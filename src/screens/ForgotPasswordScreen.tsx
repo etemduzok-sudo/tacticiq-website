@@ -2,172 +2,271 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
+  TextInput,
+  TouchableOpacity,
   StyleSheet,
-  ScrollView,
   KeyboardAvoidingView,
   Platform,
-  TouchableOpacity,
-  TextInput,
-  Alert,
+  ScrollView,
+  SafeAreaView,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BRAND, OPACITY, SPACING, TYPOGRAPHY, SIZES } from '../theme/theme';
-import { AUTH_GRADIENT, PRIMARY_BUTTON_GRADIENT } from '../theme/gradients';
+import { Ionicons } from '@expo/vector-icons';
+import Animated, {
+  FadeIn,
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withTiming,
+  withSpring,
+} from 'react-native-reanimated';
 
 interface ForgotPasswordScreenProps {
   onBack: () => void;
 }
 
-export default function ForgotPasswordScreen({ onBack }: ForgotPasswordScreenProps) {
+export default function ForgotPasswordScreen({
+  onBack,
+}: ForgotPasswordScreenProps) {
   const [email, setEmail] = useState('');
-  const [isEmailFocused, setIsEmailFocused] = useState(false);
   const [isEmailSent, setIsEmailSent] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSendResetLink = () => {
+  // Rotating ball animation
+  const rotation = useSharedValue(0);
+  
+  React.useEffect(() => {
+    rotation.value = withRepeat(
+      withTiming(360, { duration: 3000 }),
+      -1,
+      false
+    );
+  }, []);
+
+  const animatedBallStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${rotation.value}deg` }],
+  }));
+
+  // Success icon scale animation
+  const successScale = useSharedValue(0);
+
+  const handleSendEmail = async () => {
     if (!email || !email.includes('@')) {
-      Alert.alert('Hata', 'Lütfen geçerli bir e-posta adresi giriniz.');
+      alert('Geçersiz email adresi\nLütfen geçerli bir email adresi girin.');
       return;
     }
 
-    // Simülasyon - gerçek uygulamada API çağrısı yapılır
-    setTimeout(() => {
-      setIsEmailSent(true);
-    }, 1000);
+    setIsLoading(true);
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    setIsLoading(false);
+    setIsEmailSent(true);
+    
+    // Animate success icon
+    successScale.value = withSpring(1, {
+      damping: 10,
+      stiffness: 200,
+    });
   };
 
-  const handleBackToLogin = () => {
-    onBack();
-  };
-
-  if (isEmailSent) {
-    return (
-      <LinearGradient
-        {...AUTH_GRADIENT} // Design System compliant
-        style={styles.container}
-      >
-        <View style={styles.successContainer}>
-          {/* Başarı İkonu */}
-          <View style={styles.successIcon}>
-            <Text style={styles.successEmoji}>✅</Text>
-          </View>
-
-          {/* Başlık */}
-          <Text style={styles.successTitle}>E-posta Gönderildi!</Text>
-
-          {/* Açıklama */}
-          <Text style={styles.successDescription}>
-            Şifre sıfırlama bağlantısı {email} adresine gönderildi. Lütfen e-posta kutunuzu kontrol edin.
-          </Text>
-
-          {/* Geri Dön Butonu */}
-          <TouchableOpacity onPress={handleBackToLogin} activeOpacity={0.8}>
-            <LinearGradient
-              {...PRIMARY_BUTTON_GRADIENT} // Design System compliant
-              style={styles.backButton}
-            >
-              <Text style={styles.backButtonText}>Giriş Sayfasına Dön</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-
-          {/* E-posta Gelmedi? */}
-          <TouchableOpacity
-            style={styles.resendContainer}
-            onPress={() => setIsEmailSent(false)}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.resendText}>
-              E-posta gelmediyse{' '}
-              <Text style={styles.resendLink}>tekrar gönder</Text>
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </LinearGradient>
-    );
-  }
+  const successIconStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: successScale.value }],
+  }));
 
   return (
-    <LinearGradient
-      {...AUTH_GRADIENT} // Design System compliant
-      style={styles.container}
-    >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}
+    <SafeAreaView style={styles.safeArea}>
+      <LinearGradient
+        colors={['#0F172A', '#1E293B', '#0F172A']}
+        style={styles.container}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
       >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.keyboardView}
         >
-          {/* Geri Butonu */}
-          <TouchableOpacity style={styles.backButtonTop} onPress={onBack} activeOpacity={0.7}>
-            <Text style={styles.backArrow}>←</Text>
-          </TouchableOpacity>
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            {/* Back Button */}
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={onBack}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="chevron-back" size={24} color="#059669" />
+            </TouchableOpacity>
 
-          {/* İkon ve Başlık */}
-          <View style={styles.header}>
-            <View style={styles.iconContainer}>
-              <Text style={styles.lockEmoji}>🔒</Text>
-            </View>
-            
-            <Text style={styles.title}>Şifremi Unuttum</Text>
-            <Text style={styles.subtitle}>
-              E-posta adresinize şifre sıfırlama bağlantısı göndereceğiz.
+            <Animated.View entering={FadeIn.duration(300)} style={styles.content}>
+              {!isEmailSent ? (
+                <>
+                  {/* Logo Section */}
+                  <View style={styles.logoSection}>
+                    <Ionicons name="shield" size={72} color="#F59E0B" />
+                    
+                    <View style={styles.titleContainer}>
+                      <Text style={styles.titleText}>Fan Manager 2</Text>
+                      <Animated.Text style={[styles.ballEmoji, animatedBallStyle]}>
+                        ⚽
+                      </Animated.Text>
+                      <Text style={styles.titleText}>26</Text>
+                    </View>
+                    
+                    <Text style={styles.subtitle}>Şifre Sıfırlama</Text>
+                  </View>
+
+                  {/* Spacer (matches social buttons height on register) */}
+                  <View style={styles.spacer} />
+
+                  {/* Form */}
+                  <View style={styles.formContainer}>
+                    <View style={styles.inputWrapper}>
+                      <Ionicons
+                        name="mail-outline"
+                        size={20}
+                        color="#059669"
+                        style={styles.inputIcon}
+                      />
+                      <TextInput
+                        style={styles.input}
+                        placeholder="E-posta"
+                        placeholderTextColor="#64748B"
+                        value={email}
+                        onChangeText={setEmail}
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                      />
+                    </View>
+
+                    <TouchableOpacity
+                      style={[
+                        styles.submitButton,
+                        isLoading && styles.submitButtonDisabled,
+                      ]}
+                      onPress={handleSendEmail}
+                      disabled={isLoading}
+                      activeOpacity={0.8}
+                    >
+                      <LinearGradient
+                        colors={['#059669', '#047857']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={styles.submitButtonGradient}
+                      >
+                        {isLoading ? (
+                          <View style={styles.loadingContainer}>
+                            <ActivityIndicator color="#FFFFFF" />
+                            <Text style={styles.submitButtonText}>
+                              Gönderiliyor...
+                            </Text>
+                          </View>
+                        ) : (
+                          <Text style={styles.submitButtonText}>
+                            Şifre Sıfırlama Linki Gönder
+                          </Text>
+                        )}
+                      </LinearGradient>
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Back to Login */}
+                  <View style={styles.backToLoginContainer}>
+                    <Text style={styles.backToLoginText}>
+                      Şifrenizi hatırladınız mı?{' '}
+                    </Text>
+                    <TouchableOpacity onPress={onBack} activeOpacity={0.7}>
+                      <Text style={styles.backToLoginLink}>Giriş Yap</Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              ) : (
+                <>
+                  {/* Logo Section */}
+                  <View style={styles.logoSection}>
+                    <Ionicons name="shield" size={72} color="#F59E0B" />
+                    
+                    <View style={styles.titleContainer}>
+                      <Text style={styles.titleText}>Fan Manager 2</Text>
+                      <Animated.Text style={[styles.ballEmoji, animatedBallStyle]}>
+                        ⚽
+                      </Animated.Text>
+                      <Text style={styles.titleText}>26</Text>
+                    </View>
+                    
+                    <Text style={styles.subtitle}>Şifre Sıfırlama</Text>
+                  </View>
+
+                  {/* Success Message */}
+                  <View style={styles.successContainer}>
+                    <Animated.View style={successIconStyle}>
+                      <Ionicons
+                        name="checkmark-circle"
+                        size={64}
+                        color="#059669"
+                      />
+                    </Animated.View>
+
+                    <Text style={styles.successTitle}>Email Gönderildi!</Text>
+                    
+                    <Text style={styles.successMessage}>
+                      Şifre sıfırlama bağlantısı{' '}
+                      <Text style={styles.successEmail}>{email}</Text> adresine
+                      gönderildi.
+                    </Text>
+
+                    {/* Help Box */}
+                    <View style={styles.helpBox}>
+                      <View style={styles.helpHeader}>
+                        <Ionicons
+                          name="help-circle-outline"
+                          size={16}
+                          color="#059669"
+                        />
+                        <Text style={styles.helpTitle}>Email gelmediyse:</Text>
+                      </View>
+                      <View style={styles.helpList}>
+                        <Text style={styles.helpItem}>• Spam klasörünü kontrol edin</Text>
+                        <Text style={styles.helpItem}>
+                          • Email adresini doğru yazdığınızdan emin olun
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* Retry Button */}
+                    <TouchableOpacity
+                      style={styles.retryButton}
+                      onPress={() => {
+                        setIsEmailSent(false);
+                        successScale.value = 0;
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={styles.retryButtonText}>Tekrar Dene</Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              )}
+            </Animated.View>
+
+            {/* Footer */}
+            <Text style={styles.footer}>
+              © 2026 Fan Manager. Tüm hakları saklıdır.
             </Text>
-          </View>
-
-          {/* Form */}
-          <View style={styles.formContainer}>
-              {/* E-posta Input */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>E-posta Adresi</Text>
-                <View
-                  style={[
-                    styles.inputWrapper,
-                    isEmailFocused && styles.inputWrapperFocused,
-                  ]}
-                >
-                  <Text style={styles.emailIcon}>✉️</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="ornek@email.com"
-                    placeholderTextColor="#999"
-                    value={email}
-                    onChangeText={setEmail}
-                    onFocus={() => setIsEmailFocused(true)}
-                    onBlur={() => setIsEmailFocused(false)}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                  />
-                </View>
-              </View>
-
-              {/* Gönder Butonu */}
-              <TouchableOpacity onPress={handleSendResetLink} activeOpacity={0.8}>
-                <LinearGradient
-                  {...PRIMARY_BUTTON_GRADIENT} // Design System compliant
-                  style={styles.submitButton}
-                >
-                  <Text style={styles.submitButtonText}>Sıfırlama Bağlantısı Gönder</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-
-              {/* Giriş Yap Linki */}
-              <View style={styles.loginLinkContainer}>
-                <Text style={styles.loginLinkText}>Şifrenizi hatırladınız mı? </Text>
-                <TouchableOpacity onPress={handleBackToLogin}>
-                  <Text style={styles.loginLink}>Giriş Yap</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
           </ScrollView>
         </KeyboardAvoidingView>
-    </LinearGradient>
+      </LinearGradient>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#0F172A',
+  },
   container: {
     flex: 1,
   },
@@ -176,186 +275,214 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    padding: SPACING.xl,
+    paddingHorizontal: 16,
+    paddingVertical: 24,
   },
-
-  // Üst Geri Butonu
-  backButtonTop: {
-    position: 'absolute',
-    top: 20,
-    left: 20,
+  backButton: {
     width: 40,
     height: 40,
-    justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 10,
+    justifyContent: 'center',
+    marginBottom: 12,
   },
-  backArrow: {
-    fontSize: 28,
-    color: BRAND.emerald,
-    fontWeight: '300',
+  content: {
+    flex: 1,
+    maxWidth: 448,
+    width: '100%',
+    alignSelf: 'center',
   },
 
-  // Header
-  header: {
+  // Logo Section
+  logoSection: {
     alignItems: 'center',
-    marginBottom: SPACING.xxxl,
+    marginBottom: 32,
+    height: 148,
+    justifyContent: 'flex-start',
   },
-  iconContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+  titleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 12,
     justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 24,
+    height: 34,
   },
-  lockEmoji: {
-    fontSize: 60,
-  },
-  title: {
+  titleText: {
     fontSize: 28,
-    fontWeight: '700',
-    color: BRAND.white,
-    marginBottom: SPACING.sm,
-    textAlign: 'center',
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+    lineHeight: 34,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
+  },
+  ballEmoji: {
+    fontSize: 20,
+    marginHorizontal: -2,
+    lineHeight: 34,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   subtitle: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.7)',
-    textAlign: 'center',
+    color: '#9CA3AF',
+    marginTop: 6,
+    height: 20,
     lineHeight: 20,
-    paddingHorizontal: SPACING.md,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
+  },
+
+  // Spacer (matches social buttons + divider height = 146px: 2x50px buttons + 10px gap + 12px marginBottom + 24px divider)
+  spacer: {
+    height: 146,
   },
 
   // Form
   formContainer: {
-    width: '100%',
-  },
-  inputGroup: {
-    marginBottom: SPACING.xl,
-  },
-  inputLabel: {
-    fontSize: 14,
-    color: BRAND.white,
-    marginBottom: SPACING.sm,
-    fontWeight: '500',
+    gap: 10,
   },
   inputWrapper: {
+    position: 'relative',
+    height: 50,
+  },
+  inputIcon: {
+    position: 'absolute',
+    left: 12,
+    top: 15,
+    zIndex: 1,
+  },
+  input: {
+    height: 50,
+    backgroundColor: 'rgba(15, 23, 42, 0.5)',
+    borderWidth: 1,
+    borderColor: 'rgba(5, 150, 105, 0.3)',
+    borderRadius: 12,
+    paddingLeft: 44,
+    paddingRight: 16,
+    fontSize: 16,
+    color: '#FFFFFF',
+  },
+
+  // Submit Button
+  submitButton: {
+    height: 50,
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginTop: 8,
+  },
+  submitButtonDisabled: {
+    opacity: 0.5,
+  },
+  submitButtonGradient: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
+  },
+  submitButtonText: {
+    fontSize: 16,
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+
+  // Back to Login
+  backToLoginContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 16,
+  },
+  backToLoginText: {
+    fontSize: 14,
+    color: '#9CA3AF',
+  },
+  backToLoginLink: {
+    fontSize: 14,
+    color: '#059669',
+    fontWeight: '500',
+  },
+
+  // Success Screen
+  successContainer: {
     backgroundColor: 'rgba(15, 23, 42, 0.5)',
+    borderWidth: 1,
+    borderColor: 'rgba(5, 150, 105, 0.3)',
     borderRadius: 12,
-    paddingHorizontal: 16,
+    padding: 24,
+    alignItems: 'center',
+  },
+  successTitle: {
+    fontSize: 20,
+    color: '#FFFFFF',
+    fontWeight: '600',
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  successMessage: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  successEmail: {
+    color: '#FFFFFF',
+    fontWeight: '500',
+  },
+
+  // Help Box
+  helpBox: {
+    backgroundColor: 'rgba(5, 150, 105, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(5, 150, 105, 0.2)',
+    borderRadius: 8,
+    padding: 12,
+    width: '100%',
+    marginBottom: 16,
+  },
+  helpHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
+  helpTitle: {
+    fontSize: 12,
+    color: '#D1D5DB',
+  },
+  helpList: {
+    marginTop: 4,
+  },
+  helpItem: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    marginBottom: 2,
+  },
+
+  // Retry Button
+  retryButton: {
+    width: '100%',
     height: 50,
     borderWidth: 1,
     borderColor: 'rgba(5, 150, 105, 0.3)',
-    gap: 8,
-  },
-  emailIcon: {
-    fontSize: 20,
-  },
-  inputWrapperFocused: {
-    borderColor: BRAND.emerald, // Design System
-  },
-  input: {
-    flex: 1,
-    fontSize: 15,
-    color: BRAND.white,
-    fontWeight: '400',
-  },
-
-  // Submit Butonu
-  submitButton: {
     borderRadius: 12,
-    height: 56,
-    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: SPACING.lg,
-    shadowColor: BRAND.emerald, // Design System
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.2,
-    shadowRadius: 15,
-    elevation: 10,
+    justifyContent: 'center',
+    backgroundColor: 'rgba(5, 150, 105, 0.1)',
   },
-  submitButtonText: {
-    color: BRAND.white,
+  retryButtonText: {
     fontSize: 16,
-    fontWeight: '700',
+    color: '#059669',
+    fontWeight: '600',
   },
 
-  // Giriş Linki
-  loginLinkContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loginLinkText: {
-    color: 'rgba(255, 255, 255, 0.6)',
-    fontSize: 14,
-  },
-  loginLink: {
-    color: BRAND.emerald,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-
-  // Başarı Ekranı
-  successContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: SPACING.xl,
-  },
-  successIcon: {
-    marginBottom: 32, // SPACING.xl
-  },
-  successEmoji: {
-    fontSize: 80,
-  },
-  successTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: BRAND.white,
-    marginBottom: SPACING.md,
+  // Footer
+  footer: {
+    fontSize: 12,
+    color: '#6B7280',
     textAlign: 'center',
-  },
-  successDescription: {
-    fontSize: 15,
-    color: 'rgba(255, 255, 255, 0.7)',
-    textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: SPACING.xxxl,
-    paddingHorizontal: SPACING.lg,
-  },
-  backButton: {
-    borderRadius: 12,
-    height: 56,
-    paddingHorizontal: SPACING.xxxl,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: SPACING.lg,
-    shadowColor: BRAND.emerald, // Design System
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.2,
-    shadowRadius: 15,
-    elevation: 10,
-  },
-  backButtonText: {
-    color: BRAND.white,
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  resendContainer: {
-    marginTop: SPACING.md,
-  },
-  resendText: {
-    color: 'rgba(255, 255, 255, 0.6)',
-    fontSize: 14,
-    textAlign: 'center',
-  },
-  resendLink: {
-    color: BRAND.emerald,
-    fontWeight: '700',
+    marginTop: 24,
   },
 });

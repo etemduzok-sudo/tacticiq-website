@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { LogBox, View, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { LogBox, View, Text, StyleSheet } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ThemeProvider } from './src/contexts/ThemeContext';
-import ErrorBoundary from './src/components/ErrorBoundary';
 
 // Screens
 import SplashScreen from './src/screens/SplashScreen';
@@ -12,13 +11,21 @@ import AuthScreen from './src/screens/AuthScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
 import ForgotPasswordScreen from './src/screens/ForgotPasswordScreen';
 import FavoriteTeamsScreen from './src/screens/FavoriteTeamsScreen';
-import HomeScreen from './src/screens/HomeScreen';
-import MatchesScreen from './src/screens/MatchesScreen';
-import MatchDetailScreen from './src/screens/MatchDetailScreen';
-import ProfileScreen from './src/screens/ProfileScreen';
-import ProfileSettingsScreen from './src/screens/ProfileSettingsScreen';
+import { MatchListScreen } from './src/screens/MatchListScreen';
+import { ProfileScreen } from './src/screens/ProfileScreen';
+import { ProfileSettingsScreen } from './src/screens/ProfileSettingsScreen';
+import { ChangePasswordScreen } from './src/screens/ChangePasswordScreen';
+import { NotificationsScreen } from './src/screens/NotificationsScreen';
+import { DeleteAccountScreen } from './src/screens/DeleteAccountScreen';
+import { LegalDocumentScreen } from './src/screens/LegalDocumentScreen';
+import { UpgradeToProScreen } from './src/screens/UpgradeToProScreen';
+import { Dashboard } from './src/components/Dashboard';
+import { BottomNavigation } from './src/components/BottomNavigation';
+import { MatchDetail } from './src/components/MatchDetail';
+import { MatchResultSummaryScreen } from './src/screens/MatchResultSummaryScreen';
+import { Leaderboard } from './src/components/Leaderboard';
 
-// Screen Types (from documentation)
+// Screen Types
 type Screen =
   | 'splash'
   | 'language'
@@ -29,8 +36,16 @@ type Screen =
   | 'home'
   | 'matches'
   | 'match-detail'
+  | 'match-result-summary'
+  | 'leaderboard'
+  | 'tournaments'
   | 'profile'
-  | 'profile-settings';
+  | 'profile-settings'
+  | 'change-password'
+  | 'notifications'
+  | 'delete-account'
+  | 'legal'
+  | 'pro-upgrade';
 
 // Ignore warnings
 LogBox.ignoreLogs([
@@ -40,253 +55,455 @@ LogBox.ignoreLogs([
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('splash');
-  const [selectedMatchId, setSelectedMatchId] = useState<string>('');
-  const [returnScreen, setReturnScreen] = useState<Screen>('auth');
+  const [legalDocumentType, setLegalDocumentType] = useState<string>('terms');
+  const [activeTab, setActiveTab] = useState<string>('home');
+  const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
 
   // ==========================================
-  // NAVIGATION HANDLERS (from documentation)
+  // NAVIGATION HANDLERS
   // ==========================================
 
-  // A) Onboarding Handlers
-  const handleSplashComplete = async () => {
+  // 1. Splash Complete
+  const handleSplashComplete = async (hasUser: boolean) => {
+    console.log('✅ [SPLASH] Complete! Has user:', hasUser);
+    
     try {
-      const user = await AsyncStorage.getItem('fan-manager-user');
-      console.log('🔍 [SPLASH] User in AsyncStorage:', user);
-      
-      if (user) {
-        console.log('✅ [SPLASH] User EXISTS → Going to HOME');
-        setCurrentScreen('home');
+      if (hasUser) {
+        // User exists → Go to Home (or check favorite teams)
+        const hasTeams = await AsyncStorage.getItem('fan-manager-favorite-clubs');
+        if (hasTeams) {
+          console.log('→ Going to HOME');
+          setCurrentScreen('home');
+        } else {
+          console.log('→ Going to FAVORITE TEAMS');
+          setCurrentScreen('favorite-teams');
+        }
       } else {
-        console.log('❌ [SPLASH] User NOT EXISTS → Going to LANGUAGE');
+        // No user → Language Selection
+        console.log('→ Going to LANGUAGE SELECTION');
         setCurrentScreen('language');
       }
     } catch (error) {
-      console.error('Error checking user session:', error);
+      console.error('Error in splash complete:', error);
       setCurrentScreen('language');
     }
   };
 
+  // 2. Language Selection
   const handleLanguageSelect = async (lang: string) => {
-    try {
-      await AsyncStorage.setItem('fan-manager-language', lang);
-      setCurrentScreen('auth');
-    } catch (error) {
-      console.error('Error saving language:', error);
-    }
+    console.log('✅ [LANGUAGE] Selected:', lang);
+    await AsyncStorage.setItem('fan-manager-language', lang);
+    console.log('→ Going to AUTH');
+    setCurrentScreen('auth');
   };
 
-  const handleAuthComplete = async () => {
-    try {
-      await AsyncStorage.setItem('fan-manager-user', JSON.stringify({ authenticated: true }));
-      const hasTeams = await AsyncStorage.getItem('fan-manager-favorite-clubs');
-      
-      if (hasTeams) {
-        setCurrentScreen('home');
-      } else {
-        setCurrentScreen('favorite-teams');
-      }
-    } catch (error) {
-      console.error('Error in auth complete:', error);
-    }
-  };
-
-  const handleFavoriteTeamsComplete = async (selectedTeams: string[]) => {
-    try {
-      if (selectedTeams.length === 0) {
-        // Show error (would use toast in production)
-        console.warn('No teams selected');
-        return;
-      }
-      
-      await AsyncStorage.setItem('fan-manager-favorite-clubs', JSON.stringify(selectedTeams));
-      await AsyncStorage.setItem('fan-manager-user', JSON.stringify({ authenticated: true }));
+  // 3. Auth → Login Success
+  const handleLoginSuccess = async () => {
+    console.log('✅ [AUTH] Login Success!');
+    await AsyncStorage.setItem('fan-manager-user', JSON.stringify({ authenticated: true }));
+    
+    const hasTeams = await AsyncStorage.getItem('fan-manager-favorite-clubs');
+    if (hasTeams) {
+      console.log('→ Going to HOME');
       setCurrentScreen('home');
-    } catch (error) {
-      console.error('Error saving favorite teams:', error);
+    } else {
+      console.log('→ Going to FAVORITE TEAMS');
+      setCurrentScreen('favorite-teams');
     }
   };
 
-  // B) Main App Handlers
+  // 4. Auth → Forgot Password
+  const handleForgotPassword = () => {
+    console.log('→ Going to FORGOT PASSWORD');
+    setCurrentScreen('forgot-password');
+  };
+
+  // 5. Auth → Register
+  const handleRegister = () => {
+    console.log('→ Going to REGISTER');
+    setCurrentScreen('register');
+  };
+
+  // 6. Register → Success
+  const handleRegisterSuccess = async () => {
+    console.log('✅ [REGISTER] Success!');
+    await AsyncStorage.setItem('fan-manager-user', JSON.stringify({ authenticated: true }));
+    console.log('→ Going to FAVORITE TEAMS');
+    setCurrentScreen('favorite-teams');
+  };
+
+  // 7. Forgot Password → Back to Auth
+  const handleForgotPasswordBack = () => {
+    console.log('→ Back to AUTH');
+    setCurrentScreen('auth');
+  };
+
+  // 8. Register → Back to Auth
+  const handleRegisterBack = () => {
+    console.log('→ Back to AUTH');
+    setCurrentScreen('auth');
+  };
+
+  // 9. Favorite Teams → Complete
+  const handleFavoriteTeamsComplete = async (selectedTeams: string[]) => {
+    console.log('✅ [FAVORITE TEAMS] Selected:', selectedTeams);
+    if (selectedTeams.length === 0) {
+      console.warn('⚠️ No teams selected!');
+      return;
+    }
+    await AsyncStorage.setItem('fan-manager-favorite-clubs', JSON.stringify(selectedTeams));
+    console.log('→ Going to HOME');
+    setActiveTab('home');
+    setCurrentScreen('home');
+  };
+
+  // 10. Matches → Profile
+  const handleProfileClick = () => {
+    console.log('→ Going to PROFILE');
+    setCurrentScreen('profile');
+  };
+
+  // 11. Bottom Navigation Tab Change
+  const handleTabChange = (tab: string) => {
+    console.log('→ Tab changed:', tab);
+    setActiveTab(tab);
+    setCurrentScreen(tab as Screen);
+  };
+
+  // 12. Matches → Match Detail
   const handleMatchSelect = (matchId: string) => {
+    console.log('→ Match selected:', matchId);
     setSelectedMatchId(matchId);
     setCurrentScreen('match-detail');
   };
 
-  const handleProfileClick = () => {
-    setCurrentScreen('profile');
+  // 12b. Matches → Match Result Summary (for finished matches)
+  const handleMatchResultSelect = (matchId: string) => {
+    console.log('→ Finished match selected:', matchId);
+    setSelectedMatchId(matchId);
+    setCurrentScreen('match-result-summary');
   };
 
-  const handleBackToHome = () => {
-    setCurrentScreen('home');
+  // 13. Dashboard Navigation
+  const handleDashboardNavigate = (screen: string, params?: any) => {
+    console.log('→ Dashboard navigate:', screen, params);
+    
+    switch (screen) {
+      case 'notifications':
+        setCurrentScreen('notifications');
+        break;
+      case 'profile':
+        setActiveTab('profile');
+        setCurrentScreen('profile');
+        break;
+      case 'matches':
+        setActiveTab('matches');
+        setCurrentScreen('matches');
+        break;
+      case 'match-detail':
+        if (params?.id) {
+          setSelectedMatchId(params.id);
+          setCurrentScreen('match-detail');
+        }
+        break;
+      case 'achievements':
+        // TODO: Achievements page
+        console.log('Achievements page');
+        break;
+      default:
+        console.log('Unknown navigation target:', screen);
+    }
   };
 
-  const handleBackToMatches = () => {
-    setCurrentScreen('matches');
-  };
-
-  // C) Settings Handlers
-  const handleSettingsClick = () => {
+  // 12. Profile → Settings
+  const handleProfileSettings = () => {
+    console.log('→ Going to PROFILE SETTINGS');
     setCurrentScreen('profile-settings');
   };
 
-  const handleBackToProfile = () => {
+  // 13. Profile → Pro Upgrade
+  // 16. Navigate to PRO Upgrade
+  const handleProUpgrade = () => {
+    console.log('→ Going to PRO UPGRADE');
+    setCurrentScreen('pro-upgrade');
+  };
+
+  // 17. PRO Upgrade Success
+  const handleUpgradeSuccess = async () => {
+    console.log('✅ [PRO UPGRADE] Success!');
+    // TODO: Save PRO status to AsyncStorage
+    await AsyncStorage.setItem('fan-manager-pro-status', 'true');
+    console.log('→ Going back to PROFILE');
     setCurrentScreen('profile');
   };
 
-  const handleNavigateToFavoriteTeams = () => {
-    setReturnScreen('profile-settings');
-    setCurrentScreen('favorite-teams');
+  // 14. Profile Settings → Change Password
+  const handleNavigateToChangePassword = () => {
+    console.log('→ Going to CHANGE PASSWORD');
+    setCurrentScreen('change-password');
   };
 
-  const handleNavigateToLanguage = () => {
-    setReturnScreen('profile-settings');
-    setCurrentScreen('language');
+  // 15. Profile Settings → Notifications
+  const handleNavigateToNotifications = () => {
+    console.log('→ Going to NOTIFICATIONS');
+    setCurrentScreen('notifications');
   };
 
-  // D) Special Handlers
-  const handleAuthBack = () => {
-    setCurrentScreen('language');
+  // 16. Profile Settings → Delete Account
+  const handleNavigateToDeleteAccount = () => {
+    console.log('→ Going to DELETE ACCOUNT');
+    setCurrentScreen('delete-account');
   };
 
-  const handleForgotPassword = () => {
-    setCurrentScreen('forgot-password');
-  };
-
-  const handleForgotPasswordBack = () => {
-    setCurrentScreen('auth');
-  };
-
-  const handleRegister = () => {
-    setCurrentScreen('register');
-  };
-
-  const handleRegisterBack = () => {
-    setCurrentScreen('auth');
-  };
-
+  // 17. Profile Settings → Logout
   const handleLogout = async () => {
+    console.log('🚪 [LOGOUT] Logging out...');
     try {
+      // Sadece user session'ı temizle - dil ve takım seçimini koru
       await AsyncStorage.removeItem('fan-manager-user');
-      setCurrentScreen('splash');
-      // Simulate re-check
-      setTimeout(() => setCurrentScreen('language'), 1000);
+      console.log('✅ User session cleared');
+      console.log('→ Going to AUTH');
+      setCurrentScreen('auth');
     } catch (error) {
-      console.error('Error during logout:', error);
+      console.error('❌ Logout error:', error);
+      // Hata olsa bile auth'a git
+      setCurrentScreen('auth');
     }
   };
 
+  // 18. Delete Account → Confirm
+  const handleDeleteAccountConfirm = async () => {
+    console.log('🗑️ [DELETE ACCOUNT] Account deleted');
+    await AsyncStorage.clear();
+    console.log('→ Going to SPLASH');
+    setCurrentScreen('splash');
+  };
+
+  // 19. Navigate to Legal Document
+  const handleNavigateToLegal = (documentType: string) => {
+    console.log('→ Going to LEGAL DOCUMENT:', documentType);
+    setLegalDocumentType(documentType);
+    setCurrentScreen('legal');
+  };
+
   // ==========================================
-  // SCREEN RENDERING (Conditional)
+  // SCREEN RENDERING
   // ==========================================
 
   const renderScreen = () => {
-    switch (currentScreen) {
-      case 'splash':
-        return <SplashScreen onComplete={handleSplashComplete} />;
-      
-      case 'language':
-        return (
-          <LanguageSelectionScreen
-            onLanguageSelect={handleLanguageSelect}
-            onBack={returnScreen === 'profile-settings' ? handleBackToProfile : undefined}
-          />
-        );
-      
-      case 'auth':
-        return (
-          <AuthScreen
-            onLoginSuccess={handleAuthComplete}
-            onForgotPassword={handleForgotPassword}
-            onRegister={handleRegister}
-            onBack={handleAuthBack}
-          />
-        );
-      
-      case 'register':
-        return (
-          <RegisterScreen
-            onRegisterSuccess={handleAuthComplete}
-            onBack={handleRegisterBack}
-          />
-        );
-      
-      case 'forgot-password':
-        return (
-          <ForgotPasswordScreen
-            onBack={handleForgotPasswordBack}
-          />
-        );
-      
-      case 'favorite-teams':
-        return (
-          <FavoriteTeamsScreen
-            onComplete={handleFavoriteTeamsComplete}
-            onBack={returnScreen === 'profile-settings' ? handleBackToProfile : handleRegisterBack}
-          />
-        );
-      
-      case 'home':
-        return (
-          <HomeScreen
-            onMatchSelect={handleMatchSelect}
-            onProfileClick={handleProfileClick}
-          />
-        );
-      
-      case 'matches':
-        return (
-          <MatchesScreen
-            onMatchSelect={handleMatchSelect}
-            onBack={handleBackToHome}
-          />
-        );
-      
-      case 'match-detail':
-        return (
-          <MatchDetailScreen
-            matchId={selectedMatchId}
-            onBack={handleBackToHome}
-          />
-        );
-      
-      case 'profile':
-        return (
-          <ProfileScreen
-            onSettingsClick={handleSettingsClick}
-            onBack={handleBackToHome}
-          />
-        );
-      
-      case 'profile-settings':
-        return (
-          <ProfileSettingsScreen
-            onBack={handleBackToProfile}
-            onNavigateToFavoriteTeams={handleNavigateToFavoriteTeams}
-            onNavigateToLanguage={handleNavigateToLanguage}
-            onLogout={handleLogout}
-          />
-        );
-      
-      default:
-        return <SplashScreen onComplete={handleSplashComplete} />;
+    try {
+      switch (currentScreen) {
+        case 'splash':
+          return <SplashScreen onComplete={handleSplashComplete} />;
+        
+        case 'language':
+          return (
+            <LanguageSelectionScreen
+              onLanguageSelect={handleLanguageSelect}
+            />
+          );
+        
+        case 'auth':
+          return (
+            <AuthScreen
+              onLoginSuccess={handleLoginSuccess}
+              onForgotPassword={handleForgotPassword}
+              onRegister={handleRegister}
+              onBack={() => setCurrentScreen('language')}
+            />
+          );
+        
+        case 'register':
+          return (
+            <RegisterScreen
+              onRegisterSuccess={handleRegisterSuccess}
+              onBack={handleRegisterBack}
+              onNavigateToLegal={handleNavigateToLegal}
+            />
+          );
+        
+        case 'forgot-password':
+          return (
+            <ForgotPasswordScreen
+              onBack={handleForgotPasswordBack}
+            />
+          );
+        
+        case 'favorite-teams':
+          return (
+            <FavoriteTeamsScreen
+              onComplete={handleFavoriteTeamsComplete}
+            />
+          );
+        
+        case 'home':
+          return (
+            <Dashboard
+              onNavigate={handleDashboardNavigate}
+            />
+          );
+        
+        case 'matches':
+          return (
+            <MatchListScreen
+              onMatchSelect={handleMatchSelect}
+              onMatchResultSelect={handleMatchResultSelect}
+              onProfileClick={handleProfileClick}
+            />
+          );
+        
+        case 'leaderboard':
+          return <Leaderboard />;
+        
+        case 'match-detail':
+          if (!selectedMatchId) {
+            console.error('No matchId for MatchDetail');
+            setCurrentScreen('home');
+            return null;
+          }
+          return (
+            <MatchDetail
+              matchId={selectedMatchId}
+              onBack={() => {
+                setSelectedMatchId(null);
+                setCurrentScreen('home');
+              }}
+            />
+          );
+        
+        case 'match-result-summary':
+          if (!selectedMatchId) {
+            console.error('No matchId for MatchResultSummary');
+            setCurrentScreen('home');
+            return null;
+          }
+          return (
+            <MatchResultSummaryScreen
+              matchData={{ id: selectedMatchId }}
+              onBack={() => {
+                setSelectedMatchId(null);
+                setCurrentScreen('matches');
+              }}
+            />
+          );
+        
+        case 'profile':
+          return (
+            <ProfileScreen
+              onBack={() => {
+                setActiveTab('home');
+                setCurrentScreen('home');
+              }}
+              onSettings={handleProfileSettings}
+              onProUpgrade={handleProUpgrade}
+            />
+          );
+        
+        case 'profile-settings':
+          return (
+            <ProfileSettingsScreen
+              onBack={() => setCurrentScreen('profile')}
+              onNavigateToFavoriteTeams={() => setCurrentScreen('favorite-teams')}
+              onNavigateToLanguage={() => setCurrentScreen('language')}
+              onLogout={handleLogout}
+              onNavigateToChangePassword={handleNavigateToChangePassword}
+              onNavigateToNotifications={handleNavigateToNotifications}
+              onNavigateToDeleteAccount={handleNavigateToDeleteAccount}
+              onNavigateToProUpgrade={handleProUpgrade}
+            />
+          );
+        
+        case 'change-password':
+          return (
+            <ChangePasswordScreen
+              onBack={() => setCurrentScreen('profile-settings')}
+            />
+          );
+        
+        case 'notifications':
+          return (
+            <NotificationsScreen
+              onBack={() => setCurrentScreen('profile-settings')}
+            />
+          );
+        
+        case 'delete-account':
+          return (
+            <DeleteAccountScreen
+              onBack={() => setCurrentScreen('profile-settings')}
+              onDeleteConfirm={handleDeleteAccountConfirm}
+            />
+          );
+        
+        case 'legal':
+          return (
+            <LegalDocumentScreen
+              documentType={legalDocumentType}
+              onBack={() => setCurrentScreen('register')}
+            />
+          );
+        
+        case 'pro-upgrade':
+          return (
+            <UpgradeToProScreen
+              onClose={() => setCurrentScreen('profile')}
+              onUpgradeSuccess={handleUpgradeSuccess}
+            />
+          );
+        
+        default:
+          return <SplashScreen onComplete={handleSplashComplete} />;
+      }
+    } catch (error) {
+      console.error('❌ Screen render error:', error);
+      return (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>❌ Error loading screen</Text>
+          <Text style={styles.errorDetails}>{String(error)}</Text>
+        </View>
+      );
     }
   };
+  
+  // Check if current screen should show bottom navigation
+  const shouldShowBottomNav = ['home', 'matches', 'leaderboard', 'tournaments', 'profile'].includes(currentScreen);
 
   return (
-    <ErrorBoundary>
-      <SafeAreaProvider>
-        <ThemeProvider>
-          <View style={styles.container}>
-            {renderScreen()}
-          </View>
-        </ThemeProvider>
-      </SafeAreaProvider>
-    </ErrorBoundary>
+    <SafeAreaProvider>
+      <ThemeProvider>
+        <View style={{ flex: 1 }}>
+          {renderScreen()}
+          
+          {/* Bottom Navigation - Only show on main screens */}
+          {shouldShowBottomNav && (
+            <BottomNavigation
+              activeTab={activeTab}
+              onTabChange={handleTabChange}
+            />
+          )}
+        </View>
+      </ThemeProvider>
+    </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  errorContainer: {
     flex: 1,
+    backgroundColor: '#0F172A',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#ff0000',
+    marginBottom: 10,
+  },
+  errorDetails: {
+    fontSize: 14,
+    color: '#fff',
+    textAlign: 'center',
   },
 });

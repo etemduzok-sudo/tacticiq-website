@@ -2,121 +2,175 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
+  TextInput,
+  TouchableOpacity,
   StyleSheet,
-  ScrollView,
   KeyboardAvoidingView,
   Platform,
-  TouchableOpacity,
-  TextInput,
+  ScrollView,
+  SafeAreaView,
   Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BRAND, OPACITY, SPACING, TYPOGRAPHY, SIZES } from '../theme/theme';
-import { AUTH_GRADIENT } from '../theme/gradients';
+import { Ionicons } from '@expo/vector-icons';
+import Animated, {
+  FadeIn,
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withTiming,
+} from 'react-native-reanimated';
+// CheckBox için custom component kullanacağız
 
 interface RegisterScreenProps {
-  onRegisterSuccess: () => void;
   onBack: () => void;
+  onRegisterSuccess: () => void;
+  onNavigateToLegal?: (documentType: string) => void;
 }
 
-export default function RegisterScreen({ onRegisterSuccess, onBack }: RegisterScreenProps) {
-  const [fullName, setFullName] = useState('');
+export default function RegisterScreen({
+  onBack,
+  onRegisterSuccess,
+  onNavigateToLegal,
+}: RegisterScreenProps) {
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [acceptTerms, setAcceptTerms] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
-  const [isNameFocused, setIsNameFocused] = useState(false);
-  const [isEmailFocused, setIsEmailFocused] = useState(false);
-  const [isPasswordFocused, setIsPasswordFocused] = useState(false);
-  const [isConfirmPasswordFocused, setIsConfirmPasswordFocused] = useState(false);
+  // Rotating ball animation
+  const rotation = useSharedValue(0);
+
+  React.useEffect(() => {
+    rotation.value = withRepeat(
+      withTiming(360, { duration: 3000 }),
+      -1,
+      false
+    );
+  }, []);
+
+  const animatedBallStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${rotation.value}deg` }],
+  }));
+
+  const handleSocialRegister = (provider: string) => {
+    Alert.alert(
+      `${provider} ile Kayıt`,
+      'Lütfen bekleyin...',
+      [{ text: 'Tamam' }]
+    );
+    setTimeout(() => {
+      onRegisterSuccess();
+    }, 1500);
+  };
 
   const handleRegister = () => {
-    if (!fullName || !email || !password || !confirmPassword) {
-      Alert.alert('Hata', 'Lütfen tüm alanları doldurunuz.');
+    // Validation
+    if (!username || !email || !password || !confirmPassword) {
+      Alert.alert('Hata', 'Lütfen tüm alanları doldurun');
       return;
     }
 
     if (!email.includes('@')) {
-      Alert.alert('Hata', 'Geçerli bir e-posta adresi giriniz.');
-      return;
-    }
-
-    if (password.length < 6) {
-      Alert.alert('Hata', 'Şifre en az 6 karakter olmalıdır.');
+      Alert.alert('Hata', 'Geçerli bir email adresi girin');
       return;
     }
 
     if (password !== confirmPassword) {
-      Alert.alert('Hata', 'Şifreler eşleşmiyor.');
+      Alert.alert('Hata', 'Şifreler eşleşmiyor');
       return;
     }
 
-    if (!acceptTerms) {
-      Alert.alert('Hata', 'Kullanım koşullarını kabul etmelisiniz.');
+    if (password.length < 6) {
+      Alert.alert('Hata', 'Şifre en az 6 karakter olmalıdır');
       return;
     }
 
-    // Success - call handler
-    onRegisterSuccess();
-  };
+    if (!agreedToTerms) {
+      Alert.alert('Hata', 'Kullanım koşullarını kabul etmelisiniz');
+      return;
+    }
 
-  const handleSocialRegister = (provider: string) => {
-    Alert.alert('Bilgi', `${provider} ile kayıt yakında eklenecek!`);
+    // Success
+    Alert.alert(
+      'Kayıt Başarılı!',
+      'Hoş geldiniz!',
+      [
+        {
+          text: 'Tamam',
+          onPress: () => onRegisterSuccess(),
+        },
+      ]
+    );
   };
 
   return (
-    <LinearGradient
-      {...AUTH_GRADIENT} // Design System compliant
-      style={styles.container}
-    >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}
+    <SafeAreaView style={styles.safeArea}>
+      <LinearGradient
+        colors={['#0F172A', '#1E293B', '#0F172A']}
+        style={styles.container}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
       >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.keyboardView}
         >
-          {/* Geri Butonu */}
-          <TouchableOpacity style={styles.backButton} onPress={onBack} activeOpacity={0.7}>
-            <Text style={styles.backButtonIcon}>←</Text>
-          </TouchableOpacity>
+          <View style={styles.scrollContent}>
+            {/* Back Button */}
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={onBack}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="chevron-back" size={24} color="#059669" />
+            </TouchableOpacity>
 
-            {/* Logo ve Başlık */}
-            <View style={styles.header}>
-              <View style={styles.logoContainer}>
-                <View style={styles.shield}>
-                  <View style={styles.shieldInner} />
+            <Animated.View entering={FadeIn.duration(300)} style={styles.content}>
+              {/* Logo Section */}
+              <View style={styles.logoSection}>
+                <Ionicons name="shield" size={72} color="#F59E0B" />
+
+                <View style={styles.titleContainer}>
+                  <Text style={styles.titleText}>Fan Manager 2</Text>
+                  <Animated.Text style={[styles.ballEmoji, animatedBallStyle]}>
+                    ⚽
+                  </Animated.Text>
+                  <Text style={styles.titleText}>26</Text>
                 </View>
+
+                <Text style={styles.subtitle}>Kayıt Ol</Text>
               </View>
-              <Text style={styles.title}>Hesap Oluştur</Text>
-              <Text style={styles.subtitle}>Fan Manager'a katılın</Text>
-            </View>
 
-            {/* Form */}
-            <View style={styles.formContainer}>
-              {/* Sosyal Kayıt Butonları */}
-              <TouchableOpacity
-                style={styles.googleButton}
-                onPress={() => handleSocialRegister('Google')}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.googleIcon}>G</Text>
-                <Text style={styles.googleButtonText}>Google ile Kayıt Ol</Text>
-              </TouchableOpacity>
+              {/* Social Register Buttons */}
+              <View style={styles.socialButtonsContainer}>
+                {/* Google Button */}
+                <TouchableOpacity
+                  style={styles.googleButton}
+                  onPress={() => handleSocialRegister('Google')}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.googleButtonContent}>
+                    <GoogleIcon />
+                    <Text style={styles.googleButtonText}>Google ile Kayıt</Text>
+                  </View>
+                </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.appleButton}
-                onPress={() => handleSocialRegister('Apple')}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.appleIcon}></Text>
-                <Text style={styles.appleButtonText}>Apple ile Kayıt Ol</Text>
-              </TouchableOpacity>
+                {/* Apple Button */}
+                <TouchableOpacity
+                  style={styles.appleButton}
+                  onPress={() => handleSocialRegister('Apple')}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.appleButtonContent}>
+                    <Ionicons name="logo-apple" size={20} color="#FFFFFF" />
+                    <Text style={styles.appleButtonText}>Apple ile Kayıt</Text>
+                  </View>
+                </TouchableOpacity>
+              </View>
 
               {/* Divider */}
               <View style={styles.divider}>
@@ -125,378 +179,438 @@ export default function RegisterScreen({ onRegisterSuccess, onBack }: RegisterSc
                 <View style={styles.dividerLine} />
               </View>
 
-              {/* Ad Soyad */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Ad Soyad</Text>
-                <View
-                  style={[styles.inputWrapper, isNameFocused && styles.inputWrapperFocused]}
-                >
-                  <SafeIcon name="person" size={20} color="#999" />
+              {/* Register Form */}
+              <View style={styles.formContainer}>
+                {/* Username Input */}
+                <View style={styles.inputWrapper}>
+                  <Ionicons
+                    name="person-outline"
+                    size={20}
+                    color="#059669"
+                    style={styles.inputIcon}
+                  />
                   <TextInput
                     style={styles.input}
-                    placeholder="Adınız Soyadınız"
-                    placeholderTextColor="#999"
-                    value={fullName}
-                    onChangeText={setFullName}
-                    onFocus={() => setIsNameFocused(true)}
-                    onBlur={() => setIsNameFocused(false)}
+                    placeholder="Kullanıcı adı"
+                    placeholderTextColor="#64748B"
+                    value={username}
+                    onChangeText={setUsername}
+                    autoCapitalize="none"
+                    autoCorrect={false}
                   />
                 </View>
-              </View>
 
-              {/* E-posta */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>E-posta</Text>
-                <View
-                  style={[styles.inputWrapper, isEmailFocused && styles.inputWrapperFocused]}
-                >
-                  <SafeIcon name="mail" size={20} color="#999" />
+                {/* Email Input */}
+                <View style={styles.inputWrapper}>
+                  <Ionicons
+                    name="mail-outline"
+                    size={20}
+                    color="#059669"
+                    style={styles.inputIcon}
+                  />
                   <TextInput
                     style={styles.input}
-                    placeholder="ornek@email.com"
-                    placeholderTextColor="#999"
+                    placeholder="E-posta"
+                    placeholderTextColor="#64748B"
                     value={email}
                     onChangeText={setEmail}
-                    onFocus={() => setIsEmailFocused(true)}
-                    onBlur={() => setIsEmailFocused(false)}
                     keyboardType="email-address"
                     autoCapitalize="none"
+                    autoCorrect={false}
                   />
                 </View>
-              </View>
 
-              {/* Şifre */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Şifre</Text>
-                <View
-                  style={[styles.inputWrapper, isPasswordFocused && styles.inputWrapperFocused]}
-                >
-                  <SafeIcon name="lock-closed" size={20} color="#999" />
+                {/* Password Input */}
+                <View style={styles.inputWrapper}>
+                  <Ionicons
+                    name="lock-closed-outline"
+                    size={20}
+                    color="#059669"
+                    style={styles.inputIcon}
+                  />
                   <TextInput
                     style={styles.input}
-                    placeholder="••••••••"
-                    placeholderTextColor="#999"
+                    placeholder="Şifre"
+                    placeholderTextColor="#64748B"
                     value={password}
                     onChangeText={setPassword}
-                    onFocus={() => setIsPasswordFocused(true)}
-                    onBlur={() => setIsPasswordFocused(false)}
                     secureTextEntry={!showPassword}
-                  />
-                  <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                    <SafeIcon
-                      name={showPassword ? 'eye-off' : 'eye'}
-                      size={20}
-                      color="#999"
-                    />
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              {/* Şifre Tekrar */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Şifre Tekrar</Text>
-                <View
-                  style={[
-                    styles.inputWrapper,
-                    isConfirmPasswordFocused && styles.inputWrapperFocused,
-                  ]}
-                >
-                  <SafeIcon name="lock-closed" size={20} color="#999" />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="••••••••"
-                    placeholderTextColor="#999"
-                    value={confirmPassword}
-                    onChangeText={setConfirmPassword}
-                    onFocus={() => setIsConfirmPasswordFocused(true)}
-                    onBlur={() => setIsConfirmPasswordFocused(false)}
-                    secureTextEntry={!showConfirmPassword}
+                    autoCapitalize="none"
+                    autoCorrect={false}
                   />
                   <TouchableOpacity
-                    onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                    style={styles.eyeIcon}
+                    onPress={() => setShowPassword(!showPassword)}
+                    activeOpacity={0.7}
                   >
-                    <SafeIcon
-                      name={showConfirmPassword ? 'eye-off' : 'eye'}
+                    <Ionicons
+                      name={showPassword ? 'eye-off-outline' : 'eye-outline'}
                       size={20}
-                      color="#999"
+                      color="#9CA3AF"
                     />
                   </TouchableOpacity>
                 </View>
+
+                {/* Confirm Password Input */}
+                <View style={styles.inputWrapper}>
+                  <Ionicons
+                    name="lock-closed-outline"
+                    size={20}
+                    color="#059669"
+                    style={styles.inputIcon}
+                  />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Şifre tekrar"
+                    placeholderTextColor="#64748B"
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    secureTextEntry={!showConfirmPassword}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                  <TouchableOpacity
+                    style={styles.eyeIcon}
+                    onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons
+                      name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'}
+                      size={20}
+                      color="#9CA3AF"
+                    />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Terms Checkbox */}
+                <View style={styles.checkboxContainer}>
+                  <TouchableOpacity
+                    onPress={() => setAgreedToTerms(!agreedToTerms)}
+                    activeOpacity={0.8}
+                    style={styles.checkboxButton}
+                  >
+                    <View style={[
+                      styles.customCheckbox,
+                      agreedToTerms && styles.customCheckboxChecked
+                    ]}>
+                      {agreedToTerms && (
+                        <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                  <View style={styles.checkboxTextContainer}>
+                    <Text style={styles.checkboxText}>
+                      <Text 
+                        style={styles.linkText}
+                        onPress={() => onNavigateToLegal?.('terms')}
+                      >
+                        Kullanım Koşulları
+                      </Text>
+                      <Text> ve </Text>
+                      <Text 
+                        style={styles.linkText}
+                        onPress={() => onNavigateToLegal?.('privacy')}
+                      >
+                        Gizlilik Politikası
+                      </Text>
+                      <Text>'nı okudum ve kabul ediyorum</Text>
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Register Button */}
+                <TouchableOpacity
+                  style={styles.registerButton}
+                  onPress={handleRegister}
+                  activeOpacity={0.8}
+                >
+                  <LinearGradient
+                    colors={['#059669', '#047857']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.registerButtonGradient}
+                  >
+                    <Text style={styles.registerButtonText}>Kayıt Ol</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
               </View>
 
-              {/* Kullanım Koşulları Checkbox */}
-              <TouchableOpacity
-                style={styles.checkboxContainer}
-                onPress={() => setAcceptTerms(!acceptTerms)}
-                activeOpacity={0.8}
-              >
-                <View
-                  style={[styles.checkbox, acceptTerms && styles.checkboxChecked]}
-                >
-                  {acceptTerms && (
-                    <SafeIcon name="checkmark" size={16} color={BRAND.white} />
-                  )}
-                </View>
-                <Text style={styles.checkboxText}>
-                  <Text style={styles.termsLink} onPress={() => navigation.navigate('LegalDocuments')}>
-                    Kullanım Koşulları
-                  </Text>
-                  {' '}ve{' '}
-                  <Text style={styles.termsLink} onPress={() => navigation.navigate('LegalDocuments')}>
-                    Gizlilik Politikası
-                  </Text>
-                  'nı kabul ediyorum
-                </Text>
-              </TouchableOpacity>
-
-              {/* Kayıt Ol Butonu */}
-              <TouchableOpacity onPress={handleRegister} activeOpacity={0.8}>
-                <LinearGradient
-                  {...PRIMARY_BUTTON_GRADIENT} // Design System compliant
-                  style={styles.registerButton}
-                >
-                  <Text style={styles.registerButtonText}>Kayıt Ol</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-
-              {/* Giriş Yap Linki */}
-              <View style={styles.loginContainer}>
-                <Text style={styles.loginText}>Zaten hesabınız var mı? </Text>
-                <TouchableOpacity onPress={onBack}>
+              {/* Login Link */}
+              <View style={styles.loginLinkContainer}>
+                <Text style={styles.loginLinkText}>Zaten hesabınız var mı? </Text>
+                <TouchableOpacity onPress={onBack} activeOpacity={0.7}>
                   <Text style={styles.loginLink}>Giriş Yap</Text>
                 </TouchableOpacity>
               </View>
-            </View>
-          </ScrollView>
+            </Animated.View>
+
+            {/* Footer */}
+            <Text style={styles.footer}>
+              © 2026 Fan Manager. Tüm hakları saklıdır.
+            </Text>
+          </View>
         </KeyboardAvoidingView>
-    </LinearGradient>
+      </LinearGradient>
+    </SafeAreaView>
   );
 }
 
+// Google Icon Component
+const GoogleIcon = () => (
+  <Ionicons name="logo-google" size={20} color="#4285F4" />
+);
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
   safeArea: {
+    flex: 1,
+    backgroundColor: '#0F172A',
+  },
+  container: {
     flex: 1,
   },
   keyboardView: {
     flex: 1,
   },
   scrollContent: {
-    flexGrow: 1,
-    padding: SPACING.xl,
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingTop: 24,
+    paddingBottom: 12,
+    justifyContent: 'space-between',
   },
-
-  // Geri Butonu
   backButton: {
-    position: 'absolute',
-    top: 20,
-    left: 20,
     width: 40,
     height: 40,
-    justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 10,
+    justifyContent: 'center',
+    marginBottom: 12,
   },
-  backButtonIcon: {
-    fontSize: 28,
-    color: BRAND.emerald, // Yeşil ok
-    fontWeight: '300',
+  content: {
+    maxWidth: 448,
+    width: '100%',
+    alignSelf: 'center',
   },
 
-  // Header
-  header: {
+  // Logo Section
+  logoSection: {
     alignItems: 'center',
-    marginBottom: SPACING.xl,
+    marginBottom: 32,
+    height: 148,
+    justifyContent: 'flex-start',
   },
-  logoContainer: {
-    marginBottom: SPACING.md,
-  },
-  shield: {
-    width: 80,
-    height: 80,
-    borderWidth: 3,
-    borderColor: BRAND.gold,
-    borderRadius: 40,
+  titleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 12,
     justifyContent: 'center',
-    alignItems: 'center',
+    height: 34,
   },
-  shieldInner: {
-    width: 60,
-    height: 60,
-    borderWidth: 2,
-    borderColor: BRAND.gold,
-    borderRadius: 30,
-    opacity: 0.5,
+  titleText: {
+    fontSize: 28,
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+    lineHeight: 34,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: BRAND.white,
-    marginBottom: SPACING.xs,
+  ballEmoji: {
+    fontSize: 20,
+    marginHorizontal: -2,
+    lineHeight: 34,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   subtitle: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: '#9CA3AF',
+    marginTop: 6,
+    height: 20,
+    lineHeight: 20,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
 
-  // Form
-  formContainer: {
-    width: '100%',
+  // Social Buttons
+  socialButtonsContainer: {
+    gap: 10,
+    marginBottom: 12,
   },
-
-  // Sosyal Butonlar
   googleButton: {
+    backgroundColor: '#FFFFFF',
+    height: 50,
+    borderRadius: 12,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  googleButtonContent: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 12,
-    height: 50,
-    marginBottom: SPACING.md,
-    gap: SPACING.sm,
-  },
-  googleIcon: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#EA4335',
+    gap: 12,
   },
   googleButtonText: {
-    fontSize: 15,
+    fontSize: 16,
+    color: '#1F2937',
     fontWeight: '600',
-    color: BRAND.white,
   },
   appleButton: {
+    backgroundColor: '#000000',
+    height: 50,
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  appleButtonContent: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 12,
-    height: 50,
-    marginBottom: SPACING.lg,
-    gap: SPACING.sm,
-  },
-  appleIcon: {
-    fontSize: 20,
-    color: BRAND.white,
+    gap: 12,
   },
   appleButtonText: {
-    fontSize: 15,
+    fontSize: 16,
+    color: '#FFFFFF',
     fontWeight: '600',
-    color: BRAND.white,
   },
 
   // Divider
   divider: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: SPACING.lg,
+    marginVertical: 12,
+    gap: 16,
   },
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: '#374151',
   },
   dividerText: {
-    color: 'rgba(255, 255, 255, 0.6)',
     fontSize: 14,
-    marginHorizontal: SPACING.md,
+    color: '#6B7280',
   },
 
-  // Input
-  inputGroup: {
-    marginBottom: SPACING.md,
-  },
-  inputLabel: {
-    fontSize: 14,
-    color: BRAND.white,
-    marginBottom: SPACING.sm,
-    fontWeight: '500',
+  // Form
+  formContainer: {
+    gap: 10,
   },
   inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(15, 23, 42, 0.5)',
-    borderRadius: 12,
-    paddingHorizontal: SPACING.md,
+    position: 'relative',
     height: 50,
-    borderWidth: 1,
-    borderColor: 'rgba(5, 150, 105, 0.3)',
-    gap: SPACING.sm,
   },
-  inputWrapperFocused: {
-    borderColor: BRAND.emerald, // Design System
+  inputIcon: {
+    position: 'absolute',
+    left: 12,
+    top: 15,
+    zIndex: 1,
+  },
+  eyeIcon: {
+    position: 'absolute',
+    right: 12,
+    top: 15,
+    zIndex: 1,
   },
   input: {
-    flex: 1,
-    fontSize: 15,
-    color: BRAND.white,
+    height: 50,
+    backgroundColor: 'rgba(15, 23, 42, 0.5)',
+    borderWidth: 1,
+    borderColor: 'rgba(5, 150, 105, 0.3)',
+    borderRadius: 12,
+    paddingLeft: 44,
+    paddingRight: 44,
+    fontSize: 16,
+    color: '#FFFFFF',
   },
 
   // Checkbox
   checkboxContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: SPACING.lg,
-    gap: SPACING.sm,
+    alignItems: 'flex-start',
+    gap: 8,
+    marginTop: 4,
   },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
+  checkboxButton: {
+    padding: 0,
+  },
+  customCheckbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
     borderWidth: 2,
-    borderColor: 'rgba(5, 150, 105, 0.5)',
-    justifyContent: 'center',
+    borderColor: '#64748B',
+    backgroundColor: 'transparent',
     alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
   },
-  checkboxChecked: {
-    backgroundColor: BRAND.emerald,
-    borderColor: BRAND.emerald,
+  customCheckboxChecked: {
+    backgroundColor: '#059669',
+    borderColor: '#059669',
+  },
+  checkboxTextContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
   },
   checkboxText: {
-    flex: 1,
-    fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.7)',
-    lineHeight: 18,
+    fontSize: 14,
+    color: '#9CA3AF',
+    lineHeight: 20,
   },
-  termsLink: {
-    color: BRAND.emerald,
+  linkText: {
+    fontSize: 14,
+    color: '#059669',
+    lineHeight: 20,
+    textDecorationLine: 'underline',
+  },
+
+  // Register Button
+  registerButton: {
+    height: 50,
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginTop: 4,
+  },
+  registerButtonGradient: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  registerButtonText: {
+    fontSize: 16,
+    color: '#FFFFFF',
     fontWeight: '600',
   },
 
-  // Register Butonu
-  registerButton: {
-    borderRadius: 12,
-    height: 56,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: SPACING.lg,
-    shadowColor: BRAND.emerald, // Design System
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.2,
-    shadowRadius: 15,
-    elevation: 10,
-  },
-  registerButtonText: {
-    color: BRAND.white,
-    fontSize: 16,
-    fontWeight: '700',
-  },
-
   // Login Link
-  loginContainer: {
+  loginLinkContainer: {
     flexDirection: 'row',
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 12,
   },
-  loginText: {
-    color: 'rgba(255, 255, 255, 0.6)',
+  loginLinkText: {
     fontSize: 14,
+    color: '#9CA3AF',
   },
   loginLink: {
-    color: BRAND.emerald,
     fontSize: 14,
-    fontWeight: '700',
+    color: '#059669',
+    fontWeight: '500',
+  },
+
+  // Footer
+  footer: {
+    fontSize: 12,
+    color: '#6B7280',
+    textAlign: 'center',
+    marginTop: 24,
   },
 });

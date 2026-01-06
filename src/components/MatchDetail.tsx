@@ -1,0 +1,364 @@
+// src/components/MatchDetail.tsx
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Dimensions,
+  Platform,
+  StatusBar,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import Animated, { FadeIn } from 'react-native-reanimated';
+import { MatchSquad } from './match/MatchSquad';
+import { MatchPrediction } from './match/MatchPrediction';
+import { MatchLive } from './match/MatchLive';
+import { MatchStats } from './match/MatchStats';
+import { MatchRatings } from './match/MatchRatings';
+import { MatchSummary } from './match/MatchSummary';
+
+const { width } = Dimensions.get('window');
+
+interface MatchDetailProps {
+  matchId: string;
+  onBack: () => void;
+}
+
+// Mock match data
+const matchData = {
+  id: '1',
+  homeTeam: {
+    name: 'Galatasaray',
+    logo: '🦁',
+    color: ['#FDB913', '#E30613'],
+    manager: 'Okan Buruk',
+  },
+  awayTeam: {
+    name: 'Fenerbahçe',
+    logo: '🐤',
+    color: ['#FCCF1E', '#001A70'],
+    manager: 'İsmail Kartal',
+  },
+  league: 'Süper Lig',
+  stadium: 'Ali Sami Yen',
+  date: '2 Oca 2026',
+  time: '20:00',
+};
+
+const tabs = [
+  { id: 'squad', label: 'Kadro', icon: 'people' },
+  { id: 'prediction', label: 'Tahmin', icon: 'target' },
+  { id: 'live', label: 'Canlı', icon: 'pulse' },
+  { id: 'stats', label: 'İstatistik', icon: 'bar-chart' },
+  { id: 'ratings', label: 'Reyting', icon: 'star' },
+  { id: 'summary', label: 'Özet', icon: 'document-text' },
+];
+
+export function MatchDetail({ matchId, onBack }: MatchDetailProps) {
+  const [activeTab, setActiveTab] = useState('squad');
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'squad':
+        return (
+          <MatchSquad 
+            matchData={matchData} 
+            onComplete={() => setActiveTab('prediction')} 
+          />
+        );
+      
+      case 'prediction':
+        return (
+          <MatchPrediction matchData={matchData} />
+        );
+      
+      case 'live':
+        return <MatchLive matchData={matchData} />;
+      
+      case 'stats':
+        return <MatchStats matchData={matchData} />;
+      
+      case 'ratings':
+        return <MatchRatings matchData={matchData} />;
+      
+      case 'summary':
+        return <MatchSummary matchData={matchData} />;
+      
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" />
+
+      {/* Sticky Match Card Header */}
+      <View style={styles.matchCard}>
+        {/* Home Team Color Bar - Left */}
+        <LinearGradient
+          colors={matchData.homeTeam.color}
+          style={[styles.colorBar, styles.colorBarLeft]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+        />
+
+        {/* Away Team Color Bar - Right */}
+        <LinearGradient
+          colors={matchData.awayTeam.color}
+          style={[styles.colorBar, styles.colorBarRight]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+        />
+
+        {/* League Header with Back Button */}
+        <View style={styles.leagueHeader}>
+          <TouchableOpacity onPress={onBack} style={styles.backButton}>
+            <Ionicons name="chevron-back" size={20} color="#F8FAFB" />
+          </TouchableOpacity>
+
+          <View style={styles.leagueBadge}>
+            <Ionicons name="trophy" size={14} color="#059669" />
+            <Text style={styles.leagueText}>{matchData.league}</Text>
+          </View>
+
+          <View style={{ width: 32 }} />
+        </View>
+
+        {/* Match Info */}
+        <View style={styles.matchInfo}>
+          {/* Home Team */}
+          <View style={styles.teamContainer}>
+            <Text style={styles.teamName}>{matchData.homeTeam.name}</Text>
+            <Text style={styles.managerName}>{matchData.homeTeam.manager}</Text>
+          </View>
+
+          {/* VS & Time */}
+          <View style={styles.vsContainer}>
+            <Text style={styles.vsText}>VS</Text>
+            <Text style={styles.matchTime}>{matchData.time}</Text>
+            <Text style={styles.matchDate}>{matchData.date}</Text>
+            <View style={styles.stadiumBadge}>
+              <Ionicons name="location" size={10} color="#64748B" />
+              <Text style={styles.stadiumText}>{matchData.stadium}</Text>
+            </View>
+          </View>
+
+          {/* Away Team */}
+          <View style={styles.teamContainer}>
+            <Text style={styles.teamName}>{matchData.awayTeam.name}</Text>
+            <Text style={styles.managerName}>{matchData.awayTeam.manager}</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Tab Content */}
+      <View style={styles.contentContainer}>{renderContent()}</View>
+
+      {/* Bottom Navigation - 6 Tabs */}
+      <View style={styles.bottomNav}>
+        {tabs.map((tab) => {
+          const isActive = activeTab === tab.id;
+          return (
+            <TouchableOpacity
+              key={tab.id}
+              onPress={() => setActiveTab(tab.id)}
+              style={[styles.tab, isActive && styles.activeTab]}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name={tab.icon as any}
+                size={16}
+                color={isActive ? '#059669' : '#64748B'}
+              />
+              <Text style={[styles.tabLabel, isActive && styles.activeTabLabel]}>
+                {tab.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#0F172A',
+  },
+  
+  // Match Card Header
+  matchCard: {
+    backgroundColor: '#1E293B',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(5, 150, 105, 0.2)',
+    paddingTop: Platform.OS === 'ios' ? 50 : 10,
+    paddingBottom: 12,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  colorBar: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: 6,
+  },
+  colorBarLeft: {
+    left: 0,
+  },
+  colorBarRight: {
+    right: 0,
+  },
+  leagueHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    marginBottom: 12,
+  },
+  backButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(5, 150, 105, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  leagueBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(5, 150, 105, 0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  leagueText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#059669',
+  },
+  
+  // Match Info
+  matchInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+  },
+  teamContainer: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  teamName: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#F8FAFB',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  managerName: {
+    fontSize: 10,
+    color: '#64748B',
+    textAlign: 'center',
+  },
+  vsContainer: {
+    alignItems: 'center',
+    paddingHorizontal: 16,
+  },
+  vsText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#059669',
+    marginBottom: 4,
+  },
+  matchTime: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#F8FAFB',
+    marginBottom: 2,
+  },
+  matchDate: {
+    fontSize: 11,
+    color: '#64748B',
+    marginBottom: 6,
+  },
+  stadiumBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(100, 116, 139, 0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  stadiumText: {
+    fontSize: 9,
+    color: '#64748B',
+  },
+  
+  // Content
+  contentContainer: {
+    flex: 1,
+  },
+  
+  // Placeholder
+  placeholderContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  placeholderCard: {
+    alignItems: 'center',
+    backgroundColor: '#1E293B',
+    padding: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(5, 150, 105, 0.2)',
+  },
+  placeholderTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#F8FAFB',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  placeholderText: {
+    fontSize: 14,
+    color: '#64748B',
+    textAlign: 'center',
+  },
+  
+  // Bottom Navigation
+  bottomNav: {
+    flexDirection: 'row',
+    backgroundColor: '#1E293B',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(5, 150, 105, 0.2)',
+    paddingBottom: Platform.OS === 'ios' ? 20 : 8,
+  },
+  tab: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    gap: 4,
+  },
+  activeTab: {
+    borderTopWidth: 2,
+    borderTopColor: '#059669',
+  },
+  tabLabel: {
+    fontSize: 10,
+    fontWeight: '500',
+    color: '#64748B',
+  },
+  activeTabLabel: {
+    color: '#059669',
+    fontWeight: '600',
+  },
+});

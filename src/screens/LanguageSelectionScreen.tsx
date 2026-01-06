@@ -1,178 +1,184 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
+  TouchableOpacity,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
+  SafeAreaView,
   Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BRAND, DARK_MODE } from '../theme/theme';
+import { Ionicons } from '@expo/vector-icons';
+import Animated, { 
+  FadeIn,
+  useAnimatedStyle,
+  withRepeat,
+  withTiming,
+  useSharedValue,
+} from 'react-native-reanimated';
 import { AUTH_GRADIENT } from '../theme/gradients';
+import { BRAND, TYPOGRAPHY, SPACING, SIZES, OPACITY } from '../theme/theme';
 
-interface Language {
-  code: string;
-  name: string;
-  flag: string;
-  greeting: string;
-}
+// Import Flag Components
+import { FlagTR, FlagGB, FlagDE, FlagES, FlagFR, FlagIT } from '../components/flags';
+
+const { width } = Dimensions.get('window');
 
 interface LanguageSelectionScreenProps {
-  onLanguageSelect: (lang: string) => void;
+  onLanguageSelect: (language: string) => void;
   onBack?: () => void;
 }
 
-const LANGUAGES: Language[] = [
-  { code: 'de', name: 'Deutsch', flag: '🇩🇪', greeting: 'Willkommen' },
-  { code: 'en', name: 'English', flag: '🇬🇧', greeting: 'Welcome' },
-  { code: 'es', name: 'Español', flag: '🇪🇸', greeting: 'Bienvenido' },
-  { code: 'fr', name: 'Français', flag: '🇫🇷', greeting: 'Bienvenue' },
-  { code: 'it', name: 'Italiano', flag: '🇮🇹', greeting: 'Benvenuto' },
-  { code: 'tr', name: 'Türkçe', flag: '🇹🇷', greeting: 'Hoş Geldiniz' },
-];
+export default function LanguageSelectionScreen({
+  onLanguageSelect,
+  onBack,
+}: LanguageSelectionScreenProps) {
+  // Rotating ball animation
+  const rotation = useSharedValue(0);
+  
+  React.useEffect(() => {
+    rotation.value = withRepeat(
+      withTiming(360, { duration: 3000 }),
+      -1,
+      false
+    );
+  }, []);
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CARD_SPACING = 16;
-const CARD_WIDTH = (SCREEN_WIDTH - CARD_SPACING * 3) / 2;
+  const animatedBallStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ rotate: `${rotation.value}deg` }],
+    };
+  });
 
-export default function LanguageSelectionScreen({ onLanguageSelect, onBack }: LanguageSelectionScreenProps) {
-  const [selectedLanguage, setSelectedLanguage] = useState<string>('tr');
-
-  const selectedLang = LANGUAGES.find(lang => lang.code === selectedLanguage);
-  const greeting = selectedLang?.greeting || 'Welcome';
-
-  const handleLanguageSelect = (code: string) => {
-    setSelectedLanguage(code);
-    // Auto navigate after selection
-    setTimeout(() => {
-      onLanguageSelect(code);
-    }, 500);
-  };
+  const languages = [
+    { code: 'de', name: 'Deutsch', FlagComponent: FlagDE },
+    { code: 'en', name: 'English', FlagComponent: FlagGB },
+    { code: 'es', name: 'Español', FlagComponent: FlagES },
+    { code: 'fr', name: 'Français', FlagComponent: FlagFR },
+    { code: 'it', name: 'Italiano', FlagComponent: FlagIT },
+    { code: 'tr', name: 'Türkçe', FlagComponent: FlagTR },
+  ];
 
   return (
-    <LinearGradient
-      {...AUTH_GRADIENT}
-      style={styles.container}
-    >
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
+    <SafeAreaView style={styles.safeArea}>
+      <LinearGradient
+        colors={AUTH_GRADIENT.colors}
+        style={styles.container}
+        start={AUTH_GRADIENT.start}
+        end={AUTH_GRADIENT.end}
       >
-        {/* Logo Section */}
-        <View style={styles.logoSection}>
-          {/* Shield Logo */}
-          <View style={styles.logoContainer}>
-            <View style={styles.shield}>
-              <View style={styles.shieldInner} />
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <Animated.View 
+            entering={FadeIn.duration(300)}
+            style={styles.content}
+          >
+            {/* Logo Section */}
+            <View style={styles.logoSection}>
+              <Ionicons name="shield" size={96} color="#F59E0B" />
+              
+              {/* Title with rotating ball */}
+              <View style={styles.titleContainer}>
+                <Text style={styles.titleText}>Fan Manager 2</Text>
+                <Animated.Text style={[styles.ballEmoji, animatedBallStyle]}>
+                  ⚽
+                </Animated.Text>
+                <Text style={styles.titleText}>26</Text>
+              </View>
+              
+              <Text style={styles.subtitle}>
+                Premium Football Management Experience
+              </Text>
             </View>
-          </View>
 
-          {/* Title */}
-          <Text style={styles.title}>Fan Manager 2⚽26</Text>
-          
-          {/* Subtitle */}
-          <Text style={styles.subtitle}>Premium Football Management Experience</Text>
-        </View>
+            {/* Language Selection Grid */}
+            <View style={styles.languageGrid}>
+              {languages.map((lang, index) => {
+                const isLeftColumn = index % 2 === 0;
+                return (
+                  <TouchableOpacity
+                    key={lang.code}
+                    style={[
+                      styles.languageButton,
+                      isLeftColumn && styles.languageButtonLeft,
+                    ]}
+                    onPress={() => onLanguageSelect(lang.code)}
+                    activeOpacity={0.8}
+                  >
+                    <LinearGradient
+                      colors={['rgba(30, 41, 59, 0.8)', 'rgba(30, 41, 59, 0.8)']}
+                      style={styles.languageButtonGradient}
+                    >
+                      <View style={styles.flagContainer}>
+                        <lang.FlagComponent size={48} />
+                      </View>
+                      <Text style={styles.languageName}>{lang.name}</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
 
-        {/* Language Grid */}
-        <View style={styles.languageGrid}>
-          {LANGUAGES.map((language) => {
-            const isSelected = selectedLanguage === language.code;
-            
-            return (
-              <TouchableOpacity
-                key={language.code}
-                style={[
-                  styles.languageCard,
-                  isSelected && styles.languageCardSelected,
-                ]}
-                onPress={() => handleLanguageSelect(language.code)}
-                activeOpacity={0.7}
-              >
-                {/* Flag */}
-                <Text style={styles.flag}>{language.flag}</Text>
-                
-                {/* Language Name */}
-                <Text style={[
-                  styles.languageName,
-                  isSelected && styles.languageNameSelected,
-                ]}>
-                  {language.name}
-                </Text>
+            {/* Welcome Message */}
+            <Text style={styles.welcomeMessage}>Benvenuto • Welcome • Bienvenue</Text>
+          </Animated.View>
 
-                {/* Checkmark for selected */}
-                {isSelected && (
-                  <View style={styles.checkmark}>
-                    <Text style={styles.checkmarkIcon}>✓</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-
-        {/* Greeting Text */}
-        <Text style={styles.greeting}>{greeting}</Text>
-      </ScrollView>
-    </LinearGradient>
+          {/* Footer */}
+          <Text style={styles.footer}>
+            © 2026 Fan Manager. Tüm hakları saklıdır.
+          </Text>
+        </ScrollView>
+      </LinearGradient>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: AUTH_GRADIENT.colors[0],
+  },
   container: {
     flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: 20,
-    paddingTop: 80,
-    paddingBottom: 40,
+    paddingHorizontal: SPACING.base,
+    paddingVertical: SPACING.xl,
+    justifyContent: 'center',
+  },
+  content: {
+    maxWidth: 448,
+    width: '100%',
+    alignSelf: 'center',
   },
   
   // ===== LOGO SECTION =====
   logoSection: {
     alignItems: 'center',
-    marginBottom: 50,
+    marginBottom: 64,
   },
-  logoContainer: {
-    marginBottom: 30,
-  },
-  shield: {
-    width: 100,
-    height: 115,
-    borderWidth: 4,
-    borderColor: BRAND.gold, // Altın sarısı
-    borderRadius: 16,
-    borderBottomLeftRadius: 50,
-    borderBottomRightRadius: 50,
-    justifyContent: 'center',
+  titleContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
+    marginTop: 16,
   },
-  shieldInner: {
-    width: 75,
-    height: 90,
-    borderWidth: 3,
-    borderColor: BRAND.gold,
-    borderRadius: 13,
-    borderBottomLeftRadius: 38,
-    borderBottomRightRadius: 38,
-    opacity: 0.5,
-  },
-  
-  // Title & Subtitle
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
+  titleText: {
+    fontSize: 36,
     color: BRAND.white,
-    textAlign: 'center',
-    letterSpacing: 1,
-    marginBottom: 8,
+    fontWeight: 'bold',
+  },
+  ballEmoji: {
+    fontSize: 25,
+    marginHorizontal: -2,
   },
   subtitle: {
-    fontSize: 14,
-    fontWeight: '400',
-    color: 'rgba(255, 255, 255, 0.6)',
+    ...TYPOGRAPHY.bodySmall,
+    color: `rgba(255, 255, 255, ${OPACITY[60]})`,
+    marginTop: SPACING.md,
     textAlign: 'center',
   },
   
@@ -180,66 +186,60 @@ const styles = StyleSheet.create({
   languageGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    marginBottom: 40,
+    marginHorizontal: -SPACING.sm,
+    marginBottom: SPACING.xl,
   },
-  languageCard: {
-    width: CARD_WIDTH,
-    height: 110,
-    backgroundColor: DARK_MODE.card,
-    borderRadius: 16,
-    justifyContent: 'center',
+  languageButton: {
+    width: '50%',
+    paddingHorizontal: SPACING.sm,
+    marginBottom: SPACING.base,
+  },
+  languageButtonLeft: {
+    // Optional: Add specific left column styles
+  },
+  languageButtonGradient: {
+    height: 100,
+    borderRadius: SIZES.radiusLg,
+    borderWidth: 1,
+    borderColor: `rgba(5, 150, 105, ${OPACITY[30]})`,
     alignItems: 'center',
-    marginBottom: 16,
-    borderWidth: 2,
-    borderColor: 'transparent',
-    position: 'relative',
+    justifyContent: 'center',
+    gap: SPACING.md,
+    // Shadow (inactive by default)
+    shadowColor: BRAND.emerald,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0,
+    shadowRadius: 8,
+    elevation: 0,
   },
-  languageCardSelected: {
-    borderColor: BRAND.emerald,
-    backgroundColor: DARK_MODE.card,
+  flagContainer: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+    borderRadius: 4,
+    overflow: 'hidden',
   },
-  
-  // Flag
-  flag: {
-    fontSize: 56, // BÜYÜK bayrak
-    marginBottom: 12,
-  },
-  
-  // Language Name
   languageName: {
-    fontSize: 15,
-    fontWeight: '600',
+    ...TYPOGRAPHY.bodyMedium,
     color: BRAND.white,
-  },
-  languageNameSelected: {
-    color: BRAND.white,
+    fontWeight: '500',
   },
   
-  // Checkmark
-  checkmark: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: BRAND.emerald,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  checkmarkIcon: {
-    color: BRAND.white,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  
-  // ===== GREETING =====
-  greeting: {
-    fontSize: 16,
-    fontWeight: '400',
-    color: 'rgba(255, 255, 255, 0.3)', // Çok silik
+  // ===== WELCOME MESSAGE =====
+  welcomeMessage: {
+    ...TYPOGRAPHY.bodySmall,
+    color: `rgba(255, 255, 255, ${OPACITY[40]})`,
     textAlign: 'center',
-    marginTop: 20,
+  },
+  
+  // ===== FOOTER =====
+  footer: {
+    ...TYPOGRAPHY.bodySmall,
+    color: `rgba(255, 255, 255, ${OPACITY[40]})`,
+    textAlign: 'center',
+    marginTop: SPACING.xl,
+    paddingBottom: SPACING.base,
   },
 });

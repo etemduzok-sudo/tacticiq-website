@@ -9,13 +9,6 @@
       "resizeMode": "contain",
       "backgroundColor": "#059669"
     },
-    "updates": {
-      "fallbackToCacheTimeout": 0,
-      "url": "https://u.expo.dev/00000000-0000-0000-0000-000000000000"
-    },
-    "runtimeVersion": {
-      "policy": "nativeVersion"
-    },
     "ios": {
       "supportsTablet": true,
       "userInterfaceStyle": "automatic",
@@ -27,7 +20,7 @@
       "adaptiveIcon": {
         "backgroundColor": "#059669"
       },
-      "package": "com.anonymous.fanmanager2026",
+      "package": "com.fanmanager.app",
       "userInterfaceStyle": "automatic"
     },
     "web": {},
