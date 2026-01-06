@@ -1,0 +1,275 @@
+# Fan Manager 2026 - Cursor AI Rules
+
+## 🎯 Project Context
+
+This is a **React Native + Expo** mobile application for football (soccer) match prediction and management.
+
+---
+
+## 📱 Navigation Structure
+
+### **CRITICAL: Always follow this navigation flow**
+
+```typescript
+type RootStackParamList = {
+  Splash: undefined;              // ALWAYS initialRouteName
+  LanguageSelection: undefined;
+  Auth: undefined;
+  Register: undefined;
+  ForgotPassword: undefined;
+  FavoriteTeams: undefined;
+  MainTabs: undefined;            // Main app entry (Home, Matches, Profile)
+  MatchDetail: { matchId: string };
+  ProfileSettings: undefined;
+  ChangePassword: undefined;
+  Notifications: undefined;
+  DeleteAccount: undefined;
+  ProUpgrade: undefined;
+  LegalDocuments: undefined;
+  LegalDocument: { documentId: string; title: string };
+};
+```
+
+### **Navigation Flow Rules**
+
+1. **First Launch:** `Splash` → `LanguageSelection` → `Auth` → `FavoriteTeams` → `MainTabs`
+2. **Return User:** `Splash` → `MainTabs` (direct)
+3. **Logout:** Clear AsyncStorage → `Splash` → `LanguageSelection`
+
+---
+
+## 🎨 Design System
+
+### **ALWAYS use these sources:**
+
+1. `@DESIGN_SYSTEM.md` - Complete design tokens (colors, spacing, typography)
+2. `src/theme/theme.ts` - Theme constants (COLORS, SPACING, TYPOGRAPHY, SIZES)
+3. `src/theme/gradients.ts` - Gradient definitions
+
+### **Color Usage:**
+
+- **Brand Colors:** `BRAND.emerald` (#059669), `BRAND.gold` (#F59E0B)
+- **Gradients:**
+  - Auth screens: `AUTH_GRADIENT` (lacivert)
+  - Splash screen: `STADIUM_GRADIENT` (yeşil)
+  - Buttons: `PRIMARY_BUTTON_GRADIENT`
+
+### **Typography:**
+
+- Use `TYPOGRAPHY` constants, NOT hard-coded sizes
+- Font weights: `400` (normal), `500` (medium), `700` (bold)
+
+### **Spacing:**
+
+- Use `SPACING` constants: `xs`, `sm`, `base`, `lg`, `xl`, `2xl`
+- Use `SIZES` for specific dimensions: `buttonAuthHeight: 50`, `radiusLg: 12`
+
+---
+
+## 🚫 Forbidden Practices
+
+### **NEVER:**
+
+1. Skip `Splash` screen in navigation
+2. Use hard-coded colors (use `BRAND.*`, `COLORS.*`)
+3. Use hard-coded spacing (use `SPACING.*`)
+4. Use hard-coded font sizes (use `TYPOGRAPHY.*`)
+5. Create circular navigation loops
+6. Forget to add `SafeAreaView` for iOS notch support
+7. Use `Ionicons` directly (use `SafeIcon` wrapper)
+
+---
+
+## ✅ Best Practices
+
+### **DO:**
+
+1. Use `navigation.replace()` for auth flows (prevents back button issues)
+2. Check AsyncStorage for user session in `SplashScreen`
+3. Use `React.memo` for performance-critical components
+4. Add `activeOpacity={0.8}` to all `TouchableOpacity` components
+5. Use `LinearGradient` from `expo-linear-gradient` for backgrounds
+6. Add `keyboardShouldPersistTaps="handled"` to all `ScrollView` with inputs
+7. Use `Platform.select()` for iOS/Android specific styles
+
+### **Component Structure:**
+
+```typescript
+// Always follow this order:
+1. Imports (React, React Native, Navigation, Custom)
+2. Type definitions
+3. Interface/Props
+4. Component
+5. Styles (StyleSheet.create)
+```
+
+---
+
+## 📦 State Management
+
+### **LocalStorage Keys:**
+
+```typescript
+"fan-manager-user"           // User session
+"fan-manager-language"       // Selected language
+"fan-manager-favorite-clubs" // User's favorite teams
+"fan-manager-theme"          // Dark/Light mode
+```
+
+### **Usage:**
+
+```typescript
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// Save
+await AsyncStorage.setItem('fan-manager-user', JSON.stringify(data));
+
+// Get
+const data = await AsyncStorage.getItem('fan-manager-user');
+const parsed = data ? JSON.parse(data) : null;
+```
+
+---
+
+## 🧭 Navigation & State Rules
+
+### **CRITICAL: State-Based Routing**
+
+This project uses **centralized state-based routing** in `App.tsx`, NOT React Navigation.
+
+**Navigation State:**
+```typescript
+type Screen =
+  | 'splash'              // Always first screen
+  | 'language'            // Dil seçimi
+  | 'auth'                // Login/Register
+  | 'register'            // Kayıt ol
+  | 'forgot-password'     // Şifre sıfırlama
+  | 'favorite-teams'      // Favori takım seçimi
+  | 'home'                // Ana sayfa (Main entry)
+  | 'matches'             // Maç listesi
+  | 'match-detail'        // Maç detayı
+  | 'profile'             // Profil
+  | 'profile-settings';   // Profil ayarları
+```
+
+### **Navigation Flow (MUST FOLLOW):**
+
+1. **First Launch:** `splash` → `language` → `auth` → `favorite-teams` → `home`
+2. **Return User:** `splash` → `home` (direct)
+3. **Logout:** Clear AsyncStorage → `splash` → `language`
+
+### **Handler Function Rules:**
+
+**All screens MUST:**
+1. Accept handler props (onComplete, onBack, onNavigateX)
+2. Call handlers instead of using navigation hooks
+3. NOT import `useNavigation` or React Navigation
+4. Use AsyncStorage for persistence
+
+**Example Screen Props:**
+```typescript
+interface SplashScreenProps {
+  onComplete: () => void;
+}
+
+interface AuthScreenProps {
+  onLoginSuccess: () => void;
+  onForgotPassword: () => void;
+  onRegister: () => void;
+}
+```
+
+### **AsyncStorage Flow:**
+
+```typescript
+// Check user session (in App.tsx)
+const user = await AsyncStorage.getItem('fan-manager-user');
+if (user) {
+  setCurrentScreen('home');  // Return user
+} else {
+  setCurrentScreen('language');  // New user
+}
+
+// Save user session (after auth success)
+await AsyncStorage.setItem('fan-manager-user', JSON.stringify({ authenticated: true }));
+
+// Logout
+await AsyncStorage.removeItem('fan-manager-user');
+setCurrentScreen('splash');
+```
+
+### **Screen Rendering (in App.tsx):**
+
+```typescript
+const renderScreen = () => {
+  switch (currentScreen) {
+    case 'splash':
+      return <SplashScreen onComplete={handleSplashComplete} />;
+    case 'language':
+      return <LanguageSelectionScreen onLanguageSelect={handleLanguageSelect} />;
+    // ... etc
+  }
+};
+```
+
+### **FORBIDDEN:**
+
+1. ❌ DO NOT use `useNavigation()` in screens
+2. ❌ DO NOT import React Navigation components in screens
+3. ❌ DO NOT create navigation stacks outside App.tsx
+4. ❌ DO NOT skip `splash` screen
+5. ❌ DO NOT use hard-coded navigation paths
+
+### **Documentation Reference:**
+
+See `docs/navigation-map.md` for complete navigation flow, handler functions, and edge cases.
+
+---
+
+## 🎬 Screenshots Reference
+
+When implementing screens, ALWAYS:
+
+1. Check `FANMANAGER EKRAN GÖRÜNTÜLERİ/` folder for reference
+2. Match layout, spacing, colors EXACTLY to screenshots
+3. Use Design System values that match the visual appearance
+
+---
+
+## 🔧 Technical Stack
+
+- **Framework:** React Native 0.76.5
+- **Expo:** SDK 52
+- **Navigation:** React Navigation 6.x
+- **State:** React Hooks + AsyncStorage
+- **Styling:** StyleSheet + theme.ts
+- **Icons:** lucide-react (preferred), SafeIcon wrapper for Ionicons
+- **Gradients:** expo-linear-gradient
+- **Safe Area:** react-native-safe-area-context
+
+---
+
+## 🚨 Error Handling
+
+### **Always handle:**
+
+1. Network errors (show toast)
+2. Missing data (validate before navigation)
+3. Session expiry (redirect to auth)
+4. Back button edge cases (use `navigation.replace()` for one-way flows)
+
+---
+
+## 📝 Code Style
+
+- **TypeScript:** Always use types/interfaces
+- **Naming:** camelCase for variables, PascalCase for components
+- **File names:** PascalCase for components (e.g., `SplashScreen.tsx`)
+- **Constants:** UPPER_SNAKE_CASE (e.g., `PRIMARY_COLOR`)
+
+---
+
+**When in doubt, ask: "Does this follow the Design System and Navigation Map?"**
+
+**Last Updated:** 5 Ocak 2026
