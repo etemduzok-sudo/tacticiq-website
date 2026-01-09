@@ -243,9 +243,9 @@ export function useFavoriteTeamMatches(): UseFavoriteTeamMatchesResult {
       // Categorize matches
       const { past, live, upcoming } = categorizeMatches(uniqueMatches);
       
-      // If no matches found, use mock data
+      // If no matches found, use mock data (without filtering by favorite teams)
       if (past.length === 0 && live.length === 0 && upcoming.length === 0) {
-        console.log('⚠️ No favorite team matches found, using MOCK DATA...');
+        console.log('⚠️ No favorite team matches found, using MOCK DATA (all matches)...');
         const mockMatches = await generateMockMatches();
         const categorized = categorizeMatches(mockMatches);
         setPastMatches(categorized.past);
