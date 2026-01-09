@@ -38,7 +38,7 @@ const userStats = {
 const quickStats = [
   { id: '1', icon: 'flame', label: 'Seri', value: '5', color: '#EF4444' },
   { id: '2', icon: 'trophy', label: 'Kazanç', value: '+340', color: '#F59E0B' },
-  { id: '3', icon: 'target', label: 'Doğruluk', value: '%68', color: '#059669' },
+  { id: '3', icon: 'checkmark-circle', label: 'Doğruluk', value: '%68', color: '#059669' },
   { id: '4', icon: 'flash', label: 'Seviye', value: '12', color: '#3B82F6' },
 ];
 
@@ -97,7 +97,7 @@ const achievements = [
 
 export function Dashboard({ onNavigate }: DashboardProps) {
   // Fetch favorite team matches (past, live, upcoming)
-  const { pastMatches, liveMatches, upcomingMatches, loading, error } = useFavoriteTeamMatches();
+  const { pastMatches, liveMatches, upcomingMatches: realUpcomingMatches, loading, error } = useFavoriteTeamMatches();
 
   // Show loading
   if (loading) {
@@ -109,8 +109,8 @@ export function Dashboard({ onNavigate }: DashboardProps) {
     );
   }
 
-  // Show error
-  if (error) {
+  // Show error (but not if it's just "no favorite teams")
+  if (error && error !== 'Favori takım seçilmemiş') {
     return (
       <View style={[styles.container, styles.centerContent]}>
         <Ionicons name="alert-circle" size={48} color="#EF4444" />
@@ -119,6 +119,16 @@ export function Dashboard({ onNavigate }: DashboardProps) {
       </View>
     );
   }
+
+  // Use real data if available, otherwise show empty state
+  const displayMatches = realUpcomingMatches.length > 0 ? realUpcomingMatches : [];
+  
+  console.log('📊 Dashboard rendering:', {
+    past: pastMatches.length,
+    live: liveMatches.length,
+    upcoming: realUpcomingMatches.length,
+    displaying: displayMatches.length
+  });
 
   return (
     <View style={styles.container}>
@@ -280,82 +290,73 @@ export function Dashboard({ onNavigate }: DashboardProps) {
             </TouchableOpacity>
           </View>
 
-          {upcomingMatches.map((match) => (
-            <Animated.View
-              key={match.fixture?.id || match.id}
-              entering={FadeInDown.delay(300).springify()}
-            >
-              <TouchableOpacity
-                onPress={() => onNavigate('match-detail', { id: match.fixture?.id || match.id })}
-                style={styles.matchCard}
-                activeOpacity={0.8}
+          {displayMatches.length > 0 ? (
+            displayMatches.map((match) => (
+              <Animated.View
+                key={match.fixture?.id}
+                entering={FadeInDown.delay(300).springify()}
               >
-                {/* Home Team Color Bar - Left */}
-                <LinearGradient
-                  colors={match.homeTeam?.colors || match.teams?.home?.colors || ['#059669', '#047857']}
-                  style={[styles.colorBar, styles.colorBarLeft]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 0, y: 1 }}
-                />
+                <TouchableOpacity
+                  onPress={() => onNavigate('match-detail', { id: match.fixture?.id })}
+                  style={styles.matchCard}
+                  activeOpacity={0.8}
+                >
+                  {/* Home Team Color Bar - Left */}
+                  <LinearGradient
+                    colors={['#059669', '#047857']}
+                    style={[styles.colorBar, styles.colorBarLeft]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 0, y: 1 }}
+                  />
 
-                {/* Away Team Color Bar - Right */}
-                <LinearGradient
-                  colors={match.awayTeam?.colors || match.teams?.away?.colors || ['#F59E0B', '#D97706']}
-                  style={[styles.colorBar, styles.colorBarRight]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 0, y: 1 }}
-                />
+                  {/* Away Team Color Bar - Right */}
+                  <LinearGradient
+                    colors={['#F59E0B', '#D97706']}
+                    style={[styles.colorBar, styles.colorBarRight]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 0, y: 1 }}
+                  />
 
-                {/* League */}
-                <View style={styles.matchLeague}>
-                  <Ionicons name="trophy" size={12} color="#059669" />
-                  <Text style={styles.matchLeagueText}>{match.league?.name || match.league || 'League'}</Text>
-                </View>
-
-                {/* Teams */}
-                <View style={styles.matchTeams}>
-                  <View style={styles.team}>
-                    <Text style={styles.teamName}>
-                      {match.homeTeam?.name || match.teams?.home?.name || 'Home Team'}
-                    </Text>
-                    <Text style={styles.managerName}>
-                      {match.homeTeam?.manager || 'TBA'}
-                    </Text>
+                  {/* League */}
+                  <View style={styles.matchLeague}>
+                    <Ionicons name="trophy" size={12} color="#059669" />
+                    <Text style={styles.matchLeagueText}>{match.league?.name || 'League'}</Text>
                   </View>
 
-                  <View style={styles.matchInfo}>
-                    <Text style={styles.matchVs}>VS</Text>
-                    <Text style={styles.matchTime}>
-                      {match.time || new Date(match.fixture?.date).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
-                    </Text>
-                    <Text style={styles.matchDate}>
-                      {match.date || new Date(match.fixture?.date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}
-                    </Text>
-                  </View>
-
-                  <View style={styles.team}>
-                    <Text style={styles.teamName}>
-                      {match.awayTeam?.name || match.teams?.away?.name || 'Away Team'}
-                    </Text>
-                    <Text style={styles.managerName}>
-                      {match.awayTeam?.manager || 'TBA'}
-                    </Text>
-                  </View>
-                </View>
-
-                {/* Footer */}
-                <View style={styles.matchFooter}>
-                  <View style={styles.countdownBadge}>
-                    <Ionicons name="time-outline" size={14} color="#F59E0B" />
-                    <Text style={styles.countdownText}>{match.countdown || 'Yakında'}</Text>
-                  </View>
-
-                  {match.predicted ? (
-                    <View style={styles.predictedBadge}>
-                      <Ionicons name="checkmark-circle" size={14} color="#059669" />
-                      <Text style={styles.predictedText}>Tahmin yapıldı</Text>
+                  {/* Teams */}
+                  <View style={styles.matchTeams}>
+                    <View style={styles.team}>
+                      <Text style={styles.teamName}>
+                        {match.teams?.home?.name || 'Home Team'}
+                      </Text>
+                      <Text style={styles.managerName}>TBA</Text>
                     </View>
-                  ) : (
+
+                    <View style={styles.matchInfo}>
+                      <Text style={styles.matchVs}>VS</Text>
+                      <Text style={styles.matchTime}>
+                        {new Date(match.fixture?.date).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+                      </Text>
+                      <Text style={styles.matchDate}>
+                        {new Date(match.fixture?.date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}
+                      </Text>
+                    </View>
+
+                    <View style={styles.team}>
+                      <Text style={styles.teamName}>
+                        {match.teams?.away?.name || 'Away Team'}
+                      </Text>
+                      <Text style={styles.managerName}>TBA</Text>
+                    </View>
+                  </View>
+
+                  {/* Footer */}
+                  <View style={styles.matchFooter}>
+                    <View style={styles.countdownBadge}>
+                      <Ionicons name="time-outline" size={14} color="#F59E0B" />
+                      <Text style={styles.countdownText}>Yakında</Text>
+                    </View>
+
                     <LinearGradient
                       colors={['#059669', '#047857']}
                       start={{ x: 0, y: 0 }}
@@ -365,11 +366,21 @@ export function Dashboard({ onNavigate }: DashboardProps) {
                       <Ionicons name="add-circle-outline" size={14} color="#FFFFFF" />
                       <Text style={styles.predictButtonText}>Tahmin Yap</Text>
                     </LinearGradient>
-                  )}
-                </View>
-              </TouchableOpacity>
-            </Animated.View>
-          ))}
+                  </View>
+                </TouchableOpacity>
+              </Animated.View>
+            ))
+          ) : (
+            <View style={styles.emptyState}>
+              <Ionicons name="calendar-outline" size={48} color="#64748B" />
+              <Text style={styles.emptyStateText}>Yaklaşan maç bulunamadı</Text>
+              <Text style={styles.emptyStateSubtext}>
+                {error === 'Favori takım seçilmemiş' 
+                  ? 'Lütfen favori takımlarınızı seçin'
+                  : 'Favori takımlarınızın yaklaşan maçı yok'}
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Achievements */}
@@ -960,6 +971,27 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     fontSize: 13,
     marginTop: 8,
+    textAlign: 'center',
+  },
+  
+  // Empty State
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+    paddingHorizontal: 20,
+  },
+  emptyStateText: {
+    color: '#94A3B8',
+    fontSize: 16,
+    fontWeight: '600',
+    marginTop: 12,
+    textAlign: 'center',
+  },
+  emptyStateSubtext: {
+    color: '#64748B',
+    fontSize: 14,
+    marginTop: 4,
     textAlign: 'center',
   },
 });

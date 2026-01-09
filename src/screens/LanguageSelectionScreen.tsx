@@ -7,33 +7,17 @@ import {
   ScrollView,
   SafeAreaView,
   Animated as RNAnimated,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
-import Animated, { 
-  FadeIn,
-} from 'react-native-reanimated';
-import { AUTH_GRADIENT } from '../theme/gradients';
-import { BRAND, TYPOGRAPHY, SPACING, SIZES, OPACITY } from '../theme/theme';
 
-// Import Flag Components
-import { FlagTR, FlagGB, FlagDE, FlagES, FlagFR, FlagIT } from '../components/flags';
-
-// ============================================
-// LAYOUT CONSTANTS (Language screen has larger brand zone)
-// ============================================
-const LAYOUT = {
-  screenPadding: 24,
-  
-  // Brand Zone (larger for language screen - welcome screen)
-  brandZoneMarginBottom: 48,
-  logoSize: 80,
-  titleFontSize: 32,
-  titleLineHeight: 40,
-  ballEmojiSize: 22,
-  subtitleFontSize: 14,
-  subtitleMarginTop: 12,
-};
+// Try to import logo, fallback to text
+let logoImage: any = null;
+try {
+  logoImage = require('../assets/images/brand/fan_manager_shield.png');
+} catch (e) {
+  console.warn('Logo image not found, using text fallback');
+}
 
 interface LanguageSelectionScreenProps {
   onLanguageSelect: (language: string) => void;
@@ -45,25 +29,24 @@ export default function LanguageSelectionScreen({
   onBack,
 }: LanguageSelectionScreenProps) {
 
-  // Scrolling welcome text animation
+  // Scrolling welcome text animation (6 languages, no abbreviations)
   const scrollX = useRef(new RNAnimated.Value(0)).current;
   const welcomeTexts = [
-    'Welcome',      // İngilizce
+    'Welcome',      // English
     'Hoş Geldiniz', // Türkçe
-    'Bienvenido',   // İspanyolca
-    'Bienvenue',    // Fransızca
-    'Willkommen',   // Almanca
-    'Benvenuto',    // İtalyanca
+    'Willkommen',   // Deutsch
+    'Bienvenido',   // Español
+    'Bienvenue',    // Français
+    'Benvenuto',    // Italiano
   ];
   const welcomeString = welcomeTexts.join('  •  ') + '  •  ';
-  // More accurate width calculation (8.5px per character average for fontSize 14)
-  const textWidth = welcomeString.length * 8.5;
+  const textWidth = welcomeString.length * 9;
 
   useEffect(() => {
     const animation = RNAnimated.loop(
       RNAnimated.timing(scrollX, {
         toValue: -textWidth,
-        duration: 20000, // 20 saniyede tam tur
+        duration: 20000,
         useNativeDriver: true,
       })
     );
@@ -72,86 +55,89 @@ export default function LanguageSelectionScreen({
   }, []);
 
   const languages = [
-    { code: 'de', name: 'Deutsch', FlagComponent: FlagDE },
-    { code: 'en', name: 'English', FlagComponent: FlagGB },
-    { code: 'es', name: 'Español', FlagComponent: FlagES },
-    { code: 'fr', name: 'Français', FlagComponent: FlagFR },
-    { code: 'it', name: 'Italiano', FlagComponent: FlagIT },
-    { code: 'tr', name: 'Türkçe', FlagComponent: FlagTR },
+    { code: 'de', name: 'Deutsch', flag: '🇩🇪' },
+    { code: 'en', name: 'English', flag: '🇬🇧' },
+    { code: 'es', name: 'Español', flag: '🇪🇸' },
+    { code: 'fr', name: 'Français', flag: '🇫🇷' },
+    { code: 'it', name: 'Italiano', flag: '🇮🇹' },
+    { code: 'tr', name: 'Türkçe', flag: '🇹🇷' },
   ];
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <LinearGradient
-        colors={AUTH_GRADIENT.colors}
+        colors={['#0F172A', '#1E293B', '#0F172A']}
         style={styles.container}
-        start={AUTH_GRADIENT.start}
-        end={AUTH_GRADIENT.end}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
       >
         <View style={styles.screenContainer}>
           <ScrollView
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
           >
-            <Animated.View 
-              entering={FadeIn.duration(300)}
-              style={styles.content}
-            >
-            {/* [B] BRAND ZONE (Larger for welcome screen) */}
-            <View style={styles.brandZone}>
-              <Text style={styles.logoText}>FM 2026</Text>
-            </View>
+            <View style={styles.content}>
+              {/* Logo */}
+              <View style={styles.brandZone}>
+                {logoImage ? (
+                  <Image 
+                    source={logoImage} 
+                    style={styles.logoImage}
+                    resizeMode="contain"
+                  />
+                ) : (
+                  <Text style={styles.logoText}>FM 2026</Text>
+                )}
+              </View>
 
-            {/* Language Selection Grid */}
-            <View style={styles.languageGrid}>
-              {languages.map((lang, index) => {
-                const isLeftColumn = index % 2 === 0;
-                return (
-                  <TouchableOpacity
-                    key={lang.code}
-                    style={[
-                      styles.languageButton,
-                      isLeftColumn && styles.languageButtonLeft,
-                    ]}
-                    onPress={() => onLanguageSelect(lang.code)}
-                    activeOpacity={0.8}
-                  >
-                    <LinearGradient
-                      colors={['rgba(30, 41, 59, 0.8)', 'rgba(30, 41, 59, 0.8)']}
-                      style={styles.languageButtonGradient}
+              {/* Language Selection Grid */}
+              <View style={styles.languageGrid}>
+                {languages.map((lang, index) => {
+                  const isLeftColumn = index % 2 === 0;
+                  return (
+                    <TouchableOpacity
+                      key={lang.code}
+                      style={[
+                        styles.languageButton,
+                        isLeftColumn && styles.languageButtonLeft,
+                      ]}
+                      onPress={() => onLanguageSelect(lang.code)}
+                      activeOpacity={0.8}
                     >
-                      <View style={styles.flagContainer}>
-                        <lang.FlagComponent size={48} />
-                      </View>
-                      <Text style={styles.languageName}>{lang.name}</Text>
-                    </LinearGradient>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+                      <LinearGradient
+                        colors={['rgba(30, 41, 59, 0.8)', 'rgba(30, 41, 59, 0.8)']}
+                        style={styles.languageButtonGradient}
+                      >
+                        <Text style={styles.flagEmoji}>{lang.flag}</Text>
+                        <Text style={styles.languageName}>{lang.name}</Text>
+                      </LinearGradient>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
 
-            {/* Scrolling Welcome Message */}
-            <View style={styles.welcomeContainer}>
-              <RNAnimated.View
-                style={[
-                  styles.welcomeScrollView,
-                  {
-                    transform: [{ translateX: scrollX }],
-                  },
-                ]}
-              >
-                <Text style={styles.welcomeMessage} numberOfLines={1} ellipsizeMode="clip">
-                  {welcomeString}
-                </Text>
-                <Text style={styles.welcomeMessage} numberOfLines={1} ellipsizeMode="clip">
-                  {welcomeString}
-                </Text>
-              </RNAnimated.View>
+              {/* Scrolling Welcome Message */}
+              <View style={styles.welcomeContainer}>
+                <RNAnimated.View
+                  style={[
+                    styles.welcomeScrollView,
+                    {
+                      transform: [{ translateX: scrollX }],
+                    },
+                  ]}
+                >
+                  <Text style={styles.welcomeMessage} numberOfLines={1} ellipsizeMode="clip">
+                    {welcomeString}
+                  </Text>
+                  <Text style={styles.welcomeMessage} numberOfLines={1} ellipsizeMode="clip">
+                    {welcomeString}
+                  </Text>
+                </RNAnimated.View>
+              </View>
             </View>
-            </Animated.View>
           </ScrollView>
 
-          {/* [H] FOOTER ZONE - FIXED AT BOTTOM (OUTSIDE SCROLLABLE CONTENT) */}
+          {/* Footer */}
           <View style={styles.footerZone}>
             <Text style={styles.footer}>
               © 2026. Tüm hakları saklıdır.
@@ -166,14 +152,14 @@ export default function LanguageSelectionScreen({
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: AUTH_GRADIENT.colors[0],
+    backgroundColor: '#0F172A',
   },
   container: {
     flex: 1,
   },
   screenContainer: {
     flex: 1,
-    paddingHorizontal: LAYOUT.screenPadding,
+    paddingHorizontal: 24,
     paddingTop: 40,
   },
   scrollContent: {
@@ -187,18 +173,22 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   
-  // [B] BRAND ZONE (Larger for welcome/language screen)
+  // Brand Zone
   brandZone: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: LAYOUT.brandZoneMarginBottom,
-    height: 200, // Fixed height to prevent jumping between screens
+    marginBottom: 48,
+    height: 200,
   },
   logoText: {
     fontSize: 48,
     fontWeight: '700',
-    color: BRAND.white,
+    color: '#ffffff',
     letterSpacing: 4,
+  },
+  logoImage: {
+    width: 120,
+    height: 120,
   },
   
   // Language Grid
@@ -218,32 +208,27 @@ const styles = StyleSheet.create({
   },
   languageButtonGradient: {
     height: 100,
-    borderRadius: SIZES.radiusLg,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: `rgba(5, 150, 105, ${OPACITY[30]})`,
+    borderColor: 'rgba(5, 150, 105, 0.3)',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 12,
   },
-  flagContainer: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-    borderRadius: 4,
-    overflow: 'hidden',
+  flagEmoji: {
+    fontSize: 48,
+    lineHeight: 48,
   },
   languageName: {
-    ...TYPOGRAPHY.bodyMedium,
-    color: BRAND.white,
+    fontSize: 16,
+    color: '#ffffff',
     fontWeight: '500',
   },
   
   // Welcome Message
   welcomeContainer: {
     width: '100%',
-    height: 24,
+    height: 28,
     overflow: 'hidden',
     marginTop: 16,
     marginBottom: 8,
@@ -251,17 +236,18 @@ const styles = StyleSheet.create({
   welcomeScrollView: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 24,
+    height: 28,
   },
   welcomeMessage: {
-    fontSize: 14,
-    lineHeight: 24,
-    color: `rgba(255, 255, 255, ${OPACITY[40]})`,
-    marginRight: 32,
+    fontSize: 16,
+    lineHeight: 28,
+    color: 'rgba(255, 255, 255, 0.5)',
+    marginRight: 40,
     includeFontPadding: false,
+    fontWeight: '400',
   },
   
-  // [H] FOOTER ZONE - FIXED AT BOTTOM (GLOBAL FOOTER)
+  // Footer
   footerZone: {
     paddingTop: 16,
     paddingBottom: 16,
@@ -269,7 +255,7 @@ const styles = StyleSheet.create({
   },
   footer: {
     fontSize: 12,
-    color: '#6B7280', // Same color as all other screens
+    color: 'rgba(255, 255, 255, 0.3)',
     textAlign: 'center',
   },
 });

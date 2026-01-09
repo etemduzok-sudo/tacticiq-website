@@ -222,10 +222,10 @@ export function useFavoriteTeamMatches(): UseFavoriteTeamMatchesResult {
         }
       }
 
-      // Remove duplicates
+      // Remove duplicates (handle both fixture.id and id)
       const uniqueMatches = Array.from(
-        new Map(allMatches.map(m => [m.fixture.id, m])).values()
-      );
+        new Map(allMatches.map(m => [m.fixture?.id || m.id, m])).values()
+      ).filter(m => m && m.fixture); // Filter out invalid matches
 
       // Categorize matches
       const { past, live, upcoming } = categorizeMatches(uniqueMatches);
