@@ -102,9 +102,15 @@ export const matchesDb = {
           league:leagues(id, name, country, logo)
         `)
         .eq('id', matchId)
-        .single();
+        .maybeSingle(); // Use maybeSingle() to handle 0 or 1 results without error
 
       if (error) throw error;
+      
+      // If no match found, return success with null (not an error)
+      if (!data) {
+        return { success: true, data: null };
+      }
+      
       return { success: true, data };
     } catch (error: any) {
       console.error('❌ Error fetching match by ID from DB:', error.message);
