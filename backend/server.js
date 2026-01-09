@@ -77,8 +77,13 @@ app.listen(PORT, () => {
   console.log(`🚀 Fan Manager Backend running on port ${PORT}`);
   console.log(`📊 Health check: http://localhost:${PORT}/health`);
   
-  // Start live match polling
+  // Start live match polling (10 seconds interval)
   const liveMatchService = require('./services/liveMatchService');
   liveMatchService.startPolling();
   console.log(`🔴 Live match polling started`);
+  
+  // Start daily sync (6 hours interval)
+  const dailySyncService = require('./services/dailySyncService');
+  dailySyncService.startSync();
+  console.log(`📅 Daily sync service started`);
 });
