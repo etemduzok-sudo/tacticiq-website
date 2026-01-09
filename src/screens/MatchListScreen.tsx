@@ -9,6 +9,7 @@ import {
   Image,
   Dimensions,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,6 +24,9 @@ import Animated, {
   useSharedValue,
   withSequence,
 } from 'react-native-reanimated';
+
+// Web için animasyonları devre dışı bırak
+const isWeb = Platform.OS === 'web';
 
 const { width } = Dimensions.get('window');
 
@@ -388,11 +392,11 @@ interface MatchCardProps {
 }
 
 const MatchCard: React.FC<MatchCardProps> = ({ match, index, onPress }) => {
-  // Animated pulsing for LIVE badge
+  // Animated pulsing for LIVE badge (disabled on web)
   const pulseOpacity = useSharedValue(1);
 
   React.useEffect(() => {
-    if (match.status === 'live') {
+    if (!isWeb && match.status === 'live') {
       pulseOpacity.value = withRepeat(
         withSequence(
           withTiming(0.7, { duration: 750 }),
@@ -410,7 +414,7 @@ const MatchCard: React.FC<MatchCardProps> = ({ match, index, onPress }) => {
 
   return (
     <Animated.View
-      entering={FadeInDown.delay(index * 100)}
+      entering={isWeb ? undefined : FadeInDown.delay(index * 100)}
       style={styles.matchCard}
     >
       <TouchableOpacity
