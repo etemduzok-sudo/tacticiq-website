@@ -92,21 +92,84 @@ export const mockLeagues = [
 ];
 
 /**
+ * Transform mock match to API format
+ */
+function transformMockMatchToApiFormat(mockMatch: any): any {
+  const timestamp = mockMatch.date ? new Date(mockMatch.date).getTime() / 1000 : Date.now() / 1000;
+  
+  return {
+    id: mockMatch.id,
+    fixture: {
+      id: mockMatch.id,
+      date: mockMatch.date || new Date().toISOString(),
+      timestamp: timestamp,
+      status: {
+        short: mockMatch.status_short || 'NS',
+        long: mockMatch.status_long || 'Not Started',
+        elapsed: mockMatch.elapsed || null,
+      },
+      venue: {
+        name: 'Stadium',
+        city: null,
+      },
+    },
+    league: mockMatch.league || {
+      id: null,
+      name: null,
+      country: null,
+      logo: null,
+    },
+    teams: {
+      home: mockMatch.home_team || {
+        id: null,
+        name: null,
+        logo: null,
+      },
+      away: mockMatch.away_team || {
+        id: null,
+        name: null,
+        logo: null,
+      },
+    },
+    goals: {
+      home: mockMatch.home_score || null,
+      away: mockMatch.away_score || null,
+    },
+    score: {
+      halftime: {
+        home: mockMatch.home_score ? Math.floor(mockMatch.home_score / 2) : null,
+        away: mockMatch.away_score ? Math.floor(mockMatch.away_score / 2) : null,
+      },
+      fulltime: {
+        home: mockMatch.home_score || null,
+        away: mockMatch.away_score || null,
+      },
+    },
+  };
+}
+
+/**
  * Get mock matches based on status
  */
 export function getMockMatches(status: 'live' | 'upcoming' | 'finished' | 'all' = 'all') {
+  let matches: any[];
   if (status === 'all') {
-    return [...mockMatches.live, ...mockMatches.upcoming, ...mockMatches.finished];
+    matches = [...mockMatches.live, ...mockMatches.upcoming, ...mockMatches.finished];
+  } else {
+    matches = mockMatches[status];
   }
-  return mockMatches[status];
+  
+  // Transform to API format
+  return matches.map(transformMockMatchToApiFormat);
 }
 
 /**
  * Get mock match by ID
  */
 export function getMockMatchById(matchId: number) {
-  const allMatches = getMockMatches('all');
-  return allMatches.find(m => m.id === matchId);
+  const allMatches = [...mockMatches.live, ...mockMatches.upcoming, ...mockMatches.finished];
+  const match = allMatches.find(m => m.id === matchId);
+  return match ? transformMockMatchToApiFormat(match) : null;
 }
 
 /**
@@ -114,12 +177,15 @@ export function getMockMatchById(matchId: number) {
  */
 export function getMockMatchesByDate(date: string) {
   const targetDate = new Date(date);
-  const allMatches = getMockMatches('all');
+  const allMatches = [...mockMatches.live, ...mockMatches.upcoming, ...mockMatches.finished];
   
-  return allMatches.filter(match => {
+  const filtered = allMatches.filter(match => {
     const matchDate = new Date(match.date);
     return matchDate.toDateString() === targetDate.toDateString();
   });
+  
+  // Transform to API format
+  return filtered.map(transformMockMatchToApiFormat);
 }
 
 /**
