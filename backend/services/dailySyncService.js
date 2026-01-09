@@ -18,9 +18,9 @@ const supabase = createClient(
 // CONFIGURATION
 // ============================================
 
-const SYNC_INTERVAL = 6 * 60 * 60 * 1000; // 6 hours
-const DAYS_TO_FETCH = 3; // Bugün + 3 gün ileri (topla 4 gün)
-const MAX_API_CALLS_PER_SYNC = 20; // API limitini korumak için max 20 istek/sync
+const SYNC_INTERVAL = 30 * 60 * 1000; // 30 minutes (optimized for 7500/day limit)
+const DAYS_TO_FETCH = 7; // Bugün + 7 gün ileri (topla 8 gün)
+const MAX_API_CALLS_PER_SYNC = 150; // Use full API limit: 7500/day ÷ 48 syncs = ~156/sync
 
 let syncTimer = null;
 let isSyncing = false;
@@ -37,10 +37,11 @@ let syncStats = {
 // HELPER FUNCTIONS
 // ============================================
 
-// Get date range (today + next N days)
+// Get date range (yesterday + today + next N days for comprehensive coverage)
 function getDateRange(days) {
   const dates = [];
-  for (let i = 0; i <= days; i++) {
+  // Include yesterday (for matches that finished)
+  for (let i = -1; i <= days; i++) {
     const date = new Date();
     date.setDate(date.getDate() + i);
     dates.push(date.toISOString().split('T')[0]);
@@ -241,9 +242,14 @@ function startSync() {
     return;
   }
 
-  console.log(`🔄 Starting daily sync (interval: ${SYNC_INTERVAL / 1000 / 60 / 60}h)`);
-  console.log(`📊 Will fetch ${DAYS_TO_FETCH + 1} days (today + ${DAYS_TO_FETCH} forward)`);
+  const intervalMinutes = SYNC_INTERVAL / 1000 / 60;
+  const syncsPerDay = (24 * 60) / intervalMinutes;
+  const totalApiCallsPerDay = syncsPerDay * MAX_API_CALLS_PER_SYNC;
+  
+  console.log(`🔄 Starting daily sync (interval: ${intervalMinutes} minutes)`);
+  console.log(`📊 Will fetch ${DAYS_TO_FETCH + 2} days (yesterday + today + ${DAYS_TO_FETCH} forward)`);
   console.log(`⚡ Max ${MAX_API_CALLS_PER_SYNC} API calls per sync`);
+  console.log(`📈 Expected API usage: ~${totalApiCallsPerDay.toFixed(0)} calls/day (limit: 7500)`);
   
   // Run immediately on startup
   setTimeout(() => syncMatches(), 5000); // 5 seconds delay after startup
