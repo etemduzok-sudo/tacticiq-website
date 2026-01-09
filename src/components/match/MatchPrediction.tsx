@@ -1,5 +1,5 @@
 // MatchPredictionScreen.tsx - React Native FULL COMPLETE VERSION
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   FlatList,
   Alert,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { 
@@ -26,12 +27,44 @@ import Svg, {
   Line, 
   Path, 
 } from 'react-native-svg';
-import Slider from '@react-native-community/slider';
+import { Platform } from 'react-native';
+import { FocusPrediction, TrainingType, SCORING_CONSTANTS } from '../../types/prediction.types';
+import { SCORING, TEXT, STORAGE_KEYS } from '../../config/constants';
+import { handleError, ErrorType, ErrorSeverity } from '../../utils/GlobalErrorHandler';
+import { predictionsDb } from '../../services/databaseService';
+
+// Web için Slider polyfill
+let Slider: any;
+if (Platform.OS === 'web') {
+  // Web'de basit bir input range kullan
+  Slider = ({ value, onValueChange, minimumValue, maximumValue, step, ...props }: any) => {
+    return (
+      <input
+        type="range"
+        min={minimumValue}
+        max={maximumValue}
+        step={step}
+        value={value}
+        onChange={(e) => onValueChange(parseFloat(e.target.value))}
+        style={{
+          width: '100%',
+          height: 4,
+          borderRadius: 2,
+          outline: 'none',
+          ...props.style,
+        }}
+      />
+    );
+  };
+} else {
+  Slider = require('@react-native-community/slider').default;
+}
 
 const { width, height } = Dimensions.get('window');
 
 interface MatchPredictionScreenProps {
   matchData: any;
+  matchId?: string;
 }
 
 // Mock Formation Data
@@ -195,12 +228,17 @@ const FootballField = ({ children, style }: any) => (
 
 export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
   matchData,
+  matchId,
 }) => {
   const [selectedPlayer, setSelectedPlayer] = useState<typeof mockPlayers[0] | null>(null);
   const [playerPredictions, setPlayerPredictions] = useState<{[key: number]: any}>({});
   const [showSubstituteModal, setShowSubstituteModal] = useState(false);
   const [substituteType, setSubstituteType] = useState<'normal' | 'injury'>('normal');
   const [substituteForPlayer, setSubstituteForPlayer] = useState<typeof mockPlayers[0] | null>(null);
+  
+  // 🌟 STRATEGIC FOCUS SYSTEM
+  const [focusedPredictions, setFocusedPredictions] = useState<FocusPrediction[]>([]);
+  const [selectedTraining, setSelectedTraining] = useState<TrainingType | null>(null);
   
   // Match predictions state - COMPLETE
   const [predictions, setPredictions] = useState({
@@ -244,11 +282,171 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
     });
   };
 
+  const handleSavePredictions = async () => {
+    try {
+      // Check if at least some predictions are made
+      const hasMatchPredictions = Object.values(predictions).some(v => v !== null);
+      const hasPlayerPredictions = Object.keys(playerPredictions).length > 0;
+
+      if (!hasMatchPredictions && !hasPlayerPredictions) {
+        Alert.alert('Uyarı!', 'Lütfen en az bir tahmin yapın.');
+        return;
+      }
+
+      // Prepare prediction data
+      const predictionData = {
+        matchId: matchData.id,
+        matchPredictions: predictions,
+        playerPredictions: playerPredictions,
+        focusedPredictions: focusedPredictions, // 🌟 Strategic Focus
+        selectedTraining: selectedTraining,      // 💪 Training Multiplier
+        timestamp: new Date().toISOString(),
+      };
+      
+      // 💾 SAVE TO ASYNCSTORAGE (Local backup)
+      await AsyncStorage.setItem(
+        `${STORAGE_KEYS.PREDICTIONS}${matchData.id}`,
+        JSON.stringify(predictionData)
+      );
+      
+      // 🗄️ SAVE TO SUPABASE (Database)
+      try {
+        // Get user ID from AsyncStorage
+        const userDataStr = await AsyncStorage.getItem(STORAGE_KEYS.USER);
+        const userData = userDataStr ? JSON.parse(userDataStr) : null;
+        const userId = userData?.id || 'anonymous';
+
+        // Save each prediction to database
+        const predictionPromises: Promise<any>[] = [];
+
+        // Save match predictions
+        Object.entries(predictions).forEach(([type, value]) => {
+          if (value !== null && value !== undefined) {
+            predictionPromises.push(
+              predictionsDb.createPrediction({
+                user_id: userId,
+                match_id: String(matchData.id),
+                prediction_type: type,
+                prediction_value: value,
+              })
+            );
+          }
+        });
+
+        // Save player predictions
+        Object.entries(playerPredictions).forEach(([playerId, predData]) => {
+          Object.entries(predData).forEach(([type, value]) => {
+            if (value !== null && value !== undefined) {
+              predictionPromises.push(
+                predictionsDb.createPrediction({
+                  user_id: userId,
+                  match_id: String(matchData.id),
+                  prediction_type: `player_${playerId}_${type}`,
+                  prediction_value: value,
+                })
+              );
+            }
+          });
+        });
+
+        // Save focus and training metadata
+        if (focusedPredictions.length > 0) {
+          predictionPromises.push(
+            predictionsDb.createPrediction({
+              user_id: userId,
+              match_id: String(matchData.id),
+              prediction_type: 'focused_predictions',
+              prediction_value: focusedPredictions,
+            })
+          );
+        }
+
+        if (selectedTraining) {
+          predictionPromises.push(
+            predictionsDb.createPrediction({
+              user_id: userId,
+              match_id: String(matchData.id),
+              prediction_type: 'training_focus',
+              prediction_value: selectedTraining,
+            })
+          );
+        }
+
+        // Execute all database saves
+        const results = await Promise.allSettled(predictionPromises);
+        const successCount = results.filter(r => r.status === 'fulfilled').length;
+        const failCount = results.filter(r => r.status === 'rejected').length;
+
+        console.log(`✅ Predictions saved: ${successCount} success, ${failCount} failed`);
+        
+        if (failCount > 0) {
+          console.warn('⚠️ Some predictions failed to save to database, but local backup is available');
+        }
+      } catch (dbError) {
+        console.error('❌ Database save error:', dbError);
+        handleError(dbError as Error, {
+          type: ErrorType.DATABASE,
+          severity: ErrorSeverity.MEDIUM,
+          context: { matchId: matchData.id, action: 'save_predictions' },
+        });
+        // Continue even if database save fails (we have local backup)
+      }
+      
+      Alert.alert(
+        'Tahminler Kaydedildi! 🎉',
+        'Tahminleriniz başarıyla kaydedildi. Maç başladığında puanlarınız hesaplanacak!',
+        [{ text: 'Tamam' }]
+      );
+    } catch (error) {
+      console.error('Error saving predictions:', error);
+      handleError(error as Error, {
+        type: ErrorType.UNKNOWN,
+        severity: ErrorSeverity.HIGH,
+        context: { matchId: matchData.id, action: 'save_predictions' },
+      });
+      Alert.alert('Hata!', 'Tahminler kaydedilemedi. Lütfen tekrar deneyin.');
+    }
+  };
+
   const handlePredictionChange = (category: string, value: string | number) => {
     setPredictions(prev => ({
       ...prev,
       [category]: prev[category as keyof typeof prev] === value ? null : value
     }));
+  };
+
+  // 🌟 Toggle Focus (Star) on a prediction
+  const toggleFocus = (category: string, playerId?: number) => {
+    setFocusedPredictions(prev => {
+      const existingIndex = prev.findIndex(
+        fp => fp.category === category && fp.playerId === playerId
+      );
+      
+      // If already focused, remove it
+      if (existingIndex !== -1) {
+        return prev.filter((_, index) => index !== existingIndex);
+      }
+      
+      // If max focus reached, show alert
+      if (prev.length >= SCORING_CONSTANTS.MAX_FOCUS) {
+        Alert.alert(
+          'Maksimum Odak Sayısı! ⭐',
+          `En fazla ${SCORING_CONSTANTS.MAX_FOCUS} tahmine odaklanabilirsiniz. Başka bir tahmini odaktan çıkarın.`,
+          [{ text: 'Tamam' }]
+        );
+        return prev;
+      }
+      
+      // Add new focus
+      return [...prev, { category, playerId, isFocused: true }];
+    });
+  };
+
+  // Check if a prediction is focused
+  const isFocused = (category: string, playerId?: number): boolean => {
+    return focusedPredictions.some(
+      fp => fp.category === category && fp.playerId === playerId
+    );
   };
 
   const handleScoreChange = (category: 'firstHalfHomeScore' | 'firstHalfAwayScore' | 'secondHalfHomeScore' | 'secondHalfAwayScore', value: number) => {
@@ -267,6 +465,86 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* 🎯 ANTRENMAN ODAĞI SEÇİCİ */}
+        <Animated.View entering={FadeIn.duration(300)} style={styles.trainingFocusContainer}>
+          <View style={styles.trainingFocusHeader}>
+            <Ionicons name="barbell" size={20} color="#F59E0B" />
+            <Text style={styles.trainingFocusTitle}>Bugünkü Antrenman Odağın</Text>
+            <TouchableOpacity 
+              onPress={() => Alert.alert(
+                'Antrenman Odağı 💪',
+                'Seçtiğin odak, ilgili tahmin kümelerinin puanını %20 artırır!\n\n' +
+                '• Savunma: Disiplin & Fiziksel +20%\n' +
+                '• Hücum: Tempo & Bireysel +20%\n' +
+                '• Orta Saha: Tempo & Disiplin +15%\n' +
+                '• Fiziksel: Fiziksel +25%\n' +
+                '• Taktik: Tempo & Bireysel +15%'
+              )}
+            >
+              <Ionicons name="information-circle-outline" size={18} color="#64748B" />
+            </TouchableOpacity>
+          </View>
+          
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.trainingOptionsScroll}
+          >
+            {[
+              { id: 'defense', label: 'Savunma', icon: 'shield', color: '#3B82F6', effect: 'Disiplin & Fiziksel +20%' },
+              { id: 'attack', label: 'Hücum', icon: 'flash', color: '#EF4444', effect: 'Tempo & Bireysel +20%' },
+              { id: 'midfield', label: 'Orta Saha', icon: 'git-network', color: '#10B981', effect: 'Tempo & Disiplin +15%' },
+              { id: 'physical', label: 'Fiziksel', icon: 'fitness', color: '#F59E0B', effect: 'Fiziksel +25%' },
+              { id: 'tactical', label: 'Taktik', icon: 'analytics', color: '#8B5CF6', effect: 'Tempo & Bireysel +15%' },
+            ].map((training) => {
+              const isSelected = selectedTraining === training.id;
+              return (
+                <TouchableOpacity
+                  key={training.id}
+                  style={[
+                    styles.trainingOption,
+                    isSelected && { 
+                      ...styles.trainingOptionActive,
+                      borderColor: training.color,
+                      backgroundColor: `${training.color}15`,
+                    }
+                  ]}
+                  onPress={() => setSelectedTraining(isSelected ? null : training.id as TrainingType)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons 
+                    name={training.icon as any} 
+                    size={24} 
+                    color={isSelected ? training.color : '#64748B'} 
+                  />
+                  <Text style={[
+                    styles.trainingOptionLabel,
+                    isSelected && { color: training.color, fontWeight: '600' }
+                  ]}>
+                    {training.label}
+                  </Text>
+                  {isSelected && (
+                    <Text style={[styles.trainingOptionEffect, { color: training.color }]}>
+                      {training.effect}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </Animated.View>
+
+        {/* 🌟 ODAK SİSTEMİ BİLGİLENDİRME */}
+        {focusedPredictions.length > 0 && (
+          <Animated.View entering={FadeIn.duration(300)} style={styles.focusInfoBanner}>
+            <Ionicons name="star" size={20} color="#F59E0B" />
+            <Text style={styles.focusInfoText}>
+              {focusedPredictions.length} / {SCORING_CONSTANTS.MAX_FOCUS} tahmin odaklandı. 
+              Doğru tahminler 2x puan, yanlışlar -1.5x ceza!
+            </Text>
+          </Animated.View>
+        )}
+
         {/* Football Field with Players */}
         <FootballField style={styles.mainField}>
           <View style={styles.playersContainer}>
@@ -336,14 +614,42 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
 
         {/* PREDICTION CATEGORIES - COMPLETE */}
         <View style={styles.predictionsSection}>
+          {/* Focus Info Banner */}
+          {focusedPredictions.length > 0 && (
+            <Animated.View entering={FadeIn} style={styles.focusInfoBanner}>
+              <Ionicons name="star" size={20} color="#F59E0B" />
+              <Text style={styles.focusInfoText}>
+                {focusedPredictions.length}/{SCORING_CONSTANTS.MAX_FOCUS} Odak Seçildi
+              </Text>
+              <Text style={styles.focusInfoHint}>
+                Doğruysa 2x puan, yanlışsa -1.5x ceza
+              </Text>
+            </Animated.View>
+          )}
+
           {/* 1. İlk Yarı Tahminleri */}
           <View style={styles.predictionCategory}>
             <Text style={styles.categoryTitle}>⏱️ İlk Yarı Tahminleri</Text>
             
             {/* İlk Yarı Skoru */}
             <View style={styles.categoryCard}>
-              <Text style={styles.categoryLabel}>⚽ İlk Yarı Skoru</Text>
-              <Text style={styles.categoryHint}>Ev sahibi - Deplasman</Text>
+              <View style={styles.categoryHeader}>
+                <View>
+                  <Text style={styles.categoryLabel}>⚽ İlk Yarı Skoru</Text>
+                  <Text style={styles.categoryHint}>Ev sahibi - Deplasman</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => toggleFocus('firstHalfHomeScore')}
+                  style={styles.focusButton}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name={isFocused('firstHalfHomeScore') ? 'star' : 'star-outline'}
+                    size={24}
+                    color={isFocused('firstHalfHomeScore') ? '#F59E0B' : '#6B7280'}
+                  />
+                </TouchableOpacity>
+              </View>
               
               <View style={styles.scorePickerContainer}>
                 <View style={styles.scorePickerColumn}>
@@ -521,7 +827,20 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
             <Text style={styles.categoryTitle}>🧮 Toplam Gol Sayısı</Text>
             
             <View style={styles.categoryCard}>
-              <Text style={styles.categoryLabel}>⚽ Toplam Gol Sayısı</Text>
+              <View style={styles.categoryHeader}>
+                <Text style={styles.categoryLabel}>⚽ Toplam Gol Sayısı</Text>
+                <TouchableOpacity
+                  onPress={() => toggleFocus('totalGoals')}
+                  style={styles.focusButton}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name={isFocused('totalGoals') ? 'star' : 'star-outline'}
+                    size={24}
+                    color={isFocused('totalGoals') ? '#F59E0B' : '#6B7280'}
+                  />
+                </TouchableOpacity>
+              </View>
               <View style={styles.buttonRow}>
                 {['0-1 gol', '2-3 gol', '4-5 gol', '6+ gol'].map((range) => (
                   <TouchableOpacity 
@@ -828,6 +1147,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
           <TouchableOpacity 
             style={styles.submitButton}
             activeOpacity={0.8}
+            onPress={handleSavePredictions}
           >
             <LinearGradient
               colors={['#059669', '#047857']}
@@ -1400,6 +1720,26 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 24,
   },
+  focusInfoBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    borderRadius: 12,
+    padding: 12,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+  },
+  focusInfoText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#F59E0B',
+    flex: 1,
+  },
+  focusInfoHint: {
+    fontSize: 11,
+    color: '#9CA3AF',
+  },
   predictionCategory: {
     gap: 12,
   },
@@ -1416,6 +1756,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(5, 150, 105, 0.3)',
     gap: 12,
+  },
+  categoryHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  focusButton: {
+    padding: 4,
   },
   categoryLabel: {
     fontSize: 14,
@@ -1898,5 +2246,79 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#9CA3AF',
     marginTop: 2,
+  },
+  
+  // 🎯 Training Focus Styles
+  trainingFocusContainer: {
+    marginHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 12,
+    backgroundColor: 'rgba(30, 41, 59, 0.6)',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.2)',
+  },
+  trainingFocusHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  trainingFocusTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    flex: 1,
+  },
+  trainingOptionsScroll: {
+    gap: 12,
+    paddingRight: 16,
+  },
+  trainingOption: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: 'rgba(30, 41, 59, 0.8)',
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: 'rgba(100, 116, 139, 0.3)',
+    alignItems: 'center',
+    minWidth: 120,
+  },
+  trainingOptionActive: {
+    borderWidth: 2,
+    backgroundColor: 'rgba(30, 41, 59, 0.95)',
+  },
+  trainingOptionLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#9CA3AF',
+    marginTop: 6,
+  },
+  trainingOptionEffect: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  
+  // 🌟 Focus Info Banner
+  focusInfoBanner: {
+    marginHorizontal: 16,
+    marginBottom: 12,
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    borderRadius: 12,
+    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+  },
+  focusInfoText: {
+    fontSize: 13,
+    color: '#F59E0B',
+    fontWeight: '500',
+    flex: 1,
   },
 });

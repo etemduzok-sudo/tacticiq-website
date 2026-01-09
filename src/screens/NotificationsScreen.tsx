@@ -4,12 +4,13 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  ScrollView,
-  SafeAreaView,
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import { ScreenLayout, StandardHeader } from '../components/layouts';
+import { containerStyles, textStyles, cardStyles } from '../utils/styleHelpers';
+import { SPACING, COLORS } from '../theme/theme';
 
 interface NotificationsScreenProps {
   onBack: () => void;
@@ -43,23 +44,13 @@ export const NotificationsScreen: React.FC<NotificationsScreenProps> = ({
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={onBack} style={styles.headerButton}>
-            <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Bildirimler</Text>
-          <View style={styles.headerButton} />
-        </View>
+    <ScreenLayout safeArea scrollable>
+      <StandardHeader
+        title="Bildirimler"
+        onBack={onBack}
+      />
 
-        {/* Content */}
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
+      {/* Content */}
           {/* Match Reminders Card */}
           <Animated.View entering={FadeInDown.delay(0)} style={styles.card}>
             <View style={styles.cardHeader}>
@@ -204,9 +195,7 @@ export const NotificationsScreen: React.FC<NotificationsScreenProps> = ({
               </View>
             </View>
           </Animated.View>
-        </ScrollView>
-      </View>
-    </SafeAreaView>
+    </ScreenLayout>
   );
 };
 
@@ -234,66 +223,24 @@ const ToggleSwitch: React.FC<ToggleSwitchProps> = ({ enabled, onToggle }) => {
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#0F172A',
-  },
-  container: {
-    flex: 1,
-    backgroundColor: '#0F172A',
-  },
-
-  // Header
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    backgroundColor: 'rgba(15, 23, 42, 0.95)',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  headerButton: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-
-  // ScrollView
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 24,
-    paddingBottom: 96,
-  },
-
   // Card
   card: {
-    backgroundColor: 'rgba(30, 41, 59, 0.5)',
+    ...cardStyles.card,
+    backgroundColor: COLORS.dark.card,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 16,
-    padding: 24,
-    marginBottom: 24,
+    borderColor: COLORS.dark.border,
+    padding: SPACING.lg,
+    marginBottom: SPACING.lg,
   },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 16,
+    gap: SPACING.sm,
+    marginBottom: SPACING.base,
   },
   cardTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
+    ...textStyles.label,
+    color: COLORS.dark.foreground,
   },
 
   // Notification Item
@@ -304,17 +251,16 @@ const styles = StyleSheet.create({
   },
   notificationLeft: {
     flex: 1,
-    paddingRight: 16,
+    paddingRight: SPACING.base,
   },
   notificationTitle: {
-    fontSize: 14,
+    ...textStyles.body,
     fontWeight: '500',
-    color: '#FFFFFF',
-    marginBottom: 4,
+    color: COLORS.dark.foreground,
+    marginBottom: SPACING.xs,
   },
   notificationSubtitle: {
-    fontSize: 12,
-    color: '#9CA3AF',
+    ...textStyles.secondary,
     lineHeight: 18,
   },
 
@@ -323,18 +269,18 @@ const styles = StyleSheet.create({
     width: 48,
     height: 28,
     borderRadius: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: COLORS.dark.border,
     padding: 2,
     justifyContent: 'center',
   },
   switchEnabled: {
-    backgroundColor: '#059669',
+    backgroundColor: COLORS.dark.primary,
   },
   switchThumb: {
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.dark.foreground,
     transform: [{ translateX: 0 }],
   },
   switchThumbEnabled: {
@@ -343,87 +289,83 @@ const styles = StyleSheet.create({
 
   // Details Box
   detailsBox: {
-    marginTop: 16,
-    paddingLeft: 16,
+    marginTop: SPACING.base,
+    paddingLeft: SPACING.base,
     borderLeftWidth: 2,
-    borderLeftColor: 'rgba(5, 150, 105, 0.2)',
-    gap: 8,
+    borderLeftColor: COLORS.dark.primary,
+    opacity: 0.2,
+    gap: SPACING.sm,
   },
   detailItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: SPACING.sm,
   },
   detailDot: {
     width: 4,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#9CA3AF',
+    backgroundColor: COLORS.dark.mutedForeground,
   },
   detailText: {
-    fontSize: 12,
-    color: '#9CA3AF',
+    ...textStyles.secondary,
   },
 
   // Info Card
   infoCard: {
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    backgroundColor: `${COLORS.dark.info}20`,
     borderWidth: 1,
-    borderColor: 'rgba(59, 130, 246, 0.2)',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 24,
+    borderColor: `${COLORS.dark.info}40`,
+    borderRadius: SPACING.md,
+    padding: SPACING.base,
+    marginBottom: SPACING.lg,
   },
   infoHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 4,
+    gap: SPACING.sm,
+    marginBottom: SPACING.xs,
   },
   infoIcon: {
     fontSize: 16,
   },
   infoTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#FFFFFF',
+    ...textStyles.label,
+    color: COLORS.dark.foreground,
   },
   infoText: {
-    fontSize: 12,
-    color: '#9CA3AF',
+    ...textStyles.secondary,
     lineHeight: 18,
   },
 
   // Preview Card
   previewCard: {
-    backgroundColor: 'rgba(30, 41, 59, 0.5)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 16,
-    padding: 24,
-    marginBottom: 24,
+    ...cardStyles.card,
+    backgroundColor: COLORS.dark.card,
+    padding: SPACING.lg,
+    marginBottom: SPACING.lg,
   },
   previewItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 12,
-    padding: 12,
-    backgroundColor: 'rgba(5, 150, 105, 0.1)',
+    gap: SPACING.md,
+    padding: SPACING.md,
+    backgroundColor: `${COLORS.dark.primary}20`,
     borderWidth: 1,
-    borderColor: 'rgba(5, 150, 105, 0.2)',
-    borderRadius: 12,
-    marginBottom: 12,
+    borderColor: `${COLORS.dark.primary}40`,
+    borderRadius: SPACING.md,
+    marginBottom: SPACING.md,
   },
   previewItemMuted: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: `${COLORS.dark.foreground}10`,
+    borderColor: COLORS.dark.border,
     marginBottom: 0,
   },
   previewIcon: {
     width: 40,
     height: 40,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: SPACING.sm,
+    backgroundColor: `${COLORS.dark.foreground}20`,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -431,18 +373,16 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   previewTitle: {
-    fontSize: 14,
+    ...textStyles.body,
     fontWeight: '600',
-    color: '#FFFFFF',
-    marginBottom: 4,
+    color: COLORS.dark.foreground,
+    marginBottom: SPACING.xs,
   },
   previewSubtitle: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    marginBottom: 4,
+    ...textStyles.secondary,
+    marginBottom: SPACING.xs,
   },
   previewTime: {
-    fontSize: 11,
-    color: '#64748B',
+    ...textStyles.caption,
   },
 });

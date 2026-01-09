@@ -3,6 +3,7 @@
     "name": "Fan Manager 2026",
     "slug": "fan-manager-2026",
     "version": "1.0.0",
+    "scheme": "fanmanager",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "splash": {
@@ -23,13 +24,19 @@
       "package": "com.fanmanager.app",
       "userInterfaceStyle": "automatic"
     },
-    "web": {},
+    "web": {
+      "bundler": "metro"
+    },
     "plugins": [
       "expo-asset",
       "expo-font"
     ],
     "extra": {
       "newArchEnabled": true
-    }
+    },
+    "experiments": {
+      "typedRoutes": false
+    },
+    "scheme": "fanmanager"
   }
 }

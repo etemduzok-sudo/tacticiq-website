@@ -5,6 +5,8 @@ import {
   StyleSheet,
   SafeAreaView,
   Dimensions,
+  Image,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
@@ -40,9 +42,6 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
   // Animation values
   const logoScale = useSharedValue(0);
   const logoRotation = useSharedValue(-180);
-  const titleOpacity = useSharedValue(0);
-  const titleY = useSharedValue(20);
-  const yearOpacity = useSharedValue(0);
   const loadingOpacity = useSharedValue(0);
   const taglineOpacity = useSharedValue(0);
   const brandingOpacity = useSharedValue(0);
@@ -59,6 +58,23 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
   }));
 
   useEffect(() => {
+    // Web için animasyonları atla
+    if (Platform.OS === 'web') {
+      // Web'de direkt splash'i tamamla
+      const timer = setTimeout(async () => {
+        try {
+          const userToken = await AsyncStorage.getItem('fan-manager-user');
+          const hasUser = !!userToken;
+          console.log('🔍 User token:', userToken);
+          onComplete(hasUser);
+        } catch (error) {
+          console.error('❌ Error checking user:', error);
+          onComplete(false);
+        }
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+
     // Logo animation (spring effect)
     logoScale.value = withSpring(1, {
       damping: 15,
@@ -68,13 +84,6 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
       damping: 15,
       stiffness: 200,
     });
-
-    // Title animation
-    titleOpacity.value = withDelay(500, withTiming(1, { duration: 800 }));
-    titleY.value = withDelay(500, withTiming(0, { duration: 800 }));
-
-    // Year animation
-    yearOpacity.value = withDelay(800, withTiming(1, { duration: 800 }));
 
     // Loading dots animation
     loadingOpacity.value = withDelay(1200, withTiming(1, { duration: 500 }));
@@ -153,6 +162,68 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
     const checkUserStatus = async () => {
       try {
         await new Promise(resolve => setTimeout(resolve, 2000)); // 2 saniye (test için kısaltıldı)
+        
+        // 🧪 TEST MODE: Set "pro" user if not exists and save to DB
+        if (__DEV__) {
+          const existingUser = await AsyncStorage.getItem('fan-manager-user');
+          if (!existingUser) {
+            const { usersDb } = await import('../services/databaseService');
+            
+            const testUser = {
+              id: 'pro-test-user-id-' + Date.now(),
+              username: 'pro',
+              email: 'pro@test.com',
+              authenticated: true,
+              isPro: true,
+              createdAt: new Date().toISOString(),
+            };
+            
+            // Save to AsyncStorage
+            await AsyncStorage.setItem('fan-manager-user', JSON.stringify(testUser));
+            console.log('✅ Test user "pro" set up in AsyncStorage');
+            
+            // Save to Database
+            try {
+              const dbResult = await usersDb.createUser({
+                id: testUser.id,
+                username: testUser.username,
+                email: testUser.email,
+                is_pro: testUser.isPro,
+              });
+              
+              if (dbResult.success) {
+                console.log('✅ Test user "pro" saved to database');
+              } else {
+                console.warn('⚠️ Could not save user to database:', dbResult.error);
+              }
+            } catch (dbError) {
+              console.warn('⚠️ Database save error (continuing anyway):', dbError);
+            }
+          } else {
+            // User exists, check if in DB and sync if needed
+            const parsedUser = JSON.parse(existingUser);
+            const { usersDb } = await import('../services/databaseService');
+            
+            try {
+              const dbUser = await usersDb.getUserById(parsedUser.id);
+              if (!dbUser.success) {
+                // User not in DB, create it
+                const dbResult = await usersDb.createUser({
+                  id: parsedUser.id,
+                  username: parsedUser.username || 'pro',
+                  email: parsedUser.email || 'pro@test.com',
+                  is_pro: parsedUser.isPro || false,
+                });
+                if (dbResult.success) {
+                  console.log('✅ Existing user synced to database');
+                }
+              }
+            } catch (syncError) {
+              console.warn('⚠️ User sync error (continuing anyway):', syncError);
+            }
+          }
+        }
+        
         const userToken = await AsyncStorage.getItem('fan-manager-user');
         console.log('🔍 User token:', userToken);
         onComplete(userToken !== null);
@@ -173,14 +244,6 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
     ],
   }));
 
-  const titleAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: titleOpacity.value,
-    transform: [{ translateY: titleY.value }],
-  }));
-
-  const yearAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: yearOpacity.value,
-  }));
 
   const loadingAnimatedStyle = useAnimatedStyle(() => ({
     opacity: loadingOpacity.value,
@@ -243,20 +306,14 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
 
         {/* Main Content */}
         <View style={styles.content}>
-          {/* Logo */}
+          {/* Logo - Conditional render if file exists */}
           <Animated.View style={[styles.logoContainer, logoAnimatedStyle]}>
-            <View style={styles.logoCircle}>
-              <Text style={styles.logoEmoji}>⚽</Text>
+            {/* Logo will be shown when PNG file is added to src/assets/images/brand/fan_manager_shield.png */}
+            {/* For now, showing placeholder until PNG is added */}
+            <View style={[styles.logoImage, styles.logoPlaceholder]}>
+              <Text style={styles.logoPlaceholderText}>FM</Text>
+              <Text style={styles.logoPlaceholderSubtext}>2026</Text>
             </View>
-          </Animated.View>
-
-          {/* App Name */}
-          <Animated.View style={titleAnimatedStyle}>
-            <Text style={styles.titleText}>Fan Manager</Text>
-          </Animated.View>
-
-          <Animated.View style={yearAnimatedStyle}>
-            <Text style={styles.yearText}>2026</Text>
           </Animated.View>
 
           {/* Loading Indicator */}
@@ -320,30 +377,28 @@ const styles = StyleSheet.create({
   logoContainer: {
     marginBottom: SPACING.xl,
   },
-  logoCircle: {
-    width: 128,
-    height: 128,
-    borderRadius: 64,
-    backgroundColor: BRAND.white,
+  logoImage: {
+    width: 160,
+    height: 160,
+  },
+  logoPlaceholder: {
+    backgroundColor: BRAND.gold,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    ...SHADOWS.xl,
+    borderWidth: 3,
+    borderColor: '#D97706',
   },
-  logoEmoji: {
-    fontSize: 60,
+  logoPlaceholderText: {
+    fontSize: 48,
+    fontWeight: 'bold',
+    color: '#1F2937',
   },
-  
-  // Title
-  titleText: {
-    ...TYPOGRAPHY.h1Splash,
-    color: BRAND.white,
-    marginBottom: SPACING.sm,
-    textAlign: 'center',
-  },
-  yearText: {
-    ...TYPOGRAPHY.h2,
-    color: `rgba(255, 255, 255, ${OPACITY[90]})`,
-    textAlign: 'center',
+  logoPlaceholderSubtext: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#1F2937',
+    marginTop: -8,
   },
   
   // Loading Dots

@@ -8,9 +8,13 @@ import {
   SafeAreaView,
   Image,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useFavoriteTeamMatches } from '../hooks/useFavoriteTeamMatches';
+import api from '../services/api';
+import { AdBanner } from '../components/ads/AdBanner';
 import Animated, {
   FadeInDown,
   useAnimatedStyle,
@@ -151,19 +155,98 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = ({
   onMatchResultSelect,
   onProfileClick,
 }) => {
-  const [selectedTeam, setSelectedTeam] = useState('all');
+  const [selectedCategory, setSelectedCategory] = useState<'past' | 'live' | 'upcoming'>('live');
+  
+  // Fetch favorite team matches (past, live, upcoming)
+  const { pastMatches, liveMatches, upcomingMatches, loading, error } = useFavoriteTeamMatches();
+
+  // Transform API data to component format
+  const transformMatch = (apiMatch: any) => {
+    const isLive = api.utils.isMatchLive(apiMatch.fixture.status.short);
+    const isFinished = api.utils.isMatchFinished(apiMatch.fixture.status.short);
+    
+    return {
+      id: apiMatch.fixture.id.toString(),
+      status: isLive ? 'live' : isFinished ? 'finished' : 'upcoming',
+      homeTeam: {
+        name: apiMatch.teams.home.name,
+        logo: apiMatch.teams.home.logo || '⚽',
+        colors: ['#059669', '#059669'], // Default colors
+        score: apiMatch.goals.home || 0,
+        manager: 'TBA',
+      },
+      awayTeam: {
+        name: apiMatch.teams.away.name,
+        logo: apiMatch.teams.away.logo || '⚽',
+        colors: ['#F59E0B', '#F59E0B'], // Default colors
+        score: apiMatch.goals.away || 0,
+        manager: 'TBA',
+      },
+      league: apiMatch.league.name,
+      stadium: apiMatch.fixture.venue?.name || 'TBA',
+      date: new Date(apiMatch.fixture.date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' }),
+      time: api.utils.formatMatchTime(apiMatch.fixture.timestamp),
+      minute: apiMatch.fixture.status.elapsed || 0,
+      period: apiMatch.fixture.status.short,
+      halftimeScore: `${apiMatch.score?.halftime?.home || 0}-${apiMatch.score?.halftime?.away || 0}`,
+    };
+  };
+
+  // Get matches based on selected category
+  const getCurrentMatches = () => {
+    switch (selectedCategory) {
+      case 'past':
+        return pastMatches.map(transformMatch);
+      case 'live':
+        return liveMatches.map(transformMatch);
+      case 'upcoming':
+        return upcomingMatches.map(transformMatch);
+      default:
+        return [];
+    }
+  };
+
+  const allMatches = getCurrentMatches();
 
   const handleMatchClick = (match: any) => {
     if (match.status === 'locked') return;
     
+    // match zaten transform edilmiş, fixture yok
+    const matchStatus = match.status;
+    
     // Biten maçlar için özet ekranına git
-    if (match.status === 'finished') {
+    if (matchStatus === 'finished') {
       onMatchResultSelect(match.id);
     } else {
       // Diğer maçlar için maç detay ekranına git
       onMatchSelect(match.id);
     }
   };
+
+  // Loading state
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={[styles.container, styles.centerContent]}>
+          <ActivityIndicator size="large" color="#059669" />
+          <Text style={styles.loadingText}>Maçlar yükleniyor...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={[styles.container, styles.centerContent]}>
+          <Ionicons name="alert-circle" size={48} color="#EF4444" />
+          <Text style={styles.errorText}>Veriler yüklenemedi</Text>
+          <Text style={styles.errorSubtext}>{error}</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -225,42 +308,41 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = ({
             </LinearGradient>
           </TouchableOpacity>
 
-          {/* Team Filter */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.teamFilterContainer}
-          >
-            {teams.map((team) => {
-              const isSelected = selectedTeam === team.id;
+          {/* Category Filter (Geçmiş/Canlı/Gelecek) */}
+          <View style={styles.categoryFilterContainer}>
+            {[
+              { id: 'past', label: `Geçmiş (${pastMatches.length})`, icon: 'time-outline' },
+              { id: 'live', label: `Canlı (${liveMatches.length})`, icon: 'radio-outline' },
+              { id: 'upcoming', label: `Gelecek (${upcomingMatches.length})`, icon: 'calendar-outline' },
+            ].map((category) => {
+              const isSelected = selectedCategory === category.id;
               return (
                 <TouchableOpacity
-                  key={team.id}
+                  key={category.id}
                   style={[
-                    styles.teamChip,
-                    isSelected && styles.teamChipSelected,
+                    styles.categoryChip,
+                    isSelected && styles.categoryChipSelected,
                   ]}
-                  onPress={() => setSelectedTeam(team.id)}
+                  onPress={() => setSelectedCategory(category.id as 'past' | 'live' | 'upcoming')}
                   activeOpacity={0.7}
                 >
-                  <LinearGradient
-                    colors={isSelected ? ['#059669', '#047857'] : team.colors}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.teamDot}
+                  <Ionicons 
+                    name={category.icon as any} 
+                    size={16} 
+                    color={isSelected ? '#FFFFFF' : '#9CA3AF'} 
                   />
                   <Text
                     style={[
-                      styles.teamName,
-                      isSelected && styles.teamNameSelected,
+                      styles.categoryLabel,
+                      isSelected && styles.categoryLabelSelected,
                     ]}
                   >
-                    {team.name}
+                    {category.label}
                   </Text>
                 </TouchableOpacity>
               );
             })}
-          </ScrollView>
+          </View>
         </View>
 
         {/* Match Cards */}
@@ -269,14 +351,29 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = ({
           contentContainerStyle={styles.matchListContent}
           showsVerticalScrollIndicator={false}
         >
-          {matches.map((match, index) => (
-            <MatchCard
-              key={match.id}
-              match={match}
-              index={index}
-              onPress={() => handleMatchClick(match)}
-            />
-          ))}
+          {allMatches.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Ionicons name="football-outline" size={64} color="#64748B" />
+              <Text style={styles.emptyText}>Bugün maç bulunamadı</Text>
+              <Text style={styles.emptySubtext}>Yakında maçlar burada görünecek</Text>
+            </View>
+          ) : (
+            allMatches.map((match, index) => (
+              <React.Fragment key={match.id}>
+                <MatchCard
+                  match={match}
+                  index={index}
+                  onPress={() => handleMatchClick(match)}
+                />
+                {/* Show ad after every 5 matches */}
+                {(index + 1) % 5 === 0 && (
+                  <View style={styles.adContainer}>
+                    <AdBanner position="bottom" />
+                  </View>
+                )}
+              </React.Fragment>
+            ))
+          )}
         </ScrollView>
       </View>
     </SafeAreaView>
@@ -661,38 +758,35 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 
-  // Team Filter
-  teamFilterContainer: {
+  // Category Filter (Geçmiş/Canlı/Gelecek)
+  categoryFilterContainer: {
+    flexDirection: 'row',
     paddingHorizontal: 16,
     paddingBottom: 16,
-    gap: 12,
+    gap: 8,
   },
-  teamChip: {
+  categoryChip: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
     borderRadius: 12,
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    backgroundColor: '#1E293B',
+    backgroundColor: 'rgba(100, 116, 139, 0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(100, 116, 139, 0.3)',
   },
-  teamChipSelected: {
+  categoryChipSelected: {
     backgroundColor: '#059669',
     borderColor: '#059669',
   },
-  teamDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+  categoryLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#9CA3AF',
   },
-  teamName: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#FFFFFF',
-  },
-  teamNameSelected: {
+  categoryLabelSelected: {
     color: '#FFFFFF',
   },
 
@@ -964,5 +1058,54 @@ const styles = StyleSheet.create({
   lockedText: {
     fontSize: 12,
     color: '#9CA3AF',
+  },
+  
+  // Loading & Error States
+  centerContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    color: '#94A3B8',
+    fontSize: 14,
+    marginTop: 12,
+  },
+  errorText: {
+    color: '#EF4444',
+    fontSize: 16,
+    fontWeight: '600',
+    marginTop: 12,
+  },
+  errorSubtext: {
+    color: '#94A3B8',
+    fontSize: 13,
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  
+  // Ad Container
+  adContainer: {
+    marginVertical: 16,
+    alignItems: 'center',
+  },
+  
+  // Empty State
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 64,
+    paddingHorizontal: 32,
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#94A3B8',
+    textAlign: 'center',
   },
 });

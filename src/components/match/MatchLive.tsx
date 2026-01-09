@@ -1,5 +1,5 @@
 // MatchLiveScreen.tsx - React Native FULL VERSION
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   ScrollView,
   SafeAreaView,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { 
@@ -16,15 +17,19 @@ import Animated, {
   withTiming,
   useSharedValue,
 } from 'react-native-reanimated';
+import { matchesApi } from '../../services/api';
+import { handleErrorWithContext, NetworkError } from '../../utils/errorUtils';
 
 const { width, height } = Dimensions.get('window');
 
 interface MatchLiveScreenProps {
   matchData: any;
+  matchId?: string | number;
+  events?: any[];
 }
 
 // Mock match metadata
-const matchMetadata = {
+const liveStats = {
   status: '2H',
   minute: 67,
   addedTime: null,
@@ -33,7 +38,7 @@ const matchMetadata = {
 };
 
 // Mock maç akışı olayları
-const matchEvents = [
+const liveEvents = [
   { minute: 67, type: 'goal', team: 'home', player: 'Icardi', assist: 'Zaha', score: '2-1' },
   { minute: 65, type: 'var-check', description: 'VAR İncelemesi', result: 'Gol onayla' },
   { minute: 63, type: 'substitution', team: 'away', playerOut: 'Valencia', playerIn: 'Dzeko' },
@@ -57,7 +62,15 @@ const matchEvents = [
 
 export const MatchLive: React.FC<MatchLiveScreenProps> = ({
   matchData,
+  matchId,
+  events: propEvents,
 }) => {
+  // State for live data
+  const [liveEvents, setLiveEvents] = useState<any[]>(propEvents || liveEvents);
+  const [liveStats, setLiveStats] = useState<any>(liveStats);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   // Pulsing CANLI badge animation
   const scale = useSharedValue(1);
   const opacity = useSharedValue(1);
@@ -75,6 +88,58 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
     );
   }, []);
 
+  // 🔴 FETCH LIVE DATA FROM API
+  useEffect(() => {
+    if (!matchId) return;
+
+    const fetchLiveData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // Fetch match events
+        const eventsResponse = await matchesApi.getMatchEvents(Number(matchId));
+        if (eventsResponse.success && eventsResponse.data) {
+          setLiveEvents(eventsResponse.data);
+          console.log('✅ Live events loaded:', eventsResponse.data.length);
+        }
+
+        // Fetch match details for current score/minute
+        const detailsResponse = await matchesApi.getMatchDetails(Number(matchId));
+        if (detailsResponse.success && detailsResponse.data) {
+          const match = detailsResponse.data;
+          setLiveStats({
+            status: match.fixture?.status?.short || '1H',
+            minute: match.fixture?.status?.elapsed || 0,
+            addedTime: match.fixture?.status?.extra || null,
+            halfTimeScore: match.score?.halftime || { home: 0, away: 0 },
+            currentScore: match.goals || { home: 0, away: 0 },
+          });
+          console.log('✅ Live stats loaded');
+        }
+
+        setLoading(false);
+      } catch (err) {
+        console.error('❌ Error fetching live data:', err);
+        handleErrorWithContext(
+          new NetworkError('Failed to fetch live match data', 0, `/matches/${matchId}/events`),
+          { matchId, action: 'fetch_live_data' },
+          { severity: 'medium', showAlert: false }
+        );
+        setError('Canlı veri yüklenemedi');
+        setLoading(false);
+        // Keep using mock data
+      }
+    };
+
+    fetchLiveData();
+
+    // 🔄 Auto-refresh every 30 seconds for live matches
+    const interval = setInterval(fetchLiveData, 30000);
+
+    return () => clearInterval(interval);
+  }, [matchId]);
+
   const animatedBadgeStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
     opacity: opacity.value,
@@ -82,12 +147,20 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Loading State */}
+      {loading && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color="#059669" />
+          <Text style={styles.loadingText}>Canlı veriler yükleniyor...</Text>
+        </View>
+      )}
+
       {/* Compact Score Banner */}
       <View style={styles.scoreBanner}>
         <View style={styles.scoreContent}>
           {/* Home Score */}
           <View style={styles.scoreLeft}>
-            <Text style={styles.scoreText}>{matchMetadata.currentScore.home}</Text>
+            <Text style={styles.scoreText}>{liveStats.currentScore.home}</Text>
           </View>
 
           {/* Center Info */}
@@ -98,17 +171,17 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
             </Animated.View>
 
             {/* Minute */}
-            <Text style={styles.minuteText}>{matchMetadata.minute}'</Text>
+            <Text style={styles.minuteText}>{liveStats.minute}'</Text>
 
             {/* HT Score */}
             <Text style={styles.htText}>
-              HT: {matchMetadata.halfTimeScore.home}-{matchMetadata.halfTimeScore.away}
+              HT: {liveStats.halfTimeScore.home}-{liveStats.halfTimeScore.away}
             </Text>
           </View>
 
           {/* Away Score */}
           <View style={styles.scoreRight}>
-            <Text style={styles.scoreText}>{matchMetadata.currentScore.away}</Text>
+            <Text style={styles.scoreText}>{liveStats.currentScore.away}</Text>
           </View>
         </View>
       </View>
@@ -125,7 +198,7 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
 
           {/* Events */}
           <View style={styles.eventsContainer}>
-            {matchEvents.map((event, index) => {
+            {liveEvents.map((event, index) => {
               const isCentered = !event.team || 
                 event.type === 'kickoff' || 
                 event.type === 'half-time' || 
@@ -544,5 +617,24 @@ const styles = StyleSheet.create({
   eventPlayerIn: {
     fontSize: 10,
     color: '#22C55E',
+  },
+  
+  // Loading Overlay
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(15, 23, 42, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#FFFFFF',
+    fontWeight: '500',
   },
 });

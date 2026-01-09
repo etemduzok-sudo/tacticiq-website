@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,43 +8,161 @@ import {
   SafeAreaView,
   Image,
   Modal,
+  ActivityIndicator,
+  FlatList,
+  Pressable,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeInDown, ZoomIn, FadeIn } from 'react-native-reanimated';
+import { AdBanner } from '../components/ads/AdBanner';
+import { usersDb, predictionsDb } from '../services/databaseService';
+import { STORAGE_KEYS } from '../config/constants';
+import ScoringEngine from '../logic/ScoringEngine';
+import { AnalysisCluster } from '../types/prediction.types';
+import { getAllAvailableBadges, getUserBadges } from '../services/badgeService';
+import { Badge, getBadgeColor, getBadgeTierName } from '../types/badges.types';
 
 interface ProfileScreenProps {
   onBack: () => void;
   onSettings: () => void;
   onProUpgrade: () => void;
+  onDatabaseTest?: () => void;
 }
 
 export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   onBack,
   onSettings,
   onProUpgrade,
+  onDatabaseTest,
 }) => {
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
-  const isPro = false; // Set to true for PRO users
-
-  const user = {
-    name: 'Ahmet Yılmaz',
-    username: '@ahmetyilmaz',
-    email: 'ahmet@example.com',
+  const [loading, setLoading] = useState(true);
+  const [isPro, setIsPro] = useState(false);
+  
+  // 🏆 BADGE SYSTEM STATE
+  const [activeTab, setActiveTab] = useState<'profile' | 'badges'>('profile');
+  const [allBadges, setAllBadges] = useState<Badge[]>([]);
+  const [selectedBadge, setSelectedBadge] = useState<Badge | null>(null);
+  const [badgeCount, setBadgeCount] = useState(0);
+  
+  // 📊 USER STATS STATE
+  const [user, setUser] = useState({
+    name: 'Kullanıcı',
+    username: '@kullanici',
+    email: 'user@example.com',
     avatar: '',
-    level: 12,
-    points: 3450,
-    countryRank: 156,
-    totalPlayers: 2365,
+    level: 1,
+    points: 0,
+    countryRank: 0,
+    totalPlayers: 0,
     country: 'Türkiye',
-    avgMatchRating: 7.8,
-    xpGainThisWeek: 245,
+    avgMatchRating: 0,
+    xpGainThisWeek: 0,
     stats: {
-      success: 68.5,
-      total: 142,
-      streak: 5,
+      success: 0,
+      total: 0,
+      streak: 0,
     },
+  });
+
+  // 🎯 BEST CLUSTER STATE
+  const [bestCluster, setBestCluster] = useState<{
+    name: string;
+    accuracy: number;
+    icon: string;
+  } | null>(null);
+
+  // 🏆 LOAD BADGES
+  const loadBadges = async () => {
+    try {
+      const badges = await getAllAvailableBadges();
+      setAllBadges(badges);
+      
+      const earnedBadges = await getUserBadges();
+      setBadgeCount(earnedBadges.length);
+      
+      console.log('✅ Loaded badges:', badges.length, 'Earned:', earnedBadges.length);
+    } catch (error) {
+      console.error('Error loading badges:', error);
+    }
   };
+
+  // 🔄 FETCH USER DATA FROM SUPABASE
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        setLoading(true);
+
+        // Get user ID from AsyncStorage
+        const userDataStr = await AsyncStorage.getItem(STORAGE_KEYS.USER);
+        const userData = userDataStr ? JSON.parse(userDataStr) : null;
+        const userId = userData?.id || 'anonymous';
+        
+        // Load badges
+        await loadBadges();
+
+        // Fetch user profile from Supabase
+        const userResponse = await usersDb.getUserById(userId);
+        if (userResponse.success && userResponse.data) {
+          const dbUser = userResponse.data;
+          setUser({
+            name: dbUser.username || 'Kullanıcı',
+            username: `@${dbUser.username || 'kullanici'}`,
+            email: dbUser.email || 'user@example.com',
+            avatar: dbUser.avatar_url || '',
+            level: Math.floor((dbUser.total_points || 0) / 500) + 1,
+            points: dbUser.total_points || 0,
+            countryRank: dbUser.rank || 0,
+            totalPlayers: 1000, // TODO: Get from database
+            country: 'Türkiye',
+            avgMatchRating: (dbUser.accuracy || 0) / 10,
+            xpGainThisWeek: 0, // TODO: Calculate
+            stats: {
+              success: dbUser.accuracy || 0,
+              total: dbUser.total_predictions || 0,
+              streak: dbUser.current_streak || 0,
+            },
+          });
+          setIsPro(dbUser.is_pro || false);
+        }
+
+        // Fetch user predictions to calculate best cluster
+        const predictionsResponse = await predictionsDb.getUserPredictions(userId, 100);
+        if (predictionsResponse.success && predictionsResponse.data) {
+          const predictions = predictionsResponse.data;
+          
+          // Calculate cluster performance
+          const clusterStats: Record<AnalysisCluster, { correct: number; total: number }> = {
+            [AnalysisCluster.TEMPO_FLOW]: { correct: 0, total: 0 },
+            [AnalysisCluster.PHYSICAL_FATIGUE]: { correct: 0, total: 0 },
+            [AnalysisCluster.DISCIPLINE]: { correct: 0, total: 0 },
+            [AnalysisCluster.INDIVIDUAL]: { correct: 0, total: 0 },
+          };
+
+          predictions.forEach((pred: any) => {
+            // TODO: Map prediction_type to cluster and calculate accuracy
+            // This requires actual match results to compare
+          });
+
+          // Find best cluster (mock for now)
+          setBestCluster({
+            name: 'Tempo & Akış',
+            accuracy: 75,
+            icon: '⚡',
+          });
+        }
+
+        setLoading(false);
+      } catch (error) {
+        console.error('❌ Error fetching user data:', error);
+        setLoading(false);
+      }
+    };
+
+    fetchUserData();
+  }, []);
 
   const achievements = [
     { id: 'winner', icon: '🏆', name: 'Winner', description: '10 doğru tahmin' },
@@ -61,6 +179,18 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const rankPercentage = ((user.totalPlayers - user.countryRank) / user.totalPlayers) * 100;
   const topPercentage = ((user.countryRank / user.totalPlayers) * 100).toFixed(1);
 
+  // Show loading state
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={[styles.container, styles.loadingContainer]}>
+          <ActivityIndicator size="large" color="#059669" />
+          <Text style={styles.loadingText}>Profil yükleniyor...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
@@ -75,8 +205,47 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           </TouchableOpacity>
         </View>
 
+        {/* 🏆 TAB NAVIGATION */}
+        <View style={styles.tabContainer}>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'profile' && styles.tabActive]}
+            onPress={() => setActiveTab('profile')}
+            activeOpacity={0.7}
+          >
+            <Ionicons
+              name="person"
+              size={20}
+              color={activeTab === 'profile' ? '#059669' : '#64748B'}
+            />
+            <Text style={[styles.tabText, activeTab === 'profile' && styles.tabTextActive]}>
+              Profil
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'badges' && styles.tabActive]}
+            onPress={() => setActiveTab('badges')}
+            activeOpacity={0.7}
+          >
+            <Ionicons
+              name="trophy"
+              size={20}
+              color={activeTab === 'badges' ? '#F59E0B' : '#64748B'}
+            />
+            <Text style={[styles.tabText, activeTab === 'badges' && styles.tabTextActive]}>
+              Rozetlerim
+            </Text>
+            {badgeCount > 0 && (
+              <View style={styles.badgeCountBubble}>
+                <Text style={styles.badgeCountText}>{badgeCount}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
+
         {/* Content */}
-        <ScrollView
+        {activeTab === 'profile' ? (
+          <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
@@ -129,11 +298,16 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   </View>
                 )}
 
-                {/* Level & Points */}
+                {/* Level, Points & Badges */}
                 <View style={styles.levelPointsContainer}>
                   <View style={styles.statBox}>
                     <Text style={styles.statLabel}>Level</Text>
                     <Text style={styles.statValueGreen}>{user.level}</Text>
+                  </View>
+                  <View style={styles.divider} />
+                  <View style={styles.statBox}>
+                    <Text style={styles.statLabel}>Badges</Text>
+                    <Text style={styles.statValueGold}>{badgeCount}</Text>
                   </View>
                   <View style={styles.divider} />
                   <View style={styles.statBox}>
@@ -234,6 +408,38 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             </View>
           </Animated.View>
 
+          {/* 🎯 EN İYİ OLDUĞU KÜME KARTI */}
+          {bestCluster && (
+            <Animated.View entering={FadeInDown.delay(250)} style={styles.card}>
+              <View style={styles.cardHeader}>
+                <Text style={styles.clusterIcon}>{bestCluster.icon}</Text>
+                <Text style={styles.cardTitle}>En İyi Olduğun Küme</Text>
+              </View>
+
+              <View style={styles.bestClusterContainer}>
+                <LinearGradient
+                  colors={['rgba(5, 150, 105, 0.2)', 'rgba(5, 150, 105, 0.05)']}
+                  style={styles.bestClusterCard}
+                >
+                  <Text style={styles.bestClusterName}>{bestCluster.name}</Text>
+                  <View style={styles.bestClusterStats}>
+                    <View style={styles.bestClusterStat}>
+                      <Text style={styles.bestClusterLabel}>Doğruluk Oranı</Text>
+                      <Text style={styles.bestClusterValue}>{bestCluster.accuracy}%</Text>
+                    </View>
+                    <View style={styles.bestClusterBadge}>
+                      <Ionicons name="trophy" size={16} color="#F59E0B" />
+                      <Text style={styles.bestClusterBadgeText}>Uzman</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.bestClusterHint}>
+                    Bu alanda çok güçlüsün! Devam et! 💪
+                  </Text>
+                </LinearGradient>
+              </View>
+            </Animated.View>
+          )}
+
           {/* Achievements Card */}
           <Animated.View entering={FadeInDown.delay(300)} style={styles.card}>
             <View style={styles.cardHeader}>
@@ -254,47 +460,198 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             </View>
           </Animated.View>
 
-          {/* PRO Upgrade Card */}
-          {!isPro && (
-            <Animated.View entering={FadeInDown.delay(400)}>
-              <LinearGradient
-                colors={['rgba(245, 158, 11, 0.2)', 'rgba(245, 158, 11, 0.1)', 'transparent']}
-                style={styles.proCard}
-              >
-                <View style={styles.proHeader}>
-                  <LinearGradient
-                    colors={['#F59E0B', '#D97706']}
-                    style={styles.proIcon}
-                  >
-                    <Ionicons name="crown" size={24} color="#FFFFFF" />
-                  </LinearGradient>
-                  <View>
-                    <Text style={styles.proTitle}>Upgrade to PRO</Text>
-                    <Text style={styles.proSubtitle}>Unlock premium features</Text>
-                  </View>
-                </View>
-
-                <View style={styles.proFeatures}>
-                  {['3 favorite clubs', 'Advanced statistics', 'Exclusive badges', 'Priority support'].map((feature) => (
-                    <View key={feature} style={styles.proFeatureItem}>
-                      <View style={styles.proDot} />
-                      <Text style={styles.proFeatureText}>{feature}</Text>
-                    </View>
-                  ))}
-                </View>
-
-                <TouchableOpacity onPress={onProUpgrade} activeOpacity={0.8}>
-                  <LinearGradient
-                    colors={['#F59E0B', '#D97706']}
-                    style={styles.proButton}
-                  >
-                    <Text style={styles.proButtonText}>Learn More</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-              </LinearGradient>
+          {/* Database Test Button (Dev Only) */}
+          {__DEV__ && onDatabaseTest && (
+            <Animated.View entering={FadeInDown.delay(400)} style={styles.card}>
+              <TouchableOpacity onPress={onDatabaseTest} style={styles.dbTestButton}>
+                <Ionicons name="server" size={20} color="#059669" />
+                <Text style={styles.dbTestText}>🧪 Database Test</Text>
+              </TouchableOpacity>
             </Animated.View>
           )}
+
         </ScrollView>
+        ) : (
+          /* 🏆 BADGE SHOWCASE TAB */
+          <View style={styles.badgeShowcaseContainer}>
+            <FlatList
+              data={allBadges}
+              keyExtractor={(item) => item.id}
+              numColumns={3}
+              contentContainerStyle={styles.badgeGrid}
+              showsVerticalScrollIndicator={false}
+              renderItem={({ item, index }) => (
+                <Animated.View entering={ZoomIn.delay(index * 30)}>
+                  <Pressable
+                    style={[
+                      styles.badgeCard,
+                      !item.earned && styles.badgeCardLocked,
+                      { borderColor: item.earned ? getBadgeColor(item.tier) : '#334155' },
+                    ]}
+                    onPress={() => setSelectedBadge(item)}
+                  >
+                    {/* Badge Icon */}
+                    <Text
+                      style={[
+                        styles.badgeEmoji,
+                        !item.earned && styles.badgeEmojiLocked,
+                      ]}
+                    >
+                      {item.earned ? item.icon : '🔒'}
+                    </Text>
+
+                    {/* Badge Name */}
+                    <Text
+                      style={[
+                        styles.badgeName,
+                        !item.earned && styles.badgeNameLocked,
+                      ]}
+                      numberOfLines={2}
+                    >
+                      {item.name}
+                    </Text>
+
+                    {/* Badge Tier */}
+                    {item.earned && (
+                      <View
+                        style={[
+                          styles.badgeTierLabel,
+                          { backgroundColor: `${getBadgeColor(item.tier)}20` },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.badgeTierText,
+                            { color: getBadgeColor(item.tier) },
+                          ]}
+                        >
+                          {getBadgeTierName(item.tier)}
+                        </Text>
+                      </View>
+                    )}
+
+                    {/* Locked Overlay */}
+                    {!item.earned && (
+                      <View style={styles.lockedOverlay}>
+                        <Ionicons name="lock-closed" size={16} color="#64748B" />
+                      </View>
+                    )}
+
+                    {/* Sparkle Effect for Earned Badges */}
+                    {item.earned && (
+                      <Animated.View
+                        entering={FadeIn.delay(index * 30 + 200)}
+                        style={styles.sparkle}
+                      >
+                        <Text style={styles.sparkleText}>✨</Text>
+                      </Animated.View>
+                    )}
+                  </Pressable>
+                </Animated.View>
+              )}
+              ListEmptyComponent={
+                <View style={styles.emptyBadgeState}>
+                  <Ionicons name="trophy-outline" size={64} color="#64748B" />
+                  <Text style={styles.emptyBadgeTitle}>Henüz rozet yok</Text>
+                  <Text style={styles.emptyBadgeText}>
+                    Maçlara tahmin yap ve rozetleri kazan!
+                  </Text>
+                </View>
+              }
+            />
+          </View>
+        )}
+
+        {/* 🔍 BADGE DETAIL MODAL */}
+        <Modal
+          visible={selectedBadge !== null}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setSelectedBadge(null)}
+        >
+          <Pressable
+            style={styles.modalOverlay}
+            onPress={() => setSelectedBadge(null)}
+          >
+            <Animated.View entering={ZoomIn.duration(300)} style={styles.badgeDetailModal}>
+              <Pressable onPress={(e) => e.stopPropagation()}>
+                {selectedBadge && (
+                  <>
+                    {/* Badge Icon */}
+                    <View
+                      style={[
+                        styles.badgeDetailIconContainer,
+                        {
+                          backgroundColor: selectedBadge.earned
+                            ? `${getBadgeColor(selectedBadge.tier)}20`
+                            : 'rgba(51, 65, 85, 0.3)',
+                        },
+                      ]}
+                    >
+                      <Text style={styles.badgeDetailIcon}>
+                        {selectedBadge.earned ? selectedBadge.icon : '🔒'}
+                      </Text>
+                    </View>
+
+                    {/* Badge Name */}
+                    <Text style={styles.badgeDetailName}>{selectedBadge.name}</Text>
+
+                    {/* Badge Tier */}
+                    {selectedBadge.earned && (
+                      <View
+                        style={[
+                          styles.badgeDetailTier,
+                          { backgroundColor: `${getBadgeColor(selectedBadge.tier)}20` },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.badgeDetailTierText,
+                            { color: getBadgeColor(selectedBadge.tier) },
+                          ]}
+                        >
+                          {getBadgeTierName(selectedBadge.tier)}
+                        </Text>
+                      </View>
+                    )}
+
+                    {/* Badge Description */}
+                    <Text style={styles.badgeDetailDescription}>
+                      {selectedBadge.description}
+                    </Text>
+
+                    {/* Requirement */}
+                    <View style={styles.badgeDetailRequirement}>
+                      <Ionicons
+                        name={selectedBadge.earned ? 'checkmark-circle' : 'information-circle'}
+                        size={20}
+                        color={selectedBadge.earned ? '#22C55E' : '#F59E0B'}
+                      />
+                      <Text style={styles.badgeDetailRequirementText}>
+                        {selectedBadge.earned
+                          ? `Kazanıldı: ${new Date(selectedBadge.earnedAt!).toLocaleDateString('tr-TR')}`
+                          : `Nasıl Kazanılır: ${selectedBadge.requirement}`}
+                      </Text>
+                    </View>
+
+                    {/* Close Button */}
+                    <TouchableOpacity
+                      style={styles.badgeDetailCloseButton}
+                      onPress={() => setSelectedBadge(null)}
+                    >
+                      <LinearGradient
+                        colors={['#059669', '#047857']}
+                        style={styles.badgeDetailCloseGradient}
+                      >
+                        <Text style={styles.badgeDetailCloseText}>Kapat</Text>
+                      </LinearGradient>
+                    </TouchableOpacity>
+                  </>
+                )}
+              </Pressable>
+            </Animated.View>
+          </Pressable>
+        </Modal>
 
         {/* Avatar Picker Modal */}
         <Modal
@@ -684,6 +1041,24 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
+  // Database Test Button
+  dbTestButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    padding: 16,
+    backgroundColor: '#1E293B',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#059669',
+  },
+  dbTestText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#059669',
+  },
+
   // PRO Card
   proCard: {
     borderRadius: 16,
@@ -779,6 +1154,323 @@ const styles = StyleSheet.create({
   },
   modalOptionText: {
     fontSize: 16,
+    color: '#FFFFFF',
+  },
+  
+  // Loading State
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#9CA3AF',
+    fontWeight: '500',
+  },
+  
+  // Best Cluster Card
+  clusterIcon: {
+    fontSize: 20,
+  },
+  bestClusterContainer: {
+    marginTop: 12,
+  },
+  bestClusterCard: {
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(5, 150, 105, 0.3)',
+  },
+  bestClusterName: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 12,
+  },
+  bestClusterStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  bestClusterStat: {
+    flex: 1,
+  },
+  bestClusterLabel: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    marginBottom: 4,
+  },
+  bestClusterValue: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#059669',
+  },
+  bestClusterBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: 'rgba(245, 158, 11, 0.2)',
+    borderRadius: 20,
+  },
+  bestClusterBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#F59E0B',
+  },
+  bestClusterHint: {
+    fontSize: 13,
+    color: '#9CA3AF',
+    fontStyle: 'italic',
+  },
+  
+  // Ad Container
+  adContainer: {
+    marginTop: 24,
+    marginBottom: 16,
+    alignItems: 'center',
+  },
+  logoutContainer: {
+    marginTop: 16,
+    marginBottom: 16,
+  },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+  },
+  logoutText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#EF4444',
+  },
+
+  // 🏆 TAB NAVIGATION STYLES
+  tabContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#1E293B',
+    borderRadius: 12,
+    padding: 4,
+    marginHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  tab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 8,
+    position: 'relative',
+  },
+  tabActive: {
+    backgroundColor: '#0F172A',
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  tabTextActive: {
+    color: '#FFFFFF',
+  },
+  badgeCountBubble: {
+    position: 'absolute',
+    top: 6,
+    right: 20,
+    backgroundColor: '#F59E0B',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 6,
+  },
+  badgeCountText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  statValueGold: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#F59E0B',
+  },
+
+  // 🏆 BADGE SHOWCASE STYLES
+  badgeShowcaseContainer: {
+    flex: 1,
+    backgroundColor: '#0F172A',
+  },
+  badgeGrid: {
+    padding: 16,
+    paddingBottom: 100,
+  },
+  badgeCard: {
+    width: 110,
+    height: 140,
+    backgroundColor: 'rgba(30, 41, 59, 0.6)',
+    borderRadius: 16,
+    borderWidth: 2,
+    margin: 6,
+    padding: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  badgeCardLocked: {
+    opacity: 0.5,
+  },
+  badgeEmoji: {
+    fontSize: 40,
+    marginBottom: 8,
+  },
+  badgeEmojiLocked: {
+    opacity: 0.3,
+    filter: 'grayscale(100%)',
+  },
+  badgeName: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    textAlign: 'center',
+    marginBottom: 6,
+  },
+  badgeNameLocked: {
+    color: '#64748B',
+  },
+  badgeTierLabel: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  badgeTierText: {
+    fontSize: 9,
+    fontWeight: '600',
+  },
+  lockedOverlay: {
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
+  },
+  sparkle: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+  },
+  sparkleText: {
+    fontSize: 12,
+  },
+  emptyBadgeState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 80,
+  },
+  emptyBadgeTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptyBadgeText: {
+    fontSize: 14,
+    color: '#64748B',
+    textAlign: 'center',
+  },
+
+  // 🔍 BADGE DETAIL MODAL STYLES
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  badgeDetailModal: {
+    backgroundColor: '#1E293B',
+    borderRadius: 24,
+    padding: 32,
+    width: '85%',
+    maxWidth: 400,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(5, 150, 105, 0.3)',
+  },
+  badgeDetailIconContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  badgeDetailIcon: {
+    fontSize: 60,
+  },
+  badgeDetailName: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  badgeDetailTier: {
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  badgeDetailTierText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  badgeDetailDescription: {
+    fontSize: 15,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 20,
+  },
+  badgeDetailRequirement: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 24,
+    width: '100%',
+  },
+  badgeDetailRequirementText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#FFFFFF',
+    lineHeight: 18,
+  },
+  badgeDetailCloseButton: {
+    width: '100%',
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  badgeDetailCloseGradient: {
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  badgeDetailCloseText: {
+    fontSize: 16,
+    fontWeight: '600',
     color: '#FFFFFF',
   },
 });

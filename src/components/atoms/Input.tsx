@@ -7,6 +7,7 @@ import {
   ViewStyle,
   TextInputProps,
   TouchableOpacity,
+  Platform,
 } from 'react-native';
 import SafeIcon from '../SafeIcon';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -125,6 +126,8 @@ const Input = React.memo(function Input({
               : 'default'
           }
           autoCapitalize={type === 'email' ? 'none' : 'sentences'}
+          // Web için focus sorununu önlemek
+          {...(Platform.OS === 'web' ? { focusable: true } : {})}
           {...textInputProps}
         />
         

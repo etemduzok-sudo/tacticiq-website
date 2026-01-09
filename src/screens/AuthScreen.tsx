@@ -7,22 +7,67 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
   SafeAreaView,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+// import authService from '../services/authService'; // Real Supabase
+import authService from '../services/mockAuthService'; // Mock (geçici test için)
 import Animated, { 
-  FadeIn, 
-  FadeOut, 
-  SlideInLeft, 
-  SlideOutLeft,
+  SlideInLeft,
   useAnimatedStyle,
   withRepeat,
   withTiming,
   useSharedValue,
 } from 'react-native-reanimated';
+import { BRAND } from '../theme/theme';
+// Logo component removed - using text placeholder
+
+// ============================================
+// SHARED LAYOUT CONSTANTS (MUST BE IDENTICAL)
+// ============================================
+const LAYOUT = {
+  // [A] TOP NAVIGATION ZONE
+  screenPadding: 24,
+  backButtonSize: 40,
+  backButtonMarginBottom: 0,
+  
+  // [B] BRAND ZONE
+  brandZoneHeight: 100,
+  logoSize: 48,
+  titleFontSize: 22,
+  titleLineHeight: 28,
+  ballEmojiSize: 16,
+  subtitleFontSize: 14,
+  subtitleMarginTop: 6,
+  
+  // [C] PRIMARY ACTION ZONE (Social Buttons)
+  socialZoneHeight: 104, // 2x44 + 8 gap + 8 marginTop
+  socialButtonHeight: 44,
+  socialButtonGap: 8,
+  socialZoneMarginTop: 8,
+  
+  // [D] DIVIDER ZONE
+  dividerZoneHeight: 40, // 8 + 24 + 8
+  dividerMarginVertical: 8,
+  
+  // [E] FORM INPUT ZONE
+  inputHeight: 48,
+  inputGap: 12,
+  inputIconTop: 14,
+  
+  // [F] SECONDARY ACTION LINKS
+  secondaryLinkMarginTop: 16,
+  
+  // [G] PRIMARY CTA BUTTON
+  ctaButtonHeight: 48,
+  ctaButtonMarginTop: 16,
+  
+  // [H] FOOTER ZONE
+  footerMarginTop: 'auto',
+};
 
 interface AuthScreenProps {
   onLoginSuccess: () => void;
@@ -41,36 +86,70 @@ export default function AuthScreen({
   const [loginPassword, setLoginPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-
-  // Rotating ball animation
-  const rotation = useSharedValue(0);
   
-  React.useEffect(() => {
-    rotation.value = withRepeat(
-      withTiming(360, { duration: 3000 }),
-      -1,
-      false
-    );
-  }, []);
+  // Email availability check states
+  const [emailStatus, setEmailStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
 
-  const animatedBallStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{ rotate: `${rotation.value}deg` }],
-    };
-  });
+
+  // Real-time email check with debounce
+  const checkEmailTimeout = React.useRef<NodeJS.Timeout | null>(null);
+  
+  const handleEmailChange = (text: string) => {
+    setLoginEmail(text);
+    setEmailStatus('idle');
+    
+    // Clear previous timeout
+    if (checkEmailTimeout.current) {
+      clearTimeout(checkEmailTimeout.current);
+    }
+    
+    // Only check if email format is valid
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (emailRegex.test(text.trim())) {
+      setEmailStatus('checking');
+      checkEmailTimeout.current = setTimeout(async () => {
+        const result = await authService.checkEmailAvailability(text.trim());
+        if (result.success) {
+          setEmailStatus(result.available ? 'available' : 'taken');
+        } else {
+          setEmailStatus('idle');
+        }
+      }, 800);
+    }
+  };
 
   const handleLogin = async () => {
-    if (!loginEmail || !loginPassword) {
-      alert('Lütfen tüm alanları doldurun');
+    if (!loginEmail.trim()) {
+      Alert.alert('Hata', '❌ E-posta adresi boş bırakılamaz');
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(loginEmail)) {
+      Alert.alert('Hata', '❌ Geçerli bir e-posta adresi girin');
+      return;
+    }
+
+    if (!loginPassword.trim()) {
+      Alert.alert('Hata', '❌ Şifre boş bırakılamaz');
+      return;
+    }
+
+    if (loginPassword.length < 6) {
+      Alert.alert('Hata', '❌ Şifre en az 6 karakter olmalıdır');
       return;
     }
 
     setLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setLoading(false);
+    const result = await authService.signIn(loginEmail.trim(), loginPassword);
+    setLoading(false);
+    
+    if (result.success) {
+      Alert.alert('Başarılı', '✅ Giriş başarılı!');
       onLoginSuccess();
-    }, 1500);
+    } else {
+      Alert.alert('Hata', `❌ ${result.error || 'Giriş başarısız'}`);
+    }
   };
 
   const handleSocialLogin = (provider: string) => {
@@ -93,38 +172,30 @@ export default function AuthScreen({
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.keyboardView}
         >
-          <View style={styles.scrollContent}>
-            {/* Back Button */}
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={onBack}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="chevron-back" size={24} color="#059669" />
-            </TouchableOpacity>
-
-            <Animated.View 
-              entering={SlideInLeft.duration(300)}
-              style={styles.content}
-            >
-              {/* Logo Section */}
-              <View style={styles.logoSection}>
-                <Ionicons name="shield" size={72} color="#F59E0B" />
-                
-                <View style={styles.titleContainer}>
-                  <Text style={styles.titleText}>Fan Manager 2</Text>
-                  <Animated.Text style={[styles.ballEmoji, animatedBallStyle]}>
-                    ⚽
-                  </Animated.Text>
-                  <Text style={styles.titleText}>26</Text>
-                </View>
-                
-                <Text style={styles.subtitle}>Hoş Geldiniz</Text>
+          <View style={styles.screenContainer}>
+            <View style={styles.contentWrapper}>
+              {/* [A] TOP NAVIGATION ZONE */}
+              <View style={styles.topNavZone}>
+                <TouchableOpacity
+                  style={styles.backButton}
+                  onPress={onBack}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="chevron-back" size={24} color="#059669" />
+                </TouchableOpacity>
               </View>
 
-              {/* Social Login Buttons */}
-              <View style={styles.socialContainer}>
-                {/* Google Login */}
+              <Animated.View 
+                entering={SlideInLeft.duration(300)}
+                style={styles.content}
+              >
+              {/* [B] BRAND ZONE */}
+              <View style={styles.brandZone}>
+                <Text style={styles.logoText}>FM 2026</Text>
+              </View>
+
+              {/* [C] PRIMARY ACTION ZONE - Social Buttons */}
+              <View style={styles.socialZone}>
                 <TouchableOpacity
                   style={styles.googleButton}
                   onPress={() => handleSocialLogin('Google')}
@@ -134,7 +205,6 @@ export default function AuthScreen({
                   <Text style={styles.googleButtonText}>Google ile Giriş</Text>
                 </TouchableOpacity>
 
-                {/* Apple Login */}
                 <TouchableOpacity
                   style={styles.appleButton}
                   onPress={() => handleSocialLogin('Apple')}
@@ -145,15 +215,15 @@ export default function AuthScreen({
                 </TouchableOpacity>
               </View>
 
-              {/* Divider */}
-              <View style={styles.divider}>
+              {/* [D] DIVIDER ZONE */}
+              <View style={styles.dividerZone}>
                 <View style={styles.dividerLine} />
                 <Text style={styles.dividerText}>veya</Text>
                 <View style={styles.dividerLine} />
               </View>
 
-              {/* Login Form */}
-              <View style={styles.formContainer}>
+              {/* [E] FORM INPUT ZONE */}
+              <View style={styles.formZone}>
                 {/* Email Input */}
                 <View style={styles.inputGroup}>
                   <Text style={styles.label}>E-posta</Text>
@@ -165,15 +235,26 @@ export default function AuthScreen({
                       style={styles.inputIcon} 
                     />
                     <TextInput
-                      style={styles.input}
+                      style={[
+                        styles.input,
+                        emailStatus === 'available' && styles.inputSuccess,
+                        emailStatus === 'taken' && styles.inputError,
+                      ]}
                       placeholder="ornek@email.com"
                       placeholderTextColor="#64748B"
                       value={loginEmail}
-                      onChangeText={setLoginEmail}
+                      onChangeText={handleEmailChange}
                       keyboardType="email-address"
                       autoCapitalize="none"
                       autoCorrect={false}
                     />
+                    {emailStatus !== 'idle' && (
+                      <View style={styles.statusIndicator}>
+                        {emailStatus === 'checking' && <Text style={styles.checkingText}>⏳</Text>}
+                        {emailStatus === 'available' && <Text style={styles.availableText}>✅</Text>}
+                        {emailStatus === 'taken' && <Text style={styles.takenText}>❌</Text>}
+                      </View>
+                    )}
                   </View>
                 </View>
 
@@ -210,20 +291,18 @@ export default function AuthScreen({
                   </View>
                 </View>
 
-                {/* Forgot Password */}
+                {/* [F] SECONDARY ACTION LINKS */}
                 <TouchableOpacity
                   style={styles.forgotPassword}
                   onPress={onForgotPassword}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.forgotPasswordText}>
-                    Şifremi Unuttum?
-                  </Text>
+                  <Text style={styles.forgotPasswordText}>Şifremi Unuttum?</Text>
                 </TouchableOpacity>
 
-                {/* Login Button */}
+                {/* [G] PRIMARY CTA BUTTON */}
                 <TouchableOpacity
-                  style={styles.loginButton}
+                  style={styles.ctaButton}
                   onPress={handleLogin}
                   activeOpacity={0.8}
                   disabled={loading}
@@ -232,30 +311,33 @@ export default function AuthScreen({
                     colors={['#059669', '#047857']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
-                    style={styles.loginButtonGradient}
+                    style={styles.ctaButtonGradient}
                   >
                     {loading ? (
                       <ActivityIndicator color="#FFFFFF" />
                     ) : (
-                      <Text style={styles.loginButtonText}>Giriş Yap</Text>
+                      <Text style={styles.ctaButtonText}>Giriş Yap</Text>
                     )}
                   </LinearGradient>
                 </TouchableOpacity>
               </View>
 
-              {/* Register Link */}
-              <View style={styles.registerContainer}>
-                <Text style={styles.registerText}>Hesabınız yok mu? </Text>
+              {/* Secondary Link */}
+              <View style={styles.secondaryLinkContainer}>
+                <Text style={styles.secondaryLinkText}>Hesabınız yok mu? </Text>
                 <TouchableOpacity onPress={onRegister} activeOpacity={0.7}>
-                  <Text style={styles.registerLink}>Kayıt Ol</Text>
+                  <Text style={styles.secondaryLink}>Kayıt Ol</Text>
                 </TouchableOpacity>
               </View>
-            </Animated.View>
+              </Animated.View>
+            </View>
 
-            {/* Footer */}
-            <Text style={styles.footer}>
-              © 2026 Fan Manager. Tüm hakları saklıdır.
-            </Text>
+            {/* [H] FOOTER ZONE - FIXED AT BOTTOM (OUTSIDE SCROLLABLE CONTENT) */}
+            <View style={styles.footerZone}>
+              <Text style={styles.footer}>
+                © 2026. Tüm hakları saklıdır.
+              </Text>
+            </View>
           </View>
         </KeyboardAvoidingView>
       </LinearGradient>
@@ -274,83 +356,62 @@ const styles = StyleSheet.create({
   keyboardView: {
     flex: 1,
   },
-  scrollContent: {
+  screenContainer: {
     flex: 1,
-    paddingHorizontal: 16,
-    paddingTop: 24,
-    paddingBottom: 12,
-    justifyContent: 'space-between',
+    paddingHorizontal: LAYOUT.screenPadding,
+    paddingTop: 12,
+  },
+  contentWrapper: {
+    flex: 1,
+  },
+  
+  // [A] TOP NAVIGATION ZONE
+  topNavZone: {
+    height: LAYOUT.backButtonSize,
+    justifyContent: 'center',
   },
   backButton: {
-    width: 40,
-    height: 40,
+    width: LAYOUT.backButtonSize,
+    height: LAYOUT.backButtonSize,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
   },
+  
   content: {
-    maxWidth: 448,
+    flex: 1,
+    maxWidth: 400,
     width: '100%',
     alignSelf: 'center',
   },
   
-  // Logo Section
-  logoSection: {
+  // [B] BRAND ZONE
+  brandZone: {
+    height: LAYOUT.brandZoneHeight,
     alignItems: 'center',
-    marginBottom: 32,
-    height: 148,
-    justifyContent: 'flex-start',
-  },
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 12,
     justifyContent: 'center',
-    height: 34,
   },
-  titleText: {
-    fontSize: 28,
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-    lineHeight: 34,
-    includeFontPadding: false,
-    textAlignVertical: 'center',
-  },
-  ballEmoji: {
-    fontSize: 20,
-    marginHorizontal: -2,
-    lineHeight: 34,
-    includeFontPadding: false,
-    textAlignVertical: 'center',
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#9CA3AF',
-    marginTop: 6,
-    height: 20,
-    lineHeight: 20,
-    includeFontPadding: false,
-    textAlignVertical: 'center',
+  logoText: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: BRAND.white,
+    letterSpacing: 3,
   },
   
-  // Social Buttons
-  socialContainer: {
-    gap: 10,
-    marginBottom: 12,
+  // [C] PRIMARY ACTION ZONE - Social Buttons
+  socialZone: {
+    height: LAYOUT.socialZoneHeight,
+    gap: LAYOUT.socialButtonGap,
+    marginTop: LAYOUT.socialZoneMarginTop,
+    justifyContent: 'center',
   },
   googleButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#FFFFFF',
-    height: 50,
+    height: LAYOUT.socialButtonHeight,
     borderRadius: 12,
     gap: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
   },
   googleButtonText: {
     fontSize: 16,
@@ -362,7 +423,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#000000',
-    height: 50,
+    height: LAYOUT.socialButtonHeight,
     borderRadius: 12,
     gap: 12,
     borderWidth: 1,
@@ -374,12 +435,12 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   
-  // Divider
-  divider: {
+  // [D] DIVIDER ZONE
+  dividerZone: {
+    height: LAYOUT.dividerZoneHeight,
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 12,
-    gap: 16,
+    gap: 12,
   },
   dividerLine: {
     flex: 1,
@@ -391,12 +452,12 @@ const styles = StyleSheet.create({
     color: '#6B7280',
   },
   
-  // Form
-  formContainer: {
-    gap: 12,
+  // [E] FORM INPUT ZONE
+  formZone: {
+    gap: LAYOUT.inputGap,
   },
   inputGroup: {
-    gap: 8,
+    gap: 6,
   },
   label: {
     fontSize: 14,
@@ -404,16 +465,16 @@ const styles = StyleSheet.create({
   },
   inputWrapper: {
     position: 'relative',
-    height: 50,
+    height: LAYOUT.inputHeight,
   },
   inputIcon: {
     position: 'absolute',
     left: 12,
-    top: 15,
+    top: LAYOUT.inputIconTop,
     zIndex: 1,
   },
   input: {
-    height: 50,
+    height: LAYOUT.inputHeight,
     backgroundColor: 'rgba(15, 23, 42, 0.5)',
     borderWidth: 1,
     borderColor: 'rgba(5, 150, 105, 0.3)',
@@ -429,58 +490,88 @@ const styles = StyleSheet.create({
   eyeButton: {
     position: 'absolute',
     right: 12,
-    top: 15,
+    top: LAYOUT.inputIconTop,
     zIndex: 1,
   },
+  
+  // [F] SECONDARY ACTION LINKS
   forgotPassword: {
     alignSelf: 'flex-end',
-    marginTop: -8,
   },
   forgotPasswordText: {
     fontSize: 14,
     color: '#059669',
   },
   
-  // Login Button
-  loginButton: {
-    height: 50,
+  // [G] PRIMARY CTA BUTTON
+  ctaButton: {
+    height: LAYOUT.ctaButtonHeight,
     borderRadius: 12,
     overflow: 'hidden',
     marginTop: 8,
   },
-  loginButtonGradient: {
+  ctaButtonGradient: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  loginButtonText: {
+  ctaButtonText: {
     fontSize: 16,
     color: '#FFFFFF',
     fontWeight: '600',
   },
   
-  // Register Link
-  registerContainer: {
+  // Secondary Link
+  secondaryLinkContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 16,
+    marginTop: LAYOUT.secondaryLinkMarginTop,
   },
-  registerText: {
+  secondaryLinkText: {
     fontSize: 14,
     color: '#9CA3AF',
   },
-  registerLink: {
+  secondaryLink: {
     fontSize: 14,
     color: '#059669',
     fontWeight: '500',
   },
   
-  // Footer
+  // [H] FOOTER ZONE - FIXED AT BOTTOM (GLOBAL FOOTER)
+  footerZone: {
+    paddingTop: 16,
+    paddingBottom: 16,
+    backgroundColor: 'transparent',
+  },
   footer: {
     fontSize: 12,
     color: '#6B7280',
     textAlign: 'center',
-    marginTop: 24,
+  },
+  
+  // Status Indicators
+  statusIndicator: {
+    position: 'absolute',
+    right: 12,
+    top: LAYOUT.inputIconTop,
+    zIndex: 1,
+  },
+  checkingText: {
+    fontSize: 16,
+  },
+  availableText: {
+    fontSize: 16,
+    color: '#059669',
+  },
+  takenText: {
+    fontSize: 16,
+    color: '#EF4444',
+  },
+  inputSuccess: {
+    borderColor: '#059669',
+  },
+  inputError: {
+    borderColor: '#EF4444',
   },
 });

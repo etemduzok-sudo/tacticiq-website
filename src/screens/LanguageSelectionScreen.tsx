@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,16 +6,12 @@ import {
   StyleSheet,
   ScrollView,
   SafeAreaView,
-  Dimensions,
+  Animated as RNAnimated,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { 
   FadeIn,
-  useAnimatedStyle,
-  withRepeat,
-  withTiming,
-  useSharedValue,
 } from 'react-native-reanimated';
 import { AUTH_GRADIENT } from '../theme/gradients';
 import { BRAND, TYPOGRAPHY, SPACING, SIZES, OPACITY } from '../theme/theme';
@@ -23,7 +19,21 @@ import { BRAND, TYPOGRAPHY, SPACING, SIZES, OPACITY } from '../theme/theme';
 // Import Flag Components
 import { FlagTR, FlagGB, FlagDE, FlagES, FlagFR, FlagIT } from '../components/flags';
 
-const { width } = Dimensions.get('window');
+// ============================================
+// LAYOUT CONSTANTS (Language screen has larger brand zone)
+// ============================================
+const LAYOUT = {
+  screenPadding: 24,
+  
+  // Brand Zone (larger for language screen - welcome screen)
+  brandZoneMarginBottom: 48,
+  logoSize: 80,
+  titleFontSize: 32,
+  titleLineHeight: 40,
+  ballEmojiSize: 22,
+  subtitleFontSize: 14,
+  subtitleMarginTop: 12,
+};
 
 interface LanguageSelectionScreenProps {
   onLanguageSelect: (language: string) => void;
@@ -34,22 +44,32 @@ export default function LanguageSelectionScreen({
   onLanguageSelect,
   onBack,
 }: LanguageSelectionScreenProps) {
-  // Rotating ball animation
-  const rotation = useSharedValue(0);
-  
-  React.useEffect(() => {
-    rotation.value = withRepeat(
-      withTiming(360, { duration: 3000 }),
-      -1,
-      false
-    );
-  }, []);
 
-  const animatedBallStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{ rotate: `${rotation.value}deg` }],
-    };
-  });
+  // Scrolling welcome text animation
+  const scrollX = useRef(new RNAnimated.Value(0)).current;
+  const welcomeTexts = [
+    'Welcome',      // İngilizce
+    'Hoş Geldiniz', // Türkçe
+    'Bienvenido',   // İspanyolca
+    'Bienvenue',    // Fransızca
+    'Willkommen',   // Almanca
+    'Benvenuto',    // İtalyanca
+  ];
+  const welcomeString = welcomeTexts.join('  •  ') + '  •  ';
+  // More accurate width calculation (8.5px per character average for fontSize 14)
+  const textWidth = welcomeString.length * 8.5;
+
+  useEffect(() => {
+    const animation = RNAnimated.loop(
+      RNAnimated.timing(scrollX, {
+        toValue: -textWidth,
+        duration: 20000, // 20 saniyede tam tur
+        useNativeDriver: true,
+      })
+    );
+    animation.start();
+    return () => animation.stop();
+  }, []);
 
   const languages = [
     { code: 'de', name: 'Deutsch', FlagComponent: FlagDE },
@@ -68,30 +88,18 @@ export default function LanguageSelectionScreen({
         start={AUTH_GRADIENT.start}
         end={AUTH_GRADIENT.end}
       >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          <Animated.View 
-            entering={FadeIn.duration(300)}
-            style={styles.content}
+        <View style={styles.screenContainer}>
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
           >
-            {/* Logo Section */}
-            <View style={styles.logoSection}>
-              <Ionicons name="shield" size={96} color="#F59E0B" />
-              
-              {/* Title with rotating ball */}
-              <View style={styles.titleContainer}>
-                <Text style={styles.titleText}>Fan Manager 2</Text>
-                <Animated.Text style={[styles.ballEmoji, animatedBallStyle]}>
-                  ⚽
-                </Animated.Text>
-                <Text style={styles.titleText}>26</Text>
-              </View>
-              
-              <Text style={styles.subtitle}>
-                Premium Football Management Experience
-              </Text>
+            <Animated.View 
+              entering={FadeIn.duration(300)}
+              style={styles.content}
+            >
+            {/* [B] BRAND ZONE (Larger for welcome screen) */}
+            <View style={styles.brandZone}>
+              <Text style={styles.logoText}>FM 2026</Text>
             </View>
 
             {/* Language Selection Grid */}
@@ -122,15 +130,34 @@ export default function LanguageSelectionScreen({
               })}
             </View>
 
-            {/* Welcome Message */}
-            <Text style={styles.welcomeMessage}>Benvenuto • Welcome • Bienvenue</Text>
-          </Animated.View>
+            {/* Scrolling Welcome Message */}
+            <View style={styles.welcomeContainer}>
+              <RNAnimated.View
+                style={[
+                  styles.welcomeScrollView,
+                  {
+                    transform: [{ translateX: scrollX }],
+                  },
+                ]}
+              >
+                <Text style={styles.welcomeMessage} numberOfLines={1} ellipsizeMode="clip">
+                  {welcomeString}
+                </Text>
+                <Text style={styles.welcomeMessage} numberOfLines={1} ellipsizeMode="clip">
+                  {welcomeString}
+                </Text>
+              </RNAnimated.View>
+            </View>
+            </Animated.View>
+          </ScrollView>
 
-          {/* Footer */}
-          <Text style={styles.footer}>
-            © 2026 Fan Manager. Tüm hakları saklıdır.
-          </Text>
-        </ScrollView>
+          {/* [H] FOOTER ZONE - FIXED AT BOTTOM (OUTSIDE SCROLLABLE CONTENT) */}
+          <View style={styles.footerZone}>
+            <Text style={styles.footer}>
+              © 2026. Tüm hakları saklıdır.
+            </Text>
+          </View>
+        </View>
       </LinearGradient>
     </SafeAreaView>
   );
@@ -144,55 +171,47 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  screenContainer: {
+    flex: 1,
+    paddingHorizontal: LAYOUT.screenPadding,
+    paddingTop: 40,
+  },
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: SPACING.base,
-    paddingVertical: SPACING.xl,
-    justifyContent: 'center',
+    paddingBottom: 16,
   },
   content: {
-    maxWidth: 448,
+    flex: 1,
+    maxWidth: 400,
     width: '100%',
     alignSelf: 'center',
   },
   
-  // ===== LOGO SECTION =====
-  logoSection: {
+  // [B] BRAND ZONE (Larger for welcome/language screen)
+  brandZone: {
     alignItems: 'center',
-    marginBottom: 64,
+    justifyContent: 'center',
+    marginBottom: LAYOUT.brandZoneMarginBottom,
+    height: 200, // Fixed height to prevent jumping between screens
   },
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 16,
-  },
-  titleText: {
-    fontSize: 36,
+  logoText: {
+    fontSize: 48,
+    fontWeight: '700',
     color: BRAND.white,
-    fontWeight: 'bold',
-  },
-  ballEmoji: {
-    fontSize: 25,
-    marginHorizontal: -2,
-  },
-  subtitle: {
-    ...TYPOGRAPHY.bodySmall,
-    color: `rgba(255, 255, 255, ${OPACITY[60]})`,
-    marginTop: SPACING.md,
-    textAlign: 'center',
+    letterSpacing: 4,
   },
   
-  // ===== LANGUAGE GRID =====
+  // Language Grid
   languageGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginHorizontal: -SPACING.sm,
-    marginBottom: SPACING.xl,
+    marginHorizontal: -8,
+    marginBottom: 24,
   },
   languageButton: {
     width: '50%',
-    paddingHorizontal: SPACING.sm,
-    marginBottom: SPACING.base,
+    paddingHorizontal: 8,
+    marginBottom: 16,
   },
   languageButtonLeft: {
     // Optional: Add specific left column styles
@@ -204,13 +223,7 @@ const styles = StyleSheet.create({
     borderColor: `rgba(5, 150, 105, ${OPACITY[30]})`,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: SPACING.md,
-    // Shadow (inactive by default)
-    shadowColor: BRAND.emerald,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0,
-    shadowRadius: 8,
-    elevation: 0,
+    gap: 12,
   },
   flagContainer: {
     shadowColor: '#000',
@@ -227,19 +240,36 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   
-  // ===== WELCOME MESSAGE =====
+  // Welcome Message
+  welcomeContainer: {
+    width: '100%',
+    height: 24,
+    overflow: 'hidden',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  welcomeScrollView: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 24,
+  },
   welcomeMessage: {
-    ...TYPOGRAPHY.bodySmall,
+    fontSize: 14,
+    lineHeight: 24,
     color: `rgba(255, 255, 255, ${OPACITY[40]})`,
-    textAlign: 'center',
+    marginRight: 32,
+    includeFontPadding: false,
   },
   
-  // ===== FOOTER =====
+  // [H] FOOTER ZONE - FIXED AT BOTTOM (GLOBAL FOOTER)
+  footerZone: {
+    paddingTop: 16,
+    paddingBottom: 16,
+    backgroundColor: 'transparent',
+  },
   footer: {
-    ...TYPOGRAPHY.bodySmall,
-    color: `rgba(255, 255, 255, ${OPACITY[40]})`,
+    fontSize: 12,
+    color: '#6B7280', // Same color as all other screens
     textAlign: 'center',
-    marginTop: SPACING.xl,
-    paddingBottom: SPACING.base,
   },
 });

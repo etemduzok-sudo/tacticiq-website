@@ -7,9 +7,9 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
   SafeAreaView,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,10 +17,51 @@ import Animated, {
   FadeIn,
   useSharedValue,
   useAnimatedStyle,
-  withRepeat,
-  withTiming,
   withSpring,
 } from 'react-native-reanimated';
+import { BRAND } from '../theme/theme';
+// Logo component removed - using text placeholder
+// import authService from '../services/authService'; // Real Supabase
+import authService from '../services/mockAuthService'; // Mock (geçici test için)
+
+// ============================================
+// SHARED LAYOUT CONSTANTS (MUST BE IDENTICAL)
+// ============================================
+const LAYOUT = {
+  // [A] TOP NAVIGATION ZONE
+  screenPadding: 24,
+  backButtonSize: 40,
+  backButtonMarginBottom: 0,
+  
+  // [B] BRAND ZONE
+  brandZoneHeight: 100,
+  logoSize: 48,
+  
+  // [C] PRIMARY ACTION ZONE (Social Buttons)
+  socialZoneHeight: 104, // 2x44 + 8 gap + 8 marginTop
+  socialButtonHeight: 44,
+  socialButtonGap: 8,
+  socialZoneMarginTop: 8,
+  
+  // [D] DIVIDER ZONE
+  dividerZoneHeight: 40, // 8 + 24 + 8
+  dividerMarginVertical: 8,
+  
+  // [E] FORM INPUT ZONE
+  inputHeight: 48,
+  inputGap: 12,
+  inputIconTop: 14,
+  
+  // [F] SECONDARY ACTION LINKS
+  secondaryLinkMarginTop: 16,
+  
+  // [G] PRIMARY CTA BUTTON
+  ctaButtonHeight: 48,
+  ctaButtonMarginTop: 16,
+  
+  // [H] FOOTER ZONE
+  footerMarginTop: 'auto',
+};
 
 interface ForgotPasswordScreenProps {
   onBack: () => void;
@@ -32,41 +73,45 @@ export default function ForgotPasswordScreen({
   const [email, setEmail] = useState('');
   const [isEmailSent, setIsEmailSent] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [emailStatus, setEmailStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
 
-  // Rotating ball animation
-  const rotation = useSharedValue(0);
-  
-  React.useEffect(() => {
-    rotation.value = withRepeat(
-      withTiming(360, { duration: 3000 }),
-      -1,
-      false
-    );
-  }, []);
-
-  const animatedBallStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${rotation.value}deg` }],
-  }));
-
-  // Success icon scale animation
   const successScale = useSharedValue(0);
+
+  // Real-time email check (for password reset: need REGISTERED email)
+  const checkEmailTimeout = React.useRef<NodeJS.Timeout | null>(null);
+  const handleEmailChange = (text: string) => {
+    setEmail(text);
+    setEmailStatus('idle');
+    if (checkEmailTimeout.current) clearTimeout(checkEmailTimeout.current);
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (emailRegex.test(text.trim())) {
+      setEmailStatus('checking');
+      checkEmailTimeout.current = setTimeout(async () => {
+        const result = await authService.checkEmailAvailability(text.trim());
+        if (result.success) {
+          // For password reset: "taken" (registered) = ✅, "available" (not registered) = ❌
+          setEmailStatus(result.available ? 'taken' : 'available');
+        } else {
+          setEmailStatus('idle');
+        }
+      }, 800);
+    }
+  };
 
   const handleSendEmail = async () => {
     if (!email || !email.includes('@')) {
-      alert('Geçersiz email adresi\nLütfen geçerli bir email adresi girin.');
+      Alert.alert('Hata', 'Geçersiz email adresi');
       return;
     }
-
     setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    const result = await authService.resetPassword(email.trim());
     setIsLoading(false);
-    setIsEmailSent(true);
-    
-    // Animate success icon
-    successScale.value = withSpring(1, {
-      damping: 10,
-      stiffness: 200,
-    });
+    if (result.success) {
+      setIsEmailSent(true);
+      successScale.value = withSpring(1, { damping: 10, stiffness: 200 });
+    } else {
+      Alert.alert('Hata', `Şifre sıfırlama başarısız: ${result.error}`);
+    }
   };
 
   const successIconStyle = useAnimatedStyle(() => ({
@@ -85,43 +130,35 @@ export default function ForgotPasswordScreen({
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.keyboardView}
         >
-          <ScrollView
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-          >
-            {/* Back Button */}
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={onBack}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="chevron-back" size={24} color="#059669" />
-            </TouchableOpacity>
+          <View style={styles.screenContainer}>
+            <View style={styles.contentWrapper}>
+              {/* [A] TOP NAVIGATION ZONE */}
+              <View style={styles.topNavZone}>
+                <TouchableOpacity
+                  style={styles.backButton}
+                  onPress={onBack}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="chevron-back" size={24} color="#059669" />
+                </TouchableOpacity>
+              </View>
 
-            <Animated.View entering={FadeIn.duration(300)} style={styles.content}>
+              <Animated.View entering={FadeIn.duration(300)} style={styles.content}>
               {!isEmailSent ? (
                 <>
-                  {/* Logo Section */}
-                  <View style={styles.logoSection}>
-                    <Ionicons name="shield" size={72} color="#F59E0B" />
-                    
-                    <View style={styles.titleContainer}>
-                      <Text style={styles.titleText}>Fan Manager 2</Text>
-                      <Animated.Text style={[styles.ballEmoji, animatedBallStyle]}>
-                        ⚽
-                      </Animated.Text>
-                      <Text style={styles.titleText}>26</Text>
-                    </View>
-                    
-                    <Text style={styles.subtitle}>Şifre Sıfırlama</Text>
+                  {/* [B] BRAND ZONE */}
+                  <View style={styles.brandZone}>
+                    <Text style={styles.logoText}>FM 2026</Text>
                   </View>
 
-                  {/* Spacer (matches social buttons height on register) */}
-                  <View style={styles.spacer} />
+                  {/* [C] PRIMARY ACTION ZONE - SPACER (no social buttons on this screen) */}
+                  <View style={styles.socialZoneSpacer} />
 
-                  {/* Form */}
-                  <View style={styles.formContainer}>
+                  {/* [D] DIVIDER ZONE - SPACER (no divider on this screen) */}
+                  <View style={styles.dividerZoneSpacer} />
+
+                  {/* [E] FORM INPUT ZONE */}
+                  <View style={styles.formZone}>
                     <View style={styles.inputWrapper}>
                       <Ionicons
                         name="mail-outline"
@@ -130,22 +167,31 @@ export default function ForgotPasswordScreen({
                         style={styles.inputIcon}
                       />
                       <TextInput
-                        style={styles.input}
+                        style={[
+                          styles.input,
+                          emailStatus === 'available' && styles.inputSuccess,
+                          emailStatus === 'taken' && styles.inputError,
+                        ]}
                         placeholder="E-posta"
                         placeholderTextColor="#64748B"
                         value={email}
-                        onChangeText={setEmail}
+                        onChangeText={handleEmailChange}
                         keyboardType="email-address"
                         autoCapitalize="none"
                         autoCorrect={false}
                       />
+                      {emailStatus !== 'idle' && (
+                        <View style={styles.statusIndicator}>
+                          {emailStatus === 'checking' && <Text style={styles.checkingText}>⏳</Text>}
+                          {emailStatus === 'available' && <Text style={styles.availableText}>✅</Text>}
+                          {emailStatus === 'taken' && <Text style={styles.takenText}>❌</Text>}
+                        </View>
+                      )}
                     </View>
 
+                    {/* [G] PRIMARY CTA BUTTON */}
                     <TouchableOpacity
-                      style={[
-                        styles.submitButton,
-                        isLoading && styles.submitButtonDisabled,
-                      ]}
+                      style={[styles.ctaButton, isLoading && styles.ctaButtonDisabled]}
                       onPress={handleSendEmail}
                       disabled={isLoading}
                       activeOpacity={0.8}
@@ -154,88 +200,57 @@ export default function ForgotPasswordScreen({
                         colors={['#059669', '#047857']}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 0 }}
-                        style={styles.submitButtonGradient}
+                        style={styles.ctaButtonGradient}
                       >
                         {isLoading ? (
                           <View style={styles.loadingContainer}>
                             <ActivityIndicator color="#FFFFFF" />
-                            <Text style={styles.submitButtonText}>
-                              Gönderiliyor...
-                            </Text>
+                            <Text style={styles.ctaButtonText}>Gönderiliyor...</Text>
                           </View>
                         ) : (
-                          <Text style={styles.submitButtonText}>
-                            Şifre Sıfırlama Linki Gönder
-                          </Text>
+                          <Text style={styles.ctaButtonText}>Şifre Sıfırlama Linki Gönder</Text>
                         )}
                       </LinearGradient>
                     </TouchableOpacity>
                   </View>
 
-                  {/* Back to Login */}
-                  <View style={styles.backToLoginContainer}>
-                    <Text style={styles.backToLoginText}>
-                      Şifrenizi hatırladınız mı?{' '}
-                    </Text>
+                  {/* [F] SECONDARY ACTION LINKS */}
+                  <View style={styles.secondaryLinkContainer}>
+                    <Text style={styles.secondaryLinkText}>Şifrenizi hatırladınız mı? </Text>
                     <TouchableOpacity onPress={onBack} activeOpacity={0.7}>
-                      <Text style={styles.backToLoginLink}>Giriş Yap</Text>
+                      <Text style={styles.secondaryLink}>Giriş Yap</Text>
                     </TouchableOpacity>
                   </View>
                 </>
               ) : (
                 <>
-                  {/* Logo Section */}
-                  <View style={styles.logoSection}>
-                    <Ionicons name="shield" size={72} color="#F59E0B" />
-                    
-                    <View style={styles.titleContainer}>
-                      <Text style={styles.titleText}>Fan Manager 2</Text>
-                      <Animated.Text style={[styles.ballEmoji, animatedBallStyle]}>
-                        ⚽
-                      </Animated.Text>
-                      <Text style={styles.titleText}>26</Text>
-                    </View>
-                    
-                    <Text style={styles.subtitle}>Şifre Sıfırlama</Text>
+                  {/* [B] BRAND ZONE */}
+                  <View style={styles.brandZone}>
+                    <Text style={styles.logoText}>FM 2026</Text>
                   </View>
 
                   {/* Success Message */}
                   <View style={styles.successContainer}>
                     <Animated.View style={successIconStyle}>
-                      <Ionicons
-                        name="checkmark-circle"
-                        size={64}
-                        color="#059669"
-                      />
+                      <Ionicons name="checkmark-circle" size={64} color="#059669" />
                     </Animated.View>
-
                     <Text style={styles.successTitle}>Email Gönderildi!</Text>
-                    
                     <Text style={styles.successMessage}>
                       Şifre sıfırlama bağlantısı{' '}
-                      <Text style={styles.successEmail}>{email}</Text> adresine
-                      gönderildi.
+                      <Text style={styles.successEmail}>{email}</Text> adresine gönderildi.
                     </Text>
 
-                    {/* Help Box */}
                     <View style={styles.helpBox}>
                       <View style={styles.helpHeader}>
-                        <Ionicons
-                          name="help-circle-outline"
-                          size={16}
-                          color="#059669"
-                        />
+                        <Ionicons name="help-circle-outline" size={16} color="#059669" />
                         <Text style={styles.helpTitle}>Email gelmediyse:</Text>
                       </View>
                       <View style={styles.helpList}>
                         <Text style={styles.helpItem}>• Spam klasörünü kontrol edin</Text>
-                        <Text style={styles.helpItem}>
-                          • Email adresini doğru yazdığınızdan emin olun
-                        </Text>
+                        <Text style={styles.helpItem}>• Email adresini doğru yazdığınızdan emin olun</Text>
                       </View>
                     </View>
 
-                    {/* Retry Button */}
                     <TouchableOpacity
                       style={styles.retryButton}
                       onPress={() => {
@@ -249,13 +264,16 @@ export default function ForgotPasswordScreen({
                   </View>
                 </>
               )}
-            </Animated.View>
+              </Animated.View>
+            </View>
 
-            {/* Footer */}
-            <Text style={styles.footer}>
-              © 2026 Fan Manager. Tüm hakları saklıdır.
-            </Text>
-          </ScrollView>
+            {/* [H] FOOTER ZONE - FIXED AT BOTTOM (OUTSIDE SCROLLABLE CONTENT) */}
+            <View style={styles.footerZone}>
+              <Text style={styles.footer}>
+                © 2026. Tüm hakları saklıdır.
+              </Text>
+            </View>
+          </View>
         </KeyboardAvoidingView>
       </LinearGradient>
     </SafeAreaView>
@@ -273,85 +291,73 @@ const styles = StyleSheet.create({
   keyboardView: {
     flex: 1,
   },
-  scrollContent: {
-    flexGrow: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 24,
+  screenContainer: {
+    flex: 1,
+    paddingHorizontal: LAYOUT.screenPadding,
+    paddingTop: 12,
+  },
+  contentWrapper: {
+    flex: 1,
+  },
+  
+  // [A] TOP NAVIGATION ZONE
+  topNavZone: {
+    height: LAYOUT.backButtonSize,
+    justifyContent: 'center',
   },
   backButton: {
-    width: 40,
-    height: 40,
+    width: LAYOUT.backButtonSize,
+    height: LAYOUT.backButtonSize,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
   },
+  
   content: {
     flex: 1,
-    maxWidth: 448,
+    maxWidth: 400,
     width: '100%',
     alignSelf: 'center',
   },
-
-  // Logo Section
-  logoSection: {
+  
+  // [B] BRAND ZONE
+  brandZone: {
+    height: LAYOUT.brandZoneHeight,
     alignItems: 'center',
-    marginBottom: 32,
-    height: 148,
-    justifyContent: 'flex-start',
-  },
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 12,
     justifyContent: 'center',
-    height: 34,
   },
-  titleText: {
-    fontSize: 28,
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-    lineHeight: 34,
-    includeFontPadding: false,
-    textAlignVertical: 'center',
+  logoText: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: BRAND.white,
+    letterSpacing: 3,
   },
-  ballEmoji: {
-    fontSize: 20,
-    marginHorizontal: -2,
-    lineHeight: 34,
-    includeFontPadding: false,
-    textAlignVertical: 'center',
+  
+  // [C] PRIMARY ACTION ZONE - SPACER
+  socialZoneSpacer: {
+    height: LAYOUT.socialZoneHeight,
   },
-  subtitle: {
-    fontSize: 14,
-    color: '#9CA3AF',
-    marginTop: 6,
-    height: 20,
-    lineHeight: 20,
-    includeFontPadding: false,
-    textAlignVertical: 'center',
+  
+  // [D] DIVIDER ZONE - SPACER
+  dividerZoneSpacer: {
+    height: LAYOUT.dividerZoneHeight,
   },
-
-  // Spacer (matches social buttons + divider height = 146px: 2x50px buttons + 10px gap + 12px marginBottom + 24px divider)
-  spacer: {
-    height: 146,
-  },
-
-  // Form
-  formContainer: {
-    gap: 10,
+  
+  // [E] FORM INPUT ZONE
+  formZone: {
+    gap: LAYOUT.inputGap,
   },
   inputWrapper: {
     position: 'relative',
-    height: 50,
+    height: LAYOUT.inputHeight,
   },
   inputIcon: {
     position: 'absolute',
     left: 12,
-    top: 15,
+    top: LAYOUT.inputIconTop,
     zIndex: 1,
   },
   input: {
-    height: 50,
+    height: LAYOUT.inputHeight,
     backgroundColor: 'rgba(15, 23, 42, 0.5)',
     borderWidth: 1,
     borderColor: 'rgba(5, 150, 105, 0.3)',
@@ -361,18 +367,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#FFFFFF',
   },
-
-  // Submit Button
-  submitButton: {
-    height: 50,
+  
+  // [G] PRIMARY CTA BUTTON
+  ctaButton: {
+    height: LAYOUT.ctaButtonHeight,
     borderRadius: 12,
     overflow: 'hidden',
     marginTop: 8,
   },
-  submitButtonDisabled: {
+  ctaButtonDisabled: {
     opacity: 0.5,
   },
-  submitButtonGradient: {
+  ctaButtonGradient: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
@@ -382,29 +388,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  submitButtonText: {
+  ctaButtonText: {
     fontSize: 16,
     color: '#FFFFFF',
     fontWeight: '600',
   },
-
-  // Back to Login
-  backToLoginContainer: {
+  
+  // [F] SECONDARY ACTION LINKS
+  secondaryLinkContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 16,
+    marginTop: LAYOUT.secondaryLinkMarginTop,
   },
-  backToLoginText: {
+  secondaryLinkText: {
     fontSize: 14,
     color: '#9CA3AF',
   },
-  backToLoginLink: {
+  secondaryLink: {
     fontSize: 14,
     color: '#059669',
     fontWeight: '500',
   },
-
+  
   // Success Screen
   successContainer: {
     backgroundColor: 'rgba(15, 23, 42, 0.5)',
@@ -413,6 +419,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 24,
     alignItems: 'center',
+    marginTop: 24,
   },
   successTitle: {
     fontSize: 20,
@@ -431,8 +438,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '500',
   },
-
-  // Help Box
   helpBox: {
     backgroundColor: 'rgba(5, 150, 105, 0.1)',
     borderWidth: 1,
@@ -460,11 +465,9 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
     marginBottom: 2,
   },
-
-  // Retry Button
   retryButton: {
     width: '100%',
-    height: 50,
+    height: 48,
     borderWidth: 1,
     borderColor: 'rgba(5, 150, 105, 0.3)',
     borderRadius: 12,
@@ -477,12 +480,41 @@ const styles = StyleSheet.create({
     color: '#059669',
     fontWeight: '600',
   },
-
-  // Footer
+  
+  // [H] FOOTER ZONE - FIXED AT BOTTOM (GLOBAL FOOTER)
+  footerZone: {
+    paddingTop: 16,
+    paddingBottom: 16,
+    backgroundColor: 'transparent',
+  },
   footer: {
     fontSize: 12,
     color: '#6B7280',
     textAlign: 'center',
-    marginTop: 24,
+  },
+  
+  // Status Indicators
+  statusIndicator: {
+    position: 'absolute',
+    right: 12,
+    top: LAYOUT.inputIconTop,
+    zIndex: 1,
+  },
+  checkingText: {
+    fontSize: 16,
+  },
+  availableText: {
+    fontSize: 16,
+    color: '#059669',
+  },
+  takenText: {
+    fontSize: 16,
+    color: '#EF4444',
+  },
+  inputSuccess: {
+    borderColor: '#059669',
+  },
+  inputError: {
+    borderColor: '#EF4444',
   },
 });

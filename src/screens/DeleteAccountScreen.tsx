@@ -5,13 +5,14 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  ScrollView,
-  SafeAreaView,
   Alert,
   Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
+import { ScreenLayout, StandardHeader } from '../components/layouts';
+import { textStyles, cardStyles, buttonStyles, inputStyles } from '../utils/styleHelpers';
+import { SPACING, COLORS, SIZES, TYPOGRAPHY } from '../theme/theme';
 
 interface DeleteAccountScreenProps {
   onBack: () => void;
@@ -45,23 +46,13 @@ export const DeleteAccountScreen: React.FC<DeleteAccountScreenProps> = ({
   const isDeleteEnabled = confirmText.toLowerCase() === 'sil';
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={onBack} style={styles.headerButton}>
-            <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Hesabı Sil</Text>
-          <View style={styles.headerButton} />
-        </View>
+    <ScreenLayout safeArea scrollable>
+      <StandardHeader
+        title="Hesabı Sil"
+        onBack={onBack}
+      />
 
-        {/* Content */}
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
+      {/* Content */}
           {/* Warning Card */}
           <Animated.View entering={FadeInDown.delay(0)} style={styles.warningCard}>
             <View style={styles.warningHeader}>
@@ -177,105 +168,62 @@ export const DeleteAccountScreen: React.FC<DeleteAccountScreenProps> = ({
               geçebilirsiniz.
             </Text>
           </Animated.View>
-        </ScrollView>
 
-        {/* Final Confirmation Modal */}
-        <Modal
-          visible={showFinalConfirm}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setShowFinalConfirm(false)}
-        >
-          <View style={styles.modalOverlay}>
-            <Animated.View entering={FadeIn} style={styles.modalContent}>
-              <View style={styles.modalIconContainer}>
-                <Ionicons name="alert-circle" size={32} color="#EF4444" />
-              </View>
+      {/* Final Confirmation Modal */}
+      <Modal
+        visible={showFinalConfirm}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowFinalConfirm(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <Animated.View entering={FadeIn} style={styles.modalContent}>
+            <View style={styles.modalIconContainer}>
+              <Ionicons name="alert-circle" size={SIZES.iconLg} color={COLORS.dark.error} />
+            </View>
 
-              <Text style={styles.modalTitle}>Son Onay</Text>
-              <Text style={styles.modalMessage}>
-                Hesabınızı silmek üzeresiniz. Bu işlem geri alınamaz.
-              </Text>
+            <Text style={styles.modalTitle}>Son Onay</Text>
+            <Text style={styles.modalMessage}>
+              Hesabınızı silmek üzeresiniz. Bu işlem geri alınamaz.
+            </Text>
 
-              <View style={styles.modalButtons}>
-                <TouchableOpacity
-                  style={styles.modalButtonCancel}
-                  onPress={() => setShowFinalConfirm(false)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.modalButtonCancelText}>İptal</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.modalButtonConfirm}
-                  onPress={handleFinalConfirm}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.modalButtonConfirmText}>Evet, Sil</Text>
-                </TouchableOpacity>
-              </View>
-            </Animated.View>
-          </View>
-        </Modal>
-      </View>
-    </SafeAreaView>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.modalButtonCancel}
+                onPress={() => setShowFinalConfirm(false)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.modalButtonCancelText}>İptal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalButtonConfirm}
+                onPress={handleFinalConfirm}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.modalButtonConfirmText}>Evet, Sil</Text>
+              </TouchableOpacity>
+            </View>
+          </Animated.View>
+        </View>
+      </Modal>
+    </ScreenLayout>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#0F172A',
-  },
-  container: {
-    flex: 1,
-    backgroundColor: '#0F172A',
-  },
-
-  // Header
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    backgroundColor: 'rgba(15, 23, 42, 0.95)',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  headerButton: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-
-  // ScrollView
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 24,
-    paddingBottom: 96,
-  },
-
   // Warning Card
   warningCard: {
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    backgroundColor: `${COLORS.dark.error}20`,
     borderWidth: 2,
-    borderColor: 'rgba(239, 68, 68, 0.3)',
-    borderRadius: 16,
-    padding: 24,
-    marginBottom: 24,
+    borderColor: `${COLORS.dark.error}50`,
+    borderRadius: SIZES.radiusLg,
+    padding: SPACING.lg,
+    marginBottom: SPACING.lg,
   },
   warningHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: SPACING.md,
     marginBottom: 16,
   },
   warningIconContainer: {
@@ -307,96 +255,88 @@ const styles = StyleSheet.create({
 
   // Data List
   dataList: {
-    gap: 8,
+    gap: SPACING.sm,
   },
   dataItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 8,
+    gap: SPACING.md,
   },
   dataDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#EF4444',
+    backgroundColor: COLORS.dark.error,
     marginTop: 6,
   },
   dataText: {
     flex: 1,
-    fontSize: 14,
-    color: '#9CA3AF',
+    ...textStyles.body,
+    color: COLORS.dark.mutedForeground,
     lineHeight: 20,
   },
 
   // Card
   card: {
-    backgroundColor: 'rgba(30, 41, 59, 0.5)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 16,
-    padding: 24,
-    marginBottom: 24,
+    ...cardStyles.card,
+    backgroundColor: COLORS.dark.card,
+    padding: SPACING.lg,
+    marginBottom: SPACING.lg,
   },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 16,
+    gap: SPACING.sm,
+    marginBottom: SPACING.base,
   },
   cardTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    marginBottom: 16,
+    ...textStyles.label,
+    color: COLORS.dark.foreground,
+    marginBottom: SPACING.base,
   },
   cardTitleRed: {
-    color: '#EF4444',
+    color: COLORS.dark.error,
     marginBottom: 0,
   },
 
   // Alternative Options
   optionsContainer: {
-    gap: 12,
+    gap: SPACING.md,
   },
   optionBox: {
-    padding: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 12,
+    padding: SPACING.base,
+    backgroundColor: `${COLORS.dark.foreground}10`,
+    borderRadius: SPACING.md,
   },
   optionTitle: {
-    fontSize: 14,
+    ...textStyles.body,
     fontWeight: '500',
-    color: '#FFFFFF',
-    marginBottom: 4,
+    color: COLORS.dark.foreground,
+    marginBottom: SPACING.xs,
   },
   optionDescription: {
-    fontSize: 12,
-    color: '#9CA3AF',
+    ...textStyles.secondary,
     lineHeight: 18,
   },
 
   // Input Group
   inputGroup: {
-    marginBottom: 16,
+    marginBottom: SPACING.base,
   },
   label: {
-    fontSize: 14,
-    color: '#9CA3AF',
-    marginBottom: 8,
+    ...textStyles.body,
+    color: COLORS.dark.mutedForeground,
+    marginBottom: SPACING.sm,
   },
   labelBold: {
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: COLORS.dark.foreground,
   },
   input: {
-    height: 50,
-    backgroundColor: 'rgba(15, 23, 42, 0.5)',
-    borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.3)',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    fontSize: 16,
-    color: '#FFFFFF',
+    ...inputStyles.inputContainer,
+    height: SIZES.inputAuthHeight,
+    backgroundColor: COLORS.dark.input,
+    borderColor: `${COLORS.dark.error}50`,
     fontWeight: '600',
   },
 
@@ -404,67 +344,59 @@ const styles = StyleSheet.create({
   warningBox: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 8,
-    padding: 12,
-    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    gap: SPACING.sm,
+    padding: SPACING.md,
+    backgroundColor: `${COLORS.dark.warning}20`,
     borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.2)',
-    borderRadius: 8,
+    borderColor: `${COLORS.dark.warning}40`,
+    borderRadius: SPACING.sm,
   },
   warningBoxText: {
     flex: 1,
-    fontSize: 12,
-    color: '#9CA3AF',
+    ...textStyles.secondary,
     lineHeight: 18,
   },
   warningBoxBold: {
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: COLORS.dark.foreground,
   },
 
   // Delete Button
   deleteButton: {
+    ...buttonStyles.primaryButton,
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    height: 50,
-    backgroundColor: '#EF4444',
-    borderRadius: 12,
-    marginBottom: 24,
+    gap: SPACING.sm,
+    backgroundColor: COLORS.dark.error,
+    marginBottom: SPACING.lg,
   },
   deleteButtonDisabled: {
-    backgroundColor: 'rgba(239, 68, 68, 0.5)',
+    backgroundColor: `${COLORS.dark.error}80`,
     opacity: 0.5,
   },
   deleteButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
+    ...buttonStyles.primaryButtonText,
   },
 
   // Info Card
   infoCard: {
-    padding: 16,
-    backgroundColor: 'rgba(5, 150, 105, 0.1)',
+    padding: SPACING.base,
+    backgroundColor: `${COLORS.dark.primary}20`,
     borderWidth: 1,
-    borderColor: 'rgba(5, 150, 105, 0.2)',
-    borderRadius: 12,
+    borderColor: `${COLORS.dark.primary}40`,
+    borderRadius: SPACING.md,
   },
   infoHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 8,
+    gap: SPACING.sm,
+    marginBottom: SPACING.sm,
   },
   infoTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#FFFFFF',
+    ...textStyles.label,
+    color: COLORS.dark.foreground,
   },
   infoText: {
-    fontSize: 12,
-    color: '#9CA3AF',
+    ...textStyles.secondary,
     lineHeight: 18,
   },
 
@@ -474,71 +406,66 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 16,
+    padding: SPACING.base,
   },
   modalContent: {
-    backgroundColor: '#1E293B',
-    borderRadius: 16,
-    padding: 24,
+    backgroundColor: COLORS.dark.card,
+    borderRadius: SIZES.radiusLg,
+    padding: SPACING.lg,
     width: '100%',
     maxWidth: 400,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: COLORS.dark.border,
     alignItems: 'center',
   },
   modalIconContainer: {
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+    backgroundColor: `${COLORS.dark.error}30`,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: SPACING.base,
   },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginBottom: 8,
+    ...textStyles.title,
+    fontSize: TYPOGRAPHY.h3.fontSize,
+    marginBottom: SPACING.sm,
     textAlign: 'center',
   },
   modalMessage: {
-    fontSize: 14,
-    color: '#9CA3AF',
-    marginBottom: 24,
+    ...textStyles.body,
+    color: COLORS.dark.mutedForeground,
+    marginBottom: SPACING.lg,
     textAlign: 'center',
     lineHeight: 20,
   },
   modalButtons: {
     flexDirection: 'row',
-    gap: 12,
+    gap: SPACING.md,
     width: '100%',
   },
   modalButtonCancel: {
     flex: 1,
-    height: 48,
-    borderRadius: 12,
+    height: SIZES.buttonLgHeight + 8,
+    borderRadius: SIZES.radiusLg,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderColor: COLORS.dark.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
   modalButtonCancelText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
+    ...buttonStyles.secondaryButtonText,
   },
   modalButtonConfirm: {
     flex: 1,
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: '#EF4444',
+    height: SIZES.buttonLgHeight + 8,
+    borderRadius: SIZES.radiusLg,
+    backgroundColor: COLORS.dark.error,
     alignItems: 'center',
     justifyContent: 'center',
   },
   modalButtonConfirmText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
+    ...buttonStyles.primaryButtonText,
   },
 });

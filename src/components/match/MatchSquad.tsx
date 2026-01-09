@@ -12,6 +12,7 @@ import {
   Alert,
   Platform,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { 
@@ -34,6 +35,8 @@ const { width, height } = Dimensions.get('window');
 
 interface MatchSquadProps {
   matchData: any;
+  matchId: string;
+  lineups?: any[];
   onComplete: () => void;
 }
 
@@ -541,7 +544,7 @@ const FootballField = ({ children, style }: any) => (
   </View>
 );
 
-export function MatchSquad({ matchData, onComplete }: MatchSquadProps) {
+export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSquadProps) {
   const [selectedFormation, setSelectedFormation] = useState<string | null>(null);
   const [selectedPlayers, setSelectedPlayers] = useState<Record<number, typeof players[0] | null>>({});
   const [selectedSlot, setSelectedSlot] = useState<number | null>(null);
@@ -604,14 +607,35 @@ export function MatchSquad({ matchData, onComplete }: MatchSquadProps) {
     }
   };
 
-  const handleComplete = () => {
+  const handleComplete = async () => {
     const selectedCount = Object.keys(selectedPlayers).filter(k => selectedPlayers[parseInt(k)]).length;
     if (selectedCount === 11) {
-      Alert.alert(
-        'Kadro Tamamlandı! 🎉',
-        'Tahmin ekranına yönlendiriliyorsunuz...',
-        [{ text: 'Tamam', onPress: onComplete }]
-      );
+      try {
+        // Save squad data to AsyncStorage
+        const squadData = {
+          matchId: matchData.id,
+          formation: selectedFormation,
+          players: selectedPlayers,
+          playerPredictions: playerPredictions,
+          timestamp: new Date().toISOString(),
+        };
+        
+        await AsyncStorage.setItem(
+          `fan-manager-squad-${matchData.id}`,
+          JSON.stringify(squadData)
+        );
+        
+        console.log('✅ Squad saved successfully!', squadData);
+        
+        Alert.alert(
+          'Kadro Kaydedildi! 🎉',
+          'Tahminleriniz başarıyla kaydedildi.',
+          [{ text: 'Devam Et', onPress: onComplete }]
+        );
+      } catch (error) {
+        console.error('Error saving squad:', error);
+        Alert.alert('Hata!', 'Kadro kaydedilemedi. Lütfen tekrar deneyin.');
+      }
     } else {
       Alert.alert('Kadro Eksik!', `${11 - selectedCount} oyuncu daha seçmelisiniz.`);
     }
@@ -824,16 +848,6 @@ export function MatchSquad({ matchData, onComplete }: MatchSquadProps) {
       {selectedPlayerForDetail && (
         <PlayerDetailModal
           player={selectedPlayerForDetail}
-          predictions={playerPredictions[selectedPlayerForDetail.id] || {}}
-          onPredictionChange={(type, value) => {
-            setPlayerPredictions(prev => ({
-              ...prev,
-              [selectedPlayerForDetail.id]: {
-                ...(prev[selectedPlayerForDetail.id] || {}),
-                [type]: value
-              }
-            }));
-          }}
           onClose={() => setSelectedPlayerForDetail(null)}
         />
       )}
@@ -864,16 +878,18 @@ const FormationModal = ({ visible, formations, formationType, onSelect, onClose,
           >
             {/* Header */}
             <View style={styles.modalHeader}>
-              <View>
+              <View style={styles.modalHeaderContent}>
                 <Text style={styles.modalTitle}>Defans Dizilişini Belirleyin</Text>
                 <Text style={styles.modalSubtitle}>
                   Defans için aynı formasyon seçin veya atak formasyonunuzla aynı kalın
                 </Text>
               </View>
-              <TouchableOpacity onPress={onClose} style={styles.modalCloseButton}>
-                <Ionicons name="close" size={24} color="#FFFFFF" />
-              </TouchableOpacity>
             </View>
+
+            {/* Close Button - Absolute Position */}
+            <TouchableOpacity onPress={onClose} style={styles.modalCloseButtonAbsolute}>
+              <Ionicons name="close" size={28} color="#FFFFFF" />
+            </TouchableOpacity>
 
             {/* Tabs */}
             <View style={styles.modalTabs}>
@@ -926,7 +942,7 @@ const FormationModal = ({ visible, formations, formationType, onSelect, onClose,
                       }}
                       activeOpacity={0.7}
                     >
-                      <Ionicons name="information-circle" size={14} color="#FFFFFF" />
+                      <Text style={styles.formationInfoButtonText}>i</Text>
                     </TouchableOpacity>
 
                     {/* Formation ID - Clean (only numbers) */}
@@ -1144,11 +1160,8 @@ const PlayerModal = ({ visible, players, selectedPlayers, positionLabel, onSelec
   );
 };
 
-// Player Detail Modal - FULL STATS WITH PREDICTIONS
-const PlayerDetailModal = ({ player, predictions, onPredictionChange, onClose }: any) => {
-  const [showSubstituteSection, setShowSubstituteSection] = useState(false);
-  const [showInjurySubstituteSection, setShowInjurySubstituteSection] = useState(false);
-
+// Player Detail Modal - FULL STATS
+const PlayerDetailModal = ({ player, onClose }: any) => {
   return (
     <Modal
       visible={true}
@@ -1259,117 +1272,6 @@ const PlayerDetailModal = ({ player, predictions, onPredictionChange, onClose }:
                 <Text style={styles.infoCardLabel}>Yaş</Text>
                 <Text style={styles.infoCardValue}>{player.age}</Text>
               </View>
-            </View>
-
-            {/* Prediction Section */}
-            <View style={styles.predictionSection}>
-              <Text style={styles.playerDetailSectionTitle}>🔮 Oyuncu Tahminleri</Text>
-              
-              {/* Oyundan Çıkar */}
-              <TouchableOpacity
-                style={[
-                  styles.predictionButton,
-                  predictions.substitutedOut && styles.predictionButtonActive
-                ]}
-                onPress={() => {
-                  onPredictionChange('substitutedOut', !predictions.substitutedOut);
-                  setShowSubstituteSection(!showSubstituteSection);
-                }}
-                activeOpacity={0.8}
-              >
-                <Text style={[
-                  styles.predictionButtonText,
-                  predictions.substitutedOut && styles.predictionButtonTextActive
-                ]}>
-                  {predictions.substitutePlayer ? (
-                    `🔄 ${player.name} çıkar - ${substitutePlayers.find(p => p.id === predictions.substitutePlayer)?.name} girer`
-                  ) : (
-                    '🔄 Oyundan Çıkar'
-                  )}
-                </Text>
-              </TouchableOpacity>
-
-              {/* Substitute Player Selection */}
-              {showSubstituteSection && (
-                <Animated.View entering={SlideInDown.duration(300)} style={styles.substituteSelectionArea}>
-                  <Text style={styles.substituteSelectionTitle}>Yerine Girecek Oyuncu:</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                    {substitutePlayers.map((sub) => (
-                      <TouchableOpacity
-                        key={sub.id}
-                        style={[
-                          styles.substituteCard,
-                          predictions.substitutePlayer === sub.id && styles.substituteCardSelected
-                        ]}
-                        onPress={() => {
-                          onPredictionChange('substitutePlayer', sub.id);
-                          setShowSubstituteSection(false);
-                        }}
-                        activeOpacity={0.7}
-                      >
-                        <View style={styles.substituteNumber}>
-                          <Text style={styles.substituteNumberText}>{sub.number}</Text>
-                        </View>
-                        <Text style={styles.substituteName}>{sub.name}</Text>
-                        <Text style={styles.substitutePosition}>{sub.position} • {sub.rating}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
-                </Animated.View>
-              )}
-
-              {/* Sakatlanarak Çıkar */}
-              <TouchableOpacity
-                style={[
-                  styles.predictionButton,
-                  predictions.injuredOut && styles.predictionButtonActive
-                ]}
-                onPress={() => {
-                  onPredictionChange('injuredOut', !predictions.injuredOut);
-                  setShowInjurySubstituteSection(!showInjurySubstituteSection);
-                }}
-                activeOpacity={0.8}
-              >
-                <Text style={[
-                  styles.predictionButtonText,
-                  predictions.injuredOut && styles.predictionButtonTextActive
-                ]}>
-                  {predictions.injurySubstitutePlayer ? (
-                    `🚑 ${player.name} çıkar - ${substitutePlayers.find(p => p.id === predictions.injurySubstitutePlayer)?.name} girer`
-                  ) : (
-                    '🚑 Sakatlanarak Çıkar'
-                  )}
-                </Text>
-              </TouchableOpacity>
-
-              {/* Injury Substitute Player Selection */}
-              {showInjurySubstituteSection && (
-                <Animated.View entering={SlideInDown.duration(300)} style={styles.substituteSelectionArea}>
-                  <Text style={styles.substituteSelectionTitle}>Sakatlık Yedeği:</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                    {substitutePlayers.map((sub) => (
-                      <TouchableOpacity
-                        key={sub.id}
-                        style={[
-                          styles.substituteCard,
-                          predictions.injurySubstitutePlayer === sub.id && styles.substituteCardSelected
-                        ]}
-                        onPress={() => {
-                          onPredictionChange('injurySubstitutePlayer', sub.id);
-                          setShowInjurySubstituteSection(false);
-                        }}
-                        activeOpacity={0.7}
-                      >
-                        <View style={styles.substituteNumber}>
-                          <Text style={styles.substituteNumberText}>{sub.number}</Text>
-                        </View>
-                        <Text style={styles.substituteName}>{sub.name}</Text>
-                        <Text style={styles.substitutePosition}>{sub.position} • {sub.rating}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
-                </Animated.View>
-              )}
             </View>
           </ScrollView>
 
@@ -1697,12 +1599,13 @@ const styles = StyleSheet.create({
     maxHeight: height * 0.85,
   },
   modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     padding: 20,
+    paddingRight: 60,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  modalHeaderContent: {
+    flex: 1,
   },
   modalTitle: {
     fontSize: 20,
@@ -1715,12 +1618,33 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   modalCloseButton: {
-    width: 32,
-    height: 32,
+    width: 36,
+    height: 36,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 16,
+    backgroundColor: 'rgba(71, 85, 105, 0.6)',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(148, 163, 184, 0.3)',
+  },
+  modalCloseButtonAbsolute: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(71, 85, 105, 0.8)',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(148, 163, 184, 0.4)',
+    zIndex: 1000,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
   },
   modalTabs: {
     flexDirection: 'row',
@@ -1783,13 +1707,21 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 4,
     right: 4,
-    width: 20,
-    height: 20,
+    width: 18,
+    height: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#059669',
-    borderRadius: 10,
+    backgroundColor: 'transparent',
+    borderRadius: 9,
+    borderWidth: 1.5,
+    borderColor: '#64748B',
     zIndex: 10,
+  },
+  formationInfoButtonText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#94A3B8',
+    fontStyle: 'normal',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.3)',
   },
@@ -2173,88 +2105,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#FFFFFF',
   },
-
-  // Prediction Section
-  predictionSection: {
-    marginTop: 20,
-    gap: 12,
-  },
-  predictionButton: {
-    backgroundColor: 'rgba(100, 116, 139, 0.2)',
-    borderWidth: 1,
-    borderColor: 'rgba(100, 116, 139, 0.3)',
-    borderRadius: 12,
-    padding: 14,
-  },
-  predictionButtonActive: {
-    backgroundColor: 'rgba(5, 150, 105, 0.2)',
-    borderColor: '#059669',
-  },
-  predictionButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    textAlign: 'center',
-  },
-  predictionButtonTextActive: {
-    color: '#059669',
-  },
-
-  // Substitute Selection Area
-  substituteSelectionArea: {
-    backgroundColor: 'rgba(30, 41, 59, 0.8)',
-    borderRadius: 12,
-    padding: 12,
-    marginTop: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(5, 150, 105, 0.3)',
-  },
-  substituteSelectionTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#9CA3AF',
-    marginBottom: 12,
-  },
-  substituteCard: {
-    backgroundColor: 'rgba(100, 116, 139, 0.2)',
-    borderWidth: 1,
-    borderColor: 'rgba(100, 116, 139, 0.3)',
-    borderRadius: 12,
-    padding: 12,
-    marginRight: 12,
-    alignItems: 'center',
-    gap: 6,
-    width: 100,
-  },
-  substituteCardSelected: {
-    backgroundColor: 'rgba(5, 150, 105, 0.2)',
-    borderColor: '#059669',
-  },
-  substituteNumber: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    backgroundColor: '#059669',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  substituteNumberText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  substituteName: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    textAlign: 'center',
-  },
-  substitutePosition: {
-    fontSize: 10,
-    color: '#9CA3AF',
-    textAlign: 'center',
-  },
-
+  
   // Button Gradient
   buttonGradient: {
     flex: 1,

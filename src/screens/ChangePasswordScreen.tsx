@@ -5,15 +5,16 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   Alert,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import { ScreenLayout, StandardHeader } from '../components/layouts';
+import { textStyles, inputStyles, buttonStyles, cardStyles } from '../utils/styleHelpers';
+import { SPACING, COLORS, BRAND, SIZES, TYPOGRAPHY } from '../theme/theme';
 
 interface ChangePasswordScreenProps {
   onBack: () => void;
@@ -76,27 +77,17 @@ export const ChangePasswordScreen: React.FC<ChangePasswordScreenProps> = ({
   const isPasswordMatch = newPassword === confirmPassword && newPassword !== '';
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={onBack} style={styles.headerButton}>
-            <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Şifre Değiştir</Text>
-          <View style={styles.headerButton} />
-        </View>
+    <ScreenLayout safeArea scrollable>
+      <StandardHeader
+        title="Şifre Değiştir"
+        onBack={onBack}
+      />
 
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.keyboardView}
-        >
-          <ScrollView
-            style={styles.scrollView}
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-          >
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardView}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      >
             {/* Current Password Card */}
             <Animated.View entering={FadeInDown.delay(0)} style={styles.card}>
               <View style={styles.cardHeader}>
@@ -248,107 +239,57 @@ export const ChangePasswordScreen: React.FC<ChangePasswordScreenProps> = ({
                 </Text>
               </View>
             </Animated.View>
-          </ScrollView>
         </KeyboardAvoidingView>
-      </View>
-    </SafeAreaView>
+    </ScreenLayout>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#0F172A',
-  },
-  container: {
-    flex: 1,
-    backgroundColor: '#0F172A',
-  },
-
-  // Header
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    backgroundColor: 'rgba(15, 23, 42, 0.95)',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  headerButton: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-
   // KeyboardAvoidingView
   keyboardView: {
     flex: 1,
   },
 
-  // ScrollView
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 24,
-    paddingBottom: 96,
-  },
-
   // Card
   card: {
-    backgroundColor: 'rgba(30, 41, 59, 0.5)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 16,
-    padding: 24,
-    marginBottom: 24,
+    ...cardStyles.card,
+    backgroundColor: COLORS.dark.card,
+    padding: SPACING.lg,
+    marginBottom: SPACING.lg,
   },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 16,
+    gap: SPACING.sm,
+    marginBottom: SPACING.base,
   },
   cardTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
+    ...textStyles.label,
+    color: COLORS.dark.foreground,
   },
 
   // Input
   inputGroup: {
-    marginBottom: 16,
+    marginBottom: SPACING.base,
   },
   label: {
-    fontSize: 14,
-    color: '#9CA3AF',
-    marginBottom: 8,
+    ...textStyles.body,
+    color: COLORS.dark.mutedForeground,
+    marginBottom: SPACING.sm,
   },
   inputContainer: {
     position: 'relative',
   },
   input: {
-    height: 50,
-    backgroundColor: 'rgba(15, 23, 42, 0.5)',
-    borderWidth: 1,
-    borderColor: 'rgba(5, 150, 105, 0.3)',
-    borderRadius: 12,
-    paddingHorizontal: 16,
+    ...inputStyles.inputContainer,
+    height: SIZES.inputAuthHeight,
+    backgroundColor: COLORS.dark.input,
+    borderColor: COLORS.dark.primary,
     paddingRight: 48,
-    fontSize: 16,
-    color: '#FFFFFF',
   },
   eyeButton: {
     position: 'absolute',
-    right: 12,
+    right: SPACING.md,
     top: 15,
     width: 40,
     height: 40,
@@ -356,86 +297,78 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   strengthText: {
-    fontSize: 12,
+    ...textStyles.secondary,
     fontWeight: '600',
-    marginTop: 4,
+    marginTop: SPACING.xs,
   },
 
   // Requirements Box
   requirementsBox: {
-    padding: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 8,
+    padding: SPACING.md,
+    backgroundColor: `${COLORS.dark.foreground}10`,
+    borderRadius: SPACING.sm,
   },
   requirementsTitle: {
-    fontSize: 12,
+    ...textStyles.secondary,
     fontWeight: '600',
-    color: '#FFFFFF',
-    marginBottom: 8,
+    color: COLORS.dark.foreground,
+    marginBottom: SPACING.sm,
   },
   requirementsList: {
-    gap: 4,
+    gap: SPACING.xs,
   },
   requirementItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: SPACING.sm,
   },
   requirementDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#9CA3AF',
+    backgroundColor: COLORS.dark.mutedForeground,
   },
   requirementDotActive: {
-    backgroundColor: '#059669',
+    backgroundColor: COLORS.dark.primary,
   },
   requirementText: {
-    fontSize: 12,
-    color: '#9CA3AF',
+    ...textStyles.secondary,
   },
 
   // Submit Button
   submitButton: {
+    ...buttonStyles.primaryButton,
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    height: 50,
-    borderRadius: 12,
+    gap: SPACING.sm,
   },
   submitButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
+    ...buttonStyles.primaryButtonText,
   },
 
   // Tips Box
   tipsBox: {
-    padding: 16,
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    padding: SPACING.base,
+    backgroundColor: `${COLORS.dark.info}20`,
     borderWidth: 1,
-    borderColor: 'rgba(59, 130, 246, 0.2)',
-    borderRadius: 12,
-    marginTop: 24,
+    borderColor: `${COLORS.dark.info}40`,
+    borderRadius: SPACING.md,
+    marginTop: SPACING.lg,
   },
   tipsHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 8,
+    gap: SPACING.sm,
+    marginBottom: SPACING.sm,
   },
   tipsTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#FFFFFF',
+    ...textStyles.label,
+    color: COLORS.dark.foreground,
   },
   tipsList: {
-    gap: 4,
+    gap: SPACING.xs,
   },
   tipItem: {
-    fontSize: 12,
-    color: '#9CA3AF',
+    ...textStyles.secondary,
     lineHeight: 18,
   },
 });

@@ -1,5 +1,5 @@
 // components/Leaderboard.tsx
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,19 +9,21 @@ import {
   Dimensions,
   Platform,
   Image,
+  FlatList,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown, ZoomIn, FadeIn } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Badge, BadgeTier, getBadgeColor, getBadgeTierName } from '../types/badges.types';
 
 const { width } = Dimensions.get('window');
 
-// Leaderboard Data
+// Leaderboard Data with Badges
 const leaderboardData = {
   overall: [
-    { id: '1', rank: 1, username: 'GalatasaraylıEfe', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=1', points: 15420, level: 42, badges: 28, streak: 15, change: 0, team: '🦁' },
-    { id: '2', rank: 2, username: 'FenerliAhmet', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=2', points: 14890, level: 41, badges: 25, streak: 12, change: 1, team: '🐤' },
-    { id: '3', rank: 3, username: 'BJKaralı', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=3', points: 14320, level: 40, badges: 24, streak: 10, change: -1, team: '🦅' },
+    { id: '1', rank: 1, username: 'GalatasaraylıEfe', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=1', points: 15420, level: 42, badges: 28, streak: 15, change: 0, team: '🦁', topBadges: ['🇹🇷', '⚡', '🔥'] },
+    { id: '2', rank: 2, username: 'FenerliAhmet', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=2', points: 14890, level: 41, badges: 25, streak: 12, change: 1, team: '🐤', topBadges: ['🏴󠁧󠁢󠁥󠁮󠁧󠁿', '🟨', '💯'] },
+    { id: '3', rank: 3, username: 'BJKaralı', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=3', points: 14320, level: 40, badges: 24, streak: 10, change: -1, team: '🦅', topBadges: ['🇹🇷', '💪', '🎯'] },
     { id: '4', rank: 4, username: 'MehmetGS', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=4', points: 13750, level: 39, badges: 22, streak: 8, change: 2, team: '🦁' },
     { id: '5', rank: 5, username: 'AliTrabzon', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=5', points: 13210, level: 38, badges: 21, streak: 7, change: 0, team: '⚡' },
     { id: 'current', rank: 12, username: 'Sen', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=user', points: 9850, level: 32, badges: 15, streak: 5, change: 3, team: '🦁', isCurrentUser: true },
@@ -60,28 +62,36 @@ const tabs = [
 export function Leaderboard() {
   const [activeTab, setActiveTab] = useState<'overall' | 'weekly' | 'monthly' | 'friends'>('overall');
 
-  const currentData = leaderboardData[activeTab];
-  const currentUserData = currentData.find(u => u.isCurrentUser);
+  // ✅ MEMOIZED: Only recalculate when activeTab changes
+  const currentData = useMemo(() => {
+    return leaderboardData[activeTab];
+  }, [activeTab]);
 
-  const getRankColor = (rank: number) => {
+  // ✅ MEMOIZED: Only find user when data changes
+  const currentUserData = useMemo(() => {
+    return currentData.find(u => u.isCurrentUser);
+  }, [currentData]);
+
+  // ✅ MEMOIZED: Pure functions don't need to be recreated
+  const getRankColor = useCallback((rank: number) => {
     if (rank === 1) return '#FFD700'; // Gold
     if (rank === 2) return '#C0C0C0'; // Silver
     if (rank === 3) return '#CD7F32'; // Bronze
     return '#64748B';
-  };
+  }, []);
 
-  const getRankGradient = (rank: number) => {
+  const getRankGradient = useCallback((rank: number) => {
     if (rank === 1) return ['#FFD700', '#FFA500'];
     if (rank === 2) return ['#E8E8E8', '#C0C0C0'];
     if (rank === 3) return ['#CD7F32', '#8B4513'];
     return ['#334155', '#1E293B'];
-  };
+  }, []);
 
-  const getChangeIcon = (change: number) => {
+  const getChangeIcon = useCallback((change: number) => {
     if (change > 0) return { name: 'arrow-up', color: '#10B981' };
     if (change < 0) return { name: 'arrow-down', color: '#EF4444' };
     return { name: 'remove', color: '#64748B' };
-  };
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -256,6 +266,18 @@ export function Leaderboard() {
                     </Text>
                     <Text style={styles.userTeam}>{user.team}</Text>
                   </View>
+                  
+                  {/* 🏆 TOP BADGES - Uzmanlık Rozetleri */}
+                  {(user as any).topBadges && (user as any).topBadges.length > 0 && (
+                    <View style={styles.badgesRow}>
+                      {(user as any).topBadges.slice(0, 3).map((badge: string, idx: number) => (
+                        <View key={idx} style={styles.badgeIcon}>
+                          <Text style={styles.badgeIconText}>{badge}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                  
                   <View style={styles.userStatsRow}>
                     <View style={styles.userStatMini}>
                       <Ionicons name="layers" size={10} color="#64748B" />
@@ -586,6 +608,28 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#64748B',
   },
+  
+  // 🏆 Badge Styles
+  badgesRow: {
+    flexDirection: 'row',
+    gap: 4,
+    marginTop: 4,
+    marginBottom: 2,
+  },
+  badgeIcon: {
+    width: 20,
+    height: 20,
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+  },
+  badgeIconText: {
+    fontSize: 12,
+  },
+  
   pointsContainer: {
     alignItems: 'flex-end',
   },

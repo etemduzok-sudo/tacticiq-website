@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,10 +7,9 @@ import {
   TouchableOpacity,
   TextInput,
   SafeAreaView,
-  Dimensions,
   Alert,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import SafeIcon from '../components/SafeIcon';
 import { BRAND, TYPOGRAPHY, SPACING, DARK_MODE } from '../theme/theme';
 import { Button } from '../components/atoms';
@@ -123,42 +122,149 @@ const TEAMS: Team[] = [
 ];
 
 export default function FavoriteTeamsScreen({ onComplete, onBack }: FavoriteTeamsScreenProps) {
-  const [selectedClub, setSelectedClub] = useState<string | null>(null);
+  const [selectedClubs, setSelectedClubs] = useState<string[]>([]); // Pro plan için multiple seçim
   const [selectedNational, setSelectedNational] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedLanguage, setSelectedLanguage] = useState<string>('tr');
+  const [isPremium, setIsPremium] = useState<boolean>(false);
 
-  const isPremium = false; // Free Plan simülasyonu
+  // Plan ve dil bilgisini yükle
+  useEffect(() => {
+    loadUserData();
+  }, []);
 
-  const clubTeams = TEAMS.filter((t) => t.type === 'club');
-  const nationalTeams = TEAMS.filter((t) => t.type === 'national');
+  const loadUserData = async () => {
+    try {
+      // Dil seçimini yükle
+      const lang = await AsyncStorage.getItem('fan-manager-language');
+      if (lang) {
+        setSelectedLanguage(lang);
+      }
+
+      // Plan bilgisini yükle (Free/Pro)
+      const userData = await AsyncStorage.getItem('fan-manager-user');
+      if (userData) {
+        const parsed = JSON.parse(userData);
+        setIsPremium(parsed.isPremium === true || parsed.plan === 'pro' || parsed.plan === 'premium');
+      }
+    } catch (error) {
+      console.error('Kullanıcı verisi yüklenemedi:', error);
+    }
+  };
+
+
+  // Dil seçimine göre takımları önceliklendir
+  const sortTeamsByLanguage = (teams: Team[]) => {
+    const priorityCountry: Record<string, string> = {
+      'tr': 'Türkiye',
+      'en': 'İngiltere',
+      'es': 'İspanya',
+      'de': 'Almanya',
+      'fr': 'Fransa',
+      'it': 'İtalya',
+    };
+
+    const priority = priorityCountry[selectedLanguage] || 'Türkiye';
+
+    return [...teams].sort((a, b) => {
+      // Önce seçili dil ülkesi
+      if (a.country === priority && b.country !== priority) return -1;
+      if (a.country !== priority && b.country === priority) return 1;
+      // Sonra alfabetik
+      return a.name.localeCompare(b.name, 'tr');
+    });
+  };
+
+  const clubTeams = sortTeamsByLanguage(TEAMS.filter((t) => t.type === 'club'));
+  const nationalTeams = sortTeamsByLanguage(TEAMS.filter((t) => t.type === 'national'));
 
   const handleContinue = () => {
-    if (!selectedClub) {
+    // Free plan: En az 1 kulüp seçilmeli
+    // Pro plan: En az 1 kulüp seçilmeli
+    if (selectedClubs.length === 0) {
       Alert.alert('Uyarı', 'Lütfen en az bir kulüp seçin');
       return;
     }
     
-    const teams = [selectedClub, selectedNational].filter(Boolean) as string[];
+    const teams = [...selectedClubs, selectedNational].filter(Boolean) as string[];
     onComplete(teams);
   };
 
   const filterTeams = (teams: Team[]) => {
     if (searchQuery.length < 3) return teams;
-    return teams.filter((team) =>
-      team.name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    
+    const query = searchQuery.toLowerCase().trim();
+    
+    // Takımları filtrele ve skorla
+    const scoredTeams = teams
+      .map((team) => {
+        const teamName = team.name.toLowerCase();
+        let score = 0;
+        
+        // İlk harften başlıyorsa en yüksek skor
+        if (teamName.startsWith(query)) {
+          score = 100;
+        }
+        // Kelime başında eşleşme
+        else if (teamName.split(' ').some(word => word.startsWith(query))) {
+          score = 50;
+        }
+        // Herhangi bir yerde eşleşme
+        else if (teamName.includes(query)) {
+          score = 10;
+        }
+        
+        return { team, score };
+      })
+      .filter(({ score }) => score > 0); // Sadece eşleşenleri al
+    
+    // Skoruna göre sırala (yüksekten düşüğe), sonra alfabetik
+    scoredTeams.sort((a, b) => {
+      if (a.score !== b.score) {
+        return b.score - a.score;
+      }
+      return a.team.name.localeCompare(b.team.name, 'tr');
+    });
+    
+    return scoredTeams.map(({ team }) => team);
   };
 
   const handleClubSelect = (teamId: string) => {
-    // Free Plan: Sadece 1 kulüp seçilebilir
-    if (selectedClub === teamId) {
-      setSelectedClub(null);
-    } else if (selectedClub === null || isPremium) {
-      setSelectedClub(teamId);
+    const isSelected = selectedClubs.includes(teamId);
+    
+    if (isSelected) {
+      // Seçimi kaldır
+      setSelectedClubs(selectedClubs.filter(id => id !== teamId));
+    } else {
+      // Free Plan: Sadece 1 kulüp seçilebilir
+      // Pro Plan: 5 kulüp seçilebilir
+      const maxClubs = isPremium ? 5 : 1;
+      
+      if (selectedClubs.length >= maxClubs) {
+        Alert.alert(
+          isPremium ? 'Maksimum Limit' : 'Plan Limiti',
+          isPremium 
+            ? `En fazla ${maxClubs} kulüp seçebilirsiniz.`
+            : 'Ücretsiz planda sadece 1 kulüp seçebilirsiniz. Pro plana geçerek 5 kulüp seçebilirsiniz.'
+        );
+        return;
+      }
+      
+      setSelectedClubs([...selectedClubs, teamId]);
     }
   };
 
   const handleNationalSelect = (teamId: string) => {
+    // Free Plan: Milli takım seçilemez
+    if (!isPremium) {
+      Alert.alert(
+        'Pro Plan Gerekli',
+        'Milli takım seçimi Pro plan özelliğidir. Pro plana geçerek milli takımınızı seçebilirsiniz.',
+        [{ text: 'Tamam' }]
+      );
+      return;
+    }
+
     if (selectedNational === teamId) {
       setSelectedNational(null);
     } else {
@@ -166,38 +272,47 @@ export default function FavoriteTeamsScreen({ onComplete, onBack }: FavoriteTeam
     }
   };
 
-  // handleContinue already defined above
-
-  const clubCount = selectedClub ? 1 : 0;
+  const clubCount = selectedClubs.length;
   const nationalCount = selectedNational ? 1 : 0;
+  const maxClubs = isPremium ? 5 : 1;
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.header}>
+        {/* Back Button - Üst kısımda belirgin */}
+        {onBack && (
           <TouchableOpacity 
             onPress={onBack} 
-            style={styles.backButton}
+            style={styles.topBackButton}
+            activeOpacity={0.7}
           >
             <SafeIcon name="chevron-back" size={24} color={BRAND.white} />
-            <Text style={styles.backText}>Favori Takımlarınız</Text>
+            <Text style={styles.topBackText}>Geri</Text>
           </TouchableOpacity>
+        )}
 
+        {/* Header */}
+        <View style={styles.header}>
           <Text style={styles.mainTitle}>Takımlarınızı Seçin</Text>
           <Text style={styles.subtitle}>Favori kulüpleriniz ve milli takımınızı belirleyin</Text>
 
           {/* Status Badges */}
           <View style={styles.badgesContainer}>
-            <View style={[styles.badge, clubCount === 1 && styles.badgeActive]}>
-              <Text style={styles.badgeText}>Kulüp: {clubCount}/1</Text>
+            <View style={[styles.badge, clubCount > 0 && styles.badgeActive]}>
+              <Text style={styles.badgeText}>
+                Kulüp: {clubCount}/{maxClubs}
+              </Text>
             </View>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>Milli: {nationalCount}/1 (opsiyonel)</Text>
+            <View style={[styles.badge, !isPremium && styles.badgeDisabled]}>
+              <Text style={[styles.badgeText, !isPremium && styles.badgeTextDisabled]}>
+                Milli: {nationalCount}/1 {!isPremium && '(Pro)'}
+              </Text>
             </View>
-            <View style={[styles.badge, styles.badgePremium]}>
-              <SafeIcon name="star" size={12} color={BRAND.gold} />
-              <Text style={[styles.badgeText, { color: BRAND.gold }]}>Free Plan</Text>
+            <View style={[styles.badge, isPremium ? styles.badgePremium : styles.badgeFree]}>
+              <SafeIcon name={isPremium ? "star" : "star-outline"} size={12} color={isPremium ? BRAND.gold : DARK_MODE.mutedForeground} />
+              <Text style={[styles.badgeText, isPremium && { color: BRAND.gold }]}>
+                {isPremium ? 'Pro Plan' : 'Free Plan'}
+              </Text>
             </View>
           </View>
         </View>
@@ -218,17 +333,17 @@ export default function FavoriteTeamsScreen({ onComplete, onBack }: FavoriteTeam
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Kulüpler</Text>
-            <Text style={styles.sectionCount}>{clubCount}/1 seçili</Text>
+            <Text style={styles.sectionCount}>{clubCount}/{maxClubs} seçili</Text>
           </View>
 
           {filterTeams(clubTeams).map((team) => {
-            const isSelected = selectedClub === team.id;
-            const isLocked = !isSelected && selectedClub !== null && !isPremium;
+            const isSelected = selectedClubs.includes(team.id);
+            const isLocked = !isSelected && selectedClubs.length >= maxClubs && !isPremium;
 
             return (
               <TouchableOpacity
                 key={team.id}
-                style={[styles.teamCard, isSelected && styles.teamCardSelected]}
+                style={[styles.teamCard, isSelected && styles.teamCardSelected, isLocked && styles.teamCardLocked]}
                 onPress={() => handleClubSelect(team.id)}
                 activeOpacity={0.7}
                 disabled={isLocked}
@@ -273,18 +388,22 @@ export default function FavoriteTeamsScreen({ onComplete, onBack }: FavoriteTeam
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Milli Takım</Text>
-            <Text style={styles.sectionOptional}>Opsiyonel</Text>
+            <Text style={[styles.sectionOptional, !isPremium && styles.sectionOptionalLocked]}>
+              {isPremium ? 'Opsiyonel' : 'Pro Plan Gerekli'}
+            </Text>
           </View>
 
           {filterTeams(nationalTeams).map((team) => {
             const isSelected = selectedNational === team.id;
+            const isLocked = !isPremium;
 
             return (
               <TouchableOpacity
                 key={team.id}
-                style={[styles.teamCard, isSelected && styles.teamCardSelected]}
+                style={[styles.teamCard, isSelected && styles.teamCardSelected, isLocked && styles.teamCardLocked]}
                 onPress={() => handleNationalSelect(team.id)}
                 activeOpacity={0.7}
+                disabled={false} // Her zaman tıklanabilir (uyarı göstermek için)
               >
                 {/* Left Color Stripe */}
                 <View style={styles.colorStripe}>
@@ -308,7 +427,9 @@ export default function FavoriteTeamsScreen({ onComplete, onBack }: FavoriteTeam
                 </View>
 
                 {/* Right Icon */}
-                {isSelected ? (
+                {isLocked ? (
+                  <SafeIcon name="lock-closed" size={24} color={DARK_MODE.mutedForeground} />
+                ) : isSelected ? (
                   <View style={styles.checkIconContainer}>
                     <SafeIcon name="checkmark-circle" size={28} color={BRAND.emerald} />
                   </View>
@@ -328,7 +449,7 @@ export default function FavoriteTeamsScreen({ onComplete, onBack }: FavoriteTeam
           onPress={handleContinue}
           variant="solid"
           fullWidth
-          disabled={!selectedClub}
+          disabled={selectedClubs.length === 0}
           style={styles.continueButton}
           textStyle={styles.continueButtonText}
         />
@@ -346,19 +467,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.lg,
     paddingBottom: 100, // Footer için boşluk
   },
-  header: {
-    paddingTop: SPACING.md,
-    marginBottom: SPACING.xl,
-  },
-  backButton: {
+  topBackButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: SPACING.lg,
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.sm,
+    marginBottom: SPACING.md,
   },
-  backText: {
+  topBackText: {
     ...TYPOGRAPHY.bodyMedium,
     color: BRAND.white,
     marginLeft: SPACING.xs,
+    fontWeight: '500',
+  },
+  header: {
+    marginBottom: SPACING.xl,
   },
   mainTitle: {
     ...TYPOGRAPHY.h1, // 28px, Bold
@@ -394,6 +517,16 @@ const styles = StyleSheet.create({
     borderColor: BRAND.gold,
     backgroundColor: 'rgba(245, 158, 11, 0.1)', // Altın şeffaf
   },
+  badgeFree: {
+    borderColor: DARK_MODE.border,
+    backgroundColor: DARK_MODE.card,
+  },
+  badgeDisabled: {
+    opacity: 0.5,
+  },
+  badgeTextDisabled: {
+    color: DARK_MODE.mutedForeground,
+  },
   badgeText: {
     ...TYPOGRAPHY.bodySmall, // 12px
     color: BRAND.white,
@@ -412,6 +545,7 @@ const styles = StyleSheet.create({
     flex: 1,
     ...TYPOGRAPHY.bodyMedium,
     color: BRAND.white,
+    outlineStyle: 'none', // Web'de outline'ı kaldır
   },
   section: {
     marginBottom: SPACING.xl,
@@ -434,6 +568,9 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.bodySmall,
     color: DARK_MODE.mutedForeground,
   },
+  sectionOptionalLocked: {
+    color: BRAND.gold,
+  },
   teamCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -448,6 +585,9 @@ const styles = StyleSheet.create({
   teamCardSelected: {
     borderColor: BRAND.emerald,
     borderWidth: 2,
+  },
+  teamCardLocked: {
+    opacity: 0.6,
   },
   colorStripe: {
     width: 4,

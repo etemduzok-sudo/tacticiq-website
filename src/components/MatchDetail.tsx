@@ -8,10 +8,13 @@ import {
   Dimensions,
   Platform,
   StatusBar,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeIn } from 'react-native-reanimated';
+import { useMatchDetails } from '../hooks/useMatches';
+import api from '../services/api';
 import { MatchSquad } from './match/MatchSquad';
 import { MatchPrediction } from './match/MatchPrediction';
 import { MatchLive } from './match/MatchLive';
@@ -58,24 +61,74 @@ const tabs = [
 
 export function MatchDetail({ matchId, onBack }: MatchDetailProps) {
   const [activeTab, setActiveTab] = useState('squad');
+  
+  // Fetch match details from API
+  const { match, statistics, events, lineups, loading, error } = useMatchDetails(Number(matchId));
+
+  // Transform API data to component format
+  const matchData = match ? {
+    id: match.fixture.id.toString(),
+    homeTeam: {
+      name: match.teams.home.name,
+      logo: match.teams.home.logo || '⚽',
+      color: ['#059669', '#059669'], // Default colors
+      manager: 'TBA',
+    },
+    awayTeam: {
+      name: match.teams.away.name,
+      logo: match.teams.away.logo || '⚽',
+      color: ['#F59E0B', '#F59E0B'], // Default colors
+      manager: 'TBA',
+    },
+    league: match.league.name,
+    stadium: match.fixture.venue?.name || 'TBA',
+    date: new Date(match.fixture.date).toLocaleDateString('tr-TR'),
+    time: api.utils.formatMatchTime(new Date(match.fixture.date).getTime() / 1000),
+  } : null;
+
+  // Loading state
+  if (loading || !matchData) {
+    return (
+      <View style={[styles.container, styles.centerContent]}>
+        <ActivityIndicator size="large" color="#059669" />
+        <Text style={styles.loadingText}>Maç detayları yükleniyor...</Text>
+      </View>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <View style={[styles.container, styles.centerContent]}>
+        <Ionicons name="alert-circle" size={48} color="#EF4444" />
+        <Text style={styles.errorText}>Veriler yüklenemedi</Text>
+        <Text style={styles.errorSubtext}>{error}</Text>
+        <TouchableOpacity onPress={onBack} style={styles.retryButton}>
+          <Text style={styles.retryButtonText}>Geri Dön</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   const renderContent = () => {
     switch (activeTab) {
       case 'squad':
         return (
           <MatchSquad 
-            matchData={matchData} 
+            matchData={matchData}
+            matchId={matchId}
+            lineups={lineups}
             onComplete={() => setActiveTab('prediction')} 
           />
         );
       
       case 'prediction':
         return (
-          <MatchPrediction matchData={matchData} />
+          <MatchPrediction matchData={matchData} matchId={matchId} />
         );
       
       case 'live':
-        return <MatchLive matchData={matchData} />;
+        return <MatchLive matchData={matchData} events={events} />;
       
       case 'stats':
         return <MatchStats matchData={matchData} />;
@@ -155,7 +208,9 @@ export function MatchDetail({ matchId, onBack }: MatchDetailProps) {
       </View>
 
       {/* Tab Content */}
-      <View style={styles.contentContainer}>{renderContent()}</View>
+      <View style={styles.contentContainer}>
+        {renderContent()}
+      </View>
 
       {/* Bottom Navigation - 6 Tabs */}
       <View style={styles.bottomNav}>
@@ -359,6 +414,42 @@ const styles = StyleSheet.create({
   },
   activeTabLabel: {
     color: '#059669',
+    fontWeight: '600',
+  },
+  
+  // Loading & Error
+  centerContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    color: '#94A3B8',
+    fontSize: 14,
+    marginTop: 12,
+  },
+  errorText: {
+    color: '#EF4444',
+    fontSize: 16,
+    fontWeight: '600',
+    marginTop: 12,
+  },
+  errorSubtext: {
+    color: '#94A3B8',
+    fontSize: 13,
+    marginTop: 8,
+    textAlign: 'center',
+    paddingHorizontal: 24,
+  },
+  retryButton: {
+    marginTop: 16,
+    backgroundColor: '#059669',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
     fontWeight: '600',
   },
 });

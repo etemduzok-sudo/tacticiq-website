@@ -1,0 +1,24 @@
+{
+  "name": "fan-manager-backend",
+  "version": "1.0.0",
+  "description": "Fan Manager 2026 Backend API",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.90.0",
+    "axios": "^1.6.0",
+    "compression": "^1.7.4",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "helmet": "^7.1.0",
+    "node-cache": "^5.1.2",
+    "nodemailer": "^7.0.12"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}

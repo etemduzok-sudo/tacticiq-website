@@ -1,8 +1,38 @@
-import React, { useState } from 'react';
-import { LogBox, View, Text, StyleSheet } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { LogBox, View, Text, StyleSheet, Platform, UIManager } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ThemeProvider } from './src/contexts/ThemeContext';
+import ErrorBoundary from './src/components/ErrorBoundary';
+import MaintenanceScreen from './src/components/MaintenanceScreen';
+import { MAINTENANCE_CONFIG, logVersionInfo } from './src/config/AppVersion';
+
+// Web için UIManager polyfills
+if (Platform.OS === 'web') {
+  if (!UIManager || typeof UIManager.focus !== 'function') {
+    // @ts-ignore - Web için UIManager polyfills
+    if (typeof UIManager === 'object') {
+      UIManager.focus = () => {
+        console.warn('UIManager.focus is not supported on web');
+      };
+      UIManager.measure = (node: any, callback: Function) => {
+        if (callback) {
+          // Return dummy measurements for web
+          requestAnimationFrame(() => {
+            callback(0, 0, 0, 0, 0, 0);
+          });
+        }
+      };
+      UIManager.measureInWindow = (node: any, callback: Function) => {
+        if (callback) {
+          requestAnimationFrame(() => {
+            callback(0, 0, 0, 0);
+          });
+        }
+      };
+    }
+  }
+}
 
 // Screens
 import SplashScreen from './src/screens/SplashScreen';
@@ -18,12 +48,13 @@ import { ChangePasswordScreen } from './src/screens/ChangePasswordScreen';
 import { NotificationsScreen } from './src/screens/NotificationsScreen';
 import { DeleteAccountScreen } from './src/screens/DeleteAccountScreen';
 import { LegalDocumentScreen } from './src/screens/LegalDocumentScreen';
-import { UpgradeToProScreen } from './src/screens/UpgradeToProScreen';
+import ProUpgradeScreen from './src/screens/ProUpgradeScreen';
 import { Dashboard } from './src/components/Dashboard';
 import { BottomNavigation } from './src/components/BottomNavigation';
 import { MatchDetail } from './src/components/MatchDetail';
 import { MatchResultSummaryScreen } from './src/screens/MatchResultSummaryScreen';
 import { Leaderboard } from './src/components/Leaderboard';
+import { DatabaseTestScreen } from './src/screens/DatabaseTestScreen';
 
 // Screen Types
 type Screen =
@@ -45,7 +76,8 @@ type Screen =
   | 'notifications'
   | 'delete-account'
   | 'legal'
-  | 'pro-upgrade';
+  | 'pro-upgrade'
+  | 'database-test';
 
 // Ignore warnings
 LogBox.ignoreLogs([
@@ -58,6 +90,18 @@ export default function App() {
   const [legalDocumentType, setLegalDocumentType] = useState<string>('terms');
   const [activeTab, setActiveTab] = useState<string>('home');
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
+  const [isMaintenanceMode, setIsMaintenanceMode] = useState<boolean>(false);
+
+  // ==========================================
+  // INITIALIZATION
+  // ==========================================
+  useEffect(() => {
+    // Log version info on startup
+    logVersionInfo();
+
+    // Check maintenance mode
+    setIsMaintenanceMode(MAINTENANCE_CONFIG.isActive);
+  }, []);
 
   // ==========================================
   // NAVIGATION HANDLERS
@@ -151,8 +195,59 @@ export default function App() {
       console.warn('⚠️ No teams selected!');
       return;
     }
-    await AsyncStorage.setItem('fan-manager-favorite-clubs', JSON.stringify(selectedTeams));
-    console.log('→ Going to HOME');
+    
+    // Takım ID'lerini isimle eşleştir (API-Football'da isimle arama yapacağız)
+    const teamNames: { [key: string]: string } = {
+      '1': 'Galatasaray',
+      '2': 'Fenerbahce',
+      '3': 'Besiktas',
+      '4': 'Trabzonspor',
+      '5': 'Istanbul Basaksehir',
+      '6': 'Antalyaspor',
+      '7': 'Konyaspor',
+      '8': 'Sivasspor',
+      '9': 'Alanyaspor',
+      '10': 'Kasimpasa',
+      '11': 'Gaziantep',
+      '12': 'Kayserispor',
+      '13': 'Rizespor',
+      '14': 'Hatayspor',
+      '15': 'Adana Demirspor',
+      '16': 'Fatih Karagumruk',
+      '17': 'Giresunspor',
+      '18': 'Umraniyespor',
+      // Avrupa takımları
+      '19': 'Real Madrid',
+      '20': 'Barcelona',
+      '21': 'Manchester United',
+      '22': 'Liverpool',
+      '23': 'Bayern Munich',
+      '24': 'Paris Saint Germain',
+      '25': 'Juventus',
+      '26': 'Inter',
+      '27': 'Milan',
+      '28': 'Arsenal',
+      '29': 'Chelsea',
+      '30': 'Manchester City',
+      // Milli takımlar
+      '101': 'Turkey',
+      '102': 'Brazil',
+      '103': 'Germany',
+      '104': 'Argentina',
+    };
+    
+    const favoriteTeamsData = selectedTeams.map(teamId => ({
+      id: parseInt(teamId),
+      name: teamNames[teamId] || 'Unknown',
+      logo: '',
+    }));
+    
+    await AsyncStorage.setItem('fan-manager-favorite-clubs', JSON.stringify(favoriteTeamsData));
+    console.log('💾 Saved favorite teams:', favoriteTeamsData);
+    
+    // Takım seçimi sonrası MainTabs'a geç (Home tab default)
+    // Kullanıcı profil ekranını görmek için tab menüsünden Profile'a tıklayabilir
+    console.log('→ Going to MainTabs (Home tab)');
     setActiveTab('home');
     setCurrentScreen('home');
   };
@@ -333,6 +428,7 @@ export default function App() {
           return (
             <FavoriteTeamsScreen
               onComplete={handleFavoriteTeamsComplete}
+              onBack={() => setCurrentScreen('auth')}
             />
           );
         
@@ -396,6 +492,7 @@ export default function App() {
               }}
               onSettings={handleProfileSettings}
               onProUpgrade={handleProUpgrade}
+              onDatabaseTest={() => setCurrentScreen('database-test')}
             />
           );
         
@@ -445,9 +542,16 @@ export default function App() {
         
         case 'pro-upgrade':
           return (
-            <UpgradeToProScreen
-              onClose={() => setCurrentScreen('profile')}
+            <ProUpgradeScreen
+              onBack={() => setCurrentScreen('profile')}
               onUpgradeSuccess={handleUpgradeSuccess}
+            />
+          );
+        
+        case 'database-test':
+          return (
+            <DatabaseTestScreen
+              onBack={() => setCurrentScreen('profile')}
             />
           );
         
@@ -468,22 +572,43 @@ export default function App() {
   // Check if current screen should show bottom navigation
   const shouldShowBottomNav = ['home', 'matches', 'leaderboard', 'tournaments', 'profile'].includes(currentScreen);
 
+  // Web için console log
+  if (Platform.OS === 'web' && __DEV__) {
+    console.log('🚀 App rendering, currentScreen:', currentScreen);
+    console.log('📱 Platform:', Platform.OS);
+    console.log('🎨 ThemeProvider:', ThemeProvider);
+  }
+
   return (
-    <SafeAreaProvider>
-      <ThemeProvider>
-        <View style={{ flex: 1 }}>
-          {renderScreen()}
-          
-          {/* Bottom Navigation - Only show on main screens */}
-          {shouldShowBottomNav && (
-            <BottomNavigation
-              activeTab={activeTab}
-              onTabChange={handleTabChange}
-            />
+    <ErrorBoundary>
+      <SafeAreaProvider>
+        <ThemeProvider>
+          {/* Maintenance Mode Check */}
+          {isMaintenanceMode ? (
+            <MaintenanceScreen />
+          ) : (
+            <View style={{ flex: 1, backgroundColor: '#0F172A' }}>
+              {Platform.OS === 'web' && __DEV__ && (
+                <View style={{ padding: 10, backgroundColor: '#1E293B' }}>
+                  <Text style={{ color: '#FFF', fontSize: 12 }}>
+                    Debug: Screen = {currentScreen}
+                  </Text>
+                </View>
+              )}
+              {renderScreen()}
+              
+              {/* Bottom Navigation - Only show on main screens */}
+              {shouldShowBottomNav && (
+                <BottomNavigation
+                  activeTab={activeTab}
+                  onTabChange={handleTabChange}
+                />
+              )}
+            </View>
           )}
-        </View>
-      </ThemeProvider>
-    </SafeAreaProvider>
+        </ThemeProvider>
+      </SafeAreaProvider>
+    </ErrorBoundary>
   );
 }
 
