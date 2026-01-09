@@ -15,6 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 // import authService from '../services/authService'; // Real Supabase
 import authService from '../services/mockAuthService'; // Mock (geçici test için)
+import socialAuthService from '../services/socialAuthService'; // Google & Apple Sign In
 import Animated, { 
   SlideInLeft,
   useAnimatedStyle,
@@ -152,12 +153,29 @@ export default function AuthScreen({
     }
   };
 
-  const handleSocialLogin = (provider: string) => {
+  const handleSocialLogin = async (provider: 'Google' | 'Apple') => {
     setLoading(true);
-    setTimeout(() => {
+    
+    try {
+      console.log(`🔑 ${provider} ile giriş başlatıldı...`);
+      
+      const result = provider === 'Google'
+        ? await socialAuthService.signInWithGoogle()
+        : await socialAuthService.signInWithApple();
+      
       setLoading(false);
-      onLoginSuccess();
-    }, 1500);
+      
+      if (result.success) {
+        console.log(`✅ ${provider} giriş başarılı, ana sayfaya yönlendiriliyor...`);
+        // Web'de Alert.alert çalışmadığı için direkt yönlendir
+        onLoginSuccess();
+      } else {
+        Alert.alert('Hata', `❌ ${result.error || `${provider} ile giriş başarısız`}`);
+      }
+    } catch (error: any) {
+      setLoading(false);
+      Alert.alert('Hata', `❌ ${error.message || 'Bir hata oluştu'}`);
+    }
   };
 
   return (

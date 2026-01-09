@@ -47,6 +47,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const [selectedBadge, setSelectedBadge] = useState<Badge | null>(null);
   const [badgeCount, setBadgeCount] = useState(0);
   
+  // ⚽ FAVORITE TEAMS STATE
+  const [favoriteTeams, setFavoriteTeams] = useState<Array<{ id: number; name: string; logo: string }>>([]);
+  
   // 📊 USER STATS STATE
   const [user, setUser] = useState({
     name: 'Kullanıcı',
@@ -102,6 +105,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         
         // Load badges
         await loadBadges();
+        
+        // Load favorite teams
+        const favoriteTeamsStr = await AsyncStorage.getItem('fan-manager-favorite-clubs');
+        if (favoriteTeamsStr) {
+          const teams = JSON.parse(favoriteTeamsStr);
+          setFavoriteTeams(teams);
+          console.log('✅ Loaded favorite teams in profile:', teams);
+        }
 
         // Fetch user profile from Supabase
         const userResponse = await usersDb.getUserById(userId);
@@ -168,12 +179,6 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     { id: 'winner', icon: '🏆', name: 'Winner', description: '10 doğru tahmin' },
     { id: 'streak', icon: '🔥', name: 'Streak Master', description: '5 gün üst üste' },
     { id: 'expert', icon: '⭐', name: 'Expert', description: 'Level 10\'a ulaştı' },
-  ];
-
-  const favoriteTeams = [
-    { id: 'gs', name: 'Galatasaray' },
-    { id: 'rm', name: 'Real Madrid' },
-    { id: 'tr', name: 'Türkiye' },
   ];
 
   const rankPercentage = ((user.totalPlayers - user.countryRank) / user.totalPlayers) * 100;

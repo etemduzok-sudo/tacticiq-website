@@ -63,6 +63,13 @@ app.get('/', (req, res) => {
   });
 });
 
+// Sync status endpoint
+app.get('/api/sync-status', (req, res) => {
+  const smartSyncService = require('./services/smartSyncService');
+  const status = smartSyncService.getStatus();
+  res.json(status);
+});
+
 // Error handler
 app.use((err, req, res, next) => {
   console.error('Error:', err);
@@ -77,13 +84,20 @@ app.listen(PORT, () => {
   console.log(`🚀 Fan Manager Backend running on port ${PORT}`);
   console.log(`📊 Health check: http://localhost:${PORT}/health`);
   
-  // Start live match polling (10 seconds interval)
-  const liveMatchService = require('./services/liveMatchService');
-  liveMatchService.startPolling();
-  console.log(`🔴 Live match polling started`);
+  // ============================================
+  // SYNC STRATEGY: SMART ADAPTIVE SYNC
+  // ============================================
+  // Her 12 saniyede bir çalışarak 7,500/day limitini maksimum kullanır
+  // Canlı maç varsa 10 saniyeye düşer, gece 60 saniyeye çıkar
+  // ============================================
   
-  // Start daily sync (6 hours interval)
-  const dailySyncService = require('./services/dailySyncService');
-  dailySyncService.startSync();
-  console.log(`📅 Daily sync service started`);
+  const smartSyncService = require('./services/smartSyncService');
+  smartSyncService.startSync();
+  console.log(`🧠 Smart adaptive sync started (every 12s, adaptive 10s-60s)`);
+  
+  // NOTE: liveMatchService ve dailySyncService devre dışı (smartSync hepsini yapıyor)
+  // const liveMatchService = require('./services/liveMatchService');
+  // liveMatchService.startPolling();
+  // const dailySyncService = require('./services/dailySyncService');
+  // dailySyncService.startSync();
 });

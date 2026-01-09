@@ -280,6 +280,10 @@ export const matchesApi = {
   // Get head to head
   getHeadToHead: (team1Id: number, team2Id: number) => 
     request(`/matches/h2h/${team1Id}/${team2Id}`),
+  
+  // Get all matches for a team in a season (all competitions)
+  getTeamSeasonMatches: (teamId: number, season: number = 2025) => // 2025-26 sezonu
+    request(`/matches/team/${teamId}/season/${season}`),
     
   // Subscribe to real-time match updates
   subscribeToMatch: (matchId: number, callback: (payload: any) => void) => {

@@ -28,6 +28,9 @@ import Svg, {
   Path, 
 } from 'react-native-svg';
 import { Platform } from 'react-native';
+
+// Web için animasyonları devre dışı bırak
+const isWeb = Platform.OS === 'web';
 import { FocusPrediction, TrainingType, SCORING_CONSTANTS } from '../../types/prediction.types';
 import { SCORING, TEXT, STORAGE_KEYS } from '../../config/constants';
 import { handleError, ErrorType, ErrorSeverity } from '../../utils/GlobalErrorHandler';
@@ -466,7 +469,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
         showsVerticalScrollIndicator={false}
       >
         {/* 🎯 ANTRENMAN ODAĞI SEÇİCİ */}
-        <Animated.View entering={FadeIn.duration(300)} style={styles.trainingFocusContainer}>
+        <Animated.View entering={isWeb ? undefined : FadeIn.duration(300)} style={styles.trainingFocusContainer}>
           <View style={styles.trainingFocusHeader}>
             <Ionicons name="barbell" size={20} color="#F59E0B" />
             <Text style={styles.trainingFocusTitle}>Bugünkü Antrenman Odağın</Text>
@@ -536,7 +539,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
 
         {/* 🌟 ODAK SİSTEMİ BİLGİLENDİRME */}
         {focusedPredictions.length > 0 && (
-          <Animated.View entering={FadeIn.duration(300)} style={styles.focusInfoBanner}>
+          <Animated.View entering={isWeb ? undefined : FadeIn.duration(300)} style={styles.focusInfoBanner}>
             <Ionicons name="star" size={20} color="#F59E0B" />
             <Text style={styles.focusInfoText}>
               {focusedPredictions.length} / {SCORING_CONSTANTS.MAX_FOCUS} tahmin odaklandı. 
@@ -616,7 +619,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
         <View style={styles.predictionsSection}>
           {/* Focus Info Banner */}
           {focusedPredictions.length > 0 && (
-            <Animated.View entering={FadeIn} style={styles.focusInfoBanner}>
+            <Animated.View entering={isWeb ? undefined : FadeIn} style={styles.focusInfoBanner}>
               <Ionicons name="star" size={20} color="#F59E0B" />
               <Text style={styles.focusInfoText}>
                 {focusedPredictions.length}/{SCORING_CONSTANTS.MAX_FOCUS} Odak Seçildi
@@ -1225,8 +1228,8 @@ const PlayerPredictionModal = ({
   >
     <View style={styles.modalOverlay}>
       <Animated.View 
-        entering={SlideInDown.duration(300)}
-        exiting={SlideOutDown.duration(300)}
+        entering={isWeb ? undefined : SlideInDown.duration(300)}
+        exiting={isWeb ? undefined : SlideOutDown.duration(300)}
         style={styles.playerModalContent}
       >
         <LinearGradient
@@ -1501,8 +1504,8 @@ const SubstituteModal = ({ visible, players, type, playerName, selectedSubstitut
   >
     <View style={styles.modalOverlay}>
       <Animated.View 
-        entering={SlideInDown.duration(300)}
-        exiting={SlideOutDown.duration(300)}
+        entering={isWeb ? undefined : SlideInDown.duration(300)}
+        exiting={isWeb ? undefined : SlideOutDown.duration(300)}
         style={styles.substituteModalContent}
       >
         <View style={styles.substituteModalHeader}>

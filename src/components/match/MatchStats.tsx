@@ -16,9 +16,13 @@ import Animated, {
   useAnimatedStyle,
   withTiming,
 } from 'react-native-reanimated';
+import { Platform } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 
 const { width, height } = Dimensions.get('window');
+
+// Web için animasyonları devre dışı bırak
+const isWeb = Platform.OS === 'web';
 
 interface MatchStatsScreenProps {
   matchData: any;
@@ -182,7 +186,7 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
               return (
                 <Animated.View
                   key={stat.label}
-                  entering={FadeIn.delay(index * 30)}
+                  entering={isWeb ? undefined : FadeIn.delay(index * 30)}
                   style={styles.statRow}
                 >
                   {/* Values Row */}

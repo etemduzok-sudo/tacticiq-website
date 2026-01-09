@@ -9,6 +9,7 @@ import {
   ScrollView,
   Dimensions,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,6 +18,9 @@ import { PaymentSuccessModal } from './PaymentSuccessModal';
 import { PaymentFailedModal } from './PaymentFailedModal';
 
 const { height } = Dimensions.get('window');
+
+// Web için animasyonları devre dışı bırak
+const isWeb = Platform.OS === 'web';
 
 interface PaymentOptionsModalProps {
   visible: boolean;
@@ -98,7 +102,7 @@ export const PaymentOptionsModal: React.FC<PaymentOptionsModalProps> = ({
             onPress={onClose}
           />
 
-          <Animated.View entering={FadeIn} style={styles.modalContainer}>
+          <Animated.View entering={isWeb ? undefined : FadeIn} style={styles.modalContainer}>
             {/* Header */}
             <View style={styles.header}>
               <Text style={styles.headerTitle}>Ödeme Yöntemi Seç</Text>
@@ -134,7 +138,7 @@ export const PaymentOptionsModal: React.FC<PaymentOptionsModalProps> = ({
               {paymentMethods.map((method, index) => (
                 <Animated.View
                   key={method.id}
-                  entering={FadeInDown.delay(index * 50)}
+                  entering={isWeb ? undefined : FadeInDown.delay(index * 50)}
                 >
                   <TouchableOpacity
                     style={[

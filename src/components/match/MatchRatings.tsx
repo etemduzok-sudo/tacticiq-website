@@ -18,8 +18,12 @@ import Animated, {
   FadeIn,
   ZoomIn,
 } from 'react-native-reanimated';
+import { Platform } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
+
+// Web için animasyonları devre dışı bırak
+const isWeb = Platform.OS === 'web';
 import {
   generateMatchAnalysisReport,
   getClusterName,
@@ -313,7 +317,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
       >
         {/* Header Card - Total Score */}
         <Animated.View 
-          entering={FadeIn.duration(400)}
+          entering={isWeb ? undefined : FadeIn.duration(400)}
           style={styles.headerCard}
         >
           <LinearGradient
@@ -404,7 +408,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
 
         {/* 🌟 PREDICTION ANALYSIS CARD */}
         {predictionReport && (
-          <Animated.View entering={FadeIn.delay(200)} style={styles.analysisCard}>
+          <Animated.View entering={isWeb ? undefined : FadeIn.delay(200)} style={styles.analysisCard}>
             <TouchableOpacity
               onPress={() => setShowAnalysis(!showAnalysis)}
               activeOpacity={0.8}

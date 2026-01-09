@@ -18,6 +18,7 @@ import { BRAND } from '../theme/theme';
 // Logo component removed - using text placeholder
 // import authService from '../services/authService'; // Real Supabase
 import authService from '../services/mockAuthService'; // Mock (geçici test için)
+import socialAuthService from '../services/socialAuthService'; // Google & Apple Sign In
 
 // ============================================
 // SHARED LAYOUT CONSTANTS (MUST BE IDENTICAL)
@@ -146,9 +147,29 @@ export default function RegisterScreen({
     }
   }, [password, confirmPassword]);
 
-  const handleSocialRegister = (provider: string) => {
-    Alert.alert(`${provider} ile Kayıt`, 'Lütfen bekleyin...', [{ text: 'Tamam' }]);
-    setTimeout(() => onRegisterSuccess(), 1500);
+  const handleSocialRegister = async (provider: 'Google' | 'Apple') => {
+    setLoading(true);
+    
+    try {
+      console.log(`🔑 ${provider} ile kayıt başlatıldı...`);
+      
+      const result = provider === 'Google'
+        ? await socialAuthService.signInWithGoogle()
+        : await socialAuthService.signInWithApple();
+      
+      setLoading(false);
+      
+      if (result.success) {
+        console.log(`✅ ${provider} kayıt başarılı, favori takım seçimine yönlendiriliyor...`);
+        // Web'de Alert.alert çalışmadığı için direkt yönlendir
+        onRegisterSuccess();
+      } else {
+        Alert.alert('Hata', `❌ ${result.error || `${provider} ile kayıt başarısız`}`);
+      }
+    } catch (error: any) {
+      setLoading(false);
+      Alert.alert('Hata', `❌ ${error.message || 'Bir hata oluştu'}`);
+    }
   };
 
   const handleRegister = async () => {

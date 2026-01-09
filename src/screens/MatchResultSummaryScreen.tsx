@@ -21,6 +21,9 @@ import { Ionicons } from '@expo/vector-icons';
 
 const { width, height } = Dimensions.get('window');
 
+// Web için animasyonları devre dışı bırak
+const isWeb = Platform.OS === 'web';
+
 interface MatchResultSummaryScreenProps {
   matchData: any;
   onBack: () => void;
@@ -196,7 +199,7 @@ export const MatchResultSummaryScreen: React.FC<MatchResultSummaryScreenProps> =
           <View style={styles.summaryContainer}>
             {/* Final Score Card */}
             <Animated.View
-              entering={FadeIn.duration(400)}
+              entering={isWeb ? undefined : FadeIn.duration(400)}
               style={styles.scoreCard}
             >
               <LinearGradient
@@ -228,7 +231,7 @@ export const MatchResultSummaryScreen: React.FC<MatchResultSummaryScreenProps> =
                 <View style={styles.scoreRow}>
                   {/* Home Team */}
                   <Animated.View 
-                    entering={SlideInLeft.delay(200)}
+                    entering={isWeb ? undefined : SlideInLeft.delay(200)}
                     style={styles.teamContainer}
                   >
                     <Text style={styles.teamName}>{matchResult.homeTeam.name}</Text>
@@ -252,7 +255,7 @@ export const MatchResultSummaryScreen: React.FC<MatchResultSummaryScreenProps> =
 
                   {/* Away Team */}
                   <Animated.View 
-                    entering={SlideInRight.delay(200)}
+                    entering={isWeb ? undefined : SlideInRight.delay(200)}
                     style={styles.teamContainer}
                   >
                     <Text style={styles.teamName}>{matchResult.awayTeam.name}</Text>
@@ -276,7 +279,7 @@ export const MatchResultSummaryScreen: React.FC<MatchResultSummaryScreenProps> =
 
             {/* Goal Scorers */}
             <Animated.View
-              entering={FadeIn.delay(300)}
+              entering={isWeb ? undefined : FadeIn.delay(300)}
               style={styles.scorersCard}
             >
               <Text style={styles.cardTitle}>⚽ Gol Atan Oyuncular</Text>
@@ -322,7 +325,7 @@ export const MatchResultSummaryScreen: React.FC<MatchResultSummaryScreenProps> =
 
             {/* Man of the Match */}
             <Animated.View
-              entering={ZoomIn.delay(400)}
+              entering={isWeb ? undefined : ZoomIn.delay(400)}
               style={styles.motmCard}
             >
               <LinearGradient
@@ -375,7 +378,7 @@ export const MatchResultSummaryScreen: React.FC<MatchResultSummaryScreenProps> =
 
             {/* Top Performers */}
             <Animated.View
-              entering={FadeIn.delay(500)}
+              entering={isWeb ? undefined : FadeIn.delay(500)}
               style={styles.performersCard}
             >
               <Text style={styles.cardTitle}>⭐ En İyi Performanslar</Text>
@@ -429,7 +432,7 @@ export const MatchResultSummaryScreen: React.FC<MatchResultSummaryScreenProps> =
 
             {/* League Impact */}
             <Animated.View
-              entering={FadeIn.delay(600)}
+              entering={isWeb ? undefined : FadeIn.delay(600)}
               style={styles.leagueCard}
             >
               <Text style={styles.cardTitle}>🏆 Puan Durumuna Etkisi</Text>
@@ -506,7 +509,7 @@ export const MatchResultSummaryScreen: React.FC<MatchResultSummaryScreenProps> =
                 return (
                   <Animated.View
                     key={index}
-                    entering={FadeIn.delay(index * 50)}
+                    entering={isWeb ? undefined : FadeIn.delay(index * 50)}
                     style={styles.timelineCenteredEvent}
                   >
                     <View style={styles.timelineDot} />
@@ -523,7 +526,7 @@ export const MatchResultSummaryScreen: React.FC<MatchResultSummaryScreenProps> =
                   <View style={styles.timelineDot} />
                   
                   <Animated.View
-                    entering={FadeIn.delay(index * 50)}
+                    entering={isWeb ? undefined : FadeIn.delay(index * 50)}
                     style={[
                       styles.timelineEventCard,
                       isHome ? styles.timelineEventLeft : styles.timelineEventRight
@@ -581,7 +584,7 @@ export const MatchResultSummaryScreen: React.FC<MatchResultSummaryScreenProps> =
               return (
                 <Animated.View
                   key={index}
-                  entering={FadeIn.delay(index * 80)}
+                  entering={isWeb ? undefined : FadeIn.delay(index * 80)}
                   style={styles.statCard}
                 >
                   {/* Values */}
@@ -626,7 +629,7 @@ export const MatchResultSummaryScreen: React.FC<MatchResultSummaryScreenProps> =
 
             {/* Stats Summary */}
             <Animated.View
-              entering={FadeIn.delay(600)}
+              entering={isWeb ? undefined : FadeIn.delay(600)}
               style={styles.statsSummaryCard}
             >
               <LinearGradient

@@ -99,6 +99,8 @@ export function Dashboard({ onNavigate }: DashboardProps) {
   // Fetch favorite team matches (past, live, upcoming)
   const { pastMatches, liveMatches, upcomingMatches: realUpcomingMatches, loading, error } = useFavoriteTeamMatches();
 
+  console.log('🔍 Dashboard state:', { loading, hasMatches: pastMatches.length + liveMatches.length + realUpcomingMatches.length });
+
   // Show loading
   if (loading) {
     return (

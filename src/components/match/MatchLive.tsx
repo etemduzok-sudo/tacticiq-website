@@ -17,10 +17,14 @@ import Animated, {
   withTiming,
   useSharedValue,
 } from 'react-native-reanimated';
-import { matchesApi } from '../../services/api';
+import { Platform } from 'react-native';
+import api from '../../services/api';
 import { handleErrorWithContext, NetworkError } from '../../utils/errorUtils';
 
 const { width, height } = Dimensions.get('window');
+
+// Web için animasyonları devre dışı bırak
+const isWeb = Platform.OS === 'web';
 
 interface MatchLiveScreenProps {
   matchData: any;
@@ -29,7 +33,7 @@ interface MatchLiveScreenProps {
 }
 
 // Mock match metadata
-const liveStats = {
+const MOCK_LIVE_STATS = {
   status: '2H',
   minute: 67,
   addedTime: null,
@@ -38,7 +42,7 @@ const liveStats = {
 };
 
 // Mock maç akışı olayları
-const liveEvents = [
+const MOCK_LIVE_EVENTS = [
   { minute: 67, type: 'goal', team: 'home', player: 'Icardi', assist: 'Zaha', score: '2-1' },
   { minute: 65, type: 'var-check', description: 'VAR İncelemesi', result: 'Gol onayla' },
   { minute: 63, type: 'substitution', team: 'away', playerOut: 'Valencia', playerIn: 'Dzeko' },
@@ -65,10 +69,16 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
   matchId,
   events: propEvents,
 }) => {
-  // State for live data
-  const [liveEvents, setLiveEvents] = useState<any[]>(propEvents || liveEvents);
-  const [liveStats, setLiveStats] = useState<any>(liveStats);
-  const [loading, setLoading] = useState(false);
+  // State for live data - NO MORE MOCK DATA, start with empty
+  const [liveEvents, setLiveEvents] = useState<any[]>(propEvents || []);
+  const [liveStats, setLiveStats] = useState<any>({
+    status: 'NS',
+    minute: 0,
+    addedTime: null,
+    halfTimeScore: { home: 0, away: 0 },
+    currentScore: { home: 0, away: 0 },
+  });
+  const [loading, setLoading] = useState(true); // Start with loading true
   const [error, setError] = useState<string | null>(null);
 
   // Pulsing CANLI badge animation
@@ -76,16 +86,18 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
   const opacity = useSharedValue(1);
 
   React.useEffect(() => {
-    scale.value = withRepeat(
-      withTiming(1.1, { duration: 750 }),
-      -1,
-      true
-    );
-    opacity.value = withRepeat(
-      withTiming(0.7, { duration: 750 }),
-      -1,
-      true
-    );
+    if (!isWeb) {
+      scale.value = withRepeat(
+        withTiming(1.1, { duration: 750 }),
+        -1,
+        true
+      );
+      opacity.value = withRepeat(
+        withTiming(0.7, { duration: 750 }),
+        -1,
+        true
+      );
+    }
   }, []);
 
   // 🔴 FETCH LIVE DATA FROM API
@@ -97,25 +109,138 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
         setLoading(true);
         setError(null);
 
+        console.log('🔄 [NEW CODE] Fetching live data for match:', matchId);
+        
         // Fetch match events
-        const eventsResponse = await matchesApi.getMatchEvents(Number(matchId));
-        if (eventsResponse.success && eventsResponse.data) {
-          setLiveEvents(eventsResponse.data);
-          console.log('✅ Live events loaded:', eventsResponse.data.length);
+        try {
+          const response = await api.matches.getMatchEvents(matchId);
+          console.log('📥 Raw events response from API:', response);
+          
+          const events = response?.data || [];
+          
+          if (events && events.length > 0) {
+            // Transform API events to our format
+            const transformedEvents = events
+              .filter((event: any) => event && event.time) // Filter out invalid events
+              .map((event: any) => {
+                const eventType = event.type?.toLowerCase() || 'unknown';
+                const detail = event.detail?.toLowerCase() || '';
+                
+                // Determine event description based on type and detail
+                let description = '';
+                let displayType = eventType;
+                
+                // Match status events
+                if (detail === 'match kick off' || detail === 'kick off') {
+                  description = '⚽ Maç başladı!';
+                  displayType = 'kickoff';
+                } else if (detail === 'half time' || detail === 'halftime') {
+                  description = '⏸️ İlk yarı sona erdi';
+                  displayType = 'halftime';
+                } else if (detail === 'second half started') {
+                  description = '▶️ İkinci yarı başladı';
+                  displayType = 'kickoff';
+                } else if (detail === 'match finished' || detail === 'full time') {
+                  description = '🏁 Maç bitti';
+                  displayType = 'fulltime';
+                }
+                // Goal events
+                else if (eventType === 'goal') {
+                  if (detail.includes('penalty')) {
+                    description = '⚽ Penaltı golü';
+                  } else if (detail.includes('own goal')) {
+                    description = '⚽ Kendi kalesine gol';
+                  } else {
+                    description = '⚽ GOL!';
+                  }
+                }
+                // Card events
+                else if (eventType === 'card') {
+                  if (detail.includes('yellow')) {
+                    description = '🟨 Sarı kart';
+                  } else if (detail.includes('red')) {
+                    description = '🟥 Kırmızı kart';
+                  }
+                }
+                // Substitution events
+                else if (eventType === 'subst') {
+                  description = '🔄 Oyuncu değişikliği';
+                  displayType = 'substitution';
+                }
+                // Var events
+                else if (eventType === 'var') {
+                  description = '📺 VAR incelemesi';
+                }
+                // Other events
+                else {
+                  description = event.comments || event.detail || '';
+                }
+                
+                return {
+                  minute: event.time?.elapsed || 0,
+                  extraTime: event.time?.extra || null,
+                  type: displayType,
+                  team: event.team?.name ? 
+                    (event.team.name.toLowerCase().includes(matchData?.homeTeam?.name?.toLowerCase() || '') ? 'home' : 'away') 
+                    : null,
+                  player: event.player?.name || null,
+                  assist: event.assist?.name || null,
+                  description: description,
+                  detail: event.detail || '',
+                  score: event.goals ? `${event.goals.home}-${event.goals.away}` : null,
+                };
+              })
+              .sort((a: any, b: any) => b.minute - a.minute); // Sort by minute descending
+            
+            setLiveEvents(transformedEvents);
+            console.log('✅ Live events loaded:', transformedEvents.length);
+            console.log('📊 Transformed events:', transformedEvents.slice(0, 3));
+            
+            // Calculate score from goal events
+            const homeGoals = transformedEvents.filter(e => e.type === 'goal' && e.team === 'home').length;
+            const awayGoals = transformedEvents.filter(e => e.type === 'goal' && e.team === 'away').length;
+            console.log('⚽ Goals from events - Home:', homeGoals, 'Away:', awayGoals);
+          } else {
+            console.log('⚠️ No events from API - empty array');
+            setLiveEvents([]);
+          }
+        } catch (eventErr) {
+          console.error('❌ Events API failed:', eventErr);
+          setLiveEvents([]);
         }
 
         // Fetch match details for current score/minute
-        const detailsResponse = await matchesApi.getMatchDetails(Number(matchId));
-        if (detailsResponse.success && detailsResponse.data) {
-          const match = detailsResponse.data;
-          setLiveStats({
-            status: match.fixture?.status?.short || '1H',
-            minute: match.fixture?.status?.elapsed || 0,
-            addedTime: match.fixture?.status?.extra || null,
-            halfTimeScore: match.score?.halftime || { home: 0, away: 0 },
-            currentScore: match.goals || { home: 0, away: 0 },
-          });
-          console.log('✅ Live stats loaded');
+        try {
+          const response = await api.matches.getMatchDetails(matchId);
+          console.log('📥 Raw match details response from API:', response);
+          
+          const match = response?.data;
+          if (match) {
+            // Get score from match data
+            const apiScore = match.goals || match.score || { home: 0, away: 0 };
+            
+            // Calculate score from events (more accurate for live matches)
+            const homeGoals = liveEvents.filter(e => e.type === 'goal' && e.team === 'home').length;
+            const awayGoals = liveEvents.filter(e => e.type === 'goal' && e.team === 'away').length;
+            
+            // Use event-based score if available, otherwise use API score
+            const finalScore = (homeGoals > 0 || awayGoals > 0) 
+              ? { home: homeGoals, away: awayGoals }
+              : apiScore;
+            
+            console.log('📊 Score - API:', apiScore, 'Events:', { home: homeGoals, away: awayGoals }, 'Final:', finalScore);
+            
+            setLiveStats({
+              status: match.fixture?.status?.short || match.status || '1H',
+              minute: match.fixture?.status?.elapsed || match.elapsed || 0,
+              addedTime: match.fixture?.status?.extra || null,
+              halfTimeScore: match.score?.halftime || { home: 0, away: 0 },
+              currentScore: finalScore,
+            });
+            console.log('✅ Live stats loaded:', match.fixture?.status || match.status);
+          }
+        } catch (statsErr) {
+          console.log('⚠️ Stats API failed:', statsErr);
         }
 
         setLoading(false);
@@ -141,9 +266,15 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
   }, [matchId]);
 
   const animatedBadgeStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-    opacity: opacity.value,
+    transform: [{ scale: isWeb ? 1 : scale.value }],
+    opacity: isWeb ? 1 : opacity.value,
   }));
+
+  // Debug log
+  React.useEffect(() => {
+    console.log('📊 MatchLive render - Events count:', liveEvents.length);
+    console.log('📊 First 3 events:', liveEvents.slice(0, 3));
+  }, [liveEvents]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -198,33 +329,52 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
 
           {/* Events */}
           <View style={styles.eventsContainer}>
+            {/* Debug: Show event count */}
+            {liveEvents.length === 0 && (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyStateText}>
+                  Henüz canlı event yok
+                </Text>
+                <Text style={styles.emptyStateSubtext}>
+                  Maç başladığında eventler burada görünecek
+                </Text>
+              </View>
+            )}
+            
             {liveEvents.map((event, index) => {
               const isCentered = !event.team || 
                 event.type === 'kickoff' || 
-                event.type === 'half-time' || 
-                event.type === 'var-check';
+                event.type === 'halftime' ||
+                event.type === 'fulltime' ||
+                event.type === 'var';
               const isHome = event.team === 'home';
 
               if (isCentered) {
+                // Determine emoji based on event type
+                let emoji = '⚽';
+                if (event.type === 'kickoff') emoji = '⚽';
+                else if (event.type === 'halftime') emoji = '⏸️';
+                else if (event.type === 'fulltime') emoji = '🏁';
+                else if (event.type === 'var') emoji = '📺';
+                
                 return (
                   <Animated.View
                     key={index}
-                    entering={FadeIn.delay(index * 50)}
+                    entering={isWeb ? undefined : FadeIn.delay(index * 50)}
                     style={styles.centeredEventContainer}
                   >
                     <View style={styles.centeredEventCard}>
                       <View style={styles.centeredEventIcon}>
-                        <Text style={styles.centeredEventEmoji}>
-                          {event.type === 'kickoff' && '⚽'}
-                          {event.type === 'half-time' && '⏸️'}
-                          {event.type === 'var-check' && '📺'}
-                        </Text>
+                        <Text style={styles.centeredEventEmoji}>{emoji}</Text>
                       </View>
                       <View style={styles.centeredEventInfo}>
-                        <Text style={styles.centeredEventMinute}>{event.minute}'</Text>
+                        <Text style={styles.centeredEventMinute}>
+                          {event.minute}'
+                          {event.extraTime && <Text style={styles.extraTime}>+{event.extraTime}</Text>}
+                        </Text>
                         <Text style={styles.centeredEventDescription}>{event.description}</Text>
-                        {event.result && (
-                          <Text style={styles.centeredEventResult}>{event.result}</Text>
+                        {event.score && (
+                          <Text style={styles.centeredEventResult}>{event.score}</Text>
                         )}
                       </View>
                     </View>
@@ -239,7 +389,7 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
 
                   {/* Event Card */}
                   <Animated.View
-                    entering={FadeIn.delay(index * 50)}
+                    entering={isWeb ? undefined : FadeIn.delay(index * 50)}
                     style={[
                       styles.eventCardWrapper,
                       isHome ? styles.eventCardLeft : styles.eventCardRight,
@@ -251,113 +401,41 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
                         styles.eventHeader,
                         !isHome && styles.eventHeaderReverse,
                       ]}>
-                        <Text style={styles.eventMinute}>{event.minute}'</Text>
+                        <Text style={styles.eventMinute}>
+                          {event.minute}'
+                          {event.extraTime && <Text style={styles.extraTime}>+{event.extraTime}</Text>}
+                        </Text>
                         <Text style={styles.eventIcon}>
                           {event.type === 'goal' && '⚽'}
-                          {event.type === 'own-goal' && '⚽'}
-                          {event.type === 'goal-cancelled' && '❌'}
-                          {event.type === 'penalty-missed' && '🚫'}
-                          {event.type === 'penalty-saved' && '🧤'}
-                          {event.type === 'yellow' && '🟨'}
-                          {event.type === 'red' && '🟥'}
-                          {event.type === 'second-yellow' && '🟨🟥'}
-                          {event.type === 'substitution' && '🔁'}
-                          {event.type === 'injury' && '🤕'}
+                          {event.type === 'card' && (event.detail?.includes('yellow') ? '🟨' : '🟥')}
+                          {event.type === 'substitution' && '🔄'}
+                          {event.type === 'var' && '📺'}
                         </Text>
                       </View>
 
                       {/* Event Details */}
                       <View style={styles.eventDetails}>
-                        {/* Goal Event */}
-                        {event.type === 'goal' && (
-                          <>
-                            <Text style={styles.eventTitle}>⚽ GOL!</Text>
-                            <Text style={styles.eventPlayer}>{event.player}</Text>
-                            {event.assist && (
-                              <Text style={styles.eventAssist}>Asist: {event.assist}</Text>
-                            )}
-                            <Text style={styles.eventScore}>{event.score}</Text>
-                          </>
+                        {/* Description */}
+                        <Text style={styles.eventTitle}>{event.description}</Text>
+                        
+                        {/* Player name */}
+                        {event.player && (
+                          <Text style={styles.eventPlayer}>{event.player}</Text>
                         )}
-
-                        {/* Own Goal */}
-                        {event.type === 'own-goal' && (
-                          <>
-                            <Text style={styles.eventTitleError}>KENDI KALESİNE GOL</Text>
-                            <Text style={styles.eventPlayer}>{event.player}</Text>
-                            <Text style={styles.eventScore}>{event.score}</Text>
-                          </>
+                        
+                        {/* Assist */}
+                        {event.assist && (
+                          <Text style={styles.eventAssist}>Asist: {event.assist}</Text>
                         )}
-
-                        {/* Goal Cancelled */}
-                        {event.type === 'goal-cancelled' && (
-                          <>
-                            <Text style={styles.eventTitleError}>GOL İPTAL</Text>
-                            <Text style={styles.eventPlayerCancelled}>{event.player}</Text>
-                            <Text style={styles.eventReason}>{event.reason}</Text>
-                          </>
+                        
+                        {/* Score */}
+                        {event.score && (
+                          <Text style={styles.eventScore}>{event.score}</Text>
                         )}
-
-                        {/* Penalty Missed */}
-                        {event.type === 'penalty-missed' && (
-                          <>
-                            <Text style={styles.eventTitleError}>PENALTI KAÇTI</Text>
-                            <Text style={styles.eventPlayer}>{event.player}</Text>
-                          </>
-                        )}
-
-                        {/* Penalty Saved */}
-                        {event.type === 'penalty-saved' && (
-                          <>
-                            <Text style={styles.eventTitleSuccess}>PENALTI KURTARILDI</Text>
-                            <Text style={styles.eventPlayer}>{event.player}</Text>
-                            <Text style={styles.eventAssist}>Atan: {event.penaltyTaker}</Text>
-                          </>
-                        )}
-
-                        {/* Yellow Card */}
-                        {event.type === 'yellow' && (
-                          <>
-                            <Text style={styles.eventTitleYellow}>SARI KART</Text>
-                            <Text style={styles.eventPlayer}>{event.player}</Text>
-                          </>
-                        )}
-
-                        {/* Red Card */}
-                        {event.type === 'red' && (
-                          <>
-                            <Text style={styles.eventTitleError}>KIRMIZI KART</Text>
-                            <Text style={styles.eventPlayer}>{event.player}</Text>
-                            {event.reason && (
-                              <Text style={styles.eventReason}>{event.reason}</Text>
-                            )}
-                          </>
-                        )}
-
-                        {/* Second Yellow */}
-                        {event.type === 'second-yellow' && (
-                          <>
-                            <Text style={styles.eventTitleError}>İKİNCİ SARI KART</Text>
-                            <Text style={styles.eventPlayer}>{event.player}</Text>
-                          </>
-                        )}
-
-                        {/* Substitution */}
-                        {event.type === 'substitution' && (
-                          <>
-                            <Text style={styles.eventTitle}>OYUNCU DEĞİŞİKLİĞİ</Text>
-                            <Text style={styles.eventPlayerOut}>↓ {event.playerOut}</Text>
-                            <Text style={styles.eventPlayerIn}>↑ {event.playerIn}</Text>
-                          </>
-                        )}
-
-                        {/* Injury */}
-                        {event.type === 'injury' && (
-                          <>
-                            <Text style={styles.eventTitleWarning}>SAKATLIK</Text>
-                            <Text style={styles.eventPlayer}>{event.player}</Text>
-                            <Text style={styles.eventAssist}>{event.description}</Text>
-                          </>
+                        
+                        {/* Additional detail */}
+                        {event.detail && event.detail !== event.description && (
+                          <Text style={styles.eventDetail}>{event.detail}</Text>
                         )}
                       </View>
                     </View>
@@ -441,6 +519,24 @@ const styles = StyleSheet.create({
   timelineContainer: {
     position: 'relative',
     paddingHorizontal: 16,
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 24,
+  },
+  emptyStateText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#9CA3AF',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  emptyStateSubtext: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
   },
   timelineLine: {
     position: 'absolute',
@@ -557,8 +653,18 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#059669',
   },
+  extraTime: {
+    fontSize: 9,
+    fontWeight: 'normal',
+    color: '#F59E0B',
+  },
   eventIcon: {
     fontSize: 16,
+  },
+  eventDetail: {
+    fontSize: 10,
+    color: '#9CA3AF',
+    fontStyle: 'italic',
   },
   eventDetails: {
     gap: 4,

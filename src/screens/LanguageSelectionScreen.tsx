@@ -11,13 +11,8 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
-// Try to import logo, fallback to text
-let logoImage: any = null;
-try {
-  logoImage = require('../assets/images/brand/fan_manager_shield.png');
-} catch (e) {
-  console.warn('Logo image not found, using text fallback');
-}
+// Logo is optional - use text fallback
+const logoImage = null; // Disabled for now to avoid require() issues
 
 interface LanguageSelectionScreenProps {
   onLanguageSelect: (language: string) => void;

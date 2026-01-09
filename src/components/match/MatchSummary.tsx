@@ -11,8 +11,12 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeIn, FadeInDown, FadeInLeft } from 'react-native-reanimated';
+import { Platform } from 'react-native';
 
 const { width } = Dimensions.get('window');
+
+// Web için animasyonları devre dışı bırak
+const isWeb = Platform.OS === 'web';
 
 interface MatchSummaryProps {
   matchData: any;
@@ -187,7 +191,7 @@ export function MatchSummary({ matchData }: MatchSummaryProps) {
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false}>
         {activeTab === 'summary' ? (
           <>
-            <Animated.View entering={FadeIn} style={styles.section}>
+            <Animated.View entering={isWeb ? undefined : FadeIn} style={styles.section}>
               <LinearGradient colors={['rgba(245, 158, 11, 0.2)', 'rgba(245, 158, 11, 0.05)']} style={styles.pointsCard}>
                 <View style={styles.sectionHeader}>
                   <Ionicons name="trophy" size={20} color="#F59E0B" />
@@ -208,7 +212,7 @@ export function MatchSummary({ matchData }: MatchSummaryProps) {
                     </View>
                   </View>
                   <View style={styles.progressBarContainer}>
-                    <Animated.View entering={FadeIn.delay(200)} style={[styles.progressBar, { width: `${predictionResults.successRate}%` }]}>
+                    <Animated.View entering={isWeb ? undefined : FadeIn.delay(200)} style={[styles.progressBar, { width: `${predictionResults.successRate}%` }]}>
                       <LinearGradient colors={['#059669', '#F59E0B']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} />
                     </Animated.View>
                   </View>
@@ -257,7 +261,7 @@ export function MatchSummary({ matchData }: MatchSummaryProps) {
               </LinearGradient>
             </Animated.View>
 
-            <Animated.View entering={FadeInDown.delay(100)} style={styles.section}>
+            <Animated.View entering={isWeb ? undefined : FadeInDown.delay(100)} style={styles.section}>
               <View style={styles.card}>
                 <View style={styles.cardHeader}>
                   <View style={styles.sectionHeader}>
@@ -273,7 +277,7 @@ export function MatchSummary({ matchData }: MatchSummaryProps) {
                 </View>
                 <View style={styles.predictionsList}>
                   {predictionResults.predictions.slice(0, showAllPredictions ? undefined : 3).map((pred, index) => (
-                    <Animated.View key={index} entering={FadeInLeft.delay(index * 50).springify()}>
+                    <Animated.View key={index} entering={isWeb ? undefined : FadeInLeft.delay(index * 50).springify()}>
                       <View style={[styles.predictionCard, pred.status === 'correct' ? styles.predictionCardCorrect : styles.predictionCardWrong]}>
                         <View style={styles.predictionContent}>
                           <View style={styles.predictionHeader}>
@@ -306,7 +310,7 @@ export function MatchSummary({ matchData }: MatchSummaryProps) {
               </View>
             </Animated.View>
 
-            <Animated.View entering={FadeInDown.delay(200)} style={styles.section}>
+            <Animated.View entering={isWeb ? undefined : FadeInDown.delay(200)} style={styles.section}>
               <View style={styles.card}>
                 <View style={styles.sectionHeader}>
                   <Ionicons name="people" size={20} color="#059669" />
@@ -343,7 +347,7 @@ export function MatchSummary({ matchData }: MatchSummaryProps) {
                         <View key={index} style={styles.distributionRow}>
                           <Text style={styles.distributionRange}>{dist.range}</Text>
                           <View style={styles.distributionBarContainer}>
-                            <Animated.View entering={FadeIn.delay(300 + index * 50)} style={[styles.distributionBar, { width: `${widthPercent}%` }, isUserRange && styles.distributionBarUser]}>
+                            <Animated.View entering={isWeb ? undefined : FadeIn.delay(300 + index * 50)} style={[styles.distributionBar, { width: `${widthPercent}%` }, isUserRange && styles.distributionBarUser]}>
                               {isUserRange && <LinearGradient colors={['#059669', '#047857']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} />}
                               {isUserRange && <Text style={styles.distributionUserLabel}>SEN</Text>}
                             </Animated.View>
@@ -357,7 +361,7 @@ export function MatchSummary({ matchData }: MatchSummaryProps) {
               </View>
             </Animated.View>
 
-            <Animated.View entering={FadeInDown.delay(300)} style={styles.section}>
+            <Animated.View entering={isWeb ? undefined : FadeInDown.delay(300)} style={styles.section}>
               <View style={styles.card}>
                 <View style={styles.sectionHeader}>
                   <Ionicons name="ribbon" size={20} color="#F59E0B" />
@@ -365,7 +369,7 @@ export function MatchSummary({ matchData }: MatchSummaryProps) {
                 </View>
                 <View style={styles.tagsContainer}>
                   {performanceTags.map((tag, index) => (
-                    <Animated.View key={index} entering={FadeIn.delay(350 + index * 100).springify()}>
+                    <Animated.View key={index} entering={isWeb ? undefined : FadeIn.delay(350 + index * 100).springify()}>
                       <View style={styles.tag}>
                         <Text style={styles.tagIcon}>{tag.icon}</Text>
                         <Text style={styles.tagLabel}>{tag.label}</Text>
@@ -377,7 +381,7 @@ export function MatchSummary({ matchData }: MatchSummaryProps) {
               </View>
             </Animated.View>
 
-            <Animated.View entering={FadeInDown.delay(400)} style={styles.section}>
+            <Animated.View entering={isWeb ? undefined : FadeInDown.delay(400)} style={styles.section}>
               <View style={styles.card}>
                 <View style={styles.sectionHeader}>
                   <Ionicons name="trending-up" size={20} color="#059669" />
@@ -431,7 +435,7 @@ export function MatchSummary({ matchData }: MatchSummaryProps) {
           </>
         ) : (
           <>
-            <Animated.View entering={FadeIn} style={styles.section}>
+            <Animated.View entering={isWeb ? undefined : FadeIn} style={styles.section}>
               <LinearGradient colors={['#059669', '#047857']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.heroCard}>
                 <View style={styles.heroHeader}>
                   <View>
@@ -481,7 +485,7 @@ export function MatchSummary({ matchData }: MatchSummaryProps) {
               </LinearGradient>
             </Animated.View>
 
-            <Animated.View entering={FadeInDown.delay(100)} style={styles.section}>
+            <Animated.View entering={isWeb ? undefined : FadeInDown.delay(100)} style={styles.section}>
               <View style={styles.card}>
                 <View style={styles.standingsHeader}>
                   <View style={styles.sectionHeader}>
@@ -501,7 +505,7 @@ export function MatchSummary({ matchData }: MatchSummaryProps) {
                     { rank: 4, team: "Trabzonspor", played: 17, won: 9, draw: 4, lost: 4, gd: 8, points: 31, isUser: false },
                     { rank: 5, team: "Başakşehir", played: 17, won: 8, draw: 5, lost: 4, gd: 6, points: 29, isUser: false },
                   ].map((team, index) => (
-                    <Animated.View key={index} entering={FadeInLeft.delay(100 + index * 50).springify()}>
+                    <Animated.View key={index} entering={isWeb ? undefined : FadeInLeft.delay(100 + index * 50).springify()}>
                       <View style={[styles.standingRow, team.isUser && styles.standingRowUser]}>
                         <View style={[styles.standingRank, team.isUser && styles.standingRankUser]}>
                           <Text style={[styles.standingRankText, team.isUser && styles.standingRankTextUser]}>{team.rank}</Text>
@@ -524,7 +528,7 @@ export function MatchSummary({ matchData }: MatchSummaryProps) {
               </View>
             </Animated.View>
 
-            <Animated.View entering={FadeInDown.delay(200)} style={styles.section}>
+            <Animated.View entering={isWeb ? undefined : FadeInDown.delay(200)} style={styles.section}>
               <View style={styles.card}>
                 <View style={styles.sectionHeader}>
                   <Ionicons name="bar-chart" size={20} color="#059669" />
@@ -550,7 +554,7 @@ export function MatchSummary({ matchData }: MatchSummaryProps) {
               </View>
             </Animated.View>
 
-            <Animated.View entering={FadeInDown.delay(300)} style={styles.section}>
+            <Animated.View entering={isWeb ? undefined : FadeInDown.delay(300)} style={styles.section}>
               <View style={styles.card}>
                 <View style={styles.sectionHeader}>
                   <Ionicons name="home" size={20} color="#059669" />

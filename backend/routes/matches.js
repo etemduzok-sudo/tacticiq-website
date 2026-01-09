@@ -235,6 +235,71 @@ router.get('/date/:date', async (req, res) => {
   }
 });
 
+// GET /api/matches/team/:teamId/season/:season - Get all matches for a team in a season
+router.get('/team/:teamId/season/:season', async (req, res) => {
+  try {
+    const { teamId, season } = req.params;
+    
+    console.log(`📅 Fetching all matches for team ${teamId} in season ${season}`);
+    
+    // Try database first
+    const { data: dbMatches, error: dbError } = await supabase
+      .from('matches')
+      .select(`
+        *,
+        home_team:teams!matches_home_team_id_fkey(id, name, logo),
+        away_team:teams!matches_away_team_id_fkey(id, name, logo),
+        league:leagues(id, name, country, logo)
+      `)
+      .eq('season', season)
+      .or(`home_team_id.eq.${teamId},away_team_id.eq.${teamId}`)
+      .order('fixture_date', { ascending: true });
+    
+    if (dbError) {
+      console.error('❌ Database error:', dbError);
+    }
+    
+    // Eğer database'de yeterli maç varsa (en az 30), database'den dön
+    if (dbMatches && dbMatches.length >= 30) {
+      console.log(`✅ Found ${dbMatches.length} matches for team ${teamId} in database (sufficient)`);
+      return res.json({
+        success: true,
+        data: dbMatches,
+        source: 'database',
+        count: dbMatches.length
+      });
+    }
+    
+    // Yetersiz veri varsa API'den çek
+    if (dbMatches && dbMatches.length > 0) {
+      console.log(`⚠️ Only ${dbMatches.length} matches in database, fetching from API for complete data...`);
+    } else {
+      console.log(`⚠️ No matches in database, fetching from API...`);
+    }
+    
+    const data = await footballApi.getFixturesByTeam(teamId, season);
+    
+    // Sync to database
+    if (databaseService.enabled && data.response && data.response.length > 0) {
+      await databaseService.upsertMatches(data.response);
+    }
+    
+    res.json({
+      success: true,
+      data: data.response,
+      source: 'api',
+      cached: data.cached || false,
+      count: data.response?.length || 0
+    });
+  } catch (error) {
+    console.error('❌ Error fetching team season matches:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
 // GET /api/matches/league/:leagueId - Get matches by league
 router.get('/league/:leagueId', async (req, res) => {
   try {

@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Favori Takımlar Debug</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #0F172A;
+      color: #fff;
+    }
+    .section {
+      background: #1E293B;
+      padding: 20px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+    }
+    h1 {
+      color: #059669;
+    }
+    h2 {
+      color: #F59E0B;
+      margin-top: 0;
+    }
+    button {
+      background: #059669;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 5px;
+    }
+    button:hover {
+      background: #047857;
+    }
+    button.secondary {
+      background: #3B82F6;
+    }
+    button.secondary:hover {
+      background: #2563EB;
+    }
+    pre {
+      background: #0F172A;
+      padding: 15px;
+      border-radius: 8px;
+      overflow-x: auto;
+      border: 1px solid #334155;
+    }
+    .team-card {
+      background: #334155;
+      padding: 15px;
+      border-radius: 8px;
+      margin: 10px 0;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+    .team-logo {
+      width: 50px;
+      height: 50px;
+      object-fit: contain;
+    }
+    .team-info {
+      flex: 1;
+    }
+    .team-name {
+      font-size: 18px;
+      font-weight: bold;
+      color: #fff;
+    }
+    .team-id {
+      font-size: 14px;
+      color: #9CA3AF;
+    }
+    .status {
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-weight: bold;
+      display: inline-block;
+      margin: 10px 0;
+    }
+    .status.success {
+      background: #059669;
+    }
+    .status.error {
+      background: #EF4444;
+    }
+    .status.warning {
+      background: #F59E0B;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔍 Favori Takımlar Debug</h1>
+
+  <div class="section">
+    <h2>1️⃣ Mevcut Favori Takımlar</h2>
+    <button onclick="checkFavoriteTeams()">Favori Takımları Kontrol Et</button>
+    <div id="favoriteTeamsResult"></div>
+  </div>
+
+  <div class="section">
+    <h2>2️⃣ Fenerbahçe Ekle</h2>
+    <button onclick="addFenerbahce()">Fenerbahçe'yi Favori Olarak Ekle</button>
+    <div id="addResult"></div>
+  </div>
+
+  <div class="section">
+    <h2>3️⃣ Galatasaray Ekle</h2>
+    <button onclick="addGalatasaray()">Galatasaray'ı Favori Olarak Ekle</button>
+    <div id="addGsResult"></div>
+  </div>
+
+  <div class="section">
+    <h2>4️⃣ Backend Test</h2>
+    <button class="secondary" onclick="testBackend()">Backend'i Test Et</button>
+    <button class="secondary" onclick="fetchFenerbahceMatches()">Fenerbahçe Maçlarını Çek</button>
+    <div id="backendResult"></div>
+  </div>
+
+  <div class="section">
+    <h2>5️⃣ Temizle</h2>
+    <button style="background: #EF4444;" onclick="clearFavorites()">Tüm Favori Takımları Sil</button>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'fan-manager-favorite-clubs';
+    const BACKEND_URL = 'http://localhost:3000';
+
+    // Fenerbahçe bilgileri (API-Football ID: 548)
+    const FENERBAHCE = {
+      id: 548,
+      name: 'Fenerbahce',
+      logo: 'https://media.api-sports.io/football/teams/548.png',
+      league: 'Süper Lig'
+    };
+
+    // Galatasaray bilgileri (API-Football ID: 645)
+    const GALATASARAY = {
+      id: 645,
+      name: 'Galatasaray',
+      logo: 'https://media.api-sports.io/football/teams/645.png',
+      league: 'Süper Lig'
+    };
+
+    function checkFavoriteTeams() {
+      const result = document.getElementById('favoriteTeamsResult');
+      const stored = localStorage.getItem(STORAGE_KEY);
+      
+      if (!stored) {
+        result.innerHTML = '<div class="status warning">⚠️ Henüz favori takım yok</div>';
+        return;
+      }
+
+      try {
+        const teams = JSON.parse(stored);
+        
+        if (teams.length === 0) {
+          result.innerHTML = '<div class="status warning">⚠️ Favori takım listesi boş</div>';
+          return;
+        }
+
+        let html = `<div class="status success">✅ ${teams.length} favori takım bulundu</div>`;
+        
+        teams.forEach(team => {
+          html += `
+            <div class="team-card">
+              <img src="${team.logo}" alt="${team.name}" class="team-logo" onerror="this.src='https://via.placeholder.com/50'">
+              <div class="team-info">
+                <div class="team-name">${team.name}</div>
+                <div class="team-id">ID: ${team.id}</div>
+              </div>
+            </div>
+          `;
+        });
+
+        result.innerHTML = html;
+      } catch (error) {
+        result.innerHTML = `<div class="status error">❌ Hata: ${error.message}</div>`;
+      }
+    }
+
+    function addFenerbahce() {
+      const result = document.getElementById('addResult');
+      
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        let teams = stored ? JSON.parse(stored) : [];
+        
+        // Zaten var mı kontrol et
+        const exists = teams.some(t => t.id === FENERBAHCE.id);
+        if (exists) {
+          result.innerHTML = '<div class="status warning">⚠️ Fenerbahçe zaten favori takımlar arasında</div>';
+          return;
+        }
+
+        teams.push(FENERBAHCE);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(teams));
+        
+        result.innerHTML = `
+          <div class="status success">✅ Fenerbahçe eklendi!</div>
+          <div class="team-card">
+            <img src="${FENERBAHCE.logo}" alt="${FENERBAHCE.name}" class="team-logo">
+            <div class="team-info">
+              <div class="team-name">${FENERBAHCE.name}</div>
+              <div class="team-id">ID: ${FENERBAHCE.id}</div>
+            </div>
+          </div>
+          <p style="color: #F59E0B;">⚠️ Sayfayı yenileyin (F5) değişiklikleri görmek için!</p>
+        `;
+      } catch (error) {
+        result.innerHTML = `<div class="status error">❌ Hata: ${error.message}</div>`;
+      }
+    }
+
+    function addGalatasaray() {
+      const result = document.getElementById('addGsResult');
+      
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        let teams = stored ? JSON.parse(stored) : [];
+        
+        const exists = teams.some(t => t.id === GALATASARAY.id);
+        if (exists) {
+          result.innerHTML = '<div class="status warning">⚠️ Galatasaray zaten favori takımlar arasında</div>';
+          return;
+        }
+
+        teams.push(GALATASARAY);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(teams));
+        
+        result.innerHTML = `
+          <div class="status success">✅ Galatasaray eklendi!</div>
+          <div class="team-card">
+            <img src="${GALATASARAY.logo}" alt="${GALATASARAY.name}" class="team-logo">
+            <div class="team-info">
+              <div class="team-name">${GALATASARAY.name}</div>
+              <div class="team-id">ID: ${GALATASARAY.id}</div>
+            </div>
+          </div>
+          <p style="color: #F59E0B;">⚠️ Sayfayı yenileyin (F5) değişiklikleri görmek için!</p>
+        `;
+      } catch (error) {
+        result.innerHTML = `<div class="status error">❌ Hata: ${error.message}</div>`;
+      }
+    }
+
+    async function testBackend() {
+      const result = document.getElementById('backendResult');
+      result.innerHTML = '<div class="status">⏳ Backend test ediliyor...</div>';
+      
+      try {
+        const response = await fetch(`${BACKEND_URL}/api/health`);
+        const data = await response.json();
+        
+        result.innerHTML = `
+          <div class="status success">✅ Backend çalışıyor!</div>
+          <pre>${JSON.stringify(data, null, 2)}</pre>
+        `;
+      } catch (error) {
+        result.innerHTML = `
+          <div class="status error">❌ Backend'e bağlanılamadı</div>
+          <p>Hata: ${error.message}</p>
+          <p>Backend'in çalıştığından emin olun: <code>cd backend && npm start</code></p>
+        `;
+      }
+    }
+
+    async function fetchFenerbahceMatches() {
+      const result = document.getElementById('backendResult');
+      result.innerHTML = '<div class="status">⏳ Fenerbahçe maçları çekiliyor...</div>';
+      
+      try {
+        const response = await fetch(`${BACKEND_URL}/api/matches/team/548/season/2026`);
+        const data = await response.json();
+        
+        if (data.success && data.data) {
+          const matches = data.data;
+          const upcomingMatches = matches.filter(m => {
+            const status = m.fixture?.status?.short || m.status;
+            return status === 'NS' || status === 'TBD';
+          });
+          
+          result.innerHTML = `
+            <div class="status success">✅ Fenerbahçe maçları çekildi!</div>
+            <p><strong>Toplam maç:</strong> ${matches.length}</p>
+            <p><strong>Yaklaşan maç:</strong> ${upcomingMatches.length}</p>
+            <p><strong>Kaynak:</strong> ${data.source}</p>
+            <details>
+              <summary>İlk 5 yaklaşan maç</summary>
+              <pre>${JSON.stringify(upcomingMatches.slice(0, 5), null, 2)}</pre>
+            </details>
+          `;
+        } else {
+          result.innerHTML = `<div class="status error">❌ Maç bulunamadı</div>`;
+        }
+      } catch (error) {
+        result.innerHTML = `
+          <div class="status error">❌ Hata: ${error.message}</div>
+        `;
+      }
+    }
+
+    function clearFavorites() {
+      if (confirm('Tüm favori takımları silmek istediğinizden emin misiniz?')) {
+        localStorage.removeItem(STORAGE_KEY);
+        alert('✅ Tüm favori takımlar silindi!');
+        location.reload();
+      }
+    }
+
+    // Sayfa yüklendiğinde otomatik kontrol
+    window.onload = () => {
+      checkFavoriteTeams();
+    };
+  </script>
+</body>
+</html>

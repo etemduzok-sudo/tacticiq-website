@@ -52,7 +52,7 @@ export const API_CONFIG = {
   },
   
   // Request timeout (ms)
-  timeout: 30000,
+  timeout: 90000, // 90 saniye (sezon maçları için)
   
   // Retry configuration
   retry: {

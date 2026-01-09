@@ -15,7 +15,7 @@ import { BRAND, TYPOGRAPHY, SPACING, DARK_MODE } from '../theme/theme';
 import { Button } from '../components/atoms';
 
 interface FavoriteTeamsScreenProps {
-  onComplete: (selectedTeams: string[]) => void;
+  onComplete: (selectedTeams: Array<{ id: number; name: string; logo: string; league?: string }>) => void;
   onBack?: () => void;
 }
 
@@ -26,6 +26,7 @@ interface Team {
   country: string;
   colors: string[]; // Sol kenardaki renkli şerit için
   type: 'club' | 'national';
+  apiId?: number; // API-Football ID
 }
 
 const TEAMS: Team[] = [
@@ -37,6 +38,7 @@ const TEAMS: Team[] = [
     country: 'Türkiye',
     colors: ['#FFA500', '#FF0000'], // Sarı-Kırmızı
     type: 'club',
+    apiId: 645, // API-Football ID
   },
   {
     id: '2',
@@ -45,6 +47,7 @@ const TEAMS: Team[] = [
     country: 'Türkiye',
     colors: ['#FFFF00', '#000080'], // Sarı-Lacivert
     type: 'club',
+    apiId: 548, // API-Football ID
   },
   {
     id: '3',
@@ -53,6 +56,7 @@ const TEAMS: Team[] = [
     country: 'Türkiye',
     colors: ['#000000', '#FFFFFF'], // Siyah-Beyaz
     type: 'club',
+    apiId: 644, // API-Football ID
   },
   {
     id: '4',
@@ -61,6 +65,7 @@ const TEAMS: Team[] = [
     country: 'Türkiye',
     colors: ['#800020', '#0000FF'], // Bordo-Mavi
     type: 'club',
+    apiId: 643, // API-Football ID
   },
   {
     id: '5',
@@ -186,8 +191,19 @@ export default function FavoriteTeamsScreen({ onComplete, onBack }: FavoriteTeam
       return;
     }
     
-    const teams = [...selectedClubs, selectedNational].filter(Boolean) as string[];
-    onComplete(teams);
+    // Seçili takımları ID'leriyle birlikte hazırla
+    const selectedTeamIds = [...selectedClubs, selectedNational].filter(Boolean) as string[];
+    const selectedTeamsData = TEAMS
+      .filter(team => selectedTeamIds.includes(team.id))
+      .map(team => ({
+        id: team.apiId || parseInt(team.id), // API ID varsa onu kullan, yoksa string ID'yi number'a çevir
+        name: team.name,
+        logo: `https://media.api-sports.io/football/teams/${team.apiId || team.id}.png`,
+        league: team.league,
+      }));
+    
+    console.log('✅ Seçili takımlar (ID ile):', selectedTeamsData);
+    onComplete(selectedTeamsData);
   };
 
   const filterTeams = (teams: Team[]) => {

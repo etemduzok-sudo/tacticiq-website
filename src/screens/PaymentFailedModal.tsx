@@ -6,10 +6,14 @@ import {
   TouchableOpacity,
   StyleSheet,
   Modal,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeIn, ZoomIn } from 'react-native-reanimated';
+
+// Web için animasyonları devre dışı bırak
+const isWeb = Platform.OS === 'web';
 
 interface PaymentFailedModalProps {
   visible: boolean;
@@ -30,8 +34,8 @@ export const PaymentFailedModal: React.FC<PaymentFailedModalProps> = ({
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
-        <Animated.View entering={FadeIn} style={styles.container}>
-          <Animated.View entering={ZoomIn.delay(200)}>
+        <Animated.View entering={isWeb ? undefined : FadeIn} style={styles.container}>
+          <Animated.View entering={isWeb ? undefined : ZoomIn.delay(200)}>
             <View style={styles.iconContainer}>
               <Ionicons name="close-circle" size={64} color="#EF4444" />
             </View>

@@ -8,12 +8,16 @@ import {
   ScrollView,
   Modal,
   Dimensions,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeIn, FadeInLeft } from 'react-native-reanimated';
 
 const { width, height } = Dimensions.get('window');
+
+// Web için animasyonları devre dışı bırak
+const isWeb = Platform.OS === 'web';
 
 interface MatchSummaryModalProps {
   visible: boolean;
@@ -174,7 +178,7 @@ export const MatchSummaryModal: React.FC<MatchSummaryModalProps> = ({
         />
 
         {/* Modal Content */}
-        <Animated.View entering={FadeIn} style={styles.modalContainer}>
+        <Animated.View entering={isWeb ? undefined : FadeIn} style={styles.modalContainer}>
           {/* Close Button */}
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
             <View style={styles.closeButtonInner}>
@@ -248,7 +252,7 @@ export const MatchSummaryModal: React.FC<MatchSummaryModalProps> = ({
                 {summary.goals.map((goal: any, index: number) => (
                   <Animated.View
                     key={index}
-                    entering={FadeInLeft.delay(index * 50)}
+                    entering={isWeb ? undefined : FadeInLeft.delay(index * 50)}
                     style={[
                       styles.goalItem,
                       {
@@ -296,7 +300,7 @@ export const MatchSummaryModal: React.FC<MatchSummaryModalProps> = ({
                 {summary.cards.map((card: any, index: number) => (
                   <Animated.View
                     key={index}
-                    entering={FadeInLeft.delay(index * 50)}
+                    entering={isWeb ? undefined : FadeInLeft.delay(index * 50)}
                     style={styles.cardItem}
                   >
                     <View style={styles.cardBadge}>
@@ -331,7 +335,7 @@ export const MatchSummaryModal: React.FC<MatchSummaryModalProps> = ({
                 {summary.substitutions.map((sub: any, index: number) => (
                   <Animated.View
                     key={index}
-                    entering={FadeInLeft.delay(index * 50)}
+                    entering={isWeb ? undefined : FadeInLeft.delay(index * 50)}
                     style={styles.subItem}
                   >
                     <View style={styles.subMinuteBadge}>

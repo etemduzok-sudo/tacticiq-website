@@ -191,61 +191,23 @@ export default function App() {
   };
 
   // 9. Favorite Teams → Complete
-  const handleFavoriteTeamsComplete = async (selectedTeams: string[]) => {
-    console.log('✅ [FAVORITE TEAMS] Selected:', selectedTeams);
+  const handleFavoriteTeamsComplete = async (selectedTeams: Array<{ id: number; name: string; logo: string; league?: string }>) => {
+    console.log('✅ [FAVORITE TEAMS] Selected with IDs:', selectedTeams);
     if (selectedTeams.length === 0) {
       console.warn('⚠️ No teams selected!');
       return;
     }
     
-    // Takım ID'lerini isimle eşleştir (API-Football'da isimle arama yapacağız)
-    const teamNames: { [key: string]: string } = {
-      '1': 'Galatasaray',
-      '2': 'Fenerbahce',
-      '3': 'Besiktas',
-      '4': 'Trabzonspor',
-      '5': 'Istanbul Basaksehir',
-      '6': 'Antalyaspor',
-      '7': 'Konyaspor',
-      '8': 'Sivasspor',
-      '9': 'Alanyaspor',
-      '10': 'Kasimpasa',
-      '11': 'Gaziantep',
-      '12': 'Kayserispor',
-      '13': 'Rizespor',
-      '14': 'Hatayspor',
-      '15': 'Adana Demirspor',
-      '16': 'Fatih Karagumruk',
-      '17': 'Giresunspor',
-      '18': 'Umraniyespor',
-      // Avrupa takımları
-      '19': 'Real Madrid',
-      '20': 'Barcelona',
-      '21': 'Manchester United',
-      '22': 'Liverpool',
-      '23': 'Bayern Munich',
-      '24': 'Paris Saint Germain',
-      '25': 'Juventus',
-      '26': 'Inter',
-      '27': 'Milan',
-      '28': 'Arsenal',
-      '29': 'Chelsea',
-      '30': 'Manchester City',
-      // Milli takımlar
-      '101': 'Turkey',
-      '102': 'Brazil',
-      '103': 'Germany',
-      '104': 'Argentina',
-    };
-    
-    const favoriteTeamsData = selectedTeams.map(teamId => ({
-      id: parseInt(teamId),
-      name: teamNames[teamId] || 'Unknown',
-      logo: '',
+    // Artık takımlar doğrudan API ID'leriyle geliyor
+    const favoriteTeamsData = selectedTeams.map(team => ({
+      id: team.id,
+      name: team.name,
+      logo: team.logo,
+      league: team.league,
     }));
     
     await AsyncStorage.setItem('fan-manager-favorite-clubs', JSON.stringify(favoriteTeamsData));
-    console.log('💾 Saved favorite teams:', favoriteTeamsData);
+    console.log('💾 Saved favorite teams with IDs:', favoriteTeamsData);
     
     // Takım seçimi sonrası MainTabs'a geç (Home tab default)
     // Kullanıcı profil ekranını görmek için tab menüsünden Profile'a tıklayabilir

@@ -7,7 +7,8 @@ const NodeCache = require('node-cache');
 // checkperiod: 600 = check for expired keys every 10 minutes
 const cache = new NodeCache({ stdTTL: 3600, checkperiod: 600 });
 
-const API_KEY = process.env.FOOTBALL_API_KEY || 'YOUR_API_KEY_HERE';
+// Try both possible env var names for flexibility
+const API_KEY = process.env.FOOTBALL_API_KEY || process.env.API_FOOTBALL_KEY || 'YOUR_API_KEY_HERE';
 const BASE_URL = 'https://v3.football.api-sports.io';
 
 // Request counter (resets daily)
@@ -104,6 +105,11 @@ async function getFixturesByLeague(leagueId, season = 2024) {
   return makeRequest('/fixtures', { league: leagueId, season }, `fixtures-league-${leagueId}-${season}`, 3600);
 }
 
+// Get fixtures by team (all competitions for a season)
+async function getFixturesByTeam(teamId, season = 2025) { // 2025-26 sezonu
+  return makeRequest('/fixtures', { team: teamId, season }, `fixtures-team-${teamId}-${season}`, 3600); // 1 hour cache
+}
+
 // Get fixture details
 async function getFixtureDetails(fixtureId) {
   return makeRequest('/fixtures', { id: fixtureId }, `fixture-${fixtureId}`, 300); // 5 min cache
@@ -193,6 +199,7 @@ module.exports = {
   getLiveMatches,
   getFixturesByDate,
   getFixturesByLeague,
+  getFixturesByTeam,
   getFixtureDetails,
   getFixtureStatistics,
   getFixtureEvents,

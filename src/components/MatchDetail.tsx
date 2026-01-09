@@ -65,19 +65,63 @@ export function MatchDetail({ matchId, onBack }: MatchDetailProps) {
   // Fetch match details from API
   const { match, statistics, events, lineups, loading, error } = useMatchDetails(Number(matchId));
 
+  // Helper function to get team colors from API or generate from team name
+  const getTeamColors = (team: any): [string, string] => {
+    // Try to get colors from API
+    if (team.colors?.player?.primary) {
+      const primary = team.colors.player.primary;
+      const secondary = team.colors.player.number || primary;
+      return [primary, secondary];
+    }
+    
+    // Fallback: Generate colors based on team name
+    const teamName = team.name.toLowerCase();
+    
+    // Known team colors (Turkish Super Lig + Popular teams)
+    const knownColors: { [key: string]: [string, string] } = {
+      'galatasaray': ['#FDB913', '#E30613'],
+      'fenerbahçe': ['#FCCF1E', '#001A70'],
+      'fenerbahce': ['#FCCF1E', '#001A70'],
+      'beşiktaş': ['#000000', '#FFFFFF'],
+      'besiktas': ['#000000', '#FFFFFF'],
+      'trabzonspor': ['#781132', '#7C9ECC'],
+      'başakşehir': ['#FF6600', '#003366'],
+      'basaksehir': ['#FF6600', '#003366'],
+      'real madrid': ['#FFFFFF', '#FFD700'],
+      'barcelona': ['#A50044', '#004D98'],
+      'manchester united': ['#DA291C', '#000000'],
+      'liverpool': ['#C8102E', '#00B2A9'],
+      'chelsea': ['#034694', '#034694'],
+      'arsenal': ['#EF0107', '#FFFFFF'],
+      'juventus': ['#000000', '#FFFFFF'],
+      'bayern': ['#DC052D', '#0066B2'],
+      'psg': ['#004170', '#DA291C'],
+    };
+    
+    // Check if team name matches known colors
+    for (const [key, colors] of Object.entries(knownColors)) {
+      if (teamName.includes(key)) {
+        return colors;
+      }
+    }
+    
+    // Default colors based on home/away
+    return team.home ? ['#059669', '#047857'] : ['#F59E0B', '#D97706'];
+  };
+
   // Transform API data to component format
   const matchData = match ? {
     id: match.fixture.id.toString(),
     homeTeam: {
       name: match.teams.home.name,
       logo: match.teams.home.logo || '⚽',
-      color: ['#059669', '#059669'], // Default colors
+      color: getTeamColors(match.teams.home),
       manager: 'TBA',
     },
     awayTeam: {
       name: match.teams.away.name,
       logo: match.teams.away.logo || '⚽',
-      color: ['#F59E0B', '#F59E0B'], // Default colors
+      color: getTeamColors(match.teams.away),
       manager: 'TBA',
     },
     league: match.league.name,
@@ -128,7 +172,7 @@ export function MatchDetail({ matchId, onBack }: MatchDetailProps) {
         );
       
       case 'live':
-        return <MatchLive matchData={matchData} events={events} />;
+        return <MatchLive matchData={matchData} matchId={matchId} events={events} />;
       
       case 'stats':
         return <MatchStats matchData={matchData} />;

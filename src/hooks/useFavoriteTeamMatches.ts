@@ -62,8 +62,9 @@ export function useFavoriteTeamMatches(): UseFavoriteTeamMatchesResult {
   const [pastMatches, setPastMatches] = useState<Match[]>([]);
   const [liveMatches, setLiveMatches] = useState<Match[]>([]);
   const [upcomingMatches, setUpcomingMatches] = useState<Match[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // Start with loading true
   const [error, setError] = useState<string | null>(null);
+  const [isInitialLoad, setIsInitialLoad] = useState(true); // Track initial load
 
   // Generate mock matches for testing
   const generateMockMatches = async (): Promise<Match[]> => {
@@ -165,6 +166,7 @@ export function useFavoriteTeamMatches(): UseFavoriteTeamMatchesResult {
 
   const fetchMatches = async () => {
     try {
+      console.log('🔄 [useFavoriteTeamMatches] Starting fetch, setting loading=true');
       setLoading(true);
       setError(null);
 
@@ -176,53 +178,51 @@ export function useFavoriteTeamMatches(): UseFavoriteTeamMatchesResult {
         return;
       }
 
-      // Fetch matches for all favorite teams (using team names)
+      // ✅ Fetch ALL season matches for favorite teams (all competitions)
       const allMatches: Match[] = [];
+      const currentSeason = 2025; // 2025-26 sezonu (aktif sezon)
+      
+      console.log(`📅 Fetching all season matches for ${favoriteTeams.length} favorite teams...`);
       
       // Fetch live matches first
       try {
         const liveResponse = await api.matches.getLiveMatches();
         if (liveResponse.success && liveResponse.data) {
           allMatches.push(...liveResponse.data);
+          console.log(`✅ Found ${liveResponse.data.length} live matches`);
         }
       } catch (err) {
         console.warn('Failed to fetch live matches:', err);
       }
 
-      // Fetch only today and next 3 days (reduced from 7 to minimize errors)
-      const favoriteTeamNames = favoriteTeams
-        .filter(t => t && t.name) // Filter out invalid teams
-        .map(t => t.name.toLowerCase());
-      
-      // Only fetch for today and next 3 days
-      for (let i = 0; i <= 3; i++) {
-        const date = new Date();
-        date.setDate(date.getDate() + i);
-        const dateStr = date.toISOString().split('T')[0];
+      // Fetch all season matches for each favorite team
+      for (const team of favoriteTeams) {
+        if (!team || !team.id) continue;
         
         try {
-          const response = await api.matches.getMatchesByDate(dateStr);
+          console.log(`📥 Fetching season matches for ${team.name} (ID: ${team.id})...`);
+          const response = await api.matches.getTeamSeasonMatches(team.id, currentSeason);
+          
           if (response.success && response.data && response.data.length > 0) {
-            // Filter by favorite teams
-            const filtered = response.data.filter((match: any) => {
-              // Handle both API formats (teams.home or home_team)
-              const homeName = (match.teams?.home?.name || match.home_team?.name || '').toLowerCase();
-              const awayName = (match.teams?.away?.name || match.away_team?.name || '').toLowerCase();
-              
-              if (!homeName || !awayName) return false;
-              
-              return favoriteTeamNames.some(favName => 
-                homeName.includes(favName) || favName.includes(homeName) ||
-                awayName.includes(favName) || favName.includes(awayName)
-              );
+            console.log(`✅ Found ${response.data.length} matches for ${team.name}`);
+            
+            // Add matches (avoid duplicates by checking fixture ID)
+            const existingIds = new Set(allMatches.map(m => m.fixture.id));
+            const newMatches = response.data.filter((match: any) => {
+              const fixtureId = match.fixture?.id || match.id;
+              return !existingIds.has(fixtureId);
             });
             
-            allMatches.push(...filtered);
+            allMatches.push(...newMatches);
+          } else {
+            console.log(`⚠️ No matches found for ${team.name}`);
           }
         } catch (err) {
-          // Silently skip errors (they're handled in api.ts)
+          console.warn(`Failed to fetch matches for team ${team.name}:`, err);
         }
       }
+      
+      console.log(`📊 Total matches fetched: ${allMatches.length}`);
 
       // Remove duplicates (handle both fixture.id and id)
       const uniqueMatches = Array.from(
@@ -264,7 +264,9 @@ export function useFavoriteTeamMatches(): UseFavoriteTeamMatchesResult {
       console.error('Error fetching favorite team matches:', err);
       setError(err.message || 'Maçlar yüklenemedi');
     } finally {
+      console.log('✅ [useFavoriteTeamMatches] Fetch complete, setting loading=false');
       setLoading(false);
+      setIsInitialLoad(false);
     }
   };
 

@@ -96,35 +96,38 @@ class DatabaseService {
           league_id: matchData.league?.id,
           season: matchData.league?.season,
           round: matchData.league?.round,
-          date: new Date(matchData.fixture.date),
-          timestamp: matchData.fixture.timestamp,
+          fixture_date: new Date(matchData.fixture.date),
+          fixture_timestamp: matchData.fixture.timestamp,
           timezone: matchData.fixture.timezone,
-          venue: matchData.fixture.venue?.name,
+          venue_name: matchData.fixture.venue?.name,
+          venue_city: matchData.fixture.venue?.city,
           referee: matchData.fixture.referee,
           
-          // Status
+          // Status (matching Supabase schema)
+          status: matchData.fixture.status.short,
           status_long: matchData.fixture.status.long,
-          status_short: matchData.fixture.status.short,
-          status_elapsed: matchData.fixture.status.elapsed,
+          elapsed: matchData.fixture.status.elapsed,
           
           // Teams
           home_team_id: matchData.teams?.home?.id,
           away_team_id: matchData.teams?.away?.id,
           
-          // Score
-          home_goals: matchData.goals?.home,
-          away_goals: matchData.goals?.away,
-          home_halftime_goals: matchData.score?.halftime?.home,
-          away_halftime_goals: matchData.score?.halftime?.away,
-          home_fulltime_goals: matchData.score?.fulltime?.home,
-          away_fulltime_goals: matchData.score?.fulltime?.away,
+          // Score (matching Supabase schema)
+          home_score: matchData.goals?.home,
+          away_score: matchData.goals?.away,
+          halftime_home: matchData.score?.halftime?.home,
+          halftime_away: matchData.score?.halftime?.away,
+          fulltime_home: matchData.score?.fulltime?.home,
+          fulltime_away: matchData.score?.fulltime?.away,
+          extratime_home: matchData.score?.extratime?.home,
+          extratime_away: matchData.score?.extratime?.away,
+          penalty_home: matchData.score?.penalty?.home,
+          penalty_away: matchData.score?.penalty?.away,
           
-          // Additional Data
-          events: matchData.events || null,
-          lineups: matchData.lineups || null,
-          statistics: matchData.statistics || null,
-          
-          last_synced_at: new Date(),
+          // Additional Data flags (matching Supabase schema)
+          has_lineups: matchData.lineups ? true : false,
+          has_statistics: matchData.statistics ? true : false,
+          has_events: matchData.events ? true : false,
         }, { onConflict: 'id' });
 
       if (error) throw error;

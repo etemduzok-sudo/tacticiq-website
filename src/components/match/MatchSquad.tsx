@@ -33,6 +33,9 @@ import Svg, {
 
 const { width, height } = Dimensions.get('window');
 
+// Web için animasyonları devre dışı bırak
+const isWeb = Platform.OS === 'web';
+
 interface MatchSquadProps {
   matchData: any;
   matchId: string;
@@ -545,6 +548,63 @@ const FootballField = ({ children, style }: any) => (
 );
 
 export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSquadProps) {
+  // ✅ GERÇEK VERİ: Lineups'tan oyuncuları çek
+  const realPlayers = React.useMemo(() => {
+    if (!lineups || lineups.length === 0) {
+      console.log('⚠️ No lineups data, using empty array');
+      return [];
+    }
+    
+    // Her iki takımın oyuncularını birleştir
+    const allPlayers: any[] = [];
+    lineups.forEach((lineup: any) => {
+      const teamName = lineup.team?.name || 'Unknown';
+      
+      // Başlangıç 11'i ekle
+      if (lineup.startXI) {
+        lineup.startXI.forEach((item: any) => {
+          const player = item.player;
+          allPlayers.push({
+            id: player.id,
+            name: player.name,
+            position: player.pos || 'SUB',
+            rating: 75, // Default rating (gerçek rating API'den gelmez)
+            number: player.number,
+            team: teamName,
+            form: 7,
+            injury: false,
+            age: 25,
+            nationality: 'Unknown',
+            stats: { pace: 70, shooting: 70, passing: 70, dribbling: 70, defending: 70, physical: 70 }
+          });
+        });
+      }
+      
+      // Yedekleri ekle
+      if (lineup.substitutes) {
+        lineup.substitutes.forEach((item: any) => {
+          const player = item.player;
+          allPlayers.push({
+            id: player.id,
+            name: player.name,
+            position: player.pos || 'SUB',
+            rating: 70,
+            number: player.number,
+            team: teamName,
+            form: 6,
+            injury: false,
+            age: 25,
+            nationality: 'Unknown',
+            stats: { pace: 65, shooting: 65, passing: 65, dribbling: 65, defending: 65, physical: 65 }
+          });
+        });
+      }
+    });
+    
+    console.log('✅ Real players loaded from lineups:', allPlayers.length);
+    return allPlayers;
+  }, [lineups]);
+  
   const [selectedFormation, setSelectedFormation] = useState<string | null>(null);
   const [selectedPlayers, setSelectedPlayers] = useState<Record<number, typeof players[0] | null>>({});
   const [selectedSlot, setSelectedSlot] = useState<number | null>(null);
@@ -560,15 +620,17 @@ export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSqu
   const scale = useSharedValue(1);
   
   React.useEffect(() => {
-    scale.value = withRepeat(
-      withTiming(1.1, { duration: 1000 }),
-      -1,
-      true
-    );
+    if (!isWeb) {
+      scale.value = withRepeat(
+        withTiming(1.1, { duration: 1000 }),
+        -1,
+        true
+      );
+    }
   }, []);
 
   const animatedBallStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
+    transform: [{ scale: isWeb ? 1 : scale.value }],
   }));
 
   const handleFormationSelect = (formationId: string) => {
@@ -712,7 +774,7 @@ export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSqu
                   ]}
                 >
                   {player ? (
-                    <Animated.View entering={ZoomIn.duration(300)}>
+                    <Animated.View entering={isWeb ? undefined : ZoomIn.duration(300)}>
                       <View style={styles.playerCardWrapper}>
                         {/* Remove button - Top Right */}
                         <TouchableOpacity
@@ -824,7 +886,7 @@ export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSqu
       {/* Player Selection Modal */}
       <PlayerModal
         visible={showPlayerModal}
-        players={players}
+        players={realPlayers.length > 0 ? realPlayers : players}
         selectedPlayers={selectedPlayers}
         positionLabel={selectedSlot !== null ? formation?.positions[selectedSlot] : ''}
         onSelect={handlePlayerSelect}
@@ -1004,7 +1066,7 @@ const FormationDetailModal = ({ formation, onClose, onSelect }: any) => (
   >
     <View style={styles.formationDetailOverlay}>
       <Animated.View 
-        entering={ZoomIn.duration(300)}
+        entering={isWeb ? undefined : ZoomIn.duration(300)}
         style={styles.formationDetailContent}
       >
         {/* Header - Fixed at top */}
@@ -1101,8 +1163,8 @@ const PlayerModal = ({ visible, players, selectedPlayers, positionLabel, onSelec
     >
       <View style={styles.modalOverlay}>
         <Animated.View 
-          entering={SlideInDown.duration(300)}
-          exiting={SlideOutDown.duration(300)}
+          entering={isWeb ? undefined : SlideInDown.duration(300)}
+          exiting={isWeb ? undefined : SlideOutDown.duration(300)}
           style={styles.modalContent}
         >
           {/* Header */}
@@ -1404,11 +1466,20 @@ const styles = StyleSheet.create({
     height: 84,
     borderRadius: 10,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 4,
+      },
+      web: {
+        boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.3)',
+      },
+    }),
   },
   playerCardGradient: {
     flex: 1,
@@ -1432,11 +1503,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 2,
     borderColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 5,
+      },
+      web: {
+        boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.3)',
+      },
+    }),
   },
   ratingBadge: {
     width: 26,
@@ -1640,11 +1720,20 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(148, 163, 184, 0.4)',
     zIndex: 1000,
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 5,
+      },
+      web: {
+        boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.3)',
+      },
+    }),
   },
   modalTabs: {
     flexDirection: 'row',
