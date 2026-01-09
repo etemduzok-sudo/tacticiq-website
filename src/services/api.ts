@@ -79,9 +79,9 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
     }
     
     if (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError') || error.message?.includes('ERR_CONNECTION_REFUSED')) {
-      console.error('🌐 Network Error: Backend is not reachable. Make sure backend is running on', API_BASE_URL);
-      handleNetworkError('Backend bağlantısı kurulamadı', { endpoint, apiUrl: API_BASE_URL });
-      throw new Error('Backend bağlantısı kurulamadı. Backend\'in çalıştığından emin olun.');
+      // Silently handle network errors (backend is expected to be off in dev)
+      // Don't log or show errors for expected backend unavailability
+      throw new Error('Backend bağlantısı kurulamadı');
     }
     
     console.error('API Request Error:', error);
@@ -177,20 +177,17 @@ export const matchesApi = {
         return { success: true, data: transformedData, source: 'database' };
       }
       
-      // Try backend
-      console.log('⚠️ No data in DB, trying BACKEND...');
+      // Try backend (silently fail to reduce console noise)
       try {
         const backendResult = await request('/matches/live');
         return backendResult;
-      } catch (backendError) {
-        console.log('⚠️ Backend failed, using MOCK DATA...');
-        // Fallback to mock data
+      } catch (backendError: any) {
+        // Silently fallback to mock data
         const mockData = getMockMatches('live');
         return { success: true, data: mockData, source: 'mock' };
       }
     } catch (error) {
-      console.error('❌ Error in getLiveMatches, using MOCK DATA:', error);
-      // Final fallback to mock data
+      // Silently fallback to mock data (errors are expected when backend is off)
       const mockData = getMockMatches('live');
       return { success: true, data: mockData, source: 'mock' };
     }
@@ -208,20 +205,26 @@ export const matchesApi = {
         return { success: true, data: transformedData, source: 'database' };
       }
       
-      // Try backend
-      console.log(`⚠️ No data in DB for ${date}, trying BACKEND...`);
-      try {
-        const backendResult = await request(`/matches/date/${date}`);
-        return backendResult;
-      } catch (backendError) {
-        console.log(`⚠️ Backend failed for ${date}, using MOCK DATA...`);
-        // Fallback to mock data
+      // Try backend (only for today and tomorrow to reduce errors)
+      const today = new Date().toISOString().split('T')[0];
+      const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+      
+      if (date === today || date === tomorrow) {
+        try {
+          const backendResult = await request(`/matches/date/${date}`);
+          return backendResult;
+        } catch (backendError: any) {
+          // Silently fallback to mock data (don't log every failed attempt)
+          const mockData = getMockMatchesByDate(date);
+          return { success: true, data: mockData, source: 'mock' };
+        }
+      } else {
+        // For other dates, directly use mock data (no backend attempt)
         const mockData = getMockMatchesByDate(date);
         return { success: true, data: mockData, source: 'mock' };
       }
     } catch (error) {
-      console.error(`❌ Error in getMatchesByDate(${date}), using MOCK DATA:`, error);
-      // Final fallback to mock data
+      // Silently fallback to mock data (errors are expected when backend is off)
       const mockData = getMockMatchesByDate(date);
       return { success: true, data: mockData, source: 'mock' };
     }

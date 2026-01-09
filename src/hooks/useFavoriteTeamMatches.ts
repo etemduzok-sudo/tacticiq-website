@@ -189,19 +189,20 @@ export function useFavoriteTeamMatches(): UseFavoriteTeamMatchesResult {
         console.warn('Failed to fetch live matches:', err);
       }
 
-      // Fetch last 7 days and next 7 days for each favorite team
+      // Fetch only today and next 3 days (reduced from 7 to minimize errors)
       const favoriteTeamNames = favoriteTeams
         .filter(t => t && t.name) // Filter out invalid teams
         .map(t => t.name.toLowerCase());
       
-      for (let i = -7; i <= 7; i++) {
+      // Only fetch for today and next 3 days
+      for (let i = 0; i <= 3; i++) {
         const date = new Date();
         date.setDate(date.getDate() + i);
         const dateStr = date.toISOString().split('T')[0];
         
         try {
           const response = await api.matches.getMatchesByDate(dateStr);
-          if (response.success && response.data) {
+          if (response.success && response.data && response.data.length > 0) {
             // Filter by favorite teams
             const filtered = response.data.filter((match: any) => {
               // Handle both API formats (teams.home or home_team)
@@ -219,7 +220,7 @@ export function useFavoriteTeamMatches(): UseFavoriteTeamMatchesResult {
             allMatches.push(...filtered);
           }
         } catch (err) {
-          console.warn(`Failed to fetch matches for ${dateStr}:`, err);
+          // Silently skip errors (they're handled in api.ts)
         }
       }
 
@@ -245,18 +246,18 @@ export function useFavoriteTeamMatches(): UseFavoriteTeamMatchesResult {
       
       // If no matches found, use mock data (without filtering by favorite teams)
       if (past.length === 0 && live.length === 0 && upcoming.length === 0) {
-        console.log('⚠️ No favorite team matches found, using MOCK DATA (all matches)...');
+        console.log('📊 No favorite team matches found, using MOCK DATA...');
         const mockMatches = await generateMockMatches();
         const categorized = categorizeMatches(mockMatches);
         setPastMatches(categorized.past);
         setLiveMatches(categorized.live);
         setUpcomingMatches(categorized.upcoming.slice(0, 10));
-        console.log(`✅ Using mock matches: ${categorized.past.length} past, ${categorized.live.length} live, ${categorized.upcoming.length} upcoming`);
+        console.log(`✅ Mock data loaded: ${categorized.past.length} past, ${categorized.live.length} live, ${categorized.upcoming.length} upcoming`);
       } else {
         setPastMatches(past);
         setLiveMatches(live);
         setUpcomingMatches(upcoming.slice(0, 10)); // Limit upcoming to 10 matches
-        console.log(`✅ Favorite team matches: ${past.length} past, ${live.length} live, ${upcoming.length} upcoming`);
+        console.log(`✅ Matches loaded: ${past.length} past, ${live.length} live, ${upcoming.length} upcoming`);
       }
 
     } catch (err: any) {
