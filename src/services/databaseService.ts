@@ -21,8 +21,8 @@ export const matchesDb = {
           away_team:teams!matches_away_team_id_fkey(id, name, logo),
           league:leagues(id, name, country, logo)
         `)
-        .in('status_short', ['1H', '2H', 'HT', 'ET', 'BT', 'P', 'LIVE'])
-        .order('date', { ascending: false });
+        .in('status', ['1H', '2H', 'HT', 'ET', 'BT', 'P', 'LIVE'])
+        .order('fixture_date', { ascending: false });
 
       if (error) throw error;
       return { success: true, data };
@@ -51,9 +51,9 @@ export const matchesDb = {
           away_team:teams!matches_away_team_id_fkey(id, name, logo),
           league:leagues(id, name, country, logo)
         `)
-        .gte('date', startOfDay.toISOString())
-        .lte('date', endOfDay.toISOString())
-        .order('date', { ascending: true });
+        .gte('fixture_date', startOfDay.toISOString())
+        .lte('fixture_date', endOfDay.toISOString())
+        .order('fixture_date', { ascending: true });
 
       if (error) throw error;
       return { success: true, data };
@@ -77,7 +77,7 @@ export const matchesDb = {
           league:leagues(id, name, country, logo)
         `)
         .or(`home_team_id.eq.${teamId},away_team_id.eq.${teamId}`)
-        .order('date', { ascending: false })
+        .order('fixture_date', { ascending: false })
         .limit(20);
 
       if (error) throw error;

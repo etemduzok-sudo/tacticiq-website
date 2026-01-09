@@ -90,6 +90,77 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
 }
 
 // ====================
+// HELPER: Transform database format to API format
+// ====================
+
+/**
+ * Transform database match format to API format
+ * Database: { fixture_date, status, home_team, away_team, ... }
+ * API: { fixture: { id, date, status: { short, long } }, teams: { home, away }, ... }
+ */
+function transformDbMatchToApiFormat(dbMatch: any): any {
+  // If already in API format, return as is
+  if (dbMatch.fixture && dbMatch.teams) {
+    return dbMatch;
+  }
+
+  // Transform database format to API format
+  const timestamp = dbMatch.fixture_timestamp 
+    ? dbMatch.fixture_timestamp 
+    : (dbMatch.fixture_date ? new Date(dbMatch.fixture_date).getTime() / 1000 : Date.now() / 1000);
+
+  return {
+    id: dbMatch.id,
+    fixture: {
+      id: dbMatch.id,
+      date: dbMatch.fixture_date || new Date().toISOString(),
+      timestamp: timestamp,
+      status: {
+        short: dbMatch.status || 'NS',
+        long: dbMatch.status_long || 'Not Started',
+        elapsed: dbMatch.elapsed || null,
+      },
+      venue: {
+        name: dbMatch.venue_name || null,
+        city: dbMatch.venue_city || null,
+      },
+    },
+    league: dbMatch.league || {
+      id: dbMatch.league_id,
+      name: null,
+      country: null,
+      logo: null,
+    },
+    teams: {
+      home: dbMatch.home_team || {
+        id: dbMatch.home_team_id,
+        name: null,
+        logo: null,
+      },
+      away: dbMatch.away_team || {
+        id: dbMatch.away_team_id,
+        name: null,
+        logo: null,
+      },
+    },
+    goals: {
+      home: dbMatch.home_score || null,
+      away: dbMatch.away_score || null,
+    },
+    score: {
+      halftime: {
+        home: dbMatch.halftime_home || null,
+        away: dbMatch.halftime_away || null,
+      },
+      fulltime: {
+        home: dbMatch.fulltime_home || dbMatch.home_score || null,
+        away: dbMatch.fulltime_away || dbMatch.away_score || null,
+      },
+    },
+  };
+}
+
+// ====================
 // MATCHES API (Hybrid: DB first, then Backend)
 // ====================
 
@@ -101,7 +172,9 @@ export const matchesApi = {
       const dbResult = await matchesDb.getLiveMatches();
       if (dbResult.success && dbResult.data && dbResult.data.length > 0) {
         console.log('✅ Live matches from DATABASE');
-        return { success: true, data: dbResult.data, source: 'database' };
+        // Transform database format to API format
+        const transformedData = dbResult.data.map(transformDbMatchToApiFormat);
+        return { success: true, data: transformedData, source: 'database' };
       }
       
       // Try backend
@@ -130,7 +203,9 @@ export const matchesApi = {
       const dbResult = await matchesDb.getMatchesByDate(date);
       if (dbResult.success && dbResult.data && dbResult.data.length > 0) {
         console.log(`✅ Matches for ${date} from DATABASE`);
-        return { success: true, data: dbResult.data, source: 'database' };
+        // Transform database format to API format
+        const transformedData = dbResult.data.map(transformDbMatchToApiFormat);
+        return { success: true, data: transformedData, source: 'database' };
       }
       
       // Try backend
@@ -165,7 +240,9 @@ export const matchesApi = {
       const dbResult = await matchesDb.getMatchById(matchId);
       if (dbResult.success && dbResult.data) {
         console.log(`✅ Match ${matchId} from DATABASE`);
-        return { success: true, data: dbResult.data, source: 'database' };
+        // Transform database format to API format
+        const transformedData = transformDbMatchToApiFormat(dbResult.data);
+        return { success: true, data: transformedData, source: 'database' };
       }
       
       // Try backend
