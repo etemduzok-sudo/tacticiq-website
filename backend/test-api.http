@@ -1,0 +1,156 @@
+### Fan Manager 2026 - Backend API Test File
+### REST Client kullanarak test edebilirsiniz (VS Code extension)
+
+@baseUrl = http://localhost:3000
+@userId = 550e8400-e29b-41d4-a716-446655440000
+@matchId = 12345
+
+### ============================================
+### HEALTH CHECK
+### ============================================
+
+### Health Check
+GET {{baseUrl}}/health
+
+### ============================================
+### PREDICTIONS API
+### ============================================
+
+### Create Prediction
+POST {{baseUrl}}/api/predictions
+Content-Type: application/json
+
+{
+  "userId": "{{userId}}",
+  "matchId": {{matchId}},
+  "homeScore": 2,
+  "awayScore": 1,
+  "firstGoal": "home",
+  "totalGoals": "2-3",
+  "yellowCards": 4,
+  "redCards": 0,
+  "corners": 8,
+  "focusedPredictions": ["homeScore", "firstGoal"],
+  "trainingType": "attack",
+  "trainingMultiplier": 1.5
+}
+
+### Get User Predictions
+GET {{baseUrl}}/api/predictions/user/{{userId}}
+
+### Get Match Predictions
+GET {{baseUrl}}/api/predictions/match/{{matchId}}
+
+### Get Single Prediction
+GET {{baseUrl}}/api/predictions/{{userId}}/{{matchId}}
+
+### Update Prediction
+PUT {{baseUrl}}/api/predictions/{{userId}}/{{matchId}}
+Content-Type: application/json
+
+{
+  "homeScore": 3,
+  "awayScore": 2,
+  "firstGoal": "away",
+  "totalGoals": "4+",
+  "yellowCards": 5,
+  "redCards": 1,
+  "corners": 10
+}
+
+### Delete Prediction
+DELETE {{baseUrl}}/api/predictions/{{userId}}/{{matchId}}
+
+### ============================================
+### MATCH DETAILS API
+### ============================================
+
+### Get Match Details
+GET {{baseUrl}}/api/matches/{{matchId}}/details
+
+### Get Match Statistics
+GET {{baseUrl}}/api/matches/{{matchId}}/statistics
+
+### Get Match Events
+GET {{baseUrl}}/api/matches/{{matchId}}/events
+
+### Get Live Matches
+GET {{baseUrl}}/api/matches/live
+
+### ============================================
+### SCORING API
+### ============================================
+
+### Calculate Score for Match
+POST {{baseUrl}}/api/scoring/calculate/{{matchId}}
+Content-Type: application/json
+
+{
+  "matchResult": {
+    "homeScore": 2,
+    "awayScore": 1,
+    "firstGoal": "home",
+    "totalGoals": "2-3",
+    "yellowCards": 4,
+    "redCards": 0,
+    "corners": 8,
+    "events": []
+  }
+}
+
+### Get User Scores
+GET {{baseUrl}}/api/scoring/user/{{userId}}
+
+### Get Match Scores
+GET {{baseUrl}}/api/scoring/match/{{matchId}}
+
+### Get Leaderboard
+GET {{baseUrl}}/api/scoring/leaderboard?period=overall&limit=10
+
+### Get User Stats
+GET {{baseUrl}}/api/scoring/stats/{{userId}}
+
+### ============================================
+### VALIDATION TESTS
+### ============================================
+
+### Invalid Prediction (missing fields)
+POST {{baseUrl}}/api/predictions
+Content-Type: application/json
+
+{
+  "userId": "{{userId}}",
+  "matchId": {{matchId}}
+}
+
+### Invalid Prediction (wrong score range)
+POST {{baseUrl}}/api/predictions
+Content-Type: application/json
+
+{
+  "userId": "{{userId}}",
+  "matchId": {{matchId}},
+  "homeScore": 25,
+  "awayScore": -1,
+  "firstGoal": "home",
+  "totalGoals": "2-3",
+  "yellowCards": 4,
+  "redCards": 0,
+  "corners": 8
+}
+
+### Invalid Prediction (wrong enum value)
+POST {{baseUrl}}/api/predictions
+Content-Type: application/json
+
+{
+  "userId": "{{userId}}",
+  "matchId": {{matchId}},
+  "homeScore": 2,
+  "awayScore": 1,
+  "firstGoal": "invalid",
+  "totalGoals": "2-3",
+  "yellowCards": 4,
+  "redCards": 0,
+  "corners": 8
+}

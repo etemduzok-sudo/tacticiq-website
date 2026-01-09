@@ -3,6 +3,8 @@ import { LogBox, View, Text, StyleSheet, Platform, UIManager } from 'react-nativ
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ThemeProvider } from './src/contexts/ThemeContext';
+import { PredictionProvider } from './src/contexts/PredictionContext';
+import { MatchProvider } from './src/contexts/MatchContext';
 import ErrorBoundary from './src/components/ErrorBoundary';
 import MaintenanceScreen from './src/components/MaintenanceScreen';
 import { MAINTENANCE_CONFIG, logVersionInfo } from './src/config/AppVersion';
@@ -583,29 +585,33 @@ export default function App() {
     <ErrorBoundary>
       <SafeAreaProvider>
         <ThemeProvider>
-          {/* Maintenance Mode Check */}
-          {isMaintenanceMode ? (
-            <MaintenanceScreen />
-          ) : (
-            <View style={{ flex: 1, backgroundColor: '#0F172A' }}>
-              {Platform.OS === 'web' && __DEV__ && (
-                <View style={{ padding: 10, backgroundColor: '#1E293B' }}>
-                  <Text style={{ color: '#FFF', fontSize: 12 }}>
-                    Debug: Screen = {currentScreen}
-                  </Text>
+          <PredictionProvider>
+            <MatchProvider>
+              {/* Maintenance Mode Check */}
+              {isMaintenanceMode ? (
+                <MaintenanceScreen />
+              ) : (
+                <View style={{ flex: 1, backgroundColor: '#0F172A' }}>
+                  {Platform.OS === 'web' && __DEV__ && (
+                    <View style={{ padding: 10, backgroundColor: '#1E293B' }}>
+                      <Text style={{ color: '#FFF', fontSize: 12 }}>
+                        Debug: Screen = {currentScreen}
+                      </Text>
+                    </View>
+                  )}
+                  {renderScreen()}
+                  
+                  {/* Bottom Navigation - Only show on main screens */}
+                  {shouldShowBottomNav && (
+                    <BottomNavigation
+                      activeTab={activeTab}
+                      onTabChange={handleTabChange}
+                    />
+                  )}
                 </View>
               )}
-              {renderScreen()}
-              
-              {/* Bottom Navigation - Only show on main screens */}
-              {shouldShowBottomNav && (
-                <BottomNavigation
-                  activeTab={activeTab}
-                  onTabChange={handleTabChange}
-                />
-              )}
-            </View>
-          )}
+            </MatchProvider>
+          </PredictionProvider>
         </ThemeProvider>
       </SafeAreaProvider>
     </ErrorBoundary>

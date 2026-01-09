@@ -26,12 +26,16 @@ const leaguesRouter = require('./routes/leagues');
 const teamsRouter = require('./routes/teams');
 const playersRouter = require('./routes/players');
 const authRouter = require('./routes/auth');
+const predictionsRouter = require('./routes/predictions');
+const scoringRouter = require('./routes/scoring');
 
 app.use('/api/matches', matchesRouter);
 app.use('/api/leagues', leaguesRouter);
 app.use('/api/teams', teamsRouter);
 app.use('/api/players', playersRouter);
 app.use('/api/auth', authRouter);
+app.use('/api/predictions', predictionsRouter);
+app.use('/api/scoring', scoringRouter);
 
 // Health check
 app.get('/health', (req, res) => {
@@ -52,6 +56,8 @@ app.get('/', (req, res) => {
       '/api/leagues',
       '/api/teams',
       '/api/players',
+      '/api/predictions',
+      '/api/scoring',
       '/health',
     ],
   });
@@ -70,4 +76,9 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
   console.log(`🚀 Fan Manager Backend running on port ${PORT}`);
   console.log(`📊 Health check: http://localhost:${PORT}/health`);
+  
+  // Start live match polling
+  const liveMatchService = require('./services/liveMatchService');
+  liveMatchService.startPolling();
+  console.log(`🔴 Live match polling started`);
 });
