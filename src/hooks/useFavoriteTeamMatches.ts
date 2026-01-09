@@ -129,11 +129,12 @@ export function useFavoriteTeamMatches(): UseFavoriteTeamMatchesResult {
     const upcoming: Match[] = [];
 
     matches.forEach(match => {
-      if (!match || !match.fixture || !match.fixture.status) {
+      if (!match || !match.fixture) {
         return; // Skip invalid matches
       }
 
-      const status = match.fixture.status.short;
+      // Handle both API format (status.short) and direct status string
+      const status = match.fixture.status?.short || match.fixture.status || 'NS';
       
       // Live matches (1H, HT, 2H, ET, P, BT, LIVE, etc.)
       if (['1H', 'HT', '2H', 'ET', 'P', 'BT', 'LIVE'].includes(status)) {
@@ -225,7 +226,19 @@ export function useFavoriteTeamMatches(): UseFavoriteTeamMatchesResult {
       // Remove duplicates (handle both fixture.id and id)
       const uniqueMatches = Array.from(
         new Map(allMatches.map(m => [m.fixture?.id || m.id, m])).values()
-      ).filter(m => m && m.fixture); // Filter out invalid matches
+      ).filter(m => {
+        // Ensure match has required structure
+        if (!m) return false;
+        if (!m.fixture) {
+          // Try to fix if it's in database format
+          if (m.id && m.fixture_date) {
+            // This should have been transformed by api.ts, but just in case
+            return false; // Skip, let transform function handle it
+          }
+          return false;
+        }
+        return true;
+      });
 
       // Categorize matches
       const { past, live, upcoming } = categorizeMatches(uniqueMatches);
