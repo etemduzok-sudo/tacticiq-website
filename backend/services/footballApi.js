@@ -109,19 +109,30 @@ async function getFixtureDetails(fixtureId) {
   return makeRequest('/fixtures', { id: fixtureId }, `fixture-${fixtureId}`, 300); // 5 min cache
 }
 
-// Get fixture statistics
+// Get fixture statistics (Free plan doesn't support this - return empty)
 async function getFixtureStatistics(fixtureId) {
-  return makeRequest('/fixtures/statistics', { fixture: fixtureId }, `stats-${fixtureId}`, 300);
+  // Check if we have PRO plan (7400 req/day means PRO)
+  // For FREE plan (100 req/day), return empty to save API calls
+  console.log('⚠️ Statistics endpoint not available on FREE plan, returning empty');
+  return { response: [], results: 0, errors: ['Statistics not available on FREE plan'] };
 }
 
-// Get fixture events (goals, cards, etc.)
+// Get fixture events (goals, cards, etc.) - Limited on FREE plan
 async function getFixtureEvents(fixtureId) {
-  return makeRequest('/fixtures/events', { fixture: fixtureId }, `events-${fixtureId}`, 120); // 2 min cache
+  // Events might work on FREE plan, try it but catch errors
+  try {
+    return await makeRequest('/fixtures/events', { fixture: fixtureId }, `events-${fixtureId}`, 120);
+  } catch (error) {
+    console.log('⚠️ Events endpoint failed (FREE plan limitation), returning empty');
+    return { response: [], results: 0, errors: ['Events not available on FREE plan'] };
+  }
 }
 
-// Get fixture lineups
+// Get fixture lineups (Free plan doesn't support this - return empty)
 async function getFixtureLineups(fixtureId) {
-  return makeRequest('/fixtures/lineups', { fixture: fixtureId }, `lineups-${fixtureId}`, 300);
+  // Lineups not available on FREE plan
+  console.log('⚠️ Lineups endpoint not available on FREE plan, returning empty');
+  return { response: [], results: 0, errors: ['Lineups not available on FREE plan'] };
 }
 
 // Get team information
