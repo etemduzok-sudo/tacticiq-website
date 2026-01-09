@@ -44,6 +44,13 @@ async function makeRequest(endpoint, params = {}, cacheKey = null, cacheDuration
   }
 
   try {
+    // Check if API key is missing or invalid
+    if (!API_KEY || API_KEY === 'YOUR_API_KEY_HERE' || API_KEY.trim() === '') {
+      // Silently return empty response when API key is missing
+      // Frontend will handle the fallback to mock data
+      return { response: [], results: 0, errors: [] };
+    }
+
     // Make API request
     const response = await axios.get(`${BASE_URL}${endpoint}`, {
       headers: {
@@ -66,8 +73,15 @@ async function makeRequest(endpoint, params = {}, cacheKey = null, cacheDuration
 
     return data;
   } catch (error) {
+    // Silently handle 403 (Forbidden) errors - API key issues
+    if (error.response && error.response.status === 403) {
+      // Return empty response instead of throwing error
+      return { response: [], results: 0, errors: ['API key invalid or missing'] };
+    }
+    
+    // For other errors, log but still return empty response
     console.error('API Error:', error.message);
-    throw error;
+    return { response: [], results: 0, errors: [error.message] };
   }
 }
 
