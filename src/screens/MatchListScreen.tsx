@@ -169,6 +169,12 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = ({
   // Get favorite teams for filter
   const { favoriteTeams } = useFavoriteTeams();
 
+  // Debug logs
+  React.useEffect(() => {
+    console.log('🔍 [MatchListScreen] Favorite teams:', favoriteTeams);
+    console.log('🔍 [MatchListScreen] Past:', pastMatches.length, 'Live:', liveMatches.length, 'Upcoming:', upcomingMatches.length);
+  }, [favoriteTeams, pastMatches, liveMatches, upcomingMatches]);
+
   // Transform API data to component format
   const transformMatch = (apiMatch: any) => {
     const isLive = api.utils.isMatchLive(apiMatch.fixture.status.short);
@@ -364,8 +370,11 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = ({
           </View>
 
           {/* Team Filter (Tüm Takımlar / Specific Team) */}
-          {favoriteTeams.length > 1 && (
+          {favoriteTeams.length > 0 && (
             <View style={styles.teamFilterContainer}>
+              <Text style={styles.filterDebugText}>
+                Favori Takımlar: {favoriteTeams.length} | Geçmiş: {pastMatches.length} | Canlı: {liveMatches.length} | Gelecek: {upcomingMatches.length}
+              </Text>
               <ScrollView 
                 horizontal 
                 showsHorizontalScrollIndicator={false}
@@ -886,6 +895,12 @@ const styles = StyleSheet.create({
   teamFilterContainer: {
     paddingHorizontal: 16,
     paddingBottom: 12,
+  },
+  filterDebugText: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    marginBottom: 8,
+    textAlign: 'center',
   },
   teamFilterScroll: {
     gap: 8,
