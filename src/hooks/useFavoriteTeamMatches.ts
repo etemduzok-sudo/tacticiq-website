@@ -263,6 +263,22 @@ export function useFavoriteTeamMatches(): UseFavoriteTeamMatchesResult {
         return true;
       });
 
+      console.log(`📊 After removing duplicates: ${uniqueMatches.length} matches`);
+      
+      // Debug: Log Fenerbahçe matches specifically
+      const fenerbahceMatches = uniqueMatches.filter(m => 
+        m.teams?.home?.name?.includes('Fenerbah') || 
+        m.teams?.away?.name?.includes('Fenerbah')
+      );
+      console.log(`🟡 Fenerbahçe matches found: ${fenerbahceMatches.length}`);
+      if (fenerbahceMatches.length > 0) {
+        console.log('🟡 First 5 Fenerbahçe matches:', fenerbahceMatches.slice(0, 5).map(m => ({
+          teams: `${m.teams.home.name} vs ${m.teams.away.name}`,
+          status: m.fixture.status?.short || m.fixture.status,
+          date: new Date(m.fixture.timestamp * 1000).toLocaleDateString('tr-TR'),
+        })));
+      }
+
       // Categorize matches
       const { past, live, upcoming } = categorizeMatches(uniqueMatches);
       
