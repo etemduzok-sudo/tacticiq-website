@@ -240,6 +240,17 @@ export function useFavoriteTeamMatches(): UseFavoriteTeamMatchesResult {
       }
       
       console.log(`📊 Total team season matches fetched: ${allMatches.length}`);
+      
+      // Debug: Check first match structure
+      if (allMatches.length > 0) {
+        console.log('🔍 First match structure:', {
+          hasFixture: !!allMatches[0].fixture,
+          hasId: !!allMatches[0].id,
+          hasFixtureDate: !!allMatches[0].fixture_date,
+          keys: Object.keys(allMatches[0]),
+          sample: allMatches[0]
+        });
+      }
 
       // Remove duplicates (handle both fixture.id and id)
       const uniqueMatches = Array.from(
