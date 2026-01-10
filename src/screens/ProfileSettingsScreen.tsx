@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -43,11 +43,31 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
   const [theme, setTheme] = useState<Theme>('dark');
   const [hasChanges, setHasChanges] = useState(false);
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
+  const [favoriteClubs, setFavoriteClubs] = useState<string[]>([]);
   const isPro = false;
 
-  const favoriteClubs = ['Galatasaray'];
   const favoriteNational = 'Türkiye';
   const currentLanguage = 'Türkçe';
+
+  // Load favorite teams from AsyncStorage
+  useEffect(() => {
+    const loadFavoriteTeams = async () => {
+      try {
+        const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
+        const favoriteTeamsStr = await AsyncStorage.getItem('fan-manager-favorite-clubs');
+        if (favoriteTeamsStr) {
+          const teams = JSON.parse(favoriteTeamsStr);
+          const teamNames = teams.map((team: any) => team.name);
+          setFavoriteClubs(teamNames);
+          console.log('✅ Loaded favorite teams in settings:', teamNames);
+        }
+      } catch (error) {
+        console.error('Error loading favorite teams:', error);
+      }
+    };
+    
+    loadFavoriteTeams();
+  }, []);
 
   const handleNameChange = (value: string) => {
     setName(value);
