@@ -282,8 +282,22 @@ export const matchesApi = {
     request(`/matches/h2h/${team1Id}/${team2Id}`),
   
   // Get all matches for a team in a season (all competitions)
-  getTeamSeasonMatches: (teamId: number, season: number = 2025) => // 2025-26 sezonu
-    request(`/matches/team/${teamId}/season/${season}`),
+  getTeamSeasonMatches: async (teamId: number, season: number = 2025) => {
+    try {
+      const result = await request(`/matches/team/${teamId}/season/${season}`);
+      
+      // If data comes from database, transform it
+      if (result.success && result.data && result.source === 'database') {
+        const transformedData = result.data.map(transformDbMatchToApiFormat);
+        return { ...result, data: transformedData };
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('Error fetching team season matches:', error);
+      throw error;
+    }
+  },
     
   // Subscribe to real-time match updates
   subscribeToMatch: (matchId: number, callback: (payload: any) => void) => {
