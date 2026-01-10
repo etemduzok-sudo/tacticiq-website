@@ -242,6 +242,25 @@ router.get('/team/:teamId/season/:season', async (req, res) => {
     
     console.log(`📅 Fetching all matches for team ${teamId} in season ${season}`);
     
+    // TEMPORARY: Force API fetch to verify correct team ID
+    console.log('⚠️ FORCING API FETCH (database bypassed for debugging)');
+    
+    const data = await footballApi.getFixturesByTeam(teamId, season);
+    
+    // Sync to database
+    if (databaseService.enabled && data.response && data.response.length > 0) {
+      await databaseService.upsertMatches(data.response);
+    }
+    
+    res.json({
+      success: true,
+      data: data.response,
+      source: 'api-forced',
+      cached: data.cached || false,
+      count: data.response?.length || 0
+    });
+    
+    /* TEMPORARILY DISABLED DATABASE CHECK
     // Try database first
     const { data: dbMatches, error: dbError } = await supabase
       .from('matches')

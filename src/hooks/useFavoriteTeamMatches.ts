@@ -228,6 +228,7 @@ export function useFavoriteTeamMatches(): UseFavoriteTeamMatchesResult {
           
           if (response.success && response.data && response.data.length > 0) {
             console.log(`✅ Found ${response.data.length} matches for ${team.name}`);
+            console.log(`📍 Data source: ${response.source || 'unknown'}`);
             
             // Add all matches for this team (no filtering yet)
             allMatches.push(...response.data);
