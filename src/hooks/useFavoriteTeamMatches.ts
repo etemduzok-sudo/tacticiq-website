@@ -202,22 +202,23 @@ export function useFavoriteTeamMatches(): UseFavoriteTeamMatchesResult {
 
       // ✅ Fetch ALL season matches for favorite teams (all competitions)
       const allMatches: Match[] = [];
+      const liveMatchesFromAPI: Match[] = [];
       const currentSeason = 2025; // 2025-26 sezonu (aktif sezon)
       
       console.log(`📅 Fetching all season matches for ${favoriteTeams.length} favorite teams...`);
       
-      // Fetch live matches first
+      // Fetch live matches separately (we'll filter for favorite teams later)
       try {
         const liveResponse = await api.matches.getLiveMatches();
         if (liveResponse.success && liveResponse.data) {
-          allMatches.push(...liveResponse.data);
-          console.log(`✅ Found ${liveResponse.data.length} live matches`);
+          liveMatchesFromAPI.push(...liveResponse.data);
+          console.log(`✅ Found ${liveResponse.data.length} live matches (all teams)`);
         }
       } catch (err) {
         console.warn('Failed to fetch live matches:', err);
       }
 
-      // Fetch all season matches for each favorite team
+      // Fetch all season matches for each favorite team (includes past, live, upcoming)
       for (const team of favoriteTeams) {
         if (!team || !team.id) continue;
         
@@ -228,14 +229,8 @@ export function useFavoriteTeamMatches(): UseFavoriteTeamMatchesResult {
           if (response.success && response.data && response.data.length > 0) {
             console.log(`✅ Found ${response.data.length} matches for ${team.name}`);
             
-            // Add matches (avoid duplicates by checking fixture ID)
-            const existingIds = new Set(allMatches.map(m => m.fixture.id));
-            const newMatches = response.data.filter((match: any) => {
-              const fixtureId = match.fixture?.id || match.id;
-              return !existingIds.has(fixtureId);
-            });
-            
-            allMatches.push(...newMatches);
+            // Add all matches for this team (no filtering yet)
+            allMatches.push(...response.data);
           } else {
             console.log(`⚠️ No matches found for ${team.name}`);
           }
@@ -244,7 +239,7 @@ export function useFavoriteTeamMatches(): UseFavoriteTeamMatchesResult {
         }
       }
       
-      console.log(`📊 Total matches fetched: ${allMatches.length}`);
+      console.log(`📊 Total team season matches fetched: ${allMatches.length}`);
 
       // Remove duplicates (handle both fixture.id and id)
       const uniqueMatches = Array.from(
