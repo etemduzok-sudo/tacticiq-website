@@ -136,6 +136,21 @@ export function useFavoriteTeamMatches(): UseFavoriteTeamMatchesResult {
 
       // Handle both API format (status.short) and direct status string
       const status = match.fixture.status?.short || match.fixture.status || 'NS';
+      const matchTime = match.fixture.timestamp * 1000;
+      
+      // Debug: Log first 3 matches
+      if (past.length + live.length + upcoming.length < 3) {
+        console.log(`🔍 Match categorization:`, {
+          teams: `${match.teams.home.name} vs ${match.teams.away.name}`,
+          status,
+          timestamp: match.fixture.timestamp,
+          date: new Date(matchTime).toLocaleDateString('tr-TR'),
+          isLive: ['1H', 'HT', '2H', 'ET', 'P', 'BT', 'LIVE'].includes(status),
+          isFinished: ['FT', 'AET', 'PEN', 'AWD', 'WO'].includes(status),
+          isUpcoming: ['NS', 'TBD', 'PST'].includes(status),
+          isFuture: matchTime > now,
+        });
+      }
       
       // Live matches (1H, HT, 2H, ET, P, BT, LIVE, etc.)
       if (['1H', 'HT', '2H', 'ET', 'P', 'BT', 'LIVE'].includes(status)) {
