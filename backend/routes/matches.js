@@ -262,6 +262,19 @@ router.get('/team/:teamId/season/:season', async (req, res) => {
     // Eğer database'de yeterli maç varsa (en az 30), database'den dön
     if (dbMatches && dbMatches.length >= 30) {
       console.log(`✅ Found ${dbMatches.length} matches for team ${teamId} in database (sufficient)`);
+      
+      // DEBUG: Log first 3 matches to verify team IDs
+      if (dbMatches.length > 0) {
+        console.log('🔍 First 3 matches:', dbMatches.slice(0, 3).map(m => ({
+          id: m.id,
+          homeTeam: m.home_team?.name || m.home_team_id,
+          awayTeam: m.away_team?.name || m.away_team_id,
+          homeTeamId: m.home_team_id,
+          awayTeamId: m.away_team_id,
+          date: m.fixture_date
+        })));
+      }
+      
       return res.json({
         success: true,
         data: dbMatches,
