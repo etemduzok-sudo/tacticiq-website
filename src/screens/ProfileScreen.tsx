@@ -406,7 +406,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             <View style={styles.teamsContainer}>
               {favoriteTeams.map((team) => (
                 <View key={team.id} style={styles.teamChip}>
-                  <View style={styles.teamDot} />
+                  {team.logo ? (
+                    <Image
+                      source={{ uri: team.logo }}
+                      style={styles.teamLogo}
+                    />
+                  ) : (
+                    <View style={styles.teamDot} />
+                  )}
                   <Text style={styles.teamName}>{team.name}</Text>
                 </View>
               ))}
@@ -1009,6 +1016,12 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
     backgroundColor: '#059669',
+  },
+  teamLogo: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    marginRight: 4,
   },
   teamName: {
     fontSize: 14,
