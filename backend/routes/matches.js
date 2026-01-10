@@ -259,8 +259,9 @@ router.get('/team/:teamId/season/:season', async (req, res) => {
       console.error('❌ Database error:', dbError);
     }
     
-    // Eğer database'de yeterli maç varsa (en az 30), database'den dön
-    if (dbMatches && dbMatches.length >= 30) {
+    // Eğer database'de yeterli maç varsa (en az 100), database'den dön
+    // NOT: Threshold yüksek tutuldu çünkü database'de yanlış takım maçları var
+    if (dbMatches && dbMatches.length >= 100) {
       console.log(`✅ Found ${dbMatches.length} matches for team ${teamId} in database (sufficient)`);
       
       // DEBUG: Log first 3 matches to verify team IDs
