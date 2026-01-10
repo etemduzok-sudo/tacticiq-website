@@ -161,7 +161,14 @@ export function useFavoriteTeamMatches(): UseFavoriteTeamMatchesResult {
     past.sort((a, b) => b.fixture.timestamp - a.fixture.timestamp);
     upcoming.sort((a, b) => a.fixture.timestamp - b.fixture.timestamp);
 
-    return { past, live, upcoming };
+    // Filter upcoming matches to only show next 15 days
+    const fifteenDaysFromNow = now + (15 * 24 * 60 * 60 * 1000);
+    const upcomingFiltered = upcoming.filter(match => {
+      const matchTime = match.fixture.timestamp * 1000;
+      return matchTime <= fifteenDaysFromNow;
+    });
+
+    return { past, live, upcoming: upcomingFiltered };
   };
 
   const fetchMatches = async () => {

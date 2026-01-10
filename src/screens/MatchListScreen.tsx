@@ -14,6 +14,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useFavoriteTeamMatches } from '../hooks/useFavoriteTeamMatches';
+import { useFavoriteTeams } from '../hooks/useFavoriteTeams';
 import api from '../services/api';
 import { AdBanner } from '../components/ads/AdBanner';
 import Animated, {
@@ -160,9 +161,13 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = ({
   onProfileClick,
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<'past' | 'live' | 'upcoming'>('live');
+  const [selectedTeamFilter, setSelectedTeamFilter] = useState<number | 'all'>('all');
   
   // Fetch favorite team matches (past, live, upcoming)
   const { pastMatches, liveMatches, upcomingMatches, loading, error } = useFavoriteTeamMatches();
+
+  // Get favorite teams for filter
+  const { favoriteTeams } = useFavoriteTeams();
 
   // Transform API data to component format
   const transformMatch = (apiMatch: any) => {
@@ -210,7 +215,17 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = ({
     }
   };
 
-  const allMatches = getCurrentMatches();
+  // Filter matches by selected team
+  const filterMatchesByTeam = (matches: any[]) => {
+    if (selectedTeamFilter === 'all') return matches;
+    
+    return matches.filter(match => 
+      match.homeTeam.name.includes(favoriteTeams.find(t => t.id === selectedTeamFilter)?.name || '') ||
+      match.awayTeam.name.includes(favoriteTeams.find(t => t.id === selectedTeamFilter)?.name || '')
+    );
+  };
+
+  const allMatches = filterMatchesByTeam(getCurrentMatches());
 
   const handleMatchClick = (match: any) => {
     if (match.status === 'locked') return;
@@ -347,6 +362,70 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = ({
               );
             })}
           </View>
+
+          {/* Team Filter (Tüm Takımlar / Specific Team) */}
+          {favoriteTeams.length > 1 && (
+            <View style={styles.teamFilterContainer}>
+              <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.teamFilterScroll}
+              >
+                <TouchableOpacity
+                  style={[
+                    styles.teamFilterChip,
+                    selectedTeamFilter === 'all' && styles.teamFilterChipSelected,
+                  ]}
+                  onPress={() => setSelectedTeamFilter('all')}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons 
+                    name="football-outline" 
+                    size={16} 
+                    color={selectedTeamFilter === 'all' ? '#FFFFFF' : '#9CA3AF'} 
+                  />
+                  <Text
+                    style={[
+                      styles.teamFilterLabel,
+                      selectedTeamFilter === 'all' && styles.teamFilterLabelSelected,
+                    ]}
+                  >
+                    Tüm Takımlar
+                  </Text>
+                </TouchableOpacity>
+
+                {favoriteTeams.map((team) => {
+                  const isSelected = selectedTeamFilter === team.id;
+                  return (
+                    <TouchableOpacity
+                      key={team.id}
+                      style={[
+                        styles.teamFilterChip,
+                        isSelected && styles.teamFilterChipSelected,
+                      ]}
+                      onPress={() => setSelectedTeamFilter(team.id)}
+                      activeOpacity={0.7}
+                    >
+                      {team.logo && (
+                        <Image 
+                          source={{ uri: team.logo }} 
+                          style={styles.teamFilterLogo}
+                        />
+                      )}
+                      <Text
+                        style={[
+                          styles.teamFilterLabel,
+                          isSelected && styles.teamFilterLabelSelected,
+                        ]}
+                      >
+                        {team.name}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          )}
         </View>
 
         {/* Match Cards */}
@@ -801,6 +880,43 @@ const styles = StyleSheet.create({
   },
   categoryLabelSelected: {
     color: '#FFFFFF',
+  },
+
+  // Team Filter
+  teamFilterContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+  },
+  teamFilterScroll: {
+    gap: 8,
+  },
+  teamFilterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: 'rgba(100, 116, 139, 0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(100, 116, 139, 0.3)',
+  },
+  teamFilterChipSelected: {
+    backgroundColor: '#059669',
+    borderColor: '#059669',
+  },
+  teamFilterLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#9CA3AF',
+  },
+  teamFilterLabelSelected: {
+    color: '#FFFFFF',
+  },
+  teamFilterLogo: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
   },
 
   // Match List
