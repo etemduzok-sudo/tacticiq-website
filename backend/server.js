@@ -29,6 +29,10 @@ app.use(express.json());
 const { rateLimiterMiddleware, getStats } = require('./middleware/rateLimiter');
 app.use(rateLimiterMiddleware);
 
+// 🚀 Aggressive Cache Service (maximize API usage)
+const aggressiveCacheService = require('./services/aggressiveCacheService');
+aggressiveCacheService.startAggressiveCaching();
+
 // Routes
 const matchesRouter = require('./routes/matches');
 const leaguesRouter = require('./routes/leagues');
@@ -61,6 +65,15 @@ app.get('/api/rate-limit/stats', (req, res) => {
   res.json({
     success: true,
     ...stats,
+  });
+});
+
+// 🚀 Aggressive Cache Stats
+app.get('/api/cache/stats', (req, res) => {
+  const cacheStats = aggressiveCacheService.getStats();
+  res.json({
+    success: true,
+    ...cacheStats,
   });
 });
 

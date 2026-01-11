@@ -439,6 +439,18 @@ export function useFavoriteTeamMatches(): UseFavoriteTeamMatchesResult {
     }
   }, [favoriteTeams.length]); // Only re-run when team count changes
 
+  // 🔥 AUTO-REFRESH: Backend'den her 12 saniyede güncelle
+  useEffect(() => {
+    if (!hasLoadedOnce) return; // İlk yükleme tamamlanana kadar bekleme
+    
+    const refreshInterval = setInterval(() => {
+      console.log('🔄 [AUTO-REFRESH] Fetching updates from backend...');
+      fetchMatches(); // Arka planda güncelle (loading gösterme)
+    }, 12 * 1000); // 12 saniye
+    
+    return () => clearInterval(refreshInterval);
+  }, [hasLoadedOnce, favoriteTeams.length]);
+
   return {
     pastMatches,
     liveMatches,
