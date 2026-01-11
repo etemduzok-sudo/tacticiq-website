@@ -10,6 +10,22 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY
 );
 
+// 🔥 CACHE MEKANIZMASI - API kullanımını azaltmak için
+const API_CACHE = {
+  liveMatches: { data: null, timestamp: 0 },
+  teamMatches: new Map(), // teamId_season -> { data, timestamp }
+};
+
+const CACHE_DURATION = {
+  liveMatches: 12 * 1000, // 12 saniye (canlı maçlar için)
+  teamMatches: 6 * 60 * 60 * 1000, // 6 saat (geçmiş/gelecek maçlar için)
+};
+
+// Helper: Check if cache is valid
+function isCacheValid(timestamp, duration) {
+  return Date.now() - timestamp < duration;
+}
+
 // Helper: Get date range
 function getDateRange(days) {
   const today = new Date();
@@ -158,7 +174,18 @@ function getStatValue(statistics, type) {
 // GET /api/matches/live - Get live matches
 router.get('/live', async (req, res) => {
   try {
-    // 1. Try database first
+    // 🔥 1. CHECK CACHE FIRST (12 saniye)
+    if (isCacheValid(API_CACHE.liveMatches.timestamp, CACHE_DURATION.liveMatches)) {
+      console.log('✅ [LIVE] Returning from MEMORY CACHE (age:', Math.round((Date.now() - API_CACHE.liveMatches.timestamp) / 1000), 'seconds)');
+      return res.json({
+        success: true,
+        data: API_CACHE.liveMatches.data,
+        source: 'memory-cache',
+        cached: true,
+      });
+    }
+
+    // 2. Try database first
     const { data: dbMatches, error: dbError } = await supabase
       .from('matches')
       .select(`
@@ -170,10 +197,18 @@ router.get('/live', async (req, res) => {
       .in('status', ['LIVE', '1H', '2H', 'HT', 'ET', 'BT', 'P'])
       .order('fixture_date', { ascending: true });
 
-    // 2. If API key exists, try to get fresh data
+    // 3. If API key exists, try to get fresh data (ONLY if cache expired)
     if (process.env.API_FOOTBALL_KEY) {
       try {
+        console.log('🌐 [LIVE] Fetching from API-FOOTBALL (cache expired)');
         const data = await footballApi.getLiveMatches();
+        
+        // 🔥 UPDATE CACHE
+        API_CACHE.liveMatches = {
+          data: data.response,
+          timestamp: Date.now(),
+        };
+        console.log('💾 [LIVE] Cached', data.response.length, 'matches for 12 seconds');
         
         // Sync to database if enabled
         if (databaseService.enabled && data.response && data.response.length > 0) {
@@ -184,7 +219,7 @@ router.get('/live', async (req, res) => {
           success: true,
           data: data.response,
           source: 'api',
-          cached: data.cached || false,
+          cached: false,
         });
       } catch (apiError) {
         console.error('API error:', apiError);
@@ -192,7 +227,7 @@ router.get('/live', async (req, res) => {
       }
     }
 
-    // 3. Return database data or empty array
+    // 4. Return database data or empty array
     res.json({
       success: true,
       data: (!dbError && dbMatches) ? dbMatches : [],
@@ -239,15 +274,39 @@ router.get('/date/:date', async (req, res) => {
 router.get('/team/:teamId/season/:season', async (req, res) => {
   try {
     const { teamId, season } = req.params;
+    const cacheKey = `${teamId}_${season}`;
     
     console.log(`📅 Fetching all matches for team ${teamId} in season ${season}`);
     
-    // TRY DATABASE FIRST (much faster!)
+    // 🔥 1. CHECK MEMORY CACHE FIRST (6 saat)
+    if (API_CACHE.teamMatches.has(cacheKey)) {
+      const cached = API_CACHE.teamMatches.get(cacheKey);
+      if (isCacheValid(cached.timestamp, CACHE_DURATION.teamMatches)) {
+        console.log(`✅ [TEAM] Returning from MEMORY CACHE (age: ${Math.round((Date.now() - cached.timestamp) / 1000 / 60)} minutes)`);
+        return res.json({
+          success: true,
+          data: cached.data,
+          source: 'memory-cache',
+          cached: true,
+          count: cached.data.length
+        });
+      }
+    }
+    
+    // 2. TRY DATABASE (much faster than API!)
     if (databaseService.enabled) {
       try {
         const dbMatches = await databaseService.getTeamMatches(teamId, season);
         if (dbMatches && dbMatches.length > 0) {
           console.log(`✅ Found ${dbMatches.length} matches in DATABASE (fast!)`);
+          
+          // 🔥 CACHE IN MEMORY
+          API_CACHE.teamMatches.set(cacheKey, {
+            data: dbMatches,
+            timestamp: Date.now(),
+          });
+          console.log(`💾 [TEAM] Cached ${dbMatches.length} matches for 6 hours`);
+          
           return res.json({
             success: true,
             data: dbMatches,
@@ -261,9 +320,18 @@ router.get('/team/:teamId/season/:season', async (req, res) => {
       }
     }
     
-    // Fallback to API if database is empty
+    // 3. Fallback to API if database is empty
     console.log('⚠️ Database empty, fetching from API-Football...');
     const data = await footballApi.getFixturesByTeam(teamId, season);
+    
+    // 🔥 CACHE IN MEMORY
+    if (data.response && data.response.length > 0) {
+      API_CACHE.teamMatches.set(cacheKey, {
+        data: data.response,
+        timestamp: Date.now(),
+      });
+      console.log(`💾 [TEAM] Cached ${data.response.length} matches from API for 6 hours`);
+    }
     
     // Sync to database for next time
     if (databaseService.enabled && data.response && data.response.length > 0) {
@@ -275,7 +343,7 @@ router.get('/team/:teamId/season/:season', async (req, res) => {
       success: true,
       data: data.response,
       source: 'api',
-      cached: data.cached || false,
+      cached: false,
       count: data.response?.length || 0
     });
   } catch (error) {
