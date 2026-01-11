@@ -96,6 +96,26 @@ export default function App() {
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
   const [isMaintenanceMode, setIsMaintenanceMode] = useState<boolean>(false);
 
+  // 🎉 Yeni Rozet State (Test için başlangıçta bir rozet gösterelim)
+  const [newBadge, setNewBadge] = useState<{ id: string; name: string; emoji: string; description: string; tier: number } | null>(null);
+
+  // TEST: 5 saniye sonra yeni rozet göster (gerçekte maç sonunda kazanılacak)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (currentScreen === 'home') {
+        setNewBadge({
+          id: 'first_blood',
+          name: '🎯 İlk Kan',
+          emoji: '🎯',
+          description: 'İlk tahminini yaptın! Analiz yolculuğun başladı.',
+          tier: 1,
+        });
+      }
+    }, 5000); // 5 saniye sonra
+
+    return () => clearTimeout(timer);
+  }, [currentScreen]);
+
   // Global match data - shared across all screens
   const matchData = useFavoriteTeamMatches();
 
@@ -573,7 +593,11 @@ export default function App() {
                   {/* Fixed Profile Card Overlay - Only on home, matches, leaderboard */}
                   {['home', 'matches', 'leaderboard'].includes(currentScreen) && (
                     <View style={styles.profileCardOverlay}>
-                      <ProfileCard onPress={() => handleDashboardNavigate('profile')} />
+                      <ProfileCard 
+                        onPress={() => handleDashboardNavigate('profile')} 
+                        newBadge={newBadge}
+                        onBadgePopupClose={() => setNewBadge(null)}
+                      />
                     </View>
                   )}
                   

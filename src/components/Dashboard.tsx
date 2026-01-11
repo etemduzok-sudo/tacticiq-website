@@ -266,76 +266,8 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
           </ScrollView>
         </Animated.View>
 
-        {/* 2. ROZETLİ MAÇ ÖZETLERİ (SON 3 MAÇ) */}
-        <Animated.View entering={FadeInDown.delay(400).springify()} style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="trophy" size={20} color="#8B5CF6" />
-            <Text style={styles.sectionTitle}>Son Performansın</Text>
-        </View>
-
-          <View style={styles.matchHistoryVertical}>
-            {recentMatches.length > 0 ? recentMatches.map((match, index) => (
-              <Animated.View key={match.fixture.id} entering={FadeInLeft.delay(500 + index * 100).springify()}>
-                <TouchableOpacity
-                  style={styles.historyCardVertical}
-                  onPress={() => onNavigate('match-result-summary', { id: match.fixture.id })}
-                  activeOpacity={0.8}
-                >
-                  <View style={styles.historyHeader}>
-                    <Text style={styles.historyDate}>
-                      {new Date(match.fixture.date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}
-                    </Text>
-                    <Text style={styles.historyScore}>
-                      {match.goals.home} - {match.goals.away}
-                    </Text>
-        </View>
-                  
-                  <Text style={styles.historyTeams} numberOfLines={2}>
-                    {match.teams.home.name} vs {match.teams.away.name}
-                  </Text>
-
-                  <View style={styles.historyStats}>
-                    <View style={styles.historyStat}>
-                      <Ionicons name="star" size={16} color="#F59E0B" />
-                      <Text style={styles.historyStatText}>350 Puan</Text>
-                    </View>
-                    <View style={styles.historyStat}>
-                      <Ionicons name="analytics" size={16} color="#059669" />
-                      <Text style={styles.historyStatText}>%85 Tempo</Text>
-                    </View>
-                  </View>
-
-                  {/* Badge Stamps */}
-                  <View style={styles.badgeStamps}>
-                    <Text style={styles.badgeStamp}>🏆</Text>
-                    <Text style={styles.badgeStamp}>⚡</Text>
-                  </View>
-                </TouchableOpacity>
-              </Animated.View>
-            )) : (
-              <View style={styles.emptyHistoryState}>
-                <Ionicons name="time-outline" size={48} color="#64748B" />
-                <Text style={styles.emptyText}>Henüz maç geçmişin yok</Text>
-              </View>
-            )}
-
-            {/* View All Badges Button */}
-            <Animated.View entering={FadeInLeft.delay(800).springify()}>
-              <TouchableOpacity
-                style={styles.viewAllBadgesButton}
-                onPress={() => onNavigate('profile')}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="trophy" size={24} color="#F59E0B" />
-                <Text style={styles.viewAllBadgesText}>Tüm Rozetlerimi Gör</Text>
-                <Ionicons name="chevron-forward" size={20} color="#F59E0B" />
-              </TouchableOpacity>
-            </Animated.View>
-          </View>
-        </Animated.View>
-
-        {/* 3. STRATEJİK ODAK (STRATEGIC FOCUS) */}
-        <Animated.View entering={FadeInDown.delay(600).springify()} style={styles.section}>
+        {/* 2. STRATEJİK ODAK (STRATEGIC FOCUS) */}
+        <Animated.View entering={FadeInDown.delay(300).springify()} style={styles.section}>
           <View style={styles.sectionHeader}>
             <Ionicons name="bulb" size={20} color="#F59E0B" />
             <Text style={styles.sectionTitle}>Analiz Odağı Seç</Text>
@@ -344,7 +276,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
 
           <View style={styles.focusGrid}>
             {strategicFocusOptions.map((focus, index) => (
-              <Animated.View key={focus.id} entering={FadeInLeft.delay(700 + index * 50).springify()}>
+              <Animated.View key={focus.id} entering={FadeInLeft.delay(400 + index * 50).springify()}>
                 <TouchableOpacity
                   style={[
                     styles.focusCard,
@@ -392,6 +324,82 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
                 </TouchableOpacity>
               </Animated.View>
             ))}
+          </View>
+        </Animated.View>
+
+        {/* 3. KAZANILAN ROZETLER */}
+        <Animated.View entering={FadeInDown.delay(500).springify()} style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="trophy" size={20} color="#F59E0B" />
+            <Text style={styles.sectionTitle}>Kazanılan Rozetler</Text>
+          </View>
+
+          {/* View All Badges Button */}
+          <Animated.View entering={FadeInLeft.delay(600).springify()}>
+            <TouchableOpacity
+              style={styles.viewAllBadgesButton}
+              onPress={() => onNavigate('profile')}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="trophy" size={24} color="#F59E0B" />
+              <Text style={styles.viewAllBadgesText}>Tüm Rozetlerimi Gör</Text>
+              <Ionicons name="chevron-forward" size={20} color="#F59E0B" />
+            </TouchableOpacity>
+          </Animated.View>
+        </Animated.View>
+
+        {/* 4. ÖNCEKİ MAÇ PERFORMANSLARI */}
+        <Animated.View entering={FadeInDown.delay(700).springify()} style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="analytics" size={20} color="#8B5CF6" />
+            <Text style={styles.sectionTitle}>Önceki Maç Performansların</Text>
+        </View>
+
+          <View style={styles.matchHistoryVertical}>
+            {recentMatches.length > 0 ? recentMatches.map((match, index) => (
+              <Animated.View key={match.fixture.id} entering={FadeInLeft.delay(800 + index * 100).springify()}>
+                <TouchableOpacity
+                  style={styles.historyCardVertical}
+                  onPress={() => onNavigate('match-result-summary', { id: match.fixture.id })}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.historyHeader}>
+                    <Text style={styles.historyDate}>
+                      {new Date(match.fixture.date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}
+                    </Text>
+                    <Text style={styles.historyScore}>
+                      {match.goals.home} - {match.goals.away}
+                    </Text>
+        </View>
+                  
+                  <Text style={styles.historyTeams} numberOfLines={2}>
+                    {match.teams.home.name} vs {match.teams.away.name}
+                  </Text>
+
+                  <View style={styles.historyStats}>
+                    <View style={styles.historyStat}>
+                      <Ionicons name="star" size={16} color="#F59E0B" />
+                      <Text style={styles.historyStatText}>350 Puan</Text>
+                    </View>
+                    <View style={styles.historyStat}>
+                      <Ionicons name="analytics" size={16} color="#059669" />
+                      <Text style={styles.historyStatText}>%85 Tempo</Text>
+                    </View>
+                  </View>
+
+                  {/* Badge Stamps */}
+                  <View style={styles.badgeStamps}>
+                    <Text style={styles.badgeStamp}>🏆</Text>
+                    <Text style={styles.badgeStamp}>⚡</Text>
+                  </View>
+                </TouchableOpacity>
+              </Animated.View>
+            )) : (
+              <View style={styles.emptyHistoryState}>
+                <Ionicons name="time-outline" size={48} color="#64748B" />
+                <Text style={styles.emptyText}>Henüz maç geçmişin yok</Text>
+              </View>
+            )}
           </View>
         </Animated.View>
 
