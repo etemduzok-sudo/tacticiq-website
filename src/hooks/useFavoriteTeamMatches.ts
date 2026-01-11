@@ -1,8 +1,14 @@
 // useFavoriteTeamMatches Hook - Get matches for favorite teams
 import { useState, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../services/api';
 import { useFavoriteTeams } from './useFavoriteTeams';
 import { getMockMatches } from '../services/mockDataService';
+
+// Cache keys
+const CACHE_KEY = 'fan-manager-matches-cache';
+const CACHE_TIMESTAMP_KEY = 'fan-manager-matches-cache-timestamp';
+const CACHE_DURATION = 6 * 60 * 60 * 1000; // 6 saat (ms)
 
 interface Match {
   fixture: {
@@ -63,9 +69,62 @@ export function useFavoriteTeamMatches(): UseFavoriteTeamMatchesResult {
   const [pastMatches, setPastMatches] = useState<Match[]>([]);
   const [liveMatches, setLiveMatches] = useState<Match[]>([]);
   const [upcomingMatches, setUpcomingMatches] = useState<Match[]>([]);
-  const [loading, setLoading] = useState(true); // Start with loading true
+  const [loading, setLoading] = useState(false); // Cache'den yüklenirse loading gösterme
   const [error, setError] = useState<string | null>(null);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false); // Track if we've successfully loaded data
+
+  // 💾 Cache'den maçları yükle
+  const loadFromCache = async (): Promise<boolean> => {
+    try {
+      const cachedData = await AsyncStorage.getItem(CACHE_KEY);
+      const cacheTimestamp = await AsyncStorage.getItem(CACHE_TIMESTAMP_KEY);
+
+      if (!cachedData || !cacheTimestamp) {
+        console.log('📦 No cache found');
+        return false;
+      }
+
+      const cacheAge = Date.now() - parseInt(cacheTimestamp, 10);
+      const isCacheValid = cacheAge < CACHE_DURATION;
+
+      if (!isCacheValid) {
+        console.log('⏰ Cache expired (age:', Math.round(cacheAge / 1000 / 60), 'minutes)');
+        return false;
+      }
+
+      const { past, live, upcoming } = JSON.parse(cachedData);
+      setPastMatches(past || []);
+      setLiveMatches(live || []);
+      setUpcomingMatches(upcoming || []);
+      setHasLoadedOnce(true);
+
+      console.log('✅ Loaded from cache:', {
+        past: past?.length || 0,
+        live: live?.length || 0,
+        upcoming: upcoming?.length || 0,
+        age: Math.round(cacheAge / 1000 / 60) + ' minutes',
+      });
+
+      return true;
+    } catch (error) {
+      console.error('❌ Error loading cache:', error);
+      return false;
+    }
+  };
+
+  // 💾 Maçları cache'e kaydet
+  const saveToCache = async (past: Match[], live: Match[], upcoming: Match[]) => {
+    try {
+      await AsyncStorage.setItem(
+        CACHE_KEY,
+        JSON.stringify({ past, live, upcoming })
+      );
+      await AsyncStorage.setItem(CACHE_TIMESTAMP_KEY, Date.now().toString());
+      console.log('💾 Saved to cache:', { past: past.length, live: live.length, upcoming: upcoming.length });
+    } catch (error) {
+      console.error('❌ Error saving cache:', error);
+    }
+  };
 
   // Generate mock matches for testing
   const generateMockMatches = async (): Promise<Match[]> => {
@@ -330,6 +389,9 @@ export function useFavoriteTeamMatches(): UseFavoriteTeamMatchesResult {
         setUpcomingMatches(upcoming.slice(0, 10)); // Limit upcoming to 10 matches
         console.log(`✅ Matches loaded: ${past.length} past, ${live.length} live, ${upcoming.length} upcoming`);
         
+        // 💾 Cache'e kaydet
+        await saveToCache(past, live, upcoming.slice(0, 10));
+        
         // Mark as successfully loaded
         if (past.length > 0 || live.length > 0 || upcoming.length > 0) {
           setHasLoadedOnce(true);
@@ -353,10 +415,25 @@ export function useFavoriteTeamMatches(): UseFavoriteTeamMatchesResult {
       return;
     }
 
+    // 🚀 CACHE STRATEJİSİ: Önce cache'den yükle, sonra arka planda güncelle
+    const initializeMatches = async () => {
+      const cacheLoaded = await loadFromCache();
+      
+      if (cacheLoaded) {
+        console.log('✅ Cache loaded, fetching in background...');
+        // Cache'den yüklendi, arka planda güncelle (loading gösterme)
+        fetchMatches();
+      } else {
+        console.log('❌ No cache, fetching with loading...');
+        // Cache yok, loading göster
+        setLoading(true);
+        fetchMatches();
+      }
+    };
+
     // Only fetch ONCE on initial load
     if (!hasLoadedOnce) {
-      console.log('🚀 Initial fetch for favorite teams');
-      fetchMatches();
+      initializeMatches();
     } else {
       console.log('✅ Data already loaded, skipping fetch');
     }
