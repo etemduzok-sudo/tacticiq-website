@@ -25,6 +25,10 @@ app.use(cors({
 app.use(compression()); // Compress responses
 app.use(express.json());
 
+// 🔥 API Rate Limiter (7,500 calls/day)
+const { rateLimiterMiddleware, getStats } = require('./middleware/rateLimiter');
+app.use(rateLimiterMiddleware);
+
 // Routes
 const matchesRouter = require('./routes/matches');
 const leaguesRouter = require('./routes/leagues');
@@ -48,6 +52,15 @@ app.get('/health', (req, res) => {
     status: 'ok',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
+  });
+});
+
+// 🔥 Rate Limiter Stats
+app.get('/api/rate-limit/stats', (req, res) => {
+  const stats = getStats();
+  res.json({
+    success: true,
+    ...stats,
   });
 });
 

@@ -13,6 +13,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import SafeIcon from '../components/SafeIcon';
 import { BRAND, TYPOGRAPHY, SPACING, DARK_MODE } from '../theme/theme';
 import { Button } from '../components/atoms';
+import { getUserLimits, canAddTeam, isNationalTeam } from '../constants/userLimits';
 
 interface FavoriteTeamsScreenProps {
   onComplete: (selectedTeams: Array<{ id: number; name: string; logo: string; league?: string }>) => void;
@@ -184,11 +185,18 @@ export default function FavoriteTeamsScreen({ onComplete, onBack }: FavoriteTeam
   const nationalTeams = sortTeamsByLanguage(TEAMS.filter((t) => t.type === 'national'));
 
   const handleContinue = () => {
-    // Free plan: En az 1 kulüp seçilmeli
-    // Pro plan: En az 1 kulüp seçilmeli
-    if (selectedClubs.length === 0) {
-      Alert.alert('Uyarı', 'Lütfen en az bir kulüp seçin');
-      return;
+    // 🔥 FREE USER: Sadece milli takım seçmeli
+    if (!isPremium) {
+      if (!selectedNational) {
+        Alert.alert('Uyarı', 'Lütfen bir milli takım seçin');
+        return;
+      }
+    } else {
+      // PRO USER: En az 1 kulüp veya milli takım seçmeli
+      if (selectedClubs.length === 0 && !selectedNational) {
+        Alert.alert('Uyarı', 'Lütfen en az bir takım seçin');
+        return;
+      }
     }
     
     // Seçili takımları ID'leriyle birlikte hazırla
@@ -252,17 +260,26 @@ export default function FavoriteTeamsScreen({ onComplete, onBack }: FavoriteTeam
       // Seçimi kaldır
       setSelectedClubs(selectedClubs.filter(id => id !== teamId));
     } else {
-      // Free Plan: Sadece 1 kulüp seçilebilir
-      // Pro Plan: 5 kulüp seçilebilir
-      const maxClubs = isPremium ? 5 : 1;
-      
-      if (selectedClubs.length >= maxClubs) {
+      // 🔥 FREE USER: Kulüp seçemez!
+      if (!isPremium) {
         Alert.alert(
-          isPremium ? 'Maksimum Limit' : 'Plan Limiti',
-          isPremium 
-            ? `En fazla ${maxClubs} kulüp seçebilirsiniz.`
-            : 'Ücretsiz planda sadece 1 kulüp seçebilirsiniz. Pro plana geçerek 5 kulüp seçebilirsiniz.'
+          '🔒 PRO Özellik',
+          'Kulüp takımı seçmek için PRO üyelik gereklidir.\n\n✅ PRO ile 5 kulüp + 1 milli takım seçebilirsiniz!',
+          [
+            { text: 'İptal', style: 'cancel' },
+            { text: 'PRO Ol', onPress: () => {
+              // TODO: Navigate to PRO upgrade screen
+              Alert.alert('PRO Üyelik', 'PRO üyelik sayfası yakında açılacak!');
+            }},
+          ]
         );
+        return;
+      }
+      
+      // PRO USER: Check limits (5 kulüp max)
+      const maxClubs = 5;
+      if (selectedClubs.length >= maxClubs) {
+        Alert.alert('Maksimum Limit', `En fazla ${maxClubs} kulüp seçebilirsiniz.`);
         return;
       }
       
@@ -354,7 +371,8 @@ export default function FavoriteTeamsScreen({ onComplete, onBack }: FavoriteTeam
 
           {filterTeams(clubTeams).map((team) => {
             const isSelected = selectedClubs.includes(team.id);
-            const isLocked = !isSelected && selectedClubs.length >= maxClubs && !isPremium;
+            // 🔥 FREE USER: Tüm kulüpler kilitli
+            const isLocked = !isPremium || (!isSelected && selectedClubs.length >= maxClubs);
 
             return (
               <TouchableOpacity
@@ -379,15 +397,19 @@ export default function FavoriteTeamsScreen({ onComplete, onBack }: FavoriteTeam
 
                 {/* Team Info */}
                 <View style={styles.teamInfo}>
-                  <Text style={styles.teamName}>{team.name}</Text>
-                  <Text style={styles.teamLeague}>
+                  <Text style={[styles.teamName, isLocked && styles.lockedText]}>{team.name}</Text>
+                  <Text style={[styles.teamLeague, isLocked && styles.lockedText]}>
                     {team.country} • {team.league}
                   </Text>
+                  {/* 🔥 FREE USER: PRO badge göster */}
+                  {!isPremium && (
+                    <Text style={styles.proRequiredBadge}>🔒 PRO</Text>
+                  )}
                 </View>
 
                 {/* Right Icon */}
                 {isLocked ? (
-                  <SafeIcon name="lock-closed" size={24} color={DARK_MODE.mutedForeground} />
+                  <SafeIcon name="lock-closed" size={24} color="#F59E0B" />
                 ) : isSelected ? (
                   <View style={styles.checkIconContainer}>
                     <SafeIcon name="checkmark-circle" size={28} color={BRAND.emerald} />
@@ -626,6 +648,20 @@ const styles = StyleSheet.create({
   teamLeague: {
     ...TYPOGRAPHY.bodySmall, // 12px
     color: DARK_MODE.mutedForeground,
+  },
+  lockedText: {
+    opacity: 0.5,
+  },
+  proRequiredBadge: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#F59E0B',
+    marginTop: 4,
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    alignSelf: 'flex-start',
   },
   emptyCircle: {
     width: 24,
