@@ -266,69 +266,8 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
           </ScrollView>
         </Animated.View>
 
-        {/* 2. STRATEJİK ODAK (STRATEGIC FOCUS) */}
+        {/* 2. ROZETLİ MAÇ ÖZETLERİ (SON 3 MAÇ) */}
         <Animated.View entering={FadeInDown.delay(400).springify()} style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="bulb" size={20} color="#F59E0B" />
-            <Text style={styles.sectionTitle}>Analiz Odağı Seç</Text>
-          </View>
-          <Text style={styles.sectionSubtitle}>Seçtiğin odak x1.25 puan çarpanı kazandırır</Text>
-
-          <View style={styles.focusGrid}>
-            {strategicFocusOptions.map((focus, index) => (
-              <Animated.View key={focus.id} entering={FadeInLeft.delay(500 + index * 50).springify()}>
-                <TouchableOpacity
-                  style={[
-                    styles.focusCard,
-                    selectedFocus === focus.id && styles.focusCardSelected,
-                    selectedFocus && selectedFocus !== focus.id && styles.focusCardUnselected,
-                    { 
-                      borderColor: selectedFocus === focus.id ? focus.color : '#334155',
-                      transform: [{ scale: selectedFocus === focus.id ? 1.05 : selectedFocus ? 0.95 : 1 }],
-                    },
-                  ]}
-                  onPress={() => handleFocusSelect(focus.id)}
-                  activeOpacity={0.8}
-                >
-                  {/* Icon Container */}
-                  <View style={[styles.focusIconContainer, { backgroundColor: `${focus.color}15` }]}>
-                    <Ionicons
-                      name={selectedFocus === focus.id ? focus.icon : focus.iconOutline} 
-                      size={32} 
-                      color={focus.color} 
-                    />
-                  </View>
-
-                  {/* Content */}
-                  <View style={styles.focusContent}>
-                    <Text style={styles.focusName}>{focus.name}</Text>
-                    <Text style={styles.focusMultiplier}>x{focus.multiplier}</Text>
-                    <Text style={styles.focusDescription}>{focus.description}</Text>
-                    
-                    {/* Affects Tags */}
-                    <View style={styles.focusAffects}>
-                      {focus.affects.map((affect, i) => (
-                        <View key={i} style={[styles.focusAffectTag, { backgroundColor: `${focus.color}20` }]}>
-                          <Text style={[styles.focusAffectText, { color: focus.color }]}>{affect}</Text>
-                      </View>
-                      ))}
-                    </View>
-                  </View>
-
-                  {/* Selected Badge */}
-                  {selectedFocus === focus.id && (
-                    <View style={styles.selectedBadge}>
-                      <Ionicons name="checkmark-circle" size={24} color={focus.color} />
-                    </View>
-                  )}
-                </TouchableOpacity>
-              </Animated.View>
-            ))}
-          </View>
-        </Animated.View>
-
-        {/* 3. ROZETLİ MAÇ ÖZETLERİ (SON 3 MAÇ) */}
-        <Animated.View entering={FadeInDown.delay(600).springify()} style={styles.section}>
           <View style={styles.sectionHeader}>
             <Ionicons name="trophy" size={20} color="#8B5CF6" />
             <Text style={styles.sectionTitle}>Son Performansın</Text>
@@ -336,7 +275,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
 
           <View style={styles.matchHistoryVertical}>
             {recentMatches.length > 0 ? recentMatches.map((match, index) => (
-              <Animated.View key={match.fixture.id} entering={FadeInLeft.delay(700 + index * 100).springify()}>
+              <Animated.View key={match.fixture.id} entering={FadeInLeft.delay(500 + index * 100).springify()}>
                 <TouchableOpacity
                   style={styles.historyCardVertical}
                   onPress={() => onNavigate('match-result-summary', { id: match.fixture.id })}
@@ -381,7 +320,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
             )}
 
             {/* View All Badges Button */}
-            <Animated.View entering={FadeInLeft.delay(1000).springify()}>
+            <Animated.View entering={FadeInLeft.delay(800).springify()}>
               <TouchableOpacity
                 style={styles.viewAllBadgesButton}
                 onPress={() => onNavigate('profile')}
@@ -392,6 +331,67 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
                 <Ionicons name="chevron-forward" size={20} color="#F59E0B" />
               </TouchableOpacity>
             </Animated.View>
+          </View>
+        </Animated.View>
+
+        {/* 3. STRATEJİK ODAK (STRATEGIC FOCUS) */}
+        <Animated.View entering={FadeInDown.delay(600).springify()} style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="bulb" size={20} color="#F59E0B" />
+            <Text style={styles.sectionTitle}>Analiz Odağı Seç</Text>
+          </View>
+          <Text style={styles.sectionSubtitle}>Seçtiğin odak x1.25 puan çarpanı kazandırır</Text>
+
+          <View style={styles.focusGrid}>
+            {strategicFocusOptions.map((focus, index) => (
+              <Animated.View key={focus.id} entering={FadeInLeft.delay(700 + index * 50).springify()}>
+                <TouchableOpacity
+                  style={[
+                    styles.focusCard,
+                    selectedFocus === focus.id && styles.focusCardSelected,
+                    selectedFocus && selectedFocus !== focus.id && styles.focusCardUnselected,
+                    { 
+                      borderColor: selectedFocus === focus.id ? focus.color : '#334155',
+                      transform: [{ scale: selectedFocus === focus.id ? 1.05 : selectedFocus ? 0.95 : 1 }],
+                    },
+                  ]}
+                  onPress={() => handleFocusSelect(focus.id)}
+                  activeOpacity={0.8}
+                >
+                  {/* Icon Container */}
+                  <View style={[styles.focusIconContainer, { backgroundColor: `${focus.color}15` }]}>
+                    <Ionicons
+                      name={selectedFocus === focus.id ? focus.icon : focus.iconOutline} 
+                      size={32} 
+                      color={focus.color} 
+                    />
+                  </View>
+
+                  {/* Content */}
+                  <View style={styles.focusContent}>
+                    <Text style={styles.focusName}>{focus.name}</Text>
+                    <Text style={styles.focusMultiplier}>x{focus.multiplier}</Text>
+                    <Text style={styles.focusDescription} numberOfLines={2}>{focus.description}</Text>
+                    
+                    {/* Affects Tags */}
+                    <View style={styles.focusAffects}>
+                      {focus.affects.slice(0, 2).map((affect, i) => (
+                        <View key={i} style={[styles.focusAffectTag, { backgroundColor: `${focus.color}20` }]}>
+                          <Text style={[styles.focusAffectText, { color: focus.color }]} numberOfLines={1}>{affect}</Text>
+                      </View>
+                      ))}
+                    </View>
+                  </View>
+
+                  {/* Selected Badge */}
+                  {selectedFocus === focus.id && (
+                    <View style={styles.selectedBadge}>
+                      <Ionicons name="checkmark-circle" size={24} color={focus.color} />
+                    </View>
+                  )}
+                </TouchableOpacity>
+              </Animated.View>
+            ))}
           </View>
         </Animated.View>
 
@@ -617,13 +617,14 @@ const styles = StyleSheet.create({
   },
   focusCard: {
     width: (width - 44) / 2, // 2 columns
-    height: 160, // Fixed height for equal rectangles
+    height: 180, // Fixed height (increased from 160)
     backgroundColor: '#1E293B',
     borderRadius: 16,
-    padding: 16,
+    padding: 14,
     borderWidth: 2,
     borderColor: '#334155',
     position: 'relative',
+    overflow: 'hidden', // 🔥 Prevent content overflow
   },
   focusCardSelected: {
     backgroundColor: 'rgba(5, 150, 105, 0.08)',
@@ -646,33 +647,36 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   focusIconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   focusContent: {
     flex: 1,
+    justifyContent: 'space-between',
   },
   focusName: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
     color: '#F8FAFB',
-    marginBottom: 4,
+    marginBottom: 3,
+    lineHeight: 18,
   },
   focusMultiplier: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
     color: '#059669',
     marginBottom: 4,
   },
   focusDescription: {
-    fontSize: 10,
-    color: '#64748B',
+    fontSize: 11,
+    color: '#94A3B8',
     marginBottom: 8,
-    lineHeight: 14,
+    lineHeight: 15,
+    fontWeight: '500',
   },
   focusAffects: {
     flexDirection: 'row',
@@ -681,13 +685,14 @@ const styles = StyleSheet.create({
     marginTop: 'auto',
   },
   focusAffectTag: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
     borderRadius: 6,
+    maxWidth: '48%',
   },
   focusAffectText: {
     fontSize: 9,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   selectedBadge: {
     position: 'absolute',
