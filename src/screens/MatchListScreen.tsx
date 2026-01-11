@@ -46,48 +46,7 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
   const scrollViewRef = useRef<ScrollView>(null);
   const { favoriteTeams } = useFavoriteTeams();
 
-  const { pastMatches, liveMatches, upcomingMatches, loading, error, hasLoadedOnce } = matchData;
-
-  // Auto-scroll to live match or first upcoming match
-  useEffect(() => {
-    if (hasLoadedOnce && scrollViewRef.current) {
-      setTimeout(() => {
-        if (liveMatches.length > 0) {
-          // Scroll to live match
-          scrollViewRef.current?.scrollTo({ y: 200, animated: true });
-        } else if (upcomingMatches.length > 0) {
-          // Scroll to first upcoming match
-          scrollViewRef.current?.scrollTo({ y: 200, animated: true });
-        }
-      }, 500);
-    }
-  }, [hasLoadedOnce, liveMatches.length, upcomingMatches.length]);
-
-  // Transform API data to component format
-  const transformMatch = (apiMatch: any) => {
-    const isLive = api.utils.isMatchLive(apiMatch.fixture.status.short);
-    const isFinished = api.utils.isMatchFinished(apiMatch.fixture.status.short);
-    
-    return {
-      id: apiMatch.fixture.id.toString(),
-      status: isLive ? 'live' : isFinished ? 'finished' : 'upcoming',
-      homeTeam: {
-        name: apiMatch.teams.home.name,
-        logo: apiMatch.teams.home.logo || '⚽',
-        score: apiMatch.goals.home || 0,
-      },
-      awayTeam: {
-        name: apiMatch.teams.away.name,
-        logo: apiMatch.teams.away.logo || '⚽',
-        score: apiMatch.goals.away || 0,
-      },
-      league: apiMatch.league.name,
-      date: new Date(apiMatch.fixture.date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' }),
-      time: api.utils.formatMatchTime(apiMatch.fixture.timestamp),
-      minute: apiMatch.fixture.status.elapsed || 0,
-      period: apiMatch.fixture.status.short,
-    };
-  };
+  const { liveMatches, loading, error, hasLoadedOnce } = matchData;
 
   // Filter matches by team
   const filterByTeam = (matches: any[]) => {
@@ -97,6 +56,8 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
       match.teams.away.id === selectedTeamFilter
     );
   };
+
+  const filteredLiveMatches = filterByTeam(liveMatches);
 
   const filteredPastMatches = filterByTeam(pastMatches);
   const filteredLiveMatches = filterByTeam(liveMatches);
@@ -165,13 +126,131 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
               </ScrollView>
         </View>
 
-        {/* Scrollable Content: All Matches */}
+        {/* Scrollable Content: Canlı Maçlar */}
         <ScrollView
           ref={scrollViewRef}
           style={styles.scrollView}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
+          {/* Loading State */}
+          {loading && !hasLoadedOnce && (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#059669" />
+              <Text style={styles.loadingText}>Canlı maçlar yükleniyor...</Text>
+            </View>
+          )}
+
+          {/* Error State */}
+          {error && (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorText}>❌ Bir hata oluştu: {error}</Text>
+            </View>
+          )}
+
+          {/* Empty State - No Live Matches */}
+          {!loading && hasLoadedOnce && filteredLiveMatches.length === 0 && (
+            <View style={styles.emptyStateContainer}>
+              <View style={styles.emptyStateIcon}>
+                <Text style={styles.emptyStateEmoji}>😴</Text>
+              </View>
+              <Text style={styles.emptyStateTitle}>Şuan canlı maç yok</Text>
+              <Text style={styles.emptyStateText}>
+                Yaklaşan maçları görmek için{'\n'}Ana Sayfa'ya dön
+              </Text>
+              <TouchableOpacity
+                style={styles.emptyStateButton}
+                onPress={() => {/* Navigate to home tab */}}
+                activeOpacity={0.8}
+              >
+                <LinearGradient
+                  colors={['#059669', '#047857']}
+                  style={styles.emptyStateButtonGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
+                  <Text style={styles.emptyStateButtonText}>Ana Sayfa</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Live Matches */}
+          {filteredLiveMatches.length > 0 && (
+            <View style={styles.section}>
+              <View style={styles.liveSectionHeader}>
+                <View style={styles.liveDot} />
+                <Text style={styles.liveSectionTitle}>Canlı Maçlar ({filteredLiveMatches.length})</Text>
+              </View>
+              {filteredLiveMatches.map((match) => {
+                const transformed = transformMatch(match);
+                return (
+                  <TouchableOpacity
+                    key={transformed.id}
+                    style={[styles.matchCard, styles.liveMatchCard]}
+                    onPress={() => onMatchSelect(transformed.id)}
+                    activeOpacity={0.8}
+                  >
+                    <View style={styles.matchHeader}>
+                      <Text style={styles.matchLeague}>{transformed.league}</Text>
+                      <View style={styles.liveIndicator}>
+                        <View style={styles.liveDot} />
+                        <Text style={styles.liveText}>CANLI</Text>
+                      </View>
+                    </View>
+                    <View style={styles.matchContent}>
+                      <View style={styles.team}>
+                        <Text style={styles.teamLogo}>{transformed.homeTeam.logo}</Text>
+                        <Text style={styles.teamNameText}>{transformed.homeTeam.name}</Text>
+                      </View>
+                      <View style={styles.matchScore}>
+                        <Text style={styles.scoreText}>
+                          {transformed.homeTeam.score} - {transformed.awayTeam.score}
+                        </Text>
+                        <Text style={styles.liveMinute}>{transformed.minute}'</Text>
+                      </View>
+                      <View style={styles.team}>
+                        <Text style={styles.teamLogo}>{transformed.awayTeam.logo}</Text>
+                        <Text style={styles.teamNameText}>{transformed.awayTeam.name}</Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
+        </ScrollView>
+      </View>
+    </SafeAreaView>
+  );
+
+  // Transform API data to component format
+  function transformMatch(apiMatch: any) {
+    const isLive = api.utils.isMatchLive(apiMatch.fixture.status.short);
+    const isFinished = api.utils.isMatchFinished(apiMatch.fixture.status.short);
+    
+    return {
+      id: apiMatch.fixture.id.toString(),
+      status: isLive ? 'live' : isFinished ? 'finished' : 'upcoming',
+      homeTeam: {
+        name: apiMatch.teams.home.name,
+        logo: apiMatch.teams.home.logo || '⚽',
+        score: apiMatch.goals.home || 0,
+      },
+      awayTeam: {
+        name: apiMatch.teams.away.name,
+        logo: apiMatch.teams.away.logo || '⚽',
+        score: apiMatch.goals.away || 0,
+      },
+      league: apiMatch.league.name,
+      date: new Date(apiMatch.fixture.date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' }),
+      time: api.utils.formatMatchTime(apiMatch.fixture.timestamp),
+      minute: apiMatch.fixture.status.elapsed || 0,
+      period: apiMatch.fixture.status.short,
+    };
+  }
+});
           {/* Past Matches */}
           {filteredPastMatches.length > 0 && (
             <View style={styles.section}>
@@ -508,5 +587,50 @@ const styles = StyleSheet.create({
     marginTop: 16,
     textAlign: 'center',
     paddingHorizontal: 32,
+  },
+  // Empty State Styles
+  emptyStateContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 100,
+    paddingHorizontal: 40,
+  },
+  emptyStateIcon: {
+    marginBottom: 24,
+  },
+  emptyStateEmoji: {
+    fontSize: 80,
+  },
+  emptyStateTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#F8FAFB',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  emptyStateText: {
+    fontSize: 15,
+    color: '#94A3B8',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 32,
+  },
+  emptyStateButton: {
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  emptyStateButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    gap: 8,
+  },
+  emptyStateButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 });

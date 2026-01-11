@@ -1,5 +1,5 @@
 // components/Dashboard.tsx - Analist Kontrol Paneli
-import React from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -79,6 +79,34 @@ const strategicFocusOptions = [
 
 export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }: DashboardProps) {
   const [selectedFocus, setSelectedFocus] = React.useState<string | null>(null);
+  const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null); // Seçilen maç
+  const [showFocusSection, setShowFocusSection] = useState(false); // Analiz odağı görünür mü
+  
+  const scrollViewRef = useRef<ScrollView>(null);
+  const focusSectionRef = useRef<View>(null);
+  const [focusSectionY, setFocusSectionY] = useState(0);
+
+  // Maç seçildiğinde scroll animasyonu
+  const handleMatchSelect = (matchId: string) => {
+    // Haptic feedback
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+
+    setSelectedMatchId(matchId);
+    setShowFocusSection(true);
+    setSelectedFocus(null); // Odak seçimini sıfırla
+
+    // Analiz odağı bölümüne scroll
+    setTimeout(() => {
+      if (focusSectionY > 0) {
+        scrollViewRef.current?.scrollTo({
+          y: focusSectionY - 100, // Profil kartı altına denk gelsin
+          animated: true,
+        });
+      }
+    }, 100);
+  };
 
   // Handle focus selection with haptic feedback
   const handleFocusSelect = (focusId: string) => {
@@ -87,6 +115,21 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
     setSelectedFocus(focusId);
+  };
+
+  // Devam Et butonu
+  const handleContinueToMatch = () => {
+    if (selectedMatchId) {
+      onNavigate('match-detail', {
+        id: selectedMatchId,
+        focus: selectedFocus,
+      });
+      
+      // Reset
+      setSelectedMatchId(null);
+      setShowFocusSection(false);
+      setSelectedFocus(null);
+    }
   };
 
   // Get analyst advice based on selected focus and match data
@@ -153,15 +196,16 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
     <View style={styles.container}>
       {/* Scrollable Content */}
       <ScrollView
+        ref={scrollViewRef}
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* 1. YAKLAŞAN & CANLI MAÇLAR - Horizontal Scroll */}
+        {/* 1. YAKLAŞAN MAÇLAR - Horizontal Scroll */}
         <Animated.View entering={FadeInDown.delay(100).springify()} style={[styles.section, styles.firstSection]}>
             <View style={styles.sectionHeader}>
-            <Ionicons name="football" size={20} color="#059669" />
-            <Text style={styles.sectionTitle}>Yaklaşan & Canlı Maçlar</Text>
+            <Ionicons name="calendar" size={20} color="#059669" />
+            <Text style={styles.sectionTitle}>Yaklaşan Maçlar</Text>
             </View>
 
           <ScrollView
@@ -169,53 +213,17 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.upcomingMatchesScroll}
           >
-            {/* Live Matches */}
-          {liveMatches.length > 0 && liveMatches.slice(0, 2).map((match, index) => (
+            {/* Canlı maçlar artık burada görünmez - sadece "Canlı Maçlar" sekmesinde */}
+            
+          {/* Upcoming Matches (Next 7 days) - Artık daha fazla gösterebiliriz */}
+          {upcomingNext24h.length > 0 ? upcomingNext24h.slice(0, 5).map((match, index) => (
             <Animated.View key={match.fixture.id} entering={FadeInDown.delay(200 + index * 100).springify()}>
                 <TouchableOpacity
-                style={styles.liveMatchCard}
-                  onPress={() => onNavigate('match-detail', { id: match.fixture.id })}
-                  activeOpacity={0.8}
-                >
-                <View style={styles.liveIndicator}>
-                    <View style={styles.liveDot} />
-                    <Text style={styles.liveText}>CANLI</Text>
-                    <Text style={styles.liveMinute}>{match.fixture.status.elapsed}'</Text>
-                  </View>
-
-                <View style={styles.matchTeams}>
-                  <View style={styles.matchTeam}>
-                    <Text style={styles.teamLogo}>{match.teams.home.logo || '⚽'}</Text>
-                    <Text style={styles.teamName}>{match.teams.home.name}</Text>
-                    </View>
-                  <View style={styles.matchScore}>
-                    <Text style={styles.scoreText}>{match.goals.home} - {match.goals.away}</Text>
-                    </View>
-                  <View style={styles.matchTeam}>
-                    <Text style={styles.teamLogo}>{match.teams.away.logo || '⚽'}</Text>
-                    <Text style={styles.teamName}>{match.teams.away.name}</Text>
-                  </View>
-                </View>
-
-                <LinearGradient
-                  colors={['#EF4444', '#DC2626']}
-                  style={styles.liveTrackButton}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                >
-                  <Ionicons name="eye" size={16} color="#FFFFFF" />
-                  <Text style={styles.liveTrackText}>Canlı Takip</Text>
-                </LinearGradient>
-                </TouchableOpacity>
-              </Animated.View>
-            ))}
-
-          {/* Upcoming Matches (Next 24h) */}
-          {upcomingNext24h.length > 0 ? upcomingNext24h.slice(0, 3).map((match, index) => (
-            <Animated.View key={match.fixture.id} entering={FadeInDown.delay(300 + index * 100).springify()}>
-                <TouchableOpacity
-                style={styles.upcomingMatchCard}
-                onPress={() => onNavigate('match-detail', { id: match.fixture.id })}
+                style={[
+                  styles.upcomingMatchCard,
+                  selectedMatchId === match.fixture.id && styles.selectedMatchCard,
+                ]}
+                onPress={() => handleMatchSelect(match.fixture.id)}
                   activeOpacity={0.8}
                 >
                 <View style={styles.matchHeader}>
@@ -266,66 +274,110 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
           </ScrollView>
         </Animated.View>
 
-        {/* 2. STRATEJİK ODAK (STRATEGIC FOCUS) */}
-        <Animated.View entering={FadeInDown.delay(300).springify()} style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="bulb" size={20} color="#F59E0B" />
-            <Text style={styles.sectionTitle}>Analiz Odağı Seç</Text>
-          </View>
-          <Text style={styles.sectionSubtitle}>Seçtiğin odak x1.25 puan çarpanı kazandırır</Text>
+        {/* 2. ANALİZ ODAĞI (Sadece maç seçildiğinde görünür) */}
+        {showFocusSection && selectedMatchId && (
+          <View 
+            ref={focusSectionRef}
+            onLayout={(event) => {
+              const layout = event.nativeEvent.layout;
+              setFocusSectionY(layout.y);
+            }}
+            style={styles.focusSectionContainer}
+          >
+            <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.section}>
+              {/* Seçilen Maç Bilgisi */}
+              {upcomingNext24h.find(m => m.fixture.id === selectedMatchId) && (
+                <View style={styles.selectedMatchInfo}>
+                  <Text style={styles.selectedMatchTitle}>Seçilen Maç:</Text>
+                  <Text style={styles.selectedMatchTeams}>
+                    {upcomingNext24h.find(m => m.fixture.id === selectedMatchId)?.teams.home.name} 
+                    {' vs '}
+                    {upcomingNext24h.find(m => m.fixture.id === selectedMatchId)?.teams.away.name}
+                  </Text>
+                </View>
+              )}
 
-          <View style={styles.focusGrid}>
-            {strategicFocusOptions.map((focus, index) => (
-              <Animated.View key={focus.id} entering={FadeInLeft.delay(400 + index * 50).springify()}>
+              <View style={styles.sectionHeader}>
+                <Ionicons name="bulb" size={20} color="#F59E0B" />
+                <Text style={styles.sectionTitle}>Yeni Tahmin İçin Analiz Odağını Seç</Text>
+              </View>
+              <Text style={styles.sectionSubtitle}>Seçersen x1.25 puan çarpanı kazanırsın (opsiyonel)</Text>
+
+              <View style={styles.focusGrid}>
+                {strategicFocusOptions.map((focus, index) => (
+                  <Animated.View key={focus.id} entering={FadeInLeft.delay(200 + index * 50).springify()}>
+                    <TouchableOpacity
+                      style={[
+                        styles.focusCard,
+                        selectedFocus === focus.id && styles.focusCardSelected,
+                        selectedFocus && selectedFocus !== focus.id && styles.focusCardUnselected,
+                        { 
+                          borderColor: selectedFocus === focus.id ? focus.color : '#334155',
+                          transform: [{ scale: selectedFocus === focus.id ? 1.05 : selectedFocus ? 0.95 : 1 }],
+                        },
+                      ]}
+                      onPress={() => handleFocusSelect(focus.id)}
+                      activeOpacity={0.8}
+                    >
+                      {/* Icon Container */}
+                      <View style={[styles.focusIconContainer, { backgroundColor: `${focus.color}15` }]}>
+                        <Ionicons
+                          name={selectedFocus === focus.id ? focus.icon : focus.iconOutline} 
+                          size={32} 
+                          color={focus.color} 
+                        />
+                      </View>
+
+                      {/* Content */}
+                      <View style={styles.focusContent}>
+                        <Text style={styles.focusName}>{focus.name}</Text>
+                        <Text style={styles.focusMultiplier}>x{focus.multiplier}</Text>
+                        <Text style={styles.focusDescription} numberOfLines={2}>{focus.description}</Text>
+                        
+                        {/* Affects Tags */}
+                        <View style={styles.focusAffects}>
+                          {focus.affects.slice(0, 2).map((affect, i) => (
+                            <View key={i} style={[styles.focusAffectTag, { backgroundColor: `${focus.color}20` }]}>
+                              <Text style={[styles.focusAffectText, { color: focus.color }]} numberOfLines={1}>{affect}</Text>
+                          </View>
+                          ))}
+                        </View>
+                      </View>
+
+                      {/* Selected Badge */}
+                      {selectedFocus === focus.id && (
+                        <View style={styles.selectedBadge}>
+                          <Ionicons name="checkmark-circle" size={24} color={focus.color} />
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  </Animated.View>
+                ))}
+              </View>
+
+              {/* DEVAM ET Butonu */}
+              <Animated.View entering={FadeInDown.delay(400).springify()} style={styles.continueButtonContainer}>
                 <TouchableOpacity
-                  style={[
-                    styles.focusCard,
-                    selectedFocus === focus.id && styles.focusCardSelected,
-                    selectedFocus && selectedFocus !== focus.id && styles.focusCardUnselected,
-                    { 
-                      borderColor: selectedFocus === focus.id ? focus.color : '#334155',
-                      transform: [{ scale: selectedFocus === focus.id ? 1.05 : selectedFocus ? 0.95 : 1 }],
-                    },
-                  ]}
-                  onPress={() => handleFocusSelect(focus.id)}
+                  style={styles.continueButton}
+                  onPress={handleContinueToMatch}
                   activeOpacity={0.8}
                 >
-                  {/* Icon Container */}
-                  <View style={[styles.focusIconContainer, { backgroundColor: `${focus.color}15` }]}>
-                    <Ionicons
-                      name={selectedFocus === focus.id ? focus.icon : focus.iconOutline} 
-                      size={32} 
-                      color={focus.color} 
-                    />
-                  </View>
-
-                  {/* Content */}
-                  <View style={styles.focusContent}>
-                    <Text style={styles.focusName}>{focus.name}</Text>
-                    <Text style={styles.focusMultiplier}>x{focus.multiplier}</Text>
-                    <Text style={styles.focusDescription} numberOfLines={2}>{focus.description}</Text>
-                    
-                    {/* Affects Tags */}
-                    <View style={styles.focusAffects}>
-                      {focus.affects.slice(0, 2).map((affect, i) => (
-                        <View key={i} style={[styles.focusAffectTag, { backgroundColor: `${focus.color}20` }]}>
-                          <Text style={[styles.focusAffectText, { color: focus.color }]} numberOfLines={1}>{affect}</Text>
-                      </View>
-                      ))}
-                    </View>
-                  </View>
-
-                  {/* Selected Badge */}
-                  {selectedFocus === focus.id && (
-                    <View style={styles.selectedBadge}>
-                      <Ionicons name="checkmark-circle" size={24} color={focus.color} />
-                    </View>
-                  )}
+                  <LinearGradient
+                    colors={['#059669', '#047857']}
+                    style={styles.continueButtonGradient}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                  >
+                    <Text style={styles.continueButtonText}>
+                      {selectedFocus ? 'Devam Et (Odak Seçildi ✓)' : 'Devam Et (Odak Seçmeden)'}
+                    </Text>
+                    <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
+                  </LinearGradient>
                 </TouchableOpacity>
               </Animated.View>
-            ))}
+            </Animated.View>
           </View>
-        </Animated.View>
+        )}
 
         {/* 3. KAZANILAN ROZETLER */}
         <Animated.View entering={FadeInDown.delay(500).springify()} style={styles.section}>
@@ -551,6 +603,69 @@ const styles = StyleSheet.create({
   upcomingMatchCard: {
     width: 320, // Fixed width for horizontal scroll
     backgroundColor: '#1E293B',
+    borderRadius: 16,
+    padding: 16,
+    marginRight: 12,
+    borderWidth: 2,
+    borderColor: '#334155',
+  },
+  selectedMatchCard: {
+    borderColor: '#F59E0B',
+    borderWidth: 3,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#F59E0B',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.5,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 8,
+      },
+      web: {
+        boxShadow: '0 4px 16px rgba(245, 158, 11, 0.5)',
+      },
+    }),
+  },
+  focusSectionContainer: {
+    marginBottom: 24,
+  },
+  selectedMatchInfo: {
+    backgroundColor: '#059669',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+  },
+  selectedMatchTitle: {
+    fontSize: 12,
+    color: '#FFFFFF',
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  selectedMatchTeams: {
+    fontSize: 16,
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  continueButtonContainer: {
+    marginTop: 20,
+  },
+  continueButton: {
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  continueButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    gap: 8,
+  },
+  continueButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
     borderRadius: 16,
     padding: 16,
     marginRight: 12,

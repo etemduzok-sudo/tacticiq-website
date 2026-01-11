@@ -11,7 +11,7 @@ interface BottomNavigationProps {
 
 const tabs = [
   { id: 'home', label: 'Ana Sayfa', icon: 'home-outline', activeIcon: 'home' },
-  { id: 'matches', label: 'Maçlar', icon: 'calendar-outline', activeIcon: 'calendar' },
+  { id: 'matches', label: 'Canlı Maçlar', icon: 'radio-outline', activeIcon: 'radio' },
   { id: 'leaderboard', label: 'Sıralama', icon: 'trophy-outline', activeIcon: 'trophy' },
 ];
 
