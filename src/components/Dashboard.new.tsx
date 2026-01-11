@@ -11,12 +11,9 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, { 
-  FadeInDown, 
-  FadeInLeft,
-} from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated, { FadeInDown, FadeInUp, FadeInLeft } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Haptics from 'expo-haptics';
 import api from '../services/api';
 
 const { width } = Dimensions.get('window');
@@ -38,86 +35,44 @@ const strategicFocusOptions = [
   {
     id: 'tempo',
     name: 'Tempo Analizi',
-    icon: 'flash',
-    iconOutline: 'flash-outline',
+    emoji: '⚡',
     multiplier: 1.25,
     color: '#3B82F6',
-    affects: ['Gol Dakikası', 'Oyun Temposu'],
+    affects: ['Gol Dakikası', 'Oyun Temposu', 'Baskı'],
     description: 'Maçın hızına odaklan',
   },
   {
     id: 'discipline',
     name: 'Disiplin Analizi',
-    icon: 'warning',
-    iconOutline: 'warning-outline',
+    emoji: '🟨',
     multiplier: 1.25,
     color: '#F59E0B',
-    affects: ['Kart', 'Faul'],
+    affects: ['Sarı/Kırmızı Kart', 'Faul', 'Penaltı'],
     description: 'Sert geçişleri öngör',
   },
   {
     id: 'fitness',
     name: 'Kondisyon Analizi',
-    icon: 'fitness',
-    iconOutline: 'fitness-outline',
+    emoji: '💪',
     multiplier: 1.25,
     color: '#10B981',
-    affects: ['Sakatlık', 'Değişiklik'],
+    affects: ['Sakatlık', 'Oyuncu Değişikliği', '90+ Gol'],
     description: 'Fiziksel durumu değerlendir',
   },
   {
     id: 'star',
     name: 'Yıldız Analizi',
-    icon: 'star',
-    iconOutline: 'star-outline',
+    emoji: '⭐',
     multiplier: 1.25,
     color: '#8B5CF6',
-    affects: ['Maçın Adamı', 'Gol'],
+    affects: ['Maçın Adamı', 'Gol Atan Oyuncu', 'Asist'],
     description: 'Yıldız oyuncuları takip et',
   },
 ];
 
 export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }: DashboardProps) {
+  const insets = useSafeAreaInsets();
   const [selectedFocus, setSelectedFocus] = React.useState<string | null>(null);
-
-  // Handle focus selection with haptic feedback
-  const handleFocusSelect = (focusId: string) => {
-    // Haptic feedback (only on mobile)
-    if (Platform.OS !== 'web') {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
-    setSelectedFocus(focusId);
-  };
-
-  // Get analyst advice based on selected focus and match data
-  const getAnalystAdvice = (match: any) => {
-    if (!selectedFocus) return null;
-
-    const adviceMap: Record<string, { icon: string; text: string; color: string }> = {
-      tempo: {
-        icon: '⚡',
-        text: 'Hızlı tempolu maç bekleniyor!',
-        color: '#3B82F6',
-      },
-      discipline: {
-        icon: '🛡️',
-        text: 'Bu hakem kart sever, odağın isabetli!',
-        color: '#F59E0B',
-      },
-      fitness: {
-        icon: '💪',
-        text: 'Uzun sezonda kondisyon kritik!',
-        color: '#10B981',
-      },
-      star: {
-        icon: '⭐',
-        text: 'Yıldız oyuncular sahada olacak!',
-        color: '#8B5CF6',
-      },
-    };
-
-    return adviceMap[selectedFocus] || null;
-  };
   
   const { 
     pastMatches, 
@@ -151,46 +106,83 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
 
   return (
     <View style={styles.container}>
+      {/* Curved Header Panel */}
+      <LinearGradient
+        colors={['rgba(15, 23, 42, 0.98)', 'rgba(15, 23, 42, 0.95)']}
+        style={[
+          styles.headerPanel,
+          { 
+            paddingTop: insets.top + 12,
+            ...Platform.select({
+              ios: {
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.3,
+                shadowRadius: 8,
+              },
+              android: {
+                elevation: 8,
+              },
+            }),
+          },
+        ]}
+      >
+        <View style={styles.headerContent}>
+          <View style={styles.analystInfo}>
+            <Text style={styles.analystLabel}>Analist</Text>
+            <Text style={styles.analystName}>Futbol Aşığı</Text>
+          </View>
+          <View style={styles.streakBadge}>
+            <Text style={styles.streakEmoji}>🔥</Text>
+            <Text style={styles.streakText}>5 Seri</Text>
+          </View>
+          <TouchableOpacity 
+            onPress={() => onNavigate('profile')}
+            style={styles.profileIconButton}
+            activeOpacity={0.7}
+          >
+            <View style={styles.profileIcon}>
+              <Text style={styles.profileIconText}>FM</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+      </LinearGradient>
+
       {/* Scrollable Content */}
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* 1. YAKLAŞAN & CANLI MAÇLAR - Horizontal Scroll */}
+        {/* 1. YAKLAŞAN & CANLI MAÇLAR */}
         <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.section}>
-            <View style={styles.sectionHeader}>
+          <View style={styles.sectionHeader}>
             <Ionicons name="football" size={20} color="#059669" />
             <Text style={styles.sectionTitle}>Yaklaşan & Canlı Maçlar</Text>
-            </View>
+          </View>
 
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.upcomingMatchesScroll}
-          >
-            {/* Live Matches */}
+          {/* Live Matches */}
           {liveMatches.length > 0 && liveMatches.slice(0, 2).map((match, index) => (
             <Animated.View key={match.fixture.id} entering={FadeInDown.delay(200 + index * 100).springify()}>
-                <TouchableOpacity
+              <TouchableOpacity
                 style={styles.liveMatchCard}
-                  onPress={() => onNavigate('match-detail', { id: match.fixture.id })}
-                  activeOpacity={0.8}
-                >
+                onPress={() => onNavigate('match-detail', { id: match.fixture.id })}
+                activeOpacity={0.8}
+              >
                 <View style={styles.liveIndicator}>
-                    <View style={styles.liveDot} />
-                    <Text style={styles.liveText}>CANLI</Text>
-                    <Text style={styles.liveMinute}>{match.fixture.status.elapsed}'</Text>
-                  </View>
-
+                  <View style={styles.liveDot} />
+                  <Text style={styles.liveText}>CANLI</Text>
+                  <Text style={styles.liveMinute}>{match.fixture.status.elapsed}'</Text>
+                </View>
+                
                 <View style={styles.matchTeams}>
                   <View style={styles.matchTeam}>
                     <Text style={styles.teamLogo}>{match.teams.home.logo || '⚽'}</Text>
                     <Text style={styles.teamName}>{match.teams.home.name}</Text>
-                    </View>
+                  </View>
                   <View style={styles.matchScore}>
                     <Text style={styles.scoreText}>{match.goals.home} - {match.goals.away}</Text>
-                    </View>
+                  </View>
                   <View style={styles.matchTeam}>
                     <Text style={styles.teamLogo}>{match.teams.away.logo || '⚽'}</Text>
                     <Text style={styles.teamName}>{match.teams.away.name}</Text>
@@ -206,64 +198,53 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
                   <Ionicons name="eye" size={16} color="#FFFFFF" />
                   <Text style={styles.liveTrackText}>Canlı Takip</Text>
                 </LinearGradient>
-                </TouchableOpacity>
-              </Animated.View>
-            ))}
+              </TouchableOpacity>
+            </Animated.View>
+          ))}
 
           {/* Upcoming Matches (Next 24h) */}
           {upcomingNext24h.length > 0 ? upcomingNext24h.slice(0, 3).map((match, index) => (
             <Animated.View key={match.fixture.id} entering={FadeInDown.delay(300 + index * 100).springify()}>
-                <TouchableOpacity
+              <TouchableOpacity
                 style={styles.upcomingMatchCard}
                 onPress={() => onNavigate('match-detail', { id: match.fixture.id })}
-                  activeOpacity={0.8}
-                >
+                activeOpacity={0.8}
+              >
                 <View style={styles.matchHeader}>
                   <Text style={styles.matchLeague}>{match.league.name}</Text>
                   <Text style={styles.matchTime}>{api.utils.formatMatchTime(match.fixture.timestamp)}</Text>
-                  </View>
-
-                  <View style={styles.matchTeams}>
+                </View>
+                
+                <View style={styles.matchTeams}>
                   <View style={styles.matchTeam}>
                     <Text style={styles.teamLogo}>{match.teams.home.logo || '⚽'}</Text>
                     <Text style={styles.teamName}>{match.teams.home.name}</Text>
-                    </View>
+                  </View>
                   <Text style={styles.vsText}>VS</Text>
                   <View style={styles.matchTeam}>
                     <Text style={styles.teamLogo}>{match.teams.away.logo || '⚽'}</Text>
                     <Text style={styles.teamName}>{match.teams.away.name}</Text>
                   </View>
-                    </View>
+                </View>
 
-                {/* Analyst Advice Balloon */}
-                {selectedFocus && getAnalystAdvice(match) && (
-                  <View style={[styles.adviceBalloon, { backgroundColor: `${getAnalystAdvice(match)!.color}20` }]}>
-                    <Text style={styles.adviceIcon}>{getAnalystAdvice(match)!.icon}</Text>
-                    <Text style={[styles.adviceText, { color: getAnalystAdvice(match)!.color }]}>
-                      {getAnalystAdvice(match)!.text}
-                      </Text>
-                    </View>
-                )}
-
-                    <LinearGradient
-                      colors={['#059669', '#047857']}
+                <LinearGradient
+                  colors={['#059669', '#047857']}
                   style={styles.predictButton}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                    >
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
                   <Ionicons name="analytics" size={16} color="#FFFFFF" />
                   <Text style={styles.predictButtonText}>Analizini Gir</Text>
                   <View style={styles.glowDot} />
-                    </LinearGradient>
-                </TouchableOpacity>
-              </Animated.View>
+                </LinearGradient>
+              </TouchableOpacity>
+            </Animated.View>
           )) : (
             <View style={styles.emptyState}>
               <Ionicons name="calendar-outline" size={48} color="#64748B" />
               <Text style={styles.emptyText}>24 saat içinde maç yok</Text>
             </View>
           )}
-          </ScrollView>
         </Animated.View>
 
         {/* 2. STRATEJİK ODAK (STRATEGIC FOCUS) */}
@@ -281,44 +262,25 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
                   style={[
                     styles.focusCard,
                     selectedFocus === focus.id && styles.focusCardSelected,
-                    selectedFocus && selectedFocus !== focus.id && styles.focusCardUnselected,
-                    { 
-                      borderColor: selectedFocus === focus.id ? focus.color : '#334155',
-                      transform: [{ scale: selectedFocus === focus.id ? 1.05 : selectedFocus ? 0.95 : 1 }],
-                    },
+                    { borderColor: focus.color },
                   ]}
-                  onPress={() => handleFocusSelect(focus.id)}
+                  onPress={() => setSelectedFocus(focus.id)}
                   activeOpacity={0.8}
                 >
-                  {/* Icon Container */}
-                  <View style={[styles.focusIconContainer, { backgroundColor: `${focus.color}15` }]}>
-                    <Ionicons
-                      name={selectedFocus === focus.id ? focus.icon : focus.iconOutline} 
-                      size={32} 
-                      color={focus.color} 
-                    />
+                  <View style={[styles.focusEmoji, { backgroundColor: `${focus.color}20` }]}>
+                    <Text style={styles.focusEmojiText}>{focus.emoji}</Text>
                   </View>
-
-                  {/* Content */}
-                  <View style={styles.focusContent}>
-                    <Text style={styles.focusName}>{focus.name}</Text>
-                    <Text style={styles.focusMultiplier}>x{focus.multiplier}</Text>
-                    <Text style={styles.focusDescription}>{focus.description}</Text>
-                    
-                    {/* Affects Tags */}
-                    <View style={styles.focusAffects}>
-                      {focus.affects.map((affect, i) => (
-                        <View key={i} style={[styles.focusAffectTag, { backgroundColor: `${focus.color}20` }]}>
-                          <Text style={[styles.focusAffectText, { color: focus.color }]}>{affect}</Text>
-                      </View>
-                      ))}
-                    </View>
+                  <Text style={styles.focusName}>{focus.name}</Text>
+                  <Text style={styles.focusMultiplier}>x{focus.multiplier}</Text>
+                  <Text style={styles.focusDescription}>{focus.description}</Text>
+                  <View style={styles.focusAffects}>
+                    {focus.affects.slice(0, 2).map((affect, i) => (
+                      <Text key={i} style={styles.focusAffectTag}>{affect}</Text>
+                    ))}
                   </View>
-
-                  {/* Selected Badge */}
                   {selectedFocus === focus.id && (
                     <View style={styles.selectedBadge}>
-                      <Ionicons name="checkmark-circle" size={24} color={focus.color} />
+                      <Ionicons name="checkmark-circle" size={20} color={focus.color} />
                     </View>
                   )}
                 </TouchableOpacity>
@@ -332,13 +294,17 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
           <View style={styles.sectionHeader}>
             <Ionicons name="trophy" size={20} color="#8B5CF6" />
             <Text style={styles.sectionTitle}>Son Performansın</Text>
-        </View>
+          </View>
 
-          <View style={styles.matchHistoryVertical}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.matchHistoryScroll}
+          >
             {recentMatches.length > 0 ? recentMatches.map((match, index) => (
               <Animated.View key={match.fixture.id} entering={FadeInLeft.delay(700 + index * 100).springify()}>
                 <TouchableOpacity
-                  style={styles.historyCardVertical}
+                  style={styles.historyCard}
                   onPress={() => onNavigate('match-result-summary', { id: match.fixture.id })}
                   activeOpacity={0.8}
                 >
@@ -349,7 +315,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
                     <Text style={styles.historyScore}>
                       {match.goals.home} - {match.goals.away}
                     </Text>
-        </View>
+                  </View>
                   
                   <Text style={styles.historyTeams} numberOfLines={2}>
                     {match.teams.home.name} vs {match.teams.away.name}
@@ -383,16 +349,16 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
             {/* View All Badges Button */}
             <Animated.View entering={FadeInLeft.delay(1000).springify()}>
               <TouchableOpacity
-                style={styles.viewAllBadgesButton}
+                style={styles.viewAllBadgesCard}
                 onPress={() => onNavigate('profile')}
                 activeOpacity={0.8}
               >
-                <Ionicons name="trophy" size={24} color="#F59E0B" />
+                <Ionicons name="trophy" size={32} color="#F59E0B" />
                 <Text style={styles.viewAllBadgesText}>Tüm Rozetlerimi Gör</Text>
                 <Ionicons name="chevron-forward" size={20} color="#F59E0B" />
               </TouchableOpacity>
             </Animated.View>
-          </View>
+          </ScrollView>
         </Animated.View>
 
         {/* Bottom Padding */}
@@ -417,12 +383,84 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
 
+  // Curved Header Panel
+  headerPanel: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 100,
+    backgroundColor: 'rgba(15, 23, 42, 0.98)',
+    borderBottomLeftRadius: 25,
+    borderBottomRightRadius: 25,
+    paddingBottom: 16,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 8,
+  },
+  analystInfo: {
+    flex: 1,
+  },
+  analystLabel: {
+    fontSize: 11,
+    color: '#64748B',
+    marginBottom: 2,
+  },
+  analystName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#F8FAFB',
+  },
+  streakBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+    marginRight: 12,
+  },
+  streakEmoji: {
+    fontSize: 16,
+    marginRight: 4,
+  },
+  streakText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#EF4444',
+  },
+  profileIconButton: {
+    width: 40,
+    height: 40,
+  },
+  profileIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#059669',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(5, 150, 105, 0.3)',
+  },
+  profileIconText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+
   // Scroll Content
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingTop: 120, // Space for ProfileCard overlay
+    paddingTop: 100,
     paddingBottom: 100,
   },
 
@@ -449,19 +487,12 @@ const styles = StyleSheet.create({
     marginLeft: 28,
   },
 
-  // Upcoming Matches Scroll (Horizontal)
-  upcomingMatchesScroll: {
-    paddingRight: 16,
-    gap: 12,
-  },
-  
   // Live Match Card
   liveMatchCard: {
-    width: 320, // Fixed width for horizontal scroll
     backgroundColor: '#1E293B',
     borderRadius: 16,
     padding: 16,
-    marginRight: 12,
+    marginBottom: 12,
     borderWidth: 2,
     borderColor: '#EF4444',
   },
@@ -538,11 +569,10 @@ const styles = StyleSheet.create({
 
   // Upcoming Match Card
   upcomingMatchCard: {
-    width: 320, // Fixed width for horizontal scroll
     backgroundColor: '#1E293B',
     borderRadius: 16,
     padding: 16,
-    marginRight: 12,
+    marginBottom: 12,
     borderWidth: 1,
     borderColor: '#334155',
   },
@@ -560,23 +590,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: '#059669',
-  },
-  adviceBalloon: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginBottom: 8,
-    gap: 6,
-  },
-  adviceIcon: {
-    fontSize: 14,
-  },
-  adviceText: {
-    fontSize: 11,
-    fontWeight: '600',
-    flex: 1,
   },
   predictButton: {
     flexDirection: 'row',
@@ -609,12 +622,10 @@ const styles = StyleSheet.create({
   focusGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
     gap: 12,
   },
   focusCard: {
-    width: (width - 44) / 2, // 2 columns
-    height: 160, // Fixed height for equal rectangles
+    width: (width - 44) / 2,
     backgroundColor: '#1E293B',
     borderRadius: 16,
     padding: 16,
@@ -623,81 +634,62 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   focusCardSelected: {
-    backgroundColor: 'rgba(5, 150, 105, 0.08)',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#F59E0B',
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.6,
-        shadowRadius: 12,
-      },
-      android: {
-        elevation: 12,
-      },
-      web: {
-        boxShadow: '0 0 12px rgba(245, 158, 11, 0.6)',
-      },
-    }),
+    backgroundColor: 'rgba(5, 150, 105, 0.1)',
   },
-  focusCardUnselected: {
-    opacity: 0.6,
-  },
-  focusIconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+  focusEmoji: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
   },
-  focusContent: {
-    flex: 1,
+  focusEmojiText: {
+    fontSize: 24,
   },
   focusName: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
     color: '#F8FAFB',
     marginBottom: 4,
   },
   focusMultiplier: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
     color: '#059669',
     marginBottom: 4,
   },
   focusDescription: {
-    fontSize: 10,
+    fontSize: 11,
     color: '#64748B',
     marginBottom: 8,
-    lineHeight: 14,
   },
   focusAffects: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 4,
-    marginTop: 'auto',
   },
   focusAffectTag: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  focusAffectText: {
     fontSize: 9,
-    fontWeight: '600',
+    color: '#94A3B8',
+    backgroundColor: '#334155',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
   },
   selectedBadge: {
     position: 'absolute',
-    top: 12,
-    right: 12,
+    top: 8,
+    right: 8,
   },
 
-  // Match History (Vertical)
-  matchHistoryVertical: {
+  // Match History
+  matchHistoryScroll: {
+    paddingRight: 16,
     gap: 12,
   },
-  historyCardVertical: {
-    width: '100%',
+  historyCard: {
+    width: 200,
     backgroundColor: '#1E293B',
     borderRadius: 16,
     padding: 16,
@@ -749,18 +741,16 @@ const styles = StyleSheet.create({
     fontSize: 20,
     opacity: 0.8,
   },
-  viewAllBadgesButton: {
-    width: '100%',
+  viewAllBadgesCard: {
+    width: 160,
     backgroundColor: 'rgba(245, 158, 11, 0.1)',
     borderRadius: 16,
     padding: 16,
     borderWidth: 2,
     borderColor: 'rgba(245, 158, 11, 0.3)',
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    marginTop: 12,
   },
   viewAllBadgesText: {
     fontSize: 13,
@@ -768,7 +758,7 @@ const styles = StyleSheet.create({
     color: '#F59E0B',
     textAlign: 'center',
   },
-  
+
   // Empty States
   emptyState: {
     alignItems: 'center',

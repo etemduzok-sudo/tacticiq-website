@@ -10,19 +10,21 @@ import { handleNetworkError, handleApiError } from '../utils/GlobalErrorHandler'
 
 // Platform-specific API URL
 const getApiBaseUrl = () => {
-  if (__DEV__) {
-    // Web platform için localhost, mobile için localhost veya IP
-    if (Platform.OS === 'web') {
-      return 'http://localhost:3000/api';
-    }
-    // Mobile (iOS/Android) - emulator/simulator için localhost çalışır
+  // ⚠️ ALWAYS USE LOCALHOST FOR DEVELOPMENT
+  // __DEV__ check sometimes fails in web, so force localhost
+  if (Platform.OS === 'web' || __DEV__ || typeof window !== 'undefined') {
+    console.log('🔧 [API] Using localhost (development mode)');
     return 'http://localhost:3000/api';
   }
+  
   // Production - Use centralized config
+  console.log('🚀 [API] Using production API');
   return getApiEndpoint();
 };
 
 const API_BASE_URL = getApiBaseUrl();
+
+console.log('🌐 [API] Base URL set to:', API_BASE_URL);
 
 // Request helper with timeout and error handling
 async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
@@ -298,6 +300,35 @@ export const matchesApi = {
       throw error;
     }
   },
+  
+  // Get upcoming matches for a team (next 30 days) - FASTER!
+  getUpcomingMatches: async (teamId: number) => {
+    try {
+      // Calculate date range
+      const today = new Date();
+      const next30Days = new Date(today);
+      next30Days.setDate(today.getDate() + 30);
+      
+      const fromDate = today.toISOString().split('T')[0];
+      const toDate = next30Days.toISOString().split('T')[0];
+      
+      console.log(`📅 Fetching matches from ${fromDate} to ${toDate}`);
+      
+      const result = await request(`/matches/team/${teamId}?from=${fromDate}&to=${toDate}`);
+      
+      // If data comes from database, transform it
+      if (result.success && result.data && result.source === 'database') {
+        const transformedData = result.data.map(transformDbMatchToApiFormat);
+        return { ...result, data: transformedData };
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('Error fetching upcoming matches:', error);
+      // Fallback to season matches if date range fails
+      return matchesApi.getTeamSeasonMatches(teamId, 2025);
+    }
+  },
     
   // Subscribe to real-time match updates
   subscribeToMatch: (matchId: number, callback: (payload: any) => void) => {
@@ -417,4 +448,5 @@ export default {
     isMatchLive,
     isMatchFinished,
   },
+  getBaseUrl: () => API_BASE_URL, // Export base URL for direct fetch
 };

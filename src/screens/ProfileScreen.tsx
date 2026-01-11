@@ -23,6 +23,7 @@ import ScoringEngine from '../logic/ScoringEngine';
 import { AnalysisCluster } from '../types/prediction.types';
 import { getAllAvailableBadges, getUserBadges } from '../services/badgeService';
 import { Badge, getBadgeColor, getBadgeTierName } from '../types/badges.types';
+import { ALL_BADGES, BadgeDefinition, getBadgeById } from '../constants/badges';
 
 interface ProfileScreenProps {
   onBack: () => void;
@@ -80,13 +81,28 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   // 🏆 LOAD BADGES
   const loadBadges = async () => {
     try {
-      const badges = await getAllAvailableBadges();
-      setAllBadges(badges);
-      
+      // Load all 20 badges from constants
       const earnedBadges = await getUserBadges();
+      
+      // Map ALL_BADGES with earned status
+      const badgesWithStatus = ALL_BADGES.map((badgeDef) => {
+        const earnedBadge = earnedBadges.find((eb) => eb.id === badgeDef.id);
+        return {
+          id: badgeDef.id,
+          name: badgeDef.name,
+          description: badgeDef.description,
+          icon: badgeDef.emoji,
+          tier: badgeDef.tier as any,
+          earned: !!earnedBadge,
+          earnedAt: earnedBadge?.earnedAt,
+          requirement: badgeDef.howToEarn,
+        };
+      });
+      
+      setAllBadges(badgesWithStatus as any);
       setBadgeCount(earnedBadges.length);
       
-      console.log('✅ Loaded badges:', badges.length, 'Earned:', earnedBadges.length);
+      console.log('✅ Loaded badges: 20 total, Earned:', earnedBadges.length);
     } catch (error) {
       console.error('Error loading badges:', error);
     }
@@ -107,11 +123,17 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         await loadBadges();
         
         // Load favorite teams
+        console.log('🔍 [PROFILE] Loading favorite teams from AsyncStorage...');
         const favoriteTeamsStr = await AsyncStorage.getItem('fan-manager-favorite-clubs');
+        console.log('🔍 [PROFILE] Raw storage data:', favoriteTeamsStr);
+        
         if (favoriteTeamsStr) {
           const teams = JSON.parse(favoriteTeamsStr);
           setFavoriteTeams(teams);
-          console.log('✅ Loaded favorite teams in profile:', teams);
+          console.log('✅ [PROFILE] Loaded favorite teams:', teams);
+        } else {
+          console.log('⚠️ [PROFILE] No favorite teams found in storage');
+          setFavoriteTeams([]);
         }
 
         // Fetch user profile from Supabase
@@ -205,9 +227,17 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Profile</Text>
-          <TouchableOpacity onPress={onSettings} style={styles.headerButton}>
-            <Ionicons name="settings-outline" size={24} color="#FFFFFF" />
-          </TouchableOpacity>
+          <View style={styles.headerRight}>
+            <TouchableOpacity onPress={() => {/* TODO: Navigate to notifications */}} style={styles.notificationButton}>
+              <Ionicons name="notifications-outline" size={24} color="#F8FAFB" />
+              <View style={styles.notificationBadge}>
+                <Text style={styles.notificationBadgeText}>3</Text>
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={onSettings} style={styles.headerButton}>
+              <Ionicons name="settings-outline" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* 🏆 TAB NAVIGATION */}
@@ -489,7 +519,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             <FlatList
               data={allBadges}
               keyExtractor={(item) => item.id}
-              numColumns={3}
+              numColumns={4}
               contentContainerStyle={styles.badgeGrid}
               showsVerticalScrollIndicator={false}
               renderItem={({ item, index }) => (
@@ -646,6 +676,25 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                       </Text>
                     </View>
 
+                    {/* Progress Bar (for locked badges) */}
+                    {!selectedBadge.earned && (
+                      <View style={styles.badgeProgressSection}>
+                        <View style={styles.badgeProgressHeader}>
+                          <Text style={styles.badgeProgressLabel}>İlerleme</Text>
+                          <Text style={styles.badgeProgressValue}>12 / 20</Text>
+                        </View>
+                        <View style={styles.badgeProgressBarContainer}>
+                          <LinearGradient
+                            colors={[getBadgeColor(selectedBadge.tier), `${getBadgeColor(selectedBadge.tier)}80`]}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                            style={[styles.badgeProgressBarFill, { width: '60%' }]}
+                          />
+                        </View>
+                        <Text style={styles.badgeProgressHint}>🎯 8 maç daha kazanman gerekiyor!</Text>
+                      </View>
+                    )}
+
                     {/* Close Button */}
                     <TouchableOpacity
                       style={styles.badgeDetailCloseButton}
@@ -724,6 +773,36 @@ const styles = StyleSheet.create({
     height: 40,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  notificationButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  notificationBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: '#EF4444',
+    borderRadius: 10,
+    width: 18,
+    height: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#0F172A',
+  },
+  notificationBadgeText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
   },
   headerTitle: {
     fontSize: 20,
@@ -1337,45 +1416,46 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   badgeCard: {
-    width: 110,
-    height: 140,
+    width: 80,
+    height: 120,
     backgroundColor: 'rgba(30, 41, 59, 0.6)',
-    borderRadius: 16,
+    borderRadius: 12,
     borderWidth: 2,
-    margin: 6,
-    padding: 12,
+    margin: 4,
+    padding: 8,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
   },
   badgeCardLocked: {
-    opacity: 0.5,
+    opacity: 0.4,
+    backgroundColor: 'rgba(51, 65, 85, 0.3)',
+    borderColor: 'rgba(100, 116, 139, 0.2)',
   },
   badgeEmoji: {
-    fontSize: 40,
-    marginBottom: 8,
+    fontSize: 36,
+    marginBottom: 6,
   },
   badgeEmojiLocked: {
     opacity: 0.3,
-    filter: 'grayscale(100%)',
   },
   badgeName: {
-    fontSize: 11,
+    fontSize: 9,
     fontWeight: '600',
     color: '#FFFFFF',
     textAlign: 'center',
-    marginBottom: 6,
+    marginBottom: 4,
   },
   badgeNameLocked: {
     color: '#64748B',
   },
   badgeTierLabel: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
   },
   badgeTierText: {
-    fontSize: 9,
+    fontSize: 7,
     fontWeight: '600',
   },
   lockedOverlay: {
@@ -1490,5 +1570,47 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+
+  // Badge Progress Bar
+  badgeProgressSection: {
+    marginTop: 20,
+    padding: 16,
+    backgroundColor: 'rgba(30, 41, 59, 0.5)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  badgeProgressHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  badgeProgressLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#94A3B8',
+  },
+  badgeProgressValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#F8FAFB',
+  },
+  badgeProgressBarContainer: {
+    height: 8,
+    backgroundColor: '#1E293B',
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  badgeProgressBarFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  badgeProgressHint: {
+    fontSize: 11,
+    color: '#64748B',
+    textAlign: 'center',
   },
 });

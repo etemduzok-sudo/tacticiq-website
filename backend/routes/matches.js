@@ -242,78 +242,32 @@ router.get('/team/:teamId/season/:season', async (req, res) => {
     
     console.log(`📅 Fetching all matches for team ${teamId} in season ${season}`);
     
-    // TEMPORARY: Force API fetch to verify correct team ID
-    console.log('⚠️ FORCING API FETCH (database bypassed for debugging)');
-    
-    const data = await footballApi.getFixturesByTeam(teamId, season);
-    
-    // Sync to database
-    if (databaseService.enabled && data.response && data.response.length > 0) {
-      await databaseService.upsertMatches(data.response);
-    }
-    
-    res.json({
-      success: true,
-      data: data.response,
-      source: 'api-forced',
-      cached: data.cached || false,
-      count: data.response?.length || 0
-    });
-    
-    /* TEMPORARILY DISABLED DATABASE CHECK
-    // Try database first
-    const { data: dbMatches, error: dbError } = await supabase
-      .from('matches')
-      .select(`
-        *,
-        home_team:teams!matches_home_team_id_fkey(id, name, logo),
-        away_team:teams!matches_away_team_id_fkey(id, name, logo),
-        league:leagues(id, name, country, logo)
-      `)
-      .eq('season', season)
-      .or(`home_team_id.eq.${teamId},away_team_id.eq.${teamId}`)
-      .order('fixture_date', { ascending: true });
-    
-    if (dbError) {
-      console.error('❌ Database error:', dbError);
-    }
-    
-    // Eğer database'de yeterli maç varsa (en az 100), database'den dön
-    // NOT: Threshold yüksek tutuldu çünkü database'de yanlış takım maçları var
-    if (dbMatches && dbMatches.length >= 100) {
-      console.log(`✅ Found ${dbMatches.length} matches for team ${teamId} in database (sufficient)`);
-      
-      // DEBUG: Log first 3 matches to verify team IDs
-      if (dbMatches.length > 0) {
-        console.log('🔍 First 3 matches:', dbMatches.slice(0, 3).map(m => ({
-          id: m.id,
-          homeTeam: m.home_team?.name || m.home_team_id,
-          awayTeam: m.away_team?.name || m.away_team_id,
-          homeTeamId: m.home_team_id,
-          awayTeamId: m.away_team_id,
-          date: m.fixture_date
-        })));
+    // TRY DATABASE FIRST (much faster!)
+    if (databaseService.enabled) {
+      try {
+        const dbMatches = await databaseService.getTeamMatches(teamId, season);
+        if (dbMatches && dbMatches.length > 0) {
+          console.log(`✅ Found ${dbMatches.length} matches in DATABASE (fast!)`);
+          return res.json({
+            success: true,
+            data: dbMatches,
+            source: 'database',
+            cached: true,
+            count: dbMatches.length
+          });
+        }
+      } catch (dbError) {
+        console.warn('Database lookup failed, falling back to API:', dbError.message);
       }
-      
-      return res.json({
-        success: true,
-        data: dbMatches,
-        source: 'database',
-        count: dbMatches.length
-      });
     }
     
-    // Yetersiz veri varsa API'den çek
-    if (dbMatches && dbMatches.length > 0) {
-      console.log(`⚠️ Only ${dbMatches.length} matches in database, fetching from API for complete data...`);
-    } else {
-      console.log(`⚠️ No matches in database, fetching from API...`);
-    }
-    
+    // Fallback to API if database is empty
+    console.log('⚠️ Database empty, fetching from API-Football...');
     const data = await footballApi.getFixturesByTeam(teamId, season);
     
-    // Sync to database
+    // Sync to database for next time
     if (databaseService.enabled && data.response && data.response.length > 0) {
+      console.log(`💾 Syncing ${data.response.length} matches to database...`);
       await databaseService.upsertMatches(data.response);
     }
     
@@ -581,11 +535,21 @@ router.get('/team/:teamId/last', async (req, res) => {
   try {
     const { teamId } = req.params;
     const { limit = 10 } = req.query;
+    
+    console.log(`📥 Fetching ${limit} past matches for team ${teamId}`);
+    
     const data = await footballApi.getTeamLastMatches(teamId, limit);
+    
+    // Sync to database
+    if (databaseService.enabled && data.response && data.response.length > 0) {
+      await databaseService.upsertMatches(data.response);
+    }
+    
     res.json({
       success: true,
       data: data.response,
       cached: data.cached || false,
+      source: 'api'
     });
   } catch (error) {
     res.status(500).json({
@@ -599,12 +563,22 @@ router.get('/team/:teamId/last', async (req, res) => {
 router.get('/team/:teamId/upcoming', async (req, res) => {
   try {
     const { teamId } = req.params;
-    const { limit = 10 } = req.query;
+    const { limit = 15 } = req.query; // Increased to 15 for better UX
+    
+    console.log(`📥 Fetching ${limit} upcoming matches for team ${teamId}`);
+    
     const data = await footballApi.getTeamUpcomingMatches(teamId, limit);
+    
+    // Sync to database
+    if (databaseService.enabled && data.response && data.response.length > 0) {
+      await databaseService.upsertMatches(data.response);
+    }
+    
     res.json({
       success: true,
       data: data.response,
       cached: data.cached || false,
+      source: 'api'
     });
   } catch (error) {
     res.status(500).json({

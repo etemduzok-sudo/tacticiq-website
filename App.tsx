@@ -8,6 +8,8 @@ import { MatchProvider } from './src/contexts/MatchContext';
 import ErrorBoundary from './src/components/ErrorBoundary';
 import MaintenanceScreen from './src/components/MaintenanceScreen';
 import { MAINTENANCE_CONFIG, logVersionInfo } from './src/config/AppVersion';
+import { useFavoriteTeamMatches } from './src/hooks/useFavoriteTeamMatches';
+import { ProfileCard } from './src/components/ProfileCard';
 
 // Web için UIManager polyfills
 if (Platform.OS === 'web') {
@@ -93,6 +95,9 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<string>('home');
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
   const [isMaintenanceMode, setIsMaintenanceMode] = useState<boolean>(false);
+
+  // Global match data - shared across all screens
+  const matchData = useFavoriteTeamMatches();
 
   // ==========================================
   // INITIALIZATION
@@ -400,6 +405,7 @@ export default function App() {
           return (
             <Dashboard
               onNavigate={handleDashboardNavigate}
+              matchData={matchData}
             />
           );
         
@@ -409,11 +415,12 @@ export default function App() {
               onMatchSelect={handleMatchSelect}
               onMatchResultSelect={handleMatchResultSelect}
               onProfileClick={handleProfileClick}
+              matchData={matchData}
             />
           );
         
         case 'leaderboard':
-          return <Leaderboard />;
+          return <Leaderboard onNavigate={handleProfileClick} />;
         
         case 'match-detail':
           if (!selectedMatchId) {
@@ -563,6 +570,13 @@ export default function App() {
                   )}
                   {renderScreen()}
                   
+                  {/* Fixed Profile Card Overlay - Only on home, matches, leaderboard */}
+                  {['home', 'matches', 'leaderboard'].includes(currentScreen) && (
+                    <View style={styles.profileCardOverlay}>
+                      <ProfileCard onPress={() => handleDashboardNavigate('profile')} />
+                    </View>
+                  )}
+                  
                   {/* Bottom Navigation - Only show on main screens */}
                   {shouldShowBottomNav && (
                     <BottomNavigation
@@ -598,5 +612,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#fff',
     textAlign: 'center',
+  },
+  profileCardOverlay: {
+    position: 'absolute',
+    top: 10, // 10px aşağı kaydırıldı
+    left: 0,
+    right: 0,
+    zIndex: 1000,
+    backgroundColor: '#0F172A',
+    paddingTop: Platform.OS === 'ios' ? 44 : 0,
   },
 });

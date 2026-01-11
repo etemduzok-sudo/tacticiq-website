@@ -47,7 +47,7 @@ const TEAMS: Team[] = [
     country: 'Türkiye',
     colors: ['#FFFF00', '#000080'], // Sarı-Lacivert
     type: 'club',
-    apiId: 548, // API-Football ID
+    apiId: 611, // API-Football ID (FIXED: was 548 = Real Sociedad)
   },
   {
     id: '3',

@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔍 Profile Teams Debug - Fan Manager 2026</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%);
+            color: #FFFFFF;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #059669, #10B981);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .subtitle {
+            color: #9CA3AF;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        
+        .section {
+            background: rgba(30, 41, 59, 0.6);
+            border: 1px solid rgba(5, 150, 105, 0.2);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+        
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        
+        .status-ok {
+            background: #22C55E;
+            box-shadow: 0 0 10px #22C55E;
+        }
+        
+        .status-warning {
+            background: #F59E0B;
+            box-shadow: 0 0 10px #F59E0B;
+        }
+        
+        .status-error {
+            background: #EF4444;
+            box-shadow: 0 0 10px #EF4444;
+        }
+        
+        .data-box {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            overflow-x: auto;
+        }
+        
+        .team-card {
+            background: rgba(5, 150, 105, 0.1);
+            border: 2px solid rgba(5, 150, 105, 0.3);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        
+        .team-logo {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            object-fit: contain;
+            background: white;
+            padding: 8px;
+        }
+        
+        .team-info {
+            flex: 1;
+        }
+        
+        .team-name {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+        
+        .team-id {
+            color: #9CA3AF;
+            font-size: 14px;
+        }
+        
+        .team-league {
+            color: #059669;
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 4px;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #059669, #047857);
+            border: none;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .btn-secondary {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid #EF4444;
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+        }
+        
+        .log-entry {
+            padding: 8px 12px;
+            margin-bottom: 8px;
+            border-left: 3px solid #059669;
+            background: rgba(5, 150, 105, 0.05);
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        
+        .log-entry.warning {
+            border-left-color: #F59E0B;
+            background: rgba(245, 158, 11, 0.05);
+        }
+        
+        .log-entry.error {
+            border-left-color: #EF4444;
+            background: rgba(239, 68, 68, 0.05);
+        }
+        
+        .timestamp {
+            color: #64748B;
+            font-size: 11px;
+            margin-right: 8px;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #64748B;
+        }
+        
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Profile Teams Debug</h1>
+        <p class="subtitle">Fan Manager 2026 - Favori Takım Kaydetme Testi</p>
+
+        <!-- Storage Data Section -->
+        <div class="section">
+            <div class="section-title">
+                <span class="status-indicator" id="storage-status"></span>
+                💾 AsyncStorage Data
+            </div>
+            <div id="storage-data"></div>
+            <div class="btn-group">
+                <button class="btn" onclick="loadStorageData()">🔄 Yenile</button>
+                <button class="btn btn-secondary" onclick="clearStorage()">🗑️ Temizle</button>
+            </div>
+        </div>
+
+        <!-- Favorite Teams Section -->
+        <div class="section">
+            <div class="section-title">
+                <span class="status-indicator" id="teams-status"></span>
+                🏆 Favori Takımlar
+            </div>
+            <div id="teams-display"></div>
+        </div>
+
+        <!-- Test Actions Section -->
+        <div class="section">
+            <div class="section-title">
+                <span class="status-indicator status-ok"></span>
+                🧪 Test İşlemleri
+            </div>
+            <div class="btn-group">
+                <button class="btn" onclick="setFenerbahce()">🟡🔵 Fenerbahçe Kaydet</button>
+                <button class="btn" onclick="setGalatasaray()">🟡🔴 Galatasaray Kaydet</button>
+                <button class="btn" onclick="setBesiktas()">⚫⚪ Beşiktaş Kaydet</button>
+            </div>
+        </div>
+
+        <!-- Logs Section -->
+        <div class="section">
+            <div class="section-title">
+                <span class="status-indicator status-ok"></span>
+                📝 İşlem Logları
+            </div>
+            <div id="logs"></div>
+        </div>
+    </div>
+
+    <script>
+        // Storage Key
+        const STORAGE_KEY = 'fan-manager-favorite-clubs';
+        const logs = [];
+
+        // Log functions
+        function addLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString('tr-TR');
+            logs.unshift({ timestamp, message, type });
+            
+            const logsDiv = document.getElementById('logs');
+            logsDiv.innerHTML = logs.slice(0, 20).map(log => `
+                <div class="log-entry ${log.type}">
+                    <span class="timestamp">[${log.timestamp}]</span>
+                    ${log.message}
+                </div>
+            `).join('');
+            
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        // Load and display storage data
+        async function loadStorageData() {
+            try {
+                addLog('🔄 AsyncStorage verisi okunuyor...', 'info');
+                
+                // Get raw data
+                const rawData = localStorage.getItem(STORAGE_KEY);
+                
+                // Update status
+                const statusIndicator = document.getElementById('storage-status');
+                const teamsStatusIndicator = document.getElementById('teams-status');
+                
+                if (!rawData) {
+                    statusIndicator.className = 'status-indicator status-warning';
+                    teamsStatusIndicator.className = 'status-indicator status-warning';
+                    
+                    document.getElementById('storage-data').innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">📭</div>
+                            <p>Henüz favori takım kaydedilmemiş</p>
+                        </div>
+                    `;
+                    
+                    document.getElementById('teams-display').innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">⚽</div>
+                            <p>Favori takım eklemek için yukarıdaki butonları kullanın</p>
+                        </div>
+                    `;
+                    
+                    addLog('⚠️ Storage boş - Favori takım bulunamadı', 'warning');
+                    return;
+                }
+                
+                // Parse data
+                const parsedData = JSON.parse(rawData);
+                statusIndicator.className = 'status-indicator status-ok';
+                teamsStatusIndicator.className = 'status-indicator status-ok';
+                
+                // Display raw data
+                document.getElementById('storage-data').innerHTML = `
+                    <div class="data-box">
+                        <strong>Raw Data:</strong><br>
+                        ${JSON.stringify(parsedData, null, 2)}
+                    </div>
+                `;
+                
+                // Display teams
+                if (Array.isArray(parsedData) && parsedData.length > 0) {
+                    document.getElementById('teams-display').innerHTML = parsedData.map(team => `
+                        <div class="team-card">
+                            ${team.logo ? `<img src="${team.logo}" class="team-logo" alt="${team.name}">` : '<div class="team-logo">⚽</div>'}
+                            <div class="team-info">
+                                <div class="team-name">${team.name}</div>
+                                <div class="team-id">ID: ${team.id}</div>
+                                ${team.league ? `<div class="team-league">${team.league}</div>` : ''}
+                            </div>
+                        </div>
+                    `).join('');
+                    
+                    addLog(`✅ ${parsedData.length} takım başarıyla yüklendi`, 'info');
+                } else {
+                    document.getElementById('teams-display').innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">❌</div>
+                            <p>Geçersiz veri formatı</p>
+                        </div>
+                    `;
+                    addLog('❌ Geçersiz veri formatı', 'error');
+                }
+                
+            } catch (error) {
+                document.getElementById('storage-status').className = 'status-indicator status-error';
+                document.getElementById('teams-status').className = 'status-indicator status-error';
+                
+                document.getElementById('storage-data').innerHTML = `
+                    <div class="data-box" style="border-color: #EF4444;">
+                        <strong>❌ HATA:</strong><br>
+                        ${error.message}
+                    </div>
+                `;
+                
+                addLog(`❌ Hata: ${error.message}`, 'error');
+            }
+        }
+
+        // Set Fenerbahçe
+        function setFenerbahce() {
+            const teams = [
+                {
+                    id: 548,
+                    name: "Fenerbahçe",
+                    logo: "https://media.api-sports.io/football/teams/548.png",
+                    league: "Süper Lig"
+                }
+            ];
+            
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(teams));
+            addLog('🟡🔵 Fenerbahçe kaydedildi (ID: 548)', 'info');
+            loadStorageData();
+        }
+
+        // Set Galatasaray
+        function setGalatasaray() {
+            const teams = [
+                {
+                    id: 541,
+                    name: "Galatasaray",
+                    logo: "https://media.api-sports.io/football/teams/541.png",
+                    league: "Süper Lig"
+                }
+            ];
+            
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(teams));
+            addLog('🟡🔴 Galatasaray kaydedildi (ID: 541)', 'info');
+            loadStorageData();
+        }
+
+        // Set Beşiktaş
+        function setBesiktas() {
+            const teams = [
+                {
+                    id: 547,
+                    name: "Beşiktaş",
+                    logo: "https://media.api-sports.io/football/teams/547.png",
+                    league: "Süper Lig"
+                }
+            ];
+            
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(teams));
+            addLog('⚫⚪ Beşiktaş kaydedildi (ID: 547)', 'info');
+            loadStorageData();
+        }
+
+        // Clear storage
+        function clearStorage() {
+            if (confirm('Tüm favori takımları silmek istediğinize emin misiniz?')) {
+                localStorage.removeItem(STORAGE_KEY);
+                addLog('🗑️ Storage temizlendi', 'warning');
+                loadStorageData();
+            }
+        }
+
+        // Initialize
+        window.addEventListener('DOMContentLoaded', () => {
+            addLog('🚀 Debug sayfası yüklendi', 'info');
+            loadStorageData();
+            
+            // Auto-refresh every 5 seconds
+            setInterval(loadStorageData, 5000);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Cache Temizleme - Fan Manager 2026</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #0F172A;
+            color: #F8FAFB;
+        }
+        .container {
+            background: #1E293B;
+            padding: 30px;
+            border-radius: 12px;
+        }
+        h1 { color: #059669; }
+        button {
+            background: #059669;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        button:hover { background: #047857; }
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            background: #334155;
+            border-radius: 8px;
+        }
+        .success { color: #22C55E; }
+        .error { color: #EF4444; }
+        .step {
+            margin: 15px 0;
+            padding: 10px;
+            background: #475569;
+            border-radius: 6px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧹 Browser Cache Temizleme</h1>
+        <p>Fan Manager 2026 için cache temizleme aracı</p>
+        
+        <div class="step">
+            <h3>Adım 1: LocalStorage Temizle</h3>
+            <button onclick="clearLocalStorage()">LocalStorage Temizle</button>
+        </div>
+        
+        <div class="step">
+            <h3>Adım 2: SessionStorage Temizle</h3>
+            <button onclick="clearSessionStorage()">SessionStorage Temizle</button>
+        </div>
+        
+        <div class="step">
+            <h3>Adım 3: Service Workers Temizle</h3>
+            <button onclick="clearServiceWorkers()">Service Workers Temizle</button>
+        </div>
+        
+        <div class="step">
+            <h3>Adım 4: Cache Storage Temizle</h3>
+            <button onclick="clearCacheStorage()">Cache Storage Temizle</button>
+        </div>
+        
+        <div class="step">
+            <h3>Adım 5: Tümünü Temizle</h3>
+            <button onclick="clearAll()" style="background: #EF4444;">HEPSİNİ TEMİZLE</button>
+        </div>
+        
+        <div class="step">
+            <h3>Adım 6: Uygulamayı Aç</h3>
+            <button onclick="openApp()">Fan Manager 2026'yı Aç</button>
+        </div>
+        
+        <div id="status" class="status"></div>
+    </div>
+    
+    <script>
+        function log(message, type = 'info') {
+            const status = document.getElementById('status');
+            const className = type === 'success' ? 'success' : type === 'error' ? 'error' : '';
+            status.innerHTML += `<div class="${className}">${message}</div>`;
+        }
+        
+        function clearLocalStorage() {
+            try {
+                localStorage.clear();
+                log('✅ LocalStorage temizlendi!', 'success');
+            } catch (e) {
+                log('❌ LocalStorage temizlenemedi: ' + e.message, 'error');
+            }
+        }
+        
+        function clearSessionStorage() {
+            try {
+                sessionStorage.clear();
+                log('✅ SessionStorage temizlendi!', 'success');
+            } catch (e) {
+                log('❌ SessionStorage temizlenemedi: ' + e.message, 'error');
+            }
+        }
+        
+        async function clearServiceWorkers() {
+            try {
+                if ('serviceWorker' in navigator) {
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    for (let registration of registrations) {
+                        await registration.unregister();
+                    }
+                    log(`✅ ${registrations.length} Service Worker temizlendi!`, 'success');
+                } else {
+                    log('ℹ️ Service Worker desteklenmiyor', 'info');
+                }
+            } catch (e) {
+                log('❌ Service Worker temizlenemedi: ' + e.message, 'error');
+            }
+        }
+        
+        async function clearCacheStorage() {
+            try {
+                if ('caches' in window) {
+                    const cacheNames = await caches.keys();
+                    for (let cacheName of cacheNames) {
+                        await caches.delete(cacheName);
+                    }
+                    log(`✅ ${cacheNames.length} Cache Storage temizlendi!`, 'success');
+                } else {
+                    log('ℹ️ Cache Storage desteklenmiyor', 'info');
+                }
+            } catch (e) {
+                log('❌ Cache Storage temizlenemedi: ' + e.message, 'error');
+            }
+        }
+        
+        async function clearAll() {
+            document.getElementById('status').innerHTML = '<h3>🧹 Tüm cache temizleniyor...</h3>';
+            clearLocalStorage();
+            clearSessionStorage();
+            await clearServiceWorkers();
+            await clearCacheStorage();
+            log('', 'info');
+            log('✅ TÜM CACHE TEMİZLENDİ!', 'success');
+            log('', 'info');
+            log('🔄 Şimdi tarayıcıyı TAMAMEN KAPATIN ve yeniden açın!', 'success');
+            log('📱 Sonra "Fan Manager 2026\'yı Aç" butonuna tıklayın', 'success');
+        }
+        
+        function openApp() {
+            log('🚀 Fan Manager 2026 açılıyor...', 'info');
+            setTimeout(() => {
+                window.location.href = 'http://localhost:8082';
+            }, 1000);
+        }
+    </script>
+</body>
+</html>

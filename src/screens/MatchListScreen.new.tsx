@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, memo } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useFavoriteTeams } from '../hooks/useFavoriteTeams';
 import api from '../services/api';
+import { ProfileCard } from '../components/ProfileCard';
 
 interface MatchListScreenProps {
   onMatchSelect: (matchId: string) => void;
@@ -36,7 +37,7 @@ const teams = [
   { id: 609, name: 'Trabzonspor', logo: '⚡' },
 ];
 
-export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
+export const MatchListScreen: React.FC<MatchListScreenProps> = ({
   onMatchSelect,
   onMatchResultSelect,
   onProfileClick,
@@ -129,40 +130,42 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        {/* Fixed Header: Team Filter */}
+        {/* Fixed Header: Profile Card */}
         <View style={styles.fixedHeader}>
+          <ProfileCard onPress={onProfileClick} />
+
           {/* Team Filter - Horizontal Scroll */}
-              <ScrollView 
-                horizontal 
-                showsHorizontalScrollIndicator={false}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
             style={styles.teamFilterScroll}
             contentContainerStyle={styles.teamFilterContent}
           >
             {teams.map((team) => {
-                  const isSelected = selectedTeamFilter === team.id;
-                  return (
-                    <TouchableOpacity
-                      key={team.id}
-                      style={[
+              const isSelected = selectedTeamFilter === team.id;
+              return (
+                <TouchableOpacity
+                  key={team.id}
+                  style={[
                     styles.teamChip,
                     isSelected && styles.teamChipSelected,
-                      ]}
+                  ]}
                   onPress={() => setSelectedTeamFilter(team.id as any)}
-                      activeOpacity={0.7}
-                    >
+                  activeOpacity={0.7}
+                >
                   <Text style={styles.teamLogo}>{team.logo}</Text>
-                      <Text
-                        style={[
+                  <Text
+                    style={[
                       styles.teamName,
                       isSelected && styles.teamNameSelected,
-                        ]}
-                      >
-                        {team.name}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
+                    ]}
+                  >
+                    {team.name}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
         </View>
 
         {/* Scrollable Content: All Matches */}
@@ -178,10 +181,10 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
               <Text style={styles.sectionTitle}>Geçmiş Maçlar ({filteredPastMatches.length})</Text>
               {filteredPastMatches.map((match) => {
                 const transformed = transformMatch(match);
-  return (
+                return (
                   <TouchableOpacity
                     key={transformed.id}
-      style={styles.matchCard}
+                    style={styles.matchCard}
                     onPress={() => onMatchResultSelect(transformed.id)}
                     activeOpacity={0.8}
                   >
@@ -189,7 +192,7 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
                       <Text style={styles.matchLeague}>{transformed.league}</Text>
                       <Text style={styles.matchDate}>{transformed.date}</Text>
                     </View>
-        <View style={styles.matchContent}>
+                    <View style={styles.matchContent}>
                       <View style={styles.team}>
                         <Text style={styles.teamLogo}>{transformed.homeTeam.logo}</Text>
                         <Text style={styles.teamNameText}>{transformed.homeTeam.name}</Text>
@@ -204,11 +207,11 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
                         <Text style={styles.teamLogo}>{transformed.awayTeam.logo}</Text>
                         <Text style={styles.teamNameText}>{transformed.awayTeam.name}</Text>
                       </View>
-        </View>
-      </TouchableOpacity>
+                    </View>
+                  </TouchableOpacity>
                 );
               })}
-    </View>
+            </View>
           )}
 
           {/* Live Matches */}
@@ -217,7 +220,7 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
               <View style={styles.liveSectionHeader}>
                 <View style={styles.liveDot} />
                 <Text style={styles.liveSectionTitle}>Canlı Maçlar ({filteredLiveMatches.length})</Text>
-      </View>
+              </View>
               {filteredLiveMatches.map((match) => {
                 const transformed = transformMatch(match);
                 return (
@@ -232,28 +235,28 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
                       <View style={styles.liveIndicator}>
                         <View style={styles.liveDot} />
                         <Text style={styles.liveText}>CANLI</Text>
-    </View>
-      </View>
+                      </View>
+                    </View>
                     <View style={styles.matchContent}>
                       <View style={styles.team}>
                         <Text style={styles.teamLogo}>{transformed.homeTeam.logo}</Text>
                         <Text style={styles.teamNameText}>{transformed.homeTeam.name}</Text>
-      </View>
+                      </View>
                       <View style={styles.matchScore}>
                         <Text style={styles.scoreText}>
                           {transformed.homeTeam.score} - {transformed.awayTeam.score}
                         </Text>
                         <Text style={styles.liveMinute}>{transformed.minute}'</Text>
-      </View>
+                      </View>
                       <View style={styles.team}>
                         <Text style={styles.teamLogo}>{transformed.awayTeam.logo}</Text>
                         <Text style={styles.teamNameText}>{transformed.awayTeam.name}</Text>
-    </View>
-      </View>
+                      </View>
+                    </View>
                   </TouchableOpacity>
                 );
               })}
-      </View>
+            </View>
           )}
 
           {/* Upcoming Matches */}
@@ -272,25 +275,25 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
                     <View style={styles.matchHeader}>
                       <Text style={styles.matchLeague}>{transformed.league}</Text>
                       <Text style={styles.matchDate}>{transformed.date}</Text>
-      </View>
+                    </View>
                     <View style={styles.matchContent}>
                       <View style={styles.team}>
                         <Text style={styles.teamLogo}>{transformed.homeTeam.logo}</Text>
                         <Text style={styles.teamNameText}>{transformed.homeTeam.name}</Text>
-      </View>
+                      </View>
                       <View style={styles.matchScore}>
                         <Text style={styles.matchTime}>{transformed.time}</Text>
                         <Text style={styles.vsText}>VS</Text>
-    </View>
+                      </View>
                       <View style={styles.team}>
                         <Text style={styles.teamLogo}>{transformed.awayTeam.logo}</Text>
                         <Text style={styles.teamNameText}>{transformed.awayTeam.name}</Text>
-      </View>
-      </View>
+                      </View>
+                    </View>
                   </TouchableOpacity>
                 );
               })}
-      </View>
+            </View>
           )}
 
           {/* Empty State */}
@@ -302,17 +305,17 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
                 {selectedTeamFilter !== 'all' 
                   ? 'Seçili takım için maç bulunamadı'
                   : 'Favori takımlarınız için maç bulunamadı'}
-          </Text>
-          </View>
-        )}
+              </Text>
+            </View>
+          )}
 
           {/* Bottom Padding */}
           <View style={{ height: 100 }} />
         </ScrollView>
-          </View>
+      </View>
     </SafeAreaView>
   );
-});
+};
 
 const styles = StyleSheet.create({
   safeArea: {
@@ -324,6 +327,7 @@ const styles = StyleSheet.create({
   },
   fixedHeader: {
     backgroundColor: '#0F172A',
+    paddingTop: Platform.OS === 'ios' ? 0 : 12,
     borderBottomWidth: 1,
     borderBottomColor: '#1E293B',
   },
@@ -366,7 +370,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
-    paddingTop: 96,
   },
   section: {
     marginBottom: 24,

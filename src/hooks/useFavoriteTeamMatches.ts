@@ -56,6 +56,7 @@ interface UseFavoriteTeamMatchesResult {
   loading: boolean;
   error: string | null;
   refetch: () => void;
+  hasLoadedOnce: boolean; // Flag to prevent flickering on subsequent loads
 }
 
 export function useFavoriteTeamMatches(): UseFavoriteTeamMatchesResult {
@@ -64,7 +65,7 @@ export function useFavoriteTeamMatches(): UseFavoriteTeamMatchesResult {
   const [upcomingMatches, setUpcomingMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true); // Start with loading true
   const [error, setError] = useState<string | null>(null);
-  const [isInitialLoad, setIsInitialLoad] = useState(true); // Track initial load
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false); // Track if we've successfully loaded data
 
   // Generate mock matches for testing
   const generateMockMatches = async (): Promise<Match[]> => {
@@ -188,15 +189,22 @@ export function useFavoriteTeamMatches(): UseFavoriteTeamMatchesResult {
 
   const fetchMatches = async () => {
     try {
-      console.log('🔄 [useFavoriteTeamMatches] Starting fetch, setting loading=true');
-      setLoading(true);
+      // Only show loading spinner on first load
+      if (!hasLoadedOnce) {
+        console.log('🔄 [useFavoriteTeamMatches] First load, showing spinner');
+        setLoading(true);
+      } else {
+        console.log('🔄 [useFavoriteTeamMatches] Background refresh, keeping UI');
+      }
       setError(null);
 
-      if (favoriteTeams.length === 0) {
+      if (!favoriteTeams || favoriteTeams.length === 0) {
+        console.log('⚠️ [fetchMatches] No favorite teams available');
         setPastMatches([]);
         setLiveMatches([]);
         setUpcomingMatches([]);
         setError('Favori takım seçilmemiş');
+        setLoading(false);
         return;
       }
 
@@ -218,25 +226,42 @@ export function useFavoriteTeamMatches(): UseFavoriteTeamMatchesResult {
         console.warn('Failed to fetch live matches:', err);
       }
 
-      // Fetch all season matches for each favorite team (includes past, live, upcoming)
+      // Fetch ALL matches for each favorite team (but optimized with single endpoint)
       for (const team of favoriteTeams) {
         if (!team || !team.id) continue;
         
         try {
-          console.log(`📥 Fetching season matches for ${team.name} (ID: ${team.id})...`);
-          const response = await api.matches.getTeamSeasonMatches(team.id, currentSeason);
+          console.log(`📥 Fetching ALL matches for ${team.name} (ID: ${team.id})...`);
+          
+          // Fetch all season matches in one call
+          const url = `/matches/team/${team.id}/season/${currentSeason}`;
+          const fullUrl = `${api.getBaseUrl()}${url}`;
+          console.log(`🌐 Requesting: ${fullUrl}`);
+          
+          const result = await fetch(fullUrl, {
+            headers: { 'Content-Type': 'application/json' }
+          });
+          
+          console.log(`📡 Response status: ${result.status}`);
+          
+          if (!result.ok) {
+            const errorText = await result.text();
+            console.error(`❌ HTTP Error ${result.status}:`, errorText);
+            continue;
+          }
+          
+          const response = await result.json();
+          console.log(`📦 Response:`, { success: response.success, dataLength: response.data?.length, source: response.source });
           
           if (response.success && response.data && response.data.length > 0) {
-            console.log(`✅ Found ${response.data.length} matches for ${team.name}`);
-            console.log(`📍 Data source: ${response.source || 'unknown'}`);
-            
-            // Add all matches for this team (no filtering yet)
+            console.log(`✅ Found ${response.data.length} total matches for ${team.name}`);
             allMatches.push(...response.data);
           } else {
             console.log(`⚠️ No matches found for ${team.name}`);
           }
+          
         } catch (err) {
-          console.warn(`Failed to fetch matches for team ${team.name}:`, err);
+          console.error(`❌ Failed to fetch matches for team ${team.name}:`, err);
         }
       }
       
@@ -272,15 +297,16 @@ export function useFavoriteTeamMatches(): UseFavoriteTeamMatchesResult {
 
       console.log(`📊 After removing duplicates: ${uniqueMatches.length} matches`);
       
-      // Debug: Log Fenerbahçe matches specifically
-      const fenerbahceMatches = uniqueMatches.filter(m => 
-        m.teams?.home?.name?.includes('Fenerbah') || 
-        m.teams?.away?.name?.includes('Fenerbah')
+      // Debug: Log favorite team matches specifically (ID-based)
+      const favoriteTeamIds = favoriteTeams.map(t => t.id);
+      const favoriteMatches = uniqueMatches.filter(m => 
+        favoriteTeamIds.includes(m.teams?.home?.id) || 
+        favoriteTeamIds.includes(m.teams?.away?.id)
       );
-      console.log(`🟡 Fenerbahçe matches found: ${fenerbahceMatches.length}`);
-      if (fenerbahceMatches.length > 0) {
-        console.log('🟡 First 5 Fenerbahçe matches:', fenerbahceMatches.slice(0, 5).map(m => ({
-          teams: `${m.teams.home.name} vs ${m.teams.away.name}`,
+      console.log(`🟡 Favorite team matches found: ${favoriteMatches.length} (IDs: ${favoriteTeamIds.join(', ')})`);
+      if (favoriteMatches.length > 0) {
+        console.log('🟡 First 5 favorite team matches:', favoriteMatches.slice(0, 5).map(m => ({
+          teams: `${m.teams.home.name} (${m.teams.home.id}) vs ${m.teams.away.name} (${m.teams.away.id})`,
           status: m.fixture.status?.short || m.fixture.status,
           date: new Date(m.fixture.timestamp * 1000).toLocaleDateString('tr-TR'),
         })));
@@ -303,6 +329,11 @@ export function useFavoriteTeamMatches(): UseFavoriteTeamMatchesResult {
         setLiveMatches(live);
         setUpcomingMatches(upcoming.slice(0, 10)); // Limit upcoming to 10 matches
         console.log(`✅ Matches loaded: ${past.length} past, ${live.length} live, ${upcoming.length} upcoming`);
+        
+        // Mark as successfully loaded
+        if (past.length > 0 || live.length > 0 || upcoming.length > 0) {
+          setHasLoadedOnce(true);
+        }
       }
 
     } catch (err: any) {
@@ -311,20 +342,25 @@ export function useFavoriteTeamMatches(): UseFavoriteTeamMatchesResult {
     } finally {
       console.log('✅ [useFavoriteTeamMatches] Fetch complete, setting loading=false');
       setLoading(false);
-      setIsInitialLoad(false);
     }
   };
 
   useEffect(() => {
-    fetchMatches();
-    
-    // Refetch every 30 seconds
-    const interval = setInterval(() => {
-      fetchMatches();
-    }, 30000);
+    // Skip if no favorite teams
+    if (!favoriteTeams || favoriteTeams.length === 0) {
+      console.log('⚠️ No favorite teams yet, skipping fetch');
+      setLoading(false); // Stop loading if no teams
+      return;
+    }
 
-    return () => clearInterval(interval);
-  }, [favoriteTeams]);
+    // Only fetch ONCE on initial load
+    if (!hasLoadedOnce) {
+      console.log('🚀 Initial fetch for favorite teams');
+      fetchMatches();
+    } else {
+      console.log('✅ Data already loaded, skipping fetch');
+    }
+  }, [favoriteTeams.length]); // Only re-run when team count changes
 
   return {
     pastMatches,
@@ -333,5 +369,6 @@ export function useFavoriteTeamMatches(): UseFavoriteTeamMatchesResult {
     loading,
     error,
     refetch: fetchMatches,
+    hasLoadedOnce, // Return flag to prevent flickering
   };
 }

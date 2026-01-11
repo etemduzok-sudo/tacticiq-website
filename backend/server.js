@@ -14,7 +14,12 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false,
 })); // Security headers
 app.use(cors({
-  origin: ['http://localhost:8081', 'http://localhost:19006', 'http://localhost:3000'],
+  origin: [
+    'http://localhost:8081',   // Expo default
+    'http://localhost:8082',   // Expo alternative port
+    'http://localhost:19006',  // Expo web
+    'http://localhost:3000',   // Self
+  ],
   credentials: true,
 })); // Enable CORS for web
 app.use(compression()); // Compress responses

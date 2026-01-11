@@ -56,10 +56,13 @@ const tabs = [
   { id: 'overall', label: 'Genel', icon: 'globe' },
   { id: 'weekly', label: 'Haftalık', icon: 'calendar' },
   { id: 'monthly', label: 'Aylık', icon: 'calendar-outline' },
-  { id: 'friends', label: 'Arkadaşlar', icon: 'people' },
 ];
 
-export function Leaderboard() {
+interface LeaderboardProps {
+  onNavigate?: (screen: string) => void;
+}
+
+export function Leaderboard({ onNavigate }: LeaderboardProps = {}) {
   const [activeTab, setActiveTab] = useState<'overall' | 'weekly' | 'monthly' | 'friends'>('overall');
 
   // ✅ MEMOIZED: Only recalculate when activeTab changes
@@ -327,7 +330,7 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingTop: Platform.OS === 'ios' ? 140 : 120,
     paddingBottom: 16,
   },
   headerTitle: {

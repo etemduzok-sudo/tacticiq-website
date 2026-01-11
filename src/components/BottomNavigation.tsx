@@ -13,7 +13,6 @@ const tabs = [
   { id: 'home', label: 'Ana Sayfa', icon: 'home-outline', activeIcon: 'home' },
   { id: 'matches', label: 'Maçlar', icon: 'calendar-outline', activeIcon: 'calendar' },
   { id: 'leaderboard', label: 'Sıralama', icon: 'trophy-outline', activeIcon: 'trophy' },
-  { id: 'profile', label: 'Profil', icon: 'person-outline', activeIcon: 'person' },
 ];
 
 export function BottomNavigation({ activeTab, onTabChange }: BottomNavigationProps) {
@@ -62,6 +61,8 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     backgroundColor: '#0F172A',
+    borderTopLeftRadius: 25,
+    borderTopRightRadius: 25,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -76,7 +77,8 @@ const styles = StyleSheet.create({
   },
   tabContainer: {
     flexDirection: 'row',
-    paddingBottom: Platform.OS === 'ios' ? 20 : 0, // Safe area
+    paddingTop: 8,
+    paddingBottom: Platform.OS === 'ios' ? 20 : 8,
   },
   tab: {
     flex: 1,
