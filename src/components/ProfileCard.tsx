@@ -60,14 +60,25 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({ onPress }) => {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.badgesScroll}
       >
-        {ALL_BADGES.map((badge) => (
-          <View key={badge.id} style={[styles.badge, { borderColor: getBadgeTierColor(badge.tier) }]}>
-            <Text style={styles.badgeIcon}>{badge.emoji}</Text>
-            <Text style={[styles.badgeLabel, { color: getBadgeTierColor(badge.tier) }]}>
-              {badge.name}
-            </Text>
-          </View>
-        ))}
+        {ALL_BADGES.map((badge) => {
+          // Tek kelimeye kısalt
+          const shortName = badge.name.split(' ')[0];
+          
+          return (
+            <View 
+              key={badge.id} 
+              style={[
+                styles.badge, 
+                { backgroundColor: `${getBadgeTierColor(badge.tier)}20` } // %12 opacity
+              ]}
+            >
+              <Text style={styles.badgeIcon}>{badge.emoji}</Text>
+              <Text style={[styles.badgeLabel, { color: getBadgeTierColor(badge.tier) }]}>
+                {shortName}
+              </Text>
+            </View>
+          );
+        })}
       </ScrollView>
     </TouchableOpacity>
   );
@@ -153,23 +164,24 @@ const styles = StyleSheet.create({
   },
   badgesScroll: {
     paddingRight: 12,
-    gap: 8,
+    gap: 10,
   },
   badge: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    backgroundColor: 'rgba(15, 23, 42, 0.5)',
-    borderWidth: 1,
-    gap: 4,
+    justifyContent: 'center',
+    width: 60, // Sabit genişlik
+    height: 60, // Sabit yükseklik
+    borderRadius: 12,
+    // backgroundColor dinamik olarak set ediliyor (tier renginin %12'si)
   },
   badgeIcon: {
-    fontSize: 14,
+    fontSize: 20,
+    marginBottom: 4,
   },
   badgeLabel: {
     fontSize: 9,
-    fontWeight: '600',
+    fontWeight: '700',
+    textAlign: 'center',
   },
 });

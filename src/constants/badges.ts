@@ -4,6 +4,7 @@
 export interface BadgeDefinition {
   id: string;
   name: string;
+  shortName: string; // Tek kelime kısa isim
   description: string;
   howToEarn: string;
   emoji: string;
