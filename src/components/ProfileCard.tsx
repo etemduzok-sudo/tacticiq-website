@@ -4,20 +4,27 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
+  ScrollView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { ALL_BADGES } from '../constants/badges';
 
 interface ProfileCardProps {
   onPress: () => void;
 }
 
-const badges = [
-  { id: 'streak', icon: 'flame', label: '5 Seri', color: '#EF4444' },
-  { id: 'master', icon: 'trophy', label: 'Usta', color: '#F59E0B' },
-  { id: 'target', icon: 'analytics', label: '%85', color: '#059669' },
-  { id: 'lightning', icon: 'flash', label: 'Hızlı', color: '#3B82F6' },
-];
+// Helper: Badge tier'a göre renk döndür
+const getBadgeTierColor = (tier: 1 | 2 | 3 | 4 | 5): string => {
+  switch (tier) {
+    case 1: return '#10B981'; // Çaylak - Yeşil
+    case 2: return '#3B82F6'; // Amatör - Mavi
+    case 3: return '#F59E0B'; // Profesyonel - Turuncu
+    case 4: return '#EF4444'; // Uzman - Kırmızı
+    case 5: return '#8B5CF6'; // Efsane - Mor
+    default: return '#9CA3AF';
+  }
+};
 
 export const ProfileCard: React.FC<ProfileCardProps> = ({ onPress }) => {
   return (
@@ -47,17 +54,21 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({ onPress }) => {
         </View>
       </View>
 
-      {/* Badges - Inline */}
-      <View style={styles.badgesContainer}>
-        {badges.map((badge) => (
-          <View key={badge.id} style={styles.badge}>
-            <Ionicons name={badge.icon as any} size={10} color={badge.color} />
-            <Text style={[styles.badgeLabel, { color: badge.color }]}>
-              {badge.label}
+      {/* Badges - Horizontal Scroll */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.badgesScroll}
+      >
+        {ALL_BADGES.map((badge) => (
+          <View key={badge.id} style={[styles.badge, { borderColor: getBadgeTierColor(badge.tier) }]}>
+            <Text style={styles.badgeIcon}>{badge.emoji}</Text>
+            <Text style={[styles.badgeLabel, { color: getBadgeTierColor(badge.tier) }]}>
+              {badge.name}
             </Text>
           </View>
         ))}
-      </View>
+      </ScrollView>
     </TouchableOpacity>
   );
 };
@@ -140,22 +151,25 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#F59E0B',
   },
-  badgesContainer: {
-    flexDirection: 'row',
-    gap: 6,
-    flexWrap: 'wrap',
+  badgesScroll: {
+    paddingRight: 12,
+    gap: 8,
   },
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
     backgroundColor: 'rgba(15, 23, 42, 0.5)',
-    gap: 3,
+    borderWidth: 1,
+    gap: 4,
+  },
+  badgeIcon: {
+    fontSize: 14,
   },
   badgeLabel: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '600',
   },
 });

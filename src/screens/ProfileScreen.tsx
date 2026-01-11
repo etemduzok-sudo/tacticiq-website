@@ -81,28 +81,24 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   // 🏆 LOAD BADGES
   const loadBadges = async () => {
     try {
-      // Load all 20 badges from constants
-      const earnedBadges = await getUserBadges();
-      
-      // Map ALL_BADGES with earned status
+      // 🔥 TEST MODE: Tüm rozetleri kazanılmış olarak göster
       const badgesWithStatus = ALL_BADGES.map((badgeDef) => {
-        const earnedBadge = earnedBadges.find((eb) => eb.id === badgeDef.id);
         return {
           id: badgeDef.id,
           name: badgeDef.name,
           description: badgeDef.description,
           icon: badgeDef.emoji,
           tier: badgeDef.tier as any,
-          earned: !!earnedBadge,
-          earnedAt: earnedBadge?.earnedAt,
+          earned: true, // ✅ Tüm rozetler kazanılmış
+          earnedAt: new Date().toISOString(),
           requirement: badgeDef.howToEarn,
         };
       });
       
       setAllBadges(badgesWithStatus as any);
-      setBadgeCount(earnedBadges.length);
+      setBadgeCount(ALL_BADGES.length); // 20 rozet
       
-      console.log('✅ Loaded badges: 20 total, Earned:', earnedBadges.length);
+      console.log('✅ Loaded badges:', ALL_BADGES.length, 'Earned:', ALL_BADGES.length);
     } catch (error) {
       console.error('Error loading badges:', error);
     }
