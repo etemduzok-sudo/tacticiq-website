@@ -523,22 +523,33 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   <Pressable
                     style={[
                       styles.badgeCard,
-                      !item.earned && styles.badgeCardLocked,
                       { borderColor: item.earned ? getBadgeColor(item.tier) : '#334155' },
                     ]}
                     onPress={() => setSelectedBadge(item)}
                   >
-                    {/* Badge Icon */}
-                    <Text
-                      style={[
-                        styles.badgeEmoji,
-                        !item.earned && styles.badgeEmojiLocked,
-                      ]}
-                    >
-                      {item.earned ? item.icon : '🔒'}
+                    {/* Lock Icon (Top Right) - Kilitli rozetlerde */}
+                    {!item.earned && (
+                      <View style={styles.lockIcon}>
+                        <Ionicons name="lock-closed" size={14} color="#F59E0B" />
+                      </View>
+                    )}
+
+                    {/* Sparkle for earned badges (Top Right) */}
+                    {item.earned && (
+                      <Animated.View
+                        entering={FadeIn.delay(index * 30 + 200)}
+                        style={styles.sparkle}
+                      >
+                        <Text style={styles.sparkleText}>✨</Text>
+                      </Animated.View>
+                    )}
+
+                    {/* Badge Icon - Her zaman net görünsün */}
+                    <Text style={styles.badgeEmoji}>
+                      {item.icon}
                     </Text>
 
-                    {/* Badge Name */}
+                    {/* Badge Name - Daha okunabilir */}
                     <Text
                       style={[
                         styles.badgeName,
@@ -549,41 +560,22 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                       {item.name}
                     </Text>
 
-                    {/* Badge Tier */}
-                    {item.earned && (
-                      <View
+                    {/* Badge Tier - Her zaman göster */}
+                    <View
+                      style={[
+                        styles.badgeTierLabel,
+                        { backgroundColor: `${getBadgeColor(item.tier)}20` },
+                      ]}
+                    >
+                      <Text
                         style={[
-                          styles.badgeTierLabel,
-                          { backgroundColor: `${getBadgeColor(item.tier)}20` },
+                          styles.badgeTierText,
+                          { color: getBadgeColor(item.tier) },
                         ]}
                       >
-                        <Text
-                          style={[
-                            styles.badgeTierText,
-                            { color: getBadgeColor(item.tier) },
-                          ]}
-                        >
-                          {getBadgeTierName(item.tier)}
-                        </Text>
-                      </View>
-                    )}
-
-                    {/* Locked Overlay */}
-                    {!item.earned && (
-                      <View style={styles.lockedOverlay}>
-                        <Ionicons name="lock-closed" size={16} color="#64748B" />
-                      </View>
-                    )}
-
-                    {/* Sparkle Effect for Earned Badges */}
-                    {item.earned && (
-                      <Animated.View
-                        entering={FadeIn.delay(index * 30 + 200)}
-                        style={styles.sparkle}
-                      >
-                        <Text style={styles.sparkleText}>✨</Text>
-                      </Animated.View>
-                    )}
+                        {getBadgeTierName(item.tier)}
+                      </Text>
+                    </View>
                   </Pressable>
                 </Animated.View>
               )}
@@ -1414,7 +1406,7 @@ const styles = StyleSheet.create({
   badgeCard: {
     width: 80,
     height: 120,
-    backgroundColor: 'rgba(30, 41, 59, 0.6)',
+    backgroundColor: 'rgba(30, 41, 59, 0.8)',
     borderRadius: 12,
     borderWidth: 2,
     margin: 4,
@@ -1423,27 +1415,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     position: 'relative',
   },
-  badgeCardLocked: {
-    opacity: 0.4,
-    backgroundColor: 'rgba(51, 65, 85, 0.3)',
-    borderColor: 'rgba(100, 116, 139, 0.2)',
-  },
   badgeEmoji: {
     fontSize: 36,
     marginBottom: 6,
   },
-  badgeEmojiLocked: {
-    opacity: 0.3,
-  },
   badgeName: {
-    fontSize: 9,
-    fontWeight: '600',
-    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#F8FAFB',
     textAlign: 'center',
     marginBottom: 4,
+    lineHeight: 13,
   },
   badgeNameLocked: {
-    color: '#64748B',
+    color: '#94A3B8',
   },
   badgeTierLabel: {
     paddingHorizontal: 6,
@@ -1452,12 +1437,15 @@ const styles = StyleSheet.create({
   },
   badgeTierText: {
     fontSize: 7,
-    fontWeight: '600',
+    fontWeight: '700',
   },
-  lockedOverlay: {
+  lockIcon: {
     position: 'absolute',
-    bottom: 8,
-    right: 8,
+    top: 6,
+    right: 6,
+    backgroundColor: 'rgba(15, 23, 42, 0.8)',
+    borderRadius: 10,
+    padding: 3,
   },
   sparkle: {
     position: 'absolute',
@@ -1531,27 +1519,31 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   badgeDetailDescription: {
-    fontSize: 15,
-    color: '#9CA3AF',
+    fontSize: 16,
+    color: '#CBD5E1',
     textAlign: 'center',
-    lineHeight: 22,
+    lineHeight: 24,
     marginBottom: 20,
+    fontWeight: '500',
   },
   badgeDetailRequirement: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: 'rgba(15, 23, 42, 0.6)',
-    padding: 16,
+    backgroundColor: 'rgba(15, 23, 42, 0.8)',
+    padding: 18,
     borderRadius: 12,
     marginBottom: 24,
     width: '100%',
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
   },
   badgeDetailRequirementText: {
     flex: 1,
-    fontSize: 13,
-    color: '#FFFFFF',
-    lineHeight: 18,
+    fontSize: 14,
+    color: '#F8FAFB',
+    lineHeight: 20,
+    fontWeight: '600',
   },
   badgeDetailCloseButton: {
     width: '100%',
