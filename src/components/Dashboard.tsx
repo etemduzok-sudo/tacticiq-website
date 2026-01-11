@@ -158,7 +158,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
         showsVerticalScrollIndicator={false}
       >
         {/* 1. YAKLAŞAN & CANLI MAÇLAR - Horizontal Scroll */}
-        <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.section}>
+        <Animated.View entering={FadeInDown.delay(100).springify()} style={[styles.section, styles.firstSection]}>
             <View style={styles.sectionHeader}>
             <Ionicons name="football" size={20} color="#059669" />
             <Text style={styles.sectionTitle}>Yaklaşan & Canlı Maçlar</Text>
@@ -430,6 +430,9 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: 32,
     paddingHorizontal: 16,
+  },
+  firstSection: {
+    marginTop: 20, // ProfileCard'ın altına boşluk bırak
   },
   sectionHeader: {
     flexDirection: 'row',

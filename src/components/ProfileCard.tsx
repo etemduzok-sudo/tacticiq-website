@@ -180,8 +180,11 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   badgeLabel: {
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: '700',
     textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
 });
