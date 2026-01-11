@@ -11,6 +11,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { ALL_BADGES } from '../constants/badges';
+import { getUserBadges } from '../services/badgeService';
 
 interface ProfileCardProps {
   onPress: () => void;
@@ -32,12 +33,53 @@ const getBadgeTierColor = (tier: 1 | 2 | 3 | 4 | 5): string => {
 
 export const ProfileCard: React.FC<ProfileCardProps> = ({ onPress, newBadge, onBadgePopupClose }) => {
   const [showBadgePopup, setShowBadgePopup] = useState(false);
+  const [earnedBadges, setEarnedBadges] = useState<Array<{ id: string; name: string; emoji: string; tier: number }>>([]);
   const badgeSlideAnim = useRef(new Animated.Value(-100)).current; // Sol taraftan başlar
   const popupScaleAnim = useRef(new Animated.Value(0)).current;
+  const shownBadgeIdsRef = useRef<Set<string>>(new Set()); // Track badges shown in this component instance
 
-  // Yeni rozet geldiğinde popup aç
+  // Load earned badges
   useEffect(() => {
-    if (newBadge) {
+    const loadEarnedBadges = async () => {
+      try {
+        const userBadges = await getUserBadges();
+        // Map to match ALL_BADGES structure
+        const earned = userBadges.map(badge => {
+          const badgeDef = ALL_BADGES.find(b => b.id === badge.id);
+          // Convert BadgeTier enum to number (1-5)
+          const tierMap: Record<string, number> = {
+            'bronze': 1,
+            'silver': 2,
+            'gold': 3,
+            'platinum': 4,
+            'diamond': 5,
+          };
+          const tierNumber = typeof badge.tier === 'string' 
+            ? tierMap[badge.tier] || badgeDef?.tier || 1
+            : badgeDef?.tier || 1;
+          
+          return {
+            id: badge.id,
+            name: badge.name,
+            emoji: badge.icon || badgeDef?.emoji || '🏆',
+            tier: tierNumber,
+          };
+        });
+        setEarnedBadges(earned);
+      } catch (error) {
+        console.error('Error loading earned badges:', error);
+      }
+    };
+    
+    loadEarnedBadges();
+  }, [newBadge]); // Reload when new badge is earned
+
+  // Yeni rozet geldiğinde popup aç (sadece daha önce gösterilmemişse)
+  useEffect(() => {
+    if (newBadge && !shownBadgeIdsRef.current.has(newBadge.id)) {
+      // Mark as shown immediately to prevent duplicate popups
+      shownBadgeIdsRef.current.add(newBadge.id);
+      
       setShowBadgePopup(true);
       // Popup scale animasyonu
       Animated.spring(popupScaleAnim, {
@@ -95,42 +137,48 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({ onPress, newBadge, onB
         </View>
       </View>
 
-      {/* Badges - Horizontal Scroll */}
+      {/* Badges - Horizontal Scroll (Only earned badges) */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.badgesScroll}
       >
-        {ALL_BADGES.map((badge, index) => {
-          // Tek kelimeye kısalt
-          const shortName = badge.name.split(' ')[0];
-          
-          // Yeni rozet ise animasyonlu göster
-          const isNewBadge = newBadge && newBadge.id === badge.id;
-          
-          return (
-            <Animated.View
-              key={badge.id}
-              style={[
-                styles.badge,
-                { backgroundColor: `${getBadgeTierColor(badge.tier)}20` },
-                isNewBadge && {
-                  transform: [{ translateX: badgeSlideAnim }],
-                },
-              ]}
-            >
-              <Text style={styles.badgeIcon}>{badge.emoji}</Text>
-              <Text style={[styles.badgeLabel, { color: getBadgeTierColor(badge.tier) }]}>
-                {shortName}
-              </Text>
-              {isNewBadge && (
-                <View style={styles.newBadgeIndicator}>
-                  <Text style={styles.newBadgeText}>YENİ!</Text>
-                </View>
-              )}
-            </Animated.View>
-          );
-        })}
+        {earnedBadges.length > 0 ? (
+          earnedBadges.map((badge, index) => {
+            // Tek kelimeye kısalt
+            const shortName = badge.name.split(' ')[0];
+            
+            // Yeni rozet ise animasyonlu göster
+            const isNewBadge = newBadge && newBadge.id === badge.id;
+            
+            return (
+              <Animated.View
+                key={badge.id}
+                style={[
+                  styles.badge,
+                  { backgroundColor: `${getBadgeTierColor(badge.tier as 1 | 2 | 3 | 4 | 5)}20` },
+                  isNewBadge && {
+                    transform: [{ translateX: badgeSlideAnim }],
+                  },
+                ]}
+              >
+                <Text style={styles.badgeIcon}>{badge.emoji}</Text>
+                <Text style={[styles.badgeLabel, { color: getBadgeTierColor(badge.tier as 1 | 2 | 3 | 4 | 5) }]}>
+                  {shortName}
+                </Text>
+                {isNewBadge && (
+                  <View style={styles.newBadgeIndicator}>
+                    <Text style={styles.newBadgeText}>YENİ!</Text>
+                  </View>
+                )}
+              </Animated.View>
+            );
+          })
+        ) : (
+          <View style={styles.noBadgesContainer}>
+            <Text style={styles.noBadgesText}>Henüz rozet yok</Text>
+          </View>
+        )}
       </ScrollView>
     </TouchableOpacity>
 
@@ -275,6 +323,17 @@ const styles = StyleSheet.create({
   badgesScroll: {
     paddingRight: 12,
     gap: 10,
+  },
+  noBadgesContainer: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  noBadgesText: {
+    fontSize: 11,
+    color: '#64748B',
+    fontStyle: 'italic',
   },
   badge: {
     flexDirection: 'column',

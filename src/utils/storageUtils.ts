@@ -85,12 +85,55 @@ export function validateFavoriteTeams(data: any): boolean {
   );
 }
 
-// Get favorite teams safely
+// ✅ MIGRATION: Eski milli takım ID'lerini yeni ID'lere çevir
+const OLD_TO_NEW_TEAM_IDS: Record<number, number> = {
+  2003: 777,  // Türkiye (kadın) -> Türkiye (erkek)
+  2004: 25,   // Almanya (eski) -> Almanya (yeni)
+  2005: 6,    // Brezilya (eski) -> Brezilya (yeni)
+  2006: 26,   // Arjantin (eski) -> Arjantin (yeni)
+};
+
+// Get favorite teams safely with ID migration
 export async function getFavoriteTeams() {
-  return getStorageItem<Array<{ id: number; name: string; logo: string }>>(
+  const teams = await getStorageItem<Array<{ id: number; name: string; logo: string }>>(
     STORAGE_KEYS.FAVORITE_CLUBS,
     validateFavoriteTeams
   );
+  
+  if (!teams) return null;
+  
+  // ✅ Migrate old IDs to new IDs
+  let needsUpdate = false;
+  const migratedTeams = teams.map(team => {
+    if (OLD_TO_NEW_TEAM_IDS[team.id]) {
+      console.log(`🔄 Migrating team ID: ${team.id} -> ${OLD_TO_NEW_TEAM_IDS[team.id]} (${team.name})`);
+      needsUpdate = true;
+      return {
+        ...team,
+        id: OLD_TO_NEW_TEAM_IDS[team.id],
+        logo: team.logo.replace(`/${team.id}.png`, `/${OLD_TO_NEW_TEAM_IDS[team.id]}.png`),
+      };
+    }
+    return team;
+  });
+  
+  // Save migrated teams if any changes were made
+  if (needsUpdate) {
+    await setFavoriteTeams(migratedTeams);
+    console.log('✅ Team IDs migrated successfully');
+    
+    // Clear matches cache to force refresh with new IDs
+    try {
+      const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
+      await AsyncStorage.removeItem('fan-manager-matches-cache');
+      await AsyncStorage.removeItem('fan-manager-matches-cache-timestamp');
+      console.log('✅ Matches cache cleared after migration');
+    } catch (err) {
+      console.warn('Could not clear matches cache:', err);
+    }
+  }
+  
+  return migratedTeams;
 }
 
 // Set favorite teams safely

@@ -19,11 +19,13 @@ export function useFavoriteTeams() {
 
   const loadFavoriteTeams = async () => {
     try {
+      // ✅ getFavoriteTeams now includes migration logic
       const teams = await getFavoriteTeams();
       
       if (teams && teams.length > 0) {
         setFavoriteTeams(teams);
         console.log('✅ Loaded favorite teams:', teams.length, teams);
+        console.log('📋 Team IDs:', teams.map(t => `${t.name} (${t.id})`));
       } else {
         setFavoriteTeams([]);
         console.log('⚠️ No favorite teams found');

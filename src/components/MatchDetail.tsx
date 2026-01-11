@@ -59,8 +59,8 @@ const tabs = [
   { id: 'summary', label: 'Özet', icon: 'document-text' },
 ];
 
-export function MatchDetail({ matchId, onBack }: MatchDetailProps) {
-  const [activeTab, setActiveTab] = useState('squad');
+export function MatchDetail({ matchId, onBack, initialTab = 'squad' }: MatchDetailProps) {
+  const [activeTab, setActiveTab] = useState(initialTab);
   
   // Fetch match details from API
   const { match, statistics, events, lineups, loading, error } = useMatchDetails(Number(matchId));

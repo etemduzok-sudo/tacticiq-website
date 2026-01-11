@@ -215,8 +215,19 @@ const sendWelcomeEmail = async (email, userName) => {
   });
 };
 
+// Send email to admin (for alerts)
+const sendAdminEmail = async (subject, html, text) => {
+  return await sendEmail({
+    to: 'etemduzok@gmail.com',
+    subject,
+    html,
+    text,
+  });
+};
+
 module.exports = {
   sendEmail,
   sendPasswordResetEmail,
   sendWelcomeEmail,
+  sendAdminEmail,
 };

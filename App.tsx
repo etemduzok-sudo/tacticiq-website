@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { LogBox, View, Text, StyleSheet, Platform, UIManager } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -35,6 +35,57 @@ if (Platform.OS === 'web') {
         }
       };
     }
+  }
+  
+  // Web için zoom engelleme - Agresif çözüm
+  if (typeof document !== 'undefined') {
+    // Zoom seviyesini sürekli kontrol et ve sıfırla
+    const preventZoom = () => {
+      // Document zoom'unu kontrol et
+      if (document.documentElement.style.zoom !== '1') {
+        document.documentElement.style.zoom = '1';
+      }
+      if (document.body.style.zoom !== '1') {
+        document.body.style.zoom = '1';
+      }
+      
+      // Visual viewport scale'i kontrol et
+      if (window.visualViewport && window.visualViewport.scale !== 1) {
+        try {
+          window.visualViewport.scale = 1;
+        } catch (e) {
+          // Ignore
+        }
+      }
+      
+      // Root element transform'unu kontrol et
+      const root = document.getElementById('root');
+      if (root) {
+        const computedStyle = window.getComputedStyle(root);
+        const transform = computedStyle.transform;
+        if (transform && transform !== 'none' && !transform.includes('scale(1)')) {
+          root.style.transform = 'scale(1)';
+          root.style.webkitTransform = 'scale(1)';
+        }
+      }
+    };
+    
+    // Her 50ms'de bir kontrol et
+    setInterval(preventZoom, 50);
+    
+    // Event listener'lar
+    window.addEventListener('resize', preventZoom);
+    window.addEventListener('focus', preventZoom);
+    document.addEventListener('DOMContentLoaded', preventZoom);
+    window.addEventListener('load', preventZoom);
+    
+    // Çift tıklama engelle
+    document.addEventListener('dblclick', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      preventZoom();
+      return false;
+    }, true);
   }
 }
 
@@ -98,11 +149,27 @@ export default function App() {
 
   // 🎉 Yeni Rozet State (Test için başlangıçta bir rozet gösterelim)
   const [newBadge, setNewBadge] = useState<{ id: string; name: string; emoji: string; description: string; tier: number } | null>(null);
+  const badgeShownRef = useRef<Set<string>>(new Set()); // Track shown badges in this session using ref
+  const testBadgeTimerRef = useRef<NodeJS.Timeout | null>(null); // Track test badge timer
 
   // TEST: 5 saniye sonra yeni rozet göster (gerçekte maç sonunda kazanılacak)
+  // Sadece bir kez çalışacak şekilde düzeltildi
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (currentScreen === 'home') {
+    // Clear any existing timer
+    if (testBadgeTimerRef.current) {
+      clearTimeout(testBadgeTimerRef.current);
+      testBadgeTimerRef.current = null;
+    }
+
+    // Check if badge has already been shown
+    const checkAndShowTestBadge = async () => {
+      if (currentScreen === 'home' && !badgeShownRef.current.has('first_blood')) {
+        // Also check AsyncStorage to see if it was shown before
+        const { hasBadgeBeenShown } = await import('./src/services/badgeService');
+        const alreadyShown = await hasBadgeBeenShown('first_blood');
+        
+        if (!alreadyShown) {
+          testBadgeTimerRef.current = setTimeout(() => {
         setNewBadge({
           id: 'first_blood',
           name: '🎯 İlk Kan',
@@ -110,11 +177,24 @@ export default function App() {
           description: 'İlk tahminini yaptın! Analiz yolculuğun başladı.',
           tier: 1,
         });
-      }
+            // Mark as shown in this session
+            badgeShownRef.current.add('first_blood');
+            testBadgeTimerRef.current = null;
     }, 5000); // 5 saniye sonra
+        }
+      }
+    };
 
-    return () => clearTimeout(timer);
-  }, [currentScreen]);
+    checkAndShowTestBadge();
+
+    // Cleanup function
+    return () => {
+      if (testBadgeTimerRef.current) {
+        clearTimeout(testBadgeTimerRef.current);
+        testBadgeTimerRef.current = null;
+      }
+    };
+  }, [currentScreen]); // Only depend on currentScreen
 
   // Global match data - shared across all screens
   const matchData = useFavoriteTeamMatches();
@@ -277,7 +357,9 @@ export default function App() {
         setCurrentScreen('notifications');
         break;
       case 'profile':
-        setActiveTab('profile');
+        // If navigating from Dashboard "Tüm Rozetlerimi Gör" button, show badges tab
+        const showBadgesTab = params?.showBadges === true;
+        setActiveTab(showBadgesTab ? 'badges' : 'profile');
         setCurrentScreen('profile');
         break;
       case 'matches':
@@ -287,8 +369,16 @@ export default function App() {
       case 'match-detail':
         if (params?.id) {
           setSelectedMatchId(params.id);
+          // Store params for MatchDetail component to access
+          (window as any).__matchDetailParams = {
+            initialTab: params?.initialTab || 'squad',
+            focus: params?.focus,
+          };
           setCurrentScreen('match-detail');
         }
+        break;
+      case 'home':
+        setCurrentScreen('home');
         break;
       case 'achievements':
         // TODO: Achievements page
@@ -448,9 +538,12 @@ export default function App() {
             setCurrentScreen('home');
             return null;
           }
+          // Get initialTab from navigation params (if any)
+          const matchDetailParams = (window as any).__matchDetailParams || {};
           return (
             <MatchDetail
               matchId={selectedMatchId}
+              initialTab={matchDetailParams.initialTab || 'squad'}
               onBack={() => {
                 setSelectedMatchId(null);
                 setCurrentScreen('home');
@@ -475,6 +568,9 @@ export default function App() {
           );
         
         case 'profile':
+          // Check if we should show badges tab (from Dashboard button)
+          // activeTab will be 'badges' if navigated from Dashboard button
+          const shouldShowBadgesTab = activeTab === 'badges';
           return (
             <ProfileScreen
               onBack={() => {
@@ -484,6 +580,7 @@ export default function App() {
               onSettings={handleProfileSettings}
               onProUpgrade={handleProUpgrade}
               onDatabaseTest={() => setCurrentScreen('database-test')}
+              initialTab={shouldShowBadgesTab ? 'badges' : 'profile'}
             />
           );
         
@@ -596,7 +693,15 @@ export default function App() {
                       <ProfileCard 
                         onPress={() => handleDashboardNavigate('profile')} 
                         newBadge={newBadge}
-                        onBadgePopupClose={() => setNewBadge(null)}
+                        onBadgePopupClose={async () => {
+                          // Mark badge as shown when popup is closed
+                          if (newBadge) {
+                            const { markBadgeAsShown } = await import('./src/services/badgeService');
+                            await markBadgeAsShown(newBadge.id);
+                            badgeShownRef.current.add(newBadge.id);
+                          }
+                          setNewBadge(null);
+                        }}
                       />
                     </View>
                   )}

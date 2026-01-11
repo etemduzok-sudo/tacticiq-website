@@ -15,6 +15,7 @@ import {
 import { AnalysisCluster } from '../types/prediction.types';
 
 const STORAGE_KEY = 'fan-manager-user-badges';
+const SHOWN_BADGES_KEY = 'fan-manager-shown-badges'; // Track which badges have been shown in notifications
 
 /**
  * User Stats Interface
@@ -352,4 +353,156 @@ export const getBadgeProgress = async (badgeId: string): Promise<{ current: numb
   // TODO: Implement badge progress tracking
   // This would track how close a user is to earning a specific badge
   return null;
+};
+
+/**
+ * Get list of badge IDs that have been shown in notifications
+ */
+export const getShownBadgeIds = async (): Promise<Set<string>> => {
+  try {
+    const shownJson = await AsyncStorage.getItem(SHOWN_BADGES_KEY);
+    if (!shownJson) return new Set();
+    const shownArray = JSON.parse(shownJson);
+    return new Set(shownArray);
+  } catch (error) {
+    console.error('Error loading shown badges:', error);
+    return new Set();
+  }
+};
+
+/**
+ * Mark a badge as shown in notification
+ */
+export const markBadgeAsShown = async (badgeId: string): Promise<void> => {
+  try {
+    const shownIds = await getShownBadgeIds();
+    shownIds.add(badgeId);
+    await AsyncStorage.setItem(SHOWN_BADGES_KEY, JSON.stringify(Array.from(shownIds)));
+    console.log('✅ Badge marked as shown:', badgeId);
+  } catch (error) {
+    console.error('Error marking badge as shown:', error);
+  }
+};
+
+/**
+ * Check if a badge has been shown in notification
+ */
+export const hasBadgeBeenShown = async (badgeId: string): Promise<boolean> => {
+  const shownIds = await getShownBadgeIds();
+  return shownIds.has(badgeId);
+};
+
+/**
+ * Filter out badges that have already been shown
+ * Returns only badges that should trigger a notification
+ */
+export const filterNewBadgesForNotification = async (
+  badgeResults: BadgeAwardResult[]
+): Promise<BadgeAwardResult[]> => {
+  const shownIds = await getShownBadgeIds();
+  return badgeResults.filter(result => !shownIds.has(result.badge.id));
+};
+
+/**
+ * Initialize test badges (8 badges for testing)
+ * This function adds 8 test badges to the user's badge collection
+ */
+export const initializeTestBadges = async (): Promise<void> => {
+  try {
+    const existingBadges = await getUserBadges();
+    
+    // Eğer zaten 8 veya daha fazla rozet varsa, tekrar ekleme
+    if (existingBadges.length >= 8) {
+      console.log('✅ Test badges already initialized');
+      return;
+    }
+    
+    const existingBadgeIds = new Set(existingBadges.map(b => b.id));
+    
+    // 8 test rozet ID'leri (ilk 8 rozet)
+    const testBadgeIds = [
+      'first-analysis',    // İlk Analiz
+      'warm-up',           // Isınma Turu
+      'strategist',         // Stratejist
+      'punctual',           // Dakik
+      'streak-starter',     // Seri Başı
+      'card-master',        // Kart Hamili
+      'squad-engineer',     // Kadro Mühendisi
+      'local-hero',         // Yerel Kahraman
+    ];
+    
+    // Import badge definitions - use dynamic import for web compatibility
+    let ALL_BADGES: any[];
+    try {
+      // Try dynamic import first (works on web)
+      const badgesModule = await import('../constants/badges');
+      ALL_BADGES = badgesModule.ALL_BADGES || [];
+    } catch (importError) {
+      // Fallback to require for Node.js environments
+      try {
+        const badgesModule = require('../constants/badges');
+        ALL_BADGES = badgesModule.ALL_BADGES || [];
+      } catch (requireError) {
+        console.error('Error importing ALL_BADGES:', requireError);
+        return;
+      }
+    }
+    
+    if (!ALL_BADGES || ALL_BADGES.length === 0) {
+      console.warn('ALL_BADGES not found or empty');
+      return;
+    }
+    
+    const newTestBadges: Badge[] = [];
+    
+    for (const badgeId of testBadgeIds) {
+      // Skip if already exists
+      if (existingBadgeIds.has(badgeId)) {
+        continue;
+      }
+      
+      // Find badge definition
+      const badgeDef = ALL_BADGES.find((b: any) => b.id === badgeId);
+      if (!badgeDef) {
+        console.warn(`Badge definition not found: ${badgeId}`);
+        continue;
+      }
+      
+      // Map tier number to BadgeTier enum
+      const tierMap: Record<1 | 2 | 3 | 4 | 5, BadgeTier> = {
+        1: BadgeTier.BRONZE,
+        2: BadgeTier.SILVER,
+        3: BadgeTier.GOLD,
+        4: BadgeTier.PLATINUM,
+        5: BadgeTier.DIAMOND,
+      };
+      
+      // Convert to Badge type
+      const badge: Badge = {
+        id: badgeId,
+        name: badgeDef.name,
+        description: badgeDef.description,
+        icon: badgeDef.emoji,
+        tier: tierMap[badgeDef.tier] || BadgeTier.BRONZE,
+        earned: true,
+        earnedAt: new Date().toISOString(),
+        requirement: badgeDef.howToEarn || '',
+        category: BadgeCategory.PREDICTION_GOD,
+        color: badgeDef.color || '#F59E0B',
+      };
+      
+      newTestBadges.push(badge);
+    }
+    
+    if (newTestBadges.length > 0) {
+      const updatedBadges = [...existingBadges, ...newTestBadges];
+      await saveBadges(updatedBadges);
+      console.log(`✅ Initialized ${newTestBadges.length} test badges`);
+    } else {
+      console.log('✅ All test badges already exist');
+    }
+  } catch (error) {
+    console.error('Error initializing test badges:', error);
+    // Don't throw - just log the error
+  }
 };

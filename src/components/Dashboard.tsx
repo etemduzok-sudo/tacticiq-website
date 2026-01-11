@@ -9,6 +9,7 @@ import {
   Dimensions,
   Platform,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { 
@@ -18,6 +19,8 @@ import Animated, {
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import api from '../services/api';
+import { useFavoriteTeams } from '../hooks/useFavoriteTeams';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width } = Dimensions.get('window');
 
@@ -80,32 +83,72 @@ const strategicFocusOptions = [
 export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }: DashboardProps) {
   const [selectedFocus, setSelectedFocus] = React.useState<string | null>(null);
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null); // Seçilen maç
-  const [showFocusSection, setShowFocusSection] = useState(false); // Analiz odağı görünür mü
+  const [isPremium, setIsPremium] = useState(false);
   
   const scrollViewRef = useRef<ScrollView>(null);
   const focusSectionRef = useRef<View>(null);
+  const continueButtonRef = useRef<View>(null);
   const [focusSectionY, setFocusSectionY] = useState(0);
+  const [continueButtonY, setContinueButtonY] = useState(0);
+  
+  // ✅ Load favorite teams
+  const { favoriteTeams, loading: teamsLoading } = useFavoriteTeams();
+  
+  // ✅ Check if user is premium
+  React.useEffect(() => {
+    const checkPremium = async () => {
+      try {
+        const userData = await AsyncStorage.getItem('fan-manager-user');
+        if (userData) {
+          const parsed = JSON.parse(userData);
+          setIsPremium(parsed.isPremium === true || parsed.isPro === true || parsed.plan === 'pro' || parsed.plan === 'premium');
+        }
+      } catch (error) {
+        console.error('Error checking premium status:', error);
+      }
+    };
+    checkPremium();
+  }, []);
 
   // Maç seçildiğinde scroll animasyonu
-  const handleMatchSelect = (matchId: string) => {
+  const handleMatchSelect = (matchId: string | number) => {
     // Haptic feedback
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
 
-    setSelectedMatchId(matchId);
-    setShowFocusSection(true);
+    const matchIdStr = String(matchId);
+    
+    // Eğer aynı maç tekrar seçilirse, seçimi kaldır
+    if (String(selectedMatchId) === matchIdStr) {
+      setSelectedMatchId(null);
+      setSelectedFocus(null);
+      return;
+    }
+
+    setSelectedMatchId(matchIdStr);
     setSelectedFocus(null); // Odak seçimini sıfırla
 
-    // Analiz odağı bölümüne scroll
+    // ✅ Maç seçildikten sonra analiz odağı bölümüne scroll yap
+    // Biraz bekle ki React render etsin, sonra scroll yap
     setTimeout(() => {
       if (focusSectionY > 0) {
         scrollViewRef.current?.scrollTo({
-          y: focusSectionY - 100, // Profil kartı altına denk gelsin
+          y: focusSectionY - 20, // Biraz üstten başlasın
           animated: true,
         });
+      } else {
+        // Eğer focusSectionY henüz hesaplanmadıysa, biraz daha bekle
+        setTimeout(() => {
+          if (focusSectionY > 0) {
+            scrollViewRef.current?.scrollTo({
+              y: focusSectionY - 20,
+              animated: true,
+            });
+          }
+        }, 200);
       }
-    }, 100);
+    }, 300);
   };
 
   // Handle focus selection with haptic feedback
@@ -114,21 +157,49 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
+    
+    // Eğer aynı focus tekrar seçilirse, seçimi kaldır
+    if (selectedFocus === focusId) {
+      setSelectedFocus(null);
+      return;
+    }
+    
     setSelectedFocus(focusId);
+
+    // Eğer bir maç seçilmişse, "Devam Et" butonuna scroll yap
+    if (selectedMatchId) {
+      setTimeout(() => {
+        // Önce continueButtonY'yi kontrol et
+        if (continueButtonY > 0) {
+          scrollViewRef.current?.scrollTo({
+            y: continueButtonY - 150, // Butonun üstüne biraz boşluk bırak
+            animated: true,
+          });
+        } else if (focusSectionY > 0) {
+          // Eğer continueButtonY henüz hesaplanmadıysa, focusSectionY'ye ek bir offset ekle
+          // Focus kartları yaklaşık 200px yüksekliğinde, buton da ~80px, toplam ~280px
+          scrollViewRef.current?.scrollTo({
+            y: focusSectionY + 350, // Focus kartlarının altına, butonun görüneceği yere scroll
+            animated: true,
+          });
+        }
+      }, 300); // Biraz daha uzun bekle ki layout hesaplansın
+    }
   };
 
-  // Devam Et butonu
+  // Devam Et butonu - Direkt match-detail'e geç, scroll yapma
   const handleContinueToMatch = () => {
     if (selectedMatchId) {
+      // ✅ Direkt match-detail ekranına geç, scroll yapma
       onNavigate('match-detail', {
         id: selectedMatchId,
         focus: selectedFocus,
+        initialTab: 'squad', // İlk sekme olarak Kadro'yu aç
       });
       
-      // Reset
-      setSelectedMatchId(null);
-      setShowFocusSection(false);
-      setSelectedFocus(null);
+      // Reset (ama navigation sonrası, state temizlenmesin diye)
+      // setSelectedMatchId(null);
+      // setSelectedFocus(null);
     }
   };
 
@@ -171,6 +242,30 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
     hasLoadedOnce
   } = matchData;
 
+  // ✅ DEBUG: Log match data
+  React.useEffect(() => {
+    console.log('📊 [Dashboard] Match Data:', {
+      past: pastMatches.length,
+      live: liveMatches.length,
+      upcoming: upcomingMatches.length,
+      loading,
+      error,
+    });
+    if (pastMatches.length > 0) {
+      console.log('📊 [Dashboard] First past match:', {
+        teams: `${pastMatches[0].teams?.home?.name} vs ${pastMatches[0].teams?.away?.name}`,
+        league: pastMatches[0].league?.name,
+      });
+    }
+    if (upcomingMatches.length > 0) {
+      console.log('📊 [Dashboard] First upcoming match:', {
+        teams: `${upcomingMatches[0].teams?.home?.name} vs ${upcomingMatches[0].teams?.away?.name}`,
+        league: upcomingMatches[0].league?.name,
+        date: new Date(upcomingMatches[0].fixture.timestamp * 1000).toLocaleString('tr-TR'),
+      });
+    }
+  }, [pastMatches, liveMatches, upcomingMatches]);
+
   // Show loading ONLY on first load
   if (loading && !hasLoadedOnce) {
     return (
@@ -181,16 +276,12 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
     );
   }
 
-  // Get upcoming matches (next 24 hours)
+  // Get all upcoming matches (not just 24 hours)
   const now = Date.now() / 1000;
-  const next24Hours = now + (24 * 60 * 60);
-  const upcomingNext24h = upcomingMatches.filter(match => {
+  const allUpcomingMatches = upcomingMatches.filter(match => {
     const matchTime = match.fixture.timestamp;
-    return matchTime >= now && matchTime <= next24Hours;
+    return matchTime >= now;
   });
-
-  // Get last 3 matches for history
-  const recentMatches = pastMatches.slice(0, 3);
 
   return (
     <View style={styles.container}>
@@ -201,124 +292,238 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* 1. YAKLAŞAN MAÇLAR - Horizontal Scroll */}
-        <Animated.View entering={FadeInDown.delay(100).springify()} style={[styles.section, styles.firstSection]}>
+        {/* 0. SEÇİLİ TAKIMLAR (Pro kullanıcı için) - Sadece maç seçilmediğinde göster */}
+        {!selectedMatchId && isPremium && favoriteTeams.length > 0 && (
+          <Animated.View entering={FadeInDown.delay(50).springify()} style={styles.section}>
             <View style={styles.sectionHeader}>
-            <Ionicons name="calendar" size={20} color="#059669" />
-            <Text style={styles.sectionTitle}>Yaklaşan Maçlar</Text>
+              <Ionicons name="trophy" size={20} color="#F59E0B" />
+              <Text style={styles.sectionTitle}>Favori Takımlarım ({favoriteTeams.length})</Text>
             </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.teamsScroll}
+            >
+              {favoriteTeams.map((team, index) => (
+                <Animated.View key={team.id} entering={FadeInLeft.delay(100 + index * 50).springify()}>
+                  <View style={styles.teamBadge}>
+                    {team.logo ? (
+                      <Image source={{ uri: team.logo }} style={styles.teamBadgeLogo} />
+                    ) : (
+                      <View style={styles.teamBadgePlaceholder}>
+                        <Text style={styles.teamBadgeEmoji}>⚽</Text>
+                      </View>
+                    )}
+                    <Text style={styles.teamBadgeName} numberOfLines={1}>{team.name}</Text>
+                  </View>
+                </Animated.View>
+              ))}
+            </ScrollView>
+          </Animated.View>
+        )}
 
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.upcomingMatchesScroll}
-          >
-            {/* Canlı maçlar artık burada görünmez - sadece "Canlı Maçlar" sekmesinde */}
-            
-          {/* Upcoming Matches (Next 7 days) - Artık daha fazla gösterebiliriz */}
-          {upcomingNext24h.length > 0 ? upcomingNext24h.slice(0, 5).map((match, index) => (
-            <Animated.View key={match.fixture.id} entering={FadeInDown.delay(200 + index * 100).springify()}>
+        {/* 1. CANLI MAÇLAR - Sadece maç seçilmediğinde göster */}
+        {!selectedMatchId && liveMatches.length > 0 && (
+          <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="radio" size={20} color="#EF4444" />
+              <Text style={styles.sectionTitle}>Canlı Maçlar</Text>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.upcomingMatchesScroll}
+            >
+              {liveMatches.slice(0, 10).map((match, index) => (
+                <Animated.View key={match.fixture.id} entering={FadeInDown.delay(150 + index * 50).springify()}>
+                  <TouchableOpacity
+                    style={[styles.upcomingMatchCard, styles.liveMatchCard]}
+                    onPress={() => onNavigate('match-detail', { id: match.fixture.id })}
+                    activeOpacity={0.8}
+                  >
+                    <View style={styles.matchHeader}>
+                      <Text style={styles.matchLeague}>{match.league.name}</Text>
+                      <View style={styles.liveBadge}>
+                        <View style={styles.liveDot} />
+                        <Text style={styles.liveText}>CANLI</Text>
+                      </View>
+                    </View>
+                    <View style={styles.matchTeams}>
+                      <View style={styles.matchTeam}>
+                        <Text style={styles.teamName}>{match.teams.home.name}</Text>
+                        <Text style={styles.teamScore}>{match.goals.home ?? 0}</Text>
+                      </View>
+                      <Text style={styles.vsText}>VS</Text>
+                      <View style={styles.matchTeam}>
+                        <Text style={styles.teamName}>{match.teams.away.name}</Text>
+                        <Text style={styles.teamScore}>{match.goals.away ?? 0}</Text>
+                      </View>
+                    </View>
+                    {match.fixture.status.elapsed && (
+                      <Text style={styles.elapsedTime}>{match.fixture.status.elapsed}'</Text>
+                    )}
+                  </TouchableOpacity>
+                </Animated.View>
+              ))}
+            </ScrollView>
+          </Animated.View>
+        )}
+
+        {/* 2. YAKLAŞAN MAÇLAR - Her zaman göster */}
+        <Animated.View entering={FadeInDown.delay(200).springify()} style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="calendar" size={20} color="#059669" />
+            <Text style={styles.sectionTitle}>Yaklaşan Maçlar ({allUpcomingMatches.length})</Text>
+          </View>
+
+          {allUpcomingMatches.length > 0 ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.upcomingMatchesScroll}
+              pagingEnabled={false}
+              snapToInterval={width - 32} // Her kart için snap
+              decelerationRate="fast"
+              snapToAlignment="start"
+            >
+              {allUpcomingMatches.slice(0, 10).map((match, index) => (
+              <Animated.View key={match.fixture.id} entering={FadeInDown.delay(200 + index * 100).springify()}>
                 <TouchableOpacity
                 style={[
                   styles.upcomingMatchCard,
-                  selectedMatchId === match.fixture.id && styles.selectedMatchCard,
+                  String(selectedMatchId) === String(match.fixture.id) && styles.selectedMatchCard,
                 ]}
-                onPress={() => handleMatchSelect(match.fixture.id)}
+                onPress={() => handleMatchSelect(String(match.fixture.id))}
                   activeOpacity={0.8}
                 >
                 <View style={styles.matchHeader}>
                   <Text style={styles.matchLeague}>{match.league.name}</Text>
-                  <Text style={styles.matchTime}>{api.utils.formatMatchTime(match.fixture.timestamp)}</Text>
-                  </View>
-
-                  <View style={styles.matchTeams}>
-                  <View style={styles.matchTeam}>
-                    <Text style={styles.teamLogo}>{match.teams.home.logo || '⚽'}</Text>
-                    <Text style={styles.teamName}>{match.teams.home.name}</Text>
+                  {/* ✅ Sağa kaydırma ipucu - Sadece birden fazla maç varsa göster */}
+                  {allUpcomingMatches.length > 1 && (
+                    <View style={styles.scrollHintIcon}>
+                      <Ionicons name="chevron-forward" size={16} color="#64748B" />
                     </View>
-                  <Text style={styles.vsText}>VS</Text>
-                  <View style={styles.matchTeam}>
-                    <Text style={styles.teamLogo}>{match.teams.away.logo || '⚽'}</Text>
-                    <Text style={styles.teamName}>{match.teams.away.name}</Text>
-                  </View>
-                    </View>
+                  )}
+                </View>
 
-                {/* Analyst Advice Balloon */}
-                {selectedFocus && getAnalystAdvice(match) && (
-                  <View style={[styles.adviceBalloon, { backgroundColor: `${getAnalystAdvice(match)!.color}20` }]}>
-                    <Text style={styles.adviceIcon}>{getAnalystAdvice(match)!.icon}</Text>
-                    <Text style={[styles.adviceText, { color: getAnalystAdvice(match)!.color }]}>
-                      {getAnalystAdvice(match)!.text}
-                      </Text>
+                    <View style={styles.matchTeams}>
+                      <View style={styles.matchTeam}>
+                        {/* ✅ Sadece milli takımlar için bayrak göster */}
+                        {(() => {
+                          const isNationalTeam = (teamName: string) => {
+                            const nationalTeams = ['Türkiye', 'Turkey', 'Almanya', 'Germany', 'Brezilya', 'Brazil', 'Arjantin', 'Argentina', 'Romania', 'Portugal', 'Spain', 'İspanya', 'France', 'Fransa', 'Italy', 'İtalya'];
+                            return nationalTeams.some(nt => teamName.includes(nt));
+                          };
+                          
+                          if (isNationalTeam(match.teams.home.name) && match.teams.home.logo) {
+                            return <Image source={{ uri: match.teams.home.logo }} style={styles.teamLogoImage} />;
+                          }
+                          return null;
+                        })()}
+                        <Text style={styles.teamName} numberOfLines={2}>{match.teams.home.name}</Text>
+                      </View>
+                      <View style={styles.matchCenterInfo}>
+                        <Text style={styles.vsText}>VS</Text>
+                        {/* Stad */}
+                        {(match.fixture as any).venue?.name && (
+                          <View style={styles.matchInfoRow}>
+                            <Ionicons name="location" size={12} color="#64748B" />
+                            <Text style={styles.matchInfoText} numberOfLines={1}>
+                              {(match.fixture as any).venue.name}
+                            </Text>
+                          </View>
+                        )}
+                        {/* Tarih */}
+                        <Text style={styles.matchDateText}>
+                          {new Date(match.fixture.date).toLocaleDateString('tr-TR', { 
+                            day: 'numeric', 
+                            month: 'long', 
+                            year: 'numeric' 
+                          })}
+                        </Text>
+                        {/* Saat */}
+                        <Text style={styles.matchTimeText}>
+                          {api.utils.formatMatchTime(match.fixture.timestamp)}
+                        </Text>
+                      </View>
+                      <View style={styles.matchTeam}>
+                        {/* ✅ Sadece milli takımlar için bayrak göster */}
+                        {(() => {
+                          const isNationalTeam = (teamName: string) => {
+                            const nationalTeams = ['Türkiye', 'Turkey', 'Almanya', 'Germany', 'Brezilya', 'Brazil', 'Arjantin', 'Argentina', 'Romania', 'Portugal', 'Spain', 'İspanya', 'France', 'Fransa', 'Italy', 'İtalya'];
+                            return nationalTeams.some(nt => teamName.includes(nt));
+                          };
+                          
+                          if (isNationalTeam(match.teams.away.name) && match.teams.away.logo) {
+                            return <Image source={{ uri: match.teams.away.logo }} style={styles.teamLogoImage} />;
+                          }
+                          return null;
+                        })()}
+                        <Text style={styles.teamName} numberOfLines={2}>{match.teams.away.name}</Text>
+                      </View>
                     </View>
-                )}
-
-                    <LinearGradient
-                      colors={['#059669', '#047857']}
-                  style={styles.predictButton}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                    >
-                  <Ionicons name="analytics" size={16} color="#FFFFFF" />
-                  <Text style={styles.predictButtonText}>Analizini Gir</Text>
-                  <View style={styles.glowDot} />
-                    </LinearGradient>
                 </TouchableOpacity>
               </Animated.View>
-          )) : (
+            ))}
+          </ScrollView>
+          ) : (
             <View style={styles.emptyState}>
               <Ionicons name="calendar-outline" size={48} color="#64748B" />
-              <Text style={styles.emptyText}>24 saat içinde maç yok</Text>
+              <Text style={styles.emptyText}>Yaklaşan maç yok</Text>
             </View>
           )}
-          </ScrollView>
         </Animated.View>
 
-        {/* 2. ANALİZ ODAĞI (Sadece maç seçildiğinde görünür) */}
-        {showFocusSection && selectedMatchId && (
+        {/* ✅ ANALİZ ODAĞI BÖLÜMÜ - Sadece maç seçildiğinde görünür */}
+        {selectedMatchId && (
           <View 
             ref={focusSectionRef}
             onLayout={(event) => {
               const layout = event.nativeEvent.layout;
-              setFocusSectionY(layout.y);
+              // ScrollView içindeki pozisyonu hesapla
+              if (layout.y > 0) {
+                setFocusSectionY(layout.y);
+              }
             }}
             style={styles.focusSectionContainer}
           >
             <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.section}>
               {/* Seçilen Maç Bilgisi */}
-              {upcomingNext24h.find(m => m.fixture.id === selectedMatchId) && (
-                <View style={styles.selectedMatchInfo}>
-                  <Text style={styles.selectedMatchTitle}>Seçilen Maç:</Text>
-                  <Text style={styles.selectedMatchTeams}>
-                    {upcomingNext24h.find(m => m.fixture.id === selectedMatchId)?.teams.home.name} 
-                    {' vs '}
-                    {upcomingNext24h.find(m => m.fixture.id === selectedMatchId)?.teams.away.name}
-                  </Text>
-                </View>
-              )}
+              <View style={styles.selectedMatchInfo}>
+                <Text style={styles.selectedMatchTitle}>Seçilen Maç:</Text>
+                <Text style={styles.selectedMatchTeams}>
+                  {allUpcomingMatches.find(m => String(m.fixture.id) === String(selectedMatchId))?.teams.home.name} 
+                  {' vs '}
+                  {allUpcomingMatches.find(m => String(m.fixture.id) === String(selectedMatchId))?.teams.away.name}
+                </Text>
+              </View>
 
               <View style={styles.sectionHeader}>
                 <Ionicons name="bulb" size={20} color="#F59E0B" />
-                <Text style={styles.sectionTitle}>Yeni Tahmin İçin Analiz Odağını Seç</Text>
+                <Text style={styles.sectionTitle}>Bu maç için analiz odağını seç</Text>
               </View>
               <Text style={styles.sectionSubtitle}>Seçersen x1.25 puan çarpanı kazanırsın (opsiyonel)</Text>
 
               <View style={styles.focusGrid}>
-                {strategicFocusOptions.map((focus, index) => (
-                  <Animated.View key={focus.id} entering={FadeInLeft.delay(200 + index * 50).springify()}>
-                    <TouchableOpacity
-                      style={[
-                        styles.focusCard,
-                        selectedFocus === focus.id && styles.focusCardSelected,
-                        selectedFocus && selectedFocus !== focus.id && styles.focusCardUnselected,
-                        { 
-                          borderColor: selectedFocus === focus.id ? focus.color : '#334155',
-                          transform: [{ scale: selectedFocus === focus.id ? 1.05 : selectedFocus ? 0.95 : 1 }],
-                        },
-                      ]}
-                      onPress={() => handleFocusSelect(focus.id)}
-                      activeOpacity={0.8}
-                    >
+                {strategicFocusOptions.map((focus, index) => {
+                  // Her kartın genişliğini hesapla: (ekran genişliği - padding - gap) / 2
+                  const cardWidth = (width - 32 - 12) / 2; // 32 = section padding (16*2), 12 = gap
+                  return (
+                    <Animated.View key={focus.id} entering={FadeInLeft.delay(200 + index * 50).springify()}>
+                      <TouchableOpacity
+                        style={[
+                          styles.focusCard,
+                          selectedFocus === focus.id && styles.focusCardSelected,
+                          selectedFocus && selectedFocus !== focus.id && styles.focusCardUnselected,
+                          { 
+                            width: cardWidth,
+                            borderColor: selectedFocus === focus.id ? focus.color : '#334155',
+                            transform: [{ scale: selectedFocus === focus.id ? 1.05 : selectedFocus ? 0.95 : 1 }],
+                          },
+                        ]}
+                        onPress={() => handleFocusSelect(focus.id)}
+                        activeOpacity={0.8}
+                      >
                       {/* Icon Container */}
                       <View style={[styles.focusIconContainer, { backgroundColor: `${focus.color}15` }]}>
                         <Ionicons
@@ -352,108 +557,112 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
                       )}
                     </TouchableOpacity>
                   </Animated.View>
-                ))}
+                  );
+                })}
               </View>
 
-              {/* DEVAM ET Butonu */}
-              <Animated.View entering={FadeInDown.delay(400).springify()} style={styles.continueButtonContainer}>
-                <TouchableOpacity
-                  style={styles.continueButton}
-                  onPress={handleContinueToMatch}
-                  activeOpacity={0.8}
+              {/* DEVAM ET Butonu (Sadece maç seçildiğinde görünür) */}
+              {selectedMatchId && (
+                <Animated.View 
+                  ref={continueButtonRef}
+                  entering={FadeInDown.delay(400).springify()} 
+                  style={styles.continueButtonContainer}
+                  onLayout={(event) => {
+                    const layout = event.nativeEvent.layout;
+                    // Absolute pozisyonu hesapla: focusSectionY (parent) + layout.y (relative)
+                    const absoluteY = focusSectionY > 0 ? focusSectionY + layout.y : layout.y;
+                    setContinueButtonY(absoluteY);
+                  }}
                 >
-                  <LinearGradient
-                    colors={['#059669', '#047857']}
-                    style={styles.continueButtonGradient}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
+                  <TouchableOpacity
+                    style={styles.continueButton}
+                    onPress={handleContinueToMatch}
+                    activeOpacity={0.8}
                   >
-                    <Text style={styles.continueButtonText}>
-                      {selectedFocus ? 'Devam Et (Odak Seçildi ✓)' : 'Devam Et (Odak Seçmeden)'}
-                    </Text>
-                    <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
-                  </LinearGradient>
-                </TouchableOpacity>
-              </Animated.View>
+                    <LinearGradient
+                      colors={['#059669', '#047857']}
+                      style={styles.continueButtonGradient}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                    >
+                      <Text style={styles.continueButtonText}>
+                        {selectedFocus ? `Devam Et (${strategicFocusOptions.find(f => f.id === selectedFocus)?.name} ✓)` : 'Devam Et'}
+                      </Text>
+                      <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </Animated.View>
+              )}
             </Animated.View>
           </View>
         )}
 
-        {/* 3. KAZANILAN ROZETLER */}
-        <Animated.View entering={FadeInDown.delay(500).springify()} style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="trophy" size={20} color="#F59E0B" />
-            <Text style={styles.sectionTitle}>Kazanılan Rozetler</Text>
-          </View>
+        {/* 3. KAZANILAN ROZETLER - Sadece maç seçilmediğinde göster */}
+        {!selectedMatchId && (
+          <Animated.View entering={FadeInDown.delay(500).springify()} style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="trophy" size={20} color="#F59E0B" />
+              <Text style={styles.sectionTitle}>Kazanılan Rozetler</Text>
+            </View>
 
-          {/* View All Badges Button */}
-          <Animated.View entering={FadeInLeft.delay(600).springify()}>
-            <TouchableOpacity
-              style={styles.viewAllBadgesButton}
-              onPress={() => onNavigate('profile')}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="trophy" size={24} color="#F59E0B" />
-              <Text style={styles.viewAllBadgesText}>Tüm Rozetlerimi Gör</Text>
-              <Ionicons name="chevron-forward" size={20} color="#F59E0B" />
-            </TouchableOpacity>
+            {/* View All Badges Button */}
+            <Animated.View entering={FadeInLeft.delay(600).springify()}>
+              <TouchableOpacity
+                style={styles.viewAllBadgesButton}
+                onPress={() => onNavigate('profile', { showBadges: true })}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="trophy" size={24} color="#F59E0B" />
+                <Text style={styles.viewAllBadgesText}>Tüm Rozetlerimi Gör</Text>
+                <Ionicons name="chevron-forward" size={20} color="#F59E0B" />
+              </TouchableOpacity>
+            </Animated.View>
           </Animated.View>
-        </Animated.View>
+        )}
 
-        {/* 4. ÖNCEKİ MAÇ PERFORMANSLARI */}
-        <Animated.View entering={FadeInDown.delay(700).springify()} style={styles.section}>
+        {/* 3. GEÇMİŞ MAÇLAR - Sadece maç seçilmediğinde göster */}
+        {!selectedMatchId && (
+          <Animated.View entering={FadeInDown.delay(300).springify()} style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Ionicons name="analytics" size={20} color="#8B5CF6" />
-            <Text style={styles.sectionTitle}>Önceki Maç Performansların</Text>
-        </View>
-
-          <View style={styles.matchHistoryVertical}>
-            {recentMatches.length > 0 ? recentMatches.map((match, index) => (
-              <Animated.View key={match.fixture.id} entering={FadeInLeft.delay(800 + index * 100).springify()}>
-                <TouchableOpacity
-                  style={styles.historyCardVertical}
-                  onPress={() => onNavigate('match-result-summary', { id: match.fixture.id })}
-                  activeOpacity={0.8}
-                >
-                  <View style={styles.historyHeader}>
-                    <Text style={styles.historyDate}>
-                      {new Date(match.fixture.date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}
-                    </Text>
-                    <Text style={styles.historyScore}>
-                      {match.goals.home} - {match.goals.away}
-                    </Text>
-        </View>
-                  
-                  <Text style={styles.historyTeams} numberOfLines={2}>
-                    {match.teams.home.name} vs {match.teams.away.name}
-                  </Text>
-
-                  <View style={styles.historyStats}>
-                    <View style={styles.historyStat}>
-                      <Ionicons name="star" size={16} color="#F59E0B" />
-                      <Text style={styles.historyStatText}>350 Puan</Text>
-                    </View>
-                    <View style={styles.historyStat}>
-                      <Ionicons name="analytics" size={16} color="#059669" />
-                      <Text style={styles.historyStatText}>%85 Tempo</Text>
-                    </View>
-                  </View>
-
-                  {/* Badge Stamps */}
-                  <View style={styles.badgeStamps}>
-                    <Text style={styles.badgeStamp}>🏆</Text>
-                    <Text style={styles.badgeStamp}>⚡</Text>
-                  </View>
-                </TouchableOpacity>
-              </Animated.View>
-            )) : (
-              <View style={styles.emptyHistoryState}>
-                <Ionicons name="time-outline" size={48} color="#64748B" />
-                <Text style={styles.emptyText}>Henüz maç geçmişin yok</Text>
-              </View>
-            )}
+            <Ionicons name="time" size={20} color="#8B5CF6" />
+            <Text style={styles.sectionTitle}>Geçmiş Maçlar ({pastMatches.length})</Text>
           </View>
+
+          {pastMatches.length > 0 ? (
+            <View style={styles.matchHistoryVertical}>
+              {pastMatches.slice(0, 5).map((match, index) => (
+                <Animated.View key={match.fixture.id} entering={FadeInLeft.delay(350 + index * 50).springify()}>
+                  <TouchableOpacity
+                    style={styles.historyCardVertical}
+                    onPress={() => onNavigate('match-result-summary', { id: match.fixture.id })}
+                    activeOpacity={0.8}
+                  >
+                    <View style={styles.historyHeader}>
+                      <Text style={styles.historyDate}>
+                        {new Date(match.fixture.date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}
+                      </Text>
+                      <Text style={styles.historyScore}>
+                        {match.goals.home ?? 0} - {match.goals.away ?? 0}
+                      </Text>
+                    </View>
+                    
+                    <Text style={styles.historyLeague}>{match.league.name}</Text>
+                    
+                    <Text style={styles.historyTeams} numberOfLines={2}>
+                      {match.teams.home.name} vs {match.teams.away.name}
+                    </Text>
+                  </TouchableOpacity>
+                </Animated.View>
+              ))}
+            </View>
+          ) : (
+            <View style={styles.emptyHistoryState}>
+              <Ionicons name="time-outline" size={48} color="#64748B" />
+              <Text style={styles.emptyText}>Henüz geçmiş maç yok</Text>
+            </View>
+          )}
         </Animated.View>
+        )}
 
         {/* Bottom Padding */}
         <View style={{ height: 100 }} />
@@ -490,19 +699,25 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: 32,
     paddingHorizontal: 16,
-  },
-  firstSection: {
     marginTop: 20, // ProfileCard'ın altına boşluk bırak
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 8,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
     color: '#F8FAFB',
+    marginLeft: 8,
+    flex: 1,
+  },
+  scrollHint: {
+    fontSize: 12,
+    color: '#64748B',
+    fontWeight: '500',
     marginLeft: 8,
   },
   sectionSubtitle: {
@@ -565,6 +780,11 @@ const styles = StyleSheet.create({
     fontSize: 32,
     marginBottom: 4,
   },
+  teamLogoImage: {
+    width: 40,
+    height: 40,
+    marginBottom: 4,
+  },
   teamName: {
     fontSize: 12,
     fontWeight: '600',
@@ -583,7 +803,66 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: '#64748B',
-    paddingHorizontal: 16,
+    marginBottom: 8,
+  },
+  matchCenterInfo: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+    minWidth: 120,
+  },
+  matchInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
+    marginBottom: 4,
+  },
+  matchInfoText: {
+    fontSize: 11,
+    color: '#64748B',
+    fontWeight: '500',
+    maxWidth: 100,
+  },
+  matchDateText: {
+    fontSize: 12,
+    color: '#94A3B8',
+    fontWeight: '600',
+    marginTop: 4,
+    marginBottom: 2,
+  },
+  matchTimeText: {
+    fontSize: 14,
+    color: '#059669',
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  teamScore: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#F8FAFB',
+    marginTop: 4,
+  },
+  liveBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EF444420',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  elapsedTime: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#EF4444',
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  historyLeague: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 4,
+    marginBottom: 8,
   },
   liveTrackButton: {
     flexDirection: 'row',
@@ -599,9 +878,9 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
 
-  // Upcoming Match Card
+  // Upcoming Match Card - Tam ekran genişliği
   upcomingMatchCard: {
-    width: 320, // Fixed width for horizontal scroll
+    width: width - 32, // Ekran genişliği - sadece yan padding (16*2)
     backgroundColor: '#1E293B',
     borderRadius: 16,
     padding: 16,
@@ -666,12 +945,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFFFFF',
   },
-    borderRadius: 16,
-    padding: 16,
-    marginRight: 12,
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
   matchHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -681,6 +954,11 @@ const styles = StyleSheet.create({
   matchLeague: {
     fontSize: 12,
     color: '#64748B',
+    flex: 1,
+  },
+  scrollHintIcon: {
+    marginLeft: 8,
+    opacity: 0.6,
   },
   matchTime: {
     fontSize: 12,
@@ -735,12 +1013,12 @@ const styles = StyleSheet.create({
   focusGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
     gap: 12,
   },
   focusCard: {
-    width: (width - 44) / 2, // 2 columns
-    height: 180, // Fixed height (increased from 160)
+    width: '100%', // Inline style ile override edilecek
+    height: 180, // Fixed height
     backgroundColor: '#1E293B',
     borderRadius: 16,
     padding: 14,
@@ -751,20 +1029,13 @@ const styles = StyleSheet.create({
   },
   focusCardSelected: {
     backgroundColor: 'rgba(5, 150, 105, 0.08)',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#F59E0B',
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.6,
-        shadowRadius: 12,
-      },
-      android: {
-        elevation: 12,
-      },
-      web: {
-        boxShadow: '0 0 12px rgba(245, 158, 11, 0.6)',
-      },
-    }),
+    borderColor: '#F59E0B',
+    borderWidth: 2,
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 12,
+    elevation: 12,
   },
   focusCardUnselected: {
     opacity: 0.6,
@@ -917,5 +1188,44 @@ const styles = StyleSheet.create({
     color: '#64748B',
     marginTop: 12,
     textAlign: 'center',
+  },
+  // Selected Teams Section
+  teamsScroll: {
+    paddingRight: 16,
+    gap: 12,
+  },
+  teamBadge: {
+    backgroundColor: '#1E293B',
+    borderRadius: 12,
+    padding: 12,
+    marginRight: 8,
+    alignItems: 'center',
+    minWidth: 80,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  teamBadgeLogo: {
+    width: 40,
+    height: 40,
+    marginBottom: 4,
+  },
+  teamBadgePlaceholder: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#334155',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  teamBadgeEmoji: {
+    fontSize: 20,
+  },
+  teamBadgeName: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#F8FAFB',
+    textAlign: 'center',
+    maxWidth: 80,
   },
 });

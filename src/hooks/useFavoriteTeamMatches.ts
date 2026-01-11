@@ -10,6 +10,17 @@ const CACHE_KEY = 'fan-manager-matches-cache';
 const CACHE_TIMESTAMP_KEY = 'fan-manager-matches-cache-timestamp';
 const CACHE_DURATION = 6 * 60 * 60 * 1000; // 6 saat (ms)
 
+// ✅ Clear cache when team IDs change (migration)
+export async function clearMatchesCache() {
+  try {
+    await AsyncStorage.removeItem(CACHE_KEY);
+    await AsyncStorage.removeItem(CACHE_TIMESTAMP_KEY);
+    console.log('✅ Matches cache cleared');
+  } catch (error) {
+    console.error('Error clearing cache:', error);
+  }
+}
+
 interface Match {
   fixture: {
     id: number;
@@ -212,23 +223,89 @@ export function useFavoriteTeamMatches(): UseFavoriteTeamMatchesResult {
         });
       }
       
+      // ✅ NATIONAL TEAM: Check league type for better categorization
+      const leagueName = match.league?.name?.toLowerCase() || '';
+      const round = match.league?.round?.toLowerCase() || '';
+      const isNationalMatch = leagueName.includes('world cup') ||
+                              leagueName.includes('euro') ||
+                              leagueName.includes('qualification') ||
+                              leagueName.includes('play-off') ||
+                              leagueName.includes('playoff') ||
+                              leagueName.includes('nations league') ||
+                              leagueName.includes('copa america') ||
+                              leagueName.includes('africa cup') ||
+                              leagueName.includes('asian cup') ||
+                              leagueName.includes('uefa') ||
+                              leagueName.includes('conmebol');
+      
+      // Check if it's group stage or playoff
+      const isGroupStage = round.includes('group') || round.includes('grupp') || 
+                          round.includes('matchday') || round.includes('round 1') ||
+                          round.includes('round 2') || round.includes('round 3');
+      const isPlayoff = round.includes('play-off') || round.includes('playoff') ||
+                        round.includes('qualification') || round.includes('final') ||
+                        round.includes('semi') || round.includes('quarter') ||
+                        round.includes('round of 16') || round.includes('round of 8') ||
+                        round.includes('knockout');
+      
       // Live matches (1H, HT, 2H, ET, P, BT, LIVE, etc.)
       if (['1H', 'HT', '2H', 'ET', 'P', 'BT', 'LIVE'].includes(status)) {
         live.push(match);
       }
       // Finished matches (FT, AET, PEN, etc.)
       else if (['FT', 'AET', 'PEN', 'AWD', 'WO'].includes(status)) {
-        past.push(match);
+        // ✅ NATIONAL TEAM: Grup maçları geçmişte, play-off maçları gelecekte
+        if (isNationalMatch) {
+          if (isGroupStage) {
+            // Grup maçları her zaman geçmişte (bitmiş olarak kabul edilir)
+            past.push(match);
+          } else if (isPlayoff && matchTime > now) {
+            // Play-off maçları gelecekteyse geleceğe ekle
+            upcoming.push(match);
+          } else {
+            // Diğer durumlar için normal mantık
+            past.push(match);
+          }
+        } else {
+          past.push(match);
+        }
       }
       // Upcoming matches (NS, TBD, etc.)
       else if (['NS', 'TBD', 'PST'].includes(status)) {
-        upcoming.push(match);
+        // ✅ NATIONAL TEAM: Play-off maçları gelecekte, grup maçları geçmişte
+        if (isNationalMatch) {
+          if (isPlayoff) {
+            // Play-off maçları gelecekte
+            upcoming.push(match);
+          } else if (isGroupStage) {
+            // Grup maçları geçmişte (genellikle bitmiş olur)
+            past.push(match);
+          } else {
+            // Diğer durumlar için normal mantık
+            upcoming.push(match);
+          }
+        } else {
+          upcoming.push(match);
+        }
       }
       // Fallback: check timestamp
       else if (match.fixture.timestamp * 1000 > now) {
-        upcoming.push(match);
+        // ✅ NATIONAL TEAM: Play-off maçları gelecekte
+        if (isNationalMatch && isPlayoff) {
+          upcoming.push(match);
+        } else if (isNationalMatch && isGroupStage) {
+          // Grup maçları geçmişte (nadiren gelecekte olur)
+          past.push(match);
+        } else {
+          upcoming.push(match);
+        }
       } else {
-        past.push(match);
+        // ✅ NATIONAL TEAM: Grup maçları geçmişte
+        if (isNationalMatch && isGroupStage) {
+          past.push(match);
+        } else {
+          past.push(match);
+        }
       }
     });
 
@@ -236,11 +313,25 @@ export function useFavoriteTeamMatches(): UseFavoriteTeamMatchesResult {
     past.sort((a, b) => b.fixture.timestamp - a.fixture.timestamp);
     upcoming.sort((a, b) => a.fixture.timestamp - b.fixture.timestamp);
 
-    // Filter upcoming matches to only show next 15 days
-    const fifteenDaysFromNow = now + (15 * 24 * 60 * 60 * 1000);
+    // ✅ NATIONAL TEAM: Play-off ve turnuva maçları için daha uzun süre göster
+    // Grup maçları için filtreleme yok (hepsi geçmişte)
+    const isNationalTeamMatch = (match: Match) => {
+      const leagueName = match.league?.name?.toLowerCase() || '';
+      return leagueName.includes('world cup') || leagueName.includes('euro') ||
+             leagueName.includes('qualification') || leagueName.includes('play-off') ||
+             leagueName.includes('playoff') || leagueName.includes('nations league') ||
+             leagueName.includes('copa america') || leagueName.includes('africa cup') ||
+             leagueName.includes('asian cup');
+    };
+    
+    // Filter upcoming matches
+    // Milli takım maçları için 90 gün, kulüp maçları için 15 gün
     const upcomingFiltered = upcoming.filter(match => {
       const matchTime = match.fixture.timestamp * 1000;
-      return matchTime <= fifteenDaysFromNow;
+      const isNational = isNationalTeamMatch(match);
+      const maxDays = isNational ? 90 : 15; // Milli takım maçları için 90 gün (play-off'lar için)
+      const maxTime = now + (maxDays * 24 * 60 * 60 * 1000);
+      return matchTime <= maxTime;
     });
 
     return { past, live, upcoming: upcomingFiltered };
@@ -290,33 +381,74 @@ export function useFavoriteTeamMatches(): UseFavoriteTeamMatchesResult {
         if (!team || !team.id) continue;
         
         try {
-          console.log(`📥 Fetching ALL matches for ${team.name} (ID: ${team.id})...`);
+          // ✅ Check if team is national team
+          // Milli takım ID'leri: 777 (Türkiye), 25 (Almanya), 6 (Brezilya), 26 (Arjantin)
+          const nationalTeamIds = [777, 25, 6, 26];
+          const isNationalTeam = nationalTeamIds.includes(team.id) ||
+                                 team.league === 'UEFA' || 
+                                 team.league === 'CONMEBOL' || 
+                                 team.name === 'Türkiye' || 
+                                 team.name === 'Almanya' || 
+                                 team.name === 'Brezilya' || 
+                                 team.name === 'Arjantin' ||
+                                 (team as any).type === 'national';
           
-          // Fetch all season matches in one call
-          const url = `/matches/team/${team.id}/season/${currentSeason}`;
-          const fullUrl = `${api.getBaseUrl()}${url}`;
-          console.log(`🌐 Requesting: ${fullUrl}`);
+          console.log(`📥 Fetching ALL matches for ${team.name} (ID: ${team.id}) [${isNationalTeam ? 'NATIONAL' : 'CLUB'}]...`);
           
-          const result = await fetch(fullUrl, {
-            headers: { 'Content-Type': 'application/json' }
-          });
-          
-          console.log(`📡 Response status: ${result.status}`);
-          
-          if (!result.ok) {
-            const errorText = await result.text();
-            console.error(`❌ HTTP Error ${result.status}:`, errorText);
-            continue;
-          }
-          
-          const response = await result.json();
-          console.log(`📦 Response:`, { success: response.success, dataLength: response.data?.length, source: response.source });
-          
-          if (response.success && response.data && response.data.length > 0) {
-            console.log(`✅ Found ${response.data.length} total matches for ${team.name}`);
-            allMatches.push(...response.data);
+          if (isNationalTeam) {
+            // ✅ NATIONAL TEAM: Fetch matches from multiple seasons (2024, 2025, 2026)
+            // Milli takımlar için Dünya Kupası, Avrupa Şampiyonası, Play-off maçları farklı sezonlarda olabilir
+            const nationalSeasons = [2024, 2025, 2026]; // Son 3 yıl + gelecek yıl
+            
+            for (const season of nationalSeasons) {
+              try {
+                const url = `/matches/team/${team.id}/season/${season}`;
+                const fullUrl = `${api.getBaseUrl()}${url}`;
+                console.log(`🌐 Requesting national team matches: ${fullUrl}`);
+                
+                const result = await fetch(fullUrl, {
+                  headers: { 'Content-Type': 'application/json' }
+                });
+                
+                if (result.ok) {
+                  const response = await result.json();
+                  if (response.success && response.data && response.data.length > 0) {
+                    console.log(`✅ Found ${response.data.length} matches for ${team.name} in season ${season}`);
+                    allMatches.push(...response.data);
+                  }
+                }
+              } catch (seasonErr) {
+                console.warn(`⚠️ Failed to fetch season ${season} for ${team.name}:`, seasonErr);
+                // Continue with next season
+              }
+            }
           } else {
-            console.log(`⚠️ No matches found for ${team.name}`);
+            // ✅ CLUB TEAM: Fetch current season matches only
+            const url = `/matches/team/${team.id}/season/${currentSeason}`;
+            const fullUrl = `${api.getBaseUrl()}${url}`;
+            console.log(`🌐 Requesting: ${fullUrl}`);
+            
+            const result = await fetch(fullUrl, {
+              headers: { 'Content-Type': 'application/json' }
+            });
+            
+            console.log(`📡 Response status: ${result.status}`);
+            
+            if (!result.ok) {
+              const errorText = await result.text();
+              console.error(`❌ HTTP Error ${result.status}:`, errorText);
+              continue;
+            }
+            
+            const response = await result.json();
+            console.log(`📦 Response:`, { success: response.success, dataLength: response.data?.length, source: response.source });
+            
+            if (response.success && response.data && response.data.length > 0) {
+              console.log(`✅ Found ${response.data.length} total matches for ${team.name}`);
+              allMatches.push(...response.data);
+            } else {
+              console.log(`⚠️ No matches found for ${team.name}`);
+            }
           }
           
         } catch (err) {

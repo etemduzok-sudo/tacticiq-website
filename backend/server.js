@@ -49,6 +49,7 @@ app.use('/api/players', playersRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/predictions', predictionsRouter);
 app.use('/api/scoring', scoringRouter);
+app.use('/api/email', require('./routes/email'));
 
 // Health check
 app.get('/health', (req, res) => {
@@ -125,6 +126,24 @@ app.listen(PORT, () => {
   const smartSyncService = require('./services/smartSyncService');
   smartSyncService.startSync();
   console.log(`🧠 Smart adaptive sync started (every 12s, adaptive 10s-60s)`);
+  
+  // ============================================
+  // MONITORING & AUTO-RESTART SERVICE
+  // ============================================
+  // Backend'i izler, çökerse otomatik restart yapar
+  // Admin'e email gönderir
+  // ============================================
+  
+  try {
+    const monitoringService = require('./services/monitoringService');
+    // Start monitoring after a delay (to avoid checking during initial startup)
+    setTimeout(() => {
+      monitoringService.startMonitoring();
+    }, 10000); // 10 saniye sonra başlat
+    console.log(`🔍 Monitoring service will start in 10 seconds`);
+  } catch (error) {
+    console.warn('⚠️ Monitoring service could not be loaded:', error.message);
+  }
   
   // NOTE: liveMatchService ve dailySyncService devre dışı (smartSync hepsini yapıyor)
   // const liveMatchService = require('./services/liveMatchService');

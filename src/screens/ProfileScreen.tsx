@@ -30,6 +30,7 @@ interface ProfileScreenProps {
   onSettings: () => void;
   onProUpgrade: () => void;
   onDatabaseTest?: () => void;
+  initialTab?: 'profile' | 'badges'; // Initial tab to show
 }
 
 export const ProfileScreen: React.FC<ProfileScreenProps> = ({
@@ -37,13 +38,19 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   onSettings,
   onProUpgrade,
   onDatabaseTest,
+  initialTab = 'profile',
 }) => {
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isPro, setIsPro] = useState(false);
   
   // 🏆 BADGE SYSTEM STATE
-  const [activeTab, setActiveTab] = useState<'profile' | 'badges'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'badges'>(initialTab);
+  
+  // Update activeTab when initialTab prop changes
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
   const [allBadges, setAllBadges] = useState<Badge[]>([]);
   const [selectedBadge, setSelectedBadge] = useState<Badge | null>(null);
   const [badgeCount, setBadgeCount] = useState(0);
@@ -81,26 +88,72 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   // 🏆 LOAD BADGES
   const loadBadges = async () => {
     try {
-      // 🔥 TEST MODE: Tüm rozetleri kazanılmış olarak göster
+      // Get all available badges (earned + locked)
+      const availableBadges = await getAllAvailableBadges();
+      
+      // Map ALL_BADGES to include earned status from availableBadges
       const badgesWithStatus = ALL_BADGES.map((badgeDef) => {
+        const earnedBadge = availableBadges.find(b => b.id === badgeDef.id);
         return {
           id: badgeDef.id,
           name: badgeDef.name,
           description: badgeDef.description,
           icon: badgeDef.emoji,
           tier: badgeDef.tier as any,
-          earned: true, // ✅ Tüm rozetler kazanılmış
-          earnedAt: new Date().toISOString(),
+          earned: earnedBadge?.earned || false,
+          earnedAt: earnedBadge?.earnedAt,
           requirement: badgeDef.howToEarn,
+          category: earnedBadge?.category || 'PREDICTION_GOD' as any,
+          color: badgeDef.color,
         };
       });
       
       setAllBadges(badgesWithStatus as any);
-      setBadgeCount(ALL_BADGES.length); // 20 rozet
       
-      console.log('✅ Loaded badges:', ALL_BADGES.length, 'Earned:', ALL_BADGES.length);
+      // Count earned badges
+      const earnedCount = badgesWithStatus.filter(b => b.earned).length;
+      setBadgeCount(earnedCount);
+      
+      console.log(`✅ Loaded badges: ${ALL_BADGES.length} total, ${earnedCount} earned`);
+      
+      // Initialize test badges in background (non-blocking)
+      if (earnedCount === 0) {
+        // Only initialize if no badges exist
+        setTimeout(async () => {
+          try {
+            const badgeService = await import('../services/badgeService');
+            if (badgeService.initializeTestBadges) {
+              await badgeService.initializeTestBadges();
+              // Reload badges after initialization
+              const updatedBadges = await getAllAvailableBadges();
+              const updatedStatus = ALL_BADGES.map((badgeDef) => {
+                const earnedBadge = updatedBadges.find(b => b.id === badgeDef.id);
+                return {
+                  id: badgeDef.id,
+                  name: badgeDef.name,
+                  description: badgeDef.description,
+                  icon: badgeDef.emoji,
+                  tier: badgeDef.tier as any,
+                  earned: earnedBadge?.earned || false,
+                  earnedAt: earnedBadge?.earnedAt,
+                  requirement: badgeDef.howToEarn,
+                  category: earnedBadge?.category || 'PREDICTION_GOD' as any,
+                  color: badgeDef.color,
+                };
+              });
+              setAllBadges(updatedStatus as any);
+              setBadgeCount(updatedStatus.filter(b => b.earned).length);
+            }
+          } catch (err) {
+            console.warn('Background badge init failed:', err);
+          }
+        }, 1000);
+      }
     } catch (error) {
       console.error('Error loading badges:', error);
+      // Fallback: show empty badges
+      setAllBadges([]);
+      setBadgeCount(0);
     }
   };
 
@@ -500,7 +553,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
           {/* Database Test Button (Dev Only) */}
           {__DEV__ && onDatabaseTest && (
-            <Animated.View entering={FadeInDown.delay(400)} style={styles.card}>
+            <Animated.View entering={FadeInDown.delay(500)} style={styles.card}>
               <TouchableOpacity onPress={onDatabaseTest} style={styles.dbTestButton}>
                 <Ionicons name="server" size={20} color="#059669" />
                 <Text style={styles.dbTestText}>🧪 Database Test</Text>
@@ -1392,6 +1445,115 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#F59E0B',
+  },
+
+  // ⚽ MATCH CARD STYLES
+  matchCard: {
+    backgroundColor: '#1E293B',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  matchHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  matchLeague: {
+    fontSize: 11,
+    color: '#64748B',
+    fontWeight: '600',
+  },
+  matchTime: {
+    fontSize: 11,
+    color: '#059669',
+    fontWeight: '700',
+  },
+  matchDate: {
+    fontSize: 11,
+    color: '#64748B',
+    fontWeight: '600',
+  },
+  matchTeams: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  matchTeam: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  teamLogo: {
+    fontSize: 32,
+    marginBottom: 8,
+  },
+  teamName: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#F8FAFB',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  teamScore: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#F8FAFB',
+  },
+  vsText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#64748B',
+    paddingHorizontal: 16,
+  },
+  liveIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  liveDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#EF4444',
+  },
+  liveBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  liveDotSmall: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#EF4444',
+  },
+  liveText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#EF4444',
+  },
+  liveMinute: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#EF4444',
+  },
+  emptyMatchesContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+  },
+  emptyMatchesText: {
+    fontSize: 14,
+    color: '#64748B',
+    marginTop: 16,
+    textAlign: 'center',
   },
 
   // 🏆 BADGE SHOWCASE STYLES

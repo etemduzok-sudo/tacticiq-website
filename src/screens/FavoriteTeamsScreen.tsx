@@ -100,6 +100,7 @@ const TEAMS: Team[] = [
     country: 'Milli Takım',
     colors: ['#E30A17', '#FFFFFF'], // Kırmızı-Beyaz
     type: 'national',
+    apiId: 777, // API-Football National Team ID (Turkey Men's) - FIXED: Found correct men's team ID
   },
   {
     id: '102',
@@ -108,6 +109,7 @@ const TEAMS: Team[] = [
     country: 'Milli Takım',
     colors: ['#000000', '#DD0000', '#FFCE00'], // Siyah-Kırmızı-Altın
     type: 'national',
+    apiId: 25, // API-Football National Team ID (Germany) - FIXED: Using API search result
   },
   {
     id: '103',
@@ -116,6 +118,7 @@ const TEAMS: Team[] = [
     country: 'Milli Takım',
     colors: ['#009C3B', '#FFDF00'], // Yeşil-Sarı
     type: 'national',
+    apiId: 6, // API-Football National Team ID (Brazil) - FIXED: Using API search result
   },
   {
     id: '104',
@@ -124,6 +127,7 @@ const TEAMS: Team[] = [
     country: 'Milli Takım',
     colors: ['#74ACDF', '#FFFFFF'], // Mavi-Beyaz
     type: 'national',
+    apiId: 26, // API-Football National Team ID (Argentina) - FIXED: Using API search result
   },
 ];
 
@@ -145,6 +149,32 @@ export default function FavoriteTeamsScreen({ onComplete, onBack }: FavoriteTeam
       const lang = await AsyncStorage.getItem('fan-manager-language');
       if (lang) {
         setSelectedLanguage(lang);
+        
+        // ✅ Dil seçimine göre otomatik milli takım seç
+        const languageToNationalTeam: Record<string, string> = {
+          'tr': '101', // Türkiye
+          'de': '102', // Almanya
+          'es': '104', // Arjantin (İspanyolca için geçici, sonra İspanya eklenebilir)
+          'fr': '104', // Arjantin (Fransızca için geçici, sonra Fransa eklenebilir)
+          'it': '104', // Arjantin (İtalyanca için geçici, sonra İtalya eklenebilir)
+          'en': '103', // Brezilya (İngilizce için geçici, sonra İngiltere eklenebilir)
+        };
+        
+        const autoNationalTeamId = languageToNationalTeam[lang];
+        if (autoNationalTeamId && TEAMS.find(t => t.id === autoNationalTeamId)) {
+          // Sadece free kullanıcılar için otomatik seç (pro kullanıcılar kendileri seçebilir)
+          const userData = await AsyncStorage.getItem('fan-manager-user');
+          if (userData) {
+            const parsed = JSON.parse(userData);
+            const isPremium = parsed.isPremium === true || parsed.plan === 'pro' || parsed.plan === 'premium';
+            if (!isPremium) {
+              setSelectedNational(autoNationalTeamId);
+            }
+          } else {
+            // Kullanıcı verisi yoksa (ilk giriş) otomatik seç
+            setSelectedNational(autoNationalTeamId);
+          }
+        }
       }
 
       // Plan bilgisini yükle (Free/Pro)
@@ -185,10 +215,14 @@ export default function FavoriteTeamsScreen({ onComplete, onBack }: FavoriteTeam
   const nationalTeams = sortTeamsByLanguage(TEAMS.filter((t) => t.type === 'national'));
 
   const handleContinue = () => {
-    // 🔥 FREE USER: Sadece milli takım seçmeli
+    // ✅ FREE USER: Sadece milli takım seçmeli (veya seçilmiş olmalı)
     if (!isPremium) {
       if (!selectedNational) {
-        Alert.alert('Uyarı', 'Lütfen bir milli takım seçin');
+        Alert.alert(
+          'Milli Takım Seçimi Gerekli',
+          'Free plan ile sadece milli takım seçebilirsiniz. Lütfen bir milli takım seçin.',
+          [{ text: 'Tamam' }]
+        );
         return;
       }
     } else {
@@ -208,6 +242,7 @@ export default function FavoriteTeamsScreen({ onComplete, onBack }: FavoriteTeam
         name: team.name,
         logo: `https://media.api-sports.io/football/teams/${team.apiId || team.id}.png`,
         league: team.league,
+        type: team.type, // ✅ Milli takım tipini de ekle (hook'ta kullanmak için)
       }));
     
     console.log('✅ Seçili takımlar (ID ile):', selectedTeamsData);
@@ -288,16 +323,9 @@ export default function FavoriteTeamsScreen({ onComplete, onBack }: FavoriteTeam
   };
 
   const handleNationalSelect = (teamId: string) => {
-    // Free Plan: Milli takım seçilemez
-    if (!isPremium) {
-      Alert.alert(
-        'Pro Plan Gerekli',
-        'Milli takım seçimi Pro plan özelliğidir. Pro plana geçerek milli takımınızı seçebilirsiniz.',
-        [{ text: 'Tamam' }]
-      );
-      return;
-    }
-
+    // ✅ FREE USER: Milli takım seçebilir!
+    // ✅ PRO USER: Milli takım seçebilir!
+    
     if (selectedNational === teamId) {
       setSelectedNational(null);
     } else {
@@ -327,7 +355,11 @@ export default function FavoriteTeamsScreen({ onComplete, onBack }: FavoriteTeam
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.mainTitle}>Takımlarınızı Seçin</Text>
-          <Text style={styles.subtitle}>Favori kulüpleriniz ve milli takımınızı belirleyin</Text>
+          <Text style={styles.subtitle}>
+            {!isPremium 
+              ? 'Free plan ile sadece milli takım seçebilirsiniz' 
+              : 'Favori kulüpleriniz ve milli takımınızı belirleyin'}
+          </Text>
 
           {/* Status Badges */}
           <View style={styles.badgesContainer}>
@@ -336,9 +368,9 @@ export default function FavoriteTeamsScreen({ onComplete, onBack }: FavoriteTeam
                 Kulüp: {clubCount}/{maxClubs}
               </Text>
             </View>
-            <View style={[styles.badge, !isPremium && styles.badgeDisabled]}>
-              <Text style={[styles.badgeText, !isPremium && styles.badgeTextDisabled]}>
-                Milli: {nationalCount}/1 {!isPremium && '(Pro)'}
+            <View style={[styles.badge, nationalCount > 0 && styles.badgeActive]}>
+              <Text style={styles.badgeText}>
+                Milli: {nationalCount}/1
               </Text>
             </View>
             <View style={[styles.badge, isPremium ? styles.badgePremium : styles.badgeFree]}>
@@ -426,22 +458,23 @@ export default function FavoriteTeamsScreen({ onComplete, onBack }: FavoriteTeam
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Milli Takım</Text>
-            <Text style={[styles.sectionOptional, !isPremium && styles.sectionOptionalLocked]}>
-              {isPremium ? 'Opsiyonel' : 'Pro Plan Gerekli'}
+            <Text style={styles.sectionOptional}>
+              {isPremium ? 'Opsiyonel' : 'Zorunlu (Free Plan)'}
             </Text>
           </View>
 
           {filterTeams(nationalTeams).map((team) => {
             const isSelected = selectedNational === team.id;
-            const isLocked = !isPremium;
+            // ✅ FREE USER: Milli takım seçebilir!
+            const isLocked = false; // Artık hiçbir zaman kilitli değil
 
             return (
               <TouchableOpacity
                 key={team.id}
-                style={[styles.teamCard, isSelected && styles.teamCardSelected, isLocked && styles.teamCardLocked]}
+                style={[styles.teamCard, isSelected && styles.teamCardSelected]}
                 onPress={() => handleNationalSelect(team.id)}
                 activeOpacity={0.7}
-                disabled={false} // Her zaman tıklanabilir (uyarı göstermek için)
+                disabled={false} // Her zaman tıklanabilir
               >
                 {/* Left Color Stripe */}
                 <View style={styles.colorStripe}>
@@ -465,9 +498,7 @@ export default function FavoriteTeamsScreen({ onComplete, onBack }: FavoriteTeam
                 </View>
 
                 {/* Right Icon */}
-                {isLocked ? (
-                  <SafeIcon name="lock-closed" size={24} color={DARK_MODE.mutedForeground} />
-                ) : isSelected ? (
+                {isSelected ? (
                   <View style={styles.checkIconContainer}>
                     <SafeIcon name="checkmark-circle" size={28} color={BRAND.emerald} />
                   </View>
@@ -487,7 +518,7 @@ export default function FavoriteTeamsScreen({ onComplete, onBack }: FavoriteTeam
           onPress={handleContinue}
           variant="solid"
           fullWidth
-          disabled={selectedClubs.length === 0}
+          disabled={!isPremium ? !selectedNational : selectedClubs.length === 0 && !selectedNational}
           style={styles.continueButton}
           textStyle={styles.continueButtonText}
         />
