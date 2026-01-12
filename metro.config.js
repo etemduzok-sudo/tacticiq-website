@@ -57,23 +57,57 @@ config.transformer = {
   },
 };
 
-// Web için server middleware - URL parametrelerini temizle
+// Web için server middleware - URL parametrelerini temizle ve MIME type düzelt
 config.server = {
   ...config.server,
   enhanceMiddleware: (middleware) => {
     return (req, res, next) => {
+      // server.bundle isteklerini handle et (Expo Router olmadan gerekli değil)
+      if (req.url && req.url.includes('server.bundle')) {
+        // Boş bir JavaScript dosyası döndür (Expo Router kullanmıyoruz)
+        res.writeHead(200, {
+          'Content-Type': 'application/javascript; charset=utf-8',
+          'Cache-Control': 'no-cache',
+        });
+        res.end('// server.bundle not needed (Expo Router disabled)');
+        return;
+      }
+      
+      // URL parametrelerini temizle (regex ile)
       if (req.url) {
-        // routerRoot ve Hermes parametrelerini kaldır
+        // Hermes ve router parametrelerini kaldır
         req.url = req.url
           .replace(/[&?]transform\.routerRoot=[^&]*/g, '')
           .replace(/[&?]transform\.engine=hermes/g, '')
-          .replace(/[&?]unstable_transformProfile=hermes-stable/g, '');
+          .replace(/[&?]unstable_transformProfile=[^&]*/g, '')
+          .replace(/\?&/, '?') // Çift ?& temizle
+          .replace(/&$/, '') // Sondaki & temizle
+          .replace(/\?$/, ''); // Sondaki ? temizle
       }
       
-      // Bundle için MIME type
+      // Bundle için MIME type ayarla
       if (req.url && req.url.includes('.bundle')) {
-        res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+        // Response'un setHeader metodunu override et
+        const originalSetHeader = res.setHeader;
+        res.setHeader = function(name, value) {
+          if (name.toLowerCase() === 'content-type') {
+            return originalSetHeader.call(this, 'Content-Type', 'application/javascript; charset=utf-8');
+          }
+          return originalSetHeader.call(this, name, value);
+        };
+        
+        // Response'un writeHead metodunu override et
+        const originalWriteHead = res.writeHead;
+        res.writeHead = function(statusCode, statusMessage, headers) {
+          if (headers && typeof headers === 'object') {
+            headers['Content-Type'] = 'application/javascript; charset=utf-8';
+          } else if (!headers) {
+            headers = { 'Content-Type': 'application/javascript; charset=utf-8' };
+          }
+          return originalWriteHead.call(this, statusCode, statusMessage, headers);
+        };
       }
+      
       return middleware(req, res, next);
     };
   },

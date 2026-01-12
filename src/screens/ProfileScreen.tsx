@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   FlatList,
   Pressable,
+  TextInput,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -24,12 +25,16 @@ import { AnalysisCluster } from '../types/prediction.types';
 import { getAllAvailableBadges, getUserBadges } from '../services/badgeService';
 import { Badge, getBadgeColor, getBadgeTierName } from '../types/badges.types';
 import { ALL_BADGES, BadgeDefinition, getBadgeById } from '../constants/badges';
+import { useFavoriteTeams } from '../hooks/useFavoriteTeams';
+import { teamsApi } from '../services/api';
+import { SPACING, TYPOGRAPHY, BRAND, DARK_MODE } from '../theme/theme';
 
 interface ProfileScreenProps {
   onBack: () => void;
   onSettings: () => void;
   onProUpgrade: () => void;
   onDatabaseTest?: () => void;
+  onTeamSelect?: (teamId: number, teamName: string) => void; // ✅ Takım seçildiğinde o takımın maçlarını göster
   initialTab?: 'profile' | 'badges'; // Initial tab to show
 }
 
@@ -38,6 +43,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   onSettings,
   onProUpgrade,
   onDatabaseTest,
+  onTeamSelect,
   initialTab = 'profile',
 }) => {
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
@@ -55,8 +61,16 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const [selectedBadge, setSelectedBadge] = useState<Badge | null>(null);
   const [badgeCount, setBadgeCount] = useState(0);
   
-  // ⚽ FAVORITE TEAMS STATE
-  const [favoriteTeams, setFavoriteTeams] = useState<Array<{ id: number; name: string; logo: string }>>([]);
+  // ⚽ FAVORITE TEAMS STATE - useFavoriteTeams hook'unu kullan
+  const { favoriteTeams, addFavoriteTeam, removeFavoriteTeam, isFavorite, refetch } = useFavoriteTeams();
+  
+  // ✅ Takım seçim state'leri
+  const [selectedNationalTeam, setSelectedNationalTeam] = useState<{ id: number; name: string; colors: string[]; country: string; league: string; coach?: string } | null>(null);
+  const [selectedClubTeams, setSelectedClubTeams] = useState<Array<{ id: number; name: string; colors: string[]; country: string; league: string; coach?: string } | null>>([null, null, null, null, null]);
+  const [openDropdown, setOpenDropdown] = useState<'national' | 'club1' | 'club2' | 'club3' | 'club4' | 'club5' | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [apiTeams, setApiTeams] = useState<Array<{ id: number; name: string; colors: string[]; country: string; league: string; type: 'club' | 'national'; coach?: string }>>([]);
+  const [isSearching, setIsSearching] = useState(false);
   
   // 📊 USER STATS STATE
   const [user, setUser] = useState({
@@ -166,26 +180,90 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         // Get user ID from AsyncStorage
         const userDataStr = await AsyncStorage.getItem(STORAGE_KEYS.USER);
         const userData = userDataStr ? JSON.parse(userDataStr) : null;
-        const userId = userData?.id || 'anonymous';
+        // UUID formatında değilse null gönder (Supabase UUID bekliyor)
+        const userId = userData?.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userData.id) 
+          ? userData.id 
+          : null;
         
         // Load badges
         await loadBadges();
         
-        // Load favorite teams
-        console.log('🔍 [PROFILE] Loading favorite teams from AsyncStorage...');
+        // ✅ Favorite teams artık useFavoriteTeams hook'undan geliyor
+        // Mevcut favori takımları yükle ve state'e aktar
         const favoriteTeamsStr = await AsyncStorage.getItem('fan-manager-favorite-clubs');
-        console.log('🔍 [PROFILE] Raw storage data:', favoriteTeamsStr);
-        
         if (favoriteTeamsStr) {
           const teams = JSON.parse(favoriteTeamsStr);
-          setFavoriteTeams(teams);
-          console.log('✅ [PROFILE] Loaded favorite teams:', teams);
-        } else {
-          console.log('⚠️ [PROFILE] No favorite teams found in storage');
-          setFavoriteTeams([]);
+          // Milli takım ve kulüp takımlarını ayır
+          const nationalTeam = teams.find((t: any) => t.type === 'national');
+          const clubTeams = teams.filter((t: any) => t.type === 'club').slice(0, 5);
+          
+          if (nationalTeam) {
+            setSelectedNationalTeam({
+              id: nationalTeam.id,
+              name: nationalTeam.name,
+              colors: nationalTeam.colors || ['#1E40AF', '#FFFFFF'],
+              country: nationalTeam.country || 'Milli Takım',
+              league: nationalTeam.league || 'UEFA',
+              coach: nationalTeam.coach || nationalTeam.manager || 'Bilinmiyor',
+            });
+          }
+          
+          // Kulüp takımlarını sırayla yerleştir
+          const clubArray: Array<{ id: number; name: string; colors: string[]; country: string; league: string; coach?: string } | null> = [null, null, null, null, null];
+          clubTeams.forEach((team: any, idx: number) => {
+            if (idx < 5) {
+              clubArray[idx] = {
+                id: team.id,
+                name: team.name,
+                colors: team.colors || ['#1E40AF', '#FFFFFF'],
+                country: team.country || 'Unknown',
+                league: team.league || 'Unknown',
+                coach: team.coach || team.manager || 'Bilinmiyor',
+              };
+            }
+          });
+          setSelectedClubTeams(clubArray);
         }
 
-        // Fetch user profile from Supabase
+        // Check is_pro from AsyncStorage first (for development/testing)
+        // ✅ Pro kontrolü: is_pro, isPro, isPremium, plan === 'pro' veya plan === 'premium'
+        const storedIsPro = userData?.is_pro === true || userData?.isPro === true || userData?.isPremium === true || userData?.plan === 'pro' || userData?.plan === 'premium';
+        if (storedIsPro) {
+          setIsPro(true);
+          console.log('✅ [PROFILE] User is PRO (from AsyncStorage)', { is_pro: userData?.is_pro, isPro: userData?.isPro, isPremium: userData?.isPremium, plan: userData?.plan });
+        } else {
+          setIsPro(false);
+          console.log('⚠️ [PROFILE] User is NOT PRO', { is_pro: userData?.is_pro, isPro: userData?.isPro, isPremium: userData?.isPremium, plan: userData?.plan });
+        }
+
+        // Fetch user profile from Supabase (sadece geçerli UUID varsa)
+        if (!userId) {
+          console.log('⚠️ [PROFILE] No valid UUID found, skipping Supabase fetch');
+          // Use AsyncStorage data if available
+          if (userData) {
+            setUser({
+              name: userData.name || userData.username || 'Kullanıcı',
+              username: `@${userData.username || 'kullanici'}`,
+              email: userData.email || 'user@example.com',
+              avatar: userData.avatar || '',
+              level: 1,
+              points: 0,
+              countryRank: 0,
+              totalPlayers: 1000,
+              country: 'Türkiye',
+              avgMatchRating: 0,
+              xpGainThisWeek: 0,
+              stats: {
+                success: 0,
+                total: 0,
+                streak: 0,
+              },
+            });
+          }
+          setLoading(false);
+          return;
+        }
+        
         const userResponse = await usersDb.getUserById(userId);
         if (userResponse.success && userResponse.data) {
           const dbUser = userResponse.data;
@@ -207,7 +285,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               streak: dbUser.current_streak || 0,
             },
           });
-          setIsPro(dbUser.is_pro || false);
+          // Use Supabase is_pro or fallback to AsyncStorage
+          setIsPro(dbUser.is_pro || storedIsPro || false);
         }
 
         // Fetch user predictions to calculate best cluster
@@ -245,6 +324,134 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
     fetchUserData();
   }, []);
+
+  // ✅ Backend'den takım arama fonksiyonu
+  const searchTeamsFromBackend = useCallback(async (query: string, type: 'club' | 'national' = 'club') => {
+    if (query.length < 3) {
+      setApiTeams([]);
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      const response = await teamsApi.searchTeams(query);
+      if (response.success && response.data && Array.isArray(response.data)) {
+        // ✅ Takım ismine göre forma renkleri fonksiyonu
+        const getTeamColors = (teamName: string): string[] => {
+          const name = teamName.toLowerCase();
+          if (name.includes('galatasaray') || name.includes('gs')) return ['#FFA500', '#FF0000'];
+          if (name.includes('fenerbahçe') || name.includes('fenerbahce')) return ['#FFFF00', '#000080'];
+          if (name.includes('beşiktaş') || name.includes('besiktas')) return ['#000000', '#FFFFFF'];
+          if (name.includes('trabzonspor')) return ['#800020', '#0000FF'];
+          if (name.includes('real madrid')) return ['#FFFFFF', '#FFD700'];
+          if (name.includes('barcelona')) return ['#A50044', '#004D98'];
+          if (name.includes('türkiye') || name.includes('turkey')) return ['#E30A17', '#FFFFFF'];
+          if (name.includes('milan')) return ['#FB090B', '#000000'];
+          return ['#1E40AF', '#FFFFFF'];
+        };
+
+        // API'den gelen takımları filtrele (milli takım veya kulüp)
+        // Backend response formatı: { success: true, data: [{ team: {...}, league: {...} }] }
+        const filteredTeams = response.data
+          .filter((item: any) => {
+            // API-Football response formatı: item.team veya direkt item
+            const team = item.team || item;
+            const isNational = team.national === true;
+            return type === 'national' ? isNational : !isNational;
+          })
+          .map((item: any) => {
+            // API-Football response formatı: item.team veya direkt item
+            const team = item.team || item;
+            const league = item.league || {};
+            return {
+              id: team.id,
+              name: team.name,
+              country: team.country || 'Unknown',
+              colors: getTeamColors(team.name), // Forma renklerini takım isminden çıkar
+              league: league.name || 'Unknown',
+              type: team.national ? 'national' : 'club' as 'club' | 'national',
+            };
+          });
+        
+        setApiTeams(filteredTeams);
+        console.log(`✅ Backend'den ${filteredTeams.length} ${type === 'national' ? 'milli takım' : 'kulüp'} bulundu`);
+      } else {
+        setApiTeams([]);
+      }
+    } catch (error) {
+      console.error('❌ Error searching teams:', error);
+      setApiTeams([]);
+    } finally {
+      setIsSearching(false);
+    }
+  }, []);
+
+  // ✅ Takım seçildiğinde kaydet
+  const handleTeamSelect = useCallback(async (
+    team: { id: number; name: string; colors: string[]; country: string; league: string },
+    type: 'national' | 'club',
+    index?: number
+  ) => {
+    try {
+      const currentTeamsStr = await AsyncStorage.getItem('fan-manager-favorite-clubs');
+      let allTeams = currentTeamsStr ? JSON.parse(currentTeamsStr) : [];
+      
+      if (type === 'national') {
+        setSelectedNationalTeam(team);
+        // Milli takımı güncelle (varsa kaldır, yoksa ekle)
+        allTeams = allTeams.filter((t: any) => t.type !== 'national');
+        allTeams.push({
+          id: team.id,
+          name: team.name,
+          colors: team.colors,
+          country: team.country,
+          league: team.league,
+          type: 'national',
+        });
+      } else if (type === 'club' && index !== undefined && index >= 0 && index < 5) {
+        const newClubTeams = [...selectedClubTeams];
+        newClubTeams[index] = team;
+        setSelectedClubTeams(newClubTeams);
+        // Kulüp takımlarını güncelle (sadece kulüp takımlarını al, milli takımı koru)
+        const nationalTeam = allTeams.find((t: any) => t.type === 'national');
+        const existingClubTeams = allTeams.filter((t: any) => t.type === 'club');
+        // Seçilen index'teki takımı güncelle veya ekle
+        const existingIndex = existingClubTeams.findIndex((t: any, idx: number) => idx === index);
+        if (existingIndex >= 0) {
+          existingClubTeams[existingIndex] = {
+            id: team.id,
+            name: team.name,
+            colors: team.colors,
+            country: team.country,
+            league: team.league,
+            type: 'club',
+          };
+        } else {
+          existingClubTeams.push({
+            id: team.id,
+            name: team.name,
+            colors: team.colors,
+            country: team.country,
+            league: team.league,
+            type: 'club',
+          });
+        }
+        // Sadece ilk 5 kulüp takımını al
+        allTeams = nationalTeam ? [nationalTeam] : [];
+        allTeams.push(...existingClubTeams.slice(0, 5));
+      }
+      
+      await AsyncStorage.setItem('fan-manager-favorite-clubs', JSON.stringify(allTeams));
+      refetch();
+      console.log('✅ [PROFILE] Team selected and saved:', { type, index, team: team.name });
+    } catch (error) {
+      console.error('❌ [PROFILE] Error saving team:', error);
+    }
+    
+    setOpenDropdown(null);
+    setSearchQuery('');
+    setApiTeams([]);
+  }, [selectedClubTeams, refetch]);
 
   const achievements = [
     { id: 'winner', icon: '🏆', name: 'Winner', description: '10 doğru tahmin' },
@@ -373,7 +580,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                     end={{ x: 1, y: 0 }}
                     style={styles.proBadge}
                   >
-                    <Ionicons name="crown" size={16} color="#FFFFFF" />
+                    <Text style={styles.crownEmoji}>👑</Text>
                     <Text style={styles.proBadgeText}>PRO</Text>
                   </LinearGradient>
                 ) : (
@@ -479,23 +686,70 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           <Animated.View entering={FadeInDown.delay(200)} style={styles.card}>
             <View style={styles.cardHeader}>
               <Ionicons name="trophy" size={20} color="#059669" />
-              <Text style={styles.cardTitle}>Favorite Teams</Text>
+              <Text style={styles.cardTitle}>Favori Takımlar</Text>
             </View>
 
-            <View style={styles.teamsContainer}>
-              {favoriteTeams.map((team) => (
-                <View key={team.id} style={styles.teamChip}>
-                  {team.logo ? (
-                    <Image
-                      source={{ uri: team.logo }}
-                      style={styles.teamLogo}
-                    />
-                  ) : (
-                    <View style={styles.teamDot} />
-                  )}
-                  <Text style={styles.teamName}>{team.name}</Text>
+            <View style={styles.teamsSelectionContainer}>
+              {/* Milli takım önce, ardından kulüpler - sadece görüntüleme, dropdown yok */}
+              {selectedNationalTeam && (
+                <View style={styles.favoriteTeamCard}>
+                  <LinearGradient
+                    colors={selectedNationalTeam.colors}
+                    style={styles.sideStripeLeft}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 0, y: 1 }}
+                  />
+                  <LinearGradient
+                    colors={selectedNationalTeam.colors.slice().reverse()}
+                    style={styles.sideStripeRight}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 0, y: 1 }}
+                  />
+                  <View style={styles.favoriteTeamContent}>
+                    <Text style={styles.favoriteTeamName}>{selectedNationalTeam.name}</Text>
+                    <Text style={styles.favoriteTeamCoach}>
+                      {selectedNationalTeam.coach || 'Teknik direktör bilinmiyor'}
+                    </Text>
+                    <Text style={styles.favoriteTeamMeta}>
+                      {selectedNationalTeam.country || 'Unknown'} • {selectedNationalTeam.league || 'Unknown'}
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              {selectedClubTeams.filter(Boolean).map((team, idx) => (
+                <View key={team?.id || idx} style={styles.favoriteTeamCard}>
+                  <LinearGradient
+                    colors={team!.colors}
+                    style={styles.sideStripeLeft}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 0, y: 1 }}
+                  />
+                  <LinearGradient
+                    colors={team!.colors.slice().reverse()}
+                    style={styles.sideStripeRight}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 0, y: 1 }}
+                  />
+                  <View style={styles.favoriteTeamContent}>
+                    <Text style={styles.favoriteTeamName}>{team!.name}</Text>
+                    <Text style={styles.favoriteTeamCoach}>
+                      {team!.coach || 'Teknik direktör bilinmiyor'}
+                    </Text>
+                    <Text style={styles.favoriteTeamMeta}>
+                      {team!.country || 'Unknown'} • {team!.league || 'Unknown'}
+                    </Text>
+                  </View>
                 </View>
               ))}
+
+              {!selectedNationalTeam && selectedClubTeams.filter(Boolean).length === 0 && (
+                <View style={styles.emptyFavorites}>
+                  <Text style={styles.emptyFavoritesText}>
+                    Henüz favori takım seçilmemiş. Takımlarınızı Seçin ekranından ekleyin.
+                  </Text>
+                </View>
+              )}
             </View>
           </Animated.View>
 
@@ -922,6 +1176,9 @@ const styles = StyleSheet.create({
   },
 
   // Badges
+  crownEmoji: {
+    fontSize: 16,
+  },
   proBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1130,6 +1387,156 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(5, 150, 105, 0.2)',
     borderRadius: 20,
+  },
+  // ✅ Yeni takım seçim stilleri
+  teamsSelectionContainer: {
+    gap: 12,
+  },
+  teamSelectWrapper: {
+    position: 'relative',
+    zIndex: 1,
+    marginBottom: 4, // Dropdown için boşluk
+  },
+  teamSelectButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    backgroundColor: 'rgba(30, 41, 59, 0.7)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(100, 116, 139, 0.3)',
+    borderRadius: 12,
+    minHeight: 60,
+  },
+  teamSelectButtonSelected: {
+    borderColor: 'rgba(5, 150, 105, 0.6)',
+    borderWidth: 2,
+    backgroundColor: 'rgba(5, 150, 105, 0.15)',
+  },
+  teamSelectButtonText: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#F8FAFB',
+  },
+  selectedTeamInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 12,
+  },
+  colorStripe: {
+    width: 6,
+    height: 50,
+    borderRadius: 3,
+    overflow: 'hidden',
+    marginRight: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  colorStripeSecondary: {
+    width: '100%',
+    height: '50%',
+  },
+  teamInfo: {
+    flex: 1,
+  },
+  selectedTeamName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#F8FAFB',
+    marginBottom: 2,
+  },
+  selectedTeamDetails: {
+    fontSize: 12,
+    color: '#94A3B8',
+  },
+  dropdownContainer: {
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    right: 0,
+    marginTop: 8,
+    backgroundColor: '#1E293B',
+    borderWidth: 1.5,
+    borderColor: 'rgba(5, 150, 105, 0.4)',
+    borderRadius: 12,
+    maxHeight: 300,
+    zIndex: 1000,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  searchInput: {
+    backgroundColor: 'rgba(30, 41, 59, 0.8)',
+    borderWidth: 1,
+    borderColor: 'rgba(100, 116, 139, 0.2)',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    margin: 12,
+    fontSize: 14,
+    color: '#F8FAFB',
+  },
+  loadingIndicator: {
+    marginVertical: 8,
+  },
+  dropdownList: {
+    maxHeight: 250,
+  },
+  dropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(100, 116, 139, 0.1)',
+    gap: 12,
+  },
+  colorStripeSmall: {
+    width: 5,
+    height: 42,
+    borderRadius: 2,
+    overflow: 'hidden',
+    marginRight: 12,
+  },
+  colorStripeSmallSecondary: {
+    width: '100%',
+    height: '50%',
+  },
+  dropdownItemInfo: {
+    flex: 1,
+  },
+  dropdownItemName: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#F8FAFB',
+    marginBottom: 2,
+  },
+  dropdownItemDetails: {
+    fontSize: 12,
+    color: '#94A3B8',
+  },
+  freePlanInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.2)',
+    borderRadius: 8,
+  },
+  freePlanText: {
+    fontSize: 13,
+    color: '#F59E0B',
+    flex: 1,
   },
   teamDot: {
     width: 8,
@@ -1762,5 +2169,92 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#64748B',
     textAlign: 'center',
+  },
+
+  // ✅ FAVORITE TEAM CARD STYLES - Modernized & Standardized
+  favoriteTeamCard: {
+    position: 'relative',
+    backgroundColor: 'rgba(30, 41, 59, 0.6)', // Glassmorphism - FavoriteTeamsScreen ile aynı
+    borderRadius: 16, // Daha yuvarlak köşeler
+    marginBottom: SPACING.md,
+    overflow: 'hidden',
+    borderWidth: 1.5,
+    borderColor: 'rgba(148, 163, 184, 0.15)', // Yumuşak border
+    minHeight: 110,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  sideStripeLeft: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 6, // FavoriteTeamsScreen ile aynı
+    zIndex: 0,
+    opacity: 0.85, // Biraz daha yumuşak
+  },
+  sideStripeRight: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: 6, // FavoriteTeamsScreen ile aynı
+    zIndex: 0,
+    opacity: 0.85, // Biraz daha yumuşak
+  },
+  favoriteTeamContent: {
+    padding: SPACING.base,
+    paddingLeft: SPACING.lg,
+    paddingRight: SPACING.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 110,
+    zIndex: 1, // Gradient şeritlerin üstünde
+  },
+  favoriteTeamLabel: {
+    ...TYPOGRAPHY.bodySmall,
+    fontSize: 11,
+    color: 'rgba(148, 163, 184, 0.7)',
+    marginBottom: 4,
+    fontWeight: '500',
+  },
+  favoriteTeamName: {
+    ...TYPOGRAPHY.h3,
+    fontSize: 17, // FavoriteTeamsScreen ile aynı
+    fontWeight: '700',
+    color: BRAND.white,
+    marginBottom: 8,
+    textAlign: 'center',
+    letterSpacing: 0.2,
+  },
+  favoriteTeamCoach: {
+    ...TYPOGRAPHY.bodySmall,
+    fontSize: 12, // FavoriteTeamsScreen ile aynı
+    color: 'rgba(5, 150, 105, 0.9)', // Yumuşak emerald
+    marginBottom: 6,
+    textAlign: 'center',
+    fontWeight: '500',
+    fontStyle: 'italic', // FavoriteTeamsScreen ile aynı
+  },
+  favoriteTeamMeta: {
+    ...TYPOGRAPHY.bodySmall,
+    fontSize: 11, // FavoriteTeamsScreen ile aynı
+    color: 'rgba(148, 163, 184, 0.7)', // Yumuşak muted
+    textAlign: 'center',
+    fontWeight: '400',
+  },
+  emptyFavorites: {
+    padding: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyFavoritesText: {
+    fontSize: 14,
+    color: '#64748B',
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });

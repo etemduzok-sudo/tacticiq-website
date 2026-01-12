@@ -270,6 +270,36 @@ When implementing screens, ALWAYS:
 
 ---
 
+## 🤖 Model Selection & Max Mode
+
+### **Max Mode Usage Warning:**
+
+**CRITICAL:** When a task requires Max Mode (complex algorithms, multi-file architectural changes, critical business logic, security protocols, or deep reasoning), you MUST:
+
+1. **Alert the user BEFORE execution:** Inform them that "This task requires Max Mode for optimal results. Should I proceed with Max Mode?"
+2. **Explain the reasoning:** Briefly state why Max Mode is needed (complexity, risk, or critical nature of the task)
+3. **Wait for approval:** Do NOT proceed until the user explicitly approves Max Mode usage
+
+### **When Max Mode is Required:**
+
+- Complex algorithm design or optimization
+- Multi-file architectural refactoring
+- Critical data management (Global State, Database Schema changes)
+- Security protocol implementation
+- Deep debugging of complex issues
+- Tasks requiring extensive codebase analysis
+
+### **When Normal Mode is Sufficient:**
+
+- Simple UI updates
+- Naming revisions
+- Comment additions
+- Small bug fixes
+- Single-file changes
+- Routine refactoring
+
+---
+
 **When in doubt, ask: "Does this follow the Design System and Navigation Map?"**
 
 **Last Updated:** 5 Ocak 2026

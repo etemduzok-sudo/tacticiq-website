@@ -331,7 +331,7 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
               style={[styles.proCard, isPro && styles.proCardActive]}
             >
               <View style={styles.cardHeader}>
-                <Ionicons name="crown" size={20} color="#F59E0B" />
+                <Text style={{ fontSize: 20 }}>👑</Text>
                 <Text style={styles.cardTitle}>PRO Üyelik</Text>
               </View>
 
@@ -342,7 +342,7 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
                       colors={['#F59E0B', '#D97706']}
                       style={styles.proIconActive}
                     >
-                      <Ionicons name="crown" size={24} color="#FFFFFF" />
+                      <Text style={{ fontSize: 24, color: '#FFFFFF' }}>👑</Text>
                     </LinearGradient>
                     <View>
                       <Text style={styles.proTitleActive}>PRO Aktif</Text>
@@ -372,7 +372,7 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
                 <>
                   <View style={styles.proHeaderInactive}>
                     <View style={styles.proIconInactive}>
-                      <Ionicons name="crown" size={24} color="#F59E0B" />
+                      <Text style={{ fontSize: 24, color: '#F59E0B' }}>👑</Text>
                     </View>
                     <View>
                       <Text style={styles.proTitleInactive}>PRO'ya Geç</Text>

@@ -84,12 +84,15 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
   const [selectedFocus, setSelectedFocus] = React.useState<string | null>(null);
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null); // Seçilen maç
   const [isPremium, setIsPremium] = useState(false);
+  const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null); // Seçilen favori takım
+  const [dropdownOpen, setDropdownOpen] = useState(false);
   
   const scrollViewRef = useRef<ScrollView>(null);
   const focusSectionRef = useRef<View>(null);
   const continueButtonRef = useRef<View>(null);
   const [focusSectionY, setFocusSectionY] = useState(0);
   const [continueButtonY, setContinueButtonY] = useState(0);
+  const dropdownRef = useRef<View>(null);
   
   // ✅ Load favorite teams
   const { favoriteTeams, loading: teamsLoading } = useFavoriteTeams();
@@ -101,7 +104,10 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
         const userData = await AsyncStorage.getItem('fan-manager-user');
         if (userData) {
           const parsed = JSON.parse(userData);
-          setIsPremium(parsed.isPremium === true || parsed.isPro === true || parsed.plan === 'pro' || parsed.plan === 'premium');
+          // ✅ Pro kontrolü: is_pro, isPro, isPremium, plan === 'pro' veya plan === 'premium'
+          const isPremium = parsed.is_pro === true || parsed.isPro === true || parsed.isPremium === true || parsed.plan === 'pro' || parsed.plan === 'premium';
+          setIsPremium(isPremium);
+          console.log('✅ [DASHBOARD] User Pro status:', isPremium, 'from:', { is_pro: parsed.is_pro, isPro: parsed.isPro, isPremium: parsed.isPremium, plan: parsed.plan });
         }
       } catch (error) {
         console.error('Error checking premium status:', error);
@@ -283,6 +289,81 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
     return matchTime >= now;
   });
 
+  // ✅ Filter matches by selected team (ID and name matching)
+  const filterMatchesByTeam = React.useCallback((matches: any[], teamId: number | null) => {
+    if (!teamId) return matches;
+    
+    const selectedTeam = favoriteTeams.find(t => t.id === teamId);
+    if (!selectedTeam) {
+      console.log(`⚠️ [DASHBOARD] Team not found: ${teamId}`);
+      return matches;
+    }
+
+    const filtered = matches.filter(match => {
+      if (!match?.teams?.home || !match?.teams?.away) return false;
+      
+      const homeId = match.teams.home.id;
+      const awayId = match.teams.away.id;
+      const homeName = (match.teams.home.name || '').toLowerCase();
+      const awayName = (match.teams.away.name || '').toLowerCase();
+      const teamName = selectedTeam.name.toLowerCase();
+      
+      // ID eşleşmesi (öncelikli)
+      const idMatch = String(homeId) === String(teamId) || String(awayId) === String(teamId);
+      if (idMatch) {
+        return true;
+      }
+      
+      // İsim eşleşmesi (fallback - API'de ID farklı olabilir)
+      const nameMatch = homeName.includes(teamName) || teamName.includes(homeName) ||
+                       awayName.includes(teamName) || teamName.includes(awayName);
+      
+      return nameMatch;
+    });
+
+    console.log(`🔍 [DASHBOARD] Filtering matches for team: ${selectedTeam.name} (ID: ${teamId})`);
+    console.log(`   Total matches: ${matches.length}, Filtered: ${filtered.length}`);
+    if (filtered.length > 0) {
+      console.log(`   First match: ${filtered[0].teams.home.name} (${filtered[0].teams.home.id}) vs ${filtered[0].teams.away.name} (${filtered[0].teams.away.id})`);
+    }
+
+    return filtered;
+  }, [favoriteTeams]);
+
+  const filteredUpcomingMatches = React.useMemo(() => {
+    return filterMatchesByTeam(allUpcomingMatches, selectedTeamId);
+  }, [allUpcomingMatches, selectedTeamId, filterMatchesByTeam]);
+
+  const filteredPastMatches = React.useMemo(() => {
+    return filterMatchesByTeam(pastMatches, selectedTeamId);
+  }, [pastMatches, selectedTeamId, filterMatchesByTeam]);
+
+  const selectedTeamName = React.useMemo(() => {
+    if (!selectedTeamId) return null;
+    const team = favoriteTeams.find(t => t.id === selectedTeamId);
+    return team?.name || null;
+  }, [selectedTeamId, favoriteTeams]);
+
+  // Handle team selection
+  const handleTeamSelect = (teamId: number | null) => {
+    if (teamId) {
+      const team = favoriteTeams.find(t => t.id === teamId);
+      console.log(`✅ [DASHBOARD] Team selected: ${team?.name} (ID: ${teamId})`);
+    } else {
+      console.log(`✅ [DASHBOARD] Filter cleared - showing all matches`);
+    }
+    
+    setSelectedTeamId(teamId);
+    setDropdownOpen(false);
+    setSelectedMatchId(null);
+    setSelectedFocus(null);
+    
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+  };
+
+
   return (
     <View style={styles.container}>
       {/* Scrollable Content */}
@@ -292,33 +373,85 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* 0. SEÇİLİ TAKIMLAR (Pro kullanıcı için) - Sadece maç seçilmediğinde göster */}
+        {/* 0. FAVORİ TAKIM FİLTRESİ (Pro kullanıcı için) - Tek satır dropdown */}
         {!selectedMatchId && isPremium && favoriteTeams.length > 0 && (
-          <Animated.View entering={FadeInDown.delay(50).springify()} style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Ionicons name="trophy" size={20} color="#F59E0B" />
-              <Text style={styles.sectionTitle}>Favori Takımlarım ({favoriteTeams.length})</Text>
+          <Animated.View entering={FadeInDown.delay(50).springify()} style={styles.sectionWithDropdown}>
+            <View style={styles.dropdownContainer}>
+              <TouchableOpacity
+                style={styles.dropdownButton}
+                onPress={() => setDropdownOpen(!dropdownOpen)}
+                activeOpacity={0.8}
+              >
+                <View style={styles.dropdownButtonContent}>
+                  <Ionicons name="trophy" size={18} color="#F59E0B" />
+                  <Text style={styles.dropdownButtonText}>
+                    {selectedTeamName ? `${selectedTeamName} Maçları` : 'Tüm Maçlar'}
+                  </Text>
+                  {selectedTeamId && (
+                    <TouchableOpacity
+                      style={styles.clearFilterButton}
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        handleTeamSelect(null);
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="close-circle" size={18} color="#64748B" />
+                    </TouchableOpacity>
+                  )}
+                </View>
+                <Ionicons 
+                  name={dropdownOpen ? "chevron-up" : "chevron-down"} 
+                  size={20} 
+                  color="#94A3B8" 
+                />
+              </TouchableOpacity>
+              
+              {dropdownOpen && (
+                <View style={styles.dropdownMenu} ref={dropdownRef}>
+                    <TouchableOpacity
+                      style={[styles.dropdownItem, !selectedTeamId && styles.dropdownItemActive]}
+                      onPress={() => handleTeamSelect(null)}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="list" size={18} color={!selectedTeamId ? "#059669" : "#94A3B8"} />
+                      <Text style={[styles.dropdownItemText, !selectedTeamId && styles.dropdownItemTextActive]}>
+                        Tümü
+                      </Text>
+                      {!selectedTeamId && <Ionicons name="checkmark" size={18} color="#059669" />}
+                    </TouchableOpacity>
+                    
+                    {favoriteTeams.map((team) => {
+                      const isSelected = selectedTeamId === team.id;
+                      return (
+                        <TouchableOpacity
+                          key={team.id}
+                          style={[styles.dropdownItem, isSelected && styles.dropdownItemActive]}
+                          onPress={() => handleTeamSelect(team.id)}
+                          activeOpacity={0.7}
+                        >
+                          {team.colors && team.colors.length > 0 ? (
+                            <View style={styles.dropdownTeamBadge}>
+                              <View style={[styles.dropdownTeamStripe, { backgroundColor: team.colors[0] }]} />
+                              {team.colors[1] && (
+                                <View style={[styles.dropdownTeamStripe, { backgroundColor: team.colors[1] }]} />
+                              )}
+                            </View>
+                          ) : (
+                            <View style={styles.dropdownTeamPlaceholder}>
+                              <Text style={styles.dropdownTeamEmoji}>⚽</Text>
+                            </View>
+                          )}
+                          <Text style={[styles.dropdownItemText, isSelected && styles.dropdownItemTextActive]} numberOfLines={1}>
+                            {team.name}
+                          </Text>
+                          {isSelected && <Ionicons name="checkmark" size={18} color="#059669" />}
+                        </TouchableOpacity>
+                      );
+                    })}
+                </View>
+              )}
             </View>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.teamsScroll}
-            >
-              {favoriteTeams.map((team, index) => (
-                <Animated.View key={team.id} entering={FadeInLeft.delay(100 + index * 50).springify()}>
-                  <View style={styles.teamBadge}>
-                    {team.logo ? (
-                      <Image source={{ uri: team.logo }} style={styles.teamBadgeLogo} />
-                    ) : (
-                      <View style={styles.teamBadgePlaceholder}>
-                        <Text style={styles.teamBadgeEmoji}>⚽</Text>
-                      </View>
-                    )}
-                    <Text style={styles.teamBadgeName} numberOfLines={1}>{team.name}</Text>
-                  </View>
-                </Animated.View>
-              ))}
-            </ScrollView>
           </Animated.View>
         )}
 
@@ -373,10 +506,12 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
         <Animated.View entering={FadeInDown.delay(200).springify()} style={styles.section}>
           <View style={styles.sectionHeader}>
             <Ionicons name="calendar" size={20} color="#059669" />
-            <Text style={styles.sectionTitle}>Yaklaşan Maçlar ({allUpcomingMatches.length})</Text>
+            <Text style={styles.sectionTitle}>
+              {selectedTeamName ? `${selectedTeamName} Maçları` : 'Yaklaşan Maçlar'} ({filteredUpcomingMatches.length})
+            </Text>
           </View>
 
-          {allUpcomingMatches.length > 0 ? (
+          {filteredUpcomingMatches.length > 0 ? (
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -386,7 +521,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
               decelerationRate="fast"
               snapToAlignment="start"
             >
-              {allUpcomingMatches.slice(0, 10).map((match, index) => (
+              {filteredUpcomingMatches.slice(0, 10).map((match, index) => (
               <Animated.View key={match.fixture.id} entering={FadeInDown.delay(200 + index * 100).springify()}>
                 <TouchableOpacity
                 style={[
@@ -399,7 +534,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
                 <View style={styles.matchHeader}>
                   <Text style={styles.matchLeague}>{match.league.name}</Text>
                   {/* ✅ Sağa kaydırma ipucu - Sadece birden fazla maç varsa göster */}
-                  {allUpcomingMatches.length > 1 && (
+                  {filteredUpcomingMatches.length > 1 && (
                     <View style={styles.scrollHintIcon}>
                       <Ionicons name="chevron-forward" size={16} color="#64748B" />
                     </View>
@@ -474,21 +609,21 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
           )}
         </Animated.View>
 
-        {/* ✅ ANALİZ ODAĞI BÖLÜMÜ - Sadece maç seçildiğinde görünür */}
-        {selectedMatchId && (
-          <View 
-            ref={focusSectionRef}
-            onLayout={(event) => {
-              const layout = event.nativeEvent.layout;
-              // ScrollView içindeki pozisyonu hesapla
-              if (layout.y > 0) {
-                setFocusSectionY(layout.y);
-              }
-            }}
-            style={styles.focusSectionContainer}
-          >
-            <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.section}>
-              {/* Seçilen Maç Bilgisi */}
+        {/* ✅ ANALİZ ODAĞI BÖLÜMÜ - Her zaman görünür */}
+        <View 
+          ref={focusSectionRef}
+          onLayout={(event) => {
+            const layout = event.nativeEvent.layout;
+            // ScrollView içindeki pozisyonu hesapla
+            if (layout.y > 0) {
+              setFocusSectionY(layout.y);
+            }
+          }}
+          style={styles.focusSectionContainer}
+        >
+          <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.section}>
+            {/* Seçilen Maç Bilgisi - Sadece maç seçildiyse göster */}
+            {selectedMatchId && (
               <View style={styles.selectedMatchInfo}>
                 <Text style={styles.selectedMatchTitle}>Seçilen Maç:</Text>
                 <Text style={styles.selectedMatchTeams}>
@@ -497,26 +632,33 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
                   {allUpcomingMatches.find(m => String(m.fixture.id) === String(selectedMatchId))?.teams.away.name}
                 </Text>
               </View>
+            )}
 
-              <View style={styles.sectionHeader}>
-                <Ionicons name="bulb" size={20} color="#F59E0B" />
-                <Text style={styles.sectionTitle}>Bu maç için analiz odağını seç</Text>
-              </View>
-              <Text style={styles.sectionSubtitle}>Seçersen x1.25 puan çarpanı kazanırsın (opsiyonel)</Text>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="bulb" size={20} color="#F59E0B" />
+              <Text style={styles.sectionTitle}>Analiz Odağı Seç</Text>
+            </View>
+            <Text style={styles.sectionSubtitle}>Seçtiğin odak x1.25 puan çarpanı kazandırır</Text>
 
               <View style={styles.focusGrid}>
                 {strategicFocusOptions.map((focus, index) => {
-                  // Her kartın genişliğini hesapla: (ekran genişliği - padding - gap) / 2
-                  const cardWidth = (width - 32 - 12) / 2; // 32 = section padding (16*2), 12 = gap
+                  // Her kartın genişliğini hesapla: (ekran genişliği - section padding - gap) / 2
+                  const sectionPadding = 32; // 16 * 2 (left + right)
+                  const gap = 12;
+                  const cardWidth = (width - sectionPadding - gap) / 2;
                   return (
-                    <Animated.View key={focus.id} entering={FadeInLeft.delay(200 + index * 50).springify()}>
+                    <Animated.View 
+                      key={focus.id} 
+                      entering={FadeInLeft.delay(200 + index * 50).springify()}
+                      style={{ width: cardWidth }}
+                    >
                       <TouchableOpacity
                         style={[
                           styles.focusCard,
                           selectedFocus === focus.id && styles.focusCardSelected,
                           selectedFocus && selectedFocus !== focus.id && styles.focusCardUnselected,
                           { 
-                            width: cardWidth,
+                            width: '100%',
                             borderColor: selectedFocus === focus.id ? focus.color : '#334155',
                             transform: [{ scale: selectedFocus === focus.id ? 1.05 : selectedFocus ? 0.95 : 1 }],
                           },
@@ -541,10 +683,10 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
                         
                         {/* Affects Tags */}
                         <View style={styles.focusAffects}>
-                          {focus.affects.slice(0, 2).map((affect, i) => (
+                          {focus.affects && focus.affects.slice(0, 2).map((affect, i) => (
                             <View key={i} style={[styles.focusAffectTag, { backgroundColor: `${focus.color}20` }]}>
                               <Text style={[styles.focusAffectText, { color: focus.color }]} numberOfLines={1}>{affect}</Text>
-                          </View>
+                            </View>
                           ))}
                         </View>
                       </View>
@@ -561,7 +703,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
                 })}
               </View>
 
-              {/* DEVAM ET Butonu (Sadece maç seçildiğinde görünür) */}
+              {/* DEVAM ET Butonu - Sadece maç seçildiğinde görünür */}
               {selectedMatchId && (
                 <Animated.View 
                   ref={continueButtonRef}
@@ -595,7 +737,6 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
               )}
             </Animated.View>
           </View>
-        )}
 
         {/* 3. KAZANILAN ROZETLER - Sadece maç seçilmediğinde göster */}
         {!selectedMatchId && (
@@ -625,12 +766,14 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
           <Animated.View entering={FadeInDown.delay(300).springify()} style={styles.section}>
           <View style={styles.sectionHeader}>
             <Ionicons name="time" size={20} color="#8B5CF6" />
-            <Text style={styles.sectionTitle}>Geçmiş Maçlar ({pastMatches.length})</Text>
+            <Text style={styles.sectionTitle}>
+              {selectedTeamName ? `${selectedTeamName} Maçları` : 'Geçmiş Maçlar'} ({filteredPastMatches.length})
+            </Text>
           </View>
 
-          {pastMatches.length > 0 ? (
+          {filteredPastMatches.length > 0 ? (
             <View style={styles.matchHistoryVertical}>
-              {pastMatches.slice(0, 5).map((match, index) => (
+              {filteredPastMatches.slice(0, 5).map((match, index) => (
                 <Animated.View key={match.fixture.id} entering={FadeInLeft.delay(350 + index * 50).springify()}>
                   <TouchableOpacity
                     style={styles.historyCardVertical}
@@ -700,6 +843,13 @@ const styles = StyleSheet.create({
     marginBottom: 32,
     paddingHorizontal: 16,
     marginTop: 20, // ProfileCard'ın altına boşluk bırak
+  },
+  sectionWithDropdown: {
+    marginBottom: 32,
+    paddingHorizontal: 16,
+    marginTop: 20,
+    zIndex: 10000,
+    elevation: 10000, // Android için - çok yüksek
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -1017,7 +1167,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   focusCard: {
-    width: '100%', // Inline style ile override edilecek
+    width: '100%',
     height: 180, // Fixed height
     backgroundColor: '#1E293B',
     borderRadius: 16,
@@ -1189,43 +1339,104 @@ const styles = StyleSheet.create({
     marginTop: 12,
     textAlign: 'center',
   },
-  // Selected Teams Section
-  teamsScroll: {
-    paddingRight: 16,
-    gap: 12,
+  // Dropdown Filter
+  dropdownContainer: {
+    position: 'relative',
+    zIndex: 10001,
+    elevation: 10001, // Android için - çok yüksek
   },
-  teamBadge: {
+  dropdownButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     backgroundColor: '#1E293B',
     borderRadius: 12,
-    padding: 12,
-    marginRight: 8,
-    alignItems: 'center',
-    minWidth: 80,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderWidth: 1,
     borderColor: '#334155',
+    zIndex: 10001,
+    elevation: 10001, // Android için - çok yüksek
   },
-  teamBadgeLogo: {
-    width: 40,
-    height: 40,
-    marginBottom: 4,
+  dropdownButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 10,
   },
-  teamBadgePlaceholder: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  dropdownButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#F8FAFB',
+    flex: 1,
+  },
+  clearFilterButton: {
+    marginLeft: 8,
+    padding: 4,
+  },
+  dropdownMenu: {
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    right: 0,
+    marginTop: 8,
+    backgroundColor: '#1E293B',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#334155',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 12,
+    elevation: 10002, // Android için - en yüksek değer
+    maxHeight: 300,
+    zIndex: 10002, // En yüksek z-index
+  },
+  dropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#334155',
+  },
+  dropdownItemActive: {
+    backgroundColor: 'rgba(5, 150, 105, 0.1)',
+  },
+  dropdownItemText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#94A3B8',
+    flex: 1,
+  },
+  dropdownItemTextActive: {
+    color: '#F8FAFB',
+    fontWeight: '600',
+  },
+  dropdownTeamBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    overflow: 'hidden',
+    flexDirection: 'row',
+    borderWidth: 1,
+    borderColor: 'rgba(100, 116, 139, 0.3)',
+  },
+  dropdownTeamStripe: {
+    flex: 1,
+    height: '100%',
+  },
+  dropdownTeamPlaceholder: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     backgroundColor: '#334155',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 4,
   },
-  teamBadgeEmoji: {
-    fontSize: 20,
-  },
-  teamBadgeName: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#F8FAFB',
-    textAlign: 'center',
-    maxWidth: 80,
+  dropdownTeamEmoji: {
+    fontSize: 12,
   },
 });

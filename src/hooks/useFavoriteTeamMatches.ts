@@ -140,7 +140,15 @@ export function useFavoriteTeamMatches(): UseFavoriteTeamMatchesResult {
   // Generate mock matches for testing
   const generateMockMatches = async (): Promise<Match[]> => {
     const mockData = getMockMatches('all');
-    return mockData.map((match: any) => ({
+    return mockData
+      .filter((match: any) => match && match.league && match.home_team && match.away_team) // Safety check
+      .map((match: any) => {
+        // Additional safety checks
+        if (!match.league || !match.home_team || !match.away_team) {
+          console.warn('⚠️ Invalid mock match data:', match);
+          return null;
+        }
+        return {
       fixture: {
         id: match.id,
         date: match.date,
@@ -155,10 +163,10 @@ export function useFavoriteTeamMatches(): UseFavoriteTeamMatchesResult {
         },
       },
       league: {
-        id: match.league.id,
-        name: match.league.name,
-        country: match.league.country,
-        logo: match.league.logo,
+        id: match.league?.id || 0,
+        name: match.league?.name || 'Unknown League',
+        country: match.league?.country || 'Unknown',
+        logo: match.league?.logo || '',
       },
       teams: {
         home: {
@@ -186,7 +194,9 @@ export function useFavoriteTeamMatches(): UseFavoriteTeamMatchesResult {
           away: match.away_score,
         },
       },
-    }));
+    };
+      })
+      .filter((match: any) => match !== null) as Match[]; // Remove null entries
   };
   const { favoriteTeams } = useFavoriteTeams();
 

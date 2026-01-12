@@ -362,6 +362,12 @@ export const teamsApi = {
   // Get team information
   getTeamInfo: (teamId: number) => request(`/teams/${teamId}`),
 
+  // Search teams by name
+  searchTeams: (query: string) => {
+    const encodedQuery = encodeURIComponent(query);
+    return request(`/teams/search/${encodedQuery}`);
+  },
+
   // Get team statistics
   getTeamStatistics: (teamId: number, leagueId: number, season?: number) => {
     const params = new URLSearchParams({

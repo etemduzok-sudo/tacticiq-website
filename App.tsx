@@ -145,6 +145,7 @@ export default function App() {
   const [legalDocumentType, setLegalDocumentType] = useState<string>('terms');
   const [activeTab, setActiveTab] = useState<string>('home');
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
+  const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null); // ✅ Seçilen takım ID'si (kulüp takımlarının maçlarını göstermek için)
   const [isMaintenanceMode, setIsMaintenanceMode] = useState<boolean>(false);
 
   // 🎉 Yeni Rozet State (Test için başlangıçta bir rozet gösterelim)
@@ -220,6 +221,26 @@ export default function App() {
     
     try {
       if (hasUser) {
+        // 🎁 DEV: Set user as PRO automatically (ALWAYS)
+        const userDataStr = await AsyncStorage.getItem('fan-manager-user');
+        if (userDataStr) {
+          const userData = JSON.parse(userDataStr);
+          // Her zaman Pro yap (kontrol olmadan)
+          userData.is_pro = true;
+          userData.isPro = true;
+          await AsyncStorage.setItem('fan-manager-user', JSON.stringify(userData));
+          console.log('✅ [DEV] User set as PRO automatically');
+        } else {
+          // User yoksa oluştur ve Pro yap
+          const newUserData = {
+            authenticated: true,
+            is_pro: true,
+            isPro: true,
+          };
+          await AsyncStorage.setItem('fan-manager-user', JSON.stringify(newUserData));
+          console.log('✅ [DEV] New user created and set as PRO');
+        }
+        
         // User exists → Go to Home (or check favorite teams)
         const hasTeams = await AsyncStorage.getItem('fan-manager-favorite-clubs');
         if (hasTeams) {
@@ -251,7 +272,15 @@ export default function App() {
   // 3. Auth → Login Success
   const handleLoginSuccess = async () => {
     console.log('✅ [AUTH] Login Success!');
-    await AsyncStorage.setItem('fan-manager-user', JSON.stringify({ authenticated: true }));
+    // ✅ Her zaman Pro yap
+    await AsyncStorage.setItem('fan-manager-user', JSON.stringify({ 
+      authenticated: true,
+      is_pro: true,
+      isPro: true,
+      isPremium: true,
+      plan: 'pro'
+    }));
+    console.log('✅ [AUTH] User set as PRO after login');
     
     const hasTeams = await AsyncStorage.getItem('fan-manager-favorite-clubs');
     if (hasTeams) {
@@ -278,7 +307,15 @@ export default function App() {
   // 6. Register → Success
   const handleRegisterSuccess = async () => {
     console.log('✅ [REGISTER] Success!');
-    await AsyncStorage.setItem('fan-manager-user', JSON.stringify({ authenticated: true }));
+    // ✅ Her zaman Pro yap
+    await AsyncStorage.setItem('fan-manager-user', JSON.stringify({ 
+      authenticated: true,
+      is_pro: true,
+      isPro: true,
+      isPremium: true,
+      plan: 'pro'
+    }));
+    console.log('✅ [REGISTER] User set as PRO after registration');
     console.log('→ Going to FAVORITE TEAMS');
     setCurrentScreen('favorite-teams');
   };
@@ -296,19 +333,20 @@ export default function App() {
   };
 
   // 9. Favorite Teams → Complete
-  const handleFavoriteTeamsComplete = async (selectedTeams: Array<{ id: number; name: string; logo: string; league?: string }>) => {
+  const handleFavoriteTeamsComplete = async (selectedTeams: Array<{ id: number; name: string; colors: string[]; league?: string; type?: 'club' | 'national' }>) => {
     console.log('✅ [FAVORITE TEAMS] Selected with IDs:', selectedTeams);
     if (selectedTeams.length === 0) {
       console.warn('⚠️ No teams selected!');
       return;
     }
     
-    // Artık takımlar doğrudan API ID'leriyle geliyor
+    // ✅ Logo yerine forma renkleri kullan (telif yememek için)
     const favoriteTeamsData = selectedTeams.map(team => ({
       id: team.id,
       name: team.name,
-      logo: team.logo,
+      colors: team.colors || ['#1E40AF', '#FFFFFF'], // Forma renkleri
       league: team.league,
+      type: team.type, // ✅ Kulüp veya milli takım tipi
     }));
     
     await AsyncStorage.setItem('fan-manager-favorite-clubs', JSON.stringify(favoriteTeamsData));
@@ -355,6 +393,19 @@ export default function App() {
     switch (screen) {
       case 'notifications':
         setCurrentScreen('notifications');
+        break;
+      case 'matches':
+        // ✅ Takım seçildiğinde o takımın maçlarını göster
+        if (params?.teamId) {
+          setSelectedTeamId(params.teamId);
+          // Parametreleri window'a kaydet (matches ekranında kullanmak için)
+          (window as any).__matchParams = {
+            teamId: params.teamId,
+            teamName: params.teamName,
+          };
+          console.log(`✅ [DASHBOARD] Navigating to matches with team: ${params.teamName} (ID: ${params.teamId})`);
+        }
+        setCurrentScreen('matches');
         break;
       case 'profile':
         // If navigating from Dashboard "Tüm Rozetlerimi Gör" button, show badges tab
@@ -405,7 +456,15 @@ export default function App() {
   // 17. PRO Upgrade Success
   const handleUpgradeSuccess = async () => {
     console.log('✅ [PRO UPGRADE] Success!');
-    // TODO: Save PRO status to AsyncStorage
+    // Save PRO status to AsyncStorage
+    const userDataStr = await AsyncStorage.getItem('fan-manager-user');
+    if (userDataStr) {
+      const userData = JSON.parse(userDataStr);
+      userData.is_pro = true;
+      userData.isPro = true; // Both formats for compatibility
+      await AsyncStorage.setItem('fan-manager-user', JSON.stringify(userData));
+      console.log('✅ PRO status saved to AsyncStorage');
+    }
     await AsyncStorage.setItem('fan-manager-pro-status', 'true');
     console.log('→ Going back to PROFILE');
     setCurrentScreen('profile');
@@ -520,12 +579,29 @@ export default function App() {
           );
         
         case 'matches':
+          // ✅ Dashboard'dan gelen teamId parametresini kontrol et
+          const matchParams = (window as any).__matchParams || {};
+          const teamIdFromParams = matchParams.teamId;
+          const teamNameFromParams = matchParams.teamName;
+          
+          // Eğer parametre varsa, selectedTeamId'yi güncelle
+          if (teamIdFromParams && !selectedTeamId) {
+            setSelectedTeamId(teamIdFromParams);
+          }
+          
           return (
             <MatchListScreen
               onMatchSelect={handleMatchSelect}
               onMatchResultSelect={handleMatchResultSelect}
               onProfileClick={handleProfileClick}
               matchData={matchData}
+              selectedTeamId={selectedTeamId || teamIdFromParams} // ✅ Seçilen takım ID'si
+              selectedTeamName={teamNameFromParams} // ✅ Takım adı (başlık için)
+              onBack={selectedTeamId || teamIdFromParams ? () => {
+                setSelectedTeamId(null); // Takım filtresini temizle
+                (window as any).__matchParams = {}; // Parametreleri temizle
+                setCurrentScreen('home'); // Ana sayfaya geri dön
+              } : undefined}
             />
           );
         
@@ -578,6 +654,12 @@ export default function App() {
                 setCurrentScreen('home');
               }}
               onSettings={handleProfileSettings}
+              onTeamSelect={(teamId, teamName) => {
+                // ✅ Takım seçildiğinde o takımın maçlarını göster
+                console.log(`✅ [PROFILE] Team selected: ${teamName} (ID: ${teamId})`);
+                setSelectedTeamId(teamId); // Takım ID'sini kaydet
+                setCurrentScreen('matches'); // Matches ekranına git, orada filtreleme yapılacak
+              }}
               onProUpgrade={handleProUpgrade}
               onDatabaseTest={() => setCurrentScreen('database-test')}
               initialTab={shouldShowBadgesTab ? 'badges' : 'profile'}

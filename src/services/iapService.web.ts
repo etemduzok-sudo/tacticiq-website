@@ -41,6 +41,12 @@ class IAPService {
     console.log('📱 IAP Service (Web): Mock restore');
     return [];
   }
+
+  async disconnect() {
+    console.log('📱 IAP Service (Web): Mock disconnect');
+    // Web'de disconnect işlemi gerekmez
+    return Promise.resolve();
+  }
 }
 
 export default IAPService.getInstance();
