@@ -287,7 +287,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
         activeOpacity={0.8}
       >
         <LinearGradient
-          colors={['#0f172a', '#1e293b', '#0f172a']}
+          colors={[COLORS.dark.background, COLORS.dark.card, COLORS.dark.background]}
           style={styles.matchCard}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
@@ -311,7 +311,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
           <View style={styles.matchCardContent}>
               {/* Turnuva Badge - En Üstte Ortada */}
             <View style={styles.matchCardTournamentBadge}>
-              <Ionicons name="trophy" size={9} color="#34d399" />
+              <Ionicons name="trophy" size={9} color={COLORS.dark.primaryLight} />
               <Text style={styles.matchCardTournamentText}>{match.league.name}</Text>
             </View>
             
@@ -340,7 +340,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
               
               return (
                 <View style={styles.matchCardVenueContainer}>
-                  <Ionicons name="location" size={9} color="#94a3b8" />
+                  <Ionicons name="location" size={9} color={COLORS.dark.mutedForeground} />
                   <Text style={styles.matchCardVenueText} numberOfLines={1}>
                     {venueName || 'Stadyum bilgisi yok'}
                   </Text>
@@ -366,7 +366,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
                 <View style={styles.matchCardMatchInfoCard}>
                   {/* Tarih */}
                   <View style={styles.matchCardInfoRow}>
-                    <Ionicons name="time" size={9} color="#94a3b8" />
+                    <Ionicons name="time" size={9} color={COLORS.dark.mutedForeground} />
                     <Text style={styles.matchCardInfoTextBold}>
                       {new Date(match.fixture.date).toLocaleDateString('tr-TR', { 
                         day: 'numeric', 
@@ -1548,7 +1548,7 @@ const styles = StyleSheet.create({
   matchTime: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#059669',
+    color: COLORS.dark.primary,
   },
   adviceBalloon: {
     flexDirection: 'row',
@@ -1587,8 +1587,8 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#FFFFFF',
+    backgroundColor: BRAND.white,
+    shadowColor: BRAND.white,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.8,
     shadowRadius: 4,
@@ -1737,11 +1737,11 @@ const styles = StyleSheet.create({
   },
   viewAllBadgesButton: {
     width: '100%',
-    backgroundColor: `rgba(245, 158, 11, 0.1)`,
+    backgroundColor: `rgba(245, 158, 11, 0.1)`, // BRAND.gold with opacity
     borderRadius: SIZES.radiusXl,
     padding: SPACING.base,
     borderWidth: 2,
-    borderColor: `rgba(245, 158, 11, 0.3)`,
+    borderColor: `rgba(245, 158, 11, 0.3)`, // BRAND.gold with opacity
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1837,7 +1837,7 @@ const styles = StyleSheet.create({
     borderBottomColor: COLORS.dark.border,
   },
   dropdownItemActive: {
-    backgroundColor: `rgba(5, 150, 105, 0.1)`,
+    backgroundColor: `rgba(5, 150, 105, 0.1)`, // COLORS.dark.primary with opacity
   },
   dropdownItemText: {
     ...TYPOGRAPHY.body,
