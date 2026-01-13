@@ -1599,7 +1599,7 @@ const styles = StyleSheet.create({
     minHeight: 180,
     backgroundColor: COLORS.dark.card,
     borderRadius: SIZES.radiusXl,
-    padding: 14,
+    padding: SPACING.md,
     borderWidth: 1,
     borderColor: COLORS.dark.border,
     position: 'relative',

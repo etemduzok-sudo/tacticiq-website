@@ -385,9 +385,11 @@ export default function App() {
     const hasTeams = await AsyncStorage.getItem('fan-manager-favorite-clubs');
     if (hasTeams) {
       logNavigation('home');
+      setPreviousScreen(currentScreen);
       setCurrentScreen('home');
     } else {
       logNavigation('favorite-teams');
+      setPreviousScreen(currentScreen);
       setCurrentScreen('favorite-teams');
     }
   };
