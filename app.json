@@ -15,7 +15,9 @@
       "userInterfaceStyle": "automatic",
       "infoPlist": {
         "UIViewControllerBasedStatusBarAppearance": true
-      }
+      },
+      "bundleIdentifier": "com.tacticiq.app",
+      "googleServicesFile": "./GoogleService-Info.plist"
     },
     "android": {
       "adaptiveIcon": {
@@ -36,7 +38,6 @@
     },
     "experiments": {
       "typedRoutes": false
-    },
-    "scheme": "tacticiq"
+    }
   }
 }
