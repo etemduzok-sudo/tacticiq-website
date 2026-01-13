@@ -340,18 +340,22 @@ export default function App() {
         const hasTeams = await AsyncStorage.getItem('fan-manager-favorite-clubs');
         if (hasTeams) {
           logNavigation('home');
+          setPreviousScreen(currentScreen);
           setCurrentScreen('home');
         } else {
           logNavigation('favorite-teams');
+          setPreviousScreen(currentScreen);
           setCurrentScreen('favorite-teams');
         }
       } else {
         // No user → Language Selection
         logNavigation('language');
+        setPreviousScreen(currentScreen);
         setCurrentScreen('language');
       }
     } catch (error) {
       logger.error('Error in splash complete', { error }, 'SPLASH');
+      setPreviousScreen(currentScreen);
       setCurrentScreen('language');
     }
   };
