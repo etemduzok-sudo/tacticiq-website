@@ -1799,7 +1799,11 @@ const styles = StyleSheet.create({
   },
   clearFilterButton: {
     marginLeft: SPACING.sm,
-    padding: SPACING.xs,
+    minWidth: 44, // Minimum touch target (iOS/Android standard)
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: SPACING.sm,
   },
   dropdownMenu: {
     position: 'absolute',
@@ -1820,6 +1824,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: SPACING.base,
+    minHeight: 44, // Minimum touch target (iOS/Android standard)
     paddingVertical: SPACING.md,
     gap: SPACING.md,
     borderBottomWidth: 1,
