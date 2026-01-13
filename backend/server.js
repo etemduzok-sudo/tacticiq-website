@@ -144,7 +144,7 @@ app.use((err, req, res, next) => {
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`🚀 Fan Manager Backend running on port ${PORT}`);
+  console.log(`🚀 TacticIQ Backend running on port ${PORT}`);
   console.log(`📊 Health check: http://localhost:${PORT}/health`);
   
   // ============================================

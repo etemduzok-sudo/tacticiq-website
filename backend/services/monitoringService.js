@@ -7,7 +7,7 @@ const path = require('path');
 const fs = require('fs');
 
 const ADMIN_EMAIL = 'etemduzok@gmail.com';
-const INFO_EMAIL = 'info@fanmanager.com';
+const INFO_EMAIL = 'info@tacticiq.com';
 const HEALTH_CHECK_INTERVAL = 30000; // 30 saniye
 const MAX_RESTART_ATTEMPTS = 5;
 const RESTART_COOLDOWN = 60000; // 1 dakika
@@ -151,7 +151,7 @@ const sendAdminAlert = async (errorMessage) => {
   };
 
   const emailContent = {
-    subject: '🚨 Fan Manager Backend - Critical Alert',
+    subject: '🚨 TacticIQ Backend - Critical Alert',
     html: `
       <!DOCTYPE html>
       <html>
@@ -218,7 +218,7 @@ const sendAdminAlert = async (errorMessage) => {
           </div>
           
           <div class="footer">
-            <p>© 2026 Fan Manager - Monitoring System</p>
+            <p>© 2026 TacticIQ - Monitoring System</p>
             <p>Bu mail otomatik olarak gönderilmiştir.</p>
           </div>
         </div>
@@ -226,7 +226,7 @@ const sendAdminAlert = async (errorMessage) => {
       </html>
     `,
     text: `
-🚨 Fan Manager Backend - Critical Alert
+🚨 TacticIQ Backend - Critical Alert
 
 Merhaba Admin,
 
@@ -255,7 +255,7 @@ Backend Health Check: http://localhost:3000/health
 
 Not: Bu mail otomatik olarak gönderilmiştir.
 
-© 2026 Fan Manager - Monitoring System
+© 2026 TacticIQ - Monitoring System
     `,
   };
 

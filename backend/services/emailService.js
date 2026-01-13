@@ -7,7 +7,7 @@ const EMAIL_CONFIG = {
   port: process.env.SMTP_PORT || 587,
   secure: false, // true for 465, false for other ports
   auth: {
-    user: process.env.SMTP_USER || 'info@fanmanager.com',
+    user: process.env.SMTP_USER || 'info@tacticiq.com',
     pass: process.env.SMTP_PASS || '', // App-specific password
   },
 };
@@ -26,7 +26,7 @@ const createTransporter = () => {
 const EMAIL_TEMPLATES = {
   // Şifre sıfırlama maili
   passwordReset: (resetLink, userName) => ({
-    subject: 'Fan Manager - Şifre Sıfırlama',
+    subject: 'TacticIQ - Şifre Sıfırlama',
     html: `
       <!DOCTYPE html>
       <html>
@@ -51,7 +51,7 @@ const EMAIL_TEMPLATES = {
         <div class="container">
           <div class="header">
             <div class="shield">🛡️</div>
-            <div class="logo">Fan Manager 2⚽26</div>
+            <div class="logo">TacticIQ</div>
           </div>
           
           <div class="content">
@@ -75,11 +75,11 @@ const EMAIL_TEMPLATES = {
               • Bu linki kimseyle paylaşmayın.
             </div>
             
-            <p>Sorunuz mu var? <a href="mailto:info@fanmanager.com" class="link">info@fanmanager.com</a> adresinden bize ulaşabilirsiniz.</p>
+            <p>Sorunuz mu var? <a href="mailto:info@tacticiq.com" class="link">info@tacticiq.com</a> adresinden bize ulaşabilirsiniz.</p>
           </div>
           
           <div class="footer">
-            <p>© 2026 Fan Manager. Tüm hakları saklıdır.</p>
+            <p>© 2026 TacticIQ. Tüm hakları saklıdır.</p>
             <p>Bu mail otomatik olarak gönderilmiştir, lütfen yanıtlamayın.</p>
           </div>
         </div>
@@ -87,7 +87,7 @@ const EMAIL_TEMPLATES = {
       </html>
     `,
     text: `
-Fan Manager - Şifre Sıfırlama
+TacticIQ - Şifre Sıfırlama
 
 Merhaba${userName ? ' ' + userName : ''},
 
@@ -107,7 +107,7 @@ Sorularınız için: info@fanmanager.com
 
   // Hoş geldin maili
   welcome: (userName) => ({
-    subject: 'Fan Manager\'a Hoş Geldiniz! 🎉',
+    subject: 'TacticIQ\'a Hoş Geldiniz! 🎉',
     html: `
       <!DOCTYPE html>
       <html>
@@ -134,7 +134,7 @@ Sorularınız için: info@fanmanager.com
           <div class="content">
             <h2 style="color: #FFFFFF;">Merhaba ${userName}! 👋</h2>
             
-            <p>Fan Manager ailesine hoş geldiniz! Futbol tutkunuzu bir sonraki seviyeye taşımaya hazır mısınız?</p>
+            <p>TacticIQ ailesine hoş geldiniz! Futbol tutkunuzu bir sonraki seviyeye taşımaya hazır mısınız?</p>
             
             <h3 style="color: #059669;">✨ Neler Yapabilirsiniz:</h3>
             
@@ -159,8 +159,8 @@ Sorularınız için: info@fanmanager.com
           </div>
           
           <div class="footer">
-            <p>Sorularınız için: <a href="mailto:info@fanmanager.com" style="color: #059669;">info@fanmanager.com</a></p>
-            <p>© 2026 Fan Manager</p>
+            <p>Sorularınız için: <a href="mailto:info@tacticiq.com" style="color: #059669;">info@tacticiq.com</a></p>
+            <p>© 2026 TacticIQ</p>
           </div>
         </div>
       </body>
@@ -179,7 +179,7 @@ const sendEmail = async ({ to, subject, html, text }) => {
 
   try {
     const info = await transporter.sendMail({
-      from: `"Fan Manager" <${process.env.SMTP_USER || 'info@fanmanager.com'}>`,
+      from: `"TacticIQ" <${process.env.SMTP_USER || 'info@tacticiq.com'}>`,
       to,
       subject,
       html,
