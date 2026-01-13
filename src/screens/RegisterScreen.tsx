@@ -14,7 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Animated, {
   FadeIn,
 } from 'react-native-reanimated';
-import { BRAND } from '../theme/theme';
+import { BRAND, COLORS, SPACING, TYPOGRAPHY, SIZES } from '../theme/theme';
 // Logo component removed - using text placeholder
 // import authService from '../services/authService'; // Real Supabase
 import authService from '../services/mockAuthService'; // Mock (geçici test için)
@@ -228,7 +228,7 @@ export default function RegisterScreen({
   return (
     <SafeAreaView style={styles.safeArea}>
       <LinearGradient
-        colors={['#0F172A', '#1E293B', '#0F172A']}
+        colors={[COLORS.dark.background, COLORS.dark.card, COLORS.dark.background]}
         style={styles.container}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -249,7 +249,7 @@ export default function RegisterScreen({
                 onPress={onBack}
                 activeOpacity={0.7}
               >
-                <Ionicons name="chevron-back" size={24} color="#059669" />
+                <Ionicons name="chevron-back" size={24} color={BRAND.emerald} />
               </TouchableOpacity>
             </View>
 
@@ -291,7 +291,7 @@ export default function RegisterScreen({
             <View style={styles.formZone}>
               {/* Username */}
               <View style={styles.inputWrapper}>
-                <Ionicons name="person-outline" size={20} color="#059669" style={styles.inputIcon} />
+                <Ionicons name="person-outline" size={20} color={BRAND.emerald} style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
                   placeholder="Kullanıcı adı"
@@ -462,7 +462,7 @@ export default function RegisterScreen({
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: COLORS.dark.background,
   },
   container: {
     flex: 1,
@@ -521,14 +521,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: BRAND.white,
     height: LAYOUT.socialButtonHeight,
-    borderRadius: 12,
-    gap: 12,
+    borderRadius: SIZES.radiusLg,
+    gap: SPACING.md,
   },
   googleButtonText: {
+    ...TYPOGRAPHY.body,
     fontSize: 16,
-    color: '#1F2937',
+    color: COLORS.dark.foreground,
     fontWeight: '500',
   },
   appleButton: {
@@ -537,14 +538,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: '#000000',
     height: LAYOUT.socialButtonHeight,
-    borderRadius: 12,
-    gap: 12,
+    borderRadius: SIZES.radiusLg,
+    gap: SPACING.md,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   appleButtonText: {
+    ...TYPOGRAPHY.body,
     fontSize: 16,
-    color: '#FFFFFF',
+    color: BRAND.white,
     fontWeight: '500',
   },
   
@@ -558,11 +560,12 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#374151',
+    backgroundColor: COLORS.dark.border,
   },
   dividerText: {
+    ...TYPOGRAPHY.body,
     fontSize: 14,
-    color: '#6B7280',
+    color: COLORS.dark.mutedForeground,
   },
   
   // [E] FORM INPUT ZONE
@@ -581,14 +584,15 @@ const styles = StyleSheet.create({
   },
   input: {
     height: LAYOUT.inputHeight,
-    backgroundColor: 'rgba(15, 23, 42, 0.5)',
+    backgroundColor: `rgba(15, 23, 42, 0.5)`,
     borderWidth: 1,
-    borderColor: 'rgba(5, 150, 105, 0.3)',
-    borderRadius: 12,
+    borderColor: `rgba(5, 150, 105, 0.3)`,
+    borderRadius: SIZES.radiusLg,
     paddingLeft: 44,
     paddingRight: 44,
+    ...TYPOGRAPHY.body,
     fontSize: 16,
-    color: '#FFFFFF',
+    color: BRAND.white,
   },
   inputWithRightIcon: {
     paddingRight: 44,
@@ -613,17 +617,17 @@ const styles = StyleSheet.create({
   customCheckbox: {
     width: 20,
     height: 20,
-    borderRadius: 4,
+    borderRadius: SIZES.radiusSm,
     borderWidth: 2,
-    borderColor: '#64748B',
+    borderColor: COLORS.dark.mutedForeground,
     backgroundColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 2,
   },
   customCheckboxChecked: {
-    backgroundColor: '#059669',
-    borderColor: '#059669',
+    backgroundColor: BRAND.emerald,
+    borderColor: BRAND.emerald,
   },
   checkboxTextContainer: {
     flex: 1,
@@ -632,13 +636,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   checkboxText: {
+    ...TYPOGRAPHY.bodySmall,
     fontSize: 13,
-    color: '#9CA3AF',
+    color: COLORS.dark.mutedForeground,
     lineHeight: 18,
   },
   linkText: {
+    ...TYPOGRAPHY.bodySmall,
     fontSize: 13,
-    color: '#059669',
+    color: BRAND.emerald,
     lineHeight: 18,
     textDecorationLine: 'underline',
   },
@@ -656,8 +662,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   ctaButtonText: {
+    ...TYPOGRAPHY.button,
     fontSize: 16,
-    color: '#FFFFFF',
+    color: BRAND.white,
     fontWeight: '600',
   },
   
@@ -669,12 +676,14 @@ const styles = StyleSheet.create({
     marginTop: LAYOUT.secondaryLinkMarginTop,
   },
   secondaryLinkText: {
+    ...TYPOGRAPHY.body,
     fontSize: 14,
-    color: '#9CA3AF',
+    color: COLORS.dark.mutedForeground,
   },
   secondaryLink: {
+    ...TYPOGRAPHY.body,
     fontSize: 14,
-    color: '#059669',
+    color: BRAND.emerald,
     fontWeight: '500',
   },
   
@@ -685,8 +694,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   footer: {
+    ...TYPOGRAPHY.bodySmall,
     fontSize: 12,
-    color: '#6B7280',
+    color: COLORS.dark.mutedForeground,
     textAlign: 'center',
   },
   
@@ -702,16 +712,16 @@ const styles = StyleSheet.create({
   },
   availableText: {
     fontSize: 16,
-    color: '#059669',
+    color: BRAND.emerald,
   },
   takenText: {
     fontSize: 16,
-    color: '#EF4444',
+    color: COLORS.dark.error,
   },
   inputSuccess: {
-    borderColor: '#059669',
+    borderColor: BRAND.emerald,
   },
   inputError: {
-    borderColor: '#EF4444',
+    borderColor: COLORS.dark.error,
   },
 });

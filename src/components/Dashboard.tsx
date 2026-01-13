@@ -1401,8 +1401,9 @@ const styles = StyleSheet.create({
   },
   // ✅ Teknik direktör ismi
   matchCoachName: {
+    ...TYPOGRAPHY.caption,
     fontSize: 10,
-    color: '#94A3B8',
+    color: COLORS.dark.mutedForeground,
     fontStyle: 'italic',
     marginTop: 1,
     lineHeight: 14,
@@ -1430,11 +1431,11 @@ const styles = StyleSheet.create({
   venueContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginTop: 6,
-    paddingTop: 6,
+    gap: SPACING.md,
+    marginTop: SPACING.md,
+    paddingTop: SPACING.md,
     borderTopWidth: 1,
-    borderTopColor: '#334155',
+    borderTopColor: COLORS.dark.border,
     zIndex: 1,
   },
   venueText: {
@@ -1445,11 +1446,11 @@ const styles = StyleSheet.create({
   },
   // ✅ Hakem container'ı (en altta)
   refereeContainer: {
-    marginTop: 6,
-    paddingTop: 6,
+    marginTop: SPACING.md,
+    paddingTop: SPACING.md,
     borderTopWidth: 1,
-    borderTopColor: '#334155',
-    gap: 4,
+    borderTopColor: COLORS.dark.border,
+    gap: SPACING.xs,
     zIndex: 1,
   },
   refereeRow: {
@@ -1464,14 +1465,15 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   refereeName: {
+    ...TYPOGRAPHY.caption,
     fontSize: 9,
-    color: '#94A3B8',
+    color: COLORS.dark.mutedForeground,
     fontWeight: '600',
     flex: 1,
   },
   selectedMatchCard: {
-    borderColor: '#F59E0B',
-    borderWidth: 2, // ✅ Standart seçili border
+    borderColor: BRAND.gold,
+    borderWidth: 2,
     ...Platform.select({
       ios: {
         shadowColor: '#F59E0B',
@@ -1491,10 +1493,10 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   selectedMatchInfo: {
-    backgroundColor: '#059669',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 16,
+    backgroundColor: BRAND.emerald,
+    borderRadius: SIZES.radiusLg,
+    padding: SPACING.md,
+    marginBottom: SPACING.base,
   },
   selectedMatchTitle: {
     fontSize: 12,
@@ -1705,22 +1707,22 @@ const styles = StyleSheet.create({
     color: COLORS.dark.foreground,
   },
   historyTeams: {
-    fontSize: 12,
-    color: '#94A3B8',
-    marginBottom: 12,
+    ...TYPOGRAPHY.bodySmall,
+    color: COLORS.dark.mutedForeground,
+    marginBottom: SPACING.md,
     height: 32,
   },
   historyStats: {
-    gap: 6,
+    gap: SPACING.md,
   },
   historyStat: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: SPACING.md,
   },
   historyStatText: {
-    fontSize: 11,
-    color: '#94A3B8',
+    ...TYPOGRAPHY.caption,
+    color: COLORS.dark.mutedForeground,
   },
   badgeStamps: {
     position: 'absolute',
@@ -1735,16 +1737,16 @@ const styles = StyleSheet.create({
   },
   viewAllBadgesButton: {
     width: '100%',
-    backgroundColor: 'rgba(245, 158, 11, 0.1)',
-    borderRadius: 16,
-    padding: 16,
+    backgroundColor: `rgba(245, 158, 11, 0.1)`,
+    borderRadius: SIZES.radiusXl,
+    padding: SPACING.base,
     borderWidth: 2,
-    borderColor: 'rgba(245, 158, 11, 0.3)',
+    borderColor: `rgba(245, 158, 11, 0.3)`,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    marginTop: 12,
+    gap: SPACING.sm,
+    marginTop: SPACING.md,
   },
   viewAllBadgesText: {
     fontSize: 13,
@@ -1828,19 +1830,19 @@ const styles = StyleSheet.create({
   dropdownItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 12,
+    paddingHorizontal: SPACING.base,
+    paddingVertical: SPACING.md,
+    gap: SPACING.md,
     borderBottomWidth: 1,
-    borderBottomColor: '#334155',
+    borderBottomColor: COLORS.dark.border,
   },
   dropdownItemActive: {
-    backgroundColor: 'rgba(5, 150, 105, 0.1)',
+    backgroundColor: `rgba(5, 150, 105, 0.1)`,
   },
   dropdownItemText: {
-    fontSize: 14,
+    ...TYPOGRAPHY.body,
     fontWeight: '500',
-    color: '#94A3B8',
+    color: COLORS.dark.mutedForeground,
     flex: 1,
   },
   dropdownItemTextActive: {
@@ -1864,7 +1866,7 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#334155',
+    backgroundColor: COLORS.dark.border,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1964,21 +1966,24 @@ const styles = StyleSheet.create({
     minWidth: 0, // ✅ Text overflow için
   },
   matchCardTeamName: {
+    ...TYPOGRAPHY.bodyMediumSemibold,
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: BRAND.white,
     marginBottom: 2,
   },
   matchCardTeamNameRight: {
     textAlign: 'right',
   },
   matchCardCoachName: {
+    ...TYPOGRAPHY.caption,
     fontSize: 10,
-    color: '#94a3b8',
+    color: COLORS.dark.mutedForeground,
   },
   matchCardCoachNameAway: {
+    ...TYPOGRAPHY.caption,
     fontSize: 10,
-    color: '#fb923c',
+    color: COLORS.dark.warning,
   },
   matchCardCenterInfo: {
     alignItems: 'center',
@@ -1986,9 +1991,10 @@ const styles = StyleSheet.create({
     maxWidth: 160,
   },
   matchCardTournamentText: {
+    ...TYPOGRAPHY.caption,
     fontSize: 9,
     fontWeight: '600',
-    color: '#34d399',
+    color: COLORS.dark.success,
   },
   matchCardVenueContainer: {
     flexDirection: 'row',
@@ -2004,8 +2010,9 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   matchCardVenueText: {
+    ...TYPOGRAPHY.caption,
     fontSize: 10,
-    color: '#94a3b8',
+    color: COLORS.dark.mutedForeground,
     fontWeight: '500',
   },
   matchCardMatchInfoCard: {
@@ -2020,13 +2027,15 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   matchCardInfoText: {
+    ...TYPOGRAPHY.caption,
     fontSize: 9,
-    color: '#94a3b8',
+    color: COLORS.dark.mutedForeground,
     fontWeight: '500',
   },
   matchCardInfoTextBold: {
+    ...TYPOGRAPHY.caption,
     fontSize: 11,
-    color: '#cbd5e1',
+    color: COLORS.dark.mutedForeground,
     fontWeight: '600',
   },
   matchCardTimeBadge: {
@@ -2050,9 +2059,10 @@ const styles = StyleSheet.create({
     }),
   },
   matchCardTimeText: {
+    ...TYPOGRAPHY.bodyMediumSemibold,
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: BRAND.white,
   },
   matchCardLiveContainer: {
     flexDirection: 'row',
@@ -2065,12 +2075,12 @@ const styles = StyleSheet.create({
   matchCardLiveBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 6,
+    gap: SPACING.md,
+    paddingHorizontal: SPACING.base,
+    paddingVertical: SPACING.md,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#dc2626',
+    borderColor: COLORS.dark.error,
     ...Platform.select({
       ios: {
         shadowColor: '#dc2626',
@@ -2090,12 +2100,13 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#ffffff',
+    backgroundColor: BRAND.white,
   },
   matchCardLiveText: {
+    ...TYPOGRAPHY.bodySmallSemibold,
     fontSize: 12,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: BRAND.white,
   },
   matchCardMinuteBadge: {
     flexDirection: 'row',
@@ -2104,9 +2115,10 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   matchCardMinuteText: {
+    ...TYPOGRAPHY.bodySmallSemibold,
     fontSize: 12,
     fontWeight: 'bold',
-    color: '#34d399',
+    color: COLORS.dark.success,
   },
   matchCardLiveMinuteBadge: {
     flexDirection: 'row',
@@ -2121,9 +2133,10 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   matchCardLiveMinuteText: {
+    ...TYPOGRAPHY.h3,
     fontSize: 16,
     fontWeight: '700',
-    color: '#ffffff',
+    color: BRAND.white,
   },
   matchCardCountdownContainer: {
     alignItems: 'center',
@@ -2139,13 +2152,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    gap: SPACING.md,
+    paddingHorizontal: SPACING.base,
+    paddingVertical: SPACING.sm,
     minHeight: 32,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#f97316',
+    borderColor: COLORS.dark.warning,
     ...Platform.select({
       ios: {
         shadowColor: '#f97316',
@@ -2162,9 +2175,10 @@ const styles = StyleSheet.create({
     }),
   },
   matchCardDaysRemainingText: {
+    ...TYPOGRAPHY.bodySmallSemibold,
     fontSize: 12,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: BRAND.white,
   },
   matchCardCountdownCard: {
     alignItems: 'center',
@@ -2172,8 +2186,9 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   matchCardCountdownLabel: {
+    ...TYPOGRAPHY.caption,
     fontSize: 9,
-    color: '#94a3b8',
+    color: COLORS.dark.mutedForeground,
     fontWeight: '600',
     marginBottom: 1,
   },
@@ -2191,20 +2206,23 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   matchCardCountdownNumber: {
+    ...TYPOGRAPHY.bodyMediumSemibold,
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: BRAND.white,
     marginBottom: 1,
   },
   matchCardCountdownUnit: {
+    ...TYPOGRAPHY.caption,
     fontSize: 7,
-    color: '#fed7aa',
+    color: COLORS.dark.warning,
     fontWeight: '500',
   },
   matchCardCountdownSeparator: {
+    ...TYPOGRAPHY.bodySmallSemibold,
     fontSize: 12,
     fontWeight: 'bold',
-    color: '#f97316',
+    color: COLORS.dark.warning,
     marginHorizontal: 1,
   },
   matchCardFinishedContainer: {
@@ -2214,12 +2232,12 @@ const styles = StyleSheet.create({
   matchCardFinishedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 6,
+    gap: SPACING.md,
+    paddingHorizontal: SPACING.base,
+    paddingVertical: SPACING.md,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#475569',
+    borderColor: COLORS.dark.border,
     ...Platform.select({
       ios: {
         shadowColor: '#475569',
@@ -2236,9 +2254,10 @@ const styles = StyleSheet.create({
     }),
   },
   matchCardFinishedText: {
+    ...TYPOGRAPHY.bodySmallSemibold,
     fontSize: 12,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: BRAND.white,
   },
   matchCardRefereeCard: {
     flex: 1,
@@ -2255,7 +2274,7 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#334155',
+    backgroundColor: COLORS.dark.border,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 1,
@@ -2272,30 +2291,33 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   matchCardVarText: {
+    ...TYPOGRAPHY.caption,
     fontSize: 7,
     fontWeight: 'bold',
-    color: '#c084fc',
+    color: COLORS.dark.accent,
   },
   matchCardRefereeInfo: {
     flex: 1,
     alignItems: 'flex-start',
   },
   matchCardRefereeLabel: {
+    ...TYPOGRAPHY.caption,
     fontSize: 8,
-    color: '#64748b',
+    color: COLORS.dark.mutedForeground,
     marginBottom: 1,
   },
   matchCardRefereeName: {
+    ...TYPOGRAPHY.caption,
     fontSize: 10,
-    color: '#cbd5e1',
+    color: COLORS.dark.mutedForeground,
     fontWeight: '700',
   },
   matchCardScoreBox: {
-    marginTop: 4,
-    backgroundColor: '#1e293b',
-    borderRadius: 8,
+    marginTop: SPACING.xs,
+    backgroundColor: COLORS.dark.card,
+    borderRadius: SIZES.radiusLg,
     paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingVertical: SPACING.xs,
     alignItems: 'center',
     justifyContent: 'center',
     minWidth: 45,
@@ -2315,9 +2337,10 @@ const styles = StyleSheet.create({
     }),
   },
   matchCardScoreText: {
+    ...TYPOGRAPHY.h3,
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: BRAND.white,
     ...Platform.select({
       web: {
         textShadow: '1px 1px 0px #00ffff, -1px -1px 0px #ff6b35',
@@ -2330,11 +2353,11 @@ const styles = StyleSheet.create({
     }),
   },
   matchCardScoreBoxLive: {
-    marginTop: 4,
-    backgroundColor: '#1e293b',
-    borderRadius: 8,
+    marginTop: SPACING.xs,
+    backgroundColor: COLORS.dark.card,
+    borderRadius: SIZES.radiusLg,
     paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingVertical: SPACING.xs,
     alignItems: 'center',
     justifyContent: 'center',
     minWidth: 45,
@@ -2354,9 +2377,10 @@ const styles = StyleSheet.create({
     }),
   },
   matchCardScoreTextLive: {
+    ...TYPOGRAPHY.h3,
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: BRAND.white,
     ...Platform.select({
       web: {
         textShadow: '1px 1px 0px #00ffff, -1px -1px 0px #ff6b35',
