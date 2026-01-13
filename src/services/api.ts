@@ -4,7 +4,7 @@
 
 import { Platform } from 'react-native';
 import { matchesDb, teamsDb, leaguesDb } from './databaseService';
-import { getMockMatches, getMockMatchById, getMockMatchesByDate } from './mockDataService';
+// Mock data imports removed - using real API only
 import { getApiEndpoint, API_CONFIG } from '../config/AppVersion';
 import { handleNetworkError, handleApiError } from '../utils/GlobalErrorHandler';
 import { logger, logApiCall } from '../utils/logger';
