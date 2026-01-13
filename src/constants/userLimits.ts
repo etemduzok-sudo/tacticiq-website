@@ -1,5 +1,5 @@
 // User Limits & Subscription Types
-// Fan Manager 2026
+// TacticIQ
 
 export enum UserType {
   FREE = 'free',

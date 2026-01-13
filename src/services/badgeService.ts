@@ -1,5 +1,5 @@
 // Badge Service
-// Fan Manager 2026 - Rozet Kazanma ve Yönetim Sistemi
+// TacticIQ - Rozet Kazanma ve Yönetim Sistemi
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert } from 'react-native';

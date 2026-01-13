@@ -1,5 +1,5 @@
 // Email Routes
-// Fan Manager 2026 - Email Forwarding & Webhook
+// TacticIQ - Email Forwarding & Webhook
 
 const express = require('express');
 const router = express.Router();

@@ -1,5 +1,5 @@
 // Backend Monitoring & Auto-Restart Service
-// Fan Manager 2026 - Backend Health Monitoring
+// TacticIQ - Backend Health Monitoring
 
 const { sendEmail } = require('./emailService');
 const { exec } = require('child_process');

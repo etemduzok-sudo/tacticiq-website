@@ -1,6 +1,6 @@
 @echo off
 echo ========================================
-echo Fan Manager 2026 - Backend with Monitoring
+echo TacticIQ - Backend with Monitoring
 echo ========================================
 echo.
 

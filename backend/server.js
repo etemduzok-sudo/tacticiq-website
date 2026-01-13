@@ -1,4 +1,4 @@
-// Fan Manager 2026 - Backend API Server
+// TacticIQ - Backend API Server
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -112,7 +112,7 @@ app.get('/api/cache/stats', (req, res) => {
 // Root endpoint
 app.get('/', (req, res) => {
   res.json({
-    name: 'Fan Manager 2026 API',
+    name: 'TacticIQ API',
     version: '1.0.0',
     endpoints: [
       '/api/matches',

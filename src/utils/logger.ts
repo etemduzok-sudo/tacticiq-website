@@ -1,5 +1,5 @@
 // Logger Utility - Production-safe logging with structured logging
-// Fan Manager 2026 - Centralized Logging Service
+// TacticIQ - Centralized Logging Service
 
 const IS_DEV = __DEV__;
 

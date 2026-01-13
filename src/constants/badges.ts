@@ -234,8 +234,8 @@ export const ALL_BADGES: BadgeDefinition[] = [
     category: 'Yıldız',
   },
   {
-    id: 'fan-manager-2026',
-    name: 'Fan Manager 2026',
+    id: 'tacticiq-master',
+    name: 'TacticIQ Master',
     description: 'Tüm rozetleri topladın - Efsane oldun!',
     howToEarn: 'Diğer 19 rozetin tamamını topla (Büyük ödül)',
     emoji: '🏆',

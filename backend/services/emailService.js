@@ -128,7 +128,7 @@ Sorularınız için: info@fanmanager.com
         <div class="container">
           <div class="header">
             <div class="shield">🛡️⚽</div>
-            <h1 style="color: #FFFFFF;">Fan Manager 2026</h1>
+            <h1 style="color: #FFFFFF;">TacticIQ</h1>
           </div>
           
           <div class="content">

@@ -1,4 +1,4 @@
-// API Service - Fan Manager 2026
+// API Service - TacticIQ
 // Bu servis bizim backend'imize bağlanır, backend API-Football'a bağlanır
 // Hybrid mode: Önce database'den çeker, yoksa backend'den çeker
 
@@ -186,19 +186,17 @@ export const matchesApi = {
         return { success: true, data: transformedData, source: 'database' };
       }
       
-      // Try backend (silently fail to reduce console noise)
+      // Try backend
       try {
         const backendResult = await request('/matches/live');
         return backendResult;
       } catch (backendError: any) {
-        // Silently fallback to mock data
-        const mockData = getMockMatches('live');
-        return { success: true, data: mockData, source: 'mock' };
+        logger.error('Backend failed for live matches', { error: backendError }, 'API');
+        throw new Error('Could not fetch live matches from backend');
       }
     } catch (error) {
-      // Silently fallback to mock data (errors are expected when backend is off)
-      const mockData = getMockMatches('live');
-      return { success: true, data: mockData, source: 'mock' };
+      logger.error('Error fetching live matches', { error }, 'API');
+      throw error;
     }
   },
 
@@ -218,24 +216,17 @@ export const matchesApi = {
       const today = new Date().toISOString().split('T')[0];
       const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
       
-      if (date === today || date === tomorrow) {
-        try {
-          const backendResult = await request(`/matches/date/${date}`);
-          return backendResult;
-        } catch (backendError: any) {
-          // Silently fallback to mock data (don't log every failed attempt)
-          const mockData = getMockMatchesByDate(date);
-          return { success: true, data: mockData, source: 'mock' };
-        }
-      } else {
-        // For other dates, directly use mock data (no backend attempt)
-        const mockData = getMockMatchesByDate(date);
-        return { success: true, data: mockData, source: 'mock' };
+      // Try backend for all dates
+      try {
+        const backendResult = await request(`/matches/date/${date}`);
+        return backendResult;
+      } catch (backendError: any) {
+        logger.error(`Backend failed for matches on ${date}`, { date, error: backendError }, 'API');
+        throw new Error(`Could not fetch matches for ${date} from backend`);
       }
     } catch (error) {
-      // Silently fallback to mock data (errors are expected when backend is off)
-      const mockData = getMockMatchesByDate(date);
-      return { success: true, data: mockData, source: 'mock' };
+      logger.error(`Error fetching matches for ${date}`, { date, error }, 'API');
+      throw error;
     }
   },
 
@@ -263,13 +254,8 @@ export const matchesApi = {
         const backendResult = await request(`/matches/${matchId}`);
         return backendResult;
       } catch (backendError) {
-        logger.warn(`Backend failed for match ${matchId}, using MOCK DATA...`, { matchId, error: backendError }, 'API');
-        // Fallback to mock data
-        const mockMatch = getMockMatchById(matchId);
-        if (mockMatch) {
-          return { success: true, data: mockMatch, source: 'mock' };
-        }
-        throw new Error('Match not found');
+        logger.error(`Backend failed for match ${matchId}`, { matchId, error: backendError }, 'API');
+        throw new Error(`Match ${matchId} not found`);
       }
     } catch (error) {
       logger.error(`Error in getMatchDetails(${matchId})`, { matchId, error }, 'API');

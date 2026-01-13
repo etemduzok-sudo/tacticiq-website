@@ -4,9 +4,9 @@ import { Platform } from 'react-native';
 // Firebase config (Web)
 export const firebaseConfig = {
   apiKey: process.env.FIREBASE_API_KEY || "YOUR_API_KEY",
-  authDomain: process.env.FIREBASE_AUTH_DOMAIN || "fan-manager-2026.firebaseapp.com",
-  projectId: process.env.FIREBASE_PROJECT_ID || "fan-manager-2026",
-  storageBucket: process.env.FIREBASE_STORAGE_BUCKET || "fan-manager-2026.appspot.com",
+  authDomain: process.env.FIREBASE_AUTH_DOMAIN || "tacticiq.firebaseapp.com",
+  projectId: process.env.FIREBASE_PROJECT_ID || "tacticiq",
+  storageBucket: process.env.FIREBASE_STORAGE_BUCKET || "tacticiq.appspot.com",
   messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID || "123456789",
   appId: process.env.FIREBASE_APP_ID || "1:123456789:web:abcdef",
   measurementId: process.env.FIREBASE_MEASUREMENT_ID || "G-XXXXXXXXXX",

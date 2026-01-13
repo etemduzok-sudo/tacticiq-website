@@ -1,9 +1,9 @@
 {
   "expo": {
-    "name": "Fan Manager 2026",
-    "slug": "fan-manager-2026",
+    "name": "TacticIQ",
+    "slug": "tacticiq",
     "version": "1.0.0",
-    "scheme": "fanmanager",
+    "scheme": "tacticiq",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "splash": {
@@ -21,7 +21,7 @@
       "adaptiveIcon": {
         "backgroundColor": "#059669"
       },
-      "package": "com.fanmanager.app",
+      "package": "com.tacticiq.app",
       "userInterfaceStyle": "automatic"
     },
     "web": {
@@ -37,6 +37,6 @@
     "experiments": {
       "typedRoutes": false
     },
-    "scheme": "fanmanager"
+    "scheme": "tacticiq"
   }
 }

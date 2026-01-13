@@ -1,4 +1,4 @@
-// Language Constants for Fan Manager 2026
+// Language Constants for TacticIQ
 // Supports Turkish (tr) and English (en)
 
 export type Language = 'tr' | 'en';
