@@ -99,9 +99,9 @@ ${resetLink}
 
 Şifre sıfırlama talebinde bulunmadıysanız, bu maili dikkate almayın.
 
-Sorularınız için: info@fanmanager.com
+Sorularınız için: info@tacticiq.com
 
-© 2026 Fan Manager
+© 2026 TacticIQ
     `,
   }),
 
@@ -154,7 +154,7 @@ Sorularınız için: info@fanmanager.com
             </div>
             
             <div style="text-align: center;">
-              <a href="https://fanmanager.com" class="button">Hemen Başla</a>
+              <a href="https://tacticiq.com" class="button">Hemen Başla</a>
             </div>
           </div>
           
