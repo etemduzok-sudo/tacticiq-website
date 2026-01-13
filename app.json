@@ -30,11 +30,28 @@
       "bundler": "metro"
     },
     "plugins": [
+      "expo-router",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 34,
+            "targetSdkVersion": 34,
+            "buildToolsVersion": "34.0.0"
+          }
+        }
+      ],
       "expo-asset",
       "expo-font"
     ],
     "extra": {
-      "newArchEnabled": true
+      "newArchEnabled": true,
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "f33d2180-e311-47ac-b004-59e271e144f4"
+      }
     },
     "experiments": {
       "typedRoutes": false

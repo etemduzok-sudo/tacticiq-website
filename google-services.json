@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "278649047434",
+    "project_id": "fanmanager2026-c23d2",
+    "storage_bucket": "fanmanager2026-c23d2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:278649047434:android:582af06768449542f26073",
+        "android_client_info": {
+          "package_name": "com.fanmanager2026.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "278649047434-4og75tuin9n1u0s1j0vrg9fr6ocaos2i.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.fanmanager2026.app",
+            "certificate_hash": "32a81f1b5cc375fa88a03088a7728f6c3cec1b2a"
+          }
+        },
+        {
+          "client_id": "278649047434-mok8e02lano8kk62j2sn09ooqn6lql7k.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDSuXvW3UXjJt1XaXSn4KzXXz07B7zQYNY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "278649047434-mok8e02lano8kk62j2sn09ooqn6lql7k.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "278649047434-65pqo1nk9s5bm7a7sj4s896n6s0kgrnc.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.fanmanager2026.app"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
