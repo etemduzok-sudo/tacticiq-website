@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  SafeAreaView,
   Alert,
   ActivityIndicator,
 } from 'react-native';
@@ -18,6 +17,8 @@ import { Button } from '../components/atoms';
 import { getUserLimits, canAddTeam, isNationalTeam } from '../constants/userLimits';
 import { teamsApi } from '../services/api';
 import api from '../services/api';
+import { StandardHeader, ScreenLayout } from '../components/layouts';
+import { logger } from '../utils/logger';
 
 interface FavoriteTeamsScreenProps {
   onComplete: (selectedTeams: Array<{ id: number; name: string; colors: string[]; league?: string; country?: string; type?: 'club' | 'national' }>) => void;
@@ -150,7 +151,7 @@ export default function FavoriteTeamsScreen({ onComplete, onBack }: FavoriteTeam
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLanguage, setSelectedLanguage] = useState<string>('tr');
   const [isPremium, setIsPremium] = useState<boolean>(false);
-  const [openDropdown, setOpenDropdown] = useState<'national' | 'club1' | 'club2' | 'club3' | 'club4' | 'club5' | null>(null);
+  const [openDropdown, setOpenDropdown] = useState<'national' | 'club1' | 'club2' | 'club3' | 'club4' | 'club5' | 'clubs-list' | null>(null);
   const [searchType, setSearchType] = useState<'club' | 'national'>('club');
   
   // ✅ Backend'den çekilen takımlar (API-Football'a direkt bağlanmıyor!)
@@ -178,7 +179,7 @@ export default function FavoriteTeamsScreen({ onComplete, onBack }: FavoriteTeam
       if (favoriteTeamsStr) {
         try {
           const favoriteTeams = JSON.parse(favoriteTeamsStr);
-          console.log('✅ [FAVORITE TEAMS] Loaded from storage:', favoriteTeams);
+          logger.debug('Loaded from storage', { favoriteTeams }, 'FAVORITE_TEAMS');
           
           // Milli takım ve kulüp takımlarını ayır
           const nationalTeam = favoriteTeams.find((t: any) => t.type === 'national');
@@ -193,7 +194,7 @@ export default function FavoriteTeamsScreen({ onComplete, onBack }: FavoriteTeam
               colors: nationalTeam.colors || ['#1E40AF', '#FFFFFF'],
               type: 'national',
             });
-            console.log('✅ [FAVORITE TEAMS] Loaded national team:', nationalTeam.name);
+            logger.debug('Loaded national team', { name: nationalTeam.name }, 'FAVORITE_TEAMS');
           }
           
           // Kulüp takımlarını sırayla yerleştir
@@ -208,12 +209,12 @@ export default function FavoriteTeamsScreen({ onComplete, onBack }: FavoriteTeam
                 colors: team.colors || ['#1E40AF', '#FFFFFF'],
                 type: 'club',
               };
-              console.log(`✅ [FAVORITE TEAMS] Loaded club team ${idx + 1}:`, team.name);
+              logger.debug(`Loaded club team ${idx + 1}`, { name: team.name, index: idx + 1 }, 'FAVORITE_TEAMS');
             }
           });
           setSelectedClubTeams(clubArray);
         } catch (parseError) {
-          console.error('❌ [FAVORITE TEAMS] Error parsing favorite teams:', parseError);
+          logger.error('Error parsing favorite teams', { error: parseError }, 'FAVORITE_TEAMS');
         }
       }
 
@@ -230,10 +231,10 @@ export default function FavoriteTeamsScreen({ onComplete, onBack }: FavoriteTeam
         // ✅ Pro kontrolü: is_pro, isPro, isPremium, plan === 'pro' veya plan === 'premium'
         const isPremiumUser = parsed.is_pro === true || parsed.isPro === true || parsed.isPremium === true || parsed.plan === 'pro' || parsed.plan === 'premium';
         setIsPremium(isPremiumUser);
-        console.log('✅ [FAVORITE TEAMS] User Pro status:', isPremiumUser, 'from:', { is_pro: parsed.is_pro, isPro: parsed.isPro, isPremium: parsed.isPremium, plan: parsed.plan });
+        logger.debug('User Pro status', { isPremiumUser, is_pro: parsed.is_pro, isPro: parsed.isPro, isPremium: parsed.isPremium, plan: parsed.plan }, 'FAVORITE_TEAMS');
       }
     } catch (error) {
-      console.error('Kullanıcı verisi yüklenemedi:', error);
+      logger.error('Kullanıcı verisi yüklenemedi', { error }, 'FAVORITE_TEAMS');
     }
   };
 
@@ -320,8 +321,63 @@ export default function FavoriteTeamsScreen({ onComplete, onBack }: FavoriteTeam
       const response = await teamsApi.searchTeams(query);
       
       if (response.success && response.data) {
-        // API response formatını dönüştür
+        // ✅ Filtreleme: Gereksiz verileri kaldır
+        const filterUnwantedData = (item: any) => {
+          const team = item.team || item;
+          const league = item.league || {};
+          const leagueName = (league.name || '').toLowerCase();
+          const teamName = (team.name || '').toLowerCase();
+          
+          // ❌ U18, U21, U23, Youth, Gençlik takımlarını filtrele
+          if (teamName.includes('u18') || teamName.includes('u21') || teamName.includes('u23') || 
+              teamName.includes('youth') || teamName.includes('gençlik') || teamName.includes('under')) {
+            return false;
+          }
+          
+          // ❌ Kadın takımlarını filtrele
+          if (teamName.includes('women') || teamName.includes('kadın') || teamName.includes('female')) {
+            return false;
+          }
+          
+          // ✅ Milli takımlar için: Sadece A milli erkek futbol takımları
+          if (team.national) {
+            // Milli takım isimleri genelde ülke isimleriyle aynıdır (Türkiye, Germany, Brazil vs)
+            // U18, U21 gibi ekler yoksa A milli takımıdır
+            return true;
+          }
+          
+          // ✅ Kulüpler için: Sadece en üst klasman ligler ve kupalar
+          // En üst klasman ligler
+          const topLeagues = [
+            'premier league', 'la liga', 'serie a', 'bundesliga', 'ligue 1',
+            'süper lig', 'super lig', 'superliga', 'eredivisie', 'primeira liga',
+            'scottish premiership', 'belgian pro league', 'austrian bundesliga',
+            'swiss super league', 'russian premier league', 'turkish super lig'
+          ];
+          
+          // UEFA ve FIFA kupaları
+          const uefaFifaCompetitions = [
+            'uefa', 'champions league', 'europa league', 'europa conference',
+            'fifa', 'world cup', 'euro', 'copa america', 'africa cup',
+            'asian cup', 'concacaf', 'gold cup'
+          ];
+          
+          // Yerel kupalar
+          const localCups = [
+            'cup', 'kupa', 'copa', 'coupe', 'pokal', 'coppa', 'fa cup',
+            'türkiye kupası', 'türkiye kupa', 'tff kupa'
+          ];
+          
+          const isTopLeague = topLeagues.some(league => leagueName.includes(league));
+          const isUefaFifa = uefaFifaCompetitions.some(comp => leagueName.includes(comp));
+          const isLocalCup = localCups.some(cup => leagueName.includes(cup));
+          
+          return isTopLeague || isUefaFifa || isLocalCup;
+        };
+        
+        // API response formatını dönüştür ve filtrele
         const transformedTeams = response.data
+          .filter(filterUnwantedData) // ✅ Önce gereksiz verileri filtrele
           .map((item: any) => {
             const team = item.team || item;
             const league = item.league || {};
@@ -343,7 +399,7 @@ export default function FavoriteTeamsScreen({ onComplete, onBack }: FavoriteTeam
         setSearchError('Takım bulunamadı');
       }
     } catch (error: any) {
-      console.error('❌ Backend takım arama hatası:', error);
+      logger.error('Backend takım arama hatası', { error, query, type }, 'FAVORITE_TEAMS');
       // Network hatası kontrolü
       if (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError') || error.message?.includes('fetch')) {
         setSearchError('Backend bağlantısı kurulamadı. Lütfen backend sunucusunun çalıştığından emin olun.');
@@ -403,24 +459,44 @@ export default function FavoriteTeamsScreen({ onComplete, onBack }: FavoriteTeam
   const getDropdownOptions = (type: 'club' | 'national') => {
     const baseTeams = type === 'club' ? clubTeams : nationalTeams;
 
+    // ✅ En az 3 karakter yazılmadan hiçbir takım gösterilmez
+    if (searchQuery.length < 3) return [];
+
+    // ✅ Kulüp takımları seçilirken milli takımlar görünmemeli
     // Eğer arama yapılıyorsa ve backend sonuçları varsa önce onları göster
-    const backendResults = (searchQuery.length >= 3 ? apiTeams : []).filter(t => t.type === type).map((apiTeam) => ({
-      id: apiTeam.id.toString(),
-      name: apiTeam.name,
-      league: apiTeam.league || 'Unknown',
-      country: apiTeam.country,
-      colors: apiTeam.colors || getTeamColorsFromName(apiTeam.name),
-      type: apiTeam.type,
-      apiId: apiTeam.id,
-    }));
+    const backendResults = apiTeams
+      .filter(t => {
+        // ✅ Kulüp takımları seçilirken sadece kulüp takımları göster
+        if (type === 'club') {
+          return t.type === 'club';
+        }
+        // ✅ Milli takım seçilirken sadece milli takımlar göster
+        return t.type === 'national';
+      })
+      .map((apiTeam) => ({
+        id: apiTeam.id.toString(),
+        name: apiTeam.name,
+        league: apiTeam.league || 'Unknown',
+        country: apiTeam.country,
+        colors: apiTeam.colors || getTeamColorsFromName(apiTeam.name),
+        type: apiTeam.type,
+        apiId: apiTeam.id,
+      }));
 
     if (backendResults.length > 0) return backendResults;
 
-    // Arama yoksa veya sonuç yoksa, yerel takımlar
-    if (searchQuery.length < 3) return baseTeams;
-
     const query = searchQuery.toLowerCase().trim();
-    const scoredTeams = baseTeams
+    // ✅ Kulüp takımları seçilirken milli takımlar filtrelenir
+    const filteredBaseTeams = baseTeams.filter(team => {
+      // ✅ Kulüp takımları seçilirken sadece kulüp takımları göster
+      if (type === 'club') {
+        return team.type === 'club';
+      }
+      // ✅ Milli takım seçilirken sadece milli takımlar göster
+      return team.type === 'national';
+    });
+    
+    const scoredTeams = filteredBaseTeams
       .map((team) => {
         const teamName = team.name.toLowerCase();
         let score = 0;
@@ -453,7 +529,7 @@ export default function FavoriteTeamsScreen({ onComplete, onBack }: FavoriteTeam
       // ✅ Eğer aynı takım seçiliyse, seçimi kaldır (sil)
       if (selectedNationalTeam?.id === mapped.id) {
         setSelectedNationalTeam(null);
-        console.log('✅ [FAVORITE TEAMS] Removed national team:', mapped.name);
+        logger.debug('Removed national team', { name: mapped.name }, 'FAVORITE_TEAMS');
     } else {
         setSelectedNationalTeam(mapped);
         console.log('✅ [FAVORITE TEAMS] Selected national team:', mapped.name);
@@ -610,8 +686,27 @@ export default function FavoriteTeamsScreen({ onComplete, onBack }: FavoriteTeam
                 {locked ? '🔒 PRO gereklidir' : 'Seçim yapın'}
               </Text>
             )}
-            </View>
-          <SafeIcon name={isOpen ? 'chevron-up' : 'chevron-down'} size={20} color={selected ? BRAND.emerald : BRAND.white} />
+        </View>
+
+            {/* ✅ Çarpı işareti - sağ üstte (güzelleştirilmiş) */}
+            {selected && !locked && (
+              <TouchableOpacity
+                style={styles.removeButton}
+                onPress={(e) => {
+                  e.stopPropagation(); // Dropdown açılmasını engelle
+                  if (type === 'national') {
+                    setSelectedNationalTeam(null);
+                  } else if (index !== undefined) {
+                    const newClubs = [...selectedClubTeams];
+                    newClubs[index] = null;
+                    setSelectedClubTeams(newClubs);
+                  }
+                }}
+                activeOpacity={0.5}
+              >
+                <SafeIcon name="close-circle" size={20} color="rgba(239, 68, 68, 0.8)" />
+              </TouchableOpacity>
+            )}
         </TouchableOpacity>
 
         {isOpen && (
@@ -631,6 +726,23 @@ export default function FavoriteTeamsScreen({ onComplete, onBack }: FavoriteTeam
         </View>
             {searchError && (
               <Text style={[styles.errorText, { marginHorizontal: SPACING.sm }]}>⚠️ {searchError}</Text>
+            )}
+
+            {/* ✅ En az 3 karakter yazılmadan takım gösterilmez */}
+            {searchQuery.length < 3 && (
+              <View style={styles.emptySearchContainer}>
+                <Text style={styles.emptySearchText}>
+                  🔍 En az 3 karakter yazarak takım arayın
+                </Text>
+          </View>
+            )}
+
+            {searchQuery.length >= 3 && getDropdownOptions(type).length === 0 && !isSearching && (
+              <View style={styles.emptySearchContainer}>
+                <Text style={styles.emptySearchText}>
+                  ❌ Aradığınız kriterlere uygun takım bulunamadı
+                </Text>
+              </View>
             )}
 
             {getDropdownOptions(type).map((team, optionIdx) => {
@@ -723,69 +835,122 @@ export default function FavoriteTeamsScreen({ onComplete, onBack }: FavoriteTeam
   };
 
             return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Back Button - üst menüye dön (root değil) */}
-        {onBack && (
-              <TouchableOpacity
-            onPress={onBack}
-            style={styles.topBackButton}
-            activeOpacity={0.8}
-          >
-            <SafeIcon name="chevron-back" size={20} color={BRAND.white} />
-            <Text style={styles.topBackText}>Geri</Text>
-          </TouchableOpacity>
-        )}
-
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.mainTitle}>Takımlarınızı Seçin</Text>
-          <Text style={styles.subtitle}>
-            {isPremium
-              ? '1 milli takım + 5 kulüp (Pro)'
-              : 'Free: sadece 1 milli takım, kulüp kilitli'}
-                  </Text>
-
-          {/* Status Badges */}
-          <View style={styles.badgesContainer}>
-            <View style={[styles.badge, nationalCount > 0 && styles.badgeActive]}>
-              <Text style={styles.badgeText}>Milli: {nationalCount}/1</Text>
-            </View>
-            <View style={[styles.badge, clubCount > 0 && styles.badgeActive]}>
-              <Text style={styles.badgeText}>Kulüp: {clubCount}/{maxClubs}</Text>
-            </View>
-            <View style={[styles.badge, isPremium ? styles.badgePremium : styles.badgeFree]}>
-              <SafeIcon name={isPremium ? 'star' : 'star-outline'} size={12} color={isPremium ? BRAND.gold : DARK_MODE.mutedForeground} />
-              <Text style={[styles.badgeText, isPremium && { color: BRAND.gold }]}>
+    <ScreenLayout safeArea>
+      <StandardHeader
+        title="Takımlarınızı Seçin"
+        onBack={onBack}
+      />
+      
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+      <View style={styles.container}>
+        {/* Plan Info Card - Kompakt */}
+        <View style={styles.planCard}>
+          <View style={styles.planHeaderCompact}>
+            <View style={styles.planHeaderLeftCompact}>
+              <SafeIcon 
+                name={isPremium ? 'star' : 'star-outline'} 
+                size={16} 
+                color={isPremium ? BRAND.gold : DARK_MODE.mutedForeground} 
+              />
+              <Text style={styles.planTitleCompact}>
                 {isPremium ? 'Pro Plan' : 'Free Plan'}
+              </Text>
+              {isPremium && (
+                <View style={styles.proBadgeCompact}>
+                  <Text style={styles.proBadgeTextCompact}>PRO</Text>
+                </View>
+              )}
+            </View>
+            <Text style={styles.planDescriptionCompact}>
+              {isPremium 
+                ? '1 milli takım + 5 kulüp'
+                : 'Sadece 1 milli takım'}
+            </Text>
+                </View>
+
+          {/* Status Indicators - Kompakt */}
+          <View style={styles.statusContainerCompact}>
+            <View style={styles.statusItemCompact}>
+              <SafeIcon name="flag" size={12} color={nationalCount > 0 ? BRAND.emerald : DARK_MODE.mutedForeground} />
+              <View style={styles.statusProgressCompact}>
+                <View style={[styles.progressBarCompact, { width: `${(nationalCount / 1) * 100}%` }]} />
+              </View>
+              <Text style={[styles.statusCountCompact, nationalCount > 0 && styles.statusCountActive]}>
+                {nationalCount}/1
+                  </Text>
+                </View>
+
+            <View style={styles.statusItemCompact}>
+              <SafeIcon name="trophy" size={12} color={clubCount > 0 ? BRAND.emerald : DARK_MODE.mutedForeground} />
+              <View style={styles.statusProgressCompact}>
+                <View style={[styles.progressBarCompact, { width: `${(clubCount / maxClubs) * 100}%` }]} />
+                  </View>
+              <Text style={[styles.statusCountCompact, clubCount > 0 && styles.statusCountActive]}>
+                {clubCount}/{maxClubs}
               </Text>
             </View>
           </View>
-                </View>
-
-        {/* Milli takım dropdown */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Milli Takım</Text>
-          {renderSelectionButton('1 Milli Takım Seçin', selectedNationalTeam, 'national')}
-                  </View>
-
-        {/* Kulüp dropdownları */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Kulüpler</Text>
-            <Text style={styles.sectionCount}>{clubCount}/{maxClubs} seçili</Text>
-          </View>
-          {[0,1,2,3,4].map((i) =>
-            renderSelectionButton(
-              `${i + 1}. Favori Kulüp`,
-              selectedClubTeams[i],
-              'club',
-              i,
-              !isPremium
-            )
-          )}
         </View>
-      </ScrollView>
+      </View>
+
+        {/* ✅ Milli takım dropdown - Sadece milli takım dropdown açıkken veya hiçbiri açık değilken görünür */}
+        {(!openDropdown || openDropdown === 'national') && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Milli Takım</Text>
+            {renderSelectionButton('1 Milli Takım Seçin', selectedNationalTeam, 'national')}
+          </View>
+        )}
+
+        {/* ✅ Kulüp dropdownları - Sadece kulüp dropdown açıkken veya hiçbiri açık değilken görünür */}
+        {(!openDropdown || openDropdown?.startsWith('club')) && (
+          <View style={styles.section}>
+            <TouchableOpacity 
+              style={styles.sectionHeader}
+              onPress={() => {
+                // ✅ Kulüpler başlığına tıklayınca seçili takımların listesini göster/gizle
+                if (openDropdown === 'clubs-list') {
+                  setOpenDropdown(null);
+                } else {
+                  setOpenDropdown('clubs-list');
+                }
+              }}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.sectionTitle}>Kulüpler</Text>
+              <Text style={styles.sectionCount}>{clubCount}/{maxClubs} seçili</Text>
+            </TouchableOpacity>
+            
+            {/* ✅ Seçili takımların listesi - Kulüpler başlığına tıklayınca görünür */}
+            {openDropdown === 'clubs-list' && (
+              <View style={styles.selectedTeamsList}>
+                {selectedClubTeams.filter(Boolean).length > 0 ? (
+                  selectedClubTeams.filter(Boolean).map((team, index) => (
+                    <View key={index} style={styles.selectedTeamItem}>
+                      <Text style={styles.selectedTeamName}>{team.name}</Text>
+                    </View>
+                  ))
+                ) : (
+                  <Text style={styles.noTeamsText}>Henüz takım seçilmedi</Text>
+                )}
+              </View>
+            )}
+            
+            {/* ✅ 5 tane takım seçmek için alanlar */}
+            {[0,1,2,3,4].map((i) =>
+              renderSelectionButton(
+                `${i + 1}. Favori Kulüp`,
+                selectedClubTeams[i],
+                'club',
+                i,
+                !isPremium
+              )
+            )}
+          </View>
+        )}
 
       {/* Fixed Bottom Button */}
       <View style={styles.footer}>
@@ -799,78 +964,97 @@ export default function FavoriteTeamsScreen({ onComplete, onBack }: FavoriteTeam
           textStyle={styles.continueButtonText}
         />
       </View>
-    </SafeAreaView>
+      </ScrollView>
+    </ScreenLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  scrollView: {
     flex: 1,
-    backgroundColor: '#121826', // Koyu lacivert/siyah arka plan
   },
   scrollContent: {
-    paddingHorizontal: SPACING.lg,
-    paddingBottom: 100, // Footer için boşluk
+    paddingBottom: 100, // ✅ Footer için boşluk
   },
-  topBackButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: SPACING.md,
-    paddingHorizontal: SPACING.sm,
-    marginBottom: SPACING.md,
+  container: {
+    flex: 1,
+    paddingHorizontal: SPACING.base, // ✅ STANDART (SPACING.lg=24 → SPACING.base=16)
+    paddingTop: SPACING.base, // ✅ Header altı boşluk (STANDART: 16px)
   },
-  topBackText: {
-    ...TYPOGRAPHY.bodyMedium,
-    color: BRAND.white,
-    marginLeft: SPACING.xs,
-    fontWeight: '500',
-  },
-  header: {
-    marginBottom: SPACING.xl,
-  },
-  mainTitle: {
-    ...TYPOGRAPHY.h1, // 28px, Bold
-    color: BRAND.white,
-    marginBottom: SPACING.xs,
-  },
-  subtitle: {
-    ...TYPOGRAPHY.bodyMedium, // 14px
-    color: DARK_MODE.mutedForeground,
-    marginBottom: SPACING.lg,
-  },
-  badgesContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: SPACING.sm,
-  },
-  badge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.xs,
-    borderRadius: 20,
-    backgroundColor: DARK_MODE.card, // #1e293b
+  // Plan Info Card - Kompakt
+  planCard: {
+    backgroundColor: DARK_MODE.card,
+    borderRadius: 12,
+    padding: SPACING.sm,
+    marginBottom: SPACING.base,
     borderWidth: 1,
     borderColor: DARK_MODE.border,
+  },
+  planHeaderCompact: {
+    marginBottom: SPACING.xs,
+  },
+  planHeaderLeftCompact: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: SPACING.xs,
+    marginBottom: 4,
   },
-  badgeActive: {
-    borderColor: BRAND.emerald,
-    backgroundColor: 'rgba(5, 150, 105, 0.1)', // Zümrüt şeffaf
+  planTitleCompact: {
+    ...TYPOGRAPHY.bodyMedium,
+    fontSize: 14,
+    color: DARK_MODE.foreground,
+    fontWeight: '600',
   },
-  badgePremium: {
-    borderColor: BRAND.gold,
-    backgroundColor: 'rgba(245, 158, 11, 0.1)', // Altın şeffaf
-  },
-  badgeFree: {
-    borderColor: DARK_MODE.border,
-    backgroundColor: DARK_MODE.card,
-  },
-  badgeDisabled: {
-    opacity: 0.5,
-  },
-  badgeTextDisabled: {
+  planDescriptionCompact: {
+    ...TYPOGRAPHY.bodySmall,
+    fontSize: 11,
     color: DARK_MODE.mutedForeground,
+  },
+  proBadgeCompact: {
+    backgroundColor: BRAND.gold,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginLeft: SPACING.xs,
+  },
+  proBadgeTextCompact: {
+    fontSize: 10,
+    color: '#000000',
+    fontWeight: '700',
+  },
+  statusContainerCompact: {
+    flexDirection: 'row',
+    gap: SPACING.md,
+    marginTop: SPACING.xs,
+  },
+  statusItemCompact: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
+    flex: 1,
+  },
+  statusProgressCompact: {
+    flex: 1,
+    height: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  progressBarCompact: {
+    height: '100%',
+    backgroundColor: BRAND.emerald,
+    borderRadius: 2,
+  },
+  statusCountCompact: {
+    fontSize: 11,
+    color: DARK_MODE.mutedForeground,
+    fontWeight: '500',
+    minWidth: 30,
+    textAlign: 'right',
+  },
+  statusCountActive: {
+    color: BRAND.emerald,
+    fontWeight: '600',
   },
   badgeText: {
     ...TYPOGRAPHY.bodySmall, // 12px
@@ -939,6 +1123,32 @@ const styles = StyleSheet.create({
   },
   sectionOptionalLocked: {
     color: BRAND.gold,
+  },
+  // ✅ Seçili takımların listesi
+  selectedTeamsList: {
+    backgroundColor: DARK_MODE.card,
+    borderRadius: 12,
+    padding: SPACING.sm,
+    marginBottom: SPACING.md,
+    borderWidth: 1,
+    borderColor: DARK_MODE.border,
+  },
+  selectedTeamItem: {
+    paddingVertical: SPACING.xs,
+    paddingHorizontal: SPACING.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: DARK_MODE.border,
+  },
+  selectedTeamName: {
+    ...TYPOGRAPHY.bodyMedium,
+    color: BRAND.white,
+    fontSize: 14,
+  },
+  noTeamsText: {
+    ...TYPOGRAPHY.bodySmall,
+    color: DARK_MODE.mutedForeground,
+    textAlign: 'center',
+    paddingVertical: SPACING.sm,
   },
   teamCard: {
     flexDirection: 'row',
@@ -1030,14 +1240,14 @@ const styles = StyleSheet.create({
     position: 'relative',
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center', // Ortala
     backgroundColor: 'rgba(30, 41, 59, 0.6)', // Glassmorphism efekti
-    borderRadius: 16,
+    borderRadius: 12, // ✅ 16 → 12 (profil kartıyla aynı)
     paddingHorizontal: SPACING.base,
-    paddingVertical: SPACING.md,
-    borderWidth: 1.5,
-    borderColor: 'rgba(148, 163, 184, 0.15)', // Yumuşak border
-    minHeight: 80,
+    paddingVertical: SPACING.sm, // ✅ md → sm (daha kompakt)
+    borderWidth: 1,
+    borderColor: '#334155',
+    minHeight: 60, // ✅ 80 → 60 (profil kartıyla benzer)
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -1046,9 +1256,9 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   selectButtonSelected: {
-    borderColor: 'rgba(5, 150, 105, 0.4)', // Yumuşak emerald border
-    borderWidth: 1.5,
-    backgroundColor: 'rgba(5, 150, 105, 0.12)', // Çok hafif emerald ton
+    borderColor: 'rgba(5, 150, 105, 0.5)',
+    borderWidth: 2,
+    backgroundColor: 'rgba(51, 65, 85, 0.8)', // Antrasit ton
     shadowColor: BRAND.emerald,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.25,
@@ -1074,6 +1284,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     zIndex: 1, // Gradient şeritlerin üstünde olması için
     paddingVertical: SPACING.xs,
+  },
+  removeButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    zIndex: 10,
+    padding: 2,
+    borderRadius: 10,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)', // ✅ Hafif arka plan (görünürlük için)
+    // ✅ Güzelleştirilmiş çarpı ikonu
   },
   selectTeamName: {
     ...TYPOGRAPHY.h3, // 18px, Bold
@@ -1259,6 +1479,17 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: 'rgba(148, 163, 184, 0.7)', // Yumuşak muted
     fontWeight: '400',
+  },
+  emptySearchContainer: {
+    padding: SPACING.base,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 80,
+  },
+  emptySearchText: {
+    ...TYPOGRAPHY.bodyMedium,
+    color: DARK_MODE.mutedForeground,
+    textAlign: 'center',
   },
   dropdownMeta: {
     ...TYPOGRAPHY.bodySmall,

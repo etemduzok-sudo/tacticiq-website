@@ -173,12 +173,18 @@ export default function RegisterScreen({
   };
 
   const handleRegister = async () => {
-    if (!username.trim() || !email.trim() || !password.trim() || !confirmPassword.trim()) {
-      Alert.alert('❌ Hata', 'Lütfen tüm alanları doldurun');
+    // ✅ ZORUNLU: Kullanıcı adı kontrolü
+    if (!username.trim() || username.trim().length < 3) {
+      Alert.alert('❌ Hata', 'Kullanıcı adı en az 3 karakter olmalıdır');
       return;
     }
-    if (username.trim().length < 3) {
-      Alert.alert('❌ Hata', 'Kullanıcı adı en az 3 karakter olmalıdır');
+    // ✅ ZORUNLU: Kullanıcı adı müsait mi?
+    if (usernameStatus !== 'available') {
+      Alert.alert('❌ Hata', 'Lütfen müsait bir kullanıcı adı seçin');
+      return;
+    }
+    if (!email.trim() || !password.trim() || !confirmPassword.trim()) {
+      Alert.alert('❌ Hata', 'Lütfen tüm alanları doldurun');
       return;
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

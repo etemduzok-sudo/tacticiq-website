@@ -287,6 +287,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#0F172A',
+    paddingTop: Platform.OS === 'ios' ? 52 : 8, // ✅ iOS: 44px status bar + 8px padding, Android: 8px
   },
   
   // Match Card Header

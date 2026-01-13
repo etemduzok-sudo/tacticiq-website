@@ -37,6 +37,8 @@ import { handleError, ErrorType, ErrorSeverity } from '../../utils/GlobalErrorHa
 import { predictionsDb } from '../../services/databaseService';
 
 // Web için Slider polyfill
+import SliderNative from '@react-native-community/slider';
+
 let Slider: any;
 if (Platform.OS === 'web') {
   // Web'de basit bir input range kullan
@@ -60,7 +62,7 @@ if (Platform.OS === 'web') {
     );
   };
 } else {
-  Slider = require('@react-native-community/slider').default;
+  Slider = SliderNative;
 }
 
 const { width, height } = Dimensions.get('window');

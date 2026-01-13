@@ -10,6 +10,9 @@ import MaintenanceScreen from './src/components/MaintenanceScreen';
 import { MAINTENANCE_CONFIG, logVersionInfo } from './src/config/AppVersion';
 import { useFavoriteTeamMatches } from './src/hooks/useFavoriteTeamMatches';
 import { ProfileCard } from './src/components/ProfileCard';
+import { DARK_MODE } from './src/theme/theme';
+import { hasBadgeBeenShown, markBadgeAsShown } from './src/services/badgeService';
+import { logger, logNavigation } from './src/utils/logger';
 
 // Web için UIManager polyfills
 if (Platform.OS === 'web') {
@@ -17,7 +20,7 @@ if (Platform.OS === 'web') {
     // @ts-ignore - Web için UIManager polyfills
     if (typeof UIManager === 'object') {
       UIManager.focus = () => {
-        console.warn('UIManager.focus is not supported on web');
+        logger.warn('UIManager.focus is not supported on web', undefined, 'UIManager');
       };
       UIManager.measure = (node: any, callback: Function) => {
         if (callback) {
@@ -37,10 +40,56 @@ if (Platform.OS === 'web') {
     }
   }
   
-  // Web için zoom engelleme - Agresif çözüm
+  // Web için zoom engelleme - ÇOK AGRESİF ÇÖZÜM
   if (typeof document !== 'undefined') {
+    // Meta viewport tag'ini kontrol et ve ekle
+    const setViewportMeta = () => {
+      let viewport = document.querySelector('meta[name="viewport"]');
+      if (!viewport) {
+        viewport = document.createElement('meta');
+        viewport.setAttribute('name', 'viewport');
+        document.getElementsByTagName('head')[0].appendChild(viewport);
+      }
+      viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover');
+    };
+    
+    // CSS ile zoom'u tamamen engelle
+    const addZoomPreventionCSS = () => {
+      const styleId = 'zoom-prevention-style';
+      if (!document.getElementById(styleId)) {
+        const style = document.createElement('style');
+        style.id = styleId;
+        style.textContent = `
+          * {
+            touch-action: manipulation !important;
+            -webkit-touch-callout: none !important;
+            -webkit-user-select: none !important;
+            user-select: none !important;
+          }
+          input, textarea {
+            -webkit-user-select: text !important;
+            user-select: text !important;
+          }
+          html, body {
+            zoom: 1 !important;
+            -webkit-text-size-adjust: 100% !important;
+            text-size-adjust: 100% !important;
+          }
+          #root {
+            zoom: 1 !important;
+            transform: scale(1) !important;
+            -webkit-transform: scale(1) !important;
+          }
+        `;
+        document.head.appendChild(style);
+      }
+    };
+    
     // Zoom seviyesini sürekli kontrol et ve sıfırla
     const preventZoom = () => {
+      // Meta viewport'u kontrol et
+      setViewportMeta();
+      
       // Document zoom'unu kontrol et
       if (document.documentElement.style.zoom !== '1') {
         document.documentElement.style.zoom = '1';
@@ -64,28 +113,73 @@ if (Platform.OS === 'web') {
         const computedStyle = window.getComputedStyle(root);
         const transform = computedStyle.transform;
         if (transform && transform !== 'none' && !transform.includes('scale(1)')) {
-          root.style.transform = 'scale(1)';
-          root.style.webkitTransform = 'scale(1)';
+          root.style.transform = 'scale(1) !important';
+          root.style.webkitTransform = 'scale(1) !important';
+        }
+        // Root'un zoom'unu da kontrol et
+        if (root.style.zoom !== '1') {
+          root.style.zoom = '1';
         }
       }
+      
+      // Tüm elementlerin zoom'unu kontrol et
+      const allElements = document.querySelectorAll('*');
+      allElements.forEach((el: any) => {
+        if (el.style && el.style.zoom && el.style.zoom !== '1') {
+          el.style.zoom = '1';
+        }
+      });
     };
     
-    // Her 50ms'de bir kontrol et
-    setInterval(preventZoom, 50);
+    // İlk yüklemede çalıştır
+    setViewportMeta();
+    addZoomPreventionCSS();
+    preventZoom();
+    
+    // Her 25ms'de bir kontrol et (daha sık)
+    setInterval(preventZoom, 25);
     
     // Event listener'lar
     window.addEventListener('resize', preventZoom);
     window.addEventListener('focus', preventZoom);
+    window.addEventListener('blur', preventZoom);
     document.addEventListener('DOMContentLoaded', preventZoom);
     window.addEventListener('load', preventZoom);
+    document.addEventListener('touchstart', preventZoom, { passive: false });
+    document.addEventListener('touchmove', preventZoom, { passive: false });
+    document.addEventListener('touchend', preventZoom, { passive: false });
     
-    // Çift tıklama engelle
+    // Çift tıklama engelle (çok agresif)
     document.addEventListener('dblclick', (e) => {
       e.preventDefault();
       e.stopPropagation();
+      e.stopImmediatePropagation();
       preventZoom();
       return false;
     }, true);
+    
+    // Wheel zoom engelle
+    document.addEventListener('wheel', (e) => {
+      if (e.ctrlKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        preventZoom();
+        return false;
+      }
+    }, { passive: false });
+    
+    // Touch zoom engelle
+    let lastTouchEnd = 0;
+    document.addEventListener('touchend', (e) => {
+      const now = Date.now();
+      if (now - lastTouchEnd <= 300) {
+        e.preventDefault();
+        e.stopPropagation();
+        preventZoom();
+        return false;
+      }
+      lastTouchEnd = now;
+    }, { passive: false });
   }
 }
 
@@ -166,7 +260,6 @@ export default function App() {
     const checkAndShowTestBadge = async () => {
       if (currentScreen === 'home' && !badgeShownRef.current.has('first_blood')) {
         // Also check AsyncStorage to see if it was shown before
-        const { hasBadgeBeenShown } = await import('./src/services/badgeService');
         const alreadyShown = await hasBadgeBeenShown('first_blood');
         
         if (!alreadyShown) {
@@ -217,7 +310,7 @@ export default function App() {
 
   // 1. Splash Complete
   const handleSplashComplete = async (hasUser: boolean) => {
-    console.log('✅ [SPLASH] Complete! Has user:', hasUser);
+    logger.info('Splash complete', { hasUser }, 'SPLASH');
     
     try {
       if (hasUser) {
@@ -229,7 +322,7 @@ export default function App() {
           userData.is_pro = true;
           userData.isPro = true;
           await AsyncStorage.setItem('fan-manager-user', JSON.stringify(userData));
-          console.log('✅ [DEV] User set as PRO automatically');
+          logger.debug('User set as PRO automatically', undefined, 'DEV');
         } else {
           // User yoksa oluştur ve Pro yap
           const newUserData = {
@@ -238,40 +331,40 @@ export default function App() {
             isPro: true,
           };
           await AsyncStorage.setItem('fan-manager-user', JSON.stringify(newUserData));
-          console.log('✅ [DEV] New user created and set as PRO');
+          logger.debug('New user created and set as PRO', undefined, 'DEV');
         }
         
         // User exists → Go to Home (or check favorite teams)
         const hasTeams = await AsyncStorage.getItem('fan-manager-favorite-clubs');
         if (hasTeams) {
-          console.log('→ Going to HOME');
+          logNavigation('home');
           setCurrentScreen('home');
         } else {
-          console.log('→ Going to FAVORITE TEAMS');
+          logNavigation('favorite-teams');
           setCurrentScreen('favorite-teams');
         }
       } else {
         // No user → Language Selection
-        console.log('→ Going to LANGUAGE SELECTION');
+        logNavigation('language');
         setCurrentScreen('language');
       }
     } catch (error) {
-      console.error('Error in splash complete:', error);
+      logger.error('Error in splash complete', { error }, 'SPLASH');
       setCurrentScreen('language');
     }
   };
 
   // 2. Language Selection
   const handleLanguageSelect = async (lang: string) => {
-    console.log('✅ [LANGUAGE] Selected:', lang);
+    logger.info('Language selected', { lang }, 'LANGUAGE');
     await AsyncStorage.setItem('fan-manager-language', lang);
-    console.log('→ Going to AUTH');
+    logNavigation('auth');
     setCurrentScreen('auth');
   };
 
   // 3. Auth → Login Success
   const handleLoginSuccess = async () => {
-    console.log('✅ [AUTH] Login Success!');
+    logger.info('Login success', undefined, 'AUTH');
     // ✅ Her zaman Pro yap
     await AsyncStorage.setItem('fan-manager-user', JSON.stringify({ 
       authenticated: true,
@@ -280,33 +373,33 @@ export default function App() {
       isPremium: true,
       plan: 'pro'
     }));
-    console.log('✅ [AUTH] User set as PRO after login');
+    logger.debug('User set as PRO after login', undefined, 'AUTH');
     
     const hasTeams = await AsyncStorage.getItem('fan-manager-favorite-clubs');
     if (hasTeams) {
-      console.log('→ Going to HOME');
+      logNavigation('home');
       setCurrentScreen('home');
     } else {
-      console.log('→ Going to FAVORITE TEAMS');
+      logNavigation('favorite-teams');
       setCurrentScreen('favorite-teams');
     }
   };
 
   // 4. Auth → Forgot Password
   const handleForgotPassword = () => {
-    console.log('→ Going to FORGOT PASSWORD');
+    logNavigation('forgot-password');
     setCurrentScreen('forgot-password');
   };
 
   // 5. Auth → Register
   const handleRegister = () => {
-    console.log('→ Going to REGISTER');
+    logNavigation('register');
     setCurrentScreen('register');
   };
 
   // 6. Register → Success
   const handleRegisterSuccess = async () => {
-    console.log('✅ [REGISTER] Success!');
+    logger.info('Register success', undefined, 'REGISTER');
     // ✅ Her zaman Pro yap
     await AsyncStorage.setItem('fan-manager-user', JSON.stringify({ 
       authenticated: true,
@@ -315,28 +408,28 @@ export default function App() {
       isPremium: true,
       plan: 'pro'
     }));
-    console.log('✅ [REGISTER] User set as PRO after registration');
-    console.log('→ Going to FAVORITE TEAMS');
+    logger.debug('User set as PRO after registration', undefined, 'REGISTER');
+    logNavigation('favorite-teams');
     setCurrentScreen('favorite-teams');
   };
 
   // 7. Forgot Password → Back to Auth
   const handleForgotPasswordBack = () => {
-    console.log('→ Back to AUTH');
+    logNavigation('auth');
     setCurrentScreen('auth');
   };
 
   // 8. Register → Back to Auth
   const handleRegisterBack = () => {
-    console.log('→ Back to AUTH');
+    logNavigation('auth');
     setCurrentScreen('auth');
   };
 
   // 9. Favorite Teams → Complete
   const handleFavoriteTeamsComplete = async (selectedTeams: Array<{ id: number; name: string; colors: string[]; league?: string; type?: 'club' | 'national' }>) => {
-    console.log('✅ [FAVORITE TEAMS] Selected with IDs:', selectedTeams);
+    logger.info('Favorite teams selected', { teamIds: selectedTeams.map(t => t.id), count: selectedTeams.length }, 'FAVORITE_TEAMS');
     if (selectedTeams.length === 0) {
-      console.warn('⚠️ No teams selected!');
+      logger.warn('No teams selected', undefined, 'FAVORITE_TEAMS');
       return;
     }
     
@@ -350,45 +443,45 @@ export default function App() {
     }));
     
     await AsyncStorage.setItem('fan-manager-favorite-clubs', JSON.stringify(favoriteTeamsData));
-    console.log('💾 Saved favorite teams with IDs:', favoriteTeamsData);
+    logger.debug('Saved favorite teams', { favoriteTeamsData }, 'FAVORITE_TEAMS');
     
     // Takım seçimi sonrası MainTabs'a geç (Home tab default)
     // Kullanıcı profil ekranını görmek için tab menüsünden Profile'a tıklayabilir
-    console.log('→ Going to MainTabs (Home tab)');
+    logNavigation('home');
     setActiveTab('home');
     setCurrentScreen('home');
   };
 
   // 10. Matches → Profile
   const handleProfileClick = () => {
-    console.log('→ Going to PROFILE');
+    logNavigation('profile');
     setCurrentScreen('profile');
   };
 
   // 11. Bottom Navigation Tab Change
   const handleTabChange = (tab: string) => {
-    console.log('→ Tab changed:', tab);
+    logger.debug('Tab changed', { tab }, 'NAVIGATION');
     setActiveTab(tab);
     setCurrentScreen(tab as Screen);
   };
 
   // 12. Matches → Match Detail
   const handleMatchSelect = (matchId: string) => {
-    console.log('→ Match selected:', matchId);
+    logNavigation('match-detail', { matchId });
     setSelectedMatchId(matchId);
     setCurrentScreen('match-detail');
   };
 
   // 12b. Matches → Match Result Summary (for finished matches)
   const handleMatchResultSelect = (matchId: string) => {
-    console.log('→ Finished match selected:', matchId);
+    logNavigation('match-result-summary', { matchId });
     setSelectedMatchId(matchId);
     setCurrentScreen('match-result-summary');
   };
 
   // 13. Dashboard Navigation
   const handleDashboardNavigate = (screen: string, params?: any) => {
-    console.log('→ Dashboard navigate:', screen, params);
+    logNavigation(screen, params);
     
     switch (screen) {
       case 'notifications':
@@ -403,7 +496,7 @@ export default function App() {
             teamId: params.teamId,
             teamName: params.teamName,
           };
-          console.log(`✅ [DASHBOARD] Navigating to matches with team: ${params.teamName} (ID: ${params.teamId})`);
+          logger.debug(`Navigating to matches with team: ${params.teamName}`, { teamId: params.teamId }, 'DASHBOARD');
         }
         setCurrentScreen('matches');
         break;
@@ -433,29 +526,29 @@ export default function App() {
         break;
       case 'achievements':
         // TODO: Achievements page
-        console.log('Achievements page');
+        logger.debug('Achievements page navigation', undefined, 'DASHBOARD');
         break;
       default:
-        console.log('Unknown navigation target:', screen);
+        logger.warn('Unknown navigation target', { screen }, 'DASHBOARD');
     }
   };
 
   // 12. Profile → Settings
   const handleProfileSettings = () => {
-    console.log('→ Going to PROFILE SETTINGS');
+    logNavigation('profile-settings');
     setCurrentScreen('profile-settings');
   };
 
   // 13. Profile → Pro Upgrade
   // 16. Navigate to PRO Upgrade
   const handleProUpgrade = () => {
-    console.log('→ Going to PRO UPGRADE');
+    logNavigation('pro-upgrade');
     setCurrentScreen('pro-upgrade');
   };
 
   // 17. PRO Upgrade Success
   const handleUpgradeSuccess = async () => {
-    console.log('✅ [PRO UPGRADE] Success!');
+    logger.info('PRO upgrade success', undefined, 'PRO_UPGRADE');
     // Save PRO status to AsyncStorage
     const userDataStr = await AsyncStorage.getItem('fan-manager-user');
     if (userDataStr) {
@@ -463,42 +556,42 @@ export default function App() {
       userData.is_pro = true;
       userData.isPro = true; // Both formats for compatibility
       await AsyncStorage.setItem('fan-manager-user', JSON.stringify(userData));
-      console.log('✅ PRO status saved to AsyncStorage');
+      logger.debug('PRO status saved to AsyncStorage', undefined, 'PRO_UPGRADE');
     }
     await AsyncStorage.setItem('fan-manager-pro-status', 'true');
-    console.log('→ Going back to PROFILE');
+    logNavigation('profile');
     setCurrentScreen('profile');
   };
 
   // 14. Profile Settings → Change Password
   const handleNavigateToChangePassword = () => {
-    console.log('→ Going to CHANGE PASSWORD');
+    logNavigation('change-password');
     setCurrentScreen('change-password');
   };
 
   // 15. Profile Settings → Notifications
   const handleNavigateToNotifications = () => {
-    console.log('→ Going to NOTIFICATIONS');
+    logNavigation('notifications');
     setCurrentScreen('notifications');
   };
 
   // 16. Profile Settings → Delete Account
   const handleNavigateToDeleteAccount = () => {
-    console.log('→ Going to DELETE ACCOUNT');
+    logNavigation('delete-account');
     setCurrentScreen('delete-account');
   };
 
   // 17. Profile Settings → Logout
   const handleLogout = async () => {
-    console.log('🚪 [LOGOUT] Logging out...');
+    logger.info('Logging out', undefined, 'AUTH');
     try {
       // Sadece user session'ı temizle - dil ve takım seçimini koru
       await AsyncStorage.removeItem('fan-manager-user');
-      console.log('✅ User session cleared');
-      console.log('→ Going to AUTH');
+      logger.debug('User session cleared', undefined, 'AUTH');
+      logNavigation('auth');
       setCurrentScreen('auth');
     } catch (error) {
-      console.error('❌ Logout error:', error);
+      logger.error('Logout error', { error }, 'AUTH');
       // Hata olsa bile auth'a git
       setCurrentScreen('auth');
     }
@@ -506,15 +599,15 @@ export default function App() {
 
   // 18. Delete Account → Confirm
   const handleDeleteAccountConfirm = async () => {
-    console.log('🗑️ [DELETE ACCOUNT] Account deleted');
+    logger.info('Account deleted', undefined, 'DELETE_ACCOUNT');
     await AsyncStorage.clear();
-    console.log('→ Going to SPLASH');
+    logNavigation('splash');
     setCurrentScreen('splash');
   };
 
   // 19. Navigate to Legal Document
   const handleNavigateToLegal = (documentType: string) => {
-    console.log('→ Going to LEGAL DOCUMENT:', documentType);
+    logNavigation('legal', { documentType });
     setLegalDocumentType(documentType);
     setCurrentScreen('legal');
   };
@@ -566,7 +659,7 @@ export default function App() {
           return (
             <FavoriteTeamsScreen
               onComplete={handleFavoriteTeamsComplete}
-              onBack={() => setCurrentScreen('auth')}
+              onBack={() => setCurrentScreen('profile-settings')} // ✅ Bir önceki sayfa (Profil Ayarları)
             />
           );
         
@@ -610,7 +703,7 @@ export default function App() {
         
         case 'match-detail':
           if (!selectedMatchId) {
-            console.error('No matchId for MatchDetail');
+            logger.error('No matchId for MatchDetail', undefined, 'NAVIGATION');
             setCurrentScreen('home');
             return null;
           }
@@ -629,7 +722,7 @@ export default function App() {
         
         case 'match-result-summary':
           if (!selectedMatchId) {
-            console.error('No matchId for MatchResultSummary');
+            logger.error('No matchId for MatchResultSummary', undefined, 'NAVIGATION');
             setCurrentScreen('home');
             return null;
           }
@@ -656,7 +749,7 @@ export default function App() {
               onSettings={handleProfileSettings}
               onTeamSelect={(teamId, teamName) => {
                 // ✅ Takım seçildiğinde o takımın maçlarını göster
-                console.log(`✅ [PROFILE] Team selected: ${teamName} (ID: ${teamId})`);
+                logger.debug(`Team selected: ${teamName}`, { teamId }, 'PROFILE');
                 setSelectedTeamId(teamId); // Takım ID'sini kaydet
                 setCurrentScreen('matches'); // Matches ekranına git, orada filtreleme yapılacak
               }}
@@ -729,7 +822,7 @@ export default function App() {
           return <SplashScreen onComplete={handleSplashComplete} />;
       }
     } catch (error) {
-      console.error('❌ Screen render error:', error);
+      logger.error('Screen render error', { error, screen: currentScreen }, 'APP');
       return (
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>❌ Error loading screen</Text>
@@ -742,11 +835,9 @@ export default function App() {
   // Check if current screen should show bottom navigation
   const shouldShowBottomNav = ['home', 'matches', 'leaderboard', 'tournaments', 'profile'].includes(currentScreen);
 
-  // Web için console log
+  // Web için debug log
   if (Platform.OS === 'web' && __DEV__) {
-    console.log('🚀 App rendering, currentScreen:', currentScreen);
-    console.log('📱 Platform:', Platform.OS);
-    console.log('🎨 ThemeProvider:', ThemeProvider);
+    logger.debug('App rendering', { currentScreen, platform: Platform.OS }, 'APP');
   }
 
   return (
@@ -760,13 +851,6 @@ export default function App() {
                 <MaintenanceScreen />
               ) : (
                 <View style={{ flex: 1, backgroundColor: '#0F172A' }}>
-                  {Platform.OS === 'web' && __DEV__ && (
-                    <View style={{ padding: 10, backgroundColor: '#1E293B' }}>
-                      <Text style={{ color: '#FFF', fontSize: 12 }}>
-                        Debug: Screen = {currentScreen}
-                      </Text>
-                    </View>
-                  )}
                   {renderScreen()}
                   
                   {/* Fixed Profile Card Overlay - Only on home, matches, leaderboard */}
@@ -778,7 +862,6 @@ export default function App() {
                         onBadgePopupClose={async () => {
                           // Mark badge as shown when popup is closed
                           if (newBadge) {
-                            const { markBadgeAsShown } = await import('./src/services/badgeService');
                             await markBadgeAsShown(newBadge.id);
                             badgeShownRef.current.add(newBadge.id);
                           }
@@ -826,11 +909,35 @@ const styles = StyleSheet.create({
   },
   profileCardOverlay: {
     position: 'absolute',
-    top: 10, // 10px aşağı kaydırıldı
+    // ✅ Standard safe area for all screens (home, matches, leaderboard)
+    // iOS: Status bar (44px) için alan
+    // Android: Status bar için alan (0px, sistem halleder)
+    top: Platform.OS === 'ios' ? 44 : 0,
     left: 0,
     right: 0,
-    zIndex: 1000,
-    backgroundColor: '#0F172A',
-    paddingTop: Platform.OS === 'ios' ? 44 : 0,
+    zIndex: 9999,
+    elevation: 10,
+    backgroundColor: '#1E293B', // ✅ Farklı taban rengi (daha açık, renk ayrımı için)
+    borderBottomLeftRadius: 25, // ✅ Bottom bar gibi yuvarlatılmış alt köşeler
+    borderBottomRightRadius: 25,
+    borderTopWidth: 1, // ✅ İnce üst çizgi (resimdeki efekt ile aynı)
+    borderTopColor: 'rgba(255, 255, 255, 0.1)', // ✅ Hafif üst çizgi rengi (resimdeki efekt ile aynı)
+    borderBottomWidth: 2, // ✅ Kalın alt çizgi (renk ayrımı)
+    borderBottomColor: '#334155', // ✅ Alt çizgi rengi
+    paddingTop: 8,
+    paddingBottom: 8, // ✅ STANDART boşluk (16px için: 8+8=16)
+    paddingHorizontal: 0, // ✅ Yatay padding yok (ProfileCard kendi padding'ini yönetir)
+    pointerEvents: 'box-none',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 10,
+      },
+    }),
   },
 });

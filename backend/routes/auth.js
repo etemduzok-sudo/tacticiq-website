@@ -2,6 +2,13 @@
 const express = require('express');
 const router = express.Router();
 const { sendPasswordResetEmail, sendWelcomeEmail } = require('../services/emailService');
+const { createClient } = require('@supabase/supabase-js');
+
+// Supabase client
+const supabase = createClient(
+  process.env.SUPABASE_URL || 'https://jxdgiskusjljlpzvrzau.supabase.co',
+  process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp4ZGdpc2t1c2psamxwenZyemF1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzY3NTYzNTIsImV4cCI6MjA1MjMzMjM1Mn0.W4Tv6C6H_xr9T_UdUY3LgZPLMRJY1SJhvuPmw9dXYkk'
+);
 
 // Şifre sıfırlama isteği
 router.post('/forgot-password', async (req, res) => {
@@ -63,6 +70,81 @@ router.post('/send-welcome', async (req, res) => {
   } catch (error) {
     console.error('Welcome email error:', error);
     res.status(500).json({ error: 'Sunucu hatası' });
+  }
+});
+
+// Kullanıcı adı müsaitlik kontrolü
+router.get('/check-username/:username', async (req, res) => {
+  try {
+    const { username } = req.params;
+    const { currentUserId } = req.query; // Mevcut kullanıcının kendi username'ini kontrol ederken hariç tutmak için
+
+    if (!username || username.length < 3) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Kullanıcı adı en az 3 karakter olmalıdır' 
+      });
+    }
+
+    // Kullanıcı adı format kontrolü (sadece harf, rakam, alt çizgi)
+    const usernameRegex = /^[a-zA-Z0-9_]+$/;
+    if (!usernameRegex.test(username)) {
+      return res.json({ 
+        success: true,
+        available: false,
+        message: 'Kullanıcı adı sadece harf, rakam ve alt çizgi içerebilir' 
+      });
+    }
+
+    // ✅ DEV MODE: Her zaman kullanılabilir döndür (Supabase users tablosu henüz hazır değil)
+    const DEV_MODE = true;
+    if (DEV_MODE) {
+      console.log(`✅ [DEV] Username check: ${username} -> available (dev mode)`);
+      return res.json({ 
+        success: true,
+        available: true,
+        message: 'Kullanıcı adı kullanılabilir' 
+      });
+    }
+
+    // Supabase'de kontrol et (production'da kullanılacak)
+    let query = supabase
+      .from('users')
+      .select('id, username')
+      .ilike('username', username)
+      .limit(1);
+
+    // Eğer currentUserId varsa, kendi kullanıcısını hariç tut
+    if (currentUserId) {
+      query = query.neq('id', currentUserId);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('Username check error:', error);
+      return res.status(500).json({ 
+        success: false,
+        error: 'Veritabanı hatası' 
+      });
+    }
+
+    // Kullanıcı adı müsait mi?
+    const available = !data || data.length === 0;
+
+    res.json({ 
+      success: true,
+      available,
+      message: available 
+        ? 'Kullanıcı adı kullanılabilir' 
+        : 'Bu kullanıcı adı zaten kullanılıyor'
+    });
+  } catch (error) {
+    console.error('Check username error:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Sunucu hatası' 
+    });
   }
 });
 

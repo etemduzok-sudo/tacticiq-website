@@ -5,6 +5,31 @@ const helmet = require('helmet');
 const compression = require('compression');
 require('dotenv').config();
 
+// 🛡️ Global Error Handlers - Backend'in sürekli durmasını engeller
+process.on('uncaughtException', (error) => {
+  console.error('❌ UNCAUGHT EXCEPTION - Backend durduruluyor:', error);
+  console.error('Stack:', error.stack);
+  // Critical error - restart gerekli
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ UNHANDLED REJECTION - Promise rejected:', reason);
+  console.error('Promise:', promise);
+  // Log error but don't crash - allow server to continue
+  // Sadece log'la, process.exit yapma
+});
+
+process.on('SIGTERM', () => {
+  console.log('🛑 SIGTERM signal received - shutting down gracefully');
+  process.exit(0);
+});
+
+process.on('SIGINT', () => {
+  console.log('🛑 SIGINT signal received - shutting down gracefully');
+  process.exit(0);
+});
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -30,8 +55,14 @@ const { rateLimiterMiddleware, getStats } = require('./middleware/rateLimiter');
 app.use(rateLimiterMiddleware);
 
 // 🚀 Aggressive Cache Service (maximize API usage)
-const aggressiveCacheService = require('./services/aggressiveCacheService');
-aggressiveCacheService.startAggressiveCaching();
+try {
+  const aggressiveCacheService = require('./services/aggressiveCacheService');
+  aggressiveCacheService.startAggressiveCaching();
+} catch (error) {
+  console.error('❌ Failed to start aggressive cache service:', error.message);
+  console.error('Stack:', error.stack);
+  // Don't exit - continue without aggressive caching
+}
 
 // Routes
 const matchesRouter = require('./routes/matches');
@@ -123,9 +154,15 @@ app.listen(PORT, () => {
   // Canlı maç varsa 10 saniyeye düşer, gece 60 saniyeye çıkar
   // ============================================
   
-  const smartSyncService = require('./services/smartSyncService');
-  smartSyncService.startSync();
-  console.log(`🧠 Smart adaptive sync started (every 12s, adaptive 10s-60s)`);
+  try {
+    const smartSyncService = require('./services/smartSyncService');
+    smartSyncService.startSync();
+    console.log(`🧠 Smart adaptive sync started (every 12s, adaptive 10s-60s)`);
+  } catch (error) {
+    console.error('❌ Failed to start smart sync service:', error.message);
+    console.error('Stack:', error.stack);
+    // Don't exit - continue without smart sync
+  }
   
   // ============================================
   // MONITORING & AUTO-RESTART SERVICE
@@ -138,11 +175,19 @@ app.listen(PORT, () => {
     const monitoringService = require('./services/monitoringService');
     // Start monitoring after a delay (to avoid checking during initial startup)
     setTimeout(() => {
-      monitoringService.startMonitoring();
+      try {
+        monitoringService.startMonitoring();
+        console.log(`🔍 Monitoring service started`);
+      } catch (error) {
+        console.error('❌ Failed to start monitoring service:', error.message);
+        console.error('Stack:', error.stack);
+        // Don't exit - continue without monitoring
+      }
     }, 10000); // 10 saniye sonra başlat
     console.log(`🔍 Monitoring service will start in 10 seconds`);
   } catch (error) {
     console.warn('⚠️ Monitoring service could not be loaded:', error.message);
+    // Don't exit - continue without monitoring
   }
   
   // NOTE: liveMatchService ve dailySyncService devre dışı (smartSync hepsini yapıyor)

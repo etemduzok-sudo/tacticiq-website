@@ -259,11 +259,33 @@ function startSync() {
   console.log(`║ Current UTC Time: ${String(currentHourUTC).padStart(2, '0')}:${String(now.getUTCMinutes()).padStart(2, '0')}                                    ║`);
   console.log('╚════════════════════════════════════════════════════════╝\n');
   
-  // Run immediately
-  smartFetch();
+  // Run immediately - Wrap in try-catch
+  try {
+    smartFetch().catch((error) => {
+      console.error('❌ [SMART SYNC] Error in initial smartFetch:', error.message);
+      console.error('Stack:', error.stack);
+      // Continue - don't crash
+    });
+  } catch (error) {
+    console.error('❌ [SMART SYNC] Error starting smartFetch:', error.message);
+    console.error('Stack:', error.stack);
+    // Continue - don't crash
+  }
   
-  // Then run on interval
-  syncTimer = setInterval(smartFetch, currentInterval);
+  // Then run on interval - Wrap in try-catch
+  syncTimer = setInterval(() => {
+    try {
+      smartFetch().catch((error) => {
+        console.error('❌ [SMART SYNC] Error in smartFetch interval:', error.message);
+        console.error('Stack:', error.stack);
+        // Continue - don't crash
+      });
+    } catch (error) {
+      console.error('❌ [SMART SYNC] Error in smartFetch interval wrapper:', error.message);
+      console.error('Stack:', error.stack);
+      // Continue - don't crash
+    }
+  }, currentInterval);
 }
 
 function stopSync() {

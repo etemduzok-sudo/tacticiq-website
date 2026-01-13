@@ -185,11 +185,46 @@ function startAggressiveCaching() {
   refreshTeamSeasons();
   refreshStandings();
   
-  // Set intervals
-  setInterval(refreshLiveMatches, REFRESH_INTERVALS.liveMatches);
-  setInterval(refreshUpcomingMatches, REFRESH_INTERVALS.upcomingMatches);
-  setInterval(refreshTeamSeasons, REFRESH_INTERVALS.teamSeasons);
-  setInterval(refreshStandings, REFRESH_INTERVALS.standings);
+  // Set intervals - Wrap in try-catch to prevent crashes
+  setInterval(() => {
+    try {
+      refreshLiveMatches();
+    } catch (error) {
+      console.error('❌ [AGGRESSIVE CACHE] Error in refreshLiveMatches interval:', error.message);
+      console.error('Stack:', error.stack);
+      // Continue - don't crash
+    }
+  }, REFRESH_INTERVALS.liveMatches);
+  
+  setInterval(() => {
+    try {
+      refreshUpcomingMatches();
+    } catch (error) {
+      console.error('❌ [AGGRESSIVE CACHE] Error in refreshUpcomingMatches interval:', error.message);
+      console.error('Stack:', error.stack);
+      // Continue - don't crash
+    }
+  }, REFRESH_INTERVALS.upcomingMatches);
+  
+  setInterval(() => {
+    try {
+      refreshTeamSeasons();
+    } catch (error) {
+      console.error('❌ [AGGRESSIVE CACHE] Error in refreshTeamSeasons interval:', error.message);
+      console.error('Stack:', error.stack);
+      // Continue - don't crash
+    }
+  }, REFRESH_INTERVALS.teamSeasons);
+  
+  setInterval(() => {
+    try {
+      refreshStandings();
+    } catch (error) {
+      console.error('❌ [AGGRESSIVE CACHE] Error in refreshStandings interval:', error.message);
+      console.error('Stack:', error.stack);
+      // Continue - don't crash
+    }
+  }, REFRESH_INTERVALS.standings);
   
   // Stats logging every 10 minutes
   setInterval(() => {

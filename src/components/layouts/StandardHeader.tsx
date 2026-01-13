@@ -21,11 +21,7 @@ interface StandardHeaderProps {
 /**
  * Standardized Header Component
  * 
- * Provides consistent header structure:
- * - Back button (optional)
- * - Title
- * - Right action button (optional)
- * - Consistent styling
+ * Simple, working header structure
  */
 export const StandardHeader: React.FC<StandardHeaderProps> = ({
   title,
@@ -39,39 +35,37 @@ export const StandardHeader: React.FC<StandardHeaderProps> = ({
       !showBorder && styles.noBorder,
     ]}>
       {/* Left: Back Button */}
-      <View style={styles.leftSection}>
+      <View style={styles.leftContainer}>
         {onBack ? (
           <TouchableOpacity
             onPress={onBack}
-            style={headerStyles.headerButton}
-            activeOpacity={0.8}
+            style={styles.iconButton}
+            activeOpacity={0.7}
           >
-            <Ionicons name="arrow-back" size={SIZES.iconMd} color={COLORS.dark.foreground} />
+            <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
-        ) : (
-          <View style={headerStyles.headerButton} />
-        )}
+        ) : null}
       </View>
 
       {/* Center: Title */}
-      <View style={styles.centerSection}>
+      <View style={styles.titleContainer}>
         <Text style={headerStyles.headerTitle} numberOfLines={1}>
           {title}
         </Text>
       </View>
 
       {/* Right: Action Button */}
-      <View style={styles.rightSection}>
+      <View style={styles.rightContainer}>
         {rightAction ? (
           <TouchableOpacity
             onPress={rightAction.onPress}
-            style={headerStyles.headerButton}
-            activeOpacity={0.8}
+            style={styles.iconButton}
+            activeOpacity={0.7}
           >
             <Ionicons 
               name={rightAction.icon as any} 
-              size={SIZES.iconMd} 
-              color={COLORS.dark.foreground} 
+              size={24} 
+              color="#FFFFFF" 
             />
             {rightAction.badge !== undefined && rightAction.badge > 0 && (
               <View style={styles.badge}>
@@ -79,27 +73,36 @@ export const StandardHeader: React.FC<StandardHeaderProps> = ({
               </View>
             )}
           </TouchableOpacity>
-        ) : (
-          <View style={headerStyles.headerButton} />
-        )}
+        ) : null}
       </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  leftSection: {
-    width: SIZES.buttonIconSize,
-    alignItems: 'flex-start',
+  leftContainer: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  centerSection: {
+  titleContainer: {
     flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
     paddingHorizontal: SPACING.sm,
   },
-  rightSection: {
-    width: SIZES.buttonIconSize,
-    alignItems: 'flex-end',
+  rightContainer: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   noBorder: {
     borderBottomWidth: 0,

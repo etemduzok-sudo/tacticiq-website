@@ -1,6 +1,7 @@
 // useFavoriteTeams Hook - Get user's favorite teams
 import { useState, useEffect } from 'react';
 import { getFavoriteTeams, setFavoriteTeams as saveFavoriteTeams, validateFavoriteTeams } from '../utils/storageUtils';
+import { logger } from '../utils/logger';
 
 interface FavoriteTeam {
   id: number;
@@ -24,14 +25,13 @@ export function useFavoriteTeams() {
       
       if (teams && teams.length > 0) {
         setFavoriteTeams(teams);
-        console.log('✅ Loaded favorite teams:', teams.length, teams);
-        console.log('📋 Team IDs:', teams.map(t => `${t.name} (${t.id})`));
+        logger.info('Loaded favorite teams', { count: teams.length, teams: teams.map(t => ({ name: t.name, id: t.id })) }, 'FAVORITE_TEAMS');
       } else {
         setFavoriteTeams([]);
-        console.log('⚠️ No favorite teams found');
+        logger.debug('No favorite teams found', undefined, 'FAVORITE_TEAMS');
       }
     } catch (error) {
-      console.error('Error loading favorite teams:', error);
+      logger.error('Error loading favorite teams', { error }, 'FAVORITE_TEAMS');
       setFavoriteTeams([]);
     } finally {
       setLoading(false);
@@ -44,10 +44,10 @@ export function useFavoriteTeams() {
       const success = await saveFavoriteTeams(updated);
       if (success) {
         setFavoriteTeams(updated);
-        console.log('✅ Added favorite team:', team.name);
+        logger.info('Added favorite team', { teamName: team.name, teamId: team.id }, 'FAVORITE_TEAMS');
       }
     } catch (error) {
-      console.error('Error adding favorite team:', error);
+      logger.error('Error adding favorite team', { error, team }, 'FAVORITE_TEAMS');
     }
   };
 
@@ -57,10 +57,10 @@ export function useFavoriteTeams() {
       const success = await saveFavoriteTeams(updated);
       if (success) {
         setFavoriteTeams(updated);
-        console.log('✅ Removed favorite team:', teamId);
+        logger.info('Removed favorite team', { teamId }, 'FAVORITE_TEAMS');
       }
     } catch (error) {
-      console.error('Error removing favorite team:', error);
+      logger.error('Error removing favorite team', { error, teamId }, 'FAVORITE_TEAMS');
     }
   };
 

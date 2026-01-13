@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import api from '../services/api';
 import { useFavoriteTeams } from './useFavoriteTeams';
 import { Match, ApiResponse } from '../types/match.types';
+import { logger } from '../utils/logger';
 
 interface UseMatchesResult {
   matches: Match[];
@@ -55,7 +56,7 @@ export function useMatches(date?: string, filterByFavorites: boolean = false): U
       );
     });
 
-    console.log(`🎯 Filtered ${filtered.length} matches from ${matchList.length} (favorites: ${favoriteTeamNames.join(', ')})`);
+    logger.debug(`Filtered matches`, { filtered: filtered.length, total: matchList.length, favorites: favoriteTeamNames }, 'MATCHES');
     return filtered;
   };
 
@@ -76,12 +77,12 @@ export function useMatches(date?: string, filterByFavorites: boolean = false): U
           const filteredMatches = filterMatchesByFavorites(response.data);
           setMatches(filteredMatches);
           hasMatches = filteredMatches.length > 0;
-          console.log(`✅ Fetched ${filteredMatches.length} matches for ${targetDate} (total: ${response.data.length})`);
+          logger.info(`Fetched matches for ${targetDate}`, { filtered: filteredMatches.length, total: response.data.length, date: targetDate }, 'MATCHES');
         } else {
           setMatches([]);
         }
       } catch (err: any) {
-        console.error('Error fetching matches by date:', err);
+        logger.error('Error fetching matches by date', { error: err, date: targetDate }, 'MATCHES');
         setMatches([]);
         // Don't set error here, try to fetch live matches anyway
       }
@@ -93,12 +94,12 @@ export function useMatches(date?: string, filterByFavorites: boolean = false): U
           const filteredLive = filterMatchesByFavorites(liveResponse.data);
           setLiveMatches(filteredLive);
           hasLiveMatches = filteredLive.length > 0;
-          console.log(`🔴 ${filteredLive.length} live matches (total: ${liveResponse.data.length})`);
+          logger.info(`${filteredLive.length} live matches`, { filtered: filteredLive.length, total: liveResponse.data.length }, 'MATCHES');
         } else {
           setLiveMatches([]);
         }
       } catch (err: any) {
-        console.warn('Error fetching live matches:', err);
+        logger.warn('Error fetching live matches', { error: err }, 'MATCHES');
         setLiveMatches([]);
         // Don't fail the whole request if live matches fail
       }
@@ -113,7 +114,7 @@ export function useMatches(date?: string, filterByFavorites: boolean = false): U
       }
 
     } catch (err: any) {
-      console.error('Error in fetchMatches:', err);
+      logger.error('Error in fetchMatches', { error: err, date, filterByFavorites }, 'MATCHES');
       setError(err.message || 'Maçlar yüklenemedi');
     } finally {
       setLoading(false);
@@ -156,10 +157,10 @@ export function useLeagueMatches(leagueId: number, season?: number) {
         
         if (response.success && response.data) {
           setMatches(response.data);
-          console.log(`✅ Fetched ${response.data.length} matches for league ${leagueId}`);
+          logger.info(`Fetched matches for league ${leagueId}`, { count: response.data.length, leagueId, season }, 'MATCHES');
         }
       } catch (err: any) {
-        console.error('Error fetching league matches:', err);
+        logger.error('Error fetching league matches', { error: err, leagueId, season }, 'MATCHES');
         setError(err.message || 'Failed to fetch league matches');
       } finally {
         setLoading(false);
@@ -200,9 +201,9 @@ export function useMatchDetails(matchId: number) {
         if (eventsRes.success) setEvents(eventsRes.data);
         if (lineupsRes.success) setLineups(lineupsRes.data);
 
-        console.log(`✅ Fetched details for match ${matchId}`);
+        logger.info(`Fetched details for match ${matchId}`, { matchId }, 'MATCH_DETAILS');
       } catch (err: any) {
-        console.error('Error fetching match details:', err);
+        logger.error('Error fetching match details', { error: err, matchId }, 'MATCH_DETAILS');
         setError(err.message || 'Failed to fetch match details');
       } finally {
         setLoading(false);
@@ -231,10 +232,10 @@ export function useLeagueStandings(leagueId: number, season?: number) {
         
         if (response.success && response.data?.[0]?.league?.standings) {
           setStandings(response.data[0].league.standings[0]);
-          console.log(`✅ Fetched standings for league ${leagueId}`);
+          logger.info(`Fetched standings for league ${leagueId}`, { leagueId, season }, 'STANDINGS');
         }
       } catch (err: any) {
-        console.error('Error fetching standings:', err);
+        logger.error('Error fetching standings', { error: err, leagueId, season }, 'STANDINGS');
         setError(err.message || 'Failed to fetch standings');
       } finally {
         setLoading(false);

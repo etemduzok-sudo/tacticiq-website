@@ -88,129 +88,203 @@ async function makeRequest(endpoint, params = {}, cacheKey = null, cacheDuration
 }
 
 // ====================
+// MATCH FILTERING
+// ====================
+
+// ✅ Ortak filtreleme fonksiyonu: Sadece belirtilen maçlar çekilecek
+function filterMatches(matches) {
+  if (!matches || !Array.isArray(matches) || matches.length === 0) {
+    return [];
+  }
+
+  return matches.filter(match => {
+    const leagueName = (match.league?.name || '').toLowerCase();
+    const leagueType = (match.league?.type || '').toLowerCase();
+    const country = (match.league?.country || '').toLowerCase();
+    const homeTeamName = (match.teams?.home?.name || '').toLowerCase();
+    const awayTeamName = (match.teams?.away?.name || '').toLowerCase();
+    
+    // ❌ EXCLUDE: Kadın futbol ligi maçları
+    const isWomens = leagueName.includes('women') ||
+                    leagueName.includes(' w ') ||
+                    leagueName.includes(' w.') ||
+                    leagueName.includes('womens') ||
+                    leagueName.includes('feminine') ||
+                    leagueName.includes('ladies') ||
+                    leagueName.includes('girls') ||
+                    homeTeamName.includes('women') ||
+                    homeTeamName.includes(' w ') ||
+                    homeTeamName.includes('ladies') ||
+                    awayTeamName.includes('women') ||
+                    awayTeamName.includes(' w ') ||
+                    awayTeamName.includes('ladies');
+    
+    if (isWomens) {
+      return false;
+    }
+    
+    // ❌ EXCLUDE: U18, U19, U20, U21, U23, U17, Youth takımları
+    const isYouth = leagueName.includes('u18') ||
+                   leagueName.includes('u19') ||
+                   leagueName.includes('u20') ||
+                   leagueName.includes('u21') ||
+                   leagueName.includes('u23') ||
+                   leagueName.includes('u17') ||
+                   leagueName.includes('under 18') ||
+                   leagueName.includes('under 19') ||
+                   leagueName.includes('under 20') ||
+                   leagueName.includes('under 21') ||
+                   leagueName.includes('youth') ||
+                   leagueName.includes('reserve') ||
+                   homeTeamName.includes('u18') ||
+                   homeTeamName.includes('u19') ||
+                   homeTeamName.includes('u20') ||
+                   homeTeamName.includes('u21') ||
+                   homeTeamName.includes('youth') ||
+                   awayTeamName.includes('u18') ||
+                   awayTeamName.includes('u19') ||
+                   awayTeamName.includes('u20') ||
+                   awayTeamName.includes('u21') ||
+                   awayTeamName.includes('youth');
+    
+    if (isYouth) {
+      return false;
+    }
+    
+    // ❌ EXCLUDE: Alt ligler (2. lig, 3. lig, vb.)
+    const isLowerLeague = leagueName.includes('2.') ||
+                         leagueName.includes('second') ||
+                         leagueName.includes('third') ||
+                         leagueName.includes('fourth') ||
+                         leagueName.includes('division 2') ||
+                         leagueName.includes('division 3') ||
+                         leagueName.includes('liga 2') ||
+                         leagueName.includes('liga 3');
+    
+    if (isLowerLeague) {
+      return false;
+    }
+    
+    // ✅ INCLUDE: Sadece belirtilen maçlar
+    
+    // 1. Ülkelerin en üst klasman erkek futbol takımlarının maçları
+    const isTopLeague = leagueName.includes('premier league') ||
+                       leagueName.includes('la liga') ||
+                       leagueName.includes('serie a') ||
+                       leagueName.includes('bundesliga') ||
+                       leagueName.includes('ligue 1') ||
+                       leagueName.includes('süper lig') ||
+                       leagueName.includes('super lig') ||
+                       leagueName.includes('primeira liga') ||
+                       leagueName.includes('eredivisie') ||
+                       leagueName.includes('scottish premiership') ||
+                       leagueName.includes('belgian pro league') ||
+                       leagueName.includes('austrian bundesliga') ||
+                       leagueName.includes('swiss super league') ||
+                       leagueName.includes('russian premier league') ||
+                       (leagueName.includes('championship') && country === 'england');
+    
+    // 2. Ülkedeki yerel turnuvalar (Türkiye Kupası, FA Cup, Copa del Rey, vb.)
+    const isLocalCup = (leagueName.includes('cup') ||
+                       leagueName.includes('fa cup') ||
+                       leagueName.includes('copa del rey') ||
+                       leagueName.includes('coppa italia') ||
+                       leagueName.includes('dfb pokal') ||
+                       leagueName.includes('coupe de france') ||
+                       leagueName.includes('türkiye kupası') ||
+                       leagueName.includes('turkey cup') ||
+                       leagueName.includes('tff kupa') ||
+                       leagueName.includes('kupa')) &&
+                       !leagueName.includes('women') &&
+                       !leagueName.includes('youth') &&
+                       !leagueName.includes('u18') &&
+                       !leagueName.includes('u19') &&
+                       !leagueName.includes('u20') &&
+                       !leagueName.includes('u21');
+    
+    // 3. FIFA Dünya Kupası - gruplar ve eleme turlarındaki maçların tamamı
+    const isFIFA = (leagueName.includes('world cup') ||
+                   leagueName.includes('fifa world cup') ||
+                   leagueName.includes('world cup qualification') ||
+                   leagueName.includes('world cup group') ||
+                   leagueName.includes('world cup qualifiers') ||
+                   leagueName.includes('copa america') ||
+                   leagueName.includes('africa cup') ||
+                   leagueName.includes('asian cup') ||
+                   leagueName.includes('concacaf')) &&
+                   !leagueName.includes('women') &&
+                   !leagueName.includes('youth');
+    
+    // 4. UEFA kupalarındaki maçlar
+    const isUEFA = (leagueName.includes('uefa') ||
+                   leagueName.includes('champions league') ||
+                   leagueName.includes('europa league') ||
+                   leagueName.includes('europa conference') ||
+                   leagueName.includes('euro') ||
+                   leagueName.includes('nations league') ||
+                   leagueName.includes('european championship') ||
+                   leagueName.includes('euro qualification')) &&
+                   !leagueName.includes('women') &&
+                   !leagueName.includes('youth');
+    
+    // ✅ Sadece bu kategorilerden maçlar çekilecek
+    return isTopLeague || isLocalCup || isFIFA || isUEFA;
+  });
+}
+
+// ====================
 // API METHODS
 // ====================
 
 // Get live matches
 async function getLiveMatches() {
-  return makeRequest('/fixtures', { live: 'all' }, 'live-matches', 60); // 1 min cache
+  const data = await makeRequest('/fixtures', { live: 'all' }, 'live-matches', 60); // 1 min cache
+  if (data.response && data.response.length > 0) {
+    const filtered = filterMatches(data.response);
+    return {
+      ...data,
+      response: filtered,
+      results: filtered.length,
+    };
+  }
+  return data;
 }
 
 // Get fixtures by date
 async function getFixturesByDate(date) {
-  return makeRequest('/fixtures', { date }, `fixtures-${date}`, 1800); // 30 min cache
+  const data = await makeRequest('/fixtures', { date }, `fixtures-${date}`, 1800); // 30 min cache
+  if (data.response && data.response.length > 0) {
+    const filtered = filterMatches(data.response);
+    return {
+      ...data,
+      response: filtered,
+      results: filtered.length,
+    };
+  }
+  return data;
 }
 
 // Get fixtures by league
 async function getFixturesByLeague(leagueId, season = 2024) {
-  return makeRequest('/fixtures', { league: leagueId, season }, `fixtures-league-${leagueId}-${season}`, 3600);
+  const data = await makeRequest('/fixtures', { league: leagueId, season }, `fixtures-league-${leagueId}-${season}`, 3600);
+  if (data.response && data.response.length > 0) {
+    const filtered = filterMatches(data.response);
+    return {
+      ...data,
+      response: filtered,
+      results: filtered.length,
+    };
+  }
+  return data;
 }
 
 // Get fixtures by team (only top leagues, UEFA/FIFA, and local cups)
 async function getFixturesByTeam(teamId, season = 2025) { // 2025-26 sezonu
   const data = await makeRequest('/fixtures', { team: teamId, season }, `fixtures-team-${teamId}-${season}`, 3600);
   
-  // Filter: Only MEN'S top leagues, UEFA/FIFA competitions, and local cups
+  // ✅ Ortak filtreleme fonksiyonunu kullan
   if (data.response && data.response.length > 0) {
-    const filtered = data.response.filter(match => {
-      const leagueName = (match.league?.name || '').toLowerCase();
-      const leagueType = (match.league?.type || '').toLowerCase();
-      const country = (match.league?.country || '').toLowerCase();
-      
-      // ✅ EXCLUDE: Women's teams, women's leagues, women's cups
-      const isWomens = leagueName.includes('women') ||
-                      leagueName.includes(' w ') ||
-                      leagueName.includes(' w.') ||
-                      leagueName.includes('womens') ||
-                      leagueName.includes('feminine') ||
-                      leagueName.includes('ladies') ||
-                      leagueName.includes('girls') ||
-                      (match.teams?.home?.name && (
-                        match.teams.home.name.toLowerCase().includes('women') ||
-                        match.teams.home.name.toLowerCase().includes(' w ') ||
-                        match.teams.home.name.toLowerCase().includes('ladies')
-                      )) ||
-                      (match.teams?.away?.name && (
-                        match.teams.away.name.toLowerCase().includes('women') ||
-                        match.teams.away.name.toLowerCase().includes(' w ') ||
-                        match.teams.away.name.toLowerCase().includes('ladies')
-                      ));
-      
-      if (isWomens) {
-        return false; // Exclude women's matches
-      }
-      
-      // ✅ EXCLUDE: Youth teams and lower leagues
-      const isLowerLeague = leagueName.includes('2.') ||
-                           leagueName.includes('second') ||
-                           leagueName.includes('third') ||
-                           leagueName.includes('fourth') ||
-                           leagueName.includes('reserve') ||
-                           leagueName.includes('youth') ||
-                           leagueName.includes('u21') ||
-                           leagueName.includes('u19') ||
-                           leagueName.includes('u20') ||
-                           leagueName.includes('u23') ||
-                           leagueName.includes('u17') ||
-                           leagueName.includes('u18');
-      
-      if (isLowerLeague) {
-        return false; // Exclude lower leagues
-      }
-      
-      // ✅ INCLUDE: Only MEN'S competitions
-      // 1. Top tier MEN'S leagues (Premier League, La Liga, Serie A, Bundesliga, Ligue 1, Süper Lig, etc.)
-      const isTopLeague = leagueName.includes('premier league') ||
-                         leagueName.includes('la liga') ||
-                         leagueName.includes('serie a') ||
-                         leagueName.includes('bundesliga') ||
-                         leagueName.includes('ligue 1') ||
-                         leagueName.includes('süper lig') ||
-                         leagueName.includes('super lig') ||
-                         leagueName.includes('primeira liga') ||
-                         leagueName.includes('eredivisie') ||
-                         (leagueName.includes('championship') && country === 'england');
-      
-      // 2. UEFA MEN'S competitions (Champions League, Europa League, Nations League, Euro, etc.)
-      const isUEFA = (leagueName.includes('uefa') ||
-                    leagueName.includes('champions league') ||
-                    leagueName.includes('europa league') ||
-                    leagueName.includes('euro') ||
-                    leagueName.includes('nations league') ||
-                    leagueName.includes('european championship')) &&
-                    !leagueName.includes('women');
-      
-      // 3. FIFA MEN'S competitions (World Cup, etc.)
-      const isFIFA = (leagueName.includes('world cup') ||
-                    leagueName.includes('fifa') ||
-                    leagueName.includes('copa america') ||
-                    leagueName.includes('africa cup') ||
-                    leagueName.includes('asian cup')) &&
-                    !leagueName.includes('women');
-      
-      // 4. Local MEN'S cups (Cup, FA Cup, Copa del Rey, etc.)
-      const isLocalCup = (leagueName.includes('cup') ||
-                        leagueName.includes('fa cup') ||
-                        leagueName.includes('copa del rey') ||
-                        leagueName.includes('coppa italia') ||
-                        leagueName.includes('dfb pokal') ||
-                        leagueName.includes('coupe de france') ||
-                        leagueName.includes('türkiye kupası') ||
-                        leagueName.includes('turkey cup')) &&
-                        !leagueName.includes('women');
-      
-      // 5. MEN'S National team matches (qualification, friendly, etc.)
-      const isNationalTeam = (leagueType === 'cup' || match.teams?.home?.national || match.teams?.away?.national) && (
-        leagueName.includes('qualification') ||
-        leagueName.includes('friendly') ||
-        leagueName.includes('international') ||
-        leagueName.includes('world cup qualification') ||
-        leagueName.includes('euro qualification')
-      ) && !leagueName.includes('women');
-      
-      return isTopLeague || isUEFA || isFIFA || isLocalCup || isNationalTeam;
-    });
-    
+    const filtered = filterMatches(data.response);
     return {
       ...data,
       response: filtered,
@@ -280,12 +354,30 @@ async function getLeagues(country = null) {
 
 // Get team's last matches
 async function getTeamLastMatches(teamId, limit = 10) {
-  return makeRequest('/fixtures', { team: teamId, last: limit }, `team-last-${teamId}-${limit}`, 1800); // 30 min cache
+  const data = await makeRequest('/fixtures', { team: teamId, last: limit }, `team-last-${teamId}-${limit}`, 1800); // 30 min cache
+  if (data.response && data.response.length > 0) {
+    const filtered = filterMatches(data.response);
+    return {
+      ...data,
+      response: filtered,
+      results: filtered.length,
+    };
+  }
+  return data;
 }
 
 // Get team's upcoming matches
 async function getTeamUpcomingMatches(teamId, limit = 10) {
-  return makeRequest('/fixtures', { team: teamId, next: limit }, `team-next-${teamId}-${limit}`, 1800); // 30 min cache
+  const data = await makeRequest('/fixtures', { team: teamId, next: limit }, `team-next-${teamId}-${limit}`, 1800); // 30 min cache
+  if (data.response && data.response.length > 0) {
+    const filtered = filterMatches(data.response);
+    return {
+      ...data,
+      response: filtered,
+      results: filtered.length,
+    };
+  }
+  return data;
 }
 
 // ====================

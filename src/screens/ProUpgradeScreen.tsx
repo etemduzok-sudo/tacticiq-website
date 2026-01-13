@@ -4,7 +4,6 @@ import {
   Text, 
   StyleSheet, 
   ScrollView, 
-  SafeAreaView, 
   TouchableOpacity, 
   ActivityIndicator,
   Alert,
@@ -12,6 +11,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import iapService, { PremiumProduct } from '../services/iapService';
+import { ScreenLayout, StandardHeader } from '../components/layouts';
 
 interface ProUpgradeScreenProps {
   onBack: () => void;
@@ -80,24 +80,17 @@ export default function ProUpgradeScreen({ onBack, onUpgradeSuccess }: ProUpgrad
   ];
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <LinearGradient
-        colors={['#0F172A', '#1E293B', '#0F172A']}
-        style={styles.container}
-      >
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={onBack} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color="#F8FAFB" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Premium Üyelik</Text>
-          <TouchableOpacity onPress={handleRestorePurchases} style={styles.restoreButton}>
-            <Ionicons name="refresh" size={20} color="#059669" />
-            <Text style={styles.restoreText}>Geri Yükle</Text>
-          </TouchableOpacity>
-        </View>
+    <ScreenLayout safeArea={true} scrollable={false} gradient={true}>
+      <StandardHeader
+        title="Premium Üyelik"
+        onBack={onBack}
+        rightAction={{
+          icon: 'refresh',
+          onPress: handleRestorePurchases,
+        }}
+      />
 
-        <ScrollView 
+      <ScrollView 
           style={styles.scrollView}
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
@@ -201,54 +194,11 @@ export default function ProUpgradeScreen({ onBack, onUpgradeSuccess }: ProUpgrad
             </Text>
           </View>
         </ScrollView>
-      </LinearGradient>
-    </SafeAreaView>
+    </ScreenLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#0F172A',
-  },
-  container: {
-    flex: 1,
-  },
-  
-  // Header
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(5, 150, 105, 0.2)',
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(30, 41, 59, 0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#F8FAFB',
-  },
-  restoreButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  restoreText: {
-    fontSize: 12,
-    color: '#059669',
-    fontWeight: '500',
-  },
-  
   // Content
   scrollView: {
     flex: 1,

@@ -32,9 +32,6 @@ export function BottomNavigation({ activeTab, onTabChange }: BottomNavigationPro
               ]}
               activeOpacity={0.7}
             >
-              {/* Active Indicator */}
-              {isActive && <View style={styles.activeIndicator} />}
-
               {/* Icon */}
               <Ionicons
                 name={isActive ? tab.activeIcon : tab.icon}
@@ -46,6 +43,9 @@ export function BottomNavigation({ activeTab, onTabChange }: BottomNavigationPro
               <Text style={[styles.label, isActive && styles.activeLabel]}>
                 {tab.label}
               </Text>
+
+              {/* Active Indicator - Yazının altında */}
+              {isActive && <View style={styles.activeIndicator} />}
             </TouchableOpacity>
           );
         })}
@@ -63,15 +63,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#0F172A',
     borderTopLeftRadius: 25,
     borderTopRightRadius: 25,
+    borderTopWidth: 2, // ✅ Üst çizgi (profil kartının alt çizgisi ile aynı)
+    borderTopColor: '#334155', // ✅ Üst çizgi rengi (profil kartının alt çizgisi ile aynı)
     ...Platform.select({
       ios: {
+        // ✅ Profil kartının alt çizgisindeki gölge efekti (aynısı)
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: -4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 4 }, // ✅ Aşağı doğru gölge (profil kartı ile aynı)
+        shadowOpacity: 0.3, // ✅ Aynı opaklık
+        shadowRadius: 8, // ✅ Aynı bulanıklık
       },
       android: {
-        elevation: 8,
+        elevation: 10, // ✅ Profil kartı ile aynı elevation
       },
     }),
   },
@@ -88,17 +91,17 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   activeTab: {
-    backgroundColor: 'rgba(5, 150, 105, 0.1)',
+    // ✅ Arka taraftaki dikdörtgen seçim alanı kaldırıldı
   },
   activeIndicator: {
     position: 'absolute',
-    top: 0,
+    bottom: 0, // ✅ Yazının altında (top: 0 → bottom: 0)
     left: '25%',
     right: '25%',
     height: 2,
     backgroundColor: '#059669',
-    borderBottomLeftRadius: 2,
-    borderBottomRightRadius: 2,
+    borderTopLeftRadius: 2, // ✅ Alt köşeler yuvarlatılmış (üstte değil altta)
+    borderTopRightRadius: 2,
   },
   label: {
     fontSize: 10,

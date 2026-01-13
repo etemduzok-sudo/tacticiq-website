@@ -532,6 +532,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   leaderboardListContent: {
+    paddingTop: 200, // ✅ Space for ProfileCard overlay + safe area (52px safe + 148px card = 200px)
     paddingHorizontal: 16,
     paddingBottom: 100,
   },

@@ -13,10 +13,11 @@ export const containerStyles = {
     backgroundColor: COLORS.dark.background,
   } as ViewStyle,
 
-  // Safe Area Container
+  // Safe Area Container - Standardized for all screens
   safeArea: {
     flex: 1,
     backgroundColor: COLORS.dark.background,
+    paddingTop: Platform.OS === 'ios' ? 0 : 0, // SafeAreaView otomatik ayarlar
   } as ViewStyle,
 
   // Scroll Content Container
@@ -49,9 +50,8 @@ export const headerStyles = {
     flexDirection: 'row' as const,
     justifyContent: 'space-between' as const,
     alignItems: 'center' as const,
-    paddingHorizontal: SPACING.base,
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
-    paddingBottom: SPACING.base,
+    paddingHorizontal: SPACING.base, // 16px yatay padding
+    height: 56, // Sabit yükseklik - tüm header'lar için standart
     backgroundColor: 'rgba(15, 23, 42, 0.95)',
     borderBottomWidth: 1,
     borderBottomColor: COLORS.dark.border,

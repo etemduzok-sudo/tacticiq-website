@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,8 @@ import {
   StyleSheet,
   Alert,
   Modal,
+  ActivityIndicator,
+  ScrollView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,6 +16,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { ScreenLayout, StandardHeader } from '../components/layouts';
 import { textStyles, inputStyles, cardStyles, buttonStyles } from '../utils/styleHelpers';
 import { SPACING, COLORS, BRAND, SIZES, TYPOGRAPHY } from '../theme/theme';
+import { authApi } from '../services/api';
 
 interface ProfileSettingsScreenProps {
   onBack: () => void;
@@ -38,13 +41,56 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
   onNavigateToDeleteAccount,
   onNavigateToProUpgrade,
 }) => {
-  const [name, setName] = useState('Ahmet Yılmaz');
-  const [username, setUsername] = useState('ahmetyilmaz');
+  const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
+  const [initialUsername, setInitialUsername] = useState(''); // Başlangıç kullanıcı adı
+  const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'unavailable'>('idle');
+  const usernameCheckTimeout = useRef<NodeJS.Timeout | null>(null);
+  
+  // ✅ Kullanıcı bilgilerini AsyncStorage'dan yükle
+  useEffect(() => {
+    const loadUserData = async () => {
+      try {
+        const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
+        const userDataStr = await AsyncStorage.getItem('fan-manager-user');
+        if (userDataStr) {
+          const userData = JSON.parse(userDataStr);
+          if (userData.name) setName(userData.name);
+          if (userData.username) {
+            setUsername(userData.username);
+            setInitialUsername(userData.username); // Başlangıç değerini sakla
+          }
+        }
+      } catch (error) {
+        console.error('Error loading user data:', error);
+      }
+    };
+    
+    loadUserData();
+  }, []);
   const [theme, setTheme] = useState<Theme>('dark');
   const [hasChanges, setHasChanges] = useState(false);
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
   const [favoriteClubs, setFavoriteClubs] = useState<string[]>([]);
-  const isPro = false;
+  const [isPro, setIsPro] = useState(false);
+
+  // ✅ Pro durumunu yükle
+  useEffect(() => {
+    const loadProStatus = async () => {
+      try {
+        const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
+        const userDataStr = await AsyncStorage.getItem('fan-manager-user');
+        if (userDataStr) {
+          const userData = JSON.parse(userDataStr);
+          const storedIsPro = userData?.is_pro === true || userData?.isPro === true || userData?.isPremium === true || userData?.plan === 'pro' || userData?.plan === 'premium';
+          setIsPro(storedIsPro);
+        }
+      } catch (error) {
+        console.error('Error loading pro status:', error);
+      }
+    };
+    loadProStatus();
+  }, []);
 
   const favoriteNational = 'Türkiye';
   const currentLanguage = 'Türkçe';
@@ -77,6 +123,47 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
   const handleUsernameChange = (value: string) => {
     setUsername(value);
     setHasChanges(true);
+    
+    // Kullanıcı adı kontrolü (debounce ile)
+    if (usernameCheckTimeout.current) {
+      clearTimeout(usernameCheckTimeout.current);
+    }
+    
+    // Eğer boşsa veya değişiklik yoksa kontrol etme
+    if (!value || value === initialUsername) {
+      setUsernameStatus('idle');
+      return;
+    }
+    
+    // Minimum 3 karakter kontrolü
+    if (value.length < 3) {
+      setUsernameStatus('unavailable'); // ✅ Hemen kırmızı x göster
+      return;
+    }
+    
+    // Format kontrolü
+    const usernameRegex = /^[a-zA-Z0-9_]+$/;
+    if (!usernameRegex.test(value)) {
+      setUsernameStatus('unavailable'); // ✅ Geçersiz formatta hemen kırmızı x göster
+      return;
+    }
+    
+    setUsernameStatus('checking'); // ✅ Kontrol ediliyor spinner
+    
+    // 500ms sonra kontrol et
+    usernameCheckTimeout.current = setTimeout(async () => {
+      try {
+        const result = await authApi.checkUsername(value);
+        if (result.success) {
+          setUsernameStatus(result.available ? 'available' : 'unavailable');
+        } else {
+          setUsernameStatus('unavailable');
+        }
+      } catch (error) {
+        console.error('Username check error:', error);
+        setUsernameStatus('unavailable');
+      }
+    }, 500);
   };
 
   const handleThemeChange = (newTheme: Theme) => {
@@ -87,6 +174,12 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
 
   const handleSave = async () => {
     try {
+      // ✅ Kullanıcı adı kontrolü: Mutlaka available olmalı
+      if (username && username !== initialUsername && usernameStatus !== 'available') {
+        Alert.alert('Uyarı', 'Lütfen kullanılabilir bir kullanıcı adı seçin');
+        return;
+      }
+
       // Get current user ID from AsyncStorage
       const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
       const userDataStr = await AsyncStorage.getItem('fan-manager-user');
@@ -106,17 +199,23 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
       });
       
       if (result.success) {
-        // Update AsyncStorage
+        // ✅ AsyncStorage'ı güncelle - TÜM EKRANLAR BURADAN OKUR
         const updatedUser = {
           ...userData,
           username: username,
-          name: name,
+          name: name, // ✅ İsim de kaydedildi
         };
         await AsyncStorage.setItem('fan-manager-user', JSON.stringify(updatedUser));
         
+        // ✅ Başlangıç username'i güncelle (bir sonraki değişiklik için)
+        setInitialUsername(username);
+        
         setHasChanges(false);
-        Alert.alert('Başarılı', 'Değişiklikler veritabanına kaydedildi! ✓');
-        console.log('✅ Profile updated in database');
+        setUsernameStatus('idle'); // Durumu sıfırla
+        Alert.alert('Başarılı', 'Değişiklikler kaydedildi! ✓\n\nTüm ekranlarda güncellenecek.');
+        console.log('✅ Profile updated in database and AsyncStorage:', { name, username });
+        
+        // ✅ ProfileScreen ve ProfileCard otomatik güncellenecek (AsyncStorage'dan okuyorlar)
       } else {
         Alert.alert('Hata', 'Değişiklikler kaydedilemedi: ' + result.error);
       }
@@ -150,18 +249,41 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
   };
 
   return (
-    <ScreenLayout safeArea scrollable>
+    <ScreenLayout safeArea>
+      {/* ✅ Header Sabit */}
       <StandardHeader
         title="Profil Ayarları"
         onBack={handleBackPress}
       />
 
-      {/* Content */}
+      {/* ✅ İçerik Scroll Edilebilir */}
+      <ScrollView
+        style={styles.scrollContainer}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
           {/* Basic Info Card */}
           <Animated.View entering={FadeInDown.delay(0)} style={styles.card}>
             <View style={styles.cardHeader}>
               <Ionicons name="person-outline" size={20} color="#059669" />
               <Text style={styles.cardTitle}>Temel Bilgiler</Text>
+              
+              {/* PRO/Free Badge */}
+              {isPro ? (
+                <LinearGradient
+                  colors={['#F59E0B', '#D97706']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.proBadgeInline}
+                >
+                  <Text style={styles.proBadgeTextInline}>👑 PRO</Text>
+                </LinearGradient>
+              ) : (
+                <View style={styles.freeBadgeInline}>
+                  <Text style={styles.freeBadgeTextInline}>Free</Text>
+                </View>
+              )}
             </View>
 
             <View style={styles.inputGroup}>
@@ -177,14 +299,40 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Kullanıcı Adı</Text>
-              <TextInput
-                style={styles.input}
-                value={username}
-                onChangeText={handleUsernameChange}
-                placeholder="Kullanıcı adınız"
-                placeholderTextColor="#64748B"
-                autoCapitalize="none"
-              />
+              <View style={styles.usernameInputContainer}>
+                <TextInput
+                  style={[styles.input, styles.usernameInput]}
+                  value={username}
+                  onChangeText={handleUsernameChange}
+                  placeholder="Kullanıcı adınız"
+                  placeholderTextColor="#64748B"
+                  autoCapitalize="none"
+                />
+                {/* ✅ MUTLAKA görünür olmalı (idle hariç) */}
+                {username && username !== initialUsername && usernameStatus !== 'idle' && (
+                  <View style={styles.usernameStatusIcon}>
+                    {usernameStatus === 'checking' && (
+                      <ActivityIndicator size="small" color="#059669" />
+                    )}
+                    {usernameStatus === 'available' && (
+                      <Ionicons name="checkmark-circle" size={24} color="#059669" />
+                    )}
+                    {usernameStatus === 'unavailable' && (
+                      <Ionicons name="close-circle" size={24} color="#EF4444" />
+                    )}
+                  </View>
+                )}
+              </View>
+              {/* Mesajlar */}
+              {usernameStatus === 'available' && (
+                <Text style={styles.usernameHelperSuccess}>✓ Kullanıcı adı kullanılabilir</Text>
+              )}
+              {usernameStatus === 'unavailable' && username && username.length < 3 && (
+                <Text style={styles.usernameHelperError}>✗ Minimum 3 karakter gerekli</Text>
+              )}
+              {usernameStatus === 'unavailable' && username && username.length >= 3 && (
+                <Text style={styles.usernameHelperError}>✗ Bu kullanıcı adı zaten alınmış veya geçersiz</Text>
+              )}
             </View>
           </Animated.View>
 
@@ -244,84 +392,8 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
             </View>
           </Animated.View>
 
-          {/* Language Card */}
-          <Animated.View entering={FadeInDown.delay(200)} style={styles.card}>
-            <View style={styles.cardHeader}>
-              <Ionicons name="globe-outline" size={20} color="#059669" />
-              <Text style={styles.cardTitle}>Dil</Text>
-            </View>
-
-            <TouchableOpacity
-              style={styles.settingItem}
-              onPress={onNavigateToLanguage}
-              activeOpacity={0.7}
-            >
-              <View style={styles.settingItemLeft}>
-                <Ionicons name="globe" size={20} color="#9CA3AF" />
-                <View style={styles.settingItemText}>
-                  <Text style={styles.settingItemTitle}>Uygulama Dili</Text>
-                  <Text style={styles.settingItemSubtitle}>{currentLanguage}</Text>
-                </View>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-            </TouchableOpacity>
-
-            <View style={[styles.infoBox, styles.infoBoxYellow]}>
-              <Ionicons name="information-circle" size={16} color="#F59E0B" />
-              <Text style={styles.infoText}>
-                Dil değişikliği uygulamayı yeniden başlatır.
-              </Text>
-            </View>
-          </Animated.View>
-
-          {/* Theme Card */}
-          <Animated.View entering={FadeInDown.delay(300)} style={styles.card}>
-            <View style={styles.cardHeader}>
-              <Ionicons name="color-palette-outline" size={20} color="#059669" />
-              <Text style={styles.cardTitle}>Tema</Text>
-            </View>
-
-            <View style={styles.themeGrid}>
-              {[
-                { id: 'dark', name: 'Koyu', icon: 'moon' },
-                { id: 'light', name: 'Açık', icon: 'sunny' },
-                { id: 'system', name: 'Otomatik', icon: 'desktop' },
-              ].map((themeOption) => {
-                const isSelected = theme === themeOption.id;
-                return (
-                  <TouchableOpacity
-                    key={themeOption.id}
-                    style={[
-                      styles.themeOption,
-                      isSelected && styles.themeOptionSelected,
-                    ]}
-                    onPress={() => handleThemeChange(themeOption.id as Theme)}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons
-                      name={themeOption.icon as any}
-                      size={24}
-                      color={isSelected ? '#059669' : '#9CA3AF'}
-                    />
-                    <Text
-                      style={[
-                        styles.themeName,
-                        isSelected && styles.themeNameSelected,
-                      ]}
-                    >
-                      {themeOption.name}
-                    </Text>
-                    {isSelected && (
-                      <Ionicons name="checkmark" size={16} color="#059669" />
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </Animated.View>
-
           {/* PRO Membership Card */}
-          <Animated.View entering={FadeInDown.delay(400)}>
+          <Animated.View entering={FadeInDown.delay(200)}>
             <LinearGradient
               colors={
                 isPro
@@ -403,6 +475,82 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
             </LinearGradient>
           </Animated.View>
 
+          {/* Language Card */}
+          <Animated.View entering={FadeInDown.delay(300)} style={styles.card}>
+            <View style={styles.cardHeader}>
+              <Ionicons name="globe-outline" size={20} color="#059669" />
+              <Text style={styles.cardTitle}>Dil</Text>
+            </View>
+
+            <TouchableOpacity
+              style={styles.settingItem}
+              onPress={onNavigateToLanguage}
+              activeOpacity={0.7}
+            >
+              <View style={styles.settingItemLeft}>
+                <Ionicons name="globe" size={20} color="#9CA3AF" />
+                <View style={styles.settingItemText}>
+                  <Text style={styles.settingItemTitle}>Uygulama Dili</Text>
+                  <Text style={styles.settingItemSubtitle}>{currentLanguage}</Text>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+            </TouchableOpacity>
+
+            <View style={[styles.infoBox, styles.infoBoxYellow]}>
+              <Ionicons name="information-circle" size={16} color="#F59E0B" />
+              <Text style={styles.infoText}>
+                Dil değişikliği uygulamayı yeniden başlatır.
+              </Text>
+            </View>
+          </Animated.View>
+
+          {/* Theme Card */}
+          <Animated.View entering={FadeInDown.delay(400)} style={styles.card}>
+            <View style={styles.cardHeader}>
+              <Ionicons name="color-palette-outline" size={20} color="#059669" />
+              <Text style={styles.cardTitle}>Tema</Text>
+            </View>
+
+            <View style={styles.themeGrid}>
+              {[
+                { id: 'dark', name: 'Koyu', icon: 'moon' },
+                { id: 'light', name: 'Açık', icon: 'sunny' },
+                { id: 'system', name: 'Otomatik', icon: 'desktop' },
+              ].map((themeOption) => {
+                const isSelected = theme === themeOption.id;
+                return (
+                  <TouchableOpacity
+                    key={themeOption.id}
+                    style={[
+                      styles.themeOption,
+                      isSelected && styles.themeOptionSelected,
+                    ]}
+                    onPress={() => handleThemeChange(themeOption.id as Theme)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons
+                      name={themeOption.icon as any}
+                      size={24}
+                      color={isSelected ? '#059669' : '#9CA3AF'}
+                    />
+                    <Text
+                      style={[
+                        styles.themeName,
+                        isSelected && styles.themeNameSelected,
+                      ]}
+                    >
+                      {themeOption.name}
+                    </Text>
+                    {isSelected && (
+                      <Ionicons name="checkmark" size={16} color="#059669" />
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </Animated.View>
+
           {/* Account Card */}
           <Animated.View entering={FadeInDown.delay(500)} style={styles.card}>
             <View style={styles.cardHeader}>
@@ -470,8 +618,9 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
               <Ionicons name="chevron-forward" size={20} color="#EF4444" />
             </TouchableOpacity>
           </Animated.View>
+      </ScrollView>
 
-      {/* Bottom Save Button */}
+      {/* Bottom Save Button - ScrollView dışında, sabit */}
       {hasChanges && (
         <Animated.View entering={FadeInDown} style={styles.saveButtonContainer}>
           <TouchableOpacity onPress={handleSave} activeOpacity={0.8}>
@@ -523,12 +672,20 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
 };
 
 const styles = StyleSheet.create({
+  // Scroll Container
+  scrollContainer: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingTop: 16, // ✅ Header ile ilk kart arası boşluk (STANDART: 10 → 16px)
+    paddingBottom: 100, // ✅ Save button için alan
+  },
   // Card
   card: {
     ...cardStyles.card,
     backgroundColor: COLORS.dark.card,
     padding: SPACING.lg,
-    marginBottom: SPACING.lg,
+    marginBottom: SPACING.base, // ✅ STANDART boşluk (SPACING.lg=24 → SPACING.base=16)
   },
   cardHeader: {
     flexDirection: 'row',
@@ -539,6 +696,33 @@ const styles = StyleSheet.create({
   cardTitle: {
     ...textStyles.label,
     color: COLORS.dark.foreground,
+    flex: 1,
+  },
+  proBadgeInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  proBadgeTextInline: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  freeBadgeInline: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: 'rgba(100, 116, 139, 0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(100, 116, 139, 0.3)',
+  },
+  freeBadgeTextInline: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#94A3B8',
   },
 
   // Input
@@ -555,6 +739,35 @@ const styles = StyleSheet.create({
     height: SIZES.inputAuthHeight,
     backgroundColor: COLORS.dark.input,
     borderColor: COLORS.dark.primary,
+    color: COLORS.dark.foreground, // ✅ Yazı rengi beyaz
+  },
+  usernameInputContainer: {
+    position: 'relative',
+    width: '100%',
+  },
+  usernameInput: {
+    paddingRight: 48, // İkon için alan
+  },
+  usernameStatusIcon: {
+    position: 'absolute',
+    right: 16,
+    top: '50%',
+    marginTop: -12, // İkon yüksekliğinin yarısı
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  usernameHelperSuccess: {
+    fontSize: 12,
+    color: '#059669',
+    marginTop: 4,
+  },
+  usernameHelperError: {
+    fontSize: 12,
+    color: '#EF4444',
+    marginTop: 4,
   },
 
   // Setting Item

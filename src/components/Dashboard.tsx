@@ -1,5 +1,5 @@
 // components/Dashboard.tsx - Analist Kontrol Paneli
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   Platform,
   ActivityIndicator,
   Image,
+  Animated as RNAnimated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { 
@@ -21,6 +22,8 @@ import * as Haptics from 'expo-haptics';
 import api from '../services/api';
 import { useFavoriteTeams } from '../hooks/useFavoriteTeams';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { logger } from '../utils/logger';
+import { COLORS, SPACING, TYPOGRAPHY, SIZES, SHADOWS } from '../theme/theme';
 
 const { width } = Dimensions.get('window');
 
@@ -44,7 +47,7 @@ const strategicFocusOptions = [
     icon: 'flash',
     iconOutline: 'flash-outline',
     multiplier: 1.25,
-    color: '#3B82F6',
+    color: COLORS.dark.chart3,
     affects: ['Gol Dakikası', 'Oyun Temposu'],
     description: 'Maçın hızına odaklan',
   },
@@ -54,7 +57,7 @@ const strategicFocusOptions = [
     icon: 'warning',
     iconOutline: 'warning-outline',
     multiplier: 1.25,
-    color: '#F59E0B',
+    color: BRAND.gold,
     affects: ['Kart', 'Faul'],
     description: 'Sert geçişleri öngör',
   },
@@ -64,7 +67,7 @@ const strategicFocusOptions = [
     icon: 'fitness',
     iconOutline: 'fitness-outline',
     multiplier: 1.25,
-    color: '#10B981',
+    color: COLORS.dark.primaryLight,
     affects: ['Sakatlık', 'Değişiklik'],
     description: 'Fiziksel durumu değerlendir',
   },
@@ -74,7 +77,7 @@ const strategicFocusOptions = [
     icon: 'star',
     iconOutline: 'star-outline',
     multiplier: 1.25,
-    color: '#8B5CF6',
+    color: COLORS.dark.chart1,
     affects: ['Maçın Adamı', 'Gol'],
     description: 'Yıldız oyuncuları takip et',
   },
@@ -86,6 +89,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
   const [isPremium, setIsPremium] = useState(false);
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null); // Seçilen favori takım
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [countdownTicker, setCountdownTicker] = useState(0); // ✅ Geri sayım için ticker
   
   const scrollViewRef = useRef<ScrollView>(null);
   const focusSectionRef = useRef<View>(null);
@@ -97,6 +101,406 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
   // ✅ Load favorite teams
   const { favoriteTeams, loading: teamsLoading } = useFavoriteTeams();
   
+  // ✅ Geri sayım için interval (her saniye güncelle)
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      setCountdownTicker(prev => prev + 1);
+    }, 1000);
+    
+    return () => clearInterval(interval);
+  }, []);
+  
+  // ✅ Takım ismine göre forma renkleri
+  const getTeamColors = (teamName: string): string[] => {
+    const name = teamName.toLowerCase();
+    const teamColors: Record<string, string[]> = {
+      'galatasaray': ['#FFA500', '#FF0000'], // Sarı-Kırmızı
+      'fenerbahçe': ['#FFFF00', '#000080'], // Sarı-Lacivert
+      'fenerbahce': ['#FFFF00', '#000080'],
+      'beşiktaş': ['#000000', '#FFFFFF'], // Siyah-Beyaz
+      'besiktas': ['#000000', '#FFFFFF'],
+      'trabzonspor': ['#800020', '#0000FF'], // Bordo-Mavi
+      'real madrid': ['#FFFFFF', '#FFD700'], // Beyaz-Altın
+      'barcelona': ['#A50044', '#004D98'], // Kırmızı-Mavi
+      'paris saint germain': ['#004170', '#ED1C24'], // Mavi-Kırmızı
+      'psg': ['#004170', '#ED1C24'],
+      'türkiye': ['#E30A17', '#FFFFFF'], // Kırmızı-Beyaz
+      'turkey': ['#E30A17', '#FFFFFF'],
+      'almanya': ['#000000', '#DD0000', '#FFCE00'], // Siyah-Kırmızı-Altın
+      'germany': ['#000000', '#DD0000', '#FFCE00'],
+      'brezilya': ['#009C3B', '#FFDF00'], // Yeşil-Sarı
+      'brazil': ['#009C3B', '#FFDF00'],
+      'arjantin': ['#74ACDF', '#FFFFFF'], // Mavi-Beyaz
+      'argentina': ['#74ACDF', '#FFFFFF'],
+    };
+    
+    for (const [key, colors] of Object.entries(teamColors)) {
+      if (name.includes(key)) return colors;
+    }
+    
+    // Varsayılan renkler
+    return ['#1E40AF', '#FFFFFF'];
+  };
+  
+  // ✅ Geri sayım fonksiyonu (24 saat kala başlar)
+  const getCountdown = (matchTimestamp: number): string | null => {
+    // countdownTicker'ı kullanarak her saniye güncellemeyi tetikle
+    const _ = countdownTicker; // ✅ Re-render için kullan
+    
+    const now = Date.now() / 1000; // Saniye cinsinden
+    const matchTime = matchTimestamp;
+    const timeDiff = matchTime - now;
+    const hours24 = 24 * 60 * 60; // 24 saat = 86400 saniye
+    
+    // 24 saatten fazla varsa null döndür
+    if (timeDiff > hours24) {
+      return null;
+    }
+    
+    // 24 saatten az kaldıysa geri sayım göster
+    if (timeDiff > 0) {
+      const hours = Math.floor(timeDiff / 3600);
+      const minutes = Math.floor((timeDiff % 3600) / 60);
+      const seconds = Math.floor(timeDiff % 60);
+      
+      if (hours > 0) {
+        return `${hours}s ${minutes}d ${seconds}sn`;
+      } else if (minutes > 0) {
+        return `${minutes}d ${seconds}sn`;
+      } else {
+        return `${seconds}sn`;
+      }
+    }
+    
+    return null; // Maç başladı
+  };
+  
+  // ✅ Hakem bilgisini al (API'den veya null)
+  const getRefereeInfo = (match: any): { main: string | null; var: string | null } => {
+    // API'den hakem bilgisi gelirse
+    if (match.fixture?.referee) {
+      return {
+        main: match.fixture.referee,
+        var: match.fixture.varReferee || null,
+      };
+    }
+    
+    // Henüz belli değil
+    return {
+      main: null,
+      var: null,
+    };
+  };
+  
+  // ✅ Teknik direktör ismini al
+  const getCoachName = (teamName: string): string => {
+    const name = teamName.toLowerCase();
+    const coaches: Record<string, string> = {
+      'galatasaray': 'Okan Buruk',
+      'fenerbahçe': 'İsmail Kartal',
+      'fenerbahce': 'İsmail Kartal',
+      'beşiktaş': 'Fernando Santos',
+      'besiktas': 'Fernando Santos',
+      'trabzonspor': 'Abdullah Avcı',
+      'real madrid': 'Carlo Ancelotti',
+      'barcelona': 'Xavi Hernández',
+      'türkiye': 'Vincenzo Montella',
+      'turkey': 'Vincenzo Montella',
+      'almanya': 'Julian Nagelsmann',
+      'germany': 'Julian Nagelsmann',
+      'brezilya': 'Dorival Júnior',
+      'brazil': 'Dorival Júnior',
+      'arjantin': 'Lionel Scaloni',
+      'argentina': 'Lionel Scaloni',
+      'paris saint germain': 'Luis Enrique',
+      'psg': 'Luis Enrique',
+      'fethiyespor': 'Mustafa Akçay',
+    };
+    for (const [key, coach] of Object.entries(coaches)) {
+      if (name.includes(key)) return coach;
+    }
+    return 'Bilinmiyor';
+  };
+  
+  // ✅ Maç kartı bileşeni
+  const renderMatchCard = (match: any, status: 'upcoming' | 'live' | 'finished', onPress?: () => void) => {
+    const homeColors = getTeamColors(match.teams.home.name);
+    const awayColors = getTeamColors(match.teams.away.name);
+    const refereeInfo = getRefereeInfo(match);
+    
+    // Geri sayım hesaplama (countdownTicker ile her saniye güncellenir)
+    const _ = countdownTicker; // Re-render için kullan
+    
+    const now = Date.now() / 1000;
+    const matchTime = match.fixture.timestamp;
+    const timeDiff = matchTime - now;
+    const hours24 = 24 * 60 * 60;
+    const dayInSeconds = 24 * 60 * 60;
+    
+    let timeLeft = { hours: 0, minutes: 0, seconds: 0 };
+    let daysRemaining = 0;
+    
+    if (status === 'upcoming' && timeDiff > 0) {
+      if (timeDiff > hours24) {
+        // 24 saatten uzun süre varsa gün sayısını hesapla
+        daysRemaining = Math.floor(timeDiff / dayInSeconds);
+      } else {
+        // 24 saatten az kaldıysa geri sayım göster
+        timeLeft = {
+          hours: Math.floor(timeDiff / 3600),
+          minutes: Math.floor((timeDiff % 3600) / 60),
+          seconds: Math.floor(timeDiff % 60),
+        };
+      }
+    }
+    
+    // Pulse animasyonu için (sadece live durumunda)
+    const [pulseAnim] = React.useState(() => new RNAnimated.Value(1));
+    
+    React.useEffect(() => {
+      if (status === 'live') {
+        const animation = RNAnimated.loop(
+          RNAnimated.sequence([
+            RNAnimated.timing(pulseAnim, {
+              toValue: 0.3,
+              duration: 750,
+              useNativeDriver: true,
+            }),
+            RNAnimated.timing(pulseAnim, {
+              toValue: 1,
+              duration: 750,
+              useNativeDriver: true,
+            }),
+          ])
+        );
+        animation.start();
+        return () => animation.stop();
+      } else {
+        pulseAnim.setValue(1);
+      }
+    }, [status]);
+    
+    return (
+      <TouchableOpacity
+        style={styles.matchCardContainer}
+        onPress={onPress}
+        activeOpacity={0.8}
+      >
+        <LinearGradient
+          colors={['#0f172a', '#1e293b', '#0f172a']}
+          style={styles.matchCard}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          {/* Sol kenar gradient şerit */}
+          <LinearGradient
+            colors={homeColors}
+            style={styles.matchCardLeftStrip}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0, y: 1 }}
+          />
+          
+          {/* Sağ kenar gradient şerit */}
+          <LinearGradient
+            colors={[...awayColors].reverse()}
+            style={styles.matchCardRightStrip}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0, y: 1 }}
+          />
+          
+          <View style={styles.matchCardContent}>
+              {/* Turnuva Badge - En Üstte Ortada */}
+            <View style={styles.matchCardTournamentBadge}>
+              <Ionicons name="trophy" size={9} color="#34d399" />
+              <Text style={styles.matchCardTournamentText}>{match.league.name}</Text>
+            </View>
+            
+            {/* Stadyum Bilgisi - Turnuva Badge'in Altında */}
+            {(() => {
+              // Tüm olası veri kaynaklarını kontrol et
+              const venueName = 
+                (match.fixture as any)?.venue?.name || 
+                (match as any)?.fixture?.venue?.name ||
+                (match as any)?.venue?.name || 
+                (match as any)?.venue_name ||
+                (match as any)?.venue ||
+                (typeof (match as any)?.venue === 'string' ? (match as any).venue : null) ||
+                null;
+              
+              // Debug: Venue bilgisini kontrol et
+              logger.debug('Venue kontrolü', {
+                'match.fixture?.venue?.name': (match.fixture as any)?.venue?.name,
+                'match.venue?.name': (match as any)?.venue?.name,
+                'match.venue_name': (match as any)?.venue_name,
+                'match.venue (string)': typeof (match as any)?.venue === 'string' ? (match as any).venue : 'not string',
+                'final venueName': venueName,
+                'match object keys': Object.keys(match || {}),
+                'fixture keys': match.fixture ? Object.keys(match.fixture) : 'no fixture',
+              }, 'MATCH_CARD');
+              
+              return (
+                <View style={styles.matchCardVenueContainer}>
+                  <Ionicons name="location" size={9} color="#94a3b8" />
+                  <Text style={styles.matchCardVenueText} numberOfLines={1}>
+                    {venueName || 'Stadyum bilgisi yok'}
+                  </Text>
+                </View>
+              );
+            })()}
+            
+            {/* Takımlar Bölümü */}
+            <View style={styles.matchCardTeamsContainer}>
+              {/* Ev Sahibi Takım */}
+              <View style={styles.matchCardTeamLeft}>
+                <Text style={styles.matchCardTeamName} numberOfLines={1}>{match.teams.home.name}</Text>
+                <Text style={styles.matchCardCoachName}>{getCoachName(match.teams.home.name)}</Text>
+                {(status === 'live' || status === 'finished') && (
+                  <View style={status === 'live' ? styles.matchCardScoreBoxLive : styles.matchCardScoreBox}>
+                    <Text style={status === 'live' ? styles.matchCardScoreTextLive : styles.matchCardScoreText}>{match.goals?.home ?? 0}</Text>
+                  </View>
+                )}
+              </View>
+              
+              {/* Ortada Maç Bilgileri */}
+              <View style={styles.matchCardCenterInfo}>
+                <View style={styles.matchCardMatchInfoCard}>
+                  {/* Tarih */}
+                  <View style={styles.matchCardInfoRow}>
+                    <Ionicons name="time" size={9} color="#94a3b8" />
+                    <Text style={styles.matchCardInfoTextBold}>
+                      {new Date(match.fixture.date).toLocaleDateString('tr-TR', { 
+                        day: 'numeric', 
+                        month: 'long', 
+                        year: 'numeric' 
+                      })}
+                    </Text>
+                  </View>
+                  
+                  {/* Saat */}
+                  <LinearGradient
+                    colors={['#10b981', '#059669']}
+                    style={styles.matchCardTimeBadge}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                  >
+                    <Text style={styles.matchCardTimeText}>
+                      {api.utils.formatMatchTime(match.fixture.timestamp)}
+                    </Text>
+                  </LinearGradient>
+                </View>
+              </View>
+              
+              {/* Deplasman Takım */}
+              <View style={styles.matchCardTeamRight}>
+                <Text style={[styles.matchCardTeamName, styles.matchCardTeamNameRight]} numberOfLines={1}>{match.teams.away.name}</Text>
+                <Text style={styles.matchCardCoachNameAway}>{getCoachName(match.teams.away.name)}</Text>
+                {(status === 'live' || status === 'finished') && (
+                  <View style={status === 'live' ? styles.matchCardScoreBoxLive : styles.matchCardScoreBox}>
+                    <Text style={status === 'live' ? styles.matchCardScoreTextLive : styles.matchCardScoreText}>{match.goals?.away ?? 0}</Text>
+                  </View>
+                )}
+              </View>
+            </View>
+            
+            {/* Durum Badge'i (Canlı, Bitti, Geri Sayım) */}
+            {status === 'live' ? (
+              <View style={styles.matchCardLiveContainer}>
+                <LinearGradient
+                  colors={['#dc2626', '#b91c1c']}
+                  style={styles.matchCardLiveBadge}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  <RNAnimated.View style={[styles.matchCardLiveDot, { opacity: pulseAnim }]} />
+                  <Text style={styles.matchCardLiveText}>ŞUAN OYNANIYOR</Text>
+                </LinearGradient>
+                
+                {match.fixture.status?.elapsed && (
+                  <View style={styles.matchCardLiveMinuteBadge}>
+                    <Ionicons name="time" size={14} color="#10b981" />
+                    <Text style={styles.matchCardLiveMinuteText}>{match.fixture.status.elapsed}'</Text>
+                  </View>
+                )}
+              </View>
+            ) : status === 'finished' ? (
+              <View style={styles.matchCardFinishedContainer}>
+                <LinearGradient
+                  colors={['#475569', '#334155']}
+                  style={styles.matchCardFinishedBadge}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  <Text style={styles.matchCardFinishedText}>MAÇ BİTTİ</Text>
+                </LinearGradient>
+              </View>
+            ) : (
+              status === 'upcoming' && timeDiff > 0 ? (
+                daysRemaining > 0 ? (
+                  // 24 saatten uzun süre varsa gün sayısını göster
+                  <View style={styles.matchCardDaysRemainingContainer}>
+                    <LinearGradient
+                      colors={['#f97316', '#ea580c']}
+                      style={styles.matchCardDaysRemainingBadge}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                    >
+                      <Text style={styles.matchCardDaysRemainingText}>
+                        MAÇA {daysRemaining} {daysRemaining === 1 ? 'GÜN' : 'GÜN'} KALDI
+                      </Text>
+                    </LinearGradient>
+                  </View>
+                ) : (
+                  // 24 saatten az kaldıysa geri sayım sayacını göster
+                  timeLeft.hours > 0 || timeLeft.minutes > 0 || timeLeft.seconds > 0 ? (
+                    <View style={styles.matchCardCountdownContainer}>
+                      <View style={styles.matchCardCountdownCard}>
+                        <View style={styles.matchCardCountdownRow}>
+                          <LinearGradient
+                            colors={['#f97316', '#ea580c']}
+                            style={styles.matchCardCountdownBox}
+                          >
+                            <Text style={styles.matchCardCountdownNumber}>
+                              {String(timeLeft.hours).padStart(2, '0')}
+                            </Text>
+                            <Text style={styles.matchCardCountdownUnit}>Saat</Text>
+                          </LinearGradient>
+                          
+                          <Text style={styles.matchCardCountdownSeparator}>:</Text>
+                          
+                          <LinearGradient
+                            colors={['#f97316', '#ea580c']}
+                            style={styles.matchCardCountdownBox}
+                          >
+                            <Text style={styles.matchCardCountdownNumber}>
+                              {String(timeLeft.minutes).padStart(2, '0')}
+                            </Text>
+                            <Text style={styles.matchCardCountdownUnit}>Dakika</Text>
+                          </LinearGradient>
+                          
+                          <Text style={styles.matchCardCountdownSeparator}>:</Text>
+                          
+                          <LinearGradient
+                            colors={['#f97316', '#ea580c']}
+                            style={styles.matchCardCountdownBox}
+                          >
+                            <Text style={styles.matchCardCountdownNumber}>
+                              {String(timeLeft.seconds).padStart(2, '0')}
+                            </Text>
+                            <Text style={styles.matchCardCountdownUnit}>Saniye</Text>
+                          </LinearGradient>
+                        </View>
+                      </View>
+                    </View>
+                  ) : null
+                )
+              ) : null
+            )}
+          </View>
+        </LinearGradient>
+      </TouchableOpacity>
+    );
+  };
+  
   // ✅ Check if user is premium
   React.useEffect(() => {
     const checkPremium = async () => {
@@ -107,10 +511,10 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
           // ✅ Pro kontrolü: is_pro, isPro, isPremium, plan === 'pro' veya plan === 'premium'
           const isPremium = parsed.is_pro === true || parsed.isPro === true || parsed.isPremium === true || parsed.plan === 'pro' || parsed.plan === 'premium';
           setIsPremium(isPremium);
-          console.log('✅ [DASHBOARD] User Pro status:', isPremium, 'from:', { is_pro: parsed.is_pro, isPro: parsed.isPro, isPremium: parsed.isPremium, plan: parsed.plan });
+          logger.debug('User Pro status', { isPremium, is_pro: parsed.is_pro, isPro: parsed.isPro, isPremium: parsed.isPremium, plan: parsed.plan }, 'DASHBOARD');
         }
       } catch (error) {
-        console.error('Error checking premium status:', error);
+        logger.error('Error checking premium status', { error }, 'DASHBOARD');
       }
     };
     checkPremium();
@@ -217,22 +621,22 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
       tempo: {
         icon: '⚡',
         text: 'Hızlı tempolu maç bekleniyor!',
-        color: '#3B82F6',
+        color: COLORS.dark.chart3,
       },
       discipline: {
         icon: '🛡️',
         text: 'Bu hakem kart sever, odağın isabetli!',
-        color: '#F59E0B',
+        color: BRAND.gold,
       },
       fitness: {
         icon: '💪',
         text: 'Uzun sezonda kondisyon kritik!',
-        color: '#10B981',
+        color: COLORS.dark.primaryLight,
       },
       star: {
         icon: '⭐',
         text: 'Yıldız oyuncular sahada olacak!',
-        color: '#8B5CF6',
+        color: COLORS.dark.chart1,
       },
     };
 
@@ -250,25 +654,25 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
 
   // ✅ DEBUG: Log match data
   React.useEffect(() => {
-    console.log('📊 [Dashboard] Match Data:', {
+    logger.debug('Match Data', {
       past: pastMatches.length,
       live: liveMatches.length,
       upcoming: upcomingMatches.length,
       loading,
       error,
-    });
+    }, 'DASHBOARD');
     if (pastMatches.length > 0) {
-      console.log('📊 [Dashboard] First past match:', {
+      logger.debug('First past match', {
         teams: `${pastMatches[0].teams?.home?.name} vs ${pastMatches[0].teams?.away?.name}`,
         league: pastMatches[0].league?.name,
-      });
+      }, 'DASHBOARD');
     }
     if (upcomingMatches.length > 0) {
-      console.log('📊 [Dashboard] First upcoming match:', {
+      logger.debug('First upcoming match', {
         teams: `${upcomingMatches[0].teams?.home?.name} vs ${upcomingMatches[0].teams?.away?.name}`,
         league: upcomingMatches[0].league?.name,
         date: new Date(upcomingMatches[0].fixture.timestamp * 1000).toLocaleString('tr-TR'),
-      });
+      }, 'DASHBOARD');
     }
   }, [pastMatches, liveMatches, upcomingMatches]);
 
@@ -295,7 +699,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
     
     const selectedTeam = favoriteTeams.find(t => t.id === teamId);
     if (!selectedTeam) {
-      console.log(`⚠️ [DASHBOARD] Team not found: ${teamId}`);
+      logger.warn(`Team not found: ${teamId}`, { teamId }, 'DASHBOARD');
       return matches;
     }
 
@@ -321,11 +725,18 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
       return nameMatch;
     });
 
-    console.log(`🔍 [DASHBOARD] Filtering matches for team: ${selectedTeam.name} (ID: ${teamId})`);
-    console.log(`   Total matches: ${matches.length}, Filtered: ${filtered.length}`);
-    if (filtered.length > 0) {
-      console.log(`   First match: ${filtered[0].teams.home.name} (${filtered[0].teams.home.id}) vs ${filtered[0].teams.away.name} (${filtered[0].teams.away.id})`);
-    }
+    logger.debug(`Filtering matches for team: ${selectedTeam.name}`, {
+      teamId,
+      teamName: selectedTeam.name,
+      totalMatches: matches.length,
+      filteredCount: filtered.length,
+      firstMatch: filtered.length > 0 ? {
+        home: filtered[0].teams.home.name,
+        homeId: filtered[0].teams.home.id,
+        away: filtered[0].teams.away.name,
+        awayId: filtered[0].teams.away.id,
+      } : null,
+    }, 'DASHBOARD');
 
     return filtered;
   }, [favoriteTeams]);
@@ -348,9 +759,9 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
   const handleTeamSelect = (teamId: number | null) => {
     if (teamId) {
       const team = favoriteTeams.find(t => t.id === teamId);
-      console.log(`✅ [DASHBOARD] Team selected: ${team?.name} (ID: ${teamId})`);
+      logger.debug(`Team selected: ${team?.name}`, { teamId, teamName: team?.name }, 'DASHBOARD');
     } else {
-      console.log(`✅ [DASHBOARD] Filter cleared - showing all matches`);
+      logger.debug('Filter cleared - showing all matches', undefined, 'DASHBOARD');
     }
     
     setSelectedTeamId(teamId);
@@ -385,7 +796,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
                 <View style={styles.dropdownButtonContent}>
                   <Ionicons name="trophy" size={18} color="#F59E0B" />
                   <Text style={styles.dropdownButtonText}>
-                    {selectedTeamName ? `${selectedTeamName} Maçları` : 'Tüm Maçlar'}
+                    {selectedTeamName ? `${selectedTeamName} Maçları` : 'Favori Takımlarım'}
                   </Text>
                   {selectedTeamId && (
                     <TouchableOpacity
@@ -399,7 +810,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
                       <Ionicons name="close-circle" size={18} color="#64748B" />
                     </TouchableOpacity>
                   )}
-                </View>
+                  </View>
                 <Ionicons 
                   name={dropdownOpen ? "chevron-up" : "chevron-down"} 
                   size={20} 
@@ -424,7 +835,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
                     {favoriteTeams.map((team) => {
                       const isSelected = selectedTeamId === team.id;
                       return (
-                        <TouchableOpacity
+                  <TouchableOpacity
                           key={team.id}
                           style={[styles.dropdownItem, isSelected && styles.dropdownItemActive]}
                           onPress={() => handleTeamSelect(team.id)}
@@ -436,17 +847,17 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
                               {team.colors[1] && (
                                 <View style={[styles.dropdownTeamStripe, { backgroundColor: team.colors[1] }]} />
                               )}
-                            </View>
+                      </View>
                           ) : (
                             <View style={styles.dropdownTeamPlaceholder}>
                               <Text style={styles.dropdownTeamEmoji}>⚽</Text>
-                            </View>
+                    </View>
                           )}
                           <Text style={[styles.dropdownItemText, isSelected && styles.dropdownItemTextActive]} numberOfLines={1}>
                             {team.name}
                           </Text>
                           {isSelected && <Ionicons name="checkmark" size={18} color="#059669" />}
-                        </TouchableOpacity>
+                  </TouchableOpacity>
                       );
                     })}
                 </View>
@@ -455,54 +866,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
           </Animated.View>
         )}
 
-        {/* 1. CANLI MAÇLAR - Sadece maç seçilmediğinde göster */}
-        {!selectedMatchId && liveMatches.length > 0 && (
-          <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Ionicons name="radio" size={20} color="#EF4444" />
-              <Text style={styles.sectionTitle}>Canlı Maçlar</Text>
-            </View>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.upcomingMatchesScroll}
-            >
-              {liveMatches.slice(0, 10).map((match, index) => (
-                <Animated.View key={match.fixture.id} entering={FadeInDown.delay(150 + index * 50).springify()}>
-                  <TouchableOpacity
-                    style={[styles.upcomingMatchCard, styles.liveMatchCard]}
-                    onPress={() => onNavigate('match-detail', { id: match.fixture.id })}
-                    activeOpacity={0.8}
-                  >
-                    <View style={styles.matchHeader}>
-                      <Text style={styles.matchLeague}>{match.league.name}</Text>
-                      <View style={styles.liveBadge}>
-                        <View style={styles.liveDot} />
-                        <Text style={styles.liveText}>CANLI</Text>
-                      </View>
-                    </View>
-                    <View style={styles.matchTeams}>
-                      <View style={styles.matchTeam}>
-                        <Text style={styles.teamName}>{match.teams.home.name}</Text>
-                        <Text style={styles.teamScore}>{match.goals.home ?? 0}</Text>
-                      </View>
-                      <Text style={styles.vsText}>VS</Text>
-                      <View style={styles.matchTeam}>
-                        <Text style={styles.teamName}>{match.teams.away.name}</Text>
-                        <Text style={styles.teamScore}>{match.goals.away ?? 0}</Text>
-                      </View>
-                    </View>
-                    {match.fixture.status.elapsed && (
-                      <Text style={styles.elapsedTime}>{match.fixture.status.elapsed}'</Text>
-                    )}
-                  </TouchableOpacity>
-                </Animated.View>
-              ))}
-            </ScrollView>
-          </Animated.View>
-        )}
-
-        {/* 2. YAKLAŞAN MAÇLAR - Her zaman göster */}
+        {/* 1. YAKLAŞAN MAÇLAR - Her zaman göster */}
         <Animated.View entering={FadeInDown.delay(200).springify()} style={styles.section}>
           <View style={styles.sectionHeader}>
             <Ionicons name="calendar" size={20} color="#059669" />
@@ -516,88 +880,13 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.upcomingMatchesScroll}
-              pagingEnabled={false}
-              snapToInterval={width - 32} // Her kart için snap
+              pagingEnabled={true}
               decelerationRate="fast"
               snapToAlignment="start"
             >
               {filteredUpcomingMatches.slice(0, 10).map((match, index) => (
               <Animated.View key={match.fixture.id} entering={FadeInDown.delay(200 + index * 100).springify()}>
-                <TouchableOpacity
-                style={[
-                  styles.upcomingMatchCard,
-                  String(selectedMatchId) === String(match.fixture.id) && styles.selectedMatchCard,
-                ]}
-                onPress={() => handleMatchSelect(String(match.fixture.id))}
-                  activeOpacity={0.8}
-                >
-                <View style={styles.matchHeader}>
-                  <Text style={styles.matchLeague}>{match.league.name}</Text>
-                  {/* ✅ Sağa kaydırma ipucu - Sadece birden fazla maç varsa göster */}
-                  {filteredUpcomingMatches.length > 1 && (
-                    <View style={styles.scrollHintIcon}>
-                      <Ionicons name="chevron-forward" size={16} color="#64748B" />
-                    </View>
-                  )}
-                </View>
-
-                    <View style={styles.matchTeams}>
-                      <View style={styles.matchTeam}>
-                        {/* ✅ Sadece milli takımlar için bayrak göster */}
-                        {(() => {
-                          const isNationalTeam = (teamName: string) => {
-                            const nationalTeams = ['Türkiye', 'Turkey', 'Almanya', 'Germany', 'Brezilya', 'Brazil', 'Arjantin', 'Argentina', 'Romania', 'Portugal', 'Spain', 'İspanya', 'France', 'Fransa', 'Italy', 'İtalya'];
-                            return nationalTeams.some(nt => teamName.includes(nt));
-                          };
-                          
-                          if (isNationalTeam(match.teams.home.name) && match.teams.home.logo) {
-                            return <Image source={{ uri: match.teams.home.logo }} style={styles.teamLogoImage} />;
-                          }
-                          return null;
-                        })()}
-                        <Text style={styles.teamName} numberOfLines={2}>{match.teams.home.name}</Text>
-                      </View>
-                      <View style={styles.matchCenterInfo}>
-                        <Text style={styles.vsText}>VS</Text>
-                        {/* Stad */}
-                        {(match.fixture as any).venue?.name && (
-                          <View style={styles.matchInfoRow}>
-                            <Ionicons name="location" size={12} color="#64748B" />
-                            <Text style={styles.matchInfoText} numberOfLines={1}>
-                              {(match.fixture as any).venue.name}
-                            </Text>
-                          </View>
-                        )}
-                        {/* Tarih */}
-                        <Text style={styles.matchDateText}>
-                          {new Date(match.fixture.date).toLocaleDateString('tr-TR', { 
-                            day: 'numeric', 
-                            month: 'long', 
-                            year: 'numeric' 
-                          })}
-                        </Text>
-                        {/* Saat */}
-                        <Text style={styles.matchTimeText}>
-                          {api.utils.formatMatchTime(match.fixture.timestamp)}
-                        </Text>
-                      </View>
-                      <View style={styles.matchTeam}>
-                        {/* ✅ Sadece milli takımlar için bayrak göster */}
-                        {(() => {
-                          const isNationalTeam = (teamName: string) => {
-                            const nationalTeams = ['Türkiye', 'Turkey', 'Almanya', 'Germany', 'Brezilya', 'Brazil', 'Arjantin', 'Argentina', 'Romania', 'Portugal', 'Spain', 'İspanya', 'France', 'Fransa', 'Italy', 'İtalya'];
-                            return nationalTeams.some(nt => teamName.includes(nt));
-                          };
-                          
-                          if (isNationalTeam(match.teams.away.name) && match.teams.away.logo) {
-                            return <Image source={{ uri: match.teams.away.logo }} style={styles.teamLogoImage} />;
-                          }
-                          return null;
-                        })()}
-                        <Text style={styles.teamName} numberOfLines={2}>{match.teams.away.name}</Text>
-                      </View>
-                    </View>
-                </TouchableOpacity>
+                  {renderMatchCard(match, 'upcoming', () => handleMatchSelect(String(match.fixture.id)))}
               </Animated.View>
             ))}
           </ScrollView>
@@ -610,18 +899,18 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
         </Animated.View>
 
         {/* ✅ ANALİZ ODAĞI BÖLÜMÜ - Her zaman görünür */}
-        <View 
-          ref={focusSectionRef}
-          onLayout={(event) => {
-            const layout = event.nativeEvent.layout;
-            // ScrollView içindeki pozisyonu hesapla
-            if (layout.y > 0) {
-              setFocusSectionY(layout.y);
-            }
-          }}
-          style={styles.focusSectionContainer}
-        >
-          <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.section}>
+          <View 
+            ref={focusSectionRef}
+            onLayout={(event) => {
+              const layout = event.nativeEvent.layout;
+              // ScrollView içindeki pozisyonu hesapla
+              if (layout.y > 0) {
+                setFocusSectionY(layout.y);
+              }
+            }}
+            style={styles.focusSectionContainer}
+          >
+            <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.section}>
             {/* Seçilen Maç Bilgisi - Sadece maç seçildiyse göster */}
             {selectedMatchId && (
               <View style={styles.selectedMatchInfo}>
@@ -634,10 +923,10 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
               </View>
             )}
 
-            <View style={styles.sectionHeader}>
-              <Ionicons name="bulb" size={20} color="#F59E0B" />
+              <View style={styles.sectionHeader}>
+                <Ionicons name="bulb" size={20} color="#F59E0B" />
               <Text style={styles.sectionTitle}>Analiz Odağı Seç</Text>
-            </View>
+              </View>
             <Text style={styles.sectionSubtitle}>Seçtiğin odak x1.25 puan çarpanı kazandırır</Text>
 
               <View style={styles.focusGrid}>
@@ -686,7 +975,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
                           {focus.affects && focus.affects.slice(0, 2).map((affect, i) => (
                             <View key={i} style={[styles.focusAffectTag, { backgroundColor: `${focus.color}20` }]}>
                               <Text style={[styles.focusAffectText, { color: focus.color }]} numberOfLines={1}>{affect}</Text>
-                            </View>
+                          </View>
                           ))}
                         </View>
                       </View>
@@ -768,36 +1057,21 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
             <Ionicons name="time" size={20} color="#8B5CF6" />
             <Text style={styles.sectionTitle}>
               {selectedTeamName ? `${selectedTeamName} Maçları` : 'Geçmiş Maçlar'} ({filteredPastMatches.length})
-            </Text>
-          </View>
-
-          {filteredPastMatches.length > 0 ? (
-            <View style={styles.matchHistoryVertical}>
-              {filteredPastMatches.slice(0, 5).map((match, index) => (
-                <Animated.View key={match.fixture.id} entering={FadeInLeft.delay(350 + index * 50).springify()}>
-                  <TouchableOpacity
-                    style={styles.historyCardVertical}
-                    onPress={() => onNavigate('match-result-summary', { id: match.fixture.id })}
-                    activeOpacity={0.8}
-                  >
-                    <View style={styles.historyHeader}>
-                      <Text style={styles.historyDate}>
-                        {new Date(match.fixture.date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}
-                      </Text>
-                      <Text style={styles.historyScore}>
-                        {match.goals.home ?? 0} - {match.goals.away ?? 0}
                       </Text>
                     </View>
                     
-                    <Text style={styles.historyLeague}>{match.league.name}</Text>
-                    
-                    <Text style={styles.historyTeams} numberOfLines={2}>
-                      {match.teams.home.name} vs {match.teams.away.name}
-                    </Text>
-                  </TouchableOpacity>
+          {filteredPastMatches.length > 0 ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.upcomingMatchesScroll}
+            >
+              {filteredPastMatches.slice(0, 10).map((match, index) => (
+                <Animated.View key={match.fixture.id} entering={FadeInLeft.delay(350 + index * 50).springify()}>
+                  {renderMatchCard(match, 'finished', () => onNavigate('match-result-summary', { id: match.fixture.id }))}
                 </Animated.View>
               ))}
-            </View>
+            </ScrollView>
           ) : (
             <View style={styles.emptyHistoryState}>
               <Ionicons name="time-outline" size={48} color="#64748B" />
@@ -817,16 +1091,16 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: COLORS.dark.background,
   },
   centerContent: {
     justifyContent: 'center',
     alignItems: 'center',
   },
   loadingText: {
-    fontSize: 16,
-    color: '#94A3B8',
-    marginTop: 16,
+    ...TYPOGRAPHY.body,
+    color: COLORS.dark.mutedForeground,
+    marginTop: SPACING.base,
   },
 
   // Scroll Content
@@ -834,87 +1108,94 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingTop: 120, // Space for ProfileCard overlay
+    paddingTop: 130, // ✅ Profil kartının altından başlaması için (iOS: 44 top + 8 paddingTop + ~70 içerik + 8 paddingBottom = 130px)
     paddingBottom: 100,
   },
 
   // Section
   section: {
-    marginBottom: 32,
-    paddingHorizontal: 16,
-    marginTop: 20, // ProfileCard'ın altına boşluk bırak
+    marginBottom: SPACING.base,
+    paddingHorizontal: SPACING.base,
+    marginTop: SPACING.base,
   },
   sectionWithDropdown: {
-    marginBottom: 32,
-    paddingHorizontal: 16,
-    marginTop: 20,
+    marginBottom: SPACING.base,
+    paddingHorizontal: SPACING.base,
+    marginTop: SPACING.xl,
     zIndex: 10000,
-    elevation: 10000, // Android için - çok yüksek
+    elevation: 10000,
+    position: 'relative',
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: SPACING.sm,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#F8FAFB',
-    marginLeft: 8,
+    ...TYPOGRAPHY.h3,
+    color: COLORS.dark.foreground,
+    marginLeft: SPACING.sm,
     flex: 1,
   },
   scrollHint: {
-    fontSize: 12,
-    color: '#64748B',
+    ...TYPOGRAPHY.bodySmall,
+    color: COLORS.dark.mutedForeground,
     fontWeight: '500',
-    marginLeft: 8,
+    marginLeft: SPACING.sm,
   },
   sectionSubtitle: {
+    ...TYPOGRAPHY.body,
     fontSize: 13,
-    color: '#64748B',
-    marginBottom: 16,
+    color: COLORS.dark.mutedForeground,
+    marginBottom: SPACING.base,
     marginLeft: 28,
   },
 
   // Upcoming Matches Scroll (Horizontal)
   upcomingMatchesScroll: {
     paddingRight: 16,
-    gap: 12,
+    gap: 0,
+  },
+  liveMatchesScroll: {
+    paddingBottom: 16,
+    gap: 16,
+  },
+  liveMatchCardWrapper: {
+    width: '100%',
+    marginBottom: 0,
   },
   
   // Live Match Card
   liveMatchCard: {
     width: 320, // Fixed width for horizontal scroll
-    backgroundColor: '#1E293B',
-    borderRadius: 16,
-    padding: 16,
-    marginRight: 12,
+    backgroundColor: COLORS.dark.card,
+    borderRadius: SIZES.radiusXl,
+    padding: SPACING.base,
+    marginRight: SPACING.md,
     borderWidth: 2,
-    borderColor: '#EF4444',
+    borderColor: COLORS.dark.error,
   },
   liveIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: SPACING.md,
   },
   liveDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#EF4444',
-    marginRight: 6,
+    backgroundColor: COLORS.dark.error,
+    marginRight: SPACING.md,
   },
   liveText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#EF4444',
-    marginRight: 8,
+    ...TYPOGRAPHY.bodySmallSemibold,
+    color: COLORS.dark.error,
+    marginRight: SPACING.sm,
   },
   liveMinute: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#EF4444',
+    ...TYPOGRAPHY.bodySmallSemibold,
+    color: COLORS.dark.error,
   },
   matchTeams: {
     flexDirection: 'row',
@@ -936,62 +1217,62 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   teamName: {
-    fontSize: 12,
+    ...TYPOGRAPHY.bodySmall,
     fontWeight: '600',
-    color: '#F8FAFB',
+    color: COLORS.dark.foreground,
     textAlign: 'center',
   },
   matchScore: {
-    paddingHorizontal: 16,
+    paddingHorizontal: SPACING.base,
   },
   scoreText: {
+    ...TYPOGRAPHY.h2,
     fontSize: 28,
     fontWeight: '700',
-    color: '#F8FAFB',
+    color: COLORS.dark.foreground,
   },
   vsText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#64748B',
-    marginBottom: 8,
+    ...TYPOGRAPHY.bodyMediumSemibold,
+    color: COLORS.dark.foreground,
+    marginBottom: SPACING.md,
   },
   matchCenterInfo: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 12,
+    paddingHorizontal: SPACING.md,
     minWidth: 120,
   },
   matchInfoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    marginTop: 4,
-    marginBottom: 4,
+    gap: SPACING.xs,
+    marginTop: 3,
+    marginBottom: 1,
   },
   matchInfoText: {
-    fontSize: 11,
-    color: '#64748B',
+    ...TYPOGRAPHY.caption,
+    color: COLORS.dark.mutedForeground,
     fontWeight: '500',
     maxWidth: 100,
   },
   matchDateText: {
-    fontSize: 12,
-    color: '#94A3B8',
+    ...TYPOGRAPHY.bodySmall,
+    color: COLORS.dark.mutedForeground,
     fontWeight: '600',
-    marginTop: 4,
+    marginTop: SPACING.xs,
     marginBottom: 2,
   },
   matchTimeText: {
-    fontSize: 14,
-    color: '#059669',
-    fontWeight: '700',
-    marginTop: 2,
+    ...TYPOGRAPHY.bodySmallSemibold,
+    color: COLORS.dark.primary,
+    marginTop: 0,
   },
   teamScore: {
+    ...TYPOGRAPHY.xl,
     fontSize: 20,
     fontWeight: '700',
-    color: '#F8FAFB',
-    marginTop: 4,
+    color: COLORS.dark.foreground,
+    marginTop: SPACING.xs,
   },
   liveBadge: {
     flexDirection: 'row',
@@ -1004,13 +1285,13 @@ const styles = StyleSheet.create({
   elapsedTime: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#EF4444',
+    color: COLORS.dark.error,
     textAlign: 'center',
     marginTop: 8,
   },
   historyLeague: {
     fontSize: 11,
-    color: '#64748B',
+    color: COLORS.dark.mutedForeground,
     marginTop: 4,
     marginBottom: 8,
   },
@@ -1025,22 +1306,172 @@ const styles = StyleSheet.create({
   liveTrackText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: BRAND.white,
   },
 
   // Upcoming Match Card - Tam ekran genişliği
   upcomingMatchCard: {
     width: width - 32, // Ekran genişliği - sadece yan padding (16*2)
-    backgroundColor: '#1E293B',
-    borderRadius: 16,
-    padding: 16,
+    backgroundColor: COLORS.dark.card,
+    borderRadius: 12,
+    padding: 12,
     marginRight: 12,
-    borderWidth: 2,
-    borderColor: '#334155',
+    borderWidth: 1,
+    borderColor: COLORS.dark.border,
+    height: 160, // ✅ Sabit yükseklik - tüm kartlar aynı
+    position: 'relative',
+    overflow: 'hidden',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 3,
+      },
+      web: {
+        boxShadow: '0 2px 6px rgba(0, 0, 0, 0.15)',
+      },
+    }),
+  },
+  // ✅ Sol kenar gradient şerit - takım renkleri
+  matchColorStripeLeft: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 6, // ✅ Resimdeki gibi ince şerit
+    zIndex: 0,
+  },
+  // ✅ Sağ kenar gradient şerit - takım renkleri
+  matchColorStripeRight: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: 6, // ✅ Resimdeki gibi ince şerit
+    zIndex: 0,
+  },
+  // ✅ Lige göre ikon ve isim container'ı
+  matchLeagueContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  // ✅ Takımlar ve maç bilgileri container'ı
+  matchContent: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginTop: 4,
+    gap: 8,
+    zIndex: 1,
+  },
+  // ✅ Sol takım
+  matchTeamLeft: {
+    flex: 1,
+    alignItems: 'flex-start',
+    paddingRight: 6,
+    zIndex: 1,
+  },
+  // ✅ Sağ takım
+  matchTeamRight: {
+    flex: 1,
+    alignItems: 'flex-end',
+    paddingLeft: 6,
+    zIndex: 1,
+  },
+  // ✅ Ortada VS ve maç bilgileri
+  matchCenter: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 90,
+    paddingHorizontal: 6,
+    zIndex: 1,
+  },
+  // ✅ Takım ismi (güncellenmiş)
+  matchTeamName: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.dark.foreground,
+    marginBottom: 3,
+    lineHeight: 16,
+  },
+  // ✅ Teknik direktör ismi
+  matchCoachName: {
+    fontSize: 10,
+    color: '#94A3B8',
+    fontStyle: 'italic',
+    marginTop: 1,
+    lineHeight: 14,
+  },
+  // ✅ Geri sayım container'ı
+  countdownContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+  },
+  countdownText: {
+    fontSize: 10,
+    color: BRAND.gold,
+    fontWeight: '700',
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+  },
+  // ✅ Stad container'ı (daha belirgin)
+  venueContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 6,
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: '#334155',
+    zIndex: 1,
+  },
+  venueText: {
+    fontSize: 11,
+    color: COLORS.dark.foreground,
+    fontWeight: '600',
+    flex: 1,
+  },
+  // ✅ Hakem container'ı (en altta)
+  refereeContainer: {
+    marginTop: 6,
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: '#334155',
+    gap: 4,
+    zIndex: 1,
+  },
+  refereeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    flexWrap: 'wrap',
+  },
+  refereeLabel: {
+    fontSize: 9,
+    color: COLORS.dark.mutedForeground,
+    fontWeight: '500',
+  },
+  refereeName: {
+    fontSize: 9,
+    color: '#94A3B8',
+    fontWeight: '600',
+    flex: 1,
   },
   selectedMatchCard: {
     borderColor: '#F59E0B',
-    borderWidth: 3,
+    borderWidth: 2, // ✅ Standart seçili border
     ...Platform.select({
       ios: {
         shadowColor: '#F59E0B',
@@ -1067,13 +1498,13 @@ const styles = StyleSheet.create({
   },
   selectedMatchTitle: {
     fontSize: 12,
-    color: '#FFFFFF',
+    color: BRAND.white,
     fontWeight: '600',
     marginBottom: 4,
   },
   selectedMatchTeams: {
     fontSize: 16,
-    color: '#FFFFFF',
+    color: BRAND.white,
     fontWeight: '700',
   },
   continueButtonContainer: {
@@ -1093,18 +1524,20 @@ const styles = StyleSheet.create({
   continueButtonText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: BRAND.white,
   },
   matchHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
+    zIndex: 1,
   },
   matchLeague: {
-    fontSize: 12,
-    color: '#64748B',
+    fontSize: 11,
+    color: COLORS.dark.mutedForeground,
     flex: 1,
+    fontWeight: '600',
   },
   scrollHintIcon: {
     marginLeft: 8,
@@ -1144,7 +1577,7 @@ const styles = StyleSheet.create({
   predictButtonText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: BRAND.white,
   },
   glowDot: {
     position: 'absolute',
@@ -1168,20 +1601,20 @@ const styles = StyleSheet.create({
   },
   focusCard: {
     width: '100%',
-    height: 180, // Fixed height
-    backgroundColor: '#1E293B',
-    borderRadius: 16,
+    minHeight: 180,
+    backgroundColor: COLORS.dark.card,
+    borderRadius: SIZES.radiusXl,
     padding: 14,
-    borderWidth: 2,
-    borderColor: '#334155',
+    borderWidth: 1,
+    borderColor: COLORS.dark.border,
     position: 'relative',
-    overflow: 'hidden', // 🔥 Prevent content overflow
+    overflow: 'hidden',
   },
   focusCardSelected: {
     backgroundColor: 'rgba(5, 150, 105, 0.08)',
-    borderColor: '#F59E0B',
+    borderColor: COLORS.dark.warning,
     borderWidth: 2,
-    shadowColor: '#F59E0B',
+    shadowColor: COLORS.dark.warning,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.6,
     shadowRadius: 12,
@@ -1191,9 +1624,9 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   focusIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: SIZES.iconMd,
+    height: SIZES.iconMd,
+    borderRadius: SIZES.iconMd / 2,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 10,
@@ -1203,38 +1636,37 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   focusName: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#F8FAFB',
+    ...TYPOGRAPHY.bodySmallSemibold,
+    color: COLORS.dark.foreground,
     marginBottom: 3,
-    lineHeight: 18,
   },
   focusMultiplier: {
+    ...TYPOGRAPHY.h3,
     fontSize: 18,
     fontWeight: '700',
-    color: '#059669',
-    marginBottom: 4,
+    color: COLORS.dark.primary,
+    marginBottom: SPACING.xs,
   },
   focusDescription: {
-    fontSize: 11,
-    color: '#94A3B8',
-    marginBottom: 8,
-    lineHeight: 15,
+    ...TYPOGRAPHY.caption,
+    color: COLORS.dark.mutedForeground,
+    marginBottom: SPACING.sm,
     fontWeight: '500',
   },
   focusAffects: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 4,
+    gap: SPACING.xs,
     marginTop: 'auto',
   },
   focusAffectTag: {
     paddingHorizontal: 7,
     paddingVertical: 3,
-    borderRadius: 6,
+    borderRadius: SIZES.radiusSm,
     maxWidth: '48%',
   },
   focusAffectText: {
+    ...TYPOGRAPHY.caption,
     fontSize: 9,
     fontWeight: '700',
   },
@@ -1246,15 +1678,15 @@ const styles = StyleSheet.create({
 
   // Match History (Vertical)
   matchHistoryVertical: {
-    gap: 12,
+    gap: 7, // ✅ %45 azaltıldı (12 → 7: 12 * 0.55 = 6.6)
   },
   historyCardVertical: {
     width: '100%',
-    backgroundColor: '#1E293B',
-    borderRadius: 16,
-    padding: 16,
+    backgroundColor: COLORS.dark.card,
+    borderRadius: SIZES.radiusXl,
+    padding: SPACING.base,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: COLORS.dark.border,
     position: 'relative',
   },
   historyHeader: {
@@ -1265,12 +1697,12 @@ const styles = StyleSheet.create({
   },
   historyDate: {
     fontSize: 11,
-    color: '#64748B',
+    color: COLORS.dark.mutedForeground,
   },
   historyScore: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#F8FAFB',
+    color: COLORS.dark.foreground,
   },
   historyTeams: {
     fontSize: 12,
@@ -1317,7 +1749,7 @@ const styles = StyleSheet.create({
   viewAllBadgesText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#F59E0B',
+    color: BRAND.gold,
     textAlign: 'center',
   },
   
@@ -1335,7 +1767,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 14,
-    color: '#64748B',
+    color: COLORS.dark.mutedForeground,
     marginTop: 12,
     textAlign: 'center',
   },
@@ -1349,12 +1781,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#1E293B',
+    backgroundColor: COLORS.dark.card,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: COLORS.dark.border,
     zIndex: 10001,
     elevation: 10001, // Android için - çok yüksek
   },
@@ -1367,7 +1799,7 @@ const styles = StyleSheet.create({
   dropdownButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#F8FAFB',
+    color: COLORS.dark.foreground,
     flex: 1,
   },
   clearFilterButton: {
@@ -1380,10 +1812,10 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     marginTop: 8,
-    backgroundColor: '#1E293B',
+    backgroundColor: COLORS.dark.card,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: COLORS.dark.border,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -1412,7 +1844,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   dropdownItemTextActive: {
-    color: '#F8FAFB',
+    color: COLORS.dark.foreground,
     fontWeight: '600',
   },
   dropdownTeamBadge: {
@@ -1438,5 +1870,502 @@ const styles = StyleSheet.create({
   },
   dropdownTeamEmoji: {
     fontSize: 12,
+  },
+  
+  // ✅ Yeni Maç Kartı Stilleri (Verilen koddan)
+  matchCardContainer: {
+    width: width,
+    maxWidth: 768,
+    marginRight: 0,
+    minHeight: 175,
+    paddingHorizontal: 16,
+  },
+  matchCard: {
+    width: '100%',
+    minHeight: 175,
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(51, 65, 85, 0.5)',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 6,
+      },
+      web: {
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
+      },
+    }),
+  },
+  matchCardLeftStrip: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    width: 8,
+    height: '100%',
+    zIndex: 0,
+  },
+  matchCardRightStrip: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    width: 8,
+    height: '100%',
+    zIndex: 0,
+  },
+  matchCardContent: {
+    paddingTop: 12,
+    paddingHorizontal: 12,
+    paddingBottom: 6,
+    zIndex: 1,
+  },
+  matchCardTournamentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 8,
+    flexWrap: 'wrap',
+  },
+  matchCardTournamentBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+    gap: 3,
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.2)',
+    marginBottom: 4,
+  },
+  matchCardTeamsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 10,
+    gap: 8,
+  },
+  matchCardTeamLeft: {
+    flex: 1,
+    alignItems: 'flex-start',
+    minWidth: 0, // ✅ Text overflow için
+  },
+  matchCardTeamRight: {
+    flex: 1,
+    alignItems: 'flex-end',
+    minWidth: 0, // ✅ Text overflow için
+  },
+  matchCardTeamName: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginBottom: 2,
+  },
+  matchCardTeamNameRight: {
+    textAlign: 'right',
+  },
+  matchCardCoachName: {
+    fontSize: 10,
+    color: '#94a3b8',
+  },
+  matchCardCoachNameAway: {
+    fontSize: 10,
+    color: '#fb923c',
+  },
+  matchCardCenterInfo: {
+    alignItems: 'center',
+    minWidth: 140,
+    maxWidth: 160,
+  },
+  matchCardTournamentText: {
+    fontSize: 9,
+    fontWeight: '600',
+    color: '#34d399',
+  },
+  matchCardVenueContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    marginTop: 4,
+    marginBottom: 8,
+  },
+  matchCardVenueInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  matchCardVenueText: {
+    fontSize: 10,
+    color: '#94a3b8',
+    fontWeight: '500',
+  },
+  matchCardMatchInfoCard: {
+    width: '100%',
+    alignItems: 'center',
+    gap: 3,
+  },
+  matchCardInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    marginBottom: 2,
+  },
+  matchCardInfoText: {
+    fontSize: 9,
+    color: '#94a3b8',
+    fontWeight: '500',
+  },
+  matchCardInfoTextBold: {
+    fontSize: 11,
+    color: '#cbd5e1',
+    fontWeight: '600',
+  },
+  matchCardTimeBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginTop: 1,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#10b981',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 4,
+      },
+      web: {
+        boxShadow: '0 2px 8px rgba(16, 185, 129, 0.3)',
+      },
+    }),
+  },
+  matchCardTimeText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#ffffff',
+  },
+  matchCardLiveContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    marginBottom: 8,
+    marginTop: 2,
+  },
+  matchCardLiveBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#dc2626',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#dc2626',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.4,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 4,
+      },
+      web: {
+        boxShadow: '0 2px 8px rgba(220, 38, 38, 0.4)',
+      },
+    }),
+  },
+  matchCardLiveDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#ffffff',
+  },
+  matchCardLiveText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#ffffff',
+  },
+  matchCardMinuteBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    marginTop: 4,
+  },
+  matchCardMinuteText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#34d399',
+  },
+  matchCardLiveMinuteBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(51, 65, 85, 0.4)',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  matchCardLiveMinuteText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#ffffff',
+  },
+  matchCardCountdownContainer: {
+    alignItems: 'center',
+    marginBottom: 0,
+    marginTop: 2,
+  },
+  matchCardDaysRemainingContainer: {
+    alignItems: 'center',
+    marginBottom: 0,
+    marginTop: 2,
+  },
+  matchCardDaysRemainingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    minHeight: 32,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#f97316',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#f97316',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.4,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 4,
+      },
+      web: {
+        boxShadow: '0 2px 8px rgba(249, 115, 22, 0.4)',
+      },
+    }),
+  },
+  matchCardDaysRemainingText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#ffffff',
+  },
+  matchCardCountdownCard: {
+    alignItems: 'center',
+    gap: 5,
+    width: '100%',
+  },
+  matchCardCountdownLabel: {
+    fontSize: 9,
+    color: '#94a3b8',
+    fontWeight: '600',
+    marginBottom: 1,
+  },
+  matchCardCountdownRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+  },
+  matchCardCountdownBox: {
+    minWidth: 40,
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  matchCardCountdownNumber: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginBottom: 1,
+  },
+  matchCardCountdownUnit: {
+    fontSize: 7,
+    color: '#fed7aa',
+    fontWeight: '500',
+  },
+  matchCardCountdownSeparator: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#f97316',
+    marginHorizontal: 1,
+  },
+  matchCardFinishedContainer: {
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  matchCardFinishedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#475569',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#475569',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.4,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 4,
+      },
+      web: {
+        boxShadow: '0 2px 8px rgba(71, 85, 105, 0.4)',
+      },
+    }),
+  },
+  matchCardFinishedText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#ffffff',
+  },
+  matchCardRefereeCard: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+    backgroundColor: 'rgba(30, 41, 59, 0.3)',
+    borderRadius: 8,
+    padding: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(51, 65, 85, 0.5)',
+  },
+  matchCardRefereeIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#334155',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
+  },
+  matchCardVarIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(88, 28, 135, 0.5)',
+    borderWidth: 1,
+    borderColor: 'rgba(147, 51, 234, 0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
+  },
+  matchCardVarText: {
+    fontSize: 7,
+    fontWeight: 'bold',
+    color: '#c084fc',
+  },
+  matchCardRefereeInfo: {
+    flex: 1,
+    alignItems: 'flex-start',
+  },
+  matchCardRefereeLabel: {
+    fontSize: 8,
+    color: '#64748b',
+    marginBottom: 1,
+  },
+  matchCardRefereeName: {
+    fontSize: 10,
+    color: '#cbd5e1',
+    fontWeight: '700',
+  },
+  matchCardScoreBox: {
+    marginTop: 4,
+    backgroundColor: '#1e293b',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 45,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#334155',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 3,
+      },
+      web: {
+        boxShadow: '0 2px 4px rgba(30, 41, 59, 0.3)',
+      },
+    }),
+  },
+  matchCardScoreText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    ...Platform.select({
+      web: {
+        textShadow: '1px 1px 0px #00ffff, -1px -1px 0px #ff6b35',
+      },
+      default: {
+        textShadowColor: '#00ffff',
+        textShadowOffset: { width: 1, height: 1 },
+        textShadowRadius: 2,
+      },
+    }),
+  },
+  matchCardScoreBoxLive: {
+    marginTop: 4,
+    backgroundColor: '#1e293b',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 45,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#334155',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 3,
+      },
+      web: {
+        boxShadow: '0 2px 4px rgba(30, 41, 59, 0.3)',
+      },
+    }),
+  },
+  matchCardScoreTextLive: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    ...Platform.select({
+      web: {
+        textShadow: '1px 1px 0px #00ffff, -1px -1px 0px #ff6b35',
+      },
+      default: {
+        textShadowColor: '#00ffff',
+        textShadowOffset: { width: 1, height: 1 },
+        textShadowRadius: 2,
+      },
+    }),
   },
 });

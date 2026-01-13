@@ -37,6 +37,55 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({ onPress, newBadge, onB
   const badgeSlideAnim = useRef(new Animated.Value(-100)).current; // Sol taraftan başlar
   const popupScaleAnim = useRef(new Animated.Value(0)).current;
   const shownBadgeIdsRef = useRef<Set<string>>(new Set()); // Track badges shown in this component instance
+  
+  // ✅ Kullanıcı bilgilerini yükle
+  const [userName, setUserName] = useState('FM');
+  const [userDisplayName, setUserDisplayName] = useState('Futbol Aşığı');
+  
+  // ✅ Her 2 saniyede bir AsyncStorage'ı kontrol et (kullanıcı ayarlardan dönünce güncellensin)
+  useEffect(() => {
+    const loadUserData = async () => {
+      try {
+        const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
+        const userDataStr = await AsyncStorage.getItem('fan-manager-user');
+        if (userDataStr) {
+          const userData = JSON.parse(userDataStr);
+          if (userData.name) {
+            setUserDisplayName(userData.name);
+            // Avatar için isim ve soyisimden ilk harfleri al
+            const nameParts = userData.name.trim().split(' ').filter((n: string) => n.length > 0);
+            if (nameParts.length >= 2) {
+              // İsim ve soyisim varsa her ikisinin ilk harfi
+              const initials = (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase();
+              setUserName(initials);
+            } else if (nameParts.length === 1) {
+              // Sadece isim varsa ilk 2 harfi
+              setUserName(nameParts[0].substring(0, 2).toUpperCase());
+            }
+          } else if (userData.username) {
+            // Name yoksa username'den al
+            setUserDisplayName(userData.username);
+            const usernameParts = userData.username.trim().split(' ').filter((n: string) => n.length > 0);
+            if (usernameParts.length >= 2) {
+              const initials = (usernameParts[0][0] + usernameParts[usernameParts.length - 1][0]).toUpperCase();
+              setUserName(initials);
+            } else {
+              setUserName(userData.username.substring(0, 2).toUpperCase());
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error loading user data in ProfileCard:', error);
+      }
+    };
+    
+    loadUserData();
+    
+    // ✅ Her 2 saniyede bir tekrar kontrol et (Settings'den dönünce güncellensin)
+    const interval = setInterval(loadUserData, 2000);
+    
+    return () => clearInterval(interval);
+  }, []);
 
   // Load earned badges
   useEffect(() => {
@@ -119,11 +168,11 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({ onPress, newBadge, onB
       <View style={styles.profileContainer}>
         <View style={styles.profileLeft}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>FM</Text>
+            <Text style={styles.avatarText}>{userName}</Text>
           </View>
           <View style={styles.profileInfo}>
             <View style={styles.nameRow}>
-              <Text style={styles.profileName}>Futbol Aşığı</Text>
+              <Text style={styles.profileName}>{userDisplayName}</Text>
               <View style={styles.proBadge}>
                 <Text style={styles.proBadgeText}>PRO</Text>
               </View>
@@ -244,14 +293,15 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({ onPress, newBadge, onB
 
 const styles = StyleSheet.create({
   profileButton: {
-    backgroundColor: '#1E293B',
-    borderRadius: 12,
+    backgroundColor: 'transparent', // ✅ Dikdörtgen container yok, şeffaf
+    borderRadius: 0, // ✅ Border radius yok (overlay'de var)
     padding: 12,
-    marginHorizontal: 16,
-    marginTop: 12,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#334155',
+    marginHorizontal: 16, // ✅ Yatay margin korundu
+    marginTop: 0, // ✅ Üst margin kaldırıldı (overlay padding var)
+    marginBottom: 0, // ✅ Alt margin kaldırıldı
+    borderWidth: 0, // ✅ Border yok
+    borderColor: 'transparent',
+    // ✅ Shadow ve elevation kaldırıldı (overlay'de var)
   },
   profileContainer: {
     flexDirection: 'row',
@@ -322,7 +372,7 @@ const styles = StyleSheet.create({
   },
   badgesScroll: {
     paddingRight: 12,
-    gap: 10,
+    gap: 8,
   },
   noBadgesContainer: {
     paddingVertical: 8,

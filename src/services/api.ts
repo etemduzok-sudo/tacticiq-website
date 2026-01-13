@@ -7,24 +7,25 @@ import { matchesDb, teamsDb, leaguesDb } from './databaseService';
 import { getMockMatches, getMockMatchById, getMockMatchesByDate } from './mockDataService';
 import { getApiEndpoint, API_CONFIG } from '../config/AppVersion';
 import { handleNetworkError, handleApiError } from '../utils/GlobalErrorHandler';
+import { logger, logApiCall } from '../utils/logger';
 
 // Platform-specific API URL
 const getApiBaseUrl = () => {
   // ⚠️ ALWAYS USE LOCALHOST FOR DEVELOPMENT
   // __DEV__ check sometimes fails in web, so force localhost
   if (Platform.OS === 'web' || __DEV__ || typeof window !== 'undefined') {
-    console.log('🔧 [API] Using localhost (development mode)');
+    logger.debug('Using localhost (development mode)', undefined, 'API');
     return 'http://localhost:3000/api';
   }
   
   // Production - Use centralized config
-  console.log('🚀 [API] Using production API');
+  logger.info('Using production API', undefined, 'API');
   return getApiEndpoint();
 };
 
 const API_BASE_URL = getApiBaseUrl();
 
-console.log('🌐 [API] Base URL set to:', API_BASE_URL);
+logger.debug('Base URL set', { url: API_BASE_URL }, 'API');
 
 // Request helper with timeout and error handling
 async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
@@ -81,12 +82,18 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
     }
     
     if (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError') || error.message?.includes('ERR_CONNECTION_REFUSED')) {
-      // Silently handle network errors (backend is expected to be off in dev)
-      // Don't log or show errors for expected backend unavailability
-      throw new Error('Backend bağlantısı kurulamadı');
+      // Log network errors with context (even in dev, but with appropriate level)
+      const networkError = new Error('Backend bağlantısı kurulamadı');
+      handleNetworkError(networkError.message, { 
+        endpoint, 
+        method: options?.method || 'GET',
+        timeout: API_CONFIG.timeout,
+        timestamp: new Date().toISOString(),
+      });
+      throw networkError;
     }
     
-    console.error('API Request Error:', error);
+    logger.error('API Request Error', { error, endpoint }, 'API');
     throw error;
   }
 }
@@ -173,7 +180,7 @@ export const matchesApi = {
       // Try database first
       const dbResult = await matchesDb.getLiveMatches();
       if (dbResult.success && dbResult.data && dbResult.data.length > 0) {
-        console.log('✅ Live matches from DATABASE');
+        logger.debug('Live matches from DATABASE', { count: dbResult.data.length }, 'API');
         // Transform database format to API format
         const transformedData = dbResult.data.map(transformDbMatchToApiFormat);
         return { success: true, data: transformedData, source: 'database' };
@@ -201,7 +208,7 @@ export const matchesApi = {
       // Try database first
       const dbResult = await matchesDb.getMatchesByDate(date);
       if (dbResult.success && dbResult.data && dbResult.data.length > 0) {
-        console.log(`✅ Matches for ${date} from DATABASE`);
+        logger.debug(`Matches for ${date} from DATABASE`, { date, count: dbResult.data.length }, 'API');
         // Transform database format to API format
         const transformedData = dbResult.data.map(transformDbMatchToApiFormat);
         return { success: true, data: transformedData, source: 'database' };
@@ -244,19 +251,19 @@ export const matchesApi = {
       // Try database first
       const dbResult = await matchesDb.getMatchById(matchId);
       if (dbResult.success && dbResult.data) {
-        console.log(`✅ Match ${matchId} from DATABASE`);
+        logger.debug(`Match ${matchId} from DATABASE`, { matchId }, 'API');
         // Transform database format to API format
         const transformedData = transformDbMatchToApiFormat(dbResult.data);
         return { success: true, data: transformedData, source: 'database' };
       }
       
       // Try backend
-      console.log(`⚠️ Match ${matchId} not in DB, trying BACKEND...`);
+      logger.debug(`Match ${matchId} not in DB, trying BACKEND...`, { matchId }, 'API');
       try {
         const backendResult = await request(`/matches/${matchId}`);
         return backendResult;
       } catch (backendError) {
-        console.log(`⚠️ Backend failed for match ${matchId}, using MOCK DATA...`);
+        logger.warn(`Backend failed for match ${matchId}, using MOCK DATA...`, { matchId, error: backendError }, 'API');
         // Fallback to mock data
         const mockMatch = getMockMatchById(matchId);
         if (mockMatch) {
@@ -265,7 +272,7 @@ export const matchesApi = {
         throw new Error('Match not found');
       }
     } catch (error) {
-      console.error(`❌ Error in getMatchDetails(${matchId}):`, error);
+      logger.error(`Error in getMatchDetails(${matchId})`, { matchId, error }, 'API');
       throw error;
     }
   },
@@ -296,7 +303,7 @@ export const matchesApi = {
       
       return result;
     } catch (error) {
-      console.error('Error fetching team season matches:', error);
+      logger.error('Error fetching team season matches', { teamId, season, error }, 'API');
       throw error;
     }
   },
@@ -312,7 +319,7 @@ export const matchesApi = {
       const fromDate = today.toISOString().split('T')[0];
       const toDate = next30Days.toISOString().split('T')[0];
       
-      console.log(`📅 Fetching matches from ${fromDate} to ${toDate}`);
+      logger.debug(`Fetching matches from ${fromDate} to ${toDate}`, { teamId, fromDate, toDate }, 'API');
       
       const result = await request(`/matches/team/${teamId}?from=${fromDate}&to=${toDate}`);
       
@@ -324,7 +331,7 @@ export const matchesApi = {
       
       return result;
     } catch (error) {
-      console.error('Error fetching upcoming matches:', error);
+      logger.error('Error fetching upcoming matches', { teamId, error }, 'API');
       // Fallback to season matches if date range fails
       return matchesApi.getTeamSeasonMatches(teamId, 2025);
     }
@@ -455,4 +462,32 @@ export default {
     isMatchFinished,
   },
   getBaseUrl: () => API_BASE_URL, // Export base URL for direct fetch
+};
+
+// ====================
+// AUTH API
+// ====================
+export const authApi = {
+  /**
+   * Kullanıcı adı müsaitlik kontrolü
+   */
+  checkUsername: async (username: string, currentUserId?: string): Promise<{
+    success: boolean;
+    available: boolean;
+    message: string;
+  }> => {
+    try {
+      const queryParams = currentUserId ? `?currentUserId=${currentUserId}` : '';
+      const response = await fetch(`${API_BASE_URL}/auth/check-username/${username}${queryParams}`);
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      logger.error('Check username error', { username, error }, 'API');
+      return {
+        success: false,
+        available: false,
+        message: 'Bağlantı hatası',
+      };
+    }
+  },
 };

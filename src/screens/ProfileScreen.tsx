@@ -5,14 +5,16 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  SafeAreaView,
   Image,
   Modal,
   ActivityIndicator,
   FlatList,
   Pressable,
   TextInput,
+  Alert,
+  Platform,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,8 +28,11 @@ import { getAllAvailableBadges, getUserBadges } from '../services/badgeService';
 import { Badge, getBadgeColor, getBadgeTierName } from '../types/badges.types';
 import { ALL_BADGES, BadgeDefinition, getBadgeById } from '../constants/badges';
 import { useFavoriteTeams } from '../hooks/useFavoriteTeams';
+import { logger } from '../utils/logger';
 import { teamsApi } from '../services/api';
 import { SPACING, TYPOGRAPHY, BRAND, DARK_MODE } from '../theme/theme';
+import { StandardHeader, ScreenLayout } from '../components/layouts';
+import { containerStyles } from '../utils/styleHelpers';
 
 interface ProfileScreenProps {
   onBack: () => void;
@@ -128,7 +133,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       const earnedCount = badgesWithStatus.filter(b => b.earned).length;
       setBadgeCount(earnedCount);
       
-      console.log(`✅ Loaded badges: ${ALL_BADGES.length} total, ${earnedCount} earned`);
+      logger.info(`Loaded badges: ${ALL_BADGES.length} total, ${earnedCount} earned`, { total: ALL_BADGES.length, earned: earnedCount }, 'BADGES');
       
       // Initialize test badges in background (non-blocking)
       if (earnedCount === 0) {
@@ -159,12 +164,12 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               setBadgeCount(updatedStatus.filter(b => b.earned).length);
             }
           } catch (err) {
-            console.warn('Background badge init failed:', err);
+            logger.warn('Background badge init failed', { error: err }, 'BADGES');
           }
         }, 1000);
       }
     } catch (error) {
-      console.error('Error loading badges:', error);
+      logger.error('Error loading badges', { error }, 'BADGES');
       // Fallback: show empty badges
       setAllBadges([]);
       setBadgeCount(0);
@@ -180,6 +185,17 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         // Get user ID from AsyncStorage
         const userDataStr = await AsyncStorage.getItem(STORAGE_KEYS.USER);
         const userData = userDataStr ? JSON.parse(userDataStr) : null;
+        
+        // ✅ Kullanıcı adı ve ismini AsyncStorage'dan yükle
+        if (userData) {
+          setUser(prev => ({
+            ...prev,
+            name: userData.name || prev.name,
+            username: userData.username ? `@${userData.username}` : prev.username,
+            avatar: userData.avatar || prev.avatar, // ✅ Avatar'ı da yükle
+          }));
+        }
+        
         // UUID formatında değilse null gönder (Supabase UUID bekliyor)
         const userId = userData?.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userData.id) 
           ? userData.id 
@@ -230,15 +246,15 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         const storedIsPro = userData?.is_pro === true || userData?.isPro === true || userData?.isPremium === true || userData?.plan === 'pro' || userData?.plan === 'premium';
         if (storedIsPro) {
           setIsPro(true);
-          console.log('✅ [PROFILE] User is PRO (from AsyncStorage)', { is_pro: userData?.is_pro, isPro: userData?.isPro, isPremium: userData?.isPremium, plan: userData?.plan });
+          logger.debug('User is PRO (from AsyncStorage)', { is_pro: userData?.is_pro, isPro: userData?.isPro, isPremium: userData?.isPremium, plan: userData?.plan }, 'PROFILE');
         } else {
           setIsPro(false);
-          console.log('⚠️ [PROFILE] User is NOT PRO', { is_pro: userData?.is_pro, isPro: userData?.isPro, isPremium: userData?.isPremium, plan: userData?.plan });
+          logger.debug('User is NOT PRO', { is_pro: userData?.is_pro, isPro: userData?.isPro, isPremium: userData?.isPremium, plan: userData?.plan }, 'PROFILE');
         }
 
         // Fetch user profile from Supabase (sadece geçerli UUID varsa)
         if (!userId) {
-          console.log('⚠️ [PROFILE] No valid UUID found, skipping Supabase fetch');
+          logger.debug('No valid UUID found, skipping Supabase fetch', undefined, 'PROFILE');
           // Use AsyncStorage data if available
           if (userData) {
             setUser({
@@ -317,13 +333,125 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
         setLoading(false);
       } catch (error) {
-        console.error('❌ Error fetching user data:', error);
+        logger.error('Error fetching user data', { error, userId }, 'PROFILE');
         setLoading(false);
       }
     };
 
     fetchUserData();
+    
+    // ✅ Her 3 saniyede bir AsyncStorage'ı kontrol et (Settings'den dönünce güncellensin)
+    const interval = setInterval(async () => {
+      try {
+        const userDataStr = await AsyncStorage.getItem(STORAGE_KEYS.USER);
+        const userData = userDataStr ? JSON.parse(userDataStr) : null;
+        if (userData) {
+          setUser(prev => ({
+            ...prev,
+            name: userData.name || prev.name,
+            username: userData.username ? `@${userData.username}` : prev.username,
+            avatar: userData.avatar || prev.avatar,
+          }));
+        }
+      } catch (error) {
+        logger.error('Error refreshing user data', { error }, 'PROFILE');
+      }
+    }, 3000);
+    
+    return () => clearInterval(interval);
   }, []);
+
+  // 📷 Fotoğraf Çekme
+  const handleTakePhoto = async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('İzin Gerekli', 'Kamera kullanmak için izin vermeniz gerekiyor.');
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        await saveProfilePhoto(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Error taking photo:', error);
+      Alert.alert('Hata', 'Fotoğraf çekilirken bir hata oluştu.');
+    }
+  };
+
+  // 🖼️ Galeriden Fotoğraf Seçme
+  const handlePickImage = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('İzin Gerekli', 'Galeriye erişmek için izin vermeniz gerekiyor.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        await saveProfilePhoto(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
+      Alert.alert('Hata', 'Fotoğraf seçilirken bir hata oluştu.');
+    }
+  };
+
+  // 🗑️ Fotoğrafı Kaldırma
+  const handleRemovePhoto = async () => {
+    Alert.alert(
+      'Fotoğrafı Kaldır',
+      'Profil fotoğrafınızı kaldırmak istediğinizden emin misiniz?',
+      [
+        { text: 'İptal', style: 'cancel' },
+        {
+          text: 'Kaldır',
+          style: 'destructive',
+          onPress: async () => {
+            await saveProfilePhoto('');
+          },
+        },
+      ]
+    );
+  };
+
+  // 💾 Fotoğrafı Kaydetme
+  const saveProfilePhoto = async (photoUri: string) => {
+    try {
+      const userData = await AsyncStorage.getItem('fan-manager-user');
+      if (userData) {
+        const parsedData = JSON.parse(userData);
+        const updatedData = {
+          ...parsedData,
+          avatar: photoUri,
+        };
+        await AsyncStorage.setItem('fan-manager-user', JSON.stringify(updatedData));
+        
+        // State'i güncelle
+        setUser(prev => ({ ...prev, avatar: photoUri }));
+        setShowAvatarPicker(false);
+        
+        console.log('✅ Profile photo saved:', photoUri ? 'Photo set' : 'Photo removed');
+      }
+    } catch (error) {
+      console.error('Error saving profile photo:', error);
+      Alert.alert('Hata', 'Fotoğraf kaydedilirken bir hata oluştu.');
+    }
+  };
 
   // ✅ Backend'den takım arama fonksiyonu
   const searchTeamsFromBackend = useCallback(async (query: string, type: 'club' | 'national' = 'club') => {
@@ -465,37 +593,27 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   // Show loading state
   if (loading) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <ScreenLayout safeArea={true} scrollable={false}>
         <View style={[styles.container, styles.loadingContainer]}>
           <ActivityIndicator size="large" color="#059669" />
           <Text style={styles.loadingText}>Profil yükleniyor...</Text>
         </View>
-      </SafeAreaView>
+      </ScreenLayout>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={onBack} style={styles.headerButton}>
-            <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Profile</Text>
-          <View style={styles.headerRight}>
-            <TouchableOpacity onPress={() => {/* TODO: Navigate to notifications */}} style={styles.notificationButton}>
-              <Ionicons name="notifications-outline" size={24} color="#F8FAFB" />
-              <View style={styles.notificationBadge}>
-                <Text style={styles.notificationBadgeText}>3</Text>
-              </View>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={onSettings} style={styles.headerButton}>
-              <Ionicons name="settings-outline" size={24} color="#FFFFFF" />
-            </TouchableOpacity>
-          </View>
-        </View>
+    <ScreenLayout safeArea={true} scrollable={false}>
+      <StandardHeader
+        title="Profile"
+        onBack={onBack}
+        rightAction={{
+          icon: 'settings-outline',
+          onPress: onSettings,
+        }}
+      />
 
+      <View style={styles.container}>
         {/* 🏆 TAB NAVIGATION */}
         <View style={styles.tabContainer}>
           <TouchableOpacity
@@ -824,6 +942,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               keyExtractor={(item) => item.id}
               numColumns={4}
               contentContainerStyle={styles.badgeGrid}
+              columnWrapperStyle={styles.badgeRow}
               showsVerticalScrollIndicator={false}
               renderItem={({ item, index }) => (
                 <Animated.View entering={ZoomIn.delay(index * 30)}>
@@ -1025,84 +1144,41 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 </TouchableOpacity>
               </View>
 
-              <TouchableOpacity style={styles.modalOption}>
-                <Text style={styles.modalOptionText}>📷 Fotoğraf Çek</Text>
+              <TouchableOpacity 
+                style={styles.modalOption}
+                onPress={handleTakePhoto}
+              >
+                <Ionicons name="camera" size={24} color="#059669" />
+                <Text style={styles.modalOptionText}>Fotoğraf Çek</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.modalOption}>
-                <Text style={styles.modalOptionText}>🖼️ Galeriden Seç</Text>
+              <TouchableOpacity 
+                style={styles.modalOption}
+                onPress={handlePickImage}
+              >
+                <Ionicons name="images" size={24} color="#059669" />
+                <Text style={styles.modalOptionText}>Galeriden Seç</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.modalOption}>
-                <Text style={styles.modalOptionText}>🎨 Avatar Oluştur</Text>
-              </TouchableOpacity>
+              {user.avatar && (
+                <TouchableOpacity 
+                  style={[styles.modalOption, styles.modalOptionDanger]}
+                  onPress={handleRemovePhoto}
+                >
+                  <Ionicons name="trash" size={24} color="#EF4444" />
+                  <Text style={[styles.modalOptionText, styles.modalOptionTextDanger]}>Fotoğrafı Kaldır</Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         </Modal>
       </View>
-    </SafeAreaView>
+    </ScreenLayout>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#0F172A',
-  },
   container: {
     flex: 1,
     backgroundColor: '#0F172A',
-  },
-  
-  // Header
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    backgroundColor: 'rgba(15, 23, 42, 0.95)',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  headerButton: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  notificationButton: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-  },
-  notificationBadge: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    backgroundColor: '#EF4444',
-    borderRadius: 10,
-    width: 18,
-    height: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#0F172A',
-  },
-  notificationBadgeText: {
-    fontSize: 10,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
   },
 
   // ScrollView
@@ -1110,7 +1186,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: 24,
+    paddingHorizontal: 16, // ✅ Yatay padding (24 → 16, standart)
+    paddingTop: 0, // ✅ Üst padding yok (tab marginBottom zaten var)
     paddingBottom: 96,
   },
 
@@ -1119,7 +1196,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     borderColor: 'rgba(5, 150, 105, 0.2)',
-    marginBottom: 24,
+    marginBottom: 16, // ✅ Alt boşluk (standart: 24 → 16)
     overflow: 'hidden',
   },
   profileGradient: {
@@ -1689,17 +1766,25 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   modalOption: {
-    height: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
     marginBottom: 12,
+    gap: 12,
+  },
+  modalOptionDanger: {
+    borderColor: 'rgba(239, 68, 68, 0.3)',
   },
   modalOptionText: {
     fontSize: 16,
+    flex: 1,
     color: '#FFFFFF',
+  },
+  modalOptionTextDanger: {
+    color: '#EF4444',
   },
   
   // Loading State
@@ -1807,8 +1892,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 4,
     marginHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 8,
+    marginTop: 16, // ✅ Header altı boşluk (standart)
+    marginBottom: 16, // ✅ Tab altı boşluk (standart: 8 → 16)
   },
   tab: {
     flex: 1,
@@ -1969,20 +2054,24 @@ const styles = StyleSheet.create({
     backgroundColor: '#0F172A',
   },
   badgeGrid: {
-    padding: 16,
+    paddingHorizontal: 8,
+    paddingTop: 0, // ✅ Tab marginBottom zaten 16px, ekstra padding yok
     paddingBottom: 100,
   },
+  badgeRow: {
+    justifyContent: 'space-between',
+  },
   badgeCard: {
-    width: 80,
-    height: 120,
+    width: 80, // ✅ SABIT genişlik (kesinlikle sabit)
+    height: 120, // ✅ SABIT yükseklik (kesinlikle sabit)
     backgroundColor: 'rgba(30, 41, 59, 0.8)',
     borderRadius: 12,
     borderWidth: 2,
-    margin: 4,
     padding: 8,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     position: 'relative',
+    marginBottom: 8,
   },
   badgeEmoji: {
     fontSize: 36,
