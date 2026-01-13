@@ -13,6 +13,7 @@ import { ProfileCard } from './src/components/ProfileCard';
 import { DARK_MODE } from './src/theme/theme';
 import { hasBadgeBeenShown, markBadgeAsShown } from './src/services/badgeService';
 import { logger, logNavigation } from './src/utils/logger';
+import Animated, { FadeIn, FadeOut, SlideInRight, SlideOutLeft } from 'react-native-reanimated';
 
 // Web için UIManager polyfills
 if (Platform.OS === 'web') {
@@ -236,6 +237,7 @@ LogBox.ignoreLogs([
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('splash');
+  const [previousScreen, setPreviousScreen] = useState<Screen | null>(null);
   const [legalDocumentType, setLegalDocumentType] = useState<string>('terms');
   const [activeTab, setActiveTab] = useState<string>('home');
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
@@ -359,6 +361,7 @@ export default function App() {
     logger.info('Language selected', { lang }, 'LANGUAGE');
     await AsyncStorage.setItem('fan-manager-language', lang);
     logNavigation('auth');
+    setPreviousScreen(currentScreen);
     setCurrentScreen('auth');
   };
 
@@ -616,27 +619,53 @@ export default function App() {
   // SCREEN RENDERING
   // ==========================================
 
+  // Helper to wrap screen with animation
+  const wrapWithAnimation = (screen: React.ReactNode, key: string) => {
+    const isForward = previousScreen && (
+      (previousScreen === 'splash' && currentScreen !== 'splash') ||
+      (previousScreen === 'language' && currentScreen === 'auth') ||
+      (previousScreen === 'auth' && currentScreen === 'register') ||
+      (previousScreen === 'home' && currentScreen !== 'home')
+    );
+    
+    return (
+      <Animated.View
+        key={key}
+        entering={isForward ? SlideInRight.duration(300) : FadeIn.duration(250)}
+        exiting={isForward ? SlideOutLeft.duration(250) : FadeOut.duration(200)}
+        style={{ flex: 1 }}
+      >
+        {screen}
+      </Animated.View>
+    );
+  };
+
   const renderScreen = () => {
     try {
       switch (currentScreen) {
         case 'splash':
-          return <SplashScreen onComplete={handleSplashComplete} />;
+          return wrapWithAnimation(<SplashScreen onComplete={handleSplashComplete} />, 'splash');
         
         case 'language':
-          return (
+          return wrapWithAnimation(
             <LanguageSelectionScreen
               onLanguageSelect={handleLanguageSelect}
-            />
+            />,
+            'language'
           );
         
         case 'auth':
-          return (
+          return wrapWithAnimation(
             <AuthScreen
               onLoginSuccess={handleLoginSuccess}
               onForgotPassword={handleForgotPassword}
               onRegister={handleRegister}
-              onBack={() => setCurrentScreen('language')}
-            />
+              onBack={() => {
+                setPreviousScreen(currentScreen);
+                setCurrentScreen('language');
+              }}
+            />,
+            'auth'
           );
         
         case 'register':
@@ -850,7 +879,7 @@ export default function App() {
               {isMaintenanceMode ? (
                 <MaintenanceScreen />
               ) : (
-                <View style={{ flex: 1, backgroundColor: '#0F172A' }}>
+                <View style={{ flex: 1, backgroundColor: DARK_MODE.background }}>
                   {renderScreen()}
                   
                   {/* Fixed Profile Card Overlay - Only on home, matches, leaderboard */}
@@ -891,7 +920,7 @@ export default function App() {
 const styles = StyleSheet.create({
   errorContainer: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: DARK_MODE.background,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,

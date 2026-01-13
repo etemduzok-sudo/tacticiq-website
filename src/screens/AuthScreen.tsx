@@ -23,7 +23,7 @@ import Animated, {
   withTiming,
   useSharedValue,
 } from 'react-native-reanimated';
-import { BRAND } from '../theme/theme';
+import { BRAND, COLORS, SPACING, TYPOGRAPHY, SIZES } from '../theme/theme';
 // Logo component removed - using text placeholder
 
 // ============================================
@@ -366,7 +366,7 @@ export default function AuthScreen({
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: COLORS.dark.background,
   },
   container: {
     flex: 1,
@@ -409,6 +409,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   logoText: {
+    ...TYPOGRAPHY.h1,
     fontSize: 32,
     fontWeight: '700',
     color: BRAND.white,
@@ -426,14 +427,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: BRAND.white,
     height: LAYOUT.socialButtonHeight,
-    borderRadius: 12,
-    gap: 12,
+    borderRadius: SIZES.radiusLg,
+    gap: SPACING.md,
   },
   googleButtonText: {
-    fontSize: 16,
-    color: '#1F2937',
+    ...TYPOGRAPHY.body,
+    color: COLORS.dark.foreground,
     fontWeight: '500',
   },
   appleButton: {
@@ -442,14 +443,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: '#000000',
     height: LAYOUT.socialButtonHeight,
-    borderRadius: 12,
-    gap: 12,
+    borderRadius: SIZES.radiusLg,
+    gap: SPACING.md,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   appleButtonText: {
-    fontSize: 16,
-    color: '#FFFFFF',
+    ...TYPOGRAPHY.body,
+    color: BRAND.white,
     fontWeight: '500',
   },
   
@@ -458,16 +459,16 @@ const styles = StyleSheet.create({
     height: LAYOUT.dividerZoneHeight,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: SPACING.md,
   },
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#374151',
+    backgroundColor: COLORS.dark.border,
   },
   dividerText: {
-    fontSize: 14,
-    color: '#6B7280',
+    ...TYPOGRAPHY.bodySmall,
+    color: COLORS.dark.mutedForeground,
   },
   
   // [E] FORM INPUT ZONE
@@ -475,11 +476,11 @@ const styles = StyleSheet.create({
     gap: LAYOUT.inputGap,
   },
   inputGroup: {
-    gap: 6,
+    gap: SPACING.md,
   },
   label: {
-    fontSize: 14,
-    color: '#9CA3AF',
+    ...TYPOGRAPHY.bodySmall,
+    color: COLORS.dark.mutedForeground,
   },
   inputWrapper: {
     position: 'relative',
@@ -487,27 +488,27 @@ const styles = StyleSheet.create({
   },
   inputIcon: {
     position: 'absolute',
-    left: 12,
+    left: SPACING.md,
     top: LAYOUT.inputIconTop,
     zIndex: 1,
   },
   input: {
     height: LAYOUT.inputHeight,
-    backgroundColor: 'rgba(15, 23, 42, 0.5)',
+    backgroundColor: COLORS.dark.input + '80',
     borderWidth: 1,
-    borderColor: 'rgba(5, 150, 105, 0.3)',
-    borderRadius: 12,
+    borderColor: COLORS.dark.primary + '4D',
+    borderRadius: SIZES.radiusLg,
     paddingLeft: 44,
-    paddingRight: 16,
-    fontSize: 16,
-    color: '#FFFFFF',
+    paddingRight: SPACING.base,
+    ...TYPOGRAPHY.body,
+    color: BRAND.white,
   },
   inputWithRightIcon: {
     paddingRight: 44,
   },
   eyeButton: {
     position: 'absolute',
-    right: 12,
+    right: SPACING.md,
     top: LAYOUT.inputIconTop,
     zIndex: 1,
   },
@@ -517,16 +518,16 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-end',
   },
   forgotPasswordText: {
-    fontSize: 14,
-    color: '#059669',
+    ...TYPOGRAPHY.bodySmall,
+    color: BRAND.emerald,
   },
   
   // [G] PRIMARY CTA BUTTON
   ctaButton: {
     height: LAYOUT.ctaButtonHeight,
-    borderRadius: 12,
+    borderRadius: SIZES.radiusLg,
     overflow: 'hidden',
-    marginTop: 8,
+    marginTop: SPACING.sm,
   },
   ctaButtonGradient: {
     flex: 1,
@@ -534,8 +535,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   ctaButtonText: {
-    fontSize: 16,
-    color: '#FFFFFF',
+    ...TYPOGRAPHY.button,
+    color: BRAND.white,
     fontWeight: '600',
   },
   
@@ -547,40 +548,41 @@ const styles = StyleSheet.create({
     marginTop: LAYOUT.secondaryLinkMarginTop,
   },
   secondaryLinkText: {
-    fontSize: 14,
-    color: '#9CA3AF',
+    ...TYPOGRAPHY.bodySmall,
+    color: COLORS.dark.mutedForeground,
   },
   secondaryLink: {
-    fontSize: 14,
-    color: '#059669',
+    ...TYPOGRAPHY.bodySmall,
+    color: BRAND.emerald,
     fontWeight: '500',
   },
   
   // [H] FOOTER ZONE - FIXED AT BOTTOM (GLOBAL FOOTER)
   footerZone: {
-    paddingTop: 16,
-    paddingBottom: 16,
+    paddingTop: SPACING.base,
+    paddingBottom: SPACING.base,
     backgroundColor: 'transparent',
   },
   footer: {
+    ...TYPOGRAPHY.bodySmall,
     fontSize: 12,
-    color: '#6B7280',
+    color: COLORS.dark.mutedForeground,
     textAlign: 'center',
   },
   
   // Status Indicators
   statusIndicator: {
     position: 'absolute',
-    right: 12,
+    right: SPACING.md,
     top: LAYOUT.inputIconTop,
     zIndex: 1,
   },
   checkingText: {
-    fontSize: 16,
+    ...TYPOGRAPHY.body,
   },
   availableText: {
-    fontSize: 16,
-    color: '#059669',
+    ...TYPOGRAPHY.body,
+    color: BRAND.emerald,
   },
   takenText: {
     fontSize: 16,
