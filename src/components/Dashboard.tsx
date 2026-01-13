@@ -2015,10 +2015,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   matchCardTimeBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 6,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs,
+    borderRadius: SIZES.radiusSm,
     marginTop: 1,
+    minHeight: 28, // Ensure readable touch target
     ...Platform.select({
       ios: {
         shadowColor: '#10b981',
