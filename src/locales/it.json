@@ -1,0 +1,142 @@
+{
+  "common": {
+    "loading": "Caricamento...",
+    "error": "Errore",
+    "save": "Salva",
+    "cancel": "Annulla",
+    "close": "Chiudi",
+    "delete": "Elimina",
+    "edit": "Modifica",
+    "back": "Indietro",
+    "next": "Avanti",
+    "done": "Fatto"
+  },
+  "dashboard": {
+    "title": "Pannello di Controllo dell'Analista",
+    "analyst": "Analista",
+    "streak": "Serie",
+    "upcomingMatches": "Partite Imminenti e in Diretta",
+    "liveMatch": "IN DIRETTA",
+    "liveTracking": "Tracciamento in Diretta",
+    "predictButton": "Inserisci Analisi",
+    "strategicFocus": "Scegli Focus di Analisi",
+    "strategicFocusSubtitle": "Il focus selezionato dà moltiplicatore punti x1.25",
+    "recentPerformance": "La Tua Prestazione Recente",
+    "viewAllBadges": "Vedi Tutti i miei Badge",
+    "noUpcomingMatches": "Nessuna partita nelle prossime 24 ore",
+    "noMatchHistory": "Non hai ancora una cronologia partite",
+    "points": "Punti",
+    "accuracy": "Precisione"
+  },
+  "strategicFocus": {
+    "tempo": {
+      "name": "Analisi del Ritmo",
+      "description": "Concentrati sul ritmo della partita",
+      "advice": "Partita dal ritmo veloce attesa!"
+    },
+    "discipline": {
+      "name": "Analisi della Disciplina",
+      "description": "Prevedi giocate dure",
+      "advice": "Questo arbitro ama i cartellini, ottimo focus!"
+    },
+    "fitness": {
+      "name": "Analisi della Forma Fisica",
+      "description": "Valuta la condizione fisica",
+      "advice": "La forma fisica è critica in stagione lunga!"
+    },
+    "star": {
+      "name": "Analisi delle Stelle",
+      "description": "Traccia i giocatori star",
+      "advice": "I giocatori star saranno in campo!"
+    }
+  },
+  "badges": {
+    "title": "Badge",
+    "earned": "Ottenuto",
+    "locked": "Bloccato",
+    "howToEarn": "Come Ottenere",
+    "progress": "Progresso",
+    "progressHint": "servono più partite!",
+    "earnedDate": "Ottenuto:",
+    "tiers": {
+      "rookie": "Principiante",
+      "amateur": "Amatoriale",
+      "pro": "Professionista",
+      "expert": "Esperto",
+      "legend": "Leggenda"
+    }
+  },
+  "profile": {
+    "title": "Profilo",
+    "level": "Livello",
+    "points": "Punti",
+    "rank": "Classifica",
+    "settings": "Impostazioni",
+    "logout": "Esci",
+    "favoriteTeams": "Squadre Preferite",
+    "statistics": "Statistiche",
+    "achievements": "Risultati"
+  },
+  "matches": {
+    "title": "Partite",
+    "past": "Passate",
+    "live": "In Diretta",
+    "upcoming": "Imminenti",
+    "allMatches": "Tutte le Partite",
+    "noMatches": "Nessuna partita trovata",
+    "minute": "Minuto",
+    "vs": "VS"
+  },
+  "leaderboard": {
+    "title": "Classifica",
+    "overall": "Generale",
+    "weekly": "Settimanale",
+    "monthly": "Mensile",
+    "rank": "Posizione",
+    "user": "Utente",
+    "points": "Punti"
+  },
+  "scoring": {
+    "bonusApplied": "Bonus Applicato!",
+    "strategicBonus": "Bonus Focus Strategico",
+    "totalPoints": "Punti Totali",
+    "breakdown": "Ripartizione Punti"
+  },
+  "notifications": {
+    "title": "Notifiche",
+    "noNotifications": "Nessuna notifica",
+    "matchStartingSoon": "La partita inizierà presto!",
+    "predictionReminder": "Non dimenticare di fare una previsione!",
+    "badgeEarned": "Nuovo badge ottenuto!"
+  },
+  "errors": {
+    "networkError": "Errore di rete",
+    "serverError": "Errore del server",
+    "notFound": "Non trovato",
+    "unauthorized": "Accesso non autorizzato",
+    "tryAgain": "Riprova"
+  },
+  "auth": {
+    "title": "Benvenuto",
+    "subtitle": "Scopri strategie calcistiche",
+    "email": "E-mail",
+    "password": "Password",
+    "login": "Accedi",
+    "register": "Registrati",
+    "forgotPassword": "Password dimenticata",
+    "orContinueWith": "o continua con",
+    "emailRequired": "L'indirizzo e-mail non può essere vuoto",
+    "emailInvalid": "Inserisci un indirizzo e-mail valido",
+    "passwordRequired": "La password non può essere vuota",
+    "passwordMinLength": "La password deve contenere almeno 6 caratteri",
+    "loginSuccess": "Accesso riuscito!",
+    "loginFailed": "Accesso fallito",
+    "socialLoginFailed": "accesso fallito",
+    "errorOccurred": "Si è verificato un errore",
+    "checkingEmail": "Verifica e-mail...",
+    "emailAvailable": "E-mail disponibile",
+    "emailTaken": "Questa e-mail è già in uso",
+    "loginWithGoogle": "Accedi con Google",
+    "loginWithApple": "Accedi con Apple"
+  }
+}

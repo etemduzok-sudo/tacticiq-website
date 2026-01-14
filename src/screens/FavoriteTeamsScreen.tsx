@@ -8,6 +8,7 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -1249,31 +1250,52 @@ const styles = StyleSheet.create({
     borderColor: '#334155',
     minHeight: 60, // ✅ 80 → 60 (profil kartıyla benzer)
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 4,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 4px 8px rgba(0, 0, 0, 0.15)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+        elevation: 4,
+      },
+    }),
   },
   selectButtonSelected: {
     borderColor: 'rgba(5, 150, 105, 0.5)',
     borderWidth: 2,
     backgroundColor: 'rgba(51, 65, 85, 0.8)', // Antrasit ton
-    shadowColor: BRAND.emerald,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 8,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 6px 12px rgba(5, 150, 105, 0.25)',
+      },
+      default: {
+        shadowColor: BRAND.emerald,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.25,
+        shadowRadius: 12,
+        elevation: 8,
+      },
+    }),
   },
   selectButtonOpen: {
     borderColor: 'rgba(5, 150, 105, 0.5)',
     borderWidth: 1.5,
     backgroundColor: 'rgba(5, 150, 105, 0.08)',
-    shadowColor: BRAND.emerald,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 8,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 6px 12px rgba(5, 150, 105, 0.3)',
+      },
+      default: {
+        shadowColor: BRAND.emerald,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.3,
+        shadowRadius: 12,
+        elevation: 8,
+      },
+    }),
   },
   selectButtonLocked: {
     opacity: 0.5,
@@ -1395,11 +1417,18 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(148, 163, 184, 0.1)',
     padding: SPACING.md,
     gap: SPACING.sm,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 4,
+      },
+    }),
   },
   dropdownItem: {
     position: 'relative',
@@ -1414,11 +1443,18 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(148, 163, 184, 0.15)',
     overflow: 'hidden',
     minHeight: 95,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+      },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
+      },
+    }),
   },
   dropdownContent: {
     flexDirection: 'row',

@@ -1,0 +1,142 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "save": "Save",
+    "cancel": "Cancel",
+    "close": "Close",
+    "delete": "Delete",
+    "edit": "Edit",
+    "back": "Back",
+    "next": "Next",
+    "done": "Done"
+  },
+  "dashboard": {
+    "title": "Analyst Control Panel",
+    "analyst": "Analyst",
+    "streak": "Streak",
+    "upcomingMatches": "Upcoming & Live Matches",
+    "liveMatch": "LIVE",
+    "liveTracking": "Live Tracking",
+    "predictButton": "Enter Analysis",
+    "strategicFocus": "Choose Analysis Focus",
+    "strategicFocusSubtitle": "Selected focus gives x1.25 point multiplier",
+    "recentPerformance": "Recent Performance",
+    "viewAllBadges": "View All Badges",
+    "noUpcomingMatches": "No matches in next 24 hours",
+    "noMatchHistory": "No match history yet",
+    "points": "Points",
+    "accuracy": "Accuracy"
+  },
+  "strategicFocus": {
+    "tempo": {
+      "name": "Tempo Analysis",
+      "description": "Focus on match pace",
+      "advice": "Fast-paced match expected!"
+    },
+    "discipline": {
+      "name": "Discipline Analysis",
+      "description": "Predict rough plays",
+      "advice": "This referee loves cards, great focus!"
+    },
+    "fitness": {
+      "name": "Fitness Analysis",
+      "description": "Evaluate physical condition",
+      "advice": "Fitness is critical in long season!"
+    },
+    "star": {
+      "name": "Star Analysis",
+      "description": "Track star players",
+      "advice": "Star players will be on the field!"
+    }
+  },
+  "badges": {
+    "title": "Badges",
+    "earned": "Earned",
+    "locked": "Locked",
+    "howToEarn": "How to Earn",
+    "progress": "Progress",
+    "progressHint": "more matches needed!",
+    "earnedDate": "Earned:",
+    "tiers": {
+      "rookie": "Rookie",
+      "amateur": "Amateur",
+      "pro": "Professional",
+      "expert": "Expert",
+      "legend": "Legend"
+    }
+  },
+  "profile": {
+    "title": "Profile",
+    "level": "Level",
+    "points": "Points",
+    "rank": "Rank",
+    "settings": "Settings",
+    "logout": "Logout",
+    "favoriteTeams": "Favorite Teams",
+    "statistics": "Statistics",
+    "achievements": "Achievements"
+  },
+  "matches": {
+    "title": "Matches",
+    "past": "Past",
+    "live": "Live",
+    "upcoming": "Upcoming",
+    "allMatches": "All Matches",
+    "noMatches": "No matches found",
+    "minute": "Minute",
+    "vs": "VS"
+  },
+  "leaderboard": {
+    "title": "Leaderboard",
+    "overall": "Overall",
+    "weekly": "Weekly",
+    "monthly": "Monthly",
+    "rank": "Rank",
+    "user": "User",
+    "points": "Points"
+  },
+  "scoring": {
+    "bonusApplied": "Bonus Applied!",
+    "strategicBonus": "Strategic Focus Bonus",
+    "totalPoints": "Total Points",
+    "breakdown": "Points Breakdown"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "noNotifications": "No notifications",
+    "matchStartingSoon": "Match starting soon!",
+    "predictionReminder": "Don't forget to predict!",
+    "badgeEarned": "New badge earned!"
+  },
+  "errors": {
+    "networkError": "Network error",
+    "serverError": "Server error",
+    "notFound": "Not found",
+    "unauthorized": "Unauthorized access",
+    "tryAgain": "Try again"
+  },
+  "auth": {
+    "title": "Welcome",
+    "subtitle": "Discover football strategies",
+    "email": "Email",
+    "password": "Password",
+    "login": "Login",
+    "register": "Register",
+    "forgotPassword": "Forgot Password",
+    "orContinueWith": "or continue with",
+    "emailRequired": "Email address cannot be empty",
+    "emailInvalid": "Enter a valid email address",
+    "passwordRequired": "Password cannot be empty",
+    "passwordMinLength": "Password must be at least 6 characters",
+    "loginSuccess": "Login successful!",
+    "loginFailed": "Login failed",
+    "socialLoginFailed": "login failed",
+    "errorOccurred": "An error occurred",
+    "checkingEmail": "Checking email...",
+    "emailAvailable": "Email available",
+    "emailTaken": "This email is already in use",
+    "loginWithGoogle": "Login with Google",
+    "loginWithApple": "Login with Apple"
+  }
+}

@@ -7,6 +7,7 @@ import {
   ScrollView,
   Modal,
   Animated,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -402,9 +403,16 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
     textAlign: 'center',
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+    ...Platform.select({
+      web: {
+        textShadow: '0 1px 2px rgba(0, 0, 0, 0.5)',
+      },
+      default: {
+        textShadowColor: 'rgba(0, 0, 0, 0.5)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2,
+      },
+    }),
   },
   newBadgeIndicator: {
     position: 'absolute',

@@ -1,0 +1,142 @@
+{
+  "common": {
+    "loading": "Cargando...",
+    "error": "Error",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "close": "Cerrar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "back": "Atrás",
+    "next": "Siguiente",
+    "done": "Hecho"
+  },
+  "dashboard": {
+    "title": "Panel de Control del Analista",
+    "analyst": "Analista",
+    "streak": "Racha",
+    "upcomingMatches": "Partidos Próximos y en Vivo",
+    "liveMatch": "EN VIVO",
+    "liveTracking": "Seguimiento en Vivo",
+    "predictButton": "Ingresar Análisis",
+    "strategicFocus": "Elegir Enfoque de Análisis",
+    "strategicFocusSubtitle": "El enfoque seleccionado da multiplicador de puntos x1.25",
+    "recentPerformance": "Tu Rendimiento Reciente",
+    "viewAllBadges": "Ver Todas mis Insignias",
+    "noUpcomingMatches": "No hay partidos en las próximas 24 horas",
+    "noMatchHistory": "Aún no tienes historial de partidos",
+    "points": "Puntos",
+    "accuracy": "Precisión"
+  },
+  "strategicFocus": {
+    "tempo": {
+      "name": "Análisis de Ritmo",
+      "description": "Enfócate en el ritmo del partido",
+      "advice": "¡Se espera un partido de ritmo rápido!"
+    },
+    "discipline": {
+      "name": "Análisis de Disciplina",
+      "description": "Predice jugadas duras",
+      "advice": "¡Este árbitro ama las tarjetas, gran enfoque!"
+    },
+    "fitness": {
+      "name": "Análisis de Condición Física",
+      "description": "Evalúa la condición física",
+      "advice": "¡La condición física es crítica en temporada larga!"
+    },
+    "star": {
+      "name": "Análisis de Estrellas",
+      "description": "Rastrea jugadores estrella",
+      "advice": "¡Los jugadores estrella estarán en el campo!"
+    }
+  },
+  "badges": {
+    "title": "Insignias",
+    "earned": "Ganada",
+    "locked": "Bloqueada",
+    "howToEarn": "Cómo Ganar",
+    "progress": "Progreso",
+    "progressHint": "¡necesitas más partidos!",
+    "earnedDate": "Ganada:",
+    "tiers": {
+      "rookie": "Novato",
+      "amateur": "Aficionado",
+      "pro": "Profesional",
+      "expert": "Experto",
+      "legend": "Leyenda"
+    }
+  },
+  "profile": {
+    "title": "Perfil",
+    "level": "Nivel",
+    "points": "Puntos",
+    "rank": "Clasificación",
+    "settings": "Configuración",
+    "logout": "Cerrar Sesión",
+    "favoriteTeams": "Equipos Favoritos",
+    "statistics": "Estadísticas",
+    "achievements": "Logros"
+  },
+  "matches": {
+    "title": "Partidos",
+    "past": "Pasados",
+    "live": "En Vivo",
+    "upcoming": "Próximos",
+    "allMatches": "Todos los Partidos",
+    "noMatches": "No se encontraron partidos",
+    "minute": "Minuto",
+    "vs": "VS"
+  },
+  "leaderboard": {
+    "title": "Clasificación",
+    "overall": "General",
+    "weekly": "Semanal",
+    "monthly": "Mensual",
+    "rank": "Posición",
+    "user": "Usuario",
+    "points": "Puntos"
+  },
+  "scoring": {
+    "bonusApplied": "¡Bonus Aplicado!",
+    "strategicBonus": "Bonus de Enfoque Estratégico",
+    "totalPoints": "Puntos Totales",
+    "breakdown": "Desglose de Puntos"
+  },
+  "notifications": {
+    "title": "Notificaciones",
+    "noNotifications": "Sin notificaciones",
+    "matchStartingSoon": "¡El partido comenzará pronto!",
+    "predictionReminder": "¡No olvides hacer tu predicción!",
+    "badgeEarned": "¡Nueva insignia ganada!"
+  },
+  "errors": {
+    "networkError": "Error de conexión",
+    "serverError": "Error del servidor",
+    "notFound": "No encontrado",
+    "unauthorized": "Acceso no autorizado",
+    "tryAgain": "Intentar de nuevo"
+  },
+  "auth": {
+    "title": "Bienvenido",
+    "subtitle": "Descubre estrategias de fútbol",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "login": "Iniciar sesión",
+    "register": "Registrarse",
+    "forgotPassword": "Olvidé mi contraseña",
+    "orContinueWith": "o continúa con",
+    "emailRequired": "El correo electrónico no puede estar vacío",
+    "emailInvalid": "Ingresa un correo electrónico válido",
+    "passwordRequired": "La contraseña no puede estar vacía",
+    "passwordMinLength": "La contraseña debe tener al menos 6 caracteres",
+    "loginSuccess": "¡Inicio de sesión exitoso!",
+    "loginFailed": "Inicio de sesión fallido",
+    "socialLoginFailed": "inicio de sesión fallido",
+    "errorOccurred": "Ocurrió un error",
+    "checkingEmail": "Verificando correo...",
+    "emailAvailable": "Correo disponible",
+    "emailTaken": "Este correo ya está en uso",
+    "loginWithGoogle": "Iniciar sesión con Google",
+    "loginWithApple": "Iniciar sesión con Apple"
+  }
+}

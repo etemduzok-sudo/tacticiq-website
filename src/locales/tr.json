@@ -1,0 +1,140 @@
+{
+  "common": {
+    "loading": "Yükleniyor...",
+    "error": "Hata",
+    "save": "Kaydet",
+    "cancel": "İptal",
+    "close": "Kapat",
+    "delete": "Sil",
+    "edit": "Düzenle",
+    "back": "Geri",
+    "next": "İleri",
+    "done": "Tamam"
+  },
+  "dashboard": {
+    "title": "Analist Kontrol Paneli",
+    "analyst": "Analist",
+    "streak": "Seri",
+    "upcomingMatches": "Yaklaşan & Canlı Maçlar",
+    "liveMatch": "CANLI",
+    "liveTracking": "Canlı Takip",
+    "predictButton": "Analizini Gir",
+    "strategicFocus": "Analiz Odağı Seç",
+    "strategicFocusSubtitle": "Seçtiğin odak x1.25 puan çarpanı kazandırır",
+    "recentPerformance": "Son Performansın",
+    "viewAllBadges": "Tüm Rozetlerimi Gör",
+    "noUpcomingMatches": "24 saat içinde maç yok",
+    "noMatchHistory": "Henüz maç geçmişin yok",
+    "points": "Puan",
+    "accuracy": "Doğruluk"
+  },
+  "strategicFocus": {
+    "tempo": {
+      "name": "Tempo Analizi",
+      "description": "Maçın hızına odaklan",
+      "advice": "Hızlı tempolu maç bekleniyor!"
+    },
+    "discipline": {
+      "name": "Disiplin Analizi",
+      "description": "Sert geçişleri öngör",
+      "advice": "Bu hakem kart sever, odağın isabetli!"
+    },
+    "fitness": {
+      "name": "Kondisyon Analizi",
+      "description": "Fiziksel durumu değerlendir",
+      "advice": "Uzun sezonda kondisyon kritik!"
+    },
+    "star": {
+      "name": "Yıldız Analizi",
+      "description": "Yıldız oyuncuları takip et",
+      "advice": "Yıldız oyuncular sahada olacak!"
+    }
+  },
+  "badges": {
+    "title": "Rozetler",
+    "earned": "Kazanıldı",
+    "locked": "Kilitli",
+    "howToEarn": "Nasıl Kazanılır",
+    "progress": "İlerleme",
+    "progressHint": "maç daha kazanman gerekiyor!",
+    "earnedDate": "Kazanıldı:",
+    "tiers": {
+      "rookie": "Çaylak",
+      "amateur": "Amatör",
+      "pro": "Profesyonel",
+      "expert": "Uzman",
+      "legend": "Efsane"
+    }
+  },
+  "profile": {
+    "title": "Profil",
+    "level": "Seviye",
+    "points": "Puan",
+    "rank": "Sıralama",
+    "settings": "Ayarlar",
+    "logout": "Çıkış Yap",
+    "favoriteTeams": "Favori Takımlar",
+    "statistics": "İstatistikler",
+    "achievements": "Başarılar"
+  },
+  "matches": {
+    "title": "Maçlar",
+    "past": "Geçmiş",
+    "live": "Canlı",
+    "upcoming": "Gelecek",
+    "allMatches": "Tüm Maçlar",
+    "noMatches": "Maç bulunamadı",
+    "minute": "Dakika",
+    "vs": "VS"
+  },
+  "leaderboard": {
+    "title": "Sıralama",
+    "overall": "Genel",
+    "weekly": "Haftalık",
+    "monthly": "Aylık",
+    "rank": "Sıra",
+    "user": "Kullanıcı",
+    "points": "Puan"
+  },
+  "scoring": {
+    "bonusApplied": "Bonus Uygulandı!",
+    "strategicBonus": "Stratejik Odak Bonusu",
+    "totalPoints": "Toplam Puan",
+    "breakdown": "Puan Dağılımı"
+  },
+  "notifications": {
+    "title": "Bildirimler",
+    "noNotifications": "Bildirim yok",
+    "matchStartingSoon": "Maç yakında başlıyor!",
+    "predictionReminder": "Tahmin yapmayı unutma!",
+    "badgeEarned": "Yeni rozet kazandın!"
+  },
+  "errors": {
+    "networkError": "Bağlantı hatası",
+    "serverError": "Sunucu hatası",
+    "notFound": "Bulunamadı",
+    "unauthorized": "Yetkisiz erişim",
+    "tryAgain": "Tekrar dene"
+  },
+  "auth": {
+    "title": "Hoş Geldin",
+    "subtitle": "Futbol stratejilerini keşfet",
+    "email": "E-posta",
+    "password": "Şifre",
+    "login": "Giriş Yap",
+    "register": "Kayıt Ol",
+    "forgotPassword": "Şifremi Unuttum",
+    "orContinueWith": "veya devam et",
+    "emailRequired": "E-posta adresi boş bırakılamaz",
+    "emailInvalid": "Geçerli bir e-posta adresi girin",
+    "passwordRequired": "Şifre boş bırakılamaz",
+    "passwordMinLength": "Şifre en az 6 karakter olmalıdır",
+    "loginSuccess": "Giriş başarılı!",
+    "loginFailed": "Giriş başarısız",
+    "socialLoginFailed": "ile giriş başarısız",
+    "errorOccurred": "Bir hata oluştu",
+    "checkingEmail": "E-posta kontrol ediliyor...",
+    "emailAvailable": "E-posta kullanılabilir",
+    "emailTaken": "Bu e-posta zaten kullanılıyor"
+  }
+}

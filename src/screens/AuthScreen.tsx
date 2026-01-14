@@ -24,6 +24,7 @@ import Animated, {
   useSharedValue,
 } from 'react-native-reanimated';
 import { BRAND, COLORS, SPACING, TYPOGRAPHY, SIZES } from '../theme/theme';
+import { useTranslation } from '../hooks/useTranslation';
 // Logo component removed - using text placeholder
 
 // ============================================
@@ -83,6 +84,7 @@ export default function AuthScreen({
   onRegister,
   onBack,
 }: AuthScreenProps) {
+  const { t, isRTL } = useTranslation();
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -121,23 +123,23 @@ export default function AuthScreen({
 
   const handleLogin = async () => {
     if (!loginEmail.trim()) {
-      Alert.alert('Hata', '❌ E-posta adresi boş bırakılamaz');
+      Alert.alert(t('common.error'), `❌ ${t('auth.emailRequired')}`);
       return;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(loginEmail)) {
-      Alert.alert('Hata', '❌ Geçerli bir e-posta adresi girin');
+      Alert.alert(t('common.error'), `❌ ${t('auth.emailInvalid')}`);
       return;
     }
 
     if (!loginPassword.trim()) {
-      Alert.alert('Hata', '❌ Şifre boş bırakılamaz');
+      Alert.alert(t('common.error'), `❌ ${t('auth.passwordRequired')}`);
       return;
     }
 
     if (loginPassword.length < 6) {
-      Alert.alert('Hata', '❌ Şifre en az 6 karakter olmalıdır');
+      Alert.alert(t('common.error'), `❌ ${t('auth.passwordMinLength')}`);
       return;
     }
 
@@ -146,10 +148,10 @@ export default function AuthScreen({
     setLoading(false);
     
     if (result.success) {
-      Alert.alert('Başarılı', '✅ Giriş başarılı!');
+      Alert.alert(t('common.done'), `✅ ${t('auth.loginSuccess')}`);
       onLoginSuccess();
     } else {
-      Alert.alert('Hata', `❌ ${result.error || 'Giriş başarısız'}`);
+      Alert.alert(t('common.error'), `❌ ${result.error || t('auth.loginFailed')}`);
     }
   };
 
@@ -170,11 +172,11 @@ export default function AuthScreen({
         // Web'de Alert.alert çalışmadığı için direkt yönlendir
         onLoginSuccess();
       } else {
-        Alert.alert('Hata', `❌ ${result.error || `${provider} ile giriş başarısız`}`);
+        Alert.alert(t('common.error'), `❌ ${result.error || `${provider} ${t('auth.socialLoginFailed')}`}`);
       }
     } catch (error: any) {
       setLoading(false);
-      Alert.alert('Hata', `❌ ${error.message || 'Bir hata oluştu'}`);
+      Alert.alert(t('common.error'), `❌ ${error.message || t('auth.errorOccurred')}`);
     }
   };
 
@@ -220,7 +222,9 @@ export default function AuthScreen({
                   activeOpacity={0.8}
                 >
                   <Ionicons name="logo-google" size={20} color="#4285F4" />
-                  <Text style={styles.googleButtonText}>Google ile Giriş</Text>
+                  <Text style={styles.googleButtonText} numberOfLines={1} adjustsFontSizeToFit>
+                    {t('auth.loginWithGoogle')}
+                  </Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -229,14 +233,16 @@ export default function AuthScreen({
                   activeOpacity={0.8}
                 >
                   <Ionicons name="logo-apple" size={20} color="#FFFFFF" />
-                  <Text style={styles.appleButtonText}>Apple ile Giriş</Text>
+                  <Text style={styles.appleButtonText} numberOfLines={1} adjustsFontSizeToFit>
+                    {t('auth.loginWithApple')}
+                  </Text>
                 </TouchableOpacity>
               </View>
 
               {/* [D] DIVIDER ZONE */}
               <View style={styles.dividerZone}>
                 <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>veya</Text>
+                <Text style={styles.dividerText}>{t('auth.orContinueWith')}</Text>
                 <View style={styles.dividerLine} />
               </View>
 
@@ -244,7 +250,7 @@ export default function AuthScreen({
               <View style={styles.formZone}>
                 {/* Email Input */}
                 <View style={styles.inputGroup}>
-                  <Text style={styles.label}>E-posta</Text>
+                  <Text style={styles.label}>{t('auth.email')}</Text>
                   <View style={styles.inputWrapper}>
                     <Ionicons 
                       name="mail-outline" 
@@ -278,7 +284,7 @@ export default function AuthScreen({
 
                 {/* Password Input */}
                 <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Şifre</Text>
+                  <Text style={styles.label}>{t('auth.password')}</Text>
                   <View style={styles.inputWrapper}>
                     <Ionicons 
                       name="lock-closed-outline" 
@@ -315,7 +321,7 @@ export default function AuthScreen({
                   onPress={onForgotPassword}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.forgotPasswordText}>Şifremi Unuttum?</Text>
+                  <Text style={styles.forgotPasswordText}>{t('auth.forgotPassword')}?</Text>
                 </TouchableOpacity>
 
                 {/* [G] PRIMARY CTA BUTTON */}
@@ -334,7 +340,9 @@ export default function AuthScreen({
                     {loading ? (
                       <ActivityIndicator color="#FFFFFF" />
                     ) : (
-                      <Text style={styles.ctaButtonText}>Giriş Yap</Text>
+                      <Text style={styles.ctaButtonText} numberOfLines={1} adjustsFontSizeToFit>
+                        {t('auth.login')}
+                      </Text>
                     )}
                   </LinearGradient>
                 </TouchableOpacity>
@@ -342,9 +350,11 @@ export default function AuthScreen({
 
               {/* Secondary Link */}
               <View style={styles.secondaryLinkContainer}>
-                <Text style={styles.secondaryLinkText}>Hesabınız yok mu? </Text>
+                <Text style={styles.secondaryLinkText}>{t('auth.noAccount')} </Text>
                 <TouchableOpacity onPress={onRegister} activeOpacity={0.7}>
-                  <Text style={styles.secondaryLink}>Kayıt Ol</Text>
+                  <Text style={styles.secondaryLink} numberOfLines={1} adjustsFontSizeToFit>
+                    {t('auth.register')}
+                  </Text>
                 </TouchableOpacity>
               </View>
               </Animated.View>

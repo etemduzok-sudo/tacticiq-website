@@ -661,7 +661,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         >
           {/* Profile Header Card */}
           <Animated.View
-            entering={FadeInDown.delay(0)}
+            entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(0)}
             style={styles.profileHeaderCard}
           >
             <LinearGradient
@@ -729,7 +729,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           </Animated.View>
 
           {/* Performance Card */}
-          <Animated.View entering={FadeInDown.delay(100)} style={styles.card}>
+          <Animated.View entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(100)} style={styles.card}>
             <View style={styles.cardHeader}>
               <Ionicons name="trending-up" size={20} color="#059669" />
               <Text style={styles.cardTitle}>Performance</Text>
@@ -801,7 +801,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           </Animated.View>
 
           {/* Favorite Teams Card */}
-          <Animated.View entering={FadeInDown.delay(200)} style={styles.card}>
+          <Animated.View entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(200)} style={styles.card}>
             <View style={styles.cardHeader}>
               <Ionicons name="trophy" size={20} color="#059669" />
               <Text style={styles.cardTitle}>Favori Takımlar</Text>
@@ -873,7 +873,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
           {/* 🎯 EN İYİ OLDUĞU KÜME KARTI */}
           {bestCluster && (
-            <Animated.View entering={FadeInDown.delay(250)} style={styles.card}>
+            <Animated.View entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(250)} style={styles.card}>
               <View style={styles.cardHeader}>
                 <Text style={styles.clusterIcon}>{bestCluster.icon}</Text>
                 <Text style={styles.cardTitle}>En İyi Olduğun Küme</Text>
@@ -904,7 +904,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           )}
 
           {/* Achievements Card */}
-          <Animated.View entering={FadeInDown.delay(300)} style={styles.card}>
+          <Animated.View entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(300)} style={styles.card}>
             <View style={styles.cardHeader}>
               <Ionicons name="star" size={20} color="#F59E0B" />
               <Text style={styles.cardTitle}>Achievements</Text>
@@ -925,7 +925,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
           {/* Database Test Button (Dev Only) */}
           {__DEV__ && onDatabaseTest && (
-            <Animated.View entering={FadeInDown.delay(500)} style={styles.card}>
+            <Animated.View entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(500)} style={styles.card}>
               <TouchableOpacity onPress={onDatabaseTest} style={styles.dbTestButton}>
                 <Ionicons name="server" size={20} color="#059669" />
                 <Text style={styles.dbTestText}>🧪 Database Test</Text>
@@ -945,7 +945,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               columnWrapperStyle={styles.badgeRow}
               showsVerticalScrollIndicator={false}
               renderItem={({ item, index }) => (
-                <Animated.View entering={ZoomIn.delay(index * 30)}>
+                <Animated.View entering={Platform.OS === 'web' ? ZoomIn : ZoomIn.delay(index * 30)}>
                   <Pressable
                     style={[
                       styles.badgeCard,
@@ -963,7 +963,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                     {/* Sparkle for earned badges (Top Right) */}
                     {item.earned && (
                       <Animated.View
-                        entering={FadeIn.delay(index * 30 + 200)}
+                        entering={Platform.OS === 'web' ? FadeIn : FadeIn.delay(index * 30 + 200)}
                         style={styles.sparkle}
                       >
                         <Text style={styles.sparkleText}>✨</Text>

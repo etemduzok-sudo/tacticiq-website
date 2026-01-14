@@ -9,6 +9,7 @@ import {
   Modal,
   ActivityIndicator,
   ScrollView,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -264,7 +265,7 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
         keyboardShouldPersistTaps="handled"
       >
           {/* Basic Info Card */}
-          <Animated.View entering={FadeInDown.delay(0)} style={styles.card}>
+          <Animated.View entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(0)} style={styles.card}>
             <View style={styles.cardHeader}>
               <Ionicons name="person-outline" size={20} color="#059669" />
               <Text style={styles.cardTitle}>Temel Bilgiler</Text>
@@ -337,7 +338,7 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
           </Animated.View>
 
           {/* Favorite Teams Card */}
-          <Animated.View entering={FadeInDown.delay(100)} style={styles.card}>
+          <Animated.View entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(100)} style={styles.card}>
             <View style={styles.cardHeader}>
               <Ionicons name="trophy-outline" size={20} color="#059669" />
               <Text style={styles.cardTitle}>Favori Takımlar</Text>
@@ -393,7 +394,7 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
           </Animated.View>
 
           {/* PRO Membership Card */}
-          <Animated.View entering={FadeInDown.delay(200)}>
+          <Animated.View entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(200)}>
             <LinearGradient
               colors={
                 isPro
@@ -476,7 +477,7 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
           </Animated.View>
 
           {/* Language Card */}
-          <Animated.View entering={FadeInDown.delay(300)} style={styles.card}>
+          <Animated.View entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(300)} style={styles.card}>
             <View style={styles.cardHeader}>
               <Ionicons name="globe-outline" size={20} color="#059669" />
               <Text style={styles.cardTitle}>Dil</Text>
@@ -506,7 +507,7 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
           </Animated.View>
 
           {/* Theme Card */}
-          <Animated.View entering={FadeInDown.delay(400)} style={styles.card}>
+          <Animated.View entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(400)} style={styles.card}>
             <View style={styles.cardHeader}>
               <Ionicons name="color-palette-outline" size={20} color="#059669" />
               <Text style={styles.cardTitle}>Tema</Text>
@@ -552,7 +553,7 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
           </Animated.View>
 
           {/* Account Card */}
-          <Animated.View entering={FadeInDown.delay(500)} style={styles.card}>
+          <Animated.View entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(500)} style={styles.card}>
             <View style={styles.cardHeader}>
               <Ionicons name="lock-closed-outline" size={20} color="#059669" />
               <Text style={styles.cardTitle}>Hesap</Text>

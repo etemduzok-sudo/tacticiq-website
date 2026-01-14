@@ -1,0 +1,142 @@
+{
+  "common": {
+    "loading": "Chargement...",
+    "error": "Erreur",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "close": "Fermer",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "back": "Retour",
+    "next": "Suivant",
+    "done": "Terminé"
+  },
+  "dashboard": {
+    "title": "Panneau de Contrôle de l'Analyste",
+    "analyst": "Analyste",
+    "streak": "Série",
+    "upcomingMatches": "Matchs à Venir et en Direct",
+    "liveMatch": "EN DIRECT",
+    "liveTracking": "Suivi en Direct",
+    "predictButton": "Entrer l'Analyse",
+    "strategicFocus": "Choisir le Focus d'Analyse",
+    "strategicFocusSubtitle": "Le focus sélectionné donne un multiplicateur de points x1.25",
+    "recentPerformance": "Votre Performance Récente",
+    "viewAllBadges": "Voir Tous mes Badges",
+    "noUpcomingMatches": "Aucun match dans les 24 prochaines heures",
+    "noMatchHistory": "Vous n'avez pas encore d'historique de matchs",
+    "points": "Points",
+    "accuracy": "Précision"
+  },
+  "strategicFocus": {
+    "tempo": {
+      "name": "Analyse du Rythme",
+      "description": "Concentrez-vous sur le rythme du match",
+      "advice": "Match à rythme rapide attendu !"
+    },
+    "discipline": {
+      "name": "Analyse de la Discipline",
+      "description": "Prédire les jeux durs",
+      "advice": "Cet arbitre adore les cartons, excellent focus !"
+    },
+    "fitness": {
+      "name": "Analyse de la Condition Physique",
+      "description": "Évaluer la condition physique",
+      "advice": "La condition physique est critique en saison longue !"
+    },
+    "star": {
+      "name": "Analyse des Stars",
+      "description": "Suivre les joueurs stars",
+      "advice": "Les joueurs stars seront sur le terrain !"
+    }
+  },
+  "badges": {
+    "title": "Badges",
+    "earned": "Gagné",
+    "locked": "Verrouillé",
+    "howToEarn": "Comment Gagner",
+    "progress": "Progrès",
+    "progressHint": "plus de matchs nécessaires !",
+    "earnedDate": "Gagné :",
+    "tiers": {
+      "rookie": "Débutant",
+      "amateur": "Amateur",
+      "pro": "Professionnel",
+      "expert": "Expert",
+      "legend": "Légende"
+    }
+  },
+  "profile": {
+    "title": "Profil",
+    "level": "Niveau",
+    "points": "Points",
+    "rank": "Classement",
+    "settings": "Paramètres",
+    "logout": "Déconnexion",
+    "favoriteTeams": "Équipes Favorites",
+    "statistics": "Statistiques",
+    "achievements": "Réalisations"
+  },
+  "matches": {
+    "title": "Matchs",
+    "past": "Passés",
+    "live": "En Direct",
+    "upcoming": "À Venir",
+    "allMatches": "Tous les Matchs",
+    "noMatches": "Aucun match trouvé",
+    "minute": "Minute",
+    "vs": "VS"
+  },
+  "leaderboard": {
+    "title": "Classement",
+    "overall": "Général",
+    "weekly": "Hebdomadaire",
+    "monthly": "Mensuel",
+    "rank": "Rang",
+    "user": "Utilisateur",
+    "points": "Points"
+  },
+  "scoring": {
+    "bonusApplied": "Bonus Appliqué !",
+    "strategicBonus": "Bonus de Focus Stratégique",
+    "totalPoints": "Points Totaux",
+    "breakdown": "Répartition des Points"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "noNotifications": "Aucune notification",
+    "matchStartingSoon": "Le match commence bientôt !",
+    "predictionReminder": "N'oubliez pas de prédire !",
+    "badgeEarned": "Nouveau badge gagné !"
+  },
+  "errors": {
+    "networkError": "Erreur réseau",
+    "serverError": "Erreur serveur",
+    "notFound": "Non trouvé",
+    "unauthorized": "Accès non autorisé",
+    "tryAgain": "Réessayer"
+  },
+  "auth": {
+    "title": "Bienvenue",
+    "subtitle": "Découvrez les stratégies de football",
+    "email": "E-mail",
+    "password": "Mot de passe",
+    "login": "Se connecter",
+    "register": "S'inscrire",
+    "forgotPassword": "Mot de passe oublié",
+    "orContinueWith": "ou continuer avec",
+    "emailRequired": "L'adresse e-mail ne peut pas être vide",
+    "emailInvalid": "Entrez une adresse e-mail valide",
+    "passwordRequired": "Le mot de passe ne peut pas être vide",
+    "passwordMinLength": "Le mot de passe doit contenir au moins 6 caractères",
+    "loginSuccess": "Connexion réussie !",
+    "loginFailed": "Échec de la connexion",
+    "socialLoginFailed": "échec de la connexion",
+    "errorOccurred": "Une erreur s'est produite",
+    "checkingEmail": "Vérification de l'e-mail...",
+    "emailAvailable": "E-mail disponible",
+    "emailTaken": "Cet e-mail est déjà utilisé",
+    "loginWithGoogle": "Se connecter avec Google",
+    "loginWithApple": "Se connecter avec Apple"
+  }
+}

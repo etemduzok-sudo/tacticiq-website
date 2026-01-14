@@ -1,0 +1,142 @@
+{
+  "common": {
+    "loading": "Lädt...",
+    "error": "Fehler",
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "close": "Schließen",
+    "delete": "Löschen",
+    "edit": "Bearbeiten",
+    "back": "Zurück",
+    "next": "Weiter",
+    "done": "Fertig"
+  },
+  "dashboard": {
+    "title": "Analysten-Kontrollpanel",
+    "analyst": "Analyst",
+    "streak": "Serie",
+    "upcomingMatches": "Bevorstehende & Live-Spiele",
+    "liveMatch": "LIVE",
+    "liveTracking": "Live-Verfolgung",
+    "predictButton": "Analyse eingeben",
+    "strategicFocus": "Analyse-Fokus wählen",
+    "strategicFocusSubtitle": "Ausgewählter Fokus gibt x1.25 Punkte-Multiplikator",
+    "recentPerformance": "Deine letzte Leistung",
+    "viewAllBadges": "Alle meine Abzeichen anzeigen",
+    "noUpcomingMatches": "Keine Spiele in den nächsten 24 Stunden",
+    "noMatchHistory": "Du hast noch keine Spielhistorie",
+    "points": "Punkte",
+    "accuracy": "Genauigkeit"
+  },
+  "strategicFocus": {
+    "tempo": {
+      "name": "Tempus-Analyse",
+      "description": "Fokussiere dich auf das Spieltempo",
+      "advice": "Schnelles Spieltempo erwartet!"
+    },
+    "discipline": {
+      "name": "Disziplin-Analyse",
+      "description": "Vorhersage harter Spielzüge",
+      "advice": "Dieser Schiedsrichter liebt Karten, großartiger Fokus!"
+    },
+    "fitness": {
+      "name": "Fitness-Analyse",
+      "description": "Bewerte den körperlichen Zustand",
+      "advice": "Fitness ist in langer Saison kritisch!"
+    },
+    "star": {
+      "name": "Star-Analyse",
+      "description": "Verfolge Star-Spieler",
+      "advice": "Star-Spieler werden auf dem Feld sein!"
+    }
+  },
+  "badges": {
+    "title": "Abzeichen",
+    "earned": "Verdient",
+    "locked": "Gesperrt",
+    "howToEarn": "Wie man verdient",
+    "progress": "Fortschritt",
+    "progressHint": "mehr Spiele benötigt!",
+    "earnedDate": "Verdient:",
+    "tiers": {
+      "rookie": "Anfänger",
+      "amateur": "Amateur",
+      "pro": "Professionell",
+      "expert": "Experte",
+      "legend": "Legende"
+    }
+  },
+  "profile": {
+    "title": "Profil",
+    "level": "Level",
+    "points": "Punkte",
+    "rank": "Rang",
+    "settings": "Einstellungen",
+    "logout": "Abmelden",
+    "favoriteTeams": "Lieblingsteams",
+    "statistics": "Statistiken",
+    "achievements": "Erfolge"
+  },
+  "matches": {
+    "title": "Spiele",
+    "past": "Vergangen",
+    "live": "Live",
+    "upcoming": "Bevorstehend",
+    "allMatches": "Alle Spiele",
+    "noMatches": "Keine Spiele gefunden",
+    "minute": "Minute",
+    "vs": "VS"
+  },
+  "leaderboard": {
+    "title": "Rangliste",
+    "overall": "Gesamt",
+    "weekly": "Wöchentlich",
+    "monthly": "Monatlich",
+    "rank": "Rang",
+    "user": "Benutzer",
+    "points": "Punkte"
+  },
+  "scoring": {
+    "bonusApplied": "Bonus angewendet!",
+    "strategicBonus": "Strategischer Fokus-Bonus",
+    "totalPoints": "Gesamtpunkte",
+    "breakdown": "Punkteaufschlüsselung"
+  },
+  "notifications": {
+    "title": "Benachrichtigungen",
+    "noNotifications": "Keine Benachrichtigungen",
+    "matchStartingSoon": "Spiel beginnt bald!",
+    "predictionReminder": "Vergiss nicht zu prognostizieren!",
+    "badgeEarned": "Neues Abzeichen verdient!"
+  },
+  "errors": {
+    "networkError": "Netzwerkfehler",
+    "serverError": "Serverfehler",
+    "notFound": "Nicht gefunden",
+    "unauthorized": "Unbefugter Zugriff",
+    "tryAgain": "Erneut versuchen"
+  },
+  "auth": {
+    "title": "Willkommen",
+    "subtitle": "Entdecke Fußballstrategien",
+    "email": "E-Mail",
+    "password": "Passwort",
+    "login": "Anmelden",
+    "register": "Registrieren",
+    "forgotPassword": "Passwort vergessen",
+    "orContinueWith": "oder fortfahren mit",
+    "emailRequired": "E-Mail-Adresse darf nicht leer sein",
+    "emailInvalid": "Gültige E-Mail-Adresse eingeben",
+    "passwordRequired": "Passwort darf nicht leer sein",
+    "passwordMinLength": "Passwort muss mindestens 6 Zeichen lang sein",
+    "loginSuccess": "Anmeldung erfolgreich!",
+    "loginFailed": "Anmeldung fehlgeschlagen",
+    "socialLoginFailed": "Anmeldung fehlgeschlagen",
+    "errorOccurred": "Ein Fehler ist aufgetreten",
+    "checkingEmail": "E-Mail wird überprüft...",
+    "emailAvailable": "E-Mail verfügbar",
+    "emailTaken": "Diese E-Mail wird bereits verwendet",
+    "loginWithGoogle": "Mit Google anmelden",
+    "loginWithApple": "Mit Apple anmelden"
+  }
+}

@@ -32,9 +32,9 @@ class Logger {
   private maxLogs = 1000; // Keep last 1000 logs in memory
 
   /**
-   * Log with level
+   * Log with level (private method)
    */
-  private log(level: LogLevel, message: string, context?: Record<string, any>, component?: string): void {
+  private _log(level: LogLevel, message: string, context?: Record<string, any>, component?: string): void {
     const entry: LogEntry = {
       level,
       message,
@@ -95,32 +95,32 @@ class Logger {
    * Debug log - Detailed information for debugging
    */
   debug(message: string, context?: Record<string, any>, component?: string): void {
-    this.log(LogLevel.DEBUG, message, context, component);
+    this._log(LogLevel.DEBUG, message, context, component);
   }
 
   /**
    * Info log - General information
    */
   info(message: string, context?: Record<string, any>, component?: string): void {
-    this.log(LogLevel.INFO, message, context, component);
+    this._log(LogLevel.INFO, message, context, component);
   }
 
   /**
    * Warn log - Warning messages
    */
   warn(message: string, context?: Record<string, any>, component?: string): void {
-    this.log(LogLevel.WARN, message, context, component);
+    this._log(LogLevel.WARN, message, context, component);
   }
 
   /**
    * Error log - Error messages (always logged)
    */
   error(message: string, context?: Record<string, any>, component?: string): void {
-    this.log(LogLevel.ERROR, message, context, component);
+    this._log(LogLevel.ERROR, message, context, component);
   }
 
   /**
-   * Legacy support - map log() to info()
+   * Legacy support - map log() to _log() to avoid infinite recursion
    */
   log(...args: any[]): void {
     if (args.length === 0) return;
@@ -128,7 +128,8 @@ class Logger {
     const message = typeof args[0] === 'string' ? args[0] : JSON.stringify(args[0]);
     const context = args.length > 1 ? { data: args.slice(1) } : undefined;
     
-    this.info(message, context);
+    // Call private _log() method directly to avoid infinite recursion
+    this._log(LogLevel.INFO, message, context);
   }
 
   /**

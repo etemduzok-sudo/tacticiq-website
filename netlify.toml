@@ -1,0 +1,6 @@
+# Netlify configuration for TacticIQ static site
+# Site root is repository root per project requirements
+
+[build]
+  # Publish from repository root (default)
+  publish = "."

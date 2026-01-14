@@ -23,7 +23,7 @@ import api from '../services/api';
 import { useFavoriteTeams } from '../hooks/useFavoriteTeams';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { logger } from '../utils/logger';
-import { COLORS, SPACING, TYPOGRAPHY, SIZES, SHADOWS } from '../theme/theme';
+import { COLORS, SPACING, TYPOGRAPHY, SIZES, SHADOWS, BRAND } from '../theme/theme';
 
 const { width } = Dimensions.get('window');
 
@@ -643,14 +643,15 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
     return adviceMap[selectedFocus] || null;
   };
   
+  // ✅ Safe destructure with defaults
   const { 
-    pastMatches, 
-    liveMatches, 
-    upcomingMatches, 
-    loading, 
-    error,
-    hasLoadedOnce
-  } = matchData;
+    pastMatches = [], 
+    liveMatches = [], 
+    upcomingMatches = [], 
+    loading = false, 
+    error = null,
+    hasLoadedOnce = false
+  } = matchData || {};
 
   // ✅ DEBUG: Log match data
   React.useEffect(() => {
@@ -786,7 +787,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
       >
         {/* 0. FAVORİ TAKIM FİLTRESİ (Pro kullanıcı için) - Tek satır dropdown */}
         {!selectedMatchId && isPremium && favoriteTeams.length > 0 && (
-          <Animated.View entering={FadeInDown.delay(50).springify()} style={styles.sectionWithDropdown}>
+          <Animated.View entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(50).springify()} style={styles.sectionWithDropdown}>
             <View style={styles.dropdownContainer}>
               <TouchableOpacity
                 style={styles.dropdownButton}
@@ -867,7 +868,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
         )}
 
         {/* 1. YAKLAŞAN MAÇLAR - Her zaman göster */}
-        <Animated.View entering={FadeInDown.delay(200).springify()} style={styles.section}>
+        <Animated.View entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(200).springify()} style={styles.section}>
           <View style={styles.sectionHeader}>
             <Ionicons name="calendar" size={20} color="#059669" />
             <Text style={styles.sectionTitle}>
@@ -885,7 +886,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
               snapToAlignment="start"
             >
               {filteredUpcomingMatches.slice(0, 10).map((match, index) => (
-              <Animated.View key={match.fixture.id} entering={FadeInDown.delay(200 + index * 100).springify()}>
+              <Animated.View key={match.fixture.id} entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(200 + index * 100).springify()}>
                   {renderMatchCard(match, 'upcoming', () => handleMatchSelect(String(match.fixture.id)))}
               </Animated.View>
             ))}
@@ -910,7 +911,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
             }}
             style={styles.focusSectionContainer}
           >
-            <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.section}>
+            <Animated.View entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(100).springify()} style={styles.section}>
             {/* Seçilen Maç Bilgisi - Sadece maç seçildiyse göster */}
             {selectedMatchId && (
               <View style={styles.selectedMatchInfo}>
@@ -938,7 +939,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
                   return (
                     <Animated.View 
                       key={focus.id} 
-                      entering={FadeInLeft.delay(200 + index * 50).springify()}
+                      entering={Platform.OS === 'web' ? FadeInLeft : FadeInLeft.delay(200 + index * 50).springify()}
                       style={{ width: cardWidth }}
                     >
                       <TouchableOpacity
@@ -996,7 +997,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
               {selectedMatchId && (
                 <Animated.View 
                   ref={continueButtonRef}
-                  entering={FadeInDown.delay(400).springify()} 
+                  entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(400).springify()} 
                   style={styles.continueButtonContainer}
                   onLayout={(event) => {
                     const layout = event.nativeEvent.layout;
@@ -1029,14 +1030,14 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
 
         {/* 3. KAZANILAN ROZETLER - Sadece maç seçilmediğinde göster */}
         {!selectedMatchId && (
-          <Animated.View entering={FadeInDown.delay(500).springify()} style={styles.section}>
+          <Animated.View entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(500).springify()} style={styles.section}>
             <View style={styles.sectionHeader}>
               <Ionicons name="trophy" size={20} color="#F59E0B" />
               <Text style={styles.sectionTitle}>Kazanılan Rozetler</Text>
             </View>
 
             {/* View All Badges Button */}
-            <Animated.View entering={FadeInLeft.delay(600).springify()}>
+            <Animated.View entering={Platform.OS === 'web' ? FadeInLeft : FadeInLeft.delay(600).springify()}>
               <TouchableOpacity
                 style={styles.viewAllBadgesButton}
                 onPress={() => onNavigate('profile', { showBadges: true })}
@@ -1052,7 +1053,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
 
         {/* 3. GEÇMİŞ MAÇLAR - Sadece maç seçilmediğinde göster */}
         {!selectedMatchId && (
-          <Animated.View entering={FadeInDown.delay(300).springify()} style={styles.section}>
+          <Animated.View entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(300).springify()} style={styles.section}>
           <View style={styles.sectionHeader}>
             <Ionicons name="time" size={20} color="#8B5CF6" />
             <Text style={styles.sectionTitle}>
@@ -1067,7 +1068,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
               contentContainerStyle={styles.upcomingMatchesScroll}
             >
               {filteredPastMatches.slice(0, 10).map((match, index) => (
-                <Animated.View key={match.fixture.id} entering={FadeInLeft.delay(350 + index * 50).springify()}>
+                <Animated.View key={match.fixture.id} entering={Platform.OS === 'web' ? FadeInLeft : FadeInLeft.delay(350 + index * 50).springify()}>
                   {renderMatchCard(match, 'finished', () => onNavigate('match-result-summary', { id: match.fixture.id }))}
                 </Animated.View>
               ))}
@@ -1320,7 +1321,7 @@ const styles = StyleSheet.create({
     position: 'relative',
     overflow: 'hidden',
     ...SHADOWS.sm,
-      },
+    ...Platform.select({
       android: {
         elevation: 3,
       },
@@ -1581,10 +1582,17 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
     backgroundColor: BRAND.white,
-    shadowColor: BRAND.white,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 4,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 0 4px rgba(255, 255, 255, 0.8)',
+      },
+      default: {
+        shadowColor: BRAND.white,
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.8,
+        shadowRadius: 4,
+      },
+    }),
   },
 
   // Strategic Focus
@@ -1882,7 +1890,7 @@ const styles = StyleSheet.create({
     borderRadius: SIZES.radiusXl,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: COLORS.dark.border + '80', // 50% opacity
+    borderColor: 'rgba(148, 163, 184, 0.5)', // COLORS.dark.border with 50% opacity
     ...SHADOWS.md,
   },
   matchCardLeftStrip: {

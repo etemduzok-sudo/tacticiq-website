@@ -406,70 +406,55 @@ export const FONTS = {
 };
 
 // ✨ SHADOWS (Gölgeler) - Design System Standards
+// Web için boxShadow, native için shadow* props
+
+const createShadow = (offset: { width: number; height: number }, radius: number, opacity: number, color: string = '#000') => {
+  if (Platform.OS === 'web') {
+    return {
+      boxShadow: `${offset.width}px ${offset.height}px ${radius}px rgba(0, 0, 0, ${opacity})`,
+    };
+  }
+  return {
+    shadowColor: color,
+    shadowOffset: offset,
+    shadowOpacity: opacity,
+    shadowRadius: radius,
+    elevation: Math.max(offset.height, radius),
+  };
+};
+
 export const SHADOWS = {
-  none: {
-    shadowColor: 'transparent',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0,
-    shadowRadius: 0,
-    elevation: 0,
-  },
+  none: Platform.OS === 'web' 
+    ? { boxShadow: 'none' }
+    : {
+        shadowColor: 'transparent',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0,
+        shadowRadius: 0,
+        elevation: 0,
+      },
   // Extra Small - Checkbox, subtle borders
-  xs: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
+  xs: createShadow({ width: 0, height: 1 }, 2, 0.05),
   // Small - Small cards
-  sm: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
-  },
+  sm: createShadow({ width: 0, height: 1 }, 3, 0.1),
   // Medium (default) - Default cards
-  md: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 4,
-  },
+  md: createShadow({ width: 0, height: 2 }, 4, 0.1),
   // Large - Buttons, prominent cards
-  lg: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.1,
-    shadowRadius: 15,
-    elevation: 8,
-  },
+  lg: createShadow({ width: 0, height: 10 }, 15, 0.1),
   // Extra Large - Tooltips, popovers
-  xl: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 20 },
-    shadowOpacity: 0.1,
-    shadowRadius: 25,
-    elevation: 16,
-  },
+  xl: createShadow({ width: 0, height: 20 }, 25, 0.1),
   // 2X Large - Modals, dialogs
-  '2xl': {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 25 },
-    shadowOpacity: 0.25,
-    shadowRadius: 50,
-    elevation: 24,
-  },
+  '2xl': createShadow({ width: 0, height: 25 }, 50, 0.25),
   // Emerald Shadow - Primary buttons
-  emerald: {
-    shadowColor: '#059669',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.2,
-    shadowRadius: 15,
-    elevation: 10,
-  },
+  emerald: Platform.OS === 'web'
+    ? { boxShadow: '0 10px 15px rgba(5, 150, 105, 0.2)' }
+    : {
+        shadowColor: '#059669',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.2,
+        shadowRadius: 15,
+        elevation: 10,
+      },
 };
 
 // 🎭 OPACITY SCALE - Design System Standards

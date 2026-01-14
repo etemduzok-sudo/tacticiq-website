@@ -1,0 +1,142 @@
+{
+  "common": {
+    "loading": "جاري التحميل...",
+    "error": "خطأ",
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "close": "إغلاق",
+    "delete": "حذف",
+    "edit": "تعديل",
+    "back": "رجوع",
+    "next": "التالي",
+    "done": "تم"
+  },
+  "dashboard": {
+    "title": "لوحة تحكم المحلل",
+    "analyst": "محلل",
+    "streak": "سلسلة",
+    "upcomingMatches": "المباريات القادمة والمباشرة",
+    "liveMatch": "مباشر",
+    "liveTracking": "تتبع مباشر",
+    "predictButton": "أدخل التحليل",
+    "strategicFocus": "اختر محور التحليل",
+    "strategicFocusSubtitle": "المحور المحدد يعطي مضاعف نقاط x1.25",
+    "recentPerformance": "أداؤك الأخير",
+    "viewAllBadges": "عرض جميع شاراتي",
+    "noUpcomingMatches": "لا توجد مباريات في الـ 24 ساعة القادمة",
+    "noMatchHistory": "ليس لديك تاريخ مباريات بعد",
+    "points": "النقاط",
+    "accuracy": "الدقة"
+  },
+  "strategicFocus": {
+    "tempo": {
+      "name": "تحليل الإيقاع",
+      "description": "ركز على سرعة المباراة",
+      "advice": "مباراة سريعة الإيقاع متوقعة!"
+    },
+    "discipline": {
+      "name": "تحليل الانضباط",
+      "description": "توقع اللعب الخشن",
+      "advice": "هذا الحكم يحب البطاقات، محور رائع!"
+    },
+    "fitness": {
+      "name": "تحليل اللياقة",
+      "description": "قيم الحالة البدنية",
+      "advice": "اللياقة حرجة في الموسم الطويل!"
+    },
+    "star": {
+      "name": "تحليل النجوم",
+      "description": "تتبع اللاعبين النجوم",
+      "advice": "اللاعبون النجوم سيكونون في الملعب!"
+    }
+  },
+  "badges": {
+    "title": "الشارات",
+    "earned": "مكتسبة",
+    "locked": "مقفلة",
+    "howToEarn": "كيفية الكسب",
+    "progress": "التقدم",
+    "progressHint": "تحتاج مباريات أكثر!",
+    "earnedDate": "مكتسبة:",
+    "tiers": {
+      "rookie": "مبتدئ",
+      "amateur": "هواة",
+      "pro": "محترف",
+      "expert": "خبير",
+      "legend": "أسطورة"
+    }
+  },
+  "profile": {
+    "title": "الملف الشخصي",
+    "level": "المستوى",
+    "points": "النقاط",
+    "rank": "الترتيب",
+    "settings": "الإعدادات",
+    "logout": "تسجيل الخروج",
+    "favoriteTeams": "الفرق المفضلة",
+    "statistics": "الإحصائيات",
+    "achievements": "الإنجازات"
+  },
+  "matches": {
+    "title": "المباريات",
+    "past": "الماضية",
+    "live": "مباشر",
+    "upcoming": "القادمة",
+    "allMatches": "جميع المباريات",
+    "noMatches": "لم يتم العثور على مباريات",
+    "minute": "دقيقة",
+    "vs": "ضد"
+  },
+  "leaderboard": {
+    "title": "لوحة المتصدرين",
+    "overall": "الإجمالي",
+    "weekly": "الأسبوعي",
+    "monthly": "الشهري",
+    "rank": "الترتيب",
+    "user": "المستخدم",
+    "points": "النقاط"
+  },
+  "scoring": {
+    "bonusApplied": "تم تطبيق المكافأة!",
+    "strategicBonus": "مكافأة المحور الاستراتيجي",
+    "totalPoints": "إجمالي النقاط",
+    "breakdown": "تفصيل النقاط"
+  },
+  "notifications": {
+    "title": "الإشعارات",
+    "noNotifications": "لا توجد إشعارات",
+    "matchStartingSoon": "المباراة ستبدأ قريباً!",
+    "predictionReminder": "لا تنسى التوقع!",
+    "badgeEarned": "شارة جديدة مكتسبة!"
+  },
+  "errors": {
+    "networkError": "خطأ في الشبكة",
+    "serverError": "خطأ في الخادم",
+    "notFound": "غير موجود",
+    "unauthorized": "وصول غير مصرح",
+    "tryAgain": "حاول مرة أخرى"
+  },
+  "auth": {
+    "title": "مرحباً",
+    "subtitle": "اكتشف استراتيجيات كرة القدم",
+    "email": "البريد الإلكتروني",
+    "password": "كلمة المرور",
+    "login": "تسجيل الدخول",
+    "register": "التسجيل",
+    "forgotPassword": "نسيت كلمة المرور",
+    "orContinueWith": "أو تابع مع",
+    "emailRequired": "لا يمكن أن يكون البريد الإلكتروني فارغاً",
+    "emailInvalid": "أدخل عنوان بريد إلكتروني صالح",
+    "passwordRequired": "لا يمكن أن تكون كلمة المرور فارغة",
+    "passwordMinLength": "يجب أن تكون كلمة المرور 6 أحرف على الأقل",
+    "loginSuccess": "تم تسجيل الدخول بنجاح!",
+    "loginFailed": "فشل تسجيل الدخول",
+    "socialLoginFailed": "فشل تسجيل الدخول",
+    "errorOccurred": "حدث خطأ",
+    "checkingEmail": "جارٍ التحقق من البريد الإلكتروني...",
+    "emailAvailable": "البريد الإلكتروني متاح",
+    "emailTaken": "هذا البريد الإلكتروني مستخدم بالفعل",
+    "loginWithGoogle": "تسجيل الدخول مع Google",
+    "loginWithApple": "تسجيل الدخول مع Apple"
+  }
+}

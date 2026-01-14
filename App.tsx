@@ -13,7 +13,42 @@ import { ProfileCard } from './src/components/ProfileCard';
 import { DARK_MODE } from './src/theme/theme';
 import { hasBadgeBeenShown, markBadgeAsShown } from './src/services/badgeService';
 import { logger, logNavigation } from './src/utils/logger';
-import Animated, { FadeIn, FadeOut, SlideInRight, SlideOutLeft } from 'react-native-reanimated';
+// Web için React Native'in built-in Animated API'sini kullan, native için reanimated
+import { Animated as RNAnimated } from 'react-native';
+
+// Web için reanimated'i import etme - sadece native için
+let Animated: any;
+let FadeIn: any, FadeOut: any, SlideInRight: any, SlideOutLeft: any;
+
+if (Platform.OS === 'web') {
+  // Web için basit Animated wrapper
+  Animated = {
+    View: RNAnimated.View,
+  };
+  // Web için basit animasyon hook'ları (no-op)
+  FadeIn = { duration: () => ({}) };
+  FadeOut = { duration: () => ({}) };
+  SlideInRight = { duration: () => ({}) };
+  SlideOutLeft = { duration: () => ({}) };
+} else {
+  // Native için reanimated kullan - dynamic import ile
+  try {
+    const Reanimated = require('react-native-reanimated');
+    Animated = Reanimated.default || Reanimated;
+    FadeIn = Reanimated.FadeIn || { duration: () => ({}) };
+    FadeOut = Reanimated.FadeOut || { duration: () => ({}) };
+    SlideInRight = Reanimated.SlideInRight || { duration: () => ({}) };
+    SlideOutLeft = Reanimated.SlideOutLeft || { duration: () => ({}) };
+  } catch (e) {
+    // Fallback: React Native Animated kullan
+    Animated = { View: RNAnimated.View };
+    FadeIn = { duration: () => ({}) };
+    FadeOut = { duration: () => ({}) };
+    SlideInRight = { duration: () => ({}) };
+    SlideOutLeft = { duration: () => ({}) };
+  }
+}
+// import './src/i18n'; // Initialize i18n - Temporarily disabled for web debugging
 
 // Web için UIManager polyfills
 if (Platform.OS === 'web') {
@@ -637,8 +672,10 @@ export default function App() {
     return (
       <Animated.View
         key={key}
-        entering={isForward ? SlideInRight.duration(300) : FadeIn.duration(250)}
-        exiting={isForward ? SlideOutLeft.duration(250) : FadeOut.duration(200)}
+        {...(Platform.OS !== 'web' ? {
+          entering: isForward ? SlideInRight.duration(300) : FadeIn.duration(250),
+          exiting: isForward ? SlideOutLeft.duration(250) : FadeOut.duration(200),
+        } : {})}
         style={{ flex: 1 }}
       >
         {screen}

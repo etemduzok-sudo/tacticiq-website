@@ -1,0 +1,142 @@
+{
+  "common": {
+    "loading": "Загрузка...",
+    "error": "Ошибка",
+    "save": "Сохранить",
+    "cancel": "Отмена",
+    "close": "Закрыть",
+    "delete": "Удалить",
+    "edit": "Редактировать",
+    "back": "Назад",
+    "next": "Далее",
+    "done": "Готово"
+  },
+  "dashboard": {
+    "title": "Панель управления аналитика",
+    "analyst": "Аналитик",
+    "streak": "Серия",
+    "upcomingMatches": "Предстоящие и живые матчи",
+    "liveMatch": "В ПРЯМОМ ЭФИРЕ",
+    "liveTracking": "Отслеживание в реальном времени",
+    "predictButton": "Ввести анализ",
+    "strategicFocus": "Выбрать фокус анализа",
+    "strategicFocusSubtitle": "Выбранный фокус дает множитель очков x1.25",
+    "recentPerformance": "Ваша недавняя производительность",
+    "viewAllBadges": "Просмотреть все мои значки",
+    "noUpcomingMatches": "Нет матчей в ближайшие 24 часа",
+    "noMatchHistory": "У вас еще нет истории матчей",
+    "points": "Очки",
+    "accuracy": "Точность"
+  },
+  "strategicFocus": {
+    "tempo": {
+      "name": "Анализ темпа",
+      "description": "Сосредоточьтесь на темпе матча",
+      "advice": "Ожидается быстрый темп матча!"
+    },
+    "discipline": {
+      "name": "Анализ дисциплины",
+      "description": "Предсказать грубую игру",
+      "advice": "Этот судья любит карточки, отличный фокус!"
+    },
+    "fitness": {
+      "name": "Анализ физической формы",
+      "description": "Оценить физическое состояние",
+      "advice": "Физическая форма критична в длинном сезоне!"
+    },
+    "star": {
+      "name": "Анализ звезд",
+      "description": "Отслеживать звездных игроков",
+      "advice": "Звездные игроки будут на поле!"
+    }
+  },
+  "badges": {
+    "title": "Значки",
+    "earned": "Заработано",
+    "locked": "Заблокировано",
+    "howToEarn": "Как заработать",
+    "progress": "Прогресс",
+    "progressHint": "нужно больше матчей!",
+    "earnedDate": "Заработано:",
+    "tiers": {
+      "rookie": "Новичок",
+      "amateur": "Любитель",
+      "pro": "Профессионал",
+      "expert": "Эксперт",
+      "legend": "Легенда"
+    }
+  },
+  "profile": {
+    "title": "Профиль",
+    "level": "Уровень",
+    "points": "Очки",
+    "rank": "Ранг",
+    "settings": "Настройки",
+    "logout": "Выйти",
+    "favoriteTeams": "Любимые команды",
+    "statistics": "Статистика",
+    "achievements": "Достижения"
+  },
+  "matches": {
+    "title": "Матчи",
+    "past": "Прошедшие",
+    "live": "В прямом эфире",
+    "upcoming": "Предстоящие",
+    "allMatches": "Все матчи",
+    "noMatches": "Матчи не найдены",
+    "minute": "Минута",
+    "vs": "VS"
+  },
+  "leaderboard": {
+    "title": "Таблица лидеров",
+    "overall": "Общий",
+    "weekly": "Еженедельный",
+    "monthly": "Ежемесячный",
+    "rank": "Ранг",
+    "user": "Пользователь",
+    "points": "Очки"
+  },
+  "scoring": {
+    "bonusApplied": "Бонус применен!",
+    "strategicBonus": "Бонус стратегического фокуса",
+    "totalPoints": "Всего очков",
+    "breakdown": "Разбивка очков"
+  },
+  "notifications": {
+    "title": "Уведомления",
+    "noNotifications": "Нет уведомлений",
+    "matchStartingSoon": "Матч скоро начнется!",
+    "predictionReminder": "Не забудьте сделать прогноз!",
+    "badgeEarned": "Новый значок заработан!"
+  },
+  "errors": {
+    "networkError": "Ошибка сети",
+    "serverError": "Ошибка сервера",
+    "notFound": "Не найдено",
+    "unauthorized": "Несанкционированный доступ",
+    "tryAgain": "Попробовать снова"
+  },
+  "auth": {
+    "title": "Добро пожаловать",
+    "subtitle": "Откройте для себя футбольные стратегии",
+    "email": "Электронная почта",
+    "password": "Пароль",
+    "login": "Войти",
+    "register": "Зарегистрироваться",
+    "forgotPassword": "Забыли пароль",
+    "orContinueWith": "или продолжить с",
+    "emailRequired": "Адрес электронной почты не может быть пустым",
+    "emailInvalid": "Введите действительный адрес электронной почты",
+    "passwordRequired": "Пароль не может быть пустым",
+    "passwordMinLength": "Пароль должен содержать не менее 6 символов",
+    "loginSuccess": "Вход выполнен успешно!",
+    "loginFailed": "Ошибка входа",
+    "socialLoginFailed": "ошибка входа",
+    "errorOccurred": "Произошла ошибка",
+    "checkingEmail": "Проверка электронной почты...",
+    "emailAvailable": "Электронная почта доступна",
+    "emailTaken": "Эта электронная почта уже используется",
+    "loginWithGoogle": "Войти через Google",
+    "loginWithApple": "Войти через Apple"
+  }
+}
