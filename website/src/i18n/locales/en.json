@@ -1,0 +1,464 @@
+{
+  "nav": {
+    "home": "Home",
+    "features": "Features",
+    "how_it_works": "How It Works",
+    "pricing": "Pricing",
+    "blog": "Blog",
+    "login": "Login",
+    "signup": "Sign Up"
+  },
+  "hero": {
+    "badge": "Not a betting platform - Skill-based analysis",
+    "title": "Football Intelligence",
+    "subtitle": "Professional Match Analysis Platform",
+    "notBetting": "Not Betting • Skill-Based Game",
+    "description": "Analyze matches like a professional. Make data-driven predictions, evaluate tactical decisions and develop your football intelligence.",
+    "cta": {
+      "primary": "Join Waitlist",
+      "secondary": "Learn More"
+    },
+    "stats": {
+      "users": "Active Users",
+      "predictions": "Predictions Made",
+      "leagues": "Leagues Covered"
+    }
+  },
+  "product": {
+    "title": "What is TacticIQ?",
+    "subtitle": "Professional Football Analysis Platform - Not a Betting Site",
+    "description": "TacticIQ is a skill-based prediction and analysis platform where you develop your tactical intelligence, predict match outcomes with 14 different categories, analyze player performance, and compete in global leaderboards.",
+    "notGambling": "❌ This is NOT a Betting Platform",
+    "notGamblingDesc": "No deposits, no withdrawals, no real money. TacticIQ is a skill game focused on improving your football knowledge and analytical abilities.",
+    "features": {
+      "squad": {
+        "title": "⚽ Squad Builder",
+        "desc": "26 different formations. Build your starting XI and select substitutes. Predict player performance."
+      },
+      "predictions": {
+        "title": "🎯 14 Prediction Categories",
+        "desc": "Score, cards, shots, corners, possession, tempo, scenario predictions and more."
+      },
+      "focus": {
+        "title": "⭐ Strategic Focus System",
+        "desc": "Select your 3 most confident predictions. Correct = 2.0x points, Wrong = -1.5x penalty."
+      },
+      "training": {
+        "title": "💪 Training Multipliers",
+        "desc": "Choose training type to earn bonus points in specific categories. Defense (+20%), Attack (+20%), Midfield (+15%)."
+      },
+      "players": {
+        "title": "👤 Player Predictions",
+        "desc": "Predict goals, assists, yellow/red cards, substitutions for each player in the starting XI."
+      },
+      "analysis": {
+        "title": "📊 Performance Analysis",
+        "desc": "Detailed reports showing your strengths, category-based success rates, and improvement areas."
+      }
+    }
+  },
+  "features": {
+    "title": "14 Prediction Categories",
+    "subtitle": "Make Detailed Tactical Predictions",
+    "categories": {
+      "halftime_score": {
+        "title": "⚽ First Half Score",
+        "desc": "Predict the score at halftime (0-5+ for each team)",
+        "focusable": true
+      },
+      "halftime_extra": {
+        "title": "⏱️ First Half Stoppage Time",
+        "desc": "Predict stoppage time minutes (+1 to +5+ minutes)",
+        "focusable": false
+      },
+      "fulltime_score": {
+        "title": "⚽ Full Time Score",
+        "desc": "Predict the final match score (0-5+ for each team)",
+        "focusable": true
+      },
+      "fulltime_extra": {
+        "title": "⏱️ Second Half Stoppage Time",
+        "desc": "Predict second half stoppage time (+1 to +5+ minutes)",
+        "focusable": false
+      },
+      "total_goals": {
+        "title": "🧮 Total Goals",
+        "desc": "Predict total goals in the match (0-1, 2-3, 4-5, 6+)",
+        "focusable": true
+      },
+      "first_goal": {
+        "title": "⏰ First Goal Time",
+        "desc": "When will the first goal be scored? (1-15, 16-30, 31-45, 46-60, 61-75, 76-90+ minutes)",
+        "focusable": false
+      },
+      "yellow_cards": {
+        "title": "🟨 Total Yellow Cards",
+        "desc": "Predict total yellow cards (0-2, 3-4, 5-6, 7+)",
+        "focusable": false
+      },
+      "red_cards": {
+        "title": "🟥 Total Red Cards",
+        "desc": "Predict total red cards (0, 1, 2, 3+)",
+        "focusable": false
+      },
+      "possession": {
+        "title": "📊 Ball Possession",
+        "desc": "Predict ball possession percentage (30-70% range)",
+        "focusable": false
+      },
+      "total_shots": {
+        "title": "🎯 Total Shots",
+        "desc": "Predict total shots in the match (0-10, 11-20, 21-30, 31+)",
+        "focusable": false
+      },
+      "shots_on_target": {
+        "title": "🎯 Shots on Target",
+        "desc": "Predict shots on target (0-5, 6-10, 11-15, 16+)",
+        "focusable": false
+      },
+      "corners": {
+        "title": "🚩 Total Corners",
+        "desc": "Predict total corners (0-6, 7-12, 12+)",
+        "focusable": false
+      },
+      "tempo": {
+        "title": "🏃‍♂️ Match Tempo",
+        "desc": "Predict match pace (Low, Medium, High tempo)",
+        "focusable": false
+      },
+      "scenario": {
+        "title": "🧠 Match Scenario",
+        "desc": "Predict match style (Possession, High Press, Counter-Attack, Set Pieces)",
+        "focusable": false
+      }
+    },
+    "focusNote": "⭐ You can focus on max 3 predictions for 2x points (or -1.5x penalty)",
+    "totalCategories": "14 Different Categories • Detailed Tactical Analysis"
+  },
+  "player": {
+    "title": "Player Prediction System",
+    "subtitle": "Predict Performance for Starting XI Players in 8 Categories",
+    "predictions": {
+      "goal": {
+        "title": "⚽ Will Score",
+        "options": "1 goal, 2 goals, 3+ goals"
+      },
+      "assist": {
+        "title": "🅰️ Will Assist",
+        "options": "1 assist, 2 assists, 3+ assists"
+      },
+      "yellow": {
+        "title": "🟨 Yellow Card",
+        "options": "Yes/No"
+      },
+      "second_yellow": {
+        "title": "🟨🟥 Second Yellow",
+        "options": "Yes/No (auto-selects yellow card)"
+      },
+      "red": {
+        "title": "🟥 Direct Red Card",
+        "options": "Yes/No"
+      },
+      "substituted": {
+        "title": "🔄 Will Be Substituted",
+        "options": "Select replacement player"
+      },
+      "injured": {
+        "title": "🚑 Injury Substitution",
+        "options": "Select replacement player"
+      },
+      "mvp": {
+        "title": "🏆 Man of the Match (MOTM)",
+        "options": "This player will be the best performer"
+      }
+    },
+    "note": "Click on any player in the starting XI to make predictions"
+  },
+  "training": {
+    "title": "Training Multiplier System",
+    "subtitle": "Choose Training to Earn Bonus Points",
+    "types": {
+      "defense": {
+        "name": "🛡️ Defense Training",
+        "bonus": "+20% Discipline + Physical",
+        "desc": "Bonus points for cards and physical predictions"
+      },
+      "attack": {
+        "name": "⚔️ Attack Training",
+        "bonus": "+20% Tempo + Individual",
+        "desc": "Bonus points for goals, tempo, and player performance"
+      },
+      "midfield": {
+        "name": "🎯 Midfield Training",
+        "bonus": "+15% Tempo + Discipline",
+        "desc": "Bonus points for tempo and discipline predictions"
+      },
+      "physical": {
+        "name": "💪 Physical Training",
+        "bonus": "+25% Physical",
+        "desc": "Maximum bonus for injury and substitution predictions"
+      },
+      "tactical": {
+        "name": "🧠 Tactical Training",
+        "bonus": "+15% Tempo + Individual",
+        "desc": "Bonus points for tactical and player predictions"
+      }
+    },
+    "example": "Example: 20 base points + Defense Training = 20 × 1.2 = 24 points"
+  },
+  "howItWorks": {
+    "title": "How Does TacticIQ Work?",
+    "subtitle": "6 Simple Steps to Master Football Predictions",
+    "steps": {
+      "step1": {
+        "title": "1. Sign Up Free",
+        "desc": "Create your account and select at least 1 favorite team (up to 3 free, unlimited for Pro)"
+      },
+      "step2": {
+        "title": "2. Choose a Match",
+        "desc": "Select from upcoming matches. Your favorite teams' matches are highlighted"
+      },
+      "step3": {
+        "title": "3. Build Your Squad",
+        "desc": "Choose from 26 formations and place players in the starting XI. Don't forget substitutes!"
+      },
+      "step4": {
+        "title": "4. Make Match Predictions",
+        "desc": "Predict in 14 categories: Score, cards, shots, corners, possession, tempo, and scenario"
+      },
+      "step5": {
+        "title": "5. Player Predictions + Focus",
+        "desc": "Predict goals, assists, cards for each player. Select 3 most confident predictions as focus (2x points!)"
+      },
+      "step6": {
+        "title": "6. Earn Points & Climb",
+        "desc": "After the match, predictions are auto-evaluated. Earn points and climb the global leaderboard!"
+      }
+    },
+    "formula": {
+      "title": "Point Calculation Formula",
+      "desc": "Final Points = Base Points × Training Multiplier × Focus Multiplier",
+      "example": "Example: 20 points × 1.2 (Defense) × 2.0 (Focus) = 48 points"
+    }
+  },
+  "pricing": {
+    "title": "Simple, Transparent Pricing",
+    "subtitle": "Start Free or Go Pro for Advanced Features",
+    "free": {
+      "name": "Free",
+      "price": "$0",
+      "period": "forever",
+      "desc": "Perfect to get started",
+      "features": {
+        "predictions": "✅ Unlimited predictions",
+        "teams": "✅ 3 favorite teams",
+        "categories": "✅ All 14 prediction categories",
+        "focus": "✅ Strategic focus system (3x)",
+        "training": "✅ Training multipliers",
+        "stats": "✅ Basic statistics",
+        "leaderboard": "✅ Global leaderboard",
+        "badges": "✅ Basic badges",
+        "ads": "❌ Ads shown"
+      },
+      "cta": "Start Free"
+    },
+    "pro": {
+      "name": "Pro",
+      "price": "$4.99",
+      "period": "/month",
+      "desc": "Unlock everything",
+      "popular": "Most Popular",
+      "features": {
+        "predictions": "✅ Unlimited predictions",
+        "teams": "✅ Unlimited favorite teams",
+        "categories": "✅ All 14 prediction categories",
+        "focus": "✅ Strategic focus system (3x)",
+        "training": "✅ Training multipliers",
+        "stats": "✅ Advanced statistics & AI insights",
+        "leaderboard": "✅ Global + Pro-only leaderboard",
+        "badges": "✅ Exclusive Pro badges",
+        "ads": "✅ Ad-free experience",
+        "priority": "✅ Priority support",
+        "early": "✅ Early access to new features",
+        "analysis": "✅ Deep performance analysis"
+      },
+      "cta": "Upgrade to Pro"
+    },
+    "comparison": {
+      "title": "Feature Comparison",
+      "note": "All features, no hidden fees. Cancel anytime."
+    }
+  },
+  "blog": {
+    "title": "Latest from TacticIQ",
+    "subtitle": "Guides, Tips, and Football Analysis",
+    "readMore": "Read More",
+    "viewAll": "View All Posts",
+    "posts": {
+      "post1": {
+        "title": "How to Use the Strategic Focus System Effectively",
+        "desc": "Learn how to select the right predictions for 2x points and avoid penalties. Expert tips for maximizing your score.",
+        "date": "January 10, 2026",
+        "category": "Strategy"
+      },
+      "post2": {
+        "title": "Player Card Prediction Guide: Yellow vs Red Cards",
+        "desc": "Statistical analysis of when players are most likely to receive cards. Improve your discipline prediction accuracy.",
+        "date": "January 8, 2026",
+        "category": "Analysis"
+      },
+      "post3": {
+        "title": "Training Multipliers Explained: Which One to Choose?",
+        "desc": "Deep dive into Defense, Attack, Midfield, Physical, and Tactical training types. Optimize your bonus points.",
+        "date": "January 5, 2026",
+        "category": "Guide"
+      }
+    }
+  },
+  "cta": {
+    "title": "Ready to Prove Your Football Knowledge?",
+    "subtitle": "Join 10,000+ users making intelligent predictions. No credit card required.",
+    "emailPlaceholder": "Enter your email address",
+    "button": "Start Free - Sign Up Now",
+    "privacy": "🔒 Your email is safe. We never send spam. Unsubscribe anytime.",
+    "features": {
+      "free": "✅ 100% Free to Start",
+      "no_card": "✅ No Credit Card Needed",
+      "skill": "✅ Skill-Based, Not Gambling",
+      "virtual": "✅ Virtual Points Only"
+    }
+  },
+  "footer": {
+    "tagline": "Tactical Intelligence in Football Predictions",
+    "description": "TacticIQ is a professional skill-based prediction and analysis platform for football fans. No money involved - just improve your football knowledge, make intelligent predictions, and compete globally.",
+    "notBetting": {
+      "title": "❌ Not Betting",
+      "desc": "No deposits, no withdrawals, no real money. Pure skill game."
+    },
+    "skillBased": {
+      "title": "✅ Skill-Based",
+      "desc": "Predictions based only on your football knowledge and analytical skills."
+    },
+    "virtualPoints": {
+      "title": "🎮 Virtual Points",
+      "desc": "Compete with virtual points and climb the leaderboard. No money at stake."
+    },
+    "educational": {
+      "title": "📚 Educational",
+      "desc": "Improve your football IQ with detailed reports, statistics, and performance analysis."
+    },
+    "product": "Product",
+    "features": "Features",
+    "pricing": "Pricing",
+    "howItWorks": "How It Works",
+    "leaderboard": "Leaderboard",
+    "legal": "Legal",
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Service",
+    "fairPlay": "Fair Play Policy",
+    "responsible": "Responsible Use",
+    "support": "Support",
+    "faq": "FAQ",
+    "contact": "Contact Us",
+    "help": "Help Center",
+    "community": "Community",
+    "social": "Follow Us",
+    "copyright": "© 2026 TacticIQ. All rights reserved.",
+    "location": "Made with ⚽ for football fans worldwide"
+  },
+  "game": {
+    "badge": "Play Anywhere - Web & Mobile",
+    "title": "Play TacticIQ Game",
+    "description": "Make your predictions directly on the web. Test your football knowledge and compete with players worldwide.",
+    "playNow": "Play Now",
+    "notBetting": "🎮 Skill-based game • No real money • Virtual points only",
+    "features": {
+      "predictions": "Make Predictions",
+      "predictionsDesc": "14 different prediction categories for each match",
+      "leaderboard": "Global Leaderboard",
+      "leaderboardDesc": "Compete with players worldwide and climb the ranks",
+      "skills": "Improve Your Skills",
+      "skillsDesc": "Track your performance and improve your tactical knowledge",
+      "fairPlay": "Fair Play Guaranteed",
+      "fairPlayDesc": "Secure, transparent, and skill-based gameplay only"
+    },
+    "security": {
+      "title": "Secure & Protected",
+      "description": "All game data is encrypted and protected with industry-standard security measures. Your gameplay is fair, transparent, and secure."
+    },
+    "interface": {
+      "title": "Game Interface",
+      "comingSoon": "Game Interface Ready",
+      "comingSoonDesc": "The game interface is ready to use. Connect to backend to start playing.",
+      "backendRequired": "Backend Connection Required"
+    }
+  },
+  "fairPlay": {
+    "title": "Fair Play & Responsible Use",
+    "noBetting": "❌ No betting or wagering",
+    "noOdds": "❌ No odds or gambling mechanics",
+    "skillBased": "✅ 100% skill and knowledge-based",
+    "virtualPoints": "✅ Virtual points only, no real money",
+    "educational": "✅ Educational and developmental",
+    "competitive": "✅ Fair competition with global rankings"
+  },
+  "changePassword": {
+    "title": "Change Password",
+    "description": "Choose a strong password for your account security.",
+    "currentPassword": "Current Password",
+    "currentPasswordPlaceholder": "Enter your current password",
+    "newPassword": "New Password",
+    "newPasswordPlaceholder": "At least 8 characters",
+    "confirmPassword": "Confirm New Password",
+    "confirmPasswordPlaceholder": "Re-enter your new password",
+    "requirements": {
+      "length": "At least 8 characters",
+      "uppercase": "At least one uppercase letter",
+      "number": "At least one number"
+    },
+    "validation": {
+      "passwordsMatch": "Passwords match",
+      "passwordsMismatch": "Passwords do not match"
+    },
+    "errors": {
+      "currentPasswordRequired": "Enter your current password",
+      "newPasswordRequired": "Enter your new password",
+      "minLength": "New password must be at least 8 characters",
+      "sameAsOld": "New password cannot be the same as the old password",
+      "passwordsMismatch": "Passwords do not match"
+    },
+    "button": {
+      "cancel": "Cancel",
+      "submit": "Change Password",
+      "submitting": "Changing..."
+    },
+    "success": "Your password has been successfully changed!"
+  },
+  "newsletter": {
+    "badge": "NEWSLETTER",
+    "title": "Never Miss an Analysis",
+    "subtitle": "Get weekly analysis reports, exclusive predictions, and tactical insights in your inbox.",
+    "benefit1": "Weekly match analysis and predictions",
+    "benefit2": "Exclusive tactical insights and reports",
+    "benefit3": "Be the first to know about new features",
+    "form": {
+      "title": "Subscribe",
+      "description": "Enter your email to receive weekly insights",
+      "placeholder": "Enter your email address",
+      "subscribe": "Subscribe",
+      "subscribing": "Subscribing...",
+      "privacy": "Unsubscribe anytime.",
+      "privacyLink": "Privacy policy"
+    },
+    "subscribed": {
+      "title": "Successfully Subscribed!",
+      "description": "Check your inbox for the confirmation email."
+    },
+    "stats": {
+      "subscribers": "Active Subscribers",
+      "weekly": "Weekly Reports"
+    },
+    "error": "Please enter a valid email address",
+    "success": "Successfully subscribed to newsletter!"
+  }
+}

@@ -1,0 +1,464 @@
+{
+  "nav": {
+    "home": "Accueil",
+    "features": "Fonctionnalités",
+    "how_it_works": "Comment Ça Marche",
+    "pricing": "Tarifs",
+    "blog": "Blog",
+    "login": "Connexion",
+    "signup": "S'inscrire"
+  },
+  "hero": {
+    "badge": "Pas une plateforme de paris - Analyse basée sur les compétences",
+    "title": "Intelligence Footballistique",
+    "subtitle": "Plateforme Professionnelle d'Analyse de Matchs",
+    "notBetting": "Pas de Paris • Jeu Basé sur les Compétences",
+    "description": "Analysez les matchs comme un professionnel. Faites des prédictions basées sur les données, évaluez les décisions tactiques et développez votre intelligence footballistique.",
+    "cta": {
+      "primary": "Rejoindre la Liste d'Attente",
+      "secondary": "En Savoir Plus"
+    },
+    "stats": {
+      "users": "Utilisateurs Actifs",
+      "predictions": "Prédictions Effectuées",
+      "leagues": "Ligues Couvertes"
+    }
+  },
+  "product": {
+    "title": "Qu'est-ce que TacticIQ?",
+    "subtitle": "Plateforme Professionnelle d'Analyse Football - Pas un Site de Paris",
+    "description": "TacticIQ est une plateforme de prédiction et d'analyse basée sur les compétences où vous développez votre intelligence tactique, prédisez les résultats de matchs avec 14 catégories différentes, analysez les performances des joueurs et concourez dans les classements mondiaux.",
+    "notGambling": "❌ Ceci N'EST PAS une Plateforme de Paris",
+    "notGamblingDesc": "Pas de dépôts, pas de retraits, pas d'argent réel. TacticIQ est un jeu de compétence axé sur l'amélioration de vos connaissances footballistiques et capacités analytiques.",
+    "features": {
+      "squad": {
+        "title": "⚽ Constructeur d'Équipe",
+        "desc": "26 formations différentes. Construisez votre onze de départ et sélectionnez les remplaçants. Prédisez les performances des joueurs."
+      },
+      "predictions": {
+        "title": "🎯 14 Catégories de Prédiction",
+        "desc": "Score, cartons, tirs, corners, possession, tempo, prédictions de scénario et plus."
+      },
+      "focus": {
+        "title": "⭐ Système de Focus Stratégique",
+        "desc": "Sélectionnez vos 3 prédictions les plus sûres. Correct = 2.0× points, Incorrect = pénalité -1.5×."
+      },
+      "training": {
+        "title": "💪 Multiplicateurs d'Entraînement",
+        "desc": "Choisissez le type d'entraînement pour gagner des points bonus dans des catégories spécifiques. Défense (+20%), Attaque (+20%), Milieu (+15%)."
+      },
+      "players": {
+        "title": "👤 Prédictions sur les Joueurs",
+        "desc": "Prédisez les buts, passes décisives, cartons jaunes/rouges, remplacements pour chaque joueur du onze de départ."
+      },
+      "analysis": {
+        "title": "📊 Analyse de Performance",
+        "desc": "Rapports détaillés montrant vos points forts, taux de réussite par catégorie et domaines d'amélioration."
+      }
+    }
+  },
+  "features": {
+    "title": "14 Catégories de Prédiction",
+    "subtitle": "Faites des Prédictions Tactiques Détaillées",
+    "categories": {
+      "halftime_score": {
+        "title": "⚽ Score Première Mi-Temps",
+        "desc": "Prédisez le score à la mi-temps (0-5+ pour chaque équipe)",
+        "focusable": true
+      },
+      "halftime_extra": {
+        "title": "⏱️ Temps Additionnel Première Mi-Temps",
+        "desc": "Prédisez les minutes de temps additionnel (+1 à +5+ minutes)",
+        "focusable": false
+      },
+      "fulltime_score": {
+        "title": "⚽ Score Final",
+        "desc": "Prédisez le score final du match (0-5+ pour chaque équipe)",
+        "focusable": true
+      },
+      "fulltime_extra": {
+        "title": "⏱️ Temps Additionnel Deuxième Mi-Temps",
+        "desc": "Prédisez le temps additionnel de la deuxième mi-temps (+1 à +5+ minutes)",
+        "focusable": false
+      },
+      "total_goals": {
+        "title": "🧮 Total de Buts",
+        "desc": "Prédisez le total de buts dans le match (0-1, 2-3, 4-5, 6+)",
+        "focusable": true
+      },
+      "first_goal": {
+        "title": "⏰ Moment du Premier But",
+        "desc": "Quand le premier but sera-t-il marqué? (1-15, 16-30, 31-45, 46-60, 61-75, 76-90+ minutes)",
+        "focusable": false
+      },
+      "yellow_cards": {
+        "title": "🟨 Total Cartons Jaunes",
+        "desc": "Prédisez le total de cartons jaunes (0-2, 3-4, 5-6, 7+)",
+        "focusable": false
+      },
+      "red_cards": {
+        "title": "🟥 Total Cartons Rouges",
+        "desc": "Prédisez le total de cartons rouges (0, 1, 2, 3+)",
+        "focusable": false
+      },
+      "possession": {
+        "title": "📊 Possession du Ballon",
+        "desc": "Prédisez le pourcentage de possession du ballon (plage 30-70%)",
+        "focusable": false
+      },
+      "total_shots": {
+        "title": "🎯 Total de Tirs",
+        "desc": "Prédisez le total de tirs dans le match (0-10, 11-20, 21-30, 31+)",
+        "focusable": false
+      },
+      "shots_on_target": {
+        "title": "🎯 Tirs Cadrés",
+        "desc": "Prédisez les tirs cadrés (0-5, 6-10, 11-15, 16+)",
+        "focusable": false
+      },
+      "corners": {
+        "title": "🚩 Total de Corners",
+        "desc": "Prédisez le total de corners (0-6, 7-12, 12+)",
+        "focusable": false
+      },
+      "tempo": {
+        "title": "🏃‍♂️ Tempo du Match",
+        "desc": "Prédisez le rythme du match (Tempo bas, moyen, élevé)",
+        "focusable": false
+      },
+      "scenario": {
+        "title": "🧠 Scénario du Match",
+        "desc": "Prédisez le style du match (Possession, Pressing haut, Contre-attaque, Coups de pied arrêtés)",
+        "focusable": false
+      }
+    },
+    "focusNote": "⭐ Vous pouvez vous concentrer sur max 3 prédictions pour 2× points (ou pénalité -1.5×)",
+    "totalCategories": "14 Catégories Différentes • Analyse Tactique Détaillée"
+  },
+  "player": {
+    "title": "Système de Prédiction sur les Joueurs",
+    "subtitle": "Prédisez les Performances des Joueurs du Onze de Départ en 8 Catégories",
+    "predictions": {
+      "goal": {
+        "title": "⚽ Marquera",
+        "options": "1 but, 2 buts, 3+ buts"
+      },
+      "assist": {
+        "title": "🅰️ Assistera",
+        "options": "1 passe décisive, 2 passes décisives, 3+ passes décisives"
+      },
+      "yellow": {
+        "title": "🟨 Carton Jaune",
+        "options": "Oui/Non"
+      },
+      "second_yellow": {
+        "title": "🟨🟥 Deuxième Jaune",
+        "options": "Oui/Non (sélectionne automatiquement carton jaune)"
+      },
+      "red": {
+        "title": "🟥 Carton Rouge Direct",
+        "options": "Oui/Non"
+      },
+      "substituted": {
+        "title": "🔄 Sera Remplacé",
+        "options": "Sélectionnez le joueur remplaçant"
+      },
+      "injured": {
+        "title": "🚑 Remplacement pour Blessure",
+        "options": "Sélectionnez le joueur remplaçant"
+      },
+      "mvp": {
+        "title": "🏆 Homme du Match (MOTM)",
+        "options": "Ce joueur sera le meilleur du match"
+      }
+    },
+    "note": "Cliquez sur n'importe quel joueur du onze de départ pour faire des prédictions"
+  },
+  "training": {
+    "title": "Système de Multiplicateur d'Entraînement",
+    "subtitle": "Choisissez l'Entraînement pour Gagner des Points Bonus",
+    "types": {
+      "defense": {
+        "name": "🛡️ Entraînement Défensif",
+        "bonus": "+20% Discipline + Physique",
+        "desc": "Points bonus pour les prédictions de cartons et physique"
+      },
+      "attack": {
+        "name": "⚔️ Entraînement Offensif",
+        "bonus": "+20% Tempo + Individuel",
+        "desc": "Points bonus pour les buts, le tempo et les performances des joueurs"
+      },
+      "midfield": {
+        "name": "🎯 Entraînement Milieu",
+        "bonus": "+15% Tempo + Discipline",
+        "desc": "Points bonus pour les prédictions de tempo et discipline"
+      },
+      "physical": {
+        "name": "💪 Entraînement Physique",
+        "bonus": "+25% Physique",
+        "desc": "Bonus maximum pour les prédictions de blessures et remplacements"
+      },
+      "tactical": {
+        "name": "🧠 Entraînement Tactique",
+        "bonus": "+15% Tempo + Individuel",
+        "desc": "Points bonus pour les prédictions tactiques et sur les joueurs"
+      }
+    },
+    "example": "Exemple: 20 points de base + Entraînement Défensif = 20 × 1.2 = 24 points"
+  },
+  "howItWorks": {
+    "title": "Comment Fonctionne TacticIQ?",
+    "subtitle": "6 Étapes Simples pour Maîtriser les Prédictions Football",
+    "steps": {
+      "step1": {
+        "title": "1. Inscrivez-vous Gratuitement",
+        "desc": "Créez votre compte et sélectionnez au moins 1 équipe favorite (jusqu'à 3 gratuitement, illimité pour Pro)"
+      },
+      "step2": {
+        "title": "2. Choisissez un Match",
+        "desc": "Sélectionnez parmi les matchs à venir. Les matchs de vos équipes favorites sont mis en évidence"
+      },
+      "step3": {
+        "title": "3. Construisez Votre Équipe",
+        "desc": "Choisissez parmi 26 formations et placez les joueurs dans le onze de départ. N'oubliez pas les remplaçants!"
+      },
+      "step4": {
+        "title": "4. Faites des Prédictions de Match",
+        "desc": "Prédisez dans 14 catégories: Score, cartons, tirs, corners, possession, tempo et scénario"
+      },
+      "step5": {
+        "title": "5. Prédictions Joueurs + Focus",
+        "desc": "Prédisez buts, passes décisives, cartons pour chaque joueur. Sélectionnez 3 prédictions les plus sûres comme focus (2× points!)"
+      },
+      "step6": {
+        "title": "6. Gagnez des Points et Grimpez",
+        "desc": "Après le match, les prédictions sont automatiquement évaluées. Gagnez des points et grimpez le classement mondial!"
+      }
+    },
+    "formula": {
+      "title": "Formule de Calcul des Points",
+      "desc": "Points Finaux = Points de Base × Multiplicateur Entraînement × Multiplicateur Focus",
+      "example": "Exemple: 20 points × 1.2 (Défense) × 2.0 (Focus) = 48 points"
+    }
+  },
+  "pricing": {
+    "title": "Tarifs Simples et Transparents",
+    "subtitle": "Commencez Gratuitement ou Passez à Pro pour les Fonctionnalités Avancées",
+    "free": {
+      "name": "Gratuit",
+      "price": "$0",
+      "period": "pour toujours",
+      "desc": "Parfait pour commencer",
+      "features": {
+        "predictions": "✅ Prédictions illimitées",
+        "teams": "✅ 3 équipes favorites",
+        "categories": "✅ Toutes les 14 catégories de prédiction",
+        "focus": "✅ Système de focus stratégique (3×)",
+        "training": "✅ Multiplicateurs d'entraînement",
+        "stats": "✅ Statistiques de base",
+        "leaderboard": "✅ Classement mondial",
+        "badges": "✅ Badges de base",
+        "ads": "❌ Publicités affichées"
+      },
+      "cta": "Commencer Gratuitement"
+    },
+    "pro": {
+      "name": "Pro",
+      "price": "$4.99",
+      "period": "/mois",
+      "desc": "Débloquez tout",
+      "popular": "Le Plus Populaire",
+      "features": {
+        "predictions": "✅ Prédictions illimitées",
+        "teams": "✅ Équipes favorites illimitées",
+        "categories": "✅ Toutes les 14 catégories de prédiction",
+        "focus": "✅ Système de focus stratégique (3×)",
+        "training": "✅ Multiplicateurs d'entraînement",
+        "stats": "✅ Statistiques avancées et insights IA",
+        "leaderboard": "✅ Classement mondial + Pro uniquement",
+        "badges": "✅ Badges Pro exclusifs",
+        "ads": "✅ Expérience sans publicité",
+        "priority": "✅ Support prioritaire",
+        "early": "✅ Accès anticipé aux nouvelles fonctionnalités",
+        "analysis": "✅ Analyse de performance approfondie"
+      },
+      "cta": "Passer à Pro"
+    },
+    "comparison": {
+      "title": "Comparaison des Fonctionnalités",
+      "note": "Toutes les fonctionnalités, sans frais cachés. Annulez à tout moment."
+    }
+  },
+  "blog": {
+    "title": "Les Dernières de TacticIQ",
+    "subtitle": "Guides, Conseils et Analyses Football",
+    "readMore": "Lire Plus",
+    "viewAll": "Voir Tous les Articles",
+    "posts": {
+      "post1": {
+        "title": "Comment Utiliser Efficacement le Système de Focus Stratégique",
+        "desc": "Apprenez à sélectionner les bonnes prédictions pour 2× points et éviter les pénalités. Conseils d'experts pour maximiser votre score.",
+        "date": "10 janvier 2026",
+        "category": "Stratégie"
+      },
+      "post2": {
+        "title": "Guide de Prédiction des Cartons Joueurs: Jaunes vs Rouges",
+        "desc": "Analyse statistique du moment où les joueurs sont le plus susceptibles de recevoir des cartons. Améliorez votre précision de prédiction de discipline.",
+        "date": "8 janvier 2026",
+        "category": "Analyse"
+      },
+      "post3": {
+        "title": "Multiplicateurs d'Entraînement Expliqués: Lequel Choisir?",
+        "desc": "Plongée profonde dans les types d'entraînement Défense, Attaque, Milieu, Physique et Tactique. Optimisez vos points bonus.",
+        "date": "5 janvier 2026",
+        "category": "Guide"
+      }
+    }
+  },
+  "cta": {
+    "title": "Prêt à Prouver Vos Connaissances Footballistiques?",
+    "subtitle": "Rejoignez plus de 10 000 utilisateurs faisant des prédictions intelligentes. Aucune carte de crédit requise.",
+    "emailPlaceholder": "Entrez votre adresse e-mail",
+    "button": "Commencer Gratuitement - Inscrivez-vous Maintenant",
+    "privacy": "🔒 Votre e-mail est en sécurité. Nous n'envoyons jamais de spam. Désabonnez-vous à tout moment.",
+    "features": {
+      "free": "✅ 100% Gratuit pour Commencer",
+      "no_card": "✅ Aucune Carte de Crédit Nécessaire",
+      "skill": "✅ Basé sur les Compétences, Pas de Paris",
+      "virtual": "✅ Points Virtuels Uniquement"
+    }
+  },
+  "footer": {
+    "tagline": "Intelligence Tactique dans les Prédictions Football",
+    "description": "TacticIQ est une plateforme professionnelle de prédiction et d'analyse basée sur les compétences pour les fans de football. Pas d'argent impliqué - améliorez simplement vos connaissances footballistiques, faites des prédictions intelligentes et concourez mondialement.",
+    "notBetting": {
+      "title": "❌ Pas de Paris",
+      "desc": "Pas de dépôts, pas de retraits, pas d'argent réel. Jeu de compétence pur."
+    },
+    "skillBased": {
+      "title": "✅ Basé sur les Compétences",
+      "desc": "Prédictions basées uniquement sur vos connaissances footballistiques et compétences analytiques."
+    },
+    "virtualPoints": {
+      "title": "🎮 Points Virtuels",
+      "desc": "Concourez avec des points virtuels et grimpez le classement. Pas d'argent en jeu."
+    },
+    "educational": {
+      "title": "📚 Éducatif",
+      "desc": "Améliorez votre QI football avec des rapports détaillés, statistiques et analyse de performance."
+    },
+    "product": "Produit",
+    "features": "Fonctionnalités",
+    "pricing": "Tarifs",
+    "howItWorks": "Comment Ça Marche",
+    "leaderboard": "Classement",
+    "legal": "Juridique",
+    "privacy": "Politique de Confidentialité",
+    "terms": "Conditions de Service",
+    "fairPlay": "Politique de Fair-Play",
+    "responsible": "Utilisation Responsable",
+    "support": "Support",
+    "faq": "FAQ",
+    "contact": "Contactez-nous",
+    "help": "Centre d'Aide",
+    "community": "Communauté",
+    "social": "Suivez-nous",
+    "copyright": "© 2026 TacticIQ. Tous droits réservés.",
+    "location": "Fait avec ⚽ pour les fans de football du monde entier"
+  },
+  "game": {
+    "badge": "Jouez Partout - Web et Mobile",
+    "title": "Jouez au Jeu TacticIQ",
+    "description": "Faites vos prédictions directement sur le web. Testez vos connaissances footballistiques et rivalisez avec des joueurs du monde entier.",
+    "playNow": "Jouer Maintenant",
+    "notBetting": "🎮 Jeu basé sur les compétences • Pas d'argent réel • Points virtuels uniquement",
+    "features": {
+      "predictions": "Faire des Prédictions",
+      "predictionsDesc": "14 catégories de prédiction différentes pour chaque match",
+      "leaderboard": "Classement Mondial",
+      "leaderboardDesc": "Rivalisez avec des joueurs du monde entier et grimpez les rangs",
+      "skills": "Améliorez Vos Compétences",
+      "skillsDesc": "Suivez vos performances et améliorez vos connaissances tactiques",
+      "fairPlay": "Fair-Play Garanti",
+      "fairPlayDesc": "Jeu sécurisé, transparent et basé uniquement sur les compétences"
+    },
+    "security": {
+      "title": "Sécurisé et Protégé",
+      "description": "Toutes les données de jeu sont cryptées et protégées par des mesures de sécurité conformes aux normes de l'industrie. Votre jeu est équitable, transparent et sécurisé."
+    },
+    "interface": {
+      "title": "Interface de Jeu",
+      "comingSoon": "Interface de Jeu Prête",
+      "comingSoonDesc": "L'interface de jeu est prête à être utilisée. Connectez-vous au backend pour commencer à jouer.",
+      "backendRequired": "Connexion Backend Requise"
+    }
+  },
+  "fairPlay": {
+    "title": "Fair-Play et Utilisation Responsable",
+    "noBetting": "❌ Pas de paris ou de jeux d'argent",
+    "noOdds": "❌ Pas de cotes ou de mécanismes de pari",
+    "skillBased": "✅ 100% basé sur les compétences et les connaissances",
+    "virtualPoints": "✅ Points virtuels uniquement, pas d'argent réel",
+    "educational": "✅ Éducatif et développemental",
+    "competitive": "✅ Compétition équitable avec classements mondiaux"
+  },
+  "changePassword": {
+    "title": "Changer le Mot de Passe",
+    "description": "Choisissez un mot de passe fort pour la sécurité de votre compte.",
+    "currentPassword": "Mot de Passe Actuel",
+    "currentPasswordPlaceholder": "Entrez votre mot de passe actuel",
+    "newPassword": "Nouveau Mot de Passe",
+    "newPasswordPlaceholder": "Au moins 8 caractères",
+    "confirmPassword": "Confirmer le Nouveau Mot de Passe",
+    "confirmPasswordPlaceholder": "Saisissez à nouveau votre nouveau mot de passe",
+    "requirements": {
+      "length": "Au moins 8 caractères",
+      "uppercase": "Au moins une lettre majuscule",
+      "number": "Au moins un chiffre"
+    },
+    "validation": {
+      "passwordsMatch": "Les mots de passe correspondent",
+      "passwordsMismatch": "Les mots de passe ne correspondent pas"
+    },
+    "errors": {
+      "currentPasswordRequired": "Entrez votre mot de passe actuel",
+      "newPasswordRequired": "Entrez votre nouveau mot de passe",
+      "minLength": "Le nouveau mot de passe doit contenir au moins 8 caractères",
+      "sameAsOld": "Le nouveau mot de passe ne peut pas être identique à l'ancien mot de passe",
+      "passwordsMismatch": "Les mots de passe ne correspondent pas"
+    },
+    "button": {
+      "cancel": "Annuler",
+      "submit": "Changer le Mot de Passe",
+      "submitting": "Changement..."
+    },
+    "success": "Votre mot de passe a été changé avec succès!"
+  },
+  "newsletter": {
+    "badge": "NEWSLETTER",
+    "title": "Ne Manquez Aucune Analyse",
+    "subtitle": "Recevez des rapports d'analyse hebdomadaires, des prédictions exclusives et des perspectives tactiques dans votre boîte mail.",
+    "benefit1": "Analyses et prédictions de matchs hebdomadaires",
+    "benefit2": "Perspectives tactiques exclusives et rapports",
+    "benefit3": "Soyez le premier informé des nouvelles fonctionnalités",
+    "form": {
+      "title": "S'abonner",
+      "description": "Entrez votre e-mail pour recevoir des perspectives hebdomadaires",
+      "placeholder": "Entrez votre adresse e-mail",
+      "subscribe": "S'abonner",
+      "subscribing": "Abonnement...",
+      "privacy": "Désabonnez-vous à tout moment.",
+      "privacyLink": "Politique de confidentialité"
+    },
+    "subscribed": {
+      "title": "Abonnement Réussi!",
+      "description": "Vérifiez votre boîte mail pour l'e-mail de confirmation."
+    },
+    "stats": {
+      "subscribers": "Abonnés Actifs",
+      "weekly": "Rapports Hebdomadaires"
+    },
+    "error": "Veuillez entrer une adresse e-mail valide",
+    "success": "Abonnement à la newsletter réussi!"
+  }
+}

@@ -1,0 +1,464 @@
+{
+  "nav": {
+    "home": "首页",
+    "features": "功能",
+    "how_it_works": "如何运作",
+    "pricing": "定价",
+    "blog": "博客",
+    "login": "登录",
+    "signup": "注册"
+  },
+  "hero": {
+    "badge": "非博彩平台 - 基于技能的分析",
+    "title": "足球智慧",
+    "subtitle": "专业比赛分析平台",
+    "notBetting": "非博彩 • 基于技能的游戏",
+    "description": "像专业人士一样分析比赛。做出数据驱动的预测，评估战术决策，发展你的足球智慧。",
+    "cta": {
+      "primary": "加入候补名单",
+      "secondary": "了解更多"
+    },
+    "stats": {
+      "users": "活跃用户",
+      "predictions": "已完成预测",
+      "leagues": "覆盖联赛"
+    }
+  },
+  "product": {
+    "title": "什么是TacticIQ？",
+    "subtitle": "专业足球分析平台 - 非博彩网站",
+    "description": "TacticIQ是一个基于技能的预测和分析平台，在这里你可以发展战术智慧，用14个不同类别预测比赛结果，分析球员表现，并在全球排行榜上竞争。",
+    "notGambling": "❌ 这不是博彩平台",
+    "notGamblingDesc": "无存款、无提款、无真钱。TacticIQ是一个专注于提高你的足球知识和分析能力的技能游戏。",
+    "features": {
+      "squad": {
+        "title": "⚽ 阵容构建器",
+        "desc": "26种不同阵型。组建你的首发阵容并选择替补。预测球员表现。"
+      },
+      "predictions": {
+        "title": "🎯 14个预测类别",
+        "desc": "比分、卡牌、射门、角球、控球、节奏、场景预测等。"
+      },
+      "focus": {
+        "title": "⭐ 战略聚焦系统",
+        "desc": "选择你最有信心的3个预测。正确 = 2.0倍积分，错误 = -1.5倍惩罚。"
+      },
+      "training": {
+        "title": "💪 训练倍数",
+        "desc": "选择训练类型以在特定类别中获得奖励积分。防守(+20%)、进攻(+20%)、中场(+15%)。"
+      },
+      "players": {
+        "title": "👤 球员预测",
+        "desc": "预测首发阵容中每位球员的进球、助攻、黄/红牌、替换。"
+      },
+      "analysis": {
+        "title": "📊 表现分析",
+        "desc": "详细报告显示你的优势、各类别成功率和改进领域。"
+      }
+    }
+  },
+  "features": {
+    "title": "14个预测类别",
+    "subtitle": "做出详细的战术预测",
+    "categories": {
+      "halftime_score": {
+        "title": "⚽ 上半场比分",
+        "desc": "预测半场比分（每队0-5+）",
+        "focusable": true
+      },
+      "halftime_extra": {
+        "title": "⏱️ 上半场补时",
+        "desc": "预测补时分钟数（+1到+5+分钟）",
+        "focusable": false
+      },
+      "fulltime_score": {
+        "title": "⚽ 全场比分",
+        "desc": "预测比赛最终比分（每队0-5+）",
+        "focusable": true
+      },
+      "fulltime_extra": {
+        "title": "⏱️ 下半场补时",
+        "desc": "预测下半场补时（+1到+5+分钟）",
+        "focusable": false
+      },
+      "total_goals": {
+        "title": "🧮 进球总数",
+        "desc": "预测比赛进球总数（0-1、2-3、4-5、6+）",
+        "focusable": true
+      },
+      "first_goal": {
+        "title": "⏰ 首个进球时间",
+        "desc": "首个进球何时打进？（1-15、16-30、31-45、46-60、61-75、76-90+分钟）",
+        "focusable": false
+      },
+      "yellow_cards": {
+        "title": "🟨 黄牌总数",
+        "desc": "预测黄牌总数（0-2、3-4、5-6、7+）",
+        "focusable": false
+      },
+      "red_cards": {
+        "title": "🟥 红牌总数",
+        "desc": "预测红牌总数（0、1、2、3+）",
+        "focusable": false
+      },
+      "possession": {
+        "title": "📊 球权控制",
+        "desc": "预测控球率百分比（30-70%范围）",
+        "focusable": false
+      },
+      "total_shots": {
+        "title": "🎯 射门总数",
+        "desc": "预测比赛射门总数（0-10、11-20、21-30、31+）",
+        "focusable": false
+      },
+      "shots_on_target": {
+        "title": "🎯 射正次数",
+        "desc": "预测射正次数（0-5、6-10、11-15、16+）",
+        "focusable": false
+      },
+      "corners": {
+        "title": "🚩 角球总数",
+        "desc": "预测角球总数（0-6、7-12、12+）",
+        "focusable": false
+      },
+      "tempo": {
+        "title": "🏃‍♂️ 比赛节奏",
+        "desc": "预测比赛节奏（低、中、高节奏）",
+        "focusable": false
+      },
+      "scenario": {
+        "title": "🧠 比赛场景",
+        "desc": "预测比赛风格（控球、高位压迫、反击、定位球）",
+        "focusable": false
+      }
+    },
+    "focusNote": "⭐ 你最多可以聚焦3个预测以获得2倍积分（或-1.5倍惩罚）",
+    "totalCategories": "14个不同类别 • 详细战术分析"
+  },
+  "player": {
+    "title": "球员预测系统",
+    "subtitle": "在8个类别中预测首发阵容球员的表现",
+    "predictions": {
+      "goal": {
+        "title": "⚽ 将进球",
+        "options": "1球、2球、3+球"
+      },
+      "assist": {
+        "title": "🅰️ 将助攻",
+        "options": "1次助攻、2次助攻、3+次助攻"
+      },
+      "yellow": {
+        "title": "🟨 黄牌",
+        "options": "是/否"
+      },
+      "second_yellow": {
+        "title": "🟨🟥 第二张黄牌",
+        "options": "是/否（自动选择黄牌）"
+      },
+      "red": {
+        "title": "🟥 直接红牌",
+        "options": "是/否"
+      },
+      "substituted": {
+        "title": "🔄 将被替换",
+        "options": "选择替换球员"
+      },
+      "injured": {
+        "title": "🚑 受伤替换",
+        "options": "选择替换球员"
+      },
+      "mvp": {
+        "title": "🏆 全场最佳球员(MOTM)",
+        "options": "此球员将是最佳表现者"
+      }
+    },
+    "note": "点击首发阵容中的任何球员进行预测"
+  },
+  "training": {
+    "title": "训练倍数系统",
+    "subtitle": "选择训练以获得奖励积分",
+    "types": {
+      "defense": {
+        "name": "🛡️ 防守训练",
+        "bonus": "+20% 纪律 + 身体",
+        "desc": "卡牌和身体预测的奖励积分"
+      },
+      "attack": {
+        "name": "⚔️ 进攻训练",
+        "bonus": "+20% 节奏 + 个人",
+        "desc": "进球、节奏和球员表现的奖励积分"
+      },
+      "midfield": {
+        "name": "🎯 中场训练",
+        "bonus": "+15% 节奏 + 纪律",
+        "desc": "节奏和纪律预测的奖励积分"
+      },
+      "physical": {
+        "name": "💪 体能训练",
+        "bonus": "+25% 身体",
+        "desc": "受伤和替换预测的最大奖励"
+      },
+      "tactical": {
+        "name": "🧠 战术训练",
+        "bonus": "+15% 节奏 + 个人",
+        "desc": "战术和球员预测的奖励积分"
+      }
+    },
+    "example": "示例：20基础积分 + 防守训练 = 20 × 1.2 = 24积分"
+  },
+  "howItWorks": {
+    "title": "TacticIQ如何运作？",
+    "subtitle": "掌握足球预测的6个简单步骤",
+    "steps": {
+      "step1": {
+        "title": "1. 免费注册",
+        "desc": "创建你的账户并选择至少1支喜爱的球队（最多3支免费，Pro无限制）"
+      },
+      "step2": {
+        "title": "2. 选择比赛",
+        "desc": "从即将到来的比赛中选择。你喜爱球队的比赛会被突出显示"
+      },
+      "step3": {
+        "title": "3. 组建你的阵容",
+        "desc": "从26种阵型中选择并在首发阵容中放置球员。别忘了替补！"
+      },
+      "step4": {
+        "title": "4. 做出比赛预测",
+        "desc": "在14个类别中进行预测：比分、卡牌、射门、角球、控球、节奏和场景"
+      },
+      "step5": {
+        "title": "5. 球员预测 + 聚焦",
+        "desc": "预测每位球员的进球、助攻、卡牌。选择3个最有信心的预测作为聚焦（2倍积分！）"
+      },
+      "step6": {
+        "title": "6. 赚取积分并攀升",
+        "desc": "比赛结束后，预测将自动评估。赚取积分并攀升全球排行榜！"
+      }
+    },
+    "formula": {
+      "title": "积分计算公式",
+      "desc": "最终积分 = 基础积分 × 训练倍数 × 聚焦倍数",
+      "example": "示例：20积分 × 1.2（防守）× 2.0（聚焦）= 48积分"
+    }
+  },
+  "pricing": {
+    "title": "简单透明的定价",
+    "subtitle": "免费开始或升级到Pro以获得高级功能",
+    "free": {
+      "name": "免费",
+      "price": "$0",
+      "period": "永久",
+      "desc": "完美的起点",
+      "features": {
+        "predictions": "✅ 无限预测",
+        "teams": "✅ 3支喜爱球队",
+        "categories": "✅ 全部14个预测类别",
+        "focus": "✅ 战略聚焦系统（3次）",
+        "training": "✅ 训练倍数",
+        "stats": "✅ 基础统计",
+        "leaderboard": "✅ 全球排行榜",
+        "badges": "✅ 基础徽章",
+        "ads": "❌ 显示广告"
+      },
+      "cta": "免费开始"
+    },
+    "pro": {
+      "name": "Pro",
+      "price": "$4.99",
+      "period": "/月",
+      "desc": "解锁一切",
+      "popular": "最受欢迎",
+      "features": {
+        "predictions": "✅ 无限预测",
+        "teams": "✅ 无限喜爱球队",
+        "categories": "✅ 全部14个预测类别",
+        "focus": "✅ 战略聚焦系统（3次）",
+        "training": "✅ 训练倍数",
+        "stats": "✅ 高级统计和AI洞察",
+        "leaderboard": "✅ 全球 + 仅Pro排行榜",
+        "badges": "✅ 独家Pro徽章",
+        "ads": "✅ 无广告体验",
+        "priority": "✅ 优先支持",
+        "early": "✅ 新功能抢先体验",
+        "analysis": "✅ 深度表现分析"
+      },
+      "cta": "升级到Pro"
+    },
+    "comparison": {
+      "title": "功能对比",
+      "note": "所有功能，无隐藏费用。随时取消。"
+    }
+  },
+  "blog": {
+    "title": "TacticIQ最新动态",
+    "subtitle": "指南、技巧和足球分析",
+    "readMore": "阅读更多",
+    "viewAll": "查看所有帖子",
+    "posts": {
+      "post1": {
+        "title": "如何有效使用战略聚焦系统",
+        "desc": "学习如何选择正确的预测以获得2倍积分并避免惩罚。专家提示最大化你的得分。",
+        "date": "2026年1月10日",
+        "category": "策略"
+      },
+      "post2": {
+        "title": "球员卡牌预测指南：黄牌 vs 红牌",
+        "desc": "关于球员最可能收到卡牌时机的统计分析。提高你的纪律预测准确性。",
+        "date": "2026年1月8日",
+        "category": "分析"
+      },
+      "post3": {
+        "title": "训练倍数解析：选择哪一个？",
+        "desc": "深入了解防守、进攻、中场、体能和战术训练类型。优化你的奖励积分。",
+        "date": "2026年1月5日",
+        "category": "指南"
+      }
+    }
+  },
+  "cta": {
+    "title": "准备好证明你的足球知识了吗？",
+    "subtitle": "加入10,000多名用户做出智能预测。无需信用卡。",
+    "emailPlaceholder": "输入你的电子邮件地址",
+    "button": "免费开始 - 立即注册",
+    "privacy": "🔒 你的电子邮件是安全的。我们从不发送垃圾邮件。随时取消订阅。",
+    "features": {
+      "free": "✅ 100%免费开始",
+      "no_card": "✅ 无需信用卡",
+      "skill": "✅ 基于技能，非赌博",
+      "virtual": "✅ 仅虚拟积分"
+    }
+  },
+  "footer": {
+    "tagline": "足球预测中的战术智慧",
+    "description": "TacticIQ是专为足球迷设计的专业基于技能的预测和分析平台。不涉及金钱 - 只是提高你的足球知识，做出智能预测，并在全球竞争。",
+    "notBetting": {
+      "title": "❌ 非博彩",
+      "desc": "无存款、无提款、无真钱。纯技能游戏。"
+    },
+    "skillBased": {
+      "title": "✅ 基于技能",
+      "desc": "预测仅基于你的足球知识和分析技能。"
+    },
+    "virtualPoints": {
+      "title": "🎮 虚拟积分",
+      "desc": "用虚拟积分竞争并攀升排行榜。没有金钱风险。"
+    },
+    "educational": {
+      "title": "📚 教育性",
+      "desc": "通过详细报告、统计和表现分析提高你的足球智商。"
+    },
+    "product": "产品",
+    "features": "功能",
+    "pricing": "定价",
+    "howItWorks": "如何运作",
+    "leaderboard": "排行榜",
+    "legal": "法律",
+    "privacy": "隐私政策",
+    "terms": "服务条款",
+    "fairPlay": "公平竞争政策",
+    "responsible": "负责任使用",
+    "support": "支持",
+    "faq": "常见问题",
+    "contact": "联系我们",
+    "help": "帮助中心",
+    "community": "社区",
+    "social": "关注我们",
+    "copyright": "© 2026 TacticIQ. 保留所有权利。",
+    "location": "为全球足球迷用 ⚽ 制作"
+  },
+  "game": {
+    "badge": "随时随地玩 - 网页和移动",
+    "title": "玩TacticIQ游戏",
+    "description": "直接在网页上做出你的预测。测试你的足球知识并与全球玩家竞争。",
+    "playNow": "立即游玩",
+    "notBetting": "🎮 基于技能的游戏 • 无真钱 • 仅虚拟积分",
+    "features": {
+      "predictions": "做出预测",
+      "predictionsDesc": "每场比赛14个不同的预测类别",
+      "leaderboard": "全球排行榜",
+      "leaderboardDesc": "与全球玩家竞争并攀升排名",
+      "skills": "提高你的技能",
+      "skillsDesc": "跟踪你的表现并提高战术知识",
+      "fairPlay": "保证公平竞争",
+      "fairPlayDesc": "安全、透明、仅基于技能的游戏玩法"
+    },
+    "security": {
+      "title": "安全且受保护",
+      "description": "所有游戏数据都经过加密并受到行业标准安全措施的保护。你的游戏公平、透明且安全。"
+    },
+    "interface": {
+      "title": "游戏界面",
+      "comingSoon": "游戏界面准备就绪",
+      "comingSoonDesc": "游戏界面已准备好使用。连接到后端即可开始游戏。",
+      "backendRequired": "需要后端连接"
+    }
+  },
+  "fairPlay": {
+    "title": "公平竞争和负责任使用",
+    "noBetting": "❌ 无博彩或赌博",
+    "noOdds": "❌ 无赔率或赌博机制",
+    "skillBased": "✅ 100%基于技能和知识",
+    "virtualPoints": "✅ 仅虚拟积分，无真钱",
+    "educational": "✅ 教育和发展性",
+    "competitive": "✅ 全球排名的公平竞争"
+  },
+  "changePassword": {
+    "title": "更改密码",
+    "description": "为你的账户安全选择一个强密码。",
+    "currentPassword": "当前密码",
+    "currentPasswordPlaceholder": "输入你的当前密码",
+    "newPassword": "新密码",
+    "newPasswordPlaceholder": "至少8个字符",
+    "confirmPassword": "确认新密码",
+    "confirmPasswordPlaceholder": "重新输入你的新密码",
+    "requirements": {
+      "length": "至少8个字符",
+      "uppercase": "至少一个大写字母",
+      "number": "至少一个数字"
+    },
+    "validation": {
+      "passwordsMatch": "密码匹配",
+      "passwordsMismatch": "密码不匹配"
+    },
+    "errors": {
+      "currentPasswordRequired": "输入你的当前密码",
+      "newPasswordRequired": "输入你的新密码",
+      "minLength": "新密码必须至少8个字符",
+      "sameAsOld": "新密码不能与旧密码相同",
+      "passwordsMismatch": "密码不匹配"
+    },
+    "button": {
+      "cancel": "取消",
+      "submit": "更改密码",
+      "submitting": "正在更改..."
+    },
+    "success": "你的密码已成功更改！"
+  },
+  "newsletter": {
+    "badge": "时事通讯",
+    "title": "不要错过任何分析",
+    "subtitle": "在您的收件箱中获取每周分析报告、独家预测和战术见解。",
+    "benefit1": "每周比赛分析和预测",
+    "benefit2": "独家战术见解和报告",
+    "benefit3": "第一时间了解新功能",
+    "form": {
+      "title": "订阅",
+      "description": "输入您的电子邮件以接收每周见解",
+      "placeholder": "输入您的电子邮件地址",
+      "subscribe": "订阅",
+      "subscribing": "正在订阅...",
+      "privacy": "随时取消订阅。",
+      "privacyLink": "隐私政策"
+    },
+    "subscribed": {
+      "title": "订阅成功！",
+      "description": "检查您的收件箱以获取确认电子邮件。"
+    },
+    "stats": {
+      "subscribers": "活跃订阅者",
+      "weekly": "每周报告"
+    },
+    "error": "请输入有效的电子邮件地址",
+    "success": "成功订阅时事通讯！"
+  }
+}

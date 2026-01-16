@@ -1,0 +1,15 @@
+# TacticIQ - Robots.txt
+# https://tacticiq.app/robots.txt
+
+User-agent: *
+Allow: /
+
+# Disallow admin panel
+Disallow: /admin
+Disallow: /api/
+
+# Sitemap
+Sitemap: https://tacticiq.app/sitemap.xml
+
+# Crawl-delay (optional, helps prevent server overload)
+Crawl-delay: 1
