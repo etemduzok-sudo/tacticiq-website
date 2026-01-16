@@ -13,23 +13,23 @@ import { BRAND, DARK_MODE } from './theme';
 // ===== BACKGROUND GRADIENTS =====
 
 /**
- * Splash Screen Gradient
+ * Splash Screen Gradient - Design System v1.0
  * Direction: to-br (135°)
- * Stops: #059669 (0%) → #047857 (50%) → #065f46 (100%)
+ * Stops: Primary (#0F2A24) → Secondary (#1FA2A6) → Primary Dark
  */
 export const SPLASH_GRADIENT = {
-  colors: ['#059669', '#047857', '#065f46'],
+  colors: ['#0F2A24', '#1FA2A6', '#0a1f1a'],
   start: { x: 0, y: 0 },
   end: { x: 1, y: 1 }, // 135° (to-br)
 };
 
 /**
- * Auth Pages Gradient (Login, Register, ForgotPassword)
+ * Auth Pages Gradient (Login, Register, ForgotPassword) - Design System v1.0
  * Direction: to-br (135°)
- * Stops: #0F172A (0%) → #1E293B (50%) → #0F172A (100%)
+ * Stops: Dark background (#121212) → Primary (#0F2A24) → Dark background
  */
 export const AUTH_GRADIENT = {
-  colors: ['#0F172A', '#1E293B', '#0F172A'],
+  colors: ['#121212', '#0F2A24', '#121212'],
   start: { x: 0, y: 0 },
   end: { x: 1, y: 1 }, // 135° (to-br)
 };
@@ -37,34 +37,34 @@ export const AUTH_GRADIENT = {
 // ===== BUTTON GRADIENTS =====
 
 /**
- * Primary Button Gradient
+ * Primary Button Gradient - Design System v1.0
  * Direction: to-r (0°)
- * Stops: #059669 (0%) → #047857 (100%)
+ * Stops: Primary (#0F2A24) → Primary Dark
  */
 export const PRIMARY_BUTTON_GRADIENT = {
-  colors: [BRAND.emerald, BRAND.emeraldDark],
+  colors: [BRAND.primary, '#0a1f1a'],
   start: { x: 0, y: 0 },
   end: { x: 1, y: 0 }, // Horizontal (to-r)
 };
 
 /**
- * Primary Button Gradient - Hover State (Reversed)
+ * Primary Button Gradient - Hover State (Reversed) - Design System v1.0
  * Direction: to-r (0°)
- * Stops: #047857 (0%) → #059669 (100%)
+ * Stops: Primary Dark → Primary (#0F2A24)
  */
 export const PRIMARY_BUTTON_GRADIENT_HOVER = {
-  colors: [BRAND.emeraldDark, BRAND.emerald],
+  colors: ['#0a1f1a', BRAND.primary],
   start: { x: 0, y: 0 },
   end: { x: 1, y: 0 }, // Horizontal (to-r)
 };
 
 /**
- * Match Header Gradient (Modal)
+ * Match Header Gradient (Modal) - Design System v1.0
  * Direction: to-br (135°)
- * Stops: #059669 (0%) → #047857 (100%)
+ * Stops: Primary (#0F2A24) → Primary Dark
  */
 export const MATCH_HEADER_GRADIENT = {
-  colors: [BRAND.emerald, BRAND.emeraldDark],
+  colors: [BRAND.primary, '#0a1f1a'],
   start: { x: 0, y: 0 },
   end: { x: 1, y: 1 }, // 135° (to-br)
 };
@@ -94,12 +94,12 @@ export const PLAYER_CARD_GRADIENT = {
 };
 
 /**
- * Jersey Number Badge Gradient
+ * Jersey Number Badge Gradient - Design System v1.0
  * Direction: to-br (135°)
- * Stops: #059669 (0%) → #047857 (100%)
+ * Stops: Primary (#0F2A24) → Primary Dark
  */
 export const JERSEY_NUMBER_GRADIENT = {
-  colors: [BRAND.emerald, BRAND.emeraldDark],
+  colors: [BRAND.primary, '#0a1f1a'],
   start: { x: 0, y: 0 },
   end: { x: 1, y: 1 }, // 135° (to-br)
 };
@@ -131,34 +131,34 @@ export const FADE_OVERLAY_BOTTOM = {
 // ===== STAT CARD GRADIENTS =====
 
 /**
- * Home Team Stats Gradient
+ * Home Team Stats Gradient - Design System v1.0
  * Direction: to-br (135°)
- * Stops: rgba(5,150,105,0.2) (0%) → rgba(5,150,105,0.05) (100%)
+ * Stops: Primary with opacity (0.2) → Primary with opacity (0.05)
  */
 export const HOME_STATS_GRADIENT = {
-  colors: ['rgba(5, 150, 105, 0.2)', 'rgba(5, 150, 105, 0.05)'],
+  colors: ['rgba(15, 42, 36, 0.2)', 'rgba(15, 42, 36, 0.05)'],
   start: { x: 0, y: 0 },
   end: { x: 1, y: 1 }, // 135° (to-br)
 };
 
 /**
- * Away Team Stats Gradient
+ * Away Team Stats Gradient - Design System v1.0
  * Direction: to-br (135°)
- * Stops: rgba(245,158,11,0.2) (0%) → rgba(245,158,11,0.05) (100%)
+ * Stops: Accent (altın) with opacity (0.2) → Accent with opacity (0.05)
  */
 export const AWAY_STATS_GRADIENT = {
-  colors: ['rgba(245, 158, 11, 0.2)', 'rgba(245, 158, 11, 0.05)'],
+  colors: ['rgba(201, 164, 76, 0.2)', 'rgba(201, 164, 76, 0.05)'],
   start: { x: 0, y: 0 },
   end: { x: 1, y: 1 }, // 135° (to-br)
 };
 
 /**
- * Pro Feature Banner Gradient
+ * Pro Feature Banner Gradient - Design System v1.0
  * Direction: to-r (0°)
- * Stops: rgba(245,158,11,0.1) (0%) → transparent (100%)
+ * Stops: Accent (altın) with opacity (0.1) → transparent
  */
 export const PRO_FEATURE_GRADIENT = {
-  colors: ['rgba(245, 158, 11, 0.1)', 'transparent'],
+  colors: ['rgba(201, 164, 76, 0.1)', 'transparent'],
   start: { x: 0, y: 0 },
   end: { x: 1, y: 0 }, // Horizontal (to-r)
 };

@@ -8,80 +8,91 @@
 
 import { Platform, TextStyle } from 'react-native';
 
-// 🌟 MARKA RENKLERİ (BRAND COLORS)
+// 🌟 MARKA RENKLERİ (BRAND COLORS) - TacticIQ Design System v1.0
 export const BRAND = {
-  emerald: '#059669',        // Zümrüt Yeşili - Ana vurgu, butonlar, başarı
-  emeraldDark: '#047857',    // Koyu Zümrüt - Gradient bitiş, hover
-  gold: '#F59E0B',           // Altın Sarısı - Pro özellikler, premium
-  white: '#ffffff',          // Beyaz - Zümrüt ve Altın üzerindeki metin
+  // Core Brand Identity
+  primary: '#0F2A24',        // Koyu yeşil/deniz mavisi - Ana marka rengi
+  secondary: '#1FA2A6',      // Açık turkuaz/cyan - İkincil marka rengi
+  accent: '#C9A44C',          // Altın/sarı - Vurgu rengi (rozet, başarı, premium)
+  error: '#8C3A3A',          // Koyu kırmızı - Hata mesajları
+  dark: '#121212',            // Koyu arka plan (Dark mode ana rengi)
+  light: '#E6E6E6',          // Açık arka plan (Light mode vurgu rengi)
+  white: '#ffffff',          // Beyaz - Metin ve kontrastlar için
+  
+  // Legacy support (backward compatibility)
+  emerald: '#0F2A24',        // Primary ile aynı (eski kod uyumluluğu)
+  emeraldDark: '#1FA2A6',    // Secondary ile aynı (eski kod uyumluluğu)
+  gold: '#C9A44C',           // Accent ile aynı (eski kod uyumluluğu)
 };
 
-// 🌅 STADYUM GRADIENT
+// 🌅 STADYUM GRADIENT - Design System v1.0 (Primary gradient)
 export const STADIUM_GRADIENT = {
-  start: '#1e3a8a',          // Mavi Başlangıç
-  end: '#0F172A',            // Koyu Lacivert Bitiş
+  start: '#0F2A24',          // Primary (koyu yeşil)
+  end: '#1FA2A6',            // Secondary (turkuaz)
 };
 
-// ☀️ LIGHT MODE
+// ☀️ LIGHT MODE - TacticIQ Design System v1.0
 export const LIGHT_MODE = {
-  background: '#F8FAFB',           // Ana arka plan
-  foreground: '#030213',           // Ana metin rengi (koyu gri/siyah)
-  card: '#ffffff',                 // Kart arka planı
-  cardForeground: '#030213',       // Kart metni
-  popover: '#ffffff',              // Popup arka planı
-  popoverForeground: '#030213',    // Popup metni
-  primary: '#030213',              // Birincil renk (koyu)
-  primaryForeground: '#ffffff',    // Birincil metin (beyaz)
-  secondary: '#f3f4f6',            // İkincil renk (çok açık gri)
-  secondaryForeground: '#030213',  // İkincil metin
-  muted: '#ececf0',                // Soluk arka plan
-  mutedForeground: '#717182',      // Soluk metin
-  accent: '#e9ebef',               // Vurgu arka planı
-  accentForeground: '#030213',     // Vurgu metni
-  destructive: '#d4183d',          // Silme/hata rengi (kırmızı)
-  destructiveForeground: '#ffffff', // Silme butonu metni
-  border: 'rgba(0, 0, 0, 0.1)',    // Kenarlıklar (%10 siyah)
-  input: 'transparent',            // Input arka planı
-  inputBackground: '#f3f3f5',      // Input gerçek arka planı
-  switchBackground: '#cbced4',     // Switch/toggle arka planı
-  ring: '#b3b3b3',                 // Odak halkası (gri)
+  background: '#fafaf9',           // Ana arka plan (açık bej)
+  foreground: '#0F2A24',           // Ana metin rengi (koyu yeşil - Primary)
+  card: '#ffffff',                 // Kart arka planı (beyaz)
+  cardForeground: '#0F2A24',       // Kart metin rengi (Primary)
+  popover: '#ffffff',              // Popup arka planı (beyaz)
+  popoverForeground: '#0F2A24',    // Popup metin rengi (Primary)
+  primary: '#0F2A24',              // Primary buton rengi (koyu yeşil)
+  primaryForeground: '#ffffff',     // Primary buton text (beyaz)
+  secondary: '#1FA2A6',            // Secondary buton rengi (turkuaz)
+  secondaryForeground: '#ffffff',  // Secondary buton text (beyaz)
+  muted: '#E6E6E6',                // Muted arka plan (açık gri)
+  mutedForeground: '#0F2A24',      // Muted metin rengi (Primary)
+  accent: '#C9A44C',               // Vurgu rengi (altın)
+  accentForeground: '#0F2A24',     // Accent text rengi (Primary)
+  destructive: '#8C3A3A',          // Hata/silme rengi (koyu kırmızı)
+  destructiveForeground: '#ffffff', // Destructive text (beyaz)
+  border: 'rgba(15, 42, 36, 0.1)', // Border rengi (Primary %10 opacity)
+  input: 'transparent',            // Input border (şeffaf)
+  inputBackground: '#f3f3f5',      // Input arka plan
+  switchBackground: '#cbced4',     // Toggle/switch rengi
+  ring: '#1FA2A6',                 // Focus ring (Secondary - turkuaz)
   
-  // Grafik renkleri (Light Mode)
-  chart1: '#c2763d',               // Turuncu/kahve
-  chart2: '#7cb5b5',               // Turkuaz
-  chart3: '#4d6b9e',               // Mavi
-  chart4: '#d4d97f',               // Sarı/yeşil
-  chart5: '#d4a068',               // Turuncu
+  // Chart Colors (Light Mode)
+  chart1: '#1FA2A6',               // Ana chart rengi (turkuaz - Secondary)
+  chart2: '#C9A44C',               // İkincil chart (altın - Accent)
+  chart3: '#0F2A24',                // Üçüncü chart (koyu yeşil - Primary)
+  chart4: '#8C3A3A',                // Dördüncü chart (kırmızı - Error)
+  chart5: '#E6E6E6',                // Beşinci chart (açık gri - Light)
 };
 
-// 🌙 DARK MODE
+// 🌙 DARK MODE - TacticIQ Design System v1.0
 export const DARK_MODE = {
-  background: '#0F172A',           // Ana arka plan (koyu lacivert)
-  foreground: '#fafafa',           // Ana metin rengi (beyaz)
-  card: '#1e293b',                 // Kart arka planı
-  cardForeground: '#fafafa',       // Kart metni
-  popover: '#1e293b',              // Popup arka planı
-  popoverForeground: '#fafafa',    // Popup metni
-  primary: '#fafafa',              // Birincil renk (beyaz)
-  primaryForeground: '#1a1a1a',    // Birincil metin (koyu)
-  secondary: '#334155',            // İkincil renk (koyu gri)
-  secondaryForeground: '#fafafa',  // İkincil metin
-  muted: '#334155',                // Soluk arka plan
-  mutedForeground: '#b3b3b3',      // Soluk metin
-  accent: '#334155',               // Vurgu arka planı
-  accentForeground: '#fafafa',     // Vurgu metni
-  destructive: '#9e3a3a',          // Silme/hata rengi
-  destructiveForeground: '#d4a068', // Silme butonu metni
-  border: 'rgba(255, 255, 255, 0.1)', // Kenarlıklar (%10 beyaz)
-  input: '#334155',                // Input arka planı
-  ring: '#6b6b6b',                 // Odak halkası
+  background: '#121212',           // Ana arka plan (siyah - Brand Dark)
+  foreground: '#E6E6E6',           // Ana metin rengi (açık gri - Brand Light)
+  card: '#0F2A24',                 // Kart arka planı (koyu yeşil - Primary)
+  cardForeground: '#E6E6E6',       // Kart metin rengi (açık gri)
+  popover: '#0F2A24',              // Popup arka planı (Primary)
+  popoverForeground: '#E6E6E6',    // Popup metin rengi (açık gri)
+  primary: '#1FA2A6',              // Primary buton (turkuaz - Secondary)
+  primaryForeground: '#ffffff',     // Primary text (beyaz)
+  secondary: '#C9A44C',            // Secondary buton (altın - Accent)
+  secondaryForeground: '#0F2A24', // Secondary text (koyu - Primary)
+  muted: '#0F2A24',                // Muted arka plan (Primary)
+  mutedForeground: '#E6E6E6',      // Muted text (açık gri)
+  accent: '#C9A44C',               // Vurgu rengi (altın - Accent)
+  accentForeground: '#0F2A24',     // Accent text (koyu - Primary)
+  destructive: '#8C3A3A',          // Hata rengi (koyu kırmızı - Error)
+  destructiveForeground: '#ffffff', // Destructive text (beyaz)
+  border: 'rgba(230, 230, 230, 0.1)', // Border (açık gri %10 opacity)
+  input: 'rgba(230, 230, 230, 0.1)', // Input border (açık gri %10)
+  inputBackground: '#0F2A24',      // Input arka plan (Primary)
+  switchBackground: '#334155',     // Switch/toggle arka plan
+  ring: '#1FA2A6',                 // Focus ring (Secondary - turkuaz)
   
-  // Grafik renkleri (Dark Mode)
-  chart1: '#8b5fbf',               // Mor
-  chart2: '#a8d5b0',               // Yeşil
-  chart3: '#d4a068',               // Turuncu
-  chart4: '#c57ba8',               // Pembe/mor
-  chart5: '#d47761',               // Kırmızı/turuncu
+  // Chart Colors (Dark Mode)
+  chart1: '#1FA2A6',               // Turkuaz (Secondary)
+  chart2: '#C9A44C',               // Altın (Accent)
+  chart3: '#E6E6E6',                // Açık gri (Light)
+  chart4: '#8C3A3A',                // Kırmızı (Error)
+  chart5: '#0F2A24',                // Koyu yeşil (Primary)
 };
 
 // 🎨 ANA RENK PALETİ (COLORS)
@@ -89,20 +100,20 @@ export const COLORS = {
   light: {
     ...LIGHT_MODE,
     
-    // Marka renkleri
-    primary: BRAND.emerald,
-    primaryDark: BRAND.emeraldDark,
-    primaryLight: '#10b981',
+    // Marka renkleri - Design System v1.0
+    primary: BRAND.primary,         // #0F2A24 (koyu yeşil)
+    primaryDark: '#0a1f1a',        // Daha koyu primary
+    primaryLight: '#1a3d35',        // Daha açık primary
     
     // Özel renkler
-    success: BRAND.emerald,
-    error: LIGHT_MODE.destructive,
-    warning: BRAND.gold,
-    info: '#3b82f6',
+    success: BRAND.secondary,       // #1FA2A6 (turkuaz)
+    error: BRAND.error,             // #8C3A3A (koyu kırmızı)
+    warning: BRAND.accent,          // #C9A44C (altın)
+    info: BRAND.secondary,          // #1FA2A6 (turkuaz)
     
     // Pro/Premium
-    premium: BRAND.gold,
-    premiumLight: '#fbbf24',
+    premium: BRAND.accent,          // #C9A44C (altın)
+    premiumLight: '#D4B86A',        // Daha açık altın
     
     // Arka plan ve yüzeyler
     surface: LIGHT_MODE.card,
@@ -121,20 +132,20 @@ export const COLORS = {
   dark: {
     ...DARK_MODE,
     
-    // Marka renkleri
-    primary: BRAND.emerald,
-    primaryDark: BRAND.emeraldDark,
-    primaryLight: '#10b981',
+    // Marka renkleri - Design System v1.0
+    primary: BRAND.secondary,       // #1FA2A6 (turkuaz - Dark mode'da primary)
+    primaryDark: '#1a8a8e',         // Daha koyu turkuaz
+    primaryLight: '#2fb5b9',        // Daha açık turkuaz
     
     // Özel renkler
-    success: BRAND.emerald,
-    error: DARK_MODE.destructive,
-    warning: BRAND.gold,
-    info: '#3b82f6',
+    success: BRAND.secondary,       // #1FA2A6 (turkuaz)
+    error: BRAND.error,             // #8C3A3A (koyu kırmızı)
+    warning: BRAND.accent,          // #C9A44C (altın)
+    info: BRAND.secondary,          // #1FA2A6 (turkuaz)
     
     // Pro/Premium
-    premium: BRAND.gold,
-    premiumLight: '#fbbf24',
+    premium: BRAND.accent,          // #C9A44C (altın)
+    premiumLight: '#D4B86A',        // Daha açık altın
     
     // Arka plan ve yüzeyler
     surface: DARK_MODE.card,
