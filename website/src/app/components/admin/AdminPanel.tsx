@@ -1044,15 +1044,6 @@ function AdsContent() {
   
   const { advertisements, addAdvertisement, deleteAdvertisement, updateAdvertisement, adSettings, updateAdSettings, discountSettings, updateDiscountSettings } = contextData;
   const [editedAdSettings, setEditedAdSettings] = useState(adSettings);
-  const [isInitialized, setIsInitialized] = useState(false);
-
-  // İlk yüklemede adSettings'i editedAdSettings'e kopyala
-  useEffect(() => {
-    if (!isInitialized && adSettings) {
-      setEditedAdSettings(adSettings);
-      setIsInitialized(true);
-    }
-  }, [adSettings, isInitialized]);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [editingAd, setEditingAd] = useState<Advertisement | null>(null);
@@ -1069,19 +1060,23 @@ function AdsContent() {
     enabled: true,
   });
 
+  // İlk yüklemede adSettings'i editedAdSettings'e kopyala (sadece bir kez)
+  useEffect(() => {
+    setEditedAdSettings(adSettings);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Sadece mount'ta çalış
+
   const handleSaveSettings = () => {
     updateAdSettings(editedAdSettings);
     toast.success('Reklam ayarları kaydedildi!');
   };
 
-  // Toggle handler - sadece local state'i güncelle, kaydetmeyi buton ile yap
+  // Toggle handler - sadece local state'i güncelle
   const handleToggleSetting = (key: keyof AdSettings) => {
-    const newSettings = { ...editedAdSettings, [key]: !editedAdSettings[key] };
-    setEditedAdSettings(newSettings);
-    // Otomatik kaydetme - requestAnimationFrame ile geciktir
-    requestAnimationFrame(() => {
-      updateAdSettings({ [key]: newSettings[key] } as Partial<AdSettings>);
-    });
+    setEditedAdSettings(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
   };
 
   const handleAddAd = () => {
@@ -1136,8 +1131,8 @@ function AdsContent() {
               description="Tüm reklam sistemini aç/kapa"
               enabled={editedAdSettings.systemEnabled}
               onToggle={() => {
-                handleToggleSetting('systemEnabled');
                 const newValue = !editedAdSettings.systemEnabled;
+                handleToggleSetting('systemEnabled');
                 toast.success(newValue ? 'Reklam sistemi açıldı' : 'Reklam sistemi kapatıldı');
               }}
             />
@@ -1147,8 +1142,8 @@ function AdsContent() {
               description="Ana ekranda açılır pencere reklamları"
               enabled={editedAdSettings.popupEnabled}
               onToggle={() => {
-                handleToggleSetting('popupEnabled');
                 const newValue = !editedAdSettings.popupEnabled;
+                handleToggleSetting('popupEnabled');
                 toast.success(newValue ? 'Pop-up reklamlar açıldı' : 'Pop-up reklamlar kapatıldı');
               }}
               disabled={!editedAdSettings.systemEnabled}
@@ -1158,8 +1153,8 @@ function AdsContent() {
               description="Sayfa üstünde banner reklamlar"
               enabled={editedAdSettings.bannerEnabled}
               onToggle={() => {
-                handleToggleSetting('bannerEnabled');
                 const newValue = !editedAdSettings.bannerEnabled;
+                handleToggleSetting('bannerEnabled');
                 toast.success(newValue ? 'Banner reklamlar açıldı' : 'Banner reklamlar kapatıldı');
               }}
               disabled={!editedAdSettings.systemEnabled}
@@ -1169,8 +1164,8 @@ function AdsContent() {
               description="Yan menüde gösterilen reklamlar"
               enabled={editedAdSettings.sidebarEnabled}
               onToggle={() => {
-                handleToggleSetting('sidebarEnabled');
                 const newValue = !editedAdSettings.sidebarEnabled;
+                handleToggleSetting('sidebarEnabled');
                 toast.success(newValue ? 'Sidebar reklamlar açıldı' : 'Sidebar reklamlar kapatıldı');
               }}
               disabled={!editedAdSettings.systemEnabled}
