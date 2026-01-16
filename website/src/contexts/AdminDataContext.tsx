@@ -1293,7 +1293,7 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
 
   // Settings
   const updateAdSettings = (updatedSettings: Partial<AdSettings>) => {
-    setAdSettings({ ...adSettings, ...updatedSettings });
+    setAdSettings(prevSettings => ({ ...prevSettings, ...updatedSettings }));
     
     const newLog: LogEntry = {
       id: Date.now().toString(),
