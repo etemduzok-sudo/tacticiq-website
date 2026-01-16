@@ -1044,17 +1044,15 @@ function AdsContent() {
   
   const { advertisements, addAdvertisement, deleteAdvertisement, updateAdvertisement, adSettings, updateAdSettings, discountSettings, updateDiscountSettings } = contextData;
   const [editedAdSettings, setEditedAdSettings] = useState(adSettings);
+  const [isInitialized, setIsInitialized] = useState(false);
 
-  // Sync editedAdSettings when adSettings changes (sadece dış kaynaklı değişiklikler için)
+  // İlk yüklemede adSettings'i editedAdSettings'e kopyala
   useEffect(() => {
-    // Sadece gerçekten farklıysa güncelle (sonsuz döngüyü önle)
-    const adSettingsStr = JSON.stringify(adSettings);
-    const editedStr = JSON.stringify(editedAdSettings);
-    if (adSettingsStr !== editedStr) {
+    if (!isInitialized && adSettings) {
       setEditedAdSettings(adSettings);
+      setIsInitialized(true);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [adSettings]);
+  }, [adSettings, isInitialized]);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [editingAd, setEditingAd] = useState<Advertisement | null>(null);
@@ -1130,10 +1128,10 @@ function AdsContent() {
               onToggle={() => {
                 const newSettings = { ...editedAdSettings, systemEnabled: !editedAdSettings.systemEnabled };
                 setEditedAdSettings(newSettings);
-                // Otomatik kaydet - setTimeout ile geciktirerek hook sıralaması sorununu önle
-                setTimeout(() => {
+                // State güncellendikten sonra kaydet
+                requestAnimationFrame(() => {
                   updateAdSettings(newSettings);
-                }, 0);
+                });
                 toast.success(newSettings.systemEnabled ? 'Reklam sistemi açıldı' : 'Reklam sistemi kapatıldı');
               }}
             />
@@ -1145,10 +1143,10 @@ function AdsContent() {
               onToggle={() => {
                 const newSettings = { ...editedAdSettings, popupEnabled: !editedAdSettings.popupEnabled };
                 setEditedAdSettings(newSettings);
-                // Otomatik kaydet - setTimeout ile geciktirerek hook sıralaması sorununu önle
-                setTimeout(() => {
+                // State güncellendikten sonra kaydet
+                requestAnimationFrame(() => {
                   updateAdSettings(newSettings);
-                }, 0);
+                });
                 toast.success(newSettings.popupEnabled ? 'Pop-up reklamlar açıldı' : 'Pop-up reklamlar kapatıldı');
               }}
               disabled={!editedAdSettings.systemEnabled}
@@ -1160,10 +1158,10 @@ function AdsContent() {
               onToggle={() => {
                 const newSettings = { ...editedAdSettings, bannerEnabled: !editedAdSettings.bannerEnabled };
                 setEditedAdSettings(newSettings);
-                // Otomatik kaydet - setTimeout ile geciktirerek hook sıralaması sorununu önle
-                setTimeout(() => {
+                // State güncellendikten sonra kaydet
+                requestAnimationFrame(() => {
                   updateAdSettings(newSettings);
-                }, 0);
+                });
                 toast.success(newSettings.bannerEnabled ? 'Banner reklamlar açıldı' : 'Banner reklamlar kapatıldı');
               }}
               disabled={!editedAdSettings.systemEnabled}
@@ -1175,10 +1173,10 @@ function AdsContent() {
               onToggle={() => {
                 const newSettings = { ...editedAdSettings, sidebarEnabled: !editedAdSettings.sidebarEnabled };
                 setEditedAdSettings(newSettings);
-                // Otomatik kaydet - setTimeout ile geciktirerek hook sıralaması sorununu önle
-                setTimeout(() => {
+                // State güncellendikten sonra kaydet
+                requestAnimationFrame(() => {
                   updateAdSettings(newSettings);
-                }, 0);
+                });
                 toast.success(newSettings.sidebarEnabled ? 'Sidebar reklamlar açıldı' : 'Sidebar reklamlar kapatıldı');
               }}
               disabled={!editedAdSettings.systemEnabled}
