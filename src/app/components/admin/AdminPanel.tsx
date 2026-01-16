@@ -47,7 +47,7 @@ import { Textarea } from '@/app/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import { Badge } from '@/app/components/ui/badge';
 import { useAdmin } from '@/contexts/AdminContext';
-import { AdminDataContext, CURRENCY_SYMBOLS, LANGUAGE_CURRENCY_MAP } from '@/contexts/AdminDataContext';
+import { AdminDataContext, CURRENCY_SYMBOLS, LANGUAGE_CURRENCY_MAP, AdSettings } from '@/contexts/AdminDataContext';
 import { WebsiteEditor } from '@/app/components/admin/WebsiteEditor';
 import { ChangePasswordModal } from '@/app/components/auth/ChangePasswordModal';
 import { AdManagement } from '@/app/components/admin/AdManagement';
@@ -839,9 +839,9 @@ function UsersContent() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="email">E-posta</Label>
+              <Label htmlFor="new-user-email">E-posta</Label>
               <Input
-                id="email"
+                id="new-user-email"
                 type="email"
                 value={newUser.email}
                 onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
@@ -1074,6 +1074,16 @@ function AdsContent() {
     toast.success('Reklam ayarları kaydedildi!');
   };
 
+  // Toggle handler - sadece local state'i güncelle, kaydetmeyi buton ile yap
+  const handleToggleSetting = (key: keyof AdSettings) => {
+    const newSettings = { ...editedAdSettings, [key]: !editedAdSettings[key] };
+    setEditedAdSettings(newSettings);
+    // Otomatik kaydetme - requestAnimationFrame ile geciktir
+    requestAnimationFrame(() => {
+      updateAdSettings({ [key]: newSettings[key] } as Partial<AdSettings>);
+    });
+  };
+
   const handleAddAd = () => {
     if (!newAd.title || !newAd.mediaUrl) {
       toast.error('Lütfen tüm alanları doldurun');
@@ -1126,13 +1136,9 @@ function AdsContent() {
               description="Tüm reklam sistemini aç/kapa"
               enabled={editedAdSettings.systemEnabled}
               onToggle={() => {
-                const newSettings = { ...editedAdSettings, systemEnabled: !editedAdSettings.systemEnabled };
-                setEditedAdSettings(newSettings);
-                // State güncellendikten sonra kaydet
-                requestAnimationFrame(() => {
-                  updateAdSettings(newSettings);
-                });
-                toast.success(newSettings.systemEnabled ? 'Reklam sistemi açıldı' : 'Reklam sistemi kapatıldı');
+                handleToggleSetting('systemEnabled');
+                const newValue = !editedAdSettings.systemEnabled;
+                toast.success(newValue ? 'Reklam sistemi açıldı' : 'Reklam sistemi kapatıldı');
               }}
             />
             <Separator />
@@ -1141,13 +1147,9 @@ function AdsContent() {
               description="Ana ekranda açılır pencere reklamları"
               enabled={editedAdSettings.popupEnabled}
               onToggle={() => {
-                const newSettings = { ...editedAdSettings, popupEnabled: !editedAdSettings.popupEnabled };
-                setEditedAdSettings(newSettings);
-                // State güncellendikten sonra kaydet
-                requestAnimationFrame(() => {
-                  updateAdSettings(newSettings);
-                });
-                toast.success(newSettings.popupEnabled ? 'Pop-up reklamlar açıldı' : 'Pop-up reklamlar kapatıldı');
+                handleToggleSetting('popupEnabled');
+                const newValue = !editedAdSettings.popupEnabled;
+                toast.success(newValue ? 'Pop-up reklamlar açıldı' : 'Pop-up reklamlar kapatıldı');
               }}
               disabled={!editedAdSettings.systemEnabled}
             />
@@ -1156,13 +1158,9 @@ function AdsContent() {
               description="Sayfa üstünde banner reklamlar"
               enabled={editedAdSettings.bannerEnabled}
               onToggle={() => {
-                const newSettings = { ...editedAdSettings, bannerEnabled: !editedAdSettings.bannerEnabled };
-                setEditedAdSettings(newSettings);
-                // State güncellendikten sonra kaydet
-                requestAnimationFrame(() => {
-                  updateAdSettings(newSettings);
-                });
-                toast.success(newSettings.bannerEnabled ? 'Banner reklamlar açıldı' : 'Banner reklamlar kapatıldı');
+                handleToggleSetting('bannerEnabled');
+                const newValue = !editedAdSettings.bannerEnabled;
+                toast.success(newValue ? 'Banner reklamlar açıldı' : 'Banner reklamlar kapatıldı');
               }}
               disabled={!editedAdSettings.systemEnabled}
             />
@@ -1171,13 +1169,9 @@ function AdsContent() {
               description="Yan menüde gösterilen reklamlar"
               enabled={editedAdSettings.sidebarEnabled}
               onToggle={() => {
-                const newSettings = { ...editedAdSettings, sidebarEnabled: !editedAdSettings.sidebarEnabled };
-                setEditedAdSettings(newSettings);
-                // State güncellendikten sonra kaydet
-                requestAnimationFrame(() => {
-                  updateAdSettings(newSettings);
-                });
-                toast.success(newSettings.sidebarEnabled ? 'Sidebar reklamlar açıldı' : 'Sidebar reklamlar kapatıldı');
+                handleToggleSetting('sidebarEnabled');
+                const newValue = !editedAdSettings.sidebarEnabled;
+                toast.success(newValue ? 'Sidebar reklamlar açıldı' : 'Sidebar reklamlar kapatıldı');
               }}
               disabled={!editedAdSettings.systemEnabled}
             />
@@ -1221,11 +1215,15 @@ function PricingContent() {
 
   const { discountSettings, updateDiscountSettings } = contextData;
   const [editedSettings, setEditedSettings] = useState(discountSettings);
+  const [isInitialized, setIsInitialized] = useState(false);
 
-  // Sync editedSettings when discountSettings changes
+  // İlk yüklemede discountSettings'i editedSettings'e kopyala
   useEffect(() => {
-    setEditedSettings(discountSettings);
-  }, [discountSettings]);
+    if (!isInitialized && discountSettings) {
+      setEditedSettings(discountSettings);
+      setIsInitialized(true);
+    }
+  }, [discountSettings, isInitialized]);
 
   const handleSave = () => {
     updateDiscountSettings(editedSettings);
