@@ -1,4 +1,4 @@
-# Fan Manager 2026
+# TacticIQ.app
 
 Modern ve profesyonel bir futbol yönetim uygulaması.
 

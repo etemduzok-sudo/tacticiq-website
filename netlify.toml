@@ -1,6 +1,7 @@
-# Netlify configuration for TacticIQ static site
-# Site root is repository root per project requirements
+# Netlify configuration for TacticIQ.app website
+# Build settings for website deployment
 
 [build]
-  # Publish from repository root (default)
-  publish = "."
+  base = "website"
+  command = "npm run build"
+  publish = "website/dist"
