@@ -1,0 +1,464 @@
+{
+  "nav": {
+    "home": "Ana Sayfa",
+    "features": "Özellikler",
+    "how_it_works": "Nasıl Çalışır",
+    "pricing": "Fiyatlandırma",
+    "blog": "Blog",
+    "login": "Giriş Yap",
+    "signup": "Kayıt Ol"
+  },
+  "hero": {
+    "badge": "Bahis platformu değil - Beceri tabanlı analiz",
+    "title": "Futbol Zekası",
+    "subtitle": "Profesyonel Maç Analiz Platformu",
+    "notBetting": "Bahis Değil • Beceri Oyunu",
+    "description": "Maçları profesyonel gibi analiz et. Veri odaklı tahminler yap, taktiksel kararları değerlendir ve futbol zekânı geliştir.",
+    "cta": {
+      "primary": "Bekleme Listesine Katıl",
+      "secondary": "Daha Fazla Bilgi"
+    },
+    "stats": {
+      "users": "Aktif Kullanıcı",
+      "predictions": "Tahmin Yapıldı",
+      "leagues": "Lig Kapsamı"
+    }
+  },
+  "product": {
+    "title": "TacticIQ Nedir?",
+    "subtitle": "Profesyonel Futbol Analiz Platformu - Bahis Sitesi Değil",
+    "description": "TacticIQ, taktiksel zekanızı geliştirdiğiniz, 14 farklı kategoride maç sonuçlarını tahmin ettiğiniz, oyuncu performansını analiz ettiğiniz ve global sıralamalarda yarıştığınız beceri tabanlı bir platform.",
+    "notGambling": "❌ Bu Bir Bahis Platformu DEĞİLDİR",
+    "notGamblingDesc": "Para yatırma, çekme veya bahis yok. TacticIQ, futbol bilginizi ve analiz yeteneğinizi geliştirmeye odaklanan bir beceri oyunudur.",
+    "features": {
+      "squad": {
+        "title": "⚽ Kadro Kurma",
+        "desc": "26 farklı formasyon. İlk 11'inizi kurun ve yedekleri seçin. Oyuncu performansını tahmin edin."
+      },
+      "predictions": {
+        "title": "🎯 14 Tahmin Kategorisi",
+        "desc": "Skor, kartlar, şutlar, kornerler, topa sahip olma, tempo, senaryo tahminleri ve daha fazlası."
+      },
+      "focus": {
+        "title": "⭐ Stratejik Odak Sistemi",
+        "desc": "En güvendiğiniz 3 tahmini seçin. Doğru = 2.0x puan, Yanlış = -1.5x ceza."
+      },
+      "training": {
+        "title": "💪 Antrenman Çarpanları",
+        "desc": "Antrenman türü seçerek belirli kategorilerde bonus puan kazanın. Savunma (+%20), Hücum (+%20), Orta Saha (+%15)."
+      },
+      "players": {
+        "title": "👤 Oyuncu Tahminleri",
+        "desc": "İlk 11'deki her oyuncu için gol, asist, sarı/kırmızı kart, oyundan çıkma tahminleri yapın."
+      },
+      "analysis": {
+        "title": "📊 Performans Analizi",
+        "desc": "Güçlü yönlerinizi, kategori bazlı başarı oranlarınızı ve gelişim alanlarınızı gösteren detaylı raporlar."
+      }
+    }
+  },
+  "features": {
+    "title": "14 Tahmin Kategorisi",
+    "subtitle": "Detaylı Taktiksel Tahminler Yapın",
+    "categories": {
+      "halftime_score": {
+        "title": "⚽ İlk Yarı Skoru",
+        "desc": "İlk yarı skorunu tahmin edin (her takım için 0-5+)",
+        "focusable": true
+      },
+      "halftime_extra": {
+        "title": "⏱️ İlk Yarı Uzatma Süresi",
+        "desc": "Uzatma dakikalarını tahmin edin (+1 ile +5+ dakika arası)",
+        "focusable": false
+      },
+      "fulltime_score": {
+        "title": "⚽ Maç Sonu Skoru",
+        "desc": "Final skorunu tahmin edin (her takım için 0-5+)",
+        "focusable": true
+      },
+      "fulltime_extra": {
+        "title": "⏱️ İkinci Yarı Uzatma Süresi",
+        "desc": "İkinci yarı uzatma dakikalarını tahmin edin (+1 ile +5+ dakika)",
+        "focusable": false
+      },
+      "total_goals": {
+        "title": "🧮 Toplam Gol Sayısı",
+        "desc": "Maçtaki toplam golü tahmin edin (0-1, 2-3, 4-5, 6+)",
+        "focusable": true
+      },
+      "first_goal": {
+        "title": "⏰ İlk Gol Zamanı",
+        "desc": "İlk gol ne zaman atılacak? (1-15, 16-30, 31-45, 46-60, 61-75, 76-90+ dakika)",
+        "focusable": false
+      },
+      "yellow_cards": {
+        "title": "🟨 Toplam Sarı Kart",
+        "desc": "Toplam sarı kart sayısını tahmin edin (0-2, 3-4, 5-6, 7+)",
+        "focusable": false
+      },
+      "red_cards": {
+        "title": "🟥 Toplam Kırmızı Kart",
+        "desc": "Toplam kırmızı kart sayısını tahmin edin (0, 1, 2, 3+)",
+        "focusable": false
+      },
+      "possession": {
+        "title": "📊 Topa Sahip Olma",
+        "desc": "Top sahipliği yüzdesini tahmin edin (%30-70 aralığı)",
+        "focusable": false
+      },
+      "total_shots": {
+        "title": "🎯 Toplam Şut",
+        "desc": "Maçtaki toplam şut sayısını tahmin edin (0-10, 11-20, 21-30, 31+)",
+        "focusable": false
+      },
+      "shots_on_target": {
+        "title": "🎯 İsabetli Şut",
+        "desc": "İsabetli şut sayısını tahmin edin (0-5, 6-10, 11-15, 16+)",
+        "focusable": false
+      },
+      "corners": {
+        "title": "🚩 Toplam Korner",
+        "desc": "Toplam korner sayısını tahmin edin (0-6, 7-12, 12+)",
+        "focusable": false
+      },
+      "tempo": {
+        "title": "🏃‍♂️ Maç Temposu",
+        "desc": "Maç hızını tahmin edin (Düşük, Orta, Yüksek tempo)",
+        "focusable": false
+      },
+      "scenario": {
+        "title": "🧠 Maç Senaryosu",
+        "desc": "Oyun tarzını tahmin edin (Kontrollü, Baskılı, Kontra-Atak, Duran Toplar)",
+        "focusable": false
+      }
+    },
+    "focusNote": "⭐ Maksimum 3 tahmine odaklanabilir ve 2x puan kazanabilirsiniz (veya -1.5x ceza)",
+    "totalCategories": "14 Farklı Kategori • Detaylı Taktiksel Analiz"
+  },
+  "player": {
+    "title": "Oyuncu Tahmin Sistemi",
+    "subtitle": "İlk 11'deki Oyuncular İçin 8 Kategori Performans Tahmini",
+    "predictions": {
+      "goal": {
+        "title": "⚽ Gol Atar",
+        "options": "1 gol, 2 gol, 3+ gol"
+      },
+      "assist": {
+        "title": "🅰️ Asist Yapar",
+        "options": "1 asist, 2 asist, 3+ asist"
+      },
+      "yellow": {
+        "title": "🟨 Sarı Kart",
+        "options": "Evet/Hayır"
+      },
+      "second_yellow": {
+        "title": "🟨🟥 İkinci Sarı",
+        "options": "Evet/Hayır (otomatik sarı kart seçer)"
+      },
+      "red": {
+        "title": "🟥 Direkt Kırmızı Kart",
+        "options": "Evet/Hayır"
+      },
+      "substituted": {
+        "title": "🔄 Oyundan Çıkacak",
+        "options": "Yedek oyuncu seç"
+      },
+      "injured": {
+        "title": "🚑 Sakatlık Değişikliği",
+        "options": "Yedek oyuncu seç"
+      },
+      "mvp": {
+        "title": "🏆 Maçın Adamı (MOTM)",
+        "options": "Bu oyuncu maçın en iyisi olacak"
+      }
+    },
+    "note": "İlk 11'deki herhangi bir oyuncuya tıklayarak tahmin yapın"
+  },
+  "training": {
+    "title": "Antrenman Çarpan Sistemi",
+    "subtitle": "Antrenman Seçerek Bonus Puan Kazanın",
+    "types": {
+      "defense": {
+        "name": "🛡️ Savunma Antrenmanı",
+        "bonus": "+%20 Disiplin + Fiziksel",
+        "desc": "Kart ve fiziksel tahminlerden bonus puan"
+      },
+      "attack": {
+        "name": "⚔️ Hücum Antrenmanı",
+        "bonus": "+%20 Tempo + Bireysel",
+        "desc": "Gol, tempo ve oyuncu performansından bonus puan"
+      },
+      "midfield": {
+        "name": "🎯 Orta Saha Antrenmanı",
+        "bonus": "+%15 Tempo + Disiplin",
+        "desc": "Tempo ve disiplin tahminlerinden bonus puan"
+      },
+      "physical": {
+        "name": "💪 Fiziksel Antrenman",
+        "bonus": "+%25 Fiziksel",
+        "desc": "Sakatlık ve değişiklik tahminlerinden maksimum bonus"
+      },
+      "tactical": {
+        "name": "🧠 Taktik Antrenman",
+        "bonus": "+%15 Tempo + Bireysel",
+        "desc": "Taktiksel ve oyuncu tahminlerinden bonus puan"
+      }
+    },
+    "example": "Örnek: 20 temel puan + Savunma Antrenmanı = 20 × 1.2 = 24 puan"
+  },
+  "howItWorks": {
+    "title": "TacticIQ Nasıl Çalışır?",
+    "subtitle": "Futbol Tahminlerinde Ustalaşmak İçin 6 Basit Adım",
+    "steps": {
+      "step1": {
+        "title": "1. Ücretsiz Kayıt Ol",
+        "desc": "Hesap oluştur ve en az 1 favori takım seç (ücretsiz 3'e kadar, Pro'da sınırsız)"
+      },
+      "step2": {
+        "title": "2. Maç Seç",
+        "desc": "Yaklaşan maçlardan seç. Favori takımlarının maçları vurgulanır"
+      },
+      "step3": {
+        "title": "3. Kadro Kur",
+        "desc": "26 formasyondan seç ve ilk 11'i yerleştir. Yedekleri unutma!"
+      },
+      "step4": {
+        "title": "4. Maç Tahminleri Yap",
+        "desc": "14 kategoride tahmin: Skor, kartlar, şutlar, kornerler, top kontrolü, tempo ve senaryo"
+      },
+      "step5": {
+        "title": "5. Oyuncu Tahminleri + Odak",
+        "desc": "Her oyuncu için gol, asist, kart tahmin et. En güvendiğin 3 tahmini odak olarak seç (2x puan!)"
+      },
+      "step6": {
+        "title": "6. Puan Kazan & Yüksel",
+        "desc": "Maç sonrası tahminler otomatik değerlendirilir. Puan kazan ve global sıralamada yüksel!"
+      }
+    },
+    "formula": {
+      "title": "Puan Hesaplama Formülü",
+      "desc": "Final Puan = Temel Puan × Antrenman Çarpanı × Odak Çarpanı",
+      "example": "Örnek: 20 puan × 1.2 (Savunma) × 2.0 (Odak) = 48 puan"
+    }
+  },
+  "pricing": {
+    "title": "Basit ve Şeffaf Fiyatlandırma",
+    "subtitle": "Ücretsiz Başla veya Gelişmiş Özellikler İçin Pro'ya Geç",
+    "free": {
+      "name": "Ücretsiz",
+      "price": "₺0",
+      "period": "sonsuza kadar",
+      "desc": "Başlamak için mükemmel",
+      "features": {
+        "predictions": "✅ Sınırsız tahmin",
+        "teams": "✅ 3 favori takım",
+        "categories": "✅ Tüm 14 tahmin kategorisi",
+        "focus": "✅ Stratejik odak sistemi (3x)",
+        "training": "✅ Antrenman çarpanları",
+        "stats": "✅ Temel istatistikler",
+        "leaderboard": "✅ Global sıralama",
+        "badges": "✅ Temel rozetler",
+        "ads": "❌ Reklamlar gösterilir"
+      },
+      "cta": "Ücretsiz Başla"
+    },
+    "pro": {
+      "name": "Pro",
+      "price": "₺149",
+      "period": "/ay",
+      "desc": "Her şeyin kilidini aç",
+      "popular": "En Popüler",
+      "features": {
+        "predictions": "✅ Sınırsız tahmin",
+        "teams": "✅ Sınırsız favori takım",
+        "categories": "✅ Tüm 14 tahmin kategorisi",
+        "focus": "✅ Stratejik odak sistemi (3x)",
+        "training": "✅ Antrenman çarpanları",
+        "stats": "✅ Gelişmiş istatistikler & AI içgörüler",
+        "leaderboard": "✅ Global + sadece Pro sıralaması",
+        "badges": "✅ Özel Pro rozetleri",
+        "ads": "✅ Reklamsız deneyim",
+        "priority": "✅ Öncelikli destek",
+        "early": "✅ Yeni özelliklere erken erişim",
+        "analysis": "✅ Derin performans analizi"
+      },
+      "cta": "Pro'ya Yükselt"
+    },
+    "comparison": {
+      "title": "Özellik Karşılaştırması",
+      "note": "Tüm özellikler, gizli ücret yok. İstediğiniz zaman iptal edin."
+    }
+  },
+  "blog": {
+    "title": "TacticIQ'dan Son Yazılar",
+    "subtitle": "Rehberler, İpuçları ve Futbol Analizleri",
+    "readMore": "Devamını Oku",
+    "viewAll": "Tüm Yazıları Gör",
+    "posts": {
+      "post1": {
+        "title": "Stratejik Odak Sistemini Etkili Kullanma",
+        "desc": "2x puan için doğru tahminleri nasıl seçersiniz ve cezalardan nasıl kaçınırsınız. Puanınızı maksimize etmek için uzman ipuçları.",
+        "date": "10 Ocak 2026",
+        "category": "Strateji"
+      },
+      "post2": {
+        "title": "Oyuncu Kart Tahmin Rehberi: Sarı vs Kırmızı Kartlar",
+        "desc": "Oyuncuların ne zaman kart görme olasılığı yüksektir? İstatistiksel analiz. Disiplin tahmin doğruluğunuzu artırın.",
+        "date": "8 Ocak 2026",
+        "category": "Analiz"
+      },
+      "post3": {
+        "title": "Antrenman Çarpanları Açıklaması: Hangisini Seçmeli?",
+        "desc": "Savunma, Hücum, Orta Saha, Fiziksel ve Taktik antrenman türlerine derin dalış. Bonus puanlarınızı optimize edin.",
+        "date": "5 Ocak 2026",
+        "category": "Rehber"
+      }
+    }
+  },
+  "cta": {
+    "title": "Futbol Bilginizi Kanıtlamaya Hazır Mısınız?",
+    "subtitle": "Akıllı tahminler yapan 10.000+ kullanıcıya katılın. Kredi kartı gerekmez.",
+    "emailPlaceholder": "E-posta adresinizi girin",
+    "button": "Ücretsiz Başla - Şimdi Kayıt Ol",
+    "privacy": "🔒 E-postanız güvende. Asla spam göndermeyiz. İstediğiniz zaman abonelikten çıkın.",
+    "features": {
+      "free": "✅ Başlamak %100 Ücretsiz",
+      "no_card": "✅ Kredi Kartı Gerekmez",
+      "skill": "✅ Beceri Tabanlı, Bahis Değil",
+      "virtual": "✅ Sadece Sanal Puanlar"
+    }
+  },
+  "footer": {
+    "tagline": "Futbol Tahminlerinde Taktiksel Zeka",
+    "description": "TacticIQ, futbol tutkunları için profesyonel beceri tabanlı tahmin ve analiz platformudur. Para yok - sadece futbol bilginizi geliştirin, akıllı tahminler yapın ve global olarak yarışın.",
+    "notBetting": {
+      "title": "❌ Bahis Değil",
+      "desc": "Para yatırma, çekme yok. Sadece beceri oyunu."
+    },
+    "skillBased": {
+      "title": "✅ Beceri Tabanlı",
+      "desc": "Tahminler sadece futbol bilginize ve analitik yeteneklerinize dayanır."
+    },
+    "virtualPoints": {
+      "title": "🎮 Sanal Puanlar",
+      "desc": "Sanal puanlarla yarışın ve liderlik tablosunda yükselim. Risk yok."
+    },
+    "educational": {
+      "title": "📚 Eğitici",
+      "desc": "Detaylı raporlar, istatistikler ve performans analizleri ile futbol IQ'nuzu geliştirin."
+    },
+    "product": "Ürün",
+    "features": "Özellikler",
+    "pricing": "Fiyatlandırma",
+    "howItWorks": "Nasıl Çalışır",
+    "leaderboard": "Liderlik Tablosu",
+    "legal": "Yasal",
+    "privacy": "Gizlilik Politikası",
+    "terms": "Kullanım Şartları",
+    "fairPlay": "Fair Play Politikası",
+    "responsible": "Sorumlu Kullanım",
+    "support": "Destek",
+    "faq": "SSS",
+    "contact": "İletişim",
+    "help": "Yardım Merkezi",
+    "community": "Topluluk",
+    "social": "Bizi Takip Edin",
+    "copyright": "© 2026 TacticIQ. Tüm hakları saklıdır.",
+    "location": "Dünya çapındaki futbol tutkunları için ⚽ ile yapıldı"
+  },
+  "game": {
+    "badge": "Her Yerde Oyna - Web ve Mobil",
+    "title": "TacticIQ Oyununu Oyna",
+    "description": "Tahminlerinizi doğrudan web üzerinden yapın. Futbol bilginizi test edin ve dünya çapında oyuncularla yarışın.",
+    "playNow": "Şimdi Oyna",
+    "notBetting": "🎮 Beceri tabanlı oyun • Gerçek para yok • Sadece sanal puanlar",
+    "features": {
+      "predictions": "Tahmin Yap",
+      "predictionsDesc": "Her maç için 14 farklı tahmin kategorisi",
+      "leaderboard": "Global Liderlik Tablosu",
+      "leaderboardDesc": "Dünya çapındaki oyuncularla yarış ve sıralamada yüksel",
+      "skills": "Becerilerini Geliştir",
+      "skillsDesc": "Performansını takip et ve taktiksel bilgini geliştir",
+      "fairPlay": "Fair Play Garantisi",
+      "fairPlayDesc": "Güvenli, şeffaf ve sadece beceri tabanlı oyun"
+    },
+    "security": {
+      "title": "Güvenli ve Korumalı",
+      "description": "Tüm oyun verileri şifrelenir ve endüstri standardı güvenlik önlemleriyle korunur. Oyununuz adil, şeffaf ve güvenlidir."
+    },
+    "interface": {
+      "title": "Oyun Arayüzü",
+      "comingSoon": "Oyun Arayüzü Hazır",
+      "comingSoonDesc": "Oyun arayüzü kullanıma hazır. Oynamaya başlamak için backend'e bağlanın.",
+      "backendRequired": "Backend Bağlantısı Gerekli"
+    }
+  },
+  "fairPlay": {
+    "title": "Fair Play & Sorumlu Kullanım",
+    "noBetting": "❌ Bahis veya kumar yok",
+    "noOdds": "❌ Oran veya kumar mekaniği yok",
+    "skillBased": "✅ %100 beceri ve bilgi tabanlı",
+    "virtualPoints": "✅ Sadece sanal puanlar, gerçek para yok",
+    "educational": "✅ Eğitici ve geliştirici",
+    "competitive": "✅ Global sıralamalarla adil rekabet"
+  },
+  "changePassword": {
+    "title": "Şifre Değiştir",
+    "description": "Hesap güvenliğiniz için güçlü bir şifre seçin.",
+    "currentPassword": "Mevcut Şifre",
+    "currentPasswordPlaceholder": "Mevcut şifrenizi girin",
+    "newPassword": "Yeni Şifre",
+    "newPasswordPlaceholder": "En az 8 karakter",
+    "confirmPassword": "Yeni Şifre (Tekrar)",
+    "confirmPasswordPlaceholder": "Yeni şifrenizi tekrar girin",
+    "requirements": {
+      "length": "En az 8 karakter",
+      "uppercase": "En az bir büyük harf",
+      "number": "En az bir rakam"
+    },
+    "validation": {
+      "passwordsMatch": "Şifreler eşleşiyor",
+      "passwordsMismatch": "Şifreler eşleşmiyor"
+    },
+    "errors": {
+      "currentPasswordRequired": "Mevcut şifrenizi girin",
+      "newPasswordRequired": "Yeni şifrenizi girin",
+      "minLength": "Yeni şifre en az 8 karakter olmalıdır",
+      "sameAsOld": "Yeni şifre eski şifre ile aynı olamaz",
+      "passwordsMismatch": "Yeni şifreler eşleşmiyor"
+    },
+    "button": {
+      "cancel": "İptal",
+      "submit": "Şifre Değiştir",
+      "submitting": "Değiştiriliyor..."
+    },
+    "success": "Şifreniz başarıyla değiştirildi!"
+  },
+  "newsletter": {
+    "badge": "BÜLTEN",
+    "title": "Hiçbir Analizi Kaçırmayın",
+    "subtitle": "Haftalık analiz raporları, özel tahminler ve taktiksel görüşler e-postanızda.",
+    "benefit1": "Haftalık maç analizleri ve tahminler",
+    "benefit2": "Özel taktiksel görüşler ve raporlar",
+    "benefit3": "Yeni özelliklerden ilk siz haberdar olun",
+    "form": {
+      "title": "Abone Ol",
+      "description": "Haftalık içgörüler almak için e-postanızı girin",
+      "placeholder": "E-posta adresinizi girin",
+      "subscribe": "Abone Ol",
+      "subscribing": "Abone olunuyor...",
+      "privacy": "İstediğiniz zaman abonelikten çıkabilirsiniz.",
+      "privacyLink": "Gizlilik politikası"
+    },
+    "subscribed": {
+      "title": "Başarıyla Abone Oldunuz!",
+      "description": "Onay e-postası için gelen kutunuzu kontrol edin."
+    },
+    "stats": {
+      "subscribers": "Aktif Aboneler",
+      "weekly": "Haftalık Raporlar"
+    },
+    "error": "Lütfen geçerli bir e-posta adresi girin",
+    "success": "Bültene başarıyla abone oldunuz!"
+  }
+}
