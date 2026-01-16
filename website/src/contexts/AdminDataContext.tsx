@@ -509,33 +509,33 @@ export const AdminDataContext = createContext<AdminDataContextType | undefined>(
 
 export function AdminDataProvider({ children }: { children: ReactNode }) {
   // Stats - Gerçek veriler localStorage'dan yüklenecek veya API'den gelecek
-  // Varsayılan Analytics verileri
+  // Varsayılan Analytics verileri (sıfır değerler - canlı verilerle doldurulacak)
   const defaultGeoDistribution = [
-    { country: 'Türkiye', percentage: 45 },
-    { country: 'Almanya', percentage: 25 },
-    { country: 'İngiltere', percentage: 15 },
-    { country: 'Fransa', percentage: 10 },
-    { country: 'Diğer', percentage: 5 },
+    { country: '', percentage: 0 },
+    { country: '', percentage: 0 },
+    { country: '', percentage: 0 },
+    { country: '', percentage: 0 },
+    { country: '', percentage: 0 },
   ];
 
   const defaultVisitHours = [
-    { timeRange: '00:00 - 06:00', percentage: 10 },
-    { timeRange: '06:00 - 12:00', percentage: 25 },
-    { timeRange: '12:00 - 18:00', percentage: 40 },
-    { timeRange: '18:00 - 00:00', percentage: 35 },
+    { timeRange: '00:00 - 06:00', percentage: 0 },
+    { timeRange: '06:00 - 12:00', percentage: 0 },
+    { timeRange: '12:00 - 18:00', percentage: 0 },
+    { timeRange: '18:00 - 00:00', percentage: 0 },
   ];
 
   const defaultUserSegments = [
-    { segment: 'Free Users', percentage: 70 },
-    { segment: 'Premium Monthly', percentage: 20 },
-    { segment: 'Premium Yearly', percentage: 10 },
+    { segment: 'Free Users', percentage: 0 },
+    { segment: 'Premium Monthly', percentage: 0 },
+    { segment: 'Premium Yearly', percentage: 0 },
   ];
 
   const defaultGrowthMetrics = [
-    { label: 'Yeni Kayıtlar', value: '1,234', change: '+15.2%' },
-    { label: 'Aktif Kullanıcılar', value: '3,847', change: '+8.5%' },
-    { label: 'Churn Rate', value: '2.3%', change: '-0.5%' },
-    { label: 'LTV', value: '€89.50', change: '+12.1%' },
+    { label: 'Yeni Kayıtlar', value: '0', change: '0%' },
+    { label: 'Aktif Kullanıcılar', value: '0', change: '0%' },
+    { label: 'Churn Rate', value: '0%', change: '0%' },
+    { label: 'LTV', value: '€0', change: '0%' },
   ];
 
   const [stats, setStats] = useState<AdminStats>(() => {
@@ -558,9 +558,9 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
         totalLeagues: parsed.totalLeagues ?? 25,
         totalLanguages: parsed.totalLanguages ?? 8,
         totalCountries: parsed.totalCountries || '150+',
-        // Stats Section - varsayılan değerler
-        averageRating: parsed.averageRating || '4.9/5',
-        totalPredictions: parsed.totalPredictions ?? 1000000,
+        // Stats Section - varsayılan değerler (sıfır - canlı verilerle doldurulacak)
+        averageRating: parsed.averageRating || '0.0/5',
+        totalPredictions: parsed.totalPredictions ?? 0,
         // Analytics verileri
         geoDistribution: parsed.geoDistribution || defaultGeoDistribution,
         visitHours: parsed.visitHours || defaultVisitHours,
@@ -584,9 +584,9 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
       totalLeagues: 25,
       totalLanguages: 8,
       totalCountries: '150+',
-      // Stats Section - varsayılan değerler
-      averageRating: '4.9/5',
-      totalPredictions: 1000000,
+      // Stats Section - varsayılan değerler (sıfır - canlı verilerle doldurulacak)
+      averageRating: '0.0/5',
+      totalPredictions: 0,
       // Analytics verileri - varsayılan değerler
       geoDistribution: defaultGeoDistribution,
       visitHours: defaultVisitHours,
