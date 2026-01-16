@@ -255,6 +255,13 @@ export interface DiscountSettings {
   timerDuration: number; // Geri sayım süresi (saniye cinsinden, örn: 600 = 10 dakika)
   originalPrice: number; // Orijinal fiyat (girilen para birimi cinsinden)
   baseCurrency: 'TRY' | 'USD' | 'EUR' | 'GBP' | 'AED' | 'CNY'; // Fiyatın girildiği para birimi
+  // Yeni parametreler
+  maxShowsPerUser: number; // Kullanıcı başına maksimum toplam gösterim (0 = sınırsız)
+  cooldownAfterClose: number; // Kapatıldıktan sonra tekrar gösterme süresi (saniye, örn: 3600 = 1 saat)
+  showOnEveryPage: boolean; // Her sayfa yüklemesinde mi yoksa sadece ana sayfada mı gösterilsin
+  popupTitle: string; // Popup başlığı
+  popupDescription: string; // Popup açıklaması
+  ctaButtonText: string; // CTA buton metni
 }
 
 export interface SiteSettings {
@@ -635,14 +642,29 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
   });
 
   // Discount Settings
-  const [discountSettings, setDiscountSettings] = useState<DiscountSettings>({
-    enabled: true,
-    discountPercent: 20,
-    dailyShowLimit: 3,
-    showDelay: 5000,
-    timerDuration: 600,
-    originalPrice: 99.99,
-    baseCurrency: 'TRY', // Varsayılan para birimi
+  const [discountSettings, setDiscountSettings] = useState<DiscountSettings>(() => {
+    const savedSettings = localStorage.getItem('admin_discount_settings');
+    const defaultSettings: DiscountSettings = {
+      enabled: false,
+      discountPercent: 0,
+      dailyShowLimit: 3,
+      showDelay: 5000,
+      timerDuration: 600,
+      originalPrice: 0,
+      baseCurrency: 'TRY',
+      // Yeni parametreler
+      maxShowsPerUser: 5,
+      cooldownAfterClose: 3600, // 1 saat
+      showOnEveryPage: false,
+      popupTitle: 'Özel Teklif!',
+      popupDescription: 'Sınırlı süre için özel indirim fırsatı',
+      ctaButtonText: 'Hemen Al',
+    };
+    if (savedSettings) {
+      const parsed = JSON.parse(savedSettings);
+      return { ...defaultSettings, ...parsed };
+    }
+    return defaultSettings;
   });
 
   // Press Kit Files - Gerçek veriler localStorage'dan yüklenecek veya API'den gelecek

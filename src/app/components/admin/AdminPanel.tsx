@@ -1232,14 +1232,17 @@ function PricingContent() {
   const [editedSettings, setEditedSettings] = useState(discountSettings || {
     enabled: false,
     discountPercent: 0,
+    dailyShowLimit: 3,
+    showDelay: 5000,
+    timerDuration: 600,
     originalPrice: 0,
-    discountedPrice: 0,
-    popupTitle: '',
-    popupDescription: '',
-    ctaText: '',
-    expiryDate: '',
-    showCountdown: false,
-    baseCurrency: 'TRY' as const
+    baseCurrency: 'TRY' as const,
+    maxShowsPerUser: 5,
+    cooldownAfterClose: 3600,
+    showOnEveryPage: false,
+    popupTitle: 'Özel Teklif!',
+    popupDescription: 'Sınırlı süre için özel indirim fırsatı',
+    ctaButtonText: 'Hemen Al',
   });
 
   // discountSettings değiştiğinde local state'i güncelle
@@ -1423,6 +1426,89 @@ function PricingContent() {
               disabled={!editedSettings.enabled}
             />
             <p className="text-xs text-muted-foreground">İndirim popup'ındaki geri sayım süresi (60-3600 sn)</p>
+          </div>
+
+          <Separator />
+
+          {/* Kullanıcı Gösterim Limitleri */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="maxShowsPerUser">Kullanıcı Başına Maks. Gösterim</Label>
+              <Input
+                id="maxShowsPerUser"
+                type="number"
+                min="0"
+                value={editedSettings.maxShowsPerUser || 0}
+                onChange={(e) => {
+                  const value = parseInt(e.target.value) || 0;
+                  setEditedSettings({ ...editedSettings, maxShowsPerUser: value });
+                }}
+                disabled={!editedSettings.enabled}
+              />
+              <p className="text-xs text-muted-foreground">Bir kullanıcıya toplam kaç kez gösterilecek (0 = sınırsız)</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="cooldownAfterClose">Kapatma Sonrası Bekleme (sn)</Label>
+              <Input
+                id="cooldownAfterClose"
+                type="number"
+                min="0"
+                step="60"
+                value={editedSettings.cooldownAfterClose || 0}
+                onChange={(e) => {
+                  const value = parseInt(e.target.value) || 0;
+                  setEditedSettings({ ...editedSettings, cooldownAfterClose: value });
+                }}
+                disabled={!editedSettings.enabled}
+              />
+              <p className="text-xs text-muted-foreground">Popup kapatıldıktan sonra tekrar gösterme süresi (saniye)</p>
+            </div>
+          </div>
+
+          <SettingToggle 
+            label="Her Sayfada Göster" 
+            description="Her sayfa yüklemesinde popup göster (kapalıysa sadece ana sayfa)"
+            enabled={editedSettings.showOnEveryPage || false}
+            onToggle={() => setEditedSettings({ ...editedSettings, showOnEveryPage: !editedSettings.showOnEveryPage })}
+            disabled={!editedSettings.enabled}
+          />
+
+          <Separator />
+
+          {/* Popup İçerik Ayarları */}
+          <div className="space-y-4">
+            <p className="font-semibold text-sm">✏️ Popup İçeriği:</p>
+            <div className="space-y-2">
+              <Label htmlFor="popupTitle">Popup Başlığı</Label>
+              <Input
+                id="popupTitle"
+                value={editedSettings.popupTitle || ''}
+                onChange={(e) => setEditedSettings({ ...editedSettings, popupTitle: e.target.value })}
+                disabled={!editedSettings.enabled}
+                placeholder="Özel Teklif!"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="popupDescription">Popup Açıklaması</Label>
+              <Input
+                id="popupDescription"
+                value={editedSettings.popupDescription || ''}
+                onChange={(e) => setEditedSettings({ ...editedSettings, popupDescription: e.target.value })}
+                disabled={!editedSettings.enabled}
+                placeholder="Sınırlı süre için özel indirim fırsatı"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="ctaButtonText">CTA Buton Metni</Label>
+              <Input
+                id="ctaButtonText"
+                value={editedSettings.ctaButtonText || ''}
+                onChange={(e) => setEditedSettings({ ...editedSettings, ctaButtonText: e.target.value })}
+                disabled={!editedSettings.enabled}
+                placeholder="Hemen Al"
+              />
+            </div>
           </div>
 
           <Separator />
