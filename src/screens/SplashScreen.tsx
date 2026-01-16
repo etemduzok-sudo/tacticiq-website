@@ -9,18 +9,10 @@ import {
   Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withTiming,
-  withRepeat,
-  withSequence,
-  withDelay,
-} from 'react-native-reanimated';
+// ✅ Animasyon import'ları kaldırıldı (sıçrama yok)
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
-  AUTH_GRADIENT,
+  SPLASH_GRADIENT,
 } from '../theme/gradients';
 import {
   BRAND,
@@ -39,18 +31,8 @@ interface SplashScreenProps {
 }
 
 export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
-  // Animation values
-  const logoScale = useSharedValue(0);
-  const logoRotation = useSharedValue(-180);
-  const loadingOpacity = useSharedValue(0);
-  const taglineOpacity = useSharedValue(0);
-  const brandingOpacity = useSharedValue(0);
-
-  // Loading dots animations
-  const dot1Y = useSharedValue(0);
-  const dot2Y = useSharedValue(0);
-  const dot3Y = useSharedValue(0);
-
+  // ✅ Logo animasyonları kaldırıldı (sıçrama yok)
+  // ✅ Loading dots animasyonları kaldırıldı (sadece görünür)
   // ✅ Background circles kaldırıldı (baloncuklar)
 
   useEffect(() => {
@@ -71,69 +53,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
       return () => clearTimeout(timer);
     }
 
-    // Logo animation (spring effect)
-    logoScale.value = withSpring(1, {
-      damping: 15,
-      stiffness: 200,
-    });
-    logoRotation.value = withSpring(0, {
-      damping: 15,
-      stiffness: 200,
-    });
-
-    // Loading dots animation
-    loadingOpacity.value = withDelay(1200, withTiming(1, { duration: 500 }));
-    
-    // Dots bouncing
-    dot1Y.value = withDelay(
-      1200,
-      withRepeat(
-        withSequence(
-          withTiming(-10, { duration: 300 }),
-          withTiming(0, { duration: 300 })
-        ),
-        -1,
-        false
-      )
-    );
-    
-    dot2Y.value = withDelay(
-      1350,
-      withRepeat(
-        withSequence(
-          withTiming(-10, { duration: 300 }),
-          withTiming(0, { duration: 300 })
-        ),
-        -1,
-        false
-      )
-    );
-    
-    dot3Y.value = withDelay(
-      1500,
-      withRepeat(
-        withSequence(
-          withTiming(-10, { duration: 300 }),
-          withTiming(0, { duration: 300 })
-        ),
-        -1,
-        false
-      )
-    );
-
-    // Tagline animation
-    taglineOpacity.value = withDelay(2000, withTiming(1, { duration: 800 }));
-
-    // Branding animation
-    brandingOpacity.value = withDelay(2500, withTiming(1, { duration: 800 }));
-
-    // ✅ Background circles animation kaldırıldı (baloncuklar)
-          ),
-          -1,
-          false
-        )
-      );
-    });
+    // ✅ Tüm animasyonlar kaldırıldı (sıçrama yok, standart görünüm)
 
     // Check user status and navigate
     const checkUserStatus = async () => {
@@ -213,79 +133,48 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
     checkUserStatus();
   }, []);
 
-  // Animated styles
-  const logoAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [
-      { scale: logoScale.value },
-      { rotate: `${logoRotation.value}deg` },
-    ],
-  }));
-
-
-  const loadingAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: loadingOpacity.value,
-  }));
-
-  const dot1AnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: dot1Y.value }],
-  }));
-
-  const dot2AnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: dot2Y.value }],
-  }));
-
-  const dot3AnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: dot3Y.value }],
-  }));
-
-  const taglineAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: taglineOpacity.value,
-  }));
-
-  const brandingAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: brandingOpacity.value,
-  }));
+  // ✅ Tüm animated style'lar kaldırıldı (standart görünüm)
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <LinearGradient
-        colors={AUTH_GRADIENT.colors}
+        colors={SPLASH_GRADIENT.colors}
         style={styles.container}
-        start={AUTH_GRADIENT.start}
-        end={AUTH_GRADIENT.end}
+        start={SPLASH_GRADIENT.start}
+        end={SPLASH_GRADIENT.end}
       >
         {/* ✅ Animated Background Pattern kaldırıldı (baloncuklar) */}
 
         {/* Main Content */}
         <View style={styles.content}>
-          {/* Logo */}
-          <Animated.View style={[styles.logoContainer, logoAnimatedStyle]}>
+          {/* Logo - Standart boyut, animasyon yok (sıçrama yok) */}
+          <View style={styles.logoContainer}>
             <Image
               source={require('../../assets/logo.png')}
               style={styles.logoImage}
               resizeMode="contain"
             />
-          </Animated.View>
+          </View>
 
-          {/* Loading Indicator */}
-          <Animated.View style={[styles.loadingContainer, loadingAnimatedStyle]}>
+          {/* Loading Indicator - Standart görünüm (animasyon yok) */}
+          <View style={styles.loadingContainer}>
             <View style={styles.dotsContainer}>
-              <Animated.View style={[styles.dot, dot1AnimatedStyle]} />
-              <Animated.View style={[styles.dot, dot2AnimatedStyle]} />
-              <Animated.View style={[styles.dot, dot3AnimatedStyle]} />
+              <View style={styles.dot} />
+              <View style={styles.dot} />
+              <View style={styles.dot} />
             </View>
-          </Animated.View>
+          </View>
 
-          {/* Tagline */}
-          <Animated.View style={taglineAnimatedStyle}>
+          {/* Tagline - Standart görünüm */}
+          <View>
             <Text style={styles.tagline}>Predict • Compete • Win</Text>
-          </Animated.View>
+          </View>
         </View>
 
-        {/* Bottom Branding */}
-        <Animated.View style={[styles.brandingContainer, brandingAnimatedStyle]}>
+        {/* Bottom Branding - Standart görünüm */}
+        <View style={styles.brandingContainer}>
           <Text style={styles.brandingText}>Powered by Football Passion</Text>
-        </Animated.View>
+        </View>
       </LinearGradient>
     </SafeAreaView>
   );
@@ -294,7 +183,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: AUTH_GRADIENT.colors[0],
+    backgroundColor: SPLASH_GRADIENT.colors[0],
   },
   container: {
     flex: 1,
@@ -307,18 +196,22 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
+    paddingTop: 120, // %30 azaltıldı (yaklaşık 170 * 0.7) - logo'yu yukarı taşımak için
     paddingHorizontal: SPACING.xl,
     zIndex: Z_INDEX.sticky,
   },
   
-  // Logo
+  // Logo - Standart boyut (96x96), animasyon yok
   logoContainer: {
-    marginBottom: SPACING.xl,
+    marginTop: 0,
+    marginBottom: 22, // %30 azaltıldı (32 * 0.7)
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   logoImage: {
-    width: 160,
-    height: 160,
+    width: 96,
+    height: 96,
   },
   
   // Loading Dots

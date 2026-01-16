@@ -11,6 +11,8 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FlagDE, FlagGB, FlagES, FlagFR, FlagIT, FlagTR, FlagAR, FlagCN } from '../components/flags';
+import { AUTH_GRADIENT } from '../theme/gradients';
+import { STANDARD_LAYOUT, STANDARD_COLORS } from '../constants/standardLayout';
 
 // Logo
 const logoImage = require('../../assets/logo.png');
@@ -42,11 +44,12 @@ export default function LanguageSelectionScreen({
   const textWidth = welcomeString.length * 9;
 
   useEffect(() => {
+    // ✅ Web için useNativeDriver: false (uyarıyı önlemek için)
     const animation = RNAnimated.loop(
       RNAnimated.timing(scrollX, {
         toValue: -textWidth,
         duration: 20000,
-        useNativeDriver: true,
+        useNativeDriver: false, // ✅ Web için false
       })
     );
     animation.start();
@@ -84,10 +87,10 @@ export default function LanguageSelectionScreen({
   return (
     <SafeAreaView style={styles.safeArea}>
       <LinearGradient
-        colors={['#0F172A', '#1E293B', '#0F172A']}
+        colors={AUTH_GRADIENT.colors}
         style={styles.container}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+        start={AUTH_GRADIENT.start}
+        end={AUTH_GRADIENT.end}
       >
         <View style={styles.screenContainer}>
           <ScrollView
@@ -168,7 +171,7 @@ export default function LanguageSelectionScreen({
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: STANDARD_COLORS.background,
   },
   container: {
     flex: 1,
@@ -176,7 +179,7 @@ const styles = StyleSheet.create({
   screenContainer: {
     flex: 1,
     paddingHorizontal: 24,
-    paddingTop: 40,
+    paddingTop: 28, // %30 azaltıldı (40 * 0.7)
   },
   scrollContent: {
     flexGrow: 1,
@@ -192,13 +195,14 @@ const styles = StyleSheet.create({
   // Brand Zone
   brandZone: {
     alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 48,
-    height: 200,
+    justifyContent: 'flex-start',
+    marginTop: 35, // %30 azaltıldı (50 * 0.7 - tahmini üst boşluk)
+    marginBottom: 34, // %30 azaltıldı (48 * 0.7)
+    paddingVertical: 0,
   },
   logoImage: {
-    width: 120,
-    height: 120,
+    width: STANDARD_LAYOUT.logoWidth,
+    height: STANDARD_LAYOUT.logoHeight,
   },
   
   // Language Grid
@@ -220,7 +224,7 @@ const styles = StyleSheet.create({
     height: 85, // ✅ Yükseklik azaltıldı (100'den 85'e)
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(5, 150, 105, 0.3)',
+    borderColor: `rgba(31, 162, 166, 0.3)`, // BRAND.secondary with 30% opacity
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10, // ✅ Gap de azaltıldı

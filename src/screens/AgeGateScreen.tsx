@@ -13,8 +13,9 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { BRAND, COLORS, SPACING, TYPOGRAPHY } from '../theme/theme';
+import { BRAND, COLORS, SPACING, TYPOGRAPHY, DARK_MODE } from '../theme/theme';
 import { AUTH_GRADIENT } from '../theme/gradients';
+import { STANDARD_LAYOUT, STANDARD_INPUT, STANDARD_COLORS } from '../constants/standardLayout';
 import { useTranslation } from '../hooks/useTranslation';
 import {
   ConsentPreferences,
@@ -52,7 +53,6 @@ export const AgeGateScreen: React.FC<AgeGateScreenProps> = ({ onComplete }) => {
   });
   const [isChild, setIsChild] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [ageVerified, setAgeVerified] = useState(false);
 
   useEffect(() => {
     initializeConsent();
@@ -112,57 +112,7 @@ export const AgeGateScreen: React.FC<AgeGateScreenProps> = ({ onComplete }) => {
     return age;
   };
 
-  const handleAgeContinue = async () => {
-    const age = calculateAge();
-
-    if (age === null) {
-      Alert.alert(
-        t('common.error') || 'Hata',
-        t('ageGate.pleaseEnterDate') || 'Lütfen doğum tarihinizi giriniz'
-      );
-      return;
-    }
-
-    if (age < 0 || age > 120) {
-      Alert.alert(
-        t('common.error') || 'Hata',
-        t('ageGate.invalidDate') || 'Geçersiz doğum tarihi'
-      );
-      return;
-    }
-
-    // Save age info
-    await AsyncStorage.setItem('user-age', JSON.stringify({
-      year: parseInt(birthYear),
-      month: parseInt(birthMonth),
-      day: parseInt(birthDay),
-      age,
-      verifiedAt: new Date().toISOString(),
-    }));
-
-    // Determine if minor based on region
-    const isMinor = age < 13; // Using COPPA standard as most restrictive
-
-    // Enable child mode if minor
-    if (isMinor) {
-      await AsyncStorage.setItem('child-mode', 'true');
-      await AsyncStorage.setItem('data-collection-disabled', 'true');
-      setIsChild(true);
-      // Disable all non-essential for children
-      setPreferences({
-        ...preferences,
-        analytics: false,
-        marketing: false,
-        personalizedAds: false,
-        dataTransfer: false,
-      });
-    } else {
-      await AsyncStorage.setItem('child-mode', 'false');
-      setIsChild(false);
-    }
-
-    setAgeVerified(true);
-  };
+  // ✅ handleAgeContinue kaldırıldı - Artık handleSave içinde yaş doğrulaması yapılıyor
 
   const handleToggle = (key: keyof ConsentPreferences) => {
     if (key === 'essential') return; // Essential cannot be disabled
@@ -207,6 +157,56 @@ export const AgeGateScreen: React.FC<AgeGateScreenProps> = ({ onComplete }) => {
 
   const handleSave = async () => {
     try {
+      // ✅ Önce yaş doğrulaması yap
+      const age = calculateAge();
+
+      if (age === null) {
+        Alert.alert(
+          t('common.error') || 'Hata',
+          t('ageGate.pleaseEnterDate') || 'Lütfen doğum tarihinizi giriniz'
+        );
+        return;
+      }
+
+      if (age < 0 || age > 120) {
+        Alert.alert(
+          t('common.error') || 'Hata',
+          t('ageGate.invalidDate') || 'Geçersiz doğum tarihi'
+        );
+        return;
+      }
+
+      // Save age info
+      await AsyncStorage.setItem('user-age', JSON.stringify({
+        year: parseInt(birthYear),
+        month: parseInt(birthMonth),
+        day: parseInt(birthDay),
+        age,
+        verifiedAt: new Date().toISOString(),
+      }));
+
+      // Determine if minor based on region
+      const isMinor = age < 13; // Using COPPA standard as most restrictive
+
+      // Enable child mode if minor
+      if (isMinor) {
+        await AsyncStorage.setItem('child-mode', 'true');
+        await AsyncStorage.setItem('data-collection-disabled', 'true');
+        setIsChild(true);
+        // Disable all non-essential for children
+        setPreferences({
+          ...preferences,
+          analytics: false,
+          marketing: false,
+          personalizedAds: false,
+          dataTransfer: false,
+        });
+      } else {
+        await AsyncStorage.setItem('child-mode', 'false');
+        setIsChild(false);
+      }
+
+      // ✅ Sonra consent tercihlerini kaydet
       const finalPreferences: ConsentPreferences = {
         ...preferences,
         region,
@@ -216,12 +216,11 @@ export const AgeGateScreen: React.FC<AgeGateScreenProps> = ({ onComplete }) => {
       await saveConsentPreferences(finalPreferences);
       await applyConsentPreferences(finalPreferences);
       
-      // Get age to determine if minor
-      const age = calculateAge();
-      const isMinor = age !== null && age < 13;
-      
+      // ✅ Her ikisi de tamamlandı, devam et
+      console.log('✅ AgeGateScreen: handleSave completed, calling onComplete', { isMinor });
       onComplete(isMinor);
     } catch (error) {
+      console.error('❌ AgeGateScreen: handleSave error', error);
       Alert.alert(
         t('common.error') || 'Hata',
         t('consent.saveError') || 'Tercihler kaydedilemedi'
@@ -259,9 +258,10 @@ export const AgeGateScreen: React.FC<AgeGateScreenProps> = ({ onComplete }) => {
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
           <View style={styles.content}>
-            {/* Logo */}
+            {/* Logo - Standart boyut (96x96), sıçrama yok */}
             <View style={styles.brandContainer}>
               <Image 
                 source={logoImage} 
@@ -270,129 +270,116 @@ export const AgeGateScreen: React.FC<AgeGateScreenProps> = ({ onComplete }) => {
               />
             </View>
 
-            {!ageVerified ? (
-              <>
-                {/* Age Verification Section */}
-                <View style={styles.titleContainer}>
-                  <Text style={styles.title}>
-                    {t('ageGate.title') || 'Yaş Doğrulama'}
+            {/* ✅ Yaş Doğrulama ve Yasal Bilgilendirme - Tek Ekranda Birleştirildi */}
+            
+            {/* Age Verification Section */}
+            <View style={styles.titleContainer}>
+              <Text style={styles.title}>
+                {t('ageGate.title') || 'Yaş Doğrulama'}
+              </Text>
+              <Text style={styles.subtitle}>
+                {t('ageGate.subtitle') || 'Lütfen doğum tarihinizi giriniz'}
+              </Text>
+            </View>
+
+            {/* Date Inputs - Tek Satır */}
+            <View style={styles.inputContainer}>
+              <View style={styles.inputRow}>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>
+                    {t('ageGate.year') || 'Yıl'}
                   </Text>
-                  <Text style={styles.subtitle}>
-                    {t('ageGate.subtitle') || 'Lütfen doğum tarihinizi giriniz'}
-                  </Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder={t('ageGate.yearPlaceholder') || 'YYYY'}
+                    placeholderTextColor="rgba(255, 255, 255, 0.5)"
+                    value={birthYear}
+                    onChangeText={(text) => setBirthYear(text.replace(/[^0-9]/g, ''))}
+                    keyboardType="numeric"
+                    maxLength={4}
+                    autoComplete="off"
+                    editable={true}
+                    selectTextOnFocus={false}
+                  />
                 </View>
 
-                {/* Date Inputs - Tek Satır */}
-                <View style={styles.inputContainer}>
-                  <View style={styles.inputRow}>
-                    <View style={styles.inputGroup}>
-                      <Text style={styles.inputLabel}>
-                        {t('ageGate.year') || 'Yıl'}
-                      </Text>
-                      <TextInput
-                        style={styles.input}
-                        placeholder={t('ageGate.yearPlaceholder') || 'YYYY'}
-                        placeholderTextColor="rgba(255, 255, 255, 0.5)"
-                        value={birthYear}
-                        onChangeText={(text) => setBirthYear(text.replace(/[^0-9]/g, ''))}
-                        keyboardType="numeric"
-                        maxLength={4}
-                        autoComplete="off"
-                      />
-                    </View>
-
-                    <View style={styles.inputGroup}>
-                      <Text style={styles.inputLabel}>
-                        {t('ageGate.month') || 'Ay'}
-                      </Text>
-                      <TextInput
-                        style={styles.input}
-                        placeholder={t('ageGate.monthPlaceholder') || 'MM'}
-                        placeholderTextColor="rgba(255, 255, 255, 0.5)"
-                        value={birthMonth}
-                        onChangeText={(text) => {
-                          const num = text.replace(/[^0-9]/g, '');
-                          if (num === '' || (parseInt(num) >= 1 && parseInt(num) <= 12)) {
-                            setBirthMonth(num);
-                          }
-                        }}
-                        keyboardType="numeric"
-                        maxLength={2}
-                        autoComplete="off"
-                      />
-                    </View>
-
-                    <View style={styles.inputGroup}>
-                      <Text style={styles.inputLabel}>
-                        {t('ageGate.day') || 'Gün'}
-                      </Text>
-                      <TextInput
-                        style={styles.input}
-                        placeholder={t('ageGate.dayPlaceholder') || 'DD'}
-                        placeholderTextColor="rgba(255, 255, 255, 0.5)"
-                        value={birthDay}
-                        onChangeText={(text) => {
-                          const num = text.replace(/[^0-9]/g, '');
-                          if (num === '' || (parseInt(num) >= 1 && parseInt(num) <= 31)) {
-                            setBirthDay(num);
-                          }
-                        }}
-                        keyboardType="numeric"
-                        maxLength={2}
-                        autoComplete="off"
-                      />
-                    </View>
-                  </View>
-                </View>
-
-                {/* Info Text */}
-                <View style={styles.infoContainer}>
-                  <Text style={styles.infoText}>
-                    {t('ageGate.info') || 'Bu bilgi güvenliğiniz ve yasal uyumluluk için gereklidir.'}
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>
+                    {t('ageGate.month') || 'Ay'}
                   </Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder={t('ageGate.monthPlaceholder') || 'MM'}
+                    placeholderTextColor="rgba(255, 255, 255, 0.5)"
+                    value={birthMonth}
+                    onChangeText={(text) => {
+                      const num = text.replace(/[^0-9]/g, '');
+                      if (num === '' || (parseInt(num) >= 1 && parseInt(num) <= 12)) {
+                        setBirthMonth(num);
+                      }
+                    }}
+                    keyboardType="numeric"
+                    maxLength={2}
+                    autoComplete="off"
+                    editable={true}
+                    selectTextOnFocus={false}
+                  />
                 </View>
 
-                {/* Continue Button */}
-                <View style={styles.buttonContainer}>
-                  <TouchableOpacity
-                    onPress={handleAgeContinue}
-                    activeOpacity={0.8}
-                    style={styles.continueButton}
-                  >
-                    <LinearGradient
-                      colors={[BRAND.emerald, '#047857']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={styles.buttonGradient}
-                    >
-                      <Text style={styles.buttonText}>
-                        {t('common.continue') || 'Devam Et'}
-                      </Text>
-                    </LinearGradient>
-                  </TouchableOpacity>
-                </View>
-              </>
-            ) : (
-              <>
-                {/* Consent Section */}
-                <View style={styles.titleContainer}>
-                  <Text style={styles.title}>
-                    {t('consent.title') || 'Gizlilik Tercihleri'}
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>
+                    {t('ageGate.day') || 'Gün'}
                   </Text>
-                  <Text style={styles.subtitle}>
-                    {t('consent.subtitle') || 'Verilerinizin nasıl kullanılacağını seçin'}
-                  </Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder={t('ageGate.dayPlaceholder') || 'DD'}
+                    placeholderTextColor="rgba(255, 255, 255, 0.5)"
+                    value={birthDay}
+                    onChangeText={(text) => {
+                      const num = text.replace(/[^0-9]/g, '');
+                      if (num === '' || (parseInt(num) >= 1 && parseInt(num) <= 31)) {
+                        setBirthDay(num);
+                      }
+                    }}
+                    keyboardType="numeric"
+                    maxLength={2}
+                    autoComplete="off"
+                    editable={true}
+                    selectTextOnFocus={false}
+                  />
                 </View>
+              </View>
+            </View>
 
-                {/* Info Box */}
-                <View style={styles.infoBox}>
-                  <Text style={styles.infoText}>
-                    {region === 'TR' && (t('consent.kvkkInfo') || 'KVKK (6698 sayılı Kanun) kapsamında kişisel verilerinizin korunması için tercihlerinizi belirleyin.') ||
-                     region === 'EU' && (t('consent.gdprInfo') || 'GDPR kapsamında verilerinizin korunması için tercihlerinizi belirleyin.') ||
-                     region === 'US' && (t('consent.ccpaInfo') || 'CCPA kapsamında verilerinizin korunması için tercihlerinizi belirleyin.') ||
-                     t('consent.defaultInfo') || 'Verilerinizi korumak için tercihlerinizi belirleyin.'}
-                  </Text>
-                </View>
+            {/* Info Text */}
+            <View style={styles.infoContainer}>
+              <Text style={styles.infoText}>
+                {t('ageGate.info') || 'Bu bilgi güvenliğiniz ve yasal uyumluluk için gereklidir.'}
+              </Text>
+            </View>
+
+            {/* Divider */}
+            <View style={styles.divider} />
+
+            {/* Consent Section */}
+            <View style={styles.titleContainer}>
+              <Text style={styles.title}>
+                {t('consent.title') || 'Gizlilik Tercihleri'}
+              </Text>
+              <Text style={styles.subtitle}>
+                {t('consent.subtitle') || 'Verilerinizin nasıl kullanılacağını seçin'}
+              </Text>
+            </View>
+
+            {/* Info Box */}
+            <View style={styles.infoBox}>
+              <Text style={styles.infoText}>
+                {region === 'TR' && (t('consent.kvkkInfo') || 'KVKK (6698 sayılı Kanun) kapsamında kişisel verilerinizin korunması için tercihlerinizi belirleyin.') ||
+                 region === 'EU' && (t('consent.gdprInfo') || 'GDPR kapsamında verilerinizin korunması için tercihlerinizi belirleyin.') ||
+                 region === 'US' && (t('consent.ccpaInfo') || 'CCPA kapsamında verilerinizin korunması için tercihlerinizi belirleyin.') ||
+                 t('consent.defaultInfo') || 'Verilerinizi korumak için tercihlerinizi belirleyin.'}
+              </Text>
+            </View>
 
                 {/* Consent Options */}
                 <View style={styles.optionsContainer}>
@@ -544,14 +531,12 @@ export const AgeGateScreen: React.FC<AgeGateScreenProps> = ({ onComplete }) => {
                   </TouchableOpacity>
                 </View>
 
-                {/* Privacy Policy Link */}
-                <View style={styles.linkContainer}>
-                  <Text style={styles.linkText}>
-                    {t('consent.privacyPolicyLink') || 'Detaylı bilgi için Gizlilik Politikası'}
-                  </Text>
-                </View>
-              </>
-            )}
+            {/* Privacy Policy Link */}
+            <View style={styles.linkContainer}>
+              <Text style={styles.linkText}>
+                {t('consent.privacyPolicyLink') || 'Detaylı bilgi için Gizlilik Politikası'}
+              </Text>
+            </View>
           </View>
         </ScrollView>
       </LinearGradient>
@@ -631,15 +616,12 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   input: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    ...STANDARD_INPUT,
+    textAlign: 'center',
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.sm,
-    color: BRAND.white,
-    fontSize: 16,
     minHeight: 50,
+    textAlign: 'center', // ✅ Ortalanmış metin (tek satır görünümü için)
   },
   infoContainer: {
     marginBottom: SPACING.lg,
@@ -794,5 +776,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: 'rgba(255, 255, 255, 0.6)',
     textDecorationLine: 'underline',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    marginVertical: SPACING.xl,
+    marginHorizontal: SPACING.lg,
   },
 });

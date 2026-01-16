@@ -442,10 +442,17 @@ export default function App() {
   // 2.5. Age Gate & Consent Complete (Birleştirilmiş ekran)
   const handleAgeGateComplete = async (isMinor: boolean) => {
     logger.info('Age gate and consent complete', { isMinor }, 'AGE_GATE');
-    // Artık AgeGateScreen içinde consent de var, direkt register'a yönlendir (auth'dan önce)
-    logNavigation('register');
-    setPreviousScreen(currentScreen);
-    setCurrentScreen('register');
+    console.log('✅ App.tsx: handleAgeGateComplete called', { isMinor, currentScreen });
+    try {
+      // Artık AgeGateScreen içinde consent de var, direkt auth'a yönlendir
+      logNavigation('auth');
+      setPreviousScreen(currentScreen);
+      setCurrentScreen('auth');
+      console.log('✅ App.tsx: Navigated to auth screen');
+    } catch (error) {
+      console.error('❌ App.tsx: Error in handleAgeGateComplete', error);
+      logger.error('Error in age gate complete', { error }, 'AGE_GATE');
+    }
   };
 
   // 3. Auth → Login Success

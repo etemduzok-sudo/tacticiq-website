@@ -20,7 +20,9 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
 } from 'react-native-reanimated';
-import { BRAND } from '../theme/theme';
+import { BRAND, COLORS, SPACING, TYPOGRAPHY, SIZES } from '../theme/theme';
+import { AUTH_GRADIENT } from '../theme/gradients';
+import { STANDARD_LAYOUT, STANDARD_INPUT, STANDARD_COLORS } from '../constants/standardLayout';
 // Logo component removed - using text placeholder
 // import authService from '../services/authService'; // Real Supabase
 import authService from '../services/mockAuthService'; // Mock (geçici test için)
@@ -122,10 +124,10 @@ export default function ForgotPasswordScreen({
   return (
     <SafeAreaView style={styles.safeArea}>
       <LinearGradient
-        colors={['#0F172A', '#1E293B', '#0F172A']}
+        colors={AUTH_GRADIENT.colors}
         style={styles.container}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+        start={AUTH_GRADIENT.start}
+        end={AUTH_GRADIENT.end}
       >
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -303,7 +305,7 @@ const styles = StyleSheet.create({
   screenContainer: {
     flex: 1,
     paddingHorizontal: LAYOUT.screenPadding,
-    paddingTop: 12,
+    paddingTop: 8, // %30 azaltıldı (12 * 0.7)
   },
   contentWrapper: {
     flex: 1,
@@ -330,9 +332,11 @@ const styles = StyleSheet.create({
   
   // [B] BRAND ZONE
   brandZone: {
-    height: LAYOUT.brandZoneHeight,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
+    marginTop: 15, // %30 azaltıldı (22 * 0.7 - tahmini üst boşluk)
+    marginBottom: 15, // %30 azaltıldı (22 * 0.7 - tahmini alt boşluk)
+    paddingVertical: 0,
   },
   logoImage: {
     width: 96,
@@ -364,15 +368,7 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   input: {
-    height: LAYOUT.inputHeight,
-    backgroundColor: 'rgba(15, 23, 42, 0.5)',
-    borderWidth: 1,
-    borderColor: 'rgba(5, 150, 105, 0.3)',
-    borderRadius: 12,
-    paddingLeft: 44,
-    paddingRight: 16,
-    fontSize: 16,
-    color: '#FFFFFF',
+    ...STANDARD_INPUT,
   },
   
   // [G] PRIMARY CTA BUTTON

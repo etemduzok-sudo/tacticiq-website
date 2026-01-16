@@ -25,6 +25,8 @@ import Animated, {
   useSharedValue,
 } from 'react-native-reanimated';
 import { BRAND, COLORS, SPACING, TYPOGRAPHY, SIZES } from '../theme/theme';
+import { AUTH_GRADIENT } from '../theme/gradients';
+import { STANDARD_LAYOUT, STANDARD_INPUT, STANDARD_COLORS } from '../constants/standardLayout';
 import { useTranslation } from '../hooks/useTranslation';
 // Logo component removed - using text placeholder
 
@@ -184,10 +186,10 @@ export default function AuthScreen({
   return (
     <SafeAreaView style={styles.safeArea}>
       <LinearGradient
-        colors={['#0F172A', '#1E293B', '#0F172A']}
+        colors={AUTH_GRADIENT.colors}
         style={styles.container}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+        start={AUTH_GRADIENT.start}
+        end={AUTH_GRADIENT.end}
       >
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -392,7 +394,7 @@ const styles = StyleSheet.create({
   screenContainer: {
     flex: 1,
     paddingHorizontal: LAYOUT.screenPadding,
-    paddingTop: 12,
+    paddingTop: 8, // %30 azaltıldı (12 * 0.7)
   },
   contentWrapper: {
     flex: 1,
@@ -419,9 +421,11 @@ const styles = StyleSheet.create({
   
   // [B] BRAND ZONE
   brandZone: {
-    height: LAYOUT.brandZoneHeight,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
+    marginTop: 15, // %30 azaltıldı (22 * 0.7 - tahmini üst boşluk)
+    marginBottom: 15, // %30 azaltıldı (22 * 0.7 - tahmini alt boşluk)
+    paddingVertical: 0,
   },
   logoImage: {
     width: 96,
@@ -505,15 +509,7 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   input: {
-    height: LAYOUT.inputHeight,
-    backgroundColor: COLORS.dark.input + '80',
-    borderWidth: 1,
-    borderColor: COLORS.dark.primary + '4D',
-    borderRadius: SIZES.radiusLg,
-    paddingLeft: 44,
-    paddingRight: SPACING.base,
-    ...TYPOGRAPHY.body,
-    color: BRAND.white,
+    ...STANDARD_INPUT,
   },
   inputWithRightIcon: {
     paddingRight: 44,
