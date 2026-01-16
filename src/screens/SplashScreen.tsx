@@ -51,11 +51,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
   const dot2Y = useSharedValue(0);
   const dot3Y = useSharedValue(0);
 
-  // Background circles animations (20 circles)
-  const circleAnimations = Array.from({ length: 20 }, () => ({
-    opacity: useSharedValue(0),
-    scale: useSharedValue(0),
-  }));
+  // ✅ Background circles kaldırıldı (baloncuklar)
 
   useEffect(() => {
     // Web için animasyonları atla
@@ -131,26 +127,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
     // Branding animation
     brandingOpacity.value = withDelay(2500, withTiming(1, { duration: 800 }));
 
-    // Background circles animation
-    circleAnimations.forEach((circle, i) => {
-      circle.opacity.value = withDelay(
-        i * 200,
-        withRepeat(
-          withSequence(
-            withTiming(0.5, { duration: 1500 }),
-            withTiming(0, { duration: 1500 })
-          ),
-          -1,
-          false
-        )
-      );
-      
-      circle.scale.value = withDelay(
-        i * 200,
-        withRepeat(
-          withSequence(
-            withTiming(1.5, { duration: 1500 }),
-            withTiming(2, { duration: 1500 })
+    // ✅ Background circles animation kaldırıldı (baloncuklar)
           ),
           -1,
           false
@@ -277,43 +254,17 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
         start={AUTH_GRADIENT.start}
         end={AUTH_GRADIENT.end}
       >
-        {/* Animated Background Pattern */}
-        <View style={styles.backgroundPattern}>
-          {circleAnimations.map((circle, index) => {
-            const circleStyle = useAnimatedStyle(() => ({
-              opacity: circle.opacity.value * 0.1,
-              transform: [{ scale: circle.scale.value }],
-            }));
-
-            const randomLeft = Math.random() * 100;
-            const randomTop = Math.random() * 100;
-
-            return (
-              <Animated.View
-                key={index}
-                style={[
-                  styles.backgroundCircle,
-                  circleStyle,
-                  {
-                    left: `${randomLeft}%`,
-                    top: `${randomTop}%`,
-                  },
-                ]}
-              />
-            );
-          })}
-        </View>
+        {/* ✅ Animated Background Pattern kaldırıldı (baloncuklar) */}
 
         {/* Main Content */}
         <View style={styles.content}>
-          {/* Logo - Conditional render if file exists */}
+          {/* Logo */}
           <Animated.View style={[styles.logoContainer, logoAnimatedStyle]}>
-            {/* Logo will be shown when PNG file is added to src/assets/images/brand/fan_manager_shield.png */}
-            {/* For now, showing placeholder until PNG is added */}
-            <View style={[styles.logoImage, styles.logoPlaceholder]}>
-              <Text style={styles.logoPlaceholderText}>FM</Text>
-              <Text style={styles.logoPlaceholderSubtext}>2026</Text>
-            </View>
+            <Image
+              source={require('../../assets/logo.png')}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
           </Animated.View>
 
           {/* Loading Indicator */}
@@ -350,19 +301,7 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   
-  // Background Pattern
-  backgroundPattern: {
-    ...StyleSheet.absoluteFillObject,
-    overflow: 'hidden',
-  },
-  backgroundCircle: {
-    position: 'absolute',
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    borderWidth: 2,
-    borderColor: BRAND.white,
-  },
+  // ✅ Background pattern ve circles kaldırıldı (baloncuklar)
   
   // Main Content
   content: {
@@ -380,25 +319,6 @@ const styles = StyleSheet.create({
   logoImage: {
     width: 160,
     height: 160,
-  },
-  logoPlaceholder: {
-    backgroundColor: BRAND.gold,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 3,
-    borderColor: '#D97706',
-  },
-  logoPlaceholderText: {
-    fontSize: 48,
-    fontWeight: 'bold',
-    color: '#1F2937',
-  },
-  logoPlaceholderSubtext: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1F2937',
-    marginTop: -8,
   },
   
   // Loading Dots

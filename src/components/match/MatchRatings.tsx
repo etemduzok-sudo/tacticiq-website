@@ -139,7 +139,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
       if (!predictionDataStr) return;
       
       const predictionData = JSON.parse(predictionDataStr);
-      const { matchPredictions, focusedPredictions, selectedTraining } = predictionData;
+      const { matchPredictions, focusedPredictions } = predictionData;
       
       // Mock actual results (in production, this would come from API)
       const actualResults = {
@@ -154,7 +154,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
       const report = generateMatchAnalysisReport(
         matchPredictions,
         actualResults,
-        selectedTraining as TrainingType | null,
+        null, // Training focus removed
         focusedPredictions as FocusPrediction[]
       );
       

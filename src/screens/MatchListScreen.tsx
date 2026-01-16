@@ -15,6 +15,14 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import api from '../services/api';
+
+// Platform-safe animation helper (web doesn't support .delay().springify())
+const getEnteringAnimation = (index: number = 0, baseDelay: number = 150) => {
+  if (Platform.OS === 'web') {
+    return FadeInDown;
+  }
+  return FadeInDown.delay(baseDelay + index * 50).springify();
+};
 import { logger } from '../utils/logger';
 
 const { width } = Dimensions.get('window');
@@ -46,6 +54,7 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
   matchData,
 }) => {
   const scrollViewRef = useRef<ScrollView>(null);
+  const matchCardPositions = useRef<{ [key: string]: number }>({});
   
   // ✅ Takım maçları için state
   const [teamUpcomingMatches, setTeamUpcomingMatches] = useState<any[]>([]);
@@ -526,11 +535,25 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
                   </View>
                   {teamUpcomingMatches.map((match) => {
                     const transformed = transformMatch(match);
+                    const matchId = transformed.id;
                     return (
                       <TouchableOpacity
                         key={match.fixture?.id || match.id}
                         style={styles.matchCard}
-                        onPress={() => onMatchSelect(transformed.id)}
+                        onLayout={(event) => {
+                          const { y } = event.nativeEvent.layout;
+                          matchCardPositions.current[matchId] = y;
+                        }}
+                        onPress={() => {
+                          const cardY = matchCardPositions.current[matchId];
+                          if (cardY !== undefined && scrollViewRef.current) {
+                            scrollViewRef.current.scrollTo({
+                              y: cardY - 20,
+                              animated: true,
+                            });
+                          }
+                          onMatchSelect(matchId);
+                        }}
                         activeOpacity={0.7}
                       >
                         <View style={styles.matchContent}>
@@ -570,11 +593,25 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
                   </View>
                   {teamPastMatches.map((match) => {
                     const transformed = transformMatch(match);
+                    const matchId = transformed.id;
                     return (
                       <TouchableOpacity
                         key={match.fixture?.id || match.id}
                         style={styles.matchCard}
-                        onPress={() => onMatchSelect(transformed.id)}
+                        onLayout={(event) => {
+                          const { y } = event.nativeEvent.layout;
+                          matchCardPositions.current[matchId] = y;
+                        }}
+                        onPress={() => {
+                          const cardY = matchCardPositions.current[matchId];
+                          if (cardY !== undefined && scrollViewRef.current) {
+                            scrollViewRef.current.scrollTo({
+                              y: cardY - 20,
+                              animated: true,
+                            });
+                          }
+                          onMatchSelect(matchId);
+                        }}
                         activeOpacity={0.7}
                       >
                         <View style={styles.matchContent}>
@@ -671,11 +708,33 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
                 <View style={styles.liveDot} />
                 <Text style={styles.liveSectionTitle}>Canlı Maçlar ({filteredLiveMatches.length})</Text>
               </View>
-              {filteredLiveMatches.map((match, index) => (
-                <Animated.View key={match.fixture?.id || match.id} entering={FadeInDown.delay(150 + index * 50).springify()} style={styles.liveMatchCardWrapper}>
-                  {renderMatchCard(match, 'live', () => onMatchSelect(String(match.fixture?.id || match.id)))}
-                </Animated.View>
-              ))}
+              {filteredLiveMatches.map((match, index) => {
+                const matchId = String(match.fixture?.id || match.id);
+                return (
+                  <Animated.View 
+                    key={matchId} 
+                    entering={getEnteringAnimation(index)} 
+                    style={styles.liveMatchCardWrapper}
+                    onLayout={(event) => {
+                      // Maç kartı pozisyonunu kaydet
+                      const { y } = event.nativeEvent.layout;
+                      matchCardPositions.current[matchId] = y;
+                    }}
+                  >
+                    {renderMatchCard(match, 'live', () => {
+                      // Maç kartına scroll yap
+                      const cardY = matchCardPositions.current[matchId];
+                      if (cardY !== undefined && scrollViewRef.current) {
+                        scrollViewRef.current.scrollTo({
+                          y: cardY - 20,
+                          animated: true,
+                        });
+                      }
+                      onMatchSelect(matchId);
+                    })}
+                  </Animated.View>
+                );
+              })}
             </View>
           )}
             </>

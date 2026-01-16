@@ -75,7 +75,7 @@ export const PaymentSuccessModal: React.FC<PaymentSuccessModalProps> = ({
 
           <Text style={styles.title}>Ödeme Başarılı! 🎉</Text>
           <Text style={styles.subtitle}>
-            Artık Fan Manager PRO üyesisin!
+            Artık TacticIQ PRO üyesisin!
           </Text>
 
           <View style={styles.detailsContainer}>

@@ -31,7 +31,7 @@ import { Platform } from 'react-native';
 
 // Web için animasyonları devre dışı bırak
 const isWeb = Platform.OS === 'web';
-import { FocusPrediction, TrainingType, SCORING_CONSTANTS } from '../../types/prediction.types';
+import { FocusPrediction, SCORING_CONSTANTS } from '../../types/prediction.types';
 import { SCORING, TEXT, STORAGE_KEYS } from '../../config/constants';
 import { handleError, ErrorType, ErrorSeverity } from '../../utils/GlobalErrorHandler';
 import { predictionsDb } from '../../services/databaseService';
@@ -243,7 +243,6 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
   
   // 🌟 STRATEGIC FOCUS SYSTEM
   const [focusedPredictions, setFocusedPredictions] = useState<FocusPrediction[]>([]);
-  const [selectedTraining, setSelectedTraining] = useState<TrainingType | null>(null);
   
   // Match predictions state - COMPLETE
   const [predictions, setPredictions] = useState({
@@ -304,7 +303,6 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
         matchPredictions: predictions,
         playerPredictions: playerPredictions,
         focusedPredictions: focusedPredictions, // 🌟 Strategic Focus
-        selectedTraining: selectedTraining,      // 💪 Training Multiplier
         timestamp: new Date().toISOString(),
       };
       
@@ -366,16 +364,6 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
           );
         }
 
-        if (selectedTraining) {
-          predictionPromises.push(
-            predictionsDb.createPrediction({
-              user_id: userId,
-              match_id: String(matchData.id),
-              prediction_type: 'training_focus',
-              prediction_value: selectedTraining,
-            })
-          );
-        }
 
         // Execute all database saves
         const results = await Promise.allSettled(predictionPromises);
@@ -470,75 +458,6 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* 🎯 ANTRENMAN ODAĞI SEÇİCİ */}
-        <Animated.View entering={isWeb ? undefined : FadeIn.duration(300)} style={styles.trainingFocusContainer}>
-          <View style={styles.trainingFocusHeader}>
-            <Ionicons name="barbell" size={20} color="#F59E0B" />
-            <Text style={styles.trainingFocusTitle}>Bugünkü Antrenman Odağın</Text>
-            <TouchableOpacity 
-              onPress={() => Alert.alert(
-                'Antrenman Odağı 💪',
-                'Seçtiğin odak, ilgili tahmin kümelerinin puanını %20 artırır!\n\n' +
-                '• Savunma: Disiplin & Fiziksel +20%\n' +
-                '• Hücum: Tempo & Bireysel +20%\n' +
-                '• Orta Saha: Tempo & Disiplin +15%\n' +
-                '• Fiziksel: Fiziksel +25%\n' +
-                '• Taktik: Tempo & Bireysel +15%'
-              )}
-            >
-              <Ionicons name="information-circle-outline" size={18} color="#64748B" />
-            </TouchableOpacity>
-          </View>
-          
-          <ScrollView 
-            horizontal 
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.trainingOptionsScroll}
-          >
-            {[
-              { id: 'defense', label: 'Savunma', icon: 'shield', color: '#3B82F6', effect: 'Disiplin & Fiziksel +20%' },
-              { id: 'attack', label: 'Hücum', icon: 'flash', color: '#EF4444', effect: 'Tempo & Bireysel +20%' },
-              { id: 'midfield', label: 'Orta Saha', icon: 'git-network', color: '#10B981', effect: 'Tempo & Disiplin +15%' },
-              { id: 'physical', label: 'Fiziksel', icon: 'fitness', color: '#F59E0B', effect: 'Fiziksel +25%' },
-              { id: 'tactical', label: 'Taktik', icon: 'analytics', color: '#8B5CF6', effect: 'Tempo & Bireysel +15%' },
-            ].map((training) => {
-              const isSelected = selectedTraining === training.id;
-              return (
-                <TouchableOpacity
-                  key={training.id}
-                  style={[
-                    styles.trainingOption,
-                    isSelected && { 
-                      ...styles.trainingOptionActive,
-                      borderColor: training.color,
-                      backgroundColor: `${training.color}15`,
-                    }
-                  ]}
-                  onPress={() => setSelectedTraining(isSelected ? null : training.id as TrainingType)}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons 
-                    name={training.icon as any} 
-                    size={24} 
-                    color={isSelected ? training.color : '#64748B'} 
-                  />
-                  <Text style={[
-                    styles.trainingOptionLabel,
-                    isSelected && { color: training.color, fontWeight: '600' }
-                  ]}>
-                    {training.label}
-                  </Text>
-                  {isSelected && (
-                    <Text style={[styles.trainingOptionEffect, { color: training.color }]}>
-                      {training.effect}
-                    </Text>
-                  )}
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        </Animated.View>
-
         {/* 🌟 ODAK SİSTEMİ BİLGİLENDİRME */}
         {focusedPredictions.length > 0 && (
           <Animated.View entering={isWeb ? undefined : FadeIn.duration(300)} style={styles.focusInfoBanner}>
@@ -2251,60 +2170,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#9CA3AF',
     marginTop: 2,
-  },
-  
-  // 🎯 Training Focus Styles
-  trainingFocusContainer: {
-    marginHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 12,
-    backgroundColor: 'rgba(30, 41, 59, 0.6)',
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.2)',
-  },
-  trainingFocusHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 12,
-  },
-  trainingFocusTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    flex: 1,
-  },
-  trainingOptionsScroll: {
-    gap: 12,
-    paddingRight: 16,
-  },
-  trainingOption: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    backgroundColor: 'rgba(30, 41, 59, 0.8)',
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: 'rgba(100, 116, 139, 0.3)',
-    alignItems: 'center',
-    minWidth: 120,
-  },
-  trainingOptionActive: {
-    borderWidth: 2,
-    backgroundColor: 'rgba(30, 41, 59, 0.95)',
-  },
-  trainingOptionLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#9CA3AF',
-    marginTop: 6,
-  },
-  trainingOptionEffect: {
-    fontSize: 11,
-    fontWeight: '600',
-    marginTop: 4,
-    textAlign: 'center',
   },
   
   // 🌟 Focus Info Banner

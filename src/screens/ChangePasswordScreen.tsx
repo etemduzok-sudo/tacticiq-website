@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,6 +16,9 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { ScreenLayout, StandardHeader } from '../components/layouts';
 import { textStyles, inputStyles, buttonStyles, cardStyles } from '../utils/styleHelpers';
 import { SPACING, COLORS, BRAND, SIZES, TYPOGRAPHY } from '../theme/theme';
+import { authApi } from '../services/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { logger } from '../utils/logger';
 
 interface ChangePasswordScreenProps {
   onBack: () => void;
@@ -29,8 +33,26 @@ export const ChangePasswordScreen: React.FC<ChangePasswordScreenProps> = ({
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
 
-  const handleSubmit = () => {
+  // Get user email from AsyncStorage
+  useEffect(() => {
+    const loadUserEmail = async () => {
+      try {
+        const userDataStr = await AsyncStorage.getItem('fan-manager-user');
+        if (userDataStr) {
+          const userData = JSON.parse(userDataStr);
+          setUserEmail(userData.email || null);
+        }
+      } catch (error) {
+        logger.error('Error loading user email', { error }, 'CHANGE_PASSWORD');
+      }
+    };
+    loadUserEmail();
+  }, []);
+
+  const handleSubmit = async () => {
     // Validation
     if (!currentPassword || !newPassword || !confirmPassword) {
       Alert.alert('Hata', 'Tüm alanları doldurun');
@@ -47,7 +69,16 @@ export const ChangePasswordScreen: React.FC<ChangePasswordScreenProps> = ({
       return;
     }
 
-    // Success
+    if (!userEmail) {
+      Alert.alert('Hata', 'Kullanıcı bilgisi bulunamadı. Lütfen tekrar giriş yapın.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const result = await authApi.changePassword(currentPassword, newPassword, userEmail);
+      
+      if (result.success) {
     Alert.alert(
       'Başarılı',
       'Şifre başarıyla değiştirildi! ✓\nYeni şifrenizle giriş yapabilirsiniz.',
@@ -63,6 +94,15 @@ export const ChangePasswordScreen: React.FC<ChangePasswordScreenProps> = ({
         },
       ]
     );
+      } else {
+        Alert.alert('Hata', result.error || 'Şifre değiştirilemedi');
+      }
+    } catch (error: any) {
+      logger.error('Change password error', { error }, 'CHANGE_PASSWORD');
+      Alert.alert('Hata', error.message || 'Şifre değiştirilemedi. Lütfen tekrar deneyin.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Password strength indicator
@@ -89,7 +129,7 @@ export const ChangePasswordScreen: React.FC<ChangePasswordScreenProps> = ({
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
             {/* Current Password Card */}
-            <Animated.View entering={FadeInDown.delay(0)} style={styles.card}>
+            <Animated.View entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(0)} style={styles.card}>
               <View style={styles.cardHeader}>
                 <Ionicons name="lock-closed-outline" size={20} color="#059669" />
                 <Text style={styles.cardTitle}>Mevcut Şifre</Text>
@@ -123,7 +163,7 @@ export const ChangePasswordScreen: React.FC<ChangePasswordScreenProps> = ({
             </Animated.View>
 
             {/* New Password Card */}
-            <Animated.View entering={FadeInDown.delay(100)} style={styles.card}>
+            <Animated.View entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(100)} style={styles.card}>
               <View style={styles.cardHeader}>
                 <Ionicons name="lock-closed-outline" size={20} color="#059669" />
                 <Text style={styles.cardTitle}>Yeni Şifre</Text>
@@ -213,20 +253,30 @@ export const ChangePasswordScreen: React.FC<ChangePasswordScreenProps> = ({
             </Animated.View>
 
             {/* Submit Button */}
-            <Animated.View entering={FadeInDown.delay(200)}>
-              <TouchableOpacity onPress={handleSubmit} activeOpacity={0.8}>
+            <Animated.View entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(200)}>
+              <TouchableOpacity 
+                onPress={handleSubmit} 
+                activeOpacity={0.8}
+                disabled={loading}
+              >
                 <LinearGradient
                   colors={['#059669', '#047857']}
-                  style={styles.submitButton}
+                  style={[styles.submitButton, loading && styles.submitButtonDisabled]}
                 >
+                  {loading ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <>
                   <Ionicons name="checkmark" size={20} color="#FFFFFF" />
                   <Text style={styles.submitButtonText}>Şifreyi Değiştir</Text>
+                    </>
+                  )}
                 </LinearGradient>
               </TouchableOpacity>
             </Animated.View>
 
             {/* Security Tips */}
-            <Animated.View entering={FadeInDown.delay(300)} style={styles.tipsBox}>
+            <Animated.View entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(300)} style={styles.tipsBox}>
               <View style={styles.tipsHeader}>
                 <Ionicons name="information-circle" size={16} color="#3B82F6" />
                 <Text style={styles.tipsTitle}>Güvenlik İpuçları</Text>
@@ -343,6 +393,9 @@ const styles = StyleSheet.create({
   },
   submitButtonText: {
     ...buttonStyles.primaryButtonText,
+  },
+  submitButtonDisabled: {
+    opacity: 0.6,
   },
 
   // Tips Box

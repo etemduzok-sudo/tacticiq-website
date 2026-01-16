@@ -19,17 +19,33 @@ import { Animated as RNAnimated } from 'react-native';
 // Web için reanimated'i import etme - sadece native için
 let Animated: any;
 let FadeIn: any, FadeOut: any, SlideInRight: any, SlideOutLeft: any;
+let FadeInDown: any, FadeInUp: any, FadeInLeft: any, FadeInRight: any;
+let ZoomIn: any, ZoomOut: any, Layout: any;
 
 if (Platform.OS === 'web') {
   // Web için basit Animated wrapper
   Animated = {
     View: RNAnimated.View,
+    Text: RNAnimated.Text,
+    Image: RNAnimated.Image,
+    ScrollView: RNAnimated.ScrollView,
+    FlatList: RNAnimated.FlatList,
+    SectionList: RNAnimated.SectionList,
+    createAnimatedComponent: (component: any) => component,
   };
   // Web için basit animasyon hook'ları (no-op)
-  FadeIn = { duration: () => ({}) };
-  FadeOut = { duration: () => ({}) };
-  SlideInRight = { duration: () => ({}) };
-  SlideOutLeft = { duration: () => ({}) };
+  const noop = () => ({});
+  FadeIn = { duration: noop, delay: noop, springify: noop };
+  FadeOut = { duration: noop, delay: noop, springify: noop };
+  SlideInRight = { duration: noop, delay: noop, springify: noop };
+  SlideOutLeft = { duration: noop, delay: noop, springify: noop };
+  FadeInDown = { duration: noop, delay: noop, springify: noop };
+  FadeInUp = { duration: noop, delay: noop, springify: noop };
+  FadeInLeft = { duration: noop, delay: noop, springify: noop };
+  FadeInRight = { duration: noop, delay: noop, springify: noop };
+  ZoomIn = { duration: noop, delay: noop, springify: noop };
+  ZoomOut = { duration: noop, delay: noop, springify: noop };
+  Layout = { duration: noop, delay: noop, springify: noop };
 } else {
   // Native için reanimated kullan - dynamic import ile
   try {
@@ -39,13 +55,28 @@ if (Platform.OS === 'web') {
     FadeOut = Reanimated.FadeOut || { duration: () => ({}) };
     SlideInRight = Reanimated.SlideInRight || { duration: () => ({}) };
     SlideOutLeft = Reanimated.SlideOutLeft || { duration: () => ({}) };
+    FadeInDown = Reanimated.FadeInDown || { duration: () => ({}) };
+    FadeInUp = Reanimated.FadeInUp || { duration: () => ({}) };
+    FadeInLeft = Reanimated.FadeInLeft || { duration: () => ({}) };
+    FadeInRight = Reanimated.FadeInRight || { duration: () => ({}) };
+    ZoomIn = Reanimated.ZoomIn || { duration: () => ({}) };
+    ZoomOut = Reanimated.ZoomOut || { duration: () => ({}) };
+    Layout = Reanimated.Layout || { duration: () => ({}) };
   } catch (e) {
     // Fallback: React Native Animated kullan
     Animated = { View: RNAnimated.View };
-    FadeIn = { duration: () => ({}) };
-    FadeOut = { duration: () => ({}) };
-    SlideInRight = { duration: () => ({}) };
-    SlideOutLeft = { duration: () => ({}) };
+    const noop = () => ({});
+    FadeIn = { duration: noop, delay: noop, springify: noop };
+    FadeOut = { duration: noop, delay: noop, springify: noop };
+    SlideInRight = { duration: noop, delay: noop, springify: noop };
+    SlideOutLeft = { duration: noop, delay: noop, springify: noop };
+    FadeInDown = { duration: noop, delay: noop, springify: noop };
+    FadeInUp = { duration: noop, delay: noop, springify: noop };
+    FadeInLeft = { duration: noop, delay: noop, springify: noop };
+    FadeInRight = { duration: noop, delay: noop, springify: noop };
+    ZoomIn = { duration: noop, delay: noop, springify: noop };
+    ZoomOut = { duration: noop, delay: noop, springify: noop };
+    Layout = { duration: noop, delay: noop, springify: noop };
   }
 }
 // import './src/i18n'; // Initialize i18n - Temporarily disabled for web debugging
@@ -222,6 +253,7 @@ if (Platform.OS === 'web') {
 // Screens
 import SplashScreen from './src/screens/SplashScreen';
 import LanguageSelectionScreen from './src/screens/LanguageSelectionScreen';
+import { AgeGateScreen } from './src/screens/AgeGateScreen';
 import AuthScreen from './src/screens/AuthScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
 import ForgotPasswordScreen from './src/screens/ForgotPasswordScreen';
@@ -245,6 +277,7 @@ import { DatabaseTestScreen } from './src/screens/DatabaseTestScreen';
 type Screen =
   | 'splash'
   | 'language'
+  | 'age-gate'
   | 'auth'
   | 'register'
   | 'forgot-password'
@@ -399,9 +432,20 @@ export default function App() {
   const handleLanguageSelect = async (lang: string) => {
     logger.info('Language selected', { lang }, 'LANGUAGE');
     await AsyncStorage.setItem('fan-manager-language', lang);
-    logNavigation('auth');
+    
+    // ✅ Her zaman age-gate'e yönlendir (yaş ve yasal bilgilendirme tek ekranda)
+    logNavigation('age-gate');
     setPreviousScreen(currentScreen);
-    setCurrentScreen('auth');
+    setCurrentScreen('age-gate');
+  };
+
+  // 2.5. Age Gate & Consent Complete (Birleştirilmiş ekran)
+  const handleAgeGateComplete = async (isMinor: boolean) => {
+    logger.info('Age gate and consent complete', { isMinor }, 'AGE_GATE');
+    // Artık AgeGateScreen içinde consent de var, direkt register'a yönlendir (auth'dan önce)
+    logNavigation('register');
+    setPreviousScreen(currentScreen);
+    setCurrentScreen('register');
   };
 
   // 3. Auth → Login Success
@@ -695,6 +739,14 @@ export default function App() {
               onLanguageSelect={handleLanguageSelect}
             />,
             'language'
+          );
+        
+        case 'age-gate':
+          return wrapWithAnimation(
+            <AgeGateScreen
+              onComplete={handleAgeGateComplete}
+            />,
+            'age-gate'
           );
         
         case 'auth':

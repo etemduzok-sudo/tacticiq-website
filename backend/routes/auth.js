@@ -73,6 +73,66 @@ router.post('/send-welcome', async (req, res) => {
   }
 });
 
+// Şifre değiştirme
+router.post('/change-password', async (req, res) => {
+  try {
+    const { currentPassword, newPassword, email } = req.body;
+
+    // Validation
+    if (!currentPassword || !newPassword || !email) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Mevcut şifre, yeni şifre ve email gerekli' 
+      });
+    }
+
+    // Şifre uzunluk kontrolü
+    if (newPassword.length < 6) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Yeni şifre en az 6 karakter olmalıdır' 
+      });
+    }
+
+    // Mevcut şifreyi doğrula (Supabase ile)
+    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+      email: email,
+      password: currentPassword,
+    });
+
+    if (signInError || !signInData.user) {
+      return res.status(401).json({ 
+        success: false,
+        error: 'Mevcut şifre yanlış' 
+      });
+    }
+
+    // Yeni şifreyi güncelle
+    const { error: updateError } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+
+    if (updateError) {
+      console.error('Update password error:', updateError);
+      return res.status(500).json({ 
+        success: false,
+        error: 'Şifre güncellenemedi: ' + updateError.message 
+      });
+    }
+
+    res.json({ 
+      success: true,
+      message: 'Şifre başarıyla değiştirildi' 
+    });
+  } catch (error) {
+    console.error('Change password error:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Sunucu hatası' 
+    });
+  }
+});
+
 // Kullanıcı adı müsaitlik kontrolü
 router.get('/check-username/:username', async (req, res) => {
   try {

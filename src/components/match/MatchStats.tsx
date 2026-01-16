@@ -221,14 +221,14 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
                   <View style={styles.progressBarContainer}>
                     <View style={styles.progressBar}>
                       <Animated.View
-                        entering={FadeIn.delay(index * 30 + 200).duration(600)}
+                        entering={isWeb ? undefined : FadeIn.delay(index * 30 + 200).duration(600)}
                         style={[
                           styles.progressBarHome,
                           { width: `${homePercent}%` }
                         ]}
                       />
                       <Animated.View
-                        entering={FadeIn.delay(index * 30 + 200).duration(600)}
+                        entering={isWeb ? undefined : FadeIn.delay(index * 30 + 200).duration(600)}
                         style={[
                           styles.progressBarAway,
                           { width: `${awayPercent}%` }

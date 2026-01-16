@@ -52,7 +52,7 @@ const matchData = {
 
 const tabs = [
   { id: 'squad', label: 'Kadro', icon: 'people' },
-  { id: 'prediction', label: 'Tahmin', icon: 'target' },
+  { id: 'prediction', label: 'Tahmin', icon: 'analytics' },
   { id: 'live', label: 'Canlı', icon: 'pulse' },
   { id: 'stats', label: 'İstatistik', icon: 'bar-chart' },
   { id: 'ratings', label: 'Reyting', icon: 'star' },
@@ -192,8 +192,9 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad' }: MatchDeta
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
 
-      {/* Sticky Match Card Header */}
-      <View style={styles.matchCard}>
+      {/* Sticky Match Card Header - ProfileCard overlay gibi */}
+      <View style={styles.matchCardOverlay}>
+        <View style={styles.matchCard}>
         {/* Home Team Color Bar - Left */}
         <LinearGradient
           colors={matchData.homeTeam.color}
@@ -249,6 +250,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad' }: MatchDeta
             <Text style={styles.managerName}>{matchData.awayTeam.manager}</Text>
           </View>
         </View>
+        </View>
       </View>
 
       {/* Tab Content */}
@@ -256,8 +258,9 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad' }: MatchDeta
         {renderContent()}
       </View>
 
-      {/* Bottom Navigation - 6 Tabs */}
-      <View style={styles.bottomNav}>
+      {/* Bottom Navigation - 6 Tabs - BottomNavigation gibi */}
+      <View style={styles.bottomNavOverlay}>
+        <View style={styles.bottomNav}>
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
           return (
@@ -278,6 +281,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad' }: MatchDeta
             </TouchableOpacity>
           );
         })}
+        </View>
       </View>
     </View>
   );
@@ -287,16 +291,49 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#0F172A',
-    paddingTop: Platform.OS === 'ios' ? 52 : 8, // ✅ iOS: 44px status bar + 8px padding, Android: 8px
+    paddingTop: Platform.OS === 'ios' ? 44 : 0, // ✅ iOS: Status bar için alan
+  },
+  
+  // Match Card Overlay - ProfileCard overlay gibi
+  matchCardOverlay: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 44 : 0,
+    left: 0,
+    right: 0,
+    zIndex: 9999,
+    elevation: 10,
+    backgroundColor: '#1E293B', // ✅ Profil kartı ile aynı renk
+    borderBottomLeftRadius: 25, // ✅ Profil kartı gibi yuvarlatılmış alt köşeler
+    borderBottomRightRadius: 25,
+    borderTopWidth: 1, // ✅ İnce üst çizgi
+    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+    borderBottomWidth: 2, // ✅ Kalın alt çizgi
+    borderBottomColor: '#334155',
+    paddingTop: 8,
+    paddingBottom: 8,
+    paddingHorizontal: 0,
+    pointerEvents: 'box-none',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 10,
+      },
+      web: {
+        boxShadow: '0 4px 8px rgba(0, 0, 0, 0.3)',
+      },
+    }),
   },
   
   // Match Card Header
   matchCard: {
-    backgroundColor: '#1E293B',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(5, 150, 105, 0.2)',
-    paddingTop: Platform.OS === 'ios' ? 50 : 10,
-    paddingBottom: 12,
+    backgroundColor: 'transparent',
+    paddingTop: 0,
+    paddingBottom: 0,
     position: 'relative',
     overflow: 'hidden',
   },
@@ -403,6 +440,8 @@ const styles = StyleSheet.create({
   // Content
   contentContainer: {
     flex: 1,
+    paddingTop: Platform.OS === 'ios' ? 200 : 156, // ✅ Match card overlay yüksekliği için padding (iOS: 44 status + ~156 card, Android: ~156 card)
+    paddingBottom: Platform.OS === 'ios' ? 100 : 80, // ✅ Bottom nav için padding (iOS: 80 nav + 20 safe area, Android: 80 nav)
   },
   
   // Placeholder
@@ -433,13 +472,43 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   
+  // Bottom Navigation Overlay - BottomNavigation gibi
+  bottomNavOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    zIndex: 9999,
+    elevation: 10,
+    backgroundColor: '#0F172A', // ✅ BottomNavigation ile aynı renk
+    borderTopLeftRadius: 25, // ✅ Yuvarlatılmış üst köşeler
+    borderTopRightRadius: 25,
+    borderTopWidth: 2, // ✅ Üst çizgi
+    borderTopColor: '#334155',
+    paddingTop: 8,
+    paddingBottom: Platform.OS === 'ios' ? 20 : 8,
+    pointerEvents: 'box-none',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -4 }, // ✅ Yukarı doğru gölge
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 10,
+      },
+      web: {
+        boxShadow: '0 -4px 8px rgba(0, 0, 0, 0.3)',
+      },
+    }),
+  },
+  
   // Bottom Navigation
   bottomNav: {
     flexDirection: 'row',
-    backgroundColor: '#1E293B',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(5, 150, 105, 0.2)',
-    paddingBottom: Platform.OS === 'ios' ? 20 : 8,
+    backgroundColor: 'transparent',
+    paddingTop: 0,
   },
   tab: {
     flex: 1,

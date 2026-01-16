@@ -934,8 +934,8 @@ const FormationModal = ({ visible, formations, formationType, onSelect, onClose,
       >
         <View style={styles.modalOverlay}>
           <Animated.View 
-            entering={SlideInDown.duration(300)}
-            exiting={SlideOutDown.duration(300)}
+            entering={Platform.OS === 'web' ? undefined : SlideInDown.duration(300)}
+            exiting={Platform.OS === 'web' ? undefined : SlideOutDown.duration(300)}
             style={styles.modalContent}
           >
             {/* Header */}
@@ -1233,8 +1233,8 @@ const PlayerDetailModal = ({ player, onClose }: any) => {
     >
       <View style={styles.modalOverlay}>
         <Animated.View 
-          entering={SlideInDown.duration(300)}
-          exiting={SlideOutDown.duration(300)}
+          entering={Platform.OS === 'web' ? undefined : SlideInDown.duration(300)}
+          exiting={Platform.OS === 'web' ? undefined : SlideOutDown.duration(300)}
           style={styles.playerDetailModal}
         >
           {/* Header */}

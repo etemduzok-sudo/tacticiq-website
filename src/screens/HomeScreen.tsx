@@ -53,7 +53,7 @@ export default function HomeScreen({ onMatchSelect, onProfileClick }: HomeScreen
             <Text style={[styles.greeting, { color: colors.textSecondary }]}>
               Hoş Geldiniz
             </Text>
-            <Text style={[styles.userName, { color: colors.text }]}>Fan Manager</Text>
+            <Text style={[styles.userName, { color: colors.text }]}>TacticIQ</Text>
           </View>
           <TouchableOpacity onPress={onProfileClick}>
             <View>

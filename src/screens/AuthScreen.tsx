@@ -10,6 +10,7 @@ import {
   SafeAreaView,
   ActivityIndicator,
   Alert,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -211,7 +212,11 @@ export default function AuthScreen({
               >
               {/* [B] BRAND ZONE */}
               <View style={styles.brandZone}>
-                <Text style={styles.logoText}>FM 2026</Text>
+                <Image
+                  source={require('../../assets/logo.png')}
+                  style={styles.logoImage}
+                  resizeMode="contain"
+                />
               </View>
 
               {/* [C] PRIMARY ACTION ZONE - Social Buttons */}
@@ -418,12 +423,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  logoText: {
-    ...TYPOGRAPHY.h1,
-    fontSize: 32,
-    fontWeight: '700',
-    color: BRAND.white,
-    letterSpacing: 3,
+  logoImage: {
+    width: 96,
+    height: 96,
   },
   
   // [C] PRIMARY ACTION ZONE - Social Buttons

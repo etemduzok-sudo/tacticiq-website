@@ -6,82 +6,124 @@ import {
   StyleSheet,
   ScrollView,
   SafeAreaView,
+  Image,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import { useTranslation } from '../hooks/useTranslation';
 
 interface LegalDocumentScreenProps {
   documentType: string;
   onBack: () => void;
 }
 
-// Legal content data
+// Legal content data - Updated according to comprehensive legal documentation
 const LEGAL_CONTENT: Record<string, { title: string; content: string }> = {
   terms: {
-    title: 'Kullanım Koşulları',
-    content: `Son Güncelleme: 31 Aralık 2024
+    title: 'Kullanım Koşulları (EULA)',
+    content: `Son Güncelleme: 1 Ocak 2026
 
-1. GENEL HÜKÜMLER
-Fan Manager 2026 ("Uygulama") kullanımı aşağıdaki şartlara tabidir. Uygulamayı kullanarak bu koşulları kabul etmiş sayılırsınız.
+1. GİRİŞ VE KABUL
+İşbu Kullanım Koşulları ("Koşullar"), TacticIQ ("Şirket") ile sizin ("Kullanıcı") arasında, TacticIQ mobil uygulaması ("Hizmet") kullanımıyla ilgili yasal bir sözleşmedir. Oyunu indirerek, kurarak veya kullanarak bu koşulları kabul etmiş sayılırsınız.
 
-2. HİZMET TANIMI
-Fan Manager 2026, kullanıcılara sanal futbol yönetimi deneyimi sunan bir eğlence platformudur. Tüm tahminler ve sonuçlar simülasyona dayalıdır.
+2. SANAL ÖĞELER VE PARA BİRİMİ
+Hizmet, "Altın", "Elmas" veya diğer sanal varlıkları ("Sanal Öğeler") içerebilir.
 
-3. KULLANICI SORUMLULUKLARI
-• Hesap bilgilerinizin güvenliğinden siz sorumlusunuz
-• 18 yaş altı kullanıcılar ebeveyn onayı almalıdır
-• Platformu kötüye kullanmamayı kabul edersiniz
+Mülkiyet Yoktur: Sanal Öğeler üzerindeki hiçbir mülkiyet hakkına sahip değilsiniz. Şirket, size yalnızca bu öğeleri oyun içinde kullanmanız için sınırlı, geri alınabilir, devredilemez bir lisans verir.
 
-4. FİKRİ MÜLKİYET HAKLARI
-Uygulamadaki tüm içerik, tasarım ve kodlar telif hakkı ile korunmaktadır.
+Nakit Değeri Yoktur: Sanal Öğeler gerçek paraya çevrilemez, iade edilemez veya Şirket dışında satılamaz.
 
-5. SINIRLAMALAR
-Hizmetlerimiz "olduğu gibi" sunulmaktadır. Kesintisiz erişim garantisi verilmemektedir.
+Loot Box (Ganimet Kutusu) Şeffaflığı: Oyun içindeki şans bazlı kutuların (Loot Boxes) içerik düşme oranları (Drop Rates), satın alma ekranında erişilebilir durumdadır. Belçika ve Hollanda kullanıcıları için loot box satın alma özelliği yasaklanmıştır.
 
-6. DEĞİŞİKLİKLER
-Bu koşullar bildirimde bulunmaksızın güncellenebilir.
+3. FİKRİ MÜLKİYET VE TELİF HAKKI
+Hizmetin tüm hakları, unvanı ve menfaatleri (kodlar, grafikler, sesler, karakterler) Şirket'e aittir.
 
-7. İLETİŞİM
-Sorularınız için: info@fanmanager2026.com`,
+Kullanıcı İçeriği (UGC): Oyuna yüklediğiniz veya oluşturduğunuz içeriklerin telif hakkı ihlali içermediğini beyan edersiniz. Şirket, DMCA kapsamında telif hakkı ihlali bildirimi aldığında içeriği kaldırma hakkını saklı tutar.
+
+Tersine Mühendislik: Oyunun kaynak kodunu çözmek, kopyalamak veya "modlu" (hileli) versiyonlarını dağıtmak kesinlikle yasaktır ve yasal işlem sebebidir.
+
+4. CAYMA HAKKI - BÖLGESEL KURALLAR
+
+Avrupa Birliği ve Fransa Kullanıcıları İçin:
+Dijital içerik (sanal öğeler) satın aldığınızda, içeriğin ifasının (teslimatının) hemen başladığını kabul edersiniz. Bu nedenle, satın alma işlemi tamamlandığında 14 günlük cayma hakkınızdan feragat ettiğinizi açıkça beyan edersiniz.
+
+Türkiye Kullanıcıları İçin:
+Mesafeli Sözleşmeler Yönetmeliği Madde 15/ğ uyarınca, elektronik ortamda anında ifa edilen hizmetler ve tüketiciye anında teslim edilen gayrimaddi mallar (sanal para/öğe) cayma hakkı kapsamı dışındadır. İade yapılmaz.
+
+Güney Kore Kullanıcıları İçin:
+Kullanıcı sanal parayı satın aldı ancak hiç harcamadıysa, 7 gün içinde koşulsuz iade hakkı vardır.
+
+5. HESAP KAPATMA (TERMINATION)
+Şirket, hile yapılması (cheating), bot kullanımı, nefret söylemi veya bu Koşulların ihlali durumunda hesabınızı önceden bildirimde bulunmaksızın kapatma hakkını saklı tutar. Kapatılan hesaplardaki Sanal Öğeler için iade yapılmaz.
+
+6. SINIRLAMALAR VE SORUMLULUK REDDİ
+Hizmetlerimiz "olduğu gibi" sunulmaktadır. Kesintisiz erişim garantisi verilmemektedir. Şirket, uygulamadan kaynaklanan dolaylı, arızi, özel veya sonuç zararlarından sorumlu tutulamaz.
+
+7. DEĞİŞİKLİKLER
+Bu koşullar bildirimde bulunmaksızın güncellenebilir. Güncel versiyon her zaman uygulama içinde erişilebilir durumdadır.
+
+8. İLETİŞİM
+Sorularınız için: legal@tacticiq.app
+Destek: support@tacticiq.app`,
   },
   privacy: {
-    title: 'Gizlilik Politikası',
-    content: `Son Güncelleme: 31 Aralık 2024
+    title: 'Küresel Gizlilik Politikası',
+    content: `Son Güncelleme: 1 Ocak 2026
 
-1. TOPLANAN BİLGİLER
-• E-posta adresi
-• Kullanıcı adı
-• Oyun içi aktivite verileri
-• Cihaz bilgileri
+1. VERİ TOPLAMA VE KULLANIM
+Cihaz kimliği (Device ID), IP adresi, genel konum verisi ve oyun içi aktivitelerinizi; oyunu geliştirmek, hileleri önlemek ve (onayınız varsa) size özel reklamlar sunmak için işliyoruz.
 
-2. BİLGİ KULLANIMI
-Topladığımız veriler:
-• Hizmet sunumu için
-• Kullanıcı deneyimini iyileştirmek için
-• İletişim amaçlı
-• Güvenlik ve dolandırıcılık önleme için
+2. BÖLGESEL GİZLİLİK HAKLARI
 
-3. BİLGİ PAYLAŞIMI
-Bilgileriniz üçüncü taraflarla satılmaz veya paylaşılmaz. Yalnızca yasal zorunluluk durumunda paylaşılabilir.
+A. TÜRKİYE (KVKK - Kişisel Verilerin Korunması Kanunu)
+Türkiye Cumhuriyeti sınırları içindeki kullanıcılar için:
 
-4. ÇEREZLER
-Uygulama deneyimini iyileştirmek için çerezler kullanılmaktadır.
+Veri Sorumlusu: TacticIQ
+Adres: [Şirket Adresi]
+E-posta: kvkk@tacticiq.app
 
-5. GÜVENLİK
-Verileriniz endüstri standardı güvenlik protokolleri ile korunmaktadır.
+Açık Rıza (Explicit Consent): Pazarlama ve yurt dışına veri aktarımı faaliyetleri için "Açık Rıza Metni"ni oyunun açılışında ayrıca onaylamanız gerekmektedir. KVKK 5. ve 9. maddeleri uyarınca verileriniz işlenmektedir.
 
-6. HAKLARINIZ
-• Verilerinize erişim hakkı
-• Veri silme talebi
-• Veri taşınabilirliği
+Başvuru Hakları: KVKK Madde 11 kapsamındaki haklarınızı kullanmak için kvkk@tacticiq.app adresine başvurabilirsiniz.
+
+İYS (İleti Yönetim Sistemi): Size gönderilen ticari elektronik iletileri (Push Bildirim, SMS) İYS üzerinden yönetebilirsiniz.
+
+B. AVRUPA (GDPR) & FRANSA
+Veri İşleme Temeli: Oyunun çalışması için gerekli veriler "Sözleşmenin İfası" (Art 6.1.b), analitik veriler "Meşru Menfaat" (Art 6.1.f) ve reklamlar "Açık Rıza" (Art 6.1.a) temelinde işlenir.
+
+Haklarınız: Verilerinizi silme (Unutulma Hakkı), taşıma ve işlemeyi kısıtlama hakkına sahipsiniz.
+
+C. ABD (CCPA/CPRA & COPPA)
+Çocuklar (COPPA): 13 yaşından küçükseniz, ebeveyninizin doğrulanmış izni olmadan kişisel verilerinizi toplamayız. Oyunumuzda yaş doğrulama (Age Gate) sistemi mevcuttur.
+
+Veri Satışı (Do Not Sell): Kaliforniya sakinleri, "Kişisel Bilgilerimi Satma veya Paylaşma" (Do Not Sell or Share My Personal Information) hakkına sahiptir. Bu hakkı Ayarlar menüsünden kullanabilirsiniz.
+
+D. ÇİN (PIPL)
+Çinli kullanıcıların verileri, Çin anakarasındaki sunucularda saklanır ve sınır dışına çıkarılmaz. Gerçek İsim Doğrulama (Real Name Verification) sistemi zorunludur.
+
+E. BREZİLYA (LGPD) ve NİJERYA (NDPA)
+Brezilya ve Nijerya kullanıcıları için atanmış Veri Koruma Görevlisi (DPO) İletişim: dpo@tacticiq.app
+
+3. ULUSLARARASI VERİ AKTARIMI
+Küresel ölçekte hizmet verebilmemiz için verileriniz yurt dışındaki sunuculara aktarılabilir. Avrupa Ekonomik Alanı (EEA) dışına aktarım için Standart Sözleşme Maddeleri (SCC) kullanılmaktadır. Türkiye kullanıcıları için açık rıza gereklidir.
+
+4. ÇOCUK GİZLİLİĞİ
+Hizmetimiz çocukların kullanımına izin verir ancak katı koşullar altında. Eğer bir ebeveynseniz ve çocuğunuzun verilerinin doğrulanmadan toplandığına inanıyorsanız, lütfen bizimle iletişime geçin.
+
+5. ÇEREZLER VE İZLEME
+Uygulama deneyimini iyileştirmek için çerezler ve benzeri teknolojiler kullanılmaktadır. Çerez tercihlerinizi Ayarlar menüsünden yönetebilirsiniz.
+
+6. GÜVENLİK
+Verileriniz endüstri standardı güvenlik protokolleri (SSL/TLS şifreleme) ile korunmaktadır.
 
 7. İLETİŞİM
-privacy@fanmanager2026.com`,
+Gizlilik ile ilgili sorularınız için: privacy@tacticiq.app`,
   },
   cookies: {
     title: 'Çerez Politikası',
-    content: `Son Güncelleme: 31 Aralık 2024
+    content: `Son Güncelleme: 1 Ocak 2026
 
 1. ÇEREZ NEDİR?
 Çerezler, web sitesini ziyaret ettiğinizde cihazınızda saklanan küçük metin dosyalarıdır.
@@ -108,45 +150,55 @@ d) Analitik Çerezler
 • A/B testleri
 • Optimizasyon
 
+e) Pazarlama Çerezleri
+• Kişiselleştirilmiş reklamlar
+• Reklam performans ölçümü
+• Çapraz site takibi
+
 3. ÇEREZ YÖNETİMİ
-Tarayıcı ayarlarınızdan çerezleri yönetebilirsiniz. Ancak bazı çerezleri devre dışı bırakmak site işlevselliğini etkileyebilir.
+Tarayıcı ayarlarınızdan veya uygulama içi Ayarlar menüsünden çerezleri yönetebilirsiniz. Ancak bazı çerezleri devre dışı bırakmak site işlevselliğini etkileyebilir.
 
 4. ÜÇÜNCÜ TARAF ÇEREZLERİ
-Google Analytics gibi hizmetler kendi çerezlerini kullanabilir.
+Google Analytics, Facebook Pixel gibi hizmetler kendi çerezlerini kullanabilir. Bu çerezlerin kullanımı için ilgili hizmetlerin gizlilik politikalarına bakınız.
 
 5. İLETİŞİM
-cookies@fanmanager2026.com`,
+Çerezler ile ilgili sorularınız için: cookies@tacticiq.app`,
   },
   kvkk: {
     title: 'KVKK Aydınlatma Metni',
     content: `6698 Sayılı Kişisel Verilerin Korunması Kanunu Uyarınca Aydınlatma Metni
 
+Son Güncelleme: 1 Ocak 2026
+
 1. VERİ SORUMLUSU
-Fan Manager 2026
+Veri Sorumlusu: TacticIQ
 Adres: [Şirket Adresi]
-E-posta: kvkk@fanmanager2026.com
+E-posta: kvkk@tacticiq.app
 
-2. KİŞİSEL VERİLERİN İŞLENME AMAÇLARI
-• Üyelik işlemlerinin yürütülmesi
-• Hizmet sunumu ve geliştirme
-• İletişim faaliyetleri
-• Yasal yükümlülüklerin yerine getirilmesi
-• Güvenlik önlemleri
+6698 sayılı Kişisel Verilerin Korunması Kanunu ("KVKK") uyarınca; oyun deneyiminizi sağlamak, hesap güvenliğinizi temin etmek ve hizmetlerimizi geliştirmek amacıyla kişisel verilerinizi işlemekteyiz.
 
-3. İŞLENEN KİŞİSEL VERİLER
-• Kimlik bilgileri (ad, soyad)
-• İletişim bilgileri (e-posta, telefon)
-• Kullanıcı işlem bilgileri
-• Konum bilgileri (opsiyonel)
+2. İŞLENEN KİŞİSEL VERİLERİNİZ
 
-4. VERİLERİN AKTARILMASI
+Kimlik ve İletişim Bilgileri: Kullanıcı adı (Nickname), e-posta adresi (hesap bağlamanız halinde), sosyal medya ID'si.
+
+İşlem Güvenliği Bilgileri: IP adresi, cihaz kimliği (Device ID), giriş-çıkış logları.
+
+Oyun İçi Veriler: Seviye bilgisi, envanter, satın alma geçmişi, tahmin geçmişi, puanlar.
+
+3. VERİ İŞLEME AMAÇLARI VE HUKUKİ SEBEPLER
+Verileriniz, KVKK m. 5/2-c bendi uyarınca "Sözleşmenin kurulması ve ifası" (oyunun oynatılması) ve m. 5/2-f bendi uyarınca "Veri sorumlusunun meşru menfaati" (hile tespiti, güvenlik) hukuki sebeplerine dayalı olarak işlenmektedir.
+
+4. YURT DIŞINA AKTARIM
+Oyun sunucularımızın küresel ölçekte hizmet verebilmesi adına konumlu veri merkezlerinde barındırılması sebebiyle, kişisel verileriniz KVKK m. 9/1 uyarınca AÇIK RIZANIZA istinaden yurt dışına aktarılmaktadır. (Rıza vermemeniz halinde oyun hizmeti sunulamayabilir).
+
+5. VERİLERİN AKTARILDIĞI TARAFLAR
 Verileriniz yalnızca:
-• Yasal yükümlülük
-• Hizmet sağlayıcılar (sunucu, analitik)
-• Sizin açık rızanız
-durumlarında aktarılır.
+• Yasal yükümlülük durumunda yasal mercilere
+• Hizmet sağlayıcılarına (sunucu, analitik, ödeme işlemcileri)
+• Sizin açık rızanızla pazarlama ortaklarına
+aktarılır.
 
-5. HAKLARINIZ (KVKK Madde 11)
+6. HAKLARINIZ (KVKK Madde 11)
 • Kişisel verilerinizin işlenip işlenmediğini öğrenme
 • İşlenmişse buna ilişkin bilgi talep etme
 • İşlenme amacını ve amacına uygun kullanılıp kullanılmadığını öğrenme
@@ -157,17 +209,18 @@ durumlarında aktarılır.
 • Münhasıran otomatik sistemler ile analiz edilmesine itiraz etme
 • Kanuna aykırı işlenmesi sebebiyle zarara uğraması hâlinde zararın giderilmesini talep etme
 
-6. BAŞVURU YOLLARI
-kvkk@fanmanager2026.com
-[Posta Adresi]
+7. BAŞVURU YOLLARI
+KVKK kapsamındaki haklarınızı kullanmak için:
+E-posta: kvkk@tacticiq.app
+Posta: [Posta Adresi]
 
-Son Güncelleme: 31 Aralık 2024`,
+Ayrıca Kişisel Verileri Koruma Kurulu'na şikayette bulunabilirsiniz.`,
   },
   consent: {
-    title: 'Açık Rıza Metni',
+    title: 'KVKK Açık Rıza Beyanı',
     content: `AÇIK RIZA METNİ
 
-6698 sayılı Kişisel Verilerin Korunması Kanunu ("KVKK") kapsamında, Fan Manager 2026 tarafından:
+6698 sayılı Kişisel Verilerin Korunması Kanunu ("KVKK") kapsamında, TacticIQ tarafından:
 
 AYDINLATMA:
 • Kişisel verilerinizin işleneceği konusunda aydınlatıldım
@@ -191,17 +244,18 @@ Aşağıdaki kişisel verilerimin işlenmesine ve aktarılmasına AÇIK RIZA gö
 • Güvenlik ve dolandırıcılık önleme
 • Yasal yükümlülüklerin yerine getirilmesi
 • Pazarlama ve kampanya bildirimleri
+• Yurt dışına veri aktarımı (sunucu altyapısı için)
 
 AKTARIM:
 Verilerimin yalnızca hizmet kalitesinin artırılması, yasal yükümlülüklerin yerine getirilmesi ve yukarıda belirtilen amaçlarla sınırlı olmak üzere iş ortaklarına, hizmet sağlayıcılarına ve yasal mercilere aktarılabileceğini kabul ediyorum.
 
 HAKLARIM:
-Bu rızamı her zaman geri çekebileceğimi, KVKK m.11 kapsamındaki haklarımı kullanabileceğimi biliyorum.
+Bu rızamı her zaman geri çekebileceğimi, KVKK m.11 kapsamındaki haklarımı kullanabileceğimi biliyorum. Rızamı geri çekmem durumunda bazı hizmetlerden faydalanamayabileceğimi kabul ediyorum.
 
 Rıza Tarihi: [Kayıt Tarihi]
 Kullanıcı: [Kullanıcı Adı]
 
-İletişim: consent@fanmanager2026.com`,
+İletişim: consent@tacticiq.app`,
   },
   sales: {
     title: 'Mesafeli Satış Sözleşmesi',
@@ -209,13 +263,16 @@ Kullanıcı: [Kullanıcı Adı]
 
 6502 Sayılı Tüketicinin Korunması Hakkında Kanun ve Mesafeli Sözleşmeler Yönetmeliği Uyarınca
 
+Son Güncelleme: 1 Ocak 2026
+
 1. TARAFLAR
 
 SATICI:
-Ünvan: Fan Manager 2026
+Ünvan: TacticIQ
 Adres: [Şirket Adresi]
-E-posta: sales@fanmanager2026.com
+E-posta: sales@tacticiq.app
 Telefon: [Telefon]
+Mersis No: [Varsa Mersis No]
 
 ALICI:
 Sözleşmeyi onaylayan kullanıcı
@@ -224,20 +281,22 @@ Sözleşmeyi onaylayan kullanıcı
 İşbu sözleşme, alıcının satıcıdan elektronik ortamda sipariş verdiği aşağıda nitelikleri belirtilen dijital içerik/premium üyelik hizmetinin satış ve teslim şartlarını düzenler.
 
 3. ÜRÜN/HİZMET BİLGİLERİ
-• Premium Üyelik Paketi
+• Premium Üyelik Paketi (Aylık/Yıllık)
 • Pro Özellikler Erişimi
 • Reklamsız Deneyim
-• Özel İstatistikler
+• Özel İstatistikler ve Analizler
+• Öncelikli Destek
 
 4. ÖDEME BİLGİLERİ
-Toplam ücret uygulama içinde gösterilir ve ödeme anında onaylanır.
+Toplam ücret uygulama içinde gösterilir ve ödeme anında onaylanır. Ödeme, App Store veya Google Play üzerinden gerçekleştirilir.
 
 5. CAYMA HAKKI
-Dijital içerik teslimatı başladığı için cayma hakkı bulunmamaktadır (TKHK m.15/1-ğ).
+Dijital içerik teslimatı başladığı için cayma hakkı bulunmamaktadır (TKHK m.15/1-ğ). Ancak, Güney Kore kullanıcıları için harcanmamış sanal para bakiyesi 7 gün içinde iade edilebilir.
 
 6. SORUMLULUKLAR
 • Satıcı hizmeti kesintisiz sunmayı taahhüt eder
 • Alıcı hesap güvenliğinden sorumludur
+• Satıcı, teknik sorunlar nedeniyle hizmet kesintilerinden sorumlu tutulamaz
 
 7. UYUŞMAZLIKLARIN ÇÖZÜMÜ
 İşbu sözleşmeden doğan uyuşmazlıklarda Türkiye Cumhuriyeti yasaları uygulanır. Tüketici Hakem Heyetleri ve Tüketici Mahkemeleri yetkilidir.
@@ -247,8 +306,59 @@ Alıcı, ödemeyi tamamladığında bu sözleşmeyi kabul etmiş sayılır.
 
 Tarih: [Satın Alma Tarihi]
 
-İletişim: sales@fanmanager2026.com
-Destek: support@fanmanager2026.com`,
+İletişim: sales@tacticiq.app
+Destek: support@tacticiq.app`,
+  },
+  copyright: {
+    title: 'Telif Hakkı Bildirimi',
+    content: `TELİF HAKKI BİLDİRİMİ
+
+Copyright © 2026 TacticIQ. Tüm Hakları Saklıdır / All Rights Reserved.
+
+TacticIQ is a trademark of TacticIQ.
+
+Bu uygulama ve içeriği (kodlar, grafikler, sesler, karakterler, tasarımlar) telif hakkı yasaları ile korunmaktadır. İzinsiz kopyalama, dağıtma veya kullanım yasaktır.
+
+DMCA BİLDİRİMİ:
+Fikri mülkiyet haklarınıza saygı duyuyoruz. Eğer bu uygulamada telif hakkınızı ihlal eden bir içerik olduğuna inanıyorsanız, lütfen aşağıdaki bilgilerle bizimle iletişime geçin:
+
+• İhlal edildiğini düşündüğünüz içeriğin tanımı
+• Telif hakkı sahibinin bilgileri
+• İletişim bilgileriniz
+• İyi niyet beyanı
+
+İletişim: legal@tacticiq.app
+
+Tersine mühendislik, kod çözme veya uygulamanın modlu/hileli versiyonlarını oluşturma kesinlikle yasaktır ve yasal işlem sebebidir.`,
+  },
+  china: {
+    title: 'Sağlıklı Oyun Tavsiyesi (Çin)',
+    content: `健康游戏忠告
+
+抵制不良游戏，拒绝盗版游戏。
+注意自我保护，谨防受骗上当。
+适度游戏益脑，沉迷游戏伤身。
+合理安排时间，享受健康生活。
+
+---
+
+SAĞLIKSIZ OYUNLARI BOYKOT ET, KORSANI REDDET.
+KENDİNİ KORU, DOLANDIRICILARA DİKKAT ET.
+ÖLÇÜLÜ OYUN ZEKAYI GELİŞTİRİR, AŞIRI BAĞIMLILIK VÜCUDA ZARAR VERİR.
+ZAMANINI AKILLICA YÖNET, SAĞLIKLI BİR YAŞAM SÜR.
+
+---
+
+Bu mesaj, Çin Halk Cumhuriyeti Devlet Basın ve Yayın İdaresi (NPPA) gereklilikleri uyarınca gösterilmektedir.
+
+18 yaş altı kullanıcılar için oyun süresi kısıtlamaları geçerlidir:
+• Sadece Cuma, Cumartesi, Pazar ve resmi tatillerde
+• 20:00 - 21:00 saatleri arasında
+• Maksimum 1 saat oyun süresi
+
+Harcama limitleri:
+• 8-16 yaş: Tek seferde 50 RMB, aylık 200 RMB
+• 16-18 yaş: Tek seferde 100 RMB, aylık 400 RMB`,
   },
 };
 
@@ -256,6 +366,7 @@ export const LegalDocumentScreen: React.FC<LegalDocumentScreenProps> = ({
   documentType,
   onBack,
 }) => {
+  const { t } = useTranslation();
   const doc = LEGAL_CONTENT[documentType];
 
   if (!doc) {
@@ -269,12 +380,12 @@ export const LegalDocumentScreen: React.FC<LegalDocumentScreenProps> = ({
         <View style={styles.header}>
           <TouchableOpacity onPress={onBack} style={styles.backButton}>
             <Ionicons name="chevron-back" size={24} color="#059669" />
-            <Text style={styles.backText}>Geri</Text>
+            <Text style={styles.backText}>{t('common.back') || 'Geri'}</Text>
           </TouchableOpacity>
         </View>
 
         {/* Document Container */}
-        <Animated.View entering={FadeInDown.delay(0)} style={styles.documentContainer}>
+        <Animated.View entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(0)} style={styles.documentContainer}>
           {/* Document Header */}
           <View style={styles.documentHeader}>
             <Ionicons name="document-text" size={32} color="#F59E0B" />
@@ -293,8 +404,11 @@ export const LegalDocumentScreen: React.FC<LegalDocumentScreenProps> = ({
           {/* Footer */}
           <View style={styles.footer}>
             <View style={styles.footerBrand}>
-              <Ionicons name="shield-checkmark" size={16} color="#F59E0B" />
-              <Text style={styles.footerText}>Fan Manager 2026</Text>
+              <Image
+                source={require('../../assets/logo.png')}
+                style={styles.footerLogo}
+                resizeMode="contain"
+              />
             </View>
 
             <TouchableOpacity onPress={onBack} activeOpacity={0.8}>
@@ -304,7 +418,7 @@ export const LegalDocumentScreen: React.FC<LegalDocumentScreenProps> = ({
                 end={{ x: 1, y: 0 }}
                 style={styles.closeButton}
               >
-                <Text style={styles.closeButtonText}>Kapat</Text>
+                <Text style={styles.closeButtonText}>{t('common.close') || 'Kapat'}</Text>
               </LinearGradient>
             </TouchableOpacity>
           </View>
@@ -400,9 +514,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  footerText: {
-    fontSize: 14,
-    color: '#9CA3AF',
+  footerLogo: {
+    width: 24,
+    height: 24,
   },
 
   // Close Button

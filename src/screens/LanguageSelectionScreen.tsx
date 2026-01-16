@@ -10,9 +10,10 @@ import {
   Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { FlagDE, FlagGB, FlagES, FlagFR, FlagIT, FlagTR, FlagAR, FlagCN } from '../components/flags';
 
-// Logo is optional - use text fallback
-const logoImage = null; // Disabled for now to avoid require() issues
+// Logo
+const logoImage = require('../../assets/logo.png');
 
 interface LanguageSelectionScreenProps {
   onLanguageSelect: (language: string) => void;
@@ -24,7 +25,7 @@ export default function LanguageSelectionScreen({
   onBack,
 }: LanguageSelectionScreenProps) {
 
-  // Scrolling welcome text animation (6 languages, no abbreviations)
+  // Scrolling welcome text animation (8 languages, tek satırda yanyana)
   const scrollX = useRef(new RNAnimated.Value(0)).current;
   const welcomeTexts = [
     'Welcome',      // English
@@ -33,7 +34,10 @@ export default function LanguageSelectionScreen({
     'Bienvenido',   // Español
     'Bienvenue',    // Français
     'Benvenuto',    // Italiano
+    'مرحبا',        // Arabic
+    '欢迎',          // Chinese
   ];
+  // ✅ 8 dilde tek satırda yanyana, her dil arasında " • " ayırıcı
   const welcomeString = welcomeTexts.join('  •  ') + '  •  ';
   const textWidth = welcomeString.length * 9;
 
@@ -49,13 +53,32 @@ export default function LanguageSelectionScreen({
     return () => animation.stop();
   }, []);
 
+  // ✅ SVG Flag Components
+  const FlagComponent = ({ code }: { code: string }) => {
+    switch (code) {
+      case 'de': return <FlagDE size={48} />;
+      case 'en': return <FlagGB size={48} />;
+      case 'es': return <FlagES size={48} />;
+      case 'fr': return <FlagFR size={48} />;
+      case 'it': return <FlagIT size={48} />;
+      case 'tr': return <FlagTR size={48} />;
+      case 'ar': return <FlagAR size={48} />;
+      case 'zh': return <FlagCN size={48} />;
+      default: return null;
+    }
+  };
+
   const languages = [
-    { code: 'de', name: 'Deutsch', flag: '🇩🇪' },
-    { code: 'en', name: 'English', flag: '🇬🇧' },
-    { code: 'es', name: 'Español', flag: '🇪🇸' },
-    { code: 'fr', name: 'Français', flag: '🇫🇷' },
-    { code: 'it', name: 'Italiano', flag: '🇮🇹' },
-    { code: 'tr', name: 'Türkçe', flag: '🇹🇷' },
+    // İlk 6 dil (3 satır)
+    { code: 'de', name: 'Deutsch' },      // Almanya
+    { code: 'en', name: 'English' },     // İngiltere
+    { code: 'es', name: 'Español' },     // İspanya
+    { code: 'fr', name: 'Français' },    // Fransa
+    { code: 'it', name: 'Italiano' },    // İtalya
+    { code: 'tr', name: 'Türkçe' },      // Türkiye
+    // Son 2 dil (4. satır - en altta)
+    { code: 'ar', name: 'العربية' },     // Arapça - Suudi Arabistan
+    { code: 'zh', name: '中文' },         // Çince - Çin
   ];
 
   return (
@@ -74,15 +97,11 @@ export default function LanguageSelectionScreen({
             <View style={styles.content}>
               {/* Logo */}
               <View style={styles.brandZone}>
-                {logoImage ? (
                   <Image 
                     source={logoImage} 
                     style={styles.logoImage}
                     resizeMode="contain"
                   />
-                ) : (
-                  <Text style={styles.logoText}>FM 2026</Text>
-                )}
               </View>
 
               {/* Language Selection Grid */}
@@ -103,7 +122,9 @@ export default function LanguageSelectionScreen({
                         colors={['rgba(30, 41, 59, 0.8)', 'rgba(30, 41, 59, 0.8)']}
                         style={styles.languageButtonGradient}
                       >
-                        <Text style={styles.flagEmoji}>{lang.flag}</Text>
+                        <View style={styles.flagContainer}>
+                          <FlagComponent code={lang.code} />
+                        </View>
                         <Text style={styles.languageName}>{lang.name}</Text>
                       </LinearGradient>
                     </TouchableOpacity>
@@ -175,12 +196,6 @@ const styles = StyleSheet.create({
     marginBottom: 48,
     height: 200,
   },
-  logoText: {
-    fontSize: 48,
-    fontWeight: '700',
-    color: '#ffffff',
-    letterSpacing: 4,
-  },
   logoImage: {
     width: 120,
     height: 120,
@@ -202,17 +217,19 @@ const styles = StyleSheet.create({
     // Optional: Add specific left column styles
   },
   languageButtonGradient: {
-    height: 100,
+    height: 85, // ✅ Yükseklik azaltıldı (100'den 85'e)
     borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(5, 150, 105, 0.3)',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
+    gap: 10, // ✅ Gap de azaltıldı
   },
-  flagEmoji: {
-    fontSize: 48,
-    lineHeight: 48,
+  flagContainer: {
+    width: 48,
+    height: 32, // ✅ SVG bayrak için yükseklik (aspect ratio korunur)
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   languageName: {
     fontSize: 16,

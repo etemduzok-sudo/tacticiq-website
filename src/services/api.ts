@@ -476,4 +476,36 @@ export const authApi = {
       };
     }
   },
+
+  /**
+   * Şifre değiştirme
+   */
+  changePassword: async (currentPassword: string, newPassword: string, email: string): Promise<{
+    success: boolean;
+    message?: string;
+    error?: string;
+  }> => {
+    try {
+      logApiCall('/auth/change-password', 'POST', { email });
+      const response = await request<{
+        success: boolean;
+        message?: string;
+        error?: string;
+      }>('/auth/change-password', {
+        method: 'POST',
+        body: JSON.stringify({
+          currentPassword,
+          newPassword,
+          email,
+        }),
+      });
+      return response;
+    } catch (error: any) {
+      logger.error('Change password error', { error }, 'API');
+      return {
+        success: false,
+        error: error.message || 'Şifre değiştirilemedi',
+      };
+    }
+  },
 };

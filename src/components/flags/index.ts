@@ -4,3 +4,5 @@ export { FlagDE } from './FlagDE';
 export { FlagES } from './FlagES';
 export { FlagFR } from './FlagFR';
 export { FlagIT } from './FlagIT';
+export { FlagAR } from './FlagAR';
+export { FlagCN } from './FlagCN';

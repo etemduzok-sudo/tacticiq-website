@@ -254,31 +254,8 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
       }
     }
     
-    // Pulse animasyonu için (sadece live durumunda)
-    const [pulseAnim] = React.useState(() => new RNAnimated.Value(1));
-    
-    React.useEffect(() => {
-      if (status === 'live') {
-        const animation = RNAnimated.loop(
-          RNAnimated.sequence([
-            RNAnimated.timing(pulseAnim, {
-              toValue: 0.3,
-              duration: 750,
-              useNativeDriver: true,
-            }),
-            RNAnimated.timing(pulseAnim, {
-              toValue: 1,
-              duration: 750,
-              useNativeDriver: true,
-            }),
-          ])
-        );
-        animation.start();
-        return () => animation.stop();
-      } else {
-        pulseAnim.setValue(1);
-      }
-    }, [status]);
+    // Pulse animasyonu için (sadece live durumunda) - Hook olmadan, CSS ile
+    // Note: Hook'lar component seviyesinde olmalı, render fonksiyonunda olamaz
     
     return (
       <TouchableOpacity
@@ -411,7 +388,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                 >
-                  <RNAnimated.View style={[styles.matchCardLiveDot, { opacity: pulseAnim }]} />
+                  <View style={styles.matchCardLiveDot} />
                   <Text style={styles.matchCardLiveText}>ŞUAN OYNANIYOR</Text>
                 </LinearGradient>
                 
@@ -677,16 +654,6 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
     }
   }, [pastMatches, liveMatches, upcomingMatches]);
 
-  // Show loading ONLY on first load
-  if (loading && !hasLoadedOnce) {
-    return (
-      <View style={[styles.container, styles.centerContent]}>
-        <ActivityIndicator size="large" color="#059669" />
-        <Text style={styles.loadingText}>Kontrol paneli yükleniyor...</Text>
-      </View>
-    );
-  }
-
   // Get all upcoming matches (not just 24 hours)
   const now = Date.now() / 1000;
   const allUpcomingMatches = upcomingMatches.filter(match => {
@@ -695,6 +662,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
   });
 
   // ✅ Filter matches by selected team (ID and name matching)
+  // IMPORTANT: This hook MUST be before any early returns to follow Rules of Hooks
   const filterMatchesByTeam = React.useCallback((matches: any[], teamId: number | null) => {
     if (!teamId) return matches;
     
@@ -755,6 +723,16 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
     const team = favoriteTeams.find(t => t.id === selectedTeamId);
     return team?.name || null;
   }, [selectedTeamId, favoriteTeams]);
+
+  // Show loading ONLY on first load (after all hooks are called)
+  if (loading && !hasLoadedOnce) {
+    return (
+      <View style={[styles.container, styles.centerContent]}>
+        <ActivityIndicator size="large" color="#059669" />
+        <Text style={styles.loadingText}>Kontrol paneli yükleniyor...</Text>
+      </View>
+    );
+  }
 
   // Handle team selection
   const handleTeamSelect = (teamId: number | null) => {
@@ -881,12 +859,19 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.upcomingMatchesScroll}
-              pagingEnabled={true}
+              style={Platform.OS === 'web' ? { scrollSnapType: 'x mandatory', overflowX: 'auto' } as any : undefined}
+              pagingEnabled={false}
               decelerationRate="fast"
-              snapToAlignment="start"
+              snapToInterval={Platform.OS === 'web' ? undefined : width - SPACING.base * 2 + SPACING.md}
+              snapToAlignment="center"
+              contentInsetAdjustmentBehavior="automatic"
             >
               {filteredUpcomingMatches.slice(0, 10).map((match, index) => (
-              <Animated.View key={match.fixture.id} entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(200 + index * 100).springify()}>
+              <Animated.View 
+                key={match.fixture.id} 
+                entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(200 + index * 100).springify()}
+                style={Platform.OS === 'web' ? { scrollSnapAlign: 'center', scrollSnapStop: 'always' } as any : undefined}
+              >
                   {renderMatchCard(match, 'upcoming', () => handleMatchSelect(String(match.fixture.id)))}
               </Animated.View>
             ))}
@@ -1066,9 +1051,19 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.upcomingMatchesScroll}
+              style={Platform.OS === 'web' ? { scrollSnapType: 'x mandatory', overflowX: 'auto' } as any : undefined}
+              pagingEnabled={false}
+              decelerationRate="fast"
+              snapToInterval={Platform.OS === 'web' ? undefined : width - SPACING.base * 2 + SPACING.md}
+              snapToAlignment="center"
+              contentInsetAdjustmentBehavior="automatic"
             >
               {filteredPastMatches.slice(0, 10).map((match, index) => (
-                <Animated.View key={match.fixture.id} entering={Platform.OS === 'web' ? FadeInLeft : FadeInLeft.delay(350 + index * 50).springify()}>
+                <Animated.View 
+                  key={match.fixture.id} 
+                  entering={Platform.OS === 'web' ? FadeInLeft : FadeInLeft.delay(350 + index * 50).springify()}
+                  style={Platform.OS === 'web' ? { scrollSnapAlign: 'center', scrollSnapStop: 'always' } as any : undefined}
+                >
                   {renderMatchCard(match, 'finished', () => onNavigate('match-result-summary', { id: match.fixture.id }))}
                 </Animated.View>
               ))}
@@ -1155,8 +1150,13 @@ const styles = StyleSheet.create({
 
   // Upcoming Matches Scroll (Horizontal)
   upcomingMatchesScroll: {
-    paddingRight: 16,
+    paddingHorizontal: SPACING.base, // ✅ Ortada hizalanması için yan padding
+    paddingRight: SPACING.base + SPACING.md, // Son kart için ekstra padding
     gap: 0,
+    ...(Platform.OS === 'web' && {
+      scrollSnapType: 'x mandatory',
+      WebkitOverflowScrolling: 'touch',
+    } as any),
   },
   liveMatchesScroll: {
     paddingBottom: 16,
@@ -1319,6 +1319,10 @@ const styles = StyleSheet.create({
     borderColor: COLORS.dark.border,
     height: 160, // ✅ Sabit yükseklik - tüm kartlar aynı
     position: 'relative',
+    ...(Platform.OS === 'web' && {
+      scrollSnapAlign: 'center',
+      scrollSnapStop: 'always',
+    } as any),
     overflow: 'hidden',
     ...SHADOWS.sm,
     ...Platform.select({
@@ -1878,20 +1882,41 @@ const styles = StyleSheet.create({
   
   // ✅ Yeni Maç Kartı Stilleri (Verilen koddan)
   matchCardContainer: {
-    width: width,
+    width: width - SPACING.base * 2, // ✅ Scroll snap için doğru genişlik
     maxWidth: 768,
-    marginRight: 0,
+    marginRight: SPACING.md, // ✅ Kartlar arası boşluk
     minHeight: 175,
-    paddingHorizontal: SPACING.base,
+    paddingHorizontal: 0, // ✅ Padding'i kaldırdık, ScrollView'de var
+    ...(Platform.OS === 'web' && {
+      scrollSnapAlign: 'center',
+      scrollSnapStop: 'always',
+      flexShrink: 0, // ✅ Kartların küçülmesini engelle
+    } as any),
   },
   matchCard: {
     width: '100%',
     minHeight: 175,
     borderRadius: SIZES.radiusXl,
+    borderBottomLeftRadius: 25, // ✅ Profil kartı gibi yuvarlatılmış alt köşeler
+    borderBottomRightRadius: 25, // ✅ Profil kartı gibi yuvarlatılmış alt köşeler
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(148, 163, 184, 0.5)', // COLORS.dark.border with 50% opacity
-    ...SHADOWS.md,
+    // ✅ Profil kartı gibi gölge
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 10,
+      },
+      web: {
+        boxShadow: '0 4px 8px rgba(0, 0, 0, 0.3)',
+      },
+    }),
   },
   matchCardLeftStrip: {
     position: 'absolute',

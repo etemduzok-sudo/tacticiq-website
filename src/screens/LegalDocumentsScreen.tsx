@@ -26,14 +26,14 @@ type LegalDoc = {
 const LEGAL_DOCUMENTS: LegalDoc[] = [
   {
     id: 'terms',
-    title: 'Kullanım Koşulları',
-    description: 'Hizmet şartları ve kullanıcı sorumlulukları',
+    title: 'Kullanım Koşulları (EULA)',
+    description: 'Hizmet şartları, sanal öğeler ve kullanıcı sorumlulukları',
     icon: '📋',
   },
   {
     id: 'privacy',
-    title: 'Gizlilik Politikası',
-    description: 'Kişisel verilerinizin korunması ve kullanımı',
+    title: 'Küresel Gizlilik Politikası',
+    description: 'GDPR, CCPA, KVKK uyumlu gizlilik politikası',
     icon: '🔒',
   },
   {
@@ -47,6 +47,24 @@ const LEGAL_DOCUMENTS: LegalDoc[] = [
     title: 'KVKK Aydınlatma Metni',
     description: 'Kişisel Verilerin Korunması Kanunu bilgilendirmesi',
     icon: '⚖️',
+  },
+  {
+    id: 'consent',
+    title: 'Açık Rıza Metni',
+    description: 'KVKK kapsamında açık rıza beyanı',
+    icon: '✅',
+  },
+  {
+    id: 'sales',
+    title: 'Mesafeli Satış Sözleşmesi',
+    description: 'Dijital içerik satış şartları ve cayma hakkı',
+    icon: '💳',
+  },
+  {
+    id: 'copyright',
+    title: 'Telif Hakkı Bildirimi',
+    description: 'Fikri mülkiyet hakları ve DMCA bildirimi',
+    icon: '©️',
   },
 ];
 
@@ -105,6 +123,9 @@ export default function LegalDocumentsScreen() {
             </Text>
             <Text style={styles.footerText}>
               Bu belgeler yasal olarak bağlayıcıdır.
+            </Text>
+            <Text style={styles.footerText}>
+              GDPR, CCPA, KVKK, PIPL uyumlu
             </Text>
           </View>
         </ScrollView>

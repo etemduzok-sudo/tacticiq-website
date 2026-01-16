@@ -6,16 +6,20 @@ export type Language = 'tr' | 'en';
 export const LANGUAGES = {
   tr: {
     // Common
-    loading: 'Yükleniyor...',
-    error: 'Hata',
-    save: 'Kaydet',
-    cancel: 'İptal',
-    close: 'Kapat',
-    delete: 'Sil',
-    edit: 'Düzenle',
-    back: 'Geri',
-    next: 'İleri',
-    done: 'Tamam',
+    common: {
+      loading: 'Yükleniyor...',
+      error: 'Hata',
+      save: 'Kaydet',
+      cancel: 'İptal',
+      close: 'Kapat',
+      delete: 'Sil',
+      edit: 'Düzenle',
+      back: 'Geri',
+      next: 'İleri',
+      done: 'Tamam',
+      continue: 'Devam Et',
+      info: 'Bilgi',
+    },
     
     // Dashboard
     dashboard: {
@@ -139,20 +143,66 @@ export const LANGUAGES = {
       unauthorized: 'Yetkisiz erişim',
       tryAgain: 'Tekrar dene',
     },
+
+    // Age Gate
+    ageGate: {
+      title: 'Yaş Doğrulama',
+      subtitle: 'Lütfen doğum tarihinizi giriniz',
+      year: 'Yıl',
+      month: 'Ay',
+      day: 'Gün',
+      yearPlaceholder: 'YYYY',
+      monthPlaceholder: 'MM',
+      dayPlaceholder: 'DD',
+      info: 'Bu bilgi güvenliğiniz ve yasal uyumluluk için gereklidir.',
+      pleaseEnterDate: 'Lütfen doğum tarihinizi giriniz',
+      invalidDate: 'Geçersiz doğum tarihi',
+    },
+
+    // Consent
+    consent: {
+      title: 'Gizlilik Tercihleri',
+      subtitle: 'Verilerinizin nasıl kullanılacağını seçin',
+      kvkkInfo: 'KVKK (6698 sayılı Kanun) kapsamında kişisel verilerinizin korunması için tercihlerinizi belirleyin.',
+      gdprInfo: 'GDPR kapsamında verilerinizin korunması için tercihlerinizi belirleyin.',
+      ccpaInfo: 'CCPA kapsamında verilerinizin korunması için tercihlerinizi belirleyin.',
+      defaultInfo: 'Verilerinizi korumak için tercihlerinizi belirleyin.',
+      essential: 'Zorunlu Çerezler',
+      essentialDesc: 'Uygulamanın çalışması için gerekli',
+      analytics: 'Analitik',
+      analyticsDesc: 'Uygulama performansını analiz etmek için',
+      marketing: 'Pazarlama',
+      marketingDesc: 'Kampanya ve bildirimler için',
+      personalizedAds: 'Kişiselleştirilmiş Reklamlar',
+      personalizedAdsDesc: 'İlgi alanlarınıza göre reklamlar',
+      dataTransfer: 'Yurt Dışına Veri Aktarımı',
+      dataTransferDesc: 'KVKK kapsamında açık rıza gereklidir',
+      rejectAll: 'Tümünü Reddet',
+      acceptAll: 'Tümünü Kabul Et',
+      save: 'Kaydet ve Devam Et',
+      privacyPolicyLink: 'Detaylı bilgi için Gizlilik Politikası',
+      childModeRestriction: 'Çocuk modunda bu özellikler devre dışıdır',
+      saveError: 'Tercihler kaydedilemedi',
+    },
+
   },
 
   en: {
     // Common
-    loading: 'Loading...',
-    error: 'Error',
-    save: 'Save',
-    cancel: 'Cancel',
-    close: 'Close',
-    delete: 'Delete',
-    edit: 'Edit',
-    back: 'Back',
-    next: 'Next',
-    done: 'Done',
+    common: {
+      loading: 'Loading...',
+      error: 'Error',
+      save: 'Save',
+      cancel: 'Cancel',
+      close: 'Close',
+      delete: 'Delete',
+      edit: 'Edit',
+      back: 'Back',
+      next: 'Next',
+      done: 'Done',
+      continue: 'Continue',
+      info: 'Info',
+    },
     
     // Dashboard
     dashboard: {
@@ -276,6 +326,48 @@ export const LANGUAGES = {
       unauthorized: 'Unauthorized access',
       tryAgain: 'Try again',
     },
+
+    // Age Gate
+    ageGate: {
+      title: 'Age Verification',
+      subtitle: 'Please enter your date of birth',
+      year: 'Year',
+      month: 'Month',
+      day: 'Day',
+      yearPlaceholder: 'YYYY',
+      monthPlaceholder: 'MM',
+      dayPlaceholder: 'DD',
+      info: 'This information is required for your security and legal compliance.',
+      pleaseEnterDate: 'Please enter your date of birth',
+      invalidDate: 'Invalid date of birth',
+    },
+
+    // Consent
+    consent: {
+      title: 'Privacy Preferences',
+      subtitle: 'Choose how your data will be used',
+      kvkkInfo: 'Under KVKK (Law No. 6698), set your preferences to protect your personal data.',
+      gdprInfo: 'Under GDPR, set your preferences to protect your data.',
+      ccpaInfo: 'Under CCPA, set your preferences to protect your data.',
+      defaultInfo: 'Set your preferences to protect your data.',
+      essential: 'Essential Cookies',
+      essentialDesc: 'Required for the app to function',
+      analytics: 'Analytics',
+      analyticsDesc: 'To analyze app performance',
+      marketing: 'Marketing',
+      marketingDesc: 'For campaigns and notifications',
+      personalizedAds: 'Personalized Ads',
+      personalizedAdsDesc: 'Ads based on your interests',
+      dataTransfer: 'Data Transfer Abroad',
+      dataTransferDesc: 'Explicit consent required under KVKK',
+      rejectAll: 'Reject All',
+      acceptAll: 'Accept All',
+      save: 'Save and Continue',
+      privacyPolicyLink: 'Privacy Policy for detailed information',
+      childModeRestriction: 'These features are disabled in child mode',
+      saveError: 'Preferences could not be saved',
+    },
+
   },
 };
 

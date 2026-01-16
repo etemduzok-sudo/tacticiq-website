@@ -136,7 +136,7 @@ export const UpgradeToProScreen: React.FC<UpgradeToProScreenProps> = ({
               <Ionicons name="trophy" size={48} color="#FFFFFF" />
             </LinearGradient>
 
-            <Text style={styles.heroTitle}>Fan Manager PRO</Text>
+            <Text style={styles.heroTitle}>TacticIQ PRO</Text>
             <Text style={styles.heroSubtitle}>
               Tüm premium özelliklerin kilidini aç ve rakiplerinin önüne geç!
             </Text>
