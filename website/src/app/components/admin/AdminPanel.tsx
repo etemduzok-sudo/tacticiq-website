@@ -254,31 +254,31 @@ export function AdminPanel() {
 // Sections Content - Web Sitesi Bölüm Kontrolü
 function SectionsContent() {
   const contextData = useContext(AdminDataContext);
+  const sectionSettings = contextData?.sectionSettings;
+  const updateSectionSettings = contextData?.updateSectionSettings;
   
-  if (!contextData) {
-    return <div className="p-4 text-center">Bölüm ayarları yükleniyor...</div>;
-  }
-
-  const { sectionSettings, updateSectionSettings } = contextData;
-  const [editedSections, setEditedSections] = useState(sectionSettings);
+  const [editedSections, setEditedSections] = useState(sectionSettings || {});
 
   // Sync editedSections when sectionSettings changes
   useEffect(() => {
-    setEditedSections(sectionSettings);
+    if (sectionSettings) {
+      setEditedSections(sectionSettings);
+    }
   }, [sectionSettings]);
 
   const handleSave = () => {
-    updateSectionSettings(editedSections);
-    toast.success('Bölüm ayarları kaydedildi!');
+    if (updateSectionSettings) {
+      updateSectionSettings(editedSections);
+      toast.success('Bölüm ayarları kaydedildi!');
+    }
   };
 
   // Toggle handler - anında kaydet
-  const handleToggleSection = (sectionKey: keyof typeof editedSections, subKey?: string) => {
-    const newSections = { ...editedSections };
+  const handleToggleSection = (sectionKey: string, subKey?: string) => {
+    const newSections = { ...editedSections } as any;
     
     if (subKey) {
-      // Alt özellik toggle (örn: hero.showStats)
-      const section = newSections[sectionKey] as any;
+      const section = newSections[sectionKey];
       if (section && typeof section === 'object') {
         newSections[sectionKey] = {
           ...section,
@@ -286,8 +286,7 @@ function SectionsContent() {
         };
       }
     } else {
-      // Ana bölüm toggle (örn: hero.enabled)
-      const section = newSections[sectionKey] as any;
+      const section = newSections[sectionKey];
       if (section && typeof section === 'object' && 'enabled' in section) {
         newSections[sectionKey] = {
           ...section,
@@ -297,9 +296,15 @@ function SectionsContent() {
     }
     
     setEditedSections(newSections);
-    updateSectionSettings(newSections);
+    if (updateSectionSettings) {
+      updateSectionSettings(newSections);
+    }
     toast.success('Bölüm ayarı güncellendi!');
   };
+
+  if (!contextData) {
+    return <div className="p-4 text-center">Bölüm ayarları yükleniyor...</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -583,14 +588,15 @@ function AnalyticsContent() {
   const contextData = useContext(AdminDataContext);
   const [timePeriod, setTimePeriod] = useState<'today' | 'week' | 'month' | 'year'>('month');
 
-  if (!contextData) {
-    return <div className="p-4 text-center">Analytics yükleniyor...</div>;
-  }
-
-  const { stats, updateStats } = contextData;
+  const stats = contextData?.stats;
+  const updateStats = contextData?.updateStats;
   const geoColors = ['bg-secondary', 'bg-accent', 'bg-primary', 'bg-muted', 'bg-muted-foreground'];
   const hourColors = ['bg-muted', 'bg-accent', 'bg-secondary', 'bg-primary'];
   const segmentColors = ['bg-muted', 'bg-secondary', 'bg-accent'];
+
+  if (!contextData || !stats) {
+    return <div className="p-4 text-center">Analytics yükleniyor...</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -717,12 +723,10 @@ function AnalyticsContent() {
 // Users Content
 function UsersContent() {
   const contextData = useContext(AdminDataContext);
+  const users = contextData?.users || [];
+  const addUser = contextData?.addUser;
+  const deleteUser = contextData?.deleteUser;
   
-  if (!contextData) {
-    return <div className="p-4 text-center">Kullanıcılar yükleniyor...</div>;
-  }
-  
-  const { users, addUser, deleteUser } = contextData;
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [newUser, setNewUser] = useState({
     name: '',
@@ -730,6 +734,10 @@ function UsersContent() {
     plan: 'Free' as 'Free' | 'Premium',
     status: 'active' as 'active' | 'inactive',
   });
+
+  if (!contextData) {
+    return <div className="p-4 text-center">Kullanıcılar yükleniyor...</div>;
+  }
 
   const handleAddUser = () => {
     if (!newUser.name || !newUser.email) {
@@ -886,12 +894,10 @@ function UsersContent() {
 // Content Content
 function ContentContent() {
   const contextData = useContext(AdminDataContext);
+  const contents = contextData?.contents || [];
+  const addContent = contextData?.addContent;
+  const deleteContent = contextData?.deleteContent;
   
-  if (!contextData) {
-    return <div className="p-4 text-center">İçerikler yükleniyor...</div>;
-  }
-  
-  const { contents, addContent, deleteContent } = contextData;
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [newContent, setNewContent] = useState({
     title: '',
@@ -899,6 +905,10 @@ function ContentContent() {
     status: 'Taslak' as 'Yayında' | 'Taslak' | 'Zamanlandı',
     author: 'Admin',
   });
+
+  if (!contextData) {
+    return <div className="p-4 text-center">İçerikler yükleniyor...</div>;
+  }
 
   const handleAddContent = () => {
     if (!newContent.title) {
@@ -1037,13 +1047,19 @@ function ContentContent() {
 // Ads Content
 function AdsContent() {
   const contextData = useContext(AdminDataContext);
+  const adSettings = contextData?.adSettings;
+  const updateAdSettings = contextData?.updateAdSettings;
+  const advertisements = contextData?.advertisements || [];
+  const addAdvertisement = contextData?.addAdvertisement;
+  const deleteAdvertisement = contextData?.deleteAdvertisement;
   
-  if (!contextData) {
-    return <div className="p-4 text-center">Reklamlar yükleniyor...</div>;
-  }
-  
-  const { advertisements, addAdvertisement, deleteAdvertisement, updateAdvertisement, adSettings, updateAdSettings, discountSettings, updateDiscountSettings } = contextData;
-  const [editedAdSettings, setEditedAdSettings] = useState(adSettings);
+  const [editedAdSettings, setEditedAdSettings] = useState<AdSettings>({
+    systemEnabled: false,
+    popupEnabled: false,
+    bannerEnabled: false,
+    sidebarEnabled: false,
+    adminEmail: ''
+  });
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [editingAd, setEditingAd] = useState<Advertisement | null>(null);
@@ -1060,15 +1076,18 @@ function AdsContent() {
     enabled: true,
   });
 
-  // İlk yüklemede adSettings'i editedAdSettings'e kopyala (sadece bir kez)
+  // adSettings değiştiğinde local state'i güncelle
   useEffect(() => {
-    setEditedAdSettings(adSettings);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Sadece mount'ta çalış
+    if (adSettings) {
+      setEditedAdSettings(adSettings);
+    }
+  }, [adSettings]);
 
   const handleSaveSettings = () => {
-    updateAdSettings(editedAdSettings);
-    toast.success('Reklam ayarları kaydedildi!');
+    if (updateAdSettings) {
+      updateAdSettings(editedAdSettings);
+      toast.success('Reklam ayarları kaydedildi!');
+    }
   };
 
   // Toggle handler - sadece local state'i güncelle
@@ -1078,6 +1097,10 @@ function AdsContent() {
       [key]: !prev[key]
     }));
   };
+
+  if (!contextData) {
+    return <div className="p-4 text-center">Reklamlar yükleniyor...</div>;
+  }
 
   const handleAddAd = () => {
     if (!newAd.title || !newAd.mediaUrl) {
@@ -1203,27 +1226,39 @@ function AdsContent() {
 // Pricing Content - Fiyatlandırma ve İndirim Yönetimi
 function PricingContent() {
   const contextData = useContext(AdminDataContext);
+  const discountSettings = contextData?.discountSettings;
+  const updateDiscountSettings = contextData?.updateDiscountSettings;
   
+  const [editedSettings, setEditedSettings] = useState(discountSettings || {
+    enabled: false,
+    discountPercent: 0,
+    originalPrice: 0,
+    discountedPrice: 0,
+    popupTitle: '',
+    popupDescription: '',
+    ctaText: '',
+    expiryDate: '',
+    showCountdown: false,
+    baseCurrency: 'TRY' as const
+  });
+
+  // discountSettings değiştiğinde local state'i güncelle
+  useEffect(() => {
+    if (discountSettings) {
+      setEditedSettings(discountSettings);
+    }
+  }, [discountSettings]);
+
+  const handleSave = () => {
+    if (updateDiscountSettings) {
+      updateDiscountSettings(editedSettings);
+      toast.success('Fiyatlandırma ayarları kaydedildi!');
+    }
+  };
+
   if (!contextData) {
     return <div className="p-4 text-center">Fiyatlandırma ayarları yükleniyor...</div>;
   }
-
-  const { discountSettings, updateDiscountSettings } = contextData;
-  const [editedSettings, setEditedSettings] = useState(discountSettings);
-  const [isInitialized, setIsInitialized] = useState(false);
-
-  // İlk yüklemede discountSettings'i editedSettings'e kopyala
-  useEffect(() => {
-    if (!isInitialized && discountSettings) {
-      setEditedSettings(discountSettings);
-      setIsInitialized(true);
-    }
-  }, [discountSettings, isInitialized]);
-
-  const handleSave = () => {
-    updateDiscountSettings(editedSettings);
-    toast.success('Fiyatlandırma ayarları kaydedildi!');
-  };
 
   return (
     <div className="space-y-6">
@@ -1440,19 +1475,30 @@ function PricingContent() {
 // Settings Content
 function SettingsContent() {
   const contextData = useContext(AdminDataContext);
+  const settings = contextData?.settings;
+  const updateSettings = contextData?.updateSettings;
+  const stats = contextData?.stats;
+  const updateStats = contextData?.updateStats;
   
-  if (!contextData) {
-    return <div className="p-4 text-center">Ayarlar yükleniyor...</div>;
-  }
-  
-  const { settings, updateSettings, stats, updateStats } = contextData;
-  const [editedSettings, setEditedSettings] = useState(settings);
+  const [editedSettings, setEditedSettings] = useState(settings || {
+    siteName: '',
+    siteUrl: '',
+    contactEmail: '',
+    maintenanceMode: false,
+    registrationEnabled: true,
+    proFeaturesEnabled: true,
+    language: 'Türkçe',
+    timezone: 'Europe/Istanbul',
+    dateFormat: 'DD/MM/YYYY'
+  });
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showChangePassword, setShowChangePassword] = useState(false);
 
   // Sync editedSettings when settings changes
   useEffect(() => {
-    setEditedSettings(settings);
+    if (settings) {
+      setEditedSettings(settings);
+    }
   }, [settings]);
 
   // Real-time saat güncellemesi
@@ -1462,6 +1508,10 @@ function SettingsContent() {
     }, 1000);
     return () => clearInterval(timer);
   }, []);
+
+  if (!contextData) {
+    return <div className="p-4 text-center">Ayarlar yükleniyor...</div>;
+  }
 
   // Dil ve saat dilimi eşleştirmesi
   const languageTimezoneMap: Record<string, string> = {
@@ -2212,13 +2262,13 @@ function SettingsContent() {
 // Logs Content
 function LogsContent() {
   const contextData = useContext(AdminDataContext);
+  const filterLogs = contextData?.filterLogs;
   
-  if (!contextData) {
+  const [logFilter, setLogFilter] = useState<'all' | 'info' | 'success' | 'warning' | 'error'>('all');
+
+  if (!contextData || !filterLogs) {
     return <div className="p-4 text-center">Loglar yükleniyor...</div>;
   }
-  
-  const { filterLogs } = contextData;
-  const [logFilter, setLogFilter] = useState<'all' | 'info' | 'success' | 'warning' | 'error'>('all');
 
   const filteredLogs = filterLogs(logFilter);
 
@@ -2490,9 +2540,13 @@ function SettingToggle({ label, description, enabled, onToggle, disabled }: {
 // Game Content Section
 function GameContent() {
   const context = useContext(AdminDataContext);
-  if (!context) return null;
+  const settings = context?.settings;
+  const updateSettings = context?.updateSettings;
+  const games = context?.games || [];
+  const addGame = context?.addGame;
+  const updateGame = context?.updateGame;
+  const deleteGame = context?.deleteGame;
 
-  const { settings, updateSettings, games, addGame, updateGame, deleteGame } = context;
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingGame, setEditingGame] = useState<any>(null);
   const [formData, setFormData] = useState<Omit<any, 'id' | 'createdAt' | 'updatedAt'>>({
@@ -2504,6 +2558,10 @@ function GameContent() {
     featured: false,
     order: games.length,
   });
+
+  if (!context || !settings || !updateSettings) {
+    return <div className="p-4 text-center">Oyun sistemi yükleniyor...</div>;
+  }
 
   const handleToggleGame = () => {
     updateSettings({ gameEnabled: !settings.gameEnabled });
