@@ -72,7 +72,9 @@ export function SEOHead({
 
     // Additional SEO tags
     updateMetaTag('theme-color', '#0F2A24');
-    updateMetaTag('apple-mobile-web-app-capable', 'yes');
+    // Modern mobile web app meta tags
+    updateMetaTag('mobile-web-app-capable', 'yes');
+    updateMetaTag('apple-mobile-web-app-capable', 'yes'); // iOS için eski uyumluluk
     updateMetaTag('apple-mobile-web-app-status-bar-style', 'black-translucent');
     updateMetaTag('apple-mobile-web-app-title', 'TacticIQ');
 
