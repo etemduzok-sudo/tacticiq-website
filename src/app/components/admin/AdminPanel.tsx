@@ -1045,9 +1045,15 @@ function AdsContent() {
   const { advertisements, addAdvertisement, deleteAdvertisement, updateAdvertisement, adSettings, updateAdSettings, discountSettings, updateDiscountSettings } = contextData;
   const [editedAdSettings, setEditedAdSettings] = useState(adSettings);
 
-  // Sync editedAdSettings when adSettings changes
+  // Sync editedAdSettings when adSettings changes (sadece dış kaynaklı değişiklikler için)
   useEffect(() => {
-    setEditedAdSettings(adSettings);
+    // Sadece gerçekten farklıysa güncelle (sonsuz döngüyü önle)
+    const adSettingsStr = JSON.stringify(adSettings);
+    const editedStr = JSON.stringify(editedAdSettings);
+    if (adSettingsStr !== editedStr) {
+      setEditedAdSettings(adSettings);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adSettings]);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -1124,7 +1130,10 @@ function AdsContent() {
               onToggle={() => {
                 const newSettings = { ...editedAdSettings, systemEnabled: !editedAdSettings.systemEnabled };
                 setEditedAdSettings(newSettings);
-                updateAdSettings(newSettings); // Otomatik kaydet
+                // Otomatik kaydet - setTimeout ile geciktirerek hook sıralaması sorununu önle
+                setTimeout(() => {
+                  updateAdSettings(newSettings);
+                }, 0);
                 toast.success(newSettings.systemEnabled ? 'Reklam sistemi açıldı' : 'Reklam sistemi kapatıldı');
               }}
             />
@@ -1136,7 +1145,10 @@ function AdsContent() {
               onToggle={() => {
                 const newSettings = { ...editedAdSettings, popupEnabled: !editedAdSettings.popupEnabled };
                 setEditedAdSettings(newSettings);
-                updateAdSettings(newSettings); // Otomatik kaydet
+                // Otomatik kaydet - setTimeout ile geciktirerek hook sıralaması sorununu önle
+                setTimeout(() => {
+                  updateAdSettings(newSettings);
+                }, 0);
                 toast.success(newSettings.popupEnabled ? 'Pop-up reklamlar açıldı' : 'Pop-up reklamlar kapatıldı');
               }}
               disabled={!editedAdSettings.systemEnabled}
@@ -1148,7 +1160,10 @@ function AdsContent() {
               onToggle={() => {
                 const newSettings = { ...editedAdSettings, bannerEnabled: !editedAdSettings.bannerEnabled };
                 setEditedAdSettings(newSettings);
-                updateAdSettings(newSettings); // Otomatik kaydet
+                // Otomatik kaydet - setTimeout ile geciktirerek hook sıralaması sorununu önle
+                setTimeout(() => {
+                  updateAdSettings(newSettings);
+                }, 0);
                 toast.success(newSettings.bannerEnabled ? 'Banner reklamlar açıldı' : 'Banner reklamlar kapatıldı');
               }}
               disabled={!editedAdSettings.systemEnabled}
@@ -1160,7 +1175,10 @@ function AdsContent() {
               onToggle={() => {
                 const newSettings = { ...editedAdSettings, sidebarEnabled: !editedAdSettings.sidebarEnabled };
                 setEditedAdSettings(newSettings);
-                updateAdSettings(newSettings); // Otomatik kaydet
+                // Otomatik kaydet - setTimeout ile geciktirerek hook sıralaması sorununu önle
+                setTimeout(() => {
+                  updateAdSettings(newSettings);
+                }, 0);
                 toast.success(newSettings.sidebarEnabled ? 'Sidebar reklamlar açıldı' : 'Sidebar reklamlar kapatıldı');
               }}
               disabled={!editedAdSettings.systemEnabled}
