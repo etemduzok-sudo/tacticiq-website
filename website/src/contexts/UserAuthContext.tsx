@@ -383,7 +383,11 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
         setError(null);
         
         // Fetch profile and wait for it to complete
-        const profile = await fetchProfile(data.user.id, data.user.email || '');
+        const profile = await fetchProfile(
+          data.user.id, 
+          data.user.email || '',
+          data.user.user_metadata
+        );
         console.log('✅ Profile fetched after signup:', profile ? 'Found' : 'Created');
         
         // Wait a bit for state to propagate
