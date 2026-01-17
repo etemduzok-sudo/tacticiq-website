@@ -1108,16 +1108,20 @@ function AdsContent() {
       return;
     }
 
-    addAdvertisement(newAd);
-    toast.success('Reklam başarıyla eklendi');
-    setShowAddDialog(false);
-    setNewAd({ title: '', type: 'image', placement: 'popup', mediaUrl: '', linkUrl: '', duration: 10, frequency: 5, displayCount: undefined, currentDisplays: 0, enabled: true });
+    if (addAdvertisement) {
+      addAdvertisement(newAd);
+      toast.success('Reklam başarıyla eklendi');
+      setShowAddDialog(false);
+      setNewAd({ title: '', type: 'image', placement: 'popup', mediaUrl: '', linkUrl: '', duration: 10, frequency: 5, displayCount: undefined, currentDisplays: 0, enabled: true });
+    }
   };
 
   const handleDeleteAd = (id: string, title: string) => {
     if (confirm(`"${title}" reklamını silmek istediğinize emin misiniz?`)) {
-      deleteAdvertisement(id);
-      toast.success('Reklam silindi');
+      if (deleteAdvertisement) {
+        deleteAdvertisement(id);
+        toast.success('Reklam silindi');
+      }
     }
   };
 
