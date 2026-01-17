@@ -25,12 +25,19 @@ export function Header({ onNavigate }: HeaderProps) {
   
   // Auth durumu UserAuthContext'ten
   const isLoggedIn = userAuth?.isAuthenticated ?? false;
-  const user = userAuth?.profile ? {
-    email: userAuth.profile.email,
-    name: userAuth.profile.name || userAuth.profile.email.split('@')[0],
-  } : {
-    email: '',
-    name: '',
+  
+  // Get user data from profile or user object
+  const userProfile = userAuth?.profile;
+  const userEmail = userProfile?.email || userAuth?.user?.email || '';
+  const userName = userProfile?.name || 
+                   userAuth?.user?.user_metadata?.name || 
+                   userAuth?.user?.user_metadata?.full_name ||
+                   userEmail.split('@')[0] || 
+                   'User';
+  
+  const user = {
+    email: userEmail,
+    name: userName,
   };
 
   // Build nav items based on admin section settings - context değişince güncellenecek

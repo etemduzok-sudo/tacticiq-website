@@ -75,12 +75,17 @@ export function UserMenu({
     }
   };
 
-  const userInitials = user.name
+  // Get user data from UserAuthContext if available, otherwise use props
+  const displayName = userAuth?.profile?.name || user.name || user.email?.split('@')[0] || 'User';
+  const displayEmail = userAuth?.profile?.email || user.email || '';
+  
+  const userInitials = displayName
     .split(' ')
+    .filter(n => n.length > 0)
     .map((n) => n[0])
     .join('')
     .toUpperCase()
-    .slice(0, 2) || 'U';
+    .slice(0, 2) || displayEmail[0]?.toUpperCase() || 'U';
 
   return (
     <>
@@ -103,7 +108,7 @@ export function UserMenu({
           <DropdownMenuLabel className="font-normal">
             <div className="flex flex-col space-y-1">
               <div className="flex items-center gap-2">
-                <p className="text-sm font-medium leading-none">{user.name}</p>
+                <p className="text-sm font-medium leading-none">{displayName}</p>
                 {isPro && (
                   <span className="text-xs bg-gradient-to-r from-amber-500 to-yellow-400 text-black px-1.5 py-0.5 rounded font-semibold">
                     PRO
@@ -111,7 +116,7 @@ export function UserMenu({
                 )}
               </div>
               <p className="text-xs leading-none text-muted-foreground">
-                {user.email}
+                {displayEmail}
               </p>
             </div>
           </DropdownMenuLabel>
