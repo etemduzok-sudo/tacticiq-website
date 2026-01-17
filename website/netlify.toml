@@ -6,9 +6,6 @@
   NODE_VERSION = "18"
 
 # Disable submodule checkout to prevent errors
-[build.processing]
-  skip_processing = false
-
-# Ignore submodules
-[build.processing.skip]
-  skip = false
+# Netlify will not try to checkout submodules
+[build]
+  ignore = "git diff --quiet HEAD^ HEAD submodule"
