@@ -1,8 +1,20 @@
 import { createClient } from '@supabase/supabase-js';
 
 // Supabase Configuration
-const supabaseUrl = 'https://jxdgiskusjljlpzvrzau.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp4ZGdpc2t1c2psamxwenZyemF1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzY3NTYzNTIsImV4cCI6MjA1MjMzMjM1Mn0.W4Tv6C6H_xr9T_UdUY3LgZPLMRJY1SJhvuPmw9dXYkk';
+// Environment variables'ı kontrol et, yoksa fallback kullan
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://jxdgiskusjljlpzvrzau.supabase.co';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp4ZGdpc2t1c2psamxwenZyemF1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc4MTQxMDUsImV4cCI6MjA4MzM5MDEwNX0.8OHlUbt-xEs5ONH3D6cW-5eeX50kPb7kmRv-LJfjBaU';
+
+// API Key validation
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.error('❌ Supabase configuration is missing!');
+  console.error('Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables');
+}
+
+// API Key format validation
+if (supabaseAnonKey && supabaseAnonKey.startsWith('sb_publishable_')) {
+  console.log('✅ Using Supabase API key (sb_publishable format)');
+}
 
 // Supabase Client
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {

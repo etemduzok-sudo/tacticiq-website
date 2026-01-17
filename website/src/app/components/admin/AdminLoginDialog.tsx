@@ -89,9 +89,9 @@ export function AdminLoginDialog() {
         </DialogHeader>
         <form onSubmit={handleLogin} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email">E-posta</Label>
+            <Label htmlFor="admin-login-email">E-posta</Label>
             <Input
-              id="email"
+              id="admin-login-email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}

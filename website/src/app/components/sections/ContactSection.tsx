@@ -187,9 +187,9 @@ export function ContactSection() {
 
                 {/* Email */}
                 <div className="space-y-2">
-                  <Label htmlFor="email">{t('contact.form.email.label')}</Label>
+                  <Label htmlFor="contact-email">{t('contact.form.email.label')}</Label>
                   <Input
-                    id="email"
+                    id="contact-email"
                     type="email"
                     placeholder={t('contact.form.email.placeholder')}
                     value={formData.email}

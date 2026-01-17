@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useUserAuthSafe } from '@/contexts/UserAuthContext';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,7 +21,7 @@ import {
 } from '@/app/components/ui/alert-dialog';
 import { Button } from '@/app/components/ui/button';
 import { Avatar, AvatarFallback } from '@/app/components/ui/avatar';
-import { LogOut, Trash2 } from 'lucide-react';
+import { LogOut, Trash2, User, Settings, Crown } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface UserMenuProps {
@@ -30,17 +31,25 @@ interface UserMenuProps {
   };
   onSignOut?: () => void;
   onDeleteAccount?: () => void;
+  onNavigateToProfile?: () => void;
 }
 
 export function UserMenu({
   user = { email: 'user@tacticiq.app', name: 'TacticIQ User' },
   onSignOut,
   onDeleteAccount,
+  onNavigateToProfile,
 }: UserMenuProps) {
   const { t } = useLanguage();
+  const userAuth = useUserAuthSafe();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
-  const handleSignOut = () => {
+  const isPro = userAuth?.profile?.plan === 'pro';
+
+  const handleSignOut = async () => {
+    if (userAuth?.signOut) {
+      await userAuth.signOut();
+    }
     if (onSignOut) {
       onSignOut();
     }
@@ -55,12 +64,23 @@ export function UserMenu({
     toast.success(t('user.delete.success'));
   };
 
+  const handleNavigateToProfile = () => {
+    // Scroll to profile section
+    const profileSection = document.getElementById('profile');
+    if (profileSection) {
+      profileSection.scrollIntoView({ behavior: 'smooth' });
+    }
+    if (onNavigateToProfile) {
+      onNavigateToProfile();
+    }
+  };
+
   const userInitials = user.name
     .split(' ')
     .map((n) => n[0])
     .join('')
     .toUpperCase()
-    .slice(0, 2);
+    .slice(0, 2) || 'U';
 
   return (
     <>
@@ -68,21 +88,48 @@ export function UserMenu({
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="relative size-9 rounded-full">
             <Avatar className="size-9">
-              <AvatarFallback className="bg-secondary text-secondary-foreground">
+              <AvatarFallback className="bg-gradient-to-br from-secondary to-accent text-white font-bold">
                 {userInitials}
               </AvatarFallback>
             </Avatar>
+            {isPro && (
+              <div className="absolute -bottom-0.5 -right-0.5 size-4 rounded-full bg-amber-400 flex items-center justify-center">
+                <Crown className="size-2.5 text-black" />
+              </div>
+            )}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-56" align="end" forceMount>
           <DropdownMenuLabel className="font-normal">
             <div className="flex flex-col space-y-1">
-              <p className="text-sm font-medium leading-none">{user.name}</p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-medium leading-none">{user.name}</p>
+                {isPro && (
+                  <span className="text-xs bg-gradient-to-r from-amber-500 to-yellow-400 text-black px-1.5 py-0.5 rounded font-semibold">
+                    PRO
+                  </span>
+                )}
+              </div>
               <p className="text-xs leading-none text-muted-foreground">
                 {user.email}
               </p>
             </div>
           </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={handleNavigateToProfile} className="cursor-pointer">
+            <User className="mr-2 size-4" />
+            <span>Profilim</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={handleNavigateToProfile} className="cursor-pointer">
+            <Settings className="mr-2 size-4" />
+            <span>Ayarlar</span>
+          </DropdownMenuItem>
+          {!isPro && (
+            <DropdownMenuItem className="cursor-pointer text-amber-600">
+              <Crown className="mr-2 size-4" />
+              <span>Pro'ya Yükselt</span>
+            </DropdownMenuItem>
+          )}
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer">
             <LogOut className="mr-2 size-4" />

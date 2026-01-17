@@ -1214,17 +1214,27 @@ function AdsContent() {
 // Pricing Content - Fiyatlandırma ve İndirim Yönetimi
 function PricingContent() {
   const contextData = useContext(AdminDataContext);
+  const priceSettings = contextData?.priceSettings;
+  const updatePriceSettings = contextData?.updatePriceSettings;
   const discountSettings = contextData?.discountSettings;
   const updateDiscountSettings = contextData?.updateDiscountSettings;
   
-  const [editedSettings, setEditedSettings] = useState(discountSettings || {
+  // Fiyat ayarları için ayrı state
+  const [editedPriceSettings, setEditedPriceSettings] = useState(priceSettings || {
+    proPrice: 99.99,
+    baseCurrency: 'TRY' as const,
+    freeTrialDays: 7,
+    monthlyPrice: 29.99,
+    yearlyPrice: 99.99,
+  });
+
+  // İndirim popup ayarları için ayrı state
+  const [editedDiscountSettings, setEditedDiscountSettings] = useState(discountSettings || {
     enabled: false,
-    discountPercent: 0,
+    discountPercent: 20,
     dailyShowLimit: 3,
     showDelay: 5000,
     timerDuration: 600,
-    originalPrice: 0,
-    baseCurrency: 'TRY' as const,
     maxShowsPerUser: 5,
     cooldownAfterClose: 3600,
     showOnEveryPage: false,
@@ -1233,17 +1243,30 @@ function PricingContent() {
     ctaButtonText: 'Hemen Al',
   });
 
-  // discountSettings değiştiğinde local state'i güncelle
+  // Context değiştiğinde local state'leri güncelle
+  useEffect(() => {
+    if (priceSettings) {
+      setEditedPriceSettings(priceSettings);
+    }
+  }, [priceSettings]);
+
   useEffect(() => {
     if (discountSettings) {
-      setEditedSettings(discountSettings);
+      setEditedDiscountSettings(discountSettings);
     }
   }, [discountSettings]);
 
-  const handleSave = () => {
+  const handleSavePrice = () => {
+    if (updatePriceSettings) {
+      updatePriceSettings(editedPriceSettings);
+      toast.success('Fiyat ayarları kaydedildi!');
+    }
+  };
+
+  const handleSaveDiscount = () => {
     if (updateDiscountSettings) {
-      updateDiscountSettings(editedSettings);
-      toast.success('Fiyatlandırma ayarları kaydedildi!');
+      updateDiscountSettings(editedDiscountSettings);
+      toast.success('İndirim popup ayarları kaydedildi!');
     }
   };
 
@@ -1263,33 +1286,25 @@ function PricingContent() {
         </p>
       </div>
 
-      {/* Discount Settings */}
-      <Card>
-        <CardHeader>
+      {/* ===== PRICE SETTINGS - Fiyat Ayarları (İndirimden Bağımsız) ===== */}
+      <Card className="border-2 border-secondary/30">
+        <CardHeader className="bg-secondary/5">
           <CardTitle className="text-base flex items-center gap-2">
-            <Tag className="size-4" />
-            İndirim Popup Ayarları
+            💰 Pro Plan Fiyat Ayarları
           </CardTitle>
+          <p className="text-xs text-muted-foreground">
+            Bu fiyat sabit kalır ve indirim popup'ından bağımsızdır. Kullanıcı diline göre otomatik para birimi çevrimi yapılır.
+          </p>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <SettingToggle 
-            label="🎁 İndirim Popup Sistemi" 
-            description="İndirim popup'larını aktif/pasif yap"
-            enabled={editedSettings.enabled}
-            onToggle={() => setEditedSettings({ ...editedSettings, enabled: !editedSettings.enabled })}
-          />
-          
-          <Separator />
-          
+        <CardContent className="space-y-4 pt-4">
           {/* Para Birimi Seçimi */}
           <div className="space-y-2">
-            <Label htmlFor="baseCurrency">Para Birimi</Label>
+            <Label htmlFor="priceBaseCurrency">Para Birimi</Label>
             <Select 
-              value={editedSettings.baseCurrency} 
+              value={editedPriceSettings.baseCurrency} 
               onValueChange={(value: 'TRY' | 'USD' | 'EUR' | 'GBP' | 'AED' | 'CNY') => 
-                setEditedSettings({ ...editedSettings, baseCurrency: value })
+                setEditedPriceSettings({ ...editedPriceSettings, baseCurrency: value })
               }
-              disabled={!editedSettings.enabled}
             >
               <SelectTrigger>
                 <SelectValue />
@@ -1303,9 +1318,105 @@ function PricingContent() {
                 <SelectItem value="CNY">🇨🇳 Çin Yuanı (¥)</SelectItem>
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground">Fiyatı girdiğiniz para birimi - Otomatik olarak diğer dillere çevrilecek</p>
+            <p className="text-xs text-muted-foreground">Fiyatı girdiğiniz para birimi - Kullanıcı diline göre otomatik çevrilir</p>
           </div>
 
+          <Separator />
+          
+          <div className="grid grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="proPrice">Pro Plan Fiyatı ({CURRENCY_SYMBOLS[editedPriceSettings.baseCurrency]})</Label>
+              <div className="relative">
+                <Input
+                  id="proPrice"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={editedPriceSettings.proPrice}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value) || 0;
+                    if (value >= 0) {
+                      setEditedPriceSettings({ ...editedPriceSettings, proPrice: value });
+                    }
+                  }}
+                  className="pr-16"
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-bold text-secondary">
+                  {CURRENCY_SYMBOLS[editedPriceSettings.baseCurrency]}{editedPriceSettings.proPrice.toFixed(2)}
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">Ana sayfa ve pricing bölümünde gösterilen fiyat</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="monthlyPrice">Aylık Fiyat ({CURRENCY_SYMBOLS[editedPriceSettings.baseCurrency]})</Label>
+              <Input
+                id="monthlyPrice"
+                type="number"
+                min="0"
+                step="0.01"
+                value={editedPriceSettings.monthlyPrice || 0}
+                onChange={(e) => {
+                  const value = parseFloat(e.target.value) || 0;
+                  setEditedPriceSettings({ ...editedPriceSettings, monthlyPrice: value });
+                }}
+              />
+              <p className="text-xs text-muted-foreground">Opsiyonel - Aylık abonelik</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="freeTrialDays">Ücretsiz Deneme (Gün)</Label>
+              <Input
+                id="freeTrialDays"
+                type="number"
+                min="0"
+                max="30"
+                value={editedPriceSettings.freeTrialDays}
+                onChange={(e) => {
+                  const value = parseInt(e.target.value) || 0;
+                  setEditedPriceSettings({ ...editedPriceSettings, freeTrialDays: value });
+                }}
+              />
+              <p className="text-xs text-muted-foreground">0 = deneme yok</p>
+            </div>
+          </div>
+
+          <div className="bg-secondary/10 rounded-lg p-4">
+            <p className="font-semibold text-sm mb-2">📌 Fiyat Görünümü:</p>
+            <div className="text-2xl font-bold text-secondary">
+              {CURRENCY_SYMBOLS[editedPriceSettings.baseCurrency]}{editedPriceSettings.proPrice.toFixed(2)}
+              <span className="text-sm font-normal text-muted-foreground ml-2">/ yıllık</span>
+            </div>
+          </div>
+
+          {/* Save Button */}
+          <div className="flex justify-end pt-4 border-t">
+            <Button onClick={handleSavePrice} className="gap-2 bg-secondary hover:bg-secondary/90">
+              <Save className="size-4" />
+              Fiyatı Kaydet
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ===== DISCOUNT POPUP SETTINGS - İndirim Popup Ayarları ===== */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            🎁 İndirim Popup Ayarları
+          </CardTitle>
+          <p className="text-xs text-muted-foreground">
+            İndirim popup'ı aktif olduğunda, yukarıdaki fiyata belirlenen yüzde kadar indirim uygulanır.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <SettingToggle 
+            label="🎁 İndirim Popup Sistemi" 
+            description="İndirim popup'larını aktif/pasif yap"
+            enabled={editedDiscountSettings.enabled}
+            onToggle={() => setEditedDiscountSettings({ ...editedDiscountSettings, enabled: !editedDiscountSettings.enabled })}
+          />
+          
           <Separator />
           
           <div className="grid grid-cols-2 gap-4">
@@ -1317,46 +1428,40 @@ function PricingContent() {
                   type="number"
                   min="0"
                   max="100"
-                  value={editedSettings.discountPercent}
+                  value={editedDiscountSettings.discountPercent}
                   onChange={(e) => {
                     const value = parseInt(e.target.value) || 0;
                     if (value >= 0 && value <= 100) {
-                      setEditedSettings({ ...editedSettings, discountPercent: value });
+                      setEditedDiscountSettings({ ...editedDiscountSettings, discountPercent: value });
                     }
                   }}
-                  disabled={!editedSettings.enabled}
+                  disabled={!editedDiscountSettings.enabled}
                   className="pr-14"
                 />
                 <div className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-bold text-accent">
-                  %{editedSettings.discountPercent}
+                  %{editedDiscountSettings.discountPercent}
                 </div>
               </div>
-              <p className="text-xs text-muted-foreground">Müşterilere sunulacak indirim yüzdesi</p>
+              <p className="text-xs text-muted-foreground">Fiyat üzerinden uygulanacak indirim</p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="originalPrice">Orijinal Fiyat ({CURRENCY_SYMBOLS[editedSettings.baseCurrency]})</Label>
-              <div className="relative">
-                <Input
-                  id="originalPrice"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={editedSettings.originalPrice}
-                  onChange={(e) => {
-                    const value = parseFloat(e.target.value) || 0;
-                    if (value >= 0) {
-                      setEditedSettings({ ...editedSettings, originalPrice: value });
-                    }
-                  }}
-                  disabled={!editedSettings.enabled}
-                  className="pr-16"
-                />
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-bold text-secondary">
-                  {CURRENCY_SYMBOLS[editedSettings.baseCurrency]}{editedSettings.originalPrice.toFixed(2)}
+              <Label>İndirimli Fiyat Önizleme</Label>
+              <div className="bg-green-50 dark:bg-green-950 rounded-lg p-3 border border-green-200 dark:border-green-800">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-lg font-bold text-green-600">
+                    {CURRENCY_SYMBOLS[editedPriceSettings.baseCurrency]}
+                    {(editedPriceSettings.proPrice * (1 - editedDiscountSettings.discountPercent / 100)).toFixed(2)}
+                  </span>
+                  <span className="text-sm text-muted-foreground line-through">
+                    {CURRENCY_SYMBOLS[editedPriceSettings.baseCurrency]}{editedPriceSettings.proPrice.toFixed(2)}
+                  </span>
                 </div>
+                <p className="text-xs text-green-600 mt-1">
+                  Tasarruf: {CURRENCY_SYMBOLS[editedPriceSettings.baseCurrency]}
+                  {(editedPriceSettings.proPrice * editedDiscountSettings.discountPercent / 100).toFixed(2)}
+                </p>
               </div>
-              <p className="text-xs text-muted-foreground">İndirim öncesi normal fiyat</p>
             </div>
           </div>
 
@@ -1369,14 +1474,14 @@ function PricingContent() {
                 id="dailyShowLimit"
                 type="number"
                 min="0"
-                value={editedSettings.dailyShowLimit}
+                value={editedDiscountSettings.dailyShowLimit}
                 onChange={(e) => {
                   const value = parseInt(e.target.value) || 0;
-                  setEditedSettings({ ...editedSettings, dailyShowLimit: value });
+                  setEditedDiscountSettings({ ...editedDiscountSettings, dailyShowLimit: value });
                 }}
-                disabled={!editedSettings.enabled}
+                disabled={!editedDiscountSettings.enabled}
               />
-              <p className="text-xs text-muted-foreground">Günde kaç kez gösterilecek (0 = sınırsız)</p>
+              <p className="text-xs text-muted-foreground">0 = sınırsız</p>
             </div>
 
             <div className="space-y-2">
@@ -1386,80 +1491,75 @@ function PricingContent() {
                 type="number"
                 min="0"
                 step="1000"
-                value={editedSettings.showDelay}
+                value={editedDiscountSettings.showDelay}
                 onChange={(e) => {
                   const value = parseInt(e.target.value) || 0;
-                  setEditedSettings({ ...editedSettings, showDelay: value });
+                  setEditedDiscountSettings({ ...editedDiscountSettings, showDelay: value });
                 }}
-                disabled={!editedSettings.enabled}
+                disabled={!editedDiscountSettings.enabled}
               />
-              <p className="text-xs text-muted-foreground">Sayfa yüklendikten kaç ms sonra gösterilecek</p>
+              <p className="text-xs text-muted-foreground">1000ms = 1 saniye</p>
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="timerDuration">Geri Sayım Süresi (saniye)</Label>
-            <Input
-              id="timerDuration"
-              type="number"
-              min="60"
-              max="3600"
-              value={editedSettings.timerDuration}
-              onChange={(e) => {
-                const value = parseInt(e.target.value) || 600;
-                if (value >= 60 && value <= 3600) {
-                  setEditedSettings({ ...editedSettings, timerDuration: value });
-                }
-              }}
-              disabled={!editedSettings.enabled}
-            />
-            <p className="text-xs text-muted-foreground">İndirim popup'ındaki geri sayım süresi (60-3600 sn)</p>
-          </div>
-
-          <Separator />
-
-          {/* Kullanıcı Gösterim Limitleri */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="maxShowsPerUser">Kullanıcı Başına Maks. Gösterim</Label>
+              <Label htmlFor="timerDuration">Geri Sayım Süresi (sn)</Label>
+              <Input
+                id="timerDuration"
+                type="number"
+                min="60"
+                max="3600"
+                value={editedDiscountSettings.timerDuration}
+                onChange={(e) => {
+                  const value = parseInt(e.target.value) || 600;
+                  setEditedDiscountSettings({ ...editedDiscountSettings, timerDuration: value });
+                }}
+                disabled={!editedDiscountSettings.enabled}
+              />
+              <p className="text-xs text-muted-foreground">60-3600 saniye</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="maxShowsPerUser">Kullanıcı Başına Maks.</Label>
               <Input
                 id="maxShowsPerUser"
                 type="number"
                 min="0"
-                value={editedSettings.maxShowsPerUser || 0}
+                value={editedDiscountSettings.maxShowsPerUser || 0}
                 onChange={(e) => {
                   const value = parseInt(e.target.value) || 0;
-                  setEditedSettings({ ...editedSettings, maxShowsPerUser: value });
+                  setEditedDiscountSettings({ ...editedDiscountSettings, maxShowsPerUser: value });
                 }}
-                disabled={!editedSettings.enabled}
+                disabled={!editedDiscountSettings.enabled}
               />
-              <p className="text-xs text-muted-foreground">Bir kullanıcıya toplam kaç kez gösterilecek (0 = sınırsız)</p>
+              <p className="text-xs text-muted-foreground">0 = sınırsız</p>
             </div>
+          </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="cooldownAfterClose">Kapatma Sonrası Bekleme (sn)</Label>
-              <Input
-                id="cooldownAfterClose"
-                type="number"
-                min="0"
-                step="60"
-                value={editedSettings.cooldownAfterClose || 0}
-                onChange={(e) => {
-                  const value = parseInt(e.target.value) || 0;
-                  setEditedSettings({ ...editedSettings, cooldownAfterClose: value });
-                }}
-                disabled={!editedSettings.enabled}
-              />
-              <p className="text-xs text-muted-foreground">Popup kapatıldıktan sonra tekrar gösterme süresi (saniye)</p>
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="cooldownAfterClose">Kapatma Sonrası Bekleme (sn)</Label>
+            <Input
+              id="cooldownAfterClose"
+              type="number"
+              min="0"
+              step="60"
+              value={editedDiscountSettings.cooldownAfterClose || 0}
+              onChange={(e) => {
+                const value = parseInt(e.target.value) || 0;
+                setEditedDiscountSettings({ ...editedDiscountSettings, cooldownAfterClose: value });
+              }}
+              disabled={!editedDiscountSettings.enabled}
+            />
+            <p className="text-xs text-muted-foreground">3600 = 1 saat</p>
           </div>
 
           <SettingToggle 
             label="Her Sayfada Göster" 
             description="Her sayfa yüklemesinde popup göster (kapalıysa sadece ana sayfa)"
-            enabled={editedSettings.showOnEveryPage || false}
-            onToggle={() => setEditedSettings({ ...editedSettings, showOnEveryPage: !editedSettings.showOnEveryPage })}
-            disabled={!editedSettings.enabled}
+            enabled={editedDiscountSettings.showOnEveryPage || false}
+            onToggle={() => setEditedDiscountSettings({ ...editedDiscountSettings, showOnEveryPage: !editedDiscountSettings.showOnEveryPage })}
+            disabled={!editedDiscountSettings.enabled}
           />
 
           <Separator />
@@ -1467,77 +1567,45 @@ function PricingContent() {
           {/* Popup İçerik Ayarları */}
           <div className="space-y-4">
             <p className="font-semibold text-sm">✏️ Popup İçeriği:</p>
-            <div className="space-y-2">
-              <Label htmlFor="popupTitle">Popup Başlığı</Label>
-              <Input
-                id="popupTitle"
-                value={editedSettings.popupTitle || ''}
-                onChange={(e) => setEditedSettings({ ...editedSettings, popupTitle: e.target.value })}
-                disabled={!editedSettings.enabled}
-                placeholder="Özel Teklif!"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="popupDescription">Popup Açıklaması</Label>
-              <Input
-                id="popupDescription"
-                value={editedSettings.popupDescription || ''}
-                onChange={(e) => setEditedSettings({ ...editedSettings, popupDescription: e.target.value })}
-                disabled={!editedSettings.enabled}
-                placeholder="Sınırlı süre için özel indirim fırsatı"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="ctaButtonText">CTA Buton Metni</Label>
-              <Input
-                id="ctaButtonText"
-                value={editedSettings.ctaButtonText || ''}
-                onChange={(e) => setEditedSettings({ ...editedSettings, ctaButtonText: e.target.value })}
-                disabled={!editedSettings.enabled}
-                placeholder="Hemen Al"
-              />
-            </div>
-          </div>
-
-          <Separator />
-
-          <div className="bg-muted/50 rounded-lg p-4 space-y-2">
-            <p className="font-semibold text-sm">📊 Özet Bilgi ({CURRENCY_SYMBOLS[editedSettings.baseCurrency]}):</p>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <div>
-                <span className="text-muted-foreground">Orijinal Fiyat:</span>
-                <span className="font-bold ml-2">{CURRENCY_SYMBOLS[editedSettings.baseCurrency]}{editedSettings.originalPrice.toFixed(2)}</span>
+            <div className="grid grid-cols-1 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="popupTitle">Popup Başlığı</Label>
+                <Input
+                  id="popupTitle"
+                  value={editedDiscountSettings.popupTitle || ''}
+                  onChange={(e) => setEditedDiscountSettings({ ...editedDiscountSettings, popupTitle: e.target.value })}
+                  disabled={!editedDiscountSettings.enabled}
+                  placeholder="Özel Teklif!"
+                />
               </div>
-              <div>
-                <span className="text-muted-foreground">İndirim:</span>
-                <span className="font-bold ml-2 text-accent">%{editedSettings.discountPercent}</span>
+              <div className="space-y-2">
+                <Label htmlFor="popupDescription">Popup Açıklaması</Label>
+                <Input
+                  id="popupDescription"
+                  value={editedDiscountSettings.popupDescription || ''}
+                  onChange={(e) => setEditedDiscountSettings({ ...editedDiscountSettings, popupDescription: e.target.value })}
+                  disabled={!editedDiscountSettings.enabled}
+                  placeholder="Sınırlı süre için özel indirim fırsatı"
+                />
               </div>
-              <div>
-                <span className="text-muted-foreground">İndirimli Fiyat:</span>
-                <span className="font-bold ml-2 text-secondary">
-                  {CURRENCY_SYMBOLS[editedSettings.baseCurrency]}{(editedSettings.originalPrice * (1 - editedSettings.discountPercent / 100)).toFixed(2)}
-                </span>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Tasarruf:</span>
-                <span className="font-bold ml-2 text-green-600">
-                  {CURRENCY_SYMBOLS[editedSettings.baseCurrency]}{(editedSettings.originalPrice * (editedSettings.discountPercent / 100)).toFixed(2)}
-                </span>
+              <div className="space-y-2">
+                <Label htmlFor="ctaButtonText">CTA Buton Metni</Label>
+                <Input
+                  id="ctaButtonText"
+                  value={editedDiscountSettings.ctaButtonText || ''}
+                  onChange={(e) => setEditedDiscountSettings({ ...editedDiscountSettings, ctaButtonText: e.target.value })}
+                  disabled={!editedDiscountSettings.enabled}
+                  placeholder="Hemen Al"
+                />
               </div>
             </div>
-          </div>
-
-          <div className="pt-2 border-t">
-            <p className="text-xs text-muted-foreground">
-              💡 İndirim popup'ı kullanıcılara otomatik olarak gösterilir ve dile göre otomatik kur dönüşümü yapılır
-            </p>
           </div>
 
           {/* Save Button */}
           <div className="flex justify-end pt-4 border-t">
-            <Button onClick={handleSave} className="gap-2">
+            <Button onClick={handleSaveDiscount} className="gap-2">
               <Save className="size-4" />
-              Değişiklikleri Kaydet
+              İndirim Ayarlarını Kaydet
             </Button>
           </div>
         </CardContent>
