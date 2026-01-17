@@ -210,7 +210,16 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
           console.log('✅ User signed in:', session.user.email);
           setSession(session);
           setUser(session.user);
-          await fetchProfile(session.user.id, session.user.email || '');
+          // Fetch profile with retry logic
+          try {
+            await fetchProfile(session.user.id, session.user.email || '');
+          } catch (err) {
+            console.warn('⚠️ Profile fetch failed, retrying...', err);
+            // Retry after a short delay
+            setTimeout(async () => {
+              await fetchProfile(session.user.id, session.user.email || '');
+            }, 1000);
+          }
         }
       } else if (event === 'SIGNED_OUT') {
         console.log('👋 User signed out');
