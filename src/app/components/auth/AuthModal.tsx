@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useContext } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useUserAuth } from '@/contexts/UserAuthContext';
+import { AdminDataContext } from '@/contexts/AdminDataContext';
 import {
   Dialog,
   DialogContent,
@@ -24,6 +25,8 @@ interface AuthModalProps {
 export function AuthModal({ open, onOpenChange }: AuthModalProps) {
   const { t } = useLanguage();
   const { signInWithEmail, signUpWithEmail, signInWithGoogle, signInWithApple, isLoading } = useUserAuth();
+  const adminData = useContext(AdminDataContext);
+  const authSettings = adminData?.sectionSettings?.auth;
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -42,20 +45,25 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
 
     try {
       if (mode === 'signup') {
-        // Validation
-        if (!birthDate) {
-          toast.error(t('auth.error.ageRequired'));
-          return;
-        }
+        // Yaş doğrulama (admin ayarına göre)
+        const requireAge = authSettings?.requireAgeVerification ?? true;
+        const minAge = authSettings?.minimumAge ?? 18;
         
-        const birth = new Date(birthDate);
-        const today = new Date();
-        const age = today.getFullYear() - birth.getFullYear();
-        const monthDiff = today.getMonth() - birth.getMonth();
-        
-        if (age < 18 || (age === 18 && monthDiff < 0) || (age === 18 && monthDiff === 0 && today.getDate() < birth.getDate())) {
-          toast.error(t('auth.error.ageRestriction'));
-          return;
+        if (requireAge) {
+          if (!birthDate) {
+            toast.error(t('auth.error.ageRequired'));
+            return;
+          }
+          
+          const birth = new Date(birthDate);
+          const today = new Date();
+          const age = today.getFullYear() - birth.getFullYear();
+          const monthDiff = today.getMonth() - birth.getMonth();
+          
+          if (age < minAge || (age === minAge && monthDiff < 0) || (age === minAge && monthDiff === 0 && today.getDate() < birth.getDate())) {
+            toast.error(t('auth.error.ageRestriction'));
+            return;
+          }
         }
         
         if (password !== confirmPassword) {
@@ -63,7 +71,11 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
           return;
         }
         
-        if (!agreedToTerms || !agreedToPrivacy) {
+        // Kullanım şartları onayı (admin ayarına göre)
+        const requireTerms = authSettings?.requireTermsAcceptance ?? true;
+        const requirePrivacy = authSettings?.requirePrivacyAcceptance ?? true;
+        
+        if ((requireTerms && !agreedToTerms) || (requirePrivacy && !agreedToPrivacy)) {
           toast.error(t('auth.error.termsRequired'));
           return;
         }
@@ -135,6 +147,14 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
   };
 
   const handleGoogleAuth = async () => {
+    // Admin ayarlarını kontrol et
+    if (!(authSettings?.enableGoogleAuth ?? true)) {
+      toast.error('Google ile giriş şu anda devre dışı.', {
+        description: 'Lütfen e-posta ile kayıt olun.',
+      });
+      return;
+    }
+    
     const result = await signInWithGoogle();
     if (!result.success) {
       // Show user-friendly error message
@@ -147,6 +167,14 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
   };
 
   const handleAppleAuth = async () => {
+    // Admin ayarlarını kontrol et
+    if (!(authSettings?.enableAppleAuth ?? false)) {
+      toast.error('Apple ile giriş şu anda devre dışı.', {
+        description: 'Lütfen e-posta ile kayıt olun.',
+      });
+      return;
+    }
+    
     const result = await signInWithApple();
     if (!result.success) {
       // Show user-friendly error message
@@ -173,18 +201,21 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
         <div className="space-y-4 py-4">
           {/* Social Auth Buttons */}
           <div className="space-y-3">
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={handleGoogleAuth}
-              disabled={loading || isLoading}
-            >
-              <Chrome className="mr-2 size-5" />
-              {mode === 'signin' ? t('auth.google.signin') : t('auth.google.signup')}
-            </Button>
+            {/* Google OAuth - Admin ayarlarına göre */}
+            {(authSettings?.enableGoogleAuth ?? true) && (
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={handleGoogleAuth}
+                disabled={loading || isLoading}
+              >
+                <Chrome className="mr-2 size-5" />
+                {mode === 'signin' ? t('auth.google.signin') : t('auth.google.signup')}
+              </Button>
+            )}
 
-            {/* Apple OAuth - Geçici olarak gizlendi (Apple Developer hesabı hazır olunca aktif edilecek) */}
-            {false && (
+            {/* Apple OAuth - Admin ayarlarına göre */}
+            {(authSettings?.enableAppleAuth ?? false) && (
               <Button
                 variant="outline"
                 className="w-full"

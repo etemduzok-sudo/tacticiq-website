@@ -485,6 +485,65 @@ function SectionsContent() {
         </CardContent>
       </Card>
 
+      {/* Auth Settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">🔐 Kayıt/Giriş Ayarları</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <SettingToggle 
+            label="Kayıt Sistemi" 
+            description="Kullanıcı kayıt ve giriş sistemini aktif et"
+            enabled={editedSections.auth?.enabled ?? true}
+            onToggle={() => handleToggleSection('auth')}
+          />
+          <div className="ml-6 space-y-2 border-l-2 border-muted pl-4">
+            <SettingToggle 
+              label="Yaş Doğrulama Zorunlu" 
+              description="Kayıt sırasında yaş doğrulama (18+) zorunlu olsun"
+              enabled={editedSections.auth?.requireAgeVerification ?? true}
+              onToggle={() => handleToggleSection('auth', 'requireAgeVerification')}
+            />
+            <SettingToggle 
+              label="Google ile Giriş" 
+              description="Google OAuth ile giriş/kayıt aktif"
+              enabled={editedSections.auth?.enableGoogleAuth ?? true}
+              onToggle={() => handleToggleSection('auth', 'enableGoogleAuth')}
+            />
+            <SettingToggle 
+              label="Apple ile Giriş" 
+              description="Apple OAuth ile giriş/kayıt aktif (Apple Developer hesabı gerekli)"
+              enabled={editedSections.auth?.enableAppleAuth ?? false}
+              onToggle={() => handleToggleSection('auth', 'enableAppleAuth')}
+            />
+            <SettingToggle 
+              label="E-posta ile Giriş" 
+              description="E-posta/şifre ile giriş/kayıt aktif"
+              enabled={editedSections.auth?.enableEmailAuth ?? true}
+              onToggle={() => handleToggleSection('auth', 'enableEmailAuth')}
+            />
+            <SettingToggle 
+              label="E-posta Doğrulama Zorunlu" 
+              description="Kayıt sonrası e-posta doğrulama gerekli"
+              enabled={editedSections.auth?.requireEmailConfirmation ?? true}
+              onToggle={() => handleToggleSection('auth', 'requireEmailConfirmation')}
+            />
+            <SettingToggle 
+              label="Kullanım Şartları Onayı" 
+              description="Kayıt için kullanım şartları onayı zorunlu"
+              enabled={editedSections.auth?.requireTermsAcceptance ?? true}
+              onToggle={() => handleToggleSection('auth', 'requireTermsAcceptance')}
+            />
+            <SettingToggle 
+              label="Gizlilik Politikası Onayı" 
+              description="Kayıt için gizlilik politikası onayı zorunlu"
+              enabled={editedSections.auth?.requirePrivacyAcceptance ?? true}
+              onToggle={() => handleToggleSection('auth', 'requirePrivacyAcceptance')}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="bg-green-50 border border-green-200 rounded-lg p-4">
         <p className="text-sm text-green-800">
           ✅ <strong>Otomatik Kayıt:</strong> Bölüm açma/kapama işlemleri anında kaydedilir. Sayfa yenilendiğinde ayarlar korunur.
