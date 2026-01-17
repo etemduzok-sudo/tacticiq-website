@@ -75,9 +75,15 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
   }, [user, session, isAuthenticated, profile]);
 
   // Fetch user profile from Supabase or localStorage
-  const fetchProfile = useCallback(async (userId: string, userEmail: string) => {
+  const fetchProfile = useCallback(async (userId: string, userEmail: string, userMetadata?: any) => {
     try {
-      console.log('🔍 Fetching profile for:', userId, userEmail);
+      console.log('🔍 Fetching profile for:', userId, userEmail, 'metadata:', userMetadata);
+      
+      // Get name from user metadata (Google OAuth provides name in metadata)
+      const metadataName = userMetadata?.name || 
+                          userMetadata?.full_name || 
+                          userMetadata?.display_name || 
+                          null;
       
       // Try to get profile from Supabase
       const { data, error: fetchError } = await supabase
@@ -98,11 +104,13 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
 
       if (data) {
         console.log('✅ Profile found in Supabase:', data);
+        // Update name if metadata has a better name
+        const profileName = metadataName || data.name || userEmail.split('@')[0];
         const userProfile: UserProfile = {
           id: data.id,
           email: userEmail,
-          name: data.name || userEmail.split('@')[0],
-          avatar: data.avatar,
+          name: profileName,
+          avatar: userMetadata?.avatar_url || userMetadata?.picture || data.avatar,
           plan: data.plan || 'free',
           favoriteTeams: data.favorite_teams || [],
           preferredLanguage: data.preferred_language || 'tr',
@@ -114,11 +122,12 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
         console.log('✅ Profile set in state:', userProfile);
         return userProfile;
       } else {
-        // Create default profile
+        // Create default profile with metadata name if available
         const defaultProfile: UserProfile = {
           id: userId,
           email: userEmail,
-          name: userEmail.split('@')[0],
+          name: metadataName || userEmail.split('@')[0],
+          avatar: userMetadata?.avatar_url || userMetadata?.picture,
           plan: 'free',
           favoriteTeams: [],
           preferredLanguage: 'tr',
@@ -132,6 +141,7 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
           id: userId,
           email: userEmail,
           name: defaultProfile.name,
+          avatar: defaultProfile.avatar,
           plan: 'free',
           favorite_teams: [],
           preferred_language: 'tr',
@@ -185,7 +195,11 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
           console.log('✅ Session found, setting user:', currentSession.user.email);
           setSession(currentSession);
           setUser(currentSession.user);
-          await fetchProfile(currentSession.user.id, currentSession.user.email || '');
+          await fetchProfile(
+            currentSession.user.id, 
+            currentSession.user.email || '',
+            currentSession.user.user_metadata
+          );
         } else {
           console.log('ℹ️ No active session');
           setSession(null);
@@ -212,12 +226,20 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
           setUser(session.user);
           // Fetch profile with retry logic
           try {
-            await fetchProfile(session.user.id, session.user.email || '');
+            await fetchProfile(
+              session.user.id, 
+              session.user.email || '',
+              session.user.user_metadata
+            );
           } catch (err) {
             console.warn('⚠️ Profile fetch failed, retrying...', err);
             // Retry after a short delay
             setTimeout(async () => {
-              await fetchProfile(session.user.id, session.user.email || '');
+              await fetchProfile(
+                session.user.id, 
+                session.user.email || '',
+                session.user.user_metadata
+              );
             }, 1000);
           }
         }
@@ -231,7 +253,11 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
         if (session?.user) {
           console.log('🔄 User updated:', session.user.email);
           setUser(session.user);
-          await fetchProfile(session.user.id, session.user.email || '');
+          await fetchProfile(
+            session.user.id, 
+            session.user.email || '',
+            session.user.user_metadata
+          );
         }
       }
     });
@@ -276,7 +302,11 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (data.user) {
-        await fetchProfile(data.user.id, data.user.email || '');
+        await fetchProfile(
+          data.user.id, 
+          data.user.email || '',
+          data.user.user_metadata
+        );
       }
 
       return { success: true };
@@ -583,7 +613,11 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
   // Refresh profile
   const refreshProfile = async () => {
     if (user) {
-      await fetchProfile(user.id, user.email || '');
+      await fetchProfile(
+        user.id, 
+        user.email || '',
+        user.user_metadata
+      );
     }
   };
 
