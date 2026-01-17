@@ -1,10 +1,6 @@
 [build]
   publish = "dist"
-  # Explicitly skip submodule checkout to prevent errors
-  command = "git submodule deinit -f . 2>/dev/null || true && npm run build"
+  command = "npm run build"
 
 [build.environment]
   NODE_VERSION = "18"
-  
-# Disable submodule checkout
-# Empty .gitmodules file + deinit command prevents Netlify from trying to checkout submodules
