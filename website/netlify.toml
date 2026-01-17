@@ -1,6 +1,7 @@
 [build]
   publish = "dist"
-  command = "npm run build"
+  # Skip submodule checkout explicitly to prevent errors
+  command = "git submodule deinit -f . || true && git submodule sync --recursive || true && npm run build"
 
 [build.environment]
   NODE_VERSION = "18"
