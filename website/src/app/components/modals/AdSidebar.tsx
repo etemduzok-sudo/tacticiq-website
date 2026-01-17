@@ -5,30 +5,32 @@ import { Card } from '@/app/components/ui/card';
 import { AdminDataContext, Advertisement } from '@/contexts/AdminDataContext';
 
 export function AdSidebar() {
-  // Safe context usage - return null if provider is not available
+  // ALL HOOKS MUST BE AT THE TOP - BEFORE ANY CONDITIONAL RETURNS
   const contextData = useContext(AdminDataContext);
   const [currentAd, setCurrentAd] = useState<Advertisement | null>(null);
   const [showAd, setShowAd] = useState(false);
   const lastShownTimeRef = useRef<number>(0);
   
-  // If context is not available, don't render
-  if (!contextData) {
-    return null;
-  }
+  // Extract values from context (with fallbacks for when context is null)
+  const advertisements = contextData?.advertisements ?? [];
+  const adSettings = contextData?.adSettings ?? null;
   
-  const { advertisements, adSettings } = contextData;
+  // Check if system is enabled
+  const isSystemEnabled = adSettings?.systemEnabled ?? false;
+  const isSidebarEnabled = adSettings?.sidebarEnabled ?? false;
+  const shouldRender = contextData && isSystemEnabled && isSidebarEnabled;
 
   // Effect to handle ad system enable/disable - IMMEDIATELY close when disabled
   useEffect(() => {
-    if (!adSettings.systemEnabled || !adSettings.sidebarEnabled) {
+    if (!isSystemEnabled || !isSidebarEnabled) {
       setShowAd(false);
       setCurrentAd(null);
     }
-  }, [adSettings.systemEnabled, adSettings.sidebarEnabled]);
+  }, [isSystemEnabled, isSidebarEnabled]);
 
   useEffect(() => {
     // Check if ad system and sidebar ads are enabled
-    if (!adSettings.systemEnabled || !adSettings.sidebarEnabled) {
+    if (!isSystemEnabled || !isSidebarEnabled) {
       setShowAd(false);
       setCurrentAd(null);
       return;
@@ -69,10 +71,10 @@ export function AdSidebar() {
     }, 60000); // Check every minute
 
     return () => clearInterval(interval);
-  }, [advertisements, adSettings.systemEnabled, adSettings.sidebarEnabled]);
+  }, [advertisements, isSystemEnabled, isSidebarEnabled]);
 
-  // Don't render if disabled or no ad
-  if (!adSettings.systemEnabled || !adSettings.sidebarEnabled || !showAd || !currentAd) {
+  // CONDITIONAL RETURNS AFTER ALL HOOKS
+  if (!shouldRender || !showAd || !currentAd) {
     return null;
   }
 
