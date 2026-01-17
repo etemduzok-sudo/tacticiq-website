@@ -1,6 +1,7 @@
-import { useState, useContext } from 'react';
+import { useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { AdminDataContext } from '@/contexts/AdminDataContext';
+import { useAdminDataSafe } from '@/contexts/AdminDataContext';
+import { useUserAuthSafe } from '@/contexts/UserAuthContext';
 import { Button } from '@/app/components/ui/button';
 import { LanguageSwitcher } from '@/app/components/LanguageSwitcher';
 import { ThemeToggle } from '@/app/components/ThemeToggle';
@@ -15,17 +16,24 @@ interface HeaderProps {
 
 export function Header({ onNavigate }: HeaderProps) {
   const { t, isRTL } = useLanguage();
-  const adminData = useContext(AdminDataContext);
+  // useAdminDataSafe kullanarak context değişikliklerinde re-render garantile
+  const adminData = useAdminDataSafe();
+  // Gerçek auth durumu - UserAuthContext'ten
+  const userAuth = useUserAuthSafe();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
-  // Simulated auth state - in production, this would come from auth context
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [user, setUser] = useState({
-    email: 'user@tacticiq.app',
-    name: 'TacticIQ User',
-  });
+  
+  // Auth durumu UserAuthContext'ten
+  const isLoggedIn = userAuth?.isAuthenticated ?? false;
+  const user = userAuth?.profile ? {
+    email: userAuth.profile.email,
+    name: userAuth.profile.name || userAuth.profile.email.split('@')[0],
+  } : {
+    email: '',
+    name: '',
+  };
 
-  // Build nav items based on admin section settings
+  // Build nav items based on admin section settings - context değişince güncellenecek
   const sectionSettings = adminData?.sectionSettings;
   
   // Dinamik olarak admin ayarlarına göre nav items oluştur
@@ -88,10 +96,10 @@ export function Header({ onNavigate }: HeaderProps) {
             <UserMenu user={user} />
           ) : (
             <Button 
-              className="hidden sm:flex"
+              className="flex"
               onClick={() => setAuthModalOpen(true)}
             >
-              {t('nav.signup')}
+              {t('nav.signin') || 'Giriş Yap'}
             </Button>
           )}
           
@@ -124,7 +132,7 @@ export function Header({ onNavigate }: HeaderProps) {
               className="w-full mt-2"
               onClick={() => setAuthModalOpen(true)}
             >
-              {t('nav.signup')}
+              {t('nav.signin') || 'Giriş Yap'}
             </Button>
           </nav>
         </div>

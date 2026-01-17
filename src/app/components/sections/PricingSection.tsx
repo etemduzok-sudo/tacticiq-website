@@ -7,7 +7,7 @@ import { usePayment } from '@/contexts/PaymentContext';
 
 export function PricingSection() {
   const { t, language } = useLanguage();
-  const { sectionSettings, discountSettings } = useAdminData();
+  const { sectionSettings, priceSettings, discountSettings } = useAdminData();
   const { selectPlan, openPaymentModal } = usePayment();
 
   // Admin panelinden section ayarları
@@ -24,18 +24,16 @@ export function PricingSection() {
   const targetCurrency = LANGUAGE_CURRENCY_MAP[language] || 'TRY';
   const currencySymbol = CURRENCY_SYMBOLS[targetCurrency];
 
-  // React otomatik olarak discountSettings değiştiğinde re-render yapacak
-  // Gereksiz forceUpdate kaldırıldı - bu sürekli güncellemeye neden oluyordu
+  // Fiyatı priceSettings'den al ve kullanıcının diline göre çevir
+  const basePrice = priceSettings.proPrice || 99.99;
+  const baseCurrency = priceSettings.baseCurrency || 'TRY';
+  
+  // Fiyatı hedef para birimine çevir
+  const convertedOriginalPrice = convertCurrency(basePrice, baseCurrency, targetCurrency);
 
-  // Fiyatı kullanıcının diline göre çevir - NaN kontrolü ekle
-  const convertedOriginalPrice = convertCurrency(
-    discountSettings.originalPrice || 99.99,
-    discountSettings.baseCurrency || 'TRY',
-    targetCurrency
-  );
-
-  const discountPercent = discountSettings.discountPercent || 20;
-  const proPrice = pricingSettings.discountEnabled 
+  // İndirim yüzdesi (sadece discountEnabled ise uygulanır)
+  const discountPercent = discountSettings.discountPercent || 0;
+  const proPrice = pricingSettings.discountEnabled && discountPercent > 0
     ? convertedOriginalPrice * (1 - discountPercent / 100)
     : convertedOriginalPrice;
 

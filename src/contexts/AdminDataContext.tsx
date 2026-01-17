@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, ReactNode, useEffect, useCallback, useMemo } from 'react';
 // Supabase entegrasyonu geçici olarak devre dışı - localStorage kullanılıyor
 // import { configService, partnersService, teamMembersService, advertisementsService } from '../services/adminSupabaseService';
 
@@ -249,15 +249,22 @@ export interface Game {
   updatedAt: string; // Güncellenme tarihi
 }
 
+// Fiyat Ayarları - İndirim popup'ından bağımsız
+export interface PriceSettings {
+  proPrice: number; // Pro plan fiyatı (girilen para birimi cinsinden)
+  baseCurrency: 'TRY' | 'USD' | 'EUR' | 'GBP' | 'AED' | 'CNY'; // Fiyatın girildiği para birimi
+  freeTrialDays: number; // Ücretsiz deneme süresi (gün)
+  monthlyPrice?: number; // Aylık fiyat (opsiyonel)
+  yearlyPrice?: number; // Yıllık fiyat (opsiyonel)
+}
+
+// İndirim Popup Ayarları - Fiyattan bağımsız
 export interface DiscountSettings {
   enabled: boolean; // İndirim popup'ı aktif mi?
   discountPercent: number; // İndirim yüzdesi (örn: 20 = %20)
   dailyShowLimit: number; // Günde kaç kere gösterilecek (0 = sınırsız)
   showDelay: number; // Kaç saniye sonra gösterilecek (örn: 5000 = 5 saniye)
   timerDuration: number; // Geri sayım süresi (saniye cinsinden, örn: 600 = 10 dakika)
-  originalPrice: number; // Orijinal fiyat (girilen para birimi cinsinden)
-  baseCurrency: 'TRY' | 'USD' | 'EUR' | 'GBP' | 'AED' | 'CNY'; // Fiyatın girildiği para birimi
-  // Yeni parametreler
   maxShowsPerUser: number; // Kullanıcı başına maksimum toplam gösterim (0 = sınırsız)
   cooldownAfterClose: number; // Kapatıldıktan sonra tekrar gösterme süresi (saniye, örn: 3600 = 1 saat)
   showOnEveryPage: boolean; // Her sayfa yüklemesinde mi yoksa sadece ana sayfada mı gösterilsin
@@ -473,6 +480,7 @@ interface AdminDataContextType {
   advertisements: Advertisement[];
   adSettings: AdSettings;
   discountSettings: DiscountSettings;
+  priceSettings: PriceSettings; // Fiyat ayarları - indirimden bağımsız
   pressKitFiles: PressKitFile[]; // Basın kiti dosyaları
   emailAutoReply: EmailAutoReplySettings; // Otomatik email cevap ayarları
   teamMembers: TeamMember[]; // Ekip üyeleri
@@ -505,6 +513,7 @@ interface AdminDataContextType {
   deletePartner: (id: string) => void;
   updateAdSettings: (settings: Partial<AdSettings>) => void;
   updateDiscountSettings: (settings: Partial<DiscountSettings>) => void;
+  updatePriceSettings: (settings: Partial<PriceSettings>) => void;
   updateEmailAutoReply: (settings: Partial<EmailAutoReplySettings>) => void;
   updateSettings: (settings: Partial<SiteSettings>) => void;
   updateSectionSettings: (settings: Partial<SectionSettings>) => void; // Section ayarlarını güncelle
@@ -643,18 +652,32 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
     adminEmail: 'admin@tacticiq.app',
   });
 
-  // Discount Settings
+  // Price Settings - Fiyat ayarları (indirimden bağımsız)
+  const [priceSettings, setPriceSettings] = useState<PriceSettings>(() => {
+    const savedSettings = localStorage.getItem('admin_price_settings');
+    const defaultSettings: PriceSettings = {
+      proPrice: 99.99,
+      baseCurrency: 'TRY',
+      freeTrialDays: 7,
+      monthlyPrice: 29.99,
+      yearlyPrice: 99.99,
+    };
+    if (savedSettings) {
+      const parsed = JSON.parse(savedSettings);
+      return { ...defaultSettings, ...parsed };
+    }
+    return defaultSettings;
+  });
+
+  // Discount Settings - İndirim popup ayarları (fiyattan bağımsız)
   const [discountSettings, setDiscountSettings] = useState<DiscountSettings>(() => {
     const savedSettings = localStorage.getItem('admin_discount_settings');
     const defaultSettings: DiscountSettings = {
       enabled: false,
-      discountPercent: 0,
-    dailyShowLimit: 3,
-    showDelay: 5000,
-    timerDuration: 600,
-      originalPrice: 0,
-      baseCurrency: 'TRY',
-      // Yeni parametreler
+      discountPercent: 20,
+      dailyShowLimit: 3,
+      showDelay: 5000,
+      timerDuration: 600,
       maxShowsPerUser: 5,
       cooldownAfterClose: 3600, // 1 saat
       showOnEveryPage: false,
@@ -1330,6 +1353,23 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
     setLogs([newLog, ...logs]);
   };
 
+  const updatePriceSettings = (updatedSettings: Partial<PriceSettings>) => {
+    setPriceSettings(prevSettings => {
+      const newSettings = { ...prevSettings, ...updatedSettings };
+      console.log('Price Settings Updated:', newSettings);
+      return newSettings;
+    });
+    
+    const newLog: LogEntry = {
+      id: Date.now().toString(),
+      type: 'success',
+      message: 'Fiyat ayarları güncellendi',
+      user: 'admin@tacticiq.app',
+      time: new Date().toLocaleString('tr-TR'),
+    };
+    setLogs([newLog, ...logs]);
+  };
+
   const updateDiscountSettings = (updatedSettings: Partial<DiscountSettings>) => {
     setDiscountSettings(prevSettings => {
       const newSettings = { ...prevSettings, ...updatedSettings };
@@ -1571,6 +1611,11 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
     loadFromSupabase();
   }, []);
 
+  // Save priceSettings to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('admin_price_settings', JSON.stringify(priceSettings));
+  }, [priceSettings]);
+
   // Save discountSettings to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem('admin_discount_settings', JSON.stringify(discountSettings));
@@ -1651,7 +1696,8 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('admin_pressKitFiles', JSON.stringify(pressKitFiles));
   }, [pressKitFiles]);
 
-  const value = {
+  // Context value'yu useMemo ile memoize et - state değişikliklerinde güncellenecek
+  const value = useMemo(() => ({
     stats,
     users,
     contents,
@@ -1663,6 +1709,7 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
     advertisements,
     adSettings,
     discountSettings,
+    priceSettings, // Fiyat ayarları - indirimden bağımsız
     pressKitFiles, // Basın kiti dosyaları
     emailAutoReply, // Otomatik email cevap ayarları
     teamMembers, // Ekip üyeleri
@@ -1695,6 +1742,7 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
     deletePartner,
     updateAdSettings,
     updateDiscountSettings,
+    updatePriceSettings,
     updateEmailAutoReply,
     updateSettings,
     updateSectionSettings, // Section ayarlarını güncelle
@@ -1702,7 +1750,11 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
     filterLogs,
     refreshStats,
     updateStats,
-  };
+  }), [
+    stats, users, contents, activities, logs, settings, sectionSettings,
+    websiteContent, advertisements, adSettings, discountSettings, priceSettings,
+    pressKitFiles, emailAutoReply, teamMembers, pressReleases, games, partners
+  ]);
 
   return <AdminDataContext.Provider value={value}>{children}</AdminDataContext.Provider>;
 }

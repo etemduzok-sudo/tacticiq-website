@@ -269,9 +269,9 @@ export function TeamManagement() {
 
             {/* Email */}
             <div className="space-y-2">
-              <Label htmlFor="email">Email (Opsiyonel)</Label>
+              <Label htmlFor="team-member-email">Email (Opsiyonel)</Label>
               <Input
-                id="email"
+                id="team-member-email"
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}

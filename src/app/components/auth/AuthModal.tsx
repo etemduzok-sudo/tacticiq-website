@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { supabase } from '@/config/supabase';
+import { useUserAuth } from '@/contexts/UserAuthContext';
 import {
   Dialog,
   DialogContent,
@@ -12,7 +12,8 @@ import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
 import { Label } from '@/app/components/ui/label';
 import { Separator } from '@/app/components/ui/separator';
-import { Apple, Mail, Chrome, Loader2, ShieldCheck } from 'lucide-react';
+import { Checkbox } from '@/app/components/ui/checkbox';
+import { Apple, Mail, Chrome, Loader2, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface AuthModalProps {
@@ -22,10 +23,17 @@ interface AuthModalProps {
 
 export function AuthModal({ open, onOpenChange }: AuthModalProps) {
   const { t } = useLanguage();
+  const { signInWithEmail, signUpWithEmail, signInWithGoogle, signInWithApple, isLoading } = useUserAuth();
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [name, setName] = useState('');
+  const [birthDate, setBirthDate] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [agreedToPrivacy, setAgreedToPrivacy] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleEmailAuth = async (e: React.FormEvent) => {
@@ -34,37 +42,78 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
 
     try {
       if (mode === 'signup') {
-        // Kayıt işlemi
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: {
-              name: name,
-            },
-          },
-        });
+        // Validation
+        if (!birthDate) {
+          toast.error(t('auth.error.ageRequired'));
+          return;
+        }
+        
+        const birth = new Date(birthDate);
+        const today = new Date();
+        const age = today.getFullYear() - birth.getFullYear();
+        const monthDiff = today.getMonth() - birth.getMonth();
+        
+        if (age < 18 || (age === 18 && monthDiff < 0) || (age === 18 && monthDiff === 0 && today.getDate() < birth.getDate())) {
+          toast.error(t('auth.error.ageRestriction'));
+          return;
+        }
+        
+        if (password !== confirmPassword) {
+          toast.error(t('auth.error.passwordMismatch'));
+          return;
+        }
+        
+        if (!agreedToTerms || !agreedToPrivacy) {
+          toast.error(t('auth.error.termsRequired'));
+          return;
+        }
+        
+        // Kayıt işlemi - useUserAuth hook'u kullan
+        const result = await signUpWithEmail(email, password, name);
 
-        if (error) throw error;
+        if (!result.success) {
+          toast.error(result.error || t('auth.error.general'));
+          return;
+        }
 
+        // If email confirmation is required, show info and keep modal open
+        if (result.error && result.error.includes('doğrulama linki')) {
+          toast.info(result.error, { duration: 8000 });
+          // Don't close modal yet - user needs to check email
+          return;
+        }
+
+        // If signup successful with session, wait a bit for auth state to update
         toast.success(t('auth.success.signup'));
-        toast.info(t('auth.email.verification'));
+        
+        // Wait for session and profile to be loaded before closing modal
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Reset form
+        setEmail('');
+        setPassword('');
+        setConfirmPassword('');
+        setName('');
+        setBirthDate('');
+        setAgreedToTerms(false);
+        setAgreedToPrivacy(false);
+        
+        // Close modal after state is updated
+        onOpenChange(false);
       } else {
-        // Giriş işlemi
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
+        // Giriş işlemi - useUserAuth hook'u kullan
+        const result = await signInWithEmail(email, password);
 
-        if (error) throw error;
+        if (!result.success) {
+          toast.error(result.error || t('auth.error.general'));
+          return;
+        }
 
         toast.success(t('auth.success.signin'));
+        onOpenChange(false);
+        setEmail('');
+        setPassword('');
       }
-
-      onOpenChange(false);
-      setEmail('');
-      setPassword('');
-      setName('');
     } catch (error: any) {
       console.error('Auth error:', error);
       toast.error(error.message || t('auth.error.general'));
@@ -74,34 +123,26 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
   };
 
   const handleGoogleAuth = async () => {
-    try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}`,
-        },
+    const result = await signInWithGoogle();
+    if (!result.success) {
+      // Show user-friendly error message
+      const errorMsg = result.error || t('auth.error.google');
+      toast.error(errorMsg, {
+        duration: 5000,
+        description: 'Google ile giriş şu anda aktif değil. E-posta ile kayıt olabilirsiniz.',
       });
-
-      if (error) throw error;
-    } catch (error: any) {
-      console.error('Google auth error:', error);
-      toast.error(error.message || t('auth.error.google'));
     }
   };
 
   const handleAppleAuth = async () => {
-    try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'apple',
-        options: {
-          redirectTo: `${window.location.origin}`,
-        },
+    const result = await signInWithApple();
+    if (!result.success) {
+      // Show user-friendly error message
+      const errorMsg = result.error || t('auth.error.apple');
+      toast.error(errorMsg, {
+        duration: 5000,
+        description: 'Apple ile giriş şu anda aktif değil. E-posta ile kayıt olabilirsiniz.',
       });
-
-      if (error) throw error;
-    } catch (error: any) {
-      console.error('Apple auth error:', error);
-      toast.error(error.message || t('auth.error.apple'));
     }
   };
 
@@ -124,21 +165,24 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
               variant="outline"
               className="w-full"
               onClick={handleGoogleAuth}
-              disabled={loading}
+              disabled={loading || isLoading}
             >
               <Chrome className="mr-2 size-5" />
               {mode === 'signin' ? t('auth.google.signin') : t('auth.google.signup')}
             </Button>
 
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={handleAppleAuth}
-              disabled={loading}
-            >
-              <Apple className="mr-2 size-5" />
-              {mode === 'signin' ? t('auth.apple.signin') : t('auth.apple.signup')}
-            </Button>
+            {/* Apple OAuth - Geçici olarak gizlendi (Apple Developer hesabı hazır olunca aktif edilecek) */}
+            {false && (
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={handleAppleAuth}
+                disabled={loading || isLoading}
+              >
+                <Apple className="mr-2 size-5" />
+                {mode === 'signin' ? t('auth.apple.signin') : t('auth.apple.signup')}
+              </Button>
+            )}
           </div>
 
           <div className="relative">
@@ -166,9 +210,9 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="email">{t('auth.email')}</Label>
+              <Label htmlFor="auth-email">{t('auth.email')}</Label>
               <Input
-                id="email"
+                id="auth-email"
                 type="email"
                 placeholder={t('auth.email.placeholder')}
                 value={email}
@@ -180,24 +224,135 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
 
             <div className="space-y-2">
               <Label htmlFor="password">{t('auth.password')}</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder={t('auth.password.placeholder')}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={6}
-                disabled={loading}
-              />
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder={t('auth.password.placeholder')}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  minLength={6}
+                  disabled={loading}
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                </button>
+              </div>
             </div>
 
             {mode === 'signup' && (
-              <div className="flex items-start gap-2 rounded-lg bg-secondary/10 p-3 text-xs">
-                <ShieldCheck className="size-4 shrink-0 text-secondary mt-0.5" />
-                <p className="text-muted-foreground">
-                  {t('auth.disclaimer')}
-                </p>
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword">{t('auth.confirmPassword')}</Label>
+                  <div className="relative">
+                    <Input
+                      id="confirmPassword"
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      placeholder={t('auth.confirmPassword.placeholder')}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      required
+                      minLength={6}
+                      disabled={loading}
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showConfirmPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                    </button>
+                  </div>
+                  {confirmPassword && password !== confirmPassword && (
+                    <p className="text-xs text-destructive">{t('auth.error.passwordMismatch')}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="birthDate">{t('auth.birthDate')}</Label>
+                  <Input
+                    id="birthDate"
+                    type="date"
+                    value={birthDate}
+                    onChange={(e) => setBirthDate(e.target.value)}
+                    required={mode === 'signup'}
+                    disabled={loading}
+                    max={new Date(new Date().setFullYear(new Date().getFullYear() - 18)).toISOString().split('T')[0]}
+                  />
+                  <p className="text-xs text-muted-foreground">{t('auth.birthDate.helper')}</p>
+                </div>
+              </>
+            )}
+
+            {mode === 'signup' && (
+              <div className="space-y-3">
+                <div className="flex items-start gap-2 rounded-lg bg-secondary/10 p-3 text-xs">
+                  <ShieldCheck className="size-4 shrink-0 text-secondary mt-0.5" />
+                  <p className="text-muted-foreground">
+                    {t('auth.disclaimer')}
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-start space-x-2">
+                    <Checkbox
+                      id="terms"
+                      checked={agreedToTerms}
+                      onCheckedChange={(checked) => setAgreedToTerms(checked as boolean)}
+                      className="mt-1"
+                    />
+                    <label
+                      htmlFor="terms"
+                      className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                    >
+                      <span className="text-muted-foreground">
+                        {t('auth.terms.checkbox')}{' '}
+                        <a
+                          href="/legal/terms"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary hover:underline font-semibold"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {t('auth.terms.link')}
+                        </a>
+                      </span>
+                    </label>
+                  </div>
+
+                  <div className="flex items-start space-x-2">
+                    <Checkbox
+                      id="privacy"
+                      checked={agreedToPrivacy}
+                      onCheckedChange={(checked) => setAgreedToPrivacy(checked as boolean)}
+                      className="mt-1"
+                    />
+                    <label
+                      htmlFor="privacy"
+                      className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                    >
+                      <span className="text-muted-foreground">
+                        {t('auth.privacy.checkbox')}{' '}
+                        <a
+                          href="/legal/privacy"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary hover:underline font-semibold"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {t('auth.privacy.link')}
+                        </a>
+                      </span>
+                    </label>
+                  </div>
+                </div>
               </div>
             )}
 

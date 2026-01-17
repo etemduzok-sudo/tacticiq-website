@@ -1,6 +1,7 @@
 import React from 'react';
 import { AdminPanel } from '@/app/components/admin/AdminPanel';
 import { AdminDataProvider, useAdminDataSafe } from '@/contexts/AdminDataContext';
+import { useUserAuthSafe } from '@/contexts/UserAuthContext';
 import { DiscountPopup } from '@/app/components/marketing/DiscountPopup';
 import { AdPopup } from '@/app/components/modals/AdPopup';
 import { AdBanner } from '@/app/components/modals/AdBanner';
@@ -26,6 +27,7 @@ import { AboutSection } from '@/app/components/sections/AboutSection';
 import { PartnersSection } from '@/app/components/sections/PartnersSection';
 import { PressSection } from '@/app/components/sections/PressSection';
 import { StatsSection } from '@/app/components/sections/StatsSection';
+import { UserProfileSection } from '@/app/components/profile/UserProfileSection';
 import { SEOHead } from '@/app/components/seo/SEOHead';
 import { Analytics } from '@/app/components/analytics/Analytics';
 import { CookieConsent } from '@/app/components/legal/CookieConsent';
@@ -33,11 +35,85 @@ import { LanguageProvider } from '@/contexts/LanguageContext';
 import { PaymentProvider } from '@/contexts/PaymentContext';
 import { AdminProvider } from '@/contexts/AdminContext';
 import { AdminDataBackendProvider } from '@/contexts/AdminDataBackendContext';
+import { UserAuthProvider } from '@/contexts/UserAuthContext';
 import { Toaster } from 'sonner';
 import '@/i18n/config';
 
 function AppContent() {
   const adminData = useAdminDataSafe();
+  const userAuth = useUserAuthSafe();
+  const isAuthenticated = userAuth?.isAuthenticated ?? false;
+  
+  // Handle OAuth callback from URL hash
+  React.useEffect(() => {
+    const handleOAuthCallback = async () => {
+      // Check if we have OAuth callback in URL
+      const hasOAuthHash = window.location.hash.includes('access_token') || window.location.hash.includes('error');
+      const hasOAuthQuery = window.location.search.includes('access_token') || window.location.search.includes('error');
+      
+      if (!hasOAuthHash && !hasOAuthQuery) {
+        return; // No OAuth callback, exit early
+      }
+
+      console.log('🔍 OAuth callback detected in URL');
+
+      // Parse hash and query params
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const queryParams = new URLSearchParams(window.location.search);
+      const error = hashParams.get('error') || queryParams.get('error');
+      const errorDescription = hashParams.get('error_description') || queryParams.get('error_description');
+
+      if (error) {
+        console.error('❌ OAuth error:', error, errorDescription);
+        // Clear hash/query and show error
+        window.history.replaceState(null, '', window.location.pathname);
+        return;
+      }
+
+      // Import supabase client
+      const { supabase } = await import('@/config/supabase');
+      
+      console.log('⏳ Waiting for Supabase to process OAuth callback...');
+      
+      // Supabase with detectSessionInUrl: true should automatically parse hash
+      // Wait a bit for it to process the hash and set the session
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Now get the session - Supabase should have parsed it from hash
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        console.error('❌ Session error after OAuth:', sessionError.message);
+        // Clear hash anyway
+        window.history.replaceState(null, '', window.location.pathname);
+        return;
+      }
+      
+      if (session?.user) {
+        console.log('✅ OAuth session established:', session.user.email);
+        // Session is set, clear hash now
+        window.history.replaceState(null, '', window.location.pathname);
+        
+        // Small delay to let auth context update
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        // Reload page to refresh all auth state
+        console.log('🔄 Reloading page to refresh auth state...');
+        window.location.reload();
+      } else {
+        console.warn('⚠️ No session found after OAuth callback, hash:', window.location.hash.substring(0, 50));
+        // Clear hash and let normal flow continue
+        window.history.replaceState(null, '', window.location.pathname);
+      }
+    };
+
+    // Small delay to ensure all imports are ready
+    const timeoutId = setTimeout(() => {
+      handleOAuthCallback();
+    }, 100);
+
+    return () => clearTimeout(timeoutId);
+  }, []);
   
   // Sayfa yüklendiğinde ve her 1 dakikada bir en üste scroll
   React.useEffect(() => {
@@ -153,6 +229,9 @@ function AppContent() {
         
         {/* Contact Section - Admin kontrollü - EN ALTA TAŞINDI */}
         {sectionSettings.contact.enabled && <ContactSection />}
+        
+        {/* User Profile Section - Giriş yapmış kullanıcılar için */}
+        {isAuthenticated && <UserProfileSection />}
       </main>
 
       <Footer />
@@ -179,13 +258,15 @@ export default function App() {
   return (
     <LanguageProvider>
       <PaymentProvider>
-        <AdminProvider>
-          <AdminDataProvider>
-            <AdminDataBackendProvider enableBackend={false}>
-              <AppContent />
-            </AdminDataBackendProvider>
-          </AdminDataProvider>
-        </AdminProvider>
+        <UserAuthProvider>
+          <AdminProvider>
+            <AdminDataProvider>
+              <AdminDataBackendProvider enableBackend={false}>
+                <AppContent />
+              </AdminDataBackendProvider>
+            </AdminDataProvider>
+          </AdminProvider>
+        </UserAuthProvider>
       </PaymentProvider>
     </LanguageProvider>
   );

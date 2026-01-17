@@ -89,9 +89,9 @@ export function ForgotPasswordModal({ open, onOpenChange }: ForgotPasswordModalP
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">Email Adresi</Label>
+                <Label htmlFor="forgot-password-email">Email Adresi</Label>
                 <Input
-                  id="email"
+                  id="forgot-password-email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
