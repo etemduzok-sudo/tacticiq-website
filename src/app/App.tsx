@@ -74,38 +74,51 @@ function AppContent() {
       // Import supabase client
       const { supabase } = await import('@/config/supabase');
       
-      console.log('⏳ Waiting for Supabase to process OAuth callback...');
+      console.log('⏳ Processing OAuth callback...');
       
-      // Supabase with detectSessionInUrl: true should automatically parse hash
-      // Wait a bit for it to process the hash and set the session
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Clear hash immediately to prevent re-processing
+      const hash = window.location.hash;
+      window.history.replaceState(null, '', window.location.pathname);
       
-      // Now get the session - Supabase should have parsed it from hash
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      // Wait for Supabase to process the session from hash
+      // Try multiple times with increasing delays
+      let session = null;
+      let attempts = 0;
+      const maxAttempts = 5;
       
-      if (sessionError) {
-        console.error('❌ Session error after OAuth:', sessionError.message);
-        // Clear hash anyway
-        window.history.replaceState(null, '', window.location.pathname);
+      while (!session && attempts < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 500 + (attempts * 200)));
+        
+        const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error(`❌ Session error (attempt ${attempts + 1}):`, sessionError.message);
+        } else if (currentSession?.user) {
+          session = currentSession;
+          console.log('✅ OAuth session established:', session.user.email);
+          break;
+        }
+        
+        attempts++;
+      }
+
+      if (!session?.user) {
+        console.warn('⚠️ No session found after OAuth callback after', maxAttempts, 'attempts');
+        // Try to get session from URL hash manually as fallback
+        if (hash.includes('access_token')) {
+          console.log('🔄 Attempting manual session recovery from hash...');
+          // Let Supabase handle it naturally via onAuthStateChange
+          return;
+        }
         return;
       }
+
+      // Session is established, wait a bit for auth context to update
+      await new Promise(resolve => setTimeout(resolve, 500));
       
-      if (session?.user) {
-        console.log('✅ OAuth session established:', session.user.email);
-        // Session is set, clear hash now
-        window.history.replaceState(null, '', window.location.pathname);
-        
-        // Small delay to let auth context update
-        await new Promise(resolve => setTimeout(resolve, 300));
-        
-        // Reload page to refresh all auth state
-        console.log('🔄 Reloading page to refresh auth state...');
-        window.location.reload();
-      } else {
-        console.warn('⚠️ No session found after OAuth callback, hash:', window.location.hash.substring(0, 50));
-        // Clear hash and let normal flow continue
-        window.history.replaceState(null, '', window.location.pathname);
-      }
+      // Reload page to refresh all auth state
+      console.log('🔄 Reloading page to refresh auth state...');
+      window.location.reload();
     };
 
     // Small delay to ensure all imports are ready
