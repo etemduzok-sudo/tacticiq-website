@@ -40,6 +40,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { LegalDocumentsModal } from '@/app/components/legal/LegalDocumentsModal';
+import { ChangePasswordModal } from '@/app/components/auth/ChangePasswordModal';
 
 export function UserProfileSection() {
   const { t } = useLanguage();
@@ -48,6 +49,7 @@ export function UserProfileSection() {
   const [editedName, setEditedName] = useState(profile?.name || '');
   const [saving, setSaving] = useState(false);
   const [showLegalModal, setShowLegalModal] = useState(false);
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleting, setDeleting] = useState(false);
@@ -357,22 +359,15 @@ export function UserProfileSection() {
                 <CardDescription>Hesap güvenliğiniz için şifrenizi düzenli aralıklarla değiştirin</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="current-password">Mevcut Şifre</Label>
-                  <Input id="current-password" type="password" />
+                <div className="text-center py-4">
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Hesap güvenliğiniz için şifrenizi düzenli aralıklarla değiştirin
+                  </p>
+                  <Button onClick={() => setShowChangePasswordModal(true)} className="gap-2">
+                    <Shield className="size-4" />
+                    Şifreyi Değiştir
+                  </Button>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="new-password">Yeni Şifre</Label>
-                  <Input id="new-password" type="password" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="confirm-password">Yeni Şifre (Tekrar)</Label>
-                  <Input id="confirm-password" type="password" />
-                </div>
-                <Button className="gap-2">
-                  <Shield className="size-4" />
-                  Şifreyi Güncelle
-                </Button>
               </CardContent>
             </Card>
 
@@ -419,22 +414,31 @@ export function UserProfileSection() {
             </CardContent>
           </Card>
 
-          {/* Account Management - Hidden Delete Option */}
-          <Card className="border-muted/50">
-            <CardHeader>
-              <CardTitle className="text-sm font-medium text-muted-foreground">Hesap Yönetimi</CardTitle>
-              <CardDescription className="text-xs">Gelişmiş hesap ayarları</CardDescription>
+          {/* Account Management - Very Hidden Delete Option */}
+          <Card className="border-muted/30 opacity-60 hover:opacity-100 transition-opacity">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs font-normal text-muted-foreground/70">Gelişmiş Ayarlar</CardTitle>
             </CardHeader>
-            <CardContent>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowDeleteDialog(true)}
-                className="text-destructive hover:text-destructive hover:bg-destructive/10 w-full justify-start"
-              >
-                <Trash2 className="size-4 mr-2" />
-                <span className="text-xs">Hesabı Sil</span>
-              </Button>
+            <CardContent className="pt-0">
+              <details className="group">
+                <summary className="text-xs text-muted-foreground/60 cursor-pointer hover:text-muted-foreground list-none">
+                  <span className="flex items-center gap-1">
+                    <span>Tehlikeli İşlemler</span>
+                    <span className="group-open:rotate-180 transition-transform">▼</span>
+                  </span>
+                </summary>
+                <div className="mt-2 pt-2 border-t border-muted/30">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowDeleteDialog(true)}
+                    className="text-destructive/70 hover:text-destructive hover:bg-destructive/10 w-full justify-start text-xs"
+                  >
+                    <Trash2 className="size-3 mr-2" />
+                    Hesabı Sil
+                  </Button>
+                </div>
+              </details>
             </CardContent>
           </Card>
         </div>
@@ -442,6 +446,9 @@ export function UserProfileSection() {
 
       {/* Legal Documents Modal */}
       <LegalDocumentsModal open={showLegalModal} onOpenChange={setShowLegalModal} />
+
+      {/* Change Password Modal */}
+      <ChangePasswordModal open={showChangePasswordModal} onOpenChange={setShowChangePasswordModal} />
 
       {/* Delete Account Confirmation Dialog */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

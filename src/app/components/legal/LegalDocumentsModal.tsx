@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import {
   Dialog,
@@ -71,7 +71,39 @@ const LEGAL_DOCUMENTS: LegalDoc[] = [
   },
 ];
 
-// Legal content - will be moved to translations
+// Legal documents mapping to translation keys
+const LEGAL_DOC_KEYS: Record<string, { titleKey: string; contentKey: string }> = {
+  terms: {
+    titleKey: 'legal.terms.title',
+    contentKey: 'legal.terms.fullContent',
+  },
+  privacy: {
+    titleKey: 'legal.privacy.title',
+    contentKey: 'legal.privacy.fullContent',
+  },
+  cookies: {
+    titleKey: 'legal.cookies.title',
+    contentKey: 'legal.cookies.fullContent',
+  },
+  kvkk: {
+    titleKey: 'legal.kvkk.title',
+    contentKey: 'legal.kvkk.fullContent',
+  },
+  consent: {
+    titleKey: 'legal.consent.title',
+    contentKey: 'legal.consent.fullContent',
+  },
+  sales: {
+    titleKey: 'legal.sales.title',
+    contentKey: 'legal.sales.fullContent',
+  },
+  copyright: {
+    titleKey: 'legal.dmca.title',
+    contentKey: 'legal.dmca.fullContent',
+  },
+};
+
+// Legacy content - will be removed after translations are complete
 const LEGAL_CONTENT: Record<string, { title: string; content: string }> = {
   terms: {
     title: 'Kullanım Koşulları (EULA)',
@@ -226,7 +258,14 @@ export function LegalDocumentsModal({ open, onOpenChange, documentId }: LegalDoc
     }
   }, [documentId, open]);
 
-  const currentDoc = selectedDoc ? LEGAL_CONTENT[selectedDoc] : null;
+  // Get document from translations or fallback to legacy content
+  const currentDocKey = selectedDoc ? LEGAL_DOC_KEYS[selectedDoc] : null;
+  const currentDoc = currentDocKey
+    ? {
+        title: t(currentDocKey.titleKey),
+        content: t(currentDocKey.contentKey),
+      }
+    : (selectedDoc ? LEGAL_CONTENT[selectedDoc] : null);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -256,7 +295,9 @@ export function LegalDocumentsModal({ open, onOpenChange, documentId }: LegalDoc
                     <div className="flex items-center gap-3">
                       <div className="text-primary">{doc.icon}</div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm">{doc.title}</p>
+                        <p className="font-medium text-sm">
+                          {LEGAL_DOC_KEYS[doc.id] ? t(LEGAL_DOC_KEYS[doc.id].titleKey) : doc.title}
+                        </p>
                         <p className="text-xs text-muted-foreground mt-1">{doc.description}</p>
                       </div>
                     </div>
