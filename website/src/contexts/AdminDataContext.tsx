@@ -380,6 +380,18 @@ export interface SectionSettings {
     workingDays: string; // Çalışma günleri
     responseTime: string; // Yanıt süresi
   };
+  // Kayıt/Giriş Ayarları
+  auth: {
+    enabled: boolean; // Kayıt/giriş sistemi aktif mi?
+    requireAgeVerification: boolean; // Yaş doğrulama zorunlu mu?
+    minimumAge: number; // Minimum yaş (örn: 18)
+    enableGoogleAuth: boolean; // Google ile giriş aktif mi?
+    enableAppleAuth: boolean; // Apple ile giriş aktif mi?
+    enableEmailAuth: boolean; // E-posta ile giriş aktif mi?
+    requireEmailConfirmation: boolean; // E-posta doğrulama zorunlu mu?
+    requireTermsAcceptance: boolean; // Kullanım şartları onayı zorunlu mu?
+    requirePrivacyAcceptance: boolean; // Gizlilik politikası onayı zorunlu mu?
+  };
 }
 
 // Game System Types
@@ -834,6 +846,18 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
       workingDays: 'Pzt - Cmt',
       responseTime: '24 saat içinde',
     },
+    // Kayıt/Giriş Ayarları
+    auth: {
+      enabled: true,
+      requireAgeVerification: true,
+      minimumAge: 18,
+      enableGoogleAuth: true,
+      enableAppleAuth: false, // Apple henüz aktif değil
+      enableEmailAuth: true,
+      requireEmailConfirmation: true,
+      requireTermsAcceptance: true,
+      requirePrivacyAcceptance: true,
+    },
   };
 
   const [sectionSettings, setSectionSettings] = useState<SectionSettings>(() => {
@@ -862,6 +886,7 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
           press: { ...defaultSectionSettings.press, ...(parsed.press || {}) },
           faq: { ...defaultSectionSettings.faq, ...(parsed.faq || {}) },
           contact: { ...defaultSectionSettings.contact, ...(parsed.contact || {}) },
+          auth: { ...defaultSectionSettings.auth, ...(parsed.auth || {}) },
         };
       } catch (e) {
         console.error('Error parsing section settings:', e);
@@ -1520,6 +1545,10 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
       contact: {
         ...sectionSettings.contact,
         ...(updatedSettings.contact || {}),
+      },
+      auth: {
+        ...sectionSettings.auth,
+        ...(updatedSettings.auth || {}),
       },
     };
     
