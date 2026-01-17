@@ -47,7 +47,7 @@ import { Textarea } from '@/app/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import { Badge } from '@/app/components/ui/badge';
 import { useAdmin } from '@/contexts/AdminContext';
-import { AdminDataContext, CURRENCY_SYMBOLS, LANGUAGE_CURRENCY_MAP, AdSettings } from '@/contexts/AdminDataContext';
+import { AdminDataContext, CURRENCY_SYMBOLS, LANGUAGE_CURRENCY_MAP, AdSettings, SectionSettings } from '@/contexts/AdminDataContext';
 import { WebsiteEditor } from '@/app/components/admin/WebsiteEditor';
 import { ChangePasswordModal } from '@/app/components/auth/ChangePasswordModal';
 import { AdManagement } from '@/app/components/admin/AdManagement';
@@ -257,17 +257,26 @@ function SectionsContent() {
   const sectionSettings = contextData?.sectionSettings;
   const updateSectionSettings = contextData?.updateSectionSettings;
   
-  const [editedSections, setEditedSections] = useState(sectionSettings || {});
+  const [editedSections, setEditedSections] = useState<SectionSettings | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
 
-  // Sync editedSections when sectionSettings changes
+  // Sync editedSections when sectionSettings changes (only once on mount)
   useEffect(() => {
-    if (sectionSettings) {
+    if (sectionSettings && !isInitialized) {
+      setEditedSections(sectionSettings);
+      setIsInitialized(true);
+    }
+  }, [sectionSettings, isInitialized]);
+
+  // Update editedSections when sectionSettings changes externally
+  useEffect(() => {
+    if (sectionSettings && isInitialized) {
       setEditedSections(sectionSettings);
     }
-  }, [sectionSettings]);
+  }, [sectionSettings, isInitialized]);
 
   const handleSave = () => {
-    if (updateSectionSettings) {
+    if (updateSectionSettings && editedSections) {
       updateSectionSettings(editedSections);
       toast.success('Bölüm ayarları kaydedildi!');
     }
@@ -275,6 +284,8 @@ function SectionsContent() {
 
   // Toggle handler - anında kaydet
   const handleToggleSection = (sectionKey: string, subKey?: string) => {
+    if (!editedSections || !updateSectionSettings) return;
+    
     const newSections = { ...editedSections } as any;
     
     if (subKey) {
@@ -296,11 +307,13 @@ function SectionsContent() {
     }
     
     setEditedSections(newSections);
-    if (updateSectionSettings) {
-      updateSectionSettings(newSections);
-    }
-    toast.success('Bölüm ayarı güncellendi!');
+    // Anında kaydet
+    updateSectionSettings(newSections);
   };
+
+  if (!editedSections) {
+    return <div className="p-4">Yükleniyor...</div>;
+  }
 
   if (!contextData) {
     return <div className="p-4 text-center">Bölüm ayarları yükleniyor...</div>;

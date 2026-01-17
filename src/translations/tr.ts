@@ -520,6 +520,19 @@ export default {
   'user.delete.confirm.description': 'Bu işlem geri alınamaz. Tüm verileriniz, tahminleriniz, puanlarınız ve rozetleriniz kalıcı olarak silinecektir.',
   'user.delete.confirm.cancel': 'İptal',
   'user.delete.confirm.delete': 'Evet, Hesabı Sil',
+  'user.delete.confirm.text': 'Onaylamak için "sil" veya "delete" yazın',
+  'user.delete.confirm.placeholder': 'sil veya delete',
+  'user.delete.confirm.deleting': 'Siliniyor...',
+  'user.delete.confirm.error': 'Onay için "sil" veya "delete" yazmanız gerekiyor',
+  
+  // Legal Documents
+  'legal.title': 'Yasal Belgeler',
+  'legal.description': 'Platform kullanım koşulları ve yasal bilgilendirmeler',
+  'legal.select': 'Bir belge seçin',
+  
+  // Email Spam Warning
+  'auth.email.spam.warning': 'E-postanızı kontrol edin. Eğer e-postayı göremiyorsanız, spam klasörünüzü de kontrol etmeyi unutmayın.',
+  'auth.email.spam.check': '📧 Spam klasörünüzü de kontrol edin',
 
   // CTA Section
   'cta.title': 'Profesyonel Futbol Analizine Başlayın',

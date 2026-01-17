@@ -11,6 +11,15 @@ import { Separator } from '@/app/components/ui/separator';
 import { Switch } from '@/app/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/app/components/ui/dialog';
+import { Alert, AlertDescription } from '@/app/components/ui/alert';
+import {
   User,
   Mail,
   Crown,
@@ -25,15 +34,23 @@ import {
   Star,
   Calendar,
   Loader2,
+  FileText,
+  Trash2,
+  AlertTriangle,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { LegalDocumentsModal } from '@/app/components/legal/LegalDocumentsModal';
 
 export function UserProfileSection() {
   const { t } = useLanguage();
-  const { user, profile, signOut, updateProfile, isLoading } = useUserAuth();
+  const { user, profile, signOut, updateProfile, deleteAccount, isLoading } = useUserAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [editedName, setEditedName] = useState(profile?.name || '');
   const [saving, setSaving] = useState(false);
+  const [showLegalModal, setShowLegalModal] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   if (!user || !profile) {
     return null;
@@ -59,6 +76,31 @@ export function UserProfileSection() {
   const handleSignOut = async () => {
     await signOut();
     toast.success('Çıkış yapıldı');
+  };
+
+  const handleDeleteAccount = async () => {
+    const confirmText = deleteConfirmText.toLowerCase().trim();
+    if (confirmText !== 'sil' && confirmText !== 'delete') {
+      toast.error('Onay için "sil" veya "delete" yazmanız gerekiyor');
+      return;
+    }
+
+    setDeleting(true);
+    try {
+      const result = await deleteAccount();
+      if (result.success) {
+        toast.success('Hesabınız başarıyla silindi');
+        setShowDeleteDialog(false);
+        setDeleteConfirmText('');
+        // Redirect will happen automatically via auth state change
+      } else {
+        toast.error(result.error || 'Hesap silme başarısız');
+      }
+    } catch (err) {
+      toast.error('Bir hata oluştu');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const getInitials = (name: string) => {
@@ -355,20 +397,120 @@ export function UserProfileSection() {
               </CardContent>
             </Card>
 
-            <Card className="mt-4 border-destructive/50">
-              <CardHeader>
-                <CardTitle className="text-destructive">Tehlikeli Bölge</CardTitle>
-                <CardDescription>Bu işlemler geri alınamaz</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button variant="destructive" className="gap-2">
-                  Hesabı Sil
-                </Button>
-              </CardContent>
-            </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Additional Sections */}
+        <div className="mt-8 space-y-4">
+          {/* Legal Documents */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="size-5" />
+                Yasal Belgeler
+              </CardTitle>
+              <CardDescription>Platform kullanım koşulları ve yasal bilgilendirmeler</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button variant="outline" onClick={() => setShowLegalModal(true)} className="w-full">
+                <FileText className="size-4 mr-2" />
+                Yasal Belgeleri Görüntüle
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Account Management - Hidden Delete Option */}
+          <Card className="border-muted/50">
+            <CardHeader>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Hesap Yönetimi</CardTitle>
+              <CardDescription className="text-xs">Gelişmiş hesap ayarları</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowDeleteDialog(true)}
+                className="text-destructive hover:text-destructive hover:bg-destructive/10 w-full justify-start"
+              >
+                <Trash2 className="size-4 mr-2" />
+                <span className="text-xs">Hesabı Sil</span>
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
       </div>
+
+      {/* Legal Documents Modal */}
+      <LegalDocumentsModal open={showLegalModal} onOpenChange={setShowLegalModal} />
+
+      {/* Delete Account Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="size-5" />
+              Hesabı Sil
+            </DialogTitle>
+            <DialogDescription>
+              Bu işlem geri alınamaz. Hesabınız ve tüm verileriniz kalıcı olarak silinecektir.
+            </DialogDescription>
+          </DialogHeader>
+
+          <Alert variant="destructive" className="my-4">
+            <AlertTriangle className="size-4" />
+            <AlertDescription>
+              <strong>Dikkat:</strong> Bu işlem sonrasında:
+              <ul className="list-disc list-inside mt-2 space-y-1 text-sm">
+                <li>Tüm tahminleriniz silinecek</li>
+                <li>Puanlarınız ve istatistikleriniz kaybolacak</li>
+                <li>Profil bilgileriniz kalıcı olarak silinecek</li>
+                <li>Bu işlem geri alınamaz</li>
+              </ul>
+            </AlertDescription>
+          </Alert>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="delete-confirm">
+                Onaylamak için <strong>&quot;sil&quot;</strong> veya <strong>&quot;delete&quot;</strong> yazın:
+              </Label>
+              <Input
+                id="delete-confirm"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                placeholder="sil veya delete"
+                className="font-mono"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setShowDeleteDialog(false);
+              setDeleteConfirmText('');
+            }}>
+              İptal
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteAccount}
+              disabled={deleting || (deleteConfirmText.toLowerCase().trim() !== 'sil' && deleteConfirmText.toLowerCase().trim() !== 'delete')}
+            >
+              {deleting ? (
+                <>
+                  <Loader2 className="size-4 mr-2 animate-spin" />
+                  Siliniyor...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="size-4 mr-2" />
+                  Hesabı Kalıcı Olarak Sil
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }

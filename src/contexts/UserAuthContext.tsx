@@ -39,6 +39,7 @@ interface UserAuthContextType {
   // Profile Methods
   updateProfile: (updates: Partial<UserProfile>) => Promise<{ success: boolean; error?: string }>;
   refreshProfile: () => Promise<void>;
+  deleteAccount: () => Promise<{ success: boolean; error?: string }>;
 }
 
 // =====================================================
@@ -577,6 +578,54 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Delete account
+  const deleteAccount = async () => {
+    if (!user) {
+      return { success: false, error: 'Kullanıcı oturumu bulunamadı' };
+    }
+
+    setIsLoading(true);
+    setError(null);
+    try {
+      // Delete user profile first
+      const { error: profileError } = await supabase
+        .from('user_profiles')
+        .delete()
+        .eq('id', user.id);
+
+      if (profileError) {
+        console.warn('Profile delete error:', profileError.message);
+      }
+
+      // Delete auth user (this will cascade delete profile via trigger)
+      const { error: authError } = await supabase.auth.admin.deleteUser(user.id);
+
+      // If admin API is not available, try user deletion via RPC or direct auth
+      if (authError) {
+        // Fallback: Sign out and let user contact support
+        await signOut();
+        return { 
+          success: false, 
+          error: 'Hesap silme işlemi tamamlanamadı. Lütfen destek ekibimizle iletişime geçin: support@tacticiq.app' 
+        };
+      }
+
+      // Clear local state
+      setUser(null);
+      setProfile(null);
+      setSession(null);
+      localStorage.removeItem('user_profile');
+
+      return { success: true };
+    } catch (err: any) {
+      const errorMsg = err.message || 'Hesap silme başarısız';
+      setError(errorMsg);
+      return { success: false, error: errorMsg };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const value = {
     user,
     profile,
@@ -593,6 +642,7 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
     updatePassword,
     updateProfile,
     refreshProfile,
+    deleteAccount,
   };
 
   return (
