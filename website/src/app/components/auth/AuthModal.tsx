@@ -1,6 +1,7 @@
 import { useState, useContext } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useUserAuth } from '@/contexts/UserAuthContext';
+import { ForgotPasswordModal } from '@/app/components/auth/ForgotPasswordModal';
 import { AdminDataContext } from '@/contexts/AdminDataContext';
 import {
   Dialog,
@@ -38,6 +39,7 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [agreedToPrivacy, setAgreedToPrivacy] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -266,7 +268,18 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">{t('auth.password')}</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">{t('auth.password')}</Label>
+                {mode === 'signin' && (
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotPassword(true)}
+                    className="text-xs text-primary hover:underline"
+                  >
+                    {t('auth.forgotPassword') || 'Şifremi Unuttum'}
+                  </button>
+                )}
+              </div>
               <div className="relative">
                 <Input
                   id="password"
@@ -423,6 +436,9 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
           </div>
         </div>
       </DialogContent>
+
+      {/* Forgot Password Modal */}
+      <ForgotPasswordModal open={showForgotPassword} onOpenChange={setShowForgotPassword} />
     </Dialog>
   );
 }
