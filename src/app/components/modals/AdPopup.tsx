@@ -5,19 +5,22 @@ import { Card } from '@/app/components/ui/card';
 import { AdminDataContext, Advertisement } from '@/contexts/AdminDataContext';
 
 export function AdPopup() {
-  // Safe context usage - return null if provider is not available
+  // ALL HOOKS MUST BE AT THE TOP - BEFORE ANY CONDITIONAL RETURNS
   const contextData = useContext(AdminDataContext);
   const [currentAd, setCurrentAd] = useState<Advertisement | null>(null);
   const [showAd, setShowAd] = useState(false);
   const lastShownTimeRef = useRef<number>(0);
   const [closedAds, setClosedAds] = useState<string[]>([]);
   
-  // If context is not available, don't render
-  if (!contextData) {
-    return null;
-  }
+  // Extract values from context (with fallbacks for when context is null)
+  const advertisements = contextData?.advertisements ?? [];
+  const adSettings = contextData?.adSettings ?? null;
+  const updateAdvertisement = contextData?.updateAdvertisement ?? null;
   
-  const { advertisements, adSettings, updateAdvertisement } = contextData;
+  // Check if system is enabled
+  const isSystemEnabled = adSettings?.systemEnabled ?? false;
+  const isPopupEnabled = adSettings?.popupEnabled ?? false;
+  const shouldRender = contextData && isSystemEnabled && isPopupEnabled;
 
   // Load closed ads from localStorage on mount
   useEffect(() => {
@@ -33,15 +36,15 @@ export function AdPopup() {
 
   // Effect to handle ad system enable/disable - IMMEDIATELY close when disabled
   useEffect(() => {
-    if (!adSettings.systemEnabled || !adSettings.popupEnabled) {
+    if (!isSystemEnabled || !isPopupEnabled) {
       setShowAd(false);
       setCurrentAd(null);
     }
-  }, [adSettings.systemEnabled, adSettings.popupEnabled]);
+  }, [isSystemEnabled, isPopupEnabled]);
 
   useEffect(() => {
     // Check if ad system and popup ads are enabled - Close immediately if disabled
-    if (!adSettings.systemEnabled || !adSettings.popupEnabled) {
+    if (!isSystemEnabled || !isPopupEnabled) {
       setShowAd(false);
       setCurrentAd(null);
       return;
@@ -69,9 +72,11 @@ export function AdPopup() {
         lastShownTimeRef.current = now;
 
         // Increment display count
-        updateAdvertisement(randomAd.id, {
-          currentDisplays: (randomAd.currentDisplays || 0) + 1
-        });
+        if (updateAdvertisement) {
+          updateAdvertisement(randomAd.id, {
+            currentDisplays: (randomAd.currentDisplays || 0) + 1
+          });
+        }
 
         // Auto close after duration
         setTimeout(() => {
@@ -89,10 +94,10 @@ export function AdPopup() {
     }, 60000); // Check every minute
 
     return () => clearInterval(interval);
-  }, [advertisements, adSettings.systemEnabled, adSettings.popupEnabled, closedAds, updateAdvertisement]);
+  }, [advertisements, isSystemEnabled, isPopupEnabled, closedAds, updateAdvertisement]);
 
-  // Don't render if disabled or no ad
-  if (!adSettings.systemEnabled || !adSettings.popupEnabled || !showAd || !currentAd) {
+  // CONDITIONAL RETURNS AFTER ALL HOOKS
+  if (!shouldRender || !showAd || !currentAd) {
     return null;
   }
 

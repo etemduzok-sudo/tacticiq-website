@@ -4,36 +4,32 @@ import { Button } from '@/app/components/ui/button';
 import { AdminDataContext, Advertisement } from '@/contexts/AdminDataContext';
 
 export function AdBanner() {
-  // Safe context usage - return null if provider is not available
+  // ALL HOOKS MUST BE AT THE TOP - BEFORE ANY CONDITIONAL RETURNS
   const contextData = useContext(AdminDataContext);
   const [currentAd, setCurrentAd] = useState<Advertisement | null>(null);
   const [showAd, setShowAd] = useState(false);
   const lastShownTimeRef = useRef<number>(0);
   
-  // If context is not available, don't render
-  if (!contextData) {
-    return null;
-  }
+  // Extract values from context (with fallbacks for when context is null)
+  const advertisements = contextData?.advertisements ?? [];
+  const adSettings = contextData?.adSettings ?? null;
   
-  const { advertisements, adSettings } = contextData;
-
-  // CRITICAL: Early return if ad system is disabled - NO RENDERING AT ALL
-  // This check happens BEFORE any effects run, preventing any rendering
-  if (!adSettings || !adSettings.systemEnabled || !adSettings.bannerEnabled) {
-    return null;
-  }
+  // Check if system is enabled
+  const isSystemEnabled = adSettings?.systemEnabled ?? false;
+  const isBannerEnabled = adSettings?.bannerEnabled ?? false;
+  const shouldRender = contextData && isSystemEnabled && isBannerEnabled;
 
   // Effect to handle ad system enable/disable - IMMEDIATELY close when disabled
   useEffect(() => {
-    if (!adSettings || !adSettings.systemEnabled || !adSettings.bannerEnabled) {
+    if (!isSystemEnabled || !isBannerEnabled) {
       setShowAd(false);
       setCurrentAd(null);
     }
-  }, [adSettings?.systemEnabled, adSettings?.bannerEnabled]);
+  }, [isSystemEnabled, isBannerEnabled]);
 
   useEffect(() => {
     // Check if ad system and banner ads are enabled
-    if (!adSettings || !adSettings.systemEnabled || !adSettings.bannerEnabled) {
+    if (!isSystemEnabled || !isBannerEnabled) {
       setShowAd(false);
       setCurrentAd(null);
       return;
@@ -51,7 +47,7 @@ export function AdBanner() {
     
     const checkAndShowAd = () => {
       // Double check before showing
-      if (!adSettings || !adSettings.systemEnabled || !adSettings.bannerEnabled) {
+      if (!isSystemEnabled || !isBannerEnabled) {
         setShowAd(false);
         setCurrentAd(null);
         return;
@@ -81,10 +77,10 @@ export function AdBanner() {
     }, 60000); // Check every minute
 
     return () => clearInterval(interval);
-  }, [advertisements, adSettings?.systemEnabled, adSettings?.bannerEnabled]);
+  }, [advertisements, isSystemEnabled, isBannerEnabled]);
 
-  // Don't render if disabled or no ad - FINAL CHECK
-  if (!adSettings || !adSettings.systemEnabled || !adSettings.bannerEnabled || !showAd || !currentAd) {
+  // CONDITIONAL RETURNS AFTER ALL HOOKS
+  if (!shouldRender || !showAd || !currentAd) {
     return null;
   }
 
