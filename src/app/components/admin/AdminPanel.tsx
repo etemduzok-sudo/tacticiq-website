@@ -1157,44 +1157,28 @@ function AdsContent() {
               label="🟢 Reklam Sistemi (Master Switch)" 
               description="Tüm reklam sistemini aç/kapa"
               enabled={editedAdSettings.systemEnabled}
-              onToggle={() => {
-                const newValue = !editedAdSettings.systemEnabled;
-                handleToggleSetting('systemEnabled');
-                toast.success(newValue ? 'Reklam sistemi açıldı' : 'Reklam sistemi kapatıldı');
-              }}
+              onToggle={() => handleToggleSetting('systemEnabled')}
             />
             <Separator />
             <SettingToggle 
               label="Pop-up Reklamlar" 
               description="Ana ekranda açılır pencere reklamları"
               enabled={editedAdSettings.popupEnabled}
-              onToggle={() => {
-                const newValue = !editedAdSettings.popupEnabled;
-                handleToggleSetting('popupEnabled');
-                toast.success(newValue ? 'Pop-up reklamlar açıldı' : 'Pop-up reklamlar kapatıldı');
-              }}
+              onToggle={() => handleToggleSetting('popupEnabled')}
               disabled={!editedAdSettings.systemEnabled}
             />
             <SettingToggle 
               label="Banner Reklamlar" 
               description="Sayfa üstünde banner reklamlar"
               enabled={editedAdSettings.bannerEnabled}
-              onToggle={() => {
-                const newValue = !editedAdSettings.bannerEnabled;
-                handleToggleSetting('bannerEnabled');
-                toast.success(newValue ? 'Banner reklamlar açıldı' : 'Banner reklamlar kapatıldı');
-              }}
+              onToggle={() => handleToggleSetting('bannerEnabled')}
               disabled={!editedAdSettings.systemEnabled}
             />
             <SettingToggle 
               label="Sidebar Reklamlar" 
               description="Yan menüde gösterilen reklamlar"
               enabled={editedAdSettings.sidebarEnabled}
-              onToggle={() => {
-                const newValue = !editedAdSettings.sidebarEnabled;
-                handleToggleSetting('sidebarEnabled');
-                toast.success(newValue ? 'Sidebar reklamlar açıldı' : 'Sidebar reklamlar kapatıldı');
-              }}
+              onToggle={() => handleToggleSetting('sidebarEnabled')}
               disabled={!editedAdSettings.systemEnabled}
             />
             <Separator />
