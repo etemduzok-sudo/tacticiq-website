@@ -765,8 +765,8 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
     },
   });
 
-  // Section Settings
-  const [sectionSettings, setSectionSettings] = useState<SectionSettings>({
+  // Section Settings - localStorage'dan yükle
+  const defaultSectionSettings: SectionSettings = {
     hero: {
       enabled: true,
       showStats: true,
@@ -784,10 +784,10 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
       enabled: true,
     },
     playerPrediction: {
-      enabled: false, // ŞİMDİLİK KAPALI
+      enabled: false,
     },
     training: {
-      enabled: false, // ŞİMDİLİK KAPALI
+      enabled: false,
     },
     pricing: {
       enabled: true,
@@ -799,14 +799,14 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
       maxPosts: 5,
     },
     appDownload: {
-      enabled: false, // ŞİMDİLİK KAPALI
+      enabled: false,
       showQRCodes: false,
     },
     cta: {
       enabled: true,
     },
     game: {
-      enabled: false, // ŞİMDİLİK KAPALI
+      enabled: false,
     },
     testimonials: {
       enabled: true,
@@ -818,10 +818,10 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
       showMission: true,
     },
     partners: {
-      enabled: false, // ŞİMDİLİK KAPALI
+      enabled: false,
     },
     press: {
-      enabled: false, // ŞİMDİLİK KAPALI
+      enabled: false,
     },
     faq: {
       enabled: true,
@@ -834,6 +834,41 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
       workingDays: 'Pzt - Cmt',
       responseTime: '24 saat içinde',
     },
+  };
+
+  const [sectionSettings, setSectionSettings] = useState<SectionSettings>(() => {
+    const saved = localStorage.getItem('admin_section_settings');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        // Deep merge with defaults to ensure all properties exist
+        return {
+          ...defaultSectionSettings,
+          ...parsed,
+          hero: { ...defaultSectionSettings.hero, ...(parsed.hero || {}) },
+          features: { ...defaultSectionSettings.features, ...(parsed.features || {}) },
+          howItWorks: { ...defaultSectionSettings.howItWorks, ...(parsed.howItWorks || {}) },
+          product: { ...defaultSectionSettings.product, ...(parsed.product || {}) },
+          playerPrediction: { ...defaultSectionSettings.playerPrediction, ...(parsed.playerPrediction || {}) },
+          training: { ...defaultSectionSettings.training, ...(parsed.training || {}) },
+          pricing: { ...defaultSectionSettings.pricing, ...(parsed.pricing || {}) },
+          blog: { ...defaultSectionSettings.blog, ...(parsed.blog || {}) },
+          appDownload: { ...defaultSectionSettings.appDownload, ...(parsed.appDownload || {}) },
+          cta: { ...defaultSectionSettings.cta, ...(parsed.cta || {}) },
+          game: { ...defaultSectionSettings.game, ...(parsed.game || {}) },
+          testimonials: { ...defaultSectionSettings.testimonials, ...(parsed.testimonials || {}) },
+          about: { ...defaultSectionSettings.about, ...(parsed.about || {}) },
+          partners: { ...defaultSectionSettings.partners, ...(parsed.partners || {}) },
+          press: { ...defaultSectionSettings.press, ...(parsed.press || {}) },
+          faq: { ...defaultSectionSettings.faq, ...(parsed.faq || {}) },
+          contact: { ...defaultSectionSettings.contact, ...(parsed.contact || {}) },
+        };
+      } catch (e) {
+        console.error('Error parsing section settings:', e);
+        return defaultSectionSettings;
+      }
+    }
+    return defaultSectionSettings;
   });
 
   // Website Content
@@ -1417,12 +1452,7 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
     // Deep merge için her section'ı ayrı ayrı merge et
     const merged: SectionSettings = {
       ...sectionSettings,
-      ...updatedSettings,
-      // Nested properties için deep merge
-      pricing: {
-        ...sectionSettings.pricing,
-        ...(updatedSettings.pricing || {}),
-      },
+      // Tüm nested properties için deep merge
       hero: {
         ...sectionSettings.hero,
         ...(updatedSettings.hero || {}),
@@ -1431,9 +1461,41 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
         ...sectionSettings.features,
         ...(updatedSettings.features || {}),
       },
+      howItWorks: {
+        ...sectionSettings.howItWorks,
+        ...(updatedSettings.howItWorks || {}),
+      },
+      product: {
+        ...sectionSettings.product,
+        ...(updatedSettings.product || {}),
+      },
+      playerPrediction: {
+        ...sectionSettings.playerPrediction,
+        ...(updatedSettings.playerPrediction || {}),
+      },
+      training: {
+        ...sectionSettings.training,
+        ...(updatedSettings.training || {}),
+      },
+      pricing: {
+        ...sectionSettings.pricing,
+        ...(updatedSettings.pricing || {}),
+      },
       blog: {
         ...sectionSettings.blog,
         ...(updatedSettings.blog || {}),
+      },
+      appDownload: {
+        ...sectionSettings.appDownload,
+        ...(updatedSettings.appDownload || {}),
+      },
+      cta: {
+        ...sectionSettings.cta,
+        ...(updatedSettings.cta || {}),
+      },
+      game: {
+        ...sectionSettings.game,
+        ...(updatedSettings.game || {}),
       },
       testimonials: {
         ...sectionSettings.testimonials,
@@ -1443,9 +1505,17 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
         ...sectionSettings.about,
         ...(updatedSettings.about || {}),
       },
-      appDownload: {
-        ...sectionSettings.appDownload,
-        ...(updatedSettings.appDownload || {}),
+      partners: {
+        ...sectionSettings.partners,
+        ...(updatedSettings.partners || {}),
+      },
+      press: {
+        ...sectionSettings.press,
+        ...(updatedSettings.press || {}),
+      },
+      faq: {
+        ...sectionSettings.faq,
+        ...(updatedSettings.faq || {}),
       },
       contact: {
         ...sectionSettings.contact,
@@ -1453,6 +1523,7 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
       },
     };
     
+    // State'i güncelle - bu otomatik olarak localStorage'a kaydedilecek (useEffect ile)
     setSectionSettings(merged);
     
     const newLog: LogEntry = {

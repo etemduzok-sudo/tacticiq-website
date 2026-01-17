@@ -36,6 +36,7 @@ import { PaymentProvider } from '@/contexts/PaymentContext';
 import { AdminProvider } from '@/contexts/AdminContext';
 import { AdminDataBackendProvider } from '@/contexts/AdminDataBackendContext';
 import { UserAuthProvider } from '@/contexts/UserAuthContext';
+import { ThemeProvider } from 'next-themes';
 import { Toaster } from 'sonner';
 import '@/i18n/config';
 
@@ -256,18 +257,20 @@ function AppContent() {
 
 export default function App() {
   return (
-    <LanguageProvider>
-      <PaymentProvider>
-        <UserAuthProvider>
-          <AdminProvider>
-            <AdminDataProvider>
-              <AdminDataBackendProvider enableBackend={false}>
-                <AppContent />
-              </AdminDataBackendProvider>
-            </AdminDataProvider>
-          </AdminProvider>
-        </UserAuthProvider>
-      </PaymentProvider>
-    </LanguageProvider>
+    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} storageKey="tacticiq-theme">
+      <LanguageProvider>
+        <PaymentProvider>
+          <UserAuthProvider>
+            <AdminProvider>
+              <AdminDataProvider>
+                <AdminDataBackendProvider enableBackend={false}>
+                  <AppContent />
+                </AdminDataBackendProvider>
+              </AdminDataProvider>
+            </AdminProvider>
+          </UserAuthProvider>
+        </PaymentProvider>
+      </LanguageProvider>
+    </ThemeProvider>
   );
 }

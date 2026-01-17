@@ -78,7 +78,19 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
 
         // If email confirmation is required, show info and keep modal open
         if (result.error && result.error.includes('doğrulama linki')) {
-          toast.info(result.error, { duration: 8000 });
+          toast.info(
+            <div className="space-y-2">
+              <p className="font-medium">{result.error}</p>
+              <div className="flex items-start gap-2 text-sm text-muted-foreground bg-muted/50 p-2 rounded-md">
+                <span className="text-lg">📧</span>
+                <div>
+                  <p className="font-medium mb-1">E-postanızı kontrol edin</p>
+                  <p>Eğer e-postayı göremiyorsanız, <strong className="text-foreground">spam klasörünüzü</strong> de kontrol etmeyi unutmayın.</p>
+                </div>
+              </div>
+            </div>,
+            { duration: 12000 }
+          );
           // Don't close modal yet - user needs to check email
           return;
         }
