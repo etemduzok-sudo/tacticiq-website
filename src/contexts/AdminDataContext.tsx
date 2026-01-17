@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react';
+import { configService, partnersService, teamMembersService, advertisementsService } from '../services/adminSupabaseService';
 
 // Currency Exchange Rates (TRY bazlı - 1 TRY = X)
 export const EXCHANGE_RATES = {
@@ -647,9 +648,9 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
     const defaultSettings: DiscountSettings = {
       enabled: false,
       discountPercent: 0,
-      dailyShowLimit: 3,
-      showDelay: 5000,
-      timerDuration: 600,
+    dailyShowLimit: 3,
+    showDelay: 5000,
+    timerDuration: 600,
       originalPrice: 0,
       baseCurrency: 'TRY',
       // Yeni parametreler
@@ -775,6 +776,7 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
     },
     appDownload: {
       enabled: false, // ŞİMDİLİK KAPALI
+      showQRCodes: false,
     },
     cta: {
       enabled: true,
@@ -1094,7 +1096,7 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
   };
 
   // Team Member CRUD
-  const addTeamMember = (member: Omit<TeamMember, 'id'>) => {
+  const addTeamMember = async (member: Omit<TeamMember, 'id'>) => {
     const newMember: TeamMember = {
       ...member,
       id: Date.now().toString(),
@@ -1109,9 +1111,22 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
       time: new Date().toLocaleString('tr-TR'),
     };
     setLogs([newLog, ...logs]);
+    
+    // Supabase'e de kaydet
+    teamMembersService.add({
+      name: member.name,
+      role: member.role || '',
+      avatar: member.avatar || '',
+      bio: member.bio || '',
+      linkedin: member.linkedin,
+      twitter: member.twitter,
+      email: member.email,
+      enabled: member.enabled ?? true,
+      sort_order: member.order || 0,
+    }).catch(err => console.warn('Supabase team member add failed:', err));
   };
 
-  const updateTeamMember = (id: string, updatedMember: Partial<TeamMember>) => {
+  const updateTeamMember = async (id: string, updatedMember: Partial<TeamMember>) => {
     setTeamMembers(teamMembers.map(member => member.id === id ? { ...member, ...updatedMember } : member));
     
     const member = teamMembers.find(m => m.id === id);
@@ -1125,9 +1140,22 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
       };
       setLogs([newLog, ...logs]);
     }
+    
+    // Supabase'de de güncelle
+    teamMembersService.update(id, {
+      name: updatedMember.name,
+      role: updatedMember.role,
+      avatar: updatedMember.avatar,
+      bio: updatedMember.bio,
+      linkedin: updatedMember.linkedin,
+      twitter: updatedMember.twitter,
+      email: updatedMember.email,
+      enabled: updatedMember.enabled,
+      sort_order: updatedMember.order,
+    }).catch(err => console.warn('Supabase team member update failed:', err));
   };
 
-  const deleteTeamMember = (id: string) => {
+  const deleteTeamMember = async (id: string) => {
     const member = teamMembers.find(m => m.id === id);
     setTeamMembers(teamMembers.filter(member => member.id !== id));
     
@@ -1141,6 +1169,9 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
       };
       setLogs([newLog, ...logs]);
     }
+    
+    // Supabase'den de sil
+    teamMembersService.delete(id).catch(err => console.warn('Supabase team member delete failed:', err));
   };
 
   // Press Release CRUD
@@ -1251,7 +1282,7 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
   };
 
   // Partner CRUD
-  const addPartner = (partner: Omit<Partner, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const addPartner = async (partner: Omit<Partner, 'id' | 'createdAt' | 'updatedAt'>) => {
     const now = new Date().toISOString();
     const newPartner: Partner = {
       ...partner,
@@ -1262,6 +1293,18 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
     const updated = [newPartner, ...partners];
     setPartners(updated);
     localStorage.setItem('admin_partners', JSON.stringify(updated));
+    
+    // Supabase'e de kaydet (async, non-blocking)
+    partnersService.add({
+      name: partner.name,
+      logo: partner.logo || '',
+      link: partner.website || '',
+      category: partner.category || '',
+      description: partner.description || '',
+      enabled: partner.enabled ?? true,
+      featured: partner.featured ?? false,
+      sort_order: partner.order || 0,
+    }).catch(err => console.warn('Supabase partner add failed:', err));
 
     const newLog: LogEntry = {
       id: Date.now().toString(),
@@ -1273,7 +1316,7 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
     setLogs([newLog, ...logs]);
   };
 
-  const updatePartner = (id: string, updatedPartner: Partial<Partner>) => {
+  const updatePartner = async (id: string, updatedPartner: Partial<Partner>) => {
     const updated = partners.map(partner => 
       partner.id === id 
         ? { ...partner, ...updatedPartner, updatedAt: new Date().toISOString() }
@@ -1281,6 +1324,18 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
     );
     setPartners(updated);
     localStorage.setItem('admin_partners', JSON.stringify(updated));
+    
+    // Supabase'e de kaydet
+    partnersService.update(id, {
+      name: updatedPartner.name,
+      logo: updatedPartner.logo,
+      link: updatedPartner.website,
+      category: updatedPartner.category,
+      description: updatedPartner.description,
+      enabled: updatedPartner.enabled,
+      featured: updatedPartner.featured,
+      sort_order: updatedPartner.order,
+    }).catch(err => console.warn('Supabase partner update failed:', err));
     
     const partner = partners.find(p => p.id === id);
     if (partner) {
@@ -1295,11 +1350,14 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const deletePartner = (id: string) => {
+  const deletePartner = async (id: string) => {
     const partner = partners.find(p => p.id === id);
     const updated = partners.filter(p => p.id !== id);
     setPartners(updated);
     localStorage.setItem('admin_partners', JSON.stringify(updated));
+    
+    // Supabase'den de sil
+    partnersService.delete(id).catch(err => console.warn('Supabase partner delete failed:', err));
     
     if (partner) {
       const newLog: LogEntry = {
@@ -1473,165 +1531,226 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
     setLogs([newLog, ...logs]);
   };
 
-  // Load data from localStorage on mount
+  // Load data from Supabase (with localStorage fallback) on mount
   useEffect(() => {
-    const savedDiscountSettings = localStorage.getItem('admin_discount_settings');
-    const savedAdSettings = localStorage.getItem('admin_ad_settings');
-    const savedSectionSettings = localStorage.getItem('admin_section_settings');
-    const savedSettings = localStorage.getItem('admin_settings');
-    const savedPressKitFiles = localStorage.getItem('admin_pressKitFiles');
-    const savedEmailAutoReply = localStorage.getItem('admin_email_auto_reply');
-    const savedTeamMembers = localStorage.getItem('admin_team_members');
-    const savedPressReleases = localStorage.getItem('admin_press_releases');
-    const savedGames = localStorage.getItem('admin_games');
-    const savedUsers = localStorage.getItem('admin_users');
-    const savedContents = localStorage.getItem('admin_contents');
-    const savedActivities = localStorage.getItem('admin_activities');
-    const savedLogs = localStorage.getItem('admin_logs');
-    const savedAdvertisements = localStorage.getItem('admin_advertisements');
-    const savedStats = localStorage.getItem('admin_stats');
-
-    if (savedDiscountSettings) {
+    const loadFromSupabase = async () => {
+      console.log('🔄 Loading admin data from Supabase...');
+      
       try {
-        setDiscountSettings(JSON.parse(savedDiscountSettings));
-      } catch (e) {
-        console.error('Error loading discount settings:', e);
-      }
-    }
+        // Load config settings from Supabase
+        const [
+          supabaseDiscountSettings,
+          supabaseAdSettings,
+          supabaseSectionSettings,
+          supabaseSiteSettings,
+        ] = await Promise.all([
+          configService.get('discount_settings', null),
+          configService.get('ad_settings', null),
+          configService.get('section_settings', null),
+          configService.get('site_settings', null),
+        ]);
 
-    if (savedAdSettings) {
-      try {
-        setAdSettings(JSON.parse(savedAdSettings));
-      } catch (e) {
-        console.error('Error loading ad settings:', e);
-      }
-    }
+        // Load collections from Supabase
+        const [
+          supabasePartners,
+          supabaseTeamMembers,
+          supabaseAdvertisements,
+        ] = await Promise.all([
+          partnersService.getAll(),
+          teamMembersService.getAll(),
+          advertisementsService.getAll(),
+        ]);
 
-    if (savedSectionSettings) {
-      try {
-        setSectionSettings(JSON.parse(savedSectionSettings));
-      } catch (e) {
-        console.error('Error loading section settings:', e);
-      }
-    }
+        // Apply Supabase data (if available)
+        if (supabaseDiscountSettings && typeof supabaseDiscountSettings === 'object') {
+          setDiscountSettings(prev => ({ ...prev, ...(supabaseDiscountSettings as DiscountSettings) }));
+        }
+        if (supabaseAdSettings && typeof supabaseAdSettings === 'object') {
+          setAdSettings(prev => ({ ...prev, ...(supabaseAdSettings as AdSettings) }));
+        }
+        if (supabaseSectionSettings && typeof supabaseSectionSettings === 'object') {
+          setSectionSettings(prev => ({ ...prev, ...(supabaseSectionSettings as SectionSettings) }));
+        }
+        if (supabaseSiteSettings && typeof supabaseSiteSettings === 'object') {
+          setSettings(prev => ({ ...prev, ...(supabaseSiteSettings as SiteSettings) }));
+        }
 
-    if (savedSettings) {
-      try {
-        setSettings(JSON.parse(savedSettings));
-      } catch (e) {
-        console.error('Error loading settings:', e);
-      }
-    }
+        // Apply collections
+        if (supabasePartners.length > 0) {
+          // Map Supabase field names to local field names
+          const mappedPartners: Partner[] = supabasePartners.map(p => ({
+            id: p.id,
+            name: p.name,
+            logo: p.logo || '',
+            website: p.link || '',
+            category: p.category || '',
+            description: p.description || '',
+            enabled: p.enabled ?? true,
+            featured: p.featured ?? false,
+            order: p.sort_order || 0,
+            createdAt: p.created_at || new Date().toISOString(),
+            updatedAt: p.updated_at || new Date().toISOString(),
+          }));
+          setPartners(mappedPartners);
+        }
 
-    if (savedPressKitFiles) {
-      try {
-        setPressKitFiles(JSON.parse(savedPressKitFiles));
-      } catch (e) {
-        console.error('Error loading press kit files:', e);
-      }
-    }
+        if (supabaseTeamMembers.length > 0) {
+          const mappedMembers: TeamMember[] = supabaseTeamMembers.map(m => ({
+            id: m.id,
+            name: m.name,
+            role: m.role || '',
+            avatar: m.avatar || '',
+            bio: m.bio || '',
+            linkedin: m.linkedin,
+            twitter: m.twitter,
+            email: m.email,
+            enabled: m.enabled ?? true,
+            order: m.sort_order || 0,
+          }));
+          setTeamMembers(mappedMembers);
+        }
 
-    if (savedEmailAutoReply) {
-      try {
-        setEmailAutoReply(JSON.parse(savedEmailAutoReply));
-      } catch (e) {
-        console.error('Error loading email auto reply:', e);
-      }
-    }
+        if (supabaseAdvertisements.length > 0) {
+          const mappedAds: Advertisement[] = supabaseAdvertisements.map(a => ({
+            id: a.id,
+            title: a.title,
+            type: (a.type || 'image') as 'image' | 'video',
+            placement: (a.placement || 'popup') as 'popup' | 'banner' | 'sidebar',
+            mediaUrl: a.media_url || '',
+            linkUrl: a.link_url || '',
+            duration: a.duration || 10,
+            frequency: a.frequency || 5,
+            displayCount: a.display_count,
+            currentDisplays: a.current_displays || 0,
+            enabled: a.enabled ?? true,
+            createdDate: a.created_at || new Date().toISOString(),
+          }));
+          setAdvertisements(mappedAds);
+        }
 
-    // Team members zaten useState initializer'da localStorage'dan yüklendi
-    // Duplicate yükleme yapmaya gerek yok
-    // if (savedTeamMembers) {
-    //   try {
-    //     setTeamMembers(JSON.parse(savedTeamMembers));
-    //   } catch (e) {
-    //     console.error('Error loading team members:', e);
-    //   }
-    // }
-
-    if (savedPressReleases) {
-      try {
-        setPressReleases(JSON.parse(savedPressReleases));
-      } catch (e) {
-        console.error('Error loading press releases:', e);
+        console.log('✅ Admin data loaded from Supabase');
+      } catch (error) {
+        console.warn('⚠️ Supabase load failed, using localStorage fallback:', error);
       }
-    }
 
-    if (savedGames) {
-      try {
-        setGames(JSON.parse(savedGames));
-      } catch (e) {
-        console.error('Error loading games:', e);
-      }
-    }
+      // Also load remaining data from localStorage (not in Supabase yet)
+      const savedPressKitFiles = localStorage.getItem('admin_pressKitFiles');
+      const savedEmailAutoReply = localStorage.getItem('admin_email_auto_reply');
+      const savedPressReleases = localStorage.getItem('admin_press_releases');
+      const savedGames = localStorage.getItem('admin_games');
+      const savedUsers = localStorage.getItem('admin_users');
+      const savedContents = localStorage.getItem('admin_contents');
+      const savedActivities = localStorage.getItem('admin_activities');
+      const savedLogs = localStorage.getItem('admin_logs');
+      const savedStats = localStorage.getItem('admin_stats');
 
-    if (savedUsers) {
-      try {
-        setUsers(JSON.parse(savedUsers));
-      } catch (e) {
-        console.error('Error loading users:', e);
+      if (savedPressKitFiles) {
+        try {
+          setPressKitFiles(JSON.parse(savedPressKitFiles));
+        } catch (e) {
+          console.error('Error loading press kit files:', e);
+        }
       }
-    }
 
-    if (savedContents) {
-      try {
-        setContents(JSON.parse(savedContents));
-      } catch (e) {
-        console.error('Error loading contents:', e);
+      if (savedEmailAutoReply) {
+        try {
+          setEmailAutoReply(JSON.parse(savedEmailAutoReply));
+        } catch (e) {
+          console.error('Error loading email auto reply:', e);
+        }
       }
-    }
 
-    if (savedActivities) {
-      try {
-        setActivities(JSON.parse(savedActivities));
-      } catch (e) {
-        console.error('Error loading activities:', e);
+      if (savedPressReleases) {
+        try {
+          setPressReleases(JSON.parse(savedPressReleases));
+        } catch (e) {
+          console.error('Error loading press releases:', e);
+        }
       }
-    }
 
-    if (savedLogs) {
-      try {
-        setLogs(JSON.parse(savedLogs));
-      } catch (e) {
-        console.error('Error loading logs:', e);
+      if (savedGames) {
+        try {
+          setGames(JSON.parse(savedGames));
+        } catch (e) {
+          console.error('Error loading games:', e);
+        }
       }
-    }
 
-    if (savedAdvertisements) {
-      try {
-        setAdvertisements(JSON.parse(savedAdvertisements));
-      } catch (e) {
-        console.error('Error loading advertisements:', e);
+      if (savedUsers) {
+        try {
+          setUsers(JSON.parse(savedUsers));
+        } catch (e) {
+          console.error('Error loading users:', e);
+        }
       }
-    }
 
-    if (savedStats) {
-      try {
-        setStats(JSON.parse(savedStats));
-      } catch (e) {
-        console.error('Error loading stats:', e);
+      if (savedContents) {
+        try {
+          setContents(JSON.parse(savedContents));
+        } catch (e) {
+          console.error('Error loading contents:', e);
+        }
       }
-    }
+
+      if (savedActivities) {
+        try {
+          setActivities(JSON.parse(savedActivities));
+        } catch (e) {
+          console.error('Error loading activities:', e);
+        }
+      }
+
+      if (savedLogs) {
+        try {
+          setLogs(JSON.parse(savedLogs));
+        } catch (e) {
+          console.error('Error loading logs:', e);
+        }
+      }
+
+      if (savedStats) {
+        try {
+          setStats(JSON.parse(savedStats));
+        } catch (e) {
+          console.error('Error loading stats:', e);
+        }
+      }
+    };
+
+    loadFromSupabase();
   }, []);
 
-  // Save discountSettings to localStorage whenever it changes
+  // Save discountSettings to localStorage AND Supabase whenever it changes
   useEffect(() => {
     localStorage.setItem('admin_discount_settings', JSON.stringify(discountSettings));
+    // Async save to Supabase (non-blocking)
+    configService.set('discount_settings', discountSettings).catch(err => {
+      console.warn('Supabase discount_settings save failed:', err);
+    });
   }, [discountSettings]);
 
-  // Save adSettings to localStorage whenever it changes
+  // Save adSettings to localStorage AND Supabase whenever it changes
   useEffect(() => {
     localStorage.setItem('admin_ad_settings', JSON.stringify(adSettings));
+    configService.set('ad_settings', adSettings).catch(err => {
+      console.warn('Supabase ad_settings save failed:', err);
+    });
   }, [adSettings]);
 
-  // Save sectionSettings to localStorage whenever it changes
+  // Save sectionSettings to localStorage AND Supabase whenever it changes
   useEffect(() => {
     localStorage.setItem('admin_section_settings', JSON.stringify(sectionSettings));
+    configService.set('section_settings', sectionSettings).catch(err => {
+      console.warn('Supabase section_settings save failed:', err);
+    });
   }, [sectionSettings]);
 
-  // Save settings to localStorage whenever it changes
+  // Save settings to localStorage AND Supabase whenever it changes
   useEffect(() => {
     localStorage.setItem('admin_settings', JSON.stringify(settings));
+    configService.set('site_settings', settings).catch(err => {
+      console.warn('Supabase site_settings save failed:', err);
+    });
   }, [settings]);
 
   // Save pressKitFiles to localStorage whenever it changes
