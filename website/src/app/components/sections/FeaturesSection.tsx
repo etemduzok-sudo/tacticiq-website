@@ -67,33 +67,39 @@ export function FeaturesSection() {
 
         {/* Categories Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-6xl mx-auto mb-8">
-          {categories.map((category) => (
-            <Card 
-              key={category.id} 
-              className={`p-4 hover:shadow-lg transition-all border-2 ${
-                category.featured 
-                  ? 'border-accent/30 bg-accent/5' 
-                  : 'border-border/50'
-              }`}
-            >
-              <div className="flex items-start gap-3">
-                <div className="text-3xl">{category.emoji}</div>
-                <div className="flex-1 space-y-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <h3 className="font-semibold text-sm">
-                      {category.title}
-                    </h3>
-                    {category.featured && (
-                      <Star className="size-4 text-accent fill-accent shrink-0" />
-                    )}
+          {categories.map((category) => {
+            // Çeviri sisteminden başlık ve açıklama al, yoksa veritabanı değerini kullan
+            const translatedTitle = t(`features.categories.${category.key}.title`) || category.title;
+            const translatedDesc = t(`features.categories.${category.key}.desc`) || category.description;
+            
+            return (
+              <Card 
+                key={category.id} 
+                className={`p-4 hover:shadow-lg transition-all border-2 ${
+                  category.featured 
+                    ? 'border-accent/30 bg-accent/5' 
+                    : 'border-border/50'
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <div className="text-3xl">{category.emoji}</div>
+                  <div className="flex-1 space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className="font-semibold text-sm">
+                        {translatedTitle}
+                      </h3>
+                      {category.featured && (
+                        <Star className="size-4 text-accent fill-accent shrink-0" />
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {translatedDesc}
+                    </p>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    {category.description}
-                  </p>
                 </div>
-              </div>
-            </Card>
-          ))}
+              </Card>
+            );
+          })}
         </div>
 
         {/* Focus Note */}
