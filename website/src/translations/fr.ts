@@ -144,6 +144,8 @@ export default {
   'pricing.pro.name': 'Pack Professionnel',
   'pricing.pro.price': '€13',
   'pricing.pro.period': '/ Annuel',
+  'pricing.period.monthly': '/ Mensuel',
+  'pricing.period.yearly': '/ Annuel',
   'pricing.pro.original_price': '€17',
   'pricing.pro.desc': 'Maximisez vos performances avec des analyses approfondies basées sur les données et des outils exclusifs.',
   'pricing.pro.cta': 'Devenir Professionnel',

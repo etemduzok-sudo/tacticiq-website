@@ -146,6 +146,8 @@ export default {
   'pricing.pro.name': '专业套餐',
   'pricing.pro.price': '$9.99',
   'pricing.pro.period': '/ 每月',
+  'pricing.period.monthly': '/ 每月',
+  'pricing.period.yearly': '/ 每年',
   'pricing.pro.desc': '通过数据驱动的深度分析和专属工具最大化您的表现。',
   'pricing.pro.cta': '成为专业用户',
   'pricing.pro.popular': '最受欢迎',

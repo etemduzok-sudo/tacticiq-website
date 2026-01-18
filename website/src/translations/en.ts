@@ -154,6 +154,8 @@ export default {
   'pricing.pro.name': 'Professional Package',
   'pricing.pro.price': '$14',
   'pricing.pro.period': '/ Yearly',
+  'pricing.period.monthly': '/ Monthly',
+  'pricing.period.yearly': '/ Yearly',
   'pricing.pro.original_price': '$18',
   'pricing.pro.desc': 'Maximize your performance with data-driven deep analysis and exclusive tools.',
   'pricing.pro.cta': 'Go Professional',

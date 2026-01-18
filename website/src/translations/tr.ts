@@ -149,6 +149,8 @@ export default {
   'pricing.pro.name': 'Profesyonel Paket',
   'pricing.pro.price': '₺479',
   'pricing.pro.period': '/ Yıllık',
+  'pricing.period.monthly': '/ Aylık',
+  'pricing.period.yearly': '/ Yıllık',
   'pricing.pro.original_price': '₺599',
   'pricing.pro.desc': 'Veri odaklı derinlemesine analizler ve özel araçlarla performansınızı maksimize edin.',
   'pricing.pro.cta': 'Profesyonel Ol',

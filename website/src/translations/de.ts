@@ -128,6 +128,8 @@ export default {
   'pricing.pro.name': 'Professionelles Paket',
   'pricing.pro.price': '€13',
   'pricing.pro.period': '/ Jährlich',
+  'pricing.period.monthly': '/ Monatlich',
+  'pricing.period.yearly': '/ Jährlich',
   'pricing.pro.original_price': '€17',
   'pricing.pro.desc': 'Maximieren Sie Ihre Leistung mit datengesteuerten Tiefenanalysen und exklusiven Tools.',
   'pricing.pro.cta': 'Professionell Werden',

@@ -87,6 +87,8 @@ export function DiscountPopup({ onSelectPlan }: DiscountPopupProps) {
   const discountPercent = discountSettings.discountPercent || 20;
   const discountedPrice = convertedOriginalPrice * (1 - discountPercent / 100);
   const savings = convertedOriginalPrice - discountedPrice;
+  const billingPeriod = priceSettings.billingPeriod || 'yearly';
+  const periodLabel = billingPeriod === 'monthly' ? 'aylık' : 'yıllık';
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -112,7 +114,7 @@ export function DiscountPopup({ onSelectPlan }: DiscountPopupProps) {
               {currencySymbol}{savings.toFixed(0)} Tasarruf Edin!
             </h2>
             <p className="text-sm text-muted-foreground">
-              Şimdi kaydolun ve yıllık pakette %{discountPercent} indirim kazanın
+              Şimdi kaydolun ve {periodLabel} pakette %{discountPercent} indirim kazanın
             </p>
           </div>
 
@@ -155,7 +157,7 @@ export function DiscountPopup({ onSelectPlan }: DiscountPopupProps) {
         {/* Features */}
           <div className="space-y-3">
             <div className="text-base font-bold text-foreground">
-              Yıllık Pakete Dahil:
+              {billingPeriod === 'monthly' ? 'Aylık' : 'Yıllık'} Pakete Dahil:
           </div>
             <div className="space-y-2.5">
               {[

@@ -251,11 +251,12 @@ export interface Game {
 
 // Fiyat Ayarları - İndirim popup'ından bağımsız
 export interface PriceSettings {
-  proPrice: number; // Pro plan fiyatı (girilen para birimi cinsinden)
+  proPrice: number; // Pro plan fiyatı (girilen para birimi cinsinden) - aktif fiyat
   baseCurrency: 'TRY' | 'USD' | 'EUR' | 'GBP' | 'AED' | 'CNY'; // Fiyatın girildiği para birimi
   freeTrialDays: number; // Ücretsiz deneme süresi (gün)
   monthlyPrice?: number; // Aylık fiyat (opsiyonel)
   yearlyPrice?: number; // Yıllık fiyat (opsiyonel)
+  billingPeriod: 'monthly' | 'yearly'; // Aktif fatura dönemi - web'de gösterilecek
 }
 
 // İndirim Popup Ayarları - Fiyattan bağımsız
@@ -673,6 +674,7 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
       freeTrialDays: 7,
       monthlyPrice: 29.99,
       yearlyPrice: 99.99,
+      billingPeriod: 'yearly', // Varsayılan: yıllık fiyat gösterilir
     };
     if (savedSettings) {
       const parsed = JSON.parse(savedSettings);

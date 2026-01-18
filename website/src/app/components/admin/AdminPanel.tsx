@@ -1298,6 +1298,7 @@ function PricingContent() {
     freeTrialDays: 7,
     monthlyPrice: 29.99,
     yearlyPrice: 99.99,
+    billingPeriod: 'yearly' as 'monthly' | 'yearly',
   });
 
   // İndirim popup ayarları için ayrı state
@@ -1394,34 +1395,59 @@ function PricingContent() {
           </div>
 
           <Separator />
+
+          {/* Fatura Dönemi Seçimi */}
+          <div className="space-y-2">
+            <Label>Web'de Gösterilecek Fatura Dönemi</Label>
+            <div className="flex gap-4">
+              <label className={`flex items-center gap-2 p-3 border rounded-lg cursor-pointer transition-all ${editedPriceSettings.billingPeriod === 'monthly' ? 'border-secondary bg-secondary/10' : 'border-muted hover:border-secondary/50'}`}>
+                <input
+                  type="radio"
+                  name="billingPeriod"
+                  value="monthly"
+                  checked={editedPriceSettings.billingPeriod === 'monthly'}
+                  onChange={() => {
+                    const monthlyPrice = editedPriceSettings.monthlyPrice || 0;
+                    setEditedPriceSettings({ 
+                      ...editedPriceSettings, 
+                      billingPeriod: 'monthly',
+                      proPrice: monthlyPrice // Aylık fiyatı aktif fiyat olarak ayarla
+                    });
+                  }}
+                  className="accent-secondary"
+                />
+                <span className="font-medium">Aylık</span>
+              </label>
+              <label className={`flex items-center gap-2 p-3 border rounded-lg cursor-pointer transition-all ${editedPriceSettings.billingPeriod === 'yearly' ? 'border-secondary bg-secondary/10' : 'border-muted hover:border-secondary/50'}`}>
+                <input
+                  type="radio"
+                  name="billingPeriod"
+                  value="yearly"
+                  checked={editedPriceSettings.billingPeriod === 'yearly'}
+                  onChange={() => {
+                    const yearlyPrice = editedPriceSettings.yearlyPrice || 0;
+                    setEditedPriceSettings({ 
+                      ...editedPriceSettings, 
+                      billingPeriod: 'yearly',
+                      proPrice: yearlyPrice // Yıllık fiyatı aktif fiyat olarak ayarla
+                    });
+                  }}
+                  className="accent-secondary"
+                />
+                <span className="font-medium">Yıllık</span>
+              </label>
+            </div>
+            <p className="text-xs text-muted-foreground">Seçilen dönemin fiyatı web sitesinde gösterilir</p>
+          </div>
+
+          <Separator />
           
           <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="proPrice">Pro Plan Fiyatı ({CURRENCY_SYMBOLS[editedPriceSettings.baseCurrency]})</Label>
-              <div className="relative">
-                <Input
-                  id="proPrice"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={editedPriceSettings.proPrice}
-                  onChange={(e) => {
-                    const value = parseFloat(e.target.value) || 0;
-                    if (value >= 0) {
-                      setEditedPriceSettings({ ...editedPriceSettings, proPrice: value });
-                    }
-                  }}
-                  className="pr-16"
-                />
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-bold text-secondary">
-                  {CURRENCY_SYMBOLS[editedPriceSettings.baseCurrency]}{editedPriceSettings.proPrice.toFixed(2)}
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground">Ana sayfa ve pricing bölümünde gösterilen fiyat</p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="monthlyPrice">Aylık Fiyat ({CURRENCY_SYMBOLS[editedPriceSettings.baseCurrency]})</Label>
+              <Label htmlFor="monthlyPrice">
+                Aylık Fiyat ({CURRENCY_SYMBOLS[editedPriceSettings.baseCurrency]})
+                {editedPriceSettings.billingPeriod === 'monthly' && <span className="ml-2 text-xs bg-secondary text-white px-2 py-0.5 rounded">AKTİF</span>}
+              </Label>
               <Input
                 id="monthlyPrice"
                 type="number"
@@ -1430,10 +1456,41 @@ function PricingContent() {
                 value={editedPriceSettings.monthlyPrice || 0}
                 onChange={(e) => {
                   const value = parseFloat(e.target.value) || 0;
-                  setEditedPriceSettings({ ...editedPriceSettings, monthlyPrice: value });
+                  const updates: any = { ...editedPriceSettings, monthlyPrice: value };
+                  // Eğer aylık aktifse, proPrice'ı da güncelle
+                  if (editedPriceSettings.billingPeriod === 'monthly') {
+                    updates.proPrice = value;
+                  }
+                  setEditedPriceSettings(updates);
                 }}
+                className={editedPriceSettings.billingPeriod === 'monthly' ? 'border-secondary' : ''}
               />
-              <p className="text-xs text-muted-foreground">Opsiyonel - Aylık abonelik</p>
+              <p className="text-xs text-muted-foreground">Aylık abonelik fiyatı</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="yearlyPrice">
+                Yıllık Fiyat ({CURRENCY_SYMBOLS[editedPriceSettings.baseCurrency]})
+                {editedPriceSettings.billingPeriod === 'yearly' && <span className="ml-2 text-xs bg-secondary text-white px-2 py-0.5 rounded">AKTİF</span>}
+              </Label>
+              <Input
+                id="yearlyPrice"
+                type="number"
+                min="0"
+                step="0.01"
+                value={editedPriceSettings.yearlyPrice || 0}
+                onChange={(e) => {
+                  const value = parseFloat(e.target.value) || 0;
+                  const updates: any = { ...editedPriceSettings, yearlyPrice: value };
+                  // Eğer yıllık aktifse, proPrice'ı da güncelle
+                  if (editedPriceSettings.billingPeriod === 'yearly') {
+                    updates.proPrice = value;
+                  }
+                  setEditedPriceSettings(updates);
+                }}
+                className={editedPriceSettings.billingPeriod === 'yearly' ? 'border-secondary' : ''}
+              />
+              <p className="text-xs text-muted-foreground">Yıllık abonelik fiyatı</p>
             </div>
 
             <div className="space-y-2">
@@ -1454,11 +1511,21 @@ function PricingContent() {
           </div>
 
           <div className="bg-secondary/10 rounded-lg p-4">
-            <p className="font-semibold text-sm mb-2">📌 Fiyat Görünümü:</p>
+            <p className="font-semibold text-sm mb-2">📌 Web'de Gösterilecek Fiyat:</p>
             <div className="text-2xl font-bold text-secondary">
               {CURRENCY_SYMBOLS[editedPriceSettings.baseCurrency]}{editedPriceSettings.proPrice.toFixed(2)}
-              <span className="text-sm font-normal text-muted-foreground ml-2">/ yıllık</span>
+              <span className="text-sm font-normal text-muted-foreground ml-2">/ {editedPriceSettings.billingPeriod === 'monthly' ? 'aylık' : 'yıllık'}</span>
             </div>
+            {discountSettings?.enabled && discountSettings.discountPercent > 0 && (
+              <div className="mt-2 text-sm">
+                <span className="text-muted-foreground">İndirimli Fiyat:</span>
+                <span className="ml-2 text-green-600 font-bold">
+                  {CURRENCY_SYMBOLS[editedPriceSettings.baseCurrency]}
+                  {(editedPriceSettings.proPrice * (1 - (discountSettings.discountPercent || 0) / 100)).toFixed(2)}
+                </span>
+                <span className="ml-1 text-xs text-green-600">(%{discountSettings.discountPercent} indirim)</span>
+              </div>
+            )}
           </div>
 
           {/* Save Button */}

@@ -129,6 +129,8 @@ export default {
   'pricing.pro.name': 'Paquete Profesional',
   'pricing.pro.price': '9,99€',
   'pricing.pro.period': '/ Mensual',
+  'pricing.period.monthly': '/ Mensual',
+  'pricing.period.yearly': '/ Anual',
   'pricing.pro.desc': 'Maximiza tu rendimiento con análisis en profundidad basados en datos y herramientas exclusivas.',
   'pricing.pro.cta': 'Hacerse Profesional',
   'pricing.pro.popular': 'MÁS POPULAR',

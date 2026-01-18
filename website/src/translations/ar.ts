@@ -129,6 +129,8 @@ export default {
   'pricing.pro.name': 'الباقة الاحترافية',
   'pricing.pro.price': '9.99$',
   'pricing.pro.period': '/ شهريًا',
+  'pricing.period.monthly': '/ شهريًا',
+  'pricing.period.yearly': '/ سنويًا',
   'pricing.pro.desc': 'عزز أداءك بتحليلات متعمقة قائمة على البيانات وأدوات حصرية.',
   'pricing.pro.cta': 'كن محترفًا',
   'pricing.pro.popular': 'الأكثر شعبية',

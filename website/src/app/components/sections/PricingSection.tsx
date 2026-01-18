@@ -27,6 +27,7 @@ export function PricingSection() {
   // Fiyatı priceSettings'den al ve kullanıcının diline göre çevir
   const basePrice = priceSettings.proPrice || 99.99;
   const baseCurrency = priceSettings.baseCurrency || 'TRY';
+  const billingPeriod = priceSettings.billingPeriod || 'yearly';
   
   // Fiyatı hedef para birimine çevir
   const convertedOriginalPrice = convertCurrency(basePrice, baseCurrency, targetCurrency);
@@ -38,6 +39,11 @@ export function PricingSection() {
   const proPrice = pricingSettings.discountEnabled && discountPercent > 0
     ? convertedOriginalPrice * (1 - discountPercent / 100)
     : convertedOriginalPrice;
+
+  // Fatura dönemi metni
+  const periodText = billingPeriod === 'monthly' 
+    ? t('pricing.period.monthly') || '/ aylık'
+    : t('pricing.period.yearly') || '/ yıllık';
 
   return (
     <section id="pricing" className="py-20 md:py-28 bg-gradient-to-b from-muted/20 to-background">
@@ -125,7 +131,7 @@ export function PricingSection() {
                     </div>
                   )}
                 </div>
-                <div className="text-sm text-muted-foreground">{t('pricing.pro.period')}</div>
+                <div className="text-sm text-muted-foreground">{periodText}</div>
                 {pricingSettings.discountEnabled && (
                   <div className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-semibold mt-2">
                     <Zap className="size-3" />
