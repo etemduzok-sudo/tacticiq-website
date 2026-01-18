@@ -456,12 +456,12 @@ export const advertisementsService = {
           title: ad.title,
           type: ad.type,
           placement: ad.placement,
-          media_url: ad.media_url,
-          link_url: ad.link_url,
+          media_url: ad.mediaUrl, // camelCase -> snake_case mapping
+          link_url: ad.linkUrl || '', // camelCase -> snake_case mapping
           duration: ad.duration,
           frequency: ad.frequency,
-          display_count: ad.display_count,
-          current_displays: ad.current_displays,
+          display_count: ad.displayCount, // camelCase -> snake_case mapping
+          current_displays: ad.currentDisplays || 0, // camelCase -> snake_case mapping
           enabled: ad.enabled
         })
         .select()
@@ -493,12 +493,25 @@ export const advertisementsService = {
    */
   async update(id: string, updates: Partial<Advertisement>): Promise<boolean> {
     try {
+      // camelCase -> snake_case field mapping for Supabase
+      const supabaseUpdates: any = {
+        updated_at: new Date().toISOString()
+      };
+      
+      if (updates.title !== undefined) supabaseUpdates.title = updates.title;
+      if (updates.type !== undefined) supabaseUpdates.type = updates.type;
+      if (updates.placement !== undefined) supabaseUpdates.placement = updates.placement;
+      if (updates.mediaUrl !== undefined) supabaseUpdates.media_url = updates.mediaUrl;
+      if (updates.linkUrl !== undefined) supabaseUpdates.link_url = updates.linkUrl;
+      if (updates.duration !== undefined) supabaseUpdates.duration = updates.duration;
+      if (updates.frequency !== undefined) supabaseUpdates.frequency = updates.frequency;
+      if (updates.displayCount !== undefined) supabaseUpdates.display_count = updates.displayCount;
+      if (updates.currentDisplays !== undefined) supabaseUpdates.current_displays = updates.currentDisplays;
+      if (updates.enabled !== undefined) supabaseUpdates.enabled = updates.enabled;
+
       const { error } = await supabase
         .from('advertisements')
-        .update({
-          ...updates,
-          updated_at: new Date().toISOString()
-        })
+        .update(supabaseUpdates)
         .eq('id', id);
 
       if (error) {

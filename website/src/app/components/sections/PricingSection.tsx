@@ -31,7 +31,9 @@ export function PricingSection() {
   // Fiyatı hedef para birimine çevir
   const convertedOriginalPrice = convertCurrency(basePrice, baseCurrency, targetCurrency);
 
-  // İndirim yüzdesi (sadece discountEnabled ise uygulanır)
+  // İndirim yüzdesi (Section ayarlarından discountEnabled kontrol edilir)
+  // pricingSettings.discountEnabled: Pricing section'da indirim gösterilsin mi?
+  // discountSettings.discountPercent: İndirim popup'ındaki indirim oranı
   const discountPercent = discountSettings.discountPercent || 0;
   const proPrice = pricingSettings.discountEnabled && discountPercent > 0
     ? convertedOriginalPrice * (1 - discountPercent / 100)

@@ -13,7 +13,7 @@ export function WebsiteEditor() {
   const adminData = useAdminDataSafe();
   const websiteContent = adminData?.websiteContent;
   const updateWebsiteContent = adminData?.updateWebsiteContent;
-  const discountSettings = adminData?.discountSettings;
+  const priceSettings = adminData?.priceSettings;
   
   const [editedContent, setEditedContent] = useState(websiteContent);
 
@@ -251,8 +251,8 @@ export function WebsiteEditor() {
                   <div className="space-y-2">
                     <Label>Fiyat (Sadece Görüntüleme - "Fiyatlandırma & İndirim" bölümünden yönetilir)</Label>
                     <Input
-                      value={plan.name === 'Pro' && discountSettings
-                        ? `${CURRENCY_SYMBOLS[discountSettings.baseCurrency]}${discountSettings.originalPrice.toFixed(2)}`
+                      value={plan.name === 'Pro' && priceSettings
+                        ? `${CURRENCY_SYMBOLS[priceSettings.baseCurrency]}${priceSettings.proPrice.toFixed(2)}`
                         : plan.price
                       }
                       disabled
@@ -262,7 +262,7 @@ export function WebsiteEditor() {
                       <Info className="size-4 mt-0.5 flex-shrink-0" />
                       <span>
                         Fiyat değişiklikleri için <strong>"Fiyatlandırma & İndirim"</strong> bölümünü kullanın. 
-                        Bu bölümde gösterilen fiyat, "Fiyatlandırma & İndirim" bölümündeki orijinal fiyatı yansıtır.
+                        Bu bölümde gösterilen fiyat, "Fiyatlandırma & İndirim" bölümündeki Pro Plan fiyatını yansıtır.
                       </span>
                     </div>
                   </div>

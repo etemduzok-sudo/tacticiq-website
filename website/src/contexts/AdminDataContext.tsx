@@ -1417,6 +1417,8 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
     setPriceSettings(prevSettings => {
       const newSettings = { ...prevSettings, ...updatedSettings };
       console.log('Price Settings Updated:', newSettings);
+      // HEMEN localStorage'a kaydet - useEffect'i bekleme
+      localStorage.setItem('admin_price_settings', JSON.stringify(newSettings));
       return newSettings;
     });
     
@@ -1434,6 +1436,8 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
     setDiscountSettings(prevSettings => {
       const newSettings = { ...prevSettings, ...updatedSettings };
       console.log('Discount Settings Updated:', newSettings);
+      // HEMEN localStorage'a kaydet - useEffect'i bekleme
+      localStorage.setItem('admin_discount_settings', JSON.stringify(newSettings));
       return newSettings;
     });
     

@@ -18,7 +18,7 @@ interface DiscountPopupProps {
 
 export function DiscountPopup({ onSelectPlan }: DiscountPopupProps) {
   const { t, language } = useLanguage();
-  const { discountSettings } = useAdminData();
+  const { discountSettings, priceSettings } = useAdminData();
   const { selectPlan } = usePayment();
   const [isOpen, setIsOpen] = useState(false);
   const [timeLeft, setTimeLeft] = useState(discountSettings.timerDuration);
@@ -78,10 +78,10 @@ export function DiscountPopup({ onSelectPlan }: DiscountPopupProps) {
 
   if (!discountSettings.enabled || hasShownToday) return null;
 
-  // Fiyatı kullanıcının diline göre çevir - NaN kontrolü ekle
+  // Fiyatı kullanıcının diline göre çevir - priceSettings'ten al (discountSettings'ten DEĞİL)
   const convertedOriginalPrice = convertCurrency(
-    discountSettings.originalPrice || 99.99,
-    discountSettings.baseCurrency || 'TRY',
+    priceSettings.proPrice || 99.99,
+    priceSettings.baseCurrency || 'TRY',
     targetCurrency
   );
   const discountPercent = discountSettings.discountPercent || 20;
