@@ -33,7 +33,9 @@ import {
   Smartphone,
   Info,
   Gamepad2,
-  Edit2
+  Edit2,
+  Type,
+  Megaphone
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/app/components/ui/button';
@@ -48,7 +50,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/ta
 import { Badge } from '@/app/components/ui/badge';
 import { useAdmin } from '@/contexts/AdminContext';
 import { AdminDataContext, CURRENCY_SYMBOLS, LANGUAGE_CURRENCY_MAP, AdSettings, SectionSettings, SectionMediaItem } from '@/contexts/AdminDataContext';
-import { WebsiteEditor } from '@/app/components/admin/WebsiteEditor';
 import { ChangePasswordModal } from '@/app/components/auth/ChangePasswordModal';
 import { AdManagement } from '@/app/components/admin/AdManagement';
 import { TeamManagement } from '@/app/components/admin/TeamManagement';
@@ -223,12 +224,6 @@ export function AdminPanel() {
             active={activeSection === 'logs'}
             onClick={() => setActiveSection('logs')}
           />
-          <MenuButton
-            icon={Layout}
-            label="Web Sitesi Editörü"
-            active={activeSection === 'website'}
-            onClick={() => setActiveSection('website')}
-          />
         </div>
       </Card>
 
@@ -250,7 +245,6 @@ export function AdminPanel() {
             {activeSection === 'game' && <GameContent />}
             {activeSection === 'settings' && <SettingsContent />}
             {activeSection === 'logs' && <LogsContent />}
-            {activeSection === 'website' && <WebsiteContent />}
           </div>
         </div>
       </Card>
@@ -1297,10 +1291,14 @@ function MediaContent() {
   const addSectionMedia = contextData?.addSectionMedia;
   const updateSectionMedia = contextData?.updateSectionMedia;
   const deleteSectionMedia = contextData?.deleteSectionMedia;
+  const websiteContent = contextData?.websiteContent;
+  const updateWebsiteContent = contextData?.updateWebsiteContent;
 
+  const [activeTab, setActiveTab] = useState<'media' | 'headers'>('media');
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingMedia, setEditingMedia] = useState<SectionMediaItem | null>(null);
   const [selectedSection, setSelectedSection] = useState<string>('all');
+  const [editingSection, setEditingSection] = useState<string>('hero');
   
   const [newMedia, setNewMedia] = useState({
     sectionId: 'hero',
@@ -1312,6 +1310,16 @@ function MediaContent() {
     order: 0,
     enabled: true,
   });
+
+  // WebsiteContent için edited state
+  const [editedContent, setEditedContent] = useState(websiteContent);
+  
+  // websiteContent değiştiğinde editedContent'i güncelle
+  useEffect(() => {
+    if (websiteContent) {
+      setEditedContent(websiteContent);
+    }
+  }, [websiteContent]);
 
   // Kullanılabilir bölümler
   const sections = [
@@ -1387,6 +1395,20 @@ function MediaContent() {
     return <div className="p-4 text-center">Medya yükleniyor...</div>;
   }
 
+  // Bölüm başlıklarını kaydet
+  const handleSaveHeaders = () => {
+    if (!updateWebsiteContent || !editedContent) return;
+    
+    Object.keys(editedContent).forEach((key) => {
+      updateWebsiteContent(key as keyof typeof websiteContent, editedContent[key as keyof typeof editedContent]);
+    });
+    toast.success('Bölüm başlıkları kaydedildi');
+  };
+
+  if (!contextData) {
+    return <div className="p-4 text-center">Medya yükleniyor...</div>;
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -1396,17 +1418,28 @@ function MediaContent() {
             Medya Yönetimi
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Her bölüm için görsel, video ve metin içerikleri ekleyin
+            Her bölüm için görsel, video, metin içerikleri ve bölüm başlıklarını yönetin
           </p>
         </div>
-        <Button className="gap-2" onClick={() => setShowAddDialog(true)}>
-          <Plus className="size-4" />
-          Yeni Medya Ekle
-        </Button>
+        {activeTab === 'media' && (
+          <Button className="gap-2" onClick={() => setShowAddDialog(true)}>
+            <Plus className="size-4" />
+            Yeni Medya Ekle
+          </Button>
+        )}
       </div>
 
-      {/* Bölüm Filtresi */}
-      <Card>
+      {/* Sekmeler */}
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'media' | 'headers')}>
+        <TabsList className="grid w-full grid-cols-2 max-w-md">
+          <TabsTrigger value="media">🖼️ Medya İçeriği</TabsTrigger>
+          <TabsTrigger value="headers">📝 Bölüm Başlıkları</TabsTrigger>
+        </TabsList>
+
+        {/* Medya İçeriği Sekmesi */}
+        <TabsContent value="media" className="space-y-6 mt-6">
+          {/* Bölüm Filtresi */}
+          <Card>
         <CardContent className="pt-4">
           <div className="flex items-center gap-4">
             <Label>Bölüm Filtresi:</Label>
@@ -1516,7 +1549,723 @@ function MediaContent() {
           </div>
         )}
       </div>
+        </TabsContent>
 
+        {/* Bölüm Başlıkları Sekmesi */}
+        <TabsContent value="headers" className="space-y-6 mt-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold">Bölüm Başlıkları ve Metinleri</h3>
+              <p className="text-sm text-muted-foreground">
+                Her bölümün başlık, alt başlık ve buton metinlerini düzenleyin
+              </p>
+            </div>
+            <Button onClick={handleSaveHeaders} className="gap-2">
+              <Save className="size-4" />
+              Tümünü Kaydet
+            </Button>
+          </div>
+
+          <Tabs value={editingSection} onValueChange={setEditingSection}>
+            <TabsList className="grid w-full grid-cols-5 max-h-[200px] overflow-y-auto">
+              <TabsTrigger value="hero">Hero</TabsTrigger>
+              <TabsTrigger value="features">Features</TabsTrigger>
+              <TabsTrigger value="pricing">Pricing</TabsTrigger>
+              <TabsTrigger value="blog">Blog</TabsTrigger>
+              <TabsTrigger value="cta">CTA</TabsTrigger>
+            </TabsList>
+
+            {/* Hero Section */}
+            <TabsContent value="hero" className="space-y-4 mt-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Type className="size-5" />
+                    Hero Section
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Ana Başlık</Label>
+                    <Input
+                      value={editedContent?.hero?.title || ''}
+                      onChange={(e) => setEditedContent({
+                        ...editedContent,
+                        hero: { ...editedContent?.hero, title: e.target.value }
+                      })}
+                      placeholder="Ana başlık"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Alt Başlık</Label>
+                    <Textarea
+                      value={editedContent?.hero?.subtitle || ''}
+                      onChange={(e) => setEditedContent({
+                        ...editedContent,
+                        hero: { ...editedContent?.hero, subtitle: e.target.value }
+                      })}
+                      placeholder="Alt başlık"
+                      rows={3}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Buton Metni</Label>
+                    <Input
+                      value={editedContent?.hero?.buttonText || ''}
+                      onChange={(e) => setEditedContent({
+                        ...editedContent,
+                        hero: { ...editedContent?.hero, buttonText: e.target.value }
+                      })}
+                      placeholder="Buton metni"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Features Section */}
+            <TabsContent value="features" className="space-y-4 mt-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Type className="size-5" />
+                    Features Section
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Başlık</Label>
+                    <Input
+                      value={editedContent?.features?.title || ''}
+                      onChange={(e) => setEditedContent({
+                        ...editedContent,
+                        features: { ...editedContent?.features, title: e.target.value }
+                      })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Açıklama</Label>
+                    <Textarea
+                      value={editedContent?.features?.description || ''}
+                      onChange={(e) => setEditedContent({
+                        ...editedContent,
+                        features: { ...editedContent?.features, description: e.target.value }
+                      })}
+                      rows={3}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Pricing Section */}
+            <TabsContent value="pricing" className="space-y-4 mt-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <DollarSign className="size-5" />
+                    Pricing Section
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Başlık</Label>
+                    <Input
+                      value={editedContent?.pricing?.title || ''}
+                      onChange={(e) => setEditedContent({
+                        ...editedContent,
+                        pricing: { ...editedContent?.pricing, title: e.target.value }
+                      })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Açıklama</Label>
+                    <Textarea
+                      value={editedContent?.pricing?.description || ''}
+                      onChange={(e) => setEditedContent({
+                        ...editedContent,
+                        pricing: { ...editedContent?.pricing, description: e.target.value }
+                      })}
+                      rows={3}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Blog Section */}
+            <TabsContent value="blog" className="space-y-4 mt-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="size-5" />
+                    Blog Section
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Başlık</Label>
+                    <Input
+                      value={editedContent?.blog?.title || ''}
+                      onChange={(e) => setEditedContent({
+                        ...editedContent,
+                        blog: { ...editedContent?.blog, title: e.target.value }
+                      })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Açıklama</Label>
+                    <Textarea
+                      value={editedContent?.blog?.description || ''}
+                      onChange={(e) => setEditedContent({
+                        ...editedContent,
+                        blog: { ...editedContent?.blog, description: e.target.value }
+                      })}
+                      rows={3}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* CTA Section */}
+            <TabsContent value="cta" className="space-y-4 mt-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Megaphone className="size-5" />
+                    CTA Section
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Başlık</Label>
+                    <Input
+                      value={editedContent?.cta?.title || ''}
+                      onChange={(e) => setEditedContent({
+                        ...editedContent,
+                        cta: { ...editedContent?.cta, title: e.target.value }
+                      })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Açıklama</Label>
+                    <Textarea
+                      value={editedContent?.cta?.description || ''}
+                      onChange={(e) => setEditedContent({
+                        ...editedContent,
+                        cta: { ...editedContent?.cta, description: e.target.value }
+                      })}
+                      rows={3}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Buton Metni</Label>
+                    <Input
+                      value={editedContent?.cta?.buttonText || ''}
+                      onChange={(e) => setEditedContent({
+                        ...editedContent,
+                        cta: { ...editedContent?.cta, buttonText: e.target.value }
+                      })}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </TabsContent>
+      </Tabs>
+
+      {/* Yeni Medya Ekleme Dialog */}
+      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Yeni Medya Ekle</DialogTitle>
+            <DialogDescription>
+              Bir bölüme görsel, video veya metin içeriği ekleyin
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            {/* Bölüm Seçimi */}
+            <div className="space-y-2">
+              <Label>Bölüm</Label>
+              <Select 
+                value={newMedia.sectionId} 
+                onValueChange={(value) => setNewMedia({ ...newMedia, sectionId: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Bölüm seçin" />
+                </SelectTrigger>
+                <SelectContent>
+                  {sections.map(section => (
+                    <SelectItem key={section.id} value={section.id}>
+                      {section.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Tür Seçimi */}
+            <div className="space-y-2">
+              <Label>İçerik Türü</Label>
+              <Select 
+                value={newMedia.type} 
+                onValueChange={(value: 'image' | 'video' | 'text') => setNewMedia({ ...newMedia, type: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="image">🖼️ Görsel</SelectItem>
+                  <SelectItem value="video">🎬 Video</SelectItem>
+                  <SelectItem value="text">📝 Metin</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Başlık */}
+            <div className="space-y-2">
+              <Label>Başlık *</Label>
+              <Input
+                value={newMedia.title}
+                onChange={(e) => setNewMedia({ ...newMedia, title: e.target.value })}
+                placeholder="Medya başlığı"
+              />
+            </div>
+
+            {/* URL (Görsel/Video için) */}
+            {newMedia.type !== 'text' && (
+              <div className="space-y-2">
+                <Label>{newMedia.type === 'image' ? 'Görsel URL' : 'Video URL'} *</Label>
+                <Input
+                  value={newMedia.url}
+                  onChange={(e) => setNewMedia({ ...newMedia, url: e.target.value })}
+                  placeholder={newMedia.type === 'image' ? 'https://example.com/image.jpg' : 'https://youtube.com/watch?v=...'}
+                />
+                {newMedia.type === 'image' && newMedia.url && (
+                  <div className="mt-2 aspect-video bg-muted rounded-lg overflow-hidden max-w-xs">
+                    <img 
+                      src={newMedia.url} 
+                      alt="Önizleme"
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400x225?text=Görsel+Yüklenemedi';
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Alt Metin (Görsel için) */}
+            {newMedia.type === 'image' && (
+              <div className="space-y-2">
+                <Label>Alt Metin (SEO için)</Label>
+                <Input
+                  value={newMedia.altText}
+                  onChange={(e) => setNewMedia({ ...newMedia, altText: e.target.value })}
+                  placeholder="Görsel açıklaması"
+                />
+              </div>
+            )}
+
+            {/* Açıklama */}
+            <div className="space-y-2">
+              <Label>Açıklama {newMedia.type === 'text' ? '*' : ''}</Label>
+              <Textarea
+                value={newMedia.description}
+                onChange={(e) => setNewMedia({ ...newMedia, description: e.target.value })}
+                placeholder="İçerik açıklaması veya metin"
+                rows={3}
+              />
+            </div>
+
+            {/* Sıralama */}
+            <div className="space-y-2">
+              <Label>Sıralama</Label>
+              <Input
+                type="number"
+                value={newMedia.order}
+                onChange={(e) => setNewMedia({ ...newMedia, order: parseInt(e.target.value) || 0 })}
+                min={0}
+              />
+              <p className="text-xs text-muted-foreground">Düşük sayılar önce gösterilir</p>
+            </div>
+
+            {/* Aktif/Pasif */}
+            <div className="flex items-center justify-between">
+              <Label>Aktif</Label>
+              <Button
+                type="button"
+                variant={newMedia.enabled ? 'default' : 'secondary'}
+                size="sm"
+                onClick={() => setNewMedia({ ...newMedia, enabled: !newMedia.enabled })}
+              >
+                {newMedia.enabled ? 'Aktif' : 'Pasif'}
+              </Button>
+            </div>
+
+            {/* Kaydet */}
+            <div className="flex justify-end gap-2 pt-4 border-t">
+              <Button variant="outline" onClick={() => setShowAddDialog(false)}>
+                İptal
+              </Button>
+              <Button onClick={handleAddMedia} className="gap-2">
+                <Save className="size-4" />
+                Ekle
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Medya Düzenleme Dialog */}
+      <Dialog open={!!editingMedia} onOpenChange={() => setEditingMedia(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Medya Düzenle</DialogTitle>
+            <DialogDescription>
+              Medya içeriğini güncelleyin
+            </DialogDescription>
+          </DialogHeader>
+          {editingMedia && (
+            <div className="space-y-4 pt-4">
+              {/* Bölüm */}
+              <div className="space-y-2">
+                <Label>Bölüm</Label>
+                <Select 
+                  value={editingMedia.sectionId} 
+                  onValueChange={(value) => setEditingMedia({ ...editingMedia, sectionId: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sections.map(section => (
+                      <SelectItem key={section.id} value={section.id}>
+                        {section.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Başlık */}
+              <div className="space-y-2">
+                <Label>Başlık</Label>
+                <Input
+                  value={editingMedia.title}
+                  onChange={(e) => setEditingMedia({ ...editingMedia, title: e.target.value })}
+                />
+              </div>
+
+              {/* URL */}
+              {editingMedia.type !== 'text' && (
+                <div className="space-y-2">
+                  <Label>{editingMedia.type === 'image' ? 'Görsel URL' : 'Video URL'}</Label>
+                  <Input
+                    value={editingMedia.url || ''}
+                    onChange={(e) => setEditingMedia({ ...editingMedia, url: e.target.value })}
+                  />
+                  {editingMedia.type === 'image' && editingMedia.url && (
+                    <div className="mt-2 aspect-video bg-muted rounded-lg overflow-hidden max-w-xs">
+                      <img 
+                        src={editingMedia.url} 
+                        alt="Önizleme"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Alt Metin */}
+              {editingMedia.type === 'image' && (
+                <div className="space-y-2">
+                  <Label>Alt Metin</Label>
+                  <Input
+                    value={editingMedia.altText || ''}
+                    onChange={(e) => setEditingMedia({ ...editingMedia, altText: e.target.value })}
+                  />
+                </div>
+              )}
+
+              {/* Açıklama */}
+              <div className="space-y-2">
+                <Label>Açıklama</Label>
+                <Textarea
+                  value={editingMedia.description || ''}
+                  onChange={(e) => setEditingMedia({ ...editingMedia, description: e.target.value })}
+                  rows={3}
+                />
+              </div>
+
+              {/* Sıralama */}
+              <div className="space-y-2">
+                <Label>Sıralama</Label>
+                <Input
+                  type="number"
+                  value={editingMedia.order}
+                  onChange={(e) => setEditingMedia({ ...editingMedia, order: parseInt(e.target.value) || 0 })}
+                  min={0}
+                />
+              </div>
+
+              {/* Aktif/Pasif */}
+              <div className="flex items-center justify-between">
+                <Label>Aktif</Label>
+                <Button
+                  type="button"
+                  variant={editingMedia.enabled ? 'default' : 'secondary'}
+                  size="sm"
+                  onClick={() => setEditingMedia({ ...editingMedia, enabled: !editingMedia.enabled })}
+                >
+                  {editingMedia.enabled ? 'Aktif' : 'Pasif'}
+                </Button>
+              </div>
+
+              {/* Kaydet */}
+              <div className="flex justify-end gap-2 pt-4 border-t">
+                <Button variant="outline" onClick={() => setEditingMedia(null)}>
+                  İptal
+                </Button>
+                <Button onClick={handleUpdateMedia} className="gap-2">
+                  <Save className="size-4" />
+                  Güncelle
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+        {/* Bölüm Başlıkları Sekmesi */}
+        <TabsContent value="headers" className="space-y-6 mt-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold">Bölüm Başlıkları ve Metinleri</h3>
+              <p className="text-sm text-muted-foreground">
+                Her bölümün başlık, alt başlık ve buton metinlerini düzenleyin
+              </p>
+            </div>
+            <Button onClick={handleSaveHeaders} className="gap-2">
+              <Save className="size-4" />
+              Tümünü Kaydet
+            </Button>
+          </div>
+
+          <Tabs value={editingSection} onValueChange={setEditingSection}>
+            <TabsList className="grid w-full grid-cols-5 max-h-[200px] overflow-y-auto">
+              <TabsTrigger value="hero">Hero</TabsTrigger>
+              <TabsTrigger value="features">Features</TabsTrigger>
+              <TabsTrigger value="pricing">Pricing</TabsTrigger>
+              <TabsTrigger value="blog">Blog</TabsTrigger>
+              <TabsTrigger value="cta">CTA</TabsTrigger>
+            </TabsList>
+
+            {/* Hero Section */}
+            <TabsContent value="hero" className="space-y-4 mt-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Type className="size-5" />
+                    Hero Section
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Ana Başlık</Label>
+                    <Input
+                      value={editedContent?.hero?.title || ''}
+                      onChange={(e) => setEditedContent({
+                        ...editedContent,
+                        hero: { ...editedContent?.hero, title: e.target.value }
+                      })}
+                      placeholder="Ana başlık"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Alt Başlık</Label>
+                    <Textarea
+                      value={editedContent?.hero?.subtitle || ''}
+                      onChange={(e) => setEditedContent({
+                        ...editedContent,
+                        hero: { ...editedContent?.hero, subtitle: e.target.value }
+                      })}
+                      placeholder="Alt başlık"
+                      rows={3}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Buton Metni</Label>
+                    <Input
+                      value={editedContent?.hero?.buttonText || ''}
+                      onChange={(e) => setEditedContent({
+                        ...editedContent,
+                        hero: { ...editedContent?.hero, buttonText: e.target.value }
+                      })}
+                      placeholder="Buton metni"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Features Section */}
+            <TabsContent value="features" className="space-y-4 mt-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Type className="size-5" />
+                    Features Section
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Başlık</Label>
+                    <Input
+                      value={editedContent?.features?.title || ''}
+                      onChange={(e) => setEditedContent({
+                        ...editedContent,
+                        features: { ...editedContent?.features, title: e.target.value }
+                      })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Açıklama</Label>
+                    <Textarea
+                      value={editedContent?.features?.description || ''}
+                      onChange={(e) => setEditedContent({
+                        ...editedContent,
+                        features: { ...editedContent?.features, description: e.target.value }
+                      })}
+                      rows={3}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Pricing Section */}
+            <TabsContent value="pricing" className="space-y-4 mt-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <DollarSign className="size-5" />
+                    Pricing Section
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Başlık</Label>
+                    <Input
+                      value={editedContent?.pricing?.title || ''}
+                      onChange={(e) => setEditedContent({
+                        ...editedContent,
+                        pricing: { ...editedContent?.pricing, title: e.target.value }
+                      })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Açıklama</Label>
+                    <Textarea
+                      value={editedContent?.pricing?.description || ''}
+                      onChange={(e) => setEditedContent({
+                        ...editedContent,
+                        pricing: { ...editedContent?.pricing, description: e.target.value }
+                      })}
+                      rows={3}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Blog Section */}
+            <TabsContent value="blog" className="space-y-4 mt-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="size-5" />
+                    Blog Section
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Başlık</Label>
+                    <Input
+                      value={editedContent?.blog?.title || ''}
+                      onChange={(e) => setEditedContent({
+                        ...editedContent,
+                        blog: { ...editedContent?.blog, title: e.target.value }
+                      })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Açıklama</Label>
+                    <Textarea
+                      value={editedContent?.blog?.description || ''}
+                      onChange={(e) => setEditedContent({
+                        ...editedContent,
+                        blog: { ...editedContent?.blog, description: e.target.value }
+                      })}
+                      rows={3}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* CTA Section */}
+            <TabsContent value="cta" className="space-y-4 mt-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Megaphone className="size-5" />
+                    CTA Section
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Başlık</Label>
+                    <Input
+                      value={editedContent?.cta?.title || ''}
+                      onChange={(e) => setEditedContent({
+                        ...editedContent,
+                        cta: { ...editedContent?.cta, title: e.target.value }
+                      })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Açıklama</Label>
+                    <Textarea
+                      value={editedContent?.cta?.description || ''}
+                      onChange={(e) => setEditedContent({
+                        ...editedContent,
+                        cta: { ...editedContent?.cta, description: e.target.value }
+                      })}
+                      rows={3}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Buton Metni</Label>
+                    <Input
+                      value={editedContent?.cta?.buttonText || ''}
+                      onChange={(e) => setEditedContent({
+                        ...editedContent,
+                        cta: { ...editedContent?.cta, buttonText: e.target.value }
+                      })}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </TabsContent>
+      </Tabs>
+
+      {/* Medya Ekleme/Düzenleme Dialog'ları - Tabs dışında */}
       {/* Yeni Medya Ekleme Dialog */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
         <DialogContent className="max-w-lg">
@@ -3174,11 +3923,6 @@ function LogsContent() {
       </Card>
     </div>
   );
-}
-
-// Website Content
-function WebsiteContent() {
-  return <WebsiteEditor />;
 }
 
 // Helper Components
