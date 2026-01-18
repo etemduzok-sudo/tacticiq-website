@@ -129,7 +129,16 @@ function AppContent() {
     return () => clearTimeout(timeoutId);
   }, []);
   
-  // Sayfa yüklendiğinde scroll yapma - kaldırıldı (kullanıcı isteği)
+  // Scroll restoration ayarları - Sayfa yenilendiğinde her zaman en başta başla
+  React.useEffect(() => {
+    // Tarayıcının scroll pozisyonunu hatırlamasını devre dışı bırak
+    if ('scrollRestoration' in window.history) {
+      window.history.scrollRestoration = 'manual';
+    }
+    
+    // Sayfa ilk yüklendiğinde en başa git
+    window.scrollTo(0, 0);
+  }, []);
   
   // Safety check - AdminDataContext yüklenene kadar loading göster
   if (!adminData || !adminData.sectionSettings) {
