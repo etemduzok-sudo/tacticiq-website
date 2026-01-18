@@ -1149,9 +1149,10 @@ function AdsContent() {
     enabled: true,
   });
 
-  // adSettings değiştiğinde local state'i güncelle
+  // adSettings değiştiğinde local state'i güncelle - sadece ilk yüklemede veya başka bir kaynaktan değişirse
   useEffect(() => {
-    if (adSettings) {
+    if (adSettings && !editedAdSettings.systemEnabled && !editedAdSettings.popupEnabled && !editedAdSettings.bannerEnabled && !editedAdSettings.sidebarEnabled && !editedAdSettings.adminEmail) {
+      // Sadece editedAdSettings boşsa (ilk yükleme) güncelle
       setEditedAdSettings(adSettings);
     }
   }, [adSettings]);
@@ -1163,12 +1164,20 @@ function AdsContent() {
     }
   };
 
-  // Toggle handler - sadece local state'i güncelle
+  // Toggle handler - hem local state'i güncelle hem de otomatik kaydet
   const handleToggleSetting = (key: keyof AdSettings) => {
-    setEditedAdSettings(prev => ({
-      ...prev,
-      [key]: !prev[key]
-    }));
+    const newValue = !editedAdSettings[key];
+    const updated = {
+      ...editedAdSettings,
+      [key]: newValue
+    };
+    setEditedAdSettings(updated);
+    
+    // Otomatik kaydet
+    if (updateAdSettings) {
+      updateAdSettings(updated);
+      toast.success(`${key === 'systemEnabled' ? 'Reklam Sistemi' : key === 'popupEnabled' ? 'Pop-up Reklamlar' : key === 'bannerEnabled' ? 'Banner Reklamlar' : 'Sidebar Reklamlar'} ${newValue ? 'açıldı' : 'kapatıldı'}`);
+    }
   };
 
   if (!contextData) {
@@ -1199,9 +1208,14 @@ function AdsContent() {
   };
 
   const activeAdCount = advertisements.filter(a => a.enabled).length;
-  const popupAds = advertisements.filter(a => a.placement === 'popup');
-  const bannerAds = advertisements.filter(a => a.placement === 'banner');
-  const sidebarAds = advertisements.filter(a => a.placement === 'sidebar');
+  const popupAds = advertisements.filter(a => a.placement === 'popup' && a.enabled);
+  const bannerAds = advertisements.filter(a => a.placement === 'banner' && a.enabled);
+  const sidebarAds = advertisements.filter(a => a.placement === 'sidebar' && a.enabled);
+  
+  // Reklam durumu bilgisi
+  const hasActivePopupAds = popupAds.length > 0 && editedAdSettings.systemEnabled && editedAdSettings.popupEnabled;
+  const hasActiveBannerAds = bannerAds.length > 0 && editedAdSettings.systemEnabled && editedAdSettings.bannerEnabled;
+  const hasActiveSidebarAds = sidebarAds.length > 0 && editedAdSettings.systemEnabled && editedAdSettings.sidebarEnabled;
 
   return (
     <div className="space-y-6">
@@ -1261,10 +1275,69 @@ function AdsContent() {
                 id="adminEmail"
                 type="email"
                 value={editedAdSettings.adminEmail}
-                onChange={(e) => setEditedAdSettings({ ...editedAdSettings, adminEmail: e.target.value })}
+                onChange={(e) => {
+                  const updated = { ...editedAdSettings, adminEmail: e.target.value };
+                  setEditedAdSettings(updated);
+                  // Otomatik kaydet
+                  if (updateAdSettings) {
+                    updateAdSettings(updated);
+                  }
+                }}
                 placeholder="admin@tacticiq.app"
               />
               <p className="text-xs text-muted-foreground">Reklam performans raporları bu adrese gönderilir</p>
+            </div>
+          </div>
+
+          {/* Reklam Durumu Bilgisi */}
+          <div className="bg-muted/20 rounded-lg p-4 space-y-2">
+            <p className="text-sm font-semibold">📊 Reklam Durumu:</p>
+            <div className="grid grid-cols-3 gap-3 text-xs">
+              <div className={`p-2 rounded ${hasActivePopupAds ? 'bg-green-500/10 border border-green-500/30' : 'bg-muted/50'}`}>
+                <div className="font-medium">Pop-up</div>
+                <div className="text-muted-foreground">
+                  {popupAds.length} aktif reklam
+                </div>
+                {hasActivePopupAds ? (
+                  <div className="text-green-600 mt-1">✓ Gösteriliyor</div>
+                ) : (
+                  <div className="text-muted-foreground mt-1">
+                    {!editedAdSettings.systemEnabled ? 'Sistem kapalı' : 
+                     !editedAdSettings.popupEnabled ? 'Pop-up kapalı' : 
+                     popupAds.length === 0 ? 'Aktif reklam yok' : 'Kapalı'}
+                  </div>
+                )}
+              </div>
+              <div className={`p-2 rounded ${hasActiveBannerAds ? 'bg-green-500/10 border border-green-500/30' : 'bg-muted/50'}`}>
+                <div className="font-medium">Banner</div>
+                <div className="text-muted-foreground">
+                  {bannerAds.length} aktif reklam
+                </div>
+                {hasActiveBannerAds ? (
+                  <div className="text-green-600 mt-1">✓ Gösteriliyor</div>
+                ) : (
+                  <div className="text-muted-foreground mt-1">
+                    {!editedAdSettings.systemEnabled ? 'Sistem kapalı' : 
+                     !editedAdSettings.bannerEnabled ? 'Banner kapalı' : 
+                     bannerAds.length === 0 ? 'Aktif reklam yok' : 'Kapalı'}
+                  </div>
+                )}
+              </div>
+              <div className={`p-2 rounded ${hasActiveSidebarAds ? 'bg-green-500/10 border border-green-500/30' : 'bg-muted/50'}`}>
+                <div className="font-medium">Sidebar</div>
+                <div className="text-muted-foreground">
+                  {sidebarAds.length} aktif reklam
+                </div>
+                {hasActiveSidebarAds ? (
+                  <div className="text-green-600 mt-1">✓ Gösteriliyor</div>
+                ) : (
+                  <div className="text-muted-foreground mt-1">
+                    {!editedAdSettings.systemEnabled ? 'Sistem kapalı' : 
+                     !editedAdSettings.sidebarEnabled ? 'Sidebar kapalı' : 
+                     sidebarAds.length === 0 ? 'Aktif reklam yok' : 'Kapalı'}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 

@@ -678,13 +678,26 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
     return savedAds ? JSON.parse(savedAds) : [];
   });
 
-  // Ad Settings
-  const [adSettings, setAdSettings] = useState<AdSettings>({
-    systemEnabled: true,
-    popupEnabled: true,
-    bannerEnabled: true,
-    sidebarEnabled: false,
-    adminEmail: 'admin@tacticiq.app',
+  // Ad Settings - localStorage'dan yükle
+  const [adSettings, setAdSettings] = useState<AdSettings>(() => {
+    const savedSettings = localStorage.getItem('admin_ad_settings');
+    const defaultSettings: AdSettings = {
+      systemEnabled: false,
+      popupEnabled: false,
+      bannerEnabled: false,
+      sidebarEnabled: false,
+      adminEmail: 'admin@tacticiq.app',
+    };
+    if (savedSettings) {
+      try {
+        const parsed = JSON.parse(savedSettings);
+        return { ...defaultSettings, ...parsed };
+      } catch (e) {
+        console.error('Error parsing ad settings:', e);
+        return defaultSettings;
+      }
+    }
+    return defaultSettings;
   });
 
   // Price Settings - Fiyat ayarları (indirimden bağımsız)
@@ -1499,7 +1512,12 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
 
   // Settings
   const updateAdSettings = (updatedSettings: Partial<AdSettings>) => {
-    setAdSettings(prevSettings => ({ ...prevSettings, ...updatedSettings }));
+    setAdSettings(prevSettings => {
+      const newSettings = { ...prevSettings, ...updatedSettings };
+      // localStorage'a hemen kaydet (useEffect'ten önce)
+      localStorage.setItem('admin_ad_settings', JSON.stringify(newSettings));
+      return newSettings;
+    });
     
     const newLog: LogEntry = {
       id: Date.now().toString(),
