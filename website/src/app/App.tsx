@@ -246,7 +246,8 @@ function AppContent() {
         {isAuthenticated && <UserProfileSection />}
       </main>
 
-      <Footer />
+      {/* Footer - Admin kontrollü */}
+      {(sectionSettings.footer?.enabled ?? true) && <Footer />}
       
       {/* Admin Panel - Only visible when logged in as admin */}
       <AdminPanel />
