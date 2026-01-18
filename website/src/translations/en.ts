@@ -765,6 +765,8 @@ export default {
   'partners.contact.response_time': 'We respond to all inquiries within 24-48 hours',
   'partners.cta.description': 'Contact us for partnership opportunities',
   'partners.cta.button': 'Become a Partner',
+  'partners.noPartners': 'No partners added yet',
+  'partners.website': 'Website',
 
   // Press
   'press.badge': 'PRESS KIT',

@@ -641,6 +641,8 @@ export default {
   'partners.contact.response_time': '我们在24-48小时内回复所有咨询',
   'partners.cta.description': '联系我们了解合作机会',
   'partners.cta.button': '成为合作伙伴',
+  'partners.noPartners': '尚未添加合作伙伴',
+  'partners.website': '网站',
 
   // Press
   'press.badge': '媒体资料包',

@@ -471,4 +471,19 @@ export default {
   'legal.privacy.title': 'Confidentialité',
   'legal.dmca.title': 'Copyright',
   'legal.contact.title': 'Contact',
+
+  // Partners
+  'partners.badge': 'NOS PARTENAIRES',
+  'partners.title': 'Partenaires de Confiance',
+  'partners.subtitle': 'Collaboration avec les principales organisations sportives et médias du monde',
+  'partners.contact.title': 'Partenariat & Collaboration',
+  'partners.contact.description': 'Contactez-nous pour des opportunités de partenariat, collaboration ou publicité',
+  'partners.contact.options.partnership': 'Partenariat Stratégique',
+  'partners.contact.options.collaboration': 'Collaboration Commerciale',
+  'partners.contact.options.advertising': 'Publicité & Sponsoring',
+  'partners.contact.response_time': 'Nous répondons à toutes les demandes sous 24-48 heures',
+  'partners.cta.description': 'Contactez-nous pour des opportunités de partenariat',
+  'partners.cta.button': 'Devenir Partenaire',
+  'partners.noPartners': 'Aucun partenaire ajouté pour le moment',
+  'partners.website': 'Site Web',
 };

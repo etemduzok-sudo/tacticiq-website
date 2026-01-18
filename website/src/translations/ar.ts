@@ -618,6 +618,8 @@ export default {
   'partners.contact.response_time': 'نرد على جميع الاستفسارات خلال 24-48 ساعة',
   'partners.cta.description': 'تواصل معنا لفرص الشراكة',
   'partners.cta.button': 'كن شريكاً',
+  'partners.noPartners': 'لم يتم إضافة شركاء بعد',
+  'partners.website': 'الموقع الإلكتروني',
 
   // Press
   'press.badge': 'الملف الصحفي',

@@ -564,4 +564,19 @@ export default {
   'visitor.online': 'Jetzt online',
   'visitor.today': 'Heute',
   'visitor.month': 'Diesen Monat',
+
+  // Partners
+  'partners.badge': 'UNSERE PARTNER',
+  'partners.title': 'Vertrauenswürdige Partner',
+  'partners.subtitle': 'Zusammenarbeit mit weltweit führenden Sportorganisationen und Medienunternehmen',
+  'partners.contact.title': 'Partnerschaft & Zusammenarbeit',
+  'partners.contact.description': 'Kontaktieren Sie uns für Partnerschafts-, Kooperations- oder Werbemöglichkeiten',
+  'partners.contact.options.partnership': 'Strategische Partnerschaft',
+  'partners.contact.options.collaboration': 'Geschäftliche Zusammenarbeit',
+  'partners.contact.options.advertising': 'Werbung & Sponsoring',
+  'partners.contact.response_time': 'Wir antworten auf alle Anfragen innerhalb von 24-48 Stunden',
+  'partners.cta.description': 'Kontaktieren Sie uns für Partnerschaftsmöglichkeiten',
+  'partners.cta.button': 'Partner werden',
+  'partners.noPartners': 'Noch keine Partner hinzugefügt',
+  'partners.website': 'Webseite',
 };

@@ -618,6 +618,8 @@ export default {
   'partners.contact.response_time': 'Respondemos todas las consultas en 24-48 horas',
   'partners.cta.description': 'Contáctanos para oportunidades de asociación',
   'partners.cta.button': 'Ser Socio',
+  'partners.noPartners': 'Aún no se han añadido socios',
+  'partners.website': 'Sitio Web',
 
   // Press
   'press.badge': 'KIT DE PRENSA',

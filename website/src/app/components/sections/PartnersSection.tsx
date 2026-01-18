@@ -66,7 +66,7 @@ export function PartnersSection() {
                       className="text-xs text-accent hover:underline flex items-center gap-1 mt-2"
                     >
                       <ExternalLink className="size-3" />
-                      Web Sitesi
+                      {t('partners.website') || 'Web Sitesi'}
                     </a>
                   )}
                 </CardContent>
@@ -76,7 +76,7 @@ export function PartnersSection() {
         ) : (
           <div className="text-center py-12 text-muted-foreground">
             <Handshake className="size-16 mx-auto mb-4 opacity-50" />
-            <p>Henüz partner eklenmemiş</p>
+            <p>{t('partners.noPartners') || 'Henüz partner eklenmemiş'}</p>
           </div>
         )}
 

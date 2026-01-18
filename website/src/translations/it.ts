@@ -618,6 +618,8 @@ export default {
   'partners.contact.response_time': 'Rispondiamo a tutte le richieste entro 24-48 ore',
   'partners.cta.description': 'Contattaci per opportunità di partnership',
   'partners.cta.button': 'Diventa Partner',
+  'partners.noPartners': 'Nessun partner aggiunto ancora',
+  'partners.website': 'Sito Web',
 
   // Press
   'press.badge': 'KIT STAMPA',
