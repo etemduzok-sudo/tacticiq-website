@@ -1,6 +1,18 @@
 import { createContext, useContext, useState, ReactNode, useEffect, useCallback, useMemo } from 'react';
-// Supabase entegrasyonu geçici olarak devre dışı - localStorage kullanılıyor
-// import { configService, partnersService, teamMembersService, advertisementsService } from '../services/adminSupabaseService';
+// Supabase entegrasyonu AKTİF - tüm veriler Supabase'den okunur ve yazılır
+import { 
+  configService, 
+  partnersService, 
+  teamMembersService, 
+  advertisementsService,
+  featureCategoriesService,
+  sectionMediaService,
+  gamesService,
+  pressReleasesService,
+  pressKitFilesService,
+  logsService,
+  syncService
+} from '../services/adminSupabaseService';
 
 // Currency Exchange Rates (TRY bazlı - 1 TRY = X)
 export const EXCHANGE_RATES = {
@@ -264,6 +276,37 @@ export interface Game {
   updatedAt: string; // Güncellenme tarihi
 }
 
+// Feature Category - Tahmin Kategorisi (15 Tahmin Kategorisi bölümü)
+export interface FeatureCategory {
+  id: string;
+  key: string; // Benzersiz anahtar (örn: 'halftime_score', 'yellow_cards')
+  title: string; // Başlık
+  description: string; // Açıklama
+  emoji: string; // Emoji/İkon
+  featured: boolean; // Öne çıkan (yıldızlı) mı?
+  enabled: boolean; // Aktif mi?
+  order: number; // Sıralama
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Değişiklik Takip Sistemi - Admin oturumundaki değişiklikleri takip eder
+export interface ChangeLogEntry {
+  id: string;
+  timestamp: string;
+  category: string; // Hangi bölümde değişiklik yapıldı (örn: 'Fiyatlandırma', 'Reklam Ayarları')
+  action: 'create' | 'update' | 'delete'; // İşlem tipi
+  description: string; // Değişiklik açıklaması
+  details?: string; // Ek detaylar
+}
+
+// Admin Bildirim Ayarları
+export interface AdminNotificationSettings {
+  notificationEmail: string; // Bildirim gönderilecek email adresi
+  sendOnExit: boolean; // Çıkışta email gönder
+  sendOnImportantChanges: boolean; // Önemli değişikliklerde email gönder
+}
+
 // Fiyat Ayarları - İndirim popup'ından bağımsız
 export interface PriceSettings {
   proPrice: number; // Pro plan fiyatı (girilen para birimi cinsinden) - aktif fiyat
@@ -398,6 +441,17 @@ export interface SectionSettings {
     workingDays: string; // Çalışma günleri
     responseTime: string; // Yanıt süresi
   };
+  // Newsletter Ayarları
+  newsletter: {
+    enabled: boolean;
+  };
+  // Footer Ayarları
+  footer: {
+    enabled: boolean; // Footer görünür mü?
+    showVisitorCounter: boolean; // Ziyaretçi sayacını göster (admin için)
+    showSocialLinks: boolean; // Sosyal medya linklerini göster
+    showAppDownloadButtons: boolean; // Uygulama indirme butonlarını göster
+  };
   // Kayıt/Giriş Ayarları
   auth: {
     enabled: boolean; // Kayıt/giriş sistemi aktif mi?
@@ -518,6 +572,7 @@ interface AdminDataContextType {
   games: Game[]; // Oyunlar (Partner Oyunlar)
   partners: Partner[]; // Ortaklar/Partnerler
   sectionMedia: SectionMediaItem[]; // Section görselleri ve metinleri
+  featureCategories: FeatureCategory[]; // Tahmin kategorileri (15 Tahmin Kategorisi)
   addUser: (user: Omit<User, 'id' | 'joinDate'>) => void;
   updateUser: (id: string, user: Partial<User>) => void;
   deleteUser: (id: string) => void;
@@ -546,6 +601,10 @@ interface AdminDataContextType {
   updateSectionMedia: (id: string, media: Partial<SectionMediaItem>) => void;
   deleteSectionMedia: (id: string) => void;
   getSectionMedia: (sectionId: string) => SectionMediaItem[];
+  addFeatureCategory: (category: Omit<FeatureCategory, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  updateFeatureCategory: (id: string, category: Partial<FeatureCategory>) => void;
+  deleteFeatureCategory: (id: string) => void;
+  reorderFeatureCategories: (categories: FeatureCategory[]) => void;
   updateAdSettings: (settings: Partial<AdSettings>) => void;
   updateDiscountSettings: (settings: Partial<DiscountSettings>) => void;
   updatePriceSettings: (settings: Partial<PriceSettings>) => void;
@@ -556,6 +615,14 @@ interface AdminDataContextType {
   filterLogs: (type: 'all' | 'info' | 'success' | 'warning' | 'error') => LogEntry[];
   refreshStats: () => void;
   updateStats: (stats: Partial<AdminStats>) => void;
+  // Değişiklik Takip Sistemi
+  sessionChanges: ChangeLogEntry[];
+  addSessionChange: (change: Omit<ChangeLogEntry, 'id' | 'timestamp'>) => void;
+  clearSessionChanges: () => void;
+  getSessionChangeSummary: () => string;
+  // Admin Bildirim Ayarları
+  notificationSettings: AdminNotificationSettings;
+  updateNotificationSettings: (settings: Partial<AdminNotificationSettings>) => void;
 }
 
 export const AdminDataContext = createContext<AdminDataContextType | undefined>(undefined);
@@ -783,6 +850,60 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
     return saved ? JSON.parse(saved) : [];
   });
 
+  // Feature Categories - 15 Tahmin Kategorisi
+  const defaultFeatureCategories: FeatureCategory[] = [
+    { id: '1', key: 'halftime_score', title: 'İlk Yarı Skor Tahmini', description: 'İlk yarı için tam skor tahmini yapın (örn: 1-0, 2-1)', emoji: '⚽', featured: true, enabled: true, order: 1, createdAt: '', updatedAt: '' },
+    { id: '2', key: 'halftime_extra', title: 'İlk Yarı Ek Tahminler', description: 'Alt/Üst gol, karşılıklı gol, handikap tahminleri', emoji: '⏱️', featured: false, enabled: true, order: 2, createdAt: '', updatedAt: '' },
+    { id: '3', key: 'fulltime_score', title: 'Maç Sonu Skor Tahmini', description: 'Normal süre sonunda tam skor tahmini yapın', emoji: '⚽', featured: true, enabled: true, order: 3, createdAt: '', updatedAt: '' },
+    { id: '4', key: 'fulltime_extra', title: 'Maç Sonu Ek Tahminler', description: 'Gol yok, tek taraflı gol, farklı galip tahminleri', emoji: '⏱️', featured: false, enabled: true, order: 4, createdAt: '', updatedAt: '' },
+    { id: '5', key: 'yellow_cards', title: 'Sarı Kart Sayısı', description: 'Toplam sarı kart sayısını tahmin edin (0-8+)', emoji: '🟨', featured: false, enabled: true, order: 5, createdAt: '', updatedAt: '' },
+    { id: '6', key: 'red_cards', title: 'Kırmızı Kart', description: 'Kırmızı kart görülüp görülmeyeceğini tahmin edin', emoji: '🟥', featured: false, enabled: true, order: 6, createdAt: '', updatedAt: '' },
+    { id: '7', key: 'total_shots', title: 'Toplam Şut Sayısı', description: 'Her iki takımın toplam şut sayısını tahmin edin', emoji: '🎯', featured: false, enabled: true, order: 7, createdAt: '', updatedAt: '' },
+    { id: '8', key: 'shots_on_target', title: 'İsabetli Şut Sayısı', description: 'Kaleye giden şut sayısını tahmin edin', emoji: '🎯', featured: false, enabled: true, order: 8, createdAt: '', updatedAt: '' },
+    { id: '9', key: 'tempo', title: 'Maç Temposu', description: 'Maçın hızlı, dengeli veya yavaş geçeceğini tahmin edin', emoji: '🏃‍♂️', featured: false, enabled: true, order: 9, createdAt: '', updatedAt: '' },
+    { id: '10', key: 'scenario', title: 'Maç Senaryosu', description: 'Maçın nasıl gelişeceğini tahmin edin (baskılı başlangıç, geç gol vb.)', emoji: '🧠', featured: true, enabled: true, order: 10, createdAt: '', updatedAt: '' },
+    { id: '11', key: 'total_goals', title: 'Toplam Gol Sayısı', description: 'Maçta atılacak toplam gol sayısını tahmin edin (0-5+)', emoji: '🧮', featured: true, enabled: true, order: 11, createdAt: '', updatedAt: '' },
+    { id: '12', key: 'first_goal', title: 'İlk Gol Zamanı', description: 'İlk golün hangi dakika aralığında atılacağını tahmin edin', emoji: '⏰', featured: true, enabled: true, order: 12, createdAt: '', updatedAt: '' },
+    { id: '13', key: 'possession', title: 'Top Hakimiyeti', description: 'Hangi takımın daha fazla top hakimiyetine sahip olacağını tahmin edin', emoji: '📊', featured: false, enabled: true, order: 13, createdAt: '', updatedAt: '' },
+    { id: '14', key: 'corners', title: 'Korner Sayısı', description: 'Toplam korner sayısını tahmin edin (0-15+)', emoji: '🚩', featured: false, enabled: true, order: 14, createdAt: '', updatedAt: '' },
+    { id: '15', key: 'goal_expectation', title: 'Gol Beklentisi (xG)', description: 'Her iki takımın beklenen gol değerini (Expected Goals) tahmin edin', emoji: '⚡', featured: true, enabled: true, order: 15, createdAt: '', updatedAt: '' },
+  ];
+
+  const [featureCategories, setFeatureCategories] = useState<FeatureCategory[]>(() => {
+    const saved = localStorage.getItem('admin_feature_categories');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error('Error parsing feature categories:', e);
+        return defaultFeatureCategories;
+      }
+    }
+    return defaultFeatureCategories;
+  });
+
+  // Session Changes - Oturumdaki değişiklikleri takip et
+  const [sessionChanges, setSessionChanges] = useState<ChangeLogEntry[]>([]);
+
+  // Admin Notification Settings - Bildirim ayarları
+  const [notificationSettings, setNotificationSettings] = useState<AdminNotificationSettings>(() => {
+    const saved = localStorage.getItem('admin_notification_settings');
+    const defaultSettings: AdminNotificationSettings = {
+      notificationEmail: 'etemduzok@gmail.com',
+      sendOnExit: true,
+      sendOnImportantChanges: true,
+    };
+    if (saved) {
+      try {
+        return { ...defaultSettings, ...JSON.parse(saved) };
+      } catch (e) {
+        console.error('Error parsing notification settings:', e);
+        return defaultSettings;
+      }
+    }
+    return defaultSettings;
+  });
+
   // Settings - Gerçek ayarlar
   const [settings, setSettings] = useState<SiteSettings>({
     siteName: 'TacticIQ',
@@ -891,6 +1012,17 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
       workingDays: 'Pzt - Cmt',
       responseTime: '24 saat içinde',
     },
+    // Newsletter Ayarları
+    newsletter: {
+      enabled: true,
+    },
+    // Footer Ayarları
+    footer: {
+      enabled: true,
+      showVisitorCounter: true,
+      showSocialLinks: true,
+      showAppDownloadButtons: true,
+    },
     // Kayıt/Giriş Ayarları
     auth: {
       enabled: true,
@@ -931,6 +1063,8 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
           press: { ...defaultSectionSettings.press, ...(parsed.press || {}) },
           faq: { ...defaultSectionSettings.faq, ...(parsed.faq || {}) },
           contact: { ...defaultSectionSettings.contact, ...(parsed.contact || {}) },
+          newsletter: { ...defaultSectionSettings.newsletter, ...(parsed.newsletter || {}) },
+          footer: { ...defaultSectionSettings.footer, ...(parsed.footer || {}) },
           auth: { ...defaultSectionSettings.auth, ...(parsed.auth || {}) },
         };
       } catch (e) {
@@ -1510,12 +1644,159 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
       .sort((a, b) => a.order - b.order);
   };
 
-  // Settings
+  // Feature Category CRUD - Tahmin Kategorileri
+  const addFeatureCategory = (category: Omit<FeatureCategory, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const now = new Date().toISOString();
+    const newCategory: FeatureCategory = {
+      ...category,
+      id: Date.now().toString(),
+      createdAt: now,
+      updatedAt: now,
+    };
+    const updated = [...featureCategories, newCategory].sort((a, b) => a.order - b.order);
+    setFeatureCategories(updated);
+    localStorage.setItem('admin_feature_categories', JSON.stringify(updated));
+    
+    const newLog: LogEntry = {
+      id: Date.now().toString(),
+      type: 'success',
+      message: `Kategori eklendi: ${category.title}`,
+      user: 'admin@tacticiq.app',
+      time: new Date().toLocaleString('tr-TR'),
+    };
+    setLogs([newLog, ...logs]);
+  };
+
+  const updateFeatureCategory = (id: string, category: Partial<FeatureCategory>) => {
+    const updated = featureCategories.map(c => 
+      c.id === id ? { ...c, ...category, updatedAt: new Date().toISOString() } : c
+    ).sort((a, b) => a.order - b.order);
+    setFeatureCategories(updated);
+    localStorage.setItem('admin_feature_categories', JSON.stringify(updated));
+    
+    const updatedCategory = updated.find(c => c.id === id);
+    if (updatedCategory) {
+      const newLog: LogEntry = {
+        id: Date.now().toString(),
+        type: 'info',
+        message: `Kategori güncellendi: ${updatedCategory.title}`,
+        user: 'admin@tacticiq.app',
+        time: new Date().toLocaleString('tr-TR'),
+      };
+      setLogs([newLog, ...logs]);
+    }
+  };
+
+  const deleteFeatureCategory = (id: string) => {
+    const category = featureCategories.find(c => c.id === id);
+    const updated = featureCategories.filter(c => c.id !== id);
+    setFeatureCategories(updated);
+    localStorage.setItem('admin_feature_categories', JSON.stringify(updated));
+    
+    if (category) {
+      const newLog: LogEntry = {
+        id: Date.now().toString(),
+        type: 'warning',
+        message: `Kategori silindi: ${category.title}`,
+        user: 'admin@tacticiq.app',
+        time: new Date().toLocaleString('tr-TR'),
+      };
+      setLogs([newLog, ...logs]);
+    }
+  };
+
+  const reorderFeatureCategories = (categories: FeatureCategory[]) => {
+    const updated = categories.map((c, index) => ({ ...c, order: index + 1, updatedAt: new Date().toISOString() }));
+    setFeatureCategories(updated);
+    localStorage.setItem('admin_feature_categories', JSON.stringify(updated));
+    
+    const newLog: LogEntry = {
+      id: Date.now().toString(),
+      type: 'info',
+      message: 'Kategori sıralaması güncellendi',
+      user: 'admin@tacticiq.app',
+      time: new Date().toLocaleString('tr-TR'),
+    };
+    setLogs([newLog, ...logs]);
+  };
+
+  // Session Change Tracking - Oturum değişiklik takibi
+  const addSessionChange = (change: Omit<ChangeLogEntry, 'id' | 'timestamp'>) => {
+    const newChange: ChangeLogEntry = {
+      ...change,
+      id: Date.now().toString(),
+      timestamp: new Date().toISOString(),
+    };
+    setSessionChanges(prev => [...prev, newChange]);
+  };
+
+  const clearSessionChanges = () => {
+    setSessionChanges([]);
+  };
+
+  const getSessionChangeSummary = (): string => {
+    if (sessionChanges.length === 0) return '';
+    
+    const grouped = sessionChanges.reduce((acc, change) => {
+      if (!acc[change.category]) {
+        acc[change.category] = [];
+      }
+      acc[change.category].push(change);
+      return acc;
+    }, {} as Record<string, ChangeLogEntry[]>);
+
+    let summary = `📊 Admin Panel Değişiklik Özeti\n`;
+    summary += `📅 Tarih: ${new Date().toLocaleString('tr-TR')}\n`;
+    summary += `📧 Gönderen: TacticIQ Admin Panel\n\n`;
+    summary += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+
+    Object.entries(grouped).forEach(([category, changes]) => {
+      summary += `📁 ${category} (${changes.length} değişiklik)\n`;
+      changes.forEach((change, index) => {
+        const actionEmoji = change.action === 'create' ? '➕' : change.action === 'update' ? '✏️' : '🗑️';
+        summary += `   ${index + 1}. ${actionEmoji} ${change.description}\n`;
+        if (change.details) {
+          summary += `      └─ ${change.details}\n`;
+        }
+      });
+      summary += '\n';
+    });
+
+    summary += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+    summary += `Toplam: ${sessionChanges.length} değişiklik\n`;
+
+    return summary;
+  };
+
+  // Notification Settings - Bildirim ayarları
+  const updateNotificationSettings = (updatedSettings: Partial<AdminNotificationSettings>) => {
+    setNotificationSettings(prev => {
+      const newSettings = { ...prev, ...updatedSettings };
+      localStorage.setItem('admin_notification_settings', JSON.stringify(newSettings));
+      // Supabase'e kaydet (async)
+      configService.set('notification_settings', newSettings).catch(err => 
+        console.error('Failed to save notification_settings to Supabase:', err)
+      );
+      return newSettings;
+    });
+    
+    addSessionChange({
+      category: 'Bildirim Ayarları',
+      action: 'update',
+      description: 'Bildirim ayarları güncellendi',
+    });
+  };
+
+  // Settings - Supabase'e ve localStorage'a kaydet
   const updateAdSettings = (updatedSettings: Partial<AdSettings>) => {
     setAdSettings(prevSettings => {
       const newSettings = { ...prevSettings, ...updatedSettings };
-      // localStorage'a hemen kaydet (useEffect'ten önce)
+      // localStorage'a hemen kaydet
       localStorage.setItem('admin_ad_settings', JSON.stringify(newSettings));
+      // Supabase'e kaydet (async)
+      configService.set('ad_settings', newSettings).catch(err => 
+        console.error('Failed to save ad_settings to Supabase:', err)
+      );
       return newSettings;
     });
     
@@ -1527,14 +1808,27 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
       time: new Date().toLocaleString('tr-TR'),
     };
     setLogs([newLog, ...logs]);
+
+    // Session change tracking
+    const changedKeys = Object.keys(updatedSettings).join(', ');
+    addSessionChange({
+      category: 'Reklam Ayarları',
+      action: 'update',
+      description: 'Reklam ayarları güncellendi',
+      details: `Değiştirilen: ${changedKeys}`,
+    });
   };
 
   const updatePriceSettings = (updatedSettings: Partial<PriceSettings>) => {
     setPriceSettings(prevSettings => {
       const newSettings = { ...prevSettings, ...updatedSettings };
       console.log('Price Settings Updated:', newSettings);
-      // HEMEN localStorage'a kaydet - useEffect'i bekleme
+      // localStorage'a kaydet
       localStorage.setItem('admin_price_settings', JSON.stringify(newSettings));
+      // Supabase'e kaydet (async)
+      configService.set('price_settings', newSettings).catch(err => 
+        console.error('Failed to save price_settings to Supabase:', err)
+      );
       return newSettings;
     });
     
@@ -1546,14 +1840,26 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
       time: new Date().toLocaleString('tr-TR'),
     };
     setLogs([newLog, ...logs]);
+
+    // Session change tracking
+    addSessionChange({
+      category: 'Fiyatlandırma',
+      action: 'update',
+      description: 'Fiyat ayarları güncellendi',
+      details: updatedSettings.proPrice !== undefined ? `Pro fiyat: ${updatedSettings.proPrice}` : undefined,
+    });
   };
 
   const updateDiscountSettings = (updatedSettings: Partial<DiscountSettings>) => {
     setDiscountSettings(prevSettings => {
       const newSettings = { ...prevSettings, ...updatedSettings };
       console.log('Discount Settings Updated:', newSettings);
-      // HEMEN localStorage'a kaydet - useEffect'i bekleme
+      // localStorage'a kaydet
       localStorage.setItem('admin_discount_settings', JSON.stringify(newSettings));
+      // Supabase'e kaydet (async)
+      configService.set('discount_settings', newSettings).catch(err => 
+        console.error('Failed to save discount_settings to Supabase:', err)
+      );
       return newSettings;
     });
     
@@ -1565,6 +1871,14 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
       time: new Date().toLocaleString('tr-TR'),
     };
     setLogs(prevLogs => [newLog, ...prevLogs]);
+
+    // Session change tracking
+    addSessionChange({
+      category: 'İndirim Ayarları',
+      action: 'update',
+      description: 'İndirim ayarları güncellendi',
+      details: updatedSettings.discountPercent ? `İndirim: %${updatedSettings.discountPercent}` : undefined,
+    });
   };
 
   const updateEmailAutoReply = (updatedSettings: Partial<EmailAutoReplySettings>) => {
@@ -1591,6 +1905,13 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
       time: new Date().toLocaleString('tr-TR'),
     };
     setLogs([newLog, ...logs]);
+
+    // Session change tracking
+    addSessionChange({
+      category: 'Site Ayarları',
+      action: 'update',
+      description: 'Site ayarları güncellendi',
+    });
   };
 
   const updateSectionSettings = (updatedSettings: Partial<SectionSettings>) => {
@@ -1666,14 +1987,28 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
         ...sectionSettings.contact,
         ...(updatedSettings.contact || {}),
       },
+      newsletter: {
+        ...sectionSettings.newsletter,
+        ...(updatedSettings.newsletter || {}),
+      },
+      footer: {
+        ...sectionSettings.footer,
+        ...(updatedSettings.footer || {}),
+      },
       auth: {
         ...sectionSettings.auth,
         ...(updatedSettings.auth || {}),
       },
     };
     
-    // State'i güncelle - bu otomatik olarak localStorage'a kaydedilecek (useEffect ile)
+    // State'i güncelle
     setSectionSettings(merged);
+    // localStorage'a kaydet
+    localStorage.setItem('admin_section_settings', JSON.stringify(merged));
+    // Supabase'e kaydet (async)
+    configService.set('section_settings', merged).catch(err => 
+      console.error('Failed to save section_settings to Supabase:', err)
+    );
     
     const newLog: LogEntry = {
       id: Date.now().toString(),
@@ -1683,6 +2018,15 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
       time: new Date().toLocaleString('tr-TR'),
     };
     setLogs([newLog, ...logs]);
+
+    // Session change tracking
+    const changedSections = Object.keys(updatedSettings).join(', ');
+    addSessionChange({
+      category: 'Bölüm Ayarları',
+      action: 'update',
+      description: 'Bölüm görünürlük ayarları güncellendi',
+      details: `Değiştirilen: ${changedSections}`,
+    });
   };
 
   const updateWebsiteContent = (section: keyof WebsiteContent, content: any) => {
@@ -1741,90 +2085,265 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
     const loadFromSupabase = async () => {
       console.log('🔄 Loading admin data from Supabase...');
       
-      // Supabase entegrasyonu geçici olarak devre dışı - sadece localStorage kullanılıyor
-      console.log('📦 Loading admin data from localStorage...');
-
-      // Load all data from localStorage
-      const savedPressKitFiles = localStorage.getItem('admin_pressKitFiles');
-      const savedEmailAutoReply = localStorage.getItem('admin_email_auto_reply');
-      const savedPressReleases = localStorage.getItem('admin_press_releases');
-      const savedGames = localStorage.getItem('admin_games');
-      const savedUsers = localStorage.getItem('admin_users');
-      const savedContents = localStorage.getItem('admin_contents');
-      const savedActivities = localStorage.getItem('admin_activities');
-      const savedLogs = localStorage.getItem('admin_logs');
-      const savedStats = localStorage.getItem('admin_stats');
-
-      if (savedPressKitFiles) {
-        try {
-          setPressKitFiles(JSON.parse(savedPressKitFiles));
-        } catch (e) {
-          console.error('Error loading press kit files:', e);
+      try {
+        // 1. Config değerlerini Supabase'den yükle
+        const configs = await configService.getAll();
+        console.log('📦 Loaded configs from Supabase:', Object.keys(configs));
+        
+        if (configs.price_settings) {
+          setPriceSettings(prev => ({ ...prev, ...configs.price_settings }));
+          localStorage.setItem('admin_price_settings', JSON.stringify(configs.price_settings));
         }
-      }
-
-      if (savedEmailAutoReply) {
-        try {
-          setEmailAutoReply(JSON.parse(savedEmailAutoReply));
-        } catch (e) {
-          console.error('Error loading email auto reply:', e);
+        
+        if (configs.discount_settings) {
+          setDiscountSettings(prev => ({ ...prev, ...configs.discount_settings }));
+          localStorage.setItem('admin_discount_settings', JSON.stringify(configs.discount_settings));
         }
-      }
-
-      if (savedPressReleases) {
-        try {
-          setPressReleases(JSON.parse(savedPressReleases));
-        } catch (e) {
-          console.error('Error loading press releases:', e);
+        
+        if (configs.ad_settings) {
+          setAdSettings(prev => ({ ...prev, ...configs.ad_settings }));
+          localStorage.setItem('admin_ad_settings', JSON.stringify(configs.ad_settings));
         }
-      }
-
-      if (savedGames) {
-        try {
-          setGames(JSON.parse(savedGames));
-        } catch (e) {
-          console.error('Error loading games:', e);
+        
+        if (configs.section_settings) {
+          setSectionSettings(prev => ({ ...prev, ...configs.section_settings }));
+          localStorage.setItem('admin_section_settings', JSON.stringify(configs.section_settings));
         }
-      }
-
-      if (savedUsers) {
-        try {
-          setUsers(JSON.parse(savedUsers));
-        } catch (e) {
-          console.error('Error loading users:', e);
+        
+        if (configs.notification_settings) {
+          setNotificationSettings(prev => ({ ...prev, ...configs.notification_settings }));
+          localStorage.setItem('admin_notification_settings', JSON.stringify(configs.notification_settings));
         }
-      }
 
-      if (savedContents) {
-        try {
-          setContents(JSON.parse(savedContents));
-        } catch (e) {
-          console.error('Error loading contents:', e);
+        // 2. Partners'ı Supabase'den yükle
+        const partnersData = await partnersService.getAll();
+        if (partnersData.length > 0) {
+          // snake_case -> camelCase dönüşümü
+          const mappedPartners = partnersData.map((p: any) => ({
+            id: p.id,
+            name: p.name,
+            logo: p.logo || '',
+            website: p.website || '',
+            description: p.description || '',
+            category: p.category || '',
+            enabled: p.enabled ?? true,
+            featured: p.featured ?? false,
+            order: p.sort_order || 0,
+            createdAt: p.created_at || '',
+            updatedAt: p.updated_at || ''
+          }));
+          setPartners(mappedPartners);
+          console.log('✅ Partners loaded:', mappedPartners.length);
         }
-      }
 
-      if (savedActivities) {
-        try {
-          setActivities(JSON.parse(savedActivities));
-        } catch (e) {
-          console.error('Error loading activities:', e);
+        // 3. Team Members'ı Supabase'den yükle
+        const teamData = await teamMembersService.getAll();
+        if (teamData.length > 0) {
+          const mappedTeam = teamData.map((m: any) => ({
+            id: m.id,
+            name: m.name,
+            role: m.role || '',
+            avatar: m.avatar || '',
+            bio: m.bio || '',
+            linkedin: m.linkedin,
+            twitter: m.twitter,
+            email: m.email,
+            enabled: m.enabled ?? true,
+            order: m.sort_order || 0
+          }));
+          setTeamMembers(mappedTeam);
+          console.log('✅ Team members loaded:', mappedTeam.length);
         }
-      }
 
-      if (savedLogs) {
-        try {
-          setLogs(JSON.parse(savedLogs));
-        } catch (e) {
-          console.error('Error loading logs:', e);
+        // 4. Advertisements'ı Supabase'den yükle
+        const adsData = await advertisementsService.getAll();
+        if (adsData.length > 0) {
+          const mappedAds = adsData.map((a: any) => ({
+            id: a.id,
+            title: a.title,
+            type: a.type || 'image',
+            placement: a.placement || 'popup',
+            mediaUrl: a.media_url || '',
+            linkUrl: a.link_url || '',
+            duration: a.duration || 10,
+            frequency: a.frequency || 5,
+            displayCount: a.display_count,
+            currentDisplays: a.current_displays || 0,
+            enabled: a.enabled ?? true,
+            createdDate: a.created_at || ''
+          }));
+          setAdvertisements(mappedAds);
+          console.log('✅ Advertisements loaded:', mappedAds.length);
         }
-      }
 
-      if (savedStats) {
-        try {
-          setStats(JSON.parse(savedStats));
-        } catch (e) {
-          console.error('Error loading stats:', e);
+        // 5. Feature Categories'ı Supabase'den yükle
+        const categoriesData = await featureCategoriesService.getAll();
+        if (categoriesData.length > 0) {
+          const mappedCategories = categoriesData.map((c: any) => ({
+            id: c.id,
+            key: c.key,
+            title: c.title,
+            description: c.description || '',
+            emoji: c.emoji || '⚽',
+            featured: c.featured ?? false,
+            enabled: c.enabled ?? true,
+            order: c.sort_order || 0,
+            createdAt: c.created_at || '',
+            updatedAt: c.updated_at || ''
+          }));
+          setFeatureCategories(mappedCategories);
+          console.log('✅ Feature categories loaded:', mappedCategories.length);
         }
+
+        // 6. Section Media'yı Supabase'den yükle
+        const mediaData = await sectionMediaService.getAll();
+        if (mediaData.length > 0) {
+          const mappedMedia = mediaData.map((m: any) => ({
+            id: m.id,
+            sectionId: m.section_id,
+            type: m.type || 'image',
+            title: m.title,
+            description: m.description || '',
+            url: m.url || '',
+            altText: m.alt_text || '',
+            order: m.sort_order || 0,
+            enabled: m.enabled ?? true,
+            createdAt: m.created_at || '',
+            updatedAt: m.updated_at || ''
+          }));
+          setSectionMedia(mappedMedia);
+          console.log('✅ Section media loaded:', mappedMedia.length);
+        }
+
+        // 7. Games'i Supabase'den yükle
+        const gamesData = await gamesService.getAll();
+        if (gamesData.length > 0) {
+          const mappedGames = gamesData.map((g: any) => ({
+            id: g.id,
+            name: g.name,
+            logo: g.logo || '',
+            link: g.link || '',
+            description: g.description || '',
+            enabled: g.enabled ?? true,
+            featured: g.featured ?? false,
+            order: g.sort_order || 0,
+            createdAt: g.created_at || '',
+            updatedAt: g.updated_at || ''
+          }));
+          setGames(mappedGames);
+          console.log('✅ Games loaded:', mappedGames.length);
+        }
+
+        // 8. Press Releases'ı Supabase'den yükle
+        const pressData = await pressReleasesService.getAll();
+        if (pressData.length > 0) {
+          const mappedPress = pressData.map((p: any) => ({
+            id: p.id,
+            title: p.title,
+            subtitle: p.subtitle || '',
+            date: p.release_date || '',
+            category: p.category || 'other',
+            content: p.content || '',
+            imageUrl: p.image_url || '',
+            pdfUrl: p.pdf_url || '',
+            enabled: p.enabled ?? true,
+            featured: p.featured ?? false,
+            author: p.author || '',
+            tags: p.tags || []
+          }));
+          setPressReleases(mappedPress);
+          console.log('✅ Press releases loaded:', mappedPress.length);
+        }
+
+        // 9. Press Kit Files'ı Supabase'den yükle
+        const pressKitData = await pressKitFilesService.getAll();
+        if (pressKitData.length > 0) {
+          const mappedPressKit = pressKitData.map((f: any) => ({
+            id: f.id,
+            title: f.title,
+            description: f.description || '',
+            fileUrl: f.file_url || '',
+            fileName: f.file_name || '',
+            fileType: f.file_type || 'other',
+            format: f.format || '',
+            size: f.size || '',
+            enabled: f.enabled ?? true,
+            uploadedDate: f.created_at || ''
+          }));
+          setPressKitFiles(mappedPressKit);
+          console.log('✅ Press kit files loaded:', mappedPressKit.length);
+        }
+
+        // localStorage'dan yedek veriler (Supabase'de olmayan)
+        const savedEmailAutoReply = localStorage.getItem('admin_email_auto_reply');
+        const savedUsers = localStorage.getItem('admin_users');
+        const savedContents = localStorage.getItem('admin_contents');
+        const savedActivities = localStorage.getItem('admin_activities');
+        const savedLogs = localStorage.getItem('admin_logs');
+        const savedStats = localStorage.getItem('admin_stats');
+
+        if (savedEmailAutoReply) {
+          try {
+            setEmailAutoReply(JSON.parse(savedEmailAutoReply));
+          } catch (e) {
+            console.error('Error loading email auto reply:', e);
+          }
+        }
+
+        if (savedUsers) {
+          try {
+            setUsers(JSON.parse(savedUsers));
+          } catch (e) {
+            console.error('Error loading users:', e);
+          }
+        }
+
+        if (savedContents) {
+          try {
+            setContents(JSON.parse(savedContents));
+          } catch (e) {
+            console.error('Error loading contents:', e);
+          }
+        }
+
+        if (savedActivities) {
+          try {
+            setActivities(JSON.parse(savedActivities));
+          } catch (e) {
+            console.error('Error loading activities:', e);
+          }
+        }
+
+        if (savedLogs) {
+          try {
+            setLogs(JSON.parse(savedLogs));
+          } catch (e) {
+            console.error('Error loading logs:', e);
+          }
+        }
+
+        if (savedStats) {
+          try {
+            setStats(JSON.parse(savedStats));
+          } catch (e) {
+            console.error('Error loading stats:', e);
+          }
+        }
+
+        console.log('🎉 All data loaded from Supabase successfully!');
+      } catch (error) {
+        console.error('❌ Error loading from Supabase, falling back to localStorage:', error);
+        
+        // Fallback: localStorage'dan yükle
+        const savedPriceSettings = localStorage.getItem('admin_price_settings');
+        const savedDiscountSettings = localStorage.getItem('admin_discount_settings');
+        const savedAdSettings = localStorage.getItem('admin_ad_settings');
+        const savedSectionSettings = localStorage.getItem('admin_section_settings');
+        
+        if (savedPriceSettings) setPriceSettings(prev => ({ ...prev, ...JSON.parse(savedPriceSettings) }));
+        if (savedDiscountSettings) setDiscountSettings(prev => ({ ...prev, ...JSON.parse(savedDiscountSettings) }));
+        if (savedAdSettings) setAdSettings(prev => ({ ...prev, ...JSON.parse(savedAdSettings) }));
+        if (savedSectionSettings) setSectionSettings(prev => ({ ...prev, ...JSON.parse(savedSectionSettings) }));
       }
     };
 
@@ -1916,6 +2435,11 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('admin_pressKitFiles', JSON.stringify(pressKitFiles));
   }, [pressKitFiles]);
 
+  // Save featureCategories to localStorage
+  useEffect(() => {
+    localStorage.setItem('admin_feature_categories', JSON.stringify(featureCategories));
+  }, [featureCategories]);
+
   // Context value'yu useMemo ile memoize et - state değişikliklerinde güncellenecek
   const value = useMemo(() => ({
     stats,
@@ -1937,6 +2461,9 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
     games, // Oyunlar
     partners, // Ortaklar
     sectionMedia, // Section görselleri ve metinleri
+    featureCategories, // Tahmin kategorileri
+    sessionChanges, // Oturum değişiklikleri
+    notificationSettings, // Bildirim ayarları
     addUser,
     updateUser,
     deleteUser,
@@ -1965,6 +2492,10 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
     updateSectionMedia,
     deleteSectionMedia,
     getSectionMedia,
+    addFeatureCategory,
+    updateFeatureCategory,
+    deleteFeatureCategory,
+    reorderFeatureCategories,
     updateAdSettings,
     updateDiscountSettings,
     updatePriceSettings,
@@ -1975,10 +2506,16 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
     filterLogs,
     refreshStats,
     updateStats,
+    // Değişiklik Takip Sistemi
+    addSessionChange,
+    clearSessionChanges,
+    getSessionChangeSummary,
+    updateNotificationSettings,
   }), [
     stats, users, contents, activities, logs, settings, sectionSettings,
     websiteContent, advertisements, adSettings, discountSettings, priceSettings,
-    pressKitFiles, emailAutoReply, teamMembers, pressReleases, games, partners, sectionMedia
+    pressKitFiles, emailAutoReply, teamMembers, pressReleases, games, partners, sectionMedia, featureCategories,
+    sessionChanges, notificationSettings
   ]);
 
   return <AdminDataContext.Provider value={value}>{children}</AdminDataContext.Provider>;

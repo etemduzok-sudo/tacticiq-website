@@ -99,15 +99,16 @@ export function DiscountPopup({ onSelectPlan }: DiscountPopupProps) {
   if (!shouldShowPopup || hasShownToday) return null;
 
   // Fiyatı kullanıcının diline göre çevir - priceSettings'ten al (discountSettings'ten DEĞİL)
+  // NOT: ?? (nullish coalescing) kullanıyoruz çünkü 0 geçerli bir değer
   const convertedOriginalPrice = convertCurrency(
-    priceSettings.proPrice || 99.99,
-    priceSettings.baseCurrency || 'TRY',
+    priceSettings.proPrice ?? 99.99,
+    priceSettings.baseCurrency ?? 'TRY',
     targetCurrency
   );
-  const discountPercent = discountSettings.discountPercent || 20;
+  const discountPercent = discountSettings.discountPercent ?? 20;
   const discountedPrice = convertedOriginalPrice * (1 - discountPercent / 100);
   const savings = convertedOriginalPrice - discountedPrice;
-  const billingPeriod = priceSettings.billingPeriod || 'yearly';
+  const billingPeriod = priceSettings.billingPeriod ?? 'yearly';
   const periodLabel = billingPeriod === 'monthly' ? 'aylık' : 'yıllık';
 
   return (

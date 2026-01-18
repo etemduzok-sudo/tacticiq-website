@@ -5,6 +5,7 @@ import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
 import { Play, ArrowRight, TrendingUp, Users, Trophy, Gamepad2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { waitlistService } from '@/services/adminSupabaseService';
 
 export function HeroSection() {
   const { t } = useLanguage();
@@ -19,20 +20,31 @@ export function HeroSection() {
     e.preventDefault();
     
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      toast.error('Geçerli bir e-posta adresi girin');
+      toast.error(t('waitlist.invalidEmail') || 'Geçerli bir e-posta adresi girin');
       return;
     }
 
     setLoading(true);
     
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    console.log('Waitlist signup:', email);
-    toast.success('Bekleme listesine eklendi!');
-    
-    setLoading(false);
-    setEmail('');
+    try {
+      const result = await waitlistService.add({
+        email: email.toLowerCase().trim(),
+        source: 'hero-section'
+      });
+      
+      if (result) {
+        toast.success(t('waitlist.success') || 'Bekleme listesine eklendiniz! Gelişmelerden ilk siz haberdar olacaksınız.');
+        setEmail('');
+      } else {
+        // Email zaten kayıtlı olabilir
+        toast.info(t('waitlist.alreadyExists') || 'Bu e-posta adresi zaten bekleme listesinde.');
+      }
+    } catch (error) {
+      console.error('Waitlist submit error:', error);
+      toast.error(t('waitlist.error') || 'Bir hata oluştu. Lütfen tekrar deneyin.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handlePlayGame = () => {

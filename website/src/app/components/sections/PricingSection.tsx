@@ -27,9 +27,10 @@ export function PricingSection() {
   const currencySymbol = CURRENCY_SYMBOLS[targetCurrency];
 
   // Fiyatı priceSettings'den al ve kullanıcının diline göre çevir
-  const basePrice = priceSettings.proPrice || 99.99;
-  const baseCurrency = priceSettings.baseCurrency || 'TRY';
-  const billingPeriod = priceSettings.billingPeriod || 'yearly';
+  // NOT: ?? (nullish coalescing) kullanıyoruz çünkü 0 geçerli bir değer
+  const basePrice = priceSettings.proPrice ?? 99.99;
+  const baseCurrency = priceSettings.baseCurrency ?? 'TRY';
+  const billingPeriod = priceSettings.billingPeriod ?? 'yearly';
   
   // Fiyatı hedef para birimine çevir
   const convertedOriginalPrice = convertCurrency(basePrice, baseCurrency, targetCurrency);
@@ -38,7 +39,8 @@ export function PricingSection() {
   // 1. showDiscountOnWeb = true → Web'de indirimli fiyat gösterilir
   // 2. showDiscountViaPopup = true → Web'de normal fiyat gösterilir, indirimli fiyat sadece popup'ta
   // 3. İkisi de false → Web'de normal fiyat gösterilir
-  const discountPercent = discountSettings.discountPercent || 0;
+  // NOT: ?? kullanıyoruz çünkü 0 geçerli bir değer
+  const discountPercent = discountSettings.discountPercent ?? 0;
   const showDiscountOnWeb = discountSettings.showDiscountOnWeb ?? true;
   const showDiscountViaPopup = discountSettings.showDiscountViaPopup ?? false;
   
@@ -136,7 +138,7 @@ export function PricingSection() {
                 <div className="flex items-baseline gap-2">
                   <div className="text-4xl font-bold">{currencySymbol}{proPrice.toFixed(2)}</div>
                   {/* showDiscountOnWeb aktifse: Üstü çizili normal fiyat göster */}
-                  {showDiscountOnWeb && pricingSettings.discountEnabled && discountPercent > 0 && (
+                  {showDiscountOnWeb && discountSettings.enabled && discountPercent > 0 && (
                     <div className="text-lg text-muted-foreground line-through">
                       {currencySymbol}{originalPriceForPopup.toFixed(2)}
                     </div>
@@ -144,7 +146,7 @@ export function PricingSection() {
                 </div>
                 <div className="text-sm text-muted-foreground">{periodText}</div>
                 {/* showDiscountOnWeb aktifse: İndirim badge'i göster */}
-                {showDiscountOnWeb && pricingSettings.discountEnabled && discountPercent > 0 && (
+                {showDiscountOnWeb && discountSettings.enabled && discountPercent > 0 && (
                   <div className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-semibold mt-2">
                     <Zap className="size-3" />
                     {discountPercent}% {t('pricing.discount_label')}

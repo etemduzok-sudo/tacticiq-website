@@ -46,65 +46,69 @@ export function Footer() {
                 {t('footer.tagline')}
               </p>
               
-              {/* Social Media Links */}
-              <div className="flex gap-3 pt-2">
-                {socialLinks.instagram && (
-                  <a
-                    href={socialLinks.instagram}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-9 h-9 rounded-full bg-white/10 hover:bg-secondary flex items-center justify-center transition-colors"
-                    aria-label="Instagram"
-                  >
-                    <Instagram className="size-4" />
-                  </a>
-                )}
-                {socialLinks.twitter && (
-                  <a
-                    href={socialLinks.twitter}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-9 h-9 rounded-full bg-white/10 hover:bg-secondary flex items-center justify-center transition-colors"
-                    aria-label="Twitter"
-                  >
-                    <Twitter className="size-4" />
-                  </a>
-                )}
-                {socialLinks.linkedin && (
-                  <a
-                    href={socialLinks.linkedin}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-9 h-9 rounded-full bg-white/10 hover:bg-secondary flex items-center justify-center transition-colors"
-                    aria-label="LinkedIn"
-                  >
-                    <Linkedin className="size-4" />
-                  </a>
-                )}
-                {socialLinks.facebook && (
-                  <a
-                    href={socialLinks.facebook}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-9 h-9 rounded-full bg-white/10 hover:bg-secondary flex items-center justify-center transition-colors"
-                    aria-label="Facebook"
-                  >
-                    <Facebook className="size-4" />
-                  </a>
-                )}
-              </div>
+              {/* Social Media Links - Admin kontrollü */}
+              {(sectionSettings?.footer?.showSocialLinks ?? true) && (
+                <div className="flex gap-3 pt-2">
+                  {socialLinks.instagram && (
+                    <a
+                      href={socialLinks.instagram}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-9 h-9 rounded-full bg-white/10 hover:bg-secondary flex items-center justify-center transition-colors"
+                      aria-label="Instagram"
+                    >
+                      <Instagram className="size-4" />
+                    </a>
+                  )}
+                  {socialLinks.twitter && (
+                    <a
+                      href={socialLinks.twitter}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-9 h-9 rounded-full bg-white/10 hover:bg-secondary flex items-center justify-center transition-colors"
+                      aria-label="Twitter"
+                    >
+                      <Twitter className="size-4" />
+                    </a>
+                  )}
+                  {socialLinks.linkedin && (
+                    <a
+                      href={socialLinks.linkedin}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-9 h-9 rounded-full bg-white/10 hover:bg-secondary flex items-center justify-center transition-colors"
+                      aria-label="LinkedIn"
+                    >
+                      <Linkedin className="size-4" />
+                    </a>
+                  )}
+                  {socialLinks.facebook && (
+                    <a
+                      href={socialLinks.facebook}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-9 h-9 rounded-full bg-white/10 hover:bg-secondary flex items-center justify-center transition-colors"
+                      aria-label="Facebook"
+                    >
+                      <Facebook className="size-4" />
+                    </a>
+                  )}
+                </div>
+              )}
 
-              {/* App Download Buttons */}
-              <div className="flex gap-3 pt-2">
-                <Button variant="secondary" size="sm" className="gap-2">
-                  <Apple className="size-4" />
-                  App Store
-                </Button>
-                <Button variant="secondary" size="sm" className="gap-2">
-                  <Smartphone className="size-4" />
-                  Google Play
-                </Button>
-              </div>
+              {/* App Download Buttons - Admin kontrollü */}
+              {(sectionSettings?.footer?.showAppDownloadButtons ?? true) && (
+                <div className="flex gap-3 pt-2">
+                  <Button variant="secondary" size="sm" className="gap-2">
+                    <Apple className="size-4" />
+                    App Store
+                  </Button>
+                  <Button variant="secondary" size="sm" className="gap-2">
+                    <Smartphone className="size-4" />
+                    Google Play
+                  </Button>
+                </div>
+              )}
             </div>
 
             {/* Product */}
@@ -176,8 +180,8 @@ export function Footer() {
             </div>
           </div>
 
-          {/* Visitor Counter - Only visible to admins */}
-          {isAdmin && (
+          {/* Visitor Counter - Admin kontrollü ve sadece admin'e görünür */}
+          {isAdmin && (sectionSettings?.footer?.showVisitorCounter ?? true) && (
             <div className="mb-8">
               <VisitorCounter />
             </div>

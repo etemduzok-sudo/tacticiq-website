@@ -35,7 +35,9 @@ import {
   Gamepad2,
   Edit2,
   Type,
-  Megaphone
+  Megaphone,
+  Flag,
+  AlertCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/app/components/ui/button';
@@ -49,7 +51,7 @@ import { Textarea } from '@/app/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import { Badge } from '@/app/components/ui/badge';
 import { useAdmin } from '@/contexts/AdminContext';
-import { AdminDataContext, CURRENCY_SYMBOLS, LANGUAGE_CURRENCY_MAP, AdSettings, SectionSettings, SectionMediaItem } from '@/contexts/AdminDataContext';
+import { AdminDataContext, CURRENCY_SYMBOLS, LANGUAGE_CURRENCY_MAP, AdSettings, SectionSettings, SectionMediaItem, FeatureCategory, ChangeLogEntry } from '@/contexts/AdminDataContext';
 import { ChangePasswordModal } from '@/app/components/auth/ChangePasswordModal';
 import { AdManagement } from '@/app/components/admin/AdManagement';
 import { TeamManagement } from '@/app/components/admin/TeamManagement';
@@ -65,9 +67,12 @@ type MenuSection =
   | 'team'
   | 'press'
   | 'partners'
+  | 'partner-applications'
+  | 'features'
   | 'pricing'
   | 'sections'
   | 'game'
+  | 'waitlist'
   | 'settings' 
   | 'logs'
   | 'website';
@@ -76,6 +81,46 @@ export function AdminPanel() {
   const { isAdmin, logout } = useAdmin();
   const [activeSection, setActiveSection] = useState<MenuSection>('dashboard');
   const [isMinimized, setIsMinimized] = useState(true);
+  const [showExitModal, setShowExitModal] = useState(false);
+  
+  // Context'ten değişiklik takibi
+  const contextData = useContext(AdminDataContext);
+  const sessionChanges = contextData?.sessionChanges || [];
+  const clearSessionChanges = contextData?.clearSessionChanges;
+  const getSessionChangeSummary = contextData?.getSessionChangeSummary;
+  const notificationSettings = contextData?.notificationSettings;
+
+  // Çıkış işlemi - değişiklik varsa modal göster
+  const handleExitClick = () => {
+    if (sessionChanges.length > 0) {
+      setShowExitModal(true);
+    } else {
+      logout();
+    }
+  };
+
+  // Kaydet ve çık
+  const handleSaveAndExit = async () => {
+    // Email gönderme denemesi
+    if (notificationSettings?.sendOnExit && notificationSettings?.notificationEmail && getSessionChangeSummary) {
+      const summary = getSessionChangeSummary();
+      // Email gönderme - mailto ile
+      const subject = encodeURIComponent('TacticIQ Admin Panel - Değişiklik Özeti');
+      const body = encodeURIComponent(summary);
+      window.open(`mailto:${notificationSettings.notificationEmail}?subject=${subject}&body=${body}`, '_blank');
+    }
+    
+    clearSessionChanges?.();
+    setShowExitModal(false);
+    logout();
+  };
+
+  // Kaydetmeden çık
+  const handleExitWithoutSave = () => {
+    clearSessionChanges?.();
+    setShowExitModal(false);
+    logout();
+  };
 
   if (!isAdmin) {
     return null;
@@ -131,7 +176,8 @@ export function AdminPanel() {
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8"
-                onClick={logout}
+                onClick={handleExitClick}
+                title="Çıkış"
               >
                 <X className="size-4" />
               </Button>
@@ -189,10 +235,29 @@ export function AdminPanel() {
             onClick={() => setActiveSection('partners')}
           />
           <MenuButton
+            icon={Flag}
+            label="Ortaklık Başvuruları"
+            active={activeSection === 'partner-applications'}
+            onClick={() => setActiveSection('partner-applications')}
+            badge={true}
+          />
+          <MenuButton
+            icon={Gamepad2}
+            label="Kategori Yönetimi"
+            active={activeSection === 'features'}
+            onClick={() => setActiveSection('features')}
+          />
+          <MenuButton
             icon={Image}
             label="Medya Yönetimi"
             active={activeSection === 'media'}
             onClick={() => setActiveSection('media')}
+          />
+          <MenuButton
+            icon={Mail}
+            label="Bekleme Listesi"
+            active={activeSection === 'waitlist'}
+            onClick={() => setActiveSection('waitlist')}
           />
           <MenuButton
             icon={Tag}
@@ -239,7 +304,10 @@ export function AdminPanel() {
             {activeSection === 'team' && <TeamManagement />}
             {activeSection === 'press' && <PressReleaseManagement />}
             {activeSection === 'partners' && <PartnerManagement />}
+            {activeSection === 'partner-applications' && <PartnerApplicationsContent />}
+            {activeSection === 'features' && <FeatureCategoriesContent />}
             {activeSection === 'media' && <MediaContent />}
+            {activeSection === 'waitlist' && <WaitlistContent />}
             {activeSection === 'pricing' && <PricingContent />}
             {activeSection === 'sections' && <SectionsContent />}
             {activeSection === 'game' && <GameContent />}
@@ -248,6 +316,75 @@ export function AdminPanel() {
           </div>
         </div>
       </Card>
+
+      {/* Çıkış Onay Modalı */}
+      <Dialog open={showExitModal} onOpenChange={setShowExitModal}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Bell className="size-5 text-accent" />
+              Çıkış Yapmadan Önce
+            </DialogTitle>
+            <DialogDescription>
+              Bu oturumda {sessionChanges.length} değişiklik yaptınız
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {/* Değişiklik Listesi */}
+            <div className="max-h-64 overflow-y-auto space-y-2">
+              {Object.entries(
+                sessionChanges.reduce((acc, change) => {
+                  if (!acc[change.category]) acc[change.category] = [];
+                  acc[change.category].push(change);
+                  return acc;
+                }, {} as Record<string, ChangeLogEntry[]>)
+              ).map(([category, changes]) => (
+                <div key={category} className="bg-muted/30 rounded-lg p-3">
+                  <div className="font-semibold text-sm flex items-center gap-2 mb-2">
+                    📁 {category}
+                    <Badge variant="secondary" className="text-xs">{changes.length}</Badge>
+                  </div>
+                  <ul className="space-y-1">
+                    {changes.map((change, index) => (
+                      <li key={index} className="text-xs text-muted-foreground flex items-start gap-2">
+                        <span>
+                          {change.action === 'create' ? '➕' : change.action === 'update' ? '✏️' : '🗑️'}
+                        </span>
+                        <span>{change.description}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+
+            {/* Email Bildirimi */}
+            {notificationSettings?.sendOnExit && (
+              <div className="bg-accent/10 rounded-lg p-3 text-sm">
+                <p className="flex items-center gap-2">
+                  <Mail className="size-4" />
+                  <span>Değişiklik özeti <strong>{notificationSettings.notificationEmail}</strong> adresine gönderilecek</span>
+                </p>
+              </div>
+            )}
+
+            {/* Butonlar */}
+            <div className="flex justify-end gap-3 pt-4 border-t">
+              <Button variant="outline" onClick={() => setShowExitModal(false)}>
+                Geri Dön
+              </Button>
+              <Button variant="secondary" onClick={handleExitWithoutSave}>
+                Kaydetmeden Çık
+              </Button>
+              <Button onClick={handleSaveAndExit} className="gap-2">
+                <Save className="size-4" />
+                Kaydet & Çık
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -266,13 +403,6 @@ function SectionsContent() {
     if (sectionSettings && !isInitialized) {
       setEditedSections(sectionSettings);
       setIsInitialized(true);
-    }
-  }, [sectionSettings, isInitialized]);
-
-  // Update editedSections when sectionSettings changes externally
-  useEffect(() => {
-    if (sectionSettings && isInitialized) {
-      setEditedSections(sectionSettings);
     }
   }, [sectionSettings, isInitialized]);
 
@@ -483,6 +613,47 @@ function SectionsContent() {
             enabled={editedSections.contact.enabled}
             onToggle={() => handleToggleSection('contact')}
           />
+          <SettingToggle 
+            label="📰 Newsletter" 
+            description="Newsletter abonelik bölümünü göster"
+            enabled={editedSections.newsletter?.enabled ?? true}
+            onToggle={() => handleToggleSection('newsletter')}
+          />
+        </CardContent>
+      </Card>
+
+      {/* Footer Settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">🦶 Footer Ayarları</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <SettingToggle 
+            label="Footer" 
+            description="Sayfa altındaki footer bölümünü göster"
+            enabled={editedSections.footer?.enabled ?? true}
+            onToggle={() => handleToggleSection('footer')}
+          />
+          <div className="ml-6 space-y-2 border-l-2 border-muted pl-4">
+            <SettingToggle 
+              label="Ziyaretçi Sayacı" 
+              description="Footer'da ziyaretçi istatistiklerini göster (Toplam Ziyaretçi, Şu An Aktif, Bugün, Bu Ay)"
+              enabled={editedSections.footer?.showVisitorCounter ?? true}
+              onToggle={() => handleToggleSection('footer', 'showVisitorCounter')}
+            />
+            <SettingToggle 
+              label="Sosyal Medya Linkleri" 
+              description="Sosyal medya ikonlarını ve linklerini göster"
+              enabled={editedSections.footer?.showSocialLinks ?? true}
+              onToggle={() => handleToggleSection('footer', 'showSocialLinks')}
+            />
+            <SettingToggle 
+              label="Uygulama İndirme Butonları" 
+              description="App Store ve Google Play butonlarını göster"
+              enabled={editedSections.footer?.showAppDownloadButtons ?? true}
+              onToggle={() => handleToggleSection('footer', 'showAppDownloadButtons')}
+            />
+          </div>
         </CardContent>
       </Card>
 
@@ -559,12 +730,14 @@ function MenuButton({
   icon: Icon, 
   label, 
   active, 
-  onClick 
+  onClick,
+  badge
 }: { 
   icon: any; 
   label: string; 
   active: boolean; 
   onClick: () => void;
+  badge?: boolean;
 }) {
   return (
     <button
@@ -575,8 +748,11 @@ function MenuButton({
           : 'hover:bg-muted/50 text-muted-foreground'
       }`}
     >
-      <Icon className="size-4" />
-      <span>{label}</span>
+      <Icon className={`size-4 ${badge ? 'text-red-500' : ''}`} />
+      <span className="flex-1 text-left">{label}</span>
+      {badge && (
+        <span className="size-2 bg-red-500 rounded-full animate-pulse" />
+      )}
     </button>
   );
 }
@@ -1386,13 +1562,15 @@ function MediaContent() {
 
   // WebsiteContent için edited state
   const [editedContent, setEditedContent] = useState(websiteContent);
+  const [contentInitialized, setContentInitialized] = useState(false);
   
-  // websiteContent değiştiğinde editedContent'i güncelle
+  // websiteContent değiştiğinde editedContent'i güncelle - sadece ilk yüklemede
   useEffect(() => {
-    if (websiteContent) {
+    if (websiteContent && !contentInitialized) {
       setEditedContent(websiteContent);
+      setContentInitialized(true);
     }
-  }, [websiteContent]);
+  }, [websiteContent, contentInitialized]);
 
   // Kullanılabilir bölümler
   const sections = [
@@ -2381,6 +2559,1064 @@ function MediaContent() {
   );
 }
 
+// Feature Categories Content - 15 Tahmin Kategorisi Yönetimi
+function FeatureCategoriesContent() {
+  const contextData = useContext(AdminDataContext);
+  const featureCategories = contextData?.featureCategories || [];
+  const addFeatureCategory = contextData?.addFeatureCategory;
+  const updateFeatureCategory = contextData?.updateFeatureCategory;
+  const deleteFeatureCategory = contextData?.deleteFeatureCategory;
+  const reorderFeatureCategories = contextData?.reorderFeatureCategories;
+
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<FeatureCategory | null>(null);
+  const [newCategory, setNewCategory] = useState({
+    key: '',
+    title: '',
+    description: '',
+    emoji: '⚽',
+    featured: false,
+    enabled: true,
+    order: featureCategories.length + 1,
+  });
+
+  // Emoji seçenekleri
+  const emojiOptions = ['⚽', '⏱️', '🟨', '🟥', '🎯', '🏃‍♂️', '🧠', '🧮', '⏰', '📊', '🚩', '⚡', '🔥', '💎', '⭐', '🎮', '📈', '🏆'];
+
+  const handleAddCategory = () => {
+    if (!newCategory.key || !newCategory.title) {
+      toast.error('Anahtar ve başlık zorunludur');
+      return;
+    }
+    
+    // Key benzersiz mi kontrol et
+    if (featureCategories.some(c => c.key === newCategory.key)) {
+      toast.error('Bu anahtar zaten kullanılıyor');
+      return;
+    }
+
+    if (addFeatureCategory) {
+      addFeatureCategory({
+        ...newCategory,
+        order: featureCategories.length + 1,
+      });
+      toast.success('Kategori eklendi');
+      setShowAddDialog(false);
+      setNewCategory({
+        key: '',
+        title: '',
+        description: '',
+        emoji: '⚽',
+        featured: false,
+        enabled: true,
+        order: featureCategories.length + 2,
+      });
+    }
+  };
+
+  const handleUpdateCategory = () => {
+    if (!editingCategory) return;
+    
+    if (updateFeatureCategory) {
+      updateFeatureCategory(editingCategory.id, {
+        key: editingCategory.key,
+        title: editingCategory.title,
+        description: editingCategory.description,
+        emoji: editingCategory.emoji,
+        featured: editingCategory.featured,
+        enabled: editingCategory.enabled,
+        order: editingCategory.order,
+      });
+      toast.success('Kategori güncellendi');
+      setEditingCategory(null);
+    }
+  };
+
+  const handleDeleteCategory = (id: string, title: string) => {
+    if (confirm(`"${title}" kategorisini silmek istediğinize emin misiniz?`)) {
+      if (deleteFeatureCategory) {
+        deleteFeatureCategory(id);
+        toast.success('Kategori silindi');
+      }
+    }
+  };
+
+  const handleMoveUp = (index: number) => {
+    if (index === 0 || !reorderFeatureCategories) return;
+    const newOrder = [...featureCategories];
+    [newOrder[index - 1], newOrder[index]] = [newOrder[index], newOrder[index - 1]];
+    reorderFeatureCategories(newOrder);
+  };
+
+  const handleMoveDown = (index: number) => {
+    if (index === featureCategories.length - 1 || !reorderFeatureCategories) return;
+    const newOrder = [...featureCategories];
+    [newOrder[index], newOrder[index + 1]] = [newOrder[index + 1], newOrder[index]];
+    reorderFeatureCategories(newOrder);
+  };
+
+  const sortedCategories = [...featureCategories].sort((a, b) => a.order - b.order);
+  const activeCount = featureCategories.filter(c => c.enabled).length;
+  const featuredCount = featureCategories.filter(c => c.featured && c.enabled).length;
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold flex items-center gap-2">
+            🎯 Tahmin Kategorileri
+          </h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Web sitesinde gösterilecek tahmin kategorilerini yönetin
+          </p>
+        </div>
+        <Button className="gap-2" onClick={() => setShowAddDialog(true)}>
+          <Plus className="size-4" />
+          Yeni Kategori
+        </Button>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-4">
+        <Card className="p-4 text-center">
+          <div className="text-3xl font-bold text-primary">{featureCategories.length}</div>
+          <div className="text-sm text-muted-foreground">Toplam Kategori</div>
+        </Card>
+        <Card className="p-4 text-center">
+          <div className="text-3xl font-bold text-green-600">{activeCount}</div>
+          <div className="text-sm text-muted-foreground">Aktif Kategori</div>
+        </Card>
+        <Card className="p-4 text-center">
+          <div className="text-3xl font-bold text-amber-600">{featuredCount}</div>
+          <div className="text-sm text-muted-foreground">Öne Çıkan</div>
+        </Card>
+      </div>
+
+      {/* Categories List */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Kategoriler</CardTitle>
+          <CardDescription>Sıralamaları değiştirmek için yukarı/aşağı oklarını kullanın</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            {sortedCategories.map((category, index) => (
+              <div 
+                key={category.id} 
+                className={`flex items-center gap-3 p-3 rounded-lg border ${
+                  category.enabled ? 'bg-card' : 'bg-muted/50 opacity-60'
+                } ${category.featured ? 'border-accent/50' : 'border-border'}`}
+              >
+                {/* Order Buttons */}
+                <div className="flex flex-col gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-6"
+                    onClick={() => handleMoveUp(index)}
+                    disabled={index === 0}
+                  >
+                    <ChevronRight className="size-3 -rotate-90" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-6"
+                    onClick={() => handleMoveDown(index)}
+                    disabled={index === sortedCategories.length - 1}
+                  >
+                    <ChevronRight className="size-3 rotate-90" />
+                  </Button>
+                </div>
+
+                {/* Emoji */}
+                <div className="text-3xl w-12 text-center">{category.emoji}</div>
+
+                {/* Content */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold">{category.title}</span>
+                    {category.featured && (
+                      <Badge variant="secondary" className="text-xs bg-accent/20 text-accent">
+                        ⭐ Öne Çıkan
+                      </Badge>
+                    )}
+                    {!category.enabled && (
+                      <Badge variant="outline" className="text-xs">Pasif</Badge>
+                    )}
+                  </div>
+                  <p className="text-sm text-muted-foreground truncate">{category.description}</p>
+                  <p className="text-xs text-muted-foreground/70">Anahtar: {category.key}</p>
+                </div>
+
+                {/* Actions */}
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setEditingCategory(category)}
+                  >
+                    <Edit2 className="size-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-destructive hover:text-destructive"
+                    onClick={() => handleDeleteCategory(category.id, category.title)}
+                  >
+                    <Trash2 className="size-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+
+            {featureCategories.length === 0 && (
+              <div className="text-center py-8 text-muted-foreground">
+                Henüz kategori eklenmemiş
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Add Dialog */}
+      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Yeni Kategori Ekle</DialogTitle>
+            <DialogDescription>
+              Yeni bir tahmin kategorisi ekleyin
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Anahtar (key) *</Label>
+              <Input
+                value={newCategory.key}
+                onChange={(e) => setNewCategory({ ...newCategory, key: e.target.value.toLowerCase().replace(/\s+/g, '_') })}
+                placeholder="ornek_kategori"
+              />
+              <p className="text-xs text-muted-foreground">Benzersiz anahtar, küçük harf ve alt çizgi kullanın</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Başlık *</Label>
+              <Input
+                value={newCategory.title}
+                onChange={(e) => setNewCategory({ ...newCategory, title: e.target.value })}
+                placeholder="Örnek Kategori"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Açıklama</Label>
+              <Textarea
+                value={newCategory.description}
+                onChange={(e) => setNewCategory({ ...newCategory, description: e.target.value })}
+                placeholder="Kategori açıklaması..."
+                rows={2}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Emoji</Label>
+              <div className="flex flex-wrap gap-2">
+                {emojiOptions.map((emoji) => (
+                  <Button
+                    key={emoji}
+                    type="button"
+                    variant={newCategory.emoji === emoji ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setNewCategory({ ...newCategory, emoji })}
+                  >
+                    {emoji}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="featured"
+                  checked={newCategory.featured}
+                  onChange={(e) => setNewCategory({ ...newCategory, featured: e.target.checked })}
+                  className="rounded"
+                />
+                <Label htmlFor="featured">⭐ Öne Çıkan</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="enabled"
+                  checked={newCategory.enabled}
+                  onChange={(e) => setNewCategory({ ...newCategory, enabled: e.target.checked })}
+                  className="rounded"
+                />
+                <Label htmlFor="enabled">Aktif</Label>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4 border-t">
+              <Button variant="outline" onClick={() => setShowAddDialog(false)}>
+                İptal
+              </Button>
+              <Button onClick={handleAddCategory} className="gap-2">
+                <Plus className="size-4" />
+                Ekle
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={!!editingCategory} onOpenChange={(open) => !open && setEditingCategory(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Kategori Düzenle</DialogTitle>
+            <DialogDescription>
+              Kategori bilgilerini güncelleyin
+            </DialogDescription>
+          </DialogHeader>
+          {editingCategory && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Anahtar (key)</Label>
+                <Input
+                  value={editingCategory.key}
+                  onChange={(e) => setEditingCategory({ ...editingCategory, key: e.target.value.toLowerCase().replace(/\s+/g, '_') })}
+                  placeholder="ornek_kategori"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Başlık</Label>
+                <Input
+                  value={editingCategory.title}
+                  onChange={(e) => setEditingCategory({ ...editingCategory, title: e.target.value })}
+                  placeholder="Örnek Kategori"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Açıklama</Label>
+                <Textarea
+                  value={editingCategory.description}
+                  onChange={(e) => setEditingCategory({ ...editingCategory, description: e.target.value })}
+                  placeholder="Kategori açıklaması..."
+                  rows={2}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Emoji</Label>
+                <div className="flex flex-wrap gap-2">
+                  {emojiOptions.map((emoji) => (
+                    <Button
+                      key={emoji}
+                      type="button"
+                      variant={editingCategory.emoji === emoji ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setEditingCategory({ ...editingCategory, emoji })}
+                    >
+                      {emoji}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="edit-featured"
+                    checked={editingCategory.featured}
+                    onChange={(e) => setEditingCategory({ ...editingCategory, featured: e.target.checked })}
+                    className="rounded"
+                  />
+                  <Label htmlFor="edit-featured">⭐ Öne Çıkan</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="edit-enabled"
+                    checked={editingCategory.enabled}
+                    onChange={(e) => setEditingCategory({ ...editingCategory, enabled: e.target.checked })}
+                    className="rounded"
+                  />
+                  <Label htmlFor="edit-enabled">Aktif</Label>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-4 border-t">
+                <Button variant="outline" onClick={() => setEditingCategory(null)}>
+                  İptal
+                </Button>
+                <Button onClick={handleUpdateCategory} className="gap-2">
+                  <Save className="size-4" />
+                  Güncelle
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+// Partner Applications Content - Ortaklık Başvuruları Yönetimi
+function PartnerApplicationsContent() {
+  const [applications, setApplications] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({ total: 0, unread: 0, new: 0, reviewing: 0 });
+  const [selectedApp, setSelectedApp] = useState<any>(null);
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const { notificationSettings } = useContext(AdminDataContext) || {};
+
+  const loadApplications = async () => {
+    setLoading(true);
+    try {
+      const { partnerApplicationsService } = await import('@/services/adminSupabaseService');
+      const data = await partnerApplicationsService.getAll();
+      const statsData = await partnerApplicationsService.getStats();
+      setApplications(data);
+      setStats(statsData);
+    } catch (error) {
+      console.error('Error loading partner applications:', error);
+      toast.error('Başvurular yüklenirken hata oluştu');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadApplications();
+  }, []);
+
+  const handleStatusChange = async (id: string, newStatus: string) => {
+    try {
+      const { partnerApplicationsService } = await import('@/services/adminSupabaseService');
+      await partnerApplicationsService.update(id, { status: newStatus as any });
+      toast.success('Durum güncellendi');
+      loadApplications();
+    } catch (error) {
+      toast.error('Durum güncellenirken hata oluştu');
+    }
+  };
+
+  const handleMarkAsRead = async (id: string) => {
+    try {
+      const { partnerApplicationsService } = await import('@/services/adminSupabaseService');
+      await partnerApplicationsService.markAsRead(id);
+      loadApplications();
+    } catch (error) {
+      console.error('Error marking as read:', error);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Bu başvuruyu silmek istediğinizden emin misiniz?')) return;
+    
+    try {
+      const { partnerApplicationsService } = await import('@/services/adminSupabaseService');
+      await partnerApplicationsService.delete(id);
+      toast.success('Başvuru silindi');
+      loadApplications();
+    } catch (error) {
+      toast.error('Başvuru silinirken hata oluştu');
+    }
+  };
+
+  const handleSendEmail = (app: any) => {
+    const supportEmail = notificationSettings?.notificationEmail || 'support@tacticiq.app';
+    const mailtoUrl = `mailto:${app.email}?cc=${supportEmail}&subject=${encodeURIComponent(`TacticIQ Ortaklık Başvurunuz Hakkında`)}&body=${encodeURIComponent(`
+Sayın ${app.contact_name},
+
+${app.company_name} adına yaptığınız ortaklık başvurunuz için teşekkür ederiz.
+
+Başvurunuzu inceledik ve sizinle görüşmek istiyoruz.
+
+...
+
+Saygılarımızla,
+TacticIQ Ekibi
+    `)}`;
+    window.open(mailtoUrl, '_blank');
+  };
+
+  const filteredApplications = applications.filter(app => 
+    statusFilter === 'all' || app.status === statusFilter
+  );
+
+  const statusColors: Record<string, string> = {
+    new: 'bg-red-500/20 text-red-400 border-red-500/50',
+    reviewing: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50',
+    contacted: 'bg-blue-500/20 text-blue-400 border-blue-500/50',
+    negotiating: 'bg-purple-500/20 text-purple-400 border-purple-500/50',
+    approved: 'bg-green-500/20 text-green-400 border-green-500/50',
+    rejected: 'bg-gray-500/20 text-gray-400 border-gray-500/50'
+  };
+
+  const statusLabels: Record<string, string> = {
+    new: 'Yeni',
+    reviewing: 'İnceleniyor',
+    contacted: 'İletişime Geçildi',
+    negotiating: 'Görüşülüyor',
+    approved: 'Onaylandı',
+    rejected: 'Reddedildi'
+  };
+
+  const companyTypeLabels: Record<string, string> = {
+    media: 'Medya',
+    sports: 'Spor',
+    technology: 'Teknoloji',
+    gaming: 'Oyun',
+    agency: 'Ajans',
+    other: 'Diğer'
+  };
+
+  const partnershipTypeLabels: Record<string, string> = {
+    advertising: 'Reklam',
+    sponsorship: 'Sponsorluk',
+    content: 'İçerik Ortaklığı',
+    technology: 'Teknoloji Ortaklığı',
+    distribution: 'Dağıtım',
+    other: 'Diğer'
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold flex items-center gap-2">
+            <Flag className="size-6 text-red-500" />
+            Ortaklık Başvuruları
+          </h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Partner ve iş birliği başvurularını yönetin
+          </p>
+        </div>
+        <Button onClick={loadApplications} variant="outline" className="gap-2">
+          <RefreshCw className={`size-4 ${loading ? 'animate-spin' : ''}`} />
+          Yenile
+        </Button>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-4 gap-4">
+        <Card className="p-4 border-l-4 border-l-red-500">
+          <div className="text-2xl font-bold">{stats.total}</div>
+          <div className="text-sm text-muted-foreground">Toplam Başvuru</div>
+        </Card>
+        <Card className="p-4 border-l-4 border-l-orange-500">
+          <div className="text-2xl font-bold text-orange-400">{stats.unread}</div>
+          <div className="text-sm text-muted-foreground">Okunmamış</div>
+        </Card>
+        <Card className="p-4 border-l-4 border-l-red-500">
+          <div className="text-2xl font-bold text-red-400">{stats.new}</div>
+          <div className="text-sm text-muted-foreground">Yeni</div>
+        </Card>
+        <Card className="p-4 border-l-4 border-l-yellow-500">
+          <div className="text-2xl font-bold text-yellow-400">{stats.reviewing}</div>
+          <div className="text-sm text-muted-foreground">İnceleniyor</div>
+        </Card>
+      </div>
+
+      {/* Filters */}
+      <Card className="p-4">
+        <div className="flex items-center gap-4">
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="Durum Filtrele" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tümü</SelectItem>
+              <SelectItem value="new">Yeni</SelectItem>
+              <SelectItem value="reviewing">İnceleniyor</SelectItem>
+              <SelectItem value="contacted">İletişime Geçildi</SelectItem>
+              <SelectItem value="negotiating">Görüşülüyor</SelectItem>
+              <SelectItem value="approved">Onaylandı</SelectItem>
+              <SelectItem value="rejected">Reddedildi</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </Card>
+
+      {/* Applications List */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Başvurular ({filteredApplications.length})</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="text-center py-8 text-muted-foreground">Yükleniyor...</div>
+          ) : filteredApplications.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Flag className="size-12 mx-auto mb-4 opacity-50" />
+              <p>Henüz başvuru yok</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredApplications.map((app) => (
+                <div 
+                  key={app.id} 
+                  className={`p-4 rounded-lg border ${!app.is_read ? 'bg-red-500/5 border-red-500/30' : 'bg-card'}`}
+                  onClick={() => {
+                    setSelectedApp(app);
+                    if (!app.is_read) handleMarkAsRead(app.id);
+                  }}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        {!app.is_read && (
+                          <span className="size-2 bg-red-500 rounded-full" />
+                        )}
+                        <h4 className="font-semibold">{app.company_name}</h4>
+                        <Badge className={statusColors[app.status]}>
+                          {statusLabels[app.status]}
+                        </Badge>
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        <span>{app.contact_name}</span>
+                        <span className="mx-2">•</span>
+                        <span>{app.email}</span>
+                        {app.phone && (
+                          <>
+                            <span className="mx-2">•</span>
+                            <span>{app.phone}</span>
+                          </>
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        <span>{companyTypeLabels[app.company_type]}</span>
+                        <span className="mx-2">•</span>
+                        <span>{partnershipTypeLabels[app.partnership_type]}</span>
+                        <span className="mx-2">•</span>
+                        <span>{new Date(app.created_at).toLocaleDateString('tr-TR')}</span>
+                      </div>
+                      {app.message && (
+                        <p className="text-sm mt-2 text-muted-foreground line-clamp-2">{app.message}</p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Select 
+                        value={app.status} 
+                        onValueChange={(val) => handleStatusChange(app.id, val)}
+                      >
+                        <SelectTrigger className="w-36">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="new">Yeni</SelectItem>
+                          <SelectItem value="reviewing">İnceleniyor</SelectItem>
+                          <SelectItem value="contacted">İletişime Geçildi</SelectItem>
+                          <SelectItem value="negotiating">Görüşülüyor</SelectItem>
+                          <SelectItem value="approved">Onaylandı</SelectItem>
+                          <SelectItem value="rejected">Reddedildi</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Button 
+                        variant="outline" 
+                        size="icon"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSendEmail(app);
+                        }}
+                      >
+                        <Mail className="size-4" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(app.id);
+                        }}
+                      >
+                        <Trash2 className="size-4 text-destructive" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Application Detail Dialog */}
+      <Dialog open={!!selectedApp} onOpenChange={() => setSelectedApp(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Handshake className="size-5" />
+              {selectedApp?.company_name}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedApp && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-muted-foreground">İletişim Kişisi</Label>
+                  <p className="font-medium">{selectedApp.contact_name}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">E-posta</Label>
+                  <p className="font-medium">{selectedApp.email}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Telefon</Label>
+                  <p className="font-medium">{selectedApp.phone || '-'}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Website</Label>
+                  <p className="font-medium">{selectedApp.website || '-'}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Şirket Türü</Label>
+                  <p className="font-medium">{companyTypeLabels[selectedApp.company_type]}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Ortaklık Türü</Label>
+                  <p className="font-medium">{partnershipTypeLabels[selectedApp.partnership_type]}</p>
+                </div>
+              </div>
+              
+              {selectedApp.message && (
+                <div>
+                  <Label className="text-muted-foreground">Mesaj</Label>
+                  <p className="mt-1 p-3 bg-muted rounded-lg">{selectedApp.message}</p>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2 pt-4 border-t">
+                <Button variant="outline" onClick={() => setSelectedApp(null)}>
+                  Kapat
+                </Button>
+                <Button onClick={() => handleSendEmail(selectedApp)} className="gap-2">
+                  <Mail className="size-4" />
+                  E-posta Gönder
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+// Waitlist Content - Bekleme Listesi Yönetimi
+function WaitlistContent() {
+  const [waitlist, setWaitlist] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({ total: 0, pending: 0, contacted: 0, converted: 0 });
+  const [selectedEmails, setSelectedEmails] = useState<string[]>([]);
+  const [emailSubject, setEmailSubject] = useState('');
+  const [emailBody, setEmailBody] = useState('');
+  const [showEmailDialog, setShowEmailDialog] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+
+  // Waitlist servisini import et
+  const loadWaitlist = async () => {
+    setLoading(true);
+    try {
+      const { waitlistService } = await import('@/services/adminSupabaseService');
+      const data = await waitlistService.getAll();
+      const statsData = await waitlistService.getStats();
+      setWaitlist(data);
+      setStats(statsData);
+    } catch (error) {
+      console.error('Error loading waitlist:', error);
+      toast.error('Bekleme listesi yüklenirken hata oluştu');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadWaitlist();
+  }, []);
+
+  const handleStatusChange = async (id: string, newStatus: string) => {
+    try {
+      const { waitlistService } = await import('@/services/adminSupabaseService');
+      await waitlistService.update(id, { status: newStatus as any });
+      toast.success('Durum güncellendi');
+      loadWaitlist();
+    } catch (error) {
+      toast.error('Durum güncellenirken hata oluştu');
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Bu kaydı silmek istediğinizden emin misiniz?')) return;
+    
+    try {
+      const { waitlistService } = await import('@/services/adminSupabaseService');
+      await waitlistService.delete(id);
+      toast.success('Kayıt silindi');
+      loadWaitlist();
+    } catch (error) {
+      toast.error('Kayıt silinirken hata oluştu');
+    }
+  };
+
+  const handleSelectAll = () => {
+    if (selectedEmails.length === filteredWaitlist.length) {
+      setSelectedEmails([]);
+    } else {
+      setSelectedEmails(filteredWaitlist.map(w => w.email));
+    }
+  };
+
+  const handleToggleEmail = (email: string) => {
+    setSelectedEmails(prev => 
+      prev.includes(email) 
+        ? prev.filter(e => e !== email)
+        : [...prev, email]
+    );
+  };
+
+  const handleSendEmail = () => {
+    if (selectedEmails.length === 0) {
+      toast.error('En az bir e-posta seçin');
+      return;
+    }
+    
+    // mailto: ile e-posta gönder
+    const mailtoUrl = `mailto:?bcc=${selectedEmails.join(',')}&subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+    window.open(mailtoUrl, '_blank');
+    
+    toast.success(`${selectedEmails.length} kişiye e-posta hazırlandı`);
+    setShowEmailDialog(false);
+  };
+
+  const filteredWaitlist = waitlist.filter(entry => {
+    const matchesSearch = entry.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          (entry.name && entry.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    const matchesStatus = statusFilter === 'all' || entry.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  const statusColors: Record<string, string> = {
+    pending: 'bg-yellow-500/20 text-yellow-400',
+    contacted: 'bg-blue-500/20 text-blue-400',
+    converted: 'bg-green-500/20 text-green-400',
+    unsubscribed: 'bg-red-500/20 text-red-400'
+  };
+
+  const statusLabels: Record<string, string> = {
+    pending: 'Beklemede',
+    contacted: 'İletişime Geçildi',
+    converted: 'Dönüştürüldü',
+    unsubscribed: 'Abonelik İptal'
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold flex items-center gap-2">
+            <Mail className="size-6" />
+            Bekleme Listesi Yönetimi
+          </h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            E-posta kayıtlarını yönetin ve toplu e-posta gönderin
+          </p>
+        </div>
+        <Button onClick={loadWaitlist} variant="outline" className="gap-2">
+          <RefreshCw className={`size-4 ${loading ? 'animate-spin' : ''}`} />
+          Yenile
+        </Button>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-4 gap-4">
+        <Card className="p-4">
+          <div className="text-2xl font-bold">{stats.total}</div>
+          <div className="text-sm text-muted-foreground">Toplam Kayıt</div>
+        </Card>
+        <Card className="p-4">
+          <div className="text-2xl font-bold text-yellow-400">{stats.pending}</div>
+          <div className="text-sm text-muted-foreground">Beklemede</div>
+        </Card>
+        <Card className="p-4">
+          <div className="text-2xl font-bold text-blue-400">{stats.contacted}</div>
+          <div className="text-sm text-muted-foreground">İletişime Geçildi</div>
+        </Card>
+        <Card className="p-4">
+          <div className="text-2xl font-bold text-green-400">{stats.converted}</div>
+          <div className="text-sm text-muted-foreground">Dönüştürüldü</div>
+        </Card>
+      </div>
+
+      {/* Filters & Actions */}
+      <Card className="p-4">
+        <div className="flex items-center gap-4">
+          <Input
+            placeholder="E-posta veya isim ara..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="max-w-xs"
+          />
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="Durum Filtrele" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tümü</SelectItem>
+              <SelectItem value="pending">Beklemede</SelectItem>
+              <SelectItem value="contacted">İletişime Geçildi</SelectItem>
+              <SelectItem value="converted">Dönüştürüldü</SelectItem>
+              <SelectItem value="unsubscribed">Abonelik İptal</SelectItem>
+            </SelectContent>
+          </Select>
+          
+          <div className="flex-1" />
+          
+          <Button 
+            onClick={() => setShowEmailDialog(true)}
+            disabled={selectedEmails.length === 0}
+            className="gap-2 bg-secondary hover:bg-secondary/90"
+          >
+            <Mail className="size-4" />
+            Seçilenlere E-posta ({selectedEmails.length})
+          </Button>
+        </div>
+      </Card>
+
+      {/* Waitlist Table */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>Kayıtlar ({filteredWaitlist.length})</CardTitle>
+            <Button variant="ghost" size="sm" onClick={handleSelectAll}>
+              {selectedEmails.length === filteredWaitlist.length ? 'Seçimi Kaldır' : 'Tümünü Seç'}
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="text-center py-8 text-muted-foreground">Yükleniyor...</div>
+          ) : filteredWaitlist.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">Kayıt bulunamadı</div>
+          ) : (
+            <div className="space-y-2">
+              {filteredWaitlist.map((entry) => (
+                <div 
+                  key={entry.id} 
+                  className={`flex items-center gap-4 p-3 rounded-lg border ${
+                    selectedEmails.includes(entry.email) ? 'bg-secondary/10 border-secondary' : 'bg-card'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedEmails.includes(entry.email)}
+                    onChange={() => handleToggleEmail(entry.email)}
+                    className="w-4 h-4"
+                  />
+                  
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium truncate">{entry.email}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {entry.name && <span className="mr-2">{entry.name}</span>}
+                      <span>{new Date(entry.created_at).toLocaleDateString('tr-TR')}</span>
+                      {entry.source && <span className="ml-2 opacity-60">• {entry.source}</span>}
+                    </div>
+                  </div>
+                  
+                  <Select 
+                    value={entry.status} 
+                    onValueChange={(val) => handleStatusChange(entry.id, val)}
+                  >
+                    <SelectTrigger className="w-40">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pending">Beklemede</SelectItem>
+                      <SelectItem value="contacted">İletişime Geçildi</SelectItem>
+                      <SelectItem value="converted">Dönüştürüldü</SelectItem>
+                      <SelectItem value="unsubscribed">Abonelik İptal</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  
+                  <Badge className={statusColors[entry.status]}>
+                    {statusLabels[entry.status]}
+                  </Badge>
+                  
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    onClick={() => handleDelete(entry.id)}
+                  >
+                    <Trash2 className="size-4 text-destructive" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Email Dialog */}
+      <Dialog open={showEmailDialog} onOpenChange={setShowEmailDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Toplu E-posta Gönder</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="text-sm text-muted-foreground">
+              {selectedEmails.length} kişiye e-posta gönderilecek
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Konu</Label>
+              <Input
+                value={emailSubject}
+                onChange={(e) => setEmailSubject(e.target.value)}
+                placeholder="TacticIQ - Heyecan Verici Gelişmeler!"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Mesaj</Label>
+              <Textarea
+                value={emailBody}
+                onChange={(e) => setEmailBody(e.target.value)}
+                placeholder="Merhaba,
+
+TacticIQ'dan heyecan verici haberlerimiz var!
+
+..."
+                rows={10}
+              />
+            </div>
+            
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowEmailDialog(false)}>
+                İptal
+              </Button>
+              <Button onClick={handleSendEmail} className="gap-2 bg-secondary">
+                <Mail className="size-4" />
+                E-posta Gönder
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
 // Pricing Content - Fiyatlandırma ve İndirim Yönetimi
 function PricingContent() {
   const contextData = useContext(AdminDataContext);
@@ -2416,18 +3652,23 @@ function PricingContent() {
     ctaButtonText: 'Hemen Al',
   });
 
-  // Context değiştiğinde local state'leri güncelle
-  useEffect(() => {
-    if (priceSettings) {
-      setEditedPriceSettings(priceSettings);
-    }
-  }, [priceSettings]);
+  // Context değiştiğinde local state'leri güncelle - sadece ilk yüklemede
+  const [priceInitialized, setPriceInitialized] = useState(false);
+  const [discountInitialized, setDiscountInitialized] = useState(false);
 
   useEffect(() => {
-    if (discountSettings) {
-      setEditedDiscountSettings(discountSettings);
+    if (priceSettings && !priceInitialized) {
+      setEditedPriceSettings(priceSettings);
+      setPriceInitialized(true);
     }
-  }, [discountSettings]);
+  }, [priceSettings, priceInitialized]);
+
+  useEffect(() => {
+    if (discountSettings && !discountInitialized) {
+      setEditedDiscountSettings(discountSettings);
+      setDiscountInitialized(true);
+    }
+  }, [discountSettings, discountInitialized]);
 
   const handleSavePrice = () => {
     if (updatePriceSettings) {
@@ -2920,6 +4161,8 @@ function SettingsContent() {
   const updateSettings = contextData?.updateSettings;
   const stats = contextData?.stats;
   const updateStats = contextData?.updateStats;
+  const notificationSettings = contextData?.notificationSettings;
+  const updateNotificationSettings = contextData?.updateNotificationSettings;
   
   const [editedSettings, setEditedSettings] = useState(settings || {
     siteName: '',
@@ -2932,8 +4175,22 @@ function SettingsContent() {
     timezone: 'Europe/Istanbul',
     dateFormat: 'DD/MM/YYYY'
   });
+  const [editedNotificationSettings, setEditedNotificationSettings] = useState(notificationSettings || {
+    notificationEmail: 'etemduzok@gmail.com',
+    sendOnExit: true,
+    sendOnImportantChanges: true,
+  });
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showChangePassword, setShowChangePassword] = useState(false);
+  const [notificationInitialized, setNotificationInitialized] = useState(false);
+
+  // Sync notification settings
+  useEffect(() => {
+    if (notificationSettings && !notificationInitialized) {
+      setEditedNotificationSettings(notificationSettings);
+      setNotificationInitialized(true);
+    }
+  }, [notificationSettings, notificationInitialized]);
 
   // Sync editedSettings when settings changes
   useEffect(() => {
@@ -3271,6 +4528,95 @@ function SettingsContent() {
             <div className="pt-2 border-t">
               <p className="text-xs text-muted-foreground">
                 💡 QR kodları web sitesi footer'ında gösterilecektir
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Admin Bildirim Ayarları */}
+        <Card className="border-accent/30">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Bell className="size-4 text-accent" />
+              Admin Bildirim Ayarları
+            </CardTitle>
+            <CardDescription>
+              Değişiklik bildirimlerini alacağınız email adresini ayarlayın
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="notificationEmail">Bildirim Email Adresi</Label>
+              <Input
+                id="notificationEmail"
+                type="email"
+                value={editedNotificationSettings.notificationEmail}
+                onChange={(e) => {
+                  const updated = { ...editedNotificationSettings, notificationEmail: e.target.value };
+                  setEditedNotificationSettings(updated);
+                  // Otomatik kaydet
+                  if (updateNotificationSettings) {
+                    updateNotificationSettings(updated);
+                  }
+                }}
+                placeholder="admin@example.com"
+              />
+              <p className="text-xs text-muted-foreground">
+                Admin panelden çıkışta değişiklik özeti bu adrese gönderilir
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label>Çıkışta Email Gönder</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Admin panelden çıkarken değişiklik özeti gönder
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant={editedNotificationSettings.sendOnExit ? 'default' : 'secondary'}
+                  size="sm"
+                  onClick={() => {
+                    const updated = { ...editedNotificationSettings, sendOnExit: !editedNotificationSettings.sendOnExit };
+                    setEditedNotificationSettings(updated);
+                    if (updateNotificationSettings) {
+                      updateNotificationSettings(updated);
+                    }
+                  }}
+                >
+                  {editedNotificationSettings.sendOnExit ? 'Açık' : 'Kapalı'}
+                </Button>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label>Önemli Değişikliklerde Bildir</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Fiyat, indirim gibi kritik değişikliklerde bildir
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant={editedNotificationSettings.sendOnImportantChanges ? 'default' : 'secondary'}
+                  size="sm"
+                  onClick={() => {
+                    const updated = { ...editedNotificationSettings, sendOnImportantChanges: !editedNotificationSettings.sendOnImportantChanges };
+                    setEditedNotificationSettings(updated);
+                    if (updateNotificationSettings) {
+                      updateNotificationSettings(updated);
+                    }
+                  }}
+                >
+                  {editedNotificationSettings.sendOnImportantChanges ? 'Açık' : 'Kapalı'}
+                </Button>
+              </div>
+            </div>
+
+            <div className="bg-accent/10 rounded-lg p-3">
+              <p className="text-xs flex items-center gap-2">
+                💡 <span>Tüm değişiklikler otomatik olarak kaydedilir ve çıkışta size özet email gönderilir</span>
               </p>
             </div>
           </CardContent>

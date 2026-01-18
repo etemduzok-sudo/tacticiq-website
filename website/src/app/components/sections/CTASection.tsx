@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
 import { ArrowRight } from 'lucide-react';
-import { submitToWaitlist } from '@/services/emailService';
+import { waitlistService } from '@/services/adminSupabaseService';
 import { toast } from 'sonner';
 
 export function CTASection() {
@@ -24,23 +24,26 @@ export function CTASection() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) return;
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      toast.error(t('waitlist.invalidEmail') || 'Geçerli bir e-posta adresi girin');
+      return;
+    }
 
     setIsSubmitting(true);
     try {
-      const result = await submitToWaitlist({
-        email,
-        language: currentLanguage,
+      const result = await waitlistService.add({
+        email: email.toLowerCase().trim(),
+        source: 'cta-section'
       });
 
-      if (result.success) {
-        toast.success(result.message);
+      if (result) {
+        toast.success(t('waitlist.success') || 'Bekleme listesine eklendiniz!');
         setEmail('');
       } else {
-        toast.error(result.message);
+        toast.info(t('waitlist.alreadyExists') || 'Bu e-posta adresi zaten bekleme listesinde.');
       }
     } catch (error) {
-      toast.error('Bir hata oluştu. Lütfen tekrar deneyin.');
+      toast.error(t('waitlist.error') || 'Bir hata oluştu. Lütfen tekrar deneyin.');
     } finally {
       setIsSubmitting(false);
     }

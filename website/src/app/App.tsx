@@ -215,8 +215,8 @@ function AppContent() {
         {/* Blog Section - Admin kontrollü */}
         {sectionSettings.blog.enabled && <BlogSection />}
         
-        {/* Newsletter Section - Her zaman göster */}
-        <NewsletterSection />
+        {/* Newsletter Section - Admin kontrollü */}
+        {(sectionSettings.newsletter?.enabled ?? true) && <NewsletterSection />}
         
         {/* CTA Section - Admin kontrollü */}
         {sectionSettings.cta.enabled && <CTASection />}

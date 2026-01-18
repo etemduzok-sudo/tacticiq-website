@@ -2,6 +2,9 @@
  * Admin Supabase Service
  * Website admin panel verilerini Supabase'de yönetir
  * localStorage fallback ile çalışır (internet yoksa)
+ * 
+ * TÜM VERİLER SUPABASE'DEN OKUNUR VE YAZILIR
+ * localStorage sadece offline fallback olarak kullanılır
  */
 
 import { supabase } from '../config/supabase';
@@ -14,12 +17,152 @@ export interface Partner {
   id: string;
   name: string;
   logo: string;
-  link: string;
-  category: string;
-  description: string;
+  website?: string;
+  description?: string;
+  category?: string;
   enabled: boolean;
   featured: boolean;
   sort_order: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface FeatureCategory {
+  id: string;
+  key: string;
+  title: string;
+  description: string;
+  emoji: string;
+  featured: boolean;
+  enabled: boolean;
+  sort_order: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface SectionMedia {
+  id: string;
+  section_id: string;
+  type: 'image' | 'video' | 'text';
+  title: string;
+  description?: string;
+  url?: string;
+  alt_text?: string;
+  sort_order: number;
+  enabled: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface Game {
+  id: string;
+  name: string;
+  logo: string;
+  link: string;
+  description?: string;
+  enabled: boolean;
+  featured: boolean;
+  sort_order: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface PressRelease {
+  id: string;
+  title: string;
+  subtitle?: string;
+  release_date: string;
+  category: 'product' | 'partnership' | 'award' | 'event' | 'other';
+  content: string;
+  image_url?: string;
+  pdf_url?: string;
+  enabled: boolean;
+  featured: boolean;
+  author: string;
+  tags: string[];
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface PressKitFile {
+  id: string;
+  title: string;
+  description: string;
+  file_url: string;
+  file_name: string;
+  file_type: 'logo' | 'brand-guide' | 'screenshot' | 'document' | 'other';
+  format: string;
+  size: string;
+  enabled: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface WaitlistEntry {
+  id: string;
+  email: string;
+  name?: string;
+  source: string;
+  status: 'pending' | 'contacted' | 'converted' | 'unsubscribed';
+  notes?: string;
+  ip_address?: string;
+  user_agent?: string;
+  referrer?: string;
+  utm_source?: string;
+  utm_medium?: string;
+  utm_campaign?: string;
+  welcome_email_sent: boolean;
+  welcome_email_sent_at?: string;
+  last_email_sent_at?: string;
+  email_count: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface EmailTemplate {
+  id: string;
+  name: string;
+  slug: string;
+  subject: string;
+  body_html: string;
+  body_text?: string;
+  variables: string[];
+  category: 'welcome' | 'update' | 'promotion' | 'announcement' | 'custom';
+  enabled: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface EmailLog {
+  id: string;
+  template_id?: string;
+  recipient_email: string;
+  recipient_name?: string;
+  subject: string;
+  status: 'sent' | 'failed' | 'pending' | 'opened' | 'clicked';
+  error_message?: string;
+  sent_at?: string;
+  opened_at?: string;
+  clicked_at?: string;
+}
+
+export interface PartnerApplication {
+  id: string;
+  company_name: string;
+  contact_name: string;
+  email: string;
+  phone?: string;
+  website?: string;
+  company_type: 'media' | 'sports' | 'technology' | 'gaming' | 'agency' | 'other';
+  partnership_type: 'advertising' | 'sponsorship' | 'content' | 'technology' | 'distribution' | 'other';
+  message?: string;
+  expected_reach?: string;
+  budget_range?: string;
+  status: 'new' | 'reviewing' | 'contacted' | 'negotiating' | 'approved' | 'rejected';
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  admin_notes?: string;
+  is_read: boolean;
+  contacted_at?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -689,11 +832,982 @@ export const migrationService = {
   }
 };
 
+// =====================================================
+// Feature Categories Service
+// =====================================================
+
+export const featureCategoriesService = {
+  async getAll(): Promise<FeatureCategory[]> {
+    try {
+      const { data, error } = await supabase
+        .from('feature_categories')
+        .select('*')
+        .order('sort_order', { ascending: true });
+
+      if (error) {
+        console.warn('Supabase feature_categories getAll error:', error.message);
+        const localData = localStorage.getItem('admin_feature_categories');
+        return localData ? JSON.parse(localData) : [];
+      }
+
+      localStorage.setItem('admin_feature_categories', JSON.stringify(data || []));
+      return data || [];
+    } catch (error) {
+      console.error('Feature categories getAll error:', error);
+      const localData = localStorage.getItem('admin_feature_categories');
+      return localData ? JSON.parse(localData) : [];
+    }
+  },
+
+  async add(category: Omit<FeatureCategory, 'id' | 'created_at' | 'updated_at'>): Promise<FeatureCategory | null> {
+    try {
+      const { data, error } = await supabase
+        .from('feature_categories')
+        .insert(category)
+        .select()
+        .single();
+
+      if (error) {
+        console.warn('Supabase feature category add error:', error.message);
+        return null;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Feature category add error:', error);
+      return null;
+    }
+  },
+
+  async update(id: string, updates: Partial<FeatureCategory>): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('feature_categories')
+        .update(updates)
+        .eq('id', id);
+
+      if (error) {
+        console.warn('Supabase feature category update error:', error.message);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Feature category update error:', error);
+      return false;
+    }
+  },
+
+  async delete(id: string): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('feature_categories')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        console.warn('Supabase feature category delete error:', error.message);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Feature category delete error:', error);
+      return false;
+    }
+  }
+};
+
+// =====================================================
+// Section Media Service
+// =====================================================
+
+export const sectionMediaService = {
+  async getAll(): Promise<SectionMedia[]> {
+    try {
+      const { data, error } = await supabase
+        .from('section_media')
+        .select('*')
+        .order('sort_order', { ascending: true });
+
+      if (error) {
+        console.warn('Supabase section_media getAll error:', error.message);
+        const localData = localStorage.getItem('admin_section_media');
+        return localData ? JSON.parse(localData) : [];
+      }
+
+      localStorage.setItem('admin_section_media', JSON.stringify(data || []));
+      return data || [];
+    } catch (error) {
+      console.error('Section media getAll error:', error);
+      const localData = localStorage.getItem('admin_section_media');
+      return localData ? JSON.parse(localData) : [];
+    }
+  },
+
+  async getBySectionId(sectionId: string): Promise<SectionMedia[]> {
+    try {
+      const { data, error } = await supabase
+        .from('section_media')
+        .select('*')
+        .eq('section_id', sectionId)
+        .eq('enabled', true)
+        .order('sort_order', { ascending: true });
+
+      if (error) {
+        console.warn('Supabase section_media getBySectionId error:', error.message);
+        return [];
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Section media getBySectionId error:', error);
+      return [];
+    }
+  },
+
+  async add(media: Omit<SectionMedia, 'id' | 'created_at' | 'updated_at'>): Promise<SectionMedia | null> {
+    try {
+      const { data, error } = await supabase
+        .from('section_media')
+        .insert(media)
+        .select()
+        .single();
+
+      if (error) {
+        console.warn('Supabase section media add error:', error.message);
+        return null;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Section media add error:', error);
+      return null;
+    }
+  },
+
+  async update(id: string, updates: Partial<SectionMedia>): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('section_media')
+        .update(updates)
+        .eq('id', id);
+
+      if (error) {
+        console.warn('Supabase section media update error:', error.message);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Section media update error:', error);
+      return false;
+    }
+  },
+
+  async delete(id: string): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('section_media')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        console.warn('Supabase section media delete error:', error.message);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Section media delete error:', error);
+      return false;
+    }
+  }
+};
+
+// =====================================================
+// Games Service
+// =====================================================
+
+export const gamesService = {
+  async getAll(): Promise<Game[]> {
+    try {
+      const { data, error } = await supabase
+        .from('games')
+        .select('*')
+        .order('sort_order', { ascending: true });
+
+      if (error) {
+        console.warn('Supabase games getAll error:', error.message);
+        const localData = localStorage.getItem('admin_games');
+        return localData ? JSON.parse(localData) : [];
+      }
+
+      localStorage.setItem('admin_games', JSON.stringify(data || []));
+      return data || [];
+    } catch (error) {
+      console.error('Games getAll error:', error);
+      const localData = localStorage.getItem('admin_games');
+      return localData ? JSON.parse(localData) : [];
+    }
+  },
+
+  async add(game: Omit<Game, 'id' | 'created_at' | 'updated_at'>): Promise<Game | null> {
+    try {
+      const { data, error } = await supabase
+        .from('games')
+        .insert(game)
+        .select()
+        .single();
+
+      if (error) {
+        console.warn('Supabase game add error:', error.message);
+        return null;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Game add error:', error);
+      return null;
+    }
+  },
+
+  async update(id: string, updates: Partial<Game>): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('games')
+        .update(updates)
+        .eq('id', id);
+
+      if (error) {
+        console.warn('Supabase game update error:', error.message);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Game update error:', error);
+      return false;
+    }
+  },
+
+  async delete(id: string): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('games')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        console.warn('Supabase game delete error:', error.message);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Game delete error:', error);
+      return false;
+    }
+  }
+};
+
+// =====================================================
+// Press Releases Service
+// =====================================================
+
+export const pressReleasesService = {
+  async getAll(): Promise<PressRelease[]> {
+    try {
+      const { data, error } = await supabase
+        .from('press_releases')
+        .select('*')
+        .order('release_date', { ascending: false });
+
+      if (error) {
+        console.warn('Supabase press_releases getAll error:', error.message);
+        const localData = localStorage.getItem('admin_press_releases');
+        return localData ? JSON.parse(localData) : [];
+      }
+
+      localStorage.setItem('admin_press_releases', JSON.stringify(data || []));
+      return data || [];
+    } catch (error) {
+      console.error('Press releases getAll error:', error);
+      const localData = localStorage.getItem('admin_press_releases');
+      return localData ? JSON.parse(localData) : [];
+    }
+  },
+
+  async add(release: Omit<PressRelease, 'id' | 'created_at' | 'updated_at'>): Promise<PressRelease | null> {
+    try {
+      const { data, error } = await supabase
+        .from('press_releases')
+        .insert(release)
+        .select()
+        .single();
+
+      if (error) {
+        console.warn('Supabase press release add error:', error.message);
+        return null;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Press release add error:', error);
+      return null;
+    }
+  },
+
+  async update(id: string, updates: Partial<PressRelease>): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('press_releases')
+        .update(updates)
+        .eq('id', id);
+
+      if (error) {
+        console.warn('Supabase press release update error:', error.message);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Press release update error:', error);
+      return false;
+    }
+  },
+
+  async delete(id: string): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('press_releases')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        console.warn('Supabase press release delete error:', error.message);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Press release delete error:', error);
+      return false;
+    }
+  }
+};
+
+// =====================================================
+// Press Kit Files Service
+// =====================================================
+
+export const pressKitFilesService = {
+  async getAll(): Promise<PressKitFile[]> {
+    try {
+      const { data, error } = await supabase
+        .from('press_kit_files')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.warn('Supabase press_kit_files getAll error:', error.message);
+        const localData = localStorage.getItem('admin_pressKitFiles');
+        return localData ? JSON.parse(localData) : [];
+      }
+
+      localStorage.setItem('admin_pressKitFiles', JSON.stringify(data || []));
+      return data || [];
+    } catch (error) {
+      console.error('Press kit files getAll error:', error);
+      const localData = localStorage.getItem('admin_pressKitFiles');
+      return localData ? JSON.parse(localData) : [];
+    }
+  },
+
+  async add(file: Omit<PressKitFile, 'id' | 'created_at' | 'updated_at'>): Promise<PressKitFile | null> {
+    try {
+      const { data, error } = await supabase
+        .from('press_kit_files')
+        .insert(file)
+        .select()
+        .single();
+
+      if (error) {
+        console.warn('Supabase press kit file add error:', error.message);
+        return null;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Press kit file add error:', error);
+      return null;
+    }
+  },
+
+  async update(id: string, updates: Partial<PressKitFile>): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('press_kit_files')
+        .update(updates)
+        .eq('id', id);
+
+      if (error) {
+        console.warn('Supabase press kit file update error:', error.message);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Press kit file update error:', error);
+      return false;
+    }
+  },
+
+  async delete(id: string): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('press_kit_files')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        console.warn('Supabase press kit file delete error:', error.message);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Press kit file delete error:', error);
+      return false;
+    }
+  }
+};
+
+// =====================================================
+// Sync Service - Tüm verileri Supabase'den çek
+// =====================================================
+
+export const syncService = {
+  /**
+   * Tüm verileri Supabase'den çek ve localStorage'a kaydet
+   */
+  async syncAll(): Promise<boolean> {
+    console.log('🔄 Syncing all data from Supabase...');
+    
+    try {
+      // Config values
+      const configs = await configService.getAll();
+      if (configs.price_settings) {
+        localStorage.setItem('admin_price_settings', JSON.stringify(configs.price_settings));
+      }
+      if (configs.discount_settings) {
+        localStorage.setItem('admin_discount_settings', JSON.stringify(configs.discount_settings));
+      }
+      if (configs.ad_settings) {
+        localStorage.setItem('admin_ad_settings', JSON.stringify(configs.ad_settings));
+      }
+      if (configs.section_settings) {
+        localStorage.setItem('admin_section_settings', JSON.stringify(configs.section_settings));
+      }
+      if (configs.notification_settings) {
+        localStorage.setItem('admin_notification_settings', JSON.stringify(configs.notification_settings));
+      }
+
+      // Other data
+      await partnersService.getAll();
+      await teamMembersService.getAll();
+      await advertisementsService.getAll();
+      await featureCategoriesService.getAll();
+      await sectionMediaService.getAll();
+      await gamesService.getAll();
+      await pressReleasesService.getAll();
+      await pressKitFilesService.getAll();
+
+      console.log('✅ Sync completed successfully!');
+      return true;
+    } catch (error) {
+      console.error('❌ Sync failed:', error);
+      return false;
+    }
+  },
+
+  /**
+   * Sadece config değerlerini Supabase'den çek
+   */
+  async syncConfigs(): Promise<Record<string, any>> {
+    try {
+      const configs = await configService.getAll();
+      return configs;
+    } catch (error) {
+      console.error('Sync configs error:', error);
+      return {};
+    }
+  }
+};
+
+// =====================================================
+// Waitlist Service (Bekleme Listesi)
+// =====================================================
+
+export const waitlistService = {
+  async getAll(): Promise<WaitlistEntry[]> {
+    try {
+      const { data, error } = await supabase
+        .from('waitlist')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.warn('Supabase waitlist getAll error:', error.message);
+        return [];
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Waitlist getAll error:', error);
+      return [];
+    }
+  },
+
+  async getByStatus(status: WaitlistEntry['status']): Promise<WaitlistEntry[]> {
+    try {
+      const { data, error } = await supabase
+        .from('waitlist')
+        .select('*')
+        .eq('status', status)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.warn('Supabase waitlist getByStatus error:', error.message);
+        return [];
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Waitlist getByStatus error:', error);
+      return [];
+    }
+  },
+
+  async add(entry: { email: string; name?: string; source?: string }): Promise<WaitlistEntry | null> {
+    try {
+      const { data, error } = await supabase
+        .from('waitlist')
+        .insert({
+          email: entry.email,
+          name: entry.name || '',
+          source: entry.source || 'website',
+          status: 'pending',
+          welcome_email_sent: false,
+          email_count: 0
+        })
+        .select()
+        .single();
+
+      if (error) {
+        // Duplicate email
+        if (error.code === '23505') {
+          console.warn('Email already exists in waitlist:', entry.email);
+          return null;
+        }
+        console.warn('Supabase waitlist add error:', error.message);
+        return null;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Waitlist add error:', error);
+      return null;
+    }
+  },
+
+  async update(id: string, updates: Partial<WaitlistEntry>): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('waitlist')
+        .update(updates)
+        .eq('id', id);
+
+      if (error) {
+        console.warn('Supabase waitlist update error:', error.message);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Waitlist update error:', error);
+      return false;
+    }
+  },
+
+  async delete(id: string): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('waitlist')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        console.warn('Supabase waitlist delete error:', error.message);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Waitlist delete error:', error);
+      return false;
+    }
+  },
+
+  async markWelcomeEmailSent(id: string): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('waitlist')
+        .update({
+          welcome_email_sent: true,
+          welcome_email_sent_at: new Date().toISOString(),
+          email_count: 1
+        })
+        .eq('id', id);
+
+      if (error) {
+        console.warn('Supabase waitlist markWelcomeEmailSent error:', error.message);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Waitlist markWelcomeEmailSent error:', error);
+      return false;
+    }
+  },
+
+  async getStats(): Promise<{ total: number; pending: number; contacted: number; converted: number }> {
+    try {
+      const { data, error } = await supabase
+        .from('waitlist')
+        .select('status');
+
+      if (error) {
+        console.warn('Supabase waitlist getStats error:', error.message);
+        return { total: 0, pending: 0, contacted: 0, converted: 0 };
+      }
+
+      const stats = {
+        total: data?.length || 0,
+        pending: data?.filter(e => e.status === 'pending').length || 0,
+        contacted: data?.filter(e => e.status === 'contacted').length || 0,
+        converted: data?.filter(e => e.status === 'converted').length || 0
+      };
+
+      return stats;
+    } catch (error) {
+      console.error('Waitlist getStats error:', error);
+      return { total: 0, pending: 0, contacted: 0, converted: 0 };
+    }
+  }
+};
+
+// =====================================================
+// Email Templates Service
+// =====================================================
+
+export const emailTemplatesService = {
+  async getAll(): Promise<EmailTemplate[]> {
+    try {
+      const { data, error } = await supabase
+        .from('email_templates')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.warn('Supabase email_templates getAll error:', error.message);
+        return [];
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Email templates getAll error:', error);
+      return [];
+    }
+  },
+
+  async getBySlug(slug: string): Promise<EmailTemplate | null> {
+    try {
+      const { data, error } = await supabase
+        .from('email_templates')
+        .select('*')
+        .eq('slug', slug)
+        .single();
+
+      if (error) {
+        console.warn('Supabase email_templates getBySlug error:', error.message);
+        return null;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Email templates getBySlug error:', error);
+      return null;
+    }
+  },
+
+  async add(template: Omit<EmailTemplate, 'id' | 'created_at' | 'updated_at'>): Promise<EmailTemplate | null> {
+    try {
+      const { data, error } = await supabase
+        .from('email_templates')
+        .insert(template)
+        .select()
+        .single();
+
+      if (error) {
+        console.warn('Supabase email template add error:', error.message);
+        return null;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Email template add error:', error);
+      return null;
+    }
+  },
+
+  async update(id: string, updates: Partial<EmailTemplate>): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('email_templates')
+        .update(updates)
+        .eq('id', id);
+
+      if (error) {
+        console.warn('Supabase email template update error:', error.message);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Email template update error:', error);
+      return false;
+    }
+  },
+
+  async delete(id: string): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('email_templates')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        console.warn('Supabase email template delete error:', error.message);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Email template delete error:', error);
+      return false;
+    }
+  }
+};
+
+// =====================================================
+// Email Logs Service
+// =====================================================
+
+export const emailLogsService = {
+  async getAll(): Promise<EmailLog[]> {
+    try {
+      const { data, error } = await supabase
+        .from('email_logs')
+        .select('*')
+        .order('sent_at', { ascending: false });
+
+      if (error) {
+        console.warn('Supabase email_logs getAll error:', error.message);
+        return [];
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Email logs getAll error:', error);
+      return [];
+    }
+  },
+
+  async add(log: Omit<EmailLog, 'id'>): Promise<EmailLog | null> {
+    try {
+      const { data, error } = await supabase
+        .from('email_logs')
+        .insert(log)
+        .select()
+        .single();
+
+      if (error) {
+        console.warn('Supabase email log add error:', error.message);
+        return null;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Email log add error:', error);
+      return null;
+    }
+  }
+};
+
+// =====================================================
+// Partner Applications Service (Ortaklık Başvuruları)
+// =====================================================
+
+export const partnerApplicationsService = {
+  async getAll(): Promise<PartnerApplication[]> {
+    try {
+      const { data, error } = await supabase
+        .from('partner_applications')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.warn('Supabase partner_applications getAll error:', error.message);
+        return [];
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Partner applications getAll error:', error);
+      return [];
+    }
+  },
+
+  async getUnread(): Promise<PartnerApplication[]> {
+    try {
+      const { data, error } = await supabase
+        .from('partner_applications')
+        .select('*')
+        .eq('is_read', false)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.warn('Supabase partner_applications getUnread error:', error.message);
+        return [];
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Partner applications getUnread error:', error);
+      return [];
+    }
+  },
+
+  async add(application: Omit<PartnerApplication, 'id' | 'status' | 'priority' | 'is_read' | 'created_at' | 'updated_at'>): Promise<PartnerApplication | null> {
+    try {
+      const { data, error } = await supabase
+        .from('partner_applications')
+        .insert({
+          ...application,
+          status: 'new',
+          priority: 'medium',
+          is_read: false
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.warn('Supabase partner application add error:', error.message);
+        return null;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Partner application add error:', error);
+      return null;
+    }
+  },
+
+  async update(id: string, updates: Partial<PartnerApplication>): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('partner_applications')
+        .update(updates)
+        .eq('id', id);
+
+      if (error) {
+        console.warn('Supabase partner application update error:', error.message);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Partner application update error:', error);
+      return false;
+    }
+  },
+
+  async markAsRead(id: string): Promise<boolean> {
+    return this.update(id, { is_read: true });
+  },
+
+  async delete(id: string): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('partner_applications')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        console.warn('Supabase partner application delete error:', error.message);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Partner application delete error:', error);
+      return false;
+    }
+  },
+
+  async getStats(): Promise<{ total: number; unread: number; new: number; reviewing: number }> {
+    try {
+      const { data, error } = await supabase
+        .from('partner_applications')
+        .select('status, is_read');
+
+      if (error) {
+        console.warn('Supabase partner_applications getStats error:', error.message);
+        return { total: 0, unread: 0, new: 0, reviewing: 0 };
+      }
+
+      const stats = {
+        total: data?.length || 0,
+        unread: data?.filter(a => !a.is_read).length || 0,
+        new: data?.filter(a => a.status === 'new').length || 0,
+        reviewing: data?.filter(a => a.status === 'reviewing').length || 0
+      };
+
+      return stats;
+    } catch (error) {
+      console.error('Partner applications getStats error:', error);
+      return { total: 0, unread: 0, new: 0, reviewing: 0 };
+    }
+  }
+};
+
 export default {
   config: configService,
   partners: partnersService,
   teamMembers: teamMembersService,
   advertisements: advertisementsService,
+  featureCategories: featureCategoriesService,
+  sectionMedia: sectionMediaService,
+  games: gamesService,
+  pressReleases: pressReleasesService,
+  pressKitFiles: pressKitFilesService,
   logs: logsService,
-  migration: migrationService
+  migration: migrationService,
+  sync: syncService,
+  waitlist: waitlistService,
+  emailTemplates: emailTemplatesService,
+  emailLogs: emailLogsService,
+  partnerApplications: partnerApplicationsService
 };
