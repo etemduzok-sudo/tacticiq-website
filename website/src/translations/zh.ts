@@ -421,6 +421,11 @@ export default {
   'user.delete.confirm.cancel': '取消',
   'user.delete.confirm.delete': '是的，删除账户',
 
+  // Profile Section
+  'profile.title': '我的资料',
+  'profile.settings.title': '设置',
+  'profile.settings.upgrade': '升级到Pro',
+
   // CTA Section
   'cta.title': '开始您的专业足球分析之旅',
   'cta.subtitle': '使用TacticIQ将您的比赛分析提升到新水平。创建免费账户，立即开始。',

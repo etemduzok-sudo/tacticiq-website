@@ -69,9 +69,45 @@ export function UserMenu({
     const profileSection = document.getElementById('profile');
     if (profileSection) {
       profileSection.scrollIntoView({ behavior: 'smooth' });
+    } else {
+      // If profile section doesn't exist, try to navigate
+      window.location.hash = 'profile';
+      toast.info(t('profile.title'));
     }
     if (onNavigateToProfile) {
       onNavigateToProfile();
+    }
+  };
+
+  const handleNavigateToSettings = () => {
+    // Scroll to settings section in profile
+    const profileSection = document.getElementById('profile');
+    if (profileSection) {
+      profileSection.scrollIntoView({ behavior: 'smooth' });
+      // Wait for scroll then focus settings
+      setTimeout(() => {
+        const settingsElement = document.querySelector('[data-section="settings"]') || 
+                                document.querySelector('#settings') ||
+                                document.querySelector('[aria-label*="settings" i]');
+        if (settingsElement) {
+          settingsElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 500);
+    } else {
+      window.location.hash = 'profile';
+      toast.info(t('profile.settings.title'));
+    }
+  };
+
+  const handleUpgradeToPro = () => {
+    // Scroll to pricing section
+    const pricingSection = document.getElementById('pricing');
+    if (pricingSection) {
+      pricingSection.scrollIntoView({ behavior: 'smooth' });
+      toast.info(t('profile.settings.upgrade'));
+    } else {
+      window.location.hash = 'pricing';
+      toast.info(t('profile.settings.upgrade'));
     }
   };
 
@@ -123,16 +159,16 @@ export function UserMenu({
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={handleNavigateToProfile} className="cursor-pointer">
             <User className="mr-2 size-4" />
-            <span>Profilim</span>
+            <span>{t('profile.title')}</span>
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={handleNavigateToProfile} className="cursor-pointer">
+          <DropdownMenuItem onClick={handleNavigateToSettings} className="cursor-pointer">
             <Settings className="mr-2 size-4" />
-            <span>Ayarlar</span>
+            <span>{t('profile.settings.title')}</span>
           </DropdownMenuItem>
           {!isPro && (
-            <DropdownMenuItem className="cursor-pointer text-amber-600">
+            <DropdownMenuItem onClick={handleUpgradeToPro} className="cursor-pointer text-amber-600 hover:text-amber-500">
               <Crown className="mr-2 size-4" />
-              <span>Pro'ya Yükselt</span>
+              <span>{t('profile.settings.upgrade')}</span>
             </DropdownMenuItem>
           )}
           <DropdownMenuSeparator />

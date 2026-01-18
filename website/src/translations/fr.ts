@@ -322,6 +322,11 @@ export default {
   'user.delete.confirm.cancel': 'Annuler',
   'user.delete.confirm.delete': 'Oui, Supprimer',
 
+  // Profile Section
+  'profile.title': 'Mon Profil',
+  'profile.settings.title': 'Paramètres',
+  'profile.settings.upgrade': 'Passer à Pro',
+
   // Blog
   'blog.title': 'Perspectives et Analyses',
   'blog.subtitle': 'Analyse de football, conseils tactiques et mises à jour',

@@ -398,6 +398,11 @@ export default {
   'user.delete.confirm.cancel': 'Annulla',
   'user.delete.confirm.delete': 'Sì, Elimina Account',
 
+  // Profile Section
+  'profile.title': 'Il Mio Profilo',
+  'profile.settings.title': 'Impostazioni',
+  'profile.settings.upgrade': 'Passa a Pro',
+
   // CTA Section
   'cta.title': 'Inizia il Tuo Viaggio di Analisi Calcistica Professionale',
   'cta.subtitle': 'Porta la tua analisi delle partite al livello successivo con TacticIQ. Crea un account gratuito e inizia subito.',

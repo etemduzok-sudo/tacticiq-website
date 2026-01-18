@@ -398,6 +398,11 @@ export default {
   'user.delete.confirm.cancel': 'إلغاء',
   'user.delete.confirm.delete': 'نعم، احذف الحساب',
 
+  // Profile Section
+  'profile.title': 'ملفي الشخصي',
+  'profile.settings.title': 'الإعدادات',
+  'profile.settings.upgrade': 'الترقية إلى Pro',
+
   // CTA Section
   'cta.title': 'ابدأ رحلة تحليل كرة القدم الاحترافية',
   'cta.subtitle': 'ارتقِ بتحليل المباريات إلى المستوى التالي مع TacticIQ. أنشئ حساباً مجانياً وابدأ فوراً.',

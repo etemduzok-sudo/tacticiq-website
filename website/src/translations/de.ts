@@ -467,6 +467,11 @@ export default {
   'user.delete.confirm.cancel': 'Abbrechen',
   'user.delete.confirm.delete': 'Ja, Konto löschen',
 
+  // Profile Section
+  'profile.title': 'Mein Profil',
+  'profile.settings.title': 'Einstellungen',
+  'profile.settings.upgrade': 'Auf Pro upgraden',
+
   // Blog
   'blog.subtitle': 'Fußballanalyse, taktische Tipps und Plattform-Updates vom TacticIQ-Team',
   'blog.viewAll': 'Alle Artikel anzeigen',
