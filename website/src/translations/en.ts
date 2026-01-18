@@ -173,6 +173,7 @@ export default {
   'pricing.pro.features.early': 'First access to new features',
   'pricing.pro.features.analysis': 'AI-powered strategic reports',
   'pricing.discount_label': 'Discount',
+  'pricing.discount_via_popup': 'Discount in popup',
   'pricing.comparison.note': '💡 Points, XP, rankings are virtual and non-monetary - TacticIQ is not a gambling platform',
 
   // Blog

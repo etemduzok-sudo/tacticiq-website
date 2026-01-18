@@ -1305,6 +1305,8 @@ function PricingContent() {
   const [editedDiscountSettings, setEditedDiscountSettings] = useState(discountSettings || {
     enabled: false,
     discountPercent: 20,
+    showDiscountOnWeb: true,
+    showDiscountViaPopup: false,
     dailyShowLimit: 3,
     showDelay: 5000,
     timerDuration: 600,
@@ -1555,6 +1557,66 @@ function PricingContent() {
             enabled={editedDiscountSettings.enabled}
             onToggle={() => setEditedDiscountSettings({ ...editedDiscountSettings, enabled: !editedDiscountSettings.enabled })}
           />
+
+          {editedDiscountSettings.enabled && (
+            <>
+              <Separator />
+              
+              {/* İndirimli Fiyat Gösterim Kontrolü */}
+              <div className="space-y-4 bg-muted/20 p-4 rounded-lg border">
+                <div className="space-y-3">
+                  <SettingToggle 
+                    label="🌐 İndirimli Fiyatı Web'de Göster" 
+                    description="Açık: Web sitesinde indirimli fiyat gösterilir. Kapalı: Web'de normal fiyat gösterilir, indirimli fiyat sadece popup'ta."
+                    enabled={editedDiscountSettings.showDiscountOnWeb ?? true}
+                    onToggle={() => {
+                      const newValue = !(editedDiscountSettings.showDiscountOnWeb ?? true);
+                      setEditedDiscountSettings({ 
+                        ...editedDiscountSettings, 
+                        showDiscountOnWeb: newValue,
+                        // Eğer web'de göster aktifse, popup ile göster'i kapat
+                        showDiscountViaPopup: newValue ? false : editedDiscountSettings.showDiscountViaPopup
+                      });
+                    }}
+                  />
+                  
+                  <SettingToggle 
+                    label="🎯 Popup ile İndirimi Göster" 
+                    description="Açık: Web'de normal fiyat gösterilir, indirimli fiyat sadece popup'ta. Kullanıcı popup'ı kabul ederse satış indirimli fiyattan yapılır."
+                    enabled={editedDiscountSettings.showDiscountViaPopup ?? false}
+                    onToggle={() => {
+                      const newValue = !(editedDiscountSettings.showDiscountViaPopup ?? false);
+                      setEditedDiscountSettings({ 
+                        ...editedDiscountSettings, 
+                        showDiscountViaPopup: newValue,
+                        // Eğer popup ile göster aktifse, web'de göster'i kapat
+                        showDiscountOnWeb: newValue ? false : editedDiscountSettings.showDiscountOnWeb ?? true
+                      });
+                    }}
+                  />
+                </div>
+                
+                <div className="mt-4 p-3 bg-background/50 rounded border-l-4 border-secondary">
+                  <p className="text-xs font-semibold mb-1">📌 Mevcut Davranış:</p>
+                  {editedDiscountSettings.showDiscountOnWeb ? (
+                    <p className="text-xs text-muted-foreground">
+                      ✅ Web sitesinde <strong>indirimli fiyat</strong> gösterilecek. Satış indirimli fiyattan yapılacak.
+                    </p>
+                  ) : editedDiscountSettings.showDiscountViaPopup ? (
+                    <p className="text-xs text-muted-foreground">
+                      ✅ Web sitesinde <strong>normal fiyat</strong> gösterilecek. İndirimli fiyat sadece popup'ta. Kullanıcı popup'ı kabul ederse satış indirimli fiyattan, etmezse normal fiyattan yapılacak.
+                    </p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      ℹ️ Web sitesinde <strong>normal fiyat</strong> gösterilecek. Satış normal fiyattan yapılacak.
+                    </p>
+                  )}
+                </div>
+              </div>
+              
+              <Separator />
+            </>
+          )}
           
           <Separator />
           

@@ -1,11 +1,14 @@
 import { createContext, useContext, useState, ReactNode } from 'react';
 import { toast } from 'sonner';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { PaymentMethodDialog } from '@/app/components/payment/PaymentMethodDialog';
 
 interface PaymentContextType {
   initiateApplePay: (amount: number, planName: string) => Promise<void>;
   initiateGooglePay: (amount: number, planName: string) => Promise<void>;
   initiateCardPayment: (amount: number, planName: string) => Promise<void>;
+  selectPlan: (planId: 'free' | 'pro') => void;
+  openPaymentModal: (price?: number) => void;
   isProcessing: boolean;
 }
 
@@ -14,6 +17,9 @@ const PaymentContext = createContext<PaymentContextType | undefined>(undefined);
 export function PaymentProvider({ children }: { children: ReactNode }) {
   const { t } = useLanguage();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<'free' | 'pro' | null>(null);
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const [paymentPrice, setPaymentPrice] = useState<number | undefined>(undefined);
 
   const initiateApplePay = async (amount: number, planName: string) => {
     setIsProcessing(true);
@@ -180,16 +186,66 @@ export function PaymentProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Fiyat belirleme: showDiscountViaPopup aktifse ve kullanıcı popup'ı kabul ettiyse indirimli fiyat kullan
+  const getFinalPrice = (basePrice: number): number => {
+    try {
+      const popupAccepted = localStorage.getItem('discount_popup_accepted') === 'true';
+      const popupPriceData = localStorage.getItem('discount_popup_price');
+      
+      if (popupAccepted && popupPriceData) {
+        const priceData = JSON.parse(popupPriceData);
+        // 1 saat içindeyse indirimli fiyatı kullan (timestamp kontrolü)
+        const oneHour = 60 * 60 * 1000;
+        if (Date.now() - priceData.timestamp < oneHour) {
+          return priceData.discounted;
+        } else {
+          // Süre dolmuş, flag'leri temizle
+          localStorage.removeItem('discount_popup_accepted');
+          localStorage.removeItem('discount_popup_price');
+        }
+      }
+      return basePrice;
+    } catch (error) {
+      console.error('Error getting final price:', error);
+      return basePrice;
+    }
+  };
+
+  const selectPlan = (planId: 'free' | 'pro') => {
+    setSelectedPlan(planId);
+  };
+
+  const openPaymentModal = (price?: number) => {
+    // Eğer showDiscountViaPopup aktifse ve kullanıcı popup'ı kabul ettiyse indirimli fiyatı kullan
+    const finalPrice = price ? getFinalPrice(price) : price;
+    setPaymentPrice(finalPrice);
+    setPaymentDialogOpen(true);
+  };
+
   return (
     <PaymentContext.Provider
       value={{
         initiateApplePay,
         initiateGooglePay,
         initiateCardPayment,
+        selectPlan,
+        openPaymentModal,
         isProcessing,
       }}
     >
       {children}
+      <PaymentMethodDialog
+        open={paymentDialogOpen}
+        onClose={() => {
+          setPaymentDialogOpen(false);
+          setSelectedPlan(null);
+          setPaymentPrice(undefined);
+        }}
+        plan={selectedPlan ? {
+          name: selectedPlan === 'pro' ? 'Pro Plan' : 'Free Plan',
+          price: paymentPrice || (selectedPlan === 'pro' ? 99.99 : 0),
+        } : null}
+      />
     </PaymentContext.Provider>
   );
 }

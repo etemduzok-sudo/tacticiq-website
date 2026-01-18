@@ -263,6 +263,8 @@ export interface PriceSettings {
 export interface DiscountSettings {
   enabled: boolean; // İndirim popup'ı aktif mi?
   discountPercent: number; // İndirim yüzdesi (örn: 20 = %20)
+  showDiscountOnWeb: boolean; // İndirimli fiyatı web'de göster (true) veya sadece popup'ta göster (false)
+  showDiscountViaPopup: boolean; // Popup ile indirimi göster - web'de normal fiyat, popup'ta indirimli fiyat
   dailyShowLimit: number; // Günde kaç kere gösterilecek (0 = sınırsız)
   showDelay: number; // Kaç saniye sonra gösterilecek (örn: 5000 = 5 saniye)
   timerDuration: number; // Geri sayım süresi (saniye cinsinden, örn: 600 = 10 dakika)
@@ -689,6 +691,8 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
     const defaultSettings: DiscountSettings = {
       enabled: false,
       discountPercent: 20,
+      showDiscountOnWeb: true, // Varsayılan: İndirimli fiyat web'de gösterilir
+      showDiscountViaPopup: false, // Varsayılan: Popup ile indirim kapalı
       dailyShowLimit: 3,
       showDelay: 5000,
       timerDuration: 600,

@@ -147,6 +147,7 @@ export default {
   'pricing.pro.features.early': 'Erster Zugriff auf neue Funktionen',
   'pricing.pro.features.analysis': 'KI-gestützte strategische Berichte',
   'pricing.discount_label': 'Rabatt',
+  'pricing.discount_via_popup': 'Rabatt im Popup',
   'pricing.comparison.note': '💡 Punkte, XP, Ranglisten sind virtuell und nicht monetär - TacticIQ ist keine Glücksspielplattform',
   'blog.title': 'Einblicke & Analysen',
   'blog.readMore': 'Weiterlesen',

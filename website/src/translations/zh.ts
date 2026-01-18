@@ -170,6 +170,7 @@ export default {
   'pricing.pro.features.analysis': 'AI驱动的战略报告',
   'pricing.noMoneyRewards': '无金钱奖励或财务风险',
   'pricing.discount_label': '折扣',
+  'pricing.discount_via_popup': '弹窗中的折扣',
   'pricing.comparison.note': '💡 积分、XP、排名都是虚拟的非货币性的 - TacticIQ不是博彩平台',
   'blog.title': '洞察与分析',
   'blog.readMore': '阅读更多',

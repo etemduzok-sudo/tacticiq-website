@@ -16,7 +16,9 @@ export function PricingSection() {
   const handleSelectPlan = (planId: string) => {
     selectPlan(planId as 'free' | 'pro');
     if (planId === 'pro') {
-      openPaymentModal();
+      // showDiscountViaPopup aktifse ve kullanıcı popup'ı kabul ettiyse indirimli fiyat kullanılacak
+      // PaymentContext içinde getFinalPrice fonksiyonu bu kontrolü yapacak
+      openPaymentModal(proPrice);
     }
   };
 
@@ -32,13 +34,21 @@ export function PricingSection() {
   // Fiyatı hedef para birimine çevir
   const convertedOriginalPrice = convertCurrency(basePrice, baseCurrency, targetCurrency);
 
-  // İndirim yüzdesi (Section ayarlarından discountEnabled kontrol edilir)
-  // pricingSettings.discountEnabled: Pricing section'da indirim gösterilsin mi?
-  // discountSettings.discountPercent: İndirim popup'ındaki indirim oranı
+  // İndirim mantığı:
+  // 1. showDiscountOnWeb = true → Web'de indirimli fiyat gösterilir
+  // 2. showDiscountViaPopup = true → Web'de normal fiyat gösterilir, indirimli fiyat sadece popup'ta
+  // 3. İkisi de false → Web'de normal fiyat gösterilir
   const discountPercent = discountSettings.discountPercent || 0;
-  const proPrice = pricingSettings.discountEnabled && discountPercent > 0
+  const showDiscountOnWeb = discountSettings.showDiscountOnWeb ?? true;
+  const showDiscountViaPopup = discountSettings.showDiscountViaPopup ?? false;
+  
+  // Web'de gösterilecek fiyat: showDiscountOnWeb aktifse indirimli, değilse normal
+  const proPrice = (showDiscountOnWeb && discountSettings.enabled && discountPercent > 0)
     ? convertedOriginalPrice * (1 - discountPercent / 100)
     : convertedOriginalPrice;
+  
+  // Orijinal (indirimli olmayan) fiyat - popup ile indirim modunda kullanılmak üzere
+  const originalPriceForPopup = convertedOriginalPrice;
 
   // Fatura dönemi metni
   const periodText = billingPeriod === 'monthly' 
@@ -125,17 +135,26 @@ export function PricingSection() {
               <div className="mt-4">
                 <div className="flex items-baseline gap-2">
                   <div className="text-4xl font-bold">{currencySymbol}{proPrice.toFixed(2)}</div>
-                  {pricingSettings.discountEnabled && (
+                  {/* showDiscountOnWeb aktifse: Üstü çizili normal fiyat göster */}
+                  {showDiscountOnWeb && pricingSettings.discountEnabled && discountPercent > 0 && (
                     <div className="text-lg text-muted-foreground line-through">
-                      {currencySymbol}{convertedOriginalPrice.toFixed(2)}
+                      {currencySymbol}{originalPriceForPopup.toFixed(2)}
                     </div>
                   )}
                 </div>
                 <div className="text-sm text-muted-foreground">{periodText}</div>
-                {pricingSettings.discountEnabled && (
+                {/* showDiscountOnWeb aktifse: İndirim badge'i göster */}
+                {showDiscountOnWeb && pricingSettings.discountEnabled && discountPercent > 0 && (
                   <div className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-semibold mt-2">
                     <Zap className="size-3" />
                     {discountPercent}% {t('pricing.discount_label')}
+                  </div>
+                )}
+                {/* showDiscountViaPopup aktifse: İndirim sadece popup'ta bilgisi */}
+                {showDiscountViaPopup && discountSettings.enabled && discountPercent > 0 && (
+                  <div className="inline-flex items-center gap-1 px-2 py-1 bg-secondary/20 text-secondary rounded text-xs font-semibold mt-2">
+                    <Zap className="size-3" />
+                    {t('pricing.discount_via_popup') || 'İndirim popup\'ta'}
                   </div>
                 )}
               </div>

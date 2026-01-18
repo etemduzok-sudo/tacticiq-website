@@ -67,6 +67,16 @@ export function DiscountPopup({ onSelectPlan }: DiscountPopupProps) {
   };
 
   const handleClaim = () => {
+    // showDiscountViaPopup aktifse: Kullanıcı popup'ı kabul etti, indirimli fiyat üzerinden satış yapılacak
+    if (showDiscountViaPopup) {
+      localStorage.setItem('discount_popup_accepted', 'true');
+      localStorage.setItem('discount_popup_price', JSON.stringify({
+        original: convertedOriginalPrice,
+        discounted: discountedPrice,
+        discountPercent: discountPercent,
+        timestamp: Date.now()
+      }));
+    }
     selectPlan('pro');
     onSelectPlan();
     setIsOpen(false);
@@ -76,7 +86,17 @@ export function DiscountPopup({ onSelectPlan }: DiscountPopupProps) {
     setIsOpen(false);
   };
 
-  if (!discountSettings.enabled || hasShownToday) return null;
+  const showDiscountViaPopup = discountSettings.showDiscountViaPopup ?? false;
+  const showDiscountOnWeb = discountSettings.showDiscountOnWeb ?? true;
+  
+  // Popup gösterim koşulları:
+  // 1. discountSettings.enabled aktif olmalı
+  // 2. showDiscountViaPopup aktifse → Popup göster (indirimli fiyat sadece popup'ta)
+  // 3. showDiscountOnWeb aktifse → Popup göster (her iki modda da popup gösterilebilir)
+  const shouldShowPopup = discountSettings.enabled && 
+    (showDiscountViaPopup || (!showDiscountViaPopup && showDiscountOnWeb));
+  
+  if (!shouldShowPopup || hasShownToday) return null;
 
   // Fiyatı kullanıcının diline göre çevir - priceSettings'ten al (discountSettings'ten DEĞİL)
   const convertedOriginalPrice = convertCurrency(

@@ -163,6 +163,7 @@ export default {
   'pricing.pro.features.early': 'Premier accès aux nouvelles fonctionnalités',
   'pricing.pro.features.analysis': 'Rapports stratégiques alimentés par IA',
   'pricing.discount_label': 'Réduction',
+  'pricing.discount_via_popup': 'Réduction dans le popup',
   'pricing.comparison.note': '💡 Les points, XP, classements sont virtuels et non monétaires - TacticIQ n\'est pas une plateforme de jeux d\'argent',
   
   // Auth

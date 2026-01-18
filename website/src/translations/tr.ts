@@ -168,6 +168,7 @@ export default {
   'pricing.pro.features.early': 'Yeni özelliklere ilk erişim',
   'pricing.pro.features.analysis': 'Yapay zeka destekli stratejik raporlar',
   'pricing.discount_label': 'İndirim',
+  'pricing.discount_via_popup': 'İndirim popup\'ta',
   'pricing.comparison.note': '💡 Puanlar, XP, sıralamalar sanal ve parasaldır - TacticIQ bir bahis platformu değildir',
 
   // Auth Modal
