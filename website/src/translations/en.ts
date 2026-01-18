@@ -2,16 +2,21 @@ export default {
   // Navigation
   'nav.home': 'Home',
   'nav.features': 'Features',
+  'nav.product': 'Product',
   'nav.howItWorks': 'How It Works',
   'nav.how_it_works': 'How It Works',
   'nav.pricing': 'Pricing',
+  'nav.testimonials': 'Testimonials',
   'nav.blog': 'Blog',
   'nav.signin': 'Sign In',
   'nav.signup': 'Sign Up',
   'nav.game': 'Game',
+  'nav.partners': 'Partners',
+  'nav.press': 'Press',
   'nav.faq': 'FAQ',
   'nav.contact': 'Contact',
   'nav.about': 'About',
+  'nav.appDownload': 'Download',
 
   // Hero Section
   'hero.title': 'Football Intelligence',

@@ -44,13 +44,17 @@ export function Header({ onNavigate }: HeaderProps) {
   const sectionSettings = adminData?.sectionSettings;
   
   // Dinamik olarak admin ayarlarına göre nav items oluştur
+  // Her section için: admin panelinde enabled ise göster, değilse gizle
   const navItems = [
     { key: 'home', label: t('nav.home'), href: '#', enabled: true },
     { key: 'features', label: t('nav.features'), href: '#features', enabled: sectionSettings?.features?.enabled ?? true },
+    { key: 'product', label: t('nav.product') || 'Ürün', href: '#product', enabled: sectionSettings?.product?.enabled ?? false },
     { key: 'how-it-works', label: t('nav.how_it_works'), href: '#how-it-works', enabled: sectionSettings?.howItWorks?.enabled ?? true },
     { key: 'pricing', label: t('nav.pricing'), href: '#pricing', enabled: sectionSettings?.pricing?.enabled ?? true },
+    { key: 'testimonials', label: t('nav.testimonials') || 'Yorumlar', href: '#testimonials', enabled: sectionSettings?.testimonials?.enabled ?? false },
     { key: 'blog', label: t('nav.blog'), href: '#blog', enabled: sectionSettings?.blog?.enabled ?? true },
     { key: 'game', label: t('nav.game') || 'Oyun', href: '#game', enabled: sectionSettings?.game?.enabled ?? false },
+    { key: 'partners', label: t('nav.partners') || 'Ortaklar', href: '#partners', enabled: sectionSettings?.partners?.enabled ?? false },
     { key: 'faq', label: t('nav.faq') || 'SSS', href: '#faq', enabled: sectionSettings?.faq?.enabled ?? false },
     { key: 'contact', label: t('nav.contact') || 'İletişim', href: '#contact', enabled: sectionSettings?.contact?.enabled ?? false },
     { key: 'about', label: t('nav.about') || 'Hakkımızda', href: '#about', enabled: sectionSettings?.about?.enabled ?? false },
@@ -135,12 +139,17 @@ export function Header({ onNavigate }: HeaderProps) {
                 {item.label}
               </button>
             ))}
-            <Button 
-              className="w-full mt-2"
-              onClick={() => setAuthModalOpen(true)}
-            >
-              {t('nav.signin') || 'Giriş Yap'}
-            </Button>
+            {!isLoggedIn && (
+              <Button 
+                className="w-full mt-2"
+                onClick={() => {
+                  setAuthModalOpen(true);
+                  setMobileMenuOpen(false);
+                }}
+              >
+                {t('nav.signin') || 'Giriş Yap'}
+              </Button>
+            )}
           </nav>
         </div>
       )}

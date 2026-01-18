@@ -1,11 +1,12 @@
 /**
  * Change Password Component
  * Kullanıcıların şifre değiştirmesini sağlayan modal bileşeni
+ * Supabase Auth ile entegre çalışır
  */
 
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { Lock, Eye, EyeOff } from 'lucide-react';
+import { Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
 import { Label } from '@/app/components/ui/label';
@@ -17,8 +18,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/app/components/ui/dialog';
-import { authService, ChangePasswordData } from '@/services/authService';
-import { useApi } from '@/hooks/useApi';
+import { useUserAuth } from '@/contexts/UserAuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 interface ChangePasswordModalProps {
@@ -28,54 +28,40 @@ interface ChangePasswordModalProps {
 
 export function ChangePasswordModal({ open, onOpenChange }: ChangePasswordModalProps) {
   const { t, isRTL } = useLanguage();
-  const [formData, setFormData] = useState<ChangePasswordData>({
-    oldPassword: '',
-    newPassword: '',
-    confirmPassword: '',
-  });
+  const { updatePassword, isLoading: authLoading } = useUserAuth();
+  
+  const [oldPassword, setOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   
   const [showOldPassword, setShowOldPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-
-  const { execute: changePassword, loading } = useApi(
-    authService.changePassword,
-    {
-      showErrorToast: true,
-      showSuccessToast: true,
-      successMessage: t('changePassword.success'),
-    }
-  );
-
-  const handleInputChange = (field: keyof ChangePasswordData) => (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    setFormData({ ...formData, [field]: e.target.value });
-  };
+  const [loading, setLoading] = useState(false);
 
   const validateForm = (): boolean => {
-    if (!formData.oldPassword) {
-      toast.error(t('changePassword.errors.currentPasswordRequired'));
+    if (!oldPassword) {
+      toast.error(t('changePassword.errors.currentPasswordRequired') || 'Mevcut şifrenizi girin');
       return false;
     }
 
-    if (!formData.newPassword) {
-      toast.error(t('changePassword.errors.newPasswordRequired'));
+    if (!newPassword) {
+      toast.error(t('changePassword.errors.newPasswordRequired') || 'Yeni şifrenizi girin');
       return false;
     }
 
-    if (formData.newPassword.length < 8) {
-      toast.error(t('changePassword.errors.minLength'));
+    if (newPassword.length < 6) {
+      toast.error(t('changePassword.errors.minLength') || 'Şifre en az 6 karakter olmalı');
       return false;
     }
 
-    if (formData.newPassword === formData.oldPassword) {
-      toast.error(t('changePassword.errors.sameAsOld'));
+    if (newPassword === oldPassword) {
+      toast.error(t('changePassword.errors.sameAsOld') || 'Yeni şifre eskisiyle aynı olamaz');
       return false;
     }
 
-    if (formData.newPassword !== formData.confirmPassword) {
-      toast.error(t('changePassword.errors.passwordsMismatch'));
+    if (newPassword !== confirmPassword) {
+      toast.error(t('changePassword.errors.passwordsMismatch') || 'Şifreler eşleşmiyor');
       return false;
     }
 
@@ -89,27 +75,35 @@ export function ChangePasswordModal({ open, onOpenChange }: ChangePasswordModalP
       return;
     }
 
-    const result = await changePassword(formData);
-    
-    if (result !== null) {
-      // Success - close modal and reset form
-      setFormData({
-        oldPassword: '',
-        newPassword: '',
-        confirmPassword: '',
-      });
-      onOpenChange(false);
+    setLoading(true);
+    try {
+      const result = await updatePassword(newPassword);
+      
+      if (result.success) {
+        toast.success(t('changePassword.success') || 'Şifreniz başarıyla değiştirildi');
+        // Reset form and close modal
+        setOldPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+        onOpenChange(false);
+      } else {
+        toast.error(result.error || t('changePassword.errors.general') || 'Şifre değiştirilemedi');
+      }
+    } catch (err: any) {
+      toast.error(err.message || t('changePassword.errors.general') || 'Bir hata oluştu');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleCancel = () => {
-    setFormData({
-      oldPassword: '',
-      newPassword: '',
-      confirmPassword: '',
-    });
+    setOldPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
     onOpenChange(false);
   };
+
+  const isSubmitting = loading || authLoading;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -117,26 +111,26 @@ export function ChangePasswordModal({ open, onOpenChange }: ChangePasswordModalP
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Lock className="size-5 text-accent" />
-            {t('changePassword.title')}
+            {t('changePassword.title') || 'Şifre Değiştir'}
           </DialogTitle>
           <DialogDescription>
-            {t('changePassword.description')}
+            {t('changePassword.description') || 'Güvenliğiniz için şifrenizi düzenli olarak değiştirin.'}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Mevcut Şifre */}
           <div className="space-y-2">
-            <Label htmlFor="oldPassword">{t('changePassword.currentPassword')}</Label>
+            <Label htmlFor="oldPassword">{t('changePassword.currentPassword') || 'Mevcut Şifre'}</Label>
             <div className="relative">
               <Input
                 id="oldPassword"
                 type={showOldPassword ? 'text' : 'password'}
-                value={formData.oldPassword}
-                onChange={handleInputChange('oldPassword')}
-                placeholder={t('changePassword.currentPasswordPlaceholder')}
+                value={oldPassword}
+                onChange={(e) => setOldPassword(e.target.value)}
+                placeholder={t('changePassword.currentPasswordPlaceholder') || 'Mevcut şifrenizi girin'}
                 required
-                disabled={loading}
+                disabled={isSubmitting}
                 className={isRTL ? 'pl-10' : 'pr-10'}
               />
               <button
@@ -155,16 +149,16 @@ export function ChangePasswordModal({ open, onOpenChange }: ChangePasswordModalP
 
           {/* Yeni Şifre */}
           <div className="space-y-2">
-            <Label htmlFor="newPassword">{t('changePassword.newPassword')}</Label>
+            <Label htmlFor="newPassword">{t('changePassword.newPassword') || 'Yeni Şifre'}</Label>
             <div className="relative">
               <Input
                 id="newPassword"
                 type={showNewPassword ? 'text' : 'password'}
-                value={formData.newPassword}
-                onChange={handleInputChange('newPassword')}
-                placeholder={t('changePassword.newPasswordPlaceholder')}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder={t('changePassword.newPasswordPlaceholder') || 'Yeni şifrenizi girin'}
                 required
-                disabled={loading}
+                disabled={isSubmitting}
                 className={isRTL ? 'pl-10' : 'pr-10'}
               />
               <button
@@ -179,16 +173,16 @@ export function ChangePasswordModal({ open, onOpenChange }: ChangePasswordModalP
                 )}
               </button>
             </div>
-            {formData.newPassword && (
+            {newPassword && (
               <div className={`text-xs space-y-1 ${isRTL ? 'text-right' : ''}`}>
-                <p className={formData.newPassword.length >= 8 ? 'text-green-600' : 'text-red-600'}>
-                  {formData.newPassword.length >= 8 ? '✓' : '✗'} {t('changePassword.requirements.length')}
+                <p className={newPassword.length >= 6 ? 'text-green-600' : 'text-red-600'}>
+                  {newPassword.length >= 6 ? '✓' : '✗'} {t('changePassword.requirements.length') || 'En az 6 karakter'}
                 </p>
-                <p className={/[A-Z]/.test(formData.newPassword) ? 'text-green-600' : 'text-red-600'}>
-                  {/[A-Z]/.test(formData.newPassword) ? '✓' : '✗'} {t('changePassword.requirements.uppercase')}
+                <p className={/[A-Z]/.test(newPassword) ? 'text-green-600' : 'text-muted-foreground'}>
+                  {/[A-Z]/.test(newPassword) ? '✓' : '○'} {t('changePassword.requirements.uppercase') || 'Büyük harf (önerilen)'}
                 </p>
-                <p className={/[0-9]/.test(formData.newPassword) ? 'text-green-600' : 'text-red-600'}>
-                  {/[0-9]/.test(formData.newPassword) ? '✓' : '✗'} {t('changePassword.requirements.number')}
+                <p className={/[0-9]/.test(newPassword) ? 'text-green-600' : 'text-muted-foreground'}>
+                  {/[0-9]/.test(newPassword) ? '✓' : '○'} {t('changePassword.requirements.number') || 'Rakam (önerilen)'}
                 </p>
               </div>
             )}
@@ -196,16 +190,16 @@ export function ChangePasswordModal({ open, onOpenChange }: ChangePasswordModalP
 
           {/* Yeni Şifre Tekrar */}
           <div className="space-y-2">
-            <Label htmlFor="confirmPassword">{t('changePassword.confirmPassword')}</Label>
+            <Label htmlFor="confirmPassword">{t('changePassword.confirmPassword') || 'Şifre Tekrar'}</Label>
             <div className="relative">
               <Input
                 id="confirmPassword"
                 type={showConfirmPassword ? 'text' : 'password'}
-                value={formData.confirmPassword}
-                onChange={handleInputChange('confirmPassword')}
-                placeholder={t('changePassword.confirmPasswordPlaceholder')}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder={t('changePassword.confirmPasswordPlaceholder') || 'Yeni şifrenizi tekrar girin'}
                 required
-                disabled={loading}
+                disabled={isSubmitting}
                 className={isRTL ? 'pl-10' : 'pr-10'}
               />
               <button
@@ -220,15 +214,15 @@ export function ChangePasswordModal({ open, onOpenChange }: ChangePasswordModalP
                 )}
               </button>
             </div>
-            {formData.confirmPassword && (
+            {confirmPassword && (
               <p className={
-                formData.newPassword === formData.confirmPassword
+                newPassword === confirmPassword
                   ? `text-xs text-green-600 ${isRTL ? 'text-right' : ''}`
                   : `text-xs text-red-600 ${isRTL ? 'text-right' : ''}`
               }>
-                {formData.newPassword === formData.confirmPassword
-                  ? `✓ ${t('changePassword.validation.passwordsMatch')}`
-                  : `✗ ${t('changePassword.validation.passwordsMismatch')}`}
+                {newPassword === confirmPassword
+                  ? `✓ ${t('changePassword.validation.passwordsMatch') || 'Şifreler eşleşiyor'}`
+                  : `✗ ${t('changePassword.validation.passwordsMismatch') || 'Şifreler eşleşmiyor'}`}
               </p>
             )}
           </div>
@@ -238,12 +232,19 @@ export function ChangePasswordModal({ open, onOpenChange }: ChangePasswordModalP
               type="button"
               variant="outline"
               onClick={handleCancel}
-              disabled={loading}
+              disabled={isSubmitting}
             >
-              {t('changePassword.button.cancel')}
+              {t('changePassword.button.cancel') || 'İptal'}
             </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? t('changePassword.button.submitting') : t('changePassword.button.submit')}
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 size-4 animate-spin" />
+                  {t('changePassword.button.submitting') || 'Kaydediliyor...'}
+                </>
+              ) : (
+                t('changePassword.button.submit') || 'Şifreyi Değiştir'
+              )}
             </Button>
           </DialogFooter>
         </form>

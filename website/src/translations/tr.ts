@@ -2,16 +2,21 @@ export default {
   // Navigation
   'nav.home': 'Ana Sayfa',
   'nav.features': 'Özellikler',
+  'nav.product': 'Ürün',
   'nav.howItWorks': 'Nasıl Çalışır',
   'nav.how_it_works': 'Nasıl Çalışır',
   'nav.pricing': 'Fiyatlandırma',
+  'nav.testimonials': 'Yorumlar',
   'nav.blog': 'Blog',
   'nav.signin': 'Giriş Yap',
   'nav.signup': 'Kayıt Ol',
   'nav.game': 'Oyun',
+  'nav.partners': 'Ortaklar',
+  'nav.press': 'Basın',
   'nav.faq': 'SSS',
   'nav.contact': 'İletişim',
   'nav.about': 'Hakkımızda',
+  'nav.appDownload': 'İndir',
 
   // Hero Section
   'hero.title': 'Futbol Zekası',

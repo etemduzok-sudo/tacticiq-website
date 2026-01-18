@@ -1,11 +1,12 @@
 /**
  * Forgot Password Component
  * Kullanıcıların şifre sıfırlama isteği göndermesini sağlar
+ * Supabase Auth ile entegre çalışır
  */
 
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { Mail, ArrowLeft } from 'lucide-react';
+import { Mail, ArrowLeft, Loader2 } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
 import { Label } from '@/app/components/ui/label';
@@ -17,8 +18,8 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/app/components/ui/dialog';
-import { authService } from '@/services/authService';
-import { useApi } from '@/hooks/useApi';
+import { useUserAuth } from '@/contexts/UserAuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface ForgotPasswordModalProps {
   open: boolean;
@@ -26,15 +27,11 @@ interface ForgotPasswordModalProps {
 }
 
 export function ForgotPasswordModal({ open, onOpenChange }: ForgotPasswordModalProps) {
+  const { t } = useLanguage();
+  const { resetPassword, isLoading: authLoading } = useUserAuth();
   const [email, setEmail] = useState('');
   const [emailSent, setEmailSent] = useState(false);
-
-  const { execute: sendResetEmail, loading } = useApi(
-    authService.forgotPassword,
-    {
-      showErrorToast: true,
-    }
-  );
+  const [loading, setLoading] = useState(false);
 
   const validateEmail = (email: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -45,20 +42,29 @@ export function ForgotPasswordModal({ open, onOpenChange }: ForgotPasswordModalP
     e.preventDefault();
 
     if (!email) {
-      toast.error('Email adresinizi girin');
+      toast.error(t('forgotPassword.errors.emailRequired') || 'Email adresinizi girin');
       return;
     }
 
     if (!validateEmail(email)) {
-      toast.error('Geçerli bir email adresi girin');
+      toast.error(t('forgotPassword.errors.invalidEmail') || 'Geçerli bir email adresi girin');
       return;
     }
 
-    const result = await sendResetEmail({ email });
-    
-    if (result !== null) {
-      setEmailSent(true);
-      toast.success('Şifre sıfırlama bağlantısı email adresinize gönderildi!');
+    setLoading(true);
+    try {
+      const result = await resetPassword(email);
+      
+      if (result.success) {
+        setEmailSent(true);
+        toast.success(t('forgotPassword.success') || 'Şifre sıfırlama bağlantısı email adresinize gönderildi!');
+      } else {
+        toast.error(result.error || t('forgotPassword.errors.general') || 'Bir hata oluştu');
+      }
+    } catch (err: any) {
+      toast.error(err.message || t('forgotPassword.errors.general') || 'Bir hata oluştu');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -72,6 +78,8 @@ export function ForgotPasswordModal({ open, onOpenChange }: ForgotPasswordModalP
     setEmailSent(false);
   };
 
+  const isSubmitting = loading || authLoading;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
@@ -80,24 +88,26 @@ export function ForgotPasswordModal({ open, onOpenChange }: ForgotPasswordModalP
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Mail className="size-5 text-accent" />
-                Şifremi Unuttum
+                {t('forgotPassword.title') || 'Şifremi Unuttum'}
               </DialogTitle>
               <DialogDescription>
-                Email adresinize şifre sıfırlama bağlantısı göndereceğiz.
+                {t('forgotPassword.description') || 'Email adresinize şifre sıfırlama bağlantısı göndereceğiz.'}
               </DialogDescription>
             </DialogHeader>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="forgot-password-email">Email Adresi</Label>
+                <Label htmlFor="forgot-password-email">
+                  {t('forgotPassword.email') || 'Email Adresi'}
+                </Label>
                 <Input
                   id="forgot-password-email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="ornek@email.com"
+                  placeholder={t('forgotPassword.emailPlaceholder') || 'ornek@email.com'}
                   required
-                  disabled={loading}
+                  disabled={isSubmitting}
                   autoComplete="email"
                 />
               </div>
@@ -107,12 +117,19 @@ export function ForgotPasswordModal({ open, onOpenChange }: ForgotPasswordModalP
                   type="button"
                   variant="outline"
                   onClick={handleClose}
-                  disabled={loading}
+                  disabled={isSubmitting}
                 >
-                  İptal
+                  {t('forgotPassword.button.cancel') || 'İptal'}
                 </Button>
-                <Button type="submit" disabled={loading}>
-                  {loading ? 'Gönderiliyor...' : 'Bağlantı Gönder'}
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 size-4 animate-spin" />
+                      {t('forgotPassword.button.submitting') || 'Gönderiliyor...'}
+                    </>
+                  ) : (
+                    t('forgotPassword.button.submit') || 'Bağlantı Gönder'
+                  )}
                 </Button>
               </DialogFooter>
             </form>
@@ -122,26 +139,26 @@ export function ForgotPasswordModal({ open, onOpenChange }: ForgotPasswordModalP
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-green-600">
                 <Mail className="size-5" />
-                Email Gönderildi!
+                {t('forgotPassword.sent.title') || 'Email Gönderildi!'}
               </DialogTitle>
             </DialogHeader>
 
             <div className="space-y-4 py-4">
               <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
                 <p className="text-sm text-green-800 dark:text-green-200">
-                  <strong>{email}</strong> adresine şifre sıfırlama bağlantısı gönderildi.
+                  <strong>{email}</strong> {t('forgotPassword.sent.message') || 'adresine şifre sıfırlama bağlantısı gönderildi.'}
                 </p>
               </div>
 
               <div className="space-y-2 text-sm text-muted-foreground">
-                <p>📧 Email'inizi kontrol edin</p>
-                <p>🔗 Bağlantıya tıklayarak yeni şifre oluşturun</p>
-                <p>⏱️ Bağlantı 24 saat geçerlidir</p>
+                <p>📧 {t('forgotPassword.sent.step1') || "Email'inizi kontrol edin"}</p>
+                <p>🔗 {t('forgotPassword.sent.step2') || 'Bağlantıya tıklayarak yeni şifre oluşturun'}</p>
+                <p>⏱️ {t('forgotPassword.sent.step3') || 'Bağlantı 24 saat geçerlidir'}</p>
               </div>
 
               <div className="pt-2">
                 <p className="text-xs text-muted-foreground">
-                  Email gelmediyse spam/önemsiz klasörünü kontrol edin.
+                  {t('forgotPassword.sent.spamNote') || 'Email gelmediyse spam/önemsiz klasörünü kontrol edin.'}
                 </p>
               </div>
             </div>
@@ -153,10 +170,10 @@ export function ForgotPasswordModal({ open, onOpenChange }: ForgotPasswordModalP
                 className="gap-2"
               >
                 <ArrowLeft className="size-4" />
-                Geri
+                {t('forgotPassword.button.back') || 'Geri'}
               </Button>
               <Button onClick={handleClose}>
-                Tamam
+                {t('forgotPassword.button.done') || 'Tamam'}
               </Button>
             </DialogFooter>
           </>
