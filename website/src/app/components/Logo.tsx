@@ -29,7 +29,7 @@ export function Logo({ size = 'md', showText = true, className = '' }: LogoProps
     <div className={`flex items-center ${currentSize.gap} group ${className}`}>
       {/* SVG Logo - Şeffaf Arka Plan, Dikdörtgen Yapı Yok */}
       <img 
-        src="/logo.svg" 
+        src="/TacticIQ.svg" 
         alt="TacticIQ Logo" 
         className={`${currentSize.container} object-contain flex-shrink-0`}
           style={{
