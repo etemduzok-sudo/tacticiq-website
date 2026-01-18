@@ -9,7 +9,17 @@
     "edit": "Bearbeiten",
     "back": "Zurück",
     "next": "Weiter",
-    "done": "Fertig"
+    "done": "Fertig",
+    "continue": "Weiter"
+  },
+  "languageSelection": {
+    "title": "Sprachauswahl",
+    "subtitle": "Bitte wählen Sie Ihre Sprache",
+    "legalSummaryTitle": "Rechtliche Informationen",
+    "legalSummaryDesc": "Bitte lesen Sie die folgenden Dokumente:",
+    "iAccept": "Ich habe gelesen und akzeptiere",
+    "pleaseAccept": "Bitte lesen und akzeptieren Sie die rechtlichen Dokumente",
+    "legalSummary": "Durch die Nutzung der TacticIQ-Plattform akzeptieren Sie die Nutzungsbedingungen, Datenschutzrichtlinie und KVKK-Offenlegung.\n\n• Ihre persönlichen Daten werden unter KVKK/GDPR verarbeitet\n• Kein Widerrufsrecht bei digitalen Inhalten\n• Virtuelle Gegenstände haben keinen Barwert\n• Elterliche Zustimmung für Nutzer unter 13 erforderlich"
   },
   "dashboard": {
     "title": "Analysten-Kontrollpanel",
@@ -138,5 +148,49 @@
     "emailTaken": "Diese E-Mail wird bereits verwendet",
     "loginWithGoogle": "Mit Google anmelden",
     "loginWithApple": "Mit Apple anmelden"
+  },
+  "ageGate": {
+    "title": "Altersüberprüfung",
+    "subtitle": "Wählen Sie Ihr Geburtsdatum",
+    "year": "Jahr",
+    "month": "Monat",
+    "day": "Tag",
+    "yearPlaceholder": "JJJJ",
+    "monthPlaceholder": "MM",
+    "dayPlaceholder": "TT",
+    "info": "Diese Informationen sind für Ihre Sicherheit und rechtliche Compliance erforderlich.",
+    "pleaseEnterDate": "Bitte geben Sie Ihr Geburtsdatum ein",
+    "invalidDate": "Ungültiges Geburtsdatum"
+  },
+  "consent": {
+    "title": "Datenschutz-Einstellungen",
+    "subtitle": "Wählen Sie, wie Ihre Daten verwendet werden",
+    "kvkkInfo": "Uns liegt Ihre Privatsphäre am Herzen. Diese Einstellungen werden gemäß KVKK geschützt.",
+    "gdprInfo": "Uns liegt Ihre Privatsphäre am Herzen. Diese Einstellungen werden gemäß DSGVO geschützt.",
+    "ccpaInfo": "Uns liegt Ihre Privatsphäre am Herzen. Diese Einstellungen werden gemäß CCPA geschützt.",
+    "defaultInfo": "Legen Sie Ihre Einstellungen fest, um Ihre Daten zu schützen.",
+    "essential": "Notwendige Cookies",
+    "essentialDesc": "Für die Funktion der App erforderlich. Kann nicht deaktiviert werden.",
+    "analytics": "Analyse-Cookies",
+    "analyticsDesc": "Wird verwendet, um die App-Leistung zu analysieren und zu verbessern.",
+    "marketing": "Marketing-Cookies",
+    "marketingDesc": "Ermöglicht uns, Benachrichtigungen über Kampagnen und Sonderangebote zu senden.",
+    "personalizedAds": "Personalisierte Werbung",
+    "personalizedAdsDesc": "Ermöglicht uns, Ihnen auf Ihre Interessen zugeschnittene Werbung zu zeigen.",
+    "dataTransfer": "Internationale Datenübertragung",
+    "dataTransferDesc": "Ausdrückliche Zustimmung erforderlich für die Übertragung Ihrer Daten auf Server im Ausland gemäß KVKK.",
+    "acceptAll": "Alle akzeptieren",
+    "rejectAll": "Alle ablehnen",
+    "save": "Speichern und fortfahren",
+    "privacyPolicyLink": "Details finden Sie in unserer Datenschutzerklärung",
+    "childModeRestriction": "Diese Funktionen sind im Kindermodus aus Sicherheitsgründen deaktiviert.",
+    "saveError": "Ihre Einstellungen konnten nicht gespeichert werden. Bitte versuchen Sie es erneut.",
+    "saveSuccess": "Ihre Einstellungen wurden erfolgreich gespeichert!",
+    "learnMore": "Mehr erfahren",
+    "viewPrivacyPolicy": "Datenschutzerklärung",
+    "viewCookiePolicy": "Cookie-Richtlinie",
+    "viewKvkkInfo": "KVKK-Offenlegung",
+    "required": "Erforderlich",
+    "optional": "Optional"
   }
 }

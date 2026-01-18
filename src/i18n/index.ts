@@ -40,7 +40,7 @@ const getDeviceLanguage = async (): Promise<string> => {
       } catch (e) {
         // Web'de localStorage erişilemezse devam et
       }
-      return 'tr'; // Web için default
+      return 'en'; // Web için default
     }
     
     // Native için AsyncStorage
@@ -49,10 +49,10 @@ const getDeviceLanguage = async (): Promise<string> => {
       return savedLanguage;
     }
     
-    const deviceLocale = Localization.getLocales()[0]?.languageCode || 'tr';
+    const deviceLocale = Localization.getLocales()[0]?.languageCode || 'en';
     const supportedLanguages = ['tr', 'en', 'es', 'de', 'fr', 'it', 'ar', 'ru'];
     
-    return supportedLanguages.includes(deviceLocale) ? deviceLocale : 'tr';
+    return supportedLanguages.includes(deviceLocale) ? deviceLocale : 'en';
   } catch (error) {
     console.warn('Error getting device language:', error);
     return 'tr';
@@ -92,7 +92,7 @@ const initI18n = async () => {
         ru: { translation: ru },
       },
       lng: language,
-      fallbackLng: 'tr',
+      fallbackLng: 'en',
       interpolation: {
         escapeValue: false, // React already escapes values
       },
@@ -141,8 +141,8 @@ if (!i18n.isInitialized) {
         ar: { translation: ar },
         ru: { translation: ru },
       },
-      lng: 'tr', // Default, runtime'da güncellenecek
-      fallbackLng: 'tr',
+      lng: 'en', // Default, runtime'da güncellenecek
+      fallbackLng: 'en',
       interpolation: {
         escapeValue: false,
       },
@@ -156,8 +156,8 @@ if (!i18n.isInitialized) {
     configureRTL(language);
     i18n.changeLanguage(language);
   }).catch(() => {
-    // Hata durumunda default 'tr' kullan
-    i18n.changeLanguage('tr');
+    // Hata durumunda default 'en' kullan
+    i18n.changeLanguage('en');
   });
 }
 

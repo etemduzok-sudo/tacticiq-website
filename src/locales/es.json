@@ -9,7 +9,17 @@
     "edit": "Editar",
     "back": "Atrás",
     "next": "Siguiente",
-    "done": "Hecho"
+    "done": "Hecho",
+    "continue": "Continuar"
+  },
+  "languageSelection": {
+    "title": "Selección de idioma",
+    "subtitle": "Por favor seleccione su idioma",
+    "legalSummaryTitle": "Información Legal",
+    "legalSummaryDesc": "Por favor lea los siguientes documentos:",
+    "iAccept": "He leído y acepto",
+    "pleaseAccept": "Por favor lea y acepte los documentos legales",
+    "legalSummary": "Al usar la plataforma TacticIQ, acepta los Términos de Servicio, Política de Privacidad y Divulgación KVKK.\n\n• Sus datos personales se procesarán bajo KVKK/GDPR\n• Sin derecho de desistimiento para ventas de contenido digital\n• Los artículos virtuales no tienen valor en efectivo\n• Se requiere consentimiento parental para menores de 13 años"
   },
   "dashboard": {
     "title": "Panel de Control del Analista",
@@ -138,5 +148,49 @@
     "emailTaken": "Este correo ya está en uso",
     "loginWithGoogle": "Iniciar sesión con Google",
     "loginWithApple": "Iniciar sesión con Apple"
+  },
+  "ageGate": {
+    "title": "Verificación de edad",
+    "subtitle": "Selecciona tu fecha de nacimiento",
+    "year": "Año",
+    "month": "Mes",
+    "day": "Día",
+    "yearPlaceholder": "AAAA",
+    "monthPlaceholder": "MM",
+    "dayPlaceholder": "DD",
+    "info": "Esta información es necesaria para tu seguridad y cumplimiento legal.",
+    "pleaseEnterDate": "Por favor ingresa tu fecha de nacimiento",
+    "invalidDate": "Fecha de nacimiento inválida"
+  },
+  "consent": {
+    "title": "Preferencias de privacidad",
+    "subtitle": "Elige cómo se utilizarán tus datos",
+    "kvkkInfo": "Nos importa tu privacidad. Estas preferencias están protegidas por KVKK.",
+    "gdprInfo": "Nos importa tu privacidad. Estas preferencias están protegidas por GDPR.",
+    "ccpaInfo": "Nos importa tu privacidad. Estas preferencias están protegidas por CCPA.",
+    "defaultInfo": "Configura tus preferencias para proteger tus datos.",
+    "essential": "Cookies esenciales",
+    "essentialDesc": "Necesarias para el funcionamiento de la aplicación. No se pueden desactivar.",
+    "analytics": "Cookies analíticas",
+    "analyticsDesc": "Se utilizan para analizar y mejorar el rendimiento de la aplicación.",
+    "marketing": "Cookies de marketing",
+    "marketingDesc": "Nos permite enviar notificaciones sobre campañas y ofertas especiales.",
+    "personalizedAds": "Anuncios personalizados",
+    "personalizedAdsDesc": "Nos permite mostrarte anuncios basados en tus intereses.",
+    "dataTransfer": "Transferencia internacional de datos",
+    "dataTransferDesc": "Se requiere consentimiento explícito para transferir tus datos a servidores en el extranjero según KVKK.",
+    "acceptAll": "Aceptar todo",
+    "rejectAll": "Rechazar todo",
+    "save": "Guardar y continuar",
+    "privacyPolicyLink": "Revisa nuestra política de privacidad para más detalles",
+    "childModeRestriction": "Estas funciones están deshabilitadas en modo infantil por seguridad.",
+    "saveError": "No se pudieron guardar tus preferencias. Por favor, inténtalo de nuevo.",
+    "saveSuccess": "¡Tus preferencias se han guardado correctamente!",
+    "learnMore": "Más información",
+    "viewPrivacyPolicy": "Política de privacidad",
+    "viewCookiePolicy": "Política de cookies",
+    "viewKvkkInfo": "Divulgación KVKK",
+    "required": "Requerido",
+    "optional": "Opcional"
   }
 }

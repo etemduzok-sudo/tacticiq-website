@@ -8,6 +8,7 @@ import {
   Platform,
   ScrollView,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -28,20 +29,6 @@ const AnimatedView = Platform.OS === 'web'
       }
     })();
 
-// Platform-specific FadeInDown - Web için no-op, native için reanimated
-const getFadeInDown = () => {
-  if (Platform.OS === 'web') {
-    return { delay: () => getFadeInDown(), springify: () => getFadeInDown() };
-  }
-  try {
-    const Reanimated = require('react-native-reanimated');
-    return Reanimated.FadeInDown || { delay: () => getFadeInDown(), springify: () => getFadeInDown() };
-  } catch {
-    return { delay: () => getFadeInDown(), springify: () => getFadeInDown() };
-  }
-};
-const FadeInDown = getFadeInDown();
-
 import {
   ConsentPreferences,
   detectRegion,
@@ -54,9 +41,14 @@ import {
 interface ConsentScreenProps {
   onComplete: () => void;
   onBack?: () => void;
+  onViewLegalDoc?: (documentType: string) => void;
 }
 
-export const ConsentScreen: React.FC<ConsentScreenProps> = ({ onComplete, onBack }) => {
+export const ConsentScreen: React.FC<ConsentScreenProps> = ({ 
+  onComplete, 
+  onBack,
+  onViewLegalDoc 
+}) => {
   // All hooks must be called unconditionally and in the same order
   const { t } = useTranslation();
   const [region, setRegion] = useState<ConsentPreferences['region']>('OTHER');
@@ -70,6 +62,7 @@ export const ConsentScreen: React.FC<ConsentScreenProps> = ({ onComplete, onBack
   });
   const [isChild, setIsChild] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     initializeConsent();
@@ -123,6 +116,14 @@ export const ConsentScreen: React.FC<ConsentScreenProps> = ({ onComplete, onBack
   };
 
   const handleAcceptAll = () => {
+    if (isChild) {
+      Alert.alert(
+        t('common.info') || 'Bilgi',
+        t('consent.childModeRestriction') || 'Çocuk modunda tüm özellikler kabul edilemez'
+      );
+      return;
+    }
+
     setPreferences({
       essential: true,
       analytics: true,
@@ -147,6 +148,7 @@ export const ConsentScreen: React.FC<ConsentScreenProps> = ({ onComplete, onBack
   };
 
   const handleSave = async () => {
+    setSaving(true);
     try {
       const finalPreferences: ConsentPreferences = {
         ...preferences,
@@ -157,14 +159,64 @@ export const ConsentScreen: React.FC<ConsentScreenProps> = ({ onComplete, onBack
       await saveConsentPreferences(finalPreferences);
       await applyConsentPreferences(finalPreferences);
       
-      onComplete();
+      Alert.alert(
+        t('common.done') || 'Tamam',
+        t('consent.saveSuccess') || 'Tercihleriniz kaydedildi',
+        [
+          {
+            text: t('common.done') || 'Tamam',
+            onPress: () => onComplete(),
+          },
+        ]
+      );
     } catch (error) {
       Alert.alert(
         t('common.error') || 'Hata',
         t('consent.saveError') || 'Tercihler kaydedilemedi'
       );
+    } finally {
+      setSaving(false);
     }
   };
+
+  const handleViewLegal = (documentType: string) => {
+    if (onViewLegalDoc) {
+      onViewLegalDoc(documentType);
+    }
+  };
+
+  const getInfoMessage = () => {
+    switch (region) {
+      case 'TR':
+        return t('consent.kvkkInfo') || 'Gizliliğinizi önemsiyoruz. Bu tercihler KVKK kapsamında korunmaktadır.';
+      case 'EU':
+        return t('consent.gdprInfo') || 'Gizliliğinizi önemsiyoruz. Bu tercihler GDPR kapsamında korunmaktadır.';
+      case 'US':
+        return t('consent.ccpaInfo') || 'Gizliliğinizi önemsiyoruz. Bu tercihler CCPA kapsamında korunmaktadır.';
+      default:
+        return t('consent.defaultInfo') || 'Verilerinizi korumak için tercihlerinizi belirleyin.';
+    }
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <LinearGradient
+          colors={AUTH_GRADIENT.colors}
+          style={styles.container}
+          start={AUTH_GRADIENT.start}
+          end={AUTH_GRADIENT.end}
+        >
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={BRAND.emerald} />
+            <Text style={styles.loadingText}>
+              {t('common.loading') || 'Yükleniyor...'}
+            </Text>
+          </View>
+        </LinearGradient>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -174,13 +226,6 @@ export const ConsentScreen: React.FC<ConsentScreenProps> = ({ onComplete, onBack
         start={AUTH_GRADIENT.start}
         end={AUTH_GRADIENT.end}
       >
-        {loading ? (
-          <View style={styles.loadingContainer}>
-            <Text style={styles.loadingText}>
-              {t('common.loading') || 'Yükleniyor...'}
-            </Text>
-          </View>
-        ) : (
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
@@ -197,12 +242,7 @@ export const ConsentScreen: React.FC<ConsentScreenProps> = ({ onComplete, onBack
 
           {/* Info Box */}
           <AnimatedView style={styles.infoBox}>
-            <Text style={styles.infoText}>
-              {region === 'TR' && t('consent.kvkkInfo') || 
-               region === 'EU' && t('consent.gdprInfo') ||
-               region === 'US' && t('consent.ccpaInfo') ||
-               t('consent.defaultInfo') || 'Verilerinizi korumak için tercihlerinizi belirleyin'}
-            </Text>
+            <Text style={styles.infoText}>{getInfoMessage()}</Text>
           </AnimatedView>
 
           {/* Consent Options */}
@@ -210,9 +250,16 @@ export const ConsentScreen: React.FC<ConsentScreenProps> = ({ onComplete, onBack
             {/* Essential (Always On) */}
             <View style={styles.optionCard}>
               <View style={styles.optionContent}>
-                <Text style={styles.optionTitle}>
-                  {t('consent.essential') || 'Zorunlu Çerezler'}
-                </Text>
+                <View style={styles.optionHeader}>
+                  <Text style={styles.optionTitle}>
+                    {t('consent.essential') || 'Zorunlu Çerezler'}
+                  </Text>
+                  <View style={styles.requiredBadge}>
+                    <Text style={styles.requiredText}>
+                      {t('consent.required') || 'Zorunlu'}
+                    </Text>
+                  </View>
+                </View>
                 <Text style={styles.optionDescription}>
                   {t('consent.essentialDesc') || 'Uygulamanın çalışması için gerekli'}
                 </Text>
@@ -223,92 +270,120 @@ export const ConsentScreen: React.FC<ConsentScreenProps> = ({ onComplete, onBack
             </View>
 
             {/* Analytics */}
-            <View style={styles.optionCard}>
+            <TouchableOpacity
+              style={styles.optionCard}
+              onPress={() => handleToggle('analytics')}
+              disabled={isChild}
+              activeOpacity={0.7}
+            >
               <View style={styles.optionContent}>
-                <Text style={styles.optionTitle}>
-                  {t('consent.analytics') || 'Analitik'}
-                </Text>
+                <View style={styles.optionHeader}>
+                  <Text style={styles.optionTitle}>
+                    {t('consent.analytics') || 'Analitik'}
+                  </Text>
+                  <View style={styles.optionalBadge}>
+                    <Text style={styles.optionalText}>
+                      {t('consent.optional') || 'İsteğe Bağlı'}
+                    </Text>
+                  </View>
+                </View>
                 <Text style={styles.optionDescription}>
                   {t('consent.analyticsDesc') || 'Uygulama performansını analiz etmek için'}
                 </Text>
               </View>
-              <TouchableOpacity
-                style={[styles.toggle, preferences.analytics && styles.toggleActive]}
-                onPress={() => handleToggle('analytics')}
-                disabled={isChild}
-                activeOpacity={0.7}
-              >
+              <View style={[styles.toggle, preferences.analytics && styles.toggleActive]}>
                 <Text style={styles.toggleText}>
                   {preferences.analytics ? '✓' : ''}
                 </Text>
-              </TouchableOpacity>
-            </View>
+              </View>
+            </TouchableOpacity>
 
             {/* Marketing */}
-            <View style={styles.optionCard}>
+            <TouchableOpacity
+              style={styles.optionCard}
+              onPress={() => handleToggle('marketing')}
+              disabled={isChild}
+              activeOpacity={0.7}
+            >
               <View style={styles.optionContent}>
-                <Text style={styles.optionTitle}>
-                  {t('consent.marketing') || 'Pazarlama'}
-                </Text>
+                <View style={styles.optionHeader}>
+                  <Text style={styles.optionTitle}>
+                    {t('consent.marketing') || 'Pazarlama'}
+                  </Text>
+                  <View style={styles.optionalBadge}>
+                    <Text style={styles.optionalText}>
+                      {t('consent.optional') || 'İsteğe Bağlı'}
+                    </Text>
+                  </View>
+                </View>
                 <Text style={styles.optionDescription}>
                   {t('consent.marketingDesc') || 'Kampanya ve bildirimler için'}
                 </Text>
               </View>
-              <TouchableOpacity
-                style={[styles.toggle, preferences.marketing && styles.toggleActive]}
-                onPress={() => handleToggle('marketing')}
-                disabled={isChild}
-                activeOpacity={0.7}
-              >
+              <View style={[styles.toggle, preferences.marketing && styles.toggleActive]}>
                 <Text style={styles.toggleText}>
                   {preferences.marketing ? '✓' : ''}
                 </Text>
-              </TouchableOpacity>
-            </View>
+              </View>
+            </TouchableOpacity>
 
             {/* Personalized Ads */}
-            <View style={styles.optionCard}>
+            <TouchableOpacity
+              style={styles.optionCard}
+              onPress={() => handleToggle('personalizedAds')}
+              disabled={isChild}
+              activeOpacity={0.7}
+            >
               <View style={styles.optionContent}>
-                <Text style={styles.optionTitle}>
-                  {t('consent.personalizedAds') || 'Kişiselleştirilmiş Reklamlar'}
-                </Text>
+                <View style={styles.optionHeader}>
+                  <Text style={styles.optionTitle}>
+                    {t('consent.personalizedAds') || 'Kişiselleştirilmiş Reklamlar'}
+                  </Text>
+                  <View style={styles.optionalBadge}>
+                    <Text style={styles.optionalText}>
+                      {t('consent.optional') || 'İsteğe Bağlı'}
+                    </Text>
+                  </View>
+                </View>
                 <Text style={styles.optionDescription}>
                   {t('consent.personalizedAdsDesc') || 'İlgi alanlarınıza göre reklamlar'}
                 </Text>
               </View>
-              <TouchableOpacity
-                style={[styles.toggle, preferences.personalizedAds && styles.toggleActive]}
-                onPress={() => handleToggle('personalizedAds')}
-                disabled={isChild}
-                activeOpacity={0.7}
-              >
+              <View style={[styles.toggle, preferences.personalizedAds && styles.toggleActive]}>
                 <Text style={styles.toggleText}>
                   {preferences.personalizedAds ? '✓' : ''}
                 </Text>
-              </TouchableOpacity>
-            </View>
+              </View>
+            </TouchableOpacity>
 
             {/* Data Transfer (Turkey specific) */}
             {region === 'TR' && (
-              <View style={styles.optionCard}>
+              <TouchableOpacity
+                style={styles.optionCard}
+                onPress={() => handleToggle('dataTransfer')}
+                activeOpacity={0.7}
+              >
                 <View style={styles.optionContent}>
-                  <Text style={styles.optionTitle}>
-                    {t('consent.dataTransfer') || 'Yurt Dışına Veri Aktarımı'}
-                  </Text>
+                  <View style={styles.optionHeader}>
+                    <Text style={styles.optionTitle}>
+                      {t('consent.dataTransfer') || 'Yurt Dışına Veri Aktarımı'}
+                    </Text>
+                    <View style={styles.optionalBadge}>
+                      <Text style={styles.optionalText}>
+                        {t('consent.optional') || 'İsteğe Bağlı'}
+                      </Text>
+                    </View>
+                  </View>
                   <Text style={styles.optionDescription}>
                     {t('consent.dataTransferDesc') || 'KVKK kapsamında açık rıza gereklidir'}
                   </Text>
                 </View>
-                <TouchableOpacity
-                  style={[styles.toggle, preferences.dataTransfer && styles.toggleActive]}
-                  onPress={() => handleToggle('dataTransfer')}
-                  activeOpacity={0.7}
-                >
+                <View style={[styles.toggle, preferences.dataTransfer && styles.toggleActive]}>
                   <Text style={styles.toggleText}>
                     {preferences.dataTransfer ? '✓' : ''}
                   </Text>
-                </TouchableOpacity>
-              </View>
+                </View>
+              </TouchableOpacity>
             )}
           </AnimatedView>
 
@@ -318,6 +393,7 @@ export const ConsentScreen: React.FC<ConsentScreenProps> = ({ onComplete, onBack
               onPress={handleRejectAll}
               style={styles.rejectButton}
               activeOpacity={0.8}
+              disabled={saving}
             >
               <Text style={styles.rejectButtonText}>
                 {t('consent.rejectAll') || 'Tümünü Reddet'}
@@ -328,6 +404,7 @@ export const ConsentScreen: React.FC<ConsentScreenProps> = ({ onComplete, onBack
               onPress={handleAcceptAll}
               style={styles.acceptButton}
               activeOpacity={0.8}
+              disabled={saving || isChild}
             >
               <Text style={styles.acceptButtonText}>
                 {t('consent.acceptAll') || 'Tümünü Kabul Et'}
@@ -341,6 +418,7 @@ export const ConsentScreen: React.FC<ConsentScreenProps> = ({ onComplete, onBack
               onPress={handleSave}
               activeOpacity={0.8}
               style={styles.saveButton}
+              disabled={saving}
             >
               <LinearGradient
                 colors={[BRAND.emerald, '#047857']}
@@ -348,21 +426,54 @@ export const ConsentScreen: React.FC<ConsentScreenProps> = ({ onComplete, onBack
                 end={{ x: 1, y: 0 }}
                 style={styles.saveButtonGradient}
               >
-                <Text style={styles.saveButtonText}>
-                  {t('consent.save') || 'Kaydet ve Devam Et'}
-                </Text>
+                {saving ? (
+                  <ActivityIndicator size="small" color={BRAND.white} />
+                ) : (
+                  <Text style={styles.saveButtonText}>
+                    {t('consent.save') || 'Kaydet ve Devam Et'}
+                  </Text>
+                )}
               </LinearGradient>
             </TouchableOpacity>
           </AnimatedView>
 
-          {/* Privacy Policy Link */}
-          <AnimatedView style={styles.linkContainer}>
-            <Text style={styles.linkText}>
-              {t('consent.privacyPolicyLink') || 'Detaylı bilgi için Gizlilik Politikası'}
-            </Text>
+          {/* Legal Links */}
+          <AnimatedView style={styles.linksContainer}>
+            <TouchableOpacity
+              onPress={() => handleViewLegal('privacy')}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.linkText}>
+                {t('consent.viewPrivacyPolicy') || 'Gizlilik Politikası'}
+              </Text>
+            </TouchableOpacity>
+            
+            <Text style={styles.linkSeparator}>•</Text>
+            
+            <TouchableOpacity
+              onPress={() => handleViewLegal('cookies')}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.linkText}>
+                {t('consent.viewCookiePolicy') || 'Çerez Politikası'}
+              </Text>
+            </TouchableOpacity>
+
+            {region === 'TR' && (
+              <>
+                <Text style={styles.linkSeparator}>•</Text>
+                <TouchableOpacity
+                  onPress={() => handleViewLegal('kvkk')}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.linkText}>
+                    {t('consent.viewKvkkInfo') || 'KVKK Aydınlatma'}
+                  </Text>
+                </TouchableOpacity>
+              </>
+            )}
           </AnimatedView>
         </ScrollView>
-        )}
       </LinearGradient>
     </SafeAreaView>
   );
@@ -384,6 +495,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    gap: SPACING.md,
   },
   loadingText: {
     color: BRAND.white,
@@ -395,7 +507,7 @@ const styles = StyleSheet.create({
   },
   title: {
     ...TYPOGRAPHY.h2,
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: '700',
     color: BRAND.white,
     textAlign: 'center',
@@ -403,24 +515,24 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     ...TYPOGRAPHY.body,
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 15,
+    color: 'rgba(255, 255, 255, 0.85)',
     textAlign: 'center',
   },
   infoBox: {
-    backgroundColor: 'rgba(5, 150, 105, 0.2)',
-    borderRadius: 12,
-    padding: SPACING.md,
-    marginBottom: SPACING.lg,
-    borderWidth: 1,
-    borderColor: 'rgba(5, 150, 105, 0.3)',
+    backgroundColor: 'rgba(5, 150, 105, 0.15)',
+    borderRadius: 14,
+    padding: SPACING.lg,
+    marginBottom: SPACING.xl,
+    borderWidth: 1.5,
+    borderColor: 'rgba(5, 150, 105, 0.4)',
   },
   infoText: {
     ...TYPOGRAPHY.bodySmall,
     fontSize: 14,
     color: BRAND.white,
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 21,
   },
   optionsContainer: {
     marginBottom: SPACING.xl,
@@ -428,35 +540,69 @@ const styles = StyleSheet.create({
   optionCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 12,
-    padding: SPACING.md,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 14,
+    padding: SPACING.lg,
     marginBottom: SPACING.md,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderColor: 'rgba(255, 255, 255, 0.15)',
   },
   optionContent: {
     flex: 1,
     marginRight: SPACING.md,
+  },
+  optionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: SPACING.xs,
+    gap: SPACING.xs,
   },
   optionTitle: {
     ...TYPOGRAPHY.body,
     fontSize: 16,
     fontWeight: '600',
     color: BRAND.white,
-    marginBottom: SPACING.xs,
+    flex: 1,
   },
   optionDescription: {
     ...TYPOGRAPHY.bodySmall,
     fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.7)',
-    lineHeight: 18,
+    color: 'rgba(255, 255, 255, 0.75)',
+    lineHeight: 19,
+  },
+  requiredBadge: {
+    backgroundColor: 'rgba(5, 150, 105, 0.2)',
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: 2,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: BRAND.emerald,
+  },
+  requiredText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: BRAND.emerald,
+    textTransform: 'uppercase',
+  },
+  optionalBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: 2,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  optionalText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.6)',
+    textTransform: 'uppercase',
   },
   toggle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 2,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 2.5,
     borderColor: 'rgba(255, 255, 255, 0.3)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -465,6 +611,11 @@ const styles = StyleSheet.create({
   toggleActive: {
     backgroundColor: BRAND.emerald,
     borderColor: BRAND.emerald,
+    shadowColor: BRAND.emerald,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
   toggleDisabled: {
     backgroundColor: 'rgba(5, 150, 105, 0.3)',
@@ -472,8 +623,8 @@ const styles = StyleSheet.create({
   },
   toggleText: {
     color: BRAND.white,
-    fontSize: 20,
-    fontWeight: '600',
+    fontSize: 22,
+    fontWeight: '700',
   },
   actionsContainer: {
     flexDirection: 'row',
@@ -483,11 +634,11 @@ const styles = StyleSheet.create({
   rejectButton: {
     flex: 1,
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 12,
-    paddingVertical: SPACING.md,
+    borderRadius: 14,
+    paddingVertical: SPACING.lg,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
   },
   rejectButtonText: {
     ...TYPOGRAPHY.button,
@@ -497,11 +648,11 @@ const styles = StyleSheet.create({
   },
   acceptButton: {
     flex: 1,
-    backgroundColor: 'rgba(5, 150, 105, 0.3)',
-    borderRadius: 12,
-    paddingVertical: SPACING.md,
+    backgroundColor: 'rgba(5, 150, 105, 0.25)',
+    borderRadius: 14,
+    paddingVertical: SPACING.lg,
     alignItems: 'center',
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: BRAND.emerald,
   },
   acceptButtonText: {
@@ -511,31 +662,47 @@ const styles = StyleSheet.create({
     color: BRAND.white,
   },
   saveContainer: {
-    marginBottom: SPACING.lg,
+    marginBottom: SPACING.xl,
   },
   saveButton: {
-    borderRadius: 12,
+    borderRadius: 14,
     overflow: 'hidden',
+    shadowColor: BRAND.emerald,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
   },
   saveButtonGradient: {
-    paddingVertical: SPACING.md,
+    paddingVertical: SPACING.lg,
     paddingHorizontal: SPACING.xl,
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: 52,
   },
   saveButtonText: {
     ...TYPOGRAPHY.button,
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 17,
+    fontWeight: '700',
     color: BRAND.white,
   },
-  linkContainer: {
+  linksContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+    gap: SPACING.sm,
   },
   linkText: {
     ...TYPOGRAPHY.bodySmall,
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.6)',
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.7)',
     textDecorationLine: 'underline',
+    fontWeight: '500',
+  },
+  linkSeparator: {
+    color: 'rgba(255, 255, 255, 0.4)',
+    fontSize: 14,
+    fontWeight: '400',
   },
 });

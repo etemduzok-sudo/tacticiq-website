@@ -13,18 +13,18 @@ export const useTranslation = () => {
     
     return {
       t: t || ((key: string, fallback?: string) => fallback || key),
-      i18n: i18n || { language: 'tr' },
+      i18n: i18n || { language: 'en' },
       isRTL: currentIsRTL,
-      language: i18n?.language || 'tr',
+      language: i18n?.language || 'en',
     };
   } catch (error) {
     // ✅ i18n initialize edilmemişse fallback döndür
     console.warn('useTranslation: i18n not initialized, using fallback', error);
     return {
       t: (key: string, fallback?: string) => fallback || key,
-      i18n: { language: 'tr' },
+      i18n: { language: 'en' },
       isRTL: false,
-      language: 'tr',
+      language: 'en',
     };
   }
 };

@@ -9,7 +9,17 @@
     "edit": "Edit",
     "back": "Back",
     "next": "Next",
-    "done": "Done"
+    "done": "Done",
+    "continue": "Continue"
+  },
+  "languageSelection": {
+    "title": "Language Selection",
+    "subtitle": "Please select your language",
+    "legalSummaryTitle": "Legal Information",
+    "legalSummaryDesc": "Please read the following documents to continue:",
+    "iAccept": "I have read and accept",
+    "pleaseAccept": "Please read and accept the legal documents",
+    "legalSummary": "By using the TacticIQ platform, you accept the Terms of Service, Privacy Policy, and KVKK Disclosure.\n\n• Your personal data will be processed under KVKK/GDPR\n• No right of withdrawal for digital content sales\n• Virtual items have no cash value\n• Parental consent required for users under 13"
   },
   "dashboard": {
     "title": "Analyst Control Panel",
@@ -138,5 +148,91 @@
     "emailTaken": "This email is already in use",
     "loginWithGoogle": "Login with Google",
     "loginWithApple": "Login with Apple"
+  },
+  "ageGate": {
+    "title": "Age Verification",
+    "subtitle": "Select your date of birth",
+    "year": "Year",
+    "month": "Month",
+    "day": "Day",
+    "yearPlaceholder": "YYYY",
+    "monthPlaceholder": "MM",
+    "dayPlaceholder": "DD",
+    "info": "This information is required for your safety and legal compliance.",
+    "pleaseEnterDate": "Please enter your date of birth",
+    "invalidDate": "Invalid date of birth"
+  },
+  "legal": {
+    "title": "Legal Documents",
+    "description": "Platform terms and legal information",
+    "select": "Select a document",
+    "close": "Close",
+    "accept": "I Accept",
+    "terms": {
+      "title": "Terms of Use",
+      "description": "Service terms and user responsibilities",
+      "fullContent": "Last Updated: January 1, 2026\\n\\n1. INTRODUCTION\\nThese Terms govern your use of TacticIQ platform.\\n\\n2. VIRTUAL ITEMS\\nPoints, XP are virtual, non-refundable, no cash value.\\n\\n3. INTELLECTUAL PROPERTY\\nAll rights belong to TacticIQ.\\n\\n4. WITHDRAWAL\\nNo withdrawal for digital content.\\n\\n5. CONTACT\\nlegal@tacticiq.app"
+    },
+    "privacy": {
+      "title": "Privacy Policy",
+      "description": "GDPR, CCPA, KVKK compliant",
+      "fullContent": "Last Updated: January 1, 2026\\n\\n1. DATA COLLECTION\\nWe process device ID, IP, location and activity data.\\n\\n2. REGIONAL RIGHTS\\n\\nTURKEY (KVKK):\\nData Controller: TacticIQ\\n\\nEUROPE (GDPR):\\nRight to delete, transfer data.\\n\\nUSA (CCPA/COPPA):\\nUnder 13 requires parental consent.\\n\\n3. CONTACT\\nprivacy@tacticiq.app"
+    },
+    "cookies": {
+      "title": "Cookie Policy",
+      "description": "Cookie usage",
+      "fullContent": "Last Updated: January 1, 2026\\n\\n1. USAGE\\nWe use cookies to improve experience.\\n\\n2. TYPES\\n- Essential\\n- Functional\\n- Analytics\\n- Marketing\\n\\n3. MANAGEMENT\\nSettings menu"
+    },
+    "kvkk": {
+      "title": "KVKK Disclosure",
+      "description": "Turkish KVKK law",
+      "fullContent": "DATA CONTROLLER: TacticIQ\\nkvkk@tacticiq.app\\n\\nDATA PROCESSED:\\n- Identity\\n- Contact\\n- Activity\\n- Device/IP\\n\\nPURPOSES:\\n- Service\\n- Improvement\\n- Security\\n\\nRIGHTS:\\nkvkk@tacticiq.app"
+    },
+    "consent": {
+      "title": "Explicit Consent",
+      "description": "KVKK consent",
+      "fullContent": "DISCLOSURE:\\nI am informed\\nI know purposes\\nI know my rights\\n\\nCONSENT:\\nI give explicit consent for processing my Identity, Contact, Activity, Device data.\\n\\nWITHDRAWAL:\\nkvkk@tacticiq.app"
+    },
+    "sales": {
+      "title": "Distance Sales Contract",
+      "description": "Digital content sales",
+      "fullContent": "SELLER: TacticIQ\\nsales@tacticiq.app\\n\\nPRODUCT: Pro Membership\\nPAYMENT: App Store/Play\\n\\nWITHDRAWAL:\\nNo withdrawal for digital content.\\n\\nNO REFUND"
+    },
+    "dmca": {
+      "title": "Copyright Notice",
+      "description": "IP and DMCA",
+      "fullContent": "TacticIQ 2026\\n\\nINTELLECTUAL PROPERTY:\\n- Code\\n- Design\\n- Brand/Logo\\n- Content\\n\\nUSAGE PROHIBITED\\n\\nDMCA:\\ncopyright@tacticiq.app"
+    }
+  },
+  "consent": {
+    "title": "Privacy Preferences",
+    "subtitle": "Choose how your data will be used",
+    "kvkkInfo": "We care about your privacy. These preferences are protected under KVKK.",
+    "gdprInfo": "We care about your privacy. These preferences are protected under GDPR.",
+    "ccpaInfo": "We care about your privacy. These preferences are protected under CCPA.",
+    "defaultInfo": "Set your preferences to protect your data.",
+    "essential": "Essential Cookies",
+    "essentialDesc": "Required for the app to function. Cannot be disabled.",
+    "analytics": "Analytics Cookies",
+    "analyticsDesc": "Used to analyze and improve app performance.",
+    "marketing": "Marketing Cookies",
+    "marketingDesc": "Allows us to send notifications about campaigns and special offers.",
+    "personalizedAds": "Personalized Ads",
+    "personalizedAdsDesc": "Allows us to show you ads based on your interests.",
+    "dataTransfer": "International Data Transfer",
+    "dataTransferDesc": "Explicit consent required for transferring your data to servers abroad under KVKK.",
+    "acceptAll": "Accept All",
+    "rejectAll": "Reject All",
+    "save": "Save and Continue",
+    "privacyPolicyLink": "Review our Privacy Policy for details",
+    "childModeRestriction": "These features are disabled in child mode for safety.",
+    "saveError": "Your preferences could not be saved. Please try again.",
+    "saveSuccess": "Your preferences have been saved successfully!",
+    "learnMore": "Learn More",
+    "viewPrivacyPolicy": "Privacy Policy",
+    "viewCookiePolicy": "Cookie Policy",
+    "viewKvkkInfo": "KVKK Disclosure",
+    "required": "Required",
+    "optional": "Optional"
   }
 }

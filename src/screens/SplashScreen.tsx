@@ -12,7 +12,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 // ✅ Animasyon import'ları kaldırıldı (sıçrama yok)
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
-  SPLASH_GRADIENT,
+  AUTH_GRADIENT,
 } from '../theme/gradients';
 import {
   BRAND,
@@ -138,10 +138,10 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <LinearGradient
-        colors={SPLASH_GRADIENT.colors}
+        colors={AUTH_GRADIENT.colors}
         style={styles.container}
-        start={SPLASH_GRADIENT.start}
-        end={SPLASH_GRADIENT.end}
+        start={AUTH_GRADIENT.start}
+        end={AUTH_GRADIENT.end}
       >
         {/* ✅ Animated Background Pattern kaldırıldı (baloncuklar) */}
 
@@ -183,7 +183,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: SPLASH_GRADIENT.colors[0],
+    backgroundColor: AUTH_GRADIENT.colors[0],
   },
   container: {
     flex: 1,

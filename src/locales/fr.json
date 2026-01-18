@@ -9,7 +9,17 @@
     "edit": "Modifier",
     "back": "Retour",
     "next": "Suivant",
-    "done": "Terminé"
+    "done": "Terminé",
+    "continue": "Continuer"
+  },
+  "languageSelection": {
+    "title": "Sélection de la langue",
+    "subtitle": "Veuillez sélectionner votre langue",
+    "legalSummaryTitle": "Informations légales",
+    "legalSummaryDesc": "Veuillez lire les documents suivants:",
+    "iAccept": "J'ai lu et j'accepte",
+    "pleaseAccept": "Veuillez lire et accepter les documents légaux",
+    "legalSummary": "En utilisant la plateforme TacticIQ, vous acceptez les Conditions d'utilisation, la Politique de confidentialité et la Divulgation KVKK.\n\n• Vos données personnelles seront traitées conformément à KVKK/RGPD\n• Pas de droit de rétractation pour les ventes de contenu numérique\n• Les objets virtuels n'ont aucune valeur monétaire\n• Consentement parental requis pour les utilisateurs de moins de 13 ans"
   },
   "dashboard": {
     "title": "Panneau de Contrôle de l'Analyste",
@@ -138,5 +148,49 @@
     "emailTaken": "Cet e-mail est déjà utilisé",
     "loginWithGoogle": "Se connecter avec Google",
     "loginWithApple": "Se connecter avec Apple"
+  },
+  "ageGate": {
+    "title": "Vérification de l'âge",
+    "subtitle": "Sélectionnez votre date de naissance",
+    "year": "Année",
+    "month": "Mois",
+    "day": "Jour",
+    "yearPlaceholder": "AAAA",
+    "monthPlaceholder": "MM",
+    "dayPlaceholder": "JJ",
+    "info": "Ces informations sont requises pour votre sécurité et la conformité légale.",
+    "pleaseEnterDate": "Veuillez entrer votre date de naissance",
+    "invalidDate": "Date de naissance invalide"
+  },
+  "consent": {
+    "title": "Préférences de confidentialité",
+    "subtitle": "Choisissez comment vos données seront utilisées",
+    "kvkkInfo": "Nous nous soucions de votre vie privée. Ces préférences sont protégées par le KVKK.",
+    "gdprInfo": "Nous nous soucions de votre vie privée. Ces préférences sont protégées par le RGPD.",
+    "ccpaInfo": "Nous nous soucions de votre vie privée. Ces préférences sont protégées par le CCPA.",
+    "defaultInfo": "Définissez vos préférences pour protéger vos données.",
+    "essential": "Cookies essentiels",
+    "essentialDesc": "Nécessaires au fonctionnement de l'application. Ne peuvent pas être désactivés.",
+    "analytics": "Cookies analytiques",
+    "analyticsDesc": "Utilisés pour analyser et améliorer les performances de l'application.",
+    "marketing": "Cookies marketing",
+    "marketingDesc": "Nous permet d'envoyer des notifications sur les campagnes et offres spéciales.",
+    "personalizedAds": "Publicités personnalisées",
+    "personalizedAdsDesc": "Nous permet de vous montrer des publicités basées sur vos intérêts.",
+    "dataTransfer": "Transfert international de données",
+    "dataTransferDesc": "Consentement explicite requis pour le transfert de vos données vers des serveurs à l'étranger selon le KVKK.",
+    "acceptAll": "Tout accepter",
+    "rejectAll": "Tout refuser",
+    "save": "Enregistrer et continuer",
+    "privacyPolicyLink": "Consultez notre politique de confidentialité pour plus de détails",
+    "childModeRestriction": "Ces fonctionnalités sont désactivées en mode enfant par sécurité.",
+    "saveError": "Vos préférences n'ont pas pu être enregistrées. Veuillez réessayer.",
+    "saveSuccess": "Vos préférences ont été enregistrées avec succès!",
+    "learnMore": "En savoir plus",
+    "viewPrivacyPolicy": "Politique de confidentialité",
+    "viewCookiePolicy": "Politique des cookies",
+    "viewKvkkInfo": "Divulgation KVKK",
+    "required": "Requis",
+    "optional": "Optionnel"
   }
 }

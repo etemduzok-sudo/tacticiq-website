@@ -23,7 +23,7 @@ import Animated, {
 import { BRAND, COLORS, SPACING, TYPOGRAPHY, SIZES } from '../theme/theme';
 import { AUTH_GRADIENT } from '../theme/gradients';
 import { STANDARD_LAYOUT, STANDARD_INPUT, STANDARD_COLORS } from '../constants/standardLayout';
-// Logo component removed - using text placeholder
+import { WEBSITE_COLORS, WEBSITE_GRADIENTS, WEBSITE_SPACING, WEBSITE_TYPOGRAPHY } from '../theme/websiteTheme';
 // import authService from '../services/authService'; // Real Supabase
 import authService from '../services/mockAuthService'; // Mock (geçici test için)
 
@@ -152,10 +152,11 @@ export default function ForgotPasswordScreen({
                   {/* [B] BRAND ZONE */}
                   <View style={styles.brandZone}>
                     <Image
-                      source={require('../../assets/logo.png')}
-                      style={styles.logoImage}
+                      source={Platform.OS === 'web' ? { uri: '/TacticIQ.svg' } : require('../../assets/logo.png')}
+                      style={{ width: 80, height: 80 }}
                       resizeMode="contain"
                     />
+                    <Text style={styles.brandTitle}>TacticIQ</Text>
                   </View>
 
                   {/* [C] PRIMARY ACTION ZONE - SPACER (no social buttons on this screen) */}
@@ -234,10 +235,11 @@ export default function ForgotPasswordScreen({
                   {/* [B] BRAND ZONE */}
                   <View style={styles.brandZone}>
                     <Image
-                      source={require('../../assets/logo.png')}
-                      style={styles.logoImage}
+                      source={Platform.OS === 'web' ? { uri: '/TacticIQ.svg' } : require('../../assets/logo.png')}
+                      style={{ width: 80, height: 80 }}
                       resizeMode="contain"
                     />
+                    <Text style={styles.brandTitle}>TacticIQ</Text>
                   </View>
 
                   {/* Success Message */}
@@ -334,13 +336,17 @@ const styles = StyleSheet.create({
   brandZone: {
     alignItems: 'center',
     justifyContent: 'flex-start',
-    marginTop: 15, // %30 azaltıldı (22 * 0.7 - tahmini üst boşluk)
-    marginBottom: 15, // %30 azaltıldı (22 * 0.7 - tahmini alt boşluk)
+    marginTop: 15,
+    marginBottom: 20,
     paddingVertical: 0,
   },
-  logoImage: {
-    width: 96,
-    height: 96,
+  brandTitle: {
+    ...TYPOGRAPHY.h2,
+    fontSize: 24,
+    fontWeight: '800',
+    color: BRAND.white,
+    marginTop: SPACING.sm,
+    letterSpacing: 0.5,
   },
   
   // [C] PRIMARY ACTION ZONE - SPACER

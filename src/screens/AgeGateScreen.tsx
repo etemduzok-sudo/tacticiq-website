@@ -7,15 +7,15 @@ import {
   TouchableOpacity,
   Platform,
   Alert,
-  TextInput,
   ScrollView,
   Image,
+  ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { BRAND, COLORS, SPACING, TYPOGRAPHY, DARK_MODE } from '../theme/theme';
+import { BRAND, SPACING, TYPOGRAPHY } from '../theme/theme';
 import { AUTH_GRADIENT } from '../theme/gradients';
-import { STANDARD_LAYOUT, STANDARD_INPUT, STANDARD_COLORS } from '../constants/standardLayout';
 import { useTranslation } from '../hooks/useTranslation';
 import {
   ConsentPreferences,
@@ -23,10 +23,9 @@ import {
   getDefaultConsentPreferences,
   saveConsentPreferences,
   applyConsentPreferences,
-  isChildMode,
 } from '../services/consentService';
+import { LEGAL_DOCUMENTS, getLegalContent } from '../data/legalContent';
 
-// Logo
 const logoImage = require('../../assets/logo.png');
 
 interface AgeGateScreenProps {
@@ -34,14 +33,17 @@ interface AgeGateScreenProps {
 }
 
 const CURRENT_YEAR = new Date().getFullYear();
+const YEARS = Array.from({ length: 83 }, (_, i) => CURRENT_YEAR - 18 - i);
+const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
+const DAYS = Array.from({ length: 31 }, (_, i) => i + 1);
 
 export const AgeGateScreen: React.FC<AgeGateScreenProps> = ({ onComplete }) => {
   const { t } = useTranslation();
-  const [birthYear, setBirthYear] = useState<string>('');
-  const [birthMonth, setBirthMonth] = useState<string>('');
-  const [birthDay, setBirthDay] = useState<string>('');
-
-  // Consent states
+  
+  const [selectedYear, setSelectedYear] = useState(CURRENT_YEAR - 25);
+  const [selectedMonth, setSelectedMonth] = useState(1);
+  const [selectedDay, setSelectedDay] = useState(1);
+  
   const [region, setRegion] = useState<ConsentPreferences['region']>('OTHER');
   const [preferences, setPreferences] = useState<ConsentPreferences>({
     essential: true,
@@ -51,12 +53,18 @@ export const AgeGateScreen: React.FC<AgeGateScreenProps> = ({ onComplete }) => {
     dataTransfer: false,
     timestamp: new Date().toISOString(),
   });
+  
+  const [showConsentModal, setShowConsentModal] = useState(false);
+  const [showLegalModal, setShowLegalModal] = useState(false);
+  const [selectedLegalDoc, setSelectedLegalDoc] = useState<string | null>(null);
+  const [expandedConsent, setExpandedConsent] = useState<string | null>(null);
   const [isChild, setIsChild] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [legalAccepted, setLegalAccepted] = useState(false);
 
   useEffect(() => {
     initializeConsent();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const initializeConsent = async () => {
@@ -73,35 +81,10 @@ export const AgeGateScreen: React.FC<AgeGateScreenProps> = ({ onComplete }) => {
     }
   };
 
-  const calculateAge = (): number | null => {
-    const year = parseInt(birthYear);
-    const month = parseInt(birthMonth);
-    const day = parseInt(birthDay);
-
-    if (!year || !month || !day || isNaN(year) || isNaN(month) || isNaN(day)) {
-      return null;
-    }
-
-    if (year < CURRENT_YEAR - 120 || year > CURRENT_YEAR) {
-      return null;
-    }
-
-    if (month < 1 || month > 12) {
-      return null;
-    }
-
-    if (day < 1 || day > 31) {
-      return null;
-    }
-
+  const calculateAge = (): number => {
     const today = new Date();
-    const birthDate = new Date(year, month - 1, day);
+    const birthDate = new Date(selectedYear, selectedMonth - 1, selectedDay);
     
-    // Validate date
-    if (birthDate.getFullYear() !== year || birthDate.getMonth() !== month - 1 || birthDate.getDate() !== day) {
-      return null;
-    }
-
     let age = today.getFullYear() - birthDate.getFullYear();
     const monthDiff = today.getMonth() - birthDate.getMonth();
 
@@ -112,10 +95,8 @@ export const AgeGateScreen: React.FC<AgeGateScreenProps> = ({ onComplete }) => {
     return age;
   };
 
-  // ✅ handleAgeContinue kaldırıldı - Artık handleSave içinde yaş doğrulaması yapılıyor
-
-  const handleToggle = (key: keyof ConsentPreferences) => {
-    if (key === 'essential') return; // Essential cannot be disabled
+  const handleToggleConsent = (key: keyof ConsentPreferences) => {
+    if (key === 'essential') return;
     
     if (isChild && (key === 'analytics' || key === 'marketing' || key === 'personalizedAds')) {
       Alert.alert(
@@ -132,6 +113,8 @@ export const AgeGateScreen: React.FC<AgeGateScreenProps> = ({ onComplete }) => {
   };
 
   const handleAcceptAll = () => {
+    if (isChild) return;
+
     setPreferences({
       essential: true,
       analytics: true,
@@ -155,58 +138,53 @@ export const AgeGateScreen: React.FC<AgeGateScreenProps> = ({ onComplete }) => {
     });
   };
 
-  const handleSave = async () => {
-    try {
-      // ✅ Önce yaş doğrulaması yap
-      const age = calculateAge();
+  const handleSaveConsent = () => {
+    setShowConsentModal(false);
+  };
 
-      if (age === null) {
-        Alert.alert(
-          t('common.error') || 'Hata',
-          t('ageGate.pleaseEnterDate') || 'Lütfen doğum tarihinizi giriniz'
-        );
-        return;
-      }
+  const handleContinue = async () => {
+    if (!legalAccepted) {
+      Alert.alert(
+        t('common.error') || 'Hata',
+        'Lütfen yasal belgeleri okuyup kabul edin'
+      );
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const age = calculateAge();
 
       if (age < 0 || age > 120) {
         Alert.alert(
           t('common.error') || 'Hata',
           t('ageGate.invalidDate') || 'Geçersiz doğum tarihi'
         );
+        setSaving(false);
         return;
       }
 
-      // Save age info
       await AsyncStorage.setItem('user-age', JSON.stringify({
-        year: parseInt(birthYear),
-        month: parseInt(birthMonth),
-        day: parseInt(birthDay),
+        year: selectedYear,
+        month: selectedMonth,
+        day: selectedDay,
         age,
         verifiedAt: new Date().toISOString(),
       }));
 
-      // Determine if minor based on region
-      const isMinor = age < 13; // Using COPPA standard as most restrictive
+      const isMinor = age < 13;
 
-      // Enable child mode if minor
       if (isMinor) {
         await AsyncStorage.setItem('child-mode', 'true');
         await AsyncStorage.setItem('data-collection-disabled', 'true');
-        setIsChild(true);
-        // Disable all non-essential for children
-        setPreferences({
-          ...preferences,
-          analytics: false,
-          marketing: false,
-          personalizedAds: false,
-          dataTransfer: false,
-        });
+        preferences.analytics = false;
+        preferences.marketing = false;
+        preferences.personalizedAds = false;
+        preferences.dataTransfer = false;
       } else {
         await AsyncStorage.setItem('child-mode', 'false');
-        setIsChild(false);
       }
 
-      // ✅ Sonra consent tercihlerini kaydet
       const finalPreferences: ConsentPreferences = {
         ...preferences,
         region,
@@ -216,31 +194,245 @@ export const AgeGateScreen: React.FC<AgeGateScreenProps> = ({ onComplete }) => {
       await saveConsentPreferences(finalPreferences);
       await applyConsentPreferences(finalPreferences);
       
-      // ✅ Her ikisi de tamamlandı, devam et
-      console.log('✅ AgeGateScreen: handleSave completed, calling onComplete', { isMinor });
       onComplete(isMinor);
     } catch (error) {
-      console.error('❌ AgeGateScreen: handleSave error', error);
-      Alert.alert(
-        t('common.error') || 'Hata',
-        t('consent.saveError') || 'Tercihler kaydedilemedi'
-      );
+      console.error('Error:', error);
+      Alert.alert(t('common.error') || 'Hata', 'Bir hata oluştu');
+      setSaving(false);
     }
+  };
+
+  const renderPicker = (
+    items: number[],
+    selectedValue: number,
+    onSelect: (val: number) => void,
+    formatter?: (val: number) => string
+  ) => {
+    return (
+      <ScrollView
+        style={styles.pickerScroll}
+        showsVerticalScrollIndicator={false}
+        nestedScrollEnabled={true}
+      >
+        {items.map((item) => {
+          const isSelected = item === selectedValue;
+          return (
+            <TouchableOpacity
+              key={item}
+              onPress={() => onSelect(item)}
+              style={[styles.pickerItem, isSelected && styles.pickerItemSelected]}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.pickerItemText, isSelected && styles.pickerItemTextSelected]}>
+                {formatter ? formatter(item) : item}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+    );
+  };
+
+  const renderConsentModal = () => (
+    <Modal
+      visible={showConsentModal}
+      animationType="slide"
+      transparent={true}
+      onRequestClose={() => setShowConsentModal(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>{t('consent.title') || 'Gizlilik Tercihleri'}</Text>
+            <TouchableOpacity onPress={() => setShowConsentModal(false)}>
+              <Text style={styles.modalClose}>✕</Text>
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
+            {/* Essential */}
+            <TouchableOpacity style={styles.consentItem} onPress={() => setExpandedConsent(expandedConsent === 'essential' ? null : 'essential')}>
+              <View style={styles.consentRow}>
+                <Text style={styles.consentLabel}>{t('consent.essential') || 'Zorunlu Çerezler'}</Text>
+                <View style={[styles.toggle, styles.toggleActive]}>
+                  <Text style={styles.toggleText}>✓</Text>
+                </View>
+              </View>
+              {expandedConsent === 'essential' && (
+                <Text style={styles.consentDesc}>{t('consent.essentialDesc')}</Text>
+              )}
+            </TouchableOpacity>
+
+            {/* Analytics */}
+            <TouchableOpacity style={styles.consentItem} onPress={() => setExpandedConsent(expandedConsent === 'analytics' ? null : 'analytics')}>
+              <View style={styles.consentRow}>
+                <Text style={styles.consentLabel}>{t('consent.analytics') || 'Analitik'}</Text>
+                <TouchableOpacity
+                  style={[styles.toggle, preferences.analytics && styles.toggleActive]}
+                  onPress={(e) => { e.stopPropagation(); handleToggleConsent('analytics'); }}
+                  disabled={isChild}
+                >
+                  <Text style={styles.toggleText}>{preferences.analytics ? '✓' : ''}</Text>
+                </TouchableOpacity>
+              </View>
+              {expandedConsent === 'analytics' && (
+                <Text style={styles.consentDesc}>{t('consent.analyticsDesc')}</Text>
+              )}
+            </TouchableOpacity>
+
+            {/* Marketing */}
+            <TouchableOpacity style={styles.consentItem} onPress={() => setExpandedConsent(expandedConsent === 'marketing' ? null : 'marketing')}>
+              <View style={styles.consentRow}>
+                <Text style={styles.consentLabel}>{t('consent.marketing') || 'Pazarlama'}</Text>
+                <TouchableOpacity
+                  style={[styles.toggle, preferences.marketing && styles.toggleActive]}
+                  onPress={(e) => { e.stopPropagation(); handleToggleConsent('marketing'); }}
+                  disabled={isChild}
+                >
+                  <Text style={styles.toggleText}>{preferences.marketing ? '✓' : ''}</Text>
+                </TouchableOpacity>
+              </View>
+              {expandedConsent === 'marketing' && (
+                <Text style={styles.consentDesc}>{t('consent.marketingDesc')}</Text>
+              )}
+            </TouchableOpacity>
+
+            {/* Personalized Ads */}
+            <TouchableOpacity style={styles.consentItem} onPress={() => setExpandedConsent(expandedConsent === 'personalizedAds' ? null : 'personalizedAds')}>
+              <View style={styles.consentRow}>
+                <Text style={styles.consentLabel}>{t('consent.personalizedAds') || 'Kişisel Reklamlar'}</Text>
+                <TouchableOpacity
+                  style={[styles.toggle, preferences.personalizedAds && styles.toggleActive]}
+                  onPress={(e) => { e.stopPropagation(); handleToggleConsent('personalizedAds'); }}
+                  disabled={isChild}
+                >
+                  <Text style={styles.toggleText}>{preferences.personalizedAds ? '✓' : ''}</Text>
+                </TouchableOpacity>
+              </View>
+              {expandedConsent === 'personalizedAds' && (
+                <Text style={styles.consentDesc}>{t('consent.personalizedAdsDesc')}</Text>
+              )}
+            </TouchableOpacity>
+
+            {/* Data Transfer (TR only) */}
+            {region === 'TR' && (
+              <TouchableOpacity style={styles.consentItem} onPress={() => setExpandedConsent(expandedConsent === 'dataTransfer' ? null : 'dataTransfer')}>
+                <View style={styles.consentRow}>
+                  <Text style={styles.consentLabel}>{t('consent.dataTransfer') || 'Veri Aktarımı'}</Text>
+                  <TouchableOpacity
+                    style={[styles.toggle, preferences.dataTransfer && styles.toggleActive]}
+                    onPress={(e) => { e.stopPropagation(); handleToggleConsent('dataTransfer'); }}
+                  >
+                    <Text style={styles.toggleText}>{preferences.dataTransfer ? '✓' : ''}</Text>
+                  </TouchableOpacity>
+                </View>
+                {expandedConsent === 'dataTransfer' && (
+                  <Text style={styles.consentDesc}>{t('consent.dataTransferDesc')}</Text>
+                )}
+              </TouchableOpacity>
+            )}
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.rejectBtn} onPress={handleRejectAll}>
+                <Text style={styles.rejectText}>{t('consent.rejectAll') || 'Reddet'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.acceptBtn} onPress={handleAcceptAll} disabled={isChild}>
+                <Text style={styles.acceptText}>{t('consent.acceptAll') || 'Kabul Et'}</Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+
+          <TouchableOpacity style={styles.modalSaveButton} onPress={handleSaveConsent}>
+            <LinearGradient colors={[BRAND.emerald, '#047857']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.modalSaveGradient}>
+              <Text style={styles.modalSaveText}>{t('common.save') || 'Kaydet'}</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+
+  const renderLegalModal = () => (
+    <Modal
+      visible={showLegalModal}
+      animationType="slide"
+      transparent={false}
+      onRequestClose={() => setShowLegalModal(false)}
+    >
+      <SafeAreaView style={styles.legalModalContainer}>
+        <LinearGradient colors={AUTH_GRADIENT.colors} style={styles.legalGradient} start={AUTH_GRADIENT.start} end={AUTH_GRADIENT.end}>
+          <View style={styles.legalHeader}>
+            <Text style={styles.legalHeaderTitle}>{t('legal.title') || 'Yasal Belgeler'}</Text>
+            <TouchableOpacity onPress={() => setShowLegalModal(false)}>
+              <Text style={styles.legalClose}>✕</Text>
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={styles.legalScroll} showsVerticalScrollIndicator={false}>
+            {LEGAL_DOCUMENTS.map((doc) => (
+              <TouchableOpacity
+                key={doc.id}
+                style={styles.legalDocItem}
+                onPress={() => setSelectedLegalDoc(selectedLegalDoc === doc.id ? null : doc.id)}
+                activeOpacity={0.8}
+              >
+                <View style={styles.legalDocHeader}>
+                  <Text style={styles.legalDocIcon}>{doc.icon}</Text>
+                  <Text style={styles.legalDocTitle}>{t(doc.titleKey) || doc.titleKey}</Text>
+                  <Text style={styles.legalDocArrow}>{selectedLegalDoc === doc.id ? '▼' : '▶'}</Text>
+                </View>
+                {selectedLegalDoc === doc.id && (
+                  <View style={styles.legalDocContent}>
+                    <ScrollView style={styles.legalContentScroll} nestedScrollEnabled={true} showsVerticalScrollIndicator={false}>
+                      <Text style={styles.legalDocText}>
+                        {getLegalContent(doc.id, t)?.content || t(`legal.${doc.id}.fullContent`) || 'İçerik yükleniyor...'}
+                      </Text>
+                    </ScrollView>
+                  </View>
+                )}
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+
+          <TouchableOpacity style={styles.legalAcceptButton} onPress={() => { setLegalAccepted(true); setShowLegalModal(false); }}>
+            <LinearGradient colors={[BRAND.emerald, '#047857']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.legalAcceptGradient}>
+              <Text style={styles.legalAcceptText}>{t('legal.accept') || 'Kabul Ediyorum'}</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </LinearGradient>
+      </SafeAreaView>
+    </Modal>
+  );
+
+  const renderScrollablePicker = (
+    items: number[],
+    selectedValue: number,
+    onSelect: (val: number) => void,
+    formatter?: (val: number) => string
+  ) => {
+    return (
+      <ScrollView style={styles.pickerScroll} showsVerticalScrollIndicator={false} nestedScrollEnabled={true}>
+        {items.map((item) => {
+          const isSelected = item === selectedValue;
+          return (
+            <TouchableOpacity key={item} onPress={() => onSelect(item)} style={[styles.pickerItem, isSelected && styles.pickerItemSelected]} activeOpacity={0.7}>
+              <Text style={[styles.pickerItemText, isSelected && styles.pickerItemTextSelected]}>
+                {formatter ? formatter(item) : item}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+    );
   };
 
   if (loading) {
     return (
       <SafeAreaView style={styles.safeArea}>
-        <LinearGradient
-          colors={AUTH_GRADIENT.colors}
-          style={styles.container}
-          start={AUTH_GRADIENT.start}
-          end={AUTH_GRADIENT.end}
-        >
+        <LinearGradient colors={AUTH_GRADIENT.colors} style={styles.container} start={AUTH_GRADIENT.start} end={AUTH_GRADIENT.end}>
           <View style={styles.loadingContainer}>
-            <Text style={styles.loadingText}>
-              {t('common.loading') || 'Yükleniyor...'}
-            </Text>
+            <ActivityIndicator size="large" color={BRAND.emerald} />
+            <Text style={styles.loadingText}>{t('common.loading') || 'Yükleniyor...'}</Text>
           </View>
         </LinearGradient>
       </SafeAreaView>
@@ -249,538 +441,131 @@ export const AgeGateScreen: React.FC<AgeGateScreenProps> = ({ onComplete }) => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <LinearGradient
-        colors={AUTH_GRADIENT.colors}
-        style={styles.container}
-        start={AUTH_GRADIENT.start}
-        end={AUTH_GRADIENT.end}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View style={styles.content}>
-            {/* Logo - Standart boyut (96x96), sıçrama yok */}
-            <View style={styles.brandContainer}>
-              <Image 
-                source={logoImage} 
-                style={styles.logoImage}
-                resizeMode="contain"
-              />
-            </View>
+      <LinearGradient colors={AUTH_GRADIENT.colors} style={styles.container} start={AUTH_GRADIENT.start} end={AUTH_GRADIENT.end}>
+        <View style={styles.content}>
+          <Image source={logoImage} style={styles.logo} resizeMode="contain" />
+          
+          <Text style={styles.title}>{t('ageGate.title') || 'Yaş Doğrulama'}</Text>
+          <Text style={styles.subtitle}>{t('ageGate.subtitle') || 'Doğum tarihinizi seçin'}</Text>
 
-            {/* ✅ Yaş Doğrulama ve Yasal Bilgilendirme - Tek Ekranda Birleştirildi */}
-            
-            {/* Age Verification Section */}
-            <View style={styles.titleContainer}>
-              <Text style={styles.title}>
-                {t('ageGate.title') || 'Yaş Doğrulama'}
-              </Text>
-              <Text style={styles.subtitle}>
-                {t('ageGate.subtitle') || 'Lütfen doğum tarihinizi giriniz'}
-              </Text>
-            </View>
-
-            {/* Date Inputs - Tek Satır */}
-            <View style={styles.inputContainer}>
-              <View style={styles.inputRow}>
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>
-                    {t('ageGate.year') || 'Yıl'}
-                  </Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder={t('ageGate.yearPlaceholder') || 'YYYY'}
-                    placeholderTextColor="rgba(255, 255, 255, 0.5)"
-                    value={birthYear}
-                    onChangeText={(text) => setBirthYear(text.replace(/[^0-9]/g, ''))}
-                    keyboardType="numeric"
-                    maxLength={4}
-                    autoComplete="off"
-                    editable={true}
-                    selectTextOnFocus={false}
-                  />
-                </View>
-
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>
-                    {t('ageGate.month') || 'Ay'}
-                  </Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder={t('ageGate.monthPlaceholder') || 'MM'}
-                    placeholderTextColor="rgba(255, 255, 255, 0.5)"
-                    value={birthMonth}
-                    onChangeText={(text) => {
-                      const num = text.replace(/[^0-9]/g, '');
-                      if (num === '' || (parseInt(num) >= 1 && parseInt(num) <= 12)) {
-                        setBirthMonth(num);
-                      }
-                    }}
-                    keyboardType="numeric"
-                    maxLength={2}
-                    autoComplete="off"
-                    editable={true}
-                    selectTextOnFocus={false}
-                  />
-                </View>
-
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>
-                    {t('ageGate.day') || 'Gün'}
-                  </Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder={t('ageGate.dayPlaceholder') || 'DD'}
-                    placeholderTextColor="rgba(255, 255, 255, 0.5)"
-                    value={birthDay}
-                    onChangeText={(text) => {
-                      const num = text.replace(/[^0-9]/g, '');
-                      if (num === '' || (parseInt(num) >= 1 && parseInt(num) <= 31)) {
-                        setBirthDay(num);
-                      }
-                    }}
-                    keyboardType="numeric"
-                    maxLength={2}
-                    autoComplete="off"
-                    editable={true}
-                    selectTextOnFocus={false}
-                  />
-                </View>
+          <View style={styles.pickersContainer}>
+            <View style={styles.pickerColumn}>
+              <Text style={styles.pickerLabel}>{t('ageGate.year') || 'Yıl'}</Text>
+              <View style={styles.pickerWrapper}>
+                {renderScrollablePicker(YEARS, selectedYear, setSelectedYear)}
               </View>
             </View>
 
-            {/* Info Text */}
-            <View style={styles.infoContainer}>
-              <Text style={styles.infoText}>
-                {t('ageGate.info') || 'Bu bilgi güvenliğiniz ve yasal uyumluluk için gereklidir.'}
-              </Text>
+            <View style={styles.pickerColumn}>
+              <Text style={styles.pickerLabel}>{t('ageGate.month') || 'Ay'}</Text>
+              <View style={styles.pickerWrapper}>
+                {renderScrollablePicker(MONTHS, selectedMonth, setSelectedMonth, (m) => m.toString().padStart(2, '0'))}
+              </View>
             </View>
 
-            {/* Divider */}
-            <View style={styles.divider} />
-
-            {/* Consent Section */}
-            <View style={styles.titleContainer}>
-              <Text style={styles.title}>
-                {t('consent.title') || 'Gizlilik Tercihleri'}
-              </Text>
-              <Text style={styles.subtitle}>
-                {t('consent.subtitle') || 'Verilerinizin nasıl kullanılacağını seçin'}
-              </Text>
-            </View>
-
-            {/* Info Box */}
-            <View style={styles.infoBox}>
-              <Text style={styles.infoText}>
-                {region === 'TR' && (t('consent.kvkkInfo') || 'KVKK (6698 sayılı Kanun) kapsamında kişisel verilerinizin korunması için tercihlerinizi belirleyin.') ||
-                 region === 'EU' && (t('consent.gdprInfo') || 'GDPR kapsamında verilerinizin korunması için tercihlerinizi belirleyin.') ||
-                 region === 'US' && (t('consent.ccpaInfo') || 'CCPA kapsamında verilerinizin korunması için tercihlerinizi belirleyin.') ||
-                 t('consent.defaultInfo') || 'Verilerinizi korumak için tercihlerinizi belirleyin.'}
-              </Text>
-            </View>
-
-                {/* Consent Options */}
-                <View style={styles.optionsContainer}>
-                  {/* Essential (Always On) */}
-                  <View style={styles.optionCard}>
-                    <View style={styles.optionContent}>
-                      <Text style={styles.optionTitle}>
-                        {t('consent.essential') || 'Zorunlu Çerezler'}
-                      </Text>
-                      <Text style={styles.optionDescription}>
-                        {t('consent.essentialDesc') || 'Uygulamanın çalışması için gerekli'}
-                      </Text>
-                    </View>
-                    <View style={[styles.toggle, styles.toggleDisabled]}>
-                      <Text style={styles.toggleText}>✓</Text>
-                    </View>
-                  </View>
-
-                  {/* Analytics */}
-                  <View style={styles.optionCard}>
-                    <View style={styles.optionContent}>
-                      <Text style={styles.optionTitle}>
-                        {t('consent.analytics') || 'Analitik'}
-                      </Text>
-                      <Text style={styles.optionDescription}>
-                        {t('consent.analyticsDesc') || 'Uygulama performansını analiz etmek için'}
-                      </Text>
-                    </View>
-                    <TouchableOpacity
-                      style={[styles.toggle, preferences.analytics && styles.toggleActive]}
-                      onPress={() => handleToggle('analytics')}
-                      disabled={isChild}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={styles.toggleText}>
-                        {preferences.analytics ? '✓' : ''}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  {/* Marketing */}
-                  <View style={styles.optionCard}>
-                    <View style={styles.optionContent}>
-                      <Text style={styles.optionTitle}>
-                        {t('consent.marketing') || 'Pazarlama'}
-                      </Text>
-                      <Text style={styles.optionDescription}>
-                        {t('consent.marketingDesc') || 'Kampanya ve bildirimler için'}
-                      </Text>
-                    </View>
-                    <TouchableOpacity
-                      style={[styles.toggle, preferences.marketing && styles.toggleActive]}
-                      onPress={() => handleToggle('marketing')}
-                      disabled={isChild}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={styles.toggleText}>
-                        {preferences.marketing ? '✓' : ''}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  {/* Personalized Ads */}
-                  <View style={styles.optionCard}>
-                    <View style={styles.optionContent}>
-                      <Text style={styles.optionTitle}>
-                        {t('consent.personalizedAds') || 'Kişiselleştirilmiş Reklamlar'}
-                      </Text>
-                      <Text style={styles.optionDescription}>
-                        {t('consent.personalizedAdsDesc') || 'İlgi alanlarınıza göre reklamlar'}
-                      </Text>
-                    </View>
-                    <TouchableOpacity
-                      style={[styles.toggle, preferences.personalizedAds && styles.toggleActive]}
-                      onPress={() => handleToggle('personalizedAds')}
-                      disabled={isChild}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={styles.toggleText}>
-                        {preferences.personalizedAds ? '✓' : ''}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  {/* Data Transfer (Turkey specific) */}
-                  {region === 'TR' && (
-                    <View style={styles.optionCard}>
-                      <View style={styles.optionContent}>
-                        <Text style={styles.optionTitle}>
-                          {t('consent.dataTransfer') || 'Yurt Dışına Veri Aktarımı'}
-                        </Text>
-                        <Text style={styles.optionDescription}>
-                          {t('consent.dataTransferDesc') || 'KVKK kapsamında açık rıza gereklidir'}
-                        </Text>
-                      </View>
-                      <TouchableOpacity
-                        style={[styles.toggle, preferences.dataTransfer && styles.toggleActive]}
-                        onPress={() => handleToggle('dataTransfer')}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={styles.toggleText}>
-                          {preferences.dataTransfer ? '✓' : ''}
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-                  )}
-                </View>
-
-                {/* Action Buttons */}
-                <View style={styles.actionsContainer}>
-                  <TouchableOpacity
-                    onPress={handleRejectAll}
-                    style={styles.rejectButton}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={styles.rejectButtonText}>
-                      {t('consent.rejectAll') || 'Tümünü Reddet'}
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    onPress={handleAcceptAll}
-                    style={styles.acceptButton}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={styles.acceptButtonText}>
-                      {t('consent.acceptAll') || 'Tümünü Kabul Et'}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-
-                {/* Save Button */}
-                <View style={styles.saveContainer}>
-                  <TouchableOpacity
-                    onPress={handleSave}
-                    activeOpacity={0.8}
-                    style={styles.saveButton}
-                  >
-                    <LinearGradient
-                      colors={[BRAND.emerald, '#047857']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={styles.saveButtonGradient}
-                    >
-                      <Text style={styles.saveButtonText}>
-                        {t('consent.save') || 'Kaydet ve Devam Et'}
-                      </Text>
-                    </LinearGradient>
-                  </TouchableOpacity>
-                </View>
-
-            {/* Privacy Policy Link */}
-            <View style={styles.linkContainer}>
-              <Text style={styles.linkText}>
-                {t('consent.privacyPolicyLink') || 'Detaylı bilgi için Gizlilik Politikası'}
-              </Text>
+            <View style={styles.pickerColumn}>
+              <Text style={styles.pickerLabel}>{t('ageGate.day') || 'Gün'}</Text>
+              <View style={styles.pickerWrapper}>
+                {renderScrollablePicker(DAYS, selectedDay, setSelectedDay, (d) => d.toString().padStart(2, '0'))}
+              </View>
             </View>
           </View>
-        </ScrollView>
+
+          <View style={styles.buttonsRow}>
+            <TouchableOpacity style={styles.linkButton} onPress={() => setShowLegalModal(true)}>
+              <Text style={styles.linkButtonText}>📋 {t('legal.title') || 'Yasal Belgeler'}</Text>
+              {legalAccepted && <Text style={styles.checkmark}>✓</Text>}
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.linkButton} onPress={() => setShowConsentModal(true)}>
+              <Text style={styles.linkButtonText}>🔒 {t('consent.title') || 'Gizlilik'}</Text>
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity style={styles.continueButton} onPress={handleContinue} disabled={saving || !legalAccepted}>
+            <LinearGradient colors={[BRAND.emerald, '#047857']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.continueGradient}>
+              {saving ? (
+                <ActivityIndicator size="small" color={BRAND.white} />
+              ) : (
+                <Text style={styles.continueText}>{t('common.next') || 'Devam Et'}</Text>
+              )}
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+
+        {renderConsentModal()}
+        {renderLegalModal()}
       </LinearGradient>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: AUTH_GRADIENT.colors[0],
-  },
-  container: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: SPACING.xl,
-    paddingBottom: SPACING['2xl'],
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    color: BRAND.white,
-    fontSize: 16,
-  },
-  content: {
-    maxWidth: 400,
-    width: '100%',
-    alignSelf: 'center',
-  },
-  brandContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: SPACING.xl,
-  },
-  logoImage: {
-    width: 96,
-    height: 96,
-  },
-  titleContainer: {
-    alignItems: 'center',
-    marginBottom: SPACING.xl,
-  },
-  title: {
-    ...TYPOGRAPHY.h2,
-    fontSize: 24,
-    fontWeight: '700',
-    color: BRAND.white,
-    textAlign: 'center',
-    marginBottom: SPACING.sm,
-  },
-  subtitle: {
-    ...TYPOGRAPHY.body,
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.8)',
-    textAlign: 'center',
-  },
-  inputContainer: {
-    marginBottom: SPACING.lg,
-  },
-  inputRow: {
-    flexDirection: 'row',
-    gap: SPACING.md,
-    justifyContent: 'space-between',
-  },
-  inputGroup: {
-    flex: 1,
-  },
-  inputLabel: {
-    ...TYPOGRAPHY.bodySmall,
-    fontSize: 14,
-    color: BRAND.white,
-    marginBottom: SPACING.xs,
-    fontWeight: '500',
-  },
-  input: {
-    ...STANDARD_INPUT,
-    textAlign: 'center',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    minHeight: 50,
-    textAlign: 'center', // ✅ Ortalanmış metin (tek satır görünümü için)
-  },
-  infoContainer: {
-    marginBottom: SPACING.lg,
-  },
-  infoText: {
-    ...TYPOGRAPHY.bodySmall,
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.6)',
-    textAlign: 'center',
-    lineHeight: 18,
-  },
-  buttonContainer: {
-    marginTop: SPACING.lg,
-  },
-  continueButton: {
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  buttonGradient: {
-    paddingVertical: SPACING.md,
-    paddingHorizontal: SPACING.xl,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  buttonText: {
-    ...TYPOGRAPHY.button,
-    fontSize: 16,
-    fontWeight: '600',
-    color: BRAND.white,
-  },
-  // Consent styles
-  infoBox: {
-    backgroundColor: 'rgba(5, 150, 105, 0.2)',
-    borderRadius: 12,
-    padding: SPACING.md,
-    marginBottom: SPACING.lg,
-    borderWidth: 1,
-    borderColor: 'rgba(5, 150, 105, 0.3)',
-  },
-  optionsContainer: {
-    marginBottom: SPACING.xl,
-  },
-  optionCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 12,
-    padding: SPACING.md,
-    marginBottom: SPACING.md,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  optionContent: {
-    flex: 1,
-    marginRight: SPACING.md,
-  },
-  optionTitle: {
-    ...TYPOGRAPHY.body,
-    fontSize: 16,
-    fontWeight: '600',
-    color: BRAND.white,
-    marginBottom: SPACING.xs,
-  },
-  optionDescription: {
-    ...TYPOGRAPHY.bodySmall,
-    fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.7)',
-    lineHeight: 18,
-  },
-  toggle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'transparent',
-  },
-  toggleActive: {
-    backgroundColor: BRAND.emerald,
-    borderColor: BRAND.emerald,
-  },
-  toggleDisabled: {
-    backgroundColor: 'rgba(5, 150, 105, 0.3)',
-    borderColor: BRAND.emerald,
-  },
-  toggleText: {
-    color: BRAND.white,
-    fontSize: 20,
-    fontWeight: '600',
-  },
-  actionsContainer: {
-    flexDirection: 'row',
-    gap: SPACING.md,
-    marginBottom: SPACING.lg,
-  },
-  rejectButton: {
-    flex: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 12,
-    paddingVertical: SPACING.md,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  rejectButtonText: {
-    ...TYPOGRAPHY.button,
-    fontSize: 14,
-    fontWeight: '600',
-    color: BRAND.white,
-  },
-  acceptButton: {
-    flex: 1,
-    backgroundColor: 'rgba(5, 150, 105, 0.3)',
-    borderRadius: 12,
-    paddingVertical: SPACING.md,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: BRAND.emerald,
-  },
-  acceptButtonText: {
-    ...TYPOGRAPHY.button,
-    fontSize: 14,
-    fontWeight: '600',
-    color: BRAND.white,
-  },
-  saveContainer: {
-    marginBottom: SPACING.lg,
-  },
-  saveButton: {
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  saveButtonGradient: {
-    paddingVertical: SPACING.md,
-    paddingHorizontal: SPACING.xl,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  saveButtonText: {
-    ...TYPOGRAPHY.button,
-    fontSize: 16,
-    fontWeight: '600',
-    color: BRAND.white,
-  },
-  linkContainer: {
-    alignItems: 'center',
-  },
-  linkText: {
-    ...TYPOGRAPHY.bodySmall,
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.6)',
-    textDecorationLine: 'underline',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    marginVertical: SPACING.xl,
-    marginHorizontal: SPACING.lg,
-  },
+  safeArea: { flex: 1, backgroundColor: AUTH_GRADIENT.colors[0] },
+  container: { flex: 1 },
+  content: { flex: 1, paddingHorizontal: SPACING.xl, paddingVertical: SPACING.lg, justifyContent: 'space-between' },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: SPACING.md },
+  loadingText: { color: BRAND.white, fontSize: 16, marginTop: SPACING.sm },
+  logo: { width: 64, height: 64, alignSelf: 'center', marginBottom: SPACING.md },
+  title: { ...TYPOGRAPHY.h2, fontSize: 24, fontWeight: '700', color: BRAND.white, textAlign: 'center', marginBottom: SPACING.xs },
+  subtitle: { ...TYPOGRAPHY.body, fontSize: 14, color: 'rgba(255,255,255,0.75)', textAlign: 'center', marginBottom: SPACING.lg },
+  
+  pickersContainer: { flexDirection: 'row', gap: SPACING.sm, height: 140, marginBottom: SPACING.lg },
+  pickerColumn: { flex: 1 },
+  pickerLabel: { fontSize: 12, color: BRAND.white, textAlign: 'center', marginBottom: SPACING.xs, fontWeight: '600' },
+  pickerWrapper: { flex: 1, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', overflow: 'hidden' },
+  pickerScroll: { flex: 1 },
+  pickerItem: { paddingVertical: 10, alignItems: 'center' },
+  pickerItemSelected: { backgroundColor: 'rgba(5,150,105,0.25)' },
+  pickerItemText: { fontSize: 15, color: 'rgba(255,255,255,0.5)', fontWeight: '500' },
+  pickerItemTextSelected: { color: BRAND.emerald, fontWeight: '700', fontSize: 17 },
+  
+  buttonsRow: { flexDirection: 'row', gap: SPACING.sm, marginBottom: SPACING.md },
+  linkButton: { flex: 1, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 12, paddingVertical: SPACING.md, paddingHorizontal: SPACING.sm, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', flexDirection: 'row', justifyContent: 'center', gap: SPACING.xs },
+  linkButtonText: { fontSize: 13, fontWeight: '600', color: BRAND.white },
+  checkmark: { fontSize: 16, color: BRAND.emerald, fontWeight: '700' },
+  
+  continueButton: { borderRadius: 14, overflow: 'hidden' },
+  continueGradient: { paddingVertical: SPACING.md, alignItems: 'center', minHeight: 52 },
+  continueText: { fontSize: 16, fontWeight: '700', color: BRAND.white },
+  
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
+  modalContainer: { backgroundColor: '#1a1a1a', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '80%', paddingBottom: SPACING.xl },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: SPACING.lg, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.1)' },
+  modalTitle: { fontSize: 20, fontWeight: '700', color: BRAND.white },
+  modalClose: { fontSize: 28, color: 'rgba(255,255,255,0.6)', fontWeight: '300' },
+  modalContent: { maxHeight: 400, paddingHorizontal: SPACING.lg },
+  consentItem: { backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 12, padding: SPACING.md, marginVertical: SPACING.xs, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+  consentRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  consentLabel: { fontSize: 14, fontWeight: '600', color: BRAND.white, flex: 1 },
+  consentDesc: { fontSize: 11, color: 'rgba(255,255,255,0.65)', marginTop: SPACING.sm, lineHeight: 16 },
+  toggle: { width: 36, height: 36, borderRadius: 18, borderWidth: 2, borderColor: 'rgba(255,255,255,0.25)', alignItems: 'center', justifyContent: 'center' },
+  toggleActive: { backgroundColor: BRAND.emerald, borderColor: BRAND.emerald },
+  toggleText: { color: BRAND.white, fontSize: 16, fontWeight: '700' },
+  modalActions: { flexDirection: 'row', gap: SPACING.sm, padding: SPACING.lg },
+  rejectBtn: { flex: 1, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 12, paddingVertical: SPACING.md, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' },
+  rejectText: { fontSize: 13, fontWeight: '600', color: BRAND.white },
+  acceptBtn: { flex: 1, backgroundColor: 'rgba(5,150,105,0.2)', borderRadius: 12, paddingVertical: SPACING.md, alignItems: 'center', borderWidth: 1, borderColor: BRAND.emerald },
+  acceptText: { fontSize: 13, fontWeight: '600', color: BRAND.white },
+  modalSaveButton: { marginHorizontal: SPACING.lg, marginTop: SPACING.md, borderRadius: 14, overflow: 'hidden' },
+  modalSaveGradient: { paddingVertical: SPACING.md, alignItems: 'center' },
+  modalSaveText: { fontSize: 16, fontWeight: '700', color: BRAND.white },
+  
+  legalModalContainer: { flex: 1, backgroundColor: AUTH_GRADIENT.colors[0] },
+  legalGradient: { flex: 1 },
+  legalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: SPACING.lg, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.1)' },
+  legalHeaderTitle: { fontSize: 22, fontWeight: '700', color: BRAND.white },
+  legalClose: { fontSize: 32, color: BRAND.white, fontWeight: '300' },
+  legalScroll: { flex: 1, paddingHorizontal: SPACING.lg },
+  legalDocItem: { backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 12, padding: SPACING.md, marginVertical: SPACING.xs, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+  legalDocHeader: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
+  legalDocIcon: { fontSize: 22 },
+  legalDocTitle: { flex: 1, fontSize: 15, fontWeight: '600', color: BRAND.white },
+  legalDocArrow: { fontSize: 14, color: BRAND.emerald },
+  legalDocContent: { marginTop: SPACING.md, paddingTop: SPACING.md, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)', maxHeight: 200 },
+  legalContentScroll: { maxHeight: 180 },
+  legalDocText: { fontSize: 12, color: 'rgba(255,255,255,0.75)', lineHeight: 18 },
+  legalAcceptButton: { marginHorizontal: SPACING.lg, marginTop: SPACING.md, marginBottom: SPACING.lg, borderRadius: 14, overflow: 'hidden' },
+  legalAcceptGradient: { paddingVertical: SPACING.md, alignItems: 'center' },
+  legalAcceptText: { fontSize: 16, fontWeight: '700', color: BRAND.white },
 });

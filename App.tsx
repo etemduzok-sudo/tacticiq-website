@@ -252,6 +252,7 @@ if (Platform.OS === 'web') {
 
 // Screens
 import SplashScreen from './src/screens/SplashScreen';
+import OnboardingScreen from './src/screens/OnboardingScreen';
 import LanguageSelectionScreen from './src/screens/LanguageSelectionScreen';
 import { AgeGateScreen } from './src/screens/AgeGateScreen';
 import AuthScreen from './src/screens/AuthScreen';
@@ -276,6 +277,7 @@ import { DatabaseTestScreen } from './src/screens/DatabaseTestScreen';
 // Screen Types
 type Screen =
   | 'splash'
+  | 'onboarding'
   | 'language'
   | 'age-gate'
   | 'auth'
@@ -378,7 +380,23 @@ export default function App() {
   // NAVIGATION HANDLERS
   // ==========================================
 
-  // 1. Splash Complete
+  // 1. Onboarding Complete (replaces splash, language, age-gate flow)
+  const handleOnboardingComplete = async () => {
+    logger.info('Onboarding complete', undefined, 'ONBOARDING');
+    
+    try {
+      // Navigate to auth
+      logNavigation('auth');
+      setPreviousScreen(currentScreen);
+      setCurrentScreen('auth');
+    } catch (error) {
+      logger.error('Error in onboarding complete', { error }, 'ONBOARDING');
+      setPreviousScreen(currentScreen);
+      setCurrentScreen('auth');
+    }
+  };
+
+  // 1.5. Splash Complete (legacy - for existing users)
   const handleSplashComplete = async (hasUser: boolean) => {
     logger.info('Splash complete', { hasUser }, 'SPLASH');
     
@@ -416,15 +434,15 @@ export default function App() {
           setCurrentScreen('favorite-teams');
         }
       } else {
-        // No user → Language Selection
-        logNavigation('language');
+        // No user → Onboarding (new unified flow)
+        logNavigation('onboarding');
         setPreviousScreen(currentScreen);
-        setCurrentScreen('language');
+        setCurrentScreen('onboarding');
       }
     } catch (error) {
       logger.error('Error in splash complete', { error }, 'SPLASH');
       setPreviousScreen(currentScreen);
-      setCurrentScreen('language');
+      setCurrentScreen('onboarding');
     }
   };
 
@@ -739,6 +757,14 @@ export default function App() {
       switch (currentScreen) {
         case 'splash':
           return wrapWithAnimation(<SplashScreen onComplete={handleSplashComplete} />, 'splash');
+        
+        case 'onboarding':
+          return wrapWithAnimation(
+            <OnboardingScreen
+              onComplete={handleOnboardingComplete}
+            />,
+            'onboarding'
+          );
         
         case 'language':
           return wrapWithAnimation(
