@@ -47,7 +47,7 @@ import { Textarea } from '@/app/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import { Badge } from '@/app/components/ui/badge';
 import { useAdmin } from '@/contexts/AdminContext';
-import { AdminDataContext, CURRENCY_SYMBOLS, LANGUAGE_CURRENCY_MAP, AdSettings, SectionSettings } from '@/contexts/AdminDataContext';
+import { AdminDataContext, CURRENCY_SYMBOLS, LANGUAGE_CURRENCY_MAP, AdSettings, SectionSettings, SectionMediaItem } from '@/contexts/AdminDataContext';
 import { WebsiteEditor } from '@/app/components/admin/WebsiteEditor';
 import { ChangePasswordModal } from '@/app/components/auth/ChangePasswordModal';
 import { AdManagement } from '@/app/components/admin/AdManagement';
@@ -188,6 +188,12 @@ export function AdminPanel() {
             onClick={() => setActiveSection('partners')}
           />
           <MenuButton
+            icon={Image}
+            label="Medya Yönetimi"
+            active={activeSection === 'media'}
+            onClick={() => setActiveSection('media')}
+          />
+          <MenuButton
             icon={Tag}
             label="Fiyatlandırma & İndirim"
             active={activeSection === 'pricing'}
@@ -238,6 +244,7 @@ export function AdminPanel() {
             {activeSection === 'team' && <TeamManagement />}
             {activeSection === 'press' && <PressReleaseManagement />}
             {activeSection === 'partners' && <PartnerManagement />}
+            {activeSection === 'media' && <MediaContent />}
             {activeSection === 'pricing' && <PricingContent />}
             {activeSection === 'sections' && <SectionsContent />}
             {activeSection === 'game' && <GameContent />}
@@ -1279,6 +1286,500 @@ function AdsContent() {
 
       {/* Ad Management Component */}
       <AdManagement />
+    </div>
+  );
+}
+
+// Media Content - Medya Yönetimi (Her bölüm için görsel ve metin)
+function MediaContent() {
+  const contextData = useContext(AdminDataContext);
+  const sectionMedia = contextData?.sectionMedia || [];
+  const addSectionMedia = contextData?.addSectionMedia;
+  const updateSectionMedia = contextData?.updateSectionMedia;
+  const deleteSectionMedia = contextData?.deleteSectionMedia;
+
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [editingMedia, setEditingMedia] = useState<SectionMediaItem | null>(null);
+  const [selectedSection, setSelectedSection] = useState<string>('all');
+  
+  const [newMedia, setNewMedia] = useState({
+    sectionId: 'hero',
+    type: 'image' as 'image' | 'video' | 'text',
+    title: '',
+    description: '',
+    url: '',
+    altText: '',
+    order: 0,
+    enabled: true,
+  });
+
+  // Kullanılabilir bölümler
+  const sections = [
+    { id: 'hero', label: 'Ana Sayfa (Hero)' },
+    { id: 'features', label: 'Özellikler' },
+    { id: 'howItWorks', label: 'Nasıl Çalışır' },
+    { id: 'product', label: 'Ürün Tanıtım' },
+    { id: 'pricing', label: 'Fiyatlandırma' },
+    { id: 'testimonials', label: 'Kullanıcı Yorumları' },
+    { id: 'blog', label: 'Blog' },
+    { id: 'about', label: 'Hakkımızda' },
+    { id: 'partners', label: 'Ortaklar' },
+    { id: 'press', label: 'Basın' },
+    { id: 'faq', label: 'SSS' },
+    { id: 'contact', label: 'İletişim' },
+    { id: 'appDownload', label: 'Uygulama İndirme' },
+    { id: 'game', label: 'Oyun Sistemi' },
+    { id: 'cta', label: 'Aksiyon Çağrısı (CTA)' },
+  ];
+
+  // Filtrelenmiş medya
+  const filteredMedia = selectedSection === 'all' 
+    ? sectionMedia 
+    : sectionMedia.filter(m => m.sectionId === selectedSection);
+
+  const handleAddMedia = () => {
+    if (!newMedia.title) {
+      toast.error('Lütfen başlık girin');
+      return;
+    }
+    if (newMedia.type !== 'text' && !newMedia.url) {
+      toast.error('Lütfen görsel/video URL\'i girin');
+      return;
+    }
+
+    if (addSectionMedia) {
+      addSectionMedia(newMedia);
+      toast.success('Medya başarıyla eklendi');
+      setShowAddDialog(false);
+      setNewMedia({
+        sectionId: 'hero',
+        type: 'image',
+        title: '',
+        description: '',
+        url: '',
+        altText: '',
+        order: 0,
+        enabled: true,
+      });
+    }
+  };
+
+  const handleUpdateMedia = () => {
+    if (!editingMedia) return;
+    
+    if (updateSectionMedia) {
+      updateSectionMedia(editingMedia.id, editingMedia);
+      toast.success('Medya güncellendi');
+      setEditingMedia(null);
+    }
+  };
+
+  const handleDeleteMedia = (id: string, title: string) => {
+    if (confirm(`"${title}" öğesini silmek istediğinize emin misiniz?`)) {
+      if (deleteSectionMedia) {
+        deleteSectionMedia(id);
+        toast.success('Medya silindi');
+      }
+    }
+  };
+
+  if (!contextData) {
+    return <div className="p-4 text-center">Medya yükleniyor...</div>;
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold flex items-center gap-2">
+            <Image className="size-6" />
+            Medya Yönetimi
+          </h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Her bölüm için görsel, video ve metin içerikleri ekleyin
+          </p>
+        </div>
+        <Button className="gap-2" onClick={() => setShowAddDialog(true)}>
+          <Plus className="size-4" />
+          Yeni Medya Ekle
+        </Button>
+      </div>
+
+      {/* Bölüm Filtresi */}
+      <Card>
+        <CardContent className="pt-4">
+          <div className="flex items-center gap-4">
+            <Label>Bölüm Filtresi:</Label>
+            <Select value={selectedSection} onValueChange={setSelectedSection}>
+              <SelectTrigger className="w-[250px]">
+                <SelectValue placeholder="Bölüm seçin" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tüm Bölümler</SelectItem>
+                {sections.map(section => (
+                  <SelectItem key={section.id} value={section.id}>
+                    {section.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Badge variant="secondary">
+              {filteredMedia.length} medya
+            </Badge>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Medya Listesi */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {filteredMedia.map(media => (
+          <Card key={media.id} className={!media.enabled ? 'opacity-50' : ''}>
+            <CardHeader className="pb-2">
+              <div className="flex items-start justify-between">
+                <div>
+                  <CardTitle className="text-base">{media.title}</CardTitle>
+                  <CardDescription className="text-xs">
+                    {sections.find(s => s.id === media.sectionId)?.label || media.sectionId}
+                  </CardDescription>
+                </div>
+                <Badge variant={media.type === 'image' ? 'default' : media.type === 'video' ? 'secondary' : 'outline'}>
+                  {media.type === 'image' ? '🖼️ Görsel' : media.type === 'video' ? '🎬 Video' : '📝 Metin'}
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {/* Görsel Önizleme */}
+              {media.type === 'image' && media.url && (
+                <div className="aspect-video bg-muted rounded-lg overflow-hidden">
+                  <img 
+                    src={media.url} 
+                    alt={media.altText || media.title}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400x225?text=Görsel+Yüklenemedi';
+                    }}
+                  />
+                </div>
+              )}
+              
+              {media.type === 'video' && media.url && (
+                <div className="aspect-video bg-muted rounded-lg flex items-center justify-center">
+                  <span className="text-muted-foreground text-sm">🎬 Video: {media.url.substring(0, 30)}...</span>
+                </div>
+              )}
+
+              {media.type === 'text' && media.description && (
+                <p className="text-sm text-muted-foreground line-clamp-3">{media.description}</p>
+              )}
+
+              {/* Aksiyonlar */}
+              <div className="flex items-center justify-between pt-2 border-t">
+                <div className="flex items-center gap-2">
+                  <Button 
+                    size="sm" 
+                    variant="ghost"
+                    onClick={() => setEditingMedia(media)}
+                  >
+                    <Edit2 className="size-3 mr-1" />
+                    Düzenle
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="ghost"
+                    className="text-destructive hover:text-destructive"
+                    onClick={() => handleDeleteMedia(media.id, media.title)}
+                  >
+                    <Trash2 className="size-3 mr-1" />
+                    Sil
+                  </Button>
+                </div>
+                <Badge variant={media.enabled ? 'default' : 'secondary'}>
+                  {media.enabled ? 'Aktif' : 'Pasif'}
+                </Badge>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+
+        {filteredMedia.length === 0 && (
+          <div className="col-span-full text-center py-12 text-muted-foreground">
+            <Image className="size-16 mx-auto mb-4 opacity-50" />
+            <p>Bu bölümde henüz medya yok</p>
+            <Button 
+              variant="outline" 
+              className="mt-4 gap-2"
+              onClick={() => setShowAddDialog(true)}
+            >
+              <Plus className="size-4" />
+              İlk Medyayı Ekle
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* Yeni Medya Ekleme Dialog */}
+      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Yeni Medya Ekle</DialogTitle>
+            <DialogDescription>
+              Bir bölüme görsel, video veya metin içeriği ekleyin
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            {/* Bölüm Seçimi */}
+            <div className="space-y-2">
+              <Label>Bölüm</Label>
+              <Select 
+                value={newMedia.sectionId} 
+                onValueChange={(value) => setNewMedia({ ...newMedia, sectionId: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Bölüm seçin" />
+                </SelectTrigger>
+                <SelectContent>
+                  {sections.map(section => (
+                    <SelectItem key={section.id} value={section.id}>
+                      {section.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Tür Seçimi */}
+            <div className="space-y-2">
+              <Label>İçerik Türü</Label>
+              <Select 
+                value={newMedia.type} 
+                onValueChange={(value: 'image' | 'video' | 'text') => setNewMedia({ ...newMedia, type: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="image">🖼️ Görsel</SelectItem>
+                  <SelectItem value="video">🎬 Video</SelectItem>
+                  <SelectItem value="text">📝 Metin</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Başlık */}
+            <div className="space-y-2">
+              <Label>Başlık *</Label>
+              <Input
+                value={newMedia.title}
+                onChange={(e) => setNewMedia({ ...newMedia, title: e.target.value })}
+                placeholder="Medya başlığı"
+              />
+            </div>
+
+            {/* URL (Görsel/Video için) */}
+            {newMedia.type !== 'text' && (
+              <div className="space-y-2">
+                <Label>{newMedia.type === 'image' ? 'Görsel URL' : 'Video URL'} *</Label>
+                <Input
+                  value={newMedia.url}
+                  onChange={(e) => setNewMedia({ ...newMedia, url: e.target.value })}
+                  placeholder={newMedia.type === 'image' ? 'https://example.com/image.jpg' : 'https://youtube.com/watch?v=...'}
+                />
+                {newMedia.type === 'image' && newMedia.url && (
+                  <div className="mt-2 aspect-video bg-muted rounded-lg overflow-hidden max-w-xs">
+                    <img 
+                      src={newMedia.url} 
+                      alt="Önizleme"
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400x225?text=Görsel+Yüklenemedi';
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Alt Metin (Görsel için) */}
+            {newMedia.type === 'image' && (
+              <div className="space-y-2">
+                <Label>Alt Metin (SEO için)</Label>
+                <Input
+                  value={newMedia.altText}
+                  onChange={(e) => setNewMedia({ ...newMedia, altText: e.target.value })}
+                  placeholder="Görsel açıklaması"
+                />
+              </div>
+            )}
+
+            {/* Açıklama */}
+            <div className="space-y-2">
+              <Label>Açıklama {newMedia.type === 'text' ? '*' : ''}</Label>
+              <Textarea
+                value={newMedia.description}
+                onChange={(e) => setNewMedia({ ...newMedia, description: e.target.value })}
+                placeholder="İçerik açıklaması veya metin"
+                rows={3}
+              />
+            </div>
+
+            {/* Sıralama */}
+            <div className="space-y-2">
+              <Label>Sıralama</Label>
+              <Input
+                type="number"
+                value={newMedia.order}
+                onChange={(e) => setNewMedia({ ...newMedia, order: parseInt(e.target.value) || 0 })}
+                min={0}
+              />
+              <p className="text-xs text-muted-foreground">Düşük sayılar önce gösterilir</p>
+            </div>
+
+            {/* Aktif/Pasif */}
+            <div className="flex items-center justify-between">
+              <Label>Aktif</Label>
+              <Button
+                type="button"
+                variant={newMedia.enabled ? 'default' : 'secondary'}
+                size="sm"
+                onClick={() => setNewMedia({ ...newMedia, enabled: !newMedia.enabled })}
+              >
+                {newMedia.enabled ? 'Aktif' : 'Pasif'}
+              </Button>
+            </div>
+
+            {/* Kaydet */}
+            <div className="flex justify-end gap-2 pt-4 border-t">
+              <Button variant="outline" onClick={() => setShowAddDialog(false)}>
+                İptal
+              </Button>
+              <Button onClick={handleAddMedia} className="gap-2">
+                <Save className="size-4" />
+                Ekle
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Medya Düzenleme Dialog */}
+      <Dialog open={!!editingMedia} onOpenChange={() => setEditingMedia(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Medya Düzenle</DialogTitle>
+            <DialogDescription>
+              Medya içeriğini güncelleyin
+            </DialogDescription>
+          </DialogHeader>
+          {editingMedia && (
+            <div className="space-y-4 pt-4">
+              {/* Bölüm */}
+              <div className="space-y-2">
+                <Label>Bölüm</Label>
+                <Select 
+                  value={editingMedia.sectionId} 
+                  onValueChange={(value) => setEditingMedia({ ...editingMedia, sectionId: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sections.map(section => (
+                      <SelectItem key={section.id} value={section.id}>
+                        {section.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Başlık */}
+              <div className="space-y-2">
+                <Label>Başlık</Label>
+                <Input
+                  value={editingMedia.title}
+                  onChange={(e) => setEditingMedia({ ...editingMedia, title: e.target.value })}
+                />
+              </div>
+
+              {/* URL */}
+              {editingMedia.type !== 'text' && (
+                <div className="space-y-2">
+                  <Label>{editingMedia.type === 'image' ? 'Görsel URL' : 'Video URL'}</Label>
+                  <Input
+                    value={editingMedia.url || ''}
+                    onChange={(e) => setEditingMedia({ ...editingMedia, url: e.target.value })}
+                  />
+                  {editingMedia.type === 'image' && editingMedia.url && (
+                    <div className="mt-2 aspect-video bg-muted rounded-lg overflow-hidden max-w-xs">
+                      <img 
+                        src={editingMedia.url} 
+                        alt="Önizleme"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Alt Metin */}
+              {editingMedia.type === 'image' && (
+                <div className="space-y-2">
+                  <Label>Alt Metin</Label>
+                  <Input
+                    value={editingMedia.altText || ''}
+                    onChange={(e) => setEditingMedia({ ...editingMedia, altText: e.target.value })}
+                  />
+                </div>
+              )}
+
+              {/* Açıklama */}
+              <div className="space-y-2">
+                <Label>Açıklama</Label>
+                <Textarea
+                  value={editingMedia.description || ''}
+                  onChange={(e) => setEditingMedia({ ...editingMedia, description: e.target.value })}
+                  rows={3}
+                />
+              </div>
+
+              {/* Sıralama */}
+              <div className="space-y-2">
+                <Label>Sıralama</Label>
+                <Input
+                  type="number"
+                  value={editingMedia.order}
+                  onChange={(e) => setEditingMedia({ ...editingMedia, order: parseInt(e.target.value) || 0 })}
+                  min={0}
+                />
+              </div>
+
+              {/* Aktif/Pasif */}
+              <div className="flex items-center justify-between">
+                <Label>Aktif</Label>
+                <Button
+                  type="button"
+                  variant={editingMedia.enabled ? 'default' : 'secondary'}
+                  size="sm"
+                  onClick={() => setEditingMedia({ ...editingMedia, enabled: !editingMedia.enabled })}
+                >
+                  {editingMedia.enabled ? 'Aktif' : 'Pasif'}
+                </Button>
+              </div>
+
+              {/* Kaydet */}
+              <div className="flex justify-end gap-2 pt-4 border-t">
+                <Button variant="outline" onClick={() => setEditingMedia(null)}>
+                  İptal
+                </Button>
+                <Button onClick={handleUpdateMedia} className="gap-2">
+                  <Save className="size-4" />
+                  Güncelle
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

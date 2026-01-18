@@ -162,6 +162,21 @@ export interface AdSettings {
   adminEmail: string; // Reklam bildirimleri için mail
 }
 
+// Section Media - Her bölüm için metin ve görsel yönetimi
+export interface SectionMediaItem {
+  id: string;
+  sectionId: string; // Hangi section'a ait (hero, features, pricing, vb.)
+  type: 'image' | 'video' | 'text';
+  title: string;
+  description?: string;
+  url?: string; // Görsel/video URL'i
+  altText?: string; // Görsel alternatif metni
+  order: number; // Sıralama
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // Press Kit - Basın Kiti Dosyaları
 export interface PressKitFile {
   id: string;
@@ -502,6 +517,7 @@ interface AdminDataContextType {
   pressReleases: PressRelease[]; // Basın bültenleri
   games: Game[]; // Oyunlar (Partner Oyunlar)
   partners: Partner[]; // Ortaklar/Partnerler
+  sectionMedia: SectionMediaItem[]; // Section görselleri ve metinleri
   addUser: (user: Omit<User, 'id' | 'joinDate'>) => void;
   updateUser: (id: string, user: Partial<User>) => void;
   deleteUser: (id: string) => void;
@@ -526,6 +542,10 @@ interface AdminDataContextType {
   addPartner: (partner: Omit<Partner, 'id' | 'createdAt' | 'updatedAt'>) => void;
   updatePartner: (id: string, partner: Partial<Partner>) => void;
   deletePartner: (id: string) => void;
+  addSectionMedia: (media: Omit<SectionMediaItem, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  updateSectionMedia: (id: string, media: Partial<SectionMediaItem>) => void;
+  deleteSectionMedia: (id: string) => void;
+  getSectionMedia: (sectionId: string) => SectionMediaItem[];
   updateAdSettings: (settings: Partial<AdSettings>) => void;
   updateDiscountSettings: (settings: Partial<DiscountSettings>) => void;
   updatePriceSettings: (settings: Partial<PriceSettings>) => void;
@@ -741,6 +761,12 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
   const [games, setGames] = useState<Game[]>([]);
   const [partners, setPartners] = useState<Partner[]>(() => {
     const saved = localStorage.getItem('admin_partners');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  // Section Media - Her bölüm için metin ve görsel yönetimi
+  const [sectionMedia, setSectionMedia] = useState<SectionMediaItem[]>(() => {
+    const saved = localStorage.getItem('admin_section_media');
     return saved ? JSON.parse(saved) : [];
   });
 
@@ -1405,6 +1431,72 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Section Media - Her bölüm için metin ve görsel yönetimi
+  const addSectionMedia = (media: Omit<SectionMediaItem, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const newMedia: SectionMediaItem = {
+      ...media,
+      id: Date.now().toString(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    const updated = [...sectionMedia, newMedia];
+    setSectionMedia(updated);
+    localStorage.setItem('admin_section_media', JSON.stringify(updated));
+    
+    const newLog: LogEntry = {
+      id: Date.now().toString(),
+      type: 'success',
+      message: `Medya eklendi: ${media.title} (${media.sectionId})`,
+      user: 'admin@tacticiq.app',
+      time: new Date().toLocaleString('tr-TR'),
+    };
+    setLogs([newLog, ...logs]);
+  };
+
+  const updateSectionMedia = (id: string, media: Partial<SectionMediaItem>) => {
+    const updated = sectionMedia.map(m => 
+      m.id === id ? { ...m, ...media, updatedAt: new Date().toISOString() } : m
+    );
+    setSectionMedia(updated);
+    localStorage.setItem('admin_section_media', JSON.stringify(updated));
+    
+    const updatedMedia = updated.find(m => m.id === id);
+    if (updatedMedia) {
+      const newLog: LogEntry = {
+        id: Date.now().toString(),
+        type: 'info',
+        message: `Medya güncellendi: ${updatedMedia.title}`,
+        user: 'admin@tacticiq.app',
+        time: new Date().toLocaleString('tr-TR'),
+      };
+      setLogs([newLog, ...logs]);
+    }
+  };
+
+  const deleteSectionMedia = (id: string) => {
+    const media = sectionMedia.find(m => m.id === id);
+    const updated = sectionMedia.filter(m => m.id !== id);
+    setSectionMedia(updated);
+    localStorage.setItem('admin_section_media', JSON.stringify(updated));
+    
+    if (media) {
+      const newLog: LogEntry = {
+        id: Date.now().toString(),
+        type: 'warning',
+        message: `Medya silindi: ${media.title}`,
+        user: 'admin@tacticiq.app',
+        time: new Date().toLocaleString('tr-TR'),
+      };
+      setLogs([newLog, ...logs]);
+    }
+  };
+
+  const getSectionMedia = (sectionId: string): SectionMediaItem[] => {
+    return sectionMedia
+      .filter(m => m.sectionId === sectionId && m.enabled)
+      .sort((a, b) => a.order - b.order);
+  };
+
   // Settings
   const updateAdSettings = (updatedSettings: Partial<AdSettings>) => {
     setAdSettings(prevSettings => ({ ...prevSettings, ...updatedSettings }));
@@ -1826,6 +1918,7 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
     pressReleases, // Basın bültenleri
     games, // Oyunlar
     partners, // Ortaklar
+    sectionMedia, // Section görselleri ve metinleri
     addUser,
     updateUser,
     deleteUser,
@@ -1850,6 +1943,10 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
     addPartner,
     updatePartner,
     deletePartner,
+    addSectionMedia,
+    updateSectionMedia,
+    deleteSectionMedia,
+    getSectionMedia,
     updateAdSettings,
     updateDiscountSettings,
     updatePriceSettings,
@@ -1863,7 +1960,7 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
   }), [
     stats, users, contents, activities, logs, settings, sectionSettings,
     websiteContent, advertisements, adSettings, discountSettings, priceSettings,
-    pressKitFiles, emailAutoReply, teamMembers, pressReleases, games, partners
+    pressKitFiles, emailAutoReply, teamMembers, pressReleases, games, partners, sectionMedia
   ]);
 
   return <AdminDataContext.Provider value={value}>{children}</AdminDataContext.Provider>;
