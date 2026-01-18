@@ -129,18 +129,7 @@ function AppContent() {
     return () => clearTimeout(timeoutId);
   }, []);
   
-  // Sayfa yüklendiğinde ve her 1 dakikada bir en üste scroll
-  React.useEffect(() => {
-    // İlk yüklemede scroll
-    window.scrollTo(0, 0);
-    
-    // Her 1 dakikada bir scroll (60000 ms)
-    const scrollInterval = setInterval(() => {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }, 60000);
-    
-    return () => clearInterval(scrollInterval);
-  }, []);
+  // Sayfa yüklendiğinde scroll yapma - kaldırıldı (kullanıcı isteği)
   
   // Safety check - AdminDataContext yüklenene kadar loading göster
   if (!adminData || !adminData.sectionSettings) {
