@@ -15,7 +15,7 @@ import { Input } from '@/app/components/ui/input';
 import { Label } from '@/app/components/ui/label';
 import { Separator } from '@/app/components/ui/separator';
 import { Checkbox } from '@/app/components/ui/checkbox';
-import { Apple, Mail, Chrome, Loader2, ShieldCheck, Eye, EyeOff } from 'lucide-react';
+import { Apple, Mail, Chrome, Loader2, ShieldCheck, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface AuthModalProps {
@@ -77,8 +77,13 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
         const requireTerms = authSettings?.requireTermsAcceptance ?? true;
         const requirePrivacy = authSettings?.requirePrivacyAcceptance ?? true;
         
-        if ((requireTerms && !agreedToTerms) || (requirePrivacy && !agreedToPrivacy)) {
-          toast.error(t('auth.error.termsRequired'));
+        if (requireTerms && !agreedToTerms) {
+          toast.error('⚠️ Lütfen Kullanım Koşullarını okuyup kabul edin');
+          return;
+        }
+        
+        if (requirePrivacy && !agreedToPrivacy) {
+          toast.error('⚠️ Lütfen Gizlilik Politikasını okuyup kabul edin');
           return;
         }
         
@@ -356,55 +361,63 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
                   </p>
                 </div>
 
-                <div className="space-y-2">
-                  <div className="flex items-start space-x-2">
+                <div className="space-y-3 p-4 border-2 border-secondary/20 rounded-lg bg-muted/5">
+                  <p className="text-xs font-semibold text-foreground mb-2">
+                    ⚠️ Kayıt olmak için aşağıdaki onaylar zorunludur:
+                  </p>
+                  
+                  <div className="flex items-start space-x-3">
                     <Checkbox
                       id="terms"
                       checked={agreedToTerms}
                       onCheckedChange={(checked) => setAgreedToTerms(checked as boolean)}
-                      className="mt-1"
+                      className="mt-1 border-2"
+                      required
                     />
                     <label
                       htmlFor="terms"
-                      className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                      className="text-sm leading-relaxed cursor-pointer"
                     >
-                      <span className="text-muted-foreground">
+                      <span className="text-foreground font-medium">
                         {t('auth.terms.checkbox')}{' '}
                         <a
-                          href="/legal/terms"
+                          href="?legal=terms"
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-primary hover:underline font-semibold"
+                          className="text-secondary hover:underline font-bold"
                           onClick={(e) => e.stopPropagation()}
                         >
                           {t('auth.terms.link')}
                         </a>
+                        <span className="text-destructive ml-1">*</span>
                       </span>
                     </label>
                   </div>
 
-                  <div className="flex items-start space-x-2">
+                  <div className="flex items-start space-x-3">
                     <Checkbox
                       id="privacy"
                       checked={agreedToPrivacy}
                       onCheckedChange={(checked) => setAgreedToPrivacy(checked as boolean)}
-                      className="mt-1"
+                      className="mt-1 border-2"
+                      required
                     />
                     <label
                       htmlFor="privacy"
-                      className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                      className="text-sm leading-relaxed cursor-pointer"
                     >
-                      <span className="text-muted-foreground">
+                      <span className="text-foreground font-medium">
                         {t('auth.privacy.checkbox')}{' '}
                         <a
-                          href="/legal/privacy"
+                          href="?legal=privacy"
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-primary hover:underline font-semibold"
+                          className="text-secondary hover:underline font-bold"
                           onClick={(e) => e.stopPropagation()}
                         >
                           {t('auth.privacy.link')}
                         </a>
+                        <span className="text-destructive ml-1">*</span>
                       </span>
                     </label>
                   </div>
@@ -412,7 +425,20 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
               </div>
             )}
 
-            <Button type="submit" className="w-full" disabled={loading}>
+            {mode === 'signup' && (!agreedToTerms || !agreedToPrivacy) && (
+              <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/30 rounded-lg">
+                <AlertCircle className="size-4 shrink-0 text-destructive" />
+                <p className="text-xs text-destructive font-medium">
+                  Kayıt olmak için kullanım koşulları ve gizlilik politikasını kabul etmelisiniz
+                </p>
+              </div>
+            )}
+
+            <Button 
+              type="submit" 
+              className="w-full" 
+              disabled={loading || (mode === 'signup' && (!agreedToTerms || !agreedToPrivacy))}
+            >
               {loading && <Loader2 className="mr-2 size-4 animate-spin" />}
               <Mail className="mr-2 size-4" />
               {mode === 'signin' ? t('auth.email.signin') : t('auth.email.signup')}
