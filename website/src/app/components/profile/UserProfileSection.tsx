@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/app/components/ui/avatar'
 import { Badge } from '@/app/components/ui/badge';
 import { Separator } from '@/app/components/ui/separator';
 import { Switch } from '@/app/components/ui/switch';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
+// Tabs removed - using custom tab implementation for mobile app consistency
 import {
   Dialog,
   DialogContent,
@@ -21,10 +21,8 @@ import {
 import { Alert, AlertDescription } from '@/app/components/ui/alert';
 import {
   User,
-  Mail,
   Crown,
   Settings,
-  Bell,
   Shield,
   LogOut,
   Edit2,
@@ -32,11 +30,14 @@ import {
   Trophy,
   Target,
   Star,
-  Calendar,
   Loader2,
   FileText,
   Trash2,
   AlertTriangle,
+  TrendingUp,
+  Heart,
+  Zap,
+  Medal,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { LegalDocumentsModal } from '@/app/components/legal/LegalDocumentsModal';
@@ -53,7 +54,62 @@ export function UserProfileSection() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const [activeTab, setActiveTab] = useState<'profile' | 'badges'>('profile');
+  
+  // Notification preferences state
+  const [emailNotifications, setEmailNotifications] = useState(false);
+  const [weeklySummary, setWeeklySummary] = useState(false);
+  const [campaignNotifications, setCampaignNotifications] = useState(true);
 
+  // User stats (mobile app ile tutarlı)
+  const userStats = {
+    level: 1,
+    points: 0,
+    badgeCount: 0,
+    successRate: 0,
+    totalPredictions: 0,
+    dayStreak: 0,
+    countryRank: 0,
+    totalPlayers: 1000,
+    avgMatchRating: 0,
+    xpGainThisWeek: 0,
+  };
+
+  // Favorite teams (mobile app ile tutarlı)
+  const favoriteTeams = profile?.favoriteTeams || [];
+
+  // Achievements (mobile app ile tutarlı)
+  const achievements = [
+    { id: 'winner', icon: '🏆', name: 'Winner', description: '10 doğru tahmin' },
+    { id: 'streak', icon: '🔥', name: 'Streak Master', description: '5 gün üst üste' },
+    { id: 'expert', icon: '⭐', name: 'Expert', description: 'Level 10\'a ulaştı' },
+  ];
+
+  // Badges (mobile app ile tutarlı)
+  const allBadges = [
+    { id: 'first_prediction', name: 'İlk Tahmin', icon: '🎯', tier: 'bronze', earned: false },
+    { id: 'win_streak_3', name: '3\'lü Seri', icon: '🔥', tier: 'silver', earned: false },
+    { id: 'perfect_week', name: 'Mükemmel Hafta', icon: '⭐', tier: 'gold', earned: false },
+    { id: 'champion', name: 'Şampiyon', icon: '🏆', tier: 'platinum', earned: false },
+  ];
+
+  // Show loading state while auth is initializing
+  if (isLoading) {
+    return (
+      <section id="profile" className="py-20 md:py-28 bg-gradient-to-b from-background to-muted/20">
+        <div className="container mx-auto px-4 max-w-4xl">
+          <div className="flex items-center justify-center py-20">
+            <div className="text-center">
+              <Loader2 className="size-12 mx-auto mb-4 animate-spin text-secondary" />
+              <p className="text-muted-foreground">Yükleniyor...</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+  
+  // User must be authenticated
   if (!user || !profile) {
     return null;
   }
@@ -116,201 +172,267 @@ export function UserProfileSection() {
 
   const isPro = profile.plan === 'pro';
 
+  const rankPercentage = ((userStats.totalPlayers - userStats.countryRank) / userStats.totalPlayers) * 100;
+  const topPercentage = ((userStats.countryRank / userStats.totalPlayers) * 100).toFixed(1);
+
   return (
     <section id="profile" className="py-20 md:py-28 bg-gradient-to-b from-background to-muted/20">
       <div className="container mx-auto px-4 max-w-4xl">
-        {/* Profile Header */}
-        <Card className="mb-8 overflow-hidden">
-          <div className="h-32 bg-gradient-to-r from-secondary via-accent to-secondary" />
-          <CardContent className="relative pt-0 pb-6">
-            <div className="flex flex-col md:flex-row items-center md:items-end gap-4 -mt-16">
-              {/* Avatar */}
-              <Avatar className="size-32 border-4 border-background shadow-xl">
-                <AvatarImage src={profile.avatar} />
-                <AvatarFallback className="text-3xl font-bold bg-gradient-to-br from-secondary to-accent text-white">
-                  {getInitials(profile.name || profile.email)}
-                </AvatarFallback>
-              </Avatar>
+        
+        {/* Tab Navigation - Mobile App ile tutarlı */}
+        <div className="flex bg-card/50 backdrop-blur rounded-xl p-1 mb-8 border">
+          <button
+            onClick={() => setActiveTab('profile')}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-medium transition-all ${
+              activeTab === 'profile' 
+                ? 'bg-background shadow-sm text-foreground' 
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <User className="size-5" />
+            Profil
+          </button>
+          <button
+            onClick={() => setActiveTab('badges')}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-medium transition-all ${
+              activeTab === 'badges' 
+                ? 'bg-background shadow-sm text-foreground' 
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Trophy className="size-5" />
+            Rozetlerim
+            {userStats.badgeCount > 0 && (
+              <span className="bg-amber-500 text-black text-xs font-bold px-2 py-0.5 rounded-full">
+                {userStats.badgeCount}
+              </span>
+            )}
+          </button>
+        </div>
 
-              {/* Info */}
-              <div className="flex-1 text-center md:text-left mt-4 md:mt-0">
-                <div className="flex items-center justify-center md:justify-start gap-2">
-                  {isEditing ? (
-                    <div className="flex items-center gap-2">
-                      <Input
-                        value={editedName}
-                        onChange={(e) => setEditedName(e.target.value)}
-                        className="max-w-xs"
-                        placeholder="İsminiz"
-                      />
-                      <Button size="sm" onClick={handleSaveProfile} disabled={saving}>
-                        {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => setIsEditing(false)}>
-                        İptal
-                      </Button>
+        {activeTab === 'profile' ? (
+          <>
+            {/* Profile Header Card - Mobile App ile tutarlı */}
+            <Card className="mb-6 overflow-hidden border-secondary/20">
+              <div className="h-24 bg-gradient-to-r from-secondary/20 via-accent/10 to-secondary/20" />
+              <CardContent className="relative pt-0 pb-6">
+                <div className="flex flex-col items-center -mt-12">
+                  {/* Avatar */}
+                  <Avatar className="size-24 border-4 border-secondary shadow-xl mb-4">
+                    <AvatarImage src={profile.avatar} />
+                    <AvatarFallback className="text-3xl font-bold bg-gradient-to-br from-secondary to-accent text-white">
+                      {getInitials(profile.name || profile.email)}
+                    </AvatarFallback>
+                  </Avatar>
+
+                  {/* Name & Edit */}
+                  <div className="flex items-center gap-2 mb-1">
+                    {isEditing ? (
+                      <div className="flex items-center gap-2">
+                        <Input
+                          value={editedName}
+                          onChange={(e) => setEditedName(e.target.value)}
+                          className="max-w-xs"
+                          placeholder="İsminiz"
+                        />
+                        <Button size="sm" onClick={handleSaveProfile} disabled={saving}>
+                          {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => setIsEditing(false)}>
+                          İptal
+                        </Button>
+                      </div>
+                    ) : (
+                      <>
+                        <h1 className="text-2xl font-bold">{profile.name}</h1>
+                        <Button variant="ghost" size="sm" onClick={() => {
+                          setEditedName(profile.name || '');
+                          setIsEditing(true);
+                        }}>
+                          <Edit2 className="size-4" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Email */}
+                  <p className="text-muted-foreground text-sm mb-3">{profile.email}</p>
+
+                  {/* Plan Badge */}
+                  {isPro ? (
+                    <div className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-yellow-400 text-black px-4 py-1.5 rounded-full font-semibold">
+                      <span>👑</span>
+                      <span>PRO</span>
                     </div>
                   ) : (
-                    <>
-                      <h1 className="text-2xl font-bold">{profile.name}</h1>
-                      <Button variant="ghost" size="sm" onClick={() => {
-                        setEditedName(profile.name || '');
-                        setIsEditing(true);
-                      }}>
-                        <Edit2 className="size-4" />
-                      </Button>
-                    </>
-                  )}
-                </div>
-                <p className="text-muted-foreground flex items-center justify-center md:justify-start gap-2 mt-1">
-                  <Mail className="size-4" />
-                  {profile.email}
-                </p>
-                <div className="flex items-center justify-center md:justify-start gap-2 mt-3">
-                  <Badge variant={isPro ? 'default' : 'secondary'} className={isPro ? 'bg-gradient-to-r from-amber-500 to-yellow-400 text-black' : ''}>
-                    {isPro ? (
-                      <>
-                        <Crown className="size-3 mr-1" />
-                        Pro Üye
-                      </>
-                    ) : (
-                      'Ücretsiz Plan'
-                    )}
-                  </Badge>
-                  {profile.createdAt && (
-                    <Badge variant="outline" className="gap-1">
-                      <Calendar className="size-3" />
-                      {new Date(profile.createdAt).toLocaleDateString('tr-TR', { month: 'short', year: 'numeric' })}
+                    <Badge variant="outline" className="text-muted-foreground">
+                      Free
                     </Badge>
                   )}
-                </div>
-              </div>
 
-              {/* Actions */}
-              <div className="flex gap-2">
-                {!isPro && (
-                  <Button className="gap-2 bg-gradient-to-r from-amber-500 to-yellow-400 text-black hover:from-amber-600 hover:to-yellow-500">
-                    <Crown className="size-4" />
-                    Pro'ya Yükselt
-                  </Button>
+                  {/* Level, Badges, Points - Mobile App ile tutarlı */}
+                  <div className="flex items-center gap-8 mt-6">
+                    <div className="text-center">
+                      <p className="text-sm text-muted-foreground">Level</p>
+                      <p className="text-2xl font-bold text-secondary">{userStats.level}</p>
+                    </div>
+                    <div className="w-px h-10 bg-border" />
+                    <div className="text-center">
+                      <p className="text-sm text-muted-foreground">Badges</p>
+                      <p className="text-2xl font-bold text-amber-500">{userStats.badgeCount}</p>
+                    </div>
+                    <div className="w-px h-10 bg-border" />
+                    <div className="text-center">
+                      <p className="text-sm text-muted-foreground">Points</p>
+                      <p className="text-2xl font-bold">{userStats.points.toLocaleString()}</p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Performance Card - Mobile App ile tutarlı */}
+            <Card className="mb-6">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="size-5 text-secondary" />
+                  <CardTitle className="text-lg">Performance</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-3 gap-4 mb-6">
+                  <div className="text-center p-4 bg-muted/30 rounded-xl">
+                    <p className="text-2xl font-bold text-secondary">{userStats.successRate}%</p>
+                    <p className="text-xs text-muted-foreground">Success Rate</p>
+                  </div>
+                  <div className="text-center p-4 bg-muted/30 rounded-xl">
+                    <p className="text-2xl font-bold">{userStats.totalPredictions}</p>
+                    <p className="text-xs text-muted-foreground">Total Predictions</p>
+                  </div>
+                  <div className="text-center p-4 bg-muted/30 rounded-xl">
+                    <p className="text-2xl font-bold text-amber-500">{userStats.dayStreak}</p>
+                    <p className="text-xs text-muted-foreground">Day Streak</p>
+                  </div>
+                </div>
+
+                {/* Country Ranking */}
+                <div className="p-4 bg-secondary/10 border border-secondary/20 rounded-xl mb-4">
+                  <div className="flex justify-between mb-3">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Türkiye Sıralaması</p>
+                      <p className="text-xl font-bold text-secondary">#{userStats.countryRank.toLocaleString()}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-muted-foreground">Toplam Oyuncu</p>
+                      <p className="text-xl font-bold">{userStats.totalPlayers.toLocaleString()}</p>
+                    </div>
+                  </div>
+                  <div className="h-2 bg-muted/50 rounded-full overflow-hidden mb-2">
+                    <div 
+                      className="h-full bg-gradient-to-r from-secondary to-accent rounded-full transition-all" 
+                      style={{ width: `${rankPercentage}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-center text-muted-foreground">Top {topPercentage}%</p>
+                </div>
+
+                {/* Additional Metrics */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex items-center gap-3 p-3 bg-muted/20 rounded-lg">
+                    <Medal className="size-4 text-amber-500" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Avg Rating</p>
+                      <p className="text-sm font-bold">{userStats.avgMatchRating}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-3 bg-muted/20 rounded-lg">
+                    <Zap className="size-4 text-secondary" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">XP This Week</p>
+                      <p className="text-sm font-bold">+{userStats.xpGainThisWeek}</p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Favorite Teams Card - Mobile App ile tutarlı */}
+            <Card className="mb-6">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-2">
+                  <Heart className="size-5 text-secondary" />
+                  <CardTitle className="text-lg">Favori Takımlar</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {favoriteTeams.length > 0 ? (
+                  <div className="space-y-3">
+                    {favoriteTeams.map((team, idx) => (
+                      <div key={idx} className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg">
+                        <div className="size-3 rounded-full bg-secondary" />
+                        <span className="font-medium">{team}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-6 text-muted-foreground">
+                    <Heart className="size-10 mx-auto mb-3 opacity-30" />
+                    <p className="text-sm">Henüz favori takım seçilmemiş</p>
+                    <p className="text-xs">Mobil uygulamadan takımlarınızı ekleyin</p>
+                  </div>
                 )}
-                <Button variant="outline" onClick={handleSignOut} className="gap-2">
-                  <LogOut className="size-4" />
-                  Çıkış
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
 
-        {/* Profile Tabs */}
-        <Tabs defaultValue="stats" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="stats" className="gap-2">
-              <Trophy className="size-4" />
-              İstatistikler
-            </TabsTrigger>
-            <TabsTrigger value="predictions" className="gap-2">
-              <Target className="size-4" />
-              Tahminler
-            </TabsTrigger>
-            <TabsTrigger value="settings" className="gap-2">
-              <Settings className="size-4" />
-              Ayarlar
-            </TabsTrigger>
-            <TabsTrigger value="security" className="gap-2">
-              <Shield className="size-4" />
-              Güvenlik
-            </TabsTrigger>
-          </TabsList>
-
-          {/* Stats Tab */}
-          <TabsContent value="stats">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">Toplam Tahmin</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center gap-2">
-                    <Target className="size-8 text-secondary" />
-                    <span className="text-3xl font-bold">0</span>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">Başarı Oranı</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center gap-2">
-                    <Star className="size-8 text-accent" />
-                    <span className="text-3xl font-bold">0%</span>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">Toplam Puan</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center gap-2">
-                    <Trophy className="size-8 text-yellow-500" />
-                    <span className="text-3xl font-bold">0</span>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            <Card className="mt-4">
-              <CardHeader>
-                <CardTitle>Son Aktiviteler</CardTitle>
-                <CardDescription>Son tahminleriniz ve aktiviteleriniz</CardDescription>
+            {/* Achievements Card - Mobile App ile tutarlı */}
+            <Card className="mb-6">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-2">
+                  <Star className="size-5 text-amber-500" />
+                  <CardTitle className="text-lg">Achievements</CardTitle>
+                </div>
               </CardHeader>
               <CardContent>
-                <div className="text-center py-8 text-muted-foreground">
-                  <Target className="size-12 mx-auto mb-4 opacity-50" />
-                  <p>Henüz aktivite yok</p>
-                  <p className="text-sm">Tahmin yapmaya başlayın!</p>
+                <div className="grid grid-cols-3 gap-3">
+                  {achievements.map((achievement) => (
+                    <div 
+                      key={achievement.id} 
+                      className="text-center p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl"
+                    >
+                      <span className="text-3xl">{achievement.icon}</span>
+                      <p className="text-sm font-semibold mt-2">{achievement.name}</p>
+                      <p className="text-xs text-muted-foreground">{achievement.description}</p>
+                    </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
 
-          {/* Predictions Tab */}
-          <TabsContent value="predictions">
-            <Card>
-              <CardHeader>
-                <CardTitle>Tahmin Geçmişi</CardTitle>
-                <CardDescription>Geçmiş tahminleriniz ve sonuçları</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-12 text-muted-foreground">
-                  <Target className="size-16 mx-auto mb-4 opacity-50" />
-                  <p className="text-lg font-medium">Henüz tahmin yapmadınız</p>
-                  <p className="text-sm mb-4">Maçlara tahmin yaparak puanlar kazanın</p>
-                  <Button>Tahmin Yapmaya Başla</Button>
+            {/* Settings Section - Accordion style */}
+            <Card className="mb-6">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-2">
+                  <Settings className="size-5 text-muted-foreground" />
+                  <CardTitle className="text-lg">Ayarlar</CardTitle>
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Settings Tab */}
-          <TabsContent value="settings">
-            <Card>
-              <CardHeader>
-                <CardTitle>Bildirim Ayarları</CardTitle>
-                <CardDescription>Bildirim tercihlerinizi yönetin</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>E-posta Bildirimleri</Label>
-                    <p className="text-sm text-muted-foreground">Maç sonuçları ve tahmin hatırlatmaları</p>
-                  </div>
-                  <Switch />
+                {/* Notification Settings */}
+                <div className="space-y-4">
+                  <h4 className="font-medium text-sm text-muted-foreground">Bildirim Ayarları</h4>
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label>E-posta Bildirimleri</Label>
+                      <p className="text-sm text-muted-foreground">Maç sonuçları ve tahmin hatırlatmaları</p>
+                    </div>
+                  <Switch 
+                    checked={emailNotifications}
+                    onCheckedChange={(checked) => {
+                      setEmailNotifications(checked);
+                      // TODO: Save to backend when notification API is ready
+                      toast.success(checked ? 'E-posta bildirimleri açıldı' : 'E-posta bildirimleri kapatıldı');
+                    }}
+                  />
                 </div>
                 <Separator />
                 <div className="flex items-center justify-between">
@@ -318,7 +440,14 @@ export function UserProfileSection() {
                     <Label>Haftalık Özet</Label>
                     <p className="text-sm text-muted-foreground">Haftalık performans özeti</p>
                   </div>
-                  <Switch />
+                  <Switch 
+                    checked={weeklySummary}
+                    onCheckedChange={(checked) => {
+                      setWeeklySummary(checked);
+                      // TODO: Save to backend when notification API is ready
+                      toast.success(checked ? 'Haftalık özet açıldı' : 'Haftalık özet kapatıldı');
+                    }}
+                  />
                 </div>
                 <Separator />
                 <div className="flex items-center justify-between">
@@ -326,122 +455,174 @@ export function UserProfileSection() {
                     <Label>Kampanya Bildirimleri</Label>
                     <p className="text-sm text-muted-foreground">İndirim ve özel teklifler</p>
                   </div>
-                  <Switch defaultChecked />
+                  <Switch 
+                    checked={campaignNotifications}
+                    onCheckedChange={(checked) => {
+                      setCampaignNotifications(checked);
+                      toast.success(checked ? 'Kampanya bildirimleri açıldı' : 'Kampanya bildirimleri kapatıldı');
+                    }}
+                  />
                 </div>
-              </CardContent>
-            </Card>
-
-            <Card className="mt-4">
-              <CardHeader>
-                <CardTitle>Dil ve Bölge</CardTitle>
-                <CardDescription>Tercih ettiğiniz dil ve bölge ayarları</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Dil</Label>
-                    <Input value={profile.preferredLanguage || 'Türkçe'} disabled />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Saat Dilimi</Label>
-                    <Input value="Europe/Istanbul (UTC+3)" disabled />
-                  </div>
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
 
-          {/* Security Tab */}
-          <TabsContent value="security">
-            <Card>
-              <CardHeader>
-                <CardTitle>Şifre Değiştir</CardTitle>
-                <CardDescription>Hesap güvenliğiniz için şifrenizi düzenli aralıklarla değiştirin</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="text-center py-4">
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Hesap güvenliğiniz için şifrenizi düzenli aralıklarla değiştirin
-                  </p>
-                  <Button onClick={() => setShowChangePasswordModal(true)} className="gap-2">
-                    <Shield className="size-4" />
-                    Şifreyi Değiştir
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+                <Separator className="my-4" />
 
-            <Card className="mt-4">
-              <CardHeader>
-                <CardTitle>Oturum Bilgileri</CardTitle>
-                <CardDescription>Aktif oturumlarınız ve cihaz bilgileri</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <div className="size-10 rounded-full bg-secondary/20 flex items-center justify-center">
-                      <Shield className="size-5 text-secondary" />
+                {/* Language & Region */}
+                <div className="space-y-4">
+                  <h4 className="font-medium text-sm text-muted-foreground">Dil ve Bölge</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Dil</Label>
+                      <Input value={profile.preferredLanguage || 'Türkçe'} disabled />
                     </div>
+                    <div className="space-y-2">
+                      <Label>Saat Dilimi</Label>
+                      <Input value="Europe/Istanbul (UTC+3)" disabled />
+                    </div>
+                  </div>
+                </div>
+
+                <Separator className="my-4" />
+
+                {/* Security Section */}
+                <div className="space-y-4">
+                  <h4 className="font-medium text-sm text-muted-foreground">Güvenlik</h4>
+                  <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
                     <div>
-                      <p className="font-medium">Bu Cihaz</p>
-                      <p className="text-sm text-muted-foreground">Şu an aktif</p>
+                      <p className="font-medium text-sm">Şifre Değiştir</p>
+                      <p className="text-xs text-muted-foreground">Hesap güvenliğiniz için şifrenizi düzenli aralıklarla değiştirin</p>
                     </div>
+                    <Button size="sm" onClick={() => setShowChangePasswordModal(true)} className="gap-2">
+                      <Shield className="size-4" />
+                      Değiştir
+                    </Button>
                   </div>
-                  <Badge variant="secondary">Aktif</Badge>
+                  <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="size-8 rounded-full bg-secondary/20 flex items-center justify-center">
+                        <Shield className="size-4 text-secondary" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-sm">Bu Cihaz</p>
+                        <p className="text-xs text-muted-foreground">Şu an aktif</p>
+                      </div>
+                    </div>
+                    <Badge variant="secondary" className="text-xs">Aktif</Badge>
+                  </div>
                 </div>
               </CardContent>
             </Card>
 
-          </TabsContent>
-        </Tabs>
-
-        {/* Additional Sections */}
-        <div className="mt-8 space-y-4">
-          {/* Legal Documents */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="size-5" />
-                Yasal Belgeler
-              </CardTitle>
-              <CardDescription>Platform kullanım koşulları ve yasal bilgilendirmeler</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button variant="outline" onClick={() => setShowLegalModal(true)} className="w-full">
-                <FileText className="size-4 mr-2" />
-                Yasal Belgeleri Görüntüle
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Account Management - Very Hidden Delete Option */}
-          <Card className="border-muted/30 opacity-60 hover:opacity-100 transition-opacity">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-normal text-muted-foreground/70">Gelişmiş Ayarlar</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <details className="group">
-                <summary className="text-xs text-muted-foreground/60 cursor-pointer hover:text-muted-foreground list-none">
-                  <span className="flex items-center gap-1">
-                    <span>Tehlikeli İşlemler</span>
-                    <span className="group-open:rotate-180 transition-transform">▼</span>
-                  </span>
-                </summary>
-                <div className="mt-2 pt-2 border-t border-muted/30">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowDeleteDialog(true)}
-                    className="text-destructive/70 hover:text-destructive hover:bg-destructive/10 w-full justify-start text-xs"
-                  >
-                    <Trash2 className="size-3 mr-2" />
-                    Hesabı Sil
-                  </Button>
+            {/* Legal Documents */}
+            <Card className="mb-6">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-2">
+                  <FileText className="size-5 text-muted-foreground" />
+                  <CardTitle className="text-lg">Yasal Belgeler</CardTitle>
                 </div>
-              </details>
-            </CardContent>
-          </Card>
-        </div>
+              </CardHeader>
+              <CardContent>
+                <Button variant="outline" onClick={() => setShowLegalModal(true)} className="w-full">
+                  <FileText className="size-4 mr-2" />
+                  Yasal Belgeleri Görüntüle
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Actions - Sign Out & Pro Upgrade */}
+            <div className="space-y-3 mb-6">
+              {!isPro && (
+                <Button 
+                  className="w-full gap-2 bg-gradient-to-r from-amber-500 to-yellow-400 text-black hover:from-amber-600 hover:to-yellow-500"
+                  onClick={() => {
+                    const pricingSection = document.getElementById('pricing');
+                    if (pricingSection) {
+                      pricingSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    } else {
+                      window.location.hash = '#pricing';
+                    }
+                  }}
+                >
+                  <Crown className="size-4" />
+                  Pro'ya Yükselt
+                </Button>
+              )}
+              <Button variant="outline" onClick={handleSignOut} className="w-full gap-2">
+                <LogOut className="size-4" />
+                Çıkış Yap
+              </Button>
+            </div>
+
+            {/* Account Management - Very Hidden Delete Option */}
+            <Card className="border-muted/30 opacity-50 hover:opacity-100 transition-opacity">
+              <CardContent className="py-3">
+                <details className="group">
+                  <summary className="text-xs text-muted-foreground/60 cursor-pointer hover:text-muted-foreground list-none">
+                    <span className="flex items-center gap-1">
+                      <span>Gelişmiş Ayarlar</span>
+                      <span className="group-open:rotate-180 transition-transform text-[10px]">▼</span>
+                    </span>
+                  </summary>
+                  <div className="mt-3 pt-3 border-t border-muted/30">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowDeleteDialog(true)}
+                      className="text-destructive/70 hover:text-destructive hover:bg-destructive/10 w-full justify-start text-xs"
+                    >
+                      <Trash2 className="size-3 mr-2" />
+                      Hesabı Sil
+                    </Button>
+                  </div>
+                </details>
+              </CardContent>
+            </Card>
+          </>
+        ) : (
+          /* Badges Tab - Mobile App ile tutarlı */
+          <div className="grid grid-cols-4 gap-3">
+            {allBadges.map((badge) => (
+              <Card 
+                key={badge.id} 
+                className={`text-center p-4 cursor-pointer transition-all hover:scale-105 ${
+                  badge.earned 
+                    ? 'border-amber-500/50 bg-amber-500/5' 
+                    : 'opacity-50 grayscale'
+                }`}
+              >
+                <div className="relative">
+                  {!badge.earned && (
+                    <div className="absolute -top-1 -right-1 size-5 rounded-full bg-muted flex items-center justify-center">
+                      <span className="text-xs">🔒</span>
+                    </div>
+                  )}
+                  <span className="text-3xl">{badge.icon}</span>
+                </div>
+                <p className="text-xs font-medium mt-2 line-clamp-2">{badge.name}</p>
+                <Badge 
+                  variant="outline" 
+                  className={`text-[10px] mt-1 ${
+                    badge.tier === 'bronze' ? 'text-orange-600 border-orange-600/30' :
+                    badge.tier === 'silver' ? 'text-slate-400 border-slate-400/30' :
+                    badge.tier === 'gold' ? 'text-amber-500 border-amber-500/30' :
+                    'text-purple-500 border-purple-500/30'
+                  }`}
+                >
+                  {badge.tier === 'bronze' ? 'Bronz' :
+                   badge.tier === 'silver' ? 'Gümüş' :
+                   badge.tier === 'gold' ? 'Altın' : 'Platin'}
+                </Badge>
+              </Card>
+            ))}
+            {allBadges.length === 0 && (
+              <div className="col-span-4 text-center py-16 text-muted-foreground">
+                <Trophy className="size-16 mx-auto mb-4 opacity-30" />
+                <p className="text-lg font-medium">Henüz rozet yok</p>
+                <p className="text-sm">Maçlara tahmin yap ve rozetleri kazan!</p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Legal Documents Modal */}

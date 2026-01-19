@@ -31,6 +31,7 @@ import { UserProfileSection } from '@/app/components/profile/UserProfileSection'
 import { SEOHead } from '@/app/components/seo/SEOHead';
 import { Analytics } from '@/app/components/analytics/Analytics';
 import { CookieConsent } from '@/app/components/legal/CookieConsent';
+import { LegalPage } from '@/app/components/legal/LegalPage';
 import { LanguageProvider } from '@/contexts/LanguageContext';
 import { PaymentProvider } from '@/contexts/PaymentContext';
 import { AdminProvider } from '@/contexts/AdminContext';
@@ -44,6 +45,15 @@ function AppContent() {
   const adminData = useAdminDataSafe();
   const userAuth = useUserAuthSafe();
   const isAuthenticated = userAuth?.isAuthenticated ?? false;
+  
+  // Check if we're on a legal page (from URL query parameter)
+  const urlParams = new URLSearchParams(window.location.search);
+  const legalPage = urlParams.get('legal');
+  
+  // If legal page, show only legal content
+  if (legalPage === 'privacy' || legalPage === 'terms' || legalPage === 'dmca' || legalPage === 'contact') {
+    return <LegalPage />;
+  }
   
   // Handle OAuth callback from URL hash
   React.useEffect(() => {

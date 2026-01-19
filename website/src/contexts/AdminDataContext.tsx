@@ -771,11 +771,11 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
   const [priceSettings, setPriceSettings] = useState<PriceSettings>(() => {
     const savedSettings = localStorage.getItem('admin_price_settings');
     const defaultSettings: PriceSettings = {
-      proPrice: 99.99,
+      proPrice: 479, // TL cinsinden yıllık fiyat
       baseCurrency: 'TRY',
       freeTrialDays: 7,
-      monthlyPrice: 29.99,
-      yearlyPrice: 99.99,
+      monthlyPrice: 49,
+      yearlyPrice: 479,
       billingPeriod: 'yearly', // Varsayılan: yıllık fiyat gösterilir
     };
     if (savedSettings) {
@@ -933,7 +933,7 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
     lockoutUntil: undefined,
     // Contact Information
     contactEmail: 'support@tacticiq.app',
-    contactPhone: '+90 555 123 4567',
+    contactPhone: '', // Boş - Admin panelden düzenlenebilir
     contactAddress: 'Istanbul, Turkey',
     socialLinks: {
       twitter: 'https://twitter.com/tacticiq',

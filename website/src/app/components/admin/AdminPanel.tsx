@@ -37,7 +37,8 @@ import {
   Type,
   Megaphone,
   Flag,
-  AlertCircle
+  AlertCircle,
+  Bot
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/app/components/ui/button';
@@ -57,6 +58,7 @@ import { AdManagement } from '@/app/components/admin/AdManagement';
 import { TeamManagement } from '@/app/components/admin/TeamManagement';
 import { PressReleaseManagement } from '@/app/components/admin/PressReleaseManagement';
 import { PartnerManagement } from '@/app/components/admin/PartnerManagement';
+import { AdminTestBot } from '@/app/components/admin/AdminTestBot';
 
 type MenuSection = 
   | 'dashboard' 
@@ -75,6 +77,7 @@ type MenuSection =
   | 'waitlist'
   | 'settings' 
   | 'logs'
+  | 'test'
   | 'website';
 
 export function AdminPanel() {
@@ -187,6 +190,13 @@ export function AdminPanel() {
         <Separator className="flex-shrink-0" />
         <div className="flex-1 overflow-y-auto p-2 space-y-1">
           <MenuButton
+            icon={Bot}
+            label="Test Bot"
+            active={activeSection === 'test'}
+            onClick={() => setActiveSection('test')}
+            badge={true}
+          />
+          <MenuButton
             icon={LayoutDashboard}
             label="Gösterge Paneli"
             active={activeSection === 'dashboard'}
@@ -239,7 +249,6 @@ export function AdminPanel() {
             label="Ortaklık Başvuruları"
             active={activeSection === 'partner-applications'}
             onClick={() => setActiveSection('partner-applications')}
-            badge={true}
           />
           <MenuButton
             icon={Gamepad2}
@@ -313,6 +322,7 @@ export function AdminPanel() {
             {activeSection === 'game' && <GameContent />}
             {activeSection === 'settings' && <SettingsContent />}
             {activeSection === 'logs' && <LogsContent />}
+            {activeSection === 'test' && <AdminTestBot />}
           </div>
         </div>
       </Card>
@@ -1092,7 +1102,7 @@ function UsersContent() {
                 id="name"
                 value={newUser.name}
                 onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
-                placeholder="Ahmet Yılmaz"
+                placeholder=""
               />
             </div>
             <div className="space-y-2">
@@ -1102,7 +1112,7 @@ function UsersContent() {
                 type="email"
                 value={newUser.email}
                 onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-                placeholder="ahmet@example.com"
+                placeholder=""
               />
             </div>
             <div className="space-y-2">
@@ -4168,6 +4178,7 @@ function SettingsContent() {
     siteName: '',
     siteUrl: '',
     contactEmail: '',
+    contactPhone: '', // Telefon numarası - Admin panelden düzenlenebilir
     maintenanceMode: false,
     registrationEnabled: true,
     proFeaturesEnabled: true,
@@ -4729,6 +4740,101 @@ function SettingsContent() {
             <div className="pt-2 border-t">
               <p className="text-xs text-muted-foreground">
                 💡 Bu bilgiler footer ve iletişim sayfasında gösterilecektir
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Hero Statistics Settings - Stats Section (Hero altındaki istatistikler) */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <TrendingUp className="size-4" />
+              Hero İstatistikleri
+            </CardTitle>
+            <CardDescription>
+              Ana sayfada hero bölümü altında gösterilen istatistik kartlarını düzenleyin
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="averageRating">Ortalama Değerlendirme (örn: 4.9/5)</Label>
+                <Input
+                  id="averageRating"
+                  type="text"
+                  value={stats.averageRating}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // Format kontrolü: X.X/5 veya boş
+                    const ratingRegex = /^(\d+\.?\d*\/\d+|)$/;
+                    if (ratingRegex.test(value) || value === '') {
+                      updateStats({ averageRating: value });
+                    }
+                  }}
+                  placeholder="4.9/5"
+                />
+                {stats.averageRating && !/^\d+\.?\d*\/\d+$/.test(stats.averageRating) && (
+                  <p className="text-xs text-red-500">⚠️ Format: X.X/5 (örn: 4.9/5)</p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="totalUsers">Aktif Kullanıcı (örn: 50K+ veya 0.0K+)</Label>
+                <Input
+                  id="totalUsers"
+                  type="text"
+                  value={stats.totalUsers}
+                  onChange={(e) => updateStats({ totalUsers: e.target.value })}
+                  placeholder="50K+"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Metin formatı kabul edilir (örn: 50K+, 0.0K+, 1.2M+)
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="totalPredictions">Yapılan Tahmin (sayı, M+/K+ otomatik eklenir)</Label>
+                <Input
+                  id="totalPredictions"
+                  type="number"
+                  min="0"
+                  value={stats.totalPredictions || 0}
+                  onChange={(e) => {
+                    const value = parseInt(e.target.value) || 0;
+                    // Negatif sayı engelleme
+                    if (value >= 0) {
+                      updateStats({ totalPredictions: value });
+                    }
+                  }}
+                  placeholder="1000000"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Örnek: 1000000 → "1.0M+", 500000 → "500K+"
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="totalLeagues">Kapsanan Lig (sayı, + otomatik eklenir)</Label>
+                <Input
+                  id="totalLeagues"
+                  type="number"
+                  min="0"
+                  value={stats.totalLeagues || 25}
+                  onChange={(e) => {
+                    const value = parseInt(e.target.value) || 0;
+                    // Negatif sayı engelleme
+                    if (value >= 0) {
+                      updateStats({ totalLeagues: value });
+                    }
+                  }}
+                  placeholder="25"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Örnek: 25 → "25+", 0 → "0+"
+                </p>
+              </div>
+            </div>
+            <div className="pt-2 border-t">
+              <p className="text-xs text-muted-foreground">
+                💡 Bu istatistikler ana sayfada hero bölümünün altındaki 4 kartta gösterilecektir
               </p>
             </div>
           </CardContent>

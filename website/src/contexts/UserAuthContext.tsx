@@ -3,7 +3,7 @@ import { supabase } from '@/config/supabase';
 import { User, Session, AuthError, Provider } from '@supabase/supabase-js';
 
 // =====================================================
-// Types
+// Types - v2.0 Immediate Profile Fix
 // =====================================================
 
 export interface UserProfile {
@@ -24,6 +24,7 @@ interface UserAuthContextType {
   profile: UserProfile | null;
   session: Session | null;
   isLoading: boolean;
+  profileLoading: boolean;
   isAuthenticated: boolean;
   error: string | null;
   
@@ -56,8 +57,9 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true); // true ile başla - auth kontrolü tamamlanana kadar
   const [error, setError] = useState<string | null>(null);
+  const [profileLoading, setProfileLoading] = useState(false);
 
   const isAuthenticated = !!user && !!session;
   
@@ -75,7 +77,8 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
   }, [user, session, isAuthenticated, profile]);
 
   // Fetch user profile from Supabase or localStorage
-  const fetchProfile = useCallback(async (userId: string, userEmail: string, userMetadata?: any) => {
+  const fetchProfile = useCallback(async (userId: string, userEmail: string, userMetadata?: any): Promise<UserProfile> => {
+    setProfileLoading(true);
     try {
       console.log('🔍 Fetching profile for:', userId, userEmail, 'metadata:', userMetadata);
       
@@ -85,25 +88,76 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
                           userMetadata?.display_name || 
                           null;
       
-      // Try to get profile from Supabase
-      const { data, error: fetchError } = await supabase
+      // Check localStorage first for instant load
+      const cachedProfile = localStorage.getItem('user_profile');
+      if (cachedProfile) {
+        try {
+          const parsed = JSON.parse(cachedProfile);
+          if (parsed.id === userId) {
+            console.log('✅ Using cached profile from localStorage');
+            setProfile(parsed);
+            setProfileLoading(false);
+            
+            // Fetch from Supabase in background to update cache (non-blocking)
+            supabase
+              .from('user_profiles')
+              .select('*')
+              .eq('id', userId)
+              .single()
+              .then(({ data, error }) => {
+                if (!error && data) {
+                  const profileName = metadataName || data.name || userEmail.split('@')[0];
+                  const updatedProfile: UserProfile = {
+                    id: data.id,
+                    email: userEmail,
+                    name: profileName,
+                    avatar: userMetadata?.avatar_url || userMetadata?.picture || data.avatar,
+                    plan: data.plan || 'free',
+                    favoriteTeams: data.favorite_teams || [],
+                    preferredLanguage: data.preferred_language || 'tr',
+                    createdAt: data.created_at,
+                    lastLoginAt: new Date().toISOString(),
+                  };
+                  setProfile(updatedProfile);
+                  localStorage.setItem('user_profile', JSON.stringify(updatedProfile));
+                  console.log('🔄 Profile updated from Supabase');
+                }
+              });
+            
+            return parsed; // Return cached profile immediately
+          }
+        } catch (e) {
+          console.warn('⚠️ Failed to parse cached profile:', e);
+        }
+      }
+      
+      // Try to get profile from Supabase with timeout
+      const fetchPromise = supabase
         .from('user_profiles')
         .select('*')
         .eq('id', userId)
         .single();
+      
+      const timeoutPromise = new Promise<{ data: null, error: { message: string, code: string } }>((resolve) => 
+        setTimeout(() => resolve({ data: null, error: { message: 'Profile fetch timeout', code: 'TIMEOUT' } }), 8000)
+      );
+      
+      const { data, error: fetchError } = await Promise.race([fetchPromise, timeoutPromise]);
 
       if (fetchError) {
         if (fetchError.code === 'PGRST116') {
-          console.log('ℹ️ Profile not found, will create new one');
+          console.log('ℹ️ Profile not found in DB, creating new one');
         } else if (fetchError.code === '42P01') {
-          console.error('❌ user_profiles table does not exist! Please run SUPABASE_USER_PROFILES_TABLE.sql');
+          console.error('❌ user_profiles table does not exist!');
+        } else if (fetchError.code === 'TIMEOUT') {
+          console.warn('⏱️ Profile fetch timeout - using fallback');
         } else {
           console.warn('⚠️ Profile fetch error:', fetchError.message, fetchError.code);
         }
       }
 
       if (data) {
-        console.log('✅ Profile found in Supabase:', data);
+        console.log('✅ Profile found in Supabase');
         // Update name if metadata has a better name
         const profileName = metadataName || data.name || userEmail.split('@')[0];
         const userProfile: UserProfile = {
@@ -117,152 +171,243 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
           createdAt: data.created_at,
           lastLoginAt: new Date().toISOString(),
         };
+        
+        // Set profile immediately
         setProfile(userProfile);
         localStorage.setItem('user_profile', JSON.stringify(userProfile));
-        console.log('✅ Profile set in state:', userProfile);
+        console.log('✅ Profile loaded from DB');
+        setProfileLoading(false);
         return userProfile;
-      } else {
-        // Create default profile with metadata name if available
-        const defaultProfile: UserProfile = {
-          id: userId,
-          email: userEmail,
-          name: metadataName || userEmail.split('@')[0],
-          avatar: userMetadata?.avatar_url || userMetadata?.picture,
-          plan: 'free',
-          favoriteTeams: [],
-          preferredLanguage: 'tr',
-          createdAt: new Date().toISOString(),
-          lastLoginAt: new Date().toISOString(),
-        };
-        
-        // Try to insert into Supabase
-        console.log('📝 Creating new profile in Supabase...');
-        const { error: insertError } = await supabase.from('user_profiles').upsert({
-          id: userId,
-          email: userEmail,
-          name: defaultProfile.name,
-          avatar: defaultProfile.avatar,
-          plan: 'free',
-          favorite_teams: [],
-          preferred_language: 'tr',
-        }, {
-          onConflict: 'id'
-        });
-        
-        if (insertError) {
-          console.error('❌ Profile insert error:', insertError.message, insertError.code);
-          if (insertError.code === '42P01') {
-            console.error('❌ user_profiles table does not exist! Please run SUPABASE_USER_PROFILES_TABLE.sql in Supabase SQL Editor');
-          }
-          // Continue with local profile even if Supabase insert fails
-        } else {
-          console.log('✅ Profile created in Supabase');
-        }
-        
-        setProfile(defaultProfile);
-        localStorage.setItem('user_profile', JSON.stringify(defaultProfile));
-        console.log('✅ Profile set in state (local):', defaultProfile);
-        return defaultProfile;
       }
+      // CRITICAL: Create default profile immediately for first-time users
+      const defaultProfile: UserProfile = {
+        id: userId,
+        email: userEmail,
+        name: metadataName || userEmail.split('@')[0],
+        avatar: userMetadata?.avatar_url || userMetadata?.picture,
+        plan: 'free',
+        favoriteTeams: [],
+        preferredLanguage: 'tr',
+        createdAt: new Date().toISOString(),
+        lastLoginAt: new Date().toISOString(),
+      };
+      
+      // Set profile immediately - don't wait for anything
+      setProfile(defaultProfile);
+      localStorage.setItem('user_profile', JSON.stringify(defaultProfile));
+      console.log('✅ Profile set in state (new user):', defaultProfile);
+      setProfileLoading(false);
+      
+      // Try to insert into Supabase in background (non-blocking)
+      console.log('📝 Creating profile in Supabase (background)...');
+      supabase.from('user_profiles').upsert({
+        id: userId,
+        email: userEmail,
+        name: defaultProfile.name,
+        avatar: defaultProfile.avatar,
+        plan: 'free',
+        favorite_teams: [],
+        preferred_language: 'tr',
+      }, {
+        onConflict: 'id'
+      }).then(({ error: insertError }) => {
+        if (insertError) {
+          console.error('❌ Profile insert error (background):', insertError.message);
+        } else {
+          console.log('✅ Profile saved to Supabase');
+        }
+      }).catch(err => {
+        console.error('❌ Profile insert failed (background):', err);
+      });
+      
+      return defaultProfile;
     } catch (err) {
-      console.error('Profile fetch exception:', err);
+      console.error('❌ Profile fetch exception:', err);
+      
       // Fallback to localStorage
       const localProfile = localStorage.getItem('user_profile');
       if (localProfile) {
-        const parsed = JSON.parse(localProfile);
-        setProfile(parsed);
-        return parsed;
+        try {
+          const parsed = JSON.parse(localProfile);
+          console.log('✅ Using cached profile from localStorage:', parsed);
+          setProfile(parsed);
+          setProfileLoading(false);
+          return parsed;
+        } catch (e) {
+          console.warn('⚠️ Failed to parse cached profile:', e);
+        }
       }
-      return null;
+      
+      // Last resort: Create minimal profile from user data
+      console.log('⚠️ Creating minimal fallback profile');
+      const fallbackProfile: UserProfile = {
+        id: userId,
+        email: userEmail,
+        name: userEmail.split('@')[0],
+        plan: 'free',
+        favoriteTeams: [],
+        preferredLanguage: 'tr',
+        createdAt: new Date().toISOString(),
+      };
+      setProfile(fallbackProfile);
+      localStorage.setItem('user_profile', JSON.stringify(fallbackProfile));
+      console.log('✅ Fallback profile set:', fallbackProfile);
+      setProfileLoading(false);
+      return fallbackProfile;
+    } finally {
+      setProfileLoading(false);
     }
   }, []);
 
   // Initialize auth state
   useEffect(() => {
+    let authStateHandled = false; // Flag to prevent race condition
+    let mounted = true;
+    
     const initAuth = async () => {
-      setIsLoading(true);
       try {
-        // Get initial session
-        const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
+        console.log('🔄 Initializing auth...');
+        
+        // Session kontrolü - timeout ile
+        const sessionPromise = supabase.auth.getSession();
+        const timeoutPromise = new Promise<{ data: { session: null }, error: { message: string } }>((resolve) => 
+          setTimeout(() => resolve({ data: { session: null }, error: { message: 'Timeout' } }), 8000)
+        );
+        
+        const { data: { session: currentSession }, error: sessionError } = await Promise.race([sessionPromise, timeoutPromise]);
+        
+        if (!mounted) return; // Component unmount olduysa işlemi durdur
+        
+        // If onAuthStateChange already handled auth, skip this
+        if (authStateHandled) {
+          console.log('⏭️ Session check skipped: Auth state already handled by onAuthStateChange');
+          setIsLoading(false);
+          return;
+        }
         
         console.log('🔍 Initial session check:', currentSession ? 'Found' : 'Not found', sessionError?.message);
-        
-        if (sessionError) {
-          console.warn('Session error:', sessionError.message);
-        }
 
-        if (currentSession) {
+        if (currentSession?.user) {
           console.log('✅ Session found, setting user:', currentSession.user.email);
+          
+          // CRITICAL: Create immediate profile FIRST
+          const metadata = currentSession.user.user_metadata;
+          const metadataName = metadata?.name || metadata?.full_name || metadata?.display_name || null;
+          const immediateProfile: UserProfile = {
+            id: currentSession.user.id,
+            email: currentSession.user.email || '',
+            name: metadataName || currentSession.user.email?.split('@')[0] || 'User',
+            avatar: metadata?.avatar_url || metadata?.picture,
+            plan: 'free',
+            favoriteTeams: [],
+            preferredLanguage: 'tr',
+            createdAt: new Date().toISOString(),
+          };
+          
+          // Set ALL states together BEFORE any async operation
           setSession(currentSession);
           setUser(currentSession.user);
-          await fetchProfile(
+          setProfile(immediateProfile);
+          setIsLoading(false);
+          console.log('✅ Immediate profile set (init):', immediateProfile.email);
+          
+          // Then fetch from DB in background to update (non-blocking)
+          fetchProfile(
             currentSession.user.id, 
             currentSession.user.email || '',
             currentSession.user.user_metadata
-          );
+          ).then(() => {
+            console.log('✅ Profile updated from DB (init)');
+          }).catch(err => {
+            console.warn('⚠️ Profile fetch failed (using immediate profile):', err);
+          });
+        } else if (sessionError?.message === 'Timeout') {
+          // Timeout - onAuthStateChange halledecek
+          console.log('⏳ Session check timeout, waiting for onAuthStateChange...');
+          setIsLoading(false);
         } else {
+          // No session
           console.log('ℹ️ No active session');
           setSession(null);
           setUser(null);
           setProfile(null);
+          setIsLoading(false);
         }
       } catch (err) {
-        console.error('Auth init error:', err);
-      } finally {
+        console.error('❌ Auth init error:', err);
         setIsLoading(false);
       }
     };
 
     initAuth();
-
+    
     // Listen for auth state changes (OAuth callbacks, sign out, etc.)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('🔔 Auth state change:', event, session?.user?.email || 'no user');
       
+      if (!mounted) return; // Component unmount olduysa işlemi durdur
+      
+      // Mark that auth state was handled by onAuthStateChange
+      authStateHandled = true;
+      
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         if (session?.user) {
           console.log('✅ User signed in:', session.user.email);
+          
+          // CRITICAL: Create immediate profile FIRST
+          const metadata = session.user.user_metadata;
+          const metadataName = metadata?.name || metadata?.full_name || metadata?.display_name || null;
+          const immediateProfile: UserProfile = {
+            id: session.user.id,
+            email: session.user.email || '',
+            name: metadataName || session.user.email?.split('@')[0] || 'User',
+            avatar: metadata?.avatar_url || metadata?.picture,
+            plan: 'free',
+            favoriteTeams: [],
+            preferredLanguage: 'tr',
+            createdAt: new Date().toISOString(),
+          };
+          
+          // Set ALL states together BEFORE any async operation
           setSession(session);
           setUser(session.user);
-          // Fetch profile with retry logic
-          try {
-            await fetchProfile(
-              session.user.id, 
-              session.user.email || '',
-              session.user.user_metadata
-            );
-          } catch (err) {
-            console.warn('⚠️ Profile fetch failed, retrying...', err);
-            // Retry after a short delay
-            setTimeout(async () => {
-              await fetchProfile(
-                session.user.id, 
-                session.user.email || '',
-                session.user.user_metadata
-              );
-            }, 1000);
-          }
+          setProfile(immediateProfile);
+          setIsLoading(false);
+          console.log('✅ Immediate profile set:', immediateProfile.email);
+          
+          // Then fetch from DB in background to update (non-blocking)
+          fetchProfile(
+            session.user.id, 
+            session.user.email || '',
+            session.user.user_metadata
+          ).then(() => {
+            console.log('✅ Profile updated from DB');
+          }).catch(err => {
+            console.warn('⚠️ Profile fetch failed (using immediate profile):', err);
+          });
         }
       } else if (event === 'SIGNED_OUT') {
         console.log('👋 User signed out');
         setSession(null);
         setUser(null);
         setProfile(null);
+        setIsLoading(false);
         localStorage.removeItem('user_profile');
       } else if (event === 'USER_UPDATED') {
         if (session?.user) {
           console.log('🔄 User updated:', session.user.email);
           setUser(session.user);
-          await fetchProfile(
+          fetchProfile(
             session.user.id, 
             session.user.email || '',
             session.user.user_metadata
-          );
+          ).catch(err => console.warn('⚠️ Profile update failed:', err));
         }
       }
     });
 
     return () => {
+      mounted = false;
       subscription.unsubscribe();
     };
   }, [fetchProfile]);
@@ -275,17 +420,22 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
       // Validate email format
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(email)) {
+        setIsLoading(false);
         return { success: false, error: 'Lütfen geçerli bir e-posta adresi girin' };
       }
 
       if (!password || password.length === 0) {
+        setIsLoading(false);
         return { success: false, error: 'Lütfen şifrenizi girin' };
       }
 
-      const { data, error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      // Timeout ile sign in - 10 saniye
+      const signInPromise = supabase.auth.signInWithPassword({ email, password });
+      const timeoutPromise = new Promise<{ data: { user: null }, error: { message: string } }>((resolve) => 
+        setTimeout(() => resolve({ data: { user: null }, error: { message: 'Bağlantı zaman aşımına uğradı. Lütfen tekrar deneyin.' } }), 10000)
+      );
+      
+      const { data, error: signInError } = await Promise.race([signInPromise, timeoutPromise]);
 
       if (signInError) {
         // User-friendly error messages
@@ -298,29 +448,32 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
           errorMsg = 'Giriş yapılamadı. Lütfen sistem yöneticisine başvurun.';
         }
         setError(errorMsg);
+        setIsLoading(false);
         return { success: false, error: errorMsg };
       }
 
       if (data.user) {
-        await fetchProfile(
+        // Profile fetch'i background'da yap
+        fetchProfile(
           data.user.id, 
           data.user.email || '',
           data.user.user_metadata
-        );
+        ).catch(err => console.warn('Profile fetch error:', err));
       }
 
+      setIsLoading(false);
       return { success: true };
     } catch (err: any) {
       // Handle network errors
       if (err.code === 'ECONNREFUSED' || err.message?.includes('network')) {
+        setIsLoading(false);
         return { success: false, error: 'Bağlantı hatası. İnternet bağlantınızı kontrol edin.' };
       }
       
       const errorMsg = err.message || 'Giriş başarısız';
       setError(errorMsg);
-      return { success: false, error: errorMsg };
-    } finally {
       setIsLoading(false);
+      return { success: false, error: errorMsg };
     }
   };
 
@@ -433,7 +586,8 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
       // Get redirect URL - use current origin for callback
       const redirectUrl = `${window.location.origin}${window.location.pathname}`;
       
-      const { error: oauthError } = await supabase.auth.signInWithOAuth({
+      // Timeout ile OAuth
+      const oauthPromise = supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: redirectUrl,
@@ -443,18 +597,28 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
           },
         },
       });
+      
+      const timeoutPromise = new Promise<{ error: { message: string } }>((resolve) => 
+        setTimeout(() => resolve({ error: { message: 'Bağlantı zaman aşımına uğradı. Lütfen tekrar deneyin.' } }), 10000)
+      );
+      
+      const { error: oauthError } = await Promise.race([oauthPromise, timeoutPromise]);
 
       if (oauthError) {
         // Check if provider is not enabled
         if (oauthError.message?.includes('not enabled') || oauthError.message?.includes('Unsupported provider')) {
           const errorMsg = 'Google ile giriş şu anda kullanılamıyor. Lütfen e-posta ile kayıt olun veya sistem yöneticisine başvurun.';
           setError(errorMsg);
+          setIsLoading(false);
           return { success: false, error: errorMsg };
         }
         setError(oauthError.message);
+        setIsLoading(false);
         return { success: false, error: oauthError.message };
       }
 
+      // OAuth redirect başarılı, loading'i false yap
+      // (kullanıcı Google'a yönlendirilecek)
       return { success: true };
     } catch (err: any) {
       // Check for provider not enabled error in error object
@@ -517,13 +681,28 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     setIsLoading(true);
     try {
-      await supabase.auth.signOut();
+      // Timeout ile Supabase signOut
+      const signOutPromise = supabase.auth.signOut();
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Timeout')), 3000)
+      );
+      
+      await Promise.race([signOutPromise, timeoutPromise]).catch(() => {
+        console.log('SignOut timeout, clearing local state anyway');
+      });
+      
+      // Her durumda local state'i temizle
       setUser(null);
       setSession(null);
       setProfile(null);
       localStorage.removeItem('user_profile');
     } catch (err) {
       console.error('Sign out error:', err);
+      // Hata olsa bile local state'i temizle
+      setUser(null);
+      setSession(null);
+      setProfile(null);
+      localStorage.removeItem('user_profile');
     } finally {
       setIsLoading(false);
     }
@@ -678,6 +857,7 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
     profile,
     session,
     isLoading,
+    profileLoading,
     isAuthenticated,
     error,
     signInWithEmail,
