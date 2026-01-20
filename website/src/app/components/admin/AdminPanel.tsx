@@ -52,7 +52,7 @@ import { Textarea } from '@/app/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import { Badge } from '@/app/components/ui/badge';
 import { useAdmin } from '@/contexts/AdminContext';
-import { AdminDataContext, CURRENCY_SYMBOLS, LANGUAGE_CURRENCY_MAP, AdSettings, SectionSettings, SectionMediaItem, FeatureCategory, ChangeLogEntry } from '@/contexts/AdminDataContext';
+import { AdminDataContext, CURRENCY_SYMBOLS, LANGUAGE_CURRENCY_MAP, AdSettings, SectionSettings, SectionMediaItem, FeatureCategory, ChangeLogEntry, LegalDocument } from '@/contexts/AdminDataContext';
 import { ChangePasswordModal } from '@/app/components/auth/ChangePasswordModal';
 import { AdManagement } from '@/app/components/admin/AdManagement';
 import { TeamManagement } from '@/app/components/admin/TeamManagement';
@@ -76,6 +76,7 @@ type MenuSection =
   | 'stats'
   | 'game'
   | 'waitlist'
+  | 'legal'
   | 'settings' 
   | 'logs'
   | 'test'
@@ -190,121 +191,148 @@ export function AdminPanel() {
         </CardHeader>
         <Separator className="flex-shrink-0" />
         <div className="flex-1 overflow-y-auto p-2 space-y-1">
-          <MenuButton
-            icon={Bot}
-            label="Test Bot"
-            active={activeSection === 'test'}
-            onClick={() => setActiveSection('test')}
-            badge={true}
-          />
-          <MenuButton
-            icon={LayoutDashboard}
-            label="Gösterge Paneli"
-            active={activeSection === 'dashboard'}
-            onClick={() => setActiveSection('dashboard')}
-          />
-          <MenuButton
-            icon={FileBarChart}
-            label="Analitik"
-            active={activeSection === 'analytics'}
-            onClick={() => setActiveSection('analytics')}
-          />
-          <MenuButton
-            icon={Users}
-            label="Kullanıcılar"
-            active={activeSection === 'users'}
-            onClick={() => setActiveSection('users')}
-          />
-          <MenuButton
-            icon={FileText}
-            label="İçerik Yönetimi"
-            active={activeSection === 'content'}
-            onClick={() => setActiveSection('content')}
-          />
-          <MenuButton
-            icon={Monitor}
-            label="Reklam Yönetimi"
-            active={activeSection === 'ads'}
-            onClick={() => setActiveSection('ads')}
-          />
-          <MenuButton
-            icon={UserCheck}
-            label="Ekip Yönetimi"
-            active={activeSection === 'team'}
-            onClick={() => setActiveSection('team')}
-          />
-          <MenuButton
-            icon={FileText}
-            label="Basın Bültenleri"
-            active={activeSection === 'press'}
-            onClick={() => setActiveSection('press')}
-          />
-          <MenuButton
-            icon={Handshake}
-            label="Partner Yönetimi"
-            active={activeSection === 'partners'}
-            onClick={() => setActiveSection('partners')}
-          />
-          <MenuButton
-            icon={Flag}
-            label="Ortaklık Başvuruları"
-            active={activeSection === 'partner-applications'}
-            onClick={() => setActiveSection('partner-applications')}
-          />
-          <MenuButton
-            icon={Gamepad2}
-            label="Kategori Yönetimi"
-            active={activeSection === 'features'}
-            onClick={() => setActiveSection('features')}
-          />
-          <MenuButton
-            icon={Image}
-            label="Medya Yönetimi"
-            active={activeSection === 'media'}
-            onClick={() => setActiveSection('media')}
-          />
-          <MenuButton
-            icon={Mail}
-            label="Bekleme Listesi"
-            active={activeSection === 'waitlist'}
-            onClick={() => setActiveSection('waitlist')}
-          />
-          <MenuButton
-            icon={Tag}
-            label="Fiyatlandırma & İndirim"
-            active={activeSection === 'pricing'}
-            onClick={() => setActiveSection('pricing')}
-          />
-          <MenuButton
-            icon={Layout}
-            label="Bölüm Kontrolü"
-            active={activeSection === 'sections'}
-            onClick={() => setActiveSection('sections')}
-          />
-          <MenuButton
-            icon={TrendingUp}
-            label="İstatistikler"
-            active={activeSection === 'stats'}
-            onClick={() => setActiveSection('stats')}
-          />
-          <MenuButton
-            icon={Gamepad2}
-            label="Oyun Sistemi"
-            active={activeSection === 'game'}
-            onClick={() => setActiveSection('game')}
-          />
-          <MenuButton
-            icon={Settings}
-            label="Ayarlar"
-            active={activeSection === 'settings'}
-            onClick={() => setActiveSection('settings')}
-          />
-          <MenuButton
-            icon={Activity}
-            label="Loglar"
-            active={activeSection === 'logs'}
-            onClick={() => setActiveSection('logs')}
-          />
+          {/* Web Admin Section */}
+          <div className="px-2 py-2">
+            <div className="flex items-center gap-2 mb-2">
+              <Monitor className="size-4 text-primary" />
+              <span className="text-xs font-semibold text-primary uppercase tracking-wider">Web Admin</span>
+            </div>
+            <div className="space-y-1 ml-6">
+              <MenuButton
+                icon={LayoutDashboard}
+                label="Gösterge Paneli"
+                active={activeSection === 'dashboard'}
+                onClick={() => setActiveSection('dashboard')}
+              />
+              <MenuButton
+                icon={FileBarChart}
+                label="Analitik"
+                active={activeSection === 'analytics'}
+                onClick={() => setActiveSection('analytics')}
+              />
+              <MenuButton
+                icon={Users}
+                label="Kullanıcılar"
+                active={activeSection === 'users'}
+                onClick={() => setActiveSection('users')}
+              />
+              <MenuButton
+                icon={FileText}
+                label="İçerik Yönetimi"
+                active={activeSection === 'content'}
+                onClick={() => setActiveSection('content')}
+              />
+              <MenuButton
+                icon={Monitor}
+                label="Reklam Yönetimi"
+                active={activeSection === 'ads'}
+                onClick={() => setActiveSection('ads')}
+              />
+              <MenuButton
+                icon={UserCheck}
+                label="Ekip Yönetimi"
+                active={activeSection === 'team'}
+                onClick={() => setActiveSection('team')}
+              />
+              <MenuButton
+                icon={FileText}
+                label="Basın Bültenleri"
+                active={activeSection === 'press'}
+                onClick={() => setActiveSection('press')}
+              />
+              <MenuButton
+                icon={Handshake}
+                label="Partner Yönetimi"
+                active={activeSection === 'partners'}
+                onClick={() => setActiveSection('partners')}
+              />
+              <MenuButton
+                icon={Flag}
+                label="Ortaklık Başvuruları"
+                active={activeSection === 'partner-applications'}
+                onClick={() => setActiveSection('partner-applications')}
+              />
+              <MenuButton
+                icon={Gamepad2}
+                label="Kategori Yönetimi"
+                active={activeSection === 'features'}
+                onClick={() => setActiveSection('features')}
+              />
+              <MenuButton
+                icon={Image}
+                label="Medya Yönetimi"
+                active={activeSection === 'media'}
+                onClick={() => setActiveSection('media')}
+              />
+              <MenuButton
+                icon={Mail}
+                label="Bekleme Listesi"
+                active={activeSection === 'waitlist'}
+                onClick={() => setActiveSection('waitlist')}
+              />
+              <MenuButton
+                icon={Tag}
+                label="Fiyatlandırma & İndirim"
+                active={activeSection === 'pricing'}
+                onClick={() => setActiveSection('pricing')}
+              />
+              <MenuButton
+                icon={Layout}
+                label="Bölüm Kontrolü"
+                active={activeSection === 'sections'}
+                onClick={() => setActiveSection('sections')}
+              />
+              <MenuButton
+                icon={TrendingUp}
+                label="İstatistikler"
+                active={activeSection === 'stats'}
+                onClick={() => setActiveSection('stats')}
+              />
+              <MenuButton
+                icon={Gamepad2}
+                label="Oyun Sistemi"
+                active={activeSection === 'game'}
+                onClick={() => setActiveSection('game')}
+              />
+              <MenuButton
+                icon={FileText}
+                label="Yasal Belgeler"
+                active={activeSection === 'legal'}
+                onClick={() => setActiveSection('legal')}
+              />
+              <MenuButton
+                icon={Settings}
+                label="Ayarlar"
+                active={activeSection === 'settings'}
+                onClick={() => setActiveSection('settings')}
+              />
+              <MenuButton
+                icon={Activity}
+                label="Loglar"
+                active={activeSection === 'logs'}
+                onClick={() => setActiveSection('logs')}
+              />
+            </div>
+          </div>
+            </div>
+          </div>
+
+          {/* Mobil Admin Section */}
+          <div className="px-2 py-2 mt-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Smartphone className="size-4 text-secondary" />
+              <span className="text-xs font-semibold text-secondary uppercase tracking-wider">Mobil Admin</span>
+            </div>
+            <div className="space-y-1 ml-6">
+              <MenuButton
+                icon={Bot}
+                label="Test Bot"
+                active={activeSection === 'test'}
+                onClick={() => setActiveSection('test')}
+                badge={true}
+              />
+            </div>
+          </div>
         </div>
       </Card>
 
@@ -328,6 +356,7 @@ export function AdminPanel() {
             {activeSection === 'sections' && <SectionsContent />}
             {activeSection === 'stats' && <StatsContent />}
             {activeSection === 'game' && <GameContent />}
+            {activeSection === 'legal' && <LegalDocumentsContent />}
             {activeSection === 'settings' && <SettingsContent />}
             {activeSection === 'logs' && <LogsContent />}
             {activeSection === 'test' && <AdminTestBot />}
@@ -6032,6 +6061,315 @@ function StatsContent() {
           </div>
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+// Legal Documents Content - Yasal Belgeler Yönetimi
+function LegalDocumentsContent() {
+  const contextData = useContext(AdminDataContext);
+  const legalDocuments = contextData?.legalDocuments || [];
+  const addLegalDocument = contextData?.addLegalDocument;
+  const updateLegalDocument = contextData?.updateLegalDocument;
+  const deleteLegalDocument = contextData?.deleteLegalDocument;
+
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [editingDoc, setEditingDoc] = useState<LegalDocument | null>(null);
+  const [selectedLanguage, setSelectedLanguage] = useState<string>('tr');
+  const [selectedDocumentId, setSelectedDocumentId] = useState<string>('terms');
+  
+  const [formData, setFormData] = useState({
+    document_id: 'terms' as string,
+    language: 'tr' as string,
+    title: '',
+    content: '',
+    enabled: true,
+  });
+
+  const documentTypes = [
+    { id: 'terms', name: 'Kullanım Koşulları (EULA)' },
+    { id: 'privacy', name: 'Küresel Gizlilik Politikası' },
+    { id: 'cookies', name: 'Çerez Politikası' },
+    { id: 'kvkk', name: 'KVKK Aydınlatma Metni' },
+    { id: 'consent', name: 'Açık Rıza Metni' },
+    { id: 'sales', name: 'Mesafeli Satış Sözleşmesi' },
+    { id: 'copyright', name: 'Telif Hakkı Bildirimi' },
+  ];
+
+  const languages = [
+    { code: 'tr', name: 'Türkçe' },
+    { code: 'en', name: 'English' },
+    { code: 'de', name: 'Deutsch' },
+    { code: 'fr', name: 'Français' },
+    { code: 'es', name: 'Español' },
+    { code: 'it', name: 'Italiano' },
+    { code: 'ar', name: 'العربية' },
+    { code: 'zh', name: '中文' },
+  ];
+
+  if (!contextData) {
+    return <div className="p-4 text-center">Yasal belgeler yükleniyor...</div>;
+  }
+
+  const handleSave = async () => {
+    if (!formData.title || !formData.content) {
+      toast.error('Lütfen başlık ve içerik girin');
+      return;
+    }
+
+    if (editingDoc) {
+      await updateLegalDocument(editingDoc.id, formData);
+      toast.success('Yasal belge güncellendi');
+    } else {
+      await addLegalDocument(formData);
+      toast.success('Yasal belge eklendi');
+    }
+    
+    setShowAddDialog(false);
+    setEditingDoc(null);
+    setFormData({
+      document_id: 'terms',
+      language: 'tr',
+      title: '',
+      content: '',
+      enabled: true,
+    });
+  };
+
+  const handleEdit = (doc: LegalDocument) => {
+    setEditingDoc(doc);
+    setFormData({
+      document_id: doc.document_id,
+      language: doc.language,
+      title: doc.title,
+      content: doc.content,
+      enabled: doc.enabled,
+    });
+    setShowAddDialog(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (confirm('Bu yasal belgeyi silmek istediğinize emin misiniz?')) {
+      await deleteLegalDocument(id);
+      toast.success('Yasal belge silindi');
+    }
+  };
+
+  const filteredDocuments = legalDocuments.filter(doc => 
+    (!selectedDocumentId || doc.document_id === selectedDocumentId) &&
+    (!selectedLanguage || doc.language === selectedLanguage)
+  );
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold mb-1">Yasal Belgeler Yönetimi</h2>
+          <p className="text-sm text-muted-foreground">Web ve mobil uygulama için yasal belgeleri yönetin</p>
+        </div>
+        <Button className="gap-2" onClick={() => {
+          setEditingDoc(null);
+          setFormData({
+            document_id: 'terms',
+            language: 'tr',
+            title: '',
+            content: '',
+            enabled: true,
+          });
+          setShowAddDialog(true);
+        }}>
+          <Plus className="size-4" />
+          Yeni Belge
+        </Button>
+      </div>
+
+      {/* Filters */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Filtreler</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Belge Türü</Label>
+              <Select value={selectedDocumentId} onValueChange={setSelectedDocumentId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Tüm belgeler" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Tüm belgeler</SelectItem>
+                  {documentTypes.map(type => (
+                    <SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Dil</Label>
+              <Select value={selectedLanguage} onValueChange={setSelectedLanguage}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Tüm diller" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Tüm diller</SelectItem>
+                  {languages.map(lang => (
+                    <SelectItem key={lang.code} value={lang.code}>{lang.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Documents List */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Yasal Belgeler ({filteredDocuments.length})</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3 max-h-96 overflow-y-auto">
+            {filteredDocuments.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <FileText className="size-12 mx-auto mb-2 opacity-50" />
+                <p>Henüz yasal belge eklenmemiş</p>
+              </div>
+            ) : (
+              filteredDocuments.map((doc) => {
+                const docType = documentTypes.find(t => t.id === doc.document_id);
+                const lang = languages.find(l => l.code === doc.language);
+                return (
+                  <div
+                    key={doc.id}
+                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Badge variant={doc.enabled ? 'default' : 'secondary'}>
+                          {doc.enabled ? 'Aktif' : 'Pasif'}
+                        </Badge>
+                        <span className="font-semibold">{doc.title}</span>
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        <span>{docType?.name || doc.document_id}</span>
+                        <span className="mx-2">•</span>
+                        <span>{lang?.name || doc.language}</span>
+                        <span className="mx-2">•</span>
+                        <span>{doc.content.length} karakter</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEdit(doc)}
+                      >
+                        <Edit2 className="size-4" />
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleDelete(doc.id)}
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Add/Edit Dialog */}
+      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+        <DialogContent className="max-w-4xl max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle>{editingDoc ? 'Yasal Belge Düzenle' : 'Yeni Yasal Belge Ekle'}</DialogTitle>
+            <DialogDescription>
+              Web ve mobil uygulama için yasal belge içeriğini girin
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Belge Türü</Label>
+                <Select
+                  value={formData.document_id}
+                  onValueChange={(value) => setFormData({ ...formData, document_id: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {documentTypes.map(type => (
+                      <SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Dil</Label>
+                <Select
+                  value={formData.language}
+                  onValueChange={(value) => setFormData({ ...formData, language: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {languages.map(lang => (
+                      <SelectItem key={lang.code} value={lang.code}>{lang.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Başlık</Label>
+              <Input
+                value={formData.title}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                placeholder="Belge başlığı"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>İçerik</Label>
+              <Textarea
+                value={formData.content}
+                onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+                placeholder="Belge içeriği..."
+                className="min-h-[300px] font-mono text-sm"
+              />
+              <p className="text-xs text-muted-foreground">
+                {formData.content.length} karakter
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="enabled"
+                checked={formData.enabled}
+                onChange={(e) => setFormData({ ...formData, enabled: e.target.checked })}
+                className="rounded"
+              />
+              <Label htmlFor="enabled" className="cursor-pointer">Aktif</Label>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="outline" onClick={() => {
+              setShowAddDialog(false);
+              setEditingDoc(null);
+            }}>
+              İptal
+            </Button>
+            <Button onClick={handleSave}>
+              {editingDoc ? 'Güncelle' : 'Ekle'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

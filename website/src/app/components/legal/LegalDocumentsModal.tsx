@@ -11,6 +11,7 @@ import { Button } from '@/app/components/ui/button';
 import { ScrollArea } from '@/app/components/ui/scroll-area';
 import { Separator } from '@/app/components/ui/separator';
 import { FileText, Lock, Cookie, Scale, CheckCircle, CreditCard, Copyright } from 'lucide-react';
+import { legalDocumentsService } from '@/services/adminSupabaseService';
 
 interface LegalDocumentsModalProps {
   open: boolean;
@@ -249,8 +250,37 @@ Telif hakkı ihlali bildirimi için: copyright@tacticiq.app`,
 };
 
 export function LegalDocumentsModal({ open, onOpenChange, documentId }: LegalDocumentsModalProps) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [selectedDoc, setSelectedDoc] = useState<string | null>(documentId || null);
+  const [adminDocuments, setAdminDocuments] = useState<Record<string, { title: string; content: string }>>({});
+  const [loading, setLoading] = useState(false);
+
+  // Load legal documents from admin (Supabase)
+  useEffect(() => {
+    if (open) {
+      const loadAdminDocuments = async () => {
+        setLoading(true);
+        try {
+          const documents = await legalDocumentsService.getByLanguage(language || 'tr');
+          const docsMap: Record<string, { title: string; content: string }> = {};
+          documents.forEach(doc => {
+            if (doc.enabled) {
+              docsMap[doc.document_id] = {
+                title: doc.title,
+                content: doc.content,
+              };
+            }
+          });
+          setAdminDocuments(docsMap);
+        } catch (error) {
+          console.error('Failed to load admin legal documents:', error);
+        } finally {
+          setLoading(false);
+        }
+      };
+      loadAdminDocuments();
+    }
+  }, [open, language]);
 
   useEffect(() => {
     if (documentId && open) {
@@ -258,14 +288,32 @@ export function LegalDocumentsModal({ open, onOpenChange, documentId }: LegalDoc
     }
   }, [documentId, open]);
 
-  // Get document from translations or fallback to legacy content
+  // Get document: First try admin documents, then translations, then legacy content
   const currentDocKey = selectedDoc ? LEGAL_DOC_KEYS[selectedDoc] : null;
-  const currentDoc = currentDocKey
-    ? {
-        title: t(currentDocKey.titleKey),
-        content: t(currentDocKey.contentKey),
+  let currentDoc = null;
+  
+  if (selectedDoc) {
+    // 1. Try admin documents first
+    if (adminDocuments[selectedDoc]) {
+      currentDoc = adminDocuments[selectedDoc];
+    }
+    // 2. Try translations
+    else if (currentDocKey) {
+      const translatedTitle = t(currentDocKey.titleKey);
+      const translatedContent = t(currentDocKey.contentKey);
+      // Check if translation exists (not just the key)
+      if (translatedTitle !== currentDocKey.titleKey && translatedContent !== currentDocKey.contentKey) {
+        currentDoc = {
+          title: translatedTitle,
+          content: translatedContent,
+        };
       }
-    : (selectedDoc ? LEGAL_CONTENT[selectedDoc] : null);
+    }
+    // 3. Fallback to legacy content
+    if (!currentDoc && LEGAL_CONTENT[selectedDoc]) {
+      currentDoc = LEGAL_CONTENT[selectedDoc];
+    }
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

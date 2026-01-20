@@ -98,6 +98,17 @@ export interface PressKitFile {
   updated_at?: string;
 }
 
+export interface LegalDocument {
+  id: string;
+  document_id: string; // 'terms', 'privacy', 'cookies', 'kvkk', 'consent', 'sales', 'copyright'
+  language: string; // 'tr', 'en', 'de', 'fr', 'es', 'it', 'ar', 'zh'
+  title: string;
+  content: string;
+  enabled: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface WaitlistEntry {
   id: string;
   email: string;
@@ -1793,6 +1804,180 @@ export const partnerApplicationsService = {
   }
 };
 
+// =====================================================
+// Legal Documents Service
+// =====================================================
+
+export const legalDocumentsService = {
+  async getAll(): Promise<LegalDocument[]> {
+    try {
+      const { data, error } = await supabase
+        .from('legal_documents')
+        .select('*')
+        .order('document_id', { ascending: true })
+        .order('language', { ascending: true });
+
+      if (error) {
+        console.warn('Supabase legal documents getAll error:', error.message);
+        return [];
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Legal documents getAll error:', error);
+      return [];
+    }
+  },
+
+  async getByDocumentId(documentId: string): Promise<LegalDocument[]> {
+    try {
+      const { data, error } = await supabase
+        .from('legal_documents')
+        .select('*')
+        .eq('document_id', documentId)
+        .order('language', { ascending: true });
+
+      if (error) {
+        console.warn('Supabase legal documents getByDocumentId error:', error.message);
+        return [];
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Legal documents getByDocumentId error:', error);
+      return [];
+    }
+  },
+
+  async getByLanguage(language: string): Promise<LegalDocument[]> {
+    try {
+      const { data, error } = await supabase
+        .from('legal_documents')
+        .select('*')
+        .eq('language', language)
+        .order('document_id', { ascending: true });
+
+      if (error) {
+        console.warn('Supabase legal documents getByLanguage error:', error.message);
+        return [];
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Legal documents getByLanguage error:', error);
+      return [];
+    }
+  },
+
+  async get(documentId: string, language: string): Promise<LegalDocument | null> {
+    try {
+      const { data, error } = await supabase
+        .from('legal_documents')
+        .select('*')
+        .eq('document_id', documentId)
+        .eq('language', language)
+        .single();
+
+      if (error) {
+        console.warn('Supabase legal document get error:', error.message);
+        return null;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Legal document get error:', error);
+      return null;
+    }
+  },
+
+  async add(document: Omit<LegalDocument, 'id' | 'created_at' | 'updated_at'>): Promise<LegalDocument | null> {
+    try {
+      const { data, error } = await supabase
+        .from('legal_documents')
+        .insert({
+          ...document,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.warn('Supabase legal document add error:', error.message);
+        return null;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Legal document add error:', error);
+      return null;
+    }
+  },
+
+  async update(id: string, updates: Partial<LegalDocument>): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('legal_documents')
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id);
+
+      if (error) {
+        console.warn('Supabase legal document update error:', error.message);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Legal document update error:', error);
+      return false;
+    }
+  },
+
+  async upsert(document: Omit<LegalDocument, 'id' | 'created_at' | 'updated_at'>): Promise<LegalDocument | null> {
+    try {
+      // Önce mevcut kaydı kontrol et
+      const existing = await this.get(document.document_id, document.language);
+      
+      if (existing) {
+        // Güncelle
+        const updated = await this.update(existing.id, document);
+        if (updated) {
+          return await this.get(document.document_id, document.language);
+        }
+        return null;
+      } else {
+        // Yeni ekle
+        return await this.add(document);
+      }
+    } catch (error) {
+      console.error('Legal document upsert error:', error);
+      return null;
+    }
+  },
+
+  async delete(id: string): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('legal_documents')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        console.warn('Supabase legal document delete error:', error.message);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Legal document delete error:', error);
+      return false;
+    }
+  }
+};
+
 export default {
   config: configService,
   partners: partnersService,
@@ -1809,5 +1994,6 @@ export default {
   waitlist: waitlistService,
   emailTemplates: emailTemplatesService,
   emailLogs: emailLogsService,
-  partnerApplications: partnerApplicationsService
+  partnerApplications: partnerApplicationsService,
+  legalDocuments: legalDocumentsService
 };

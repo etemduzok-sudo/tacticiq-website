@@ -11,7 +11,8 @@ import {
   pressReleasesService,
   pressKitFilesService,
   logsService,
-  syncService
+  syncService,
+  legalDocumentsService
 } from '../services/adminSupabaseService';
 
 // Currency Exchange Rates (TRY bazlı - 1 TRY = X)
@@ -300,6 +301,18 @@ export interface ChangeLogEntry {
   details?: string; // Ek detaylar
 }
 
+// Legal Document - Yasal Belge
+export interface LegalDocument {
+  id: string;
+  document_id: string; // 'terms', 'privacy', 'cookies', 'kvkk', 'consent', 'sales', 'copyright'
+  language: string; // 'tr', 'en', 'de', 'fr', 'es', 'it', 'ar', 'zh'
+  title: string;
+  content: string;
+  enabled: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
 // Admin Bildirim Ayarları
 export interface AdminNotificationSettings {
   notificationEmail: string; // Bildirim gönderilecek email adresi
@@ -573,6 +586,7 @@ interface AdminDataContextType {
   partners: Partner[]; // Ortaklar/Partnerler
   sectionMedia: SectionMediaItem[]; // Section görselleri ve metinleri
   featureCategories: FeatureCategory[]; // Tahmin kategorileri (15 Tahmin Kategorisi)
+  legalDocuments: LegalDocument[]; // Yasal belgeler
   addUser: (user: Omit<User, 'id' | 'joinDate'>) => void;
   updateUser: (id: string, user: Partial<User>) => void;
   deleteUser: (id: string) => void;
@@ -605,6 +619,9 @@ interface AdminDataContextType {
   updateFeatureCategory: (id: string, category: Partial<FeatureCategory>) => void;
   deleteFeatureCategory: (id: string) => void;
   reorderFeatureCategories: (categories: FeatureCategory[]) => void;
+  addLegalDocument: (document: Omit<LegalDocument, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
+  updateLegalDocument: (id: string, updates: Partial<LegalDocument>) => Promise<void>;
+  deleteLegalDocument: (id: string) => Promise<void>;
   updateAdSettings: (settings: Partial<AdSettings>) => void;
   updateDiscountSettings: (settings: Partial<DiscountSettings>) => void;
   updatePriceSettings: (settings: Partial<PriceSettings>) => void;
@@ -868,6 +885,9 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
     { id: '14', key: 'corners', title: 'Korner Sayısı', description: 'Toplam korner sayısını tahmin edin (0-15+)', emoji: '🚩', featured: false, enabled: true, order: 14, createdAt: '', updatedAt: '' },
     { id: '15', key: 'goal_expectation', title: 'Gol Beklentisi (xG)', description: 'Her iki takımın beklenen gol değerini (Expected Goals) tahmin edin', emoji: '⚡', featured: true, enabled: true, order: 15, createdAt: '', updatedAt: '' },
   ];
+
+  // Legal Documents - Yasal Belgeler
+  const [legalDocuments, setLegalDocuments] = useState<LegalDocument[]>([]);
 
   const [featureCategories, setFeatureCategories] = useState<FeatureCategory[]>(() => {
     const saved = localStorage.getItem('admin_feature_categories');
@@ -1720,6 +1740,106 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
     setLogs([newLog, ...logs]);
   };
 
+  // Legal Documents CRUD - Yasal Belgeler
+  useEffect(() => {
+    const loadLegalDocuments = async () => {
+      try {
+        const documents = await legalDocumentsService.getAll();
+        setLegalDocuments(documents);
+      } catch (error) {
+        console.error('Failed to load legal documents:', error);
+      }
+    };
+    loadLegalDocuments();
+  }, []);
+
+  const addLegalDocument = async (document: Omit<LegalDocument, 'id' | 'created_at' | 'updated_at'>) => {
+    try {
+      const existing = legalDocuments.find(d => d.document_id === document.document_id && d.language === document.language);
+      const newDoc = await legalDocumentsService.upsert(document);
+      if (newDoc) {
+        setLegalDocuments(prev => {
+          if (existing) {
+            return prev.map(d => d.id === existing.id ? newDoc : d);
+          }
+          return [...prev, newDoc];
+        });
+        
+        const newLog: LogEntry = {
+          id: Date.now().toString(),
+          type: 'success',
+          message: `Yasal belge ${existing ? 'güncellendi' : 'eklendi'}: ${document.title} (${document.language})`,
+          user: 'admin@tacticiq.app',
+          time: new Date().toLocaleString('tr-TR'),
+        };
+        setLogs([newLog, ...logs]);
+        addSessionChange({
+          category: 'Yasal Belgeler',
+          action: existing ? 'update' : 'create',
+          description: `${document.title} (${document.language})`,
+        });
+      }
+    } catch (error) {
+      console.error('Failed to add legal document:', error);
+    }
+  };
+
+  const updateLegalDocument = async (id: string, updates: Partial<LegalDocument>) => {
+    try {
+      const success = await legalDocumentsService.update(id, updates);
+      if (success) {
+        setLegalDocuments(prev => prev.map(doc => doc.id === id ? { ...doc, ...updates } : doc));
+        
+        const doc = legalDocuments.find(d => d.id === id);
+        if (doc) {
+          const newLog: LogEntry = {
+            id: Date.now().toString(),
+            type: 'info',
+            message: `Yasal belge güncellendi: ${doc.title} (${doc.language})`,
+            user: 'admin@tacticiq.app',
+            time: new Date().toLocaleString('tr-TR'),
+          };
+          setLogs([newLog, ...logs]);
+          addSessionChange({
+            category: 'Yasal Belgeler',
+            action: 'update',
+            description: `${doc.title} (${doc.language})`,
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Failed to update legal document:', error);
+    }
+  };
+
+  const deleteLegalDocument = async (id: string) => {
+    try {
+      const doc = legalDocuments.find(d => d.id === id);
+      const success = await legalDocumentsService.delete(id);
+      if (success) {
+        setLegalDocuments(prev => prev.filter(doc => doc.id !== id));
+        
+        if (doc) {
+          const newLog: LogEntry = {
+            id: Date.now().toString(),
+            type: 'warning',
+            message: `Yasal belge silindi: ${doc.title} (${doc.language})`,
+            user: 'admin@tacticiq.app',
+            time: new Date().toLocaleString('tr-TR'),
+          };
+          setLogs([newLog, ...logs]);
+          addSessionChange({
+            category: 'Yasal Belgeler',
+            action: 'delete',
+            description: `${doc.title} (${doc.language})`,
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Failed to delete legal document:', error);
+    }
+  };
+
   // Session Change Tracking - Oturum değişiklik takibi
   const addSessionChange = (change: Omit<ChangeLogEntry, 'id' | 'timestamp'>) => {
     const newChange: ChangeLogEntry = {
@@ -2511,6 +2631,9 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
     updateFeatureCategory,
     deleteFeatureCategory,
     reorderFeatureCategories,
+    addLegalDocument,
+    updateLegalDocument,
+    deleteLegalDocument,
     updateAdSettings,
     updateDiscountSettings,
     updatePriceSettings,
@@ -2529,7 +2652,7 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
   }), [
     stats, users, contents, activities, logs, settings, sectionSettings,
     websiteContent, advertisements, adSettings, discountSettings, priceSettings,
-    pressKitFiles, emailAutoReply, teamMembers, pressReleases, games, partners, sectionMedia, featureCategories,
+    pressKitFiles, emailAutoReply, teamMembers, pressReleases, games, partners, sectionMedia, featureCategories, legalDocuments,
     sessionChanges, notificationSettings
   ]);
 
