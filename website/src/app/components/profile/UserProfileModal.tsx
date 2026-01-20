@@ -99,7 +99,8 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [nickname, setNickname] = useState('');
-  const [selectedTeam, setSelectedTeam] = useState<string>('');
+  const [selectedNationalTeam, setSelectedNationalTeam] = useState<string>('');
+  const [selectedClubTeams, setSelectedClubTeams] = useState<string[]>([]);
   
   // Notification preferences state
   const [emailNotifications, setEmailNotifications] = useState(false);
@@ -109,6 +110,29 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
   // Language & Timezone state
   const [selectedTimezone, setSelectedTimezone] = useState('Europe/Istanbul');
 
+  // Milli takımlar listesi
+  const nationalTeams = [
+    '🇹🇷 Türkiye', '🇩🇪 Almanya', '🇪🇸 İspanya', '🇫🇷 Fransa', '🇮🇹 İtalya',
+    '🏴󠁧󠁢󠁥󠁮󠁧󠁿 İngiltere', '🇧🇷 Brezilya', '🇦🇷 Arjantin', '🇵🇹 Portekiz', '🇳🇱 Hollanda',
+    '🇧🇪 Belçika', '🇭🇷 Hırvatistan', '🇺🇾 Uruguay', '🇲🇽 Meksika', '🇨🇴 Kolombiya',
+  ];
+
+  // Kulüp takımları listesi
+  const clubTeamsList = [
+    // Türkiye
+    'Fenerbahçe', 'Galatasaray', 'Beşiktaş', 'Trabzonspor', 'Başakşehir',
+    // İngiltere
+    'Arsenal', 'Manchester City', 'Liverpool', 'Chelsea', 'Manchester United', 'Tottenham',
+    // İspanya
+    'Real Madrid', 'Barcelona', 'Atletico Madrid', 'Sevilla', 'Valencia',
+    // Almanya
+    'Bayern Munich', 'Borussia Dortmund', 'RB Leipzig', 'Bayer Leverkusen',
+    // Fransa
+    'PSG', 'Lyon', 'Marseille', 'Monaco',
+    // İtalya
+    'Juventus', 'AC Milan', 'Inter Milan', 'Napoli', 'Roma',
+  ];
+
   // Initialize form data from profile
   useEffect(() => {
     if (profile && user && open) {
@@ -116,7 +140,13 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
       setFirstName(nameParts[0] || '');
       setLastName(nameParts.slice(1).join(' ') || '');
       setNickname(profile.nickname || profile.name || user.email?.split('@')[0] || '');
-      setSelectedTeam(profile.favoriteTeams?.[0] || '');
+      
+      // Takımları milli takım ve kulüp takımları olarak ayır
+      const teams = profile.favoriteTeams || [];
+      const nationalTeam = teams.find((team: string) => nationalTeams.includes(team)) || '';
+      const clubTeams = teams.filter((team: string) => clubTeamsList.includes(team)) || [];
+      setSelectedNationalTeam(nationalTeam);
+      setSelectedClubTeams(clubTeams);
       
       // Google/Apple kayıt olanlar için otomatik doldur
       if (user.app_metadata?.provider === 'google' || user.app_metadata?.provider === 'apple') {
@@ -129,12 +159,12 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
         setNickname(user.user_metadata?.name || user.email?.split('@')[0] || '');
       }
 
-      // Eğer nickname veya takım eksikse otomatik düzenleme moduna geç
+      // Eğer nickname veya milli takım eksikse otomatik düzenleme moduna geç
       const isEmailUser = user.app_metadata?.provider === 'email' || !user.app_metadata?.provider;
       const hasNickname = profile.nickname || profile.name;
-      const hasTeam = profile.favoriteTeams && profile.favoriteTeams.length > 0;
+      const hasNationalTeam = nationalTeam !== '';
       
-      if ((isEmailUser && !hasNickname) || !hasTeam) {
+      if ((isEmailUser && !hasNickname) || !hasNationalTeam) {
         setIsEditing(true);
       }
     }
@@ -215,19 +245,33 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
       return;
     }
 
-    // Takım seçimi zorunlu
-    if (!selectedTeam) {
-      toast.error('Lütfen bir takım seçin');
+    // Milli takım seçimi zorunlu (her kullanıcı için)
+    if (!selectedNationalTeam) {
+      toast.error('Lütfen bir milli takım seçin');
+      return;
+    }
+
+    // Pro kullanıcılar için kulüp takım limiti kontrolü
+    if (isPro && selectedClubTeams.length > 5) {
+      toast.error('Maksimum 5 kulüp takımı seçebilirsiniz');
+      return;
+    }
+
+    // Free kullanıcılar kulüp takımı seçemez
+    if (!isPro && selectedClubTeams.length > 0) {
+      toast.error('Kulüp takımı seçmek için Pro üye olmanız gerekiyor');
       return;
     }
 
     setSaving(true);
     try {
       const fullName = [firstName, lastName].filter(Boolean).join(' ').trim() || nickname;
+      // Milli takım + kulüp takımları birleştir
+      const allTeams = [selectedNationalTeam, ...selectedClubTeams].filter(Boolean);
       const result = await updateProfile({ 
         name: fullName || nickname,
         nickname: nickname,
-        favoriteTeams: selectedTeam ? [selectedTeam] : [],
+        favoriteTeams: allTeams,
       });
       if (result.success) {
         toast.success('Profil güncellendi');
@@ -287,12 +331,22 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
   const isGoogleUser = user.app_metadata?.provider === 'google';
   const isAppleUser = user.app_metadata?.provider === 'apple';
 
-  // Sample teams for selection (can be replaced with API call)
-  const availableTeams = [
-    'Fenerbahçe', 'Galatasaray', 'Beşiktaş', 'Trabzonspor', 'Başakşehir',
-    'Arsenal', 'Manchester City', 'Liverpool', 'Real Madrid', 'Barcelona',
-    'Bayern Munich', 'PSG', 'Juventus', 'AC Milan', 'Inter Milan',
-  ];
+  // Kulüp takımı ekleme/kaldırma
+  const handleToggleClubTeam = (team: string) => {
+    if (!isEditing) return;
+    
+    if (selectedClubTeams.includes(team)) {
+      setSelectedClubTeams(selectedClubTeams.filter(t => t !== team));
+    } else {
+      if (isPro && selectedClubTeams.length < 5) {
+        setSelectedClubTeams([...selectedClubTeams, team]);
+      } else if (!isPro) {
+        toast.error('Kulüp takımı seçmek için Pro üye olmanız gerekiyor');
+      } else {
+        toast.error('Maksimum 5 kulüp takımı seçebilirsiniz');
+      }
+    }
+  };
 
   return (
     <>
@@ -413,25 +467,80 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
                         )}
                       </div>
 
-                      {/* Team Selection - Zorunlu */}
+                      {/* Milli Takım Seçimi - Zorunlu (Tüm kullanıcılar için) */}
                       <div className="space-y-2">
                         <Label>
-                          Favori Takım <span className="text-destructive">*</span>
+                          Milli Takım <span className="text-destructive">*</span>
                         </Label>
-                        <Select value={selectedTeam} onValueChange={setSelectedTeam} disabled={!isEditing}>
-                          <SelectTrigger className={`${!isEditing ? 'bg-muted cursor-not-allowed' : ''} ${!selectedTeam && isEditing ? 'border-destructive' : ''}`}>
-                            <SelectValue placeholder="Takım seçin" />
+                        <Select value={selectedNationalTeam} onValueChange={setSelectedNationalTeam} disabled={!isEditing}>
+                          <SelectTrigger className={`${!isEditing ? 'bg-muted cursor-not-allowed' : ''} ${!selectedNationalTeam && isEditing ? 'border-destructive' : ''}`}>
+                            <SelectValue placeholder="Milli takım seçin" />
                           </SelectTrigger>
                           <SelectContent>
-                            {availableTeams.map(team => (
+                            {nationalTeams.map(team => (
                               <SelectItem key={team} value={team}>
                                 {team}
                               </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
-                        <p className="text-xs text-muted-foreground">Bir takım seçmeniz zorunludur</p>
+                        <p className="text-xs text-muted-foreground">Bir milli takım seçmeniz zorunludur</p>
                       </div>
+
+                      {/* Kulüp Takımları Seçimi - Sadece Pro kullanıcılar için */}
+                      {isPro && (
+                        <div className="space-y-2">
+                          <Label>
+                            Kulüp Takımları <span className="text-xs text-muted-foreground">(Maksimum 5)</span>
+                          </Label>
+                          <div className="border rounded-lg p-3 bg-muted/30 max-h-48 overflow-y-auto">
+                            <div className="grid grid-cols-2 gap-2">
+                              {clubTeamsList.map(team => {
+                                const isSelected = selectedClubTeams.includes(team);
+                                return (
+                                  <button
+                                    key={team}
+                                    onClick={() => handleToggleClubTeam(team)}
+                                    disabled={!isEditing}
+                                    className={`flex items-center gap-2 p-2 rounded-md text-sm transition-all ${
+                                      isSelected
+                                        ? 'bg-secondary text-white'
+                                        : 'bg-background hover:bg-muted'
+                                    } ${!isEditing ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                                  >
+                                    <div className={`size-4 rounded border-2 flex items-center justify-center ${
+                                      isSelected ? 'border-white bg-white' : 'border-muted-foreground'
+                                    }`}>
+                                      {isSelected && (
+                                        <span className="text-secondary text-xs font-bold">✓</span>
+                                      )}
+                                    </div>
+                                    <span className="text-xs">{team}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            {selectedClubTeams.length} / 5 kulüp takımı seçildi {isPro ? '' : '(Pro üye için)'}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Free kullanıcılar için Pro upgrade teşviki */}
+                      {!isPro && (
+                        <div className="border border-amber-500/30 rounded-lg p-3 bg-amber-500/10">
+                          <div className="flex items-start gap-2">
+                            <Crown className="size-4 text-amber-500 mt-0.5" />
+                            <div className="flex-1">
+                              <p className="text-xs font-medium text-amber-600">Pro Üye Olun</p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Pro üye olarak 5 kulüp takımı daha seçebilirsiniz
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
 
                       {/* Save Button */}
                       {isEditing && (
