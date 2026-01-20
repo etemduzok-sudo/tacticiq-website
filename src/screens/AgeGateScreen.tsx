@@ -25,7 +25,8 @@ import {
   saveConsentPreferences,
   applyConsentPreferences,
 } from '../services/consentService';
-import { LEGAL_DOCUMENTS, getLegalContent } from '../data/legalContent';
+import { LEGAL_DOCUMENTS, getLegalContent, getLegalContentSync } from '../data/legalContent';
+import { getCurrentLanguage } from '../i18n';
 
 const logoImage = require('../../assets/logo.png');
 
@@ -75,6 +76,18 @@ export const AgeGateScreen: React.FC<AgeGateScreenProps> = ({ onComplete }) => {
 
   useEffect(() => {
     initializeConsent();
+    // Pre-load admin legal documents
+    const loadAdminDocuments = async () => {
+      const language = getCurrentLanguage();
+      LEGAL_DOCUMENTS.forEach(async (doc) => {
+        try {
+          await getLegalContent(doc.id, t, language);
+        } catch (error) {
+          // Silently fail, will use fallback
+        }
+      });
+    };
+    loadAdminDocuments();
   }, []);
 
   const initializeConsent = async () => {
@@ -428,6 +441,9 @@ export const AgeGateScreen: React.FC<AgeGateScreenProps> = ({ onComplete }) => {
     >
       <SafeAreaView style={styles.legalModalContainer}>
         <LinearGradient colors={AUTH_GRADIENT.colors} style={styles.legalGradient} start={AUTH_GRADIENT.start} end={AUTH_GRADIENT.end}>
+          {/* Grid Pattern Background */}
+          <View style={styles.legalGridPattern} />
+          
           <View style={styles.legalHeader}>
             <Text style={styles.legalHeaderTitle}>{t('legal.title') || 'Yasal Belgeler'}</Text>
             <TouchableOpacity onPress={() => setShowLegalModal(false)}>
@@ -435,37 +451,62 @@ export const AgeGateScreen: React.FC<AgeGateScreenProps> = ({ onComplete }) => {
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={styles.legalScroll} showsVerticalScrollIndicator={false}>
-            {LEGAL_DOCUMENTS.map((doc) => (
-              <TouchableOpacity
-                key={doc.id}
-                style={styles.legalDocItem}
-                onPress={() => setSelectedLegalDoc(selectedLegalDoc === doc.id ? null : doc.id)}
-                activeOpacity={0.8}
-              >
-                <View style={styles.legalDocHeader}>
-                  <Text style={styles.legalDocIcon}>{doc.icon}</Text>
-                  <Text style={styles.legalDocTitle}>{t(doc.titleKey) || doc.titleKey}</Text>
-                  <Text style={styles.legalDocArrow}>{selectedLegalDoc === doc.id ? '▼' : '▶'}</Text>
-                </View>
-                {selectedLegalDoc === doc.id && (
-                  <View style={styles.legalDocContent}>
-                    <ScrollView style={styles.legalContentScroll} nestedScrollEnabled={true} showsVerticalScrollIndicator={false}>
-                      <Text style={styles.legalDocText}>
-                        {getLegalContent(doc.id, t)?.content || t(`legal.${doc.id}.fullContent`) || 'İçerik yükleniyor...'}
-                      </Text>
-                    </ScrollView>
+          <ScrollView style={styles.legalScroll} showsVerticalScrollIndicator={true}>
+            {LEGAL_DOCUMENTS.map((doc) => {
+              const language = getCurrentLanguage();
+              const legalContent = getLegalContentSync(doc.id, t, language);
+              return (
+                <TouchableOpacity
+                  key={doc.id}
+                  style={styles.legalDocItem}
+                  onPress={() => {
+                    if (selectedLegalDoc === doc.id) {
+                      setSelectedLegalDoc(null);
+                    } else {
+                      setSelectedLegalDoc(doc.id);
+                    }
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.legalDocHeader}>
+                    <View style={styles.legalDocHeaderLeft}>
+                      <Text style={styles.legalDocIcon}>{doc.icon}</Text>
+                      <Text style={styles.legalDocTitle}>{legalContent?.title || t(doc.titleKey) || doc.titleKey}</Text>
+                    </View>
+                    <Text style={styles.legalDocArrow}>{selectedLegalDoc === doc.id ? '▼' : '▶'}</Text>
                   </View>
-                )}
-              </TouchableOpacity>
-            ))}
+                  {selectedLegalDoc === doc.id && legalContent && (
+                    <View style={styles.legalDocContent}>
+                      <ScrollView style={styles.legalContentScroll} nestedScrollEnabled={true} showsVerticalScrollIndicator={true}>
+                        <Text style={styles.legalDocText}>{legalContent.content}</Text>
+                      </ScrollView>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
           </ScrollView>
 
-          <TouchableOpacity style={styles.legalAcceptButton} onPress={() => { setLegalAccepted(true); setShowLegalModal(false); }}>
-            <LinearGradient colors={[BRAND.emerald, '#047857']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.legalAcceptGradient}>
-              <Text style={styles.legalAcceptText}>{t('legal.accept') || 'Kabul Ediyorum'}</Text>
-            </LinearGradient>
-          </TouchableOpacity>
+          <View style={styles.legalModalFooter}>
+            <TouchableOpacity 
+              style={styles.legalAcceptButton} 
+              onPress={() => { 
+                setLegalAccepted(true); 
+                setShowLegalModal(false);
+              }}
+            >
+              <LinearGradient colors={[BRAND.emerald, '#047857']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.legalAcceptGradient}>
+                <Text style={styles.legalAcceptText}>{t('legal.accept') || 'Kabul Ediyorum'}</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.legalCancelButton} 
+              onPress={() => setShowLegalModal(false)}
+            >
+              <Text style={styles.legalCancelText}>{t('common.cancel') || 'İptal'}</Text>
+            </TouchableOpacity>
+          </View>
         </LinearGradient>
       </SafeAreaView>
     </Modal>
@@ -518,23 +559,26 @@ export const AgeGateScreen: React.FC<AgeGateScreenProps> = ({ onComplete }) => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <LinearGradient colors={AUTH_GRADIENT.colors} style={styles.container} start={AUTH_GRADIENT.start} end={AUTH_GRADIENT.end}>
+        {/* Grid Pattern Background */}
+        <View style={styles.gridPattern} />
         <View style={styles.content}>
-          {Platform.OS === 'web' ? (
-            <img 
-              src="/TacticIQ.svg" 
-              alt="TacticIQ" 
-              style={{ width: 250, height: 250 }} 
-            />
-          ) : (
-            <Image 
-              source={logoImage} 
-              style={{ width: 250, height: 250 }} 
-              resizeMode="contain" 
-            />
-          )}
+          <Image 
+            source={logoImage} 
+            style={styles.logoImage}
+            resizeMode="contain" 
+          />
           
           <Text style={styles.title}>{t('ageGate.title') || 'Yaş Doğrulama'}</Text>
           <Text style={styles.subtitle}>{t('ageGate.subtitle') || 'Doğum tarihinizi seçin'}</Text>
+          
+          {/* Yaş Göstergesi - Basitleştirilmiş */}
+          {selectedYear && selectedMonth && selectedDay && (
+            <View style={styles.ageDisplay}>
+              <Text style={styles.ageText}>
+                {calculateAge() || '-'} {t('ageGate.yearsOld') || 'yaşında'}
+              </Text>
+            </View>
+          )}
 
           <View style={styles.pickersContainer}>
             <View style={styles.pickerColumn}>
@@ -590,13 +634,36 @@ export const AgeGateScreen: React.FC<AgeGateScreenProps> = ({ onComplete }) => {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: AUTH_GRADIENT.colors[0] },
-  container: { flex: 1 },
-  content: { flex: 1, paddingHorizontal: SPACING.xl, paddingVertical: SPACING.xs, justifyContent: 'flex-start', alignItems: 'center' },
+  container: { flex: 1, position: 'relative' },
+  gridPattern: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    opacity: 0.15,
+    zIndex: 0,
+    ...Platform.select({
+      web: {
+        backgroundImage: `
+          linear-gradient(to right, rgba(31, 162, 166, 0.15) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(31, 162, 166, 0.15) 1px, transparent 1px)
+        `,
+        backgroundSize: '50px 50px',
+      },
+      default: {
+        backgroundColor: 'transparent',
+      },
+    }),
+  },
+  content: { flex: 1, paddingHorizontal: SPACING.xl, paddingVertical: SPACING.xs, justifyContent: 'flex-start', alignItems: 'center', zIndex: 1 },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: SPACING.md },
   loadingText: { color: BRAND.white, fontSize: 16, marginTop: SPACING.sm },
-  // Logo artık inline style ile 250px
+  logoImage: { width: 200, height: 200, marginBottom: SPACING.lg },
   title: { ...TYPOGRAPHY.h2, fontSize: 24, fontWeight: '700', color: BRAND.white, textAlign: 'center', marginBottom: SPACING.xs },
   subtitle: { ...TYPOGRAPHY.body, fontSize: 14, color: 'rgba(255,255,255,0.75)', textAlign: 'center', marginBottom: SPACING.lg },
+  ageDisplay: { backgroundColor: 'rgba(5, 150, 105, 0.15)', borderRadius: 12, paddingVertical: SPACING.sm, paddingHorizontal: SPACING.md, marginBottom: SPACING.lg, borderWidth: 1, borderColor: BRAND.emerald },
+  ageText: { fontSize: 16, fontWeight: '600', color: BRAND.emerald, textAlign: 'center' },
   
   pickersContainer: { flexDirection: 'row', gap: SPACING.sm, height: 140, marginBottom: SPACING.lg },
   pickerColumn: { flex: 1 },
@@ -640,20 +707,45 @@ const styles = StyleSheet.create({
   modalSaveText: { fontSize: 16, fontWeight: '700', color: BRAND.white },
   
   legalModalContainer: { flex: 1, backgroundColor: AUTH_GRADIENT.colors[0] },
-  legalGradient: { flex: 1 },
-  legalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: SPACING.lg, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.1)' },
+  legalGradient: { flex: 1, position: 'relative' },
+  legalGridPattern: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    opacity: 0.15,
+    zIndex: 0,
+    ...Platform.select({
+      web: {
+        backgroundImage: `
+          linear-gradient(to right, rgba(31, 162, 166, 0.15) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(31, 162, 166, 0.15) 1px, transparent 1px)
+        `,
+        backgroundSize: '50px 50px',
+      },
+      default: {
+        backgroundColor: 'transparent',
+      },
+    }),
+  },
+  legalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: SPACING.lg, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.1)', zIndex: 1 },
   legalHeaderTitle: { fontSize: 22, fontWeight: '700', color: BRAND.white },
   legalClose: { fontSize: 32, color: BRAND.white, fontWeight: '300' },
-  legalScroll: { flex: 1, paddingHorizontal: SPACING.lg },
-  legalDocItem: { backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 12, padding: SPACING.md, minHeight: 56, marginVertical: SPACING.xs, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
-  legalDocHeader: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
+  legalScroll: { flex: 1, paddingHorizontal: SPACING.lg, zIndex: 1 },
+  legalDocItem: { backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 12, padding: SPACING.md, marginVertical: SPACING.xs, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' },
+  legalDocHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  legalDocHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, flex: 1 },
   legalDocIcon: { fontSize: 22 },
   legalDocTitle: { flex: 1, fontSize: 15, fontWeight: '600', color: BRAND.white },
-  legalDocArrow: { fontSize: 14, color: BRAND.emerald },
-  legalDocContent: { marginTop: SPACING.md, paddingTop: SPACING.md, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)', maxHeight: 200 },
-  legalContentScroll: { maxHeight: 180 },
-  legalDocText: { fontSize: 12, color: 'rgba(255,255,255,0.75)', lineHeight: 18 },
-  legalAcceptButton: { marginHorizontal: SPACING.lg, marginTop: SPACING.md, marginBottom: SPACING.lg, borderRadius: 14, overflow: 'hidden' },
+  legalDocArrow: { fontSize: 14, color: BRAND.emerald, marginLeft: SPACING.sm },
+  legalDocContent: { marginTop: SPACING.md, paddingTop: SPACING.md, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)', maxHeight: 300 },
+  legalContentScroll: { maxHeight: 280 },
+  legalDocText: { fontSize: 13, color: 'rgba(255,255,255,0.85)', lineHeight: 20 },
+  legalModalFooter: { paddingHorizontal: SPACING.lg, paddingBottom: SPACING.lg, gap: SPACING.sm, zIndex: 1 },
+  legalAcceptButton: { borderRadius: 14, overflow: 'hidden' },
   legalAcceptGradient: { paddingVertical: SPACING.md, alignItems: 'center' },
   legalAcceptText: { fontSize: 16, fontWeight: '700', color: BRAND.white },
+  legalCancelButton: { borderRadius: 14, paddingVertical: SPACING.md, alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.1)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
+  legalCancelText: { fontSize: 16, fontWeight: '600', color: BRAND.white },
 });

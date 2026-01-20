@@ -14,6 +14,7 @@ import {
   Alert,
   Platform,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -51,6 +52,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   onTeamSelect,
   initialTab = 'profile',
 }) => {
+  const { t } = useTranslation();
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isPro, setIsPro] = useState(false);
@@ -605,7 +607,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   return (
     <ScreenLayout safeArea={true} scrollable={false}>
       <StandardHeader
-        title="Profile"
+        title={t('profile.title')}
         onBack={onBack}
         rightAction={{
           icon: 'settings-outline',
@@ -627,7 +629,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               color={activeTab === 'profile' ? '#059669' : '#64748B'}
             />
             <Text style={[styles.tabText, activeTab === 'profile' && styles.tabTextActive]}>
-              Profil
+              {t('profile.title')}
             </Text>
           </TouchableOpacity>
 
@@ -642,7 +644,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               color={activeTab === 'badges' ? '#F59E0B' : '#64748B'}
             />
             <Text style={[styles.tabText, activeTab === 'badges' && styles.tabTextActive]}>
-              Rozetlerim
+              {t('badges.title')}
             </Text>
             {badgeCount > 0 && (
               <View style={styles.badgeCountBubble}>
@@ -949,9 +951,17 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   <Pressable
                     style={[
                       styles.badgeCard,
-                      { borderColor: item.earned ? getBadgeColor(item.tier) : '#334155' },
+                      !item.earned && styles.badgeCardLocked,
+                      { borderColor: item.earned ? getBadgeColor(item.tier) : '#475569' },
+                      { backgroundColor: item.earned ? 'rgba(30, 41, 59, 0.8)' : 'rgba(30, 41, 59, 0.4)' },
                     ]}
                     onPress={() => setSelectedBadge(item)}
+                    // @ts-ignore - Web için title attribute (tooltip)
+                    {...(Platform.OS === 'web' && {
+                      title: item.earned 
+                        ? `${item.name} - Kazanıldı: ${item.earnedAt ? new Date(item.earnedAt).toLocaleDateString('tr-TR') : ''}` 
+                        : `${item.name} - Nasıl Kazanılır: ${item.requirement || item.description}`,
+                    })}
                   >
                     {/* Lock Icon (Top Right) - Kilitli rozetlerde */}
                     {!item.earned && (
@@ -970,8 +980,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                       </Animated.View>
                     )}
 
-                    {/* Badge Icon - Her zaman net görünsün */}
-                    <Text style={styles.badgeEmoji}>
+                    {/* Badge Icon - Kazanılan renkli, diğerleri gri */}
+                    <Text style={[
+                      styles.badgeEmoji,
+                      !item.earned && styles.badgeEmojiLocked,
+                    ]}>
                       {item.icon}
                     </Text>
 
@@ -1008,9 +1021,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               ListEmptyComponent={
                 <View style={styles.emptyBadgeState}>
                   <Ionicons name="trophy-outline" size={64} color="#64748B" />
-                  <Text style={styles.emptyBadgeTitle}>Henüz rozet yok</Text>
+                  <Text style={styles.emptyBadgeTitle}>{t('badges.noBadges')}</Text>
                   <Text style={styles.emptyBadgeText}>
-                    Maçlara tahmin yap ve rozetleri kazan!
+                    {t('badges.startPredicting')}
                   </Text>
                 </View>
               }
@@ -2073,9 +2086,17 @@ const styles = StyleSheet.create({
     position: 'relative',
     marginBottom: 8,
   },
+  badgeCardLocked: {
+    backgroundColor: 'rgba(30, 41, 59, 0.5)',
+    opacity: 0.7,
+  },
   badgeEmoji: {
     fontSize: 36,
     marginBottom: 6,
+  },
+  badgeEmojiLocked: {
+    opacity: 0.3,
+    filter: 'grayscale(100%)',
   },
   badgeName: {
     fontSize: 10,
@@ -2087,6 +2108,7 @@ const styles = StyleSheet.create({
   },
   badgeNameLocked: {
     color: '#94A3B8',
+    opacity: 0.6,
   },
   badgeTierLabel: {
     paddingHorizontal: 6,

@@ -1,5 +1,5 @@
 // Badge System Constants
-// 20 Progressive Badges across 5 difficulty tiers
+// 25 Progressive Badges across 5 difficulty tiers
 
 export interface BadgeDefinition {
   id: string;
@@ -237,11 +237,76 @@ export const ALL_BADGES: BadgeDefinition[] = [
     id: 'tacticiq-master',
     name: 'TacticIQ Master',
     description: 'Tüm rozetleri topladın - Efsane oldun!',
-    howToEarn: 'Diğer 19 rozetin tamamını topla (Büyük ödül)',
+    howToEarn: 'Diğer 24 rozetin tamamını topla (Büyük ödül)',
     emoji: '🏆',
     tier: 5,
     tierName: 'Efsane',
     color: '#FFD700',
+    category: 'Genel',
+  },
+  
+  // 🟢 Seviye 1: Çaylak (Ekstra rozet)
+  {
+    id: 'quick-learner',
+    name: 'Hızlı Öğrenen',
+    description: 'İlk 3 maçta %60+ başarı oranı yakaladın',
+    howToEarn: 'İlk 3 maçta %60 veya daha yüksek başarı oranı yakala',
+    emoji: '📚',
+    tier: 1,
+    tierName: 'Çaylak',
+    color: '#10B981',
+    category: 'Genel',
+  },
+  
+  // 🟡 Seviye 2: Amatör (Ekstra rozet)
+  {
+    id: 'team-supporter',
+    name: 'Takım Destekçisi',
+    description: 'Aynı takımın 5 maçını analiz ettin',
+    howToEarn: 'Aynı takımın 5 farklı maçını analiz et',
+    emoji: '👥',
+    tier: 2,
+    tierName: 'Amatör',
+    color: '#F59E0B',
+    category: 'Yıldız',
+  },
+  
+  // 🟠 Seviye 3: Profesyonel (Ekstra rozet)
+  {
+    id: 'prediction-wizard',
+    name: 'Tahmin Büyücüsü',
+    description: 'Tek maçta 500+ puan topladın',
+    howToEarn: 'Tek bir maçta 500 veya daha fazla puan topla',
+    emoji: '🧙',
+    tier: 3,
+    tierName: 'Profesyonel',
+    color: '#EF4444',
+    category: 'Genel',
+  },
+  
+  // 🔴 Seviye 4: Uzman (Ekstra rozet)
+  {
+    id: 'consistency-champion',
+    name: 'Tutarlılık Şampiyonu',
+    description: '10 maçta üst üste %70+ başarı oranı',
+    howToEarn: '10 maçta üst üste %70 veya daha yüksek başarı oranı yakala',
+    emoji: '🎖️',
+    tier: 4,
+    tierName: 'Uzman',
+    color: '#8B5CF6',
+    category: 'Disiplin',
+  },
+  
+  // 💎 Seviye 5: Efsane (Ekstra rozet)
+  {
+    id: 'legendary-analyst',
+    name: 'Efsanevi Analist',
+    description: 'Toplam 1000+ maç analiz ettin',
+    howToEarn: 'Toplamda 1000 veya daha fazla maç analiz et',
+    emoji: '🌟',
+    tier: 5,
+    tierName: 'Efsane',
+    color: '#06B6D4',
     category: 'Genel',
   },
 ];

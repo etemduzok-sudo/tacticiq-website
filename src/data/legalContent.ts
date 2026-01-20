@@ -2,7 +2,10 @@
  * Legal Content for TacticIQ Mobile App
  * Web sitesi ile uyumlu yasal metinler
  * Tüm bölgeler için (GDPR, KVKK, CCPA)
+ * Admin'den eklenen içerikler API'den çekilir
  */
+
+import { legalDocumentsApi, LegalDocument as ApiLegalDocument } from '../services/api';
 
 export interface LegalDocument {
   id: string;
@@ -56,26 +59,99 @@ export const LEGAL_DOCUMENTS: LegalDocument[] = [
   },
 ];
 
+// Cache for admin legal documents
+let adminDocumentsCache: Record<string, Record<string, { title: string; content: string }>> = {};
+let cacheTimestamp: number = 0;
+const CACHE_DURATION = 5 * 60 * 1000; // 5 dakika
+
 /**
  * Yasal metinlerin tam içeriği
- * Web sitesinden alınmıştır
+ * Öncelik sırası:
+ * 1. Admin'den eklenen içerikler (API'den)
+ * 2. Çeviri dosyaları
+ * 3. Fallback içerik
  */
-export const getLegalContent = (documentId: string, t: (key: string) => string): { title: string; content: string } | null => {
+export const getLegalContent = async (
+  documentId: string, 
+  t: (key: string) => string,
+  language: string = 'tr'
+): Promise<{ title: string; content: string } | null> => {
+  // Check cache first
+  const now = Date.now();
+  if (now - cacheTimestamp > CACHE_DURATION) {
+    adminDocumentsCache = {};
+  }
+
+  // Try to get from admin documents (API)
+  try {
+    if (!adminDocumentsCache[language] || !adminDocumentsCache[language][documentId]) {
+      const adminDocs = await legalDocumentsApi.getAll(language);
+      if (!adminDocumentsCache[language]) {
+        adminDocumentsCache[language] = {};
+      }
+      adminDocs.forEach(doc => {
+        if (doc.enabled && doc.document_id === documentId) {
+          adminDocumentsCache[language][documentId] = {
+            title: doc.title,
+            content: doc.content,
+          };
+        }
+      });
+      cacheTimestamp = now;
+    }
+
+    if (adminDocumentsCache[language][documentId]) {
+      return adminDocumentsCache[language][documentId];
+    }
+  } catch (error) {
+    console.warn('Failed to load admin legal documents, using fallback', error);
+  }
+
+  // Try translations
   const contentKey = `legal.${documentId}.fullContent`;
   const titleKey = `legal.${documentId}.title`;
   
   const content = t(contentKey);
   const title = t(titleKey);
   
-  // Eğer çeviri yoksa fallback kullan
-  if (content === contentKey || !content) {
-    return FALLBACK_LEGAL_CONTENT[documentId] || null;
+  // Check if translation exists (not just the key)
+  if (content !== contentKey && title !== titleKey && content && title) {
+    return {
+      title,
+      content,
+    };
   }
   
-  return {
-    title,
-    content,
-  };
+  // Fallback to static content
+  return FALLBACK_LEGAL_CONTENT[documentId] || null;
+};
+
+/**
+ * Synchronous version for backward compatibility
+ * Uses cached data if available, otherwise returns fallback
+ */
+export const getLegalContentSync = (documentId: string, t: (key: string) => string, language: string = 'tr'): { title: string; content: string } | null => {
+  // Check cache first
+  if (adminDocumentsCache[language] && adminDocumentsCache[language][documentId]) {
+    return adminDocumentsCache[language][documentId];
+  }
+
+  // Try translations
+  const contentKey = `legal.${documentId}.fullContent`;
+  const titleKey = `legal.${documentId}.title`;
+  
+  const content = t(contentKey);
+  const title = t(titleKey);
+  
+  if (content !== contentKey && title !== titleKey && content && title) {
+    return {
+      title,
+      content,
+    };
+  }
+  
+  // Fallback
+  return FALLBACK_LEGAL_CONTENT[documentId] || null;
 };
 
 /**

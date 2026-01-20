@@ -1,12 +1,9 @@
 /**
- * TacticIQ - Unified Onboarding Screen
- * Website-aligned design (https://www.tacticiq.app/)
- * 
- * Flow: Language → Age → Legal → Complete
- * Features: SVG Logo, Website colors, Professional UI
+ * TacticIQ - Premium Onboarding Screen
+ * 9 dil, premium tasarım, büyük butonlar
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,7 +11,6 @@ import {
   StyleSheet,
   ScrollView,
   SafeAreaView,
-  Animated as RNAnimated,
   Modal,
   Platform,
   Alert,
@@ -26,7 +22,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FlagDE, FlagGB, FlagES, FlagFR, FlagIT, FlagTR, FlagAR, FlagCN } from '../components/flags';
 import { useTranslation } from '../hooks/useTranslation';
-import { LEGAL_DOCUMENTS, getLegalContent } from '../data/legalContent';
+import { changeLanguage as changeI18nLanguage } from '../i18n';
+import { getLegalContent, getLegalContentSync } from '../data/legalContent';
+import { getCurrentLanguage } from '../i18n';
 import {
   ConsentPreferences,
   detectRegion,
@@ -34,17 +32,17 @@ import {
   saveConsentPreferences,
   applyConsentPreferences,
 } from '../services/consentService';
+import { Ionicons } from '@expo/vector-icons';
 import {
-  WEBSITE_COLORS,
-  WEBSITE_GRADIENTS,
+  WEBSITE_BRAND_COLORS,
+  WEBSITE_DARK_COLORS,
+  WEBSITE_BORDER_RADIUS,
   WEBSITE_SPACING,
-  WEBSITE_RADIUS,
+  WEBSITE_ICON_SIZES,
   WEBSITE_TYPOGRAPHY,
-  WEBSITE_SHADOWS,
-  WEBSITE_CARDS,
-} from '../theme/websiteTheme';
+} from '../config/WebsiteDesignSystem';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 interface OnboardingScreenProps {
   onComplete: () => void;
@@ -54,73 +52,60 @@ type OnboardingStep = 'language' | 'age' | 'legal';
 
 const CURRENT_YEAR = new Date().getFullYear();
 const YEARS = Array.from({ length: 100 }, (_, i) => CURRENT_YEAR - i);
-const MONTHS = [
-  { value: 1, label: 'January' },
-  { value: 2, label: 'February' },
-  { value: 3, label: 'March' },
-  { value: 4, label: 'April' },
-  { value: 5, label: 'May' },
-  { value: 6, label: 'June' },
-  { value: 7, label: 'July' },
-  { value: 8, label: 'August' },
-  { value: 9, label: 'September' },
-  { value: 10, label: 'October' },
-  { value: 11, label: 'November' },
-  { value: 12, label: 'December' },
+
+const MONTHS_BY_LANG: Record<string, string[]> = {
+  tr: ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'],
+  en: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
+  de: ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'],
+  es: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'],
+  fr: ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'],
+  it: ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'],
+  ar: ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'],
+  zh: ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'],
+};
+
+const languages = [
+  { code: 'tr', name: 'Türkçe' },
+  { code: 'en', name: 'English' },
+  { code: 'de', name: 'Deutsch' },
+  { code: 'es', name: 'Español' },
+  { code: 'fr', name: 'Français' },
+  { code: 'it', name: 'Italiano' },
+  { code: 'ar', name: 'العربية' },
+  { code: 'zh', name: '中文' },
 ];
+
+// Logo yüksekliği her sayfada aynı (sıçrama olmasın) - %50 büyütüldü
+const LOGO_SIZE = 270; // 180 * 1.5
+const LOGO_MARGIN_TOP = 30;
+const LOGO_MARGIN_BOTTOM = 24;
 
 export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
   const { t, i18n } = useTranslation();
   
-  // Step Management
   const [currentStep, setCurrentStep] = useState<OnboardingStep>('language');
   const [selectedLanguage, setSelectedLanguage] = useState<string>('tr');
   
-  // Age Gate
   const [selectedYear, setSelectedYear] = useState(CURRENT_YEAR - 25);
   const [selectedMonth, setSelectedMonth] = useState(1);
   const [selectedDay, setSelectedDay] = useState(1);
   const [isMinor, setIsMinor] = useState(false);
   
-  // Legal & Consent
   const [legalAccepted, setLegalAccepted] = useState(false);
   const [region, setRegion] = useState<ConsentPreferences['region']>('OTHER');
   const [preferences, setPreferences] = useState<ConsentPreferences>({
     essential: true,
-    analytics: false,
-    marketing: false,
-    personalizedAds: false,
-    dataTransfer: false,
+    analytics: true, // Ön tanımlı açık
+    marketing: true, // Ön tanımlı açık
+    personalizedAds: true, // Ön tanımlı açık
+    dataTransfer: true, // Ön tanımlı açık
     timestamp: new Date().toISOString(),
   });
   
-  // Modal States
   const [showLegalModal, setShowLegalModal] = useState(false);
   const [selectedLegalDoc, setSelectedLegalDoc] = useState<string | null>(null);
-  const [showCookieModal, setShowCookieModal] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState<'year' | 'month' | 'day' | null>(null);
-  
   const [loading, setLoading] = useState(false);
-
-  // Animation
-  const fadeAnim = useRef(new RNAnimated.Value(0)).current;
-  const slideAnim = useRef(new RNAnimated.Value(50)).current;
-
-  useEffect(() => {
-    // Animate in
-    RNAnimated.parallel([
-      RNAnimated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 600,
-        useNativeDriver: Platform.OS !== 'web',
-      }),
-      RNAnimated.timing(slideAnim, {
-        toValue: 0,
-        duration: 600,
-        useNativeDriver: Platform.OS !== 'web',
-      }),
-    ]).start();
-  }, [currentStep]);
 
   useEffect(() => {
     if (currentStep === 'legal') {
@@ -132,15 +117,18 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
     try {
       const detectedRegion = await detectRegion();
       setRegion(detectedRegion);
-      const defaultPrefs = await getDefaultConsentPreferences();
+      // Ön tanımlı olarak tüm çerezler açık (essential zaten true, diğerleri de true)
+      const defaultPrefs: ConsentPreferences = {
+        essential: true,
+        analytics: true,
+        marketing: true,
+        personalizedAds: true,
+        dataTransfer: true,
+        timestamp: new Date().toISOString(),
+      };
       if (isMinor) {
-        setPreferences({
-          ...defaultPrefs,
-          analytics: false,
-          marketing: false,
-          personalizedAds: false,
-          dataTransfer: false,
-        });
+        // 18 yaş altı için bazı çerezler kapalı
+        setPreferences({ ...defaultPrefs, analytics: false, marketing: false, personalizedAds: false, dataTransfer: false });
       } else {
         setPreferences(defaultPrefs);
       }
@@ -149,24 +137,14 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
     }
   };
 
-  // Language selection
   const handleLanguageSelect = async (code: string) => {
     setSelectedLanguage(code);
-    await i18n.changeLanguage(code);
+    await changeI18nLanguage(code);
     await AsyncStorage.setItem('@user_language', code);
-    
-    // Animate transition
-    RNAnimated.parallel([
-      RNAnimated.timing(fadeAnim, { toValue: 0, duration: 200, useNativeDriver: Platform.OS !== 'web' }),
-      RNAnimated.timing(slideAnim, { toValue: -50, duration: 200, useNativeDriver: Platform.OS !== 'web' }),
-    ]).start(() => {
-      setCurrentStep('age');
-      fadeAnim.setValue(0);
-      slideAnim.setValue(50);
-    });
+    await AsyncStorage.setItem('tacticiq-language', code);
+    setCurrentStep('age');
   };
 
-  // Age verification
   const calculateAge = (): number => {
     const today = new Date();
     const birthDate = new Date(selectedYear, selectedMonth - 1, selectedDay);
@@ -178,33 +156,15 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
     return age;
   };
 
-  const getDaysInMonth = (year: number, month: number) => {
-    return new Date(year, month, 0).getDate();
-  };
+  const getDaysInMonth = (year: number, month: number) => new Date(year, month, 0).getDate();
 
   const handleAgeVerification = async () => {
     const age = calculateAge();
     const minor = age < 18;
     setIsMinor(minor);
-    
     await AsyncStorage.setItem('@user_age_verified', 'true');
     await AsyncStorage.setItem('@user_is_minor', minor ? 'true' : 'false');
-    await AsyncStorage.setItem('@user_birth_date', `${selectedYear}-${selectedMonth}-${selectedDay}`);
-    
-    RNAnimated.parallel([
-      RNAnimated.timing(fadeAnim, { toValue: 0, duration: 200, useNativeDriver: Platform.OS !== 'web' }),
-      RNAnimated.timing(slideAnim, { toValue: -50, duration: 200, useNativeDriver: Platform.OS !== 'web' }),
-    ]).start(() => {
       setCurrentStep('legal');
-      fadeAnim.setValue(0);
-      slideAnim.setValue(50);
-    });
-  };
-
-  // Legal
-  const handleToggleConsent = (key: keyof ConsentPreferences) => {
-    if (key === 'essential' || isMinor) return;
-    setPreferences(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
   const handleOpenLegalDoc = (docType: string) => {
@@ -214,28 +174,32 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
 
   const handleComplete = async () => {
     if (!legalAccepted) {
-      Alert.alert(
-        t('consent.error') || 'Error',
-        t('consent.mustAccept') || 'You must accept the legal documents to continue'
-      );
+      Alert.alert(t('consent.error') || 'Hata', t('consent.mustAccept') || 'Devam etmek için yasal belgeleri kabul etmelisiniz');
       return;
     }
-
     setLoading(true);
     try {
-      await saveConsentPreferences(preferences, region);
+      // Include region in preferences
+      await saveConsentPreferences({ ...preferences, region });
       await applyConsentPreferences(preferences);
       await AsyncStorage.setItem('@onboarding_completed', 'true');
       setTimeout(() => onComplete(), 300);
     } catch (error) {
       console.error('Error saving consent:', error);
-      Alert.alert(t('consent.error') || 'Error', t('consent.saveFailed') || 'Failed to save');
+      Alert.alert(t('consent.error') || 'Hata', t('consent.saveFailed') || 'Kaydedilemedi');
     } finally {
       setLoading(false);
     }
   };
 
-  // Flag Component
+  const handleBack = () => {
+    if (currentStep === 'age') {
+      setCurrentStep('language');
+    } else if (currentStep === 'legal') {
+      setCurrentStep('age');
+    }
+  };
+
   const FlagComponent = ({ code }: { code: string }) => {
     const size = 40;
     switch (code) {
@@ -251,232 +215,190 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
     }
   };
 
-  const languages = [
-    { code: 'tr', name: 'Türkçe', native: 'Türkçe' },
-    { code: 'en', name: 'English', native: 'English' },
-    { code: 'de', name: 'Deutsch', native: 'Deutsch' },
-    { code: 'es', name: 'Español', native: 'Español' },
-    { code: 'fr', name: 'Français', native: 'Français' },
-    { code: 'it', name: 'Italiano', native: 'Italiano' },
-    { code: 'ar', name: 'العربية', native: 'العربية' },
-    { code: 'zh', name: '中文', native: '中文' },
-  ];
+  const getMonthLabel = (monthIndex: number) => {
+    const months = MONTHS_BY_LANG[selectedLanguage] || MONTHS_BY_LANG['en'];
+    return months[monthIndex] || '';
+  };
 
-  // ===== RENDER: Language Selection =====
+  const getTranslation = (key: string): string => {
+    const translations: Record<string, Record<string, string>> = {
+      'languageSelection.title': {
+        tr: 'Dil Seçimi', en: 'Language Selection', de: 'Sprachauswahl', es: 'Selección de idioma',
+        fr: 'Sélection de la langue', it: 'Selezione della lingua', ar: 'اختيار اللغة', zh: '语言选择'
+      },
+      'languageSelection.subtitle': {
+        tr: 'Lütfen dilinizi seçin', en: 'Please select your language', de: 'Bitte wählen Sie Ihre Sprache',
+        es: 'Por favor seleccione su idioma', fr: 'Veuillez sélectionner votre langue', it: 'Seleziona la tua lingua',
+        ar: 'يرجى اختيار لغتك', zh: '请选择您的语言'
+      },
+      'ageGate.title': {
+        tr: 'Yaş Doğrulama', en: 'Age Verification', de: 'Altersverifikation', es: 'Verificación de edad',
+        fr: "Vérification de l'âge", it: "Verifica dell'età", ar: 'التحقق من العمر', zh: '年龄验证'
+      },
+      'ageGate.subtitle': {
+        tr: 'Doğum tarihinizi seçin', en: 'Select your date of birth', de: 'Wählen Sie Ihr Geburtsdatum',
+        es: 'Seleccione su fecha de nacimiento', fr: 'Sélectionnez votre date de naissance', it: 'Seleziona la tua data di nascita',
+        ar: 'اختر تاريخ ميلادك', zh: '选择您的出生日期'
+      },
+      'ageGate.day': { tr: 'Gün', en: 'Day', de: 'Tag', es: 'Día', fr: 'Jour', it: 'Giorno', ar: 'اليوم', zh: '日' },
+      'ageGate.month': { tr: 'Ay', en: 'Month', de: 'Monat', es: 'Mes', fr: 'Mois', it: 'Mese', ar: 'الشهر', zh: '月' },
+      'ageGate.year': { tr: 'Yıl', en: 'Year', de: 'Jahr', es: 'Año', fr: 'Année', it: 'Anno', ar: 'السنة', zh: '年' },
+      'ageGate.yearsOld': { tr: 'yaşında', en: 'years old', de: 'Jahre alt', es: 'años', fr: 'ans', it: 'anni', ar: 'سنة', zh: '岁' },
+      'ageGate.selectDay': { tr: 'Gün Seçin', en: 'Select Day', de: 'Tag wählen', es: 'Seleccionar día', fr: 'Sélectionner le jour', it: 'Seleziona giorno', ar: 'اختر اليوم', zh: '选择日' },
+      'ageGate.selectMonth': { tr: 'Ay Seçin', en: 'Select Month', de: 'Monat wählen', es: 'Seleccionar mes', fr: 'Sélectionner le mois', it: 'Seleziona mese', ar: 'اختر الشهر', zh: '选择月' },
+      'ageGate.selectYear': { tr: 'Yıl Seçin', en: 'Select Year', de: 'Jahr wählen', es: 'Seleccionar año', fr: "Sélectionner l'année", it: 'Seleziona anno', ar: 'اختر السنة', zh: '选择年' },
+      'legal.title': { tr: 'Yasal Belgeler', en: 'Legal Documents', de: 'Rechtliche Dokumente', es: 'Documentos legales', fr: 'Documents légaux', it: 'Documenti legali', ar: 'المستندات القانونية', zh: '法律文件' },
+      'legal.subtitle': { tr: 'Lütfen belgeleri inceleyin', en: 'Please review the documents', de: 'Bitte überprüfen Sie die Dokumente', es: 'Por favor revise los documentos', fr: 'Veuillez lire les documents', it: 'Si prega di leggere i documenti', ar: 'يرجى مراجعة المستندات', zh: '请阅读文件' },
+      'legal.iAccept': { tr: 'Okudum ve kabul ediyorum', en: 'I have read and accept', de: 'Ich habe gelesen und akzeptiere', es: 'He leído y acepto', fr: "J'ai lu et j'accepte", it: 'Ho letto e accetto', ar: 'قرأت وأوافق', zh: '我已阅读并接受' },
+      'legal.minorNotice': { tr: '18 yaş altı için ebeveyn onayı gerekli', en: 'Parental consent required for under 18', de: 'Elterliche Zustimmung für unter 18', es: 'Consentimiento parental requerido para menores de 18', fr: 'Consentement parental requis pour les moins de 18 ans', it: 'Consenso parentale richiesto per i minori di 18 anni', ar: 'موافقة الوالدين مطلوبة لمن هم دون 18', zh: '18岁以下需要父母同意' },
+      'legal.terms.title': { tr: 'Kullanım Koşulları', en: 'Terms of Service', de: 'Nutzungsbedingungen', es: 'Términos de servicio', fr: "Conditions d'utilisation", it: 'Termini di servizio', ar: 'شروط الخدمة', zh: '服务条款', ru: 'Условия использования' },
+      'legal.privacy.title': { tr: 'Gizlilik Politikası', en: 'Privacy Policy', de: 'Datenschutzrichtlinie', es: 'Política de privacidad', fr: 'Politique de confidentialité', it: 'Informativa sulla privacy', ar: 'سياسة الخصوصية', zh: '隐私政策', ru: 'Политика конфиденциальности' },
+      'legal.cookies.title': { tr: 'Çerez Politikası', en: 'Cookie Policy', de: 'Cookie-Richtlinie', es: 'Política de cookies', fr: 'Politique des cookies', it: 'Politica sui cookie', ar: 'سياسة ملفات تعريف الارتباط', zh: 'Cookie政策', ru: 'Политика Cookie' },
+      'legal.kvkk.title': { tr: 'KVKK Aydınlatma', en: 'KVKK Disclosure', de: 'KVKK-Offenlegung', es: 'Divulgación KVKK', fr: 'Divulgation KVKK', it: 'Informativa KVKK', ar: 'إفصاح KVKK', zh: 'KVKK披露' },
+      'common.continue': { tr: 'Devam Et', en: 'Continue', de: 'Weiter', es: 'Continuar', fr: 'Continuer', it: 'Continua', ar: 'متابعة', zh: '继续' },
+      'common.getStarted': { tr: 'Başla', en: 'Get Started', de: 'Loslegen', es: 'Empezar', fr: 'Commencer', it: 'Inizia', ar: 'ابدأ', zh: '开始' },
+      'common.back': { tr: 'Geri', en: 'Back', de: 'Zurück', es: 'Atrás', fr: 'Retour', it: 'Indietro', ar: 'رجوع', zh: '返回' },
+      'common.close': { tr: 'Kapat', en: 'Close', de: 'Schließen', es: 'Cerrar', fr: 'Fermer', it: 'Chiudi', ar: 'إغلاق', zh: '关闭' },
+      'consent.error': { tr: 'Hata', en: 'Error', de: 'Fehler', es: 'Error', fr: 'Erreur', it: 'Errore', ar: 'خطأ', zh: '错误' },
+      'consent.mustAccept': { tr: 'Devam etmek için yasal belgeleri kabul etmelisiniz', en: 'You must accept the legal documents to continue', de: 'Sie müssen die Dokumente akzeptieren', es: 'Debe aceptar los documentos para continuar', fr: 'Vous devez accepter les documents', it: 'Devi accettare i documenti', ar: 'يجب قبول المستندات للمتابعة', zh: '您必须接受文件才能继续' },
+    };
+    return translations[key]?.[selectedLanguage] || translations[key]?.['en'] || t(key) || key;
+  };
+
+  // ===== LANGUAGE STEP - PREMIUM DESIGN =====
   const renderLanguageStep = () => (
-    <RNAnimated.View style={[styles.stepContent, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-      {/* Header */}
-      <View style={styles.stepHeader}>
-        <Text style={styles.stepIcon}>🌍</Text>
-        <Text style={styles.stepTitle}>{t('onboarding.selectLanguage') || 'Select Language'}</Text>
-        <Text style={styles.stepSubtitle}>{t('onboarding.choosePreferred') || 'Choose your preferred language'}</Text>
-      </View>
-
-      {/* Language Grid */}
-      <View style={styles.languageGrid}>
+    <View style={styles.stepContainer}>
+      <Text style={styles.stepTitle}>{getTranslation('languageSelection.title')}</Text>
+      <Text style={styles.stepSubtitle}>{getTranslation('languageSelection.subtitle')}</Text>
+      
+      {/* 2 sütun 4 satır grid */}
+      <View style={styles.languageGridPremium}>
         {languages.map((lang) => (
           <TouchableOpacity
             key={lang.code}
-            style={styles.languageCard}
+            style={styles.languageCardPremium}
             onPress={() => handleLanguageSelect(lang.code)}
-            activeOpacity={0.7}
+            activeOpacity={0.85}
           >
             <LinearGradient
-              colors={['rgba(31, 162, 166, 0.15)', 'rgba(15, 42, 36, 0.3)']}
+              colors={['rgba(15, 42, 36, 0.95)', 'rgba(15, 42, 36, 0.95)']}
               style={styles.languageCardGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
             >
-              <View style={styles.flagWrapper}>
+              <View style={styles.flagWrapperGrid}>
                 <FlagComponent code={lang.code} />
               </View>
-              <Text style={styles.languageName}>{lang.native}</Text>
+              <Text style={styles.languageNameGrid}>{lang.name}</Text>
             </LinearGradient>
           </TouchableOpacity>
         ))}
       </View>
-    </RNAnimated.View>
+    </View>
   );
 
-  // ===== RENDER: Age Verification =====
+  // ===== AGE STEP =====
   const renderAgeStep = () => (
-    <RNAnimated.View style={[styles.stepContent, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-      {/* Header */}
-      <View style={styles.stepHeader}>
-        <Text style={styles.stepIcon}>🎂</Text>
-        <Text style={styles.stepTitle}>{t('ageGate.title') || 'Age Verification'}</Text>
-        <Text style={styles.stepSubtitle}>{t('ageGate.subtitle') || 'Please enter your birth date'}</Text>
-      </View>
+    <View style={styles.stepContainer}>
+      <Text style={styles.stepTitle}>{getTranslation('ageGate.title')}</Text>
+      <Text style={styles.stepSubtitle}>{getTranslation('ageGate.subtitle')}</Text>
 
-      {/* Date Pickers */}
-      <View style={styles.datePickerRow}>
-        {/* Day */}
-        <TouchableOpacity
-          style={styles.datePickerCard}
-          onPress={() => setShowDatePicker('day')}
-        >
-          <Text style={styles.datePickerLabel}>{t('ageGate.day') || 'Day'}</Text>
-          <Text style={styles.datePickerValue}>{selectedDay}</Text>
+      <View style={styles.dateRow}>
+        <TouchableOpacity style={styles.dateCard} onPress={() => setShowDatePicker('day')}>
+          <Text style={styles.dateLabel}>{getTranslation('ageGate.day')}</Text>
+          <Text style={styles.dateValue}>{selectedDay}</Text>
         </TouchableOpacity>
 
-        {/* Month */}
-        <TouchableOpacity
-          style={[styles.datePickerCard, styles.datePickerCardLarge]}
-          onPress={() => setShowDatePicker('month')}
-        >
-          <Text style={styles.datePickerLabel}>{t('ageGate.month') || 'Month'}</Text>
-          <Text style={styles.datePickerValue}>{MONTHS[selectedMonth - 1]?.label.substring(0, 3)}</Text>
+        <TouchableOpacity style={[styles.dateCard, styles.dateCardWide]} onPress={() => setShowDatePicker('month')}>
+          <Text style={styles.dateLabel}>{getTranslation('ageGate.month')}</Text>
+          <Text style={styles.dateValue}>{getMonthLabel(selectedMonth - 1)}</Text>
         </TouchableOpacity>
 
-        {/* Year */}
-        <TouchableOpacity
-          style={styles.datePickerCard}
-          onPress={() => setShowDatePicker('year')}
-        >
-          <Text style={styles.datePickerLabel}>{t('ageGate.year') || 'Year'}</Text>
-          <Text style={styles.datePickerValue}>{selectedYear}</Text>
+        <TouchableOpacity style={styles.dateCard} onPress={() => setShowDatePicker('year')}>
+          <Text style={styles.dateLabel}>{getTranslation('ageGate.year')}</Text>
+          <Text style={styles.dateValue}>{selectedYear}</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Age Display */}
-      <View style={styles.ageDisplay}>
-        <LinearGradient
-          colors={['rgba(31, 162, 166, 0.2)', 'rgba(201, 164, 76, 0.1)']}
-          style={styles.ageDisplayGradient}
-        >
-          <Text style={styles.ageDisplayLabel}>{t('ageGate.yourAge') || 'Your Age'}</Text>
-          <Text style={styles.ageDisplayValue}>{calculateAge()}</Text>
-          <Text style={styles.ageDisplayUnit}>{t('ageGate.years') || 'years'}</Text>
-        </LinearGradient>
+      <View style={styles.ageDisplayBox}>
+        <Text style={styles.ageNumber}>{calculateAge()}</Text>
+        <Text style={styles.ageUnit}>{getTranslation('ageGate.yearsOld')}</Text>
       </View>
 
-      {/* Continue Button */}
-      <TouchableOpacity
-        style={styles.primaryButton}
+      <TouchableOpacity 
+        style={[styles.primaryBtn, calculateAge() < 18 && styles.primaryBtnDisabled]} 
         onPress={handleAgeVerification}
-        activeOpacity={0.8}
+        disabled={calculateAge() < 18}
       >
-        <LinearGradient
-          colors={WEBSITE_GRADIENTS.buttonPrimary.colors}
-          style={styles.primaryButtonGradient}
-          start={WEBSITE_GRADIENTS.buttonPrimary.start}
-          end={WEBSITE_GRADIENTS.buttonPrimary.end}
+        <LinearGradient 
+          colors={calculateAge() < 18 ? ['#444', '#333'] : [WEBSITE_BRAND_COLORS.secondary, WEBSITE_BRAND_COLORS.primary]} 
+          style={styles.primaryBtnGradient} 
+          start={{ x: 0, y: 0 }} 
+          end={{ x: 1, y: 0 }}
         >
-          <Text style={styles.primaryButtonText}>{t('common.continue') || 'Continue'}</Text>
+          <Text style={styles.primaryBtnText}>{getTranslation('common.continue')}</Text>
         </LinearGradient>
       </TouchableOpacity>
-
-      {/* Back Button */}
-      <TouchableOpacity
-        style={styles.backButton}
-        onPress={() => setCurrentStep('language')}
-      >
-        <Text style={styles.backButtonText}>← {t('common.back') || 'Back'}</Text>
-      </TouchableOpacity>
-    </RNAnimated.View>
+    </View>
   );
 
-  // ===== RENDER: Legal Acceptance =====
+  // ===== LEGAL STEP =====
   const renderLegalStep = () => (
-    <RNAnimated.View style={[styles.stepContent, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-      {/* Header */}
-      <View style={styles.stepHeader}>
-        <Text style={styles.stepIcon}>📋</Text>
-        <Text style={styles.stepTitle}>{t('legal.title') || 'Legal Information'}</Text>
-        <Text style={styles.stepSubtitle}>{t('legal.subtitle') || 'Please review and accept our terms'}</Text>
-      </View>
+    <View style={styles.stepContainer}>
+      <Text style={styles.stepTitle}>{getTranslation('legal.title')}</Text>
+      <Text style={styles.stepSubtitle}>{getTranslation('legal.subtitle')}</Text>
 
-      {/* Legal Documents */}
       <View style={styles.legalList}>
         <TouchableOpacity style={styles.legalItem} onPress={() => handleOpenLegalDoc('terms')}>
-          <View style={styles.legalItemIcon}><Text>📋</Text></View>
-          <View style={styles.legalItemContent}>
-            <Text style={styles.legalItemTitle}>{t('legal.terms.title') || 'Terms of Service'}</Text>
-            <Text style={styles.legalItemDesc}>{t('legal.terms.desc') || 'Usage rules and conditions'}</Text>
-          </View>
-          <Text style={styles.legalItemArrow}>›</Text>
+          <Text style={styles.legalIcon}>📋</Text>
+          <Text style={styles.legalTitle}>{getTranslation('legal.terms.title')}</Text>
+          <Text style={styles.legalArrow}>›</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.legalItem} onPress={() => handleOpenLegalDoc('privacy')}>
-          <View style={styles.legalItemIcon}><Text>🔒</Text></View>
-          <View style={styles.legalItemContent}>
-            <Text style={styles.legalItemTitle}>{t('legal.privacy.title') || 'Privacy Policy'}</Text>
-            <Text style={styles.legalItemDesc}>{t('legal.privacy.desc') || 'How we handle your data'}</Text>
-          </View>
-          <Text style={styles.legalItemArrow}>›</Text>
+          <Text style={styles.legalIcon}>🔒</Text>
+          <Text style={styles.legalTitle}>{getTranslation('legal.privacy.title')}</Text>
+          <Text style={styles.legalArrow}>›</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.legalItem} onPress={() => setShowCookieModal(true)}>
-          <View style={styles.legalItemIcon}><Text>🍪</Text></View>
-          <View style={styles.legalItemContent}>
-            <Text style={styles.legalItemTitle}>{t('legal.cookies.title') || 'Cookie Settings'}</Text>
-            <Text style={styles.legalItemDesc}>{t('legal.cookies.desc') || 'Manage your preferences'}</Text>
-          </View>
-          <Text style={styles.legalItemArrow}>›</Text>
+        <TouchableOpacity style={styles.legalItem} onPress={() => handleOpenLegalDoc('cookies')}>
+          <Text style={styles.legalIcon}>🍪</Text>
+          <Text style={styles.legalTitle}>{getTranslation('legal.cookies.title')}</Text>
+          <Text style={styles.legalArrow}>›</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.legalItem} onPress={() => handleOpenLegalDoc('kvkk')}>
-          <View style={styles.legalItemIcon}><Text>⚖️</Text></View>
-          <View style={styles.legalItemContent}>
-            <Text style={styles.legalItemTitle}>{t('legal.kvkk.title') || 'KVKK Disclosure'}</Text>
-            <Text style={styles.legalItemDesc}>{t('legal.kvkk.desc') || 'Data protection rights'}</Text>
-          </View>
-          <Text style={styles.legalItemArrow}>›</Text>
+          <Text style={styles.legalIcon}>⚖️</Text>
+          <Text style={styles.legalTitle}>{getTranslation('legal.kvkk.title')}</Text>
+          <Text style={styles.legalArrow}>›</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Acceptance Checkbox */}
-      <TouchableOpacity
-        style={styles.checkboxRow}
-        onPress={() => setLegalAccepted(!legalAccepted)}
-        activeOpacity={0.7}
-      >
+      <TouchableOpacity style={styles.checkboxRow} onPress={() => setLegalAccepted(!legalAccepted)}>
         <View style={[styles.checkbox, legalAccepted && styles.checkboxChecked]}>
-          {legalAccepted && <Text style={styles.checkboxIcon}>✓</Text>}
+          {legalAccepted && <Text style={styles.checkmark}>✓</Text>}
         </View>
-        <Text style={styles.checkboxLabel}>
-          {t('legal.iAccept') || 'I have read and accept the legal documents'}
-        </Text>
+        <Text style={styles.checkboxText}>{getTranslation('legal.iAccept')}</Text>
       </TouchableOpacity>
 
-      {/* Minor Notice */}
-      {isMinor && (
-        <View style={styles.minorNotice}>
-          <Text style={styles.minorNoticeIcon}>⚠️</Text>
-          <Text style={styles.minorNoticeText}>
-            {t('legal.minorNotice') || 'Parental consent required for users under 18'}
-          </Text>
-        </View>
-      )}
-
-      {/* Continue Button */}
       <TouchableOpacity
-        style={[styles.primaryButton, !legalAccepted && styles.primaryButtonDisabled]}
+        style={[styles.primaryBtn, !legalAccepted && styles.primaryBtnDisabled]} 
         onPress={handleComplete}
-        activeOpacity={0.8}
         disabled={!legalAccepted || loading}
       >
         <LinearGradient
-          colors={legalAccepted ? WEBSITE_GRADIENTS.buttonPrimary.colors : ['#555', '#444']}
-          style={styles.primaryButtonGradient}
+          colors={legalAccepted ? [WEBSITE_BRAND_COLORS.secondary, WEBSITE_BRAND_COLORS.primary] : ['#444', '#333']} 
+          style={styles.primaryBtnGradient} 
+          start={{ x: 0, y: 0 }} 
+          end={{ x: 1, y: 0 }}
         >
-          {loading ? (
-            <ActivityIndicator size="small" color={WEBSITE_COLORS.white} />
-          ) : (
-            <Text style={styles.primaryButtonText}>{t('common.getStarted') || 'Get Started'}</Text>
-          )}
+          {loading ? <ActivityIndicator color={WEBSITE_BRAND_COLORS.white} size="small" /> : <Text style={styles.primaryBtnText}>{getTranslation('common.getStarted')}</Text>}
         </LinearGradient>
       </TouchableOpacity>
-
-      {/* Back Button */}
-      <TouchableOpacity
-        style={styles.backButton}
-        onPress={() => setCurrentStep('age')}
-      >
-        <Text style={styles.backButtonText}>← {t('common.back') || 'Back'}</Text>
-      </TouchableOpacity>
-    </RNAnimated.View>
+    </View>
   );
 
-  // ===== RENDER: Date Picker Modal =====
+  // ===== DATE PICKER MODAL =====
   const renderDatePickerModal = () => {
     let items: { value: number; label: string }[] = [];
     let title = '';
@@ -484,16 +406,16 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
 
     if (showDatePicker === 'year') {
       items = YEARS.map(y => ({ value: y, label: String(y) }));
-      title = t('ageGate.selectYear') || 'Select Year';
+      title = getTranslation('ageGate.selectYear');
       onSelect = (v) => { setSelectedYear(v); setShowDatePicker(null); };
     } else if (showDatePicker === 'month') {
-      items = MONTHS;
-      title = t('ageGate.selectMonth') || 'Select Month';
+      items = Array.from({ length: 12 }, (_, i) => ({ value: i + 1, label: getMonthLabel(i) }));
+      title = getTranslation('ageGate.selectMonth');
       onSelect = (v) => { setSelectedMonth(v); setShowDatePicker(null); };
     } else if (showDatePicker === 'day') {
       const daysCount = getDaysInMonth(selectedYear, selectedMonth);
       items = Array.from({ length: daysCount }, (_, i) => ({ value: i + 1, label: String(i + 1) }));
-      title = t('ageGate.selectDay') || 'Select Day';
+      title = getTranslation('ageGate.selectDay');
       onSelect = (v) => { setSelectedDay(v); setShowDatePicker(null); };
     }
 
@@ -528,645 +450,477 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
     );
   };
 
-  // ===== RENDER: Legal Document Modal =====
-  const renderLegalModal = () => (
+  // ===== LEGAL MODAL =====
+  const renderLegalModal = () => {
+    const language = getCurrentLanguage();
+    const legalContent = selectedLegalDoc ? getLegalContentSync(selectedLegalDoc, t, language) : null;
+    const isCookiesModal = selectedLegalDoc === 'cookies';
+    
+    const toggleCookiePreference = (key: keyof ConsentPreferences) => {
+      if (key === 'essential') return; // Zorunlu çerezler değiştirilemez
+      setPreferences(prev => ({ ...prev, [key]: !prev[key] }));
+    };
+    
+    return (
     <Modal visible={showLegalModal} transparent animationType="slide">
       <View style={styles.modalOverlay}>
         <View style={styles.legalModal}>
           <View style={styles.legalModalHeader}>
-            <Text style={styles.legalModalTitle}>
-              {selectedLegalDoc && t(`legal.${selectedLegalDoc}.title`)}
-            </Text>
+              <Text style={styles.legalModalTitle}>{legalContent?.title || ''}</Text>
             <TouchableOpacity onPress={() => setShowLegalModal(false)}>
               <Text style={styles.legalModalClose}>✕</Text>
             </TouchableOpacity>
           </View>
-          <ScrollView style={styles.legalModalScroll}>
-            <Text style={styles.legalModalContent}>
-              {selectedLegalDoc && getLegalContent(selectedLegalDoc, selectedLanguage)}
-            </Text>
-          </ScrollView>
-          <TouchableOpacity
-            style={styles.legalModalButton}
-            onPress={() => setShowLegalModal(false)}
-          >
-            <Text style={styles.legalModalButtonText}>{t('common.close') || 'Close'}</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </Modal>
-  );
-
-  // ===== RENDER: Cookie Modal =====
-  const renderCookieModal = () => (
-    <Modal visible={showCookieModal} transparent animationType="slide">
-      <View style={styles.modalOverlay}>
-        <View style={styles.cookieModal}>
-          <View style={styles.cookieModalHeader}>
-            <Text style={styles.cookieModalTitle}>{t('legal.cookies.title') || 'Cookie Settings'}</Text>
-            <TouchableOpacity onPress={() => setShowCookieModal(false)}>
-              <Text style={styles.cookieModalClose}>✕</Text>
-            </TouchableOpacity>
-          </View>
-          <ScrollView style={styles.cookieModalScroll}>
-            {/* Essential - Always on */}
-            <View style={styles.cookieItem}>
-              <View style={styles.cookieItemInfo}>
-                <Text style={styles.cookieItemTitle}>{t('cookies.essential') || 'Essential'}</Text>
-                <Text style={styles.cookieItemDesc}>{t('cookies.essentialDesc') || 'Required for basic functionality'}</Text>
-              </View>
-              <View style={[styles.cookieToggle, styles.cookieToggleOn]}>
-                <View style={styles.cookieToggleThumb} />
-              </View>
+          {isCookiesModal ? (
+            <View style={styles.legalModalContentNoScroll}>
+              {/* Çerez türleri için toggle butonları */}
+              <View style={styles.cookieControls}>
+                  <Text style={styles.cookieControlsTitle}>Çerez Türleri</Text>
+                  
+                  {/* Zorunlu Çerezler */}
+                  <View style={styles.cookieToggleRow}>
+                    <View style={styles.cookieToggleInfo}>
+                      <Text style={styles.cookieToggleLabel}>{getTranslation('cookies.essential') || 'Zorunlu Çerezler'}</Text>
+                      <Text style={styles.cookieToggleDesc}>{getTranslation('cookies.essentialDesc') || 'Uygulamanın çalışması için gerekli'}</Text>
+                    </View>
+                    <View style={[styles.cookieToggleSwitch, styles.cookieToggleSwitchActive]}>
+                      <Text style={styles.cookieToggleSwitchText}>✓</Text>
+                    </View>
+                  </View>
+                  
+                  {/* Analitik Çerezler */}
+                  <View style={styles.cookieToggleRow}>
+                    <View style={styles.cookieToggleInfo}>
+                      <Text style={styles.cookieToggleLabel}>{getTranslation('cookies.analytics') || 'Analitik Çerezler'}</Text>
+                      <Text style={styles.cookieToggleDesc}>{getTranslation('cookies.analyticsDesc') || 'Performansı iyileştirmemize yardımcı olur'}</Text>
+                    </View>
+                    <TouchableOpacity 
+                      style={[styles.cookieToggleSwitch, preferences.analytics && styles.cookieToggleSwitchActive]}
+                      onPress={() => toggleCookiePreference('analytics')}
+                    >
+                      <Text style={styles.cookieToggleSwitchText}>{preferences.analytics ? '✓' : ''}</Text>
+                    </TouchableOpacity>
+                  </View>
+                  
+                  {/* Pazarlama Çerezleri */}
+                  <View style={styles.cookieToggleRow}>
+                    <View style={styles.cookieToggleInfo}>
+                      <Text style={styles.cookieToggleLabel}>{getTranslation('cookies.marketing') || 'Pazarlama Çerezleri'}</Text>
+                      <Text style={styles.cookieToggleDesc}>{getTranslation('cookies.marketingDesc') || 'Kişiselleştirilmiş içerik sunar'}</Text>
+                    </View>
+                    <TouchableOpacity 
+                      style={[styles.cookieToggleSwitch, preferences.marketing && styles.cookieToggleSwitchActive]}
+                      onPress={() => toggleCookiePreference('marketing')}
+                    >
+                      <Text style={styles.cookieToggleSwitchText}>{preferences.marketing ? '✓' : ''}</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
             </View>
-
-            {/* Analytics */}
-            {!isMinor && (
-              <TouchableOpacity style={styles.cookieItem} onPress={() => handleToggleConsent('analytics')}>
-                <View style={styles.cookieItemInfo}>
-                  <Text style={styles.cookieItemTitle}>{t('cookies.analytics') || 'Analytics'}</Text>
-                  <Text style={styles.cookieItemDesc}>{t('cookies.analyticsDesc') || 'Help us improve'}</Text>
-                </View>
-                <View style={[styles.cookieToggle, preferences.analytics && styles.cookieToggleOn]}>
-                  <View style={[styles.cookieToggleThumb, preferences.analytics && styles.cookieToggleThumbOn]} />
-                </View>
-              </TouchableOpacity>
-            )}
-
-            {/* Marketing */}
-            {!isMinor && (
-              <TouchableOpacity style={styles.cookieItem} onPress={() => handleToggleConsent('marketing')}>
-                <View style={styles.cookieItemInfo}>
-                  <Text style={styles.cookieItemTitle}>{t('cookies.marketing') || 'Marketing'}</Text>
-                  <Text style={styles.cookieItemDesc}>{t('cookies.marketingDesc') || 'Personalized content'}</Text>
-                </View>
-                <View style={[styles.cookieToggle, preferences.marketing && styles.cookieToggleOn]}>
-                  <View style={[styles.cookieToggleThumb, preferences.marketing && styles.cookieToggleThumbOn]} />
-                </View>
-              </TouchableOpacity>
-            )}
-          </ScrollView>
-          <TouchableOpacity
-            style={styles.cookieSaveButton}
-            onPress={() => setShowCookieModal(false)}
-          >
-            <LinearGradient colors={WEBSITE_GRADIENTS.buttonPrimary.colors} style={styles.cookieSaveGradient}>
-              <Text style={styles.cookieSaveText}>{t('common.save') || 'Save Preferences'}</Text>
-            </LinearGradient>
+          ) : (
+            <ScrollView style={styles.legalModalScroll}>
+              <Text style={styles.legalModalContent}>{legalContent?.content || ''}</Text>
+            </ScrollView>
+          )}
+            <TouchableOpacity style={styles.legalModalBtn} onPress={() => setShowLegalModal(false)}>
+              <Text style={styles.legalModalBtnText}>{getTranslation('common.close')}</Text>
           </TouchableOpacity>
         </View>
       </View>
     </Modal>
   );
+  };
 
   // ===== MAIN RENDER =====
   return (
     <SafeAreaView style={styles.safeArea}>
-      <LinearGradient
-        colors={WEBSITE_GRADIENTS.auth.colors}
-        style={styles.container}
-        start={WEBSITE_GRADIENTS.auth.start}
-        end={WEBSITE_GRADIENTS.auth.end}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          {/* Logo */}
+      <LinearGradient colors={['#0a1612', '#0F2A24', '#0a1612']} style={styles.container} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}>
+        <View style={styles.gridPattern} />
+        
+        <View style={styles.mainContent}>
+          {/* Back Button - Sol üst köşe */}
+          {currentStep !== 'language' && (
+            <TouchableOpacity style={styles.backButtonTop} onPress={handleBack} activeOpacity={0.7}>
+              <Ionicons name="arrow-back" size={WEBSITE_ICON_SIZES.lg} color={WEBSITE_BRAND_COLORS.white} />
+              </TouchableOpacity>
+            )}
+
+          {/* Logo - Her sayfada aynı yerde ve boyutta */}
           <View style={styles.logoContainer}>
-            <Image
-              source={Platform.OS === 'web' ? { uri: '/TacticIQ.svg' } : require('../../assets/logo.png')}
-              style={styles.logo}
-              resizeMode="contain"
-            />
-            <Text style={styles.brandName}>TacticIQ</Text>
-            <Text style={styles.brandTagline}>Football Analytics Platform</Text>
+            <Image source={require('../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
           </View>
 
-          {/* Progress Indicator */}
-          <View style={styles.progressContainer}>
+          {/* Content - İçerik alta yakın */}
+          <View style={styles.contentWrapper}>
+          {currentStep === 'language' && renderLanguageStep()}
+          {currentStep === 'age' && renderAgeStep()}
+          {currentStep === 'legal' && renderLegalStep()}
+          </View>
+
+          {/* Progress - 5 noktalı (Language, Age, Legal, Auth, FavoriteTeams) */}
+          <View style={styles.progressRow}>
             <View style={[styles.progressDot, currentStep === 'language' && styles.progressDotActive]} />
             <View style={styles.progressLine} />
             <View style={[styles.progressDot, currentStep === 'age' && styles.progressDotActive]} />
             <View style={styles.progressLine} />
             <View style={[styles.progressDot, currentStep === 'legal' && styles.progressDotActive]} />
+            <View style={styles.progressLine} />
+            <View style={styles.progressDot} />
+            <View style={styles.progressLine} />
+            <View style={styles.progressDot} />
           </View>
-
-          {/* Step Content */}
-          {currentStep === 'language' && renderLanguageStep()}
-          {currentStep === 'age' && renderAgeStep()}
-          {currentStep === 'legal' && renderLegalStep()}
 
           {/* Footer */}
           <View style={styles.footer}>
-            <Text style={styles.footerText}>© 2026 TacticIQ. All rights reserved.</Text>
+            <Text style={styles.footerText}>© 2026 TacticIQ</Text>
           </View>
-        </ScrollView>
+        </View>
 
-        {/* Modals */}
         {renderDatePickerModal()}
         {renderLegalModal()}
-        {renderCookieModal()}
       </LinearGradient>
     </SafeAreaView>
   );
 }
 
-// ===== STYLES =====
 const styles = StyleSheet.create({
-  safeArea: {
+  safeArea: { flex: 1, backgroundColor: WEBSITE_BRAND_COLORS.primary },
+  container: { flex: 1 },
+  gridPattern: {
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 1, zIndex: 0,
+    ...Platform.select({
+      web: { 
+        backgroundImage: `linear-gradient(to right, rgba(31, 162, 166, 0.12) 1px, transparent 1px), linear-gradient(to bottom, rgba(31, 162, 166, 0.12) 1px, transparent 1px)`, 
+        backgroundSize: '40px 40px' 
+      },
+      default: { backgroundColor: 'transparent' },
+    }),
+  },
+  mainContent: { 
     flex: 1,
-    backgroundColor: WEBSITE_COLORS.dark,
+    paddingHorizontal: WEBSITE_SPACING.xxl,
+    paddingTop: WEBSITE_SPACING.xl + WEBSITE_ICON_SIZES.xl + WEBSITE_SPACING.md, // Tüm sayfalarla aynı (56px)
   },
-  container: {
-    flex: 1,
+  // Back Button - Sol üst köşe
+  backButtonTop: {
+    position: 'absolute',
+    top: WEBSITE_SPACING.xl,
+    left: WEBSITE_SPACING.xl,
+    width: WEBSITE_ICON_SIZES.xl + WEBSITE_SPACING.md,
+    height: WEBSITE_ICON_SIZES.xl + WEBSITE_SPACING.md,
+    borderRadius: WEBSITE_BORDER_RADIUS.lg,
+    backgroundColor: 'rgba(15, 42, 36, 0.95)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.3)',
   },
-  scrollContent: {
-    flexGrow: 1,
-    paddingHorizontal: WEBSITE_SPACING.lg,
-    paddingBottom: WEBSITE_SPACING.xl,
-  },
-
-  // Logo
+  
+  // Logo - Her sayfada aynı (sıçrama yok)
   logoContainer: {
     alignItems: 'center',
-    marginTop: WEBSITE_SPACING.xl,
-    marginBottom: WEBSITE_SPACING.lg,
+    marginTop: LOGO_MARGIN_TOP, 
+    marginBottom: LOGO_MARGIN_BOTTOM,
+    height: LOGO_SIZE,
+    justifyContent: 'center',
   },
-  logo: {
-    width: 120,
-    height: 120,
-    marginBottom: WEBSITE_SPACING.sm,
-  },
-  brandName: {
-    ...WEBSITE_TYPOGRAPHY.h1,
-    color: WEBSITE_COLORS.white,
-    marginTop: WEBSITE_SPACING.sm,
-  },
-  brandTagline: {
-    ...WEBSITE_TYPOGRAPHY.bodySmall,
-    color: WEBSITE_COLORS.secondary,
-    marginTop: WEBSITE_SPACING.xs,
-  },
-
-  // Progress
-  progressContainer: {
+  logo: { width: LOGO_SIZE, height: LOGO_SIZE },
+  
+  // Progress - Tüm sayfalarda altta (sıçrama ve çakışma önleme)
+  progressRow: { 
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: WEBSITE_SPACING.xl,
+    marginBottom: 16,
+    marginTop: 0,
+    height: 16,
   },
   progressDot: {
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(255,255,255,0.2)', 
     borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderColor: 'rgba(255,255,255,0.3)' 
   },
-  progressDotActive: {
-    backgroundColor: WEBSITE_COLORS.secondary,
-    borderColor: WEBSITE_COLORS.secondary,
-    ...WEBSITE_SHADOWS.glow,
-  },
-  progressLine: {
-    width: 40,
-    height: 2,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    marginHorizontal: WEBSITE_SPACING.xs,
-  },
-
-  // Step Content
-  stepContent: {
+  progressDotActive: { backgroundColor: WEBSITE_BRAND_COLORS.secondary, borderColor: WEBSITE_BRAND_COLORS.secondary },
+  progressLine: { width: 28, height: 2, backgroundColor: 'rgba(255,255,255,0.2)', marginHorizontal: 4 },
+  
+  // Content Wrapper - İçerik alta yakın (scroll yok)
+  contentWrapper: {
     flex: 1,
+    justifyContent: 'flex-end',
+    paddingBottom: 8, // Progress indicator için alan bırak
+  },
+  
+  stepContainer: { 
     maxWidth: 480,
     width: '100%',
     alignSelf: 'center',
   },
-  stepHeader: {
-    alignItems: 'center',
-    marginBottom: WEBSITE_SPACING.xl,
-  },
-  stepIcon: {
-    fontSize: 48,
-    marginBottom: WEBSITE_SPACING.md,
-  },
   stepTitle: {
-    ...WEBSITE_TYPOGRAPHY.h2,
-    color: WEBSITE_COLORS.white,
+    fontSize: WEBSITE_TYPOGRAPHY['2xl'], 
+    fontWeight: WEBSITE_TYPOGRAPHY.weights.bold, 
+    color: WEBSITE_BRAND_COLORS.white, 
     textAlign: 'center',
+    marginTop: 0,
+    marginBottom: WEBSITE_SPACING.xs,
+    letterSpacing: 0.5,
   },
   stepSubtitle: {
-    ...WEBSITE_TYPOGRAPHY.body,
-    color: 'rgba(255, 255, 255, 0.6)',
+    fontSize: WEBSITE_TYPOGRAPHY.sm, 
+    color: `rgba(255,255,255,${0.65})`, 
     textAlign: 'center',
-    marginTop: WEBSITE_SPACING.xs,
+    marginBottom: WEBSITE_SPACING.lg,
   },
 
-  // Language Grid
-  languageGrid: {
+  // PREMIUM Language Grid - 2 sütun 4 satır
+  languageGridPremium: { 
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginHorizontal: -WEBSITE_SPACING.xs,
+    gap: 8,
+    justifyContent: 'space-between',
+    marginBottom: 16, // Progress dots ile çakışmayı önle (tüm sayfalarda progress altta)
   },
-  languageCard: {
-    width: '50%',
-    paddingHorizontal: WEBSITE_SPACING.xs,
+  languageCardPremium: { 
+    width: '48%',
+    borderRadius: WEBSITE_BORDER_RADIUS.xl, 
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: `rgba(31,162,166,${0.25})`,
     marginBottom: WEBSITE_SPACING.md,
   },
   languageCardGradient: {
-    height: 90,
-    borderRadius: WEBSITE_RADIUS.xl,
-    borderWidth: 1,
-    borderColor: 'rgba(31, 162, 166, 0.3)',
+    alignItems: 'center',
+    paddingVertical: WEBSITE_SPACING.lg - 2,
+    paddingHorizontal: WEBSITE_SPACING.lg - 2,
+  },
+  flagWrapperGrid: { 
+    width: WEBSITE_ICON_SIZES.xl, 
+    height: WEBSITE_ICON_SIZES.xl, 
     alignItems: 'center',
     justifyContent: 'center',
-    gap: WEBSITE_SPACING.sm,
+    marginBottom: WEBSITE_SPACING.sm,
   },
-  flagWrapper: {
-    width: 48,
-    height: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
+  languageNameGrid: { 
+    fontSize: WEBSITE_TYPOGRAPHY.sm, 
+    fontWeight: WEBSITE_TYPOGRAPHY.weights.semibold, 
+    color: WEBSITE_BRAND_COLORS.white,
+    textAlign: 'center',
+    letterSpacing: 0.2,
   },
-  languageName: {
-    ...WEBSITE_TYPOGRAPHY.button,
-    color: WEBSITE_COLORS.white,
-  },
-
-  // Date Picker
-  datePickerRow: {
-    flexDirection: 'row',
-    gap: WEBSITE_SPACING.sm,
-    marginBottom: WEBSITE_SPACING.lg,
-  },
-  datePickerCard: {
+  
+  // Date Row
+  dateRow: { flexDirection: 'row', gap: 10, marginBottom: 12 },
+  dateCard: { 
     flex: 1,
-    ...WEBSITE_CARDS.glass,
-    padding: WEBSITE_SPACING.md,
+    backgroundColor: 'rgba(15, 42, 36, 0.95)', 
+    borderRadius: 14, 
+    padding: 16, 
     alignItems: 'center',
+    borderWidth: 1, 
+    borderColor: 'rgba(31, 162, 166, 0.3)' 
   },
-  datePickerCardLarge: {
-    flex: 1.5,
-  },
-  datePickerLabel: {
-    ...WEBSITE_TYPOGRAPHY.caption,
-    color: 'rgba(255, 255, 255, 0.5)',
-    marginBottom: WEBSITE_SPACING.xs,
-  },
-  datePickerValue: {
-    ...WEBSITE_TYPOGRAPHY.h3,
-    color: WEBSITE_COLORS.white,
-  },
+  dateCardWide: { flex: 1.5 },
+  dateLabel: { fontSize: 12, color: 'rgba(255,255,255,0.5)', marginBottom: 6 },
+  dateValue: { fontSize: 20, fontWeight: '700', color: '#fff' },
 
   // Age Display
-  ageDisplay: {
-    marginBottom: WEBSITE_SPACING.xl,
-    borderRadius: WEBSITE_RADIUS.xl,
-    overflow: 'hidden',
-  },
-  ageDisplayGradient: {
-    padding: WEBSITE_SPACING.lg,
+  ageDisplayBox: { 
+    backgroundColor: 'rgba(15, 42, 36, 0.95)', 
+    borderRadius: 18, 
+    padding: 24, 
     alignItems: 'center',
-    borderRadius: WEBSITE_RADIUS.xl,
+    marginBottom: 12, 
     borderWidth: 1,
-    borderColor: 'rgba(31, 162, 166, 0.3)',
+    borderColor: 'rgba(31, 162, 166, 0.3)' 
   },
-  ageDisplayLabel: {
-    ...WEBSITE_TYPOGRAPHY.bodySmall,
-    color: 'rgba(255, 255, 255, 0.6)',
-  },
-  ageDisplayValue: {
-    fontSize: 56,
-    fontWeight: '800',
-    color: WEBSITE_COLORS.secondary,
-    lineHeight: 64,
-  },
-  ageDisplayUnit: {
-    ...WEBSITE_TYPOGRAPHY.body,
-    color: 'rgba(255, 255, 255, 0.6)',
-  },
+  ageNumber: { fontSize: 56, fontWeight: '800', color: '#1FA2A6', letterSpacing: 1 },
+  ageUnit: { fontSize: 15, color: 'rgba(255,255,255,0.65)', marginTop: 4 },
 
   // Legal List
-  legalList: {
-    gap: WEBSITE_SPACING.sm,
-    marginBottom: WEBSITE_SPACING.lg,
-  },
+  legalList: { gap: 4, marginBottom: 10 },
   legalItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    ...WEBSITE_CARDS.glass,
-    padding: WEBSITE_SPACING.md,
+    backgroundColor: 'rgba(15, 42, 36, 0.95)', 
+    borderRadius: 8, 
+    paddingVertical: 8, 
+    paddingHorizontal: 12, 
+    borderWidth: 1, 
+    borderColor: 'rgba(31, 162, 166, 0.3)' 
   },
-  legalItemIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: WEBSITE_RADIUS.lg,
-    backgroundColor: 'rgba(31, 162, 166, 0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: WEBSITE_SPACING.md,
-  },
-  legalItemContent: {
-    flex: 1,
-  },
-  legalItemTitle: {
-    ...WEBSITE_TYPOGRAPHY.button,
-    color: WEBSITE_COLORS.white,
-  },
-  legalItemDesc: {
-    ...WEBSITE_TYPOGRAPHY.caption,
-    color: 'rgba(255, 255, 255, 0.5)',
-    marginTop: 2,
-  },
-  legalItemArrow: {
-    fontSize: 24,
-    color: WEBSITE_COLORS.secondary,
-    fontWeight: '300',
-  },
+  legalIcon: { fontSize: 16, marginRight: 8 },
+  legalTitle: { flex: 1, fontSize: 13, fontWeight: '600', color: '#fff' },
+  legalArrow: { fontSize: 24, color: '#1FA2A6' },
 
   // Checkbox
   checkboxRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    ...WEBSITE_CARDS.glass,
-    padding: WEBSITE_SPACING.md,
-    marginBottom: WEBSITE_SPACING.lg,
+    alignItems: 'center', 
+    backgroundColor: 'rgba(15, 42, 36, 0.95)', 
+    borderRadius: 8, 
+    paddingVertical: 8, 
+    paddingHorizontal: 12, 
+    marginBottom: 12, 
+    borderWidth: 1, 
+    borderColor: 'rgba(31, 162, 166, 0.3)' 
   },
   checkbox: {
-    width: 28,
-    height: 28,
-    borderRadius: WEBSITE_RADIUS.md,
+    width: 26, 
+    height: 26, 
+    borderRadius: 8, 
     borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.4)',
+    borderColor: 'rgba(255,255,255,0.4)', 
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: WEBSITE_SPACING.md,
+    marginRight: 12 
   },
-  checkboxChecked: {
-    backgroundColor: WEBSITE_COLORS.secondary,
-    borderColor: WEBSITE_COLORS.secondary,
-  },
-  checkboxIcon: {
-    color: WEBSITE_COLORS.white,
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  checkboxLabel: {
-    ...WEBSITE_TYPOGRAPHY.body,
-    color: WEBSITE_COLORS.white,
-    flex: 1,
-  },
+  checkboxChecked: { backgroundColor: '#1FA2A6', borderColor: '#1FA2A6' },
+  checkmark: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  checkboxText: { flex: 1, fontSize: 14, color: '#fff', lineHeight: 20 },
 
   // Minor Notice
   minorNotice: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(201, 164, 76, 0.15)',
-    borderRadius: WEBSITE_RADIUS.lg,
-    padding: WEBSITE_SPACING.md,
-    marginBottom: WEBSITE_SPACING.lg,
+    backgroundColor: 'rgba(15, 42, 36, 0.95)', 
+    borderRadius: 12, 
+    padding: 14, 
+    marginBottom: 12, 
+    marginTop: 8,
     borderWidth: 1,
-    borderColor: 'rgba(201, 164, 76, 0.3)',
+    borderColor: 'rgba(31, 162, 166, 0.3)' 
   },
-  minorNoticeIcon: {
-    fontSize: 20,
-    marginRight: WEBSITE_SPACING.sm,
-  },
-  minorNoticeText: {
-    ...WEBSITE_TYPOGRAPHY.bodySmall,
-    color: WEBSITE_COLORS.accent,
-    flex: 1,
-  },
+  minorText: { fontSize: 13, color: '#C9A44C', lineHeight: 18 },
 
   // Buttons
-  primaryButton: {
-    borderRadius: WEBSITE_RADIUS.xl,
-    overflow: 'hidden',
-    marginBottom: WEBSITE_SPACING.md,
-    ...WEBSITE_SHADOWS.lg,
-  },
-  primaryButtonDisabled: {
-    opacity: 0.5,
-    ...WEBSITE_SHADOWS.sm,
-  },
-  primaryButtonGradient: {
-    paddingVertical: WEBSITE_SPACING.md,
-    paddingHorizontal: WEBSITE_SPACING.xl,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 56,
-  },
-  primaryButtonText: {
-    ...WEBSITE_TYPOGRAPHY.button,
-    color: WEBSITE_COLORS.white,
-  },
-  backButton: {
-    alignItems: 'center',
-    paddingVertical: WEBSITE_SPACING.md,
-  },
-  backButtonText: {
-    ...WEBSITE_TYPOGRAPHY.body,
-    color: 'rgba(255, 255, 255, 0.6)',
-  },
+  primaryBtn: { borderRadius: 16, overflow: 'hidden', marginBottom: 0, marginTop: 4 },
+  primaryBtnDisabled: { opacity: 0.5 },
+  primaryBtnGradient: { paddingVertical: WEBSITE_SPACING.lg, alignItems: 'center' },
+  primaryBtnText: { fontSize: WEBSITE_TYPOGRAPHY.lg, fontWeight: WEBSITE_TYPOGRAPHY.weights.bold, color: WEBSITE_BRAND_COLORS.white, letterSpacing: 0.5 },
 
   // Footer
-  footer: {
-    marginTop: 'auto',
-    paddingTop: WEBSITE_SPACING.xl,
-    alignItems: 'center',
-  },
-  footerText: {
-    ...WEBSITE_TYPOGRAPHY.caption,
-    color: 'rgba(255, 255, 255, 0.3)',
-  },
+  footer: { paddingVertical: 16, alignItems: 'center' },
+  footerText: { fontSize: 11, color: 'rgba(255,255,255,0.3)' },
 
   // Modals
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    backgroundColor: 'rgba(0,0,0,0.88)', 
     justifyContent: 'center',
     alignItems: 'center',
-    padding: WEBSITE_SPACING.lg,
+    padding: 20 
   },
   pickerModal: {
     width: '100%',
-    maxWidth: 350,
-    maxHeight: '70%',
-    backgroundColor: WEBSITE_COLORS.primary,
-    borderRadius: WEBSITE_RADIUS.xxl,
+    maxWidth: 340, 
+    maxHeight: '65%', 
+    backgroundColor: '#0F2A24', 
+    borderRadius: 20, 
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: WEBSITE_COLORS.secondary,
+    borderColor: '#1FA2A6' 
   },
   pickerHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: WEBSITE_SPACING.lg,
-    backgroundColor: 'rgba(31, 162, 166, 0.15)',
+    padding: 18, 
+    backgroundColor: 'rgba(15, 42, 36, 0.95)', 
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+    borderBottomColor: 'rgba(31, 162, 166, 0.3)' 
   },
-  pickerTitle: {
-    ...WEBSITE_TYPOGRAPHY.h4,
-    color: WEBSITE_COLORS.white,
-  },
-  pickerClose: {
-    fontSize: 24,
-    color: WEBSITE_COLORS.white,
-    fontWeight: '300',
-  },
-  pickerScroll: {
-    maxHeight: 300,
-  },
-  pickerItem: {
-    padding: WEBSITE_SPACING.md,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
-  },
-  pickerItemSelected: {
-    backgroundColor: 'rgba(31, 162, 166, 0.2)',
-  },
-  pickerItemText: {
-    ...WEBSITE_TYPOGRAPHY.body,
-    color: WEBSITE_COLORS.white,
-    textAlign: 'center',
-  },
-  pickerItemTextSelected: {
-    color: WEBSITE_COLORS.secondary,
-    fontWeight: '700',
-  },
+  pickerTitle: { fontSize: 17, fontWeight: '700', color: '#fff' },
+  pickerClose: { fontSize: 24, color: '#fff' },
+  pickerScroll: { maxHeight: 320 },
+  pickerItem: { padding: 16, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' },
+  pickerItemSelected: { backgroundColor: 'rgba(31, 162, 166, 0.4)' },
+  pickerItemText: { fontSize: 16, color: '#fff', textAlign: 'center' },
+  pickerItemTextSelected: { color: '#1FA2A6', fontWeight: '700' },
 
   legalModal: {
     width: '100%',
     maxWidth: 500,
     maxHeight: '80%',
-    backgroundColor: WEBSITE_COLORS.primary,
-    borderRadius: WEBSITE_RADIUS.xxl,
+    backgroundColor: '#0F2A24', 
+    borderRadius: 20, 
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: WEBSITE_COLORS.secondary,
+    borderColor: '#1FA2A6' 
   },
   legalModalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: WEBSITE_SPACING.lg,
-    backgroundColor: 'rgba(31, 162, 166, 0.15)',
+    padding: 18, 
+    backgroundColor: 'rgba(15, 42, 36, 0.95)', 
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+    borderBottomColor: 'rgba(31, 162, 166, 0.3)' 
   },
-  legalModalTitle: {
-    ...WEBSITE_TYPOGRAPHY.h4,
-    color: WEBSITE_COLORS.white,
+  legalModalTitle: { fontSize: 17, fontWeight: '700', color: '#fff', flex: 1 },
+  legalModalClose: { fontSize: 24, color: '#fff' },
+  legalModalScroll: { padding: 20 },
+  legalModalContent: { fontSize: 14, color: 'rgba(255,255,255,0.85)', lineHeight: 22 },
+  legalModalContentNoScroll: { 
+    padding: 20,
     flex: 1,
   },
-  legalModalClose: {
-    fontSize: 24,
-    color: WEBSITE_COLORS.white,
-    fontWeight: '300',
+  legalModalBtn: { padding: 18, backgroundColor: 'rgba(31, 162, 166, 0.4)', alignItems: 'center' },
+  legalModalBtnText: { fontSize: 15, fontWeight: '600', color: '#1FA2A6' },
+  
+  // Cookie Controls
+  cookieControls: {
+    marginTop: 0,
+    paddingTop: 0,
   },
-  legalModalScroll: {
-    padding: WEBSITE_SPACING.lg,
+  cookieControlsTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
+    marginBottom: 16,
   },
-  legalModalContent: {
-    ...WEBSITE_TYPOGRAPHY.body,
-    color: 'rgba(255, 255, 255, 0.8)',
-  },
-  legalModalButton: {
-    padding: WEBSITE_SPACING.lg,
-    backgroundColor: 'rgba(31, 162, 166, 0.2)',
+  cookieToggleRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-  },
-  legalModalButtonText: {
-    ...WEBSITE_TYPOGRAPHY.button,
-    color: WEBSITE_COLORS.secondary,
-  },
-
-  cookieModal: {
-    width: '100%',
-    maxWidth: 450,
-    backgroundColor: WEBSITE_COLORS.primary,
-    borderRadius: WEBSITE_RADIUS.xxl,
-    overflow: 'hidden',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: 'rgba(15, 42, 36, 0.95)',
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: WEBSITE_COLORS.secondary,
+    borderColor: 'rgba(31, 162, 166, 0.3)',
   },
-  cookieModalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: WEBSITE_SPACING.lg,
-    backgroundColor: 'rgba(31, 162, 166, 0.15)',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  cookieModalTitle: {
-    ...WEBSITE_TYPOGRAPHY.h4,
-    color: WEBSITE_COLORS.white,
-  },
-  cookieModalClose: {
-    fontSize: 24,
-    color: WEBSITE_COLORS.white,
-    fontWeight: '300',
-  },
-  cookieModalScroll: {
-    padding: WEBSITE_SPACING.lg,
-  },
-  cookieItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: WEBSITE_SPACING.md,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  cookieItemInfo: {
+  cookieToggleInfo: {
     flex: 1,
-    marginRight: WEBSITE_SPACING.md,
   },
-  cookieItemTitle: {
-    ...WEBSITE_TYPOGRAPHY.button,
-    color: WEBSITE_COLORS.white,
+  cookieToggleLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#fff',
+    marginBottom: 4,
   },
-  cookieItemDesc: {
-    ...WEBSITE_TYPOGRAPHY.caption,
-    color: 'rgba(255, 255, 255, 0.5)',
-    marginTop: 2,
+  cookieToggleDesc: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.6)',
   },
-  cookieToggle: {
-    width: 52,
+  cookieToggleSwitch: {
+    width: 48,
     height: 28,
     borderRadius: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    padding: 2,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
     justifyContent: 'center',
   },
-  cookieToggleOn: {
-    backgroundColor: WEBSITE_COLORS.secondary,
+  cookieToggleSwitchActive: {
+    backgroundColor: WEBSITE_BRAND_COLORS.secondary,
+    borderColor: WEBSITE_BRAND_COLORS.secondary,
   },
-  cookieToggleThumb: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: WEBSITE_COLORS.white,
-  },
-  cookieToggleThumbOn: {
-    alignSelf: 'flex-end',
-  },
-  cookieSaveButton: {
-    margin: WEBSITE_SPACING.lg,
-    borderRadius: WEBSITE_RADIUS.lg,
-    overflow: 'hidden',
-  },
-  cookieSaveGradient: {
-    padding: WEBSITE_SPACING.md,
-    alignItems: 'center',
-  },
-  cookieSaveText: {
-    ...WEBSITE_TYPOGRAPHY.button,
-    color: WEBSITE_COLORS.white,
+  cookieToggleSwitchText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
   },
 });

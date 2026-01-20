@@ -10,16 +10,13 @@
     "back": "Geri",
     "next": "İleri",
     "done": "Tamam",
-    "continue": "Devam Et"
+    "continue": "Devam Et",
+    "getStarted": "Başla",
+    "info": "Bilgi"
   },
   "languageSelection": {
     "title": "Dil Seçimi",
-    "subtitle": "Lütfen dilinizi seçin",
-    "legalSummaryTitle": "Yasal Bilgilendirme",
-    "legalSummaryDesc": "Devam etmek için lütfen aşağıdaki belgeleri okuyun:",
-    "iAccept": "Okudum ve kabul ediyorum",
-    "pleaseAccept": "Lütfen yasal belgeleri okuyup kabul edin",
-    "legalSummary": "TacticIQ platformunu kullanarak Kullanım Koşulları, Gizlilik Politikası ve KVKK Aydınlatma Metni'ni kabul etmiş olursunuz.\n\n• Kişisel verileriniz KVKK/GDPR kapsamında işlenecektir\n• Dijital içerik satışlarında cayma hakkı bulunmamaktadır\n• Platform içi sanal öğelerin nakit değeri yoktur\n• 13 yaş altı kullanıcılar için ebeveyn izni gereklidir"
+    "subtitle": "Lütfen dilinizi seçin"
   },
   "dashboard": {
     "title": "Analist Kontrol Paneli",
@@ -68,6 +65,8 @@
     "progress": "İlerleme",
     "progressHint": "maç daha kazanman gerekiyor!",
     "earnedDate": "Kazanıldı:",
+    "noBadges": "Henüz rozet yok",
+    "startPredicting": "Maçlara tahmin yap ve rozetleri kazan!",
     "tiers": {
       "rookie": "Çaylak",
       "amateur": "Amatör",
@@ -148,89 +147,65 @@
     "emailTaken": "Bu e-posta zaten kullanılıyor"
   },
   "ageGate": {
-    "title": "Yas Dogrulama",
-    "subtitle": "Dogum tarihinizi secin",
-    "year": "Yil",
+    "title": "Yaş Doğrulama",
+    "subtitle": "Doğum tarihinizi seçin",
+    "year": "Yıl",
     "month": "Ay",
-    "day": "Gun",
-    "yearPlaceholder": "YYYY",
-    "monthPlaceholder": "MM",
-    "dayPlaceholder": "DD",
-    "info": "Bu bilgi guvenliginiz ve yasal uyumluluk icin gereklidir.",
-    "pleaseEnterDate": "Lutfen dogum tarihinizi giriniz",
-    "invalidDate": "Gecersiz dogum tarihi"
+    "day": "Gün",
+    "yearsOld": "yaşında",
+    "selectYear": "Yıl Seçin",
+    "selectMonth": "Ay Seçin",
+    "selectDay": "Gün Seçin",
+    "info": "Bu bilgi güvenliğiniz ve yasal uyumluluk için gereklidir.",
+    "pleaseEnterDate": "Lütfen doğum tarihinizi giriniz",
+    "invalidDate": "Geçersiz doğum tarihi",
+    "minorNotice": "18 yaş altı için ebeveyn onayı gerekli"
   },
   "legal": {
     "title": "Yasal Belgeler",
-    "description": "Platform kullanim kosullari ve yasal bilgilendirmeler",
-    "select": "Bir belge secin",
-    "close": "Kapat",
-    "accept": "Kabul Ediyorum",
+    "subtitle": "Lütfen aşağıdaki belgeleri inceleyin ve kabul edin",
+    "iAccept": "Okudum ve kabul ediyorum",
+    "minorNotice": "18 yaş altı kullanıcılar için ebeveyn onayı gereklidir",
     "terms": {
-      "title": "Kullanim Kosullari",
-      "description": "Hizmet sartlari ve kullanici sorumluluklari",
-      "fullContent": "Son Guncelleme: 1 Ocak 2026\\n\\n1. GIRIS VE KABUL\\nBu Kosullar, TacticIQ ile sizin aradinizda, web platformu ve mobil uygulama kullanimi ile ilgili yasal sozlesmedir.\\n\\n2. SANAL OGELER\\nPuan, XP gibi sanal varliklar gercek paraya cevrilemez, iade edilemez.\\n\\n3. FIKRI MULKIYET\\nTum haklar TacticIQ'a aittir.\\n\\n4. CAYMA HAKKI\\nDijital icerik teslimatinda cayma hakki yoktur.\\n\\n5. ILETISIM\\nlegal@tacticiq.app"
+      "title": "Kullanım Koşulları",
+      "desc": "Hizmet şartları ve kullanıcı sorumlulukları",
+      "fullContent": "Son Güncelleme: 1 Ocak 2026\n\n1. GİRİŞ VE KABUL\nBu Koşullar, TacticIQ ile sizin aranızda, web platformu ve mobil uygulama kullanımı ile ilgili yasal sözleşmedir.\n\n2. SANAL ÖĞELER\nPuan, XP gibi sanal varlıklar gerçek paraya çevrilemez, iade edilemez.\n\n3. FİKRİ MÜLKİYET\nTüm haklar TacticIQ'a aittir.\n\n4. CAYMA HAKKI\nDijital içerik teslimatında cayma hakkı yoktur.\n\n5. İLETİŞİM\nlegal@tacticiq.app"
     },
     "privacy": {
-      "title": "Gizlilik Politikasi",
-      "description": "GDPR, CCPA, KVKK uyumlu",
-      "fullContent": "Son Guncelleme: 1 Ocak 2026\\n\\n1. VERI TOPLAMA\\nCihaz kimligi, IP, konum ve aktivite verilerinizi isliyoruz.\\n\\n2. BOLGESEL HAKLAR\\n\\nTURKIYE (KVKK):\\nVeri Sorumlusu: TacticIQ\\nkvkk@tacticiq.app\\n\\nAVRUPA (GDPR):\\nSilme, tasima hakkiniz var.\\n\\nABD (CCPA):\\n13 yas alti icin ebeveyn izni.\\n\\n3. ILETISIM\\nprivacy@tacticiq.app"
+      "title": "Gizlilik Politikası",
+      "desc": "GDPR, CCPA, KVKK uyumlu",
+      "fullContent": "Son Güncelleme: 1 Ocak 2026\n\n1. VERİ TOPLAMA\nCihaz kimliği, IP, konum ve aktivite verilerinizi işliyoruz.\n\n2. BÖLGESEL HAKLAR\n\nTÜRKİYE (KVKK):\nVeri Sorumlusu: TacticIQ\nkvkk@tacticiq.app\n\nAVRUPA (GDPR):\nSilme, taşıma hakkınız var.\n\nABD (CCPA):\n13 yaş altı için ebeveyn izni.\n\n3. İLETİŞİM\nprivacy@tacticiq.app"
     },
     "cookies": {
-      "title": "Cerez Politikasi",
-      "description": "Cerezlerin kullanimi",
-      "fullContent": "Son Guncelleme: 1 Ocak 2026\\n\\n1. CEREZ KULLANIMI\\nDeneyimi gelistirmek icin cerezler kullanilir.\\n\\n2. CEREZ TURLERI\\n- Zorunlu\\n- Islevsel\\n- Analitik\\n- Pazarlama\\n\\n3. YONETIM\\nAyarlar menusu"
+      "title": "Çerez Politikası",
+      "desc": "Çerezlerin kullanımı",
+      "fullContent": "Son Güncelleme: 1 Ocak 2026\n\n1. ÇEREZ KULLANIMI\nDeneyimi geliştirmek için çerezler kullanılır.\n\n2. ÇEREZ TÜRLERİ\n- Zorunlu\n- İşlevsel\n- Analitik\n- Pazarlama\n\n3. YÖNETİM\nAyarlar menüsü"
     },
     "kvkk": {
-      "title": "KVKK Aydinlatma",
-      "description": "6698 sayili KVKK",
-      "fullContent": "VERI SORUMLUSU: TacticIQ\\nkvkk@tacticiq.app\\n\\nISLENEN VERILER:\\n- Kimlik\\n- Iletisim\\n- Aktivite\\n- Cihaz/IP\\n\\nAMACLAR:\\n- Hizmet\\n- Iyilestirme\\n- Guvenlik\\n\\nHAKLARINIZ:\\nkvkk@tacticiq.app"
-    },
-    "consent": {
-      "title": "Acik Riza Metni",
-      "description": "KVKK acik riza",
-      "fullContent": "AYDINLATMA:\\nAydinlatildim\\nAmaclari biliyorum\\nHaklarim hakkinda bilgilendirildim\\n\\nONAY:\\nKimlik, Iletisim, Aktivite, Cihaz verilerim icin acik riza.\\n\\nRIZA GERI CEKME:\\nkvkk@tacticiq.app"
-    },
-    "sales": {
-      "title": "Mesafeli Satis Sozlesmesi",
-      "description": "Dijital icerik satis sartlari",
-      "fullContent": "SATICI: TacticIQ\\nsales@tacticiq.app\\n\\nURUN: Pro Uyelik\\nODEME: App Store/Play\\n\\nCAYMA HAKKI:\\nDijital icerik tesliminde cayma hakki yoktur.\\n\\nIADE YAPILMAZ"
-    },
-    "dmca": {
-      "title": "Telif Hakki",
-      "description": "Fikri mulkiyet ve DMCA",
-      "fullContent": "TacticIQ 2026\\n\\nFIKRI MULKIYET:\\n- Kodlar\\n- Tasarimlar\\n- Marka/Logo\\n- Icerikler\\n\\nKULLANIM YASAK\\n\\nDMCA:\\ncopyright@tacticiq.app"
+      "title": "KVKK Aydınlatma",
+      "desc": "6698 sayılı KVKK",
+      "fullContent": "VERİ SORUMLUSU: TacticIQ\nkvkk@tacticiq.app\n\nİŞLENEN VERİLER:\n- Kimlik\n- İletişim\n- Aktivite\n- Cihaz/IP\n\nAMAÇLAR:\n- Hizmet\n- İyileştirme\n- Güvenlik\n\nHAKLARINIZ:\nkvkk@tacticiq.app"
     }
+  },
+  "cookies": {
+    "essential": "Zorunlu Çerezler",
+    "essentialDesc": "Uygulamanın çalışması için gerekli",
+    "analytics": "Analitik Çerezler",
+    "analyticsDesc": "Performansı iyileştirmemize yardımcı olur",
+    "marketing": "Pazarlama Çerezleri",
+    "marketingDesc": "Kişiselleştirilmiş içerik sunar"
   },
   "consent": {
     "title": "Gizlilik Tercihleri",
     "subtitle": "Verilerinizin nasıl kullanılacağını seçin",
-    "kvkkInfo": "Gizliliğinizi önemsiyoruz. Bu tercihler KVKK kapsamında korunmaktadır.",
-    "gdprInfo": "Gizliliğinizi önemsiyoruz. Bu tercihler GDPR kapsamında korunmaktadır.",
-    "ccpaInfo": "Gizliliğinizi önemsiyoruz. Bu tercihler CCPA kapsamında korunmaktadır.",
-    "defaultInfo": "Verilerinizi korumak için tercihlerinizi belirleyin.",
+    "error": "Hata",
+    "mustAccept": "Devam etmek için yasal belgeleri kabul etmelisiniz",
+    "saveFailed": "Kaydedilemedi",
     "essential": "Zorunlu Çerezler",
-    "essentialDesc": "Uygulamanın çalışması için gerekli temel çerezler. Devre dışı bırakılamaz.",
+    "essentialDesc": "Uygulamanın çalışması için gerekli temel çerezler",
     "analytics": "Analitik Çerezler",
-    "analyticsDesc": "Uygulama performansını analiz etmek ve iyileştirmek için kullanılır.",
+    "analyticsDesc": "Uygulama performansını analiz etmek için kullanılır",
     "marketing": "Pazarlama Çerezleri",
-    "marketingDesc": "Kampanya ve özel teklifler için bildirimler göndermemize izin verir.",
-    "personalizedAds": "Kişiselleştirilmiş Reklamlar",
-    "personalizedAdsDesc": "İlgi alanlarınıza göre size özel reklamlar göstermemize izin verir.",
-    "dataTransfer": "Yurt Dışına Veri Aktarımı",
-    "dataTransferDesc": "KVKK kapsamında verilerinizin yurt dışı sunucularına aktarımı için açık rıza gereklidir.",
-    "acceptAll": "Tümünü Kabul Et",
-    "rejectAll": "Tümünü Reddet",
-    "save": "Kaydet ve Devam Et",
-    "privacyPolicyLink": "Detaylı bilgi için Gizlilik Politikası'nı inceleyin",
-    "childModeRestriction": "Çocuk modunda bu özellikler güvenlik nedeniyle devre dışıdır.",
-    "saveError": "Tercihleriniz kaydedilemedi. Lütfen tekrar deneyin.",
-    "saveSuccess": "Tercihleriniz başarıyla kaydedildi!",
-    "learnMore": "Daha Fazla Bilgi",
-    "viewPrivacyPolicy": "Gizlilik Politikası",
-    "viewCookiePolicy": "Çerez Politikası",
-    "viewKvkkInfo": "KVKK Aydınlatma Metni",
-    "required": "Zorunlu",
-    "optional": "İsteğe Bağlı"
+    "marketingDesc": "Kampanya ve özel teklifler için bildirimler"
   }
 }

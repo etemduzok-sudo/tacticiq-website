@@ -433,12 +433,54 @@ export function isMatchFinished(status: string): boolean {
   return ['FT', 'AET', 'PEN'].includes(status);
 }
 
+// ====================
+// LEGAL DOCUMENTS API
+// ====================
+
+export interface LegalDocument {
+  id: string;
+  document_id: string;
+  language: string;
+  title: string;
+  content: string;
+  enabled: boolean;
+}
+
+export const legalDocumentsApi = {
+  /**
+   * Tüm yasal belgeleri dil bazında getir
+   */
+  async getAll(language: string = 'tr'): Promise<LegalDocument[]> {
+    try {
+      const data = await request<{ success: boolean; data: LegalDocument[] }>(`/legal-documents?language=${language}`);
+      return data.data || [];
+    } catch (error) {
+      logger.error('Failed to fetch legal documents', { error, language }, 'LEGAL_DOCS');
+      return [];
+    }
+  },
+
+  /**
+   * Belirli bir belgeyi getir
+   */
+  async get(documentId: string, language: string = 'tr'): Promise<LegalDocument | null> {
+    try {
+      const data = await request<{ success: boolean; data: LegalDocument }>(`/legal-documents/${documentId}?language=${language}`);
+      return data.data || null;
+    } catch (error) {
+      logger.error('Failed to fetch legal document', { error, documentId, language }, 'LEGAL_DOCS');
+      return null;
+    }
+  },
+};
+
 // Export all
 export default {
   matches: matchesApi,
   leagues: leaguesApi,
   teams: teamsApi,
   players: playersApi,
+  legalDocuments: legalDocumentsApi,
   utils: {
     getTodayDate,
     getDateRange,

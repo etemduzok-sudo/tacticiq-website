@@ -10,6 +10,7 @@ import {
   Image,
   Alert,
   Modal,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FlagDE, FlagGB, FlagES, FlagFR, FlagIT, FlagTR, FlagAR, FlagCN } from '../components/flags';
@@ -17,7 +18,8 @@ import { AUTH_GRADIENT } from '../theme/gradients';
 import { STANDARD_LAYOUT, STANDARD_COLORS } from '../constants/standardLayout';
 import { useTranslation } from '../hooks/useTranslation';
 import { BRAND, SPACING, TYPOGRAPHY } from '../theme/theme';
-import { LEGAL_DOCUMENTS, getLegalContent } from '../data/legalContent';
+import { LEGAL_DOCUMENTS, getLegalContent, getLegalContentSync } from '../data/legalContent';
+import { getCurrentLanguage } from '../i18n';
 
 // Logo
 const logoImage = require('../../assets/logo.png');
@@ -73,11 +75,13 @@ export default function LanguageSelectionScreen({
     return () => animation.stop();
   }, []);
 
-  // Dil seçildiğinde translation'ı güncelle
+  // Dil seçildiğinde translation'ı güncelle ve direkt ilerle
   const handleLanguagePress = (langCode: string) => {
     setSelectedLanguage(langCode);
     i18n?.changeLanguage?.(langCode);
     setShowLanguageModal(false);
+    // Direkt dil seçimini onayla ve ilerle
+    onLanguageSelect(langCode);
   };
 
   // Yasal belge aç
@@ -181,7 +185,8 @@ export default function LanguageSelectionScreen({
   // Render Legal Document Modal
   const renderLegalModal = () => {
     if (!selectedLegalDoc) return null;
-    const legalContent = getLegalContent(selectedLegalDoc, t);
+    const language = getCurrentLanguage();
+    const legalContent = getLegalContentSync(selectedLegalDoc, t, language);
     
     return (
       <Modal
@@ -295,167 +300,67 @@ export default function LanguageSelectionScreen({
         start={AUTH_GRADIENT.start}
         end={AUTH_GRADIENT.end}
       >
-        <ScrollView
-          contentContainerStyle={styles.mainScrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.screenContainer}>
-            <View style={styles.content}>
-              {/* Logo & Brand */}
-              <View style={styles.brandZone}>
-                <View style={styles.logoContainer}>
-                  <Image 
-                    source={logoImage} 
-                    style={styles.logoImage}
-                    resizeMode="contain"
-                  />
-                </View>
-                <Text style={styles.brandTitle}>TacticIQ</Text>
-                <Text style={styles.brandSubtitle}>{t('languageSelection.subtitle') || 'Welcome'}</Text>
-              </View>
+        {/* Grid Pattern Background */}
+        <View style={styles.gridPattern} />
+        <View style={styles.screenContainer}>
+          <View style={styles.content}>
+            {/* Logo - %300 Büyük (288px -> 864px) */}
+            <View style={styles.logoContainer}>
+              <Image 
+                source={logoImage} 
+                style={styles.logoImage}
+                resizeMode="contain"
+              />
+            </View>
 
-              {/* Language Selector Card */}
-              <View style={styles.sectionCard}>
-                <Text style={styles.sectionTitle}>🌐 {t('languageSelection.title') || 'Select Language'}</Text>
-                <TouchableOpacity
-                  style={styles.languageSelectorButton}
-                  onPress={() => setShowLanguageModal(true)}
-                  activeOpacity={0.8}
-                >
-                  <View style={styles.languageSelectorContent}>
-                    <View style={styles.languageSelectorFlag}>
-                      <FlagComponent code={selectedLanguage} />
-                    </View>
-                    <Text style={styles.languageSelectorText}>{getLanguageName(selectedLanguage)}</Text>
-                  </View>
-                  <View style={styles.languageSelectorArrowContainer}>
-                    <Text style={styles.languageSelectorArrow}>▼</Text>
-                  </View>
-                </TouchableOpacity>
-              </View>
+            {/* Bilgilendirme Alanı */}
+            <View style={styles.infoContainer}>
+              <Text style={styles.infoTitle}>
+                {selectedLanguage === 'tr' ? 'Dil Seçimi' : 
+                 selectedLanguage === 'en' ? 'Language Selection' :
+                 selectedLanguage === 'de' ? 'Sprachauswahl' :
+                 selectedLanguage === 'es' ? 'Selección de Idioma' :
+                 selectedLanguage === 'fr' ? 'Sélection de la Langue' :
+                 selectedLanguage === 'it' ? 'Selezione Lingua' :
+                 selectedLanguage === 'ar' ? 'اختيار اللغة' :
+                 selectedLanguage === 'ru' ? 'Выбор языка' : 'Language Selection'}
+              </Text>
+              <Text style={styles.infoSubtitle}>
+                {selectedLanguage === 'tr' ? 'Lütfen tercih ettiğiniz dili seçin' : 
+                 selectedLanguage === 'en' ? 'Please select your preferred language' :
+                 selectedLanguage === 'de' ? 'Bitte wählen Sie Ihre bevorzugte Sprache' :
+                 selectedLanguage === 'es' ? 'Por favor seleccione su idioma preferido' :
+                 selectedLanguage === 'fr' ? 'Veuillez sélectionner votre langue préférée' :
+                 selectedLanguage === 'it' ? 'Seleziona la tua lingua preferita' :
+                 selectedLanguage === 'ar' ? 'يرجى اختيار لغتك المفضلة' :
+                 selectedLanguage === 'ru' ? 'Пожалуйста, выберите предпочитаемый язык' : 'Please select your preferred language'}
+              </Text>
+            </View>
 
-              {/* Legal Information Card */}
-              <View style={styles.sectionCard}>
-                <Text style={styles.sectionTitle}>📋 {t('languageSelection.legalSummaryTitle') || 'Legal Information'}</Text>
-                <Text style={styles.sectionDescription}>
-                  {t('languageSelection.legalSummaryDesc') || 'Please review our legal documents'}
-                </Text>
-                
-                <View style={styles.legalLinks}>
+            {/* 8 Dil Seçim Butonları - Grid Layout */}
+            <View style={styles.languageGrid}>
+              {languages.map((lang) => {
+                const isSelected = lang.code === selectedLanguage;
+                return (
                   <TouchableOpacity
-                    style={styles.legalLinkCard}
-                    onPress={() => handleOpenLegalDoc('terms')}
+                    key={lang.code}
+                    style={[styles.languageButton, isSelected && styles.languageButtonSelected]}
+                    onPress={() => handleLanguagePress(lang.code)}
                     activeOpacity={0.7}
                   >
-                    <View style={styles.legalLinkLeft}>
-                      <View style={styles.legalLinkIconContainer}>
-                        <Text style={styles.legalLinkIcon}>📋</Text>
-                      </View>
-                      <View style={styles.legalLinkTextContainer}>
-                        <Text style={styles.legalLinkTitle}>{t('legal.terms.title') || 'Terms of Service'}</Text>
-                        <Text style={styles.legalLinkSubtitle}>Read terms</Text>
-                      </View>
+                    <View style={styles.languageButtonFlag}>
+                      <FlagComponent code={lang.code} />
                     </View>
-                    <Text style={styles.legalLinkArrow}>›</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.legalLinkCard}
-                    onPress={() => handleOpenLegalDoc('privacy')}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.legalLinkLeft}>
-                      <View style={styles.legalLinkIconContainer}>
-                        <Text style={styles.legalLinkIcon}>🔒</Text>
-                      </View>
-                      <View style={styles.legalLinkTextContainer}>
-                        <Text style={styles.legalLinkTitle}>{t('legal.privacy.title') || 'Privacy Policy'}</Text>
-                        <Text style={styles.legalLinkSubtitle}>Data protection</Text>
-                      </View>
-                    </View>
-                    <Text style={styles.legalLinkArrow}>›</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.legalLinkCard}
-                    onPress={() => setShowCookieModal(true)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.legalLinkLeft}>
-                      <View style={styles.legalLinkIconContainer}>
-                        <Text style={styles.legalLinkIcon}>🍪</Text>
-                      </View>
-                      <View style={styles.legalLinkTextContainer}>
-                        <Text style={styles.legalLinkTitle}>{t('legal.cookies.title') || 'Cookie Settings'}</Text>
-                        <Text style={styles.legalLinkSubtitle}>Manage preferences</Text>
-                      </View>
-                    </View>
-                    <Text style={styles.legalLinkArrow}>›</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.legalLinkCard}
-                    onPress={() => handleOpenLegalDoc('kvkk')}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.legalLinkLeft}>
-                      <View style={styles.legalLinkIconContainer}>
-                        <Text style={styles.legalLinkIcon}>⚖️</Text>
-                      </View>
-                      <View style={styles.legalLinkTextContainer}>
-                        <Text style={styles.legalLinkTitle}>{t('legal.kvkk.title') || 'KVKK Disclosure'}</Text>
-                        <Text style={styles.legalLinkSubtitle}>Privacy rights</Text>
-                      </View>
-                    </View>
-                    <Text style={styles.legalLinkArrow}>›</Text>
-                  </TouchableOpacity>
-                </View>
-
-                {/* Acceptance Checkbox */}
-                <View style={styles.acceptanceContainer}>
-                  <TouchableOpacity
-                    style={styles.checkboxContainer}
-                    onPress={() => setLegalAccepted(!legalAccepted)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={[styles.checkbox, legalAccepted && styles.checkboxChecked]}>
-                      {legalAccepted && <Text style={styles.checkboxIcon}>✓</Text>}
-                    </View>
-                    <Text style={styles.checkboxLabel}>
-                      {t('languageSelection.iAccept') || 'I have read and accept the legal documents'}
+                    <Text style={[styles.languageButtonText, isSelected && styles.languageButtonTextSelected]}>
+                      {lang.name}
                     </Text>
+                    {isSelected && <Text style={styles.languageButtonCheckmark}>✓</Text>}
                   </TouchableOpacity>
-                </View>
-              </View>
-
-              {/* Continue Button */}
-              <TouchableOpacity
-                style={[styles.continueButton, !legalAccepted && styles.continueButtonDisabled]}
-                onPress={handleContinue}
-                disabled={!legalAccepted}
-                activeOpacity={0.8}
-              >
-                <LinearGradient
-                  colors={legalAccepted ? [BRAND.emerald, '#047857'] : ['rgba(100, 100, 100, 0.5)', 'rgba(80, 80, 80, 0.5)']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.continueButtonGradient}
-                >
-                  <Text style={styles.continueButtonText}>
-                    {t('common.continue') || 'Continue'}
-                  </Text>
-                </LinearGradient>
-              </TouchableOpacity>
-
-              {/* Footer */}
-              <View style={styles.footerZone}>
-                <Text style={styles.footer}>
-                  © 2026 TacticIQ. All rights reserved.
-                </Text>
-              </View>
+                );
+              })}
             </View>
           </View>
-        </ScrollView>
+        </View>
 
         {/* Modals */}
         {renderLanguageModal()}
@@ -473,265 +378,132 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
+    position: 'relative',
   },
-  mainScrollContent: {
-    flexGrow: 1,
-    paddingBottom: SPACING.xl,
+  gridPattern: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    opacity: 0.15,
+    ...Platform.select({
+      web: {
+        backgroundImage: `
+          linear-gradient(to right, rgba(31, 162, 166, 0.15) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(31, 162, 166, 0.15) 1px, transparent 1px)
+        `,
+        backgroundSize: '50px 50px',
+      },
+      default: {
+        backgroundColor: 'transparent',
+      },
+    }),
   },
   screenContainer: {
     flex: 1,
     paddingHorizontal: SPACING.lg,
     paddingTop: SPACING.xl,
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    zIndex: 1,
   },
   content: {
-    maxWidth: 480,
     width: '100%',
-    alignSelf: 'center',
+    maxWidth: 600,
+    alignItems: 'center',
+    justifyContent: 'flex-start',
   },
   
-  // Brand Zone
-  brandZone: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: SPACING.xl,
-    paddingTop: SPACING.lg,
-  },
+  // Logo Container - Büyük
   logoContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: SPACING.md,
-    borderWidth: 2,
-    borderColor: 'rgba(5, 150, 105, 0.3)',
+    marginTop: SPACING.xl,
+    marginBottom: SPACING.xl,
   },
   logoImage: {
-    width: 70,
-    height: 70,
-  },
-  brandTitle: {
-    ...TYPOGRAPHY.h1,
-    fontSize: 32,
-    fontWeight: '800',
-    color: BRAND.white,
-    marginBottom: SPACING.xs,
-    letterSpacing: 0.5,
-  },
-  brandSubtitle: {
-    ...TYPOGRAPHY.body,
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.7)',
-    fontWeight: '400',
+    width: 864, // %300 büyük (288px * 3)
+    height: 864,
   },
   
-  // Section Cards
-  sectionCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    borderRadius: 20,
+  // Bilgilendirme Alanı
+  infoContainer: {
+    width: '100%',
+    maxWidth: 600,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 16,
     padding: SPACING.lg,
-    marginBottom: SPACING.lg,
+    marginBottom: SPACING.xl,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 8,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
-  sectionTitle: {
-    fontSize: 18,
+  infoTitle: {
+    fontSize: 24,
     fontWeight: '700',
     color: BRAND.white,
+    textAlign: 'center',
+    marginBottom: SPACING.xs,
+  },
+  infoSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.75)',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  
+  // Language Grid - 8 Buton, 2 Sütun
+  languageGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: SPACING.md,
+    width: '100%',
+    paddingHorizontal: SPACING.md,
+  },
+  languageButton: {
+    width: '45%',
+    aspectRatio: 1.2,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: SPACING.md,
+    position: 'relative',
+  },
+  languageButtonSelected: {
+    backgroundColor: 'rgba(5, 150, 105, 0.2)',
+    borderColor: BRAND.emerald,
+    borderWidth: 2,
+  },
+  languageButtonFlag: {
+    width: 56,
+    height: 56,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: SPACING.sm,
   },
-  sectionDescription: {
-    fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.6)',
-    marginBottom: SPACING.md,
-    lineHeight: 18,
-  },
-  
-  // Language Selector
-  languageSelectorButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: 'rgba(30, 41, 59, 0.6)',
-    borderRadius: 16,
-    paddingVertical: SPACING.md,
-    paddingHorizontal: SPACING.lg,
-    borderWidth: 2,
-    borderColor: 'rgba(5, 150, 105, 0.3)',
-    minHeight: 64,
-  },
-  languageSelectorContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.md,
-    flex: 1,
-  },
-  languageSelectorFlag: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-    overflow: 'hidden',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  languageSelectorText: {
-    fontSize: 17,
+  languageButtonText: {
+    fontSize: 16,
     fontWeight: '600',
     color: BRAND.white,
-  },
-  languageSelectorArrowContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(5, 150, 105, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  languageSelectorArrow: {
-    fontSize: 12,
-    color: BRAND.emerald,
-    fontWeight: '700',
-  },
-  
-  // Legal Links
-  legalLinks: {
-    gap: SPACING.sm,
-    marginBottom: SPACING.lg,
-  },
-  legalLinkCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    borderRadius: 14,
-    padding: SPACING.md,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    minHeight: 64,
-  },
-  legalLinkLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.md,
-    flex: 1,
-  },
-  legalLinkIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: 'rgba(5, 150, 105, 0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  legalLinkIcon: {
-    fontSize: 22,
-  },
-  legalLinkTextContainer: {
-    flex: 1,
-  },
-  legalLinkTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: BRAND.white,
-    marginBottom: 2,
-  },
-  legalLinkSubtitle: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.5)',
-  },
-  legalLinkArrow: {
-    fontSize: 24,
-    color: BRAND.emerald,
-    fontWeight: '300',
-    marginLeft: SPACING.sm,
-  },
-  
-  // Acceptance
-  acceptanceContainer: {
-    marginTop: SPACING.md,
-    paddingTop: SPACING.md,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  checkboxContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: SPACING.md,
-  },
-  checkbox: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.4)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'transparent',
-    marginTop: 2,
-  },
-  checkboxChecked: {
-    backgroundColor: BRAND.emerald,
-    borderColor: BRAND.emerald,
-  },
-  checkboxIcon: {
-    color: BRAND.white,
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  checkboxLabel: {
-    fontSize: 14,
-    color: BRAND.white,
-    fontWeight: '500',
-    flex: 1,
-    lineHeight: 22,
-  },
-  
-  // Continue Button
-  continueButton: {
-    borderRadius: 16,
-    overflow: 'hidden',
-    marginTop: SPACING.md,
-    marginBottom: SPACING.lg,
-    shadowColor: BRAND.emerald,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    elevation: 12,
-  },
-  continueButtonDisabled: {
-    opacity: 0.4,
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  continueButtonGradient: {
-    paddingVertical: SPACING.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 56,
-  },
-  continueButtonText: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: BRAND.white,
-    letterSpacing: 0.5,
-  },
-  
-  // Footer
-  footerZone: {
-    paddingTop: SPACING.lg,
-    paddingBottom: SPACING.md,
-    alignItems: 'center',
-  },
-  footer: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.4)',
     textAlign: 'center',
   },
+  languageButtonTextSelected: {
+    color: BRAND.emerald,
+    fontWeight: '700',
+  },
+  languageButtonCheckmark: {
+    position: 'absolute',
+    top: SPACING.xs,
+    right: SPACING.xs,
+    fontSize: 20,
+    color: BRAND.emerald,
+    fontWeight: '700',
+  },
+  
   
   // Modals - Overlay
   modalOverlay: {
