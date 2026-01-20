@@ -317,7 +317,7 @@ export function LegalDocumentsModal({ open, onOpenChange, documentId }: LegalDoc
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl w-[95vw] max-h-[85vh] flex flex-col">
+      <DialogContent className="max-w-7xl w-[98vw] max-h-[90vh] flex flex-col overflow-hidden">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle>{t('legal.title') || 'Yasal Belgeler'}</DialogTitle>
           <DialogDescription>
@@ -327,8 +327,8 @@ export function LegalDocumentsModal({ open, onOpenChange, documentId }: LegalDoc
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 flex-1 min-h-0 overflow-hidden">
           {/* Document List */}
-          <div className="md:col-span-1 flex flex-col min-h-0">
-            <ScrollArea className="flex-1 pr-4" style={{ maxHeight: 'calc(70vh - 120px)' }}>
+          <div className="md:col-span-1 flex flex-col min-h-0 overflow-hidden">
+            <ScrollArea className="flex-1 pr-2" style={{ height: 'calc(90vh - 180px)' }}>
               <div className="space-y-2 pb-4">
                 {LEGAL_DOCUMENTS.map((doc) => (
                   <button
@@ -356,33 +356,35 @@ export function LegalDocumentsModal({ open, onOpenChange, documentId }: LegalDoc
           </div>
 
           {/* Document Content */}
-          <div className="md:col-span-2 flex flex-col min-h-0 border rounded-lg bg-muted/20">
-            <ScrollArea className="flex-1 p-4" style={{ maxHeight: 'calc(70vh - 120px)' }}>
-              {loading ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  <div className="animate-spin size-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4" />
-                  <p>Yükleniyor...</p>
-                </div>
-              ) : currentDoc ? (
-                <div className="prose prose-sm dark:prose-invert max-w-none pb-4">
-                  <h2 className="text-xl font-bold mb-4 text-foreground">{currentDoc.title}</h2>
-                  <div className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
-                    {currentDoc.content}
+          <div className="md:col-span-2 flex flex-col min-h-0 border rounded-lg bg-muted/20 overflow-hidden">
+            <ScrollArea className="flex-1" style={{ height: 'calc(90vh - 180px)' }}>
+              <div className="p-6">
+                {loading ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <div className="animate-spin size-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4" />
+                    <p>Yükleniyor...</p>
                   </div>
-                </div>
-              ) : (
-                <div className="text-center py-12 text-muted-foreground">
-                  <FileText className="size-12 mx-auto mb-4 opacity-50" />
-                  <p>{t('legal.select') || 'Bir belge seçin'}</p>
-                </div>
-              )}
+                ) : currentDoc ? (
+                  <div className="prose prose-sm dark:prose-invert max-w-none">
+                    <h2 className="text-xl font-bold mb-4 text-foreground">{currentDoc.title}</h2>
+                    <div className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
+                      {currentDoc.content}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <FileText className="size-12 mx-auto mb-4 opacity-50" />
+                    <p>{t('legal.select') || 'Bir belge seçin'}</p>
+                  </div>
+                )}
+              </div>
             </ScrollArea>
           </div>
         </div>
 
         <div className="flex justify-end gap-2 pt-4 flex-shrink-0 border-t">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            {t('common.close') || 'Kapat'}
+            {t('legal.close') || t('common.close') || 'Kapat'}
           </Button>
         </div>
       </DialogContent>
