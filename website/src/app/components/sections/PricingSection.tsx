@@ -26,14 +26,28 @@ export function PricingSection() {
   const targetCurrency = LANGUAGE_CURRENCY_MAP[language] || 'TRY';
   const currencySymbol = CURRENCY_SYMBOLS[targetCurrency];
 
-  // Fiyatı priceSettings'den al ve kullanıcının diline göre çevir
-  // NOT: ?? (nullish coalescing) kullanıyoruz çünkü 0 geçerli bir değer
-  const basePrice = priceSettings.proPrice ?? 99.99;
-  const baseCurrency = priceSettings.baseCurrency ?? 'TRY';
+  // Fiyatı priceSettings'den al - billingPeriod'a göre doğru fiyatı seç
   const billingPeriod = priceSettings.billingPeriod ?? 'yearly';
+  const baseCurrency = priceSettings.baseCurrency ?? 'TRY';
+  
+  // Aktif döneme göre doğru fiyatı seç (monthlyPrice veya yearlyPrice)
+  const activePrice = billingPeriod === 'monthly' 
+    ? (priceSettings.monthlyPrice ?? priceSettings.proPrice ?? 49)
+    : (priceSettings.yearlyPrice ?? priceSettings.proPrice ?? 479);
+  
+  // Debug: Console'da fiyat bilgilerini göster
+  console.log('💰 Pricing Debug:', {
+    billingPeriod,
+    monthlyPrice: priceSettings.monthlyPrice,
+    yearlyPrice: priceSettings.yearlyPrice,
+    proPrice: priceSettings.proPrice,
+    activePrice,
+    baseCurrency,
+    targetCurrency
+  });
   
   // Fiyatı hedef para birimine çevir
-  const convertedOriginalPrice = convertCurrency(basePrice, baseCurrency, targetCurrency);
+  const convertedOriginalPrice = convertCurrency(activePrice, baseCurrency, targetCurrency);
 
   // İndirim mantığı:
   // 1. showDiscountOnWeb = true → Web'de indirimli fiyat gösterilir

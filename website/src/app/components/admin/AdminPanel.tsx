@@ -2639,6 +2639,18 @@ function MediaContent() {
 }
 
 // Feature Categories Content - 15 Tahmin Kategorisi Yönetimi
+// Oyuncu Kategorileri (8 adet - varsayılan)
+const DEFAULT_PLAYER_CATEGORIES = [
+  { id: 'goalscorer', key: 'goalscorer', title: 'Gol Atan Oyuncu', description: 'Maçta gol atacak oyuncuları tahmin edin', emoji: '⚽', enabled: true, order: 1 },
+  { id: 'assist', key: 'assist', title: 'Asist Yapan Oyuncu', description: 'Maçta asist yapacak oyuncuları tahmin edin', emoji: '🅰️', enabled: true, order: 2 },
+  { id: 'yellow_card', key: 'yellow_card', title: 'Sarı Kart Görecek Oyuncu', description: 'Sarı kart görecek oyuncuları tahmin edin', emoji: '🟨', enabled: true, order: 3 },
+  { id: 'red_card', key: 'red_card', title: 'Kırmızı Kart Görecek Oyuncu', description: 'Kırmızı kart görecek oyuncuları tahmin edin', emoji: '🟥', enabled: true, order: 4 },
+  { id: 'motm', key: 'motm', title: 'Maçın Adamı', description: 'Maçın en iyi oyuncusunu tahmin edin', emoji: '⭐', enabled: true, order: 5 },
+  { id: 'first_goal', key: 'first_goal', title: 'İlk Golü Atan', description: 'Maçın ilk golünü atacak oyuncuyu tahmin edin', emoji: '🥇', enabled: true, order: 6 },
+  { id: 'substituted', key: 'substituted', title: 'Oyundan Çıkacak Oyuncu', description: 'Oyundan çıkacak/değiştirilecek oyuncuları tahmin edin', emoji: '🔄', enabled: true, order: 7 },
+  { id: 'shot_on_target', key: 'shot_on_target', title: 'Kaleyi Bulan Şut', description: 'En fazla kaleyi bulan şut yapacak oyuncuyu tahmin edin', emoji: '🎯', enabled: true, order: 8 },
+];
+
 function FeatureCategoriesContent() {
   const contextData = useContext(AdminDataContext);
   const featureCategories = contextData?.featureCategories || [];
@@ -2647,6 +2659,7 @@ function FeatureCategoriesContent() {
   const deleteFeatureCategory = contextData?.deleteFeatureCategory;
   const reorderFeatureCategories = contextData?.reorderFeatureCategories;
 
+  const [activeTab, setActiveTab] = useState<'prediction' | 'player'>('prediction');
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingCategory, setEditingCategory] = useState<FeatureCategory | null>(null);
   const [newCategory, setNewCategory] = useState({
@@ -2659,8 +2672,33 @@ function FeatureCategoriesContent() {
     order: featureCategories.length + 1,
   });
 
+  // Oyuncu kategorileri state (localStorage'dan yükle)
+  const [playerCategories, setPlayerCategories] = useState(() => {
+    const saved = localStorage.getItem('admin_player_categories');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        return DEFAULT_PLAYER_CATEGORIES;
+      }
+    }
+    return DEFAULT_PLAYER_CATEGORIES;
+  });
+
+  const [editingPlayerCategory, setEditingPlayerCategory] = useState<typeof DEFAULT_PLAYER_CATEGORIES[0] | null>(null);
+
+  // Oyuncu kategorisini güncelle
+  const handleUpdatePlayerCategory = (id: string, updates: Partial<typeof DEFAULT_PLAYER_CATEGORIES[0]>) => {
+    const updated = playerCategories.map((cat: typeof DEFAULT_PLAYER_CATEGORIES[0]) => 
+      cat.id === id ? { ...cat, ...updates } : cat
+    );
+    setPlayerCategories(updated);
+    localStorage.setItem('admin_player_categories', JSON.stringify(updated));
+    toast.success('Oyuncu kategorisi güncellendi');
+  };
+
   // Emoji seçenekleri
-  const emojiOptions = ['⚽', '⏱️', '🟨', '🟥', '🎯', '🏃‍♂️', '🧠', '🧮', '⏰', '📊', '🚩', '⚡', '🔥', '💎', '⭐', '🎮', '📈', '🏆'];
+  const emojiOptions = ['⚽', '⏱️', '🟨', '🟥', '🎯', '🏃‍♂️', '🧠', '🧮', '⏰', '📊', '🚩', '⚡', '🔥', '💎', '⭐', '🎮', '📈', '🏆', '🅰️', '🥇', '🔄'];
 
   const handleAddCategory = () => {
     if (!newCategory.key || !newCategory.title) {
@@ -2744,40 +2782,70 @@ function FeatureCategoriesContent() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold flex items-center gap-2">
-            🎯 Tahmin Kategorileri
+            🎯 Kategori Yönetimi
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Web sitesinde gösterilecek tahmin kategorilerini yönetin
+            Tahmin ve oyuncu kategorilerini yönetin
           </p>
         </div>
-        <Button className="gap-2" onClick={() => setShowAddDialog(true)}>
-          <Plus className="size-4" />
-          Yeni Kategori
-        </Button>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
-        <Card className="p-4 text-center">
-          <div className="text-3xl font-bold text-primary">{featureCategories.length}</div>
-          <div className="text-sm text-muted-foreground">Toplam Kategori</div>
-        </Card>
-        <Card className="p-4 text-center">
-          <div className="text-3xl font-bold text-green-600">{activeCount}</div>
-          <div className="text-sm text-muted-foreground">Aktif Kategori</div>
-        </Card>
-        <Card className="p-4 text-center">
-          <div className="text-3xl font-bold text-amber-600">{featuredCount}</div>
-          <div className="text-sm text-muted-foreground">Öne Çıkan</div>
-        </Card>
+      {/* Tab Navigation */}
+      <div className="flex bg-muted rounded-lg p-1 gap-1">
+        <button
+          onClick={() => setActiveTab('prediction')}
+          className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-md text-sm font-medium transition-all ${
+            activeTab === 'prediction'
+              ? 'bg-background shadow-sm text-foreground'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          🎯 Tahmin Kategorileri ({featureCategories.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('player')}
+          className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-md text-sm font-medium transition-all ${
+            activeTab === 'player'
+              ? 'bg-background shadow-sm text-foreground'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          👤 Oyuncu Kategorileri ({playerCategories.length})
+        </button>
       </div>
 
-      {/* Categories List */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Kategoriler</CardTitle>
-          <CardDescription>Sıralamaları değiştirmek için yukarı/aşağı oklarını kullanın</CardDescription>
-        </CardHeader>
+      {/* Tahmin Kategorileri Tab */}
+      {activeTab === 'prediction' && (
+        <>
+          <div className="flex justify-end">
+            <Button className="gap-2" onClick={() => setShowAddDialog(true)}>
+              <Plus className="size-4" />
+              Yeni Kategori
+            </Button>
+          </div>
+
+          {/* Stats */}
+          <div className="grid grid-cols-3 gap-4">
+            <Card className="p-4 text-center">
+              <div className="text-3xl font-bold text-primary">{featureCategories.length}</div>
+              <div className="text-sm text-muted-foreground">Toplam Kategori</div>
+            </Card>
+            <Card className="p-4 text-center">
+              <div className="text-3xl font-bold text-green-600">{activeCount}</div>
+              <div className="text-sm text-muted-foreground">Aktif Kategori</div>
+            </Card>
+            <Card className="p-4 text-center">
+              <div className="text-3xl font-bold text-amber-600">{featuredCount}</div>
+              <div className="text-sm text-muted-foreground">Öne Çıkan</div>
+            </Card>
+          </div>
+
+          {/* Categories List */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Tahmin Kategorileri</CardTitle>
+              <CardDescription>Sıralamaları değiştirmek için yukarı/aşağı oklarını kullanın</CardDescription>
+            </CardHeader>
         <CardContent>
           <div className="space-y-2">
             {sortedCategories.map((category, index) => (
@@ -3043,6 +3111,156 @@ function FeatureCategoriesContent() {
           )}
         </DialogContent>
       </Dialog>
+        </>
+      )}
+
+      {/* Oyuncu Kategorileri Tab */}
+      {activeTab === 'player' && (
+        <>
+          {/* Stats */}
+          <div className="grid grid-cols-2 gap-4">
+            <Card className="p-4 text-center">
+              <div className="text-3xl font-bold text-primary">{playerCategories.length}</div>
+              <div className="text-sm text-muted-foreground">Toplam Oyuncu Kategorisi</div>
+            </Card>
+            <Card className="p-4 text-center">
+              <div className="text-3xl font-bold text-green-600">{playerCategories.filter((c: any) => c.enabled).length}</div>
+              <div className="text-sm text-muted-foreground">Aktif Kategori</div>
+            </Card>
+          </div>
+
+          {/* Player Categories List */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">👤 Oyuncu Tahmin Kategorileri</CardTitle>
+              <CardDescription>Oyuncu bazlı tahmin kategorilerini yönetin. Bu kategoriler mobil uygulamada kullanılır.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {playerCategories.map((category: any) => (
+                  <div 
+                    key={category.id} 
+                    className={`flex items-center gap-3 p-3 rounded-lg border ${
+                      category.enabled ? 'bg-card' : 'bg-muted/50 opacity-60'
+                    }`}
+                  >
+                    {/* Emoji */}
+                    <div className="text-3xl w-12 text-center">{category.emoji}</div>
+
+                    {/* Content */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold">{category.title}</span>
+                        {!category.enabled && (
+                          <Badge variant="outline" className="text-xs">Pasif</Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground truncate">{category.description}</p>
+                      <p className="text-xs text-muted-foreground/70">Anahtar: {category.key}</p>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setEditingPlayerCategory(category)}
+                      >
+                        <Edit2 className="size-4" />
+                      </Button>
+                      <Button
+                        variant={category.enabled ? 'secondary' : 'default'}
+                        size="sm"
+                        onClick={() => handleUpdatePlayerCategory(category.id, { enabled: !category.enabled })}
+                      >
+                        {category.enabled ? 'Pasif Yap' : 'Aktif Yap'}
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Edit Player Category Dialog */}
+          <Dialog open={!!editingPlayerCategory} onOpenChange={(open) => !open && setEditingPlayerCategory(null)}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Oyuncu Kategorisini Düzenle</DialogTitle>
+                <DialogDescription>
+                  Kategori bilgilerini güncelleyin
+                </DialogDescription>
+              </DialogHeader>
+              {editingPlayerCategory && (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Başlık</Label>
+                    <Input
+                      value={editingPlayerCategory.title}
+                      onChange={(e) => setEditingPlayerCategory({ ...editingPlayerCategory, title: e.target.value })}
+                      placeholder="Kategori başlığı"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Açıklama</Label>
+                    <Textarea
+                      value={editingPlayerCategory.description}
+                      onChange={(e) => setEditingPlayerCategory({ ...editingPlayerCategory, description: e.target.value })}
+                      placeholder="Kategori açıklaması..."
+                      rows={2}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Emoji</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {emojiOptions.map((emoji) => (
+                        <Button
+                          key={emoji}
+                          type="button"
+                          variant={editingPlayerCategory.emoji === emoji ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => setEditingPlayerCategory({ ...editingPlayerCategory, emoji })}
+                        >
+                          {emoji}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="player-enabled"
+                      checked={editingPlayerCategory.enabled}
+                      onChange={(e) => setEditingPlayerCategory({ ...editingPlayerCategory, enabled: e.target.checked })}
+                      className="rounded"
+                    />
+                    <Label htmlFor="player-enabled">Aktif</Label>
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-4 border-t">
+                    <Button variant="outline" onClick={() => setEditingPlayerCategory(null)}>
+                      İptal
+                    </Button>
+                    <Button 
+                      onClick={() => {
+                        handleUpdatePlayerCategory(editingPlayerCategory.id, editingPlayerCategory);
+                        setEditingPlayerCategory(null);
+                      }} 
+                      className="gap-2"
+                    >
+                      <Save className="size-4" />
+                      Güncelle
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
+        </>
+      )}
     </div>
   );
 }
