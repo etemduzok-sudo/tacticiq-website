@@ -314,8 +314,6 @@ export function AdminPanel() {
               />
             </div>
           </div>
-            </div>
-          </div>
 
           {/* Mobil Admin Section */}
           <div className="px-2 py-2 mt-4">
