@@ -81,7 +81,9 @@ type MenuSection =
   | 'settings' 
   | 'logs'
   | 'test'
-  | 'website';
+  | 'website'
+  | 'mobile-placeholder'
+  | 'media';
 
 export function AdminPanel() {
   const { isAdmin, logout } = useAdmin();
@@ -198,7 +200,7 @@ export function AdminPanel() {
             <button
               onClick={() => setActiveSection('dashboard')}
               className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-semibold transition-all ${
-                !['test'].includes(activeSection)
+                !['mobile-placeholder'].includes(activeSection)
                   ? 'bg-primary text-primary-foreground shadow-md'
                   : 'text-muted-foreground hover:text-foreground hover:bg-muted-foreground/10'
               }`}
@@ -207,9 +209,9 @@ export function AdminPanel() {
               Web Admin
             </button>
             <button
-              onClick={() => setActiveSection('test')}
+              onClick={() => setActiveSection('mobile-placeholder')}
               className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-semibold transition-all ${
-                ['test'].includes(activeSection)
+                ['mobile-placeholder'].includes(activeSection)
                   ? 'bg-secondary text-secondary-foreground shadow-md'
                   : 'text-muted-foreground hover:text-foreground hover:bg-muted-foreground/10'
               }`}
@@ -222,7 +224,7 @@ export function AdminPanel() {
         
         <div className="flex-1 overflow-y-auto p-2 space-y-1">
           {/* Web Admin Section - Only show when not in mobile admin */}
-          {!['test'].includes(activeSection) && (
+          {!['mobile-placeholder'].includes(activeSection) && (
           <div className="px-2 py-2 bg-primary/5 rounded-lg border border-primary/20">
             <div className="flex items-center gap-2 mb-2">
               <Monitor className="size-4 text-primary" />
@@ -348,11 +350,23 @@ export function AdminPanel() {
           )}
 
           {/* Mobil Admin Section - Only show when in mobile admin mode */}
-          {['test'].includes(activeSection) && (
+          {['mobile-placeholder'].includes(activeSection) && (
           <div className="px-2 py-2 bg-secondary/10 rounded-lg border border-secondary/30">
             <div className="flex items-center gap-2 mb-2">
               <Smartphone className="size-4 text-secondary" />
               <span className="text-xs font-semibold text-secondary uppercase tracking-wider">Mobil Yönetimi</span>
+            </div>
+            <div className="space-y-1 ml-6">
+              <p className="text-xs text-muted-foreground py-2">Mobil uygulama yönetim araçları burada görünecek.</p>
+            </div>
+          </div>
+          )}
+
+          {/* Ortak Araçlar - Her iki modda da görünür */}
+          <div className="px-2 py-2 mt-2 bg-gradient-to-r from-accent/10 to-secondary/10 rounded-lg border border-accent/30">
+            <div className="flex items-center gap-2 mb-2">
+              <Bot className="size-4 text-accent" />
+              <span className="text-xs font-semibold text-accent uppercase tracking-wider">Ortak Araçlar</span>
             </div>
             <div className="space-y-1 ml-6">
               <MenuButton
@@ -364,7 +378,6 @@ export function AdminPanel() {
               />
             </div>
           </div>
-          )}
         </div>
       </Card>
 
@@ -392,6 +405,7 @@ export function AdminPanel() {
             {activeSection === 'settings' && <SettingsContent />}
             {activeSection === 'logs' && <LogsContent />}
             {activeSection === 'test' && <AdminTestBot />}
+            {activeSection === 'mobile-placeholder' && <MobilePlaceholderContent />}
           </div>
         </div>
       </Card>
@@ -5456,6 +5470,97 @@ function SettingsContent() {
         open={showChangePassword}
         onOpenChange={setShowChangePassword}
       />
+    </div>
+  );
+}
+
+// Mobil Admin Placeholder Content
+function MobilePlaceholderContent() {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold flex items-center gap-2">
+          <Smartphone className="size-6" />
+          Mobil Uygulama Yönetimi
+        </h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          Mobil uygulama yönetim araçları
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card className="p-6">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-2">
+              <Smartphone className="size-5 text-secondary" />
+              Uygulama Durumu
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">iOS Versiyonu</span>
+                <Badge variant="secondary">v1.0.0</Badge>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Android Versiyonu</span>
+                <Badge variant="secondary">v1.0.0</Badge>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Minimum API</span>
+                <Badge variant="outline">v2.0</Badge>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="p-6">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-2">
+              <Users className="size-5 text-secondary" />
+              Mobil Kullanıcılar
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Toplam İndirme</span>
+                <span className="font-semibold">-</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Aktif Kullanıcı</span>
+                <span className="font-semibold">-</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Günlük Aktif</span>
+                <span className="font-semibold">-</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className="p-6 border-2 border-dashed border-muted-foreground/30">
+        <div className="text-center py-8">
+          <Smartphone className="size-16 mx-auto mb-4 text-muted-foreground/50" />
+          <h3 className="text-lg font-semibold text-muted-foreground">Mobil Yönetim Araçları</h3>
+          <p className="text-sm text-muted-foreground/70 max-w-md mx-auto mt-2">
+            Push bildirimleri, uygulama içi mesajlar, kullanıcı segmentasyonu ve diğer mobil yönetim özellikleri yakında eklenecek.
+          </p>
+        </div>
+      </Card>
+
+      <div className="bg-accent/10 rounded-lg p-4 border border-accent/30">
+        <div className="flex items-start gap-3">
+          <AlertCircle className="size-5 text-accent mt-0.5" />
+          <div>
+            <h4 className="font-semibold text-accent">Test Bot'u Kullanın</h4>
+            <p className="text-sm text-muted-foreground mt-1">
+              Tüm web ve mobil fonksiyonlarını test etmek için soldaki menüden "Test Bot" seçeneğini kullanabilirsiniz. Test Bot her iki platformda da çalışan tüm özellikleri test eder.
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
