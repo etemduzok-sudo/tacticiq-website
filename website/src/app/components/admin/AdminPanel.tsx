@@ -6493,6 +6493,8 @@ function GameContent() {
   const context = useContext(AdminDataContext);
   const settings = context?.settings;
   const updateSettings = context?.updateSettings;
+  const updateSectionSettings = context?.updateSectionSettings;
+  const sectionSettings = context?.sectionSettings;
   const games = context?.games || [];
   const addGame = context?.addGame;
   const updateGame = context?.updateGame;
@@ -6510,16 +6512,40 @@ function GameContent() {
     order: games.length,
   });
 
-  if (!context || !settings || !updateSettings) {
+  if (!context || !settings || !updateSettings || !updateSectionSettings) {
     return <div className="p-4 text-center">Oyun sistemi yükleniyor...</div>;
   }
 
-  const handleToggleGame = () => {
-    updateSettings({ gameEnabled: !settings.gameEnabled });
+  // Hero'daki oyun butonu kontrolü
+  const heroShowPlayButton = sectionSettings?.hero?.showPlayButton ?? false;
+  // GameSection kontrolü
+  const gameSectionEnabled = sectionSettings?.game?.enabled ?? false;
+
+  const handleToggleHeroPlayButton = () => {
+    updateSectionSettings({
+      hero: {
+        ...sectionSettings?.hero,
+        showPlayButton: !heroShowPlayButton,
+      },
+    });
     toast.success(
-      settings.gameEnabled 
-        ? '🎮 Oyun sistemi devre dışı bırakıldı' 
-        : '🎮 Oyun sistemi aktif edildi'
+      heroShowPlayButton 
+        ? '🎮 Hero bölümündeki oyun butonu gizlendi' 
+        : '🎮 Hero bölümündeki oyun butonu gösterildi'
+    );
+  };
+
+  const handleToggleGameSection = () => {
+    updateSectionSettings({
+      game: {
+        ...sectionSettings?.game,
+        enabled: !gameSectionEnabled,
+      },
+    });
+    toast.success(
+      gameSectionEnabled 
+        ? '🎮 Tahmin Oyunu bölümü gizlendi' 
+        : '🎮 Tahmin Oyunu bölümü gösterildi'
     );
   };
 
@@ -6532,49 +6558,99 @@ function GameContent() {
         </p>
       </div>
 
-      <Card className="border-2 border-accent/30">
+      {/* Hero Bölümündeki Oyun Butonu */}
+      <Card className="border-2 border-primary/30">
         <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-3 rounded-lg bg-accent/10">
-                <Gamepad2 className="size-6 text-accent" />
+              <div className="p-3 rounded-lg bg-primary/10">
+                <Gamepad2 className="size-6 text-primary" />
               </div>
               <div>
-                <CardTitle className="text-lg">Oyun Modülü</CardTitle>
+                <CardTitle className="text-lg">Hero Bölümü - Oyun Butonu</CardTitle>
                 <CardDescription>
-                  Kullanıcıların web sitesinden oyun oynayabilmesini sağlar
+                  Ana sayfanın hero bölümündeki "Oyun Oyna" butonunu kontrol eder
                 </CardDescription>
               </div>
             </div>
             <button 
-              onClick={handleToggleGame}
-              className={`w-16 h-8 rounded-full transition-colors ${settings.gameEnabled ? 'bg-green-500' : 'bg-muted'}`}
+              onClick={handleToggleHeroPlayButton}
+              className={`w-16 h-8 rounded-full transition-colors ${heroShowPlayButton ? 'bg-green-500' : 'bg-muted'}`}
             >
-              <div className={`w-6 h-6 rounded-full bg-white mt-1 transition-transform ${settings.gameEnabled ? 'ml-9' : 'ml-1'}`} />
+              <div className={`w-6 h-6 rounded-full bg-white mt-1 transition-transform ${heroShowPlayButton ? 'ml-9' : 'ml-1'}`} />
             </button>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            <div className={`p-4 rounded-lg ${settings.gameEnabled ? 'bg-green-500/10 border border-green-500/20' : 'bg-muted/50'}`}>
-              <div className="flex items-start gap-3">
-                <Info className="size-5 text-accent mt-0.5 flex-shrink-0" />
-                <div className="space-y-2">
-                  <p className="text-sm font-medium">
-                    {settings.gameEnabled ? '✅ Oyun sistemi aktif' : '❌ Oyun sistemi devre dışı'}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {settings.gameEnabled 
-                      ? 'Kullanıcılar web sitesinde "Oyun Oyna" butonunu görebilir ve oyun arayüzüne erişebilir.'
-                      : 'Oyun butonu ve arayüzü gizlenmiştir. Sadece admin panelinden yeniden açabilirsiniz.'
-                    }
-                  </p>
-                </div>
+          <div className={`p-4 rounded-lg ${heroShowPlayButton ? 'bg-green-500/10 border border-green-500/20' : 'bg-muted/50'}`}>
+            <div className="flex items-start gap-3">
+              <Info className="size-5 text-primary mt-0.5 flex-shrink-0" />
+              <div className="space-y-2">
+                <p className="text-sm font-medium">
+                  {heroShowPlayButton ? '✅ Hero bölümündeki oyun butonu aktif' : '❌ Hero bölümündeki oyun butonu gizli'}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {heroShowPlayButton 
+                    ? 'Ana sayfanın hero bölümünde "Oyun Oyna" butonu görünür. Kullanıcılar bu butona tıklayarak GameSection\'a yönlendirilir.'
+                    : 'Hero bölümündeki oyun butonu gizlenmiştir.'
+                  }
+                </p>
               </div>
             </div>
+          </div>
+        </CardContent>
+      </Card>
 
-            <Separator />
+      {/* Tahmin Oyunu Bölümü (Misyon Ekibimiz Üzerinde) */}
+      <Card className="border-2 border-secondary/30">
+        <CardHeader className="pb-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-lg bg-secondary/10">
+                <Gamepad2 className="size-6 text-secondary" />
+              </div>
+              <div>
+                <CardTitle className="text-lg">Tahmin Oyunu Bölümü</CardTitle>
+                <CardDescription>
+                  "Misyon Ekibimiz" bölümünün üzerinde yer alan tahmin oyunu alanını kontrol eder
+                </CardDescription>
+              </div>
+            </div>
+            <button 
+              onClick={handleToggleGameSection}
+              className={`w-16 h-8 rounded-full transition-colors ${gameSectionEnabled ? 'bg-green-500' : 'bg-muted'}`}
+            >
+              <div className={`w-6 h-6 rounded-full bg-white mt-1 transition-transform ${gameSectionEnabled ? 'ml-9' : 'ml-1'}`} />
+            </button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className={`p-4 rounded-lg ${gameSectionEnabled ? 'bg-green-500/10 border border-green-500/20' : 'bg-muted/50'}`}>
+            <div className="flex items-start gap-3">
+              <Info className="size-5 text-secondary mt-0.5 flex-shrink-0" />
+              <div className="space-y-2">
+                <p className="text-sm font-medium">
+                  {gameSectionEnabled ? '✅ Tahmin Oyunu bölümü aktif' : '❌ Tahmin Oyunu bölümü gizli'}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {gameSectionEnabled 
+                    ? 'Web sitesinde "Misyon Ekibimiz" bölümünün üzerinde tahmin oyunu bölümü görünür.'
+                    : 'Tahmin oyunu bölümü gizlenmiştir.'
+                  }
+                </p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
+      {/* Backend ve Güvenlik Bilgileri */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">📋 Teknik Detaylar</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
             <div className="space-y-3">
               <h3 className="text-sm font-semibold">📋 Backend Bağlantısı Gerekli</h3>
               <div className="space-y-2 text-sm text-muted-foreground">

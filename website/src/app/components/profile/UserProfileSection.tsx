@@ -39,6 +39,7 @@ import {
   Heart,
   Zap,
   Medal,
+  Lock,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { LegalDocumentsModal } from '@/app/components/legal/LegalDocumentsModal';
@@ -699,37 +700,37 @@ export function UserProfileSection() {
             </Card>
 
             {/* Badges Grid */}
-            <div className="grid grid-cols-5 gap-3">
+            <div className="grid grid-cols-5 gap-4">
               {allBadges.map((badge) => (
                 <Card 
                   key={badge.id} 
-                  className={`text-center p-3 cursor-pointer transition-all hover:scale-105 group relative ${
+                  className={`text-center p-4 cursor-pointer transition-all hover:scale-105 group relative ${
                     badge.earned 
                       ? 'border-amber-500/50 bg-amber-500/5' 
-                      : 'opacity-60 grayscale hover:opacity-80 hover:grayscale-0'
+                      : 'border-border/50 bg-card'
                   }`}
                   title={badge.earned 
                     ? `${badge.name} - Kazanıldı!` 
                     : `${badge.name} - Nasıl Kazanılır: ${badge.howToEarn}`
                   }
                 >
-                  <div className="relative">
+                  <div className="relative flex items-center justify-center">
                     {!badge.earned && (
-                      <div className="absolute -top-1 -right-1 size-5 rounded-full bg-muted flex items-center justify-center z-10">
-                        <span className="text-xs">🔒</span>
+                      <div className="absolute -top-2 -right-2 size-6 rounded-full bg-muted border-2 border-background flex items-center justify-center z-10 shadow-md">
+                        <Lock className="size-3 text-muted-foreground" />
                       </div>
                     )}
                     {badge.earned && (
-                      <div className="absolute -top-1 -right-1 size-5 rounded-full bg-green-500 flex items-center justify-center z-10">
-                        <span className="text-xs">✓</span>
+                      <div className="absolute -top-2 -right-2 size-6 rounded-full bg-green-500 border-2 border-background flex items-center justify-center z-10 shadow-md">
+                        <span className="text-white text-xs">✓</span>
                       </div>
                     )}
-                    <span className="text-2xl">{badge.icon}</span>
+                    <span className="text-5xl block">{badge.icon}</span>
                   </div>
-                  <p className="text-[10px] font-medium mt-1 line-clamp-2">{badge.name}</p>
+                  <p className="text-xs font-medium mt-2 line-clamp-2">{badge.name}</p>
                   <Badge 
                     variant="outline" 
-                    className={`text-[8px] mt-1 px-1 py-0 ${
+                    className={`text-[9px] mt-2 px-1.5 py-0.5 ${
                       badge.tier === 'bronze' ? 'text-orange-600 border-orange-600/30' :
                       badge.tier === 'silver' ? 'text-slate-400 border-slate-400/30' :
                       badge.tier === 'gold' ? 'text-amber-500 border-amber-500/30' :
