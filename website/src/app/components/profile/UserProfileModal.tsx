@@ -351,7 +351,7 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
+        <SheetContent side="right" className="w-full sm:max-w-2xl overflow-y-auto">
           <SheetHeader>
             <SheetTitle>{t('profile.title') || 'Profil'}</SheetTitle>
             <SheetDescription>
@@ -527,16 +527,29 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
                         </div>
                       )}
 
-                      {/* Free kullanıcılar için Pro upgrade teşviki */}
+                      {/* Kulüp Takımları - Free kullanıcılar için kilitli */}
                       {!isPro && (
-                        <div className="border border-amber-500/30 rounded-lg p-3 bg-amber-500/10">
-                          <div className="flex items-start gap-2">
-                            <Crown className="size-4 text-amber-500 mt-0.5" />
-                            <div className="flex-1">
-                              <p className="text-xs font-medium text-amber-600">Pro Üye Olun</p>
-                              <p className="text-xs text-muted-foreground mt-1">
-                                Pro üye olarak 5 kulüp takımı daha seçebilirsiniz
-                              </p>
+                        <div className="space-y-2">
+                          <Label className="flex items-center gap-2">
+                            Kulüp Takımları
+                            <Lock className="size-3 text-muted-foreground" />
+                            <span className="text-xs text-amber-500">(Pro)</span>
+                          </Label>
+                          <div className="border border-muted rounded-lg p-4 bg-muted/30 relative">
+                            <div className="absolute inset-0 bg-background/50 backdrop-blur-sm flex items-center justify-center z-10 rounded-lg">
+                              <div className="text-center">
+                                <Lock className="size-8 mx-auto mb-2 text-muted-foreground" />
+                                <p className="text-sm font-medium text-muted-foreground">Pro Üye Gerekli</p>
+                                <p className="text-xs text-muted-foreground mt-1">5 kulüp takımı seçmek için Pro üye olun</p>
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 opacity-40">
+                              {clubTeamsList.slice(0, 6).map(team => (
+                                <div key={team} className="flex items-center gap-2 p-2 rounded-md bg-background">
+                                  <div className="size-4 rounded border-2 border-muted-foreground" />
+                                  <span className="text-xs">{team}</span>
+                                </div>
+                              ))}
                             </div>
                           </div>
                         </div>
@@ -632,6 +645,64 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
 
                       <Separator />
 
+                      {/* Notification Settings */}
+                      <div className="space-y-4">
+                        <h4 className="font-medium text-sm text-muted-foreground">Bildirim Ayarları</h4>
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <Label>E-posta Bildirimleri</Label>
+                            <p className="text-xs text-muted-foreground">Maç sonuçları ve tahmin hatırlatmaları</p>
+                          </div>
+                          <Switch 
+                            checked={emailNotifications}
+                            onCheckedChange={(checked) => {
+                              setEmailNotifications(checked);
+                              toast.success(checked ? 'E-posta bildirimleri açıldı' : 'E-posta bildirimleri kapatıldı');
+                            }}
+                          />
+                        </div>
+                        <Separator />
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <Label>Haftalık Özet</Label>
+                            <p className="text-xs text-muted-foreground">Haftalık performans özeti</p>
+                          </div>
+                          <Switch 
+                            checked={weeklySummary}
+                            onCheckedChange={(checked) => {
+                              setWeeklySummary(checked);
+                              toast.success(checked ? 'Haftalık özet açıldı' : 'Haftalık özet kapatıldı');
+                            }}
+                          />
+                        </div>
+                        <Separator />
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <Label>Kampanya Bildirimleri</Label>
+                            <p className="text-xs text-muted-foreground">İndirim ve özel teklifler</p>
+                          </div>
+                          <Switch 
+                            checked={campaignNotifications}
+                            onCheckedChange={(checked) => {
+                              setCampaignNotifications(checked);
+                              toast.success(checked ? 'Kampanya bildirimleri açıldı' : 'Kampanya bildirimleri kapatıldı');
+                            }}
+                          />
+                        </div>
+                      </div>
+
+                      <Separator />
+
+                      {/* Legal Documents */}
+                      <Button 
+                        variant="outline" 
+                        className="w-full"
+                        onClick={() => setShowLegalModal(true)}
+                      >
+                        <FileText className="size-4 mr-2" />
+                        Yasal Bilgilendirmeler
+                      </Button>
+
                       {/* Password Change */}
                       {isEmailUser && (
                         <Button 
@@ -704,21 +775,21 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
                           >
                             <div className="relative flex items-center justify-center">
                               {!badge.earned && (
-                                <div className="absolute -top-2 -right-2 size-5 rounded-full bg-muted border-2 border-background flex items-center justify-center z-10 shadow-md">
-                                  <Lock className="size-3 text-muted-foreground" />
+                                <div className="absolute -top-2 -right-2 size-6 rounded-full bg-muted border-2 border-background flex items-center justify-center z-10 shadow-md">
+                                  <Lock className="size-3.5 text-muted-foreground" />
                                 </div>
                               )}
                               {badge.earned && (
-                                <div className="absolute -top-2 -right-2 size-5 rounded-full bg-green-500 border-2 border-background flex items-center justify-center z-10 shadow-md">
-                                  <span className="text-white text-xs">✓</span>
+                                <div className="absolute -top-2 -right-2 size-6 rounded-full bg-green-500 border-2 border-background flex items-center justify-center z-10 shadow-md">
+                                  <span className="text-white text-xs font-bold">✓</span>
                                 </div>
                               )}
-                              <span className="text-4xl block">{badge.icon}</span>
+                              <span className="text-5xl block">{badge.icon}</span>
                             </div>
-                            <p className="text-[10px] font-medium mt-2 line-clamp-2">{badge.name}</p>
+                            <p className="text-xs font-medium mt-2 line-clamp-2">{badge.name}</p>
                             <Badge 
                               variant="outline" 
-                              className={`text-[8px] mt-2 px-1 py-0.5 ${
+                              className={`text-[10px] mt-2 px-1.5 py-0.5 ${
                                 badge.tier === 'bronze' ? 'text-orange-600 border-orange-600/30' :
                                 badge.tier === 'silver' ? 'text-slate-400 border-slate-400/30' :
                                 badge.tier === 'gold' ? 'text-amber-500 border-amber-500/30' :
