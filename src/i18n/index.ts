@@ -18,7 +18,7 @@ import ru from '../locales/ru.json';
 const RTL_LANGUAGES = ['ar', 'he', 'fa', 'ur'];
 
 // Storage key for language preference
-const LANGUAGE_STORAGE_KEY = 'fan-manager-language';
+const LANGUAGE_STORAGE_KEY = 'tacticiq-language';
 
 // Get device language or default to Turkish
 const getDeviceLanguage = async (): Promise<string> => {

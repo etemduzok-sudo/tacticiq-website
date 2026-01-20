@@ -51,10 +51,10 @@ const API_KEY = process.env.FOOTBALL_API_KEY || 'YOUR_API_KEY_HERE';
 ### backend/.env dosyası:
 ```env
 # ❌ YANLIŞ KEY ADI
-API_FOOTBALL_KEY=a7ac2f7672bcafcf6fdca1b021b74865
+API_FOOTBALL_KEY=8a7e3c18ff59d0c7d254d230f999a084
 
 # ✅ DOĞRU KEY ADI (kod bunu arıyor)
-FOOTBALL_API_KEY=a7ac2f7672bcafcf6fdca1b021b74865
+FOOTBALL_API_KEY=8a7e3c18ff59d0c7d254d230f999a084
 ```
 
 **Sonuç:** Backend API key'i okuyamıyor, bu yüzden boş response dönüyor!
@@ -66,7 +66,7 @@ FOOTBALL_API_KEY=a7ac2f7672bcafcf6fdca1b021b74865
 ### 1. .env dosyasını düzelt:
 ```env
 # Backend .env
-FOOTBALL_API_KEY=a7ac2f7672bcafcf6fdca1b021b74865
+FOOTBALL_API_KEY=8a7e3c18ff59d0c7d254d230f999a084
 ```
 
 ### 2. Ya da footballApi.js'yi düzelt:

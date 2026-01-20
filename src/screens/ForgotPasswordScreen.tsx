@@ -19,6 +19,14 @@ import { BRAND, COLORS, SPACING, TYPOGRAPHY, SIZES } from '../theme/theme';
 import { AUTH_GRADIENT } from '../theme/gradients';
 import { STANDARD_LAYOUT, STANDARD_INPUT, STANDARD_COLORS } from '../constants/standardLayout';
 import { WEBSITE_COLORS, WEBSITE_GRADIENTS, WEBSITE_SPACING, WEBSITE_TYPOGRAPHY } from '../theme/websiteTheme';
+import {
+  WEBSITE_BRAND_COLORS,
+  WEBSITE_DARK_COLORS,
+  WEBSITE_BORDER_RADIUS,
+  WEBSITE_SPACING as WDS_SPACING,
+  WEBSITE_ICON_SIZES,
+  WEBSITE_TYPOGRAPHY as WDS_TYPOGRAPHY,
+} from '../config/WebsiteDesignSystem';
 // import authService from '../services/authService'; // Real Supabase
 import authService from '../services/mockAuthService'; // Mock (geçici test için)
 
@@ -116,43 +124,40 @@ export default function ForgotPasswordScreen({
   return (
     <SafeAreaView style={styles.safeArea}>
       <LinearGradient
-        colors={AUTH_GRADIENT.colors}
+        colors={['#0a1612', '#0F2A24', '#0a1612']}
         style={styles.container}
-        start={AUTH_GRADIENT.start}
-        end={AUTH_GRADIENT.end}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
       >
+        {/* Grid Pattern Background */}
+        <View style={styles.gridPattern} />
+        {/* Back Button - Sol üst köşe */}
+        <TouchableOpacity style={styles.backButtonTop} onPress={onBack} activeOpacity={0.7}>
+          <Ionicons name="arrow-back" size={WEBSITE_ICON_SIZES.lg} color={WEBSITE_BRAND_COLORS.white} />
+        </TouchableOpacity>
+        
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.keyboardView}
         >
           <View style={styles.screenContainer}>
             <View style={styles.contentWrapper}>
-              {/* [A] TOP NAVIGATION ZONE */}
-              <View style={styles.topNavZone}>
-                <TouchableOpacity
-                  style={styles.backButton}
-                  onPress={onBack}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="chevron-back" size={24} color="#059669" />
-                </TouchableOpacity>
-              </View>
 
               <View style={styles.content}>
               {!isEmailSent ? (
                 <>
-                  {/* [B] BRAND ZONE */}
+                  {/* [B] BRAND ZONE - OnboardingScreen ile aynı konum */}
                   <View style={styles.brandZone}>
                     {Platform.OS === 'web' ? (
                       <img 
                         src="/TacticIQ.svg" 
                         alt="TacticIQ" 
-                        style={{ width: 250, height: 250 }} 
+                        style={{ width: 270, height: 270 }} 
                       />
                     ) : (
                       <Image
                         source={require('../../assets/logo.png')}
-                        style={{ width: 250, height: 250 }}
+                        style={{ width: 270, height: 270 }}
                         resizeMode="contain"
                       />
                     )}
@@ -204,7 +209,7 @@ export default function ForgotPasswordScreen({
                       activeOpacity={0.8}
                     >
                       <LinearGradient
-                        colors={['#059669', '#047857']}
+                        colors={[WEBSITE_BRAND_COLORS.secondary, WEBSITE_BRAND_COLORS.primary]}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 0 }}
                         style={styles.ctaButtonGradient}
@@ -231,14 +236,13 @@ export default function ForgotPasswordScreen({
                 </>
               ) : (
                 <>
-                  {/* [B] BRAND ZONE */}
+                  {/* [B] BRAND ZONE - OnboardingScreen ile aynı konum */}
                   <View style={styles.brandZone}>
                     <Image
                       source={Platform.OS === 'web' ? { uri: '/TacticIQ.svg' } : require('../../assets/logo.png')}
-                      style={{ width: 80, height: 80 }}
+                      style={{ width: 270, height: 270 }}
                       resizeMode="contain"
                     />
-                    <Text style={styles.brandTitle}>TacticIQ</Text>
                   </View>
 
                   {/* Success Message */}
@@ -296,29 +300,57 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
+    position: 'relative',
+  },
+  gridPattern: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    opacity: 1,
+    zIndex: 0,
+    ...Platform.select({
+      web: {
+        backgroundImage: `
+          linear-gradient(to right, rgba(31, 162, 166, 0.12) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(31, 162, 166, 0.12) 1px, transparent 1px)
+        `,
+        backgroundSize: '40px 40px',
+      },
+      default: {
+        backgroundColor: 'transparent',
+      },
+    }),
   },
   keyboardView: {
     flex: 1,
+    zIndex: 1,
+  },
+  // Back Button - Sol üst köşe (standardize)
+  backButtonTop: {
+    position: 'absolute',
+    top: WDS_SPACING.xl,
+    left: WDS_SPACING.xl,
+    width: WEBSITE_ICON_SIZES.xl + WDS_SPACING.md,
+    height: WEBSITE_ICON_SIZES.xl + WDS_SPACING.md,
+    borderRadius: WEBSITE_BORDER_RADIUS.lg,
+    backgroundColor: 'rgba(15, 42, 36, 0.95)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.3)',
+    borderWidth: 1,
+    borderColor: `rgba(31, 162, 166, ${0.2})`,
   },
   screenContainer: {
     flex: 1,
     paddingHorizontal: LAYOUT.screenPadding,
-    paddingTop: 8, // %30 azaltıldı (12 * 0.7)
+    paddingTop: WDS_SPACING.xl + WEBSITE_ICON_SIZES.xl + WDS_SPACING.md,
   },
   contentWrapper: {
     flex: 1,
-  },
-  
-  // [A] TOP NAVIGATION ZONE
-  topNavZone: {
-    height: LAYOUT.backButtonSize,
-    justifyContent: 'center',
-  },
-  backButton: {
-    width: LAYOUT.backButtonSize,
-    height: LAYOUT.backButtonSize,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   
   content: {
@@ -330,12 +362,13 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
   },
   
-  // [B] BRAND ZONE
+  // [B] BRAND ZONE - OnboardingScreen ile aynı konum (sıçrama olmasın)
   brandZone: {
     alignItems: 'center',
-    justifyContent: 'flex-start',
-    marginTop: 5,
-    marginBottom: 5,
+    justifyContent: 'center',
+    marginTop: 30, // LOGO_MARGIN_TOP ile aynı
+    marginBottom: 16, // Biraz azaltıldı (24'ten 16'ya)
+    height: 270, // LOGO_SIZE ile aynı
     paddingVertical: 0,
   },
   brandTitle: {
@@ -410,19 +443,21 @@ const styles = StyleSheet.create({
   },
   secondaryLinkText: {
     fontSize: 14,
-    color: '#9CA3AF',
+    color: 'rgba(255, 255, 255, 0.8)', // Daha okunabilir
+    fontWeight: '500',
   },
   secondaryLink: {
-    fontSize: 14,
-    color: '#059669',
-    fontWeight: '500',
+    fontSize: 15, // Biraz daha büyük
+    color: WEBSITE_BRAND_COLORS.white, // Beyaz renk
+    fontWeight: '700', // Daha kalın
+    textDecorationLine: 'underline', // Altı çizili
   },
   
   // Success Screen
   successContainer: {
-    backgroundColor: 'rgba(15, 23, 42, 0.5)',
+    backgroundColor: 'rgba(15, 42, 36, 0.95)',
     borderWidth: 1,
-    borderColor: 'rgba(5, 150, 105, 0.3)',
+    borderColor: 'rgba(31, 162, 166, 0.3)',
     borderRadius: 12,
     padding: 24,
     alignItems: 'center',
@@ -446,9 +481,9 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   helpBox: {
-    backgroundColor: 'rgba(5, 150, 105, 0.1)',
+    backgroundColor: 'rgba(15, 42, 36, 0.95)',
     borderWidth: 1,
-    borderColor: 'rgba(5, 150, 105, 0.2)',
+    borderColor: 'rgba(31, 162, 166, 0.3)',
     borderRadius: 8,
     padding: 12,
     width: '100%',
@@ -476,11 +511,11 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 48,
     borderWidth: 1,
-    borderColor: 'rgba(5, 150, 105, 0.3)',
+    borderColor: 'rgba(31, 162, 166, 0.3)',
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(5, 150, 105, 0.1)',
+    backgroundColor: 'rgba(15, 42, 36, 0.95)',
   },
   retryButtonText: {
     fontSize: 16,

@@ -15,6 +15,7 @@ interface ScreenLayoutProps {
   style?: any;
   contentContainerStyle?: any;
   showsVerticalScrollIndicator?: boolean;
+  showGridPattern?: boolean;
 }
 
 /**
@@ -24,17 +25,19 @@ interface ScreenLayoutProps {
  * - SafeAreaView support
  * - ScrollView support
  * - Gradient background option
+ * - Grid pattern (hero style) option
  * - Consistent padding and spacing
  */
 export const ScreenLayout: React.FC<ScreenLayoutProps> = ({
   children,
   safeArea = true,
   scrollable = false,
-  gradient = false,
-  gradientColors = ['#0F172A', '#1E293B', '#0F172A'],
+  gradient = true,
+  gradientColors = ['#0a1612', '#0F2A24', '#0a1612'],
   style,
   contentContainerStyle,
   showsVerticalScrollIndicator = false,
+  showGridPattern = true,
 }) => {
   const Container = safeArea ? SafeAreaView : View;
   const containerStyle = safeArea ? containerStyles.safeArea : containerStyles.screen;
@@ -56,22 +59,18 @@ export const ScreenLayout: React.FC<ScreenLayoutProps> = ({
     </View>
   );
 
-  if (gradient) {
-    return (
-      <Container style={[containerStyle, style]}>
-        <LinearGradient
-          colors={gradientColors}
-          style={styles.gradient}
-        >
-          {content}
-        </LinearGradient>
-      </Container>
-    );
-  }
-
+  // Grid Pattern + Gradient (Hero style - default)
   return (
     <Container style={[containerStyle, style]}>
-      {content}
+      <LinearGradient
+        colors={gradientColors}
+        style={styles.gradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+      >
+        {showGridPattern && <View style={styles.gridPattern} />}
+        {content}
+      </LinearGradient>
     </Container>
   );
 };
@@ -79,13 +78,37 @@ export const ScreenLayout: React.FC<ScreenLayoutProps> = ({
 const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
+    zIndex: 1,
   },
   content: {
     flex: 1,
     padding: SPACING.base,
+    zIndex: 1,
   },
   gradient: {
     flex: 1,
+    position: 'relative',
+  },
+  gridPattern: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    opacity: 1,
+    zIndex: 0,
+    ...Platform.select({
+      web: {
+        backgroundImage: `
+          linear-gradient(to right, rgba(31, 162, 166, 0.12) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(31, 162, 166, 0.12) 1px, transparent 1px)
+        `,
+        backgroundSize: '40px 40px',
+      },
+      default: {
+        backgroundColor: 'transparent',
+      },
+    }),
   },
 });
 

@@ -376,6 +376,9 @@ export const LegalDocumentScreen: React.FC<LegalDocumentScreenProps> = ({
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
+        {/* Grid Pattern Background */}
+        <View style={styles.gridPattern} />
+        
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={onBack} style={styles.backButton}>
@@ -388,7 +391,6 @@ export const LegalDocumentScreen: React.FC<LegalDocumentScreenProps> = ({
         <Animated.View entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(0)} style={styles.documentContainer}>
           {/* Document Header */}
           <View style={styles.documentHeader}>
-            <Ionicons name="document-text" size={32} color="#F59E0B" />
             <Text style={styles.documentTitle}>{doc.title}</Text>
           </View>
 
@@ -436,6 +438,28 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#0F172A',
+    position: 'relative',
+  },
+  gridPattern: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    opacity: 0.15,
+    zIndex: 0,
+    ...Platform.select({
+      web: {
+        backgroundImage: `
+          linear-gradient(to right, rgba(31, 162, 166, 0.15) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(31, 162, 166, 0.15) 1px, transparent 1px)
+        `,
+        backgroundSize: '50px 50px',
+      },
+      default: {
+        backgroundColor: 'transparent',
+      },
+    }),
   },
 
   // Header
@@ -469,13 +493,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 16,
     elevation: 8,
+    zIndex: 1,
   },
 
   // Document Header
   documentHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
     padding: 24,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(5, 150, 105, 0.2)',

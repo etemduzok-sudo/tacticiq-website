@@ -18,9 +18,18 @@ import { BRAND, COLORS, SPACING, TYPOGRAPHY, SIZES } from '../theme/theme';
 import { AUTH_GRADIENT } from '../theme/gradients';
 import { STANDARD_LAYOUT, STANDARD_INPUT, STANDARD_COLORS } from '../constants/standardLayout';
 import { WEBSITE_COLORS, WEBSITE_GRADIENTS, WEBSITE_SPACING, WEBSITE_TYPOGRAPHY } from '../theme/websiteTheme';
+import {
+  WEBSITE_BRAND_COLORS,
+  WEBSITE_DARK_COLORS,
+  WEBSITE_BORDER_RADIUS,
+  WEBSITE_SPACING as WDS_SPACING,
+  WEBSITE_ICON_SIZES,
+  WEBSITE_TYPOGRAPHY as WDS_TYPOGRAPHY,
+} from '../config/WebsiteDesignSystem';
 // import authService from '../services/authService'; // Real Supabase
 import authService from '../services/mockAuthService'; // Mock (geçici test için)
 import socialAuthService from '../services/socialAuthService'; // Google & Apple Sign In
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // ============================================
 // SHARED LAYOUT CONSTANTS (MUST BE IDENTICAL)
@@ -83,7 +92,6 @@ export default function RegisterScreen({
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [loading, setLoading] = useState(false);
   
   // Availability check states
@@ -202,14 +210,42 @@ export default function RegisterScreen({
       Alert.alert('❌ Hata', 'Şifreler eşleşmiyor');
       return;
     }
-    if (!agreedToTerms) {
-      Alert.alert('❌ Hata', 'Kullanım koşullarını kabul etmelisiniz');
-      return;
-    }
     await proceedWithRegistration();
   };
 
   const proceedWithRegistration = async () => {
+    // 18 yaş altı kontrolü
+    try {
+      const birthDateStr = await AsyncStorage.getItem('@user_birth_date');
+      const isMinorStr = await AsyncStorage.getItem('@user_is_minor');
+      
+      if (isMinorStr === 'true' || birthDateStr) {
+        // Yaş bilgisi varsa kontrol et
+        if (birthDateStr) {
+          const [year, month, day] = birthDateStr.split('-').map(Number);
+          const today = new Date();
+          const birthDate = new Date(year, month - 1, day);
+          let age = today.getFullYear() - birthDate.getFullYear();
+          const monthDiff = today.getMonth() - birthDate.getMonth();
+          if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+            age--;
+          }
+          
+          if (age < 18) {
+            Alert.alert('❌ Kayıt Olunamadı', '18 yaşının altındaki kullanıcılar için kayıt kabul edilmemektedir.');
+            setLoading(false);
+            return;
+          }
+        } else if (isMinorStr === 'true') {
+          Alert.alert('❌ Kayıt Olunamadı', '18 yaşının altındaki kullanıcılar için kayıt kabul edilmemektedir.');
+          setLoading(false);
+          return;
+        }
+      }
+    } catch (error) {
+      console.error('Error checking age:', error);
+    }
+
     setLoading(true);
     try {
       const result = await authService.signUp(email.trim(), password, username.trim());
@@ -230,44 +266,33 @@ export default function RegisterScreen({
   return (
     <SafeAreaView style={styles.safeArea}>
       <LinearGradient
-        colors={AUTH_GRADIENT.colors}
+        colors={['#0a1612', '#0F2A24', '#0a1612']}
         style={styles.container}
-        start={AUTH_GRADIENT.start}
-        end={AUTH_GRADIENT.end}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
       >
+        {/* Grid Pattern Background */}
+        <View style={styles.gridPattern} />
+        {/* Back Button - Sol üst köşe */}
+        <TouchableOpacity style={styles.backButtonTop} onPress={onBack} activeOpacity={0.7}>
+          <Ionicons name="arrow-back" size={WEBSITE_ICON_SIZES.lg} color={WEBSITE_BRAND_COLORS.white} />
+        </TouchableOpacity>
+        
         <View style={styles.screenContainer}>
-          <ScrollView
-            ref={scrollViewRef}
-            style={styles.scrollView}
-            contentContainerStyle={styles.scrollContent}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-            bounces={false}
-          >
-            {/* [A] TOP NAVIGATION ZONE */}
-            <View style={styles.topNavZone}>
-              <TouchableOpacity
-                style={styles.backButton}
-                onPress={onBack}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="chevron-back" size={24} color={BRAND.emerald} />
-              </TouchableOpacity>
-            </View>
-
+          <View style={styles.contentWrapper}>
             <View style={styles.content}>
-              {/* [B] BRAND ZONE */}
+              {/* [B] BRAND ZONE - OnboardingScreen ile aynı konum (sıçrama olmasın) */}
               <View style={styles.brandZone}>
                 {Platform.OS === 'web' ? (
                   <img 
                     src="/TacticIQ.svg" 
                     alt="TacticIQ" 
-                    style={{ width: 250, height: 250 }} 
+                    style={{ width: 270, height: 270 }} 
                   />
                 ) : (
                   <Image
                     source={require('../../assets/logo.png')}
-                    style={{ width: 250, height: 250 }}
+                    style={{ width: 270, height: 270 }}
                     resizeMode="contain"
                   />
                 )}
@@ -281,7 +306,7 @@ export default function RegisterScreen({
                 activeOpacity={0.8}
               >
                 <Ionicons name="logo-google" size={20} color="#4285F4" />
-                <Text style={styles.googleButtonText}>Google ile Kayıt</Text>
+                <Text style={styles.googleButtonText}>Google ile Kayıt Ol</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -290,7 +315,7 @@ export default function RegisterScreen({
                 activeOpacity={0.8}
               >
                 <Ionicons name="logo-apple" size={20} color="#FFFFFF" />
-                <Text style={styles.appleButtonText}>Apple ile Kayıt</Text>
+                <Text style={styles.appleButtonText}>Apple ile Kayıt Ol</Text>
               </TouchableOpacity>
             </View>
 
@@ -409,31 +434,6 @@ export default function RegisterScreen({
                 )}
               </View>
 
-              {/* Terms Checkbox */}
-              <View style={styles.checkboxContainer}>
-                <TouchableOpacity
-                  onPress={() => setAgreedToTerms(!agreedToTerms)}
-                  activeOpacity={0.8}
-                  style={styles.checkboxButton}
-                >
-                  <View style={[styles.customCheckbox, agreedToTerms && styles.customCheckboxChecked]}>
-                    {agreedToTerms && <Ionicons name="checkmark" size={14} color="#FFFFFF" />}
-                  </View>
-                </TouchableOpacity>
-                <View style={styles.checkboxTextContainer}>
-                  <Text style={styles.checkboxText}>
-                    <Text style={styles.linkText} onPress={() => onNavigateToLegal?.('terms')}>
-                      Kullanım Koşulları
-                    </Text>
-                    <Text> ve </Text>
-                    <Text style={styles.linkText} onPress={() => onNavigateToLegal?.('privacy')}>
-                      Gizlilik Politikası
-                    </Text>
-                    <Text>'nı okudum ve kabul ediyorum</Text>
-                  </Text>
-                </View>
-              </View>
-
               {/* [G] PRIMARY CTA BUTTON */}
               <TouchableOpacity
                 style={styles.ctaButton}
@@ -441,7 +441,7 @@ export default function RegisterScreen({
                 activeOpacity={0.8}
               >
                 <LinearGradient
-                  colors={['#059669', '#047857']}
+                  colors={[WEBSITE_BRAND_COLORS.secondary, WEBSITE_BRAND_COLORS.primary]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={styles.ctaButtonGradient}
@@ -458,15 +458,28 @@ export default function RegisterScreen({
                 <Text style={styles.secondaryLink}>Giriş Yap</Text>
               </TouchableOpacity>
             </View>
-            </View>
-          </ScrollView>
 
-          {/* [H] FOOTER ZONE - FIXED AT BOTTOM (OUTSIDE SCROLLABLE CONTENT) */}
-          <View style={styles.footerZone}>
-            <Text style={styles.footer}>
-              © 2026. Tüm hakları saklıdır.
-            </Text>
+            {/* Progress Indicator - 5 noktalı (Language, Age, Legal, Auth/Register, FavoriteTeams) */}
+            <View style={styles.progressRow}>
+              <View style={styles.progressDot} />
+              <View style={styles.progressLine} />
+              <View style={styles.progressDot} />
+              <View style={styles.progressLine} />
+              <View style={styles.progressDot} />
+              <View style={styles.progressLine} />
+              <View style={[styles.progressDot, styles.progressDotActive]} />
+              <View style={styles.progressLine} />
+              <View style={styles.progressDot} />
+            </View>
+            </View>
           </View>
+        </View>
+
+        {/* [H] FOOTER ZONE - FIXED AT BOTTOM */}
+        <View style={styles.footerZone}>
+          <Text style={styles.footer}>
+            © 2026. Tüm hakları saklıdır.
+          </Text>
         </View>
       </LinearGradient>
     </SafeAreaView>
@@ -480,29 +493,57 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
+    position: 'relative',
+  },
+  gridPattern: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    opacity: 1,
+    zIndex: 0,
+    ...Platform.select({
+      web: {
+        backgroundImage: `
+          linear-gradient(to right, rgba(31, 162, 166, 0.12) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(31, 162, 166, 0.12) 1px, transparent 1px)
+        `,
+        backgroundSize: '40px 40px',
+      },
+      default: {
+        backgroundColor: 'transparent',
+      },
+    }),
+  },
+  // Back Button - Sol üst köşe (standardize)
+  backButtonTop: {
+    position: 'absolute',
+    top: WDS_SPACING.xl,
+    left: WDS_SPACING.xl,
+    width: WEBSITE_ICON_SIZES.xl + WDS_SPACING.md,
+    height: WEBSITE_ICON_SIZES.xl + WDS_SPACING.md,
+    borderRadius: WEBSITE_BORDER_RADIUS.lg,
+    backgroundColor: 'rgba(15, 42, 36, 0.95)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.3)',
+    borderWidth: 1,
+    borderColor: `rgba(31, 162, 166, ${0.2})`,
   },
   screenContainer: {
     flex: 1,
     paddingHorizontal: LAYOUT.screenPadding,
-    paddingTop: 8, // %30 azaltıldı (12 * 0.7)
+    paddingTop: WDS_SPACING.xl + WEBSITE_ICON_SIZES.xl + WDS_SPACING.md,
+    zIndex: 1,
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 16,
-  },
-  
-  // [A] TOP NAVIGATION ZONE
-  topNavZone: {
-    height: LAYOUT.backButtonSize,
-    justifyContent: 'center',
-  },
-  backButton: {
-    width: LAYOUT.backButtonSize,
-    height: LAYOUT.backButtonSize,
-    alignItems: 'center',
-    justifyContent: 'center',
+    paddingBottom: 24, // "Giriş Yap" yazısını görünür hale getir
   },
   
   content: {
@@ -511,12 +552,13 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   
-  // [B] BRAND ZONE
+  // [B] BRAND ZONE - OnboardingScreen ile aynı konum (sıçrama olmasın)
   brandZone: {
     alignItems: 'center',
-    justifyContent: 'flex-start',
-    marginTop: 5,
-    marginBottom: 5,
+    justifyContent: 'center',
+    marginTop: 30, // LOGO_MARGIN_TOP ile aynı
+    marginBottom: 6, // AuthScreen ile aynı
+    height: 270, // LOGO_SIZE ile aynı
     paddingVertical: 0,
   },
   brandTitle: {
@@ -530,9 +572,8 @@ const styles = StyleSheet.create({
   
   // [C] PRIMARY ACTION ZONE - Social Buttons
   socialZone: {
-    height: LAYOUT.socialZoneHeight,
-    gap: LAYOUT.socialButtonGap,
-    marginTop: LAYOUT.socialZoneMarginTop,
+    gap: 6, // Azaltıldı
+    marginTop: 0,
     justifyContent: 'center',
   },
   googleButton: {
@@ -540,7 +581,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: BRAND.white,
-    height: LAYOUT.socialButtonHeight,
+    height: 42, // AuthScreen ile aynı (sıçrama olmasın)
     borderRadius: SIZES.radiusLg,
     gap: SPACING.md,
     borderWidth: 1,
@@ -557,7 +598,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#000000',
-    height: LAYOUT.socialButtonHeight,
+    height: 42, // AuthScreen ile aynı (sıçrama olmasın)
     borderRadius: SIZES.radiusLg,
     gap: SPACING.md,
     borderWidth: 1,
@@ -572,10 +613,11 @@ const styles = StyleSheet.create({
   
   // [D] DIVIDER ZONE
   dividerZone: {
-    height: LAYOUT.dividerZoneHeight,
+    height: 20, // AuthScreen ile aynı
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    marginVertical: 5, // AuthScreen ile aynı
   },
   dividerLine: {
     flex: 1,
@@ -590,11 +632,11 @@ const styles = StyleSheet.create({
   
   // [E] FORM INPUT ZONE
   formZone: {
-    gap: LAYOUT.inputGap,
+    gap: 8, // Azaltıldı
   },
   inputWrapper: {
     position: 'relative',
-    height: LAYOUT.inputHeight,
+    height: 42, // Azaltıldı
   },
   inputIcon: {
     position: 'absolute',
@@ -663,10 +705,10 @@ const styles = StyleSheet.create({
   
   // [G] PRIMARY CTA BUTTON
   ctaButton: {
-    height: LAYOUT.ctaButtonHeight,
+    height: 42, // Azaltıldı
     borderRadius: 12,
     overflow: 'hidden',
-    marginTop: 8,
+    marginTop: 8, // Azaltıldı
   },
   ctaButtonGradient: {
     flex: 1,
@@ -685,24 +727,55 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: LAYOUT.secondaryLinkMarginTop,
+    marginTop: 6,
+    marginBottom: 28, // "Giriş Yap" yazısını görünür hale getir
   },
   secondaryLinkText: {
     ...TYPOGRAPHY.body,
     fontSize: 14,
-    color: COLORS.dark.mutedForeground,
+    color: 'rgba(255, 255, 255, 0.8)', // Daha okunabilir
+    fontWeight: '500',
   },
   secondaryLink: {
     ...TYPOGRAPHY.body,
-    fontSize: 14,
-    color: BRAND.emerald,
-    fontWeight: '500',
+    fontSize: 15, // Biraz daha büyük
+    color: WEBSITE_BRAND_COLORS.white, // Beyaz renk
+    fontWeight: '700', // Daha kalın
+    textDecorationLine: 'underline', // Altı çizili
   },
   
   // [H] FOOTER ZONE - FIXED AT BOTTOM (GLOBAL FOOTER)
+  // Progress Indicator
+  progressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 0, // Progress bar pozisyonu sabit
+    marginBottom: 12,
+    height: 16,
+  },
+  progressDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  progressDotActive: {
+    backgroundColor: WEBSITE_BRAND_COLORS.secondary,
+    borderColor: WEBSITE_BRAND_COLORS.secondary,
+  },
+  progressLine: {
+    width: 28,
+    height: 2,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    marginHorizontal: 4,
+  },
+  
   footerZone: {
-    paddingTop: 16,
-    paddingBottom: 16,
+    paddingTop: 4,
+    paddingBottom: 12,
     backgroundColor: 'transparent',
   },
   footer: {

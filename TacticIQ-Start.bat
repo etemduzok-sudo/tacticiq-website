@@ -35,9 +35,9 @@ timeout /t 2 /nobreak >nul
 echo       Website basladi!
 echo.
 
-echo [5/5] Expo Web baslatiliyor (cache temizleniyor)...
-start "TacticIQ Expo" cmd /k "cd /d C:\TacticIQ && color 0D && echo EXPO WEB && echo =============== && npx expo start --clear --web"
-echo       Expo Web basladi!
+echo [5/5] Mobile Web (Vite) baslatiliyor...
+start "TacticIQ Mobile" cmd /k "cd /d C:\TacticIQ\mobile-vite && color 0A && echo MOBILE WEB (Vite) && echo ================== && npm run dev"
+echo       Mobile Web basladi!
 echo.
 
 echo ========================================

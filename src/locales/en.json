@@ -10,16 +10,13 @@
     "back": "Back",
     "next": "Next",
     "done": "Done",
-    "continue": "Continue"
+    "continue": "Continue",
+    "getStarted": "Get Started",
+    "info": "Info"
   },
   "languageSelection": {
     "title": "Language Selection",
-    "subtitle": "Please select your language",
-    "legalSummaryTitle": "Legal Information",
-    "legalSummaryDesc": "Please read the following documents to continue:",
-    "iAccept": "I have read and accept",
-    "pleaseAccept": "Please read and accept the legal documents",
-    "legalSummary": "By using the TacticIQ platform, you accept the Terms of Service, Privacy Policy, and KVKK Disclosure.\n\n• Your personal data will be processed under KVKK/GDPR\n• No right of withdrawal for digital content sales\n• Virtual items have no cash value\n• Parental consent required for users under 13"
+    "subtitle": "Please select your language"
   },
   "dashboard": {
     "title": "Analyst Control Panel",
@@ -39,26 +36,10 @@
     "accuracy": "Accuracy"
   },
   "strategicFocus": {
-    "tempo": {
-      "name": "Tempo Analysis",
-      "description": "Focus on match pace",
-      "advice": "Fast-paced match expected!"
-    },
-    "discipline": {
-      "name": "Discipline Analysis",
-      "description": "Predict rough plays",
-      "advice": "This referee loves cards, great focus!"
-    },
-    "fitness": {
-      "name": "Fitness Analysis",
-      "description": "Evaluate physical condition",
-      "advice": "Fitness is critical in long season!"
-    },
-    "star": {
-      "name": "Star Analysis",
-      "description": "Track star players",
-      "advice": "Star players will be on the field!"
-    }
+    "tempo": { "name": "Tempo Analysis", "description": "Focus on match pace", "advice": "Fast-paced match expected!" },
+    "discipline": { "name": "Discipline Analysis", "description": "Predict rough plays", "advice": "This referee loves cards!" },
+    "fitness": { "name": "Fitness Analysis", "description": "Evaluate physical condition", "advice": "Fitness is critical!" },
+    "star": { "name": "Star Analysis", "description": "Track star players", "advice": "Star players on the field!" }
   },
   "badges": {
     "title": "Badges",
@@ -68,13 +49,7 @@
     "progress": "Progress",
     "progressHint": "more matches needed!",
     "earnedDate": "Earned:",
-    "tiers": {
-      "rookie": "Rookie",
-      "amateur": "Amateur",
-      "pro": "Professional",
-      "expert": "Expert",
-      "legend": "Legend"
-    }
+    "tiers": { "rookie": "Rookie", "amateur": "Amateur", "pro": "Professional", "expert": "Expert", "legend": "Legend" }
   },
   "profile": {
     "title": "Profile",
@@ -97,35 +72,10 @@
     "minute": "Minute",
     "vs": "VS"
   },
-  "leaderboard": {
-    "title": "Leaderboard",
-    "overall": "Overall",
-    "weekly": "Weekly",
-    "monthly": "Monthly",
-    "rank": "Rank",
-    "user": "User",
-    "points": "Points"
-  },
-  "scoring": {
-    "bonusApplied": "Bonus Applied!",
-    "strategicBonus": "Strategic Focus Bonus",
-    "totalPoints": "Total Points",
-    "breakdown": "Points Breakdown"
-  },
-  "notifications": {
-    "title": "Notifications",
-    "noNotifications": "No notifications",
-    "matchStartingSoon": "Match starting soon!",
-    "predictionReminder": "Don't forget to predict!",
-    "badgeEarned": "New badge earned!"
-  },
-  "errors": {
-    "networkError": "Network error",
-    "serverError": "Server error",
-    "notFound": "Not found",
-    "unauthorized": "Unauthorized access",
-    "tryAgain": "Try again"
-  },
+  "leaderboard": { "title": "Leaderboard", "overall": "Overall", "weekly": "Weekly", "monthly": "Monthly", "rank": "Rank", "user": "User", "points": "Points" },
+  "scoring": { "bonusApplied": "Bonus Applied!", "strategicBonus": "Strategic Focus Bonus", "totalPoints": "Total Points", "breakdown": "Points Breakdown" },
+  "notifications": { "title": "Notifications", "noNotifications": "No notifications", "matchStartingSoon": "Match starting soon!", "predictionReminder": "Don't forget to predict!", "badgeEarned": "New badge earned!" },
+  "errors": { "networkError": "Network error", "serverError": "Server error", "notFound": "Not found", "unauthorized": "Unauthorized", "tryAgain": "Try again" },
   "auth": {
     "title": "Welcome",
     "subtitle": "Discover football strategies",
@@ -135,19 +85,14 @@
     "register": "Register",
     "forgotPassword": "Forgot Password",
     "orContinueWith": "or continue with",
-    "emailRequired": "Email address cannot be empty",
-    "emailInvalid": "Enter a valid email address",
-    "passwordRequired": "Password cannot be empty",
+    "emailRequired": "Email is required",
+    "emailInvalid": "Invalid email",
+    "passwordRequired": "Password is required",
     "passwordMinLength": "Password must be at least 6 characters",
     "loginSuccess": "Login successful!",
     "loginFailed": "Login failed",
-    "socialLoginFailed": "login failed",
-    "errorOccurred": "An error occurred",
-    "checkingEmail": "Checking email...",
-    "emailAvailable": "Email available",
-    "emailTaken": "This email is already in use",
-    "loginWithGoogle": "Login with Google",
-    "loginWithApple": "Login with Apple"
+    "socialLoginFailed": "Social login failed",
+    "errorOccurred": "An error occurred"
   },
   "ageGate": {
     "title": "Age Verification",
@@ -155,84 +100,36 @@
     "year": "Year",
     "month": "Month",
     "day": "Day",
-    "yearPlaceholder": "YYYY",
-    "monthPlaceholder": "MM",
-    "dayPlaceholder": "DD",
-    "info": "This information is required for your safety and legal compliance.",
-    "pleaseEnterDate": "Please enter your date of birth",
-    "invalidDate": "Invalid date of birth"
+    "yearsOld": "years old",
+    "selectYear": "Select Year",
+    "selectMonth": "Select Month",
+    "selectDay": "Select Day",
+    "info": "Required for safety and legal compliance.",
+    "minorNotice": "Parental consent required for users under 18"
   },
   "legal": {
     "title": "Legal Documents",
-    "description": "Platform terms and legal information",
-    "select": "Select a document",
-    "close": "Close",
-    "accept": "I Accept",
-    "terms": {
-      "title": "Terms of Use",
-      "description": "Service terms and user responsibilities",
-      "fullContent": "Last Updated: January 1, 2026\\n\\n1. INTRODUCTION\\nThese Terms govern your use of TacticIQ platform.\\n\\n2. VIRTUAL ITEMS\\nPoints, XP are virtual, non-refundable, no cash value.\\n\\n3. INTELLECTUAL PROPERTY\\nAll rights belong to TacticIQ.\\n\\n4. WITHDRAWAL\\nNo withdrawal for digital content.\\n\\n5. CONTACT\\nlegal@tacticiq.app"
-    },
-    "privacy": {
-      "title": "Privacy Policy",
-      "description": "GDPR, CCPA, KVKK compliant",
-      "fullContent": "Last Updated: January 1, 2026\\n\\n1. DATA COLLECTION\\nWe process device ID, IP, location and activity data.\\n\\n2. REGIONAL RIGHTS\\n\\nTURKEY (KVKK):\\nData Controller: TacticIQ\\n\\nEUROPE (GDPR):\\nRight to delete, transfer data.\\n\\nUSA (CCPA/COPPA):\\nUnder 13 requires parental consent.\\n\\n3. CONTACT\\nprivacy@tacticiq.app"
-    },
-    "cookies": {
-      "title": "Cookie Policy",
-      "description": "Cookie usage",
-      "fullContent": "Last Updated: January 1, 2026\\n\\n1. USAGE\\nWe use cookies to improve experience.\\n\\n2. TYPES\\n- Essential\\n- Functional\\n- Analytics\\n- Marketing\\n\\n3. MANAGEMENT\\nSettings menu"
-    },
-    "kvkk": {
-      "title": "KVKK Disclosure",
-      "description": "Turkish KVKK law",
-      "fullContent": "DATA CONTROLLER: TacticIQ\\nkvkk@tacticiq.app\\n\\nDATA PROCESSED:\\n- Identity\\n- Contact\\n- Activity\\n- Device/IP\\n\\nPURPOSES:\\n- Service\\n- Improvement\\n- Security\\n\\nRIGHTS:\\nkvkk@tacticiq.app"
-    },
-    "consent": {
-      "title": "Explicit Consent",
-      "description": "KVKK consent",
-      "fullContent": "DISCLOSURE:\\nI am informed\\nI know purposes\\nI know my rights\\n\\nCONSENT:\\nI give explicit consent for processing my Identity, Contact, Activity, Device data.\\n\\nWITHDRAWAL:\\nkvkk@tacticiq.app"
-    },
-    "sales": {
-      "title": "Distance Sales Contract",
-      "description": "Digital content sales",
-      "fullContent": "SELLER: TacticIQ\\nsales@tacticiq.app\\n\\nPRODUCT: Pro Membership\\nPAYMENT: App Store/Play\\n\\nWITHDRAWAL:\\nNo withdrawal for digital content.\\n\\nNO REFUND"
-    },
-    "dmca": {
-      "title": "Copyright Notice",
-      "description": "IP and DMCA",
-      "fullContent": "TacticIQ 2026\\n\\nINTELLECTUAL PROPERTY:\\n- Code\\n- Design\\n- Brand/Logo\\n- Content\\n\\nUSAGE PROHIBITED\\n\\nDMCA:\\ncopyright@tacticiq.app"
-    }
+    "subtitle": "Please review and accept",
+    "iAccept": "I have read and accept",
+    "minorNotice": "Parental consent required for users under 18",
+    "terms": { "title": "Terms of Service", "desc": "Usage rules and conditions", "fullContent": "Last Updated: January 1, 2026\n\n1. INTRODUCTION\nThese Terms govern your use of TacticIQ.\n\n2. VIRTUAL ITEMS\nPoints are virtual, non-refundable.\n\n3. INTELLECTUAL PROPERTY\nAll rights belong to TacticIQ.\n\n4. CONTACT\nlegal@tacticiq.app" },
+    "privacy": { "title": "Privacy Policy", "desc": "GDPR, CCPA compliant", "fullContent": "Last Updated: January 1, 2026\n\n1. DATA COLLECTION\nWe collect device ID, IP, activity.\n\n2. YOUR RIGHTS\nYou can request data deletion.\n\n3. CONTACT\nprivacy@tacticiq.app" },
+    "cookies": { "title": "Cookie Policy", "desc": "Cookie usage", "fullContent": "We use cookies to improve your experience.\n\nTypes: Essential, Analytics, Marketing\n\nManage in Settings." },
+    "kvkk": { "title": "KVKK Disclosure", "desc": "Turkish data protection", "fullContent": "DATA CONTROLLER: TacticIQ\nkvkk@tacticiq.app\n\nDATA: Identity, Contact, Activity, Device\n\nRIGHTS: Contact kvkk@tacticiq.app" }
+  },
+  "cookies": {
+    "essential": "Essential Cookies",
+    "essentialDesc": "Required for app to function",
+    "analytics": "Analytics Cookies",
+    "analyticsDesc": "Help us improve",
+    "marketing": "Marketing Cookies",
+    "marketingDesc": "Personalized content"
   },
   "consent": {
     "title": "Privacy Preferences",
-    "subtitle": "Choose how your data will be used",
-    "kvkkInfo": "We care about your privacy. These preferences are protected under KVKK.",
-    "gdprInfo": "We care about your privacy. These preferences are protected under GDPR.",
-    "ccpaInfo": "We care about your privacy. These preferences are protected under CCPA.",
-    "defaultInfo": "Set your preferences to protect your data.",
-    "essential": "Essential Cookies",
-    "essentialDesc": "Required for the app to function. Cannot be disabled.",
-    "analytics": "Analytics Cookies",
-    "analyticsDesc": "Used to analyze and improve app performance.",
-    "marketing": "Marketing Cookies",
-    "marketingDesc": "Allows us to send notifications about campaigns and special offers.",
-    "personalizedAds": "Personalized Ads",
-    "personalizedAdsDesc": "Allows us to show you ads based on your interests.",
-    "dataTransfer": "International Data Transfer",
-    "dataTransferDesc": "Explicit consent required for transferring your data to servers abroad under KVKK.",
-    "acceptAll": "Accept All",
-    "rejectAll": "Reject All",
-    "save": "Save and Continue",
-    "privacyPolicyLink": "Review our Privacy Policy for details",
-    "childModeRestriction": "These features are disabled in child mode for safety.",
-    "saveError": "Your preferences could not be saved. Please try again.",
-    "saveSuccess": "Your preferences have been saved successfully!",
-    "learnMore": "Learn More",
-    "viewPrivacyPolicy": "Privacy Policy",
-    "viewCookiePolicy": "Cookie Policy",
-    "viewKvkkInfo": "KVKK Disclosure",
-    "required": "Required",
-    "optional": "Optional"
+    "subtitle": "Choose how your data is used",
+    "error": "Error",
+    "mustAccept": "You must accept the legal documents to continue",
+    "saveFailed": "Failed to save"
   }
 }

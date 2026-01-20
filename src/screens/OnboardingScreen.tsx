@@ -78,7 +78,7 @@ const languages = [
 // Logo yüksekliği her sayfada aynı (sıçrama olmasın) - %50 büyütüldü
 const LOGO_SIZE = 270; // 180 * 1.5
 const LOGO_MARGIN_TOP = 30;
-const LOGO_MARGIN_BOTTOM = 24;
+const LOGO_MARGIN_BOTTOM = 16; // Biraz azaltıldı (24'ten 16'ya) - diğer sayfalarla uyumlu
 
 export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
   const { t, i18n } = useTranslation();

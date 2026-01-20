@@ -58,7 +58,7 @@ export const STANDARD_LAYOUT = {
 export const STANDARD_INPUT = {
   height: STANDARD_LAYOUT.inputHeight,
   borderRadius: SIZES.radiusLg,
-  backgroundColor: 'rgba(15, 42, 36, 0.5)', // DARK_MODE.inputBackground with opacity
+  backgroundColor: 'rgba(15, 42, 36, 0.95)', // DARK_MODE.inputBackground - opak (grid görünmesin)
   borderWidth: 1,
   borderColor: 'rgba(31, 162, 166, 0.3)', // BRAND.secondary with 30% opacity
   paddingLeft: STANDARD_LAYOUT.inputPaddingLeft,

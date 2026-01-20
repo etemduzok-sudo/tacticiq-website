@@ -24,6 +24,14 @@ import { STANDARD_LAYOUT, STANDARD_INPUT, STANDARD_COLORS } from '../constants/s
 import { useTranslation } from '../hooks/useTranslation';
 import TacticIQLogo from '../components/TacticIQLogo';
 import { WEBSITE_COLORS, WEBSITE_GRADIENTS, WEBSITE_SPACING, WEBSITE_TYPOGRAPHY } from '../theme/websiteTheme';
+import {
+  WEBSITE_BRAND_COLORS,
+  WEBSITE_DARK_COLORS,
+  WEBSITE_BORDER_RADIUS,
+  WEBSITE_SPACING as WDS_SPACING,
+  WEBSITE_ICON_SIZES,
+  WEBSITE_TYPOGRAPHY as WDS_TYPOGRAPHY,
+} from '../config/WebsiteDesignSystem';
 
 // ============================================
 // SHARED LAYOUT CONSTANTS (MUST BE IDENTICAL)
@@ -181,41 +189,40 @@ export default function AuthScreen({
   return (
     <SafeAreaView style={styles.safeArea}>
       <LinearGradient
-        colors={AUTH_GRADIENT.colors}
+        colors={['#0a1612', '#0F2A24', '#0a1612']}
         style={styles.container}
-        start={AUTH_GRADIENT.start}
-        end={AUTH_GRADIENT.end}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
       >
+        {/* Grid Pattern Background */}
+        <View style={styles.gridPattern} />
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.keyboardView}
         >
+          {/* Back Button - Sol üst köşe */}
+          {onBack && (
+            <TouchableOpacity style={styles.backButtonTop} onPress={onBack} activeOpacity={0.7}>
+              <Ionicons name="arrow-back" size={WEBSITE_ICON_SIZES.lg} color={WEBSITE_BRAND_COLORS.white} />
+            </TouchableOpacity>
+          )}
+
           <View style={styles.screenContainer}>
             <View style={styles.contentWrapper}>
-              {/* [A] TOP NAVIGATION ZONE */}
-              <View style={styles.topNavZone}>
-                <TouchableOpacity
-                  style={styles.backButton}
-                  onPress={onBack}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="chevron-back" size={24} color="#059669" />
-                </TouchableOpacity>
-              </View>
 
               <View style={styles.content}>
-              {/* [B] BRAND ZONE */}
+              {/* [B] BRAND ZONE - OnboardingScreen ile aynı konum (sıçrama olmasın) */}
               <View style={styles.brandZone}>
                 {Platform.OS === 'web' ? (
                   <img 
                     src="/TacticIQ.svg" 
                     alt="TacticIQ" 
-                    style={{ width: 250, height: 250 }} 
+                    style={{ width: 270, height: 270 }} 
                   />
                 ) : (
                   <Image
                     source={require('../../assets/logo.png')}
-                    style={{ width: 250, height: 250 }}
+                    style={{ width: 270, height: 270 }}
                     resizeMode="contain"
                   />
                 )}
@@ -230,7 +237,7 @@ export default function AuthScreen({
                 >
                   <Ionicons name="logo-google" size={20} color="#4285F4" />
                   <Text style={styles.googleButtonText} numberOfLines={1} adjustsFontSizeToFit>
-                    {t('auth.loginWithGoogle')}
+                    Google ile Giriş Yap
                   </Text>
                 </TouchableOpacity>
 
@@ -241,16 +248,14 @@ export default function AuthScreen({
                 >
                   <Ionicons name="logo-apple" size={20} color="#FFFFFF" />
                   <Text style={styles.appleButtonText} numberOfLines={1} adjustsFontSizeToFit>
-                    {t('auth.loginWithApple')}
+                    Apple ile Giriş Yap
                   </Text>
                 </TouchableOpacity>
               </View>
 
               {/* [D] DIVIDER ZONE */}
               <View style={styles.dividerZone}>
-                <View style={styles.dividerLine} />
                 <Text style={styles.dividerText}>{t('auth.orContinueWith')}</Text>
-                <View style={styles.dividerLine} />
               </View>
 
               {/* [E] FORM INPUT ZONE */}
@@ -328,7 +333,7 @@ export default function AuthScreen({
                   onPress={onForgotPassword}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.forgotPasswordText}>{t('auth.forgotPassword')}?</Text>
+                  <Text style={styles.forgotPasswordText}>Şifremi Unuttum</Text>
                 </TouchableOpacity>
 
                 {/* [G] PRIMARY CTA BUTTON */}
@@ -339,7 +344,7 @@ export default function AuthScreen({
                   disabled={loading}
                 >
                   <LinearGradient
-                    colors={['#059669', '#047857']}
+                    colors={[WEBSITE_BRAND_COLORS.secondary, WEBSITE_BRAND_COLORS.primary]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                     style={styles.ctaButtonGradient}
@@ -357,13 +362,26 @@ export default function AuthScreen({
 
               {/* Secondary Link */}
               <View style={styles.secondaryLinkContainer}>
-                <Text style={styles.secondaryLinkText}>{t('auth.noAccount')} </Text>
+                <Text style={styles.secondaryLinkText}>Hesabınız yok mu? </Text>
                 <TouchableOpacity onPress={onRegister} activeOpacity={0.7}>
                   <Text style={styles.secondaryLink} numberOfLines={1} adjustsFontSizeToFit>
-                    {t('auth.register')}
+                    Kayıt Ol
                   </Text>
                 </TouchableOpacity>
               </View>
+              </View>
+
+              {/* Progress Indicator - 5 noktalı (Language, Age, Legal, Auth, FavoriteTeams) */}
+              <View style={styles.progressRow}>
+                <View style={styles.progressDot} />
+                <View style={styles.progressLine} />
+                <View style={styles.progressDot} />
+                <View style={styles.progressLine} />
+                <View style={styles.progressDot} />
+                <View style={styles.progressLine} />
+                <View style={[styles.progressDot, styles.progressDotActive]} />
+                <View style={styles.progressLine} />
+                <View style={styles.progressDot} />
               </View>
             </View>
 
@@ -387,29 +405,56 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
+    position: 'relative',
+  },
+  gridPattern: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    opacity: 1,
+    zIndex: 0,
+    ...Platform.select({
+      web: {
+        backgroundImage: `
+          linear-gradient(to right, rgba(31, 162, 166, 0.12) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(31, 162, 166, 0.12) 1px, transparent 1px)
+        `,
+        backgroundSize: '40px 40px',
+      },
+      default: {
+        backgroundColor: 'transparent',
+      },
+    }),
   },
   keyboardView: {
     flex: 1,
+    zIndex: 1,
+  },
+  // Back Button - Sol üst köşe (standardize)
+  backButtonTop: {
+    position: 'absolute',
+    top: WDS_SPACING.xl,
+    left: WDS_SPACING.xl,
+    width: WEBSITE_ICON_SIZES.xl + WDS_SPACING.md,
+    height: WEBSITE_ICON_SIZES.xl + WDS_SPACING.md,
+    borderRadius: WEBSITE_BORDER_RADIUS.lg,
+    backgroundColor: 'rgba(15, 42, 36, 0.95)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.3)',
   },
   screenContainer: {
     flex: 1,
     paddingHorizontal: LAYOUT.screenPadding,
-    paddingTop: 8, // %30 azaltıldı (12 * 0.7)
+    paddingTop: WDS_SPACING.xl + WEBSITE_ICON_SIZES.xl + WDS_SPACING.md,
   },
   contentWrapper: {
     flex: 1,
-  },
-  
-  // [A] TOP NAVIGATION ZONE
-  topNavZone: {
-    height: LAYOUT.backButtonSize,
-    justifyContent: 'center',
-  },
-  backButton: {
-    width: LAYOUT.backButtonSize,
-    height: LAYOUT.backButtonSize,
-    alignItems: 'center',
-    justifyContent: 'center',
+    paddingBottom: 8, // Progress ve footer için minimum boşluk
   },
   
   content: {
@@ -419,14 +464,16 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     justifyContent: 'flex-start',
     paddingVertical: 0,
+    paddingBottom: 32, // Progress bar ile çakışmayı önle (artırıldı)
   },
   
-  // [B] BRAND ZONE
+  // [B] BRAND ZONE - OnboardingScreen ile aynı konum (sıçrama olmasın)
   brandZone: {
     alignItems: 'center',
-    justifyContent: 'flex-start',
-    marginTop: 5,
-    marginBottom: 5,
+    justifyContent: 'center',
+    marginTop: 30, // LOGO_MARGIN_TOP ile aynı
+    marginBottom: 6, // Biraz daha azaltıldı
+    height: 270, // LOGO_SIZE ile aynı
     paddingVertical: 0,
   },
   brandTitle: {
@@ -440,9 +487,8 @@ const styles = StyleSheet.create({
   
   // [C] PRIMARY ACTION ZONE - Social Buttons
   socialZone: {
-    height: LAYOUT.socialZoneHeight,
-    gap: LAYOUT.socialButtonGap,
-    marginTop: LAYOUT.socialZoneMarginTop,
+    gap: 6, // Azaltıldı
+    marginTop: 0,
     justifyContent: 'center',
   },
   googleButton: {
@@ -450,7 +496,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: BRAND.white,
-    height: LAYOUT.socialButtonHeight,
+    height: 42, // Azaltıldı
     borderRadius: SIZES.radiusLg,
     gap: SPACING.md,
     borderWidth: 1,
@@ -467,7 +513,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#000000',
-    height: LAYOUT.socialButtonHeight,
+    height: 42, // Azaltıldı
     borderRadius: SIZES.radiusLg,
     gap: SPACING.md,
     borderWidth: 1,
@@ -481,15 +527,11 @@ const styles = StyleSheet.create({
   
   // [D] DIVIDER ZONE
   dividerZone: {
-    height: LAYOUT.dividerZoneHeight,
+    height: 20, // Biraz daha azaltıldı
     flexDirection: 'row',
     alignItems: 'center',
-    gap: SPACING.md,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: COLORS.dark.border,
+    justifyContent: 'center',
+    marginVertical: 5, // Biraz daha azaltıldı
   },
   dividerText: {
     ...TYPOGRAPHY.bodySmall,
@@ -498,10 +540,11 @@ const styles = StyleSheet.create({
   
   // [E] FORM INPUT ZONE
   formZone: {
-    gap: LAYOUT.inputGap,
+    gap: 10, // Azaltıldı
+    marginTop: 0,
   },
   inputGroup: {
-    gap: SPACING.md,
+    gap: 8, // Azaltıldı
   },
   label: {
     ...TYPOGRAPHY.bodySmall,
@@ -509,7 +552,7 @@ const styles = StyleSheet.create({
   },
   inputWrapper: {
     position: 'relative',
-    height: LAYOUT.inputHeight,
+    height: 46, // Azaltıldı
   },
   inputIcon: {
     position: 'absolute',
@@ -533,18 +576,23 @@ const styles = StyleSheet.create({
   // [F] SECONDARY ACTION LINKS
   forgotPassword: {
     alignSelf: 'flex-end',
+    marginTop: 6,
   },
   forgotPasswordText: {
     ...TYPOGRAPHY.bodySmall,
-    color: BRAND.emerald,
+    fontSize: 15, // Biraz daha büyük
+    fontWeight: '700', // Daha kalın
+    color: WEBSITE_BRAND_COLORS.white, // Beyaz renk
+    textDecorationLine: 'underline', // Altı çizili
   },
   
   // [G] PRIMARY CTA BUTTON
   ctaButton: {
-    height: LAYOUT.ctaButtonHeight,
+    height: 46, // Azaltıldı
     borderRadius: SIZES.radiusLg,
     overflow: 'hidden',
-    marginTop: SPACING.sm,
+    marginTop: 10, // Azaltıldı
+    marginBottom: 6, // Azaltıldı
   },
   ctaButtonGradient: {
     flex: 1,
@@ -562,22 +610,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: LAYOUT.secondaryLinkMarginTop,
+    marginTop: 6,
+    marginBottom: 24, // Progress ile yeterli boşluk
   },
   secondaryLinkText: {
     ...TYPOGRAPHY.bodySmall,
-    color: COLORS.dark.mutedForeground,
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.8)', // Daha okunabilir
+    fontWeight: '500',
   },
   secondaryLink: {
     ...TYPOGRAPHY.bodySmall,
-    color: BRAND.emerald,
-    fontWeight: '500',
+    fontSize: 15, // Biraz daha büyük
+    fontWeight: '700', // Daha kalın
+    color: WEBSITE_BRAND_COLORS.white, // Beyaz renk
+    textDecorationLine: 'underline', // Altı çizili
   },
   
   // [H] FOOTER ZONE - FIXED AT BOTTOM (GLOBAL FOOTER)
   footerZone: {
-    paddingTop: SPACING.base,
-    paddingBottom: SPACING.base,
+    paddingTop: 4,
+    paddingBottom: 12,
     backgroundColor: 'transparent',
   },
   footer: {
@@ -610,5 +663,33 @@ const styles = StyleSheet.create({
   },
   inputError: {
     borderColor: '#EF4444',
+  },
+  
+  // Progress Indicator
+  progressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 0, // Progress bar pozisyonu sabit
+    marginBottom: 12,
+    height: 16,
+  },
+  progressDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  progressDotActive: {
+    backgroundColor: WEBSITE_BRAND_COLORS.secondary,
+    borderColor: WEBSITE_BRAND_COLORS.secondary,
+  },
+  progressLine: {
+    width: 28,
+    height: 2,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    marginHorizontal: 4,
   },
 });

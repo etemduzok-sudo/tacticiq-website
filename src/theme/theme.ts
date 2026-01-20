@@ -1,5 +1,5 @@
 /**
- * FAN MANAGER 2026 - DESIGN SYSTEM
+ * TACTICIQ - DESIGN SYSTEM
  * Complete Design System based on official documentation
  * Adapted from Tailwind CSS to React Native StyleSheet
  * Version: 1.0.0

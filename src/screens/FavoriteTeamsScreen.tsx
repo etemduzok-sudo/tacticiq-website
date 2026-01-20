@@ -20,6 +20,15 @@ import { teamsApi } from '../services/api';
 import api from '../services/api';
 import { StandardHeader, ScreenLayout } from '../components/layouts';
 import { logger } from '../utils/logger';
+import { Ionicons } from '@expo/vector-icons';
+import {
+  WEBSITE_BRAND_COLORS,
+  WEBSITE_DARK_COLORS,
+  WEBSITE_BORDER_RADIUS,
+  WEBSITE_SPACING as WDS_SPACING,
+  WEBSITE_ICON_SIZES,
+  WEBSITE_TYPOGRAPHY as WDS_TYPOGRAPHY,
+} from '../config/WebsiteDesignSystem';
 
 interface FavoriteTeamsScreenProps {
   onComplete: (selectedTeams: Array<{ id: number; name: string; colors: string[]; league?: string; country?: string; type?: 'club' | 'national' }>) => void;
@@ -153,7 +162,8 @@ export default function FavoriteTeamsScreen({ onComplete, onBack }: FavoriteTeam
   const [selectedLanguage, setSelectedLanguage] = useState<string>('tr');
   const [isPremium, setIsPremium] = useState<boolean>(false);
   const [openDropdown, setOpenDropdown] = useState<'national' | 'club1' | 'club2' | 'club3' | 'club4' | 'club5' | 'clubs-list' | null>(null);
-  const [searchType, setSearchType] = useState<'club' | 'national'>('club');
+  const [showSearchDropdown, setShowSearchDropdown] = useState<boolean>(false);
+  const [searchType, setSearchType] = useState<'club' | 'national' | 'all'>('all'); // 'all' = hem milli hem kulüp
   
   // ✅ Backend'den çekilen takımlar (API-Football'a direkt bağlanmıyor!)
   const [apiTeams, setApiTeams] = useState<Array<{
@@ -269,21 +279,22 @@ export default function FavoriteTeamsScreen({ onComplete, onBack }: FavoriteTeam
     const maxClubs = isPremium ? 5 : 0;
     const selectedClubs = selectedClubTeams.filter(Boolean) as TeamOption[];
 
-    // ✅ Milli takım zorunlu (free & pro), sadece 1 tane
-    if (!selectedNationalTeam) {
-      Alert.alert('Milli Takım Seçimi Gerekli', 'Lütfen 1 milli takım seçin.');
-        return;
-      }
-
-    // ✅ Free: kulüp seçemez
+    // ✅ Free: sadece milli takım seçilebilir (opsiyonel)
+    // ✅ Pro: milli takım (opsiyonel) + en fazla 5 kulüp
     if (!isPremium && selectedClubs.length > 0) {
       Alert.alert('Kulüp Seçimi Kilitli', 'Free kullanıcılar kulüp takımı seçemez.');
-        return;
-      }
+      return;
+    }
 
     // ✅ Pro: en fazla 5 kulüp
     if (isPremium && selectedClubs.length > maxClubs) {
       Alert.alert('Maksimum Limit', `En fazla ${maxClubs} kulüp seçebilirsiniz.`);
+      return;
+    }
+
+    // ✅ En az bir takım seçilmeli
+    if (!selectedNationalTeam && selectedClubs.length === 0) {
+      Alert.alert('Takım Seçimi Gerekli', 'Lütfen en az bir takım seçin.');
       return;
     }
 
@@ -292,9 +303,9 @@ export default function FavoriteTeamsScreen({ onComplete, onBack }: FavoriteTeam
       ...selectedClubs,
     ].filter(Boolean).map(team => ({
       id: team.id,
-        name: team.name,
+      name: team.name,
       colors: team.colors || ['#1E40AF', '#FFFFFF'],
-        league: team.league,
+      league: team.league,
       country: team.country,
       type: team.type,
     }));
@@ -711,6 +722,7 @@ export default function FavoriteTeamsScreen({ onComplete, onBack }: FavoriteTeam
         </TouchableOpacity>
 
         {isOpen && (
+          <View style={styles.dropdownContainer}>
           <View style={styles.dropdown}>
         <View style={styles.searchContainer}>
               <SafeIcon name="search" size={18} color={DARK_MODE.mutedForeground} />
@@ -824,12 +836,21 @@ export default function FavoriteTeamsScreen({ onComplete, onBack }: FavoriteTeam
                         </Text>
                       </TouchableOpacity>
                   </View>
-                    <SafeIcon name="add-circle-outline" size={24} color={BRAND.emerald} />
+                    {(() => {
+                      const isSelected = (type === 'national' && selectedNationalTeam?.id === team.id) ||
+                        (type === 'club' && index !== undefined && selectedClubTeams[index]?.id === team.id);
+                      return isSelected ? (
+                        <Ionicons name="checkmark-circle" size={24} color={WEBSITE_BRAND_COLORS.secondary} />
+                      ) : (
+                        <Ionicons name="add-circle-outline" size={24} color={BRAND.emerald} />
+                      );
+                    })()}
                   </View>
               </TouchableOpacity>
             );
           })}
         </View>
+          </View>
         )}
           </View>
     );
@@ -837,16 +858,14 @@ export default function FavoriteTeamsScreen({ onComplete, onBack }: FavoriteTeam
 
             return (
     <ScreenLayout safeArea>
-      <StandardHeader
-        title="Takımlarınızı Seçin"
-        onBack={onBack}
-      />
+      {/* Back Button - Sol üst köşe */}
+      {onBack && (
+        <TouchableOpacity style={styles.backButtonTop} onPress={onBack} activeOpacity={0.7}>
+          <Ionicons name="arrow-back" size={WEBSITE_ICON_SIZES.lg} color={WEBSITE_BRAND_COLORS.white} />
+        </TouchableOpacity>
+      )}
       
-      <ScrollView 
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
+      <View style={styles.mainContainer}>
       <View style={styles.container}>
         {/* Plan Info Card - Kompakt */}
         <View style={styles.planCard}>
@@ -960,22 +979,51 @@ export default function FavoriteTeamsScreen({ onComplete, onBack }: FavoriteTeam
           onPress={handleContinue}
           variant="solid"
           fullWidth
-          disabled={!selectedNationalTeam || (!isPremium && selectedClubTeams.filter(Boolean).length > 0)}
+          disabled={!selectedNationalTeam && selectedClubTeams.filter(Boolean).length === 0}
           style={styles.continueButton}
           textStyle={styles.continueButtonText}
         />
+
+        {/* Progress Indicator - 5 noktalı (Language, Age, Legal, Auth/Register, FavoriteTeams) */}
+        <View style={styles.progressRow}>
+          <View style={styles.progressDot} />
+          <View style={styles.progressLine} />
+          <View style={styles.progressDot} />
+          <View style={styles.progressLine} />
+          <View style={styles.progressDot} />
+          <View style={styles.progressLine} />
+          <View style={styles.progressDot} />
+          <View style={styles.progressLine} />
+          <View style={[styles.progressDot, styles.progressDotActive]} />
+        </View>
       </View>
-      </ScrollView>
+          </View>
     </ScreenLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  scrollView: {
-    flex: 1,
+  // Back Button - Sol üst köşe (standardize)
+  backButtonTop: {
+    position: 'absolute',
+    top: WDS_SPACING.xl,
+    left: WDS_SPACING.xl,
+    width: WEBSITE_ICON_SIZES.xl + WDS_SPACING.md,
+    height: WEBSITE_ICON_SIZES.xl + WDS_SPACING.md,
+    borderRadius: WEBSITE_BORDER_RADIUS.lg,
+    backgroundColor: 'rgba(15, 42, 36, 0.95)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.3)',
+    borderWidth: 1,
+    borderColor: `rgba(31, 162, 166, ${0.2})`,
   },
-  scrollContent: {
-    paddingBottom: 100, // ✅ Footer için boşluk
+  mainContainer: {
+    flex: 1,
+    paddingTop: WDS_SPACING.xl + WEBSITE_ICON_SIZES.xl + WDS_SPACING.md + WDS_SPACING.lg,
+    paddingBottom: 140, // Footer için yeterli boşluk (buton + progress + padding)
   },
   container: {
     flex: 1,
@@ -1221,15 +1269,19 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    padding: SPACING.lg,
+    paddingTop: SPACING.md,
+    paddingBottom: SPACING.lg,
+    paddingHorizontal: SPACING.lg,
     backgroundColor: '#121826',
     borderTopWidth: 1,
     borderTopColor: DARK_MODE.border,
+    zIndex: 100, // Tıklanabilir olması için
   },
   continueButton: {
     backgroundColor: BRAND.emerald,
     borderRadius: 12,
     height: 56,
+    marginBottom: 8, // Progress ile arasına boşluk
   },
   continueButtonText: {
     color: BRAND.white,
@@ -1409,6 +1461,14 @@ const styles = StyleSheet.create({
     marginTop: 4,
     fontWeight: '500',
   },
+  dropdownContainer: {
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    right: 0,
+    zIndex: 1000,
+    marginTop: 4,
+  },
   dropdown: {
     marginTop: SPACING.sm,
     backgroundColor: 'rgba(30, 41, 59, 0.4)', // Glassmorphism
@@ -1531,5 +1591,33 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.bodySmall,
     color: DARK_MODE.mutedForeground,
     marginTop: 2,
+  },
+  
+  // Progress Indicator
+  progressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 0, // continueButton'dan marginBottom ile boşluk var
+    marginBottom: 8, // Footer bottom padding
+    height: 16,
+  },
+  progressDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  progressDotActive: {
+    backgroundColor: WEBSITE_BRAND_COLORS.secondary,
+    borderColor: WEBSITE_BRAND_COLORS.secondary,
+  },
+  progressLine: {
+    width: 28,
+    height: 2,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    marginHorizontal: 4,
   },
 });

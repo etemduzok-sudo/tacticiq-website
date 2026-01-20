@@ -5,6 +5,8 @@
  * CSS Variables → React Native Constants
  */
 
+import { Platform } from 'react-native';
+
 // ===== BRAND COLORS (Website CSS Variables) =====
 export const WEBSITE_COLORS = {
   // Primary Brand Colors
@@ -184,46 +186,70 @@ export const WEBSITE_TYPOGRAPHY = {
 // ===== SHADOWS =====
 export const WEBSITE_SHADOWS = {
   sm: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
+    } : {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 2,
+      elevation: 1,
+    }),
   },
   md: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 3,
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+    } : {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.1,
+      shadowRadius: 6,
+      elevation: 3,
+    }),
   },
   lg: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.15,
-    shadowRadius: 15,
-    elevation: 8,
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 10px 15px rgba(0, 0, 0, 0.15)',
+    } : {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 10 },
+      shadowOpacity: 0.15,
+      shadowRadius: 15,
+      elevation: 8,
+    }),
   },
   xl: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 20 },
-    shadowOpacity: 0.2,
-    shadowRadius: 25,
-    elevation: 12,
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 20px 25px rgba(0, 0, 0, 0.2)',
+    } : {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 20 },
+      shadowOpacity: 0.2,
+      shadowRadius: 25,
+      elevation: 12,
+    }),
   },
   glow: {
-    shadowColor: '#1FA2A6',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.4,
-    shadowRadius: 20,
-    elevation: 10,
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 0 20px rgba(31, 162, 166, 0.4)',
+    } : {
+      shadowColor: '#1FA2A6',
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.4,
+      shadowRadius: 20,
+      elevation: 10,
+    }),
   },
   goldGlow: {
-    shadowColor: '#C9A44C',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.4,
-    shadowRadius: 20,
-    elevation: 10,
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 0 20px rgba(201, 164, 76, 0.4)',
+    } : {
+      shadowColor: '#C9A44C',
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.4,
+      shadowRadius: 20,
+      elevation: 10,
+    }),
   },
 };
 

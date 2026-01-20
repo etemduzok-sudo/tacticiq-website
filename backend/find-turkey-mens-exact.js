@@ -1,7 +1,7 @@
 // Find Turkey men's national team - comprehensive search
 const axios = require('axios');
 
-const API_KEY = 'a7ac2f7672bcafcf6fdca1b021b74865';
+const API_KEY = '8a7e3c18ff59d0c7d254d230f999a084';
 const BASE_URL = 'https://v3.football.api-sports.io';
 
 async function searchTeams(query, country = null) {

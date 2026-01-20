@@ -9,7 +9,7 @@ const cache = new NodeCache({ stdTTL: 3600, checkperiod: 600 });
 
 // Try both possible env var names for flexibility
 // Default API key provided by user
-const API_KEY = process.env.FOOTBALL_API_KEY || process.env.API_FOOTBALL_KEY || 'a7ac2f7672bcafcf6fdca1b021b74865';
+const API_KEY = process.env.FOOTBALL_API_KEY || process.env.API_FOOTBALL_KEY || '8a7e3c18ff59d0c7d254d230f999a084';
 const BASE_URL = 'https://v3.football.api-sports.io';
 
 // Request counter (resets daily)

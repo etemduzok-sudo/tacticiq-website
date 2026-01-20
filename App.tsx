@@ -79,7 +79,7 @@ if (Platform.OS === 'web') {
     Layout = { duration: noop, delay: noop, springify: noop };
   }
 }
-// import './src/i18n'; // Initialize i18n - Temporarily disabled for web debugging
+import './src/i18n'; // Initialize i18n
 
 // Web için UIManager polyfills
 if (Platform.OS === 'web') {
@@ -784,7 +784,7 @@ export default function App() {
               onRegister={handleRegister}
               onBack={() => {
                 setPreviousScreen(currentScreen);
-                setCurrentScreen('language');
+                setCurrentScreen('onboarding');
               }}
             />,
             'auth'

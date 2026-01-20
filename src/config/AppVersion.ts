@@ -158,9 +158,9 @@ export function getAppInfo(): string {
  * Log version info (for debugging)
  */
 export function logVersionInfo(): void {
-  console.log('╔════════════════════════════════════════╗');
-  console.log('║     FAN MANAGER 2026 - VERSION INFO   ║');
-  console.log('╠════════════════════════════════════════╣');
+        console.log('╔════════════════════════════════════════╗');
+        console.log('║         TACTICIQ - VERSION INFO        ║');
+        console.log('╠════════════════════════════════════════╣');
   console.log(`║ Version: ${APP_VERSION.current.padEnd(28)} ║`);
   console.log(`║ Build: ${String(APP_VERSION.buildNumber).padEnd(30)} ║`);
   console.log(`║ Release: ${APP_VERSION.releaseDate.padEnd(26)} ║`);

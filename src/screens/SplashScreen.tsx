@@ -23,6 +23,10 @@ import {
   OPACITY,
   Z_INDEX,
 } from '../theme/theme';
+import {
+  WEBSITE_BRAND_COLORS,
+  WEBSITE_SPACING as WDS_SPACING,
+} from '../config/WebsiteDesignSystem';
 
 const { width, height } = Dimensions.get('window');
 
@@ -41,7 +45,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
       // Web'de direkt splash'i tamamla
       const timer = setTimeout(async () => {
         try {
-          const userToken = await AsyncStorage.getItem('fan-manager-user');
+          const userToken = await AsyncStorage.getItem('tacticiq-user');
           const hasUser = !!userToken;
           console.log('🔍 User token:', userToken);
           onComplete(hasUser);
@@ -49,7 +53,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
           console.error('❌ Error checking user:', error);
           onComplete(false);
         }
-      }, 2000);
+      }, 5000); // 5 saniye
       return () => clearTimeout(timer);
     }
 
@@ -58,11 +62,11 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
     // Check user status and navigate
     const checkUserStatus = async () => {
       try {
-        await new Promise(resolve => setTimeout(resolve, 2000)); // 2 saniye (test için kısaltıldı)
+        await new Promise(resolve => setTimeout(resolve, 5000)); // 5 saniye
         
         // 🧪 TEST MODE: Set "pro" user if not exists and save to DB
         if (__DEV__) {
-          const existingUser = await AsyncStorage.getItem('fan-manager-user');
+          const existingUser = await AsyncStorage.getItem('tacticiq-user');
           if (!existingUser) {
             const { usersDb } = await import('../services/databaseService');
             
@@ -76,7 +80,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
             };
             
             // Save to AsyncStorage
-            await AsyncStorage.setItem('fan-manager-user', JSON.stringify(testUser));
+            await AsyncStorage.setItem('tacticiq-user', JSON.stringify(testUser));
             console.log('✅ Test user "pro" set up in AsyncStorage');
             
             // Save to Database
@@ -121,7 +125,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
           }
         }
         
-        const userToken = await AsyncStorage.getItem('fan-manager-user');
+        const userToken = await AsyncStorage.getItem('tacticiq-user');
         console.log('🔍 User token:', userToken);
         onComplete(userToken !== null);
       } catch (error) {
@@ -138,12 +142,13 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <LinearGradient
-        colors={AUTH_GRADIENT.colors}
+        colors={['#0a1612', '#0F2A24', '#0a1612']}
         style={styles.container}
-        start={AUTH_GRADIENT.start}
-        end={AUTH_GRADIENT.end}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
       >
-        {/* ✅ Animated Background Pattern kaldırıldı (baloncuklar) */}
+        {/* Grid Pattern Background */}
+        <View style={styles.gridPattern} />
 
         {/* Main Content */}
         <View style={styles.content}>
@@ -156,24 +161,6 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
             />
           </View>
 
-          {/* Loading Indicator - Standart görünüm (animasyon yok) */}
-          <View style={styles.loadingContainer}>
-            <View style={styles.dotsContainer}>
-              <View style={styles.dot} />
-              <View style={styles.dot} />
-              <View style={styles.dot} />
-            </View>
-          </View>
-
-          {/* Tagline - Standart görünüm */}
-          <View>
-            <Text style={styles.tagline}>Predict • Compete • Win</Text>
-          </View>
-        </View>
-
-        {/* Bottom Branding - Standart görünüm */}
-        <View style={styles.brandingContainer}>
-          <Text style={styles.brandingText}>Powered by Football Passion</Text>
         </View>
       </LinearGradient>
     </SafeAreaView>
@@ -183,73 +170,56 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: AUTH_GRADIENT.colors[0],
+    backgroundColor: WEBSITE_BRAND_COLORS.primary,
   },
   container: {
     flex: 1,
     position: 'relative',
   },
   
-  // ✅ Background pattern ve circles kaldırıldı (baloncuklar)
+  // Grid Pattern Background - Websitesi ile uyumlu
+  gridPattern: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    opacity: 1,
+    zIndex: 0,
+    ...Platform.select({
+      web: {
+        backgroundImage: `
+          linear-gradient(to right, rgba(31, 162, 166, 0.12) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(31, 162, 166, 0.12) 1px, transparent 1px)
+        `,
+        backgroundSize: '40px 40px',
+      },
+      default: {
+        backgroundColor: 'transparent',
+      },
+    }),
+  },
   
-  // Main Content
+  // Main Content - Tam ortada
   content: {
     flex: 1,
     alignItems: 'center',
-    justifyContent: 'flex-start',
-    paddingTop: 120, // %30 azaltıldı (yaklaşık 170 * 0.7) - logo'yu yukarı taşımak için
+    justifyContent: 'center', // Tam ortada
     paddingHorizontal: SPACING.xl,
     zIndex: Z_INDEX.sticky,
   },
   
-  // Logo - Standart boyut (96x96), animasyon yok
+  // Logo - Büyük boyut, tam ortada
   logoContainer: {
-    marginTop: 0,
-    marginBottom: 22, // %30 azaltıldı (32 * 0.7)
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: SPACING.xl,
   },
   logoImage: {
-    width: 96,
-    height: 96,
+    width: 450, // %50 büyütüldü (300 * 1.5)
+    height: 450,
   },
   
-  // Loading Dots
-  loadingContainer: {
-    marginTop: SPACING.xxl,
-  },
-  dotsContainer: {
-    flexDirection: 'row',
-    gap: SPACING.sm,
-  },
-  dot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: BRAND.white,
-  },
-  
-  // Tagline
-  tagline: {
-    ...TYPOGRAPHY.bodySmall,
-    color: `rgba(255, 255, 255, ${OPACITY[80]})`,
-    marginTop: SPACING.xl,
-    textAlign: 'center',
-  },
-  
-  // Bottom Branding
-  brandingContainer: {
-    position: 'absolute',
-    bottom: SPACING.xl,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-  },
-  brandingText: {
-    ...TYPOGRAPHY.bodySmall,
-    color: `rgba(255, 255, 255, ${OPACITY[60]})`,
-    textAlign: 'center',
-  },
 });
 
 export default SplashScreen;
