@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { useLanguage } from '@/contexts/LanguageContext';
+import { useLanguage, Language } from '@/contexts/LanguageContext';
 import { useUserAuth, UserProfile } from '@/contexts/UserAuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
 import { Label } from '@/app/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/app/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/app/components/ui/avatar';
 import { Badge } from '@/app/components/ui/badge';
 import { Separator } from '@/app/components/ui/separator';
@@ -43,8 +44,34 @@ import { toast } from 'sonner';
 import { LegalDocumentsModal } from '@/app/components/legal/LegalDocumentsModal';
 import { ChangePasswordModal } from '@/app/components/auth/ChangePasswordModal';
 
+// Available languages
+const LANGUAGES = [
+  { code: 'tr', name: 'Türkçe', flag: '🇹🇷' },
+  { code: 'en', name: 'English', flag: '🇬🇧' },
+  { code: 'de', name: 'Deutsch', flag: '🇩🇪' },
+  { code: 'fr', name: 'Français', flag: '🇫🇷' },
+  { code: 'es', name: 'Español', flag: '🇪🇸' },
+  { code: 'it', name: 'Italiano', flag: '🇮🇹' },
+  { code: 'ar', name: 'العربية', flag: '🇸🇦' },
+  { code: 'zh', name: '中文', flag: '🇨🇳' },
+];
+
+// Available timezones
+const TIMEZONES = [
+  { id: 'Europe/Istanbul', name: 'İstanbul (UTC+3)', offset: '+03:00' },
+  { id: 'Europe/London', name: 'Londra (UTC+0)', offset: '+00:00' },
+  { id: 'Europe/Berlin', name: 'Berlin (UTC+1)', offset: '+01:00' },
+  { id: 'Europe/Paris', name: 'Paris (UTC+1)', offset: '+01:00' },
+  { id: 'Europe/Madrid', name: 'Madrid (UTC+1)', offset: '+01:00' },
+  { id: 'America/New_York', name: 'New York (UTC-5)', offset: '-05:00' },
+  { id: 'America/Los_Angeles', name: 'Los Angeles (UTC-8)', offset: '-08:00' },
+  { id: 'Asia/Dubai', name: 'Dubai (UTC+4)', offset: '+04:00' },
+  { id: 'Asia/Shanghai', name: 'Şangay (UTC+8)', offset: '+08:00' },
+  { id: 'Asia/Tokyo', name: 'Tokyo (UTC+9)', offset: '+09:00' },
+];
+
 export function UserProfileSection() {
-  const { t } = useLanguage();
+  const { t, language, setLanguage } = useLanguage();
   const { user, profile, signOut, updateProfile, deleteAccount, isLoading } = useUserAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [editedName, setEditedName] = useState(profile?.name || '');
@@ -60,6 +87,9 @@ export function UserProfileSection() {
   const [emailNotifications, setEmailNotifications] = useState(false);
   const [weeklySummary, setWeeklySummary] = useState(false);
   const [campaignNotifications, setCampaignNotifications] = useState(true);
+  
+  // Language & Timezone state
+  const [selectedTimezone, setSelectedTimezone] = useState('Europe/Istanbul');
 
   // User stats (mobile app ile tutarlı)
   const userStats = {
@@ -85,12 +115,42 @@ export function UserProfileSection() {
     { id: 'expert', icon: '⭐', name: 'Expert', description: 'Level 10\'a ulaştı' },
   ];
 
-  // Badges (mobile app ile tutarlı)
+  // Badges (mobile app ile tutarlı - 25 rozet)
   const allBadges = [
-    { id: 'first_prediction', name: 'İlk Tahmin', icon: '🎯', tier: 'bronze', earned: false },
-    { id: 'win_streak_3', name: '3\'lü Seri', icon: '🔥', tier: 'silver', earned: false },
-    { id: 'perfect_week', name: 'Mükemmel Hafta', icon: '⭐', tier: 'gold', earned: false },
-    { id: 'champion', name: 'Şampiyon', icon: '🏆', tier: 'platinum', earned: false },
+    // Bronz Tier
+    { id: 'first_prediction', name: 'İlk Tahmin', icon: '🎯', tier: 'bronze', earned: false, howToEarn: 'İlk tahmininizi yapın' },
+    { id: 'rookie', name: 'Çaylak', icon: '🌱', tier: 'bronze', earned: false, howToEarn: '5 tahmin yapın' },
+    { id: 'streak_3', name: '3\'lü Seri', icon: '🔥', tier: 'bronze', earned: false, howToEarn: '3 ardışık doğru tahmin' },
+    { id: 'early_bird', name: 'Erken Kuş', icon: '🐦', tier: 'bronze', earned: false, howToEarn: 'Maçtan 24 saat önce tahmin yapın' },
+    { id: 'daily_player', name: 'Günlük Oyuncu', icon: '📅', tier: 'bronze', earned: false, howToEarn: '7 gün üst üste aktif olun' },
+    
+    // Gümüş Tier
+    { id: 'streak_5', name: '5\'li Seri', icon: '🔥', tier: 'silver', earned: false, howToEarn: '5 ardışık doğru tahmin' },
+    { id: 'league_expert', name: 'Lig Uzmanı', icon: '🏟️', tier: 'silver', earned: false, howToEarn: 'Tek bir ligde 20 doğru tahmin' },
+    { id: 'team_supporter', name: 'Takım Destekçisi', icon: '🎽', tier: 'silver', earned: false, howToEarn: 'Favori takımınızın 10 maçını tahmin edin' },
+    { id: 'quick_learner', name: 'Hızlı Öğrenen', icon: '📚', tier: 'silver', earned: false, howToEarn: 'İlk haftada 50 puan kazanın' },
+    { id: 'night_owl', name: 'Gece Kuşu', icon: '🦉', tier: 'silver', earned: false, howToEarn: 'Gece 00:00 sonrası 10 tahmin yapın' },
+    
+    // Altın Tier
+    { id: 'streak_10', name: '10\'lu Seri', icon: '🔥', tier: 'gold', earned: false, howToEarn: '10 ardışık doğru tahmin' },
+    { id: 'perfect_week', name: 'Mükemmel Hafta', icon: '⭐', tier: 'gold', earned: false, howToEarn: 'Bir haftada %100 başarı' },
+    { id: 'multi_league', name: 'Çoklu Lig Ustası', icon: '🌍', tier: 'gold', earned: false, howToEarn: '5 farklı ligde tahmin yapın' },
+    { id: 'prediction_wizard', name: 'Tahmin Büyücüsü', icon: '🧙', tier: 'gold', earned: false, howToEarn: '%75+ başarı oranı (min 50 tahmin)' },
+    { id: 'consistency_champ', name: 'Tutarlılık Şampiyonu', icon: '📊', tier: 'gold', earned: false, howToEarn: '30 gün üst üste aktif olun' },
+    
+    // Platin Tier
+    { id: 'streak_20', name: '20\'li Seri', icon: '🔥', tier: 'platinum', earned: false, howToEarn: '20 ardışık doğru tahmin' },
+    { id: 'champion', name: 'Şampiyon', icon: '🏆', tier: 'platinum', earned: false, howToEarn: 'Haftalık liderlik tablosunda 1. olun' },
+    { id: 'legend', name: 'Efsane', icon: '👑', tier: 'platinum', earned: false, howToEarn: '1000 doğru tahmin yapın' },
+    { id: 'legendary_analyst', name: 'Efsanevi Analist', icon: '🔮', tier: 'platinum', earned: false, howToEarn: '%85+ başarı oranı (min 100 tahmin)' },
+    { id: 'pro_predictor', name: 'Pro Tahmincu', icon: '💎', tier: 'platinum', earned: false, howToEarn: 'Pro üye olun ve 100 tahmin yapın' },
+    
+    // Elmas Tier
+    { id: 'streak_50', name: '50\'li Seri', icon: '🔥', tier: 'diamond', earned: false, howToEarn: '50 ardışık doğru tahmin' },
+    { id: 'tacticiq_master', name: 'TacticIQ Master', icon: '🎓', tier: 'diamond', earned: false, howToEarn: 'Diğer 24 rozeti kazanın' },
+    { id: 'world_champion', name: 'Dünya Şampiyonu', icon: '🌟', tier: 'diamond', earned: false, howToEarn: 'Global liderlik tablosunda 1. olun' },
+    { id: 'perfect_month', name: 'Mükemmel Ay', icon: '🌙', tier: 'diamond', earned: false, howToEarn: 'Bir ayda %90+ başarı oranı' },
+    { id: 'ultimate_fan', name: 'Ultimate Fan', icon: '⚽', tier: 'diamond', earned: false, howToEarn: '5000 puan kazanın' },
   ];
 
   // Show loading state while auth is initializing
@@ -473,11 +533,48 @@ export function UserProfileSection() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Dil</Label>
-                      <Input value={profile.preferredLanguage || 'Türkçe'} disabled />
+                      <Select 
+                        value={language} 
+                        onValueChange={(value: Language) => {
+                          setLanguage(value);
+                          toast.success(`Dil değiştirildi: ${LANGUAGES.find(l => l.code === value)?.name}`);
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Dil seçin" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {LANGUAGES.map(lang => (
+                            <SelectItem key={lang.code} value={lang.code}>
+                              <span className="flex items-center gap-2">
+                                <span>{lang.flag}</span>
+                                <span>{lang.name}</span>
+                              </span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div className="space-y-2">
                       <Label>Saat Dilimi</Label>
-                      <Input value="Europe/Istanbul (UTC+3)" disabled />
+                      <Select 
+                        value={selectedTimezone} 
+                        onValueChange={(value) => {
+                          setSelectedTimezone(value);
+                          toast.success(`Saat dilimi değiştirildi: ${TIMEZONES.find(tz => tz.id === value)?.name}`);
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Saat dilimi seçin" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {TIMEZONES.map(tz => (
+                            <SelectItem key={tz.id} value={tz.id}>
+                              {tz.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                 </div>
@@ -579,43 +676,88 @@ export function UserProfileSection() {
             </Card>
           </>
         ) : (
-          /* Badges Tab - Mobile App ile tutarlı */
-          <div className="grid grid-cols-4 gap-3">
-            {allBadges.map((badge) => (
-              <Card 
-                key={badge.id} 
-                className={`text-center p-4 cursor-pointer transition-all hover:scale-105 ${
-                  badge.earned 
-                    ? 'border-amber-500/50 bg-amber-500/5' 
-                    : 'opacity-50 grayscale'
-                }`}
-              >
-                <div className="relative">
-                  {!badge.earned && (
-                    <div className="absolute -top-1 -right-1 size-5 rounded-full bg-muted flex items-center justify-center">
-                      <span className="text-xs">🔒</span>
-                    </div>
-                  )}
-                  <span className="text-3xl">{badge.icon}</span>
+          /* Badges Tab - Mobile App ile tutarlı (25 rozet) */
+          <div className="space-y-6">
+            {/* Badge Stats */}
+            <Card className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Kazanılan Rozetler</p>
+                  <p className="text-3xl font-bold text-amber-500">{allBadges.filter(b => b.earned).length}</p>
                 </div>
-                <p className="text-xs font-medium mt-2 line-clamp-2">{badge.name}</p>
-                <Badge 
-                  variant="outline" 
-                  className={`text-[10px] mt-1 ${
-                    badge.tier === 'bronze' ? 'text-orange-600 border-orange-600/30' :
-                    badge.tier === 'silver' ? 'text-slate-400 border-slate-400/30' :
-                    badge.tier === 'gold' ? 'text-amber-500 border-amber-500/30' :
-                    'text-purple-500 border-purple-500/30'
+                <div className="text-right">
+                  <p className="text-sm text-muted-foreground">Toplam Rozetler</p>
+                  <p className="text-3xl font-bold">{allBadges.length}</p>
+                </div>
+              </div>
+              <div className="mt-3 h-2 bg-muted rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-gradient-to-r from-amber-500 to-yellow-400 rounded-full transition-all"
+                  style={{ width: `${(allBadges.filter(b => b.earned).length / allBadges.length) * 100}%` }}
+                />
+              </div>
+            </Card>
+
+            {/* Badges Grid */}
+            <div className="grid grid-cols-5 gap-3">
+              {allBadges.map((badge) => (
+                <Card 
+                  key={badge.id} 
+                  className={`text-center p-3 cursor-pointer transition-all hover:scale-105 group relative ${
+                    badge.earned 
+                      ? 'border-amber-500/50 bg-amber-500/5' 
+                      : 'opacity-60 grayscale hover:opacity-80 hover:grayscale-0'
                   }`}
+                  title={badge.earned 
+                    ? `${badge.name} - Kazanıldı!` 
+                    : `${badge.name} - Nasıl Kazanılır: ${badge.howToEarn}`
+                  }
                 >
-                  {badge.tier === 'bronze' ? 'Bronz' :
-                   badge.tier === 'silver' ? 'Gümüş' :
-                   badge.tier === 'gold' ? 'Altın' : 'Platin'}
-                </Badge>
-              </Card>
-            ))}
+                  <div className="relative">
+                    {!badge.earned && (
+                      <div className="absolute -top-1 -right-1 size-5 rounded-full bg-muted flex items-center justify-center z-10">
+                        <span className="text-xs">🔒</span>
+                      </div>
+                    )}
+                    {badge.earned && (
+                      <div className="absolute -top-1 -right-1 size-5 rounded-full bg-green-500 flex items-center justify-center z-10">
+                        <span className="text-xs">✓</span>
+                      </div>
+                    )}
+                    <span className="text-2xl">{badge.icon}</span>
+                  </div>
+                  <p className="text-[10px] font-medium mt-1 line-clamp-2">{badge.name}</p>
+                  <Badge 
+                    variant="outline" 
+                    className={`text-[8px] mt-1 px-1 py-0 ${
+                      badge.tier === 'bronze' ? 'text-orange-600 border-orange-600/30' :
+                      badge.tier === 'silver' ? 'text-slate-400 border-slate-400/30' :
+                      badge.tier === 'gold' ? 'text-amber-500 border-amber-500/30' :
+                      badge.tier === 'platinum' ? 'text-purple-500 border-purple-500/30' :
+                      'text-cyan-400 border-cyan-400/30'
+                    }`}
+                  >
+                    {badge.tier === 'bronze' ? 'Bronz' :
+                     badge.tier === 'silver' ? 'Gümüş' :
+                     badge.tier === 'gold' ? 'Altın' :
+                     badge.tier === 'platinum' ? 'Platin' : 'Elmas'}
+                  </Badge>
+                  
+                  {/* Tooltip on hover */}
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-20">
+                    <div className="bg-popover text-popover-foreground text-xs p-2 rounded-lg shadow-lg border whitespace-nowrap max-w-[200px]">
+                      <p className="font-semibold">{badge.name}</p>
+                      <p className="text-muted-foreground text-[10px] mt-1 whitespace-normal">
+                        {badge.earned ? '✅ Kazanıldı!' : `🎯 ${badge.howToEarn}`}
+                      </p>
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+            
             {allBadges.length === 0 && (
-              <div className="col-span-4 text-center py-16 text-muted-foreground">
+              <div className="text-center py-16 text-muted-foreground">
                 <Trophy className="size-16 mx-auto mb-4 opacity-30" />
                 <p className="text-lg font-medium">Henüz rozet yok</p>
                 <p className="text-sm">Maçlara tahmin yap ve rozetleri kazan!</p>

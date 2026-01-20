@@ -317,19 +317,19 @@ export function LegalDocumentsModal({ open, onOpenChange, documentId }: LegalDoc
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh]">
-        <DialogHeader>
+      <DialogContent className="max-w-5xl w-[95vw] max-h-[85vh] flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle>{t('legal.title') || 'Yasal Belgeler'}</DialogTitle>
           <DialogDescription>
             {t('legal.description') || 'Platform kullanım koşulları ve yasal bilgilendirmeler'}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 flex-1 min-h-0 overflow-hidden">
           {/* Document List */}
-          <div className="md:col-span-1">
-            <ScrollArea className="h-[60vh] pr-4">
-              <div className="space-y-2">
+          <div className="md:col-span-1 flex flex-col min-h-0">
+            <ScrollArea className="flex-1 pr-4" style={{ maxHeight: 'calc(70vh - 120px)' }}>
+              <div className="space-y-2 pb-4">
                 {LEGAL_DOCUMENTS.map((doc) => (
                   <button
                     key={doc.id}
@@ -346,7 +346,7 @@ export function LegalDocumentsModal({ open, onOpenChange, documentId }: LegalDoc
                         <p className="font-medium text-sm">
                           {LEGAL_DOC_KEYS[doc.id] ? t(LEGAL_DOC_KEYS[doc.id].titleKey) : doc.title}
                         </p>
-                        <p className="text-xs text-muted-foreground mt-1">{doc.description}</p>
+                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{doc.description}</p>
                       </div>
                     </div>
                   </button>
@@ -356,12 +356,17 @@ export function LegalDocumentsModal({ open, onOpenChange, documentId }: LegalDoc
           </div>
 
           {/* Document Content */}
-          <div className="md:col-span-2">
-            <ScrollArea className="h-[60vh]">
-              {currentDoc ? (
-                <div className="prose prose-sm dark:prose-invert max-w-none">
-                  <h2 className="text-2xl font-bold mb-4">{currentDoc.title}</h2>
-                  <div className="whitespace-pre-wrap text-sm leading-relaxed">
+          <div className="md:col-span-2 flex flex-col min-h-0 border rounded-lg bg-muted/20">
+            <ScrollArea className="flex-1 p-4" style={{ maxHeight: 'calc(70vh - 120px)' }}>
+              {loading ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <div className="animate-spin size-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4" />
+                  <p>Yükleniyor...</p>
+                </div>
+              ) : currentDoc ? (
+                <div className="prose prose-sm dark:prose-invert max-w-none pb-4">
+                  <h2 className="text-xl font-bold mb-4 text-foreground">{currentDoc.title}</h2>
+                  <div className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
                     {currentDoc.content}
                   </div>
                 </div>
@@ -375,7 +380,7 @@ export function LegalDocumentsModal({ open, onOpenChange, documentId }: LegalDoc
           </div>
         </div>
 
-        <div className="flex justify-end gap-2 mt-4">
+        <div className="flex justify-end gap-2 pt-4 flex-shrink-0 border-t">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             {t('common.close') || 'Kapat'}
           </Button>
