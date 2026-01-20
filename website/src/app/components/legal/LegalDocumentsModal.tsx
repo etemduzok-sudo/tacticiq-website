@@ -317,7 +317,7 @@ export function LegalDocumentsModal({ open, onOpenChange, documentId }: LegalDoc
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-7xl w-[98vw] max-h-[90vh] flex flex-col overflow-hidden">
+      <DialogContent className="max-w-[95vw] w-[95vw] max-h-[90vh] flex flex-col overflow-hidden">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle>{t('legal.title') || 'Yasal Belgeler'}</DialogTitle>
           <DialogDescription>
@@ -325,9 +325,9 @@ export function LegalDocumentsModal({ open, onOpenChange, documentId }: LegalDoc
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 flex-1 min-h-0 overflow-hidden">
+        <div className="grid grid-cols-1 md:grid-cols-[280px_1fr] gap-6 flex-1 min-h-0 overflow-hidden">
           {/* Document List */}
-          <div className="md:col-span-1 flex flex-col min-h-0 overflow-hidden">
+          <div className="flex flex-col min-h-0 overflow-hidden">
             <ScrollArea className="flex-1 pr-2" style={{ height: 'calc(90vh - 180px)' }}>
               <div className="space-y-2 pb-4">
                 {LEGAL_DOCUMENTS.map((doc) => (
@@ -356,7 +356,7 @@ export function LegalDocumentsModal({ open, onOpenChange, documentId }: LegalDoc
           </div>
 
           {/* Document Content */}
-          <div className="md:col-span-2 flex flex-col min-h-0 border rounded-lg bg-muted/20 overflow-hidden">
+          <div className="flex flex-col min-h-0 border rounded-lg bg-muted/20 overflow-hidden">
             <ScrollArea className="flex-1" style={{ height: 'calc(90vh - 180px)' }}>
               <div className="p-6">
                 {loading ? (
