@@ -190,12 +190,42 @@ export function AdminPanel() {
           </div>
         </CardHeader>
         <Separator className="flex-shrink-0" />
+        
+        {/* Admin Mode Selector - Prominent Tabs */}
+        <div className="p-2 border-b border-border">
+          <div className="flex gap-1 bg-muted rounded-lg p-1">
+            <button
+              onClick={() => setActiveSection('dashboard')}
+              className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-semibold transition-all ${
+                !['test'].includes(activeSection)
+                  ? 'bg-primary text-primary-foreground shadow-md'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted-foreground/10'
+              }`}
+            >
+              <Monitor className="size-4" />
+              Web Admin
+            </button>
+            <button
+              onClick={() => setActiveSection('test')}
+              className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-semibold transition-all ${
+                ['test'].includes(activeSection)
+                  ? 'bg-secondary text-secondary-foreground shadow-md'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted-foreground/10'
+              }`}
+            >
+              <Smartphone className="size-4" />
+              Mobil Admin
+            </button>
+          </div>
+        </div>
+        
         <div className="flex-1 overflow-y-auto p-2 space-y-1">
-          {/* Web Admin Section */}
-          <div className="px-2 py-2">
+          {/* Web Admin Section - Only show when not in mobile admin */}
+          {!['test'].includes(activeSection) && (
+          <div className="px-2 py-2 bg-primary/5 rounded-lg border border-primary/20">
             <div className="flex items-center gap-2 mb-2">
               <Monitor className="size-4 text-primary" />
-              <span className="text-xs font-semibold text-primary uppercase tracking-wider">Web Admin</span>
+              <span className="text-xs font-semibold text-primary uppercase tracking-wider">Web Yönetimi</span>
             </div>
             <div className="space-y-1 ml-6">
               <MenuButton
@@ -314,12 +344,14 @@ export function AdminPanel() {
               />
             </div>
           </div>
+          )}
 
-          {/* Mobil Admin Section */}
-          <div className="px-2 py-2 mt-4">
+          {/* Mobil Admin Section - Only show when in mobile admin mode */}
+          {['test'].includes(activeSection) && (
+          <div className="px-2 py-2 bg-secondary/10 rounded-lg border border-secondary/30">
             <div className="flex items-center gap-2 mb-2">
               <Smartphone className="size-4 text-secondary" />
-              <span className="text-xs font-semibold text-secondary uppercase tracking-wider">Mobil Admin</span>
+              <span className="text-xs font-semibold text-secondary uppercase tracking-wider">Mobil Yönetimi</span>
             </div>
             <div className="space-y-1 ml-6">
               <MenuButton
@@ -331,6 +363,7 @@ export function AdminPanel() {
               />
             </div>
           </div>
+          )}
         </div>
       </Card>
 
@@ -6073,8 +6106,8 @@ function LegalDocumentsContent() {
 
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingDoc, setEditingDoc] = useState<LegalDocument | null>(null);
-  const [selectedLanguage, setSelectedLanguage] = useState<string>('tr');
-  const [selectedDocumentId, setSelectedDocumentId] = useState<string>('terms');
+  const [selectedLanguage, setSelectedLanguage] = useState<string>('all');
+  const [selectedDocumentId, setSelectedDocumentId] = useState<string>('all');
   
   const [formData, setFormData] = useState({
     document_id: 'terms' as string,
@@ -6154,8 +6187,8 @@ function LegalDocumentsContent() {
   };
 
   const filteredDocuments = legalDocuments.filter(doc => 
-    (!selectedDocumentId || doc.document_id === selectedDocumentId) &&
-    (!selectedLanguage || doc.language === selectedLanguage)
+    (selectedDocumentId === 'all' || !selectedDocumentId || doc.document_id === selectedDocumentId) &&
+    (selectedLanguage === 'all' || !selectedLanguage || doc.language === selectedLanguage)
   );
 
   return (
@@ -6195,7 +6228,7 @@ function LegalDocumentsContent() {
                   <SelectValue placeholder="Tüm belgeler" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Tüm belgeler</SelectItem>
+                  <SelectItem value="all">Tüm belgeler</SelectItem>
                   {documentTypes.map(type => (
                     <SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>
                   ))}
@@ -6209,7 +6242,7 @@ function LegalDocumentsContent() {
                   <SelectValue placeholder="Tüm diller" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Tüm diller</SelectItem>
+                  <SelectItem value="all">Tüm diller</SelectItem>
                   {languages.map(lang => (
                     <SelectItem key={lang.code} value={lang.code}>{lang.name}</SelectItem>
                   ))}
