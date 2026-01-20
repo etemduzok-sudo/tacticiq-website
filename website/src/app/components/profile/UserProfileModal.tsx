@@ -522,39 +522,90 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
                         )}
                       </div>
 
-                      {/* Milli Takım Seçimi - Zorunlu (Tüm kullanıcılar için) - Searchable */}
+                      {/* Milli Takım Seçimi - Zorunlu (Tüm kullanıcılar için) - Searchable Button */}
                       <div className="space-y-2">
                         <Label>
                           Milli Takım <span className="text-destructive">*</span>
                         </Label>
                         <div className="relative">
-                          <Input
-                            placeholder={selectedNationalTeam || "Milli takım ara (min 3 karakter)..."}
-                            value={nationalTeamSearch || selectedNationalTeam}
-                            onChange={(e) => {
-                              const value = e.target.value;
-                              setNationalTeamSearch(value);
-                              setShowNationalTeamDropdown(value.length >= 3);
-                              if (value.length < 3) {
-                                setShowNationalTeamDropdown(false);
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (isEditing) {
+                                const input = document.getElementById('national-team-search');
+                                if (input) {
+                                  (input as HTMLInputElement).focus();
+                                } else {
+                                  setShowNationalTeamDropdown(!showNationalTeamDropdown);
+                                }
                               }
                             }}
-                            onFocus={() => {
-                              if (nationalTeamSearch.length >= 3) setShowNationalTeamDropdown(true);
-                            }}
-                            onBlur={() => {
-                              setTimeout(() => setShowNationalTeamDropdown(false), 200);
-                            }}
                             disabled={!isEditing}
-                            className={`${!isEditing ? 'bg-muted cursor-not-allowed' : ''} ${!selectedNationalTeam && isEditing ? 'border-destructive' : ''}`}
-                          />
-                          {showNationalTeamDropdown && nationalTeamSearch.length >= 3 && (
-                            <div className="absolute z-20 w-full mt-1 bg-popover border rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                              {nationalTeams
-                                .filter(team => 
+                            className={`w-full flex items-center justify-between h-10 px-3 py-2 text-sm border rounded-md bg-background ${
+                              !isEditing ? 'bg-muted cursor-not-allowed opacity-50' : 'cursor-pointer hover:bg-accent'
+                            } ${!selectedNationalTeam && isEditing ? 'border-destructive' : 'border-input'}`}
+                          >
+                            <span className={selectedNationalTeam ? '' : 'text-muted-foreground'}>
+                              {selectedNationalTeam || 'Milli takım seçin veya ara...'}
+                            </span>
+                            <div className="flex items-center gap-2">
+                              {selectedNationalTeam && !nationalTeamSearch && isEditing && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedNationalTeam('');
+                                    setNationalTeamSearch('');
+                                  }}
+                                  className="text-muted-foreground hover:text-foreground"
+                                >
+                                  <X className="size-4" />
+                                </button>
+                              )}
+                              <svg
+                                className="size-4 opacity-50"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </div>
+                          </button>
+                          
+                          {/* Search Input - Hidden by default, shown when clicked */}
+                          {(showNationalTeamDropdown || nationalTeamSearch) && isEditing && (
+                            <div 
+                              className="absolute z-30 w-full mt-1 bg-popover border rounded-lg shadow-lg"
+                              onMouseDown={(e) => e.preventDefault()}
+                            >
+                              <div className="p-2 border-b">
+                                <Input
+                                  id="national-team-search"
+                                  placeholder="Ara... (min 3 karakter)"
+                                  value={nationalTeamSearch}
+                                  onChange={(e) => {
+                                    const value = e.target.value;
+                                    setNationalTeamSearch(value);
+                                    if (value.length >= 3) {
+                                      setShowNationalTeamDropdown(true);
+                                    }
+                                  }}
+                                  onBlur={() => {
+                                    setTimeout(() => {
+                                      if (!document.activeElement?.closest('.absolute.z-30')) {
+                                        setShowNationalTeamDropdown(false);
+                                        setNationalTeamSearch('');
+                                      }
+                                    }, 200);
+                                  }}
+                                  autoFocus
+                                  className="w-full"
+                                />
+                              </div>
+                              <div className="max-h-60 overflow-y-auto">
+                                {(nationalTeamSearch.length >= 3 ? nationalTeams.filter(team => 
                                   team.toLowerCase().includes(nationalTeamSearch.toLowerCase())
-                                )
-                                .map(team => (
+                                ) : nationalTeams).map(team => (
                                   <button
                                     key={team}
                                     onClick={() => {
@@ -562,74 +613,103 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
                                       setNationalTeamSearch('');
                                       setShowNationalTeamDropdown(false);
                                     }}
-                                    className="w-full p-2 hover:bg-muted text-left text-sm transition-colors"
+                                    className={`w-full p-2 hover:bg-muted text-left text-sm transition-colors ${
+                                      selectedNationalTeam === team ? 'bg-primary/10' : ''
+                                    }`}
                                   >
                                     {team}
                                   </button>
                                 ))}
-                              {nationalTeams.filter(team => 
-                                team.toLowerCase().includes(nationalTeamSearch.toLowerCase())
-                              ).length === 0 && (
-                                <div className="p-2 text-sm text-muted-foreground text-center">
-                                  Sonuç bulunamadı
-                                </div>
-                              )}
-                            </div>
-                          )}
-                          {selectedNationalTeam && !nationalTeamSearch && (
-                            <div className="absolute right-2 top-1/2 -translate-y-1/2">
-                              <button
-                                onClick={() => {
-                                  setSelectedNationalTeam('');
-                                  setNationalTeamSearch('');
-                                }}
-                                disabled={!isEditing}
-                                className="text-muted-foreground hover:text-foreground disabled:opacity-50"
-                              >
-                                <X className="size-4" />
-                              </button>
+                                {nationalTeamSearch.length >= 3 && nationalTeams.filter(team => 
+                                  team.toLowerCase().includes(nationalTeamSearch.toLowerCase())
+                                ).length === 0 && (
+                                  <div className="p-2 text-sm text-muted-foreground text-center">
+                                    Sonuç bulunamadı
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           )}
                         </div>
                         <p className="text-xs text-muted-foreground">Bir milli takım seçmeniz zorunludur</p>
                       </div>
 
-                      {/* Kulüp Takımları Seçimi - Sadece Pro kullanıcılar için - Searchable */}
+                      {/* Kulüp Takımları Seçimi - Sadece Pro kullanıcılar için - Searchable Button */}
                       {isPro && (
                         <div className="space-y-2">
                           <Label>
                             Kulüp Takımları <span className="text-xs text-muted-foreground">(Maksimum 5)</span>
                           </Label>
-                          {/* Search Input */}
                           <div className="relative">
-                            <Input
-                              placeholder="Kulüp takımı ara (min 3 karakter)..."
-                              value={clubTeamSearch}
-                              onChange={(e) => {
-                                const value = e.target.value;
-                                setClubTeamSearch(value);
-                                setShowClubTeamDropdown(value.length >= 3);
-                                if (value.length < 3) {
-                                  setShowClubTeamDropdown(false);
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (isEditing) {
+                                  const input = document.getElementById('club-team-search');
+                                  if (input) {
+                                    (input as HTMLInputElement).focus();
+                                  } else {
+                                    setShowClubTeamDropdown(!showClubTeamDropdown);
+                                  }
                                 }
                               }}
-                              onFocus={() => {
-                                if (clubTeamSearch.length >= 3) setShowClubTeamDropdown(true);
-                              }}
-                              onBlur={() => {
-                                setTimeout(() => setShowClubTeamDropdown(false), 200);
-                              }}
-                              disabled={!isEditing}
-                              className={!isEditing ? 'bg-muted cursor-not-allowed' : ''}
-                            />
-                            {showClubTeamDropdown && clubTeamSearch.length >= 3 && (
-                              <div className="absolute z-20 w-full mt-1 bg-popover border rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                                {clubTeamsList
-                                  .filter(team => 
+                              disabled={!isEditing || selectedClubTeams.length >= 5}
+                              className={`w-full flex items-center justify-between h-10 px-3 py-2 text-sm border rounded-md bg-background ${
+                                !isEditing || selectedClubTeams.length >= 5
+                                  ? 'bg-muted cursor-not-allowed opacity-50'
+                                  : 'cursor-pointer hover:bg-accent'
+                              } border-input`}
+                            >
+                              <span className="text-muted-foreground">
+                                {selectedClubTeams.length > 0 
+                                  ? `${selectedClubTeams.length} takım seçildi`
+                                  : 'Kulüp takımı seçin veya ara...'}
+                              </span>
+                              <svg
+                                className="size-4 opacity-50"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </button>
+                            
+                            {/* Search Input - Hidden by default, shown when clicked */}
+                            {(showClubTeamDropdown || clubTeamSearch) && isEditing && (
+                              <div 
+                                className="absolute z-30 w-full mt-1 bg-popover border rounded-lg shadow-lg"
+                                onMouseDown={(e) => e.preventDefault()}
+                              >
+                                <div className="p-2 border-b">
+                                  <Input
+                                    id="club-team-search"
+                                    placeholder="Ara... (min 3 karakter)"
+                                    value={clubTeamSearch}
+                                    onChange={(e) => {
+                                      const value = e.target.value;
+                                      setClubTeamSearch(value);
+                                      if (value.length >= 3) {
+                                        setShowClubTeamDropdown(true);
+                                      }
+                                    }}
+                                    onBlur={() => {
+                                      setTimeout(() => {
+                                        if (!document.activeElement?.closest('.absolute.z-30')) {
+                                          setShowClubTeamDropdown(false);
+                                          setClubTeamSearch('');
+                                        }
+                                      }, 200);
+                                    }}
+                                    autoFocus
+                                    className="w-full"
+                                  />
+                                </div>
+                                <div className="max-h-60 overflow-y-auto">
+                                  {(clubTeamSearch.length >= 3 ? clubTeamsList.filter(team => 
                                     team.toLowerCase().includes(clubTeamSearch.toLowerCase()) &&
                                     !selectedClubTeams.includes(team)
-                                  )
-                                  .map(team => (
+                                  ) : clubTeamsList.filter(team => !selectedClubTeams.includes(team))).map(team => (
                                     <button
                                       key={team}
                                       onClick={() => {
@@ -637,23 +717,30 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
                                         setClubTeamSearch('');
                                         setShowClubTeamDropdown(false);
                                       }}
-                                      disabled={!isEditing || selectedClubTeams.length >= 5}
-                                      className="w-full p-2 hover:bg-muted text-left text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                      disabled={selectedClubTeams.length >= 5}
+                                      className={`w-full p-2 hover:bg-muted text-left text-sm transition-colors ${
+                                        selectedClubTeams.includes(team) ? 'bg-primary/10' : ''
+                                      } disabled:opacity-50 disabled:cursor-not-allowed`}
                                     >
                                       {team}
+                                      {selectedClubTeams.includes(team) && (
+                                        <span className="ml-2 text-primary">✓</span>
+                                      )}
                                     </button>
                                   ))}
-                                {clubTeamsList.filter(team => 
-                                  team.toLowerCase().includes(clubTeamSearch.toLowerCase()) &&
-                                  !selectedClubTeams.includes(team)
-                                ).length === 0 && (
-                                  <div className="p-2 text-sm text-muted-foreground text-center">
-                                    {selectedClubTeams.length >= 5 ? 'Maksimum 5 kulüp takımı seçebilirsiniz' : 'Sonuç bulunamadı'}
-                                  </div>
-                                )}
+                                  {clubTeamSearch.length >= 3 && clubTeamsList.filter(team => 
+                                    team.toLowerCase().includes(clubTeamSearch.toLowerCase()) &&
+                                    !selectedClubTeams.includes(team)
+                                  ).length === 0 && (
+                                    <div className="p-2 text-sm text-muted-foreground text-center">
+                                      {selectedClubTeams.length >= 5 ? 'Maksimum 5 kulüp takımı seçebilirsiniz' : 'Sonuç bulunamadı'}
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             )}
                           </div>
+                          
                           {/* Selected Teams */}
                           {selectedClubTeams.length > 0 && (
                             <div className="flex flex-wrap gap-2">
@@ -715,35 +802,16 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
                             </div>
                             {/* Kulüp Takımları Arama Combobox */}
                             <div className="relative">
-                              <Input
-                                placeholder="Kulüp takımı ara (min 3 karakter)..."
-                                value={clubTeamSearch}
-                                onChange={(e) => {
-                                  setClubTeamSearch(e.target.value);
-                                  setShowClubTeamDropdown(e.target.value.length >= 3);
-                                }}
-                                onFocus={() => {
-                                  if (clubTeamSearch.length >= 3) setShowClubTeamDropdown(true);
-                                }}
+                              <button
+                                type="button"
                                 disabled={true}
-                                className="bg-background/50"
-                              />
-                              {showClubTeamDropdown && clubTeamSearch.length >= 3 && (
-                                <div className="absolute z-20 w-full mt-1 bg-popover border rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                                  {clubTeamsList
-                                    .filter(team => 
-                                      team.toLowerCase().includes(clubTeamSearch.toLowerCase())
-                                    )
-                                    .map(team => (
-                                      <div
-                                        key={team}
-                                        className="p-2 hover:bg-muted cursor-not-allowed opacity-50 text-sm"
-                                      >
-                                        {team}
-                                      </div>
-                                    ))}
-                                </div>
-                              )}
+                                className="w-full flex items-center justify-between h-10 px-3 py-2 text-sm border rounded-md bg-background/50 opacity-50 cursor-not-allowed border-input"
+                              >
+                                <span className="text-muted-foreground">
+                                  Pro üye olarak kulüp takımı seçebilirsiniz
+                                </span>
+                                <Lock className="size-4 opacity-50" />
+                              </button>
                             </div>
                             <div className="grid grid-cols-2 gap-2 mt-2 opacity-40">
                               {clubTeamsList.slice(0, 6).map(team => (

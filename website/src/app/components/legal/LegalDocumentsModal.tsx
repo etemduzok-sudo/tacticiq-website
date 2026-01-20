@@ -325,7 +325,7 @@ export function LegalDocumentsModal({ open, onOpenChange, documentId }: LegalDoc
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 md:grid-cols-[280px_1fr] gap-6 flex-1 min-h-0 overflow-hidden">
+        <div className="grid grid-cols-1 md:grid-cols-[200px_3fr] gap-6 flex-1 min-h-0 overflow-hidden">
           {/* Document List */}
           <div className="flex flex-col min-h-0 overflow-hidden">
             <ScrollArea className="flex-1 pr-2" style={{ height: 'calc(90vh - 180px)' }}>
