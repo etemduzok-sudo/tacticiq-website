@@ -38,7 +38,8 @@ import {
   Megaphone,
   Flag,
   AlertCircle,
-  Bot
+  Bot,
+  Trophy
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/app/components/ui/button';
