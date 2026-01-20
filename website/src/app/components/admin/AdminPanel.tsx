@@ -39,7 +39,8 @@ import {
   Flag,
   AlertCircle,
   Bot,
-  Trophy
+  Trophy,
+  Check
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/app/components/ui/button';
@@ -6577,10 +6578,82 @@ function LegalDocumentsContent() {
         </CardContent>
       </Card>
 
+      {/* Documents Matrix - Tüm belge türleri ve diller için grid */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <FileText className="size-5" />
+            Belge Durumu Matrisi
+          </CardTitle>
+          <CardDescription>
+            Yeşil: İçerik mevcut | Kırmızı: Boş (tıklayarak ekleyin) | Toplam: {legalDocuments.length} / {documentTypes.length * languages.length} belge
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr>
+                  <th className="border p-2 bg-muted text-left font-semibold">Belge Türü</th>
+                  {languages.map(lang => (
+                    <th key={lang.code} className="border p-2 bg-muted text-center font-semibold min-w-[80px]">
+                      {lang.name}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {documentTypes.map(docType => (
+                  <tr key={docType.id}>
+                    <td className="border p-2 font-medium bg-muted/50">{docType.name}</td>
+                    {languages.map(lang => {
+                      const existingDoc = legalDocuments.find(
+                        d => d.document_id === docType.id && d.language === lang.code
+                      );
+                      return (
+                        <td key={lang.code} className="border p-1 text-center">
+                          {existingDoc ? (
+                            <button
+                              onClick={() => handleEdit(existingDoc)}
+                              className="w-full h-full p-2 bg-green-100 hover:bg-green-200 dark:bg-green-900/30 dark:hover:bg-green-900/50 rounded transition-colors"
+                              title={`${existingDoc.title} (${existingDoc.content.length} karakter) - Düzenlemek için tıklayın`}
+                            >
+                              <Check className="size-4 mx-auto text-green-600" />
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => {
+                                setEditingDoc(null);
+                                setFormData({
+                                  document_id: docType.id,
+                                  language: lang.code,
+                                  title: `${docType.name} - ${lang.name}`,
+                                  content: '',
+                                  enabled: true,
+                                });
+                                setShowAddDialog(true);
+                              }}
+                              className="w-full h-full p-2 bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50 rounded transition-colors"
+                              title={`${docType.name} (${lang.name}) - İçerik eklemek için tıklayın`}
+                            >
+                              <Plus className="size-4 mx-auto text-red-600" />
+                            </button>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Documents List */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Yasal Belgeler ({filteredDocuments.length})</CardTitle>
+          <CardTitle className="text-base">Mevcut Belgeler ({filteredDocuments.length})</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-3 max-h-96 overflow-y-auto">
@@ -6588,6 +6661,7 @@ function LegalDocumentsContent() {
               <div className="text-center py-8 text-muted-foreground">
                 <FileText className="size-12 mx-auto mb-2 opacity-50" />
                 <p>Henüz yasal belge eklenmemiş</p>
+                <p className="text-xs mt-2">Yukarıdaki matristeki kırmızı hücrelere tıklayarak belge ekleyebilirsiniz</p>
               </div>
             ) : (
               filteredDocuments.map((doc) => {
