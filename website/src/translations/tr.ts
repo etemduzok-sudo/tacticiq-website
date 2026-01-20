@@ -582,6 +582,7 @@ export default {
 
   // Profile Section
   'profile.title': 'Profilim',
+  'profile.description': 'Profil bilgilerinizi yönetin',
   'profile.edit': 'Düzenle',
   'profile.cancel': 'İptal',
   'profile.save': 'Kaydet',
