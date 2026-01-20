@@ -1821,7 +1821,22 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
 
   const updatePriceSettings = (updatedSettings: Partial<PriceSettings>) => {
     setPriceSettings(prevSettings => {
-      const newSettings = { ...prevSettings, ...updatedSettings };
+      const mergedSettings = { ...prevSettings, ...updatedSettings };
+      
+      // Aktif döneme göre proPrice'ı otomatik güncelle
+      const billingPeriod = mergedSettings.billingPeriod || prevSettings.billingPeriod;
+      if (billingPeriod === 'monthly' && mergedSettings.monthlyPrice !== undefined) {
+        mergedSettings.proPrice = mergedSettings.monthlyPrice;
+      } else if (billingPeriod === 'yearly' && mergedSettings.yearlyPrice !== undefined) {
+        mergedSettings.proPrice = mergedSettings.yearlyPrice;
+      } else if (mergedSettings.billingPeriod && !mergedSettings.proPrice) {
+        // Billing period değiştiyse ama fiyat güncellenmediyse, aktif fiyatı kullan
+        mergedSettings.proPrice = billingPeriod === 'monthly' 
+          ? (mergedSettings.monthlyPrice || prevSettings.monthlyPrice || prevSettings.proPrice)
+          : (mergedSettings.yearlyPrice || prevSettings.yearlyPrice || prevSettings.proPrice);
+      }
+      
+      const newSettings = mergedSettings as PriceSettings;
       console.log('Price Settings Updated:', newSettings);
       // localStorage'a kaydet
       localStorage.setItem('admin_price_settings', JSON.stringify(newSettings));

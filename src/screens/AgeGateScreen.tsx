@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Haptics from 'expo-haptics';
 import { BRAND, SPACING, TYPOGRAPHY } from '../theme/theme';
 import { AUTH_GRADIENT } from '../theme/gradients';
 import { useTranslation } from '../hooks/useTranslation';
@@ -33,24 +34,33 @@ interface AgeGateScreenProps {
 }
 
 const CURRENT_YEAR = new Date().getFullYear();
-const YEARS = Array.from({ length: 83 }, (_, i) => CURRENT_YEAR - 18 - i);
+// Years array - dynamically starts from 18 years ago (updates daily)
+const getYearsArray = () => {
+  const year18YearsAgo = CURRENT_YEAR - 18;
+  return Array.from({ length: 83 }, (_, i) => year18YearsAgo - i);
+};
 const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
 const DAYS = Array.from({ length: 31 }, (_, i) => i + 1);
 
 export const AgeGateScreen: React.FC<AgeGateScreenProps> = ({ onComplete }) => {
   const { t } = useTranslation();
   
-  const [selectedYear, setSelectedYear] = useState(CURRENT_YEAR - 25);
-  const [selectedMonth, setSelectedMonth] = useState(1);
-  const [selectedDay, setSelectedDay] = useState(1);
+  // No pre-selected date - user must choose
+  const [selectedYear, setSelectedYear] = useState<number | null>(null);
+  const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  
+  // Get years array dynamically
+  const YEARS = getYearsArray();
   
   const [region, setRegion] = useState<ConsentPreferences['region']>('OTHER');
+  // Tüm çerezler ön tanımlı olarak işaretlenmiş halde gelsin
   const [preferences, setPreferences] = useState<ConsentPreferences>({
     essential: true,
-    analytics: false,
-    marketing: false,
-    personalizedAds: false,
-    dataTransfer: false,
+    analytics: true,
+    marketing: true,
+    personalizedAds: true,
+    dataTransfer: true,
     timestamp: new Date().toISOString(),
   });
   
@@ -72,8 +82,18 @@ export const AgeGateScreen: React.FC<AgeGateScreenProps> = ({ onComplete }) => {
       const detectedRegion = await detectRegion();
       setRegion(detectedRegion);
       
-      const defaultPrefs = await getDefaultConsentPreferences();
-      setPreferences(defaultPrefs);
+      // Tüm çerezler ön tanımlı olarak işaretlenmiş halde gelsin
+      // getDefaultConsentPreferences yerine tümünü true yap
+      setPreferences((prev) => ({
+        ...prev,
+        essential: true,
+        analytics: true,
+        marketing: true,
+        personalizedAds: true,
+        dataTransfer: detectedRegion === 'TR' ? true : prev.dataTransfer,
+        region: detectedRegion,
+        timestamp: new Date().toISOString(),
+      }));
     } catch (error) {
       console.error('Error initializing consent:', error);
     } finally {
@@ -81,7 +101,11 @@ export const AgeGateScreen: React.FC<AgeGateScreenProps> = ({ onComplete }) => {
     }
   };
 
-  const calculateAge = (): number => {
+  const calculateAge = (): number | null => {
+    if (selectedYear === null || selectedMonth === null || selectedDay === null) {
+      return null;
+    }
+    
     const today = new Date();
     const birthDate = new Date(selectedYear, selectedMonth - 1, selectedDay);
     
@@ -93,6 +117,17 @@ export const AgeGateScreen: React.FC<AgeGateScreenProps> = ({ onComplete }) => {
     }
 
     return age;
+  };
+
+  // Ses efekti için (tık tık)
+  const playTickSound = async () => {
+    if (Platform.OS !== 'web') {
+      try {
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      } catch (error) {
+        // Haptic feedback desteklenmiyorsa sessizce devam et
+      }
+    }
   };
 
   const handleToggleConsent = (key: keyof ConsentPreferences) => {
@@ -151,9 +186,37 @@ export const AgeGateScreen: React.FC<AgeGateScreenProps> = ({ onComplete }) => {
       return;
     }
 
+    // Tarih seçilmiş mi kontrol et
+    if (selectedYear === null || selectedMonth === null || selectedDay === null) {
+      Alert.alert(
+        t('common.error') || 'Hata',
+        'Lütfen doğum tarihinizi seçin'
+      );
+      return;
+    }
+
     setSaving(true);
     try {
       const age = calculateAge();
+
+      if (age === null) {
+        Alert.alert(
+          t('common.error') || 'Hata',
+          'Lütfen doğum tarihinizi seçin'
+        );
+        setSaving(false);
+        return;
+      }
+
+      // 18 yaş kontrolü - gün itibarı ile
+      if (age < 18) {
+        Alert.alert(
+          t('common.error') || 'Hata',
+          '18 yaşından küçükler kayıt olamaz. Lütfen doğum tarihinizi kontrol edin.'
+        );
+        setSaving(false);
+        return;
+      }
 
       if (age < 0 || age > 120) {
         Alert.alert(
@@ -204,7 +267,7 @@ export const AgeGateScreen: React.FC<AgeGateScreenProps> = ({ onComplete }) => {
 
   const renderPicker = (
     items: number[],
-    selectedValue: number,
+    selectedValue: number | null,
     onSelect: (val: number) => void,
     formatter?: (val: number) => string
   ) => {
@@ -219,7 +282,11 @@ export const AgeGateScreen: React.FC<AgeGateScreenProps> = ({ onComplete }) => {
           return (
             <TouchableOpacity
               key={item}
-              onPress={() => onSelect(item)}
+              onPress={async () => {
+                // Ses ve haptic feedback (tık tık)
+                await playTickSound();
+                onSelect(item);
+              }}
               style={[styles.pickerItem, isSelected && styles.pickerItemSelected]}
               activeOpacity={0.7}
             >
@@ -406,7 +473,7 @@ export const AgeGateScreen: React.FC<AgeGateScreenProps> = ({ onComplete }) => {
 
   const renderScrollablePicker = (
     items: number[],
-    selectedValue: number,
+    selectedValue: number | null,
     onSelect: (val: number) => void,
     formatter?: (val: number) => string
   ) => {
@@ -415,7 +482,16 @@ export const AgeGateScreen: React.FC<AgeGateScreenProps> = ({ onComplete }) => {
         {items.map((item) => {
           const isSelected = item === selectedValue;
           return (
-            <TouchableOpacity key={item} onPress={() => onSelect(item)} style={[styles.pickerItem, isSelected && styles.pickerItemSelected]} activeOpacity={0.7}>
+            <TouchableOpacity 
+              key={item} 
+              onPress={async () => {
+                // Ses ve haptic feedback
+                await playTickSound();
+                onSelect(item);
+              }} 
+              style={[styles.pickerItem, isSelected && styles.pickerItemSelected]} 
+              activeOpacity={0.7}
+            >
               <Text style={[styles.pickerItemText, isSelected && styles.pickerItemTextSelected]}>
                 {formatter ? formatter(item) : item}
               </Text>
@@ -443,7 +519,19 @@ export const AgeGateScreen: React.FC<AgeGateScreenProps> = ({ onComplete }) => {
     <SafeAreaView style={styles.safeArea}>
       <LinearGradient colors={AUTH_GRADIENT.colors} style={styles.container} start={AUTH_GRADIENT.start} end={AUTH_GRADIENT.end}>
         <View style={styles.content}>
-          <Image source={logoImage} style={styles.logo} resizeMode="contain" />
+          {Platform.OS === 'web' ? (
+            <img 
+              src="/TacticIQ.svg" 
+              alt="TacticIQ" 
+              style={{ width: 250, height: 250 }} 
+            />
+          ) : (
+            <Image 
+              source={logoImage} 
+              style={{ width: 250, height: 250 }} 
+              resizeMode="contain" 
+            />
+          )}
           
           <Text style={styles.title}>{t('ageGate.title') || 'Yaş Doğrulama'}</Text>
           <Text style={styles.subtitle}>{t('ageGate.subtitle') || 'Doğum tarihinizi seçin'}</Text>
@@ -503,10 +591,10 @@ export const AgeGateScreen: React.FC<AgeGateScreenProps> = ({ onComplete }) => {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: AUTH_GRADIENT.colors[0] },
   container: { flex: 1 },
-  content: { flex: 1, paddingHorizontal: SPACING.xl, paddingVertical: SPACING.lg, justifyContent: 'space-between' },
+  content: { flex: 1, paddingHorizontal: SPACING.xl, paddingVertical: SPACING.xs, justifyContent: 'flex-start', alignItems: 'center' },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: SPACING.md },
   loadingText: { color: BRAND.white, fontSize: 16, marginTop: SPACING.sm },
-  logo: { width: 64, height: 64, alignSelf: 'center', marginBottom: SPACING.md },
+  // Logo artık inline style ile 250px
   title: { ...TYPOGRAPHY.h2, fontSize: 24, fontWeight: '700', color: BRAND.white, textAlign: 'center', marginBottom: SPACING.xs },
   subtitle: { ...TYPOGRAPHY.body, fontSize: 14, color: 'rgba(255,255,255,0.75)', textAlign: 'center', marginBottom: SPACING.lg },
   
@@ -535,7 +623,7 @@ const styles = StyleSheet.create({
   modalTitle: { fontSize: 20, fontWeight: '700', color: BRAND.white },
   modalClose: { fontSize: 28, color: 'rgba(255,255,255,0.6)', fontWeight: '300' },
   modalContent: { maxHeight: 400, paddingHorizontal: SPACING.lg },
-  consentItem: { backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 12, padding: SPACING.md, marginVertical: SPACING.xs, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+  consentItem: { backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 12, padding: SPACING.md, minHeight: 56, marginVertical: SPACING.xs, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
   consentRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   consentLabel: { fontSize: 14, fontWeight: '600', color: BRAND.white, flex: 1 },
   consentDesc: { fontSize: 11, color: 'rgba(255,255,255,0.65)', marginTop: SPACING.sm, lineHeight: 16 },
@@ -557,7 +645,7 @@ const styles = StyleSheet.create({
   legalHeaderTitle: { fontSize: 22, fontWeight: '700', color: BRAND.white },
   legalClose: { fontSize: 32, color: BRAND.white, fontWeight: '300' },
   legalScroll: { flex: 1, paddingHorizontal: SPACING.lg },
-  legalDocItem: { backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 12, padding: SPACING.md, marginVertical: SPACING.xs, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+  legalDocItem: { backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 12, padding: SPACING.md, minHeight: 56, marginVertical: SPACING.xs, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
   legalDocHeader: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
   legalDocIcon: { fontSize: 22 },
   legalDocTitle: { flex: 1, fontSize: 15, fontWeight: '600', color: BRAND.white },

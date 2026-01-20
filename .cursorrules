@@ -1,4 +1,4 @@
-# Fan Manager 2026 - Cursor AI Rules
+# TacticIQ.app - Cursor AI Rules
 
 ## 🎯 Project Context
 
@@ -6,9 +6,89 @@ This is a **React Native + Expo** mobile application for football (soccer) match
 
 ---
 
-## 📱 Navigation Structure
+## 🔒 AUTO-APPROVAL & NO-ROLLBACK POLICY (MANDATORY)
 
-### **CRITICAL: Always follow this navigation flow**
+### ✅ AUTO-APPROVED (NO QUESTIONS)
+
+The following are always approved automatically:
+
+- UI / layout adjustments
+- Spacing, responsiveness, component alignment
+- StyleSheet / theme-based refinements
+- Refactoring without behavior change
+- Bug fixes, linting, typing, formatting
+- Performance optimizations without UX change
+- Test additions or corrections
+- Minor dependency updates (patch/minor)
+- Small config fixes that do not affect production flow
+
+### 📱 MOBILE SCREENS AUTO-APPROVAL (ABSOLUTE RULE)
+
+**ALL changes to mobile application screens (`src/screens/` directory) are AUTOMATICALLY APPROVED.**
+
+When editing files in `src/screens/`:
+- ✅ **NEVER ask for approval** (Skip, Accept, etc.)
+- ✅ **NEVER wait for confirmation**
+- ✅ **Apply changes immediately**
+- ✅ **No questions, no delays**
+
+This includes but not limited to:
+- Logo size adjustments
+- Animation removal/addition
+- Layout/spacing changes
+- Button styling
+- Text readability improvements
+- Scroll behavior modifications
+- Component positioning
+- StyleSheet updates
+- Any UI/UX refinements
+
+**Rule:** If the file path contains `src/screens/`, apply changes immediately without asking.
+
+### ❌ NO ROLLBACK / NO REVERSAL (ABSOLUTE RULE)
+
+Once a change is:
+- explicitly approved OR
+- implicitly approved under Auto-Approval rules
+
+You MUST NOT:
+- Revert
+- Roll back
+- Undo
+- Restore previous versions
+- "Optimize it away"
+- Reinterpret the decision later
+
+**Approved changes are FINAL.**
+
+Rollback is allowed ONLY if I explicitly say:
+- "Revert / rollback this change."
+
+Otherwise: **NO EXCEPTIONS.**
+
+### 🚨 CRITICAL CHANGES (MUST ASK ONCE)
+
+Stop and ask approval ONLY IF the change includes:
+
+- New packages / SDKs or major dependency upgrades
+- Authentication, subscription, payment, security, user data logic
+- Data models, API contracts, database schema
+- Routes, URLs, SEO, sitemap, robots
+- Build / deploy / hosting / environment / domain / redirects
+- Moving or deleting 10+ files
+- Downtime or data loss risk
+- Fundamental user flow or navigation paradigm changes
+
+### 🧠 CORE PRINCIPLE (FINAL)
+
+- Not critical → auto-apply
+- Critical → ask once
+- Approved → permanent
+- No rollback unless explicitly ordered
+
+---
+
+## 📱 Navigation Structure (STRICT – MUST FOLLOW)
 
 ```typescript
 type RootStackParamList = {
@@ -18,7 +98,7 @@ type RootStackParamList = {
   Register: undefined;
   ForgotPassword: undefined;
   FavoriteTeams: undefined;
-  MainTabs: undefined;            // Main app entry (Home, Matches, Profile)
+  MainTabs: undefined;
   MatchDetail: { matchId: string };
   ProfileSettings: undefined;
   ChangePassword: undefined;
@@ -30,114 +110,31 @@ type RootStackParamList = {
 };
 ```
 
-### **Navigation Flow Rules**
+### **Navigation Flow (NON-NEGOTIABLE)**
 
 1. **First Launch:** `Splash` → `LanguageSelection` → `Auth` → `FavoriteTeams` → `MainTabs`
-2. **Return User:** `Splash` → `MainTabs` (direct)
+2. **Return User:** `Splash` → `MainTabs`
 3. **Logout:** Clear AsyncStorage → `Splash` → `LanguageSelection`
 
 ---
 
-## 🎨 Design System
+## 🧭 STATE-BASED ROUTING (CRITICAL)
 
-### **ALWAYS use these sources:**
+Navigation is **CENTRALIZED** in `App.tsx`.
 
-1. `@DESIGN_SYSTEM.md` - Complete design tokens (colors, spacing, typography)
-2. `src/theme/theme.ts` - Theme constants (COLORS, SPACING, TYPOGRAPHY, SIZES)
-3. `src/theme/gradients.ts` - Gradient definitions
+Screens **DO NOT** use React Navigation directly.
 
-### **Color Usage:**
+### **FORBIDDEN:**
 
-- **Brand Colors:** `BRAND.emerald` (#059669), `BRAND.gold` (#F59E0B)
-- **Gradients:**
-  - Auth screens: `AUTH_GRADIENT` (lacivert)
-  - Splash screen: `STADIUM_GRADIENT` (yeşil)
-  - Buttons: `PRIMARY_BUTTON_GRADIENT`
+- ❌ `useNavigation()` in screens
+- ❌ Navigation stacks outside App.tsx
+- ❌ Skipping Splash
+- ❌ Hard-coded routes
 
-### **Typography:**
+Screens communicate **ONLY** via handler props.
 
-- Use `TYPOGRAPHY` constants, NOT hard-coded sizes
-- Font weights: `400` (normal), `500` (medium), `700` (bold)
+### **Navigation State:**
 
-### **Spacing:**
-
-- Use `SPACING` constants: `xs`, `sm`, `base`, `lg`, `xl`, `2xl`
-- Use `SIZES` for specific dimensions: `buttonAuthHeight: 50`, `radiusLg: 12`
-
----
-
-## 🚫 Forbidden Practices
-
-### **NEVER:**
-
-1. Skip `Splash` screen in navigation
-2. Use hard-coded colors (use `BRAND.*`, `COLORS.*`)
-3. Use hard-coded spacing (use `SPACING.*`)
-4. Use hard-coded font sizes (use `TYPOGRAPHY.*`)
-5. Create circular navigation loops
-6. Forget to add `SafeAreaView` for iOS notch support
-7. Use `Ionicons` directly (use `SafeIcon` wrapper)
-
----
-
-## ✅ Best Practices
-
-### **DO:**
-
-1. Use `navigation.replace()` for auth flows (prevents back button issues)
-2. Check AsyncStorage for user session in `SplashScreen`
-3. Use `React.memo` for performance-critical components
-4. Add `activeOpacity={0.8}` to all `TouchableOpacity` components
-5. Use `LinearGradient` from `expo-linear-gradient` for backgrounds
-6. Add `keyboardShouldPersistTaps="handled"` to all `ScrollView` with inputs
-7. Use `Platform.select()` for iOS/Android specific styles
-
-### **Component Structure:**
-
-```typescript
-// Always follow this order:
-1. Imports (React, React Native, Navigation, Custom)
-2. Type definitions
-3. Interface/Props
-4. Component
-5. Styles (StyleSheet.create)
-```
-
----
-
-## 📦 State Management
-
-### **LocalStorage Keys:**
-
-```typescript
-"fan-manager-user"           // User session
-"fan-manager-language"       // Selected language
-"fan-manager-favorite-clubs" // User's favorite teams
-"fan-manager-theme"          // Dark/Light mode
-```
-
-### **Usage:**
-
-```typescript
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
-// Save
-await AsyncStorage.setItem('fan-manager-user', JSON.stringify(data));
-
-// Get
-const data = await AsyncStorage.getItem('fan-manager-user');
-const parsed = data ? JSON.parse(data) : null;
-```
-
----
-
-## 🧭 Navigation & State Rules
-
-### **CRITICAL: State-Based Routing**
-
-This project uses **centralized state-based routing** in `App.tsx`, NOT React Navigation.
-
-**Navigation State:**
 ```typescript
 type Screen =
   | 'splash'              // Always first screen
@@ -152,12 +149,6 @@ type Screen =
   | 'profile'             // Profil
   | 'profile-settings';   // Profil ayarları
 ```
-
-### **Navigation Flow (MUST FOLLOW):**
-
-1. **First Launch:** `splash` → `language` → `auth` → `favorite-teams` → `home`
-2. **Return User:** `splash` → `home` (direct)
-3. **Logout:** Clear AsyncStorage → `splash` → `language`
 
 ### **Handler Function Rules:**
 
@@ -180,25 +171,6 @@ interface AuthScreenProps {
 }
 ```
 
-### **AsyncStorage Flow:**
-
-```typescript
-// Check user session (in App.tsx)
-const user = await AsyncStorage.getItem('fan-manager-user');
-if (user) {
-  setCurrentScreen('home');  // Return user
-} else {
-  setCurrentScreen('language');  // New user
-}
-
-// Save user session (after auth success)
-await AsyncStorage.setItem('fan-manager-user', JSON.stringify({ authenticated: true }));
-
-// Logout
-await AsyncStorage.removeItem('fan-manager-user');
-setCurrentScreen('splash');
-```
-
 ### **Screen Rendering (in App.tsx):**
 
 ```typescript
@@ -213,17 +185,155 @@ const renderScreen = () => {
 };
 ```
 
-### **FORBIDDEN:**
+---
 
-1. ❌ DO NOT use `useNavigation()` in screens
-2. ❌ DO NOT import React Navigation components in screens
-3. ❌ DO NOT create navigation stacks outside App.tsx
-4. ❌ DO NOT skip `splash` screen
-5. ❌ DO NOT use hard-coded navigation paths
+## 🎨 Design System (STRICT)
 
-### **Documentation Reference:**
+### **Mandatory Sources:**
 
-See `docs/navigation-map.md` for complete navigation flow, handler functions, and edge cases.
+1. `@DESIGN_SYSTEM.md` - Complete design tokens (colors, spacing, typography)
+2. `src/theme/theme.ts` - Theme constants (COLORS, SPACING, TYPOGRAPHY, SIZES)
+3. `src/theme/gradients.ts` - Gradient definitions
+
+### **NEVER:**
+
+- ❌ Hard-coded colors
+- ❌ Hard-coded spacing
+- ❌ Hard-coded font sizes
+- ❌ Direct Ionicons usage
+
+### **Use:**
+
+- `BRAND.*`
+- `COLORS.*`
+- `SPACING.*`
+- `TYPOGRAPHY.*`
+- `SafeIcon`
+
+### **Color Usage:**
+
+- **Brand Colors:** `BRAND.emerald` (#059669), `BRAND.gold` (#F59E0B)
+- **Gradients:**
+  - Auth screens: `AUTH_GRADIENT` (lacivert)
+  - Splash screen: `STADIUM_GRADIENT` (yeşil)
+  - Buttons: `PRIMARY_BUTTON_GRADIENT`
+
+### **Typography:**
+
+- Use `TYPOGRAPHY` constants, NOT hard-coded sizes
+- Font weights: `400` (normal), `500` (medium), `700` (bold)
+
+### **Spacing:**
+
+- Use `SPACING` constants: `xs`, `sm`, `base`, `lg`, `xl`, `2xl`
+- Use `SIZES` for specific dimensions: `buttonAuthHeight: 50`, `radiusLg: 12`
+
+---
+
+## 📦 AsyncStorage (AUTHORIZED KEYS ONLY)
+
+```typescript
+"tacticiq-user"             // User session
+"tacticiq-language"         // Selected language
+"tacticiq-favorite-clubs"   // Favorite teams
+"tacticiq-theme"            // Dark / Light mode
+```
+
+### **Usage:**
+
+```typescript
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// Save
+await AsyncStorage.setItem('tacticiq-user', JSON.stringify(data));
+
+// Get
+const data = await AsyncStorage.getItem('tacticiq-user');
+const parsed = data ? JSON.parse(data) : null;
+```
+
+### **AsyncStorage Flow:**
+
+```typescript
+// Check user session (in App.tsx)
+const user = await AsyncStorage.getItem('tacticiq-user');
+if (user) {
+  setCurrentScreen('home');  // Return user
+} else {
+  setCurrentScreen('language');  // New user
+}
+
+// Save user session (after auth success)
+await AsyncStorage.setItem('tacticiq-user', JSON.stringify({ authenticated: true }));
+
+// Logout
+await AsyncStorage.removeItem('tacticiq-user');
+setCurrentScreen('splash');
+```
+
+❗ **No new keys without explicit approval.**
+
+---
+
+## 🧩 Component Discipline
+
+### **Order is MANDATORY:**
+
+1. Imports
+2. Types
+3. Props
+4. Component
+5. Styles
+
+### **Always:**
+
+- `SafeAreaView`
+- `keyboardShouldPersistTaps="handled"`
+- `activeOpacity={0.8}`
+- `React.memo` where relevant
+
+### **Component Structure:**
+
+```typescript
+// Always follow this order:
+1. Imports (React, React Native, Navigation, Custom)
+2. Type definitions
+3. Interface/Props
+4. Component
+5. Styles (StyleSheet.create)
+```
+
+---
+
+## 🚫 FORBIDDEN PRACTICES (ABSOLUTE)
+
+### **NEVER:**
+
+1. Skip `Splash` screen in navigation
+2. Use hard-coded colors (use `BRAND.*`, `COLORS.*`)
+3. Use hard-coded spacing (use `SPACING.*`)
+4. Use hard-coded font sizes (use `TYPOGRAPHY.*`)
+5. Create circular navigation loops
+6. Forget to add `SafeAreaView` for iOS notch support
+7. Use `Ionicons` directly (use `SafeIcon` wrapper)
+8. Temporary hacks
+9. Code shortcuts
+10. Silent architectural changes
+11. Self-initiated rollbacks
+
+---
+
+## ✅ Best Practices
+
+### **DO:**
+
+1. Use `navigation.replace()` for auth flows (prevents back button issues)
+2. Check AsyncStorage for user session in `SplashScreen`
+3. Use `React.memo` for performance-critical components
+4. Add `activeOpacity={0.8}` to all `TouchableOpacity` components
+5. Use `LinearGradient` from `expo-linear-gradient` for backgrounds
+6. Add `keyboardShouldPersistTaps="handled"` to all `ScrollView` with inputs
+7. Use `Platform.select()` for iOS/Android specific styles
 
 ---
 
@@ -270,15 +380,25 @@ When implementing screens, ALWAYS:
 
 ---
 
+## 🧪 Validation & Commits
+
+- Every change must pass build / lint / test (as applicable)
+- Commits must be atomic and meaningful
+- No long explanations; short summary is sufficient
+
+---
+
 ## 🤖 Model Selection & Max Mode
 
-### **Max Mode Usage Warning:**
+### **🧠 MAX MODE RULE (ENFORCED)**
 
-**CRITICAL:** When a task requires Max Mode (complex algorithms, multi-file architectural changes, critical business logic, security protocols, or deep reasoning), you MUST:
+Before using Max Mode, you MUST:
 
-1. **Alert the user BEFORE execution:** Inform them that "This task requires Max Mode for optimal results. Should I proceed with Max Mode?"
-2. **Explain the reasoning:** Briefly state why Max Mode is needed (complexity, risk, or critical nature of the task)
-3. **Wait for approval:** Do NOT proceed until the user explicitly approves Max Mode usage
+1. **Inform the user**
+2. **Explain why it is required**
+3. **Wait for explicit approval**
+
+**No exceptions.**
 
 ### **When Max Mode is Required:**
 
@@ -300,6 +420,52 @@ When implementing screens, ALWAYS:
 
 ---
 
+## 📚 Documentation Reference
+
+See `docs/navigation-map.md` for complete navigation flow, handler functions, and edge cases.
+
+---
+
+## 🔄 HOT RELOAD & CACHE SORUNLARI (KALİCİ ÇÖZÜM)
+
+### **Değişiklikler Görünmüyorsa:**
+
+1. **Expo cache temizle ve yeniden başlat:**
+   ```bash
+   npx expo start --clear --web
+   ```
+
+2. **Veya tüm sistemleri yeniden başlat:**
+   ```powershell
+   .\start-all.ps1
+   ```
+
+3. **Sadece durdur:**
+   ```powershell
+   .\stop-all.ps1
+   ```
+
+### **Neden Oluyor?**
+
+- Metro bundler eski cache'i kullanıyor
+- Vite hot reload bazen çalışmıyor
+- Node process'ler arka planda takılı kalıyor
+
+### **Kalıcı Çözüm:**
+
+Her büyük değişiklik sonrası şu adımları uygula:
+
+1. Terminalde `Ctrl+C` ile Expo'yu durdur
+2. `npx expo start --clear --web` ile yeniden başlat
+3. Tarayıcıda hard refresh yap (`Ctrl+Shift+R`)
+
+### **Startup Scripts:**
+
+- `start-all.ps1` - Tüm sistemleri temiz başlatır (cache siler)
+- `stop-all.ps1` - Tüm Node süreçlerini durdurur
+
+---
+
 **When in doubt, ask: "Does this follow the Design System and Navigation Map?"**
 
-**Last Updated:** 5 Ocak 2026
+**Last Updated:** 20 January 2026 – Hot reload fix scripts added

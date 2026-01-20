@@ -486,16 +486,10 @@ export default function App() {
     }));
     logger.debug('User set as PRO after login', undefined, 'AUTH');
     
-    const hasTeams = await AsyncStorage.getItem('fan-manager-favorite-clubs');
-    if (hasTeams) {
-      logNavigation('home');
-      setPreviousScreen(currentScreen);
-      setCurrentScreen('home');
-    } else {
-      logNavigation('favorite-teams');
-      setPreviousScreen(currentScreen);
-      setCurrentScreen('favorite-teams');
-    }
+    // Giriş yap → Ana sayfaya git (takım kontrolü yapmadan)
+    logNavigation('home');
+    setPreviousScreen(currentScreen);
+    setCurrentScreen('home');
   };
 
   // 4. Auth → Forgot Password

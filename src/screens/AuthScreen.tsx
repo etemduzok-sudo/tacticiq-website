@@ -17,13 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 // import authService from '../services/authService'; // Real Supabase
 import authService from '../services/mockAuthService'; // Mock (geçici test için)
 import socialAuthService from '../services/socialAuthService'; // Google & Apple Sign In
-import Animated, { 
-  SlideInLeft,
-  useAnimatedStyle,
-  withRepeat,
-  withTiming,
-  useSharedValue,
-} from 'react-native-reanimated';
+// Animasyonlar kaldırıldı (sıçrama yok)
 import { BRAND, COLORS, SPACING, TYPOGRAPHY, SIZES } from '../theme/theme';
 import { AUTH_GRADIENT } from '../theme/gradients';
 import { STANDARD_LAYOUT, STANDARD_INPUT, STANDARD_COLORS } from '../constants/standardLayout';
@@ -209,18 +203,22 @@ export default function AuthScreen({
                 </TouchableOpacity>
               </View>
 
-              <Animated.View 
-                entering={SlideInLeft.duration(300)}
-                style={styles.content}
-              >
+              <View style={styles.content}>
               {/* [B] BRAND ZONE */}
               <View style={styles.brandZone}>
-                <Image
-                  source={Platform.OS === 'web' ? { uri: '/TacticIQ.svg' } : require('../../assets/logo.png')}
-                  style={{ width: 80, height: 80 }}
-                  resizeMode="contain"
-                />
-                <Text style={styles.brandTitle}>TacticIQ</Text>
+                {Platform.OS === 'web' ? (
+                  <img 
+                    src="/TacticIQ.svg" 
+                    alt="TacticIQ" 
+                    style={{ width: 250, height: 250 }} 
+                  />
+                ) : (
+                  <Image
+                    source={require('../../assets/logo.png')}
+                    style={{ width: 250, height: 250 }}
+                    resizeMode="contain"
+                  />
+                )}
               </View>
 
               {/* [C] PRIMARY ACTION ZONE - Social Buttons */}
@@ -366,7 +364,7 @@ export default function AuthScreen({
                   </Text>
                 </TouchableOpacity>
               </View>
-              </Animated.View>
+              </View>
             </View>
 
             {/* [H] FOOTER ZONE - FIXED AT BOTTOM (OUTSIDE SCROLLABLE CONTENT) */}
@@ -419,14 +417,16 @@ const styles = StyleSheet.create({
     maxWidth: 400,
     width: '100%',
     alignSelf: 'center',
+    justifyContent: 'flex-start',
+    paddingVertical: 0,
   },
   
   // [B] BRAND ZONE
   brandZone: {
     alignItems: 'center',
     justifyContent: 'flex-start',
-    marginTop: 15,
-    marginBottom: 20,
+    marginTop: 5,
+    marginBottom: 5,
     paddingVertical: 0,
   },
   brandTitle: {
@@ -453,11 +453,14 @@ const styles = StyleSheet.create({
     height: LAYOUT.socialButtonHeight,
     borderRadius: SIZES.radiusLg,
     gap: SPACING.md,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   googleButtonText: {
     ...TYPOGRAPHY.body,
-    color: COLORS.dark.foreground,
-    fontWeight: '500',
+    fontSize: 16,
+    color: '#1F2937',
+    fontWeight: '600',
   },
   appleButton: {
     flexDirection: 'row',

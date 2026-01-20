@@ -73,6 +73,7 @@ type MenuSection =
   | 'features'
   | 'pricing'
   | 'sections'
+  | 'stats'
   | 'game'
   | 'waitlist'
   | 'settings' 
@@ -281,6 +282,12 @@ export function AdminPanel() {
             onClick={() => setActiveSection('sections')}
           />
           <MenuButton
+            icon={TrendingUp}
+            label="İstatistikler"
+            active={activeSection === 'stats'}
+            onClick={() => setActiveSection('stats')}
+          />
+          <MenuButton
             icon={Gamepad2}
             label="Oyun Sistemi"
             active={activeSection === 'game'}
@@ -319,6 +326,7 @@ export function AdminPanel() {
             {activeSection === 'waitlist' && <WaitlistContent />}
             {activeSection === 'pricing' && <PricingContent />}
             {activeSection === 'sections' && <SectionsContent />}
+            {activeSection === 'stats' && <StatsContent />}
             {activeSection === 'game' && <GameContent />}
             {activeSection === 'settings' && <SettingsContent />}
             {activeSection === 'logs' && <LogsContent />}
@@ -3682,7 +3690,17 @@ function PricingContent() {
 
   const handleSavePrice = () => {
     if (updatePriceSettings) {
-      updatePriceSettings(editedPriceSettings);
+      // Aktif döneme göre proPrice'ı güncelle
+      const activePrice = editedPriceSettings.billingPeriod === 'monthly' 
+        ? editedPriceSettings.monthlyPrice 
+        : editedPriceSettings.yearlyPrice;
+      
+      const finalSettings = {
+        ...editedPriceSettings,
+        proPrice: activePrice || editedPriceSettings.proPrice, // Aktif fiyatı proPrice olarak ayarla
+      };
+      
+      updatePriceSettings(finalSettings);
       toast.success('Fiyat ayarları kaydedildi!');
     }
   };
@@ -3864,15 +3882,26 @@ function PricingContent() {
           <div className="bg-secondary/10 rounded-lg p-4">
             <p className="font-semibold text-sm mb-2">📌 Web'de Gösterilecek Fiyat:</p>
             <div className="text-2xl font-bold text-secondary">
-              {CURRENCY_SYMBOLS[editedPriceSettings.baseCurrency]}{editedPriceSettings.proPrice.toFixed(2)}
+              {(() => {
+                // Aktif döneme göre doğru fiyatı göster
+                const activePrice = editedPriceSettings.billingPeriod === 'monthly' 
+                  ? editedPriceSettings.monthlyPrice 
+                  : editedPriceSettings.yearlyPrice;
+                return `${CURRENCY_SYMBOLS[editedPriceSettings.baseCurrency]}${(activePrice || 0).toFixed(2)}`;
+              })()}
               <span className="text-sm font-normal text-muted-foreground ml-2">/ {editedPriceSettings.billingPeriod === 'monthly' ? 'aylık' : 'yıllık'}</span>
             </div>
             {discountSettings?.enabled && discountSettings.discountPercent > 0 && (
               <div className="mt-2 text-sm">
                 <span className="text-muted-foreground">İndirimli Fiyat:</span>
                 <span className="ml-2 text-green-600 font-bold">
-                  {CURRENCY_SYMBOLS[editedPriceSettings.baseCurrency]}
-                  {(editedPriceSettings.proPrice * (1 - (discountSettings.discountPercent || 0) / 100)).toFixed(2)}
+                  {(() => {
+                    const activePrice = editedPriceSettings.billingPeriod === 'monthly' 
+                      ? editedPriceSettings.monthlyPrice 
+                      : editedPriceSettings.yearlyPrice;
+                    const discountedPrice = (activePrice || 0) * (1 - (discountSettings.discountPercent || 0) / 100);
+                    return `${CURRENCY_SYMBOLS[editedPriceSettings.baseCurrency]}${discountedPrice.toFixed(2)}`;
+                  })()}
                 </span>
                 <span className="ml-1 text-xs text-green-600">(%{discountSettings.discountPercent} indirim)</span>
               </div>
@@ -5826,6 +5855,183 @@ function LogEntry({ type, message, user, time }: any) {
         <p className="text-xs text-muted-foreground">User: {user}</p>
       </div>
       <span className="text-xs text-muted-foreground whitespace-nowrap">{time}</span>
+    </div>
+  );
+}
+
+// Stats Content - Hero Altı İstatistikler Yönetimi
+function StatsContent() {
+  const contextData = useContext(AdminDataContext);
+  const stats = contextData?.stats;
+  const updateStats = contextData?.updateStats;
+
+  if (!contextData || !stats || !updateStats) {
+    return <div className="p-4 text-center">İstatistik ayarları yükleniyor...</div>;
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold flex items-center gap-2">
+          <TrendingUp className="size-6" />
+          Hero İstatistikleri Yönetimi
+        </h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          Ana sayfada hero bölümünün altında gösterilen 4 istatistik kartını düzenleyin
+        </p>
+      </div>
+
+      {/* Hero Statistics Settings - Stats Section (Hero altındaki istatistikler) */}
+      <Card className="border-2 border-secondary/30">
+        <CardHeader className="bg-secondary/5">
+          <CardTitle className="text-base flex items-center gap-2">
+            <TrendingUp className="size-4" />
+            Hero Altı İstatistik Kartları
+          </CardTitle>
+          <CardDescription>
+            Ana sayfada hero bölümü altında gösterilen 4 istatistik kartını düzenleyin
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4 pt-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Ortalama Değerlendirme */}
+            <div className="space-y-2">
+              <Label htmlFor="stats-averageRating" className="flex items-center gap-2">
+                <Trophy className="size-4 text-yellow-500" />
+                Ortalama Değerlendirme
+              </Label>
+              <Input
+                id="stats-averageRating"
+                type="text"
+                value={stats.averageRating || ''}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Format kontrolü: X.X/5 veya boş
+                  const ratingRegex = /^(\d+\.?\d*\/\d+|)$/;
+                  if (ratingRegex.test(value) || value === '') {
+                    updateStats({ averageRating: value });
+                  }
+                }}
+                placeholder="4.9/5"
+                className="font-semibold"
+              />
+              {stats.averageRating && !/^\d+\.?\d*\/\d+$/.test(stats.averageRating) && (
+                <p className="text-xs text-red-500">⚠️ Format: X.X/5 (örn: 4.9/5)</p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Örnek: 4.9/5, 5.0/5
+              </p>
+            </div>
+
+            {/* Aktif Kullanıcı */}
+            <div className="space-y-2">
+              <Label htmlFor="stats-totalUsers" className="flex items-center gap-2">
+                <Users className="size-4 text-blue-500" />
+                Aktif Kullanıcı
+              </Label>
+              <Input
+                id="stats-totalUsers"
+                type="text"
+                value={stats.totalUsers || ''}
+                onChange={(e) => updateStats({ totalUsers: e.target.value })}
+                placeholder="50K+"
+                className="font-semibold"
+              />
+              <p className="text-xs text-muted-foreground">
+                Metin formatı kabul edilir (örn: 50K+, 0.0K+, 1.2M+)
+              </p>
+            </div>
+
+            {/* Yapılan Tahmin */}
+            <div className="space-y-2">
+              <Label htmlFor="stats-totalPredictions" className="flex items-center gap-2">
+                <TrendingUp className="size-4 text-purple-500" />
+                Yapılan Tahmin
+              </Label>
+              <Input
+                id="stats-totalPredictions"
+                type="number"
+                min="0"
+                value={stats.totalPredictions || 0}
+                onChange={(e) => {
+                  const value = parseInt(e.target.value) || 0;
+                  // Negatif sayı engelleme
+                  if (value >= 0) {
+                    updateStats({ totalPredictions: value });
+                  }
+                }}
+                placeholder="1000000"
+                className="font-semibold"
+              />
+              <p className="text-xs text-muted-foreground">
+                Sayı girin, M+/K+ otomatik eklenir. Örnek: 1000000 → "1.0M+", 500000 → "500K+"
+              </p>
+            </div>
+
+            {/* Kapsanan Lig */}
+            <div className="space-y-2">
+              <Label htmlFor="stats-totalLeagues" className="flex items-center gap-2">
+                <Globe className="size-4 text-green-500" />
+                Kapsanan Lig
+              </Label>
+              <Input
+                id="stats-totalLeagues"
+                type="number"
+                min="0"
+                value={stats.totalLeagues || 25}
+                onChange={(e) => {
+                  const value = parseInt(e.target.value) || 0;
+                  // Negatif sayı engelleme
+                  if (value >= 0) {
+                    updateStats({ totalLeagues: value });
+                  }
+                }}
+                placeholder="25"
+                className="font-semibold"
+              />
+              <p className="text-xs text-muted-foreground">
+                Sayı girin, + otomatik eklenir. Örnek: 25 → "25+", 0 → "0+"
+              </p>
+            </div>
+          </div>
+
+          <div className="pt-4 border-t bg-secondary/5 rounded-lg p-4">
+            <div className="flex items-start gap-2">
+              <Info className="size-4 text-secondary mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm font-semibold mb-1">📊 Canlı Önizleme</p>
+                <p className="text-xs text-muted-foreground">
+                  Bu istatistikler ana sayfada hero bölümünün altındaki 4 kartta gösterilecektir:
+                </p>
+                <div className="mt-2 grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                  <div className="bg-background/50 p-2 rounded border">
+                    <div className="font-bold text-secondary">{stats.averageRating || '0.0/5'}</div>
+                    <div className="text-muted-foreground">Ortalama Değerlendirme</div>
+                  </div>
+                  <div className="bg-background/50 p-2 rounded border">
+                    <div className="font-bold text-secondary">{stats.totalUsers || '0.0K+'}</div>
+                    <div className="text-muted-foreground">Aktif Kullanıcı</div>
+                  </div>
+                  <div className="bg-background/50 p-2 rounded border">
+                    <div className="font-bold text-secondary">
+                      {stats.totalPredictions 
+                        ? stats.totalPredictions >= 1000000 
+                          ? `${(stats.totalPredictions / 1000000).toFixed(1)}M+`
+                          : `${(stats.totalPredictions / 1000).toFixed(0)}K+`
+                        : '1M+'}
+                    </div>
+                    <div className="text-muted-foreground">Yapılan Tahmin</div>
+                  </div>
+                  <div className="bg-background/50 p-2 rounded border">
+                    <div className="font-bold text-secondary">{stats.totalLeagues ? `${stats.totalLeagues}+` : '25+'}</div>
+                    <div className="text-muted-foreground">Kapsanan Lig</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

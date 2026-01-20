@@ -1,134 +1,48 @@
-# TacticIQ - Otomatik Servis Başlatıcı ve Hata Kontrolü
-# Bu script tüm servisleri başlatır ve hataları otomatik kontrol eder
+# TacticIQ - All Systems Start Script
+# Bu script tüm sistemleri temiz bir şekilde başlatır
 
-$ErrorActionPreference = "Continue"
-$BackendPort = 3000
-$ExpoPort = 8081
-$CheckInterval = 10 # Saniye
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host "  TacticIQ - All Systems Startup" -ForegroundColor Cyan  
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host ""
 
-Write-Host "`n========================================" -ForegroundColor Cyan
-Write-Host "   TACTICIQ - OTOMATIK SERVIS BASLATICISI" -ForegroundColor Green
-Write-Host "========================================`n" -ForegroundColor Cyan
+# 1. Tüm Node süreçlerini kapat
+Write-Host "[1/5] Mevcut Node sureclerini kapatiliyor..." -ForegroundColor Yellow
+taskkill /F /IM node.exe 2>$null
+Start-Sleep -Seconds 2
 
-# Backend başlatma fonksiyonu
-function Start-Backend {
-    Write-Host "[BACKEND] Başlatılıyor..." -ForegroundColor Yellow
-    $backendJob = Start-Job -ScriptBlock {
-        Set-Location $using:PWD\backend
-        node server.js 2>&1
-    }
-    Start-Sleep -Seconds 3
-    
-    # Backend kontrolü
-    try {
-        $response = Invoke-WebRequest -Uri "http://localhost:$BackendPort" -TimeoutSec 2 -ErrorAction Stop
-        Write-Host "[BACKEND] ✅ Çalışıyor (Port: $BackendPort)" -ForegroundColor Green
-        return $backendJob
-    } catch {
-        Write-Host "[BACKEND] ⚠️  Başlatılıyor, kontrol ediliyor..." -ForegroundColor Yellow
-        return $backendJob
-    }
-}
+# 2. Cache temizle
+Write-Host "[2/5] Cache temizleniyor..." -ForegroundColor Yellow
+Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "$PSScriptRoot\.expo"
+Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "$PSScriptRoot\node_modules\.cache"
+Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "$PSScriptRoot\website\.vite"
+Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "$PSScriptRoot\website\node_modules\.vite"
+Write-Host "   Cache temizlendi!" -ForegroundColor Green
 
-# Expo başlatma fonksiyonu
-function Start-Expo {
-    Write-Host "[EXPO] Başlatılıyor..." -ForegroundColor Yellow
-    $expoJob = Start-Job -ScriptBlock {
-        Set-Location $using:PWD
-        $env:EXPO_PUBLIC_PLATFORM = "web"
-        npx expo start --web --clear 2>&1
-    }
-    Start-Sleep -Seconds 5
-    
-    # Expo kontrolü
-    try {
-        $response = Invoke-WebRequest -Uri "http://localhost:$ExpoPort" -TimeoutSec 3 -ErrorAction Stop
-        Write-Host "[EXPO] ✅ Çalışıyor (Port: $ExpoPort)" -ForegroundColor Green
-        return $expoJob
-    } catch {
-        Write-Host "[EXPO] ⚠️  Başlatılıyor, kontrol ediliyor..." -ForegroundColor Yellow
-        return $expoJob
-    }
-}
+# 3. Backend başlat
+Write-Host "[3/5] Backend baslatiliyor..." -ForegroundColor Yellow
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$PSScriptRoot\backend'; Write-Host 'BACKEND SERVER' -ForegroundColor Green; node server.js" -WindowStyle Normal
+Start-Sleep -Seconds 2
+Write-Host "   Backend basladi!" -ForegroundColor Green
 
-# Hata kontrolü fonksiyonu
-function Check-Errors {
-    param($Job, $ServiceName)
-    
-    $output = Receive-Job -Job $Job -ErrorAction SilentlyContinue
-    if ($output) {
-        $errorLines = $output | Where-Object { 
-            $_ -match "error|Error|ERROR|failed|Failed|FAILED|500|syntax|Syntax|SyntaxError" 
-        }
-        
-        if ($errorLines) {
-            Write-Host "`n[$ServiceName] ❌ HATA TESPIT EDILDI:" -ForegroundColor Red
-            $errorLines | Select-Object -First 5 | ForEach-Object {
-                Write-Host "  $_" -ForegroundColor Red
-            }
-            return $true
-        }
-    }
-    return $false
-}
+# 4. Website başlat
+Write-Host "[4/5] Website baslatiliyor..." -ForegroundColor Yellow
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$PSScriptRoot\website'; Write-Host 'WEBSITE (Vite)' -ForegroundColor Blue; npm run dev" -WindowStyle Normal
+Start-Sleep -Seconds 2
+Write-Host "   Website basladi!" -ForegroundColor Green
 
-# Servis durumu kontrolü
-function Check-ServiceHealth {
-    param($Port, $ServiceName)
-    
-    try {
-        $response = Invoke-WebRequest -Uri "http://localhost:$Port" -TimeoutSec 2 -ErrorAction Stop
-        return $true
-    } catch {
-        return $false
-    }
-}
+# 5. Expo Web başlat (cache temizleyerek)
+Write-Host "[5/5] Expo Web baslatiliyor (cache temizleniyor)..." -ForegroundColor Yellow
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$PSScriptRoot'; Write-Host 'EXPO WEB' -ForegroundColor Magenta; npx expo start --clear --web" -WindowStyle Normal
+Write-Host "   Expo Web basladi!" -ForegroundColor Green
 
-# Ana başlatma
-Write-Host "1️⃣  Backend servisi başlatılıyor..." -ForegroundColor Cyan
-$backendJob = Start-Backend
-
-Write-Host "`n2️⃣  Expo servisi başlatılıyor..." -ForegroundColor Cyan
-$expoJob = Start-Expo
-
-Write-Host "`n✅ Servisler başlatıldı!" -ForegroundColor Green
-Write-Host "`n📊 Durum:" -ForegroundColor Cyan
-Write-Host "  • Backend: http://localhost:$BackendPort" -ForegroundColor White
-Write-Host "  • Expo: http://localhost:$ExpoPort" -ForegroundColor White
-Write-Host "`n🔄 Otomatik hata kontrolü aktif (Her $CheckInterval saniyede bir)" -ForegroundColor Yellow
-Write-Host "   Çıkmak için Ctrl+C basın`n" -ForegroundColor Gray
-
-# Sürekli hata kontrolü döngüsü
-$iteration = 0
-while ($true) {
-    Start-Sleep -Seconds $CheckInterval
-    $iteration++
-    
-    # Her 6. iterasyonda (1 dakika) durum kontrolü
-    if ($iteration % 6 -eq 0) {
-        $backendOk = Check-ServiceHealth -Port $BackendPort -ServiceName "BACKEND"
-        $expoOk = Check-ServiceHealth -Port $ExpoPort -ServiceName "EXPO"
-        
-        if (-not $backendOk) {
-            Write-Host "[BACKEND] ⚠️  Servis durmuş, yeniden başlatılıyor..." -ForegroundColor Yellow
-            Stop-Job -Job $backendJob -ErrorAction SilentlyContinue
-            Remove-Job -Job $backendJob -ErrorAction SilentlyContinue
-            $backendJob = Start-Backend
-        }
-        
-        if (-not $expoOk) {
-            Write-Host "[EXPO] ⚠️  Servis durmuş, yeniden başlatılıyor..." -ForegroundColor Yellow
-            Stop-Job -Job $expoJob -ErrorAction SilentlyContinue
-            Remove-Job -Job $expoJob -ErrorAction SilentlyContinue
-            $expoJob = Start-Expo
-        }
-    }
-    
-    # Hata kontrolü
-    $backendError = Check-Errors -Job $backendJob -ServiceName "BACKEND"
-    $expoError = Check-Errors -Job $expoJob -ServiceName "EXPO"
-    
-    if ($backendError -or $expoError) {
-        Write-Host "`n⚠️  Hata tespit edildi, loglar kontrol ediliyor..." -ForegroundColor Yellow
-    }
-}
+Write-Host ""
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host "  Tum sistemler baslatildi!" -ForegroundColor Green
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "Acilan pencereler:" -ForegroundColor White
+Write-Host "  - Backend: http://localhost:3001" -ForegroundColor Gray
+Write-Host "  - Website: http://localhost:5173" -ForegroundColor Gray
+Write-Host "  - Expo Web: http://localhost:8081" -ForegroundColor Gray
+Write-Host ""

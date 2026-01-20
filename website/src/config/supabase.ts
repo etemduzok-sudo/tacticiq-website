@@ -100,7 +100,7 @@ export const adminAuthService = {
         }
       }
 
-      // Check Supabase session as fallback
+      // Check Supabase session - but only if user is admin
       const { data: { session }, error } = await supabase.auth.getSession();
       
       if (error) {
@@ -108,7 +108,14 @@ export const adminAuthService = {
         return { success: false, session: null };
       }
 
-      return { success: !!session, session };
+      // ✅ Sadece admin email'i olan kullanıcılar için admin session döndür
+      const ADMIN_EMAIL = 'etemduzok@gmail.com';
+      if (session?.user?.email === ADMIN_EMAIL) {
+        return { success: true, session };
+      }
+
+      // Normal kullanıcı session'ı varsa bile admin değil
+      return { success: false, session: null };
     } catch (error) {
       console.error('Session check exception:', error);
       return { success: false, session: null };

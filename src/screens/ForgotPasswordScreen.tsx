@@ -14,12 +14,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, {
-  FadeIn,
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-} from 'react-native-reanimated';
+// Animasyonlar kaldırıldı (sıçrama yok)
 import { BRAND, COLORS, SPACING, TYPOGRAPHY, SIZES } from '../theme/theme';
 import { AUTH_GRADIENT } from '../theme/gradients';
 import { STANDARD_LAYOUT, STANDARD_INPUT, STANDARD_COLORS } from '../constants/standardLayout';
@@ -78,7 +73,7 @@ export default function ForgotPasswordScreen({
   const [isLoading, setIsLoading] = useState(false);
   const [emailStatus, setEmailStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
 
-  const successScale = useSharedValue(0);
+  // Animasyonlar kaldırıldı (sıçrama yok)
 
   // Real-time email check (for password reset: need REGISTERED email)
   const checkEmailTimeout = React.useRef<NodeJS.Timeout | null>(null);
@@ -111,15 +106,12 @@ export default function ForgotPasswordScreen({
     setIsLoading(false);
     if (result.success) {
       setIsEmailSent(true);
-      successScale.value = withSpring(1, { damping: 10, stiffness: 200 });
     } else {
       Alert.alert('Hata', `Şifre sıfırlama başarısız: ${result.error}`);
     }
   };
 
-  const successIconStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: successScale.value }],
-  }));
+  // Animasyonlar kaldırıldı (sıçrama yok)
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -146,17 +138,24 @@ export default function ForgotPasswordScreen({
                 </TouchableOpacity>
               </View>
 
-              <Animated.View entering={FadeIn.duration(300)} style={styles.content}>
+              <View style={styles.content}>
               {!isEmailSent ? (
                 <>
                   {/* [B] BRAND ZONE */}
                   <View style={styles.brandZone}>
-                    <Image
-                      source={Platform.OS === 'web' ? { uri: '/TacticIQ.svg' } : require('../../assets/logo.png')}
-                      style={{ width: 80, height: 80 }}
-                      resizeMode="contain"
-                    />
-                    <Text style={styles.brandTitle}>TacticIQ</Text>
+                    {Platform.OS === 'web' ? (
+                      <img 
+                        src="/TacticIQ.svg" 
+                        alt="TacticIQ" 
+                        style={{ width: 250, height: 250 }} 
+                      />
+                    ) : (
+                      <Image
+                        source={require('../../assets/logo.png')}
+                        style={{ width: 250, height: 250 }}
+                        resizeMode="contain"
+                      />
+                    )}
                   </View>
 
                   {/* [C] PRIMARY ACTION ZONE - SPACER (no social buttons on this screen) */}
@@ -244,9 +243,7 @@ export default function ForgotPasswordScreen({
 
                   {/* Success Message */}
                   <View style={styles.successContainer}>
-                    <Animated.View style={successIconStyle}>
-                      <Ionicons name="checkmark-circle" size={64} color="#059669" />
-                    </Animated.View>
+                    <Ionicons name="checkmark-circle" size={64} color="#059669" />
                     <Text style={styles.successTitle}>Email Gönderildi!</Text>
                     <Text style={styles.successMessage}>
                       Şifre sıfırlama bağlantısı{' '}
@@ -268,7 +265,6 @@ export default function ForgotPasswordScreen({
                       style={styles.retryButton}
                       onPress={() => {
                         setIsEmailSent(false);
-                        successScale.value = 0;
                       }}
                       activeOpacity={0.8}
                     >
@@ -277,7 +273,7 @@ export default function ForgotPasswordScreen({
                   </View>
                 </>
               )}
-              </Animated.View>
+              </View>
             </View>
 
             {/* [H] FOOTER ZONE - FIXED AT BOTTOM (OUTSIDE SCROLLABLE CONTENT) */}
@@ -330,14 +326,16 @@ const styles = StyleSheet.create({
     maxWidth: 400,
     width: '100%',
     alignSelf: 'center',
+    justifyContent: 'flex-start',
+    paddingVertical: 0,
   },
   
   // [B] BRAND ZONE
   brandZone: {
     alignItems: 'center',
     justifyContent: 'flex-start',
-    marginTop: 15,
-    marginBottom: 20,
+    marginTop: 5,
+    marginBottom: 5,
     paddingVertical: 0,
   },
   brandTitle: {
