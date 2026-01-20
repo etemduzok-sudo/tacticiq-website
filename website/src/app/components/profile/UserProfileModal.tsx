@@ -94,6 +94,7 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleting, setDeleting] = useState(false);
   const [activeTab, setActiveTab] = useState<'profile' | 'badges'>('profile');
+  const [showDeleteSection, setShowDeleteSection] = useState(false);
   
   // Profile fields
   const [firstName, setFirstName] = useState('');
@@ -396,25 +397,75 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
                 <>
                   {/* Profile Header */}
                   <Card>
-                    <div className="h-16 bg-gradient-to-r from-secondary/20 via-accent/10 to-secondary/20" />
+                    <div className="h-20 bg-gradient-to-r from-secondary/20 via-accent/10 to-secondary/20" />
                     <CardContent className="relative pt-0 pb-4">
-                      <div className="flex flex-col items-center -mt-10">
-                        <Avatar className="size-16 border-4 border-background shadow-lg mb-3">
+                      <div className="flex flex-col items-center -mt-12">
+                        <Avatar className="size-20 border-4 border-background shadow-lg mb-3">
                           <AvatarImage src={profile.avatar} />
-                          <AvatarFallback className="text-xl font-bold bg-gradient-to-br from-secondary to-accent text-white">
+                          <AvatarFallback className="text-2xl font-bold bg-gradient-to-br from-secondary to-accent text-white">
                             {getInitials(profile.name || profile.email)}
                           </AvatarFallback>
                         </Avatar>
-                        <h2 className="text-lg font-bold mb-1">{profile.name || nickname || profile.email}</h2>
-                        <p className="text-xs text-muted-foreground mb-2">{profile.email}</p>
-                        {isPro ? (
-                          <Badge className="bg-gradient-to-r from-amber-500 to-yellow-400 text-black">
-                            <Crown className="size-3 mr-1" />
-                            PRO
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline">Free</Badge>
-                        )}
+                        <div className="flex items-center gap-2 mb-1">
+                          <h2 className="text-xl font-bold">{profile.name || nickname || profile.email}</h2>
+                          {isPro ? (
+                            <Badge className="bg-gradient-to-r from-amber-500 to-yellow-400 text-black">
+                              <Crown className="size-3 mr-1" />
+                              PRO
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline">Free</Badge>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground mb-3">{profile.email}</p>
+                        
+                        {/* Stats Row */}
+                        <div className="flex items-center gap-4 w-full justify-center">
+                          {/* Country */}
+                          <div className="text-center">
+                            <p className="text-xs text-muted-foreground mb-1">Ülke</p>
+                            <div className="flex items-center gap-1">
+                              <span className="text-lg">🇹🇷</span>
+                              <p className="text-sm font-semibold">Türkiye</p>
+                            </div>
+                          </div>
+                          <Separator orientation="vertical" className="h-8" />
+                          {/* Country Rank */}
+                          <div className="text-center">
+                            <p className="text-xs text-muted-foreground mb-1">Türkiye Sırası</p>
+                            <p className="text-sm font-bold text-secondary">#{userStats.countryRank.toLocaleString()}</p>
+                          </div>
+                          <Separator orientation="vertical" className="h-8" />
+                          {/* Global Rank */}
+                          <div className="text-center">
+                            <p className="text-xs text-muted-foreground mb-1">Dünya Sırası</p>
+                            <p className="text-sm font-bold">#{((userStats.totalPlayers || 1000) - (userStats.countryRank || 0)).toLocaleString()}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Achievements Card */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Star className="size-4 text-amber-500" />
+                        Başarımlar
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-3 gap-3">
+                        {achievements.map((achievement) => (
+                          <Card 
+                            key={achievement.id} 
+                            className="text-center p-4 bg-amber-500/10 border-amber-500/20 hover:bg-amber-500/20 transition-colors"
+                          >
+                            <span className="text-4xl block mb-2">{achievement.icon}</span>
+                            <p className="text-sm font-semibold mb-1">{achievement.name}</p>
+                            <p className="text-xs text-muted-foreground">{achievement.description}</p>
+                          </Card>
+                        ))}
                       </div>
                     </CardContent>
                   </Card>
@@ -715,15 +766,60 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
                         </Button>
                       )}
 
-                      {/* Sign Out */}
-                      <Button 
-                        variant="outline" 
-                        className="w-full"
-                        onClick={handleSignOut}
-                      >
-                        <LogOut className="size-4 mr-2" />
-                        Çıkış Yap
-                      </Button>
+                      <Separator />
+
+                      {/* Security & Account Section */}
+                      <div className="space-y-3">
+                        <h4 className="font-medium text-sm text-muted-foreground flex items-center gap-2">
+                          <Shield className="size-4" />
+                          Güvenlik ve Hesap
+                        </h4>
+                        
+                        {/* Sign Out */}
+                        <Button 
+                          variant="outline" 
+                          className="w-full"
+                          onClick={handleSignOut}
+                        >
+                          <LogOut className="size-4 mr-2" />
+                          Çıkış Yap
+                        </Button>
+
+                        {/* Delete Account - Hidden in collapsible */}
+                        <div className="border border-destructive/20 rounded-lg overflow-hidden">
+                          <button
+                            onClick={() => setShowDeleteSection(!showDeleteSection)}
+                            className="w-full p-3 text-left text-destructive hover:bg-destructive/10 transition-colors flex items-center justify-between"
+                          >
+                            <div className="flex items-center gap-2">
+                              <Trash2 className="size-4" />
+                              <span className="text-sm font-medium">Hesabı Sil</span>
+                            </div>
+                            <AlertTriangle className={`size-4 opacity-50 transition-transform ${showDeleteSection ? 'rotate-180' : ''}`} />
+                          </button>
+                          {showDeleteSection && (
+                            <div className="p-4 bg-destructive/5 border-t border-destructive/20 space-y-3 animate-in slide-in-from-top-2">
+                              <Alert variant="destructive">
+                                <AlertTriangle className="size-4" />
+                                <AlertDescription className="text-xs">
+                                  Hesabınızı silmek kalıcıdır ve geri alınamaz. Tüm verileriniz silinecektir.
+                                </AlertDescription>
+                              </Alert>
+                              <Button 
+                                variant="destructive" 
+                                className="w-full"
+                                onClick={() => {
+                                  setShowDeleteSection(false);
+                                  setShowDeleteDialog(true);
+                                }}
+                              >
+                                <Trash2 className="size-4 mr-2" />
+                                Hesabı Kalıcı Olarak Sil
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </CardContent>
                   </Card>
                 </>
@@ -758,8 +854,8 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
                         </CardContent>
                       </Card>
 
-                      {/* Badges Grid */}
-                      <div className="grid grid-cols-4 gap-3">
+                      {/* Badges Grid - 1 satıra 5 rozet */}
+                      <div className="grid grid-cols-5 gap-2">
                         {allBadges.map((badge) => (
                           <Card 
                             key={badge.id} 
