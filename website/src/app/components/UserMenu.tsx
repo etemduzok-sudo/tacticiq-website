@@ -23,6 +23,7 @@ import { Button } from '@/app/components/ui/button';
 import { Avatar, AvatarFallback } from '@/app/components/ui/avatar';
 import { LogOut, Trash2, User, Settings, Crown } from 'lucide-react';
 import { toast } from 'sonner';
+import { UserProfileModal } from '@/app/components/profile/UserProfileModal';
 
 interface UserMenuProps {
   user?: {
@@ -43,6 +44,7 @@ export function UserMenu({
   const { t } = useLanguage();
   const userAuth = useUserAuthSafe();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
 
   const isPro = userAuth?.profile?.plan === 'pro';
 
@@ -65,15 +67,8 @@ export function UserMenu({
   };
 
   const handleNavigateToProfile = () => {
-    // Scroll to profile section
-    const profileSection = document.getElementById('profile');
-    if (profileSection) {
-      profileSection.scrollIntoView({ behavior: 'smooth' });
-    } else {
-      // If profile section doesn't exist, try to navigate
-      window.location.hash = 'profile';
-      toast.info(t('profile.title'));
-    }
+    // Open profile modal instead of scrolling
+    setProfileModalOpen(true);
     if (onNavigateToProfile) {
       onNavigateToProfile();
     }
@@ -161,10 +156,6 @@ export function UserMenu({
             <User className="mr-2 size-4" />
             <span>{t('profile.title')}</span>
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={handleNavigateToSettings} className="cursor-pointer">
-            <Settings className="mr-2 size-4" />
-            <span>{t('profile.settings.title')}</span>
-          </DropdownMenuItem>
           {!isPro && (
             <DropdownMenuItem onClick={handleUpgradeToPro} className="cursor-pointer text-amber-600 hover:text-amber-500">
               <Crown className="mr-2 size-4" />
@@ -207,6 +198,9 @@ export function UserMenu({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* User Profile Modal */}
+      <UserProfileModal open={profileModalOpen} onOpenChange={setProfileModalOpen} />
     </>
   );
 }

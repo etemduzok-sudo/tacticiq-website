@@ -10,6 +10,7 @@ export interface UserProfile {
   id: string;
   email: string;
   name?: string;
+  nickname?: string;
   avatar?: string;
   plan: 'free' | 'pro';
   favoriteTeams?: string[];
@@ -164,6 +165,7 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
           id: data.id,
           email: userEmail,
           name: profileName,
+          nickname: data.nickname || profileName || userEmail.split('@')[0],
           avatar: userMetadata?.avatar_url || userMetadata?.picture || data.avatar,
           plan: data.plan || 'free',
           favoriteTeams: data.favorite_teams || [],
@@ -180,10 +182,12 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
         return userProfile;
       }
       // CRITICAL: Create default profile immediately for first-time users
+      const defaultName = metadataName || userEmail.split('@')[0];
       const defaultProfile: UserProfile = {
         id: userId,
         email: userEmail,
-        name: metadataName || userEmail.split('@')[0],
+        name: defaultName,
+        nickname: defaultName,
         avatar: userMetadata?.avatar_url || userMetadata?.picture,
         plan: 'free',
         favoriteTeams: [],
@@ -240,10 +244,12 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
       
       // Last resort: Create minimal profile from user data
       console.log('⚠️ Creating minimal fallback profile');
+      const fallbackName = userEmail.split('@')[0];
       const fallbackProfile: UserProfile = {
         id: userId,
         email: userEmail,
-        name: userEmail.split('@')[0],
+        name: fallbackName,
+        nickname: fallbackName,
         plan: 'free',
         favoriteTeams: [],
         preferredLanguage: 'tr',
@@ -293,10 +299,12 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
           // CRITICAL: Create immediate profile FIRST
           const metadata = currentSession.user.user_metadata;
           const metadataName = metadata?.name || metadata?.full_name || metadata?.display_name || null;
+          const immediateName = metadataName || currentSession.user.email?.split('@')[0] || 'User';
           const immediateProfile: UserProfile = {
             id: currentSession.user.id,
             email: currentSession.user.email || '',
-            name: metadataName || currentSession.user.email?.split('@')[0] || 'User',
+            name: immediateName,
+            nickname: immediateName,
             avatar: metadata?.avatar_url || metadata?.picture,
             plan: 'free',
             favoriteTeams: [],
@@ -357,10 +365,12 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
           // CRITICAL: Create immediate profile FIRST
           const metadata = session.user.user_metadata;
           const metadataName = metadata?.name || metadata?.full_name || metadata?.display_name || null;
+          const immediateName = metadataName || session.user.email?.split('@')[0] || 'User';
           const immediateProfile: UserProfile = {
             id: session.user.id,
             email: session.user.email || '',
-            name: metadataName || session.user.email?.split('@')[0] || 'User',
+            name: immediateName,
+            nickname: immediateName,
             avatar: metadata?.avatar_url || metadata?.picture,
             plan: 'free',
             favoriteTeams: [],
@@ -765,11 +775,12 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
     try {
       // Map to Supabase column names
       const supabaseUpdates: any = {};
-      if (updates.name) supabaseUpdates.name = updates.name;
-      if (updates.avatar) supabaseUpdates.avatar = updates.avatar;
-      if (updates.plan) supabaseUpdates.plan = updates.plan;
-      if (updates.favoriteTeams) supabaseUpdates.favorite_teams = updates.favoriteTeams;
-      if (updates.preferredLanguage) supabaseUpdates.preferred_language = updates.preferredLanguage;
+      if (updates.name !== undefined) supabaseUpdates.name = updates.name;
+      if (updates.nickname !== undefined) supabaseUpdates.nickname = updates.nickname;
+      if (updates.avatar !== undefined) supabaseUpdates.avatar = updates.avatar;
+      if (updates.plan !== undefined) supabaseUpdates.plan = updates.plan;
+      if (updates.favoriteTeams !== undefined) supabaseUpdates.favorite_teams = updates.favoriteTeams;
+      if (updates.preferredLanguage !== undefined) supabaseUpdates.preferred_language = updates.preferredLanguage;
       supabaseUpdates.updated_at = new Date().toISOString();
 
       const { error: updateError } = await supabase
