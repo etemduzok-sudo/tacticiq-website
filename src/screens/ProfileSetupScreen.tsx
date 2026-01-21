@@ -1081,14 +1081,20 @@ export default function ProfileSetupScreen({
   
   return (
     <View style={styles.container}>
-      {/* Watermark Background - TacticIQ.app */}
+      {/* Watermark Background - Futbol Topları */}
       <View style={styles.watermarkContainer} pointerEvents="none">
-        <Text style={[styles.watermarkText, styles.watermark1]}>TacticIQ.app</Text>
-        <Text style={[styles.watermarkText, styles.watermark2]}>TacticIQ.app</Text>
-        <Text style={[styles.watermarkText, styles.watermark3]}>TacticIQ.app</Text>
-        <Text style={[styles.watermarkText, styles.watermark4]}>TacticIQ.app</Text>
-        <Text style={[styles.watermarkText, styles.watermark5]}>TacticIQ.app</Text>
-        <Text style={[styles.watermarkText, styles.watermark6]}>TacticIQ.app</Text>
+        <Text style={[styles.ballWatermark, styles.ball1]}>⚽</Text>
+        <Text style={[styles.ballWatermark, styles.ball2]}>⚽</Text>
+        <Text style={[styles.ballWatermark, styles.ball3]}>⚽</Text>
+        <Text style={[styles.ballWatermark, styles.ball4]}>⚽</Text>
+        <Text style={[styles.ballWatermark, styles.ball5]}>⚽</Text>
+        <Text style={[styles.ballWatermark, styles.ball6]}>⚽</Text>
+        <Text style={[styles.ballWatermark, styles.ball7]}>⚽</Text>
+        <Text style={[styles.ballWatermark, styles.ball8]}>⚽</Text>
+        <Text style={[styles.ballWatermark, styles.ball9]}>⚽</Text>
+        <Text style={[styles.ballWatermark, styles.ball10]}>⚽</Text>
+        <Text style={[styles.ballWatermark, styles.ball11]}>⚽</Text>
+        <Text style={[styles.ballWatermark, styles.ball12]}>⚽</Text>
       </View>
       
       {/* Back Button */}
@@ -1244,63 +1250,71 @@ const styles = StyleSheet.create({
     zIndex: 0,
     overflow: 'hidden',
   },
-  watermarkText: {
+  ballWatermark: {
     position: 'absolute',
-    color: 'rgba(31, 162, 166, 0.08)', // Silik ama okunabilir turkuaz
-    fontWeight: '900',
-    fontFamily: Platform.OS === 'web' ? 'system-ui, -apple-system, sans-serif' : undefined,
-    letterSpacing: 6,
+    opacity: 0.06, // Çok silik
+    color: 'rgba(31, 162, 166, 1)', // Turkuaz renk
     // X eksenine paralel, rotasyon yok
   },
-  watermark1: {
+  ball1: {
     top: 60,
-    left: -50,
-    fontSize: 110,
+    left: '10%',
+    fontSize: 45,
   },
-  watermark2: {
-    top: 180,
-    left: '30%',
-    fontSize: 135,
+  ball2: {
+    top: 60,
+    left: '50%',
+    fontSize: 68,
   },
-  watermark3: {
-    top: 280,
-    left: -80,
-    fontSize: 125,
-  },
-  watermark4: {
-    top: 380,
-    left: '45%',
-    fontSize: 150,
-  },
-  watermark5: {
-    top: 500,
-    left: -60,
-    fontSize: 140,
-  },
-  watermark6: {
-    top: 620,
-    left: '60%',
-    fontSize: 120,
-  },
-  watermark7: {
-    top: 720,
-    left: '15%',
-    fontSize: 145,
-  },
-  watermark8: {
-    top: 240,
+  ball3: {
+    top: 60,
     left: '85%',
-    fontSize: 130,
+    fontSize: 52,
   },
-  watermark9: {
-    top: 460,
+  ball4: {
+    top: 180,
+    left: -20,
+    fontSize: 58,
+  },
+  ball5: {
+    top: 180,
+    left: '35%',
+    fontSize: 74,
+  },
+  ball6: {
+    top: 280,
+    left: '20%',
+    fontSize: 61,
+  },
+  ball7: {
+    top: 280,
+    left: '65%',
+    fontSize: 48,
+  },
+  ball8: {
+    top: 400,
+    left: '5%',
+    fontSize: 56,
+  },
+  ball9: {
+    top: 400,
+    left: '45%',
+    fontSize: 70,
+  },
+  ball10: {
+    top: 520,
+    left: '30%',
+    fontSize: 54,
+  },
+  ball11: {
+    top: 520,
     left: '75%',
-    fontSize: 115,
+    fontSize: 65,
   },
-  watermark10: {
-    top: 680,
-    left: -70,
-    fontSize: 155,
+  ball12: {
+    top: 650,
+    left: '55%',
+    fontSize: 59,
   },
   backButton: {
     position: 'absolute',
