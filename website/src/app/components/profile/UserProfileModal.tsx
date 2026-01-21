@@ -520,21 +520,44 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
   const isGoogleUser = user.app_metadata?.provider === 'google';
   const isAppleUser = user.app_metadata?.provider === 'apple';
 
+  // Takımları otomatik kaydet
+  const handleSaveTeams = async (nationalTeam: string, clubTeams: string[]) => {
+    try {
+      const allTeams = [nationalTeam, ...clubTeams].filter(Boolean);
+      const result = await updateProfile({ 
+        favoriteTeams: allTeams,
+      });
+      if (result.success) {
+        toast.success('Takımlar güncellendi');
+      } else {
+        toast.error(result.error || 'Takımlar güncellenemedi');
+      }
+    } catch (err) {
+      console.error('Error saving teams:', err);
+    }
+  };
+
   // Kulüp takımı ekleme/kaldırma
-  const handleToggleClubTeam = (team: string) => {
-    if (!isEditing) return;
+  const handleToggleClubTeam = async (team: string) => {
+    let newClubTeams: string[];
     
     if (selectedClubTeams.includes(team)) {
-      setSelectedClubTeams(selectedClubTeams.filter(t => t !== team));
+      newClubTeams = selectedClubTeams.filter(t => t !== team);
     } else {
       if (isPro && selectedClubTeams.length < 5) {
-        setSelectedClubTeams([...selectedClubTeams, team]);
+        newClubTeams = [...selectedClubTeams, team];
       } else if (!isPro) {
         toast.error('Kulüp takımı seçmek için Pro üye olmanız gerekiyor');
+        return;
       } else {
         toast.error('Maksimum 5 kulüp takımı seçebilirsiniz');
+        return;
       }
     }
+    
+    setSelectedClubTeams(newClubTeams);
+    // Otomatik kaydet
+    await handleSaveTeams(selectedNationalTeam, newClubTeams);
   };
 
   return (
@@ -719,25 +742,20 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
                           <button
                             type="button"
                             onClick={() => {
-                              if (isEditing) {
-                                const input = document.getElementById('national-team-search');
-                                if (input) {
-                                  (input as HTMLInputElement).focus();
-                                } else {
-                                  setShowNationalTeamDropdown(!showNationalTeamDropdown);
-                                }
+                              const input = document.getElementById('national-team-search');
+                              if (input) {
+                                (input as HTMLInputElement).focus();
+                              } else {
+                                setShowNationalTeamDropdown(!showNationalTeamDropdown);
                               }
                             }}
-                            disabled={!isEditing}
-                            className={`w-full flex items-center justify-between h-10 px-3 py-2 text-sm border rounded-md bg-background ${
-                              !isEditing ? 'bg-muted cursor-not-allowed opacity-50' : 'cursor-pointer hover:bg-accent'
-                            } ${!selectedNationalTeam && isEditing ? 'border-destructive' : 'border-input'}`}
+                            className={`w-full flex items-center justify-between h-10 px-3 py-2 text-sm border rounded-md bg-background cursor-pointer hover:bg-accent ${!selectedNationalTeam ? 'border-destructive' : 'border-input'}`}
                           >
                             <span className={selectedNationalTeam ? '' : 'text-muted-foreground'}>
                               {selectedNationalTeam || 'Milli takım seçin veya ara...'}
                             </span>
                             <div className="flex items-center gap-2">
-                              {selectedNationalTeam && !nationalTeamSearch && isEditing && (
+                              {selectedNationalTeam && !nationalTeamSearch && (
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -796,10 +814,12 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
                                 ) : nationalTeams).map(team => (
                                   <button
                                     key={team}
-                                    onClick={() => {
+                                    onClick={async () => {
                                       setSelectedNationalTeam(team);
                                       setNationalTeamSearch('');
                                       setShowNationalTeamDropdown(false);
+                                      // Otomatik kaydet
+                                      await handleSaveTeams(team, selectedClubTeams);
                                     }}
                                     className={`w-full p-2 hover:bg-muted text-left text-sm transition-colors ${
                                       selectedNationalTeam === team ? 'bg-primary/10' : ''
@@ -832,18 +852,16 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
                             <button
                               type="button"
                               onClick={() => {
-                                if (isEditing) {
-                                  const input = document.getElementById('club-team-search');
-                                  if (input) {
-                                    (input as HTMLInputElement).focus();
-                                  } else {
-                                    setShowClubTeamDropdown(!showClubTeamDropdown);
-                                  }
+                                const input = document.getElementById('club-team-search');
+                                if (input) {
+                                  (input as HTMLInputElement).focus();
+                                } else {
+                                  setShowClubTeamDropdown(!showClubTeamDropdown);
                                 }
                               }}
-                              disabled={!isEditing || selectedClubTeams.length >= 5}
+                              disabled={selectedClubTeams.length >= 5}
                               className={`w-full flex items-center justify-between h-10 px-3 py-2 text-sm border rounded-md bg-background ${
-                                !isEditing || selectedClubTeams.length >= 5
+                                selectedClubTeams.length >= 5
                                   ? 'bg-muted cursor-not-allowed opacity-50'
                                   : 'cursor-pointer hover:bg-accent'
                               } border-input`}
@@ -864,7 +882,7 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
                             </button>
                             
                             {/* Search Input - Hidden by default, shown when clicked */}
-                            {(showClubTeamDropdown || clubTeamSearch) && isEditing && (
+                            {(showClubTeamDropdown || clubTeamSearch) && (
                               <div 
                                 className="absolute z-30 w-full mt-1 bg-popover border rounded-lg shadow-lg"
                                 onMouseDown={(e) => e.preventDefault()}
@@ -900,8 +918,8 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
                                   ) : clubTeamsList.filter(team => !selectedClubTeams.includes(team))).map(team => (
                                     <button
                                       key={team}
-                                      onClick={() => {
-                                        handleToggleClubTeam(team);
+                                      onClick={async () => {
+                                        await handleToggleClubTeam(team);
                                         setClubTeamSearch('');
                                         setShowClubTeamDropdown(false);
                                       }}
@@ -935,14 +953,12 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
                               {selectedClubTeams.map(team => (
                                 <Badge key={team} variant="secondary" className="gap-1">
                                   {team}
-                                  {isEditing && (
-                                    <button
-                                      onClick={() => handleToggleClubTeam(team)}
-                                      className="ml-1 hover:bg-secondary-foreground/20 rounded-full p-0.5"
-                                    >
-                                      <X className="size-3" />
-                                    </button>
-                                  )}
+                                  <button
+                                    onClick={async () => await handleToggleClubTeam(team)}
+                                    className="ml-1 hover:bg-secondary-foreground/20 rounded-full p-0.5"
+                                  >
+                                    <X className="size-3" />
+                                  </button>
                                 </Badge>
                               ))}
                             </div>
