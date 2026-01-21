@@ -858,18 +858,20 @@ export default function FavoriteTeamsScreen({ onComplete, onBack }: FavoriteTeam
 
             return (
     <ScreenLayout safeArea>
-      {/* Watermark Background - TacticIQ.app */}
+      {/* Watermark Background - Futbol Topları */}
       <View style={styles.watermarkContainer} pointerEvents="none">
-        <Text style={[styles.watermarkText, styles.watermark1]}>TacticIQ.app</Text>
-        <Text style={[styles.watermarkText, styles.watermark2]}>TacticIQ.app</Text>
-        <Text style={[styles.watermarkText, styles.watermark3]}>TacticIQ.app</Text>
-        <Text style={[styles.watermarkText, styles.watermark4]}>TacticIQ.app</Text>
-        <Text style={[styles.watermarkText, styles.watermark5]}>TacticIQ.app</Text>
-        <Text style={[styles.watermarkText, styles.watermark6]}>TacticIQ.app</Text>
-        <Text style={[styles.watermarkText, styles.watermark7]}>TacticIQ.app</Text>
-        <Text style={[styles.watermarkText, styles.watermark8]}>TacticIQ.app</Text>
-        <Text style={[styles.watermarkText, styles.watermark9]}>TacticIQ.app</Text>
-        <Text style={[styles.watermarkText, styles.watermark10]}>TacticIQ.app</Text>
+        <Text style={[styles.ballWatermark, styles.ball1]}>⚽</Text>
+        <Text style={[styles.ballWatermark, styles.ball2]}>⚽</Text>
+        <Text style={[styles.ballWatermark, styles.ball3]}>⚽</Text>
+        <Text style={[styles.ballWatermark, styles.ball4]}>⚽</Text>
+        <Text style={[styles.ballWatermark, styles.ball5]}>⚽</Text>
+        <Text style={[styles.ballWatermark, styles.ball6]}>⚽</Text>
+        <Text style={[styles.ballWatermark, styles.ball7]}>⚽</Text>
+        <Text style={[styles.ballWatermark, styles.ball8]}>⚽</Text>
+        <Text style={[styles.ballWatermark, styles.ball9]}>⚽</Text>
+        <Text style={[styles.ballWatermark, styles.ball10]}>⚽</Text>
+        <Text style={[styles.ballWatermark, styles.ball11]}>⚽</Text>
+        <Text style={[styles.ballWatermark, styles.ball12]}>⚽</Text>
       </View>
 
       {/* Back Button - Sol üst köşe */}
@@ -1027,63 +1029,71 @@ const styles = StyleSheet.create({
     zIndex: 0,
     overflow: 'hidden',
   },
-  watermarkText: {
+  ballWatermark: {
     position: 'absolute',
-    color: 'rgba(31, 162, 166, 0.08)', // Silik ama okunabilir turkuaz
-    fontWeight: '900',
-    fontFamily: Platform.OS === 'web' ? 'system-ui, -apple-system, sans-serif' : undefined,
-    letterSpacing: 6,
+    opacity: 0.06, // Çok silik
+    color: 'rgba(31, 162, 166, 1)', // Turkuaz renk
     // X eksenine paralel, rotasyon yok
   },
-  watermark1: {
-    top: 80,
-    left: '15%',
+  ball1: {
+    top: 60,
+    left: '10%',
+    fontSize: 45,
+  },
+  ball2: {
+    top: 60,
+    left: '50%',
+    fontSize: 68,
+  },
+  ball3: {
+    top: 60,
+    left: '85%',
+    fontSize: 52,
+  },
+  ball4: {
+    top: 180,
+    left: -20,
     fontSize: 58,
   },
-  watermark2: {
-    top: 80,
-    left: '55%',
-    fontSize: 72,
-  },
-  watermark3: {
+  ball5: {
     top: 180,
-    left: -30,
-    fontSize: 64,
+    left: '35%',
+    fontSize: 74,
   },
-  watermark4: {
-    top: 240,
-    left: '25%',
-    fontSize: 69,
-  },
-  watermark5: {
-    top: 240,
-    left: '70%',
-    fontSize: 81,
-  },
-  watermark6: {
-    top: 340,
-    left: '45%',
-    fontSize: 76,
-  },
-  watermark7: {
-    top: 420,
-    left: -25,
-    fontSize: 93,
-  },
-  watermark8: {
-    top: 500,
-    left: '30%',
+  ball6: {
+    top: 280,
+    left: '20%',
     fontSize: 61,
   },
-  watermark9: {
-    top: 500,
-    left: '75%',
-    fontSize: 87,
+  ball7: {
+    top: 280,
+    left: '65%',
+    fontSize: 48,
   },
-  watermark10: {
-    top: 620,
-    left: '50%',
-    fontSize: 66,
+  ball8: {
+    top: 400,
+    left: '5%',
+    fontSize: 56,
+  },
+  ball9: {
+    top: 400,
+    left: '45%',
+    fontSize: 70,
+  },
+  ball10: {
+    top: 520,
+    left: '30%',
+    fontSize: 54,
+  },
+  ball11: {
+    top: 520,
+    left: '75%',
+    fontSize: 65,
+  },
+  ball12: {
+    top: 650,
+    left: '55%',
+    fontSize: 59,
   },
   // Back Button - Sol üst köşe (standardize)
   backButtonTop: {

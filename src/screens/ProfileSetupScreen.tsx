@@ -814,9 +814,18 @@ export default function ProfileSetupScreen({
     };
     
     // Extract flag emoji from team string
-    const getFlagEmoji = (teamString: string) => {
-      const flagMatch = teamString.match(/[\u{1F1E6}-\u{1F1FF}]{2}|🏴[^\s]*/u);
-      return flagMatch ? flagMatch[0] : null;
+    const getFlagEmoji = (teamString: string): string | null => {
+      // Try to match regular flag emojis first
+      const regularFlagMatch = teamString.match(/[\u{1F1E6}-\u{1F1FF}]{2}/u);
+      if (regularFlagMatch) {
+        return regularFlagMatch[0];
+      }
+      // Try to match England/UK flag
+      const englandFlagMatch = teamString.match(/🏴[^\s]*/u);
+      if (englandFlagMatch) {
+        return englandFlagMatch[0];
+      }
+      return null;
     };
     
     return (
@@ -1244,54 +1253,54 @@ const styles = StyleSheet.create({
     // X eksenine paralel, rotasyon yok
   },
   watermark1: {
-    top: 80,
-    left: '15%',
-    fontSize: 58,
+    top: 60,
+    left: -50,
+    fontSize: 110,
   },
   watermark2: {
-    top: 80,
-    left: '55%',
-    fontSize: 72,
+    top: 180,
+    left: '30%',
+    fontSize: 135,
   },
   watermark3: {
-    top: 180,
-    left: -30,
-    fontSize: 64,
+    top: 280,
+    left: -80,
+    fontSize: 125,
   },
   watermark4: {
-    top: 240,
-    left: '25%',
-    fontSize: 69,
+    top: 380,
+    left: '45%',
+    fontSize: 150,
   },
   watermark5: {
-    top: 240,
-    left: '70%',
-    fontSize: 81,
+    top: 500,
+    left: -60,
+    fontSize: 140,
   },
   watermark6: {
-    top: 340,
-    left: '45%',
-    fontSize: 76,
+    top: 620,
+    left: '60%',
+    fontSize: 120,
   },
   watermark7: {
-    top: 420,
-    left: -25,
-    fontSize: 93,
+    top: 720,
+    left: '15%',
+    fontSize: 145,
   },
   watermark8: {
-    top: 500,
-    left: '30%',
-    fontSize: 61,
+    top: 240,
+    left: '85%',
+    fontSize: 130,
   },
   watermark9: {
-    top: 500,
+    top: 460,
     left: '75%',
-    fontSize: 87,
+    fontSize: 115,
   },
   watermark10: {
-    top: 620,
-    left: '50%',
-    fontSize: 66,
+    top: 680,
+    left: -70,
+    fontSize: 155,
   },
   backButton: {
     position: 'absolute',
