@@ -984,11 +984,8 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
                                     </div>
                                   ) : (
                                     <div className="flex flex-col items-center gap-1">
-                                      <Badge variant="outline" className="text-muted-foreground border-muted-foreground/30">
-                                        Sıralama Yok
-                                      </Badge>
-                                      <span className="text-xs text-muted-foreground">
-                                        Tahmin yaparak sıralamaya gir
+                                      <span className="text-xs text-muted-foreground italic">
+                                        Tahmin yapınca sıralamanız burada görünecek
                                       </span>
                                     </div>
                                   )}
@@ -1005,11 +1002,8 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
                                     </div>
                                   ) : (
                                     <div className="flex flex-col items-center gap-1">
-                                      <Badge variant="outline" className="text-muted-foreground border-muted-foreground/30">
-                                        Sıralama Yok
-                                      </Badge>
-                                      <span className="text-xs text-muted-foreground">
-                                        Tahmin yaparak sıralamaya gir
+                                      <span className="text-xs text-muted-foreground italic">
+                                        Tahmin yapınca sıralamanız burada görünecek
                                       </span>
                                     </div>
                                   )}
@@ -1042,6 +1036,52 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
                             <p className="text-xs text-muted-foreground">{achievement.description}</p>
                           </Card>
                         ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Performance Card - Mobil ile aynı */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <TrendingUp className="size-4 text-secondary" />
+                        Performans
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="text-center p-4 bg-secondary/10 border border-secondary/20 rounded-lg">
+                          <div className="text-2xl font-bold text-secondary mb-1">
+                            {userStats.successRate}%
+                          </div>
+                          <div className="text-xs text-muted-foreground">Başarı Oranı</div>
+                        </div>
+                        <div className="text-center p-4 bg-muted/50 border border-border rounded-lg">
+                          <div className="text-2xl font-bold text-foreground mb-1">
+                            {userStats.totalPredictions}
+                          </div>
+                          <div className="text-xs text-muted-foreground">Toplam Tahmin</div>
+                        </div>
+                        <div className="text-center p-4 bg-accent/10 border border-accent/20 rounded-lg">
+                          <div className="text-2xl font-bold text-accent mb-1">
+                            {userStats.currentStreak}
+                          </div>
+                          <div className="text-xs text-muted-foreground">Günlük Seri</div>
+                        </div>
+                      </div>
+
+                      {/* Puan Gelişimi */}
+                      <div className="mt-4 p-4 bg-primary/5 border border-primary/10 rounded-lg">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-medium text-muted-foreground">Bu Hafta Kazanılan XP</span>
+                          <Zap className="size-4 text-primary" />
+                        </div>
+                        <div className="text-2xl font-bold text-primary">
+                          +{userStats.xpGainThisWeek}
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          Toplam Puan: {userStats.points.toLocaleString()}
+                        </div>
                       </div>
                     </CardContent>
                   </Card>

@@ -27,7 +27,9 @@
       "userInterfaceStyle": "automatic"
     },
     "web": {
-      "bundler": "metro"
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/logo.png"
     },
     "plugins": [
       "expo-router",
@@ -47,7 +49,8 @@
     "extra": {
       "newArchEnabled": true,
       "router": {
-        "origin": false
+        "origin": false,
+        "root": "./src"
       },
       "eas": {
         "projectId": "f33d2180-e311-47ac-b004-59e271e144f4"
