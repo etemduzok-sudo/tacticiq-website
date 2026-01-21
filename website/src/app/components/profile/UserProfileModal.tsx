@@ -111,6 +111,7 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
   const [emailNotifications, setEmailNotifications] = useState(false);
   const [weeklySummary, setWeeklySummary] = useState(false);
   const [campaignNotifications, setCampaignNotifications] = useState(true);
+  const [pushNotificationPermission, setPushNotificationPermission] = useState<NotificationPermission>('default');
   
   // Language & Timezone state
   const [selectedTimezone, setSelectedTimezone] = useState('Europe/Istanbul');
@@ -311,6 +312,13 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
     // İtalya
     'Juventus', 'AC Milan', 'Inter Milan', 'Napoli', 'Roma',
   ];
+
+  // Check notification permission on mount
+  useEffect(() => {
+    if ('Notification' in window) {
+      setPushNotificationPermission(Notification.permission);
+    }
+  }, []);
 
   // Initialize form data from profile
   useEffect(() => {
@@ -1139,6 +1147,65 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
                             }}
                           />
                         </div>
+                        
+                        {/* Push Notification Permission */}
+                        {typeof window !== 'undefined' && 'Notification' in window && (
+                          <>
+                            <Separator />
+                            <div className="flex items-center justify-between">
+                              <div className="space-y-0.5">
+                                <Label>Canlı Bildirimler</Label>
+                                <p className="text-xs text-muted-foreground">
+                                  Tarayıcı bildirim izni - Maç sonuçları ve canlı güncellemeler
+                                </p>
+                              </div>
+                              {pushNotificationPermission === 'granted' ? (
+                                <Badge variant="default" className="bg-green-500 text-white border-green-600">
+                                  ✓ Aktif
+                                </Badge>
+                              ) : pushNotificationPermission === 'denied' ? (
+                                <Badge variant="destructive">
+                                  X Reddedildi
+                                </Badge>
+                              ) : (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={async () => {
+                                    try {
+                                      if ('Notification' in window) {
+                                        const permission = await Notification.requestPermission();
+                                        setPushNotificationPermission(permission);
+                                        
+                                        if (permission === 'granted') {
+                                          toast.success('Canlı bildirim izni verildi!');
+                                          // Test notification gönder
+                                          new Notification('TacticIQ', {
+                                            body: 'Canlı bildirimler aktif! Maç sonuçları ve önemli güncellemeler için bildirim alacaksınız.',
+                                            icon: '/favicon.ico',
+                                          });
+                                        } else if (permission === 'denied') {
+                                          toast.error('Bildirim izni reddedildi. Tarayıcı ayarlarından değiştirebilirsiniz.');
+                                        }
+                                      }
+                                    } catch (error) {
+                                      console.error('Notification permission error:', error);
+                                      toast.error('Bildirim izni alınamadı. Lütfen tarayıcı ayarlarını kontrol edin.');
+                                    }
+                                  }}
+                                >
+                                  <Zap className="size-4 mr-1" />
+                                  İzin Ver
+                                </Button>
+                              )}
+                            </div>
+                            {pushNotificationPermission === 'denied' && (
+                              <p className="text-xs text-muted-foreground mt-2">
+                                Bildirim izni tarayıcı ayarlarından açılabilir. Ayarlar → Site İzinleri → Bildirimler
+                              </p>
+                            )}
+                          </>
+                        )}
                       </div>
 
                       <Separator />
@@ -1226,13 +1293,7 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
                 <>
                   {/* Badges Tab */}
                   <Card>
-                    <CardHeader>
-                      <CardTitle className="text-base">{t('badges.title') || 'Rozetlerim'}</CardTitle>
-                      <CardDescription>
-                        {allBadges.filter(b => b.earned).length} / {allBadges.length} rozet kazanıldı
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
+                    <CardContent className="pt-6">
                       {/* Badge Progress */}
                       <Card className="mb-4 bg-muted/50">
                         <CardContent className="pt-4">

@@ -116,8 +116,8 @@
     "privacy": { "title": "Privacy Policy", "desc": "GDPR, CCPA compliant", "fullContent": "Last Updated: January 1, 2026\n\n1. DATA COLLECTION\nWe collect device ID, IP, activity.\n\n2. YOUR RIGHTS\nYou can request data deletion.\n\n3. CONTACT\nprivacy@tacticiq.app" },
     "cookies": { "title": "Cookie Policy", "desc": "Cookie usage", "fullContent": "We use cookies to improve your experience.\n\nTypes: Essential, Analytics, Marketing\n\nManage in Settings." },
     "kvkk": { "title": "KVKK Disclosure", "desc": "Turkish data protection", "fullContent": "DATA CONTROLLER: TacticIQ\nkvkk@tacticiq.app\n\nDATA: Identity, Contact, Activity, Device\n\nRIGHTS: Contact kvkk@tacticiq.app" }
-  },
-  "cookies": {
+    },
+    "cookies": {
     "essential": "Essential Cookies",
     "essentialDesc": "Required for app to function",
     "analytics": "Analytics Cookies",

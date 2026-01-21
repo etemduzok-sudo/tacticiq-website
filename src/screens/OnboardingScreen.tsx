@@ -3,7 +3,7 @@
  * 9 dil, premium tasarım, büyük butonlar
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,8 @@ import {
   ActivityIndicator,
   Image,
   Dimensions,
+  Animated,
+  Easing,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -50,7 +52,11 @@ interface OnboardingScreenProps {
 
 type OnboardingStep = 'language' | 'age' | 'legal';
 
-const CURRENT_YEAR = new Date().getFullYear();
+// Yerel tarih (indirildiği bölgedeki tarih)
+const TODAY = new Date();
+const CURRENT_YEAR = TODAY.getFullYear();
+const CURRENT_MONTH = TODAY.getMonth() + 1; // 1-12 formatı
+const CURRENT_DAY = TODAY.getDate();
 const YEARS = Array.from({ length: 100 }, (_, i) => CURRENT_YEAR - i);
 
 const MONTHS_BY_LANG: Record<string, string[]> = {
@@ -86,10 +92,11 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
   const [currentStep, setCurrentStep] = useState<OnboardingStep>('language');
   const [selectedLanguage, setSelectedLanguage] = useState<string>('tr');
   
-  const [selectedYear, setSelectedYear] = useState(CURRENT_YEAR - 25);
-  const [selectedMonth, setSelectedMonth] = useState(1);
-  const [selectedDay, setSelectedDay] = useState(1);
-  const [isMinor, setIsMinor] = useState(false);
+  // Varsayılan: Bugünkü yerel tarih (yaş 0 olarak başlar)
+  const [selectedYear, setSelectedYear] = useState(CURRENT_YEAR);
+  const [selectedMonth, setSelectedMonth] = useState(CURRENT_MONTH);
+  const [selectedDay, setSelectedDay] = useState(CURRENT_DAY);
+  const [isMinor, setIsMinor] = useState(true); // Bugünkü tarih = 0 yaş = minor
   
   const [legalAccepted, setLegalAccepted] = useState(false);
   const [region, setRegion] = useState<ConsentPreferences['region']>('OTHER');
@@ -106,6 +113,63 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
   const [selectedLegalDoc, setSelectedLegalDoc] = useState<string | null>(null);
   const [showDatePicker, setShowDatePicker] = useState<'year' | 'month' | 'day' | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Animasyon değerleri
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const slideAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  // Sayfa geçiş animasyonu
+  const animateTransition = (direction: 'forward' | 'backward', callback: () => void) => {
+    const slideValue = direction === 'forward' ? -30 : 30;
+    
+    // Fade out + slide
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 150,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: slideValue,
+        duration: 150,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleAnim, {
+        toValue: 0.98,
+        duration: 150,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      callback();
+      slideAnim.setValue(direction === 'forward' ? 30 : -30);
+      
+      // Fade in + slide back
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+        toValue: 1,
+          duration: 200,
+          easing: Easing.out(Easing.ease),
+          useNativeDriver: true,
+      }),
+        Animated.timing(slideAnim, {
+        toValue: 0,
+          duration: 200,
+          easing: Easing.out(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(scaleAnim, {
+          toValue: 1,
+          duration: 200,
+          easing: Easing.out(Easing.ease),
+          useNativeDriver: true,
+      }),
+    ]).start();
+    });
+  };
 
   useEffect(() => {
     if (currentStep === 'legal') {
@@ -142,7 +206,11 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
     await changeI18nLanguage(code);
     await AsyncStorage.setItem('@user_language', code);
     await AsyncStorage.setItem('tacticiq-language', code);
-    setCurrentStep('age');
+    
+    // Animasyonlu geçiş
+    animateTransition('forward', () => {
+      setCurrentStep('age');
+    });
   };
 
   const calculateAge = (): number => {
@@ -164,7 +232,11 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
     setIsMinor(minor);
     await AsyncStorage.setItem('@user_age_verified', 'true');
     await AsyncStorage.setItem('@user_is_minor', minor ? 'true' : 'false');
+    
+    // Animasyonlu geçiş
+    animateTransition('forward', () => {
       setCurrentStep('legal');
+    });
   };
 
   const handleOpenLegalDoc = (docType: string) => {
@@ -194,9 +266,13 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
 
   const handleBack = () => {
     if (currentStep === 'age') {
-      setCurrentStep('language');
+      animateTransition('backward', () => {
+        setCurrentStep('language');
+      });
     } else if (currentStep === 'legal') {
-      setCurrentStep('age');
+      animateTransition('backward', () => {
+        setCurrentStep('age');
+      });
     }
   };
 
@@ -255,6 +331,9 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
       'legal.privacy.title': { tr: 'Gizlilik Politikası', en: 'Privacy Policy', de: 'Datenschutzrichtlinie', es: 'Política de privacidad', fr: 'Politique de confidentialité', it: 'Informativa sulla privacy', ar: 'سياسة الخصوصية', zh: '隐私政策', ru: 'Политика конфиденциальности' },
       'legal.cookies.title': { tr: 'Çerez Politikası', en: 'Cookie Policy', de: 'Cookie-Richtlinie', es: 'Política de cookies', fr: 'Politique des cookies', it: 'Politica sui cookie', ar: 'سياسة ملفات تعريف الارتباط', zh: 'Cookie政策', ru: 'Политика Cookie' },
       'legal.kvkk.title': { tr: 'KVKK Aydınlatma', en: 'KVKK Disclosure', de: 'KVKK-Offenlegung', es: 'Divulgación KVKK', fr: 'Divulgation KVKK', it: 'Informativa KVKK', ar: 'إفصاح KVKK', zh: 'KVKK披露' },
+      'legal.consent.title': { tr: 'Açık Rıza Metni', en: 'Consent Form', de: 'Einwilligungsformular', es: 'Formulario de consentimiento', fr: 'Formulaire de consentement', it: 'Modulo di consenso', ar: 'نموذج الموافقة', zh: '同意书' },
+      'legal.sales.title': { tr: 'Mesafeli Satış Sözleşmesi', en: 'Distance Sales Agreement', de: 'Fernabsatzvertrag', es: 'Contrato de venta a distancia', fr: 'Contrat de vente à distance', it: 'Contratto di vendita a distanza', ar: 'اتفاقية البيع عن بعد', zh: '远程销售协议' },
+      'legal.copyright.title': { tr: 'Telif Hakkı Bildirimi', en: 'Copyright Notice', de: 'Urheberrechtshinweis', es: 'Aviso de derechos de autor', fr: 'Avis de droit d\'auteur', it: 'Avviso di copyright', ar: 'إشعار حقوق النشر', zh: '版权声明' },
       'common.continue': { tr: 'Devam Et', en: 'Continue', de: 'Weiter', es: 'Continuar', fr: 'Continuer', it: 'Continua', ar: 'متابعة', zh: '继续' },
       'common.getStarted': { tr: 'Başla', en: 'Get Started', de: 'Loslegen', es: 'Empezar', fr: 'Commencer', it: 'Inizia', ar: 'ابدأ', zh: '开始' },
       'common.back': { tr: 'Geri', en: 'Back', de: 'Zurück', es: 'Atrás', fr: 'Retour', it: 'Indietro', ar: 'رجوع', zh: '返回' },
@@ -270,7 +349,7 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
     <View style={styles.stepContainer}>
       <Text style={styles.stepTitle}>{getTranslation('languageSelection.title')}</Text>
       <Text style={styles.stepSubtitle}>{getTranslation('languageSelection.subtitle')}</Text>
-      
+
       {/* 2 sütun 4 satır grid */}
       <View style={styles.languageGridPremium}>
         {languages.map((lang) => (
@@ -325,12 +404,12 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
         <Text style={styles.ageUnit}>{getTranslation('ageGate.yearsOld')}</Text>
       </View>
 
-      <TouchableOpacity 
+      <TouchableOpacity
         style={[styles.primaryBtn, calculateAge() < 18 && styles.primaryBtnDisabled]} 
         onPress={handleAgeVerification}
         disabled={calculateAge() < 18}
       >
-        <LinearGradient 
+        <LinearGradient
           colors={calculateAge() < 18 ? ['#444', '#333'] : [WEBSITE_BRAND_COLORS.secondary, WEBSITE_BRAND_COLORS.primary]} 
           style={styles.primaryBtnGradient} 
           start={{ x: 0, y: 0 }} 
@@ -348,31 +427,59 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
       <Text style={styles.stepTitle}>{getTranslation('legal.title')}</Text>
       <Text style={styles.stepSubtitle}>{getTranslation('legal.subtitle')}</Text>
 
+      {/* Scroll edilebilir yasal döküman listesi */}
+      <ScrollView style={styles.legalListScroll} showsVerticalScrollIndicator={true} nestedScrollEnabled={true}>
       <View style={styles.legalList}>
+          {/* Kullanım Koşulları */}
         <TouchableOpacity style={styles.legalItem} onPress={() => handleOpenLegalDoc('terms')}>
-          <Text style={styles.legalIcon}>📋</Text>
-          <Text style={styles.legalTitle}>{getTranslation('legal.terms.title')}</Text>
-          <Text style={styles.legalArrow}>›</Text>
+            <Text style={styles.legalIcon}>📋</Text>
+            <Text style={styles.legalTitle}>{getTranslation('legal.terms.title')}</Text>
+            <Text style={styles.legalArrow}>›</Text>
         </TouchableOpacity>
 
+          {/* Gizlilik Politikası */}
         <TouchableOpacity style={styles.legalItem} onPress={() => handleOpenLegalDoc('privacy')}>
-          <Text style={styles.legalIcon}>🔒</Text>
-          <Text style={styles.legalTitle}>{getTranslation('legal.privacy.title')}</Text>
-          <Text style={styles.legalArrow}>›</Text>
+            <Text style={styles.legalIcon}>🔒</Text>
+            <Text style={styles.legalTitle}>{getTranslation('legal.privacy.title')}</Text>
+            <Text style={styles.legalArrow}>›</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.legalItem} onPress={() => handleOpenLegalDoc('cookies')}>
-          <Text style={styles.legalIcon}>🍪</Text>
-          <Text style={styles.legalTitle}>{getTranslation('legal.cookies.title')}</Text>
-          <Text style={styles.legalArrow}>›</Text>
+          {/* Çerez Politikası */}
+          <TouchableOpacity style={styles.legalItem} onPress={() => handleOpenLegalDoc('cookies')}>
+            <Text style={styles.legalIcon}>🍪</Text>
+            <Text style={styles.legalTitle}>{getTranslation('legal.cookies.title')}</Text>
+            <Text style={styles.legalArrow}>›</Text>
         </TouchableOpacity>
 
+          {/* KVKK */}
         <TouchableOpacity style={styles.legalItem} onPress={() => handleOpenLegalDoc('kvkk')}>
-          <Text style={styles.legalIcon}>⚖️</Text>
-          <Text style={styles.legalTitle}>{getTranslation('legal.kvkk.title')}</Text>
-          <Text style={styles.legalArrow}>›</Text>
+            <Text style={styles.legalIcon}>⚖️</Text>
+            <Text style={styles.legalTitle}>{getTranslation('legal.kvkk.title')}</Text>
+            <Text style={styles.legalArrow}>›</Text>
+          </TouchableOpacity>
+
+          {/* Açık Rıza Metni */}
+          <TouchableOpacity style={styles.legalItem} onPress={() => handleOpenLegalDoc('consent')}>
+            <Text style={styles.legalIcon}>✅</Text>
+            <Text style={styles.legalTitle}>{getTranslation('legal.consent.title')}</Text>
+            <Text style={styles.legalArrow}>›</Text>
+          </TouchableOpacity>
+
+          {/* Mesafeli Satış Sözleşmesi */}
+          <TouchableOpacity style={styles.legalItem} onPress={() => handleOpenLegalDoc('sales')}>
+            <Text style={styles.legalIcon}>💳</Text>
+            <Text style={styles.legalTitle}>{getTranslation('legal.sales.title')}</Text>
+            <Text style={styles.legalArrow}>›</Text>
+          </TouchableOpacity>
+
+          {/* Telif Hakkı */}
+          <TouchableOpacity style={styles.legalItem} onPress={() => handleOpenLegalDoc('copyright')}>
+            <Text style={styles.legalIcon}>©️</Text>
+            <Text style={styles.legalTitle}>{getTranslation('legal.copyright.title')}</Text>
+            <Text style={styles.legalArrow}>›</Text>
         </TouchableOpacity>
       </View>
+      </ScrollView>
 
       <TouchableOpacity style={styles.checkboxRow} onPress={() => setLegalAccepted(!legalAccepted)}>
         <View style={[styles.checkbox, legalAccepted && styles.checkboxChecked]}>
@@ -472,53 +579,56 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
             </TouchableOpacity>
           </View>
           {isCookiesModal ? (
-            <View style={styles.legalModalContentNoScroll}>
+            <ScrollView style={styles.legalModalScroll} showsVerticalScrollIndicator={true}>
+              {/* Çerez içeriği */}
+              <Text style={styles.legalModalContent}>{legalContent?.content || ''}</Text>
+              
               {/* Çerez türleri için toggle butonları */}
               <View style={styles.cookieControls}>
-                  <Text style={styles.cookieControlsTitle}>Çerez Türleri</Text>
+                  <Text style={styles.cookieControlsTitle}>Çerez Tercihleri</Text>
                   
                   {/* Zorunlu Çerezler */}
                   <View style={styles.cookieToggleRow}>
                     <View style={styles.cookieToggleInfo}>
                       <Text style={styles.cookieToggleLabel}>{getTranslation('cookies.essential') || 'Zorunlu Çerezler'}</Text>
                       <Text style={styles.cookieToggleDesc}>{getTranslation('cookies.essentialDesc') || 'Uygulamanın çalışması için gerekli'}</Text>
-                    </View>
+          </View>
                     <View style={[styles.cookieToggleSwitch, styles.cookieToggleSwitchActive]}>
                       <Text style={styles.cookieToggleSwitchText}>✓</Text>
-                    </View>
-                  </View>
-                  
+              </View>
+            </View>
+
                   {/* Analitik Çerezler */}
                   <View style={styles.cookieToggleRow}>
                     <View style={styles.cookieToggleInfo}>
                       <Text style={styles.cookieToggleLabel}>{getTranslation('cookies.analytics') || 'Analitik Çerezler'}</Text>
                       <Text style={styles.cookieToggleDesc}>{getTranslation('cookies.analyticsDesc') || 'Performansı iyileştirmemize yardımcı olur'}</Text>
-                    </View>
+                </View>
                     <TouchableOpacity 
                       style={[styles.cookieToggleSwitch, preferences.analytics && styles.cookieToggleSwitchActive]}
                       onPress={() => toggleCookiePreference('analytics')}
                     >
                       <Text style={styles.cookieToggleSwitchText}>{preferences.analytics ? '✓' : ''}</Text>
-                    </TouchableOpacity>
+              </TouchableOpacity>
                   </View>
-                  
+
                   {/* Pazarlama Çerezleri */}
                   <View style={styles.cookieToggleRow}>
                     <View style={styles.cookieToggleInfo}>
                       <Text style={styles.cookieToggleLabel}>{getTranslation('cookies.marketing') || 'Pazarlama Çerezleri'}</Text>
                       <Text style={styles.cookieToggleDesc}>{getTranslation('cookies.marketingDesc') || 'Kişiselleştirilmiş içerik sunar'}</Text>
-                    </View>
-                    <TouchableOpacity 
+                </View>
+          <TouchableOpacity
                       style={[styles.cookieToggleSwitch, preferences.marketing && styles.cookieToggleSwitchActive]}
                       onPress={() => toggleCookiePreference('marketing')}
-                    >
+          >
                       <Text style={styles.cookieToggleSwitchText}>{preferences.marketing ? '✓' : ''}</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
-            </View>
+            </ScrollView>
           ) : (
-            <ScrollView style={styles.legalModalScroll}>
+            <ScrollView style={styles.legalModalScroll} showsVerticalScrollIndicator={true}>
               <Text style={styles.legalModalContent}>{legalContent?.content || ''}</Text>
             </ScrollView>
           )}
@@ -550,12 +660,23 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
             <Image source={require('../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
           </View>
 
-          {/* Content - İçerik alta yakın */}
-          <View style={styles.contentWrapper}>
-          {currentStep === 'language' && renderLanguageStep()}
-          {currentStep === 'age' && renderAgeStep()}
-          {currentStep === 'legal' && renderLegalStep()}
-          </View>
+          {/* Content - İçerik alta yakın (Animasyonlu) */}
+          <Animated.View 
+            style={[
+              styles.contentWrapper,
+              {
+                opacity: fadeAnim,
+                transform: [
+                  { translateX: slideAnim },
+                  { scale: scaleAnim },
+                ],
+              },
+            ]}
+          >
+            {currentStep === 'language' && renderLanguageStep()}
+            {currentStep === 'age' && renderAgeStep()}
+            {currentStep === 'legal' && renderLegalStep()}
+          </Animated.View>
 
           {/* Progress - 5 noktalı (Language, Age, Legal, Auth, FavoriteTeams) */}
           <View style={styles.progressRow}>
@@ -616,7 +737,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(31, 162, 166, 0.3)',
   },
-  
+
   // Logo - Her sayfada aynı (sıçrama yok)
   logoContainer: {
     alignItems: 'center',
@@ -626,7 +747,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   logo: { width: LOGO_SIZE, height: LOGO_SIZE },
-  
+
   // Progress - Tüm sayfalarda altta (sıçrama ve çakışma önleme)
   progressRow: { 
     flexDirection: 'row',
@@ -646,7 +767,7 @@ const styles = StyleSheet.create({
   },
   progressDotActive: { backgroundColor: WEBSITE_BRAND_COLORS.secondary, borderColor: WEBSITE_BRAND_COLORS.secondary },
   progressLine: { width: 28, height: 2, backgroundColor: 'rgba(255,255,255,0.2)', marginHorizontal: 4 },
-  
+
   // Content Wrapper - İçerik alta yakın (scroll yok)
   contentWrapper: {
     flex: 1,
@@ -710,7 +831,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     letterSpacing: 0.2,
   },
-  
+
   // Date Row
   dateRow: { flexDirection: 'row', gap: 10, marginBottom: 12 },
   dateCard: { 
@@ -740,7 +861,11 @@ const styles = StyleSheet.create({
   ageUnit: { fontSize: 15, color: 'rgba(255,255,255,0.65)', marginTop: 4 },
 
   // Legal List
-  legalList: { gap: 4, marginBottom: 10 },
+  legalListScroll: { 
+    maxHeight: 200, // Scroll alanı sınırla
+    marginBottom: 8,
+  },
+  legalList: { gap: 4, paddingBottom: 4 },
   legalItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -841,9 +966,10 @@ const styles = StyleSheet.create({
   legalModal: {
     width: '100%',
     maxWidth: 500,
-    maxHeight: '80%',
+    maxHeight: '85%', // Daha fazla içerik göster
     backgroundColor: '#0F2A24', 
-    borderRadius: 20, 
+    borderRadius: 20,
+    overflow: 'hidden', // İçeriğin taşmasını engelle 
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: '#1FA2A6' 
@@ -853,20 +979,37 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: 18, 
-    backgroundColor: 'rgba(15, 42, 36, 0.95)', 
+    backgroundColor: 'rgba(15, 42, 36, 1)', // Tam opak
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(31, 162, 166, 0.3)', 
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(31, 162, 166, 0.3)' 
   },
   legalModalTitle: { fontSize: 17, fontWeight: '700', color: '#fff', flex: 1 },
   legalModalClose: { fontSize: 24, color: '#fff' },
-  legalModalScroll: { padding: 20 },
-  legalModalContent: { fontSize: 14, color: 'rgba(255,255,255,0.85)', lineHeight: 22 },
+  legalModalScroll: {
+    flex: 1, // Kalan alanı kapla
+    padding: 20,
+    paddingBottom: 10,
+  },
+  legalModalContent: {
+    fontSize: 14, 
+    color: 'rgba(255,255,255,0.9)', // Daha okunabilir
+    lineHeight: 24, // Daha iyi satır aralığı
+    letterSpacing: 0.3,
+  },
   legalModalContentNoScroll: { 
     padding: 20,
     flex: 1,
   },
-  legalModalBtn: { padding: 18, backgroundColor: 'rgba(31, 162, 166, 0.4)', alignItems: 'center' },
-  legalModalBtnText: { fontSize: 15, fontWeight: '600', color: '#1FA2A6' },
+  legalModalBtn: { 
+    padding: 16, 
+    backgroundColor: 'rgba(31, 162, 166, 0.2)',
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(31, 162, 166, 0.3)',
+  },
+  legalModalBtnText: { fontSize: 15, fontWeight: '700', color: '#fff' },
   
   // Cookie Controls
   cookieControls: {

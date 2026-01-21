@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLanguage, Language } from '@/contexts/LanguageContext';
 import { useUserAuth, UserProfile } from '@/contexts/UserAuthContext';
+import { useAdminData, CURRENCY_SYMBOLS, LANGUAGE_CURRENCY_MAP, convertCurrency } from '@/contexts/AdminDataContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
@@ -74,7 +75,13 @@ const TIMEZONES = [
 export function UserProfileSection() {
   const { t, language, setLanguage } = useLanguage();
   const { user, profile, signOut, updateProfile, deleteAccount, isLoading } = useUserAuth();
+  const { profilePromoSettings, priceSettings } = useAdminData();
   const [isEditing, setIsEditing] = useState(false);
+  
+  // Profil Promosyon State
+  const [promoTimeLeft, setPromoTimeLeft] = useState(profilePromoSettings.timerDuration);
+  const [showPromo, setShowPromo] = useState(false);
+  const [dailyShows, setDailyShows] = useState(0);
   const [editedName, setEditedName] = useState(profile?.name || '');
   const [saving, setSaving] = useState(false);
   const [showLegalModal, setShowLegalModal] = useState(false);
@@ -91,6 +98,65 @@ export function UserProfileSection() {
   
   // Language & Timezone state
   const [selectedTimezone, setSelectedTimezone] = useState('Europe/Istanbul');
+
+  // Profil Promosyon - Günlük gösterim kontrolü ve timer
+  useEffect(() => {
+    if (!profilePromoSettings.enabled) return;
+    
+    // Günlük gösterim kontrolü
+    const today = new Date().toDateString();
+    const storedData = localStorage.getItem('profile_promo_data');
+    let data = storedData ? JSON.parse(storedData) : { date: today, shows: 0 };
+    
+    // Yeni gün ise sıfırla
+    if (data.date !== today) {
+      data = { date: today, shows: 0 };
+    }
+    
+    setDailyShows(data.shows);
+    
+    // Gösterim limiti kontrolü
+    if (profilePromoSettings.dailyShowLimit === 0 || data.shows < profilePromoSettings.dailyShowLimit) {
+      setShowPromo(true);
+      // Gösterim sayısını artır
+      data.shows += 1;
+      localStorage.setItem('profile_promo_data', JSON.stringify(data));
+    }
+  }, [profilePromoSettings.enabled, profilePromoSettings.dailyShowLimit]);
+
+  // Timer countdown
+  useEffect(() => {
+    if (!showPromo || !profilePromoSettings.showTimer) return;
+    
+    const timer = setInterval(() => {
+      setPromoTimeLeft((prev) => {
+        if (prev <= 0) {
+          clearInterval(timer);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    
+    return () => clearInterval(timer);
+  }, [showPromo, profilePromoSettings.showTimer]);
+
+  // Format timer display
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Fiyat hesaplama
+  const targetCurrency = LANGUAGE_CURRENCY_MAP[language] || 'TRY';
+  const currencySymbol = CURRENCY_SYMBOLS[targetCurrency];
+  const billingPeriod = priceSettings.billingPeriod ?? 'yearly';
+  const basePrice = billingPeriod === 'monthly' 
+    ? (priceSettings.monthlyPrice ?? 49)
+    : (priceSettings.yearlyPrice ?? 479);
+  const originalPrice = convertCurrency(basePrice, priceSettings.baseCurrency as 'TRY', targetCurrency);
+  const discountedPrice = originalPrice * (1 - profilePromoSettings.discountPercent / 100);
 
   // User stats (mobile app ile tutarlı)
   const userStats = {
@@ -627,9 +693,83 @@ export function UserProfileSection() {
               </CardContent>
             </Card>
 
+            {/* Profil Promosyon Banner - Admin'den kontrol edilir */}
+            {!isPro && showPromo && profilePromoSettings.enabled && (
+              <Card className="mb-6 overflow-hidden border-2 border-amber-400/50 shadow-lg relative">
+                {/* Badge */}
+                <div className="absolute -top-1 -right-1 z-10">
+                  <div className="bg-gradient-to-r from-red-500 to-red-600 text-white text-xs font-bold px-3 py-1 rounded-bl-lg rounded-tr-lg shadow-md">
+                    {profilePromoSettings.badgeText || `%${profilePromoSettings.discountPercent} İNDİRİM`}
+                  </div>
+                </div>
+                
+                <CardContent className="p-4" style={{ background: profilePromoSettings.backgroundColor }}>
+                  <div className="text-center" style={{ color: profilePromoSettings.textColor }}>
+                    {/* Timer */}
+                    {profilePromoSettings.showTimer && promoTimeLeft > 0 && (
+                      <div className="flex items-center justify-center gap-2 mb-2">
+                        <Zap className="size-4 animate-pulse" />
+                        <span className="text-sm font-semibold">
+                          Bu teklif için kalan süre: {formatTime(promoTimeLeft)}
+                        </span>
+                      </div>
+                    )}
+                    
+                    {/* Title */}
+                    <h3 className="text-xl font-bold mb-1">
+                      {profilePromoSettings.promoTitle}
+                    </h3>
+                    
+                    {/* Description */}
+                    <p className="text-sm opacity-90 mb-3">
+                      {profilePromoSettings.promoDescription}
+                    </p>
+                    
+                    {/* Price Display */}
+                    <div className="flex items-center justify-center gap-3 mb-3">
+                      {profilePromoSettings.showOriginalPrice && (
+                        <span className="text-lg line-through opacity-60">
+                          {currencySymbol}{originalPrice.toFixed(2)}
+                        </span>
+                      )}
+                      <span className="text-3xl font-bold">
+                        {currencySymbol}{discountedPrice.toFixed(2)}
+                      </span>
+                      <span className="text-xs opacity-75">
+                        /{billingPeriod === 'monthly' ? 'ay' : 'yıl'}
+                      </span>
+                    </div>
+                    
+                    {/* CTA Button */}
+                    <Button 
+                      className="w-full gap-2 bg-white text-black hover:bg-gray-100 font-bold text-lg py-6"
+                      onClick={() => {
+                        const pricingSection = document.getElementById('pricing');
+                        if (pricingSection) {
+                          pricingSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        } else {
+                          window.location.hash = '#pricing';
+                        }
+                      }}
+                    >
+                      <Crown className="size-5" />
+                      {profilePromoSettings.ctaButtonText}
+                    </Button>
+                    
+                    {/* Daily show info (debug - admin için) */}
+                    {profilePromoSettings.dailyShowLimit > 0 && (
+                      <p className="text-xs opacity-50 mt-2">
+                        Bugün {dailyShows}/{profilePromoSettings.dailyShowLimit} gösterim
+                      </p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Actions - Sign Out & Pro Upgrade */}
             <div className="space-y-3 mb-6">
-              {!isPro && (
+              {!isPro && !showPromo && (
                 <Button 
                   className="w-full gap-2 bg-gradient-to-r from-amber-500 to-yellow-400 text-black hover:from-amber-600 hover:to-yellow-500"
                   onClick={() => {

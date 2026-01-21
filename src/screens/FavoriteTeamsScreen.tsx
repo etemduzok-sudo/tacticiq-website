@@ -283,8 +283,8 @@ export default function FavoriteTeamsScreen({ onComplete, onBack }: FavoriteTeam
     // ✅ Pro: milli takım (opsiyonel) + en fazla 5 kulüp
     if (!isPremium && selectedClubs.length > 0) {
       Alert.alert('Kulüp Seçimi Kilitli', 'Free kullanıcılar kulüp takımı seçemez.');
-      return;
-    }
+        return;
+      }
 
     // ✅ Pro: en fazla 5 kulüp
     if (isPremium && selectedClubs.length > maxClubs) {
@@ -303,9 +303,9 @@ export default function FavoriteTeamsScreen({ onComplete, onBack }: FavoriteTeam
       ...selectedClubs,
     ].filter(Boolean).map(team => ({
       id: team.id,
-      name: team.name,
+        name: team.name,
       colors: team.colors || ['#1E40AF', '#FFFFFF'],
-      league: team.league,
+        league: team.league,
       country: team.country,
       type: team.type,
     }));
@@ -850,7 +850,7 @@ export default function FavoriteTeamsScreen({ onComplete, onBack }: FavoriteTeam
             );
           })}
         </View>
-          </View>
+        </View>
         )}
           </View>
     );
@@ -995,7 +995,7 @@ export default function FavoriteTeamsScreen({ onComplete, onBack }: FavoriteTeam
           <View style={styles.progressDot} />
           <View style={styles.progressLine} />
           <View style={[styles.progressDot, styles.progressDotActive]} />
-        </View>
+      </View>
       </View>
           </View>
     </ScreenLayout>

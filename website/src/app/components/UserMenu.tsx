@@ -167,37 +167,8 @@ export function UserMenu({
             <LogOut className="mr-2 size-4" />
             <span>{t('user.signout')}</span>
           </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            onClick={() => setDeleteDialogOpen(true)}
-            className="cursor-pointer text-destructive focus:text-destructive"
-          >
-            <Trash2 className="mr-2 size-4" />
-            <span>{t('user.delete.account')}</span>
-          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-
-      {/* Delete Account Confirmation Dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t('user.delete.confirm.title')}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t('user.delete.confirm.description')}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t('user.delete.confirm.cancel')}</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteAccount}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {t('user.delete.confirm.delete')}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       {/* User Profile Modal */}
       <UserProfileModal open={profileModalOpen} onOpenChange={setProfileModalOpen} />

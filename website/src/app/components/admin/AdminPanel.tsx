@@ -4585,6 +4585,8 @@ function PricingContent() {
   const updatePriceSettings = contextData?.updatePriceSettings;
   const discountSettings = contextData?.discountSettings;
   const updateDiscountSettings = contextData?.updateDiscountSettings;
+  const profilePromoSettings = contextData?.profilePromoSettings;
+  const updateProfilePromoSettings = contextData?.updateProfilePromoSettings;
   
   // Fiyat ayarları için ayrı state
   const [editedPriceSettings, setEditedPriceSettings] = useState(priceSettings || {
@@ -4613,9 +4615,27 @@ function PricingContent() {
     ctaButtonText: 'Hemen Al',
   });
 
+  // Profil promosyon ayarları için state
+  const [editedProfilePromoSettings, setEditedProfilePromoSettings] = useState(profilePromoSettings || {
+    enabled: true,
+    discountPercent: 30,
+    dailyShowLimit: 3,
+    showDuration: 0,
+    promoTitle: 'Şimdi Üye Ol!',
+    promoDescription: 'Sınırlı süre için özel indirim fırsatı',
+    ctaButtonText: 'İndirimli Satın Al',
+    showTimer: true,
+    timerDuration: 600,
+    showOriginalPrice: true,
+    badgeText: 'Özel Teklif',
+    backgroundColor: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+    textColor: '#ffffff',
+  });
+
   // Context değiştiğinde local state'leri güncelle - sadece ilk yüklemede
   const [priceInitialized, setPriceInitialized] = useState(false);
   const [discountInitialized, setDiscountInitialized] = useState(false);
+  const [promoInitialized, setPromoInitialized] = useState(false);
 
   useEffect(() => {
     if (priceSettings && !priceInitialized) {
@@ -4630,6 +4650,13 @@ function PricingContent() {
       setDiscountInitialized(true);
     }
   }, [discountSettings, discountInitialized]);
+
+  useEffect(() => {
+    if (profilePromoSettings && !promoInitialized) {
+      setEditedProfilePromoSettings(profilePromoSettings);
+      setPromoInitialized(true);
+    }
+  }, [profilePromoSettings, promoInitialized]);
 
   const handleSavePrice = () => {
     if (updatePriceSettings) {
@@ -4652,6 +4679,13 @@ function PricingContent() {
     if (updateDiscountSettings) {
       updateDiscountSettings(editedDiscountSettings);
       toast.success('İndirim popup ayarları kaydedildi!');
+    }
+  };
+
+  const handleSaveProfilePromo = () => {
+    if (updateProfilePromoSettings) {
+      updateProfilePromoSettings(editedProfilePromoSettings);
+      toast.success('Profil promosyon ayarları kaydedildi!');
     }
   };
 
@@ -5128,6 +5162,247 @@ function PricingContent() {
             <Button onClick={handleSaveDiscount} className="gap-2">
               <Save className="size-4" />
               İndirim Ayarlarını Kaydet
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ===== PROFILE PROMO SETTINGS - Profil Promosyon Ayarları ===== */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            👤 Profil Sayfası Promosyon Ayarları
+          </CardTitle>
+          <p className="text-xs text-muted-foreground">
+            Profil sayfasında gösterilecek indirim banner'ı ayarları. "Şimdi üye olursan %X indirim" şeklinde görünür.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <SettingToggle 
+            label="👤 Profil Promosyonu Aktif" 
+            description="Profil sayfasında promosyon banner'ını göster"
+            enabled={editedProfilePromoSettings.enabled}
+            onToggle={() => setEditedProfilePromoSettings({
+              ...editedProfilePromoSettings, 
+              enabled: !editedProfilePromoSettings.enabled
+            })}
+          />
+          
+          {editedProfilePromoSettings.enabled && (
+            <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
+              {/* İndirim Yüzdesi */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">İndirim Yüzdesi (%)</Label>
+                <Input 
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={editedProfilePromoSettings.discountPercent}
+                  onChange={(e) => setEditedProfilePromoSettings({
+                    ...editedProfilePromoSettings, 
+                    discountPercent: parseInt(e.target.value) || 0
+                  })}
+                  className="w-32"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Web'de gösterilen fiyat üzerinden uygulanacak indirim yüzdesi
+                </p>
+              </div>
+
+              {/* Günlük Gösterim Limiti */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Günlük Gösterim Limiti</Label>
+                <Input 
+                  type="number"
+                  min={0}
+                  value={editedProfilePromoSettings.dailyShowLimit}
+                  onChange={(e) => setEditedProfilePromoSettings({
+                    ...editedProfilePromoSettings, 
+                    dailyShowLimit: parseInt(e.target.value) || 0
+                  })}
+                  className="w-32"
+                />
+                <p className="text-xs text-muted-foreground">
+                  0 = sınırsız gösterim
+                </p>
+              </div>
+
+              {/* Promosyon Başlığı */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Promosyon Başlığı</Label>
+                <Input 
+                  type="text"
+                  value={editedProfilePromoSettings.promoTitle}
+                  onChange={(e) => setEditedProfilePromoSettings({
+                    ...editedProfilePromoSettings, 
+                    promoTitle: e.target.value
+                  })}
+                  placeholder="Şimdi Üye Ol!"
+                />
+              </div>
+
+              {/* Promosyon Açıklaması */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Promosyon Açıklaması</Label>
+                <Textarea 
+                  value={editedProfilePromoSettings.promoDescription}
+                  onChange={(e) => setEditedProfilePromoSettings({
+                    ...editedProfilePromoSettings, 
+                    promoDescription: e.target.value
+                  })}
+                  placeholder="Sınırlı süre için özel indirim fırsatı"
+                  rows={2}
+                />
+              </div>
+
+              {/* CTA Buton Metni */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Buton Metni</Label>
+                <Input 
+                  type="text"
+                  value={editedProfilePromoSettings.ctaButtonText}
+                  onChange={(e) => setEditedProfilePromoSettings({
+                    ...editedProfilePromoSettings, 
+                    ctaButtonText: e.target.value
+                  })}
+                  placeholder="İndirimli Satın Al"
+                />
+              </div>
+
+              {/* Badge Metni */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">İndirim Rozeti Metni</Label>
+                <Input 
+                  type="text"
+                  value={editedProfilePromoSettings.badgeText}
+                  onChange={(e) => setEditedProfilePromoSettings({
+                    ...editedProfilePromoSettings, 
+                    badgeText: e.target.value
+                  })}
+                  placeholder="Özel Teklif"
+                />
+              </div>
+
+              {/* Timer Ayarları */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="text-sm font-medium">Geri Sayım Göster</Label>
+                  <p className="text-xs text-muted-foreground">Banner'da geri sayım sayacı göster</p>
+                </div>
+                <Button 
+                  variant={editedProfilePromoSettings.showTimer ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setEditedProfilePromoSettings({
+                    ...editedProfilePromoSettings, 
+                    showTimer: !editedProfilePromoSettings.showTimer
+                  })}
+                >
+                  {editedProfilePromoSettings.showTimer ? 'Açık' : 'Kapalı'}
+                </Button>
+              </div>
+
+              {editedProfilePromoSettings.showTimer && (
+                <div className="space-y-2 ml-4">
+                  <Label className="text-sm font-medium">Geri Sayım Süresi (saniye)</Label>
+                  <Input 
+                    type="number"
+                    min={60}
+                    value={editedProfilePromoSettings.timerDuration}
+                    onChange={(e) => setEditedProfilePromoSettings({
+                      ...editedProfilePromoSettings, 
+                      timerDuration: parseInt(e.target.value) || 600
+                    })}
+                    className="w-32"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Örn: 600 = 10 dakika
+                  </p>
+                </div>
+              )}
+
+              {/* Orijinal Fiyat Göster */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="text-sm font-medium">Orijinal Fiyatı Göster</Label>
+                  <p className="text-xs text-muted-foreground">Üstü çizili normal fiyatı göster</p>
+                </div>
+                <Button 
+                  variant={editedProfilePromoSettings.showOriginalPrice ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setEditedProfilePromoSettings({
+                    ...editedProfilePromoSettings, 
+                    showOriginalPrice: !editedProfilePromoSettings.showOriginalPrice
+                  })}
+                >
+                  {editedProfilePromoSettings.showOriginalPrice ? 'Açık' : 'Kapalı'}
+                </Button>
+              </div>
+
+              {/* Arka Plan Rengi */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Arka Plan Stili (CSS)</Label>
+                <Input 
+                  type="text"
+                  value={editedProfilePromoSettings.backgroundColor}
+                  onChange={(e) => setEditedProfilePromoSettings({
+                    ...editedProfilePromoSettings, 
+                    backgroundColor: e.target.value
+                  })}
+                  placeholder="linear-gradient(135deg, #f59e0b 0%, #d97706 100%)"
+                />
+                <p className="text-xs text-muted-foreground">
+                  CSS gradient veya renk kodu (örn: #f59e0b)
+                </p>
+              </div>
+
+              {/* Metin Rengi */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Metin Rengi</Label>
+                <Input 
+                  type="text"
+                  value={editedProfilePromoSettings.textColor}
+                  onChange={(e) => setEditedProfilePromoSettings({
+                    ...editedProfilePromoSettings, 
+                    textColor: e.target.value
+                  })}
+                  placeholder="#ffffff"
+                  className="w-32"
+                />
+              </div>
+
+              {/* Önizleme */}
+              <div className="mt-4 p-4 rounded-lg border-2 border-dashed">
+                <Label className="text-sm font-medium block mb-2">📱 Önizleme</Label>
+                <div 
+                  className="p-4 rounded-lg text-center"
+                  style={{ 
+                    background: editedProfilePromoSettings.backgroundColor,
+                    color: editedProfilePromoSettings.textColor 
+                  }}
+                >
+                  <div className="text-sm font-semibold mb-1">{editedProfilePromoSettings.promoTitle}</div>
+                  <div className="text-xs opacity-80 mb-2">{editedProfilePromoSettings.promoDescription}</div>
+                  <div className="flex items-center justify-center gap-2">
+                    {editedProfilePromoSettings.showOriginalPrice && (
+                      <span className="line-through opacity-60">₺479.00</span>
+                    )}
+                    <span className="text-xl font-bold">
+                      ₺{(479 * (1 - editedProfilePromoSettings.discountPercent / 100)).toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="mt-2 bg-white text-black px-4 py-1 rounded text-sm font-semibold inline-block">
+                    {editedProfilePromoSettings.ctaButtonText}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Save Button */}
+          <div className="pt-4 border-t flex justify-end">
+            <Button onClick={handleSaveProfilePromo} className="gap-2">
+              <Save className="size-4" />
+              Profil Promosyon Ayarlarını Kaydet
             </Button>
           </div>
         </CardContent>

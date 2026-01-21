@@ -347,6 +347,23 @@ export interface DiscountSettings {
   ctaButtonText: string; // CTA buton metni
 }
 
+// Profil Sayfası Promosyon Ayarları
+export interface ProfilePromoSettings {
+  enabled: boolean; // Profil promosyonu aktif mi?
+  discountPercent: number; // Sadece % olarak indirim (örn: 30 = %30)
+  dailyShowLimit: number; // Günde kaç kez gösterilecek (0 = sınırsız)
+  showDuration: number; // Her gösterimde kaç saniye görünecek (0 = süresiz)
+  promoTitle: string; // Promosyon başlığı (örn: "Şimdi Üye Ol!")
+  promoDescription: string; // Promosyon açıklaması
+  ctaButtonText: string; // Buton metni (örn: "İndirimli Satın Al")
+  showTimer: boolean; // Geri sayım göster
+  timerDuration: number; // Geri sayım süresi (saniye)
+  showOriginalPrice: boolean; // Orijinal fiyatı üstü çizili göster
+  badgeText: string; // İndirim rozeti metni (örn: "Özel Teklif")
+  backgroundColor: string; // Arka plan rengi
+  textColor: string; // Metin rengi
+}
+
 export interface SiteSettings {
   siteName: string;
   siteUrl: string;
@@ -578,6 +595,7 @@ interface AdminDataContextType {
   adSettings: AdSettings;
   discountSettings: DiscountSettings;
   priceSettings: PriceSettings; // Fiyat ayarları - indirimden bağımsız
+  profilePromoSettings: ProfilePromoSettings; // Profil sayfası promosyon ayarları
   pressKitFiles: PressKitFile[]; // Basın kiti dosyaları
   emailAutoReply: EmailAutoReplySettings; // Otomatik email cevap ayarları
   teamMembers: TeamMember[]; // Ekip üyeleri
@@ -625,6 +643,7 @@ interface AdminDataContextType {
   updateAdSettings: (settings: Partial<AdSettings>) => void;
   updateDiscountSettings: (settings: Partial<DiscountSettings>) => void;
   updatePriceSettings: (settings: Partial<PriceSettings>) => void;
+  updateProfilePromoSettings: (settings: Partial<ProfilePromoSettings>) => void;
   updateEmailAutoReply: (settings: Partial<EmailAutoReplySettings>) => void;
   updateSettings: (settings: Partial<SiteSettings>) => void;
   updateSectionSettings: (settings: Partial<SectionSettings>) => void; // Section ayarlarını güncelle
@@ -819,6 +838,31 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
       popupTitle: 'Özel Teklif!',
       popupDescription: 'Sınırlı süre için özel indirim fırsatı',
       ctaButtonText: 'Hemen Al',
+    };
+    if (savedSettings) {
+      const parsed = JSON.parse(savedSettings);
+      return { ...defaultSettings, ...parsed };
+    }
+    return defaultSettings;
+  });
+
+  // Profile Promo Settings - Profil sayfası promosyon ayarları
+  const [profilePromoSettings, setProfilePromoSettings] = useState<ProfilePromoSettings>(() => {
+    const savedSettings = localStorage.getItem('admin_profile_promo_settings');
+    const defaultSettings: ProfilePromoSettings = {
+      enabled: true,
+      discountPercent: 30,
+      dailyShowLimit: 3,
+      showDuration: 0, // 0 = süresiz
+      promoTitle: 'Şimdi Üye Ol!',
+      promoDescription: 'Sınırlı süre için özel indirim fırsatı',
+      ctaButtonText: 'İndirimli Satın Al',
+      showTimer: true,
+      timerDuration: 600, // 10 dakika
+      showOriginalPrice: true,
+      badgeText: 'Özel Teklif',
+      backgroundColor: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+      textColor: '#ffffff',
     };
     if (savedSettings) {
       const parsed = JSON.parse(savedSettings);
@@ -2016,6 +2060,38 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  // Profil Promosyon Ayarları Güncelleme
+  const updateProfilePromoSettings = (updatedSettings: Partial<ProfilePromoSettings>) => {
+    setProfilePromoSettings(prevSettings => {
+      const newSettings = { ...prevSettings, ...updatedSettings };
+      console.log('Profile Promo Settings Updated:', newSettings);
+      // localStorage'a kaydet
+      localStorage.setItem('admin_profile_promo_settings', JSON.stringify(newSettings));
+      // Supabase'e kaydet (async)
+      configService.set('profile_promo_settings', newSettings).catch(err => 
+        console.error('Failed to save profile_promo_settings to Supabase:', err)
+      );
+      return newSettings;
+    });
+    
+    const newLog: LogEntry = {
+      id: Date.now().toString(),
+      type: 'success',
+      message: 'Profil promosyon ayarları güncellendi',
+      user: 'admin@tacticiq.app',
+      time: new Date().toLocaleString('tr-TR'),
+    };
+    setLogs(prevLogs => [newLog, ...prevLogs]);
+
+    // Session change tracking
+    addSessionChange({
+      category: 'Profil Promosyon Ayarları',
+      action: 'update',
+      description: 'Profil promosyon ayarları güncellendi',
+      details: updatedSettings.discountPercent ? `İndirim: %${updatedSettings.discountPercent}` : undefined,
+    });
+  };
+
   const updateEmailAutoReply = (updatedSettings: Partial<EmailAutoReplySettings>) => {
     setEmailAutoReply({ ...emailAutoReply, ...updatedSettings });
     
@@ -2495,6 +2571,11 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('admin_discount_settings', JSON.stringify(discountSettings));
   }, [discountSettings]);
 
+  // Save profilePromoSettings to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('admin_profile_promo_settings', JSON.stringify(profilePromoSettings));
+  }, [profilePromoSettings]);
+
   // Save adSettings to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem('admin_ad_settings', JSON.stringify(adSettings));
@@ -2589,6 +2670,7 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
     adSettings,
     discountSettings,
     priceSettings, // Fiyat ayarları - indirimden bağımsız
+    profilePromoSettings, // Profil sayfası promosyon ayarları
     pressKitFiles, // Basın kiti dosyaları
     emailAutoReply, // Otomatik email cevap ayarları
     teamMembers, // Ekip üyeleri
@@ -2637,6 +2719,7 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
     updateAdSettings,
     updateDiscountSettings,
     updatePriceSettings,
+    updateProfilePromoSettings,
     updateEmailAutoReply,
     updateSettings,
     updateSectionSettings, // Section ayarlarını güncelle
@@ -2651,7 +2734,7 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
     updateNotificationSettings,
   }), [
     stats, users, contents, activities, logs, settings, sectionSettings,
-    websiteContent, advertisements, adSettings, discountSettings, priceSettings,
+    websiteContent, advertisements, adSettings, discountSettings, priceSettings, profilePromoSettings,
     pressKitFiles, emailAutoReply, teamMembers, pressReleases, games, partners, sectionMedia, featureCategories, legalDocuments,
     sessionChanges, notificationSettings
   ]);
