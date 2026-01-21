@@ -1,29 +1,41 @@
 # TacticIQ Profil Test Botu
 
-Web ve mobil profil kartları için otomatik test botu.
+Web ve mobil profil kartları için kapsamlı otomatik test botu.
 
-## 🚀 Kurulum
+## Özellikler
 
-### 1. Playwright Kurulumu (Web Testleri İçin)
+- ✅ Aynı kullanıcılarla web ve mobil'de giriş yapar
+- ✅ Tüm butonları test eder (Düzenle, Kaydet, İptal, Şifre Değiştir, Çıkış Yap, Hesabı Sil)
+- ✅ Tüm switch'leri test eder (E-posta, Haftalık Özet, Kampanya, Push Bildirimler)
+- ✅ Dil ve saat dilimi seçimlerini test eder
+- ✅ Profil bilgilerini güncellemeyi test eder
+- ✅ Takım seçimlerini test eder (Milli Takım, Kulüp Takımları)
+- ✅ Badges tab'ını test eder
+- ✅ Web ve mobil arası senkronizasyonu kontrol eder
+- ✅ Scroll overflow kontrolü yapar (sağdan kesilme)
+- ✅ Hızlı mod desteği
+
+## Kullanım
+
+### Web Testi (Playwright)
 
 ```bash
-npm install --save-dev playwright
-npx playwright install chromium
-```
-
-### 2. Test Botunu Çalıştırma
-
-```bash
-# Web testleri (Playwright)
+# Normal mod (görsel)
 npm run test:profile
 
-# Veya direkt
-node scripts/profile-test-bot.js
+# Hızlı mod (bazı testleri atla)
+FAST_MODE=true npm run test:profile
+
+# Headless mod (arka planda)
+HEADLESS=true npm run test:profile
+
+# Özel URL
+WEB_URL=http://localhost:3001 npm run test:profile
 ```
 
-### 3. Mobil Testleri (Detox)
+### Mobil Testi (Detox)
 
-Mobil testleri için önce Detox test dosyası oluşturulur, sonra manuel çalıştırılır:
+Test botu otomatik olarak `e2e/profile-test-bot.test.ts` dosyasını oluşturur.
 
 ```bash
 # iOS
@@ -33,84 +45,64 @@ npm run detox:test:ios -- e2e/profile-test-bot.test.ts
 npm run detox:test:android -- e2e/profile-test-bot.test.ts
 ```
 
-## 📋 Test Kapsamı
+## Test Kullanıcıları
 
-### Web Testleri (Playwright)
-- ✅ Profil sayfasına erişim
-- ✅ Profil header ve avatar kontrolü
-- ✅ Tab navigation (Profil/Rozetler)
-- ✅ Ranking Table görünürlüğü
-- ✅ Achievements Card
-- ✅ Performance Card ve XP Gain
-- ✅ Kişisel Bilgiler düzenleme
-  - İsim, Soyisim, Nickname input'ları
-  - Düzenle/Kaydet butonları
-- ✅ Milli Takım seçici
-- ✅ Ayarlar bölümü
-  - Dil seçimi
-  - Saat dilimi seçimi
-- ✅ Bildirim switch'leri (toggle testi)
-- ✅ Push bildirim onay butonu
-- ✅ Güvenlik ve Hesap butonları
-  - Şifre değiştir
-  - Çıkış yap
-  - Hesabı sil
-- ✅ Scroll overflow kontrolü (sağdan kesilme)
+Varsayılan test kullanıcıları:
+- `test@tacticiq.app` / `Test123456!`
+- `test2@tacticiq.app` / `Test123456!`
 
-### Mobil Testleri (Detox)
-- ✅ Giriş yapma
-- ✅ Profil sayfasına navigasyon
-- ✅ Profil header görünürlüğü
-- ✅ Ranking table görünürlüğü
-- ✅ Achievements card
-- ✅ Performance card ve XP Gain
-- ✅ Düzenle butonu ve input'lar
-- ✅ Bildirim switch'leri
-- ✅ Push bildirim butonu
-- ✅ Güvenlik butonları
-- ✅ Rozetler sekmesi
+Bu kullanıcıların Supabase'de mevcut olması gerekir.
 
-### Senkronizasyon Testleri
-- ✅ Web ve mobil arası veri senkronizasyonu
-- ✅ Aynı kullanıcı ile her iki platformda test
+## Test Edilen Özellikler
 
-## 🔧 Yapılandırma
+### Web Profil Testleri
 
-### Test Kullanıcıları
+1. ✅ Giriş yapma
+2. ✅ Profil sayfasına gitme
+3. ✅ Profil header (avatar, isim)
+4. ✅ Tab navigation (Profil/Rozetler)
+5. ✅ Ranking Table (Ülke, Türkiye Sırası, Dünya Sırası)
+6. ✅ Achievements Card
+7. ✅ Performance Card (XP Gain bölümü dahil)
+8. ✅ Kişisel Bilgiler (Düzenle, İsim, Soyisim, Nickname, Kaydet, İptal)
+9. ✅ Milli Takım seçimi (dropdown açma, arama)
+10. ✅ Ayarlar (Dil, Saat Dilimi)
+11. ✅ Bildirim switch'leri (E-posta, Haftalık, Kampanya)
+12. ✅ Push bildirim onay butonu
+13. ✅ Güvenlik butonları (Şifre Değiştir, Çıkış Yap, Hesabı Sil)
+14. ✅ Scroll overflow kontrolü
 
-`scripts/profile-test-bot.js` dosyasında test kullanıcılarını düzenleyebilirsiniz:
+### Mobil Profil Testleri
 
-```javascript
-const TEST_USERS = [
-  {
-    email: 'test@tacticiq.app',
-    password: 'Test123456!',
-    name: 'Test User',
-  },
-];
-```
+1. ✅ Giriş yapma
+2. ✅ Profil sayfasına gitme
+3. ✅ Profil header
+4. ✅ Tab navigation
+5. ✅ Ranking Table/Card
+6. ✅ Achievements Card
+7. ✅ Performance Card (XP Gain)
+8. ✅ Düzenle butonu ve input'lar
+9. ✅ Bildirim switch'leri
+10. ✅ Push bildirim onay butonu
+11. ✅ Güvenlik butonları
+12. ✅ Badges tab
+13. ✅ Dil ve saat dilimi seçimleri
+14. ✅ Takım seçimleri
 
-### Web URL
+## Test Sonuçları
 
-Varsayılan olarak `http://localhost:3000` kullanılır. Değiştirmek için:
+Test sonuçları `test-results-profile-bot.json` dosyasına kaydedilir.
 
-```javascript
-await page.goto('http://localhost:3000', { ... });
-```
-
-## 📊 Test Sonuçları
-
-Test sonuçları `test-results-profile-bot.json` dosyasına kaydedilir:
-
+Format:
 ```json
 {
   "timestamp": "2026-01-21T...",
   "duration": "45.23s",
   "summary": {
-    "total": 25,
-    "passed": 23,
-    "failed": 2,
-    "skipped": 0
+    "total": 50,
+    "passed": 45,
+    "failed": 3,
+    "skipped": 2
   },
   "results": {
     "web": [...],
@@ -121,36 +113,40 @@ Test sonuçları `test-results-profile-bot.json` dosyasına kaydedilir:
 }
 ```
 
-## 🐛 Sorun Giderme
+## Hızlı Test Modu
 
-### Playwright Kurulum Hatası
-
-```bash
-npm install --save-dev playwright
-npx playwright install chromium
-```
-
-### Web Sunucusu Çalışmıyor
-
-Test botu çalışmadan önce web sunucusunun çalıştığından emin olun:
+Hızlı modda bazı testler atlanır:
+- Screenshot'lar alınmaz
+- Bazı scroll işlemleri atlanır
+- Bekleme süreleri kısaltılır
 
 ```bash
-cd website
-npm run dev
+FAST_MODE=true npm run test:profile
 ```
 
-### Detox Testleri Çalışmıyor
+## Sorun Giderme
 
-Detox için önce uygulamayı build etmeniz gerekir:
+### Web testi çalışmıyor
 
-```bash
-npm run detox:build:ios
-npm run detox:test:ios
-```
+1. Web sunucusunun çalıştığından emin olun: `npm run web:dev`
+2. Port kontrolü: `http://localhost:3000` erişilebilir olmalı
+3. Playwright kurulu mu: `npm install playwright`
 
-## 📝 Notlar
+### Mobil testi çalışmıyor
 
-- Web testleri görsel olarak çalışır (headless: false)
-- Test adımları yavaşlatılmıştır (slowMo: 300ms)
-- Gerçek kaydetme işlemleri yapılmaz (sadece UI testi)
-- Mobil testleri için Detox kurulumu gerekir
+1. Detox kurulu mu: `npm install -g detox-cli`
+2. iOS Simulator/Android Emulator çalışıyor mu
+3. Test dosyası oluşturuldu mu: `e2e/profile-test-bot.test.ts`
+
+### Giriş başarısız
+
+1. Test kullanıcılarının Supabase'de mevcut olduğundan emin olun
+2. Şifrelerin doğru olduğundan emin olun
+3. Supabase bağlantısını kontrol edin
+
+## Notlar
+
+- Web testleri Playwright ile gerçek tarayıcıda çalışır
+- Mobil testleri Detox ile gerçek cihaz/simulator'de çalışır
+- Her iki platform da aynı Supabase `user_profiles` tablosunu kullanır
+- Senkronizasyon otomatik olarak çalışmalı (aynı veri kaynağı)

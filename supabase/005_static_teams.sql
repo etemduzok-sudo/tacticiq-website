@@ -1,15 +1,7 @@
 -- =====================================================
--- Static Teams Database Schema (PostgreSQL)
+-- Static Teams Database Schema (PostgreSQL/Supabase)
 -- =====================================================
--- Bu tablo tüm önemli takımları içerir:
--- - Tüm ülkelerin en üst liglerindeki takımlar
--- - Yerel turnuva ve kupa takımları (örn: Türkiye Kupası)
--- - Kıta otoritelerinin kupaları (ŞL, EL, Konfederasyon Ligi)
--- - FIFA Dünya Kupası grup/playoff milli takımları
--- - Kıta kupaları (Afrika Uluslar Kupası, vs.)
--- 
--- Güncelleme: Haftada 1 kez (cron job ile)
--- Temizlik: 2 ay önceki veriler otomatik silinir
+-- Run this in Supabase SQL Editor
 -- =====================================================
 
 -- Static Teams Tablosu
@@ -21,13 +13,13 @@ CREATE TABLE IF NOT EXISTS static_teams (
     league VARCHAR(255),
     league_type VARCHAR(50) NOT NULL CHECK (league_type IN ('domestic_top', 'domestic_cup', 'continental', 'international', 'world_cup', 'continental_championship')),
     team_type VARCHAR(20) NOT NULL CHECK (team_type IN ('club', 'national')),
-    colors JSONB, -- Resmi arma renkleri: ["#FF0000", "#FFFFFF"]
-    colors_primary VARCHAR(7), -- Birincil renk (hızlı erişim için)
-    colors_secondary VARCHAR(7), -- İkincil renk
-    coach VARCHAR(255), -- Teknik direktör adı
-    coach_api_id INTEGER, -- API-Football coach ID
-    logo_url TEXT, -- ⚠️ TELİF HAKKI: Kulüp armaları ASLA kaydedilmez (sadece milli takımlar için NULL)
-    flag_url TEXT, -- ✅ Milli takım bayrakları kullanılabilir (telifli değil)
+    colors JSONB,
+    colors_primary VARCHAR(7),
+    colors_secondary VARCHAR(7),
+    coach VARCHAR(255),
+    coach_api_id INTEGER,
+    logo_url TEXT,
+    flag_url TEXT,
     last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -41,19 +33,17 @@ CREATE INDEX IF NOT EXISTS idx_static_teams_last_updated ON static_teams(last_up
 CREATE INDEX IF NOT EXISTS idx_static_teams_name ON static_teams(name);
 CREATE INDEX IF NOT EXISTS idx_static_teams_name_lower ON static_teams(LOWER(name));
 
--- League Information Tablosu (Lig bilgileri)
--- ⚠️ TELİF HAKKI: UEFA, FIFA gibi organizasyonların logo'ları ASLA kaydedilmez
--- Sadece lig renkleri (brand colors) kullanılabilir
+-- Static Leagues Tablosu
 CREATE TABLE IF NOT EXISTS static_leagues (
     id SERIAL PRIMARY KEY,
     api_football_id INTEGER UNIQUE NOT NULL,
     name VARCHAR(255) NOT NULL,
     country VARCHAR(100) NOT NULL,
     league_type VARCHAR(50) NOT NULL CHECK (league_type IN ('domestic_top', 'domestic_cup', 'continental', 'international', 'world_cup', 'continental_championship')),
-    logo_url TEXT, -- ⚠️ TELİF HAKKI: Organizasyon logo'ları (UEFA, FIFA, vs.) ASLA kaydedilmez - her zaman NULL
-    colors JSONB, -- ✅ Organizasyon renkleri (UEFA mavisi, FIFA kırmızısı, vs.) kullanılabilir
-    colors_primary VARCHAR(7), -- Birincil renk (hızlı erişim için)
-    colors_secondary VARCHAR(7), -- İkincil renk
+    logo_url TEXT,
+    colors JSONB,
+    colors_primary VARCHAR(7),
+    colors_secondary VARCHAR(7),
     last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -62,7 +52,7 @@ CREATE INDEX IF NOT EXISTS idx_static_leagues_api_football_id ON static_leagues(
 CREATE INDEX IF NOT EXISTS idx_static_leagues_league_type ON static_leagues(league_type);
 CREATE INDEX IF NOT EXISTS idx_static_leagues_country ON static_leagues(country);
 
--- Update History Tablosu (Güncelleme geçmişi)
+-- Update History Tablosu
 CREATE TABLE IF NOT EXISTS static_teams_update_history (
     id SERIAL PRIMARY KEY,
     update_type VARCHAR(50) NOT NULL CHECK (update_type IN ('full_sync', 'incremental', 'cleanup')),
@@ -79,22 +69,19 @@ CREATE TABLE IF NOT EXISTS static_teams_update_history (
 CREATE INDEX IF NOT EXISTS idx_static_teams_update_history_started_at ON static_teams_update_history(started_at);
 CREATE INDEX IF NOT EXISTS idx_static_teams_update_history_status ON static_teams_update_history(status);
 
--- Otomatik temizlik fonksiyonu (2 ay önceki verileri sil)
+-- Cleanup function
 CREATE OR REPLACE FUNCTION cleanup_old_static_teams()
 RETURNS void AS $$
 BEGIN
     DELETE FROM static_teams
     WHERE last_updated < NOW() - INTERVAL '2 months';
     
-    -- Update history'den de eski kayıtları sil (6 ay)
     DELETE FROM static_teams_update_history
     WHERE started_at < NOW() - INTERVAL '6 months';
-    
-    RAISE NOTICE 'Cleanup completed: Old static teams removed';
 END;
 $$ LANGUAGE plpgsql;
 
--- Otomatik last_updated güncelleme trigger'ı
+-- Timestamp trigger function
 CREATE OR REPLACE FUNCTION update_static_teams_timestamp()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -103,74 +90,70 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Drop trigger if exists and recreate
+-- Drop and recreate trigger
 DROP TRIGGER IF EXISTS trigger_update_static_teams_timestamp ON static_teams;
 CREATE TRIGGER trigger_update_static_teams_timestamp
     BEFORE UPDATE ON static_teams
     FOR EACH ROW
     EXECUTE FUNCTION update_static_teams_timestamp();
 
--- View: Aktif takımlar (son 2 ay içinde güncellenmiş)
+-- View: Aktif takımlar
 CREATE OR REPLACE VIEW v_active_static_teams AS
 SELECT 
-    id,
-    api_football_id,
-    name,
-    country,
-    league,
-    league_type,
-    team_type,
-    colors,
-    colors_primary,
-    colors_secondary,
-    coach,
-    coach_api_id,
-    logo_url,
-    flag_url,
-    last_updated
+    id, api_football_id, name, country, league, league_type, team_type,
+    colors, colors_primary, colors_secondary, coach, coach_api_id,
+    logo_url, flag_url, last_updated
 FROM static_teams
 WHERE last_updated >= NOW() - INTERVAL '2 months'
 ORDER BY country, league, name;
 
--- View: Milli takımlar (hızlı erişim için)
+-- View: Milli takımlar
 CREATE OR REPLACE VIEW v_national_teams AS
 SELECT 
-    id,
-    api_football_id,
-    name,
-    country,
-    colors,
-    colors_primary,
-    colors_secondary,
-    coach,
-    flag_url
+    id, api_football_id, name, country, colors, colors_primary,
+    colors_secondary, coach, flag_url
 FROM static_teams
 WHERE team_type = 'national'
 AND last_updated >= NOW() - INTERVAL '2 months'
 ORDER BY country;
 
--- View: Kulüp takımları (hızlı erişim için)
--- ⚠️ TELİF HAKKI: logo_url ASLA döndürülmez (sadece renkler kullanılır)
+-- View: Kulüp takımları
 CREATE OR REPLACE VIEW v_club_teams AS
 SELECT 
-    id,
-    api_football_id,
-    name,
-    country,
-    league,
-    league_type,
-    colors,
-    colors_primary,
-    colors_secondary,
-    coach
-    -- logo_url ASLA döndürülmez (telif koruması - sadece renkler kullanılır)
+    id, api_football_id, name, country, league, league_type,
+    colors, colors_primary, colors_secondary, coach
 FROM static_teams
 WHERE team_type = 'club'
 AND last_updated >= NOW() - INTERVAL '2 months'
 ORDER BY country, league, name;
 
 -- =====================================================
--- Initial Data: Fallback Teams (temel takımlar)
+-- RLS (Row Level Security) Policies
+-- =====================================================
+
+-- Enable RLS
+ALTER TABLE static_teams ENABLE ROW LEVEL SECURITY;
+ALTER TABLE static_leagues ENABLE ROW LEVEL SECURITY;
+ALTER TABLE static_teams_update_history ENABLE ROW LEVEL SECURITY;
+
+-- Allow public read access to static_teams (no auth required for reading)
+CREATE POLICY "Allow public read access to static_teams" ON static_teams
+    FOR SELECT USING (true);
+
+-- Allow service role to manage static_teams
+CREATE POLICY "Allow service role to manage static_teams" ON static_teams
+    FOR ALL USING (auth.role() = 'service_role');
+
+-- Allow public read access to static_leagues
+CREATE POLICY "Allow public read access to static_leagues" ON static_leagues
+    FOR SELECT USING (true);
+
+-- Allow service role to manage static_leagues
+CREATE POLICY "Allow service role to manage static_leagues" ON static_leagues
+    FOR ALL USING (auth.role() = 'service_role');
+
+-- =====================================================
+-- Initial Data: Fallback Teams
 -- =====================================================
 
 -- Milli Takımlar
@@ -217,7 +200,15 @@ VALUES
     (562, 'Antalyaspor', 'Turkey', 'Süper Lig', 'domestic_top', 'club', '["#FF0000", "#FFFFFF"]', '#FF0000', '#FFFFFF'),
     (556, 'Konyaspor', 'Turkey', 'Süper Lig', 'domestic_top', 'club', '["#006633", "#FFFFFF"]', '#006633', '#FFFFFF'),
     (564, 'Sivasspor', 'Turkey', 'Süper Lig', 'domestic_top', 'club', '["#FF0000", "#FFFFFF"]', '#FF0000', '#FFFFFF'),
-    (3571, 'Kasimpasa', 'Turkey', 'Süper Lig', 'domestic_top', 'club', '["#000066", "#FFFFFF"]', '#000066', '#FFFFFF')
+    (3571, 'Kasimpasa', 'Turkey', 'Süper Lig', 'domestic_top', 'club', '["#000066", "#FFFFFF"]', '#000066', '#FFFFFF'),
+    (550, 'Goztepe', 'Turkey', 'Süper Lig', 'domestic_top', 'club', '["#FFD700", "#C8102E"]', '#FFD700', '#C8102E'),
+    (553, 'Kayserispor', 'Turkey', 'Süper Lig', 'domestic_top', 'club', '["#FF0000", "#FFD700"]', '#FF0000', '#FFD700'),
+    (563, 'Rizespor', 'Turkey', 'Süper Lig', 'domestic_top', 'club', '["#006633", "#0000FF"]', '#006633', '#0000FF'),
+    (3563, 'Hatayspor', 'Turkey', 'Süper Lig', 'domestic_top', 'club', '["#006633", "#C8102E"]', '#006633', '#C8102E'),
+    (565, 'Samsunspor', 'Turkey', 'Süper Lig', 'domestic_top', 'club', '["#C8102E", "#FFFFFF"]', '#C8102E', '#FFFFFF'),
+    (552, 'Gaziantep FK', 'Turkey', 'Süper Lig', 'domestic_top', 'club', '["#C8102E", "#000000"]', '#C8102E', '#000000'),
+    (3574, 'Alanyaspor', 'Turkey', 'Süper Lig', 'domestic_top', 'club', '["#FF6600", "#006633"]', '#FF6600', '#006633'),
+    (559, 'Bursaspor', 'Turkey', 'Süper Lig', 'domestic_top', 'club', '["#006633", "#FFFFFF"]', '#006633', '#FFFFFF')
 ON CONFLICT (api_football_id) DO UPDATE SET
     name = EXCLUDED.name,
     league = EXCLUDED.league,
@@ -238,7 +229,17 @@ VALUES
     (66, 'Aston Villa', 'England', 'Premier League', 'domestic_top', 'club', '["#670E36", "#95BFE5"]', '#670E36', '#95BFE5'),
     (34, 'Newcastle', 'England', 'Premier League', 'domestic_top', 'club', '["#241F20", "#FFFFFF"]', '#241F20', '#FFFFFF'),
     (51, 'Brighton', 'England', 'Premier League', 'domestic_top', 'club', '["#0057B8", "#FFFFFF"]', '#0057B8', '#FFFFFF'),
-    (39, 'Wolverhampton', 'England', 'Premier League', 'domestic_top', 'club', '["#FDB913", "#231F20"]', '#FDB913', '#231F20')
+    (39, 'Wolverhampton', 'England', 'Premier League', 'domestic_top', 'club', '["#FDB913", "#231F20"]', '#FDB913', '#231F20'),
+    (48, 'West Ham', 'England', 'Premier League', 'domestic_top', 'club', '["#7A263A", "#1BB1E7"]', '#7A263A', '#1BB1E7'),
+    (52, 'Crystal Palace', 'England', 'Premier League', 'domestic_top', 'club', '["#1B458F", "#C4122E"]', '#1B458F', '#C4122E'),
+    (36, 'Fulham', 'England', 'Premier League', 'domestic_top', 'club', '["#FFFFFF", "#000000"]', '#FFFFFF', '#000000'),
+    (55, 'Brentford', 'England', 'Premier League', 'domestic_top', 'club', '["#C8102E", "#FFFFFF"]', '#C8102E', '#FFFFFF'),
+    (65, 'Nottingham Forest', 'England', 'Premier League', 'domestic_top', 'club', '["#DD0000", "#FFFFFF"]', '#DD0000', '#FFFFFF'),
+    (35, 'Bournemouth', 'England', 'Premier League', 'domestic_top', 'club', '["#B50E12", "#000000"]', '#B50E12', '#000000'),
+    (45, 'Everton', 'England', 'Premier League', 'domestic_top', 'club', '["#003399", "#FFFFFF"]', '#003399', '#FFFFFF'),
+    (46, 'Leicester', 'England', 'Premier League', 'domestic_top', 'club', '["#003090", "#FDBE11"]', '#003090', '#FDBE11'),
+    (57, 'Ipswich', 'England', 'Premier League', 'domestic_top', 'club', '["#0000FF", "#FFFFFF"]', '#0000FF', '#FFFFFF'),
+    (41, 'Southampton', 'England', 'Premier League', 'domestic_top', 'club', '["#D71920", "#FFFFFF"]', '#D71920', '#FFFFFF')
 ON CONFLICT (api_football_id) DO UPDATE SET
     name = EXCLUDED.name,
     league = EXCLUDED.league,
@@ -259,7 +260,17 @@ VALUES
     (543, 'Real Betis', 'Spain', 'La Liga', 'domestic_top', 'club', '["#00954C", "#FFFFFF"]', '#00954C', '#FFFFFF'),
     (531, 'Athletic Bilbao', 'Spain', 'La Liga', 'domestic_top', 'club', '["#EE2523", "#FFFFFF"]', '#EE2523', '#FFFFFF'),
     (533, 'Villarreal', 'Spain', 'La Liga', 'domestic_top', 'club', '["#FFFF00", "#005592"]', '#FFFF00', '#005592'),
-    (723, 'Almeria', 'Spain', 'La Liga', 'domestic_top', 'club', '["#C8102E", "#FFFFFF"]', '#C8102E', '#FFFFFF')
+    (723, 'Almeria', 'Spain', 'La Liga', 'domestic_top', 'club', '["#C8102E", "#FFFFFF"]', '#C8102E', '#FFFFFF'),
+    (540, 'Espanyol', 'Spain', 'La Liga', 'domestic_top', 'club', '["#007FC8", "#FFFFFF"]', '#007FC8', '#FFFFFF'),
+    (539, 'Levante', 'Spain', 'La Liga', 'domestic_top', 'club', '["#004B93", "#C8102E"]', '#004B93', '#C8102E'),
+    (536, 'Getafe', 'Spain', 'La Liga', 'domestic_top', 'club', '["#004999", "#FFFFFF"]', '#004999', '#FFFFFF'),
+    (798, 'Mallorca', 'Spain', 'La Liga', 'domestic_top', 'club', '["#C8102E", "#000000"]', '#C8102E', '#000000'),
+    (728, 'Rayo Vallecano', 'Spain', 'La Liga', 'domestic_top', 'club', '["#FFFFFF", "#C8102E"]', '#FFFFFF', '#C8102E'),
+    (797, 'Elche', 'Spain', 'La Liga', 'domestic_top', 'club', '["#006633", "#FFFFFF"]', '#006633', '#FFFFFF'),
+    (534, 'Las Palmas', 'Spain', 'La Liga', 'domestic_top', 'club', '["#FFFF00", "#0000FF"]', '#FFFF00', '#0000FF'),
+    (542, 'Celta Vigo', 'Spain', 'La Liga', 'domestic_top', 'club', '["#8AC3EE", "#FFFFFF"]', '#8AC3EE', '#FFFFFF'),
+    (547, 'Girona', 'Spain', 'La Liga', 'domestic_top', 'club', '["#C8102E", "#FFFFFF"]', '#C8102E', '#FFFFFF'),
+    (727, 'Osasuna', 'Spain', 'La Liga', 'domestic_top', 'club', '["#0A3B76", "#C8102E"]', '#0A3B76', '#C8102E')
 ON CONFLICT (api_football_id) DO UPDATE SET
     name = EXCLUDED.name,
     league = EXCLUDED.league,
@@ -280,7 +291,15 @@ VALUES
     (160, 'Union Berlin', 'Germany', 'Bundesliga', 'domestic_top', 'club', '["#EB1923", "#FFFFFF"]', '#EB1923', '#FFFFFF'),
     (162, 'Werder Bremen', 'Germany', 'Bundesliga', 'domestic_top', 'club', '["#1D9053", "#FFFFFF"]', '#1D9053', '#FFFFFF'),
     (182, 'VfB Stuttgart', 'Germany', 'Bundesliga', 'domestic_top', 'club', '["#E32219", "#FFFFFF"]', '#E32219', '#FFFFFF'),
-    (159, 'Hertha Berlin', 'Germany', 'Bundesliga', 'domestic_top', 'club', '["#005DAC", "#FFFFFF"]', '#005DAC', '#FFFFFF')
+    (159, 'Hertha Berlin', 'Germany', 'Bundesliga', 'domestic_top', 'club', '["#005DAC", "#FFFFFF"]', '#005DAC', '#FFFFFF'),
+    (161, 'VfL Wolfsburg', 'Germany', 'Bundesliga', 'domestic_top', 'club', '["#65B32E", "#FFFFFF"]', '#65B32E', '#FFFFFF'),
+    (163, 'Borussia Monchengladbach', 'Germany', 'Bundesliga', 'domestic_top', 'club', '["#000000", "#FFFFFF"]', '#000000', '#FFFFFF'),
+    (164, 'FSV Mainz 05', 'Germany', 'Bundesliga', 'domestic_top', 'club', '["#C8102E", "#FFFFFF"]', '#C8102E', '#FFFFFF'),
+    (170, 'FC Augsburg', 'Germany', 'Bundesliga', 'domestic_top', 'club', '["#C8102E", "#006633"]', '#C8102E', '#006633'),
+    (172, 'VfL Bochum', 'Germany', 'Bundesliga', 'domestic_top', 'club', '["#0000FF", "#FFFFFF"]', '#0000FF', '#FFFFFF'),
+    (174, 'FC Koln', 'Germany', 'Bundesliga', 'domestic_top', 'club', '["#ED1C24", "#FFFFFF"]', '#ED1C24', '#FFFFFF'),
+    (192, 'FC Schalke 04', 'Germany', 'Bundesliga', 'domestic_top', 'club', '["#004D9D", "#FFFFFF"]', '#004D9D', '#FFFFFF'),
+    (180, 'Hoffenheim', 'Germany', 'Bundesliga', 'domestic_top', 'club', '["#1E88E5", "#FFFFFF"]', '#1E88E5', '#FFFFFF')
 ON CONFLICT (api_football_id) DO UPDATE SET
     name = EXCLUDED.name,
     league = EXCLUDED.league,
@@ -301,7 +320,17 @@ VALUES
     (500, 'Atalanta', 'Italy', 'Serie A', 'domestic_top', 'club', '["#1B478D", "#000000"]', '#1B478D', '#000000'),
     (502, 'Fiorentina', 'Italy', 'Serie A', 'domestic_top', 'club', '["#472C84", "#FFFFFF"]', '#472C84', '#FFFFFF'),
     (503, 'Torino', 'Italy', 'Serie A', 'domestic_top', 'club', '["#8B0000", "#FFFFFF"]', '#8B0000', '#FFFFFF'),
-    (504, 'Hellas Verona', 'Italy', 'Serie A', 'domestic_top', 'club', '["#FFFF00", "#003366"]', '#FFFF00', '#003366')
+    (504, 'Hellas Verona', 'Italy', 'Serie A', 'domestic_top', 'club', '["#FFFF00", "#003366"]', '#FFFF00', '#003366'),
+    (488, 'Sassuolo', 'Italy', 'Serie A', 'domestic_top', 'club', '["#000000", "#006633"]', '#000000', '#006633'),
+    (494, 'Udinese', 'Italy', 'Serie A', 'domestic_top', 'club', '["#000000", "#FFFFFF"]', '#000000', '#FFFFFF'),
+    (490, 'Cagliari', 'Italy', 'Serie A', 'domestic_top', 'club', '["#9F0200", "#003399"]', '#9F0200', '#003399'),
+    (495, 'Genoa', 'Italy', 'Serie A', 'domestic_top', 'club', '["#A7082B", "#0033A0"]', '#A7082B', '#0033A0'),
+    (498, 'Sampdoria', 'Italy', 'Serie A', 'domestic_top', 'club', '["#005BAC", "#FFFFFF"]', '#005BAC', '#FFFFFF'),
+    (499, 'Spezia', 'Italy', 'Serie A', 'domestic_top', 'club', '["#FFFFFF", "#000000"]', '#FFFFFF', '#000000'),
+    (511, 'Empoli', 'Italy', 'Serie A', 'domestic_top', 'club', '["#005CA9", "#FFFFFF"]', '#005CA9', '#FFFFFF'),
+    (514, 'Lecce', 'Italy', 'Serie A', 'domestic_top', 'club', '["#FFD700", "#C8102E"]', '#FFD700', '#C8102E'),
+    (515, 'Monza', 'Italy', 'Serie A', 'domestic_top', 'club', '["#C8102E", "#FFFFFF"]', '#C8102E', '#FFFFFF'),
+    (520, 'Bologna', 'Italy', 'Serie A', 'domestic_top', 'club', '["#1A2F4F", "#C8102E"]', '#1A2F4F', '#C8102E')
 ON CONFLICT (api_football_id) DO UPDATE SET
     name = EXCLUDED.name,
     league = EXCLUDED.league,
@@ -322,7 +351,15 @@ VALUES
     (84, 'Nice', 'France', 'Ligue 1', 'domestic_top', 'club', '["#000000", "#FF0000"]', '#000000', '#FF0000'),
     (93, 'Reims', 'France', 'Ligue 1', 'domestic_top', 'club', '["#B1102E", "#FFFFFF"]', '#B1102E', '#FFFFFF'),
     (116, 'Lens', 'France', 'Ligue 1', 'domestic_top', 'club', '["#FFE100", "#D20000"]', '#FFE100', '#D20000'),
-    (82, 'Montpellier', 'France', 'Ligue 1', 'domestic_top', 'club', '["#F58025", "#004A99"]', '#F58025', '#004A99')
+    (82, 'Montpellier', 'France', 'Ligue 1', 'domestic_top', 'club', '["#F58025", "#004A99"]', '#F58025', '#004A99'),
+    (83, 'Nantes', 'France', 'Ligue 1', 'domestic_top', 'club', '["#FCE100", "#008D36"]', '#FCE100', '#008D36'),
+    (78, 'Bordeaux', 'France', 'Ligue 1', 'domestic_top', 'club', '["#142032", "#FFFFFF"]', '#142032', '#FFFFFF'),
+    (77, 'Angers', 'France', 'Ligue 1', 'domestic_top', 'club', '["#000000", "#FFFFFF"]', '#000000', '#FFFFFF'),
+    (95, 'Strasbourg', 'France', 'Ligue 1', 'domestic_top', 'club', '["#0087D0", "#FFFFFF"]', '#0087D0', '#FFFFFF'),
+    (96, 'Toulouse', 'France', 'Ligue 1', 'domestic_top', 'club', '["#7A3998", "#FFFFFF"]', '#7A3998', '#FFFFFF'),
+    (97, 'Lorient', 'France', 'Ligue 1', 'domestic_top', 'club', '["#F47216", "#000000"]', '#F47216', '#000000'),
+    (99, 'Brest', 'France', 'Ligue 1', 'domestic_top', 'club', '["#C8102E", "#FFFFFF"]', '#C8102E', '#FFFFFF'),
+    (108, 'Auxerre', 'France', 'Ligue 1', 'domestic_top', 'club', '["#0052A5", "#FFFFFF"]', '#0052A5', '#FFFFFF')
 ON CONFLICT (api_football_id) DO UPDATE SET
     name = EXCLUDED.name,
     league = EXCLUDED.league,
@@ -332,10 +369,10 @@ ON CONFLICT (api_football_id) DO UPDATE SET
     last_updated = CURRENT_TIMESTAMP;
 
 -- =====================================================
--- SCHEMA COMPLETE
+-- Verify data
 -- =====================================================
 SELECT 
-    'Static Teams DB Schema Created Successfully!' AS status,
+    'Static Teams DB Created!' AS status,
     (SELECT COUNT(*) FROM static_teams) AS total_teams,
     (SELECT COUNT(*) FROM static_teams WHERE team_type = 'national') AS national_teams,
     (SELECT COUNT(*) FROM static_teams WHERE team_type = 'club') AS club_teams;

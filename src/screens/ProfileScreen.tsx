@@ -3274,7 +3274,7 @@ const createStyles = () => {
     backgroundColor: '#F59E0B0D', // amber-500/5 (web ile aynı)
   },
   badgeCardLocked: {
-    borderColor: theme.border + '80', // border/50 (web ile aynı)
+    borderColor: 'rgba(230, 230, 230, 0.5)', // border/50 (web ile aynı) - fixed invalid color format
     backgroundColor: theme.card,
     opacity: 0.8,
   },

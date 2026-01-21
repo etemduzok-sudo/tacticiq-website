@@ -45,10 +45,10 @@ export function Header({ onNavigate }: HeaderProps) {
   
   // Dinamik olarak admin ayarlarına göre nav items oluştur
   // Her section için: admin panelinde enabled ise göster, değilse gizle
+  // NOT: 'product' sekmesi kaldırıldı (kullanıcı isteği)
   const navItems = [
     { key: 'home', label: t('nav.home'), href: '#', enabled: true },
     { key: 'features', label: t('nav.features'), href: '#features', enabled: sectionSettings?.features?.enabled ?? true },
-    { key: 'product', label: t('nav.product') || 'Ürün', href: '#product', enabled: sectionSettings?.product?.enabled ?? false },
     { key: 'how-it-works', label: t('nav.how_it_works'), href: '#how-it-works', enabled: sectionSettings?.howItWorks?.enabled ?? true },
     { key: 'pricing', label: t('nav.pricing'), href: '#pricing', enabled: sectionSettings?.pricing?.enabled ?? true },
     { key: 'testimonials', label: t('nav.testimonials') || 'Yorumlar', href: '#testimonials', enabled: sectionSettings?.testimonials?.enabled ?? false },
