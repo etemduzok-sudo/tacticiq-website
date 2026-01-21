@@ -1126,7 +1126,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.dark.background,
+    backgroundColor: '#1F3231', // ProfileCard ile aynı koyu yeşil ton
   },
   centerContent: {
     justifyContent: 'center',
@@ -2450,9 +2450,9 @@ const styles = StyleSheet.create({
     right: 0,
     flexDirection: 'row',
     height: SIZES.tabBarHeight,
-    backgroundColor: COLORS.dark.card,
+    backgroundColor: '#1E3A3A', // ProfileCard ranking card ile aynı ton
     borderTopWidth: 1,
-    borderTopColor: COLORS.dark.border,
+    borderTopColor: 'rgba(43, 124, 115, 0.3)', // #2B7C73 with opacity
     ...SHADOWS.lg,
     ...Platform.select({
       ios: {

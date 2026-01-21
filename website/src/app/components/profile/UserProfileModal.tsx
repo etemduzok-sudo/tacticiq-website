@@ -693,10 +693,13 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
   }
 
   const handleSaveProfile = async () => {
-    // Email ile kayıt olanlar için nickname zorunlu
-    const isEmailUser = user.app_metadata?.provider === 'email' || !user.app_metadata?.provider;
-    if (isEmailUser && !nickname.trim()) {
+    // Tüm kullanıcılar için nickname zorunlu ve minimum 3 karakter
+    if (!nickname.trim()) {
       toast.error('Nickname zorunludur');
+      return;
+    }
+    if (nickname.trim().length < 3) {
+      toast.error('Nickname en az 3 karakter olmalıdır');
       return;
     }
 
