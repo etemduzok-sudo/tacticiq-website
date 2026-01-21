@@ -350,6 +350,7 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
   }, [profile, user, open]);
 
   // User stats (mobile app ile tutarlı)
+  // TODO: Bu veriler backend'den gelecek - şimdilik placeholder değerler
   const userStats = {
     level: 1,
     points: 0,
@@ -357,8 +358,9 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
     successRate: 0,
     totalPredictions: 0,
     dayStreak: 0,
-    countryRank: 0,
-    totalPlayers: 1000,
+    countryRank: 0, // Türkiye'deki sıralaması
+    globalRank: 0, // Dünyadaki sıralaması
+    totalPlayers: 1000, // Toplam oyuncu sayısı
     avgMatchRating: 0,
     xpGainThisWeek: 0,
   };
@@ -608,16 +610,20 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
                             </div>
                           </div>
                           <Separator orientation="vertical" className="h-8" />
-                          {/* Country Rank */}
+                          {/* Country Rank - Türkiye'deki sıralaması */}
                           <div className="text-center">
                             <p className="text-xs text-muted-foreground mb-1">Türkiye Sırası</p>
-                            <p className="text-sm font-bold text-secondary">#{userStats.countryRank.toLocaleString()}</p>
+                            <p className="text-sm font-bold text-secondary">
+                              #{userStats.countryRank > 0 ? userStats.countryRank.toLocaleString() : 'N/A'}
+                            </p>
                           </div>
                           <Separator orientation="vertical" className="h-8" />
-                          {/* Global Rank */}
+                          {/* Global Rank - Dünyadaki sıralaması */}
                           <div className="text-center">
                             <p className="text-xs text-muted-foreground mb-1">Dünya Sırası</p>
-                            <p className="text-sm font-bold">#{((userStats.totalPlayers || 1000) - (userStats.countryRank || 0)).toLocaleString()}</p>
+                            <p className="text-sm font-bold">
+                              #{userStats.globalRank > 0 ? userStats.globalRank.toLocaleString() : 'N/A'}
+                            </p>
                           </div>
                         </div>
                       </div>
