@@ -1,4 +1,4 @@
-# 📱 Google AdMob Setup Guide - Fan Manager 2026
+# 📱 Google AdMob Setup Guide - TacticIQ
 
 ## 🎯 **Reklam Yerleşimi Stratejisi**
 
@@ -34,7 +34,7 @@ Uygulamada reklamlar şu ekranlarda gösteriliyor:
 2. Google hesabınla giriş yap
 3. **"Add app"** butonuna tıkla
 4. Uygulama bilgilerini gir:
-   - **App name:** Fan Manager 2026
+   - **App name:** TacticIQ
    - **Platform:** Android / iOS (her ikisi için ayrı oluştur)
    - **App ID:** (Play Store / App Store'dan alınacak)
 
@@ -43,33 +43,33 @@ Uygulamada reklamlar şu ekranlarda gösteriliyor:
 ### **2. Ad Unit ID'leri Oluştur**
 
 #### **Android için:**
-1. AdMob Dashboard > **"Apps"** > **"Fan Manager 2026 (Android)"**
+1. AdMob Dashboard > **"Apps"** > **"TacticIQ (Android)"**
 2. **"Ad units"** sekmesine git
 3. **"Add ad unit"** butonuna tıkla
 
 **Banner Ad Unit:**
 - **Ad format:** Banner
-- **Ad unit name:** Banner - Fan Manager Android
+- **Ad unit name:** Banner - TacticIQ Android
 - **Ad unit ID:** `ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX` (kopyala)
 
 **Interstitial Ad Unit (opsiyonel):**
 - **Ad format:** Interstitial
-- **Ad unit name:** Interstitial - Fan Manager Android
+- **Ad unit name:** Interstitial - TacticIQ Android
 - **Ad unit ID:** `ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX` (kopyala)
 
 #### **iOS için:**
-1. AdMob Dashboard > **"Apps"** > **"Fan Manager 2026 (iOS)"**
+1. AdMob Dashboard > **"Apps"** > **"TacticIQ (iOS)"**
 2. **"Ad units"** sekmesine git
 3. **"Add ad unit"** butonuna tıkla
 
 **Banner Ad Unit:**
 - **Ad format:** Banner
-- **Ad unit name:** Banner - Fan Manager iOS
+- **Ad unit name:** Banner - TacticIQ iOS
 - **Ad unit ID:** `ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX` (kopyala)
 
 **Interstitial Ad Unit (opsiyonel):**
 - **Ad format:** Interstitial
-- **Ad unit name:** Interstitial - Fan Manager iOS
+- **Ad unit name:** Interstitial - TacticIQ iOS
 - **Ad unit ID:** `ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX` (kopyala)
 
 ---
@@ -81,8 +81,8 @@ Uygulamada reklamlar şu ekranlarda gösteriliyor:
 ```json
 {
   "expo": {
-    "name": "Fan Manager 2026",
-    "slug": "fan-manager-2026",
+    "name": "TacticIQ",
+    "slug": "tacticiq",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -102,14 +102,14 @@ Uygulamada reklamlar şu ekranlarda gösteriliyor:
       ]
     ],
     "android": {
-      "package": "com.fanmanager2026.app",
+      "package": "com.tacticiq.app",
       "googleServicesFile": "./google-services.json",
       "config": {
         "googleMobileAdsAppId": "ca-app-pub-XXXXXXXXXXXXXXXX~XXXXXXXXXX"
       }
     },
     "ios": {
-      "bundleIdentifier": "com.fanmanager2026.app",
+      "bundleIdentifier": "com.tacticiq.app",
       "googleServicesFile": "./GoogleService-Info.plist",
       "config": {
         "googleMobileAdsAppId": "ca-app-pub-XXXXXXXXXXXXXXXX~XXXXXXXXXX"
@@ -145,13 +145,13 @@ const bannerAdUnitId = __DEV__
 ### **5. Google Services Dosyalarını İndir**
 
 #### **Android için:**
-1. AdMob Dashboard > **"Apps"** > **"Fan Manager 2026 (Android)"**
+1. AdMob Dashboard > **"Apps"** > **"TacticIQ (Android)"**
 2. **"App settings"** sekmesine git
 3. **"Download google-services.json"** butonuna tıkla
 4. Dosyayı proje root'una kopyala: `google-services.json`
 
 #### **iOS için:**
-1. AdMob Dashboard > **"Apps"** > **"Fan Manager 2026 (iOS)"**
+1. AdMob Dashboard > **"Apps"** > **"TacticIQ (iOS)"**
 2. **"App settings"** sekmesine git
 3. **"Download GoogleService-Info.plist"** butonuna tıkla
 4. Dosyayı proje root'una kopyala: `GoogleService-Info.plist`
@@ -161,7 +161,7 @@ const bannerAdUnitId = __DEV__
 ### **6. Firebase Console'da Uygulamayı Kaydet**
 
 1. https://console.firebase.google.com adresine git
-2. Yeni proje oluştur: **"Fan Manager 2026"**
+2. Yeni proje oluştur: **"TacticIQ"**
 3. **"Add app"** butonuna tıkla
 4. Android ve iOS için ayrı ayrı ekle
 5. `google-services.json` ve `GoogleService-Info.plist` dosyalarını indir

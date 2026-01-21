@@ -36,7 +36,7 @@ export const API_CONFIG = {
   // Backend API
   backend: {
     development: 'http://localhost:3000/api',
-    production: 'https://api.fanmanager2026.com/api',
+    production: 'https://api.tacticiq.com/api',
   },
   
   // Supabase

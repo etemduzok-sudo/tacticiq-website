@@ -13,6 +13,7 @@ const tabs = [
   { id: 'home', label: 'Ana Sayfa', icon: 'home-outline', activeIcon: 'home' },
   { id: 'matches', label: 'Canlı Maçlar', icon: 'radio-outline', activeIcon: 'radio' },
   { id: 'leaderboard', label: 'Sıralama', icon: 'trophy-outline', activeIcon: 'trophy' },
+  { id: 'profile', label: 'Profil', icon: 'person-outline', activeIcon: 'person' },
 ];
 
 export function BottomNavigation({ activeTab, onTabChange }: BottomNavigationProps) {

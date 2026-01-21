@@ -1,4 +1,4 @@
-### Fan Manager 2026 - Backend API Test File
+### TacticIQ - Backend API Test File
 ### REST Client kullanarak test edebilirsiniz (VS Code extension)
 
 @baseUrl = http://localhost:3000

@@ -1,7 +1,7 @@
 {
   "name": "fan-manager-backend",
   "version": "2.0.0",
-  "description": "Fan Manager 2026 - Enhanced Backend API with Security & Performance",
+  "description": "TacticIQ - Enhanced Backend API with Security & Performance",
   "main": "server.enhanced.js",
   "scripts": {
     "start": "node server.enhanced.js",
@@ -49,6 +49,6 @@
     "express",
     "nodejs"
   ],
-  "author": "Fan Manager Team",
+  "author": "TacticIQ Team",
   "license": "MIT"
 }

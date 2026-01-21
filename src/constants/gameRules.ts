@@ -1,5 +1,5 @@
 // Game Rules & Business Logic Constants
-// Fan Manager 2026 - Centralized Game Rules
+// TacticIQ - Centralized Game Rules
 
 /**
  * ⚽ PUANLAMA KURALLARI

@@ -1,5 +1,5 @@
 /**
- * Fan Manager 2026 - Gradient Helpers
+ * TacticIQ - Gradient Helpers
  * Design System Documentation'a göre hazır gradient fonksiyonları
  */
 

@@ -1,5 +1,5 @@
 // Badge Types
-// Fan Manager 2026 - Uzmanlık Rozetleri Sistemi
+// TacticIQ - Uzmanlık Rozetleri Sistemi
 
 /**
  * Badge Categories

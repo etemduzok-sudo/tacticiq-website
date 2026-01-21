@@ -1,5 +1,5 @@
 -- Fix RLS Policies for Public Read Access
--- Fan Manager 2026 - Supabase Database
+-- TacticIQ - Supabase Database
 
 -- ========================================
 -- OPTION 1: Enable RLS with Public Read (RECOMMENDED)

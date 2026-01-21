@@ -872,18 +872,18 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side="right" className="w-full sm:max-w-2xl overflow-y-auto">
-          <SheetHeader>
+        <SheetContent side="right" className="w-full sm:max-w-2xl lg:max-w-3xl overflow-hidden p-0">
+          <SheetHeader className="px-6 pt-6 pb-4">
             <SheetTitle>{t('profile.title') || 'Profil'}</SheetTitle>
             <SheetDescription>
               {t('profile.description') || 'Profil bilgilerinizi yönetin'}
             </SheetDescription>
           </SheetHeader>
 
-          <ScrollArea className="flex-1 px-4" style={{ height: 'calc(100vh - 100px)' }}>
-            <div className="space-y-6 mt-6">
+          <ScrollArea className="flex-1 pb-6" style={{ height: 'calc(100vh - 120px)' }}>
+            <div className="space-y-6 mt-2 px-6 max-w-full overflow-x-hidden">
               {/* Tab Navigation */}
-              <div className="flex bg-muted rounded-lg p-1 gap-1">
+              <div className="flex bg-muted rounded-lg p-1 gap-1 w-full max-w-full">
                 <button
                   onClick={() => setActiveTab('profile')}
                   className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-medium transition-all ${
@@ -918,7 +918,7 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
                   {/* Profile Header */}
                   <Card>
                     <div className="h-20 bg-gradient-to-r from-secondary/20 via-accent/10 to-secondary/20" />
-                    <CardContent className="relative pt-0 pb-4">
+                    <CardContent className="relative pt-0 pb-4 !px-6">
                       <div className="flex flex-col items-center -mt-12">
                         <Avatar className="size-20 border-4 border-background shadow-lg mb-3">
                           <AvatarImage src={profile.avatar} />
@@ -940,7 +940,7 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
                         <p className="text-xs text-muted-foreground mb-4">{profile.email}</p>
                         
                         {/* Ranking Table - Professional Design */}
-                        <div className="w-full border rounded-lg overflow-hidden bg-card/50">
+                        <div className="w-full max-w-full border rounded-lg overflow-hidden bg-card/50">
                           <Table>
                             <TableHeader>
                               <TableRow className="border-b bg-muted/30">
@@ -1017,15 +1017,15 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
                   </Card>
 
                   {/* Achievements Card */}
-                  <Card>
+                  <Card className="w-full max-w-full">
                     <CardHeader>
                       <CardTitle className="text-base flex items-center gap-2">
                         <Star className="size-4 text-amber-500" />
                         Başarımlar
                       </CardTitle>
                     </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-3 gap-3">
+                    <CardContent className="!px-6">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         {achievements.map((achievement) => (
                           <Card 
                             key={achievement.id} 
@@ -1048,8 +1048,8 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
                         Performans
                       </CardTitle>
                     </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-3 gap-4">
+                    <CardContent className="!px-6">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div className="text-center p-4 bg-secondary/10 border border-secondary/20 rounded-lg">
                           <div className="text-2xl font-bold text-secondary mb-1">
                             {userStats.successRate}%
@@ -1087,11 +1087,11 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
                   </Card>
 
                   {/* Profile Form */}
-                  <Card>
+                  <Card className="w-full max-w-full">
                     <CardHeader>
                       <CardTitle className="text-base">Kişisel Bilgiler</CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="space-y-4 !px-6">
                       {/* First Name */}
                       <div className="space-y-2">
                         <Label>İsim</Label>
@@ -1155,7 +1155,7 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
                                 setShowNationalTeamDropdown(!showNationalTeamDropdown);
                               }
                             }}
-                            className={`w-full flex items-center justify-between h-10 px-3 py-2 text-sm border rounded-md bg-background cursor-pointer hover:bg-accent ${!selectedNationalTeam ? 'border-destructive' : 'border-input'}`}
+                            className={`w-full max-w-full flex items-center justify-between h-10 px-3 py-2 text-sm border rounded-md bg-background cursor-pointer hover:bg-accent ${!selectedNationalTeam ? 'border-destructive' : 'border-input'}`}
                           >
                             <span className={selectedNationalTeam ? '' : 'text-muted-foreground'}>
                               {selectedNationalTeam || 'Milli takım seçin veya ara...'}
@@ -1187,7 +1187,7 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
                           {/* Search Input - Hidden by default, shown when clicked */}
                           {(showNationalTeamDropdown || nationalTeamSearch) && isEditing && (
                             <div 
-                              className="absolute z-30 w-full mt-1 bg-popover border rounded-lg shadow-lg"
+                              className="absolute z-30 w-full max-w-full mt-1 bg-popover border rounded-lg shadow-lg"
                               onMouseDown={(e) => e.preventDefault()}
                             >
                               <div className="p-2 border-b">
@@ -1340,7 +1340,7 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
                             {/* Search Input - Hidden by default, shown when clicked */}
                             {(showClubTeamDropdown || clubTeamSearch) && (
                               <div 
-                                className="absolute z-30 w-full mt-1 bg-popover border rounded-lg shadow-lg"
+                                className="absolute z-30 w-full max-w-full mt-1 bg-popover border rounded-lg shadow-lg"
                                 onMouseDown={(e) => e.preventDefault()}
                               >
                                 <div className="p-2 border-b">
@@ -1518,7 +1518,7 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
                               <button
                                 type="button"
                                 disabled={true}
-                                className="w-full flex items-center justify-between h-10 px-3 py-2 text-sm border rounded-md bg-background/50 opacity-50 cursor-not-allowed border-input"
+                                className="w-full max-w-full flex items-center justify-between h-10 px-3 py-2 text-sm border rounded-md bg-background/50 opacity-50 cursor-not-allowed border-input"
                               >
                                 <span className="text-muted-foreground">
                                   Pro üye olarak kulüp takımı seçebilirsiniz
@@ -1572,13 +1572,13 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
                   </Card>
 
                   {/* Settings */}
-                  <Card>
+                  <Card className="w-full max-w-full">
                     <CardHeader>
                       <CardTitle className="text-base">Ayarlar</CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="space-y-4 !px-6">
                       {/* Language & Timezone */}
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label>Dil</Label>
                           <Select 
@@ -1815,11 +1815,11 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
               ) : (
                 <>
                   {/* Badges Tab */}
-                  <Card>
-                    <CardContent className="pt-6">
+                  <Card className="w-full max-w-full">
+                    <CardContent className="pt-6 !px-6">
                       {/* Badge Progress */}
                       <Card className="mb-4 bg-muted/50">
-                        <CardContent className="pt-4">
+                        <CardContent className="pt-4 !px-6">
                           <div className="flex items-center justify-between mb-2">
                             <span className="text-sm font-medium">
                               {allBadges.filter(b => b.earned).length} / {allBadges.length}

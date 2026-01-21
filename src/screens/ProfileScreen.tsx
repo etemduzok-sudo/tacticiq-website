@@ -36,6 +36,8 @@ import { teamsApi } from '../services/api';
 import { SPACING, TYPOGRAPHY, BRAND, DARK_MODE, COLORS, SIZES, SHADOWS } from '../theme/theme';
 import { StandardHeader, ScreenLayout } from '../components/layouts';
 import { containerStyles } from '../utils/styleHelpers';
+import { ChangePasswordModal } from '../components/profile/ChangePasswordModal';
+import { authService } from '../services/authService';
 
 // Theme colors (Dark mode - mobil varsayılan olarak dark mode kullanıyor)
 const theme = COLORS.dark;
@@ -1463,37 +1465,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             {/* Şifre Değiştir - Web ile aynı */}
             <TouchableOpacity 
               style={styles.securityButton}
-              onPress={() => {
-                // Şifre değiştir modalı açılacak
-                Alert.prompt(
-                  'Şifre Değiştir',
-                  'Yeni şifrenizi girin:',
-                  [
-                    { text: 'İptal', style: 'cancel' },
-                    {
-                      text: 'Kaydet',
-                      onPress: async (newPassword) => {
-                        if (!newPassword || newPassword.length < 6) {
-                          Alert.alert('Hata', 'Şifre en az 6 karakter olmalıdır');
-                          return;
-                        }
-                        try {
-                          const { supabase } = await import('../config/supabase');
-                          const { error } = await supabase.auth.updateUser({ password: newPassword });
-                          if (error) throw error;
-                          Alert.alert('Başarılı', 'Şifreniz başarıyla değiştirildi');
-                        } catch (error: any) {
-                          Alert.alert('Hata', error.message || 'Şifre değiştirilemedi');
-                        }
-                      },
-                    },
-                  ],
-                  'secure-text-input'
-                );
-              }}
+              onPress={() => setShowChangePasswordModal(true)}
             >
               <Ionicons name="lock-closed-outline" size={20} color={theme.primary} />
               <Text style={styles.securityButtonText}>Şifre Değiştir</Text>
+              <Ionicons name="chevron-forward" size={20} color={theme.mutedForeground} />
             </TouchableOpacity>
 
             {/* Çıkış Yap - Web ile aynı */}
@@ -1510,13 +1486,16 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                       style: 'destructive',
                       onPress: async () => {
                         try {
-                          const { supabase } = await import('../config/supabase');
-                          await supabase.auth.signOut();
-                          await AsyncStorage.clear();
-                          Alert.alert('Başarılı', 'Çıkış yapıldı');
-                          onBack();
-                        } catch (error) {
-                          Alert.alert('Hata', 'Çıkış yapılamadı');
+                          const result = await authService.signOut();
+                          if (result.success) {
+                            await AsyncStorage.clear();
+                            Alert.alert('Başarılı', 'Çıkış yapıldı');
+                            onBack();
+                          } else {
+                            throw new Error(result.error || 'Çıkış yapılamadı');
+                          }
+                        } catch (error: any) {
+                          Alert.alert('Hata', error.message || 'Çıkış yapılamadı');
                         }
                       },
                     },
@@ -1526,6 +1505,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             >
               <Ionicons name="log-out-outline" size={20} color={theme.primary} />
               <Text style={styles.securityButtonText}>Çıkış Yap</Text>
+              <Ionicons name="chevron-forward" size={20} color={theme.mutedForeground} />
             </TouchableOpacity>
 
             {/* Hesabı Sil - Web ile aynı (collapsible) */}
@@ -4089,10 +4069,11 @@ const createStyles = () => {
     color: theme.foreground,
   },
 
-  // Security Buttons
+  // Security Buttons - Web ile aynı stil
   securityButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     gap: SPACING.sm,
     paddingVertical: SPACING.base,
     paddingHorizontal: SPACING.base,
@@ -4101,10 +4082,13 @@ const createStyles = () => {
     borderRadius: SIZES.radiusSm,
     backgroundColor: theme.card,
     marginBottom: SPACING.sm,
+    minHeight: SIZES.buttonHeight,
   },
   securityButtonText: {
     ...TYPOGRAPHY.body,
+    fontWeight: TYPOGRAPHY.medium,
     color: theme.foreground,
+    flex: 1,
   },
   deleteSection: {
     marginTop: SPACING.base,

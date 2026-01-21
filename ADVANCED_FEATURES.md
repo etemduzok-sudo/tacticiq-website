@@ -1,4 +1,4 @@
-# Fan Manager 2026 - Advanced Features Documentation
+# TacticIQ - Advanced Features Documentation
 
 ## 🚀 Advanced Features Implementation
 

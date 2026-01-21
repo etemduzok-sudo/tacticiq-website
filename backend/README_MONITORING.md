@@ -5,7 +5,7 @@
 1. **Otomatik Health Check**: Her 30 saniyede bir backend sağlığını kontrol eder
 2. **Otomatik Restart**: Backend çökerse otomatik olarak yeniden başlatır
 3. **Admin Bildirimleri**: Hata durumunda admin'e email gönderir
-4. **Email Forwarding**: info@fanmanager.com'a gelen tüm mailler etemduzok@gmail.com'a iletilir
+4. **Email Forwarding**: info@tacticiq.com'a gelen tüm mailler etemduzok@gmail.com'a iletilir
 
 ## Kurulum
 
@@ -17,7 +17,7 @@
 # Email Configuration
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
-SMTP_USER=info@fanmanager.com
+SMTP_USER=info@tacticiq.com
 SMTP_PASS=your-app-specific-password
 ADMIN_EMAIL=etemduzok@gmail.com
 ```
@@ -27,7 +27,7 @@ ADMIN_EMAIL=etemduzok@gmail.com
 1. Google Account'a gidin: https://myaccount.google.com/
 2. Security > 2-Step Verification'ı aktif edin
 3. App Passwords bölümüne gidin
-4. "Mail" seçin ve "Fan Manager Backend" yazın
+4. "Mail" seçin ve "TacticIQ Backend" yazın
 5. Oluşturulan şifreyi `SMTP_PASS` olarak ekleyin
 
 ### 3. Backend'i Başlatın
@@ -53,7 +53,7 @@ Monitoring servisi otomatik olarak başlayacaktır.
 
 ### Email Alerts
 - **Recipient**: etemduzok@gmail.com
-- **Subject**: 🚨 Fan Manager Backend - Critical Alert
+- **Subject**: 🚨 TacticIQ Backend - Critical Alert
 - **Content**: Hata detayları, restart talimatları, servis durumu
 
 ## Email Forwarding
@@ -79,14 +79,14 @@ curl -X POST http://localhost:3000/api/email/test-forward
 1. SendGrid hesabı oluşturun
 2. Inbound Parse Webhook ayarlayın:
    - URL: `https://your-domain.com/api/email/webhook`
-   - Domain: `fanmanager.com`
-   - Forward to: `info@fanmanager.com`
+   - Domain: `tacticiq.com`
+   - Forward to: `info@tacticiq.com`
 
 ### Mailgun
 
 1. Mailgun hesabı oluşturun
 2. Routes ayarlayın:
-   - Match: `info@fanmanager.com`
+   - Match: `info@tacticiq.com`
    - Action: Forward to webhook
    - URL: `https://your-domain.com/api/email/webhook`
 

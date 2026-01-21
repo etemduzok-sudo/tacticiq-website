@@ -1,6 +1,6 @@
 /**
  * Enhanced Skeleton Component with Shimmer Effect
- * Fan Manager 2026 - Premium Loading States
+ * TacticIQ - Premium Loading States
  */
 
 import React, { useEffect, useRef } from 'react';

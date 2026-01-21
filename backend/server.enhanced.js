@@ -1,4 +1,4 @@
-// Fan Manager 2026 - Enhanced Backend API Server
+// TacticIQ - Enhanced Backend API Server
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -98,7 +98,7 @@ app.get('/health', (req, res) => {
 // Root endpoint
 app.get('/', (req, res) => {
   res.json({
-    name: 'Fan Manager 2026 API',
+    name: 'TacticIQ API',
     version: '2.0.0',
     status: 'running',
     endpoints: {
@@ -208,7 +208,7 @@ let server;
 
 function startServer() {
   server = app.listen(PORT, () => {
-    logger.info(`🚀 Fan Manager Backend running on port ${PORT}`);
+    logger.info(`🚀 TacticIQ Backend running on port ${PORT}`);
     logger.info(`📊 Health check: http://localhost:${PORT}/health`);
     logger.info(`📈 Stats: http://localhost:${PORT}/api/stats`);
     logger.info(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);

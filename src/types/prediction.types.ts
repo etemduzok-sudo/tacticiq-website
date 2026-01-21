@@ -1,5 +1,5 @@
 // Prediction System Types - Strategic Focus & Transparent Scoring
-// Fan Manager 2026
+// TacticIQ
 
 /**
  * 4 Ana Analiz Kümesi (Analysis Clusters)

@@ -1,5 +1,5 @@
 // Scoring Engine
-// Fan Manager 2026 - Centralized Scoring Logic
+// TacticIQ - Centralized Scoring Logic
 
 import { SCORING } from '../config/constants';
 import {

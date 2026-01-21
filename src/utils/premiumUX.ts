@@ -1,5 +1,5 @@
 /**
- * Premium UX Utilities for Fan Manager 2026
+ * Premium UX Utilities for TacticIQ
  * Safe Area Insets, Haptic Feedback, Touch Optimization
  */
 

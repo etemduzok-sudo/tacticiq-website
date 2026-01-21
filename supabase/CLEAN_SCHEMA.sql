@@ -1,5 +1,5 @@
 -- =============================================
--- Fan Manager 2026 - CLEAN INSTALL
+-- TacticIQ - CLEAN INSTALL
 -- =============================================
 -- This will DROP existing tables and recreate everything
 -- WARNING: This will DELETE all existing data!

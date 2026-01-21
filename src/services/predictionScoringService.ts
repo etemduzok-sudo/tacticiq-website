@@ -1,5 +1,5 @@
 // Prediction Scoring Service - Strategic Focus & Transparent Scoring
-// Fan Manager 2026
+// TacticIQ
 
 import {
   AnalysisCluster,

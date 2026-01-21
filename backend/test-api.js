@@ -4,7 +4,7 @@ const axios = require('axios');
 const BASE_URL = 'http://localhost:3000';
 
 async function testAPI() {
-  console.log('🧪 Testing Fan Manager Backend API...\n');
+  console.log('🧪 Testing TacticIQ Backend API...\n');
 
   try {
     // 1. Health Check

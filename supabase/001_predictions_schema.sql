@@ -1,5 +1,5 @@
 -- ============================================
--- FAN MANAGER 2026 - PREDICTIONS SCHEMA
+-- TACTICIQ - PREDICTIONS SCHEMA
 -- ============================================
 -- Tahmin sistemi için gerekli tablolar
 -- Çalıştırma: Supabase SQL Editor'da çalıştır

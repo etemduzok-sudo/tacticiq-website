@@ -1,4 +1,4 @@
-// Fan Manager 2026 - Database Service
+// TacticIQ - Database Service
 // Handles syncing API data to Supabase
 const { supabase, isConfigured } = require('../config/supabase');
 

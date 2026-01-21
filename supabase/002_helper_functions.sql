@@ -1,5 +1,5 @@
 -- ============================================
--- FAN MANAGER 2026 - HELPER FUNCTIONS
+-- TACTICIQ - HELPER FUNCTIONS
 -- ============================================
 -- Supabase RPC functions for predictions
 -- ============================================

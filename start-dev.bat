@@ -1,11 +1,11 @@
 @echo off
 REM ========================================
-REM Fan Manager 2026 - Development Launcher
+REM TacticIQ - Development Launcher
 REM ========================================
 
 echo.
 echo ========================================
-echo   FAN MANAGER 2026 - DEV LAUNCHER
+echo   TACTICIQ - DEV LAUNCHER
 echo ========================================
 echo.
 

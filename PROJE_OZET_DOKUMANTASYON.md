@@ -610,7 +610,7 @@ tacticiq-website/
 - E2E test dosyaları
 - Detox test senaryoları
 
-### 📸 FANMANAGER EKRAN GÖRÜNTÜLERİ/
+### 📸 TACTICIQ EKRAN GÖRÜNTÜLERİ/
 - Ekran görüntüleri referans klasörü
 - Tasarım referansları
 

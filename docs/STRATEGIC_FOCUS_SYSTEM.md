@@ -1,6 +1,6 @@
 # 🌟 Stratejik Odak ve Şeffaf Puanlama Sistemi
 
-**Fan Manager 2026** - Tahmin Sistemine Derinlik Katan Yeni Özellikler
+**TacticIQ** - Tahmin Sistemine Derinlik Katan Yeni Özellikler
 
 ---
 
@@ -309,4 +309,4 @@ Final Puan = Baz Puan × Antrenman Çarpanı × Odak Çarpanı
 
 **Son Güncelleme:** 8 Ocak 2026  
 **Versiyon:** 1.0.0  
-**Geliştirici:** Fan Manager 2026 Team
+**Geliştirici:** TacticIQ Team

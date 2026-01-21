@@ -103,7 +103,7 @@ export const UI = {
  */
 export const TEXT = {
   // App name
-  APP_NAME: 'Fan Manager 2026',
+  APP_NAME: 'TacticIQ',
   
   // Error messages
   ERRORS: {
@@ -255,10 +255,10 @@ export const VALIDATION = {
  * External Links
  */
 export const LINKS = {
-  PRIVACY_POLICY: 'https://fanmanager2026.com/privacy',
-  TERMS_OF_SERVICE: 'https://fanmanager2026.com/terms',
-  SUPPORT: 'https://fanmanager2026.com/support',
-  GITHUB: 'https://github.com/fanmanager2026',
+  PRIVACY_POLICY: 'https://tacticiq.com/privacy',
+  TERMS_OF_SERVICE: 'https://tacticiq.com/terms',
+  SUPPORT: 'https://tacticiq.com/support',
+  GITHUB: 'https://github.com/tacticiq',
 };
 
 /**

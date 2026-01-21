@@ -1,4 +1,4 @@
--- Fan Manager 2026 - Supabase Database Schema
+-- TacticIQ - Supabase Database Schema
 -- Run this in Supabase SQL Editor: https://app.supabase.com/project/YOUR_PROJECT/sql
 
 -- Enable UUID extension

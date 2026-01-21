@@ -1,4 +1,4 @@
-# Fan Manager 2026 - Backend API
+# TacticIQ - Backend API
 
 Backend API ara katmanı. React Native uygulaması ile Football API arasında köprü görevi görür.
 

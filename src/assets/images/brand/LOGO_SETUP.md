@@ -4,7 +4,7 @@
 
 Logo dosyanızı şu konuma koyun:
 ```
-src/assets/images/brand/fan_manager_shield.png
+src/assets/images/brand/tacticiq_logo.png
 ```
 
 ## Logo Özellikleri
@@ -14,14 +14,14 @@ Görsel açıklamasına göre logo:
 - **Renkler:** Turuncu/Altın tonları (#F59E0B ile uyumlu)
 - **İçerik:** 
   - Üstte futbol topu grafiği
-  - Altta "Fan Manager" ve "2026" yazısı
+  - Altta "TacticIQ" yazısı
 - **Arka Plan:** Siyah (transparent PNG olmalı)
 
 ## Dosya Formatı
 
 - **Format:** PNG (transparent background önerilir)
 - **Boyut:** 200x200px veya 400x400px (yüksek çözünürlük)
-- **Dosya Adı:** `fan_manager_shield.png`
+- **Dosya Adı:** `tacticiq_logo.png`
 
 ## Kullanım
 

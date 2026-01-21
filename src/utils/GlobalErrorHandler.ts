@@ -1,5 +1,5 @@
 // Global Error Handler
-// Fan Manager 2026 - Centralized Error Management
+// TacticIQ - Centralized Error Management
 
 import { Alert } from 'react-native';
 import { APP_VERSION } from '../config/AppVersion';

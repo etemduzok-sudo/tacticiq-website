@@ -5,7 +5,7 @@
 1. ✅ **Otomatik Health Check** - Her 30 saniyede backend sağlığını kontrol eder
 2. ✅ **Otomatik Restart** - Backend çökerse otomatik yeniden başlatır
 3. ✅ **Admin Email Bildirimleri** - Hata durumunda etemduzok@gmail.com'a email gönderir
-4. ✅ **Email Forwarding** - info@fanmanager.com'a gelen tüm mailler etemduzok@gmail.com'a iletilir
+4. ✅ **Email Forwarding** - info@tacticiq.com'a gelen tüm mailler etemduzok@gmail.com'a iletilir
 
 ## 🚀 Hızlı Başlangıç
 
@@ -17,7 +17,7 @@
 # Email Configuration (Zorunlu)
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
-SMTP_USER=info@fanmanager.com
+SMTP_USER=info@tacticiq.com
 SMTP_PASS=your-app-specific-password-here
 ADMIN_EMAIL=etemduzok@gmail.com
 ```
@@ -26,7 +26,7 @@ ADMIN_EMAIL=etemduzok@gmail.com
 
 1. https://myaccount.google.com/ → Security
 2. 2-Step Verification'ı aktif edin
-3. App Passwords → "Mail" → "Fan Manager Backend"
+3. App Passwords → "Mail" → "TacticIQ Backend"
 4. Oluşturulan şifreyi `SMTP_PASS` olarak ekleyin
 
 ### 3. Backend'i Başlatın
@@ -45,14 +45,14 @@ Monitoring servisi otomatik olarak 10 saniye sonra başlayacaktır.
 1. SendGrid hesabı oluşturun
 2. Inbound Parse Webhook ayarlayın:
    - **URL**: `https://your-domain.com/api/email/webhook`
-   - **Domain**: `fanmanager.com`
-   - **Forward to**: `info@fanmanager.com`
+   - **Domain**: `tacticiq.com`
+   - **Forward to**: `info@tacticiq.com`
 
 ### Mailgun ile
 
 1. Mailgun hesabı oluşturun
 2. Routes → Create Route:
-   - **Match**: `info@fanmanager.com`
+   - **Match**: `info@tacticiq.com`
    - **Action**: Forward to webhook
    - **URL**: `https://your-domain.com/api/email/webhook`
 
@@ -76,7 +76,7 @@ curl -X POST http://localhost:3000/api/email/test-forward
 
 ### Email Alerts
 - **Recipient**: etemduzok@gmail.com
-- **Subject**: 🚨 Fan Manager Backend - Critical Alert
+- **Subject**: 🚨 TacticIQ Backend - Critical Alert
 - **Content**: 
   - Hata detayları
   - Restart talimatları
@@ -153,7 +153,7 @@ Console'da şu log'ları göreceksiniz:
 1. **PM2 Kullanın**: Process management için
    ```bash
    npm install -g pm2
-   pm2 start server.js --name fan-manager-backend
+   pm2 start server.js --name tacticiq-backend
    pm2 startup
    pm2 save
    ```

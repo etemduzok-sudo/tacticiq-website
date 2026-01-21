@@ -1,4 +1,4 @@
-# Fan Manager 2026 - Backend Test Script
+# TacticIQ - Backend Test Script
 # PowerShell ile API test scripti
 
 $baseUrl = "http://localhost:3000"
@@ -6,7 +6,7 @@ $userId = "550e8400-e29b-41d4-a716-446655440000"
 $matchId = 12345
 
 Write-Host "`n========================================" -ForegroundColor Cyan
-Write-Host "FAN MANAGER 2026 - BACKEND TEST" -ForegroundColor Yellow
+Write-Host "TACTICIQ - BACKEND TEST" -ForegroundColor Yellow
 Write-Host "========================================`n" -ForegroundColor Cyan
 
 # Test 1: Health Check

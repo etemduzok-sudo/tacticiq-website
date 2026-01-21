@@ -2,7 +2,7 @@
 
 /**
  * Cleanup Unused Imports and Dead Code
- * Fan Manager 2026 - Code Quality Tool
+ * TacticIQ - Code Quality Tool
  * 
  * This script helps identify:
  * - Unused imports

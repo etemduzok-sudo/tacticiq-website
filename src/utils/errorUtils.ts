@@ -1,5 +1,5 @@
 // Error Utilities
-// Fan Manager 2026 - Advanced Error Handling
+// TacticIQ - Advanced Error Handling
 
 import { Alert } from 'react-native';
 import { APP_VERSION } from '../config/AppVersion';

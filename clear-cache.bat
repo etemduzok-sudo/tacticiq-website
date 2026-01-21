@@ -1,6 +1,6 @@
 @echo off
 REM ========================================
-REM Fan Manager 2026 - Cache Cleaner
+REM TacticIQ - Cache Cleaner
 REM ========================================
 
 echo.

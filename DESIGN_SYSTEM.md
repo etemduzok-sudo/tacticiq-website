@@ -1,4 +1,4 @@
-# 🎨 Fan Manager 2026 - Design System
+# 🎨 TacticIQ - Design System
 
 **React Native Design System Implementation**  
 *Adapted from Tailwind CSS Documentation v1.0.0*
@@ -7,7 +7,7 @@
 
 ## 📖 Overview
 
-This Design System provides a complete, standardized set of design tokens for the Fan Manager 2026 mobile application. All values are sourced from the official **Fan Manager 2026 - Design System Documentation** and adapted for React Native.
+This Design System provides a complete, standardized set of design tokens for the TacticIQ mobile application. All values are sourced from the official **TacticIQ - Design System Documentation** and adapted for React Native.
 
 ---
 
@@ -93,7 +93,7 @@ TYPOGRAPHY.caption        // 10px, normal - Match info
 
 #### Usage:
 ```typescript
-<Text style={styles.title}>Fan Manager 2026</Text>
+<Text style={styles.title}>TacticIQ</Text>
 
 const styles = StyleSheet.create({
   title: {
@@ -385,4 +385,4 @@ See `src/theme/theme.ts` for the complete Design System implementation with:
 
 **Version:** 1.0.0  
 **Last Updated:** 4 Ocak 2026  
-**Source:** Fan Manager 2026 - Design System Documentation
+**Source:** TacticIQ - Design System Documentation

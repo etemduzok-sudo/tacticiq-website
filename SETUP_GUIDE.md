@@ -1,4 +1,4 @@
-# 🚀 Fan Manager 2026 - Complete Setup Guide
+# 🚀 TacticIQ - Complete Setup Guide
 
 ## 📋 İçindekiler
 
@@ -15,7 +15,7 @@
 
 ## 🎯 Proje Özeti
 
-**Fan Manager 2026** - React Native + Expo ile geliştirilmiş futbol maç tahmini ve yönetim uygulaması.
+**TacticIQ** - React Native + Expo ile geliştirilmiş futbol maç tahmini ve yönetim uygulaması.
 
 ### Tech Stack
 - **Frontend:** React Native 0.76.5, Expo SDK 52

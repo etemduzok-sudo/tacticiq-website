@@ -1,5 +1,5 @@
 // Mock Data Service - For development when API is not available
-// Fan Manager 2026
+// TacticIQ
 
 export const mockMatches = {
   live: [

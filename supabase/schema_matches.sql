@@ -1,4 +1,4 @@
--- Fan Manager 2026 - Matches & Teams Schema Extension
+-- TacticIQ - Matches & Teams Schema Extension
 -- Run this AFTER the main schema.sql
 
 -- =============================================

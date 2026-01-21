@@ -1,5 +1,5 @@
 -- ============================================
--- FAN MANAGER 2026 - PREDICTIONS SCHEMA (CLEAN)
+-- TACTICIQ - PREDICTIONS SCHEMA (CLEAN)
 -- ============================================
 -- Policy hatalarını atlayan temiz versiyon
 -- ============================================

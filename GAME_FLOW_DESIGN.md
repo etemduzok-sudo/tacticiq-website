@@ -1,4 +1,4 @@
-# ⚽ Fan Manager 2026 - Oyun Akışı Sistemi
+# ⚽ TacticIQ - Oyun Akışı Sistemi
 
 ## 🎯 GENEL VİZYON
 

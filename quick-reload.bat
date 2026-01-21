@@ -1,6 +1,6 @@
 @echo off
 REM ========================================
-REM Fan Manager 2026 - Quick Reload
+REM TacticIQ - Quick Reload
 REM ========================================
 
 echo.

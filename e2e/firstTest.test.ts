@@ -1,7 +1,7 @@
 // E2E Test - First Test
 import { device, element, by, expect as detoxExpect } from 'detox';
 
-describe('Fan Manager 2026 - E2E Tests', () => {
+describe('TacticIQ - E2E Tests', () => {
   beforeAll(async () => {
     await device.launchApp({
       newInstance: true,
@@ -14,7 +14,7 @@ describe('Fan Manager 2026 - E2E Tests', () => {
   });
 
   it('should show splash screen', async () => {
-    await detoxExpect(element(by.text('Fan Manager 2026'))).toBeVisible();
+    await detoxExpect(element(by.text('TacticIQ'))).toBeVisible();
   });
 
   it('should navigate to language selection', async () => {

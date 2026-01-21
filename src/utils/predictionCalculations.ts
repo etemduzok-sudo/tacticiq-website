@@ -1,5 +1,5 @@
 // Prediction Calculations
-// Fan Manager 2026 - Pure Business Logic (NO UI)
+// TacticIQ - Pure Business Logic (NO UI)
 
 import {
   PREDICTION_DIFFICULTY,

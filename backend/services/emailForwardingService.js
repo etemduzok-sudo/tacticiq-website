@@ -1,14 +1,14 @@
 // Email Forwarding Service
-// Forwards all emails from info@fanmanager.com to etemduzok@gmail.com
+// Forwards all emails from info@tacticiq.com to etemduzok@gmail.com
 
 const { sendEmail } = require('./emailService');
 
-const INFO_EMAIL = 'info@fanmanager.com';
+const INFO_EMAIL = 'info@tacticiq.com';
 const ADMIN_EMAIL = 'etemduzok@gmail.com';
 
 /**
- * Forward email from info@fanmanager.com to admin
- * This should be called whenever an email is received at info@fanmanager.com
+ * Forward email from info@tacticiq.com to admin
+ * This should be called whenever an email is received at info@tacticiq.com
  */
 const forwardEmailToAdmin = async (originalEmail) => {
   try {
@@ -37,7 +37,7 @@ const forwardEmailToAdmin = async (originalEmail) => {
             
             <div class="content">
               <div class="forward-badge">
-                <strong style="color: #3B82F6;">ℹ️ Bu email info@fanmanager.com adresine gelen bir mesajdır ve size otomatik olarak iletilmiştir.</strong>
+                <strong style="color: #3B82F6;">ℹ️ Bu email info@tacticiq.com adresine gelen bir mesajdır ve size otomatik olarak iletilmiştir.</strong>
               </div>
               
               <div class="original-email">
@@ -56,7 +56,7 @@ const forwardEmailToAdmin = async (originalEmail) => {
             </div>
             
             <div class="footer">
-              <p>© 2026 Fan Manager - Email Forwarding System</p>
+              <p>© 2026 TacticIQ - Email Forwarding System</p>
             </div>
           </div>
         </body>
@@ -65,7 +65,7 @@ const forwardEmailToAdmin = async (originalEmail) => {
       text: `
 📧 Email Forwarded
 
-Bu email info@fanmanager.com adresine gelen bir mesajdır ve size otomatik olarak iletilmiştir.
+Bu email info@tacticiq.com adresine gelen bir mesajdır ve size otomatik olarak iletilmiştir.
 
 Orijinal Email:
 Gönderen: ${originalEmail.from || 'Bilinmiyor'}
@@ -76,7 +76,7 @@ ${originalEmail.text || originalEmail.html || 'İçerik yok'}
 
 Not: Bu email otomatik olarak iletilmiştir.
 
-© 2026 Fan Manager - Email Forwarding System
+© 2026 TacticIQ - Email Forwarding System
       `,
     };
 
@@ -106,13 +106,13 @@ Not: Bu email otomatik olarak iletilmiştir.
  * - Email service API
  */
 const processIncomingEmail = async (emailData) => {
-  // Check if email is to info@fanmanager.com
+  // Check if email is to info@tacticiq.com
   if (emailData.to && emailData.to.includes(INFO_EMAIL)) {
-    console.log('📧 Processing incoming email to info@fanmanager.com');
+    console.log('📧 Processing incoming email to info@tacticiq.com');
     return await forwardEmailToAdmin(emailData);
   }
   
-  return { success: false, error: 'Email not for info@fanmanager.com' };
+  return { success: false, error: 'Email not for info@tacticiq.com' };
 };
 
 module.exports = {

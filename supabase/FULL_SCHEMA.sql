@@ -1,5 +1,5 @@
 -- =============================================
--- Fan Manager 2026 - COMPLETE DATABASE SCHEMA
+-- TacticIQ - COMPLETE DATABASE SCHEMA
 -- =============================================
 -- Copy this entire file and run it in Supabase SQL Editor
 -- URL: https://supabase.com/dashboard/project/jxdgiskusjljlpzvrzau/sql
@@ -508,4 +508,4 @@ $$ LANGUAGE plpgsql;
 -- DONE! 
 -- =============================================
 -- All tables, indexes, policies, functions, and triggers are created.
--- You can now use the database with your Fan Manager 2026 app!
+-- You can now use the database with your TacticIQ app!

@@ -1,5 +1,5 @@
 -- ============================================
--- FAN MANAGER 2026 - BASE TABLES
+-- TACTICIQ - BASE TABLES
 -- ============================================
 -- Temel kullanıcı tabloları (önce bunları çalıştırın)
 -- ============================================
@@ -153,7 +153,7 @@ CREATE TRIGGER trigger_create_user_stats_on_signup
 INSERT INTO users (id, email, username, full_name, avatar)
 VALUES (
   '550e8400-e29b-41d4-a716-446655440000',
-  'test@fanmanager.com',
+  'test@tacticiq.com',
   'testuser',
   'Test User',
   'https://api.dicebear.com/7.x/avataaars/svg?seed=testuser'

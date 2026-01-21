@@ -82,4 +82,4 @@ Uygulama tam dark/light mode desteği ile gelir:
 
 ## 📄 Lisans
 
-© 2026 Fan Manager. Tüm hakları saklıdır.
+© 2026 TacticIQ. Tüm hakları saklıdır.

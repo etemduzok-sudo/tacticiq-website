@@ -12,13 +12,13 @@ module.exports = {
   apps: {
     'ios.debug': {
       type: 'ios.app',
-      binaryPath: 'ios/build/Build/Products/Debug-iphonesimulator/FanManager2026.app',
-      build: 'xcodebuild -workspace ios/FanManager2026.xcworkspace -scheme FanManager2026 -configuration Debug -sdk iphonesimulator -derivedDataPath ios/build',
+      binaryPath: 'ios/build/Build/Products/Debug-iphonesimulator/TacticIQ.app',
+      build: 'xcodebuild -workspace ios/TacticIQ.xcworkspace -scheme TacticIQ -configuration Debug -sdk iphonesimulator -derivedDataPath ios/build',
     },
     'ios.release': {
       type: 'ios.app',
-      binaryPath: 'ios/build/Build/Products/Release-iphonesimulator/FanManager2026.app',
-      build: 'xcodebuild -workspace ios/FanManager2026.xcworkspace -scheme FanManager2026 -configuration Release -sdk iphonesimulator -derivedDataPath ios/build',
+      binaryPath: 'ios/build/Build/Products/Release-iphonesimulator/TacticIQ.app',
+      build: 'xcodebuild -workspace ios/TacticIQ.xcworkspace -scheme TacticIQ -configuration Release -sdk iphonesimulator -derivedDataPath ios/build',
     },
     'android.debug': {
       type: 'android.apk',

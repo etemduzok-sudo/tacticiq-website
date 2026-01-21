@@ -1,5 +1,5 @@
 // useFormState Hook
-// Fan Manager 2026 - Centralized Form State Management
+// TacticIQ - Centralized Form State Management
 
 import { useState, useCallback, useMemo } from 'react';
 

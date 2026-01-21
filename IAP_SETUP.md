@@ -1,5 +1,5 @@
 # 💳 In-App Purchase (IAP) Setup Guide
-## Google Play & Apple App Store - Fan Manager 2026
+## Google Play & Apple App Store - TacticIQ
 
 ---
 
@@ -8,7 +8,7 @@
 ### 1. **Google Play Console'a Giriş Yap**
 1. https://play.google.com/console adresine git
 2. Developer hesabınla giriş yap
-3. "Fan Manager 2026" uygulamanı seç
+3. "TacticIQ" uygulamanı seç
 
 ---
 
@@ -19,7 +19,7 @@
 
 #### **Ürün 1: Aylık Premium**
 - **Product ID:** `fan_manager_premium_monthly`
-- **Name:** Fan Manager Premium - Aylık
+- **Name:** TacticIQ Premium - Aylık
 - **Description:** 1 ay boyunca tüm premium özelliklere erişim
 - **Status:** Active
 - **Pricing:**
@@ -31,7 +31,7 @@
 
 #### **Ürün 2: 3 Aylık Premium**
 - **Product ID:** `fan_manager_premium_quarterly`
-- **Name:** Fan Manager Premium - 3 Aylık
+- **Name:** TacticIQ Premium - 3 Aylık
 - **Description:** 3 ay boyunca tüm premium özelliklere erişim
 - **Status:** Active
 - **Pricing:**
@@ -42,7 +42,7 @@
 
 #### **Ürün 3: Yıllık Premium**
 - **Product ID:** `fan_manager_premium_yearly`
-- **Name:** Fan Manager Premium - Yıllık
+- **Name:** TacticIQ Premium - Yıllık
 - **Description:** 1 yıl boyunca tüm premium özelliklere erişim
 - **Status:** Active
 - **Pricing:**
@@ -80,7 +80,7 @@
 ### 1. **App Store Connect'e Giriş Yap**
 1. https://appstoreconnect.apple.com adresine git
 2. Apple Developer hesabınla giriş yap
-3. **"My Apps"** sekmesinden "Fan Manager 2026" uygulamanı seç
+3. **"My Apps"** sekmesinden "TacticIQ" uygulamanı seç
 
 ---
 
@@ -90,7 +90,7 @@
 2. **"+"** butonuna tıkla → **"Auto-Renewable Subscription"** seç
 
 #### **Subscription Group Oluştur**
-- **Reference Name:** Fan Manager Premium
+- **Reference Name:** TacticIQ Premium
 - **App Store Localization:**
   - Display Name: Premium Üyelik
   - Description: Tüm premium özelliklere sınırsız erişim
@@ -158,7 +158,7 @@
 2. **"App Review Information"** kısmını doldur:
    - Demo Account (premium özellikleri test etmek için)
    - Contact Information
-   - Notes: "Premium üyelik sistemi eklendi. Test hesabı: demo@fanmanager.com / password123"
+   - Notes: "Premium üyelik sistemi eklendi. Test hesabı: demo@tacticiq.com / password123"
 
 ---
 

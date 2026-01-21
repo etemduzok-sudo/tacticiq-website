@@ -1,4 +1,4 @@
-# 🎯 Fan Manager 2026 - Screen Flow & Navigation Documentation
+# 🎯 TacticIQ - Screen Flow & Navigation Documentation
 
 **Sayfa Akışları, Router Logic ve State Management Kılavuzu**  
 *Frontend Geliştiriciler İçin Navigasyon Haritası*

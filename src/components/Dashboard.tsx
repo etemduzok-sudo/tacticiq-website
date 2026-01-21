@@ -1078,8 +1078,47 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
         )}
 
         {/* Bottom Padding */}
-        <View style={{ height: 100 }} />
+        <View style={{ height: 100 + SIZES.tabBarHeight }} />
       </ScrollView>
+
+      {/* Bottom Navigation - 4 Tabs (Ana Sayfa, Canlı Maçlar, Sıralama, Profil) */}
+      <View style={styles.footerNavigation}>
+        <TouchableOpacity 
+          style={styles.footerTab}
+          onPress={() => onNavigate('home')}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="home-outline" size={24} color={COLORS.dark.mutedForeground} />
+          <Text style={styles.footerTabText}>Ana Sayfa</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={styles.footerTab}
+          onPress={() => onNavigate('matches')}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="radio-outline" size={24} color={COLORS.dark.mutedForeground} />
+          <Text style={styles.footerTabText}>Canlı</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={styles.footerTab}
+          onPress={() => onNavigate('leaderboard')}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="trophy-outline" size={24} color={COLORS.dark.mutedForeground} />
+          <Text style={styles.footerTabText}>Sıralama</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={styles.footerTab}
+          onPress={() => onNavigate('profile')}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="person-outline" size={24} color={COLORS.dark.mutedForeground} />
+          <Text style={styles.footerTabText}>Profil</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 });
@@ -1105,7 +1144,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingTop: 130, // ✅ Profil kartının altından başlaması için (iOS: 44 top + 8 paddingTop + ~70 içerik + 8 paddingBottom = 130px)
-    paddingBottom: 100,
+    paddingBottom: 100 + SIZES.tabBarHeight, // ✅ Footer navigation için extra padding
   },
 
   // Section
@@ -2401,5 +2440,40 @@ const styles = StyleSheet.create({
         textShadowRadius: 2,
       },
     }),
+  },
+
+  // Footer Navigation - 4 Tabs
+  footerNavigation: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    height: SIZES.tabBarHeight,
+    backgroundColor: COLORS.dark.card,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.dark.border,
+    ...SHADOWS.lg,
+    ...Platform.select({
+      ios: {
+        paddingBottom: 20,
+      },
+      android: {
+        paddingBottom: 8,
+      },
+    }),
+  },
+  footerTab: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: SPACING.xs,
+    paddingVertical: SPACING.sm,
+  },
+  footerTabText: {
+    ...TYPOGRAPHY.bodySmall,
+    color: COLORS.dark.mutedForeground,
+    fontSize: 10,
+    fontWeight: '500',
   },
 });

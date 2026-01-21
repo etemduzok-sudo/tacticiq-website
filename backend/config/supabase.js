@@ -1,4 +1,4 @@
-// Fan Manager 2026 - Supabase Configuration
+// TacticIQ - Supabase Configuration
 const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config();
 

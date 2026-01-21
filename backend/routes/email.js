@@ -23,10 +23,10 @@ router.post('/webhook', async (req, res) => {
       date: req.body.date || new Date().toISOString(),
     };
 
-    if (!emailData.to || !emailData.to.includes('info@fanmanager.com')) {
+    if (!emailData.to || !emailData.to.includes('info@tacticiq.com')) {
       return res.status(400).json({
         success: false,
-        error: 'Email not for info@fanmanager.com',
+        error: 'Email not for info@tacticiq.com',
       });
     }
 
@@ -63,7 +63,7 @@ router.post('/test-forward', async (req, res) => {
     
     const testEmail = {
       from: 'test@example.com',
-      to: 'info@fanmanager.com',
+      to: 'info@tacticiq.com',
       subject: 'Test Email - ' + new Date().toISOString(),
       text: 'This is a test email to verify forwarding functionality.',
       html: '<p>This is a test email to verify forwarding functionality.</p>',

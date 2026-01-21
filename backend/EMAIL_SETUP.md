@@ -1,17 +1,17 @@
 # Email Servisi Kurulum Rehberi
 
-## 📧 Email Adresi: info@fanmanager.com
+## 📧 Email Adresi: info@tacticiq.com
 
 ### 1. Gmail ile SMTP Kurulumu
 
 #### A. Gmail Hesabı Oluşturun
-1. `info@fanmanager.com` için bir Gmail hesabı oluşturun (veya mevcut email sağlayıcınızı kullanın)
+1. `info@tacticiq.com` için bir Gmail hesabı oluşturun (veya mevcut email sağlayıcınızı kullanın)
 
 #### B. App-Specific Password Oluşturun (Gmail için)
 1. Google Account'a gidin: https://myaccount.google.com/
 2. Security > 2-Step Verification'ı aktif edin
 3. App Passwords bölümüne gidin
-4. "Mail" seçin ve "Other" diyerek "Fan Manager" yazın
+4. "Mail" seçin ve "Other" diyerek "TacticIQ" yazın
 5. Oluşturulan şifreyi kopyalayın (örn: `abcd efgh ijkl mnop`)
 
 #### C. Backend .env Dosyasını Yapılandırın
@@ -21,7 +21,7 @@
 
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
-SMTP_USER=info@fanmanager.com
+SMTP_USER=info@tacticiq.com
 SMTP_PASS=abcd efgh ijkl mnop  # App-specific password
 APP_URL=http://localhost:8082   # Veya production URL
 ```
@@ -33,11 +33,11 @@ APP_URL=http://localhost:8082   # Veya production URL
 Eğer kendi domain email'iniz varsa (örn: cPanel, Plesk):
 
 ```env
-SMTP_HOST=mail.fanmanager.com
+SMTP_HOST=mail.tacticiq.com
 SMTP_PORT=587
-SMTP_USER=info@fanmanager.com
+SMTP_USER=info@tacticiq.com
 SMTP_PASS=your_email_password
-APP_URL=https://fanmanager.com
+APP_URL=https://tacticiq.com
 ```
 
 ---
@@ -88,12 +88,12 @@ curl -X POST http://localhost:3000/api/auth/forgot-password \
 
 ### 1. Şifre Sıfırlama
 - **Endpoint:** `POST /api/auth/forgot-password`
-- **Gönderen:** info@fanmanager.com
+- **Gönderen:** info@tacticiq.com
 - **Süre:** 15 dakika geçerli
 
 ### 2. Hoş Geldin Maili
 - **Endpoint:** `POST /api/auth/send-welcome`
-- **Gönderen:** info@fanmanager.com
+- **Gönderen:** info@tacticiq.com
 - **İçerik:** Uygulama özellikleri
 
 ---
