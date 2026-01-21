@@ -1103,9 +1103,9 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
 
                       <Separator />
 
-                      {/* Notification Settings */}
+                      {/* Mobile Notification Settings */}
                       <div className="space-y-4">
-                        <h4 className="font-medium text-sm text-muted-foreground">Bildirim Ayarları</h4>
+                        <h4 className="font-medium text-sm text-muted-foreground">Mobil Bildirimler</h4>
                         <div className="flex items-center justify-between">
                           <div className="space-y-0.5">
                             <Label>E-posta Bildirimleri</Label>
@@ -1220,18 +1220,6 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
                         Yasal Bilgilendirmeler
                       </Button>
 
-                      {/* Password Change */}
-                      {isEmailUser && (
-                        <Button 
-                          variant="outline" 
-                          className="w-full"
-                          onClick={() => setShowChangePasswordModal(true)}
-                        >
-                          <Lock className="size-4 mr-2" />
-                          Şifre Değiştir
-                        </Button>
-                      )}
-
                       <Separator />
 
                       {/* Security & Account Section */}
@@ -1240,6 +1228,18 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
                           <Shield className="size-4" />
                           Güvenlik ve Hesap
                         </h4>
+                        
+                        {/* Password Change - Email users only */}
+                        {isEmailUser && (
+                          <Button 
+                            variant="outline" 
+                            className="w-full"
+                            onClick={() => setShowChangePasswordModal(true)}
+                          >
+                            <Lock className="size-4 mr-2" />
+                            Şifre Değiştir
+                          </Button>
+                        )}
                         
                         {/* Sign Out */}
                         <Button 
