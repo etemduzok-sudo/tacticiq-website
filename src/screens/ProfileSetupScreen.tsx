@@ -1066,6 +1066,10 @@ export default function ProfileSetupScreen({
         <Text style={[styles.watermarkText, styles.watermark4]}>TacticIQ.app</Text>
         <Text style={[styles.watermarkText, styles.watermark5]}>TacticIQ.app</Text>
         <Text style={[styles.watermarkText, styles.watermark6]}>TacticIQ.app</Text>
+        <Text style={[styles.watermarkText, styles.watermark7]}>TacticIQ.app</Text>
+        <Text style={[styles.watermarkText, styles.watermark8]}>TacticIQ.app</Text>
+        <Text style={[styles.watermarkText, styles.watermark9]}>TacticIQ.app</Text>
+        <Text style={[styles.watermarkText, styles.watermark10]}>TacticIQ.app</Text>
       </View>
       
       {/* Back Button */}
@@ -1223,47 +1227,70 @@ const styles = StyleSheet.create({
   },
   watermarkText: {
     position: 'absolute',
-    color: 'rgba(31, 162, 166, 0.03)', // Çok silik turkuaz
-    fontSize: 180,
+    color: 'rgba(31, 162, 166, 0.08)', // Silik ama okunabilir turkuaz
     fontWeight: '900',
     fontFamily: Platform.OS === 'web' ? 'system-ui, -apple-system, sans-serif' : undefined,
-    letterSpacing: 8,
-    transform: [{ rotate: '-15deg' }],
+    letterSpacing: 6,
   },
   watermark1: {
-    top: -50,
-    left: -100,
-    fontSize: 220,
+    top: 50,
+    left: 10,
+    fontSize: 120,
+    transform: [{ rotate: '-12deg' }],
   },
   watermark2: {
-    top: 200,
-    right: -150,
-    fontSize: 180,
-    transform: [{ rotate: '25deg' }],
+    top: 180,
+    left: '25%',
+    fontSize: 160,
+    transform: [{ rotate: '8deg' }],
   },
   watermark3: {
-    top: 500,
-    left: -80,
-    fontSize: 200,
-    transform: [{ rotate: '-10deg' }],
+    top: 320,
+    left: '45%',
+    fontSize: 140,
+    transform: [{ rotate: '-5deg' }],
   },
   watermark4: {
-    bottom: 100,
-    right: -120,
-    fontSize: 190,
-    transform: [{ rotate: '20deg' }],
+    top: 480,
+    left: '15%',
+    fontSize: 180,
+    transform: [{ rotate: '15deg' }],
   },
   watermark5: {
-    top: 350,
-    left: '50%',
-    fontSize: 170,
-    transform: [{ rotate: '-5deg' }, { translateX: -100 }],
+    top: 650,
+    left: '55%',
+    fontSize: 130,
+    transform: [{ rotate: '-8deg' }],
   },
   watermark6: {
-    bottom: 250,
-    left: -60,
-    fontSize: 210,
-    transform: [{ rotate: '15deg' }],
+    top: 800,
+    left: '35%',
+    fontSize: 150,
+    transform: [{ rotate: '12deg' }],
+  },
+  watermark7: {
+    top: 240,
+    left: '70%',
+    fontSize: 110,
+    transform: [{ rotate: '-18deg' }],
+  },
+  watermark8: {
+    top: 420,
+    left: '80%',
+    fontSize: 170,
+    transform: [{ rotate: '6deg' }],
+  },
+  watermark9: {
+    top: 580,
+    left: '5%',
+    fontSize: 125,
+    transform: [{ rotate: '-10deg' }],
+  },
+  watermark10: {
+    top: 720,
+    left: '65%',
+    fontSize: 145,
+    transform: [{ rotate: '18deg' }],
   },
   backButton: {
     position: 'absolute',
