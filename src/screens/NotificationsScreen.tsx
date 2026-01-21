@@ -7,7 +7,7 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeInDown, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { ScreenLayout, StandardHeader } from '../components/layouts';
 import { containerStyles, textStyles, cardStyles } from '../utils/styleHelpers';
 import { SPACING, COLORS } from '../theme/theme';
@@ -206,6 +206,12 @@ interface ToggleSwitchProps {
 }
 
 const ToggleSwitch: React.FC<ToggleSwitchProps> = ({ enabled, onToggle }) => {
+  const thumbAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ translateX: withTiming(enabled ? 20 : 0, { duration: 200 }) }],
+    };
+  });
+
   return (
     <TouchableOpacity
       style={[styles.switch, enabled && styles.switchEnabled]}
@@ -215,7 +221,7 @@ const ToggleSwitch: React.FC<ToggleSwitchProps> = ({ enabled, onToggle }) => {
       <Animated.View
         style={[
           styles.switchThumb,
-          enabled && styles.switchThumbEnabled,
+          thumbAnimatedStyle,
         ]}
       />
     </TouchableOpacity>
@@ -269,22 +275,26 @@ const styles = StyleSheet.create({
     width: 48,
     height: 28,
     borderRadius: 14,
-    backgroundColor: COLORS.dark.border,
+    backgroundColor: '#374151', // Daha görünür kapalı durum rengi
     padding: 2,
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#4B5563', // Border ile daha belirgin
   },
   switchEnabled: {
     backgroundColor: COLORS.dark.primary,
+    borderColor: COLORS.dark.primary,
   },
   switchThumb: {
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: COLORS.dark.foreground,
-    transform: [{ translateX: 0 }],
-  },
-  switchThumbEnabled: {
-    transform: [{ translateX: 20 }],
+    backgroundColor: '#FFFFFF', // Beyaz thumb daha görünür
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
   },
 
   // Details Box

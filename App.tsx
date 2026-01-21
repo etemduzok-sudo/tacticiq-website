@@ -258,7 +258,6 @@ import { AgeGateScreen } from './src/screens/AgeGateScreen';
 import AuthScreen from './src/screens/AuthScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
 import ForgotPasswordScreen from './src/screens/ForgotPasswordScreen';
-import FavoriteTeamsScreen from './src/screens/FavoriteTeamsScreen';
 import ProfileSetupScreen from './src/screens/ProfileSetupScreen';
 import { MatchListScreen } from './src/screens/MatchListScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
@@ -284,7 +283,6 @@ type Screen =
   | 'auth'
   | 'register'
   | 'forgot-password'
-  | 'favorite-teams'
   | 'home'
   | 'matches'
   | 'match-detail'
@@ -434,36 +432,43 @@ export default function App() {
     try {
       if (hasUser) {
         // 🎁 DEV: Set user as PRO automatically (ALWAYS)
-        const userDataStr = await AsyncStorage.getItem('fan-manager-user');
+        const userDataStr = await AsyncStorage.getItem('tacticiq-user');
         if (userDataStr) {
           const userData = JSON.parse(userDataStr);
           // Her zaman Pro yap (kontrol olmadan)
           userData.is_pro = true;
           userData.isPro = true;
-          await AsyncStorage.setItem('fan-manager-user', JSON.stringify(userData));
+          userData.isPremium = true;
+          userData.plan = 'pro';
+          await AsyncStorage.setItem('tacticiq-user', JSON.stringify(userData));
           logger.debug('User set as PRO automatically', undefined, 'DEV');
+          
+          // ✅ Eğer profil kurulumu tamamlanmışsa direkt home'a git
+          if (userData.profileSetupComplete === true) {
+            logger.info('Profile setup complete, navigating to home', undefined, 'SPLASH');
+            logNavigation('home');
+            setPreviousScreen(currentScreen);
+            setCurrentScreen('home');
+            return;
+          }
         } else {
           // User yoksa oluştur ve Pro yap
           const newUserData = {
             authenticated: true,
             is_pro: true,
             isPro: true,
+            isPremium: true,
+            plan: 'pro',
           };
-          await AsyncStorage.setItem('fan-manager-user', JSON.stringify(newUserData));
+          await AsyncStorage.setItem('tacticiq-user', JSON.stringify(newUserData));
           logger.debug('New user created and set as PRO', undefined, 'DEV');
         }
         
-        // User exists → Go to Home (or check favorite teams)
-        const hasTeams = await AsyncStorage.getItem('fan-manager-favorite-clubs');
-        if (hasTeams) {
-          logNavigation('home');
-          setPreviousScreen(currentScreen);
-          setCurrentScreen('home');
-        } else {
-          logNavigation('favorite-teams');
-          setPreviousScreen(currentScreen);
-          setCurrentScreen('favorite-teams');
-        }
+        // ✅ Profil kurulumu tamamlanmamışsa onboarding'e git (favorite-teams artık kullanılmıyor)
+        logger.info('Profile setup not complete, navigating to onboarding', undefined, 'SPLASH');
+        logNavigation('onboarding');
+        setPreviousScreen(currentScreen);
+        setCurrentScreen('onboarding');
       } else {
         // No user → Onboarding (new unified flow)
         logNavigation('onboarding');
@@ -577,32 +582,6 @@ export default function App() {
     setCurrentScreen('auth');
   };
 
-  // 9. Favorite Teams → Complete
-  const handleFavoriteTeamsComplete = async (selectedTeams: Array<{ id: number; name: string; colors: string[]; league?: string; type?: 'club' | 'national' }>) => {
-    logger.info('Favorite teams selected', { teamIds: selectedTeams.map(t => t.id), count: selectedTeams.length }, 'FAVORITE_TEAMS');
-    if (selectedTeams.length === 0) {
-      logger.warn('No teams selected', undefined, 'FAVORITE_TEAMS');
-      return;
-    }
-    
-    // ✅ Logo yerine forma renkleri kullan (telif yememek için)
-    const favoriteTeamsData = selectedTeams.map(team => ({
-      id: team.id,
-      name: team.name,
-      colors: team.colors || ['#1E40AF', '#FFFFFF'], // Forma renkleri
-      league: team.league,
-      type: team.type, // ✅ Kulüp veya milli takım tipi
-    }));
-    
-    await AsyncStorage.setItem('fan-manager-favorite-clubs', JSON.stringify(favoriteTeamsData));
-    logger.debug('Saved favorite teams', { favoriteTeamsData }, 'FAVORITE_TEAMS');
-    
-    // Takım seçimi sonrası MainTabs'a geç (Home tab default)
-    // Kullanıcı profil ekranını görmek için tab menüsünden Profile'a tıklayabilir
-    logNavigation('home');
-    setActiveTab('home');
-    setCurrentScreen('home');
-  };
 
   // 10. Matches → Profile
   const handleProfileClick = () => {
@@ -734,8 +713,8 @@ export default function App() {
         console.log('✅ User set as Pro! You can now select club teams.');
         alert('✅ Pro olarak ayarlandınız! Artık kulüp takımları seçebilirsiniz.');
         // Refresh current screen
-        if (currentScreen === 'profile' || currentScreen === 'favorite-teams') {
-          setCurrentScreen(currentScreen === 'profile' ? 'profile' : 'favorite-teams');
+        if (currentScreen === 'profile') {
+          setCurrentScreen('profile');
         }
       } else {
         alert('❌ Kullanıcı bulunamadı. Lütfen önce giriş yapın.');
@@ -895,14 +874,6 @@ export default function App() {
             />
           );
         
-        case 'favorite-teams':
-          return (
-            <FavoriteTeamsScreen
-              onComplete={handleFavoriteTeamsComplete}
-              onBack={() => setCurrentScreen('profile-settings')} // ✅ Bir önceki sayfa (Profil Ayarları)
-            />
-          );
-        
         case 'home':
           return (
             <Dashboard
@@ -1003,7 +974,6 @@ export default function App() {
           return (
             <ProfileSettingsScreen
               onBack={() => setCurrentScreen('profile')}
-              onNavigateToFavoriteTeams={() => setCurrentScreen('favorite-teams')}
               onNavigateToLanguage={() => setCurrentScreen('language')}
               onLogout={handleLogout}
               onNavigateToChangePassword={handleNavigateToChangePassword}
@@ -1094,7 +1064,7 @@ export default function App() {
                   {renderScreen()}
                   
                   {/* Fixed Profile Card Overlay - Only on home, matches, leaderboard */}
-                  {['home', 'matches', 'leaderboard'].includes(currentScreen) && (
+                  {['home', 'matches', 'leaderboard', 'profile'].includes(currentScreen) && (
                     <View style={styles.profileCardOverlay}>
                       <ProfileCard 
                         onPress={() => handleDashboardNavigate('profile')} 
@@ -1149,35 +1119,16 @@ const styles = StyleSheet.create({
   },
   profileCardOverlay: {
     position: 'absolute',
-    // ✅ Standard safe area for all screens (home, matches, leaderboard)
-    // iOS: Status bar (44px) için alan
-    // Android: Status bar için alan (0px, sistem halleder)
-    top: Platform.OS === 'ios' ? 44 : 0,
+    top: 0, // Ekranın en üstüne kadar
     left: 0,
     right: 0,
     zIndex: 9999,
     elevation: 10,
-    backgroundColor: '#1E293B', // ✅ Farklı taban rengi (daha açık, renk ayrımı için)
-    borderBottomLeftRadius: 25, // ✅ Bottom bar gibi yuvarlatılmış alt köşeler
-    borderBottomRightRadius: 25,
-    borderTopWidth: 1, // ✅ İnce üst çizgi (resimdeki efekt ile aynı)
-    borderTopColor: 'rgba(255, 255, 255, 0.1)', // ✅ Hafif üst çizgi rengi (resimdeki efekt ile aynı)
-    borderBottomWidth: 2, // ✅ Kalın alt çizgi (renk ayrımı)
-    borderBottomColor: '#334155', // ✅ Alt çizgi rengi
-    paddingTop: 8,
-    paddingBottom: 8, // ✅ STANDART boşluk (16px için: 8+8=16)
-    paddingHorizontal: 0, // ✅ Yatay padding yok (ProfileCard kendi padding'ini yönetir)
+    backgroundColor: 'transparent',
+    paddingTop: 0, // Üst padding kaldırıldı
+    paddingBottom: 8,
+    paddingHorizontal: 0,
     pointerEvents: 'box-none',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 10,
-      },
-    }),
+    // Gölge ve border efektleri kaldırıldı
   },
 });

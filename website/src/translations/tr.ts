@@ -546,6 +546,9 @@ export default {
   'analysisFocus.types.tactical.name': 'Taktik Odaklı Analiz',
   'analysisFocus.types.tactical.bonus': '+25% Taktiksel Kategoriler',
   'analysisFocus.types.tactical.desc': 'Formasyon tahmini, maç senaryosu, stratejik odak kategorilerinde bonus puan',
+  'analysisFocus.types.player.name': 'Oyuncu Odaklı Analiz',
+  'analysisFocus.types.player.bonus': '+30% Bireysel Kategoriler',
+  'analysisFocus.types.player.desc': 'Golcü performansı, asist kralı, maçın oyuncusu kategorilerinde bonus puan',
   'analysisFocus.example': '💡 Örnek: Savunma odaklı analiz seçerseniz ve sarı kart sayısını doğru tahmin ederseniz, normal puanın %20 fazlasını kazanırsınız',
   
   // Discount Popup

@@ -24,6 +24,8 @@ import { useFavoriteTeams } from '../hooks/useFavoriteTeams';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { logger } from '../utils/logger';
 import { COLORS, SPACING, TYPOGRAPHY, SIZES, SHADOWS, BRAND } from '../theme/theme';
+import { WEBSITE_DARK_COLORS } from '../config/WebsiteDesignSystem';
+import { cardStyles, textStyles, containerStyles } from '../utils/styleHelpers';
 
 const { width } = Dimensions.get('window');
 
@@ -264,7 +266,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
         activeOpacity={0.8}
       >
         <LinearGradient
-          colors={[COLORS.dark.background, COLORS.dark.card, COLORS.dark.background]}
+          colors={['#0a1612', '#0F2A24', '#0a1612']} // Koyu yeşil gradient - splash ile uyumlu
           style={styles.matchCard}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
@@ -355,7 +357,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
                   
                   {/* Saat */}
                   <LinearGradient
-                    colors={['#10b981', '#059669']}
+                    colors={[BRAND.primary, '#0a1f1a']}
                     style={styles.matchCardTimeBadge}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
@@ -394,7 +396,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
                 
                 {match.fixture.status?.elapsed && (
                   <View style={styles.matchCardLiveMinuteBadge}>
-                    <Ionicons name="time" size={14} color="#10b981" />
+                    <Ionicons name="time" size={14} color={BRAND.primary} />
                     <Text style={styles.matchCardLiveMinuteText}>{match.fixture.status.elapsed}'</Text>
                   </View>
                 )}
@@ -728,7 +730,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
   if (loading && !hasLoadedOnce) {
     return (
       <View style={[styles.container, styles.centerContent]}>
-        <ActivityIndicator size="large" color="#059669" />
+        <ActivityIndicator size="large" color={BRAND.primary} />
         <Text style={styles.loadingText}>Kontrol paneli yükleniyor...</Text>
       </View>
     );
@@ -756,6 +758,9 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
 
   return (
     <View style={styles.container}>
+      {/* Grid Pattern Background - Splash screen ile uyumlu */}
+      <View style={styles.gridPattern} />
+      
       {/* Scrollable Content */}
       <ScrollView
         ref={scrollViewRef}
@@ -804,11 +809,11 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
                       onPress={() => handleTeamSelect(null)}
                       activeOpacity={0.7}
                     >
-                      <Ionicons name="list" size={18} color={!selectedTeamId ? "#059669" : "#94A3B8"} />
+                      <Ionicons name="list" size={18} color={!selectedTeamId ? BRAND.primary : COLORS.dark.mutedForeground} />
                       <Text style={[styles.dropdownItemText, !selectedTeamId && styles.dropdownItemTextActive]}>
                         Tümü
                       </Text>
-                      {!selectedTeamId && <Ionicons name="checkmark" size={18} color="#059669" />}
+                      {!selectedTeamId && <Ionicons name="checkmark" size={18} color={BRAND.primary} />}
                     </TouchableOpacity>
                     
                     {favoriteTeams.map((team) => {
@@ -835,7 +840,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
                           <Text style={[styles.dropdownItemText, isSelected && styles.dropdownItemTextActive]} numberOfLines={1}>
                             {team.name}
                           </Text>
-                          {isSelected && <Ionicons name="checkmark" size={18} color="#059669" />}
+                          {isSelected && <Ionicons name="checkmark" size={18} color={BRAND.primary} />}
                   </TouchableOpacity>
                       );
                     })}
@@ -848,7 +853,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
         {/* 1. YAKLAŞAN MAÇLAR - Her zaman göster */}
         <Animated.View entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(200).springify()} style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Ionicons name="calendar" size={20} color="#059669" />
+            <Ionicons name="calendar" size={20} color={BRAND.primary} />
             <Text style={styles.sectionTitle}>
               {selectedTeamName ? `${selectedTeamName} Maçları` : 'Yaklaşan Maçlar'} ({filteredUpcomingMatches.length})
             </Text>
@@ -934,7 +939,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
                           selectedFocus && selectedFocus !== focus.id && styles.focusCardUnselected,
                           { 
                             width: '100%',
-                            borderColor: selectedFocus === focus.id ? focus.color : '#334155',
+                            borderColor: selectedFocus === focus.id ? focus.color : COLORS.dark.border,
                             transform: [{ scale: selectedFocus === focus.id ? 1.05 : selectedFocus ? 0.95 : 1 }],
                           },
                         ]}
@@ -1126,7 +1131,30 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1F3231', // ProfileCard ile aynı koyu yeşil ton
+    backgroundColor: '#0F2A24', // Koyu yeşil taban - Splash screen ile uyumlu
+    position: 'relative',
+  },
+  // Grid Pattern Background - Splash screen ile uyumlu (40px, flu)
+  gridPattern: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    opacity: 0.6,
+    zIndex: 0,
+    ...Platform.select({
+      web: {
+        backgroundImage: `
+          linear-gradient(to right, rgba(31, 162, 166, 0.08) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(31, 162, 166, 0.08) 1px, transparent 1px)
+        `,
+        backgroundSize: '40px 40px',
+      },
+      default: {
+        backgroundColor: 'transparent',
+      },
+    }),
   },
   centerContent: {
     justifyContent: 'center',
@@ -1141,10 +1169,13 @@ const styles = StyleSheet.create({
   // Scroll Content
   scrollView: {
     flex: 1,
+    backgroundColor: 'transparent', // Grid pattern görünsün
+    zIndex: 1,
   },
   scrollContent: {
-    paddingTop: 130, // ✅ Profil kartının altından başlaması için (iOS: 44 top + 8 paddingTop + ~70 içerik + 8 paddingBottom = 130px)
+    paddingTop: Platform.OS === 'ios' ? 44 + 70 + 8 : 70 + 8, // ✅ Profil kartının altından başlaması için (iOS: 44 safe area + ~70 içerik + 8 paddingBottom)
     paddingBottom: 100 + SIZES.tabBarHeight, // ✅ Footer navigation için extra padding
+    backgroundColor: 'transparent', // Grid pattern görünsün
   },
 
   // Section
@@ -1657,14 +1688,10 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   focusCardSelected: {
-    backgroundColor: 'rgba(5, 150, 105, 0.08)',
+    backgroundColor: `${BRAND.primary}14`, // BRAND.primary with 8% opacity
     borderColor: COLORS.dark.warning,
     borderWidth: 2,
-    shadowColor: COLORS.dark.warning,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.6,
-    shadowRadius: 12,
-    elevation: 12,
+    // Gölge efektleri kaldırıldı
   },
   focusCardUnselected: {
     opacity: 0.6,
@@ -1882,7 +1909,7 @@ const styles = StyleSheet.create({
     borderBottomColor: COLORS.dark.border,
   },
   dropdownItemActive: {
-    backgroundColor: `rgba(5, 150, 105, 0.1)`, // COLORS.dark.primary with opacity
+    backgroundColor: `${BRAND.primary}1A`, // BRAND.primary with 10% opacity
   },
   dropdownItemText: {
     ...TYPOGRAPHY.body,
@@ -1941,21 +1968,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(148, 163, 184, 0.5)', // COLORS.dark.border with 50% opacity
-    // ✅ Profil kartı gibi gölge
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 10,
-      },
-      web: {
-        boxShadow: '0 4px 8px rgba(0, 0, 0, 0.3)',
-      },
-    }),
+    // Gölge efektleri kaldırıldı
   },
   matchCardLeftStrip: {
     position: 'absolute',
@@ -2094,7 +2107,7 @@ const styles = StyleSheet.create({
     minHeight: 28, // Ensure readable touch target
     ...Platform.select({
       ios: {
-        shadowColor: '#10b981',
+        shadowColor: BRAND.primary,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.3,
         shadowRadius: 4,
@@ -2450,10 +2463,8 @@ const styles = StyleSheet.create({
     right: 0,
     flexDirection: 'row',
     height: SIZES.tabBarHeight,
-    backgroundColor: '#1E3A3A', // ProfileCard ranking card ile aynı ton
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(43, 124, 115, 0.3)', // #2B7C73 with opacity
-    ...SHADOWS.lg,
+    backgroundColor: '#0F2A24', // Koyu yeşil - Grid pattern ile uyumlu
+    borderTopWidth: 0, // Border kaldırıldı
     ...Platform.select({
       ios: {
         paddingBottom: 20,

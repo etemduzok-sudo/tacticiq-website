@@ -2,7 +2,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useAdminDataSafe } from '@/contexts/AdminDataContext';
 import { Card } from '@/app/components/ui/card';
 import { Badge } from '@/app/components/ui/badge';
-import { Shield, Swords, Target, Activity, Layers } from 'lucide-react';
+import { Shield, Swords, Target, Activity, Layers, Brain } from 'lucide-react';
 
 export function TrainingSection() {
   const { t } = useLanguage();
@@ -52,6 +52,13 @@ export function TrainingSection() {
       bgColor: 'bg-accent/10',
       borderColor: 'border-accent/30',
     },
+    {
+      icon: Brain,
+      key: 'player',
+      color: 'text-orange-500',
+      bgColor: 'bg-orange-500/10',
+      borderColor: 'border-orange-500/30',
+    },
   ];
 
   return (
@@ -67,8 +74,8 @@ export function TrainingSection() {
           </p>
         </div>
 
-        {/* Training Types Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 max-w-7xl mx-auto mb-8">
+        {/* Training Types Grid - 3 columns x 2 rows */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto mb-8">
           {trainingTypes.map((training, index) => {
             const Icon = training.icon;
             return (

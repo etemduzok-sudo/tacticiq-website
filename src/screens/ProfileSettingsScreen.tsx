@@ -23,7 +23,6 @@ import { profileService } from '../services/profileService';
 
 interface ProfileSettingsScreenProps {
   onBack: () => void;
-  onNavigateToFavoriteTeams: () => void;
   onNavigateToLanguage: () => void;
   onLogout: () => void;
   onNavigateToChangePassword: () => void;
@@ -36,7 +35,6 @@ type Theme = 'dark' | 'light' | 'system';
 
 export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
   onBack, 
-  onNavigateToFavoriteTeams, 
   onNavigateToLanguage, 
   onLogout,
   onNavigateToChangePassword,
@@ -97,31 +95,8 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
   const [theme, setTheme] = useState<Theme>('dark');
   const [hasChanges, setHasChanges] = useState(false);
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
-  const [favoriteClubs, setFavoriteClubs] = useState<string[]>([]);
   const [isPro, setIsPro] = useState(false);
-
-  const favoriteNational = 'Türkiye';
   const currentLanguage = 'Türkçe';
-
-  // Load favorite teams from AsyncStorage
-  useEffect(() => {
-    const loadFavoriteTeams = async () => {
-      try {
-        const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
-        const favoriteTeamsStr = await AsyncStorage.getItem(STORAGE_KEYS.FAVORITE_TEAMS);
-        if (favoriteTeamsStr) {
-          const teams = JSON.parse(favoriteTeamsStr);
-          const teamNames = teams.map((team: any) => team.name);
-          setFavoriteClubs(teamNames);
-          console.log('✅ Loaded favorite teams in settings:', teamNames);
-        }
-      } catch (error) {
-        console.error('Error loading favorite teams:', error);
-      }
-    };
-    
-    loadFavoriteTeams();
-  }, []);
 
   const handleNameChange = (value: string) => {
     setName(value);
@@ -320,62 +295,6 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
               {usernameStatus === 'unavailable' && username && username.length >= 3 && (
                 <Text style={styles.usernameHelperError}>✗ Bu kullanıcı adı zaten alınmış veya geçersiz</Text>
               )}
-            </View>
-          </Animated.View>
-
-          {/* Favorite Teams Card */}
-          <Animated.View entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(100)} style={styles.card}>
-            <View style={styles.cardHeader}>
-              <Ionicons name="trophy-outline" size={20} color="#059669" />
-              <Text style={styles.cardTitle}>Favori Takımlar</Text>
-      </View>
-
-            <TouchableOpacity
-              style={styles.settingItem}
-              onPress={onNavigateToFavoriteTeams}
-              activeOpacity={0.7}
-            >
-              <View style={styles.settingItemLeft}>
-                <Ionicons name="trophy" size={20} color="#9CA3AF" />
-                <View style={styles.settingItemText}>
-                  <Text style={styles.settingItemTitle}>Kulüpler</Text>
-                  <Text style={styles.settingItemSubtitle}>
-                    {favoriteClubs.join(', ')}
-                  </Text>
-                </View>
-              </View>
-              <View style={styles.settingItemRight}>
-                <Text style={styles.limitText}>
-                  {favoriteClubs.length}/{isPro ? 3 : 1}
-                </Text>
-                <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-          </View>
-        </TouchableOpacity>
-
-            <View style={styles.divider} />
-
-            <TouchableOpacity
-              style={styles.settingItem}
-              onPress={onNavigateToFavoriteTeams}
-              activeOpacity={0.7}
-            >
-              <View style={styles.settingItemLeft}>
-                <Ionicons name="flag" size={20} color="#9CA3AF" />
-                <View style={styles.settingItemText}>
-                  <Text style={styles.settingItemTitle}>Milli Takım</Text>
-                  <Text style={styles.settingItemSubtitle}>
-                    {favoriteNational || 'Opsiyonel'}
-                  </Text>
-                </View>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-            </TouchableOpacity>
-
-            <View style={styles.infoBox}>
-              <Ionicons name="information-circle" size={16} color="#3B82F6" />
-              <Text style={styles.infoText}>
-                Takım limitleri planınıza göre uygulanır. PRO kullanıcılar 3 kulüp seçebilir.
-              </Text>
             </View>
           </Animated.View>
 

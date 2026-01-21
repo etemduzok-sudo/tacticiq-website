@@ -11,11 +11,20 @@ import { logger, logApiCall } from '../utils/logger';
 
 // Platform-specific API URL
 const getApiBaseUrl = () => {
-  // ⚠️ ALWAYS USE LOCALHOST FOR DEVELOPMENT
-  // __DEV__ check sometimes fails in web, so force localhost
+  // Web/Dev mode - detect if on LAN or localhost
   if (Platform.OS === 'web' || __DEV__ || typeof window !== 'undefined') {
+    // Check if running on LAN IP (not localhost)
+    if (typeof window !== 'undefined' && window.location) {
+      const hostname = window.location.hostname;
+      // If not localhost, use the same host with backend port
+      if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
+        const lanUrl = `http://${hostname.replace(':8081', '')}:3001/api`;
+        logger.debug('Using LAN URL (development mode)', { url: lanUrl }, 'API');
+        return lanUrl;
+      }
+    }
     logger.debug('Using localhost (development mode)', undefined, 'API');
-    return 'http://localhost:3000/api';
+    return 'http://localhost:3001/api';
   }
   
   // Production - Use centralized config

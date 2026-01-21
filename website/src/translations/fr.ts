@@ -466,6 +466,9 @@ export default {
   'analysisFocus.types.tactical.name': 'Focus Tactique',
   'analysisFocus.types.tactical.bonus': '+25% Tactique',
   'analysisFocus.types.tactical.desc': 'Bonus pour formation, scénario',
+  'analysisFocus.types.player.name': 'Focus Joueur',
+  'analysisFocus.types.player.bonus': '+30% Individuel',
+  'analysisFocus.types.player.desc': 'Bonus pour buteur, passeur, homme du match',
   'analysisFocus.example': '💡 Exemple: Focus défensif = 20% bonus sur cartons jaunes',
 
   // Legal

@@ -259,6 +259,9 @@ export default {
   'analysisFocus.types.tactical.name': '战术分析焦点',
   'analysisFocus.types.tactical.bonus': '+25% 战术类别',
   'analysisFocus.types.tactical.desc': '阵型预测、比赛场景、战略聚焦类别获得额外积分',
+  'analysisFocus.types.player.name': '球员分析焦点',
+  'analysisFocus.types.player.bonus': '+30% 个人类别',
+  'analysisFocus.types.player.desc': '射手王、助攻王、最佳球员类别获得额外积分',
   'analysisFocus.example': '💡 示例：如果您选择防守分析焦点并正确预测黄牌数量，您将获得比正常积分多20%的积分',
 
   // Auth Modal

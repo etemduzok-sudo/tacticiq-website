@@ -679,46 +679,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       {/* Header kaldırıldı - footer navigation kullanılacak */}
       
       <View style={styles.container}>
-        {/* 🏆 TAB NAVIGATION */}
-        <View style={styles.tabContainer}>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'profile' && styles.tabActive]}
-            onPress={() => setActiveTab('profile')}
-            activeOpacity={0.7}
-          >
-            <Ionicons
-              name="person"
-              size={20}
-              color={activeTab === 'profile' ? theme.primary : theme.mutedForeground}
-            />
-            <Text style={[styles.tabText, activeTab === 'profile' && styles.tabTextActive]}>
-              {t('profile.title')}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'badges' && styles.tabActive]}
-            onPress={() => setActiveTab('badges')}
-            activeOpacity={0.7}
-          >
-            <Ionicons
-              name="trophy"
-              size={20}
-              color={activeTab === 'badges' ? theme.accent : theme.mutedForeground}
-            />
-            <Text style={[styles.tabText, activeTab === 'badges' && styles.tabTextActive]}>
-              {t('badges.title')}
-            </Text>
-            {badgeCount > 0 && (
-              <View style={styles.badgeCountBubble}>
-                <Text style={styles.badgeCountText}>{badgeCount}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        </View>
-
-        {/* Content */}
-        {activeTab === 'profile' ? (
+        {/* Profile Content - Tab bar kaldırıldı */}
           <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
@@ -1423,7 +1384,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                     ) : pushNotificationPermission === 'denied' ? (
                       <View style={[styles.pushNotificationBadge, { backgroundColor: theme.destructive }]}>
                         <Ionicons name="close" size={16} color="#FFFFFF" />
-                        <Text style={styles.pushNotificationBadgeText}>Reddedildi</Text>
+                        <Text style={styles.pushNotificationBadgeText}>İzin Yok</Text>
                       </View>
                     ) : (
                       <TouchableOpacity
@@ -1496,35 +1457,48 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               <Ionicons name="chevron-forward" size={20} color={theme.mutedForeground} />
             </TouchableOpacity>
 
-            {/* Çıkış Yap - Web ile aynı */}
+            {/* Çıkış Yap - Web ve Mobile uyumlu */}
             <TouchableOpacity 
               style={styles.securityButton}
               onPress={async () => {
-                Alert.alert(
-                  'Çıkış Yap',
-                  'Çıkış yapmak istediğinizden emin misiniz?',
-                  [
-                    { text: 'İptal', style: 'cancel' },
-                    {
-                      text: 'Çıkış Yap',
-                      style: 'destructive',
-                      onPress: async () => {
-                        try {
-                          const result = await authService.signOut();
-                          if (result.success) {
-                            await AsyncStorage.clear();
-                            Alert.alert('Başarılı', 'Çıkış yapıldı');
-                            onBack();
-                          } else {
-                            throw new Error(result.error || 'Çıkış yapılamadı');
-                          }
-                        } catch (error: any) {
-                          Alert.alert('Hata', error.message || 'Çıkış yapılamadı');
-                        }
-                      },
-                    },
-                  ]
-                );
+                // Web için window.confirm, Mobile için Alert.alert
+                const handleLogout = async () => {
+                  try {
+                    const result = await authService.signOut();
+                    if (result.success) {
+                      await AsyncStorage.clear();
+                      if (Platform.OS === 'web') {
+                        window.location.reload();
+                      } else {
+                        Alert.alert('Başarılı', 'Çıkış yapıldı');
+                        onBack();
+                      }
+                    } else {
+                      throw new Error(result.error || 'Çıkış yapılamadı');
+                    }
+                  } catch (error: any) {
+                    if (Platform.OS === 'web') {
+                      alert(error.message || 'Çıkış yapılamadı');
+                    } else {
+                      Alert.alert('Hata', error.message || 'Çıkış yapılamadı');
+                    }
+                  }
+                };
+
+                if (Platform.OS === 'web') {
+                  if (window.confirm('Çıkış yapmak istediğinizden emin misiniz?')) {
+                    await handleLogout();
+                  }
+                } else {
+                  Alert.alert(
+                    'Çıkış Yap',
+                    'Çıkış yapmak istediğinizden emin misiniz?',
+                    [
+                      { text: 'İptal', style: 'cancel' },
+                      { text: 'Çıkış Yap', style: 'destructive', onPress: handleLogout },
+                    ]
+                  );
+                }
               }}
             >
               <Ionicons name="log-out-outline" size={20} color={theme.primary} />
@@ -1699,14 +1673,16 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           {/* Database Test Button kaldırıldı - Web Admin Panel'e taşındı */}
 
         </ScrollView>
-        ) : (
-          /* 🏆 BADGE SHOWCASE TAB - Web ile aynı stil ve renk hiyerarşisi */
+
+        {/* Badges bölümü ProfileCard'a taşındı - tab bar kaldırıldı */}
+        {/* Badge showcase content removed - badges shown in ProfileCard */}
+        {false && (
           <ScrollView 
             style={styles.badgeShowcaseContainer}
             contentContainerStyle={styles.badgeShowcaseContent}
             showsVerticalScrollIndicator={false}
           >
-            {/* Badge Progress Card - Web ile aynı */}
+            {/* Badge Progress Card - Disabled */}
             <View style={styles.badgeProgressCard}>
               <View style={styles.badgeProgressHeader}>
                 <Text style={styles.badgeProgressCount}>
@@ -1718,7 +1694,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               </View>
               <View style={styles.badgeProgressBarContainer}>
                 <LinearGradient
-                  colors={['#F59E0B', '#FCD34D']} // amber-500 to yellow-400 (web ile aynı)
+                  colors={['#F59E0B', '#FCD34D']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={[

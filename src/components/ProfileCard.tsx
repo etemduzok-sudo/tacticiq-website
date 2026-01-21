@@ -93,25 +93,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({ onPress, newBadge, onB
     return () => clearInterval(interval);
   }, []);
   
-  // ✅ Kart pulse animasyonu (her 10 saniyede bir)
-  useEffect(() => {
-    const pulseInterval = setInterval(() => {
-      Animated.sequence([
-        Animated.timing(cardPulseAnim, {
-          toValue: 1.02,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.timing(cardPulseAnim, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    }, 10000);
-    
-    return () => clearInterval(pulseInterval);
-  }, []);
+  // Pulse animasyonu kaldırıldı
   
   // ✅ Her 2 saniyede bir AsyncStorage'ı kontrol et (fallback - backward compatibility)
   useEffect(() => {
@@ -225,32 +207,24 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({ onPress, newBadge, onB
 
   return (
     <>
-      <Animated.View style={[{ transform: [{ scale: cardPulseAnim }] }]}>
+      <View>
         <TouchableOpacity
           style={styles.profileButton}
           onPress={onPress}
           activeOpacity={0.7}
         >
-          {/* Modern gradient background with white card */}
-          <LinearGradient
-            colors={['#1F3231', '#2B7C73']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.gradientBackground}
-          >
-            <View style={styles.whiteCard}>
+          {/* Profile card container with grid pattern */}
+            <View style={styles.cardWrapper}>
+              {/* Grid Pattern Background */}
+              <View style={styles.gridPattern} />
+              <View style={styles.whiteCard}>
             <View style={styles.profileContainer}>
               <View style={styles.profileLeft}>
-                {/* Avatar with glow effect */}
+                {/* Avatar */}
                 <View style={styles.avatarContainer}>
-                  <LinearGradient
-                    colors={['#1FA2A6', '#C9A44C']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.avatar}
-                  >
+                  <View style={styles.avatar}>
                     <Text style={styles.avatarText}>{userName}</Text>
-                  </LinearGradient>
+                  </View>
                   {profile?.isPro && (
                     <View style={styles.proIndicator}>
                       <Ionicons name="star" size={10} color="#FFD700" />
@@ -353,9 +327,9 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({ onPress, newBadge, onB
               </ScrollView>
             </View>
             </View>
-          </LinearGradient>
+          </View>
         </TouchableOpacity>
-      </Animated.View>
+      </View>
 
       {/* 🎉 Yeni Rozet Popup Modal */}
       <Modal
@@ -423,28 +397,47 @@ const styles = StyleSheet.create({
     marginTop: 0,
     marginBottom: 0,
   },
-  gradientBackground: {
-    padding: 12,
-    borderRadius: 16,
+  // Card wrapper with grid pattern background - Üst köşeler düz (ekranın en üstüne kadar)
+  cardWrapper: {
+    position: 'relative',
+    borderTopLeftRadius: 0, // Üst sol köşe düz
+    borderTopRightRadius: 0, // Üst sağ köşe düz
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: '#0F2A24', // Koyu yeşil taban
   },
-  whiteCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 12,
+  // Grid Pattern Background - Splash screen ile uyumlu (40px, flu)
+  gridPattern: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    opacity: 0.6,
+    zIndex: 0,
     ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 4,
-      },
       web: {
-        boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1)',
+        backgroundImage: `
+          linear-gradient(to right, rgba(31, 162, 166, 0.08) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(31, 162, 166, 0.08) 1px, transparent 1px)
+        `,
+        backgroundSize: '40px 40px',
+      },
+      default: {
+        backgroundColor: 'transparent',
       },
     }),
+  },
+  whiteCard: {
+    backgroundColor: 'transparent', // Grid pattern görünsün
+    borderTopLeftRadius: 0, // Üst köşeler düz
+    borderTopRightRadius: 0,
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
+    padding: 12,
+    paddingTop: Platform.OS === 'ios' ? 44 + 12 : 12, // Safe area + normal padding
+    zIndex: 1,
   },
   profileContainer: {
     flexDirection: 'row',
@@ -468,8 +461,9 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: '#0F2A24', // Solid dark green instead of turquoise gradient
     borderWidth: 1.5,
-    borderColor: 'rgba(31, 162, 166, 0.3)',
+    borderColor: 'rgba(15, 42, 36, 0.5)',
   },
   avatarText: {
     fontSize: 12,
@@ -501,7 +495,7 @@ const styles = StyleSheet.create({
   profileName: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#333333',
+    color: '#FFFFFF',
     marginRight: 6,
   },
   proBadge: {
@@ -570,7 +564,7 @@ const styles = StyleSheet.create({
   badgesTitle: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#333333',
+    color: '#E2E8F0',
     marginLeft: 4,
     flex: 1,
   },
@@ -610,7 +604,7 @@ const styles = StyleSheet.create({
     padding: 6,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.15)',
+    backgroundColor: 'rgba(0, 0, 0, 0.25)',
   },
   badgeIcon: {
     fontSize: 20,
@@ -644,20 +638,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    backgroundColor: 'transparent',
+    backgroundColor: 'rgba(30, 41, 59, 0.3)',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: 'rgba(100, 116, 139, 0.15)',
+    borderColor: 'rgba(100, 116, 139, 0.3)',
     borderStyle: 'dashed',
   },
   noBadgesText: {
     fontSize: 10,
-    color: '#666666',
+    color: '#94A3B8',
     fontWeight: '500',
   },
   noBadgesHint: {
     fontSize: 9,
-    color: '#888888',
+    color: '#64748B',
   },
   // 🎉 Badge Popup Modal Styles
   modalOverlay: {

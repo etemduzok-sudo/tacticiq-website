@@ -48,6 +48,10 @@ let stats = {
     standings: 0,
     statistics: 0,
   },
+
+// Store interval references for stop functionality
+let cacheIntervals = [];
+let isRunning = false;
 };
 
 // Reset daily stats
@@ -169,8 +173,27 @@ async function refreshStandings() {
   }
 }
 
+// Stop aggressive caching
+function stopAggressiveCaching() {
+  if (cacheIntervals.length > 0) {
+    cacheIntervals.forEach(interval => clearInterval(interval));
+    cacheIntervals = [];
+    isRunning = false;
+    console.log('⏹️ [AGGRESSIVE CACHE] Stopped');
+  }
+}
+
 // Start aggressive caching
 function startAggressiveCaching() {
+  // Prevent multiple starts
+  if (isRunning) {
+    console.log('⚠️ [AGGRESSIVE CACHE] Already running, skipping start');
+    return;
+  }
+  
+  // Clear any existing intervals
+  stopAggressiveCaching();
+  
   console.log('🚀 [AGGRESSIVE CACHE] Starting aggressive caching service...');
   console.log(`📊 Target: 7,368 API calls per day (98.2% usage)`);
   console.log(`📊 Breakdown:`);
@@ -179,6 +202,8 @@ function startAggressiveCaching() {
   console.log(`   - Teams: 60 calls (4h interval, 10 teams)`);
   console.log(`   - Standings: 36 calls (4h interval, 6 leagues)`);
   
+  isRunning = true;
+  
   // Initial fetch
   refreshLiveMatches();
   refreshUpcomingMatches();
@@ -186,7 +211,7 @@ function startAggressiveCaching() {
   refreshStandings();
   
   // Set intervals - Wrap in try-catch to prevent crashes
-  setInterval(() => {
+  cacheIntervals.push(setInterval(() => {
     try {
       refreshLiveMatches();
     } catch (error) {
@@ -194,9 +219,9 @@ function startAggressiveCaching() {
       console.error('Stack:', error.stack);
       // Continue - don't crash
     }
-  }, REFRESH_INTERVALS.liveMatches);
+  }, REFRESH_INTERVALS.liveMatches));
   
-  setInterval(() => {
+  cacheIntervals.push(setInterval(() => {
     try {
       refreshUpcomingMatches();
     } catch (error) {
@@ -204,9 +229,9 @@ function startAggressiveCaching() {
       console.error('Stack:', error.stack);
       // Continue - don't crash
     }
-  }, REFRESH_INTERVALS.upcomingMatches);
+  }, REFRESH_INTERVALS.upcomingMatches));
   
-  setInterval(() => {
+  cacheIntervals.push(setInterval(() => {
     try {
       refreshTeamSeasons();
     } catch (error) {
@@ -214,9 +239,9 @@ function startAggressiveCaching() {
       console.error('Stack:', error.stack);
       // Continue - don't crash
     }
-  }, REFRESH_INTERVALS.teamSeasons);
+  }, REFRESH_INTERVALS.teamSeasons));
   
-  setInterval(() => {
+  cacheIntervals.push(setInterval(() => {
     try {
       refreshStandings();
     } catch (error) {
@@ -224,10 +249,10 @@ function startAggressiveCaching() {
       console.error('Stack:', error.stack);
       // Continue - don't crash
     }
-  }, REFRESH_INTERVALS.standings);
+  }, REFRESH_INTERVALS.standings));
   
   // Stats logging every 10 minutes
-  setInterval(() => {
+  cacheIntervals.push(setInterval(() => {
     const percentage = ((stats.callsToday / 7500) * 100).toFixed(1);
     const targetPercentage = ((stats.callsToday / 7368) * 100).toFixed(1);
     console.log(`📊 [AGGRESSIVE CACHE] Stats:`, {
@@ -261,7 +286,9 @@ function addTrackedTeam(teamId) {
 
 module.exports = {
   startAggressiveCaching,
+  stopAggressiveCaching,
   getStats,
   addTrackedTeam,
   refreshLiveMatches,
+  isRunning: () => isRunning,
 };

@@ -309,6 +309,9 @@ export default {
   'analysisFocus.types.tactical.name': 'Taktischer Analyse-Fokus',
   'analysisFocus.types.tactical.bonus': '+25% Taktische Kategorien',
   'analysisFocus.types.tactical.desc': 'Bonuspunkte bei Formationsvorhersage, Spielszenario, strategischem Fokus',
+  'analysisFocus.types.player.name': 'Spieler-Fokus Analyse',
+  'analysisFocus.types.player.bonus': '+30% Individuelle Kategorien',
+  'analysisFocus.types.player.desc': 'Bonuspunkte bei Torschütze, Assist-König, Spieler des Spiels',
   'analysisFocus.example': '💡 Beispiel: Wenn Sie den defensiven Analyse-Fokus wählen und die Anzahl der gelben Karten richtig vorhersagen, erhalten Sie 20% mehr als die normalen Punkte',
   
   // Auth Modal

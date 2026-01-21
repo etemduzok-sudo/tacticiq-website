@@ -236,6 +236,9 @@ export default {
   'analysisFocus.types.tactical.name': 'Focus di Analisi Tattica',
   'analysisFocus.types.tactical.bonus': '+25% Categorie Tattiche',
   'analysisFocus.types.tactical.desc': 'Punti bonus in previsione formazione, scenario partita, focus strategico',
+  'analysisFocus.types.player.name': 'Focus sul Giocatore',
+  'analysisFocus.types.player.bonus': '+30% Categorie Individuali',
+  'analysisFocus.types.player.desc': 'Punti bonus in capocannoniere, re degli assist, uomo della partita',
   'analysisFocus.example': '💡 Esempio: Se selezioni il focus di analisi difensiva e prevedi correttamente il numero di cartellini gialli, guadagni il 20% in più dei punti normali',
 
   // Auth Modal

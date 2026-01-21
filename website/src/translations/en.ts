@@ -384,6 +384,9 @@ export default {
   'analysisFocus.types.tactical.name': 'Tactical Analysis Focus',
   'analysisFocus.types.tactical.bonus': '+25% Tactical Categories',
   'analysisFocus.types.tactical.desc': 'Bonus points in formation prediction, match scenario, strategic focus categories',
+  'analysisFocus.types.player.name': 'Player-Focused Analysis',
+  'analysisFocus.types.player.bonus': '+30% Individual Categories',
+  'analysisFocus.types.player.desc': 'Bonus points in top scorer, assist king, man of the match categories',
   'analysisFocus.example': '💡 Example: If you select defensive analysis focus and correctly predict yellow card count, you earn 20% more than normal points',
 
   // Auth Modal

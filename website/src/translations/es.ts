@@ -236,6 +236,9 @@ export default {
   'analysisFocus.types.tactical.name': 'Enfoque de Análisis Táctico',
   'analysisFocus.types.tactical.bonus': '+25% Categorías Tácticas',
   'analysisFocus.types.tactical.desc': 'Puntos bonus en predicción de formación, escenario del partido, enfoque estratégico',
+  'analysisFocus.types.player.name': 'Enfoque en el Jugador',
+  'analysisFocus.types.player.bonus': '+30% Categorías Individuales',
+  'analysisFocus.types.player.desc': 'Puntos bonus en goleador, asistente, jugador del partido',
   'analysisFocus.example': '💡 Ejemplo: Si seleccionas el enfoque de análisis defensivo y predices correctamente el número de tarjetas amarillas, ganas un 20% más que los puntos normales',
 
   // Auth Modal

@@ -44,6 +44,13 @@ app.use(cors({
     'http://localhost:8082',   // Expo alternative port
     'http://localhost:19006',  // Expo web
     'http://localhost:3000',   // Self
+    'http://localhost:3001',   // Self (correct port)
+    'http://localhost:5173',   // Vite (Website)
+    'http://localhost:5174',   // Vite alternative port
+    'http://127.0.0.1:5173',   // Vite (127.0.0.1)
+    'http://127.0.0.1:8081',   // Expo (127.0.0.1)
+    'http://192.168.254.149:8081', // Expo LAN
+    /^http:\/\/192\.168\.\d+\.\d+:\d+$/, // Any LAN IP
   ],
   credentials: true,
 })); // Enable CORS for web
@@ -207,6 +214,176 @@ app.get('/api/system-status', (req, res) => {
   } catch (error) {
     res.json({ success: false, error: error.message });
   }
+});
+
+// ============================================
+// SERVICE CONTROL ENDPOINTS
+// ============================================
+
+// Control a specific service
+app.post('/api/services/control', (req, res) => {
+  const { serviceId, action } = req.body;
+  
+  if (!serviceId || !action) {
+    return res.status(400).json({ success: false, error: 'serviceId and action required' });
+  }
+  
+  if (!['start', 'stop', 'restart'].includes(action)) {
+    return res.status(400).json({ success: false, error: 'action must be start, stop, or restart' });
+  }
+  
+  try {
+    let result = { success: true, message: '' };
+    
+    switch (serviceId) {
+      case 'smartSync':
+      case 'worldwideSync': {
+        const smartSyncService = require('./services/smartSyncService');
+        if (action === 'stop') {
+          smartSyncService.stopSync();
+          result.message = 'Worldwide Sync durduruldu';
+        } else if (action === 'start' || action === 'restart') {
+          if (action === 'restart') smartSyncService.stopSync();
+          smartSyncService.startSync();
+          result.message = 'Worldwide Sync başlatıldı';
+        }
+        break;
+      }
+      
+      case 'staticTeams': {
+        const staticTeamsScheduler = require('./services/staticTeamsScheduler');
+        if (action === 'stop') {
+          staticTeamsScheduler.stopScheduler();
+          result.message = 'Static Teams Scheduler durduruldu';
+        } else if (action === 'start' || action === 'restart') {
+          if (action === 'restart') staticTeamsScheduler.stopScheduler();
+          staticTeamsScheduler.startScheduler();
+          result.message = 'Static Teams Scheduler başlatıldı';
+        }
+        break;
+      }
+      
+      case 'leaderboard': {
+        const snapshotService = require('./services/leaderboardSnapshotService');
+        if (action === 'stop') {
+          snapshotService.stopSnapshotService();
+          result.message = 'Leaderboard Snapshots durduruldu';
+        } else if (action === 'start' || action === 'restart') {
+          if (action === 'restart') snapshotService.stopSnapshotService();
+          snapshotService.startSnapshotService();
+          result.message = 'Leaderboard Snapshots başlatıldı';
+        }
+        break;
+      }
+      
+      case 'cache': {
+        const aggressiveCacheService = require('./services/aggressiveCacheService');
+        if (action === 'stop') {
+          aggressiveCacheService.stopAggressiveCaching();
+          result.message = 'Cache Service durduruldu';
+        } else if (action === 'start' || action === 'restart') {
+          if (action === 'restart') aggressiveCacheService.stopAggressiveCaching();
+          aggressiveCacheService.startAggressiveCaching();
+          result.message = 'Cache Service başlatıldı';
+        }
+        break;
+      }
+      
+      case 'monitoring': {
+        const monitoringService = require('./services/monitoringService');
+        if (action === 'stop') {
+          monitoringService.stopMonitoring();
+          result.message = 'Monitoring durduruldu';
+        } else if (action === 'start' || action === 'restart') {
+          if (action === 'restart') monitoringService.stopMonitoring();
+          monitoringService.startMonitoring();
+          result.message = 'Monitoring başlatıldı';
+        }
+        break;
+      }
+      
+      default:
+        return res.status(400).json({ success: false, error: `Unknown service: ${serviceId}` });
+    }
+    
+    console.log(`🔧 Service control: ${serviceId} - ${action} - ${result.message}`);
+    res.json(result);
+  } catch (error) {
+    console.error(`❌ Service control error: ${serviceId} - ${action}`, error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+// Restart all services
+app.post('/api/services/restart-all', (req, res) => {
+  try {
+    const smartSyncService = require('./services/smartSyncService');
+    const staticTeamsScheduler = require('./services/staticTeamsScheduler');
+    const snapshotService = require('./services/leaderboardSnapshotService');
+    const aggressiveCacheService = require('./services/aggressiveCacheService');
+    
+    // Stop all
+    smartSyncService.stopSync();
+    staticTeamsScheduler.stopScheduler();
+    snapshotService.stopSnapshotService();
+    aggressiveCacheService.stopAggressiveCaching();
+    
+    // Wait a bit then start all
+    setTimeout(() => {
+      smartSyncService.startSync();
+      staticTeamsScheduler.startScheduler();
+      snapshotService.startSnapshotService();
+      aggressiveCacheService.startAggressiveCaching();
+    }, 1000);
+    
+    console.log('🔄 All services restarted');
+    res.json({ success: true, message: 'Tüm servisler yeniden başlatıldı' });
+  } catch (error) {
+    console.error('❌ Restart all services error:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+// Auto-restart configuration
+let autoRestartEnabled = true;
+let autoRestartInterval = null;
+
+app.get('/api/services/auto-restart-status', (req, res) => {
+  res.json({ 
+    success: true, 
+    enabled: autoRestartEnabled,
+    checkInterval: 30000 // 30 seconds
+  });
+});
+
+app.post('/api/services/auto-restart', (req, res) => {
+  const { enabled } = req.body;
+  autoRestartEnabled = enabled !== false;
+  
+  if (autoRestartEnabled && !autoRestartInterval) {
+    // Start auto-restart checker
+    autoRestartInterval = setInterval(() => {
+      try {
+        const smartSyncService = require('./services/smartSyncService');
+        const status = smartSyncService.getStatus();
+        
+        if (!status.isRunning) {
+          console.log('🔄 Auto-restart: Worldwide Sync was stopped, restarting...');
+          smartSyncService.startSync();
+        }
+      } catch (error) {
+        console.error('❌ Auto-restart check error:', error);
+      }
+    }, 30000); // Check every 30 seconds
+    
+    console.log('✅ Auto-restart enabled');
+  } else if (!autoRestartEnabled && autoRestartInterval) {
+    clearInterval(autoRestartInterval);
+    autoRestartInterval = null;
+    console.log('⏹️ Auto-restart disabled');
+  }
+  
+  res.json({ success: true, enabled: autoRestartEnabled });
 });
 
 // Error handler

@@ -7838,20 +7838,39 @@ interface ServiceStatus {
 
 function SystemMonitoringContent() {
   const [services, setServices] = useState<ServiceStatus[]>([
-    { id: 'backend', name: 'Backend API', description: 'Ana API sunucusu', status: 'loading', port: 3001 },
-    { id: 'expo', name: 'Expo Web', description: 'Mobil uygulama (web)', status: 'loading', port: 8081 },
-    { id: 'website', name: 'Website (Vite)', description: 'Tanıtım sitesi', status: 'loading', port: 5173 },
+    { id: 'backend', name: 'Backend', description: 'Ana API sunucusu', status: 'loading', port: 3001 },
+    { id: 'expo', name: 'Expo', description: 'Mobil uygulama (web)', status: 'loading', port: 8081 },
+    { id: 'website', name: 'Website', description: 'Tanıtım sitesi', status: 'loading', port: 5173 },
     { id: 'supabase', name: 'Supabase', description: 'Veritabanı servisi', status: 'loading' },
-    { id: 'smartSync', name: 'Worldwide Sync (12s)', description: 'Canlı maç + timeline senkronizasyonu', status: 'loading' },
-    { id: 'staticTeams', name: 'Static Teams (2x/gün)', description: 'Takım verileri güncelleme', status: 'loading' },
-    { id: 'leaderboard', name: 'Leaderboard Snapshots', description: 'Günlük/haftalık sıralama', status: 'loading' },
-    { id: 'cache', name: 'Cache Service', description: 'Agresif önbellek sistemi', status: 'loading' },
-    { id: 'monitoring', name: 'Monitoring', description: 'Sistem izleme servisi', status: 'loading' },
+    { id: 'smartSync', name: 'Sync', description: 'Canlı maç senkronizasyonu', status: 'loading' },
+    { id: 'staticTeams', name: 'Teams', description: 'Takım verileri güncelleme', status: 'loading' },
+    { id: 'leaderboard', name: 'Lider', description: 'Günlük/haftalık sıralama', status: 'loading' },
+    { id: 'cache', name: 'Cache', description: 'Agresif önbellek sistemi', status: 'loading' },
+    { id: 'monitoring', name: 'Monitor', description: 'Sistem izleme servisi', status: 'loading' },
   ]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [apiStats, setApiStats] = useState<{ dailyCalls: number; remaining: number; limit: number } | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [autoRestartEnabled, setAutoRestartEnabled] = useState(true);
+
+  // Toggle auto-restart
+  const toggleAutoRestart = async () => {
+    try {
+      const response = await fetch('http://localhost:3001/api/services/auto-restart', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: !autoRestartEnabled }),
+      });
+      const result = await response.json();
+      if (result.success) {
+        setAutoRestartEnabled(result.enabled);
+        toast.success(result.enabled ? 'Otomatik yeniden başlatma açık' : 'Otomatik yeniden başlatma kapalı');
+      }
+    } catch (error) {
+      toast.error('Ayar değiştirilemedi');
+    }
+  };
 
   // Health check for all services
   const checkServiceHealth = async () => {
@@ -8032,26 +8051,52 @@ function SystemMonitoringContent() {
     setActionLoading(`${serviceId}-${action}`);
     toast.info(`${action === 'start' ? 'Başlatılıyor' : action === 'stop' ? 'Durduruluyor' : 'Yeniden başlatılıyor'}...`);
     
-    // Simulate action (in real implementation, this would call backend endpoints)
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    try {
+      const response = await fetch('http://localhost:3001/api/services/control', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ serviceId, action }),
+      });
+      const result = await response.json();
+      
+      if (result.success) {
+        toast.success(result.message || `Servis ${action === 'start' ? 'başlatıldı' : action === 'stop' ? 'durduruldu' : 'yeniden başlatıldı'}`);
+      } else {
+        toast.error(result.error || 'İşlem başarısız');
+      }
+    } catch (error: any) {
+      toast.error('Backend bağlantısı kurulamadı');
+    }
     
-    toast.success(`Servis ${action === 'start' ? 'başlatıldı' : action === 'stop' ? 'durduruldu' : 'yeniden başlatıldı'}`);
     setActionLoading(null);
     
     // Refresh status after action
-    await checkServiceHealth();
+    setTimeout(() => checkServiceHealth(), 1000);
   };
 
   const handleAllServicesAction = async (action: 'start' | 'stop' | 'restart') => {
     setActionLoading(`all-${action}`);
     toast.info(`Tüm servisler ${action === 'start' ? 'başlatılıyor' : action === 'stop' ? 'durduruluyor' : 'yeniden başlatılıyor'}...`);
     
-    await new Promise(resolve => setTimeout(resolve, 3000));
+    try {
+      const response = await fetch('http://localhost:3001/api/services/restart-all', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const result = await response.json();
+      
+      if (result.success) {
+        toast.success(result.message || 'Tüm servisler yeniden başlatıldı');
+      } else {
+        toast.error(result.error || 'İşlem başarısız');
+      }
+    } catch (error: any) {
+      toast.error('Backend bağlantısı kurulamadı');
+    }
     
-    toast.success(`Tüm servisler ${action === 'start' ? 'başlatıldı' : action === 'stop' ? 'durduruldu' : 'yeniden başlatıldı'}`);
     setActionLoading(null);
     
-    await checkServiceHealth();
+    setTimeout(() => checkServiceHealth(), 2000);
   };
 
   const getStatusColor = (status: ServiceStatus['status']) => {
@@ -8089,19 +8134,28 @@ function SystemMonitoringContent() {
             Tüm servislerin durumunu izleyin ve yönetin
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            variant={autoRestartEnabled ? 'default' : 'outline'}
+            size="sm"
+            onClick={toggleAutoRestart}
+            className={autoRestartEnabled ? 'bg-green-600 hover:bg-green-700' : ''}
+          >
+            <RotateCw className="size-4 mr-1" />
+            {autoRestartEnabled ? 'Otomatik' : 'Manuel'}
+          </Button>
           <Button
             variant="outline"
             size="sm"
             onClick={checkServiceHealth}
             disabled={isRefreshing}
           >
-            <RefreshCw className={`size-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`size-4 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
             Yenile
           </Button>
           {lastRefresh && (
             <span className="text-xs text-muted-foreground">
-              Son: {lastRefresh.toLocaleTimeString('tr-TR')}
+              {lastRefresh.toLocaleTimeString('tr-TR')}
             </span>
           )}
         </div>
@@ -8200,18 +8254,18 @@ function SystemMonitoringContent() {
       </Card>
 
       {/* System Architecture Diagram */}
-      <Card>
+      <Card className="overflow-hidden">
         <CardHeader className="py-3">
           <CardTitle className="text-lg flex items-center gap-2">
             <HardDrive className="size-5" />
             Sistem Mimarisi
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="relative bg-muted/30 rounded-lg p-6 overflow-x-auto">
-            <div className="flex flex-col items-center gap-6 min-w-[800px]">
+        <CardContent className="overflow-hidden p-3">
+          <div className="relative bg-muted/30 rounded-lg p-3 overflow-hidden">
+            <div className="flex flex-col items-center gap-3">
               {/* Top Layer - Frontend */}
-              <div className="flex gap-8 items-center">
+              <div className="flex flex-wrap gap-3 items-center justify-center w-full">
                 <ServiceBlock 
                   service={services.find(s => s.id === 'website')!}
                   onAction={handleServiceAction}
@@ -8226,12 +8280,12 @@ function SystemMonitoringContent() {
               
               {/* Arrow Down */}
               <div className="flex flex-col items-center">
-                <div className="w-px h-8 bg-border" />
+                <div className="w-px h-6 bg-border" />
                 <ChevronRight className="size-4 rotate-90 text-muted-foreground" />
               </div>
               
               {/* Middle Layer - Backend */}
-              <div className="flex gap-8 items-center">
+              <div className="flex justify-center w-full">
                 <ServiceBlock 
                   service={services.find(s => s.id === 'backend')!}
                   onAction={handleServiceAction}
@@ -8242,12 +8296,12 @@ function SystemMonitoringContent() {
               
               {/* Arrow Down */}
               <div className="flex flex-col items-center">
-                <div className="w-px h-8 bg-border" />
+                <div className="w-px h-6 bg-border" />
                 <ChevronRight className="size-4 rotate-90 text-muted-foreground" />
               </div>
               
               {/* Services Layer */}
-              <div className="flex gap-6 items-center">
+              <div className="flex flex-wrap gap-2 items-center justify-center w-full">
                 <ServiceBlock 
                   service={services.find(s => s.id === 'smartSync')!}
                   onAction={handleServiceAction}
@@ -8267,20 +8321,20 @@ function SystemMonitoringContent() {
               
               {/* Arrow Down */}
               <div className="flex flex-col items-center">
-                <div className="w-px h-8 bg-border" />
+                <div className="w-px h-6 bg-border" />
                 <ChevronRight className="size-4 rotate-90 text-muted-foreground" />
               </div>
               
               {/* Bottom Layer - Database */}
-              <div className="flex gap-8 items-center">
+              <div className="flex flex-wrap gap-3 items-center justify-center w-full">
                 <ServiceBlock 
                   service={services.find(s => s.id === 'supabase')!}
                   onAction={handleServiceAction}
                   actionLoading={actionLoading}
                   large
                 />
-                <div className="px-6 py-3 bg-accent/10 border border-accent/30 rounded-lg text-center">
-                  <Globe className="size-6 mx-auto text-accent mb-1" />
+                <div className="px-4 py-2 bg-accent/10 border border-accent/30 rounded-lg text-center">
+                  <Globe className="size-5 mx-auto text-accent mb-1" />
                   <p className="text-xs font-medium">API-Football</p>
                   <p className="text-[10px] text-muted-foreground">Harici API</p>
                 </div>
@@ -8468,17 +8522,17 @@ function ServiceBlock({ service, onAction, actionLoading, large }: ServiceBlockP
   };
 
   return (
-    <div className={`relative ${large ? 'px-8 py-4' : 'px-6 py-3'} rounded-lg border-2 ${getStatusColor(service.status)} transition-all`}>
+    <div className={`relative ${large ? 'px-4 py-3' : 'px-3 py-2'} rounded-lg border-2 ${getStatusColor(service.status)} transition-all flex-shrink-0`}>
       <div className={`absolute -top-1.5 -right-1.5 w-3 h-3 rounded-full ${getIndicatorColor(service.status)}`} />
       <div className="text-center">
-        {service.id === 'backend' && <Server className={`${large ? 'size-8' : 'size-6'} mx-auto mb-1`} />}
-        {service.id === 'expo' && <Smartphone className={`${large ? 'size-8' : 'size-6'} mx-auto mb-1`} />}
-        {service.id === 'website' && <Monitor className={`${large ? 'size-8' : 'size-6'} mx-auto mb-1`} />}
-        {service.id === 'supabase' && <Database className={`${large ? 'size-8' : 'size-6'} mx-auto mb-1`} />}
-        {service.id === 'smartSync' && <RefreshCw className={`${large ? 'size-8' : 'size-6'} mx-auto mb-1`} />}
-        {service.id === 'cache' && <HardDrive className={`${large ? 'size-8' : 'size-6'} mx-auto mb-1`} />}
-        {service.id === 'monitoring' && <Activity className={`${large ? 'size-8' : 'size-6'} mx-auto mb-1`} />}
-        <p className={`${large ? 'text-sm' : 'text-xs'} font-medium`}>{service.name}</p>
+        {service.id === 'backend' && <Server className={`${large ? 'size-6' : 'size-5'} mx-auto mb-1`} />}
+        {service.id === 'expo' && <Smartphone className={`${large ? 'size-6' : 'size-5'} mx-auto mb-1`} />}
+        {service.id === 'website' && <Monitor className={`${large ? 'size-6' : 'size-5'} mx-auto mb-1`} />}
+        {service.id === 'supabase' && <Database className={`${large ? 'size-6' : 'size-5'} mx-auto mb-1`} />}
+        {service.id === 'smartSync' && <RefreshCw className={`${large ? 'size-6' : 'size-5'} mx-auto mb-1`} />}
+        {service.id === 'cache' && <HardDrive className={`${large ? 'size-6' : 'size-5'} mx-auto mb-1`} />}
+        {service.id === 'monitoring' && <Activity className={`${large ? 'size-6' : 'size-5'} mx-auto mb-1`} />}
+        <p className={`${large ? 'text-xs' : 'text-[10px]'} font-medium whitespace-nowrap`}>{service.name}</p>
         {service.port && (
           <p className="text-[10px] text-muted-foreground">:{service.port}</p>
         )}
@@ -8683,9 +8737,9 @@ function DataFlowHealthSection() {
   const totalFlows = dataFlows.length;
 
   return (
-    <Card>
+    <Card className="overflow-hidden">
       <CardHeader className="py-3">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <CardTitle className="text-lg flex items-center gap-2">
             <Database className="size-5" />
             Veri Akışı Sağlığı
@@ -8709,74 +8763,60 @@ function DataFlowHealthSection() {
           Veritabanı, web ve mobil arasındaki veri akışını izleyin
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="space-y-4 overflow-hidden">
         {/* Data Flow Diagram */}
-        <div className="relative bg-muted/20 rounded-lg p-6 overflow-x-auto">
-          <div className="flex items-center justify-center gap-4 min-w-[700px]">
+        <div className="relative bg-muted/20 rounded-lg p-4 overflow-hidden">
+          <div className="flex flex-wrap items-center justify-center gap-2">
             {/* Mobile */}
-            <div className={`p-4 rounded-lg border-2 ${dataFlows.find(f => f.id === 'mobile-db')?.status === 'healthy' ? 'border-green-500 bg-green-500/10' : dataFlows.find(f => f.id === 'mobile-db')?.status === 'error' ? 'border-red-500 bg-red-500/10' : 'border-yellow-500 bg-yellow-500/10'}`}>
-              <Smartphone className="size-8 mx-auto mb-2" />
-              <p className="text-sm font-medium text-center">Mobil</p>
-              <p className="text-xs text-muted-foreground text-center">Expo App</p>
+            <div className={`p-3 rounded-lg border-2 flex-shrink-0 ${dataFlows.find(f => f.id === 'mobile-db')?.status === 'healthy' ? 'border-green-500 bg-green-500/10' : dataFlows.find(f => f.id === 'mobile-db')?.status === 'error' ? 'border-red-500 bg-red-500/10' : 'border-yellow-500 bg-yellow-500/10'}`}>
+              <Smartphone className="size-6 mx-auto mb-1" />
+              <p className="text-xs font-medium text-center">Mobil</p>
             </div>
 
             {/* Arrow Mobile → DB */}
-            <div className="flex flex-col items-center">
-              <div className={`flex items-center gap-1 ${dataFlows.find(f => f.id === 'mobile-db')?.status === 'healthy' ? 'text-green-500' : 'text-yellow-500'}`}>
-                <div className="w-8 h-0.5 bg-current" />
-                <ChevronRight className="size-4" />
+            <div className="flex flex-col items-center flex-shrink-0">
+              <div className={`flex items-center ${dataFlows.find(f => f.id === 'mobile-db')?.status === 'healthy' ? 'text-green-500' : 'text-yellow-500'}`}>
+                <div className="w-4 h-0.5 bg-current" />
+                <ChevronRight className="size-3" />
               </div>
-              <div className={`flex items-center gap-1 mt-1 ${dataFlows.find(f => f.id === 'db-mobile')?.status === 'healthy' ? 'text-green-500' : 'text-yellow-500'}`}>
-                <ChevronRight className="size-4 rotate-180" />
-                <div className="w-8 h-0.5 bg-current" />
-              </div>
-              <p className="text-[10px] text-muted-foreground mt-1">
+              <p className="text-[9px] text-muted-foreground">
                 {dataFlows.find(f => f.id === 'mobile-db')?.latency || '?'}ms
               </p>
             </div>
 
             {/* Supabase */}
-            <div className={`p-6 rounded-lg border-2 ${dataFlows.filter(f => f.status === 'healthy').length > 4 ? 'border-green-500 bg-green-500/10' : 'border-yellow-500 bg-yellow-500/10'}`}>
-              <Database className="size-12 mx-auto mb-2" />
-              <p className="text-lg font-bold text-center">Supabase</p>
-              <p className="text-xs text-muted-foreground text-center">PostgreSQL + Realtime</p>
+            <div className={`p-3 rounded-lg border-2 flex-shrink-0 ${dataFlows.filter(f => f.status === 'healthy').length > 4 ? 'border-green-500 bg-green-500/10' : 'border-yellow-500 bg-yellow-500/10'}`}>
+              <Database className="size-6 mx-auto mb-1" />
+              <p className="text-xs font-bold text-center">Supabase</p>
               {dbStats && (
-                <div className="mt-2 text-center space-y-1">
-                  <p className="text-[10px] text-muted-foreground">{dbStats.totalUsers} kullanıcı</p>
-                  <p className="text-[10px] text-muted-foreground">{dbStats.totalPredictions} tahmin</p>
-                </div>
+                <p className="text-[9px] text-muted-foreground text-center">{dbStats.totalUsers} kullanıcı</p>
               )}
             </div>
 
             {/* Arrow DB → Web */}
-            <div className="flex flex-col items-center">
-              <div className={`flex items-center gap-1 ${dataFlows.find(f => f.id === 'db-web')?.status === 'healthy' ? 'text-green-500' : 'text-yellow-500'}`}>
-                <div className="w-8 h-0.5 bg-current" />
-                <ChevronRight className="size-4" />
+            <div className="flex flex-col items-center flex-shrink-0">
+              <div className={`flex items-center ${dataFlows.find(f => f.id === 'db-web')?.status === 'healthy' ? 'text-green-500' : 'text-yellow-500'}`}>
+                <div className="w-4 h-0.5 bg-current" />
+                <ChevronRight className="size-3" />
               </div>
-              <div className={`flex items-center gap-1 mt-1 ${dataFlows.find(f => f.id === 'web-db')?.status === 'healthy' ? 'text-green-500' : 'text-yellow-500'}`}>
-                <ChevronRight className="size-4 rotate-180" />
-                <div className="w-8 h-0.5 bg-current" />
-              </div>
-              <p className="text-[10px] text-muted-foreground mt-1">
+              <p className="text-[9px] text-muted-foreground">
                 {dataFlows.find(f => f.id === 'web-db')?.latency || '?'}ms
               </p>
             </div>
 
             {/* Web */}
-            <div className={`p-4 rounded-lg border-2 ${dataFlows.find(f => f.id === 'web-db')?.status === 'healthy' ? 'border-green-500 bg-green-500/10' : dataFlows.find(f => f.id === 'web-db')?.status === 'error' ? 'border-red-500 bg-red-500/10' : 'border-yellow-500 bg-yellow-500/10'}`}>
-              <Monitor className="size-8 mx-auto mb-2" />
-              <p className="text-sm font-medium text-center">Web</p>
-              <p className="text-xs text-muted-foreground text-center">Next.js</p>
+            <div className={`p-3 rounded-lg border-2 flex-shrink-0 ${dataFlows.find(f => f.id === 'web-db')?.status === 'healthy' ? 'border-green-500 bg-green-500/10' : dataFlows.find(f => f.id === 'web-db')?.status === 'error' ? 'border-red-500 bg-red-500/10' : 'border-yellow-500 bg-yellow-500/10'}`}>
+              <Monitor className="size-6 mx-auto mb-1" />
+              <p className="text-xs font-medium text-center">Web</p>
             </div>
           </div>
 
           {/* API-Football Connection */}
-          <div className="flex justify-center mt-4">
+          <div className="flex justify-center mt-3">
             <div className="flex items-center gap-2">
-              <Globe className="size-6 text-accent" />
-              <div className={`flex items-center gap-1 ${dataFlows.find(f => f.id === 'api-db')?.status === 'healthy' ? 'text-green-500' : 'text-yellow-500'}`}>
-                <div className="w-12 h-0.5 bg-current" />
+              <Globe className="size-5 text-accent" />
+              <div className={`flex items-center ${dataFlows.find(f => f.id === 'api-db')?.status === 'healthy' ? 'text-green-500' : 'text-yellow-500'}`}>
+                <div className="w-6 h-0.5 bg-current" />
                 <ChevronRight className="size-4" />
               </div>
               <Database className="size-6" />
