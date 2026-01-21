@@ -344,7 +344,11 @@ export function LegalDocumentsModal({ open, onOpenChange, documentId }: LegalDoc
                       <div className="text-primary">{doc.icon}</div>
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm">
-                          {LEGAL_DOC_KEYS[doc.id] ? t(LEGAL_DOC_KEYS[doc.id].titleKey) : doc.title}
+                          {LEGAL_DOC_KEYS[doc.id] 
+                            ? (t(LEGAL_DOC_KEYS[doc.id].titleKey) !== LEGAL_DOC_KEYS[doc.id].titleKey
+                                ? t(LEGAL_DOC_KEYS[doc.id].titleKey)
+                                : doc.title)
+                            : doc.title}
                         </p>
                         <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{doc.description}</p>
                       </div>
