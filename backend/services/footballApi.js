@@ -380,6 +380,42 @@ async function getTeamUpcomingMatches(teamId, limit = 10) {
   return data;
 }
 
+// Get team squad (players)
+async function getTeamSquad(teamId, season = 2024) {
+  return makeRequest('/players/squads', { team: teamId }, `team-squad-${teamId}-${season}`, 86400); // 24 hour cache
+}
+
+// Get team seasons (available seasons for a team)
+async function getTeamSeasons(teamId) {
+  return makeRequest('/teams/seasons', { team: teamId }, `team-seasons-${teamId}`, 86400); // 24 hour cache
+}
+
+// Get countries (for national teams - includes flag information)
+async function getCountries() {
+  return makeRequest('/countries', {}, 'countries-all', 86400); // 24 hour cache
+}
+
+// Extract team colors from API response (kit colors)
+function extractTeamColors(teamData) {
+  if (!teamData || !teamData.team) return null;
+  
+  // API-Football provides kit colors in team.colors or team.team.colors
+  const colors = teamData.team.colors || teamData.colors;
+  if (colors && colors.primary && colors.secondary) {
+    return [colors.primary, colors.secondary];
+  }
+  
+  // Fallback: Try to extract from logo or other sources
+  // API-Football v3 doesn't directly provide kit colors, so we might need to use a mapping
+  return null;
+}
+
+// Extract country flag from API response (national teams)
+function extractCountryFlag(countryData) {
+  if (!countryData || !countryData.flag) return null;
+  return countryData.flag; // Returns flag emoji or URL
+}
+
 // ====================
 // CACHE MANAGEMENT
 // ====================
@@ -421,6 +457,11 @@ module.exports = {
   getLeagues,
   getTeamLastMatches,
   getTeamUpcomingMatches,
+  getTeamSquad,
+  getTeamSeasons,
+  getCountries,
+  extractTeamColors,
+  extractCountryFlag,
   getCacheStats,
   clearCache,
 };

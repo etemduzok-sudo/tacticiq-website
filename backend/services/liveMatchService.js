@@ -17,7 +17,7 @@ const supabase = createClient(
 // CONFIGURATION
 // ============================================
 
-const POLLING_INTERVAL = 10000; // 10 seconds
+const POLLING_INTERVAL = 12000; // 12 seconds (günde 7400 defa = 86400 / 12)
 const FINALIZATION_DELAY = 60000; // 1 minute after match ends
 
 let pollingTimer = null;

@@ -45,17 +45,26 @@ class DatabaseService {
     if (!this.enabled) return null;
 
     try {
+      const team = teamData.team || teamData;
+      
+      // Extract colors and flag from team data if available
+      const colors = teamData.colors || team.colors || null;
+      const flag = teamData.flag || team.flag || null;
+      
       const { data, error } = await supabase
         .from('teams')
         .upsert({
-          id: teamData.team.id,
-          name: teamData.team.name,
-          code: teamData.team.code,
-          country: teamData.team.country,
-          logo: teamData.team.logo,
-          founded: teamData.team.founded,
+          id: team.id,
+          name: team.name,
+          code: team.code,
+          country: team.country,
+          logo: team.logo,
+          founded: team.founded,
           venue_name: teamData.venue?.name,
           venue_capacity: teamData.venue?.capacity,
+          colors: colors ? JSON.stringify(colors) : null, // Store as JSON array
+          flag: flag || null, // Store flag emoji or URL
+          national: team.national || false,
         }, { onConflict: 'id' });
 
       if (error) throw error;
