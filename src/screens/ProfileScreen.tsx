@@ -40,11 +40,6 @@ import { containerStyles } from '../utils/styleHelpers';
 // Theme colors (Dark mode - mobil varsayılan olarak dark mode kullanıyor)
 const theme = COLORS.dark;
 
-// Helper: StyleSheet için theme-aware styles
-const createStyles = () => {
-  const theme = COLORS.dark;
-  return StyleSheet.create({
-
 interface ProfileScreenProps {
   onBack: () => void;
   onSettings: () => void;
@@ -105,6 +100,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     level: 1,
     points: 0,
     countryRank: 0,
+    globalRank: 0,
     totalPlayers: 0,
     country: 'Türkiye',
     avgMatchRating: 0,
@@ -222,6 +218,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             level: unifiedProfile.level || 1,
             points: unifiedProfile.totalPoints || 0,
             countryRank: unifiedProfile.countryRank || 0,
+            globalRank: unifiedProfile.globalRank || 0,
             totalPlayers: 5000, // TODO: Backend'den çekilecek
             country: unifiedProfile.country === 'TR' ? 'Türkiye' : unifiedProfile.country || 'Türkiye',
             avgMatchRating: (unifiedProfile.accuracy || 0) / 10,
@@ -673,20 +670,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
   return (
     <ScreenLayout safeArea={true} scrollable={false}>
-      <StandardHeader
-        title={t('profile.title')}
-        onBack={onBack}
-        rightAction={{
-          icon: 'settings-outline',
-          onPress: () => {
-            // Ayarlar artık ProfileScreen içinde - sadece scroll yap
-            // veya modal açılabilir (web'de Sheet olarak açılıyor)
-            // Şimdilik scroll yap (sonra modal eklenebilir)
-            Alert.alert('Ayarlar', 'Ayarlar bölümüne scroll yapın');
-          },
-        }}
-      />
-
+      {/* Header kaldırıldı - footer navigation kullanılacak */}
+      
       <View style={styles.container}>
         {/* 🏆 TAB NAVIGATION */}
         <View style={styles.tabContainer}>
@@ -733,26 +718,44 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* Profile Header Card */}
+          {/* Profile Header Card - Web ile uyumlu profesyonel tasarım */}
           <Animated.View
             entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(0)}
             style={styles.profileHeaderCard}
           >
+            {/* Gradient Background Banner - Web ile aynı */}
             <LinearGradient
-              colors={[theme.primary + '20', 'transparent']} // 20% opacity
-              style={styles.profileGradient}
-            >
+              colors={[
+                theme.secondary + '33',  // secondary/20 opacity (20%)
+                theme.accent + '1A',      // accent/10 opacity (10%)
+                theme.secondary + '33',  // secondary/20 opacity (20%)
+              ]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.profileHeaderBanner}
+            />
+            
+            <View style={styles.profileHeaderContent}>
               {/* Avatar */}
               <View style={styles.avatarSection}>
                 <TouchableOpacity
                   onPress={() => setShowAvatarPicker(true)}
                   style={styles.avatarContainer}
                 >
-                  <View style={[styles.avatar, { borderColor: theme.primary }]}>
+                  <View style={[styles.avatar, { borderColor: theme.card, borderWidth: 4 }, SHADOWS.lg]}>
                     {user.avatar ? (
                       <Image source={{ uri: user.avatar }} style={styles.avatarImage} />
                     ) : (
-                      <Text style={styles.avatarText}>{user.name.charAt(0)}</Text>
+                      <LinearGradient
+                        colors={[theme.secondary, theme.accent]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles.avatarGradient}
+                      >
+                        <Text style={styles.avatarText}>
+                          {user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                        </Text>
+                      </LinearGradient>
                     )}
                   </View>
                   <View style={[styles.cameraButton, { backgroundColor: theme.primary }]}>
@@ -760,50 +763,118 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   </View>
                 </TouchableOpacity>
 
-                {/* Name & Username */}
-                <Text style={styles.name}>{user.name}</Text>
-                <Text style={styles.username}>{user.username}</Text>
+                {/* Name & Plan Badge - Web ile aynı */}
+                <View style={styles.nameBadgeRow}>
+                  <Text style={styles.name}>{user.name || user.email}</Text>
+                  {isPro ? (
+                    <LinearGradient
+                      colors={['#F59E0B', '#FCD34D']} // amber-500 to yellow-400
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.proBadge}
+                    >
+                      <Ionicons name="star" size={12} color="#000" />
+                      <Text style={styles.proBadgeText}>PRO</Text>
+                    </LinearGradient>
+                  ) : (
+                    <View style={styles.freeBadge}>
+                      <Text style={styles.freeBadgeText}>Free</Text>
+                    </View>
+                  )}
+                </View>
+                <Text style={styles.emailText}>{user.email}</Text>
 
-                {/* Plan Badge */}
-                {isPro ? (
-                  <LinearGradient
-                    colors={[theme.accent, theme.accent + 'CC']} // Accent rengi + opacity
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.proBadge}
-                  >
-                    <Text style={styles.crownEmoji}>👑</Text>
-                    <Text style={styles.proBadgeText}>PRO</Text>
-                  </LinearGradient>
-                ) : (
-                  <View style={styles.freeBadge}>
-                    <Text style={styles.freeBadgeText}>Free</Text>
+                {/* Ranking Cards - Tek kolonlu mobile uyumlu tasarım */}
+                <View style={styles.rankingCardsContainer}>
+                  {/* Ülke */}
+                  <View style={styles.rankingCard_mobile}>
+                    <View style={styles.rankingCard_header}>
+                      <Ionicons name="flag" size={20} color={theme.mutedForeground} />
+                      <Text style={styles.rankingCard_title}>Ülke</Text>
+                    </View>
+                    <View style={styles.rankingCard_content}>
+                      <Text style={styles.flagEmoji}>🇹🇷</Text>
+                      <Text style={styles.rankingCountryText}>TR Türkiye</Text>
+                    </View>
                   </View>
-                )}
 
-                {/* Level, Points & Badges */}
-                <View style={styles.levelPointsContainer}>
-                  <View style={styles.statBox}>
-                    <Text style={styles.statLabel}>Level</Text>
-                    <Text style={styles.statValueGreen}>{user.level}</Text>
+                  {/* Türkiye Sırası */}
+                  <View style={styles.rankingCard_mobile}>
+                    <View style={styles.rankingCard_header}>
+                      <Ionicons name="trophy" size={20} color={theme.secondary} />
+                      <Text style={styles.rankingCard_title}>Türkiye Sırası</Text>
+                    </View>
+                    {user.countryRank > 0 ? (
+                      <View style={styles.rankingCard_content}>
+                        <View style={styles.rankingBadge}>
+                          <Text style={styles.rankingBadgeText}>
+                            {calculateTopPercent(user.countryRank, user.totalPlayers || 5000)}
+                          </Text>
+                        </View>
+                        <Text style={styles.rankingSubtext}>
+                          {user.countryRank.toLocaleString()} / {(user.totalPlayers || 5000).toLocaleString()}
+                        </Text>
+                      </View>
+                    ) : (
+                      <View style={styles.rankingCard_content}>
+                        <View style={styles.rankingBadgeEmpty}>
+                          <Text style={styles.rankingBadgeEmptyText}>Sıralama Yok</Text>
+                        </View>
+                        <Text style={styles.rankingSubtext}>Tahmin yaparak sıralamaya gir</Text>
+                      </View>
+                    )}
                   </View>
-                  <View style={styles.divider} />
-                  <View style={styles.statBox}>
-                    <Text style={styles.statLabel}>Badges</Text>
-                    <Text style={styles.statValueGold}>{badgeCount}</Text>
-                  </View>
-                  <View style={styles.divider} />
-                  <View style={styles.statBox}>
-                    <Text style={styles.statLabel}>Points</Text>
-                    <Text style={styles.statValue}>{user.points.toLocaleString()}</Text>
+
+                  {/* Dünya Sırası */}
+                  <View style={styles.rankingCard_mobile}>
+                    <View style={styles.rankingCard_header}>
+                      <Ionicons name="globe" size={20} color={theme.primary} />
+                      <Text style={styles.rankingCard_title}>Dünya Sırası</Text>
+                    </View>
+                    {user.globalRank > 0 ? (
+                      <View style={styles.rankingCard_content}>
+                        <View style={[styles.rankingBadge, { backgroundColor: theme.primary + '33' }]}>
+                          <Text style={[styles.rankingBadgeText, { color: theme.primary }]}>
+                            {calculateTopPercent(user.globalRank, 50000)}
+                          </Text>
+                        </View>
+                        <Text style={styles.rankingSubtext}>
+                          {user.globalRank.toLocaleString()} / 50,000
+                        </Text>
+                      </View>
+                    ) : (
+                      <View style={styles.rankingCard_content}>
+                        <View style={styles.rankingBadgeEmpty}>
+                          <Text style={styles.rankingBadgeEmptyText}>Sıralama Yok</Text>
+                        </View>
+                        <Text style={styles.rankingSubtext}>Tahmin yaparak sıralamaya gir</Text>
+                      </View>
+                    )}
                   </View>
                 </View>
               </View>
-            </LinearGradient>
+            </View>
+          </Animated.View>
+
+          {/* Achievements Card - Web ile aynı stil */}
+          <Animated.View entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(100)} style={styles.card}>
+            <View style={styles.cardHeader}>
+              <Ionicons name="star" size={20} color={theme.accent} />
+              <Text style={styles.cardTitle}>Başarımlar</Text>
+            </View>
+            <View style={styles.achievementsGrid}>
+              {achievements.map((achievement) => (
+                <View key={achievement.id} style={styles.achievementCard}>
+                  <Text style={styles.achievementIcon}>{achievement.icon}</Text>
+                  <Text style={styles.achievementName}>{achievement.name}</Text>
+                  <Text style={styles.achievementDescription}>{achievement.description}</Text>
+                </View>
+              ))}
+            </View>
           </Animated.View>
 
           {/* Performance Card */}
-          <Animated.View entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(100)} style={styles.card}>
+          <Animated.View entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(150)} style={styles.card}>
             <View style={styles.cardHeader}>
               <Ionicons name="trending-up" size={20} color={theme.primary} />
               <Text style={styles.cardTitle}>Performance</Text>
@@ -1679,6 +1750,29 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             </View>
           </View>
         </Modal>
+
+        {/* Footer Navigation - 4 Sekmeli */}
+        <View style={styles.footerNavigation}>
+          <TouchableOpacity style={styles.footerTab} onPress={() => Alert.alert('Ana Sayfa', 'Ana sayfaya yönlendiriliyorsunuz')}>
+            <Ionicons name="home" size={24} color={theme.mutedForeground} />
+            <Text style={styles.footerTabText}>Ana Sf</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity style={styles.footerTab} onPress={() => Alert.alert('Canlı Maçlar', 'Canlı maçlara yönlendiriliyorsunuz')}>
+            <Ionicons name="tennisball" size={24} color={theme.mutedForeground} />
+            <Text style={styles.footerTabText}>Canlı</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity style={styles.footerTab} onPress={() => Alert.alert('Özet', 'Özet sayfasına yönlendiriliyorsunuz')}>
+            <Ionicons name="stats-chart" size={24} color={theme.mutedForeground} />
+            <Text style={styles.footerTabText}>Özet</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity style={[styles.footerTab, styles.footerTabActive]}>
+            <Ionicons name="person" size={24} color={theme.primary} />
+            <Text style={[styles.footerTabText, styles.footerTabTextActive]}>Profil</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </ScreenLayout>
   );
@@ -1698,44 +1792,59 @@ const createStyles = () => {
   },
   scrollContent: {
     paddingHorizontal: 16, // ✅ Yatay padding (24 → 16, standart)
-    paddingTop: 0, // ✅ Üst padding yok (tab marginBottom zaten var)
-    paddingBottom: 96,
+    paddingTop: SPACING.base, // ✅ Header kaldırıldığı için üst padding ekle
+    paddingBottom: 96 + SIZES.tabBarHeight, // Footer navigation için extra padding
   },
 
-  // Profile Header Card
+  // Profile Header Card - Web ile uyumlu
   profileHeaderCard: {
+    backgroundColor: theme.card,
     borderRadius: SIZES.radiusXl,
     borderWidth: 1,
-    borderColor: theme.primary + '30', // 30% opacity
-    marginBottom: SPACING.base, // ✅ Alt boşluk (standart: 24 → 16)
+    borderColor: theme.border,
+    marginBottom: SPACING.base,
     overflow: 'hidden',
   },
-  profileGradient: {
-    padding: SPACING.lg,
+  profileHeaderBanner: {
+    height: 80,
+    width: '100%',
+  },
+  profileHeaderContent: {
+    paddingTop: 0,
+    paddingHorizontal: SPACING.lg,
+    paddingBottom: SPACING.lg,
   },
   avatarSection: {
     alignItems: 'center',
+    marginTop: -48, // Avatar banner üzerine çıkıyor
   },
   avatarContainer: {
     position: 'relative',
     marginBottom: 16,
   },
   avatar: {
-    width: 96,
-    height: 96,
-    borderRadius: SIZES.radiusFull / 2,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     borderWidth: 4,
-    backgroundColor: theme.primary, // Will be overridden by inline style
+    backgroundColor: theme.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  avatarGradient: {
+    width: '100%',
+    height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarImage: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
   },
   avatarText: {
-    fontSize: 36,
+    fontSize: 24,
     color: '#FFFFFF',
     fontWeight: 'bold',
   },
@@ -1749,16 +1858,21 @@ const createStyles = () => {
     alignItems: 'center',
     justifyContent: 'center',
   },
-  name: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginTop: 16,
+  nameBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    marginTop: SPACING.base,
   },
-  username: {
-    fontSize: 14,
-    color: '#9CA3AF',
-    marginTop: 4,
+  name: {
+    ...TYPOGRAPHY.xl,
+    fontWeight: TYPOGRAPHY.bold,
+    color: theme.cardForeground,
+  },
+  emailText: {
+    ...TYPOGRAPHY.bodySmall,
+    color: theme.mutedForeground,
+    marginTop: SPACING.xs,
   },
 
   // Badges
@@ -1768,28 +1882,128 @@ const createStyles = () => {
   proBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 20,
-    marginTop: 12,
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
   proBadgeText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
+    ...TYPOGRAPHY.bodySmall,
+    fontWeight: TYPOGRAPHY.bold,
+    color: '#000000', // Web ile aynı (black text)
   },
   freeBadge: {
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    marginTop: 12,
+    borderColor: theme.border,
+    backgroundColor: 'transparent',
   },
   freeBadgeText: {
-    color: '#9CA3AF',
-    fontWeight: '600',
+    ...TYPOGRAPHY.bodySmall,
+    fontWeight: TYPOGRAPHY.semibold,
+    color: theme.mutedForeground,
+  },
+
+  // Ranking Cards - Mobile uyumlu tek kolonlu tasarım
+  rankingCardsContainer: {
+    width: '100%',
+    marginTop: SPACING.lg,
+    gap: SPACING.md,
+  },
+  rankingCard_mobile: {
+    backgroundColor: theme.card + '80', // 50% opacity
+    borderWidth: 1,
+    borderColor: theme.border,
+    borderRadius: SIZES.radiusMd,
+    padding: SPACING.base,
+  },
+  rankingCard_header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    marginBottom: SPACING.sm,
+    paddingBottom: SPACING.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.border,
+  },
+  rankingCard_title: {
+    ...TYPOGRAPHY.body,
+    fontWeight: TYPOGRAPHY.semibold,
+    color: theme.cardForeground,
+  },
+  rankingCard_content: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: SPACING.md,
+  },
+  flagEmoji: {
+    fontSize: 20,
+  },
+  rankingCountryText: {
+    ...TYPOGRAPHY.bodySmall,
+    fontWeight: TYPOGRAPHY.semibold,
+    color: theme.cardForeground,
+  },
+  rankingBadge: {
+    backgroundColor: theme.secondary + '33', // 20% opacity
+    borderWidth: 1,
+    borderColor: theme.secondary + '4D', // 30% opacity
+    borderRadius: SIZES.radiusSm,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+  },
+  rankingBadgeText: {
+    ...TYPOGRAPHY.bodySmall,
+    fontWeight: TYPOGRAPHY.bold,
+    color: theme.secondary,
+  },
+  rankingBadgeEmpty: {
+    borderWidth: 1,
+    borderColor: theme.border,
+    borderRadius: SIZES.radiusSm,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+  },
+  rankingBadgeEmptyText: {
+    ...TYPOGRAPHY.bodySmall,
+    fontWeight: TYPOGRAPHY.medium,
+    color: theme.mutedForeground,
+  },
+
+  // Achievements Grid - Web ile aynı stil
+  achievementsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: SPACING.md,
+  },
+  achievementCard: {
+    flex: 1,
+    minWidth: '30%',
+    alignItems: 'center',
+    padding: SPACING.base,
+    backgroundColor: theme.accent + '1A', // 10% opacity
+    borderWidth: 1,
+    borderColor: theme.accent + '33', // 20% opacity
+    borderRadius: SIZES.radiusMd,
+  },
+  achievementIcon: {
+    fontSize: 32,
+    marginBottom: SPACING.sm,
+  },
+  achievementName: {
+    ...TYPOGRAPHY.bodySmall,
+    fontWeight: TYPOGRAPHY.semibold,
+    color: theme.cardForeground,
+    marginBottom: SPACING.xs,
+    textAlign: 'center',
+  },
+  achievementDescription: {
+    ...TYPOGRAPHY.bodySmall,
+    color: theme.mutedForeground,
+    textAlign: 'center',
   },
 
   // Level & Points
@@ -1896,9 +2110,10 @@ const createStyles = () => {
     marginBottom: 12,
   },
   rankingSubtext: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    marginBottom: 4,
+    ...TYPOGRAPHY.bodySmall,
+    color: theme.mutedForeground,
+    marginTop: SPACING.xs,
+    textAlign: 'center',
   },
   rankingRank: {
     ...TYPOGRAPHY.xl,
@@ -2320,6 +2535,35 @@ const createStyles = () => {
   modalOptionTextDanger: {
     color: '#EF4444',
   },
+
+  // Footer Navigation - 4 Sekmeli
+  footerNavigation: {
+    flexDirection: 'row',
+    height: SIZES.tabBarHeight,
+    backgroundColor: theme.card,
+    borderTopWidth: 1,
+    borderTopColor: theme.border,
+    ...SHADOWS.lg,
+  },
+  footerTab: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: SPACING.xs,
+  },
+  footerTabActive: {
+    borderTopWidth: 2,
+    borderTopColor: theme.primary,
+  },
+  footerTabText: {
+    ...TYPOGRAPHY.bodySmall,
+    color: theme.mutedForeground,
+  },
+  footerTabTextActive: {
+    ...TYPOGRAPHY.bodySmall,
+    fontWeight: TYPOGRAPHY.semibold,
+    color: theme.primary,
+  },
   
   // Loading State
   loadingContainer: {
@@ -2422,50 +2666,52 @@ const createStyles = () => {
   // 🏆 TAB NAVIGATION STYLES
   tabContainer: {
     flexDirection: 'row',
-    backgroundColor: '#1E293B',
-    borderRadius: 12,
+    backgroundColor: theme.muted,
+    borderRadius: SIZES.radiusMd,
     padding: 4,
-    marginHorizontal: 16,
-    marginTop: 16, // ✅ Header altı boşluk (standart)
-    marginBottom: 16, // ✅ Tab altı boşluk (standart: 8 → 16)
+    marginHorizontal: 0, // Header kaldırıldığı için margin yok
+    marginTop: 0, // ScrollContent'te padding var
+    marginBottom: 16,
+    gap: 4,
   },
   tab: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    borderRadius: 8,
+    gap: SPACING.sm,
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.md,
+    borderRadius: SIZES.radiusSm,
     position: 'relative',
   },
   tabActive: {
-    backgroundColor: '#0F172A',
+    backgroundColor: theme.card,
+    ...SHADOWS.sm,
   },
   tabText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#64748B',
+    ...TYPOGRAPHY.body,
+    fontWeight: TYPOGRAPHY.medium,
+    color: theme.mutedForeground,
   },
   tabTextActive: {
-    color: '#FFFFFF',
+    color: theme.foreground,
+    fontWeight: TYPOGRAPHY.medium,
   },
   badgeCountBubble: {
-    position: 'absolute',
-    top: 6,
-    right: 20,
-    backgroundColor: '#F59E0B',
+    backgroundColor: theme.accent,
     borderRadius: 10,
     minWidth: 20,
     height: 20,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 6,
+    marginLeft: 4,
   },
   badgeCountText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#FFFFFF',
+    ...TYPOGRAPHY.bodySmall,
+    fontWeight: TYPOGRAPHY.bold,
+    color: theme.accentForeground,
   },
   statValueGold: {
     fontSize: 24,
