@@ -1,0 +1,39 @@
+---
+description: Vercel deployment rules for TacticIQ project
+globs: 
+  - website/**
+  - "*.vercel*"
+alwaysApply: true
+---
+
+# Vercel Deployment Rules
+
+## CRITICAL: Never use `vercel deploy` command
+
+The TacticIQ website is deployed via **Git push only**. 
+
+### Correct Deployment Method:
+```bash
+git add -A
+git commit -m "Your commit message"
+git push origin main
+```
+
+This triggers automatic deployment on the `tacticiq-website` Vercel project.
+
+### NEVER DO:
+- `vercel --prod`
+- `vercel deploy`
+- Creating `.vercel` folder manually
+- Deploying from `website` folder directly
+
+### Why:
+- `vercel deploy` creates a separate project called "website"
+- The correct project is `tacticiq-website` which is connected to GitHub
+- Only git push triggers the correct deployment
+
+### Vercel Projects:
+- ✅ `tacticiq-website` - Correct (Git-connected, auto-deploy on push)
+- ❌ `website` - Wrong (manual deploy, do not use)
+
+If `.vercel` folder exists in `c:\TacticIQ\website\`, delete it immediately.

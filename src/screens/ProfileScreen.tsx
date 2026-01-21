@@ -830,9 +830,20 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               <View style={styles.rankingHeader}>
                 <View>
                   <Text style={styles.rankingSubtext}>{user.country} Sıralaması</Text>
-                  <Text style={styles.rankingRank}>
-                    #{user.countryRank.toLocaleString()}
-                  </Text>
+                  {user.countryRank > 0 ? (
+                    <>
+                      <Text style={styles.rankingRank}>
+                        #{user.countryRank.toLocaleString()}
+                      </Text>
+                      <View style={styles.topPercentBadge}>
+                        <Text style={styles.topPercentBadgeText}>
+                          {calculateTopPercent(user.countryRank, user.totalPlayers)}
+                        </Text>
+                      </View>
+                    </>
+                  ) : (
+                    <Text style={styles.rankingNoRank}>Sıralama Yok</Text>
+                  )}
                 </View>
                 <View style={styles.rankingRight}>
                   <Text style={styles.rankingSubtext}>Toplam Oyuncu</Text>
@@ -843,15 +854,23 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               </View>
 
               {/* Progress Bar */}
-              <View style={styles.progressBarContainer}>
-                <LinearGradient
-                  colors={['#059669', '#047857']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={[styles.progressBar, { width: `${rankPercentage}%` }]}
-                />
-              </View>
-              <Text style={styles.topPercentage}>Top {topPercentage}%</Text>
+              {user.countryRank > 0 && (
+                <View style={styles.progressBarContainer}>
+                  <LinearGradient
+                    colors={['#059669', '#047857']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={[styles.progressBar, { width: `${rankPercentage}%` }]}
+                  />
+                </View>
+              )}
+              {user.countryRank > 0 ? (
+                <Text style={styles.topPercentage}>
+                  {user.countryRank.toLocaleString()} / {user.totalPlayers.toLocaleString()} oyuncu
+                </Text>
+              ) : (
+                <Text style={styles.topPercentageHint}>Tahmin yaparak sıralamaya gir!</Text>
+              )}
             </View>
 
             {/* Additional Metrics */}
@@ -1503,6 +1522,31 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#9CA3AF',
     textAlign: 'center',
+  },
+  topPercentageHint: {
+    fontSize: 12,
+    color: '#64748B',
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  topPercentBadge: {
+    backgroundColor: 'rgba(5, 150, 105, 0.2)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginTop: 6,
+    alignSelf: 'flex-start',
+  },
+  topPercentBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#059669',
+  },
+  rankingNoRank: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#64748B',
+    marginTop: 4,
   },
 
   // Metrics
