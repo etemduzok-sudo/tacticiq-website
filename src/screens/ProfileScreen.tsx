@@ -33,7 +33,7 @@ import { logger } from '../utils/logger';
 import { profileService } from '../services/profileService';
 import { calculateTopPercent } from '../types/profile.types';
 import { teamsApi } from '../services/api';
-import { SPACING, TYPOGRAPHY, BRAND, DARK_MODE, COLORS, SIZES } from '../theme/theme';
+import { SPACING, TYPOGRAPHY, BRAND, DARK_MODE, COLORS, SIZES, SHADOWS } from '../theme/theme';
 import { StandardHeader, ScreenLayout } from '../components/layouts';
 import { containerStyles } from '../utils/styleHelpers';
 
@@ -66,6 +66,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isPro, setIsPro] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  
+  // 📝 PROFILE EDITING STATE
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [nickname, setNickname] = useState('');
   
   // 🏆 BADGE SYSTEM STATE
   const [activeTab, setActiveTab] = useState<'profile' | 'badges'>(initialTab);
@@ -201,8 +208,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           logger.info('Unified profile loaded', { id: unifiedProfile.id, plan: unifiedProfile.plan }, 'PROFILE');
           
           // Unified profile'dan verileri state'e aktar
+          const fullName = unifiedProfile.name || unifiedProfile.nickname || 'Kullanıcı';
+          const nameParts = fullName.split(' ');
+          setFirstName(nameParts[0] || '');
+          setLastName(nameParts.slice(1).join(' ') || '');
+          setNickname(unifiedProfile.nickname || nameParts[0] || '');
+          
           setUser({
-            name: unifiedProfile.name || unifiedProfile.nickname || 'Kullanıcı',
+            name: fullName,
             username: unifiedProfile.nickname ? `@${unifiedProfile.nickname}` : '@kullanici',
             email: unifiedProfile.email,
             avatar: unifiedProfile.avatar || '',
@@ -595,72 +608,47 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     }
   }, []);
 
-  // ✅ Takım seçildiğinde kaydet
+  // ✅ Takım seçildiğinde kaydet - Web ile senkronize (profileService kullan)
   const handleTeamSelect = useCallback(async (
     team: { id: number; name: string; colors: string[]; country: string; league: string },
     type: 'national' | 'club',
     index?: number
   ) => {
     try {
-      const currentTeamsStr = await AsyncStorage.getItem(STORAGE_KEYS.FAVORITE_TEAMS);
-      let allTeams = currentTeamsStr ? JSON.parse(currentTeamsStr) : [];
+      const currentProfile = await profileService.getProfile();
       
       if (type === 'national') {
+        // Milli takımı güncelle
         setSelectedNationalTeam(team);
-        // Milli takımı güncelle (varsa kaldır, yoksa ekle)
-        allTeams = allTeams.filter((t: any) => t.type !== 'national');
-        allTeams.push({
-          id: team.id,
-          name: team.name,
-          colors: team.colors,
-          country: team.country,
-          league: team.league,
-          type: 'national',
-        });
+        await profileService.updateNationalTeam(team.name);
+        
+        // Favorite teams'i güncelle (milli takım + kulüp takımları)
+        const clubTeamNames = selectedClubTeams.filter(Boolean).map(t => t!.name);
+        await profileService.updateFavoriteTeams([team.name, ...clubTeamNames]);
       } else if (type === 'club' && index !== undefined && index >= 0 && index < 5) {
+        // Kulüp takımını ekle/güncelle
         const newClubTeams = [...selectedClubTeams];
         newClubTeams[index] = team;
         setSelectedClubTeams(newClubTeams);
-        // Kulüp takımlarını güncelle (sadece kulüp takımlarını al, milli takımı koru)
-        const nationalTeam = allTeams.find((t: any) => t.type === 'national');
-        const existingClubTeams = allTeams.filter((t: any) => t.type === 'club');
-        // Seçilen index'teki takımı güncelle veya ekle
-        const existingIndex = existingClubTeams.findIndex((t: any, idx: number) => idx === index);
-        if (existingIndex >= 0) {
-          existingClubTeams[existingIndex] = {
-            id: team.id,
-            name: team.name,
-            colors: team.colors,
-            country: team.country,
-            league: team.league,
-            type: 'club',
-          };
-        } else {
-          existingClubTeams.push({
-            id: team.id,
-            name: team.name,
-            colors: team.colors,
-            country: team.country,
-            league: team.league,
-            type: 'club',
-          });
-        }
-        // Sadece ilk 5 kulüp takımını al
-        allTeams = nationalTeam ? [nationalTeam] : [];
-        allTeams.push(...existingClubTeams.slice(0, 5));
+        
+        // Favorite teams'i güncelle
+        const nationalTeamName = selectedNationalTeam?.name || currentProfile?.nationalTeam || '';
+        const clubTeamNames = newClubTeams.filter(Boolean).map(t => t!.name);
+        await profileService.updateFavoriteTeams([nationalTeamName, ...clubTeamNames].filter(Boolean));
+        await profileService.updateClubTeams(clubTeamNames);
       }
       
-      await AsyncStorage.setItem(STORAGE_KEYS.FAVORITE_TEAMS, JSON.stringify(allTeams));
       refetch();
-      console.log('✅ [PROFILE] Team selected and saved:', { type, index, team: team.name });
+      logger.info('Team selected and saved', { type, index, team: team.name }, 'PROFILE');
     } catch (error) {
-      console.error('❌ [PROFILE] Error saving team:', error);
+      logger.error('Error saving team', { error }, 'PROFILE');
+      Alert.alert('Hata', 'Takım kaydedilemedi');
     }
     
     setOpenDropdown(null);
     setSearchQuery('');
     setApiTeams([]);
-  }, [selectedClubTeams, refetch]);
+  }, [selectedClubTeams, selectedNationalTeam, refetch]);
 
   const achievements = [
     { id: 'winner', icon: '🏆', name: 'Winner', description: '10 doğru tahmin' },
@@ -690,7 +678,12 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         onBack={onBack}
         rightAction={{
           icon: 'settings-outline',
-          onPress: onSettings,
+          onPress: () => {
+            // Ayarlar artık ProfileScreen içinde - sadece scroll yap
+            // veya modal açılabilir (web'de Sheet olarak açılıyor)
+            // Şimdilik scroll yap (sonra modal eklenebilir)
+            Alert.alert('Ayarlar', 'Ayarlar bölümüne scroll yapın');
+          },
         }}
       />
 
@@ -705,7 +698,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             <Ionicons
               name="person"
               size={20}
-              color={activeTab === 'profile' ? '#059669' : '#64748B'}
+              color={activeTab === 'profile' ? theme.primary : theme.mutedForeground}
             />
             <Text style={[styles.tabText, activeTab === 'profile' && styles.tabTextActive]}>
               {t('profile.title')}
@@ -720,7 +713,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             <Ionicons
               name="trophy"
               size={20}
-              color={activeTab === 'badges' ? '#F59E0B' : '#64748B'}
+              color={activeTab === 'badges' ? theme.accent : theme.mutedForeground}
             />
             <Text style={[styles.tabText, activeTab === 'badges' && styles.tabTextActive]}>
               {t('badges.title')}
@@ -900,16 +893,181 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             </View>
           </Animated.View>
 
-          {/* Favorite Teams Card */}
+          {/* Favorite Teams Card - Web ile uyumlu, düzenlenebilir */}
           <Animated.View entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(200)} style={styles.card}>
             <View style={styles.cardHeader}>
               <Ionicons name="trophy" size={20} color={theme.primary} />
               <Text style={styles.cardTitle}>Favori Takımlar</Text>
+              {!isEditing && (
+                <TouchableOpacity 
+                  onPress={() => setIsEditing(true)}
+                  style={styles.editButton}
+                >
+                  <Ionicons name="create-outline" size={18} color={theme.primary} />
+                </TouchableOpacity>
+              )}
             </View>
 
-            <View style={styles.teamsSelectionContainer}>
-              {/* Milli takım önce, ardından kulüpler - sadece görüntüleme, dropdown yok */}
-              {selectedNationalTeam && (
+            {isEditing ? (
+              <View style={styles.teamsEditContainer}>
+                {/* Milli Takım Seçimi */}
+                <View style={styles.teamSelectSection}>
+                  <Text style={styles.teamSelectLabel}>Milli Takım *</Text>
+                  <TouchableOpacity
+                    style={styles.teamSelectButton}
+                    onPress={() => setOpenDropdown(openDropdown === 'national' ? null : 'national')}
+                  >
+                    <Text style={styles.teamSelectButtonText}>
+                      {selectedNationalTeam ? selectedNationalTeam.name : 'Milli takım seçin...'}
+                    </Text>
+                    <Ionicons name="chevron-down" size={20} color={theme.mutedForeground} />
+                  </TouchableOpacity>
+                  
+                  {openDropdown === 'national' && (
+                    <View style={styles.teamDropdown}>
+                      <TextInput
+                        style={styles.teamSearchInput}
+                        placeholder="Ara... (min 3 karakter)"
+                        value={searchQuery}
+                        onChangeText={(text) => {
+                          setSearchQuery(text);
+                          if (text.length >= 3) {
+                            searchTeamsFromBackend(text, 'national');
+                          } else {
+                            setApiTeams([]);
+                          }
+                        }}
+                        autoFocus
+                      />
+                      {isSearching && (
+                        <ActivityIndicator size="small" color={theme.primary} style={styles.searchLoading} />
+                      )}
+                      <ScrollView style={styles.teamDropdownList} nestedScrollEnabled>
+                        {apiTeams.map(team => (
+                          <TouchableOpacity
+                            key={team.id}
+                            style={styles.teamDropdownItem}
+                            onPress={() => {
+                              setSelectedNationalTeam(team);
+                              handleTeamSelect(team, 'national');
+                              setOpenDropdown(null);
+                              setSearchQuery('');
+                            }}
+                          >
+                            <Text style={styles.teamDropdownItemName}>{team.name}</Text>
+                            <Text style={styles.teamDropdownItemMeta}>{team.country}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    </View>
+                  )}
+                </View>
+
+                {/* Kulüp Takımları Seçimi (Sadece Pro) */}
+                {isPro && (
+                  <View style={styles.teamSelectSection}>
+                    <Text style={styles.teamSelectLabel}>Kulüp Takımları (Maksimum 5)</Text>
+                    {[0, 1, 2, 3, 4].map((idx) => (
+                      <View key={idx} style={styles.clubTeamRow}>
+                        <TouchableOpacity
+                          style={styles.teamSelectButton}
+                          onPress={() => {
+                            const key = `club${idx + 1}` as 'club1' | 'club2' | 'club3' | 'club4' | 'club5';
+                            setOpenDropdown(openDropdown === key ? null : key);
+                          }}
+                        >
+                          <Text style={styles.teamSelectButtonText}>
+                            {selectedClubTeams[idx] ? selectedClubTeams[idx]!.name : 'Kulüp takımı seçin...'}
+                          </Text>
+                          <Ionicons name="chevron-down" size={20} color={theme.mutedForeground} />
+                        </TouchableOpacity>
+                        {selectedClubTeams[idx] && (
+                          <TouchableOpacity
+                            onPress={() => {
+                              const newTeams = [...selectedClubTeams];
+                              newTeams[idx] = null;
+                              setSelectedClubTeams(newTeams);
+                              handleTeamSelect(selectedClubTeams[idx]!, 'club', idx);
+                            }}
+                            style={styles.removeTeamButton}
+                          >
+                            <Ionicons name="close-circle" size={20} color={theme.destructive} />
+                          </TouchableOpacity>
+                        )}
+                        
+                        {openDropdown === `club${idx + 1}` && (
+                          <View style={styles.teamDropdown}>
+                            <TextInput
+                              style={styles.teamSearchInput}
+                              placeholder="Ara... (min 3 karakter)"
+                              value={searchQuery}
+                              onChangeText={(text) => {
+                                setSearchQuery(text);
+                                if (text.length >= 3) {
+                                  searchTeamsFromBackend(text, 'club');
+                                } else {
+                                  setApiTeams([]);
+                                }
+                              }}
+                              autoFocus
+                            />
+                            {isSearching && (
+                              <ActivityIndicator size="small" color={theme.primary} style={styles.searchLoading} />
+                            )}
+                            <ScrollView style={styles.teamDropdownList} nestedScrollEnabled>
+                              {apiTeams.filter(t => !selectedClubTeams.includes(t)).map(team => (
+                                <TouchableOpacity
+                                  key={team.id}
+                                  style={styles.teamDropdownItem}
+                                  onPress={() => {
+                                    const newTeams = [...selectedClubTeams];
+                                    newTeams[idx] = team;
+                                    setSelectedClubTeams(newTeams);
+                                    handleTeamSelect(team, 'club', idx);
+                                    setOpenDropdown(null);
+                                    setSearchQuery('');
+                                  }}
+                                >
+                                  <Text style={styles.teamDropdownItemName}>{team.name}</Text>
+                                  <Text style={styles.teamDropdownItemMeta}>{team.league || team.country}</Text>
+                                </TouchableOpacity>
+                              ))}
+                            </ScrollView>
+                          </View>
+                        )}
+                      </View>
+                    ))}
+                    <Text style={styles.teamSelectHint}>
+                      {selectedClubTeams.filter(Boolean).length} / 5 kulüp takımı seçildi
+                    </Text>
+                  </View>
+                )}
+
+                {/* Pro değilse kulüp takımları kilitli */}
+                {!isPro && (
+                  <View style={styles.lockedClubTeams}>
+                    <Ionicons name="lock-closed" size={32} color={theme.accent} />
+                    <Text style={styles.lockedClubTeamsTitle}>Pro Üye Gerekli</Text>
+                    <Text style={styles.lockedClubTeamsText}>5 kulüp takımı seçmek için Pro üye olun</Text>
+                    <TouchableOpacity
+                      style={styles.proUpgradeButton}
+                      onPress={onProUpgrade}
+                    >
+                      <LinearGradient
+                        colors={[theme.accent, theme.accent + 'CC']}
+                        style={styles.proUpgradeButtonGradient}
+                      >
+                        <Ionicons name="crown" size={18} color={theme.accentForeground} />
+                        <Text style={styles.proUpgradeButtonText}>Pro Üye Ol</Text>
+                      </LinearGradient>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+            ) : (
+              <View style={styles.teamsSelectionContainer}>
+                {/* Milli takım önce, ardından kulüpler - görüntüleme modu */}
+                {selectedNationalTeam && (
                 <View style={styles.favoriteTeamCard}>
                   <LinearGradient
                     colors={selectedNationalTeam.colors}
@@ -961,14 +1119,121 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 </View>
               ))}
 
-              {!selectedNationalTeam && selectedClubTeams.filter(Boolean).length === 0 && (
-                <View style={styles.emptyFavorites}>
-                  <Text style={styles.emptyFavoritesText}>
-                    Henüz favori takım seçilmemiş. Takımlarınızı Seçin ekranından ekleyin.
-                  </Text>
-                </View>
-              )}
+                {!selectedNationalTeam && selectedClubTeams.filter(Boolean).length === 0 && (
+                  <View style={styles.emptyFavorites}>
+                    <Text style={styles.emptyFavoritesText}>
+                      Henüz favori takım seçilmemiş. Düzenle butonuna tıklayarak takımlarınızı seçin.
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )}
+          </Animated.View>
+
+          {/* Profil Düzenleme Card - Web ile uyumlu */}
+          <Animated.View entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(250)} style={styles.card}>
+            <View style={styles.cardHeader}>
+              <Ionicons name="person-outline" size={20} color={theme.primary} />
+              <Text style={styles.cardTitle}>Kişisel Bilgiler</Text>
             </View>
+
+            {isEditing ? (
+              <View style={styles.profileForm}>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>İsim</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    value={firstName}
+                    onChangeText={setFirstName}
+                    placeholder="İsim"
+                    placeholderTextColor={theme.mutedForeground}
+                  />
+                </View>
+
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>Soyisim</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    value={lastName}
+                    onChangeText={setLastName}
+                    placeholder="Soyisim"
+                    placeholderTextColor={theme.mutedForeground}
+                  />
+                </View>
+
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>Nickname *</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    value={nickname}
+                    onChangeText={setNickname}
+                    placeholder="Kullanıcı adı"
+                    placeholderTextColor={theme.mutedForeground}
+                  />
+                  <Text style={styles.formHint}>Email ile kayıt olanlar için zorunludur</Text>
+                </View>
+
+                <View style={styles.formActions}>
+                  <TouchableOpacity
+                    style={[styles.formButton, styles.formButtonSave]}
+                    onPress={async () => {
+                      setSaving(true);
+                      try {
+                        const fullName = [firstName, lastName].filter(Boolean).join(' ').trim() || nickname;
+                        await profileService.updateProfile({
+                          name: fullName,
+                          nickname: nickname,
+                        });
+                        setIsEditing(false);
+                        Alert.alert('Başarılı', 'Profil güncellendi');
+                      } catch (error) {
+                        Alert.alert('Hata', 'Profil güncellenemedi');
+                      } finally {
+                        setSaving(false);
+                      }
+                    }}
+                    disabled={saving || !nickname.trim()}
+                  >
+                    {saving ? (
+                      <ActivityIndicator size="small" color={theme.primaryForeground} />
+                    ) : (
+                      <>
+                        <Ionicons name="checkmark" size={18} color={theme.primaryForeground} />
+                        <Text style={styles.formButtonText}>Kaydet</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.formButton, styles.formButtonCancel]}
+                    onPress={() => setIsEditing(false)}
+                  >
+                    <Text style={[styles.formButtonText, { color: theme.foreground }]}>İptal</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              <View style={styles.profileInfo}>
+                <View style={styles.profileInfoRow}>
+                  <Text style={styles.profileInfoLabel}>İsim</Text>
+                  <Text style={styles.profileInfoValue}>{firstName || '-'}</Text>
+                </View>
+                <View style={styles.profileInfoRow}>
+                  <Text style={styles.profileInfoLabel}>Soyisim</Text>
+                  <Text style={styles.profileInfoValue}>{lastName || '-'}</Text>
+                </View>
+                <View style={styles.profileInfoRow}>
+                  <Text style={styles.profileInfoLabel}>Nickname</Text>
+                  <Text style={styles.profileInfoValue}>{nickname || '-'}</Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.editProfileButton}
+                  onPress={() => setIsEditing(true)}
+                >
+                  <Ionicons name="create-outline" size={18} color={theme.primary} />
+                  <Text style={styles.editProfileButtonText}>Düzenle</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </Animated.View>
 
           {/* 🎯 EN İYİ OLDUĞU KÜME KARTI */}
@@ -1006,7 +1271,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           {/* Achievements Card */}
           <Animated.View entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(300)} style={styles.card}>
             <View style={styles.cardHeader}>
-              <Ionicons name="star" size={20} color="#F59E0B" />
+              <Ionicons name="star" size={20} color={theme.accent} />
               <Text style={styles.cardTitle}>Achievements</Text>
             </View>
 
@@ -1020,6 +1285,139 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   </Text>
                 </View>
               ))}
+            </View>
+          </Animated.View>
+
+          {/* Ayarlar Card - Web ile uyumlu */}
+          <Animated.View entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(350)} style={styles.card}>
+            <View style={styles.cardHeader}>
+              <Ionicons name="settings-outline" size={20} color={theme.primary} />
+              <Text style={styles.cardTitle}>Ayarlar</Text>
+            </View>
+
+            <View style={styles.settingsContainer}>
+              {/* Dil seçimi - Placeholder (i18n hook ile bağlanacak) */}
+              <TouchableOpacity
+                style={styles.settingItem}
+                onPress={() => {
+                  // TODO: Dil seçim modalı açılacak
+                  Alert.alert('Dil Seçimi', 'Dil seçim ekranı yakında eklenecek');
+                }}
+              >
+                <View style={styles.settingItemLeft}>
+                  <Ionicons name="language-outline" size={20} color={theme.mutedForeground} />
+                  <View style={styles.settingItemText}>
+                    <Text style={styles.settingItemTitle}>Dil</Text>
+                    <Text style={styles.settingItemSubtitle}>Türkçe</Text>
+                  </View>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={theme.mutedForeground} />
+              </TouchableOpacity>
+
+              {/* Bildirimler */}
+              <TouchableOpacity
+                style={styles.settingItem}
+                onPress={() => {
+                  // TODO: Bildirimler ekranı açılacak
+                  Alert.alert('Bildirimler', 'Bildirim ayarları yakında eklenecek');
+                }}
+              >
+                <View style={styles.settingItemLeft}>
+                  <Ionicons name="notifications-outline" size={20} color={theme.mutedForeground} />
+                  <View style={styles.settingItemText}>
+                    <Text style={styles.settingItemTitle}>Bildirimler</Text>
+                    <Text style={styles.settingItemSubtitle}>Maç uyarıları, haberler</Text>
+                  </View>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={theme.mutedForeground} />
+              </TouchableOpacity>
+            </View>
+          </Animated.View>
+
+          {/* Güvenlik ve Hesap Card - Web ile uyumlu */}
+          <Animated.View entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(400)} style={styles.card}>
+            <View style={styles.cardHeader}>
+              <Ionicons name="shield-checkmark-outline" size={20} color={theme.primary} />
+              <Text style={styles.cardTitle}>Güvenlik ve Hesap</Text>
+            </View>
+
+            <View style={styles.securityContainer}>
+              {/* Şifre Değiştir */}
+              <TouchableOpacity
+                style={styles.settingItem}
+                onPress={() => {
+                  // TODO: Şifre değiştir ekranına yönlendir
+                  Alert.alert('Şifre Değiştir', 'Şifre değiştirme ekranı yakında eklenecek');
+                }}
+              >
+                <View style={styles.settingItemLeft}>
+                  <Ionicons name="lock-closed-outline" size={20} color={theme.mutedForeground} />
+                  <Text style={styles.settingItemTitle}>Şifre Değiştir</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={theme.mutedForeground} />
+              </TouchableOpacity>
+
+              {/* Çıkış Yap */}
+              <TouchableOpacity
+                style={styles.settingItem}
+                onPress={() => {
+                  Alert.alert(
+                    'Çıkış Yap',
+                    'Çıkış yapmak istediğinizden emin misiniz?',
+                    [
+                      { text: 'İptal', style: 'cancel' },
+                      {
+                        text: 'Çıkış Yap',
+                        style: 'destructive',
+                        onPress: async () => {
+                          // TODO: Logout işlemi
+                          try {
+                            await AsyncStorage.clear();
+                            Alert.alert('Başarılı', 'Çıkış yapıldı');
+                            // Navigation reset gerekebilir
+                          } catch (error) {
+                            Alert.alert('Hata', 'Çıkış yapılamadı');
+                          }
+                        },
+                      },
+                    ]
+                  );
+                }}
+              >
+                <View style={styles.settingItemLeft}>
+                  <Ionicons name="log-out-outline" size={20} color={theme.destructive} />
+                  <Text style={[styles.settingItemTitle, { color: theme.destructive }]}>Çıkış Yap</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={theme.mutedForeground} />
+              </TouchableOpacity>
+
+              {/* Hesabı Sil */}
+              <TouchableOpacity
+                style={[styles.settingItem, styles.deleteAccountItem]}
+                onPress={() => {
+                  Alert.alert(
+                    'Hesabı Sil',
+                    'Bu işlem geri alınamaz. Hesabınız ve tüm verileriniz kalıcı olarak silinecektir.',
+                    [
+                      { text: 'İptal', style: 'cancel' },
+                      {
+                        text: 'Sil',
+                        style: 'destructive',
+                        onPress: () => {
+                          // TODO: Hesap silme işlemi
+                          Alert.alert('Hesap Silme', 'Hesap silme işlemi yakında eklenecek');
+                        },
+                      },
+                    ]
+                  );
+                }}
+              >
+                <View style={styles.settingItemLeft}>
+                  <Ionicons name="trash-outline" size={20} color={theme.destructive} />
+                  <Text style={[styles.settingItemTitle, { color: theme.destructive }]}>Hesabı Sil</Text>
+                </View>
+                <Ionicons name="alert-circle-outline" size={20} color={theme.destructive} />
+              </TouchableOpacity>
             </View>
           </Animated.View>
 
@@ -2491,7 +2889,271 @@ const createStyles = () => {
     textAlign: 'center',
     lineHeight: 20,
   },
-  });
+
+  // ✏️ EDIT BUTTON
+  editButton: {
+    marginLeft: 'auto',
+    padding: SPACING.xs,
+  },
+
+  // 👥 TEAM EDITING STYLES
+  teamsEditContainer: {
+    gap: SPACING.base,
+  },
+  teamSelectSection: {
+    gap: SPACING.sm,
+  },
+  teamSelectLabel: {
+    ...TYPOGRAPHY.bodySmall,
+    fontWeight: TYPOGRAPHY.semibold,
+    color: theme.foreground,
+  },
+  teamSelectButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: SPACING.base,
+    paddingVertical: SPACING.md,
+    backgroundColor: theme.inputBackground,
+    borderWidth: 1,
+    borderColor: theme.border,
+    borderRadius: SIZES.radiusSm,
+    minHeight: SIZES.inputHeight,
+  },
+  teamSelectButtonText: {
+    ...TYPOGRAPHY.body,
+    color: theme.foreground,
+    flex: 1,
+  },
+  teamDropdown: {
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    right: 0,
+    marginTop: SPACING.xs,
+    backgroundColor: theme.card,
+    borderWidth: 1,
+    borderColor: theme.border,
+    borderRadius: SIZES.radiusSm,
+    maxHeight: 200,
+    zIndex: 1000,
+    ...SHADOWS.lg,
+  },
+  teamSearchInput: {
+    ...TYPOGRAPHY.body,
+    paddingHorizontal: SPACING.base,
+    paddingVertical: SPACING.sm,
+    backgroundColor: theme.inputBackground,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.border,
+    color: theme.foreground,
+  },
+  searchLoading: {
+    padding: SPACING.sm,
+  },
+  teamDropdownList: {
+    maxHeight: 150,
+  },
+  teamDropdownItem: {
+    paddingHorizontal: SPACING.base,
+    paddingVertical: SPACING.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.border,
+  },
+  teamDropdownItemName: {
+    ...TYPOGRAPHY.body,
+    color: theme.foreground,
+    fontWeight: TYPOGRAPHY.medium,
+  },
+  teamDropdownItemMeta: {
+    ...TYPOGRAPHY.bodySmall,
+    color: theme.mutedForeground,
+    marginTop: 2,
+  },
+  clubTeamRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+  },
+  removeTeamButton: {
+    padding: SPACING.xs,
+  },
+  teamSelectHint: {
+    ...TYPOGRAPHY.bodySmall,
+    color: theme.mutedForeground,
+    marginTop: SPACING.xs,
+  },
+  lockedClubTeams: {
+    alignItems: 'center',
+    padding: SPACING.lg,
+    backgroundColor: theme.muted,
+    borderRadius: SIZES.radiusMd,
+    borderWidth: 1,
+    borderColor: theme.accent + '30',
+  },
+  lockedClubTeamsTitle: {
+    ...TYPOGRAPHY.h3,
+    color: theme.accent,
+    marginTop: SPACING.sm,
+    marginBottom: SPACING.xs,
+  },
+  lockedClubTeamsText: {
+    ...TYPOGRAPHY.body,
+    color: theme.mutedForeground,
+    textAlign: 'center',
+    marginBottom: SPACING.base,
+  },
+  proUpgradeButton: {
+    borderRadius: SIZES.radiusSm,
+    overflow: 'hidden',
+    marginTop: SPACING.sm,
+  },
+  proUpgradeButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: SPACING.xs,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.sm,
+  },
+  proUpgradeButtonText: {
+    ...TYPOGRAPHY.button,
+    color: theme.accentForeground,
+    fontWeight: TYPOGRAPHY.semibold,
+  },
+
+  // 📝 PROFILE FORM STYLES
+  profileForm: {
+    gap: SPACING.base,
+  },
+  profileInfo: {
+    gap: SPACING.base,
+  },
+  profileInfoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: SPACING.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.border,
+  },
+  profileInfoLabel: {
+    ...TYPOGRAPHY.body,
+    color: theme.mutedForeground,
+    fontWeight: TYPOGRAPHY.medium,
+  },
+  profileInfoValue: {
+    ...TYPOGRAPHY.body,
+    color: theme.foreground,
+  },
+  editProfileButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: SPACING.xs,
+    marginTop: SPACING.base,
+    paddingVertical: SPACING.sm,
+    borderWidth: 1,
+    borderColor: theme.border,
+    borderRadius: SIZES.radiusSm,
+    backgroundColor: theme.muted,
+  },
+  editProfileButtonText: {
+    ...TYPOGRAPHY.button,
+    color: theme.primary,
+    fontWeight: TYPOGRAPHY.semibold,
+  },
+  formRow: {
+    gap: SPACING.xs,
+  },
+  formLabel: {
+    ...TYPOGRAPHY.body,
+    fontWeight: TYPOGRAPHY.medium,
+    color: theme.foreground,
+  },
+  formInput: {
+    ...TYPOGRAPHY.body,
+    paddingHorizontal: SPACING.base,
+    paddingVertical: SPACING.sm,
+    backgroundColor: theme.inputBackground,
+    borderWidth: 1,
+    borderColor: theme.border,
+    borderRadius: SIZES.radiusSm,
+    color: theme.foreground,
+    minHeight: SIZES.inputHeight,
+  },
+  formHint: {
+    ...TYPOGRAPHY.bodySmall,
+    color: theme.mutedForeground,
+  },
+  formActions: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
+    marginTop: SPACING.base,
+  },
+  formButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: SPACING.xs,
+    paddingVertical: SPACING.sm,
+    borderRadius: SIZES.radiusSm,
+    minHeight: SIZES.buttonHeight,
+  },
+  formButtonSave: {
+    backgroundColor: theme.primary,
+  },
+  formButtonCancel: {
+    backgroundColor: theme.muted,
+    borderWidth: 1,
+    borderColor: theme.border,
+  },
+  formButtonText: {
+    ...TYPOGRAPHY.button,
+    color: theme.primaryForeground,
+    fontWeight: TYPOGRAPHY.semibold,
+  },
+
+  // ⚙️ SETTINGS STYLES
+  settingsContainer: {
+    gap: 0,
+  },
+  settingItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: SPACING.base,
+    paddingHorizontal: SPACING.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.border,
+  },
+  settingItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.base,
+    flex: 1,
+  },
+  settingItemText: {
+    flex: 1,
+  },
+  settingItemTitle: {
+    ...TYPOGRAPHY.body,
+    color: theme.foreground,
+    fontWeight: TYPOGRAPHY.medium,
+  },
+  settingItemSubtitle: {
+    ...TYPOGRAPHY.bodySmall,
+    color: theme.mutedForeground,
+    marginTop: 2,
+  },
+  securityContainer: {
+    gap: 0,
+  },
+  deleteAccountItem: {
+    borderBottomWidth: 0,
+  },
+});
 };
 
 const styles = createStyles();
