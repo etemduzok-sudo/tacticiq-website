@@ -231,13 +231,14 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({ onPress, newBadge, onB
           onPress={onPress}
           activeOpacity={0.7}
         >
-          {/* Modern gradient background with shadow */}
+          {/* Modern gradient background with white card */}
           <LinearGradient
-            colors={['rgba(15, 42, 36, 0.95)', 'rgba(31, 162, 166, 0.15)']}
+            colors={['#1F3231', '#2B7C73']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={styles.gradientContainer}
+            style={styles.gradientBackground}
           >
+            <View style={styles.whiteCard}>
             <View style={styles.profileContainer}>
               <View style={styles.profileLeft}>
                 {/* Avatar with glow effect */}
@@ -267,7 +268,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({ onPress, newBadge, onB
                     )}
                   </View>
                   <View style={styles.statsRow}>
-                    <Ionicons name="trending-up" size={11} color="#1FA2A6" />
+                    <Ionicons name="trending-up" size={11} color="#F79F1B" />
                     <Text style={styles.profileStats}>
                       Level {userLevel} • {userPoints.toLocaleString()} Puan
                     </Text>
@@ -279,17 +280,12 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({ onPress, newBadge, onB
                 <View style={styles.rankingCard}>
                   <Text style={styles.rankingLabel}>Türkiye Sıralaması</Text>
                   <View style={styles.rankingValueContainer}>
-                    <LinearGradient
-                      colors={['#F59E0B', '#C9A44C']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={styles.rankingGradient}
-                    >
-                      <Ionicons name="trophy" size={12} color="#0F172A" />
+                    <View style={styles.rankingGradient}>
+                      <Ionicons name="trophy" size={12} color="#F79F1B" />
                       <Text style={styles.rankingValue}>
                         #{countryRank || '–'} / {totalPlayers.toLocaleString()}
                       </Text>
-                    </LinearGradient>
+                    </View>
                   </View>
                 </View>
               </View>
@@ -298,7 +294,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({ onPress, newBadge, onB
             {/* Badges - Horizontal Scroll with modern design */}
             <View style={styles.badgesContainer}>
               <View style={styles.badgesHeader}>
-                <Ionicons name="ribbon" size={14} color="#C9A44C" />
+                <Ionicons name="ribbon" size={14} color="#F79F1B" />
                 <Text style={styles.badgesTitle}>Rozetlerim</Text>
                 <View style={styles.badgeCount}>
                   <Text style={styles.badgeCountText}>{earnedBadges.length}</Text>
@@ -356,14 +352,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({ onPress, newBadge, onB
                 )}
               </ScrollView>
             </View>
-            
-            {/* Bottom accent line */}
-            <LinearGradient
-              colors={['transparent', '#1FA2A6', 'transparent']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.accentLine}
-            />
+            </View>
           </LinearGradient>
         </TouchableOpacity>
       </Animated.View>
@@ -430,97 +419,74 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({ onPress, newBadge, onB
 
 const styles = StyleSheet.create({
   profileButton: {
-    marginHorizontal: 16,
-    marginTop: 8,
-    marginBottom: 8,
-    borderRadius: 20,
-    overflow: 'hidden',
+    marginHorizontal: 0,
+    marginTop: 0,
+    marginBottom: 0,
+  },
+  gradientBackground: {
+    padding: 12,
+    borderRadius: 16,
+  },
+  whiteCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 12,
     ...Platform.select({
       ios: {
-        shadowColor: '#1FA2A6',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.3,
-        shadowRadius: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
       },
       android: {
-        elevation: 12,
+        elevation: 4,
       },
       web: {
-        boxShadow: '0 8px 32px rgba(31, 162, 166, 0.25), 0 0 0 1px rgba(31, 162, 166, 0.1)',
+        boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1)',
       },
     }),
-  },
-  gradientContainer: {
-    padding: 16,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(31, 162, 166, 0.2)',
   },
   profileContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 16,
+    alignItems: 'center',
+    marginBottom: 6,
   },
   profileLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
-    marginRight: 12,
+    marginRight: 8,
   },
   avatarContainer: {
     position: 'relative',
-    marginRight: 12,
+    marginRight: 10,
   },
   avatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 3,
+    borderWidth: 1.5,
     borderColor: 'rgba(31, 162, 166, 0.3)',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#C9A44C',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.4,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 8,
-      },
-      web: {
-        boxShadow: '0 4px 16px rgba(201, 164, 76, 0.4)',
-      },
-    }),
   },
   avatarText: {
-    fontSize: 18,
-    fontWeight: '800',
+    fontSize: 12,
+    fontWeight: '700',
     color: '#FFFFFF',
-    ...Platform.select({
-      web: {
-        textShadow: '0 2px 4px rgba(0, 0, 0, 0.3)',
-      },
-      default: {
-        textShadowColor: 'rgba(0, 0, 0, 0.3)',
-        textShadowOffset: { width: 0, height: 2 },
-        textShadowRadius: 4,
-      },
-    }),
   },
   proIndicator: {
     position: 'absolute',
     bottom: -2,
     right: -2,
     backgroundColor: '#0F2A24',
-    borderRadius: 10,
-    width: 20,
-    height: 20,
+    borderRadius: 8,
+    width: 16,
+    height: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderColor: '#FFD700',
   },
   profileInfo: {
@@ -530,231 +496,168 @@ const styles = StyleSheet.create({
   nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   profileName: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#F8FAFB',
-    marginRight: 8,
-    ...Platform.select({
-      web: {
-        textShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
-      },
-      default: {
-        textShadowColor: 'rgba(0, 0, 0, 0.2)',
-        textShadowOffset: { width: 0, height: 2 },
-        textShadowRadius: 4,
-      },
-    }),
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#333333',
+    marginRight: 6,
   },
   proBadge: {
     backgroundColor: '#F59E0B',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#F59E0B',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.5,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 4,
-      },
-      web: {
-        boxShadow: '0 2px 8px rgba(245, 158, 11, 0.5)',
-      },
-    }),
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 4,
   },
   proBadgeText: {
-    fontSize: 10,
-    fontWeight: '900',
+    fontSize: 9,
+    fontWeight: '700',
     color: '#0F172A',
-    letterSpacing: 0.5,
   },
   statsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 3,
   },
   profileStats: {
-    fontSize: 12,
-    color: '#94A3B8',
-    fontWeight: '600',
+    fontSize: 11,
+    color: '#666666',
+    fontWeight: '500',
   },
   profileRight: {
     alignItems: 'flex-end',
   },
   rankingCard: {
-    backgroundColor: 'rgba(15, 42, 36, 0.6)',
-    padding: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(31, 162, 166, 0.3)',
-    minWidth: 140,
+    backgroundColor: '#1E3A3A',
+    padding: 8,
+    borderRadius: 10,
+    borderWidth: 0,
   },
   rankingLabel: {
-    fontSize: 9,
-    color: '#64748B',
-    marginBottom: 4,
+    fontSize: 8,
+    color: '#FFFFFF',
+    marginBottom: 2,
     fontWeight: '600',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
   },
   rankingValueContainer: {
-    borderRadius: 8,
+    borderRadius: 6,
     overflow: 'hidden',
   },
   rankingGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    gap: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    gap: 3,
   },
   rankingValue: {
-    fontSize: 14,
-    fontWeight: '900',
-    color: '#0F172A',
-    letterSpacing: 0.3,
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
   badgesContainer: {
-    marginTop: 8,
+    marginTop: 2,
   },
   badgesHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10,
-    paddingHorizontal: 4,
+    marginBottom: 4,
   },
   badgesTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#E6E6E6',
-    marginLeft: 6,
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#333333',
+    marginLeft: 4,
     flex: 1,
   },
   badgeCount: {
-    backgroundColor: 'rgba(201, 164, 76, 0.2)',
-    borderRadius: 10,
-    minWidth: 24,
-    height: 20,
+    backgroundColor: '#F79F1B',
+    borderRadius: 8,
+    minWidth: 20,
+    height: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(201, 164, 76, 0.4)',
+    paddingHorizontal: 4,
+    borderWidth: 0,
   },
   badgeCountText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#C9A44C',
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   badgesScroll: {
-    paddingRight: 12,
-    gap: 10,
+    paddingRight: 8,
+    gap: 8,
   },
   badge: {
-    borderRadius: 14,
+    borderRadius: 10,
     overflow: 'hidden',
   },
   badgeGradient: {
-    padding: 10,
+    padding: 4,
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 72,
-    minHeight: 72,
+    minWidth: 50,
+    minHeight: 50,
   },
   badgeBorder: {
-    borderWidth: 2,
-    borderRadius: 12,
-    padding: 8,
+    borderWidth: 1.5,
+    borderRadius: 8,
+    padding: 6,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+    backgroundColor: 'rgba(0, 0, 0, 0.15)',
   },
   badgeIcon: {
-    fontSize: 28,
-    marginBottom: 4,
+    fontSize: 20,
+    marginBottom: 2,
   },
   badgeLabel: {
-    fontSize: 10,
-    fontWeight: '800',
+    fontSize: 9,
+    fontWeight: '700',
     textAlign: 'center',
-    letterSpacing: 0.3,
-    ...Platform.select({
-      web: {
-        textShadow: '0 1px 3px rgba(0, 0, 0, 0.5)',
-      },
-      default: {
-        textShadowColor: 'rgba(0, 0, 0, 0.5)',
-        textShadowOffset: { width: 0, height: 1 },
-        textShadowRadius: 3,
-      },
-    }),
   },
   newBadgeIndicator: {
     position: 'absolute',
-    top: -8,
-    right: -8,
+    top: -5,
+    right: -5,
     backgroundColor: '#EF4444',
-    borderRadius: 10,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderWidth: 2,
+    borderRadius: 8,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderWidth: 1,
     borderColor: '#FFFFFF',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#EF4444',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.6,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 6,
-      },
-      web: {
-        boxShadow: '0 2px 8px rgba(239, 68, 68, 0.6)',
-      },
-    }),
   },
   newBadgeText: {
-    fontSize: 9,
-    fontWeight: '900',
+    fontSize: 8,
+    fontWeight: '700',
     color: '#FFFFFF',
-    letterSpacing: 0.5,
   },
   noBadgesContainer: {
-    paddingVertical: 16,
-    paddingHorizontal: 24,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(15, 42, 36, 0.4)',
-    borderRadius: 12,
+    gap: 6,
+    backgroundColor: 'transparent',
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: 'rgba(100, 116, 139, 0.3)',
+    borderColor: 'rgba(100, 116, 139, 0.15)',
     borderStyle: 'dashed',
-    minWidth: 200,
   },
   noBadgesText: {
-    fontSize: 12,
-    color: '#94A3B8',
-    fontWeight: '600',
-    marginTop: 8,
+    fontSize: 10,
+    color: '#666666',
+    fontWeight: '500',
   },
   noBadgesHint: {
-    fontSize: 10,
-    color: '#64748B',
-    fontStyle: 'italic',
-    marginTop: 4,
-  },
-  accentLine: {
-    height: 2,
-    marginTop: 12,
-    borderRadius: 1,
+    fontSize: 9,
+    color: '#888888',
   },
   // 🎉 Badge Popup Modal Styles
   modalOverlay: {

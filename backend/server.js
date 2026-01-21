@@ -83,6 +83,8 @@ app.use('/api/predictions', predictionsRouter);
 app.use('/api/scoring', scoringRouter);
 app.use('/api/email', require('./routes/email'));
 app.use('/api/static-teams', staticTeamsRouter); // ⚡ Hızlı statik takımlar
+app.use('/api/timeline', require('./routes/timeline')); // 📊 Maç akışı
+app.use('/api/leaderboard/snapshots', require('./routes/leaderboardSnapshots')); // 📸 Sıralama geçmişi
 
 // Health check
 app.get('/health', (req, res) => {
@@ -115,24 +117,96 @@ app.get('/api/cache/stats', (req, res) => {
 app.get('/', (req, res) => {
   res.json({
     name: 'TacticIQ API',
-    version: '1.0.0',
-    endpoints: [
-      '/api/matches',
-      '/api/leagues',
-      '/api/teams',
-      '/api/players',
-      '/api/predictions',
-      '/api/scoring',
-      '/health',
-    ],
+    version: '2.0.0',
+    description: 'Worldwide Football Data Platform',
+    endpoints: {
+      core: [
+        '/api/matches',
+        '/api/leagues',
+        '/api/teams',
+        '/api/players',
+        '/api/predictions',
+        '/api/scoring',
+      ],
+      data: [
+        '/api/static-teams',
+        '/api/timeline/:matchId',
+        '/api/timeline/:matchId/goals',
+        '/api/timeline/:matchId/summary',
+      ],
+      leaderboard: [
+        '/api/leaderboard/snapshots',
+        '/api/leaderboard/snapshots/weekly',
+        '/api/leaderboard/user/:userId/history',
+      ],
+      status: [
+        '/health',
+        '/api/sync-status',
+        '/api/static-teams/status',
+        '/api/leaderboard/snapshot-status',
+        '/api/system-status',
+      ],
+    },
   });
 });
 
+// ============================================
+// STATUS ENDPOINTS
+// ============================================
+
 // Sync status endpoint
 app.get('/api/sync-status', (req, res) => {
-  const smartSyncService = require('./services/smartSyncService');
-  const status = smartSyncService.getStatus();
-  res.json(status);
+  try {
+    const smartSyncService = require('./services/smartSyncService');
+    const status = smartSyncService.getStatus();
+    res.json(status);
+  } catch (error) {
+    res.json({ error: error.message });
+  }
+});
+
+// Static teams status
+app.get('/api/static-teams/status', (req, res) => {
+  try {
+    const staticTeamsScheduler = require('./services/staticTeamsScheduler');
+    const status = staticTeamsScheduler.getStatus();
+    res.json({ success: true, ...status });
+  } catch (error) {
+    res.json({ success: false, error: error.message });
+  }
+});
+
+// Leaderboard snapshot status
+app.get('/api/leaderboard/snapshot-status', (req, res) => {
+  try {
+    const snapshotService = require('./services/leaderboardSnapshotService');
+    const status = snapshotService.getStatus();
+    res.json({ success: true, ...status });
+  } catch (error) {
+    res.json({ success: false, error: error.message });
+  }
+});
+
+// Full system status
+app.get('/api/system-status', (req, res) => {
+  try {
+    const smartSyncService = require('./services/smartSyncService');
+    const staticTeamsScheduler = require('./services/staticTeamsScheduler');
+    const snapshotService = require('./services/leaderboardSnapshotService');
+    
+    res.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      services: {
+        worldwideSync: smartSyncService.getStatus(),
+        staticTeams: staticTeamsScheduler.getStatus(),
+        leaderboardSnapshots: snapshotService.getStatus(),
+      }
+    });
+  } catch (error) {
+    res.json({ success: false, error: error.message });
+  }
 });
 
 // Error handler
@@ -146,55 +220,95 @@ app.use((err, req, res, next) => {
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`🚀 TacticIQ Backend running on port ${PORT}`);
-  console.log(`📊 Health check: http://localhost:${PORT}/health`);
+  console.log('\n');
+  console.log('╔════════════════════════════════════════════════════════════╗');
+  console.log('║           🚀 TACTICIQ BACKEND STARTED 🚀                   ║');
+  console.log('╠════════════════════════════════════════════════════════════╣');
+  console.log(`║ Port: ${PORT}                                                  ║`);
+  console.log(`║ Health: http://localhost:${PORT}/health                       ║`);
+  console.log('╚════════════════════════════════════════════════════════════╝');
   
   // ============================================
-  // SYNC STRATEGY: SMART ADAPTIVE SYNC
+  // 1. WORLDWIDE SYNC SERVICE (Sabit 12s)
   // ============================================
-  // Her 12 saniyede bir çalışarak 7,500/day limitini maksimum kullanır
-  // Canlı maç varsa 10 saniyeye düşer, gece 60 saniyeye çıkar
+  // Dünya genelinde her an maç var - SABİT 12s interval
+  // Günlük: 7,200 API çağrısı (%96 kullanım)
+  // Timeline service ile maç akışını kaydeder
   // ============================================
   
   try {
     const smartSyncService = require('./services/smartSyncService');
     smartSyncService.startSync();
-    console.log(`🧠 Smart adaptive sync started (every 12s, adaptive 10s-60s)`);
+    console.log(`🌍 Worldwide sync started (fixed 12s interval)`);
   } catch (error) {
     console.error('❌ Failed to start smart sync service:', error.message);
-    console.error('Stack:', error.stack);
     // Don't exit - continue without smart sync
   }
   
   // ============================================
-  // MONITORING & AUTO-RESTART SERVICE
+  // 2. STATIC TEAMS SCHEDULER (Günde 2x)
+  // ============================================
+  // Takım verilerini günde 2 kez günceller (08:00 ve 20:00 UTC)
+  // Aylık API bütçesi: 62 çağrı (31 gün × 2)
+  // ============================================
+  
+  try {
+    const staticTeamsScheduler = require('./services/staticTeamsScheduler');
+    staticTeamsScheduler.startScheduler();
+    console.log(`🏆 Static teams scheduler started (daily at 08:00 & 20:00 UTC)`);
+  } catch (error) {
+    console.error('❌ Failed to start static teams scheduler:', error.message);
+    // Don't exit - continue without scheduler
+  }
+  
+  // ============================================
+  // 3. LEADERBOARD SNAPSHOT SERVICE
+  // ============================================
+  // Günlük, haftalık ve aylık sıralama snapshot'ları
+  // Kullanıcılar geçmiş sıralamaları görebilir
+  // ============================================
+  
+  try {
+    const snapshotService = require('./services/leaderboardSnapshotService');
+    snapshotService.startSnapshotService();
+    console.log(`📸 Leaderboard snapshot service started`);
+  } catch (error) {
+    console.error('❌ Failed to start snapshot service:', error.message);
+    // Don't exit - continue without snapshots
+  }
+  
+  // ============================================
+  // 4. MONITORING SERVICE
   // ============================================
   // Backend'i izler, çökerse otomatik restart yapar
-  // Admin'e email gönderir
   // ============================================
   
   try {
     const monitoringService = require('./services/monitoringService');
-    // Start monitoring after a delay (to avoid checking during initial startup)
     setTimeout(() => {
       try {
         monitoringService.startMonitoring();
         console.log(`🔍 Monitoring service started`);
       } catch (error) {
         console.error('❌ Failed to start monitoring service:', error.message);
-        console.error('Stack:', error.stack);
-        // Don't exit - continue without monitoring
       }
     }, 10000); // 10 saniye sonra başlat
-    console.log(`🔍 Monitoring service will start in 10 seconds`);
   } catch (error) {
     console.warn('⚠️ Monitoring service could not be loaded:', error.message);
-    // Don't exit - continue without monitoring
   }
   
-  // NOTE: liveMatchService ve dailySyncService devre dışı (smartSync hepsini yapıyor)
-  // const liveMatchService = require('./services/liveMatchService');
-  // liveMatchService.startPolling();
-  // const dailySyncService = require('./services/dailySyncService');
-  // dailySyncService.startSync();
+  // ============================================
+  // STARTUP COMPLETE
+  // ============================================
+  console.log('\n');
+  console.log('╔════════════════════════════════════════════════════════════╗');
+  console.log('║           ✅ ALL SERVICES INITIALIZED                      ║');
+  console.log('╠════════════════════════════════════════════════════════════╣');
+  console.log('║ Active Services:                                          ║');
+  console.log('║   • Worldwide Sync (12s) - Live matches & timeline        ║');
+  console.log('║   • Static Teams (2x/day) - Team data updates             ║');
+  console.log('║   • Leaderboard Snapshots - Daily/weekly rankings         ║');
+  console.log('║   • Monitoring - Health checks & alerts                   ║');
+  console.log('╚════════════════════════════════════════════════════════════╝');
+  console.log('\n');
 });

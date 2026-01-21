@@ -928,13 +928,25 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             <View style={styles.formField}>
               <Text style={styles.formLabel}>Milli Takım <Text style={styles.requiredStar}>*</Text></Text>
               <TouchableOpacity
-                style={styles.dropdownButton}
+                style={[
+                  styles.dropdownButton,
+                  selectedNationalTeam && styles.dropdownButtonSelected
+                ]}
                 onPress={() => setOpenDropdown(openDropdown === 'national' ? null : 'national')}
               >
-                <Text style={selectedNationalTeam ? styles.dropdownButtonTextSelected : styles.dropdownButtonTextPlaceholder}>
-                  {selectedNationalTeam ? selectedNationalTeam.name : 'Milli takım seçin veya ara...'}
-                </Text>
-                <Ionicons name="chevron-down" size={20} color={theme.mutedForeground} />
+                {selectedNationalTeam ? (
+                  <View style={styles.dropdownSelectedContent}>
+                    <Ionicons name="flag" size={18} color={theme.secondary} />
+                    <Text style={styles.dropdownButtonTextSelected}>{selectedNationalTeam.name}</Text>
+                  </View>
+                ) : (
+                  <Text style={styles.dropdownButtonTextPlaceholder}>Milli takım seçin veya ara...</Text>
+                )}
+                <Ionicons 
+                  name={openDropdown === 'national' ? 'chevron-up' : 'chevron-down'} 
+                  size={20} 
+                  color={selectedNationalTeam ? theme.secondary : theme.mutedForeground} 
+                />
               </TouchableOpacity>
               <Text style={styles.formHint}>Bir milli takım seçmeniz zorunludur</Text>
 
@@ -1004,16 +1016,28 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   Kulüp Takımları <Text style={styles.formHint}>(Maksimum 5)</Text>
                 </Text>
                 <TouchableOpacity
-                  style={styles.dropdownButton}
+                  style={[
+                    styles.dropdownButton,
+                    selectedClubTeams.filter(Boolean).length > 0 && styles.dropdownButtonSelected
+                  ]}
                   onPress={() => setOpenDropdown(openDropdown === 'club' ? null : 'club')}
                   disabled={selectedClubTeams.filter(Boolean).length >= 5}
                 >
-                  <Text style={styles.dropdownButtonTextPlaceholder}>
-                    {selectedClubTeams.filter(Boolean).length > 0 
-                      ? `${selectedClubTeams.filter(Boolean).length} takım seçildi`
-                      : 'Kulüp takımı seçin veya ara...'}
-                  </Text>
-                  <Ionicons name="chevron-down" size={20} color={theme.mutedForeground} />
+                  {selectedClubTeams.filter(Boolean).length > 0 ? (
+                    <View style={styles.dropdownSelectedContent}>
+                      <Ionicons name="football" size={18} color={theme.accent} />
+                      <Text style={styles.dropdownButtonTextSelected}>
+                        {selectedClubTeams.filter(Boolean).length} takım seçildi
+                      </Text>
+                    </View>
+                  ) : (
+                    <Text style={styles.dropdownButtonTextPlaceholder}>Kulüp takımı seçin veya ara...</Text>
+                  )}
+                  <Ionicons 
+                    name={openDropdown === 'club' ? 'chevron-up' : 'chevron-down'} 
+                    size={20} 
+                    color={selectedClubTeams.filter(Boolean).length > 0 ? theme.accent : theme.mutedForeground} 
+                  />
                 </TouchableOpacity>
                 
                 {/* Seçilen Takımlar - Badge olarak */}
@@ -1167,7 +1191,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 placeholderTextColor={theme.mutedForeground}
                 editable={isEditing}
               />
-              <Text style={styles.formHint}>Email ile kayıt olanlar için zorunludur</Text>
+              <Text style={styles.formHint}>Tüm kullanıcılar için zorunludur (min 3 karakter)</Text>
             </View>
 
             {/* Save/Cancel Buttons */}
@@ -1191,7 +1215,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                       setSaving(false);
                     }
                   }}
-                  disabled={saving || !nickname.trim()}
+                  disabled={saving || nickname.trim().length < 3}
                 >
                   <LinearGradient
                     colors={[theme.primary, theme.primaryDark || theme.primary]}
@@ -1672,15 +1696,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
           {/* Duplicate Settings ve Security Card kaldırıldı - yukarıda zaten var */}
 
-          {/* Database Test Button (Dev Only) */}
-          {__DEV__ && onDatabaseTest && (
-            <Animated.View entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(500)} style={styles.card}>
-              <TouchableOpacity onPress={onDatabaseTest} style={styles.dbTestButton}>
-                <Ionicons name="server" size={20} color="#059669" />
-                <Text style={styles.dbTestText}>🧪 Database Test</Text>
-              </TouchableOpacity>
-            </Animated.View>
-          )}
+          {/* Database Test Button kaldırıldı - Web Admin Panel'e taşındı */}
 
         </ScrollView>
         ) : (
@@ -3786,8 +3802,9 @@ const createStyles = () => {
   },
   formLabel: {
     ...TYPOGRAPHY.body,
-    fontWeight: TYPOGRAPHY.medium,
+    fontWeight: TYPOGRAPHY.semibold,
     color: theme.foreground,
+    marginBottom: SPACING.xs,
   },
   formInput: {
     ...TYPOGRAPHY.body,
@@ -3801,8 +3818,10 @@ const createStyles = () => {
     minHeight: SIZES.inputHeight,
   },
   formHint: {
-    ...TYPOGRAPHY.bodySmall,
+    ...TYPOGRAPHY.caption,
     color: theme.mutedForeground,
+    marginTop: SPACING.xs,
+    fontStyle: 'italic',
   },
   formActions: {
     flexDirection: 'row',
@@ -3876,11 +3895,12 @@ const createStyles = () => {
   
   // Form Fields
   formField: {
-    marginBottom: SPACING.base,
+    marginBottom: SPACING.lg,
   },
   requiredStar: {
-    color: theme.destructive,
+    color: theme.accent,
     fontWeight: TYPOGRAPHY.bold,
+    fontSize: 14,
   },
   
   // Dropdown Button
@@ -3888,17 +3908,27 @@ const createStyles = () => {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    height: 40,
+    height: 48,
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.sm,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: theme.border,
-    borderRadius: SIZES.radiusSm,
+    borderRadius: SIZES.radiusMd,
     backgroundColor: theme.card,
+  },
+  dropdownButtonSelected: {
+    borderColor: theme.secondary,
+    backgroundColor: theme.secondary + '0D',
+  },
+  dropdownSelectedContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
   },
   dropdownButtonTextSelected: {
     ...TYPOGRAPHY.body,
     color: theme.foreground,
+    fontWeight: TYPOGRAPHY.semibold,
   },
   dropdownButtonTextPlaceholder: {
     ...TYPOGRAPHY.body,
@@ -3908,7 +3938,7 @@ const createStyles = () => {
   // Dropdown Modal
   dropdownModalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
     justifyContent: 'flex-end',
   },
   dropdownModalContent: {
@@ -3917,6 +3947,23 @@ const createStyles = () => {
     borderTopRightRadius: SIZES.radiusXl,
     maxHeight: '80%',
     paddingBottom: 40,
+    borderWidth: 1,
+    borderColor: theme.secondary + '30',
+    borderBottomWidth: 0,
+    ...Platform.select({
+      ios: {
+        shadowColor: theme.secondary,
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 12,
+      },
+      web: {
+        boxShadow: `0 -4px 24px ${theme.secondary}20`,
+      },
+    }),
   },
   dropdownModalHeader: {
     flexDirection: 'row',
@@ -3926,20 +3973,22 @@ const createStyles = () => {
     paddingVertical: SPACING.base,
     borderBottomWidth: 1,
     borderBottomColor: theme.border,
+    backgroundColor: theme.secondary + '0A',
   },
   dropdownModalTitle: {
     ...TYPOGRAPHY.h3,
     color: theme.foreground,
+    fontWeight: TYPOGRAPHY.bold,
   },
   dropdownSearchInput: {
     marginHorizontal: SPACING.lg,
     marginVertical: SPACING.base,
     paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    borderWidth: 1,
-    borderColor: theme.border,
-    borderRadius: SIZES.radiusSm,
-    backgroundColor: theme.inputBackground,
+    paddingVertical: SPACING.md,
+    borderWidth: 1.5,
+    borderColor: theme.secondary + '40',
+    borderRadius: SIZES.radiusMd,
+    backgroundColor: theme.background,
     color: theme.foreground,
     ...TYPOGRAPHY.body,
   },
@@ -3951,7 +4000,7 @@ const createStyles = () => {
   },
   dropdownItem: {
     paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.base,
+    paddingVertical: SPACING.md,
     borderBottomWidth: 1,
     borderBottomColor: theme.border,
     flexDirection: 'row',
@@ -3961,10 +4010,12 @@ const createStyles = () => {
   dropdownItemName: {
     ...TYPOGRAPHY.body,
     color: theme.foreground,
+    fontWeight: TYPOGRAPHY.medium,
   },
   dropdownItemMeta: {
     ...TYPOGRAPHY.bodySmall,
-    color: theme.mutedForeground,
+    color: theme.secondary,
+    fontWeight: TYPOGRAPHY.medium,
   },
 
   // Selected Teams Badges
@@ -3972,20 +4023,23 @@ const createStyles = () => {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: SPACING.sm,
-    marginTop: SPACING.sm,
+    marginTop: SPACING.md,
   },
   teamBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.xs,
     paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.xs,
-    backgroundColor: theme.secondary + '33',
+    paddingVertical: SPACING.sm,
+    backgroundColor: theme.accent + '20',
     borderRadius: SIZES.radiusMd,
+    borderWidth: 1,
+    borderColor: theme.accent + '40',
   },
   teamBadgeText: {
     ...TYPOGRAPHY.bodySmall,
     color: theme.foreground,
+    fontWeight: TYPOGRAPHY.medium,
   },
 
   // Locked Section
