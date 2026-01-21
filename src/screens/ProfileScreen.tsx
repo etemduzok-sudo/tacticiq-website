@@ -208,7 +208,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         
         // ✅ Favorite teams artık useFavoriteTeams hook'undan geliyor
         // Mevcut favori takımları yükle ve state'e aktar
-        const favoriteTeamsStr = await AsyncStorage.getItem('fan-manager-favorite-clubs');
+        const favoriteTeamsStr = await AsyncStorage.getItem(STORAGE_KEYS.FAVORITE_TEAMS);
         if (favoriteTeamsStr) {
           const teams = JSON.parse(favoriteTeamsStr);
           // Milli takım ve kulüp takımlarını ayır
@@ -523,7 +523,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     index?: number
   ) => {
     try {
-      const currentTeamsStr = await AsyncStorage.getItem('fan-manager-favorite-clubs');
+      const currentTeamsStr = await AsyncStorage.getItem(STORAGE_KEYS.FAVORITE_TEAMS);
       let allTeams = currentTeamsStr ? JSON.parse(currentTeamsStr) : [];
       
       if (type === 'national') {
@@ -571,7 +571,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         allTeams.push(...existingClubTeams.slice(0, 5));
       }
       
-      await AsyncStorage.setItem('fan-manager-favorite-clubs', JSON.stringify(allTeams));
+      await AsyncStorage.setItem(STORAGE_KEYS.FAVORITE_TEAMS, JSON.stringify(allTeams));
       refetch();
       console.log('✅ [PROFILE] Team selected and saved:', { type, index, team: team.name });
     } catch (error) {

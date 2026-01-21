@@ -29,6 +29,7 @@ import {
   WEBSITE_ICON_SIZES,
   WEBSITE_TYPOGRAPHY as WDS_TYPOGRAPHY,
 } from '../config/WebsiteDesignSystem';
+import { STORAGE_KEYS } from '../config/constants';
 
 interface FavoriteTeamsScreenProps {
   onComplete: (selectedTeams: Array<{ id: number; name: string; colors: string[]; league?: string; country?: string; type?: 'club' | 'national' }>) => void;
@@ -186,7 +187,7 @@ export default function FavoriteTeamsScreen({ onComplete, onBack }: FavoriteTeam
   const loadUserData = async () => {
     try {
       // ✅ ÖNCE favori takımları yükle (AsyncStorage'dan) - profil ekranından gelen seçimler
-      const favoriteTeamsStr = await AsyncStorage.getItem('fan-manager-favorite-clubs');
+      const favoriteTeamsStr = await AsyncStorage.getItem(STORAGE_KEYS.FAVORITE_TEAMS);
       if (favoriteTeamsStr) {
         try {
           const favoriteTeams = JSON.parse(favoriteTeamsStr);

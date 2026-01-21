@@ -19,6 +19,7 @@ import { SPACING, COLORS, BRAND, SIZES, TYPOGRAPHY } from '../theme/theme';
 import { authApi } from '../services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { logger } from '../utils/logger';
+import { STORAGE_KEYS } from '../config/constants';
 
 interface ChangePasswordScreenProps {
   onBack: () => void;
@@ -40,7 +41,7 @@ export const ChangePasswordScreen: React.FC<ChangePasswordScreenProps> = ({
   useEffect(() => {
     const loadUserEmail = async () => {
       try {
-        const userDataStr = await AsyncStorage.getItem('fan-manager-user');
+        const userDataStr = await AsyncStorage.getItem(STORAGE_KEYS.USER);
         if (userDataStr) {
           const userData = JSON.parse(userDataStr);
           setUserEmail(userData.email || null);

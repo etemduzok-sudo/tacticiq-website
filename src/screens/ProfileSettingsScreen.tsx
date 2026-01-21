@@ -18,6 +18,7 @@ import { ScreenLayout, StandardHeader } from '../components/layouts';
 import { textStyles, inputStyles, cardStyles, buttonStyles } from '../utils/styleHelpers';
 import { SPACING, COLORS, BRAND, SIZES, TYPOGRAPHY } from '../theme/theme';
 import { authApi } from '../services/api';
+import { STORAGE_KEYS } from '../config/constants';
 
 interface ProfileSettingsScreenProps {
   onBack: () => void;
@@ -53,7 +54,7 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
     const loadUserData = async () => {
       try {
         const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
-        const userDataStr = await AsyncStorage.getItem('fan-manager-user');
+        const userDataStr = await AsyncStorage.getItem(STORAGE_KEYS.USER);
         if (userDataStr) {
           const userData = JSON.parse(userDataStr);
           if (userData.name) setName(userData.name);
@@ -80,7 +81,7 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
     const loadProStatus = async () => {
       try {
         const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
-        const userDataStr = await AsyncStorage.getItem('fan-manager-user');
+        const userDataStr = await AsyncStorage.getItem(STORAGE_KEYS.USER);
         if (userDataStr) {
           const userData = JSON.parse(userDataStr);
           const storedIsPro = userData?.is_pro === true || userData?.isPro === true || userData?.isPremium === true || userData?.plan === 'pro' || userData?.plan === 'premium';
@@ -101,7 +102,7 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
     const loadFavoriteTeams = async () => {
       try {
         const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
-        const favoriteTeamsStr = await AsyncStorage.getItem('fan-manager-favorite-clubs');
+        const favoriteTeamsStr = await AsyncStorage.getItem(STORAGE_KEYS.FAVORITE_TEAMS);
         if (favoriteTeamsStr) {
           const teams = JSON.parse(favoriteTeamsStr);
           const teamNames = teams.map((team: any) => team.name);
@@ -206,7 +207,7 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
           username: username,
           name: name, // ✅ İsim de kaydedildi
         };
-        await AsyncStorage.setItem('fan-manager-user', JSON.stringify(updatedUser));
+        await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(updatedUser));
         
         // ✅ Başlangıç username'i güncelle (bir sonraki değişiklik için)
         setInitialUsername(username);
