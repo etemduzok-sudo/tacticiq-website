@@ -829,15 +829,28 @@ export default function ProfileSetupScreen({
           }}
           activeOpacity={0.7}
         >
-          <Text style={[
-            styles.dropdownButtonText,
-            !selectedNationalTeam && styles.dropdownButtonTextPlaceholder
-          ]}>
-            {selectedNationalTeam 
-              ? `${selectedNationalTeam.name}`
-              : 'Milli Takım Seç'
-            }
-          </Text>
+          <View style={styles.dropdownButtonContent}>
+            <Text style={[
+              styles.dropdownButtonText,
+              !selectedNationalTeam && styles.dropdownButtonTextPlaceholder
+            ]}>
+              {selectedNationalTeam 
+                ? `${selectedNationalTeam.name}`
+                : 'Milli Takım Seç'
+              }
+            </Text>
+            {selectedNationalTeam && NATIONAL_TEAMS.find(t => {
+              const countryName = t.replace(/^[\u{1F1E6}-\u{1F1FF}]{2}\s*|🏴[^\s]*\s*/u, '').trim();
+              return countryName === selectedNationalTeam.name;
+            }) && (
+              <Text style={styles.dropdownButtonFlag}>
+                {NATIONAL_TEAMS.find(t => {
+                  const countryName = t.replace(/^[\u{1F1E6}-\u{1F1FF}]{2}\s*|🏴[^\s]*\s*/u, '').trim();
+                  return countryName === selectedNationalTeam.name;
+                })?.match(/[\u{1F1E6}-\u{1F1FF}]{2}|🏴[^\s]*/u)?.[0]}
+              </Text>
+            )}
+          </View>
           <Ionicons 
             name={showNationalDropdown ? "chevron-up" : "chevron-down"} 
             size={20} 
@@ -1221,57 +1234,57 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     fontFamily: Platform.OS === 'web' ? 'system-ui, -apple-system, sans-serif' : undefined,
     letterSpacing: 6,
-    // Satır satır paralel olacak şekilde rotasyon yok
+    // X eksenine paralel, rotasyon yok
   },
   watermark1: {
-    top: 80,
-    left: '5%',
-    fontSize: 95,
+    top: 60,
+    left: -50,
+    fontSize: 110,
   },
   watermark2: {
-    top: 80,
-    left: '35%',
-    fontSize: 120,
+    top: 180,
+    left: '30%',
+    fontSize: 135,
   },
   watermark3: {
-    top: 80,
-    left: '70%',
-    fontSize: 105,
+    top: 280,
+    left: -80,
+    fontSize: 125,
   },
   watermark4: {
-    top: 250,
-    left: '10%',
-    fontSize: 115,
+    top: 380,
+    left: '45%',
+    fontSize: 150,
   },
   watermark5: {
-    top: 250,
-    left: '50%',
+    top: 500,
+    left: -60,
     fontSize: 140,
   },
   watermark6: {
-    top: 420,
-    left: '20%',
-    fontSize: 130,
+    top: 620,
+    left: '60%',
+    fontSize: 120,
   },
   watermark7: {
-    top: 420,
-    left: '65%',
-    fontSize: 110,
-  },
-  watermark8: {
-    top: 590,
-    left: '5%',
-    fontSize: 125,
-  },
-  watermark9: {
-    top: 590,
-    left: '45%',
+    top: 720,
+    left: '15%',
     fontSize: 145,
   },
+  watermark8: {
+    top: 240,
+    left: '85%',
+    fontSize: 130,
+  },
+  watermark9: {
+    top: 460,
+    left: '75%',
+    fontSize: 115,
+  },
   watermark10: {
-    top: 760,
-    left: '30%',
-    fontSize: 135,
+    top: 680,
+    left: -70,
+    fontSize: 155,
   },
   backButton: {
     position: 'absolute',
@@ -1617,6 +1630,15 @@ const styles = StyleSheet.create({
   },
   dropdownButtonTextPlaceholder: {
     color: 'rgba(255, 255, 255, 0.5)',
+  },
+  dropdownButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  dropdownButtonFlag: {
+    fontSize: 20,
+    marginLeft: 8,
   },
   dropdownContainer: {
     backgroundColor: 'rgba(15, 42, 36, 0.98)',
