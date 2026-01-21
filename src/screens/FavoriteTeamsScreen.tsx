@@ -858,6 +858,16 @@ export default function FavoriteTeamsScreen({ onComplete, onBack }: FavoriteTeam
 
             return (
     <ScreenLayout safeArea>
+      {/* Watermark Background - TacticIQ.app */}
+      <View style={styles.watermarkContainer} pointerEvents="none">
+        <Text style={[styles.watermarkText, styles.watermark1]}>TacticIQ.app</Text>
+        <Text style={[styles.watermarkText, styles.watermark2]}>TacticIQ.app</Text>
+        <Text style={[styles.watermarkText, styles.watermark3]}>TacticIQ.app</Text>
+        <Text style={[styles.watermarkText, styles.watermark4]}>TacticIQ.app</Text>
+        <Text style={[styles.watermarkText, styles.watermark5]}>TacticIQ.app</Text>
+        <Text style={[styles.watermarkText, styles.watermark6]}>TacticIQ.app</Text>
+      </View>
+
       {/* Back Button - Sol üst köşe */}
       {onBack && (
         <TouchableOpacity style={styles.backButtonTop} onPress={onBack} activeOpacity={0.7}>
@@ -1003,6 +1013,60 @@ export default function FavoriteTeamsScreen({ onComplete, onBack }: FavoriteTeam
 }
 
 const styles = StyleSheet.create({
+  // Watermark Background
+  watermarkContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 0,
+    overflow: 'hidden',
+  },
+  watermarkText: {
+    position: 'absolute',
+    color: 'rgba(31, 162, 166, 0.03)', // Çok silik turkuaz
+    fontSize: 180,
+    fontWeight: '900',
+    fontFamily: Platform.OS === 'web' ? 'system-ui, -apple-system, sans-serif' : undefined,
+    letterSpacing: 8,
+    transform: [{ rotate: '-15deg' }],
+  },
+  watermark1: {
+    top: -50,
+    left: -100,
+    fontSize: 220,
+  },
+  watermark2: {
+    top: 200,
+    right: -150,
+    fontSize: 180,
+    transform: [{ rotate: '25deg' }],
+  },
+  watermark3: {
+    top: 500,
+    left: -80,
+    fontSize: 200,
+    transform: [{ rotate: '-10deg' }],
+  },
+  watermark4: {
+    bottom: 100,
+    right: -120,
+    fontSize: 190,
+    transform: [{ rotate: '20deg' }],
+  },
+  watermark5: {
+    top: 350,
+    left: '50%',
+    fontSize: 170,
+    transform: [{ rotate: '-5deg' }, { translateX: -100 }],
+  },
+  watermark6: {
+    bottom: 250,
+    left: -60,
+    fontSize: 210,
+    transform: [{ rotate: '15deg' }],
+  },
   // Back Button - Sol üst köşe (standardize)
   backButtonTop: {
     position: 'absolute',
@@ -1024,6 +1088,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingTop: WDS_SPACING.xl + WEBSITE_ICON_SIZES.xl + WDS_SPACING.md + WDS_SPACING.lg,
     paddingBottom: 140, // Footer için yeterli boşluk (buton + progress + padding)
+    zIndex: 1, // Watermark'ın üstünde olması için
   },
   container: {
     flex: 1,
