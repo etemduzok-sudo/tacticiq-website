@@ -33,9 +33,17 @@ import { logger } from '../utils/logger';
 import { profileService } from '../services/profileService';
 import { calculateTopPercent } from '../types/profile.types';
 import { teamsApi } from '../services/api';
-import { SPACING, TYPOGRAPHY, BRAND, DARK_MODE } from '../theme/theme';
+import { SPACING, TYPOGRAPHY, BRAND, DARK_MODE, COLORS, SIZES } from '../theme/theme';
 import { StandardHeader, ScreenLayout } from '../components/layouts';
 import { containerStyles } from '../utils/styleHelpers';
+
+// Theme colors (Dark mode - mobil varsayılan olarak dark mode kullanıyor)
+const theme = COLORS.dark;
+
+// Helper: StyleSheet için theme-aware styles
+const createStyles = () => {
+  const theme = COLORS.dark;
+  return StyleSheet.create({
 
 interface ProfileScreenProps {
   onBack: () => void;
@@ -667,8 +675,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   if (loading) {
     return (
       <ScreenLayout safeArea={true} scrollable={false}>
-        <View style={[styles.container, styles.loadingContainer]}>
-          <ActivityIndicator size="large" color="#059669" />
+          <View style={[styles.container, styles.loadingContainer]}>
+          <ActivityIndicator size="large" color={theme.primary} />
           <Text style={styles.loadingText}>Profil yükleniyor...</Text>
         </View>
       </ScreenLayout>
@@ -738,7 +746,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             style={styles.profileHeaderCard}
           >
             <LinearGradient
-              colors={['rgba(5, 150, 105, 0.1)', 'transparent']}
+              colors={[theme.primary + '20', 'transparent']} // 20% opacity
               style={styles.profileGradient}
             >
               {/* Avatar */}
@@ -747,15 +755,15 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   onPress={() => setShowAvatarPicker(true)}
                   style={styles.avatarContainer}
                 >
-                  <View style={styles.avatar}>
+                  <View style={[styles.avatar, { borderColor: theme.primary }]}>
                     {user.avatar ? (
                       <Image source={{ uri: user.avatar }} style={styles.avatarImage} />
                     ) : (
                       <Text style={styles.avatarText}>{user.name.charAt(0)}</Text>
                     )}
                   </View>
-                  <View style={styles.cameraButton}>
-                    <Ionicons name="camera" size={16} color="#FFFFFF" />
+                  <View style={[styles.cameraButton, { backgroundColor: theme.primary }]}>
+                    <Ionicons name="camera" size={16} color={theme.primaryForeground} />
                   </View>
                 </TouchableOpacity>
 
@@ -766,7 +774,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 {/* Plan Badge */}
                 {isPro ? (
                   <LinearGradient
-                    colors={['#F59E0B', '#D97706']}
+                    colors={[theme.accent, theme.accent + 'CC']} // Accent rengi + opacity
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                     style={styles.proBadge}
@@ -804,7 +812,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           {/* Performance Card */}
           <Animated.View entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(100)} style={styles.card}>
             <View style={styles.cardHeader}>
-              <Ionicons name="trending-up" size={20} color="#059669" />
+              <Ionicons name="trending-up" size={20} color={theme.primary} />
               <Text style={styles.cardTitle}>Performance</Text>
             </View>
 
@@ -857,7 +865,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               {user.countryRank > 0 && (
                 <View style={styles.progressBarContainer}>
                   <LinearGradient
-                    colors={['#059669', '#047857']}
+                    colors={[theme.primary, theme.primaryDark || theme.primary]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                     style={[styles.progressBar, { width: `${rankPercentage}%` }]}
@@ -876,14 +884,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             {/* Additional Metrics */}
             <View style={styles.metricsContainer}>
               <View style={styles.metricBox}>
-                <Ionicons name="medal" size={16} color="#F59E0B" />
+                <Ionicons name="medal" size={16} color={theme.accent} />
                 <View style={styles.metricText}>
                   <Text style={styles.metricLabel}>Avg Rating</Text>
                   <Text style={styles.metricValue}>{user.avgMatchRating}</Text>
                 </View>
               </View>
               <View style={styles.metricBox}>
-                <Ionicons name="flash" size={16} color="#059669" />
+                <Ionicons name="flash" size={16} color={theme.primary} />
                 <View style={styles.metricText}>
                   <Text style={styles.metricLabel}>XP This Week</Text>
                   <Text style={styles.metricValue}>+{user.xpGainThisWeek}</Text>
@@ -895,7 +903,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           {/* Favorite Teams Card */}
           <Animated.View entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(200)} style={styles.card}>
             <View style={styles.cardHeader}>
-              <Ionicons name="trophy" size={20} color="#059669" />
+              <Ionicons name="trophy" size={20} color={theme.primary} />
               <Text style={styles.cardTitle}>Favori Takımlar</Text>
             </View>
 
@@ -1278,10 +1286,12 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = () => {
+  const theme = COLORS.dark;
+  return StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: theme.background,
   },
 
   // ScrollView
@@ -1296,14 +1306,14 @@ const styles = StyleSheet.create({
 
   // Profile Header Card
   profileHeaderCard: {
-    borderRadius: 16,
+    borderRadius: SIZES.radiusXl,
     borderWidth: 1,
-    borderColor: 'rgba(5, 150, 105, 0.2)',
-    marginBottom: 16, // ✅ Alt boşluk (standart: 24 → 16)
+    borderColor: theme.primary + '30', // 30% opacity
+    marginBottom: SPACING.base, // ✅ Alt boşluk (standart: 24 → 16)
     overflow: 'hidden',
   },
   profileGradient: {
-    padding: 24,
+    padding: SPACING.lg,
   },
   avatarSection: {
     alignItems: 'center',
@@ -1315,10 +1325,9 @@ const styles = StyleSheet.create({
   avatar: {
     width: 96,
     height: 96,
-    borderRadius: 48,
+    borderRadius: SIZES.radiusFull / 2,
     borderWidth: 4,
-    borderColor: '#059669',
-    backgroundColor: '#059669',
+    backgroundColor: theme.primary, // Will be overridden by inline style
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1338,8 +1347,7 @@ const styles = StyleSheet.create({
     right: 0,
     width: 32,
     height: 32,
-    borderRadius: 16,
-    backgroundColor: '#059669',
+    borderRadius: SIZES.radiusFull / 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1407,9 +1415,9 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   statValueGreen: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#059669',
+    ...TYPOGRAPHY['2xl'],
+    fontWeight: TYPOGRAPHY.bold,
+    color: theme.primary,
   },
   divider: {
     width: 1,
@@ -1419,23 +1427,23 @@ const styles = StyleSheet.create({
 
   // Card
   card: {
-    backgroundColor: 'rgba(30, 41, 59, 0.5)',
+    backgroundColor: theme.card,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 16,
-    padding: 24,
-    marginBottom: 24,
+    borderColor: theme.border,
+    borderRadius: SIZES.radiusXl,
+    padding: SPACING.lg,
+    marginBottom: SPACING.lg,
   },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 16,
+    gap: SPACING.sm,
+    marginBottom: SPACING.base,
   },
   cardTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
+    ...TYPOGRAPHY.h4,
+    fontWeight: TYPOGRAPHY.semibold,
+    color: theme.cardForeground,
   },
 
   // Performance
@@ -1446,43 +1454,43 @@ const styles = StyleSheet.create({
   },
   performanceItem: {
     flex: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 12,
-    padding: 16,
+    backgroundColor: theme.muted,
+    borderRadius: SIZES.radiusMd,
+    padding: SPACING.base,
     alignItems: 'center',
   },
   performanceValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginBottom: 4,
+    ...TYPOGRAPHY['2xl'],
+    fontWeight: TYPOGRAPHY.bold,
+    color: theme.foreground,
+    marginBottom: SPACING.xs,
   },
   performanceValueGreen: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#059669',
-    marginBottom: 4,
+    ...TYPOGRAPHY['2xl'],
+    fontWeight: TYPOGRAPHY.bold,
+    color: theme.primary,
+    marginBottom: SPACING.xs,
   },
   performanceValueGold: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#F59E0B',
-    marginBottom: 4,
+    ...TYPOGRAPHY['2xl'],
+    fontWeight: TYPOGRAPHY.bold,
+    color: theme.accent,
+    marginBottom: SPACING.xs,
   },
   performanceLabel: {
-    fontSize: 12,
-    color: '#9CA3AF',
+    ...TYPOGRAPHY.bodySmall,
+    color: theme.mutedForeground,
     textAlign: 'center',
   },
 
   // Ranking
   rankingCard: {
-    padding: 16,
-    backgroundColor: 'rgba(5, 150, 105, 0.1)',
+    padding: SPACING.base,
+    backgroundColor: theme.primary + '20', // 20% opacity
     borderWidth: 1,
-    borderColor: 'rgba(5, 150, 105, 0.2)',
-    borderRadius: 12,
-    marginBottom: 16,
+    borderColor: theme.primary + '30', // 30% opacity
+    borderRadius: SIZES.radiusMd,
+    marginBottom: SPACING.base,
   },
   rankingHeader: {
     flexDirection: 'row',
@@ -1495,9 +1503,9 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   rankingRank: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#059669',
+    ...TYPOGRAPHY.xl,
+    fontWeight: TYPOGRAPHY.bold,
+    color: theme.primary,
   },
   rankingRight: {
     alignItems: 'flex-end',
@@ -1530,17 +1538,17 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   topPercentBadge: {
-    backgroundColor: 'rgba(5, 150, 105, 0.2)',
+    backgroundColor: theme.primary + '20', // 20% opacity
     paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginTop: 6,
+    paddingVertical: SPACING.xs,
+    borderRadius: SIZES.radiusMd,
+    marginTop: SPACING.md,
     alignSelf: 'flex-start',
   },
   topPercentBadgeText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#059669',
+    ...TYPOGRAPHY.bodySmall,
+    fontWeight: TYPOGRAPHY.bold,
+    color: theme.primary,
   },
   rankingNoRank: {
     fontSize: 16,
@@ -2483,4 +2491,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
   },
-});
+  });
+};
+
+const styles = createStyles();
