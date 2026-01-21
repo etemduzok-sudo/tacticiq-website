@@ -9,19 +9,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/app/components/ui/dropdown-menu';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/app/components/ui/alert-dialog';
 import { Button } from '@/app/components/ui/button';
 import { Avatar, AvatarFallback } from '@/app/components/ui/avatar';
-import { LogOut, Trash2, User, Settings, Crown } from 'lucide-react';
+import { LogOut, User, Crown } from 'lucide-react';
 import { toast } from 'sonner';
 import { UserProfileModal } from '@/app/components/profile/UserProfileModal';
 
@@ -38,12 +28,10 @@ interface UserMenuProps {
 export function UserMenu({
   user = { email: 'user@tacticiq.app', name: 'TacticIQ User' },
   onSignOut,
-  onDeleteAccount,
   onNavigateToProfile,
 }: UserMenuProps) {
   const { t } = useLanguage();
   const userAuth = useUserAuthSafe();
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
 
   const isPro = userAuth?.profile?.plan === 'pro';
@@ -56,14 +44,6 @@ export function UserMenu({
       onSignOut();
     }
     toast.success(t('user.signout.success'));
-  };
-
-  const handleDeleteAccount = () => {
-    if (onDeleteAccount) {
-      onDeleteAccount();
-    }
-    setDeleteDialogOpen(false);
-    toast.success(t('user.delete.success'));
   };
 
   const handleNavigateToProfile = () => {
