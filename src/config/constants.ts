@@ -230,6 +230,7 @@ export const STORAGE_KEYS = {
   RATINGS: 'fan-manager-ratings-',          // Append matchId
   ONBOARDING: 'fan-manager-onboarding-complete',
   PRO_STATUS: 'fan-manager-pro-status',
+  PROFILE_SETUP: 'tacticiq-profile-setup',
 };
 
 /**

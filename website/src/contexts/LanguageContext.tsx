@@ -5,6 +5,7 @@ interface LanguageContextType {
   currentLanguage: string;
   language: string; // Alias for currentLanguage for compatibility
   changeLanguage: (lang: string) => void;
+  setLanguage: (lang: string) => void; // Alias for changeLanguage for compatibility
   t: (key: string) => string;
   isRTL: boolean;
 }
@@ -47,6 +48,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     currentLanguage: i18n.language,
     language: i18n.language, // Alias for compatibility
     changeLanguage,
+    setLanguage: changeLanguage, // Alias for compatibility
     t,
     isRTL: i18n.language === 'ar',
   };

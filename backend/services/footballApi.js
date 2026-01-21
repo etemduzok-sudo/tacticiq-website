@@ -1,6 +1,9 @@
 // Football API Service (API-Football.com)
 const axios = require('axios');
 const NodeCache = require('node-cache');
+const sharp = require('sharp');
+const https = require('https');
+const http = require('http');
 
 // Cache configuration
 // stdTTL: 3600 = 1 hour cache
@@ -406,8 +409,100 @@ function extractTeamColors(teamData) {
     return [colors.primary, colors.secondary];
   }
   
-  // Fallback: Try to extract from logo or other sources
-  // API-Football v3 doesn't directly provide kit colors, so we might need to use a mapping
+  return null;
+}
+
+// Extract dominant colors from logo image (telif için logo yerine renkler kullanılacak)
+async function extractColorsFromLogo(logoUrl) {
+  if (!logoUrl) return null;
+  
+  try {
+    // Download image
+    const response = await axios({
+      method: 'GET',
+      url: logoUrl,
+      responseType: 'arraybuffer',
+      timeout: 10000,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; TacticIQ/1.0)',
+      },
+    });
+
+    const imageBuffer = Buffer.from(response.data);
+    
+    // Resize image for faster processing (max 200x200)
+    const resized = await sharp(imageBuffer)
+      .resize(200, 200, { fit: 'inside', withoutEnlargement: true })
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+
+    const { data, info } = resized;
+    const { width, height, channels } = info;
+    
+    // Extract color palette using k-means-like approach (simplified)
+    const colorMap = new Map();
+    const sampleStep = 10; // Sample every 10th pixel for performance
+    
+    for (let i = 0; i < data.length; i += channels * sampleStep) {
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+      
+      // Skip very dark (almost black) and very light (almost white) pixels
+      const brightness = (r + g + b) / 3;
+      if (brightness < 30 || brightness > 225) continue;
+      
+      // Round colors to nearest 32 to group similar colors
+      const roundedR = Math.round(r / 32) * 32;
+      const roundedG = Math.round(g / 32) * 32;
+      const roundedB = Math.round(b / 32) * 32;
+      
+      const colorKey = `${roundedR},${roundedG},${roundedB}`;
+      colorMap.set(colorKey, (colorMap.get(colorKey) || 0) + 1);
+    }
+    
+    // Sort by frequency and get top 2 colors
+    const sortedColors = Array.from(colorMap.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 2)
+      .map(([colorKey]) => {
+        const [r, g, b] = colorKey.split(',').map(Number);
+        return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+      });
+    
+    if (sortedColors.length === 0) return null;
+    
+    // If only one color found, duplicate it for secondary
+    if (sortedColors.length === 1) {
+      return [sortedColors[0], sortedColors[0]];
+    }
+    
+    return sortedColors;
+  } catch (error) {
+    console.warn(`⚠️ Could not extract colors from logo ${logoUrl}:`, error.message);
+    return null;
+  }
+}
+
+// Get team colors from logo (telif için - ayrımcılık yapmadan tüm takımlar için çalışır)
+async function getTeamColors(teamId, teamData) {
+  // First try to extract from API response
+  const apiColors = extractTeamColors(teamData);
+  if (apiColors) {
+    return apiColors;
+  }
+  
+  // If no API colors, extract from logo
+  const team = teamData?.team || teamData;
+  const logoUrl = team?.logo;
+  
+  if (logoUrl) {
+    const logoColors = await extractColorsFromLogo(logoUrl);
+    if (logoColors) {
+      return logoColors;
+    }
+  }
+  
   return null;
 }
 
@@ -415,6 +510,27 @@ function extractTeamColors(teamData) {
 function extractCountryFlag(countryData) {
   if (!countryData || !countryData.flag) return null;
   return countryData.flag; // Returns flag emoji or URL
+}
+
+// Map team to country flag (helper function)
+async function getTeamFlag(teamCountry) {
+  if (!teamCountry) return null;
+  
+  try {
+    const countriesData = await getCountries();
+    if (countriesData.response && countriesData.response.length > 0) {
+      const country = countriesData.response.find(c => 
+        c.name.toLowerCase() === teamCountry.toLowerCase() ||
+        c.code.toLowerCase() === teamCountry.toLowerCase() ||
+        c.name.toLowerCase().includes(teamCountry.toLowerCase())
+      );
+      return country ? country.flag : null;
+    }
+  } catch (error) {
+    console.warn('Error fetching country flag:', error.message);
+  }
+  
+  return null;
 }
 
 // ====================

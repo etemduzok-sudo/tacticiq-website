@@ -259,6 +259,7 @@ import AuthScreen from './src/screens/AuthScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
 import ForgotPasswordScreen from './src/screens/ForgotPasswordScreen';
 import FavoriteTeamsScreen from './src/screens/FavoriteTeamsScreen';
+import ProfileSetupScreen from './src/screens/ProfileSetupScreen';
 import { MatchListScreen } from './src/screens/MatchListScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
 import { ProfileSettingsScreen } from './src/screens/ProfileSettingsScreen';
@@ -297,7 +298,8 @@ type Screen =
   | 'delete-account'
   | 'legal'
   | 'pro-upgrade'
-  | 'database-test';
+  | 'database-test'
+  | 'profile-setup';
 
 // Ignore warnings
 LogBox.ignoreLogs([
@@ -504,7 +506,7 @@ export default function App() {
     setCurrentScreen('register');
   };
 
-  // 6. Register → Success
+  // 6. Register → Success → Profile Setup
   const handleRegisterSuccess = async () => {
     logger.info('Register success', undefined, 'REGISTER');
     // ✅ Her zaman Pro yap
@@ -516,8 +518,16 @@ export default function App() {
       plan: 'pro'
     }));
     logger.debug('User set as PRO after registration', undefined, 'REGISTER');
-    logNavigation('favorite-teams');
-    setCurrentScreen('favorite-teams');
+    logNavigation('profile-setup');
+    setCurrentScreen('profile-setup');
+  };
+  
+  // 6.5. Profile Setup → Complete → Dashboard
+  const handleProfileSetupComplete = async () => {
+    logger.info('Profile setup complete', undefined, 'PROFILE_SETUP');
+    logNavigation('home');
+    setPreviousScreen(currentScreen);
+    setCurrentScreen('home');
   };
 
   // 7. Forgot Password → Back to Auth
@@ -803,6 +813,14 @@ export default function App() {
           return (
             <ForgotPasswordScreen
               onBack={handleForgotPasswordBack}
+            />
+          );
+        
+        case 'profile-setup':
+          return (
+            <ProfileSetupScreen
+              onComplete={handleProfileSetupComplete}
+              onBack={() => setCurrentScreen('auth')}
             />
           );
         

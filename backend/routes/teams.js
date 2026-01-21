@@ -106,8 +106,8 @@ router.get('/:id/colors', async (req, res) => {
     const teamData = data.response[0];
     const team = teamData.team || teamData;
     
-    // Get colors from mapping (telif için logo yerine renkler)
-    const colors = footballApi.getTeamColors(team.id, teamData);
+    // Get colors from logo (telif için logo yerine renkler - ayrımcılık yapmadan)
+    const colors = await footballApi.getTeamColors(team.id, teamData);
     
     res.json({
       success: true,
@@ -196,8 +196,8 @@ router.get('/search/:query', async (req, res) => {
         // National team - get country flag from API
         flag = await footballApi.getTeamFlag(team.country);
       } else {
-        // Club team - get colors from mapping (telif için logo yerine renkler)
-        colors = footballApi.getTeamColors(team.id, teamData);
+        // Club team - extract colors from logo (telif için logo yerine renkler - ayrımcılık yapmadan)
+        colors = await footballApi.getTeamColors(team.id, teamData);
       }
       
       return {

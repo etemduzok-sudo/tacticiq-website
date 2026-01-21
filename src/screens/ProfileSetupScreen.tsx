@@ -57,7 +57,7 @@ const NATIONAL_TEAMS = [
   '🇪🇸 İspanya',
   '🇫🇷 Fransa',
   '🇮🇹 İtalya',
-  '🏴󠁧󠁢󠁥󠁮󠁧󠁿 İngiltere',
+  '🇬🇧 İngiltere',
   '🇧🇷 Brezilya',
   '🇦🇷 Arjantin',
   '🇵🇹 Portekiz',
@@ -809,18 +809,15 @@ export default function ProfileSetupScreen({
     
     // Extract country name from team string (remove flag emoji)
     const getCountryName = (teamString: string) => {
-      // Remove flag emoji (both regular and England flag)
-      return teamString.replace(/^[\u{1F1E6}-\u{1F1FF}]{2}\s*|🏴\s*/u, '').trim();
+      // Remove flag emoji (regular flag emojis)
+      return teamString.replace(/^[\u{1F1E6}-\u{1F1FF}]{2}\s*/u, '').trim();
     };
     
     // Extract flag emoji from team string
     const getFlagEmoji = (teamString: string): string | null => {
-      // İngiltere için özel durum - sadece 🏴 kullan
-      if (teamString.includes('İngiltere')) {
-        return '🏴';
-      }
-      // Try to match regular flag emojis (2-letter country codes like 🇹🇷)
-      const regularFlagMatch = teamString.match(/[\u{1F1E6}-\u{1F1FF}]{2}/u);
+      // Try to match regular flag emojis (2-letter country codes like 🇹🇷, 🇬🇧)
+      // Match at the start of the string
+      const regularFlagMatch = teamString.match(/^[\u{1F1E6}-\u{1F1FF}]{2}/u);
       if (regularFlagMatch) {
         return regularFlagMatch[0];
       }
@@ -921,12 +918,17 @@ export default function ProfileSetupScreen({
                       activeOpacity={0.7}
                     >
                       <View style={styles.dropdownItemContent}>
-                        <Text style={styles.dropdownItemText}>{getCountryName(item)}</Text>
-                        {getFlagEmoji(item) && (
-                          <Text style={styles.flagEmoji}>
-                            {getFlagEmoji(item)}
-                          </Text>
-                        )}
+                        <Text style={styles.dropdownItemText} numberOfLines={1}>
+                          {getCountryName(item)}
+                        </Text>
+                        {(() => {
+                          const flag = getFlagEmoji(item);
+                          return flag ? (
+                            <Text style={styles.flagEmoji} allowFontScaling={false}>
+                              {flag}
+                            </Text>
+                          ) : null;
+                        })()}
                       </View>
                       {isSelected && (
                         <Ionicons name="checkmark-circle" size={22} color={WEBSITE_BRAND_COLORS.primary} />
@@ -1577,6 +1579,9 @@ const styles = StyleSheet.create({
   dropdownButtonFlag: {
     fontSize: 20,
     marginLeft: 8,
+    lineHeight: 20,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   dropdownContainer: {
     backgroundColor: 'rgba(15, 42, 36, 0.98)',
@@ -1627,10 +1632,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     flex: 1,
+    gap: 8,
   },
   flagEmoji: {
     fontSize: 20,
-    marginLeft: 8,
+    lineHeight: 20,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   dropdownItemText: {
     color: WEBSITE_BRAND_COLORS.white,
