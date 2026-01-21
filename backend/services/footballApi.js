@@ -392,7 +392,8 @@ async function getTeamSeasons(teamId) {
 
 // Get countries (for national teams - includes flag information)
 async function getCountries() {
-  return makeRequest('/countries', {}, 'countries-all', 86400); // 24 hour cache
+  // API-Football uses /teams/countries endpoint for country data with flags
+  return makeRequest('/teams/countries', {}, 'countries-all', 86400); // 24 hour cache
 }
 
 // Extract team colors from API response (kit colors)
@@ -462,6 +463,8 @@ module.exports = {
   getCountries,
   extractTeamColors,
   extractCountryFlag,
+  getTeamFlag,
+  getTeamColors,
   getCacheStats,
   clearCache,
 };

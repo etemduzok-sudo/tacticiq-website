@@ -38,34 +38,17 @@ router.get('/:id', async (req, res) => {
     const teamData = data.response[0];
     const team = teamData.team || teamData;
     
-    // Extract team colors (for club teams - kit colors)
-    // Note: API-Football doesn't directly provide kit colors, so we'll need to map them
-    // For now, we'll use country flag for national teams
-    let colors = null;
-    let flag = null;
-    
-    if (team.national) {
-      // National team - get country flag
-      try {
-        const countriesData = await footballApi.getCountries();
-        if (countriesData.response) {
-          const country = countriesData.response.find(c => 
-            c.name.toLowerCase() === (team.country || '').toLowerCase() ||
-            c.name.toLowerCase().includes((team.country || '').toLowerCase())
-          );
-          if (country) {
-            flag = country.flag; // Flag emoji or URL
-          }
-        }
-      } catch (err) {
-        console.warn('Could not fetch country flag:', err.message);
+      // Extract team colors (for club teams - kit colors) and flags (for national teams)
+      let colors = null;
+      let flag = null;
+      
+      if (team.national) {
+        // National team - get country flag from API
+        flag = await footballApi.getTeamFlag(team.country);
+      } else {
+        // Club team - get colors from mapping (telif için logo yerine renkler)
+        colors = footballApi.getTeamColors(team.id, teamData);
       }
-    } else {
-      // Club team - extract or map colors from team data
-      // API-Football doesn't provide kit colors directly, so we'll need a mapping
-      // For now, return null and we'll map them in the frontend
-      colors = footballApi.extractTeamColors(teamData) || null;
-    }
     
     // Enhanced team data with colors and flags
     const enhancedTeam = {
@@ -121,7 +104,10 @@ router.get('/:id/colors', async (req, res) => {
     }
     
     const teamData = data.response[0];
-    const colors = footballApi.extractTeamColors(teamData);
+    const team = teamData.team || teamData;
+    
+    // Get colors from mapping (telif için logo yerine renkler)
+    const colors = footballApi.getTeamColors(team.id, teamData);
     
     res.json({
       success: true,
@@ -164,22 +150,8 @@ router.get('/:id/flag', async (req, res) => {
       });
     }
     
-    // Get country flag
-    let flag = null;
-    try {
-      const countriesData = await footballApi.getCountries();
-      if (countriesData.response) {
-        const country = countriesData.response.find(c => 
-          c.name.toLowerCase() === (team.country || '').toLowerCase() ||
-          c.name.toLowerCase().includes((team.country || '').toLowerCase())
-        );
-        if (country) {
-          flag = country.flag;
-        }
-      }
-    } catch (err) {
-      console.warn('Could not fetch country flag:', err.message);
-    }
+    // Get country flag from API
+    const flag = await footballApi.getTeamFlag(team.country);
     
     res.json({
       success: true,
@@ -221,24 +193,11 @@ router.get('/search/:query', async (req, res) => {
       let flag = null;
       
       if (team.national) {
-        // National team - get country flag
-        try {
-          const countriesData = await footballApi.getCountries();
-          if (countriesData.response) {
-            const country = countriesData.response.find(c => 
-              c.name.toLowerCase() === (team.country || '').toLowerCase() ||
-              c.name.toLowerCase().includes((team.country || '').toLowerCase())
-            );
-            if (country) {
-              flag = country.flag;
-            }
-          }
-        } catch (err) {
-          // Ignore flag fetch errors
-        }
+        // National team - get country flag from API
+        flag = await footballApi.getTeamFlag(team.country);
       } else {
-        // Club team - extract colors
-        colors = footballApi.extractTeamColors(teamData) || null;
+        // Club team - get colors from mapping (telif için logo yerine renkler)
+        colors = footballApi.getTeamColors(team.id, teamData);
       }
       
       return {
