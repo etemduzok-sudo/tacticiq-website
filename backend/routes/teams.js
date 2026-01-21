@@ -46,8 +46,8 @@ router.get('/:id', async (req, res) => {
         // National team - get country flag from API
         flag = await footballApi.getTeamFlag(team.country);
       } else {
-        // Club team - get colors from mapping (telif için logo yerine renkler)
-        colors = footballApi.getTeamColors(team.id, teamData);
+        // Club team - extract colors from logo (telif için logo yerine renkler - ayrımcılık yapmadan)
+        colors = await footballApi.getTeamColors(team.id, teamData);
       }
     
     // Enhanced team data with colors and flags
