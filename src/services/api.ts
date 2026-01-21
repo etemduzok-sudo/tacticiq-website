@@ -355,10 +355,11 @@ export const teamsApi = {
   // Get team information
   getTeamInfo: (teamId: number) => request(`/teams/${teamId}`),
 
-  // Search teams by name
-  searchTeams: (query: string) => {
+  // Search teams by name - ✅ Static teams database'den hızlı arama
+  searchTeams: (query: string, type?: 'club' | 'national') => {
     const encodedQuery = encodeURIComponent(query);
-    return request(`/teams/search/${encodedQuery}`);
+    const typeParam = type ? `&type=${type}` : '';
+    return request(`/static-teams/search?q=${encodedQuery}${typeParam}`);
   },
 
   // Get team statistics

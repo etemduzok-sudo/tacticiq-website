@@ -880,7 +880,7 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
             </SheetDescription>
           </SheetHeader>
 
-          <ScrollArea className="flex-1 pr-4" style={{ height: 'calc(100vh - 100px)' }}>
+          <ScrollArea className="flex-1 px-4" style={{ height: 'calc(100vh - 100px)' }}>
             <div className="space-y-6 mt-6">
               {/* Tab Navigation */}
               <div className="flex bg-muted rounded-lg p-1 gap-1">

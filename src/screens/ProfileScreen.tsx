@@ -544,56 +544,31 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     }
   };
 
-  // ✅ Backend'den takım arama fonksiyonu
+  // ✅ Backend'den takım arama fonksiyonu - Static teams database'den hızlı arama
   const searchTeamsFromBackend = useCallback(async (query: string, type: 'club' | 'national' = 'club') => {
-    if (query.length < 3) {
+    if (query.length < 2) {
       setApiTeams([]);
       return;
     }
 
     setIsSearching(true);
     try {
-      const response = await teamsApi.searchTeams(query);
+      // ✅ Static teams endpoint'ini kullan (type parametresi ile)
+      const response = await teamsApi.searchTeams(query, type);
       if (response.success && response.data && Array.isArray(response.data)) {
-        // ✅ Takım ismine göre forma renkleri fonksiyonu
-        const getTeamColors = (teamName: string): string[] => {
-          const name = teamName.toLowerCase();
-          if (name.includes('galatasaray') || name.includes('gs')) return ['#FFA500', '#FF0000'];
-          if (name.includes('fenerbahçe') || name.includes('fenerbahce')) return ['#FFFF00', '#000080'];
-          if (name.includes('beşiktaş') || name.includes('besiktas')) return ['#000000', '#FFFFFF'];
-          if (name.includes('trabzonspor')) return ['#800020', '#0000FF'];
-          if (name.includes('real madrid')) return ['#FFFFFF', '#FFD700'];
-          if (name.includes('barcelona')) return ['#A50044', '#004D98'];
-          if (name.includes('türkiye') || name.includes('turkey')) return ['#E30A17', '#FFFFFF'];
-          if (name.includes('milan')) return ['#FB090B', '#000000'];
-          return ['#1E40AF', '#FFFFFF'];
-        };
-
-        // API'den gelen takımları filtrele (milli takım veya kulüp)
-        // Backend response formatı: { success: true, data: [{ team: {...}, league: {...} }] }
-        const filteredTeams = response.data
-          .filter((item: any) => {
-            // API-Football response formatı: item.team veya direkt item
-            const team = item.team || item;
-            const isNational = team.national === true;
-            return type === 'national' ? isNational : !isNational;
-          })
-          .map((item: any) => {
-            // API-Football response formatı: item.team veya direkt item
-            const team = item.team || item;
-            const league = item.league || {};
-            return {
-              id: team.id,
-              name: team.name,
-              country: team.country || 'Unknown',
-              colors: getTeamColors(team.name), // Forma renklerini takım isminden çıkar
-              league: league.name || 'Unknown',
-              type: team.national ? 'national' : 'club' as 'club' | 'national',
-            };
-          });
+        // Static teams response formatı: { success: true, data: [{ id, name, country, league, type, colors, flag, coach }] }
+        const formattedTeams = response.data.map((team: any) => ({
+          id: team.id,
+          name: team.name,
+          country: team.country || 'Unknown',
+          league: team.league || 'Unknown',
+          type: team.type || type,
+          colors: team.colors || ['#1E40AF', '#FFFFFF'], // Backend'den gelen renkler
+          coach: team.coach || null,
+        }));
         
-        setApiTeams(filteredTeams);
-        console.log(`✅ Backend'den ${filteredTeams.length} ${type === 'national' ? 'milli takım' : 'kulüp'} bulundu`);
+        setApiTeams(formattedTeams);
+        logger.debug(`✅ Static DB'den ${formattedTeams.length} ${type === 'national' ? 'milli takım' : 'kulüp'} bulundu`, { query, type, count: formattedTeams.length }, 'TEAM_SEARCH');
       } else {
         setApiTeams([]);
       }
@@ -1373,332 +1348,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             </View>
           </Animated.View>
 
-          {/* Eski duplicate içerik kaldırıldı */}
-                {/* Milli Takım Seçimi */}
-                <View style={styles.teamSelectSection}>
-                  <Text style={styles.teamSelectLabel}>Milli Takım *</Text>
-                  <TouchableOpacity
-                    style={styles.teamSelectButton}
-                    onPress={() => setOpenDropdown(openDropdown === 'national' ? null : 'national')}
-                  >
-                    <Text style={styles.teamSelectButtonText}>
-                      {selectedNationalTeam ? selectedNationalTeam.name : 'Milli takım seçin...'}
-                    </Text>
-                    <Ionicons name="chevron-down" size={20} color={theme.mutedForeground} />
-                  </TouchableOpacity>
-                  
-                  {openDropdown === 'national' && (
-                    <View style={styles.teamDropdown}>
-                      <TextInput
-                        style={styles.teamSearchInput}
-                        placeholder="Ara... (min 3 karakter)"
-                        value={searchQuery}
-                        onChangeText={(text) => {
-                          setSearchQuery(text);
-                          if (text.length >= 3) {
-                            searchTeamsFromBackend(text, 'national');
-                          } else {
-                            setApiTeams([]);
-                          }
-                        }}
-                        autoFocus
-                      />
-                      {isSearching && (
-                        <ActivityIndicator size="small" color={theme.primary} style={styles.searchLoading} />
-                      )}
-                      <ScrollView style={styles.teamDropdownList} nestedScrollEnabled>
-                        {apiTeams.map(team => (
-                          <TouchableOpacity
-                            key={team.id}
-                            style={styles.teamDropdownItem}
-                            onPress={() => {
-                              setSelectedNationalTeam(team);
-                              handleTeamSelect(team, 'national');
-                              setOpenDropdown(null);
-                              setSearchQuery('');
-                            }}
-                          >
-                            <Text style={styles.teamDropdownItemName}>{team.name}</Text>
-                            <Text style={styles.teamDropdownItemMeta}>{team.country}</Text>
-                          </TouchableOpacity>
-                        ))}
-                      </ScrollView>
-                    </View>
-                  )}
-                </View>
+          {/* Eski duplicate içerik tamamen kaldırıldı */}
 
-                {/* Kulüp Takımları Seçimi (Sadece Pro) */}
-                {isPro && (
-                  <View style={styles.teamSelectSection}>
-                    <Text style={styles.teamSelectLabel}>Kulüp Takımları (Maksimum 5)</Text>
-                    {[0, 1, 2, 3, 4].map((idx) => (
-                      <View key={idx} style={styles.clubTeamRow}>
-                        <TouchableOpacity
-                          style={styles.teamSelectButton}
-                          onPress={() => {
-                            const key = `club${idx + 1}` as 'club1' | 'club2' | 'club3' | 'club4' | 'club5';
-                            setOpenDropdown(openDropdown === key ? null : key);
-                          }}
-                        >
-                          <Text style={styles.teamSelectButtonText}>
-                            {selectedClubTeams[idx] ? selectedClubTeams[idx]!.name : 'Kulüp takımı seçin...'}
-                          </Text>
-                          <Ionicons name="chevron-down" size={20} color={theme.mutedForeground} />
-                        </TouchableOpacity>
-                        {selectedClubTeams[idx] && (
-                          <TouchableOpacity
-                            onPress={() => {
-                              const newTeams = [...selectedClubTeams];
-                              newTeams[idx] = null;
-                              setSelectedClubTeams(newTeams);
-                              handleTeamSelect(selectedClubTeams[idx]!, 'club', idx);
-                            }}
-                            style={styles.removeTeamButton}
-                          >
-                            <Ionicons name="close-circle" size={20} color={theme.destructive} />
-                          </TouchableOpacity>
-                        )}
-                        
-                        {openDropdown === `club${idx + 1}` && (
-                          <View style={styles.teamDropdown}>
-                            <TextInput
-                              style={styles.teamSearchInput}
-                              placeholder="Ara... (min 3 karakter)"
-                              value={searchQuery}
-                              onChangeText={(text) => {
-                                setSearchQuery(text);
-                                if (text.length >= 3) {
-                                  searchTeamsFromBackend(text, 'club');
-                                } else {
-                                  setApiTeams([]);
-                                }
-                              }}
-                              autoFocus
-                            />
-                            {isSearching && (
-                              <ActivityIndicator size="small" color={theme.primary} style={styles.searchLoading} />
-                            )}
-                            <ScrollView style={styles.teamDropdownList} nestedScrollEnabled>
-                              {apiTeams.filter(t => !selectedClubTeams.includes(t)).map(team => (
-                                <TouchableOpacity
-                                  key={team.id}
-                                  style={styles.teamDropdownItem}
-                                  onPress={() => {
-                                    const newTeams = [...selectedClubTeams];
-                                    newTeams[idx] = team;
-                                    setSelectedClubTeams(newTeams);
-                                    handleTeamSelect(team, 'club', idx);
-                                    setOpenDropdown(null);
-                                    setSearchQuery('');
-                                  }}
-                                >
-                                  <Text style={styles.teamDropdownItemName}>{team.name}</Text>
-                                  <Text style={styles.teamDropdownItemMeta}>{team.league || team.country}</Text>
-                                </TouchableOpacity>
-                              ))}
-                            </ScrollView>
-                          </View>
-                        )}
-                      </View>
-                    ))}
-                    <Text style={styles.teamSelectHint}>
-                      {selectedClubTeams.filter(Boolean).length} / 5 kulüp takımı seçildi
-                    </Text>
-                  </View>
-                )}
-
-                {/* Pro değilse kulüp takımları kilitli */}
-                {!isPro && (
-                  <View style={styles.lockedClubTeams}>
-                    <Ionicons name="lock-closed" size={32} color={theme.accent} />
-                    <Text style={styles.lockedClubTeamsTitle}>Pro Üye Gerekli</Text>
-                    <Text style={styles.lockedClubTeamsText}>5 kulüp takımı seçmek için Pro üye olun</Text>
-                    <TouchableOpacity
-                      style={styles.proUpgradeButton}
-                      onPress={onProUpgrade}
-                    >
-                      <LinearGradient
-                        colors={[theme.accent, theme.accent + 'CC']}
-                        style={styles.proUpgradeButtonGradient}
-                      >
-                        <Ionicons name="crown" size={18} color={theme.accentForeground} />
-                        <Text style={styles.proUpgradeButtonText}>Pro Üye Ol</Text>
-                      </LinearGradient>
-                    </TouchableOpacity>
-                  </View>
-                )}
-              </View>
-            ) : (
-              <View style={styles.teamsSelectionContainer}>
-                {/* Milli takım önce, ardından kulüpler - görüntüleme modu */}
-                {selectedNationalTeam && (
-                <View style={styles.favoriteTeamCard}>
-                  <LinearGradient
-                    colors={selectedNationalTeam.colors}
-                    style={styles.sideStripeLeft}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 0, y: 1 }}
-                  />
-                  <LinearGradient
-                    colors={selectedNationalTeam.colors.slice().reverse()}
-                    style={styles.sideStripeRight}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 0, y: 1 }}
-                  />
-                  <View style={styles.favoriteTeamContent}>
-                    <Text style={styles.favoriteTeamName}>{selectedNationalTeam.name}</Text>
-                    <Text style={styles.favoriteTeamCoach}>
-                      {selectedNationalTeam.coach || 'Teknik direktör bilinmiyor'}
-                    </Text>
-                    <Text style={styles.favoriteTeamMeta}>
-                      {selectedNationalTeam.country || 'Unknown'} • {selectedNationalTeam.league || 'Unknown'}
-                    </Text>
-                  </View>
-                </View>
-              )}
-
-              {selectedClubTeams.filter(Boolean).map((team, idx) => (
-                <View key={team?.id || idx} style={styles.favoriteTeamCard}>
-                  <LinearGradient
-                    colors={team!.colors}
-                    style={styles.sideStripeLeft}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 0, y: 1 }}
-                  />
-                  <LinearGradient
-                    colors={team!.colors.slice().reverse()}
-                    style={styles.sideStripeRight}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 0, y: 1 }}
-                  />
-                  <View style={styles.favoriteTeamContent}>
-                    <Text style={styles.favoriteTeamName}>{team!.name}</Text>
-                    <Text style={styles.favoriteTeamCoach}>
-                      {team!.coach || 'Teknik direktör bilinmiyor'}
-                    </Text>
-                    <Text style={styles.favoriteTeamMeta}>
-                      {team!.country || 'Unknown'} • {team!.league || 'Unknown'}
-                    </Text>
-                  </View>
-                </View>
-              ))}
-
-                {!selectedNationalTeam && selectedClubTeams.filter(Boolean).length === 0 && (
-                  <View style={styles.emptyFavorites}>
-                    <Text style={styles.emptyFavoritesText}>
-                      Henüz favori takım seçilmemiş. Düzenle butonuna tıklayarak takımlarınızı seçin.
-                    </Text>
-                  </View>
-                )}
-              </View>
-            )}
-          </Animated.View>
-
-          {/* Profil Düzenleme Card - Web ile uyumlu */}
-          <Animated.View entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(250)} style={styles.card}>
-            <View style={styles.cardHeader}>
-              <Ionicons name="person-outline" size={20} color={theme.primary} />
-              <Text style={styles.cardTitle}>Kişisel Bilgiler</Text>
-            </View>
-
-            {isEditing ? (
-              <View style={styles.profileForm}>
-                <View style={styles.formRow}>
-                  <Text style={styles.formLabel}>İsim</Text>
-                  <TextInput
-                    style={styles.formInput}
-                    value={firstName}
-                    onChangeText={setFirstName}
-                    placeholder="İsim"
-                    placeholderTextColor={theme.mutedForeground}
-                  />
-                </View>
-
-                <View style={styles.formRow}>
-                  <Text style={styles.formLabel}>Soyisim</Text>
-                  <TextInput
-                    style={styles.formInput}
-                    value={lastName}
-                    onChangeText={setLastName}
-                    placeholder="Soyisim"
-                    placeholderTextColor={theme.mutedForeground}
-                  />
-                </View>
-
-                <View style={styles.formRow}>
-                  <Text style={styles.formLabel}>Nickname *</Text>
-                  <TextInput
-                    style={styles.formInput}
-                    value={nickname}
-                    onChangeText={setNickname}
-                    placeholder="Kullanıcı adı"
-                    placeholderTextColor={theme.mutedForeground}
-                  />
-                  <Text style={styles.formHint}>Email ile kayıt olanlar için zorunludur</Text>
-                </View>
-
-                <View style={styles.formActions}>
-                  <TouchableOpacity
-                    style={[styles.formButton, styles.formButtonSave]}
-                    onPress={async () => {
-                      setSaving(true);
-                      try {
-                        const fullName = [firstName, lastName].filter(Boolean).join(' ').trim() || nickname;
-                        await profileService.updateProfile({
-                          name: fullName,
-                          nickname: nickname,
-                        });
-                        setIsEditing(false);
-                        Alert.alert('Başarılı', 'Profil güncellendi');
-                      } catch (error) {
-                        Alert.alert('Hata', 'Profil güncellenemedi');
-                      } finally {
-                        setSaving(false);
-                      }
-                    }}
-                    disabled={saving || !nickname.trim()}
-                  >
-                    {saving ? (
-                      <ActivityIndicator size="small" color={theme.primaryForeground} />
-                    ) : (
-                      <>
-                        <Ionicons name="checkmark" size={18} color={theme.primaryForeground} />
-                        <Text style={styles.formButtonText}>Kaydet</Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.formButton, styles.formButtonCancel]}
-                    onPress={() => setIsEditing(false)}
-                  >
-                    <Text style={[styles.formButtonText, { color: theme.foreground }]}>İptal</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ) : (
-              <View style={styles.profileInfo}>
-                <View style={styles.profileInfoRow}>
-                  <Text style={styles.profileInfoLabel}>İsim</Text>
-                  <Text style={styles.profileInfoValue}>{firstName || '-'}</Text>
-                </View>
-                <View style={styles.profileInfoRow}>
-                  <Text style={styles.profileInfoLabel}>Soyisim</Text>
-                  <Text style={styles.profileInfoValue}>{lastName || '-'}</Text>
-                </View>
-                <View style={styles.profileInfoRow}>
-                  <Text style={styles.profileInfoLabel}>Nickname</Text>
-                  <Text style={styles.profileInfoValue}>{nickname || '-'}</Text>
-                </View>
-                <TouchableOpacity
-                  style={styles.editProfileButton}
-                  onPress={() => setIsEditing(true)}
-                >
-                  <Ionicons name="create-outline" size={18} color={theme.primary} />
-                  <Text style={styles.editProfileButtonText}>Düzenle</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </Animated.View>
+          {/* Duplicate Kişisel Bilgiler Card kaldırıldı - yukarıda zaten var */}
 
           {/* 🎯 EN İYİ OLDUĞU KÜME KARTI */}
           {bestCluster && (
