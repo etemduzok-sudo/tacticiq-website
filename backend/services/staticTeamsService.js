@@ -398,8 +398,15 @@ async function searchTeams(query, type = null) {
     const result = await pool.query(sql, params);
     return result.rows;
   } catch (error) {
+    const errorMessage = error.message || String(error);
+    console.error('⚠️  Static teams search error:', errorMessage);
+    
     // Eğer static_teams tablosu yoksa boş array döndür
-    if (error.message.includes('does not exist') || error.message.includes('relation')) {
+    if (errorMessage.includes('does not exist') || 
+        errorMessage.includes('relation') || 
+        errorMessage.includes('static_teams') ||
+        errorMessage.includes('undefined') ||
+        !errorMessage) {
       console.warn('⚠️  static_teams table does not exist yet. Returning empty results.');
       return [];
     }

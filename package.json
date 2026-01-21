@@ -17,6 +17,9 @@
     "detox:test:android": "detox test --configuration android.emu.debug",
     "e2e:ios": "npm run detox:build:ios && npm run detox:test:ios",
     "e2e:android": "npm run detox:build:android && npm run detox:test:android",
+    "test:profile": "node scripts/profile-test-bot.js",
+    "test:profile:web": "node scripts/profile-test-bot.js",
+    "test:profile:mobile": "npm run detox:test:ios -- e2e/profile-test-bot.test.ts",
     "lint": "eslint . --ext .ts,.tsx",
     "type-check": "tsc --noEmit",
     "clean": "rm -rf node_modules && npm install",
@@ -70,9 +73,11 @@
     "@babel/plugin-proposal-optional-chaining": "^7.21.0",
     "@babel/plugin-transform-nullish-coalescing-operator": "^7.28.6",
     "@babel/plugin-transform-template-literals": "^7.27.1",
+    "@playwright/test": "^1.48.0",
     "@testing-library/jest-native": "^5.4.3",
     "@testing-library/react-native": "^13.3.3",
-    "jest-expo": "^54.0.16"
+    "jest-expo": "^54.0.16",
+    "playwright": "^1.48.0"
   },
   "private": true
 }

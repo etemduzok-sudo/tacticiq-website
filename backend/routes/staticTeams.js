@@ -16,8 +16,35 @@ const pool = new Pool({
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
 });
 
+// Fallback takım listesi (DB yoksa kullanılır)
+const FALLBACK_NATIONAL_TEAMS = [
+  { id: 1, name: 'Türkiye', country: 'Turkey', type: 'national', colors: ['#E30A17', '#FFFFFF'], flag: 'https://flagcdn.com/w80/tr.png' },
+  { id: 2, name: 'Germany', country: 'Germany', type: 'national', colors: ['#000000', '#DD0000', '#FFCC00'], flag: 'https://flagcdn.com/w80/de.png' },
+  { id: 3, name: 'France', country: 'France', type: 'national', colors: ['#002395', '#FFFFFF', '#ED2939'], flag: 'https://flagcdn.com/w80/fr.png' },
+  { id: 4, name: 'England', country: 'England', type: 'national', colors: ['#FFFFFF', '#CF081F'], flag: 'https://flagcdn.com/w80/gb-eng.png' },
+  { id: 5, name: 'Spain', country: 'Spain', type: 'national', colors: ['#AA151B', '#F1BF00'], flag: 'https://flagcdn.com/w80/es.png' },
+  { id: 6, name: 'Italy', country: 'Italy', type: 'national', colors: ['#009246', '#FFFFFF', '#CE2B37'], flag: 'https://flagcdn.com/w80/it.png' },
+  { id: 7, name: 'Brazil', country: 'Brazil', type: 'national', colors: ['#009C3B', '#FFDF00'], flag: 'https://flagcdn.com/w80/br.png' },
+  { id: 8, name: 'Argentina', country: 'Argentina', type: 'national', colors: ['#74ACDF', '#FFFFFF'], flag: 'https://flagcdn.com/w80/ar.png' },
+  { id: 9, name: 'Portugal', country: 'Portugal', type: 'national', colors: ['#006600', '#FF0000'], flag: 'https://flagcdn.com/w80/pt.png' },
+  { id: 10, name: 'Netherlands', country: 'Netherlands', type: 'national', colors: ['#FF6600', '#FFFFFF'], flag: 'https://flagcdn.com/w80/nl.png' },
+];
+
+const FALLBACK_CLUB_TEAMS = [
+  { id: 611, name: 'Fenerbahçe', country: 'Turkey', league: 'Süper Lig', type: 'club', colors: ['#FFED00', '#00205B'], logo: null },
+  { id: 645, name: 'Galatasaray', country: 'Turkey', league: 'Süper Lig', type: 'club', colors: ['#FF0000', '#FFD700'], logo: null },
+  { id: 549, name: 'Beşiktaş', country: 'Turkey', league: 'Süper Lig', type: 'club', colors: ['#000000', '#FFFFFF'], logo: null },
+  { id: 551, name: 'Trabzonspor', country: 'Turkey', league: 'Süper Lig', type: 'club', colors: ['#632134', '#00BFFF'], logo: null },
+  { id: 50, name: 'Manchester City', country: 'England', league: 'Premier League', type: 'club', colors: ['#6CABDD', '#1C2C5B'], logo: null },
+  { id: 33, name: 'Manchester United', country: 'England', league: 'Premier League', type: 'club', colors: ['#DA291C', '#FBE122'], logo: null },
+  { id: 40, name: 'Liverpool', country: 'England', league: 'Premier League', type: 'club', colors: ['#C8102E', '#00B2A9'], logo: null },
+  { id: 541, name: 'Real Madrid', country: 'Spain', league: 'La Liga', type: 'club', colors: ['#FFFFFF', '#00529F'], logo: null },
+  { id: 529, name: 'Barcelona', country: 'Spain', league: 'La Liga', type: 'club', colors: ['#004D98', '#A50044'], logo: null },
+  { id: 157, name: 'Bayern Munich', country: 'Germany', league: 'Bundesliga', type: 'club', colors: ['#DC052D', '#FFFFFF'], logo: null },
+];
+
 /**
- * Takım ara (Hızlı - Static DB'den)
+ * Takım ara (Hızlı - Static DB'den, fallback ile)
  * GET /api/static-teams/search?q=query&type=club|national
  */
 router.get('/search', async (req, res) => {
@@ -56,24 +83,31 @@ router.get('/search', async (req, res) => {
       count: formattedTeams.length,
     });
   } catch (error) {
-    console.error('Static teams search error:', error);
+    const errorMessage = error.message || String(error) || 'Unknown error';
+    console.error('Static teams search error:', errorMessage);
     
-    // Eğer tablo/view yoksa boş sonuç döndür (henüz sync yapılmamış olabilir)
-    if (error.message.includes('does not exist') || error.message.includes('relation')) {
-      console.warn('⚠️  static_teams table/view does not exist. Returning empty results.');
-      return res.json({
-        success: true,
-        data: [],
-        source: 'static_db',
-        count: 0,
-        message: 'Static teams database not initialized yet. Please run sync first.',
-      });
-    }
+    // Static teams DB henüz kurulmamış olabilir - fallback listesini kullan
+    console.warn('⚠️  static_teams error, using fallback list. Error:', errorMessage);
     
-    res.status(500).json({
-      success: false,
-      error: 'Failed to search teams',
-      message: error.message,
+    // req.query'den değerleri al (catch bloğunda type/query tanımsız olabilir)
+    const { q: queryParam, type: typeParam } = req.query;
+    
+    const fallbackTeams = typeParam === 'national' ? FALLBACK_NATIONAL_TEAMS : 
+                          typeParam === 'club' ? FALLBACK_CLUB_TEAMS : 
+                          [...FALLBACK_NATIONAL_TEAMS, ...FALLBACK_CLUB_TEAMS];
+    
+    // Query ile filtrele
+    const filteredTeams = queryParam ? fallbackTeams.filter(team => 
+      team.name.toLowerCase().includes(queryParam.toLowerCase()) ||
+      team.country.toLowerCase().includes(queryParam.toLowerCase())
+    ) : fallbackTeams;
+    
+    return res.json({
+      success: true,
+      data: filteredTeams,
+      source: 'fallback',
+      count: filteredTeams.length,
+      message: 'Using fallback team list. Database not available.',
     });
   }
 });
@@ -103,9 +137,13 @@ router.get('/national', async (req, res) => {
     });
   } catch (error) {
     console.error('Get national teams error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to get national teams',
+    // Fallback kullan
+    return res.json({
+      success: true,
+      data: FALLBACK_NATIONAL_TEAMS,
+      source: 'fallback',
+      count: FALLBACK_NATIONAL_TEAMS.length,
+      message: 'Using fallback team list. Database not available.',
     });
   }
 });
@@ -148,9 +186,18 @@ router.get('/clubs', async (req, res) => {
     });
   } catch (error) {
     console.error('Get club teams error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to get club teams',
+    // Fallback kullan
+    const { country } = req.query;
+    let filtered = FALLBACK_CLUB_TEAMS;
+    if (country) {
+      filtered = FALLBACK_CLUB_TEAMS.filter(t => t.country.toLowerCase().includes(country.toLowerCase()));
+    }
+    return res.json({
+      success: true,
+      data: filtered,
+      source: 'fallback',
+      count: filtered.length,
+      message: 'Using fallback team list. Database not available.',
     });
   }
 });

@@ -1521,6 +1521,12 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             </View>
           </Animated.View>
 
+          {/* Şifre Değiştir Modal */}
+          <ChangePasswordModal
+            visible={showChangePasswordModal}
+            onClose={() => setShowChangePasswordModal(false)}
+          />
+
           {/* Hesabı Sil Dialog - Web ile aynı */}
           <Modal
             visible={showDeleteAccountDialog}
@@ -1678,98 +1684,126 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
         </ScrollView>
         ) : (
-          /* 🏆 BADGE SHOWCASE TAB */
-          <View style={styles.badgeShowcaseContainer}>
-            <FlatList
-              data={allBadges}
-              keyExtractor={(item) => item.id}
-              numColumns={4}
-              contentContainerStyle={styles.badgeGrid}
-              columnWrapperStyle={styles.badgeRow}
-              showsVerticalScrollIndicator={false}
-              renderItem={({ item, index }) => (
-                <Animated.View entering={Platform.OS === 'web' ? ZoomIn : ZoomIn.delay(index * 30)}>
+          /* 🏆 BADGE SHOWCASE TAB - Web ile aynı stil ve renk hiyerarşisi */
+          <ScrollView 
+            style={styles.badgeShowcaseContainer}
+            contentContainerStyle={styles.badgeShowcaseContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Badge Progress Card - Web ile aynı */}
+            <View style={styles.badgeProgressCard}>
+              <View style={styles.badgeProgressHeader}>
+                <Text style={styles.badgeProgressCount}>
+                  {allBadges.filter(b => b.earned).length} / {allBadges.length}
+                </Text>
+                <Text style={styles.badgeProgressPercent}>
+                  {Math.round((allBadges.filter(b => b.earned).length / allBadges.length) * 100)}%
+                </Text>
+              </View>
+              <View style={styles.badgeProgressBarContainer}>
+                <LinearGradient
+                  colors={['#F59E0B', '#FCD34D']} // amber-500 to yellow-400 (web ile aynı)
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={[
+                    styles.badgeProgressBarFill,
+                    { width: `${(allBadges.filter(b => b.earned).length / allBadges.length) * 100}%` }
+                  ]}
+                />
+              </View>
+            </View>
+
+            {/* Badges Grid - Web ile aynı (5 sütun) */}
+            <View style={styles.badgeGrid}>
+              {allBadges.map((badge, index) => (
+                <Animated.View 
+                  key={badge.id}
+                  entering={Platform.OS === 'web' ? ZoomIn : ZoomIn.delay(index * 30)}
+                >
                   <Pressable
                     style={[
                       styles.badgeCard,
-                      !item.earned && styles.badgeCardLocked,
-                      { borderColor: item.earned ? getBadgeColor(item.tier) : '#475569' },
-                      { backgroundColor: item.earned ? 'rgba(30, 41, 59, 0.8)' : 'rgba(30, 41, 59, 0.4)' },
+                      badge.earned 
+                        ? styles.badgeCardEarned 
+                        : styles.badgeCardLocked,
                     ]}
-                    onPress={() => setSelectedBadge(item)}
+                    onPress={() => setSelectedBadge(badge)}
                     // @ts-ignore - Web için title attribute (tooltip)
                     {...(Platform.OS === 'web' && {
-                      title: item.earned 
-                        ? `${item.name} - Kazanıldı: ${item.earnedAt ? new Date(item.earnedAt).toLocaleDateString('tr-TR') : ''}` 
-                        : `${item.name} - Nasıl Kazanılır: ${item.requirement || item.description}`,
+                      title: badge.earned 
+                        ? `${badge.name} - Kazanıldı!` 
+                        : `${badge.name} - Nasıl Kazanılır: ${badge.requirement || badge.description}`,
                     })}
                   >
-                    {/* Lock Icon (Top Right) - Kilitli rozetlerde */}
-                    {!item.earned && (
-                      <View style={styles.lockIcon}>
-                        <Ionicons name="lock-closed" size={14} color="#F59E0B" />
+                    {/* Lock Icon (Top Right) - Web ile aynı stil */}
+                    {!badge.earned && (
+                      <View style={styles.badgeLockIcon}>
+                        <Ionicons name="lock-closed" size={14} color={theme.mutedForeground} />
                       </View>
                     )}
 
-                    {/* Sparkle for earned badges (Top Right) */}
-                    {item.earned && (
-                      <Animated.View
-                        entering={Platform.OS === 'web' ? FadeIn : FadeIn.delay(index * 30 + 200)}
-                        style={styles.sparkle}
-                      >
-                        <Text style={styles.sparkleText}>✨</Text>
-                      </Animated.View>
+                    {/* Checkmark (Top Right) - Web ile aynı (yeşil badge) */}
+                    {badge.earned && (
+                      <View style={styles.badgeCheckmark}>
+                        <Text style={styles.badgeCheckmarkText}>✓</Text>
+                      </View>
                     )}
 
-                    {/* Badge Icon - Kazanılan renkli, diğerleri gri */}
-                    <Text style={[
-                      styles.badgeEmoji,
-                      !item.earned && styles.badgeEmojiLocked,
-                    ]}>
-                      {item.icon}
+                    {/* Badge Icon - Web ile aynı (text-5xl = 48px) */}
+                    <Text style={styles.badgeEmoji}>
+                      {badge.icon}
                     </Text>
 
-                    {/* Badge Name - Daha okunabilir */}
+                    {/* Badge Name - Web ile aynı */}
                     <Text
-                      style={[
-                        styles.badgeName,
-                        !item.earned && styles.badgeNameLocked,
-                      ]}
+                      style={styles.badgeName}
                       numberOfLines={2}
                     >
-                      {item.name}
+                      {badge.name}
                     </Text>
 
-                    {/* Badge Tier - Her zaman göster */}
+                    {/* Badge Tier - Web ile aynı stil */}
                     <View
                       style={[
                         styles.badgeTierLabel,
-                        { backgroundColor: `${getBadgeColor(item.tier)}20` },
+                        badge.tier === 'bronze' && styles.badgeTierBronze,
+                        badge.tier === 'silver' && styles.badgeTierSilver,
+                        badge.tier === 'gold' && styles.badgeTierGold,
+                        badge.tier === 'platinum' && styles.badgeTierPlatinum,
+                        badge.tier === 'diamond' && styles.badgeTierDiamond,
                       ]}
                     >
                       <Text
                         style={[
                           styles.badgeTierText,
-                          { color: getBadgeColor(item.tier) },
+                          badge.tier === 'bronze' && styles.badgeTierTextBronze,
+                          badge.tier === 'silver' && styles.badgeTierTextSilver,
+                          badge.tier === 'gold' && styles.badgeTierTextGold,
+                          badge.tier === 'platinum' && styles.badgeTierTextPlatinum,
+                          badge.tier === 'diamond' && styles.badgeTierTextDiamond,
                         ]}
                       >
-                        {getBadgeTierName(item.tier)}
+                        {badge.tier === 'bronze' ? 'Bronz' :
+                         badge.tier === 'silver' ? 'Gümüş' :
+                         badge.tier === 'gold' ? 'Altın' :
+                         badge.tier === 'platinum' ? 'Platin' : 'Elmas'}
                       </Text>
                     </View>
                   </Pressable>
                 </Animated.View>
-              )}
-              ListEmptyComponent={
-                <View style={styles.emptyBadgeState}>
-                  <Ionicons name="trophy-outline" size={64} color="#64748B" />
-                  <Text style={styles.emptyBadgeTitle}>{t('badges.noBadges')}</Text>
-                  <Text style={styles.emptyBadgeText}>
-                    {t('badges.startPredicting')}
-                  </Text>
-                </View>
-              }
-            />
-          </View>
+              ))}
+            </View>
+
+            {allBadges.length === 0 && (
+              <View style={styles.emptyBadgeState}>
+                <Ionicons name="trophy-outline" size={64} color="#64748B" />
+                <Text style={styles.emptyBadgeTitle}>{t('badges.noBadges')}</Text>
+                <Text style={styles.emptyBadgeText}>
+                  {t('badges.startPredicting')}
+                </Text>
+              </View>
+            )}
+          </ScrollView>
         )}
 
         {/* 🔍 BADGE DETAIL MODAL */}
@@ -3174,79 +3208,171 @@ const createStyles = () => {
     textAlign: 'center',
   },
 
-  // 🏆 BADGE SHOWCASE STYLES
+  // 🏆 BADGE SHOWCASE STYLES - Web ile aynı stil ve renk hiyerarşisi
   badgeShowcaseContainer: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: theme.background,
   },
-  badgeGrid: {
-    paddingHorizontal: 8,
-    paddingTop: 0, // ✅ Tab marginBottom zaten 16px, ekstra padding yok
+  badgeShowcaseContent: {
+    padding: SPACING.base,
     paddingBottom: 100,
   },
-  badgeRow: {
+  // Badge Progress Card - Web ile aynı (bg-muted/50)
+  badgeProgressCard: {
+    backgroundColor: theme.muted + '80', // 50% opacity (bg-muted/50)
+    borderRadius: SIZES.radiusMd,
+    padding: SPACING.base,
+    marginBottom: SPACING.base,
+  },
+  badgeProgressHeader: {
+    flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.sm,
+  },
+  badgeProgressCount: {
+    ...TYPOGRAPHY.bodySmall,
+    fontWeight: TYPOGRAPHY.medium,
+    color: theme.foreground,
+  },
+  badgeProgressPercent: {
+    ...TYPOGRAPHY.bodySmall,
+    color: theme.mutedForeground,
+  },
+  badgeProgressBarContainer: {
+    height: 8,
+    backgroundColor: theme.muted,
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  badgeProgressBarFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  // Badges Grid - Web ile aynı (5 sütun, mobilde responsive)
+  badgeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: SPACING.xs,
+    justifyContent: 'flex-start',
   },
   badgeCard: {
-    width: 80, // ✅ SABIT genişlik (kesinlikle sabit)
-    height: 120, // ✅ SABIT yükseklik (kesinlikle sabit)
-    backgroundColor: 'rgba(30, 41, 59, 0.8)',
-    borderRadius: 12,
-    borderWidth: 2,
-    padding: 8,
+    width: '19%', // 5 sütun için ~19% (web ile aynı grid-cols-5), gap ile birlikte
+    minWidth: 65,
+    aspectRatio: 0.65, // Web ile aynı oran
+    backgroundColor: theme.card,
+    borderRadius: SIZES.radiusMd,
+    borderWidth: 1,
+    padding: SPACING.sm,
     alignItems: 'center',
     justifyContent: 'flex-start',
     position: 'relative',
-    marginBottom: 8,
+    marginBottom: SPACING.xs,
+  },
+  badgeCardEarned: {
+    borderColor: '#F59E0B80', // amber-500/50 (web ile aynı)
+    backgroundColor: '#F59E0B0D', // amber-500/5 (web ile aynı)
   },
   badgeCardLocked: {
-    backgroundColor: 'rgba(30, 41, 59, 0.5)',
-    opacity: 0.7,
+    borderColor: theme.border + '80', // border/50 (web ile aynı)
+    backgroundColor: theme.card,
+    opacity: 0.8,
   },
   badgeEmoji: {
-    fontSize: 36,
-    marginBottom: 6,
-  },
-  badgeEmojiLocked: {
-    opacity: 0.3,
-    filter: 'grayscale(100%)',
+    fontSize: 48, // text-5xl (web ile aynı)
+    marginBottom: SPACING.xs,
   },
   badgeName: {
+    ...TYPOGRAPHY.bodySmall,
     fontSize: 10,
-    fontWeight: '700',
-    color: '#F8FAFB',
+    fontWeight: TYPOGRAPHY.medium,
+    color: theme.foreground,
     textAlign: 'center',
-    marginBottom: 4,
+    marginBottom: SPACING.xs,
     lineHeight: 13,
   },
-  badgeNameLocked: {
-    color: '#94A3B8',
-    opacity: 0.6,
-  },
+  // Badge Tier Labels - Web ile aynı renkler
   badgeTierLabel: {
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
+    borderWidth: 1,
+  },
+  badgeTierBronze: {
+    backgroundColor: 'transparent',
+    borderColor: '#EA580C4D', // orange-600/30
+  },
+  badgeTierSilver: {
+    backgroundColor: 'transparent',
+    borderColor: '#94A3B84D', // slate-400/30
+  },
+  badgeTierGold: {
+    backgroundColor: 'transparent',
+    borderColor: '#F59E0B4D', // amber-500/30
+  },
+  badgeTierPlatinum: {
+    backgroundColor: 'transparent',
+    borderColor: '#A855F74D', // purple-500/30
+  },
+  badgeTierDiamond: {
+    backgroundColor: 'transparent',
+    borderColor: '#22D3EE4D', // cyan-400/30
   },
   badgeTierText: {
-    fontSize: 7,
-    fontWeight: '700',
+    fontSize: 10,
+    fontWeight: TYPOGRAPHY.bold,
   },
-  lockIcon: {
+  badgeTierTextBronze: {
+    color: '#EA580C', // orange-600
+  },
+  badgeTierTextSilver: {
+    color: '#94A3B8', // slate-400
+  },
+  badgeTierTextGold: {
+    color: '#F59E0B', // amber-500
+  },
+  badgeTierTextPlatinum: {
+    color: '#A855F7', // purple-500
+  },
+  badgeTierTextDiamond: {
+    color: '#22D3EE', // cyan-400
+  },
+  // Lock Icon - Web ile aynı (muted background, mutedForeground color)
+  badgeLockIcon: {
     position: 'absolute',
-    top: 6,
-    right: 6,
-    backgroundColor: 'rgba(15, 23, 42, 0.8)',
-    borderRadius: 10,
-    padding: 3,
+    top: -4,
+    right: -4,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: theme.muted,
+    borderWidth: 2,
+    borderColor: theme.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+    ...SHADOWS.md,
   },
-  sparkle: {
+  // Checkmark - Web ile aynı (green-500 background)
+  badgeCheckmark: {
     position: 'absolute',
-    top: 4,
-    right: 4,
+    top: -4,
+    right: -4,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#22C55E', // green-500 (web ile aynı)
+    borderWidth: 2,
+    borderColor: theme.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+    ...SHADOWS.md,
   },
-  sparkleText: {
+  badgeCheckmarkText: {
+    color: '#FFFFFF',
     fontSize: 12,
+    fontWeight: TYPOGRAPHY.bold,
   },
   emptyBadgeState: {
     alignItems: 'center',
