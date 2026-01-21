@@ -859,7 +859,7 @@ export default function FavoriteTeamsScreen({ onComplete, onBack }: FavoriteTeam
             return (
     <ScreenLayout safeArea>
       {/* Watermark Background - Futbol Topları */}
-      <View style={styles.watermarkContainer} pointerEvents="none">
+      <View style={styles.watermarkContainer}>
         <Text style={[styles.ballWatermark, styles.ball1]}>⚽</Text>
         <Text style={[styles.ballWatermark, styles.ball2]}>⚽</Text>
         <Text style={[styles.ballWatermark, styles.ball3]}>⚽</Text>
@@ -1028,6 +1028,11 @@ const styles = StyleSheet.create({
     bottom: 0,
     zIndex: 0,
     overflow: 'hidden',
+    ...Platform.select({
+      web: {
+        pointerEvents: 'none',
+      },
+    }),
   },
   ballWatermark: {
     position: 'absolute',

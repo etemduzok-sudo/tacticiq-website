@@ -810,7 +810,7 @@ export default function ProfileSetupScreen({
     // Extract country name from team string (remove flag emoji)
     const getCountryName = (teamString: string) => {
       // Remove flag emoji (both regular and England flag)
-      return teamString.replace(/^[\u{1F1E6}-\u{1F1FF}]{2}\s*|🏴[^\s]*\s*/u, '').trim();
+      return teamString.replace(/^[\u{1F1E6}-\u{1F1FF}]{2}\s*|🏴\s*/u, '').trim();
     };
     
     // Extract flag emoji from team string
@@ -855,17 +855,20 @@ export default function ProfileSetupScreen({
                 : 'Milli Takım Seç'
               }
             </Text>
-            {selectedNationalTeam && NATIONAL_TEAMS.find(t => {
-              const countryName = t.replace(/^[\u{1F1E6}-\u{1F1FF}]{2}\s*|🏴[^\s]*\s*/u, '').trim();
-              return countryName === selectedNationalTeam.name;
-            }) && (
-              <Text style={styles.dropdownButtonFlag}>
-                {NATIONAL_TEAMS.find(t => {
-                  const countryName = t.replace(/^[\u{1F1E6}-\u{1F1FF}]{2}\s*|🏴[^\s]*\s*/u, '').trim();
-                  return countryName === selectedNationalTeam.name;
-                })?.match(/[\u{1F1E6}-\u{1F1FF}]{2}|🏴[^\s]*/u)?.[0]}
-              </Text>
-            )}
+            {selectedNationalTeam && (() => {
+              const team = NATIONAL_TEAMS.find(t => {
+                const countryName = t.replace(/^[\u{1F1E6}-\u{1F1FF}]{2}\s*|🏴[^\s]*\s*/u, '').trim();
+                return countryName === selectedNationalTeam.name;
+              });
+              if (!team) return null;
+              // Extract flag emoji
+              const regularFlagMatch = team.match(/[\u{1F1E6}-\u{1F1FF}]{2}/u);
+              const englandFlagMatch = team.match(/🏴[^\s]*/u);
+              const flag = regularFlagMatch ? regularFlagMatch[0] : (englandFlagMatch ? englandFlagMatch[0] : null);
+              return flag ? (
+                <Text style={styles.dropdownButtonFlag}>{flag}</Text>
+              ) : null;
+            })()}
           </View>
           <Ionicons 
             name={showNationalDropdown ? "chevron-up" : "chevron-down"} 
@@ -1081,22 +1084,6 @@ export default function ProfileSetupScreen({
   
   return (
     <View style={styles.container}>
-      {/* Watermark Background - Futbol Topları */}
-      <View style={styles.watermarkContainer} pointerEvents="none">
-        <Text style={[styles.ballWatermark, styles.ball1]}>⚽</Text>
-        <Text style={[styles.ballWatermark, styles.ball2]}>⚽</Text>
-        <Text style={[styles.ballWatermark, styles.ball3]}>⚽</Text>
-        <Text style={[styles.ballWatermark, styles.ball4]}>⚽</Text>
-        <Text style={[styles.ballWatermark, styles.ball5]}>⚽</Text>
-        <Text style={[styles.ballWatermark, styles.ball6]}>⚽</Text>
-        <Text style={[styles.ballWatermark, styles.ball7]}>⚽</Text>
-        <Text style={[styles.ballWatermark, styles.ball8]}>⚽</Text>
-        <Text style={[styles.ballWatermark, styles.ball9]}>⚽</Text>
-        <Text style={[styles.ballWatermark, styles.ball10]}>⚽</Text>
-        <Text style={[styles.ballWatermark, styles.ball11]}>⚽</Text>
-        <Text style={[styles.ballWatermark, styles.ball12]}>⚽</Text>
-      </View>
-      
       {/* Back Button */}
       {onBack && (
         <TouchableOpacity style={styles.backButton} onPress={handleBack} activeOpacity={0.7}>
@@ -1249,72 +1236,69 @@ const styles = StyleSheet.create({
     bottom: 0,
     zIndex: 0,
     overflow: 'hidden',
+    ...Platform.select({
+      web: {
+        pointerEvents: 'none',
+      },
+    }),
   },
-  ballWatermark: {
+  watermarkText: {
     position: 'absolute',
-    opacity: 0.06, // Çok silik
-    color: 'rgba(31, 162, 166, 1)', // Turkuaz renk
+    color: 'rgba(31, 162, 166, 0.08)', // Silik ama okunabilir turkuaz
+    fontWeight: '900',
+    fontFamily: Platform.OS === 'web' ? 'system-ui, -apple-system, sans-serif' : undefined,
+    letterSpacing: 6,
     // X eksenine paralel, rotasyon yok
   },
-  ball1: {
+  watermark1: {
     top: 60,
-    left: '10%',
-    fontSize: 45,
+    left: -50,
+    fontSize: 110,
   },
-  ball2: {
-    top: 60,
-    left: '50%',
-    fontSize: 68,
-  },
-  ball3: {
-    top: 60,
-    left: '85%',
-    fontSize: 52,
-  },
-  ball4: {
+  watermark2: {
     top: 180,
-    left: -20,
-    fontSize: 58,
-  },
-  ball5: {
-    top: 180,
-    left: '35%',
-    fontSize: 74,
-  },
-  ball6: {
-    top: 280,
-    left: '20%',
-    fontSize: 61,
-  },
-  ball7: {
-    top: 280,
-    left: '65%',
-    fontSize: 48,
-  },
-  ball8: {
-    top: 400,
-    left: '5%',
-    fontSize: 56,
-  },
-  ball9: {
-    top: 400,
-    left: '45%',
-    fontSize: 70,
-  },
-  ball10: {
-    top: 520,
     left: '30%',
-    fontSize: 54,
+    fontSize: 135,
   },
-  ball11: {
-    top: 520,
+  watermark3: {
+    top: 280,
+    left: -80,
+    fontSize: 125,
+  },
+  watermark4: {
+    top: 380,
+    left: '45%',
+    fontSize: 150,
+  },
+  watermark5: {
+    top: 500,
+    left: -60,
+    fontSize: 140,
+  },
+  watermark6: {
+    top: 620,
+    left: '60%',
+    fontSize: 120,
+  },
+  watermark7: {
+    top: 720,
+    left: '15%',
+    fontSize: 145,
+  },
+  watermark8: {
+    top: 240,
+    left: '85%',
+    fontSize: 130,
+  },
+  watermark9: {
+    top: 460,
     left: '75%',
-    fontSize: 65,
+    fontSize: 115,
   },
-  ball12: {
-    top: 650,
-    left: '55%',
-    fontSize: 59,
+  watermark10: {
+    top: 680,
+    left: -70,
+    fontSize: 155,
   },
   backButton: {
     position: 'absolute',
