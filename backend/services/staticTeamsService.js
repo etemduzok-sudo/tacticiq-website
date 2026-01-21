@@ -376,8 +376,9 @@ async function syncAllTeams() {
 async function searchTeams(query, type = null) {
   const searchQuery = `%${query.toLowerCase()}%`;
   
+  // Önce view'ı dene, yoksa direkt tabloyu kullan
   let sql = `
-    SELECT * FROM v_active_static_teams
+    SELECT * FROM static_teams
     WHERE LOWER(name) LIKE $1
   `;
   
@@ -388,10 +389,22 @@ async function searchTeams(query, type = null) {
     params.push(type);
   }
   
+  // Son 2 ay içinde güncellenmiş takımlar (view mantığı)
+  sql += ` AND (last_updated >= NOW() - INTERVAL '2 months' OR last_updated IS NULL)`;
+  
   sql += ` ORDER BY country, name LIMIT 50`;
   
-  const result = await pool.query(sql, params);
-  return result.rows;
+  try {
+    const result = await pool.query(sql, params);
+    return result.rows;
+  } catch (error) {
+    // Eğer static_teams tablosu yoksa boş array döndür
+    if (error.message.includes('does not exist') || error.message.includes('relation')) {
+      console.warn('⚠️  static_teams table does not exist yet. Returning empty results.');
+      return [];
+    }
+    throw error;
+  }
 }
 
 module.exports = {

@@ -57,6 +57,19 @@ router.get('/search', async (req, res) => {
     });
   } catch (error) {
     console.error('Static teams search error:', error);
+    
+    // Eğer tablo/view yoksa boş sonuç döndür (henüz sync yapılmamış olabilir)
+    if (error.message.includes('does not exist') || error.message.includes('relation')) {
+      console.warn('⚠️  static_teams table/view does not exist. Returning empty results.');
+      return res.json({
+        success: true,
+        data: [],
+        source: 'static_db',
+        count: 0,
+        message: 'Static teams database not initialized yet. Please run sync first.',
+      });
+    }
+    
     res.status(500).json({
       success: false,
       error: 'Failed to search teams',

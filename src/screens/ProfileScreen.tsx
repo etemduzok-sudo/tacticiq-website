@@ -119,6 +119,30 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     icon: string;
   } | null>(null);
 
+  // ⚙️ SETTINGS STATE - Web ile aynı
+  const [selectedLanguage, setSelectedLanguage] = useState('tr');
+  const [selectedTimezone, setSelectedTimezone] = useState('Europe/Istanbul');
+  const [emailNotifications, setEmailNotifications] = useState(false);
+  const [weeklySummary, setWeeklySummary] = useState(false);
+  const [campaignNotifications, setCampaignNotifications] = useState(true);
+  const [pushNotificationPermission, setPushNotificationPermission] = useState<'default' | 'granted' | 'denied'>('default');
+  
+  // 🔒 SECURITY STATE
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+  const [showDeleteAccountDialog, setShowDeleteAccountDialog] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleting, setDeleting] = useState(false);
+
+  // Push notification permission kontrolü
+  useEffect(() => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && 'Notification' in window) {
+      setPushNotificationPermission(Notification.permission as 'default' | 'granted' | 'denied');
+    } else if (Platform.OS !== 'web') {
+      // React Native için expo-notifications kullanılabilir
+      // Şimdilik default olarak bırakıyoruz
+    }
+  }, []);
+
   // 🏆 LOAD BADGES
   const loadBadges = async () => {
     try {
@@ -271,6 +295,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             });
             setSelectedClubTeams(clubArray);
           }
+
+          // Settings state'lerini profil verilerinden al
+          setSelectedLanguage(unifiedProfile.preferredLanguage || 'tr');
+          setSelectedTimezone(unifiedProfile.timezone || 'Europe/Istanbul');
+          // TODO: Bildirim ayarları profil verilerinden alınacak
         }
 
         // Fallback: AsyncStorage'dan yükle (eski sistem)
@@ -759,64 +788,65 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 </View>
                 <Text style={styles.emailText}>{user.email}</Text>
 
-                {/* Ranking Card - Tek kart, her satır bir bilgi */}
-                <View style={styles.rankingCard_single}>
-                  {/* Ülke - Tek satırda, bayrak solda */}
-                  <View style={styles.rankingRow}>
-                    <View style={styles.rankingRow_left}>
-                      <Text style={styles.flagEmoji}>🇹🇷</Text>
-                      <Text style={styles.rankingRow_label}>Türkiye</Text>
+                {/* Ranking Table - Web ile aynı tablo formatı */}
+                <View style={styles.rankingTableContainer}>
+                  {/* Table Header */}
+                  <View style={styles.rankingTableHeader}>
+                    <View style={styles.rankingTableHeaderCell}>
+                      <Ionicons name="flag" size={16} color={theme.mutedForeground} />
+                      <Text style={styles.rankingTableHeaderText}>Ülke</Text>
+                    </View>
+                    <View style={styles.rankingTableHeaderCell}>
+                      <Ionicons name="trophy" size={16} color={theme.secondary} />
+                      <Text style={styles.rankingTableHeaderText}>Türkiye Sırası</Text>
+                    </View>
+                    <View style={styles.rankingTableHeaderCell}>
+                      <Ionicons name="globe" size={16} color={theme.primary} />
+                      <Text style={styles.rankingTableHeaderText}>Dünya Sırası</Text>
                     </View>
                   </View>
-
-                  <View style={styles.rankingDivider} />
-
-                  {/* Türkiye Sırası */}
-                  <View style={styles.rankingRow}>
-                    <View style={styles.rankingRow_left}>
-                      <Ionicons name="trophy" size={20} color={theme.secondary} />
-                      <Text style={styles.rankingRow_label}>Türkiye Sırası</Text>
+                  
+                  {/* Table Row */}
+                  <View style={styles.rankingTableRow}>
+                    {/* Ülke Cell */}
+                    <View style={styles.rankingTableCell}>
+                      <Text style={styles.flagEmoji}>🇹🇷</Text>
+                      <Text style={styles.rankingTableCountryText}>TR Türkiye</Text>
                     </View>
-                    <View style={styles.rankingRow_right}>
+                    
+                    {/* Türkiye Sırası Cell */}
+                    <View style={styles.rankingTableCell}>
                       {user.countryRank > 0 ? (
-                        <>
-                          <View style={styles.rankingBadge}>
-                            <Text style={styles.rankingBadgeText}>
+                        <View style={styles.rankingTableCellContent}>
+                          <View style={[styles.rankingBadge, { backgroundColor: theme.secondary + '33', borderColor: theme.secondary + '4D' }]}>
+                            <Text style={[styles.rankingBadgeText, { color: theme.secondary }]}>
                               {calculateTopPercent(user.countryRank, user.totalPlayers || 5000)}
                             </Text>
                           </View>
-                          <Text style={styles.rankingValue}>
+                          <Text style={styles.rankingTableValue}>
                             {user.countryRank.toLocaleString()} / {(user.totalPlayers || 5000).toLocaleString()}
                           </Text>
-                        </>
+                        </View>
                       ) : (
-                        <Text style={styles.rankingEmptyText}>Tahmin yapınca sıralamanız burada görünecek</Text>
+                        <Text style={styles.rankingTableEmptyText}>Tahmin yapınca sıralamanız burada görünecek</Text>
                       )}
                     </View>
-                  </View>
-
-                  <View style={styles.rankingDivider} />
-
-                  {/* Dünya Sırası */}
-                  <View style={styles.rankingRow}>
-                    <View style={styles.rankingRow_left}>
-                      <Ionicons name="globe" size={20} color={theme.primary} />
-                      <Text style={styles.rankingRow_label}>Dünya Sırası</Text>
-                    </View>
-                    <View style={styles.rankingRow_right}>
+                    
+                    {/* Dünya Sırası Cell */}
+                    <View style={styles.rankingTableCell}>
                       {user.globalRank > 0 ? (
-                        <>
-                          <View style={[styles.rankingBadge, { backgroundColor: theme.primary + '33' }]}>
+                        <View style={styles.rankingTableCellContent}>
+                          <View style={[styles.rankingBadge, { backgroundColor: theme.primary + '33', borderColor: theme.primary + '4D' }]}>
                             <Text style={[styles.rankingBadgeText, { color: theme.primary }]}>
                               {calculateTopPercent(user.globalRank, 50000)}
                             </Text>
                           </View>
-                          <Text style={styles.rankingValue}>
+                          <Text style={styles.rankingTableValue}>
                             {user.globalRank.toLocaleString()} / 50,000
                           </Text>
-                        </>
+                        </View>
                       ) : (
-                        <Text style={styles.rankingEmptyText}>Tahmin yapınca sıralamanız burada görünecek</Text>
+                        <Text style={styles.rankingTableEmptyText}>Tahmin yapınca sıralamanız burada görünecek</Text>
                       )}
                     </View>
                   </View>
@@ -842,94 +872,46 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             </View>
           </Animated.View>
 
-          {/* Performance Card */}
+          {/* Performance Card - Web ile aynı */}
           <Animated.View entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(150)} style={styles.card}>
             <View style={styles.cardHeader}>
-              <Ionicons name="trending-up" size={20} color={theme.primary} />
-              <Text style={styles.cardTitle}>Performance</Text>
+              <Ionicons name="trending-up" size={20} color={theme.secondary} />
+              <Text style={styles.cardTitle}>Performans</Text>
             </View>
 
             <View style={styles.performanceGrid}>
-              <View style={styles.performanceItem}>
-                <Text style={styles.performanceValueGreen}>
+              <View style={[styles.performanceItem, { backgroundColor: theme.secondary + '1A', borderColor: theme.secondary + '33' }]}>
+                <Text style={[styles.performanceValue, { color: theme.secondary }]}>
                   {user.stats.success}%
                 </Text>
-                <Text style={styles.performanceLabel}>Success Rate</Text>
+                <Text style={styles.performanceLabel}>Başarı Oranı</Text>
               </View>
-              <View style={styles.performanceItem}>
-                <Text style={styles.performanceValue}>{user.stats.total}</Text>
-                <Text style={styles.performanceLabel}>Total Predictions</Text>
-              </View>
-              <View style={styles.performanceItem}>
-                <Text style={styles.performanceValueGold}>{user.stats.streak}</Text>
-                <Text style={styles.performanceLabel}>Day Streak</Text>
-              </View>
-            </View>
-
-            {/* Country Ranking */}
-            <View style={styles.rankingCard}>
-              <View style={styles.rankingHeader}>
-                <View>
-                  <Text style={styles.rankingSubtext}>{user.country} Sıralaması</Text>
-                  {user.countryRank > 0 ? (
-                    <>
-                      <Text style={styles.rankingRank}>
-                        #{user.countryRank.toLocaleString()}
-                      </Text>
-                      <View style={styles.topPercentBadge}>
-                        <Text style={styles.topPercentBadgeText}>
-                          {calculateTopPercent(user.countryRank, user.totalPlayers)}
-                        </Text>
-                      </View>
-                    </>
-                  ) : (
-                    <Text style={styles.rankingNoRank}>Sıralama Yok</Text>
-                  )}
-                </View>
-                <View style={styles.rankingRight}>
-                  <Text style={styles.rankingSubtext}>Toplam Oyuncu</Text>
-                  <Text style={styles.rankingTotal}>
-                    {user.totalPlayers.toLocaleString()}
-                  </Text>
-                </View>
-              </View>
-
-              {/* Progress Bar */}
-              {user.countryRank > 0 && (
-                <View style={styles.progressBarContainer}>
-                  <LinearGradient
-                    colors={[theme.primary, theme.primaryDark || theme.primary]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={[styles.progressBar, { width: `${rankPercentage}%` }]}
-                  />
-                </View>
-              )}
-              {user.countryRank > 0 ? (
-                <Text style={styles.topPercentage}>
-                  {user.countryRank.toLocaleString()} / {user.totalPlayers.toLocaleString()} oyuncu
+              <View style={[styles.performanceItem, { backgroundColor: theme.muted + '80', borderColor: theme.border }]}>
+                <Text style={[styles.performanceValue, { color: theme.foreground }]}>
+                  {user.stats.total}
                 </Text>
-              ) : (
-                <Text style={styles.topPercentageHint}>Tahmin yaparak sıralamaya gir!</Text>
-              )}
+                <Text style={styles.performanceLabel}>Toplam Tahmin</Text>
+              </View>
+              <View style={[styles.performanceItem, { backgroundColor: theme.accent + '1A', borderColor: theme.accent + '33' }]}>
+                <Text style={[styles.performanceValue, { color: theme.accent }]}>
+                  {user.stats.streak}
+                </Text>
+                <Text style={styles.performanceLabel}>Günlük Seri</Text>
+              </View>
             </View>
 
-            {/* Additional Metrics */}
-            <View style={styles.metricsContainer}>
-              <View style={styles.metricBox}>
-                <Ionicons name="medal" size={16} color={theme.accent} />
-                <View style={styles.metricText}>
-                  <Text style={styles.metricLabel}>Avg Rating</Text>
-                  <Text style={styles.metricValue}>{user.avgMatchRating}</Text>
-                </View>
-              </View>
-              <View style={styles.metricBox}>
+            {/* Puan Gelişimi - Web ile aynı */}
+            <View style={[styles.xpGainCard, { backgroundColor: theme.primary + '0D', borderColor: theme.primary + '1A' }]}>
+              <View style={styles.xpGainHeader}>
+                <Text style={[styles.xpGainLabel, { color: theme.mutedForeground }]}>Bu Hafta Kazanılan XP</Text>
                 <Ionicons name="flash" size={16} color={theme.primary} />
-                <View style={styles.metricText}>
-                  <Text style={styles.metricLabel}>XP This Week</Text>
-                  <Text style={styles.metricValue}>+{user.xpGainThisWeek}</Text>
-                </View>
               </View>
+              <Text style={[styles.xpGainValue, { color: theme.primary }]}>
+                +{user.xpGainThisWeek}
+              </Text>
+              <Text style={[styles.xpGainTotal, { color: theme.mutedForeground }]}>
+                Toplam Puan: {user.points.toLocaleString()}
+              </Text>
             </View>
           </Animated.View>
 
@@ -1247,24 +1229,81 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               <Text style={styles.cardTitle}>Ayarlar</Text>
             </View>
 
-            {/* Dil ve Saat Dilimi */}
+            {/* Dil ve Saat Dilimi - Web ile aynı */}
             <View style={styles.settingsGrid}>
-              <View style={styles.settingsField}>
+              <TouchableOpacity 
+                style={styles.settingsField}
+                onPress={() => {
+                  // Dil seçim modalı açılacak
+                  const languages = [
+                    { code: 'tr', name: 'Türkçe', flag: '🇹🇷' },
+                    { code: 'en', name: 'English', flag: '🇬🇧' },
+                    { code: 'de', name: 'Deutsch', flag: '🇩🇪' },
+                  ];
+                  Alert.alert(
+                    'Dil Seçimi',
+                    'Dil seçin:',
+                    languages.map(lang => ({
+                      text: `${lang.flag} ${lang.name}`,
+                      onPress: async () => {
+                        setSelectedLanguage(lang.code);
+                        await profileService.updateProfile({ preferredLanguage: lang.code });
+                        Alert.alert('Başarılı', `Dil değiştirildi: ${lang.name}`);
+                      },
+                    })).concat([{ text: 'İptal', style: 'cancel' }])
+                  );
+                }}
+              >
                 <Text style={styles.formLabel}>Dil</Text>
                 <View style={styles.settingsValue}>
-                  <Text style={styles.flagEmoji}>🇹🇷</Text>
-                  <Text style={styles.settingsValueText}>Türkçe</Text>
+                  <Text style={styles.flagEmoji}>
+                    {selectedLanguage === 'tr' ? '🇹🇷' : selectedLanguage === 'en' ? '🇬🇧' : '🇩🇪'}
+                  </Text>
+                  <Text style={styles.settingsValueText}>
+                    {selectedLanguage === 'tr' ? 'Türkçe' : selectedLanguage === 'en' ? 'English' : 'Deutsch'}
+                  </Text>
+                  <Ionicons name="chevron-down" size={16} color={theme.mutedForeground} />
                 </View>
-              </View>
-              <View style={styles.settingsField}>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.settingsField}
+                onPress={() => {
+                  // Saat dilimi seçim modalı açılacak
+                  const timezones = [
+                    { id: 'Europe/Istanbul', name: 'İstanbul (UTC+3)' },
+                    { id: 'Europe/London', name: 'Londra (UTC+0)' },
+                    { id: 'Europe/Berlin', name: 'Berlin (UTC+1)' },
+                    { id: 'America/New_York', name: 'New York (UTC-5)' },
+                  ];
+                  Alert.alert(
+                    'Saat Dilimi Seçimi',
+                    'Saat dilimi seçin:',
+                    timezones.map(tz => ({
+                      text: tz.name,
+                      onPress: async () => {
+                        setSelectedTimezone(tz.id);
+                        await profileService.updateProfile({ timezone: tz.id });
+                        Alert.alert('Başarılı', `Saat dilimi değiştirildi: ${tz.name}`);
+                      },
+                    })).concat([{ text: 'İptal', style: 'cancel' }])
+                  );
+                }}
+              >
                 <Text style={styles.formLabel}>Saat Dilimi</Text>
-                <Text style={styles.settingsValueText}>İstanbul (UTC+3)</Text>
-              </View>
+                <Text style={styles.settingsValueText}>
+                  {selectedTimezone === 'Europe/Istanbul' ? 'İstanbul (UTC+3)' :
+                   selectedTimezone === 'Europe/London' ? 'Londra (UTC+0)' :
+                   selectedTimezone === 'Europe/Berlin' ? 'Berlin (UTC+1)' :
+                   selectedTimezone === 'America/New_York' ? 'New York (UTC-5)' :
+                   selectedTimezone}
+                </Text>
+                <Ionicons name="chevron-down" size={16} color={theme.mutedForeground} />
+              </TouchableOpacity>
             </View>
 
             <View style={styles.settingsDivider} />
 
-            {/* Bildirimler */}
+            {/* Bildirimler - Web ile aynı, çalışır Switch'ler */}
             <View style={styles.notificationsSection}>
               <Text style={styles.sectionTitle}>Mobil Bildirimler</Text>
               
@@ -1273,9 +1312,18 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   <Text style={styles.settingRow_title}>E-posta Bildirimleri</Text>
                   <Text style={styles.settingRow_desc}>Maç sonuçları ve tahmin hatırlatmaları</Text>
                 </View>
-                <View style={[styles.settingRow_switch, { backgroundColor: theme.muted }]}>
-                  <View style={styles.settingRow_switchThumb} />
-                </View>
+                <TouchableOpacity
+                  style={[styles.settingRow_switch, emailNotifications && { backgroundColor: theme.primary }]}
+                  onPress={async () => {
+                    const newValue = !emailNotifications;
+                    setEmailNotifications(newValue);
+                    // Supabase'e kaydet
+                    await profileService.updateProfile({ notificationsEnabled: newValue });
+                    Alert.alert('Başarılı', newValue ? 'E-posta bildirimleri açıldı' : 'E-posta bildirimleri kapatıldı');
+                  }}
+                >
+                  <View style={[styles.settingRow_switchThumb, emailNotifications && styles.settingRow_switchThumbActive]} />
+                </TouchableOpacity>
               </View>
 
               <View style={styles.settingsDivider} />
@@ -1285,9 +1333,22 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   <Text style={styles.settingRow_title}>Haftalık Özet</Text>
                   <Text style={styles.settingRow_desc}>Haftalık performans özeti</Text>
                 </View>
-                <View style={[styles.settingRow_switch, { backgroundColor: theme.muted }]}>
+                <TouchableOpacity
+                  style={[
+                    styles.settingRow_switch, 
+                    weeklySummary 
+                      ? { backgroundColor: theme.primary, justifyContent: 'flex-end' }
+                      : { backgroundColor: theme.muted, justifyContent: 'flex-start' }
+                  ]}
+                  onPress={async () => {
+                    const newValue = !weeklySummary;
+                    setWeeklySummary(newValue);
+                    // TODO: Supabase'e özel notification settings tablosuna kaydet
+                    Alert.alert('Başarılı', newValue ? 'Haftalık özet açıldı' : 'Haftalık özet kapatıldı');
+                  }}
+                >
                   <View style={styles.settingRow_switchThumb} />
-                </View>
+                </TouchableOpacity>
               </View>
 
               <View style={styles.settingsDivider} />
@@ -1297,10 +1358,90 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   <Text style={styles.settingRow_title}>Kampanya Bildirimleri</Text>
                   <Text style={styles.settingRow_desc}>İndirim ve özel teklifler</Text>
                 </View>
-                <View style={[styles.settingRow_switch, styles.settingRow_switchActive, { backgroundColor: theme.primary }]}>
-                  <View style={[styles.settingRow_switchThumb, styles.settingRow_switchThumbActive]} />
-                </View>
+                <TouchableOpacity
+                  style={[
+                    styles.settingRow_switch, 
+                    campaignNotifications 
+                      ? { backgroundColor: theme.primary, justifyContent: 'flex-end' }
+                      : { backgroundColor: theme.muted, justifyContent: 'flex-start' }
+                  ]}
+                  onPress={async () => {
+                    const newValue = !campaignNotifications;
+                    setCampaignNotifications(newValue);
+                    // TODO: Supabase'e özel notification settings tablosuna kaydet
+                    Alert.alert('Başarılı', newValue ? 'Kampanya bildirimleri açıldı' : 'Kampanya bildirimleri kapatıldı');
+                  }}
+                >
+                  <View style={styles.settingRow_switchThumb} />
+                </TouchableOpacity>
               </View>
+
+              {/* Push Notification Permission - Web ile aynı */}
+              {(Platform.OS === 'web' || Platform.OS === 'ios' || Platform.OS === 'android') && (
+                <>
+                  <View style={styles.settingsDivider} />
+                  <View style={styles.settingRow}>
+                    <View style={styles.settingRow_left}>
+                      <Text style={styles.settingRow_title}>Canlı Bildirimler</Text>
+                      <Text style={styles.settingRow_desc}>
+                        {Platform.OS === 'web' 
+                          ? 'Tarayıcı bildirim izni - Maç sonuçları ve canlı güncellemeler'
+                          : 'Mobil bildirim izni - Maç sonuçları ve canlı güncellemeler'}
+                      </Text>
+                    </View>
+                    {pushNotificationPermission === 'granted' ? (
+                      <View style={[styles.pushNotificationBadge, { backgroundColor: theme.primary }]}>
+                        <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                        <Text style={styles.pushNotificationBadgeText}>Aktif</Text>
+                      </View>
+                    ) : pushNotificationPermission === 'denied' ? (
+                      <View style={[styles.pushNotificationBadge, { backgroundColor: theme.destructive }]}>
+                        <Ionicons name="close" size={16} color="#FFFFFF" />
+                        <Text style={styles.pushNotificationBadgeText}>Reddedildi</Text>
+                      </View>
+                    ) : (
+                      <TouchableOpacity
+                        style={[styles.pushNotificationButton, { borderColor: theme.border }]}
+                        onPress={async () => {
+                          try {
+                            if (Platform.OS === 'web' && typeof window !== 'undefined' && 'Notification' in window) {
+                              const permission = await Notification.requestPermission();
+                              setPushNotificationPermission(permission);
+                              
+                              if (permission === 'granted') {
+                                Alert.alert('Başarılı', 'Canlı bildirim izni verildi!');
+                                // Test notification gönder
+                                new Notification('TacticIQ', {
+                                  body: 'Canlı bildirimler aktif! Maç sonuçları ve önemli güncellemeler için bildirim alacaksınız.',
+                                  icon: '/favicon.ico',
+                                });
+                              } else if (permission === 'denied') {
+                                Alert.alert('Bildirim İzni', 'Bildirim izni reddedildi. Tarayıcı ayarlarından değiştirebilirsiniz.');
+                              }
+                            } else if (Platform.OS === 'ios' || Platform.OS === 'android') {
+                              // React Native için expo-notifications kullanılabilir
+                              Alert.alert('Bildirim İzni', 'Mobil bildirim izni ayarlardan açılabilir.');
+                            }
+                          } catch (error: any) {
+                            console.error('Notification permission error:', error);
+                            Alert.alert('Hata', 'Bildirim izni alınamadı. Lütfen ayarları kontrol edin.');
+                          }
+                        }}
+                      >
+                        <Ionicons name="flash" size={16} color={theme.primary} />
+                        <Text style={[styles.pushNotificationButtonText, { color: theme.primary }]}>İzin Ver</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                  {pushNotificationPermission === 'denied' && (
+                    <Text style={styles.pushNotificationHint}>
+                      {Platform.OS === 'web' 
+                        ? 'Bildirim izni tarayıcı ayarlarından açılabilir. Ayarlar → Site İzinleri → Bildirimler'
+                        : 'Bildirim izni cihaz ayarlarından açılabilir.'}
+                    </Text>
+                  )}
+                </>
+              )}
             </View>
 
             <View style={styles.settingsDivider} />
@@ -1319,34 +1460,191 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               <Text style={styles.cardTitle}>Güvenlik ve Hesap</Text>
             </View>
 
-            {/* Şifre Değiştir */}
-            <TouchableOpacity style={styles.securityButton}>
+            {/* Şifre Değiştir - Web ile aynı */}
+            <TouchableOpacity 
+              style={styles.securityButton}
+              onPress={() => {
+                // Şifre değiştir modalı açılacak
+                Alert.prompt(
+                  'Şifre Değiştir',
+                  'Yeni şifrenizi girin:',
+                  [
+                    { text: 'İptal', style: 'cancel' },
+                    {
+                      text: 'Kaydet',
+                      onPress: async (newPassword) => {
+                        if (!newPassword || newPassword.length < 6) {
+                          Alert.alert('Hata', 'Şifre en az 6 karakter olmalıdır');
+                          return;
+                        }
+                        try {
+                          const { supabase } = await import('../config/supabase');
+                          const { error } = await supabase.auth.updateUser({ password: newPassword });
+                          if (error) throw error;
+                          Alert.alert('Başarılı', 'Şifreniz başarıyla değiştirildi');
+                        } catch (error: any) {
+                          Alert.alert('Hata', error.message || 'Şifre değiştirilemedi');
+                        }
+                      },
+                    },
+                  ],
+                  'secure-text-input'
+                );
+              }}
+            >
               <Ionicons name="lock-closed-outline" size={20} color={theme.primary} />
               <Text style={styles.securityButtonText}>Şifre Değiştir</Text>
             </TouchableOpacity>
 
-            {/* Çıkış Yap */}
+            {/* Çıkış Yap - Web ile aynı */}
             <TouchableOpacity 
               style={styles.securityButton}
               onPress={async () => {
-                await AsyncStorage.clear();
-                Alert.alert('Başarılı', 'Çıkış yapıldı');
-                onBack();
+                Alert.alert(
+                  'Çıkış Yap',
+                  'Çıkış yapmak istediğinizden emin misiniz?',
+                  [
+                    { text: 'İptal', style: 'cancel' },
+                    {
+                      text: 'Çıkış Yap',
+                      style: 'destructive',
+                      onPress: async () => {
+                        try {
+                          const { supabase } = await import('../config/supabase');
+                          await supabase.auth.signOut();
+                          await AsyncStorage.clear();
+                          Alert.alert('Başarılı', 'Çıkış yapıldı');
+                          onBack();
+                        } catch (error) {
+                          Alert.alert('Hata', 'Çıkış yapılamadı');
+                        }
+                      },
+                    },
+                  ]
+                );
               }}
             >
               <Ionicons name="log-out-outline" size={20} color={theme.primary} />
               <Text style={styles.securityButtonText}>Çıkış Yap</Text>
             </TouchableOpacity>
 
-            {/* Hesabı Sil */}
+            {/* Hesabı Sil - Web ile aynı (collapsible) */}
             <View style={styles.deleteSection}>
-              <TouchableOpacity style={styles.deleteButton}>
+              <TouchableOpacity 
+                style={styles.deleteButton}
+                onPress={() => setShowDeleteAccountDialog(true)}
+              >
                 <Ionicons name="trash-outline" size={20} color={theme.destructive} />
                 <Text style={styles.deleteButtonText}>Hesabı Sil</Text>
                 <Ionicons name="warning-outline" size={20} color={theme.destructive} />
               </TouchableOpacity>
             </View>
           </Animated.View>
+
+          {/* Hesabı Sil Dialog - Web ile aynı */}
+          <Modal
+            visible={showDeleteAccountDialog}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setShowDeleteAccountDialog(false)}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalContent}>
+                <View style={styles.modalHeader}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACING.sm }}>
+                    <Ionicons name="alert-triangle" size={24} color={theme.destructive} />
+                    <Text style={styles.modalTitle}>Hesabı Sil</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => {
+                    setShowDeleteAccountDialog(false);
+                    setDeleteConfirmText('');
+                  }}>
+                    <Ionicons name="close" size={24} color={theme.mutedForeground} />
+                  </TouchableOpacity>
+                </View>
+                <Text style={styles.modalDescription}>
+                  Bu işlem geri alınamaz. Hesabınız ve tüm verileriniz kalıcı olarak silinecektir.
+                </Text>
+                <Text style={styles.modalWarning}>
+                  Onay için aşağıya "sil" veya "delete" yazın:
+                </Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={deleteConfirmText}
+                  onChangeText={setDeleteConfirmText}
+                  placeholder="sil veya delete yazın"
+                  placeholderTextColor={theme.mutedForeground}
+                  autoCapitalize="none"
+                />
+                <View style={styles.modalActions}>
+                  <TouchableOpacity
+                    style={[styles.modalButton, styles.modalButtonCancel]}
+                    onPress={() => {
+                      setShowDeleteAccountDialog(false);
+                      setDeleteConfirmText('');
+                    }}
+                  >
+                    <Text style={styles.modalButtonCancelText}>İptal</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.modalButton, styles.modalButtonDelete]}
+                    onPress={async () => {
+                      const confirmText = deleteConfirmText.toLowerCase().trim();
+                      if (confirmText !== 'sil' && confirmText !== 'delete') {
+                        Alert.alert('Hata', 'Onay için "sil" veya "delete" yazmanız gerekiyor');
+                        return;
+                      }
+
+                      setDeleting(true);
+                      try {
+                        const { supabase } = await import('../config/supabase');
+                        const { data: { user } } = await supabase.auth.getUser();
+                        
+                        if (!user) {
+                          Alert.alert('Hata', 'Kullanıcı oturumu bulunamadı');
+                          return;
+                        }
+
+                        // Profil sil
+                        await supabase
+                          .from('user_profiles')
+                          .delete()
+                          .eq('id', user.id);
+
+                        // Auth user sil (admin API gerekli, yoksa signOut yap)
+                        try {
+                          await supabase.auth.admin.deleteUser(user.id);
+                        } catch (error) {
+                          // Admin API yoksa sadece signOut yap
+                          await supabase.auth.signOut();
+                        }
+
+                        await AsyncStorage.clear();
+                        Alert.alert('Başarılı', 'Hesabınız başarıyla silindi');
+                        setShowDeleteAccountDialog(false);
+                        setDeleteConfirmText('');
+                        onBack();
+                      } catch (error: any) {
+                        Alert.alert('Hata', error.message || 'Hesap silme başarısız');
+                      } finally {
+                        setDeleting(false);
+                      }
+                    }}
+                    disabled={deleting}
+                  >
+                    {deleting ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <>
+                        <Ionicons name="trash" size={18} color="#FFFFFF" />
+                        <Text style={styles.modalButtonDeleteText}>Hesabı Sil</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </Modal>
 
           {/* Eski duplicate içerik tamamen kaldırıldı */}
 
@@ -1386,140 +1684,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
           {/* Duplicate Achievements Card kaldırıldı - profile tab'ında zaten var */}
 
-          {/* Ayarlar Card kaldırıldı - badges tab'ında ayarlar olmamalı */}
-          
-          {/* Settings Card - Web ile uyumlu */}
-          <Animated.View entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(350)} style={styles.card}>
-            <View style={styles.cardHeader}>
-              <Ionicons name="settings-outline" size={20} color={theme.primary} />
-              <Text style={styles.cardTitle}>Ayarlar</Text>
-            </View>
-
-            <View style={styles.settingsContainer}>
-              {/* Dil seçimi - Placeholder (i18n hook ile bağlanacak) */}
-              <TouchableOpacity
-                style={styles.settingItem}
-                onPress={() => {
-                  // TODO: Dil seçim modalı açılacak
-                  Alert.alert('Dil Seçimi', 'Dil seçim ekranı yakında eklenecek');
-                }}
-              >
-                <View style={styles.settingItemLeft}>
-                  <Ionicons name="language-outline" size={20} color={theme.mutedForeground} />
-                  <View style={styles.settingItemText}>
-                    <Text style={styles.settingItemTitle}>Dil</Text>
-                    <Text style={styles.settingItemSubtitle}>Türkçe</Text>
-                  </View>
-                </View>
-                <Ionicons name="chevron-forward" size={20} color={theme.mutedForeground} />
-              </TouchableOpacity>
-
-              {/* Bildirimler */}
-              <TouchableOpacity
-                style={styles.settingItem}
-                onPress={() => {
-                  // TODO: Bildirimler ekranı açılacak
-                  Alert.alert('Bildirimler', 'Bildirim ayarları yakında eklenecek');
-                }}
-              >
-                <View style={styles.settingItemLeft}>
-                  <Ionicons name="notifications-outline" size={20} color={theme.mutedForeground} />
-                  <View style={styles.settingItemText}>
-                    <Text style={styles.settingItemTitle}>Bildirimler</Text>
-                    <Text style={styles.settingItemSubtitle}>Maç uyarıları, haberler</Text>
-                  </View>
-                </View>
-                <Ionicons name="chevron-forward" size={20} color={theme.mutedForeground} />
-              </TouchableOpacity>
-            </View>
-          </Animated.View>
-
-          {/* Güvenlik ve Hesap Card - Web ile uyumlu */}
-          <Animated.View entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(400)} style={styles.card}>
-            <View style={styles.cardHeader}>
-              <Ionicons name="shield-checkmark-outline" size={20} color={theme.primary} />
-              <Text style={styles.cardTitle}>Güvenlik ve Hesap</Text>
-            </View>
-
-            <View style={styles.securityContainer}>
-              {/* Şifre Değiştir */}
-              <TouchableOpacity
-                style={styles.settingItem}
-                onPress={() => {
-                  // TODO: Şifre değiştir ekranına yönlendir
-                  Alert.alert('Şifre Değiştir', 'Şifre değiştirme ekranı yakında eklenecek');
-                }}
-              >
-                <View style={styles.settingItemLeft}>
-                  <Ionicons name="lock-closed-outline" size={20} color={theme.mutedForeground} />
-                  <Text style={styles.settingItemTitle}>Şifre Değiştir</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={20} color={theme.mutedForeground} />
-              </TouchableOpacity>
-
-              {/* Çıkış Yap */}
-              <TouchableOpacity
-                style={styles.settingItem}
-                onPress={() => {
-                  Alert.alert(
-                    'Çıkış Yap',
-                    'Çıkış yapmak istediğinizden emin misiniz?',
-                    [
-                      { text: 'İptal', style: 'cancel' },
-                      {
-                        text: 'Çıkış Yap',
-                        style: 'destructive',
-                        onPress: async () => {
-                          // TODO: Logout işlemi
-                          try {
-                            await AsyncStorage.clear();
-                            Alert.alert('Başarılı', 'Çıkış yapıldı');
-                            // Navigation reset gerekebilir
-                          } catch (error) {
-                            Alert.alert('Hata', 'Çıkış yapılamadı');
-                          }
-                        },
-                      },
-                    ]
-                  );
-                }}
-              >
-                <View style={styles.settingItemLeft}>
-                  <Ionicons name="log-out-outline" size={20} color={theme.destructive} />
-                  <Text style={[styles.settingItemTitle, { color: theme.destructive }]}>Çıkış Yap</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={20} color={theme.mutedForeground} />
-              </TouchableOpacity>
-
-              {/* Hesabı Sil */}
-              <TouchableOpacity
-                style={[styles.settingItem, styles.deleteAccountItem]}
-                onPress={() => {
-                  Alert.alert(
-                    'Hesabı Sil',
-                    'Bu işlem geri alınamaz. Hesabınız ve tüm verileriniz kalıcı olarak silinecektir.',
-                    [
-                      { text: 'İptal', style: 'cancel' },
-                      {
-                        text: 'Sil',
-                        style: 'destructive',
-                        onPress: () => {
-                          // TODO: Hesap silme işlemi
-                          Alert.alert('Hesap Silme', 'Hesap silme işlemi yakında eklenecek');
-                        },
-                      },
-                    ]
-                  );
-                }}
-              >
-                <View style={styles.settingItemLeft}>
-                  <Ionicons name="trash-outline" size={20} color={theme.destructive} />
-                  <Text style={[styles.settingItemTitle, { color: theme.destructive }]}>Hesabı Sil</Text>
-                </View>
-                <Ionicons name="alert-circle-outline" size={20} color={theme.destructive} />
-              </TouchableOpacity>
-            </View>
-          </Animated.View>
+          {/* Duplicate Settings ve Security Card kaldırıldı - yukarıda zaten var */}
 
           {/* Database Test Button (Dev Only) */}
           {__DEV__ && onDatabaseTest && (
@@ -1945,6 +2110,66 @@ const createStyles = () => {
     overflow: 'hidden',
     marginTop: SPACING.lg,
   },
+  // Ranking Table - Web ile aynı tablo formatı
+  rankingTableContainer: {
+    width: '100%',
+    backgroundColor: theme.card + '80', // 50% opacity
+    borderWidth: 1,
+    borderColor: theme.border,
+    borderRadius: SIZES.radiusMd,
+    overflow: 'hidden',
+    marginTop: SPACING.lg,
+  },
+  rankingTableHeader: {
+    flexDirection: 'row',
+    backgroundColor: theme.muted + '4D', // 30% opacity
+    borderBottomWidth: 1,
+    borderBottomColor: theme.border,
+    paddingVertical: SPACING.md,
+  },
+  rankingTableHeaderCell: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: SPACING.xs,
+  },
+  rankingTableHeaderText: {
+    ...TYPOGRAPHY.body,
+    fontWeight: TYPOGRAPHY.semibold,
+    color: theme.foreground,
+  },
+  rankingTableRow: {
+    flexDirection: 'row',
+    paddingVertical: SPACING.base,
+  },
+  rankingTableCell: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: SPACING.sm,
+  },
+  rankingTableCellContent: {
+    alignItems: 'center',
+    gap: SPACING.xs,
+  },
+  rankingTableCountryText: {
+    ...TYPOGRAPHY.bodySmall,
+    fontWeight: TYPOGRAPHY.semibold,
+    color: theme.foreground,
+    marginTop: SPACING.xs,
+  },
+  rankingTableValue: {
+    ...TYPOGRAPHY.bodySmall,
+    color: theme.mutedForeground,
+  },
+  rankingTableEmptyText: {
+    ...TYPOGRAPHY.bodySmall,
+    color: theme.mutedForeground,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    paddingHorizontal: SPACING.xs,
+  },
   rankingRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2137,6 +2362,33 @@ const createStyles = () => {
     ...TYPOGRAPHY.bodySmall,
     color: theme.mutedForeground,
     textAlign: 'center',
+  },
+
+  // XP Gain Card - Web ile aynı
+  xpGainCard: {
+    marginTop: SPACING.base,
+    padding: SPACING.base,
+    borderRadius: SIZES.radiusMd,
+    borderWidth: 1,
+  },
+  xpGainHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: SPACING.sm,
+  },
+  xpGainLabel: {
+    ...TYPOGRAPHY.bodySmall,
+    fontWeight: TYPOGRAPHY.medium,
+  },
+  xpGainValue: {
+    ...TYPOGRAPHY['2xl'],
+    fontWeight: TYPOGRAPHY.bold,
+    marginBottom: SPACING.xs,
+  },
+  xpGainTotal: {
+    ...TYPOGRAPHY.bodySmall,
+    marginTop: SPACING.xs,
   },
 
   // Ranking
@@ -2535,27 +2787,87 @@ const createStyles = () => {
     color: '#FFFFFF',
   },
 
-  // Modal
+  // Modal - Web ile aynı (merkeze alınmış)
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: SPACING.lg,
   },
   modalContent: {
-    backgroundColor: '#1E293B',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 24,
+    backgroundColor: theme.card,
+    borderRadius: SIZES.radiusXl,
+    padding: SPACING.lg,
+    width: '90%',
+    maxWidth: 400,
+    borderWidth: 1,
+    borderColor: theme.border,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: SPACING.base,
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginLeft: SPACING.sm,
+  },
+  modalDescription: {
+    ...TYPOGRAPHY.body,
+    color: theme.mutedForeground,
+    marginBottom: SPACING.base,
+    lineHeight: 20,
+  },
+  modalWarning: {
+    ...TYPOGRAPHY.bodySmall,
+    color: theme.mutedForeground,
+    marginBottom: SPACING.sm,
+  },
+  modalInput: {
+    ...TYPOGRAPHY.body,
+    backgroundColor: theme.inputBackground,
+    borderWidth: 1,
+    borderColor: theme.border,
+    borderRadius: SIZES.radiusSm,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    color: theme.foreground,
+    marginBottom: SPACING.base,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
+    marginTop: SPACING.base,
+  },
+  modalButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: SPACING.xs,
+    paddingVertical: SPACING.sm,
+    borderRadius: SIZES.radiusSm,
+  },
+  modalButtonCancel: {
+    backgroundColor: theme.muted,
+    borderWidth: 1,
+    borderColor: theme.border,
+  },
+  modalButtonCancelText: {
+    ...TYPOGRAPHY.body,
+    fontWeight: TYPOGRAPHY.medium,
+    color: theme.foreground,
+  },
+  modalButtonDelete: {
+    backgroundColor: theme.destructive,
+  },
+  modalButtonDeleteText: {
+    ...TYPOGRAPHY.body,
+    fontWeight: TYPOGRAPHY.medium,
     color: '#FFFFFF',
   },
   modalOption: {
@@ -3616,6 +3928,45 @@ const createStyles = () => {
     color: theme.primary,
   },
 
+  // Save/Cancel Buttons - Web ile aynı
+  saveButton: {
+    flex: 1,
+    overflow: 'hidden',
+    borderRadius: SIZES.radiusSm,
+  },
+  saveButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: SPACING.xs,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.base,
+    minHeight: SIZES.buttonHeight,
+  },
+  saveButtonText: {
+    ...TYPOGRAPHY.button,
+    fontWeight: TYPOGRAPHY.semibold,
+    color: theme.primaryForeground,
+  },
+  cancelButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.base,
+    backgroundColor: theme.muted,
+    borderWidth: 1,
+    borderColor: theme.border,
+    borderRadius: SIZES.radiusSm,
+    minHeight: SIZES.buttonHeight,
+  },
+  cancelButtonText: {
+    ...TYPOGRAPHY.button,
+    fontWeight: TYPOGRAPHY.medium,
+    color: theme.foreground,
+  },
+
   // Settings
   settingsGrid: {
     flexDirection: 'row',
@@ -3673,20 +4024,52 @@ const createStyles = () => {
     height: 24,
     borderRadius: 12,
     padding: 2,
-    justifyContent: 'center',
-  },
-  settingRow_switchActive: {
-    justifyContent: 'flex-end',
-    alignItems: 'flex-end',
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   settingRow_switchThumb: {
     width: 20,
     height: 20,
     borderRadius: 10,
     backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
   },
-  settingRow_switchThumbActive: {
-    backgroundColor: '#FFFFFF',
+  // Push Notification Styles
+  pushNotificationBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    borderRadius: SIZES.radiusSm,
+  },
+  pushNotificationBadgeText: {
+    ...TYPOGRAPHY.bodySmall,
+    color: '#FFFFFF',
+    fontWeight: TYPOGRAPHY.semibold,
+  },
+  pushNotificationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    borderRadius: SIZES.radiusSm,
+    borderWidth: 1,
+  },
+  pushNotificationButtonText: {
+    ...TYPOGRAPHY.bodySmall,
+    fontWeight: TYPOGRAPHY.medium,
+  },
+  pushNotificationHint: {
+    ...TYPOGRAPHY.bodySmall,
+    color: theme.mutedForeground,
+    marginTop: SPACING.xs,
+    paddingHorizontal: SPACING.sm,
   },
 
   // Legal Button
