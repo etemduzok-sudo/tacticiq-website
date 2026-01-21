@@ -1,6 +1,7 @@
 // socialAuthService.ts - Google & Apple Sign In Test Service
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert } from 'react-native';
+import { STORAGE_KEYS } from '../config/constants';
 
 interface SocialAuthResult {
   success: boolean;
@@ -41,7 +42,7 @@ class SocialAuthService {
       };
       
       // Save to AsyncStorage
-      await AsyncStorage.setItem('fan-manager-user', JSON.stringify(mockGoogleUser));
+      await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(mockGoogleUser));
       
       console.log('✅ [socialAuth] Google Sign In başarılı (MOCK)');
       console.log('👤 User:', mockGoogleUser);
@@ -59,7 +60,7 @@ class SocialAuthService {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: 'fanmanager://auth/callback',
+          redirectTo: 'tacticiq://auth/callback',
           queryParams: {
             access_type: 'offline',
             prompt: 'consent',
@@ -143,7 +144,7 @@ class SocialAuthService {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'apple',
         options: {
-          redirectTo: 'fanmanager://auth/callback',
+          redirectTo: 'tacticiq://auth/callback',
         },
       });
       
@@ -211,7 +212,7 @@ class SocialAuthService {
    */
   async getCurrentSocialUser(): Promise<any | null> {
     try {
-      const userStr = await AsyncStorage.getItem('fan-manager-user');
+      const userStr = await AsyncStorage.getItem(STORAGE_KEYS.USER);
       if (!userStr) return null;
       
       const user = JSON.parse(userStr);

@@ -1,5 +1,5 @@
 // App Version & Configuration
-// Fan Manager 2026 - Centralized Version Control
+// TacticIQ - Centralized Version Control
 
 /**
  * Application Version Information
@@ -151,7 +151,7 @@ export function isFeatureEnabled(feature: keyof typeof FEATURE_FLAGS): boolean {
  * Get app info string
  */
 export function getAppInfo(): string {
-  return `Fan Manager ${APP_VERSION.current} (${APP_VERSION.buildNumber})`;
+  return `TacticIQ ${APP_VERSION.current} (${APP_VERSION.buildNumber})`;
 }
 
 /**

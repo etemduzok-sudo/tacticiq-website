@@ -32,7 +32,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
 
   const loadTheme = async () => {
     try {
-      const savedTheme = await AsyncStorage.getItem('@fan_manager_theme');
+      const savedTheme = await AsyncStorage.getItem('@tacticiq_theme');
       if (savedTheme === 'light' || savedTheme === 'dark') {
         setThemeState(savedTheme);
       } else {
@@ -47,7 +47,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
 
   const handleSystemThemeChange = async (colorScheme: ColorSchemeName) => {
     try {
-      const savedTheme = await AsyncStorage.getItem('@fan_manager_theme');
+      const savedTheme = await AsyncStorage.getItem('@tacticiq_theme');
       // Kullanıcı manuel olarak tema seçmediyse sistem temasını kullan
       if (!savedTheme && colorScheme) {
         setThemeState(colorScheme);
@@ -60,7 +60,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
   const setTheme = async (newTheme: Theme) => {
     try {
       setThemeState(newTheme);
-      await AsyncStorage.setItem('@fan_manager_theme', newTheme);
+      await AsyncStorage.setItem('@tacticiq_theme', newTheme);
     } catch (error) {
       console.error('Theme kaydetme hatası:', error);
     }

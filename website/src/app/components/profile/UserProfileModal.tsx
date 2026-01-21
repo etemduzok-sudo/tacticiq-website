@@ -929,6 +929,11 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
                           <button
                             type="button"
                             onClick={() => {
+                              // Eğer düzenleme modunda değilse, önce düzenleme modunu aç
+                              if (!isEditing) {
+                                setIsEditing(true);
+                              }
+                              // Dropdown'ı aç/kapat
                               const input = document.getElementById('national-team-search');
                               if (input) {
                                 (input as HTMLInputElement).focus();

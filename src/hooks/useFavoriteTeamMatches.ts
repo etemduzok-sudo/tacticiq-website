@@ -7,8 +7,8 @@ import { getMockMatches } from '../services/mockDataService';
 import { logger } from '../utils/logger';
 
 // Cache keys
-const CACHE_KEY = 'fan-manager-matches-cache';
-const CACHE_TIMESTAMP_KEY = 'fan-manager-matches-cache-timestamp';
+const CACHE_KEY = 'tacticiq-matches-cache';
+const CACHE_TIMESTAMP_KEY = 'tacticiq-matches-cache-timestamp';
 const CACHE_DURATION = 6 * 60 * 60 * 1000; // 6 saat (ms)
 
 // ✅ Clear cache when team IDs change (migration)

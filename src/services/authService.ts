@@ -1,6 +1,7 @@
 // src/services/authService.ts
 import { supabase } from '../config/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { STORAGE_KEYS } from '../config/constants';
 
 export interface AuthUser {
   id: string;
@@ -114,7 +115,7 @@ class AuthService {
       if (profileError) throw profileError;
 
       // 5. Save to AsyncStorage
-      await AsyncStorage.setItem('fan-manager-user', JSON.stringify({
+      await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify({
         id: authData.user.id,
         email,
         username,
@@ -149,7 +150,7 @@ class AuthService {
       if (profileError) throw profileError;
 
       // Save to AsyncStorage
-      await AsyncStorage.setItem('fan-manager-user', JSON.stringify({
+      await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify({
         ...profile,
         authenticated: true,
       }));
@@ -227,10 +228,10 @@ class AuthService {
       if (error) throw error;
 
       // Update AsyncStorage
-      const storedUser = await AsyncStorage.getItem('fan-manager-user');
+      const storedUser = await AsyncStorage.getItem(STORAGE_KEYS.USER);
       if (storedUser) {
         const parsedUser = JSON.parse(storedUser);
-        await AsyncStorage.setItem('fan-manager-user', JSON.stringify({
+        await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify({
           ...parsedUser,
           ...updates,
         }));
@@ -247,7 +248,7 @@ class AuthService {
   async resetPassword(email: string) {
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: 'fanmanager://reset-password',
+        redirectTo: 'tacticiq://reset-password',
       });
 
       if (error) throw error;
@@ -311,7 +312,7 @@ class AuthService {
       if (error) throw error;
 
       // Update AsyncStorage
-      await AsyncStorage.setItem('fan-manager-favorite-clubs', JSON.stringify(teams));
+      await AsyncStorage.setItem(STORAGE_KEYS.FAVORITE_TEAMS, JSON.stringify(teams));
 
       return { success: true };
     } catch (error: any) {

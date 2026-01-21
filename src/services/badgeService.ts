@@ -14,8 +14,8 @@ import {
 } from '../types/badges.types';
 import { AnalysisCluster } from '../types/prediction.types';
 
-const STORAGE_KEY = 'fan-manager-user-badges';
-const SHOWN_BADGES_KEY = 'fan-manager-shown-badges'; // Track which badges have been shown in notifications
+const STORAGE_KEY = 'tacticiq-user-badges';
+const SHOWN_BADGES_KEY = 'tacticiq-shown-badges'; // Track which badges have been shown in notifications
 
 /**
  * User Stats Interface

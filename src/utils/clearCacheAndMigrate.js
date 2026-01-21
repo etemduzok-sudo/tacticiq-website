@@ -5,12 +5,12 @@
   const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
   
   // Clear matches cache
-  await AsyncStorage.removeItem('fan-manager-matches-cache');
-  await AsyncStorage.removeItem('fan-manager-matches-cache-timestamp');
+  await AsyncStorage.removeItem('tacticiq-matches-cache');
+  await AsyncStorage.removeItem('tacticiq-matches-cache-timestamp');
   console.log('✅ Matches cache cleared');
   
   // Get favorite teams
-  const teamsData = await AsyncStorage.getItem('fan-manager-favorite-clubs');
+  const teamsData = await AsyncStorage.getItem('tacticiq-favorite-clubs');
   if (teamsData) {
     const teams = JSON.parse(teamsData);
     console.log('📋 Current teams:', teams);
@@ -29,7 +29,7 @@
       return team;
     });
     
-    await AsyncStorage.setItem('fan-manager-favorite-clubs', JSON.stringify(migrated));
+    await AsyncStorage.setItem('tacticiq-favorite-clubs', JSON.stringify(migrated));
     console.log('✅ Teams migrated:', migrated);
   }
   

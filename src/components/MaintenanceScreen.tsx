@@ -1,5 +1,5 @@
 // Maintenance Screen
-// Fan Manager 2026 - Maintenance Mode UI
+// TacticIQ - Maintenance Mode UI
 
 import React from 'react';
 import {
@@ -87,7 +87,7 @@ const MaintenanceScreen: React.FC<MaintenanceScreenProps> = ({
           {/* Footer */}
           <View style={styles.footer}>
             <Text style={styles.footerText}>
-              Fan Manager {APP_VERSION.current}
+              TacticIQ {APP_VERSION.current}
             </Text>
             <Text style={styles.footerSubtext}>
               Anlayışınız için teşekkür ederiz 🙏

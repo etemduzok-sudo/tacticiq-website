@@ -1,5 +1,5 @@
 // Application Constants
-// Fan Manager 2026 - Centralized Constants Management
+// TacticIQ - Centralized Constants Management
 
 /**
  * Scoring Constants
@@ -222,14 +222,14 @@ export const TIME = {
  * AsyncStorage keys
  */
 export const STORAGE_KEYS = {
-  USER: 'fan-manager-user',
-  LANGUAGE: 'fan-manager-language',
-  THEME: 'fan-manager-theme',
-  FAVORITE_TEAMS: 'fan-manager-favorite-clubs',
-  PREDICTIONS: 'fan-manager-predictions-',  // Append matchId
-  RATINGS: 'fan-manager-ratings-',          // Append matchId
-  ONBOARDING: 'fan-manager-onboarding-complete',
-  PRO_STATUS: 'fan-manager-pro-status',
+  USER: 'tacticiq-user',
+  LANGUAGE: 'tacticiq-language',
+  THEME: 'tacticiq-theme',
+  FAVORITE_TEAMS: 'tacticiq-favorite-clubs',
+  PREDICTIONS: 'tacticiq-predictions-',  // Append matchId
+  RATINGS: 'tacticiq-ratings-',          // Append matchId
+  ONBOARDING: 'tacticiq-onboarding-complete',
+  PRO_STATUS: 'tacticiq-pro-status',
   PROFILE_SETUP: 'tacticiq-profile-setup',
 };
 

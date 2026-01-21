@@ -1,8 +1,9 @@
 // src/services/mockAuthService.ts
 // Geçici mock authentication service (Supabase olmadan test için)
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { STORAGE_KEYS } from '../config/constants';
 
-const MOCK_USERS_KEY = 'fan-manager-mock-users';
+const MOCK_USERS_KEY = 'tacticiq-mock-users';
 
 interface MockUser {
   id: string;
@@ -106,7 +107,7 @@ class MockAuthService {
       await this.saveMockUsers(users);
 
       // Save session
-      await AsyncStorage.setItem('fan-manager-user', JSON.stringify({
+      await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify({
         id: newUser.id,
         email: newUser.email,
         username: newUser.username,
@@ -136,7 +137,7 @@ class MockAuthService {
       }
 
       // Save session
-      await AsyncStorage.setItem('fan-manager-user', JSON.stringify({
+      await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify({
         id: user.id,
         email: user.email,
         username: user.username,
@@ -182,7 +183,7 @@ class MockAuthService {
   // Get current user
   async getCurrentUser() {
     try {
-      const data = await AsyncStorage.getItem('fan-manager-user');
+      const data = await AsyncStorage.getItem(STORAGE_KEYS.USER);
       return data ? JSON.parse(data) : null;
     } catch (error) {
       return null;

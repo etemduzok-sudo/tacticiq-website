@@ -1,11 +1,10 @@
 // Storage Utilities - Safe AsyncStorage operations
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { STORAGE_KEYS as CONSTANTS_STORAGE_KEYS } from '../config/constants';
 
+// Export STORAGE_KEYS with additional utility-specific keys
 export const STORAGE_KEYS = {
-  USER: 'fan-manager-user',
-  LANGUAGE: 'fan-manager-language',
-  FAVORITE_CLUBS: 'fan-manager-favorite-clubs',
-  THEME: 'fan-manager-theme',
+  ...CONSTANTS_STORAGE_KEYS,
   ERROR_COUNT: 'error-count',
   IMAGE_CACHE_MAP: 'image-cache-map',
 } as const;
@@ -125,8 +124,8 @@ export async function getFavoriteTeams() {
     // Clear matches cache to force refresh with new IDs
     try {
       const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
-      await AsyncStorage.removeItem('fan-manager-matches-cache');
-      await AsyncStorage.removeItem('fan-manager-matches-cache-timestamp');
+      await AsyncStorage.removeItem('tacticiq-matches-cache');
+      await AsyncStorage.removeItem('tacticiq-matches-cache-timestamp');
       console.log('✅ Matches cache cleared after migration');
     } catch (err) {
       console.warn('Could not clear matches cache:', err);
