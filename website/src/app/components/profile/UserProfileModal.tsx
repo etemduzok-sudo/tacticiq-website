@@ -38,11 +38,21 @@ import {
   Medal,
   Lock,
   X,
+  Globe,
+  Flag,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { LegalDocumentsModal } from '@/app/components/legal/LegalDocumentsModal';
 import { ChangePasswordModal } from '@/app/components/auth/ChangePasswordModal';
 import { ScrollArea } from '@/app/components/ui/scroll-area';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/app/components/ui/table';
 import {
   Dialog,
   DialogContent,
@@ -815,34 +825,70 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
                             <Badge variant="outline">Free</Badge>
                           )}
                         </div>
-                        <p className="text-xs text-muted-foreground mb-3">{profile.email}</p>
+                        <p className="text-xs text-muted-foreground mb-4">{profile.email}</p>
                         
-                        {/* Stats Row */}
-                        <div className="flex items-center gap-4 w-full justify-center">
-                          {/* Country */}
-                          <div className="text-center">
-                            <p className="text-xs text-muted-foreground mb-1">Ülke</p>
-                            <div className="flex items-center gap-1">
-                              <span className="text-lg">🇹🇷</span>
-                              <p className="text-sm font-semibold">Türkiye</p>
-                            </div>
-                          </div>
-                          <Separator orientation="vertical" className="h-8" />
-                          {/* Country Rank - Türkiye'deki sıralaması */}
-                          <div className="text-center">
-                            <p className="text-xs text-muted-foreground mb-1">Türkiye Sırası</p>
-                            <p className="text-sm font-bold text-secondary">
-                              #{userStats.countryRank > 0 ? userStats.countryRank.toLocaleString() : 'N/A'}
-                            </p>
-                          </div>
-                          <Separator orientation="vertical" className="h-8" />
-                          {/* Global Rank - Dünyadaki sıralaması */}
-                          <div className="text-center">
-                            <p className="text-xs text-muted-foreground mb-1">Dünya Sırası</p>
-                            <p className="text-sm font-bold">
-                              #{userStats.globalRank > 0 ? userStats.globalRank.toLocaleString() : 'N/A'}
-                            </p>
-                          </div>
+                        {/* Ranking Table - Professional Design */}
+                        <div className="w-full border rounded-lg overflow-hidden bg-card/50">
+                          <Table>
+                            <TableHeader>
+                              <TableRow className="border-b bg-muted/30">
+                                <TableHead className="h-12 text-center font-semibold">
+                                  <div className="flex items-center justify-center gap-2">
+                                    <Flag className="size-4 text-muted-foreground" />
+                                    <span>Ülke</span>
+                                  </div>
+                                </TableHead>
+                                <TableHead className="h-12 text-center font-semibold">
+                                  <div className="flex items-center justify-center gap-2">
+                                    <Trophy className="size-4 text-secondary" />
+                                    <span>Türkiye Sırası</span>
+                                  </div>
+                                </TableHead>
+                                <TableHead className="h-12 text-center font-semibold">
+                                  <div className="flex items-center justify-center gap-2">
+                                    <Globe className="size-4 text-primary" />
+                                    <span>Dünya Sırası</span>
+                                  </div>
+                                </TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              <TableRow className="hover:bg-muted/20 transition-colors">
+                                <TableCell className="text-center py-4">
+                                  <div className="flex items-center justify-center gap-2">
+                                    <span className="text-xl">🇹🇷</span>
+                                    <span className="font-semibold text-sm">TR Türkiye</span>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-center py-4">
+                                  {userStats.countryRank > 0 ? (
+                                    <div className="flex items-center justify-center gap-1">
+                                      <span className="text-lg font-bold text-secondary">
+                                        #{userStats.countryRank.toLocaleString()}
+                                      </span>
+                                    </div>
+                                  ) : (
+                                    <span className="text-sm text-muted-foreground font-medium">
+                                      —
+                                    </span>
+                                  )}
+                                </TableCell>
+                                <TableCell className="text-center py-4">
+                                  {userStats.globalRank > 0 ? (
+                                    <div className="flex items-center justify-center gap-1">
+                                      <span className="text-lg font-bold text-primary">
+                                        #{userStats.globalRank.toLocaleString()}
+                                      </span>
+                                    </div>
+                                  ) : (
+                                    <span className="text-sm text-muted-foreground font-medium">
+                                      —
+                                    </span>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            </TableBody>
+                          </Table>
                         </div>
                       </div>
                     </CardContent>

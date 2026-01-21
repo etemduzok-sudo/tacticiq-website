@@ -320,6 +320,35 @@ export default function App() {
   const [newBadge, setNewBadge] = useState<{ id: string; name: string; emoji: string; description: string; tier: number } | null>(null);
   const badgeShownRef = useRef<Set<string>>(new Set()); // Track shown badges in this session using ref
   const testBadgeTimerRef = useRef<NodeJS.Timeout | null>(null); // Track test badge timer
+  
+  // 🧪 TEST: Auto-set user as Pro on mount (for testing)
+  useEffect(() => {
+    if (__DEV__) {
+      const autoSetPro = async () => {
+        try {
+          const { STORAGE_KEYS } = await import('./src/config/constants');
+          const userDataStr = await AsyncStorage.getItem(STORAGE_KEYS.USER);
+          if (userDataStr) {
+            const userData = JSON.parse(userDataStr);
+            // Only set if not already Pro
+            if (!userData.isPro && !userData.is_pro) {
+              userData.is_pro = true;
+              userData.isPro = true;
+              userData.isPremium = true;
+              userData.plan = 'pro';
+              await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(userData));
+              await AsyncStorage.setItem(STORAGE_KEYS.PRO_STATUS, 'true');
+              console.log('✅ [TEST] User automatically set as Pro!');
+            }
+          }
+        } catch (error) {
+          console.log('Auto-set Pro skipped:', error);
+        }
+      };
+      // Run after a short delay to ensure app is initialized
+      setTimeout(autoSetPro, 1000);
+    }
+  }, []);
 
   // TEST: 5 saniye sonra yeni rozet göster (gerçekte maç sonunda kazanılacak)
   // Sadece bir kez çalışacak şekilde düzeltildi
@@ -479,13 +508,19 @@ export default function App() {
   const handleLoginSuccess = async () => {
     logger.info('Login success', undefined, 'AUTH');
     // ✅ Her zaman Pro yap
-    await AsyncStorage.setItem('fan-manager-user', JSON.stringify({ 
+    const { STORAGE_KEYS } = await import('./src/config/constants');
+    const existingUser = await AsyncStorage.getItem(STORAGE_KEYS.USER);
+    const userData = existingUser ? JSON.parse(existingUser) : {};
+    
+    await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify({ 
+      ...userData,
       authenticated: true,
       is_pro: true,
       isPro: true,
       isPremium: true,
       plan: 'pro'
     }));
+    await AsyncStorage.setItem(STORAGE_KEYS.PRO_STATUS, 'true');
     logger.debug('User set as PRO after login', undefined, 'AUTH');
     
     // Giriş yap → Ana sayfaya git (takım kontrolü yapmadan)
@@ -667,18 +702,54 @@ export default function App() {
   const handleUpgradeSuccess = async () => {
     logger.info('PRO upgrade success', undefined, 'PRO_UPGRADE');
     // Save PRO status to AsyncStorage
-    const userDataStr = await AsyncStorage.getItem('fan-manager-user');
+    const { STORAGE_KEYS } = await import('./src/config/constants');
+    const userDataStr = await AsyncStorage.getItem(STORAGE_KEYS.USER);
     if (userDataStr) {
       const userData = JSON.parse(userDataStr);
       userData.is_pro = true;
       userData.isPro = true; // Both formats for compatibility
-      await AsyncStorage.setItem('fan-manager-user', JSON.stringify(userData));
+      userData.isPremium = true;
+      userData.plan = 'pro';
+      await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(userData));
       logger.debug('PRO status saved to AsyncStorage', undefined, 'PRO_UPGRADE');
     }
-    await AsyncStorage.setItem('fan-manager-pro-status', 'true');
+    await AsyncStorage.setItem(STORAGE_KEYS.PRO_STATUS, 'true');
     logNavigation('profile');
     setCurrentScreen('profile');
   };
+  
+  // 🧪 TEST: Set user as Pro (for testing)
+  const setUserProForTest = async () => {
+    try {
+      const { STORAGE_KEYS } = await import('./src/config/constants');
+      const userDataStr = await AsyncStorage.getItem(STORAGE_KEYS.USER);
+      if (userDataStr) {
+        const userData = JSON.parse(userDataStr);
+        userData.is_pro = true;
+        userData.isPro = true;
+        userData.isPremium = true;
+        userData.plan = 'pro';
+        await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(userData));
+        await AsyncStorage.setItem(STORAGE_KEYS.PRO_STATUS, 'true');
+        console.log('✅ User set as Pro! You can now select club teams.');
+        alert('✅ Pro olarak ayarlandınız! Artık kulüp takımları seçebilirsiniz.');
+        // Refresh current screen
+        if (currentScreen === 'profile' || currentScreen === 'favorite-teams') {
+          setCurrentScreen(currentScreen === 'profile' ? 'profile' : 'favorite-teams');
+        }
+      } else {
+        alert('❌ Kullanıcı bulunamadı. Lütfen önce giriş yapın.');
+      }
+    } catch (error) {
+      console.error('Error setting user as Pro:', error);
+      alert('Hata: ' + error);
+    }
+  };
+  
+  // Make it available globally for testing
+  if (typeof window !== 'undefined') {
+    (window as any).setUserPro = setUserProForTest;
+  }
 
   // 14. Profile Settings → Change Password
   const handleNavigateToChangePassword = () => {

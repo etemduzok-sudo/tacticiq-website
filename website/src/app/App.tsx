@@ -46,6 +46,42 @@ function AppContent() {
   const userAuth = useUserAuthSafe();
   const isAuthenticated = userAuth?.isAuthenticated ?? false;
   
+  // 🧪 TEST: Set user as Pro (for testing)
+  React.useEffect(() => {
+    if (import.meta.env.DEV && userAuth?.user && userAuth?.profile?.plan !== 'pro') {
+      const setUserPro = async () => {
+        try {
+          await userAuth.updateProfile({ plan: 'pro' });
+          console.log('✅ [WEB TEST] User automatically set as Pro!');
+        } catch (error) {
+          console.log('Auto-set Pro skipped:', error);
+        }
+      };
+      // Run after a short delay to ensure auth is initialized
+      setTimeout(setUserPro, 2000);
+    }
+  }, [userAuth?.user, userAuth?.profile?.plan]);
+  
+  // Make it available globally for testing
+  React.useEffect(() => {
+    if (typeof window !== 'undefined' && userAuth?.updateProfile) {
+      (window as any).setUserPro = async () => {
+        try {
+          const result = await userAuth.updateProfile({ plan: 'pro' });
+          if (result.success) {
+            console.log('✅ User set as Pro! You can now select club teams.');
+            alert('✅ Pro olarak ayarlandınız! Artık kulüp takımları seçebilirsiniz.');
+          } else {
+            alert('Hata: ' + result.error);
+          }
+        } catch (error: any) {
+          console.error('Error setting user as Pro:', error);
+          alert('Hata: ' + error.message);
+        }
+      };
+    }
+  }, [userAuth?.updateProfile]);
+  
   // Check if we're on a legal page (from URL query parameter)
   const urlParams = new URLSearchParams(window.location.search);
   const legalPage = urlParams.get('legal');
