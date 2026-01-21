@@ -438,22 +438,18 @@ export default {
   // Legal - Cookies
   'legal.cookies.title': 'Çerez Politikası',
   'legal.cookies.description': 'Çerezlerin kullanımı ve yönetimi',
-  'legal.cookies.fullContent': 'Bu platform çerezler kullanır. Çerez ayarlarınızı yönetebilir ve özelleştirebilirsiniz.',
   
   // Legal - KVKK
   'legal.kvkk.title': 'KVKK Aydınlatma Metni',
   'legal.kvkk.description': 'Kişisel Verilerin Korunması Kanunu bilgilendirmesi',
-  'legal.kvkk.fullContent': 'Kişisel verilerinizin işlenmesi hakkında KVKK kapsamında bilgilendirme metnimiz.',
   
   // Legal - Consent
   'legal.consent.title': 'Açık Rıza Metni',
   'legal.consent.description': 'KVKK kapsamında açık rıza beyanı',
-  'legal.consent.fullContent': 'Kişisel verilerinizin işlenmesi ve aktarılması için açık rıza beyanınız.',
   
   // Legal - Sales
   'legal.sales.title': 'Mesafeli Satış Sözleşmesi',
   'legal.sales.description': 'Dijital içerik satış şartları ve cayma hakkı',
-  'legal.sales.fullContent': '6502 Sayılı Tüketicinin Korunması Hakkında Kanun uyarınca mesafeli satış sözleşmesi.',
   
   // Legal - DMCA
   'legal.dmca.title': 'Telif Hakkı ve DMCA Bildirimi',

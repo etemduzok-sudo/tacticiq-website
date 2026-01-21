@@ -19,6 +19,7 @@ import { textStyles, inputStyles, cardStyles, buttonStyles } from '../utils/styl
 import { SPACING, COLORS, BRAND, SIZES, TYPOGRAPHY } from '../theme/theme';
 import { authApi } from '../services/api';
 import { STORAGE_KEYS } from '../config/constants';
+import { profileService } from '../services/profileService';
 
 interface ProfileSettingsScreenProps {
   onBack: () => void;
@@ -49,18 +50,41 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
   const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'unavailable'>('idle');
   const usernameCheckTimeout = useRef<NodeJS.Timeout | null>(null);
   
-  // ✅ Kullanıcı bilgilerini AsyncStorage'dan yükle
+  // ✅ Kullanıcı bilgilerini Unified Profile Service'den yükle (Web ile senkronize)
   useEffect(() => {
     const loadUserData = async () => {
       try {
-        const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
-        const userDataStr = await AsyncStorage.getItem(STORAGE_KEYS.USER);
-        if (userDataStr) {
-          const userData = JSON.parse(userDataStr);
-          if (userData.name) setName(userData.name);
-          if (userData.username) {
-            setUsername(userData.username);
-            setInitialUsername(userData.username); // Başlangıç değerini sakla
+        // 🆕 Unified Profile Service kullan
+        const profile = await profileService.getProfile();
+        
+        if (profile) {
+          if (profile.name) setName(profile.name);
+          if (profile.nickname) {
+            setUsername(profile.nickname);
+            setInitialUsername(profile.nickname);
+          }
+          // Pro durumu
+          setIsPro(profile.plan === 'pro');
+          // Tema
+          if (profile.theme) setTheme(profile.theme as Theme);
+          // Favori takımlar
+          if (profile.favoriteTeams && profile.favoriteTeams.length > 0) {
+            setFavoriteClubs(profile.favoriteTeams);
+          }
+          console.log('✅ Profile loaded from unified service:', profile.email);
+        } else {
+          // Fallback: AsyncStorage'dan yükle
+          const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
+          const userDataStr = await AsyncStorage.getItem(STORAGE_KEYS.USER);
+          if (userDataStr) {
+            const userData = JSON.parse(userDataStr);
+            if (userData.name) setName(userData.name);
+            if (userData.username) {
+              setUsername(userData.username);
+              setInitialUsername(userData.username);
+            }
+            const storedIsPro = userData?.is_pro === true || userData?.isPro === true || userData?.isPremium === true || userData?.plan === 'pro' || userData?.plan === 'premium';
+            setIsPro(storedIsPro);
           }
         }
       } catch (error) {
@@ -75,24 +99,6 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
   const [favoriteClubs, setFavoriteClubs] = useState<string[]>([]);
   const [isPro, setIsPro] = useState(false);
-
-  // ✅ Pro durumunu yükle
-  useEffect(() => {
-    const loadProStatus = async () => {
-      try {
-        const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
-        const userDataStr = await AsyncStorage.getItem(STORAGE_KEYS.USER);
-        if (userDataStr) {
-          const userData = JSON.parse(userDataStr);
-          const storedIsPro = userData?.is_pro === true || userData?.isPro === true || userData?.isPremium === true || userData?.plan === 'pro' || userData?.plan === 'premium';
-          setIsPro(storedIsPro);
-        }
-      } catch (error) {
-        console.error('Error loading pro status:', error);
-      }
-    };
-    loadProStatus();
-  }, []);
 
   const favoriteNational = 'Türkiye';
   const currentLanguage = 'Türkçe';
@@ -182,42 +188,21 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
         return;
       }
 
-      // Get current user ID from AsyncStorage
-      const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
-      const userDataStr = await AsyncStorage.getItem('fan-manager-user');
-      if (!userDataStr) {
-        Alert.alert('Hata', 'Kullanıcı bilgisi bulunamadı');
-        return;
-      }
-      
-      const userData = JSON.parse(userDataStr);
-      const userId = userData.id;
-      
-      // Update user in database
-      const { usersDb } = await import('../services/databaseService');
-      const result = await usersDb.updateUserProfile(userId, {
-        username: username,
-        // Note: name field might not exist in DB, using username
+      // 🆕 Unified Profile Service ile kaydet (Web ile senkronize)
+      const result = await profileService.updateProfile({
+        name: name,
+        nickname: username,
+        theme: theme,
       });
       
       if (result.success) {
-        // ✅ AsyncStorage'ı güncelle - TÜM EKRANLAR BURADAN OKUR
-        const updatedUser = {
-          ...userData,
-          username: username,
-          name: name, // ✅ İsim de kaydedildi
-        };
-        await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(updatedUser));
-        
         // ✅ Başlangıç username'i güncelle (bir sonraki değişiklik için)
         setInitialUsername(username);
         
         setHasChanges(false);
         setUsernameStatus('idle'); // Durumu sıfırla
-        Alert.alert('Başarılı', 'Değişiklikler kaydedildi! ✓\n\nTüm ekranlarda güncellenecek.');
-        console.log('✅ Profile updated in database and AsyncStorage:', { name, username });
-        
-        // ✅ ProfileScreen ve ProfileCard otomatik güncellenecek (AsyncStorage'dan okuyorlar)
+        Alert.alert('Başarılı', 'Değişiklikler kaydedildi! ✓\n\nWeb ve mobil senkronize edildi.');
+        console.log('✅ Profile updated via unified service:', { name, username, theme });
       } else {
         Alert.alert('Hata', 'Değişiklikler kaydedilemedi: ' + result.error);
       }

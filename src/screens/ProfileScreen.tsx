@@ -30,6 +30,8 @@ import { Badge, getBadgeColor, getBadgeTierName } from '../types/badges.types';
 import { ALL_BADGES, BadgeDefinition, getBadgeById } from '../constants/badges';
 import { useFavoriteTeams } from '../hooks/useFavoriteTeams';
 import { logger } from '../utils/logger';
+import { profileService } from '../services/profileService';
+import { calculateTopPercent } from '../types/profile.types';
 import { teamsApi } from '../services/api';
 import { SPACING, TYPOGRAPHY, BRAND, DARK_MODE } from '../theme/theme';
 import { StandardHeader, ScreenLayout } from '../components/layouts';
@@ -178,23 +180,92 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     }
   };
 
-  // 🔄 FETCH USER DATA FROM SUPABASE
+  // 🔄 FETCH USER DATA FROM SUPABASE (Unified Profile Service)
   useEffect(() => {
     const fetchUserData = async () => {
       try {
         setLoading(true);
 
-        // Get user ID from AsyncStorage
+        // 🆕 Unified Profile Service kullan (Web ile senkronize)
+        const unifiedProfile = await profileService.getProfile();
+        
+        if (unifiedProfile) {
+          logger.info('Unified profile loaded', { id: unifiedProfile.id, plan: unifiedProfile.plan }, 'PROFILE');
+          
+          // Unified profile'dan verileri state'e aktar
+          setUser({
+            name: unifiedProfile.name || unifiedProfile.nickname || 'Kullanıcı',
+            username: unifiedProfile.nickname ? `@${unifiedProfile.nickname}` : '@kullanici',
+            email: unifiedProfile.email,
+            avatar: unifiedProfile.avatar || '',
+            level: unifiedProfile.level || 1,
+            points: unifiedProfile.totalPoints || 0,
+            countryRank: unifiedProfile.countryRank || 0,
+            totalPlayers: 5000, // TODO: Backend'den çekilecek
+            country: unifiedProfile.country === 'TR' ? 'Türkiye' : unifiedProfile.country || 'Türkiye',
+            avgMatchRating: (unifiedProfile.accuracy || 0) / 10,
+            xpGainThisWeek: unifiedProfile.xp || 0,
+            stats: {
+              success: unifiedProfile.accuracy || 0,
+              total: unifiedProfile.totalPredictions || 0,
+              streak: unifiedProfile.currentStreak || 0,
+            },
+          });
+          
+          // Pro durumu - birden fazla alan kontrol et
+          const isPro = unifiedProfile.plan === 'pro' || 
+                        (unifiedProfile as any).is_pro === true || 
+                        (unifiedProfile as any).isPro === true ||
+                        (unifiedProfile as any).is_premium === true ||
+                        (unifiedProfile as any).isPremium === true;
+          setIsPro(isPro);
+          logger.debug(`User is ${isPro ? 'PRO' : 'FREE'}`, { 
+            plan: unifiedProfile.plan, 
+            is_pro: (unifiedProfile as any).is_pro,
+            isPremium: (unifiedProfile as any).isPremium 
+          }, 'PROFILE');
+          
+          // Milli takım
+          if (unifiedProfile.nationalTeam) {
+            // Basit format: "🇹🇷 Türkiye" -> parse et
+            setSelectedNationalTeam({
+              id: 0,
+              name: unifiedProfile.nationalTeam,
+              colors: ['#E30A17', '#FFFFFF'],
+              country: unifiedProfile.nationalTeam,
+              league: 'UEFA',
+            });
+          }
+          
+          // Kulüp takımları
+          if (unifiedProfile.clubTeams && unifiedProfile.clubTeams.length > 0) {
+            const clubArray: Array<{ id: number; name: string; colors: string[]; country: string; league: string; coach?: string } | null> = [null, null, null, null, null];
+            unifiedProfile.clubTeams.forEach((teamName: string, idx: number) => {
+              if (idx < 5 && teamName) {
+                clubArray[idx] = {
+                  id: idx,
+                  name: teamName,
+                  colors: ['#1E40AF', '#FFFFFF'],
+                  country: 'Unknown',
+                  league: 'Unknown',
+                };
+              }
+            });
+            setSelectedClubTeams(clubArray);
+          }
+        }
+
+        // Fallback: AsyncStorage'dan yükle (eski sistem)
         const userDataStr = await AsyncStorage.getItem(STORAGE_KEYS.USER);
         const userData = userDataStr ? JSON.parse(userDataStr) : null;
         
-        // ✅ Kullanıcı adı ve ismini AsyncStorage'dan yükle
-        if (userData) {
+        // ✅ Kullanıcı adı ve ismini AsyncStorage'dan yükle (fallback)
+        if (!unifiedProfile && userData) {
           setUser(prev => ({
             ...prev,
             name: userData.name || prev.name,
             username: userData.username ? `@${userData.username}` : prev.username,
-            avatar: userData.avatar || prev.avatar, // ✅ Avatar'ı da yükle
+            avatar: userData.avatar || prev.avatar,
           }));
         }
         

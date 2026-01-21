@@ -554,20 +554,35 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
     }
   }, [profile, user, open]);
 
-  // User stats (mobile app ile tutarlı)
-  // TODO: Bu veriler backend'den gelecek - şimdilik placeholder değerler
+  // User stats - Profil verilerinden otomatik hesaplanır
   const userStats = {
-    level: 1,
-    points: 0,
-    badgeCount: 0,
-    successRate: 0,
-    totalPredictions: 0,
-    dayStreak: 0,
-    countryRank: 0, // Türkiye'deki sıralaması
-    globalRank: 0, // Dünyadaki sıralaması
-    totalPlayers: 1000, // Toplam oyuncu sayısı
-    avgMatchRating: 0,
-    xpGainThisWeek: 0,
+    level: profile?.level || 1,
+    points: profile?.totalPoints || 0,
+    badgeCount: profile?.badges?.length || 0,
+    successRate: profile?.accuracy || 0,
+    totalPredictions: profile?.totalPredictions || 0,
+    correctPredictions: profile?.correctPredictions || 0,
+    dayStreak: profile?.dayStreak || 0,
+    currentStreak: profile?.currentStreak || 0,
+    bestStreak: profile?.bestStreak || 0,
+    countryRank: profile?.countryRank || 0,
+    globalRank: profile?.globalRank || 0,
+    countryTotalPlayers: 5000, // TODO: Backend'den çekilecek
+    globalTotalPlayers: 50000, // TODO: Backend'den çekilecek
+    avgMatchRating: (profile?.accuracy || 0) / 10,
+    xpGainThisWeek: profile?.xp || 0,
+  };
+
+  // Top yüzdelik hesaplama fonksiyonu
+  const calculateTopPercent = (rank: number, total: number): string => {
+    if (rank <= 0 || total <= 0) return '';
+    const percent = (rank / total) * 100;
+    if (percent <= 1) return 'Top %1';
+    if (percent <= 5) return 'Top %5';
+    if (percent <= 10) return 'Top %10';
+    if (percent <= 25) return 'Top %25';
+    if (percent <= 50) return 'Top %50';
+    return `Top %${Math.ceil(percent)}`;
   };
 
   // Favorite teams (mobile app ile tutarlı)
@@ -712,10 +727,53 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
       .slice(0, 2);
   };
 
-  const isPro = profile.plan === 'pro';
-  const isEmailUser = user.app_metadata?.provider === 'email' || !user.app_metadata?.provider;
-  const isGoogleUser = user.app_metadata?.provider === 'google';
-  const isAppleUser = user.app_metadata?.provider === 'apple';
+  // Pro kontrolü - birden fazla alan ve localStorage kontrol et
+  const checkIsPro = (): boolean => {
+    // 1. Profile'dan kontrol
+    if (profile.plan === 'pro') return true;
+    if ((profile as any).is_pro === true) return true;
+    if ((profile as any).isPro === true) return true;
+    if ((profile as any).is_premium === true) return true;
+    if ((profile as any).isPremium === true) return true;
+    
+    // 2. localStorage'dan kontrol
+    try {
+      const stored = localStorage.getItem('user_profile');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed.plan === 'pro') return true;
+        if (parsed.is_pro === true) return true;
+        if (parsed.isPro === true) return true;
+        if (parsed.is_premium === true) return true;
+        if (parsed.isPremium === true) return true;
+      }
+    } catch (e) {
+      // ignore
+    }
+    
+    // 3. User metadata kontrol
+    if (user.user_metadata?.plan === 'pro') return true;
+    if (user.user_metadata?.is_pro === true) return true;
+    
+    return false;
+  };
+  
+  const isPro = checkIsPro();
+  
+  // Debug: Pro durumunu logla
+  console.log('🔍 Pro Check:', { 
+    isPro, 
+    profilePlan: profile.plan, 
+    userMetadata: user.user_metadata,
+    provider: user.app_metadata?.provider 
+  });
+  
+  // Email kullanıcısı kontrolü - provider yoksa veya email ise
+  const provider = user.app_metadata?.provider;
+  const isEmailUser = !provider || provider === 'email';
+  const isGoogleUser = provider === 'google';
+  const isAppleUser = provider === 'apple';
+  const isOAuthUser = isGoogleUser || isAppleUser;
 
   // Takımları otomatik kaydet
   const handleSaveTeams = async (nationalTeam: string, clubTeams: string[]) => {
@@ -862,28 +920,44 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
                                 </TableCell>
                                 <TableCell className="text-center py-4">
                                   {userStats.countryRank > 0 ? (
-                                    <div className="flex items-center justify-center gap-1">
-                                      <span className="text-lg font-bold text-secondary">
-                                        #{userStats.countryRank.toLocaleString()}
+                                    <div className="flex flex-col items-center gap-1">
+                                      <Badge className="bg-secondary/20 text-secondary border-secondary/30 hover:bg-secondary/30">
+                                        {calculateTopPercent(userStats.countryRank, userStats.countryTotalPlayers)}
+                                      </Badge>
+                                      <span className="text-xs text-muted-foreground">
+                                        {userStats.countryRank.toLocaleString()} / {userStats.countryTotalPlayers.toLocaleString()}
                                       </span>
                                     </div>
                                   ) : (
-                                    <span className="text-sm text-muted-foreground font-medium">
-                                      —
-                                    </span>
+                                    <div className="flex flex-col items-center gap-1">
+                                      <Badge variant="outline" className="text-muted-foreground border-muted-foreground/30">
+                                        Sıralama Yok
+                                      </Badge>
+                                      <span className="text-xs text-muted-foreground">
+                                        Tahmin yaparak sıralamaya gir
+                                      </span>
+                                    </div>
                                   )}
                                 </TableCell>
                                 <TableCell className="text-center py-4">
                                   {userStats.globalRank > 0 ? (
-                                    <div className="flex items-center justify-center gap-1">
-                                      <span className="text-lg font-bold text-primary">
-                                        #{userStats.globalRank.toLocaleString()}
+                                    <div className="flex flex-col items-center gap-1">
+                                      <Badge className="bg-primary/20 text-primary border-primary/30 hover:bg-primary/30">
+                                        {calculateTopPercent(userStats.globalRank, userStats.globalTotalPlayers)}
+                                      </Badge>
+                                      <span className="text-xs text-muted-foreground">
+                                        {userStats.globalRank.toLocaleString()} / {userStats.globalTotalPlayers.toLocaleString()}
                                       </span>
                                     </div>
                                   ) : (
-                                    <span className="text-sm text-muted-foreground font-medium">
-                                      —
-                                    </span>
+                                    <div className="flex flex-col items-center gap-1">
+                                      <Badge variant="outline" className="text-muted-foreground border-muted-foreground/30">
+                                        Sıralama Yok
+                                      </Badge>
+                                      <span className="text-xs text-muted-foreground">
+                                        Tahmin yaparak sıralamaya gir
+                                      </span>
+                                    </div>
                                   )}
                                 </TableCell>
                               </TableRow>
@@ -1486,17 +1560,15 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
                           Güvenlik ve Hesap
                         </h4>
                         
-                        {/* Password Change - Email users only */}
-                        {isEmailUser && (
-                          <Button 
-                            variant="outline" 
-                            className="w-full"
-                            onClick={() => setShowChangePasswordModal(true)}
-                          >
-                            <Lock className="size-4 mr-2" />
-                            Şifre Değiştir
-                          </Button>
-                        )}
+                        {/* Password Change - Tüm kullanıcılar için */}
+                        <Button 
+                          variant="outline" 
+                          className="w-full"
+                          onClick={() => setShowChangePasswordModal(true)}
+                        >
+                          <Lock className="size-4 mr-2" />
+                          Şifre Değiştir
+                        </Button>
                         
                         {/* Sign Out */}
                         <Button 

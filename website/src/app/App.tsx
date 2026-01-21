@@ -1,6 +1,8 @@
-import React from 'react';
-import { AdminPanel } from '@/app/components/admin/AdminPanel';
+import React, { Suspense } from 'react';
 import { AdminDataProvider, useAdminDataSafe } from '@/contexts/AdminDataContext';
+
+// Lazy load AdminPanel - sadece adminler için yüklenir
+const AdminPanel = React.lazy(() => import('@/app/components/admin/AdminPanel').then(m => ({ default: m.AdminPanel })));
 import { useUserAuthSafe } from '@/contexts/UserAuthContext';
 import { DiscountPopup } from '@/app/components/marketing/DiscountPopup';
 import { AdPopup } from '@/app/components/modals/AdPopup';
@@ -31,7 +33,9 @@ import { StatsSection } from '@/app/components/sections/StatsSection';
 import { SEOHead } from '@/app/components/seo/SEOHead';
 import { Analytics } from '@/app/components/analytics/Analytics';
 import { CookieConsent } from '@/app/components/legal/CookieConsent';
-import { LegalPage } from '@/app/components/legal/LegalPage';
+
+// Lazy load LegalPage - sadece legal sayfalarında yüklenir
+const LegalPage = React.lazy(() => import('@/app/components/legal/LegalPage').then(m => ({ default: m.LegalPage })));
 import { LanguageProvider } from '@/contexts/LanguageContext';
 import { PaymentProvider } from '@/contexts/PaymentContext';
 import { AdminProvider } from '@/contexts/AdminContext';
@@ -88,7 +92,18 @@ function AppContent() {
   
   // If legal page, show only legal content
   if (legalPage === 'privacy' || legalPage === 'terms' || legalPage === 'dmca' || legalPage === 'contact') {
-    return <LegalPage />;
+    return (
+      <Suspense fallback={
+        <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Yükleniyor...</p>
+          </div>
+        </div>
+      }>
+        <LegalPage />
+      </Suspense>
+    );
   }
   
   // Handle OAuth callback from URL hash
@@ -294,8 +309,10 @@ function AppContent() {
       {/* Footer - Admin kontrollü */}
       {(sectionSettings.footer?.enabled ?? true) && <Footer />}
       
-      {/* Admin Panel - Only visible when logged in as admin */}
-      <AdminPanel />
+      {/* Admin Panel - Only visible when logged in as admin (lazy loaded) */}
+      <Suspense fallback={null}>
+        <AdminPanel />
+      </Suspense>
       
       {/* Discount Popup - 5 saniye sonra otomatik açılır */}
       <DiscountPopup onSelectPlan={handleDiscountClaim} />
