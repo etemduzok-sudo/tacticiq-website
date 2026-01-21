@@ -2287,24 +2287,34 @@ const createStyles = () => {
   },
 
   // Card
+  // Card Styles - Web ile aynı (daha temiz ve modern)
   card: {
     backgroundColor: theme.card,
     borderWidth: 1,
     borderColor: theme.border,
-    borderRadius: SIZES.radiusXl,
+    borderRadius: SIZES.radiusLg, // Web'de daha küçük radius
     padding: SPACING.lg,
-    marginBottom: SPACING.lg,
+    marginBottom: SPACING.base, // Web'de daha az margin
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.sm,
     marginBottom: SPACING.base,
+    paddingBottom: SPACING.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.border + '40', // Subtle divider
   },
   cardTitle: {
     ...TYPOGRAPHY.h4,
     fontWeight: TYPOGRAPHY.semibold,
-    color: theme.cardForeground,
+    color: theme.foreground, // Web ile aynı
+    fontSize: 16, // Web'deki base size
   },
 
   // Performance
@@ -4069,7 +4079,7 @@ const createStyles = () => {
     color: theme.foreground,
   },
 
-  // Security Buttons - Web ile aynı stil
+  // Security Buttons - Web ile aynı stil (outline variant)
   securityButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -4080,9 +4090,10 @@ const createStyles = () => {
     borderWidth: 1,
     borderColor: theme.border,
     borderRadius: SIZES.radiusSm,
-    backgroundColor: theme.card,
+    backgroundColor: 'transparent', // Web'deki outline variant gibi
     marginBottom: SPACING.sm,
     minHeight: SIZES.buttonHeight,
+    width: '100%',
   },
   securityButtonText: {
     ...TYPOGRAPHY.body,
