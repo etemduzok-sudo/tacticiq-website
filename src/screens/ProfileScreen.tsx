@@ -973,7 +973,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                       
                       <TextInput
                         style={styles.dropdownSearchInput}
-                        placeholder="Ara... (min 3 karakter)"
+                        placeholder="Ara... (min 2 karakter)"
                         value={searchQuery}
                         onChangeText={(text) => {
                           setSearchQuery(text);
@@ -1075,7 +1075,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                         
                         <TextInput
                           style={styles.dropdownSearchInput}
-                          placeholder="Ara... (min 3 karakter)"
+                          placeholder="Ara... (min 2 karakter)"
                           value={searchQuery}
                           onChangeText={(text) => {
                             setSearchQuery(text);
