@@ -176,9 +176,11 @@ router.get('/search/:query', async (req, res) => {
   try {
     const { query } = req.params;
     console.log(`🔍 Searching teams: "${query}"`);
+    
     const data = await footballApi.searchTeams(query);
     
     if (!data.response || data.response.length === 0) {
+      console.log(`❌ No teams found for query: "${query}"`);
       return res.json({
         success: true,
         data: [],
@@ -186,34 +188,67 @@ router.get('/search/:query', async (req, res) => {
       });
     }
     
-    // Enhance each team with colors and flags
-    const enhancedTeams = await Promise.all(data.response.map(async (teamData) => {
-      const team = teamData.team || teamData;
-      let colors = null;
-      let flag = null;
-      
-      if (team.national) {
-        // National team - get country flag from API
-        flag = await footballApi.getTeamFlag(team.country);
-      } else {
-        // Club team - extract colors from logo (telif için logo yerine renkler - ayrımcılık yapmadan)
-        colors = await footballApi.getTeamColors(team.id, teamData);
-      }
-      
-      return {
-        ...team,
-        colors,
-        flag,
-        type: team.national ? 'national' : 'club',
-      };
-    }));
+    console.log(`✅ Found ${data.response.length} teams from API`);
+    
+    // Enhance each team with colors and flags (with timeout to avoid slow responses)
+    const enhancedTeams = await Promise.all(
+      data.response.slice(0, 50).map(async (teamData) => { // Limit to first 50 teams
+        try {
+          const team = teamData.team || teamData;
+          let colors = null;
+          let flag = null;
+          
+          // Only enhance if team has basic data
+          if (!team || !team.id) {
+            return null;
+          }
+          
+          if (team.national) {
+            // National team - get country flag from API (fast)
+            flag = await Promise.race([
+              footballApi.getTeamFlag(team.country),
+              new Promise((resolve) => setTimeout(() => resolve(null), 2000)) // 2s timeout
+            ]);
+          } else {
+            // Club team - extract colors from logo (can be slow, so timeout)
+            colors = await Promise.race([
+              footballApi.getTeamColors(team.id, teamData),
+              new Promise((resolve) => setTimeout(() => resolve(null), 3000)) // 3s timeout
+            ]);
+          }
+          
+          return {
+            ...team,
+            colors,
+            flag,
+            type: team.national ? 'national' : 'club',
+          };
+        } catch (error) {
+          console.warn(`⚠️ Error enhancing team ${teamData.team?.id}:`, error.message);
+          // Return basic team data even if enhancement fails
+          const team = teamData.team || teamData;
+          return {
+            ...team,
+            colors: null,
+            flag: null,
+            type: team.national ? 'national' : 'club',
+          };
+        }
+      })
+    );
+    
+    // Filter out null values
+    const validTeams = enhancedTeams.filter(team => team !== null);
+    
+    console.log(`✅ Returning ${validTeams.length} enhanced teams`);
     
     res.json({
       success: true,
-      data: enhancedTeams,
+      data: validTeams,
       cached: data.cached || false,
     });
   } catch (error) {
+    console.error('❌ Error in team search:', error);
     res.status(500).json({
       success: false,
       error: error.message,

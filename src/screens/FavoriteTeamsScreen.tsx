@@ -329,8 +329,11 @@ export default function FavoriteTeamsScreen({ onComplete, onBack }: FavoriteTeam
     setSearchError(null);
 
     try {
+      console.log(`🔍 Backend'den takım araniyor: "${query}" (tip: ${type})`);
       // ✅ Backend'den çek (backend API-Football'a bağlanır)
       const response = await teamsApi.searchTeams(query);
+      
+      console.log('✅ Backend yanıtı:', { success: response.success, dataLength: response.data?.length || 0 });
       
       if (response.success && response.data) {
         // ✅ Filtreleme: Gereksiz verileri kaldır
@@ -411,12 +414,20 @@ export default function FavoriteTeamsScreen({ onComplete, onBack }: FavoriteTeam
         setSearchError('Takım bulunamadı');
       }
     } catch (error: any) {
-      logger.error('Backend takım arama hatası', { error, query, type }, 'FAVORITE_TEAMS');
+      console.error('❌ Backend takım arama hatası:', error);
+      logger.error('Backend takım arama hatası', { error: error.message, query, type, stack: error.stack }, 'FAVORITE_TEAMS');
+      
       // Network hatası kontrolü
-      if (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError') || error.message?.includes('fetch')) {
-        setSearchError('Backend bağlantısı kurulamadı. Lütfen backend sunucusunun çalıştığından emin olun.');
+      if (error.message?.includes('Failed to fetch') || 
+          error.message?.includes('NetworkError') || 
+          error.message?.includes('fetch') ||
+          error.message?.includes('ERR_CONNECTION_REFUSED') ||
+          error.message?.includes('Backend bağlantısı')) {
+        setSearchError('Backend bağlantısı kurulamadı. Lütfen backend sunucusunun çalıştığından emin olun (http://localhost:3000)');
+        console.error('⚠️ Backend çalışmıyor olabilir:', error.message);
       } else {
         setSearchError(error.message || 'Arama başarısız');
+        console.error('⚠️ Arama hatası:', error.message);
       }
       setApiTeams([]);
     } finally {
