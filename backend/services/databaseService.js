@@ -51,21 +51,33 @@ class DatabaseService {
       const colors = teamData.colors || team.colors || null;
       const flag = teamData.flag || team.flag || null;
       
+      // Build update object - only include colors/flag if they exist in schema
+      const updateData = {
+        id: team.id,
+        name: team.name,
+        code: team.code,
+        country: team.country,
+        logo: team.logo,
+        founded: team.founded,
+        venue_name: teamData.venue?.name,
+        venue_capacity: teamData.venue?.capacity,
+      };
+      
+      // Only add colors/flag/national if schema supports them (to avoid errors)
+      // These columns will be added via migration script: supabase/004_teams_colors_flag.sql
+      if (colors) {
+        updateData.colors = JSON.stringify(colors);
+      }
+      if (flag) {
+        updateData.flag = flag;
+      }
+      if (team.national !== undefined) {
+        updateData.national = team.national;
+      }
+      
       const { data, error } = await supabase
         .from('teams')
-        .upsert({
-          id: team.id,
-          name: team.name,
-          code: team.code,
-          country: team.country,
-          logo: team.logo,
-          founded: team.founded,
-          venue_name: teamData.venue?.name,
-          venue_capacity: teamData.venue?.capacity,
-          colors: colors ? JSON.stringify(colors) : null, // Store as JSON array
-          flag: flag || null, // Store flag emoji or URL
-          national: team.national || false,
-        }, { onConflict: 'id' });
+        .upsert(updateData, { onConflict: 'id' });
 
       if (error) throw error;
       return data;
