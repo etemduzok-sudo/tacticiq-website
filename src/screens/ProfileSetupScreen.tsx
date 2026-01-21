@@ -809,7 +809,14 @@ export default function ProfileSetupScreen({
     
     // Extract country name from team string (remove flag emoji)
     const getCountryName = (teamString: string) => {
-      return teamString.replace(/^[\u{1F1E6}-\u{1F1FF}]{2}\s*/u, '').trim();
+      // Remove flag emoji (both regular and England flag)
+      return teamString.replace(/^[\u{1F1E6}-\u{1F1FF}]{2}\s*|🏴[^\s]*\s*/u, '').trim();
+    };
+    
+    // Extract flag emoji from team string
+    const getFlagEmoji = (teamString: string) => {
+      const flagMatch = teamString.match(/[\u{1F1E6}-\u{1F1FF}]{2}|🏴[^\s]*/u);
+      return flagMatch ? flagMatch[0] : null;
     };
     
     return (
@@ -906,9 +913,9 @@ export default function ProfileSetupScreen({
                     >
                       <View style={styles.dropdownItemContent}>
                         <Text style={styles.dropdownItemText}>{getCountryName(item)}</Text>
-                        {item.match(/[\u{1F1E6}-\u{1F1FF}]{2}|🏴[^\s]*/u) && (
+                        {getFlagEmoji(item) && (
                           <Text style={styles.flagEmoji}>
-                            {item.match(/[\u{1F1E6}-\u{1F1FF}]{2}|🏴[^\s]*/u)?.[0]}
+                            {getFlagEmoji(item)}
                           </Text>
                         )}
                       </View>
@@ -1237,54 +1244,54 @@ const styles = StyleSheet.create({
     // X eksenine paralel, rotasyon yok
   },
   watermark1: {
-    top: 80,
-    left: '20%',
-    fontSize: 85,
+    top: 60,
+    left: -50,
+    fontSize: 110,
   },
   watermark2: {
     top: 180,
-    left: -40,
-    fontSize: 95,
+    left: '30%',
+    fontSize: 135,
   },
   watermark3: {
     top: 280,
-    left: '35%',
-    fontSize: 75,
+    left: -80,
+    fontSize: 125,
   },
   watermark4: {
     top: 380,
-    left: '60%',
-    fontSize: 110,
+    left: '45%',
+    fontSize: 150,
   },
   watermark5: {
     top: 500,
-    left: -35,
-    fontSize: 90,
+    left: -60,
+    fontSize: 140,
   },
   watermark6: {
     top: 620,
-    left: '25%',
-    fontSize: 105,
+    left: '60%',
+    fontSize: 120,
   },
   watermark7: {
     top: 720,
-    left: '50%',
-    fontSize: 80,
+    left: '15%',
+    fontSize: 145,
   },
   watermark8: {
     top: 240,
-    left: '75%',
-    fontSize: 100,
+    left: '85%',
+    fontSize: 130,
   },
   watermark9: {
     top: 460,
-    left: '10%',
+    left: '75%',
     fontSize: 115,
   },
   watermark10: {
     top: 680,
-    left: '80%',
-    fontSize: 88,
+    left: -70,
+    fontSize: 155,
   },
   backButton: {
     position: 'absolute',
