@@ -61,6 +61,7 @@ import {
   DialogTitle,
 } from '@/app/components/ui/dialog';
 import { Alert, AlertDescription } from '@/app/components/ui/alert';
+import { teamsService, TeamSearchResult } from '@/services/teamsService';
 
 interface UserProfileModalProps {
   open: boolean;
@@ -116,6 +117,13 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
   const [clubTeamSearch, setClubTeamSearch] = useState('');
   const [showNationalTeamDropdown, setShowNationalTeamDropdown] = useState(false);
   const [showClubTeamDropdown, setShowClubTeamDropdown] = useState(false);
+  
+  // API arama state'leri
+  const [apiNationalTeams, setApiNationalTeams] = useState<TeamSearchResult[]>([]);
+  const [apiClubTeams, setApiClubTeams] = useState<TeamSearchResult[]>([]);
+  const [isSearchingNational, setIsSearchingNational] = useState(false);
+  const [isSearchingClub, setIsSearchingClub] = useState(false);
+  const [useApiSearch, setUseApiSearch] = useState(true); // API arama aktif/pasif
   
   // Notification preferences state
   const [emailNotifications, setEmailNotifications] = useState(false);
@@ -516,6 +524,52 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
       setPushNotificationPermission(Notification.permission);
     }
   }, []);
+
+  // API ile milli takım arama (debounced)
+  useEffect(() => {
+    if (!useApiSearch || nationalTeamSearch.length < 3) {
+      setApiNationalTeams([]);
+      return;
+    }
+
+    const debounceTimer = setTimeout(async () => {
+      setIsSearchingNational(true);
+      try {
+        const results = await teamsService.searchTeams(nationalTeamSearch, 'national');
+        setApiNationalTeams(results);
+      } catch (error) {
+        console.error('National team search error:', error);
+        setApiNationalTeams([]);
+      } finally {
+        setIsSearchingNational(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(debounceTimer);
+  }, [nationalTeamSearch, useApiSearch]);
+
+  // API ile kulüp takımı arama (debounced)
+  useEffect(() => {
+    if (!useApiSearch || clubTeamSearch.length < 3) {
+      setApiClubTeams([]);
+      return;
+    }
+
+    const debounceTimer = setTimeout(async () => {
+      setIsSearchingClub(true);
+      try {
+        const results = await teamsService.searchTeams(clubTeamSearch, 'club');
+        setApiClubTeams(results);
+      } catch (error) {
+        console.error('Club team search error:', error);
+        setApiClubTeams([]);
+      } finally {
+        setIsSearchingClub(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(debounceTimer);
+  }, [clubTeamSearch, useApiSearch]);
 
   // Initialize form data from profile
   useEffect(() => {
@@ -1121,34 +1175,81 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
                                 />
                               </div>
                               <div className="max-h-60 overflow-y-auto">
-                                {(nationalTeamSearch.length >= 3 ? nationalTeams.filter(team => 
-                                  team.toLowerCase().includes(nationalTeamSearch.toLowerCase())
-                                ) : nationalTeams).map(team => (
-                                  <button
-                                    key={team}
-                                    onClick={async () => {
-                                      setSelectedNationalTeam(team);
-                                      setNationalTeamSearch('');
-                                      setShowNationalTeamDropdown(false);
-                                      // Otomatik kaydet
-                                      await handleSaveTeams(team, selectedClubTeams);
-                                    }}
-                                    className={`w-full p-2 hover:bg-muted text-left text-sm transition-colors flex items-center justify-between ${
-                                      selectedNationalTeam === team ? 'bg-primary/10' : ''
-                                    }`}
-                                  >
-                                    <span>{team.replace(/^[\u{1F1E6}-\u{1F1FF}]{2}\s*/u, '').trim()}</span>
-                                    {team.match(/^[\u{1F1E6}-\u{1F1FF}]{2}/u) && (
-                                      <span className="text-lg ml-2">{team.match(/^[\u{1F1E6}-\u{1F1FF}]{2}/u)?.[0]}</span>
-                                    )}
-                                  </button>
-                                ))}
-                                {nationalTeamSearch.length >= 3 && nationalTeams.filter(team => 
-                                  team.toLowerCase().includes(nationalTeamSearch.toLowerCase())
-                                ).length === 0 && (
-                                  <div className="p-2 text-sm text-muted-foreground text-center">
-                                    Sonuç bulunamadı
+                                {/* Loading indicator */}
+                                {isSearchingNational && (
+                                  <div className="p-3 text-center">
+                                    <Loader2 className="size-5 animate-spin mx-auto text-primary" />
+                                    <span className="text-xs text-muted-foreground">Aranıyor...</span>
                                   </div>
+                                )}
+                                
+                                {/* API sonuçları (öncelikli) */}
+                                {!isSearchingNational && apiNationalTeams.length > 0 && (
+                                  <>
+                                    <div className="px-2 py-1 text-xs text-muted-foreground bg-muted/50">
+                                      🌍 API Sonuçları ({apiNationalTeams.length})
+                                    </div>
+                                    {apiNationalTeams.map(result => (
+                                      <button
+                                        key={result.team.id}
+                                        onClick={async () => {
+                                          const teamName = result.team.name;
+                                          setSelectedNationalTeam(teamName);
+                                          setNationalTeamSearch('');
+                                          setShowNationalTeamDropdown(false);
+                                          await handleSaveTeams(teamName, selectedClubTeams);
+                                        }}
+                                        className="w-full p-2 hover:bg-muted text-left text-sm transition-colors flex items-center justify-between"
+                                      >
+                                        <div className="flex items-center gap-2">
+                                          {result.team.logo && (
+                                            <img src={result.team.logo} alt="" className="size-5 object-contain" />
+                                          )}
+                                          <span>{result.team.name}</span>
+                                        </div>
+                                        <span className="text-xs text-muted-foreground">{result.team.country}</span>
+                                      </button>
+                                    ))}
+                                  </>
+                                )}
+                                
+                                {/* Statik liste (fallback veya arama yokken) */}
+                                {!isSearchingNational && apiNationalTeams.length === 0 && (
+                                  <>
+                                    {nationalTeamSearch.length >= 3 && (
+                                      <div className="px-2 py-1 text-xs text-muted-foreground bg-muted/50">
+                                        📋 Statik Liste
+                                      </div>
+                                    )}
+                                    {(nationalTeamSearch.length >= 3 ? nationalTeams.filter(team => 
+                                      team.toLowerCase().includes(nationalTeamSearch.toLowerCase())
+                                    ) : nationalTeams.slice(0, 20)).map(team => (
+                                      <button
+                                        key={team}
+                                        onClick={async () => {
+                                          setSelectedNationalTeam(team);
+                                          setNationalTeamSearch('');
+                                          setShowNationalTeamDropdown(false);
+                                          await handleSaveTeams(team, selectedClubTeams);
+                                        }}
+                                        className={`w-full p-2 hover:bg-muted text-left text-sm transition-colors flex items-center justify-between ${
+                                          selectedNationalTeam === team ? 'bg-primary/10' : ''
+                                        }`}
+                                      >
+                                        <span>{team.replace(/^[\u{1F1E6}-\u{1F1FF}]{2}\s*/u, '').trim()}</span>
+                                        {team.match(/^[\u{1F1E6}-\u{1F1FF}]{2}/u) && (
+                                          <span className="text-lg ml-2">{team.match(/^[\u{1F1E6}-\u{1F1FF}]{2}/u)?.[0]}</span>
+                                        )}
+                                      </button>
+                                    ))}
+                                    {nationalTeamSearch.length >= 3 && nationalTeams.filter(team => 
+                                      team.toLowerCase().includes(nationalTeamSearch.toLowerCase())
+                                    ).length === 0 && (
+                                      <div className="p-2 text-sm text-muted-foreground text-center">
+                                        Sonuç bulunamadı
+                                      </div>
+                                    )}
+                                  </>
                                 )}
                               </div>
                             </div>
@@ -1227,29 +1328,82 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
                                   />
                                 </div>
                                 <div className="max-h-60 overflow-y-auto">
-                                  {(clubTeamSearch.length >= 3 ? clubTeamsList.filter(team => 
-                                    team.toLowerCase().includes(clubTeamSearch.toLowerCase()) &&
-                                    !selectedClubTeams.includes(team)
-                                  ) : clubTeamsList.filter(team => !selectedClubTeams.includes(team))).map(team => (
-                                    <button
-                                      key={team}
-                                      onClick={async () => {
-                                        await handleToggleClubTeam(team);
-                                        setClubTeamSearch('');
-                                        setShowClubTeamDropdown(false);
-                                      }}
-                                      disabled={selectedClubTeams.length >= 5}
-                                      className={`w-full p-2 hover:bg-muted text-left text-sm transition-colors ${
-                                        selectedClubTeams.includes(team) ? 'bg-primary/10' : ''
-                                      } disabled:opacity-50 disabled:cursor-not-allowed`}
-                                    >
-                                      {team}
-                                      {selectedClubTeams.includes(team) && (
-                                        <span className="ml-2 text-primary">✓</span>
+                                  {/* Loading indicator */}
+                                  {isSearchingClub && (
+                                    <div className="p-3 text-center">
+                                      <Loader2 className="size-5 animate-spin mx-auto text-primary" />
+                                      <span className="text-xs text-muted-foreground">Aranıyor...</span>
+                                    </div>
+                                  )}
+                                  
+                                  {/* API sonuçları (öncelikli) */}
+                                  {!isSearchingClub && apiClubTeams.length > 0 && (
+                                    <>
+                                      <div className="px-2 py-1 text-xs text-muted-foreground bg-muted/50">
+                                        ⚽ API Sonuçları ({apiClubTeams.length})
+                                      </div>
+                                      {apiClubTeams.filter(r => !selectedClubTeams.includes(r.team.name)).map(result => (
+                                        <button
+                                          key={result.team.id}
+                                          onClick={async () => {
+                                            await handleToggleClubTeam(result.team.name);
+                                            setClubTeamSearch('');
+                                            setShowClubTeamDropdown(false);
+                                          }}
+                                          disabled={selectedClubTeams.length >= 5}
+                                          className="w-full p-2 hover:bg-muted text-left text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                          <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                              {result.team.logo && (
+                                                <img src={result.team.logo} alt="" className="size-5 object-contain" />
+                                              )}
+                                              <span>{result.team.name}</span>
+                                            </div>
+                                            <span className="text-xs text-muted-foreground">
+                                              {result.league?.name || result.team.country}
+                                            </span>
+                                          </div>
+                                        </button>
+                                      ))}
+                                    </>
+                                  )}
+                                  
+                                  {/* Statik liste (fallback) */}
+                                  {!isSearchingClub && apiClubTeams.length === 0 && (
+                                    <>
+                                      {clubTeamSearch.length >= 3 && (
+                                        <div className="px-2 py-1 text-xs text-muted-foreground bg-muted/50">
+                                          📋 Statik Liste
+                                        </div>
                                       )}
-                                    </button>
-                                  ))}
-                                  {clubTeamSearch.length >= 3 && clubTeamsList.filter(team => 
+                                      {(clubTeamSearch.length >= 3 ? clubTeamsList.filter(team => 
+                                        team.toLowerCase().includes(clubTeamSearch.toLowerCase()) &&
+                                        !selectedClubTeams.includes(team)
+                                      ) : clubTeamsList.filter(team => !selectedClubTeams.includes(team))).map(team => (
+                                        <button
+                                          key={team}
+                                          onClick={async () => {
+                                            await handleToggleClubTeam(team);
+                                            setClubTeamSearch('');
+                                            setShowClubTeamDropdown(false);
+                                          }}
+                                          disabled={selectedClubTeams.length >= 5}
+                                          className={`w-full p-2 hover:bg-muted text-left text-sm transition-colors ${
+                                            selectedClubTeams.includes(team) ? 'bg-primary/10' : ''
+                                          } disabled:opacity-50 disabled:cursor-not-allowed`}
+                                        >
+                                          {team}
+                                          {selectedClubTeams.includes(team) && (
+                                            <span className="ml-2 text-primary">✓</span>
+                                          )}
+                                        </button>
+                                      ))}
+                                    </>
+                                  )}
+                                  
+                                  {/* Sonuç bulunamadı mesajı */}
+                                  {!isSearchingClub && apiClubTeams.length === 0 && clubTeamSearch.length >= 3 && clubTeamsList.filter(team => 
                                     team.toLowerCase().includes(clubTeamSearch.toLowerCase()) &&
                                     !selectedClubTeams.includes(team)
                                   ).length === 0 && (

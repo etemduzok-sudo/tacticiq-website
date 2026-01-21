@@ -95,6 +95,25 @@ export const API_ENDPOINTS = {
     LIST: '/blog/list',
     GET: '/blog/:id',
   },
+  
+  // Teams (Backend API - Supabase üzerinden)
+  TEAMS: {
+    SEARCH: '/teams/search',
+    GET: '/teams/:id',
+    COLORS: '/teams/:id/colors',
+    FLAG: '/teams/:id/flag',
+    STATISTICS: '/teams/:id/statistics',
+  },
+  
+  // Matches (Backend API)
+  MATCHES: {
+    BASE: '/matches',
+    LIVE: '/matches/live',
+    TODAY: '/matches/today',
+    UPCOMING: '/matches/upcoming',
+    BY_DATE: '/matches/date/:date',
+    BY_TEAM: '/matches/team/:teamId',
+  },
 } as const;
 
 // Error Messages

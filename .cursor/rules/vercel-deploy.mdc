@@ -16,24 +16,30 @@ The TacticIQ website is deployed via **Git push only**.
 ```bash
 git add -A
 git commit -m "Your commit message"
+git push tacticiqweb main
 git push origin main
 ```
 
-This triggers automatic deployment on the `tacticiq-website` Vercel project.
+**IMPORTANT:** Push to `tacticiqweb` remote for Vercel deployment!
+
+### Remotes:
+- `tacticiqweb` → `tacticiq-website.git` (Vercel bağlı - BU REMOTE'A PUSH YAP)
+- `origin` → `fan_manager_2026.git` (Backup, senkron tutmak için)
 
 ### NEVER DO:
 - `vercel --prod`
 - `vercel deploy`
 - Creating `.vercel` folder manually
 - Deploying from `website` folder directly
+- Only pushing to `origin` (Vercel deploy olmaz!)
 
 ### Why:
 - `vercel deploy` creates a separate project called "website"
-- The correct project is `tacticiq-website` which is connected to GitHub
-- Only git push triggers the correct deployment
+- The correct project is `tacticiq-website` which is connected to `tacticiqweb` remote
+- Only `git push tacticiqweb main` triggers the correct deployment
 
 ### Vercel Projects:
-- ✅ `tacticiq-website` - Correct (Git-connected, auto-deploy on push)
+- ✅ `tacticiq-website` - Correct (Git-connected via tacticiqweb remote)
 - ❌ `website` - Wrong (manual deploy, do not use)
 
 If `.vercel` folder exists in `c:\TacticIQ\website\`, delete it immediately.
