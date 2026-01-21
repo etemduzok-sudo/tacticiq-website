@@ -644,6 +644,40 @@ export default function ProfileSetupScreen({
     }
   };
   
+  // Fallback takım listeleri (Backend çalışmadığında kullanılacak)
+  const FALLBACK_CLUB_TEAMS: Team[] = [
+    { id: 645, name: 'Galatasaray', league: 'Süper Lig', country: 'Türkiye', colors: ['#FFA500', '#FF0000'], type: 'club', apiId: 645 },
+    { id: 611, name: 'Fenerbahçe', league: 'Süper Lig', country: 'Türkiye', colors: ['#FFFF00', '#000080'], type: 'club', apiId: 611 },
+    { id: 644, name: 'Beşiktaş', league: 'Süper Lig', country: 'Türkiye', colors: ['#000000', '#FFFFFF'], type: 'club', apiId: 644 },
+    { id: 643, name: 'Trabzonspor', league: 'Süper Lig', country: 'Türkiye', colors: ['#800020', '#0000FF'], type: 'club', apiId: 643 },
+    { id: 541, name: 'Real Madrid', league: 'La Liga', country: 'İspanya', colors: ['#FFFFFF', '#FFD700'], type: 'club', apiId: 541 },
+    { id: 529, name: 'Barcelona', league: 'La Liga', country: 'İspanya', colors: ['#A50044', '#004D98'], type: 'club', apiId: 529 },
+    { id: 85, name: 'Paris Saint-Germain', league: 'Ligue 1', country: 'Fransa', colors: ['#004170', '#DA291C'], type: 'club', apiId: 85 },
+    { id: 50, name: 'Manchester City', league: 'Premier League', country: 'İngiltere', colors: ['#6CABDD', '#FFFFFF'], type: 'club', apiId: 50 },
+    { id: 33, name: 'Manchester United', league: 'Premier League', country: 'İngiltere', colors: ['#DA291C', '#FFFFFF'], type: 'club', apiId: 33 },
+    { id: 40, name: 'Liverpool', league: 'Premier League', country: 'İngiltere', colors: ['#C8102E', '#FFFFFF'], type: 'club', apiId: 40 },
+    { id: 42, name: 'Arsenal', league: 'Premier League', country: 'İngiltere', colors: ['#EF0107', '#FFFFFF'], type: 'club', apiId: 42 },
+    { id: 49, name: 'Chelsea', league: 'Premier League', country: 'İngiltere', colors: ['#034694', '#FFFFFF'], type: 'club', apiId: 49 },
+    { id: 489, name: 'AC Milan', league: 'Serie A', country: 'İtalya', colors: ['#FB090B', '#000000'], type: 'club', apiId: 489 },
+    { id: 496, name: 'Juventus', league: 'Serie A', country: 'İtalya', colors: ['#000000', '#FFFFFF'], type: 'club', apiId: 496 },
+    { id: 505, name: 'Inter', league: 'Serie A', country: 'İtalya', colors: ['#0068A8', '#000000'], type: 'club', apiId: 505 },
+    { id: 157, name: 'Bayern München', league: 'Bundesliga', country: 'Almanya', colors: ['#DC052D', '#FFFFFF'], type: 'club', apiId: 157 },
+    { id: 165, name: 'Borussia Dortmund', league: 'Bundesliga', country: 'Almanya', colors: ['#FDE100', '#000000'], type: 'club', apiId: 165 },
+  ];
+
+  const FALLBACK_NATIONAL_TEAMS: Team[] = [
+    { id: 777, name: 'Türkiye', league: 'UEFA', country: 'Milli Takım', colors: ['#E30A17', '#FFFFFF'], type: 'national', apiId: 777 },
+    { id: 25, name: 'Almanya', league: 'UEFA', country: 'Milli Takım', colors: ['#000000', '#DD0000', '#FFCE00'], type: 'national', apiId: 25 },
+    { id: 6, name: 'Brezilya', league: 'CONMEBOL', country: 'Milli Takım', colors: ['#009C3B', '#FFDF00'], type: 'national', apiId: 6 },
+    { id: 26, name: 'Arjantin', league: 'CONMEBOL', country: 'Milli Takım', colors: ['#74ACDF', '#FFFFFF'], type: 'national', apiId: 26 },
+    { id: 9, name: 'İspanya', league: 'UEFA', country: 'Milli Takım', colors: ['#AA151B', '#F1BF00'], type: 'national', apiId: 9 },
+    { id: 2, name: 'Fransa', league: 'UEFA', country: 'Milli Takım', colors: ['#002654', '#FFFFFF', '#ED2939'], type: 'national', apiId: 2 },
+    { id: 768, name: 'İtalya', league: 'UEFA', country: 'Milli Takım', colors: ['#009246', '#FFFFFF', '#CE2B37'], type: 'national', apiId: 768 },
+    { id: 10, name: 'İngiltere', league: 'UEFA', country: 'Milli Takım', colors: ['#FFFFFF', '#C8102E'], type: 'national', apiId: 10 },
+    { id: 27, name: 'Portekiz', league: 'UEFA', country: 'Milli Takım', colors: ['#006600', '#FF0000'], type: 'national', apiId: 27 },
+    { id: 1118, name: 'Hollanda', league: 'UEFA', country: 'Milli Takım', colors: ['#AE1C28', '#FFFFFF', '#21468B'], type: 'national', apiId: 1118 },
+  ];
+
   const searchTeams = async (query: string, type: 'national' | 'club') => {
     if (query.length < 2) {
       setApiTeams([]);
@@ -673,7 +707,12 @@ export default function ProfileSetupScreen({
       setApiTeams(filteredTeams);
     } catch (error) {
       console.error('Error searching teams:', error);
-      setApiTeams([]);
+      // Fallback: Backend çalışmıyorsa hardcoded listeden ara
+      const fallbackList = type === 'club' ? FALLBACK_CLUB_TEAMS : FALLBACK_NATIONAL_TEAMS;
+      const filteredFallback = fallbackList.filter(team => 
+        team.name.toLowerCase().includes(query.toLowerCase())
+      );
+      setApiTeams(filteredFallback);
     } finally {
       setIsSearching(false);
     }
@@ -815,15 +854,14 @@ export default function ProfileSetupScreen({
     
     // Extract flag emoji from team string
     const getFlagEmoji = (teamString: string): string | null => {
-      // Try to match regular flag emojis first
+      // İngiltere için özel durum - sadece 🏴 kullan
+      if (teamString.includes('İngiltere')) {
+        return '🏴';
+      }
+      // Try to match regular flag emojis (2-letter country codes like 🇹🇷)
       const regularFlagMatch = teamString.match(/[\u{1F1E6}-\u{1F1FF}]{2}/u);
       if (regularFlagMatch) {
         return regularFlagMatch[0];
-      }
-      // Try to match England/UK flag
-      const englandFlagMatch = teamString.match(/🏴[^\s]*/u);
-      if (englandFlagMatch) {
-        return englandFlagMatch[0];
       }
       return null;
     };
@@ -861,10 +899,8 @@ export default function ProfileSetupScreen({
                 return countryName === selectedNationalTeam.name;
               });
               if (!team) return null;
-              // Extract flag emoji
-              const regularFlagMatch = team.match(/[\u{1F1E6}-\u{1F1FF}]{2}/u);
-              const englandFlagMatch = team.match(/🏴[^\s]*/u);
-              const flag = regularFlagMatch ? regularFlagMatch[0] : (englandFlagMatch ? englandFlagMatch[0] : null);
+              // Extract flag emoji - use getFlagEmoji helper
+              const flag = getFlagEmoji(team);
               return flag ? (
                 <Text style={styles.dropdownButtonFlag}>{flag}</Text>
               ) : null;
@@ -1227,8 +1263,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: WEBSITE_DARK_COLORS.background,
   },
-  // Watermark Background
-  watermarkContainer: {
+  backButton: {
     position: 'absolute',
     top: 0,
     left: 0,
@@ -1236,11 +1271,6 @@ const styles = StyleSheet.create({
     bottom: 0,
     zIndex: 0,
     overflow: 'hidden',
-    ...Platform.select({
-      web: {
-        pointerEvents: 'none',
-      },
-    }),
   },
   watermarkText: {
     position: 'absolute',
