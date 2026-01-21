@@ -60,7 +60,7 @@ async function upsertTeam(team) {
         id: team.id,
         name: team.name,
         code: team.code || null,
-        logo: team.logo,
+        logo: null, // ⚠️ TELİF HAKKI: Kulüp armaları telifli - ASLA kaydedilmez (sadece renkler kullanılır)
         country: team.country || null,
         founded: team.founded || null,
         updated_at: new Date().toISOString()
@@ -81,7 +81,7 @@ async function upsertLeague(league) {
         id: league.id,
         name: league.name,
         country: league.country || null,
-        logo: league.logo || null,
+        logo: null, // ⚠️ TELİF HAKKI: Organizasyon logo'ları (UEFA, FIFA) ASLA kullanılmaz
         season: league.season || null,
         updated_at: new Date().toISOString()
       }, { onConflict: 'id' });

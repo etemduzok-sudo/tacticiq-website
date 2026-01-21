@@ -98,7 +98,7 @@ async function upsertTeam(team) {
       name: team.name,
       code: team.code,
       country: team.country,
-      logo: team.logo
+      logo: null // ⚠️ TELİF HAKKI: Kulüp armaları telifli - ASLA döndürülmez (sadece renkler kullanılır)
     };
 
     await supabase
@@ -116,7 +116,7 @@ async function upsertLeague(league) {
       id: league.id,
       name: league.name,
       country: league.country,
-      logo: league.logo,
+      logo: null, // ⚠️ TELİF HAKKI: UEFA, FIFA gibi organizasyon logo'ları ASLA kullanılmaz
       flag: league.flag,
       season: league.season
     };

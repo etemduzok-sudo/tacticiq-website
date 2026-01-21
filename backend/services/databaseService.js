@@ -25,7 +25,7 @@ class DatabaseService {
           id: leagueData.league.id,
           name: leagueData.league.name,
           country: leagueData.country.name,
-          logo: leagueData.league.logo,
+          logo: null, // ⚠️ TELİF HAKKI: Organizasyon logo'ları (UEFA, FIFA) ASLA kullanılmaz
           season: leagueData.seasons?.[0]?.year || new Date().getFullYear(),
           type: leagueData.league.type,
         }, { onConflict: 'id' });
@@ -52,12 +52,13 @@ class DatabaseService {
       const flag = teamData.flag || team.flag || null;
       
       // Build update object - only include colors/flag if they exist in schema
+      // ⚠️ TELİF HAKKI: Kulüp armaları ve lig logo'ları ASLA kullanılmaz, sadece renkler
       const updateData = {
         id: team.id,
         name: team.name,
         code: team.code,
         country: team.country,
-        logo: team.logo,
+        logo: null, // ⚠️ TELİF HAKKI: Kulüp armaları ASLA kaydedilmez (sadece renkler kullanılır)
         founded: team.founded,
         venue_name: teamData.venue?.name,
         venue_capacity: teamData.venue?.capacity,

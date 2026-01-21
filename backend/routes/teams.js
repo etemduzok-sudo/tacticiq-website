@@ -51,8 +51,10 @@ router.get('/:id', async (req, res) => {
       }
     
     // Enhanced team data with colors and flags
+    // ⚠️ TELİF HAKKI: Kulüp armaları ASLA döndürülmez, sadece renkler kullanılır
     const enhancedTeam = {
       ...team,
+      logo: null, // ⚠️ TELİF HAKKI: Kulüp armaları telifli - ASLA döndürülmez (sadece renkler kullanılır)
       colors, // Kit colors for club teams (telif için)
       flag, // Flag for national teams
       type: team.national ? 'national' : 'club',
