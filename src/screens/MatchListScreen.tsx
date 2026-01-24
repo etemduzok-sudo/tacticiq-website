@@ -616,7 +616,7 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#0F2A24', // Profil kartı ile aynı koyu yeşil
   },
   backHeader: {
     flexDirection: 'row',
@@ -668,9 +668,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   fixedHeader: {
-    backgroundColor: '#0F172A',
+    backgroundColor: '#0F2A24', // Profil kartı ile aynı koyu yeşil
     borderBottomWidth: 1,
-    borderBottomColor: '#1E293B',
+    borderBottomColor: 'rgba(31, 162, 166, 0.2)', // Turkuaz border
   },
   scrollView: {
     flex: 1,
@@ -763,7 +763,7 @@ const styles = StyleSheet.create({
     color: '#F1F5F9',
   },
   matchCard: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#1A3A34', // Koyu yeşil - profil kartı ile uyumlu
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
