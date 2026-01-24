@@ -330,46 +330,60 @@ export default function App() {
     const handleOAuthCallback = async () => {
       if (Platform.OS !== 'web') return;
       
-      // URL'de OAuth token var mı kontrol et
+      // URL'de OAuth token veya code var mı kontrol et
       const hash = window.location.hash;
-      const hasAccessToken = hash.includes('access_token');
-      const hasError = hash.includes('error');
+      const search = window.location.search;
+      const url = window.location.href;
       
-      if (hasAccessToken || hasError) {
+      const hasAccessToken = hash.includes('access_token');
+      const hasCode = search.includes('code=') || url.includes('code=');
+      const hasError = hash.includes('error') || search.includes('error=');
+      
+      console.log('🔍 [App] OAuth check:', { 
+        hash: hash.substring(0, 50), 
+        hasAccessToken, 
+        hasCode, 
+        hasError,
+        url: url.substring(0, 100)
+      });
+      
+      if (hasAccessToken || hasCode || hasError) {
         console.log('🔄 [App] OAuth callback algılandı!');
         setIsProcessingOAuth(true);
         
         try {
           // Supabase'in URL'yi işlemesini bekle (detectSessionInUrl: true)
-          await new Promise(resolve => setTimeout(resolve, 1500));
+          // PKCE flow için daha uzun bekle
+          console.log('⏳ [App] Supabase session bekleniyor...');
+          await new Promise(resolve => setTimeout(resolve, 3000));
           
           // Session'ı kontrol et
           const result = await socialAuthService.checkSession();
+          console.log('📋 [App] Session check result:', result.success, result.user?.email);
           
           if (result.success && result.user) {
             console.log('✅ [App] OAuth başarılı, ana sayfaya yönlendiriliyor...');
             
-            // URL hash'i temizle
+            // URL'yi tamamen temizle
             if (window.history && window.history.replaceState) {
-              window.history.replaceState(null, '', window.location.pathname);
+              window.history.replaceState(null, '', window.location.origin + window.location.pathname);
             }
             
             // Direkt ana sayfaya git
             setCurrentScreen('home');
           } else {
-            console.log('⚠️ [App] OAuth session bulunamadı, auth ekranına yönlendiriliyor');
+            console.log('⚠️ [App] OAuth session bulunamadı');
             
-            // URL hash'i temizle
+            // URL'yi temizle
             if (window.history && window.history.replaceState) {
-              window.history.replaceState(null, '', window.location.pathname);
+              window.history.replaceState(null, '', window.location.origin + window.location.pathname);
             }
             
-            setCurrentScreen('auth');
+            // Splash'a devam et (normal akış)
+            setIsProcessingOAuth(false);
           }
         } catch (error) {
           console.error('❌ [App] OAuth callback error:', error);
-          setCurrentScreen('auth');
-        } finally {
           setIsProcessingOAuth(false);
         }
       }

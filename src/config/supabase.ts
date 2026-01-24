@@ -17,6 +17,8 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     persistSession: true,
     // ✅ Web OAuth için URL'deki session token'larını algıla
     detectSessionInUrl: Platform.OS === 'web',
+    // ✅ Web için implicit flow kullan (PKCE yerine, daha basit)
+    flowType: Platform.OS === 'web' ? 'implicit' : 'pkce',
   },
 });
 
