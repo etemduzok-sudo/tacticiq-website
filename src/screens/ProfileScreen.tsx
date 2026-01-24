@@ -3737,18 +3737,17 @@ const createStyles = () => {
   badgesGridInline: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
-    justifyContent: 'flex-start',
+    justifyContent: 'space-between',
+    rowGap: 8,
   },
   badgeItemInline: {
-    // 5 sütun için: (100% - 4 gap) / 5 = ~18.5%
-    width: '18.5%',
-    minWidth: 54,
-    aspectRatio: 0.8,
+    // 5 sütun için sabit genişlik: (100% - 4*4px gap) / 5 = ~19%
+    width: '19%',
+    aspectRatio: 0.85,
     backgroundColor: theme.card,
     borderRadius: SIZES.radiusMd,
     borderWidth: 1.5,
-    padding: 4,
+    padding: 3,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
