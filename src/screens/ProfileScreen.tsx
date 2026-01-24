@@ -2605,6 +2605,8 @@ const createStyles = () => {
   profileHeaderBanner: {
     height: 80,
     width: '100%',
+    borderTopLeftRadius: SIZES.radiusXl,
+    borderTopRightRadius: SIZES.radiusXl,
   },
   profileHeaderContent: {
     paddingTop: 0,
