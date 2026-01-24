@@ -316,7 +316,7 @@ export default function App() {
   const [isMaintenanceMode, setIsMaintenanceMode] = useState<boolean>(false);
   
   // ✅ Favori takımlar hook'u - ProfileCard'a aktarılacak
-  const { favoriteTeams, loading: teamsLoading } = useFavoriteTeams();
+  const { favoriteTeams, loading: teamsLoading, refetch: refetchFavoriteTeams } = useFavoriteTeams();
 
   // 🎉 Yeni Rozet State (Test için başlangıçta bir rozet gösterelim)
   const [newBadge, setNewBadge] = useState<{ id: string; name: string; emoji: string; description: string; tier: number } | null>(null);
@@ -985,6 +985,10 @@ export default function App() {
                 logger.debug(`Team selected: ${teamName}`, { teamId }, 'PROFILE');
                 setSelectedTeamId(teamId); // Takım ID'sini kaydet
                 setCurrentScreen('matches'); // Matches ekranına git, orada filtreleme yapılacak
+              }}
+              onTeamsChange={() => {
+                // ✅ Takım değiştiğinde ProfileCard'daki listeyi de güncelle
+                refetchFavoriteTeams();
               }}
               onProUpgrade={handleProUpgrade}
               onDatabaseTest={() => setCurrentScreen('database-test')}

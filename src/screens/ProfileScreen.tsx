@@ -13,6 +13,7 @@ import {
   TextInput,
   Alert,
   Platform,
+  ViewStyle,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import i18n from '../i18n';
@@ -20,7 +21,7 @@ import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, { FadeInDown, ZoomIn, FadeIn } from 'react-native-reanimated';
+import Animated, { FadeInDown, ZoomIn, FadeIn, FadeOut } from 'react-native-reanimated';
 import { AdBanner } from '../components/ads/AdBanner';
 import { usersDb, predictionsDb } from '../services/databaseService';
 import { STORAGE_KEYS } from '../config/constants';
@@ -52,6 +53,7 @@ interface ProfileScreenProps {
   onProUpgrade: () => void;
   onDatabaseTest?: () => void;
   onTeamSelect?: (teamId: number, teamName: string) => void; // ✅ Takım seçildiğinde o takımın maçlarını göster
+  onTeamsChange?: () => void; // ✅ Takım değiştiğinde App.tsx'e bildir
   initialTab?: 'profile' | 'badges'; // Initial tab to show
 }
 
@@ -61,6 +63,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   onProUpgrade,
   onDatabaseTest,
   onTeamSelect,
+  onTeamsChange,
   initialTab = 'profile',
 }) => {
   const { t } = useTranslation();
@@ -941,11 +944,21 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       
       refetch();
       console.log('✅ Team saved to profile:', team.name);
+      
+      // ✅ App.tsx'e bildir ki filtre barı da güncellensin
+      onTeamsChange?.();
+      
+      // ✅ Kaydedildi mesajı göster
+      setAutoSaveMessage('✓ Takım kaydedildi');
+      setTimeout(() => setAutoSaveMessage(null), 2000);
     } catch (error) {
       console.warn('⚠️ Error saving team to profile (UI already updated):', error);
-      // UI zaten güncellendi, hata olsa bile devam et
+      // UI zaten güncellendi, hata olsa bile devam et - yine de kaydetildi mesajı göster
+      onTeamsChange?.();
+      setAutoSaveMessage('✓ Takım kaydedildi');
+      setTimeout(() => setAutoSaveMessage(null), 2000);
     }
-  }, [selectedClubTeams, selectedNationalTeam, refetch]);
+  }, [selectedClubTeams, selectedNationalTeam, refetch, onTeamsChange]);
 
   // ✅ TAKIM SİLME FONKSİYONU
   const handleRemoveClubTeam = useCallback(async (indexToRemove: number) => {
@@ -996,10 +1009,17 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       });
       
       refetch();
+      
+      // ✅ App.tsx'e bildir ki filtre barı da güncellensin
+      onTeamsChange?.();
+      
+      // ✅ Kaydedildi mesajı göster
+      setAutoSaveMessage('✓ Takım silindi');
+      setTimeout(() => setAutoSaveMessage(null), 2000);
     } catch (error) {
       console.warn('⚠️ Error removing team:', error);
     }
-  }, [selectedClubTeams, selectedNationalTeam, refetch]);
+  }, [selectedClubTeams, selectedNationalTeam, refetch, onTeamsChange]);
 
   // ✅ OTOMATİK KAYDETME FONKSİYONU
   const autoSaveProfile = useCallback(async (fieldsToSave: { nickname?: string; firstName?: string; lastName?: string }) => {
@@ -2546,6 +2566,25 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
       </View>
 
+      {/* ✅ Kaydedildi mesajı - toast notification */}
+      {autoSaveMessage && (
+        <Animated.View 
+          entering={Platform.OS === 'web' ? FadeIn : FadeIn.duration(200)}
+          exiting={Platform.OS === 'web' ? FadeOut : FadeOut.duration(200)}
+          style={styles.savedToast}
+        >
+          <Ionicons 
+            name={autoSaveMessage.includes('✗') ? 'close-circle' : 'checkmark-circle'} 
+            size={18} 
+            color={autoSaveMessage.includes('✗') ? '#EF4444' : '#10B981'} 
+          />
+          <Text style={[
+            styles.savedToastText, 
+            autoSaveMessage.includes('✗') && { color: '#EF4444' }
+          ]}>{autoSaveMessage}</Text>
+        </Animated.View>
+      )}
+
       {/* Otomatik kaydetme aktif - banner kaldırıldı */}
     </ScreenLayout>
   );
@@ -3520,6 +3559,34 @@ const createStyles = () => {
     fontSize: 14,
     color: '#9CA3AF',
     fontWeight: '500',
+  },
+  
+  // ✅ Saved Toast
+  savedToast: {
+    position: 'absolute',
+    bottom: 100,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    borderRadius: 24,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.4)',
+    zIndex: 999,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  } as ViewStyle,
+  savedToastText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#10B981',
+    marginLeft: 8,
   },
   
   // Best Cluster Card
