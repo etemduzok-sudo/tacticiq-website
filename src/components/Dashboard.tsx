@@ -619,14 +619,16 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
     return [...filtered].sort((a, b) => a.fixture.timestamp - b.fixture.timestamp);
   }, [liveMatches, selectedTeamIds, filterMatchesByTeam]);
 
+  // ✅ Maç kartı yüksekliği (minHeight + marginBottom)
+  const MATCH_CARD_HEIGHT = 175 + SPACING.md; // ~187px
+
   // ✅ İlk scroll pozisyonunu hesapla (geçmiş maçları atla)
   const initialScrollOffset = React.useMemo(() => {
     if (filteredPastMatches.length > 0) {
-      // Her maç kartı yaklaşık 200px yüksekliğinde
-      return filteredPastMatches.length * 200;
+      return filteredPastMatches.length * MATCH_CARD_HEIGHT;
     }
     return 0;
-  }, [filteredPastMatches.length]);
+  }, [filteredPastMatches.length, MATCH_CARD_HEIGHT]);
 
   // ✅ Sayfa hazır olduğunda işaretle (kıpırdama önleme)
   React.useEffect(() => {
@@ -638,6 +640,65 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
       return () => clearTimeout(timer);
     }
   }, [initialScrollDone]);
+
+  // ✅ Scroll bırakıldığında en yakın maç kartına snap yap
+  const handleScrollEnd = React.useCallback((event: any) => {
+    const scrollY = event.nativeEvent.contentOffset.y;
+    const pastMatchesHeight = filteredPastMatches.length * MATCH_CARD_HEIGHT;
+    
+    // Canlı maçlar header yüksekliği (varsa)
+    const liveMatchesHeaderHeight = filteredLiveMatches.length > 0 ? 40 : 0;
+    const liveMatchesHeight = filteredLiveMatches.length * MATCH_CARD_HEIGHT + liveMatchesHeaderHeight;
+    
+    // Minimum scroll pozisyonu (geçmiş maçların altı = yaklaşan maçların başı)
+    const minScrollForUpcoming = pastMatchesHeight;
+    
+    // Eğer geçmiş maçlara scroll yapılmışsa, en yakın geçmiş maça snap yap
+    if (scrollY < minScrollForUpcoming) {
+      const cardIndex = Math.round(scrollY / MATCH_CARD_HEIGHT);
+      const snapPosition = cardIndex * MATCH_CARD_HEIGHT;
+      
+      // Yumuşak animasyon ile scroll
+      setTimeout(() => {
+        scrollViewRef.current?.scrollTo({ y: snapPosition, animated: true });
+      }, 10);
+      return;
+    }
+    
+    // Canlı maçlar bölgesinde ise
+    const liveMatchesStart = pastMatchesHeight;
+    const liveMatchesEnd = pastMatchesHeight + liveMatchesHeight;
+    
+    if (filteredLiveMatches.length > 0 && scrollY >= liveMatchesStart && scrollY < liveMatchesEnd) {
+      // Canlı maçlara snap yap
+      const offsetInLive = scrollY - liveMatchesStart - liveMatchesHeaderHeight;
+      const liveCardIndex = Math.round(offsetInLive / MATCH_CARD_HEIGHT);
+      const snapPosition = liveMatchesStart + liveMatchesHeaderHeight + (liveCardIndex * MATCH_CARD_HEIGHT);
+      
+      // Geçerli aralıkta tut
+      const clampedPosition = Math.max(liveMatchesStart, Math.min(snapPosition, liveMatchesEnd - MATCH_CARD_HEIGHT));
+      
+      setTimeout(() => {
+        scrollViewRef.current?.scrollTo({ y: clampedPosition, animated: true });
+      }, 10);
+      return;
+    }
+    
+    // Yaklaşan maçlar bölgesinde
+    const upcomingStart = pastMatchesHeight + liveMatchesHeight;
+    const offsetInUpcoming = scrollY - upcomingStart;
+    const upcomingCardIndex = Math.round(offsetInUpcoming / MATCH_CARD_HEIGHT);
+    
+    // En yakın yaklaşan maça snap yap
+    const snapPosition = upcomingStart + (Math.max(0, upcomingCardIndex) * MATCH_CARD_HEIGHT);
+    
+    // Minimum pozisyonu kontrol et (ilk yaklaşan maç)
+    const finalPosition = Math.max(upcomingStart, snapPosition);
+    
+    setTimeout(() => {
+      scrollViewRef.current?.scrollTo({ y: finalPosition, animated: true });
+    }, 10);
+  }, [filteredPastMatches.length, filteredLiveMatches.length, MATCH_CARD_HEIGHT]);
 
   // Show loading ONLY on first load (after all hooks are called)
   if (loading && !hasLoadedOnce) {
@@ -666,6 +727,16 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         contentOffset={{ x: 0, y: initialScrollOffset }}
+        onMomentumScrollEnd={handleScrollEnd}
+        onScrollEndDrag={(e) => {
+          // Momentum yoksa (yavaş bırakma) direkt snap yap
+          const velocity = e.nativeEvent.velocity?.y || 0;
+          if (Math.abs(velocity) < 0.5) {
+            handleScrollEnd(e);
+          }
+        }}
+        decelerationRate="fast"
+        scrollEventThrottle={16}
       >
 
         {/* GEÇMİŞ MAÇLAR - En üstte (yukarı scroll yapınca görünür) */}
