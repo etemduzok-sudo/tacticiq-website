@@ -71,6 +71,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   
+  // ✅ OTOMATİK KAYDETME STATE
+  const [autoSaveMessage, setAutoSaveMessage] = useState<string | null>(null);
+  const [nicknameError, setNicknameError] = useState<string | null>(null);
+  const [nicknameChecking, setNicknameChecking] = useState(false);
+  const autoSaveTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+  const nicknameCheckTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+  
   // 📝 PROFILE EDITING STATE
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -604,14 +611,18 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         // Load badges
         await loadBadges();
         
-        // ✅ Favorite teams artık useFavoriteTeams hook'undan geliyor
-        // Mevcut favori takımları yükle ve state'e aktar
+        // ✅ Favorite teams - FAVORITE_CLUBS storage'dan yükle
+        // useFavoriteTeams hook'u ile aynı storage kullanılıyor
         const favoriteTeamsStr = await AsyncStorage.getItem(STORAGE_KEYS.FAVORITE_TEAMS);
+        console.log('📦 Loading favorite teams from storage:', favoriteTeamsStr ? 'found' : 'empty');
         if (favoriteTeamsStr) {
           const teams = JSON.parse(favoriteTeamsStr);
-          // Milli takım ve kulüp takımlarını ayır
-          const nationalTeam = teams.find((t: any) => t.type === 'national');
-          const clubTeams = teams.filter((t: any) => t.type === 'club').slice(0, 5);
+          console.log('📋 Parsed teams:', teams.map((t: any) => ({ name: t.name, type: t.type, id: t.id })));
+          
+          // Milli takım ve kulüp takımlarını ayır (type field veya ilk takım milli kabul edilir)
+          const nationalTeam = teams.find((t: any) => t.type === 'national') || 
+                              (teams.length > 0 && !teams[0].type ? teams[0] : null);
+          const clubTeams = teams.filter((t: any) => t.type === 'club' || (t.type === undefined && teams.indexOf(t) > 0)).slice(0, 5);
           
           if (nationalTeam) {
             setSelectedNationalTeam({
@@ -883,19 +894,20 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     
     // ✅ FAVORITE_CLUBS storage'ına da kaydet (Dashboard için)
     try {
-      const allTeams: Array<{ id: number; name: string; logo: string; colors?: string[] }> = [];
+      const allTeams: Array<{ id: number; name: string; logo: string; colors?: string[]; type?: string }> = [];
       
-      // Milli takım ekle
+      // Milli takım ekle (type: 'national')
       if (newNationalTeam) {
         allTeams.push({
           id: newNationalTeam.id,
           name: newNationalTeam.name,
           logo: `https://media.api-sports.io/football/teams/${newNationalTeam.id}.png`,
           colors: newNationalTeam.colors,
+          type: 'national', // ✅ Type eklendi
         });
       }
       
-      // Kulüp takımları ekle
+      // Kulüp takımları ekle (type: 'club')
       newClubTeams.filter(Boolean).forEach(clubTeam => {
         if (clubTeam) {
           allTeams.push({
@@ -903,13 +915,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             name: clubTeam.name,
             logo: `https://media.api-sports.io/football/teams/${clubTeam.id}.png`,
             colors: clubTeam.colors,
+            type: 'club', // ✅ Type eklendi
           });
         }
       });
       
       // Storage'a kaydet
       await saveFavoriteTeamsToStorage(allTeams);
-      console.log('✅ Favorite teams saved to storage:', allTeams.map(t => t.name));
+      console.log('✅ Favorite teams saved to storage:', allTeams.map(t => ({ name: t.name, type: t.type })));
     } catch (storageError) {
       console.warn('⚠️ Error saving to FAVORITE_CLUBS storage:', storageError);
     }
@@ -936,6 +949,111 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       // UI zaten güncellendi, hata olsa bile devam et
     }
   }, [selectedClubTeams, selectedNationalTeam, refetch]);
+
+  // ✅ OTOMATİK KAYDETME FONKSİYONU
+  const autoSaveProfile = useCallback(async (fieldsToSave: { nickname?: string; firstName?: string; lastName?: string }) => {
+    if (saving) return;
+    
+    setSaving(true);
+    try {
+      const fullName = [fieldsToSave.firstName || firstName, fieldsToSave.lastName || lastName].filter(Boolean).join(' ').trim();
+      const nicknameToSave = fieldsToSave.nickname || nickname;
+      
+      if (nicknameToSave.trim().length < 3) {
+        setSaving(false);
+        return;
+      }
+      
+      await profileService.updateProfile({
+        name: fullName || nicknameToSave,
+        nickname: nicknameToSave,
+      });
+      
+      // Başarılı mesajı göster
+      setAutoSaveMessage('✓ Kaydedildi');
+      setTimeout(() => setAutoSaveMessage(null), 2000);
+      
+      setIsEditing(false);
+      console.log('✅ Profile auto-saved:', { fullName, nickname: nicknameToSave });
+    } catch (error) {
+      console.error('❌ Auto-save error:', error);
+      setAutoSaveMessage('✗ Kaydetme hatası');
+      setTimeout(() => setAutoSaveMessage(null), 3000);
+    } finally {
+      setSaving(false);
+    }
+  }, [firstName, lastName, nickname, saving]);
+
+  // ✅ NICKNAME DEĞİŞİKLİĞİNDE OTOMATİK KAYDET (debounce ile)
+  const handleNicknameChange = useCallback((text: string) => {
+    // Sadece alfanumerik karakterler ve alt çizgi izin ver
+    const sanitized = text.replace(/[^a-zA-Z0-9_]/g, '');
+    setNickname(sanitized);
+    setIsEditing(true);
+    setNicknameError(null);
+    
+    // Nickname validation
+    if (sanitized.length < 3) {
+      setNicknameError('En az 3 karakter gerekli');
+      return;
+    }
+    
+    if (sanitized.length > 20) {
+      setNicknameError('En fazla 20 karakter olabilir');
+      return;
+    }
+    
+    // Debounce ile otomatik kaydet
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
+    }
+    
+    autoSaveTimeoutRef.current = setTimeout(() => {
+      autoSaveProfile({ nickname: sanitized });
+    }, 1500); // 1.5 saniye bekle
+  }, [autoSaveProfile]);
+
+  // ✅ İSİM DEĞİŞİKLİĞİNDE OTOMATİK KAYDET
+  const handleFirstNameChange = useCallback((text: string) => {
+    setFirstName(text);
+    setIsEditing(true);
+    
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
+    }
+    
+    autoSaveTimeoutRef.current = setTimeout(() => {
+      autoSaveProfile({ firstName: text });
+    }, 1500);
+  }, [autoSaveProfile]);
+
+  const handleLastNameChange = useCallback((text: string) => {
+    setLastName(text);
+    setIsEditing(true);
+    
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
+    }
+    
+    autoSaveTimeoutRef.current = setTimeout(() => {
+      autoSaveProfile({ lastName: text });
+    }, 1500);
+  }, [autoSaveProfile]);
+
+  // ✅ OTOMATİK NICKNAME OLUŞTUR (TacticIQxxx)
+  const generateAutoNickname = useCallback(() => {
+    const randomNum = Math.floor(Math.random() * 9000) + 1000; // 1000-9999
+    return `TacticIQ${randomNum}`;
+  }, []);
+
+  // ✅ Nickname boşsa otomatik oluştur
+  useEffect(() => {
+    if (!loading && !nickname && user.name === 'Kullanıcı') {
+      const autoNickname = generateAutoNickname();
+      setNickname(autoNickname);
+      autoSaveProfile({ nickname: autoNickname });
+    }
+  }, [loading, nickname, user.name, generateAutoNickname, autoSaveProfile]);
 
   const achievements = [
     { id: 'winner', icon: '🏆', name: 'Winner', description: '10 doğru tahmin' },
@@ -1449,6 +1567,25 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             <View style={styles.cardHeader}>
               <Ionicons name="person-outline" size={20} color={theme.primary} />
               <Text style={styles.cardTitle}>Kişisel Bilgiler</Text>
+              {/* ✅ Otomatik Kaydetme Mesajı */}
+              {autoSaveMessage && (
+                <View style={{
+                  marginLeft: 'auto',
+                  backgroundColor: autoSaveMessage.includes('✓') ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)',
+                  paddingHorizontal: 10,
+                  paddingVertical: 4,
+                  borderRadius: 12,
+                }}>
+                  <Text style={{
+                    color: autoSaveMessage.includes('✓') ? '#22C55E' : '#EF4444',
+                    fontSize: 12,
+                    fontWeight: '600',
+                  }}>{autoSaveMessage}</Text>
+                </View>
+              )}
+              {saving && (
+                <ActivityIndicator size="small" color={theme.primary} style={{ marginLeft: 8 }} />
+              )}
             </View>
             
             <View style={styles.formField}>
@@ -1456,10 +1593,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               <TextInput
                 style={[styles.formInput, styles.formInputEditable]}
                 value={firstName}
-                onChangeText={(text) => {
-                  setFirstName(text);
-                  setIsEditing(true);
-                }}
+                onChangeText={handleFirstNameChange}
                 placeholder={t('profileEdit.firstName')}
                 placeholderTextColor={theme.mutedForeground}
               />
@@ -1470,10 +1604,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               <TextInput
                 style={[styles.formInput, styles.formInputEditable]}
                 value={lastName}
-                onChangeText={(text) => {
-                  setLastName(text);
-                  setIsEditing(true);
-                }}
+                onChangeText={handleLastNameChange}
                 placeholder={t('profileEdit.lastName')}
                 placeholderTextColor={theme.mutedForeground}
               />
@@ -1481,17 +1612,54 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
             <View style={styles.formField}>
               <Text style={styles.formLabel}>{t('profileEdit.nickname')} <Text style={styles.requiredStar}>*</Text></Text>
-              <TextInput
-                style={[styles.formInput, styles.formInputEditable]}
-                value={nickname}
-                onChangeText={(text) => {
-                  setNickname(text);
-                  setIsEditing(true);
-                }}
-                placeholder={t('profileEdit.nickname')}
-                placeholderTextColor={theme.mutedForeground}
-              />
-              <Text style={styles.formHint}>Tüm kullanıcılar için zorunludur (min 3 karakter)</Text>
+              <View style={{ position: 'relative' }}>
+                <TextInput
+                  style={[
+                    styles.formInput, 
+                    styles.formInputEditable,
+                    nicknameError && { borderColor: '#EF4444', borderWidth: 1 }
+                  ]}
+                  value={nickname}
+                  onChangeText={handleNicknameChange}
+                  placeholder="TacticIQ1234"
+                  placeholderTextColor={theme.mutedForeground}
+                  maxLength={20}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+                {nicknameChecking && (
+                  <ActivityIndicator 
+                    size="small" 
+                    color={theme.primary} 
+                    style={{ position: 'absolute', right: 12, top: 12 }} 
+                  />
+                )}
+              </View>
+              {nicknameError ? (
+                <Text style={[styles.formHint, { color: '#EF4444' }]}>{nicknameError}</Text>
+              ) : (
+                <Text style={styles.formHint}>Sadece harf, rakam ve alt çizgi. Otomatik kaydedilir.</Text>
+              )}
+              {!nickname && (
+                <TouchableOpacity 
+                  style={{
+                    marginTop: 8,
+                    backgroundColor: 'rgba(31, 162, 166, 0.2)',
+                    paddingHorizontal: 12,
+                    paddingVertical: 6,
+                    borderRadius: 8,
+                    alignSelf: 'flex-start',
+                  }}
+                  onPress={() => {
+                    const autoNick = generateAutoNickname();
+                    handleNicknameChange(autoNick);
+                  }}
+                >
+                  <Text style={{ color: theme.primary, fontSize: 13, fontWeight: '600' }}>
+                    Otomatik Kullanıcı Adı Oluştur
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
 
           </Animated.View>
@@ -2051,141 +2219,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
           {/* Database Test Button kaldırıldı - Web Admin Panel'e taşındı */}
 
-          {/* ✅ ŞIK KAYDET BUTONU - Scroll içinde en sonda */}
-          <Animated.View 
-            entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(400)} 
-            style={{ marginTop: 16, marginBottom: 120 }}
-          >
-            <TouchableOpacity
-              activeOpacity={0.85}
-              style={{
-                borderRadius: 16,
-                overflow: 'hidden',
-                ...(Platform.OS === 'web' ? {
-                  boxShadow: isEditing && nickname.trim().length >= 3 
-                    ? '0 8px 32px rgba(245, 158, 11, 0.4), 0 4px 16px rgba(0, 0, 0, 0.3)'
-                    : '0 4px 20px rgba(0, 0, 0, 0.3)',
-                } : {
-                  shadowColor: isEditing && nickname.trim().length >= 3 ? '#F59E0B' : '#000',
-                  shadowOffset: { width: 0, height: 6 },
-                  shadowOpacity: 0.4,
-                  shadowRadius: 12,
-                  elevation: 12,
-                }),
-              }}
-              onPress={async () => {
-                if (!isEditing || nickname.trim().length < 3) {
-                  if (Platform.OS === 'web') {
-                    window.alert('Değişiklik yapmadınız veya kullanıcı adı çok kısa');
-                  } else {
-                    Alert.alert('Bilgi', 'Değişiklik yapmadınız veya kullanıcı adı çok kısa');
-                  }
-                  return;
-                }
-                setSaving(true);
-                try {
-                  const fullName = [firstName, lastName].filter(Boolean).join(' ').trim() || nickname;
-                  await profileService.updateProfile({
-                    name: fullName,
-                    nickname: nickname,
-                  });
-                  setIsEditing(false);
-                  if (Platform.OS === 'web') {
-                    window.alert('✅ Profil güncellendi!');
-                  } else {
-                    Alert.alert('Başarılı', 'Profil güncellendi!');
-                  }
-                } catch (error) {
-                  console.error('Profile update error:', error);
-                  if (Platform.OS === 'web') {
-                    window.alert('❌ Profil güncellenemedi');
-                  } else {
-                    Alert.alert('Hata', 'Profil güncellenemedi');
-                  }
-                } finally {
-                  setSaving(false);
-                }
-              }}
-            >
-              <LinearGradient
-                colors={isEditing && nickname.trim().length >= 3 
-                  ? ['#F59E0B', '#D97706', '#B45309']
-                  : ['#1F2937', '#374151', '#1F2937']
-                }
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 12,
-                  paddingVertical: 18,
-                  paddingHorizontal: 32,
-                  borderWidth: 1,
-                  borderColor: isEditing && nickname.trim().length >= 3 
-                    ? 'rgba(253, 224, 71, 0.5)'
-                    : 'rgba(75, 85, 99, 0.5)',
-                  borderRadius: 16,
-                }}
-              >
-                {saving ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                ) : (
-                  <>
-                    <View style={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: 20,
-                      backgroundColor: isEditing && nickname.trim().length >= 3 
-                        ? 'rgba(255, 255, 255, 0.2)'
-                        : 'rgba(75, 85, 99, 0.3)',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}>
-                      <Ionicons 
-                        name={isEditing && nickname.trim().length >= 3 ? "checkmark-circle" : "save-outline"} 
-                        size={24} 
-                        color={isEditing && nickname.trim().length >= 3 ? '#FFFFFF' : '#6B7280'} 
-                      />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ 
-                        color: isEditing && nickname.trim().length >= 3 ? '#FFFFFF' : '#6B7280', 
-                        fontSize: 18, 
-                        fontWeight: '700',
-                        letterSpacing: 0.3,
-                      }}>
-                        {isEditing && nickname.trim().length >= 3 ? 'Değişiklikleri Kaydet' : 'Profili Kaydet'}
-                      </Text>
-                      <Text style={{
-                        color: isEditing && nickname.trim().length >= 3 
-                          ? 'rgba(255, 255, 255, 0.7)' 
-                          : 'rgba(107, 114, 128, 0.7)',
-                        fontSize: 13,
-                        marginTop: 2,
-                      }}>
-                        {isEditing && nickname.trim().length >= 3 
-                          ? '⚡ Tüm değişiklikler kaydedilecek' 
-                          : 'Henüz değişiklik yapılmadı'}
-                      </Text>
-                    </View>
-                    {isEditing && nickname.trim().length >= 3 && (
-                      <View style={{
-                        width: 32,
-                        height: 32,
-                        borderRadius: 16,
-                        backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}>
-                        <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
-                      </View>
-                    )}
-                  </>
-                )}
-              </LinearGradient>
-            </TouchableOpacity>
-          </Animated.View>
+          {/* ✅ Kaydet butonu kaldırıldı - Otomatik kaydetme aktif */}
+          <View style={{ marginBottom: 120 }} />
 
         </ScrollView>
 
@@ -2468,38 +2503,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
       </View>
 
-      {/* Kaydedilmemiş değişiklik uyarısı - sabit banner */}
-      {isEditing && nickname.trim().length >= 3 && (
-        <View style={{
-          position: 'absolute',
-          bottom: Platform.OS === 'web' ? 75 : 95,
-          left: 16,
-          right: 16,
-          zIndex: 1000,
-          backgroundColor: 'rgba(245, 158, 11, 0.95)',
-          borderRadius: 12,
-          padding: 12,
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 8,
-          ...(Platform.OS === 'web' ? {
-            boxShadow: '0 4px 20px rgba(245, 158, 11, 0.4)',
-          } : {
-            shadowColor: '#F59E0B',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.4,
-            shadowRadius: 8,
-            elevation: 8,
-          }),
-        }}>
-          <Ionicons name="warning" size={20} color="#FFFFFF" />
-          <Text style={{ color: '#FFFFFF', fontWeight: '600', fontSize: 14 }}>
-            Kaydedilmemiş değişiklikler var!
-          </Text>
-          <Ionicons name="arrow-down" size={16} color="#FFFFFF" />
-        </View>
-      )}
+      {/* Otomatik kaydetme aktif - banner kaldırıldı */}
     </ScreenLayout>
   );
 };

@@ -9,6 +9,7 @@ interface FavoriteTeam {
   logo: string;
   league?: string;
   colors?: string[];
+  type?: 'club' | 'national';
 }
 
 export function useFavoriteTeams() {
