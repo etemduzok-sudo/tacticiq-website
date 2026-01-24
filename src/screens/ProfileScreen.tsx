@@ -3698,15 +3698,16 @@ const createStyles = () => {
     borderColor: theme.border,
     padding: SPACING.base,
     marginTop: SPACING.base,
+    marginBottom: SPACING.base, // Ayarlar kartı ile arasında standart boşluk
   },
   badgesSectionHeader: {
-    marginBottom: SPACING.base,
+    marginBottom: SPACING.sm, // 8px - daha kompakt header
   },
   badgesSectionTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 8,
+    gap: SPACING.sm,
+    marginBottom: SPACING.sm,
   },
   badgesSectionTitle: {
     fontSize: 18,
