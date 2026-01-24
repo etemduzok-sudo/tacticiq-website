@@ -615,8 +615,8 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
   // ✅ Canlı maçları da favori takımlara göre filtrele ve sırala
   const filteredLiveMatches = React.useMemo(() => {
     const filtered = filterMatchesByTeam(liveMatches, selectedTeamIds);
-    // En erken başlayan maç en üstte (timestamp'e göre artan sıra)
-    return [...filtered].sort((a, b) => a.fixture.timestamp - b.fixture.timestamp);
+    // En son başlayan maç en üstte, en önce başlayan en altta (timestamp'e göre azalan sıra)
+    return [...filtered].sort((a, b) => b.fixture.timestamp - a.fixture.timestamp);
   }, [liveMatches, selectedTeamIds, filterMatchesByTeam]);
 
   // ✅ Maç kartı yüksekliği (minHeight + marginBottom)

@@ -1132,8 +1132,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       {/* Header kaldırıldı - footer navigation kullanılacak */}
       
       <View style={styles.container}>
-        {/* Grid Pattern Background - Dashboard ile aynı */}
-        <View style={styles.gridPattern} />
+        {/* Grid Pattern artık ScreenLayout'tan geliyor - tekrar ekleme */}
         
         {/* Profile Content - Tab bar kaldırıldı */}
           <ScrollView
