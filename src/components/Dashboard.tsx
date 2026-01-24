@@ -801,67 +801,13 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
         scrollEventThrottle={16}
       >
 
-        {/* GEÇMİŞ MAÇLAR - En üstte, profil kartının arkasında gizli (yukarı çekerek görülür) */}
-        {filteredPastMatches.length > 0 && (
-          <View style={styles.pastMatchesSection}>
-            {/* Tam liste görünümü - en eski en üstte, en yeni en altta */}
-            {pastMatchesCollapsed ? (
-              // Küçültülmüş görünüm - tıkla genişlet
-              <TouchableOpacity 
-                style={styles.pastMatchesCollapsedBar}
-                onPress={() => setPastMatchesCollapsed(false)}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="time-outline" size={16} color="#64748B" />
-                <Text style={styles.pastMatchesCollapsedText}>
-                  {filteredPastMatches.length} Biten Maç
-                </Text>
-                <Ionicons name="chevron-down" size={16} color="#64748B" />
-              </TouchableOpacity>
-            ) : (
-              // Genişletilmiş görünüm
-              <View>
-                {/* Header - Kapat butonu */}
-                <TouchableOpacity 
-                  style={styles.pastMatchesExpandedHeader}
-                  onPress={() => setPastMatchesCollapsed(true)}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.pastMatchesHeaderLeft}>
-                    <Ionicons name="checkmark-circle" size={16} color="#64748B" />
-                    <Text style={styles.pastMatchesTitle}>Biten Maçlar</Text>
-                    <View style={styles.pastMatchesCount}>
-                      <Text style={styles.pastMatchesCountText}>{filteredPastMatches.length}</Text>
-                    </View>
-                  </View>
-                  <Ionicons name="chevron-up" size={18} color="#64748B" />
-                </TouchableOpacity>
-                
-                {/* Maç listesi - en eski en üstte */}
-                {filteredPastMatches.map((match, index) => (
-                  <Animated.View 
-                    key={`past-${match.fixture.id}`} 
-                    entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(50 + index * 30).springify()}
-                    style={styles.matchCardWrapper}
-                  >
-                    {renderMatchCard(match, 'finished', () => onNavigate('match-result-summary', { id: match.fixture.id }))}
-                  </Animated.View>
-                ))}
-              </View>
-            )}
-          </View>
-        )}
-
-        {/* ✅ CANLI MAÇLAR - Artık ana sayfada gösterilmiyor, sadece Canlı sekmesinde */}
-        {/* Canlı maçlar MatchListScreen'de gösteriliyor */}
-
-        {/* GELECEK MAÇLAR - Tarih sırasına göre */}
+        {/* YAKLAŞAN MAÇLAR - En üstte, tarih sırasına göre */}
         <View style={styles.matchesListContainer}>
           {filteredUpcomingMatches.length > 0 ? (
             filteredUpcomingMatches.map((match, index) => (
               <Animated.View 
                 key={`upcoming-${match.fixture.id}`} 
-                entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(200 + index * 50).springify()}
+                entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(100 + index * 30).springify()}
                 style={styles.matchCardWrapper}
               >
                 {renderMatchCard(match, 'upcoming', () => onNavigate('match-detail', { id: match.fixture.id }))}
@@ -874,6 +820,44 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
             </View>
           )}
         </View>
+
+        {/* GEÇMİŞ MAÇLAR - Aşağıda, tıklayınca yukarı doğru açılır */}
+        {filteredPastMatches.length > 0 && (
+          <View style={styles.pastMatchesSection}>
+            {/* Küçültülmüş bar - tıkla genişlet */}
+            <TouchableOpacity 
+              style={styles.pastMatchesCollapsedBar}
+              onPress={() => setPastMatchesCollapsed(!pastMatchesCollapsed)}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="time-outline" size={16} color="#64748B" />
+              <Text style={styles.pastMatchesCollapsedText}>
+                {filteredPastMatches.length} Biten Maç
+              </Text>
+              <Ionicons 
+                name={pastMatchesCollapsed ? 'chevron-up' : 'chevron-down'} 
+                size={16} 
+                color="#64748B" 
+              />
+            </TouchableOpacity>
+            
+            {/* Genişletilmiş görünüm - yukarı doğru açılır (en yeni en üstte) */}
+            {!pastMatchesCollapsed && (
+              <View style={styles.pastMatchesExpandedList}>
+                {/* Maç listesi - en yeni (son biten) en üstte, en eski en altta */}
+                {[...filteredPastMatches].reverse().map((match, index) => (
+                  <Animated.View 
+                    key={`past-${match.fixture.id}`} 
+                    entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(50 + index * 30).springify()}
+                    style={styles.matchCardWrapper}
+                  >
+                    {renderMatchCard(match, 'finished', () => onNavigate('match-result-summary', { id: match.fixture.id }))}
+                  </Animated.View>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
 
         {/* Bottom Padding */}
         <View style={{ height: 100 + SIZES.tabBarHeight }} />
@@ -1852,6 +1836,9 @@ const styles = StyleSheet.create({
     marginHorizontal: SPACING.base,
     borderWidth: 1,
     borderColor: 'rgba(100, 116, 139, 0.2)',
+  },
+  pastMatchesExpandedList: {
+    marginTop: SPACING.md,
   },
   // ✅ Biten Maçlar Header (Küçültülebilir) - Eski stiller
   pastMatchesHeader: {

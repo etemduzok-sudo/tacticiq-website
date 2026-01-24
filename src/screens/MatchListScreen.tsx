@@ -305,16 +305,22 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
     ];
   }, [liveMatches]);
 
-  // ✅ Canlı maçları filtrele - selectedTeamId varsa sadece o takımın maçları
+  // ✅ Canlı maçları filtrele ve sırala - en son başlayan en üstte
   const allLiveMatches = liveMatches.length > 0 ? liveMatches : mockLiveMatches;
   const filteredLiveMatches = React.useMemo(() => {
-    if (!selectedTeamId) return allLiveMatches;
+    let matches = allLiveMatches;
     
-    return allLiveMatches.filter(match => {
-      const homeId = match.teams?.home?.id;
-      const awayId = match.teams?.away?.id;
-      return homeId === selectedTeamId || awayId === selectedTeamId;
-    });
+    // Takım filtresi varsa uygula
+    if (selectedTeamId) {
+      matches = matches.filter(match => {
+        const homeId = match.teams?.home?.id;
+        const awayId = match.teams?.away?.id;
+        return homeId === selectedTeamId || awayId === selectedTeamId;
+      });
+    }
+    
+    // En son başlayan en üstte (timestamp azalan)
+    return [...matches].sort((a, b) => b.fixture.timestamp - a.fixture.timestamp);
   }, [allLiveMatches, selectedTeamId]);
   
   useEffect(() => {
@@ -568,16 +574,9 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
             </View>
           )}
 
-          {/* Live Matches */}
+          {/* Live Matches - Başlık yok, direkt maçlar */}
           {filteredLiveMatches.length > 0 && (
             <View style={styles.section}>
-              <View style={styles.liveSectionHeader}>
-                <View style={styles.liveDot} />
-                <Text style={styles.liveSectionTitle}>
-                  Canlı Maçlar ({filteredLiveMatches.length})
-                  {selectedTeamId && selectedTeamName ? ` - ${selectedTeamName}` : ''}
-                </Text>
-              </View>
               {filteredLiveMatches.map((match, index) => {
                 const matchId = String(match.fixture?.id || match.id);
                 return (
