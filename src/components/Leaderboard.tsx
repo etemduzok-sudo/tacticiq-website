@@ -1,5 +1,5 @@
 // components/Leaderboard.tsx
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   Platform,
   Image,
   FlatList,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown, ZoomIn, FadeIn } from 'react-native-reanimated';
@@ -64,6 +65,15 @@ interface LeaderboardProps {
 
 export function Leaderboard({ onNavigate }: LeaderboardProps = {}) {
   const [activeTab, setActiveTab] = useState<'overall' | 'weekly' | 'monthly' | 'friends'>('overall');
+  const [isLoading, setIsLoading] = useState(true);
+
+  // ✅ Yükleme animasyonu
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 800); // 0.8 saniye yükleme animasyonu
+    return () => clearTimeout(timer);
+  }, []);
 
   // ✅ MEMOIZED: Only recalculate when activeTab changes
   const currentData = useMemo(() => {
@@ -95,6 +105,24 @@ export function Leaderboard({ onNavigate }: LeaderboardProps = {}) {
     if (change < 0) return { name: 'arrow-down', color: '#EF4444' };
     return { name: 'remove', color: '#64748B' };
   }, []);
+
+  // ✅ Yükleme ekranı
+  if (isLoading) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.gridPattern} />
+        <View style={styles.loadingContainer}>
+          <Animated.View entering={ZoomIn.springify()}>
+            <View style={styles.loadingIconContainer}>
+              <Ionicons name="trophy" size={48} color="#FFD700" />
+            </View>
+          </Animated.View>
+          <ActivityIndicator size="large" color="#1FA2A6" style={{ marginTop: 16 }} />
+          <Text style={styles.loadingText}>Sıralama yükleniyor...</Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -353,9 +381,31 @@ const styles = StyleSheet.create({
       },
     }),
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingBottom: 100,
+  },
+  loadingIconContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(31, 162, 166, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(31, 162, 166, 0.3)',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#94A3B8',
+    fontWeight: '500',
+  },
   header: {
     paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'ios' ? 140 : 120,
+    paddingTop: Platform.OS === 'ios' ? 250 : 240, // ✅ ProfileCard + team filter için standart padding
     paddingBottom: 16,
   },
   headerTitle: {
