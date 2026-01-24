@@ -4577,39 +4577,57 @@ const createStyles = () => {
     fontWeight: TYPOGRAPHY.medium,
   },
 
-  // Selected Teams Badges
+  // Selected Teams Badges - Estetik Tasarım
   selectedTeamsBadges: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: SPACING.sm,
+    gap: 10,
     marginTop: SPACING.md,
+    paddingVertical: 4,
   },
   teamBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingLeft: 12,
-    paddingRight: 8,
+    paddingLeft: 14,
+    paddingRight: 10,
     paddingVertical: 10,
-    backgroundColor: 'rgba(31, 162, 166, 0.15)',
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(31, 162, 166, 0.4)',
-    borderColor: theme.accent + '40',
+    backgroundColor: 'rgba(31, 162, 166, 0.12)',
+    borderRadius: 25,
+    borderWidth: 1.5,
+    borderColor: 'rgba(31, 162, 166, 0.35)',
+    ...Platform.select({
+      web: {
+        boxShadow: '0 2px 8px rgba(31, 162, 166, 0.15)',
+        transition: 'all 0.2s ease',
+      },
+      ios: {
+        shadowColor: '#1FA2A6',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
   teamBadgeText: {
-    ...TYPOGRAPHY.bodySmall,
-    color: theme.foreground,
+    fontSize: 13,
+    color: '#E2E8F0',
     fontWeight: '600',
+    letterSpacing: 0.3,
   },
   teamBadgeRemove: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: 'rgba(239, 68, 68, 0.8)',
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: 'rgba(239, 68, 68, 0.85)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: 4,
+    marginLeft: 2,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
 
   // Locked Section
