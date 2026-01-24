@@ -929,7 +929,27 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
         scrollEventThrottle={16}
       >
 
-        {/* YAKLAŞAN MAÇLAR - En üstte, tarih sırasına göre */}
+        {/* ✅ CANLI MAÇLAR - Sadece favori takımların canlı maçları */}
+        {filteredLiveMatches.length > 0 && (
+          <View style={styles.matchesListContainer}>
+            <View style={styles.liveMatchesHeader}>
+              <View style={styles.liveIndicatorDot} />
+              <Text style={styles.liveMatchesTitle}>CANLI MAÇLAR</Text>
+              <Text style={styles.liveMatchesCount}>{filteredLiveMatches.length}</Text>
+            </View>
+            {filteredLiveMatches.map((match, index) => (
+              <Animated.View 
+                key={`live-${match.fixture.id}`} 
+                entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(50 + index * 30).springify()}
+                style={styles.matchCardWrapper}
+              >
+                {renderMatchCard(match, 'live', () => onNavigate('match-detail', { id: match.fixture.id }))}
+              </Animated.View>
+            ))}
+          </View>
+        )}
+
+        {/* YAKLAŞAN MAÇLAR - Tarih sırasına göre */}
         <View style={styles.matchesListContainer}>
           {filteredUpcomingMatches.length > 0 ? (
             filteredUpcomingMatches.map((match, index) => (
@@ -941,12 +961,12 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
                 {renderMatchCard(match, 'upcoming', () => onNavigate('match-detail', { id: match.fixture.id }))}
               </Animated.View>
             ))
-          ) : (
+          ) : filteredLiveMatches.length === 0 ? (
             <View style={styles.emptyState}>
               <Ionicons name="calendar-outline" size={48} color="#64748B" />
               <Text style={styles.emptyText}>Yaklaşan maç yok</Text>
             </View>
-          )}
+          ) : null}
         </View>
 
         {/* Bottom Padding */}
