@@ -490,12 +490,19 @@ export function useFavoriteTeamMatches(): UseFavoriteTeamMatchesResult {
         duplicatesRemoved: allMatches.length - uniqueMatches.length
       }, 'MATCHES');
       
-      // Filter favorite team matches (ID-based)
+      // ✅ KRITIK: Sadece favori takımların maçlarını filtrele (ID-based)
       const favoriteTeamIds = favoriteTeams.map(t => t.id);
       const favoriteMatches = uniqueMatches.filter(m => 
         favoriteTeamIds.includes(m.teams?.home?.id) || 
         favoriteTeamIds.includes(m.teams?.away?.id)
       );
+      
+      logger.debug('Favorite matches filtering', {
+        totalUnique: uniqueMatches.length,
+        favoriteTeamIds: favoriteTeamIds,
+        afterFilter: favoriteMatches.length,
+        filtered: uniqueMatches.length - favoriteMatches.length
+      }, 'MATCHES');
       
       if (favoriteMatches.length > 0) {
         logger.debug('First 5 favorite team matches', {
@@ -507,8 +514,9 @@ export function useFavoriteTeamMatches(): UseFavoriteTeamMatchesResult {
         }, 'MATCHES');
       }
 
-      // Categorize matches
-      const { past, live, upcoming } = categorizeMatches(uniqueMatches);
+      // ✅ KRITIK FIX: Kategorize sadece FAVORİ TAKIMLARIN maçlarını yap
+      // ÖNCEKİ HATA: uniqueMatches kullanılıyordu, favoriteMatches olmalı!
+      const { past, live, upcoming } = categorizeMatches(favoriteMatches);
       
       // If no matches found, use mock data (without filtering by favorite teams)
       if (past.length === 0 && live.length === 0 && upcoming.length === 0) {
