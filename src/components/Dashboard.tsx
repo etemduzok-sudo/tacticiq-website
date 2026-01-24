@@ -226,7 +226,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
         activeOpacity={0.8}
       >
         <LinearGradient
-          colors={[COLORS.dark.card, COLORS.dark.card, COLORS.dark.card]} // Sistem renkleri - mavi değil
+          colors={['#1A3A34', '#162E29', '#122520']} // Koyu yeşil gradient - zeminden farklı
           style={styles.matchCard}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
@@ -861,19 +861,28 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   
-  // ✅ Takım Filtre Barı Stilleri - SABİT KONUM
+  // ✅ Takım Filtre Barı Stilleri - SABİT KONUM (Profil kartı gibi)
   teamFilterBarFixed: {
     position: 'absolute',
     top: Platform.OS === 'ios' ? 175 : 165, // Profil kartının altında
-    left: 0,
-    right: 0,
+    left: 12,
+    right: 12,
     zIndex: 9000,
     elevation: 9000,
-    backgroundColor: 'rgba(15, 42, 36, 0.95)',
-    paddingVertical: 10,
+    backgroundColor: '#1A3A34', // Koyu yeşil - profil kartı ile uyumlu
+    paddingVertical: 12,
     paddingHorizontal: SPACING.base,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(31, 162, 166, 0.2)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.3)',
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(31, 162, 166, 0.15)',
+    } : {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+    }),
   },
   teamFilterBar: {
     marginBottom: SPACING.md,
@@ -1763,9 +1772,18 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 25, // ✅ Profil kartı gibi yuvarlatılmış alt köşeler
     borderBottomRightRadius: 25, // ✅ Profil kartı gibi yuvarlatılmış alt köşeler
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(148, 163, 184, 0.5)', // COLORS.dark.border with 50% opacity
-    // Gölge efektleri kaldırıldı
+    borderWidth: 1.5,
+    borderColor: 'rgba(31, 162, 166, 0.25)', // Turkuaz border
+    backgroundColor: '#1A3A34', // Koyu yeşil arka plan - zeminden farklı
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 4px 16px rgba(0, 0, 0, 0.35), 0 2px 6px rgba(31, 162, 166, 0.1)',
+    } : {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 6,
+      elevation: 6,
+    }),
   },
   matchCardLeftStrip: {
     position: 'absolute',
