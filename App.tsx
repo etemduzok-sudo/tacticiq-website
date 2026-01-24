@@ -362,20 +362,30 @@ export default function App() {
         setIsProcessingOAuth(true);
         
         try {
-          // Supabase'in URL'yi işlemesini bekle (detectSessionInUrl: true)
-          console.log('⏳ [App] Supabase session bekleniyor...');
-          await new Promise(resolve => setTimeout(resolve, 2000));
+          // ✅ Retry mekanizması ile session kontrolü
+          console.log('⏳ [App] Supabase session bekleniyor (retry ile)...');
+          let attempts = 0;
+          const maxAttempts = 5;
+          let sessionResult = null;
           
-          // URL'yi HEMEN temizle (loop önleme)
+          while (!sessionResult && attempts < maxAttempts) {
+            await new Promise(resolve => setTimeout(resolve, 500 + (attempts * 300)));
+            const result = await socialAuthService.checkSession();
+            console.log(`📋 [App] Session check attempt ${attempts + 1}:`, result.success, result.user?.email);
+            
+            if (result.success && result.user) {
+              sessionResult = result;
+              break;
+            }
+            attempts++;
+          }
+          
+          // ✅ URL'yi session kontrolünden SONRA temizle (race condition önleme)
           if (window.history && window.history.replaceState) {
             window.history.replaceState(null, '', window.location.origin + window.location.pathname);
           }
           
-          // Session'ı kontrol et
-          const result = await socialAuthService.checkSession();
-          console.log('📋 [App] Session check result:', result.success, result.user?.email);
-          
-          if (result.success && result.user) {
+          if (sessionResult && sessionResult.user) {
             console.log('✅ [App] OAuth başarılı, ana sayfaya yönlendiriliyor...');
             
             // ✅ OAuth tamamlandı işaretle (SplashScreen'in override etmesini engelle)
@@ -385,7 +395,7 @@ export default function App() {
             setIsProcessingOAuth(false);
             setCurrentScreen('home');
           } else {
-            console.log('⚠️ [App] OAuth session bulunamadı');
+            console.log('⚠️ [App] OAuth session bulunamadı (tüm denemeler başarısız)');
             
             // Splash'a devam et (normal akış)
             setIsProcessingOAuth(false);
@@ -393,6 +403,8 @@ export default function App() {
         } catch (error) {
           console.error('❌ [App] OAuth callback error:', error);
           setIsProcessingOAuth(false);
+          // Hata durumunda auth ekranına yönlendir
+          setCurrentScreen('auth');
         }
       }
     };

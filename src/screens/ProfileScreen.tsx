@@ -746,9 +746,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           });
         }
 
-        setLoading(false);
       } catch (error) {
         logger.error('Error fetching user data', { error, userId }, 'PROFILE');
+      } finally {
+        // ✅ Her durumda loading'i kapat
         setLoading(false);
       }
     };
