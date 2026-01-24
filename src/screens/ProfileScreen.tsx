@@ -1735,6 +1735,94 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
           </Animated.View>
 
+          {/* ✅ ROZETLERİM BÖLÜMÜ - Kişisel Bilgilerin altında, Ayarların üstünde (5 sütun) */}
+          <Animated.View
+            entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(275)}
+            style={styles.badgesSectionCard}
+          >
+            {/* Header */}
+            <View style={styles.badgesSectionHeader}>
+              <View style={styles.badgesSectionTitleRow}>
+                <Ionicons name="trophy" size={22} color="#F59E0B" />
+                <Text style={styles.badgesSectionTitle}>Rozetlerim</Text>
+              </View>
+              <View style={styles.badgesSectionProgress}>
+                <Text style={styles.badgesSectionCount}>
+                  {allBadges.filter(b => b.earned).length} / {allBadges.length}
+                </Text>
+                <View style={styles.badgesSectionProgressBar}>
+                  <LinearGradient
+                    colors={['#F59E0B', '#FCD34D']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={[
+                      styles.badgesSectionProgressFill,
+                      { width: `${(allBadges.filter(b => b.earned).length / Math.max(allBadges.length, 1)) * 100}%` }
+                    ]}
+                  />
+                </View>
+              </View>
+            </View>
+
+            {/* Badges Grid - 5 sütun */}
+            <View style={styles.badgesGridInline}>
+              {allBadges.map((badge, index) => (
+                <TouchableOpacity
+                  key={badge.id}
+                  style={[
+                    styles.badgeItemInline,
+                    badge.earned 
+                      ? styles.badgeItemEarned 
+                      : styles.badgeItemLocked,
+                  ]}
+                  onPress={() => setSelectedBadge(badge)}
+                  activeOpacity={0.7}
+                >
+                  {/* Lock Icon (kilitli rozetler için) */}
+                  {!badge.earned && (
+                    <View style={styles.badgeLockOverlay}>
+                      <Ionicons name="lock-closed" size={10} color="#9CA3AF" />
+                    </View>
+                  )}
+
+                  {/* Checkmark (kazanılmış rozetler için) */}
+                  {badge.earned && (
+                    <View style={styles.badgeEarnedCheck}>
+                      <Ionicons name="checkmark" size={9} color="#FFFFFF" />
+                    </View>
+                  )}
+
+                  {/* Badge Icon */}
+                  <Text style={[
+                    styles.badgeEmojiInline,
+                    !badge.earned && styles.badgeEmojiLocked
+                  ]}>
+                    {badge.icon}
+                  </Text>
+
+                  {/* Badge Name */}
+                  <Text
+                    style={[
+                      styles.badgeNameInline,
+                      !badge.earned && styles.badgeNameLocked
+                    ]}
+                    numberOfLines={2}
+                  >
+                    {badge.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Rozet yoksa */}
+            {allBadges.length === 0 && (
+              <View style={styles.noBadgesInline}>
+                <Ionicons name="trophy-outline" size={48} color="#64748B" />
+                <Text style={styles.noBadgesText}>Rozet yükleniyor...</Text>
+              </View>
+            )}
+          </Animated.View>
+
           {/* Ayarlar Card - Web ile aynı */}
           <Animated.View entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(300)} style={styles.card}>
             <View style={styles.cardHeader}>
@@ -2281,94 +2369,6 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           {/* Duplicate Settings ve Security Card kaldırıldı - yukarıda zaten var */}
 
           {/* Database Test Button kaldırıldı - Web Admin Panel'e taşındı */}
-
-          {/* ✅ ROZETLERİM BÖLÜMÜ - Tüm rozetler (kazanılmış ve kilitli) */}
-          <Animated.View
-            entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(200)}
-            style={styles.badgesSectionCard}
-          >
-            {/* Header */}
-            <View style={styles.badgesSectionHeader}>
-              <View style={styles.badgesSectionTitleRow}>
-                <Ionicons name="trophy" size={22} color="#F59E0B" />
-                <Text style={styles.badgesSectionTitle}>Rozetlerim</Text>
-              </View>
-              <View style={styles.badgesSectionProgress}>
-                <Text style={styles.badgesSectionCount}>
-                  {allBadges.filter(b => b.earned).length} / {allBadges.length}
-                </Text>
-                <View style={styles.badgesSectionProgressBar}>
-                  <LinearGradient
-                    colors={['#F59E0B', '#FCD34D']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={[
-                      styles.badgesSectionProgressFill,
-                      { width: `${(allBadges.filter(b => b.earned).length / Math.max(allBadges.length, 1)) * 100}%` }
-                    ]}
-                  />
-                </View>
-              </View>
-            </View>
-
-            {/* Badges Grid - Tüm rozetler */}
-            <View style={styles.badgesGridInline}>
-              {allBadges.map((badge, index) => (
-                <TouchableOpacity
-                  key={badge.id}
-                  style={[
-                    styles.badgeItemInline,
-                    badge.earned 
-                      ? styles.badgeItemEarned 
-                      : styles.badgeItemLocked,
-                  ]}
-                  onPress={() => setSelectedBadge(badge)}
-                  activeOpacity={0.7}
-                >
-                  {/* Lock Icon (kilitli rozetler için) */}
-                  {!badge.earned && (
-                    <View style={styles.badgeLockOverlay}>
-                      <Ionicons name="lock-closed" size={12} color="#9CA3AF" />
-                    </View>
-                  )}
-
-                  {/* Checkmark (kazanılmış rozetler için) */}
-                  {badge.earned && (
-                    <View style={styles.badgeEarnedCheck}>
-                      <Ionicons name="checkmark" size={10} color="#FFFFFF" />
-                    </View>
-                  )}
-
-                  {/* Badge Icon */}
-                  <Text style={[
-                    styles.badgeEmojiInline,
-                    !badge.earned && styles.badgeEmojiLocked
-                  ]}>
-                    {badge.icon}
-                  </Text>
-
-                  {/* Badge Name */}
-                  <Text
-                    style={[
-                      styles.badgeNameInline,
-                      !badge.earned && styles.badgeNameLocked
-                    ]}
-                    numberOfLines={2}
-                  >
-                    {badge.name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            {/* Rozet yoksa */}
-            {allBadges.length === 0 && (
-              <View style={styles.noBadgesInline}>
-                <Ionicons name="trophy-outline" size={48} color="#64748B" />
-                <Text style={styles.noBadgesText}>Rozet yükleniyor...</Text>
-              </View>
-            )}
-          </Animated.View>
 
           {/* ✅ Kaydet butonu kaldırıldı - Otomatik kaydetme aktif */}
           <View style={{ marginBottom: 120 }} />
@@ -3724,17 +3724,18 @@ const createStyles = () => {
   badgesGridInline: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 6,
     justifyContent: 'flex-start',
   },
   badgeItemInline: {
-    width: '18%',
-    minWidth: 58,
-    aspectRatio: 0.75,
+    // 5 sütun için: (100% - 4 gap) / 5 = ~18.5%
+    width: '18.5%',
+    minWidth: 54,
+    aspectRatio: 0.8,
     backgroundColor: theme.card,
     borderRadius: SIZES.radiusMd,
     borderWidth: 1.5,
-    padding: 6,
+    padding: 4,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
@@ -3750,28 +3751,28 @@ const createStyles = () => {
   },
   badgeLockOverlay: {
     position: 'absolute',
-    top: 4,
-    right: 4,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+    top: 2,
+    right: 2,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
     backgroundColor: 'rgba(0,0,0,0.5)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   badgeEarnedCheck: {
     position: 'absolute',
-    top: 4,
-    right: 4,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
+    top: 2,
+    right: 2,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
     backgroundColor: '#10B981',
     alignItems: 'center',
     justifyContent: 'center',
   },
   badgeEmojiInline: {
-    fontSize: 28,
+    fontSize: 24,
     marginBottom: 2,
   },
   badgeEmojiLocked: {
@@ -3780,11 +3781,11 @@ const createStyles = () => {
     ...(Platform.OS === 'web' ? { filter: 'grayscale(100%)' } : {}),
   } as any,
   badgeNameInline: {
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: '600',
     color: theme.foreground,
     textAlign: 'center',
-    lineHeight: 11,
+    lineHeight: 10,
   },
   badgeNameLocked: {
     color: theme.mutedForeground,
