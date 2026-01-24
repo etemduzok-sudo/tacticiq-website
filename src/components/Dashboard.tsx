@@ -950,9 +950,9 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
         )}
 
         {/* YAKLAŞAN MAÇLAR - Tarih sırasına göre */}
-        <View style={styles.matchesListContainer}>
-          {filteredUpcomingMatches.length > 0 ? (
-            filteredUpcomingMatches.map((match, index) => (
+        {filteredUpcomingMatches.length > 0 && (
+          <View style={styles.matchesListContainer}>
+            {filteredUpcomingMatches.map((match, index) => (
               <Animated.View 
                 key={`upcoming-${match.fixture.id}`} 
                 entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(100 + index * 30).springify()}
@@ -960,14 +960,37 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
               >
                 {renderMatchCard(match, 'upcoming', () => onNavigate('match-detail', { id: match.fixture.id }))}
               </Animated.View>
-            ))
-          ) : filteredLiveMatches.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Ionicons name="calendar-outline" size={48} color="#64748B" />
-              <Text style={styles.emptyText}>Yaklaşan maç yok</Text>
+            ))}
+          </View>
+        )}
+
+        {/* ✅ BİTEN MAÇLAR - Sadece favori takımların biten maçları */}
+        {filteredPastMatches.length > 0 && (
+          <View style={styles.matchesListContainer}>
+            <View style={styles.finishedMatchesHeader}>
+              <Ionicons name="checkmark-done" size={18} color="#64748B" />
+              <Text style={styles.finishedMatchesTitle}>BİTEN MAÇLAR</Text>
+              <Text style={styles.finishedMatchesCount}>{filteredPastMatches.length}</Text>
             </View>
-          ) : null}
-        </View>
+            {filteredPastMatches.slice(0, 5).map((match, index) => (
+              <Animated.View 
+                key={`finished-${match.fixture.id}`} 
+                entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(150 + index * 30).springify()}
+                style={styles.matchCardWrapper}
+              >
+                {renderMatchCard(match, 'finished', () => onNavigate('match-result', { id: match.fixture.id }))}
+              </Animated.View>
+            ))}
+          </View>
+        )}
+
+        {/* Boş Durum - Hiç maç yoksa */}
+        {filteredLiveMatches.length === 0 && filteredUpcomingMatches.length === 0 && filteredPastMatches.length === 0 && (
+          <View style={styles.emptyState}>
+            <Ionicons name="football-outline" size={48} color="#64748B" />
+            <Text style={styles.emptyText}>Favori takımlarınızın maçı bulunamadı</Text>
+          </View>
+        )}
 
         {/* Bottom Padding */}
         <View style={{ height: 100 + SIZES.tabBarHeight }} />
@@ -2051,6 +2074,32 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FFFFFF',
     backgroundColor: '#EF4444',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+
+  // ✅ Biten Maçlar Header
+  finishedMatchesHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.base,
+    paddingVertical: SPACING.sm,
+    marginBottom: SPACING.sm,
+    gap: 8,
+  },
+  finishedMatchesTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#64748B',
+    flex: 1,
+  },
+  finishedMatchesCount: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    backgroundColor: '#475569',
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 10,
