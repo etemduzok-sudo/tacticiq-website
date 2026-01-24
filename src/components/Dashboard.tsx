@@ -911,7 +911,7 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   scrollContent: {
-    paddingTop: Platform.OS === 'ios' ? 220 : 210, // ✅ ProfileCard (filtre dahil) altından başlaması için
+    paddingTop: Platform.OS === 'ios' ? 245 : 235, // ✅ ProfileCard + team filter altından başlaması için
     paddingBottom: 100 + SIZES.tabBarHeight, // ✅ Footer navigation için extra padding
     backgroundColor: 'transparent', // Grid pattern görünsün
   },

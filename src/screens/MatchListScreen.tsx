@@ -699,7 +699,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingTop: 200, // ✅ Space for ProfileCard overlay + safe area (52px safe + 148px card = 200px)
+    paddingTop: 230, // ✅ Space for ProfileCard overlay + team filter + safe area
     paddingHorizontal: 16,
     paddingBottom: 100,
   },
