@@ -98,6 +98,9 @@ export function Leaderboard({ onNavigate }: LeaderboardProps = {}) {
 
   return (
     <View style={styles.container}>
+      {/* Grid Pattern Background - Dashboard ile aynı */}
+      <View style={styles.gridPattern} />
+      
       {/* Header with Stats */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>🏆 Sıralama</Text>
@@ -326,7 +329,29 @@ export function Leaderboard({ onNavigate }: LeaderboardProps = {}) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#0F2A24', // Koyu yeşil zemin - Dashboard ile aynı
+    position: 'relative',
+  },
+  gridPattern: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    opacity: 0.6,
+    zIndex: 0,
+    ...Platform.select({
+      web: {
+        backgroundImage: `
+          linear-gradient(to right, rgba(31, 162, 166, 0.08) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(31, 162, 166, 0.08) 1px, transparent 1px)
+        `,
+        backgroundSize: '40px 40px',
+      },
+      default: {
+        backgroundColor: 'transparent',
+      },
+    }),
   },
   header: {
     paddingHorizontal: 16,
