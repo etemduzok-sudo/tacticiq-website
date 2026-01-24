@@ -326,9 +326,18 @@ export default function App() {
   const badgeShownRef = useRef<Set<string>>(new Set()); // Track shown badges in this session using ref
   const testBadgeTimerRef = useRef<NodeJS.Timeout | null>(null); // Track test badge timer
   
-  // ✅ OAuth Callback Detection - App başlarken HEMEN kontrol et
+  // ✅ OAuth Callback Detection - App başlarken HEMEN ve SADECE BİR KEZ kontrol et
+  const oauthCheckedRef = useRef(false);
+  
   useEffect(() => {
     const handleOAuthCallback = async () => {
+      // ✅ Sadece bir kez çalış
+      if (oauthCheckedRef.current) {
+        console.log('🛡️ [App] OAuth check zaten yapıldı, atlanıyor');
+        return;
+      }
+      oauthCheckedRef.current = true;
+      
       if (Platform.OS !== 'web') return;
       
       // URL'de OAuth token veya code var mı kontrol et
@@ -354,9 +363,13 @@ export default function App() {
         
         try {
           // Supabase'in URL'yi işlemesini bekle (detectSessionInUrl: true)
-          // PKCE flow için daha uzun bekle
           console.log('⏳ [App] Supabase session bekleniyor...');
-          await new Promise(resolve => setTimeout(resolve, 3000));
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          
+          // URL'yi HEMEN temizle (loop önleme)
+          if (window.history && window.history.replaceState) {
+            window.history.replaceState(null, '', window.location.origin + window.location.pathname);
+          }
           
           // Session'ı kontrol et
           const result = await socialAuthService.checkSession();
@@ -364,11 +377,6 @@ export default function App() {
           
           if (result.success && result.user) {
             console.log('✅ [App] OAuth başarılı, ana sayfaya yönlendiriliyor...');
-            
-            // URL'yi tamamen temizle
-            if (window.history && window.history.replaceState) {
-              window.history.replaceState(null, '', window.location.origin + window.location.pathname);
-            }
             
             // ✅ OAuth tamamlandı işaretle (SplashScreen'in override etmesini engelle)
             setOauthCompleted(true);
@@ -378,11 +386,6 @@ export default function App() {
             setCurrentScreen('home');
           } else {
             console.log('⚠️ [App] OAuth session bulunamadı');
-            
-            // URL'yi temizle
-            if (window.history && window.history.replaceState) {
-              window.history.replaceState(null, '', window.location.origin + window.location.pathname);
-            }
             
             // Splash'a devam et (normal akış)
             setIsProcessingOAuth(false);
