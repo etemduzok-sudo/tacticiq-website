@@ -39,11 +39,12 @@ interface DashboardProps {
     error: string | null;
     hasLoadedOnce: boolean;
   };
+  selectedTeamIds?: number[]; // ✅ App.tsx'ten gelen seçili takımlar
 }
 
-export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }: DashboardProps) {
+export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, selectedTeamIds = [] }: DashboardProps) {
   const [isPremium, setIsPremium] = useState(false);
-  const [selectedTeamIds, setSelectedTeamIds] = useState<number[]>([]); // ✅ Çoklu takım seçimi
+  // ✅ selectedTeamIds artık App.tsx'ten prop olarak geliyor
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [countdownTicker, setCountdownTicker] = useState(0); // ✅ Geri sayım için ticker
   
@@ -609,37 +610,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
     );
   }
 
-  // ✅ Handle team selection - ÇOKLU SEÇİM (Toggle)
-  const handleTeamSelect = (teamId: number | null) => {
-    if (teamId === null) {
-      // "Tümü" butonu - tüm seçimleri temizle
-      setSelectedTeamIds([]);
-      logger.debug('Filter cleared - showing all favorite teams', undefined, 'DASHBOARD');
-    } else {
-      // Takım seçimi - toggle mantığı
-      setSelectedTeamIds(prev => {
-        const isSelected = prev.includes(teamId);
-        if (isSelected) {
-          // Seçiliyse kaldır
-          const newIds = prev.filter(id => id !== teamId);
-          logger.debug(`Team deselected`, { teamId, remainingCount: newIds.length }, 'DASHBOARD');
-          return newIds;
-        } else {
-          // Seçili değilse ekle
-          const newIds = [...prev, teamId];
-          const team = favoriteTeams.find(t => t.id === teamId);
-          logger.debug(`Team selected: ${team?.name}`, { teamId, teamName: team?.name, totalSelected: newIds.length }, 'DASHBOARD');
-          return newIds;
-        }
-      });
-    }
-    
-    setDropdownOpen(false);
-    
-    if (Platform.OS !== 'web') {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
-  };
+  // ✅ handleTeamSelect artık App.tsx'te - ProfileCard üzerinden yönetiliyor
 
 
   return (
@@ -647,84 +618,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
       {/* Grid Pattern Background - Splash screen ile uyumlu */}
       <View style={styles.gridPattern} />
       
-      {/* ✅ SABİT TAKIM FİLTRE BARI - Profil kartının hemen altında, scroll dışında */}
-      <View style={styles.teamFilterBarFixed}>
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.teamFilterScrollContent}
-        >
-          {/* Tümü Chip */}
-          <TouchableOpacity
-            style={[
-              styles.teamChip,
-              selectedTeamIds.length === 0 && styles.teamChipActive
-            ]}
-            onPress={() => handleTeamSelect(null)}
-            activeOpacity={0.8}
-          >
-            <Ionicons 
-              name="apps" 
-              size={14} 
-              color={selectedTeamIds.length === 0 ? '#FFFFFF' : '#94A3B8'} 
-            />
-            <Text style={[
-              styles.teamChipText,
-              selectedTeamIds.length === 0 && styles.teamChipTextActive
-            ]}>
-              Tümü
-            </Text>
-          </TouchableOpacity>
-
-          {/* Favori Takım Chip'leri - ÇOKLU SEÇİM */}
-          {favoriteTeams.slice(0, 6).map((team) => {
-            const isSelected = selectedTeamIds.includes(team.id);
-            return (
-              <TouchableOpacity
-                key={team.id}
-                style={[
-                  styles.teamChip,
-                  isSelected && styles.teamChipActive,
-                  { borderColor: team.colors?.[0] || '#1FA2A6' }
-                ]}
-                onPress={() => handleTeamSelect(team.id)}
-                activeOpacity={0.8}
-              >
-                {team.colors && team.colors.length > 0 && (
-                  <View style={styles.teamChipBadge}>
-                    <View style={[styles.teamChipStripe, { backgroundColor: team.colors[0] }]} />
-                    {team.colors[1] && (
-                      <View style={[styles.teamChipStripe, { backgroundColor: team.colors[1] }]} />
-                    )}
-                  </View>
-                )}
-                <Text 
-                  style={[
-                    styles.teamChipText,
-                    isSelected && styles.teamChipTextActive
-                  ]} 
-                  numberOfLines={1}
-                >
-                  {team.name}
-                </Text>
-                {isSelected && (
-                  <View style={styles.teamChipCheck}>
-                    <Ionicons name="checkmark" size={12} color="#FFFFFF" />
-                  </View>
-                )}
-              </TouchableOpacity>
-            );
-          })}
-
-          {/* Takım yoksa bilgi */}
-          {favoriteTeams.length === 0 && (
-            <View style={styles.teamChipEmpty}>
-              <Ionicons name="heart-outline" size={14} color="#64748B" />
-              <Text style={styles.teamChipEmptyText}>Profilde takım seçin</Text>
-            </View>
-          )}
-        </ScrollView>
-      </View>
+      {/* ✅ Takım filtresi artık ProfileCard içinde - App.tsx'ten yönetiliyor */}
 
       {/* Scrollable Content */}
       <ScrollView
@@ -841,7 +735,7 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   scrollContent: {
-    paddingTop: Platform.OS === 'ios' ? 260 : 250, // ✅ ProfileCard + FilterBar altından başlaması için (artırıldı)
+    paddingTop: Platform.OS === 'ios' ? 220 : 210, // ✅ ProfileCard (filtre dahil) altından başlaması için
     paddingBottom: 100 + SIZES.tabBarHeight, // ✅ Footer navigation için extra padding
     backgroundColor: 'transparent', // Grid pattern görünsün
   },
@@ -869,7 +763,7 @@ const styles = StyleSheet.create({
     right: 12,
     zIndex: 9000,
     elevation: 9000,
-    backgroundColor: '#1A3A34', // Koyu yeşil - profil kartı ile uyumlu
+    backgroundColor: '#1E3A3A', // ✅ BottomNavigation ile aynı renk
     paddingVertical: 12,
     paddingHorizontal: SPACING.base,
     borderRadius: 16,

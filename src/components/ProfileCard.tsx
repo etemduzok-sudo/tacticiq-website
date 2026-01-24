@@ -16,10 +16,22 @@ import { getUserBadges } from '../services/badgeService';
 import { profileService } from '../services/profileService';
 import { UnifiedUserProfile } from '../types/profile.types';
 
+interface FavoriteTeam {
+  id: number;
+  name: string;
+  colors?: string[];
+  type?: 'club' | 'national';
+}
+
 interface ProfileCardProps {
   onPress: () => void;
   newBadge?: { id: string; name: string; emoji: string; description: string; tier: number } | null;
   onBadgePopupClose?: () => void;
+  // Takım filtre için
+  favoriteTeams?: FavoriteTeam[];
+  selectedTeamIds?: number[];
+  onTeamSelect?: (teamId: number | null) => void;
+  showTeamFilter?: boolean;
 }
 
 // Helper: Badge tier'a göre renk döndür
@@ -34,7 +46,15 @@ const getBadgeTierColor = (tier: 1 | 2 | 3 | 4 | 5): string => {
   }
 };
 
-export const ProfileCard: React.FC<ProfileCardProps> = ({ onPress, newBadge, onBadgePopupClose }) => {
+export const ProfileCard: React.FC<ProfileCardProps> = ({ 
+  onPress, 
+  newBadge, 
+  onBadgePopupClose,
+  favoriteTeams = [],
+  selectedTeamIds = [],
+  onTeamSelect,
+  showTeamFilter = false,
+}) => {
   const [showBadgePopup, setShowBadgePopup] = useState(false);
   const [earnedBadges, setEarnedBadges] = useState<Array<{ id: string; name: string; emoji: string; tier: number }>>([]);
   const badgeSlideAnim = useRef(new Animated.Value(-100)).current;
@@ -289,6 +309,95 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({ onPress, newBadge, onB
                 )}
               </ScrollView>
             </View>
+
+            {/* ✅ Takım Filtre Barı - Profil kartına entegre */}
+            {showTeamFilter && (
+              <View style={styles.teamFilterSection}>
+                <View style={styles.teamFilterHeader}>
+                  <Ionicons name="football" size={14} color="#1FA2A6" />
+                  <Text style={styles.teamFilterTitle}>Takımlarım</Text>
+                  <View style={styles.teamFilterCount}>
+                    <Text style={styles.teamFilterCountText}>{favoriteTeams.length}</Text>
+                  </View>
+                </View>
+                
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.teamFilterScroll}
+                >
+                  {/* Tümü Chip */}
+                  <TouchableOpacity
+                    style={[
+                      styles.teamChip,
+                      selectedTeamIds.length === 0 && styles.teamChipActive
+                    ]}
+                    onPress={() => onTeamSelect?.(null)}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons 
+                      name="apps" 
+                      size={14} 
+                      color={selectedTeamIds.length === 0 ? '#FFFFFF' : '#94A3B8'} 
+                    />
+                    <Text style={[
+                      styles.teamChipText,
+                      selectedTeamIds.length === 0 && styles.teamChipTextActive
+                    ]}>
+                      Tümü
+                    </Text>
+                  </TouchableOpacity>
+
+                  {/* Favori Takım Chip'leri */}
+                  {favoriteTeams.slice(0, 6).map((team) => {
+                    const isSelected = selectedTeamIds.includes(team.id);
+                    return (
+                      <TouchableOpacity
+                        key={team.id}
+                        style={[
+                          styles.teamChip,
+                          isSelected && styles.teamChipActive,
+                          { borderColor: team.colors?.[0] || '#1FA2A6' }
+                        ]}
+                        onPress={() => onTeamSelect?.(team.id)}
+                        activeOpacity={0.8}
+                      >
+                        {team.colors && team.colors.length > 0 && (
+                          <View style={styles.teamChipBadge}>
+                            <View style={[styles.teamChipStripe, { backgroundColor: team.colors[0] }]} />
+                            {team.colors[1] && (
+                              <View style={[styles.teamChipStripe, { backgroundColor: team.colors[1] }]} />
+                            )}
+                          </View>
+                        )}
+                        <Text 
+                          style={[
+                            styles.teamChipText,
+                            isSelected && styles.teamChipTextActive
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {team.name}
+                        </Text>
+                        {isSelected && (
+                          <View style={styles.teamChipCheck}>
+                            <Ionicons name="checkmark" size={12} color="#FFFFFF" />
+                          </View>
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
+
+                  {/* Takım yoksa bilgi */}
+                  {favoriteTeams.length === 0 && (
+                    <View style={styles.noTeamsContainer}>
+                      <Ionicons name="heart-outline" size={14} color="#64748B" />
+                      <Text style={styles.noTeamsText}>Profilde takım seçin</Text>
+                    </View>
+                  )}
+                </ScrollView>
+              </View>
+            )}
             </View>
           </View>
         </TouchableOpacity>
@@ -614,6 +723,105 @@ const styles = StyleSheet.create({
   },
   noBadgesHint: {
     fontSize: 9,
+    color: '#64748B',
+  },
+  // ✅ Takım Filtre Stilleri
+  teamFilterSection: {
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(31, 162, 166, 0.15)',
+  },
+  teamFilterHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  teamFilterTitle: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#E2E8F0',
+    marginLeft: 4,
+    flex: 1,
+  },
+  teamFilterCount: {
+    backgroundColor: '#1FA2A6',
+    borderRadius: 8,
+    minWidth: 20,
+    height: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  teamFilterCountText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  teamFilterScroll: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingRight: 8,
+  },
+  teamChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: 'rgba(31, 41, 55, 0.6)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(75, 85, 99, 0.4)',
+  },
+  teamChipActive: {
+    backgroundColor: '#1FA2A6',
+    borderColor: '#1FA2A6',
+  },
+  teamChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#94A3B8',
+    maxWidth: 80,
+  },
+  teamChipTextActive: {
+    color: '#FFFFFF',
+  },
+  teamChipBadge: {
+    flexDirection: 'row',
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    overflow: 'hidden',
+  },
+  teamChipStripe: {
+    flex: 1,
+    height: '100%',
+  },
+  teamChipCheck: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 2,
+  },
+  noTeamsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: 'rgba(30, 41, 59, 0.3)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(100, 116, 139, 0.3)',
+    borderStyle: 'dashed',
+  },
+  noTeamsText: {
+    fontSize: 11,
     color: '#64748B',
   },
   // 🎉 Badge Popup Modal Styles

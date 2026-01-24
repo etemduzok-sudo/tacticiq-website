@@ -9,6 +9,7 @@ import ErrorBoundary from './src/components/ErrorBoundary';
 import MaintenanceScreen from './src/components/MaintenanceScreen';
 import { MAINTENANCE_CONFIG, logVersionInfo } from './src/config/AppVersion';
 import { useFavoriteTeamMatches } from './src/hooks/useFavoriteTeamMatches';
+import { useFavoriteTeams } from './src/hooks/useFavoriteTeams';
 import { ProfileCard } from './src/components/ProfileCard';
 import { DARK_MODE } from './src/theme/theme';
 import { hasBadgeBeenShown, markBadgeAsShown } from './src/services/badgeService';
@@ -311,8 +312,11 @@ export default function App() {
   const [legalDocumentType, setLegalDocumentType] = useState<string>('terms');
   const [activeTab, setActiveTab] = useState<string>('home');
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
-  const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null); // ✅ Seçilen takım ID'si (kulüp takımlarının maçlarını göstermek için)
+  const [selectedTeamIds, setSelectedTeamIds] = useState<number[]>([]); // ✅ Çoklu takım seçimi
   const [isMaintenanceMode, setIsMaintenanceMode] = useState<boolean>(false);
+  
+  // ✅ Favori takımlar hook'u - ProfileCard'a aktarılacak
+  const { favoriteTeams, loading: teamsLoading } = useFavoriteTeams();
 
   // 🎉 Yeni Rozet State (Test için başlangıçta bir rozet gösterelim)
   const [newBadge, setNewBadge] = useState<{ id: string; name: string; emoji: string; description: string; tier: number } | null>(null);
@@ -621,7 +625,7 @@ export default function App() {
       case 'matches':
         // ✅ Takım seçildiğinde o takımın maçlarını göster
         if (params?.teamId) {
-          setSelectedTeamId(params.teamId);
+          setSelectedTeamIds(prev => prev.includes(params.teamId) ? prev : [...prev, params.teamId]);
           // Parametreleri window'a kaydet (matches ekranında kullanmak için)
           (window as any).__matchParams = {
             teamId: params.teamId,
@@ -879,6 +883,7 @@ export default function App() {
             <Dashboard
               onNavigate={handleDashboardNavigate}
               matchData={matchData}
+              selectedTeamIds={selectedTeamIds}
             />
           );
         
@@ -888,9 +893,9 @@ export default function App() {
           const teamIdFromParams = matchParams.teamId;
           const teamNameFromParams = matchParams.teamName;
           
-          // Eğer parametre varsa, selectedTeamId'yi güncelle
-          if (teamIdFromParams && !selectedTeamId) {
-            setSelectedTeamId(teamIdFromParams);
+          // Eğer parametre varsa, selectedTeamIds'yi güncelle
+          if (teamIdFromParams && !selectedTeamIds.includes(teamIdFromParams)) {
+            setSelectedTeamIds(prev => [...prev, teamIdFromParams]);
           }
           
           return (
@@ -899,10 +904,10 @@ export default function App() {
               onMatchResultSelect={handleMatchResultSelect}
               onProfileClick={handleProfileClick}
               matchData={matchData}
-              selectedTeamId={selectedTeamId || teamIdFromParams} // ✅ Seçilen takım ID'si
+              selectedTeamId={selectedTeamIds[0] || teamIdFromParams} // ✅ İlk seçilen takım (backward compat)
               selectedTeamName={teamNameFromParams} // ✅ Takım adı (başlık için)
-              onBack={selectedTeamId || teamIdFromParams ? () => {
-                setSelectedTeamId(null); // Takım filtresini temizle
+              onBack={selectedTeamIds.length > 0 || teamIdFromParams ? () => {
+                setSelectedTeamIds([]); // Takım filtresini temizle
                 (window as any).__matchParams = {}; // Parametreleri temizle
                 setCurrentScreen('home'); // Ana sayfaya geri dön
               } : undefined}
@@ -1077,6 +1082,23 @@ export default function App() {
                           }
                           setNewBadge(null);
                         }}
+                        // ✅ Takım filtre props'ları - home ve matches ekranlarında göster
+                        favoriteTeams={favoriteTeams}
+                        selectedTeamIds={selectedTeamIds}
+                        onTeamSelect={(teamId) => {
+                          if (teamId === null) {
+                            // Tümü seçildi - filtreyi temizle
+                            setSelectedTeamIds([]);
+                          } else {
+                            // Toggle: seçili ise kaldır, değilse ekle
+                            setSelectedTeamIds(prev => 
+                              prev.includes(teamId) 
+                                ? prev.filter(id => id !== teamId)
+                                : [...prev, teamId]
+                            );
+                          }
+                        }}
+                        showTeamFilter={['home', 'matches'].includes(currentScreen)}
                       />
                     </View>
                   )}
