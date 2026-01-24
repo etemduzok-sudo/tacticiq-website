@@ -226,7 +226,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
         activeOpacity={0.8}
       >
         <LinearGradient
-          colors={['#1A3A34', '#162E29', '#122520']} // Koyu yeşil gradient - zeminden farklı
+          colors={['#1E293B', '#1A2435', '#151D2C']} // Koyu slate/lacivert gradient - yeşil zeminden farklı
           style={styles.matchCard}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
@@ -841,7 +841,7 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   scrollContent: {
-    paddingTop: Platform.OS === 'ios' ? 240 : 230, // ✅ ProfileCard + FilterBar altından başlaması için
+    paddingTop: Platform.OS === 'ios' ? 260 : 250, // ✅ ProfileCard + FilterBar altından başlaması için (artırıldı)
     paddingBottom: 100 + SIZES.tabBarHeight, // ✅ Footer navigation için extra padding
     backgroundColor: 'transparent', // Grid pattern görünsün
   },
@@ -864,7 +864,7 @@ const styles = StyleSheet.create({
   // ✅ Takım Filtre Barı Stilleri - SABİT KONUM (Profil kartı gibi)
   teamFilterBarFixed: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 175 : 165, // Profil kartının altında
+    top: Platform.OS === 'ios' ? 195 : 185, // Profil kartının tam altında (daha aşağı)
     left: 12,
     right: 12,
     zIndex: 9000,
@@ -1773,14 +1773,14 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 25, // ✅ Profil kartı gibi yuvarlatılmış alt köşeler
     overflow: 'hidden',
     borderWidth: 1.5,
-    borderColor: 'rgba(31, 162, 166, 0.25)', // Turkuaz border
-    backgroundColor: '#1A3A34', // Koyu yeşil arka plan - zeminden farklı
+    borderColor: 'rgba(100, 116, 139, 0.35)', // Slate border
+    backgroundColor: '#1E293B', // Koyu slate/lacivert - yeşil zeminden farklı
     ...(Platform.OS === 'web' ? {
-      boxShadow: '0 4px 16px rgba(0, 0, 0, 0.35), 0 2px 6px rgba(31, 162, 166, 0.1)',
+      boxShadow: '0 4px 16px rgba(0, 0, 0, 0.4), 0 2px 6px rgba(100, 116, 139, 0.15)',
     } : {
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.25,
+      shadowOpacity: 0.3,
       shadowRadius: 6,
       elevation: 6,
     }),
