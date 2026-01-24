@@ -1132,6 +1132,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       {/* Header kaldırıldı - footer navigation kullanılacak */}
       
       <View style={styles.container}>
+        {/* Grid Pattern Background - Dashboard ile aynı */}
+        <View style={styles.gridPattern} />
+        
         {/* Profile Content - Tab bar kaldırıldı */}
           <ScrollView
           style={styles.scrollView}
@@ -2567,6 +2570,28 @@ const createStyles = () => {
   container: {
     flex: 1,
     backgroundColor: '#0F2A24', // Koyu yeşil zemin - Dashboard ile aynı
+    position: 'relative',
+  },
+  gridPattern: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    opacity: 0.6,
+    zIndex: 0,
+    ...Platform.select({
+      web: {
+        backgroundImage: `
+          linear-gradient(to right, rgba(31, 162, 166, 0.08) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(31, 162, 166, 0.08) 1px, transparent 1px)
+        `,
+        backgroundSize: '40px 40px',
+      },
+      default: {
+        backgroundColor: 'transparent',
+      },
+    }),
   },
 
   // ScrollView
