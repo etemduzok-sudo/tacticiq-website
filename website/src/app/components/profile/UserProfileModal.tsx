@@ -875,7 +875,7 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side="right" className="w-full sm:max-w-2xl lg:max-w-3xl overflow-hidden p-0">
+        <SheetContent side="right" className="w-[100vw] sm:w-full sm:max-w-2xl lg:max-w-3xl overflow-hidden p-0">
           <SheetHeader className="px-6 pt-6 pb-4">
             <SheetTitle>{t('profile.title') || 'Profil'}</SheetTitle>
             <SheetDescription>
@@ -884,9 +884,9 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
           </SheetHeader>
 
           <ScrollArea className="flex-1 pb-6" style={{ height: 'calc(100vh - 120px)' }}>
-            <div className="space-y-6 mt-2 px-6 max-w-full overflow-x-hidden">
+            <div className="space-y-4 sm:space-y-6 mt-2 px-3 sm:px-6 max-w-full overflow-x-hidden">
               {/* Tab Navigation */}
-              <div className="flex bg-muted rounded-lg p-1 gap-1 w-full max-w-full">
+              <div className="flex bg-muted rounded-lg p-1 gap-1 w-full max-w-full overflow-x-auto">
                 <button
                   onClick={() => setActiveTab('profile')}
                   className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-md text-sm font-medium transition-all ${
@@ -921,7 +921,7 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
                   {/* Profile Header */}
                   <Card>
                     <div className="h-20 bg-gradient-to-r from-secondary/20 via-accent/10 to-secondary/20" />
-                    <CardContent className="relative pt-0 pb-4 !px-6">
+                    <CardContent className="relative pt-0 pb-4 !px-3 sm:!px-6">
                       <div className="flex flex-col items-center -mt-12">
                         <Avatar className="size-20 border-4 border-background shadow-lg mb-3">
                           <AvatarImage src={profile.avatar} />
@@ -929,8 +929,8 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
                             {getInitials(profile.name || profile.email)}
                           </AvatarFallback>
                         </Avatar>
-                        <div className="flex items-center gap-2 mb-1">
-                          <h2 className="text-xl font-bold">{profile.name || nickname || profile.email}</h2>
+                        <div className="flex items-center gap-2 mb-1 flex-wrap justify-center">
+                          <h2 className="text-base sm:text-xl font-bold text-center break-words max-w-full">{profile.name || nickname || profile.email}</h2>
                           {isPro ? (
                             <Badge className="bg-gradient-to-r from-amber-500 to-yellow-400 text-black">
                               <Crown className="size-3 mr-1" />
@@ -942,71 +942,73 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
                         </div>
                         <p className="text-xs text-muted-foreground mb-4">{profile.email}</p>
                         
-                        {/* Ranking Table - Professional Design */}
+                        {/* Ranking Table - Professional Design - Responsive */}
                         <div className="w-full max-w-full border rounded-lg overflow-hidden bg-card/50">
-                          <Table>
+                          <Table className="table-fixed w-full">
                             <TableHeader>
                               <TableRow className="border-b bg-muted/30">
-                                <TableHead className="h-12 text-center font-semibold">
-                                  <div className="flex items-center justify-center gap-2">
-                                    <Flag className="size-4 text-muted-foreground" />
-                                    <span>Ülke</span>
+                                <TableHead className="h-10 sm:h-12 text-center font-semibold px-1 sm:px-4 w-1/3">
+                                  <div className="flex items-center justify-center gap-1 sm:gap-2">
+                                    <Flag className="size-3 sm:size-4 text-muted-foreground flex-shrink-0" />
+                                    <span className="text-xs sm:text-sm truncate">Ülke</span>
                                   </div>
                                 </TableHead>
-                                <TableHead className="h-12 text-center font-semibold">
-                                  <div className="flex items-center justify-center gap-2">
-                                    <Trophy className="size-4 text-secondary" />
-                                    <span>Türkiye Sırası</span>
+                                <TableHead className="h-10 sm:h-12 text-center font-semibold px-1 sm:px-4 w-1/3">
+                                  <div className="flex items-center justify-center gap-1 sm:gap-2">
+                                    <Trophy className="size-3 sm:size-4 text-secondary flex-shrink-0" />
+                                    <span className="text-xs sm:text-sm truncate hidden xs:inline">Türkiye</span>
+                                    <span className="text-xs sm:text-sm truncate xs:hidden">TR</span>
                                   </div>
                                 </TableHead>
-                                <TableHead className="h-12 text-center font-semibold">
-                                  <div className="flex items-center justify-center gap-2">
-                                    <Globe className="size-4 text-primary" />
-                                    <span>Dünya Sırası</span>
+                                <TableHead className="h-10 sm:h-12 text-center font-semibold px-1 sm:px-4 w-1/3">
+                                  <div className="flex items-center justify-center gap-1 sm:gap-2">
+                                    <Globe className="size-3 sm:size-4 text-primary flex-shrink-0" />
+                                    <span className="text-xs sm:text-sm truncate hidden xs:inline">Dünya</span>
+                                    <span className="text-xs sm:text-sm truncate xs:hidden">🌍</span>
                                   </div>
                                 </TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody>
                               <TableRow className="hover:bg-muted/20 transition-colors">
-                                <TableCell className="text-center py-4">
-                                  <div className="flex items-center justify-center gap-2">
-                                    <span className="text-xl">🇹🇷</span>
-                                    <span className="font-semibold text-sm">TR Türkiye</span>
+                                <TableCell className="text-center py-2 sm:py-4 px-1 sm:px-4">
+                                  <div className="flex items-center justify-center gap-1 sm:gap-2">
+                                    <span className="text-base sm:text-xl">🇹🇷</span>
+                                    <span className="font-semibold text-xs sm:text-sm hidden sm:inline">TR Türkiye</span>
                                   </div>
                                 </TableCell>
-                                <TableCell className="text-center py-4">
+                                <TableCell className="text-center py-2 sm:py-4 px-1 sm:px-4">
                                   {userStats.countryRank > 0 ? (
-                                    <div className="flex flex-col items-center gap-1">
-                                      <Badge className="bg-secondary/20 text-secondary border-secondary/30 hover:bg-secondary/30">
+                                    <div className="flex flex-col items-center gap-0.5 sm:gap-1">
+                                      <Badge className="bg-secondary/20 text-secondary border-secondary/30 hover:bg-secondary/30 text-[10px] sm:text-xs px-1.5 sm:px-2">
                                         {calculateTopPercent(userStats.countryRank, userStats.countryTotalPlayers)}
                                       </Badge>
-                                      <span className="text-xs text-muted-foreground">
-                                        {userStats.countryRank.toLocaleString()} / {userStats.countryTotalPlayers.toLocaleString()}
+                                      <span className="text-[10px] sm:text-xs text-muted-foreground">
+                                        {userStats.countryRank.toLocaleString()}
                                       </span>
                                     </div>
                                   ) : (
-                                    <div className="flex flex-col items-center gap-1">
-                                      <span className="text-xs text-muted-foreground italic">
-                                        Tahmin yapınca sıralamanız burada görünecek
+                                    <div className="flex flex-col items-center">
+                                      <span className="text-[10px] sm:text-xs text-muted-foreground italic leading-tight">
+                                        Tahmin yap
                                       </span>
                                     </div>
                                   )}
                                 </TableCell>
-                                <TableCell className="text-center py-4">
+                                <TableCell className="text-center py-2 sm:py-4 px-1 sm:px-4">
                                   {userStats.globalRank > 0 ? (
-                                    <div className="flex flex-col items-center gap-1">
-                                      <Badge className="bg-primary/20 text-primary border-primary/30 hover:bg-primary/30">
+                                    <div className="flex flex-col items-center gap-0.5 sm:gap-1">
+                                      <Badge className="bg-primary/20 text-primary border-primary/30 hover:bg-primary/30 text-[10px] sm:text-xs px-1.5 sm:px-2">
                                         {calculateTopPercent(userStats.globalRank, userStats.globalTotalPlayers)}
                                       </Badge>
-                                      <span className="text-xs text-muted-foreground">
-                                        {userStats.globalRank.toLocaleString()} / {userStats.globalTotalPlayers.toLocaleString()}
+                                      <span className="text-[10px] sm:text-xs text-muted-foreground">
+                                        {userStats.globalRank.toLocaleString()}
                                       </span>
                                     </div>
                                   ) : (
-                                    <div className="flex flex-col items-center gap-1">
-                                      <span className="text-xs text-muted-foreground italic">
-                                        Tahmin yapınca sıralamanız burada görünecek
+                                    <div className="flex flex-col items-center">
+                                      <span className="text-[10px] sm:text-xs text-muted-foreground italic leading-tight">
+                                        Tahmin yap
                                       </span>
                                     </div>
                                   )}
