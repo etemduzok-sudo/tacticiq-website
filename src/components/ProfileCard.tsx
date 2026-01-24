@@ -313,14 +313,6 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
             {/* ✅ Takım Filtre Barı - Profil kartına entegre */}
             {showTeamFilter && (
               <View style={styles.teamFilterSection}>
-                <View style={styles.teamFilterHeader}>
-                  <Ionicons name="football" size={14} color="#1FA2A6" />
-                  <Text style={styles.teamFilterTitle}>Takımlarım</Text>
-                  <View style={styles.teamFilterCount}>
-                    <Text style={styles.teamFilterCountText}>{favoriteTeams.length}</Text>
-                  </View>
-                </View>
-                
                 <ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
