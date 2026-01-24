@@ -369,7 +369,8 @@ export default function App() {
               window.history.replaceState(null, '', window.location.origin + window.location.pathname);
             }
             
-            // Direkt ana sayfaya git
+            // ✅ Loading ekranını kapat ve ana sayfaya git
+            setIsProcessingOAuth(false);
             setCurrentScreen('home');
           } else {
             console.log('⚠️ [App] OAuth session bulunamadı');
