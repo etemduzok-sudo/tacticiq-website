@@ -947,6 +947,60 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     }
   }, [selectedClubTeams, selectedNationalTeam, refetch]);
 
+  // ✅ TAKIM SİLME FONKSİYONU
+  const handleRemoveClubTeam = useCallback(async (indexToRemove: number) => {
+    console.log('🗑️ Removing club team at index:', indexToRemove);
+    
+    // State'i güncelle
+    const newClubTeams = [...selectedClubTeams];
+    const removedTeam = newClubTeams[indexToRemove];
+    newClubTeams[indexToRemove] = null;
+    setSelectedClubTeams(newClubTeams);
+    
+    // Storage'ı güncelle
+    try {
+      const allTeams: Array<{ id: number; name: string; logo: string; colors?: string[]; type?: string }> = [];
+      
+      // Milli takım ekle
+      if (selectedNationalTeam) {
+        allTeams.push({
+          id: selectedNationalTeam.id,
+          name: selectedNationalTeam.name,
+          logo: `https://media.api-sports.io/football/teams/${selectedNationalTeam.id}.png`,
+          colors: selectedNationalTeam.colors,
+          type: 'national',
+        });
+      }
+      
+      // Kalan kulüp takımlarını ekle (silinen hariç)
+      newClubTeams.filter(Boolean).forEach(clubTeam => {
+        if (clubTeam) {
+          allTeams.push({
+            id: clubTeam.id,
+            name: clubTeam.name,
+            logo: `https://media.api-sports.io/football/teams/${clubTeam.id}.png`,
+            colors: clubTeam.colors,
+            type: 'club',
+          });
+        }
+      });
+      
+      // Storage'a kaydet
+      await saveFavoriteTeamsToStorage(allTeams);
+      console.log('✅ Team removed from storage:', removedTeam?.name);
+      
+      // ProfileService'e de kaydet
+      await profileService.updateProfile({
+        nationalTeam: selectedNationalTeam?.name || '',
+        clubTeams: newClubTeams.filter(Boolean).map(t => t!.name),
+      });
+      
+      refetch();
+    } catch (error) {
+      console.warn('⚠️ Error removing team:', error);
+    }
+  }, [selectedClubTeams, selectedNationalTeam, refetch]);
+
   // ✅ OTOMATİK KAYDETME FONKSİYONU
   const autoSaveProfile = useCallback(async (fieldsToSave: { nickname?: string; firstName?: string; lastName?: string }) => {
     if (saving) return;
@@ -1416,24 +1470,26 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   />
                 </TouchableOpacity>
                 
-                {/* Seçilen Takımlar - Badge olarak */}
+                {/* Seçilen Takımlar - Badge olarak (tıklanabilir silme) */}
                 {selectedClubTeams.filter(Boolean).length > 0 && (
                   <View style={styles.selectedTeamsBadges}>
-                    {selectedClubTeams.filter(Boolean).map((team, idx) => (
-                      <View key={team!.id || idx} style={styles.teamBadge}>
-                        <Text style={styles.teamBadgeText}>{team!.name}</Text>
-                        <TouchableOpacity
-                          onPress={() => {
-                            const newTeams = [...selectedClubTeams];
-                            newTeams[idx] = null;
-                            setSelectedClubTeams(newTeams);
-                            handleTeamSelect(team!, 'club', idx);
-                          }}
+                    {selectedClubTeams.map((team, idx) => {
+                      if (!team) return null;
+                      return (
+                        <TouchableOpacity 
+                          key={team.id || idx} 
+                          style={styles.teamBadge}
+                          onPress={() => handleRemoveClubTeam(idx)}
+                          activeOpacity={0.7}
                         >
-                          <Ionicons name="close-circle" size={16} color={theme.foreground} />
+                          <Ionicons name="football" size={14} color={theme.accent} />
+                          <Text style={styles.teamBadgeText}>{team.name}</Text>
+                          <View style={styles.teamBadgeRemove}>
+                            <Ionicons name="close" size={12} color="#FFFFFF" />
+                          </View>
                         </TouchableOpacity>
-                      </View>
-                    ))}
+                      );
+                    })}
                   </View>
                 )}
                 <Text style={styles.formHint}>
@@ -4507,18 +4563,29 @@ const createStyles = () => {
   teamBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: SPACING.xs,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    backgroundColor: theme.accent + '20',
-    borderRadius: SIZES.radiusMd,
+    gap: 8,
+    paddingLeft: 12,
+    paddingRight: 8,
+    paddingVertical: 10,
+    backgroundColor: 'rgba(31, 162, 166, 0.15)',
+    borderRadius: 20,
     borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.4)',
     borderColor: theme.accent + '40',
   },
   teamBadgeText: {
     ...TYPOGRAPHY.bodySmall,
     color: theme.foreground,
-    fontWeight: TYPOGRAPHY.medium,
+    fontWeight: '600',
+  },
+  teamBadgeRemove: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(239, 68, 68, 0.8)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 4,
   },
 
   // Locked Section
