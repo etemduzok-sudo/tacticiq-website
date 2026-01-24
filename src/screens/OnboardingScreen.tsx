@@ -391,9 +391,7 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
   // ===== LANGUAGE STEP - PREMIUM DESIGN =====
   const renderLanguageStep = () => (
     <View style={styles.stepContainer}>
-      <Text style={styles.stepTitle}>{getTranslation('languageSelection.title')}</Text>
-      
-      {/* 🌍 Animasyonlu dönen subtitle - tüm dillerde */}
+      {/* 🌍 Animasyonlu dönen subtitle - tüm dillerde (başlık kaldırıldı) */}
       <Animated.View style={{ 
         opacity: subtitleFade,
         flexDirection: 'row',
@@ -401,9 +399,10 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
         justifyContent: 'center',
         gap: 8,
         marginBottom: 24,
+        marginTop: 8,
       }}>
-        <Text style={{ fontSize: 20 }}>{subtitleTranslations[subtitleLangIndex].flag}</Text>
-        <Text style={styles.stepSubtitle}>{subtitleTranslations[subtitleLangIndex].text}</Text>
+        <Text style={{ fontSize: 22 }}>{subtitleTranslations[subtitleLangIndex].flag}</Text>
+        <Text style={[styles.stepSubtitle, { fontSize: 18, fontWeight: '600' }]}>{subtitleTranslations[subtitleLangIndex].text}</Text>
       </Animated.View>
 
       {/* 2 sütun 4 satır grid */}
