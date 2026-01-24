@@ -315,6 +315,7 @@ export default function App() {
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
   const [selectedTeamIds, setSelectedTeamIds] = useState<number[]>([]); // ✅ Çoklu takım seçimi
   const [isMaintenanceMode, setIsMaintenanceMode] = useState<boolean>(false);
+  const [isProcessingOAuth, setIsProcessingOAuth] = useState<boolean>(false); // OAuth işleniyor mu?
   
   // ✅ Favori takımlar hook'u - ProfileCard'a aktarılacak
   const { favoriteTeams, loading: teamsLoading, refetch: refetchFavoriteTeams } = useFavoriteTeams();
@@ -323,6 +324,59 @@ export default function App() {
   const [newBadge, setNewBadge] = useState<{ id: string; name: string; emoji: string; description: string; tier: number } | null>(null);
   const badgeShownRef = useRef<Set<string>>(new Set()); // Track shown badges in this session using ref
   const testBadgeTimerRef = useRef<NodeJS.Timeout | null>(null); // Track test badge timer
+  
+  // ✅ OAuth Callback Detection - App başlarken HEMEN kontrol et
+  useEffect(() => {
+    const handleOAuthCallback = async () => {
+      if (Platform.OS !== 'web') return;
+      
+      // URL'de OAuth token var mı kontrol et
+      const hash = window.location.hash;
+      const hasAccessToken = hash.includes('access_token');
+      const hasError = hash.includes('error');
+      
+      if (hasAccessToken || hasError) {
+        console.log('🔄 [App] OAuth callback algılandı!');
+        setIsProcessingOAuth(true);
+        
+        try {
+          // Supabase'in URL'yi işlemesini bekle (detectSessionInUrl: true)
+          await new Promise(resolve => setTimeout(resolve, 1500));
+          
+          // Session'ı kontrol et
+          const result = await socialAuthService.checkSession();
+          
+          if (result.success && result.user) {
+            console.log('✅ [App] OAuth başarılı, ana sayfaya yönlendiriliyor...');
+            
+            // URL hash'i temizle
+            if (window.history && window.history.replaceState) {
+              window.history.replaceState(null, '', window.location.pathname);
+            }
+            
+            // Direkt ana sayfaya git
+            setCurrentScreen('home');
+          } else {
+            console.log('⚠️ [App] OAuth session bulunamadı, auth ekranına yönlendiriliyor');
+            
+            // URL hash'i temizle
+            if (window.history && window.history.replaceState) {
+              window.history.replaceState(null, '', window.location.pathname);
+            }
+            
+            setCurrentScreen('auth');
+          }
+        } catch (error) {
+          console.error('❌ [App] OAuth callback error:', error);
+          setCurrentScreen('auth');
+        } finally {
+          setIsProcessingOAuth(false);
+        }
+      }
+    };
+    
+    handleOAuthCallback();
+  }, []);
   
   // ✅ OAuth Auth State Listener - Google/Apple giriş callback'lerini handle et
   useEffect(() => {
@@ -823,6 +877,16 @@ export default function App() {
 
   const renderScreen = () => {
     try {
+      // ✅ OAuth işlenirken splash gösterme - bekle
+      if (isProcessingOAuth) {
+        return (
+          <View style={{ flex: 1, backgroundColor: '#0a1612', alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={{ color: '#1FA2A6', fontSize: 18, marginBottom: 10 }}>Giriş yapılıyor...</Text>
+            <Text style={{ color: '#94a3b8', fontSize: 14 }}>Lütfen bekleyin</Text>
+          </View>
+        );
+      }
+      
       switch (currentScreen) {
         case 'splash':
           return wrapWithAnimation(<SplashScreen onComplete={handleSplashComplete} />, 'splash');
