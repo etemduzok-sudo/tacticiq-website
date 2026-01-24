@@ -587,6 +587,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           setSelectedLanguage(unifiedProfile.preferredLanguage || 'tr');
           setSelectedTimezone(unifiedProfile.timezone || 'Europe/Istanbul');
           // TODO: Bildirim ayarları profil verilerinden alınacak
+          
+          // ✅ Unified profile bulundu, loading'i kapat ve çık
+          setLoading(false);
+          return;
         }
 
         // Fallback: AsyncStorage'dan yükle (eski sistem)
