@@ -647,6 +647,85 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
       {/* Grid Pattern Background - Splash screen ile uyumlu */}
       <View style={styles.gridPattern} />
       
+      {/* ✅ SABİT TAKIM FİLTRE BARI - Profil kartının hemen altında, scroll dışında */}
+      <View style={styles.teamFilterBarFixed}>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.teamFilterScrollContent}
+        >
+          {/* Tümü Chip */}
+          <TouchableOpacity
+            style={[
+              styles.teamChip,
+              selectedTeamIds.length === 0 && styles.teamChipActive
+            ]}
+            onPress={() => handleTeamSelect(null)}
+            activeOpacity={0.8}
+          >
+            <Ionicons 
+              name="apps" 
+              size={14} 
+              color={selectedTeamIds.length === 0 ? '#FFFFFF' : '#94A3B8'} 
+            />
+            <Text style={[
+              styles.teamChipText,
+              selectedTeamIds.length === 0 && styles.teamChipTextActive
+            ]}>
+              Tümü
+            </Text>
+          </TouchableOpacity>
+
+          {/* Favori Takım Chip'leri - ÇOKLU SEÇİM */}
+          {favoriteTeams.slice(0, 6).map((team) => {
+            const isSelected = selectedTeamIds.includes(team.id);
+            return (
+              <TouchableOpacity
+                key={team.id}
+                style={[
+                  styles.teamChip,
+                  isSelected && styles.teamChipActive,
+                  { borderColor: team.colors?.[0] || '#1FA2A6' }
+                ]}
+                onPress={() => handleTeamSelect(team.id)}
+                activeOpacity={0.8}
+              >
+                {team.colors && team.colors.length > 0 && (
+                  <View style={styles.teamChipBadge}>
+                    <View style={[styles.teamChipStripe, { backgroundColor: team.colors[0] }]} />
+                    {team.colors[1] && (
+                      <View style={[styles.teamChipStripe, { backgroundColor: team.colors[1] }]} />
+                    )}
+                  </View>
+                )}
+                <Text 
+                  style={[
+                    styles.teamChipText,
+                    isSelected && styles.teamChipTextActive
+                  ]} 
+                  numberOfLines={1}
+                >
+                  {team.name}
+                </Text>
+                {isSelected && (
+                  <View style={styles.teamChipCheck}>
+                    <Ionicons name="checkmark" size={12} color="#FFFFFF" />
+                  </View>
+                )}
+              </TouchableOpacity>
+            );
+          })}
+
+          {/* Takım yoksa bilgi */}
+          {favoriteTeams.length === 0 && (
+            <View style={styles.teamChipEmpty}>
+              <Ionicons name="heart-outline" size={14} color="#64748B" />
+              <Text style={styles.teamChipEmptyText}>Profilde takım seçin</Text>
+            </View>
+          )}
+        </ScrollView>
+      </View>
+
       {/* Scrollable Content */}
       <ScrollView
         ref={scrollViewRef}
@@ -654,87 +733,6 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* ✅ TAKIM FİLTRE BARI - Profil kartının hemen altında */}
-        <Animated.View 
-          entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(50).springify()} 
-          style={styles.teamFilterBar}
-        >
-          <ScrollView 
-            horizontal 
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.teamFilterScrollContent}
-          >
-            {/* Tümü Chip */}
-            <TouchableOpacity
-              style={[
-                styles.teamChip,
-                selectedTeamIds.length === 0 && styles.teamChipActive
-              ]}
-              onPress={() => handleTeamSelect(null)}
-              activeOpacity={0.8}
-            >
-              <Ionicons 
-                name="apps" 
-                size={14} 
-                color={selectedTeamIds.length === 0 ? '#FFFFFF' : '#94A3B8'} 
-              />
-              <Text style={[
-                styles.teamChipText,
-                selectedTeamIds.length === 0 && styles.teamChipTextActive
-              ]}>
-                Tümü
-              </Text>
-            </TouchableOpacity>
-
-            {/* Favori Takım Chip'leri - ÇOKLU SEÇİM */}
-            {favoriteTeams.slice(0, 6).map((team) => {
-              const isSelected = selectedTeamIds.includes(team.id);
-              return (
-                <TouchableOpacity
-                  key={team.id}
-                  style={[
-                    styles.teamChip,
-                    isSelected && styles.teamChipActive,
-                    { borderColor: team.colors?.[0] || '#1FA2A6' }
-                  ]}
-                  onPress={() => handleTeamSelect(team.id)}
-                  activeOpacity={0.8}
-                >
-                  {team.colors && team.colors.length > 0 && (
-                    <View style={styles.teamChipBadge}>
-                      <View style={[styles.teamChipStripe, { backgroundColor: team.colors[0] }]} />
-                      {team.colors[1] && (
-                        <View style={[styles.teamChipStripe, { backgroundColor: team.colors[1] }]} />
-                      )}
-                    </View>
-                  )}
-                  <Text 
-                    style={[
-                      styles.teamChipText,
-                      isSelected && styles.teamChipTextActive
-                    ]} 
-                    numberOfLines={1}
-                  >
-                    {team.name}
-                  </Text>
-                  {isSelected && (
-                    <View style={styles.teamChipCheck}>
-                      <Ionicons name="checkmark" size={12} color="#FFFFFF" />
-                    </View>
-                  )}
-                </TouchableOpacity>
-              );
-            })}
-
-            {/* Takım yoksa bilgi */}
-            {favoriteTeams.length === 0 && (
-              <View style={styles.teamChipEmpty}>
-                <Ionicons name="heart-outline" size={14} color="#64748B" />
-                <Text style={styles.teamChipEmptyText}>Profilde takım seçin</Text>
-              </View>
-            )}
-          </ScrollView>
-        </Animated.View>
 
         {/* GEÇMİŞ MAÇLAR - En üstte (yukarı scroll yapınca görünür) */}
         {filteredPastMatches.length > 0 && (
@@ -843,7 +841,7 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   scrollContent: {
-    paddingTop: Platform.OS === 'ios' ? 190 : 180, // ✅ ProfileCard overlay'ın altından başlaması için
+    paddingTop: Platform.OS === 'ios' ? 240 : 230, // ✅ ProfileCard + FilterBar altından başlaması için
     paddingBottom: 100 + SIZES.tabBarHeight, // ✅ Footer navigation için extra padding
     backgroundColor: 'transparent', // Grid pattern görünsün
   },
@@ -863,16 +861,24 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   
-  // ✅ Takım Filtre Barı Stilleri
+  // ✅ Takım Filtre Barı Stilleri - SABİT KONUM
+  teamFilterBarFixed: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 175 : 165, // Profil kartının altında
+    left: 0,
+    right: 0,
+    zIndex: 9000,
+    elevation: 9000,
+    backgroundColor: 'rgba(15, 42, 36, 0.95)',
+    paddingVertical: 10,
+    paddingHorizontal: SPACING.base,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(31, 162, 166, 0.2)',
+  },
   teamFilterBar: {
-    marginTop: 10, // Profil kartının hemen altında
     marginBottom: SPACING.md,
     paddingHorizontal: SPACING.base,
     zIndex: 100,
-    backgroundColor: 'rgba(15, 42, 36, 0.9)', // Arka plan görünür olsun
-    paddingVertical: 8,
-    borderRadius: 12,
-    marginHorizontal: SPACING.base,
   },
   teamFilterScrollContent: {
     flexDirection: 'row',
