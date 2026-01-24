@@ -203,21 +203,33 @@ router.get('/live', async (req, res) => {
         console.log('🌐 [LIVE] Fetching from API-FOOTBALL (cache expired)');
         const data = await footballApi.getLiveMatches();
         
-        // 🔥 UPDATE CACHE
+        // 🔥 DEDUPLİKASYON: fixture.id bazında tekil maçlar (ekstra güvenlik)
+        const seenIds = new Set();
+        const uniqueMatches = (data.response || []).filter(match => {
+          const fixtureId = match.fixture?.id;
+          if (!fixtureId || seenIds.has(fixtureId)) {
+            console.log('⚠️ [LIVE] Duplicate match filtered:', fixtureId, match.teams?.home?.name, 'vs', match.teams?.away?.name);
+            return false;
+          }
+          seenIds.add(fixtureId);
+          return true;
+        });
+        
+        // 🔥 UPDATE CACHE with deduplicated data
         API_CACHE.liveMatches = {
-          data: data.response,
+          data: uniqueMatches,
           timestamp: Date.now(),
         };
-        console.log('💾 [LIVE] Cached', data.response.length, 'matches for 12 seconds');
+        console.log('💾 [LIVE] Cached', uniqueMatches.length, 'unique matches for 12 seconds (filtered', (data.response?.length || 0) - uniqueMatches.length, 'duplicates)');
         
-        // Sync to database if enabled
-        if (databaseService.enabled && data.response && data.response.length > 0) {
-          await databaseService.upsertMatches(data.response);
+        // Sync to database if enabled (use unique matches)
+        if (databaseService.enabled && uniqueMatches && uniqueMatches.length > 0) {
+          await databaseService.upsertMatches(uniqueMatches);
         }
         
         return res.json({
           success: true,
-          data: data.response,
+          data: uniqueMatches,
           source: 'api',
           cached: false,
         });

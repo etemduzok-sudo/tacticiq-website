@@ -94,13 +94,24 @@ async function makeRequest(endpoint, params = {}, cacheKey = null, cacheDuration
 // MATCH FILTERING
 // ====================
 
-// ✅ Ortak filtreleme fonksiyonu: Sadece belirtilen maçlar çekilecek
+// ✅ Ortak filtreleme fonksiyonu: Sadece belirtilen maçlar çekilecek + duplikasyon önleme
 function filterMatches(matches) {
   if (!matches || !Array.isArray(matches) || matches.length === 0) {
     return [];
   }
 
-  return matches.filter(match => {
+  // 🔥 DEDUPLİKASYON: fixture.id bazında tekil maçlar
+  const seenIds = new Set();
+  const uniqueMatches = matches.filter(match => {
+    const fixtureId = match.fixture?.id;
+    if (!fixtureId || seenIds.has(fixtureId)) {
+      return false;
+    }
+    seenIds.add(fixtureId);
+    return true;
+  });
+
+  return uniqueMatches.filter(match => {
     const leagueName = (match.league?.name || '').toLowerCase();
     const leagueType = (match.league?.type || '').toLowerCase();
     const country = (match.league?.country || '').toLowerCase();

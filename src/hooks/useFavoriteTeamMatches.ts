@@ -461,15 +461,21 @@ export function useFavoriteTeamMatches(): UseFavoriteTeamMatchesResult {
         }
       }
 
+      // 🔥 CANLI MAÇLARI DA EKLE (bu eksikti!)
+      if (liveMatchesFromAPI.length > 0) {
+        logger.debug('Adding live matches from API', { count: liveMatchesFromAPI.length }, 'MATCHES');
+        allMatches.push(...liveMatchesFromAPI);
+      }
+
       // Remove duplicates (handle both fixture.id and id)
       const uniqueMatches = Array.from(
-        new Map(allMatches.map(m => [m.fixture?.id || m.id, m])).values()
+        new Map(allMatches.map(m => [m.fixture?.id || (m as any).id, m])).values()
       ).filter(m => {
         // Ensure match has required structure
         if (!m) return false;
         if (!m.fixture) {
           // Try to fix if it's in database format
-          if (m.id && m.fixture_date) {
+          if ((m as any).id && (m as any).fixture_date) {
             // This should have been transformed by api.ts, but just in case
             return false; // Skip, let transform function handle it
           }
@@ -477,6 +483,12 @@ export function useFavoriteTeamMatches(): UseFavoriteTeamMatchesResult {
         }
         return true;
       });
+      
+      logger.debug('Unique matches after deduplication', { 
+        total: allMatches.length, 
+        unique: uniqueMatches.length,
+        duplicatesRemoved: allMatches.length - uniqueMatches.length
+      }, 'MATCHES');
       
       // Filter favorite team matches (ID-based)
       const favoriteTeamIds = favoriteTeams.map(t => t.id);
