@@ -880,31 +880,32 @@ const styles = StyleSheet.create({
   legalTitle: { flex: 1, fontSize: 13, fontWeight: '600', color: '#fff' },
   legalArrow: { fontSize: 24, color: '#1FA2A6' },
 
-  // Checkbox
+  // Checkbox - Amber/Gold accent for distinction
   checkboxRow: {
     flexDirection: 'row',
     alignItems: 'center', 
-    backgroundColor: 'rgba(15, 42, 36, 0.95)', 
-    borderRadius: 8, 
-    paddingVertical: 8, 
-    paddingHorizontal: 12, 
+    backgroundColor: 'rgba(201, 164, 76, 0.08)', // Hafif amber arka plan
+    borderRadius: 12, 
+    paddingVertical: 12, 
+    paddingHorizontal: 14, 
     marginBottom: 12, 
-    borderWidth: 1, 
-    borderColor: 'rgba(31, 162, 166, 0.3)' 
+    borderWidth: 1.5, 
+    borderColor: 'rgba(201, 164, 76, 0.4)' // Amber border
   },
   checkbox: {
-    width: 26, 
-    height: 26, 
+    width: 28, 
+    height: 28, 
     borderRadius: 8, 
     borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.4)', 
+    borderColor: '#C9A44C', // Amber border
+    backgroundColor: 'rgba(201, 164, 76, 0.1)',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12 
   },
-  checkboxChecked: { backgroundColor: '#1FA2A6', borderColor: '#1FA2A6' },
-  checkmark: { color: '#fff', fontSize: 14, fontWeight: '700' },
-  checkboxText: { flex: 1, fontSize: 14, color: '#fff', lineHeight: 20 },
+  checkboxChecked: { backgroundColor: '#C9A44C', borderColor: '#C9A44C' }, // Amber checked
+  checkmark: { color: '#0F2A24', fontSize: 16, fontWeight: '800' }, // Koyu yeşil checkmark
+  checkboxText: { flex: 1, fontSize: 14, color: '#E8DCC8', lineHeight: 20, fontWeight: '500' }, // Açık amber text
 
   // Minor Notice
   minorNotice: {
