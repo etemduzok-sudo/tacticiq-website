@@ -48,43 +48,50 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
         try {
           console.log('🔍 [Splash] Web auth check başlıyor...');
           
-          // ✅ OAuth callback kontrolü - URL'de hash varsa bekle
+          // ✅ OAuth callback kontrolü - URL'de hash varsa App.tsx hallediyor, burada skip et
           const hasAuthHash = window.location.hash.includes('access_token') || 
                               window.location.hash.includes('error');
           
           if (hasAuthHash) {
-            console.log('🔄 [Splash] OAuth callback algılandı, Supabase session bekleniyor...');
-            
-            // Supabase'in URL'deki token'ları parse etmesini bekle
-            // detectSessionInUrl: true olduğu için otomatik yapacak
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            
-            // URL hash'i temizle (loop önleme)
-            if (window.history && window.history.replaceState) {
-              window.history.replaceState(null, '', window.location.pathname);
-            }
-          }
-          
-          // ✅ Supabase session kontrolü (öncelikli)
-          const { data: { session } } = await supabase.auth.getSession();
-          
-          if (session?.user) {
-            console.log('✅ [Splash] Supabase session bulundu:', session.user.email);
-            
-            // Kullanıcıyı local storage'a senkronize et
-            const provider = session.user.app_metadata?.provider || 'email';
-            await socialAuthService.checkSession(); // Bu sync yapacak
-            
-            onComplete(true);
+            console.log('🔄 [Splash] OAuth callback var, App.tsx halledecek, bekleniyor...');
+            // App.tsx OAuth'u handle edecek, burada bekle
             return;
           }
           
-          // ✅ AsyncStorage fallback
+          // ✅ AsyncStorage kontrolü (hızlı ve güvenilir)
           const userToken = await AsyncStorage.getItem('tacticiq-user');
-          const hasUser = !!userToken;
-          console.log('🔍 [Splash] AsyncStorage user:', hasUser);
           
-          onComplete(hasUser);
+          if (userToken) {
+            try {
+              const userData = JSON.parse(userToken);
+              console.log('🔍 [Splash] AsyncStorage user found:', userData.email || 'no-email');
+              onComplete(true);
+              return;
+            } catch (e) {
+              console.warn('⚠️ [Splash] Invalid user data in storage');
+            }
+          }
+          
+          // ✅ Supabase session kontrolü (fallback) - timeout ile
+          try {
+            const sessionPromise = supabase.auth.getSession();
+            const timeoutPromise = new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Session check timeout')), 3000)
+            );
+            
+            const { data: { session } } = await Promise.race([sessionPromise, timeoutPromise]) as any;
+            
+            if (session?.user) {
+              console.log('✅ [Splash] Supabase session bulundu:', session.user.email);
+              onComplete(true);
+              return;
+            }
+          } catch (sessionError) {
+            console.warn('⚠️ [Splash] Session check failed/timeout:', sessionError);
+          }
+          
+          console.log('🔍 [Splash] No user found, going to onboarding');
+          onComplete(false);
         } catch (error) {
           console.error('❌ [Splash] Auth check error:', error);
           onComplete(false);
