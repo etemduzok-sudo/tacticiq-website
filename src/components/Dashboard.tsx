@@ -988,7 +988,24 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
         {filteredLiveMatches.length === 0 && filteredUpcomingMatches.length === 0 && filteredPastMatches.length === 0 && (
           <View style={styles.emptyState}>
             <Ionicons name="football-outline" size={48} color="#64748B" />
-            <Text style={styles.emptyText}>Favori takımlarınızın maçı bulunamadı</Text>
+            <Text style={styles.emptyText}>
+              {favoriteTeams.length === 0 
+                ? 'Maçları görmek için profil ekranından favori takım seçin'
+                : error 
+                  ? 'Maçlar yüklenirken hata oluştu. Lütfen tekrar deneyin.'
+                  : loading
+                    ? 'Maçlar yükleniyor...'
+                    : 'Favori takımlarınızın yaklaşan maçı bulunamadı'}
+            </Text>
+            {favoriteTeams.length === 0 && (
+              <TouchableOpacity 
+                style={styles.selectTeamButton}
+                onPress={() => onNavigate?.('profile')}
+              >
+                <Ionicons name="heart-outline" size={16} color="#1FA2A6" />
+                <Text style={styles.selectTeamText}>Takım Seç</Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
 
@@ -1797,6 +1814,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: SPACING.xl * 2,
+  },
+  selectTeamButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
+    marginTop: SPACING.md,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.sm,
+    backgroundColor: 'rgba(31, 162, 166, 0.15)',
+    borderRadius: SIZES.radiusMd,
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.3)',
+  },
+  selectTeamText: {
+    color: '#1FA2A6',
+    fontWeight: '600',
+    fontSize: 14,
   },
   emptyText: {
     ...TYPOGRAPHY.bodySmall,

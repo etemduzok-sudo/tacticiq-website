@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -36,16 +36,17 @@ import { profileService } from '../services/profileService';
 import { setFavoriteTeams as saveFavoriteTeamsToStorage } from '../utils/storageUtils';
 import { calculateTopPercent } from '../types/profile.types';
 import { teamsApi } from '../services/api';
-import { SPACING, TYPOGRAPHY, BRAND, DARK_MODE, COLORS, SIZES, SHADOWS } from '../theme/theme';
+import { SPACING, TYPOGRAPHY, BRAND, DARK_MODE, LIGHT_MODE, COLORS, SIZES, SHADOWS } from '../theme/theme';
 import { StandardHeader, ScreenLayout } from '../components/layouts';
+import { useTheme } from '../contexts/ThemeContext';
 import { containerStyles } from '../utils/styleHelpers';
 import { ChangePasswordModal } from '../components/profile/ChangePasswordModal';
 import { authService } from '../services/authService';
 import { LegalDocumentScreen } from './LegalDocumentScreen';
 import { translateCountry, formatCountryDisplay, getCountryFlag } from '../utils/countryUtils';
 
-// Theme colors (Dark mode - mobil varsayılan olarak dark mode kullanıyor)
-const theme = COLORS.dark;
+// ❌ Kaldırıldı - Theme artık component içinde dinamik olarak alınıyor
+// const theme = COLORS.dark;
 
 interface ProfileScreenProps {
   onBack: () => void;
@@ -375,8 +376,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     }
   }, [useFallbackTeams]);
   
-  // 🌙 TEMA STATE - Açık/Koyu mod
-  const [isDarkMode, setIsDarkMode] = useState(true); // Varsayılan koyu mod
+  // 🌙 TEMA STATE - ThemeContext'ten al
+  const { theme: currentTheme, setTheme: setAppTheme } = useTheme();
+  const isDarkMode = currentTheme === 'dark';
+  
+  // 🎨 Dinamik stiller - tema değişince yeniden oluştur
+  const styles = useMemo(() => createStyles(isDarkMode), [isDarkMode]);
+  const theme = useMemo(() => isDarkMode ? COLORS.dark : COLORS.light, [isDarkMode]);
   
   // 📊 USER STATS STATE
   const [user, setUser] = useState({
@@ -408,6 +414,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
   // ⚙️ SETTINGS STATE - Web ile aynı
   const [selectedLanguage, setSelectedLanguage] = useState('tr');
+  const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
+  const [showTimezoneDropdown, setShowTimezoneDropdown] = useState(false);
   const [selectedTimezone, setSelectedTimezone] = useState('Europe/Istanbul');
   const [emailNotifications, setEmailNotifications] = useState(false);
   const [weeklySummary, setWeeklySummary] = useState(false);
@@ -430,74 +438,69 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     }
   }, []);
 
-  // 🏆 LOAD BADGES
+  // 🏆 LOAD BADGES - Hemen ALL_BADGES'i göster, sonra earned durumunu güncelle
   const loadBadges = async () => {
     try {
-      // Get all available badges (earned + locked)
-      const availableBadges = await getAllAvailableBadges();
+      // ✅ Hemen ALL_BADGES'i göster (yükleniyor... mesajını önle)
+      const initialBadges = ALL_BADGES.map((badgeDef) => ({
+        id: badgeDef.id,
+        name: badgeDef.name,
+        description: badgeDef.description,
+        icon: badgeDef.emoji,
+        tier: badgeDef.tier as any,
+        earned: false, // Başlangıçta hepsi kilitli
+        earnedAt: undefined,
+        requirement: badgeDef.howToEarn,
+        category: 'PREDICTION_GOD' as any,
+        color: badgeDef.color,
+      }));
       
-      // Map ALL_BADGES to include earned status from availableBadges
-      const badgesWithStatus = ALL_BADGES.map((badgeDef) => {
-        const earnedBadge = availableBadges.find(b => b.id === badgeDef.id);
-        return {
-          id: badgeDef.id,
-          name: badgeDef.name,
-          description: badgeDef.description,
-          icon: badgeDef.emoji,
-          tier: badgeDef.tier as any,
-          earned: earnedBadge?.earned || false,
-          earnedAt: earnedBadge?.earnedAt,
-          requirement: badgeDef.howToEarn,
-          category: earnedBadge?.category || 'PREDICTION_GOD' as any,
-          color: badgeDef.color,
-        };
-      });
+      setAllBadges(initialBadges as any);
+      logger.info(`Badges initialized: ${ALL_BADGES.length} total`, { total: ALL_BADGES.length }, 'BADGES');
       
-      setAllBadges(badgesWithStatus as any);
-      
-      // Count earned badges
-      const earnedCount = badgesWithStatus.filter(b => b.earned).length;
-      setBadgeCount(earnedCount);
-      
-      logger.info(`Loaded badges: ${ALL_BADGES.length} total, ${earnedCount} earned`, { total: ALL_BADGES.length, earned: earnedCount }, 'BADGES');
-      
-      // Initialize test badges in background (non-blocking)
-      if (earnedCount === 0) {
-        // Only initialize if no badges exist
-        setTimeout(async () => {
-          try {
-            const badgeService = await import('../services/badgeService');
-            if (badgeService.initializeTestBadges) {
-              await badgeService.initializeTestBadges();
-              // Reload badges after initialization
-              const updatedBadges = await getAllAvailableBadges();
-              const updatedStatus = ALL_BADGES.map((badgeDef) => {
-                const earnedBadge = updatedBadges.find(b => b.id === badgeDef.id);
-                return {
-                  id: badgeDef.id,
-                  name: badgeDef.name,
-                  description: badgeDef.description,
-                  icon: badgeDef.emoji,
-                  tier: badgeDef.tier as any,
-                  earned: earnedBadge?.earned || false,
-                  earnedAt: earnedBadge?.earnedAt,
-                  requirement: badgeDef.howToEarn,
-                  category: earnedBadge?.category || 'PREDICTION_GOD' as any,
-                  color: badgeDef.color,
-                };
-              });
-              setAllBadges(updatedStatus as any);
-              setBadgeCount(updatedStatus.filter(b => b.earned).length);
-            }
-          } catch (err) {
-            logger.warn('Background badge init failed', { error: err }, 'BADGES');
-          }
-        }, 1000);
+      // ✅ Arka planda earned durumunu güncelle
+      try {
+        const availableBadges = await getAllAvailableBadges();
+        
+        const badgesWithStatus = ALL_BADGES.map((badgeDef) => {
+          const earnedBadge = availableBadges.find(b => b.id === badgeDef.id);
+          return {
+            id: badgeDef.id,
+            name: badgeDef.name,
+            description: badgeDef.description,
+            icon: badgeDef.emoji,
+            tier: badgeDef.tier as any,
+            earned: earnedBadge?.earned || false,
+            earnedAt: earnedBadge?.earnedAt,
+            requirement: badgeDef.howToEarn,
+            category: earnedBadge?.category || 'PREDICTION_GOD' as any,
+            color: badgeDef.color,
+          };
+        });
+        
+        setAllBadges(badgesWithStatus as any);
+        const earnedCount = badgesWithStatus.filter(b => b.earned).length;
+        setBadgeCount(earnedCount);
+        logger.info(`Badges updated: ${earnedCount} earned`, { earned: earnedCount }, 'BADGES');
+      } catch (err) {
+        logger.warn('Failed to fetch earned badges', { error: err }, 'BADGES');
       }
     } catch (error) {
       logger.error('Error loading badges', { error }, 'BADGES');
-      // Fallback: show empty badges
-      setAllBadges([]);
+      // Fallback: Yine de ALL_BADGES'i göster
+      const fallbackBadges = ALL_BADGES.map((badgeDef) => ({
+        id: badgeDef.id,
+        name: badgeDef.name,
+        description: badgeDef.description,
+        icon: badgeDef.emoji,
+        tier: badgeDef.tier as any,
+        earned: false,
+        earnedAt: undefined,
+        requirement: badgeDef.howToEarn,
+        category: 'PREDICTION_GOD' as any,
+        color: badgeDef.color,
+      }));
+      setAllBadges(fallbackBadges as any);
       setBadgeCount(0);
     }
   };
@@ -598,12 +601,16 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         const userData = userDataStr ? JSON.parse(userDataStr) : null;
         
         // ✅ Kullanıcı adı ve ismini AsyncStorage'dan yükle (fallback)
+        // OAuth'tan gelen displayName ve photoURL'i de kontrol et
         if (!unifiedProfile && userData) {
+          const fullName = userData.displayName || userData.name || userData.username;
+          const avatarUrl = userData.photoURL || userData.avatar || userData.avatar_url;
+          
           setUser(prev => ({
             ...prev,
-            name: userData.name || prev.name,
+            name: fullName || prev.name,
             username: userData.username ? `@${userData.username}` : prev.username,
-            avatar: userData.avatar || prev.avatar,
+            avatar: avatarUrl || prev.avatar,
           }));
         }
         
@@ -672,11 +679,15 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           logger.debug('No valid UUID found, skipping Supabase fetch', undefined, 'PROFILE');
           // Use AsyncStorage data if available
           if (userData) {
+            // ✅ OAuth'tan gelen displayName ve photoURL'i de kontrol et
+            const fullName = userData.displayName || userData.name || userData.username || 'Kullanıcı';
+            const avatarUrl = userData.photoURL || userData.avatar || userData.avatar_url || '';
+            
             setUser({
-              name: userData.name || userData.username || 'Kullanıcı',
+              name: fullName,
               username: `@${userData.username || 'kullanici'}`,
               email: userData.email || 'user@example.com',
-              avatar: userData.avatar || '',
+              avatar: avatarUrl,
               level: 1,
               points: 0,
               countryRank: 0,
@@ -1852,43 +1863,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             <View style={styles.settingsGrid}>
               <TouchableOpacity 
                 style={styles.settingsField}
-                onPress={async () => {
-                  const languages = [
-                    { code: 'tr', name: 'Türkçe', flag: '🇹🇷' },
-                    { code: 'en', name: 'English', flag: '🇬🇧' },
-                    { code: 'de', name: 'Deutsch', flag: '🇩🇪' },
-                  ];
-                  
-                  if (Platform.OS === 'web') {
-                    // Web için basit prompt
-                    const choice = window.prompt(
-                      'Dil seçin:\n1 - 🇹🇷 Türkçe\n2 - 🇬🇧 English\n3 - 🇩🇪 Deutsch\n\nNumara girin (1, 2 veya 3):'
-                    );
-                    const langMap: Record<string, string> = { '1': 'tr', '2': 'en', '3': 'de' };
-                    const langCode = langMap[choice || ''];
-                    if (langCode) {
-                      setSelectedLanguage(langCode);
-                      await profileService.updateProfile({ preferredLanguage: langCode });
-                      // i18n dilini değiştir
-                      i18n.changeLanguage(langCode);
-                      window.alert(`✅ Dil değiştirildi: ${languages.find(l => l.code === langCode)?.name}`);
-                    }
-                  } else {
-                  Alert.alert(
-                    'Dil Seçimi',
-                    'Dil seçin:',
-                    languages.map(lang => ({
-                      text: `${lang.flag} ${lang.name}`,
-                      onPress: async () => {
-                        setSelectedLanguage(lang.code);
-                        await profileService.updateProfile({ preferredLanguage: lang.code });
-                          i18n.changeLanguage(lang.code);
-                        Alert.alert('Başarılı', `Dil değiştirildi: ${lang.name}`);
-                      },
-                      })).concat([{ text: 'İptal', style: 'cancel' as const }])
-                  );
-                  }
-                }}
+                onPress={() => setShowLanguageDropdown(!showLanguageDropdown)}
               >
                 <Text style={styles.formLabel}>Dil</Text>
                 <View style={styles.settingsValue}>
@@ -1898,9 +1873,43 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   <Text style={styles.settingsValueText}>
                     {selectedLanguage === 'tr' ? 'Türkçe' : selectedLanguage === 'en' ? 'English' : 'Deutsch'}
                   </Text>
-                  <Ionicons name="chevron-down" size={16} color={theme.mutedForeground} />
+                  <Ionicons name={showLanguageDropdown ? "chevron-up" : "chevron-down"} size={16} color={theme.mutedForeground} />
                 </View>
               </TouchableOpacity>
+              
+              {/* Dil Dropdown */}
+              {showLanguageDropdown && (
+                <View style={styles.languageDropdown}>
+                  {[
+                    { code: 'tr', name: 'Türkçe', flag: '🇹🇷' },
+                    { code: 'en', name: 'English', flag: '🇬🇧' },
+                    { code: 'de', name: 'Deutsch', flag: '🇩🇪' },
+                  ].map((lang) => (
+                    <TouchableOpacity
+                      key={lang.code}
+                      style={[
+                        styles.languageOption,
+                        selectedLanguage === lang.code && styles.languageOptionSelected
+                      ]}
+                      onPress={async () => {
+                        setSelectedLanguage(lang.code);
+                        await profileService.updateProfile({ preferredLanguage: lang.code });
+                        i18n.changeLanguage(lang.code);
+                        setShowLanguageDropdown(false);
+                      }}
+                    >
+                      <Text style={styles.languageFlag}>{lang.flag}</Text>
+                      <Text style={[
+                        styles.languageName,
+                        selectedLanguage === lang.code && styles.languageNameSelected
+                      ]}>{lang.name}</Text>
+                      {selectedLanguage === lang.code && (
+                        <Ionicons name="checkmark" size={18} color={theme.primary} />
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
               <TouchableOpacity 
                 style={styles.settingsField}
                 onPress={async () => {
@@ -1964,17 +1973,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               <View style={styles.themeToggleButtons}>
                 <TouchableOpacity
                   style={[styles.themeButton, !isDarkMode && styles.themeButtonActive]}
-                  onPress={() => {
-                    setIsDarkMode(false);
-                    Alert.alert('Tema', 'Açık mod şu an geliştirme aşamasında. Yakında kullanılabilir olacak.');
-                  }}
+                  onPress={() => setAppTheme('light')}
                 >
                   <Ionicons name="sunny" size={16} color={!isDarkMode ? '#000' : theme.mutedForeground} />
                   <Text style={[styles.themeButtonText, !isDarkMode && styles.themeButtonTextActive]}>Açık</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.themeButton, isDarkMode && styles.themeButtonActive]}
-                  onPress={() => setIsDarkMode(true)}
+                  onPress={() => setAppTheme('dark')}
                 >
                   <Ionicons name="moon" size={16} color={isDarkMode ? '#000' : theme.mutedForeground} />
                   <Text style={[styles.themeButtonText, isDarkMode && styles.themeButtonTextActive]}>Koyu</Text>
@@ -2696,8 +2702,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   );
 };
 
-const createStyles = () => {
-  const theme = COLORS.dark;
+const createStyles = (isDark: boolean = true) => {
+  const theme = isDark ? COLORS.dark : COLORS.light;
   return StyleSheet.create({
   container: {
     flex: 1,
@@ -5087,6 +5093,39 @@ const createStyles = () => {
     ...TYPOGRAPHY.body,
     color: theme.foreground,
   },
+  // Language Dropdown Styles
+  languageDropdown: {
+    backgroundColor: theme.card,
+    borderRadius: SIZES.radiusMd,
+    borderWidth: 1,
+    borderColor: theme.border,
+    marginTop: SPACING.xs,
+    marginBottom: SPACING.sm,
+    overflow: 'hidden',
+  },
+  languageOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: SPACING.md,
+    gap: SPACING.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.border + '40',
+  },
+  languageOptionSelected: {
+    backgroundColor: theme.primary + '15',
+  },
+  languageFlag: {
+    fontSize: 20,
+  },
+  languageName: {
+    ...TYPOGRAPHY.body,
+    color: theme.foreground,
+    flex: 1,
+  },
+  languageNameSelected: {
+    color: theme.primary,
+    fontWeight: '600',
+  },
   settingsDivider: {
     height: 1,
     backgroundColor: theme.border,
@@ -5285,4 +5324,5 @@ const createStyles = () => {
 });
 };
 
-const styles = createStyles();
+// Varsayılan stiller - Component içinde dinamik olarak override edilecek
+const defaultStyles = createStyles(true);
