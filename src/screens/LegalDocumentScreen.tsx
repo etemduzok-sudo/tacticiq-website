@@ -81,7 +81,7 @@ export const LegalDocumentScreen: React.FC<LegalDocumentScreenProps> = ({
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={onBack} style={styles.backButton}>
-            <Ionicons name="chevron-back" size={24} color="#059669" />
+            <Ionicons name="chevron-back" size={24} color="#1FA2A6" />
             <Text style={styles.backText}>Geri</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Yasal Belgeler</Text>
@@ -155,7 +155,7 @@ export const LegalDocumentScreen: React.FC<LegalDocumentScreenProps> = ({
         <View style={styles.footer}>
           <TouchableOpacity onPress={onBack} activeOpacity={0.8}>
             <LinearGradient
-              colors={['#059669', '#047857']}
+              colors={['#1FA2A6', '#168688']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.closeButton}
@@ -218,7 +218,7 @@ const styles = StyleSheet.create({
   backText: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#059669',
+    color: '#1FA2A6',
   },
   headerTitle: {
     fontSize: 18,
@@ -256,7 +256,7 @@ const styles = StyleSheet.create({
     }),
     backgroundColor: 'rgba(15, 23, 42, 0.8)',
     borderWidth: 1,
-    borderColor: 'rgba(5, 150, 105, 0.3)',
+    borderColor: 'rgba(31, 162, 166, 0.3)',
     borderRadius: 12,
     overflow: 'hidden',
   },
@@ -274,11 +274,11 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: 'rgba(5, 150, 105, 0.2)',
+    borderColor: 'rgba(31, 162, 166, 0.2)',
   },
   menuItemActive: {
-    backgroundColor: 'rgba(5, 150, 105, 0.15)',
-    borderColor: 'rgba(5, 150, 105, 0.5)',
+    backgroundColor: 'rgba(31, 162, 166, 0.15)',
+    borderColor: 'rgba(31, 162, 166, 0.5)',
   },
   menuItemIcon: {
     fontSize: 20,
@@ -309,7 +309,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   menuItemTitleActive: {
-    color: '#059669',
+    color: '#1FA2A6',
   },
   menuItemDescription: {
     fontSize: 10,
@@ -322,7 +322,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(15, 23, 42, 0.8)',
     borderWidth: 1,
-    borderColor: 'rgba(5, 150, 105, 0.3)',
+    borderColor: 'rgba(31, 162, 166, 0.3)',
     borderRadius: 12,
     overflow: 'hidden',
   },
@@ -332,7 +332,7 @@ const styles = StyleSheet.create({
   contentHeader: {
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(5, 150, 105, 0.2)',
+    borderBottomColor: 'rgba(31, 162, 166, 0.2)',
   },
   contentTitle: {
     fontSize: 20,

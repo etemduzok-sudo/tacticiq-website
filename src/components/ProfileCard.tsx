@@ -117,33 +117,24 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
   // Pulse animasyonu kaldırıldı
   // NOT: AsyncStorage yüklemesi kaldırıldı - profileService tek veri kaynağı olarak kullanılıyor
 
-  // Load earned badges
+  // Load earned badges - ProfileScreen ile aynı mantık
   useEffect(() => {
     const loadEarnedBadges = async () => {
       try {
         const userBadges = await getUserBadges();
-        // Map to match ALL_BADGES structure
-        const earned = userBadges.map(badge => {
-          const badgeDef = ALL_BADGES.find(b => b.id === badge.id);
-          // Convert BadgeTier enum to number (1-5)
-          const tierMap: Record<string, number> = {
-            'bronze': 1,
-            'silver': 2,
-            'gold': 3,
-            'platinum': 4,
-            'diamond': 5,
-          };
-          const tierNumber = typeof badge.tier === 'string' 
-            ? tierMap[badge.tier] || badgeDef?.tier || 1
-            : badgeDef?.tier || 1;
-          
-          return {
-            id: badge.id,
-            name: badge.name,
-            emoji: badge.icon || badgeDef?.emoji || '🏆',
-            tier: tierNumber,
-          };
-        });
+        const earnedIds = new Set(userBadges.map(b => b.id));
+        
+        // ✅ Tüm rozetleri ALL_BADGES'den al, earned durumunu kontrol et
+        // Sadece kazanılmış olanları göster (ProfileScreen'den farklı)
+        const earned = ALL_BADGES
+          .filter(badgeDef => earnedIds.has(badgeDef.id))
+          .map(badgeDef => ({
+            id: badgeDef.id,
+            name: badgeDef.name,
+            emoji: badgeDef.emoji,
+            tier: badgeDef.tier,
+          }));
+        
         setEarnedBadges(earned);
       } catch (error) {
         console.error('Error loading earned badges:', error);

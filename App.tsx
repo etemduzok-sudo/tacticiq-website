@@ -1098,8 +1098,12 @@ export default function App() {
                 setCurrentScreen('matches'); // Matches ekranına git, orada filtreleme yapılacak
               }}
               onTeamsChange={() => {
-                // ✅ Takım değiştiğinde ProfileCard'daki listeyi de güncelle
+                // ✅ Takım değiştiğinde hem listeyi hem maçları güncelle
                 refetchFavoriteTeams();
+                // ✅ Maçları da yenile (yeni takımların maçları için)
+                setTimeout(() => {
+                  matchData.refetch();
+                }, 500); // Storage yazılmasını bekle
               }}
               onProUpgrade={handleProUpgrade}
               onDatabaseTest={() => setCurrentScreen('database-test')}

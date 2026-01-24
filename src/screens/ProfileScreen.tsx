@@ -598,6 +598,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           setSelectedTimezone(unifiedProfile.timezone || 'Europe/Istanbul');
           // TODO: Bildirim ayarları profil verilerinden alınacak
           
+          // ✅ Rozetleri yükle (erken return'den önce!)
+          await loadBadges();
+          
           // ✅ Unified profile bulundu, loading'i kapat ve çık
           setLoading(false);
           return;
