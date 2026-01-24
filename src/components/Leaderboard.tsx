@@ -87,7 +87,7 @@ export function Leaderboard({ onNavigate }: LeaderboardProps = {}) {
     if (rank === 1) return ['#FFD700', '#FFA500'];
     if (rank === 2) return ['#E8E8E8', '#C0C0C0'];
     if (rank === 3) return ['#CD7F32', '#8B4513'];
-    return ['#334155', '#1E293B'];
+    return ['#1A3A34', '#162E29']; // Koyu yeşil gradient
   }, []);
 
   const getChangeIcon = useCallback((change: number) => {
@@ -435,7 +435,7 @@ const styles = StyleSheet.create({
   },
   tabsContainer: {
     borderBottomWidth: 1,
-    borderBottomColor: '#1E293B',
+    borderBottomColor: 'rgba(31, 162, 166, 0.2)', // Turkuaz border
   },
   tabs: {
     paddingHorizontal: 16,
@@ -516,7 +516,7 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#0F2A24', // Koyu yeşil
     borderWidth: 2,
     borderColor: '#059669',
     alignItems: 'center',
@@ -541,7 +541,7 @@ const styles = StyleSheet.create({
   },
   podiumPlatform: {
     width: '100%',
-    backgroundColor: '#1E293B',
+    backgroundColor: '#1A3A34', // Koyu yeşil
     borderTopLeftRadius: 12,
     borderTopRightRadius: 12,
     alignItems: 'center',
@@ -564,9 +564,9 @@ const styles = StyleSheet.create({
   leaderboardItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1E293B',
+    backgroundColor: '#1A3A34', // Koyu yeşil
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: 'rgba(31, 162, 166, 0.25)', // Turkuaz border
     borderRadius: 12,
     padding: 12,
     marginBottom: 8,

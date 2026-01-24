@@ -648,7 +648,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#1E293B',
+    borderBottomColor: 'rgba(31, 162, 166, 0.2)', // Turkuaz border
   },
   backButton: {
     flexDirection: 'row',
@@ -692,9 +692,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   fixedHeader: {
-    backgroundColor: '#0F172A', // Orijinal lacivert
+    backgroundColor: '#0F2A24', // Koyu yeşil zemin
     borderBottomWidth: 1,
-    borderBottomColor: '#1E293B',
+    borderBottomColor: 'rgba(31, 162, 166, 0.2)', // Turkuaz border
   },
   scrollView: {
     flex: 1,
@@ -718,7 +718,7 @@ const styles = StyleSheet.create({
   },
   errorContainer: {
     padding: 20,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#1A3A34', // Koyu yeşil
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#EF4444',
@@ -787,7 +787,7 @@ const styles = StyleSheet.create({
     color: '#F1F5F9',
   },
   matchCard: {
-    backgroundColor: '#1E293B', // Orijinal slate
+    backgroundColor: '#1A3A34', // Koyu yeşil - Dashboard ile uyumlu
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,

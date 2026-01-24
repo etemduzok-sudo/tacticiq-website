@@ -1098,7 +1098,7 @@ export default function App() {
                             );
                           }
                         }}
-                        showTeamFilter={['home', 'matches'].includes(currentScreen)}
+                        showTeamFilter={['home', 'matches', 'leaderboard', 'profile'].includes(currentScreen)}
                       />
                     </View>
                   )}

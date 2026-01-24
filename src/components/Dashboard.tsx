@@ -227,7 +227,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
         activeOpacity={0.8}
       >
         <LinearGradient
-          colors={['#1E293B', '#1A2435', '#151D2C']} // Koyu slate/lacivert gradient - yeşil zeminden farklı
+          colors={['#1A3A34', '#162E29', '#122520']} // Koyu yeşil gradient - zemin ile uyumlu
           style={styles.matchCard}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
@@ -1667,8 +1667,8 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 25, // ✅ Profil kartı gibi yuvarlatılmış alt köşeler
     overflow: 'hidden',
     borderWidth: 1.5,
-    borderColor: 'rgba(100, 116, 139, 0.35)', // Slate border
-    backgroundColor: '#1E293B', // Koyu slate/lacivert - yeşil zeminden farklı
+    borderColor: 'rgba(31, 162, 166, 0.25)', // Turkuaz border
+    backgroundColor: '#1A3A34', // Koyu yeşil - zemin ile uyumlu
     ...(Platform.OS === 'web' ? {
       boxShadow: '0 4px 16px rgba(0, 0, 0, 0.4), 0 2px 6px rgba(100, 116, 139, 0.15)',
     } : {
