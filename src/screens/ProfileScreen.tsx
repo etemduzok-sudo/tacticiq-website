@@ -2510,7 +2510,7 @@ const createStyles = () => {
   return StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.background,
+    backgroundColor: '#0F2A24', // Koyu yeşil zemin - Dashboard ile aynı
   },
 
   // ScrollView
@@ -3130,9 +3130,9 @@ const createStyles = () => {
     left: 0,
     right: 0,
     marginTop: 8,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#1A3A34',
     borderWidth: 1.5,
-    borderColor: 'rgba(5, 150, 105, 0.4)',
+    borderColor: 'rgba(31, 162, 166, 0.4)',
     borderRadius: 12,
     maxHeight: 300,
     zIndex: 1000,
@@ -3263,10 +3263,10 @@ const createStyles = () => {
     justifyContent: 'center',
     gap: 8,
     padding: 16,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#1A3A34',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#059669',
+    borderColor: 'rgba(31, 162, 166, 0.4)',
   },
   dbTestText: {
     fontSize: 16,
@@ -3596,12 +3596,12 @@ const createStyles = () => {
 
   // ⚽ MATCH CARD STYLES
   matchCard: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#1A3A34',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: 'rgba(31, 162, 166, 0.2)',
   },
   matchHeader: {
     flexDirection: 'row',
@@ -3895,7 +3895,7 @@ const createStyles = () => {
     alignItems: 'center',
   },
   badgeDetailModal: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#1A3A34',
     borderRadius: 24,
     padding: 32,
     width: '85%',
@@ -3981,7 +3981,7 @@ const createStyles = () => {
     backgroundColor: 'rgba(30, 41, 59, 0.5)',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: 'rgba(31, 162, 166, 0.2)',
   },
   badgeProgressHeader: {
     flexDirection: 'row',
@@ -4001,7 +4001,7 @@ const createStyles = () => {
   },
   badgeProgressBarContainer: {
     height: 8,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#0F2A24',
     borderRadius: 4,
     overflow: 'hidden',
     marginBottom: 8,

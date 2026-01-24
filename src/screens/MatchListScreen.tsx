@@ -364,7 +364,7 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
         activeOpacity={0.8}
       >
         <LinearGradient
-          colors={['#0f172a', '#1e293b', '#0f172a']}
+          colors={['#1A3A34', '#162E29', '#122520']}
           style={matchCardStyles.matchCard}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
@@ -880,7 +880,7 @@ const matchCardStyles = StyleSheet.create({
     borderRadius: 16,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(51, 65, 85, 0.5)',
+    borderColor: 'rgba(31, 162, 166, 0.25)',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -1077,12 +1077,12 @@ const matchCardStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    backgroundColor: 'rgba(51, 65, 85, 0.4)',
+    backgroundColor: 'rgba(31, 162, 166, 0.2)',
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: 'rgba(31, 162, 166, 0.3)',
   },
   matchCardLiveMinuteText: {
     fontSize: 16,
@@ -1091,16 +1091,18 @@ const matchCardStyles = StyleSheet.create({
   },
   matchCardScoreBox: {
     marginTop: 4,
-    backgroundColor: '#1e293b',
+    backgroundColor: '#0F2A24',
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 4,
     alignItems: 'center',
     justifyContent: 'center',
     minWidth: 45,
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.2)',
     ...Platform.select({
       ios: {
-        shadowColor: '#334155',
+        shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.3,
         shadowRadius: 4,
@@ -1109,7 +1111,7 @@ const matchCardStyles = StyleSheet.create({
         elevation: 3,
       },
       web: {
-        boxShadow: '0 2px 4px rgba(30, 41, 59, 0.3)',
+        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.3)',
       },
     }),
   },
@@ -1119,10 +1121,10 @@ const matchCardStyles = StyleSheet.create({
     color: '#ffffff',
     ...Platform.select({
       web: {
-        textShadow: '1px 1px 0px #00ffff, -1px -1px 0px #ff6b35',
+        textShadow: '1px 1px 0px #1FA2A6',
       },
       default: {
-        textShadowColor: '#00ffff',
+        textShadowColor: '#1FA2A6',
         textShadowOffset: { width: 1, height: 1 },
         textShadowRadius: 2,
       },
@@ -1130,16 +1132,18 @@ const matchCardStyles = StyleSheet.create({
   },
   matchCardScoreBoxLive: {
     marginTop: 4,
-    backgroundColor: '#1e293b',
+    backgroundColor: '#0F2A24',
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 4,
     alignItems: 'center',
     justifyContent: 'center',
     minWidth: 45,
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.3)',
     ...Platform.select({
       ios: {
-        shadowColor: '#334155',
+        shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.3,
         shadowRadius: 4,
@@ -1148,7 +1152,7 @@ const matchCardStyles = StyleSheet.create({
         elevation: 3,
       },
       web: {
-        boxShadow: '0 2px 4px rgba(30, 41, 59, 0.3)',
+        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.3)',
       },
     }),
   },
@@ -1158,10 +1162,10 @@ const matchCardStyles = StyleSheet.create({
     color: '#ffffff',
     ...Platform.select({
       web: {
-        textShadow: '1px 1px 0px #00ffff, -1px -1px 0px #ff6b35',
+        textShadow: '1px 1px 0px #1FA2A6',
       },
       default: {
-        textShadowColor: '#00ffff',
+        textShadowColor: '#1FA2A6',
         textShadowOffset: { width: 1, height: 1 },
         textShadowRadius: 2,
       },

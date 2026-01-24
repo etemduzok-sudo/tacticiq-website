@@ -226,6 +226,7 @@ export const STORAGE_KEYS = {
   LANGUAGE: 'tacticiq-language',
   THEME: 'tacticiq-theme',
   FAVORITE_TEAMS: 'tacticiq-favorite-clubs',
+  FAVORITE_CLUBS: 'tacticiq-favorite-clubs', // Alias for FAVORITE_TEAMS
   PREDICTIONS: 'tacticiq-predictions-',  // Append matchId
   RATINGS: 'tacticiq-ratings-',          // Append matchId
   ONBOARDING: 'tacticiq-onboarding-complete',
