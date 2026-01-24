@@ -821,42 +821,21 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
           )}
         </View>
 
-        {/* GEÇMİŞ MAÇLAR - Aşağıda, tıklayınca yukarı doğru açılır */}
+        {/* GEÇMİŞ MAÇLAR - Biten sekmesine yönlendirme */}
         {filteredPastMatches.length > 0 && (
-          <View style={styles.pastMatchesSection}>
-            {/* Küçültülmüş bar - tıkla genişlet */}
-            <TouchableOpacity 
-              style={styles.pastMatchesCollapsedBar}
-              onPress={() => setPastMatchesCollapsed(!pastMatchesCollapsed)}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="time-outline" size={16} color="#64748B" />
+          <TouchableOpacity 
+            style={styles.pastMatchesSection}
+            onPress={() => onNavigate('finished')}
+            activeOpacity={0.7}
+          >
+            <View style={styles.pastMatchesCollapsedBar}>
+              <Ionicons name="checkmark-done-outline" size={16} color="#64748B" />
               <Text style={styles.pastMatchesCollapsedText}>
                 {filteredPastMatches.length} Biten Maç
               </Text>
-              <Ionicons 
-                name={pastMatchesCollapsed ? 'chevron-up' : 'chevron-down'} 
-                size={16} 
-                color="#64748B" 
-              />
-            </TouchableOpacity>
-            
-            {/* Genişletilmiş görünüm - yukarı doğru açılır (en yeni en üstte) */}
-            {!pastMatchesCollapsed && (
-              <View style={styles.pastMatchesExpandedList}>
-                {/* Maç listesi - en yeni (son biten) en üstte, en eski en altta */}
-                {[...filteredPastMatches].reverse().map((match, index) => (
-                  <Animated.View 
-                    key={`past-${match.fixture.id}`} 
-                    entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(50 + index * 30).springify()}
-                    style={styles.matchCardWrapper}
-                  >
-                    {renderMatchCard(match, 'finished', () => onNavigate('match-result-summary', { id: match.fixture.id }))}
-                  </Animated.View>
-                ))}
-              </View>
-            )}
-          </View>
+              <Ionicons name="chevron-forward" size={16} color="#64748B" />
+            </View>
+          </TouchableOpacity>
         )}
 
         {/* Bottom Padding */}

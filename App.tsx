@@ -645,6 +645,10 @@ export default function App() {
         setActiveTab('matches');
         setCurrentScreen('matches');
         break;
+      case 'finished':
+        setActiveTab('finished');
+        setCurrentScreen('finished');
+        break;
       case 'match-detail':
         if (params?.id) {
           setSelectedMatchId(params.id);
@@ -914,6 +918,19 @@ export default function App() {
             />
           );
         
+        case 'finished':
+          // ✅ Biten maçlar sekmesi
+          return (
+            <MatchListScreen
+              onMatchSelect={handleMatchSelect}
+              onMatchResultSelect={handleMatchResultSelect}
+              onProfileClick={handleProfileClick}
+              matchData={matchData}
+              selectedTeamId={selectedTeamIds[0]}
+              showOnlyFinished={true} // ✅ Sadece biten maçları göster
+            />
+          );
+        
         case 'leaderboard':
           return <Leaderboard onNavigate={handleProfileClick} />;
         
@@ -1048,7 +1065,7 @@ export default function App() {
   };
   
   // Check if current screen should show bottom navigation
-  const shouldShowBottomNav = ['home', 'matches', 'leaderboard', 'tournaments', 'profile'].includes(currentScreen);
+  const shouldShowBottomNav = ['home', 'matches', 'finished', 'leaderboard', 'tournaments', 'profile'].includes(currentScreen);
 
   // Web için debug log
   if (Platform.OS === 'web' && __DEV__) {
@@ -1069,7 +1086,7 @@ export default function App() {
                   {renderScreen()}
                   
                   {/* Fixed Profile Card Overlay - Only on home, matches, leaderboard */}
-                  {['home', 'matches', 'leaderboard', 'profile'].includes(currentScreen) && (
+                  {['home', 'matches', 'finished', 'leaderboard', 'profile'].includes(currentScreen) && (
                     <View style={styles.profileCardOverlay}>
                       <ProfileCard 
                         onPress={() => handleDashboardNavigate('profile')} 
@@ -1098,7 +1115,7 @@ export default function App() {
                             );
                           }
                         }}
-                        showTeamFilter={['home', 'matches', 'leaderboard', 'profile'].includes(currentScreen)}
+                        showTeamFilter={['home', 'matches', 'finished', 'leaderboard', 'profile'].includes(currentScreen)}
                       />
                     </View>
                   )}

@@ -29,11 +29,13 @@ const { width } = Dimensions.get('window');
 
 interface MatchListScreenProps {
   onMatchSelect: (matchId: string) => void;
+  onMatchResultSelect?: (matchId: string) => void; // ✅ Biten maç detayı
   onNavigate?: (screen: string) => void;
   onProfileClick?: () => void;
   selectedTeamId?: number | null; // ✅ Seçilen takım ID'si (kulüp takımlarının maçlarını göstermek için)
   selectedTeamName?: string; // ✅ Takım adı (başlık için)
   onBack?: () => void; // ✅ Geri butonu (takım filtresi aktifse göster)
+  showOnlyFinished?: boolean; // ✅ Sadece biten maçları göster
   matchData: {
     pastMatches?: any[];
     liveMatches: any[];
@@ -46,11 +48,13 @@ interface MatchListScreenProps {
 
 export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
   onMatchSelect,
+  onMatchResultSelect,
   onNavigate,
   onProfileClick,
   selectedTeamId,
   selectedTeamName,
   onBack,
+  showOnlyFinished = false, // ✅ Varsayılan: false (canlı maçları göster)
   matchData,
 }) => {
   const scrollViewRef = useRef<ScrollView>(null);
@@ -62,7 +66,7 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
   const [teamMatchesLoading, setTeamMatchesLoading] = useState(false);
   const [teamMatchesError, setTeamMatchesError] = useState<string | null>(null);
 
-  const { liveMatches, loading, error, hasLoadedOnce } = matchData;
+  const { liveMatches, pastMatches = [], loading, error, hasLoadedOnce } = matchData;
   
   // ✅ Eğer selectedTeamId varsa, takım maçlarını çek
   useEffect(() => {
@@ -322,6 +326,23 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
     // En son başlayan en üstte (timestamp azalan)
     return [...matches].sort((a, b) => b.fixture.timestamp - a.fixture.timestamp);
   }, [allLiveMatches, selectedTeamId]);
+
+  // ✅ Biten maçları filtrele ve sırala - en son biten en üstte
+  const filteredFinishedMatches = React.useMemo(() => {
+    let matches = [...pastMatches];
+    
+    // Takım filtresi varsa uygula
+    if (selectedTeamId) {
+      matches = matches.filter(match => {
+        const homeId = match.teams?.home?.id;
+        const awayId = match.teams?.away?.id;
+        return homeId === selectedTeamId || awayId === selectedTeamId;
+      });
+    }
+    
+    // En son biten en üstte (timestamp azalan)
+    return matches.sort((a, b) => b.fixture.timestamp - a.fixture.timestamp);
+  }, [pastMatches, selectedTeamId]);
   
   useEffect(() => {
     if (filteredLiveMatches.length > 0) {
@@ -533,7 +554,9 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
           {loading && !hasLoadedOnce && (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color="#059669" />
-              <Text style={styles.loadingText}>Canlı maçlar yükleniyor...</Text>
+              <Text style={styles.loadingText}>
+                {showOnlyFinished ? 'Biten maçlar yükleniyor...' : 'Canlı maçlar yükleniyor...'}
+              </Text>
             </View>
           )}
 
@@ -544,67 +567,128 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
             </View>
           )}
 
-          {/* Empty State - No Live Matches */}
-          {!loading && hasLoadedOnce && filteredLiveMatches.length === 0 && (
-            <View style={styles.emptyStateContainer}>
-              <View style={styles.emptyStateIcon}>
-                <Ionicons name="radio-outline" size={64} color="#64748B" />
-              </View>
-              <Text style={styles.emptyStateTitleLive}>
-                {selectedTeamId ? 'Bu takımın canlı maçı yok' : 'Şuan canlı maç yok'}
-              </Text>
-              <Text style={styles.emptyStateText}>
-                Yaklaşan maçları görmek için{'\n'}Ana Sayfa'ya dön
-              </Text>
-              <TouchableOpacity
-                style={styles.emptyStateButton}
-                onPress={() => onNavigate?.('home')}
-                activeOpacity={0.8}
-              >
-                <LinearGradient
-                  colors={['#059669', '#047857']}
-                  style={styles.emptyStateButtonGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                >
-                  <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
-                  <Text style={styles.emptyStateButtonText}>Ana Sayfa</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {/* Live Matches - Başlık yok, direkt maçlar */}
-          {filteredLiveMatches.length > 0 && (
-            <View style={styles.section}>
-              {filteredLiveMatches.map((match, index) => {
-                const matchId = String(match.fixture?.id || match.id);
-                return (
-                  <Animated.View 
-                    key={matchId} 
-                    entering={getEnteringAnimation(index)} 
-                    style={styles.liveMatchCardWrapper}
-                    onLayout={(event) => {
-                      // Maç kartı pozisyonunu kaydet
-                      const { y } = event.nativeEvent.layout;
-                      matchCardPositions.current[matchId] = y;
-                    }}
+          {/* ✅ Biten Maçlar Modu */}
+          {showOnlyFinished ? (
+            <>
+              {/* Empty State - No Finished Matches */}
+              {!loading && hasLoadedOnce && filteredFinishedMatches.length === 0 && (
+                <View style={styles.emptyStateContainer}>
+                  <View style={styles.emptyStateIcon}>
+                    <Ionicons name="checkmark-done-outline" size={64} color="#64748B" />
+                  </View>
+                  <Text style={styles.emptyStateTitleLive}>
+                    {selectedTeamId ? 'Bu takımın biten maçı yok' : 'Henüz biten maç yok'}
+                  </Text>
+                  <Text style={styles.emptyStateText}>
+                    Yaklaşan maçları görmek için{'\n'}Ana Sayfa'ya dön
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.emptyStateButton}
+                    onPress={() => onNavigate?.('home')}
+                    activeOpacity={0.8}
                   >
-                    {renderMatchCard(match, 'live', () => {
-                      // Maç kartına scroll yap
-                      const cardY = matchCardPositions.current[matchId];
-                      if (cardY !== undefined && scrollViewRef.current) {
-                        scrollViewRef.current.scrollTo({
-                          y: cardY - 20,
-                          animated: true,
-                        });
-                      }
-                      onMatchSelect(matchId);
-                    })}
-                  </Animated.View>
-                );
-              })}
-            </View>
+                    <LinearGradient
+                      colors={['#059669', '#047857']}
+                      style={styles.emptyStateButtonGradient}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                    >
+                      <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
+                      <Text style={styles.emptyStateButtonText}>Ana Sayfa</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {/* Finished Matches */}
+              {filteredFinishedMatches.length > 0 && (
+                <View style={styles.section}>
+                  {filteredFinishedMatches.map((match, index) => {
+                    const matchId = String(match.fixture?.id || match.id);
+                    return (
+                      <Animated.View 
+                        key={matchId} 
+                        entering={getEnteringAnimation(index)} 
+                        style={styles.liveMatchCardWrapper}
+                        onLayout={(event) => {
+                          const { y } = event.nativeEvent.layout;
+                          matchCardPositions.current[matchId] = y;
+                        }}
+                      >
+                        {renderMatchCard(match, 'finished', () => {
+                          onMatchResultSelect?.(matchId) || onMatchSelect(matchId);
+                        })}
+                      </Animated.View>
+                    );
+                  })}
+                </View>
+              )}
+            </>
+          ) : (
+            <>
+              {/* Empty State - No Live Matches */}
+              {!loading && hasLoadedOnce && filteredLiveMatches.length === 0 && (
+                <View style={styles.emptyStateContainer}>
+                  <View style={styles.emptyStateIcon}>
+                    <Ionicons name="radio-outline" size={64} color="#64748B" />
+                  </View>
+                  <Text style={styles.emptyStateTitleLive}>
+                    {selectedTeamId ? 'Bu takımın canlı maçı yok' : 'Şuan canlı maç yok'}
+                  </Text>
+                  <Text style={styles.emptyStateText}>
+                    Yaklaşan maçları görmek için{'\n'}Ana Sayfa'ya dön
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.emptyStateButton}
+                    onPress={() => onNavigate?.('home')}
+                    activeOpacity={0.8}
+                  >
+                    <LinearGradient
+                      colors={['#059669', '#047857']}
+                      style={styles.emptyStateButtonGradient}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                    >
+                      <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
+                      <Text style={styles.emptyStateButtonText}>Ana Sayfa</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {/* Live Matches - Başlık yok, direkt maçlar */}
+              {filteredLiveMatches.length > 0 && (
+                <View style={styles.section}>
+                  {filteredLiveMatches.map((match, index) => {
+                    const matchId = String(match.fixture?.id || match.id);
+                    return (
+                      <Animated.View 
+                        key={matchId} 
+                        entering={getEnteringAnimation(index)} 
+                        style={styles.liveMatchCardWrapper}
+                        onLayout={(event) => {
+                          // Maç kartı pozisyonunu kaydet
+                          const { y } = event.nativeEvent.layout;
+                          matchCardPositions.current[matchId] = y;
+                        }}
+                      >
+                        {renderMatchCard(match, 'live', () => {
+                          // Maç kartına scroll yap
+                          const cardY = matchCardPositions.current[matchId];
+                          if (cardY !== undefined && scrollViewRef.current) {
+                            scrollViewRef.current.scrollTo({
+                              y: cardY - 20,
+                              animated: true,
+                            });
+                          }
+                          onMatchSelect(matchId);
+                        })}
+                      </Animated.View>
+                    );
+                  })}
+                </View>
+              )}
+            </>
           )}
 
           {/* Bottom Padding */}
