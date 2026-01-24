@@ -14,6 +14,7 @@ import { ProfileCard } from './src/components/ProfileCard';
 import { DARK_MODE } from './src/theme/theme';
 import { hasBadgeBeenShown, markBadgeAsShown } from './src/services/badgeService';
 import { logger, logNavigation } from './src/utils/logger';
+import socialAuthService from './src/services/socialAuthService';
 // Web için React Native'in built-in Animated API'sini kullan, native için reanimated
 import { Animated as RNAnimated } from 'react-native';
 
@@ -323,6 +324,12 @@ export default function App() {
   const badgeShownRef = useRef<Set<string>>(new Set()); // Track shown badges in this session using ref
   const testBadgeTimerRef = useRef<NodeJS.Timeout | null>(null); // Track test badge timer
   
+  // ✅ OAuth Auth State Listener - Google/Apple giriş callback'lerini handle et
+  useEffect(() => {
+    console.log('🔐 [App] Initializing auth state listener...');
+    socialAuthService.initAuthStateListener();
+  }, []);
+
   // 🧪 TEST: Auto-set user as Pro on mount (for testing)
   useEffect(() => {
     if (__DEV__) {

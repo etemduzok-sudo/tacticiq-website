@@ -107,7 +107,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [apiTeams, setApiTeams] = useState<Array<{ id: number; name: string; colors: string[]; country: string; league: string; type: 'club' | 'national'; coach?: string }>>([]);
   const [isSearching, setIsSearching] = useState(false);
-
+  
   // ✅ TÜM MİLLİ TAKIMLAR - 50+ ülke
   const FALLBACK_NATIONAL_TEAMS = [
     // Türkiye önce
@@ -314,7 +314,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   useEffect(() => {
     if (openDropdown) {
       setSearchQuery('');
-      const type = openDropdown === 'national' ? 'national' : 'club';
+          const type = openDropdown === 'national' ? 'national' : 'club';
       // Hemen fallback takımları göster (sıçrama olmasın)
       useFallbackTeams('', type);
       setIsSearching(false);
@@ -345,13 +345,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             // Backend sonuçlarını mevcut fallback sonuçlarıyla birleştir (duplicate'leri kaldır)
             setApiTeams(prev => {
               const backendTeams = response.data.map((team: any) => ({
-                id: team.id,
-                name: team.name,
-                country: team.country || 'Unknown',
-                league: team.league || '',
-                type: team.type || type,
-                colors: team.colors || ['#1E40AF', '#FFFFFF'],
-                coach: team.coach || null,
+              id: team.id,
+              name: team.name,
+              country: team.country || 'Unknown',
+              league: team.league || '',
+              type: team.type || type,
+              colors: team.colors || ['#1E40AF', '#FFFFFF'],
+              coach: team.coach || null,
               }));
               
               // Mevcut ID'leri topla
@@ -1451,7 +1451,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                             }}
                           >
                             <View style={{ flex: 1 }}>
-                              <Text style={styles.dropdownItemName}>{team.name}</Text>
+                            <Text style={styles.dropdownItemName}>{team.name}</Text>
                               <Text style={styles.dropdownItemMeta}>{translateCountry(team.country)}</Text>
                             </View>
                           </TouchableOpacity>
@@ -1509,7 +1509,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                     {selectedClubTeams.map((team, idx) => {
                       if (!team) return null;
                       return (
-                        <TouchableOpacity 
+                        <TouchableOpacity
                           key={team.id || idx} 
                           style={styles.teamBadge}
                           onPress={() => handleRemoveClubTeam(idx)}
@@ -1614,7 +1614,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                               disabled={selectedClubTeams.filter(Boolean).length >= 5}
                             >
                               <View style={{ flex: 1 }}>
-                                <Text style={styles.dropdownItemName}>{team.name}</Text>
+                              <Text style={styles.dropdownItemName}>{team.name}</Text>
                                 <Text style={styles.dropdownItemMeta}>{team.league ? `${team.league} • ${translateCountry(team.country)}` : translateCountry(team.country)}</Text>
                               </View>
                             </TouchableOpacity>
@@ -1697,16 +1697,16 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             <View style={styles.formField}>
               <Text style={styles.formLabel}>{t('profileEdit.nickname')} <Text style={styles.requiredStar}>*</Text></Text>
               <View style={{ position: 'relative' }}>
-                <TextInput
+              <TextInput
                   style={[
                     styles.formInput, 
                     styles.formInputEditable,
                     nicknameError && { borderColor: '#EF4444', borderWidth: 1 }
                   ]}
-                  value={nickname}
+                value={nickname}
                   onChangeText={handleNicknameChange}
                   placeholder="TacticIQ1234"
-                  placeholderTextColor={theme.mutedForeground}
+                placeholderTextColor={theme.mutedForeground}
                   maxLength={20}
                   autoCapitalize="none"
                   autoCorrect={false}
@@ -1718,14 +1718,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                     style={{ position: 'absolute', right: 12, top: 12 }} 
                   />
                 )}
-              </View>
+            </View>
               {nicknameError ? (
                 <Text style={[styles.formHint, { color: '#EF4444' }]}>{nicknameError}</Text>
               ) : (
                 <Text style={styles.formHint}>Sadece harf, rakam ve alt çizgi. Otomatik kaydedilir.</Text>
               )}
               {!nickname && (
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={{
                     marginTop: 8,
                     backgroundColor: 'rgba(31, 162, 166, 0.2)',
@@ -1795,8 +1795,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   {!badge.earned && (
                     <View style={styles.badgeLockOverlay}>
                       <Ionicons name="lock-closed" size={10} color="#9CA3AF" />
-                    </View>
-                  )}
+              </View>
+            )}
 
                   {/* Checkmark (kazanılmış rozetler için) */}
                   {badge.earned && (
@@ -1823,7 +1823,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   >
                     {badge.name}
                   </Text>
-                </TouchableOpacity>
+              </TouchableOpacity>
               ))}
             </View>
 
@@ -1869,19 +1869,19 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                       window.alert(`✅ Dil değiştirildi: ${languages.find(l => l.code === langCode)?.name}`);
                     }
                   } else {
-                    Alert.alert(
-                      'Dil Seçimi',
-                      'Dil seçin:',
-                      languages.map(lang => ({
-                        text: `${lang.flag} ${lang.name}`,
-                        onPress: async () => {
-                          setSelectedLanguage(lang.code);
-                          await profileService.updateProfile({ preferredLanguage: lang.code });
+                  Alert.alert(
+                    'Dil Seçimi',
+                    'Dil seçin:',
+                    languages.map(lang => ({
+                      text: `${lang.flag} ${lang.name}`,
+                      onPress: async () => {
+                        setSelectedLanguage(lang.code);
+                        await profileService.updateProfile({ preferredLanguage: lang.code });
                           i18n.changeLanguage(lang.code);
-                          Alert.alert('Başarılı', `Dil değiştirildi: ${lang.name}`);
-                        },
+                        Alert.alert('Başarılı', `Dil değiştirildi: ${lang.name}`);
+                      },
                       })).concat([{ text: 'İptal', style: 'cancel' as const }])
-                    );
+                  );
                   }
                 }}
               >
@@ -1923,18 +1923,18 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                       window.alert(`✅ Saat dilimi değiştirildi: ${timezones.find(t => t.id === tzId)?.name}`);
                     }
                   } else {
-                    Alert.alert(
-                      'Saat Dilimi Seçimi',
-                      'Saat dilimi seçin:',
-                      timezones.map(tz => ({
-                        text: tz.name,
-                        onPress: async () => {
-                          setSelectedTimezone(tz.id);
-                          await profileService.updateProfile({ timezone: tz.id });
-                          Alert.alert('Başarılı', `Saat dilimi değiştirildi: ${tz.name}`);
-                        },
+                  Alert.alert(
+                    'Saat Dilimi Seçimi',
+                    'Saat dilimi seçin:',
+                    timezones.map(tz => ({
+                      text: tz.name,
+                      onPress: async () => {
+                        setSelectedTimezone(tz.id);
+                        await profileService.updateProfile({ timezone: tz.id });
+                        Alert.alert('Başarılı', `Saat dilimi değiştirildi: ${tz.name}`);
+                      },
                       })).concat([{ text: 'İptal', style: 'cancel' as const }])
-                    );
+                  );
                   }
                 }}
               >
@@ -2162,12 +2162,12 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                     console.log('✅ AuthService signOut completed');
                     
                     // Sayfayı yenile (web) veya geri git (mobile)
-                    if (Platform.OS === 'web') {
+                      if (Platform.OS === 'web') {
                       console.log('🔄 Reloading page...');
                       window.location.href = '/';
-                    } else {
-                      Alert.alert('Başarılı', 'Çıkış yapıldı');
-                      onBack();
+                      } else {
+                        Alert.alert('Başarılı', 'Çıkış yapıldı');
+                        onBack();
                     }
                   } catch (error: any) {
                     console.error('❌ Logout error:', error);

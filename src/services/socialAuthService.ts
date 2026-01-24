@@ -8,11 +8,20 @@ import { STORAGE_KEYS } from '../config/constants';
 import { supabase } from '../config/supabase';
 import profileService from './profileService';
 
-// Expo için OAuth redirect URI
-const redirectUri = makeRedirectUri({
-  scheme: 'tacticiq',
-  path: 'auth/callback',
-});
+// ✅ Platform'a göre OAuth redirect URI
+const getRedirectUri = () => {
+  if (Platform.OS === 'web') {
+    // Web için mevcut URL'i kullan (Supabase otomatik handle eder)
+    return window.location.origin;
+  }
+  // Mobile için deep link
+  return makeRedirectUri({
+    scheme: 'tacticiq',
+    path: 'auth/callback',
+  });
+};
+
+const redirectUri = getRedirectUri();
 
 interface SocialAuthResult {
   success: boolean;
