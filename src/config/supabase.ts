@@ -1,6 +1,7 @@
 // src/config/supabase.ts
 import { createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 
 // Supabase Configuration
 // Project: jxdgiskusjljlpzvrzau
@@ -14,7 +15,8 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     storage: AsyncStorage,
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: false,
+    // ✅ Web OAuth için URL'deki session token'larını algıla
+    detectSessionInUrl: Platform.OS === 'web',
   },
 });
 
