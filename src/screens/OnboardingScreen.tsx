@@ -123,16 +123,16 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
   const [subtitleLangIndex, setSubtitleLangIndex] = useState(0);
   const subtitleFade = useRef(new Animated.Value(1)).current;
   
-  // Tüm dillerde subtitle metinleri
+  // Tüm dillerde subtitle metinleri (bayraklar kaldırıldı - altta zaten var)
   const subtitleTranslations = [
-    { lang: 'tr', text: 'Lütfen dilinizi seçin', flag: '🇹🇷' },
-    { lang: 'en', text: 'Please select your language', flag: '🇬🇧' },
-    { lang: 'de', text: 'Bitte wählen Sie Ihre Sprache', flag: '🇩🇪' },
-    { lang: 'es', text: 'Por favor seleccione su idioma', flag: '🇪🇸' },
-    { lang: 'fr', text: 'Veuillez sélectionner votre langue', flag: '🇫🇷' },
-    { lang: 'it', text: 'Seleziona la tua lingua', flag: '🇮🇹' },
-    { lang: 'ar', text: 'يرجى اختيار لغتك', flag: '🇸🇦' },
-    { lang: 'zh', text: '请选择您的语言', flag: '🇨🇳' },
+    { lang: 'tr', text: 'Lütfen dilinizi seçin' },
+    { lang: 'en', text: 'Please select your language' },
+    { lang: 'de', text: 'Bitte wählen Sie Ihre Sprache' },
+    { lang: 'es', text: 'Por favor seleccione su idioma' },
+    { lang: 'fr', text: 'Veuillez sélectionner votre langue' },
+    { lang: 'it', text: 'Seleziona la tua lingua' },
+    { lang: 'ar', text: 'يرجى اختيار لغتك' },
+    { lang: 'zh', text: '请选择您的语言' },
   ];
   
   // Subtitle döngüsü efekti
@@ -391,17 +391,14 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
   // ===== LANGUAGE STEP - PREMIUM DESIGN =====
   const renderLanguageStep = () => (
     <View style={styles.stepContainer}>
-      {/* 🌍 Animasyonlu dönen subtitle - tüm dillerde (başlık kaldırıldı) */}
+      {/* 🌍 Animasyonlu dönen subtitle - tüm dillerde (bayraklar kaldırıldı) */}
       <Animated.View style={{ 
         opacity: subtitleFade,
-        flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 8,
         marginBottom: 24,
         marginTop: 8,
       }}>
-        <Text style={{ fontSize: 22 }}>{subtitleTranslations[subtitleLangIndex].flag}</Text>
         <Text style={[styles.stepSubtitle, { fontSize: 18, fontWeight: '600' }]}>{subtitleTranslations[subtitleLangIndex].text}</Text>
       </Animated.View>
 
