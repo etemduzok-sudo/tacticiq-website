@@ -105,6 +105,53 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
     // Varsayılan renkler
     return ['#1E40AF', '#FFFFFF'];
   };
+
+  // ✅ Lig öncelik sıralaması (düşük sayı = yüksek öncelik)
+  const getLeaguePriority = (leagueName: string): number => {
+    const name = leagueName.toLowerCase();
+    const leaguePriorities: Record<string, number> = {
+      // Uluslararası Turnuvalar (En yüksek öncelik)
+      'uefa champions league': 1,
+      'champions league': 1,
+      'şampiyonlar ligi': 1,
+      'uefa europa league': 2,
+      'europa league': 2,
+      'avrupa ligi': 2,
+      'uefa conference league': 3,
+      'conference league': 3,
+      'world cup': 4,
+      'dünya kupası': 4,
+      'euro championship': 5,
+      'euro': 5,
+      'avrupa şampiyonası': 5,
+      // Büyük 5 Lig
+      'premier league': 10,
+      'la liga': 11,
+      'bundesliga': 12,
+      'serie a': 13,
+      'ligue 1': 14,
+      // Türkiye
+      'süper lig': 20,
+      'super lig': 20,
+      'trendyol süper lig': 20,
+      '1. lig': 25,
+      'tff 1. lig': 25,
+      // Diğer Avrupa Ligleri
+      'eredivisie': 30,
+      'primeira liga': 31,
+      'scottish premiership': 32,
+      // Milli Takım
+      'friendlies': 50,
+      'hazırlık maçı': 50,
+    };
+    
+    for (const [key, priority] of Object.entries(leaguePriorities)) {
+      if (name.includes(key)) return priority;
+    }
+    
+    // Varsayılan (bilinmeyen ligler)
+    return 100;
+  };
   
   // ✅ Geri sayım fonksiyonu (24 saat kala başlar)
   const getCountdown = (matchTimestamp: number): string | null => {
@@ -602,8 +649,14 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
 
   const filteredUpcomingMatches = React.useMemo(() => {
     const filtered = filterMatchesByTeam(allUpcomingMatches, selectedTeamIds);
-    // Tarih sırasına göre sırala (en yakın en üstte, en uzak en altta)
-    return [...filtered].sort((a, b) => a.fixture.timestamp - b.fixture.timestamp);
+    // Tarih sırasına göre sırala (en yakın en üstte)
+    // Aynı saatte başlayanlar için lig önceliğine göre sırala
+    return [...filtered].sort((a, b) => {
+      const timeDiff = a.fixture.timestamp - b.fixture.timestamp;
+      if (timeDiff !== 0) return timeDiff;
+      // Aynı zamanda başlıyorlarsa, lig önceliğine göre sırala
+      return getLeaguePriority(a.league.name) - getLeaguePriority(b.league.name);
+    });
   }, [allUpcomingMatches, selectedTeamIds, filterMatchesByTeam]);
 
   const filteredPastMatches = React.useMemo(() => {
@@ -625,11 +678,13 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
 
   // ✅ İlk scroll pozisyonunu hesapla (geçmiş maçları atla)
   const initialScrollOffset = React.useMemo(() => {
-    if (filteredPastMatches.length > 0) {
+    if (filteredPastMatches.length > 0 && !pastMatchesCollapsed) {
+      // Tam görünümde: tüm geçmiş maçların yüksekliği
       return filteredPastMatches.length * MATCH_CARD_HEIGHT;
     }
+    // Küçültülmüş veya geçmiş maç yoksa: en üstten başla
     return 0;
-  }, [filteredPastMatches.length, MATCH_CARD_HEIGHT]);
+  }, [filteredPastMatches.length, MATCH_CARD_HEIGHT, pastMatchesCollapsed]);
 
   // ✅ Sayfa hazır olduğunda işaretle (kıpırdama önleme)
   React.useEffect(() => {
@@ -642,11 +697,15 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
     }
   }, [initialScrollDone]);
 
-  // ✅ Biten maçları 10 saniye sonra otomatik küçült
+  // ✅ Biten maçları 10 saniye sonra otomatik küçült ve yaklaşan maçlara scroll yap
   React.useEffect(() => {
     if (filteredPastMatches.length > 0 && !pastMatchesCollapsed) {
       const timer = setTimeout(() => {
         setPastMatchesCollapsed(true);
+        // Küçültüldükten sonra en üste (yaklaşan maçlara) scroll yap
+        setTimeout(() => {
+          scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+        }, 100);
       }, 10000); // 10 saniye
       return () => clearTimeout(timer);
     }
