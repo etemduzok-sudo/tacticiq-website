@@ -531,7 +531,10 @@ export function useFavoriteTeamMatches(): UseFavoriteTeamMatchesResult {
         setPastMatches(past);
         setLiveMatches(live);
         setUpcomingMatches(upcoming.slice(0, 10)); // Limit upcoming to 10 matches
-        logger.info(`Matches loaded`, { past: past.length, live: live.length, upcoming: upcoming.length }, 'MATCHES');
+        // Sadece ilk yüklemede veya değişiklik olduğunda logla
+        if (!hasLoadedOnce) {
+          logger.info(`Matches loaded`, { past: past.length, live: live.length, upcoming: upcoming.length }, 'MATCHES');
+        }
         
         // 💾 Cache'e kaydet
         await saveToCache(past, live, upcoming.slice(0, 10));
@@ -583,14 +586,14 @@ export function useFavoriteTeamMatches(): UseFavoriteTeamMatchesResult {
     }
   }, [favoriteTeams.length]); // Only re-run when team count changes
 
-  // 🔥 AUTO-REFRESH: Backend'den her 12 saniyede güncelle
+  // 🔥 AUTO-REFRESH: Backend'den her 30 saniyede güncelle (performans için artırıldı)
   useEffect(() => {
     if (!hasLoadedOnce) return; // İlk yükleme tamamlanana kadar bekleme
     
     const refreshInterval = setInterval(() => {
-      logger.debug('AUTO-REFRESH: Fetching updates from backend', undefined, 'MATCHES');
-      fetchMatches(); // Arka planda güncelle (loading gösterme)
-    }, 12 * 1000); // 12 saniye
+      // Sessiz güncelleme - her seferinde log basma
+      fetchMatches();
+    }, 30 * 1000); // 30 saniye (12'den artırıldı - daha az API çağrısı)
     
     return () => clearInterval(refreshInterval);
   }, [hasLoadedOnce, favoriteTeams.length]);
