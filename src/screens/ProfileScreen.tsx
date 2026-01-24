@@ -601,17 +601,44 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         const userData = userDataStr ? JSON.parse(userDataStr) : null;
         
         // ✅ Kullanıcı adı ve ismini AsyncStorage'dan yükle (fallback)
-        // OAuth'tan gelen displayName ve photoURL'i de kontrol et
+        // OAuth'tan gelen displayName, photoURL, firstName, lastName, nickname'i de kontrol et
         if (!unifiedProfile && userData) {
-          const fullName = userData.displayName || userData.name || userData.username;
-          const avatarUrl = userData.photoURL || userData.avatar || userData.avatar_url;
+          const fullName = userData.displayName || userData.name || userData.username || '';
+          const avatarUrl = userData.photoURL || userData.avatar || userData.avatar_url || '';
+          
+          // ✅ OAuth'tan gelen firstName/lastName varsa kullan, yoksa displayName'i ayır
+          const fName = userData.firstName || '';
+          const lName = userData.lastName || '';
+          const nick = userData.nickname || userData.username || '';
+          
+          // firstName/lastName set edilmemişse displayName'den ayır
+          if (!fName && fullName) {
+            const nameParts = fullName.trim().split(' ').filter((p: string) => p.length > 0);
+            setFirstName(nameParts[0] || '');
+            setLastName(nameParts.slice(1).join(' ') || '');
+          } else {
+            setFirstName(fName);
+            setLastName(lName);
+          }
+          
+          // Nickname set et
+          setNickname(nick);
           
           setUser(prev => ({
             ...prev,
             name: fullName || prev.name,
-            username: userData.username ? `@${userData.username}` : prev.username,
+            username: nick ? `@${nick}` : prev.username,
             avatar: avatarUrl || prev.avatar,
           }));
+          
+          console.log('👤 [Profile] OAuth user data loaded:', {
+            fullName,
+            firstName: fName || fullName.split(' ')[0],
+            lastName: lName || fullName.split(' ').slice(1).join(' '),
+            nickname: nick,
+            avatar: avatarUrl ? 'exists' : 'none',
+            provider: userData.provider
+          });
         }
         
         // UUID formatında değilse null gönder (Supabase UUID bekliyor)
@@ -679,13 +706,24 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           logger.debug('No valid UUID found, skipping Supabase fetch', undefined, 'PROFILE');
           // Use AsyncStorage data if available
           if (userData) {
-            // ✅ OAuth'tan gelen displayName ve photoURL'i de kontrol et
+            // ✅ OAuth'tan gelen displayName, photoURL, firstName, lastName, nickname'i kontrol et
             const fullName = userData.displayName || userData.name || userData.username || 'Kullanıcı';
             const avatarUrl = userData.photoURL || userData.avatar || userData.avatar_url || '';
+            const nick = userData.nickname || userData.username || '';
+            
+            // ✅ firstName/lastName varsa kullan, yoksa fullName'den ayır
+            const nameParts = fullName.trim().split(' ').filter((p: string) => p.length > 0);
+            const fName = userData.firstName || nameParts[0] || '';
+            const lName = userData.lastName || nameParts.slice(1).join(' ') || '';
+            
+            // State'leri set et
+            setFirstName(fName);
+            setLastName(lName);
+            setNickname(nick);
             
             setUser({
               name: fullName,
-              username: `@${userData.username || 'kullanici'}`,
+              username: `@${nick || 'kullanici'}`,
               email: userData.email || 'user@example.com',
               avatar: avatarUrl,
               level: 1,
@@ -1133,13 +1171,38 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     return `TacticIQ${randomNum}`;
   }, []);
 
-  // ✅ Nickname boşsa otomatik oluştur
+  // ✅ Nickname boşsa otomatik oluştur (sadece email kullanıcıları için)
+  // OAuth kullanıcıları için nickname zaten email@öncesi olarak set ediliyor
   useEffect(() => {
-    if (!loading && !nickname && user.name === 'Kullanıcı') {
-      const autoNickname = generateAutoNickname();
-      setNickname(autoNickname);
-      autoSaveProfile({ nickname: autoNickname });
-    }
+    const checkAndSetNickname = async () => {
+      if (loading || nickname) return;
+      
+      // Provider bilgisini kontrol et
+      const userDataStr = await AsyncStorage.getItem(STORAGE_KEYS.USER);
+      const userData = userDataStr ? JSON.parse(userDataStr) : null;
+      const provider = userData?.provider || 'email';
+      
+      // OAuth kullanıcıları için nickname zaten email prefix olarak set edilmiş olmalı
+      if (provider !== 'email' && provider !== 'unknown') {
+        // OAuth user - nickname zaten ayarlanmış olmalı (email prefix)
+        if (!nickname && userData?.email) {
+          const emailPrefix = userData.email.split('@')[0];
+          setNickname(emailPrefix);
+          console.log('👤 [Profile] OAuth nickname set from email:', emailPrefix);
+        }
+        return;
+      }
+      
+      // Email kullanıcıları için TacticIQxxxx oluştur
+      if (!nickname || user.name === 'Kullanıcı') {
+        const autoNickname = generateAutoNickname();
+        setNickname(autoNickname);
+        autoSaveProfile({ nickname: autoNickname });
+        console.log('👤 [Profile] Auto nickname generated for email user:', autoNickname);
+      }
+    };
+    
+    checkAndSetNickname();
   }, [loading, nickname, user.name, generateAutoNickname, autoSaveProfile]);
 
   const achievements = [

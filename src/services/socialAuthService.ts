@@ -203,15 +203,42 @@ class SocialAuthService {
     const email = supabaseUser.email || `${provider}.user@unknown.com`;
     const displayName = supabaseUser.user_metadata?.full_name || 
                         supabaseUser.user_metadata?.name ||
-                        `${provider.charAt(0).toUpperCase() + provider.slice(1)} User`;
+                        '';
+    
+    // ✅ İsim ve soyismi ayır
+    const nameParts = displayName.trim().split(' ').filter((p: string) => p.length > 0);
+    const firstName = nameParts[0] || '';
+    const lastName = nameParts.slice(1).join(' ') || '';
+    
+    // ✅ Nickname: email'in @ öncesi kısmı (OAuth için)
+    const nickname = email.split('@')[0] || '';
+    
+    // ✅ Avatar URL
+    const photoURL = supabaseUser.user_metadata?.avatar_url || 
+                     supabaseUser.user_metadata?.picture || 
+                     supabaseUser.user_metadata?.avatar ||
+                     null;
+    
+    console.log('👤 [socialAuth] User metadata:', {
+      displayName,
+      firstName,
+      lastName,
+      nickname,
+      photoURL,
+      provider
+    });
     
     const userProfile = {
       id: supabaseUser.id,
       email: email,
-      username: email.split('@')[0],
+      username: nickname, // email'in @ öncesi
       displayName: displayName,
-      photoURL: supabaseUser.user_metadata?.avatar_url || 
-                supabaseUser.user_metadata?.picture || null,
+      name: displayName, // ProfileScreen için
+      firstName: firstName,
+      lastName: lastName,
+      nickname: nickname,
+      photoURL: photoURL,
+      avatar: photoURL, // ProfileScreen için
       provider: provider,
       authenticated: true,
       createdAt: supabaseUser.created_at || new Date().toISOString(),
@@ -236,7 +263,12 @@ class SocialAuthService {
         email: userProfile.email,
         username: userProfile.username,
         displayName: userProfile.displayName,
+        name: userProfile.displayName,
+        firstName: userProfile.firstName,
+        lastName: userProfile.lastName,
+        nickname: userProfile.nickname,
         photoURL: userProfile.photoURL,
+        avatar: userProfile.photoURL,
         provider: provider,
       });
       console.log('✅ [socialAuth] Profil Supabase\'e senkronize edildi');
