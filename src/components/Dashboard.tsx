@@ -26,6 +26,7 @@ import { logger } from '../utils/logger';
 import { COLORS, SPACING, TYPOGRAPHY, SIZES, SHADOWS, BRAND } from '../theme/theme';
 import { WEBSITE_DARK_COLORS } from '../config/WebsiteDesignSystem';
 import { cardStyles, textStyles, containerStyles } from '../utils/styleHelpers';
+import { translateCountry } from '../utils/countryUtils';
 
 const { width } = Dimensions.get('window');
 
@@ -203,18 +204,53 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
     };
   };
   
-  // ✅ Teknik direktör ismini al
+  // ✅ Teknik direktör ismini al (2026 güncel)
   const getCoachName = (teamName: string): string => {
     const name = teamName.toLowerCase();
     const coaches: Record<string, string> = {
+      // Türk Takımları
       'galatasaray': 'Okan Buruk',
-      'fenerbahçe': 'İsmail Kartal',
-      'fenerbahce': 'İsmail Kartal',
-      'beşiktaş': 'Fernando Santos',
-      'besiktas': 'Fernando Santos',
-      'trabzonspor': 'Abdullah Avcı',
+      'fenerbahçe': 'José Mourinho',
+      'fenerbahce': 'José Mourinho',
+      'beşiktaş': 'Giovanni van Bronckhorst',
+      'besiktas': 'Giovanni van Bronckhorst',
+      'trabzonspor': 'Şenol Güneş',
+      'başakşehir': 'Çağdaş Atan',
+      'basaksehir': 'Çağdaş Atan',
+      // La Liga
       'real madrid': 'Carlo Ancelotti',
-      'barcelona': 'Xavi Hernández',
+      'barcelona': 'Hansi Flick',
+      'atletico madrid': 'Diego Simeone',
+      'sevilla': 'García Pimienta',
+      'villarreal': 'Marcelino',
+      'real sociedad': 'Imanol Alguacil',
+      // Premier League
+      'manchester city': 'Pep Guardiola',
+      'arsenal': 'Mikel Arteta',
+      'liverpool': 'Arne Slot',
+      'manchester united': 'Ruben Amorim',
+      'chelsea': 'Enzo Maresca',
+      'tottenham': 'Ange Postecoglou',
+      // Bundesliga
+      'bayern munich': 'Vincent Kompany',
+      'bayern': 'Vincent Kompany',
+      'borussia dortmund': 'Nuri Şahin',
+      'dortmund': 'Nuri Şahin',
+      'rb leipzig': 'Marco Rose',
+      'leverkusen': 'Xabi Alonso',
+      'bayer leverkusen': 'Xabi Alonso',
+      // Serie A
+      'juventus': 'Thiago Motta',
+      'inter': 'Simone Inzaghi',
+      'milan': 'Paulo Fonseca',
+      'ac milan': 'Paulo Fonseca',
+      'napoli': 'Antonio Conte',
+      'roma': 'Claudio Ranieri',
+      // Ligue 1
+      'paris saint germain': 'Luis Enrique',
+      'psg': 'Luis Enrique',
+      'marseille': 'Roberto De Zerbi',
+      // Milli Takımlar
       'türkiye': 'Vincenzo Montella',
       'turkey': 'Vincenzo Montella',
       'almanya': 'Julian Nagelsmann',
@@ -223,14 +259,48 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
       'brazil': 'Dorival Júnior',
       'arjantin': 'Lionel Scaloni',
       'argentina': 'Lionel Scaloni',
-      'paris saint germain': 'Luis Enrique',
-      'psg': 'Luis Enrique',
-      'fethiyespor': 'Mustafa Akçay',
+      'fransa': 'Didier Deschamps',
+      'france': 'Didier Deschamps',
+      'ingiltere': 'Thomas Tuchel',
+      'england': 'Thomas Tuchel',
+      'ispanya': 'Luis de la Fuente',
+      'spain': 'Luis de la Fuente',
+      'italya': 'Luciano Spalletti',
+      'italy': 'Luciano Spalletti',
+      'portekiz': 'Roberto Martínez',
+      'portugal': 'Roberto Martínez',
+      'hollanda': 'Ronald Koeman',
+      'netherlands': 'Ronald Koeman',
+      'belçika': 'Domenico Tedesco',
+      'belgium': 'Domenico Tedesco',
     };
     for (const [key, coach] of Object.entries(coaches)) {
       if (name.includes(key)) return coach;
     }
     return 'Bilinmiyor';
+  };
+
+  // ✅ Takım adını çevir (milli takımlar için)
+  const getDisplayTeamName = (teamName: string): string => {
+    // Milli takım isimleri için çeviri yap
+    const nationalTeamNames = [
+      'Turkey', 'Germany', 'France', 'England', 'Spain', 'Italy', 'Brazil', 
+      'Argentina', 'Portugal', 'Netherlands', 'Belgium', 'Croatia', 'Poland',
+      'Ukraine', 'Russia', 'Sweden', 'Austria', 'Switzerland', 'USA', 'Mexico',
+      'Japan', 'South-Korea', 'Australia', 'Saudi-Arabia', 'Czech Republic',
+      'Georgia', 'Scotland', 'Wales', 'Serbia', 'Denmark', 'Norway', 'Finland',
+      'Greece', 'Romania', 'Hungary', 'Morocco', 'Nigeria', 'Senegal', 'Egypt',
+      'Ghana', 'Cameroon', 'South Africa', 'Iran', 'Iraq', 'Qatar', 'Japan',
+      'China', 'India', 'Indonesia', 'Thailand', 'Vietnam'
+    ];
+    
+    // Eğer milli takım ise çevir
+    if (nationalTeamNames.includes(teamName)) {
+      return translateCountry(teamName);
+    }
+    
+    // Kulüp takımı ise olduğu gibi döndür
+    return teamName;
   };
   
   // ✅ Maç kartı bileşeni
@@ -360,7 +430,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
             <View style={styles.matchCardTeamsContainer}>
               {/* Ev Sahibi Takım */}
               <View style={styles.matchCardTeamLeft}>
-                <Text style={styles.matchCardTeamName} numberOfLines={1}>{match.teams.home.name}</Text>
+                <Text style={styles.matchCardTeamName} numberOfLines={1}>{getDisplayTeamName(match.teams.home.name)}</Text>
                 <Text style={styles.matchCardCoachName}>{getCoachName(match.teams.home.name)}</Text>
                 {(status === 'live' || status === 'finished') && (
                   <View style={status === 'live' ? styles.matchCardScoreBoxLive : styles.matchCardScoreBox}>
@@ -400,7 +470,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
               
               {/* Deplasman Takım */}
               <View style={styles.matchCardTeamRight}>
-                <Text style={[styles.matchCardTeamName, styles.matchCardTeamNameRight]} numberOfLines={1}>{match.teams.away.name}</Text>
+                <Text style={[styles.matchCardTeamName, styles.matchCardTeamNameRight]} numberOfLines={1}>{getDisplayTeamName(match.teams.away.name)}</Text>
                 <Text style={styles.matchCardCoachNameAway}>{getCoachName(match.teams.away.name)}</Text>
                 {(status === 'live' || status === 'finished') && (
                   <View style={status === 'live' ? styles.matchCardScoreBoxLive : styles.matchCardScoreBox}>

@@ -173,6 +173,55 @@ router.get('/:id/flag', async (req, res) => {
   }
 });
 
+// GET /api/teams/:id/squad - Get team squad (players)
+router.get('/:id/squad', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { season } = req.query;
+    console.log(`👥 Fetching squad for team ${id}, season ${season || 'current'}`);
+    
+    const data = await footballApi.getTeamSquad(id, season || 2024);
+    
+    if (!data.response || data.response.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Squad not found for this team',
+      });
+    }
+    
+    // Extract players from response
+    const squadData = data.response[0];
+    const players = squadData.players || [];
+    
+    // Enhance player data
+    const enhancedPlayers = players.map(player => ({
+      id: player.id,
+      name: player.name,
+      age: player.age,
+      number: player.number,
+      position: player.position,
+      photo: null, // ⚠️ TELİF: Oyuncu fotoğrafları telifli - kullanmıyoruz
+    }));
+    
+    console.log(`✅ Found ${enhancedPlayers.length} players for team ${id}`);
+    
+    res.json({
+      success: true,
+      data: {
+        team: squadData.team,
+        players: enhancedPlayers,
+      },
+      cached: data.cached || false,
+    });
+  } catch (error) {
+    console.error(`❌ Error fetching squad for team ${req.params.id}:`, error.message);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
 // GET /api/teams/search/:query - Enhanced search with colors and flags
 router.get('/search/:query', async (req, res) => {
   try {

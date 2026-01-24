@@ -1405,12 +1405,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                         nestedScrollEnabled={true}
                       >
                         {apiTeams.map(team => (
-                          <Pressable
+                          <TouchableOpacity
                             key={team.id}
-                            style={({ pressed }) => [
-                              styles.dropdownItem,
-                              pressed && { backgroundColor: 'rgba(255,255,255,0.1)' }
-                            ]}
+                            style={styles.dropdownItem}
+                            activeOpacity={0.7}
                             onPress={() => {
                               console.log('🔵 National team clicked:', team.name);
                               const teamToAdd = {
@@ -1429,7 +1427,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                               <Text style={styles.dropdownItemName}>{team.name}</Text>
                               <Text style={styles.dropdownItemMeta}>{translateCountry(team.country)}</Text>
                             </View>
-                          </Pressable>
+                          </TouchableOpacity>
                         ))}
                       </ScrollView>
                     </View>
@@ -1548,12 +1546,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                           nestedScrollEnabled={true}
                         >
                           {apiTeams.filter(t => !selectedClubTeams.some(ct => ct && ct.id === t.id)).map(team => (
-                            <Pressable
+                            <TouchableOpacity
                               key={team.id}
-                              style={({ pressed }) => [
-                                styles.dropdownItem,
-                                pressed && { backgroundColor: 'rgba(255,255,255,0.1)' }
-                              ]}
+                              style={styles.dropdownItem}
+                              activeOpacity={0.7}
                               onPress={() => {
                                 console.log('🔵 Team clicked:', team.name);
                                 // Boş slot bul
@@ -1588,7 +1584,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                                 <Text style={styles.dropdownItemName}>{team.name}</Text>
                                 <Text style={styles.dropdownItemMeta}>{team.league ? `${team.league} • ${translateCountry(team.country)}` : translateCountry(team.country)}</Text>
                               </View>
-                            </Pressable>
+                            </TouchableOpacity>
                           ))}
                         </ScrollView>
                       </View>
@@ -2040,19 +2036,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 const doLogout = async () => {
                   console.log('🚪 Logout started...');
                   try {
-                    // 1. AsyncStorage'ı temizle
-                    await AsyncStorage.clear();
-                    console.log('✅ AsyncStorage cleared');
+                    // ✅ AuthService signOut - tüm storage key'leri temizler
+                    await authService.signOut();
+                    console.log('✅ AuthService signOut completed');
                     
-                    // 2. AuthService signOut (opsiyonel, hata verse de devam et)
-                    try {
-                      await authService.signOut();
-                      console.log('✅ AuthService signOut completed');
-                    } catch (e) {
-                      console.warn('⚠️ AuthService signOut warning:', e);
-                    }
-                    
-                    // 3. Sayfayı yenile (web) veya geri git (mobile)
+                    // Sayfayı yenile (web) veya geri git (mobile)
                     if (Platform.OS === 'web') {
                       console.log('🔄 Reloading page...');
                       window.location.href = '/';

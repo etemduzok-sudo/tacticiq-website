@@ -174,12 +174,22 @@ class AuthService {
       }
 
       // Clear AsyncStorage - HER ZAMAN çalışmalı
+      // ✅ Hem eski hem yeni key'leri temizle (geriye dönük uyumluluk)
       await AsyncStorage.multiRemove([
+        // Yeni key'ler (STORAGE_KEYS)
+        'tacticiq-user',
+        'tacticiq-language',
+        'tacticiq-theme',
+        'tacticiq-favorite-clubs',
+        'tacticiq-onboarding-complete',
+        'tacticiq-pro-status',
+        'tacticiq-profile-setup',
+        'tacticiq_user_profile',
+        'tacticiq_player_counts',
+        // Eski key'ler (geriye dönük uyumluluk)
         'fan-manager-user',
         'fan-manager-language',
         'fan-manager-favorite-clubs',
-        'tacticiq_user_profile',
-        'tacticiq_player_counts',
       ]);
 
       // ProfileService cache'ini temizle

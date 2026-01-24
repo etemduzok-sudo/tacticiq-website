@@ -24,6 +24,7 @@ const getEnteringAnimation = (index: number = 0, baseDelay: number = 150) => {
   return FadeInDown.delay(baseDelay + index * 50).springify();
 };
 import { logger } from '../utils/logger';
+import { translateCountry } from '../utils/countryUtils';
 
 const { width } = Dimensions.get('window');
 
@@ -190,18 +191,53 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
     return ['#1E40AF', '#FFFFFF'];
   };
 
-  // ✅ Teknik direktör ismini al
+  // ✅ Teknik direktör ismini al (2026 güncel)
   const getCoachName = (teamName: string): string => {
     const name = teamName.toLowerCase();
     const coaches: Record<string, string> = {
+      // Türk Takımları
       'galatasaray': 'Okan Buruk',
-      'fenerbahçe': 'İsmail Kartal',
-      'fenerbahce': 'İsmail Kartal',
-      'beşiktaş': 'Fernando Santos',
-      'besiktas': 'Fernando Santos',
-      'trabzonspor': 'Abdullah Avcı',
+      'fenerbahçe': 'José Mourinho',
+      'fenerbahce': 'José Mourinho',
+      'beşiktaş': 'Giovanni van Bronckhorst',
+      'besiktas': 'Giovanni van Bronckhorst',
+      'trabzonspor': 'Şenol Güneş',
+      'başakşehir': 'Çağdaş Atan',
+      'basaksehir': 'Çağdaş Atan',
+      // La Liga
       'real madrid': 'Carlo Ancelotti',
-      'barcelona': 'Xavi Hernández',
+      'barcelona': 'Hansi Flick',
+      'atletico madrid': 'Diego Simeone',
+      'sevilla': 'García Pimienta',
+      'villarreal': 'Marcelino',
+      'real sociedad': 'Imanol Alguacil',
+      // Premier League
+      'manchester city': 'Pep Guardiola',
+      'arsenal': 'Mikel Arteta',
+      'liverpool': 'Arne Slot',
+      'manchester united': 'Ruben Amorim',
+      'chelsea': 'Enzo Maresca',
+      'tottenham': 'Ange Postecoglou',
+      // Bundesliga
+      'bayern munich': 'Vincent Kompany',
+      'bayern': 'Vincent Kompany',
+      'borussia dortmund': 'Nuri Şahin',
+      'dortmund': 'Nuri Şahin',
+      'rb leipzig': 'Marco Rose',
+      'leverkusen': 'Xabi Alonso',
+      'bayer leverkusen': 'Xabi Alonso',
+      // Serie A
+      'juventus': 'Thiago Motta',
+      'inter': 'Simone Inzaghi',
+      'milan': 'Paulo Fonseca',
+      'ac milan': 'Paulo Fonseca',
+      'napoli': 'Antonio Conte',
+      'roma': 'Claudio Ranieri',
+      // Ligue 1
+      'paris saint germain': 'Luis Enrique',
+      'psg': 'Luis Enrique',
+      'marseille': 'Roberto De Zerbi',
+      // Milli Takımlar
       'türkiye': 'Vincenzo Montella',
       'turkey': 'Vincenzo Montella',
       'almanya': 'Julian Nagelsmann',
@@ -210,15 +246,44 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
       'brazil': 'Dorival Júnior',
       'arjantin': 'Lionel Scaloni',
       'argentina': 'Lionel Scaloni',
-      'paris saint germain': 'Luis Enrique',
-      'psg': 'Luis Enrique',
-      'fethiyespor': 'Mustafa Akçay',
-      'bayern munich': 'Thomas Tuchel',
+      'fransa': 'Didier Deschamps',
+      'france': 'Didier Deschamps',
+      'ingiltere': 'Thomas Tuchel',
+      'england': 'Thomas Tuchel',
+      'ispanya': 'Luis de la Fuente',
+      'spain': 'Luis de la Fuente',
+      'italya': 'Luciano Spalletti',
+      'italy': 'Luciano Spalletti',
+      'portekiz': 'Roberto Martínez',
+      'portugal': 'Roberto Martínez',
+      'hollanda': 'Ronald Koeman',
+      'netherlands': 'Ronald Koeman',
+      'belçika': 'Domenico Tedesco',
+      'belgium': 'Domenico Tedesco',
     };
     for (const [key, coach] of Object.entries(coaches)) {
       if (name.includes(key)) return coach;
     }
     return 'Bilinmiyor';
+  };
+
+  // ✅ Takım adını çevir (milli takımlar için)
+  const getDisplayTeamName = (teamName: string): string => {
+    const nationalTeamNames = [
+      'Turkey', 'Germany', 'France', 'England', 'Spain', 'Italy', 'Brazil', 
+      'Argentina', 'Portugal', 'Netherlands', 'Belgium', 'Croatia', 'Poland',
+      'Ukraine', 'Russia', 'Sweden', 'Austria', 'Switzerland', 'USA', 'Mexico',
+      'Japan', 'South-Korea', 'Australia', 'Saudi-Arabia', 'Czech Republic',
+      'Georgia', 'Scotland', 'Wales', 'Serbia', 'Denmark', 'Norway', 'Finland',
+      'Greece', 'Romania', 'Hungary', 'Morocco', 'Nigeria', 'Senegal', 'Egypt',
+      'Ghana', 'Cameroon', 'South Africa', 'Iran', 'Iraq', 'Qatar',
+      'China', 'India', 'Indonesia', 'Thailand', 'Vietnam'
+    ];
+    
+    if (nationalTeamNames.includes(teamName)) {
+      return translateCountry(teamName);
+    }
+    return teamName;
   };
 
   // ✅ Countdown ticker için state (canlı maçlar için pulse animasyonu)
@@ -439,7 +504,7 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
             <View style={matchCardStyles.matchCardTeamsContainer}>
               {/* Ev Sahibi Takım */}
               <View style={matchCardStyles.matchCardTeamLeft}>
-                <Text style={matchCardStyles.matchCardTeamName} numberOfLines={1}>{match.teams.home.name}</Text>
+                <Text style={matchCardStyles.matchCardTeamName} numberOfLines={1}>{getDisplayTeamName(match.teams.home.name)}</Text>
                 <Text style={matchCardStyles.matchCardCoachName}>{getCoachName(match.teams.home.name)}</Text>
                 {(status === 'live' || status === 'finished') && (
                   <View style={status === 'live' ? matchCardStyles.matchCardScoreBoxLive : matchCardStyles.matchCardScoreBox}>
@@ -479,7 +544,7 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
               
               {/* Deplasman Takım */}
               <View style={matchCardStyles.matchCardTeamRight}>
-                <Text style={[matchCardStyles.matchCardTeamName, matchCardStyles.matchCardTeamNameRight]} numberOfLines={1}>{match.teams.away.name}</Text>
+                <Text style={[matchCardStyles.matchCardTeamName, matchCardStyles.matchCardTeamNameRight]} numberOfLines={1}>{getDisplayTeamName(match.teams.away.name)}</Text>
                 <Text style={matchCardStyles.matchCardCoachNameAway}>{getCoachName(match.teams.away.name)}</Text>
                 {(status === 'live' || status === 'finished') && (
                   <View style={status === 'live' ? matchCardStyles.matchCardScoreBoxLive : matchCardStyles.matchCardScoreBox}>
