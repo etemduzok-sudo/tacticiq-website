@@ -25,30 +25,35 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
 });
 
+// ✅ Admin credentials - Environment variables'dan oku (güvenlik için)
+const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL || '';
+const ADMIN_PASSWORD_HASH = import.meta.env.VITE_ADMIN_PASSWORD_HASH || '';
+
 // Admin Authentication Service
 export const adminAuthService = {
   // Admin girişi (Supabase auth kullanarak)
   async login(email: string, password: string) {
     try {
-      // Hardcoded admin credentials check (fallback)
-      const ADMIN_EMAIL = 'etemduzok@gmail.com';
-      const ADMIN_PASSWORD = '*130923*Tdd*';
-      
-      if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
-        // Store admin session in localStorage
-        const adminSession = {
-          user: {
-            email: ADMIN_EMAIL,
-            id: 'admin-local',
-            role: 'admin',
-          },
-          timestamp: Date.now(),
-        };
-        localStorage.setItem('admin_session', JSON.stringify(adminSession));
-        return { success: true, user: adminSession.user };
+      // ✅ Environment variable'dan admin credentials kontrolü
+      // Not: Production'da Supabase Auth + Role-based access kullanılmalı
+      if (ADMIN_EMAIL && ADMIN_PASSWORD_HASH) {
+        // Basit hash kontrolü (production'da bcrypt kullanılmalı)
+        const inputHash = btoa(password); // Base64 encoding as simple hash
+        if (email === ADMIN_EMAIL && inputHash === ADMIN_PASSWORD_HASH) {
+          const adminSession = {
+            user: {
+              email: ADMIN_EMAIL,
+              id: 'admin-local',
+              role: 'admin',
+            },
+            timestamp: Date.now(),
+          };
+          localStorage.setItem('admin_session', JSON.stringify(adminSession));
+          return { success: true, user: adminSession.user };
+        }
       }
 
-      // Try Supabase authentication as fallback
+      // Try Supabase authentication
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -59,7 +64,14 @@ export const adminAuthService = {
         return { success: false, error: error.message };
       }
 
-      return { success: true, user: data.user };
+      // ✅ Supabase kullanıcısı admin mi kontrol et
+      if (data.user?.email === ADMIN_EMAIL) {
+        return { success: true, user: data.user };
+      }
+
+      // Admin değilse session temizle
+      await supabase.auth.signOut();
+      return { success: false, error: 'Bu hesap admin yetkisine sahip değil' };
     } catch (error) {
       console.error('Admin login exception:', error);
       return { success: false, error: 'Login failed' };
@@ -109,7 +121,6 @@ export const adminAuthService = {
       }
 
       // ✅ Sadece admin email'i olan kullanıcılar için admin session döndür
-      const ADMIN_EMAIL = 'etemduzok@gmail.com';
       if (session?.user?.email === ADMIN_EMAIL) {
         return { success: true, session };
       }

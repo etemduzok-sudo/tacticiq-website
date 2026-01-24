@@ -1,7 +1,18 @@
-// socialAuthService.ts - Google & Apple Sign In Test Service
+// socialAuthService.ts - Google & Apple Sign In Service
+// ✅ GERÇEK SUPABASE OAUTH IMPLEMENTASYONU
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Alert } from 'react-native';
+import { Alert, Platform, Linking } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
+import { makeRedirectUri } from 'expo-auth-session';
 import { STORAGE_KEYS } from '../config/constants';
+import { supabase } from '../config/supabase';
+import profileService from './profileService';
+
+// Expo için OAuth redirect URI
+const redirectUri = makeRedirectUri({
+  scheme: 'tacticiq',
+  path: 'auth/callback',
+});
 
 interface SocialAuthResult {
   success: boolean;
@@ -12,55 +23,23 @@ interface SocialAuthResult {
 
 class SocialAuthService {
   /**
-   * Google Sign In - Mock Implementation
+   * Google Sign In - GERÇEK SUPABASE OAUTH
    * 
-   * Gerçek implementasyon için gerekli:
-   * 1. Supabase Dashboard → Authentication → Providers → Google
-   * 2. Google Cloud Console → OAuth 2.0 Client ID
-   * 3. app.json → expo.android.googleServicesFile
+   * Gereksinimler:
+   * 1. Supabase Dashboard → Authentication → Providers → Google (Aktif)
+   * 2. Google Cloud Console → OAuth 2.0 Client ID yapılandırılmış
+   * 3. Redirect URI: tacticiq://auth/callback (app.json'da tanımlı)
    */
   async signInWithGoogle(): Promise<SocialAuthResult> {
     try {
       console.log('🔑 [socialAuth] Google Sign In başlatıldı...');
+      console.log('📍 Redirect URI:', redirectUri);
       
-      // ============================================
-      // MOCK IMPLEMENTATION (Test için)
-      // ============================================
-      // Gerçek OAuth yerine test kullanıcısı oluştur
-      
-      await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate network delay
-      
-      const mockGoogleUser = {
-        id: `google_${Date.now()}`,
-        email: `google.user.${Date.now()}@gmail.com`,
-        username: `GoogleUser${Math.floor(Math.random() * 1000)}`,
-        displayName: 'Google Test User',
-        photoURL: 'https://via.placeholder.com/150',
-        provider: 'google',
-        authenticated: true,
-        createdAt: new Date().toISOString(),
-      };
-      
-      // Save to AsyncStorage
-      await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(mockGoogleUser));
-      
-      console.log('✅ [socialAuth] Google Sign In başarılı (MOCK)');
-      console.log('👤 User:', mockGoogleUser);
-      
-      return {
-        success: true,
-        user: mockGoogleUser,
-        provider: 'google',
-      };
-      
-      // ============================================
-      // REAL IMPLEMENTATION (Supabase OAuth)
-      // ============================================
-      /*
+      // ✅ GERÇEK SUPABASE OAUTH
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: 'tacticiq://auth/callback',
+          redirectTo: redirectUri,
           queryParams: {
             access_type: 'offline',
             prompt: 'consent',
@@ -68,22 +47,54 @@ class SocialAuthService {
         },
       });
       
-      if (error) throw error;
+      if (error) {
+        console.error('❌ [socialAuth] Supabase OAuth error:', error);
+        throw error;
+      }
       
-      // Fetch user profile
-      const { data: profile } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', data.user.id)
-        .single();
+      if (!data.url) {
+        throw new Error('OAuth URL alınamadı');
+      }
       
-      await AsyncStorage.setItem('fan-manager-user', JSON.stringify({
-        ...profile,
-        authenticated: true,
-      }));
+      console.log('🌐 [socialAuth] OAuth URL açılıyor...');
       
-      return { success: true, user: profile, provider: 'google' };
-      */
+      // Tarayıcıda OAuth sayfasını aç
+      if (Platform.OS === 'web') {
+        // Web'de yönlendirme yap
+        window.location.href = data.url;
+        return { success: true, provider: 'google' };
+      } else {
+        // Mobilde in-app browser kullan
+        const result = await WebBrowser.openAuthSessionAsync(
+          data.url,
+          redirectUri
+        );
+        
+        if (result.type === 'success') {
+          // Session'ı al ve kullanıcıyı senkronize et
+          const { data: sessionData } = await supabase.auth.getSession();
+          
+          if (sessionData?.session?.user) {
+            const user = await this.syncUserToProfile(sessionData.session.user, 'google');
+            console.log('✅ [socialAuth] Google Sign In başarılı');
+            return { success: true, user, provider: 'google' };
+          }
+        }
+        
+        // Kullanıcı iptal etti veya hata oluştu
+        if (result.type === 'cancel') {
+          return { success: false, error: 'Giriş iptal edildi', provider: 'google' };
+        }
+      }
+      
+      // Session kontrolü (callback sonrası)
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (sessionData?.session?.user) {
+        const user = await this.syncUserToProfile(sessionData.session.user, 'google');
+        return { success: true, user, provider: 'google' };
+      }
+      
+      return { success: false, error: 'Giriş tamamlanamadı', provider: 'google' };
       
     } catch (error: any) {
       console.error('❌ [socialAuth] Google Sign In error:', error);
@@ -96,74 +107,75 @@ class SocialAuthService {
   }
 
   /**
-   * Apple Sign In - Mock Implementation
+   * Apple Sign In - GERÇEK SUPABASE OAUTH
    * 
-   * Gerçek implementasyon için gerekli:
-   * 1. Apple Developer Account ($99/year)
-   * 2. App ID ve Service ID
-   * 3. Supabase Dashboard → Authentication → Providers → Apple
-   * 4. iOS/macOS cihazda test (Web'de sınırlı)
+   * Gereksinimler:
+   * 1. Apple Developer Account ($99/yıl)
+   * 2. Supabase Dashboard → Authentication → Providers → Apple (Aktif)
+   * 3. App ID ve Service ID yapılandırılmış
+   * 4. iOS/macOS cihazda test edilmeli (Web'de sınırlı destek)
    */
   async signInWithApple(): Promise<SocialAuthResult> {
     try {
       console.log('🔑 [socialAuth] Apple Sign In başlatıldı...');
+      console.log('📍 Redirect URI:', redirectUri);
       
-      // ============================================
-      // MOCK IMPLEMENTATION (Test için)
-      // ============================================
-      
-      await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate network delay
-      
-      const mockAppleUser = {
-        id: `apple_${Date.now()}`,
-        email: `apple.user.${Date.now()}@privaterelay.appleid.com`,
-        username: `AppleUser${Math.floor(Math.random() * 1000)}`,
-        displayName: 'Apple Test User',
-        photoURL: null, // Apple doesn't provide photos
-        provider: 'apple',
-        authenticated: true,
-        createdAt: new Date().toISOString(),
-      };
-      
-      // Save to AsyncStorage
-      await AsyncStorage.setItem('fan-manager-user', JSON.stringify(mockAppleUser));
-      
-      console.log('✅ [socialAuth] Apple Sign In başarılı (MOCK)');
-      console.log('👤 User:', mockAppleUser);
-      
-      return {
-        success: true,
-        user: mockAppleUser,
-        provider: 'apple',
-      };
-      
-      // ============================================
-      // REAL IMPLEMENTATION (Supabase OAuth)
-      // ============================================
-      /*
+      // ✅ GERÇEK SUPABASE OAUTH
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'apple',
         options: {
-          redirectTo: 'tacticiq://auth/callback',
+          redirectTo: redirectUri,
         },
       });
       
-      if (error) throw error;
+      if (error) {
+        console.error('❌ [socialAuth] Supabase OAuth error:', error);
+        throw error;
+      }
       
-      // Fetch user profile
-      const { data: profile } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', data.user.id)
-        .single();
+      if (!data.url) {
+        throw new Error('OAuth URL alınamadı');
+      }
       
-      await AsyncStorage.setItem('fan-manager-user', JSON.stringify({
-        ...profile,
-        authenticated: true,
-      }));
+      console.log('🌐 [socialAuth] OAuth URL açılıyor...');
       
-      return { success: true, user: profile, provider: 'apple' };
-      */
+      // Tarayıcıda OAuth sayfasını aç
+      if (Platform.OS === 'web') {
+        // Web'de yönlendirme yap
+        window.location.href = data.url;
+        return { success: true, provider: 'apple' };
+      } else {
+        // Mobilde in-app browser kullan
+        const result = await WebBrowser.openAuthSessionAsync(
+          data.url,
+          redirectUri
+        );
+        
+        if (result.type === 'success') {
+          // Session'ı al ve kullanıcıyı senkronize et
+          const { data: sessionData } = await supabase.auth.getSession();
+          
+          if (sessionData?.session?.user) {
+            const user = await this.syncUserToProfile(sessionData.session.user, 'apple');
+            console.log('✅ [socialAuth] Apple Sign In başarılı');
+            return { success: true, user, provider: 'apple' };
+          }
+        }
+        
+        // Kullanıcı iptal etti veya hata oluştu
+        if (result.type === 'cancel') {
+          return { success: false, error: 'Giriş iptal edildi', provider: 'apple' };
+        }
+      }
+      
+      // Session kontrolü (callback sonrası)
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (sessionData?.session?.user) {
+        const user = await this.syncUserToProfile(sessionData.session.user, 'apple');
+        return { success: true, user, provider: 'apple' };
+      }
+      
+      return { success: false, error: 'Giriş tamamlanamadı', provider: 'apple' };
       
     } catch (error: any) {
       console.error('❌ [socialAuth] Apple Sign In error:', error);
@@ -174,37 +186,156 @@ class SocialAuthService {
       };
     }
   }
-
+  
   /**
-   * Test Social Auth - Console'da detaylı log göster
+   * Supabase kullanıcısını local profile'a senkronize et
    */
-  async testSocialAuth(provider: 'google' | 'apple') {
-    console.log('\n🧪 ============================================');
-    console.log(`🧪 SOCIAL AUTH TEST: ${provider.toUpperCase()}`);
-    console.log('🧪 ============================================\n');
+  private async syncUserToProfile(supabaseUser: any, provider: string) {
+    const email = supabaseUser.email || `${provider}.user@unknown.com`;
+    const displayName = supabaseUser.user_metadata?.full_name || 
+                        supabaseUser.user_metadata?.name ||
+                        `${provider.charAt(0).toUpperCase() + provider.slice(1)} User`;
     
-    const result = provider === 'google' 
-      ? await this.signInWithGoogle()
-      : await this.signInWithApple();
+    const userProfile = {
+      id: supabaseUser.id,
+      email: email,
+      username: email.split('@')[0],
+      displayName: displayName,
+      photoURL: supabaseUser.user_metadata?.avatar_url || 
+                supabaseUser.user_metadata?.picture || null,
+      provider: provider,
+      authenticated: true,
+      createdAt: supabaseUser.created_at || new Date().toISOString(),
+      // Supabase'den alınan ek bilgiler
+      supabase_id: supabaseUser.id,
+      last_sign_in_at: supabaseUser.last_sign_in_at,
+    };
     
-    console.log('\n📊 Test Sonucu:');
-    console.log('   Success:', result.success);
-    console.log('   Provider:', result.provider);
+    // AsyncStorage'a kaydet
+    await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(userProfile));
     
-    if (result.success && result.user) {
-      console.log('\n👤 User Bilgileri:');
-      console.log('   ID:', result.user.id);
-      console.log('   Email:', result.user.email);
-      console.log('   Username:', result.user.username);
-      console.log('   Display Name:', result.user.displayName);
-      console.log('   Provider:', result.user.provider);
-    } else {
-      console.log('\n❌ Error:', result.error);
+    // Supabase user_profiles tablosuna da kaydet
+    try {
+      await profileService.updateProfile({
+        email: userProfile.email,
+        username: userProfile.username,
+        displayName: userProfile.displayName,
+        photoURL: userProfile.photoURL,
+        provider: provider,
+      });
+      console.log('✅ [socialAuth] Profil Supabase\'e senkronize edildi');
+    } catch (syncError) {
+      console.warn('⚠️ [socialAuth] Supabase sync hatası (devam ediliyor):', syncError);
     }
     
-    console.log('\n🧪 ============================================\n');
-    
-    return result;
+    return userProfile;
+  }
+
+  /**
+   * Supabase auth state listener'ı başlat
+   * App.tsx'te çağrılmalı
+   */
+  initAuthStateListener() {
+    supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('🔄 [socialAuth] Auth state changed:', event);
+      
+      if (event === 'SIGNED_IN' && session?.user) {
+        // Kullanıcı giriş yaptı
+        const provider = session.user.app_metadata?.provider || 'email';
+        await this.syncUserToProfile(session.user, provider);
+        console.log('✅ [socialAuth] User signed in:', session.user.email);
+      } else if (event === 'SIGNED_OUT') {
+        // Kullanıcı çıkış yaptı
+        await AsyncStorage.removeItem(STORAGE_KEYS.USER);
+        console.log('👋 [socialAuth] User signed out');
+      }
+    });
+  }
+  
+  /**
+   * OAuth callback'i handle et (deep link'ten)
+   */
+  async handleOAuthCallback(url: string): Promise<SocialAuthResult> {
+    try {
+      console.log('📥 [socialAuth] OAuth callback:', url);
+      
+      // URL'den session bilgilerini çıkar
+      const { data, error } = await supabase.auth.getSession();
+      
+      if (error) {
+        throw error;
+      }
+      
+      if (data.session?.user) {
+        const provider = data.session.user.app_metadata?.provider || 'oauth';
+        const user = await this.syncUserToProfile(data.session.user, provider);
+        return { success: true, user, provider };
+      }
+      
+      return { success: false, error: 'Session bulunamadı' };
+    } catch (error: any) {
+      console.error('❌ [socialAuth] OAuth callback error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+  
+  /**
+   * Çıkış yap (tüm provider'lar için)
+   */
+  async signOut(): Promise<{ success: boolean; error?: string }> {
+    try {
+      console.log('👋 [socialAuth] Çıkış yapılıyor...');
+      
+      // Supabase session'ı temizle
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.warn('⚠️ [socialAuth] Supabase signOut error:', error);
+      }
+      
+      // Local storage'ı temizle
+      await AsyncStorage.removeItem(STORAGE_KEYS.USER);
+      await AsyncStorage.removeItem('tacticiq_user_profile');
+      
+      console.log('✅ [socialAuth] Çıkış başarılı');
+      return { success: true };
+    } catch (error: any) {
+      console.error('❌ [socialAuth] SignOut error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Mevcut session'ı kontrol et
+   */
+  async checkSession(): Promise<SocialAuthResult> {
+    try {
+      // Önce Supabase session'ını kontrol et
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      if (error) {
+        console.warn('⚠️ [socialAuth] Session check error:', error);
+      }
+      
+      if (session?.user) {
+        const provider = session.user.app_metadata?.provider || 'email';
+        const user = await this.syncUserToProfile(session.user, provider);
+        return { success: true, user, provider };
+      }
+      
+      // AsyncStorage'dan kontrol et (fallback)
+      const userStr = await AsyncStorage.getItem(STORAGE_KEYS.USER);
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        if (user.authenticated) {
+          return { success: true, user, provider: user.provider };
+        }
+      }
+      
+      return { success: false, error: 'Session bulunamadı' };
+    } catch (error: any) {
+      console.error('❌ [socialAuth] Check session error:', error);
+      return { success: false, error: error.message };
+    }
   }
 
   /**
@@ -212,6 +343,17 @@ class SocialAuthService {
    */
   async getCurrentSocialUser(): Promise<any | null> {
     try {
+      // Önce Supabase session'ını kontrol et
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session?.user) {
+        const provider = session.user.app_metadata?.provider;
+        if (provider === 'google' || provider === 'apple') {
+          return await this.syncUserToProfile(session.user, provider);
+        }
+      }
+      
+      // AsyncStorage fallback
       const userStr = await AsyncStorage.getItem(STORAGE_KEYS.USER);
       if (!userStr) return null;
       
