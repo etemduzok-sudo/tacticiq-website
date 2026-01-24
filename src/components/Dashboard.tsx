@@ -19,9 +19,12 @@ import Animated, {
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
-import api from '../services/api';
+import api, { teamsApi } from '../services/api';
 import { useFavoriteTeams } from '../hooks/useFavoriteTeams';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// Coach cache - takım ID'sine göre teknik direktör isimlerini cache'le
+const coachCache: Record<number, string> = {};
 import { logger } from '../utils/logger';
 import { COLORS, SPACING, TYPOGRAPHY, SIZES, SHADOWS, BRAND } from '../theme/theme';
 import { WEBSITE_DARK_COLORS } from '../config/WebsiteDesignSystem';
@@ -204,16 +207,24 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
     };
   };
   
-  // ✅ Teknik direktör ismini al (2026 güncel)
-  const getCoachName = (teamName: string): string => {
+  // ✅ Teknik direktör ismini al (2026 Ocak güncel - API fallback)
+  // Önce cache'e bak, yoksa fallback listesini kullan
+  // API endpoint'i: /api/teams/:id/coach (arka planda çekilecek)
+  const getCoachName = (teamName: string, teamId?: number): string => {
+    // Eğer teamId varsa ve cache'te varsa, cache'ten döndür
+    if (teamId && coachCache[teamId]) {
+      return coachCache[teamId];
+    }
+    
     const name = teamName.toLowerCase();
+    // ✅ Fallback liste - Ocak 2026 güncel (web search ile doğrulandı)
     const coaches: Record<string, string> = {
-      // Türk Takımları
+      // Türk Takımları (2026 Ocak güncel)
       'galatasaray': 'Okan Buruk',
-      'fenerbahçe': 'José Mourinho',
-      'fenerbahce': 'José Mourinho',
-      'beşiktaş': 'Giovanni van Bronckhorst',
-      'besiktas': 'Giovanni van Bronckhorst',
+      'fenerbahçe': 'Domenico Tedesco', // ✅ Mourinho ayrıldı, Tedesco geldi
+      'fenerbahce': 'Domenico Tedesco',
+      'beşiktaş': 'Sergen Yalçın', // ✅ Solskjaer ayrıldı, Sergen geldi
+      'besiktas': 'Sergen Yalçın',
       'trabzonspor': 'Şenol Güneş',
       'başakşehir': 'Çağdaş Atan',
       'basaksehir': 'Çağdaş Atan',
@@ -890,23 +901,6 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
             </View>
           )}
         </View>
-
-        {/* GEÇMİŞ MAÇLAR - Biten sekmesine yönlendirme */}
-        {filteredPastMatches.length > 0 && (
-          <TouchableOpacity 
-            style={styles.pastMatchesSection}
-            onPress={() => onNavigate('finished')}
-            activeOpacity={0.7}
-          >
-            <View style={styles.pastMatchesCollapsedBar}>
-              <Ionicons name="checkmark-done-outline" size={16} color="#64748B" />
-              <Text style={styles.pastMatchesCollapsedText}>
-                {filteredPastMatches.length} Biten Maç
-              </Text>
-              <Ionicons name="chevron-forward" size={16} color="#64748B" />
-            </View>
-          </TouchableOpacity>
-        )}
 
         {/* Bottom Padding */}
         <View style={{ height: 100 + SIZES.tabBarHeight }} />

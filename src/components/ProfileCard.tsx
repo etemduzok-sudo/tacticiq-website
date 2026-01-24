@@ -301,11 +301,15 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
                     );
                   })
                 ) : (
-                  <View style={styles.noBadgesContainer}>
-                    <Ionicons name="lock-closed" size={16} color="#64748B" />
-                    <Text style={styles.noBadgesText}>Henüz rozet yok</Text>
-                    <Text style={styles.noBadgesHint}>Tahmin yaparak rozet kazan!</Text>
-                  </View>
+                  <Animated.View 
+                    style={styles.noBadgesContainer}
+                  >
+                    <View style={styles.noBadgesIconContainer}>
+                      <Ionicons name="trophy-outline" size={24} color="#F59E0B" />
+                    </View>
+                    <Text style={styles.noBadgesText}>Yakında rozetler gelecek!</Text>
+                    <Text style={styles.noBadgesHint}>Tahmin yaparak rozet kazan</Text>
+                  </Animated.View>
                 )}
               </ScrollView>
             </View>
@@ -696,17 +700,21 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   noBadgesContainer: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(30, 41, 59, 0.3)',
-    borderRadius: 8,
+    gap: 8,
+    backgroundColor: 'rgba(245, 158, 11, 0.08)',
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: 'rgba(100, 116, 139, 0.3)',
-    borderStyle: 'dashed',
+    borderColor: 'rgba(245, 158, 11, 0.2)',
+  },
+  noBadgesIconContainer: {
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    borderRadius: 20,
+    padding: 6,
   },
   noBadgesText: {
     fontSize: 10,

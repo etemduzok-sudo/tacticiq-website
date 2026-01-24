@@ -364,6 +364,15 @@ export const teamsApi = {
   // Get team information
   getTeamInfo: (teamId: number) => request(`/teams/${teamId}`),
 
+  // Get team coach (teknik direktör) - API'den dinamik
+  getTeamCoach: (teamId: number) => request(`/teams/${teamId}/coach`),
+
+  // Get team squad (oyuncu kadrosu)
+  getTeamSquad: (teamId: number, season?: number) => {
+    const params = season ? `?season=${season}` : '';
+    return request(`/teams/${teamId}/squad${params}`);
+  },
+
   // Search teams by name - ✅ Static teams database'den hızlı arama
   searchTeams: (query: string, type?: 'club' | 'national') => {
     const encodedQuery = encodeURIComponent(query);

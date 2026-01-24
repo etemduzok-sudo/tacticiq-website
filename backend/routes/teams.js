@@ -173,6 +173,59 @@ router.get('/:id/flag', async (req, res) => {
   }
 });
 
+// GET /api/teams/:id/coach - Get team coach (teknik direktör)
+router.get('/:id/coach', async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log(`👔 Fetching coach for team ${id}`);
+    
+    const data = await footballApi.getTeamCoach(id);
+    
+    if (!data.response || data.response.length === 0) {
+      return res.json({
+        success: true,
+        data: {
+          teamId: id,
+          coach: null,
+          message: 'No coach data available',
+        },
+        cached: data.cached || false,
+      });
+    }
+    
+    // Get the current coach (most recent)
+    const coaches = data.response;
+    const currentCoach = coaches.find(c => c.career && c.career.some(car => car.team?.id == id && !car.end)) 
+      || coaches[0];
+    
+    console.log(`✅ Found coach for team ${id}: ${currentCoach.name}`);
+    
+    res.json({
+      success: true,
+      data: {
+        teamId: id,
+        coach: {
+          id: currentCoach.id,
+          name: currentCoach.name,
+          firstName: currentCoach.firstname,
+          lastName: currentCoach.lastname,
+          age: currentCoach.age,
+          nationality: currentCoach.nationality,
+          // ⚠️ TELİF: Fotoğraflar telifli olabilir
+          photo: null,
+        },
+      },
+      cached: data.cached || false,
+    });
+  } catch (error) {
+    console.error(`❌ Error fetching coach for team ${req.params.id}:`, error.message);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
 // GET /api/teams/:id/squad - Get team squad (players)
 router.get('/:id/squad', async (req, res) => {
   try {

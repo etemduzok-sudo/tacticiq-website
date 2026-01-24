@@ -191,16 +191,17 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
     return ['#1E40AF', '#FFFFFF'];
   };
 
-  // ✅ Teknik direktör ismini al (2026 güncel)
+  // ✅ Teknik direktör ismini al (2026 Ocak güncel)
   const getCoachName = (teamName: string): string => {
     const name = teamName.toLowerCase();
+    // ✅ Fallback liste - Ocak 2026 güncel (web search ile doğrulandı)
     const coaches: Record<string, string> = {
-      // Türk Takımları
+      // Türk Takımları (2026 Ocak güncel)
       'galatasaray': 'Okan Buruk',
-      'fenerbahçe': 'José Mourinho',
-      'fenerbahce': 'José Mourinho',
-      'beşiktaş': 'Giovanni van Bronckhorst',
-      'besiktas': 'Giovanni van Bronckhorst',
+      'fenerbahçe': 'Domenico Tedesco', // ✅ Mourinho ayrıldı, Tedesco geldi
+      'fenerbahce': 'Domenico Tedesco',
+      'beşiktaş': 'Sergen Yalçın', // ✅ Solskjaer ayrıldı, Sergen geldi
+      'besiktas': 'Sergen Yalçın',
       'trabzonspor': 'Şenol Güneş',
       'başakşehir': 'Çağdaş Atan',
       'basaksehir': 'Çağdaş Atan',

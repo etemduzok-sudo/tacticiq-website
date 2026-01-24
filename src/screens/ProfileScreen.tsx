@@ -2587,7 +2587,7 @@ const createStyles = () => {
   },
   scrollContent: {
     paddingHorizontal: 16, // ✅ Yatay padding (24 → 16, standart)
-    paddingTop: Platform.OS === 'ios' ? 190 : 180, // ✅ ProfileCard overlay'ın altından başlaması için (rozetler dahil ~170px + buffer)
+    paddingTop: Platform.OS === 'ios' ? 245 : 235, // ✅ Dashboard/MatchList ile aynı hiza
     paddingBottom: 96 + SIZES.tabBarHeight, // Footer navigation için extra padding
   },
 

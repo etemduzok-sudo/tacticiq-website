@@ -388,6 +388,11 @@ async function getTeamSquad(teamId, season = 2024) {
   return makeRequest('/players/squads', { team: teamId }, `team-squad-${teamId}-${season}`, 86400); // 24 hour cache
 }
 
+// Get team coach (teknik direktör)
+async function getTeamCoach(teamId) {
+  return makeRequest('/coachs', { team: teamId }, `team-coach-${teamId}`, 86400); // 24 hour cache - günde 1 kez güncellenir
+}
+
 // Get team seasons (available seasons for a team)
 async function getTeamSeasons(teamId) {
   return makeRequest('/teams/seasons', { team: teamId }, `team-seasons-${teamId}`, 86400); // 24 hour cache
@@ -575,6 +580,7 @@ module.exports = {
   getTeamLastMatches,
   getTeamUpcomingMatches,
   getTeamSquad,
+  getTeamCoach,
   getTeamSeasons,
   getCountries,
   extractTeamColors,
