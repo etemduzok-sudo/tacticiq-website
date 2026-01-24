@@ -575,6 +575,15 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
                   </View>
                 )}
               </View>
+            ) : status === 'finished' ? (
+              /* ✅ Biten maçlar için bilgi notu */
+              <View style={matchCardStyles.matchCardFinishedHint}>
+                <Ionicons name="stats-chart" size={12} color="#64748B" />
+                <Text style={matchCardStyles.matchCardFinishedHintText}>
+                  İstatistikler ve maç özeti için tıklayın
+                </Text>
+                <Ionicons name="chevron-forward" size={12} color="#64748B" />
+              </View>
             ) : null}
           </View>
         </LinearGradient>
@@ -1237,6 +1246,22 @@ const matchCardStyles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#ffffff',
+  },
+  matchCardFinishedHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: 'rgba(100, 116, 139, 0.15)',
+    borderRadius: 8,
+  },
+  matchCardFinishedHintText: {
+    fontSize: 11,
+    color: '#94A3B8',
+    fontWeight: '500',
   },
   matchCardScoreBox: {
     marginTop: 4,

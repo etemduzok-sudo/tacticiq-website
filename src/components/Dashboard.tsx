@@ -521,6 +521,14 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
                 >
                   <Text style={styles.matchCardFinishedText}>MAÇ BİTTİ</Text>
                 </LinearGradient>
+                {/* ✅ İstatistik ve özet için bilgi notu */}
+                <View style={styles.matchCardFinishedHint}>
+                  <Ionicons name="stats-chart" size={12} color="#64748B" />
+                  <Text style={styles.matchCardFinishedHintText}>
+                    İstatistikler ve maç özeti için tıklayın
+                  </Text>
+                  <Ionicons name="chevron-forward" size={12} color="#64748B" />
+                </View>
               </View>
             ) : (
               status === 'upcoming' && timeDiff > 0 ? (
@@ -2386,6 +2394,22 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: 'bold',
     color: BRAND.white,
+  },
+  matchCardFinishedHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: 'rgba(100, 116, 139, 0.15)',
+    borderRadius: 8,
+  },
+  matchCardFinishedHintText: {
+    fontSize: 11,
+    color: '#94A3B8',
+    fontWeight: '500',
   },
   matchCardRefereeCard: {
     flex: 1,
