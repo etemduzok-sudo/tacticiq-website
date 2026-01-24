@@ -1147,7 +1147,7 @@ const styles = StyleSheet.create({
     zIndex: 9999,
     elevation: 10,
     backgroundColor: 'transparent',
-    paddingTop: Platform.OS === 'ios' ? 50 : 35, // ✅ Safe area için üst padding
+    paddingTop: 0, // Üst padding kaldırıldı - her ekran kendi padding'ini yönetir
     paddingBottom: 8,
     paddingHorizontal: 0,
     pointerEvents: 'box-none',
