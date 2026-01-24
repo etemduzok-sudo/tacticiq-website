@@ -619,19 +619,25 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
     return [...filtered].sort((a, b) => a.fixture.timestamp - b.fixture.timestamp);
   }, [liveMatches, selectedTeamIds, filterMatchesByTeam]);
 
-  // ✅ Sayfa açıldığında geçmiş maçları atlayıp gelecek maçlara scroll yap
-  React.useEffect(() => {
-    if (!initialScrollDone && filteredPastMatches.length > 0 && scrollViewRef.current) {
+  // ✅ İlk scroll pozisyonunu hesapla (geçmiş maçları atla)
+  const initialScrollOffset = React.useMemo(() => {
+    if (filteredPastMatches.length > 0) {
       // Her maç kartı yaklaşık 200px yüksekliğinde
-      const pastMatchesHeight = filteredPastMatches.length * 200;
-      setTimeout(() => {
-        scrollViewRef.current?.scrollTo({ y: pastMatchesHeight, animated: false });
-        setInitialScrollDone(true);
-      }, 100);
-    } else if (!initialScrollDone && filteredPastMatches.length === 0) {
-      setInitialScrollDone(true);
+      return filteredPastMatches.length * 200;
     }
-  }, [filteredPastMatches.length, initialScrollDone]);
+    return 0;
+  }, [filteredPastMatches.length]);
+
+  // ✅ Sayfa hazır olduğunda işaretle (kıpırdama önleme)
+  React.useEffect(() => {
+    if (!initialScrollDone) {
+      // Kısa bir gecikme ile içeriğin hazır olmasını bekle
+      const timer = setTimeout(() => {
+        setInitialScrollDone(true);
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [initialScrollDone]);
 
   // Show loading ONLY on first load (after all hooks are called)
   if (loading && !hasLoadedOnce) {
@@ -656,9 +662,10 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
       {/* Scrollable Content */}
       <ScrollView
         ref={scrollViewRef}
-        style={styles.scrollView}
+        style={[styles.scrollView, { opacity: initialScrollDone ? 1 : 0 }]}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        contentOffset={{ x: 0, y: initialScrollOffset }}
       >
 
         {/* GEÇMİŞ MAÇLAR - En üstte (yukarı scroll yapınca görünür) */}
