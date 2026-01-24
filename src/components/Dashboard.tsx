@@ -2059,9 +2059,6 @@ const styles = StyleSheet.create({
     height: 10,
     borderRadius: 5,
     backgroundColor: '#EF4444',
-    ...(Platform.OS === 'web' && {
-      animation: 'pulse 1.5s ease-in-out infinite',
-    } as any),
   },
   liveMatchesTitle: {
     fontSize: 16,
