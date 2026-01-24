@@ -35,6 +35,58 @@ class ProfileService {
   private cachedPlayerCounts: PlayerCounts | null = null;
 
   // =====================================================
+  // Profil Normalizasyonu - OAuth ve diğer formatları birleştir
+  // =====================================================
+  
+  /**
+   * Ham veriyi UnifiedUserProfile formatına dönüştür
+   * OAuth, legacy ve diğer formatları destekler
+   */
+  private normalizeProfile(rawData: any): UnifiedUserProfile {
+    // OAuth verileri (displayName, photoURL, firstName, lastName)
+    const displayName = rawData.displayName || rawData.name || '';
+    const nameParts = displayName.trim().split(' ').filter((p: string) => p.length > 0);
+    
+    // firstName/lastName: Önce direkt alanlar, yoksa displayName'den ayır
+    const firstName = rawData.firstName || nameParts[0] || '';
+    const lastName = rawData.lastName || nameParts.slice(1).join(' ') || '';
+    const fullName = displayName || `${firstName} ${lastName}`.trim() || 'Kullanıcı';
+    
+    // nickname: email prefix veya username
+    const nickname = rawData.nickname || rawData.username || rawData.email?.split('@')[0] || 'User';
+    
+    // avatar: OAuth photoURL veya avatar
+    const avatar = rawData.photoURL || rawData.avatar || rawData.avatar_url || '';
+    
+    return {
+      ...DEFAULT_PROFILE,
+      id: rawData.id || rawData.supabase_id || 'local_user',
+      email: rawData.email || '',
+      name: fullName,
+      nickname: nickname,
+      firstName: firstName,
+      lastName: lastName,
+      fullName: fullName,
+      avatar: avatar,
+      plan: rawData.is_pro || rawData.isPro || rawData.isPremium || rawData.plan === 'pro' ? 'pro' : 'free',
+      totalPoints: rawData.points || rawData.totalPoints || rawData.total_points || 0,
+      level: rawData.level || 1,
+      countryRank: rawData.countryRank || rawData.country_rank || 0,
+      globalRank: rawData.globalRank || rawData.global_rank || 0,
+      accuracy: rawData.accuracy || 0,
+      totalPredictions: rawData.totalPredictions || rawData.total_predictions || 0,
+      currentStreak: rawData.currentStreak || rawData.current_streak || 0,
+      bestStreak: rawData.bestStreak || rawData.best_streak || 0,
+      nationalTeam: rawData.nationalTeam || rawData.national_team || '',
+      clubTeams: rawData.clubTeams || rawData.club_teams || [],
+      provider: rawData.provider || 'email',
+      preferredLanguage: rawData.preferredLanguage || rawData.preferred_language || 'tr',
+      timezone: rawData.timezone || 'Europe/Istanbul',
+      country: rawData.country || 'TR',
+    };
+  }
+
+  // =====================================================
   // Profil Okuma
   // =====================================================
 
@@ -54,7 +106,9 @@ class ProfileService {
       // 2. Ana AsyncStorage key kontrolü
       const stored = await AsyncStorage.getItem(STORAGE_KEY);
       if (stored) {
-        this.cachedProfile = JSON.parse(stored);
+        const rawData = JSON.parse(stored);
+        // ✅ Veriyi normalize et (OAuth ve diğer formatları birleştir)
+        this.cachedProfile = this.normalizeProfile(rawData);
         // Arka planda güncelle
         this.refreshProfileInBackground();
         return this.cachedProfile;
@@ -65,32 +119,10 @@ class ProfileService {
         const legacyData = await AsyncStorage.getItem(legacyKey);
         if (legacyData) {
           console.log(`[ProfileService] Legacy key migration: ${legacyKey}`);
-          const userData = JSON.parse(legacyData);
+          const rawData = JSON.parse(legacyData);
           
-          // Legacy format'ı UnifiedUserProfile'a çevir
-          const profile: UnifiedUserProfile = {
-            ...DEFAULT_PROFILE,
-            id: userData.id || 'local_user',
-            email: userData.email || '',
-            name: userData.displayName || userData.name || userData.nickname || '',
-            nickname: userData.nickname || userData.username || userData.email?.split('@')[0] || 'User',
-            firstName: userData.firstName || '',
-            lastName: userData.lastName || '',
-            fullName: userData.displayName || `${userData.firstName || ''} ${userData.lastName || ''}`.trim(),
-            avatar: userData.photoURL || userData.avatar || '',
-            plan: userData.is_pro || userData.isPro || userData.isPremium ? 'pro' : 'free',
-            totalPoints: userData.points || userData.totalPoints || 0,
-            level: userData.level || 1,
-            countryRank: userData.countryRank || 0,
-            globalRank: userData.globalRank || 0,
-            accuracy: userData.accuracy || 0,
-            totalPredictions: userData.totalPredictions || 0,
-            nationalTeam: userData.nationalTeam || '',
-            clubTeams: userData.clubTeams || [],
-            // OAuth provider bilgisi
-            provider: userData.provider || 'email',
-          };
-          
+          // ✅ Aynı normalizasyon fonksiyonunu kullan
+          const profile = this.normalizeProfile(rawData);
           this.cachedProfile = profile;
           
           // Yeni key'e kaydet
