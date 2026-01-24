@@ -783,7 +783,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingTop: 230, // ✅ Space for ProfileCard overlay + team filter + safe area
+    paddingTop: Platform.OS === 'ios' ? 245 : 235, // ✅ Dashboard ile aynı - ProfileCard + team filter
     paddingHorizontal: 16,
     paddingBottom: 100,
   },
