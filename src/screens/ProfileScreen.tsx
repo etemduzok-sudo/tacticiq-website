@@ -1374,9 +1374,16 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   <View style={styles.dropdownSelectedContent}>
                     <Ionicons name="flag" size={18} color={theme.secondary} />
                     <Text style={styles.dropdownButtonTextSelected}>{selectedNationalTeam.name}</Text>
+                    <View style={styles.searchHintInline}>
+                      <Ionicons name="search" size={12} color={theme.mutedForeground} />
+                      <Text style={styles.searchHintText}>Değiştir...</Text>
+                    </View>
                   </View>
                 ) : (
-                  <Text style={styles.dropdownButtonTextPlaceholder}>Milli takım seçin veya ara...</Text>
+                  <View style={styles.dropdownSelectedContent}>
+                    <Ionicons name="search" size={16} color={theme.mutedForeground} />
+                    <Text style={styles.dropdownButtonTextPlaceholder}>Milli takım adı yazarak ara...</Text>
+                  </View>
                 )}
                 <Ionicons 
                   name={openDropdown === 'national' ? 'chevron-up' : 'chevron-down'} 
@@ -1475,13 +1482,19 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                       <Ionicons name="football" size={18} color={theme.accent} />
                       <Text style={styles.dropdownButtonTextSelected}>
                         {selectedClubTeams.filter(Boolean).length}/5 seçildi
-                        {selectedClubTeams.filter(Boolean).length < 5 && (
-                          ` • ${selectedClubTeams.filter(Boolean).length + 1}. takımınızı seçin`
-                        )}
                       </Text>
+                      {selectedClubTeams.filter(Boolean).length < 5 && (
+                        <View style={styles.searchHintInline}>
+                          <Ionicons name="search" size={12} color={theme.mutedForeground} />
+                          <Text style={styles.searchHintText}>Takım ara...</Text>
+                        </View>
+                      )}
                     </View>
                   ) : (
-                    <Text style={styles.dropdownButtonTextPlaceholder}>1. favori kulüp takımınızı seçin...</Text>
+                    <View style={styles.dropdownSelectedContent}>
+                      <Ionicons name="search" size={16} color={theme.mutedForeground} />
+                      <Text style={styles.dropdownButtonTextPlaceholder}>Takım adı yazarak ara...</Text>
+                    </View>
                   )}
                   <Ionicons 
                     name={openDropdown === 'club' ? 'chevron-up' : 'chevron-down'} 
@@ -4752,6 +4765,21 @@ const createStyles = () => {
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.sm,
+    flex: 1,
+  },
+  searchHintInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginLeft: 8,
+    paddingLeft: 8,
+    borderLeftWidth: 1,
+    borderLeftColor: 'rgba(255,255,255,0.1)',
+  },
+  searchHintText: {
+    fontSize: 12,
+    color: theme.mutedForeground,
+    fontStyle: 'italic',
   },
   dropdownButtonTextSelected: {
     ...TYPOGRAPHY.body,
