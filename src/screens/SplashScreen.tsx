@@ -27,6 +27,8 @@ import {
   WEBSITE_BRAND_COLORS,
   WEBSITE_SPACING as WDS_SPACING,
 } from '../config/WebsiteDesignSystem';
+import { supabase } from '../config/supabase';
+import socialAuthService from '../services/socialAuthService';
 
 const { width, height } = Dimensions.get('window');
 
@@ -40,21 +42,57 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
   // ✅ Background circles kaldırıldı (baloncuklar)
 
   useEffect(() => {
-    // Web için animasyonları atla
+    // Web için OAuth callback ve session kontrolü
     if (Platform.OS === 'web') {
-      // Web'de direkt splash'i tamamla
-      const timer = setTimeout(async () => {
+      const checkAuthAndComplete = async () => {
         try {
+          console.log('🔍 [Splash] Web auth check başlıyor...');
+          
+          // ✅ OAuth callback kontrolü - URL'de hash varsa bekle
+          const hasAuthHash = window.location.hash.includes('access_token') || 
+                              window.location.hash.includes('error');
+          
+          if (hasAuthHash) {
+            console.log('🔄 [Splash] OAuth callback algılandı, Supabase session bekleniyor...');
+            
+            // Supabase'in URL'deki token'ları parse etmesini bekle
+            // detectSessionInUrl: true olduğu için otomatik yapacak
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            // URL hash'i temizle (loop önleme)
+            if (window.history && window.history.replaceState) {
+              window.history.replaceState(null, '', window.location.pathname);
+            }
+          }
+          
+          // ✅ Supabase session kontrolü (öncelikli)
+          const { data: { session } } = await supabase.auth.getSession();
+          
+          if (session?.user) {
+            console.log('✅ [Splash] Supabase session bulundu:', session.user.email);
+            
+            // Kullanıcıyı local storage'a senkronize et
+            const provider = session.user.app_metadata?.provider || 'email';
+            await socialAuthService.checkSession(); // Bu sync yapacak
+            
+            onComplete(true);
+            return;
+          }
+          
+          // ✅ AsyncStorage fallback
           const userToken = await AsyncStorage.getItem('tacticiq-user');
           const hasUser = !!userToken;
-          // ✅ SECURITY: Don't log full token
-          console.log('🔍 User authenticated:', !!userToken);
+          console.log('🔍 [Splash] AsyncStorage user:', hasUser);
+          
           onComplete(hasUser);
         } catch (error) {
-          console.error('❌ Error checking user:', error);
+          console.error('❌ [Splash] Auth check error:', error);
           onComplete(false);
         }
-      }, 5000); // 5 saniye
+      };
+      
+      // Web için 2 saniye splash göster, sonra auth check
+      const timer = setTimeout(checkAuthAndComplete, 2000);
       return () => clearTimeout(timer);
     }
 
