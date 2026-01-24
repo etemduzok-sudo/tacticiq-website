@@ -865,9 +865,14 @@ const styles = StyleSheet.create({
   
   // ✅ Takım Filtre Barı Stilleri
   teamFilterBar: {
+    marginTop: 10, // Profil kartının hemen altında
     marginBottom: SPACING.md,
     paddingHorizontal: SPACING.base,
     zIndex: 100,
+    backgroundColor: 'rgba(15, 42, 36, 0.9)', // Arka plan görünür olsun
+    paddingVertical: 8,
+    borderRadius: 12,
+    marginHorizontal: SPACING.base,
   },
   teamFilterScrollContent: {
     flexDirection: 'row',

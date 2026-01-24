@@ -282,20 +282,17 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         normalizedQuery.includes(normalizeText(t))
       );
       
-      // Sorguya göre filtrele
+      // Sorguya göre filtrele - SADECE TAKIM ADI
       const filtered = fallbackList.filter(team => {
         const normalizedName = normalizeText(team.name);
-        const normalizedCountry = normalizeText(team.country);
-        const normalizedLeague = normalizeText((team as any).league || '');
         
-        // Türkiye araması ise country=Turkey olanları da dahil et
-        if (isTurkeySearch && team.country === 'Turkey') {
+        // Türkiye araması ise Türk milli takımlarını dahil et
+        if (isTurkeySearch && team.country === 'Turkey' && type === 'national') {
           return true;
         }
         
-        return normalizedName.includes(normalizedQuery) ||
-               normalizedCountry.includes(normalizedQuery) ||
-               normalizedLeague.includes(normalizedQuery);
+        // SADECE takım adında ara (ülke ve lig adında ARAMA)
+        return normalizedName.includes(normalizedQuery);
       });
       
       setApiTeams(filtered.map(team => ({
