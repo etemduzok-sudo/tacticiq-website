@@ -923,20 +923,20 @@ const styles = StyleSheet.create({
     backgroundColor: '#0F2A24', // Koyu yeşil taban - Splash screen ile uyumlu
     position: 'relative',
   },
-  // Grid Pattern Background - Splash screen ile uyumlu (40px, flu)
+  // Grid Pattern Background - Profil ekranı ile aynı (belirgin grid)
   gridPattern: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    opacity: 0.6,
+    opacity: 1,
     zIndex: 0,
     ...Platform.select({
       web: {
         backgroundImage: `
-          linear-gradient(to right, rgba(31, 162, 166, 0.08) 1px, transparent 1px),
-          linear-gradient(to bottom, rgba(31, 162, 166, 0.08) 1px, transparent 1px)
+          linear-gradient(to right, rgba(31, 162, 166, 0.12) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(31, 162, 166, 0.12) 1px, transparent 1px)
         `,
         backgroundSize: '40px 40px',
       },

@@ -366,13 +366,13 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    opacity: 0.6,
+    opacity: 1,
     zIndex: 0,
     ...Platform.select({
       web: {
         backgroundImage: `
-          linear-gradient(to right, rgba(31, 162, 166, 0.08) 1px, transparent 1px),
-          linear-gradient(to bottom, rgba(31, 162, 166, 0.08) 1px, transparent 1px)
+          linear-gradient(to right, rgba(31, 162, 166, 0.12) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(31, 162, 166, 0.12) 1px, transparent 1px)
         `,
         backgroundSize: '40px 40px',
       },
