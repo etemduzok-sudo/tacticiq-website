@@ -2568,7 +2568,7 @@ const createStyles = () => {
   return StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F2A24', // Koyu yeşil zemin - Dashboard ile aynı
+    backgroundColor: 'transparent', // Grid pattern ScreenLayout'tan geliyor
     position: 'relative',
   },
   gridPattern: {
