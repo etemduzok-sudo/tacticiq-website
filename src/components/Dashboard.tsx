@@ -738,9 +738,19 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
 
   const filteredUpcomingMatches = React.useMemo(() => {
     const filtered = filterMatchesByTeam(allUpcomingMatches, selectedTeamIds);
+    
+    // ✅ Duplicate fixture ID'leri kaldır
+    const uniqueMatches = filtered.reduce((acc: any[], match) => {
+      const fixtureId = match.fixture?.id;
+      if (fixtureId && !acc.some(m => m.fixture?.id === fixtureId)) {
+        acc.push(match);
+      }
+      return acc;
+    }, []);
+    
     // Tarih sırasına göre sırala (en yakın en üstte)
     // Aynı saatte başlayanlar için lig önceliğine göre sırala
-    return [...filtered].sort((a, b) => {
+    return uniqueMatches.sort((a, b) => {
       const timeDiff = a.fixture.timestamp - b.fixture.timestamp;
       if (timeDiff !== 0) return timeDiff;
       // Aynı zamanda başlıyorlarsa, lig önceliğine göre sırala
@@ -750,16 +760,36 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
 
   const filteredPastMatches = React.useMemo(() => {
     const filtered = filterMatchesByTeam(pastMatches, selectedTeamIds);
+    
+    // ✅ Duplicate fixture ID'leri kaldır
+    const uniqueMatches = filtered.reduce((acc: any[], match) => {
+      const fixtureId = match.fixture?.id;
+      if (fixtureId && !acc.some(m => m.fixture?.id === fixtureId)) {
+        acc.push(match);
+      }
+      return acc;
+    }, []);
+    
     // Geçmiş maçları tarih sırasına göre sırala (en eski en üstte, en yeni en altta)
     // Böylece scroll edilince en eski maçlar profil kartının arkasında kalır
-    return [...filtered].sort((a, b) => a.fixture.timestamp - b.fixture.timestamp);
+    return uniqueMatches.sort((a, b) => a.fixture.timestamp - b.fixture.timestamp);
   }, [pastMatches, selectedTeamIds, filterMatchesByTeam]);
 
-  // ✅ Canlı maçları da favori takımlara göre filtrele ve sırala
+  // ✅ Canlı maçları da favori takımlara göre filtrele ve sırala (duplicate önleme dahil)
   const filteredLiveMatches = React.useMemo(() => {
     const filtered = filterMatchesByTeam(liveMatches, selectedTeamIds);
+    
+    // ✅ Duplicate fixture ID'leri kaldır (aynı maç birden fazla kez gelebilir)
+    const uniqueMatches = filtered.reduce((acc: any[], match) => {
+      const fixtureId = match.fixture?.id;
+      if (fixtureId && !acc.some(m => m.fixture?.id === fixtureId)) {
+        acc.push(match);
+      }
+      return acc;
+    }, []);
+    
     // En son başlayan maç en üstte, en önce başlayan en altta (timestamp'e göre azalan sıra)
-    return [...filtered].sort((a, b) => b.fixture.timestamp - a.fixture.timestamp);
+    return uniqueMatches.sort((a, b) => b.fixture.timestamp - a.fixture.timestamp);
   }, [liveMatches, selectedTeamIds, filterMatchesByTeam]);
 
   // ✅ Maç kartı yüksekliği (minHeight + marginBottom)

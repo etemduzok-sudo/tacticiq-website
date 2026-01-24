@@ -375,7 +375,7 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
     ];
   }, [liveMatches]);
 
-  // ✅ Canlı maçları filtrele ve sırala - en son başlayan en üstte
+  // ✅ Canlı maçları filtrele ve sırala - en son başlayan en üstte (duplicate önleme dahil)
   const allLiveMatches = liveMatches.length > 0 ? liveMatches : mockLiveMatches;
   const filteredLiveMatches = React.useMemo(() => {
     let matches = allLiveMatches;
@@ -389,11 +389,20 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
       });
     }
     
+    // ✅ Duplicate fixture ID'leri kaldır
+    const uniqueMatches = matches.reduce((acc: any[], match) => {
+      const fixtureId = match.fixture?.id;
+      if (fixtureId && !acc.some(m => m.fixture?.id === fixtureId)) {
+        acc.push(match);
+      }
+      return acc;
+    }, []);
+    
     // En son başlayan en üstte (timestamp azalan)
-    return [...matches].sort((a, b) => b.fixture.timestamp - a.fixture.timestamp);
+    return uniqueMatches.sort((a, b) => b.fixture.timestamp - a.fixture.timestamp);
   }, [allLiveMatches, selectedTeamId]);
 
-  // ✅ Biten maçları filtrele ve sırala - en son biten en üstte
+  // ✅ Biten maçları filtrele ve sırala - en son biten en üstte (duplicate önleme dahil)
   const filteredFinishedMatches = React.useMemo(() => {
     let matches = [...pastMatches];
     
@@ -406,8 +415,17 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
       });
     }
     
+    // ✅ Duplicate fixture ID'leri kaldır
+    const uniqueMatches = matches.reduce((acc: any[], match) => {
+      const fixtureId = match.fixture?.id;
+      if (fixtureId && !acc.some(m => m.fixture?.id === fixtureId)) {
+        acc.push(match);
+      }
+      return acc;
+    }, []);
+    
     // En son biten en üstte (timestamp azalan)
-    return matches.sort((a, b) => b.fixture.timestamp - a.fixture.timestamp);
+    return uniqueMatches.sort((a, b) => b.fixture.timestamp - a.fixture.timestamp);
   }, [pastMatches, selectedTeamId]);
   
   useEffect(() => {
