@@ -47,7 +47,8 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
         try {
           const userToken = await AsyncStorage.getItem('tacticiq-user');
           const hasUser = !!userToken;
-          console.log('🔍 User token:', userToken);
+          // ✅ SECURITY: Don't log full token
+          console.log('🔍 User authenticated:', !!userToken);
           onComplete(hasUser);
         } catch (error) {
           console.error('❌ Error checking user:', error);
@@ -126,7 +127,8 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
         }
         
         const userToken = await AsyncStorage.getItem('tacticiq-user');
-        console.log('🔍 User token:', userToken);
+        // ✅ SECURITY: Don't log full token
+        console.log('🔍 User authenticated:', !!userToken);
         onComplete(userToken !== null);
       } catch (error) {
         console.error('❌ Error checking user status:', error);

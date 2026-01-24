@@ -2,9 +2,27 @@
 const jwt = require('jsonwebtoken');
 const { logger } = require('./logger');
 
-// JWT Secret (should be in .env)
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this-in-production';
+// ✅ SECURITY: JWT Secret must be from environment variable
+const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
+
+if (!JWT_SECRET) {
+  console.error('❌ CRITICAL: JWT_SECRET environment variable is not set!');
+  console.error('   Generate a secure random string and set it in backend/.env');
+  // Use a fallback for development only - NEVER in production
+  if (process.env.NODE_ENV === 'development') {
+    console.warn('⚠️ Using insecure fallback JWT secret for development');
+  }
+}
+
+// Fallback only for development
+const getJwtSecret = () => {
+  if (JWT_SECRET) return JWT_SECRET;
+  if (process.env.NODE_ENV === 'development') {
+    return 'dev-only-insecure-secret-' + Date.now();
+  }
+  throw new Error('JWT_SECRET is required in production');
+};
 
 // ======================
 // JWT FUNCTIONS
@@ -22,7 +40,7 @@ function generateToken(user) {
     role: user.role || 'user',
   };
   
-  return jwt.sign(payload, JWT_SECRET, {
+  return jwt.sign(payload, getJwtSecret(), {
     expiresIn: JWT_EXPIRES_IN,
     issuer: 'fan-manager-api',
     audience: 'fan-manager-app',
@@ -36,7 +54,7 @@ function generateToken(user) {
  */
 function verifyToken(token) {
   try {
-    return jwt.verify(token, JWT_SECRET, {
+    return jwt.verify(token, getJwtSecret(), {
       issuer: 'fan-manager-api',
       audience: 'fan-manager-app',
     });
@@ -52,7 +70,7 @@ function verifyToken(token) {
  */
 function refreshToken(token) {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET, {
+    const decoded = jwt.verify(token, getJwtSecret(), {
       ignoreExpiration: true, // Allow expired tokens for refresh
     });
     

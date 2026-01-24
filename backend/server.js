@@ -5,6 +5,9 @@ const helmet = require('helmet');
 const compression = require('compression');
 require('dotenv').config();
 
+// ✅ SECURITY: Import auth middleware for protected endpoints
+const { authenticateApiKey } = require('./middleware/auth');
+
 // 🛡️ Global Error Handlers - Backend'in sürekli durmasını engeller
 process.on('uncaughtException', (error) => {
   const timestamp = new Date().toISOString();
@@ -47,8 +50,14 @@ app.use(helmet({
   contentSecurityPolicy: false, // Web için esnek
   crossOriginEmbedderPolicy: false,
 })); // Security headers
-app.use(cors({
-  origin: [
+// ✅ SECURITY: Restrictive CORS configuration
+const allowedOrigins = [
+  // Production
+  'https://tacticiq.app',
+  'https://www.tacticiq.app',
+  'https://tacticiq-website.vercel.app',
+  // Development only (NODE_ENV check)
+  ...(process.env.NODE_ENV === 'development' ? [
     'http://localhost:8081',   // Expo default
     'http://localhost:8082',   // Expo alternative port
     'http://localhost:19006',  // Expo web
@@ -58,9 +67,33 @@ app.use(cors({
     'http://localhost:5174',   // Vite alternative port
     'http://127.0.0.1:5173',   // Vite (127.0.0.1)
     'http://127.0.0.1:8081',   // Expo (127.0.0.1)
-    'http://192.168.254.149:8081', // Expo LAN
-    /^http:\/\/192\.168\.\d+\.\d+:\d+$/, // Any LAN IP
-  ],
+  ] : []),
+];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, Postman, etc.)
+    if (!origin) {
+      // ✅ SECURITY: Only allow no-origin in development
+      if (process.env.NODE_ENV === 'development') {
+        return callback(null, true);
+      }
+      return callback(new Error('Origin required'), false);
+    }
+    
+    // Check if origin is allowed
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    
+    // Allow LAN IPs only in development
+    if (process.env.NODE_ENV === 'development' && /^http:\/\/192\.168\.\d+\.\d+:\d+$/.test(origin)) {
+      return callback(null, true);
+    }
+    
+    console.warn('⚠️ CORS: Blocked origin:', origin);
+    callback(new Error('CORS policy violation'), false);
+  },
   credentials: true,
 })); // Enable CORS for web
 app.use(compression()); // Compress responses
@@ -227,10 +260,11 @@ app.get('/api/system-status', (req, res) => {
 
 // ============================================
 // SERVICE CONTROL ENDPOINTS
+// ✅ SECURITY: Requires API key authentication
 // ============================================
 
 // Control a specific service
-app.post('/api/services/control', (req, res) => {
+app.post('/api/services/control', authenticateApiKey, (req, res) => {
   const { serviceId, action } = req.body;
   
   if (!serviceId || !action) {
@@ -324,7 +358,8 @@ app.post('/api/services/control', (req, res) => {
 });
 
 // Restart all services
-app.post('/api/services/restart-all', (req, res) => {
+// ✅ SECURITY: Requires API key authentication
+app.post('/api/services/restart-all', authenticateApiKey, (req, res) => {
   try {
     const smartSyncService = require('./services/smartSyncService');
     const staticTeamsScheduler = require('./services/staticTeamsScheduler');

@@ -152,7 +152,8 @@ export function PaymentProvider({ children }: { children: ReactNode }) {
       const paymentData = await paymentsClient.loadPaymentData(paymentDataRequest);
       
       // Process payment token - backend'e gönderilecek
-      console.log('Google Pay token:', paymentData.paymentMethodData.tokenizationData.token);
+      // ✅ SECURITY: Don't log payment tokens
+      console.log('Google Pay: Payment token received (not logged for security)');
       
       toast.success(t('payment.success'));
       setIsProcessing(false);

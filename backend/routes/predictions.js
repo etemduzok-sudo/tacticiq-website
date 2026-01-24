@@ -2,12 +2,14 @@
 // PREDICTIONS API ROUTES
 // ============================================
 // Tahmin sistemi için API endpoint'leri
+// ✅ SECURITY: All mutation routes require authentication
 // ============================================
 
 const express = require('express');
 const router = express.Router();
 const { body, param, validationResult } = require('express-validator');
 const { createClient } = require('@supabase/supabase-js');
+const { authenticateToken, optionalAuth } = require('../middleware/auth');
 
 // Supabase client
 const supabase = createClient(
@@ -91,7 +93,8 @@ async function hasMatchStarted(matchId) {
 
 // 1. CREATE PREDICTION
 // POST /api/predictions
-router.post('/', validatePrediction, async (req, res) => {
+// ✅ SECURITY: Requires authentication
+router.post('/', authenticateToken, validatePrediction, async (req, res) => {
   try {
     const {
       userId,
@@ -260,7 +263,8 @@ router.get('/:id', async (req, res) => {
 
 // 4. UPDATE PREDICTION
 // PUT /api/predictions/:id
-router.put('/:id', validatePrediction, async (req, res) => {
+// ✅ SECURITY: Requires authentication
+router.put('/:id', authenticateToken, validatePrediction, async (req, res) => {
   try {
     const { id } = req.params;
     const {
@@ -346,7 +350,8 @@ router.put('/:id', validatePrediction, async (req, res) => {
 
 // 5. DELETE PREDICTION
 // DELETE /api/predictions/:id
-router.delete('/:id', async (req, res) => {
+// ✅ SECURITY: Requires authentication
+router.delete('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
 

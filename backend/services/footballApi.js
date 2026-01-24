@@ -10,9 +10,14 @@ const http = require('http');
 // checkperiod: 600 = check for expired keys every 10 minutes
 const cache = new NodeCache({ stdTTL: 3600, checkperiod: 600 });
 
-// Try both possible env var names for flexibility
-// Default API key provided by user
-const API_KEY = process.env.FOOTBALL_API_KEY || process.env.API_FOOTBALL_KEY || '8a7e3c18ff59d0c7d254d230f999a084';
+// ✅ SECURITY: API key must be from environment variable only
+// Never hardcode API keys in source code
+const API_KEY = process.env.FOOTBALL_API_KEY || process.env.API_FOOTBALL_KEY;
+
+if (!API_KEY) {
+  console.error('❌ CRITICAL: FOOTBALL_API_KEY environment variable is not set!');
+  console.error('   Set FOOTBALL_API_KEY in backend/.env file');
+}
 const BASE_URL = 'https://v3.football.api-sports.io';
 
 // Request counter (resets daily)
