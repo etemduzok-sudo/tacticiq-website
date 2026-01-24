@@ -136,7 +136,7 @@ export async function getFavoriteTeams() {
 }
 
 // Set favorite teams safely
-export async function setFavoriteTeams(teams: Array<{ id: number; name: string; logo: string }>) {
+export async function setFavoriteTeams(teams: Array<{ id: number; name: string; logo: string; colors?: string[] }>) {
   if (!validateFavoriteTeams(teams)) {
     console.error('Invalid favorite teams data');
     return false;

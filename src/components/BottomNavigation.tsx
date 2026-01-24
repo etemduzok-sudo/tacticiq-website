@@ -61,11 +61,11 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#1E3A3A', // Profil kartı rankingCard ile aynı renk
     borderTopLeftRadius: 25,
     borderTopRightRadius: 25,
-    borderTopWidth: 2, // ✅ Üst çizgi (profil kartının alt çizgisi ile aynı)
-    borderTopColor: '#334155', // ✅ Üst çizgi rengi (profil kartının alt çizgisi ile aynı)
+    borderTopWidth: 0, // Border kaldırıldı
+    borderTopColor: 'transparent', // Border kaldırıldı
     ...Platform.select({
       ios: {
         // ✅ Profil kartının alt çizgisindeki gölge efekti (aynısı)

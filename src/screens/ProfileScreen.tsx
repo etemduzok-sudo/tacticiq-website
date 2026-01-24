@@ -15,6 +15,7 @@ import {
   Platform,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import i18n from '../i18n';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -31,6 +32,7 @@ import { ALL_BADGES, BadgeDefinition, getBadgeById } from '../constants/badges';
 import { useFavoriteTeams } from '../hooks/useFavoriteTeams';
 import { logger } from '../utils/logger';
 import { profileService } from '../services/profileService';
+import { setFavoriteTeams as saveFavoriteTeamsToStorage } from '../utils/storageUtils';
 import { calculateTopPercent } from '../types/profile.types';
 import { teamsApi } from '../services/api';
 import { SPACING, TYPOGRAPHY, BRAND, DARK_MODE, COLORS, SIZES, SHADOWS } from '../theme/theme';
@@ -38,6 +40,8 @@ import { StandardHeader, ScreenLayout } from '../components/layouts';
 import { containerStyles } from '../utils/styleHelpers';
 import { ChangePasswordModal } from '../components/profile/ChangePasswordModal';
 import { authService } from '../services/authService';
+import { LegalDocumentScreen } from './LegalDocumentScreen';
+import { translateCountry, formatCountryDisplay, getCountryFlag } from '../utils/countryUtils';
 
 // Theme colors (Dark mode - mobil varsayılan olarak dark mode kullanıyor)
 const theme = COLORS.dark;
@@ -61,6 +65,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 }) => {
   const { t } = useTranslation();
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
+  const [showLegalModal, setShowLegalModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isPro, setIsPro] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -92,6 +97,279 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [apiTeams, setApiTeams] = useState<Array<{ id: number; name: string; colors: string[]; country: string; league: string; type: 'club' | 'national'; coach?: string }>>([]);
   const [isSearching, setIsSearching] = useState(false);
+
+  // ✅ TÜM MİLLİ TAKIMLAR - 50+ ülke
+  const FALLBACK_NATIONAL_TEAMS = [
+    // Türkiye önce
+    { id: 777, name: 'Türkiye', country: 'Turkey', type: 'national' as const, colors: ['#E30A17', '#FFFFFF'], flag: 'https://flagcdn.com/w80/tr.png' },
+    // UEFA - Avrupa
+    { id: 25, name: 'Germany', country: 'Germany', type: 'national' as const, colors: ['#000000', '#DD0000', '#FFCC00'], flag: 'https://flagcdn.com/w80/de.png' },
+    { id: 2, name: 'France', country: 'France', type: 'national' as const, colors: ['#002395', '#FFFFFF', '#ED2939'], flag: 'https://flagcdn.com/w80/fr.png' },
+    { id: 10, name: 'England', country: 'England', type: 'national' as const, colors: ['#FFFFFF', '#CF081F'], flag: 'https://flagcdn.com/w80/gb-eng.png' },
+    { id: 9, name: 'Spain', country: 'Spain', type: 'national' as const, colors: ['#AA151B', '#F1BF00'], flag: 'https://flagcdn.com/w80/es.png' },
+    { id: 768, name: 'Italy', country: 'Italy', type: 'national' as const, colors: ['#009246', '#FFFFFF', '#CE2B37'], flag: 'https://flagcdn.com/w80/it.png' },
+    { id: 27, name: 'Portugal', country: 'Portugal', type: 'national' as const, colors: ['#006600', '#FF0000'], flag: 'https://flagcdn.com/w80/pt.png' },
+    { id: 1, name: 'Belgium', country: 'Belgium', type: 'national' as const, colors: ['#000000', '#FFCD00', '#FF0000'], flag: 'https://flagcdn.com/w80/be.png' },
+    { id: 4, name: 'Netherlands', country: 'Netherlands', type: 'national' as const, colors: ['#FF6600', '#FFFFFF'], flag: 'https://flagcdn.com/w80/nl.png' },
+    { id: 3, name: 'Croatia', country: 'Croatia', type: 'national' as const, colors: ['#FF0000', '#FFFFFF', '#0000FF'], flag: 'https://flagcdn.com/w80/hr.png' },
+    { id: 24, name: 'Poland', country: 'Poland', type: 'national' as const, colors: ['#FFFFFF', '#DC143C'], flag: 'https://flagcdn.com/w80/pl.png' },
+    { id: 772, name: 'Ukraine', country: 'Ukraine', type: 'national' as const, colors: ['#005BBB', '#FFD500'], flag: 'https://flagcdn.com/w80/ua.png' },
+    { id: 15, name: 'Austria', country: 'Austria', type: 'national' as const, colors: ['#ED2939', '#FFFFFF'], flag: 'https://flagcdn.com/w80/at.png' },
+    { id: 14, name: 'Switzerland', country: 'Switzerland', type: 'national' as const, colors: ['#FF0000', '#FFFFFF'], flag: 'https://flagcdn.com/w80/ch.png' },
+    { id: 21, name: 'Denmark', country: 'Denmark', type: 'national' as const, colors: ['#C8102E', '#FFFFFF'], flag: 'https://flagcdn.com/w80/dk.png' },
+    { id: 29, name: 'Wales', country: 'Wales', type: 'national' as const, colors: ['#C8102E', '#FFFFFF'], flag: 'https://flagcdn.com/w80/gb-wls.png' },
+    { id: 30, name: 'Scotland', country: 'Scotland', type: 'national' as const, colors: ['#0065BF', '#FFFFFF'], flag: 'https://flagcdn.com/w80/gb-sct.png' },
+    { id: 31, name: 'Ireland', country: 'Ireland', type: 'national' as const, colors: ['#169B62', '#FFFFFF', '#FF883E'], flag: 'https://flagcdn.com/w80/ie.png' },
+    { id: 32, name: 'Sweden', country: 'Sweden', type: 'national' as const, colors: ['#006AA7', '#FECC00'], flag: 'https://flagcdn.com/w80/se.png' },
+    { id: 33, name: 'Norway', country: 'Norway', type: 'national' as const, colors: ['#EF2B2D', '#002868'], flag: 'https://flagcdn.com/w80/no.png' },
+    { id: 34, name: 'Finland', country: 'Finland', type: 'national' as const, colors: ['#003580', '#FFFFFF'], flag: 'https://flagcdn.com/w80/fi.png' },
+    { id: 35, name: 'Czech Republic', country: 'Czech Republic', type: 'national' as const, colors: ['#D7141A', '#11457E'], flag: 'https://flagcdn.com/w80/cz.png' },
+    { id: 36, name: 'Hungary', country: 'Hungary', type: 'national' as const, colors: ['#CD2A3E', '#436F4D'], flag: 'https://flagcdn.com/w80/hu.png' },
+    { id: 37, name: 'Romania', country: 'Romania', type: 'national' as const, colors: ['#002B7F', '#FCD116', '#CE1126'], flag: 'https://flagcdn.com/w80/ro.png' },
+    { id: 38, name: 'Serbia', country: 'Serbia', type: 'national' as const, colors: ['#C6363C', '#0C4076'], flag: 'https://flagcdn.com/w80/rs.png' },
+    { id: 39, name: 'Greece', country: 'Greece', type: 'national' as const, colors: ['#0D5EAF', '#FFFFFF'], flag: 'https://flagcdn.com/w80/gr.png' },
+    { id: 40, name: 'Russia', country: 'Russia', type: 'national' as const, colors: ['#FFFFFF', '#0039A6', '#D52B1E'], flag: 'https://flagcdn.com/w80/ru.png' },
+    { id: 41, name: 'Slovenia', country: 'Slovenia', type: 'national' as const, colors: ['#005DA4', '#ED1C24'], flag: 'https://flagcdn.com/w80/si.png' },
+    { id: 42, name: 'Slovakia', country: 'Slovakia', type: 'national' as const, colors: ['#0B4EA2', '#EE1C25'], flag: 'https://flagcdn.com/w80/sk.png' },
+    { id: 43, name: 'Albania', country: 'Albania', type: 'national' as const, colors: ['#E41E20', '#000000'], flag: 'https://flagcdn.com/w80/al.png' },
+    { id: 44, name: 'North Macedonia', country: 'North Macedonia', type: 'national' as const, colors: ['#D20000', '#FFE600'], flag: 'https://flagcdn.com/w80/mk.png' },
+    { id: 45, name: 'Georgia', country: 'Georgia', type: 'national' as const, colors: ['#FFFFFF', '#FF0000'], flag: 'https://flagcdn.com/w80/ge.png' },
+    { id: 46, name: 'Iceland', country: 'Iceland', type: 'national' as const, colors: ['#02529C', '#DC1E35'], flag: 'https://flagcdn.com/w80/is.png' },
+    // CONMEBOL - Güney Amerika
+    { id: 6, name: 'Brazil', country: 'Brazil', type: 'national' as const, colors: ['#009C3B', '#FFDF00'], flag: 'https://flagcdn.com/w80/br.png' },
+    { id: 26, name: 'Argentina', country: 'Argentina', type: 'national' as const, colors: ['#74ACDF', '#FFFFFF'], flag: 'https://flagcdn.com/w80/ar.png' },
+    { id: 47, name: 'Uruguay', country: 'Uruguay', type: 'national' as const, colors: ['#0038A8', '#FFFFFF'], flag: 'https://flagcdn.com/w80/uy.png' },
+    { id: 48, name: 'Colombia', country: 'Colombia', type: 'national' as const, colors: ['#FCD116', '#003893', '#CE1126'], flag: 'https://flagcdn.com/w80/co.png' },
+    { id: 49, name: 'Chile', country: 'Chile', type: 'national' as const, colors: ['#D52B1E', '#0039A6'], flag: 'https://flagcdn.com/w80/cl.png' },
+    { id: 50, name: 'Peru', country: 'Peru', type: 'national' as const, colors: ['#D91023', '#FFFFFF'], flag: 'https://flagcdn.com/w80/pe.png' },
+    { id: 51, name: 'Ecuador', country: 'Ecuador', type: 'national' as const, colors: ['#FFD100', '#0033A0'], flag: 'https://flagcdn.com/w80/ec.png' },
+    { id: 52, name: 'Paraguay', country: 'Paraguay', type: 'national' as const, colors: ['#D52B1E', '#0038A8'], flag: 'https://flagcdn.com/w80/py.png' },
+    { id: 53, name: 'Venezuela', country: 'Venezuela', type: 'national' as const, colors: ['#FCE300', '#003DA5', '#EF3340'], flag: 'https://flagcdn.com/w80/ve.png' },
+    { id: 54, name: 'Bolivia', country: 'Bolivia', type: 'national' as const, colors: ['#D52B1E', '#F9E300', '#007934'], flag: 'https://flagcdn.com/w80/bo.png' },
+    // CONCACAF - Kuzey/Orta Amerika
+    { id: 22, name: 'USA', country: 'USA', type: 'national' as const, colors: ['#002868', '#BF0A30'], flag: 'https://flagcdn.com/w80/us.png' },
+    { id: 16, name: 'Mexico', country: 'Mexico', type: 'national' as const, colors: ['#006847', '#FFFFFF', '#CE1126'], flag: 'https://flagcdn.com/w80/mx.png' },
+    { id: 55, name: 'Canada', country: 'Canada', type: 'national' as const, colors: ['#FF0000', '#FFFFFF'], flag: 'https://flagcdn.com/w80/ca.png' },
+    { id: 56, name: 'Costa Rica', country: 'Costa Rica', type: 'national' as const, colors: ['#002B7F', '#CE1126'], flag: 'https://flagcdn.com/w80/cr.png' },
+    { id: 57, name: 'Jamaica', country: 'Jamaica', type: 'national' as const, colors: ['#009B3A', '#FED100', '#000000'], flag: 'https://flagcdn.com/w80/jm.png' },
+    { id: 58, name: 'Panama', country: 'Panama', type: 'national' as const, colors: ['#005293', '#D21034'], flag: 'https://flagcdn.com/w80/pa.png' },
+    // CAF - Afrika
+    { id: 59, name: 'Nigeria', country: 'Nigeria', type: 'national' as const, colors: ['#008751', '#FFFFFF'], flag: 'https://flagcdn.com/w80/ng.png' },
+    { id: 60, name: 'South Africa', country: 'South Africa', type: 'national' as const, colors: ['#007749', '#FFB81C', '#000000'], flag: 'https://flagcdn.com/w80/za.png' },
+    { id: 61, name: 'Egypt', country: 'Egypt', type: 'national' as const, colors: ['#CE1126', '#FFFFFF', '#000000'], flag: 'https://flagcdn.com/w80/eg.png' },
+    { id: 62, name: 'Morocco', country: 'Morocco', type: 'national' as const, colors: ['#C1272D', '#006233'], flag: 'https://flagcdn.com/w80/ma.png' },
+    { id: 63, name: 'Senegal', country: 'Senegal', type: 'national' as const, colors: ['#00853F', '#FDEF42', '#E31B23'], flag: 'https://flagcdn.com/w80/sn.png' },
+    { id: 64, name: 'Algeria', country: 'Algeria', type: 'national' as const, colors: ['#006233', '#FFFFFF', '#D21034'], flag: 'https://flagcdn.com/w80/dz.png' },
+    { id: 65, name: 'Tunisia', country: 'Tunisia', type: 'national' as const, colors: ['#E70013', '#FFFFFF'], flag: 'https://flagcdn.com/w80/tn.png' },
+    { id: 66, name: 'Cameroon', country: 'Cameroon', type: 'national' as const, colors: ['#007A5E', '#CE1126', '#FCD116'], flag: 'https://flagcdn.com/w80/cm.png' },
+    { id: 67, name: 'Ghana', country: 'Ghana', type: 'national' as const, colors: ['#006B3F', '#FCD116', '#CE1126'], flag: 'https://flagcdn.com/w80/gh.png' },
+    { id: 68, name: 'Ivory Coast', country: 'Ivory Coast', type: 'national' as const, colors: ['#F77F00', '#FFFFFF', '#009E60'], flag: 'https://flagcdn.com/w80/ci.png' },
+    { id: 69, name: 'DR Congo', country: 'DR Congo', type: 'national' as const, colors: ['#007FFF', '#CE1021', '#F7D618'], flag: 'https://flagcdn.com/w80/cd.png' },
+    { id: 70, name: 'Mali', country: 'Mali', type: 'national' as const, colors: ['#14B53A', '#FCD116', '#CE1126'], flag: 'https://flagcdn.com/w80/ml.png' },
+    // AFC - Asya
+    { id: 12, name: 'Japan', country: 'Japan', type: 'national' as const, colors: ['#FFFFFF', '#BC002D'], flag: 'https://flagcdn.com/w80/jp.png' },
+    { id: 17, name: 'South Korea', country: 'South Korea', type: 'national' as const, colors: ['#FFFFFF', '#C60C30'], flag: 'https://flagcdn.com/w80/kr.png' },
+    { id: 23, name: 'Australia', country: 'Australia', type: 'national' as const, colors: ['#00843D', '#FFCD00'], flag: 'https://flagcdn.com/w80/au.png' },
+    { id: 28, name: 'Saudi Arabia', country: 'Saudi Arabia', type: 'national' as const, colors: ['#006C35', '#FFFFFF'], flag: 'https://flagcdn.com/w80/sa.png' },
+    { id: 71, name: 'Iran', country: 'Iran', type: 'national' as const, colors: ['#239F40', '#FFFFFF', '#DA0000'], flag: 'https://flagcdn.com/w80/ir.png' },
+    { id: 72, name: 'Qatar', country: 'Qatar', type: 'national' as const, colors: ['#8D1B3D', '#FFFFFF'], flag: 'https://flagcdn.com/w80/qa.png' },
+    { id: 73, name: 'UAE', country: 'UAE', type: 'national' as const, colors: ['#00732F', '#FFFFFF', '#FF0000', '#000000'], flag: 'https://flagcdn.com/w80/ae.png' },
+    { id: 74, name: 'China', country: 'China', type: 'national' as const, colors: ['#DE2910', '#FFDE00'], flag: 'https://flagcdn.com/w80/cn.png' },
+    { id: 75, name: 'India', country: 'India', type: 'national' as const, colors: ['#FF9933', '#FFFFFF', '#138808'], flag: 'https://flagcdn.com/w80/in.png' },
+    { id: 76, name: 'Iraq', country: 'Iraq', type: 'national' as const, colors: ['#007A3D', '#FFFFFF', '#CE1126', '#000000'], flag: 'https://flagcdn.com/w80/iq.png' },
+    { id: 77, name: 'Uzbekistan', country: 'Uzbekistan', type: 'national' as const, colors: ['#1EB53A', '#0099B5', '#FFFFFF'], flag: 'https://flagcdn.com/w80/uz.png' },
+    // OFC - Okyanusya
+    { id: 78, name: 'New Zealand', country: 'New Zealand', type: 'national' as const, colors: ['#000000', '#FFFFFF'], flag: 'https://flagcdn.com/w80/nz.png' },
+  ];
+
+  const FALLBACK_CLUB_TEAMS = [
+    // Türk Takımları
+    { id: 611, name: 'Fenerbahçe', country: 'Turkey', league: 'Süper Lig', type: 'club' as const, colors: ['#FFED00', '#00205B'] },
+    { id: 645, name: 'Galatasaray', country: 'Turkey', league: 'Süper Lig', type: 'club' as const, colors: ['#FF0000', '#FFD700'] },
+    { id: 549, name: 'Beşiktaş', country: 'Turkey', league: 'Süper Lig', type: 'club' as const, colors: ['#000000', '#FFFFFF'] },
+    { id: 551, name: 'Trabzonspor', country: 'Turkey', league: 'Süper Lig', type: 'club' as const, colors: ['#632134', '#00BFFF'] },
+    { id: 607, name: 'Başakşehir', country: 'Turkey', league: 'Süper Lig', type: 'club' as const, colors: ['#F26522', '#1E3A5F'] },
+    { id: 3563, name: 'Konyaspor', country: 'Turkey', league: 'Süper Lig', type: 'club' as const, colors: ['#006633', '#FFFFFF'] },
+    { id: 6890, name: 'Antalyaspor', country: 'Turkey', league: 'Süper Lig', type: 'club' as const, colors: ['#ED1C24', '#FFFFFF'] },
+    { id: 1005, name: 'Kasımpaşa', country: 'Turkey', league: 'Süper Lig', type: 'club' as const, colors: ['#1E4D78', '#FFFFFF'] },
+    // Premier League
+    { id: 50, name: 'Manchester City', country: 'England', league: 'Premier League', type: 'club' as const, colors: ['#6CABDD', '#1C2C5B'] },
+    { id: 33, name: 'Manchester United', country: 'England', league: 'Premier League', type: 'club' as const, colors: ['#DA291C', '#FBE122'] },
+    { id: 40, name: 'Liverpool', country: 'England', league: 'Premier League', type: 'club' as const, colors: ['#C8102E', '#00B2A9'] },
+    { id: 42, name: 'Arsenal', country: 'England', league: 'Premier League', type: 'club' as const, colors: ['#EF0107', '#FFFFFF'] },
+    { id: 49, name: 'Chelsea', country: 'England', league: 'Premier League', type: 'club' as const, colors: ['#034694', '#FFFFFF'] },
+    { id: 47, name: 'Tottenham', country: 'England', league: 'Premier League', type: 'club' as const, colors: ['#132257', '#FFFFFF'] },
+    { id: 66, name: 'Aston Villa', country: 'England', league: 'Premier League', type: 'club' as const, colors: ['#670E36', '#95BFE5'] },
+    { id: 34, name: 'Newcastle', country: 'England', league: 'Premier League', type: 'club' as const, colors: ['#241F20', '#FFFFFF'] },
+    { id: 48, name: 'West Ham', country: 'England', league: 'Premier League', type: 'club' as const, colors: ['#7A263A', '#1BB1E7'] },
+    { id: 45, name: 'Everton', country: 'England', league: 'Premier League', type: 'club' as const, colors: ['#003399', '#FFFFFF'] },
+    // La Liga
+    { id: 541, name: 'Real Madrid', country: 'Spain', league: 'La Liga', type: 'club' as const, colors: ['#FFFFFF', '#00529F'] },
+    { id: 529, name: 'Barcelona', country: 'Spain', league: 'La Liga', type: 'club' as const, colors: ['#004D98', '#A50044'] },
+    { id: 530, name: 'Atletico Madrid', country: 'Spain', league: 'La Liga', type: 'club' as const, colors: ['#CB3524', '#FFFFFF'] },
+    { id: 536, name: 'Sevilla', country: 'Spain', league: 'La Liga', type: 'club' as const, colors: ['#FF0000', '#FFFFFF'] },
+    { id: 533, name: 'Villarreal', country: 'Spain', league: 'La Liga', type: 'club' as const, colors: ['#FFFF00', '#004F9E'] },
+    { id: 548, name: 'Real Sociedad', country: 'Spain', league: 'La Liga', type: 'club' as const, colors: ['#0067B1', '#FFFFFF'] },
+    // Bundesliga
+    { id: 157, name: 'Bayern Munich', country: 'Germany', league: 'Bundesliga', type: 'club' as const, colors: ['#DC052D', '#FFFFFF'] },
+    { id: 165, name: 'Borussia Dortmund', country: 'Germany', league: 'Bundesliga', type: 'club' as const, colors: ['#FDE100', '#000000'] },
+    { id: 173, name: 'RB Leipzig', country: 'Germany', league: 'Bundesliga', type: 'club' as const, colors: ['#DD0741', '#FFFFFF'] },
+    { id: 168, name: 'Bayer Leverkusen', country: 'Germany', league: 'Bundesliga', type: 'club' as const, colors: ['#E32221', '#000000'] },
+    // Serie A
+    { id: 489, name: 'AC Milan', country: 'Italy', league: 'Serie A', type: 'club' as const, colors: ['#AC1F2E', '#000000'] },
+    { id: 505, name: 'Inter Milan', country: 'Italy', league: 'Serie A', type: 'club' as const, colors: ['#010E80', '#000000'] },
+    { id: 496, name: 'Juventus', country: 'Italy', league: 'Serie A', type: 'club' as const, colors: ['#FFFFFF', '#000000'] },
+    { id: 492, name: 'Napoli', country: 'Italy', league: 'Serie A', type: 'club' as const, colors: ['#12A0D7', '#FFFFFF'] },
+    { id: 497, name: 'Roma', country: 'Italy', league: 'Serie A', type: 'club' as const, colors: ['#8E1F2F', '#F0BC42'] },
+    { id: 487, name: 'Lazio', country: 'Italy', league: 'Serie A', type: 'club' as const, colors: ['#87D8F7', '#FFFFFF'] },
+    // Ligue 1
+    { id: 85, name: 'Paris Saint-Germain', country: 'France', league: 'Ligue 1', type: 'club' as const, colors: ['#004170', '#DA291C'] },
+    { id: 81, name: 'Marseille', country: 'France', league: 'Ligue 1', type: 'club' as const, colors: ['#2FAEE0', '#FFFFFF'] },
+    { id: 80, name: 'Lyon', country: 'France', league: 'Ligue 1', type: 'club' as const, colors: ['#FFFFFF', '#DA291C', '#041E42'] },
+    { id: 91, name: 'Monaco', country: 'France', league: 'Ligue 1', type: 'club' as const, colors: ['#DA291C', '#FFFFFF'] },
+    // Portekiz
+    { id: 211, name: 'Benfica', country: 'Portugal', league: 'Primeira Liga', type: 'club' as const, colors: ['#FF0000', '#FFFFFF'] },
+    { id: 212, name: 'Porto', country: 'Portugal', league: 'Primeira Liga', type: 'club' as const, colors: ['#003893', '#FFFFFF'] },
+    { id: 228, name: 'Sporting CP', country: 'Portugal', league: 'Primeira Liga', type: 'club' as const, colors: ['#008754', '#FFFFFF'] },
+  ];
+
+  // ✅ Gelişmiş arama fonksiyonu - Türkçe karakter desteği ile
+  const normalizeText = useCallback((text: string): string => {
+    return text
+      .toLowerCase()
+      .replace(/ı/g, 'i')
+      .replace(/ğ/g, 'g')
+      .replace(/ü/g, 'u')
+      .replace(/ş/g, 's')
+      .replace(/ö/g, 'o')
+      .replace(/ç/g, 'c')
+      .replace(/İ/g, 'i')
+      .replace(/Ğ/g, 'g')
+      .replace(/Ü/g, 'u')
+      .replace(/Ş/g, 's')
+      .replace(/Ö/g, 'o')
+      .replace(/Ç/g, 'c');
+  }, []);
+
+  // ✅ Fallback takımları filtrele ve göster - GELİŞTİRİLMİŞ
+  const useFallbackTeams = useCallback((query: string, type: 'club' | 'national') => {
+    const fallbackList = type === 'national' ? FALLBACK_NATIONAL_TEAMS : FALLBACK_CLUB_TEAMS;
+    
+    if (!query || query.length === 0) {
+      // Boş sorgu - tüm fallback takımları göster
+      setApiTeams(fallbackList.map(team => ({
+        id: team.id,
+        name: team.name,
+        country: team.country || 'Unknown',
+        league: (team as any).league || '',
+        type: team.type,
+        colors: team.colors || ['#1E40AF', '#FFFFFF'],
+        coach: undefined,
+      })));
+    } else {
+      // Normalize edilmiş sorgu
+      const normalizedQuery = normalizeText(query);
+      
+      // Türkiye için özel kontrol
+      const isTurkeySearch = ['turk', 'türk', 'turkey', 'türkiye'].some(t => 
+        normalizedQuery.includes(normalizeText(t))
+      );
+      
+      // Sorguya göre filtrele
+      const filtered = fallbackList.filter(team => {
+        const normalizedName = normalizeText(team.name);
+        const normalizedCountry = normalizeText(team.country);
+        const normalizedLeague = normalizeText((team as any).league || '');
+        
+        // Türkiye araması ise country=Turkey olanları da dahil et
+        if (isTurkeySearch && team.country === 'Turkey') {
+          return true;
+        }
+        
+        return normalizedName.includes(normalizedQuery) ||
+               normalizedCountry.includes(normalizedQuery) ||
+               normalizedLeague.includes(normalizedQuery);
+      });
+      
+      setApiTeams(filtered.map(team => ({
+        id: team.id,
+        name: team.name,
+        country: team.country || 'Unknown',
+        league: (team as any).league || '',
+        type: team.type,
+        colors: team.colors || ['#1E40AF', '#FFFFFF'],
+        coach: undefined,
+      })));
+    }
+  }, [normalizeText]);
+  
+  // ✅ Dropdown açıldığında varsayılan takımları HEMEN göster (fallback'ten)
+  useEffect(() => {
+    if (openDropdown) {
+      setSearchQuery('');
+      const type = openDropdown === 'national' ? 'national' : 'club';
+      // Hemen fallback takımları göster (sıçrama olmasın)
+      useFallbackTeams('', type);
+      setIsSearching(false);
+    } else {
+      setApiTeams([]);
+    }
+  }, [openDropdown, useFallbackTeams]);
+
+  // ✅ Arama debounce - sıçramayı önler
+  const searchTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+  
+  const handleTeamSearch = useCallback((query: string, type: 'club' | 'national') => {
+    // Önce fallback'ten hemen filtrele (anında sonuç) - bu stabildir
+    useFallbackTeams(query, type);
+    
+    // Backend aramasını debounce et - ama fallback sonuçlarını silme
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    
+    // Backend araması sadece 3+ karakter için ve sadece ek sonuç bulmak için
+    // Fallback zaten çalışıyor, backend ek takımlar getirirse birleştir
+    if (query.length >= 3) {
+      searchTimeoutRef.current = setTimeout(async () => {
+        try {
+          const response = await teamsApi.searchTeams(query, type);
+          if (response.success && response.data && response.data.length > 0) {
+            // Backend sonuçlarını mevcut fallback sonuçlarıyla birleştir (duplicate'leri kaldır)
+            setApiTeams(prev => {
+              const backendTeams = response.data.map((team: any) => ({
+                id: team.id,
+                name: team.name,
+                country: team.country || 'Unknown',
+                league: team.league || '',
+                type: team.type || type,
+                colors: team.colors || ['#1E40AF', '#FFFFFF'],
+                coach: team.coach || null,
+              }));
+              
+              // Mevcut ID'leri topla
+              const existingIds = new Set(prev.map(t => t.id));
+              
+              // Backend'den gelen yeni takımları ekle
+              const newTeams = backendTeams.filter((t: any) => !existingIds.has(t.id));
+              
+              // Eğer yeni takım yoksa mevcut listeyi koru
+              if (newTeams.length === 0) return prev;
+              
+              return [...prev, ...newTeams];
+            });
+          }
+          // Backend boş döndüyse fallback zaten gösteriliyor, değiştirme
+        } catch (error) {
+          // Backend hatası - fallback zaten gösteriliyor, değiştirme
+          console.warn('Backend arama hatası, fallback kullanılıyor');
+        }
+      }, 500); // 500ms debounce - daha uzun bekle
+    }
+  }, [useFallbackTeams]);
+  
+  // 🌙 TEMA STATE - Açık/Koyu mod
+  const [isDarkMode, setIsDarkMode] = useState(true); // Varsayılan koyu mod
   
   // 📊 USER STATS STATE
   const [user, setUser] = useState({
@@ -575,82 +853,88 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     }
   };
 
-  // ✅ Backend'den takım arama fonksiyonu - Static teams database'den hızlı arama
-  const searchTeamsFromBackend = useCallback(async (query: string, type: 'club' | 'national' = 'club') => {
-    if (query.length < 2) {
-      setApiTeams([]);
-      return;
-    }
-
-    setIsSearching(true);
-    try {
-      // ✅ Static teams endpoint'ini kullan (type parametresi ile)
-      const response = await teamsApi.searchTeams(query, type);
-      if (response.success && response.data && Array.isArray(response.data)) {
-        // Static teams response formatı: { success: true, data: [{ id, name, country, league, type, colors, flag, coach }] }
-        const formattedTeams = response.data.map((team: any) => ({
-          id: team.id,
-          name: team.name,
-          country: team.country || 'Unknown',
-          league: team.league || 'Unknown',
-          type: team.type || type,
-          colors: team.colors || ['#1E40AF', '#FFFFFF'], // Backend'den gelen renkler
-          coach: team.coach || null,
-        }));
-        
-        setApiTeams(formattedTeams);
-        logger.debug(`✅ Static DB'den ${formattedTeams.length} ${type === 'national' ? 'milli takım' : 'kulüp'} bulundu`, { query, type, count: formattedTeams.length }, 'TEAM_SEARCH');
-      } else {
-        setApiTeams([]);
-      }
-    } catch (error) {
-      console.error('❌ Error searching teams:', error);
-      setApiTeams([]);
-    } finally {
-      setIsSearching(false);
-    }
-  }, []);
-
-  // ✅ Takım seçildiğinde kaydet - Web ile senkronize (profileService kullan)
+  // ✅ Takım seçildiğinde kaydet - DÜZELTILMIŞ
   const handleTeamSelect = useCallback(async (
     team: { id: number; name: string; colors: string[]; country: string; league: string },
     type: 'national' | 'club',
     index?: number
   ) => {
+    console.log('🎯 handleTeamSelect called:', { team: team.name, type, index });
+    
+    // ÖNCE modal'ı kapat ve state'i güncelle
+    setOpenDropdown(null);
+    setSearchQuery('');
+    setApiTeams([]);
+    
+    // Güncel seçili takımları hesapla
+    let newNationalTeam = selectedNationalTeam;
+    let newClubTeams = [...selectedClubTeams];
+    
+    // State'i hemen güncelle
+    if (type === 'national') {
+      newNationalTeam = team;
+      setSelectedNationalTeam(team);
+      console.log('✅ National team state updated:', team.name);
+    } else if (type === 'club' && index !== undefined && index >= 0 && index < 5) {
+      newClubTeams[index] = team;
+      setSelectedClubTeams(newClubTeams);
+      console.log('✅ Club team state updated at index', index, ':', team.name);
+    }
+    
+    // ✅ FAVORITE_CLUBS storage'ına da kaydet (Dashboard için)
+    try {
+      const allTeams: Array<{ id: number; name: string; logo: string; colors?: string[] }> = [];
+      
+      // Milli takım ekle
+      if (newNationalTeam) {
+        allTeams.push({
+          id: newNationalTeam.id,
+          name: newNationalTeam.name,
+          logo: `https://media.api-sports.io/football/teams/${newNationalTeam.id}.png`,
+          colors: newNationalTeam.colors,
+        });
+      }
+      
+      // Kulüp takımları ekle
+      newClubTeams.filter(Boolean).forEach(clubTeam => {
+        if (clubTeam) {
+          allTeams.push({
+            id: clubTeam.id,
+            name: clubTeam.name,
+            logo: `https://media.api-sports.io/football/teams/${clubTeam.id}.png`,
+            colors: clubTeam.colors,
+          });
+        }
+      });
+      
+      // Storage'a kaydet
+      await saveFavoriteTeamsToStorage(allTeams);
+      console.log('✅ Favorite teams saved to storage:', allTeams.map(t => t.name));
+    } catch (storageError) {
+      console.warn('⚠️ Error saving to FAVORITE_CLUBS storage:', storageError);
+    }
+    
+    // Arka planda profil servisine de kaydet
     try {
       const currentProfile = await profileService.getProfile();
       
       if (type === 'national') {
-        // Milli takımı güncelle
-        setSelectedNationalTeam(team);
         await profileService.updateNationalTeam(team.name);
-        
-        // Favorite teams'i güncelle (milli takım + kulüp takımları)
-        const clubTeamNames = selectedClubTeams.filter(Boolean).map(t => t!.name);
+        const clubTeamNames = newClubTeams.filter(Boolean).map(t => t!.name);
         await profileService.updateFavoriteTeams([team.name, ...clubTeamNames]);
-      } else if (type === 'club' && index !== undefined && index >= 0 && index < 5) {
-        // Kulüp takımını ekle/güncelle
-        const newClubTeams = [...selectedClubTeams];
-        newClubTeams[index] = team;
-        setSelectedClubTeams(newClubTeams);
-        
-        // Favorite teams'i güncelle
-        const nationalTeamName = selectedNationalTeam?.name || currentProfile?.nationalTeam || '';
+      } else if (type === 'club' && index !== undefined) {
+        const nationalTeamName = newNationalTeam?.name || currentProfile?.nationalTeam || '';
         const clubTeamNames = newClubTeams.filter(Boolean).map(t => t!.name);
         await profileService.updateFavoriteTeams([nationalTeamName, ...clubTeamNames].filter(Boolean));
         await profileService.updateClubTeams(clubTeamNames);
       }
       
       refetch();
-      logger.info('Team selected and saved', { type, index, team: team.name }, 'PROFILE');
+      console.log('✅ Team saved to profile:', team.name);
     } catch (error) {
-      logger.error('Error saving team', { error }, 'PROFILE');
-      Alert.alert('Hata', 'Takım kaydedilemedi');
+      console.warn('⚠️ Error saving team to profile (UI already updated):', error);
+      // UI zaten güncellendi, hata olsa bile devam et
     }
-    
-    setOpenDropdown(null);
-    setSearchQuery('');
-    setApiTeams([]);
   }, [selectedClubTeams, selectedNationalTeam, refetch]);
 
   const achievements = [
@@ -930,38 +1214,51 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                       
                       <TextInput
                         style={styles.dropdownSearchInput}
-                        placeholder="Ara... (min 2 karakter)"
+                        placeholder={t('teamSelection.searchPlaceholder')}
                         value={searchQuery}
                         onChangeText={(text) => {
                           setSearchQuery(text);
-                          if (text.length >= 3) {
-                            searchTeamsFromBackend(text, 'national');
-                          } else {
-                            setApiTeams([]);
-                          }
+                          handleTeamSearch(text, 'national');
                         }}
                         placeholderTextColor={theme.mutedForeground}
+                        autoFocus={false}
                       />
                       
                       {isSearching && (
                         <ActivityIndicator size="small" color={theme.primary} style={styles.dropdownLoading} />
                       )}
                       
-                      <ScrollView style={styles.dropdownList}>
+                      <ScrollView 
+                        style={styles.dropdownList}
+                        keyboardShouldPersistTaps="always"
+                        nestedScrollEnabled={true}
+                      >
                         {apiTeams.map(team => (
-                          <TouchableOpacity
+                          <Pressable
                             key={team.id}
-                            style={styles.dropdownItem}
+                            style={({ pressed }) => [
+                              styles.dropdownItem,
+                              pressed && { backgroundColor: 'rgba(255,255,255,0.1)' }
+                            ]}
                             onPress={() => {
-                              setSelectedNationalTeam(team);
-                              handleTeamSelect(team, 'national');
-                              setOpenDropdown(null);
-                              setSearchQuery('');
+                              console.log('🔵 National team clicked:', team.name);
+                              const teamToAdd = {
+                                id: team.id,
+                                name: team.name,
+                                colors: team.colors || ['#1E40AF', '#FFFFFF'],
+                                country: team.country || 'Unknown',
+                                league: team.league || '',
+                              };
+                              // handleTeamSelect zaten setSelectedNationalTeam ve modal kapatmayı yapıyor
+                              handleTeamSelect(teamToAdd, 'national');
+                              console.log('✅ National team selected:', teamToAdd.name);
                             }}
                           >
-                            <Text style={styles.dropdownItemName}>{team.name}</Text>
-                            <Text style={styles.dropdownItemMeta}>{team.country}</Text>
-                          </TouchableOpacity>
+                            <View style={{ flex: 1 }}>
+                              <Text style={styles.dropdownItemName}>{team.name}</Text>
+                              <Text style={styles.dropdownItemMeta}>{translateCountry(team.country)}</Text>
+                            </View>
+                          </Pressable>
                         ))}
                       </ScrollView>
                     </View>
@@ -988,11 +1285,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                     <View style={styles.dropdownSelectedContent}>
                       <Ionicons name="football" size={18} color={theme.accent} />
                       <Text style={styles.dropdownButtonTextSelected}>
-                        {selectedClubTeams.filter(Boolean).length} takım seçildi
+                        {selectedClubTeams.filter(Boolean).length}/5 seçildi
+                        {selectedClubTeams.filter(Boolean).length < 5 && (
+                          ` • ${selectedClubTeams.filter(Boolean).length + 1}. takımınızı seçin`
+                        )}
                       </Text>
                     </View>
                   ) : (
-                    <Text style={styles.dropdownButtonTextPlaceholder}>Kulüp takımı seçin veya ara...</Text>
+                    <Text style={styles.dropdownButtonTextPlaceholder}>1. favori kulüp takımınızı seçin...</Text>
                   )}
                   <Ionicons 
                     name={openDropdown === 'club' ? 'chevron-up' : 'chevron-down'} 
@@ -1036,7 +1336,18 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                     <View style={styles.dropdownModalOverlay}>
                       <View style={styles.dropdownModalContent}>
                         <View style={styles.dropdownModalHeader}>
-                          <Text style={styles.dropdownModalTitle}>Kulüp Takımı Seç</Text>
+                          <Text style={styles.dropdownModalTitle}>
+                            {selectedClubTeams.filter(Boolean).length === 0 
+                              ? t('teamSelection.selectClubTeam')
+                              : selectedClubTeams.filter(Boolean).length === 1
+                                ? t('teamSelection.selectClubTeam2')
+                                : selectedClubTeams.filter(Boolean).length === 2
+                                  ? t('teamSelection.selectClubTeam3')
+                                  : selectedClubTeams.filter(Boolean).length === 3
+                                    ? t('teamSelection.selectClubTeam4')
+                                    : t('teamSelection.selectClubTeam5')
+                            }
+                          </Text>
                           <TouchableOpacity onPress={() => setOpenDropdown(null)}>
                             <Ionicons name="close" size={24} color={theme.mutedForeground} />
                           </TouchableOpacity>
@@ -1044,45 +1355,67 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                         
                         <TextInput
                           style={styles.dropdownSearchInput}
-                          placeholder="Ara... (min 2 karakter)"
+                          placeholder={t('teamSelection.searchPlaceholder')}
                           value={searchQuery}
                           onChangeText={(text) => {
                             setSearchQuery(text);
-                            if (text.length >= 3) {
-                              searchTeamsFromBackend(text, 'club');
-                            } else {
-                              setApiTeams([]);
-                            }
+                            handleTeamSearch(text, 'club');
                           }}
                           placeholderTextColor={theme.mutedForeground}
+                          autoFocus={false}
                         />
                         
                         {isSearching && (
                           <ActivityIndicator size="small" color={theme.primary} style={styles.dropdownLoading} />
                         )}
                         
-                        <ScrollView style={styles.dropdownList}>
-                          {apiTeams.filter(t => !selectedClubTeams.map(ct => ct?.id).includes(t.id)).map(team => (
-                            <TouchableOpacity
+                        <ScrollView 
+                          style={styles.dropdownList}
+                          keyboardShouldPersistTaps="always"
+                          nestedScrollEnabled={true}
+                        >
+                          {apiTeams.filter(t => !selectedClubTeams.some(ct => ct && ct.id === t.id)).map(team => (
+                            <Pressable
                               key={team.id}
-                              style={styles.dropdownItem}
+                              style={({ pressed }) => [
+                                styles.dropdownItem,
+                                pressed && { backgroundColor: 'rgba(255,255,255,0.1)' }
+                              ]}
                               onPress={() => {
-                                // Boş slot bul ve ekle
+                                console.log('🔵 Team clicked:', team.name);
+                                // Boş slot bul
                                 const emptyIndex = selectedClubTeams.findIndex(t => t === null);
-                                if (emptyIndex !== -1) {
-                                  const newTeams = [...selectedClubTeams];
-                                  newTeams[emptyIndex] = team;
-                                  setSelectedClubTeams(newTeams);
-                                  handleTeamSelect(team, 'club', emptyIndex);
+                                console.log('🔵 Empty slot index:', emptyIndex);
+                                
+                                if (emptyIndex === -1) {
+                                  console.log('⚠️ No empty slot - all 5 filled');
+                                  if (Platform.OS === 'web') {
+                                    window.alert('Maksimum 5 kulüp takımı seçebilirsiniz. Bir takımı kaldırıp tekrar deneyin.');
+                                  } else {
+                                    Alert.alert('Uyarı', 'Maksimum 5 kulüp takımı seçebilirsiniz.');
+                                  }
+                                  return;
                                 }
-                                setOpenDropdown(null);
-                                setSearchQuery('');
+                                
+                                const teamToAdd = {
+                                  id: team.id,
+                                  name: team.name,
+                                  colors: team.colors || ['#1E40AF', '#FFFFFF'],
+                                  country: team.country || 'Unknown',
+                                  league: team.league || '',
+                                };
+                                
+                                // handleTeamSelect zaten state'i güncelliyor
+                                handleTeamSelect(teamToAdd, 'club', emptyIndex);
+                                console.log('✅ Team added:', teamToAdd.name, 'at index:', emptyIndex);
                               }}
                               disabled={selectedClubTeams.filter(Boolean).length >= 5}
                             >
-                              <Text style={styles.dropdownItemName}>{team.name}</Text>
-                              <Text style={styles.dropdownItemMeta}>{team.league || team.country}</Text>
-                            </TouchableOpacity>
+                              <View style={{ flex: 1 }}>
+                                <Text style={styles.dropdownItemName}>{team.name}</Text>
+                                <Text style={styles.dropdownItemMeta}>{team.league ? `${team.league} • ${translateCountry(team.country)}` : translateCountry(team.country)}</Text>
+                              </View>
+                            </Pressable>
                           ))}
                         </ScrollView>
                       </View>
@@ -1119,94 +1452,48 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             </View>
             
             <View style={styles.formField}>
-              <Text style={styles.formLabel}>İsim</Text>
+              <Text style={styles.formLabel}>{t('profileEdit.firstName')}</Text>
               <TextInput
-                style={styles.formInput}
+                style={[styles.formInput, styles.formInputEditable]}
                 value={firstName}
-                onChangeText={setFirstName}
-                placeholder="İsim"
+                onChangeText={(text) => {
+                  setFirstName(text);
+                  setIsEditing(true);
+                }}
+                placeholder={t('profileEdit.firstName')}
                 placeholderTextColor={theme.mutedForeground}
-                editable={isEditing}
               />
             </View>
 
             <View style={styles.formField}>
-              <Text style={styles.formLabel}>Soyisim</Text>
+              <Text style={styles.formLabel}>{t('profileEdit.lastName')}</Text>
               <TextInput
-                style={styles.formInput}
+                style={[styles.formInput, styles.formInputEditable]}
                 value={lastName}
-                onChangeText={setLastName}
-                placeholder="Soyisim"
+                onChangeText={(text) => {
+                  setLastName(text);
+                  setIsEditing(true);
+                }}
+                placeholder={t('profileEdit.lastName')}
                 placeholderTextColor={theme.mutedForeground}
-                editable={isEditing}
               />
             </View>
 
             <View style={styles.formField}>
-              <Text style={styles.formLabel}>Nickname <Text style={styles.requiredStar}>*</Text></Text>
+              <Text style={styles.formLabel}>{t('profileEdit.nickname')} <Text style={styles.requiredStar}>*</Text></Text>
               <TextInput
-                style={styles.formInput}
+                style={[styles.formInput, styles.formInputEditable]}
                 value={nickname}
-                onChangeText={setNickname}
-                placeholder="Kullanıcı adı"
+                onChangeText={(text) => {
+                  setNickname(text);
+                  setIsEditing(true);
+                }}
+                placeholder={t('profileEdit.nickname')}
                 placeholderTextColor={theme.mutedForeground}
-                editable={isEditing}
               />
               <Text style={styles.formHint}>Tüm kullanıcılar için zorunludur (min 3 karakter)</Text>
             </View>
 
-            {/* Save/Cancel Buttons */}
-            {isEditing && (
-              <View style={styles.formActions}>
-                <TouchableOpacity
-                  style={styles.saveButton}
-                  onPress={async () => {
-                    setSaving(true);
-                    try {
-                      const fullName = [firstName, lastName].filter(Boolean).join(' ').trim() || nickname;
-                      await profileService.updateProfile({
-                        name: fullName,
-                        nickname: nickname,
-                      });
-                      setIsEditing(false);
-                      Alert.alert('Başarılı', 'Profil güncellendi');
-                    } catch (error) {
-                      Alert.alert('Hata', 'Profil güncellenemedi');
-                    } finally {
-                      setSaving(false);
-                    }
-                  }}
-                  disabled={saving || nickname.trim().length < 3}
-                >
-                  <LinearGradient
-                    colors={[theme.primary, theme.primaryDark || theme.primary]}
-                    style={styles.saveButtonGradient}
-                  >
-                    {saving ? (
-                      <ActivityIndicator size="small" color={theme.primaryForeground} />
-                    ) : (
-                      <>
-                        <Ionicons name="checkmark" size={18} color={theme.primaryForeground} />
-                        <Text style={styles.saveButtonText}>Kaydet</Text>
-                      </>
-                    )}
-                  </LinearGradient>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.cancelButton}
-                  onPress={() => setIsEditing(false)}
-                >
-                  <Text style={styles.cancelButtonText}>İptal</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-
-            {!isEditing && (
-              <TouchableOpacity style={styles.editButton_main} onPress={() => setIsEditing(true)}>
-                <Ionicons name="create-outline" size={18} color={theme.primary} />
-                <Text style={styles.editButtonText}>Düzenle</Text>
-              </TouchableOpacity>
-            )}
           </Animated.View>
 
           {/* Ayarlar Card - Web ile aynı */}
@@ -1216,29 +1503,46 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               <Text style={styles.cardTitle}>Ayarlar</Text>
             </View>
 
-            {/* Dil ve Saat Dilimi - Web ile aynı */}
+            {/* Dil ve Saat Dilimi - Web uyumlu */}
             <View style={styles.settingsGrid}>
               <TouchableOpacity 
                 style={styles.settingsField}
-                onPress={() => {
-                  // Dil seçim modalı açılacak
+                onPress={async () => {
                   const languages = [
                     { code: 'tr', name: 'Türkçe', flag: '🇹🇷' },
                     { code: 'en', name: 'English', flag: '🇬🇧' },
                     { code: 'de', name: 'Deutsch', flag: '🇩🇪' },
                   ];
-                  Alert.alert(
-                    'Dil Seçimi',
-                    'Dil seçin:',
-                    languages.map(lang => ({
-                      text: `${lang.flag} ${lang.name}`,
-                      onPress: async () => {
-                        setSelectedLanguage(lang.code);
-                        await profileService.updateProfile({ preferredLanguage: lang.code });
-                        Alert.alert('Başarılı', `Dil değiştirildi: ${lang.name}`);
-                      },
-                    })).concat([{ text: 'İptal', style: 'cancel' }])
-                  );
+                  
+                  if (Platform.OS === 'web') {
+                    // Web için basit prompt
+                    const choice = window.prompt(
+                      'Dil seçin:\n1 - 🇹🇷 Türkçe\n2 - 🇬🇧 English\n3 - 🇩🇪 Deutsch\n\nNumara girin (1, 2 veya 3):'
+                    );
+                    const langMap: Record<string, string> = { '1': 'tr', '2': 'en', '3': 'de' };
+                    const langCode = langMap[choice || ''];
+                    if (langCode) {
+                      setSelectedLanguage(langCode);
+                      await profileService.updateProfile({ preferredLanguage: langCode });
+                      // i18n dilini değiştir
+                      i18n.changeLanguage(langCode);
+                      window.alert(`✅ Dil değiştirildi: ${languages.find(l => l.code === langCode)?.name}`);
+                    }
+                  } else {
+                    Alert.alert(
+                      'Dil Seçimi',
+                      'Dil seçin:',
+                      languages.map(lang => ({
+                        text: `${lang.flag} ${lang.name}`,
+                        onPress: async () => {
+                          setSelectedLanguage(lang.code);
+                          await profileService.updateProfile({ preferredLanguage: lang.code });
+                          i18n.changeLanguage(lang.code);
+                          Alert.alert('Başarılı', `Dil değiştirildi: ${lang.name}`);
+                        },
+                      })).concat([{ text: 'İptal', style: 'cancel' as const }])
+                    );
+                  }
                 }}
               >
                 <Text style={styles.formLabel}>Dil</Text>
@@ -1254,26 +1558,44 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               </TouchableOpacity>
               <TouchableOpacity 
                 style={styles.settingsField}
-                onPress={() => {
-                  // Saat dilimi seçim modalı açılacak
+                onPress={async () => {
                   const timezones = [
                     { id: 'Europe/Istanbul', name: 'İstanbul (UTC+3)' },
                     { id: 'Europe/London', name: 'Londra (UTC+0)' },
                     { id: 'Europe/Berlin', name: 'Berlin (UTC+1)' },
                     { id: 'America/New_York', name: 'New York (UTC-5)' },
                   ];
-                  Alert.alert(
-                    'Saat Dilimi Seçimi',
-                    'Saat dilimi seçin:',
-                    timezones.map(tz => ({
-                      text: tz.name,
-                      onPress: async () => {
-                        setSelectedTimezone(tz.id);
-                        await profileService.updateProfile({ timezone: tz.id });
-                        Alert.alert('Başarılı', `Saat dilimi değiştirildi: ${tz.name}`);
-                      },
-                    })).concat([{ text: 'İptal', style: 'cancel' }])
-                  );
+                  
+                  if (Platform.OS === 'web') {
+                    const choice = window.prompt(
+                      'Saat dilimi seçin:\n1 - İstanbul (UTC+3)\n2 - Londra (UTC+0)\n3 - Berlin (UTC+1)\n4 - New York (UTC-5)\n\nNumara girin:'
+                    );
+                    const tzMap: Record<string, string> = { 
+                      '1': 'Europe/Istanbul', 
+                      '2': 'Europe/London', 
+                      '3': 'Europe/Berlin', 
+                      '4': 'America/New_York' 
+                    };
+                    const tzId = tzMap[choice || ''];
+                    if (tzId) {
+                      setSelectedTimezone(tzId);
+                      await profileService.updateProfile({ timezone: tzId });
+                      window.alert(`✅ Saat dilimi değiştirildi: ${timezones.find(t => t.id === tzId)?.name}`);
+                    }
+                  } else {
+                    Alert.alert(
+                      'Saat Dilimi Seçimi',
+                      'Saat dilimi seçin:',
+                      timezones.map(tz => ({
+                        text: tz.name,
+                        onPress: async () => {
+                          setSelectedTimezone(tz.id);
+                          await profileService.updateProfile({ timezone: tz.id });
+                          Alert.alert('Başarılı', `Saat dilimi değiştirildi: ${tz.name}`);
+                        },
+                      })).concat([{ text: 'İptal', style: 'cancel' as const }])
+                    );
+                  }
                 }}
               >
                 <Text style={styles.formLabel}>Saat Dilimi</Text>
@@ -1286,6 +1608,33 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 </Text>
                 <Ionicons name="chevron-down" size={16} color={theme.mutedForeground} />
               </TouchableOpacity>
+            </View>
+
+            {/* Tema Seçimi - Açık/Koyu Mod */}
+            <View style={styles.themeToggleContainer}>
+              <View style={styles.themeToggleLeft}>
+                <Ionicons name={isDarkMode ? "moon" : "sunny"} size={20} color={theme.primary} />
+                <Text style={styles.themeToggleLabel}>Tema</Text>
+              </View>
+              <View style={styles.themeToggleButtons}>
+                <TouchableOpacity
+                  style={[styles.themeButton, !isDarkMode && styles.themeButtonActive]}
+                  onPress={() => {
+                    setIsDarkMode(false);
+                    Alert.alert('Tema', 'Açık mod şu an geliştirme aşamasında. Yakında kullanılabilir olacak.');
+                  }}
+                >
+                  <Ionicons name="sunny" size={16} color={!isDarkMode ? '#000' : theme.mutedForeground} />
+                  <Text style={[styles.themeButtonText, !isDarkMode && styles.themeButtonTextActive]}>Açık</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.themeButton, isDarkMode && styles.themeButtonActive]}
+                  onPress={() => setIsDarkMode(true)}
+                >
+                  <Ionicons name="moon" size={16} color={isDarkMode ? '#000' : theme.mutedForeground} />
+                  <Text style={[styles.themeButtonText, isDarkMode && styles.themeButtonTextActive]}>Koyu</Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
             <View style={styles.settingsDivider} />
@@ -1434,7 +1783,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             <View style={styles.settingsDivider} />
 
             {/* Yasal Bilgilendirmeler */}
-            <TouchableOpacity style={styles.legalButton}>
+            <TouchableOpacity 
+              style={styles.legalButton}
+              onPress={() => setShowLegalModal(true)}
+            >
               <Ionicons name="document-text-outline" size={20} color={theme.primary} />
               <Text style={styles.legalButtonText}>Yasal Bilgilendirmeler</Text>
             </TouchableOpacity>
@@ -1459,35 +1811,48 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
             {/* Çıkış Yap - Web ve Mobile uyumlu */}
             <TouchableOpacity 
-              style={styles.securityButton}
-              onPress={async () => {
-                // Web için window.confirm, Mobile için Alert.alert
-                const handleLogout = async () => {
+              style={[styles.securityButton, { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.3)' }]}
+              onPress={() => {
+                // Direkt çıkış yap fonksiyonu
+                const doLogout = async () => {
+                  console.log('🚪 Logout started...');
                   try {
-                    const result = await authService.signOut();
-                    if (result.success) {
-                      await AsyncStorage.clear();
-                      if (Platform.OS === 'web') {
-                        window.location.reload();
-                      } else {
-                        Alert.alert('Başarılı', 'Çıkış yapıldı');
-                        onBack();
-                      }
+                    // 1. AsyncStorage'ı temizle
+                    await AsyncStorage.clear();
+                    console.log('✅ AsyncStorage cleared');
+                    
+                    // 2. AuthService signOut (opsiyonel, hata verse de devam et)
+                    try {
+                      await authService.signOut();
+                      console.log('✅ AuthService signOut completed');
+                    } catch (e) {
+                      console.warn('⚠️ AuthService signOut warning:', e);
+                    }
+                    
+                    // 3. Sayfayı yenile (web) veya geri git (mobile)
+                    if (Platform.OS === 'web') {
+                      console.log('🔄 Reloading page...');
+                      window.location.href = '/';
                     } else {
-                      throw new Error(result.error || 'Çıkış yapılamadı');
+                      Alert.alert('Başarılı', 'Çıkış yapıldı');
+                      onBack();
                     }
                   } catch (error: any) {
+                    console.error('❌ Logout error:', error);
+                    // Hata olsa bile sayfayı yenile
                     if (Platform.OS === 'web') {
-                      alert(error.message || 'Çıkış yapılamadı');
+                      window.location.href = '/';
                     } else {
                       Alert.alert('Hata', error.message || 'Çıkış yapılamadı');
                     }
                   }
                 };
 
+                // Onay al ve çıkış yap
                 if (Platform.OS === 'web') {
-                  if (window.confirm('Çıkış yapmak istediğinizden emin misiniz?')) {
-                    await handleLogout();
+                  const confirmed = window.confirm('Çıkış yapmak istediğinizden emin misiniz?');
+                  if (confirmed) {
+                    doLogout();
                   }
                 } else {
                   Alert.alert(
@@ -1495,15 +1860,15 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                     'Çıkış yapmak istediğinizden emin misiniz?',
                     [
                       { text: 'İptal', style: 'cancel' },
-                      { text: 'Çıkış Yap', style: 'destructive', onPress: handleLogout },
+                      { text: 'Çıkış Yap', style: 'destructive', onPress: doLogout },
                     ]
                   );
                 }
               }}
             >
-              <Ionicons name="log-out-outline" size={20} color={theme.primary} />
-              <Text style={styles.securityButtonText}>Çıkış Yap</Text>
-              <Ionicons name="chevron-forward" size={20} color={theme.mutedForeground} />
+              <Ionicons name="log-out-outline" size={20} color="#EF4444" />
+              <Text style={[styles.securityButtonText, { color: '#EF4444' }]}>Çıkış Yap</Text>
+              <Ionicons name="chevron-forward" size={20} color="#EF4444" />
             </TouchableOpacity>
 
             {/* Hesabı Sil - Web ile aynı (collapsible) */}
@@ -1524,6 +1889,20 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             visible={showChangePasswordModal}
             onClose={() => setShowChangePasswordModal(false)}
           />
+
+          {/* Yasal Bilgilendirmeler Modal */}
+          <Modal
+            visible={showLegalModal}
+            transparent
+            animationType="slide"
+            onRequestClose={() => setShowLegalModal(false)}
+          >
+            <View style={{ flex: 1, backgroundColor: theme.background }}>
+              <LegalDocumentScreen
+                onBack={() => setShowLegalModal(false)}
+              />
+            </View>
+          </Modal>
 
           {/* Hesabı Sil Dialog - Web ile aynı */}
           <Modal
@@ -1671,6 +2050,142 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           {/* Duplicate Settings ve Security Card kaldırıldı - yukarıda zaten var */}
 
           {/* Database Test Button kaldırıldı - Web Admin Panel'e taşındı */}
+
+          {/* ✅ ŞIK KAYDET BUTONU - Scroll içinde en sonda */}
+          <Animated.View 
+            entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(400)} 
+            style={{ marginTop: 16, marginBottom: 120 }}
+          >
+            <TouchableOpacity
+              activeOpacity={0.85}
+              style={{
+                borderRadius: 16,
+                overflow: 'hidden',
+                ...(Platform.OS === 'web' ? {
+                  boxShadow: isEditing && nickname.trim().length >= 3 
+                    ? '0 8px 32px rgba(245, 158, 11, 0.4), 0 4px 16px rgba(0, 0, 0, 0.3)'
+                    : '0 4px 20px rgba(0, 0, 0, 0.3)',
+                } : {
+                  shadowColor: isEditing && nickname.trim().length >= 3 ? '#F59E0B' : '#000',
+                  shadowOffset: { width: 0, height: 6 },
+                  shadowOpacity: 0.4,
+                  shadowRadius: 12,
+                  elevation: 12,
+                }),
+              }}
+              onPress={async () => {
+                if (!isEditing || nickname.trim().length < 3) {
+                  if (Platform.OS === 'web') {
+                    window.alert('Değişiklik yapmadınız veya kullanıcı adı çok kısa');
+                  } else {
+                    Alert.alert('Bilgi', 'Değişiklik yapmadınız veya kullanıcı adı çok kısa');
+                  }
+                  return;
+                }
+                setSaving(true);
+                try {
+                  const fullName = [firstName, lastName].filter(Boolean).join(' ').trim() || nickname;
+                  await profileService.updateProfile({
+                    name: fullName,
+                    nickname: nickname,
+                  });
+                  setIsEditing(false);
+                  if (Platform.OS === 'web') {
+                    window.alert('✅ Profil güncellendi!');
+                  } else {
+                    Alert.alert('Başarılı', 'Profil güncellendi!');
+                  }
+                } catch (error) {
+                  console.error('Profile update error:', error);
+                  if (Platform.OS === 'web') {
+                    window.alert('❌ Profil güncellenemedi');
+                  } else {
+                    Alert.alert('Hata', 'Profil güncellenemedi');
+                  }
+                } finally {
+                  setSaving(false);
+                }
+              }}
+            >
+              <LinearGradient
+                colors={isEditing && nickname.trim().length >= 3 
+                  ? ['#F59E0B', '#D97706', '#B45309']
+                  : ['#1F2937', '#374151', '#1F2937']
+                }
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 12,
+                  paddingVertical: 18,
+                  paddingHorizontal: 32,
+                  borderWidth: 1,
+                  borderColor: isEditing && nickname.trim().length >= 3 
+                    ? 'rgba(253, 224, 71, 0.5)'
+                    : 'rgba(75, 85, 99, 0.5)',
+                  borderRadius: 16,
+                }}
+              >
+                {saving ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <>
+                    <View style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: 20,
+                      backgroundColor: isEditing && nickname.trim().length >= 3 
+                        ? 'rgba(255, 255, 255, 0.2)'
+                        : 'rgba(75, 85, 99, 0.3)',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}>
+                      <Ionicons 
+                        name={isEditing && nickname.trim().length >= 3 ? "checkmark-circle" : "save-outline"} 
+                        size={24} 
+                        color={isEditing && nickname.trim().length >= 3 ? '#FFFFFF' : '#6B7280'} 
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ 
+                        color: isEditing && nickname.trim().length >= 3 ? '#FFFFFF' : '#6B7280', 
+                        fontSize: 18, 
+                        fontWeight: '700',
+                        letterSpacing: 0.3,
+                      }}>
+                        {isEditing && nickname.trim().length >= 3 ? 'Değişiklikleri Kaydet' : 'Profili Kaydet'}
+                      </Text>
+                      <Text style={{
+                        color: isEditing && nickname.trim().length >= 3 
+                          ? 'rgba(255, 255, 255, 0.7)' 
+                          : 'rgba(107, 114, 128, 0.7)',
+                        fontSize: 13,
+                        marginTop: 2,
+                      }}>
+                        {isEditing && nickname.trim().length >= 3 
+                          ? '⚡ Tüm değişiklikler kaydedilecek' 
+                          : 'Henüz değişiklik yapılmadı'}
+                      </Text>
+                    </View>
+                    {isEditing && nickname.trim().length >= 3 && (
+                      <View style={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: 16,
+                        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}>
+                        <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
+                      </View>
+                    )}
+                  </>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
+          </Animated.View>
 
         </ScrollView>
 
@@ -1951,29 +2466,40 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           </View>
         </Modal>
 
-        {/* Footer Navigation - 4 Sekmeli */}
-        <View style={styles.footerNavigation}>
-          <TouchableOpacity style={styles.footerTab} onPress={() => Alert.alert('Ana Sayfa', 'Ana sayfaya yönlendiriliyorsunuz')}>
-            <Ionicons name="home" size={24} color={theme.mutedForeground} />
-            <Text style={styles.footerTabText}>Ana Sf</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.footerTab} onPress={() => Alert.alert('Canlı Maçlar', 'Canlı maçlara yönlendiriliyorsunuz')}>
-            <Ionicons name="tennisball" size={24} color={theme.mutedForeground} />
-            <Text style={styles.footerTabText}>Canlı</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.footerTab} onPress={() => Alert.alert('Özet', 'Özet sayfasına yönlendiriliyorsunuz')}>
-            <Ionicons name="stats-chart" size={24} color={theme.mutedForeground} />
-            <Text style={styles.footerTabText}>Özet</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={[styles.footerTab, styles.footerTabActive]}>
-            <Ionicons name="person" size={24} color={theme.primary} />
-            <Text style={[styles.footerTabText, styles.footerTabTextActive]}>Profil</Text>
-          </TouchableOpacity>
-        </View>
       </View>
+
+      {/* Kaydedilmemiş değişiklik uyarısı - sabit banner */}
+      {isEditing && nickname.trim().length >= 3 && (
+        <View style={{
+          position: 'absolute',
+          bottom: Platform.OS === 'web' ? 75 : 95,
+          left: 16,
+          right: 16,
+          zIndex: 1000,
+          backgroundColor: 'rgba(245, 158, 11, 0.95)',
+          borderRadius: 12,
+          padding: 12,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 8,
+          ...(Platform.OS === 'web' ? {
+            boxShadow: '0 4px 20px rgba(245, 158, 11, 0.4)',
+          } : {
+            shadowColor: '#F59E0B',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.4,
+            shadowRadius: 8,
+            elevation: 8,
+          }),
+        }}>
+          <Ionicons name="warning" size={20} color="#FFFFFF" />
+          <Text style={{ color: '#FFFFFF', fontWeight: '600', fontSize: 14 }}>
+            Kaydedilmemiş değişiklikler var!
+          </Text>
+          <Ionicons name="arrow-down" size={16} color="#FFFFFF" />
+        </View>
+      )}
     </ScreenLayout>
   );
 };
@@ -1992,7 +2518,7 @@ const createStyles = () => {
   },
   scrollContent: {
     paddingHorizontal: 16, // ✅ Yatay padding (24 → 16, standart)
-    paddingTop: SPACING.base, // ✅ Header kaldırıldığı için üst padding ekle
+    paddingTop: Platform.OS === 'ios' ? 190 : 180, // ✅ ProfileCard overlay'ın altından başlaması için (rozetler dahil ~170px + buffer)
     paddingBottom: 96 + SIZES.tabBarHeight, // Footer navigation için extra padding
   },
 
@@ -2003,7 +2529,9 @@ const createStyles = () => {
     borderWidth: 1,
     borderColor: theme.border,
     marginBottom: SPACING.base,
-    overflow: 'hidden',
+    overflow: 'visible', // Avatar'ın badge'lerin üstünde görünmesi için
+    zIndex: 5,
+    position: 'relative',
   },
   profileHeaderBanner: {
     height: 80,
@@ -2017,10 +2545,13 @@ const createStyles = () => {
   avatarSection: {
     alignItems: 'center',
     marginTop: -48, // Avatar banner üzerine çıkıyor
+    zIndex: 10, // Badge'lerin üstünde görünmesi için
+    position: 'relative',
   },
   avatarContainer: {
     position: 'relative',
     marginBottom: 16,
+    zIndex: 15, // Badge'lerin üstünde görünmesi için
   },
   avatar: {
     width: 80,
@@ -2908,35 +3439,6 @@ const createStyles = () => {
     color: '#EF4444',
   },
 
-  // Footer Navigation - 4 Sekmeli
-  footerNavigation: {
-    flexDirection: 'row',
-    height: SIZES.tabBarHeight,
-    backgroundColor: theme.card,
-    borderTopWidth: 1,
-    borderTopColor: theme.border,
-    ...SHADOWS.lg,
-  },
-  footerTab: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: SPACING.xs,
-  },
-  footerTabActive: {
-    borderTopWidth: 2,
-    borderTopColor: theme.primary,
-  },
-  footerTabText: {
-    ...TYPOGRAPHY.bodySmall,
-    color: theme.mutedForeground,
-  },
-  footerTabTextActive: {
-    ...TYPOGRAPHY.bodySmall,
-    fontWeight: TYPOGRAPHY.semibold,
-    color: theme.primary,
-  },
-  
   // Loading State
   loadingContainer: {
     justifyContent: 'center',
@@ -4113,6 +4615,22 @@ const createStyles = () => {
     color: theme.foreground,
   },
 
+  // Editable input field styling
+  formInputEditable: {
+    borderColor: theme.primary + '40',
+    backgroundColor: theme.background,
+  },
+  
+  // Permanent save button (always visible)
+  saveButtonPermanent: {
+    marginTop: SPACING.md,
+    overflow: 'hidden',
+    borderRadius: SIZES.radiusSm,
+  },
+  saveButtonDisabled: {
+    opacity: 0.5,
+  },
+
   // Settings
   settingsGrid: {
     flexDirection: 'row',
@@ -4135,6 +4653,49 @@ const createStyles = () => {
   settingsDivider: {
     height: 1,
     backgroundColor: theme.border,
+  },
+  themeToggleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: SPACING.md,
+    marginBottom: SPACING.md,
+  },
+  themeToggleLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+  },
+  themeToggleLabel: {
+    ...TYPOGRAPHY.body,
+    color: theme.foreground,
+    fontWeight: '500',
+  },
+  themeToggleButtons: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+    borderRadius: 8,
+    padding: 4,
+  },
+  themeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
+    gap: 6,
+  },
+  themeButtonActive: {
+    backgroundColor: BRAND.primary,
+  },
+  themeButtonText: {
+    ...TYPOGRAPHY.bodySmall,
+    color: theme.mutedForeground,
+    fontWeight: '500',
+  },
+  themeButtonTextActive: {
+    color: '#000',
+    fontWeight: '600',
     marginVertical: SPACING.base,
   },
   notificationsSection: {

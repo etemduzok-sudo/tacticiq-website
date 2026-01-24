@@ -131,5 +131,50 @@
     "error": "Error",
     "mustAccept": "You must accept the legal documents to continue",
     "saveFailed": "Failed to save"
+  },
+  "countries": {
+    "Turkey": "Turkey",
+    "Germany": "Germany",
+    "France": "France",
+    "England": "England",
+    "Spain": "Spain",
+    "Italy": "Italy",
+    "Brazil": "Brazil",
+    "Argentina": "Argentina",
+    "Portugal": "Portugal",
+    "Netherlands": "Netherlands",
+    "Belgium": "Belgium",
+    "Croatia": "Croatia",
+    "Poland": "Poland",
+    "Ukraine": "Ukraine",
+    "Russia": "Russia",
+    "Sweden": "Sweden",
+    "Austria": "Austria",
+    "Switzerland": "Switzerland",
+    "USA": "USA",
+    "Mexico": "Mexico",
+    "Japan": "Japan",
+    "South-Korea": "South Korea",
+    "Australia": "Australia",
+    "Saudi-Arabia": "Saudi Arabia",
+    "Unknown": "Unknown"
+  },
+  "teamSelection": {
+    "selectNationalTeam": "Select your national team",
+    "selectClubTeam": "Select your favorite club team",
+    "selectClubTeam2": "Select your 2nd favorite club",
+    "selectClubTeam3": "Select your 3rd favorite club",
+    "selectClubTeam4": "Select your 4th favorite club",
+    "selectClubTeam5": "Select your 5th favorite club",
+    "searchPlaceholder": "Search teams...",
+    "noTeamsFound": "No teams found"
+  },
+  "profileEdit": {
+    "firstName": "First Name",
+    "lastName": "Last Name",
+    "nickname": "Username",
+    "saveChanges": "Save Changes",
+    "editing": "Editing...",
+    "saved": "Saved!"
   }
 }

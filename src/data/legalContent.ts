@@ -14,48 +14,59 @@ export interface LegalDocument {
   descriptionKey: string;
 }
 
+// Türkçe başlıklar ve açıklamalar - doğrudan kullanılacak
+export const LEGAL_DOCUMENT_TITLES: Record<string, { title: string; description: string }> = {
+  terms: { title: 'Kullanım Koşulları', description: 'Hizmet kullanım şartları' },
+  privacy: { title: 'Gizlilik Politikası', description: 'Veri gizliliği bilgileri' },
+  cookies: { title: 'Çerez Politikası', description: 'Çerez kullanımı hakkında' },
+  kvkk: { title: 'KVKK Aydınlatma', description: 'Kişisel veri koruma' },
+  consent: { title: 'Açık Rıza Metni', description: 'Veri işleme onayı' },
+  sales: { title: 'Mesafeli Satış', description: 'Satış sözleşmesi' },
+  copyright: { title: 'Telif Hakları', description: 'DMCA ve telif bilgisi' },
+};
+
 export const LEGAL_DOCUMENTS: LegalDocument[] = [
   {
     id: 'terms',
     icon: '📋',
-    titleKey: 'legal.terms.title',
-    descriptionKey: 'legal.terms.description',
+    titleKey: 'Kullanım Koşulları',
+    descriptionKey: 'Hizmet kullanım şartları',
   },
   {
     id: 'privacy',
     icon: '🔒',
-    titleKey: 'legal.privacy.title',
-    descriptionKey: 'legal.privacy.description',
+    titleKey: 'Gizlilik Politikası',
+    descriptionKey: 'Veri gizliliği bilgileri',
   },
   {
     id: 'cookies',
     icon: '🍪',
-    titleKey: 'legal.cookies.title',
-    descriptionKey: 'legal.cookies.description',
+    titleKey: 'Çerez Politikası',
+    descriptionKey: 'Çerez kullanımı hakkında',
   },
   {
     id: 'kvkk',
     icon: '⚖️',
-    titleKey: 'legal.kvkk.title',
-    descriptionKey: 'legal.kvkk.description',
+    titleKey: 'KVKK Aydınlatma',
+    descriptionKey: 'Kişisel veri koruma',
   },
   {
     id: 'consent',
     icon: '✅',
-    titleKey: 'legal.consent.title',
-    descriptionKey: 'legal.consent.description',
+    titleKey: 'Açık Rıza Metni',
+    descriptionKey: 'Veri işleme onayı',
   },
   {
     id: 'sales',
     icon: '💳',
-    titleKey: 'legal.sales.title',
-    descriptionKey: 'legal.sales.description',
+    titleKey: 'Mesafeli Satış',
+    descriptionKey: 'Satış sözleşmesi',
   },
   {
     id: 'copyright',
     icon: '©️',
-    titleKey: 'legal.dmca.title',
-    descriptionKey: 'legal.dmca.description',
+    titleKey: 'Telif Hakları',
+    descriptionKey: 'DMCA ve telif bilgisi',
   },
 ];
 

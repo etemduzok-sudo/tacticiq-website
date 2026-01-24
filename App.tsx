@@ -1060,7 +1060,7 @@ export default function App() {
               {isMaintenanceMode ? (
                 <MaintenanceScreen />
               ) : (
-                <View style={{ flex: 1, backgroundColor: DARK_MODE.background }}>
+                <View style={{ flex: 1, backgroundColor: '#0F2A24' }}>
                   {renderScreen()}
                   
                   {/* Fixed Profile Card Overlay - Only on home, matches, leaderboard */}

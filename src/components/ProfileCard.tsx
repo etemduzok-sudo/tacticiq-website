@@ -51,7 +51,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({ onPress, newBadge, onB
   const [countryRank, setCountryRank] = useState(0);
   const [totalPlayers, setTotalPlayers] = useState(1000);
   
-  // ✅ Profil verilerini yükle
+  // ✅ Profil verilerini yükle (SINGLE SOURCE OF TRUTH: profileService)
   useEffect(() => {
     const loadProfileData = async () => {
       try {
@@ -59,8 +59,9 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({ onPress, newBadge, onB
         if (userProfile) {
           setProfile(userProfile);
           
-          // İsim ve avatar bilgileri
-          const displayName = userProfile.fullName || userProfile.firstName || userProfile.email || 'TacticIQ User';
+          // İsim ve avatar bilgileri - ProfileScreen ile AYNI mantık
+          // Öncelik: name > nickname > fullName > firstName > email
+          const displayName = userProfile.name || userProfile.nickname || userProfile.fullName || userProfile.firstName || userProfile.email || 'TacticIQ User';
           setUserDisplayName(displayName);
           
           // Avatar için initials
@@ -72,8 +73,8 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({ onPress, newBadge, onB
             setUserName(nameParts[0].substring(0, 2).toUpperCase());
           }
           
-          // Puan ve level
-          setUserPoints(userProfile.points || 0);
+          // Puan ve level - totalPoints alanını da kontrol et
+          setUserPoints(userProfile.totalPoints || userProfile.points || 0);
           setUserLevel(userProfile.level || 1);
           
           // Sıralama bilgileri
@@ -87,52 +88,14 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({ onPress, newBadge, onB
     
     loadProfileData();
     
-    // Her 5 saniyede bir yeniden yükle
-    const interval = setInterval(loadProfileData, 5000);
+    // Her 3 saniyede bir yeniden yükle (daha hızlı senkronizasyon)
+    const interval = setInterval(loadProfileData, 3000);
     
     return () => clearInterval(interval);
   }, []);
   
   // Pulse animasyonu kaldırıldı
-  
-  // ✅ Her 2 saniyede bir AsyncStorage'ı kontrol et (fallback - backward compatibility)
-  useEffect(() => {
-    const loadUserData = async () => {
-      try {
-        const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
-        const userDataStr = await AsyncStorage.getItem('fan-manager-user');
-        if (userDataStr) {
-          const userData = JSON.parse(userDataStr);
-          if (userData.name) {
-            setUserDisplayName(userData.name);
-            const nameParts = userData.name.trim().split(' ').filter((n: string) => n.length > 0);
-            if (nameParts.length >= 2) {
-              const initials = (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase();
-              setUserName(initials);
-            } else if (nameParts.length === 1) {
-              setUserName(nameParts[0].substring(0, 2).toUpperCase());
-            }
-          } else if (userData.username) {
-            setUserDisplayName(userData.username);
-            const usernameParts = userData.username.trim().split(' ').filter((n: string) => n.length > 0);
-            if (usernameParts.length >= 2) {
-              const initials = (usernameParts[0][0] + usernameParts[usernameParts.length - 1][0]).toUpperCase();
-              setUserName(initials);
-            } else {
-              setUserName(userData.username.substring(0, 2).toUpperCase());
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Error loading user data from AsyncStorage:', error);
-      }
-    };
-    
-    loadUserData();
-    const interval = setInterval(loadUserData, 2000);
-    
-    return () => clearInterval(interval);
-  }, []);
+  // NOT: AsyncStorage yüklemesi kaldırıldı - profileService tek veri kaynağı olarak kullanılıyor
 
   // Load earned badges
   useEffect(() => {
@@ -211,7 +174,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({ onPress, newBadge, onB
         <TouchableOpacity
           style={styles.profileButton}
           onPress={onPress}
-          activeOpacity={0.7}
+          activeOpacity={1}
         >
           {/* Profile card container with grid pattern */}
             <View style={styles.cardWrapper}>
@@ -430,7 +393,7 @@ const styles = StyleSheet.create({
     }),
   },
   whiteCard: {
-    backgroundColor: 'transparent', // Grid pattern görünsün
+    backgroundColor: '#0F2A24', // Koyu yeşil arka plan - eski haline döndürüldü
     borderTopLeftRadius: 0, // Üst köşeler düz
     borderTopRightRadius: 0,
     borderBottomLeftRadius: 12,

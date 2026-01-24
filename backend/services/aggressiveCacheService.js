@@ -48,11 +48,11 @@ let stats = {
     standings: 0,
     statistics: 0,
   },
+};
 
 // Store interval references for stop functionality
 let cacheIntervals = [];
 let isRunning = false;
-};
 
 // Reset daily stats
 function resetDailyStats() {
@@ -157,13 +157,13 @@ async function refreshStandings() {
     console.log('📊 [STANDINGS] Fetching league standings...');
     
     for (const leagueId of trackedLeagues) {
-      const data = await footballApi.getStandings(leagueId, 2025);
+      const data = await footballApi.getLeagueStandings(leagueId, 2025);
       incrementCallCounter('standings');
       
       if (data.response && data.response.length > 0) {
-        // Store standings in database
-        await databaseService.upsertStandings(leagueId, data.response);
-        console.log(`✅ [STANDINGS] Updated standings for league ${leagueId}`);
+        // Store standings in database (TODO: implement upsertStandings in databaseService)
+        // await databaseService.upsertStandings(leagueId, data.response);
+        console.log(`✅ [STANDINGS] Fetched standings for league ${leagueId}`);
       }
       
       await new Promise(resolve => setTimeout(resolve, 500)); // Small delay
@@ -255,7 +255,7 @@ function startAggressiveCaching() {
   cacheIntervals.push(setInterval(() => {
     const percentage = ((stats.callsToday / 7500) * 100).toFixed(1);
     const targetPercentage = ((stats.callsToday / 7368) * 100).toFixed(1);
-    console.log(`📊 [AGGRESSIVE CACHE] Stats:`, {
+    console.log('📊 [AGGRESSIVE CACHE] Stats:', {
       totalToday: stats.callsToday,
       target: 7368,
       hardLimit: 7500,
@@ -264,7 +264,7 @@ function startAggressiveCaching() {
       usageVsLimit: percentage + '%',
       breakdown: stats.breakdown,
     });
-  }, 10 * 60 * 1000);
+  }, 10 * 60 * 1000));
 }
 
 // Get stats

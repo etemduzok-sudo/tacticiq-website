@@ -8,6 +8,7 @@ interface FavoriteTeam {
   name: string;
   logo: string;
   league?: string;
+  colors?: string[];
 }
 
 export function useFavoriteTeams() {

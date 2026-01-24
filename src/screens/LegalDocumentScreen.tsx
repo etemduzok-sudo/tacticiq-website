@@ -82,9 +82,9 @@ export const LegalDocumentScreen: React.FC<LegalDocumentScreenProps> = ({
         <View style={styles.header}>
           <TouchableOpacity onPress={onBack} style={styles.backButton}>
             <Ionicons name="chevron-back" size={24} color="#059669" />
-            <Text style={styles.backText}>{t('common.back') || 'Geri'}</Text>
+            <Text style={styles.backText}>Geri</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>{t('legal.title') || 'Yasal Belgeler'}</Text>
+          <Text style={styles.headerTitle}>Yasal Belgeler</Text>
           <View style={styles.headerSpacer} />
         </View>
 
@@ -113,10 +113,10 @@ export const LegalDocumentScreen: React.FC<LegalDocumentScreenProps> = ({
                       styles.menuItemTitle,
                       selectedDoc === doc.id && styles.menuItemTitleActive,
                     ]}>
-                      {t(doc.titleKey) || doc.id}
+                      {doc.titleKey}
                     </Text>
                     <Text style={styles.menuItemDescription} numberOfLines={2}>
-                      {t(doc.descriptionKey) || ''}
+                      {doc.descriptionKey}
                     </Text>
                   </View>
                 </TouchableOpacity>
@@ -145,7 +145,7 @@ export const LegalDocumentScreen: React.FC<LegalDocumentScreenProps> = ({
               </View>
             ) : (
               <View style={styles.emptyContainer}>
-                <Text style={styles.emptyText}>{t('legal.select') || 'Bir belge seçin'}</Text>
+                <Text style={styles.emptyText}>Bir belge seçin</Text>
               </View>
             )}
           </View>
@@ -160,7 +160,7 @@ export const LegalDocumentScreen: React.FC<LegalDocumentScreenProps> = ({
               end={{ x: 1, y: 0 }}
               style={styles.closeButton}
             >
-              <Text style={styles.closeButtonText}>{t('legal.close') || t('common.close') || 'Kapat'}</Text>
+              <Text style={styles.closeButtonText}>Kapat</Text>
             </LinearGradient>
           </TouchableOpacity>
         </View>
@@ -172,11 +172,11 @@ export const LegalDocumentScreen: React.FC<LegalDocumentScreenProps> = ({
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#0F2A24',
   },
   container: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#0F2A24',
     position: 'relative',
   },
   gridPattern: {

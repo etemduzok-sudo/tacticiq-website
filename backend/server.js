@@ -7,17 +7,26 @@ require('dotenv').config();
 
 // 🛡️ Global Error Handlers - Backend'in sürekli durmasını engeller
 process.on('uncaughtException', (error) => {
-  console.error('❌ UNCAUGHT EXCEPTION - Backend durduruluyor:', error);
+  const timestamp = new Date().toISOString();
+  console.error(`\n❌ [${timestamp}] UNCAUGHT EXCEPTION:`);
+  console.error('Error:', error.message);
   console.error('Stack:', error.stack);
-  // Critical error - restart gerekli
-  process.exit(1);
+  // ⚠️ Critical error - ama backend'i durdurma, sadece log'la
+  // Watchdog script backend'i yeniden başlatacak
+  console.error('⚠️ Backend çalışmaya devam ediyor... (Watchdog yeniden başlatabilir)');
+  console.error('');
+  // process.exit(1); // KALDIRILDI - Backend durmasın
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('❌ UNHANDLED REJECTION - Promise rejected:', reason);
+  const timestamp = new Date().toISOString();
+  console.error(`\n❌ [${timestamp}] UNHANDLED REJECTION:`);
+  console.error('Reason:', reason);
   console.error('Promise:', promise);
   // Log error but don't crash - allow server to continue
   // Sadece log'la, process.exit yapma
+  console.error('⚠️ Backend çalışmaya devam ediyor...');
+  console.error('');
 });
 
 process.on('SIGTERM', () => {

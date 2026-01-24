@@ -41,67 +41,27 @@ interface DashboardProps {
   };
 }
 
-// Strategic Focus Options
-const strategicFocusOptions = [
-  {
-    id: 'tempo',
-    name: 'Tempo Analizi',
-    icon: 'flash',
-    iconOutline: 'flash-outline',
-    multiplier: 1.25,
-    color: COLORS.dark.chart3,
-    affects: ['Gol Dakikası', 'Oyun Temposu'],
-    description: 'Maçın hızına odaklan',
-  },
-  {
-    id: 'discipline',
-    name: 'Disiplin Analizi',
-    icon: 'warning',
-    iconOutline: 'warning-outline',
-    multiplier: 1.25,
-    color: BRAND.gold,
-    affects: ['Kart', 'Faul'],
-    description: 'Sert geçişleri öngör',
-  },
-  {
-    id: 'fitness',
-    name: 'Kondisyon Analizi',
-    icon: 'fitness',
-    iconOutline: 'fitness-outline',
-    multiplier: 1.25,
-    color: COLORS.dark.primaryLight,
-    affects: ['Sakatlık', 'Değişiklik'],
-    description: 'Fiziksel durumu değerlendir',
-  },
-  {
-    id: 'star',
-    name: 'Yıldız Analizi',
-    icon: 'star',
-    iconOutline: 'star-outline',
-    multiplier: 1.25,
-    color: COLORS.dark.chart1,
-    affects: ['Maçın Adamı', 'Gol'],
-    description: 'Yıldız oyuncuları takip et',
-  },
-];
-
 export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }: DashboardProps) {
-  const [selectedFocus, setSelectedFocus] = React.useState<string | null>(null);
-  const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null); // Seçilen maç
   const [isPremium, setIsPremium] = useState(false);
-  const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null); // Seçilen favori takım
+  const [selectedTeamIds, setSelectedTeamIds] = useState<number[]>([]); // ✅ Çoklu takım seçimi
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [countdownTicker, setCountdownTicker] = useState(0); // ✅ Geri sayım için ticker
   
   const scrollViewRef = useRef<ScrollView>(null);
-  const focusSectionRef = useRef<View>(null);
-  const continueButtonRef = useRef<View>(null);
-  const [focusSectionY, setFocusSectionY] = useState(0);
-  const [continueButtonY, setContinueButtonY] = useState(0);
   const dropdownRef = useRef<View>(null);
+  const [initialScrollDone, setInitialScrollDone] = useState(false);
   
   // ✅ Load favorite teams
   const { favoriteTeams, loading: teamsLoading } = useFavoriteTeams();
+  
+  // ✅ DEBUG: Log favorite teams
+  React.useEffect(() => {
+    logger.debug('Favorite Teams Loaded', {
+      count: favoriteTeams.length,
+      teams: favoriteTeams.map(t => ({ id: t.id, name: t.name })),
+      loading: teamsLoading,
+    }, 'DASHBOARD');
+  }, [favoriteTeams, teamsLoading]);
   
   // ✅ Geri sayım için interval (her saniye güncelle)
   React.useEffect(() => {
@@ -266,7 +226,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
         activeOpacity={0.8}
       >
         <LinearGradient
-          colors={['#0a1612', '#0F2A24', '#0a1612']} // Koyu yeşil gradient - splash ile uyumlu
+          colors={[COLORS.dark.card, COLORS.dark.card, COLORS.dark.card]} // Sistem renkleri - mavi değil
           style={styles.matchCard}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
@@ -357,7 +317,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
                   
                   {/* Saat */}
                   <LinearGradient
-                    colors={[BRAND.primary, '#0a1f1a']}
+                    colors={[BRAND.primary, BRAND.primaryDark || '#047857']} // Sistem renkleri
                     style={styles.matchCardTimeBadge}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
@@ -499,128 +459,6 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
     checkPremium();
   }, []);
 
-  // Maç seçildiğinde scroll animasyonu
-  const handleMatchSelect = (matchId: string | number) => {
-    // Haptic feedback
-    if (Platform.OS !== 'web') {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
-
-    const matchIdStr = String(matchId);
-    
-    // Eğer aynı maç tekrar seçilirse, seçimi kaldır
-    if (String(selectedMatchId) === matchIdStr) {
-      setSelectedMatchId(null);
-      setSelectedFocus(null);
-      return;
-    }
-
-    setSelectedMatchId(matchIdStr);
-    setSelectedFocus(null); // Odak seçimini sıfırla
-
-    // ✅ Maç seçildikten sonra analiz odağı bölümüne scroll yap
-    // Biraz bekle ki React render etsin, sonra scroll yap
-    setTimeout(() => {
-      if (focusSectionY > 0) {
-        scrollViewRef.current?.scrollTo({
-          y: focusSectionY - 20, // Biraz üstten başlasın
-          animated: true,
-        });
-      } else {
-        // Eğer focusSectionY henüz hesaplanmadıysa, biraz daha bekle
-        setTimeout(() => {
-          if (focusSectionY > 0) {
-            scrollViewRef.current?.scrollTo({
-              y: focusSectionY - 20,
-              animated: true,
-            });
-          }
-        }, 200);
-      }
-    }, 300);
-  };
-
-  // Handle focus selection with haptic feedback
-  const handleFocusSelect = (focusId: string) => {
-    // Haptic feedback (only on mobile)
-    if (Platform.OS !== 'web') {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
-    
-    // Eğer aynı focus tekrar seçilirse, seçimi kaldır
-    if (selectedFocus === focusId) {
-      setSelectedFocus(null);
-      return;
-    }
-    
-    setSelectedFocus(focusId);
-
-    // Eğer bir maç seçilmişse, "Devam Et" butonuna scroll yap
-    if (selectedMatchId) {
-      setTimeout(() => {
-        // Önce continueButtonY'yi kontrol et
-        if (continueButtonY > 0) {
-          scrollViewRef.current?.scrollTo({
-            y: continueButtonY - 150, // Butonun üstüne biraz boşluk bırak
-            animated: true,
-          });
-        } else if (focusSectionY > 0) {
-          // Eğer continueButtonY henüz hesaplanmadıysa, focusSectionY'ye ek bir offset ekle
-          // Focus kartları yaklaşık 200px yüksekliğinde, buton da ~80px, toplam ~280px
-          scrollViewRef.current?.scrollTo({
-            y: focusSectionY + 350, // Focus kartlarının altına, butonun görüneceği yere scroll
-            animated: true,
-          });
-        }
-      }, 300); // Biraz daha uzun bekle ki layout hesaplansın
-    }
-  };
-
-  // Devam Et butonu - Direkt match-detail'e geç, scroll yapma
-  const handleContinueToMatch = () => {
-    if (selectedMatchId) {
-      // ✅ Direkt match-detail ekranına geç, scroll yapma
-      onNavigate('match-detail', {
-        id: selectedMatchId,
-        focus: selectedFocus,
-        initialTab: 'squad', // İlk sekme olarak Kadro'yu aç
-      });
-      
-      // Reset (ama navigation sonrası, state temizlenmesin diye)
-      // setSelectedMatchId(null);
-      // setSelectedFocus(null);
-    }
-  };
-
-  // Get analyst advice based on selected focus and match data
-  const getAnalystAdvice = (match: any) => {
-    if (!selectedFocus) return null;
-
-    const adviceMap: Record<string, { icon: string; text: string; color: string }> = {
-      tempo: {
-        icon: '⚡',
-        text: 'Hızlı tempolu maç bekleniyor!',
-        color: COLORS.dark.chart3,
-      },
-      discipline: {
-        icon: '🛡️',
-        text: 'Bu hakem kart sever, odağın isabetli!',
-        color: BRAND.gold,
-      },
-      fitness: {
-        icon: '💪',
-        text: 'Uzun sezonda kondisyon kritik!',
-        color: COLORS.dark.primaryLight,
-      },
-      star: {
-        icon: '⭐',
-        text: 'Yıldız oyuncular sahada olacak!',
-        color: COLORS.dark.chart1,
-      },
-    };
-
-    return adviceMap[selectedFocus] || null;
-  };
   
   // ✅ Safe destructure with defaults
   const { 
@@ -663,14 +501,21 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
     return matchTime >= now;
   });
 
-  // ✅ Filter matches by selected team (ID and name matching)
+  // ✅ Filter matches by selected teams (ID and name matching) - ÇOKLU SEÇİM
   // IMPORTANT: This hook MUST be before any early returns to follow Rules of Hooks
-  const filterMatchesByTeam = React.useCallback((matches: any[], teamId: number | null) => {
-    if (!teamId) return matches;
+  const filterMatchesByTeam = React.useCallback((matches: any[], teamIds: number[]) => {
+    // Eğer favori takım yoksa, tüm maçları göster
+    if (favoriteTeams.length === 0) {
+      return matches;
+    }
     
-    const selectedTeam = favoriteTeams.find(t => t.id === teamId);
-    if (!selectedTeam) {
-      logger.warn(`Team not found: ${teamId}`, { teamId }, 'DASHBOARD');
+    // Eğer hiç takım seçilmemişse (boş array), TÜM favori takımların maçlarını göster
+    // Eğer takımlar seçilmişse, sadece seçili takımların maçlarını göster
+    const teamsToFilter = teamIds.length === 0
+      ? favoriteTeams
+      : favoriteTeams.filter(t => teamIds.includes(t.id));
+    
+    if (teamsToFilter.length === 0) {
       return matches;
     }
 
@@ -681,31 +526,42 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
       const awayId = match.teams.away.id;
       const homeName = (match.teams.home.name || '').toLowerCase();
       const awayName = (match.teams.away.name || '').toLowerCase();
-      const teamName = selectedTeam.name.toLowerCase();
       
-      // ID eşleşmesi (öncelikli)
-      const idMatch = String(homeId) === String(teamId) || String(awayId) === String(teamId);
-      if (idMatch) {
-        return true;
+      // Her favori takım için kontrol et
+      for (const team of teamsToFilter) {
+        const teamIdStr = String(team.id);
+        const teamName = team.name.toLowerCase();
+        
+        // ID eşleşmesi (öncelikli)
+        const idMatch = String(homeId) === teamIdStr || String(awayId) === teamIdStr;
+        if (idMatch) {
+          return true;
+        }
+        
+        // İsim eşleşmesi (fallback - API'de ID farklı olabilir)
+        const nameMatch = homeName.includes(teamName) || teamName.includes(homeName) ||
+                         awayName.includes(teamName) || teamName.includes(awayName);
+        
+        if (nameMatch) {
+          return true;
+        }
       }
       
-      // İsim eşleşmesi (fallback - API'de ID farklı olabilir)
-      const nameMatch = homeName.includes(teamName) || teamName.includes(homeName) ||
-                       awayName.includes(teamName) || teamName.includes(awayName);
-      
-      return nameMatch;
+      return false;
     });
 
-    logger.debug(`Filtering matches for team: ${selectedTeam.name}`, {
-      teamId,
-      teamName: selectedTeam.name,
+    logger.debug(`Filtering matches`, {
+      selectedTeamIds: teamIds.length === 0 ? 'ALL_FAVORITES' : teamIds,
+      teamsCount: teamsToFilter.length,
+      teamNames: teamsToFilter.map(t => t.name),
+      teamIds: teamsToFilter.map(t => t.id),
       totalMatches: matches.length,
       filteredCount: filtered.length,
-      firstMatch: filtered.length > 0 ? {
-        home: filtered[0].teams.home.name,
-        homeId: filtered[0].teams.home.id,
-        away: filtered[0].teams.away.name,
-        awayId: filtered[0].teams.away.id,
+      sampleMatch: filtered.length > 0 ? {
+        home: filtered[0].teams?.home?.name,
+        homeId: filtered[0].teams?.home?.id,
+        away: filtered[0].teams?.away?.name,
+        awayId: filtered[0].teams?.away?.id,
       } : null,
     }, 'DASHBOARD');
 
@@ -713,18 +569,35 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
   }, [favoriteTeams]);
 
   const filteredUpcomingMatches = React.useMemo(() => {
-    return filterMatchesByTeam(allUpcomingMatches, selectedTeamId);
-  }, [allUpcomingMatches, selectedTeamId, filterMatchesByTeam]);
+    const filtered = filterMatchesByTeam(allUpcomingMatches, selectedTeamIds);
+    // Tarih sırasına göre sırala (en yakın en üstte, en uzak en altta)
+    return [...filtered].sort((a, b) => a.fixture.timestamp - b.fixture.timestamp);
+  }, [allUpcomingMatches, selectedTeamIds, filterMatchesByTeam]);
 
   const filteredPastMatches = React.useMemo(() => {
-    return filterMatchesByTeam(pastMatches, selectedTeamId);
-  }, [pastMatches, selectedTeamId, filterMatchesByTeam]);
+    const filtered = filterMatchesByTeam(pastMatches, selectedTeamIds);
+    // Geçmiş maçları ters sırala (en yakın tarihli en üstte)
+    return [...filtered].sort((a, b) => b.fixture.timestamp - a.fixture.timestamp);
+  }, [pastMatches, selectedTeamIds, filterMatchesByTeam]);
 
-  const selectedTeamName = React.useMemo(() => {
-    if (!selectedTeamId) return null;
-    const team = favoriteTeams.find(t => t.id === selectedTeamId);
-    return team?.name || null;
-  }, [selectedTeamId, favoriteTeams]);
+  // ✅ Canlı maçları da favori takımlara göre filtrele
+  const filteredLiveMatches = React.useMemo(() => {
+    return filterMatchesByTeam(liveMatches, selectedTeamIds);
+  }, [liveMatches, selectedTeamIds, filterMatchesByTeam]);
+
+  // ✅ Sayfa açıldığında geçmiş maçları atlayıp gelecek maçlara scroll yap
+  React.useEffect(() => {
+    if (!initialScrollDone && filteredPastMatches.length > 0 && scrollViewRef.current) {
+      // Her maç kartı yaklaşık 200px yüksekliğinde
+      const pastMatchesHeight = filteredPastMatches.length * 200;
+      setTimeout(() => {
+        scrollViewRef.current?.scrollTo({ y: pastMatchesHeight, animated: false });
+        setInitialScrollDone(true);
+      }, 100);
+    } else if (!initialScrollDone && filteredPastMatches.length === 0) {
+      setInitialScrollDone(true);
+    }
+  }, [filteredPastMatches.length, initialScrollDone]);
 
   // Show loading ONLY on first load (after all hooks are called)
   if (loading && !hasLoadedOnce) {
@@ -736,19 +609,32 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
     );
   }
 
-  // Handle team selection
+  // ✅ Handle team selection - ÇOKLU SEÇİM (Toggle)
   const handleTeamSelect = (teamId: number | null) => {
-    if (teamId) {
-      const team = favoriteTeams.find(t => t.id === teamId);
-      logger.debug(`Team selected: ${team?.name}`, { teamId, teamName: team?.name }, 'DASHBOARD');
+    if (teamId === null) {
+      // "Tümü" butonu - tüm seçimleri temizle
+      setSelectedTeamIds([]);
+      logger.debug('Filter cleared - showing all favorite teams', undefined, 'DASHBOARD');
     } else {
-      logger.debug('Filter cleared - showing all matches', undefined, 'DASHBOARD');
+      // Takım seçimi - toggle mantığı
+      setSelectedTeamIds(prev => {
+        const isSelected = prev.includes(teamId);
+        if (isSelected) {
+          // Seçiliyse kaldır
+          const newIds = prev.filter(id => id !== teamId);
+          logger.debug(`Team deselected`, { teamId, remainingCount: newIds.length }, 'DASHBOARD');
+          return newIds;
+        } else {
+          // Seçili değilse ekle
+          const newIds = [...prev, teamId];
+          const team = favoriteTeams.find(t => t.id === teamId);
+          logger.debug(`Team selected: ${team?.name}`, { teamId, teamName: team?.name, totalSelected: newIds.length }, 'DASHBOARD');
+          return newIds;
+        }
+      });
     }
     
-    setSelectedTeamId(teamId);
     setDropdownOpen(false);
-    setSelectedMatchId(null);
-    setSelectedFocus(null);
     
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -768,362 +654,146 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData }
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* 0. FAVORİ TAKIM FİLTRESİ (Pro kullanıcı için) - Tek satır dropdown */}
-        {!selectedMatchId && isPremium && favoriteTeams.length > 0 && (
-          <Animated.View entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(50).springify()} style={styles.sectionWithDropdown}>
-            <View style={styles.dropdownContainer}>
-              <TouchableOpacity
-                style={styles.dropdownButton}
-                onPress={() => setDropdownOpen(!dropdownOpen)}
-                activeOpacity={0.8}
-              >
-                <View style={styles.dropdownButtonContent}>
-                  <Ionicons name="trophy" size={18} color="#F59E0B" />
-                  <Text style={styles.dropdownButtonText}>
-                    {selectedTeamName ? `${selectedTeamName} Maçları` : 'Favori Takımlarım'}
-                  </Text>
-                  {selectedTeamId && (
-                    <TouchableOpacity
-                      style={styles.clearFilterButton}
-                      onPress={(e) => {
-                        e.stopPropagation();
-                        handleTeamSelect(null);
-                      }}
-                      activeOpacity={0.7}
-                    >
-                      <Ionicons name="close-circle" size={18} color="#64748B" />
-                    </TouchableOpacity>
-                  )}
-                  </View>
-                <Ionicons 
-                  name={dropdownOpen ? "chevron-up" : "chevron-down"} 
-                  size={20} 
-                  color="#94A3B8" 
-                />
-              </TouchableOpacity>
-              
-              {dropdownOpen && (
-                <View style={styles.dropdownMenu} ref={dropdownRef}>
-                    <TouchableOpacity
-                      style={[styles.dropdownItem, !selectedTeamId && styles.dropdownItemActive]}
-                      onPress={() => handleTeamSelect(null)}
-                      activeOpacity={0.7}
-                    >
-                      <Ionicons name="list" size={18} color={!selectedTeamId ? BRAND.primary : COLORS.dark.mutedForeground} />
-                      <Text style={[styles.dropdownItemText, !selectedTeamId && styles.dropdownItemTextActive]}>
-                        Tümü
-                      </Text>
-                      {!selectedTeamId && <Ionicons name="checkmark" size={18} color={BRAND.primary} />}
-                    </TouchableOpacity>
-                    
-                    {favoriteTeams.map((team) => {
-                      const isSelected = selectedTeamId === team.id;
-                      return (
-                  <TouchableOpacity
-                          key={team.id}
-                          style={[styles.dropdownItem, isSelected && styles.dropdownItemActive]}
-                          onPress={() => handleTeamSelect(team.id)}
-                          activeOpacity={0.7}
-                        >
-                          {team.colors && team.colors.length > 0 ? (
-                            <View style={styles.dropdownTeamBadge}>
-                              <View style={[styles.dropdownTeamStripe, { backgroundColor: team.colors[0] }]} />
-                              {team.colors[1] && (
-                                <View style={[styles.dropdownTeamStripe, { backgroundColor: team.colors[1] }]} />
-                              )}
-                      </View>
-                          ) : (
-                            <View style={styles.dropdownTeamPlaceholder}>
-                              <Text style={styles.dropdownTeamEmoji}>⚽</Text>
-                    </View>
-                          )}
-                          <Text style={[styles.dropdownItemText, isSelected && styles.dropdownItemTextActive]} numberOfLines={1}>
-                            {team.name}
-                          </Text>
-                          {isSelected && <Ionicons name="checkmark" size={18} color={BRAND.primary} />}
-                  </TouchableOpacity>
-                      );
-                    })}
-                </View>
-              )}
-            </View>
-          </Animated.View>
-        )}
-
-        {/* 1. YAKLAŞAN MAÇLAR - Her zaman göster */}
-        <Animated.View entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(200).springify()} style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="calendar" size={20} color={BRAND.primary} />
-            <Text style={styles.sectionTitle}>
-              {selectedTeamName ? `${selectedTeamName} Maçları` : 'Yaklaşan Maçlar'} ({filteredUpcomingMatches.length})
-            </Text>
-          </View>
-
-          {filteredUpcomingMatches.length > 0 ? (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.upcomingMatchesScroll}
-              style={Platform.OS === 'web' ? { scrollSnapType: 'x mandatory', overflowX: 'auto' } as any : undefined}
-              pagingEnabled={false}
-              decelerationRate="fast"
-              snapToInterval={Platform.OS === 'web' ? undefined : width - SPACING.base * 2 + SPACING.md}
-              snapToAlignment="center"
-              contentInsetAdjustmentBehavior="automatic"
+        {/* ✅ TAKIM FİLTRE BARI - Profil kartının hemen altında */}
+        <Animated.View 
+          entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(50).springify()} 
+          style={styles.teamFilterBar}
+        >
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.teamFilterScrollContent}
+          >
+            {/* Tümü Chip */}
+            <TouchableOpacity
+              style={[
+                styles.teamChip,
+                selectedTeamIds.length === 0 && styles.teamChipActive
+              ]}
+              onPress={() => handleTeamSelect(null)}
+              activeOpacity={0.8}
             >
-              {filteredUpcomingMatches.slice(0, 10).map((match, index) => (
+              <Ionicons 
+                name="apps" 
+                size={14} 
+                color={selectedTeamIds.length === 0 ? '#FFFFFF' : '#94A3B8'} 
+              />
+              <Text style={[
+                styles.teamChipText,
+                selectedTeamIds.length === 0 && styles.teamChipTextActive
+              ]}>
+                Tümü
+              </Text>
+            </TouchableOpacity>
+
+            {/* Favori Takım Chip'leri - ÇOKLU SEÇİM */}
+            {favoriteTeams.slice(0, 6).map((team) => {
+              const isSelected = selectedTeamIds.includes(team.id);
+              return (
+                <TouchableOpacity
+                  key={team.id}
+                  style={[
+                    styles.teamChip,
+                    isSelected && styles.teamChipActive,
+                    { borderColor: team.colors?.[0] || '#1FA2A6' }
+                  ]}
+                  onPress={() => handleTeamSelect(team.id)}
+                  activeOpacity={0.8}
+                >
+                  {team.colors && team.colors.length > 0 && (
+                    <View style={styles.teamChipBadge}>
+                      <View style={[styles.teamChipStripe, { backgroundColor: team.colors[0] }]} />
+                      {team.colors[1] && (
+                        <View style={[styles.teamChipStripe, { backgroundColor: team.colors[1] }]} />
+                      )}
+                    </View>
+                  )}
+                  <Text 
+                    style={[
+                      styles.teamChipText,
+                      isSelected && styles.teamChipTextActive
+                    ]} 
+                    numberOfLines={1}
+                  >
+                    {team.name}
+                  </Text>
+                  {isSelected && (
+                    <View style={styles.teamChipCheck}>
+                      <Ionicons name="checkmark" size={12} color="#FFFFFF" />
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+
+            {/* Takım yoksa bilgi */}
+            {favoriteTeams.length === 0 && (
+              <View style={styles.teamChipEmpty}>
+                <Ionicons name="heart-outline" size={14} color="#64748B" />
+                <Text style={styles.teamChipEmptyText}>Profilde takım seçin</Text>
+              </View>
+            )}
+          </ScrollView>
+        </Animated.View>
+
+        {/* GEÇMİŞ MAÇLAR - En üstte (yukarı scroll yapınca görünür) */}
+        {filteredPastMatches.length > 0 && (
+          <View style={styles.matchesListContainer}>
+            {filteredPastMatches.map((match, index) => (
               <Animated.View 
-                key={match.fixture.id} 
-                entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(200 + index * 100).springify()}
-                style={Platform.OS === 'web' ? { scrollSnapAlign: 'center', scrollSnapStop: 'always' } as any : undefined}
+                key={`past-${match.fixture.id}`} 
+                entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(100 + index * 50).springify()}
+                style={styles.matchCardWrapper}
               >
-                  {renderMatchCard(match, 'upcoming', () => handleMatchSelect(String(match.fixture.id)))}
+                {renderMatchCard(match, 'finished', () => onNavigate('match-result-summary', { id: match.fixture.id }))}
               </Animated.View>
             ))}
-          </ScrollView>
+          </View>
+        )}
+
+        {/* ✅ CANLI MAÇLAR - Favori takımlardan */}
+        {filteredLiveMatches.length > 0 && (
+          <View style={styles.matchesListContainer}>
+            <View style={styles.liveMatchesHeader}>
+              <View style={styles.liveIndicatorDot} />
+              <Text style={styles.liveMatchesTitle}>Canlı Maçlar</Text>
+              <Text style={styles.liveMatchesCount}>{filteredLiveMatches.length}</Text>
+            </View>
+            {filteredLiveMatches.map((match, index) => (
+              <Animated.View 
+                key={`live-${match.fixture.id}`} 
+                entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(50 + index * 30).springify()}
+                style={styles.matchCardWrapper}
+              >
+                {renderMatchCard(match, 'live', () => onNavigate('match-detail', { id: match.fixture.id }))}
+              </Animated.View>
+            ))}
+          </View>
+        )}
+
+        {/* GELECEK MAÇLAR - Tarih sırasına göre */}
+        <View style={styles.matchesListContainer}>
+          {filteredUpcomingMatches.length > 0 ? (
+            filteredUpcomingMatches.map((match, index) => (
+              <Animated.View 
+                key={`upcoming-${match.fixture.id}`} 
+                entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(200 + index * 50).springify()}
+                style={styles.matchCardWrapper}
+              >
+                {renderMatchCard(match, 'upcoming', () => onNavigate('match-detail', { id: match.fixture.id }))}
+              </Animated.View>
+            ))
           ) : (
             <View style={styles.emptyState}>
               <Ionicons name="calendar-outline" size={48} color="#64748B" />
               <Text style={styles.emptyText}>Yaklaşan maç yok</Text>
             </View>
           )}
-        </Animated.View>
-
-        {/* ✅ ANALİZ ODAĞI BÖLÜMÜ - Her zaman görünür */}
-          <View 
-            ref={focusSectionRef}
-            onLayout={(event) => {
-              const layout = event.nativeEvent.layout;
-              // ScrollView içindeki pozisyonu hesapla
-              if (layout.y > 0) {
-                setFocusSectionY(layout.y);
-              }
-            }}
-            style={styles.focusSectionContainer}
-          >
-            <Animated.View entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(100).springify()} style={styles.section}>
-            {/* Seçilen Maç Bilgisi - Sadece maç seçildiyse göster */}
-            {selectedMatchId && (
-              <View style={styles.selectedMatchInfo}>
-                <Text style={styles.selectedMatchTitle}>Seçilen Maç:</Text>
-                <Text style={styles.selectedMatchTeams}>
-                  {allUpcomingMatches.find(m => String(m.fixture.id) === String(selectedMatchId))?.teams.home.name} 
-                  {' vs '}
-                  {allUpcomingMatches.find(m => String(m.fixture.id) === String(selectedMatchId))?.teams.away.name}
-                </Text>
-              </View>
-            )}
-
-              <View style={styles.sectionHeader}>
-                <Ionicons name="bulb" size={20} color="#F59E0B" />
-              <Text style={styles.sectionTitle}>Analiz Odağı Seç</Text>
-              </View>
-            <Text style={styles.sectionSubtitle}>Seçtiğin odak x1.25 puan çarpanı kazandırır</Text>
-
-              <View style={styles.focusGrid}>
-                {strategicFocusOptions.map((focus, index) => {
-                  // Her kartın genişliğini hesapla: (ekran genişliği - section padding - gap) / 2
-                  const sectionPadding = 32; // 16 * 2 (left + right)
-                  const gap = 12;
-                  const cardWidth = (width - sectionPadding - gap) / 2;
-                  return (
-                    <Animated.View 
-                      key={focus.id} 
-                      entering={Platform.OS === 'web' ? FadeInLeft : FadeInLeft.delay(200 + index * 50).springify()}
-                      style={{ width: cardWidth }}
-                    >
-                      <TouchableOpacity
-                        style={[
-                          styles.focusCard,
-                          selectedFocus === focus.id && styles.focusCardSelected,
-                          selectedFocus && selectedFocus !== focus.id && styles.focusCardUnselected,
-                          { 
-                            width: '100%',
-                            borderColor: selectedFocus === focus.id ? focus.color : COLORS.dark.border,
-                            transform: [{ scale: selectedFocus === focus.id ? 1.05 : selectedFocus ? 0.95 : 1 }],
-                          },
-                        ]}
-                        onPress={() => handleFocusSelect(focus.id)}
-                        activeOpacity={0.8}
-                      >
-                      {/* Icon Container */}
-                      <View style={[styles.focusIconContainer, { backgroundColor: `${focus.color}15` }]}>
-                        <Ionicons
-                          name={selectedFocus === focus.id ? focus.icon : focus.iconOutline} 
-                          size={32} 
-                          color={focus.color} 
-                        />
-                      </View>
-
-                      {/* Content */}
-                      <View style={styles.focusContent}>
-                        <Text style={styles.focusName}>{focus.name}</Text>
-                        <Text style={styles.focusMultiplier}>x{focus.multiplier}</Text>
-                        <Text style={styles.focusDescription} numberOfLines={2}>{focus.description}</Text>
-                        
-                        {/* Affects Tags */}
-                        <View style={styles.focusAffects}>
-                          {focus.affects && focus.affects.slice(0, 2).map((affect, i) => (
-                            <View key={i} style={[styles.focusAffectTag, { backgroundColor: `${focus.color}20` }]}>
-                              <Text style={[styles.focusAffectText, { color: focus.color }]} numberOfLines={1}>{affect}</Text>
-                          </View>
-                          ))}
-                        </View>
-                      </View>
-
-                      {/* Selected Badge */}
-                      {selectedFocus === focus.id && (
-                        <View style={styles.selectedBadge}>
-                          <Ionicons name="checkmark-circle" size={24} color={focus.color} />
-                        </View>
-                      )}
-                    </TouchableOpacity>
-                  </Animated.View>
-                  );
-                })}
-              </View>
-
-              {/* DEVAM ET Butonu - Sadece maç seçildiğinde görünür */}
-              {selectedMatchId && (
-                <Animated.View 
-                  ref={continueButtonRef}
-                  entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(400).springify()} 
-                  style={styles.continueButtonContainer}
-                  onLayout={(event) => {
-                    const layout = event.nativeEvent.layout;
-                    // Absolute pozisyonu hesapla: focusSectionY (parent) + layout.y (relative)
-                    const absoluteY = focusSectionY > 0 ? focusSectionY + layout.y : layout.y;
-                    setContinueButtonY(absoluteY);
-                  }}
-                >
-                  <TouchableOpacity
-                    style={styles.continueButton}
-                    onPress={handleContinueToMatch}
-                    activeOpacity={0.8}
-                  >
-                    <LinearGradient
-                      colors={['#059669', '#047857']}
-                      style={styles.continueButtonGradient}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                    >
-                      <Text style={styles.continueButtonText}>
-                        {selectedFocus ? `Devam Et (${strategicFocusOptions.find(f => f.id === selectedFocus)?.name} ✓)` : 'Devam Et'}
-                      </Text>
-                      <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
-                    </LinearGradient>
-                  </TouchableOpacity>
-                </Animated.View>
-              )}
-            </Animated.View>
-          </View>
-
-        {/* 3. KAZANILAN ROZETLER - Sadece maç seçilmediğinde göster */}
-        {!selectedMatchId && (
-          <Animated.View entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(500).springify()} style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Ionicons name="trophy" size={20} color="#F59E0B" />
-              <Text style={styles.sectionTitle}>Kazanılan Rozetler</Text>
-            </View>
-
-            {/* View All Badges Button */}
-            <Animated.View entering={Platform.OS === 'web' ? FadeInLeft : FadeInLeft.delay(600).springify()}>
-              <TouchableOpacity
-                style={styles.viewAllBadgesButton}
-                onPress={() => onNavigate('profile', { showBadges: true })}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="trophy" size={24} color="#F59E0B" />
-                <Text style={styles.viewAllBadgesText}>Tüm Rozetlerimi Gör</Text>
-                <Ionicons name="chevron-forward" size={20} color="#F59E0B" />
-              </TouchableOpacity>
-            </Animated.View>
-          </Animated.View>
-        )}
-
-        {/* 3. GEÇMİŞ MAÇLAR - Sadece maç seçilmediğinde göster */}
-        {!selectedMatchId && (
-          <Animated.View entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(300).springify()} style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="time" size={20} color="#8B5CF6" />
-            <Text style={styles.sectionTitle}>
-              {selectedTeamName ? `${selectedTeamName} Maçları` : 'Geçmiş Maçlar'} ({filteredPastMatches.length})
-                      </Text>
-                    </View>
-                    
-          {filteredPastMatches.length > 0 ? (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.upcomingMatchesScroll}
-              style={Platform.OS === 'web' ? { scrollSnapType: 'x mandatory', overflowX: 'auto' } as any : undefined}
-              pagingEnabled={false}
-              decelerationRate="fast"
-              snapToInterval={Platform.OS === 'web' ? undefined : width - SPACING.base * 2 + SPACING.md}
-              snapToAlignment="center"
-              contentInsetAdjustmentBehavior="automatic"
-            >
-              {filteredPastMatches.slice(0, 10).map((match, index) => (
-                <Animated.View 
-                  key={match.fixture.id} 
-                  entering={Platform.OS === 'web' ? FadeInLeft : FadeInLeft.delay(350 + index * 50).springify()}
-                  style={Platform.OS === 'web' ? { scrollSnapAlign: 'center', scrollSnapStop: 'always' } as any : undefined}
-                >
-                  {renderMatchCard(match, 'finished', () => onNavigate('match-result-summary', { id: match.fixture.id }))}
-                </Animated.View>
-              ))}
-            </ScrollView>
-          ) : (
-            <View style={styles.emptyHistoryState}>
-              <Ionicons name="time-outline" size={48} color="#64748B" />
-              <Text style={styles.emptyText}>Henüz geçmiş maç yok</Text>
-            </View>
-          )}
-        </Animated.View>
-        )}
+        </View>
 
         {/* Bottom Padding */}
         <View style={{ height: 100 + SIZES.tabBarHeight }} />
       </ScrollView>
-
-      {/* Bottom Navigation - 4 Tabs (Ana Sayfa, Canlı Maçlar, Sıralama, Profil) */}
-      <View style={styles.footerNavigation}>
-        <TouchableOpacity 
-          style={styles.footerTab}
-          onPress={() => onNavigate('home')}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="home-outline" size={24} color={COLORS.dark.mutedForeground} />
-          <Text style={styles.footerTabText}>Ana Sayfa</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={styles.footerTab}
-          onPress={() => onNavigate('matches')}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="radio-outline" size={24} color={COLORS.dark.mutedForeground} />
-          <Text style={styles.footerTabText}>Canlı</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={styles.footerTab}
-          onPress={() => onNavigate('leaderboard')}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="trophy-outline" size={24} color={COLORS.dark.mutedForeground} />
-          <Text style={styles.footerTabText}>Sıralama</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={styles.footerTab}
-          onPress={() => onNavigate('profile')}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="person-outline" size={24} color={COLORS.dark.mutedForeground} />
-          <Text style={styles.footerTabText}>Profil</Text>
-        </TouchableOpacity>
-      </View>
     </View>
   );
 });
@@ -1173,7 +843,7 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   scrollContent: {
-    paddingTop: Platform.OS === 'ios' ? 44 + 70 + 8 : 70 + 8, // ✅ Profil kartının altından başlaması için (iOS: 44 safe area + ~70 içerik + 8 paddingBottom)
+    paddingTop: Platform.OS === 'ios' ? 190 : 180, // ✅ ProfileCard overlay'ın altından başlaması için
     paddingBottom: 100 + SIZES.tabBarHeight, // ✅ Footer navigation için extra padding
     backgroundColor: 'transparent', // Grid pattern görünsün
   },
@@ -1192,6 +862,73 @@ const styles = StyleSheet.create({
     elevation: 10000,
     position: 'relative',
   },
+  
+  // ✅ Takım Filtre Barı Stilleri
+  teamFilterBar: {
+    marginBottom: SPACING.md,
+    paddingHorizontal: SPACING.base,
+    zIndex: 100,
+  },
+  teamFilterScrollContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 4,
+  },
+  teamChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(31, 41, 55, 0.8)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(75, 85, 99, 0.5)',
+  },
+  teamChipActive: {
+    backgroundColor: BRAND.primary,
+    borderColor: BRAND.primary,
+  },
+  teamChipText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#94A3B8',
+  },
+  teamChipTextActive: {
+    color: '#FFFFFF',
+  },
+  teamChipBadge: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    flexDirection: 'row',
+    overflow: 'hidden',
+  },
+  teamChipStripe: {
+    flex: 1,
+    height: '100%',
+  },
+  teamChipCheck: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  teamChipEmpty: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  teamChipEmptyText: {
+    fontSize: 12,
+    color: '#64748B',
+  },
+
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1854,12 +1591,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: COLORS.dark.card,
+    backgroundColor: '#1a3a34', // Daha belirgin koyu yeşil arka plan
     borderRadius: SIZES.radiusLg,
     paddingHorizontal: SPACING.base,
-    paddingVertical: SPACING.md,
+    paddingVertical: 14,
     borderWidth: 1,
-    borderColor: COLORS.dark.border,
+    borderColor: BRAND.primary,
     zIndex: 10001,
     elevation: 10001, // Android için - çok yüksek
   },
@@ -1945,20 +1682,69 @@ const styles = StyleSheet.create({
   dropdownTeamEmoji: {
     fontSize: 12,
   },
+  dropdownEmptyItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+  },
+  dropdownEmptyText: {
+    fontSize: 14,
+    color: COLORS.dark.mutedForeground,
+    fontStyle: 'italic',
+  },
   
   // ✅ Yeni Maç Kartı Stilleri (Verilen koddan)
   matchCardContainer: {
-    width: width - SPACING.base * 2, // ✅ Scroll snap için doğru genişlik
+    width: '100%', // ✅ Dikey liste için tam genişlik
     maxWidth: 768,
-    marginRight: SPACING.md, // ✅ Kartlar arası boşluk
     minHeight: 175,
-    paddingHorizontal: 0, // ✅ Padding'i kaldırdık, ScrollView'de var
+  },
+  matchCardWrapper: {
+    width: '100%',
+    paddingHorizontal: SPACING.base,
+    marginBottom: SPACING.md,
+  },
+  matchesListContainer: {
+    width: '100%',
+  },
+  
+  // ✅ Canlı Maçlar Header
+  liveMatchesHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.base,
+    paddingVertical: SPACING.sm,
+    marginBottom: SPACING.sm,
+    gap: 8,
+  },
+  liveIndicatorDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#EF4444',
     ...(Platform.OS === 'web' && {
-      scrollSnapAlign: 'center',
-      scrollSnapStop: 'always',
-      flexShrink: 0, // ✅ Kartların küçülmesini engelle
+      animation: 'pulse 1.5s ease-in-out infinite',
     } as any),
   },
+  liveMatchesTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#EF4444',
+    flex: 1,
+  },
+  liveMatchesCount: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    backgroundColor: '#EF4444',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+
   matchCard: {
     width: '100%',
     minHeight: 175,
@@ -2403,16 +2189,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: BRAND.white,
-    ...Platform.select({
-      web: {
-        textShadow: '1px 1px 0px #00ffff, -1px -1px 0px #ff6b35',
-      },
-      default: {
-        textShadowColor: '#00ffff',
-        textShadowOffset: { width: 1, height: 1 },
-        textShadowRadius: 2,
-      },
-    }),
+    // Sistem renkleri - mavi text shadow kaldırıldı
   },
   matchCardScoreBoxLive: {
     marginTop: SPACING.xs,
@@ -2443,48 +2220,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: BRAND.white,
-    ...Platform.select({
-      web: {
-        textShadow: '1px 1px 0px #00ffff, -1px -1px 0px #ff6b35',
-      },
-      default: {
-        textShadowColor: '#00ffff',
-        textShadowOffset: { width: 1, height: 1 },
-        textShadowRadius: 2,
-      },
-    }),
-  },
-
-  // Footer Navigation - 4 Tabs
-  footerNavigation: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    height: SIZES.tabBarHeight,
-    backgroundColor: '#0F2A24', // Koyu yeşil - Grid pattern ile uyumlu
-    borderTopWidth: 0, // Border kaldırıldı
-    ...Platform.select({
-      ios: {
-        paddingBottom: 20,
-      },
-      android: {
-        paddingBottom: 8,
-      },
-    }),
-  },
-  footerTab: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: SPACING.xs,
-    paddingVertical: SPACING.sm,
-  },
-  footerTabText: {
-    ...TYPOGRAPHY.bodySmall,
-    color: COLORS.dark.mutedForeground,
-    fontSize: 10,
-    fontWeight: '500',
+    // Sistem renkleri - mavi text shadow kaldırıldı
   },
 });

@@ -207,5 +207,50 @@
     "analyticsDesc": "Uygulama performansını analiz etmek için kullanılır",
     "marketing": "Pazarlama Çerezleri",
     "marketingDesc": "Kampanya ve özel teklifler için bildirimler"
+  },
+  "countries": {
+    "Turkey": "Türkiye",
+    "Germany": "Almanya",
+    "France": "Fransa",
+    "England": "İngiltere",
+    "Spain": "İspanya",
+    "Italy": "İtalya",
+    "Brazil": "Brezilya",
+    "Argentina": "Arjantin",
+    "Portugal": "Portekiz",
+    "Netherlands": "Hollanda",
+    "Belgium": "Belçika",
+    "Croatia": "Hırvatistan",
+    "Poland": "Polonya",
+    "Ukraine": "Ukrayna",
+    "Russia": "Rusya",
+    "Sweden": "İsveç",
+    "Austria": "Avusturya",
+    "Switzerland": "İsviçre",
+    "USA": "ABD",
+    "Mexico": "Meksika",
+    "Japan": "Japonya",
+    "South-Korea": "Güney Kore",
+    "Australia": "Avustralya",
+    "Saudi-Arabia": "Suudi Arabistan",
+    "Unknown": "Bilinmiyor"
+  },
+  "teamSelection": {
+    "selectNationalTeam": "Milli takımınızı seçin",
+    "selectClubTeam": "Favori kulüp takımınızı seçin",
+    "selectClubTeam2": "2. favori kulüp takımınızı seçin",
+    "selectClubTeam3": "3. favori kulüp takımınızı seçin",
+    "selectClubTeam4": "4. favori kulüp takımınızı seçin",
+    "selectClubTeam5": "5. favori kulüp takımınızı seçin",
+    "searchPlaceholder": "Takım ara...",
+    "noTeamsFound": "Takım bulunamadı"
+  },
+  "profileEdit": {
+    "firstName": "Ad",
+    "lastName": "Soyad",
+    "nickname": "Kullanıcı Adı",
+    "saveChanges": "Değişiklikleri Kaydet",
+    "editing": "Düzenleniyor...",
+    "saved": "Kaydedildi!"
   }
 }

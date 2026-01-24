@@ -32,7 +32,7 @@ class ProfileService {
 
   /**
    * Mevcut kullanıcı profilini getir
-   * Önce cache, sonra AsyncStorage, en son Supabase
+   * Önce cache, sonra AsyncStorage (tacticiq + fan-manager), en son Supabase
    */
   async getProfile(): Promise<UnifiedUserProfile | null> {
     try {
@@ -43,7 +43,7 @@ class ProfileService {
         return this.cachedProfile;
       }
 
-      // 2. AsyncStorage kontrolü
+      // 2. AsyncStorage kontrolü - tacticiq_user_profile
       const stored = await AsyncStorage.getItem(STORAGE_KEY);
       if (stored) {
         this.cachedProfile = JSON.parse(stored);
@@ -52,7 +52,38 @@ class ProfileService {
         return this.cachedProfile;
       }
 
-      // 3. Supabase'den çek
+      // 3. AsyncStorage kontrolü - fan-manager-user (legacy/mock login)
+      const legacyUserData = await AsyncStorage.getItem('fan-manager-user');
+      if (legacyUserData) {
+        const userData = JSON.parse(legacyUserData);
+        // Legacy format'ı UnifiedUserProfile'a çevir
+        const profile: UnifiedUserProfile = {
+          ...DEFAULT_PROFILE,
+          id: userData.id || 'local_user',
+          email: userData.email || '',
+          name: userData.displayName || userData.name || userData.nickname || '',
+          nickname: userData.nickname || userData.username || userData.email?.split('@')[0] || 'User',
+          firstName: userData.firstName || '',
+          lastName: userData.lastName || '',
+          fullName: userData.displayName || `${userData.firstName || ''} ${userData.lastName || ''}`.trim(),
+          avatar: userData.photoURL || userData.avatar || '',
+          plan: userData.is_pro || userData.isPro || userData.isPremium ? 'pro' : 'free',
+          totalPoints: userData.points || 0,
+          level: userData.level || 1,
+          countryRank: userData.countryRank || 0,
+          globalRank: userData.globalRank || 0,
+          accuracy: userData.accuracy || 0,
+          totalPredictions: userData.totalPredictions || 0,
+          nationalTeam: userData.nationalTeam || '',
+          clubTeams: userData.clubTeams || [],
+        };
+        this.cachedProfile = profile;
+        // Yeni format'ta kaydet
+        await this.saveToCache(profile);
+        return profile;
+      }
+
+      // 4. Supabase'den çek
       return await this.fetchProfileFromSupabase();
     } catch (error) {
       console.error('[ProfileService] getProfile error:', error);
@@ -61,13 +92,41 @@ class ProfileService {
   }
 
   /**
-   * Supabase'den profil çek
+   * Supabase veya AsyncStorage'dan profil çek
    */
   async fetchProfileFromSupabase(): Promise<UnifiedUserProfile | null> {
     try {
+      // Önce Supabase auth kontrolü
       const { data: { user } } = await supabase.auth.getUser();
+      
+      // Supabase auth yoksa, mock/legacy kullanıcı kontrolü
       if (!user) {
-        console.log('[ProfileService] No authenticated user');
+        const legacyUserData = await AsyncStorage.getItem('fan-manager-user');
+        if (legacyUserData) {
+          const userData = JSON.parse(legacyUserData);
+          const profile: UnifiedUserProfile = {
+            ...DEFAULT_PROFILE,
+            id: userData.id || 'local_user',
+            email: userData.email || '',
+            name: userData.displayName || userData.name || userData.nickname || '',
+            nickname: userData.nickname || userData.username || userData.email?.split('@')[0] || 'User',
+            firstName: userData.firstName || '',
+            lastName: userData.lastName || '',
+            fullName: userData.displayName || `${userData.firstName || ''} ${userData.lastName || ''}`.trim(),
+            avatar: userData.photoURL || userData.avatar || '',
+            plan: userData.is_pro || userData.isPro || userData.isPremium ? 'pro' : 'free',
+            totalPoints: userData.points || 0,
+            level: userData.level || 1,
+            countryRank: userData.countryRank || 0,
+            globalRank: userData.globalRank || 0,
+            accuracy: userData.accuracy || 0,
+            totalPredictions: userData.totalPredictions || 0,
+            nationalTeam: userData.nationalTeam || '',
+            clubTeams: userData.clubTeams || [],
+          };
+          return profile;
+        }
+        // Hiç kullanıcı yok
         return null;
       }
 
@@ -156,27 +215,43 @@ class ProfileService {
 
   /**
    * Profili güncelle
-   * Hem Supabase hem de local cache güncellenir
+   * Supabase veya AsyncStorage (mock kullanıcılar için)
    */
   async updateProfile(updates: ProfileUpdate): Promise<{ success: boolean; error?: string }> {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        return { success: false, error: 'Kullanıcı oturumu bulunamadı' };
+      
+      // Supabase auth varsa Supabase'e kaydet
+      if (user) {
+        const supabaseUpdates = toSupabaseProfile(updates);
+        const { error } = await supabase
+          .from('user_profiles')
+          .update(supabaseUpdates)
+          .eq('id', user.id);
+
+        if (error) {
+          console.warn('[ProfileService] Supabase update error:', error.message);
+        }
       }
-
-      // Supabase formatına dönüştür
-      const supabaseUpdates = toSupabaseProfile(updates);
-
-      // Supabase güncelle
-      const { error } = await supabase
-        .from('user_profiles')
-        .update(supabaseUpdates)
-        .eq('id', user.id);
-
-      if (error) {
-        console.warn('[ProfileService] Update error:', error.message);
-        return { success: false, error: error.message };
+      
+      // Mock/legacy kullanıcı için AsyncStorage güncelle
+      const legacyUserData = await AsyncStorage.getItem('fan-manager-user');
+      if (legacyUserData) {
+        const userData = JSON.parse(legacyUserData);
+        const updatedUserData = {
+          ...userData,
+          ...updates,
+          // Özel alanları map'le
+          displayName: updates.name || userData.displayName,
+          nickname: updates.nickname || userData.nickname,
+          firstName: updates.firstName || userData.firstName,
+          lastName: updates.lastName || userData.lastName,
+          nationalTeam: updates.nationalTeam || userData.nationalTeam,
+          clubTeams: updates.clubTeams || userData.clubTeams,
+          profileSetupComplete: true,
+        };
+        await AsyncStorage.setItem('fan-manager-user', JSON.stringify(updatedUserData));
+        console.log('[ProfileService] AsyncStorage updated for mock user');
       }
 
       // Local cache güncelle

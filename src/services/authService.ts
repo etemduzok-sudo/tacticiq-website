@@ -165,19 +165,40 @@ class AuthService {
   // Sign out
   async signOut() {
     try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
+      // Supabase signOut - hata olsa bile devam et
+      try {
+        await supabase.auth.signOut();
+      } catch (supabaseError) {
+        console.warn('Supabase signOut warning:', supabaseError);
+        // Supabase hatası olsa bile AsyncStorage'ı temizle
+      }
 
-      // Clear AsyncStorage
+      // Clear AsyncStorage - HER ZAMAN çalışmalı
       await AsyncStorage.multiRemove([
         'fan-manager-user',
         'fan-manager-language',
         'fan-manager-favorite-clubs',
+        'tacticiq_user_profile',
+        'tacticiq_player_counts',
       ]);
+
+      // ProfileService cache'ini temizle
+      try {
+        const { profileService } = await import('./profileService');
+        profileService.clearCache();
+      } catch (e) {
+        // Ignore cache clear error
+      }
 
       return { success: true };
     } catch (error: any) {
       console.error('Sign out error:', error);
+      // Son çare olarak yine de AsyncStorage'ı temizlemeye çalış
+      try {
+        await AsyncStorage.clear();
+      } catch (e) {
+        // Ignore
+      }
       return { success: false, error: error.message };
     }
   }

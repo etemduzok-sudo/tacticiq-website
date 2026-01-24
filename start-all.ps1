@@ -19,11 +19,11 @@ Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "$PSScriptRoot\website
 Remove-Item -Recurse -Force -ErrorAction SilentlyContinue "$PSScriptRoot\website\node_modules\.vite"
 Write-Host "   Cache temizlendi!" -ForegroundColor Green
 
-# 3. Backend başlat
-Write-Host "[3/5] Backend baslatiliyor..." -ForegroundColor Yellow
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$PSScriptRoot\backend'; Write-Host 'BACKEND SERVER' -ForegroundColor Green; node server.js" -WindowStyle Normal
-Start-Sleep -Seconds 2
-Write-Host "   Backend basladi!" -ForegroundColor Green
+# 3. Backend başlat (Watchdog ile - otomatik yeniden başlatma)
+Write-Host "[3/5] Backend baslatiliyor (Watchdog ile)..." -ForegroundColor Yellow
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$PSScriptRoot\backend'; Write-Host 'BACKEND WATCHDOG' -ForegroundColor Green; powershell.exe -ExecutionPolicy Bypass -File 'watchdog-backend.ps1'" -WindowStyle Normal
+Start-Sleep -Seconds 3
+Write-Host "   Backend watchdog basladi!" -ForegroundColor Green
 
 # 4. Website başlat
 Write-Host "[4/5] Website baslatiliyor..." -ForegroundColor Yellow
