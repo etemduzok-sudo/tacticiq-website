@@ -316,6 +316,7 @@ export default function App() {
   const [selectedTeamIds, setSelectedTeamIds] = useState<number[]>([]); // ✅ Çoklu takım seçimi
   const [isMaintenanceMode, setIsMaintenanceMode] = useState<boolean>(false);
   const [isProcessingOAuth, setIsProcessingOAuth] = useState<boolean>(false); // OAuth işleniyor mu?
+  const [oauthCompleted, setOauthCompleted] = useState<boolean>(false); // OAuth tamamlandı mı?
   
   // ✅ Favori takımlar hook'u - ProfileCard'a aktarılacak
   const { favoriteTeams, loading: teamsLoading, refetch: refetchFavoriteTeams } = useFavoriteTeams();
@@ -368,6 +369,9 @@ export default function App() {
             if (window.history && window.history.replaceState) {
               window.history.replaceState(null, '', window.location.origin + window.location.pathname);
             }
+            
+            // ✅ OAuth tamamlandı işaretle (SplashScreen'in override etmesini engelle)
+            setOauthCompleted(true);
             
             // ✅ Loading ekranını kapat ve ana sayfaya git
             setIsProcessingOAuth(false);
@@ -507,6 +511,12 @@ export default function App() {
 
   // 1.5. Splash Complete (legacy - for existing users)
   const handleSplashComplete = async (hasUser: boolean) => {
+    // ✅ OAuth zaten tamamlandıysa bu callback'i yoksay
+    if (oauthCompleted) {
+      console.log('🛡️ [App] OAuth zaten tamamlandı, handleSplashComplete atlanıyor');
+      return;
+    }
+    
     logger.info('Splash complete', { hasUser }, 'SPLASH');
     
     try {
