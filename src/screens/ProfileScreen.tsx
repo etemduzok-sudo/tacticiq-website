@@ -514,21 +514,42 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         // 🆕 Unified Profile Service kullan (Web ile senkronize)
         const unifiedProfile = await profileService.getProfile();
         
+        // ✅ AsyncStorage'dan OAuth verilerini al (firstName, lastName, photoURL için)
+        const userDataStr = await AsyncStorage.getItem(STORAGE_KEYS.USER);
+        const userData = userDataStr ? JSON.parse(userDataStr) : null;
+        
         if (unifiedProfile) {
           logger.info('Unified profile loaded', { id: unifiedProfile.id, plan: unifiedProfile.plan }, 'PROFILE');
           
+          // ✅ OAuth verileri varsa onları kullan, yoksa unifiedProfile'dan al
+          const oauthFirstName = userData?.firstName || '';
+          const oauthLastName = userData?.lastName || '';
+          const oauthNickname = userData?.nickname || userData?.username || '';
+          const oauthAvatar = userData?.photoURL || userData?.avatar || '';
+          const oauthDisplayName = userData?.displayName || '';
+          
           // Unified profile'dan verileri state'e aktar
-          const fullName = unifiedProfile.name || unifiedProfile.nickname || 'Kullanıcı';
-          const nameParts = fullName.split(' ');
-          setFirstName(nameParts[0] || '');
-          setLastName(nameParts.slice(1).join(' ') || '');
-          setNickname(unifiedProfile.nickname || nameParts[0] || '');
+          // OAuth verileri varsa öncelikli kullan
+          const fullName = oauthDisplayName || unifiedProfile.name || unifiedProfile.nickname || 'Kullanıcı';
+          const nameParts = fullName.trim().split(' ').filter((p: string) => p.length > 0);
+          
+          // firstName/lastName: Önce OAuth, yoksa fullName'den ayır
+          const fName = oauthFirstName || nameParts[0] || '';
+          const lName = oauthLastName || nameParts.slice(1).join(' ') || '';
+          setFirstName(fName);
+          setLastName(lName);
+          setNickname(oauthNickname || unifiedProfile.nickname || nameParts[0] || '');
+          
+          // Avatar: Önce OAuth, yoksa unified profile
+          const avatarUrl = oauthAvatar || unifiedProfile.avatar || '';
+          
+          console.log('👤 [Profile] Loading with OAuth data:', { fName, lName, oauthNickname, avatarUrl: avatarUrl ? 'exists' : 'none', provider: userData?.provider });
           
           setUser({
             name: fullName,
-            username: unifiedProfile.nickname ? `@${unifiedProfile.nickname}` : '@kullanici',
+            username: oauthNickname ? `@${oauthNickname}` : (unifiedProfile.nickname ? `@${unifiedProfile.nickname}` : '@kullanici'),
             email: unifiedProfile.email,
-            avatar: unifiedProfile.avatar || '',
+            avatar: avatarUrl,
             level: unifiedProfile.level || 1,
             points: unifiedProfile.totalPoints || 0,
             countryRank: unifiedProfile.countryRank || 0,
@@ -597,12 +618,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         }
 
         // Fallback: AsyncStorage'dan yükle (eski sistem)
-        const userDataStr = await AsyncStorage.getItem(STORAGE_KEYS.USER);
-        const userData = userDataStr ? JSON.parse(userDataStr) : null;
+        // userData zaten yukarıda alındı
         
         // ✅ Kullanıcı adı ve ismini AsyncStorage'dan yükle (fallback)
         // OAuth'tan gelen displayName, photoURL, firstName, lastName, nickname'i de kontrol et
-        if (!unifiedProfile && userData) {
+        if (userData) {
           const fullName = userData.displayName || userData.name || userData.username || '';
           const avatarUrl = userData.photoURL || userData.avatar || userData.avatar_url || '';
           
