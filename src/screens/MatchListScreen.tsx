@@ -15,6 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import api from '../services/api';
+import { useFavoriteTeams } from '../hooks/useFavoriteTeams';
 
 // Platform-safe animation helper (web doesn't support .delay().springify())
 const getEnteringAnimation = (index: number = 0, baseDelay: number = 150) => {
@@ -60,6 +61,9 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
 }) => {
   const scrollViewRef = useRef<ScrollView>(null);
   const matchCardPositions = useRef<{ [key: string]: number }>({});
+  
+  // ✅ Favori takımları al
+  const { favoriteTeams } = useFavoriteTeams();
   
   // ✅ Takım maçları için state
   const [teamUpcomingMatches, setTeamUpcomingMatches] = useState<any[]>([]);
@@ -387,6 +391,14 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
         const awayId = match.teams?.away?.id;
         return homeId === selectedTeamId || awayId === selectedTeamId;
       });
+    } else if (favoriteTeams.length > 0) {
+      // ✅ Eğer seçili takım yoksa, sadece favori takımların maçlarını göster
+      const favoriteTeamIds = favoriteTeams.map(t => t.id);
+      matches = matches.filter(match => {
+        const homeId = match.teams?.home?.id;
+        const awayId = match.teams?.away?.id;
+        return favoriteTeamIds.includes(homeId) || favoriteTeamIds.includes(awayId);
+      });
     }
     
     // ✅ Duplicate fixture ID'leri kaldır
@@ -400,7 +412,7 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
     
     // En son başlayan en üstte (timestamp azalan)
     return uniqueMatches.sort((a, b) => b.fixture.timestamp - a.fixture.timestamp);
-  }, [allLiveMatches, selectedTeamId]);
+  }, [allLiveMatches, selectedTeamId, favoriteTeams]);
 
   // ✅ Biten maçları filtrele ve sırala - en son biten en üstte (duplicate önleme dahil)
   const filteredFinishedMatches = React.useMemo(() => {
@@ -412,6 +424,14 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
         const homeId = match.teams?.home?.id;
         const awayId = match.teams?.away?.id;
         return homeId === selectedTeamId || awayId === selectedTeamId;
+      });
+    } else if (favoriteTeams.length > 0) {
+      // ✅ Eğer seçili takım yoksa, sadece favori takımların maçlarını göster
+      const favoriteTeamIds = favoriteTeams.map(t => t.id);
+      matches = matches.filter(match => {
+        const homeId = match.teams?.home?.id;
+        const awayId = match.teams?.away?.id;
+        return favoriteTeamIds.includes(homeId) || favoriteTeamIds.includes(awayId);
       });
     }
     
@@ -426,7 +446,7 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
     
     // En son biten en üstte (timestamp azalan)
     return uniqueMatches.sort((a, b) => b.fixture.timestamp - a.fixture.timestamp);
-  }, [pastMatches, selectedTeamId]);
+  }, [pastMatches, selectedTeamId, favoriteTeams]);
   
   useEffect(() => {
     if (filteredLiveMatches.length > 0) {

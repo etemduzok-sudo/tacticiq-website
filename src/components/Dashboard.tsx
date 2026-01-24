@@ -672,9 +672,10 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
   // ✅ Filter matches by selected teams (ID and name matching) - ÇOKLU SEÇİM
   // IMPORTANT: This hook MUST be before any early returns to follow Rules of Hooks
   const filterMatchesByTeam = React.useCallback((matches: any[], teamIds: number[]) => {
-    // Eğer favori takım yoksa, tüm maçları göster
+    // ❌ Favori takım yoksa, HİÇ MAÇ GÖSTERME (boş dön)
+    // Kullanıcı önce favori takım seçmeli
     if (favoriteTeams.length === 0) {
-      return matches;
+      return []; // Tüm maçları gösterme, boş dön
     }
     
     // Eğer hiç takım seçilmemişse (boş array), TÜM favori takımların maçlarını göster
@@ -683,8 +684,16 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
       ? favoriteTeams
       : favoriteTeams.filter(t => teamIds.includes(t.id));
     
+    // Eğer seçili takımlar favori listesinde yoksa, tüm favorileri kullan
     if (teamsToFilter.length === 0) {
-      return matches;
+      // Hiç filtreleme yapma, favoriler arasında seçili ID yok
+      // Bu durumda tüm favorilerin maçlarını göster
+      return matches.filter(match => {
+        if (!match?.teams?.home || !match?.teams?.away) return false;
+        const homeId = match.teams.home.id;
+        const awayId = match.teams.away.id;
+        return favoriteTeams.some(t => t.id === homeId || t.id === awayId);
+      });
     }
 
     const filtered = matches.filter(match => {

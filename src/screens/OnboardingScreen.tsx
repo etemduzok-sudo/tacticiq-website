@@ -118,6 +118,50 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const slideAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
+  
+  // 🌍 Dönen dil subtitle animasyonu
+  const [subtitleLangIndex, setSubtitleLangIndex] = useState(0);
+  const subtitleFade = useRef(new Animated.Value(1)).current;
+  
+  // Tüm dillerde subtitle metinleri
+  const subtitleTranslations = [
+    { lang: 'tr', text: 'Lütfen dilinizi seçin', flag: '🇹🇷' },
+    { lang: 'en', text: 'Please select your language', flag: '🇬🇧' },
+    { lang: 'de', text: 'Bitte wählen Sie Ihre Sprache', flag: '🇩🇪' },
+    { lang: 'es', text: 'Por favor seleccione su idioma', flag: '🇪🇸' },
+    { lang: 'fr', text: 'Veuillez sélectionner votre langue', flag: '🇫🇷' },
+    { lang: 'it', text: 'Seleziona la tua lingua', flag: '🇮🇹' },
+    { lang: 'ar', text: 'يرجى اختيار لغتك', flag: '🇸🇦' },
+    { lang: 'zh', text: '请选择您的语言', flag: '🇨🇳' },
+  ];
+  
+  // Subtitle döngüsü efekti
+  useEffect(() => {
+    if (currentStep !== 'language') return;
+    
+    const interval = setInterval(() => {
+      // Fade out
+      Animated.timing(subtitleFade, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+        easing: Easing.out(Easing.ease),
+      }).start(() => {
+        // Sonraki dil
+        setSubtitleLangIndex(prev => (prev + 1) % subtitleTranslations.length);
+        
+        // Fade in
+        Animated.timing(subtitleFade, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+          easing: Easing.in(Easing.ease),
+        }).start();
+      });
+    }, 2500); // 2.5 saniyede bir değiş
+    
+    return () => clearInterval(interval);
+  }, [currentStep]);
 
   // Sayfa geçiş animasyonu
   const animateTransition = (direction: 'forward' | 'backward', callback: () => void) => {
@@ -348,7 +392,19 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
   const renderLanguageStep = () => (
     <View style={styles.stepContainer}>
       <Text style={styles.stepTitle}>{getTranslation('languageSelection.title')}</Text>
-      <Text style={styles.stepSubtitle}>{getTranslation('languageSelection.subtitle')}</Text>
+      
+      {/* 🌍 Animasyonlu dönen subtitle - tüm dillerde */}
+      <Animated.View style={{ 
+        opacity: subtitleFade,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        marginBottom: 24,
+      }}>
+        <Text style={{ fontSize: 20 }}>{subtitleTranslations[subtitleLangIndex].flag}</Text>
+        <Text style={styles.stepSubtitle}>{subtitleTranslations[subtitleLangIndex].text}</Text>
+      </Animated.View>
 
       {/* 2 sütun 4 satır grid */}
       <View style={styles.languageGridPremium}>
