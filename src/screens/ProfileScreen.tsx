@@ -3067,11 +3067,16 @@ const createStyles = () => {
     borderRadius: SIZES.radiusLg, // Web'de daha küçük radius
     padding: SPACING.lg,
     marginBottom: SPACING.base, // Web'de daha az margin
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+      },
+      android: { elevation: 1 },
+      web: { boxShadow: '0 1px 2px rgba(0,0,0,0.05)' },
+    }),
   },
   cardHeader: {
     flexDirection: 'row',
@@ -3315,11 +3320,16 @@ const createStyles = () => {
     borderRadius: 3,
     overflow: 'hidden',
     marginRight: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+      },
+      android: { elevation: 4 },
+      web: { boxShadow: '0 2px 4px rgba(0,0,0,0.3)' },
+    }),
   },
   colorStripeSecondary: {
     width: '100%',
@@ -3350,11 +3360,16 @@ const createStyles = () => {
     borderRadius: 12,
     maxHeight: 300,
     zIndex: 1000,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 10,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.4,
+        shadowRadius: 12,
+      },
+      android: { elevation: 10 },
+      web: { boxShadow: '0 6px 12px rgba(0,0,0,0.4)' },
+    }),
   },
   searchInput: {
     backgroundColor: 'rgba(30, 41, 59, 0.8)',
@@ -3681,11 +3696,16 @@ const createStyles = () => {
     borderWidth: 1,
     borderColor: 'rgba(16, 185, 129, 0.4)',
     zIndex: 999,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: { elevation: 8 },
+      web: { boxShadow: '0 4px 8px rgba(0,0,0,0.3)' },
+    }),
   } as ViewStyle,
   savedToastText: {
     fontSize: 15,
@@ -4392,11 +4412,16 @@ const createStyles = () => {
     borderWidth: 1.5,
     borderColor: 'rgba(148, 163, 184, 0.15)', // Yumuşak border
     minHeight: 110,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 4,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+      },
+      android: { elevation: 4 },
+      web: { boxShadow: '0 4px 8px rgba(0,0,0,0.15)' },
+    }),
   },
   sideStripeLeft: {
     position: 'absolute',
@@ -5150,11 +5175,16 @@ const createStyles = () => {
     height: 20,
     borderRadius: 10,
     backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    elevation: 2,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 2,
+      },
+      android: { elevation: 2 },
+      web: { boxShadow: '0 2px 2px rgba(0,0,0,0.2)' },
+    }),
   },
   // Push Notification Styles
   pushNotificationBadge: {
