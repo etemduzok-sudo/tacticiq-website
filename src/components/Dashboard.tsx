@@ -199,13 +199,20 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
     const timeDiff = matchTime - now;
     const hours24 = 24 * 60 * 60;
     const dayInSeconds = 24 * 60 * 60;
+    const days7 = 7 * dayInSeconds; // 7 gün
     
     let timeLeft = { hours: 0, minutes: 0, seconds: 0 };
     let daysRemaining = 0;
+    let isLocked = false; // 7 günden uzak maçlar kilitli
+    let countdownColor = '#10b981'; // Varsayılan yeşil
     
     if (status === 'upcoming' && timeDiff > 0) {
-      if (timeDiff > hours24) {
-        // 24 saatten uzun süre varsa gün sayısını hesapla
+      // 7 günden fazla ise kilitli
+      if (timeDiff > days7) {
+        isLocked = true;
+        daysRemaining = Math.floor(timeDiff / dayInSeconds);
+      } else if (timeDiff > hours24) {
+        // 24 saatten uzun ama 7 günden az - gün sayısını göster
         daysRemaining = Math.floor(timeDiff / dayInSeconds);
       } else {
         // 24 saatten az kaldıysa geri sayım göster
@@ -214,6 +221,19 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
           minutes: Math.floor((timeDiff % 3600) / 60),
           seconds: Math.floor(timeDiff % 60),
         };
+        
+        // Renk değişimi: yeşil -> sarı -> turuncu -> kırmızı
+        const hoursLeft = timeDiff / 3600;
+        if (hoursLeft <= 1) {
+          countdownColor = '#EF4444'; // Kırmızı - 1 saatten az
+        } else if (hoursLeft <= 3) {
+          countdownColor = '#F97316'; // Turuncu - 3 saatten az
+        } else if (hoursLeft <= 6) {
+          countdownColor = '#F59E0B'; // Sarı - 6 saatten az
+        } else if (hoursLeft <= 12) {
+          countdownColor = '#84CC16'; // Açık yeşil - 12 saatten az
+        }
+        // 12+ saat için varsayılan yeşil kalır
       }
     }
     
@@ -342,7 +362,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
               </View>
             </View>
             
-            {/* Durum Badge'i (Canlı, Bitti, Geri Sayım) */}
+            {/* Durum Badge'i (Canlı, Bitti, Geri Sayım, Kilitli) */}
             {status === 'live' ? (
               <View style={styles.matchCardLiveContainer}>
                 <LinearGradient
@@ -375,8 +395,18 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
               </View>
             ) : (
               status === 'upcoming' && timeDiff > 0 ? (
-                daysRemaining > 0 ? (
-                  // 24 saatten uzun süre varsa gün sayısını göster
+                isLocked ? (
+                  // 7 günden fazla - KİLİTLİ
+                  <View style={styles.matchCardLockedContainer}>
+                    <View style={styles.matchCardLockedBadge}>
+                      <Ionicons name="lock-closed" size={14} color="#64748B" />
+                      <Text style={styles.matchCardLockedText}>
+                        {daysRemaining} GÜN SONRA • TAHMİNE KAPALI
+                      </Text>
+                    </View>
+                  </View>
+                ) : daysRemaining > 0 ? (
+                  // 24 saatten uzun ama 7 günden az - gün sayısını göster
                   <View style={styles.matchCardDaysRemainingContainer}>
                     <LinearGradient
                       colors={['#f97316', '#ea580c']}
@@ -385,18 +415,18 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
                       end={{ x: 1, y: 0 }}
                     >
                       <Text style={styles.matchCardDaysRemainingText}>
-                        MAÇA {daysRemaining} {daysRemaining === 1 ? 'GÜN' : 'GÜN'} KALDI
+                        MAÇA {daysRemaining} GÜN KALDI
                       </Text>
                     </LinearGradient>
                   </View>
                 ) : (
-                  // 24 saatten az kaldıysa geri sayım sayacını göster
+                  // 24 saatten az kaldıysa geri sayım sayacını göster (renk değişimi ile)
                   timeLeft.hours > 0 || timeLeft.minutes > 0 || timeLeft.seconds > 0 ? (
                     <View style={styles.matchCardCountdownContainer}>
                       <View style={styles.matchCardCountdownCard}>
                         <View style={styles.matchCardCountdownRow}>
                           <LinearGradient
-                            colors={['#f97316', '#ea580c']}
+                            colors={[countdownColor, countdownColor === '#EF4444' ? '#B91C1C' : countdownColor === '#F97316' ? '#EA580C' : countdownColor === '#F59E0B' ? '#D97706' : countdownColor === '#84CC16' ? '#65A30D' : '#059669']}
                             style={styles.matchCardCountdownBox}
                           >
                             <Text style={styles.matchCardCountdownNumber}>
@@ -405,10 +435,10 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
                             <Text style={styles.matchCardCountdownUnit}>Saat</Text>
                           </LinearGradient>
                           
-                          <Text style={styles.matchCardCountdownSeparator}>:</Text>
+                          <Text style={[styles.matchCardCountdownSeparator, { color: countdownColor }]}>:</Text>
                           
                           <LinearGradient
-                            colors={['#f97316', '#ea580c']}
+                            colors={[countdownColor, countdownColor === '#EF4444' ? '#B91C1C' : countdownColor === '#F97316' ? '#EA580C' : countdownColor === '#F59E0B' ? '#D97706' : countdownColor === '#84CC16' ? '#65A30D' : '#059669']}
                             style={styles.matchCardCountdownBox}
                           >
                             <Text style={styles.matchCardCountdownNumber}>
@@ -417,10 +447,10 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
                             <Text style={styles.matchCardCountdownUnit}>Dakika</Text>
                           </LinearGradient>
                           
-                          <Text style={styles.matchCardCountdownSeparator}>:</Text>
+                          <Text style={[styles.matchCardCountdownSeparator, { color: countdownColor }]}>:</Text>
                           
                           <LinearGradient
-                            colors={['#f97316', '#ea580c']}
+                            colors={[countdownColor, countdownColor === '#EF4444' ? '#B91C1C' : countdownColor === '#F97316' ? '#EA580C' : countdownColor === '#F59E0B' ? '#D97706' : countdownColor === '#84CC16' ? '#65A30D' : '#059669']}
                             style={styles.matchCardCountdownBox}
                           >
                             <Text style={styles.matchCardCountdownNumber}>
@@ -577,13 +607,16 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
 
   const filteredPastMatches = React.useMemo(() => {
     const filtered = filterMatchesByTeam(pastMatches, selectedTeamIds);
-    // Geçmiş maçları ters sırala (en yakın tarihli en üstte)
-    return [...filtered].sort((a, b) => b.fixture.timestamp - a.fixture.timestamp);
+    // Geçmiş maçları tarih sırasına göre sırala (en eski en üstte, en yeni en altta)
+    // Böylece scroll edilince en eski maçlar profil kartının arkasında kalır
+    return [...filtered].sort((a, b) => a.fixture.timestamp - b.fixture.timestamp);
   }, [pastMatches, selectedTeamIds, filterMatchesByTeam]);
 
-  // ✅ Canlı maçları da favori takımlara göre filtrele
+  // ✅ Canlı maçları da favori takımlara göre filtrele ve sırala
   const filteredLiveMatches = React.useMemo(() => {
-    return filterMatchesByTeam(liveMatches, selectedTeamIds);
+    const filtered = filterMatchesByTeam(liveMatches, selectedTeamIds);
+    // En erken başlayan maç en üstte (timestamp'e göre artan sıra)
+    return [...filtered].sort((a, b) => a.fixture.timestamp - b.fixture.timestamp);
   }, [liveMatches, selectedTeamIds, filterMatchesByTeam]);
 
   // ✅ Sayfa açıldığında geçmiş maçları atlayıp gelecek maçlara scroll yap
@@ -1950,6 +1983,32 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: 'bold',
     color: BRAND.white,
+  },
+  // Kilitli maç stilleri (7 günden uzak)
+  matchCardLockedContainer: {
+    alignItems: 'center',
+    marginBottom: 0,
+    marginTop: 2,
+  },
+  matchCardLockedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    minHeight: 32,
+    borderRadius: 10,
+    backgroundColor: 'rgba(100, 116, 139, 0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(100, 116, 139, 0.4)',
+    borderStyle: 'dashed',
+  },
+  matchCardLockedText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#64748B',
+    letterSpacing: 0.5,
   },
   matchCardCountdownCard: {
     alignItems: 'center',
