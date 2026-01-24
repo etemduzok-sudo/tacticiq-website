@@ -2282,6 +2282,94 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
           {/* Database Test Button kaldırıldı - Web Admin Panel'e taşındı */}
 
+          {/* ✅ ROZETLERİM BÖLÜMÜ - Tüm rozetler (kazanılmış ve kilitli) */}
+          <Animated.View
+            entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(200)}
+            style={styles.badgesSectionCard}
+          >
+            {/* Header */}
+            <View style={styles.badgesSectionHeader}>
+              <View style={styles.badgesSectionTitleRow}>
+                <Ionicons name="trophy" size={22} color="#F59E0B" />
+                <Text style={styles.badgesSectionTitle}>Rozetlerim</Text>
+              </View>
+              <View style={styles.badgesSectionProgress}>
+                <Text style={styles.badgesSectionCount}>
+                  {allBadges.filter(b => b.earned).length} / {allBadges.length}
+                </Text>
+                <View style={styles.badgesSectionProgressBar}>
+                  <LinearGradient
+                    colors={['#F59E0B', '#FCD34D']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={[
+                      styles.badgesSectionProgressFill,
+                      { width: `${(allBadges.filter(b => b.earned).length / Math.max(allBadges.length, 1)) * 100}%` }
+                    ]}
+                  />
+                </View>
+              </View>
+            </View>
+
+            {/* Badges Grid - Tüm rozetler */}
+            <View style={styles.badgesGridInline}>
+              {allBadges.map((badge, index) => (
+                <TouchableOpacity
+                  key={badge.id}
+                  style={[
+                    styles.badgeItemInline,
+                    badge.earned 
+                      ? styles.badgeItemEarned 
+                      : styles.badgeItemLocked,
+                  ]}
+                  onPress={() => setSelectedBadge(badge)}
+                  activeOpacity={0.7}
+                >
+                  {/* Lock Icon (kilitli rozetler için) */}
+                  {!badge.earned && (
+                    <View style={styles.badgeLockOverlay}>
+                      <Ionicons name="lock-closed" size={12} color="#9CA3AF" />
+                    </View>
+                  )}
+
+                  {/* Checkmark (kazanılmış rozetler için) */}
+                  {badge.earned && (
+                    <View style={styles.badgeEarnedCheck}>
+                      <Ionicons name="checkmark" size={10} color="#FFFFFF" />
+                    </View>
+                  )}
+
+                  {/* Badge Icon */}
+                  <Text style={[
+                    styles.badgeEmojiInline,
+                    !badge.earned && styles.badgeEmojiLocked
+                  ]}>
+                    {badge.icon}
+                  </Text>
+
+                  {/* Badge Name */}
+                  <Text
+                    style={[
+                      styles.badgeNameInline,
+                      !badge.earned && styles.badgeNameLocked
+                    ]}
+                    numberOfLines={2}
+                  >
+                    {badge.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Rozet yoksa */}
+            {allBadges.length === 0 && (
+              <View style={styles.noBadgesInline}>
+                <Ionicons name="trophy-outline" size={48} color="#64748B" />
+                <Text style={styles.noBadgesText}>Rozet yükleniyor...</Text>
+              </View>
+            )}
+          </Animated.View>
+
           {/* ✅ Kaydet butonu kaldırıldı - Otomatik kaydetme aktif */}
           <View style={{ marginBottom: 120 }} />
 
@@ -3587,6 +3675,129 @@ const createStyles = () => {
     fontWeight: '600',
     color: '#10B981',
     marginLeft: 8,
+  },
+  
+  // ✅ Rozetlerim Section - Inline badges grid
+  badgesSectionCard: {
+    backgroundColor: theme.card,
+    borderRadius: SIZES.radiusLg,
+    borderWidth: 1,
+    borderColor: theme.border,
+    padding: SPACING.base,
+    marginTop: SPACING.base,
+  },
+  badgesSectionHeader: {
+    marginBottom: SPACING.base,
+  },
+  badgesSectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  badgesSectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: theme.foreground,
+  },
+  badgesSectionProgress: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  badgesSectionCount: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#F59E0B',
+  },
+  badgesSectionProgressBar: {
+    flex: 1,
+    height: 6,
+    backgroundColor: theme.muted,
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  badgesSectionProgressFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  badgesGridInline: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    justifyContent: 'flex-start',
+  },
+  badgeItemInline: {
+    width: '18%',
+    minWidth: 58,
+    aspectRatio: 0.75,
+    backgroundColor: theme.card,
+    borderRadius: SIZES.radiusMd,
+    borderWidth: 1.5,
+    padding: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  badgeItemEarned: {
+    borderColor: '#F59E0B',
+    backgroundColor: 'rgba(245, 158, 11, 0.08)',
+  },
+  badgeItemLocked: {
+    borderColor: theme.border,
+    backgroundColor: theme.muted,
+    opacity: 0.6,
+  },
+  badgeLockOverlay: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeEarnedCheck: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#10B981',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeEmojiInline: {
+    fontSize: 28,
+    marginBottom: 2,
+  },
+  badgeEmojiLocked: {
+    opacity: 0.4,
+    // Grayscale effect for web
+    ...(Platform.OS === 'web' ? { filter: 'grayscale(100%)' } : {}),
+  } as any,
+  badgeNameInline: {
+    fontSize: 9,
+    fontWeight: '600',
+    color: theme.foreground,
+    textAlign: 'center',
+    lineHeight: 11,
+  },
+  badgeNameLocked: {
+    color: theme.mutedForeground,
+  },
+  noBadgesInline: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 32,
+  },
+  noBadgesText: {
+    marginTop: 8,
+    fontSize: 14,
+    color: theme.mutedForeground,
   },
   
   // Best Cluster Card
