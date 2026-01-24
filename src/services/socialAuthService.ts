@@ -218,6 +218,13 @@ class SocialAuthService {
       // Supabase'den alınan ek bilgiler
       supabase_id: supabaseUser.id,
       last_sign_in_at: supabaseUser.last_sign_in_at,
+      // ✅ OAuth ile giriş yapan kullanıcılar için profil kurulumunu tamamlanmış say
+      profileSetupComplete: true,
+      // ✅ Pro özellikleri
+      is_pro: true,
+      isPro: true,
+      isPremium: true,
+      plan: 'pro',
     };
     
     // AsyncStorage'a kaydet
