@@ -305,7 +305,17 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
     ];
   }, [liveMatches]);
 
-  const filteredLiveMatches = liveMatches.length > 0 ? liveMatches : mockLiveMatches;
+  // ✅ Canlı maçları filtrele - selectedTeamId varsa sadece o takımın maçları
+  const allLiveMatches = liveMatches.length > 0 ? liveMatches : mockLiveMatches;
+  const filteredLiveMatches = React.useMemo(() => {
+    if (!selectedTeamId) return allLiveMatches;
+    
+    return allLiveMatches.filter(match => {
+      const homeId = match.teams?.home?.id;
+      const awayId = match.teams?.away?.id;
+      return homeId === selectedTeamId || awayId === selectedTeamId;
+    });
+  }, [allLiveMatches, selectedTeamId]);
   
   useEffect(() => {
     if (filteredLiveMatches.length > 0) {
@@ -508,156 +518,8 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
-          {/* ✅ TAKIM MAÇLARI (selectedTeamId varsa) */}
-          {selectedTeamId ? (
-            <>
-              {/* Loading State */}
-              {teamMatchesLoading && (
-                <View style={styles.loadingContainer}>
-                  <ActivityIndicator size="large" color="#059669" />
-                  <Text style={styles.loadingText}>Takım maçları yükleniyor...</Text>
-                </View>
-              )}
-
-              {/* Error State */}
-              {teamMatchesError && (
-                <View style={styles.errorContainer}>
-                  <Text style={styles.errorText}>❌ {teamMatchesError}</Text>
-                </View>
-              )}
-
-              {/* ✅ YAKLAŞAN MAÇLAR (ÜSTTE) */}
-              {!teamMatchesLoading && teamUpcomingMatches.length > 0 && (
-                <View style={styles.section}>
-                  <View style={styles.sectionHeader}>
-                    <Ionicons name="calendar-outline" size={20} color="#F59E0B" />
-                    <Text style={styles.sectionTitle}>Yaklaşan Maçlar</Text>
-                  </View>
-                  {teamUpcomingMatches.map((match) => {
-                    const transformed = transformMatch(match);
-                    const matchId = transformed.id;
-                    return (
-                      <TouchableOpacity
-                        key={match.fixture?.id || match.id}
-                        style={styles.matchCard}
-                        onLayout={(event) => {
-                          const { y } = event.nativeEvent.layout;
-                          matchCardPositions.current[matchId] = y;
-                        }}
-                        onPress={() => {
-                          const cardY = matchCardPositions.current[matchId];
-                          if (cardY !== undefined && scrollViewRef.current) {
-                            scrollViewRef.current.scrollTo({
-                              y: cardY - 20,
-                              animated: true,
-                            });
-                          }
-                          onMatchSelect(matchId);
-                        }}
-                        activeOpacity={0.7}
-                      >
-                        <View style={styles.matchContent}>
-                          <View style={styles.team}>
-                            <Text style={styles.teamNameText}>{transformed.homeTeam.name}</Text>
-                            <Text style={styles.teamLogo}>{transformed.homeTeam.logo}</Text>
-                          </View>
-                          <View style={styles.matchScore}>
-                            <Text style={styles.scoreText}>VS</Text>
-                            <Text style={styles.liveMinute}>
-                              {new Date(match.fixture?.date || match.date).toLocaleDateString('tr-TR', {
-                                day: '2-digit',
-                                month: '2-digit',
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              })}
-                            </Text>
-                          </View>
-                          <View style={styles.team}>
-                            <Text style={styles.teamNameText}>{transformed.awayTeam.name}</Text>
-                            <Text style={styles.teamLogo}>{transformed.awayTeam.logo}</Text>
-                          </View>
-                        </View>
-                        <Text style={styles.leagueText}>{transformed.league}</Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              )}
-
-              {/* ✅ GEÇMİŞ MAÇLAR (ALTTA) */}
-              {!teamMatchesLoading && teamPastMatches.length > 0 && (
-                <View style={styles.section}>
-                  <View style={styles.sectionHeader}>
-                    <Ionicons name="time-outline" size={20} color="#64748B" />
-                    <Text style={styles.sectionTitle}>Geçmiş Maçlar</Text>
-                  </View>
-                  {teamPastMatches.map((match) => {
-                    const transformed = transformMatch(match);
-                    const matchId = transformed.id;
-                    return (
-                      <TouchableOpacity
-                        key={match.fixture?.id || match.id}
-                        style={styles.matchCard}
-                        onLayout={(event) => {
-                          const { y } = event.nativeEvent.layout;
-                          matchCardPositions.current[matchId] = y;
-                        }}
-                        onPress={() => {
-                          const cardY = matchCardPositions.current[matchId];
-                          if (cardY !== undefined && scrollViewRef.current) {
-                            scrollViewRef.current.scrollTo({
-                              y: cardY - 20,
-                              animated: true,
-                            });
-                          }
-                          onMatchSelect(matchId);
-                        }}
-                        activeOpacity={0.7}
-                      >
-                        <View style={styles.matchContent}>
-                          <View style={styles.team}>
-                            <Text style={styles.teamNameText}>{transformed.homeTeam.name}</Text>
-                            <Text style={styles.teamLogo}>{transformed.homeTeam.logo}</Text>
-                          </View>
-                          <View style={styles.matchScore}>
-                            <Text style={styles.scoreText}>
-                              {transformed.homeTeam.score} - {transformed.awayTeam.score}
-                            </Text>
-                            <Text style={styles.liveMinute}>
-                              {new Date(match.fixture?.date || match.date).toLocaleDateString('tr-TR', {
-                                day: '2-digit',
-                                month: '2-digit',
-                              })}
-                            </Text>
-                          </View>
-                          <View style={styles.team}>
-                            <Text style={styles.teamNameText}>{transformed.awayTeam.name}</Text>
-                            <Text style={styles.teamLogo}>{transformed.awayTeam.logo}</Text>
-                          </View>
-                        </View>
-                        <Text style={styles.leagueText}>{transformed.league}</Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              )}
-
-              {/* Empty State - No Team Matches */}
-              {!teamMatchesLoading && teamUpcomingMatches.length === 0 && teamPastMatches.length === 0 && (
-                <View style={styles.emptyStateContainer}>
-                  <View style={styles.emptyStateIcon}>
-                    <Ionicons name="football-outline" size={64} color="#64748B" />
-                  </View>
-                  <Text style={styles.emptyStateTitle}>Takım maçı bulunamadı</Text>
-                  <Text style={styles.emptyStateText}>
-                    Bu takım için henüz maç kaydı yok
-                  </Text>
-                </View>
-              )}
-            </>
-          ) : (
-            <>
-              {/* ✅ NORMAL CANLI MAÇLAR (takım seçilmediyse) */}
+          {/* ✅ SADECE CANLI MAÇLAR - Takım seçiliyse filtreli */}
+          
           {/* Loading State */}
           {loading && !hasLoadedOnce && (
             <View style={styles.loadingContainer}>
@@ -674,18 +536,20 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
           )}
 
           {/* Empty State - No Live Matches */}
-              {!loading && hasLoadedOnce && liveMatches.length === 0 && mockLiveMatches.length === 0 && (
+          {!loading && hasLoadedOnce && filteredLiveMatches.length === 0 && (
             <View style={styles.emptyStateContainer}>
               <View style={styles.emptyStateIcon}>
                 <Ionicons name="radio-outline" size={64} color="#64748B" />
               </View>
-              <Text style={styles.emptyStateTitleLive}>Şuan canlı maç yok</Text>
+              <Text style={styles.emptyStateTitleLive}>
+                {selectedTeamId ? 'Bu takımın canlı maçı yok' : 'Şuan canlı maç yok'}
+              </Text>
               <Text style={styles.emptyStateText}>
                 Yaklaşan maçları görmek için{'\n'}Ana Sayfa'ya dön
               </Text>
               <TouchableOpacity
                 style={styles.emptyStateButton}
-                onPress={() => onNavigate('home')}
+                onPress={() => onNavigate?.('home')}
                 activeOpacity={0.8}
               >
                 <LinearGradient
@@ -706,7 +570,10 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
             <View style={styles.section}>
               <View style={styles.liveSectionHeader}>
                 <View style={styles.liveDot} />
-                <Text style={styles.liveSectionTitle}>Canlı Maçlar ({filteredLiveMatches.length})</Text>
+                <Text style={styles.liveSectionTitle}>
+                  Canlı Maçlar ({filteredLiveMatches.length})
+                  {selectedTeamId && selectedTeamName ? ` - ${selectedTeamName}` : ''}
+                </Text>
               </View>
               {filteredLiveMatches.map((match, index) => {
                 const matchId = String(match.fixture?.id || match.id);
@@ -736,8 +603,6 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
                 );
               })}
             </View>
-          )}
-            </>
           )}
 
           {/* Bottom Padding */}
