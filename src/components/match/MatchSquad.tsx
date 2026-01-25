@@ -13,8 +13,8 @@ import {
   Platform,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { supabase } from '../services/supabaseClient';
-import { squadPredictionsApi } from '../services/api';
+import { supabase } from '../../config/supabase';
+import { squadPredictionsApi } from '../../services/api';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { 
