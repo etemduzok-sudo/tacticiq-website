@@ -669,6 +669,27 @@ export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSqu
   const attackSquadPlayers = React.useMemo(() => {
     return Object.values(attackPlayers).filter(Boolean) as typeof players;
   }, [attackPlayers]);
+  
+  // ✅ Track if defense confirmation was already shown
+  const [defenseConfirmShown, setDefenseConfirmShown] = React.useState(false);
+  
+  // ✅ Show defense confirmation when attack squad is complete (11 players)
+  React.useEffect(() => {
+    const attackCount = Object.keys(attackPlayers).filter(k => attackPlayers[parseInt(k)]).length;
+    
+    // Show confirmation only when:
+    // 1. Attack squad has 11 players
+    // 2. Defense formation not yet selected
+    // 3. Confirmation not already shown
+    // 4. We're in attack mode
+    if (attackCount === 11 && !defenseFormation && !defenseConfirmShown && editingMode === 'attack') {
+      setDefenseConfirmShown(true);
+      // Small delay to let the last player animation complete
+      setTimeout(() => {
+        setShowDefenseConfirmModal(true);
+      }, 500);
+    }
+  }, [attackPlayers, defenseFormation, defenseConfirmShown, editingMode]);
 
   // Pulsing ball animation
   const scale = useSharedValue(1);
@@ -691,15 +712,12 @@ export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSqu
     const formation = formations.find(f => f.id === formationId);
     
     if (editingMode === 'attack') {
-      // ✅ Attack formation selected
+      // ✅ Attack formation selected - Start placing players
       setAttackFormation(formationId);
       setAttackPlayers({});
       setShowFormationModal(false);
-      
-      // Show defense confirmation after a brief delay
-      setTimeout(() => {
-        setShowDefenseConfirmModal(true);
-      }, 300);
+      Alert.alert('Atak Formasyonu Seçildi!', `${formation?.name}\n\nŞimdi 11 oyuncunuzu pozisyonlara yerleştirin.`);
+      // Defense confirmation will be shown after 11 players are selected
     } else {
       // ✅ Defense formation selected
       setDefenseFormation(formationId);
