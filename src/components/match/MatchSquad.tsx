@@ -1665,7 +1665,6 @@ const PlayerModal = ({ visible, players, selectedPlayers, positionLabel, onSelec
                   </TouchableOpacity>
                 );
               }}
-              )}
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.playersList}
             />
