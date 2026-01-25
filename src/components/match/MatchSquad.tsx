@@ -1496,87 +1496,210 @@ const FormationDetailModal = ({ formation, onClose, onSelect }: any) => (
 
 // Player Modal Component - COMPLETE
 const PlayerModal = ({ visible, players, selectedPlayers, positionLabel, onSelect, onClose, isDefenseMode }: any) => {
+  const [previewPlayer, setPreviewPlayer] = useState<any>(null);
+  
   const availablePlayers = players.filter(
     (p: any) => !Object.values(selectedPlayers).some((sp: any) => sp?.id === p.id)
   );
 
-  return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      transparent={true}
-      onRequestClose={onClose}
-    >
-      <View style={styles.modalOverlay}>
-        <Animated.View 
-          entering={isWeb ? undefined : SlideInDown.duration(300)}
-          exiting={isWeb ? undefined : SlideOutDown.duration(300)}
-          style={styles.modalContent}
-        >
-          {/* Header */}
-          <View style={styles.modalHeader}>
-            <View>
-              <Text style={styles.modalTitle}>
-                {isDefenseMode ? '🛡️ Defans Oyuncusu Seç' : 'Oyuncu Seç'}
-              </Text>
-              <Text style={styles.modalSubtitle}>Pozisyon: {positionLabel}</Text>
-            </View>
-            <TouchableOpacity onPress={onClose} style={styles.modalCloseButton}>
-              <Ionicons name="close" size={24} color="#FFFFFF" />
-            </TouchableOpacity>
-          </View>
-          
-          {/* Defense Mode Info */}
-          {isDefenseMode && (
-            <View style={styles.defenseModeInfo}>
-              <Ionicons name="information-circle" size={16} color="#3B82F6" />
-              <Text style={styles.defenseModeInfoText}>
-                Sadece atak kadronuzdaki 11 oyuncudan seçim yapabilirsiniz.
-              </Text>
-            </View>
-          )}
+  const handlePlayerSelect = (player: any) => {
+    setPreviewPlayer(null);
+    onSelect(player);
+  };
 
-          {/* Players List */}
-          <FlatList
-            data={availablePlayers}
-            keyExtractor={(item) => item.id.toString()}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={styles.playerItem}
-                onPress={() => onSelect(item)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.playerItemLeft}>
-                  <View style={[
-                    styles.playerItemRating,
-                    { backgroundColor: item.rating >= 85 ? '#C9A44C' : '#1FA2A6' } // ✅ Design System
-                  ]}>
-                    <Text style={styles.playerItemRatingText}>{item.rating}</Text>
-                  </View>
-                  <View style={styles.playerItemInfo}>
-                    <View style={styles.playerItemNameRow}>
-                      <Text style={styles.playerItemName}>{item.name}</Text>
-                      {item.form >= 8 && (
-                        <Ionicons name="flame" size={14} color="#F59E0B" style={{ marginLeft: 4 }} />
-                      )}
-                      {item.injury && (
-                        <Ionicons name="warning" size={14} color="#EF4444" style={{ marginLeft: 4 }} />
-                      )}
+  return (
+    <>
+      <Modal
+        visible={visible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={onClose}
+      >
+        <View style={styles.modalOverlay}>
+          <Animated.View 
+            entering={isWeb ? undefined : SlideInDown.duration(300)}
+            exiting={isWeb ? undefined : SlideOutDown.duration(300)}
+            style={styles.modalContent}
+          >
+            {/* Header */}
+            <View style={styles.modalHeader}>
+              <View>
+                <Text style={styles.modalTitle}>
+                  {isDefenseMode ? '🛡️ Defans Oyuncusu Seç' : 'Oyuncu Seç'}
+                </Text>
+                <Text style={styles.modalSubtitle}>Pozisyon: {positionLabel}</Text>
+              </View>
+              <TouchableOpacity onPress={onClose} style={styles.playerModalCloseBtn}>
+                <Ionicons name="close" size={20} color="#94A3B8" />
+              </TouchableOpacity>
+            </View>
+            
+            {/* Defense Mode Info */}
+            {isDefenseMode && (
+              <View style={styles.defenseModeInfo}>
+                <Ionicons name="information-circle" size={16} color="#3B82F6" />
+                <Text style={styles.defenseModeInfoText}>
+                  Sadece atak kadronuzdaki 11 oyuncudan seçim yapabilirsiniz.
+                </Text>
+              </View>
+            )}
+
+            {/* Players List */}
+            <FlatList
+              data={availablePlayers}
+              keyExtractor={(item) => item.id.toString()}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.playerItem}
+                  onPress={() => setPreviewPlayer(item)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.playerItemLeft}>
+                    <View style={[
+                      styles.playerItemRating,
+                      { backgroundColor: item.rating >= 85 ? '#C9A44C' : '#1FA2A6' }
+                    ]}>
+                      <Text style={styles.playerItemRatingText}>{item.rating}</Text>
                     </View>
-                    <Text style={styles.playerItemPosition}>
-                      {item.position} • {item.team}
-                    </Text>
+                    <View style={styles.playerItemInfo}>
+                      <View style={styles.playerItemNameRow}>
+                        <Text style={styles.playerItemName}>{item.name}</Text>
+                        {item.form >= 8 && (
+                          <Ionicons name="flame" size={14} color="#F59E0B" style={{ marginLeft: 4 }} />
+                        )}
+                        {item.injury && (
+                          <Ionicons name="warning" size={14} color="#EF4444" style={{ marginLeft: 4 }} />
+                        )}
+                      </View>
+                      <Text style={styles.playerItemPosition}>
+                        {item.position} • {item.team}
+                      </Text>
+                    </View>
+                  </View>
+                  {/* + Button - Direct Add */}
+                  <TouchableOpacity
+                    onPress={() => handlePlayerSelect(item)}
+                    style={styles.playerItemAddBtn}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="add-circle" size={28} color="#1FA2A6" />
+                  </TouchableOpacity>
+                </TouchableOpacity>
+              )}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.playersList}
+            />
+          </Animated.View>
+        </View>
+      </Modal>
+
+      {/* Player Preview Modal */}
+      {previewPlayer && (
+        <Modal
+          visible={true}
+          animationType="fade"
+          transparent={true}
+          onRequestClose={() => setPreviewPlayer(null)}
+        >
+          <View style={styles.playerPreviewOverlay}>
+            <View style={styles.playerPreviewModal}>
+              {/* Player Info */}
+              <View style={styles.playerPreviewHeader}>
+                <View style={[
+                  styles.playerPreviewRating,
+                  { backgroundColor: previewPlayer.rating >= 85 ? '#C9A44C' : '#1FA2A6' }
+                ]}>
+                  <Text style={styles.playerPreviewRatingText}>{previewPlayer.rating}</Text>
+                </View>
+                <View style={styles.playerPreviewInfo}>
+                  <Text style={styles.playerPreviewName}>{previewPlayer.name}</Text>
+                  <Text style={styles.playerPreviewPosition}>
+                    {previewPlayer.position} • {previewPlayer.team}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Stats */}
+              {previewPlayer.stats && (
+                <View style={styles.playerPreviewStats}>
+                  <View style={styles.playerPreviewStatRow}>
+                    <View style={styles.playerPreviewStat}>
+                      <Text style={styles.playerPreviewStatValue}>{previewPlayer.stats.pace}</Text>
+                      <Text style={styles.playerPreviewStatLabel}>HIZ</Text>
+                    </View>
+                    <View style={styles.playerPreviewStat}>
+                      <Text style={styles.playerPreviewStatValue}>{previewPlayer.stats.shooting}</Text>
+                      <Text style={styles.playerPreviewStatLabel}>ŞUT</Text>
+                    </View>
+                    <View style={styles.playerPreviewStat}>
+                      <Text style={styles.playerPreviewStatValue}>{previewPlayer.stats.passing}</Text>
+                      <Text style={styles.playerPreviewStatLabel}>PAS</Text>
+                    </View>
+                  </View>
+                  <View style={styles.playerPreviewStatRow}>
+                    <View style={styles.playerPreviewStat}>
+                      <Text style={styles.playerPreviewStatValue}>{previewPlayer.stats.dribbling}</Text>
+                      <Text style={styles.playerPreviewStatLabel}>DRİB</Text>
+                    </View>
+                    <View style={styles.playerPreviewStat}>
+                      <Text style={styles.playerPreviewStatValue}>{previewPlayer.stats.defending}</Text>
+                      <Text style={styles.playerPreviewStatLabel}>DEF</Text>
+                    </View>
+                    <View style={styles.playerPreviewStat}>
+                      <Text style={styles.playerPreviewStatValue}>{previewPlayer.stats.physical}</Text>
+                      <Text style={styles.playerPreviewStatLabel}>FİZ</Text>
+                    </View>
                   </View>
                 </View>
-                <Ionicons name="add-circle" size={24} color="#1FA2A6" />
-              </TouchableOpacity>
-            )}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.playersList}
-          />
-        </Animated.View>
-      </View>
-    </Modal>
+              )}
+
+              {/* Badges */}
+              <View style={styles.playerPreviewBadges}>
+                {previewPlayer.form >= 8 && (
+                  <View style={styles.playerPreviewBadge}>
+                    <Ionicons name="flame" size={14} color="#F59E0B" />
+                    <Text style={styles.playerPreviewBadgeText}>Formda</Text>
+                  </View>
+                )}
+                {previewPlayer.injury && (
+                  <View style={[styles.playerPreviewBadge, { backgroundColor: 'rgba(239, 68, 68, 0.2)' }]}>
+                    <Ionicons name="medical" size={14} color="#EF4444" />
+                    <Text style={[styles.playerPreviewBadgeText, { color: '#EF4444' }]}>Sakatlık</Text>
+                  </View>
+                )}
+              </View>
+
+              {/* Buttons */}
+              <View style={styles.playerPreviewButtons}>
+                <TouchableOpacity
+                  style={styles.playerPreviewCancelBtn}
+                  onPress={() => setPreviewPlayer(null)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.playerPreviewCancelText}>İptal</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={styles.playerPreviewAddBtn}
+                  onPress={() => handlePlayerSelect(previewPlayer)}
+                  activeOpacity={0.7}
+                >
+                  <LinearGradient
+                    colors={['#1FA2A6', '#047857']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.playerPreviewAddGradient}
+                  >
+                    <Ionicons name="add-circle" size={18} color="#FFFFFF" />
+                    <Text style={styles.playerPreviewAddText}>İlk 11'e Ekle</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
+    </>
   );
 };
 
@@ -2622,6 +2745,150 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#9CA3AF',
     marginTop: 2,
+  },
+  playerItemAddBtn: {
+    padding: 4,
+  },
+  
+  // ✅ Player Modal Close Button
+  playerModalCloseBtn: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(148, 163, 184, 0.15)',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(148, 163, 184, 0.3)',
+  },
+  
+  // ✅ Player Preview Modal
+  playerPreviewOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  playerPreviewModal: {
+    backgroundColor: '#1A3D37',
+    borderRadius: 20,
+    padding: 20,
+    width: '100%',
+    maxWidth: 340,
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.3)',
+  },
+  playerPreviewHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    marginBottom: 16,
+  },
+  playerPreviewRating: {
+    width: 56,
+    height: 56,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  playerPreviewRatingText: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  playerPreviewInfo: {
+    flex: 1,
+  },
+  playerPreviewName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginBottom: 4,
+  },
+  playerPreviewPosition: {
+    fontSize: 14,
+    color: '#94A3B8',
+  },
+  playerPreviewStats: {
+    backgroundColor: 'rgba(15, 42, 36, 0.6)',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+  },
+  playerPreviewStatRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 8,
+  },
+  playerPreviewStat: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  playerPreviewStatValue: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  playerPreviewStatLabel: {
+    fontSize: 10,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  playerPreviewBadges: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 16,
+  },
+  playerPreviewBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(245, 158, 11, 0.2)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  playerPreviewBadgeText: {
+    fontSize: 12,
+    color: '#F59E0B',
+    fontWeight: '600',
+  },
+  playerPreviewButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  playerPreviewCancelBtn: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: 'rgba(100, 116, 139, 0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(100, 116, 139, 0.4)',
+  },
+  playerPreviewCancelText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#94A3B8',
+  },
+  playerPreviewAddBtn: {
+    flex: 2,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  playerPreviewAddGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+  },
+  playerPreviewAddText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   
   // Player Detail Modal
