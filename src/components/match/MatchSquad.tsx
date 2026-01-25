@@ -753,9 +753,18 @@ export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSqu
   
   const handleDefenseConfirmNo = () => {
     setShowDefenseConfirmModal(false);
-    // Continue with attack squad building
-    const formation = formations.find(f => f.id === attackFormation);
-    Alert.alert('Atak Formasyonu Seçildi!', `${formation?.name}\n\nŞimdi oyuncularınızı pozisyonlara yerleştirin.`);
+    
+    // ✅ Copy attack formation and players to defense (same system for both)
+    if (attackFormation) {
+      setDefenseFormation(attackFormation);
+      setDefensePlayers({ ...attackPlayers });
+      
+      const formation = formations.find(f => f.id === attackFormation);
+      Alert.alert(
+        'Kadro Tamamlandı! ⚽',
+        `Atak ve defans için aynı sistem kullanılacak:\n\n${formation?.name}\n\nKadronuz kaydedilmeye hazır.`
+      );
+    }
   };
 
   const handlePlayerSelect = (player: typeof players[0]) => {
@@ -1095,14 +1104,15 @@ export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSqu
             
             {/* Description */}
             <Text style={styles.defenseConfirmDesc}>
-              Atak formasyonunuz seçildi. Defans için farklı bir formasyon seçmek ister misiniz?
+              Atak kadronuz tamamlandı! Defans için farklı bir formasyon kullanmak ister misiniz?
             </Text>
             
             {/* Info Box */}
             <View style={styles.defenseConfirmInfo}>
               <Ionicons name="information-circle" size={18} color="#F59E0B" />
               <Text style={styles.defenseConfirmInfoText}>
-                Defans formasyonunda atak kadronuzdaki 11 oyuncuyu farklı pozisyonlara yerleştireceksiniz.
+                <Text style={{ fontWeight: '700' }}>Evet:</Text> Defans formasyonu seçip aynı 11 oyuncuyu yeniden konumlandırırsınız.{'\n'}
+                <Text style={{ fontWeight: '700' }}>Hayır:</Text> Atak sistemi defans için de kullanılır.
               </Text>
             </View>
             
