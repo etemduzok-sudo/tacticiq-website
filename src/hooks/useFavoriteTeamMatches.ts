@@ -1,5 +1,5 @@
 // useFavoriteTeamMatches Hook - Get matches for favorite teams
-import { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../services/api';
 import { useFavoriteTeams } from './useFavoriteTeams';
@@ -91,11 +91,12 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
   const [pastMatches, setPastMatches] = useState<Match[]>([]);
   const [liveMatches, setLiveMatches] = useState<Match[]>([]);
   const [upcomingMatches, setUpcomingMatches] = useState<Match[]>([]);
-  const [loading, setLoading] = useState(false); // Cache'den yüklenirse loading gösterme
+  const [loading, setLoading] = useState(true); // ✅ Başlangıçta true - cache yüklenene kadar
   const [error, setError] = useState<string | null>(null);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false); // Track if we've successfully loaded data
+  const cacheLoadedRef = useRef(false); // ✅ Cache yüklenip yüklenmediğini takip et
 
-  // 💾 Cache'den maçları yükle
+  // 💾 Cache'den maçları yükle - ÖNCELİKLİ ve HIZLI
   const loadFromCache = async (): Promise<boolean> => {
     try {
       const cachedData = await AsyncStorage.getItem(CACHE_KEY);
@@ -107,10 +108,11 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
       }
 
       const cacheAge = Date.now() - parseInt(cacheTimestamp, 10);
-      const isCacheValid = cacheAge < CACHE_DURATION;
+      // ✅ Cache süresi 24 saate çıkarıldı - açılışta hızlı yükleme için
+      const isCacheUsable = cacheAge < 24 * 60 * 60 * 1000; // 24 saat
 
-      if (!isCacheValid) {
-        logger.debug('Cache expired', { ageMinutes: Math.round(cacheAge / 1000 / 60) }, 'CACHE');
+      if (!isCacheUsable) {
+        logger.debug('Cache too old', { ageMinutes: Math.round(cacheAge / 1000 / 60) }, 'CACHE');
         return false;
       }
 
@@ -119,8 +121,9 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
       setLiveMatches(live || []);
       setUpcomingMatches(upcoming || []);
       setHasLoadedOnce(true);
+      setLoading(false); // ✅ Cache yüklenince loading'i kapat
 
-      logger.debug('Loaded from cache', {
+      logger.info('⚡ Loaded from cache instantly', {
         past: past?.length || 0,
         live: live?.length || 0,
         upcoming: upcoming?.length || 0,
@@ -133,6 +136,22 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
       return false;
     }
   };
+  
+  // ✅ HIZLI BAŞLANGIÇ: Component mount olduğunda HEMEN cache'den yükle
+  useEffect(() => {
+    if (cacheLoadedRef.current) return; // Sadece bir kez çalış
+    cacheLoadedRef.current = true;
+    
+    const quickLoad = async () => {
+      const cacheLoaded = await loadFromCache();
+      if (!cacheLoaded) {
+        // Cache yoksa loading'i göstermeye devam et
+        logger.debug('No cache available, waiting for fetch', undefined, 'CACHE');
+      }
+    };
+    
+    quickLoad();
+  }, []);
 
   // 💾 Maçları cache'e kaydet
   const saveToCache = async (past: Match[], live: Match[], upcoming: Match[]) => {
@@ -312,11 +331,12 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
   };
 
   const fetchMatches = async () => {
-    logger.info('📡 fetchMatches started', { teamsCount: favoriteTeams.length }, 'MATCHES');
+    logger.info('📡 fetchMatches started', { teamsCount: favoriteTeams.length, hasLoadedOnce }, 'MATCHES');
     
     try {
-      // Only show loading spinner on first load
-      if (!hasLoadedOnce) {
+      // ✅ Sadece ilk yüklemede VE cache yoksa loading göster
+      // Cache varsa arka planda sessizce güncelle
+      if (!hasLoadedOnce && pastMatches.length === 0 && upcomingMatches.length === 0) {
         setLoading(true);
       }
       setError(null);
@@ -554,14 +574,19 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
       return;
     }
 
-    // 🚀 Direkt fetch yap - cache stratejisi basitleştirildi
-    logger.info('🚀 Starting match fetch', { 
+    // 🚀 Arka planda fetch yap - cache zaten yüklendi
+    logger.info('🚀 Starting background match fetch', { 
       teamsCount: favoriteTeams.length, 
       teamIds: favoriteTeamIdsString,
       hasLoadedOnce 
     }, 'MATCHES');
     
-    setLoading(true);
+    // ✅ Sadece cache yoksa loading göster (hasLoadedOnce false ise)
+    if (!hasLoadedOnce) {
+      setLoading(true);
+    }
+    
+    // ✅ Arka planda fetch - cache varsa kullanıcı beklemez
     fetchMatches();
   }, [favoriteTeamIdsString]); // ✅ Takım ID'leri değiştiğinde yeniden fetch yap
 

@@ -24,6 +24,7 @@ import { useFavoriteTeams } from '../hooks/useFavoriteTeams';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { profileService } from '../services/profileService';
 import { isSuperAdmin } from '../config/constants';
+import { AnalysisFocusModal, AnalysisFocusType } from './AnalysisFocusModal';
 
 // Coach cache - takım ID'sine göre teknik direktör isimlerini cache'le
 const coachCache: Record<number, string> = {};
@@ -59,6 +60,30 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
   const dropdownRef = useRef<View>(null);
   const [initialScrollDone, setInitialScrollDone] = useState(false);
   const [pastMatchesCollapsed, setPastMatchesCollapsed] = useState(true); // ✅ Biten maçlar varsayılan küçültülmüş
+  
+  // ✅ Analiz Odağı Modal State
+  const [analysisFocusModalVisible, setAnalysisFocusModalVisible] = useState(false);
+  const [selectedMatchForAnalysis, setSelectedMatchForAnalysis] = useState<any>(null);
+  
+  // ✅ Maça tıklandığında analiz odağı modal'ını aç
+  const handleMatchPress = (match: any) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setSelectedMatchForAnalysis(match);
+    setAnalysisFocusModalVisible(true);
+  };
+  
+  // ✅ Analiz odağı seçildiğinde maç detayına git
+  const handleAnalysisFocusSelect = (focus: AnalysisFocusType) => {
+    setAnalysisFocusModalVisible(false);
+    if (selectedMatchForAnalysis) {
+      onNavigate('match-detail', { 
+        id: selectedMatchForAnalysis.fixture.id,
+        analysisFocus: focus,
+        initialTab: 'squad' // Kadro sekmesiyle başla
+      });
+    }
+    setSelectedMatchForAnalysis(null);
+  };
   
   // ✅ Load favorite teams
   const { favoriteTeams, loading: teamsLoading } = useFavoriteTeams();
@@ -879,100 +904,29 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
           </View>
         )}
 
-        {/* ✅ CANLI MAÇLAR - En üstte göster */}
-        {!showLoadingIndicator && filteredLiveMatches.length > 0 && (
-          <View style={styles.matchesListContainer}>
-            {/* Canlı Maçlar Başlığı */}
-            <View style={styles.liveMatchesHeader}>
-              <View style={styles.liveIndicatorDot} />
-              <Text style={styles.liveMatchesTitle}>CANLI MAÇLAR</Text>
-              <Text style={styles.liveMatchesCount}>{filteredLiveMatches.length}</Text>
-            </View>
-            {filteredLiveMatches.map((match, index) => (
-              <Animated.View 
-                key={`live-${match.fixture.id}`} 
-                entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(index * 30).springify()}
-                style={styles.matchCardWrapper}
-              >
-                {renderMatchCard(match, 'live', () => onNavigate('match-detail', { id: match.fixture.id }))}
-              </Animated.View>
-            ))}
-          </View>
-        )}
+        {/* ✅ CANLI MAÇLAR - Dashboard'da gösterilmez, sadece Matches sekmesinde */}
+        {/* Canlı maçlar artık MatchListScreen'de gösteriliyor */}
 
         {/* ✅ YAKLAŞAN MAÇLAR */}
         {!showLoadingIndicator && filteredUpcomingMatches.length > 0 && (
           <View style={styles.matchesListContainer}>
-            {/* Yaklaşan Maçlar Başlığı - sadece canlı maç varsa göster */}
-            {filteredLiveMatches.length > 0 && (
-              <View style={styles.upcomingMatchesHeader}>
-                <Ionicons name="time-outline" size={18} color={BRAND.primary} />
-                <Text style={styles.upcomingMatchesTitle}>YAKLAŞAN MAÇLAR</Text>
-                <Text style={styles.upcomingMatchesCount}>{filteredUpcomingMatches.length}</Text>
-              </View>
-            )}
             {filteredUpcomingMatches.map((match, index) => (
               <Animated.View 
                 key={`upcoming-${match.fixture.id}`} 
                 entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(50 + index * 30).springify()}
                 style={styles.matchCardWrapper}
               >
-                {renderMatchCard(match, 'upcoming', () => onNavigate('match-detail', { id: match.fixture.id }))}
+                {/* ✅ Yaklaşan maçlarda Analiz Odağı Modal'ı aç */}
+                {renderMatchCard(match, 'upcoming', () => handleMatchPress(match))}
               </Animated.View>
             ))}
           </View>
         )}
 
-        {/* ✅ BİTEN MAÇLAR - Küçültülebilir bölüm */}
-        {!showLoadingIndicator && filteredPastMatches.length > 0 && (
-          <View style={styles.pastMatchesSection}>
-            {/* Biten Maçlar Başlığı - Tıklanabilir */}
-            <TouchableOpacity 
-              style={styles.pastMatchesExpandedHeader}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                setPastMatchesCollapsed(!pastMatchesCollapsed);
-              }}
-              activeOpacity={0.7}
-            >
-              <View style={styles.pastMatchesHeaderLeft}>
-                <Ionicons name="checkmark-circle" size={18} color="#64748B" />
-                <Text style={styles.pastMatchesTitle}>BİTEN MAÇLAR</Text>
-                <View style={styles.pastMatchesCount}>
-                  <Text style={styles.pastMatchesCountText}>{filteredPastMatches.length}</Text>
-                </View>
-              </View>
-              <Ionicons 
-                name={pastMatchesCollapsed ? "chevron-down" : "chevron-up"} 
-                size={20} 
-                color="#64748B" 
-              />
-            </TouchableOpacity>
-            
-            {/* Biten Maçlar Listesi - Küçültülebilir */}
-            {!pastMatchesCollapsed && (
-              <View style={styles.pastMatchesExpandedList}>
-                {filteredPastMatches.slice(0, 10).map((match, index) => (
-                  <Animated.View 
-                    key={`past-${match.fixture.id}`} 
-                    entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(index * 20).springify()}
-                    style={styles.matchCardWrapper}
-                  >
-                    {renderMatchCard(match, 'finished', () => onNavigate('match-detail', { id: match.fixture.id }))}
-                  </Animated.View>
-                ))}
-                {filteredPastMatches.length > 10 && (
-                  <Text style={styles.pastMatchesMoreText}>
-                    +{filteredPastMatches.length - 10} daha fazla maç
-                  </Text>
-                )}
-              </View>
-            )}
-          </View>
-        )}
+        {/* Biten Maçlar bölümü kaldırıldı - Ana sayfadan erişilemez */}
 
         {/* Boş Durum - Hiç maç yoksa (loading değilse göster) */}
-        {!showLoadingIndicator && filteredUpcomingMatches.length === 0 && filteredLiveMatches.length === 0 && filteredPastMatches.length === 0 && (
+        {!showLoadingIndicator && filteredUpcomingMatches.length === 0 && (
           <View style={styles.emptyState}>
             <Ionicons name="football-outline" size={48} color="#64748B" />
             <Text style={styles.emptyText}>
@@ -1006,6 +960,27 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
         {/* Bottom Padding */}
         <View style={{ height: 100 + SIZES.tabBarHeight }} />
       </ScrollView>
+      
+      {/* ✅ Analiz Odağı Seçim Modal'ı */}
+      <AnalysisFocusModal
+        visible={analysisFocusModalVisible}
+        onClose={() => {
+          setAnalysisFocusModalVisible(false);
+          setSelectedMatchForAnalysis(null);
+        }}
+        onSelectFocus={handleAnalysisFocusSelect}
+        matchInfo={selectedMatchForAnalysis ? {
+          homeTeam: selectedMatchForAnalysis.teams?.home?.name || 'Ev Sahibi',
+          awayTeam: selectedMatchForAnalysis.teams?.away?.name || 'Deplasman',
+          date: new Date(selectedMatchForAnalysis.fixture?.timestamp * 1000).toLocaleDateString('tr-TR', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          })
+        } : undefined}
+      />
     </View>
   );
 });

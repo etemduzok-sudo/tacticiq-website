@@ -61,7 +61,7 @@ export function FeaturesSection() {
             {t('features.subtitle')}
           </p>
           <Badge variant="secondary" className="px-4 py-2 text-base">
-            {activeCount} {t('features.totalCategories')}
+            {t('features.totalCategories')}
           </Badge>
         </div>
 
