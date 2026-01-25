@@ -1523,11 +1523,31 @@ const FormationDetailModal = ({ formation, onClose, onSelect }: any) => (
 const PlayerModal = ({ visible, players, selectedPlayers, positionLabel, onSelect, onClose, isDefenseMode }: any) => {
   const [previewPlayer, setPreviewPlayer] = useState<any>(null);
   
+  // Filter out already selected players
   const availablePlayers = players.filter(
     (p: any) => !Object.values(selectedPlayers).some((sp: any) => sp?.id === p.id)
   );
 
+  // Check if player can be assigned to position
+  const isPlayerEligible = (player: any) => {
+    const isGKPosition = positionLabel === 'GK';
+    const isGoalkeeper = player.position === 'GK';
+    
+    // GK position can only have goalkeepers, field positions can only have field players
+    return isGKPosition ? isGoalkeeper : !isGoalkeeper;
+  };
+
+  // Sort players: eligible first, then locked
+  const sortedPlayers = [...availablePlayers].sort((a, b) => {
+    const aEligible = isPlayerEligible(a);
+    const bEligible = isPlayerEligible(b);
+    if (aEligible && !bEligible) return -1;
+    if (!aEligible && bEligible) return 1;
+    return b.rating - a.rating; // Sort by rating within each group
+  });
+
   const handlePlayerSelect = (player: any) => {
+    if (!isPlayerEligible(player)) return; // Prevent selection of ineligible players
     setPreviewPlayer(null);
     onSelect(player);
   };
@@ -1565,7 +1585,7 @@ const PlayerModal = ({ visible, players, selectedPlayers, positionLabel, onSelec
               <Text style={styles.positionRuleInfoText}>
                 {positionLabel === 'GK' 
                   ? 'Kaleci pozisyonuna sadece kaleciler atanabilir.'
-                  : 'Saha oyuncuları sadece saha pozisyonlarına atanabilir.'}
+                  : 'Kaleciler saha pozisyonlarına atanamaz.'}
               </Text>
             </View>
             
@@ -1581,45 +1601,70 @@ const PlayerModal = ({ visible, players, selectedPlayers, positionLabel, onSelec
 
             {/* Players List */}
             <FlatList
-              data={availablePlayers}
+              data={sortedPlayers}
               keyExtractor={(item) => item.id.toString()}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={styles.playerItem}
-                  onPress={() => setPreviewPlayer(item)}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.playerItemLeft}>
-                    <View style={[
-                      styles.playerItemRating,
-                      { backgroundColor: item.rating >= 85 ? '#C9A44C' : '#1FA2A6' }
-                    ]}>
-                      <Text style={styles.playerItemRatingText}>{item.rating}</Text>
-                    </View>
-                    <View style={styles.playerItemInfo}>
-                      <View style={styles.playerItemNameRow}>
-                        <Text style={styles.playerItemName}>{item.name}</Text>
-                        {item.form >= 8 && (
-                          <Ionicons name="flame" size={14} color="#F59E0B" style={{ marginLeft: 4 }} />
-                        )}
-                        {item.injury && (
-                          <Ionicons name="warning" size={14} color="#EF4444" style={{ marginLeft: 4 }} />
-                        )}
-                      </View>
-                      <Text style={styles.playerItemPosition}>
-                        {item.position} • {item.team}
-                      </Text>
-                    </View>
-                  </View>
-                  {/* + Button - Direct Add */}
+              renderItem={({ item }) => {
+                const eligible = isPlayerEligible(item);
+                return (
                   <TouchableOpacity
-                    onPress={() => handlePlayerSelect(item)}
-                    style={styles.playerItemAddBtn}
-                    activeOpacity={0.7}
+                    style={[
+                      styles.playerItem,
+                      !eligible && styles.playerItemLocked
+                    ]}
+                    onPress={() => eligible ? setPreviewPlayer(item) : null}
+                    activeOpacity={eligible ? 0.7 : 1}
+                    disabled={!eligible}
                   >
-                    <Ionicons name="add-circle" size={28} color="#1FA2A6" />
+                    <View style={styles.playerItemLeft}>
+                      <View style={[
+                        styles.playerItemRating,
+                        { backgroundColor: eligible 
+                          ? (item.rating >= 85 ? '#C9A44C' : '#1FA2A6') 
+                          : '#4B5563' }
+                      ]}>
+                        <Text style={[
+                          styles.playerItemRatingText,
+                          !eligible && { opacity: 0.5 }
+                        ]}>{item.rating}</Text>
+                      </View>
+                      <View style={styles.playerItemInfo}>
+                        <View style={styles.playerItemNameRow}>
+                          <Text style={[
+                            styles.playerItemName,
+                            !eligible && styles.playerItemNameLocked
+                          ]}>{item.name}</Text>
+                          {item.form >= 8 && eligible && (
+                            <Ionicons name="flame" size={14} color="#F59E0B" style={{ marginLeft: 4 }} />
+                          )}
+                          {item.injury && (
+                            <Ionicons name="warning" size={14} color="#EF4444" style={{ marginLeft: 4 }} />
+                          )}
+                        </View>
+                        <Text style={[
+                          styles.playerItemPosition,
+                          !eligible && styles.playerItemPositionLocked
+                        ]}>
+                          {item.position} • {item.team}
+                        </Text>
+                      </View>
+                    </View>
+                    {/* Lock icon for ineligible, + button for eligible */}
+                    {eligible ? (
+                      <TouchableOpacity
+                        onPress={() => handlePlayerSelect(item)}
+                        style={styles.playerItemAddBtn}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons name="add-circle" size={28} color="#1FA2A6" />
+                      </TouchableOpacity>
+                    ) : (
+                      <View style={styles.playerItemLockedIcon}>
+                        <Ionicons name="lock-closed" size={20} color="#6B7280" />
+                      </View>
+                    )}
                   </TouchableOpacity>
-                </TouchableOpacity>
+                );
+              }}
               )}
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.playersList}
@@ -2872,6 +2917,22 @@ const styles = StyleSheet.create({
   },
   playerItemAddBtn: {
     padding: 4,
+  },
+  playerItemLocked: {
+    opacity: 0.5,
+    backgroundColor: 'rgba(75, 85, 99, 0.1)',
+  },
+  playerItemNameLocked: {
+    color: '#6B7280',
+  },
+  playerItemPositionLocked: {
+    color: '#4B5563',
+  },
+  playerItemLockedIcon: {
+    padding: 4,
+    width: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   
   // ✅ Player Modal Close Button
