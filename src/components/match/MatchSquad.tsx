@@ -295,6 +295,26 @@ const formations = [
     cons: ['Neredeyse sıfır atak', 'Forvet tamamen yalnız', 'Çok pasif'],
     bestFor: 'Skor koruma, savunma kalelenmesi, zayıf kadrolar'
   },
+  { 
+    id: '4-2-4',
+    name: '4-2-4 (Total Attack)',
+    type: 'attack',
+    positions: ['GK', 'LB', 'CB', 'CB', 'RB', 'CM', 'CM', 'LW', 'ST', 'ST', 'RW'],
+    description: 'Topyekün hücum. Dörtlü atak hattı ile maksimum gol tehdidi.',
+    pros: ['Maksimum atak gücü', 'Geniş hücum alanı', 'Çok sayıda gol yolu'],
+    cons: ['Orta saha çok zayıf', 'Kontraya açık', 'Savunma riski'],
+    bestFor: 'Gol şart durumlar, zayıf rakipler, son dakika baskısı'
+  },
+  { 
+    id: '4-1-2-1-2',
+    name: '4-1-2-1-2 (Narrow)',
+    type: 'balanced',
+    positions: ['GK', 'LB', 'CB', 'CB', 'RB', 'CDM', 'CM', 'CM', 'CAM', 'ST', 'ST'],
+    description: 'Dar elmas dizilişi. Orta saha hakimiyeti ile çift forvet.',
+    pros: ['Güçlü orta saha', 'Çift forvet', 'Kompakt yapı'],
+    cons: ['Kanat oyunu yok', 'Beklere yük biner', 'Dar alan gerektirir'],
+    bestFor: 'Teknik orta saha, güçlü forvet ikilisi'
+  },
 ];
 
 // Formation Positions - ALL 26 FORMATIONS (truncated for brevity, keeping structure)
@@ -447,6 +467,20 @@ const formationPositions: Record<string, Array<{ x: number; y: number }>> = {
     { x: 8, y: 67 }, { x: 28, y: 69 }, { x: 50, y: 71 }, { x: 72, y: 69 }, { x: 92, y: 67 }, // Defense - V (5)
     { x: 15, y: 46 }, { x: 38, y: 48 }, { x: 62, y: 48 }, { x: 85, y: 46 }, // Midfield - V (4)
     { x: 50, y: 12 }, // ST
+  ],
+  '4-2-4': [
+    { x: 50, y: 85 }, // GK
+    { x: 12, y: 66 }, { x: 37, y: 68 }, { x: 63, y: 68 }, { x: 88, y: 66 }, // Defense (4)
+    { x: 35, y: 48 }, { x: 65, y: 48 }, // CM (2)
+    { x: 10, y: 18 }, { x: 38, y: 12 }, { x: 62, y: 12 }, { x: 90, y: 18 }, // Attack (4)
+  ],
+  '4-1-2-1-2': [
+    { x: 50, y: 85 }, // GK
+    { x: 12, y: 66 }, { x: 37, y: 68 }, { x: 63, y: 68 }, { x: 88, y: 66 }, // Defense (4)
+    { x: 50, y: 55 }, // CDM (1)
+    { x: 32, y: 42 }, { x: 68, y: 42 }, // CM (2)
+    { x: 50, y: 28 }, // CAM (1)
+    { x: 35, y: 12 }, { x: 65, y: 12 }, // ST (2)
   ],
 };
 
@@ -605,8 +639,23 @@ export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSqu
     return allPlayers;
   }, [lineups]);
   
-  const [selectedFormation, setSelectedFormation] = useState<string | null>(null);
-  const [selectedPlayers, setSelectedPlayers] = useState<Record<number, typeof players[0] | null>>({});
+  // ✅ Attack & Defense Formation States
+  const [attackFormation, setAttackFormation] = useState<string | null>(null);
+  const [defenseFormation, setDefenseFormation] = useState<string | null>(null);
+  const [attackPlayers, setAttackPlayers] = useState<Record<number, typeof players[0] | null>>({});
+  const [defensePlayers, setDefensePlayers] = useState<Record<number, typeof players[0] | null>>({});
+  
+  // ✅ Current editing mode: 'attack' or 'defense'
+  const [editingMode, setEditingMode] = useState<'attack' | 'defense'>('attack');
+  
+  // ✅ Confirmation modal for defense formation
+  const [showDefenseConfirmModal, setShowDefenseConfirmModal] = useState(false);
+  
+  // Legacy compatibility (will be mapped to attack/defense)
+  const selectedFormation = editingMode === 'attack' ? attackFormation : defenseFormation;
+  const selectedPlayers = editingMode === 'attack' ? attackPlayers : defensePlayers;
+  const setSelectedPlayers = editingMode === 'attack' ? setAttackPlayers : setDefensePlayers;
+  
   const [selectedSlot, setSelectedSlot] = useState<number | null>(null);
   const [showFormationModal, setShowFormationModal] = useState(false);
   const [showPlayerModal, setShowPlayerModal] = useState(false);
@@ -615,6 +664,11 @@ export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSqu
   
   // Player Predictions State
   const [playerPredictions, setPlayerPredictions] = useState<Record<number, any>>({});
+  
+  // ✅ Get attack squad players for defense selection
+  const attackSquadPlayers = React.useMemo(() => {
+    return Object.values(attackPlayers).filter(Boolean) as typeof players;
+  }, [attackPlayers]);
 
   // Pulsing ball animation
   const scale = useSharedValue(1);
@@ -634,18 +688,87 @@ export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSqu
   }));
 
   const handleFormationSelect = (formationId: string) => {
-    setSelectedFormation(formationId);
-    setSelectedPlayers({});
-    setShowFormationModal(false);
-    Alert.alert('Formasyon Seçildi!', formations.find(f => f.id === formationId)?.name);
+    const formation = formations.find(f => f.id === formationId);
+    
+    if (editingMode === 'attack') {
+      // ✅ Attack formation selected
+      setAttackFormation(formationId);
+      setAttackPlayers({});
+      setShowFormationModal(false);
+      
+      // Show defense confirmation after a brief delay
+      setTimeout(() => {
+        setShowDefenseConfirmModal(true);
+      }, 300);
+    } else {
+      // ✅ Defense formation selected
+      setDefenseFormation(formationId);
+      // ✅ Pre-fill defense players with attack squad (same 11 players, different positions)
+      const defFormation = formations.find(f => f.id === formationId);
+      if (defFormation && Object.keys(attackPlayers).length === 11) {
+        // Map attack players to defense positions
+        const defPlayers: Record<number, typeof players[0] | null> = {};
+        const attackPlayersList = Object.values(attackPlayers).filter(Boolean) as typeof players;
+        
+        // Find goalkeeper from attack squad and assign to GK position (index 0)
+        const goalkeeper = attackPlayersList.find(p => p?.position === 'GK');
+        if (goalkeeper) {
+          defPlayers[0] = goalkeeper;
+        }
+        
+        setDefensePlayers(defPlayers);
+      }
+      setShowFormationModal(false);
+      Alert.alert('Defans Formasyonu Seçildi!', `${formation?.name}\n\nAtak kadronuzdaki 11 oyuncuyu defans pozisyonlarına yerleştirin.`);
+    }
+  };
+  
+  // ✅ Handle defense confirmation
+  const handleDefenseConfirmYes = () => {
+    setShowDefenseConfirmModal(false);
+    setEditingMode('defense');
+    setFormationType('defense');
+    setTimeout(() => {
+      setShowFormationModal(true);
+    }, 300);
+  };
+  
+  const handleDefenseConfirmNo = () => {
+    setShowDefenseConfirmModal(false);
+    // Continue with attack squad building
+    const formation = formations.find(f => f.id === attackFormation);
+    Alert.alert('Atak Formasyonu Seçildi!', `${formation?.name}\n\nŞimdi oyuncularınızı pozisyonlara yerleştirin.`);
   };
 
   const handlePlayerSelect = (player: typeof players[0]) => {
     if (selectedSlot !== null) {
-      setSelectedPlayers({ ...selectedPlayers, [selectedSlot]: player });
+      const currentFormation = editingMode === 'attack' ? attackFormation : defenseFormation;
+      const formationData = formations.find(f => f.id === currentFormation);
+      const slotPosition = formationData?.positions[selectedSlot];
+      
+      // ✅ Goalkeeper validation - GK can only go to GK position
+      if (player.position === 'GK' && slotPosition !== 'GK') {
+        Alert.alert('Kaleci Kısıtlaması', 'Kaleci sadece kale pozisyonuna yerleştirilebilir.');
+        return;
+      }
+      
+      // ✅ GK position can only have goalkeeper
+      if (slotPosition === 'GK' && player.position !== 'GK') {
+        Alert.alert('Kale Pozisyonu', 'Kale pozisyonuna sadece kaleci yerleştirilebilir.');
+        return;
+      }
+      
+      if (editingMode === 'attack') {
+        setAttackPlayers({ ...attackPlayers, [selectedSlot]: player });
+      } else {
+        setDefensePlayers({ ...defensePlayers, [selectedSlot]: player });
+      }
+      
       setSelectedSlot(null);
       setShowPlayerModal(false);
-      Alert.alert('Oyuncu Eklendi!', `${player.name} kadronuza eklendi`);
+      
+      const modeText = editingMode === 'attack' ? 'atak' : 'defans';
+      Alert.alert('Oyuncu Yerleştirildi!', `${player.name} ${modeText} kadronuza eklendi`);
     }
   };
 
@@ -670,36 +793,54 @@ export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSqu
   };
 
   const handleComplete = async () => {
-    const selectedCount = Object.keys(selectedPlayers).filter(k => selectedPlayers[parseInt(k)]).length;
-    if (selectedCount === 11) {
-      try {
-        // Save squad data to AsyncStorage
-        const squadData = {
-          matchId: matchData.id,
-          formation: selectedFormation,
-          players: selectedPlayers,
-          playerPredictions: playerPredictions,
-          timestamp: new Date().toISOString(),
-        };
-        
-        await AsyncStorage.setItem(
-          `fan-manager-squad-${matchData.id}`,
-          JSON.stringify(squadData)
-        );
-        
-        console.log('✅ Squad saved successfully!', squadData);
-        
-        Alert.alert(
-          'Kadro Kaydedildi! 🎉',
-          'Tahminleriniz başarıyla kaydedildi.',
-          [{ text: 'Devam Et', onPress: onComplete }]
-        );
-      } catch (error) {
-        console.error('Error saving squad:', error);
-        Alert.alert('Hata!', 'Kadro kaydedilemedi. Lütfen tekrar deneyin.');
-      }
-    } else {
-      Alert.alert('Kadro Eksik!', `${11 - selectedCount} oyuncu daha seçmelisiniz.`);
+    const attackCount = Object.keys(attackPlayers).filter(k => attackPlayers[parseInt(k)]).length;
+    const defenseCount = Object.keys(defensePlayers).filter(k => defensePlayers[parseInt(k)]).length;
+    
+    // Check if attack squad is complete
+    if (attackCount < 11) {
+      Alert.alert('Atak Kadrosu Eksik!', `Atak için ${11 - attackCount} oyuncu daha seçmelisiniz.`);
+      setEditingMode('attack');
+      return;
+    }
+    
+    // If defense formation was selected, check if defense squad is complete
+    if (defenseFormation && defenseCount < 11) {
+      Alert.alert('Defans Kadrosu Eksik!', `Defans için ${11 - defenseCount} oyuncu daha yerleştirmelisiniz.`);
+      setEditingMode('defense');
+      return;
+    }
+    
+    try {
+      // Save squad data to AsyncStorage
+      const squadData = {
+        matchId: matchData.id,
+        attackFormation: attackFormation,
+        defenseFormation: defenseFormation,
+        attackPlayers: attackPlayers,
+        defensePlayers: defensePlayers,
+        playerPredictions: playerPredictions,
+        timestamp: new Date().toISOString(),
+      };
+      
+      await AsyncStorage.setItem(
+        `fan-manager-squad-${matchData.id}`,
+        JSON.stringify(squadData)
+      );
+      
+      console.log('✅ Squad saved successfully!', squadData);
+      
+      const message = defenseFormation 
+        ? 'Atak ve defans kadronuz başarıyla kaydedildi.'
+        : 'Atak kadronuz başarıyla kaydedildi.';
+      
+      Alert.alert(
+        'Kadro Kaydedildi! 🎉',
+        message,
+        [{ text: 'Devam Et', onPress: onComplete }]
+      );
+    } catch (error) {
+      console.error('Error saving squad:', error);
+      Alert.alert('Hata!', 'Kadro kaydedilemedi. Lütfen tekrar deneyin.');
     }
   };
 
@@ -757,6 +898,80 @@ export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSqu
   // Main Squad Screen (Formation Selected)
   return (
     <View style={styles.container}>
+      {/* ✅ Mode Indicator - Attack/Defense Toggle */}
+      <View style={styles.modeIndicatorContainer}>
+        <TouchableOpacity
+          style={[
+            styles.modeIndicatorTab,
+            editingMode === 'attack' && styles.modeIndicatorTabActive,
+          ]}
+          onPress={() => attackFormation && setEditingMode('attack')}
+          activeOpacity={0.7}
+        >
+          <Ionicons 
+            name="flash" 
+            size={16} 
+            color={editingMode === 'attack' ? '#FFFFFF' : '#64748B'} 
+          />
+          <Text style={[
+            styles.modeIndicatorText,
+            editingMode === 'attack' && styles.modeIndicatorTextActive,
+          ]}>Atak</Text>
+          {attackFormation && (
+            <View style={[
+              styles.modeIndicatorBadge,
+              { backgroundColor: editingMode === 'attack' ? '#10B981' : '#475569' }
+            ]}>
+              <Text style={styles.modeIndicatorBadgeText}>
+                {Object.keys(attackPlayers).filter(k => attackPlayers[parseInt(k)]).length}/11
+              </Text>
+            </View>
+          )}
+        </TouchableOpacity>
+        
+        <TouchableOpacity
+          style={[
+            styles.modeIndicatorTab,
+            editingMode === 'defense' && styles.modeIndicatorTabActiveDefense,
+          ]}
+          onPress={() => {
+            if (defenseFormation) {
+              setEditingMode('defense');
+            } else if (attackFormation && Object.keys(attackPlayers).filter(k => attackPlayers[parseInt(k)]).length === 11) {
+              setShowDefenseConfirmModal(true);
+            }
+          }}
+          activeOpacity={0.7}
+          disabled={!attackFormation}
+        >
+          <Ionicons 
+            name="shield" 
+            size={16} 
+            color={editingMode === 'defense' ? '#FFFFFF' : (attackFormation ? '#64748B' : '#334155')} 
+          />
+          <Text style={[
+            styles.modeIndicatorText,
+            editingMode === 'defense' && styles.modeIndicatorTextActive,
+            !attackFormation && styles.modeIndicatorTextDisabled,
+          ]}>Defans</Text>
+          {defenseFormation && (
+            <View style={[
+              styles.modeIndicatorBadge,
+              { backgroundColor: editingMode === 'defense' ? '#3B82F6' : '#475569' }
+            ]}>
+              <Text style={styles.modeIndicatorBadgeText}>
+                {Object.keys(defensePlayers).filter(k => defensePlayers[parseInt(k)]).length}/11
+              </Text>
+            </View>
+          )}
+          {!defenseFormation && attackFormation && (
+            <View style={styles.modeIndicatorAddBadge}>
+              <Ionicons name="add" size={12} color="#94A3B8" />
+            </View>
+          )}
+        </TouchableOpacity>
+      </View>
+
       <View style={styles.mainContainer}>
         {/* Football Field with Players */}
         <FootballField style={styles.mainField}>
@@ -886,7 +1101,9 @@ export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSqu
       {/* Player Selection Modal */}
       <PlayerModal
         visible={showPlayerModal}
-        players={realPlayers.length > 0 ? realPlayers : players}
+        players={editingMode === 'defense' && attackSquadPlayers.length === 11 
+          ? attackSquadPlayers 
+          : (realPlayers.length > 0 ? realPlayers : players)}
         selectedPlayers={selectedPlayers}
         positionLabel={selectedSlot !== null ? formation?.positions[selectedSlot] : ''}
         onSelect={handlePlayerSelect}
@@ -894,6 +1111,7 @@ export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSqu
           setShowPlayerModal(false);
           setSelectedSlot(null);
         }}
+        isDefenseMode={editingMode === 'defense'}
       />
 
       {/* Formation Modal */}
@@ -920,6 +1138,7 @@ export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSqu
 // Formation Modal Component - 3 COLUMN GRID
 const FormationModal = ({ visible, formations, formationType, onSelect, onClose, onTabChange }: any) => {
   const [selectedFormationForDetail, setSelectedFormationForDetail] = useState<any>(null);
+  const [hoveredFormation, setHoveredFormation] = useState<any>(null); // ✅ Önizleme için
   
   // Show all formations in both tabs
   const filteredFormations = formations;
@@ -938,19 +1157,23 @@ const FormationModal = ({ visible, formations, formationType, onSelect, onClose,
             exiting={Platform.OS === 'web' ? undefined : SlideOutDown.duration(300)}
             style={styles.modalContent}
           >
-            {/* Header */}
+            {/* Header - Tab'a göre değişen başlık */}
             <View style={styles.modalHeader}>
               <View style={styles.modalHeaderContent}>
-                <Text style={styles.modalTitle}>Defans Dizilişini Belirleyin</Text>
+                <Text style={styles.modalTitle}>
+                  {formationType === 'attack' ? 'Atak Formasyonu Seçin' : 'Defans Formasyonu Seçin'}
+                </Text>
                 <Text style={styles.modalSubtitle}>
-                  Defans için aynı formasyon seçin veya atak formasyonunuzla aynı kalın
+                  {formationType === 'attack' 
+                    ? 'Hücum stratejiniz için bir diziliş seçin'
+                    : 'Savunma stratejiniz için bir diziliş seçin'}
                 </Text>
               </View>
             </View>
 
             {/* Close Button - Absolute Position */}
             <TouchableOpacity onPress={onClose} style={styles.modalCloseButtonAbsolute}>
-              <Ionicons name="close" size={28} color="#FFFFFF" />
+              <Ionicons name="close" size={22} color="#1FA2A6" />
             </TouchableOpacity>
 
             {/* Tabs */}
@@ -991,25 +1214,19 @@ const FormationModal = ({ visible, formations, formationType, onSelect, onClose,
               {filteredFormations.map((formation: any) => (
                 <View key={formation.id} style={styles.formationGridItem}>
                   <TouchableOpacity
-                    style={styles.formationCard}
-                    onPress={() => onSelect(formation.id)}
+                    style={[
+                      styles.formationCard,
+                      hoveredFormation?.id === formation.id && styles.formationCardSelected,
+                    ]}
+                    onPress={() => setHoveredFormation(formation)}
                     activeOpacity={0.8}
                   >
-                    {/* Info Button - Top Right Corner */}
-                    <TouchableOpacity
-                      style={styles.formationInfoButton}
-                      onPress={(e) => {
-                        e.stopPropagation();
-                        setSelectedFormationForDetail(formation);
-                      }}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={styles.formationInfoButtonText}>i</Text>
-                    </TouchableOpacity>
-
-                    {/* Formation ID - Clean (only numbers) */}
-                    <Text style={styles.formationCardId}>
-                      {formation.id.split('-').slice(0, 3).join('-')}
+                    {/* Formation ID */}
+                    <Text style={[
+                      styles.formationCardId,
+                      hoveredFormation?.id === formation.id && { color: '#1FA2A6' },
+                    ]}>
+                      {formation.id.replace(/-holding|-false9|-diamond|-attack/g, '')}
                     </Text>
 
                     {/* Formation Subtitle - From parentheses */}
@@ -1028,30 +1245,178 @@ const FormationModal = ({ visible, formations, formationType, onSelect, onClose,
                 </View>
               ))}
             </ScrollView>
-
-            {/* Info Note */}
-            <View style={styles.formationInfoNote}>
-              <Ionicons name="information-circle" size={16} color="#9CA3AF" />
-              <Text style={styles.formationInfoNoteText}>
-                Defans dizilişi seçimi farklı dizilişi seç
-              </Text>
-            </View>
+            
           </Animated.View>
         </View>
       </Modal>
 
-      {/* Formation Detail Modal */}
-      {selectedFormationForDetail && (
-        <FormationDetailModal
-          formation={selectedFormationForDetail}
-          onClose={() => setSelectedFormationForDetail(null)}
-          onSelect={(formation: any) => {
-            setSelectedFormation(formation);
-            setSelectedFormationForDetail(null);
-            setShowFormationModal(false);
-          }}
-        />
+      {/* ✅ Formation Preview Modal - Ayrı popup olarak açılıyor */}
+      {hoveredFormation && (
+        <Modal
+          visible={true}
+          animationType="fade"
+          transparent={true}
+          onRequestClose={() => setHoveredFormation(null)}
+        >
+          <View style={styles.formationPreviewOverlay}>
+            <View style={styles.formationPreviewModal}>
+              {/* Header */}
+              <View style={styles.formationPreviewHeader}>
+                <View style={styles.formationPreviewTitleRow}>
+                  <Text style={styles.formationPreviewName}>{hoveredFormation.name}</Text>
+                  <TouchableOpacity 
+                    onPress={() => setHoveredFormation(null)}
+                    style={styles.formationPreviewCloseBtn}
+                  >
+                    <Ionicons name="close" size={20} color="#94A3B8" />
+                  </TouchableOpacity>
+                </View>
+                <View style={[
+                  styles.formationPreviewTypeBadge,
+                  { backgroundColor: hoveredFormation.type === 'attack' ? 'rgba(239, 68, 68, 0.2)' : 
+                    hoveredFormation.type === 'defense' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(245, 158, 11, 0.2)' }
+                ]}>
+                  <Text style={[
+                    styles.formationPreviewTypeText,
+                    { color: hoveredFormation.type === 'attack' ? '#EF4444' : 
+                      hoveredFormation.type === 'defense' ? '#3B82F6' : '#F59E0B' }
+                  ]}>
+                    {hoveredFormation.type === 'attack' ? '⚔️ Atak' : 
+                     hoveredFormation.type === 'defense' ? '🛡️ Defans' : '⚖️ Dengeli'}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Description */}
+              <Text style={styles.formationPreviewDesc}>
+                {hoveredFormation.description}
+              </Text>
+
+              {/* Pros */}
+              <View style={styles.formationPreviewSection}>
+                <Text style={styles.formationPreviewSectionTitle}>✅ Avantajlar</Text>
+                {hoveredFormation.pros?.map((pro: string, index: number) => (
+                  <View key={index} style={styles.formationPreviewListItem}>
+                    <View style={styles.formationPreviewBullet} />
+                    <Text style={styles.formationPreviewListText}>{pro}</Text>
+                  </View>
+                ))}
+              </View>
+
+              {/* Cons */}
+              <View style={styles.formationPreviewSection}>
+                <Text style={styles.formationPreviewSectionTitle}>❌ Dezavantajlar</Text>
+                {hoveredFormation.cons?.map((con: string, index: number) => (
+                  <View key={index} style={styles.formationPreviewListItem}>
+                    <View style={[styles.formationPreviewBullet, { backgroundColor: '#EF4444' }]} />
+                    <Text style={styles.formationPreviewListText}>{con}</Text>
+                  </View>
+                ))}
+              </View>
+
+              {/* Best For */}
+              <View style={styles.formationPreviewBestFor}>
+                <Ionicons name="trophy" size={16} color="#F59E0B" />
+                <Text style={styles.formationPreviewBestForText}>
+                  <Text style={styles.formationPreviewBestForLabel}>En İyi: </Text>
+                  {hoveredFormation.bestFor}
+                </Text>
+              </View>
+              
+              {/* Buttons */}
+              <View style={styles.formationPreviewButtons}>
+                <TouchableOpacity
+                  style={styles.formationPreviewCancelBtn}
+                  onPress={() => setHoveredFormation(null)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.formationPreviewCancelText}>İptal</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={styles.formationPreviewSelectBtn}
+                  onPress={() => {
+                    onSelect(hoveredFormation.id);
+                    setHoveredFormation(null);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <LinearGradient
+                    colors={['#1FA2A6', '#047857']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.formationPreviewSelectGradient}
+                  >
+                    <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" />
+                    <Text style={styles.formationPreviewSelectText}>Bu Dizilişi Seç</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
       )}
+
+      {/* ✅ Defense Confirmation Modal */}
+      <Modal
+        visible={showDefenseConfirmModal}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setShowDefenseConfirmModal(false)}
+      >
+        <View style={styles.defenseConfirmOverlay}>
+          <View style={styles.defenseConfirmModal}>
+            {/* Icon */}
+            <View style={styles.defenseConfirmIcon}>
+              <Ionicons name="shield-checkmark" size={48} color="#1FA2A6" />
+            </View>
+            
+            {/* Title */}
+            <Text style={styles.defenseConfirmTitle}>Defans Formasyonu</Text>
+            
+            {/* Description */}
+            <Text style={styles.defenseConfirmDesc}>
+              Atak formasyonunuz seçildi. Defans için farklı bir formasyon seçmek ister misiniz?
+            </Text>
+            
+            {/* Info Box */}
+            <View style={styles.defenseConfirmInfo}>
+              <Ionicons name="information-circle" size={18} color="#F59E0B" />
+              <Text style={styles.defenseConfirmInfoText}>
+                Defans formasyonunda atak kadronuzdaki 11 oyuncuyu farklı pozisyonlara yerleştireceksiniz.
+              </Text>
+            </View>
+            
+            {/* Buttons */}
+            <View style={styles.defenseConfirmButtons}>
+              <TouchableOpacity
+                style={styles.defenseConfirmNoBtn}
+                onPress={handleDefenseConfirmNo}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="close-circle-outline" size={20} color="#94A3B8" />
+                <Text style={styles.defenseConfirmNoText}>Hayır, Devam Et</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={styles.defenseConfirmYesBtn}
+                onPress={handleDefenseConfirmYes}
+                activeOpacity={0.7}
+              >
+                <LinearGradient
+                  colors={['#3B82F6', '#1D4ED8']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.defenseConfirmYesGradient}
+                >
+                  <Ionicons name="shield" size={20} color="#FFFFFF" />
+                  <Text style={styles.defenseConfirmYesText}>Evet, Seç</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </>
   );
 };
@@ -1149,7 +1514,7 @@ const FormationDetailModal = ({ formation, onClose, onSelect }: any) => (
 );
 
 // Player Modal Component - COMPLETE
-const PlayerModal = ({ visible, players, selectedPlayers, positionLabel, onSelect, onClose }: any) => {
+const PlayerModal = ({ visible, players, selectedPlayers, positionLabel, onSelect, onClose, isDefenseMode }: any) => {
   const availablePlayers = players.filter(
     (p: any) => !Object.values(selectedPlayers).some((sp: any) => sp?.id === p.id)
   );
@@ -1170,13 +1535,25 @@ const PlayerModal = ({ visible, players, selectedPlayers, positionLabel, onSelec
           {/* Header */}
           <View style={styles.modalHeader}>
             <View>
-              <Text style={styles.modalTitle}>Oyuncu Seç</Text>
+              <Text style={styles.modalTitle}>
+                {isDefenseMode ? '🛡️ Defans Oyuncusu Seç' : 'Oyuncu Seç'}
+              </Text>
               <Text style={styles.modalSubtitle}>Pozisyon: {positionLabel}</Text>
             </View>
             <TouchableOpacity onPress={onClose} style={styles.modalCloseButton}>
               <Ionicons name="close" size={24} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
+          
+          {/* Defense Mode Info */}
+          {isDefenseMode && (
+            <View style={styles.defenseModeInfo}>
+              <Ionicons name="information-circle" size={16} color="#3B82F6" />
+              <Text style={styles.defenseModeInfoText}>
+                Sadece atak kadronuzdaki 11 oyuncudan seçim yapabilirsiniz.
+              </Text>
+            </View>
+          )}
 
           {/* Players List */}
           <FlatList
@@ -1362,6 +1739,65 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: 'transparent', // ✅ Grid pattern görünsün - MatchDetail'den geliyor
+  },
+  
+  // ✅ Mode Indicator Styles
+  modeIndicatorContainer: {
+    flexDirection: 'row',
+    marginHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 4,
+    backgroundColor: 'rgba(15, 42, 36, 0.8)',
+    borderRadius: 12,
+    padding: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.2)',
+  },
+  modeIndicatorTab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  modeIndicatorTabActive: {
+    backgroundColor: 'rgba(31, 162, 166, 0.3)',
+  },
+  modeIndicatorTabActiveDefense: {
+    backgroundColor: 'rgba(59, 130, 246, 0.3)',
+  },
+  modeIndicatorText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  modeIndicatorTextActive: {
+    color: '#FFFFFF',
+  },
+  modeIndicatorTextDisabled: {
+    color: '#334155',
+  },
+  modeIndicatorBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginLeft: 4,
+  },
+  modeIndicatorBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  modeIndicatorAddBadge: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: 'rgba(148, 163, 184, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 4,
   },
   
   // Empty State
@@ -1666,35 +2102,38 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   
-  // Modal
+  // Modal - Design System uyumlu
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#1E3A3A',
+    backgroundColor: '#0F2A24', // ✅ Design System: Primary
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    maxHeight: height * 0.85,
+    maxHeight: height * 0.92, // ✅ Daha yüksek - scroll azalt
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.2)',
+    borderBottomWidth: 0,
   },
   modalHeader: {
-    padding: 20,
-    paddingRight: 60,
+    padding: 16,
+    paddingRight: 56,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+    borderBottomColor: 'rgba(31, 162, 166, 0.15)',
   },
   modalHeaderContent: {
     flex: 1,
   },
   modalTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: '#F8FAFB',
   },
   modalSubtitle: {
-    fontSize: 14,
-    color: '#9CA3AF',
+    fontSize: 12,
+    color: '#64748B',
     marginTop: 4,
   },
   modalCloseButton: {
@@ -1707,37 +2146,41 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(148, 163, 184, 0.3)',
   },
+  defenseModeInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(59, 130, 246, 0.15)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(59, 130, 246, 0.3)',
+  },
+  defenseModeInfoText: {
+    fontSize: 12,
+    color: '#93C5FD',
+    flex: 1,
+  },
   modalCloseButtonAbsolute: {
     position: 'absolute',
-    top: 16,
-    right: 16,
-    width: 40,
-    height: 40,
+    top: 12,
+    right: 12,
+    width: 36,
+    height: 36,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(71, 85, 105, 0.8)',
-    borderRadius: 20,
+    backgroundColor: 'rgba(31, 162, 166, 0.15)', // ✅ Design System
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: 'rgba(148, 163, 184, 0.4)',
+    borderColor: 'rgba(31, 162, 166, 0.3)',
     zIndex: 1000,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.3,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 5,
-      },
-      web: {
-        boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.3)',
-      },
-    }),
   },
   modalTabs: {
     flexDirection: 'row',
-    padding: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     gap: 8,
   },
   modalTab: {
@@ -1747,98 +2190,339 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
     paddingVertical: 10,
-    borderRadius: 8,
-    backgroundColor: 'rgba(15, 23, 42, 0.5)',
+    borderRadius: 10,
+    backgroundColor: 'rgba(31, 162, 166, 0.08)', // ✅ Design System
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.15)',
   },
   modalTabActive: {
-    backgroundColor: 'rgba(5, 150, 105, 0.2)',
+    backgroundColor: 'rgba(31, 162, 166, 0.25)', // ✅ Aktif tab
     borderWidth: 1,
     borderColor: '#1FA2A6',
   },
   modalTabText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#9CA3AF',
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#64748B',
   },
   modalTabTextActive: {
     color: '#1FA2A6',
-    fontWeight: '600',
+    fontWeight: '700',
   },
   modalScroll: {
     flex: 1,
   },
   
-  // Formation Grid - 3 Columns COMPACT
+  // Formation Grid - 3 Columns COMPACT - Eşit boşluklar
   formationGridContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    padding: 8,
-    paddingBottom: 20,
-    gap: 3,
-    justifyContent: 'space-between',
+    paddingHorizontal: 8, // ✅ Eşit sağ-sol boşluk
+    paddingTop: 4,
+    paddingBottom: 8,
+    justifyContent: 'space-between', // ✅ Eşit dağılım
   },
   formationGridItem: {
-    width: '32%', // 3 columns with smaller gap
-    marginBottom: 3,
+    width: '32%', // 3 columns
+    marginBottom: 6, // ✅ Alt boşluk
+    marginBottom: 2,
   },
   formationCard: {
-    backgroundColor: 'rgba(15, 23, 42, 0.95)',
-    borderRadius: 12,
-    padding: 8,
-    borderWidth: 1.5,
-    borderColor: 'rgba(5, 150, 105, 0.4)',
+    backgroundColor: '#0F2A24', // ✅ Design System: Primary
+    borderRadius: 10,
+    padding: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.3)', // ✅ Turkuaz border
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 62,
+    minHeight: 52, // ✅ Daha kompakt
     position: 'relative',
   },
-  formationInfoButton: {
-    position: 'absolute',
-    top: 4,
-    right: 4,
-    width: 18,
-    height: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'transparent',
-    borderRadius: 9,
-    borderWidth: 1.5,
-    borderColor: '#64748B',
-    zIndex: 10,
-  },
-  formationInfoButtonText: {
-    fontSize: 10,
-    fontWeight: 'bold',
-    color: '#94A3B8',
-    fontStyle: 'normal',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-  },
   formationCardId: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
     color: '#FFFFFF',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   formationCardSubtitle: {
-    fontSize: 10,
-    color: '#9CA3AF',
+    fontSize: 9,
+    color: '#64748B',
     textAlign: 'center',
   },
-  formationInfoNote: {
+  formationCardSelected: {
+    borderColor: '#1FA2A6',
+    borderWidth: 2,
+    backgroundColor: 'rgba(31, 162, 166, 0.15)',
+  },
+  
+  // ✅ Formation Preview Modal - Ayrı popup
+  formationPreviewOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  formationPreviewModal: {
+    backgroundColor: '#1A3D37', // ✅ Daha açık ton - belirgin
+    borderRadius: 16,
+    padding: 20,
+    width: '100%',
+    maxWidth: 380,
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.4)',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#1FA2A6',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 10,
+      },
+      web: {
+        boxShadow: '0 4px 24px rgba(31, 162, 166, 0.25)',
+      },
+    }),
+  },
+  formationPreviewHeader: {
+    marginBottom: 12,
+  },
+  formationPreviewTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    padding: 16,
-    backgroundColor: 'rgba(15, 23, 42, 0.5)',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+    justifyContent: 'space-between',
+    marginBottom: 8,
   },
-  formationInfoNoteText: {
-    fontSize: 12,
-    color: '#9CA3AF',
+  formationPreviewName: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
     flex: 1,
   },
+  formationPreviewCloseBtn: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(148, 163, 184, 0.15)',
+    borderRadius: 16,
+  },
+  formationPreviewTypeBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  formationPreviewTypeText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  formationPreviewDesc: {
+    fontSize: 14,
+    color: '#E2E8F0',
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  formationPreviewSection: {
+    marginBottom: 12,
+  },
+  formationPreviewSectionTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 8,
+  },
+  formationPreviewListItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 4,
+    gap: 8,
+  },
+  formationPreviewBullet: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#1FA2A6',
+    marginTop: 6,
+  },
+  formationPreviewListText: {
+    fontSize: 12,
+    color: '#CBD5E1',
+    flex: 1,
+    lineHeight: 18,
+  },
+  formationPreviewBestFor: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    backgroundColor: 'rgba(245, 158, 11, 0.12)',
+    padding: 12,
+    borderRadius: 10,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.25)',
+  },
+  formationPreviewBestForLabel: {
+    fontWeight: '700',
+    color: '#F59E0B',
+  },
+  formationPreviewBestForText: {
+    fontSize: 12,
+    color: '#FDE68A',
+    flex: 1,
+    lineHeight: 18,
+  },
+  formationPreviewButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  formationPreviewCancelBtn: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: 'rgba(100, 116, 139, 0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(100, 116, 139, 0.4)',
+  },
+  formationPreviewCancelText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#94A3B8',
+  },
+  formationPreviewSelectBtn: {
+    flex: 2,
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+  formationPreviewSelectGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+  },
+  formationPreviewSelectText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  
+  // ✅ Defense Confirmation Modal Styles
+  defenseConfirmOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  defenseConfirmModal: {
+    backgroundColor: '#1A3D37',
+    borderRadius: 20,
+    padding: 24,
+    width: '100%',
+    maxWidth: 360,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.3)',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#1FA2A6',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.3,
+        shadowRadius: 16,
+      },
+      android: {
+        elevation: 12,
+      },
+      web: {
+        boxShadow: '0 8px 32px rgba(31, 162, 166, 0.25)',
+      },
+    }),
+  },
+  defenseConfirmIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(31, 162, 166, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  defenseConfirmTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  defenseConfirmDesc: {
+    fontSize: 14,
+    color: '#CBD5E1',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 16,
+  },
+  defenseConfirmInfo: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    backgroundColor: 'rgba(245, 158, 11, 0.12)',
+    padding: 12,
+    borderRadius: 10,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.25)',
+  },
+  defenseConfirmInfoText: {
+    fontSize: 12,
+    color: '#FDE68A',
+    flex: 1,
+    lineHeight: 18,
+  },
+  defenseConfirmButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  defenseConfirmNoBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: 'rgba(100, 116, 139, 0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(100, 116, 139, 0.4)',
+  },
+  defenseConfirmNoText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#94A3B8',
+  },
+  defenseConfirmYesBtn: {
+    flex: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  defenseConfirmYesGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+  },
+  defenseConfirmYesText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  
 
   // Formation Detail Modal
   formationDetailOverlay: {
