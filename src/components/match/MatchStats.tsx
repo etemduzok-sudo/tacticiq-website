@@ -304,7 +304,7 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
                           cx="24"
                           cy="24"
                           r="15"
-                          stroke="#059669"
+                          stroke="#1FA2A6"
                           strokeWidth="2"
                           fill="none"
                           strokeDasharray={`${(player.rating / 10) * 94.2} 94.2`}
@@ -647,7 +647,7 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: 'transparent', // ✅ Grid pattern görünsün - MatchDetail'den geliyor
   },
   
   // Tabs
@@ -670,7 +670,7 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
   },
   tabTextActive: {
-    color: '#059669',
+    color: '#1FA2A6',
   },
   tabIndicator: {
     position: 'absolute',
@@ -678,7 +678,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 2,
-    backgroundColor: '#059669',
+    backgroundColor: '#1FA2A6',
   },
   
   // Content
@@ -716,7 +716,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   statValueTextWinner: {
-    color: '#059669',
+    color: '#1FA2A6',
   },
   statValueTextWinnerAway: {
     color: '#F59E0B',
@@ -747,7 +747,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   progressBarHome: {
-    backgroundColor: '#059669',
+    backgroundColor: '#1FA2A6',
     height: '100%',
   },
   progressBarAway: {
@@ -839,7 +839,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: '#059669',
+    backgroundColor: '#1FA2A6',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
@@ -882,7 +882,7 @@ const styles = StyleSheet.create({
     width: 16,
     height: 16,
     borderRadius: 8,
-    backgroundColor: '#059669',
+    backgroundColor: '#1FA2A6',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
@@ -930,7 +930,7 @@ const styles = StyleSheet.create({
   ratingText: {
     fontSize: 13,
     fontWeight: 'bold',
-    color: '#059669',
+    color: '#1FA2A6',
   },
   ratingTextAway: {
     fontSize: 13,
@@ -974,7 +974,7 @@ const styles = StyleSheet.create({
   quickStatValueHome: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#059669',
+    color: '#1FA2A6',
   },
   quickStatValueAway: {
     fontSize: 16,

@@ -796,7 +796,8 @@ export default function App() {
           // Store params for MatchDetail component to access
           (window as any).__matchDetailParams = {
             initialTab: params?.initialTab || 'squad',
-            focus: params?.focus,
+            analysisFocus: params?.analysisFocus,
+            matchData: params?.matchData, // ✅ Dashboard'dan gelen maç verisi
           };
           setCurrentScreen('match-detail');
         }
@@ -1091,14 +1092,18 @@ export default function App() {
             setCurrentScreen('home');
             return null;
           }
-          // Get initialTab from navigation params (if any)
+          // Get initialTab and analysisFocus from navigation params (if any)
           const matchDetailParams = (window as any).__matchDetailParams || {};
           return (
             <MatchDetail
               matchId={selectedMatchId}
               initialTab={matchDetailParams.initialTab || 'squad'}
+              analysisFocus={matchDetailParams.analysisFocus}
+              preloadedMatch={matchDetailParams.matchData}
               onBack={() => {
                 setSelectedMatchId(null);
+                // ✅ Params'ları temizle
+                (window as any).__matchDetailParams = {};
                 setCurrentScreen('home');
               }}
             />

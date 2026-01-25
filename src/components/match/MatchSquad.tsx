@@ -730,7 +730,7 @@ export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSqu
             activeOpacity={0.8}
           >
             <LinearGradient
-              colors={['#059669', '#047857']}
+              colors={['#1FA2A6', '#047857']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.buttonGradient}
@@ -793,7 +793,7 @@ export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSqu
                           activeOpacity={0.8}
                         >
                           <LinearGradient
-                            colors={['#1E293B', '#0F172A']}
+                            colors={['#1E3A3A', '#0F2A24']} // ✅ Design System
                             style={styles.playerCardGradient}
                           >
                             {/* Injury/Alert Badge - Top Right */}
@@ -853,7 +853,7 @@ export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSqu
               onPress={() => setShowFormationModal(true)}
               activeOpacity={0.7}
             >
-              <Ionicons name="swap-horizontal" size={16} color="#059669" />
+              <Ionicons name="swap-horizontal" size={16} color="#1FA2A6" />
               <Text style={styles.changeFormationText} numberOfLines={1}>{formation?.name}</Text>
             </TouchableOpacity>
           </View>
@@ -872,7 +872,7 @@ export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSqu
               activeOpacity={0.8}
             >
               <LinearGradient
-                colors={selectedCount === 11 ? ['#059669', '#047857'] : ['#374151', '#374151']}
+                colors={selectedCount === 11 ? ['#1FA2A6', '#047857'] : ['#374151', '#374151']}
                 style={styles.completeButtonGradient}
               >
                 <Text style={styles.completeButtonText}>Tamamla</Text>
@@ -1134,7 +1134,7 @@ const FormationDetailModal = ({ formation, onClose, onSelect }: any) => (
           activeOpacity={0.8}
         >
           <LinearGradient
-            colors={['#059669', '#047857']}
+            colors={['#1FA2A6', '#047857']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.formationDetailSelectGradient}
@@ -1191,7 +1191,7 @@ const PlayerModal = ({ visible, players, selectedPlayers, positionLabel, onSelec
                 <View style={styles.playerItemLeft}>
                   <View style={[
                     styles.playerItemRating,
-                    { backgroundColor: item.rating >= 85 ? '#F59E0B' : '#059669' }
+                    { backgroundColor: item.rating >= 85 ? '#C9A44C' : '#1FA2A6' } // ✅ Design System
                   ]}>
                     <Text style={styles.playerItemRatingText}>{item.rating}</Text>
                   </View>
@@ -1210,7 +1210,7 @@ const PlayerModal = ({ visible, players, selectedPlayers, positionLabel, onSelec
                     </Text>
                   </View>
                 </View>
-                <Ionicons name="add-circle" size={24} color="#059669" />
+                <Ionicons name="add-circle" size={24} color="#1FA2A6" />
               </TouchableOpacity>
             )}
             showsVerticalScrollIndicator={false}
@@ -1239,7 +1239,7 @@ const PlayerDetailModal = ({ player, onClose }: any) => {
         >
           {/* Header */}
           <LinearGradient
-            colors={['#1E293B', '#0F172A']}
+            colors={['#1E3A3A', '#0F2A24']} // ✅ Design System
             style={styles.playerDetailHeader}
           >
             <TouchableOpacity onPress={onClose} style={styles.modalCloseButton}>
@@ -1249,7 +1249,7 @@ const PlayerDetailModal = ({ player, onClose }: any) => {
             <View style={styles.playerDetailHeaderContent}>
               <View style={[
                 styles.playerDetailRating,
-                { backgroundColor: player.rating >= 85 ? '#F59E0B' : '#059669' }
+                { backgroundColor: player.rating >= 85 ? '#C9A44C' : '#1FA2A6' } // ✅ Design System
               ]}>
                 <Text style={styles.playerDetailRatingText}>{player.rating}</Text>
               </View>
@@ -1296,7 +1296,7 @@ const PlayerDetailModal = ({ player, onClose }: any) => {
                   physical: 'Fizik'
                 };
                 
-                const statColor = value >= 80 ? '#059669' : value >= 70 ? '#F59E0B' : '#9CA3AF';
+                const statColor = value >= 80 ? '#1FA2A6' : value >= 70 ? '#F59E0B' : '#9CA3AF';
                 
                 return (
                   <View key={key} style={styles.statItem}>
@@ -1320,17 +1320,17 @@ const PlayerDetailModal = ({ player, onClose }: any) => {
             {/* Additional Info */}
             <View style={styles.additionalInfo}>
               <View style={styles.infoCard}>
-                <Ionicons name="fitness" size={20} color="#059669" />
+                <Ionicons name="fitness" size={20} color="#1FA2A6" />
                 <Text style={styles.infoCardLabel}>Form</Text>
                 <Text style={styles.infoCardValue}>{player.form}/10</Text>
               </View>
               <View style={styles.infoCard}>
-                <Ionicons name="shirt" size={20} color="#059669" />
+                <Ionicons name="shirt" size={20} color="#1FA2A6" />
                 <Text style={styles.infoCardLabel}>Pozisyon</Text>
                 <Text style={styles.infoCardValue}>{player.position}</Text>
               </View>
               <View style={styles.infoCard}>
-                <Ionicons name="person" size={20} color="#059669" />
+                <Ionicons name="person" size={20} color="#1FA2A6" />
                 <Text style={styles.infoCardLabel}>Yaş</Text>
                 <Text style={styles.infoCardValue}>{player.age}</Text>
               </View>
@@ -1345,7 +1345,7 @@ const PlayerDetailModal = ({ player, onClose }: any) => {
               activeOpacity={0.8}
             >
               <LinearGradient
-                colors={['#059669', '#047857']}
+                colors={['#1FA2A6', '#047857']}
                 style={styles.playerDetailCloseButtonGradient}
               >
                 <Text style={styles.playerDetailCloseButtonText}>Kapat</Text>
@@ -1361,7 +1361,7 @@ const PlayerDetailModal = ({ player, onClose }: any) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: 'transparent', // ✅ Grid pattern görünsün - MatchDetail'den geliyor
   },
   
   // Empty State
@@ -1522,7 +1522,7 @@ const styles = StyleSheet.create({
     width: 26,
     height: 26,
     borderRadius: 7,
-    backgroundColor: '#059669',
+    backgroundColor: '#1FA2A6', // ✅ Design System
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 2,
@@ -1632,7 +1632,7 @@ const styles = StyleSheet.create({
   },
   changeFormationText: {
     fontSize: 12,
-    color: '#059669',
+    color: '#1FA2A6',
     fontWeight: '500',
     flex: 1,
   },
@@ -1673,7 +1673,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#1E3A3A',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     maxHeight: height * 0.85,
@@ -1753,7 +1753,7 @@ const styles = StyleSheet.create({
   modalTabActive: {
     backgroundColor: 'rgba(5, 150, 105, 0.2)',
     borderWidth: 1,
-    borderColor: '#059669',
+    borderColor: '#1FA2A6',
   },
   modalTabText: {
     fontSize: 13,
@@ -1761,7 +1761,7 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
   },
   modalTabTextActive: {
-    color: '#059669',
+    color: '#1FA2A6',
     fontWeight: '600',
   },
   modalScroll: {
@@ -1849,7 +1849,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   formationDetailContent: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#1E3A3A',
     borderRadius: 16,
     padding: 20,
     width: '100%',
@@ -1886,7 +1886,7 @@ const styles = StyleSheet.create({
   },
   formationDetailTypeText: {
     fontSize: 12,
-    color: '#059669',
+    color: '#1FA2A6',
     fontWeight: '600',
   },
   formationDetailCloseButton: {
@@ -1917,7 +1917,7 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#059669',
+    backgroundColor: '#1FA2A6',
     marginTop: 6,
   },
   formationDetailListText: {
@@ -2019,7 +2019,7 @@ const styles = StyleSheet.create({
   
   // Player Detail Modal
   playerDetailModal: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#1E3A3A',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     maxHeight: height * 0.9,
@@ -2076,7 +2076,7 @@ const styles = StyleSheet.create({
   },
   nationalityText: {
     fontSize: 11,
-    color: '#059669',
+    color: '#1FA2A6',
     fontWeight: '600',
   },
   formBadgeLarge: {

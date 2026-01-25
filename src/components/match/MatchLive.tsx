@@ -281,7 +281,7 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
       {/* Loading State */}
       {loading && (
         <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color="#059669" />
+          <ActivityIndicator size="large" color="#1FA2A6" />
           <Text style={styles.loadingText}>Canlı veriler yükleniyor...</Text>
         </View>
       )}
@@ -453,7 +453,7 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: 'transparent', // ✅ Grid pattern görünsün - MatchDetail'den geliyor
   },
   
   // Score Banner
@@ -488,7 +488,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   canliBadge: {
-    backgroundColor: '#059669',
+    backgroundColor: '#1FA2A6',
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 12,
@@ -502,7 +502,7 @@ const styles = StyleSheet.create({
   minuteText: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#059669',
+    color: '#1FA2A6',
   },
   htText: {
     fontSize: 10,
@@ -589,7 +589,7 @@ const styles = StyleSheet.create({
   centeredEventMinute: {
     fontSize: 12,
     fontWeight: 'bold',
-    color: '#059669',
+    color: '#1FA2A6',
   },
   centeredEventDescription: {
     fontSize: 13,
@@ -612,9 +612,9 @@ const styles = StyleSheet.create({
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: '#059669',
+    backgroundColor: '#1FA2A6',
     borderWidth: 2,
-    borderColor: '#0F172A',
+    borderColor: '#0F2A24',
     transform: [{ translateX: -6 }, { translateY: -6 }],
     zIndex: 20,
   },
@@ -651,7 +651,7 @@ const styles = StyleSheet.create({
   eventMinute: {
     fontSize: 11,
     fontWeight: 'bold',
-    color: '#059669',
+    color: '#1FA2A6',
   },
   extraTime: {
     fontSize: 9,
@@ -677,7 +677,7 @@ const styles = StyleSheet.create({
   eventTitleSuccess: {
     fontSize: 11,
     fontWeight: 'bold',
-    color: '#059669',
+    color: '#1FA2A6',
   },
   eventTitleError: {
     fontSize: 11,
@@ -710,7 +710,7 @@ const styles = StyleSheet.create({
   eventScore: {
     fontSize: 10,
     fontWeight: 'bold',
-    color: '#059669',
+    color: '#1FA2A6',
   },
   eventReason: {
     fontSize: 10,

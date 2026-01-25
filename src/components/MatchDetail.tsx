@@ -21,12 +21,16 @@ import { MatchLive } from './match/MatchLive';
 import { MatchStats } from './match/MatchStats';
 import { MatchRatings } from './match/MatchRatings';
 import { MatchSummary } from './match/MatchSummary';
+import { BRAND, COLORS, SPACING, SIZES } from '../theme/theme';
 
 const { width } = Dimensions.get('window');
 
 interface MatchDetailProps {
   matchId: string;
   onBack: () => void;
+  initialTab?: string; // ✅ Başlangıç sekmesi (squad, prediction, live, stats, ratings, summary)
+  analysisFocus?: string; // ✅ Analiz odağı (defense, offense, midfield, physical, tactical, player)
+  preloadedMatch?: any; // ✅ Dashboard'dan gelen maç verisi (API çağrısını atlar)
 }
 
 // Mock match data
@@ -59,11 +63,69 @@ const tabs = [
   { id: 'summary', label: 'Özet', icon: 'document-text' },
 ];
 
-export function MatchDetail({ matchId, onBack, initialTab = 'squad' }: MatchDetailProps) {
+export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFocus, preloadedMatch }: MatchDetailProps) {
   const [activeTab, setActiveTab] = useState(initialTab);
+  const [coaches, setCoaches] = useState<{ home: string; away: string }>({ home: '', away: '' });
+  const [countdownTicker, setCountdownTicker] = useState(0); // ✅ Geri sayım için ticker
   
-  // Fetch match details from API
-  const { match, statistics, events, lineups, loading, error } = useMatchDetails(Number(matchId));
+  // ✅ Analiz odağı bilgisini logla (ileride kullanılacak)
+  React.useEffect(() => {
+    if (analysisFocus) {
+      console.log('📊 Analiz Odağı:', analysisFocus);
+    }
+  }, [analysisFocus]);
+  
+  // ✅ Geri sayım ticker - her saniye güncelle
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      setCountdownTicker(prev => prev + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+  
+  // ✅ Eğer preloadedMatch varsa, API çağrısı yapma
+  const shouldFetchFromApi = !preloadedMatch;
+  
+  // Fetch match details from API (sadece preloadedMatch yoksa)
+  const { match: apiMatch, statistics, events, lineups, loading: apiLoading, error } = useMatchDetails(
+    shouldFetchFromApi ? Number(matchId) : 0 // 0 = API çağrısı yapılmaz
+  );
+  
+  // ✅ preloadedMatch varsa onu kullan, yoksa API'den gelen veriyi kullan
+  const match = preloadedMatch || apiMatch;
+  const loading = shouldFetchFromApi ? apiLoading : false;
+
+  // ✅ Teknik direktör bilgilerini çek
+  React.useEffect(() => {
+    const fetchCoaches = async () => {
+      if (!match?.teams?.home?.id || !match?.teams?.away?.id) return;
+      
+      try {
+        const [homeCoach, awayCoach] = await Promise.allSettled([
+          api.teams.getTeamCoach(match.teams.home.id),
+          api.teams.getTeamCoach(match.teams.away.id),
+        ]);
+        
+        setCoaches({
+          home: homeCoach.status === 'fulfilled' && homeCoach.value?.data?.coach?.name 
+            ? homeCoach.value.data.coach.name 
+            : '',
+          away: awayCoach.status === 'fulfilled' && awayCoach.value?.data?.coach?.name 
+            ? awayCoach.value.data.coach.name 
+            : '',
+        });
+        
+        console.log('👔 Coaches loaded:', {
+          home: homeCoach.status === 'fulfilled' ? homeCoach.value?.data?.coach?.name : 'N/A',
+          away: awayCoach.status === 'fulfilled' ? awayCoach.value?.data?.coach?.name : 'N/A',
+        });
+      } catch (error) {
+        console.log('⚠️ Coach fetch error:', error);
+      }
+    };
+    
+    fetchCoaches();
+  }, [match?.teams?.home?.id, match?.teams?.away?.id]);
 
   // Helper function to get team colors from API or generate from team name
   const getTeamColors = (team: any): [string, string] => {
@@ -105,8 +167,8 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad' }: MatchDeta
       }
     }
     
-    // Default colors based on home/away
-    return team.home ? ['#059669', '#047857'] : ['#F59E0B', '#D97706'];
+    // Default colors based on home/away - Design System colors
+    return team.home ? ['#1FA2A6', '#0F2A24'] : ['#C9A44C', '#8B7833'];
   };
 
   // Transform API data to component format
@@ -116,25 +178,81 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad' }: MatchDeta
       name: match.teams.home.name,
       logo: match.teams.home.logo || '⚽',
       color: getTeamColors(match.teams.home),
-      manager: 'TBA',
+      manager: coaches.home || '', // ✅ Teknik direktör API'den
     },
     awayTeam: {
       name: match.teams.away.name,
       logo: match.teams.away.logo || '⚽',
       color: getTeamColors(match.teams.away),
-      manager: 'TBA',
+      manager: coaches.away || '', // ✅ Teknik direktör API'den
     },
     league: match.league.name,
     stadium: match.fixture.venue?.name || 'TBA',
     date: new Date(match.fixture.date).toLocaleDateString('tr-TR'),
     time: api.utils.formatMatchTime(new Date(match.fixture.date).getTime() / 1000),
+    timestamp: match.fixture.timestamp || new Date(match.fixture.date).getTime() / 1000, // ✅ Geri sayım için
   } : null;
+  
+  // ✅ Geri sayım hesaplama
+  const getCountdownData = () => {
+    if (!matchData?.timestamp) return null;
+    
+    // countdownTicker'ı kullanarak her saniye güncellemeyi tetikle
+    const _ = countdownTicker;
+    
+    const now = Date.now() / 1000;
+    const matchTime = matchData.timestamp;
+    const timeDiff = matchTime - now;
+    
+    // Maç başladıysa veya bittiyse geri sayım gösterme
+    if (timeDiff <= 0) return null;
+    
+    const hours24 = 24 * 60 * 60;
+    const days7 = 7 * 24 * 60 * 60;
+    
+    let countdownColor = '#10b981'; // Varsayılan yeşil
+    const hoursLeft = timeDiff / 3600;
+    
+    // Renk değişimi
+    if (hoursLeft <= 1) {
+      countdownColor = '#EF4444'; // Kırmızı
+    } else if (hoursLeft <= 3) {
+      countdownColor = '#F97316'; // Turuncu
+    } else if (hoursLeft <= 6) {
+      countdownColor = '#F59E0B'; // Sarı
+    } else if (hoursLeft <= 12) {
+      countdownColor = '#84CC16'; // Açık yeşil
+    }
+    
+    // 7 günden fazla ise gün sayısını göster
+    if (timeDiff > days7) {
+      const days = Math.floor(timeDiff / (24 * 60 * 60));
+      return { type: 'days', days, color: countdownColor };
+    }
+    
+    // 24 saatten fazla ama 7 günden az ise gün sayısını göster
+    if (timeDiff > hours24) {
+      const days = Math.floor(timeDiff / (24 * 60 * 60));
+      return { type: 'days', days, color: countdownColor };
+    }
+    
+    // 24 saatten az kaldıysa saat:dakika:saniye göster
+    return {
+      type: 'countdown',
+      hours: Math.floor(timeDiff / 3600),
+      minutes: Math.floor((timeDiff % 3600) / 60),
+      seconds: Math.floor(timeDiff % 60),
+      color: countdownColor,
+    };
+  };
+  
+  const countdownData = getCountdownData();
 
   // Loading state
   if (loading || !matchData) {
     return (
       <View style={[styles.container, styles.centerContent]}>
-        <ActivityIndicator size="large" color="#059669" />
+        <ActivityIndicator size="large" color="#1FA2A6" />
         <Text style={styles.loadingText}>Maç detayları yükleniyor...</Text>
       </View>
     );
@@ -191,34 +309,37 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad' }: MatchDeta
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
+      
+      {/* ✅ Grid Pattern Background - Dashboard ile aynı */}
+      <View style={styles.gridPattern} />
 
       {/* Sticky Match Card Header - ProfileCard overlay gibi */}
       <View style={styles.matchCardOverlay}>
-        <View style={styles.matchCard}>
-        {/* Home Team Color Bar - Left */}
+        {/* ✅ Home Team Color Bar - Overlay'in tam yüksekliğinde */}
         <LinearGradient
           colors={matchData.homeTeam.color}
-          style={[styles.colorBar, styles.colorBarLeft]}
+          style={styles.colorBarLeft}
           start={{ x: 0, y: 0 }}
           end={{ x: 0, y: 1 }}
         />
 
-        {/* Away Team Color Bar - Right */}
+        {/* ✅ Away Team Color Bar - Overlay'in tam yüksekliğinde */}
         <LinearGradient
           colors={matchData.awayTeam.color}
-          style={[styles.colorBar, styles.colorBarRight]}
+          style={styles.colorBarRight}
           start={{ x: 0, y: 0 }}
           end={{ x: 0, y: 1 }}
         />
 
+        <View style={styles.matchCard}>
         {/* League Header with Back Button */}
         <View style={styles.leagueHeader}>
           <TouchableOpacity onPress={onBack} style={styles.backButton}>
-            <Ionicons name="chevron-back" size={20} color="#F8FAFB" />
+            <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
           </TouchableOpacity>
 
           <View style={styles.leagueBadge}>
-            <Ionicons name="trophy" size={14} color="#059669" />
+            <Ionicons name="trophy" size={14} color="#1FA2A6" />
             <Text style={styles.leagueText}>{matchData.league}</Text>
           </View>
 
@@ -230,14 +351,24 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad' }: MatchDeta
           {/* Home Team */}
           <View style={styles.teamContainer}>
             <Text style={styles.teamName}>{matchData.homeTeam.name}</Text>
-            <Text style={styles.managerName}>{matchData.homeTeam.manager}</Text>
+            {matchData.homeTeam.manager ? (
+              <Text style={styles.managerName}>{matchData.homeTeam.manager}</Text>
+            ) : null}
           </View>
 
-          {/* VS & Time */}
+          {/* Time & Stadium & Countdown */}
           <View style={styles.vsContainer}>
-            <Text style={styles.vsText}>VS</Text>
             <Text style={styles.matchTime}>{matchData.time}</Text>
             <Text style={styles.matchDate}>{matchData.date}</Text>
+            {/* ✅ Geri Sayım - Basit metin olarak */}
+            {countdownData && (
+              <Text style={[styles.countdownText, { color: countdownData.color }]}>
+                {countdownData.type === 'days' 
+                  ? `${countdownData.days} gün kaldı`
+                  : `${String(countdownData.hours).padStart(2, '0')}:${String(countdownData.minutes).padStart(2, '0')}:${String(countdownData.seconds).padStart(2, '0')}`
+                }
+              </Text>
+            )}
             <View style={styles.stadiumBadge}>
               <Ionicons name="location" size={10} color="#64748B" />
               <Text style={styles.stadiumText}>{matchData.stadium}</Text>
@@ -247,7 +378,9 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad' }: MatchDeta
           {/* Away Team */}
           <View style={styles.teamContainer}>
             <Text style={styles.teamName}>{matchData.awayTeam.name}</Text>
-            <Text style={styles.managerName}>{matchData.awayTeam.manager}</Text>
+            {matchData.awayTeam.manager ? (
+              <Text style={styles.managerName}>{matchData.awayTeam.manager}</Text>
+            ) : null}
           </View>
         </View>
         </View>
@@ -267,17 +400,19 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad' }: MatchDeta
             <TouchableOpacity
               key={tab.id}
               onPress={() => setActiveTab(tab.id)}
-              style={[styles.tab, isActive && styles.activeTab]}
+              style={styles.tab}
               activeOpacity={0.7}
             >
               <Ionicons
                 name={tab.icon as any}
-                size={16}
-                color={isActive ? '#059669' : '#64748B'}
+                size={18}
+                color={isActive ? '#1FA2A6' : '#64748B'}
               />
               <Text style={[styles.tabLabel, isActive && styles.activeTabLabel]}>
                 {tab.label}
               </Text>
+              {/* ✅ Active Indicator - Yazının altında (BottomNavigation gibi) */}
+              {isActive && <View style={styles.activeIndicator} />}
             </TouchableOpacity>
           );
         })}
@@ -290,29 +425,49 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad' }: MatchDeta
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#0F2A24', // ✅ Design System: Koyu yeşil taban - Dashboard ile aynı
     paddingTop: Platform.OS === 'ios' ? 44 : 0, // ✅ iOS: Status bar için alan
+    position: 'relative',
   },
   
-  // Match Card Overlay - ProfileCard overlay gibi
+  // ✅ Grid Pattern Background - Dashboard ile aynı
+  gridPattern: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    opacity: 1,
+    zIndex: 0,
+    ...Platform.select({
+      web: {
+        backgroundImage: `
+          linear-gradient(to right, rgba(31, 162, 166, 0.12) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(31, 162, 166, 0.12) 1px, transparent 1px)
+        `,
+        backgroundSize: '40px 40px',
+      },
+      default: {
+        backgroundColor: 'transparent',
+      },
+    }),
+  },
+  
+  // Match Card Overlay - ProfileCard ile aynı stil
   matchCardOverlay: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 44 : 0,
+    top: 0, // ✅ Ekranın en üstünden başla
     left: 0,
     right: 0,
     zIndex: 9999,
-    elevation: 10,
-    backgroundColor: '#1E293B', // ✅ Profil kartı ile aynı renk
-    borderBottomLeftRadius: 25, // ✅ Profil kartı gibi yuvarlatılmış alt köşeler
-    borderBottomRightRadius: 25,
-    borderTopWidth: 1, // ✅ İnce üst çizgi
-    borderTopColor: 'rgba(255, 255, 255, 0.1)',
-    borderBottomWidth: 2, // ✅ Kalın alt çizgi
-    borderBottomColor: '#334155',
-    paddingTop: 8,
-    paddingBottom: 8,
-    paddingHorizontal: 0,
-    pointerEvents: 'box-none',
+    backgroundColor: '#0F2A24', // ✅ ProfileCard ile aynı renk
+    borderTopLeftRadius: 0, // ✅ Üst köşeler düz (ProfileCard gibi)
+    borderTopRightRadius: 0,
+    borderBottomLeftRadius: 12, // ✅ ProfileCard ile aynı (25 değil 12)
+    borderBottomRightRadius: 12,
+    paddingTop: Platform.OS === 'ios' ? 50 : 12, // ✅ Status bar için padding
+    paddingBottom: 12,
+    overflow: 'hidden', // ✅ Renk çubukları köşelerde kesilsin
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -324,7 +479,7 @@ const styles = StyleSheet.create({
         elevation: 10,
       },
       web: {
-        boxShadow: '0 4px 8px rgba(0, 0, 0, 0.3)',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
       },
     }),
   },
@@ -335,19 +490,27 @@ const styles = StyleSheet.create({
     paddingTop: 0,
     paddingBottom: 0,
     position: 'relative',
-    overflow: 'hidden',
+    zIndex: 1, // ✅ İçerik renk çubuklarının üstünde
   },
-  colorBar: {
+  // ✅ Sol kenar gradient şerit - Dashboard ile aynı
+  colorBarLeft: {
     position: 'absolute',
+    left: 0,
     top: 0,
     bottom: 0,
     width: 6,
+    zIndex: 0,
+    borderBottomLeftRadius: 12, // ✅ Overlay ile aynı yuvarlaklık
   },
-  colorBarLeft: {
-    left: 0,
-  },
+  // ✅ Sağ kenar gradient şerit - Dashboard ile aynı
   colorBarRight: {
+    position: 'absolute',
     right: 0,
+    top: 0,
+    bottom: 0,
+    width: 6,
+    zIndex: 0,
+    borderBottomRightRadius: 12, // ✅ Overlay ile aynı yuvarlaklık
   },
   leagueHeader: {
     flexDirection: 'row',
@@ -357,10 +520,12 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   backButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(5, 150, 105, 0.1)',
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(15, 42, 36, 0.95)', // ✅ Standart: Diğer ekranlarla aynı
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.3)', // ✅ Turkuaz ince border
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -368,15 +533,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(5, 150, 105, 0.1)',
+    backgroundColor: 'rgba(15, 42, 36, 0.95)', // ✅ Standart: Geri tuşuyla aynı
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.2)',
   },
   leagueText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#059669',
+    color: '#1FA2A6', // ✅ Design System: Secondary/Turkuaz
   },
   
   // Match Info
@@ -409,19 +576,19 @@ const styles = StyleSheet.create({
   vsText: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#059669',
+    color: '#1FA2A6', // ✅ Design System: Secondary/Turkuaz
     marginBottom: 4,
   },
   matchTime: {
     fontSize: 16,
     fontWeight: 'bold',
     color: '#F8FAFB',
-    marginBottom: 2,
+    marginBottom: 4, // ✅ Eşit boşluk
   },
   matchDate: {
     fontSize: 11,
     color: '#64748B',
-    marginBottom: 6,
+    marginBottom: 4, // ✅ Eşit boşluk
   },
   stadiumBadge: {
     flexDirection: 'row',
@@ -437,11 +604,20 @@ const styles = StyleSheet.create({
     color: '#64748B',
   },
   
+  // ✅ Geri Sayım - Basit metin stili
+  countdownText: {
+    fontSize: 12,
+    fontWeight: '700',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    marginBottom: 4, // ✅ Eşit boşluk
+    letterSpacing: 1,
+  },
+  
   // Content
   contentContainer: {
     flex: 1,
-    paddingTop: Platform.OS === 'ios' ? 200 : 156, // ✅ Match card overlay yüksekliği için padding (iOS: 44 status + ~156 card, Android: ~156 card)
-    paddingBottom: Platform.OS === 'ios' ? 100 : 80, // ✅ Bottom nav için padding (iOS: 80 nav + 20 safe area, Android: 80 nav)
+    paddingTop: Platform.OS === 'ios' ? 200 : 156, // ✅ Match card overlay yüksekliği için padding
+    paddingBottom: Platform.OS === 'ios' ? 100 : 80, // ✅ Bottom nav için padding
   },
   
   // Placeholder
@@ -453,11 +629,11 @@ const styles = StyleSheet.create({
   },
   placeholderCard: {
     alignItems: 'center',
-    backgroundColor: '#1E293B',
+    backgroundColor: '#1A3A34', // ✅ Design System: Koyu yeşil kart
     padding: 32,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(5, 150, 105, 0.2)',
+    borderColor: 'rgba(31, 162, 166, 0.25)', // ✅ Turkuaz border
   },
   placeholderTitle: {
     fontSize: 20,
@@ -472,26 +648,24 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   
-  // Bottom Navigation Overlay - BottomNavigation gibi
+  // Bottom Navigation Overlay - BottomNavigation ile aynı stil
   bottomNavOverlay: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
     zIndex: 9999,
-    elevation: 10,
-    backgroundColor: '#0F172A', // ✅ BottomNavigation ile aynı renk
-    borderTopLeftRadius: 25, // ✅ Yuvarlatılmış üst köşeler
+    backgroundColor: '#0F2A24', // ✅ BottomNavigation ile aynı renk
+    borderTopLeftRadius: 25,
     borderTopRightRadius: 25,
-    borderTopWidth: 2, // ✅ Üst çizgi
-    borderTopColor: '#334155',
+    borderTopWidth: 1, // ✅ Turkuaz ince border
+    borderTopColor: 'rgba(31, 162, 166, 0.2)',
     paddingTop: 8,
     paddingBottom: Platform.OS === 'ios' ? 20 : 8,
-    pointerEvents: 'box-none',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: -4 }, // ✅ Yukarı doğru gölge
+        shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 8,
       },
@@ -499,7 +673,7 @@ const styles = StyleSheet.create({
         elevation: 10,
       },
       web: {
-        boxShadow: '0 -4px 8px rgba(0, 0, 0, 0.3)',
+        boxShadow: '0 -4px 20px rgba(0, 0, 0, 0.4), 0 -2px 8px rgba(31, 162, 166, 0.15)',
       },
     }),
   },
@@ -514,20 +688,28 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 8,
-    gap: 4,
+    paddingVertical: 10,
+    position: 'relative', // ✅ activeIndicator için
   },
-  activeTab: {
-    borderTopWidth: 2,
-    borderTopColor: '#059669',
+  // ✅ Active Indicator - BottomNavigation gibi alt çizgi
+  activeIndicator: {
+    position: 'absolute',
+    bottom: 0,
+    left: '20%',
+    right: '20%',
+    height: 2,
+    backgroundColor: '#1FA2A6',
+    borderTopLeftRadius: 2,
+    borderTopRightRadius: 2,
   },
   tabLabel: {
     fontSize: 10,
     fontWeight: '500',
-    color: '#64748B',
+    color: '#64748B', // ✅ BottomNavigation ile aynı
+    marginTop: 2,
   },
   activeTabLabel: {
-    color: '#059669',
+    color: '#1FA2A6', // ✅ Design System: Secondary/Turkuaz
     fontWeight: '600',
   },
   
@@ -556,7 +738,7 @@ const styles = StyleSheet.create({
   },
   retryButton: {
     marginTop: 16,
-    backgroundColor: '#059669',
+    backgroundColor: '#1FA2A6', // ✅ Design System: Secondary/Turkuaz
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,

@@ -40,62 +40,62 @@ const ANALYSIS_FOCUSES: AnalysisFocus[] = [
   {
     id: 'defense',
     title: 'Savunma Odaklı Analiz',
-    bonus: '+20% Defansif Kategoriler',
-    description: 'Sarı kartlar, kırmızı kartlar, isabetli şutlar kategorilerinde bonus puan',
+    bonus: '+20% Defansif',
+    description: 'Sarı/kırmızı kartlar, isabetli şutlar',
     icon: 'shield-outline',
-    color: '#60A5FA', // Mavi
+    color: '#60A5FA',
     borderColor: '#1E40AF',
-    backgroundColor: '#0C1929', // Koyu mavi zemin
+    backgroundColor: '#0C1929',
   },
   {
     id: 'offense',
     title: 'Hücum Odaklı Analiz',
-    bonus: '+20% Ofansif Kategoriler',
-    description: 'Gol tahminleri, ilk gol zamanı, toplam şut kategorilerinde bonus puan',
+    bonus: '+20% Ofansif',
+    description: 'Gol tahminleri, ilk gol, toplam şut',
     icon: 'flash-outline',
-    color: '#F87171', // Kırmızı
+    color: '#F87171',
     borderColor: '#991B1B',
-    backgroundColor: '#1C0A0A', // Koyu kırmızı zemin
+    backgroundColor: '#1C0A0A',
   },
   {
     id: 'midfield',
     title: 'Orta Saha Odaklı Analiz',
-    bonus: '+15% Orta Saha Kategoriler',
-    description: 'Top hakimiyeti, pas sayısı, anahtar pas kategorilerinde bonus puan',
+    bonus: '+15% Orta Saha',
+    description: 'Top hakimiyeti, pas, anahtar pas',
     icon: 'radio-button-on-outline',
-    color: '#C084FC', // Mor
+    color: '#C084FC',
     borderColor: '#7C3AED',
-    backgroundColor: '#1A0A2E', // Koyu mor zemin
+    backgroundColor: '#1A0A2E',
   },
   {
     id: 'physical',
     title: 'Fiziksel Odaklı Analiz',
-    bonus: '+15% Fiziksel Kategoriler',
-    description: 'Maç temposu, koşu mesafesi, sprint sayısı kategorilerinde bonus puan',
+    bonus: '+15% Fiziksel',
+    description: 'Maç temposu, koşu, sprint sayısı',
     icon: 'pulse-outline',
-    color: '#4ADE80', // Yeşil
+    color: '#4ADE80',
     borderColor: '#16A34A',
-    backgroundColor: '#052E16', // Koyu yeşil zemin
+    backgroundColor: '#052E16',
   },
   {
     id: 'tactical',
     title: 'Taktik Odaklı Analiz',
-    bonus: '+25% Taktiksel Kategoriler',
-    description: 'Formasyon tahmini, maç senaryosu, stratejik odak kategorilerinde bonus puan',
+    bonus: '+25% Taktiksel',
+    description: 'Formasyon, maç senaryosu, strateji',
     icon: 'layers-outline',
-    color: '#FBBF24', // Sarı/Turuncu
+    color: '#FBBF24',
     borderColor: '#B45309',
-    backgroundColor: '#1C1708', // Koyu sarı/kahve zemin
+    backgroundColor: '#1C1708',
   },
   {
     id: 'player',
     title: 'Oyuncu Odaklı Analiz',
-    bonus: '+30% Bireysel Kategoriler',
-    description: 'Golcü performansı, asist kralı, maçın oyuncusu kategorilerinde bonus puan',
+    bonus: '+30% Bireysel',
+    description: 'Golcü, asist kralı, maçın oyuncusu',
     icon: 'people-outline',
-    color: '#FB923C', // Turuncu
+    color: '#FB923C',
     borderColor: '#C2410C',
-    backgroundColor: '#1C0F08', // Koyu turuncu zemin
+    backgroundColor: '#1C0F08',
   },
 ];
 
@@ -122,11 +122,9 @@ export const AnalysisFocusModal: React.FC<AnalysisFocusModalProps> = ({
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setSelectedFocus(focus.id);
     
-    // Kısa bir gecikme ile seçimi gönder (animasyon için)
-    setTimeout(() => {
-      onSelectFocus(focus.id);
-      setSelectedFocus(null);
-    }, 200);
+    // ✅ Anında geçiş - gecikme yok
+    onSelectFocus(focus.id);
+    setSelectedFocus(null);
   };
 
   const renderFocusCard = (focus: AnalysisFocus) => {
@@ -146,10 +144,10 @@ export const AnalysisFocusModal: React.FC<AnalysisFocusModalProps> = ({
         onPress={() => handleSelectFocus(focus)}
         activeOpacity={0.85}
       >
-        {/* İkon - Sabit yükseklik */}
+        {/* İkon */}
         <View style={styles.iconRow}>
           <View style={[styles.focusIconContainer, { borderColor: `${focus.color}40` }]}>
-            <Ionicons name={focus.icon} size={24} color={focus.color} />
+            <Ionicons name={focus.icon} size={14} color={focus.color} />
           </View>
         </View>
         
@@ -177,10 +175,13 @@ export const AnalysisFocusModal: React.FC<AnalysisFocusModalProps> = ({
     <Modal
       visible={visible}
       transparent
-      animationType="fade"
+      animationType="none"
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
+        {/* ✅ Grid Pattern Background */}
+        <View style={styles.gridPattern} />
+        
         {/* Kapatma için overlay'e tıklama */}
         <TouchableOpacity style={styles.overlayTouch} onPress={onClose} activeOpacity={1} />
         
@@ -216,10 +217,32 @@ export const AnalysisFocusModal: React.FC<AnalysisFocusModalProps> = ({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.95)', // Koyu lacivert overlay
+    backgroundColor: '#0F2A24', // ✅ Design System: Koyu yeşil taban
     justifyContent: 'center',
     alignItems: 'center',
     padding: SPACING.md,
+  },
+  // ✅ Grid Pattern Background - Dashboard ile aynı
+  gridPattern: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    opacity: 1,
+    zIndex: 0,
+    ...Platform.select({
+      web: {
+        backgroundImage: `
+          linear-gradient(to right, rgba(31, 162, 166, 0.12) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(31, 162, 166, 0.12) 1px, transparent 1px)
+        `,
+        backgroundSize: '40px 40px',
+      },
+      default: {
+        backgroundColor: 'transparent',
+      },
+    }),
   },
   overlayTouch: {
     position: 'absolute',
@@ -227,16 +250,21 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
+    zIndex: 1,
   },
   modalContainer: {
     width: '100%',
     maxWidth: 700,
-    backgroundColor: '#0F1F1B', // Web tasarımındaki koyu yeşil zemin
-    borderRadius: 16,
+    maxHeight: '90%', // ✅ Ekran taşmasını önle
+    backgroundColor: '#0F2A24', // ✅ Design System: Koyu yeşil zemin
+    borderRadius: 20,
     padding: SPACING.lg,
+    borderWidth: 1.5,
+    borderColor: 'rgba(31, 162, 166, 0.25)', // ✅ Turkuaz border
+    zIndex: 2,
     ...Platform.select({
       web: {
-        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 40px rgba(31, 162, 166, 0.1)',
       },
       default: {
         elevation: 20,
@@ -249,17 +277,17 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    marginBottom: SPACING.lg,
+    marginBottom: SPACING.md, // ✅ Daha kompakt
   },
   title: {
-    fontSize: 28,
+    fontSize: 22, // ✅ Daha küçük başlık
     fontWeight: '700',
     color: '#FFFFFF',
     marginBottom: SPACING.xs,
     textAlign: 'center',
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: 12, // ✅ Daha küçük alt başlık
     color: '#94A3B8',
     textAlign: 'center',
   },
@@ -276,9 +304,10 @@ const styles = StyleSheet.create({
     width: width > 600 ? '32%' : '48%',
     borderRadius: 12,
     borderWidth: 1.5,
-    padding: SPACING.md,
-    marginBottom: SPACING.sm,
-    minHeight: width > 600 ? 160 : 140,
+    padding: 10, // ✅ Sabit padding
+    marginBottom: 8,
+    // ✅ Sabit yükseklik YOK - içerik kadar uzasın
+    overflow: 'hidden', // ✅ Taşmayı önle
     ...Platform.select({
       web: {
         cursor: 'pointer',
@@ -292,53 +321,52 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.97 }],
     backgroundColor: 'rgba(31, 162, 166, 0.1)',
   },
-  // Satır stilleri - Yatay hizalama için
+  // Satır stilleri - Esnek yapı
   iconRow: {
-    height: 44,
     marginBottom: 6,
   },
   titleRow: {
-    height: 36, // 2 satır için sabit yükseklik
-    marginBottom: 4,
+    marginBottom: 6,
+    overflow: 'hidden', // ✅ Taşma önle
   },
   badgeRow: {
-    height: 24,
-    marginBottom: 4,
+    marginBottom: 6,
+    overflow: 'hidden', // ✅ Taşma önle
   },
   descriptionRow: {
-    flex: 1,
+    overflow: 'hidden', // ✅ Taşma önle
   },
   focusIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
+    width: 28, // ✅ Daha küçük ikon kutusu
+    height: 28,
+    borderRadius: 6,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
   },
   focusTitle: {
-    fontSize: 13,
+    fontSize: 11, // ✅ Daha küçük başlık
     fontWeight: '700',
     color: '#FFFFFF',
-    lineHeight: 18,
+    lineHeight: 14,
   },
   bonusBadge: {
     alignSelf: 'flex-start',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
     borderWidth: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
   },
   bonusText: {
-    fontSize: 10,
+    fontSize: 9, // ✅ Daha küçük bonus text
     fontWeight: '600',
   },
   focusDescription: {
-    fontSize: 10,
+    fontSize: 9, // ✅ Daha küçük açıklama
     color: '#94A3B8',
-    lineHeight: 14,
+    lineHeight: 12,
   },
   infoBox: {
     flexDirection: 'row',

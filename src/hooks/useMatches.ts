@@ -187,21 +187,53 @@ export function useMatchDetails(matchId: number) {
       try {
         setLoading(true);
         setError(null);
+        
+        logger.info(`🔄 Fetching match details for ${matchId}...`, { matchId }, 'MATCH_DETAILS');
 
-        // Fetch all match data in parallel
-        const [matchRes, statsRes, eventsRes, lineupsRes] = await Promise.all([
-          api.matches.getMatchDetails(matchId),
-          api.matches.getMatchStatistics(matchId),
-          api.matches.getMatchEvents(matchId),
-          api.matches.getMatchLineups(matchId),
+        // ✅ Timeout wrapper for each API call (10 seconds max)
+        const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number = 10000): Promise<T> => {
+          return Promise.race([
+            promise,
+            new Promise<T>((_, reject) => 
+              setTimeout(() => reject(new Error('Request timeout')), timeoutMs)
+            )
+          ]);
+        };
+
+        // ✅ Use Promise.allSettled to handle partial failures
+        const [matchRes, statsRes, eventsRes, lineupsRes] = await Promise.allSettled([
+          withTimeout(api.matches.getMatchDetails(matchId)),
+          withTimeout(api.matches.getMatchStatistics(matchId)),
+          withTimeout(api.matches.getMatchEvents(matchId)),
+          withTimeout(api.matches.getMatchLineups(matchId)),
         ]);
 
-        if (matchRes.success) setMatch(matchRes.data);
-        if (statsRes.success) setStatistics(statsRes.data);
-        if (eventsRes.success) setEvents(eventsRes.data);
-        if (lineupsRes.success) setLineups(lineupsRes.data);
+        // ✅ Process results - partial data is OK
+        if (matchRes.status === 'fulfilled' && matchRes.value.success) {
+          setMatch(matchRes.value.data);
+          logger.info(`✅ Match data loaded`, { matchId }, 'MATCH_DETAILS');
+        } else {
+          logger.warn(`⚠️ Match data failed`, { matchId, reason: matchRes.status === 'rejected' ? matchRes.reason : 'No data' }, 'MATCH_DETAILS');
+        }
+        
+        if (statsRes.status === 'fulfilled' && statsRes.value.success) {
+          setStatistics(statsRes.value.data);
+        }
+        
+        if (eventsRes.status === 'fulfilled' && eventsRes.value.success) {
+          setEvents(eventsRes.value.data);
+        }
+        
+        if (lineupsRes.status === 'fulfilled' && lineupsRes.value.success) {
+          setLineups(lineupsRes.value.data);
+        }
 
-        logger.info(`Fetched details for match ${matchId}`, { matchId }, 'MATCH_DETAILS');
+        // ✅ If match data failed, set error
+        if (matchRes.status === 'rejected' || (matchRes.status === 'fulfilled' && !matchRes.value.success)) {
+          setError('Maç detayları yüklenemedi');
+        }
+
+        logger.info(`📊 Match details fetch complete`, { matchId }, 'MATCH_DETAILS');
       } catch (err: any) {
         logger.error('Error fetching match details', { error: err, matchId }, 'MATCH_DETAILS');
         setError(err.message || 'Failed to fetch match details');
@@ -210,7 +242,12 @@ export function useMatchDetails(matchId: number) {
       }
     };
 
-    fetchMatchDetails();
+    if (matchId && matchId > 0) {
+      fetchMatchDetails();
+    } else {
+      // ✅ matchId 0 ise loading false olsun
+      setLoading(false);
+    }
   }, [matchId]);
 
   return { match, statistics, events, lineups, loading, error };

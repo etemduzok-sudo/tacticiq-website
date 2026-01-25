@@ -495,7 +495,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                     activeOpacity={0.8}
                   >
                     <LinearGradient
-                      colors={['#1E293B', '#0F172A']}
+                      colors={['#1E3A3A', '#0F2A24']}
                       style={styles.playerCardGradient}
                     >
                       {/* Prediction Alert - Top Right */}
@@ -907,7 +907,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                   step={5}
                   value={parseInt(predictions.possession)}
                   onValueChange={(value) => handlePredictionChange('possession', value.toString())}
-                  minimumTrackTintColor="#059669"
+                  minimumTrackTintColor="#1FA2A6"
                   maximumTrackTintColor="rgba(100, 116, 139, 0.3)"
                   thumbTintColor="#FFFFFF"
                 />
@@ -1074,7 +1074,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
             onPress={handleSavePredictions}
           >
             <LinearGradient
-              colors={['#059669', '#047857']}
+              colors={['#1FA2A6', '#047857']}
               style={styles.submitButtonGradient}
             >
               <Text style={styles.submitButtonText}>Tahminleri Kaydet</Text>
@@ -1154,7 +1154,7 @@ const PlayerPredictionModal = ({
         style={styles.playerModalContent}
       >
         <LinearGradient
-          colors={['#1E293B', '#0F172A']}
+          colors={['#1E3A3A', '#0F2A24']}
           style={styles.playerModalHeader}
         >
           <TouchableOpacity onPress={onClose} style={styles.modalCloseButton}>
@@ -1403,7 +1403,7 @@ const PlayerPredictionModal = ({
             activeOpacity={0.8}
           >
             <LinearGradient
-              colors={['#059669', '#047857']}
+              colors={['#1FA2A6', '#047857']}
               style={styles.saveButtonGradient}
             >
               <Text style={styles.saveButtonText}>Kaydet</Text>
@@ -1474,7 +1474,7 @@ const SubstituteModal = ({ visible, players, type, playerName, selectedSubstitut
                 <Ionicons 
                   name={isSelected ? "checkmark-circle" : "add-circle-outline"} 
                   size={24} 
-                  color={isSelected ? "#059669" : "#6B7280"} 
+                  color={isSelected ? "#1FA2A6" : "#6B7280"} 
                 />
               </TouchableOpacity>
             );
@@ -1490,7 +1490,7 @@ const SubstituteModal = ({ visible, players, type, playerName, selectedSubstitut
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: 'transparent', // ✅ Grid pattern görünsün - MatchDetail'den geliyor
   },
   scrollView: {
     flex: 1,
@@ -1591,7 +1591,7 @@ const styles = StyleSheet.create({
     width: 26,
     height: 26,
     borderRadius: 7,
-    backgroundColor: '#059669',
+    backgroundColor: '#1FA2A6',
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 2,
@@ -1745,8 +1745,8 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(100, 116, 139, 0.5)',
   },
   scoreButtonActive: {
-    backgroundColor: '#059669',
-    borderColor: '#059669',
+    backgroundColor: '#1FA2A6',
+    borderColor: '#1FA2A6',
   },
   scoreButtonText: {
     fontSize: 14,
@@ -1764,7 +1764,7 @@ const styles = StyleSheet.create({
   scoreSeparatorText: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#059669',
+    color: '#1FA2A6',
   },
   
   // Button Rows & Grids
@@ -1800,8 +1800,8 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(100, 116, 139, 0.5)',
   },
   optionButtonActive: {
-    backgroundColor: '#059669',
-    borderColor: '#059669',
+    backgroundColor: '#1FA2A6',
+    borderColor: '#1FA2A6',
     transform: [{ scale: 1.05 }],
   },
   optionText: {
@@ -1840,7 +1840,7 @@ const styles = StyleSheet.create({
   possessionTeamValue: {
     fontSize: 28,
     fontWeight: '900',
-    color: '#059669',
+    color: '#1FA2A6',
   },
   possessionVs: {
     fontSize: 18,
@@ -1861,7 +1861,7 @@ const styles = StyleSheet.create({
   },
   sliderLabelLeft: {
     fontSize: 11,
-    color: '#059669',
+    color: '#1FA2A6',
     fontWeight: '600',
   },
   sliderLabelRight: {
@@ -1895,7 +1895,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   playerModalContent: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#1E3A3A', // ✅ Design System
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     maxHeight: height * 0.9,
@@ -1925,7 +1925,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 12,
-    backgroundColor: '#059669',
+    backgroundColor: '#1FA2A6',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
@@ -1952,7 +1952,7 @@ const styles = StyleSheet.create({
   playerRatingSmall: {
     fontSize: 10,
     fontWeight: 'bold',
-    color: '#0F172A',
+    color: '#0F2A24',
   },
   playerDetails: {
     flex: 1,
@@ -1995,8 +1995,8 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(100, 116, 139, 0.5)',
   },
   predictionButtonActive: {
-    backgroundColor: '#059669',
-    borderColor: '#059669',
+    backgroundColor: '#1FA2A6',
+    borderColor: '#1FA2A6',
     transform: [{ scale: 1.02 }],
   },
   predictionButtonText: {
@@ -2030,8 +2030,8 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(100, 116, 139, 0.5)',
   },
   subOptionButtonActive: {
-    backgroundColor: '#059669',
-    borderColor: '#059669',
+    backgroundColor: '#1FA2A6',
+    borderColor: '#1FA2A6',
   },
   subOptionText: {
     fontSize: 12,
@@ -2068,7 +2068,7 @@ const styles = StyleSheet.create({
   },
   changeSubstituteButton: {
     fontSize: 11,
-    color: '#059669',
+    color: '#1FA2A6',
     fontWeight: '600',
   },
   
@@ -2078,8 +2078,8 @@ const styles = StyleSheet.create({
     gap: 12,
     padding: 16,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.1)',
-    backgroundColor: '#1E293B',
+    borderTopColor: 'rgba(31, 162, 166, 0.2)',
+    backgroundColor: '#1E3A3A', // ✅ Design System
   },
   cancelButton: {
     flex: 1,
@@ -2115,7 +2115,7 @@ const styles = StyleSheet.create({
   
   // Substitute Modal
   substituteModalContent: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#1E3A3A', // ✅ Design System
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     maxHeight: height * 0.7,
@@ -2152,7 +2152,7 @@ const styles = StyleSheet.create({
   substituteItemSelected: {
     backgroundColor: 'rgba(5, 150, 105, 0.1)',
     borderLeftWidth: 3,
-    borderLeftColor: '#059669',
+    borderLeftColor: '#1FA2A6',
   },
   substituteItemLeft: {
     flex: 1,
@@ -2164,7 +2164,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 8,
-    backgroundColor: '#059669',
+    backgroundColor: '#1FA2A6',
     alignItems: 'center',
     justifyContent: 'center',
   },

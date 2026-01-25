@@ -79,7 +79,8 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
       onNavigate('match-detail', { 
         id: selectedMatchForAnalysis.fixture.id,
         analysisFocus: focus,
-        initialTab: 'squad' // Kadro sekmesiyle başla
+        initialTab: 'squad', // Kadro sekmesiyle başla
+        matchData: selectedMatchForAnalysis, // ✅ Maç verisi doğrudan geçiriliyor - API çağrısı yok!
       });
     }
     setSelectedMatchForAnalysis(null);

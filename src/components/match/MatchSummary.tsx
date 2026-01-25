@@ -213,7 +213,7 @@ export function MatchSummary({ matchData }: MatchSummaryProps) {
                   </View>
                   <View style={styles.progressBarContainer}>
                     <Animated.View entering={isWeb ? undefined : FadeIn.delay(200)} style={[styles.progressBar, { width: `${predictionResults.successRate}%` }]}>
-                      <LinearGradient colors={['#059669', '#F59E0B']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} />
+                      <LinearGradient colors={['#1FA2A6', '#F59E0B']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} />
                     </Animated.View>
                   </View>
                 </View>
@@ -238,7 +238,7 @@ export function MatchSummary({ matchData }: MatchSummaryProps) {
                 <View style={styles.accuracyGrid}>
                   <View style={styles.accuracyItemCorrect}>
                     <View style={styles.accuracyIconRow}>
-                      <Ionicons name="checkmark-circle" size={14} color="#059669" />
+                      <Ionicons name="checkmark-circle" size={14} color="#1FA2A6" />
                       <Text style={styles.accuracyValueCorrect}>{correctCount}</Text>
                     </View>
                     <Text style={styles.accuracyLabel}>Doğru</Text>
@@ -265,12 +265,12 @@ export function MatchSummary({ matchData }: MatchSummaryProps) {
               <View style={styles.card}>
                 <View style={styles.cardHeader}>
                   <View style={styles.sectionHeader}>
-                    <Ionicons name="analytics" size={20} color="#059669" />
+                    <Ionicons name="analytics" size={20} color="#1FA2A6" />
                     <Text style={styles.sectionTitle}>Tahmin Analizi</Text>
                   </View>
                   {predictionResults.timingBonus.hasBonus && (
                     <View style={styles.bonusBadge}>
-                      <Ionicons name="flash" size={12} color="#059669" />
+                      <Ionicons name="flash" size={12} color="#1FA2A6" />
                       <Text style={styles.bonusBadgeText}>+{predictionResults.timingBonus.bonusPoints} Erken Bonus</Text>
                     </View>
                   )}
@@ -281,7 +281,7 @@ export function MatchSummary({ matchData }: MatchSummaryProps) {
                       <View style={[styles.predictionCard, pred.status === 'correct' ? styles.predictionCardCorrect : styles.predictionCardWrong]}>
                         <View style={styles.predictionContent}>
                           <View style={styles.predictionHeader}>
-                            <Ionicons name={pred.status === 'correct' ? 'checkmark-circle' : 'close-circle'} size={18} color={pred.status === 'correct' ? '#059669' : '#64748B'} />
+                            <Ionicons name={pred.status === 'correct' ? 'checkmark-circle' : 'close-circle'} size={18} color={pred.status === 'correct' ? '#1FA2A6' : '#64748B'} />
                             <Text style={styles.predictionName}>{pred.name}</Text>
                           </View>
                           <View style={styles.predictionDetails}>
@@ -313,7 +313,7 @@ export function MatchSummary({ matchData }: MatchSummaryProps) {
             <Animated.View entering={isWeb ? undefined : FadeInDown.delay(200)} style={styles.section}>
               <View style={styles.card}>
                 <View style={styles.sectionHeader}>
-                  <Ionicons name="people" size={20} color="#059669" />
+                  <Ionicons name="people" size={20} color="#1FA2A6" />
                   <Text style={styles.sectionTitle}>Kullanıcı Karşılaştırması</Text>
                 </View>
                 <View style={styles.comparisonCard}>
@@ -348,7 +348,7 @@ export function MatchSummary({ matchData }: MatchSummaryProps) {
                           <Text style={styles.distributionRange}>{dist.range}</Text>
                           <View style={styles.distributionBarContainer}>
                             <Animated.View entering={isWeb ? undefined : FadeIn.delay(300 + index * 50)} style={[styles.distributionBar, { width: `${widthPercent}%` }, isUserRange && styles.distributionBarUser]}>
-                              {isUserRange && <LinearGradient colors={['#059669', '#047857']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} />}
+                              {isUserRange && <LinearGradient colors={['#1FA2A6', '#047857']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} />}
                               {isUserRange && <Text style={styles.distributionUserLabel}>SEN</Text>}
                             </Animated.View>
                           </View>
@@ -384,7 +384,7 @@ export function MatchSummary({ matchData }: MatchSummaryProps) {
             <Animated.View entering={isWeb ? undefined : FadeInDown.delay(400)} style={styles.section}>
               <View style={styles.card}>
                 <View style={styles.sectionHeader}>
-                  <Ionicons name="trending-up" size={20} color="#059669" />
+                  <Ionicons name="trending-up" size={20} color="#1FA2A6" />
                   <Text style={styles.sectionTitle}>Geçmiş Performans</Text>
                 </View>
                 <View style={styles.performanceComparison}>
@@ -436,7 +436,7 @@ export function MatchSummary({ matchData }: MatchSummaryProps) {
         ) : (
           <>
             <Animated.View entering={isWeb ? undefined : FadeIn} style={styles.section}>
-              <LinearGradient colors={['#059669', '#047857']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.heroCard}>
+              <LinearGradient colors={['#1FA2A6', '#047857']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.heroCard}>
                 <View style={styles.heroHeader}>
                   <View>
                     <Text style={styles.heroLeague}>{teamStandings.league}</Text>
@@ -531,7 +531,7 @@ export function MatchSummary({ matchData }: MatchSummaryProps) {
             <Animated.View entering={isWeb ? undefined : FadeInDown.delay(200)} style={styles.section}>
               <View style={styles.card}>
                 <View style={styles.sectionHeader}>
-                  <Ionicons name="bar-chart" size={20} color="#059669" />
+                  <Ionicons name="bar-chart" size={20} color="#1FA2A6" />
                   <Text style={styles.sectionTitle}>Form Durumu</Text>
                 </View>
                 <View style={styles.formContainer}>
@@ -557,13 +557,13 @@ export function MatchSummary({ matchData }: MatchSummaryProps) {
             <Animated.View entering={isWeb ? undefined : FadeInDown.delay(300)} style={styles.section}>
               <View style={styles.card}>
                 <View style={styles.sectionHeader}>
-                  <Ionicons name="home" size={20} color="#059669" />
+                  <Ionicons name="home" size={20} color="#1FA2A6" />
                   <Text style={styles.sectionTitle}>İç Saha / Dış Saha</Text>
                 </View>
                 <View style={styles.venueStatsContainer}>
                   <View style={styles.venueCard}>
                     <View style={styles.venueHeader}>
-                      <Ionicons name="home" size={16} color="#059669" />
+                      <Ionicons name="home" size={16} color="#1FA2A6" />
                       <Text style={styles.venueTitle}>İç Saha</Text>
                     </View>
                     <View style={styles.venueStats}>
@@ -620,17 +620,17 @@ export function MatchSummary({ matchData }: MatchSummaryProps) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0F172A' },
-  tabContainer: { flexDirection: 'row', backgroundColor: '#1E293B', borderBottomWidth: 1, borderBottomColor: 'rgba(100, 116, 139, 0.3)' },
+  container: { flex: 1, backgroundColor: 'transparent' }, // ✅ Grid pattern görünsün
+  tabContainer: { flexDirection: 'row', backgroundColor: '#1E3A3A', borderBottomWidth: 1, borderBottomColor: 'rgba(31, 162, 166, 0.3)' }, // ✅ Design System
   tab: { flex: 1, height: 50, justifyContent: 'center', alignItems: 'center', position: 'relative' },
   tabActive: {},
   tabText: { fontSize: 10, fontWeight: 'bold', color: '#94A3B8' },
-  tabTextActive: { color: '#059669' },
-  tabIndicator: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 2, backgroundColor: '#059669' },
+  tabTextActive: { color: '#1FA2A6' },
+  tabIndicator: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 2, backgroundColor: '#1FA2A6' },
   content: { flex: 1 },
   contentContainer: { padding: 16, paddingBottom: 100 },
   section: { marginBottom: 16 },
-  card: { backgroundColor: '#1E293B', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: 'rgba(100, 116, 139, 0.3)' },
+  card: { backgroundColor: '#1E3A3A', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: 'rgba(100, 116, 139, 0.3)' },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
   sectionTitle: { fontSize: 16, fontWeight: 'bold', color: '#F1F5F9' },
   pointsCard: { borderRadius: 12, padding: 16, borderWidth: 2, borderColor: '#F59E0B' },
@@ -641,7 +641,7 @@ const styles = StyleSheet.create({
   pointsValue: { fontSize: 32, fontWeight: 'bold', color: '#F59E0B' },
   pointsMax: { fontSize: 16, color: '#64748B' },
   successContainer: { alignItems: 'flex-end' },
-  successValue: { fontSize: 24, fontWeight: 'bold', color: '#059669' },
+  successValue: { fontSize: 24, fontWeight: 'bold', color: '#1FA2A6' },
   progressBarContainer: { height: 8, backgroundColor: '#E2E8F0', borderRadius: 4, overflow: 'hidden' },
   progressBar: { height: '100%' },
   breakdownGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
@@ -660,7 +660,7 @@ const styles = StyleSheet.create({
   emptyCircle: { width: 14, height: 14, borderRadius: 7, backgroundColor: 'rgba(100, 116, 139, 0.4)' },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   bonusBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(5, 150, 105, 0.1)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
-  bonusBadgeText: { fontSize: 9, fontWeight: 'bold', color: '#059669' },
+  bonusBadgeText: { fontSize: 9, fontWeight: 'bold', color: '#1FA2A6' },
   predictionsList: { gap: 8 },
   predictionCard: { borderRadius: 8, padding: 12, borderWidth: 1, flexDirection: 'row', gap: 12 },
   predictionCardCorrect: { backgroundColor: 'rgba(5, 150, 105, 0.2)', borderColor: 'rgba(5, 150, 105, 0.4)' },
@@ -677,7 +677,7 @@ const styles = StyleSheet.create({
   predictionPointsCorrect: { color: '#F59E0B' },
   predictionPointsWrong: { color: '#64748B' },
   showMoreButton: { marginTop: 12, paddingVertical: 8, borderRadius: 8, alignItems: 'center' },
-  showMoreText: { fontSize: 10, fontWeight: 'bold', color: '#059669', textTransform: 'uppercase', letterSpacing: 0.5 },
+  showMoreText: { fontSize: 10, fontWeight: 'bold', color: '#1FA2A6', textTransform: 'uppercase', letterSpacing: 0.5 },
   timingInfo: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#E2E8F0' },
   timingText: { fontSize: 10, color: '#64748B' },
   timingBold: { fontWeight: '600' },
@@ -710,7 +710,7 @@ const styles = StyleSheet.create({
   performanceValue: { fontSize: 14, fontWeight: 'bold', color: '#F1F5F9' },
   performanceValueRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   performanceDiff: { fontSize: 12, fontWeight: 'bold' },
-  performanceDiffPositive: { color: '#059669' },
+  performanceDiffPositive: { color: '#1FA2A6' },
   performanceDiffNegative: { color: '#EF4444' },
   recentMatches: { gap: 6 },
   recentMatchRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'rgba(71, 85, 105, 0.3)', borderRadius: 8, padding: 8 },
@@ -767,11 +767,11 @@ const styles = StyleSheet.create({
   formLabel: { fontSize: 12, fontWeight: '600', color: '#64748B', marginBottom: 8 },
   formBadges: { flexDirection: 'row', gap: 6 },
   formBadge: { width: 40, height: 40, borderRadius: 8, justifyContent: 'center', alignItems: 'center', borderWidth: 1 },
-  formBadgeWin: { backgroundColor: 'rgba(5, 150, 105, 0.1)', borderColor: '#059669' },
+  formBadgeWin: { backgroundColor: 'rgba(5, 150, 105, 0.1)', borderColor: '#1FA2A6' },
   formBadgeDraw: { backgroundColor: 'rgba(148, 163, 184, 0.1)', borderColor: '#94A3B8' },
   formBadgeLoss: { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: '#EF4444' },
   formBadgeText: { fontSize: 14, fontWeight: 'bold' },
-  formBadgeTextWin: { color: '#059669' },
+  formBadgeTextWin: { color: '#1FA2A6' },
   formBadgeTextDraw: { color: '#94A3B8' },
   formBadgeTextLoss: { color: '#EF4444' },
   streakCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: 'rgba(245, 158, 11, 0.2)', borderRadius: 8, padding: 12, borderWidth: 1, borderColor: 'rgba(245, 158, 11, 0.4)' },

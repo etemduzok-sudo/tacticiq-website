@@ -50,7 +50,7 @@ const coachCategories = [
     title: 'Sonuç & Beklenti Yönetimi', 
     weight: 20,
     description: 'Maç sonucu, favori-underdog farkı, skor yönetimi',
-    color: '#059669'
+    color: '#1FA2A6'
   },
   { 
     id: 2,
@@ -345,7 +345,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
                       cx="50"
                       cy="50"
                       r="40"
-                      stroke="#059669"
+                      stroke="#1FA2A6"
                       strokeWidth="8"
                       fill="none"
                       strokeDasharray={`${(userScore / 10) * 251.2} 251.2`}
@@ -512,7 +512,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
                 {predictionReport && predictionReport.clusterScores.length > 0 && (
                   <Animated.View entering={FadeIn.delay(300)} style={styles.clusterBreakdownCard}>
                     <View style={styles.clusterBreakdownHeader}>
-                      <Ionicons name="bar-chart" size={20} color="#059669" />
+                      <Ionicons name="bar-chart" size={20} color="#1FA2A6" />
                       <Text style={styles.clusterBreakdownTitle}>Küme Bazında Puan Dağılımı</Text>
                     </View>
 
@@ -688,7 +688,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
           onPress={handleSaveRatings}
         >
           <LinearGradient
-            colors={['#059669', '#047857']}
+            colors={['#1FA2A6', '#047857']}
             style={styles.submitGradient}
           >
             <Text style={styles.submitText}>Değerlendirmeyi Kaydet</Text>
@@ -818,7 +818,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: 'transparent', // ✅ Grid pattern görünsün - MatchDetail'den geliyor
   },
   scrollView: {
     flex: 1,
@@ -884,7 +884,7 @@ const styles = StyleSheet.create({
   scoreText: {
     fontSize: 32,
     fontWeight: '900',
-    color: '#059669',
+    color: '#1FA2A6',
   },
   scoreTextCommunity: {
     fontSize: 32,
@@ -975,7 +975,7 @@ const styles = StyleSheet.create({
   categoryWeightText: {
     fontSize: 12,
     fontWeight: 'bold',
-    color: '#059669',
+    color: '#1FA2A6',
   },
 
   // Rating Stars
@@ -1034,7 +1034,7 @@ const styles = StyleSheet.create({
   comparisonValueUser: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#059669',
+    color: '#1FA2A6',
   },
   comparisonValueCommunity: {
     fontSize: 16,
@@ -1217,7 +1217,7 @@ const styles = StyleSheet.create({
   clusterStatValue: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#059669',
+    color: '#1FA2A6',
   },
   focusedStatsCard: {
     backgroundColor: 'rgba(245, 158, 11, 0.1)',
@@ -1248,7 +1248,7 @@ const styles = StyleSheet.create({
   focusedStatValue: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#059669',
+    color: '#1FA2A6',
     marginBottom: 4,
   },
   focusedStatValueWrong: {
@@ -1324,7 +1324,7 @@ const styles = StyleSheet.create({
   clusterRowPointsValue: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#059669',
+    color: '#1FA2A6',
   },
   clusterRowPointsLabel: {
     fontSize: 10,
@@ -1367,7 +1367,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   badgePopupContainer: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#1E3A3A',
     borderRadius: 32,
     padding: 40,
     width: '90%',
