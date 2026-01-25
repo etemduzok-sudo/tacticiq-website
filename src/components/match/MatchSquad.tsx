@@ -1584,10 +1584,18 @@ const PlayerModal = ({ visible, players, selectedPlayers, positionLabel, onSelec
               keyExtractor={(item) => item.id.toString()}
               renderItem={({ item }) => {
                 const eligible = isPlayerEligible(item);
+                // Border colors: Elite = Gold, GK = Blue, Others = Gray
+                const getBorderColor = () => {
+                  if (!eligible) return '#4B5563';
+                  if (item.rating >= 85) return '#C9A44C'; // Gold for elite
+                  if (item.position === 'GK') return '#3B82F6'; // Blue for GK
+                  return '#4B5563'; // Gray for others
+                };
                 return (
                   <TouchableOpacity
                     style={[
                       styles.playerItem,
+                      { borderLeftWidth: 3, borderLeftColor: getBorderColor() },
                       !eligible && styles.playerItemLocked
                     ]}
                     onPress={() => eligible ? setPreviewPlayer(item) : null}
