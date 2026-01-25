@@ -916,78 +916,45 @@ export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSqu
   // Main Squad Screen (Formation Selected)
   return (
     <View style={styles.container}>
-      {/* ✅ Mode Indicator - Attack/Defense Toggle */}
-      <View style={styles.modeIndicatorContainer}>
-        <TouchableOpacity
-          style={[
-            styles.modeIndicatorTab,
-            editingMode === 'attack' && styles.modeIndicatorTabActive,
-          ]}
-          onPress={() => attackFormation && setEditingMode('attack')}
-          activeOpacity={0.7}
-        >
-          <Ionicons 
-            name="flash" 
-            size={16} 
-            color={editingMode === 'attack' ? '#FFFFFF' : '#64748B'} 
-          />
+      {/* ✅ Progress Indicator - Shows current phase */}
+      <View style={styles.progressIndicatorContainer}>
+        <View style={styles.progressStep}>
+          <View style={[
+            styles.progressStepCircle,
+            attackFormation && styles.progressStepCircleActive,
+            Object.keys(attackPlayers).filter(k => attackPlayers[parseInt(k)]).length === 11 && styles.progressStepCircleComplete,
+          ]}>
+            {Object.keys(attackPlayers).filter(k => attackPlayers[parseInt(k)]).length === 11 ? (
+              <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+            ) : (
+              <Text style={styles.progressStepNumber}>1</Text>
+            )}
+          </View>
           <Text style={[
-            styles.modeIndicatorText,
-            editingMode === 'attack' && styles.modeIndicatorTextActive,
-          ]}>Atak</Text>
-          {attackFormation && (
-            <View style={[
-              styles.modeIndicatorBadge,
-              { backgroundColor: editingMode === 'attack' ? '#10B981' : '#475569' }
-            ]}>
-              <Text style={styles.modeIndicatorBadgeText}>
-                {Object.keys(attackPlayers).filter(k => attackPlayers[parseInt(k)]).length}/11
-              </Text>
-            </View>
-          )}
-        </TouchableOpacity>
+            styles.progressStepText,
+            editingMode === 'attack' && styles.progressStepTextActive,
+          ]}>Kadro ({Object.keys(attackPlayers).filter(k => attackPlayers[parseInt(k)]).length}/11)</Text>
+        </View>
         
-        <TouchableOpacity
-          style={[
-            styles.modeIndicatorTab,
-            editingMode === 'defense' && styles.modeIndicatorTabActiveDefense,
-          ]}
-          onPress={() => {
-            if (defenseFormation) {
-              setEditingMode('defense');
-            } else if (attackFormation && Object.keys(attackPlayers).filter(k => attackPlayers[parseInt(k)]).length === 11) {
-              setShowDefenseConfirmModal(true);
-            }
-          }}
-          activeOpacity={0.7}
-          disabled={!attackFormation}
-        >
-          <Ionicons 
-            name="shield" 
-            size={16} 
-            color={editingMode === 'defense' ? '#FFFFFF' : (attackFormation ? '#64748B' : '#334155')} 
-          />
+        <View style={styles.progressLine} />
+        
+        <View style={styles.progressStep}>
+          <View style={[
+            styles.progressStepCircle,
+            defenseFormation && styles.progressStepCircleActiveDefense,
+            Object.keys(defensePlayers).filter(k => defensePlayers[parseInt(k)]).length === 11 && styles.progressStepCircleComplete,
+          ]}>
+            {Object.keys(defensePlayers).filter(k => defensePlayers[parseInt(k)]).length === 11 ? (
+              <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+            ) : (
+              <Text style={styles.progressStepNumber}>2</Text>
+            )}
+          </View>
           <Text style={[
-            styles.modeIndicatorText,
-            editingMode === 'defense' && styles.modeIndicatorTextActive,
-            !attackFormation && styles.modeIndicatorTextDisabled,
-          ]}>Defans</Text>
-          {defenseFormation && (
-            <View style={[
-              styles.modeIndicatorBadge,
-              { backgroundColor: editingMode === 'defense' ? '#3B82F6' : '#475569' }
-            ]}>
-              <Text style={styles.modeIndicatorBadgeText}>
-                {Object.keys(defensePlayers).filter(k => defensePlayers[parseInt(k)]).length}/11
-              </Text>
-            </View>
-          )}
-          {!defenseFormation && attackFormation && (
-            <View style={styles.modeIndicatorAddBadge}>
-              <Ionicons name="add" size={12} color="#94A3B8" />
-            </View>
-          )}
-        </TouchableOpacity>
+            styles.progressStepText,
+            editingMode === 'defense' && styles.progressStepTextActive,
+          ]}>Defans {defenseFormation ? `(${Object.keys(defensePlayers).filter(k => defensePlayers[parseInt(k)]).length}/11)` : '(Opsiyonel)'}</Text>
+        </View>
       </View>
 
       <View style={styles.mainContainer}>
@@ -1759,63 +1726,66 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent', // ✅ Grid pattern görünsün - MatchDetail'den geliyor
   },
   
-  // ✅ Mode Indicator Styles
-  modeIndicatorContainer: {
+  // ✅ Progress Indicator Styles
+  progressIndicatorContainer: {
     flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     marginHorizontal: 16,
     marginTop: 8,
     marginBottom: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
     backgroundColor: 'rgba(15, 42, 36, 0.8)',
     borderRadius: 12,
-    padding: 4,
     borderWidth: 1,
     borderColor: 'rgba(31, 162, 166, 0.2)',
   },
-  modeIndicatorTab: {
-    flex: 1,
+  progressStep: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
     gap: 6,
-    paddingVertical: 10,
-    borderRadius: 8,
   },
-  modeIndicatorTabActive: {
+  progressStepCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(100, 116, 139, 0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(100, 116, 139, 0.5)',
+  },
+  progressStepCircleActive: {
     backgroundColor: 'rgba(31, 162, 166, 0.3)',
+    borderColor: '#1FA2A6',
   },
-  modeIndicatorTabActiveDefense: {
+  progressStepCircleActiveDefense: {
     backgroundColor: 'rgba(59, 130, 246, 0.3)',
+    borderColor: '#3B82F6',
   },
-  modeIndicatorText: {
-    fontSize: 13,
+  progressStepCircleComplete: {
+    backgroundColor: '#10B981',
+    borderColor: '#10B981',
+  },
+  progressStepNumber: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#94A3B8',
+  },
+  progressStepText: {
+    fontSize: 12,
     fontWeight: '600',
     color: '#64748B',
   },
-  modeIndicatorTextActive: {
+  progressStepTextActive: {
     color: '#FFFFFF',
   },
-  modeIndicatorTextDisabled: {
-    color: '#334155',
-  },
-  modeIndicatorBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-    marginLeft: 4,
-  },
-  modeIndicatorBadgeText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  modeIndicatorAddBadge: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: 'rgba(148, 163, 184, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 4,
+  progressLine: {
+    width: 24,
+    height: 2,
+    backgroundColor: 'rgba(100, 116, 139, 0.3)',
+    marginHorizontal: 8,
   },
   
   // Empty State
