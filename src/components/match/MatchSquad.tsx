@@ -2028,10 +2028,10 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   
-  // Player Slot
+  // Player Slot - Centered on position
   playerSlot: {
     position: 'absolute',
-    transform: [{ translateX: -36 }, { translateY: -42 }],
+    transform: [{ translateX: -32 }, { translateY: -38 }], // Half of card size
     zIndex: 1,
   },
   playerCardWrapper: {
@@ -2039,11 +2039,11 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   
-  // Player Card - Optimized size (72x84)
+  // Player Card - Reduced size to prevent overflow (64x76)
   playerCard: {
-    width: 72,
-    height: 84,
-    borderRadius: 10,
+    width: 64,
+    height: 76,
+    borderRadius: 8,
     overflow: 'hidden',
     ...Platform.select({
       ios: {
@@ -2062,22 +2062,22 @@ const styles = StyleSheet.create({
   },
   playerCardGradient: {
     flex: 1,
-    padding: 6,
+    padding: 4,
     alignItems: 'center',
     justifyContent: 'flex-start',
-    gap: 2,
+    gap: 1,
     borderWidth: 1,
     borderColor: 'rgba(5, 150, 105, 0.3)',
   },
   removeButton: {
     position: 'absolute',
-    top: -6,
-    right: -6,
+    top: -5,
+    right: -5,
     zIndex: 100,
     backgroundColor: '#EF4444',
-    borderRadius: 12,
-    width: 24,
-    height: 24,
+    borderRadius: 10,
+    width: 20,
+    height: 20,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
@@ -2098,18 +2098,18 @@ const styles = StyleSheet.create({
     }),
   },
   ratingBadge: {
-    width: 26,
-    height: 26,
-    borderRadius: 7,
+    width: 22,
+    height: 22,
+    borderRadius: 6,
     backgroundColor: '#1FA2A6', // ✅ Design System
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 2,
-    borderWidth: 1.5,
+    marginTop: 1,
+    borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   ratingText: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '900',
     color: '#FFFFFF',
   },
@@ -2133,20 +2133,20 @@ const styles = StyleSheet.create({
     zIndex: 50,
   },
   playerName: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '500',
     color: '#FFFFFF',
     textAlign: 'center',
-    marginTop: 4,
+    marginTop: 2,
     paddingHorizontal: 2,
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
   },
   playerPosition: {
-    fontSize: 9,
+    fontSize: 8,
     color: '#9CA3AF',
     textAlign: 'center',
     fontWeight: '600',
-    marginTop: 2,
+    marginTop: 1,
   },
   formGlow: {
     position: 'absolute',
@@ -2170,9 +2170,9 @@ const styles = StyleSheet.create({
   
   // Empty Slot
   emptySlot: {
-    width: 72,
-    height: 84,
-    borderRadius: 10,
+    width: 64,
+    height: 76,
+    borderRadius: 8,
     borderWidth: 2,
     borderColor: 'rgba(255, 255, 255, 0.3)',
     borderStyle: 'dashed',
@@ -2184,7 +2184,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptySlotText: {
-    fontSize: 9,
+    fontSize: 8,
     color: 'rgba(255, 255, 255, 0.7)',
     marginTop: 4,
   },
