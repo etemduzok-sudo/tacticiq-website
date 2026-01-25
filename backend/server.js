@@ -122,6 +122,7 @@ const authRouter = require('./routes/auth');
 const predictionsRouter = require('./routes/predictions');
 const scoringRouter = require('./routes/scoring');
 const staticTeamsRouter = require('./routes/staticTeams');
+const squadPredictionsRouter = require('./routes/squadPredictions'); // 📋 Kadro tahminleri
 
 app.use('/api/matches', matchesRouter);
 app.use('/api/leagues', leaguesRouter);
@@ -134,6 +135,7 @@ app.use('/api/email', require('./routes/email'));
 app.use('/api/static-teams', staticTeamsRouter); // ⚡ Hızlı statik takımlar
 app.use('/api/timeline', require('./routes/timeline')); // 📊 Maç akışı
 app.use('/api/leaderboard/snapshots', require('./routes/leaderboardSnapshots')); // 📸 Sıralama geçmişi
+app.use('/api/squad-predictions', squadPredictionsRouter); // 📋 Kadro tahminleri ve istatistikler
 
 // Health check
 app.get('/health', (req, res) => {

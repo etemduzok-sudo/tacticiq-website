@@ -484,6 +484,112 @@ export const legalDocumentsApi = {
   },
 };
 
+// ====================
+// SQUAD PREDICTIONS API
+// ====================
+export const squadPredictionsApi = {
+  /**
+   * Kadro tahmini kaydet
+   */
+  saveSquadPrediction: async (data: {
+    matchId: number;
+    attackFormation: string;
+    attackPlayers: Record<number, any>;
+    defenseFormation: string;
+    defensePlayers: Record<number, any>;
+    analysisFocus?: string;
+  }, authToken: string): Promise<{ success: boolean; data?: any; message?: string }> => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/squad-predictions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
+        },
+        body: JSON.stringify(data),
+      });
+      const result = await response.json();
+      return result;
+    } catch (error: any) {
+      logger.error('Save squad prediction error', { error }, 'SQUAD_API');
+      return { success: false, message: error.message || 'Kadro kaydedilemedi' };
+    }
+  },
+
+  /**
+   * Kullanıcının maç için kadro tahmini
+   */
+  getUserSquadPrediction: async (matchId: number, authToken: string): Promise<{ success: boolean; data?: any }> => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/squad-predictions/match/${matchId}`, {
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+        },
+      });
+      const result = await response.json();
+      return result;
+    } catch (error: any) {
+      logger.error('Get squad prediction error', { error, matchId }, 'SQUAD_API');
+      return { success: false };
+    }
+  },
+
+  /**
+   * Maç istatistikleri ve karşılaştırma
+   */
+  getMatchStats: async (matchId: number, authToken?: string): Promise<{
+    success: boolean;
+    data?: {
+      summary: {
+        total_predictions: number;
+        top_attack_formation: string | null;
+        top_attack_formation_percentage: number;
+        top_defense_formation: string | null;
+        top_defense_formation_percentage: number;
+      };
+      formationStats: any[];
+      userPrediction: any;
+      userComparison: {
+        attackFormationMatches: boolean;
+        attackFormationPopularity: number;
+        defenseFormationMatches: boolean;
+        defenseFormationPopularity: number;
+        overallCompatibility: 'high' | 'medium' | 'low';
+      } | null;
+    };
+  }> => {
+    try {
+      const headers: Record<string, string> = {};
+      if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`;
+      }
+      const response = await fetch(`${API_BASE_URL}/squad-predictions/stats/${matchId}`, { headers });
+      const result = await response.json();
+      return result;
+    } catch (error: any) {
+      logger.error('Get match stats error', { error, matchId }, 'SQUAD_API');
+      return { success: false };
+    }
+  },
+
+  /**
+   * En popüler formasyonlar
+   */
+  getPopularFormations: async (type: 'attack' | 'defense' = 'attack'): Promise<{
+    success: boolean;
+    data?: Array<{ formation: string; count: number }>;
+  }> => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/squad-predictions/popular-formations?type=${type}`);
+      const result = await response.json();
+      return result;
+    } catch (error: any) {
+      logger.error('Get popular formations error', { error, type }, 'SQUAD_API');
+      return { success: false };
+    }
+  },
+};
+
 // Export all
 export default {
   matches: matchesApi,
@@ -491,6 +597,7 @@ export default {
   teams: teamsApi,
   players: playersApi,
   legalDocuments: legalDocumentsApi,
+  squadPredictions: squadPredictionsApi,
   utils: {
     getTodayDate,
     getDateRange,

@@ -13,6 +13,8 @@ import {
   Platform,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { supabase } from '../services/supabaseClient';
+import { squadPredictionsApi } from '../services/api';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { 
@@ -838,13 +840,13 @@ export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSqu
     }
     
     try {
-      // Save squad data to AsyncStorage
+      // Save squad data to AsyncStorage (local backup)
       const squadData = {
         matchId: matchData.id,
         attackFormation: attackFormation,
-        defenseFormation: defenseFormation,
+        defenseFormation: defenseFormation || attackFormation, // If no defense, use attack
         attackPlayers: attackPlayers,
-        defensePlayers: defensePlayers,
+        defensePlayers: defenseFormation ? defensePlayers : attackPlayers, // If no defense, use attack players
         playerPredictions: playerPredictions,
         timestamp: new Date().toISOString(),
       };
@@ -854,11 +856,36 @@ export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSqu
         JSON.stringify(squadData)
       );
       
-      console.log('✅ Squad saved successfully!', squadData);
+      console.log('✅ Squad saved to local storage!', squadData);
+      
+      // ✅ Save to backend for statistics tracking
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const authToken = sessionData?.session?.access_token;
+        
+        if (authToken) {
+          const result = await squadPredictionsApi.saveSquadPrediction({
+            matchId: matchData.id,
+            attackFormation: attackFormation!,
+            attackPlayers: attackPlayers,
+            defenseFormation: defenseFormation || attackFormation!,
+            defensePlayers: defenseFormation ? defensePlayers : attackPlayers,
+            analysisFocus: matchData.analysisFocus || 'balanced',
+          }, authToken);
+          
+          if (result.success) {
+            console.log('✅ Squad saved to backend for statistics!');
+          } else {
+            console.warn('⚠️ Backend save failed:', result.message);
+          }
+        }
+      } catch (backendError) {
+        console.warn('⚠️ Backend save failed (continuing with local):', backendError);
+      }
       
       const message = defenseFormation 
         ? 'Atak ve defans kadronuz başarıyla kaydedildi.'
-        : 'Atak kadronuz başarıyla kaydedildi.';
+        : 'Kadronuz başarıyla kaydedildi.';
       
       Alert.alert(
         'Kadro Kaydedildi! 🎉',
