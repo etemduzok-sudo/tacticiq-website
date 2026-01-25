@@ -916,47 +916,6 @@ export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSqu
   // Main Squad Screen (Formation Selected)
   return (
     <View style={styles.container}>
-      {/* ✅ Progress Indicator - Shows current phase */}
-      <View style={styles.progressIndicatorContainer}>
-        <View style={styles.progressStep}>
-          <View style={[
-            styles.progressStepCircle,
-            attackFormation && styles.progressStepCircleActive,
-            Object.keys(attackPlayers).filter(k => attackPlayers[parseInt(k)]).length === 11 && styles.progressStepCircleComplete,
-          ]}>
-            {Object.keys(attackPlayers).filter(k => attackPlayers[parseInt(k)]).length === 11 ? (
-              <Ionicons name="checkmark" size={14} color="#FFFFFF" />
-            ) : (
-              <Text style={styles.progressStepNumber}>1</Text>
-            )}
-          </View>
-          <Text style={[
-            styles.progressStepText,
-            editingMode === 'attack' && styles.progressStepTextActive,
-          ]}>Kadro ({Object.keys(attackPlayers).filter(k => attackPlayers[parseInt(k)]).length}/11)</Text>
-        </View>
-        
-        <View style={styles.progressLine} />
-        
-        <View style={styles.progressStep}>
-          <View style={[
-            styles.progressStepCircle,
-            defenseFormation && styles.progressStepCircleActiveDefense,
-            Object.keys(defensePlayers).filter(k => defensePlayers[parseInt(k)]).length === 11 && styles.progressStepCircleComplete,
-          ]}>
-            {Object.keys(defensePlayers).filter(k => defensePlayers[parseInt(k)]).length === 11 ? (
-              <Ionicons name="checkmark" size={14} color="#FFFFFF" />
-            ) : (
-              <Text style={styles.progressStepNumber}>2</Text>
-            )}
-          </View>
-          <Text style={[
-            styles.progressStepText,
-            editingMode === 'defense' && styles.progressStepTextActive,
-          ]}>Defans {defenseFormation ? `(${Object.keys(defensePlayers).filter(k => defensePlayers[parseInt(k)]).length}/11)` : '(Opsiyonel)'}</Text>
-        </View>
-      </View>
-
       <View style={styles.mainContainer}>
         {/* Football Field with Players */}
         <FootballField style={styles.mainField}>
@@ -1726,67 +1685,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent', // ✅ Grid pattern görünsün - MatchDetail'den geliyor
   },
   
-  // ✅ Progress Indicator Styles
-  progressIndicatorContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginHorizontal: 16,
-    marginTop: 8,
-    marginBottom: 4,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    backgroundColor: 'rgba(15, 42, 36, 0.8)',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(31, 162, 166, 0.2)',
-  },
-  progressStep: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  progressStepCircle: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: 'rgba(100, 116, 139, 0.3)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(100, 116, 139, 0.5)',
-  },
-  progressStepCircleActive: {
-    backgroundColor: 'rgba(31, 162, 166, 0.3)',
-    borderColor: '#1FA2A6',
-  },
-  progressStepCircleActiveDefense: {
-    backgroundColor: 'rgba(59, 130, 246, 0.3)',
-    borderColor: '#3B82F6',
-  },
-  progressStepCircleComplete: {
-    backgroundColor: '#10B981',
-    borderColor: '#10B981',
-  },
-  progressStepNumber: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#94A3B8',
-  },
-  progressStepText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#64748B',
-  },
-  progressStepTextActive: {
-    color: '#FFFFFF',
-  },
-  progressLine: {
-    width: 24,
-    height: 2,
-    backgroundColor: 'rgba(100, 116, 139, 0.3)',
-    marginHorizontal: 8,
-  },
   
   // Empty State
   emptyStateContainer: {
