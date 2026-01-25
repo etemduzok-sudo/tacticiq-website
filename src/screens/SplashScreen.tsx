@@ -48,6 +48,27 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
         try {
           console.log('🔍 [Splash] Web auth check başlıyor...');
           
+          // ✅ LOGOUT kontrolü - URL'de logout parametresi varsa session kontrolünü atla
+          const urlParams = new URLSearchParams(window.location.search);
+          const isLogout = urlParams.has('logout');
+          
+          if (isLogout) {
+            console.log('🚪 [Splash] Logout detected, clearing all storage and going to onboarding...');
+            // Tüm storage'ı temizle
+            window.localStorage.clear();
+            window.sessionStorage?.clear();
+            try {
+              await AsyncStorage.clear();
+            } catch (e) {
+              console.warn('⚠️ [Splash] AsyncStorage clear error:', e);
+            }
+            // URL'den logout parametresini temizle (tarih için)
+            window.history.replaceState({}, '', '/');
+            console.log('✅ [Splash] Storage cleared, going to login');
+            onComplete(false);
+            return;
+          }
+          
           // ✅ OAuth callback kontrolü - URL'de hash varsa App.tsx hallediyor, burada skip et
           const hasAuthHash = window.location.hash.includes('access_token') || 
                               window.location.hash.includes('error');

@@ -165,49 +165,121 @@ class AuthService {
   // Sign out
   async signOut() {
     try {
-      // Supabase signOut - hata olsa bile devam et
-      try {
-        await supabase.auth.signOut();
-      } catch (supabaseError) {
-        console.warn('Supabase signOut warning:', supabaseError);
-        // Supabase hatası olsa bile AsyncStorage'ı temizle
+      console.log('🚪 [AuthService] SignOut başlıyor...');
+      
+      // 1. ÖNCE Supabase localStorage key'lerini temizle (web için) - EN ÖNEMLİ!
+      // Bu, signOut çağrısından önce yapılmalı çünkü signOut async ve tamamlanmadan sayfa değişebilir
+      if (typeof window !== 'undefined' && window.localStorage) {
+        console.log('🗑️ [AuthService] Supabase localStorage ÖNCE temizleniyor...');
+        const keysToRemove: string[] = [];
+        for (let i = 0; i < window.localStorage.length; i++) {
+          const key = window.localStorage.key(i);
+          if (key && (key.startsWith('sb-') || key.includes('supabase') || key.includes('auth'))) {
+            keysToRemove.push(key);
+          }
+        }
+        keysToRemove.forEach(key => {
+          console.log('🗑️ [AuthService] Removing localStorage key:', key);
+          window.localStorage.removeItem(key);
+        });
+        console.log('✅ [AuthService] Supabase localStorage temizlendi:', keysToRemove.length, 'key');
+        
+        // SessionStorage'ı da temizle
+        if (window.sessionStorage) {
+          console.log('🗑️ [AuthService] SessionStorage temizleniyor...');
+          window.sessionStorage.clear();
+          console.log('✅ [AuthService] SessionStorage temizlendi');
+        }
       }
 
-      // Clear AsyncStorage - HER ZAMAN çalışmalı
-      // ✅ Hem eski hem yeni key'leri temizle (geriye dönük uyumluluk)
+      // 2. AsyncStorage'ı temizle
+      console.log('🗑️ [AuthService] AsyncStorage temizleniyor...');
       await AsyncStorage.multiRemove([
         // Yeni key'ler (STORAGE_KEYS)
         'tacticiq-user',
         'tacticiq-language',
         'tacticiq-theme',
         'tacticiq-favorite-clubs',
+        'tacticiq-favorite-teams',
         'tacticiq-onboarding-complete',
         'tacticiq-pro-status',
         'tacticiq-profile-setup',
         'tacticiq_user_profile',
         'tacticiq_player_counts',
+        'tacticiq-matches-cache',
+        'tacticiq-matches-cache-timestamp',
         // Eski key'ler (geriye dönük uyumluluk)
         'fan-manager-user',
         'fan-manager-language',
         'fan-manager-favorite-clubs',
       ]);
+      console.log('✅ [AuthService] AsyncStorage temizlendi');
 
-      // ProfileService cache'ini temizle
+      // 3. ProfileService cache'ini temizle
       try {
         const { profileService } = await import('./profileService');
         profileService.clearCache();
+        console.log('✅ [AuthService] ProfileService cache temizlendi');
       } catch (e) {
-        // Ignore cache clear error
+        console.warn('⚠️ [AuthService] ProfileService cache temizleme hatası:', e);
       }
 
+      // 4. Supabase signOut - scope: 'global' ile tüm cihazlarda çıkış yap (timeout ile)
+      try {
+        console.log('🔐 [AuthService] Supabase signOut çağrılıyor...');
+        
+        // Timeout ile signOut - 3 saniye bekle, takılırsa devam et
+        const signOutPromise = supabase.auth.signOut({ scope: 'global' });
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('SignOut timeout')), 3000)
+        );
+        
+        try {
+          const { error } = await Promise.race([signOutPromise, timeoutPromise]) as any;
+          if (error) {
+            console.warn('⚠️ [AuthService] Supabase signOut error:', error);
+          } else {
+            console.log('✅ [AuthService] Supabase signOut başarılı');
+          }
+        } catch (timeoutError) {
+          console.warn('⚠️ [AuthService] Supabase signOut timeout, devam ediliyor...');
+        }
+      } catch (supabaseError) {
+        console.warn('⚠️ [AuthService] Supabase signOut exception:', supabaseError);
+      }
+
+      // 5. Tekrar localStorage temizle (Supabase yeni key oluşturmuş olabilir)
+      if (typeof window !== 'undefined' && window.localStorage) {
+        console.log('🗑️ [AuthService] Final localStorage temizliği...');
+        const finalKeysToRemove: string[] = [];
+        for (let i = 0; i < window.localStorage.length; i++) {
+          const key = window.localStorage.key(i);
+          if (key && (key.startsWith('sb-') || key.includes('supabase') || key.includes('auth'))) {
+            finalKeysToRemove.push(key);
+          }
+        }
+        finalKeysToRemove.forEach(key => {
+          window.localStorage.removeItem(key);
+        });
+        if (finalKeysToRemove.length > 0) {
+          console.log('✅ [AuthService] Final temizlik:', finalKeysToRemove.length, 'key');
+        }
+      }
+
+      console.log('✅ [AuthService] SignOut tamamlandı');
       return { success: true };
     } catch (error: any) {
-      console.error('Sign out error:', error);
-      // Son çare olarak yine de AsyncStorage'ı temizlemeye çalış
+      console.error('❌ [AuthService] Sign out error:', error);
+      // Son çare olarak yine de tüm storage'ı temizlemeye çalış
       try {
         await AsyncStorage.clear();
+        if (typeof window !== 'undefined') {
+          window.localStorage.clear();
+          window.sessionStorage?.clear();
+        }
+        console.log('✅ [AuthService] Tüm storage temizlendi (fallback)');
       } catch (e) {
-        // Ignore
+        console.error('❌ [AuthService] Storage temizleme hatası:', e);
       }
       return { success: false, error: error.message };
     }

@@ -299,11 +299,16 @@ const createStyles = (theme: typeof COLORS.dark) => ({
     backgroundColor: theme.card,
     borderRadius: SIZES.radiusLg,
     padding: SPACING.lg,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: { elevation: 8 },
+      web: { boxShadow: '0 4px 16px rgba(0,0,0,0.3)' },
+    }),
   },
   header: {
     alignItems: 'center',

@@ -254,7 +254,7 @@ const styles = StyleSheet.create({
         marginBottom: 12,
       },
     }),
-    backgroundColor: 'rgba(15, 23, 42, 0.8)',
+    backgroundColor: 'rgba(15, 42, 36, 0.9)', // ✅ Koyu yeşil - uygulama teması ile uyumlu
     borderWidth: 1,
     borderColor: 'rgba(31, 162, 166, 0.3)',
     borderRadius: 12,
@@ -320,7 +320,7 @@ const styles = StyleSheet.create({
   // Content Container (Right)
   contentContainer: {
     flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.8)',
+    backgroundColor: 'rgba(15, 42, 36, 0.9)', // ✅ Koyu yeşil - uygulama teması ile uyumlu
     borderWidth: 1,
     borderColor: 'rgba(31, 162, 166, 0.3)',
     borderRadius: 12,

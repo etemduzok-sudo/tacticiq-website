@@ -475,19 +475,19 @@ export default function ProfileSetupScreen({
         toValue: 0,
         duration: 150,
         easing: Easing.out(Easing.ease),
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web', // ✅ Web için false
       }),
       Animated.timing(translateX, {
         toValue: direction === 'forward' ? -50 : 50,
         duration: 150,
         easing: Easing.out(Easing.ease),
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web', // ✅ Web için false
       }),
       Animated.timing(scale, {
         toValue: 0.98,
         duration: 150,
         easing: Easing.out(Easing.ease),
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web', // ✅ Web için false
       }),
     ]).start(() => {
       if (callback) callback();
@@ -496,19 +496,19 @@ export default function ProfileSetupScreen({
           toValue: 1,
           duration: 200,
           easing: Easing.out(Easing.ease),
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== 'web', // ✅ Web için false
         }),
         Animated.timing(translateX, {
           toValue: 0,
           duration: 200,
           easing: Easing.out(Easing.ease),
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== 'web', // ✅ Web için false
         }),
         Animated.timing(scale, {
           toValue: 1,
           duration: 200,
           easing: Easing.out(Easing.ease),
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== 'web', // ✅ Web için false
         }),
       ]).start();
     });

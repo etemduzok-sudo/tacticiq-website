@@ -71,7 +71,7 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
   const [teamMatchesLoading, setTeamMatchesLoading] = useState(false);
   const [teamMatchesError, setTeamMatchesError] = useState<string | null>(null);
 
-  const { liveMatches, pastMatches = [], loading, error, hasLoadedOnce } = matchData;
+  const { liveMatches = [], pastMatches = [], loading, error, hasLoadedOnce } = matchData;
   
   // ✅ Eğer selectedTeamId varsa, takım maçlarını çek
   useEffect(() => {
@@ -294,93 +294,11 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
   // ✅ Countdown ticker için state (canlı maçlar için pulse animasyonu)
   const [countdownTicker, setCountdownTicker] = useState(0);
   
-  // Mock canlı maçlar (canlı maç yoksa göster)
-  const mockLiveMatches = React.useMemo(() => {
-    if (liveMatches.length > 0) return [];
-    
-    const now = Date.now() / 1000;
-    return [
-      {
-        fixture: {
-          id: 999901,
-          timestamp: now - 3600,
-          date: new Date((now - 3600) * 1000).toISOString(),
-          status: { short: '1H', long: 'First Half', elapsed: 45 },
-          venue: { name: 'Sükrü Saracoğlu Stadyumu', city: 'İstanbul' },
-        },
-        league: { id: 203, name: 'Süper Lig', country: 'Turkey', logo: null },
-        teams: {
-          home: { id: 611, name: 'Fenerbahçe', logo: null },
-          away: { id: 610, name: 'Galatasaray', logo: null },
-        },
-        goals: { home: 2, away: 1 },
-        score: {
-          halftime: { home: 1, away: 0 },
-          fulltime: { home: null, away: null },
-        },
-      },
-      {
-        fixture: {
-          id: 999902,
-          timestamp: now - 2700,
-          date: new Date((now - 2700) * 1000).toISOString(),
-          status: { short: '1H', long: 'First Half', elapsed: 65 },
-          venue: { name: 'Türk Telekom Stadyumu', city: 'İstanbul' },
-        },
-        league: { id: 203, name: 'Süper Lig', country: 'Turkey', logo: null },
-        teams: {
-          home: { id: 612, name: 'Beşiktaş', logo: null },
-          away: { id: 613, name: 'Trabzonspor', logo: null },
-        },
-        goals: { home: 0, away: 1 },
-        score: {
-          halftime: { home: 0, away: 1 },
-          fulltime: { home: null, away: null },
-        },
-      },
-      {
-        fixture: {
-          id: 999903,
-          timestamp: now - 1800,
-          date: new Date((now - 1800) * 1000).toISOString(),
-          status: { short: '2H', long: 'Second Half', elapsed: 72 },
-          venue: { name: 'Rams Park', city: 'İstanbul' },
-        },
-        league: { id: 61, name: 'Champions League', country: 'Europe', logo: null },
-        teams: {
-          home: { id: 85, name: 'Real Madrid', logo: null },
-          away: { id: 81, name: 'Bayern Munich', logo: null },
-        },
-        goals: { home: 1, away: 1 },
-        score: {
-          halftime: { home: 1, away: 0 },
-          fulltime: { home: null, away: null },
-        },
-      },
-      {
-        fixture: {
-          id: 999904,
-          timestamp: now - 900,
-          date: new Date((now - 900) * 1000).toISOString(),
-          status: { short: '2H', long: 'Second Half', elapsed: 85 },
-          venue: { name: 'Camp Nou', city: 'Barcelona' },
-        },
-        league: { id: 61, name: 'Champions League', country: 'Europe', logo: null },
-        teams: {
-          home: { id: 529, name: 'Barcelona', logo: null },
-          away: { id: 85, name: 'Real Madrid', logo: null },
-        },
-        goals: { home: 3, away: 2 },
-        score: {
-          halftime: { home: 2, away: 1 },
-          fulltime: { home: null, away: null },
-        },
-      },
-    ];
-  }, [liveMatches]);
+  // ✅ Mock data KALDIRILDI - sadece gerçek API verisi kullanılıyor
+  // Canlı maç yoksa boş array gösterilecek
 
   // ✅ Canlı maçları filtrele ve sırala - en son başlayan en üstte (duplicate önleme dahil)
-  const allLiveMatches = liveMatches.length > 0 ? liveMatches : mockLiveMatches;
+  const allLiveMatches = liveMatches;
   const filteredLiveMatches = React.useMemo(() => {
     let matches = allLiveMatches;
     
@@ -472,12 +390,12 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
             RNAnimated.timing(pulseAnim, {
               toValue: 0.3,
               duration: 750,
-              useNativeDriver: true,
+              useNativeDriver: Platform.OS !== 'web', // ✅ Web için false
             }),
             RNAnimated.timing(pulseAnim, {
               toValue: 1,
               duration: 750,
-              useNativeDriver: true,
+              useNativeDriver: Platform.OS !== 'web', // ✅ Web için false
             }),
           ])
         );
@@ -690,10 +608,16 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
                     <Ionicons name="checkmark-done-outline" size={64} color="#64748B" />
                   </View>
                   <Text style={styles.emptyStateTitleLive}>
-                    {selectedTeamId ? 'Bu takımın biten maçı yok' : 'Henüz biten maç yok'}
+                    {selectedTeamId 
+                      ? 'Bu takımın biten maçı yok' 
+                      : favoriteTeams.length === 0
+                        ? 'Favori takım seçilmemiş'
+                        : 'Favori takımlarınızın biten maçı yok'}
                   </Text>
                   <Text style={styles.emptyStateText}>
-                    Yaklaşan maçları görmek için{'\n'}Ana Sayfa'ya dön
+                    {favoriteTeams.length === 0 
+                      ? 'Maçları görmek için profil ekranından\nfavori takım seçin'
+                      : 'Yaklaşan maçları görmek için\nAna Sayfa\'ya dön'}
                   </Text>
                   <TouchableOpacity
                     style={styles.emptyStateButton}
@@ -746,10 +670,16 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
                     <Ionicons name="radio-outline" size={64} color="#64748B" />
                   </View>
                   <Text style={styles.emptyStateTitleLive}>
-                    {selectedTeamId ? 'Bu takımın canlı maçı yok' : 'Şuan canlı maç yok'}
+                    {selectedTeamId 
+                      ? 'Bu takımın canlı maçı yok' 
+                      : favoriteTeams.length === 0
+                        ? 'Favori takım seçilmemiş'
+                        : 'Favori takımlarınızın canlı maçı yok'}
                   </Text>
                   <Text style={styles.emptyStateText}>
-                    Yaklaşan maçları görmek için{'\n'}Ana Sayfa'ya dön
+                    {favoriteTeams.length === 0 
+                      ? 'Maçları görmek için profil ekranından\nfavori takım seçin'
+                      : 'Yaklaşan maçları görmek için\nAna Sayfa\'ya dön'}
                   </Text>
                   <TouchableOpacity
                     style={styles.emptyStateButton}

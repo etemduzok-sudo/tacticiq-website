@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useRef } from 'react';
-import { View, StyleSheet, Animated, ViewStyle } from 'react-native';
+import { View, StyleSheet, Animated, ViewStyle, Platform } from 'react-native';
 import { useTheme } from '../../contexts/ThemeContext';
 import { COLORS, SIZES } from '../../theme/theme';
 
@@ -49,7 +49,7 @@ const Skeleton: React.FC<SkeletonProps> = ({
         Animated.timing(shimmerAnim, {
           toValue: 1,
           duration: 2000, // 2 seconds
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== 'web', // ✅ Web için false
         })
       ).start();
     }

@@ -235,6 +235,20 @@ export const STORAGE_KEYS = {
 };
 
 /**
+ * Super Admin & Pro Users
+ * These users have full access to all features
+ */
+export const SUPER_ADMINS = [
+  'etemduzok@gmail.com',
+];
+
+// Check if email is super admin (also automatically Pro)
+export const isSuperAdmin = (email?: string | null): boolean => {
+  if (!email) return false;
+  return SUPER_ADMINS.includes(email.toLowerCase());
+};
+
+/**
  * Validation Rules
  */
 export const VALIDATION = {

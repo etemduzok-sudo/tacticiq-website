@@ -183,19 +183,10 @@ function transformDbMatchToApiFormat(dbMatch: any): any {
 // ====================
 
 export const matchesApi = {
-  // Get live matches (try DB first, fallback to backend, then mock)
+  // Get live matches - direkt backend'den çek (database sorgusu timeout'a neden oluyordu)
   getLiveMatches: async () => {
     try {
-      // Try database first
-      const dbResult = await matchesDb.getLiveMatches();
-      if (dbResult.success && dbResult.data && dbResult.data.length > 0) {
-        logger.debug('Live matches from DATABASE', { count: dbResult.data.length }, 'API');
-        // Transform database format to API format
-        const transformedData = dbResult.data.map(transformDbMatchToApiFormat);
-        return { success: true, data: transformedData, source: 'database' };
-      }
-      
-      // Try backend
+      // ✅ Direkt backend'den çek - database sorgusu atlandı
       try {
         const backendResult = await request('/matches/live');
         return backendResult;

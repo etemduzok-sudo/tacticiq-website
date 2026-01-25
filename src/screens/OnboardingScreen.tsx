@@ -144,7 +144,7 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
       Animated.timing(subtitleFade, {
         toValue: 0,
         duration: 300,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web', // ✅ Web için false
         easing: Easing.out(Easing.ease),
       }).start(() => {
         // Sonraki dil
@@ -154,7 +154,7 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
         Animated.timing(subtitleFade, {
           toValue: 1,
           duration: 300,
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== 'web', // ✅ Web için false
           easing: Easing.in(Easing.ease),
         }).start();
       });
@@ -173,19 +173,19 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
         toValue: 0,
         duration: 150,
         easing: Easing.out(Easing.ease),
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web', // ✅ Web için false
       }),
       Animated.timing(slideAnim, {
         toValue: slideValue,
         duration: 150,
         easing: Easing.out(Easing.ease),
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web', // ✅ Web için false
       }),
       Animated.timing(scaleAnim, {
         toValue: 0.98,
         duration: 150,
         easing: Easing.out(Easing.ease),
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web', // ✅ Web için false
       }),
     ]).start(() => {
       callback();
@@ -197,19 +197,19 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
         toValue: 1,
           duration: 200,
           easing: Easing.out(Easing.ease),
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== 'web', // ✅ Web için false
       }),
         Animated.timing(slideAnim, {
         toValue: 0,
           duration: 200,
           easing: Easing.out(Easing.ease),
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== 'web', // ✅ Web için false
         }),
         Animated.timing(scaleAnim, {
           toValue: 1,
           duration: 200,
           easing: Easing.out(Easing.ease),
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== 'web', // ✅ Web için false
       }),
     ]).start();
     });

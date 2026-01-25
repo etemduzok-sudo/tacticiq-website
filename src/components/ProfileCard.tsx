@@ -156,14 +156,14 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
         toValue: 1,
         tension: 50,
         friction: 7,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web', // ✅ Web için false
       }).start();
 
       // Rozet kartına slide animasyonu (soldan sağa)
       Animated.timing(badgeSlideAnim, {
         toValue: 0,
         duration: 600,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web', // ✅ Web için false
       }).start();
     }
   }, [newBadge]);
@@ -172,7 +172,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
     Animated.timing(popupScaleAnim, {
       toValue: 0,
       duration: 200,
-      useNativeDriver: true,
+      useNativeDriver: Platform.OS !== 'web', // ✅ Web için false
     }).start(() => {
       setShowBadgePopup(false);
       if (onBadgePopupClose) onBadgePopupClose();
@@ -292,15 +292,20 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
                     );
                   })
                 ) : (
-                  <Animated.View 
-                    style={styles.noBadgesContainer}
-                  >
-                    <View style={styles.noBadgesIconContainer}>
-                      <Ionicons name="trophy-outline" size={24} color="#F59E0B" />
+                  <View style={styles.noBadgesContainer}>
+                    <View style={styles.noBadgesIconWrapper}>
+                      <LinearGradient
+                        colors={['rgba(245, 158, 11, 0.2)', 'rgba(245, 158, 11, 0.05)']}
+                        style={styles.noBadgesIconGradient}
+                      >
+                        <Ionicons name="trophy" size={20} color="#F59E0B" />
+                      </LinearGradient>
                     </View>
-                    <Text style={styles.noBadgesText}>Yakında rozetler gelecek!</Text>
-                    <Text style={styles.noBadgesHint}>Tahmin yaparak rozet kazan</Text>
-                  </Animated.View>
+                    <View style={styles.noBadgesTextContainer}>
+                      <Text style={styles.noBadgesText}>Yakında rozetler gelecek!</Text>
+                      <Text style={styles.noBadgesHint}>Tahmin yaparak rozet kazan</Text>
+                    </View>
+                  </View>
                 )}
               </ScrollView>
             </View>
@@ -691,30 +696,40 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   noBadgesContainer: {
-    paddingVertical: 10,
-    paddingHorizontal: 14,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: 'rgba(245, 158, 11, 0.08)',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: 'rgba(15, 42, 36, 0.6)',
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.2)',
+    borderColor: 'rgba(245, 158, 11, 0.25)',
+    minWidth: 200,
   },
-  noBadgesIconContainer: {
-    backgroundColor: 'rgba(245, 158, 11, 0.15)',
-    borderRadius: 20,
-    padding: 6,
+  noBadgesIconWrapper: {
+    marginRight: 10,
+  },
+  noBadgesIconGradient: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: 'rgba(245, 158, 11, 0.4)',
+  },
+  noBadgesTextContainer: {
+    flex: 1,
   },
   noBadgesText: {
-    fontSize: 10,
-    color: '#94A3B8',
-    fontWeight: '500',
+    fontSize: 11,
+    color: '#F59E0B',
+    fontWeight: '600',
+    marginBottom: 2,
   },
   noBadgesHint: {
     fontSize: 9,
-    color: '#64748B',
+    color: '#94A3B8',
   },
   // ✅ Takım Filtre Stilleri
   teamFilterSection: {

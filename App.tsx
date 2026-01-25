@@ -315,11 +315,21 @@ export default function App() {
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
   const [selectedTeamIds, setSelectedTeamIds] = useState<number[]>([]); // ✅ Çoklu takım seçimi
   const [isMaintenanceMode, setIsMaintenanceMode] = useState<boolean>(false);
-  const [isProcessingOAuth, setIsProcessingOAuth] = useState<boolean>(false); // OAuth işleniyor mu?
+  const [isProcessingOAuth, setIsProcessingOAuth] = useState<boolean>(() => {
+    // ✅ Sayfa yüklenirken OAuth initiating flag'ini kontrol et
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const oauthInitiating = window.localStorage.getItem('tacticiq_oauth_initiating');
+      if (oauthInitiating === 'true') {
+        console.log('🔄 [App] OAuth initiating detected on startup');
+        return true;
+      }
+    }
+    return false;
+  }); // OAuth işleniyor mu?
   const [oauthCompleted, setOauthCompleted] = useState<boolean>(false); // OAuth tamamlandı mı?
   
-  // ✅ Favori takımlar hook'u - ProfileCard'a aktarılacak
-  const { favoriteTeams, loading: teamsLoading, refetch: refetchFavoriteTeams } = useFavoriteTeams();
+  // ✅ Favori takımlar hook'u - ProfileCard'a aktarılacak ve ProfileScreen ile paylaşılacak
+  const { favoriteTeams, loading: teamsLoading, refetch: refetchFavoriteTeams, setAllFavoriteTeams } = useFavoriteTeams();
 
   // 🎉 Yeni Rozet State (Test için başlangıçta bir rozet gösterelim)
   const [newBadge, setNewBadge] = useState<{ id: string; name: string; emoji: string; description: string; tier: number } | null>(null);
@@ -348,18 +358,23 @@ export default function App() {
       const hasAccessToken = hash.includes('access_token');
       const hasCode = search.includes('code=') || url.includes('code=');
       const hasError = hash.includes('error') || search.includes('error=');
+      const hasOAuthInitiating = window.localStorage.getItem('tacticiq_oauth_initiating') === 'true';
       
       console.log('🔍 [App] OAuth check:', { 
         hash: hash.substring(0, 50), 
         hasAccessToken, 
         hasCode, 
         hasError,
+        hasOAuthInitiating,
         url: url.substring(0, 100)
       });
       
       if (hasAccessToken || hasCode || hasError) {
         console.log('🔄 [App] OAuth callback algılandı!');
         setIsProcessingOAuth(true);
+        
+        // ✅ OAuth initiating flag'ini temizle (callback geldi)
+        window.localStorage.removeItem('tacticiq_oauth_initiating');
         
         try {
           // ✅ Retry mekanizması ile session kontrolü
@@ -406,6 +421,18 @@ export default function App() {
           // Hata durumunda auth ekranına yönlendir
           setCurrentScreen('auth');
         }
+      } else if (hasOAuthInitiating) {
+        // ✅ OAuth başlatıldı ama callback gelmedi (kullanıcı iptal etti veya sayfa yenilendi)
+        console.log('⚠️ [App] OAuth was initiating but no callback received');
+        // 5 saniye bekle, eğer hala callback gelmezse flag'i temizle
+        setTimeout(() => {
+          const stillInitiating = window.localStorage.getItem('tacticiq_oauth_initiating') === 'true';
+          if (stillInitiating && !window.location.hash.includes('access_token')) {
+            console.log('🧹 [App] Clearing stale OAuth initiating flag');
+            window.localStorage.removeItem('tacticiq_oauth_initiating');
+            setIsProcessingOAuth(false);
+          }
+        }, 5000);
       }
     };
     
@@ -414,6 +441,18 @@ export default function App() {
   
   // ✅ OAuth Auth State Listener - Google/Apple giriş callback'lerini handle et
   useEffect(() => {
+    // ✅ LOGOUT kontrolü - URL'de logout parametresi varsa session listener'ı başlatma
+    if (Platform.OS === 'web') {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.has('logout')) {
+        console.log('🚪 [App] Logout detected in URL, skipping auth state listener init');
+        // Storage'ı temizle
+        window.localStorage.clear();
+        window.sessionStorage?.clear();
+        return; // Listener'ı başlatma
+      }
+    }
+    
     console.log('🔐 [App] Initializing auth state listener...');
     socialAuthService.initAuthStateListener();
   }, []);
@@ -456,30 +495,30 @@ export default function App() {
       testBadgeTimerRef.current = null;
     }
 
-    // Check if badge has already been shown
+    // ✅ DEVRE DIŞI: Rozet sistemi sonraya bırakıldı
+    // Badge popup'ları şimdilik kapalı - diğer özellikler tamamlandıktan sonra aktif edilecek
+    /*
     const checkAndShowTestBadge = async () => {
       if (currentScreen === 'home' && !badgeShownRef.current.has('first_blood')) {
-        // Also check AsyncStorage to see if it was shown before
         const alreadyShown = await hasBadgeBeenShown('first_blood');
         
         if (!alreadyShown) {
           testBadgeTimerRef.current = setTimeout(() => {
-        setNewBadge({
-          id: 'first_blood',
-          name: '🎯 İlk Kan',
-          emoji: '🎯',
-          description: 'İlk tahminini yaptın! Analiz yolculuğun başladı.',
-          tier: 1,
-        });
-            // Mark as shown in this session
+            setNewBadge({
+              id: 'first_blood',
+              name: '🎯 İlk Kan',
+              emoji: '🎯',
+              description: 'İlk tahminini yaptın! Analiz yolculuğun başladı.',
+              tier: 1,
+            });
             badgeShownRef.current.add('first_blood');
             testBadgeTimerRef.current = null;
-    }, 5000); // 5 saniye sonra
+          }, 5000);
         }
       }
     };
-
     checkAndShowTestBadge();
+    */
 
     // Cleanup function
     return () => {
@@ -491,7 +530,8 @@ export default function App() {
   }, [currentScreen]); // Only depend on currentScreen
 
   // Global match data - shared across all screens
-  const matchData = useFavoriteTeamMatches();
+  // ✅ favoriteTeams'i doğrudan geçiyoruz, böylece güncellenince maçlar da güncellenir
+  const matchData = useFavoriteTeamMatches(favoriteTeams);
 
   // ==========================================
   // INITIALIZATION
@@ -1098,13 +1138,11 @@ export default function App() {
                 setCurrentScreen('matches'); // Matches ekranına git, orada filtreleme yapılacak
               }}
               onTeamsChange={() => {
-                // ✅ Takım değiştiğinde hem listeyi hem maçları güncelle
-                refetchFavoriteTeams();
-                // ✅ Maçları da yenile (yeni takımların maçları için)
-                setTimeout(() => {
-                  matchData.refetch();
-                }, 500); // Storage yazılmasını bekle
+                // ✅ Takım değiştiğinde maç verilerini güncelle (state zaten güncel)
+                logger.info('Teams changed, refreshing matches...', undefined, 'APP');
+                matchData.refetch();
               }}
+              setAllFavoriteTeamsFromApp={setAllFavoriteTeams}
               onProUpgrade={handleProUpgrade}
               onDatabaseTest={() => setCurrentScreen('database-test')}
               initialTab={shouldShowBadgesTab ? 'badges' : 'profile'}

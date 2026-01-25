@@ -1,9 +1,9 @@
 // useFavoriteTeamMatches Hook - Get matches for favorite teams
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../services/api';
 import { useFavoriteTeams } from './useFavoriteTeams';
-import { getMockMatches } from '../services/mockDataService';
+// Mock data kaldırıldı - sadece gerçek API verisi kullanılıyor
 import { logger } from '../utils/logger';
 
 // Cache keys
@@ -67,6 +67,15 @@ interface Match {
   };
 }
 
+interface FavoriteTeam {
+  id: number;
+  name: string;
+  logo?: string;
+  league?: string;
+  colors?: string[];
+  type?: 'club' | 'national';
+}
+
 interface UseFavoriteTeamMatchesResult {
   pastMatches: Match[];
   liveMatches: Match[];
@@ -77,7 +86,8 @@ interface UseFavoriteTeamMatchesResult {
   hasLoadedOnce: boolean; // Flag to prevent flickering on subsequent loads
 }
 
-export function useFavoriteTeamMatches(): UseFavoriteTeamMatchesResult {
+// ✅ Dışarıdan favoriteTeams alabilir veya kendi hook'unu kullanabilir
+export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): UseFavoriteTeamMatchesResult {
   const [pastMatches, setPastMatches] = useState<Match[]>([]);
   const [liveMatches, setLiveMatches] = useState<Match[]>([]);
   const [upcomingMatches, setUpcomingMatches] = useState<Match[]>([]);
@@ -138,68 +148,21 @@ export function useFavoriteTeamMatches(): UseFavoriteTeamMatchesResult {
     }
   };
 
-  // Generate mock matches for testing
-  const generateMockMatches = async (): Promise<Match[]> => {
-    const mockData = getMockMatches('all');
-    return mockData
-      .filter((match: any) => match && match.league && match.home_team && match.away_team) // Safety check
-      .map((match: any) => {
-        // Additional safety checks
-        if (!match.league || !match.home_team || !match.away_team) {
-          logger.warn('Invalid mock match data', { match }, 'MOCK_DATA');
-          return null;
-        }
-        return {
-      fixture: {
-        id: match.id,
-        date: match.date,
-        timestamp: new Date(match.date).getTime() / 1000,
-        status: {
-          short: match.status_short,
-          long: match.status_long,
-          elapsed: match.elapsed,
-        },
-        venue: {
-          name: 'Stadium',
-        },
-      },
-      league: {
-        id: match.league?.id || 0,
-        name: match.league?.name || 'Unknown League',
-        country: match.league?.country || 'Unknown',
-        logo: match.league?.logo || '',
-      },
-      teams: {
-        home: {
-          id: match.home_team.id,
-          name: match.home_team.name,
-          logo: match.home_team.logo,
-        },
-        away: {
-          id: match.away_team.id,
-          name: match.away_team.name,
-          logo: match.away_team.logo,
-        },
-      },
-      goals: {
-        home: match.home_score,
-        away: match.away_score,
-      },
-      score: {
-        halftime: {
-          home: match.home_score ? Math.floor(match.home_score / 2) : null,
-          away: match.away_score ? Math.floor(match.away_score / 2) : null,
-        },
-        fulltime: {
-          home: match.home_score,
-          away: match.away_score,
-        },
-      },
-    };
-      })
-      .filter((match: any) => match !== null) as Match[]; // Remove null entries
-  };
-  const { favoriteTeams } = useFavoriteTeams();
+  // ✅ Mock data fonksiyonu kaldırıldı - sadece gerçek API verisi kullanılıyor
+  
+  // ✅ Dışarıdan geçilen favoriteTeams varsa onu kullan, yoksa hook'tan al
+  const { favoriteTeams: hookFavoriteTeams, loading: teamsLoading } = useFavoriteTeams();
+  const favoriteTeams = externalFavoriteTeams || hookFavoriteTeams;
+  
+  // 🔍 DEBUG: Hook state kontrolü
+  logger.debug('useFavoriteTeamMatches state', { 
+    externalTeamsCount: externalFavoriteTeams?.length || 0,
+    hookTeamsCount: hookFavoriteTeams.length,
+    finalTeamsCount: favoriteTeams.length,
+    teamsLoading,
+    hasLoadedOnce,
+    loading
+  }, 'MATCHES');
 
   const categorizeMatches = (matches: Match[]) => {
     if (!matches || matches.length === 0) {
@@ -349,6 +312,8 @@ export function useFavoriteTeamMatches(): UseFavoriteTeamMatchesResult {
   };
 
   const fetchMatches = async () => {
+    logger.info('📡 fetchMatches started', { teamsCount: favoriteTeams.length }, 'MATCHES');
+    
     try {
       // Only show loading spinner on first load
       if (!hasLoadedOnce) {
@@ -369,24 +334,37 @@ export function useFavoriteTeamMatches(): UseFavoriteTeamMatchesResult {
       const allMatches: Match[] = [];
       const liveMatchesFromAPI: Match[] = [];
       const currentSeason = 2025; // 2025-26 sezonu (aktif sezon)
+      let backendConnectionError = false; // Backend bağlantı hatası flag'i
+      let successfulFetches = 0; // Başarılı fetch sayısı
       
       // Fetch live matches separately (we'll filter for favorite teams later)
+      logger.info('🔴 Fetching live matches...', undefined, 'MATCHES');
       try {
         const liveResponse = await api.matches.getLiveMatches();
+        logger.info('✅ Live matches response', { success: liveResponse.success, count: liveResponse.data?.length || 0 }, 'MATCHES');
         if (liveResponse.success && liveResponse.data) {
           liveMatchesFromAPI.push(...liveResponse.data);
+          successfulFetches++;
         }
-      } catch (err) {
-        // Silent fail - backend çalışmıyor olabilir
+      } catch (err: any) {
+        logger.error('❌ Live matches fetch error', { error: err.message }, 'MATCHES');
+        // Backend bağlantı hatası kontrolü
+        if (err.message?.includes('Failed to fetch') || 
+            err.message?.includes('NetworkError') || 
+            err.message?.includes('ERR_CONNECTION_REFUSED') ||
+            err.message?.includes('Backend bağlantısı')) {
+          backendConnectionError = true;
+          logger.warn('Backend bağlantısı kurulamadı (live matches)', { error: err.message }, 'API');
+        }
       }
 
-      // Fetch ALL matches for each favorite team (but optimized with single endpoint)
-      for (const team of favoriteTeams) {
-        if (!team || !team.id) continue;
+      // ✅ PARALEL FETCH - Tüm takımlar aynı anda çekilir (5-6x daha hızlı!)
+      logger.info('⚡ Fetching all teams in PARALLEL...', { teamCount: favoriteTeams.length }, 'MATCHES');
+      
+      const fetchTeamMatches = async (team: FavoriteTeam): Promise<Match[]> => {
+        if (!team || !team.id) return [];
         
         try {
-          // ✅ Check if team is national team
-          // Milli takım ID'leri: 777 (Türkiye), 25 (Almanya), 6 (Brezilya), 26 (Arjantin)
           const nationalTeamIds = [777, 25, 6, 26];
           const isNationalTeam = nationalTeamIds.includes(team.id) ||
                                  team.league === 'UEFA' || 
@@ -397,69 +375,64 @@ export function useFavoriteTeamMatches(): UseFavoriteTeamMatchesResult {
                                  team.name === 'Arjantin' ||
                                  (team as any).type === 'national';
           
+          const teamMatches: Match[] = [];
+          
           if (isNationalTeam) {
-            // ✅ NATIONAL TEAM: Fetch matches from multiple seasons (2024, 2025, 2026)
-            // Milli takımlar için Dünya Kupası, Avrupa Şampiyonası, Play-off maçları farklı sezonlarda olabilir
-            const nationalSeasons = [2024, 2025, 2026]; // Son 3 yıl + gelecek yıl
-            let backendAvailable = true; // Backend kontrolü için flag
-            
-            for (const season of nationalSeasons) {
+            // Milli takım: Paralel olarak 3 sezonu çek
+            const nationalSeasons = [2024, 2025, 2026];
+            const seasonPromises = nationalSeasons.map(async (season) => {
               try {
                 const url = `/matches/team/${team.id}/season/${season}`;
-                const fullUrl = `${api.getBaseUrl()}${url}`;
-                
-                const result = await fetch(fullUrl, {
+                const result = await fetch(`${api.getBaseUrl()}${url}`, {
                   headers: { 'Content-Type': 'application/json' },
-                  signal: AbortSignal.timeout(5000) // 5 saniye timeout
+                  signal: AbortSignal.timeout(15000)
                 });
-                
                 if (result.ok) {
                   const response = await result.json();
-                  if (response.success && response.data && response.data.length > 0) {
-                    allMatches.push(...response.data);
-                  }
+                  return response.success && response.data ? response.data : [];
                 }
-              } catch (seasonErr: any) {
-                // Backend çalışmıyorsa sadece bir kez log göster
-                if (seasonErr.name === 'AbortError' || seasonErr.message?.includes('ERR_CONNECTION_REFUSED')) {
-                  if (backendAvailable) {
-                    logger.warn('Backend sunucusu çalışmıyor. Milli takım maçları yüklenemiyor.', { teamId: team.id, teamName: team.name }, 'API');
-                    backendAvailable = false; // Bir kez göster
-                  }
-                }
-                // Continue with next season
+                return [];
+              } catch {
+                return [];
               }
-            }
-          } else {
-            // ✅ CLUB TEAM: Fetch current season matches only
-            const url = `/matches/team/${team.id}/season/${currentSeason}`;
-            const fullUrl = `${api.getBaseUrl()}${url}`;
-            
-            const result = await fetch(fullUrl, {
-              headers: { 'Content-Type': 'application/json' },
-              signal: AbortSignal.timeout(5000) // 5 saniye timeout
             });
-            
-            if (!result.ok) {
-              // Silent fail - backend çalışmıyor olabilir
-              continue;
-            }
-            
-            const response = await result.json();
-            logger.debug('Response received', { success: response.success, dataLength: response.data?.length, source: response.source, teamId: team.id }, 'API');
-            
-            if (response.success && response.data && response.data.length > 0) {
-              allMatches.push(...response.data);
+            const seasonResults = await Promise.all(seasonPromises);
+            seasonResults.forEach(matches => teamMatches.push(...matches));
+          } else {
+            // Kulüp takımı: Sadece güncel sezon
+            try {
+              const url = `/matches/team/${team.id}/season/${currentSeason}`;
+              const result = await fetch(`${api.getBaseUrl()}${url}`, {
+                headers: { 'Content-Type': 'application/json' },
+                signal: AbortSignal.timeout(15000)
+              });
+              if (result.ok) {
+                const response = await result.json();
+                if (response.success && response.data) {
+                  teamMatches.push(...response.data);
+                  successfulFetches++;
+                }
+              }
+            } catch {
+              // Silent fail
             }
           }
           
+          return teamMatches;
         } catch (err: any) {
-          // Backend çalışmıyorsa sessizce devam et
-          if (err.name !== 'AbortError' && !err.message?.includes('ERR_CONNECTION_REFUSED')) {
-            // Sadece beklenmeyen hataları logla
+          if (err.name === 'AbortError' || err.message?.includes('ERR_CONNECTION_REFUSED')) {
+            backendConnectionError = true;
           }
+          return [];
         }
-      }
+      };
+      
+      // 🚀 Tüm takımları PARALEL olarak çek
+      const teamMatchPromises = favoriteTeams.map(fetchTeamMatches);
+      const teamMatchResults = await Promise.all(teamMatchPromises);
+      teamMatchResults.forEach(matches => allMatches.push(...matches));
+      
+      logger.info('✅ All teams fetched', { totalMatches: allMatches.length }, 'MATCHES');
 
       // 🔥 CANLI MAÇLARI DA EKLE (bu eksikti!)
       if (liveMatchesFromAPI.length > 0) {
@@ -516,17 +489,22 @@ export function useFavoriteTeamMatches(): UseFavoriteTeamMatchesResult {
 
       // ✅ KRITIK FIX: Kategorize sadece FAVORİ TAKIMLARIN maçlarını yap
       // ÖNCEKİ HATA: uniqueMatches kullanılıyordu, favoriteMatches olmalı!
+      logger.info('🔄 Categorizing matches...', { favoriteMatchesCount: favoriteMatches.length }, 'MATCHES');
       const { past, live, upcoming } = categorizeMatches(favoriteMatches);
+      logger.info('📊 Categorized results', { past: past.length, live: live.length, upcoming: upcoming.length }, 'MATCHES');
       
-      // If no matches found, use mock data (without filtering by favorite teams)
+      // ✅ Gerçek veri yoksa boş göster - MOCK DATA KULLANMA
       if (past.length === 0 && live.length === 0 && upcoming.length === 0) {
-        logger.info('No favorite team matches found, using MOCK DATA', undefined, 'MATCHES');
-        const mockMatches = await generateMockMatches();
-        const categorized = categorizeMatches(mockMatches);
-        setPastMatches(categorized.past);
-        setLiveMatches(categorized.live);
-        setUpcomingMatches(categorized.upcoming.slice(0, 10));
-        logger.info(`Mock data loaded`, { past: categorized.past.length, live: categorized.live.length, upcoming: categorized.upcoming.length }, 'MATCHES');
+        logger.info('⚠️ No favorite team matches found from API', undefined, 'MATCHES');
+        setPastMatches([]);
+        setLiveMatches([]);
+        setUpcomingMatches([]);
+        
+        // Backend bağlantı hatası varsa kullanıcıya bildir
+        if (backendConnectionError && successfulFetches === 0) {
+          setError('Backend sunucusuna bağlanılamadı. Lütfen internet bağlantınızı kontrol edin veya daha sonra tekrar deneyin.');
+        }
+        // Mock data kullanmıyoruz - gerçek veri bekliyoruz
       } else {
         setPastMatches(past);
         setLiveMatches(live);
@@ -554,37 +532,38 @@ export function useFavoriteTeamMatches(): UseFavoriteTeamMatchesResult {
     }
   };
 
+  // ✅ Favori takım ID'lerini string olarak takip et (değişiklik algılama için)
+  const favoriteTeamIdsString = useMemo(() => {
+    return favoriteTeams.map(t => t.id).sort().join(',');
+  }, [favoriteTeams]);
+
   useEffect(() => {
+    logger.info('useEffect triggered', { 
+      favoriteTeamIdsString, 
+      teamsCount: favoriteTeams.length,
+      teamsLoading 
+    }, 'MATCHES');
+    
     // Skip if no favorite teams
     if (!favoriteTeams || favoriteTeams.length === 0) {
       logger.debug('No favorite teams yet, skipping fetch', undefined, 'MATCHES');
+      setPastMatches([]);
+      setLiveMatches([]);
+      setUpcomingMatches([]);
       setLoading(false); // Stop loading if no teams
       return;
     }
 
-    // 🚀 CACHE STRATEJİSİ: Önce cache'den yükle, sonra arka planda güncelle
-    const initializeMatches = async () => {
-      const cacheLoaded = await loadFromCache();
-      
-      if (cacheLoaded) {
-        logger.debug('Cache loaded, fetching in background', undefined, 'MATCHES');
-        // Cache'den yüklendi, arka planda güncelle (loading gösterme)
-        fetchMatches();
-      } else {
-        logger.debug('No cache, fetching with loading', undefined, 'MATCHES');
-        // Cache yok, loading göster
-        setLoading(true);
-        fetchMatches();
-      }
-    };
-
-    // Only fetch ONCE on initial load
-    if (!hasLoadedOnce) {
-      initializeMatches();
-    } else {
-      logger.debug('Data already loaded, skipping fetch', undefined, 'MATCHES');
-    }
-  }, [favoriteTeams.length]); // Only re-run when team count changes
+    // 🚀 Direkt fetch yap - cache stratejisi basitleştirildi
+    logger.info('🚀 Starting match fetch', { 
+      teamsCount: favoriteTeams.length, 
+      teamIds: favoriteTeamIdsString,
+      hasLoadedOnce 
+    }, 'MATCHES');
+    
+    setLoading(true);
+    fetchMatches();
+  }, [favoriteTeamIdsString]); // ✅ Takım ID'leri değiştiğinde yeniden fetch yap
 
   // 🔥 AUTO-REFRESH: Backend'den her 30 saniyede güncelle (performans için artırıldı)
   useEffect(() => {

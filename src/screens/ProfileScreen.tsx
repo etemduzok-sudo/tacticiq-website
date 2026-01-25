@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -24,7 +24,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown, ZoomIn, FadeIn, FadeOut } from 'react-native-reanimated';
 import { AdBanner } from '../components/ads/AdBanner';
 import { usersDb, predictionsDb } from '../services/databaseService';
-import { STORAGE_KEYS } from '../config/constants';
+import { STORAGE_KEYS, isSuperAdmin } from '../config/constants';
 import ScoringEngine from '../logic/ScoringEngine';
 import { AnalysisCluster } from '../types/prediction.types';
 import { getAllAvailableBadges, getUserBadges } from '../services/badgeService';
@@ -41,7 +41,7 @@ import { StandardHeader, ScreenLayout } from '../components/layouts';
 import { useTheme } from '../contexts/ThemeContext';
 import { containerStyles } from '../utils/styleHelpers';
 import { ChangePasswordModal } from '../components/profile/ChangePasswordModal';
-import { authService } from '../services/authService';
+import authService from '../services/authService';
 import { LegalDocumentScreen } from './LegalDocumentScreen';
 import { translateCountry, formatCountryDisplay, getCountryFlag } from '../utils/countryUtils';
 
@@ -54,7 +54,8 @@ interface ProfileScreenProps {
   onProUpgrade: () => void;
   onDatabaseTest?: () => void;
   onTeamSelect?: (teamId: number, teamName: string) => void; // ✅ Takım seçildiğinde o takımın maçlarını göster
-  onTeamsChange?: () => void; // ✅ Takım değiştiğinde App.tsx'e bildir
+  onTeamsChange?: () => void; // ✅ Takım değiştiğinde App.tsx'e bildir (maç verilerini güncelle)
+  setAllFavoriteTeamsFromApp?: (teams: Array<{ id: number; name: string; logo: string; colors?: string[]; type?: 'club' | 'national' }>) => Promise<boolean>; // ✅ App.tsx'teki hook ile aynı state'i kullan
   initialTab?: 'profile' | 'badges'; // Initial tab to show
 }
 
@@ -65,6 +66,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   onDatabaseTest,
   onTeamSelect,
   onTeamsChange,
+  setAllFavoriteTeamsFromApp,
   initialTab = 'profile',
 }) => {
   const { t } = useTranslation();
@@ -99,11 +101,53 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const [badgeCount, setBadgeCount] = useState(0);
   
   // ⚽ FAVORITE TEAMS STATE - useFavoriteTeams hook'unu kullan
-  const { favoriteTeams, addFavoriteTeam, removeFavoriteTeam, isFavorite, refetch } = useFavoriteTeams();
+  const { favoriteTeams, addFavoriteTeam, removeFavoriteTeam, setAllFavoriteTeams, isFavorite, refetch } = useFavoriteTeams();
   
   // ✅ Takım seçim state'leri
   const [selectedNationalTeam, setSelectedNationalTeam] = useState<{ id: number; name: string; colors: string[]; country: string; league: string; coach?: string } | null>(null);
   const [selectedClubTeams, setSelectedClubTeams] = useState<Array<{ id: number; name: string; colors: string[]; country: string; league: string; coach?: string } | null>>([null, null, null, null, null]);
+  
+  // ✅ useFavoriteTeams hook'undan gelen verilerle state'leri senkronize et
+  useEffect(() => {
+    if (favoriteTeams && favoriteTeams.length > 0) {
+      console.log('🔄 Syncing favoriteTeams to state:', favoriteTeams.map(t => ({ name: t.name, type: t.type, id: t.id })));
+      
+      // Milli takımı bul
+      const nationalTeam = favoriteTeams.find((t: any) => t.type === 'national');
+      if (nationalTeam) {
+        setSelectedNationalTeam({
+          id: nationalTeam.id,
+          name: nationalTeam.name,
+          colors: nationalTeam.colors || ['#1E40AF', '#FFFFFF'],
+          country: (nationalTeam as any).country || 'Milli Takım',
+          league: (nationalTeam as any).league || 'UEFA',
+          coach: (nationalTeam as any).coach || 'Bilinmiyor',
+        });
+      }
+      
+      // Kulüp takımlarını bul
+      const clubTeams = favoriteTeams.filter((t: any) => t.type === 'club').slice(0, 5);
+      const clubArray: Array<{ id: number; name: string; colors: string[]; country: string; league: string; coach?: string } | null> = [null, null, null, null, null];
+      clubTeams.forEach((team: any, idx: number) => {
+        if (idx < 5) {
+          clubArray[idx] = {
+            id: team.id,
+            name: team.name,
+            colors: team.colors || ['#1E40AF', '#FFFFFF'],
+            country: team.country || 'Unknown',
+            league: team.league || 'Unknown',
+            coach: team.coach || 'Bilinmiyor',
+          };
+        }
+      });
+      setSelectedClubTeams(clubArray);
+      
+      console.log('✅ State synced:', { 
+        national: nationalTeam?.name || 'none', 
+        clubs: clubTeams.map((t: any) => t.name) 
+      });
+    }
+  }, [favoriteTeams]);
   const [openDropdown, setOpenDropdown] = useState<'national' | 'club' | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [apiTeams, setApiTeams] = useState<Array<{ id: number; name: string; colors: string[]; country: string; league: string; type: 'club' | 'national'; coach?: string }>>([]);
@@ -343,29 +387,38 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         try {
           const response = await teamsApi.searchTeams(query, type);
           if (response.success && response.data && response.data.length > 0) {
-            // Backend sonuçlarını mevcut fallback sonuçlarıyla birleştir (duplicate'leri kaldır)
-            setApiTeams(prev => {
-              const backendTeams = response.data.map((team: any) => ({
-              id: team.id,
-              name: team.name,
-              country: team.country || 'Unknown',
-              league: team.league || '',
-              type: team.type || type,
-              colors: team.colors || ['#1E40AF', '#FFFFFF'],
-              coach: team.coach || null,
+            // ✅ Backend sonuçlarını SADECE TAKIM ADINA göre filtrele (ülke/lig hariç)
+            const normalizedQuery = normalizeText(query);
+            const backendTeams = response.data
+              .filter((team: any) => {
+                // ✅ SADECE takım adında ara - ülke ve lig adında ARAMA
+                const normalizedName = normalizeText(team.name);
+                return normalizedName.includes(normalizedQuery);
+              })
+              .map((team: any) => ({
+                id: team.id,
+                name: team.name,
+                country: team.country || 'Unknown',
+                league: team.league || '',
+                type: team.type || type,
+                colors: team.colors || ['#1E40AF', '#FFFFFF'],
+                coach: team.coach || null,
               }));
               
-              // Mevcut ID'leri topla
-              const existingIds = new Set(prev.map(t => t.id));
-              
-              // Backend'den gelen yeni takımları ekle
-              const newTeams = backendTeams.filter((t: any) => !existingIds.has(t.id));
-              
-              // Eğer yeni takım yoksa mevcut listeyi koru
-              if (newTeams.length === 0) return prev;
-              
-              return [...prev, ...newTeams];
-            });
+            if (backendTeams.length > 0) {
+              setApiTeams(prev => {
+                // Mevcut ID'leri topla
+                const existingIds = new Set(prev.map(t => t.id));
+                
+                // Backend'den gelen yeni takımları ekle
+                const newTeams = backendTeams.filter((t: any) => !existingIds.has(t.id));
+                
+                // Eğer yeni takım yoksa mevcut listeyi koru
+                if (newTeams.length === 0) return prev;
+                
+                return [...prev, ...newTeams];
+              });
+            }
           }
           // Backend boş döndüyse fallback zaten gösteriliyor, değiştirme
         } catch (error) {
@@ -374,7 +427,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         }
       }, 500); // 500ms debounce - daha uzun bekle
     }
-  }, [useFallbackTeams]);
+  }, [useFallbackTeams, normalizeText]);
   
   // 🌙 TEMA STATE - ThemeContext'ten al
   const { theme: currentTheme, setTheme: setAppTheme } = useTheme();
@@ -551,14 +604,17 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             },
           });
           
-          // Pro durumu - birden fazla alan kontrol et
-          const isPro = unifiedProfile.plan === 'pro' || 
+          // Pro durumu - birden fazla alan kontrol et + isSuperAdmin
+          const userIsPro = isSuperAdmin(unifiedProfile.email) ||
+                        unifiedProfile.plan === 'pro' || 
                         (unifiedProfile as any).is_pro === true || 
                         (unifiedProfile as any).isPro === true ||
                         (unifiedProfile as any).is_premium === true ||
                         (unifiedProfile as any).isPremium === true;
-          setIsPro(isPro);
-          logger.debug(`User is ${isPro ? 'PRO' : 'FREE'}`, { 
+          setIsPro(userIsPro);
+          logger.debug(`User is ${userIsPro ? 'PRO' : 'FREE'}`, { 
+            email: unifiedProfile.email,
+            isSuperAdmin: isSuperAdmin(unifiedProfile.email),
             plan: unifiedProfile.plan, 
             is_pro: (unifiedProfile as any).is_pro,
             isPremium: (unifiedProfile as any).isPremium 
@@ -643,56 +699,20 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         // Load badges
         await loadBadges();
         
-        // ✅ Favorite teams - FAVORITE_CLUBS storage'dan yükle
-        // useFavoriteTeams hook'u ile aynı storage kullanılıyor
-        const favoriteTeamsStr = await AsyncStorage.getItem(STORAGE_KEYS.FAVORITE_TEAMS);
-        console.log('📦 Loading favorite teams from storage:', favoriteTeamsStr ? 'found' : 'empty');
-        if (favoriteTeamsStr) {
-          const teams = JSON.parse(favoriteTeamsStr);
-          console.log('📋 Parsed teams:', teams.map((t: any) => ({ name: t.name, type: t.type, id: t.id })));
-          
-          // Milli takım ve kulüp takımlarını ayır (type field veya ilk takım milli kabul edilir)
-          const nationalTeam = teams.find((t: any) => t.type === 'national') || 
-                              (teams.length > 0 && !teams[0].type ? teams[0] : null);
-          const clubTeams = teams.filter((t: any) => t.type === 'club' || (t.type === undefined && teams.indexOf(t) > 0)).slice(0, 5);
-          
-          if (nationalTeam) {
-            setSelectedNationalTeam({
-              id: nationalTeam.id,
-              name: nationalTeam.name,
-              colors: nationalTeam.colors || ['#1E40AF', '#FFFFFF'],
-              country: nationalTeam.country || 'Milli Takım',
-              league: nationalTeam.league || 'UEFA',
-              coach: nationalTeam.coach || nationalTeam.manager || 'Bilinmiyor',
-            });
-          }
-          
-          // Kulüp takımlarını sırayla yerleştir
-          const clubArray: Array<{ id: number; name: string; colors: string[]; country: string; league: string; coach?: string } | null> = [null, null, null, null, null];
-          clubTeams.forEach((team: any, idx: number) => {
-            if (idx < 5) {
-              clubArray[idx] = {
-                id: team.id,
-                name: team.name,
-                colors: team.colors || ['#1E40AF', '#FFFFFF'],
-                country: team.country || 'Unknown',
-                league: team.league || 'Unknown',
-                coach: team.coach || team.manager || 'Bilinmiyor',
-              };
-            }
-          });
-          setSelectedClubTeams(clubArray);
-        }
+        // ✅ Favorite teams artık useFavoriteTeams hook'undan useEffect ile senkronize ediliyor
+        // Ayrıca storage'dan okumaya gerek yok - hook otomatik yüklüyor
+        console.log('📦 Favorite teams will be synced from useFavoriteTeams hook');
 
         // Check is_pro from AsyncStorage first (for development/testing)
-        // ✅ Pro kontrolü: is_pro, isPro, isPremium, plan === 'pro' veya plan === 'premium'
-        const storedIsPro = userData?.is_pro === true || userData?.isPro === true || userData?.isPremium === true || userData?.plan === 'pro' || userData?.plan === 'premium';
+        // ✅ Pro kontrolü: isSuperAdmin, is_pro, isPro, isPremium, plan === 'pro' veya plan === 'premium'
+        const userEmail = userData?.email?.toLowerCase() || '';
+        const storedIsPro = isSuperAdmin(userEmail) || userData?.is_pro === true || userData?.isPro === true || userData?.isPremium === true || userData?.plan === 'pro' || userData?.plan === 'premium';
         if (storedIsPro) {
           setIsPro(true);
-          logger.debug('User is PRO (from AsyncStorage)', { is_pro: userData?.is_pro, isPro: userData?.isPro, isPremium: userData?.isPremium, plan: userData?.plan }, 'PROFILE');
+          logger.debug('User is PRO', { email: userEmail, isSuperAdmin: isSuperAdmin(userEmail), is_pro: userData?.is_pro, isPro: userData?.isPro, isPremium: userData?.isPremium, plan: userData?.plan }, 'PROFILE');
         } else {
           setIsPro(false);
-          logger.debug('User is NOT PRO', { is_pro: userData?.is_pro, isPro: userData?.isPro, isPremium: userData?.isPremium, plan: userData?.plan }, 'PROFILE');
+          logger.debug('User is NOT PRO', { email: userEmail, is_pro: userData?.is_pro, isPro: userData?.isPro, isPremium: userData?.isPremium, plan: userData?.plan }, 'PROFILE');
         }
 
         // Fetch user profile from Supabase (sadece geçerli UUID varsa)
@@ -759,8 +779,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               streak: dbUser.current_streak || 0,
             },
           });
-          // Use Supabase is_pro or fallback to AsyncStorage
-          setIsPro(dbUser.is_pro || storedIsPro || false);
+          // Use isSuperAdmin, Supabase is_pro or fallback to AsyncStorage
+          const userEmail = dbUser.email || userData?.email || '';
+          setIsPro(isSuperAdmin(userEmail) || dbUser.is_pro || storedIsPro || false);
         }
 
         // Fetch user predictions to calculate best cluster
@@ -940,73 +961,63 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       console.log('✅ Club team state updated at index', index, ':', team.name);
     }
     
-    // ✅ FAVORITE_CLUBS storage'ına da kaydet (Dashboard için)
-    try {
-      const allTeams: Array<{ id: number; name: string; logo: string; colors?: string[]; type?: string }> = [];
-      
-      // Milli takım ekle (type: 'national')
-      if (newNationalTeam) {
-        allTeams.push({
-          id: newNationalTeam.id,
-          name: newNationalTeam.name,
-          logo: `https://media.api-sports.io/football/teams/${newNationalTeam.id}.png`,
-          colors: newNationalTeam.colors,
-          type: 'national', // ✅ Type eklendi
-        });
-      }
-      
-      // Kulüp takımları ekle (type: 'club')
-      newClubTeams.filter(Boolean).forEach(clubTeam => {
-        if (clubTeam) {
-          allTeams.push({
-            id: clubTeam.id,
-            name: clubTeam.name,
-            logo: `https://media.api-sports.io/football/teams/${clubTeam.id}.png`,
-            colors: clubTeam.colors,
-            type: 'club', // ✅ Type eklendi
-          });
-        }
+    // ✅ Tüm takımları birleştir ve ANINDA kaydet
+    const allTeams: Array<{ id: number; name: string; logo: string; colors?: string[]; type?: 'club' | 'national' }> = [];
+    
+    // Milli takım ekle (type: 'national')
+    if (newNationalTeam) {
+      allTeams.push({
+        id: newNationalTeam.id,
+        name: newNationalTeam.name,
+        logo: `https://media.api-sports.io/football/teams/${newNationalTeam.id}.png`,
+        colors: newNationalTeam.colors,
+        type: 'national',
       });
-      
-      // Storage'a kaydet
-      await saveFavoriteTeamsToStorage(allTeams);
-      console.log('✅ Favorite teams saved to storage:', allTeams.map(t => ({ name: t.name, type: t.type })));
-    } catch (storageError) {
-      console.warn('⚠️ Error saving to FAVORITE_CLUBS storage:', storageError);
     }
     
-    // Arka planda profil servisine de kaydet
+    // Kulüp takımları ekle (type: 'club')
+    newClubTeams.filter(Boolean).forEach(clubTeam => {
+      if (clubTeam) {
+        allTeams.push({
+          id: clubTeam.id,
+          name: clubTeam.name,
+          logo: `https://media.api-sports.io/football/teams/${clubTeam.id}.png`,
+          colors: clubTeam.colors,
+          type: 'club',
+        });
+      }
+    });
+    
+    // ✅ ANINDA App.tsx'teki hook state'ini güncelle - bu filtre barını da anında güncelleyecek
+    // Eğer App.tsx'ten gelen fonksiyon varsa onu kullan (aynı state), yoksa local hook'u kullan
+    const saveFunc = setAllFavoriteTeamsFromApp || setAllFavoriteTeams;
+    const success = await saveFunc(allTeams);
+    console.log('✅ Favorite teams saved via App hook:', success, allTeams.map(t => ({ name: t.name, type: t.type })));
+    
+    // Profil servisine de kaydet (arka planda)
     try {
-      const currentProfile = await profileService.getProfile();
-      
       if (type === 'national') {
         await profileService.updateNationalTeam(team.name);
         const clubTeamNames = newClubTeams.filter(Boolean).map(t => t!.name);
         await profileService.updateFavoriteTeams([team.name, ...clubTeamNames]);
       } else if (type === 'club' && index !== undefined) {
-        const nationalTeamName = newNationalTeam?.name || currentProfile?.nationalTeam || '';
+        const nationalTeamName = newNationalTeam?.name || '';
         const clubTeamNames = newClubTeams.filter(Boolean).map(t => t!.name);
         await profileService.updateFavoriteTeams([nationalTeamName, ...clubTeamNames].filter(Boolean));
         await profileService.updateClubTeams(clubTeamNames);
       }
-      
-      refetch();
-      console.log('✅ Team saved to profile:', team.name);
-      
-      // ✅ App.tsx'e bildir ki filtre barı da güncellensin
-      onTeamsChange?.();
-      
-      // ✅ Kaydedildi mesajı göster
-      setAutoSaveMessage('✓ Takım kaydedildi');
-      setTimeout(() => setAutoSaveMessage(null), 2000);
+      console.log('✅ Team saved to profile service:', team.name);
     } catch (error) {
-      console.warn('⚠️ Error saving team to profile (UI already updated):', error);
-      // UI zaten güncellendi, hata olsa bile devam et - yine de kaydetildi mesajı göster
-      onTeamsChange?.();
-      setAutoSaveMessage('✓ Takım kaydedildi');
-      setTimeout(() => setAutoSaveMessage(null), 2000);
+      console.warn('⚠️ Error saving to profile service:', error);
     }
-  }, [selectedClubTeams, selectedNationalTeam, refetch, onTeamsChange]);
+    
+    // ✅ App.tsx'e bildir ki maç verileri de güncellensin
+    onTeamsChange?.();
+    
+    // ✅ Kaydedildi mesajı göster
+    setAutoSaveMessage('✓ Takım kaydedildi');
+    setTimeout(() => setAutoSaveMessage(null), 2000);
+  }, [selectedClubTeams, selectedNationalTeam, setAllFavoriteTeams, setAllFavoriteTeamsFromApp, onTeamsChange]);
 
   // ✅ TAKIM SİLME FONKSİYONU
   const handleRemoveClubTeam = useCallback(async (indexToRemove: number) => {
@@ -1018,56 +1029,55 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     newClubTeams[indexToRemove] = null;
     setSelectedClubTeams(newClubTeams);
     
-    // Storage'ı güncelle
-    try {
-      const allTeams: Array<{ id: number; name: string; logo: string; colors?: string[]; type?: string }> = [];
-      
-      // Milli takım ekle
-      if (selectedNationalTeam) {
+    // ✅ Tüm takımları birleştir
+    const allTeams: Array<{ id: number; name: string; logo: string; colors?: string[]; type?: 'club' | 'national' }> = [];
+    
+    // Milli takım ekle
+    if (selectedNationalTeam) {
+      allTeams.push({
+        id: selectedNationalTeam.id,
+        name: selectedNationalTeam.name,
+        logo: `https://media.api-sports.io/football/teams/${selectedNationalTeam.id}.png`,
+        colors: selectedNationalTeam.colors,
+        type: 'national',
+      });
+    }
+    
+    // Kalan kulüp takımlarını ekle (silinen hariç)
+    newClubTeams.filter(Boolean).forEach(clubTeam => {
+      if (clubTeam) {
         allTeams.push({
-          id: selectedNationalTeam.id,
-          name: selectedNationalTeam.name,
-          logo: `https://media.api-sports.io/football/teams/${selectedNationalTeam.id}.png`,
-          colors: selectedNationalTeam.colors,
-          type: 'national',
+          id: clubTeam.id,
+          name: clubTeam.name,
+          logo: `https://media.api-sports.io/football/teams/${clubTeam.id}.png`,
+          colors: clubTeam.colors,
+          type: 'club',
         });
       }
-      
-      // Kalan kulüp takımlarını ekle (silinen hariç)
-      newClubTeams.filter(Boolean).forEach(clubTeam => {
-        if (clubTeam) {
-          allTeams.push({
-            id: clubTeam.id,
-            name: clubTeam.name,
-            logo: `https://media.api-sports.io/football/teams/${clubTeam.id}.png`,
-            colors: clubTeam.colors,
-            type: 'club',
-          });
-        }
-      });
-      
-      // Storage'a kaydet
-      await saveFavoriteTeamsToStorage(allTeams);
-      console.log('✅ Team removed from storage:', removedTeam?.name);
-      
-      // ProfileService'e de kaydet
+    });
+    
+    // ✅ ANINDA App.tsx'teki hook state'ini güncelle
+    const saveFunc = setAllFavoriteTeamsFromApp || setAllFavoriteTeams;
+    await saveFunc(allTeams);
+    console.log('✅ Team removed:', removedTeam?.name);
+    
+    // ProfileService'e de kaydet (arka planda)
+    try {
       await profileService.updateProfile({
         nationalTeam: selectedNationalTeam?.name || '',
         clubTeams: newClubTeams.filter(Boolean).map(t => t!.name),
       });
-      
-      refetch();
-      
-      // ✅ App.tsx'e bildir ki filtre barı da güncellensin
-      onTeamsChange?.();
-      
-      // ✅ Kaydedildi mesajı göster
-      setAutoSaveMessage('✓ Takım silindi');
-      setTimeout(() => setAutoSaveMessage(null), 2000);
     } catch (error) {
-      console.warn('⚠️ Error removing team:', error);
+      console.warn('⚠️ Error updating profile service:', error);
     }
-  }, [selectedClubTeams, selectedNationalTeam, refetch, onTeamsChange]);
+    
+    // ✅ App.tsx'e bildir ki maç verileri de güncellensin
+    onTeamsChange?.();
+    
+    // ✅ Silindi mesajı göster
+    setAutoSaveMessage('✓ Takım silindi');
+    setTimeout(() => setAutoSaveMessage(null), 2000);
+  }, [selectedClubTeams, selectedNationalTeam, setAllFavoriteTeams, setAllFavoriteTeamsFromApp, onTeamsChange]);
 
   // ✅ OTOMATİK KAYDETME FONKSİYONU
   const autoSaveProfile = useCallback(async (fieldsToSave: { nickname?: string; firstName?: string; lastName?: string }) => {
@@ -1165,39 +1175,48 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     return `TacticIQ${randomNum}`;
   }, []);
 
-  // ✅ Nickname boşsa otomatik oluştur (sadece email kullanıcıları için)
-  // OAuth kullanıcıları için nickname zaten email@öncesi olarak set ediliyor
+  // ✅ Nickname sadece İLK KEZ (boşken) otomatik set edilir
+  // Sonraki değişikliklere karışılmaz - kullanıcı istediği gibi değiştirebilir
+  const nicknameSetOnceRef = useRef(false);
+  
   useEffect(() => {
     const checkAndSetNickname = async () => {
-      if (loading || nickname) return;
+      // Zaten bir kez set edildiyse veya loading'deyse çık
+      if (nicknameSetOnceRef.current || loading) return;
+      
+      // Nickname zaten varsa hiçbir şey yapma
+      if (nickname && nickname.trim().length > 0) {
+        nicknameSetOnceRef.current = true;
+        return;
+      }
       
       // Provider bilgisini kontrol et
       const userDataStr = await AsyncStorage.getItem(STORAGE_KEYS.USER);
       const userData = userDataStr ? JSON.parse(userDataStr) : null;
       const provider = userData?.provider || 'email';
       
-      // OAuth kullanıcıları için nickname zaten email prefix olarak set edilmiş olmalı
+      // Sadece bir kez çalış
+      nicknameSetOnceRef.current = true;
+      
+      // OAuth kullanıcıları için nickname email prefix
       if (provider !== 'email' && provider !== 'unknown') {
-        // OAuth user - nickname zaten ayarlanmış olmalı (email prefix)
-        if (!nickname && userData?.email) {
+        if (userData?.email) {
           const emailPrefix = userData.email.split('@')[0];
           setNickname(emailPrefix);
-          console.log('👤 [Profile] OAuth nickname set from email:', emailPrefix);
+          console.log('👤 [Profile] OAuth nickname set from email (once):', emailPrefix);
         }
         return;
       }
       
       // Email kullanıcıları için TacticIQxxxx oluştur
-      if (!nickname || user.name === 'Kullanıcı') {
-        const autoNickname = generateAutoNickname();
-        setNickname(autoNickname);
-        autoSaveProfile({ nickname: autoNickname });
-        console.log('👤 [Profile] Auto nickname generated for email user:', autoNickname);
-      }
+      const autoNickname = generateAutoNickname();
+      setNickname(autoNickname);
+      autoSaveProfile({ nickname: autoNickname });
+      console.log('👤 [Profile] Auto nickname generated for email user:', autoNickname);
     };
     
     checkAndSetNickname();
-  }, [loading, nickname, user.name, generateAutoNickname, autoSaveProfile]);
+  }, [loading, nickname, generateAutoNickname, autoSaveProfile]);
 
   const achievements = [
     { id: 'winner', icon: '🏆', name: 'Winner', description: '10 doğru tahmin' },
@@ -1492,7 +1511,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                           handleTeamSearch(text, 'national');
                         }}
                         placeholderTextColor={theme.mutedForeground}
-                        autoFocus={false}
+                        autoFocus={true}
                       />
                       
                       {isSearching && (
@@ -1639,7 +1658,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                             handleTeamSearch(text, 'club');
                           }}
                           placeholderTextColor={theme.mutedForeground}
-                          autoFocus={false}
+                          autoFocus={true}
                         />
                         
                         {isSearching && (
@@ -1864,12 +1883,12 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   onPress={() => setSelectedBadge(badge)}
                   activeOpacity={0.7}
                 >
-                  {/* Lock Icon (kilitli rozetler için) */}
+                  {/* Lock Icon (kilitli rozetler için) - daha belirgin */}
                   {!badge.earned && (
                     <View style={styles.badgeLockOverlay}>
-                      <Ionicons name="lock-closed" size={10} color="#9CA3AF" />
-              </View>
-            )}
+                      <Ionicons name="lock-closed" size={10} color="#E2E8F0" />
+                    </View>
+                  )}
 
                   {/* Checkmark (kazanılmış rozetler için) */}
                   {badge.earned && (
@@ -1969,56 +1988,53 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               )}
               <TouchableOpacity 
                 style={styles.settingsField}
-                onPress={async () => {
-                  const timezones = [
+                onPress={() => setShowTimezoneDropdown(!showTimezoneDropdown)}
+              >
+                <Text style={styles.formLabel}>Saat Dilimi</Text>
+                <View style={styles.settingsValue}>
+                  <Text style={styles.settingsValueText}>
+                    {selectedTimezone === 'Europe/Istanbul' ? 'İstanbul (UTC+3)' :
+                     selectedTimezone === 'Europe/London' ? 'Londra (UTC+0)' :
+                     selectedTimezone === 'Europe/Berlin' ? 'Berlin (UTC+1)' :
+                     selectedTimezone === 'America/New_York' ? 'New York (UTC-5)' :
+                     selectedTimezone}
+                  </Text>
+                  <Ionicons name={showTimezoneDropdown ? "chevron-up" : "chevron-down"} size={16} color={theme.mutedForeground} />
+                </View>
+              </TouchableOpacity>
+              
+              {/* Saat Dilimi Dropdown */}
+              {showTimezoneDropdown && (
+                <View style={styles.languageDropdown}>
+                  {[
                     { id: 'Europe/Istanbul', name: 'İstanbul (UTC+3)' },
                     { id: 'Europe/London', name: 'Londra (UTC+0)' },
                     { id: 'Europe/Berlin', name: 'Berlin (UTC+1)' },
                     { id: 'America/New_York', name: 'New York (UTC-5)' },
-                  ];
-                  
-                  if (Platform.OS === 'web') {
-                    const choice = window.prompt(
-                      'Saat dilimi seçin:\n1 - İstanbul (UTC+3)\n2 - Londra (UTC+0)\n3 - Berlin (UTC+1)\n4 - New York (UTC-5)\n\nNumara girin:'
-                    );
-                    const tzMap: Record<string, string> = { 
-                      '1': 'Europe/Istanbul', 
-                      '2': 'Europe/London', 
-                      '3': 'Europe/Berlin', 
-                      '4': 'America/New_York' 
-                    };
-                    const tzId = tzMap[choice || ''];
-                    if (tzId) {
-                      setSelectedTimezone(tzId);
-                      await profileService.updateProfile({ timezone: tzId });
-                      window.alert(`✅ Saat dilimi değiştirildi: ${timezones.find(t => t.id === tzId)?.name}`);
-                    }
-                  } else {
-                  Alert.alert(
-                    'Saat Dilimi Seçimi',
-                    'Saat dilimi seçin:',
-                    timezones.map(tz => ({
-                      text: tz.name,
-                      onPress: async () => {
+                  ].map((tz) => (
+                    <TouchableOpacity
+                      key={tz.id}
+                      style={[
+                        styles.languageOption,
+                        selectedTimezone === tz.id && styles.languageOptionSelected
+                      ]}
+                      onPress={async () => {
                         setSelectedTimezone(tz.id);
                         await profileService.updateProfile({ timezone: tz.id });
-                        Alert.alert('Başarılı', `Saat dilimi değiştirildi: ${tz.name}`);
-                      },
-                      })).concat([{ text: 'İptal', style: 'cancel' as const }])
-                  );
-                  }
-                }}
-              >
-                <Text style={styles.formLabel}>Saat Dilimi</Text>
-                <Text style={styles.settingsValueText}>
-                  {selectedTimezone === 'Europe/Istanbul' ? 'İstanbul (UTC+3)' :
-                   selectedTimezone === 'Europe/London' ? 'Londra (UTC+0)' :
-                   selectedTimezone === 'Europe/Berlin' ? 'Berlin (UTC+1)' :
-                   selectedTimezone === 'America/New_York' ? 'New York (UTC-5)' :
-                   selectedTimezone}
-                </Text>
-                <Ionicons name="chevron-down" size={16} color={theme.mutedForeground} />
-              </TouchableOpacity>
+                        setShowTimezoneDropdown(false);
+                      }}
+                    >
+                      <Text style={[
+                        styles.languageName,
+                        selectedTimezone === tz.id && styles.languageNameSelected
+                      ]}>{tz.name}</Text>
+                      {selectedTimezone === tz.id && (
+                        <Ionicons name="checkmark" size={18} color={theme.primary} />
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
             </View>
 
             {/* Tema Seçimi - Açık/Koyu Mod */}
@@ -2225,23 +2241,39 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 const doLogout = async () => {
                   console.log('🚪 Logout started...');
                   try {
-                    // ✅ AuthService signOut - tüm storage key'leri temizler
-                    await authService.signOut();
-                    console.log('✅ AuthService signOut completed');
-                    
-                    // Sayfayı yenile (web) veya geri git (mobile)
-                      if (Platform.OS === 'web') {
-                      console.log('🔄 Reloading page...');
-                      window.location.href = '/';
-                      } else {
-                        Alert.alert('Başarılı', 'Çıkış yapıldı');
-                        onBack();
+                    // ✅ Web için: ÖNCE localStorage'ı manuel temizle (en güvenli yol)
+                    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+                      console.log('🗑️ Manuel localStorage temizliği başlıyor...');
+                      // Tüm localStorage'ı temizle
+                      const keyCount = window.localStorage.length;
+                      window.localStorage.clear();
+                      window.sessionStorage?.clear();
+                      console.log('✅ Manuel localStorage temizlendi:', keyCount, 'key');
+                      
+                      // ✅ Storage temizlendikten sonra HEMEN yönlendir
+                      // AuthService.signOut() arka planda çalışsın, beklemiyoruz
+                      console.log('🔄 Sayfayı yeniliyoruz...');
+                      
+                      // AuthService'i arka planda çağır (beklemeden)
+                      authService.signOut().catch(e => console.warn('Background signOut error:', e));
+                      
+                      // Hemen yönlendir
+                      window.location.href = '/?logout=' + Date.now();
+                      return;
                     }
+
+                    // Mobile için normal akış
+                    const result = await authService.signOut();
+                    console.log('✅ AuthService signOut completed:', result);
+                    Alert.alert('Başarılı', 'Çıkış yapıldı');
+                    onBack();
                   } catch (error: any) {
                     console.error('❌ Logout error:', error);
-                    // Hata olsa bile sayfayı yenile
-                    if (Platform.OS === 'web') {
-                      window.location.href = '/';
+                    // Hata olsa bile storage'ı temizle ve sayfayı yenile
+                    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+                      window.localStorage.clear();
+                      window.sessionStorage?.clear();
+                      window.location.href = '/?logout=' + Date.now();
                     } else {
                       Alert.alert('Hata', error.message || 'Çıkış yapılamadı');
                     }
@@ -3846,20 +3878,23 @@ const createStyles = (isDark: boolean = true) => {
     backgroundColor: 'rgba(245, 158, 11, 0.08)',
   },
   badgeItemLocked: {
-    borderColor: theme.border,
-    backgroundColor: theme.muted,
-    opacity: 0.6,
+    borderColor: 'rgba(100, 116, 139, 0.4)',
+    backgroundColor: 'rgba(30, 41, 59, 0.6)',
+    // ✅ Opacity kaldırıldı - rozetler renkli görünecek, sadece kilit ikonu olacak
   },
   badgeLockOverlay: {
     position: 'absolute',
-    top: 2,
-    right: 2,
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    top: 3,
+    right: 3,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: 'rgba(30, 41, 59, 0.95)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(148, 163, 184, 0.6)',
     alignItems: 'center',
     justifyContent: 'center',
+    // ✅ Daha belirgin kilit ikonu - rozetler renkli olduğu için bu önemli
   },
   badgeEarnedCheck: {
     position: 'absolute',
@@ -3877,9 +3912,9 @@ const createStyles = (isDark: boolean = true) => {
     marginBottom: 2,
   },
   badgeEmojiLocked: {
-    opacity: 0.4,
-    // Grayscale effect for web
-    ...(Platform.OS === 'web' ? { filter: 'grayscale(100%)' } : {}),
+    // ✅ Grayscale ve opacity kaldırıldı - rozetler renkli görünecek
+    // Sadece kilit ikonu ile "kilitli" olduğu anlaşılacak
+    opacity: 0.85, // Hafif soluk ama renkli
   } as any,
   badgeNameInline: {
     fontSize: 8,
@@ -3889,7 +3924,7 @@ const createStyles = (isDark: boolean = true) => {
     lineHeight: 10,
   },
   badgeNameLocked: {
-    color: theme.mutedForeground,
+    color: '#94A3B8', // Biraz daha okunabilir renk
   },
   noBadgesInline: {
     alignItems: 'center',

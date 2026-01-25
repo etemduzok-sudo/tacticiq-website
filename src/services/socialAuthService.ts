@@ -70,8 +70,18 @@ class SocialAuthService {
       // Tarayıcıda OAuth sayfasını aç
       if (Platform.OS === 'web') {
         // Web'de yönlendirme yap
+        // ✅ ÖNEMLİ: window.location.href ayarlandıktan sonra JavaScript çalışmaya devam eder
+        // Bu yüzden burada "success: true" dönersek AuthScreen bunu işler ve home'a yönlendirir
+        // Bu da "flaş" sorununa neden olur. Çözüm: redirecting flag'i ile işaretleyip
+        // asla success olarak dönmemek.
         window.location.href = data.url;
-        return { success: true, provider: 'google' };
+        
+        // ✅ Sayfa yönlendiriliyor - AuthScreen bu durumda hiçbir şey yapmamalı
+        // Sonsuza kadar bekle (sayfa zaten yönlendirilecek)
+        return new Promise(() => {
+          // Bu promise asla resolve olmaz - sayfa yönlendirilene kadar bekler
+          // Bu sayede AuthScreen'deki kod çalışmaz ve flaş olmaz
+        });
       } else {
         // Mobilde in-app browser kullan
         const result = await WebBrowser.openAuthSessionAsync(
@@ -151,8 +161,18 @@ class SocialAuthService {
       // Tarayıcıda OAuth sayfasını aç
       if (Platform.OS === 'web') {
         // Web'de yönlendirme yap
+        // ✅ ÖNEMLİ: window.location.href ayarlandıktan sonra JavaScript çalışmaya devam eder
+        // Bu yüzden burada "success: true" dönersek AuthScreen bunu işler ve home'a yönlendirir
+        // Bu da "flaş" sorununa neden olur. Çözüm: redirecting flag'i ile işaretleyip
+        // asla success olarak dönmemek.
         window.location.href = data.url;
-        return { success: true, provider: 'apple' };
+        
+        // ✅ Sayfa yönlendiriliyor - AuthScreen bu durumda hiçbir şey yapmamalı
+        // Sonsuza kadar bekle (sayfa zaten yönlendirilecek)
+        return new Promise(() => {
+          // Bu promise asla resolve olmaz - sayfa yönlendirilene kadar bekler
+          // Bu sayede AuthScreen'deki kod çalışmaz ve flaş olmaz
+        });
       } else {
         // Mobilde in-app browser kullan
         const result = await WebBrowser.openAuthSessionAsync(
@@ -334,15 +354,37 @@ class SocialAuthService {
     try {
       console.log('👋 [socialAuth] Çıkış yapılıyor...');
       
-      // Supabase session'ı temizle
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        console.warn('⚠️ [socialAuth] Supabase signOut error:', error);
+      // 1. Supabase session'ı temizle (scope: global)
+      try {
+        const { error } = await supabase.auth.signOut({ scope: 'global' });
+        if (error) {
+          console.warn('⚠️ [socialAuth] Supabase signOut error:', error);
+        }
+      } catch (e) {
+        console.warn('⚠️ [socialAuth] Supabase signOut exception:', e);
       }
       
-      // Local storage'ı temizle
+      // 2. AsyncStorage'ı temizle
       await AsyncStorage.removeItem(STORAGE_KEYS.USER);
       await AsyncStorage.removeItem('tacticiq_user_profile');
+      await AsyncStorage.removeItem('tacticiq-user');
+      await AsyncStorage.removeItem('tacticiq-favorite-teams');
+      await AsyncStorage.removeItem('tacticiq-favorite-clubs');
+      
+      // 3. Supabase localStorage key'lerini de temizle (web için)
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const keysToRemove: string[] = [];
+        for (let i = 0; i < window.localStorage.length; i++) {
+          const key = window.localStorage.key(i);
+          if (key && (key.startsWith('sb-') || key.includes('supabase'))) {
+            keysToRemove.push(key);
+          }
+        }
+        keysToRemove.forEach(key => {
+          console.log('🗑️ [socialAuth] Removing localStorage key:', key);
+          window.localStorage.removeItem(key);
+        });
+      }
       
       console.log('✅ [socialAuth] Çıkış başarılı');
       return { success: true };

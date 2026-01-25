@@ -7,6 +7,7 @@ import {
   ViewStyle,
   TextStyle,
   Animated,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -63,7 +64,7 @@ const Button = React.memo(function Button({
     Animated.timing(scaleAnim, {
       toValue: ACTIVE_STATES.scale.pressed, // 0.95
       duration: ANIMATION_DURATION.fast, // 75ms
-      useNativeDriver: true,
+      useNativeDriver: Platform.OS !== 'web', // ✅ Web için false
     }).start();
   };
 
@@ -71,7 +72,7 @@ const Button = React.memo(function Button({
     Animated.timing(scaleAnim, {
       toValue: ACTIVE_STATES.scale.normal, // 1
       duration: ANIMATION_DURATION.fast, // 75ms
-      useNativeDriver: true,
+      useNativeDriver: Platform.OS !== 'web', // ✅ Web için false
     }).start();
   };
 

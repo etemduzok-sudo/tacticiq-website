@@ -95,6 +95,7 @@ export default function AuthScreen({
   const [loginPassword, setLoginPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [oauthLoading, setOauthLoading] = useState(false); // ✅ OAuth tam ekran loading
   
   // Email availability check states
   const [emailStatus, setEmailStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
@@ -162,29 +163,85 @@ export default function AuthScreen({
   };
 
   const handleSocialLogin = async (provider: 'Google' | 'Apple') => {
+    // ✅ HEMEN tam ekran loading göster (flaş sorununu önler)
+    setOauthLoading(true);
     setLoading(true);
     
     try {
       console.log(`🔑 ${provider} ile giriş başlatıldı...`);
       
+      // ✅ Web için: localStorage'a OAuth başladığını işaretle
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        window.localStorage.setItem('tacticiq_oauth_initiating', 'true');
+        console.log('📍 OAuth initiating flag set');
+      }
+      
       const result = provider === 'Google'
         ? await socialAuthService.signInWithGoogle()
         : await socialAuthService.signInWithApple();
       
+      // ✅ Web'de buraya ASLA ulaşılmaz çünkü signInWithGoogle/Apple
+      // never-resolving promise döndürür (sayfa yönlendiriliyor)
+      // Bu sayede aşağıdaki kod çalışmaz ve "flaş" sorunu oluşmaz
       setLoading(false);
+      setOauthLoading(false);
       
       if (result.success) {
+        // Mobil için: OAuth tamamlandı, ana sayfaya yönlendir
         console.log(`✅ ${provider} giriş başarılı, ana sayfaya yönlendiriliyor...`);
-        // Web'de Alert.alert çalışmadığı için direkt yönlendir
         onLoginSuccess();
       } else {
+        // OAuth başarısız oldu, flag'i temizle
+        if (Platform.OS === 'web' && typeof window !== 'undefined') {
+          window.localStorage.removeItem('tacticiq_oauth_initiating');
+        }
         Alert.alert(t('common.error'), `❌ ${result.error || `${provider} ${t('auth.socialLoginFailed')}`}`);
       }
     } catch (error: any) {
       setLoading(false);
+      setOauthLoading(false);
+      // Hata durumunda flag'i temizle
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        window.localStorage.removeItem('tacticiq_oauth_initiating');
+      }
       Alert.alert(t('common.error'), `❌ ${error.message || t('auth.errorOccurred')}`);
     }
   };
+
+  // ✅ OAuth tam ekran loading overlay - sayfa yönlendirilene kadar gösterilir
+  if (oauthLoading) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <LinearGradient
+          colors={['#0a1612', '#0F2A24', '#0a1612']}
+          style={[styles.container, styles.oauthLoadingContainer]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+        >
+          {/* Grid Pattern Background */}
+          <View style={styles.gridPattern} />
+          <View style={styles.oauthLoadingContent}>
+            {Platform.OS === 'web' ? (
+              <img 
+                src="/TacticIQ.svg" 
+                alt="TacticIQ" 
+                style={{ width: 200, height: 200, marginBottom: 32 }} 
+              />
+            ) : (
+              <Image
+                source={require('../../assets/logo.png')}
+                style={{ width: 200, height: 200, marginBottom: 32 }}
+                resizeMode="contain"
+              />
+            )}
+            <ActivityIndicator size="large" color="#1FA2A6" style={{ marginBottom: 16 }} />
+            <Text style={styles.oauthLoadingText}>Giriş yapılıyor...</Text>
+            <Text style={styles.oauthLoadingSubtext}>Lütfen bekleyin</Text>
+          </View>
+        </LinearGradient>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -663,6 +720,28 @@ const styles = StyleSheet.create({
   },
   inputError: {
     borderColor: '#EF4444',
+  },
+  
+  // ✅ OAuth Loading Overlay
+  oauthLoadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  oauthLoadingContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  oauthLoadingText: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#1FA2A6',
+    marginBottom: 8,
+  },
+  oauthLoadingSubtext: {
+    fontSize: 14,
+    color: '#94a3b8',
   },
   
   // Progress Indicator

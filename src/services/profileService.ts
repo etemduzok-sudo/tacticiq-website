@@ -5,7 +5,7 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../config/supabase';
-import { STORAGE_KEYS } from '../config/constants';
+import { STORAGE_KEYS, isSuperAdmin } from '../config/constants';
 import {
   UnifiedUserProfile,
   ProfileUpdate,
@@ -68,7 +68,7 @@ class ProfileService {
       lastName: lastName,
       fullName: fullName,
       avatar: avatar,
-      plan: rawData.is_pro || rawData.isPro || rawData.isPremium || rawData.plan === 'pro' ? 'pro' : 'free',
+      plan: isSuperAdmin(rawData.email) || rawData.is_pro || rawData.isPro || rawData.isPremium || rawData.plan === 'pro' ? 'pro' : 'free',
       totalPoints: rawData.points || rawData.totalPoints || rawData.total_points || 0,
       level: rawData.level || 1,
       countryRank: rawData.countryRank || rawData.country_rank || 0,
@@ -519,9 +519,18 @@ class ProfileService {
 
   /**
    * Pro üyelik kontrolü
+   * Super admin'ler otomatik Pro
    */
   isPro(): boolean {
+    if (isSuperAdmin(this.cachedProfile?.email)) return true;
     return this.cachedProfile?.plan === 'pro';
+  }
+
+  /**
+   * Admin kontrolü
+   */
+  isAdmin(): boolean {
+    return isSuperAdmin(this.cachedProfile?.email);
   }
 
   /**

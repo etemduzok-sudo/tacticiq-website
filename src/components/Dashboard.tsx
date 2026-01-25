@@ -22,6 +22,8 @@ import * as Haptics from 'expo-haptics';
 import api, { teamsApi } from '../services/api';
 import { useFavoriteTeams } from '../hooks/useFavoriteTeams';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { profileService } from '../services/profileService';
+import { isSuperAdmin } from '../config/constants';
 
 // Coach cache - takım ID'sine göre teknik direktör isimlerini cache'le
 const coachCache: Record<number, string> = {};
@@ -42,6 +44,7 @@ interface DashboardProps {
     loading: boolean;
     error: string | null;
     hasLoadedOnce: boolean;
+    refetch?: () => void; // ✅ Tekrar yükleme fonksiyonu
   };
   selectedTeamIds?: number[]; // ✅ App.tsx'ten gelen seçili takımlar
 }
@@ -608,17 +611,16 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
     );
   };
   
-  // ✅ Check if user is premium
+  // ✅ Check if user is premium (Super admin = otomatik Pro)
   React.useEffect(() => {
     const checkPremium = async () => {
       try {
-        const userData = await AsyncStorage.getItem('fan-manager-user');
-        if (userData) {
-          const parsed = JSON.parse(userData);
-          // ✅ Pro kontrolü: is_pro, isPro, isPremium, plan === 'pro' veya plan === 'premium'
-          const isPremium = parsed.is_pro === true || parsed.isPro === true || parsed.isPremium === true || parsed.plan === 'pro' || parsed.plan === 'premium';
-          setIsPremium(isPremium);
-          logger.debug('User Pro status', { isPremium, is_pro: parsed.is_pro, isPro: parsed.isPro, isPremium: parsed.isPremium, plan: parsed.plan }, 'DASHBOARD');
+        // ✅ profileService üzerinden kontrol (super admin desteği dahil)
+        const profile = await profileService.getProfile();
+        if (profile) {
+          const isPro = profileService.isPro() || isSuperAdmin(profile.email);
+          setIsPremium(isPro);
+          logger.debug('User Pro status', { isPro, email: profile.email, plan: profile.plan }, 'DASHBOARD');
         }
       } catch (error) {
         logger.error('Error checking premium status', { error }, 'DASHBOARD');
@@ -635,7 +637,8 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
     upcomingMatches = [], 
     loading = false, 
     error = null,
-    hasLoadedOnce = false
+    hasLoadedOnce = false,
+    refetch
   } = matchData || {};
 
   // ✅ DEBUG: Log match data
@@ -821,84 +824,23 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
     }
   }, [initialScrollDone]);
 
-  // ✅ Biten maçlar genişletildiğinde, 15 saniye sonra otomatik küçült
-  React.useEffect(() => {
-    if (filteredPastMatches.length > 0 && !pastMatchesCollapsed) {
-      const timer = setTimeout(() => {
-        setPastMatchesCollapsed(true);
-      }, 15000); // 15 saniye sonra küçült
-      return () => clearTimeout(timer);
-    }
-  }, [filteredPastMatches.length, pastMatchesCollapsed]);
-
-  // ✅ Scroll bırakıldığında en yakın maç kartına snap yap
+  // ✅ Scroll bırakıldığında en yakın maç kartına snap yap (sadece yaklaşan maçlar)
   const handleScrollEnd = React.useCallback((event: any) => {
     const scrollY = event.nativeEvent.contentOffset.y;
-    const pastMatchesHeight = filteredPastMatches.length * MATCH_CARD_HEIGHT;
     
-    // Canlı maçlar header yüksekliği (varsa)
-    const liveMatchesHeaderHeight = filteredLiveMatches.length > 0 ? 40 : 0;
-    const liveMatchesHeight = filteredLiveMatches.length * MATCH_CARD_HEIGHT + liveMatchesHeaderHeight;
+    // En yakın yaklaşan maç kartına snap yap
+    const cardIndex = Math.round(scrollY / MATCH_CARD_HEIGHT);
+    const snapPosition = Math.max(0, cardIndex * MATCH_CARD_HEIGHT);
     
-    // Minimum scroll pozisyonu (geçmiş maçların altı = yaklaşan maçların başı)
-    const minScrollForUpcoming = pastMatchesHeight;
-    
-    // Eğer geçmiş maçlara scroll yapılmışsa, en yakın geçmiş maça snap yap
-    if (scrollY < minScrollForUpcoming) {
-      const cardIndex = Math.round(scrollY / MATCH_CARD_HEIGHT);
-      const snapPosition = cardIndex * MATCH_CARD_HEIGHT;
-      
-      // Yumuşak animasyon ile scroll
-      setTimeout(() => {
-        scrollViewRef.current?.scrollTo({ y: snapPosition, animated: true });
-      }, 10);
-      return;
-    }
-    
-    // Canlı maçlar bölgesinde ise
-    const liveMatchesStart = pastMatchesHeight;
-    const liveMatchesEnd = pastMatchesHeight + liveMatchesHeight;
-    
-    if (filteredLiveMatches.length > 0 && scrollY >= liveMatchesStart && scrollY < liveMatchesEnd) {
-      // Canlı maçlara snap yap
-      const offsetInLive = scrollY - liveMatchesStart - liveMatchesHeaderHeight;
-      const liveCardIndex = Math.round(offsetInLive / MATCH_CARD_HEIGHT);
-      const snapPosition = liveMatchesStart + liveMatchesHeaderHeight + (liveCardIndex * MATCH_CARD_HEIGHT);
-      
-      // Geçerli aralıkta tut
-      const clampedPosition = Math.max(liveMatchesStart, Math.min(snapPosition, liveMatchesEnd - MATCH_CARD_HEIGHT));
-      
-      setTimeout(() => {
-        scrollViewRef.current?.scrollTo({ y: clampedPosition, animated: true });
-      }, 10);
-      return;
-    }
-    
-    // Yaklaşan maçlar bölgesinde
-    const upcomingStart = pastMatchesHeight + liveMatchesHeight;
-    const offsetInUpcoming = scrollY - upcomingStart;
-    const upcomingCardIndex = Math.round(offsetInUpcoming / MATCH_CARD_HEIGHT);
-    
-    // En yakın yaklaşan maça snap yap
-    const snapPosition = upcomingStart + (Math.max(0, upcomingCardIndex) * MATCH_CARD_HEIGHT);
-    
-    // Minimum pozisyonu kontrol et (ilk yaklaşan maç)
-    const finalPosition = Math.max(upcomingStart, snapPosition);
-    
+    // Yumuşak animasyon ile scroll
     setTimeout(() => {
-      scrollViewRef.current?.scrollTo({ y: finalPosition, animated: true });
+      scrollViewRef.current?.scrollTo({ y: snapPosition, animated: true });
     }, 10);
-  }, [filteredPastMatches.length, filteredLiveMatches.length, MATCH_CARD_HEIGHT]);
+  }, [MATCH_CARD_HEIGHT]);
 
-  // Show loading ONLY on first load (after all hooks are called)
-  if (loading && !hasLoadedOnce) {
-    return (
-      <View style={[styles.container, styles.centerContent]}>
-        <ActivityIndicator size="large" color={BRAND.primary} />
-        <Text style={styles.loadingText}>Kontrol paneli yükleniyor...</Text>
-      </View>
-    );
-  }
+  // ✅ Loading durumunda da grid pattern göster
+  // Maçlar yüklenirken veya backend çalışmıyorken bile UI gösterilmeli
+  const showLoadingIndicator = loading && !hasLoadedOnce;
 
   // ✅ handleTeamSelect artık App.tsx'te - ProfileCard üzerinden yönetiliyor
 
@@ -929,9 +871,18 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
         scrollEventThrottle={16}
       >
 
-        {/* ✅ CANLI MAÇLAR - Sadece favori takımların canlı maçları */}
-        {filteredLiveMatches.length > 0 && (
+        {/* ✅ Loading Indicator - Grid pattern üzerinde */}
+        {showLoadingIndicator && (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={BRAND.primary} />
+            <Text style={styles.loadingText}>Maçlar yükleniyor...</Text>
+          </View>
+        )}
+
+        {/* ✅ CANLI MAÇLAR - En üstte göster */}
+        {!showLoadingIndicator && filteredLiveMatches.length > 0 && (
           <View style={styles.matchesListContainer}>
+            {/* Canlı Maçlar Başlığı */}
             <View style={styles.liveMatchesHeader}>
               <View style={styles.liveIndicatorDot} />
               <Text style={styles.liveMatchesTitle}>CANLI MAÇLAR</Text>
@@ -940,7 +891,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
             {filteredLiveMatches.map((match, index) => (
               <Animated.View 
                 key={`live-${match.fixture.id}`} 
-                entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(50 + index * 30).springify()}
+                entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(index * 30).springify()}
                 style={styles.matchCardWrapper}
               >
                 {renderMatchCard(match, 'live', () => onNavigate('match-detail', { id: match.fixture.id }))}
@@ -949,13 +900,21 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
           </View>
         )}
 
-        {/* YAKLAŞAN MAÇLAR - Tarih sırasına göre */}
-        {filteredUpcomingMatches.length > 0 && (
+        {/* ✅ YAKLAŞAN MAÇLAR */}
+        {!showLoadingIndicator && filteredUpcomingMatches.length > 0 && (
           <View style={styles.matchesListContainer}>
+            {/* Yaklaşan Maçlar Başlığı - sadece canlı maç varsa göster */}
+            {filteredLiveMatches.length > 0 && (
+              <View style={styles.upcomingMatchesHeader}>
+                <Ionicons name="time-outline" size={18} color={BRAND.primary} />
+                <Text style={styles.upcomingMatchesTitle}>YAKLAŞAN MAÇLAR</Text>
+                <Text style={styles.upcomingMatchesCount}>{filteredUpcomingMatches.length}</Text>
+              </View>
+            )}
             {filteredUpcomingMatches.map((match, index) => (
               <Animated.View 
                 key={`upcoming-${match.fixture.id}`} 
-                entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(100 + index * 30).springify()}
+                entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(50 + index * 30).springify()}
                 style={styles.matchCardWrapper}
               >
                 {renderMatchCard(match, 'upcoming', () => onNavigate('match-detail', { id: match.fixture.id }))}
@@ -964,28 +923,56 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
           </View>
         )}
 
-        {/* ✅ BİTEN MAÇLAR - Sadece favori takımların biten maçları */}
-        {filteredPastMatches.length > 0 && (
-          <View style={styles.matchesListContainer}>
-            <View style={styles.finishedMatchesHeader}>
-              <Ionicons name="checkmark-done" size={18} color="#64748B" />
-              <Text style={styles.finishedMatchesTitle}>BİTEN MAÇLAR</Text>
-              <Text style={styles.finishedMatchesCount}>{filteredPastMatches.length}</Text>
-            </View>
-            {filteredPastMatches.slice(0, 5).map((match, index) => (
-              <Animated.View 
-                key={`finished-${match.fixture.id}`} 
-                entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(150 + index * 30).springify()}
-                style={styles.matchCardWrapper}
-              >
-                {renderMatchCard(match, 'finished', () => onNavigate('match-result', { id: match.fixture.id }))}
-              </Animated.View>
-            ))}
+        {/* ✅ BİTEN MAÇLAR - Küçültülebilir bölüm */}
+        {!showLoadingIndicator && filteredPastMatches.length > 0 && (
+          <View style={styles.pastMatchesSection}>
+            {/* Biten Maçlar Başlığı - Tıklanabilir */}
+            <TouchableOpacity 
+              style={styles.pastMatchesExpandedHeader}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setPastMatchesCollapsed(!pastMatchesCollapsed);
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={styles.pastMatchesHeaderLeft}>
+                <Ionicons name="checkmark-circle" size={18} color="#64748B" />
+                <Text style={styles.pastMatchesTitle}>BİTEN MAÇLAR</Text>
+                <View style={styles.pastMatchesCount}>
+                  <Text style={styles.pastMatchesCountText}>{filteredPastMatches.length}</Text>
+                </View>
+              </View>
+              <Ionicons 
+                name={pastMatchesCollapsed ? "chevron-down" : "chevron-up"} 
+                size={20} 
+                color="#64748B" 
+              />
+            </TouchableOpacity>
+            
+            {/* Biten Maçlar Listesi - Küçültülebilir */}
+            {!pastMatchesCollapsed && (
+              <View style={styles.pastMatchesExpandedList}>
+                {filteredPastMatches.slice(0, 10).map((match, index) => (
+                  <Animated.View 
+                    key={`past-${match.fixture.id}`} 
+                    entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(index * 20).springify()}
+                    style={styles.matchCardWrapper}
+                  >
+                    {renderMatchCard(match, 'finished', () => onNavigate('match-detail', { id: match.fixture.id }))}
+                  </Animated.View>
+                ))}
+                {filteredPastMatches.length > 10 && (
+                  <Text style={styles.pastMatchesMoreText}>
+                    +{filteredPastMatches.length - 10} daha fazla maç
+                  </Text>
+                )}
+              </View>
+            )}
           </View>
         )}
 
-        {/* Boş Durum - Hiç maç yoksa */}
-        {filteredLiveMatches.length === 0 && filteredUpcomingMatches.length === 0 && filteredPastMatches.length === 0 && (
+        {/* Boş Durum - Hiç maç yoksa (loading değilse göster) */}
+        {!showLoadingIndicator && filteredUpcomingMatches.length === 0 && filteredLiveMatches.length === 0 && filteredPastMatches.length === 0 && (
           <View style={styles.emptyState}>
             <Ionicons name="football-outline" size={48} color="#64748B" />
             <Text style={styles.emptyText}>
@@ -993,9 +980,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
                 ? 'Maçları görmek için profil ekranından favori takım seçin'
                 : error 
                   ? 'Maçlar yüklenirken hata oluştu. Lütfen tekrar deneyin.'
-                  : loading
-                    ? 'Maçlar yükleniyor...'
-                    : 'Favori takımlarınızın yaklaşan maçı bulunamadı'}
+                  : 'Favori takımlarınızın maçı bulunamadı'}
             </Text>
             {favoriteTeams.length === 0 && (
               <TouchableOpacity 
@@ -1004,6 +989,15 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
               >
                 <Ionicons name="heart-outline" size={16} color="#1FA2A6" />
                 <Text style={styles.selectTeamText}>Takım Seç</Text>
+              </TouchableOpacity>
+            )}
+            {error && favoriteTeams.length > 0 && refetch && (
+              <TouchableOpacity 
+                style={styles.retryButton}
+                onPress={() => refetch()}
+              >
+                <Ionicons name="refresh-outline" size={16} color="#1FA2A6" />
+                <Text style={styles.selectTeamText}>Tekrar Dene</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -1047,6 +1041,11 @@ const styles = StyleSheet.create({
   centerContent: {
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: SPACING.xl * 3,
   },
   loadingText: {
     ...TYPOGRAPHY.body,
@@ -2109,6 +2108,44 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 10,
     overflow: 'hidden',
+  },
+  // ✅ Yaklaşan Maçlar Header
+  upcomingMatchesHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.base,
+    paddingVertical: SPACING.sm,
+    marginBottom: SPACING.sm,
+    gap: 8,
+  },
+  upcomingMatchesTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: BRAND.primary,
+    flex: 1,
+  },
+  upcomingMatchesCount: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    backgroundColor: BRAND.primary,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+  // ✅ Tekrar Dene butonu
+  retryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
+    marginTop: SPACING.md,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.sm,
+    backgroundColor: 'rgba(31, 162, 166, 0.15)',
+    borderRadius: SIZES.radiusMd,
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.3)',
   },
 
   // ✅ Biten Maçlar Header

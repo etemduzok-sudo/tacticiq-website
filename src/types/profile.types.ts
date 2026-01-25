@@ -135,11 +135,14 @@ export function fromSupabaseProfile(data: SupabaseUserProfile): UnifiedUserProfi
 
 /**
  * Uygulama formatından Supabase formatına dönüştür
+ * NOT: nickname sütunu Supabase'de mevcut olmalı
+ * Yoksa supabase/add_nickname_column.sql dosyasını çalıştırın
  */
 export function toSupabaseProfile(data: ProfileUpdate): Partial<SupabaseUserProfile> {
   const result: Partial<SupabaseUserProfile> = {};
   
   if (data.name !== undefined) result.name = data.name;
+  // ✅ nickname sütunu - supabase/add_nickname_column.sql çalıştırıldıktan sonra aktif
   if (data.nickname !== undefined) result.nickname = data.nickname;
   if (data.avatar !== undefined) result.avatar = data.avatar;
   if (data.plan !== undefined) result.plan = data.plan;
