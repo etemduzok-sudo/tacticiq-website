@@ -1547,16 +1547,26 @@ const PlayerModal = ({ visible, players, selectedPlayers, positionLabel, onSelec
             style={styles.modalContent}
           >
             {/* Header */}
-            <View style={styles.modalHeader}>
-              <View>
+            <View style={styles.playerModalHeader}>
+              <View style={styles.playerModalHeaderText}>
                 <Text style={styles.modalTitle}>
                   {isDefenseMode ? '🛡️ Defans Oyuncusu Seç' : 'Oyuncu Seç'}
                 </Text>
                 <Text style={styles.modalSubtitle}>Pozisyon: {positionLabel}</Text>
               </View>
-              <TouchableOpacity onPress={onClose} style={styles.playerModalCloseBtn}>
+              <TouchableOpacity onPress={onClose} style={styles.playerModalCloseBtnTopRight}>
                 <Ionicons name="close" size={20} color="#94A3B8" />
               </TouchableOpacity>
+            </View>
+            
+            {/* Position Rule Info */}
+            <View style={styles.positionRuleInfo}>
+              <Ionicons name="information-circle" size={16} color="#F59E0B" />
+              <Text style={styles.positionRuleInfoText}>
+                {positionLabel === 'GK' 
+                  ? 'Kaleci pozisyonuna sadece kaleciler atanabilir.'
+                  : 'Saha oyuncuları sadece saha pozisyonlarına atanabilir.'}
+              </Text>
             </View>
             
             {/* Defense Mode Info */}
@@ -2874,6 +2884,43 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     borderWidth: 1,
     borderColor: 'rgba(148, 163, 184, 0.3)',
+  },
+  playerModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(31, 162, 166, 0.15)',
+  },
+  playerModalHeaderText: {
+    flex: 1,
+    marginRight: 12,
+  },
+  playerModalCloseBtnTopRight: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(148, 163, 184, 0.15)',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(148, 163, 184, 0.3)',
+  },
+  positionRuleInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(245, 158, 11, 0.2)',
+  },
+  positionRuleInfoText: {
+    marginLeft: 8,
+    fontSize: 12,
+    color: '#F59E0B',
+    flex: 1,
   },
   
   // ✅ Player Preview Modal - Enhanced
