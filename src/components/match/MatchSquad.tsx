@@ -1131,6 +1131,67 @@ export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSqu
           onClose={() => setSelectedPlayerForDetail(null)}
         />
       )}
+
+      {/* ✅ Defense Confirmation Modal */}
+      <Modal
+        visible={showDefenseConfirmModal}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setShowDefenseConfirmModal(false)}
+      >
+        <View style={styles.defenseConfirmOverlay}>
+          <View style={styles.defenseConfirmModal}>
+            {/* Icon */}
+            <View style={styles.defenseConfirmIcon}>
+              <Ionicons name="shield-checkmark" size={48} color="#1FA2A6" />
+            </View>
+            
+            {/* Title */}
+            <Text style={styles.defenseConfirmTitle}>Defans Formasyonu</Text>
+            
+            {/* Description */}
+            <Text style={styles.defenseConfirmDesc}>
+              Atak formasyonunuz seçildi. Defans için farklı bir formasyon seçmek ister misiniz?
+            </Text>
+            
+            {/* Info Box */}
+            <View style={styles.defenseConfirmInfo}>
+              <Ionicons name="information-circle" size={18} color="#F59E0B" />
+              <Text style={styles.defenseConfirmInfoText}>
+                Defans formasyonunda atak kadronuzdaki 11 oyuncuyu farklı pozisyonlara yerleştireceksiniz.
+              </Text>
+            </View>
+            
+            {/* Buttons */}
+            <View style={styles.defenseConfirmButtons}>
+              <TouchableOpacity
+                style={styles.defenseConfirmNoBtn}
+                onPress={handleDefenseConfirmNo}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="close-circle-outline" size={20} color="#94A3B8" />
+                <Text style={styles.defenseConfirmNoText}>Hayır, Devam Et</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={styles.defenseConfirmYesBtn}
+                onPress={handleDefenseConfirmYes}
+                activeOpacity={0.7}
+              >
+                <LinearGradient
+                  colors={['#3B82F6', '#1D4ED8']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.defenseConfirmYesGradient}
+                >
+                  <Ionicons name="shield" size={20} color="#FFFFFF" />
+                  <Text style={styles.defenseConfirmYesText}>Evet, Seç</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -1356,67 +1417,6 @@ const FormationModal = ({ visible, formations, formationType, onSelect, onClose,
           </View>
         </Modal>
       )}
-
-      {/* ✅ Defense Confirmation Modal */}
-      <Modal
-        visible={showDefenseConfirmModal}
-        animationType="fade"
-        transparent={true}
-        onRequestClose={() => setShowDefenseConfirmModal(false)}
-      >
-        <View style={styles.defenseConfirmOverlay}>
-          <View style={styles.defenseConfirmModal}>
-            {/* Icon */}
-            <View style={styles.defenseConfirmIcon}>
-              <Ionicons name="shield-checkmark" size={48} color="#1FA2A6" />
-            </View>
-            
-            {/* Title */}
-            <Text style={styles.defenseConfirmTitle}>Defans Formasyonu</Text>
-            
-            {/* Description */}
-            <Text style={styles.defenseConfirmDesc}>
-              Atak formasyonunuz seçildi. Defans için farklı bir formasyon seçmek ister misiniz?
-            </Text>
-            
-            {/* Info Box */}
-            <View style={styles.defenseConfirmInfo}>
-              <Ionicons name="information-circle" size={18} color="#F59E0B" />
-              <Text style={styles.defenseConfirmInfoText}>
-                Defans formasyonunda atak kadronuzdaki 11 oyuncuyu farklı pozisyonlara yerleştireceksiniz.
-              </Text>
-            </View>
-            
-            {/* Buttons */}
-            <View style={styles.defenseConfirmButtons}>
-              <TouchableOpacity
-                style={styles.defenseConfirmNoBtn}
-                onPress={handleDefenseConfirmNo}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="close-circle-outline" size={20} color="#94A3B8" />
-                <Text style={styles.defenseConfirmNoText}>Hayır, Devam Et</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={styles.defenseConfirmYesBtn}
-                onPress={handleDefenseConfirmYes}
-                activeOpacity={0.7}
-              >
-                <LinearGradient
-                  colors={['#3B82F6', '#1D4ED8']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.defenseConfirmYesGradient}
-                >
-                  <Ionicons name="shield" size={20} color="#FFFFFF" />
-                  <Text style={styles.defenseConfirmYesText}>Evet, Seç</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </>
   );
 };
