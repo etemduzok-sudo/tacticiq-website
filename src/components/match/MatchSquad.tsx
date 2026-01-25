@@ -829,20 +829,8 @@ export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSqu
   const handleRemovePlayer = (slotIndex: number) => {
     const player = selectedPlayers[slotIndex];
     if (player) {
-      Alert.alert(
-        'Oyuncu Çıkar',
-        `${player.name} yedeğe gönderilsin mi?`,
-        [
-          { text: 'İptal', style: 'cancel' },
-          { 
-            text: 'Çıkar', 
-            style: 'destructive',
-            onPress: () => {
-              setSelectedPlayers({ ...selectedPlayers, [slotIndex]: null });
-            }
-          }
-        ]
-      );
+      // Directly remove player without confirmation for smoother UX
+      setSelectedPlayers({ ...selectedPlayers, [slotIndex]: null });
     }
   };
 
@@ -1001,8 +989,9 @@ export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSqu
                           style={styles.removeButton}
                           onPress={() => handleRemovePlayer(index)}
                           activeOpacity={0.7}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                         >
-                          <Ionicons name="close-circle" size={20} color="#FFFFFF" />
+                          <Ionicons name="close" size={16} color="#FFFFFF" />
                         </TouchableOpacity>
 
                         {/* Player Card - Main */}
@@ -2101,13 +2090,13 @@ const styles = StyleSheet.create({
   },
   removeButton: {
     position: 'absolute',
-    top: -5,
-    right: -5,
+    top: -8,
+    right: -8,
     zIndex: 100,
     backgroundColor: '#EF4444',
-    borderRadius: 10,
-    width: 20,
-    height: 20,
+    borderRadius: 13,
+    width: 26,
+    height: 26,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
