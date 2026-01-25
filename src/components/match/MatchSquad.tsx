@@ -1579,16 +1579,6 @@ const PlayerModal = ({ visible, players, selectedPlayers, positionLabel, onSelec
               </TouchableOpacity>
             </View>
             
-            {/* Position Rule Info */}
-            <View style={styles.positionRuleInfo}>
-              <Ionicons name="information-circle" size={16} color="#F59E0B" />
-              <Text style={styles.positionRuleInfoText}>
-                {positionLabel === 'GK' 
-                  ? 'Kaleci pozisyonuna sadece kaleciler atanabilir.'
-                  : 'Kaleciler saha pozisyonlarına atanamaz.'}
-              </Text>
-            </View>
-            
             {/* Defense Mode Info */}
             {isDefenseMode && (
               <View style={styles.defenseModeInfo}>
@@ -2936,22 +2926,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(148, 163, 184, 0.3)',
   },
-  positionRuleInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: 'rgba(245, 158, 11, 0.1)',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(245, 158, 11, 0.2)',
-  },
-  positionRuleInfoText: {
-    marginLeft: 8,
-    fontSize: 12,
-    color: '#F59E0B',
-    flex: 1,
-  },
-  
+
   // ✅ Player Card Modal - FIFA Style
   playerCardOverlay: {
     flex: 1,
