@@ -38,6 +38,14 @@ const { width, height } = Dimensions.get('window');
 // Web için animasyonları devre dışı bırak
 const isWeb = Platform.OS === 'web';
 
+// Helper function to get color based on stat value
+const getStatColor = (value: number): string => {
+  if (value >= 85) return '#10B981'; // Green - Excellent
+  if (value >= 70) return '#1FA2A6'; // Teal - Good
+  if (value >= 50) return '#F59E0B'; // Yellow - Average
+  return '#EF4444'; // Red - Poor
+};
+
 interface MatchSquadProps {
   matchData: any;
   matchId: string;
@@ -1593,7 +1601,7 @@ const PlayerModal = ({ visible, players, selectedPlayers, positionLabel, onSelec
         </View>
       </Modal>
 
-      {/* Player Preview Modal */}
+      {/* Player Preview Modal - Enhanced */}
       {previewPlayer && (
         <Modal
           visible={true}
@@ -1602,100 +1610,189 @@ const PlayerModal = ({ visible, players, selectedPlayers, positionLabel, onSelec
           onRequestClose={() => setPreviewPlayer(null)}
         >
           <View style={styles.playerPreviewOverlay}>
-            <View style={styles.playerPreviewModal}>
-              {/* Player Info */}
-              <View style={styles.playerPreviewHeader}>
-                <View style={[
-                  styles.playerPreviewRating,
-                  { backgroundColor: previewPlayer.rating >= 85 ? '#C9A44C' : '#1FA2A6' }
-                ]}>
-                  <Text style={styles.playerPreviewRatingText}>{previewPlayer.rating}</Text>
+            <ScrollView 
+              style={styles.playerPreviewScrollView}
+              contentContainerStyle={styles.playerPreviewScrollContent}
+              showsVerticalScrollIndicator={false}
+            >
+              <View style={styles.playerPreviewModal}>
+                {/* Close Button */}
+                <TouchableOpacity 
+                  style={styles.playerPreviewCloseBtn}
+                  onPress={() => setPreviewPlayer(null)}
+                >
+                  <Ionicons name="close" size={20} color="#94A3B8" />
+                </TouchableOpacity>
+
+                {/* Player Header */}
+                <View style={styles.playerPreviewHeader}>
+                  <View style={[
+                    styles.playerPreviewRating,
+                    { backgroundColor: previewPlayer.rating >= 85 ? '#C9A44C' : '#1FA2A6' }
+                  ]}>
+                    <Text style={styles.playerPreviewRatingText}>{previewPlayer.rating}</Text>
+                  </View>
+                  <View style={styles.playerPreviewInfo}>
+                    <Text style={styles.playerPreviewName}>{previewPlayer.name}</Text>
+                    <Text style={styles.playerPreviewPosition}>
+                      {previewPlayer.position} • {previewPlayer.team}
+                    </Text>
+                    {previewPlayer.nationality && (
+                      <Text style={styles.playerPreviewNationality}>
+                        🌍 {previewPlayer.nationality} {previewPlayer.age ? `• ${previewPlayer.age} yaş` : ''}
+                      </Text>
+                    )}
+                  </View>
                 </View>
-                <View style={styles.playerPreviewInfo}>
-                  <Text style={styles.playerPreviewName}>{previewPlayer.name}</Text>
-                  <Text style={styles.playerPreviewPosition}>
-                    {previewPlayer.position} • {previewPlayer.team}
+
+                {/* Status Badges */}
+                <View style={styles.playerPreviewStatusSection}>
+                  {/* Form Status */}
+                  <View style={[
+                    styles.playerPreviewStatusBadge,
+                    previewPlayer.form >= 8 ? styles.statusBadgeGood :
+                    previewPlayer.form >= 5 ? styles.statusBadgeNeutral :
+                    styles.statusBadgeBad
+                  ]}>
+                    <Ionicons 
+                      name={previewPlayer.form >= 8 ? "trending-up" : previewPlayer.form >= 5 ? "remove" : "trending-down"} 
+                      size={16} 
+                      color={previewPlayer.form >= 8 ? "#10B981" : previewPlayer.form >= 5 ? "#F59E0B" : "#EF4444"} 
+                    />
+                    <Text style={[
+                      styles.playerPreviewStatusText,
+                      { color: previewPlayer.form >= 8 ? "#10B981" : previewPlayer.form >= 5 ? "#F59E0B" : "#EF4444" }
+                    ]}>
+                      {previewPlayer.form >= 8 ? 'Yüksek Form' : previewPlayer.form >= 5 ? 'Normal Form' : 'Düşük Form'}
+                    </Text>
+                  </View>
+
+                  {/* Injury Status */}
+                  {previewPlayer.injury ? (
+                    <View style={[styles.playerPreviewStatusBadge, styles.statusBadgeBad]}>
+                      <Ionicons name="medical" size={16} color="#EF4444" />
+                      <Text style={[styles.playerPreviewStatusText, { color: '#EF4444' }]}>Sakat</Text>
+                    </View>
+                  ) : (
+                    <View style={[styles.playerPreviewStatusBadge, styles.statusBadgeGood]}>
+                      <Ionicons name="fitness" size={16} color="#10B981" />
+                      <Text style={[styles.playerPreviewStatusText, { color: '#10B981' }]}>Sağlıklı</Text>
+                    </View>
+                  )}
+                </View>
+
+                {/* Skill Stats - FIFA Style */}
+                {previewPlayer.stats && (
+                  <View style={styles.playerPreviewSkillsSection}>
+                    <Text style={styles.playerPreviewSectionTitle}>⚡ Beceri Değerleri</Text>
+                    <View style={styles.playerPreviewSkillsGrid}>
+                      <View style={styles.playerPreviewSkillItem}>
+                        <View style={styles.playerPreviewSkillBar}>
+                          <View style={[styles.playerPreviewSkillFill, { width: `${previewPlayer.stats.pace}%`, backgroundColor: getStatColor(previewPlayer.stats.pace) }]} />
+                        </View>
+                        <View style={styles.playerPreviewSkillInfo}>
+                          <Text style={styles.playerPreviewSkillLabel}>HIZ</Text>
+                          <Text style={[styles.playerPreviewSkillValue, { color: getStatColor(previewPlayer.stats.pace) }]}>{previewPlayer.stats.pace}</Text>
+                        </View>
+                      </View>
+                      <View style={styles.playerPreviewSkillItem}>
+                        <View style={styles.playerPreviewSkillBar}>
+                          <View style={[styles.playerPreviewSkillFill, { width: `${previewPlayer.stats.shooting}%`, backgroundColor: getStatColor(previewPlayer.stats.shooting) }]} />
+                        </View>
+                        <View style={styles.playerPreviewSkillInfo}>
+                          <Text style={styles.playerPreviewSkillLabel}>ŞUT</Text>
+                          <Text style={[styles.playerPreviewSkillValue, { color: getStatColor(previewPlayer.stats.shooting) }]}>{previewPlayer.stats.shooting}</Text>
+                        </View>
+                      </View>
+                      <View style={styles.playerPreviewSkillItem}>
+                        <View style={styles.playerPreviewSkillBar}>
+                          <View style={[styles.playerPreviewSkillFill, { width: `${previewPlayer.stats.passing}%`, backgroundColor: getStatColor(previewPlayer.stats.passing) }]} />
+                        </View>
+                        <View style={styles.playerPreviewSkillInfo}>
+                          <Text style={styles.playerPreviewSkillLabel}>PAS</Text>
+                          <Text style={[styles.playerPreviewSkillValue, { color: getStatColor(previewPlayer.stats.passing) }]}>{previewPlayer.stats.passing}</Text>
+                        </View>
+                      </View>
+                      <View style={styles.playerPreviewSkillItem}>
+                        <View style={styles.playerPreviewSkillBar}>
+                          <View style={[styles.playerPreviewSkillFill, { width: `${previewPlayer.stats.dribbling}%`, backgroundColor: getStatColor(previewPlayer.stats.dribbling) }]} />
+                        </View>
+                        <View style={styles.playerPreviewSkillInfo}>
+                          <Text style={styles.playerPreviewSkillLabel}>DRİBLİNG</Text>
+                          <Text style={[styles.playerPreviewSkillValue, { color: getStatColor(previewPlayer.stats.dribbling) }]}>{previewPlayer.stats.dribbling}</Text>
+                        </View>
+                      </View>
+                      <View style={styles.playerPreviewSkillItem}>
+                        <View style={styles.playerPreviewSkillBar}>
+                          <View style={[styles.playerPreviewSkillFill, { width: `${previewPlayer.stats.defending}%`, backgroundColor: getStatColor(previewPlayer.stats.defending) }]} />
+                        </View>
+                        <View style={styles.playerPreviewSkillInfo}>
+                          <Text style={styles.playerPreviewSkillLabel}>DEFANS</Text>
+                          <Text style={[styles.playerPreviewSkillValue, { color: getStatColor(previewPlayer.stats.defending) }]}>{previewPlayer.stats.defending}</Text>
+                        </View>
+                      </View>
+                      <View style={styles.playerPreviewSkillItem}>
+                        <View style={styles.playerPreviewSkillBar}>
+                          <View style={[styles.playerPreviewSkillFill, { width: `${previewPlayer.stats.physical}%`, backgroundColor: getStatColor(previewPlayer.stats.physical) }]} />
+                        </View>
+                        <View style={styles.playerPreviewSkillInfo}>
+                          <Text style={styles.playerPreviewSkillLabel}>FİZİK</Text>
+                          <Text style={[styles.playerPreviewSkillValue, { color: getStatColor(previewPlayer.stats.physical) }]}>{previewPlayer.stats.physical}</Text>
+                        </View>
+                      </View>
+                    </View>
+                  </View>
+                )}
+
+                {/* Position Suitability Info */}
+                <View style={styles.playerPreviewPositionInfo}>
+                  <Ionicons name="information-circle" size={16} color="#64748B" />
+                  <Text style={styles.playerPreviewPositionInfoText}>
+                    Bu oyuncu <Text style={{ color: '#1FA2A6', fontWeight: '700' }}>{positionLabel}</Text> pozisyonuna atanacak.
                   </Text>
                 </View>
-              </View>
 
-              {/* Stats */}
-              {previewPlayer.stats && (
-                <View style={styles.playerPreviewStats}>
-                  <View style={styles.playerPreviewStatRow}>
-                    <View style={styles.playerPreviewStat}>
-                      <Text style={styles.playerPreviewStatValue}>{previewPlayer.stats.pace}</Text>
-                      <Text style={styles.playerPreviewStatLabel}>HIZ</Text>
-                    </View>
-                    <View style={styles.playerPreviewStat}>
-                      <Text style={styles.playerPreviewStatValue}>{previewPlayer.stats.shooting}</Text>
-                      <Text style={styles.playerPreviewStatLabel}>ŞUT</Text>
-                    </View>
-                    <View style={styles.playerPreviewStat}>
-                      <Text style={styles.playerPreviewStatValue}>{previewPlayer.stats.passing}</Text>
-                      <Text style={styles.playerPreviewStatLabel}>PAS</Text>
-                    </View>
-                  </View>
-                  <View style={styles.playerPreviewStatRow}>
-                    <View style={styles.playerPreviewStat}>
-                      <Text style={styles.playerPreviewStatValue}>{previewPlayer.stats.dribbling}</Text>
-                      <Text style={styles.playerPreviewStatLabel}>DRİB</Text>
-                    </View>
-                    <View style={styles.playerPreviewStat}>
-                      <Text style={styles.playerPreviewStatValue}>{previewPlayer.stats.defending}</Text>
-                      <Text style={styles.playerPreviewStatLabel}>DEF</Text>
-                    </View>
-                    <View style={styles.playerPreviewStat}>
-                      <Text style={styles.playerPreviewStatValue}>{previewPlayer.stats.physical}</Text>
-                      <Text style={styles.playerPreviewStatLabel}>FİZ</Text>
-                    </View>
-                  </View>
-                </View>
-              )}
-
-              {/* Badges */}
-              <View style={styles.playerPreviewBadges}>
-                {previewPlayer.form >= 8 && (
-                  <View style={styles.playerPreviewBadge}>
-                    <Ionicons name="flame" size={14} color="#F59E0B" />
-                    <Text style={styles.playerPreviewBadgeText}>Formda</Text>
-                  </View>
-                )}
-                {previewPlayer.injury && (
-                  <View style={[styles.playerPreviewBadge, { backgroundColor: 'rgba(239, 68, 68, 0.2)' }]}>
-                    <Ionicons name="medical" size={14} color="#EF4444" />
-                    <Text style={[styles.playerPreviewBadgeText, { color: '#EF4444' }]}>Sakatlık</Text>
-                  </View>
-                )}
-              </View>
-
-              {/* Buttons */}
-              <View style={styles.playerPreviewButtons}>
-                <TouchableOpacity
-                  style={styles.playerPreviewCancelBtn}
-                  onPress={() => setPreviewPlayer(null)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.playerPreviewCancelText}>İptal</Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity
-                  style={styles.playerPreviewAddBtn}
-                  onPress={() => handlePlayerSelect(previewPlayer)}
-                  activeOpacity={0.7}
-                >
-                  <LinearGradient
-                    colors={['#1FA2A6', '#047857']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.playerPreviewAddGradient}
+                {/* Buttons */}
+                <View style={styles.playerPreviewButtons}>
+                  <TouchableOpacity
+                    style={styles.playerPreviewCancelBtn}
+                    onPress={() => setPreviewPlayer(null)}
+                    activeOpacity={0.7}
                   >
-                    <Ionicons name="add-circle" size={18} color="#FFFFFF" />
-                    <Text style={styles.playerPreviewAddText}>İlk 11'e Ekle</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
+                    <Text style={styles.playerPreviewCancelText}>İptal</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity
+                    style={[
+                      styles.playerPreviewAddBtn,
+                      previewPlayer.injury && styles.playerPreviewAddBtnDisabled
+                    ]}
+                    onPress={() => handlePlayerSelect(previewPlayer)}
+                    activeOpacity={0.7}
+                  >
+                    <LinearGradient
+                      colors={previewPlayer.injury ? ['#64748B', '#475569'] : ['#1FA2A6', '#047857']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.playerPreviewAddGradient}
+                    >
+                      <Ionicons name="add-circle" size={18} color="#FFFFFF" />
+                      <Text style={styles.playerPreviewAddText}>İlk 11'e Ekle</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Injury Warning */}
+                {previewPlayer.injury && (
+                  <View style={styles.playerPreviewInjuryWarning}>
+                    <Ionicons name="warning" size={14} color="#F59E0B" />
+                    <Text style={styles.playerPreviewInjuryWarningText}>
+                      Bu oyuncu sakat! Yine de ekleyebilirsiniz ama performansı düşük olabilir.
+                    </Text>
+                  </View>
+                )}
               </View>
-            </View>
+            </ScrollView>
           </View>
         </Modal>
       )}
@@ -2762,38 +2859,61 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(148, 163, 184, 0.3)',
   },
   
-  // ✅ Player Preview Modal
+  // ✅ Player Preview Modal - Enhanced
   playerPreviewOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
+  },
+  playerPreviewScrollView: {
+    flex: 1,
+    width: '100%',
+  },
+  playerPreviewScrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
   },
   playerPreviewModal: {
-    backgroundColor: '#1A3D37',
+    backgroundColor: '#0F2A24',
     borderRadius: 20,
     padding: 20,
     width: '100%',
-    maxWidth: 340,
+    maxWidth: 380,
     borderWidth: 1,
     borderColor: 'rgba(31, 162, 166, 0.3)',
+    position: 'relative',
+  },
+  playerPreviewCloseBtn: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(148, 163, 184, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
   },
   playerPreviewHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
     marginBottom: 16,
+    paddingRight: 40,
   },
   playerPreviewRating: {
-    width: 56,
-    height: 56,
-    borderRadius: 12,
+    width: 60,
+    height: 60,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
   playerPreviewRatingText: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#FFFFFF',
   },
@@ -2810,50 +2930,113 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#94A3B8',
   },
-  playerPreviewStats: {
-    backgroundColor: 'rgba(15, 42, 36, 0.6)',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 12,
-  },
-  playerPreviewStatRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 8,
-  },
-  playerPreviewStat: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  playerPreviewStatValue: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  playerPreviewStatLabel: {
-    fontSize: 10,
+  playerPreviewNationality: {
+    fontSize: 12,
     color: '#64748B',
-    marginTop: 2,
+    marginTop: 4,
   },
-  playerPreviewBadges: {
+  
+  // Status Badges Section
+  playerPreviewStatusSection: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 10,
     marginBottom: 16,
   },
-  playerPreviewBadge: {
+  playerPreviewStatusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(245, 158, 11, 0.2)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    flex: 1,
   },
-  playerPreviewBadgeText: {
+  statusBadgeGood: {
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.3)',
+  },
+  statusBadgeNeutral: {
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+  },
+  statusBadgeBad: {
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+  },
+  playerPreviewStatusText: {
     fontSize: 12,
-    color: '#F59E0B',
     fontWeight: '600',
   },
+  
+  // Skills Section
+  playerPreviewSkillsSection: {
+    backgroundColor: 'rgba(26, 61, 55, 0.6)',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 12,
+  },
+  playerPreviewSectionTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 12,
+  },
+  playerPreviewSkillsGrid: {
+    gap: 10,
+  },
+  playerPreviewSkillItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  playerPreviewSkillBar: {
+    flex: 1,
+    height: 8,
+    backgroundColor: 'rgba(100, 116, 139, 0.2)',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  playerPreviewSkillFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  playerPreviewSkillInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: 80,
+  },
+  playerPreviewSkillLabel: {
+    fontSize: 10,
+    color: '#64748B',
+    fontWeight: '600',
+  },
+  playerPreviewSkillValue: {
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  
+  // Position Info
+  playerPreviewPositionInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(31, 162, 166, 0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
+    marginBottom: 16,
+  },
+  playerPreviewPositionInfoText: {
+    fontSize: 12,
+    color: '#94A3B8',
+    flex: 1,
+  },
+  
+  // Buttons
   playerPreviewButtons: {
     flexDirection: 'row',
     gap: 12,
@@ -2878,6 +3061,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: 'hidden',
   },
+  playerPreviewAddBtnDisabled: {
+    opacity: 0.7,
+  },
   playerPreviewAddGradient: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2889,6 +3075,25 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  
+  // Injury Warning
+  playerPreviewInjuryWarning: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    padding: 12,
+    borderRadius: 10,
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.2)',
+  },
+  playerPreviewInjuryWarningText: {
+    fontSize: 11,
+    color: '#FDE68A',
+    flex: 1,
+    lineHeight: 16,
   },
   
   // Player Detail Modal
