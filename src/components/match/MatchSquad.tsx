@@ -1672,7 +1672,7 @@ const PlayerModal = ({ visible, players, selectedPlayers, positionLabel, onSelec
         </View>
       </Modal>
 
-      {/* Player Preview Modal - Enhanced */}
+      {/* Player Preview Modal - FIFA Card Style */}
       {previewPlayer && (
         <Modal
           visible={true}
@@ -1680,190 +1680,159 @@ const PlayerModal = ({ visible, players, selectedPlayers, positionLabel, onSelec
           transparent={true}
           onRequestClose={() => setPreviewPlayer(null)}
         >
-          <View style={styles.playerPreviewOverlay}>
-            <ScrollView 
-              style={styles.playerPreviewScrollView}
-              contentContainerStyle={styles.playerPreviewScrollContent}
-              showsVerticalScrollIndicator={false}
+          <View style={styles.playerCardOverlay}>
+            <Animated.View 
+              entering={isWeb ? undefined : ZoomIn.duration(200)}
+              style={styles.playerCardContainer}
             >
-              <View style={styles.playerPreviewModal}>
+              {/* Card Header with Gradient */}
+              <LinearGradient
+                colors={previewPlayer.rating >= 85 ? ['#C9A44C', '#A67C00'] : ['#1FA2A6', '#0D7377']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.playerCardHeader}
+              >
                 {/* Close Button */}
                 <TouchableOpacity 
-                  style={styles.playerPreviewCloseBtn}
+                  style={styles.playerCardCloseBtn}
                   onPress={() => setPreviewPlayer(null)}
                 >
-                  <Ionicons name="close" size={20} color="#94A3B8" />
+                  <Ionicons name="close" size={18} color="#FFFFFF" />
                 </TouchableOpacity>
 
-                {/* Player Header */}
-                <View style={styles.playerPreviewHeader}>
-                  <View style={[
-                    styles.playerPreviewRating,
-                    { backgroundColor: previewPlayer.rating >= 85 ? '#C9A44C' : '#1FA2A6' }
-                  ]}>
-                    <Text style={styles.playerPreviewRatingText}>{previewPlayer.rating}</Text>
-                  </View>
-                  <View style={styles.playerPreviewInfo}>
-                    <Text style={styles.playerPreviewName}>{previewPlayer.name}</Text>
-                    <Text style={styles.playerPreviewPosition}>
-                      {previewPlayer.position} • {previewPlayer.team}
-                    </Text>
-                    {previewPlayer.nationality && (
-                      <Text style={styles.playerPreviewNationality}>
-                        🌍 {previewPlayer.nationality} {previewPlayer.age ? `• ${previewPlayer.age} yaş` : ''}
-                      </Text>
-                    )}
-                  </View>
+                {/* Rating Circle */}
+                <View style={styles.playerCardRatingCircle}>
+                  <Text style={styles.playerCardRatingText}>{previewPlayer.rating}</Text>
                 </View>
 
-                {/* Status Badges */}
-                <View style={styles.playerPreviewStatusSection}>
-                  {/* Form Status */}
+                {/* Player Name & Position */}
+                <Text style={styles.playerCardName}>{previewPlayer.name}</Text>
+                <View style={styles.playerCardPositionRow}>
+                  <View style={styles.playerCardPositionBadge}>
+                    <Text style={styles.playerCardPositionText}>{previewPlayer.position}</Text>
+                  </View>
+                  <Text style={styles.playerCardTeam}>{previewPlayer.team}</Text>
+                </View>
+
+                {/* Nationality & Age */}
+                <View style={styles.playerCardInfoRow}>
+                  <Text style={styles.playerCardInfoText}>
+                    {previewPlayer.nationality || 'Unknown'} • {previewPlayer.age || '?'} yaş
+                  </Text>
+                </View>
+              </LinearGradient>
+
+              {/* Card Body */}
+              <View style={styles.playerCardBody}>
+                {/* Status Row */}
+                <View style={styles.playerCardStatusRow}>
+                  {/* Form */}
                   <View style={[
-                    styles.playerPreviewStatusBadge,
-                    previewPlayer.form >= 8 ? styles.statusBadgeGood :
-                    previewPlayer.form >= 5 ? styles.statusBadgeNeutral :
-                    styles.statusBadgeBad
+                    styles.playerCardStatusItem,
+                    { borderColor: previewPlayer.form >= 8 ? '#10B981' : previewPlayer.form >= 5 ? '#F59E0B' : '#EF4444' }
                   ]}>
                     <Ionicons 
-                      name={previewPlayer.form >= 8 ? "trending-up" : previewPlayer.form >= 5 ? "remove" : "trending-down"} 
-                      size={16} 
+                      name={previewPlayer.form >= 8 ? "flame" : previewPlayer.form >= 5 ? "remove-circle" : "arrow-down-circle"} 
+                      size={20} 
                       color={previewPlayer.form >= 8 ? "#10B981" : previewPlayer.form >= 5 ? "#F59E0B" : "#EF4444"} 
                     />
+                    <Text style={styles.playerCardStatusLabel}>Form</Text>
                     <Text style={[
-                      styles.playerPreviewStatusText,
+                      styles.playerCardStatusValue,
                       { color: previewPlayer.form >= 8 ? "#10B981" : previewPlayer.form >= 5 ? "#F59E0B" : "#EF4444" }
-                    ]}>
-                      {previewPlayer.form >= 8 ? 'Yüksek Form' : previewPlayer.form >= 5 ? 'Normal Form' : 'Düşük Form'}
-                    </Text>
+                    ]}>{previewPlayer.form}/10</Text>
                   </View>
 
-                  {/* Injury Status */}
-                  {previewPlayer.injury ? (
-                    <View style={[styles.playerPreviewStatusBadge, styles.statusBadgeBad]}>
-                      <Ionicons name="medical" size={16} color="#EF4444" />
-                      <Text style={[styles.playerPreviewStatusText, { color: '#EF4444' }]}>Sakat</Text>
-                    </View>
-                  ) : (
-                    <View style={[styles.playerPreviewStatusBadge, styles.statusBadgeGood]}>
-                      <Ionicons name="fitness" size={16} color="#10B981" />
-                      <Text style={[styles.playerPreviewStatusText, { color: '#10B981' }]}>Sağlıklı</Text>
-                    </View>
-                  )}
+                  {/* Health */}
+                  <View style={[
+                    styles.playerCardStatusItem,
+                    { borderColor: previewPlayer.injury ? '#EF4444' : '#10B981' }
+                  ]}>
+                    <Ionicons 
+                      name={previewPlayer.injury ? "medical" : "heart"} 
+                      size={20} 
+                      color={previewPlayer.injury ? "#EF4444" : "#10B981"} 
+                    />
+                    <Text style={styles.playerCardStatusLabel}>Sağlık</Text>
+                    <Text style={[
+                      styles.playerCardStatusValue,
+                      { color: previewPlayer.injury ? "#EF4444" : "#10B981" }
+                    ]}>{previewPlayer.injury ? 'Sakat' : 'Fit'}</Text>
+                  </View>
                 </View>
 
-                {/* Skill Stats - FIFA Style */}
+                {/* Stats Grid - 2x3 */}
                 {previewPlayer.stats && (
-                  <View style={styles.playerPreviewSkillsSection}>
-                    <Text style={styles.playerPreviewSectionTitle}>⚡ Beceri Değerleri</Text>
-                    <View style={styles.playerPreviewSkillsGrid}>
-                      <View style={styles.playerPreviewSkillItem}>
-                        <View style={styles.playerPreviewSkillBar}>
-                          <View style={[styles.playerPreviewSkillFill, { width: `${previewPlayer.stats.pace}%`, backgroundColor: getStatColor(previewPlayer.stats.pace) }]} />
+                  <View style={styles.playerCardStatsGrid}>
+                    {[
+                      { label: 'HIZ', value: previewPlayer.stats.pace, icon: 'flash' },
+                      { label: 'ŞUT', value: previewPlayer.stats.shooting, icon: 'football' },
+                      { label: 'PAS', value: previewPlayer.stats.passing, icon: 'swap-horizontal' },
+                      { label: 'DRİBLİNG', value: previewPlayer.stats.dribbling, icon: 'walk' },
+                      { label: 'DEFANS', value: previewPlayer.stats.defending, icon: 'shield' },
+                      { label: 'FİZİK', value: previewPlayer.stats.physical, icon: 'fitness' },
+                    ].map((stat, index) => (
+                      <View key={index} style={styles.playerCardStatItem}>
+                        <View style={[
+                          styles.playerCardStatCircle,
+                          { borderColor: getStatColor(stat.value) }
+                        ]}>
+                          <Text style={[styles.playerCardStatValue, { color: getStatColor(stat.value) }]}>
+                            {stat.value}
+                          </Text>
                         </View>
-                        <View style={styles.playerPreviewSkillInfo}>
-                          <Text style={styles.playerPreviewSkillLabel}>HIZ</Text>
-                          <Text style={[styles.playerPreviewSkillValue, { color: getStatColor(previewPlayer.stats.pace) }]}>{previewPlayer.stats.pace}</Text>
-                        </View>
+                        <Text style={styles.playerCardStatLabel}>{stat.label}</Text>
                       </View>
-                      <View style={styles.playerPreviewSkillItem}>
-                        <View style={styles.playerPreviewSkillBar}>
-                          <View style={[styles.playerPreviewSkillFill, { width: `${previewPlayer.stats.shooting}%`, backgroundColor: getStatColor(previewPlayer.stats.shooting) }]} />
-                        </View>
-                        <View style={styles.playerPreviewSkillInfo}>
-                          <Text style={styles.playerPreviewSkillLabel}>ŞUT</Text>
-                          <Text style={[styles.playerPreviewSkillValue, { color: getStatColor(previewPlayer.stats.shooting) }]}>{previewPlayer.stats.shooting}</Text>
-                        </View>
-                      </View>
-                      <View style={styles.playerPreviewSkillItem}>
-                        <View style={styles.playerPreviewSkillBar}>
-                          <View style={[styles.playerPreviewSkillFill, { width: `${previewPlayer.stats.passing}%`, backgroundColor: getStatColor(previewPlayer.stats.passing) }]} />
-                        </View>
-                        <View style={styles.playerPreviewSkillInfo}>
-                          <Text style={styles.playerPreviewSkillLabel}>PAS</Text>
-                          <Text style={[styles.playerPreviewSkillValue, { color: getStatColor(previewPlayer.stats.passing) }]}>{previewPlayer.stats.passing}</Text>
-                        </View>
-                      </View>
-                      <View style={styles.playerPreviewSkillItem}>
-                        <View style={styles.playerPreviewSkillBar}>
-                          <View style={[styles.playerPreviewSkillFill, { width: `${previewPlayer.stats.dribbling}%`, backgroundColor: getStatColor(previewPlayer.stats.dribbling) }]} />
-                        </View>
-                        <View style={styles.playerPreviewSkillInfo}>
-                          <Text style={styles.playerPreviewSkillLabel}>DRİBLİNG</Text>
-                          <Text style={[styles.playerPreviewSkillValue, { color: getStatColor(previewPlayer.stats.dribbling) }]}>{previewPlayer.stats.dribbling}</Text>
-                        </View>
-                      </View>
-                      <View style={styles.playerPreviewSkillItem}>
-                        <View style={styles.playerPreviewSkillBar}>
-                          <View style={[styles.playerPreviewSkillFill, { width: `${previewPlayer.stats.defending}%`, backgroundColor: getStatColor(previewPlayer.stats.defending) }]} />
-                        </View>
-                        <View style={styles.playerPreviewSkillInfo}>
-                          <Text style={styles.playerPreviewSkillLabel}>DEFANS</Text>
-                          <Text style={[styles.playerPreviewSkillValue, { color: getStatColor(previewPlayer.stats.defending) }]}>{previewPlayer.stats.defending}</Text>
-                        </View>
-                      </View>
-                      <View style={styles.playerPreviewSkillItem}>
-                        <View style={styles.playerPreviewSkillBar}>
-                          <View style={[styles.playerPreviewSkillFill, { width: `${previewPlayer.stats.physical}%`, backgroundColor: getStatColor(previewPlayer.stats.physical) }]} />
-                        </View>
-                        <View style={styles.playerPreviewSkillInfo}>
-                          <Text style={styles.playerPreviewSkillLabel}>FİZİK</Text>
-                          <Text style={[styles.playerPreviewSkillValue, { color: getStatColor(previewPlayer.stats.physical) }]}>{previewPlayer.stats.physical}</Text>
-                        </View>
-                      </View>
-                    </View>
+                    ))}
                   </View>
                 )}
 
-                {/* Position Suitability Info */}
-                <View style={styles.playerPreviewPositionInfo}>
-                  <Ionicons name="information-circle" size={16} color="#64748B" />
-                  <Text style={styles.playerPreviewPositionInfoText}>
-                    Bu oyuncu <Text style={{ color: '#1FA2A6', fontWeight: '700' }}>{positionLabel}</Text> pozisyonuna atanacak.
+                {/* Position Assignment Info */}
+                <View style={styles.playerCardAssignInfo}>
+                  <Ionicons name="locate" size={16} color="#1FA2A6" />
+                  <Text style={styles.playerCardAssignText}>
+                    <Text style={{ color: '#1FA2A6', fontWeight: '700' }}>{positionLabel}</Text> pozisyonuna atanacak
                   </Text>
                 </View>
 
-                {/* Buttons */}
-                <View style={styles.playerPreviewButtons}>
+                {/* Action Buttons */}
+                <View style={styles.playerCardActions}>
                   <TouchableOpacity
-                    style={styles.playerPreviewCancelBtn}
+                    style={styles.playerCardCancelBtn}
                     onPress={() => setPreviewPlayer(null)}
                     activeOpacity={0.7}
                   >
-                    <Text style={styles.playerPreviewCancelText}>İptal</Text>
+                    <Text style={styles.playerCardCancelText}>Vazgeç</Text>
                   </TouchableOpacity>
                   
                   <TouchableOpacity
-                    style={[
-                      styles.playerPreviewAddBtn,
-                      previewPlayer.injury && styles.playerPreviewAddBtnDisabled
-                    ]}
+                    style={styles.playerCardAddBtn}
                     onPress={() => handlePlayerSelect(previewPlayer)}
                     activeOpacity={0.7}
                   >
                     <LinearGradient
-                      colors={previewPlayer.injury ? ['#64748B', '#475569'] : ['#1FA2A6', '#047857']}
+                      colors={previewPlayer.injury ? ['#64748B', '#475569'] : ['#10B981', '#059669']}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 0 }}
-                      style={styles.playerPreviewAddGradient}
+                      style={styles.playerCardAddGradient}
                     >
-                      <Ionicons name="add-circle" size={18} color="#FFFFFF" />
-                      <Text style={styles.playerPreviewAddText}>İlk 11'e Ekle</Text>
+                      <Ionicons name="person-add" size={18} color="#FFFFFF" />
+                      <Text style={styles.playerCardAddText}>Kadroya Al</Text>
                     </LinearGradient>
                   </TouchableOpacity>
                 </View>
 
                 {/* Injury Warning */}
                 {previewPlayer.injury && (
-                  <View style={styles.playerPreviewInjuryWarning}>
-                    <Ionicons name="warning" size={14} color="#F59E0B" />
-                    <Text style={styles.playerPreviewInjuryWarningText}>
-                      Bu oyuncu sakat! Yine de ekleyebilirsiniz ama performansı düşük olabilir.
+                  <View style={styles.playerCardWarning}>
+                    <Ionicons name="alert-circle" size={16} color="#F59E0B" />
+                    <Text style={styles.playerCardWarningText}>
+                      Sakatlık nedeniyle performansı düşük olabilir
                     </Text>
                   </View>
                 )}
               </View>
-            </ScrollView>
+            </Animated.View>
           </View>
         </Modal>
       )}
@@ -2983,241 +2952,230 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   
-  // ✅ Player Preview Modal - Enhanced
-  playerPreviewOverlay: {
+  // ✅ Player Card Modal - FIFA Style
+  playerCardOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.9)',
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 20,
   },
-  playerPreviewScrollView: {
-    flex: 1,
+  playerCardContainer: {
     width: '100%',
+    maxWidth: 340,
+    borderRadius: 24,
+    overflow: 'hidden',
+    backgroundColor: '#0F2027',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.5,
+        shadowRadius: 20,
+      },
+      android: {
+        elevation: 20,
+      },
+    }),
   },
-  playerPreviewScrollContent: {
-    flexGrow: 1,
-    justifyContent: 'center',
+  playerCardHeader: {
+    paddingTop: 40,
+    paddingBottom: 24,
+    paddingHorizontal: 20,
     alignItems: 'center',
-    padding: 20,
-  },
-  playerPreviewModal: {
-    backgroundColor: '#0F2A24',
-    borderRadius: 20,
-    padding: 20,
-    width: '100%',
-    maxWidth: 380,
-    borderWidth: 1,
-    borderColor: 'rgba(31, 162, 166, 0.3)',
     position: 'relative',
   },
-  playerPreviewCloseBtn: {
+  playerCardCloseBtn: {
     position: 'absolute',
     top: 12,
     right: 12,
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: 'rgba(148, 163, 184, 0.15)',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 10,
   },
-  playerPreviewHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    marginBottom: 16,
-    paddingRight: 40,
-  },
-  playerPreviewRating: {
-    width: 60,
-    height: 60,
-    borderRadius: 14,
+  playerCardRatingCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 12,
+    borderWidth: 3,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
   },
-  playerPreviewRatingText: {
-    fontSize: 24,
+  playerCardRatingText: {
+    fontSize: 32,
     fontWeight: 'bold',
     color: '#FFFFFF',
   },
-  playerPreviewInfo: {
-    flex: 1,
-  },
-  playerPreviewName: {
-    fontSize: 18,
+  playerCardName: {
+    fontSize: 22,
     fontWeight: 'bold',
     color: '#FFFFFF',
-    marginBottom: 4,
+    textAlign: 'center',
+    marginBottom: 8,
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
-  playerPreviewPosition: {
-    fontSize: 14,
-    color: '#94A3B8',
-  },
-  playerPreviewNationality: {
-    fontSize: 12,
-    color: '#64748B',
-    marginTop: 4,
-  },
-  
-  // Status Badges Section
-  playerPreviewStatusSection: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 16,
-  },
-  playerPreviewStatusBadge: {
+  playerCardPositionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 10,
+    marginBottom: 6,
+  },
+  playerCardPositionBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
     paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-    flex: 1,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
-  statusBadgeGood: {
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.3)',
-  },
-  statusBadgeNeutral: {
-    backgroundColor: 'rgba(245, 158, 11, 0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.3)',
-  },
-  statusBadgeBad: {
-    backgroundColor: 'rgba(239, 68, 68, 0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.3)',
-  },
-  playerPreviewStatusText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  
-  // Skills Section
-  playerPreviewSkillsSection: {
-    backgroundColor: 'rgba(26, 61, 55, 0.6)',
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 12,
-  },
-  playerPreviewSectionTitle: {
+  playerCardPositionText: {
     fontSize: 13,
     fontWeight: '700',
     color: '#FFFFFF',
-    marginBottom: 12,
   },
-  playerPreviewSkillsGrid: {
-    gap: 10,
-  },
-  playerPreviewSkillItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  playerPreviewSkillBar: {
-    flex: 1,
-    height: 8,
-    backgroundColor: 'rgba(100, 116, 139, 0.2)',
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  playerPreviewSkillFill: {
-    height: '100%',
-    borderRadius: 4,
-  },
-  playerPreviewSkillInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    width: 80,
-  },
-  playerPreviewSkillLabel: {
-    fontSize: 10,
-    color: '#64748B',
-    fontWeight: '600',
-  },
-  playerPreviewSkillValue: {
+  playerCardTeam: {
     fontSize: 14,
-    fontWeight: 'bold',
+    color: 'rgba(255, 255, 255, 0.9)',
   },
-  
-  // Position Info
-  playerPreviewPositionInfo: {
+  playerCardInfoRow: {
+    marginTop: 4,
+  },
+  playerCardInfoText: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.7)',
+  },
+  playerCardBody: {
+    backgroundColor: '#0F2027',
+    padding: 20,
+  },
+  playerCardStatusRow: {
     flexDirection: 'row',
+    gap: 12,
+    marginBottom: 20,
+  },
+  playerCardStatusItem: {
+    flex: 1,
     alignItems: 'center',
-    gap: 8,
-    backgroundColor: 'rgba(31, 162, 166, 0.1)',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 10,
+    paddingVertical: 12,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderWidth: 2,
+  },
+  playerCardStatusLabel: {
+    fontSize: 10,
+    color: '#94A3B8',
+    marginTop: 4,
+    textTransform: 'uppercase',
+  },
+  playerCardStatusValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  playerCardStatsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
     marginBottom: 16,
   },
-  playerPreviewPositionInfoText: {
-    fontSize: 12,
-    color: '#94A3B8',
-    flex: 1,
+  playerCardStatItem: {
+    width: '30%',
+    alignItems: 'center',
+    marginBottom: 16,
   },
-  
-  // Buttons
-  playerPreviewButtons: {
+  playerCardStatCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    borderWidth: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  playerCardStatValue: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  playerCardStatLabel: {
+    fontSize: 9,
+    color: '#64748B',
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  playerCardAssignInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(31, 162, 166, 0.15)',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  playerCardAssignText: {
+    fontSize: 13,
+    color: '#94A3B8',
+  },
+  playerCardActions: {
     flexDirection: 'row',
     gap: 12,
   },
-  playerPreviewCancelBtn: {
+  playerCardCancelBtn: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 14,
-    borderRadius: 12,
-    backgroundColor: 'rgba(100, 116, 139, 0.2)',
+    borderRadius: 14,
+    backgroundColor: 'rgba(100, 116, 139, 0.15)',
     borderWidth: 1,
-    borderColor: 'rgba(100, 116, 139, 0.4)',
+    borderColor: 'rgba(100, 116, 139, 0.3)',
   },
-  playerPreviewCancelText: {
+  playerCardCancelText: {
     fontSize: 14,
     fontWeight: '600',
     color: '#94A3B8',
   },
-  playerPreviewAddBtn: {
+  playerCardAddBtn: {
     flex: 2,
-    borderRadius: 12,
+    borderRadius: 14,
     overflow: 'hidden',
   },
-  playerPreviewAddBtnDisabled: {
-    opacity: 0.7,
-  },
-  playerPreviewAddGradient: {
+  playerCardAddGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
     paddingVertical: 14,
   },
-  playerPreviewAddText: {
+  playerCardAddText: {
     fontSize: 14,
     fontWeight: '700',
     color: '#FFFFFF',
   },
-  
-  // Injury Warning
-  playerPreviewInjuryWarning: {
+  playerCardWarning: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     gap: 8,
     backgroundColor: 'rgba(245, 158, 11, 0.1)',
     padding: 12,
-    borderRadius: 10,
+    borderRadius: 12,
     marginTop: 12,
     borderWidth: 1,
     borderColor: 'rgba(245, 158, 11, 0.2)',
   },
-  playerPreviewInjuryWarningText: {
+  playerCardWarningText: {
     fontSize: 11,
     color: '#FDE68A',
     flex: 1,
-    lineHeight: 16,
   },
   
   // Player Detail Modal
