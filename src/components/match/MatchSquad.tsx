@@ -755,16 +755,30 @@ export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSqu
         const defPlayers: Record<number, typeof players[0] | null> = {};
         const attackPlayersList = Object.values(attackPlayers).filter(Boolean) as typeof players;
         
-        // Find goalkeeper from attack squad and assign to GK position (index 0)
+        // 1. Find goalkeeper from attack squad and assign to GK position (index 0)
         const goalkeeper = attackPlayersList.find(p => p?.position === 'GK');
         if (goalkeeper) {
           defPlayers[0] = goalkeeper;
         }
         
+        // 2. Get all outfield players from attack squad (excluding GK)
+        const outfieldPlayers = attackPlayersList.filter(p => p?.position !== 'GK');
+        
+        // 3. Assign outfield players to defense positions (index 1-10)
+        // Map attack players to defense positions sequentially
+        outfieldPlayers.forEach((player, idx) => {
+          const defenseSlotIndex = idx + 1; // Defense slots start from index 1 (0 is GK)
+          if (defenseSlotIndex < 11) { // Ensure we don't exceed 11 slots
+            defPlayers[defenseSlotIndex] = player;
+          }
+        });
+        
         setDefensePlayers(defPlayers);
+        // Set editing mode to defense so user can see and edit defense squad
+        setEditingMode('defense');
       }
       setShowFormationModal(false);
-      Alert.alert('Defans Formasyonu Seçildi!', `${formation?.name}\n\nAtak kadronuzdaki 11 oyuncuyu defans pozisyonlarına yerleştirin.`);
+      Alert.alert('Defans Formasyonu Seçildi!', `${formation?.name}\n\nAtak kadronuzdaki oyuncular defans pozisyonlarına otomatik yerleştirildi. Gerekirse düzenleyebilirsiniz.`);
     }
   };
   
@@ -1196,8 +1210,10 @@ const FormationModal = ({ visible, formations, formationType, onSelect, onClose,
   const [selectedFormationForDetail, setSelectedFormationForDetail] = useState<any>(null);
   const [hoveredFormation, setHoveredFormation] = useState<any>(null); // ✅ Önizleme için
   
-  // Show only attack formations (tabs removed)
-  const filteredFormations = formations.filter((f: any) => f.type === 'attack');
+  // Filter formations based on type (attack or defense)
+  const filteredFormations = formations.filter((f: any) => 
+    formationType === 'defense' ? f.type === 'defense' : f.type === 'attack'
+  );
 
   return (
     <>
@@ -1217,10 +1233,10 @@ const FormationModal = ({ visible, formations, formationType, onSelect, onClose,
             <View style={styles.modalHeader}>
               <View style={styles.modalHeaderContent}>
                 <Text style={styles.modalTitle}>
-                  Atak Formasyonu Seçin
+                  {formationType === 'defense' ? 'Defans Formasyonu Seçin' : 'Atak Formasyonu Seçin'}
                 </Text>
                 <Text style={styles.modalSubtitle}>
-                  Atak için formasyon seçin
+                  {formationType === 'defense' ? 'Defans için formasyon seçiniz' : 'Atak için formasyon seçin'}
                 </Text>
               </View>
             </View>
