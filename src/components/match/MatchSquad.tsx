@@ -2101,7 +2101,7 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 4,
     alignItems: 'center',
-    justifyContent: 'flex-start',
+    justifyContent: 'space-between',
     gap: 1,
   },
   removeButton: {
@@ -2191,6 +2191,9 @@ const styles = StyleSheet.create({
     marginTop: 2,
     paddingHorizontal: 2,
     letterSpacing: 0.2,
+    flexShrink: 1,
+    flexGrow: 0,
+    maxHeight: 20, // Prevent overflow
   },
   playerPosition: {
     fontSize: 8,
@@ -2205,7 +2208,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     width: '100%',
     paddingHorizontal: 4,
-    marginTop: 2,
+    marginTop: 'auto', // Push to bottom
+    flexShrink: 0, // Prevent shrinking
   },
   playerRatingBottom: {
     fontSize: 8,

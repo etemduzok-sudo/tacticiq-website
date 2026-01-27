@@ -513,8 +513,13 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                   }) }
                 : mockFormation;
               
+              // If no squad selected, don't show any cards
+              if (!useAttackSquad) {
+                return null;
+              }
+              
               return positions.map((pos, index) => {
-                const player = useAttackSquad ? attackPlayers[index] : mockPlayers[index];
+                const player = attackPlayers[index];
                 if (!player) return null; // Skip if no player in attack squad
                 const positionLabel = formation.positions[index] || '';
                 const hasPredictions = playerPredictions[player.id] && 
@@ -1634,7 +1639,7 @@ const styles = StyleSheet.create({
   playerCardGradient: {
     flex: 1,
     alignItems: 'center',
-    justifyContent: 'flex-start',
+    justifyContent: 'space-between',
     gap: 2,
     padding: 6,
   },
@@ -1669,6 +1674,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     width: '100%',
     paddingHorizontal: 4,
+    marginTop: 'auto', // Push to bottom
+    flexShrink: 0, // Prevent shrinking
     marginTop: 2,
   },
   playerRatingBottom: {
@@ -1705,6 +1712,9 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     textAlign: 'center',
     marginTop: 4,
+    flexShrink: 1,
+    flexGrow: 0,
+    maxHeight: 24, // Prevent overflow
     paddingHorizontal: 2,
     letterSpacing: 0.3,
   },
