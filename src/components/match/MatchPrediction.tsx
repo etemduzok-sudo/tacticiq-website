@@ -1676,7 +1676,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     marginTop: 'auto', // Push to bottom
     flexShrink: 0, // Prevent shrinking
-    marginTop: 2,
   },
   playerRatingBottom: {
     fontSize: 9,
