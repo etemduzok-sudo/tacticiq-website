@@ -1196,8 +1196,8 @@ const FormationModal = ({ visible, formations, formationType, onSelect, onClose,
   const [selectedFormationForDetail, setSelectedFormationForDetail] = useState<any>(null);
   const [hoveredFormation, setHoveredFormation] = useState<any>(null); // ✅ Önizleme için
   
-  // Show all formations in both tabs
-  const filteredFormations = formations;
+  // Show only attack formations (tabs removed)
+  const filteredFormations = formations.filter((f: any) => f.type === 'attack');
 
   return (
     <>
@@ -1213,16 +1213,14 @@ const FormationModal = ({ visible, formations, formationType, onSelect, onClose,
             exiting={Platform.OS === 'web' ? undefined : SlideOutDown.duration(300)}
             style={styles.modalContent}
           >
-            {/* Header - Tab'a göre değişen başlık */}
+            {/* Header */}
             <View style={styles.modalHeader}>
               <View style={styles.modalHeaderContent}>
                 <Text style={styles.modalTitle}>
-                  {formationType === 'attack' ? 'Atak Formasyonu Seçin' : 'Defans Formasyonu Seçin'}
+                  Atak Formasyonu Seçin
                 </Text>
                 <Text style={styles.modalSubtitle}>
-                  {formationType === 'attack' 
-                    ? 'Hücum stratejiniz için bir diziliş seçin'
-                    : 'Savunma stratejiniz için bir diziliş seçin'}
+                  Atak için formasyon seçin
                 </Text>
               </View>
             </View>
@@ -1231,35 +1229,6 @@ const FormationModal = ({ visible, formations, formationType, onSelect, onClose,
             <TouchableOpacity onPress={onClose} style={styles.modalCloseButtonAbsolute}>
               <Ionicons name="close" size={22} color="#1FA2A6" />
             </TouchableOpacity>
-
-            {/* Tabs */}
-            <View style={styles.modalTabs}>
-              <TouchableOpacity
-                style={[styles.modalTab, formationType === 'attack' && styles.modalTabActive]}
-                onPress={() => onTabChange('attack')}
-                activeOpacity={0.7}
-              >
-                <Text style={[
-                  styles.modalTabText,
-                  formationType === 'attack' && styles.modalTabTextActive,
-                ]}>
-                  Atak
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.modalTab, formationType === 'defense' && styles.modalTabActive]}
-                onPress={() => onTabChange('defense')}
-                activeOpacity={0.7}
-              >
-                <Text style={[
-                  styles.modalTabText,
-                  formationType === 'defense' && styles.modalTabTextActive,
-                ]}>
-                  Defans
-                </Text>
-              </TouchableOpacity>
-            </View>
 
             {/* Formations Grid - 3 Columns */}
             <ScrollView 
