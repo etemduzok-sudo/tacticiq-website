@@ -1221,10 +1221,14 @@ const FormationModal = ({ visible, formations, formationType, onSelect, onClose,
   const [selectedFormationForDetail, setSelectedFormationForDetail] = useState<any>(null);
   const [hoveredFormation, setHoveredFormation] = useState<any>(null); // ✅ Önizleme için
   
-  // Filter formations based on type (attack or defense)
-  const filteredFormations = formations.filter((f: any) => 
-    formationType === 'defense' ? f.type === 'defense' : f.type === 'attack'
-  );
+  // Filter formations: show attack for attack, defense for defense, balanced for both
+  const filteredFormations = formations.filter((f: any) => {
+    if (formationType === 'defense') {
+      return f.type === 'defense' || f.type === 'balanced';
+    } else {
+      return f.type === 'attack' || f.type === 'balanced';
+    }
+  });
 
   return (
     <>
@@ -2317,7 +2321,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#0F2A24', // ✅ Design System: Primary
+    backgroundColor: '#1A2E2A', // ✅ Design System: Slightly lighter than primary for better contrast
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     maxHeight: height * 0.92, // ✅ Daha yüksek - scroll azalt
@@ -2436,7 +2440,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   formationCard: {
-    backgroundColor: '#0F2A24', // ✅ Design System: Primary
+    backgroundColor: '#1E3A3A', // ✅ Design System: Standard card background (not blue)
     borderRadius: 10,
     padding: 6,
     borderWidth: 1,
