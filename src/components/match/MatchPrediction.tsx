@@ -15,6 +15,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { formationPositions } from './MatchSquad';
 import Animated, { 
   FadeIn,
   SlideInDown,
@@ -241,8 +242,35 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
   const [substituteType, setSubstituteType] = useState<'normal' | 'injury'>('normal');
   const [substituteForPlayer, setSubstituteForPlayer] = useState<typeof mockPlayers[0] | null>(null);
   
+  // ✅ Load attack squad from AsyncStorage
+  const [attackPlayers, setAttackPlayers] = useState<Record<number, any>>({});
+  const [attackFormation, setAttackFormation] = useState<string | null>(null);
+  const [squadLoaded, setSquadLoaded] = useState(false);
+  
   // 🌟 STRATEGIC FOCUS SYSTEM
   const [focusedPredictions, setFocusedPredictions] = useState<FocusPrediction[]>([]);
+  
+  // Load squad data on mount
+  React.useEffect(() => {
+    const loadSquad = async () => {
+      try {
+        const squadData = await AsyncStorage.getItem(`fan-manager-squad-${matchId}`);
+        if (squadData) {
+          const parsed = JSON.parse(squadData);
+          setAttackPlayers(parsed.attackPlayers || {});
+          setAttackFormation(parsed.attackFormation || null);
+          setSquadLoaded(true);
+        } else {
+          // No squad saved, use mock data
+          setSquadLoaded(true);
+        }
+      } catch (error) {
+        console.error('Error loading squad:', error);
+        setSquadLoaded(true);
+      }
+    };
+    loadSquad();
+  }, [matchId]);
   
   // Match predictions state - COMPLETE
   const [predictions, setPredictions] = useState({
@@ -472,11 +500,25 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
         {/* Football Field with Players */}
         <FootballField style={styles.mainField}>
           <View style={styles.playersContainer}>
-            {mockPositions.map((pos, index) => {
-              const player = mockPlayers[index];
-              const positionLabel = mockFormation.positions[index] || '';
-              const hasPredictions = playerPredictions[player.id] && 
-                Object.keys(playerPredictions[player.id]).length > 0;
+            {(() => {
+              // Use attack squad if available, otherwise use mock data
+              const useAttackSquad = squadLoaded && attackFormation && Object.keys(attackPlayers).length === 11;
+              const positions = useAttackSquad && attackFormation 
+                ? (formationPositions[attackFormation] || mockPositions)
+                : mockPositions;
+              const formation = useAttackSquad && attackFormation
+                ? { positions: positions.map((_, i) => {
+                    const player = attackPlayers[i];
+                    return player ? player.position : mockFormation.positions[i] || '';
+                  }) }
+                : mockFormation;
+              
+              return positions.map((pos, index) => {
+                const player = useAttackSquad ? attackPlayers[index] : mockPlayers[index];
+                if (!player) return null; // Skip if no player in attack squad
+                const positionLabel = formation.positions[index] || '';
+                const hasPredictions = playerPredictions[player.id] && 
+                  Object.keys(playerPredictions[player.id]).length > 0;
 
               return (
                 <View
@@ -490,6 +532,10 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                     style={[
                       styles.playerCard,
                       hasPredictions && styles.playerCardPredicted,
+                      // Gold border for elite players (85+)
+                      player.rating >= 85 && styles.playerCardElite,
+                      // Blue border for goalkeepers
+                      player.position === 'GK' && styles.playerCardGK,
                     ]}
                     onPress={() => setSelectedPlayer(player)}
                     activeOpacity={0.8}
@@ -505,9 +551,11 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                         </View>
                       )}
 
-                      {/* Rating Badge - Top Center - BIG */}
-                      <View style={styles.ratingBadge}>
-                        <Text style={styles.ratingText}>{player.rating}</Text>
+                      {/* Jersey Number Badge - Top Center */}
+                      <View style={styles.jerseyNumberBadge}>
+                        <Text style={styles.jerseyNumberText}>
+                          {player.number || player.id}
+                        </Text>
                       </View>
 
                       {/* Player Name - Center */}
@@ -515,8 +563,11 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                         {player.name}
                       </Text>
 
-                      {/* Position - Bottom */}
-                      <Text style={styles.playerPosition}>{player.position}</Text>
+                      {/* Rating and Position - Same row, bottom */}
+                      <View style={styles.playerBottomRow}>
+                        <Text style={styles.playerRatingBottom}>{player.rating}</Text>
+                        <Text style={styles.playerPositionBottom}>{positionLabel}</Text>
+                      </View>
 
                       {/* Prediction glow effect */}
                       {hasPredictions && <View style={styles.predictionGlow} />}
@@ -524,7 +575,8 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                   </TouchableOpacity>
                 </View>
               );
-            })}
+            }).filter(Boolean); // Remove null entries
+            })()}
           </View>
         </FootballField>
 
@@ -1546,6 +1598,8 @@ const styles = StyleSheet.create({
     height: 84,
     borderRadius: 10,
     overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: 'rgba(100, 116, 139, 0.3)', // Default gray border
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -1556,6 +1610,14 @@ const styles = StyleSheet.create({
       android: { elevation: 4 },
       web: { boxShadow: '0 2px 8px rgba(0,0,0,0.3)' },
     }),
+  },
+  playerCardElite: {
+    borderColor: '#C9A44C', // Gold border for elite players (85+)
+    borderWidth: 2,
+  },
+  playerCardGK: {
+    borderColor: '#3B82F6', // Blue border for goalkeepers
+    borderWidth: 2,
   },
   playerCardPredicted: {
     ...Platform.select({
@@ -1575,8 +1637,6 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
     gap: 2,
     padding: 6,
-    borderWidth: 1.5,
-    borderColor: 'rgba(5, 150, 105, 0.5)',
   },
   predictionGlow: {
     position: 'absolute',
@@ -1587,7 +1647,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(245, 158, 11, 0.15)',
     borderRadius: 12,
   },
-  ratingBadge: {
+  jerseyNumberBadge: {
     width: 26,
     height: 26,
     borderRadius: 7,
@@ -1598,10 +1658,28 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: 'rgba(255, 255, 255, 0.2)',
   },
-  ratingText: {
+  jerseyNumberText: {
     fontSize: 13,
     fontWeight: '900',
     color: '#FFFFFF',
+  },
+  playerBottomRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+    paddingHorizontal: 4,
+    marginTop: 2,
+  },
+  playerRatingBottom: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#C9A44C', // Gold color for rating
+  },
+  playerPositionBottom: {
+    fontSize: 9,
+    fontWeight: '600',
+    color: '#9CA3AF',
   },
   alertBadge: {
     position: 'absolute',

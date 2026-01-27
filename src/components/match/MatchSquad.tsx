@@ -329,7 +329,7 @@ const formations = [
 
 // Formation Positions - ALL 26 FORMATIONS - Optimized spacing to prevent overlap
 // Minimum horizontal gap: 20%, Edge padding: 12-88%, GK max y: 88%
-const formationPositions: Record<string, Array<{ x: number; y: number }>> = {
+export const formationPositions: Record<string, Array<{ x: number; y: number }>> = {
   '2-3-5': [
     { x: 50, y: 88 }, // GK
     { x: 30, y: 70 }, { x: 70, y: 70 }, // 2 defenders - wider
@@ -910,15 +910,8 @@ export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSqu
         console.warn('⚠️ Backend save failed (continuing with local):', backendError);
       }
       
-      const message = defenseFormation 
-        ? 'Atak ve defans kadronuz başarıyla kaydedildi.'
-        : 'Kadronuz başarıyla kaydedildi.';
-      
-      Alert.alert(
-        'Kadro Kaydedildi! 🎉',
-        message,
-        [{ text: 'Devam Et', onPress: onComplete }]
-      );
+      // Directly navigate to prediction tab after saving
+      onComplete();
     } catch (error) {
       console.error('Error saving squad:', error);
       Alert.alert('Hata!', 'Kadro kaydedilemedi. Lütfen tekrar deneyin.');
@@ -928,6 +921,13 @@ export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSqu
   const positions = selectedFormation ? formationPositions[selectedFormation] || formationPositions['4-3-3'] : null;
   const formation = formations.find(f => f.id === selectedFormation);
   const selectedCount = Object.keys(selectedPlayers).filter(k => selectedPlayers[parseInt(k)]).length;
+  
+  // Calculate attack and defense counts for button activation
+  const attackCount = Object.keys(attackPlayers).filter(k => attackPlayers[parseInt(k)]).length;
+  const defenseCount = Object.keys(defensePlayers).filter(k => defensePlayers[parseInt(k)]).length;
+  
+  // Button is active if: attack is complete (11) AND (no defense formation OR defense is complete)
+  const isCompleteButtonActive = attackCount === 11 && (!defenseFormation || defenseCount === 11);
 
   // Empty State (No Formation Selected)
   if (!selectedFormation) {
@@ -1010,7 +1010,13 @@ export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSqu
 
                         {/* Player Card - Main */}
                         <TouchableOpacity
-                          style={styles.playerCard}
+                          style={[
+                            styles.playerCard,
+                            // Gold border for elite players (85+)
+                            player.rating >= 85 && styles.playerCardElite,
+                            // Blue border for goalkeepers
+                            player.position === 'GK' && styles.playerCardGK,
+                          ]}
                           onPress={() => setSelectedPlayerForDetail(player)}
                           onLongPress={() => handleRemovePlayer(index)}
                           activeOpacity={0.8}
@@ -1038,13 +1044,11 @@ export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSqu
                               {player.name.split(' ').pop()}
                             </Text>
 
-                            {/* Rating Badge - Small, below name */}
-                            <View style={styles.ratingBadgeSmall}>
-                              <Text style={styles.ratingTextSmall}>{player.rating}</Text>
+                            {/* Rating and Position - Same row, bottom */}
+                            <View style={styles.playerBottomRow}>
+                              <Text style={styles.playerRatingBottom}>{player.rating}</Text>
+                              <Text style={styles.playerPositionBottom}>{positionLabel}</Text>
                             </View>
-
-                            {/* Position - Bottom */}
-                            <Text style={styles.playerPosition}>{positionLabel}</Text>
 
                             {/* Form indicator - Subtle glow */}
                             {player.form >= 8 && (
@@ -1095,14 +1099,14 @@ export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSqu
             <TouchableOpacity
               style={[
                 styles.completeButton,
-                selectedCount !== 11 && styles.completeButtonDisabled,
+                !isCompleteButtonActive && styles.completeButtonDisabled,
               ]}
               onPress={handleComplete}
-              disabled={selectedCount !== 11}
+              disabled={!isCompleteButtonActive}
               activeOpacity={0.8}
             >
               <LinearGradient
-                colors={selectedCount === 11 ? ['#1FA2A6', '#047857'] : ['#374151', '#374151']}
+                colors={isCompleteButtonActive ? ['#1FA2A6', '#047857'] : ['#374151', '#374151']}
                 style={styles.completeButtonGradient}
               >
                 <Text style={styles.completeButtonText}>Tamamla</Text>
@@ -2064,6 +2068,8 @@ const styles = StyleSheet.create({
     height: 76,
     borderRadius: 8,
     overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: 'rgba(100, 116, 139, 0.3)', // Default gray border
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -2079,14 +2085,20 @@ const styles = StyleSheet.create({
       },
     }),
   },
+  playerCardElite: {
+    borderColor: '#C9A44C', // Gold border for elite players (85+)
+    borderWidth: 2,
+  },
+  playerCardGK: {
+    borderColor: '#3B82F6', // Blue border for goalkeepers
+    borderWidth: 2,
+  },
   playerCardGradient: {
     flex: 1,
     padding: 4,
     alignItems: 'center',
     justifyContent: 'flex-start',
     gap: 1,
-    borderWidth: 1,
-    borderColor: 'rgba(5, 150, 105, 0.3)',
   },
   removeButton: {
     position: 'absolute',
@@ -2182,6 +2194,24 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: '600',
     marginTop: 1,
+  },
+  playerBottomRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+    paddingHorizontal: 4,
+    marginTop: 2,
+  },
+  playerRatingBottom: {
+    fontSize: 8,
+    fontWeight: '700',
+    color: '#C9A44C', // Gold color for rating
+  },
+  playerPositionBottom: {
+    fontSize: 8,
+    fontWeight: '600',
+    color: '#9CA3AF',
   },
   formGlow: {
     position: 'absolute',
