@@ -1603,16 +1603,17 @@ const PlayerModal = ({ visible, players, selectedPlayers, positionLabel, onSelec
                     disabled={!eligible}
                   >
                     <View style={styles.playerItemLeft}>
+                      {/* Jersey Number Badge - Circular */}
                       <View style={[
-                        styles.playerItemRating,
+                        styles.playerItemJerseyNumber,
                         { backgroundColor: eligible 
                           ? (item.rating >= 85 ? '#C9A44C' : '#1FA2A6') 
                           : '#4B5563' }
                       ]}>
                         <Text style={[
-                          styles.playerItemRatingText,
+                          styles.playerItemJerseyNumberText,
                           !eligible && { opacity: 0.5 }
-                        ]}>{item.rating}</Text>
+                        ]}>{item.number || item.id}</Text>
                       </View>
                       <View style={styles.playerItemInfo}>
                         <View style={styles.playerItemNameRow}>
@@ -1627,12 +1628,18 @@ const PlayerModal = ({ visible, players, selectedPlayers, positionLabel, onSelec
                             <Ionicons name="warning" size={14} color="#EF4444" style={{ marginLeft: 4 }} />
                           )}
                         </View>
-                        <Text style={[
-                          styles.playerItemPosition,
-                          !eligible && styles.playerItemPositionLocked
-                        ]}>
-                          {item.position} • {item.team}
-                        </Text>
+                        <View style={styles.playerItemBottomRow}>
+                          <Text style={[
+                            styles.playerItemRatingBottom,
+                            !eligible && styles.playerItemPositionLocked
+                          ]}>{item.rating}</Text>
+                          <Text style={[
+                            styles.playerItemPosition,
+                            !eligible && styles.playerItemPositionLocked
+                          ]}>
+                            {item.position} • {item.team}
+                          </Text>
+                        </View>
                       </View>
                     </View>
                     {/* Lock icon for ineligible, + button for eligible */}
@@ -1687,9 +1694,9 @@ const PlayerModal = ({ visible, players, selectedPlayers, positionLabel, onSelec
                   <Ionicons name="close" size={18} color="#FFFFFF" />
                 </TouchableOpacity>
 
-                {/* Rating Circle */}
+                {/* Jersey Number Circle */}
                 <View style={styles.playerCardRatingCircle}>
-                  <Text style={styles.playerCardRatingText}>{previewPlayer.rating}</Text>
+                  <Text style={styles.playerCardRatingText}>{previewPlayer.number || previewPlayer.id}</Text>
                 </View>
 
                 {/* Player Name & Position */}
@@ -1701,11 +1708,12 @@ const PlayerModal = ({ visible, players, selectedPlayers, positionLabel, onSelec
                   <Text style={styles.playerCardTeam}>{previewPlayer.team}</Text>
                 </View>
 
-                {/* Nationality & Age */}
+                {/* Nationality & Age with Rating */}
                 <View style={styles.playerCardInfoRow}>
                   <Text style={styles.playerCardInfoText}>
                     {previewPlayer.nationality || 'Unknown'} • {previewPlayer.age || '?'} yaş
                   </Text>
+                  <Text style={styles.playerCardRatingBottom}>{previewPlayer.rating}</Text>
                 </View>
               </LinearGradient>
 
@@ -2899,6 +2907,20 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#FFFFFF',
   },
+  // ✅ Jersey Number Badge - Circular
+  playerItemJerseyNumber: {
+    width: 40,
+    height: 40,
+    borderRadius: 20, // Fully circular
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  playerItemJerseyNumberText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
   playerItemInfo: {
     flex: 1,
   },
@@ -2911,10 +2933,20 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FFFFFF',
   },
+  playerItemBottomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 2,
+    gap: 8,
+  },
+  playerItemRatingBottom: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#C9A44C', // Gold color for rating
+  },
   playerItemPosition: {
     fontSize: 13,
     color: '#9CA3AF',
-    marginTop: 2,
   },
   playerItemAddBtn: {
     padding: 4,
@@ -3064,10 +3096,19 @@ const styles = StyleSheet.create({
   },
   playerCardInfoRow: {
     marginTop: 4,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
   },
   playerCardInfoText: {
     fontSize: 12,
     color: 'rgba(255, 255, 255, 0.7)',
+  },
+  playerCardRatingBottom: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#C9A44C', // Gold color for rating
   },
   playerCardBody: {
     backgroundColor: '#0F2027',
