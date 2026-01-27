@@ -868,18 +868,26 @@ export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSqu
     
     try {
       // Save squad data to AsyncStorage (local backup)
+      // Convert Record to array for easier access in MatchPrediction
+      const attackPlayersArray = Object.values(attackPlayers).filter(Boolean);
+      const defensePlayersArray = defenseFormation 
+        ? Object.values(defensePlayers).filter(Boolean)
+        : attackPlayersArray;
+      
       const squadData = {
-        matchId: matchData.id,
+        matchId: matchId, // ✅ Use matchId prop for consistency
         attackFormation: attackFormation,
         defenseFormation: defenseFormation || attackFormation, // If no defense, use attack
-        attackPlayers: attackPlayers,
+        attackPlayers: attackPlayers, // Keep as Record for compatibility
+        attackPlayersArray: attackPlayersArray, // Add array version for easy access
         defensePlayers: defenseFormation ? defensePlayers : attackPlayers, // If no defense, use attack players
+        defensePlayersArray: defensePlayersArray, // Add array version
         playerPredictions: playerPredictions,
         timestamp: new Date().toISOString(),
       };
       
       await AsyncStorage.setItem(
-        `fan-manager-squad-${matchData.id}`,
+        `fan-manager-squad-${matchId}`, // ✅ Use matchId prop for consistency
         JSON.stringify(squadData)
       );
       
@@ -892,7 +900,7 @@ export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSqu
         
         if (authToken) {
           const result = await squadPredictionsApi.saveSquadPrediction({
-            matchId: matchData.id,
+            matchId: matchId, // Use matchId prop
             attackFormation: attackFormation!,
             attackPlayers: attackPlayers,
             defenseFormation: defenseFormation || attackFormation!,

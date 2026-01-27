@@ -244,6 +244,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
   
   // ✅ Load attack squad from AsyncStorage
   const [attackPlayers, setAttackPlayers] = useState<Record<number, any>>({});
+  const [attackPlayersArray, setAttackPlayersArray] = useState<any[]>([]);
   const [attackFormation, setAttackFormation] = useState<string | null>(null);
   const [squadLoaded, setSquadLoaded] = useState(false);
   
@@ -257,7 +258,21 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
         const squadData = await AsyncStorage.getItem(`fan-manager-squad-${matchId}`);
         if (squadData) {
           const parsed = JSON.parse(squadData);
-          setAttackPlayers(parsed.attackPlayers || {});
+          // Use array version if available, otherwise convert Record to array
+          if (parsed.attackPlayersArray && Array.isArray(parsed.attackPlayersArray)) {
+            setAttackPlayersArray(parsed.attackPlayersArray);
+            // Also set Record for compatibility
+            const record: Record<number, any> = {};
+            parsed.attackPlayersArray.forEach((player: any, index: number) => {
+              record[index] = player;
+            });
+            setAttackPlayers(record);
+          } else if (parsed.attackPlayers) {
+            // Fallback: convert Record to array
+            const array = Object.values(parsed.attackPlayers).filter(Boolean);
+            setAttackPlayersArray(array);
+            setAttackPlayers(parsed.attackPlayers);
+          }
           setAttackFormation(parsed.attackFormation || null);
           setSquadLoaded(true);
         } else {
@@ -502,13 +517,17 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
           <View style={styles.playersContainer}>
             {(() => {
               // Use attack squad if available, otherwise use mock data
-              const useAttackSquad = squadLoaded && attackFormation && Object.keys(attackPlayers).length === 11;
+              // Use pre-loaded array or convert Record to array
+              const playersArray = attackPlayersArray.length > 0 
+                ? attackPlayersArray 
+                : Object.values(attackPlayers).filter(Boolean);
+              const useAttackSquad = squadLoaded && attackFormation && playersArray.length === 11;
               const positions = useAttackSquad && attackFormation 
                 ? (formationPositions[attackFormation] || mockPositions)
                 : mockPositions;
               const formation = useAttackSquad && attackFormation
                 ? { positions: positions.map((_, i) => {
-                    const player = attackPlayers[i];
+                    const player = playersArray[i];
                     return player ? player.position : mockFormation.positions[i] || '';
                   }) }
                 : mockFormation;
@@ -519,7 +538,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
               }
               
               return positions.map((pos, index) => {
-                const player = attackPlayers[index];
+                const player = playersArray[index];
                 if (!player) return null; // Skip if no player in attack squad
                 const positionLabel = formation.positions[index] || '';
                 const hasPredictions = playerPredictions[player.id] && 
