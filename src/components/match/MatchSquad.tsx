@@ -1221,14 +1221,9 @@ const FormationModal = ({ visible, formations, formationType, onSelect, onClose,
   const [selectedFormationForDetail, setSelectedFormationForDetail] = useState<any>(null);
   const [hoveredFormation, setHoveredFormation] = useState<any>(null); // ✅ Önizleme için
   
-  // Filter formations: show attack for attack, defense for defense, balanced for both
-  const filteredFormations = formations.filter((f: any) => {
-    if (formationType === 'defense') {
-      return f.type === 'defense' || f.type === 'balanced';
-    } else {
-      return f.type === 'attack' || f.type === 'balanced';
-    }
-  });
+  // Filter formations: show all formations for both attack and defense
+  // Defense type formations can also be used for attack, and vice versa
+  const filteredFormations = formations; // Show all 27 formations
 
   return (
     <>
