@@ -513,55 +513,55 @@ const formationPositions: Record<string, Array<{ x: number; y: number }>> = {
 
 // Mock Players - COMPLETE WITH ALL STATS (truncated for brevity)
 const players = [
-  { id: 1, name: 'Alisson Becker', position: 'GK', rating: 89, team: 'Liverpool', form: 8, injury: false,
+  { id: 1, name: 'Alisson Becker', position: 'GK', rating: 89, team: 'Liverpool', form: 8, injury: false, number: 1,
     age: 30, nationality: 'Brazil', stats: { pace: 45, shooting: 30, passing: 65, dribbling: 40, defending: 25, physical: 78 }
   },
-  { id: 2, name: 'Virgil van Dijk', position: 'CB', rating: 90, team: 'Liverpool', form: 9, injury: false,
+  { id: 2, name: 'Virgil van Dijk', position: 'CB', rating: 90, team: 'Liverpool', form: 9, injury: false, number: 4,
     age: 32, nationality: 'Netherlands', stats: { pace: 75, shooting: 60, passing: 71, dribbling: 72, defending: 91, physical: 86 }
   },
-  { id: 3, name: 'Trent Alexander-Arnold', position: 'RB', rating: 87, team: 'Liverpool', form: 8, injury: false,
+  { id: 3, name: 'Trent Alexander-Arnold', position: 'RB', rating: 87, team: 'Liverpool', form: 8, injury: false, number: 66,
     age: 25, nationality: 'England', stats: { pace: 76, shooting: 66, passing: 89, dribbling: 74, defending: 76, physical: 71 }
   },
-  { id: 4, name: 'Andrew Robertson', position: 'LB', rating: 87, team: 'Liverpool', form: 8, injury: false,
+  { id: 4, name: 'Andrew Robertson', position: 'LB', rating: 87, team: 'Liverpool', form: 8, injury: false, number: 26,
     age: 29, nationality: 'Scotland', stats: { pace: 81, shooting: 58, passing: 81, dribbling: 78, defending: 82, physical: 77 }
   },
-  { id: 5, name: 'Joël Matip', position: 'CB', rating: 85, team: 'Liverpool', form: 7, injury: false,
+  { id: 5, name: 'Joël Matip', position: 'CB', rating: 85, team: 'Liverpool', form: 7, injury: false, number: 32,
     age: 32, nationality: 'Cameroon', stats: { pace: 68, shooting: 45, passing: 69, dribbling: 65, defending: 85, physical: 84 }
   },
-  { id: 6, name: 'Fabinho', position: 'CDM', rating: 87, team: 'Liverpool', form: 8, injury: false,
+  { id: 6, name: 'Fabinho', position: 'CDM', rating: 87, team: 'Liverpool', form: 8, injury: false, number: 3,
     age: 30, nationality: 'Brazil', stats: { pace: 67, shooting: 70, passing: 75, dribbling: 72, defending: 84, physical: 82 }
   },
-  { id: 7, name: 'Jordan Henderson', position: 'CM', rating: 84, team: 'Liverpool', form: 7, injury: false,
+  { id: 7, name: 'Jordan Henderson', position: 'CM', rating: 84, team: 'Liverpool', form: 7, injury: false, number: 14,
     age: 33, nationality: 'England', stats: { pace: 68, shooting: 72, passing: 78, dribbling: 73, defending: 74, physical: 77 }
   },
-  { id: 8, name: 'Thiago Alcântara', position: 'CM', rating: 86, team: 'Liverpool', form: 7, injury: true,
+  { id: 8, name: 'Thiago Alcântara', position: 'CM', rating: 86, team: 'Liverpool', form: 7, injury: true, number: 6,
     age: 32, nationality: 'Spain', stats: { pace: 64, shooting: 74, passing: 89, dribbling: 84, defending: 68, physical: 64 }
   },
-  { id: 9, name: 'Mohamed Salah', position: 'RW', rating: 90, team: 'Liverpool', form: 9, injury: false,
+  { id: 9, name: 'Mohamed Salah', position: 'RW', rating: 90, team: 'Liverpool', form: 9, injury: false, number: 11,
     age: 31, nationality: 'Egypt', stats: { pace: 90, shooting: 87, passing: 81, dribbling: 90, defending: 45, physical: 75 }
   },
-  { id: 10, name: 'Sadio Mané', position: 'LW', rating: 89, team: 'Liverpool', form: 8, injury: false,
+  { id: 10, name: 'Sadio Mané', position: 'LW', rating: 89, team: 'Liverpool', form: 8, injury: false, number: 10,
     age: 31, nationality: 'Senegal', stats: { pace: 90, shooting: 83, passing: 80, dribbling: 87, defending: 44, physical: 77 }
   },
-  { id: 11, name: 'Roberto Firmino', position: 'ST', rating: 86, team: 'Liverpool', form: 7, injury: false,
+  { id: 11, name: 'Roberto Firmino', position: 'ST', rating: 86, team: 'Liverpool', form: 7, injury: false, number: 9,
     age: 32, nationality: 'Brazil', stats: { pace: 76, shooting: 82, passing: 83, dribbling: 86, defending: 59, physical: 76 }
   },
-  { id: 12, name: 'Diogo Jota', position: 'ST', rating: 85, team: 'Liverpool', form: 8, injury: false,
+  { id: 12, name: 'Diogo Jota', position: 'ST', rating: 85, team: 'Liverpool', form: 8, injury: false, number: 20,
     age: 27, nationality: 'Portugal', stats: { pace: 85, shooting: 83, passing: 73, dribbling: 85, defending: 34, physical: 73 }
   },
-  { id: 13, name: 'Luis Díaz', position: 'LW', rating: 84, team: 'Liverpool', form: 9, injury: false,
+  { id: 13, name: 'Luis Díaz', position: 'LW', rating: 84, team: 'Liverpool', form: 9, injury: false, number: 7,
     age: 26, nationality: 'Colombia', stats: { pace: 91, shooting: 76, passing: 75, dribbling: 88, defending: 38, physical: 72 }
   },
-  { id: 14, name: 'Curtis Jones', position: 'CM', rating: 78, team: 'Liverpool', form: 7, injury: false,
+  { id: 14, name: 'Curtis Jones', position: 'CM', rating: 78, team: 'Liverpool', form: 7, injury: false, number: 17,
     age: 22, nationality: 'England', stats: { pace: 74, shooting: 68, passing: 74, dribbling: 79, defending: 60, physical: 68 }
   },
-  { id: 15, name: 'Harvey Elliott', position: 'CAM', rating: 76, team: 'Liverpool', form: 8, injury: false,
+  { id: 15, name: 'Harvey Elliott', position: 'CAM', rating: 76, team: 'Liverpool', form: 8, injury: false, number: 19,
     age: 20, nationality: 'England', stats: { pace: 78, shooting: 65, passing: 76, dribbling: 82, defending: 45, physical: 58 }
   },
-  { id: 16, name: 'Darwin Núñez', position: 'ST', rating: 82, team: 'Liverpool', form: 7, injury: false,
+  { id: 16, name: 'Darwin Núñez', position: 'ST', rating: 82, team: 'Liverpool', form: 7, injury: false, number: 27,
     age: 24, nationality: 'Uruguay', stats: { pace: 88, shooting: 80, passing: 68, dribbling: 77, defending: 35, physical: 82 }
   },
-  { id: 17, name: 'Cody Gakpo', position: 'LW', rating: 81, team: 'Liverpool', form: 8, injury: false,
+  { id: 17, name: 'Cody Gakpo', position: 'LW', rating: 81, team: 'Liverpool', form: 8, injury: false, number: 18,
     age: 24, nationality: 'Netherlands', stats: { pace: 82, shooting: 78, passing: 76, dribbling: 82, defending: 40, physical: 75 }
   },
 ];
@@ -1026,15 +1026,22 @@ export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSqu
                               </View>
                             )}
 
-                            {/* Rating Badge - Top Center - BIG */}
-                            <View style={styles.ratingBadge}>
-                              <Text style={styles.ratingText}>{player.rating}</Text>
+                            {/* Jersey Number Badge - Top Center */}
+                            <View style={styles.jerseyNumberBadge}>
+                              <Text style={styles.jerseyNumberText}>
+                                {player.number || player.id}
+                              </Text>
                             </View>
 
                             {/* Player Name - Center */}
                             <Text style={styles.playerName} numberOfLines={1}>
                               {player.name.split(' ').pop()}
                             </Text>
+
+                            {/* Rating Badge - Small, below name */}
+                            <View style={styles.ratingBadgeSmall}>
+                              <Text style={styles.ratingTextSmall}>{player.rating}</Text>
+                            </View>
 
                             {/* Position - Bottom */}
                             <Text style={styles.playerPosition}>{positionLabel}</Text>
@@ -2109,7 +2116,7 @@ const styles = StyleSheet.create({
       },
     }),
   },
-  ratingBadge: {
+  jerseyNumberBadge: {
     width: 22,
     height: 22,
     borderRadius: 6,
@@ -2120,10 +2127,26 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.2)',
   },
-  ratingText: {
+  jerseyNumberText: {
     fontSize: 11,
     fontWeight: '900',
     color: '#FFFFFF',
+  },
+  ratingBadgeSmall: {
+    width: 18,
+    height: 14,
+    borderRadius: 4,
+    backgroundColor: 'rgba(201, 164, 76, 0.3)', // Gold tint for rating
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(201, 164, 76, 0.5)',
+  },
+  ratingTextSmall: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#C9A44C',
   },
   alertBadge: {
     position: 'absolute',
