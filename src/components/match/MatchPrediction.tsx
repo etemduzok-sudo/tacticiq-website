@@ -1,5 +1,5 @@
 // MatchPredictionScreen.tsx - React Native FULL COMPLETE VERSION
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -243,40 +243,35 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
   const [substituteForPlayer, setSubstituteForPlayer] = useState<typeof mockPlayers[0] | null>(null);
   
   // ✅ Load attack squad from AsyncStorage
-  const [attackPlayers, setAttackPlayers] = useState<Record<number, any>>({});
   const [attackPlayersArray, setAttackPlayersArray] = useState<any[]>([]);
   const [attackFormation, setAttackFormation] = useState<string | null>(null);
   const [squadLoaded, setSquadLoaded] = useState(false);
+  const [isSquadCompleted, setIsSquadCompleted] = useState(false); // ✅ Tamamla basıldı mı?
   
   // 🌟 STRATEGIC FOCUS SYSTEM
   const [focusedPredictions, setFocusedPredictions] = useState<FocusPrediction[]>([]);
   
-  // Load squad data on mount
+  // Load squad data on mount – SADECE isCompleted true ise oyuncuları göster
   React.useEffect(() => {
     const loadSquad = async () => {
       try {
         const squadData = await AsyncStorage.getItem(`fan-manager-squad-${matchId}`);
         if (squadData) {
           const parsed = JSON.parse(squadData);
-          // Use array version if available, otherwise convert Record to array
-          if (parsed.attackPlayersArray && Array.isArray(parsed.attackPlayersArray)) {
-            setAttackPlayersArray(parsed.attackPlayersArray);
-            // Also set Record for compatibility
-            const record: Record<number, any> = {};
-            parsed.attackPlayersArray.forEach((player: any, index: number) => {
-              record[index] = player;
-            });
-            setAttackPlayers(record);
-          } else if (parsed.attackPlayers) {
-            // Fallback: convert Record to array
-            const array = Object.values(parsed.attackPlayers).filter(Boolean);
-            setAttackPlayersArray(array);
-            setAttackPlayers(parsed.attackPlayers);
+          
+          // ✅ Sadece Tamamla basıldıysa (isCompleted: true) oyuncuları yükle
+          if (parsed.isCompleted === true) {
+            if (parsed.attackPlayersArray && Array.isArray(parsed.attackPlayersArray)) {
+              setAttackPlayersArray(parsed.attackPlayersArray);
+            } else if (parsed.attackPlayers) {
+              const array = Object.values(parsed.attackPlayers).filter(Boolean);
+              setAttackPlayersArray(array);
+            }
+            setAttackFormation(parsed.attackFormation || null);
+            setIsSquadCompleted(true);
           }
-          setAttackFormation(parsed.attackFormation || null);
           setSquadLoaded(true);
         } else {
-          // No squad saved, use mock data
           setSquadLoaded(true);
         }
       } catch (error) {
@@ -286,7 +281,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
     };
     loadSquad();
   }, [matchId]);
-  
+
   // Match predictions state - COMPLETE
   const [predictions, setPredictions] = useState({
     firstHalfHomeScore: null as number | null,
@@ -512,94 +507,87 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
           </Animated.View>
         )}
 
-        {/* Football Field with Players */}
+        {/* Football Field with Players – Kadro sekmesindeki saha ile aynı boyut */}
         <FootballField style={styles.mainField}>
           <View style={styles.playersContainer}>
             {(() => {
-              // Use attack squad if available, otherwise use mock data
-              // Use pre-loaded array or convert Record to array
-              const playersArray = attackPlayersArray.length > 0 
-                ? attackPlayersArray 
-                : Object.values(attackPlayers).filter(Boolean);
-              const useAttackSquad = squadLoaded && attackFormation && playersArray.length === 11;
-              const positions = useAttackSquad && attackFormation 
-                ? (formationPositions[attackFormation] || mockPositions)
-                : mockPositions;
-              const formation = useAttackSquad && attackFormation
-                ? { positions: positions.map((_, i) => {
-                    const player = playersArray[i];
-                    return player ? player.position : mockFormation.positions[i] || '';
-                  }) }
-                : mockFormation;
+              // ✅ SADECE Tamamla basıldıysa ve 11 oyuncu varsa kartları göster
+              const showPlayers = isSquadCompleted && attackPlayersArray.length === 11 && attackFormation;
               
-              // If no squad selected, don't show any cards
-              if (!useAttackSquad) {
-                return null;
+              if (!showPlayers) {
+                // ✅ Kadro tamamlanmadıysa uyarı göster
+                return (
+                  <View style={styles.squadIncompleteWarning}>
+                    <Ionicons name="football-outline" size={48} color="rgba(31, 162, 166, 0.6)" />
+                    <Text style={styles.squadIncompleteTitle}>Kadro Tamamlanmadı</Text>
+                    <Text style={styles.squadIncompleteText}>
+                      Tahmin yapabilmek için önce Kadro sekmesinden{'\n'}formasyonunuzu ve 11 oyuncunuzu seçin.
+                    </Text>
+                  </View>
+                );
               }
               
+              const positions = formationPositions[attackFormation] || mockPositions;
+              const formation = { 
+                positions: positions.map((_, i) => {
+                  const player = attackPlayersArray[i];
+                  return player ? player.position : '';
+                }) 
+              };
+              
               return positions.map((pos, index) => {
-                const player = playersArray[index];
-                if (!player) return null; // Skip if no player in attack squad
+                const player = attackPlayersArray[index];
+                if (!player) return null;
+                
                 const positionLabel = formation.positions[index] || '';
                 const hasPredictions = playerPredictions[player.id] && 
                   Object.keys(playerPredictions[player.id]).length > 0;
 
-              return (
-                <View
-                  key={index}
-                  style={[
-                    styles.playerSlot,
-                    { left: `${pos.x}%`, top: `${pos.y}%` },
-                  ]}
-                >
-                  <TouchableOpacity
+                return (
+                  <View
+                    key={index}
                     style={[
-                      styles.playerCard,
-                      hasPredictions && styles.playerCardPredicted,
-                      // Gold border for elite players (85+)
-                      player.rating >= 85 && styles.playerCardElite,
-                      // Blue border for goalkeepers
-                      player.position === 'GK' && styles.playerCardGK,
+                      styles.playerSlot,
+                      { left: `${pos.x}%`, top: `${pos.y}%` },
                     ]}
-                    onPress={() => setSelectedPlayer(player)}
-                    activeOpacity={0.8}
                   >
-                    <LinearGradient
-                      colors={['#1E3A3A', '#0F2A24']}
-                      style={styles.playerCardGradient}
+                    <TouchableOpacity
+                      style={[
+                        styles.playerCard,
+                        hasPredictions && styles.playerCardPredicted,
+                        player.rating >= 85 && styles.playerCardElite,
+                        player.position === 'GK' && styles.playerCardGK,
+                      ]}
+                      onPress={() => setSelectedPlayer(player)}
+                      activeOpacity={0.8}
                     >
-                      {/* Prediction Alert - Top Right */}
-                      {hasPredictions && (
-                        <View style={styles.alertBadge}>
-                          <View style={styles.alertDot} />
+                      <LinearGradient
+                        colors={['#1E3A3A', '#0F2A24']}
+                        style={styles.playerCardGradient}
+                      >
+                        {hasPredictions && (
+                          <View style={styles.alertBadge}>
+                            <View style={styles.alertDot} />
+                          </View>
+                        )}
+                        <View style={styles.jerseyNumberBadge}>
+                          <Text style={styles.jerseyNumberText}>
+                            {player.number || player.id}
+                          </Text>
                         </View>
-                      )}
-
-                      {/* Jersey Number Badge - Top Center */}
-                      <View style={styles.jerseyNumberBadge}>
-                        <Text style={styles.jerseyNumberText}>
-                          {player.number || player.id}
+                        <Text style={styles.playerName} numberOfLines={1}>
+                          {player.name.split(' ').pop()}
                         </Text>
-                      </View>
-
-                      {/* Player Name - Center */}
-                      <Text style={styles.playerName} numberOfLines={2} ellipsizeMode="tail">
-                        {player.name}
-                      </Text>
-
-                      {/* Rating and Position - Same row, bottom */}
-                      <View style={styles.playerBottomRow}>
-                        <Text style={styles.playerRatingBottom}>{player.rating}</Text>
-                        <Text style={styles.playerPositionBottom}>{positionLabel}</Text>
-                      </View>
-
-                      {/* Prediction glow effect */}
-                      {hasPredictions && <View style={styles.predictionGlow} />}
-                    </LinearGradient>
-                  </TouchableOpacity>
-                </View>
-              );
-            }).filter(Boolean); // Remove null entries
+                        <View style={styles.playerBottomRow}>
+                          <Text style={styles.playerRatingBottom}>{player.rating}</Text>
+                          <Text style={styles.playerPositionBottom}>{positionLabel}</Text>
+                        </View>
+                        {hasPredictions && <View style={styles.predictionGlow} />}
+                      </LinearGradient>
+                    </TouchableOpacity>
+                  </View>
+                );
+              }).filter(Boolean);
             })()}
           </View>
         </FootballField>
@@ -1574,14 +1562,15 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 80,
   },
-  
-  // Football Field
+
+  // Football Field – Kadro ile aynı saha görünümü ve boyut
   fieldContainer: {
-    aspectRatio: 2/3,
+    flex: 1,
+    minHeight: height * 0.48,
     borderRadius: 12,
     overflow: 'hidden',
-    marginHorizontal: 16,
-    marginTop: 16,
+    marginHorizontal: 12,
+    marginTop: 8,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -1606,24 +1595,49 @@ const styles = StyleSheet.create({
   playersContainer: {
     flex: 1,
     position: 'relative',
+    overflow: 'visible',
+  },
+  squadIncompleteWarning: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: [{ translateX: -120 }, { translateY: -60 }],
+    width: 240,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+  },
+  squadIncompleteTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginTop: 12,
+    marginBottom: 6,
+  },
+  squadIncompleteText: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.7)',
+    textAlign: 'center',
+    lineHeight: 18,
   },
   mainField: {
-    marginBottom: 16,
+    flex: 1,
+    minHeight: height * 0.48,
+    marginBottom: 8,
   },
-  
-  // Player Slot
+  // Oyuncu kartları – Kadro ile aynı boyut (64x76) ve yerleşim
   playerSlot: {
     position: 'absolute',
-    transform: [{ translateX: -36 }, { translateY: -42 }],
+    transform: [{ translateX: -32 }, { translateY: -38 }],
     zIndex: 1,
   },
   playerCard: {
-    width: 72,
-    height: 84,
-    borderRadius: 10,
+    width: 64,
+    height: 76,
+    borderRadius: 8,
     overflow: 'hidden',
     borderWidth: 2,
-    borderColor: 'rgba(100, 116, 139, 0.3)', // Default gray border
+    borderColor: 'rgba(100, 116, 139, 0.3)',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -1659,8 +1673,8 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 2,
-    padding: 6,
+    gap: 1,
+    padding: 4,
   },
   predictionGlow: {
     position: 'absolute',
@@ -1669,12 +1683,12 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: 'rgba(245, 158, 11, 0.15)',
-    borderRadius: 12,
+    borderRadius: 8,
   },
   jerseyNumberBadge: {
-    width: 26,
-    height: 26,
-    borderRadius: 7,
+    width: 22,
+    height: 22,
+    borderRadius: 6,
     backgroundColor: '#1FA2A6',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1683,7 +1697,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   jerseyNumberText: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '900',
     color: '#FFFFFF',
   },
@@ -1692,17 +1706,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     width: '100%',
-    paddingHorizontal: 4,
-    marginTop: 'auto', // Push to bottom
-    flexShrink: 0, // Prevent shrinking
+    paddingHorizontal: 2,
+    marginTop: 'auto',
+    flexShrink: 0,
   },
   playerRatingBottom: {
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: '700',
-    color: '#C9A44C', // Gold color for rating
+    color: '#C9A44C',
   },
   playerPositionBottom: {
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: '600',
     color: '#9CA3AF',
   },
@@ -1725,14 +1739,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#F59E0B',
   },
   playerName: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '500',
     color: '#FFFFFF',
     textAlign: 'center',
-    marginTop: 4,
+    marginTop: 2,
+    paddingHorizontal: 2,
     flexShrink: 1,
     flexGrow: 0,
-    maxHeight: 24, // Prevent overflow
+    maxHeight: 22,
     paddingHorizontal: 2,
     letterSpacing: 0.3,
   },

@@ -23,7 +23,7 @@ import { MatchRatings } from './match/MatchRatings';
 import { MatchSummary } from './match/MatchSummary';
 import { BRAND, COLORS, SPACING, SIZES } from '../theme/theme';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
 interface MatchDetailProps {
   matchId: string;
@@ -616,8 +616,8 @@ const styles = StyleSheet.create({
   // Content
   contentContainer: {
     flex: 1,
-    paddingTop: Platform.OS === 'ios' ? 200 : 156, // ✅ Match card overlay yüksekliği için padding
-    paddingBottom: Platform.OS === 'ios' ? 100 : 80, // ✅ Bottom nav için padding
+    paddingTop: Platform.OS === 'ios' ? 200 : 156,
+    paddingBottom: Platform.OS === 'ios' ? 100 : 80,
   },
   
   // Placeholder

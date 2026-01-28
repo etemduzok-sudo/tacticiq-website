@@ -11,6 +11,7 @@ import {
   FlatList,
   Alert,
   Platform,
+  InteractionManager,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../../config/supabase';
@@ -678,6 +679,67 @@ export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSqu
   // ✅ Confirmation modal for defense formation
   const [showDefenseConfirmModal, setShowDefenseConfirmModal] = useState(false);
   
+  // ✅ State restore edildi mi?
+  const [stateRestored, setStateRestored] = useState(false);
+  
+  // ✅ Mount olunca partial state'i AsyncStorage'dan yükle (sekme değişimlerinde kaybolmasın)
+  React.useEffect(() => {
+    const restoreState = async () => {
+      try {
+        const key = `fan-manager-squad-${matchId}`;
+        const raw = await AsyncStorage.getItem(key);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed.attackFormation) setAttackFormation(parsed.attackFormation);
+          if (parsed.defenseFormation) setDefenseFormation(parsed.defenseFormation);
+          if (parsed.attackPlayers) setAttackPlayers(parsed.attackPlayers);
+          if (parsed.defensePlayers) setDefensePlayers(parsed.defensePlayers);
+          if (parsed.editingMode) setEditingMode(parsed.editingMode);
+          
+          // ✅ defenseConfirmShown: Eğer defenseFormation varsa true, yoksa false
+          // Bu sayede popup tekrar açılabilir veya buton aktif olabilir
+          const shouldConfirmBeShown = parsed.defenseFormation ? true : (parsed.defenseConfirmShown || false);
+          setDefenseConfirmShown(shouldConfirmBeShown);
+        }
+      } catch (e) {
+        console.warn('State restore failed', e);
+      }
+      setStateRestored(true);
+    };
+    restoreState();
+  }, [matchId]);
+  
+  // ✅ Her state değişikliğinde AsyncStorage'a kaydet (sekme değişimlerinde korunsun)
+  React.useEffect(() => {
+    if (!stateRestored) return; // İlk yüklemede kaydetme
+    
+    const savePartialState = async () => {
+      try {
+        const key = `fan-manager-squad-${matchId}`;
+        const raw = await AsyncStorage.getItem(key);
+        const existing = raw ? JSON.parse(raw) : {};
+        
+        const updated = {
+          ...existing,
+          matchId,
+          attackFormation,
+          defenseFormation,
+          attackPlayers,
+          defensePlayers,
+          editingMode,
+          defenseConfirmShown,
+          // isCompleted sadece Tamamla basılınca true olacak
+          isCompleted: existing.isCompleted || false,
+        };
+        
+        await AsyncStorage.setItem(key, JSON.stringify(updated));
+      } catch (e) {
+        console.warn('Partial state save failed', e);
+      }
+    };
+    savePartialState();
+  }, [attackFormation, defenseFormation, attackPlayers, defensePlayers, editingMode, defenseConfirmShown, stateRestored, matchId]);
+  
   // Legacy compatibility (will be mapped to attack/defense)
   const selectedFormation = editingMode === 'attack' ? attackFormation : defenseFormation;
   const selectedPlayers = editingMode === 'attack' ? attackPlayers : defensePlayers;
@@ -702,6 +764,8 @@ export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSqu
   
   // ✅ Show defense confirmation when attack squad is complete (11 players)
   React.useEffect(() => {
+    if (!stateRestored) return; // State restore edilene kadar bekle
+    
     const attackCount = Object.keys(attackPlayers).filter(k => attackPlayers[parseInt(k)]).length;
     
     // Show confirmation only when:
@@ -716,7 +780,7 @@ export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSqu
         setShowDefenseConfirmModal(true);
       }, 500);
     }
-  }, [attackPlayers, defenseFormation, defenseConfirmShown, editingMode]);
+  }, [attackPlayers, defenseFormation, defenseConfirmShown, editingMode, stateRestored]);
 
   // Pulsing ball animation
   const scale = useSharedValue(1);
@@ -735,50 +799,51 @@ export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSqu
     transform: [{ scale: isWeb ? 1 : scale.value }],
   }));
 
-  const handleFormationSelect = (formationId: string) => {
+  const handleFormationSelect = async (formationId: string) => {
     const formation = formations.find(f => f.id === formationId);
     
     if (editingMode === 'attack') {
       // ✅ Attack formation selected - Start placing players
       setAttackFormation(formationId);
       setAttackPlayers({});
+      setDefenseFormation(null);
+      setDefensePlayers({});
+      setDefenseConfirmShown(false);
       setShowFormationModal(false);
+      
+      // ✅ isCompleted sıfırla (Tahmin sekmesinde saha boş olsun)
+      try {
+        const key = `fan-manager-squad-${matchId}`;
+        const raw = await AsyncStorage.getItem(key);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          parsed.isCompleted = false;
+          await AsyncStorage.setItem(key, JSON.stringify(parsed));
+        }
+      } catch (e) { console.warn('isCompleted reset failed', e); }
+      
       Alert.alert('Atak Formasyonu Seçildi!', `${formation?.name}\n\nŞimdi 11 oyuncunuzu pozisyonlara yerleştirin.`);
-      // Defense confirmation will be shown after 11 players are selected
     } else {
       // ✅ Defense formation selected
       setDefenseFormation(formationId);
-      // ✅ Pre-fill defense players with attack squad (same 11 players, different positions)
+      // ✅ Sadece kaleci otomatik kalacak, diğer 10 oyuncu boş (oyuncu manuel yerleştirecek)
       const defFormation = formations.find(f => f.id === formationId);
       if (defFormation && Object.keys(attackPlayers).length === 11) {
-        // Map attack players to defense positions
         const defPlayers: Record<number, typeof players[0] | null> = {};
         const attackPlayersList = Object.values(attackPlayers).filter(Boolean) as typeof players;
         
-        // 1. Find goalkeeper from attack squad and assign to GK position (index 0)
+        // Sadece kaleci otomatik yerleştir (index 0 = GK pozisyonu)
         const goalkeeper = attackPlayersList.find(p => p?.position === 'GK');
         if (goalkeeper) {
           defPlayers[0] = goalkeeper;
         }
-        
-        // 2. Get all outfield players from attack squad (excluding GK)
-        const outfieldPlayers = attackPlayersList.filter(p => p?.position !== 'GK');
-        
-        // 3. Assign outfield players to defense positions (index 1-10)
-        // Map attack players to defense positions sequentially
-        outfieldPlayers.forEach((player, idx) => {
-          const defenseSlotIndex = idx + 1; // Defense slots start from index 1 (0 is GK)
-          if (defenseSlotIndex < 11) { // Ensure we don't exceed 11 slots
-            defPlayers[defenseSlotIndex] = player;
-          }
-        });
+        // Diğer 10 pozisyon (index 1-10) boş kalacak - oyuncu manuel yerleştirecek
         
         setDefensePlayers(defPlayers);
-        // Set editing mode to defense so user can see and edit defense squad
         setEditingMode('defense');
       }
       setShowFormationModal(false);
-      Alert.alert('Defans Formasyonu Seçildi!', `${formation?.name}\n\nAtak kadronuzdaki oyuncular defans pozisyonlarına otomatik yerleştirildi. Gerekirse düzenleyebilirsiniz.`);
+      Alert.alert('Defans Formasyonu Seçildi!', `${formation?.name}\n\nKaleci otomatik yerleştirildi. Diğer 10 oyuncuyu defans pozisyonlarına yerleştirin.`);
     }
   };
   
@@ -798,7 +863,7 @@ export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSqu
     // ✅ Copy attack formation and players to defense (same system for both)
     if (attackFormation) {
       setDefenseFormation(attackFormation);
-      setDefensePlayers({ ...attackPlayers });
+      setDefensePlayers({ ...attackPlayers }); // ✅ Aynı oyuncular defans için de kopyalanıyor
       
       const formation = formations.find(f => f.id === attackFormation);
       Alert.alert(
@@ -840,17 +905,37 @@ export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSqu
     }
   };
 
-  const handleRemovePlayer = (slotIndex: number) => {
+  const handleRemovePlayer = async (slotIndex: number) => {
     const player = selectedPlayers[slotIndex];
     if (player) {
       // Directly remove player without confirmation for smoother UX
       setSelectedPlayers({ ...selectedPlayers, [slotIndex]: null });
+      
+      // ✅ Atak modunda oyuncu çıkarılırsa, defans ayarlarını sıfırla (tekrar sorulsun)
+      if (editingMode === 'attack') {
+        setDefenseFormation(null);
+        setDefensePlayers({});
+        setDefenseConfirmShown(false);
+        
+        // ✅ isCompleted sıfırla (Tahmin sekmesinde saha boş olsun)
+        try {
+          const key = `fan-manager-squad-${matchId}`;
+          const raw = await AsyncStorage.getItem(key);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            parsed.isCompleted = false;
+            await AsyncStorage.setItem(key, JSON.stringify(parsed));
+          }
+        } catch (e) { console.warn('isCompleted reset failed', e); }
+      }
     }
   };
 
   const handleComplete = async () => {
     const attackCount = Object.keys(attackPlayers).filter(k => attackPlayers[parseInt(k)]).length;
     const defenseCount = Object.keys(defensePlayers).filter(k => defensePlayers[parseInt(k)]).length;
+    
+    console.log('🔍 handleComplete called', { attackCount, defenseCount, defenseFormation, editingMode });
     
     // Check if attack squad is complete
     if (attackCount < 11) {
@@ -874,16 +959,19 @@ export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSqu
         ? Object.values(defensePlayers).filter(Boolean)
         : attackPlayersArray;
       
+      const formationName = formations.find(f => f.id === attackFormation)?.name || attackFormation;
       const squadData = {
-        matchId: matchId, // ✅ Use matchId prop for consistency
+        matchId: matchId,
         attackFormation: attackFormation,
-        defenseFormation: defenseFormation || attackFormation, // If no defense, use attack
-        attackPlayers: attackPlayers, // Keep as Record for compatibility
-        attackPlayersArray: attackPlayersArray, // Add array version for easy access
-        defensePlayers: defenseFormation ? defensePlayers : attackPlayers, // If no defense, use attack players
-        defensePlayersArray: defensePlayersArray, // Add array version
+        attackFormationName: formationName,
+        defenseFormation: defenseFormation || attackFormation,
+        attackPlayers: attackPlayers,
+        attackPlayersArray: attackPlayersArray,
+        defensePlayers: defenseFormation ? defensePlayers : attackPlayers,
+        defensePlayersArray: defensePlayersArray,
         playerPredictions: playerPredictions,
         timestamp: new Date().toISOString(),
+        isCompleted: true, // ✅ Tamamla basıldı – Tahmin sekmesinde oyuncular görünecek
       };
       
       await AsyncStorage.setItem(
@@ -918,8 +1006,8 @@ export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSqu
         console.warn('⚠️ Backend save failed (continuing with local):', backendError);
       }
       
-      // Directly navigate to prediction tab after saving
-      onComplete();
+      // Tahmin sekmesine geç (animasyonlar/commit sonrası parent state güncellenir)
+      InteractionManager.runAfterInteractions(() => onComplete());
     } catch (error) {
       console.error('Error saving squad:', error);
       Alert.alert('Hata!', 'Kadro kaydedilemedi. Lütfen tekrar deneyin.');
@@ -934,10 +1022,10 @@ export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSqu
   const attackCount = Object.keys(attackPlayers).filter(k => attackPlayers[parseInt(k)]).length;
   const defenseCount = Object.keys(defensePlayers).filter(k => defensePlayers[parseInt(k)]).length;
   
-  // Button is active if: attack is complete (11) AND (no defense formation OR defense is complete)
+  // Tamamla: atak 11 VE (defans yok VEYA defans 11) olduğunda aktif
   const isCompleteButtonActive = attackCount === 11 && (!defenseFormation || defenseCount === 11);
 
-  // Empty State (No Formation Selected)
+  // Empty State (No Formation Selected) - saha aynı minHeight ile küçülmesin
   if (!selectedFormation) {
     return (
       <View style={styles.container}>
@@ -994,13 +1082,20 @@ export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSqu
             {positions?.map((pos, index) => {
               const player = selectedPlayers[index];
               const positionLabel = formation?.positions[index] || '';
+              
+              // ✅ En ilerideki oyuncuyu bul (en küçük y değeri = en ilerideki)
+              const allYPositions = positions?.map(p => p.y) || [];
+              const minY = Math.min(...allYPositions);
+              const isForwardmost = pos.y === minY;
+              // En ilerideki oyuncuyu birkaç piksel aşağı kaydır (kesilmesini engelle, diğerlerini bozma)
+              const adjustedTop = isForwardmost ? `${pos.y + 3}%` : `${pos.y}%`;
 
               return (
                 <View
                   key={index}
                   style={[
                     styles.playerSlot,
-                    { left: `${pos.x}%`, top: `${pos.y}%` },
+                    { left: `${pos.x}%`, top: adjustedTop },
                   ]}
                 >
                   {player ? (
@@ -1185,8 +1280,8 @@ export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSqu
             <View style={styles.defenseConfirmInfo}>
               <Ionicons name="information-circle" size={18} color="#F59E0B" />
               <Text style={styles.defenseConfirmInfoText}>
-                <Text style={{ fontWeight: '700' }}>Evet:</Text> Defans formasyonu seçip aynı 11 oyuncuyu yeniden konumlandırırsınız.{'\n'}
-                <Text style={{ fontWeight: '700' }}>Hayır:</Text> Atak sistemi defans için de kullanılır.
+                <Text style={{ fontWeight: '700' }}>Evet:</Text> Defans formasyonu seçip sadece kaleci otomatik kalır, diğer 10 oyuncuyu defans pozisyonlarına manuel yerleştirirsiniz.{'\n'}
+                <Text style={{ fontWeight: '700' }}>Hayır:</Text> Atak formasyonu ve oyuncuları defans için de aynen kullanılır.
               </Text>
             </View>
             
@@ -1257,6 +1352,30 @@ const FormationModal = ({ visible, formations, formationType, onSelect, onClose,
                   {formationType === 'defense' ? 'Defans için formasyon seçiniz' : 'Atak için formasyon seçin'}
                 </Text>
               </View>
+            </View>
+
+            {/* ✅ Atak / Defans sekme butonları */}
+            <View style={styles.formationModalTabs}>
+              <TouchableOpacity
+                style={[styles.formationModalTab, formationType === 'attack' && styles.formationModalTabActive]}
+                onPress={() => onTabChange('attack')}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="flash" size={18} color={formationType === 'attack' ? '#FFFFFF' : '#1FA2A6'} />
+                <Text style={[styles.formationModalTabText, formationType === 'attack' && styles.formationModalTabTextActive]}>
+                  Atak
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.formationModalTab, formationType === 'defense' && styles.formationModalTabActive]}
+                onPress={() => onTabChange('defense')}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="shield-checkmark" size={18} color={formationType === 'defense' ? '#FFFFFF' : '#3B82F6'} />
+                <Text style={[styles.formationModalTabText, formationType === 'defense' && styles.formationModalTabTextActive]}>
+                  Defans
+                </Text>
+              </TouchableOpacity>
             </View>
 
             {/* Close Button - Absolute Position */}
@@ -1398,10 +1517,10 @@ const FormationModal = ({ visible, formations, formationType, onSelect, onClose,
                     onSelect(hoveredFormation.id);
                     setHoveredFormation(null);
                   }}
-                  activeOpacity={0.7}
+                  activeOpacity={0.85}
                 >
                   <LinearGradient
-                    colors={['#1FA2A6', '#047857']}
+                    colors={['#1FA2A6', '#0D9488', '#047857']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                     style={styles.formationPreviewSelectGradient}
@@ -1494,10 +1613,10 @@ const FormationDetailModal = ({ formation, onClose, onSelect }: any) => (
             onSelect(formation);
           }}
           style={styles.formationDetailSelectButton}
-          activeOpacity={0.8}
+          activeOpacity={0.85}
         >
           <LinearGradient
-            colors={['#1FA2A6', '#047857']}
+            colors={['#1FA2A6', '#0D9488', '#047857']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.formationDetailSelectGradient}
@@ -2052,30 +2171,37 @@ const styles = StyleSheet.create({
     bottom: 0,
   },
   
-  // Main Container
+  // Main Container – y ekseni boşlukları azaltıldı, saha yüksekliği arttı
   mainContainer: {
     flex: 1,
-    padding: 16,
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    paddingBottom: 8,
   },
   mainField: {
     flex: 1,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   playersContainer: {
     flex: 1,
     position: 'relative',
+    overflow: 'visible', // ✅ Kartların kesilmemesi için
   },
   
   // Player Slot - Centered on position
   playerSlot: {
     position: 'absolute',
     transform: [{ translateX: -32 }, { translateY: -38 }], // Half of card size
-    zIndex: 1,
+    zIndex: 5,
+    elevation: 5,
   },
   playerCardWrapper: {
     position: 'relative',
-    zIndex: 2,
+    zIndex: 10,
+    elevation: 10,
+    overflow: 'visible',
   },
+  // X butonu her zaman oyuncu kartının ÜSTÜNDE (kartın altında kalmamalı)
   
   // Player Card - Reduced size to prevent overflow (64x76)
   playerCard: {
@@ -2119,7 +2245,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: -8,
     right: -8,
-    zIndex: 100,
+    zIndex: 9999,
+    elevation: 9999,
     backgroundColor: '#EF4444',
     borderRadius: 13,
     width: 26,
@@ -2132,14 +2259,14 @@ const styles = StyleSheet.create({
       ios: {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.3,
+        shadowOpacity: 0.4,
         shadowRadius: 4,
       },
       android: {
-        elevation: 5,
+        elevation: 999,
       },
       web: {
-        boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.3)',
+        boxShadow: '0 2px 8px rgba(239, 68, 68, 0.5)',
       },
     }),
   },
@@ -2273,25 +2400,26 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   
-  // Bottom Bar
   bottomBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: 'rgba(30, 41, 59, 0.8)',
-    borderRadius: 12,
-    padding: 12,
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
     borderWidth: 1,
     borderColor: 'rgba(5, 150, 105, 0.3)',
+    marginTop: 6,
   },
   bottomBarLeft: {
     flex: 1,
-    marginRight: 12,
+    marginRight: 8,
   },
   changeFormationButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   changeFormationText: {
     fontSize: 12,
@@ -2302,10 +2430,10 @@ const styles = StyleSheet.create({
   bottomBarRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
   },
   playerCount: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
     color: '#FFFFFF',
   },
@@ -2319,12 +2447,12 @@ const styles = StyleSheet.create({
   completeButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
   completeButtonText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: '#FFFFFF',
   },
@@ -2362,6 +2490,38 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#64748B',
     marginTop: 4,
+  },
+  formationModalTabs: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(31, 162, 166, 0.15)',
+  },
+  formationModalTab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: 'rgba(31, 162, 166, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.25)',
+  },
+  formationModalTabActive: {
+    backgroundColor: '#1FA2A6',
+    borderColor: '#1FA2A6',
+  },
+  formationModalTabText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1FA2A6',
+  },
+  formationModalTabTextActive: {
+    color: '#FFFFFF',
   },
   modalCloseButton: {
     width: 36,
@@ -2624,6 +2784,7 @@ const styles = StyleSheet.create({
     flex: 2,
     borderRadius: 10,
     overflow: 'hidden',
+    backgroundColor: '#1FA2A6', // ✅ Opak turkuaz – açıklama popup’ı ile aynı, mavi/şeffaf görünmesin
   },
   formationPreviewSelectGradient: {
     flexDirection: 'row',
@@ -2631,6 +2792,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     paddingVertical: 12,
+    opacity: 1,
   },
   formationPreviewSelectText: {
     fontSize: 14,
@@ -2865,6 +3027,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     borderRadius: 12,
     overflow: 'hidden',
+    backgroundColor: '#1FA2A6', // ✅ Açıklama popup’ı ile aynı opak turkuaz
   },
   formationDetailSelectGradient: {
     flexDirection: 'row',
@@ -2873,6 +3036,7 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 14,
     paddingHorizontal: 24,
+    opacity: 1,
   },
   formationDetailSelectText: {
     fontSize: 16,
