@@ -610,7 +610,7 @@ const FootballField = ({ children, style }: any) => (
 );
 
 export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSquadProps) {
-  // ✅ GERÇEK VERİ: Lineups'tan oyuncuları çek
+  // ✅ GERÇEK VERİ: Lineups'tan oyuncuları çek (backend enriched format destekli)
   const realPlayers = React.useMemo(() => {
     if (!lineups || lineups.length === 0) {
       console.log('⚠️ No lineups data, using empty array');
@@ -621,22 +621,29 @@ export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSqu
     const allPlayers: any[] = [];
     lineups.forEach((lineup: any) => {
       const teamName = lineup.team?.name || 'Unknown';
+      const teamId = lineup.team?.id;
+      const teamColors = lineup.team?.colors; // Backend'den gelen team colors
       
       // Başlangıç 11'i ekle
       if (lineup.startXI) {
         lineup.startXI.forEach((item: any) => {
-          const player = item.player;
+          // Backend enriched format: doğrudan player objesi
+          // Eski format: item.player içinde
+          const player = item.player || item;
           allPlayers.push({
             id: player.id,
             name: player.name,
-            position: player.pos || 'SUB',
-            rating: 75, // Default rating (gerçek rating API'den gelmez)
+            position: player.pos || player.position || 'SUB',
+            rating: player.rating || 75,
             number: player.number,
             team: teamName,
+            teamId: teamId,
+            teamColors: teamColors,
             form: 7,
             injury: false,
-            age: 25,
-            nationality: 'Unknown',
+            age: player.age || 25,
+            nationality: player.nationality || 'Unknown',
+            grid: player.grid,
             stats: { pace: 70, shooting: 70, passing: 70, dribbling: 70, defending: 70, physical: 70 }
           });
         });
@@ -645,25 +652,28 @@ export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSqu
       // Yedekleri ekle
       if (lineup.substitutes) {
         lineup.substitutes.forEach((item: any) => {
-          const player = item.player;
+          const player = item.player || item;
           allPlayers.push({
             id: player.id,
             name: player.name,
-            position: player.pos || 'SUB',
-            rating: 70,
+            position: player.pos || player.position || 'SUB',
+            rating: player.rating || 70,
             number: player.number,
             team: teamName,
+            teamId: teamId,
+            teamColors: teamColors,
             form: 6,
             injury: false,
-            age: 25,
-            nationality: 'Unknown',
+            age: player.age || 25,
+            nationality: player.nationality || 'Unknown',
+            grid: player.grid,
             stats: { pace: 65, shooting: 65, passing: 65, dribbling: 65, defending: 65, physical: 65 }
           });
         });
       }
     });
     
-    console.log('✅ Real players loaded from lineups:', allPlayers.length);
+    console.log('✅ Real players loaded from lineups:', allPlayers.length, 'with team colors:', lineups[0]?.team?.colors);
     return allPlayers;
   }, [lineups]);
   
@@ -678,6 +688,9 @@ export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSqu
   
   // ✅ Confirmation modal for defense formation
   const [showDefenseConfirmModal, setShowDefenseConfirmModal] = useState(false);
+  
+  // ✅ Track if defense confirmation was already shown
+  const [defenseConfirmShown, setDefenseConfirmShown] = useState(false);
   
   // ✅ State restore edildi mi?
   const [stateRestored, setStateRestored] = useState(false);
@@ -758,9 +771,6 @@ export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSqu
   const attackSquadPlayers = React.useMemo(() => {
     return Object.values(attackPlayers).filter(Boolean) as typeof players;
   }, [attackPlayers]);
-  
-  // ✅ Track if defense confirmation was already shown
-  const [defenseConfirmShown, setDefenseConfirmShown] = React.useState(false);
   
   // ✅ Show defense confirmation when attack squad is complete (11 players)
   React.useEffect(() => {
@@ -3236,9 +3246,14 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     textAlign: 'center',
     marginBottom: 8,
-    textShadowColor: 'rgba(0,0,0,0.3)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+    ...Platform.select({
+      web: { textShadow: '0px 1px 2px rgba(0,0,0,0.3)' },
+      default: {
+        textShadowColor: 'rgba(0,0,0,0.3)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2,
+      },
+    }),
   },
   playerCardPositionRow: {
     flexDirection: 'row',

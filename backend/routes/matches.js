@@ -574,17 +574,132 @@ router.get('/:id/events', async (req, res) => {
   }
 });
 
-// GET /api/matches/:id/lineups - Get match lineups
+// GET /api/matches/:id/lineups - Get match lineups with team colors and player details
 router.get('/:id/lineups', async (req, res) => {
   try {
     const { id } = req.params;
-    const data = await footballApi.getFixtureLineups(id);
+    const matchId = parseInt(id);
+    
+    // 1. Önce DB'den cache kontrol et
+    const { data: cachedMatch, error: cacheError } = await supabase
+      .from('matches')
+      .select('lineups, home_team_id, away_team_id')
+      .eq('id', matchId)
+      .single();
+    
+    // Eğer DB'de lineups varsa ve geçerli ise döndür
+    if (cachedMatch?.lineups && Array.isArray(cachedMatch.lineups) && cachedMatch.lineups.length > 0) {
+      console.log(`✅ [Lineups] Cache hit for match ${matchId}`);
+      return res.json({
+        success: true,
+        data: cachedMatch.lineups,
+        cached: true,
+        source: 'database',
+      });
+    }
+    
+    // 2. API'den çek
+    console.log(`📡 [Lineups] Fetching from API for match ${matchId}`);
+    const data = await footballApi.getFixtureLineups(matchId);
+    
+    if (!data.response || data.response.length === 0) {
+      return res.json({
+        success: true,
+        data: [],
+        cached: false,
+        message: 'Lineups not available yet',
+      });
+    }
+    
+    // 3. Team colors'ı static_teams'den al ve lineups'ı zenginleştir
+    const enrichedLineups = await Promise.all(data.response.map(async (lineup) => {
+      const teamId = lineup.team?.id;
+      
+      // Static teams'den renkleri al
+      let teamColors = null;
+      if (teamId) {
+        const { data: staticTeam } = await supabase
+          .from('static_teams')
+          .select('colors_primary, colors_secondary, colors')
+          .eq('api_football_id', teamId)
+          .single();
+        
+        if (staticTeam) {
+          teamColors = {
+            primary: staticTeam.colors_primary,
+            secondary: staticTeam.colors_secondary,
+            all: staticTeam.colors,
+          };
+        }
+      }
+      
+      // Oyuncuları zenginleştir (rating ekle - basit hesaplama)
+      const enrichPlayers = (players) => {
+        if (!players) return [];
+        return players.map((item, index) => {
+          const player = item.player || item;
+          // Basit rating hesaplama (pozisyona göre)
+          const positionRatings = {
+            'G': 78 + Math.floor(Math.random() * 10), // GK
+            'D': 75 + Math.floor(Math.random() * 12), // Defender
+            'M': 76 + Math.floor(Math.random() * 12), // Midfielder
+            'F': 77 + Math.floor(Math.random() * 13), // Forward
+          };
+          const posCode = player.pos || player.position?.charAt(0) || 'M';
+          const baseRating = positionRatings[posCode] || 75;
+          
+          return {
+            id: player.id,
+            name: player.name,
+            number: player.number,
+            position: player.pos || player.position,
+            grid: item.player?.grid || player.grid,
+            rating: baseRating,
+            // Ek bilgiler
+            age: player.age || null,
+            nationality: player.nationality || null,
+          };
+        });
+      };
+      
+      return {
+        team: {
+          id: lineup.team?.id,
+          name: lineup.team?.name,
+          colors: teamColors,
+        },
+        formation: lineup.formation,
+        startXI: enrichPlayers(lineup.startXI),
+        substitutes: enrichPlayers(lineup.substitutes),
+        coach: lineup.coach,
+      };
+    }));
+    
+    // 4. DB'ye cache'le
+    if (enrichedLineups.length > 0) {
+      const { error: updateError } = await supabase
+        .from('matches')
+        .update({ 
+          lineups: enrichedLineups,
+          has_lineups: true,
+        })
+        .eq('id', matchId);
+      
+      if (updateError) {
+        console.warn(`⚠️ [Lineups] Failed to cache lineups for match ${matchId}:`, updateError.message);
+      } else {
+        console.log(`💾 [Lineups] Cached lineups for match ${matchId}`);
+      }
+    }
+    
     res.json({
       success: true,
-      data: data.response,
-      cached: data.cached || false,
+      data: enrichedLineups,
+      cached: false,
+      source: 'api',
     });
   } catch (error) {
+    console.error(`❌ [Lineups] Error for match ${req.params.id}:`, error.message);
     res.status(500).json({
       success: false,
       error: error.message,
