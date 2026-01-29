@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { useMatchDetails } from '../hooks/useMatches';
+import { useFavoriteTeams } from '../hooks/useFavoriteTeams';
 import api from '../services/api';
 import { MatchSquad } from './match/MatchSquad';
 import { MatchPrediction } from './match/MatchPrediction';
@@ -67,6 +68,8 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
   const [activeTab, setActiveTab] = useState(initialTab);
   const [coaches, setCoaches] = useState<{ home: string; away: string }>({ home: '', away: '' });
   const [countdownTicker, setCountdownTicker] = useState(0); // ✅ Geri sayım için ticker
+  const { favoriteTeams } = useFavoriteTeams();
+  const favoriteTeamIds = React.useMemo(() => favoriteTeams?.map(t => t.id) ?? [], [favoriteTeams]);
   
   // ✅ Analiz odağı bilgisini logla (ileride kullanılacak)
   React.useEffect(() => {
@@ -175,16 +178,23 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
   const matchData = match ? {
     id: match.fixture.id.toString(),
     homeTeam: {
+      id: match.teams.home.id, // ✅ Team ID eklendi
       name: match.teams.home.name,
       logo: match.teams.home.logo || '⚽',
       color: getTeamColors(match.teams.home),
       manager: coaches.home || '', // ✅ Teknik direktör API'den
     },
     awayTeam: {
+      id: match.teams.away.id, // ✅ Team ID eklendi
       name: match.teams.away.name,
       logo: match.teams.away.logo || '⚽',
       color: getTeamColors(match.teams.away),
       manager: coaches.away || '', // ✅ Teknik direktör API'den
+    },
+    // ✅ Geriye uyumluluk için teams objesi de ekle
+    teams: {
+      home: { id: match.teams.home.id, name: match.teams.home.name },
+      away: { id: match.teams.away.id, name: match.teams.away.name },
     },
     league: match.league.name,
     stadium: match.fixture.venue?.name || 'TBA',
@@ -280,6 +290,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
             matchData={matchData}
             matchId={matchId}
             lineups={lineups}
+            favoriteTeamIds={favoriteTeamIds}
             onComplete={() => setActiveTab('prediction')} 
           />
         );

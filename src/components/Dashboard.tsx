@@ -25,6 +25,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { profileService } from '../services/profileService';
 import { isSuperAdmin } from '../config/constants';
 import { AnalysisFocusModal, AnalysisFocusType } from './AnalysisFocusModal';
+import { getTeamColors } from '../utils/teamColors';
 
 // Coach cache - takım ID'sine göre teknik direktör isimlerini cache'le
 const coachCache: Record<number, string> = {};
@@ -107,37 +108,6 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
     return () => clearInterval(interval);
   }, []);
   
-  // ✅ Takım ismine göre forma renkleri
-  const getTeamColors = (teamName: string): string[] => {
-    const name = teamName.toLowerCase();
-    const teamColors: Record<string, string[]> = {
-      'galatasaray': ['#FFA500', '#FF0000'], // Sarı-Kırmızı
-      'fenerbahçe': ['#FFFF00', '#000080'], // Sarı-Lacivert
-      'fenerbahce': ['#FFFF00', '#000080'],
-      'beşiktaş': ['#000000', '#FFFFFF'], // Siyah-Beyaz
-      'besiktas': ['#000000', '#FFFFFF'],
-      'trabzonspor': ['#800020', '#0000FF'], // Bordo-Mavi
-      'real madrid': ['#FFFFFF', '#FFD700'], // Beyaz-Altın
-      'barcelona': ['#A50044', '#004D98'], // Kırmızı-Mavi
-      'paris saint germain': ['#004170', '#ED1C24'], // Mavi-Kırmızı
-      'psg': ['#004170', '#ED1C24'],
-      'türkiye': ['#E30A17', '#FFFFFF'], // Kırmızı-Beyaz
-      'turkey': ['#E30A17', '#FFFFFF'],
-      'almanya': ['#000000', '#DD0000', '#FFCE00'], // Siyah-Kırmızı-Altın
-      'germany': ['#000000', '#DD0000', '#FFCE00'],
-      'brezilya': ['#009C3B', '#FFDF00'], // Yeşil-Sarı
-      'brazil': ['#009C3B', '#FFDF00'],
-      'arjantin': ['#74ACDF', '#FFFFFF'], // Mavi-Beyaz
-      'argentina': ['#74ACDF', '#FFFFFF'],
-    };
-    
-    for (const [key, colors] of Object.entries(teamColors)) {
-      if (name.includes(key)) return colors;
-    }
-    
-    // Varsayılan renkler
-    return ['#1E40AF', '#FFFFFF'];
-  };
 
   // ✅ Lig öncelik sıralaması (düşük sayı = yüksek öncelik)
   const getLeaguePriority = (leagueName: string): number => {
@@ -357,20 +327,20 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
     const timeDiff = matchTime - now;
     const hours24 = 24 * 60 * 60;
     const dayInSeconds = 24 * 60 * 60;
-    const days7 = 7 * dayInSeconds; // 7 gün
+    const days10 = 10 * dayInSeconds; // 10 güne kadar tahmin açık
     
     let timeLeft = { hours: 0, minutes: 0, seconds: 0 };
     let daysRemaining = 0;
-    let isLocked = false; // 7 günden uzak maçlar kilitli
+    let isLocked = false; // 10 günden uzak maçlar tahmine kapalı
     let countdownColor = '#10b981'; // Varsayılan yeşil
     
     if (status === 'upcoming' && timeDiff > 0) {
-      // 7 günden fazla ise kilitli
-      if (timeDiff > days7) {
+      // 10 günden fazla ise tahmine kapalı
+      if (timeDiff > days10) {
         isLocked = true;
         daysRemaining = Math.floor(timeDiff / dayInSeconds);
       } else if (timeDiff > hours24) {
-        // 24 saatten uzun ama 7 günden az - gün sayısını göster
+        // 24 saatten uzun ama 10 günden az - gün sayısını göster
         daysRemaining = Math.floor(timeDiff / dayInSeconds);
       } else {
         // 24 saatten az kaldıysa geri sayım göster
@@ -401,8 +371,9 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
     return (
       <TouchableOpacity
         style={styles.matchCardContainer}
-        onPress={onPress}
-        activeOpacity={0.8}
+        onPress={isLocked ? undefined : onPress} // ✅ 10 günden fazla ise tıklanamaz
+        activeOpacity={isLocked ? 1 : 0.8} // ✅ Kilitli ise opacity değişmesin
+        disabled={isLocked} // ✅ Kilitli ise disabled
       >
         <LinearGradient
           colors={['#1A3A34', '#162E29', '#122520']} // Koyu yeşil gradient - zemin ile uyumlu
@@ -530,7 +501,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
                   end={{ x: 1, y: 0 }}
                 >
                   <View style={styles.matchCardLiveDot} />
-                  <Text style={styles.matchCardLiveText}>ŞUAN OYNANIYOR</Text>
+                  <Text style={styles.matchCardLiveText}>OYNANIYOR</Text>
                 </LinearGradient>
                 
                 {match.fixture.status?.elapsed && (
@@ -562,7 +533,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
             ) : (
               status === 'upcoming' && timeDiff > 0 ? (
                 isLocked ? (
-                  // 7 günden fazla - KİLİTLİ
+                  // 10 günden fazla - tahmine kapalı
                   <View style={styles.matchCardLockedContainer}>
                     <View style={styles.matchCardLockedBadge}>
                       <Ionicons name="lock-closed" size={14} color="#64748B" />
@@ -572,7 +543,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
                     </View>
                   </View>
                 ) : daysRemaining > 0 ? (
-                  // 24 saatten uzun ama 7 günden az - gün sayısını göster
+                  // 24 saatten uzun ama 10 günden az - gün sayısını göster
                   <View style={styles.matchCardDaysRemainingContainer}>
                     <LinearGradient
                       colors={['#f97316', '#ea580c']}
@@ -701,10 +672,9 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
   // ✅ Filter matches by selected teams (ID and name matching) - ÇOKLU SEÇİM
   // IMPORTANT: This hook MUST be before any early returns to follow Rules of Hooks
   const filterMatchesByTeam = React.useCallback((matches: any[], teamIds: number[]) => {
-    // ❌ Favori takım yoksa, HİÇ MAÇ GÖSTERME (boş dön)
-    // Kullanıcı önce favori takım seçmeli
+    // ✅ Eğer favori takım yoksa, TÜM maçları göster (filtreleme yapma)
     if (favoriteTeams.length === 0) {
-      return []; // Tüm maçları gösterme, boş dön
+      return matches; // Tüm maçları göster
     }
     
     // Eğer hiç takım seçilmemişse (boş array), TÜM favori takımların maçlarını göster
@@ -796,40 +766,6 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
     });
   }, [allUpcomingMatches, selectedTeamIds, filterMatchesByTeam]);
 
-  const filteredPastMatches = React.useMemo(() => {
-    const filtered = filterMatchesByTeam(pastMatches, selectedTeamIds);
-    
-    // ✅ Duplicate fixture ID'leri kaldır
-    const uniqueMatches = filtered.reduce((acc: any[], match) => {
-      const fixtureId = match.fixture?.id;
-      if (fixtureId && !acc.some(m => m.fixture?.id === fixtureId)) {
-        acc.push(match);
-      }
-      return acc;
-    }, []);
-    
-    // Geçmiş maçları tarih sırasına göre sırala (en eski en üstte, en yeni en altta)
-    // Böylece scroll edilince en eski maçlar profil kartının arkasında kalır
-    return uniqueMatches.sort((a, b) => a.fixture.timestamp - b.fixture.timestamp);
-  }, [pastMatches, selectedTeamIds, filterMatchesByTeam]);
-
-  // ✅ Canlı maçları da favori takımlara göre filtrele ve sırala (duplicate önleme dahil)
-  const filteredLiveMatches = React.useMemo(() => {
-    const filtered = filterMatchesByTeam(liveMatches, selectedTeamIds);
-    
-    // ✅ Duplicate fixture ID'leri kaldır (aynı maç birden fazla kez gelebilir)
-    const uniqueMatches = filtered.reduce((acc: any[], match) => {
-      const fixtureId = match.fixture?.id;
-      if (fixtureId && !acc.some(m => m.fixture?.id === fixtureId)) {
-        acc.push(match);
-      }
-      return acc;
-    }, []);
-    
-    // En son başlayan maç en üstte, en önce başlayan en altta (timestamp'e göre azalan sıra)
-    return uniqueMatches.sort((a, b) => b.fixture.timestamp - a.fixture.timestamp);
-  }, [liveMatches, selectedTeamIds, filterMatchesByTeam]);
-
   // ✅ Maç kartı yüksekliği (minHeight + marginBottom)
   const MATCH_CARD_HEIGHT = 175 + SPACING.md; // ~187px
 
@@ -905,10 +841,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
           </View>
         )}
 
-        {/* ✅ CANLI MAÇLAR - Dashboard'da gösterilmez, sadece Matches sekmesinde */}
-        {/* Canlı maçlar artık MatchListScreen'de gösteriliyor */}
-
-        {/* ✅ YAKLAŞAN MAÇLAR */}
+        {/* Ana sayfa: planlanan maçlar (başlık yok) */}
         {!showLoadingIndicator && filteredUpcomingMatches.length > 0 && (
           <View style={styles.matchesListContainer}>
             {filteredUpcomingMatches.map((match, index) => (
@@ -924,9 +857,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
           </View>
         )}
 
-        {/* Biten Maçlar bölümü kaldırıldı - Ana sayfadan erişilemez */}
-
-        {/* Boş Durum - Hiç maç yoksa (loading değilse göster) */}
+        {/* Boş Durum - Yaklaşan maç yoksa (loading değilse göster) */}
         {!showLoadingIndicator && filteredUpcomingMatches.length === 0 && (
           <View style={styles.emptyState}>
             <Ionicons name="football-outline" size={48} color="#64748B" />
@@ -2148,6 +2079,24 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 10,
     overflow: 'hidden',
+  },
+  viewMoreButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: SPACING.xs,
+    marginTop: SPACING.md,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    backgroundColor: 'rgba(31, 162, 166, 0.1)',
+    borderRadius: SIZES.radiusMd,
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.2)',
+  },
+  viewMoreText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1FA2A6',
   },
 
   matchCard: {

@@ -2,6 +2,9 @@ import { createContext, useContext, useState, useEffect, ReactNode, useCallback 
 import { supabase } from '@/config/supabase';
 import { User, Session, AuthError, Provider } from '@supabase/supabase-js';
 
+// Type for error-like objects (safer than 'any')
+type ErrorLike = Error | { message?: string; code?: string | number; [key: string]: unknown };
+
 // =====================================================
 // Types - v3.0 Unified Profile (Web + Mobile Sync)
 // =====================================================
@@ -56,7 +59,12 @@ export interface UserProfile {
 }
 
 // Helper: Supabase verisini UserProfile'a dönüştür
-function mapSupabaseToProfile(data: any, email: string, name?: string, metadata?: any): UserProfile {
+function mapSupabaseToProfile(
+  data: Record<string, unknown>, 
+  email: string, 
+  name?: string, 
+  metadata?: Record<string, unknown>
+): UserProfile {
   return {
     id: data.id,
     email: email,
@@ -145,21 +153,25 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
   // Debug log for auth state changes
   useEffect(() => {
     if (user || session) {
-      console.log('🔍 Auth state update:', {
-        hasUser: !!user,
-        hasSession: !!session,
-        isAuthenticated,
-        profileLoaded: !!profile,
-        userEmail: user?.email,
-      });
+      if (import.meta.env.DEV) {
+        console.log('🔍 Auth state update:', {
+          hasUser: !!user,
+          hasSession: !!session,
+          isAuthenticated,
+          profileLoaded: !!profile,
+          userEmail: user?.email,
+        });
+      }
     }
   }, [user, session, isAuthenticated, profile]);
 
   // Fetch user profile from Supabase or localStorage
-  const fetchProfile = useCallback(async (userId: string, userEmail: string, userMetadata?: any): Promise<UserProfile> => {
+  const fetchProfile = useCallback(async (userId: string, userEmail: string, userMetadata?: Record<string, unknown>): Promise<UserProfile> => {
     setProfileLoading(true);
     try {
-      console.log('🔍 Fetching profile for:', userId, userEmail, 'metadata:', userMetadata);
+      if (import.meta.env.DEV) {
+        console.log('🔍 Fetching profile for:', userId, userEmail, 'metadata:', userMetadata);
+      }
       
       // Get name from user metadata (Google OAuth provides name in metadata)
       const metadataName = userMetadata?.name || 
@@ -530,9 +542,10 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
 
       setIsLoading(false);
       return { success: true };
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Handle network errors
-      if (err.code === 'ECONNREFUSED' || err.message?.includes('network')) {
+      const error = err as ErrorLike;
+      if (error.code === 'ECONNREFUSED' || error.message?.includes('network')) {
         setIsLoading(false);
         return { success: false, error: 'Bağlantı hatası. İnternet bağlantınızı kontrol edin.' };
       }
@@ -627,9 +640,10 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
 
       // Fallback
       return { success: false, error: 'Kayıt başarısız. Lütfen tekrar deneyin.' };
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Handle network errors
-      if (err.code === 'ECONNREFUSED' || err.message?.includes('network')) {
+      const error = err as ErrorLike;
+      if (error.code === 'ECONNREFUSED' || error.message?.includes('network')) {
         return { success: false, error: 'Bağlantı hatası. İnternet bağlantınızı kontrol edin.' };
       }
       
@@ -687,9 +701,10 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
       // OAuth redirect başarılı, loading'i false yap
       // (kullanıcı Google'a yönlendirilecek)
       return { success: true };
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Check for provider not enabled error in error object
-      if (err?.message?.includes('not enabled') || err?.message?.includes('Unsupported provider') || err?.code === 400) {
+      const error = err as ErrorLike;
+      if (error?.message?.includes('not enabled') || error?.message?.includes('Unsupported provider') || error?.code === 400) {
         const errorMsg = 'Google ile giriş şu anda kullanılamıyor. Lütfen e-posta ile kayıt olun veya sistem yöneticisine başvurun.';
         setError(errorMsg);
         return { success: false, error: errorMsg };
@@ -729,9 +744,10 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
       }
 
       return { success: true };
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Check for provider not enabled error in error object
-      if (err?.message?.includes('not enabled') || err?.message?.includes('Unsupported provider') || err?.code === 400) {
+      const error = err as ErrorLike;
+      if (error?.message?.includes('not enabled') || error?.message?.includes('Unsupported provider') || error?.code === 400) {
         const errorMsg = 'Apple ile giriş şu anda kullanılamıyor. Lütfen e-posta ile kayıt olun veya sistem yöneticisine başvurun.';
         setError(errorMsg);
         return { success: false, error: errorMsg };
@@ -790,8 +806,9 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
       }
 
       return { success: true };
-    } catch (err: any) {
-      const errorMsg = err.message || 'Şifre sıfırlama başarısız';
+    } catch (err: unknown) {
+      const error = err as ErrorLike;
+      const errorMsg = error.message || 'Şifre sıfırlama başarısız';
       setError(errorMsg);
       return { success: false, error: errorMsg };
     } finally {
@@ -814,8 +831,9 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
       }
 
       return { success: true };
-    } catch (err: any) {
-      const errorMsg = err.message || 'Şifre güncelleme başarısız';
+    } catch (err: unknown) {
+      const error = err as ErrorLike;
+      const errorMsg = error.message || 'Şifre güncelleme başarısız';
       setError(errorMsg);
       return { success: false, error: errorMsg };
     } finally {
@@ -831,7 +849,7 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
 
     try {
       // Map to Supabase column names (camelCase -> snake_case)
-      const supabaseUpdates: any = {};
+      const supabaseUpdates: Record<string, unknown> = {};
       
       // Temel bilgiler
       if (updates.name !== undefined) supabaseUpdates.name = updates.name;
@@ -885,8 +903,9 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem('user_profile', JSON.stringify(newProfile));
 
       return { success: true };
-    } catch (err: any) {
-      const errorMsg = err.message || 'Profil güncelleme başarısız';
+    } catch (err: unknown) {
+      const error = err as ErrorLike;
+      const errorMsg = error.message || 'Profil güncelleme başarısız';
       return { success: false, error: errorMsg };
     }
   };
@@ -941,8 +960,9 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem('user_profile');
 
       return { success: true };
-    } catch (err: any) {
-      const errorMsg = err.message || 'Hesap silme başarısız';
+    } catch (err: unknown) {
+      const error = err as ErrorLike;
+      const errorMsg = error.message || 'Hesap silme başarısız';
       setError(errorMsg);
       return { success: false, error: errorMsg };
     } finally {

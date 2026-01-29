@@ -16,12 +16,12 @@ timeout /t 3 /nobreak >nul
 
 REM 2. Emülatörü başlat (Pixel 6)
 echo [2/4] Emulator (Pixel 6) baslatiliyor...
-start "" "%LOCALAPPDATA%\Android\Sdk\emulator\emulator.exe" -avd Pixel_6_API_33
+start "" "%LOCALAPPDATA%\Android\Sdk\emulator\emulator.exe" -avd Pixel_6
 timeout /t 10 /nobreak >nul
 
 REM 3. Metro Bundler'ı başlat
 echo [3/4] Metro Bundler baslatiliyor...
-start "Metro Bundler" cmd /k "cd /d C:\fan_manager_2026 && npx expo start --clear"
+start "Metro Bundler" cmd /k "cd /d %~dp0 && npx expo start --clear"
 timeout /t 5 /nobreak >nul
 
 REM 4. Expo Go'yu aç ve app'i yükle (20 saniye sonra)

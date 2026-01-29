@@ -22,6 +22,7 @@ if not exist ".env" (
 )
 
 echo Starting backend server...
-echo Server will run on http://localhost:3000
+echo Server will run on http://localhost:3001
 echo.
+set PORT=3001
 call npm run dev

@@ -51,7 +51,26 @@ interface MatchSquadProps {
   matchData: any;
   matchId: string;
   lineups?: any[];
+  /** Sadece bu takım(lar)ın kadrosu gösterilir; rakip gizlenir. Boşsa tüm kadro gösterilir. */
+  favoriteTeamIds?: number[];
   onComplete: () => void;
+}
+
+/** API'den gelen tüm kaleci varyantlarını tanı (G, GK, Goalkeeper vb.) */
+function isGoalkeeperPlayer(p: { position?: string; pos?: string } | null | undefined): boolean {
+  if (!p) return false;
+  const pos = (p.position ?? p.pos ?? '') as string;
+  if (!pos) return false;
+  const lower = pos.toLowerCase();
+  return pos === 'GK' || pos === 'G' || lower === 'goalkeeper' || lower.startsWith('goalkeeper');
+}
+
+/** Kadro oluştururken pozisyonu normalize et – kaleciler her yerde 'GK' olsun */
+function normalizePosition(pos: string | undefined): string {
+  const raw = pos ?? '';
+  const lower = raw.toLowerCase();
+  if (raw === 'G' || raw === 'GK' || lower === 'goalkeeper' || lower.startsWith('goalkeeper')) return 'GK';
+  return raw || 'SUB';
 }
 
 // 26 FIFA/Wikipedia Standard Formations - COMPLETE
@@ -609,13 +628,93 @@ const FootballField = ({ children, style }: any) => (
   </View>
 );
 
-export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSquadProps) {
-  // ✅ GERÇEK VERİ: Lineups'tan oyuncuları çek (backend enriched format destekli)
+export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], onComplete }: MatchSquadProps) {
+  // ✅ Takım ID'lerini matchData'dan al
+  const homeTeamId = matchData?.teams?.home?.id || matchData?.homeTeam?.id;
+  const awayTeamId = matchData?.teams?.away?.id || matchData?.awayTeam?.id;
+  const homeTeamName = matchData?.teams?.home?.name || matchData?.homeTeam?.name || 'Ev Sahibi';
+  const awayTeamName = matchData?.teams?.away?.name || matchData?.awayTeam?.name || 'Deplasman';
+
+  // ✅ Takım kadrosu için state (lineups yoksa API'den çekilecek)
+  const [squadPlayers, setSquadPlayers] = React.useState<any[]>([]);
+  const [isLoadingSquad, setIsLoadingSquad] = React.useState(false);
+
+  // ✅ Lineups yoksa API'den takım kadrosunu çek – sadece favori takım(lar) varsa onların kadrosu
+  React.useEffect(() => {
+    const fetchSquads = async () => {
+      if (lineups && lineups.length > 0) return;
+      if (!homeTeamId || !awayTeamId) {
+        console.log('⚠️ No team IDs for squad fetch');
+        return;
+      }
+
+      const showOnlyFavorites = favoriteTeamIds && favoriteTeamIds.length > 0;
+      const fetchHome = !showOnlyFavorites || favoriteTeamIds!.includes(homeTeamId);
+      const fetchAway = !showOnlyFavorites || favoriteTeamIds!.includes(awayTeamId);
+      if (showOnlyFavorites && !fetchHome && !fetchAway) {
+        setSquadPlayers([]);
+        setIsLoadingSquad(false);
+        return;
+      }
+
+      setIsLoadingSquad(true);
+      console.log('📥 Fetching team squads...', { homeTeamId, awayTeamId, favoriteOnly: showOnlyFavorites });
+
+      try {
+        const homePromise = fetchHome
+          ? fetch(`http://localhost:3001/api/teams/${homeTeamId}/squad`)
+              .then(r => r.ok ? r.json() : null)
+              .catch(() => null)
+          : Promise.resolve(null);
+        const awayPromise = fetchAway
+          ? fetch(`http://localhost:3001/api/teams/${awayTeamId}/squad`)
+              .then(r => r.ok ? r.json() : null)
+              .catch(() => null)
+          : Promise.resolve(null);
+
+        const [homeRes, awayRes] = await Promise.all([homePromise, awayPromise]);
+
+        const allPlayers: any[] = [];
+
+        if (fetchHome && homeRes?.data?.players) {
+          homeRes.data.players.forEach((p: any) => {
+            allPlayers.push({
+              id: p.id, name: p.name, position: normalizePosition(p.position), rating: 75,
+              number: p.number, team: homeTeamName, teamId: homeTeamId,
+              form: 7, injury: p.injured || false, age: p.age || 25,
+              nationality: p.nationality || 'Unknown', photo: p.photo,
+              stats: { pace: 70, shooting: 70, passing: 70, dribbling: 70, defending: 70, physical: 70 }
+            });
+          });
+        }
+        if (fetchAway && awayRes?.data?.players) {
+          awayRes.data.players.forEach((p: any) => {
+            allPlayers.push({
+              id: p.id, name: p.name, position: normalizePosition(p.position), rating: 75,
+              number: p.number, team: awayTeamName, teamId: awayTeamId,
+              form: 7, injury: p.injured || false, age: p.age || 25,
+              nationality: p.nationality || 'Unknown', photo: p.photo,
+              stats: { pace: 70, shooting: 70, passing: 70, dribbling: 70, defending: 70, physical: 70 }
+            });
+          });
+        }
+
+        console.log('✅ Squad players loaded:', allPlayers.length, showOnlyFavorites ? '(favori takım only)' : '');
+        setSquadPlayers(allPlayers);
+      } catch (err) {
+        console.error('❌ Squad fetch error:', err);
+      } finally {
+        setIsLoadingSquad(false);
+      }
+    };
+
+    fetchSquads();
+  }, [lineups, homeTeamId, awayTeamId, homeTeamName, awayTeamName, favoriteTeamIds]);
+
+  // ✅ GERÇEK VERİ: Önce lineups, yoksa squadPlayers kullan
   const realPlayers = React.useMemo(() => {
-    if (!lineups || lineups.length === 0) {
-      console.log('⚠️ No lineups data, using empty array');
-      return [];
-    }
+    // 1. Lineups varsa kullan (maç kadrosu)
+    if (lineups && lineups.length > 0) {
     
     // Her iki takımın oyuncularını birleştir
     const allPlayers: any[] = [];
@@ -633,7 +732,7 @@ export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSqu
           allPlayers.push({
             id: player.id,
             name: player.name,
-            position: player.pos || player.position || 'SUB',
+            position: normalizePosition(player.pos || player.position),
             rating: player.rating || 75,
             number: player.number,
             team: teamName,
@@ -656,7 +755,7 @@ export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSqu
           allPlayers.push({
             id: player.id,
             name: player.name,
-            position: player.pos || player.position || 'SUB',
+            position: normalizePosition(player.pos || player.position),
             rating: player.rating || 70,
             number: player.number,
             team: teamName,
@@ -672,10 +771,25 @@ export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSqu
         });
       }
     });
-    
-    console.log('✅ Real players loaded from lineups:', allPlayers.length, 'with team colors:', lineups[0]?.team?.colors);
-    return allPlayers;
-  }, [lineups]);
+
+      // ✅ Sadece favori takım(lar)ın kadrosu – rakip gizlenir
+      const filtered = favoriteTeamIds.length > 0
+        ? allPlayers.filter((p: any) => p.teamId != null && favoriteTeamIds.includes(p.teamId))
+        : allPlayers;
+      console.log('✅ Real players loaded from LINEUPS:', filtered.length, favoriteTeamIds.length ? '(favori only)' : '');
+      return filtered;
+    }
+
+    // 2. Lineups yoksa squadPlayers kullan (takım kadrosu – fetch zaten favoriye göre filtrelenmiş)
+    if (squadPlayers.length > 0) {
+      console.log('✅ Real players loaded from SQUAD API:', squadPlayers.length);
+      return squadPlayers;
+    }
+
+    // 3. Hiçbiri yoksa boş array
+    console.log('⚠️ No players available');
+    return [];
+  }, [lineups, squadPlayers, favoriteTeamIds]);
   
   // ✅ Attack & Defense Formation States
   const [attackFormation, setAttackFormation] = useState<string | null>(null);
@@ -843,7 +957,7 @@ export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSqu
         const attackPlayersList = Object.values(attackPlayers).filter(Boolean) as typeof players;
         
         // Sadece kaleci otomatik yerleştir (index 0 = GK pozisyonu)
-        const goalkeeper = attackPlayersList.find(p => p?.position === 'GK');
+        const goalkeeper = attackPlayersList.find(p => isGoalkeeperPlayer(p));
         if (goalkeeper) {
           defPlayers[0] = goalkeeper;
         }
@@ -889,14 +1003,13 @@ export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSqu
       const formationData = formations.find(f => f.id === currentFormation);
       const slotPosition = formationData?.positions[selectedSlot];
       
-      // ✅ Goalkeeper validation - GK can only go to GK position
-      if (player.position === 'GK' && slotPosition !== 'GK') {
+      const isGK = isGoalkeeperPlayer(player);
+      // ✅ Kaleci yalnızca kale pozisyonuna, saha oyuncusu yalnızca saha pozisyonlarına
+      if (isGK && slotPosition !== 'GK') {
         Alert.alert('Kaleci Kısıtlaması', 'Kaleci sadece kale pozisyonuna yerleştirilebilir.');
         return;
       }
-      
-      // ✅ GK position can only have goalkeeper
-      if (slotPosition === 'GK' && player.position !== 'GK') {
+      if (slotPosition === 'GK' && !isGK) {
         Alert.alert('Kale Pozisyonu', 'Kale pozisyonuna sadece kaleci yerleştirilebilir.');
         return;
       }
@@ -1128,7 +1241,7 @@ export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSqu
                             // Gold border for elite players (85+)
                             player.rating >= 85 && styles.playerCardElite,
                             // Blue border for goalkeepers
-                            player.position === 'GK' && styles.playerCardGK,
+                            isGoalkeeperPlayer(player) && styles.playerCardGK,
                           ]}
                           onPress={() => setSelectedPlayerForDetail(player)}
                           onLongPress={() => handleRemovePlayer(index)}
@@ -1235,7 +1348,7 @@ export function MatchSquad({ matchData, matchId, lineups, onComplete }: MatchSqu
         visible={showPlayerModal}
         players={editingMode === 'defense' && attackSquadPlayers.length === 11 
           ? attackSquadPlayers 
-          : (realPlayers.length > 0 ? realPlayers : players)}
+          : realPlayers} // ✅ Mock kaldırıldı - sadece gerçek kadro
         selectedPlayers={selectedPlayers}
         positionLabel={selectedSlot !== null ? formation?.positions[selectedSlot] : ''}
         onSelect={handlePlayerSelect}
@@ -1641,34 +1754,30 @@ const FormationDetailModal = ({ formation, onClose, onSelect }: any) => (
 );
 
 // Player Modal Component - COMPLETE
+// Kaleci pozisyonuna yalnızca kaleci, saha pozisyonlarına yalnızca saha oyuncusu atanabilir.
 const PlayerModal = ({ visible, players, selectedPlayers, positionLabel, onSelect, onClose, isDefenseMode }: any) => {
   const [previewPlayer, setPreviewPlayer] = useState<any>(null);
-  
-  // Filter out already selected players
-  const availablePlayers = players.filter(
-    (p: any) => !Object.values(selectedPlayers).some((sp: any) => sp?.id === p.id)
+
+  const isGKPosition = positionLabel === 'GK';
+
+  // Check if player can be assigned to current slot (GK slot → only GK, field → only field)
+  const isPlayerEligible = (player: any) =>
+    isGKPosition ? isGoalkeeperPlayer(player) : !isGoalkeeperPlayer(player);
+
+  // Filter: not already selected AND eligible for this position
+  const eligiblePlayers = players.filter(
+    (p: any) =>
+      !Object.values(selectedPlayers).some((sp: any) => sp?.id === p.id) && isPlayerEligible(p)
   );
 
-  // Check if player can be assigned to position
-  const isPlayerEligible = (player: any) => {
-    const isGKPosition = positionLabel === 'GK';
-    const isGoalkeeper = player.position === 'GK';
-    
-    // GK position can only have goalkeepers, field positions can only have field players
-    return isGKPosition ? isGoalkeeper : !isGoalkeeper;
-  };
-
-  // Sort players: eligible first, then locked
-  const sortedPlayers = [...availablePlayers].sort((a, b) => {
-    const aEligible = isPlayerEligible(a);
-    const bEligible = isPlayerEligible(b);
-    if (aEligible && !bEligible) return -1;
-    if (!aEligible && bEligible) return 1;
-    return b.rating - a.rating; // Sort by rating within each group
+  // Forma numarasına göre küçükten büyüğe sırala (yoksa sonda)
+  const sortedPlayers = [...eligiblePlayers].sort((a, b) => {
+    const na = a.number != null ? Number(a.number) : 999;
+    const nb = b.number != null ? Number(b.number) : 999;
+    return na - nb;
   });
 
   const handlePlayerSelect = (player: any) => {
-    if (!isPlayerEligible(player)) return; // Prevent selection of ineligible players
     setPreviewPlayer(null);
     onSelect(player);
   };
@@ -1710,17 +1819,14 @@ const PlayerModal = ({ visible, players, selectedPlayers, positionLabel, onSelec
               </View>
             )}
 
-            {/* Players List */}
+            {/* Players List – sadece uygun oyuncular, forma no küçükten büyüğe */}
             <FlatList
               data={sortedPlayers}
               keyExtractor={(item) => item.id.toString()}
               renderItem={({ item }) => {
-                const eligible = isPlayerEligible(item);
-                // Border colors: Elite = Gold, GK = Blue, Others = Gray
                 const getBorderColor = () => {
-                  if (!eligible) return '#4B5563';
                   if (item.rating >= 85) return '#C9A44C'; // Gold for elite
-                  if (item.position === 'GK') return '#3B82F6'; // Blue for GK
+                  if (isGoalkeeperPlayer(item)) return '#3B82F6'; // Blue for GK
                   return '#4B5563'; // Gray for others
                 };
                 return (
@@ -1728,32 +1834,21 @@ const PlayerModal = ({ visible, players, selectedPlayers, positionLabel, onSelec
                     style={[
                       styles.playerItem,
                       { borderLeftWidth: 3, borderLeftColor: getBorderColor() },
-                      !eligible && styles.playerItemLocked
                     ]}
-                    onPress={() => eligible ? setPreviewPlayer(item) : null}
-                    activeOpacity={eligible ? 0.7 : 1}
-                    disabled={!eligible}
+                    onPress={() => setPreviewPlayer(item)}
+                    activeOpacity={0.7}
                   >
                     <View style={styles.playerItemLeft}>
-                      {/* Jersey Number Badge - Circular */}
                       <View style={[
                         styles.playerItemJerseyNumber,
-                        { backgroundColor: eligible 
-                          ? (item.rating >= 85 ? '#C9A44C' : '#1FA2A6') 
-                          : '#4B5563' }
+                        { backgroundColor: item.rating >= 85 ? '#C9A44C' : '#1FA2A6' }
                       ]}>
-                        <Text style={[
-                          styles.playerItemJerseyNumberText,
-                          !eligible && { opacity: 0.5 }
-                        ]}>{item.number || item.id}</Text>
+                        <Text style={styles.playerItemJerseyNumberText}>{item.number ?? item.id}</Text>
                       </View>
                       <View style={styles.playerItemInfo}>
                         <View style={styles.playerItemNameRow}>
-                          <Text style={[
-                            styles.playerItemName,
-                            !eligible && styles.playerItemNameLocked
-                          ]}>{item.name}</Text>
-                          {item.form >= 8 && eligible && (
+                          <Text style={styles.playerItemName}>{item.name}</Text>
+                          {item.form >= 8 && (
                             <Ionicons name="flame" size={14} color="#F59E0B" style={{ marginLeft: 4 }} />
                           )}
                           {item.injury && (
@@ -1761,38 +1856,41 @@ const PlayerModal = ({ visible, players, selectedPlayers, positionLabel, onSelec
                           )}
                         </View>
                         <View style={styles.playerItemBottomRow}>
-                          <Text style={[
-                            styles.playerItemRatingBottom,
-                            !eligible && styles.playerItemPositionLocked
-                          ]}>{item.rating}</Text>
-                          <Text style={[
-                            styles.playerItemPosition,
-                            !eligible && styles.playerItemPositionLocked
-                          ]}>
+                          <Text style={styles.playerItemRatingBottom}>{item.rating}</Text>
+                          <Text style={styles.playerItemPosition}>
                             {item.position} • {item.team}
                           </Text>
                         </View>
                       </View>
                     </View>
-                    {/* Lock icon for ineligible, + button for eligible */}
-                    {eligible ? (
-                      <TouchableOpacity
-                        onPress={() => handlePlayerSelect(item)}
-                        style={styles.playerItemAddBtn}
-                        activeOpacity={0.7}
-                      >
-                        <Ionicons name="add-circle" size={28} color="#1FA2A6" />
-                      </TouchableOpacity>
-                    ) : (
-                      <View style={styles.playerItemLockedIcon}>
-                        <Ionicons name="lock-closed" size={20} color="#6B7280" />
-                      </View>
-                    )}
+                    <TouchableOpacity
+                      onPress={() => handlePlayerSelect(item)}
+                      style={styles.playerItemAddBtn}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="add-circle" size={28} color="#1FA2A6" />
+                    </TouchableOpacity>
                   </TouchableOpacity>
                 );
               }}
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.playersList}
+              ListEmptyComponent={() => {
+                const noData = !players || players.length === 0;
+                return (
+                  <View style={{ alignItems: 'center', padding: 32, marginTop: 40 }}>
+                    <Ionicons name="football-outline" size={48} color="rgba(31, 162, 166, 0.5)" />
+                    <Text style={{ fontSize: 18, fontWeight: '600', color: '#FFFFFF', marginTop: 16 }}>
+                      {noData ? 'Kadro Bilgisi Yok' : 'Bu Pozisyon İçin Uygun Oyuncu Yok'}
+                    </Text>
+                    <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)', textAlign: 'center', marginTop: 8, lineHeight: 20 }}>
+                      {noData
+                        ? 'Bu maç için kadro bilgisi henüz yayınlanmadı. Maç yaklaştığında kadro bilgileri güncellenecektir.'
+                        : (isGKPosition ? 'Kadroda kaleci yok veya hepsi seçildi. Önce kalecinizi kale pozisyonuna yerleştirin.' : 'Kadroda saha oyuncusu yok veya hepsi seçildi.')}
+                    </Text>
+                  </View>
+                );
+              }}
             />
           </Animated.View>
         </View>
@@ -2153,9 +2251,11 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   
-  // Football Field
+  // Football Field – yükseklik (y) %5 artırıldı
   fieldContainer: {
-    flex: 1,
+    width: width - 24,
+    height: (width - 24) * 1.35 * 1.05 * 1.02, // ✅ MatchPrediction ile aynı oran, y ekseni +5% +2%
+    alignSelf: 'center',
     borderRadius: 12,
     overflow: 'hidden',
     ...Platform.select({
@@ -2189,7 +2289,9 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   mainField: {
-    flex: 1,
+    width: width - 24,
+    height: (width - 24) * 1.35 * 1.05 * 1.02, // ✅ MatchPrediction ile aynı oran, y ekseni +5% +2%
+    alignSelf: 'center',
     marginBottom: 6,
   },
   playersContainer: {

@@ -31,13 +31,12 @@ const { width } = Dimensions.get('window');
 
 interface MatchListScreenProps {
   onMatchSelect: (matchId: string) => void;
-  onMatchResultSelect?: (matchId: string) => void; // ✅ Biten maç detayı
+  onMatchResultSelect?: (matchId: string) => void;
   onNavigate?: (screen: string) => void;
   onProfileClick?: () => void;
-  selectedTeamId?: number | null; // ✅ Seçilen takım ID'si (kulüp takımlarının maçlarını göstermek için)
-  selectedTeamName?: string; // ✅ Takım adı (başlık için)
-  onBack?: () => void; // ✅ Geri butonu (takım filtresi aktifse göster)
-  showOnlyFinished?: boolean; // ✅ Sadece biten maçları göster
+  /** Tümü: boş array → tüm favori takımların maçları. Tek/çoklu: sadece seçili takımların maçları. */
+  selectedTeamIds?: number[];
+  showOnlyFinished?: boolean;
   matchData: {
     pastMatches?: any[];
     liveMatches: any[];
@@ -53,92 +52,27 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
   onMatchResultSelect,
   onNavigate,
   onProfileClick,
-  selectedTeamId,
-  selectedTeamName,
-  onBack,
-  showOnlyFinished = false, // ✅ Varsayılan: false (canlı maçları göster)
+  selectedTeamIds = [],
+  showOnlyFinished = false,
   matchData,
 }) => {
   const scrollViewRef = useRef<ScrollView>(null);
   const matchCardPositions = useRef<{ [key: string]: number }>({});
-  
-  // ✅ Favori takımları al
   const { favoriteTeams } = useFavoriteTeams();
-  
-  // ✅ Takım maçları için state
-  const [teamUpcomingMatches, setTeamUpcomingMatches] = useState<any[]>([]);
-  const [teamPastMatches, setTeamPastMatches] = useState<any[]>([]);
-  const [teamMatchesLoading, setTeamMatchesLoading] = useState(false);
-  const [teamMatchesError, setTeamMatchesError] = useState<string | null>(null);
-
   const { liveMatches = [], pastMatches = [], loading, error, hasLoadedOnce } = matchData;
-  
-  // ✅ Eğer selectedTeamId varsa, takım maçlarını çek
-  useEffect(() => {
-    if (selectedTeamId) {
-      fetchTeamMatches(selectedTeamId);
-    } else {
-      // Takım seçimi yoksa, normal maçları göster
-      setTeamUpcomingMatches([]);
-      setTeamPastMatches([]);
-    }
-  }, [selectedTeamId]);
-  
-  // ✅ Backend'den takım maçlarını çek (yaklaşan ve geçmiş)
-  const fetchTeamMatches = async (teamId: number) => {
-    setTeamMatchesLoading(true);
-    setTeamMatchesError(null);
-    
-    try {
-      const baseUrl = api.getBaseUrl();
-      logger.debug(`Fetching matches for team ${teamId}`, { teamId, baseUrl }, 'MATCH_LIST');
-      
-      // ✅ Yaklaşan maçları çek
-      try {
-        const upcomingResponse = await fetch(`${baseUrl}/matches/team/${teamId}/upcoming?limit=15`);
-        if (upcomingResponse.ok) {
-          const upcomingData = await upcomingResponse.json();
-          if (upcomingData.success && upcomingData.data && Array.isArray(upcomingData.data)) {
-            setTeamUpcomingMatches(upcomingData.data);
-            logger.info(`Fetched ${upcomingData.data.length} upcoming matches for team ${teamId}`, { teamId, count: upcomingData.data.length }, 'MATCH_LIST');
-          } else {
-            logger.warn(`No upcoming matches data for team ${teamId}`, { teamId }, 'MATCH_LIST');
-            setTeamUpcomingMatches([]);
-          }
-        } else {
-          const errorText = await upcomingResponse.text();
-          logger.error(`Failed to fetch upcoming matches: ${upcomingResponse.status}`, { teamId, status: upcomingResponse.status, errorText }, 'MATCH_LIST');
-        }
-      } catch (upcomingErr: any) {
-        logger.error('Error fetching upcoming matches', { teamId, error: upcomingErr }, 'MATCH_LIST');
-      }
-      
-      // ✅ Geçmiş maçları çek
-      try {
-        const pastResponse = await fetch(`${baseUrl}/matches/team/${teamId}/last?limit=15`);
-        if (pastResponse.ok) {
-          const pastData = await pastResponse.json();
-          if (pastData.success && pastData.data && Array.isArray(pastData.data)) {
-            setTeamPastMatches(pastData.data);
-            logger.info(`Fetched ${pastData.data.length} past matches for team ${teamId}`, { teamId, count: pastData.data.length }, 'MATCH_LIST');
-          } else {
-            logger.warn(`No past matches data for team ${teamId}`, { teamId }, 'MATCH_LIST');
-            setTeamPastMatches([]);
-          }
-        } else {
-          const errorText = await pastResponse.text();
-          logger.error(`Failed to fetch past matches: ${pastResponse.status}`, { teamId, status: pastResponse.status, errorText }, 'MATCH_LIST');
-        }
-      } catch (pastErr: any) {
-        logger.error('Error fetching past matches', { teamId, error: pastErr }, 'MATCH_LIST');
-      }
-    } catch (err: any) {
-      logger.error('Error fetching team matches', { teamId, error: err }, 'MATCH_LIST');
-      setTeamMatchesError(err.message || 'Takım maçları yüklenemedi. Backend bağlantısını kontrol edin.');
-    } finally {
-      setTeamMatchesLoading(false);
-    }
-  };
+
+  // ✅ Takım filtresi: boş = tüm favoriler, dolu = sadece seçili takımların maçları
+  const filterByTeamIds = React.useCallback((matches: any[], teamIds: number[]) => {
+    if (!matches.length) return [];
+    if (favoriteTeams.length === 0) return matches;
+    const ids = teamIds.length === 0 ? favoriteTeams.map(t => t.id) : teamIds;
+    const idSet = new Set(ids);
+    return matches.filter(m => {
+      const homeId = m.teams?.home?.id;
+      const awayId = m.teams?.away?.id;
+      return homeId != null && idSet.has(homeId) || awayId != null && idSet.has(awayId);
+    });
+  }, [favoriteTeams]);
 
   // Transform API data to component format
   function transformMatch(apiMatch: any) {
@@ -297,74 +231,27 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
   // ✅ Mock data KALDIRILDI - sadece gerçek API verisi kullanılıyor
   // Canlı maç yoksa boş array gösterilecek
 
-  // ✅ Canlı maçları filtrele ve sırala - en son başlayan en üstte (duplicate önleme dahil)
-  const allLiveMatches = liveMatches;
+  // ✅ Canlı maçları selectedTeamIds ile filtrele (Tümü = boş → tüm favoriler, tek/çoklu = seçili takımlar)
   const filteredLiveMatches = React.useMemo(() => {
-    let matches = allLiveMatches;
-    
-    // Takım filtresi varsa uygula
-    if (selectedTeamId) {
-      matches = matches.filter(match => {
-        const homeId = match.teams?.home?.id;
-        const awayId = match.teams?.away?.id;
-        return homeId === selectedTeamId || awayId === selectedTeamId;
-      });
-    } else if (favoriteTeams.length > 0) {
-      // ✅ Eğer seçili takım yoksa, sadece favori takımların maçlarını göster
-      const favoriteTeamIds = favoriteTeams.map(t => t.id);
-      matches = matches.filter(match => {
-        const homeId = match.teams?.home?.id;
-        const awayId = match.teams?.away?.id;
-        return favoriteTeamIds.includes(homeId) || favoriteTeamIds.includes(awayId);
-      });
-    }
-    
-    // ✅ Duplicate fixture ID'leri kaldır
-    const uniqueMatches = matches.reduce((acc: any[], match) => {
-      const fixtureId = match.fixture?.id;
-      if (fixtureId && !acc.some(m => m.fixture?.id === fixtureId)) {
-        acc.push(match);
-      }
+    const filtered = filterByTeamIds(liveMatches, selectedTeamIds);
+    const unique = filtered.reduce((acc: any[], m) => {
+      const id = m.fixture?.id;
+      if (id && !acc.some(x => x.fixture?.id === id)) acc.push(m);
       return acc;
     }, []);
-    
-    // En son başlayan en üstte (timestamp azalan)
-    return uniqueMatches.sort((a, b) => b.fixture.timestamp - a.fixture.timestamp);
-  }, [allLiveMatches, selectedTeamId, favoriteTeams]);
+    return unique.sort((a, b) => b.fixture.timestamp - a.fixture.timestamp);
+  }, [liveMatches, selectedTeamIds, filterByTeamIds]);
 
-  // ✅ Biten maçları filtrele ve sırala - en son biten en üstte (duplicate önleme dahil)
+  // ✅ Biten maçları selectedTeamIds ile filtrele
   const filteredFinishedMatches = React.useMemo(() => {
-    let matches = [...pastMatches];
-    
-    // Takım filtresi varsa uygula
-    if (selectedTeamId) {
-      matches = matches.filter(match => {
-        const homeId = match.teams?.home?.id;
-        const awayId = match.teams?.away?.id;
-        return homeId === selectedTeamId || awayId === selectedTeamId;
-      });
-    } else if (favoriteTeams.length > 0) {
-      // ✅ Eğer seçili takım yoksa, sadece favori takımların maçlarını göster
-      const favoriteTeamIds = favoriteTeams.map(t => t.id);
-      matches = matches.filter(match => {
-        const homeId = match.teams?.home?.id;
-        const awayId = match.teams?.away?.id;
-        return favoriteTeamIds.includes(homeId) || favoriteTeamIds.includes(awayId);
-      });
-    }
-    
-    // ✅ Duplicate fixture ID'leri kaldır
-    const uniqueMatches = matches.reduce((acc: any[], match) => {
-      const fixtureId = match.fixture?.id;
-      if (fixtureId && !acc.some(m => m.fixture?.id === fixtureId)) {
-        acc.push(match);
-      }
+    const filtered = filterByTeamIds(pastMatches, selectedTeamIds);
+    const unique = filtered.reduce((acc: any[], m) => {
+      const id = m.fixture?.id;
+      if (id && !acc.some(x => x.fixture?.id === id)) acc.push(m);
       return acc;
     }, []);
-    
-    // En son biten en üstte (timestamp azalan)
-    return uniqueMatches.sort((a, b) => b.fixture.timestamp - a.fixture.timestamp);
-  }, [pastMatches, selectedTeamId, favoriteTeams]);
+    return unique.sort((a, b) => b.fixture.timestamp - a.fixture.timestamp);
+  }, [pastMatches, selectedTeamIds, filterByTeamIds]);
   
   useEffect(() => {
     if (filteredLiveMatches.length > 0) {
@@ -521,7 +408,7 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
                   end={{ x: 1, y: 0 }}
                 >
                   <RNAnimated.View style={[matchCardStyles.matchCardLiveDot, { opacity: pulseAnim }]} />
-                  <Text style={matchCardStyles.matchCardLiveText}>ŞUAN OYNANIYOR</Text>
+                  <Text style={matchCardStyles.matchCardLiveText}>OYNANIYOR</Text>
                 </LinearGradient>
                 
                 {match.fixture.status?.elapsed && (
@@ -557,20 +444,6 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
       <View style={styles.container}>
         {/* Grid Pattern Background - Dashboard ile aynı */}
         <View style={styles.gridPattern} />
-        
-        {/* ✅ Geri Butonu (takım filtresi aktifse göster) */}
-        {selectedTeamId && onBack && (
-          <View style={styles.backHeader}>
-            <TouchableOpacity onPress={onBack} style={styles.backButton} activeOpacity={0.7}>
-              <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
-              <Text style={styles.backText}>Geri</Text>
-            </TouchableOpacity>
-            <Text style={styles.teamFilterTitle}>
-              {selectedTeamName || 'Takım'} Maçları
-                  </Text>
-        </View>
-        )}
-        
 
         {/* Scrollable Content */}
         <ScrollView
@@ -586,7 +459,7 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color="#059669" />
               <Text style={styles.loadingText}>
-                {showOnlyFinished ? 'Biten maçlar yükleniyor...' : 'Canlı maçlar yükleniyor...'}
+                {showOnlyFinished ? 'Biten maçlar yükleniyor...' : 'Oynanıyor maçlar yükleniyor...'}
               </Text>
             </View>
           )}
@@ -608,16 +481,14 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
                     <Ionicons name="checkmark-done-outline" size={64} color="#64748B" />
                   </View>
                   <Text style={styles.emptyStateTitleLive}>
-                    {selectedTeamId 
-                      ? 'Bu takımın biten maçı yok' 
-                      : favoriteTeams.length === 0
-                        ? 'Favori takım seçilmemiş'
-                        : 'Favori takımlarınızın biten maçı yok'}
+                    {selectedTeamIds.length > 0
+                      ? 'Seçili takımların biten maçı yok'
+                      : 'Biten maç yok'}
                   </Text>
                   <Text style={styles.emptyStateText}>
-                    {favoriteTeams.length === 0 
-                      ? 'Maçları görmek için profil ekranından\nfavori takım seçin'
-                      : 'Yaklaşan maçları görmek için\nAna Sayfa\'ya dön'}
+                    {selectedTeamIds.length > 0
+                      ? 'Seçili takımların biten maçı yok'
+                      : 'Maçlar sekmesine dön'}
                   </Text>
                   <TouchableOpacity
                     style={styles.emptyStateButton}
@@ -631,7 +502,7 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
                       end={{ x: 1, y: 0 }}
                     >
                       <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
-                      <Text style={styles.emptyStateButtonText}>Ana Sayfa</Text>
+                      <Text style={styles.emptyStateButtonText}>Maçlar</Text>
                     </LinearGradient>
                   </TouchableOpacity>
                 </View>
@@ -670,16 +541,14 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
                     <Ionicons name="radio-outline" size={64} color="#64748B" />
                   </View>
                   <Text style={styles.emptyStateTitleLive}>
-                    {selectedTeamId 
-                      ? 'Bu takımın canlı maçı yok' 
-                      : favoriteTeams.length === 0
-                        ? 'Favori takım seçilmemiş'
-                        : 'Favori takımlarınızın canlı maçı yok'}
+                    {selectedTeamIds.length > 0
+                      ? 'Seçili takımların oynanıyor maçı yok'
+                      : 'Oynanıyor maç yok'}
                   </Text>
                   <Text style={styles.emptyStateText}>
-                    {favoriteTeams.length === 0 
-                      ? 'Maçları görmek için profil ekranından\nfavori takım seçin'
-                      : 'Yaklaşan maçları görmek için\nAna Sayfa\'ya dön'}
+                    {selectedTeamIds.length > 0
+                      ? 'Seçili takımların şu an oynanıyor maçı yok'
+                      : 'Maçlar sekmesine dön'}
                   </Text>
                   <TouchableOpacity
                     style={styles.emptyStateButton}
@@ -693,7 +562,7 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
                       end={{ x: 1, y: 0 }}
                     >
                       <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
-                      <Text style={styles.emptyStateButtonText}>Ana Sayfa</Text>
+                      <Text style={styles.emptyStateButtonText}>Maçlar</Text>
                     </LinearGradient>
                   </TouchableOpacity>
                 </View>

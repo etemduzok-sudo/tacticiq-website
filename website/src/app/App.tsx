@@ -1,6 +1,9 @@
 import React, { Suspense } from 'react';
 import { AdminDataProvider, useAdminDataSafe } from '@/contexts/AdminDataContext';
 
+// Type for error-like objects (safer than 'any')
+type ErrorLike = Error | { message?: string; code?: string | number; [key: string]: unknown };
+
 // Lazy load AdminPanel - sadece adminler için yüklenir
 const AdminPanel = React.lazy(() => import('@/app/components/admin/AdminPanel').then(m => ({ default: m.AdminPanel })));
 import { useUserAuthSafe } from '@/contexts/UserAuthContext';
@@ -69,7 +72,7 @@ function AppContent() {
   // Make it available globally for testing
   React.useEffect(() => {
     if (typeof window !== 'undefined' && userAuth?.updateProfile) {
-      (window as any).setUserPro = async () => {
+      (window as Record<string, unknown>).setUserPro = async () => {
         try {
           const result = await userAuth.updateProfile({ plan: 'pro' });
           if (result.success) {
@@ -78,9 +81,10 @@ function AppContent() {
           } else {
             alert('Hata: ' + result.error);
           }
-        } catch (error: any) {
-          console.error('Error setting user as Pro:', error);
-          alert('Hata: ' + error.message);
+        } catch (error: unknown) {
+          const err = error as ErrorLike;
+          console.error('Error setting user as Pro:', err);
+          alert('Hata: ' + (err.message || 'Bilinmeyen hata'));
         }
       };
     }

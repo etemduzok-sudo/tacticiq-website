@@ -1563,13 +1563,13 @@ const styles = StyleSheet.create({
     paddingBottom: 80,
   },
 
-  // Football Field – Kadro ile aynı saha görünümü ve boyut
+  // Football Field – Kadro ile AYNI boyut, yükseklik (y) %5 artırıldı
   fieldContainer: {
-    flex: 1,
-    minHeight: height * 0.48,
+    width: width - 24,
+    height: (width - 24) * 1.35 * 1.05 * 1.02, // ✅ Kadro sekmesiyle aynı oran, y ekseni +5% +2%
+    alignSelf: 'center',
     borderRadius: 12,
     overflow: 'hidden',
-    marginHorizontal: 12,
     marginTop: 8,
     ...Platform.select({
       ios: {
@@ -1621,8 +1621,9 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   mainField: {
-    flex: 1,
-    minHeight: height * 0.48,
+    width: width - 24,
+    height: (width - 24) * 1.35 * 1.05 * 1.02, // ✅ Kadro sekmesiyle aynı oran, y ekseni +5% +2%
+    alignSelf: 'center',
     marginBottom: 8,
   },
   // Oyuncu kartları – Kadro ile aynı boyut (64x76) ve yerleşim

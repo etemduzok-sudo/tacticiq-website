@@ -35,16 +35,18 @@ export function PricingSection() {
     ? (priceSettings.monthlyPrice ?? priceSettings.proPrice ?? 49)
     : (priceSettings.yearlyPrice ?? priceSettings.proPrice ?? 479);
   
-  // Debug: Console'da fiyat bilgilerini göster
-  console.log('💰 Pricing Debug:', {
-    billingPeriod,
-    monthlyPrice: priceSettings.monthlyPrice,
-    yearlyPrice: priceSettings.yearlyPrice,
-    proPrice: priceSettings.proPrice,
-    activePrice,
-    baseCurrency,
-    targetCurrency
-  });
+  // Debug: Console'da fiyat bilgilerini göster (sadece development'ta)
+  if (import.meta.env.DEV) {
+    console.log('💰 Pricing Debug:', {
+      billingPeriod,
+      monthlyPrice: priceSettings.monthlyPrice,
+      yearlyPrice: priceSettings.yearlyPrice,
+      proPrice: priceSettings.proPrice,
+      activePrice,
+      baseCurrency,
+      targetCurrency
+    });
+  }
   
   // Fiyatı hedef para birimine çevir
   const convertedOriginalPrice = convertCurrency(activePrice, baseCurrency, targetCurrency);

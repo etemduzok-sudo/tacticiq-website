@@ -15,6 +15,7 @@ import { ALL_BADGES } from '../constants/badges';
 import { getUserBadges } from '../services/badgeService';
 import { profileService } from '../services/profileService';
 import { UnifiedUserProfile } from '../types/profile.types';
+import { getTeamColors } from '../utils/teamColors';
 
 interface FavoriteTeam {
   id: number;
@@ -182,16 +183,13 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
   return (
     <>
       <View>
-        <TouchableOpacity
-          style={styles.profileButton}
-          onPress={onPress}
-          activeOpacity={1}
-        >
+        <View style={styles.profileButton}>
           {/* Profile card container with grid pattern */}
             <View style={styles.cardWrapper}>
               {/* Grid Pattern Background */}
               <View style={styles.gridPattern} />
               <View style={styles.whiteCard}>
+            <TouchableOpacity onPress={onPress} activeOpacity={1} style={{ flex: 1 }}>
             <View style={styles.profileContainer}>
               <View style={styles.profileLeft}>
                 {/* Avatar */}
@@ -309,8 +307,9 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
                 )}
               </ScrollView>
             </View>
+            </TouchableOpacity>
 
-            {/* ✅ Takım Filtre Barı - Profil kartına entegre */}
+            {/* ✅ Takım Filtre Barı - TouchableOpacity dışında; chip tıklamaları sadece filtreyi günceller */}
             {showTeamFilter && (
               <View style={styles.teamFilterSection}>
                 <ScrollView
@@ -342,26 +341,37 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
 
                   {/* Favori Takım Chip'leri */}
                   {favoriteTeams.slice(0, 6).map((team) => {
-                    const isSelected = selectedTeamIds.includes(team.id);
+                    const tid = Number(team.id);
+                    const isSelected = !Number.isNaN(tid) && selectedTeamIds.includes(tid);
                     return (
                       <TouchableOpacity
                         key={team.id}
                         style={[
                           styles.teamChip,
                           isSelected && styles.teamChipActive,
-                          { borderColor: team.colors?.[0] || '#1FA2A6' }
+                          { 
+                            backgroundColor: isSelected 
+                              ? (team.colors?.[0] || getTeamColors(team.name)[0] || '#1FA2A6')
+                              : 'rgba(31, 41, 55, 0.6)',
+                            borderColor: team.colors?.[0] || getTeamColors(team.name)[0] || '#1FA2A6' 
+                          }
                         ]}
-                        onPress={() => onTeamSelect?.(team.id)}
+                        onPress={() => onTeamSelect?.(tid)}
                         activeOpacity={0.8}
                       >
-                        {team.colors && team.colors.length > 0 && (
-                          <View style={styles.teamChipBadge}>
-                            <View style={[styles.teamChipStripe, { backgroundColor: team.colors[0] }]} />
-                            {team.colors[1] && (
-                              <View style={[styles.teamChipStripe, { backgroundColor: team.colors[1] }]} />
-                            )}
-                          </View>
-                        )}
+                        {(() => {
+                          const colors = team.colors && team.colors.length > 0 
+                            ? team.colors 
+                            : getTeamColors(team.name);
+                          return colors && colors.length > 0 && (
+                            <View style={styles.teamChipBadge}>
+                              <View style={[styles.teamChipStripe, { backgroundColor: colors[0] }]} />
+                              {colors[1] && (
+                                <View style={[styles.teamChipStripe, { backgroundColor: colors[1] }]} />
+                              )}
+                            </View>
+                          );
+                        })()}
                         <Text 
                           style={[
                             styles.teamChipText,
@@ -392,7 +402,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
             )}
             </View>
           </View>
-        </TouchableOpacity>
+        </View>
       </View>
 
       {/* 🎉 Yeni Rozet Popup Modal */}

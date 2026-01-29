@@ -12,7 +12,10 @@ import profileService from './profileService';
 const getRedirectUri = () => {
   if (Platform.OS === 'web') {
     // Web için mevcut URL'i kullan (Supabase otomatik handle eder)
-    return window.location.origin;
+    // ✅ Development için localhost, production için domain
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8081';
+    console.log('🌐 [socialAuth] Web redirect URI:', origin);
+    return origin;
   }
   // Mobile için deep link
   return makeRedirectUri({
@@ -138,17 +141,37 @@ class SocialAuthService {
     try {
       console.log('🔑 [socialAuth] Apple Sign In başlatıldı...');
       console.log('📍 Redirect URI:', redirectUri);
+      console.log('🌐 Platform:', Platform.OS);
+      
+      // ⚠️ Apple OAuth Web'de sınırlı destek sunar
+      // iOS/macOS cihazlarda daha iyi çalışır
+      if (Platform.OS === 'web') {
+        console.warn('⚠️ [socialAuth] Apple Sign In web\'de sınırlı destek sunar. iOS/macOS\'ta daha iyi çalışır.');
+      }
       
       // ✅ GERÇEK SUPABASE OAUTH
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'apple',
         options: {
           redirectTo: redirectUri,
+          // ✅ Web için skipBrowserRedirect kullanmayalım (redirect gerekli)
+          skipBrowserRedirect: false,
         },
       });
       
       if (error) {
         console.error('❌ [socialAuth] Supabase OAuth error:', error);
+        console.error('❌ Error details:', {
+          message: error.message,
+          status: error.status,
+          name: error.name
+        });
+        
+        // ✅ Kullanıcıya daha anlaşılır hata mesajı göster
+        if (error.message?.includes('400') || error.message?.includes('Bad Request')) {
+          throw new Error('Apple OAuth yapılandırması eksik. Lütfen Supabase Dashboard\'da Apple provider\'ını kontrol edin.');
+        }
+        
         throw error;
       }
       

@@ -32,7 +32,8 @@ function Start-Backend {
     
     Start-Sleep -Seconds 1
     
-    # Backend'i başlat
+    # Backend'i PORT=3001 ile başlat (frontend ile uyumlu)
+    $env:PORT = "3001"
     $process = Start-Process -FilePath "node" -ArgumentList "server.js" -WorkingDirectory $backendPath -PassThru -WindowStyle Hidden
     
     Start-Sleep -Seconds 3

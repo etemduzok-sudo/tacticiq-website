@@ -10,9 +10,9 @@ interface BottomNavigationProps {
 }
 
 const tabs = [
-  { id: 'home', label: 'Ana Sayfa', icon: 'home-outline', activeIcon: 'home' },
-  { id: 'matches', label: 'Canlı', icon: 'radio-outline', activeIcon: 'radio' },
-  { id: 'finished', label: 'Biten', icon: 'checkmark-done-outline', activeIcon: 'checkmark-done' },
+  { id: 'home', label: 'Maçlar', icon: 'calendar-outline', activeIcon: 'calendar' },
+  { id: 'matches', label: 'Oynanıyor', icon: 'radio-outline', activeIcon: 'radio' },
+  { id: 'finished', label: 'Biten Maçlar', icon: 'checkmark-done-outline', activeIcon: 'checkmark-done' },
   { id: 'leaderboard', label: 'Sıralama', icon: 'trophy-outline', activeIcon: 'trophy' },
   { id: 'profile', label: 'Profil', icon: 'person-outline', activeIcon: 'person' },
 ];

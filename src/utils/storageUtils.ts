@@ -84,12 +84,14 @@ export function validateFavoriteTeams(data: any): boolean {
   );
 }
 
-// ✅ MIGRATION: Eski milli takım ID'lerini yeni ID'lere çevir
+// ✅ MIGRATION: Eski / yanlış takım ID'lerini API-Football ID'lerine çevir (maç API uyumu)
 const OLD_TO_NEW_TEAM_IDS: Record<number, number> = {
-  2003: 777,  // Türkiye (kadın) -> Türkiye (erkek)
-  2004: 25,   // Almanya (eski) -> Almanya (yeni)
-  2005: 6,    // Brezilya (eski) -> Brezilya (yeni)
-  2006: 26,   // Arjantin (eski) -> Arjantin (yeni)
+  2003: 777,   // Türkiye (kadın) -> Türkiye (erkek)
+  2004: 25,    // Almanya (eski) -> Almanya (yeni)
+  2005: 6,     // Brezilya (eski) -> Brezilya (yeni)
+  2006: 26,    // Arjantin (eski) -> Arjantin (yeni)
+  6890: 562,   // Antalyaspor (fallback yanlış ID) -> API-Football 562
+  3563: 556,   // Konyaspor (fallback yanlış ID) -> API-Football 556
 };
 
 // Get favorite teams safely with ID migration
@@ -105,13 +107,12 @@ export async function getFavoriteTeams() {
   let needsUpdate = false;
   const migratedTeams = teams.map(team => {
     if (OLD_TO_NEW_TEAM_IDS[team.id]) {
-      console.log(`🔄 Migrating team ID: ${team.id} -> ${OLD_TO_NEW_TEAM_IDS[team.id]} (${team.name})`);
+      const newId = OLD_TO_NEW_TEAM_IDS[team.id];
+      console.log(`🔄 Migrating team ID: ${team.id} -> ${newId} (${team.name})`);
       needsUpdate = true;
-      return {
-        ...team,
-        id: OLD_TO_NEW_TEAM_IDS[team.id],
-        logo: team.logo.replace(`/${team.id}.png`, `/${OLD_TO_NEW_TEAM_IDS[team.id]}.png`),
-      };
+      const logo = team.logo && typeof team.logo === 'string'
+        ? team.logo.replace(`/${team.id}.png`, `/${newId}.png`) : (team.logo ?? '');
+      return { ...team, id: newId, logo };
     }
     return team;
   });

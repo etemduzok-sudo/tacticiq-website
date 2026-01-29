@@ -8,6 +8,7 @@ import {
   SafeAreaView,
   Dimensions,
   ActivityIndicator,
+  TouchableOpacity,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { 
@@ -64,6 +65,16 @@ const MOCK_LIVE_EVENTS = [
   { minute: 1, type: 'kickoff', description: 'Maç başladı' },
 ];
 
+// Event categories for tabs
+const EVENT_TABS = [
+  { id: 'all', label: 'Tümü', icon: '📋' },
+  { id: 'goals', label: 'Goller', icon: '⚽' },
+  { id: 'cards', label: 'Kartlar', icon: '🟨' },
+  { id: 'substitutions', label: 'Değişiklikler', icon: '🔄' },
+  { id: 'var', label: 'VAR', icon: '📺' },
+  { id: 'other', label: 'Diğer', icon: '📝' },
+];
+
 export const MatchLive: React.FC<MatchLiveScreenProps> = ({
   matchData,
   matchId,
@@ -80,6 +91,7 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
   });
   const [loading, setLoading] = useState(true); // Start with loading true
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<string>('all'); // ✅ Active tab state
 
   // Pulsing CANLI badge animation
   const scale = useSharedValue(1);
@@ -276,6 +288,38 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
     console.log('📊 First 3 events:', liveEvents.slice(0, 3));
   }, [liveEvents]);
 
+  // ✅ Filter events by category
+  const filterEventsByCategory = (events: any[], category: string) => {
+    if (category === 'all') return events;
+    
+    return events.filter(event => {
+      switch (category) {
+        case 'goals':
+          return event.type === 'goal' || event.type === 'penalty' || event.type === 'own-goal';
+        case 'cards':
+          return event.type === 'card' || event.type === 'yellow' || event.type === 'red' || event.type === 'second-yellow';
+        case 'substitutions':
+          return event.type === 'substitution' || event.type === 'subst';
+        case 'var':
+          return event.type === 'var' || event.type === 'var-check';
+        case 'other':
+          return !['goal', 'penalty', 'own-goal', 'card', 'yellow', 'red', 'second-yellow', 'substitution', 'subst', 'var', 'var-check'].includes(event.type);
+        default:
+          return true;
+      }
+    });
+  };
+
+  // ✅ Get filtered events for active tab
+  const filteredEvents = React.useMemo(() => {
+    return filterEventsByCategory(liveEvents, activeTab);
+  }, [liveEvents, activeTab]);
+
+  // ✅ Get event count for each tab
+  const getTabEventCount = (category: string) => {
+    return filterEventsByCategory(liveEvents, category).length;
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Loading State */}
@@ -317,6 +361,38 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
         </View>
       </View>
 
+      {/* ✅ Event Category Tabs */}
+      <ScrollView 
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.tabsContainer}
+        contentContainerStyle={styles.tabsContent}
+      >
+        {EVENT_TABS.map((tab) => {
+          const isActive = activeTab === tab.id;
+          const tabEventCount = getTabEventCount(tab.id);
+          
+          return (
+            <TouchableOpacity
+              key={tab.id}
+              style={[styles.tab, isActive && styles.tabActive]}
+              onPress={() => setActiveTab(tab.id)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.tabIcon, isActive && styles.tabIconActive]}>{tab.icon}</Text>
+              <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]}>{tab.label}</Text>
+              {tabEventCount > 0 && (
+                <View style={[styles.tabBadge, isActive && styles.tabBadgeActive]}>
+                  <Text style={[styles.tabBadgeText, isActive && styles.tabBadgeTextActive]}>
+                    {tabEventCount}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+
       {/* Match Events Timeline */}
       <ScrollView 
         style={styles.scrollView}
@@ -330,18 +406,22 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
           {/* Events */}
           <View style={styles.eventsContainer}>
             {/* Debug: Show event count */}
-            {liveEvents.length === 0 && (
+            {filteredEvents.length === 0 && (
               <View style={styles.emptyState}>
                 <Text style={styles.emptyStateText}>
-                  Henüz canlı event yok
+                  {liveEvents.length === 0 
+                    ? 'Henüz canlı event yok'
+                    : `${EVENT_TABS.find(t => t.id === activeTab)?.label || 'Bu kategori'} için event yok`}
                 </Text>
                 <Text style={styles.emptyStateSubtext}>
-                  Maç başladığında eventler burada görünecek
+                  {liveEvents.length === 0
+                    ? 'Maç başladığında eventler burada görünecek'
+                    : 'Diğer kategorilere bakabilirsiniz'}
                 </Text>
               </View>
             )}
             
-            {liveEvents.map((event, index) => {
+            {filteredEvents.map((event, index) => {
               const isCentered = !event.team || 
                 event.type === 'kickoff' || 
                 event.type === 'halftime' ||
@@ -742,5 +822,66 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#FFFFFF',
     fontWeight: '500',
+  },
+  
+  // ✅ Event Category Tabs
+  tabsContainer: {
+    backgroundColor: 'rgba(30, 41, 59, 0.6)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(100, 116, 139, 0.3)',
+  },
+  tabsContent: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    gap: 8,
+  },
+  tab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(100, 116, 139, 0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(100, 116, 139, 0.3)',
+    marginRight: 8,
+  },
+  tabActive: {
+    backgroundColor: '#1FA2A6',
+    borderColor: '#1FA2A6',
+  },
+  tabIcon: {
+    fontSize: 14,
+  },
+  tabIconActive: {
+    // Same for active
+  },
+  tabLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#9CA3AF',
+  },
+  tabLabelActive: {
+    color: '#FFFFFF',
+  },
+  tabBadge: {
+    backgroundColor: 'rgba(100, 116, 139, 0.4)',
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    minWidth: 20,
+    alignItems: 'center',
+  },
+  tabBadgeActive: {
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  tabBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#9CA3AF',
+  },
+  tabBadgeTextActive: {
+    color: '#FFFFFF',
   },
 });

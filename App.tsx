@@ -1,20 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { LogBox, View, Text, StyleSheet, Platform, UIManager } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ThemeProvider } from './src/contexts/ThemeContext';
 import { PredictionProvider } from './src/contexts/PredictionContext';
 import { MatchProvider } from './src/contexts/MatchContext';
 import ErrorBoundary from './src/components/ErrorBoundary';
 import MaintenanceScreen from './src/components/MaintenanceScreen';
-import { MAINTENANCE_CONFIG, logVersionInfo } from './src/config/AppVersion';
 import { useFavoriteTeamMatches } from './src/hooks/useFavoriteTeamMatches';
 import { useFavoriteTeams } from './src/hooks/useFavoriteTeams';
 import { ProfileCard } from './src/components/ProfileCard';
 import { DARK_MODE } from './src/theme/theme';
-import { hasBadgeBeenShown, markBadgeAsShown } from './src/services/badgeService';
-import { logger, logNavigation } from './src/utils/logger';
-import socialAuthService from './src/services/socialAuthService';
+import { markBadgeAsShown } from './src/services/badgeService';
+import { logger } from './src/utils/logger';
+import { useAppNavigation } from './src/hooks/useAppNavigation';
+import { useOAuth } from './src/hooks/useOAuth';
+import { initWebZoomPrevention } from './src/utils/webZoomPrevention';
+
 // Web için React Native'in built-in Animated API'sini kullan, native için reanimated
 import { Animated as RNAnimated } from 'react-native';
 
@@ -93,7 +94,6 @@ if (Platform.OS === 'web') {
       };
       UIManager.measure = (node: any, callback: Function) => {
         if (callback) {
-          // Return dummy measurements for web
           requestAnimationFrame(() => {
             callback(0, 0, 0, 0, 0, 0);
           });
@@ -109,147 +109,8 @@ if (Platform.OS === 'web') {
     }
   }
   
-  // Web için zoom engelleme - ÇOK AGRESİF ÇÖZÜM
-  if (typeof document !== 'undefined') {
-    // Meta viewport tag'ini kontrol et ve ekle
-    const setViewportMeta = () => {
-      let viewport = document.querySelector('meta[name="viewport"]');
-      if (!viewport) {
-        viewport = document.createElement('meta');
-        viewport.setAttribute('name', 'viewport');
-        document.getElementsByTagName('head')[0].appendChild(viewport);
-      }
-      viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover');
-    };
-    
-    // CSS ile zoom'u tamamen engelle
-    const addZoomPreventionCSS = () => {
-      const styleId = 'zoom-prevention-style';
-      if (!document.getElementById(styleId)) {
-        const style = document.createElement('style');
-        style.id = styleId;
-        style.textContent = `
-          * {
-            touch-action: manipulation !important;
-            -webkit-touch-callout: none !important;
-            -webkit-user-select: none !important;
-            user-select: none !important;
-          }
-          input, textarea {
-            -webkit-user-select: text !important;
-            user-select: text !important;
-          }
-          html, body {
-            zoom: 1 !important;
-            -webkit-text-size-adjust: 100% !important;
-            text-size-adjust: 100% !important;
-          }
-          #root {
-            zoom: 1 !important;
-            transform: scale(1) !important;
-            -webkit-transform: scale(1) !important;
-          }
-        `;
-        document.head.appendChild(style);
-      }
-    };
-    
-    // Zoom seviyesini sürekli kontrol et ve sıfırla
-    const preventZoom = () => {
-      // Meta viewport'u kontrol et
-      setViewportMeta();
-      
-      // Document zoom'unu kontrol et
-      if (document.documentElement.style.zoom !== '1') {
-        document.documentElement.style.zoom = '1';
-      }
-      if (document.body.style.zoom !== '1') {
-        document.body.style.zoom = '1';
-      }
-      
-      // Visual viewport scale'i kontrol et
-      if (window.visualViewport && window.visualViewport.scale !== 1) {
-        try {
-          window.visualViewport.scale = 1;
-        } catch (e) {
-          // Ignore
-        }
-      }
-      
-      // Root element transform'unu kontrol et
-      const root = document.getElementById('root');
-      if (root) {
-        const computedStyle = window.getComputedStyle(root);
-        const transform = computedStyle.transform;
-        if (transform && transform !== 'none' && !transform.includes('scale(1)')) {
-          root.style.transform = 'scale(1) !important';
-          root.style.webkitTransform = 'scale(1) !important';
-        }
-        // Root'un zoom'unu da kontrol et
-        if (root.style.zoom !== '1') {
-          root.style.zoom = '1';
-        }
-      }
-      
-      // Tüm elementlerin zoom'unu kontrol et
-      const allElements = document.querySelectorAll('*');
-      allElements.forEach((el: any) => {
-        if (el.style && el.style.zoom && el.style.zoom !== '1') {
-          el.style.zoom = '1';
-        }
-      });
-    };
-    
-    // İlk yüklemede çalıştır
-    setViewportMeta();
-    addZoomPreventionCSS();
-    preventZoom();
-    
-    // Her 25ms'de bir kontrol et (daha sık)
-    setInterval(preventZoom, 25);
-    
-    // Event listener'lar
-    window.addEventListener('resize', preventZoom);
-    window.addEventListener('focus', preventZoom);
-    window.addEventListener('blur', preventZoom);
-    document.addEventListener('DOMContentLoaded', preventZoom);
-    window.addEventListener('load', preventZoom);
-    document.addEventListener('touchstart', preventZoom, { passive: false });
-    document.addEventListener('touchmove', preventZoom, { passive: false });
-    document.addEventListener('touchend', preventZoom, { passive: false });
-    
-    // Çift tıklama engelle (çok agresif)
-    document.addEventListener('dblclick', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      e.stopImmediatePropagation();
-      preventZoom();
-      return false;
-    }, true);
-    
-    // Wheel zoom engelle
-    document.addEventListener('wheel', (e) => {
-      if (e.ctrlKey) {
-        e.preventDefault();
-        e.stopPropagation();
-        preventZoom();
-        return false;
-      }
-    }, { passive: false });
-    
-    // Touch zoom engelle
-    let lastTouchEnd = 0;
-    document.addEventListener('touchend', (e) => {
-      const now = Date.now();
-      if (now - lastTouchEnd <= 300) {
-        e.preventDefault();
-        e.stopPropagation();
-        preventZoom();
-        return false;
-      }
-      lastTouchEnd = now;
-    }, { passive: false });
-  }
+  // Initialize Web Zoom Prevention
+  initWebZoomPrevention();
 }
 
 // Screens
@@ -276,31 +137,6 @@ import { MatchResultSummaryScreen } from './src/screens/MatchResultSummaryScreen
 import { Leaderboard } from './src/components/Leaderboard';
 import { DatabaseTestScreen } from './src/screens/DatabaseTestScreen';
 
-// Screen Types
-type Screen =
-  | 'splash'
-  | 'onboarding'
-  | 'language'
-  | 'age-gate'
-  | 'auth'
-  | 'register'
-  | 'forgot-password'
-  | 'home'
-  | 'matches'
-  | 'match-detail'
-  | 'match-result-summary'
-  | 'leaderboard'
-  | 'tournaments'
-  | 'profile'
-  | 'profile-settings'
-  | 'change-password'
-  | 'notifications'
-  | 'delete-account'
-  | 'legal'
-  | 'pro-upgrade'
-  | 'database-test'
-  | 'profile-setup';
-
 // Ignore warnings
 LogBox.ignoreLogs([
   'Require cycle:',
@@ -308,26 +144,16 @@ LogBox.ignoreLogs([
 ]);
 
 export default function App() {
-  const [currentScreen, setCurrentScreen] = useState<Screen>('splash');
-  const [previousScreen, setPreviousScreen] = useState<Screen | null>(null);
-  const [legalDocumentType, setLegalDocumentType] = useState<string>('terms');
-  const [activeTab, setActiveTab] = useState<string>('home');
-  const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
-  const [selectedTeamIds, setSelectedTeamIds] = useState<number[]>([]); // ✅ Çoklu takım seçimi
-  const [isMaintenanceMode, setIsMaintenanceMode] = useState<boolean>(false);
-  const [isProcessingOAuth, setIsProcessingOAuth] = useState<boolean>(() => {
-    // ✅ Sayfa yüklenirken OAuth initiating flag'ini kontrol et
-    if (Platform.OS === 'web' && typeof window !== 'undefined') {
-      const oauthInitiating = window.localStorage.getItem('tacticiq_oauth_initiating');
-      if (oauthInitiating === 'true') {
-        console.log('🔄 [App] OAuth initiating detected on startup');
-        return true;
-      }
-    }
-    return false;
-  }); // OAuth işleniyor mu?
-  const [oauthCompleted, setOauthCompleted] = useState<boolean>(false); // OAuth tamamlandı mı?
-  
+  // Use Navigation Hook
+  const { state: navState, actions: navActions, handlers: navHandlers, refs: navRefs } = useAppNavigation();
+  const { 
+    currentScreen, previousScreen, activeTab, selectedMatchId, 
+    selectedTeamIds, isMaintenanceMode, isProcessingOAuth, oauthCompleted 
+  } = navState;
+
+  // Use OAuth Hook
+  useOAuth({ navActions, navRefs });
+
   // ✅ Favori takımlar hook'u - ProfileCard'a aktarılacak ve ProfileScreen ile paylaşılacak
   const { favoriteTeams, loading: teamsLoading, refetch: refetchFavoriteTeams, setAllFavoriteTeams } = useFavoriteTeams();
 
@@ -336,189 +162,13 @@ export default function App() {
   const badgeShownRef = useRef<Set<string>>(new Set()); // Track shown badges in this session using ref
   const testBadgeTimerRef = useRef<NodeJS.Timeout | null>(null); // Track test badge timer
   
-  // ✅ OAuth Callback Detection - App başlarken HEMEN ve SADECE BİR KEZ kontrol et
-  const oauthCheckedRef = useRef(false);
-  
-  useEffect(() => {
-    const handleOAuthCallback = async () => {
-      // ✅ Sadece bir kez çalış
-      if (oauthCheckedRef.current) {
-        console.log('🛡️ [App] OAuth check zaten yapıldı, atlanıyor');
-        return;
-      }
-      oauthCheckedRef.current = true;
-      
-      if (Platform.OS !== 'web') return;
-      
-      // URL'de OAuth token veya code var mı kontrol et
-      const hash = window.location.hash;
-      const search = window.location.search;
-      const url = window.location.href;
-      
-      const hasAccessToken = hash.includes('access_token');
-      const hasCode = search.includes('code=') || url.includes('code=');
-      const hasError = hash.includes('error') || search.includes('error=');
-      const hasOAuthInitiating = window.localStorage.getItem('tacticiq_oauth_initiating') === 'true';
-      
-      console.log('🔍 [App] OAuth check:', { 
-        hash: hash.substring(0, 50), 
-        hasAccessToken, 
-        hasCode, 
-        hasError,
-        hasOAuthInitiating,
-        url: url.substring(0, 100)
-      });
-      
-      if (hasAccessToken || hasCode || hasError) {
-        console.log('🔄 [App] OAuth callback algılandı!');
-        setIsProcessingOAuth(true);
-        
-        // ✅ OAuth initiating flag'ini temizle (callback geldi)
-        window.localStorage.removeItem('tacticiq_oauth_initiating');
-        
-        try {
-          // ✅ Retry mekanizması ile session kontrolü
-          console.log('⏳ [App] Supabase session bekleniyor (retry ile)...');
-          let attempts = 0;
-          const maxAttempts = 5;
-          let sessionResult = null;
-          
-          while (!sessionResult && attempts < maxAttempts) {
-            await new Promise(resolve => setTimeout(resolve, 500 + (attempts * 300)));
-            const result = await socialAuthService.checkSession();
-            console.log(`📋 [App] Session check attempt ${attempts + 1}:`, result.success, result.user?.email);
-            
-            if (result.success && result.user) {
-              sessionResult = result;
-              break;
-            }
-            attempts++;
-          }
-          
-          // ✅ URL'yi session kontrolünden SONRA temizle (race condition önleme)
-          if (window.history && window.history.replaceState) {
-            window.history.replaceState(null, '', window.location.origin + window.location.pathname);
-          }
-          
-          if (sessionResult && sessionResult.user) {
-            console.log('✅ [App] OAuth başarılı, ana sayfaya yönlendiriliyor...');
-            
-            // ✅ OAuth tamamlandı işaretle (SplashScreen'in override etmesini engelle)
-            setOauthCompleted(true);
-            
-            // ✅ Loading ekranını kapat ve ana sayfaya git
-            setIsProcessingOAuth(false);
-            setCurrentScreen('home');
-          } else {
-            console.log('⚠️ [App] OAuth session bulunamadı (tüm denemeler başarısız)');
-            
-            // Splash'a devam et (normal akış)
-            setIsProcessingOAuth(false);
-          }
-        } catch (error) {
-          console.error('❌ [App] OAuth callback error:', error);
-          setIsProcessingOAuth(false);
-          // Hata durumunda auth ekranına yönlendir
-          setCurrentScreen('auth');
-        }
-      } else if (hasOAuthInitiating) {
-        // ✅ OAuth başlatıldı ama callback gelmedi (kullanıcı iptal etti veya sayfa yenilendi)
-        console.log('⚠️ [App] OAuth was initiating but no callback received');
-        // 5 saniye bekle, eğer hala callback gelmezse flag'i temizle
-        setTimeout(() => {
-          const stillInitiating = window.localStorage.getItem('tacticiq_oauth_initiating') === 'true';
-          if (stillInitiating && !window.location.hash.includes('access_token')) {
-            console.log('🧹 [App] Clearing stale OAuth initiating flag');
-            window.localStorage.removeItem('tacticiq_oauth_initiating');
-            setIsProcessingOAuth(false);
-          }
-        }, 5000);
-      }
-    };
-    
-    handleOAuthCallback();
-  }, []);
-  
-  // ✅ OAuth Auth State Listener - Google/Apple giriş callback'lerini handle et
-  useEffect(() => {
-    // ✅ LOGOUT kontrolü - URL'de logout parametresi varsa session listener'ı başlatma
-    if (Platform.OS === 'web') {
-      const urlParams = new URLSearchParams(window.location.search);
-      if (urlParams.has('logout')) {
-        console.log('🚪 [App] Logout detected in URL, skipping auth state listener init');
-        // Storage'ı temizle
-        window.localStorage.clear();
-        window.sessionStorage?.clear();
-        return; // Listener'ı başlatma
-      }
-    }
-    
-    console.log('🔐 [App] Initializing auth state listener...');
-    socialAuthService.initAuthStateListener();
-  }, []);
-
-  // 🧪 TEST: Auto-set user as Pro on mount (for testing)
-  useEffect(() => {
-    if (__DEV__) {
-      const autoSetPro = async () => {
-        try {
-          const { STORAGE_KEYS } = await import('./src/config/constants');
-          const userDataStr = await AsyncStorage.getItem(STORAGE_KEYS.USER);
-          if (userDataStr) {
-            const userData = JSON.parse(userDataStr);
-            // Only set if not already Pro
-            if (!userData.isPro && !userData.is_pro) {
-              userData.is_pro = true;
-              userData.isPro = true;
-              userData.isPremium = true;
-              userData.plan = 'pro';
-              await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(userData));
-              await AsyncStorage.setItem(STORAGE_KEYS.PRO_STATUS, 'true');
-              console.log('✅ [TEST] User automatically set as Pro!');
-            }
-          }
-        } catch (error) {
-          console.log('Auto-set Pro skipped:', error);
-        }
-      };
-      // Run after a short delay to ensure app is initialized
-      setTimeout(autoSetPro, 1000);
-    }
-  }, []);
-
   // TEST: 5 saniye sonra yeni rozet göster (gerçekte maç sonunda kazanılacak)
-  // Sadece bir kez çalışacak şekilde düzeltildi
   useEffect(() => {
     // Clear any existing timer
     if (testBadgeTimerRef.current) {
       clearTimeout(testBadgeTimerRef.current);
       testBadgeTimerRef.current = null;
     }
-
-    // ✅ DEVRE DIŞI: Rozet sistemi sonraya bırakıldı
-    // Badge popup'ları şimdilik kapalı - diğer özellikler tamamlandıktan sonra aktif edilecek
-    /*
-    const checkAndShowTestBadge = async () => {
-      if (currentScreen === 'home' && !badgeShownRef.current.has('first_blood')) {
-        const alreadyShown = await hasBadgeBeenShown('first_blood');
-        
-        if (!alreadyShown) {
-          testBadgeTimerRef.current = setTimeout(() => {
-            setNewBadge({
-              id: 'first_blood',
-              name: '🎯 İlk Kan',
-              emoji: '🎯',
-              description: 'İlk tahminini yaptın! Analiz yolculuğun başladı.',
-              tier: 1,
-            });
-            badgeShownRef.current.add('first_blood');
-            testBadgeTimerRef.current = null;
-          }, 5000);
-        }
-      }
-    };
-    checkAndShowTestBadge();
-    */
 
     // Cleanup function
     return () => {
@@ -527,407 +177,27 @@ export default function App() {
         testBadgeTimerRef.current = null;
       }
     };
-  }, [currentScreen]); // Only depend on currentScreen
+  }, [currentScreen]);
 
   // Global match data - shared across all screens
   // ✅ favoriteTeams'i doğrudan geçiyoruz, böylece güncellenince maçlar da güncellenir
   const matchData = useFavoriteTeamMatches(favoriteTeams);
-
-  // ==========================================
-  // INITIALIZATION
-  // ==========================================
+  
+  // 🔍 DEBUG: Favori takımlar ve maç durumunu logla
   useEffect(() => {
-    // Log version info on startup
-    logVersionInfo();
-
-    // Check maintenance mode
-    setIsMaintenanceMode(MAINTENANCE_CONFIG.isActive);
-  }, []);
-
-  // ==========================================
-  // NAVIGATION HANDLERS
-  // ==========================================
-
-  // 1. Onboarding Complete (replaces splash, language, age-gate flow)
-  const handleOnboardingComplete = async () => {
-    logger.info('Onboarding complete', undefined, 'ONBOARDING');
-    
-    try {
-      // Navigate to auth
-      logNavigation('auth');
-      setPreviousScreen(currentScreen);
-      setCurrentScreen('auth');
-    } catch (error) {
-      logger.error('Error in onboarding complete', { error }, 'ONBOARDING');
-      setPreviousScreen(currentScreen);
-      setCurrentScreen('auth');
+    if (favoriteTeams && favoriteTeams.length > 0) {
+      console.log('✅ Favori takımlar yüklendi:', favoriteTeams.map(t => `${t.name} (${t.id})`));
+      console.log('📊 Maç durumu:', {
+        past: matchData.pastMatches.length,
+        live: matchData.liveMatches.length,
+        upcoming: matchData.upcomingMatches.length,
+        loading: matchData.loading,
+        error: matchData.error
+      });
+    } else {
+      console.log('⚠️ Henüz favori takım yok veya yükleniyor...', { teamsLoading });
     }
-  };
-
-  // 1.5. Splash Complete (legacy - for existing users)
-  const handleSplashComplete = async (hasUser: boolean) => {
-    // ✅ OAuth zaten tamamlandıysa bu callback'i yoksay
-    if (oauthCompleted) {
-      console.log('🛡️ [App] OAuth zaten tamamlandı, handleSplashComplete atlanıyor');
-      return;
-    }
-    
-    logger.info('Splash complete', { hasUser }, 'SPLASH');
-    
-    try {
-      if (hasUser) {
-        // 🎁 DEV: Set user as PRO automatically (ALWAYS)
-        const userDataStr = await AsyncStorage.getItem('tacticiq-user');
-        if (userDataStr) {
-          const userData = JSON.parse(userDataStr);
-          // Her zaman Pro yap (kontrol olmadan)
-          userData.is_pro = true;
-          userData.isPro = true;
-          userData.isPremium = true;
-          userData.plan = 'pro';
-          await AsyncStorage.setItem('tacticiq-user', JSON.stringify(userData));
-          logger.debug('User set as PRO automatically', undefined, 'DEV');
-          
-          // ✅ Eğer profil kurulumu tamamlanmışsa direkt home'a git
-          if (userData.profileSetupComplete === true) {
-            logger.info('Profile setup complete, navigating to home', undefined, 'SPLASH');
-            logNavigation('home');
-            setPreviousScreen(currentScreen);
-            setCurrentScreen('home');
-            return;
-          }
-        } else {
-          // User yoksa oluştur ve Pro yap
-          const newUserData = {
-            authenticated: true,
-            is_pro: true,
-            isPro: true,
-            isPremium: true,
-            plan: 'pro',
-          };
-          await AsyncStorage.setItem('tacticiq-user', JSON.stringify(newUserData));
-          logger.debug('New user created and set as PRO', undefined, 'DEV');
-        }
-        
-        // ✅ Profil kurulumu tamamlanmamışsa onboarding'e git (favorite-teams artık kullanılmıyor)
-        logger.info('Profile setup not complete, navigating to onboarding', undefined, 'SPLASH');
-        logNavigation('onboarding');
-        setPreviousScreen(currentScreen);
-        setCurrentScreen('onboarding');
-      } else {
-        // No user → Onboarding (new unified flow)
-        logNavigation('onboarding');
-        setPreviousScreen(currentScreen);
-        setCurrentScreen('onboarding');
-      }
-    } catch (error) {
-      logger.error('Error in splash complete', { error }, 'SPLASH');
-      setPreviousScreen(currentScreen);
-      setCurrentScreen('onboarding');
-    }
-  };
-
-  // 2. Language Selection
-  const handleLanguageSelect = async (lang: string) => {
-    logger.info('Language selected', { lang }, 'LANGUAGE');
-    await AsyncStorage.setItem('fan-manager-language', lang);
-    
-    // ✅ Her zaman age-gate'e yönlendir (yaş ve yasal bilgilendirme tek ekranda)
-    logNavigation('age-gate');
-    setPreviousScreen(currentScreen);
-    setCurrentScreen('age-gate');
-  };
-
-  // 2.5. Age Gate & Consent Complete (Birleştirilmiş ekran)
-  const handleAgeGateComplete = async (isMinor: boolean) => {
-    logger.info('Age gate and consent complete', { isMinor }, 'AGE_GATE');
-    console.log('✅ App.tsx: handleAgeGateComplete called', { isMinor, currentScreen });
-    try {
-      // Artık AgeGateScreen içinde consent de var, direkt auth'a yönlendir
-      logNavigation('auth');
-      setPreviousScreen(currentScreen);
-      setCurrentScreen('auth');
-      console.log('✅ App.tsx: Navigated to auth screen');
-    } catch (error) {
-      console.error('❌ App.tsx: Error in handleAgeGateComplete', error);
-      logger.error('Error in age gate complete', { error }, 'AGE_GATE');
-    }
-  };
-
-  // 3. Auth → Login Success
-  const handleLoginSuccess = async () => {
-    logger.info('Login success', undefined, 'AUTH');
-    // ✅ Her zaman Pro yap
-    const { STORAGE_KEYS } = await import('./src/config/constants');
-    const existingUser = await AsyncStorage.getItem(STORAGE_KEYS.USER);
-    const userData = existingUser ? JSON.parse(existingUser) : {};
-    
-    await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify({ 
-      ...userData,
-      authenticated: true,
-      is_pro: true,
-      isPro: true,
-      isPremium: true,
-      plan: 'pro'
-    }));
-    await AsyncStorage.setItem(STORAGE_KEYS.PRO_STATUS, 'true');
-    logger.debug('User set as PRO after login', undefined, 'AUTH');
-    
-    // Giriş yap → Ana sayfaya git (takım kontrolü yapmadan)
-    logNavigation('home');
-    setPreviousScreen(currentScreen);
-    setCurrentScreen('home');
-  };
-
-  // 4. Auth → Forgot Password
-  const handleForgotPassword = () => {
-    logNavigation('forgot-password');
-    setCurrentScreen('forgot-password');
-  };
-
-  // 5. Auth → Register
-  const handleRegister = () => {
-    logNavigation('register');
-    setCurrentScreen('register');
-  };
-
-  // 6. Register → Success → Profile Setup
-  const handleRegisterSuccess = async () => {
-    logger.info('Register success', undefined, 'REGISTER');
-    // ✅ Her zaman Pro yap
-    await AsyncStorage.setItem('fan-manager-user', JSON.stringify({ 
-      authenticated: true,
-      is_pro: true,
-      isPro: true,
-      isPremium: true,
-      plan: 'pro'
-    }));
-    logger.debug('User set as PRO after registration', undefined, 'REGISTER');
-    logNavigation('profile-setup');
-    setCurrentScreen('profile-setup');
-  };
-  
-  // 6.5. Profile Setup → Complete → Dashboard
-  const handleProfileSetupComplete = async () => {
-    logger.info('Profile setup complete', undefined, 'PROFILE_SETUP');
-    logNavigation('home');
-    setPreviousScreen(currentScreen);
-    setCurrentScreen('home');
-  };
-
-  // 7. Forgot Password → Back to Auth
-  const handleForgotPasswordBack = () => {
-    logNavigation('auth');
-    setCurrentScreen('auth');
-  };
-
-  // 8. Register → Back to Auth
-  const handleRegisterBack = () => {
-    logNavigation('auth');
-    setCurrentScreen('auth');
-  };
-
-
-  // 10. Matches → Profile
-  const handleProfileClick = () => {
-    logNavigation('profile');
-    setCurrentScreen('profile');
-  };
-
-  // 11. Bottom Navigation Tab Change
-  const handleTabChange = (tab: string) => {
-    logger.debug('Tab changed', { tab }, 'NAVIGATION');
-    setActiveTab(tab);
-    setCurrentScreen(tab as Screen);
-  };
-
-  // 12. Matches → Match Detail
-  const handleMatchSelect = (matchId: string) => {
-    logNavigation('match-detail', { matchId });
-    setSelectedMatchId(matchId);
-    setCurrentScreen('match-detail');
-  };
-
-  // 12b. Matches → Match Result Summary (for finished matches)
-  const handleMatchResultSelect = (matchId: string) => {
-    logNavigation('match-result-summary', { matchId });
-    setSelectedMatchId(matchId);
-    setCurrentScreen('match-result-summary');
-  };
-
-  // 13. Dashboard Navigation
-  const handleDashboardNavigate = (screen: string, params?: any) => {
-    logNavigation(screen, params);
-    
-    switch (screen) {
-      case 'notifications':
-        setCurrentScreen('notifications');
-        break;
-      case 'matches':
-        // ✅ Takım seçildiğinde o takımın maçlarını göster
-        if (params?.teamId) {
-          setSelectedTeamIds(prev => prev.includes(params.teamId) ? prev : [...prev, params.teamId]);
-          // Parametreleri window'a kaydet (matches ekranında kullanmak için)
-          (window as any).__matchParams = {
-            teamId: params.teamId,
-            teamName: params.teamName,
-          };
-          logger.debug(`Navigating to matches with team: ${params.teamName}`, { teamId: params.teamId }, 'DASHBOARD');
-        }
-        setCurrentScreen('matches');
-        break;
-      case 'profile':
-        // If navigating from Dashboard "Tüm Rozetlerimi Gör" button, show badges tab
-        const showBadgesTab = params?.showBadges === true;
-        setActiveTab(showBadgesTab ? 'badges' : 'profile');
-        setCurrentScreen('profile');
-        break;
-      case 'matches':
-        setActiveTab('matches');
-        setCurrentScreen('matches');
-        break;
-      case 'finished':
-        setActiveTab('finished');
-        setCurrentScreen('finished');
-        break;
-      case 'match-detail':
-        if (params?.id) {
-          setSelectedMatchId(params.id);
-          // Store params for MatchDetail component to access
-          (window as any).__matchDetailParams = {
-            initialTab: params?.initialTab || 'squad',
-            analysisFocus: params?.analysisFocus,
-            matchData: params?.matchData, // ✅ Dashboard'dan gelen maç verisi
-          };
-          setCurrentScreen('match-detail');
-        }
-        break;
-      case 'home':
-        setCurrentScreen('home');
-        break;
-      case 'achievements':
-        // TODO: Achievements page
-        logger.debug('Achievements page navigation', undefined, 'DASHBOARD');
-        break;
-      default:
-        logger.warn('Unknown navigation target', { screen }, 'DASHBOARD');
-    }
-  };
-
-  // 12. Profile → Settings
-  const handleProfileSettings = () => {
-    logNavigation('profile-settings');
-    setCurrentScreen('profile-settings');
-  };
-
-  // 13. Profile → Pro Upgrade
-  // 16. Navigate to PRO Upgrade
-  const handleProUpgrade = () => {
-    logNavigation('pro-upgrade');
-    setCurrentScreen('pro-upgrade');
-  };
-
-  // 17. PRO Upgrade Success
-  const handleUpgradeSuccess = async () => {
-    logger.info('PRO upgrade success', undefined, 'PRO_UPGRADE');
-    // Save PRO status to AsyncStorage
-    const { STORAGE_KEYS } = await import('./src/config/constants');
-    const userDataStr = await AsyncStorage.getItem(STORAGE_KEYS.USER);
-    if (userDataStr) {
-      const userData = JSON.parse(userDataStr);
-      userData.is_pro = true;
-      userData.isPro = true; // Both formats for compatibility
-      userData.isPremium = true;
-      userData.plan = 'pro';
-      await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(userData));
-      logger.debug('PRO status saved to AsyncStorage', undefined, 'PRO_UPGRADE');
-    }
-    await AsyncStorage.setItem(STORAGE_KEYS.PRO_STATUS, 'true');
-    logNavigation('profile');
-    setCurrentScreen('profile');
-  };
-  
-  // 🧪 TEST: Set user as Pro (for testing)
-  const setUserProForTest = async () => {
-    try {
-      const { STORAGE_KEYS } = await import('./src/config/constants');
-      const userDataStr = await AsyncStorage.getItem(STORAGE_KEYS.USER);
-      if (userDataStr) {
-        const userData = JSON.parse(userDataStr);
-        userData.is_pro = true;
-        userData.isPro = true;
-        userData.isPremium = true;
-        userData.plan = 'pro';
-        await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(userData));
-        await AsyncStorage.setItem(STORAGE_KEYS.PRO_STATUS, 'true');
-        console.log('✅ User set as Pro! You can now select club teams.');
-        alert('✅ Pro olarak ayarlandınız! Artık kulüp takımları seçebilirsiniz.');
-        // Refresh current screen
-        if (currentScreen === 'profile') {
-          setCurrentScreen('profile');
-        }
-      } else {
-        alert('❌ Kullanıcı bulunamadı. Lütfen önce giriş yapın.');
-      }
-    } catch (error) {
-      console.error('Error setting user as Pro:', error);
-      alert('Hata: ' + error);
-    }
-  };
-  
-  // Make it available globally for testing
-  if (typeof window !== 'undefined') {
-    (window as any).setUserPro = setUserProForTest;
-  }
-
-  // 14. Profile Settings → Change Password
-  const handleNavigateToChangePassword = () => {
-    logNavigation('change-password');
-    setCurrentScreen('change-password');
-  };
-
-  // 15. Profile Settings → Notifications
-  const handleNavigateToNotifications = () => {
-    logNavigation('notifications');
-    setCurrentScreen('notifications');
-  };
-
-  // 16. Profile Settings → Delete Account
-  const handleNavigateToDeleteAccount = () => {
-    logNavigation('delete-account');
-    setCurrentScreen('delete-account');
-  };
-
-  // 17. Profile Settings → Logout
-  const handleLogout = async () => {
-    logger.info('Logging out', undefined, 'AUTH');
-    try {
-      // Sadece user session'ı temizle - dil ve takım seçimini koru
-      await AsyncStorage.removeItem('fan-manager-user');
-      logger.debug('User session cleared', undefined, 'AUTH');
-      logNavigation('auth');
-      setCurrentScreen('auth');
-    } catch (error) {
-      logger.error('Logout error', { error }, 'AUTH');
-      // Hata olsa bile auth'a git
-      setCurrentScreen('auth');
-    }
-  };
-
-  // 18. Delete Account → Confirm
-  const handleDeleteAccountConfirm = async () => {
-    logger.info('Account deleted', undefined, 'DELETE_ACCOUNT');
-    await AsyncStorage.clear();
-    logNavigation('splash');
-    setCurrentScreen('splash');
-  };
-
-  // 19. Navigate to Legal Document
-  const handleNavigateToLegal = (documentType: string) => {
-    logNavigation('legal', { documentType });
-    setLegalDocumentType(documentType);
-    setCurrentScreen('legal');
-  };
+  }, [favoriteTeams, matchData.pastMatches.length, matchData.liveMatches.length, matchData.upcomingMatches.length]);
 
   // ==========================================
   // SCREEN RENDERING
@@ -970,12 +240,12 @@ export default function App() {
       
       switch (currentScreen) {
         case 'splash':
-          return wrapWithAnimation(<SplashScreen onComplete={handleSplashComplete} />, 'splash');
+          return wrapWithAnimation(<SplashScreen onComplete={navHandlers.handleSplashComplete} />, 'splash');
         
         case 'onboarding':
           return wrapWithAnimation(
             <OnboardingScreen
-              onComplete={handleOnboardingComplete}
+              onComplete={navHandlers.handleOnboardingComplete}
             />,
             'onboarding'
           );
@@ -983,7 +253,7 @@ export default function App() {
         case 'language':
           return wrapWithAnimation(
             <LanguageSelectionScreen
-              onLanguageSelect={handleLanguageSelect}
+              onLanguageSelect={navHandlers.handleLanguageSelect}
             />,
             'language'
           );
@@ -991,7 +261,7 @@ export default function App() {
         case 'age-gate':
           return wrapWithAnimation(
             <AgeGateScreen
-              onComplete={handleAgeGateComplete}
+              onComplete={navHandlers.handleAgeGateComplete}
             />,
             'age-gate'
           );
@@ -999,12 +269,12 @@ export default function App() {
         case 'auth':
           return wrapWithAnimation(
             <AuthScreen
-              onLoginSuccess={handleLoginSuccess}
-              onForgotPassword={handleForgotPassword}
-              onRegister={handleRegister}
+              onLoginSuccess={navHandlers.handleLoginSuccess}
+              onForgotPassword={navHandlers.handleForgotPassword}
+              onRegister={navHandlers.handleRegister}
               onBack={() => {
-                setPreviousScreen(currentScreen);
-                setCurrentScreen('onboarding');
+                navActions.setPreviousScreen(currentScreen);
+                navActions.setCurrentScreen('onboarding');
               }}
             />,
             'auth'
@@ -1013,83 +283,66 @@ export default function App() {
         case 'register':
           return (
             <RegisterScreen
-              onRegisterSuccess={handleRegisterSuccess}
-              onBack={handleRegisterBack}
-              onNavigateToLegal={handleNavigateToLegal}
+              onRegisterSuccess={navHandlers.handleRegisterSuccess}
+              onBack={navHandlers.handleRegisterBack}
+              onNavigateToLegal={navHandlers.handleNavigateToLegal}
             />
           );
         
         case 'forgot-password':
           return (
             <ForgotPasswordScreen
-              onBack={handleForgotPasswordBack}
+              onBack={navHandlers.handleForgotPasswordBack}
             />
           );
         
         case 'profile-setup':
           return (
             <ProfileSetupScreen
-              onComplete={handleProfileSetupComplete}
-              onBack={() => setCurrentScreen('auth')}
+              onComplete={navHandlers.handleProfileSetupComplete}
+              onBack={() => navActions.setCurrentScreen('auth')}
             />
           );
         
         case 'home':
           return (
             <Dashboard
-              onNavigate={handleDashboardNavigate}
+              onNavigate={navHandlers.handleDashboardNavigate}
               matchData={matchData}
               selectedTeamIds={selectedTeamIds}
             />
           );
         
         case 'matches':
-          // ✅ Dashboard'dan gelen teamId parametresini kontrol et
-          const matchParams = (window as any).__matchParams || {};
-          const teamIdFromParams = matchParams.teamId;
-          const teamNameFromParams = matchParams.teamName;
-          
-          // Eğer parametre varsa, selectedTeamIds'yi güncelle
-          if (teamIdFromParams && !selectedTeamIds.includes(teamIdFromParams)) {
-            setSelectedTeamIds(prev => [...prev, teamIdFromParams]);
-          }
-          
           return (
             <MatchListScreen
-              onMatchSelect={handleMatchSelect}
-              onMatchResultSelect={handleMatchResultSelect}
-              onProfileClick={handleProfileClick}
+              onMatchSelect={navHandlers.handleMatchSelect}
+              onMatchResultSelect={navHandlers.handleMatchResultSelect}
+              onProfileClick={navHandlers.handleProfileClick}
               matchData={matchData}
-              selectedTeamId={selectedTeamIds[0] || teamIdFromParams} // ✅ İlk seçilen takım (backward compat)
-              selectedTeamName={teamNameFromParams} // ✅ Takım adı (başlık için)
-              onBack={selectedTeamIds.length > 0 || teamIdFromParams ? () => {
-                setSelectedTeamIds([]); // Takım filtresini temizle
-                (window as any).__matchParams = {}; // Parametreleri temizle
-                setCurrentScreen('home'); // Ana sayfaya geri dön
-              } : undefined}
+              selectedTeamIds={selectedTeamIds}
             />
           );
         
         case 'finished':
-          // ✅ Biten maçlar sekmesi
           return (
             <MatchListScreen
-              onMatchSelect={handleMatchSelect}
-              onMatchResultSelect={handleMatchResultSelect}
-              onProfileClick={handleProfileClick}
+              onMatchSelect={navHandlers.handleMatchSelect}
+              onMatchResultSelect={navHandlers.handleMatchResultSelect}
+              onProfileClick={navHandlers.handleProfileClick}
               matchData={matchData}
-              selectedTeamId={selectedTeamIds[0]}
-              showOnlyFinished={true} // ✅ Sadece biten maçları göster
+              selectedTeamIds={selectedTeamIds}
+              showOnlyFinished={true}
             />
           );
         
         case 'leaderboard':
-          return <Leaderboard onNavigate={handleProfileClick} />;
+          return <Leaderboard onNavigate={navHandlers.handleProfileClick} />;
         
         case 'match-detail':
           if (!selectedMatchId) {
             logger.error('No matchId for MatchDetail', undefined, 'NAVIGATION');
-            setCurrentScreen('home');
+            navActions.setCurrentScreen('home');
             return null;
           }
           // Get initialTab and analysisFocus from navigation params (if any)
@@ -1101,10 +354,10 @@ export default function App() {
               analysisFocus={matchDetailParams.analysisFocus}
               preloadedMatch={matchDetailParams.matchData}
               onBack={() => {
-                setSelectedMatchId(null);
+                navActions.setSelectedMatchId(null);
                 // ✅ Params'ları temizle
                 (window as any).__matchDetailParams = {};
-                setCurrentScreen('home');
+                navActions.setCurrentScreen('home');
               }}
             />
           );
@@ -1112,15 +365,15 @@ export default function App() {
         case 'match-result-summary':
           if (!selectedMatchId) {
             logger.error('No matchId for MatchResultSummary', undefined, 'NAVIGATION');
-            setCurrentScreen('home');
+            navActions.setCurrentScreen('home');
             return null;
           }
           return (
             <MatchResultSummaryScreen
               matchData={{ id: selectedMatchId }}
               onBack={() => {
-                setSelectedMatchId(null);
-                setCurrentScreen('matches');
+                navActions.setSelectedMatchId(null);
+                navActions.setCurrentScreen('matches');
               }}
             />
           );
@@ -1132,15 +385,15 @@ export default function App() {
           return (
             <ProfileScreen
               onBack={() => {
-                setActiveTab('home');
-                setCurrentScreen('home');
+                navActions.setActiveTab('home');
+                navActions.setCurrentScreen('home');
               }}
-              onSettings={handleProfileSettings}
+              onSettings={navHandlers.handleProfileSettings}
               onTeamSelect={(teamId, teamName) => {
                 // ✅ Takım seçildiğinde o takımın maçlarını göster
                 logger.debug(`Team selected: ${teamName}`, { teamId }, 'PROFILE');
-                setSelectedTeamId(teamId); // Takım ID'sini kaydet
-                setCurrentScreen('matches'); // Matches ekranına git, orada filtreleme yapılacak
+                navActions.setSelectedTeamIds([teamId]); // Takım ID'sini kaydet (artık array)
+                navActions.setCurrentScreen('matches'); // Matches ekranına git, orada filtreleme yapılacak
               }}
               onTeamsChange={() => {
                 // ✅ Takım değiştiğinde maç verilerini güncelle (state zaten güncel)
@@ -1148,8 +401,8 @@ export default function App() {
                 matchData.refetch();
               }}
               setAllFavoriteTeamsFromApp={setAllFavoriteTeams}
-              onProUpgrade={handleProUpgrade}
-              onDatabaseTest={() => setCurrentScreen('database-test')}
+              onProUpgrade={navHandlers.handleProUpgrade}
+              onDatabaseTest={() => navActions.setCurrentScreen('database-test')}
               initialTab={shouldShowBadgesTab ? 'badges' : 'profile'}
             />
           );
@@ -1157,35 +410,35 @@ export default function App() {
         case 'profile-settings':
           return (
             <ProfileSettingsScreen
-              onBack={() => setCurrentScreen('profile')}
-              onNavigateToLanguage={() => setCurrentScreen('language')}
-              onLogout={handleLogout}
-              onNavigateToChangePassword={handleNavigateToChangePassword}
-              onNavigateToNotifications={handleNavigateToNotifications}
-              onNavigateToDeleteAccount={handleNavigateToDeleteAccount}
-              onNavigateToProUpgrade={handleProUpgrade}
+              onBack={() => navActions.setCurrentScreen('profile')}
+              onNavigateToLanguage={() => navActions.setCurrentScreen('language')}
+              onLogout={navHandlers.handleLogout}
+              onNavigateToChangePassword={navHandlers.handleNavigateToChangePassword}
+              onNavigateToNotifications={navHandlers.handleNavigateToNotifications}
+              onNavigateToDeleteAccount={navHandlers.handleNavigateToDeleteAccount}
+              onNavigateToProUpgrade={navHandlers.handleProUpgrade}
             />
           );
         
         case 'change-password':
           return (
             <ChangePasswordScreen
-              onBack={() => setCurrentScreen('profile-settings')}
+              onBack={() => navActions.setCurrentScreen('profile-settings')}
             />
           );
         
         case 'notifications':
           return (
             <NotificationsScreen
-              onBack={() => setCurrentScreen('profile-settings')}
+              onBack={() => navActions.setCurrentScreen('profile-settings')}
             />
           );
         
         case 'delete-account':
           return (
             <DeleteAccountScreen
-              onBack={() => setCurrentScreen('profile-settings')}
-              onDeleteConfirm={handleDeleteAccountConfirm}
+              onBack={() => navActions.setCurrentScreen('profile-settings')}
+              onDeleteConfirm={navHandlers.handleDeleteAccountConfirm}
             />
           );
         
@@ -1193,27 +446,27 @@ export default function App() {
           return (
             <LegalDocumentScreen
               documentType={legalDocumentType}
-              onBack={() => setCurrentScreen('register')}
+              onBack={() => navActions.setCurrentScreen('register')}
             />
           );
         
         case 'pro-upgrade':
           return (
             <ProUpgradeScreen
-              onBack={() => setCurrentScreen('profile')}
-              onUpgradeSuccess={handleUpgradeSuccess}
+              onBack={() => navActions.setCurrentScreen('profile')}
+              onUpgradeSuccess={navHandlers.handleUpgradeSuccess}
             />
           );
         
         case 'database-test':
           return (
             <DatabaseTestScreen
-              onBack={() => setCurrentScreen('profile')}
+              onBack={() => navActions.setCurrentScreen('profile')}
             />
           );
         
         default:
-          return <SplashScreen onComplete={handleSplashComplete} />;
+          return <SplashScreen onComplete={navHandlers.handleSplashComplete} />;
       }
     } catch (error) {
       logger.error('Screen render error', { error, screen: currentScreen }, 'APP');
@@ -1251,7 +504,7 @@ export default function App() {
                   {['home', 'matches', 'finished', 'leaderboard', 'profile'].includes(currentScreen) && (
                     <View style={styles.profileCardOverlay}>
                       <ProfileCard 
-                        onPress={() => handleDashboardNavigate('profile')} 
+                        onPress={() => navHandlers.handleDashboardNavigate('profile')} 
                         newBadge={newBadge}
                         onBadgePopupClose={async () => {
                           // Mark badge as shown when popup is closed
@@ -1265,17 +518,16 @@ export default function App() {
                         favoriteTeams={favoriteTeams}
                         selectedTeamIds={selectedTeamIds}
                         onTeamSelect={(teamId) => {
-                          if (teamId === null) {
-                            // Tümü seçildi - filtreyi temizle
-                            setSelectedTeamIds([]);
-                          } else {
-                            // Toggle: seçili ise kaldır, değilse ekle
-                            setSelectedTeamIds(prev => 
-                              prev.includes(teamId) 
-                                ? prev.filter(id => id !== teamId)
-                                : [...prev, teamId]
-                            );
+                          if (teamId === null || teamId === undefined) {
+                            navActions.setSelectedTeamIds([]);
+                            return;
                           }
+                          const id = Number(teamId);
+                          if (Number.isNaN(id)) return;
+                          // Functional update: stale closure önlenir, toggle güvenilir çalışır
+                          navActions.setSelectedTeamIds((prev: number[]) =>
+                            prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+                          );
                         }}
                         showTeamFilter={['home', 'matches', 'finished', 'leaderboard', 'profile'].includes(currentScreen)}
                       />
@@ -1286,7 +538,7 @@ export default function App() {
                   {shouldShowBottomNav && (
                     <BottomNavigation
                       activeTab={activeTab}
-                      onTabChange={handleTabChange}
+                      onTabChange={navHandlers.handleTabChange}
                     />
                   )}
                 </View>

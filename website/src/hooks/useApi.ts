@@ -26,8 +26,8 @@ interface UseApiReturn<T> {
  * @param apiFunction - API servis fonksiyonu
  * @param options - Hook seçenekleri
  */
-export function useApi<T = any>(
-  apiFunction: (...args: any[]) => Promise<T>,
+export function useApi<T = unknown>(
+  apiFunction: (...args: unknown[]) => Promise<T>,
   options: UseApiOptions = {}
 ): UseApiReturn<T> {
   const {
@@ -41,7 +41,7 @@ export function useApi<T = any>(
   const [error, setError] = useState<ApiError | null>(null);
 
   const execute = useCallback(
-    async (...args: any[]): Promise<T | null> => {
+    async (...args: unknown[]): Promise<T | null> => {
       try {
         setLoading(true);
         setError(null);
@@ -55,11 +55,12 @@ export function useApi<T = any>(
         }
         
         return result;
-      } catch (err: any) {
+      } catch (err: unknown) {
+        const error = err as ErrorLike;
         const apiError: ApiError = {
-          message: err.message || 'Bir hata oluştu',
-          statusCode: err.statusCode,
-          details: err.details,
+          message: error.message || 'Bir hata oluştu',
+          statusCode: (error as { statusCode?: number }).statusCode,
+          details: (error as { details?: unknown }).details,
         };
         
         setError(apiError);
@@ -94,7 +95,7 @@ export function useApi<T = any>(
 /**
  * API çağrıları için mutation hook (POST, PUT, DELETE operations)
  */
-export function useApiMutation<T = any, P = any>(
+export function useApiMutation<T = unknown, P = unknown>(
   apiFunction: (params: P) => Promise<T>,
   options: UseApiOptions = {}
 ) {

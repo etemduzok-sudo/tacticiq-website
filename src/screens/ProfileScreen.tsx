@@ -244,8 +244,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     { id: 549, name: 'Beşiktaş', country: 'Turkey', league: 'Süper Lig', type: 'club' as const, colors: ['#000000', '#FFFFFF'] },
     { id: 551, name: 'Trabzonspor', country: 'Turkey', league: 'Süper Lig', type: 'club' as const, colors: ['#632134', '#00BFFF'] },
     { id: 607, name: 'Başakşehir', country: 'Turkey', league: 'Süper Lig', type: 'club' as const, colors: ['#F26522', '#1E3A5F'] },
-    { id: 3563, name: 'Konyaspor', country: 'Turkey', league: 'Süper Lig', type: 'club' as const, colors: ['#006633', '#FFFFFF'] },
-    { id: 6890, name: 'Antalyaspor', country: 'Turkey', league: 'Süper Lig', type: 'club' as const, colors: ['#ED1C24', '#FFFFFF'] },
+    { id: 556, name: 'Konyaspor', country: 'Turkey', league: 'Süper Lig', type: 'club' as const, colors: ['#006633', '#FFFFFF'] },
+    { id: 562, name: 'Antalyaspor', country: 'Turkey', league: 'Süper Lig', type: 'club' as const, colors: ['#ED1C24', '#FFFFFF'] },
     { id: 1005, name: 'Kasımpaşa', country: 'Turkey', league: 'Süper Lig', type: 'club' as const, colors: ['#1E4D78', '#FFFFFF'] },
     // Premier League
     { id: 50, name: 'Manchester City', country: 'England', league: 'Premier League', type: 'club' as const, colors: ['#6CABDD', '#1C2C5B'] },
