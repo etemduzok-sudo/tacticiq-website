@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   Image,
   Animated as RNAnimated,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { 
@@ -26,6 +27,7 @@ import { profileService } from '../services/profileService';
 import { isSuperAdmin } from '../config/constants';
 import { AnalysisFocusModal, AnalysisFocusType } from './AnalysisFocusModal';
 import { getTeamColors } from '../utils/teamColors';
+import { useMatchesWithPredictions } from '../hooks/useMatchesWithPredictions';
 
 // Coach cache - takım ID'sine göre teknik direktör isimlerini cache'le
 const coachCache: Record<number, string> = {};
@@ -66,9 +68,18 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
   const [analysisFocusModalVisible, setAnalysisFocusModalVisible] = useState(false);
   const [selectedMatchForAnalysis, setSelectedMatchForAnalysis] = useState<any>(null);
   
-  // ✅ Maça tıklandığında analiz odağı modal'ını aç
+  // ✅ Maça tıklandığında: tahmin varsa doğrudan Tahmin sekmesine git, yoksa analiz odağı modal'ını aç
   const handleMatchPress = (match: any) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const hasPrediction = match?.fixture?.id != null && matchIdsWithPredictions.has(match.fixture.id);
+    if (hasPrediction) {
+      onNavigate('match-detail', {
+        id: String(match.fixture.id),
+        initialTab: 'prediction',
+        matchData: match,
+      });
+      return;
+    }
     setSelectedMatchForAnalysis(match);
     setAnalysisFocusModalVisible(true);
   };
@@ -313,11 +324,32 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
     return teamName;
   };
   
-  // ✅ Maç kartı bileşeni
-  const renderMatchCard = (match: any, status: 'upcoming' | 'live' | 'finished', onPress?: () => void) => {
+  // ✅ Maç kartı bileşeni – tahmin belirteci ve silme seçeneği
+  const renderMatchCard = (
+    match: any,
+    status: 'upcoming' | 'live' | 'finished',
+    onPress?: () => void,
+    options?: { hasPrediction?: boolean; matchId?: number; onDeletePrediction?: (matchId: number) => void }
+  ) => {
     const homeColors = getTeamColors(match.teams.home.name);
     const awayColors = getTeamColors(match.teams.away.name);
     const refereeInfo = getRefereeInfo(match);
+    const hasPrediction = options?.hasPrediction ?? false;
+    const matchId = options?.matchId;
+    const onDeletePrediction = options?.onDeletePrediction;
+
+    const handleLongPress = () => {
+      if (hasPrediction && matchId != null && onDeletePrediction) {
+        Alert.alert(
+          'Tahmini sil',
+          'Bu maça yaptığınız tahmini silmek istiyor musunuz? Maç detayına girerek kadro ve tahminleri tekrar kurabilir veya güncelleyebilirsiniz.',
+          [
+            { text: 'Vazgeç', style: 'cancel' },
+            { text: 'Sil', style: 'destructive', onPress: () => onDeletePrediction(matchId) },
+          ]
+        );
+      }
+    };
     
     // Geri sayım hesaplama (countdownTicker ile her saniye güncellenir)
     const _ = countdownTicker; // Re-render için kullan
@@ -371,12 +403,13 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
     return (
       <TouchableOpacity
         style={styles.matchCardContainer}
-        onPress={isLocked ? undefined : onPress} // ✅ 10 günden fazla ise tıklanamaz
-        activeOpacity={isLocked ? 1 : 0.8} // ✅ Kilitli ise opacity değişmesin
-        disabled={isLocked} // ✅ Kilitli ise disabled
+        onPress={isLocked ? undefined : onPress}
+        onLongPress={handleLongPress}
+        activeOpacity={isLocked ? 1 : 0.8}
+        disabled={isLocked}
       >
         <LinearGradient
-          colors={['#1A3A34', '#162E29', '#122520']} // Koyu yeşil gradient - zemin ile uyumlu
+          colors={['#1A3A34', '#162E29', '#122520']}
           style={styles.matchCard}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
@@ -603,6 +636,27 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
               ) : null
             )}
           </View>
+          {/* Tahmin yaptınız: sarı yıldız — en üstte (son child) ki tıklanabilsin */}
+          {hasPrediction && matchId != null && onDeletePrediction && (
+            <TouchableOpacity
+              style={styles.matchCardPredictionStarHitArea}
+              onPress={(e) => {
+                e?.stopPropagation?.();
+                Alert.alert(
+                  'Tahmini sil',
+                  'Bu maça yaptığınız tahmini silmek istiyor musunuz?',
+                  [
+                    { text: 'Vazgeç', style: 'cancel' },
+                    { text: 'Sil', style: 'destructive', onPress: () => onDeletePrediction(matchId) },
+                  ]
+                );
+              }}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              activeOpacity={1}
+            >
+              <Ionicons name="star" size={20} color="#fbbf24" />
+            </TouchableOpacity>
+          )}
         </LinearGradient>
       </TouchableOpacity>
     );
@@ -766,6 +820,9 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
     });
   }, [allUpcomingMatches, selectedTeamIds, filterMatchesByTeam]);
 
+  const upcomingMatchIds = React.useMemo(() => filteredUpcomingMatches.map(m => m.fixture.id), [filteredUpcomingMatches]);
+  const { matchIdsWithPredictions, clearPredictionForMatch } = useMatchesWithPredictions(upcomingMatchIds);
+
   // ✅ Maç kartı yüksekliği (minHeight + marginBottom)
   const MATCH_CARD_HEIGHT = 175 + SPACING.md; // ~187px
 
@@ -851,7 +908,11 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
                 style={styles.matchCardWrapper}
               >
                 {/* ✅ Yaklaşan maçlarda Analiz Odağı Modal'ı aç */}
-                {renderMatchCard(match, 'upcoming', () => handleMatchPress(match))}
+                {renderMatchCard(match, 'upcoming', () => handleMatchPress(match), {
+                  hasPrediction: matchIdsWithPredictions.has(match.fixture.id),
+                  matchId: match.fixture.id,
+                  onDeletePrediction: clearPredictionForMatch,
+                })}
               </Animated.View>
             ))}
           </View>
@@ -1860,9 +1921,16 @@ const styles = StyleSheet.create({
   
   // ✅ Yeni Maç Kartı Stilleri (Verilen koddan)
   matchCardContainer: {
-    width: '100%', // ✅ Dikey liste için tam genişlik
+    width: '100%',
     maxWidth: 768,
     minHeight: 175,
+  },
+  matchCardPredictionStarHitArea: {
+    position: 'absolute',
+    top: 10,
+    right: 12,
+    zIndex: 10,
+    padding: 6,
   },
   matchCardWrapper: {
     width: '100%',

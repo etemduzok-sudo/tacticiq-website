@@ -10,6 +10,7 @@ import {
   Platform,
   Dimensions,
   Animated as RNAnimated,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,11 +27,13 @@ const getEnteringAnimation = (index: number = 0, baseDelay: number = 150) => {
 };
 import { logger } from '../utils/logger';
 import { translateCountry } from '../utils/countryUtils';
+import { getTeamColors as getTeamColorsUtil } from '../utils/teamColors';
+import { useMatchesWithPredictions } from '../hooks/useMatchesWithPredictions';
 
 const { width } = Dimensions.get('window');
 
 interface MatchListScreenProps {
-  onMatchSelect: (matchId: string) => void;
+  onMatchSelect: (matchId: string, options?: { initialTab?: string }) => void;
   onMatchResultSelect?: (matchId: string) => void;
   onNavigate?: (screen: string) => void;
   onProfileClick?: () => void;
@@ -95,38 +98,9 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
     };
   }
 
-  // ✅ Helper: Takım renklerini al
+  // ✅ Helper: Takım renklerini al (Global utility kullan - tutarlılık için)
   const getTeamColors = (teamName: string): string[] => {
-    const name = teamName.toLowerCase();
-    const teamColors: Record<string, string[]> = {
-      'fenerbahçe': ['#FFD700', '#0066CC'], // Sarı-Mavi
-      'fenerbahce': ['#FFD700', '#0066CC'],
-      'galatasaray': ['#FF0000', '#FFD700'], // Kırmızı-Sarı
-      'beşiktaş': ['#000000', '#FFFFFF'], // Siyah-Beyaz
-      'besiktas': ['#000000', '#FFFFFF'],
-      'trabzonspor': ['#800020', '#0000FF'], // Bordo-Mavi
-      'real madrid': ['#FFFFFF', '#FFD700'], // Beyaz-Altın
-      'barcelona': ['#A50044', '#004D98'], // Kırmızı-Mavi
-      'paris saint germain': ['#004170', '#ED1C24'], // Mavi-Kırmızı
-      'psg': ['#004170', '#ED1C24'],
-      'türkiye': ['#E30A17', '#FFFFFF'], // Kırmızı-Beyaz
-      'turkey': ['#E30A17', '#FFFFFF'],
-      'almanya': ['#000000', '#DD0000', '#FFCE00'], // Siyah-Kırmızı-Altın
-      'germany': ['#000000', '#DD0000', '#FFCE00'],
-      'brezilya': ['#009C3B', '#FFDF00'], // Yeşil-Sarı
-      'brazil': ['#009C3B', '#FFDF00'],
-      'arjantin': ['#74ACDF', '#FFFFFF'], // Mavi-Beyaz
-      'argentina': ['#74ACDF', '#FFFFFF'],
-      'fethiyespor': ['#0066CC', '#FFD700'],
-      'bayern munich': ['#DC052D', '#FFFFFF'],
-    };
-    
-    for (const [key, colors] of Object.entries(teamColors)) {
-      if (name.includes(key)) return colors;
-    }
-    
-    // Varsayılan renkler
-    return ['#1E40AF', '#FFFFFF'];
+    return getTeamColorsUtil(teamName);
   };
 
   // ✅ Teknik direktör ismini al (2026 Ocak güncel)
@@ -252,6 +226,13 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
     }, []);
     return unique.sort((a, b) => b.fixture.timestamp - a.fixture.timestamp);
   }, [pastMatches, selectedTeamIds, filterByTeamIds]);
+
+  const allMatchIds = React.useMemo(() => {
+    const live = (filteredLiveMatches || []).map(m => m.fixture?.id ?? m.id).filter(Boolean) as number[];
+    const finished = (filteredFinishedMatches || []).map(m => m.fixture?.id ?? m.id).filter(Boolean) as number[];
+    return [...new Set([...live, ...finished])];
+  }, [filteredLiveMatches, filteredFinishedMatches]);
+  const { matchIdsWithPredictions, clearPredictionForMatch } = useMatchesWithPredictions(allMatchIds);
   
   useEffect(() => {
     if (filteredLiveMatches.length > 0) {
@@ -262,10 +243,30 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
     }
   }, [filteredLiveMatches.length]);
 
-  // ✅ Maç kartı bileşeni (Dashboard'daki gibi)
-  const MatchCardComponent = React.memo(({ match, status, onPress }: { match: any; status: 'upcoming' | 'live' | 'finished'; onPress?: () => void }) => {
+  // ✅ Maç kartı bileşeni (Dashboard'daki gibi) – tahmin belirteci ve silme seçeneği
+  const MatchCardComponent = React.memo(({ match, status, onPress, hasPrediction, matchId, onDeletePrediction }: { 
+    match: any; 
+    status: 'upcoming' | 'live' | 'finished'; 
+    onPress?: () => void;
+    hasPrediction?: boolean;
+    matchId?: number;
+    onDeletePrediction?: (matchId: number) => void;
+  }) => {
     const homeColors = getTeamColors(match.teams.home.name);
     const awayColors = getTeamColors(match.teams.away.name);
+    
+    const handleLongPress = () => {
+      if (hasPrediction && matchId != null && onDeletePrediction) {
+        Alert.alert(
+          'Tahmini sil',
+          'Bu maça yaptığınız tahmini silmek istiyor musunuz? Maç detayına girerek kadro ve tahminleri tekrar kurabilir veya güncelleyebilirsiniz.',
+          [
+            { text: 'Vazgeç', style: 'cancel' },
+            { text: 'Sil', style: 'destructive', onPress: () => onDeletePrediction(matchId) },
+          ]
+        );
+      }
+    };
     
     // Pulse animasyonu (canlı maçlar için)
     const pulseAnim = React.useRef(new RNAnimated.Value(1)).current;
@@ -297,6 +298,7 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
       <TouchableOpacity
         style={matchCardStyles.matchCardContainer}
         onPress={onPress}
+        onLongPress={handleLongPress}
         activeOpacity={0.8}
       >
         <LinearGradient
@@ -429,14 +431,44 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
               </View>
             ) : null}
           </View>
+          {/* Tahmin yaptınız: sarı yıldız — en üstte (son child) ki tıklanabilsin */}
+          {hasPrediction && matchId != null && onDeletePrediction && (
+            <TouchableOpacity
+              style={matchCardStyles.matchCardPredictionStarHitArea}
+              onPress={(e) => {
+                e?.stopPropagation?.();
+                Alert.alert(
+                  'Tahmini sil',
+                  'Bu maça yaptığınız tahmini silmek istiyor musunuz?',
+                  [
+                    { text: 'Vazgeç', style: 'cancel' },
+                    { text: 'Sil', style: 'destructive', onPress: () => onDeletePrediction(matchId) },
+                  ]
+                );
+              }}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              activeOpacity={1}
+            >
+              <Ionicons name="star" size={20} color="#fbbf24" />
+            </TouchableOpacity>
+          )}
         </LinearGradient>
       </TouchableOpacity>
     );
   });
 
-  // Wrapper function for backward compatibility
   const renderMatchCard = (match: any, status: 'upcoming' | 'live' | 'finished', onPress?: () => void) => {
-    return <MatchCardComponent match={match} status={status} onPress={onPress} />;
+    const mid = match.fixture?.id ?? match.id;
+    return (
+      <MatchCardComponent
+        match={match}
+        status={status}
+        onPress={onPress}
+        hasPrediction={mid != null ? matchIdsWithPredictions.has(mid) : false}
+        matchId={mid}
+        onDeletePrediction={clearPredictionForMatch}
+      />
+    );
   };
 
   return (
@@ -524,7 +556,8 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
                         }}
                       >
                         {renderMatchCard(match, 'finished', () => {
-                          onMatchResultSelect?.(matchId) || onMatchSelect(matchId);
+                          const hasPred = (match.fixture?.id != null && matchIdsWithPredictions.has(match.fixture.id));
+                          onMatchResultSelect?.(matchId) || onMatchSelect(matchId, hasPred ? { initialTab: 'prediction' } : undefined);
                         })}
                       </Animated.View>
                     );
@@ -585,7 +618,6 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
                         }}
                       >
                         {renderMatchCard(match, 'live', () => {
-                          // Maç kartına scroll yap
                           const cardY = matchCardPositions.current[matchId];
                           if (cardY !== undefined && scrollViewRef.current) {
                             scrollViewRef.current.scrollTo({
@@ -593,7 +625,8 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
                               animated: true,
                             });
                           }
-                          onMatchSelect(matchId);
+                          const hasPred = (match.fixture?.id != null && matchIdsWithPredictions.has(match.fixture.id));
+                          onMatchSelect(matchId, hasPred ? { initialTab: 'prediction' } : undefined);
                         })}
                       </Animated.View>
                     );
@@ -868,6 +901,13 @@ const matchCardStyles = StyleSheet.create({
   matchCardContainer: {
     width: '100%',
     marginBottom: 16,
+  },
+  matchCardPredictionStarHitArea: {
+    position: 'absolute',
+    top: 10,
+    right: 12,
+    zIndex: 10,
+    padding: 6,
   },
   matchCard: {
     width: '100%',

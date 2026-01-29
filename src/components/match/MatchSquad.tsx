@@ -15,7 +15,10 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../../config/supabase';
+import { STORAGE_KEYS } from '../../config/constants';
 import { squadPredictionsApi } from '../../services/api';
+import { predictionsDb } from '../../services/databaseService';
+import { ConfirmModal, ConfirmButton } from '../ui/ConfirmModal';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { 
@@ -54,6 +57,8 @@ interface MatchSquadProps {
   /** Sadece bu takım(lar)ın kadrosu gösterilir; rakip gizlenir. Boşsa tüm kadro gösterilir. */
   favoriteTeamIds?: number[];
   onComplete: () => void;
+  /** Atak formasyonu değişikliği onaylandıktan sonra (tahminler silindikten sonra) çağrılır – örn. Dashboard'a dönüp analiz odağı seçimi gösterilsin */
+  onAttackFormationChangeConfirmed?: () => void;
 }
 
 /** API'den gelen tüm kaleci varyantlarını tanı (G, GK, Goalkeeper vb.) */
@@ -347,6 +352,15 @@ const formations = [
   },
 ];
 
+/** Formasyon ID → pozisyon etiketleri (GK, LB, CB, ...) – Kadro ve Tahmin aynı gösterim için */
+export const formationLabels: Record<string, string[]> = formations.reduce(
+  (acc, f) => {
+    acc[f.id] = f.positions;
+    return acc;
+  },
+  {} as Record<string, string[]>
+);
+
 // Formation Positions - ALL 26 FORMATIONS - Optimized spacing to prevent overlap
 // Minimum horizontal gap: 20%, Edge padding: 12-88%, GK max y: 88%
 export const formationPositions: Record<string, Array<{ x: number; y: number }>> = {
@@ -628,7 +642,7 @@ const FootballField = ({ children, style }: any) => (
   </View>
 );
 
-export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], onComplete }: MatchSquadProps) {
+export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], onComplete, onAttackFormationChangeConfirmed }: MatchSquadProps) {
   // ✅ Takım ID'lerini matchData'dan al
   const homeTeamId = matchData?.teams?.home?.id || matchData?.homeTeam?.id;
   const awayTeamId = matchData?.teams?.away?.id || matchData?.awayTeam?.id;
@@ -679,7 +693,8 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
         if (fetchHome && homeRes?.data?.players) {
           homeRes.data.players.forEach((p: any) => {
             allPlayers.push({
-              id: p.id, name: p.name, position: normalizePosition(p.position), rating: 75,
+              id: p.id, name: p.name, position: normalizePosition(p.position), 
+              rating: p.rating || 75, // ✅ Backend'den gelen gerçek rating
               number: p.number, team: homeTeamName, teamId: homeTeamId,
               form: 7, injury: p.injured || false, age: p.age || 25,
               nationality: p.nationality || 'Unknown', photo: p.photo,
@@ -690,7 +705,8 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
         if (fetchAway && awayRes?.data?.players) {
           awayRes.data.players.forEach((p: any) => {
             allPlayers.push({
-              id: p.id, name: p.name, position: normalizePosition(p.position), rating: 75,
+              id: p.id, name: p.name, position: normalizePosition(p.position), 
+              rating: p.rating || 75, // ✅ Backend'den gelen gerçek rating
               number: p.number, team: awayTeamName, teamId: awayTeamId,
               form: 7, injury: p.injured || false, age: p.age || 25,
               nationality: p.nationality || 'Unknown', photo: p.photo,
@@ -718,10 +734,36 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
     
     // Her iki takımın oyuncularını birleştir
     const allPlayers: any[] = [];
-    lineups.forEach((lineup: any) => {
-      const teamName = lineup.team?.name || 'Unknown';
-      const teamId = lineup.team?.id;
+    lineups.forEach((lineup: any, index: number) => {
+      const lineupTeamId = lineup.team?.id;
+      const lineupTeamName = lineup.team?.name || 'Unknown';
       const teamColors = lineup.team?.colors; // Backend'den gelen team colors
+      
+      // ✅ Takım ID'yi doğrula ve eşleştir
+      let finalTeamId = lineupTeamId;
+      let finalTeamName = lineupTeamName;
+      
+      // Eğer lineup team.id matchData ile eşleşiyorsa kullan
+      if (lineupTeamId === homeTeamId) {
+        finalTeamId = homeTeamId;
+        finalTeamName = homeTeamName;
+      } else if (lineupTeamId === awayTeamId) {
+        finalTeamId = awayTeamId;
+        finalTeamName = awayTeamName;
+      } else {
+        // Eşleşme yoksa, lineup sırasına göre ata (ilk = home, ikinci = away)
+        if (index === 0 && homeTeamId) {
+          finalTeamId = homeTeamId;
+          finalTeamName = homeTeamName;
+          console.warn(`⚠️ Lineup[0] team ID mismatch: lineup.team.id=${lineupTeamId}, assigning to HOME (${homeTeamId})`);
+        } else if (index === 1 && awayTeamId) {
+          finalTeamId = awayTeamId;
+          finalTeamName = awayTeamName;
+          console.warn(`⚠️ Lineup[1] team ID mismatch: lineup.team.id=${lineupTeamId}, assigning to AWAY (${awayTeamId})`);
+        } else {
+          console.error(`❌ Cannot match lineup[${index}] team ID ${lineupTeamId} to home (${homeTeamId}) or away (${awayTeamId})`);
+        }
+      }
       
       // Başlangıç 11'i ekle
       if (lineup.startXI) {
@@ -733,17 +775,17 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
             id: player.id,
             name: player.name,
             position: normalizePosition(player.pos || player.position),
-            rating: player.rating || 75,
+            rating: player.rating || 75, // ✅ Backend'den gelen gerçek rating
             number: player.number,
-            team: teamName,
-            teamId: teamId,
+            team: finalTeamName, // ✅ Doğrulanmış takım adı
+            teamId: finalTeamId, // ✅ Doğrulanmış takım ID
             teamColors: teamColors,
             form: 7,
             injury: false,
             age: player.age || 25,
             nationality: player.nationality || 'Unknown',
             grid: player.grid,
-            stats: { pace: 70, shooting: 70, passing: 70, dribbling: 70, defending: 70, physical: 70 }
+            stats: player.stats || { pace: 70, shooting: 70, passing: 70, dribbling: 70, defending: 70, physical: 70 } // ✅ Backend'den gelen stats varsa kullan
           });
         });
       }
@@ -756,21 +798,26 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
             id: player.id,
             name: player.name,
             position: normalizePosition(player.pos || player.position),
-            rating: player.rating || 70,
+            rating: player.rating || 70, // ✅ Backend'den gelen gerçek rating
             number: player.number,
-            team: teamName,
-            teamId: teamId,
+            team: finalTeamName, // ✅ Doğrulanmış takım adı
+            teamId: finalTeamId, // ✅ Doğrulanmış takım ID
             teamColors: teamColors,
             form: 6,
             injury: false,
             age: player.age || 25,
             nationality: player.nationality || 'Unknown',
             grid: player.grid,
-            stats: { pace: 65, shooting: 65, passing: 65, dribbling: 65, defending: 65, physical: 65 }
+            stats: player.stats || { pace: 65, shooting: 65, passing: 65, dribbling: 65, defending: 65, physical: 65 } // ✅ Backend'den gelen stats varsa kullan
           });
         });
       }
     });
+
+      // ✅ Debug: Takım dağılımını kontrol et
+      const homePlayers = allPlayers.filter((p: any) => p.teamId === homeTeamId);
+      const awayPlayers = allPlayers.filter((p: any) => p.teamId === awayTeamId);
+      console.log(`🔍 Lineups team check: homeTeamId=${homeTeamId} (${homeTeamName}) → ${homePlayers.length} players, awayTeamId=${awayTeamId} (${awayTeamName}) → ${awayPlayers.length} players`);
 
       // ✅ Sadece favori takım(lar)ın kadrosu – rakip gizlenir
       const filtered = favoriteTeamIds.length > 0
@@ -802,6 +849,7 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
   
   // ✅ Confirmation modal for defense formation
   const [showDefenseConfirmModal, setShowDefenseConfirmModal] = useState(false);
+  const [formationConfirmModal, setFormationConfirmModal] = useState<{ formationId: string } | null>(null);
   
   // ✅ Track if defense confirmation was already shown
   const [defenseConfirmShown, setDefenseConfirmShown] = useState(false);
@@ -837,6 +885,7 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
   }, [matchId]);
   
   // ✅ Her state değişikliğinde AsyncStorage'a kaydet (sekme değişimlerinde korunsun)
+  // Kadro tamamlandıysa (isCompleted) attackPlayersArray/defensePlayersArray asla silinmez.
   React.useEffect(() => {
     if (!stateRestored) return; // İlk yüklemede kaydetme
     
@@ -845,8 +894,9 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
         const key = `fan-manager-squad-${matchId}`;
         const raw = await AsyncStorage.getItem(key);
         const existing = raw ? JSON.parse(raw) : {};
+        const wasCompleted = existing.isCompleted === true;
         
-        const updated = {
+        const updated: Record<string, any> = {
           ...existing,
           matchId,
           attackFormation,
@@ -855,9 +905,25 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
           defensePlayers,
           editingMode,
           defenseConfirmShown,
-          // isCompleted sadece Tamamla basılınca true olacak
-          isCompleted: existing.isCompleted || false,
+          isCompleted: wasCompleted || false,
         };
+        
+        // ✅ Kadro tamamlandıysa Tamamla ile kaydedilen alanları koru; boş gelmesin
+        if (wasCompleted) {
+          if (existing.attackPlayersArray && existing.attackPlayersArray.length >= 11) {
+            updated.attackPlayersArray = existing.attackPlayersArray;
+          } else {
+            const arr = Object.values(attackPlayers).filter(Boolean);
+            if (arr.length >= 11) updated.attackPlayersArray = arr;
+          }
+          if (existing.defensePlayersArray && existing.defensePlayersArray.length >= 11) {
+            updated.defensePlayersArray = existing.defensePlayersArray;
+          } else if (updated.defensePlayersArray == null) {
+            const defArr = Object.values(defensePlayers).filter(Boolean);
+            if (defArr.length >= 11) updated.defensePlayersArray = defArr;
+          }
+          if (existing.attackFormationName) updated.attackFormationName = existing.attackFormationName;
+        }
         
         await AsyncStorage.setItem(key, JSON.stringify(updated));
       } catch (e) {
@@ -923,19 +989,32 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
     transform: [{ scale: isWeb ? 1 : scale.value }],
   }));
 
-  const handleFormationSelect = async (formationId: string) => {
+  const applyFormationChange = (formationId: string) => {
     const formation = formations.find(f => f.id === formationId);
-    
     if (editingMode === 'attack') {
-      // ✅ Attack formation selected - Start placing players
       setAttackFormation(formationId);
       setAttackPlayers({});
       setDefenseFormation(null);
       setDefensePlayers({});
       setDefenseConfirmShown(false);
       setShowFormationModal(false);
-      
-      // ✅ isCompleted sıfırla (Tahmin sekmesinde saha boş olsun)
+      Alert.alert('Atak Formasyonu Seçildi!', `${formation?.name}\n\nŞimdi 11 oyuncunuzu pozisyonlara yerleştirin.`);
+    } else {
+      setDefenseFormation(formationId);
+      const defFormation = formations.find(f => f.id === formationId);
+      if (defFormation && Object.keys(attackPlayers).length === 11) {
+        const defPlayers: Record<number, typeof players[0] | null> = {};
+        const attackPlayersList = Object.values(attackPlayers).filter(Boolean) as typeof players;
+        const goalkeeper = attackPlayersList.find(p => isGoalkeeperPlayer(p));
+        if (goalkeeper) defPlayers[0] = goalkeeper;
+        setDefensePlayers(defPlayers);
+        setEditingMode('defense');
+      }
+      setShowFormationModal(false);
+      Alert.alert('Defans Formasyonu Seçildi!', `${formation?.name}\n\nKaleci otomatik yerleştirildi. Diğer 10 oyuncuyu defans pozisyonlarına yerleştirin.`);
+    }
+    // isCompleted sıfırla (Tahmin sekmesinde saha boş olsun)
+    (async () => {
       try {
         const key = `fan-manager-squad-${matchId}`;
         const raw = await AsyncStorage.getItem(key);
@@ -945,30 +1024,80 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
           await AsyncStorage.setItem(key, JSON.stringify(parsed));
         }
       } catch (e) { console.warn('isCompleted reset failed', e); }
-      
-      Alert.alert('Atak Formasyonu Seçildi!', `${formation?.name}\n\nŞimdi 11 oyuncunuzu pozisyonlara yerleştirin.`);
-    } else {
-      // ✅ Defense formation selected
-      setDefenseFormation(formationId);
-      // ✅ Sadece kaleci otomatik kalacak, diğer 10 oyuncu boş (oyuncu manuel yerleştirecek)
-      const defFormation = formations.find(f => f.id === formationId);
-      if (defFormation && Object.keys(attackPlayers).length === 11) {
-        const defPlayers: Record<number, typeof players[0] | null> = {};
-        const attackPlayersList = Object.values(attackPlayers).filter(Boolean) as typeof players;
-        
-        // Sadece kaleci otomatik yerleştir (index 0 = GK pozisyonu)
-        const goalkeeper = attackPlayersList.find(p => isGoalkeeperPlayer(p));
-        if (goalkeeper) {
-          defPlayers[0] = goalkeeper;
+    })();
+  };
+
+  const handleFormationSelect = async (formationId: string) => {
+    // ✅ Uyarı SADECE atak formasyonu değiştiğinde: modal'da "Atak" sekmesindeyken farklı formasyon seçilirse.
+    // Defans formasyonu seçildiğinde bu uyarı hiç gelmez (defans aynı 11'i kullanır, tahminler silinmez).
+    const isAttackFormationChange =
+      formationType === 'attack' &&
+      attackFormation != null &&
+      formationId !== attackFormation;
+
+    if (isAttackFormationChange) {
+      // ✅ Uyarı SADECE kadro "Tamamla" ile tamamlanmışsa gösterilir (oyuncu atanmış + Tamamla basılmış)
+      let squadIsCompleted = false;
+      try {
+        const squadRaw = await AsyncStorage.getItem(`fan-manager-squad-${matchId}`);
+        if (squadRaw) {
+          const squad = JSON.parse(squadRaw);
+          squadIsCompleted = squad?.isCompleted === true;
         }
-        // Diğer 10 pozisyon (index 1-10) boş kalacak - oyuncu manuel yerleştirecek
-        
-        setDefensePlayers(defPlayers);
-        setEditingMode('defense');
+      } catch (_) {}
+
+      if (squadIsCompleted) {
+        const clearAndApply = async () => {
+          try {
+            await AsyncStorage.removeItem(STORAGE_KEYS.PREDICTIONS + matchId);
+            await AsyncStorage.removeItem(`fan-manager-predictions-${matchId}`);
+            const userDataStr = await AsyncStorage.getItem(STORAGE_KEYS.USER);
+            const userData = userDataStr ? JSON.parse(userDataStr) : null;
+            const userId = userData?.id;
+            if (userId) {
+              await predictionsDb.deletePredictionsByMatch(userId, String(matchId));
+            }
+            const key = `fan-manager-squad-${matchId}`;
+            const raw = await AsyncStorage.getItem(key);
+            if (raw) {
+              const parsed = JSON.parse(raw);
+              parsed.isCompleted = false;
+              await AsyncStorage.setItem(key, JSON.stringify(parsed));
+            }
+          } catch (e) { console.warn('Clear predictions failed', e); }
+          applyFormationChange(formationId);
+        };
+
+        setFormationConfirmModal({ formationId });
+        return;
       }
-      setShowFormationModal(false);
-      Alert.alert('Defans Formasyonu Seçildi!', `${formation?.name}\n\nKaleci otomatik yerleştirildi. Diğer 10 oyuncuyu defans pozisyonlarına yerleştirin.`);
     }
+
+    applyFormationChange(formationId);
+  };
+
+  const runFormationChangeConfirm = async () => {
+    const id = formationConfirmModal?.formationId;
+    if (!id) return;
+    try {
+      await AsyncStorage.removeItem(STORAGE_KEYS.PREDICTIONS + matchId);
+      await AsyncStorage.removeItem(`fan-manager-predictions-${matchId}`);
+      const userDataStr = await AsyncStorage.getItem(STORAGE_KEYS.USER);
+      const userData = userDataStr ? JSON.parse(userDataStr) : null;
+      const userId = userData?.id;
+      if (userId) await predictionsDb.deletePredictionsByMatch(userId, String(matchId));
+      const raw = await AsyncStorage.getItem(`fan-manager-squad-${matchId}`);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        parsed.isCompleted = false;
+        await AsyncStorage.setItem(`fan-manager-squad-${matchId}`, JSON.stringify(parsed));
+      }
+    } catch (e) { console.warn('Clear predictions failed', e); }
+    applyFormationChange(id);
+    setFormationConfirmModal(null);
+    setShowFormationModal(false);
+    // ✅ Analiz odağı seçimi tekrar gösterilsin: Dashboard'a dön; kullanıcı maça tıklayınca analiz odağı modal açılır
+    onAttackFormationChangeConfirmed?.();
   };
   
   // ✅ Handle defense confirmation
@@ -1104,33 +1233,34 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
       
       console.log('✅ Squad saved to local storage!', squadData);
       
-      // ✅ Save to backend for statistics tracking
-      try {
-        const { data: sessionData } = await supabase.auth.getSession();
-        const authToken = sessionData?.session?.access_token;
-        
-        if (authToken) {
-          const result = await squadPredictionsApi.saveSquadPrediction({
-            matchId: matchId, // Use matchId prop
-            attackFormation: attackFormation!,
-            attackPlayers: attackPlayers,
-            defenseFormation: defenseFormation || attackFormation!,
-            defensePlayers: defenseFormation ? defensePlayers : attackPlayers,
-            analysisFocus: matchData.analysisFocus || 'balanced',
-          }, authToken);
-          
-          if (result.success) {
-            console.log('✅ Squad saved to backend for statistics!');
-          } else {
-            console.warn('⚠️ Backend save failed:', result.message);
-          }
-        }
-      } catch (backendError) {
-        console.warn('⚠️ Backend save failed (continuing with local):', backendError);
-      }
+      // ✅ Tahmin sekmesine hemen geç – backend kaydı bunu engellemesin
+      if (__DEV__) console.log('🔄 Switching to Prediction tab...');
+      InteractionManager.runAfterInteractions(() => {
+        if (__DEV__) console.log('🔄 onComplete() called');
+        onComplete();
+      });
       
-      // Tahmin sekmesine geç (animasyonlar/commit sonrası parent state güncellenir)
-      InteractionManager.runAfterInteractions(() => onComplete());
+      // ✅ Backend'e arka planda kaydet (başarısız olsa da sekme geçişi yapıldı)
+      (async () => {
+        try {
+          const { data: sessionData } = await supabase.auth.getSession();
+          const authToken = sessionData?.session?.access_token;
+          if (authToken) {
+            const result = await squadPredictionsApi.saveSquadPrediction({
+              matchId: matchId,
+              attackFormation: attackFormation!,
+              attackPlayers: attackPlayers,
+              defenseFormation: defenseFormation || attackFormation!,
+              defensePlayers: defenseFormation ? defensePlayers : attackPlayers,
+              analysisFocus: matchData.analysisFocus || 'balanced',
+            }, authToken);
+            if (result.success) console.log('✅ Squad saved to backend!');
+            else console.warn('⚠️ Backend save failed:', result.message);
+          }
+        } catch (e) {
+          console.warn('⚠️ Backend save failed (local OK):', e);
+        }
+      })();
     } catch (error) {
       console.error('Error saving squad:', error);
       Alert.alert('Hata!', 'Kadro kaydedilemedi. Lütfen tekrar deneyin.');
@@ -1205,25 +1335,17 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
             {positions?.map((pos, index) => {
               const player = selectedPlayers[index];
               const positionLabel = formation?.positions[index] || '';
-              
-              // ✅ En ilerideki oyuncuyu bul (en küçük y değeri = en ilerideki)
-              const allYPositions = positions?.map(p => p.y) || [];
-              const minY = Math.min(...allYPositions);
-              const isForwardmost = pos.y === minY;
-              // En ilerideki oyuncuyu birkaç piksel aşağı kaydır (kesilmesini engelle, diğerlerini bozma)
-              const adjustedTop = isForwardmost ? `${pos.y + 3}%` : `${pos.y}%`;
 
               return (
                 <View
-                  key={index}
+                  key={player ? `player-${player.id}-${index}` : `slot-${index}`} // ✅ Stable key - sıçramayı önler
                   style={[
                     styles.playerSlot,
-                    { left: `${pos.x}%`, top: adjustedTop },
+                    { left: `${pos.x}%`, top: `${pos.y}%` }, // ✅ Sabit pozisyon - animasyon yok
                   ]}
                 >
                   {player ? (
-                    <Animated.View entering={isWeb ? undefined : ZoomIn.duration(300)}>
-                      <View style={styles.playerCardWrapper}>
+                    <View style={styles.playerCardWrapper}>
                         {/* Remove button - Top Right */}
                         <TouchableOpacity
                           style={styles.removeButton}
@@ -1283,7 +1405,6 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
                           </LinearGradient>
                         </TouchableOpacity>
                       </View>
-                    </Animated.View>
                   ) : (
                     <TouchableOpacity
                       style={styles.emptySlot}
@@ -1332,7 +1453,7 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
               activeOpacity={0.8}
             >
               <LinearGradient
-                colors={isCompleteButtonActive ? ['#1FA2A6', '#047857'] : ['#374151', '#374151']}
+                colors={isCompleteButtonActive ? ['#1FA2A6', '#0F2A24'] : ['#374151', '#374151']} // ✅ Design System: Secondary → Primary gradient
                 style={styles.completeButtonGradient}
               >
                 <Text style={styles.completeButtonText}>Tamamla</Text>
@@ -1438,6 +1559,34 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
           </View>
         </View>
       </Modal>
+
+      {/* Atak formasyonu değişikliği – uygulama içi onay popup */}
+      {formationConfirmModal && (
+        <ConfirmModal
+          visible={true}
+          title="Atak formasyonu değişikliği"
+          message="Bu maç için kadro tamamlanmış. Atak formasyonu değişince tüm tahmin verileri silinecek ve Tahmin sekmesi sıfırlanacak. Onaylıyor musunuz?"
+          buttons={[
+            {
+              text: 'İptal',
+              style: 'cancel',
+              onPress: () => {
+                setShowFormationModal(false);
+                setFormationConfirmModal(null);
+              },
+            },
+            {
+              text: 'Onayla',
+              style: 'destructive',
+              onPress: () => runFormationChangeConfirm(),
+            },
+          ]}
+          onRequestClose={() => {
+            setShowFormationModal(false);
+            setFormationConfirmModal(null);
+          }}
+        />
+      )}
     </View>
   );
 }
@@ -1990,12 +2139,12 @@ const PlayerModal = ({ visible, players, selectedPlayers, positionLabel, onSelec
                 {previewPlayer.stats && (
                   <View style={styles.playerCardStatsGrid}>
                     {[
-                      { label: 'HIZ', value: previewPlayer.stats.pace, icon: 'flash' },
-                      { label: 'ŞUT', value: previewPlayer.stats.shooting, icon: 'football' },
-                      { label: 'PAS', value: previewPlayer.stats.passing, icon: 'swap-horizontal' },
-                      { label: 'DRİBLİNG', value: previewPlayer.stats.dribbling, icon: 'walk' },
-                      { label: 'DEFANS', value: previewPlayer.stats.defending, icon: 'shield' },
-                      { label: 'FİZİK', value: previewPlayer.stats.physical, icon: 'fitness' },
+                      { label: 'HIZ', value: previewPlayer.stats.pace ?? 70, icon: 'flash' },
+                      { label: 'ŞUT', value: previewPlayer.stats.shooting ?? 70, icon: 'football' },
+                      { label: 'PAS', value: previewPlayer.stats.passing ?? 70, icon: 'swap-horizontal' },
+                      { label: 'DRİBLİNG', value: previewPlayer.stats.dribbling ?? 70, icon: 'walk' },
+                      { label: 'DEFANS', value: previewPlayer.stats.defending ?? 70, icon: 'shield' },
+                      { label: 'FİZİK', value: previewPlayer.stats.physical ?? 70, icon: 'fitness' },
                     ].map((stat, index) => (
                       <View key={index} style={styles.playerCardStatItem}>
                         <View style={[
@@ -2092,9 +2241,11 @@ const PlayerDetailModal = ({ player, onClose }: any) => {
             <View style={styles.playerDetailHeaderContent}>
               <View style={[
                 styles.playerDetailRating,
-                { backgroundColor: player.rating >= 85 ? '#C9A44C' : '#1FA2A6' } // ✅ Design System
+                { backgroundColor: (player.rating || 75) >= 85 ? '#C9A44C' : '#1FA2A6' } // ✅ Design System
               ]}>
-                <Text style={styles.playerDetailRatingText}>{player.rating}</Text>
+                <Text style={styles.playerDetailRatingText}>
+                  {Math.max(65, Math.min(95, player.rating || 75))}
+                </Text>
               </View>
 
               <View style={styles.playerDetailInfo}>
@@ -2129,7 +2280,7 @@ const PlayerDetailModal = ({ player, onClose }: any) => {
             <Text style={styles.playerDetailSectionTitle}>📊 Oyuncu İstatistikleri</Text>
             
             <View style={styles.statsGrid}>
-              {Object.entries(player.stats).map(([key, value]: [string, any]) => {
+              {Object.entries(player.stats || {}).map(([key, value]: [string, any]) => {
                 const statNames: Record<string, string> = {
                   pace: 'Hız',
                   shooting: 'Şut',
@@ -2139,7 +2290,9 @@ const PlayerDetailModal = ({ player, onClose }: any) => {
                   physical: 'Fizik'
                 };
                 
-                const statColor = value >= 80 ? '#1FA2A6' : value >= 70 ? '#F59E0B' : '#9CA3AF';
+                // ✅ Stats değerini clamp et: minimum 50, maximum 99
+                const clampedValue = Math.max(50, Math.min(99, Number(value) || 70));
+                const statColor = clampedValue >= 80 ? '#1FA2A6' : clampedValue >= 70 ? '#F59E0B' : '#9CA3AF';
                 
                 return (
                   <View key={key} style={styles.statItem}>
@@ -2149,11 +2302,11 @@ const PlayerDetailModal = ({ player, onClose }: any) => {
                         <View 
                           style={[
                             styles.statBarFill, 
-                            { width: `${value}%`, backgroundColor: statColor }
+                            { width: `${clampedValue}%`, backgroundColor: statColor }
                           ]} 
                         />
                       </View>
-                      <Text style={[styles.statValue, { color: statColor }]}>{value}</Text>
+                      <Text style={[styles.statValue, { color: statColor }]}>{clampedValue}</Text>
                     </View>
                   </View>
                 );
@@ -2516,12 +2669,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: 'rgba(30, 41, 59, 0.8)',
+    backgroundColor: '#1E3A3A', // ✅ Design System: Primary tonu (koyu yeşil kart)
     borderRadius: 10,
     paddingVertical: 8,
     paddingHorizontal: 10,
     borderWidth: 1,
-    borderColor: 'rgba(5, 150, 105, 0.3)',
+    borderColor: 'rgba(31, 162, 166, 0.3)', // ✅ Design System: Secondary opacity
     marginTop: 6,
   },
   bottomBarLeft: {
@@ -2535,7 +2688,7 @@ const styles = StyleSheet.create({
   },
   changeFormationText: {
     fontSize: 12,
-    color: '#1FA2A6',
+    color: '#1FA2A6', // ✅ Design System: Secondary (turkuaz)
     fontWeight: '500',
     flex: 1,
   },
@@ -2547,7 +2700,7 @@ const styles = StyleSheet.create({
   playerCount: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: '#E6E6E6', // ✅ Design System: DARK_MODE.foreground
   },
   completeButton: {
     borderRadius: 8,

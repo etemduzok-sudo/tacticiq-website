@@ -4,6 +4,7 @@ import {
   View,
   Text,
   TouchableOpacity,
+  Pressable,
   StyleSheet,
   ScrollView,
   SafeAreaView,
@@ -15,7 +16,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { formationPositions } from './MatchSquad';
+import { formationPositions, formationLabels } from './MatchSquad';
 import Animated, { 
   FadeIn,
   SlideInDown,
@@ -36,6 +37,7 @@ import { FocusPrediction, SCORING_CONSTANTS } from '../../types/prediction.types
 import { SCORING, TEXT, STORAGE_KEYS } from '../../config/constants';
 import { handleError, ErrorType, ErrorSeverity } from '../../utils/GlobalErrorHandler';
 import { predictionsDb } from '../../services/databaseService';
+import { ConfirmModal, ConfirmButton } from '../ui/ConfirmModal';
 
 // Web için Slider polyfill
 import SliderNative from '@react-native-community/slider';
@@ -67,6 +69,58 @@ if (Platform.OS === 'web') {
 }
 
 const { width, height } = Dimensions.get('window');
+
+// ✅ Pozisyon isimlerini kısaltmaya çevir (MatchSquad ile uyumlu)
+function getPositionAbbreviation(position: string): string {
+  if (!position) return '';
+  
+  const pos = position.toUpperCase().trim();
+  
+  // Zaten kısaltma ise olduğu gibi döndür
+  if (pos.length <= 3 && /^[A-Z]+$/.test(pos)) {
+    return pos;
+  }
+  
+  // Tam isimleri kısaltmaya çevir
+  const lower = position.toLowerCase();
+  
+  // Kaleci
+  if (lower.includes('goalkeeper') || lower === 'gk' || lower === 'g') {
+    return 'GK';
+  }
+  
+  // Savunma
+  if (lower.includes('defender') || lower.includes('defence') || lower.includes('defense')) {
+    // Spesifik pozisyonları kontrol et
+    if (lower.includes('left') && lower.includes('back')) return 'LB';
+    if (lower.includes('right') && lower.includes('back')) return 'RB';
+    if (lower.includes('centre') || lower.includes('center')) return 'CB';
+    if (lower.includes('left') && lower.includes('wing')) return 'LWB';
+    if (lower.includes('right') && lower.includes('wing')) return 'RWB';
+    return 'DEF'; // Genel savunma
+  }
+  
+  // Orta saha
+  if (lower.includes('midfielder') || lower.includes('midfield')) {
+    if (lower.includes('defensive')) return 'CDM';
+    if (lower.includes('attacking') || lower.includes('attack')) return 'CAM';
+    if (lower.includes('left')) return 'LM';
+    if (lower.includes('right')) return 'RM';
+    if (lower.includes('centre') || lower.includes('center')) return 'CM';
+    return 'MID'; // Genel orta saha
+  }
+  
+  // Hücum
+  if (lower.includes('attacker') || lower.includes('forward') || lower.includes('striker')) {
+    if (lower.includes('left') && lower.includes('wing')) return 'LW';
+    if (lower.includes('right') && lower.includes('wing')) return 'RW';
+    if (lower.includes('centre') || lower.includes('center') || lower.includes('forward')) return 'CF';
+    return 'ST'; // Genel forvet
+  }
+  
+  // Bilinmeyen pozisyonlar için ilk 3 harfi büyük harfle döndür
+  return position.substring(0, 3).toUpperCase();
+}
 
 interface MatchPredictionScreenProps {
   matchData: any;
@@ -250,25 +304,32 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
   
   // 🌟 STRATEGIC FOCUS SYSTEM
   const [focusedPredictions, setFocusedPredictions] = useState<FocusPrediction[]>([]);
-  
-  // Load squad data on mount – SADECE isCompleted true ise oyuncuları göster
+  const [confirmModal, setConfirmModal] = useState<{
+    title: string;
+    message: string;
+    buttons: ConfirmButton[];
+  } | null>(null);
+  // Load squad data on mount – Kadro tamamlandıysa (isCompleted) atak/defans hiç boş gelmemeli
   React.useEffect(() => {
     const loadSquad = async () => {
       try {
-        const squadData = await AsyncStorage.getItem(`fan-manager-squad-${matchId}`);
+        const key = matchId ? `fan-manager-squad-${matchId}` : null;
+        if (!key) { setSquadLoaded(true); return; }
+        const squadData = await AsyncStorage.getItem(key);
         if (squadData) {
           const parsed = JSON.parse(squadData);
-          
-          // ✅ Sadece Tamamla basıldıysa (isCompleted: true) oyuncuları yükle
           if (parsed.isCompleted === true) {
-            if (parsed.attackPlayersArray && Array.isArray(parsed.attackPlayersArray)) {
-              setAttackPlayersArray(parsed.attackPlayersArray);
-            } else if (parsed.attackPlayers) {
-              const array = Object.values(parsed.attackPlayers).filter(Boolean);
-              setAttackPlayersArray(array);
+            let arr: any[] = [];
+            if (parsed.attackPlayersArray && Array.isArray(parsed.attackPlayersArray) && parsed.attackPlayersArray.length >= 11) {
+              arr = parsed.attackPlayersArray;
+            } else if (parsed.attackPlayers && typeof parsed.attackPlayers === 'object') {
+              arr = Object.values(parsed.attackPlayers).filter(Boolean);
             }
-            setAttackFormation(parsed.attackFormation || null);
-            setIsSquadCompleted(true);
+            if (arr.length >= 11) {
+              setAttackPlayersArray(arr);
+              setAttackFormation(parsed.attackFormation || null);
+              setIsSquadCompleted(true);
+            }
           }
           setSquadLoaded(true);
         } else {
@@ -281,6 +342,10 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
     };
     loadSquad();
   }, [matchId]);
+
+  React.useEffect(() => {
+    if (__DEV__) console.log('📌 MatchPrediction mounted (build: focus+confirm+tamamla-fix)');
+  }, []);
 
   // Match predictions state - COMPLETE
   const [predictions, setPredictions] = useState({
@@ -446,31 +511,44 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
     }));
   };
 
-  // 🌟 Toggle Focus (Star) on a prediction
+  // 🌟 Toggle Focus (Star) – uygulama içi ConfirmModal popup (tarayıcı confirm/alert yok)
   const toggleFocus = (category: string, playerId?: number) => {
-    setFocusedPredictions(prev => {
-      const existingIndex = prev.findIndex(
-        fp => fp.category === category && fp.playerId === playerId
-      );
-      
-      // If already focused, remove it
-      if (existingIndex !== -1) {
-        return prev.filter((_, index) => index !== existingIndex);
-      }
-      
-      // If max focus reached, show alert
-      if (prev.length >= SCORING_CONSTANTS.MAX_FOCUS) {
-        Alert.alert(
-          'Maksimum Odak Sayısı! ⭐',
-          `En fazla ${SCORING_CONSTANTS.MAX_FOCUS} tahmine odaklanabilirsiniz. Başka bir tahmini odaktan çıkarın.`,
-          [{ text: 'Tamam' }]
-        );
-        return prev;
-      }
-      
-      // Add new focus
-      return [...prev, { category, playerId, isFocused: true }];
-    });
+    const isCurrentlyFocused = focusedPredictions.some(
+      fp => fp.category === category && fp.playerId === playerId
+    );
+    if (__DEV__) console.log('🌟 toggleFocus', category, 'focused=', isCurrentlyFocused);
+
+    if (isCurrentlyFocused) {
+      setConfirmModal({
+        title: 'Odaktan çıkar',
+        message:
+          'Bu tahmini odaktan çıkarmak istiyor musunuz? Doğru tahmin 2x puan avantajı kaybolur.',
+        buttons: [
+          { text: 'İptal', style: 'cancel', onPress: () => {} },
+          {
+            text: 'Çıkar',
+            style: 'destructive',
+            onPress: () => {
+              setFocusedPredictions(prev =>
+                prev.filter(fp => !(fp.category === category && fp.playerId === playerId))
+              );
+            },
+          },
+        ],
+      });
+      return;
+    }
+
+    if (focusedPredictions.length >= SCORING_CONSTANTS.MAX_FOCUS) {
+      setConfirmModal({
+        title: 'Maksimum Odak Sayısı! ⭐',
+        message: `En fazla ${SCORING_CONSTANTS.MAX_FOCUS} tahmine odaklanabilirsiniz. Başka bir tahmini odaktan çıkarın.`,
+        buttons: [{ text: 'Tamam', onPress: () => {} }],
+      });
+      return;
+    }
+
+    setFocusedPredictions(prev => [...prev, { category, playerId, isFocused: true }]);
   };
 
   // Check if a prediction is focused
@@ -528,27 +606,23 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
               }
               
               const positions = formationPositions[attackFormation] || mockPositions;
-              const formation = { 
-                positions: positions.map((_, i) => {
-                  const player = attackPlayersArray[i];
-                  return player ? player.position : '';
-                }) 
-              };
+              // ✅ Kadro ile aynı: formasyon slot etiketi (GK, LB, CB, CDM, ...) kullan
+              const slotLabels = formationLabels[attackFormation] || [];
               
               return positions.map((pos, index) => {
                 const player = attackPlayersArray[index];
                 if (!player) return null;
-                
-                const positionLabel = formation.positions[index] || '';
+                // Kadro sekmesiyle aynı pozisyon etiketi (formasyon slot: GK, LB, CB, RB, CDM, CAM, ST vb.)
+                const positionLabel = slotLabels[index] || getPositionAbbreviation(player.position || '');
                 const hasPredictions = playerPredictions[player.id] && 
                   Object.keys(playerPredictions[player.id]).length > 0;
 
                 return (
                   <View
-                    key={index}
+                    key={player ? `prediction-player-${player.id}-${index}` : `prediction-slot-${index}`} // ✅ Stable key - sıçramayı önler
                     style={[
                       styles.playerSlot,
-                      { left: `${pos.x}%`, top: `${pos.y}%` },
+                      { left: `${pos.x}%`, top: `${pos.y}%` }, // ✅ Sabit pozisyon
                     ]}
                   >
                     <TouchableOpacity
@@ -626,17 +700,20 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                   <Text style={styles.categoryLabel}>⚽ İlk Yarı Skoru</Text>
                   <Text style={styles.categoryHint}>Ev sahibi - Deplasman</Text>
                 </View>
-                <TouchableOpacity
-                  onPress={() => toggleFocus('firstHalfHomeScore')}
-                  style={styles.focusButton}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons
-                    name={isFocused('firstHalfHomeScore') ? 'star' : 'star-outline'}
-                    size={24}
-                    color={isFocused('firstHalfHomeScore') ? '#F59E0B' : '#6B7280'}
-                  />
-                </TouchableOpacity>
+                <View style={styles.focusButtonWrap} collapsable={false} pointerEvents="box-none">
+                  <Pressable
+                    onPress={() => toggleFocus('firstHalfHomeScore')}
+                    style={({ pressed }) => [styles.focusButton, pressed && styles.focusButtonPressed]}
+                    hitSlop={16}
+                    accessibilityLabel="Odak yıldızı (ilk yarı ev sahibi gol)"
+                  >
+                    <Ionicons
+                      name={isFocused('firstHalfHomeScore') ? 'star' : 'star-outline'}
+                      size={24}
+                      color={isFocused('firstHalfHomeScore') ? '#F59E0B' : '#6B7280'}
+                    />
+                  </Pressable>
+                </View>
               </View>
               
               <View style={styles.scorePickerContainer}>
@@ -817,17 +894,20 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
             <View style={styles.categoryCard}>
               <View style={styles.categoryHeader}>
                 <Text style={styles.categoryLabel}>⚽ Toplam Gol Sayısı</Text>
-                <TouchableOpacity
-                  onPress={() => toggleFocus('totalGoals')}
-                  style={styles.focusButton}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons
-                    name={isFocused('totalGoals') ? 'star' : 'star-outline'}
-                    size={24}
-                    color={isFocused('totalGoals') ? '#F59E0B' : '#6B7280'}
-                  />
-                </TouchableOpacity>
+                <View style={styles.focusButtonWrap} collapsable={false} pointerEvents="box-none">
+                  <Pressable
+                    onPress={() => toggleFocus('totalGoals')}
+                    style={({ pressed }) => [styles.focusButton, pressed && styles.focusButtonPressed]}
+                    hitSlop={16}
+                    accessibilityLabel="Odak yıldızı (toplam gol)"
+                  >
+                    <Ionicons
+                      name={isFocused('totalGoals') ? 'star' : 'star-outline'}
+                      size={24}
+                      color={isFocused('totalGoals') ? '#F59E0B' : '#6B7280'}
+                    />
+                  </Pressable>
+                </View>
               </View>
               <View style={styles.buttonRow}>
                 {['0-1 gol', '2-3 gol', '4-5 gol', '6+ gol'].map((range) => (
@@ -1193,6 +1273,18 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
         }}
         onClose={() => setShowSubstituteModal(false)}
       />
+
+      {/* Uygulama içi onay popup (yıldız odaktan çıkar / maksimum odak) */}
+      {confirmModal && (
+        <ConfirmModal
+          visible={true}
+          title={confirmModal.title}
+          message={confirmModal.message}
+          buttons={confirmModal.buttons}
+          onRequestClose={() => setConfirmModal(null)}
+        />
+      )}
+
     </SafeAreaView>
   );
 };
@@ -1807,15 +1899,15 @@ const styles = StyleSheet.create({
   categoryTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: '#E6E6E6', // ✅ Design System: DARK_MODE.foreground
     marginBottom: 4,
   },
   categoryCard: {
-    backgroundColor: 'rgba(30, 41, 59, 0.8)',
+    backgroundColor: '#1E3A3A', // ✅ Design System: Primary tonu (koyu yeşil kart)
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: 'rgba(5, 150, 105, 0.3)',
+    borderColor: 'rgba(31, 162, 166, 0.3)', // ✅ Design System: Secondary opacity
     gap: 12,
   },
   categoryHeader: {
@@ -1823,17 +1915,30 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
   },
+  focusButtonWrap: {
+    zIndex: 10,
+    elevation: 10,
+  },
   focusButton: {
-    padding: 4,
+    padding: 12,
+    minWidth: 48,
+    minHeight: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+    ...(Platform.OS === 'web' && { cursor: 'pointer' as any }),
+  },
+  focusButtonPressed: {
+    opacity: 0.7,
   },
   categoryLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: '#E6E6E6', // ✅ Design System: DARK_MODE.foreground
   },
   categoryHint: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: '#9CA3AF', // ✅ Design System: Muted foreground (gri ton)
   },
   
   // Score Picker
@@ -1848,7 +1953,7 @@ const styles = StyleSheet.create({
   },
   scorePickerLabel: {
     fontSize: 11,
-    color: '#9CA3AF',
+    color: '#9CA3AF', // ✅ Design System: Muted foreground (gri ton)
     textAlign: 'center',
   },
   scoreButtons: {
@@ -1859,21 +1964,21 @@ const styles = StyleSheet.create({
   scoreButton: {
     width: 36,
     height: 36,
-    backgroundColor: 'rgba(15, 23, 42, 0.5)',
+    backgroundColor: 'rgba(15, 42, 36, 0.6)', // ✅ Design System: Primary opacity
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(100, 116, 139, 0.5)',
+    borderColor: 'rgba(31, 162, 166, 0.3)', // ✅ Design System: Secondary opacity
   },
   scoreButtonActive: {
-    backgroundColor: '#1FA2A6',
+    backgroundColor: '#1FA2A6', // ✅ Design System: Secondary
     borderColor: '#1FA2A6',
   },
   scoreButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#9CA3AF',
+    color: '#E6E6E6', // ✅ Design System: DARK_MODE.foreground
   },
   scoreButtonTextActive: {
     color: '#FFFFFF',
@@ -1886,7 +1991,7 @@ const styles = StyleSheet.create({
   scoreSeparatorText: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#1FA2A6',
+    color: '#1FA2A6', // ✅ Design System: Secondary (turkuaz)
   },
   
   // Button Rows & Grids
@@ -1904,38 +2009,38 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 60,
     height: 48,
-    backgroundColor: 'rgba(15, 23, 42, 0.5)',
+    backgroundColor: 'rgba(15, 42, 36, 0.6)', // ✅ Design System: Primary opacity
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(100, 116, 139, 0.5)',
+    borderColor: 'rgba(31, 162, 166, 0.3)', // ✅ Design System: Secondary opacity
   },
   optionButtonGrid: {
     width: '48%',
     height: 48,
-    backgroundColor: 'rgba(15, 23, 42, 0.5)',
+    backgroundColor: 'rgba(15, 42, 36, 0.6)', // ✅ Design System: Primary opacity
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(100, 116, 139, 0.5)',
+    borderColor: 'rgba(31, 162, 166, 0.3)', // ✅ Design System: Secondary opacity
   },
   optionButtonActive: {
-    backgroundColor: '#1FA2A6',
+    backgroundColor: '#1FA2A6', // ✅ Design System: Secondary
     borderColor: '#1FA2A6',
     transform: [{ scale: 1.05 }],
   },
   optionText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#9CA3AF',
+    color: '#E6E6E6', // ✅ Design System: DARK_MODE.foreground
     textAlign: 'center',
   },
   optionTextSmall: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#9CA3AF',
+    color: '#E6E6E6', // ✅ Design System: DARK_MODE.foreground
     textAlign: 'center',
   },
   optionTextActive: {

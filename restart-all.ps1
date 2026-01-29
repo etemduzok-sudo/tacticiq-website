@@ -39,6 +39,15 @@ Write-Host ""
 # 3 saniye bekle
 Start-Sleep -Seconds 3
 
+# Script'in bulunduğu klasör (restart-all.ps1 ile aynı dizin)
+$RootDir = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
+if (-not $RootDir) { $RootDir = Get-Location | Select-Object -ExpandProperty Path }
+
 # start-all.ps1'yi çalıştır
+$StartAllPath = Join-Path $RootDir "start-all.ps1"
+if (-not (Test-Path $StartAllPath)) {
+    Write-Host "HATA: start-all.ps1 bulunamadi: $StartAllPath" -ForegroundColor Red
+    exit 1
+}
 Write-Host "start-all.ps1 calistiriliyor..." -ForegroundColor Yellow
-& "$PSScriptRoot\start-all.ps1"
+& $StartAllPath

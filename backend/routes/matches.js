@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const footballApi = require('../services/footballApi');
 const databaseService = require('../services/databaseService');
+const { calculateRatingFromStats, calculatePlayerAttributesFromStats } = require('../utils/playerRatingFromStats');
 const { createClient } = require('@supabase/supabase-js');
 
 const supabase = createClient(
@@ -24,6 +25,32 @@ const CACHE_DURATION = {
 // Helper: Check if cache is valid
 function isCacheValid(timestamp, duration) {
   return Date.now() - timestamp < duration;
+}
+
+// ✅ Rating ve pozisyona göre 6 özniteliği türet (API bu alanları sağlamıyor)
+function derivePlayerStats(rating, positionStr) {
+  const pos = (positionStr || '').toLowerCase();
+  let base = { pace: 70, shooting: 70, passing: 70, dribbling: 70, defending: 70, physical: 70 };
+  if (pos.includes('goalkeeper') || pos === 'gk' || pos === 'g') {
+    base = { pace: 48, shooting: 28, passing: 58, dribbling: 42, defending: 92, physical: 88 };
+  } else if (pos.includes('defender') || pos.includes('back') || /cb|lb|rb|lwb|rwb/i.test(pos)) {
+    base = { pace: 72, shooting: 42, passing: 68, dribbling: 58, defending: 92, physical: 88 };
+  } else if (pos.includes('midfielder') || pos.includes('mid') || /cm|cdm|cam|lm|rm|dm|am/i.test(pos)) {
+    base = { pace: 76, shooting: 68, passing: 92, dribbling: 88, defending: 68, physical: 72 };
+  } else if (pos.includes('attacker') || pos.includes('forward') || pos.includes('striker') || /st|cf|lw|rw|w/i.test(pos)) {
+    base = { pace: 90, shooting: 90, passing: 72, dribbling: 88, defending: 38, physical: 72 };
+  }
+  const avgBase = (base.pace + base.shooting + base.passing + base.dribbling + base.defending + base.physical) / 6;
+  const scale = (rating || 75) / avgBase;
+  const clamp = (n) => Math.min(99, Math.max(65, Math.round(n)));
+  return {
+    pace: clamp(base.pace * scale),
+    shooting: clamp(base.shooting * scale),
+    passing: clamp(base.passing * scale),
+    dribbling: clamp(base.dribbling * scale),
+    defending: clamp(base.defending * scale),
+    physical: clamp(base.physical * scale),
+  };
 }
 
 // Helper: Get date range
@@ -556,6 +583,100 @@ router.get('/:id/statistics', async (req, res) => {
   }
 });
 
+// GET /api/matches/:id/prediction-data - Get prediction data from API-Football
+router.get('/:id/prediction-data', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // API-Football'dan statistics ve events çek
+    const [statsData, eventsData] = await Promise.all([
+      footballApi.getFixtureStatistics(id).catch(() => ({ response: [] })),
+      footballApi.getFixtureEvents(id).catch(() => ({ response: [] })),
+    ]);
+    
+    const statistics = statsData.response || [];
+    const events = eventsData.response || [];
+    
+    // Statistics'ten verileri çıkar
+    const homeStats = statistics.find(s => s.team?.id) || {};
+    const awayStats = statistics.find(s => s.team?.id && s.team.id !== homeStats.team?.id) || {};
+    
+    const getStatValue = (stats, type) => {
+      const stat = stats.statistics?.find(s => s.type === type);
+      return stat ? parseInt(stat.value) || 0 : 0;
+    };
+    
+    // Events'ten verileri çıkar
+    const goals = events.filter(e => e.type === 'Goal');
+    const yellowCards = events.filter(e => e.type === 'Card' && e.detail === 'Yellow Card');
+    const redCards = events.filter(e => e.type === 'Card' && e.detail === 'Red Card');
+    const firstGoal = goals.length > 0 ? goals[0] : null;
+    
+    // Prediction data'yı oluştur
+    const predictionData = {
+      // Cards
+      yellowCards: {
+        home: getStatValue(homeStats, 'Yellow Cards'),
+        away: getStatValue(awayStats, 'Yellow Cards'),
+        total: yellowCards.length,
+      },
+      redCards: {
+        home: getStatValue(homeStats, 'Red Cards'),
+        away: getStatValue(awayStats, 'Red Cards'),
+        total: redCards.length,
+      },
+      
+      // Possession
+      possession: {
+        home: getStatValue(homeStats, 'Ball Possession'),
+        away: getStatValue(awayStats, 'Ball Possession'),
+      },
+      
+      // Shots
+      totalShots: {
+        home: getStatValue(homeStats, 'Total Shots'),
+        away: getStatValue(awayStats, 'Total Shots'),
+        total: getStatValue(homeStats, 'Total Shots') + getStatValue(awayStats, 'Total Shots'),
+      },
+      shotsOnTarget: {
+        home: getStatValue(homeStats, 'Shots on Goal'),
+        away: getStatValue(awayStats, 'Shots on Goal'),
+        total: getStatValue(homeStats, 'Shots on Goal') + getStatValue(awayStats, 'Shots on Goal'),
+      },
+      
+      // Corners
+      corners: {
+        home: getStatValue(homeStats, 'Corner Kicks'),
+        away: getStatValue(awayStats, 'Corner Kicks'),
+        total: getStatValue(homeStats, 'Corner Kicks') + getStatValue(awayStats, 'Corner Kicks'),
+      },
+      
+      // First Goal Time
+      firstGoalTime: firstGoal ? firstGoal.time?.elapsed : null,
+      
+      // Goals
+      goals: {
+        home: goals.filter(g => g.team?.id === homeStats.team?.id).length,
+        away: goals.filter(g => g.team?.id === awayStats.team?.id).length,
+        total: goals.length,
+      },
+    };
+    
+    res.json({
+      success: true,
+      data: predictionData,
+      source: 'api',
+      cached: false,
+    });
+  } catch (error) {
+    console.error('Error fetching prediction data:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
 // GET /api/matches/:id/events - Get match events (goals, cards, etc.)
 router.get('/:id/events', async (req, res) => {
   try {
@@ -575,24 +696,72 @@ router.get('/:id/events', async (req, res) => {
 });
 
 // GET /api/matches/:id/lineups - Get match lineups with team colors and player details
+// ?refresh=1 ile cache atlanır, API'den taze çekilir ve rating'ler güncellenir
 router.get('/:id/lineups', async (req, res) => {
   try {
     const { id } = req.params;
     const matchId = parseInt(id);
+    const skipCache = req.query.refresh === '1' || req.query.refresh === 'true';
     
-    // 1. Önce DB'den cache kontrol et
-    const { data: cachedMatch, error: cacheError } = await supabase
+    // 1. Önce DB'den cache kontrol et (refresh=1 ise atla)
+    const { data: cachedMatch, error: cacheError } = skipCache ? { data: null, error: null } : await supabase
       .from('matches')
       .select('lineups, home_team_id, away_team_id')
       .eq('id', matchId)
       .single();
     
-    // Eğer DB'de lineups varsa ve geçerli ise döndür
+    // Eğer DB'de lineups varsa, rating'leri players tablosundan doldurup döndür
     if (cachedMatch?.lineups && Array.isArray(cachedMatch.lineups) && cachedMatch.lineups.length > 0) {
-      console.log(`✅ [Lineups] Cache hit for match ${matchId}`);
+      console.log(`✅ [Lineups] Cache hit for match ${matchId}, enriching with ratings from DB...`);
+      const playerIds = [];
+      for (const lineup of cachedMatch.lineups) {
+        for (const item of (lineup.startXI || [])) {
+          const p = item.player || item;
+          if (p && p.id) playerIds.push(p.id);
+        }
+        for (const item of (lineup.substitutes || [])) {
+          const p = item.player || item;
+          if (p && p.id) playerIds.push(p.id);
+        }
+      }
+      let ratingsMap = {};
+      if (playerIds.length > 0) {
+        try {
+          const { data: playersRows } = await supabase
+            .from('players')
+            .select('id, rating')
+            .in('id', [...new Set(playerIds)]);
+          if (playersRows) {
+            ratingsMap = playersRows.reduce((acc, row) => {
+              if (row.rating != null) acc[row.id] = row.rating;
+              return acc;
+            }, {});
+          }
+        } catch (e) {
+          console.warn('⚠️ [Lineups] Failed to fetch ratings for cached lineups:', e.message);
+        }
+      }
+      const applyRating = (list) => (list || []).map((item) => {
+        const p = item.player || item;
+        const id = p && p.id;
+        const dbRating = id ? ratingsMap[id] : null;
+        const raw = dbRating != null ? dbRating : (p && (p.rating != null && p.rating !== undefined) ? p.rating : 75);
+        const rating = Math.round(Number(raw)) || 75;
+        const positionStr = p && (p.position || p.pos) || '';
+        const stats = derivePlayerStats(rating, positionStr);
+        if (item.player) {
+          return { ...item, player: { ...item.player, rating, stats } };
+        }
+        return { ...item, rating, stats };
+      });
+      const enrichedCached = cachedMatch.lineups.map((lineup) => ({
+        ...lineup,
+        startXI: applyRating(lineup.startXI),
+        substitutes: applyRating(lineup.substitutes),
+      }));
       return res.json({
         success: true,
-        data: cachedMatch.lineups,
+        data: enrichedCached,
         cached: true,
         source: 'database',
       });
@@ -611,56 +780,289 @@ router.get('/:id/lineups', async (req, res) => {
       });
     }
     
+    // ✅ Fallback renk listesi (static_teams'de yoksa)
+    const FALLBACK_COLORS = {
+      // Türkiye
+      611: ['#FFED00', '#00205B'], // Fenerbahçe
+      645: ['#E30613', '#FDB913'], // Galatasaray
+      549: ['#000000', '#FFFFFF'], // Beşiktaş
+      551: ['#632134', '#00BFFF'], // Trabzonspor
+      // UEFA
+      2594: ['#E30613', '#00205B'], // FCSB
+      194: ['#D2122E', '#FFFFFF'], // Ajax
+      212: ['#003399', '#FFFFFF'], // Porto
+      // Premier League
+      50: ['#6CABDD', '#1C2C5B'], // Man City
+      33: ['#DA291C', '#FBE122'], // Man United
+      40: ['#C8102E', '#00B2A9'], // Liverpool
+      42: ['#EF0107', '#FFFFFF'], // Arsenal
+      49: ['#034694', '#FFFFFF'], // Chelsea
+      66: ['#95BFE5', '#670E36'], // Aston Villa
+      // La Liga
+      541: ['#FFFFFF', '#00529F'], // Real Madrid
+      529: ['#004D98', '#A50044'], // Barcelona
+      530: ['#CB3524', '#FFFFFF'], // Atletico
+      // Bundesliga
+      157: ['#DC052D', '#FFFFFF'], // Bayern
+      165: ['#FDE100', '#000000'], // Dortmund
+      // Serie A
+      489: ['#AC1818', '#000000'], // AC Milan
+      505: ['#010E80', '#000000'], // Inter
+      496: ['#000000', '#FFFFFF'], // Juventus
+      // Ligue 1
+      85: ['#004170', '#DA291C'], // PSG
+    };
+    
     // 3. Team colors'ı static_teams'den al ve lineups'ı zenginleştir
     const enrichedLineups = await Promise.all(data.response.map(async (lineup) => {
       const teamId = lineup.team?.id;
+      const teamName = (lineup.team?.name || '').toLowerCase();
       
       // Static teams'den renkleri al
       let teamColors = null;
       if (teamId) {
-        const { data: staticTeam } = await supabase
-          .from('static_teams')
-          .select('colors_primary, colors_secondary, colors')
-          .eq('api_football_id', teamId)
-          .single();
-        
-        if (staticTeam) {
-          teamColors = {
-            primary: staticTeam.colors_primary,
-            secondary: staticTeam.colors_secondary,
-            all: staticTeam.colors,
-          };
+        try {
+          const { data: staticTeam } = await supabase
+            .from('static_teams')
+            .select('colors_primary, colors_secondary, colors')
+            .eq('api_football_id', teamId)
+            .single();
+          
+          if (staticTeam && (staticTeam.colors_primary || staticTeam.colors)) {
+            teamColors = {
+              primary: staticTeam.colors_primary,
+              secondary: staticTeam.colors_secondary,
+              all: staticTeam.colors,
+            };
+          }
+        } catch (dbError) {
+          console.warn(`⚠️ DB lookup failed for team ${teamId}:`, dbError.message);
         }
       }
       
-      // Oyuncuları zenginleştir (rating ekle - basit hesaplama)
-      const enrichPlayers = (players) => {
-        if (!players) return [];
-        return players.map((item, index) => {
+      // ✅ Fallback: Hardcoded renklerden al
+      if (!teamColors && teamId && FALLBACK_COLORS[teamId]) {
+        const [primary, secondary] = FALLBACK_COLORS[teamId];
+        teamColors = { primary, secondary, all: [primary, secondary] };
+      }
+      
+      // ✅ Son fallback: İsimden tahmin et
+      if (!teamColors) {
+        let primary = '#1E40AF';
+        let secondary = '#FFFFFF';
+        
+        // Yaygın takım isimlerini kontrol et
+        if (teamName.includes('fenerbahce') || teamName.includes('fenerbahçe')) {
+          primary = '#FFED00'; secondary = '#00205B';
+        } else if (teamName.includes('galatasaray')) {
+          primary = '#E30613'; secondary = '#FDB913';
+        } else if (teamName.includes('fcsb') || teamName.includes('steaua')) {
+          primary = '#E30613'; secondary = '#00205B';
+        }
+        
+        teamColors = { primary, secondary, all: [primary, secondary] };
+      }
+      
+      // ✅ Oyuncuları zenginleştir - API-Football'dan gerçek verilerle
+      const enrichPlayers = async (players, teamId, season = 2025) => {
+        if (!players || !Array.isArray(players)) return [];
+        
+        // Rate limiting için batch'ler halinde işle (her batch'te max 5 oyuncu)
+        const batchSize = 5;
+        const batches = [];
+        for (let i = 0; i < players.length; i += batchSize) {
+          batches.push(players.slice(i, i + batchSize));
+        }
+        
+        const enriched = [];
+        for (const batch of batches) {
+          const batchResults = await Promise.all(batch.map(async (item) => {
           const player = item.player || item;
-          // Basit rating hesaplama (pozisyona göre)
-          const positionRatings = {
-            'G': 78 + Math.floor(Math.random() * 10), // GK
-            'D': 75 + Math.floor(Math.random() * 12), // Defender
-            'M': 76 + Math.floor(Math.random() * 12), // Midfielder
-            'F': 77 + Math.floor(Math.random() * 13), // Forward
-          };
-          const posCode = player.pos || player.position?.charAt(0) || 'M';
-          const baseRating = positionRatings[posCode] || 75;
+          const playerId = player.id;
           
+          if (!playerId) {
+            // Fallback: Eğer player ID yoksa basit rating kullan
+            const posCode = player.pos || player.position?.charAt(0) || 'M';
+            const positionRatings = {
+              'G': 78, 'D': 75, 'M': 76, 'F': 77,
+            };
+            return {
+              id: null,
+              name: player.name,
+              number: player.number,
+              position: player.pos || player.position,
+              grid: item.player?.grid || player.grid,
+              rating: positionRatings[posCode] || 75,
+              age: player.age || null,
+              nationality: player.nationality || null,
+            };
+          }
+          
+          // 1. Önce veritabanından kontrol et
+          let dbPlayer = null;
+          try {
+            const { data, error } = await supabase
+              .from('players')
+              .select('*')
+              .eq('id', playerId)
+              .single();
+            
+            if (!error && data) {
+              dbPlayer = data;
+            }
+          } catch (dbError) {
+            console.warn(`⚠️ DB check failed for player ${playerId}:`, dbError.message);
+          }
+          
+          // 2. Eğer DB'de yoksa veya güncel değilse API'den çek
+          let playerStats = null;
+          let calculatedRating = 75; // Default rating
+          let statsFromApi = null; // API'den gelen 6 öznitelik (pace, shooting, ...)
+          
+          if (!dbPlayer || !dbPlayer.rating) {
+            try {
+              // API-Football'dan oyuncu bilgilerini çek (sezon bazlı istatistiklerle)
+              // Rate limiting için timeout ekle
+              const apiData = await Promise.race([
+                footballApi.getPlayerInfo(playerId, season),
+                new Promise((_, reject) => 
+                  setTimeout(() => reject(new Error('API timeout')), 5000)
+                )
+              ]).catch((err) => {
+                console.warn(`⚠️ Player API timeout/failed for ${playerId}:`, err.message);
+                return null;
+              });
+              
+              if (apiData && apiData.response && apiData.response.length > 0 && apiData.response[0]) {
+                const apiPlayer = apiData.response[0];
+                const playerData = apiPlayer.player || {};
+                const statistics = apiPlayer.statistics || [];
+                
+                // En son sezonun istatistiklerini kullan
+                const latestStats = statistics.length > 0 ? statistics[0] : null;
+                
+                // Kendi reyting + 6 öznitelik (hız, şut, pas, dribling, defans, fizik) API istatistiklerinden
+                if (latestStats && latestStats.games) {
+                  const games = latestStats.games;
+                  const attrs = calculatePlayerAttributesFromStats(latestStats, playerData);
+                  calculatedRating = attrs.rating;
+                  playerStats = {
+                    rating: calculatedRating,
+                    games: games.appearences || 0,
+                    goals: latestStats.goals?.total || 0,
+                    assists: latestStats.goals?.assists || 0,
+                    minutes: games.minutes || 0,
+                  };
+                  // 6 öznitelik (stats) aşağıda attrs'tan alınacak
+                  statsFromApi = {
+                    pace: attrs.pace,
+                    shooting: attrs.shooting,
+                    passing: attrs.passing,
+                    dribbling: attrs.dribbling,
+                    defending: attrs.defending,
+                    physical: attrs.physical,
+                  };
+                  console.log(`✅ Player ${playerId} (${playerData.name || player.name}): Rating=${calculatedRating}, Stats from API`);
+                } else {
+                  console.warn(`⚠️ Player ${playerId} (${playerData.name || player.name}): No stats from API, will use fallback`);
+                }
+                
+                  // Veritabanına kaydet/güncelle
+                try {
+                  const playerRecord = {
+                    id: playerId,
+                    name: playerData.name || player.name,
+                    firstname: playerData.firstname || null,
+                    lastname: playerData.lastname || null,
+                    age: playerData.age || player.age || null,
+                    nationality: playerData.nationality || player.nationality || null,
+                    position: playerData.position || player.pos || player.position || null,
+                    height: playerData.height || null,
+                    weight: playerData.weight || null,
+                    rating: calculatedRating, // ✅ Rating'i kaydet
+                    team_id: teamId,
+                    updated_at: new Date().toISOString(),
+                  };
+                  
+                  await supabase
+                    .from('players')
+                    .upsert(playerRecord, { onConflict: 'id' });
+                  
+                  console.log(`✅ Saved player ${playerId} (${playerData.name || player.name}) with rating ${calculatedRating}`);
+                } catch (saveError) {
+                  console.warn(`⚠️ Failed to save player ${playerId} to DB:`, saveError.message);
+                }
+              }
+            } catch (apiError) {
+              console.warn(`⚠️ API fetch failed for player ${playerId}:`, apiError.message);
+              // Fallback: DB'deki rating'i kullan veya default
+              if (dbPlayer && dbPlayer.rating) {
+                calculatedRating = dbPlayer.rating;
+              }
+            }
+          } else {
+            // DB'de varsa onu kullan
+            calculatedRating = dbPlayer.rating || 75;
+          }
+          
+          // ✅ Rating'i clamp et: minimum 65, maximum 95 (FIFA benzeri)
+          let finalRating = Math.round(Number(calculatedRating)) || 75;
+          if (finalRating < 65) {
+            console.warn(`⚠️ Rating too low for player ${playerId}: ${finalRating}, clamping to 65`);
+            finalRating = 65;
+          }
+          if (finalRating > 95) {
+            finalRating = 95;
+          }
+          
+          const positionStr = player.pos || player.position || dbPlayer?.position || '';
+          
+          // ✅ Stats: API'den gelmediyse derivePlayerStats kullan, ama rating düşükse bile pozisyona göre mantıklı değerler üret
+          let stats = statsFromApi;
+          if (!stats) {
+            stats = derivePlayerStats(finalRating, positionStr);
+            // Eğer rating çok düşükse (65-70), stats'ları pozisyona göre minimum değerlere ayarla
+            if (finalRating < 70) {
+              const pos = (positionStr || '').toLowerCase();
+              if (pos.includes('goalkeeper') || pos === 'gk' || pos === 'g') {
+                stats = { pace: 48, shooting: 28, passing: 58, dribbling: 42, defending: 85, physical: 80 };
+              } else if (pos.includes('defender') || pos.includes('back') || /cb|lb|rb|lwb|rwb/i.test(pos)) {
+                stats = { pace: 65, shooting: 40, passing: 65, dribbling: 55, defending: 85, physical: 80 };
+              } else if (pos.includes('midfielder') || pos.includes('mid') || /cm|cdm|cam|lm|rm|dm|am/i.test(pos)) {
+                stats = { pace: 70, shooting: 65, passing: 85, dribbling: 80, defending: 65, physical: 70 };
+              } else if (pos.includes('attacker') || pos.includes('forward') || pos.includes('striker') || /st|cf|lw|rw|w/i.test(pos)) {
+                stats = { pace: 80, shooting: 80, passing: 70, dribbling: 80, defending: 40, physical: 70 };
+              }
+            }
+          }
           return {
-            id: player.id,
+            id: playerId,
             name: player.name,
             number: player.number,
             position: player.pos || player.position,
             grid: item.player?.grid || player.grid,
-            rating: baseRating,
-            // Ek bilgiler
-            age: player.age || null,
-            nationality: player.nationality || null,
+            rating: finalRating,
+            age: player.age || dbPlayer?.age || null,
+            nationality: player.nationality || dbPlayer?.nationality || null,
+            stats,
           };
-        });
+          }));
+          
+          enriched.push(...batchResults);
+          
+          // Batch'ler arasında kısa bir delay (rate limiting)
+          if (batches.indexOf(batch) < batches.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 200));
+          }
+        }
+        
+        return enriched;
       };
+      
+      // ✅ Gerçek oyuncu verilerini kullan
+      const season = new Date().getFullYear(); // Mevcut sezon
+      const enrichedStartXI = await enrichPlayers(lineup.startXI, teamId, season);
+      const enrichedSubstitutes = await enrichPlayers(lineup.substitutes, teamId, season);
       
       return {
         team: {
@@ -669,8 +1071,8 @@ router.get('/:id/lineups', async (req, res) => {
           colors: teamColors,
         },
         formation: lineup.formation,
-        startXI: enrichPlayers(lineup.startXI),
-        substitutes: enrichPlayers(lineup.substitutes),
+        startXI: enrichedStartXI,
+        substitutes: enrichedSubstitutes,
         coach: lineup.coach,
       };
     }));

@@ -292,6 +292,25 @@ export const predictionsDb = {
       return { success: false, error: error.message, data: [] };
     }
   },
+
+  /**
+   * Delete all predictions for a match (e.g. when user changes formation)
+   */
+  deletePredictionsByMatch: async (userId: string, matchId: string) => {
+    try {
+      const { error } = await supabase
+        .from('predictions')
+        .delete()
+        .eq('user_id', userId)
+        .eq('match_id', matchId);
+
+      if (error) throw error;
+      return { success: true };
+    } catch (error: any) {
+      console.error('❌ Error deleting match predictions:', error.message);
+      return { success: false, error: error.message };
+    }
+  },
 };
 
 // ==========================================

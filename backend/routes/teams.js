@@ -2,6 +2,13 @@
 const express = require('express');
 const router = express.Router();
 const footballApi = require('../services/footballApi');
+const { calculateRatingFromStats } = require('../utils/playerRatingFromStats');
+const { createClient } = require('@supabase/supabase-js');
+
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY
+);
 
 // GET /api/teams/search/:query - Search teams by name
 router.get('/search/:query', async (req, res) => {
@@ -231,9 +238,11 @@ router.get('/:id/squad', async (req, res) => {
   try {
     const { id } = req.params;
     const { season } = req.query;
-    console.log(`👥 Fetching squad for team ${id}, season ${season || 'current'}`);
+    const currentSeason = season || 2025;
+    console.log(`👥 Fetching squad for team ${id}, season ${currentSeason}`);
     
-    const data = await footballApi.getTeamSquad(id, season || 2024);
+    // 1. API-Football'dan takım kadrosunu çek
+    const data = await footballApi.getTeamSquad(id, currentSeason);
     
     if (!data.response || data.response.length === 0) {
       return res.status(404).json({
@@ -246,17 +255,64 @@ router.get('/:id/squad', async (req, res) => {
     const squadData = data.response[0];
     const players = squadData.players || [];
     
-    // Enhance player data
-    const enhancedPlayers = players.map(player => ({
-      id: player.id,
-      name: player.name,
-      age: player.age,
-      number: player.number,
-      position: player.position,
-      photo: null, // ⚠️ TELİF: Oyuncu fotoğrafları telifli - kullanmıyoruz
-    }));
+    // 2. DB'den tüm oyuncuların rating'lerini tek seferde çek
+    const playerIds = players.map(p => p.id);
+    let dbPlayersMap = {};
     
-    console.log(`✅ Found ${enhancedPlayers.length} players for team ${id}`);
+    try {
+      const { data: dbPlayers, error } = await supabase
+        .from('players')
+        .select('id, rating, age, nationality, position')
+        .in('id', playerIds);
+      
+      if (!error && dbPlayers) {
+        dbPlayersMap = dbPlayers.reduce((acc, p) => {
+          acc[p.id] = p;
+          return acc;
+        }, {});
+      }
+    } catch (dbError) {
+      console.warn('⚠️ DB batch query failed:', dbError.message);
+    }
+    
+    // 3. Oyuncuları zenginleştir - DB'de varsa kullan, yoksa pozisyon bazlı default
+    const enhancedPlayers = players.map((player) => {
+      const dbPlayer = dbPlayersMap[player.id];
+      let rating = 75; // Default rating
+      
+      if (dbPlayer && dbPlayer.rating) {
+        rating = dbPlayer.rating;
+      } else {
+        // Pozisyon bazlı default rating
+        const pos = (player.position || '').toLowerCase();
+        if (pos.includes('goalkeeper')) rating = 78;
+        else if (pos.includes('defender')) rating = 75;
+        else if (pos.includes('midfielder')) rating = 76;
+        else if (pos.includes('attacker')) rating = 77;
+      }
+      
+      return {
+        id: player.id,
+        name: player.name,
+        age: player.age || dbPlayer?.age || null,
+        number: player.number,
+        position: player.position,
+        nationality: player.nationality || dbPlayer?.nationality || null,
+        rating: Math.round(rating), // ✅ Gerçek rating
+        photo: null, // ⚠️ TELİF: Oyuncu fotoğrafları telifli - kullanmıyoruz
+      };
+    });
+    
+    // 4. Arka planda DB'de olmayan oyuncuları API'den çekip kaydet (rate limit için)
+    const missingPlayerIds = playerIds.filter(id => !dbPlayersMap[id]);
+    if (missingPlayerIds.length > 0) {
+      // Async olarak arka planda çalıştır - response'u bekletme
+      fetchAndSavePlayerRatings(missingPlayerIds, players, id, currentSeason).catch(err => {
+        console.warn('⚠️ Background player fetch failed:', err.message);
+      });
+    }
+    
+    console.log(`✅ Found ${enhancedPlayers.length} players for team ${id} (${Object.keys(dbPlayersMap).length} from DB)`);
     
     res.json({
       success: true,
@@ -274,6 +330,68 @@ router.get('/:id/squad', async (req, res) => {
     });
   }
 });
+
+// ✅ Helper: Arka planda oyuncu rating'lerini çek ve DB'ye kaydet
+async function fetchAndSavePlayerRatings(playerIds, allPlayers, teamId, season) {
+  console.log(`🔄 Background: Fetching ratings for ${playerIds.length} players...`);
+  
+  // Rate limiting için batch'ler halinde işle (her batch'te max 3 oyuncu)
+  const batchSize = 3;
+  for (let i = 0; i < playerIds.length; i += batchSize) {
+    const batch = playerIds.slice(i, i + batchSize);
+    
+    await Promise.all(batch.map(async (playerId) => {
+      try {
+        const player = allPlayers.find(p => p.id === playerId);
+        if (!player) return;
+        
+        // API'den oyuncu bilgilerini çek (timeout ile)
+        const apiData = await Promise.race([
+          footballApi.getPlayerInfo(playerId, season),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
+        ]).catch(() => null);
+        
+        if (!apiData || !apiData.response || !apiData.response[0]) return;
+        
+        const apiPlayer = apiData.response[0];
+        const playerData = apiPlayer.player || {};
+        const statistics = apiPlayer.statistics || [];
+        const latestStats = statistics.length > 0 ? statistics[0] : null;
+        
+        const rating = (latestStats && latestStats.games)
+          ? calculateRatingFromStats(latestStats, playerData)
+          : 75;
+        
+        // DB'ye kaydet
+        await supabase
+          .from('players')
+          .upsert({
+            id: playerId,
+            name: playerData.name || player.name,
+            firstname: playerData.firstname || null,
+            lastname: playerData.lastname || null,
+            age: playerData.age || player.age || null,
+            nationality: playerData.nationality || player.nationality || null,
+            position: playerData.position || player.position || null,
+            rating: Math.round(rating),
+            team_id: teamId,
+            updated_at: new Date().toISOString(),
+          }, { onConflict: 'id' });
+        
+        console.log(`✅ Saved player ${playerId} (${playerData.name || player.name}) with rating ${Math.round(rating)}`);
+      } catch (err) {
+        console.warn(`⚠️ Failed to fetch/save player ${playerId}:`, err.message);
+      }
+    }));
+    
+    // Batch'ler arasında delay (rate limiting)
+    if (i + batchSize < playerIds.length) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+  }
+  
+  console.log(`✅ Background: Completed fetching ratings for ${playerIds.length} players`);
+}
 
 // GET /api/teams/search/:query - Enhanced search with colors and flags
 router.get('/search/:query', async (req, res) => {

@@ -8,6 +8,8 @@
     "ios": "expo run:ios",
     "web": "expo start --web --no-dev",
     "web:dev": "expo start --web",
+    "backend:dev": "npm run dev --prefix backend",
+    "backend:start": "npm run start --prefix backend",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",

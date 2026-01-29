@@ -269,6 +269,9 @@ export const matchesApi = {
   // Get match events (goals, cards, etc.)
   getMatchEvents: (matchId: number) => request(`/matches/${matchId}/events`),
 
+  // Get prediction data (statistics + events combined)
+  getPredictionData: (matchId: number) => request(`/matches/${matchId}/prediction-data`),
+
   // Get match lineups
   getMatchLineups: (matchId: number) => request(`/matches/${matchId}/lineups`),
 

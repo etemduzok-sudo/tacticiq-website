@@ -334,12 +334,13 @@ export const handleDashboardNavigate = (
     case 'match-detail':
       if (params?.id) {
         setSelectedMatchId(params.id);
-        // Store params for MatchDetail component to access
-        (window as any).__matchDetailParams = {
+        const matchParams = {
           initialTab: params?.initialTab || 'squad',
           analysisFocus: params?.analysisFocus,
           matchData: params?.matchData,
         };
+        if (typeof global !== 'undefined') (global as any).__matchDetailParams = matchParams;
+        if (typeof window !== 'undefined') (window as any).__matchDetailParams = matchParams;
         setCurrentScreen('match-detail');
       }
       break;

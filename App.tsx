@@ -345,8 +345,8 @@ export default function App() {
             navActions.setCurrentScreen('home');
             return null;
           }
-          // Get initialTab and analysisFocus from navigation params (if any)
-          const matchDetailParams = (window as any).__matchDetailParams || {};
+          // Get initialTab and analysisFocus from navigation params (web + native)
+          const matchDetailParams = (typeof global !== 'undefined' && (global as any).__matchDetailParams) || (typeof window !== 'undefined' && (window as any).__matchDetailParams) || {};
           return (
             <MatchDetail
               matchId={selectedMatchId}
@@ -355,8 +355,8 @@ export default function App() {
               preloadedMatch={matchDetailParams.matchData}
               onBack={() => {
                 navActions.setSelectedMatchId(null);
-                // ✅ Params'ları temizle
-                (window as any).__matchDetailParams = {};
+                if (typeof global !== 'undefined') (global as any).__matchDetailParams = {};
+                if (typeof window !== 'undefined') (window as any).__matchDetailParams = {};
                 navActions.setCurrentScreen('home');
               }}
             />

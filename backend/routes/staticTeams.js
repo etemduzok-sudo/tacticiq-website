@@ -31,16 +31,36 @@ const FALLBACK_NATIONAL_TEAMS = [
 ];
 
 const FALLBACK_CLUB_TEAMS = [
+  // Türkiye
   { id: 611, name: 'Fenerbahçe', country: 'Turkey', league: 'Süper Lig', type: 'club', colors: ['#FFED00', '#00205B'], logo: null },
-  { id: 645, name: 'Galatasaray', country: 'Turkey', league: 'Süper Lig', type: 'club', colors: ['#FF0000', '#FFD700'], logo: null },
+  { id: 645, name: 'Galatasaray', country: 'Turkey', league: 'Süper Lig', type: 'club', colors: ['#E30613', '#FDB913'], logo: null },
   { id: 549, name: 'Beşiktaş', country: 'Turkey', league: 'Süper Lig', type: 'club', colors: ['#000000', '#FFFFFF'], logo: null },
   { id: 551, name: 'Trabzonspor', country: 'Turkey', league: 'Süper Lig', type: 'club', colors: ['#632134', '#00BFFF'], logo: null },
+  // UEFA Europa League / Champions League
+  { id: 2594, name: 'FCSB', country: 'Romania', league: 'Liga I', type: 'club', colors: ['#E30613', '#00205B'], logo: null },
+  { id: 194, name: 'Ajax', country: 'Netherlands', league: 'Eredivisie', type: 'club', colors: ['#D2122E', '#FFFFFF'], logo: null },
+  { id: 212, name: 'Porto', country: 'Portugal', league: 'Primeira Liga', type: 'club', colors: ['#003399', '#FFFFFF'], logo: null },
+  { id: 228, name: 'Sporting CP', country: 'Portugal', league: 'Primeira Liga', type: 'club', colors: ['#008B00', '#FFFFFF'], logo: null },
+  // Premier League
   { id: 50, name: 'Manchester City', country: 'England', league: 'Premier League', type: 'club', colors: ['#6CABDD', '#1C2C5B'], logo: null },
   { id: 33, name: 'Manchester United', country: 'England', league: 'Premier League', type: 'club', colors: ['#DA291C', '#FBE122'], logo: null },
   { id: 40, name: 'Liverpool', country: 'England', league: 'Premier League', type: 'club', colors: ['#C8102E', '#00B2A9'], logo: null },
+  { id: 42, name: 'Arsenal', country: 'England', league: 'Premier League', type: 'club', colors: ['#EF0107', '#FFFFFF'], logo: null },
+  { id: 49, name: 'Chelsea', country: 'England', league: 'Premier League', type: 'club', colors: ['#034694', '#FFFFFF'], logo: null },
+  { id: 66, name: 'Aston Villa', country: 'England', league: 'Premier League', type: 'club', colors: ['#95BFE5', '#670E36'], logo: null },
+  // La Liga
   { id: 541, name: 'Real Madrid', country: 'Spain', league: 'La Liga', type: 'club', colors: ['#FFFFFF', '#00529F'], logo: null },
   { id: 529, name: 'Barcelona', country: 'Spain', league: 'La Liga', type: 'club', colors: ['#004D98', '#A50044'], logo: null },
+  { id: 530, name: 'Atletico Madrid', country: 'Spain', league: 'La Liga', type: 'club', colors: ['#CB3524', '#FFFFFF'], logo: null },
+  // Bundesliga
   { id: 157, name: 'Bayern Munich', country: 'Germany', league: 'Bundesliga', type: 'club', colors: ['#DC052D', '#FFFFFF'], logo: null },
+  { id: 165, name: 'Borussia Dortmund', country: 'Germany', league: 'Bundesliga', type: 'club', colors: ['#FDE100', '#000000'], logo: null },
+  // Serie A
+  { id: 489, name: 'AC Milan', country: 'Italy', league: 'Serie A', type: 'club', colors: ['#AC1818', '#000000'], logo: null },
+  { id: 505, name: 'Inter', country: 'Italy', league: 'Serie A', type: 'club', colors: ['#010E80', '#000000'], logo: null },
+  { id: 496, name: 'Juventus', country: 'Italy', league: 'Serie A', type: 'club', colors: ['#000000', '#FFFFFF'], logo: null },
+  // Ligue 1
+  { id: 85, name: 'Paris Saint Germain', country: 'France', league: 'Ligue 1', type: 'club', colors: ['#004170', '#DA291C'], logo: null },
 ];
 
 /**
@@ -198,6 +218,69 @@ router.get('/clubs', async (req, res) => {
       source: 'fallback',
       count: filtered.length,
       message: 'Using fallback team list. Database not available.',
+    });
+  }
+});
+
+/**
+ * Takım renklerini getir (ID ile)
+ * GET /api/static-teams/:teamId/colors
+ */
+router.get('/:teamId/colors', async (req, res) => {
+  try {
+    const { teamId } = req.params;
+    
+    // 1. Önce static_teams tablosundan dene
+    try {
+      const result = await pool.query(
+        'SELECT colors, colors_primary, colors_secondary FROM static_teams WHERE api_football_id = $1',
+        [teamId]
+      );
+      
+      if (result.rows.length > 0) {
+        const team = result.rows[0];
+        let colors = null;
+        
+        if (team.colors && Array.isArray(team.colors)) {
+          colors = team.colors;
+        } else if (team.colors_primary) {
+          colors = [team.colors_primary, team.colors_secondary || team.colors_primary];
+        }
+        
+        if (colors) {
+          return res.json({
+            success: true,
+            colors: colors,
+            source: 'static_db',
+          });
+        }
+      }
+    } catch (dbError) {
+      console.warn('DB query failed:', dbError.message);
+    }
+    
+    // 2. Fallback'lerden dene
+    const allFallbacks = [...FALLBACK_NATIONAL_TEAMS, ...FALLBACK_CLUB_TEAMS];
+    const fallbackTeam = allFallbacks.find(t => t.id === parseInt(teamId));
+    
+    if (fallbackTeam && fallbackTeam.colors) {
+      return res.json({
+        success: true,
+        colors: fallbackTeam.colors,
+        source: 'fallback',
+      });
+    }
+    
+    // 3. Bulunamadı
+    res.json({
+      success: false,
+      message: 'Team colors not found',
+    });
+  } catch (error) {
+    console.error('Get team colors error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
     });
   }
 });

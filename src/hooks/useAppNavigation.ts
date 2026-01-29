@@ -211,9 +211,12 @@ export function useAppNavigation() {
     setCurrentScreen(tab as Screen);
   }, []);
 
-  const handleMatchSelect = useCallback((matchId: string) => {
-    logNavigation('match-detail', { matchId });
+  const handleMatchSelect = useCallback((matchId: string, options?: { initialTab?: string }) => {
+    logNavigation('match-detail', { matchId, ...options });
     setSelectedMatchId(matchId);
+    const matchParams = { initialTab: options?.initialTab || 'squad' };
+    if (typeof global !== 'undefined') (global as any).__matchDetailParams = matchParams;
+    if (typeof window !== 'undefined') (window as any).__matchDetailParams = matchParams;
     setCurrentScreen('match-detail');
   }, []);
 
@@ -254,13 +257,13 @@ export function useAppNavigation() {
       case 'match-detail':
         if (params?.id) {
           setSelectedMatchId(params.id);
-          if (Platform.OS === 'web') {
-            (window as any).__matchDetailParams = {
-              initialTab: params?.initialTab || 'squad',
-              analysisFocus: params?.analysisFocus,
-              matchData: params?.matchData,
-            };
-          }
+          const matchParams = {
+            initialTab: params?.initialTab || 'squad',
+            analysisFocus: params?.analysisFocus,
+            matchData: params?.matchData,
+          };
+          if (typeof global !== 'undefined') (global as any).__matchDetailParams = matchParams;
+          if (typeof window !== 'undefined') (window as any).__matchDetailParams = matchParams;
           setCurrentScreen('match-detail');
         }
         break;

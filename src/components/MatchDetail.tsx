@@ -10,6 +10,7 @@ import {
   StatusBar,
   ActivityIndicator,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeIn } from 'react-native-reanimated';
@@ -22,7 +23,12 @@ import { MatchLive } from './match/MatchLive';
 import { MatchStats } from './match/MatchStats';
 import { MatchRatings } from './match/MatchRatings';
 import { MatchSummary } from './match/MatchSummary';
+import { AnalysisFocusModal, AnalysisFocusType } from './AnalysisFocusModal';
+import { ConfirmModal } from './ui/ConfirmModal';
+import { STORAGE_KEYS } from '../config/constants';
+import { predictionsDb } from '../services/databaseService';
 import { BRAND, COLORS, SPACING, SIZES } from '../theme/theme';
+import { getTeamColors as getTeamColorsUtil } from '../utils/teamColors';
 
 const { width, height } = Dimensions.get('window');
 
@@ -70,13 +76,36 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
   const [countdownTicker, setCountdownTicker] = useState(0); // ✅ Geri sayım için ticker
   const { favoriteTeams } = useFavoriteTeams();
   const favoriteTeamIds = React.useMemo(() => favoriteTeams?.map(t => t.id) ?? [], [favoriteTeams]);
-  
-  // ✅ Analiz odağı bilgisini logla (ileride kullanılacak)
+  const [showAnalysisFocusModal, setShowAnalysisFocusModal] = useState(false);
+  const [analysisFocusOverride, setAnalysisFocusOverride] = useState<AnalysisFocusType | null>(null);
+  const [showResetPredictionsModal, setShowResetPredictionsModal] = useState(false);
+  const effectiveAnalysisFocus = analysisFocusOverride ?? analysisFocus;
+
+  const handleResetPredictionsConfirm = async () => {
+    setShowResetPredictionsModal(false);
+    try {
+      await AsyncStorage.removeItem(STORAGE_KEYS.PREDICTIONS + matchId);
+      await AsyncStorage.removeItem(`fan-manager-predictions-${matchId}`);
+      const userDataStr = await AsyncStorage.getItem(STORAGE_KEYS.USER);
+      const userData = userDataStr ? JSON.parse(userDataStr) : null;
+      const userId = userData?.id;
+      if (userId) await predictionsDb.deletePredictionsByMatch(userId, String(matchId));
+      const squadKey = `fan-manager-squad-${matchId}`;
+      const raw = await AsyncStorage.getItem(squadKey);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        parsed.isCompleted = false;
+        await AsyncStorage.setItem(squadKey, JSON.stringify(parsed));
+      }
+    } catch (e) { console.warn('Reset predictions failed', e); }
+    setShowAnalysisFocusModal(true);
+  };
+
   React.useEffect(() => {
-    if (analysisFocus) {
-      console.log('📊 Analiz Odağı:', analysisFocus);
+    if (effectiveAnalysisFocus) {
+      console.log('📊 Analiz Odağı:', effectiveAnalysisFocus);
     }
-  }, [analysisFocus]);
+  }, [effectiveAnalysisFocus]);
   
   // ✅ Geri sayım ticker - her saniye güncelle
   React.useEffect(() => {
@@ -131,47 +160,27 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
   }, [match?.teams?.home?.id, match?.teams?.away?.id]);
 
   // Helper function to get team colors from API or generate from team name
+  // ✅ STANDART: teamColors.ts utility'sini kullan (tutarlılık için)
   const getTeamColors = (team: any): [string, string] => {
-    // Try to get colors from API
+    // Try to get colors from API first
     if (team.colors?.player?.primary) {
       const primary = team.colors.player.primary;
       const secondary = team.colors.player.number || primary;
       return [primary, secondary];
     }
     
-    // Fallback: Generate colors based on team name
-    const teamName = team.name.toLowerCase();
+    // ✅ teamColors.ts utility'sini kullan (standart renkler için)
+    const teamName = typeof team === 'string' ? team : team.name;
+    const colors = getTeamColorsUtil(teamName);
     
-    // Known team colors (Turkish Super Lig + Popular teams)
-    const knownColors: { [key: string]: [string, string] } = {
-      'galatasaray': ['#FDB913', '#E30613'],
-      'fenerbahçe': ['#FCCF1E', '#001A70'],
-      'fenerbahce': ['#FCCF1E', '#001A70'],
-      'beşiktaş': ['#000000', '#FFFFFF'],
-      'besiktas': ['#000000', '#FFFFFF'],
-      'trabzonspor': ['#781132', '#7C9ECC'],
-      'başakşehir': ['#FF6600', '#003366'],
-      'basaksehir': ['#FF6600', '#003366'],
-      'real madrid': ['#FFFFFF', '#FFD700'],
-      'barcelona': ['#A50044', '#004D98'],
-      'manchester united': ['#DA291C', '#000000'],
-      'liverpool': ['#C8102E', '#00B2A9'],
-      'chelsea': ['#034694', '#034694'],
-      'arsenal': ['#EF0107', '#FFFFFF'],
-      'juventus': ['#000000', '#FFFFFF'],
-      'bayern': ['#DC052D', '#0066B2'],
-      'psg': ['#004170', '#DA291C'],
-    };
-    
-    // Check if team name matches known colors
-    for (const [key, colors] of Object.entries(knownColors)) {
-      if (teamName.includes(key)) {
-        return colors;
-      }
+    // Eğer teamColors.ts'den renk geldiyse kullan
+    if (colors && colors.length >= 2 && colors[0] !== '#1E40AF') {
+      return [colors[0], colors[1]];
     }
     
-    // Default colors based on home/away - Design System colors
-    return team.home ? ['#1FA2A6', '#0F2A24'] : ['#C9A44C', '#8B7833'];
+    // Fallback: Default colors based on home/away - Design System colors
+    const isHome = typeof team === 'object' && team.home;
+    return isHome ? ['#1FA2A6', '#0F2A24'] : ['#C9A44C', '#8B7833'];
   };
 
   // Transform API data to component format
@@ -291,7 +300,8 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
             matchId={matchId}
             lineups={lineups}
             favoriteTeamIds={favoriteTeamIds}
-            onComplete={() => setActiveTab('prediction')} 
+            onComplete={() => setActiveTab('prediction')}
+            onAttackFormationChangeConfirmed={() => setShowAnalysisFocusModal(true)}
           />
         );
       
@@ -354,7 +364,14 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
             <Text style={styles.leagueText}>{matchData.league}</Text>
           </View>
 
-          <View style={{ width: 32 }} />
+          <TouchableOpacity
+            onPress={() => setShowResetPredictionsModal(true)}
+            style={styles.starButton}
+            hitSlop={12}
+            accessibilityLabel="Tahminleri silmek istiyor musunuz?"
+          >
+            <Ionicons name="star" size={24} color="#F59E0B" />
+          </TouchableOpacity>
         </View>
 
         {/* Match Info */}
@@ -401,6 +418,35 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
       <View style={styles.contentContainer}>
         {renderContent()}
       </View>
+
+      {/* Tahminleri sil popup – header yıldızına basınca */}
+      {showResetPredictionsModal && (
+        <ConfirmModal
+          visible={true}
+          title="Tahminleri sil"
+          message="Bu maça yapılan tahminleri silmek istiyor musunuz?"
+          buttons={[
+            { text: 'Hayır', style: 'cancel', onPress: () => { setShowResetPredictionsModal(false); setActiveTab('squad'); } },
+            { text: 'Sil', style: 'destructive', onPress: handleResetPredictionsConfirm },
+          ]}
+          onRequestClose={() => setShowResetPredictionsModal(false)}
+        />
+      )}
+
+      {/* Analiz Odağı Modal - Onay (formasyon değişikliği) sonrası gösterilir */}
+      <AnalysisFocusModal
+        visible={showAnalysisFocusModal}
+        onClose={() => setShowAnalysisFocusModal(false)}
+        onSelectFocus={(focus) => {
+          setAnalysisFocusOverride(focus);
+          setShowAnalysisFocusModal(false);
+        }}
+        matchInfo={matchData ? {
+          homeTeam: matchData.homeTeam.name,
+          awayTeam: matchData.awayTeam.name,
+          date: `${matchData.date} ${matchData.time}`,
+        } : undefined}
+      />
 
       {/* Bottom Navigation - 6 Tabs - BottomNavigation gibi */}
       <View style={styles.bottomNavOverlay}>
@@ -503,25 +549,53 @@ const styles = StyleSheet.create({
     position: 'relative',
     zIndex: 1, // ✅ İçerik renk çubuklarının üstünde
   },
-  // ✅ Sol kenar gradient şerit - Dashboard ile aynı
+  // ✅ Sol kenar gradient şerit - Daha belirgin
   colorBarLeft: {
     position: 'absolute',
     left: 0,
     top: 0,
     bottom: 0,
-    width: 6,
+    width: 10, // ✅ 6px → 10px: Daha belirgin
     zIndex: 0,
     borderBottomLeftRadius: 12, // ✅ Overlay ile aynı yuvarlaklık
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 2, height: 0 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 4,
+      },
+      web: {
+        boxShadow: '2px 0 8px rgba(0, 0, 0, 0.3)',
+      },
+    }),
   },
-  // ✅ Sağ kenar gradient şerit - Dashboard ile aynı
+  // ✅ Sağ kenar gradient şerit - Daha belirgin
   colorBarRight: {
     position: 'absolute',
     right: 0,
     top: 0,
     bottom: 0,
-    width: 6,
+    width: 10, // ✅ 6px → 10px: Daha belirgin
     zIndex: 0,
     borderBottomRightRadius: 12, // ✅ Overlay ile aynı yuvarlaklık
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: -2, height: 0 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 4,
+      },
+      web: {
+        boxShadow: '-2px 0 8px rgba(0, 0, 0, 0.3)',
+      },
+    }),
   },
   leagueHeader: {
     flexDirection: 'row',
@@ -555,6 +629,16 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: '#1FA2A6', // ✅ Design System: Secondary/Turkuaz
+  },
+  starButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(15, 42, 36, 0.95)',
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   
   // Match Info
