@@ -316,6 +316,76 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
         </View>
       </View>
 
+      {/* ✅ Favori Takım Filtre Barı - Profil kartının hemen altında */}
+      {showTeamFilter && favoriteTeams.length > 0 && (
+        <View style={styles.teamFilterSection}>
+          <View style={styles.teamFilterHeader}>
+            <Ionicons name="filter" size={14} color="#F79F1B" />
+            <Text style={styles.teamFilterTitle}>Takım Filtresi</Text>
+            <View style={styles.teamFilterCount}>
+              <Text style={styles.teamFilterCountText}>
+                {selectedTeamIds.length === 0 ? 'Tümü' : `${selectedTeamIds.length} seçili`}
+              </Text>
+            </View>
+          </View>
+          
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.teamFilterScroll}
+          >
+            {/* Tümü butonu */}
+            <TouchableOpacity
+              style={[
+                styles.teamFilterChip,
+                selectedTeamIds.length === 0 && styles.teamFilterChipActive,
+              ]}
+              onPress={() => onTeamSelect?.(null)}
+              activeOpacity={0.7}
+            >
+              <Ionicons 
+                name="apps" 
+                size={14} 
+                color={selectedTeamIds.length === 0 ? '#FFFFFF' : '#94A3B8'} 
+              />
+              <Text style={[
+                styles.teamFilterChipText,
+                selectedTeamIds.length === 0 && styles.teamFilterChipTextActive,
+              ]}>
+                Tümü
+              </Text>
+            </TouchableOpacity>
+            
+            {/* Favori takımlar */}
+            {favoriteTeams.map((team) => {
+              const isSelected = selectedTeamIds.includes(team.id);
+              const teamColors = team.colors || ['#1FA2A6', '#0F2A24'];
+              
+              return (
+                <TouchableOpacity
+                  key={team.id}
+                  style={[
+                    styles.teamFilterChip,
+                    isSelected && styles.teamFilterChipActive,
+                    isSelected && { borderColor: teamColors[0] },
+                  ]}
+                  onPress={() => onTeamSelect?.(team.id)}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.teamColorDot, { backgroundColor: teamColors[0] }]} />
+                  <Text style={[
+                    styles.teamFilterChipText,
+                    isSelected && styles.teamFilterChipTextActive,
+                  ]} numberOfLines={1}>
+                    {team.name.length > 12 ? team.name.substring(0, 10) + '...' : team.name}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+      )}
+
       {/* 🎉 Yeni Rozet Popup Modal */}
       <Modal
         visible={showBadgePopup}
@@ -694,6 +764,35 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     paddingRight: 8,
+  },
+  teamFilterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: 'rgba(31, 41, 55, 0.6)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(75, 85, 99, 0.4)',
+  },
+  teamFilterChipActive: {
+    backgroundColor: '#1FA2A6',
+    borderColor: '#1FA2A6',
+  },
+  teamFilterChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#94A3B8',
+    maxWidth: 80,
+  },
+  teamFilterChipTextActive: {
+    color: '#FFFFFF',
+  },
+  teamColorDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
   },
   teamChip: {
     flexDirection: 'row',
