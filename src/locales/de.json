@@ -1,12 +1,256 @@
 {
-  "common": { "loading": "Laden...", "error": "Fehler", "save": "Speichern", "cancel": "Abbrechen", "close": "Schließen", "delete": "Löschen", "edit": "Bearbeiten", "back": "Zurück", "next": "Weiter", "done": "Fertig", "continue": "Fortfahren", "getStarted": "Loslegen", "info": "Info" },
-  "languageSelection": { "title": "Sprachauswahl", "subtitle": "Bitte wählen Sie Ihre Sprache" },
-  "dashboard": { "title": "Analyst-Dashboard", "analyst": "Analyst", "streak": "Serie", "upcomingMatches": "Kommende Spiele", "liveMatch": "LIVE", "liveTracking": "Live-Tracking", "predictButton": "Analyse eingeben", "strategicFocus": "Analysefokus wählen", "strategicFocusSubtitle": "x1.25 Punktemultiplikator", "recentPerformance": "Letzte Leistung", "viewAllBadges": "Alle Abzeichen", "noUpcomingMatches": "Keine Spiele in 24h", "noMatchHistory": "Keine Spielhistorie", "points": "Punkte", "accuracy": "Genauigkeit" },
-  "ageGate": { "title": "Altersverifikation", "subtitle": "Wählen Sie Ihr Geburtsdatum", "year": "Jahr", "month": "Monat", "day": "Tag", "yearsOld": "Jahre alt", "selectYear": "Jahr wählen", "selectMonth": "Monat wählen", "selectDay": "Tag wählen", "minorNotice": "Elterliche Zustimmung für unter 18 erforderlich" },
-  "legal": { "title": "Rechtliche Dokumente", "subtitle": "Bitte überprüfen und akzeptieren", "iAccept": "Ich habe gelesen und akzeptiere", "minorNotice": "Elterliche Zustimmung für unter 18 erforderlich", "terms": { "title": "Nutzungsbedingungen", "desc": "Nutzungsregeln", "fullContent": "Letzte Aktualisierung: 1. Januar 2026\n\nNutzungsbedingungen von TacticIQ.\n\nKontakt: legal@tacticiq.app" }, "privacy": { "title": "Datenschutz", "desc": "DSGVO-konform", "fullContent": "Datenschutzrichtlinie\n\nKontakt: privacy@tacticiq.app" }, "cookies": { "title": "Cookie-Richtlinie", "desc": "Cookie-Nutzung", "fullContent": "Wir verwenden Cookies." }, "kvkk": { "title": "KVKK-Offenlegung", "desc": "Datenschutz", "fullContent": "KVKK Informationen" } },
-  "cookies": { "essential": "Notwendige Cookies", "essentialDesc": "Erforderlich", "analytics": "Analyse-Cookies", "analyticsDesc": "Verbessern", "marketing": "Marketing-Cookies", "marketingDesc": "Personalisiert" },
-  "consent": { "title": "Datenschutz", "subtitle": "Wählen Sie Ihre Einstellungen", "error": "Fehler", "mustAccept": "Sie müssen die Dokumente akzeptieren", "saveFailed": "Speichern fehlgeschlagen" },
-  "auth": { "title": "Willkommen", "subtitle": "Fußballstrategien entdecken", "email": "E-Mail", "password": "Passwort", "login": "Anmelden", "register": "Registrieren" },
-  "profile": { "title": "Profil", "settings": "Einstellungen", "logout": "Abmelden" },
-  "matches": { "title": "Spiele", "live": "Live", "upcoming": "Kommende" }
+  "common": {
+    "loading": "Laden...",
+    "error": "Fehler",
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "close": "Schließen",
+    "delete": "Löschen",
+    "edit": "Bearbeiten",
+    "back": "Zurück",
+    "next": "Weiter",
+    "done": "Fertig",
+    "continue": "Fortfahren",
+    "getStarted": "Loslegen",
+    "info": "Info"
+  },
+  "languageSelection": {
+    "title": "Sprachauswahl",
+    "subtitle": "Bitte wählen Sie Ihre Sprache"
+  },
+  "dashboard": {
+    "title": "Analysten-Dashboard",
+    "analyst": "Analyst",
+    "streak": "Serie",
+    "upcomingMatches": "Kommende & Live-Spiele",
+    "liveMatch": "LIVE",
+    "liveTracking": "Live-Tracking",
+    "predictButton": "Analyse eingeben",
+    "strategicFocus": "Analysefokus wählen",
+    "strategicFocusSubtitle": "Gewählter Fokus gibt x1.25 Punktemultiplikator",
+    "recentPerformance": "Deine letzte Leistung",
+    "viewAllBadges": "Alle meine Abzeichen ansehen",
+    "noUpcomingMatches": "Keine Spiele in den nächsten 24 Stunden",
+    "noMatchHistory": "Noch keine Spielhistorie",
+    "points": "Punkte",
+    "accuracy": "Genauigkeit"
+  },
+  "strategicFocus": {
+    "tempo": {
+      "name": "Tempo-Analyse",
+      "description": "Fokus auf das Spieltempo",
+      "advice": "Ein temporeicheres Spiel wird erwartet!"
+    },
+    "discipline": {
+      "name": "Disziplin-Analyse",
+      "description": "Harte Fouls vorhersagen",
+      "advice": "Dieser Schiedsrichter liebt Karten, dein Fokus ist richtig!"
+    },
+    "fitness": {
+      "name": "Fitness-Analyse",
+      "description": "Körperliche Verfassung bewerten",
+      "advice": "Fitness ist in einer langen Saison entscheidend!"
+    },
+    "star": {
+      "name": "Star-Analyse",
+      "description": "Star-Spieler verfolgen",
+      "advice": "Star-Spieler werden auf dem Platz sein!"
+    }
+  },
+  "badges": {
+    "title": "Abzeichen",
+    "earned": "Verdient",
+    "locked": "Gesperrt",
+    "howToEarn": "Wie man sie verdient",
+    "progress": "Fortschritt",
+    "progressHint": "Spiele mehr gewinnen!",
+    "earnedDate": "Verdient am:",
+    "noBadges": "Noch keine Abzeichen",
+    "startPredicting": "Tippe auf Spiele und verdiene Abzeichen!",
+    "tiers": {
+      "rookie": "Anfänger",
+      "amateur": "Amateur",
+      "pro": "Profi",
+      "expert": "Experte",
+      "legend": "Legende"
+    }
+  },
+  "profile": {
+    "title": "Profil",
+    "level": "Level",
+    "points": "Punkte",
+    "rank": "Rang",
+    "settings": "Einstellungen",
+    "logout": "Abmelden",
+    "favoriteTeams": "Lieblingsmannschaften",
+    "statistics": "Statistiken",
+    "achievements": "Erfolge"
+  },
+  "matches": {
+    "title": "Spiele",
+    "past": "Vergangene",
+    "live": "Live",
+    "upcoming": "Kommende",
+    "allMatches": "Alle Spiele",
+    "noMatches": "Keine Spiele gefunden",
+    "minute": "Minute",
+    "vs": "VS"
+  },
+  "leaderboard": {
+    "title": "Rangliste",
+    "overall": "Gesamt",
+    "weekly": "Wöchentlich",
+    "monthly": "Monatlich",
+    "rank": "Rang",
+    "user": "Benutzer",
+    "points": "Punkte"
+  },
+  "scoring": {
+    "bonusApplied": "Bonus angewendet!",
+    "strategicBonus": "Strategischer Fokus Bonus",
+    "totalPoints": "Gesamtpunkte",
+    "breakdown": "Punkteübersicht"
+  },
+  "notifications": {
+    "title": "Benachrichtigungen",
+    "noNotifications": "Keine Benachrichtigungen",
+    "matchStartingSoon": "Spiel beginnt bald!",
+    "predictionReminder": "Vergiss nicht zu tippen!",
+    "badgeEarned": "Neues Abzeichen verdient!"
+  },
+  "errors": {
+    "networkError": "Verbindungsfehler",
+    "serverError": "Serverfehler",
+    "notFound": "Nicht gefunden",
+    "unauthorized": "Nicht autorisiert",
+    "tryAgain": "Erneut versuchen"
+  },
+  "auth": {
+    "title": "Willkommen",
+    "subtitle": "Entdecke Fußballstrategien",
+    "email": "E-Mail",
+    "password": "Passwort",
+    "login": "Anmelden",
+    "register": "Registrieren",
+    "forgotPassword": "Passwort vergessen",
+    "orContinueWith": "oder fortfahren mit",
+    "emailRequired": "E-Mail ist erforderlich",
+    "emailInvalid": "Geben Sie eine gültige E-Mail ein",
+    "passwordRequired": "Passwort ist erforderlich",
+    "passwordMinLength": "Passwort muss mindestens 6 Zeichen haben",
+    "loginSuccess": "Erfolgreich angemeldet!",
+    "loginFailed": "Anmeldung fehlgeschlagen",
+    "socialLoginFailed": "Anmeldung mit fehlgeschlagen",
+    "errorOccurred": "Ein Fehler ist aufgetreten",
+    "checkingEmail": "E-Mail wird überprüft...",
+    "emailAvailable": "E-Mail ist verfügbar",
+    "emailTaken": "Diese E-Mail wird bereits verwendet"
+  },
+  "ageGate": {
+    "title": "Altersverifikation",
+    "subtitle": "Wählen Sie Ihr Geburtsdatum",
+    "year": "Jahr",
+    "month": "Monat",
+    "day": "Tag",
+    "yearsOld": "Jahre alt",
+    "selectYear": "Jahr wählen",
+    "selectMonth": "Monat wählen",
+    "selectDay": "Tag wählen",
+    "info": "Diese Information ist für Ihre Sicherheit und rechtliche Konformität erforderlich.",
+    "pleaseEnterDate": "Bitte geben Sie Ihr Geburtsdatum ein",
+    "invalidDate": "Ungültiges Geburtsdatum",
+    "minorNotice": "Elterliche Zustimmung für unter 18 erforderlich"
+  },
+  "legal": {
+    "title": "Rechtliche Dokumente",
+    "subtitle": "Bitte überprüfen und akzeptieren Sie die folgenden Dokumente",
+    "iAccept": "Ich habe gelesen und akzeptiere",
+    "minorNotice": "Elterliche Zustimmung für unter 18 erforderlich",
+    "terms": {
+      "title": "Nutzungsbedingungen",
+      "desc": "Servicebedingungen und Benutzerverantwortlichkeiten",
+      "fullContent": "Letzte Aktualisierung: 1. Januar 2026\n\n1. EINFÜHRUNG UND AKZEPTANZ\nDiese Bedingungen sind ein rechtlicher Vertrag zwischen Ihnen und TacticIQ.\n\n2. VIRTUELLE GEGENSTÄNDE\nPunkte und XP können nicht in echtes Geld umgewandelt werden.\n\n3. GEISTIGES EIGENTUM\nAlle Rechte gehören TacticIQ.\n\n4. KONTAKT\nlegal@tacticiq.app"
+    },
+    "privacy": {
+      "title": "Datenschutzerklärung",
+      "desc": "DSGVO, CCPA, KVKK konform",
+      "fullContent": "Letzte Aktualisierung: 1. Januar 2026\n\n1. DATENSAMMLUNG\nWir verarbeiten Geräte-ID, IP, Standort und Aktivitätsdaten.\n\n2. IHRE RECHTE\nSie können die Löschung Ihrer Daten anfordern.\n\n3. KONTAKT\nprivacy@tacticiq.app"
+    },
+    "cookies": {
+      "title": "Cookie-Richtlinie",
+      "desc": "Cookie-Nutzung",
+      "fullContent": "Letzte Aktualisierung: 1. Januar 2026\n\n1. COOKIE-NUTZUNG\nWir verwenden Cookies, um Ihr Erlebnis zu verbessern.\n\n2. COOKIE-TYPEN\n- Notwendig\n- Funktional\n- Analytisch\n- Marketing\n\n3. VERWALTUNG\nEinstellungsmenü"
+    },
+    "kvkk": {
+      "title": "KVKK-Offenlegung",
+      "desc": "Türkisches Datenschutzgesetz",
+      "fullContent": "DATENVERANTWORTLICHER: TacticIQ\nkvkk@tacticiq.app\n\nVERARBEITETE DATEN:\n- Identität\n- Kontakt\n- Aktivität\n- Gerät/IP\n\nIHRE RECHTE:\nkvkk@tacticiq.app"
+    }
+  },
+  "cookies": {
+    "essential": "Notwendige Cookies",
+    "essentialDesc": "Erforderlich für die App-Funktion",
+    "analytics": "Analyse-Cookies",
+    "analyticsDesc": "Helfen uns zu verbessern",
+    "marketing": "Marketing-Cookies",
+    "marketingDesc": "Personalisierte Inhalte"
+  },
+  "consent": {
+    "title": "Datenschutzeinstellungen",
+    "subtitle": "Wählen Sie, wie Ihre Daten verwendet werden",
+    "error": "Fehler",
+    "mustAccept": "Sie müssen die rechtlichen Dokumente akzeptieren, um fortzufahren",
+    "saveFailed": "Speichern fehlgeschlagen",
+    "essential": "Notwendige Cookies",
+    "essentialDesc": "Grundlegende Cookies für die App-Funktion",
+    "analytics": "Analyse-Cookies",
+    "analyticsDesc": "Zur Analyse der App-Leistung verwendet",
+    "marketing": "Marketing-Cookies",
+    "marketingDesc": "Benachrichtigungen für Kampagnen und Sonderangebote"
+  },
+  "countries": {
+    "Turkey": "Türkei",
+    "Germany": "Deutschland",
+    "France": "Frankreich",
+    "England": "England",
+    "Spain": "Spanien",
+    "Italy": "Italien",
+    "Brazil": "Brasilien",
+    "Argentina": "Argentinien",
+    "Portugal": "Portugal",
+    "Netherlands": "Niederlande",
+    "Belgium": "Belgien",
+    "Croatia": "Kroatien",
+    "Poland": "Polen",
+    "Ukraine": "Ukraine",
+    "Russia": "Russland",
+    "Sweden": "Schweden",
+    "Austria": "Österreich",
+    "Switzerland": "Schweiz",
+    "USA": "USA",
+    "Mexico": "Mexiko",
+    "Japan": "Japan",
+    "South-Korea": "Südkorea",
+    "Australia": "Australien",
+    "Saudi-Arabia": "Saudi-Arabien",
+    "Unknown": "Unbekannt"
+  },
+  "teamSelection": {
+    "selectNationalTeam": "Wählen Sie Ihre Nationalmannschaft",
+    "selectClubTeam": "Wählen Sie Ihren Lieblingsverein",
+    "selectClubTeam2": "Wählen Sie Ihren 2. Lieblingsverein",
+    "selectClubTeam3": "Wählen Sie Ihren 3. Lieblingsverein",
+    "selectClubTeam4": "Wählen Sie Ihren 4. Lieblingsverein",
+    "selectClubTeam5": "Wählen Sie Ihren 5. Lieblingsverein",
+    "searchPlaceholder": "Team suchen...",
+    "noTeamsFound": "Keine Teams gefunden"
+  },
+  "profileEdit": {
+    "firstName": "Vorname",
+    "lastName": "Nachname",
+    "nickname": "Benutzername",
+    "saveChanges": "Änderungen speichern",
+    "editing": "Bearbeiten...",
+    "saved": "Gespeichert!"
+  }
 }

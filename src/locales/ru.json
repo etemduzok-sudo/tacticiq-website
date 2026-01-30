@@ -1,12 +1,256 @@
 {
-  "common": { "loading": "Загрузка...", "error": "Ошибка", "save": "Сохранить", "cancel": "Отмена", "close": "Закрыть", "delete": "Удалить", "edit": "Редактировать", "back": "Назад", "next": "Далее", "done": "Готово", "continue": "Продолжить", "getStarted": "Начать", "info": "Инфо" },
-  "languageSelection": { "title": "Выбор языка", "subtitle": "Пожалуйста, выберите ваш язык" },
-  "dashboard": { "title": "Панель Аналитика", "analyst": "Аналитик", "streak": "Серия", "upcomingMatches": "Предстоящие Матчи", "liveMatch": "LIVE", "liveTracking": "Live Отслеживание", "predictButton": "Ввести Анализ", "strategicFocus": "Выбрать Фокус", "strategicFocusSubtitle": "x1.25 множитель", "recentPerformance": "Последняя Эффективность", "viewAllBadges": "Все Значки", "noUpcomingMatches": "Нет матчей за 24ч", "noMatchHistory": "Нет истории", "points": "Очки", "accuracy": "Точность" },
-  "ageGate": { "title": "Проверка Возраста", "subtitle": "Выберите дату рождения", "year": "Год", "month": "Месяц", "day": "День", "yearsOld": "лет", "selectYear": "Выбрать Год", "selectMonth": "Выбрать Месяц", "selectDay": "Выбрать День" },
-  "legal": { "title": "Правовые Документы", "subtitle": "Пожалуйста, прочитайте и примите", "iAccept": "Я прочитал и принимаю", "minorNotice": "Для несовершеннолетних требуется согласие родителей", "terms": { "title": "Условия Использования", "desc": "Правила использования", "fullContent": "Последнее обновление: 1 января 2026\n\nУсловия TacticIQ.\n\nКонтакт: legal@tacticiq.app" }, "privacy": { "title": "Политика Конфиденциальности", "desc": "Соответствует GDPR", "fullContent": "Политика конфиденциальности\n\nКонтакт: privacy@tacticiq.app" }, "cookies": { "title": "Политика Cookie", "desc": "Использование cookie", "fullContent": "Мы используем cookie." }, "kvkk": { "title": "Раскрытие KVKK", "desc": "Защита данных", "fullContent": "Информация KVKK" } },
-  "cookies": { "essential": "Обязательные Cookie", "essentialDesc": "Требуются", "analytics": "Аналитические Cookie", "analyticsDesc": "Улучшение", "marketing": "Маркетинговые Cookie", "marketingDesc": "Персонализация" },
-  "consent": { "title": "Настройки Конфиденциальности", "subtitle": "Выберите настройки", "error": "Ошибка", "mustAccept": "Вы должны принять документы", "saveFailed": "Ошибка сохранения" },
-  "auth": { "title": "Добро Пожаловать", "subtitle": "Откройте футбольные стратегии", "email": "Email", "password": "Пароль", "login": "Войти", "register": "Регистрация" },
-  "profile": { "title": "Профиль", "settings": "Настройки", "logout": "Выход" },
-  "matches": { "title": "Матчи", "live": "Live", "upcoming": "Предстоящие" }
+  "common": {
+    "loading": "Загрузка...",
+    "error": "Ошибка",
+    "save": "Сохранить",
+    "cancel": "Отмена",
+    "close": "Закрыть",
+    "delete": "Удалить",
+    "edit": "Редактировать",
+    "back": "Назад",
+    "next": "Далее",
+    "done": "Готово",
+    "continue": "Продолжить",
+    "getStarted": "Начать",
+    "info": "Инфо"
+  },
+  "languageSelection": {
+    "title": "Выбор языка",
+    "subtitle": "Пожалуйста, выберите ваш язык"
+  },
+  "dashboard": {
+    "title": "Панель Управления Аналитика",
+    "analyst": "Аналитик",
+    "streak": "Серия",
+    "upcomingMatches": "Предстоящие и Живые Матчи",
+    "liveMatch": "LIVE",
+    "liveTracking": "Живое Отслеживание",
+    "predictButton": "Ввести Анализ",
+    "strategicFocus": "Выбрать Фокус Анализа",
+    "strategicFocusSubtitle": "Выбранный фокус даёт множитель x1.25",
+    "recentPerformance": "Твоя Последняя Эффективность",
+    "viewAllBadges": "Посмотреть Все Мои Значки",
+    "noUpcomingMatches": "Нет матчей в ближайшие 24 часа",
+    "noMatchHistory": "Пока нет истории матчей",
+    "points": "Очки",
+    "accuracy": "Точность"
+  },
+  "strategicFocus": {
+    "tempo": {
+      "name": "Анализ Темпа",
+      "description": "Фокус на темпе матча",
+      "advice": "Ожидается быстрый темп матча!"
+    },
+    "discipline": {
+      "name": "Анализ Дисциплины",
+      "description": "Предсказывай грубые фолы",
+      "advice": "Этот судья любит карточки, твой фокус верен!"
+    },
+    "fitness": {
+      "name": "Анализ Физподготовки",
+      "description": "Оцени физическое состояние",
+      "advice": "Физподготовка критична в долгом сезоне!"
+    },
+    "star": {
+      "name": "Анализ Звёзд",
+      "description": "Следи за звёздными игроками",
+      "advice": "Звёздные игроки будут на поле!"
+    }
+  },
+  "badges": {
+    "title": "Значки",
+    "earned": "Получен",
+    "locked": "Заблокирован",
+    "howToEarn": "Как Получить",
+    "progress": "Прогресс",
+    "progressHint": "матчей ещё нужно выиграть!",
+    "earnedDate": "Получен:",
+    "noBadges": "Пока нет значков",
+    "startPredicting": "Делай прогнозы на матчи и получай значки!",
+    "tiers": {
+      "rookie": "Новичок",
+      "amateur": "Любитель",
+      "pro": "Профессионал",
+      "expert": "Эксперт",
+      "legend": "Легенда"
+    }
+  },
+  "profile": {
+    "title": "Профиль",
+    "level": "Уровень",
+    "points": "Очки",
+    "rank": "Рейтинг",
+    "settings": "Настройки",
+    "logout": "Выход",
+    "favoriteTeams": "Любимые Команды",
+    "statistics": "Статистика",
+    "achievements": "Достижения"
+  },
+  "matches": {
+    "title": "Матчи",
+    "past": "Прошедшие",
+    "live": "Живые",
+    "upcoming": "Предстоящие",
+    "allMatches": "Все Матчи",
+    "noMatches": "Матчи не найдены",
+    "minute": "Минута",
+    "vs": "VS"
+  },
+  "leaderboard": {
+    "title": "Таблица Лидеров",
+    "overall": "Общий",
+    "weekly": "Недельный",
+    "monthly": "Месячный",
+    "rank": "Место",
+    "user": "Пользователь",
+    "points": "Очки"
+  },
+  "scoring": {
+    "bonusApplied": "Бонус Применён!",
+    "strategicBonus": "Бонус Стратегического Фокуса",
+    "totalPoints": "Всего Очков",
+    "breakdown": "Разбивка Очков"
+  },
+  "notifications": {
+    "title": "Уведомления",
+    "noNotifications": "Нет уведомлений",
+    "matchStartingSoon": "Матч скоро начнётся!",
+    "predictionReminder": "Не забудь сделать прогноз!",
+    "badgeEarned": "Новый значок получен!"
+  },
+  "errors": {
+    "networkError": "Ошибка соединения",
+    "serverError": "Ошибка сервера",
+    "notFound": "Не найдено",
+    "unauthorized": "Не авторизован",
+    "tryAgain": "Попробовать снова"
+  },
+  "auth": {
+    "title": "Добро Пожаловать",
+    "subtitle": "Открой футбольные стратегии",
+    "email": "Email",
+    "password": "Пароль",
+    "login": "Войти",
+    "register": "Регистрация",
+    "forgotPassword": "Забыл пароль",
+    "orContinueWith": "или продолжить с",
+    "emailRequired": "Email обязателен",
+    "emailInvalid": "Введите корректный email",
+    "passwordRequired": "Пароль обязателен",
+    "passwordMinLength": "Пароль должен быть минимум 6 символов",
+    "loginSuccess": "Успешный вход!",
+    "loginFailed": "Ошибка входа",
+    "socialLoginFailed": "Ошибка входа через",
+    "errorOccurred": "Произошла ошибка",
+    "checkingEmail": "Проверка email...",
+    "emailAvailable": "Email доступен",
+    "emailTaken": "Этот email уже используется"
+  },
+  "ageGate": {
+    "title": "Проверка Возраста",
+    "subtitle": "Выберите дату рождения",
+    "year": "Год",
+    "month": "Месяц",
+    "day": "День",
+    "yearsOld": "лет",
+    "selectYear": "Выбрать Год",
+    "selectMonth": "Выбрать Месяц",
+    "selectDay": "Выбрать День",
+    "info": "Эта информация необходима для вашей безопасности и соответствия законодательству.",
+    "pleaseEnterDate": "Пожалуйста, введите дату рождения",
+    "invalidDate": "Неверная дата рождения",
+    "minorNotice": "Для несовершеннолетних требуется согласие родителей"
+  },
+  "legal": {
+    "title": "Правовые Документы",
+    "subtitle": "Пожалуйста, ознакомьтесь и примите следующие документы",
+    "iAccept": "Я прочитал и принимаю",
+    "minorNotice": "Для несовершеннолетних требуется согласие родителей",
+    "terms": {
+      "title": "Условия Использования",
+      "desc": "Условия сервиса и обязанности пользователя",
+      "fullContent": "Последнее обновление: 1 января 2026\n\n1. ВВЕДЕНИЕ И ПРИНЯТИЕ\nЭти Условия являются юридическим соглашением между вами и TacticIQ.\n\n2. ВИРТУАЛЬНЫЕ ПРЕДМЕТЫ\nОчки и XP нельзя конвертировать в реальные деньги.\n\n3. ИНТЕЛЛЕКТУАЛЬНАЯ СОБСТВЕННОСТЬ\nВсе права принадлежат TacticIQ.\n\n4. КОНТАКТ\nlegal@tacticiq.app"
+    },
+    "privacy": {
+      "title": "Политика Конфиденциальности",
+      "desc": "Соответствует GDPR, CCPA, KVKK",
+      "fullContent": "Последнее обновление: 1 января 2026\n\n1. СБОР ДАННЫХ\nМы обрабатываем ID устройства, IP, местоположение и данные активности.\n\n2. ВАШИ ПРАВА\nВы можете запросить удаление ваших данных.\n\n3. КОНТАКТ\nprivacy@tacticiq.app"
+    },
+    "cookies": {
+      "title": "Политика Cookie",
+      "desc": "Использование cookie",
+      "fullContent": "Последнее обновление: 1 января 2026\n\n1. ИСПОЛЬЗОВАНИЕ COOKIE\nМы используем cookie для улучшения вашего опыта.\n\n2. ТИПЫ COOKIE\n- Обязательные\n- Функциональные\n- Аналитические\n- Маркетинговые\n\n3. УПРАВЛЕНИЕ\nМеню настроек"
+    },
+    "kvkk": {
+      "title": "Раскрытие KVKK",
+      "desc": "Турецкий закон о защите данных",
+      "fullContent": "КОНТРОЛЁР ДАННЫХ: TacticIQ\nkvkk@tacticiq.app\n\nОБРАБАТЫВАЕМЫЕ ДАННЫЕ:\n- Личность\n- Контакт\n- Активность\n- Устройство/IP\n\nВАШИ ПРАВА:\nkvkk@tacticiq.app"
+    }
+  },
+  "cookies": {
+    "essential": "Обязательные Cookie",
+    "essentialDesc": "Необходимы для работы приложения",
+    "analytics": "Аналитические Cookie",
+    "analyticsDesc": "Помогают нам улучшаться",
+    "marketing": "Маркетинговые Cookie",
+    "marketingDesc": "Персонализированный контент"
+  },
+  "consent": {
+    "title": "Настройки Конфиденциальности",
+    "subtitle": "Выберите, как используются ваши данные",
+    "error": "Ошибка",
+    "mustAccept": "Вы должны принять правовые документы для продолжения",
+    "saveFailed": "Ошибка сохранения",
+    "essential": "Обязательные Cookie",
+    "essentialDesc": "Базовые cookie для работы приложения",
+    "analytics": "Аналитические Cookie",
+    "analyticsDesc": "Используются для анализа производительности приложения",
+    "marketing": "Маркетинговые Cookie",
+    "marketingDesc": "Уведомления о кампаниях и специальных предложениях"
+  },
+  "countries": {
+    "Turkey": "Турция",
+    "Germany": "Германия",
+    "France": "Франция",
+    "England": "Англия",
+    "Spain": "Испания",
+    "Italy": "Италия",
+    "Brazil": "Бразилия",
+    "Argentina": "Аргентина",
+    "Portugal": "Португалия",
+    "Netherlands": "Нидерланды",
+    "Belgium": "Бельгия",
+    "Croatia": "Хорватия",
+    "Poland": "Польша",
+    "Ukraine": "Украина",
+    "Russia": "Россия",
+    "Sweden": "Швеция",
+    "Austria": "Австрия",
+    "Switzerland": "Швейцария",
+    "USA": "США",
+    "Mexico": "Мексика",
+    "Japan": "Япония",
+    "South-Korea": "Южная Корея",
+    "Australia": "Австралия",
+    "Saudi-Arabia": "Саудовская Аравия",
+    "Unknown": "Неизвестно"
+  },
+  "teamSelection": {
+    "selectNationalTeam": "Выберите свою сборную",
+    "selectClubTeam": "Выберите любимый клуб",
+    "selectClubTeam2": "Выберите 2-й любимый клуб",
+    "selectClubTeam3": "Выберите 3-й любимый клуб",
+    "selectClubTeam4": "Выберите 4-й любимый клуб",
+    "selectClubTeam5": "Выберите 5-й любимый клуб",
+    "searchPlaceholder": "Поиск команды...",
+    "noTeamsFound": "Команды не найдены"
+  },
+  "profileEdit": {
+    "firstName": "Имя",
+    "lastName": "Фамилия",
+    "nickname": "Имя пользователя",
+    "saveChanges": "Сохранить Изменения",
+    "editing": "Редактирование...",
+    "saved": "Сохранено!"
+  }
 }

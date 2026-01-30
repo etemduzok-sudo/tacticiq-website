@@ -28,18 +28,34 @@
     "predictButton": "Enter Analysis",
     "strategicFocus": "Choose Analysis Focus",
     "strategicFocusSubtitle": "Selected focus gives x1.25 point multiplier",
-    "recentPerformance": "Recent Performance",
-    "viewAllBadges": "View All Badges",
-    "noUpcomingMatches": "No matches in next 24 hours",
+    "recentPerformance": "Your Recent Performance",
+    "viewAllBadges": "View All My Badges",
+    "noUpcomingMatches": "No matches in the next 24 hours",
     "noMatchHistory": "No match history yet",
     "points": "Points",
     "accuracy": "Accuracy"
   },
   "strategicFocus": {
-    "tempo": { "name": "Tempo Analysis", "description": "Focus on match pace", "advice": "Fast-paced match expected!" },
-    "discipline": { "name": "Discipline Analysis", "description": "Predict rough plays", "advice": "This referee loves cards!" },
-    "fitness": { "name": "Fitness Analysis", "description": "Evaluate physical condition", "advice": "Fitness is critical!" },
-    "star": { "name": "Star Analysis", "description": "Track star players", "advice": "Star players on the field!" }
+    "tempo": {
+      "name": "Tempo Analysis",
+      "description": "Focus on match pace",
+      "advice": "Fast-paced match expected!"
+    },
+    "discipline": {
+      "name": "Discipline Analysis",
+      "description": "Predict rough plays",
+      "advice": "This referee loves cards, your focus is correct!"
+    },
+    "fitness": {
+      "name": "Fitness Analysis",
+      "description": "Evaluate physical condition",
+      "advice": "Fitness is critical in a long season!"
+    },
+    "star": {
+      "name": "Star Analysis",
+      "description": "Track star players",
+      "advice": "Star players will be on the field!"
+    }
   },
   "badges": {
     "title": "Badges",
@@ -47,9 +63,17 @@
     "locked": "Locked",
     "howToEarn": "How to Earn",
     "progress": "Progress",
-    "progressHint": "more matches needed!",
+    "progressHint": "more matches to win!",
     "earnedDate": "Earned:",
-    "tiers": { "rookie": "Rookie", "amateur": "Amateur", "pro": "Professional", "expert": "Expert", "legend": "Legend" }
+    "noBadges": "No badges yet",
+    "startPredicting": "Predict matches and earn badges!",
+    "tiers": {
+      "rookie": "Rookie",
+      "amateur": "Amateur",
+      "pro": "Professional",
+      "expert": "Expert",
+      "legend": "Legend"
+    }
   },
   "profile": {
     "title": "Profile",
@@ -72,10 +96,35 @@
     "minute": "Minute",
     "vs": "VS"
   },
-  "leaderboard": { "title": "Leaderboard", "overall": "Overall", "weekly": "Weekly", "monthly": "Monthly", "rank": "Rank", "user": "User", "points": "Points" },
-  "scoring": { "bonusApplied": "Bonus Applied!", "strategicBonus": "Strategic Focus Bonus", "totalPoints": "Total Points", "breakdown": "Points Breakdown" },
-  "notifications": { "title": "Notifications", "noNotifications": "No notifications", "matchStartingSoon": "Match starting soon!", "predictionReminder": "Don't forget to predict!", "badgeEarned": "New badge earned!" },
-  "errors": { "networkError": "Network error", "serverError": "Server error", "notFound": "Not found", "unauthorized": "Unauthorized", "tryAgain": "Try again" },
+  "leaderboard": {
+    "title": "Leaderboard",
+    "overall": "Overall",
+    "weekly": "Weekly",
+    "monthly": "Monthly",
+    "rank": "Rank",
+    "user": "User",
+    "points": "Points"
+  },
+  "scoring": {
+    "bonusApplied": "Bonus Applied!",
+    "strategicBonus": "Strategic Focus Bonus",
+    "totalPoints": "Total Points",
+    "breakdown": "Points Breakdown"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "noNotifications": "No notifications",
+    "matchStartingSoon": "Match starting soon!",
+    "predictionReminder": "Don't forget to predict!",
+    "badgeEarned": "New badge earned!"
+  },
+  "errors": {
+    "networkError": "Network error",
+    "serverError": "Server error",
+    "notFound": "Not found",
+    "unauthorized": "Unauthorized",
+    "tryAgain": "Try again"
+  },
   "auth": {
     "title": "Welcome",
     "subtitle": "Discover football strategies",
@@ -86,13 +135,16 @@
     "forgotPassword": "Forgot Password",
     "orContinueWith": "or continue with",
     "emailRequired": "Email is required",
-    "emailInvalid": "Invalid email",
+    "emailInvalid": "Enter a valid email",
     "passwordRequired": "Password is required",
     "passwordMinLength": "Password must be at least 6 characters",
     "loginSuccess": "Login successful!",
     "loginFailed": "Login failed",
     "socialLoginFailed": "Social login failed",
-    "errorOccurred": "An error occurred"
+    "errorOccurred": "An error occurred",
+    "checkingEmail": "Checking email...",
+    "emailAvailable": "Email is available",
+    "emailTaken": "This email is already in use"
   },
   "ageGate": {
     "title": "Age Verification",
@@ -104,20 +156,38 @@
     "selectYear": "Select Year",
     "selectMonth": "Select Month",
     "selectDay": "Select Day",
-    "info": "Required for safety and legal compliance.",
+    "info": "This information is required for your safety and legal compliance.",
+    "pleaseEnterDate": "Please enter your date of birth",
+    "invalidDate": "Invalid date of birth",
     "minorNotice": "Parental consent required for users under 18"
   },
   "legal": {
     "title": "Legal Documents",
-    "subtitle": "Please review and accept",
+    "subtitle": "Please review and accept the following documents",
     "iAccept": "I have read and accept",
     "minorNotice": "Parental consent required for users under 18",
-    "terms": { "title": "Terms of Service", "desc": "Usage rules and conditions", "fullContent": "Last Updated: January 1, 2026\n\n1. INTRODUCTION\nThese Terms govern your use of TacticIQ.\n\n2. VIRTUAL ITEMS\nPoints are virtual, non-refundable.\n\n3. INTELLECTUAL PROPERTY\nAll rights belong to TacticIQ.\n\n4. CONTACT\nlegal@tacticiq.app" },
-    "privacy": { "title": "Privacy Policy", "desc": "GDPR, CCPA compliant", "fullContent": "Last Updated: January 1, 2026\n\n1. DATA COLLECTION\nWe collect device ID, IP, activity.\n\n2. YOUR RIGHTS\nYou can request data deletion.\n\n3. CONTACT\nprivacy@tacticiq.app" },
-    "cookies": { "title": "Cookie Policy", "desc": "Cookie usage", "fullContent": "We use cookies to improve your experience.\n\nTypes: Essential, Analytics, Marketing\n\nManage in Settings." },
-    "kvkk": { "title": "KVKK Disclosure", "desc": "Turkish data protection", "fullContent": "DATA CONTROLLER: TacticIQ\nkvkk@tacticiq.app\n\nDATA: Identity, Contact, Activity, Device\n\nRIGHTS: Contact kvkk@tacticiq.app" }
+    "terms": {
+      "title": "Terms of Service",
+      "desc": "Service terms and user responsibilities",
+      "fullContent": "Last Updated: January 1, 2026\n\n1. INTRODUCTION AND ACCEPTANCE\nThese Terms are a legal agreement between you and TacticIQ.\n\n2. VIRTUAL ITEMS\nPoints and XP cannot be converted to real money.\n\n3. INTELLECTUAL PROPERTY\nAll rights belong to TacticIQ.\n\n4. CONTACT\nlegal@tacticiq.app"
+    },
+    "privacy": {
+      "title": "Privacy Policy",
+      "desc": "GDPR, CCPA, KVKK compliant",
+      "fullContent": "Last Updated: January 1, 2026\n\n1. DATA COLLECTION\nWe process device ID, IP, location and activity data.\n\n2. YOUR RIGHTS\nYou can request deletion of your data.\n\n3. CONTACT\nprivacy@tacticiq.app"
     },
     "cookies": {
+      "title": "Cookie Policy",
+      "desc": "Cookie usage",
+      "fullContent": "Last Updated: January 1, 2026\n\n1. COOKIE USAGE\nWe use cookies to improve your experience.\n\n2. COOKIE TYPES\n- Essential\n- Functional\n- Analytics\n- Marketing\n\n3. MANAGEMENT\nSettings menu"
+    },
+    "kvkk": {
+      "title": "KVKK Disclosure",
+      "desc": "Turkish data protection law",
+      "fullContent": "DATA CONTROLLER: TacticIQ\nkvkk@tacticiq.app\n\nPROCESSED DATA:\n- Identity\n- Contact\n- Activity\n- Device/IP\n\nYOUR RIGHTS:\nkvkk@tacticiq.app"
+    }
+  },
+  "cookies": {
     "essential": "Essential Cookies",
     "essentialDesc": "Required for app to function",
     "analytics": "Analytics Cookies",
@@ -130,7 +200,13 @@
     "subtitle": "Choose how your data is used",
     "error": "Error",
     "mustAccept": "You must accept the legal documents to continue",
-    "saveFailed": "Failed to save"
+    "saveFailed": "Failed to save",
+    "essential": "Essential Cookies",
+    "essentialDesc": "Basic cookies required for app to function",
+    "analytics": "Analytics Cookies",
+    "analyticsDesc": "Used to analyze app performance",
+    "marketing": "Marketing Cookies",
+    "marketingDesc": "Notifications for campaigns and special offers"
   },
   "countries": {
     "Turkey": "Turkey",

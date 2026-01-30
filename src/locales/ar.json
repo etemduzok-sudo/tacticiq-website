@@ -1,12 +1,256 @@
 {
-  "common": { "loading": "جاري التحميل...", "error": "خطأ", "save": "حفظ", "cancel": "إلغاء", "close": "إغلاق", "delete": "حذف", "edit": "تعديل", "back": "رجوع", "next": "التالي", "done": "تم", "continue": "متابعة", "getStarted": "ابدأ", "info": "معلومات" },
-  "languageSelection": { "title": "اختيار اللغة", "subtitle": "يرجى اختيار لغتك" },
-  "dashboard": { "title": "لوحة المحلل", "analyst": "محلل", "streak": "سلسلة", "upcomingMatches": "المباريات القادمة", "liveMatch": "مباشر", "liveTracking": "تتبع مباشر", "predictButton": "إدخال التحليل", "strategicFocus": "اختر التركيز", "strategicFocusSubtitle": "مضاعف x1.25", "recentPerformance": "الأداء الأخير", "viewAllBadges": "عرض جميع الشارات", "noUpcomingMatches": "لا مباريات في 24 ساعة", "noMatchHistory": "لا يوجد سجل", "points": "نقاط", "accuracy": "الدقة" },
-  "ageGate": { "title": "التحقق من العمر", "subtitle": "اختر تاريخ ميلادك", "year": "السنة", "month": "الشهر", "day": "اليوم", "yearsOld": "سنة", "selectYear": "اختر السنة", "selectMonth": "اختر الشهر", "selectDay": "اختر اليوم", "minorNotice": "موافقة الوالدين مطلوبة لمن هم دون 18" },
-  "legal": { "title": "المستندات القانونية", "subtitle": "يرجى المراجعة والقبول", "iAccept": "قرأت وأوافق", "minorNotice": "موافقة الوالدين مطلوبة لمن هم دون 18", "terms": { "title": "شروط الخدمة", "desc": "قواعد الاستخدام", "fullContent": "آخر تحديث: 1 يناير 2026\n\nشروط TacticIQ.\n\nاتصل: legal@tacticiq.app" }, "privacy": { "title": "سياسة الخصوصية", "desc": "متوافق مع GDPR", "fullContent": "سياسة الخصوصية\n\nاتصل: privacy@tacticiq.app" }, "cookies": { "title": "سياسة ملفات تعريف الارتباط", "desc": "استخدام الكوكيز", "fullContent": "نستخدم ملفات تعريف الارتباط." }, "kvkk": { "title": "إفصاح KVKK", "desc": "حماية البيانات", "fullContent": "معلومات KVKK" } },
-  "cookies": { "essential": "ملفات تعريف الارتباط الأساسية", "essentialDesc": "مطلوبة", "analytics": "ملفات التحليلات", "analyticsDesc": "للتحسين", "marketing": "ملفات التسويق", "marketingDesc": "مخصص" },
-  "consent": { "title": "تفضيلات الخصوصية", "subtitle": "اختر تفضيلاتك", "error": "خطأ", "mustAccept": "يجب قبول المستندات", "saveFailed": "فشل الحفظ" },
-  "auth": { "title": "مرحباً", "subtitle": "اكتشف استراتيجيات كرة القدم", "email": "البريد الإلكتروني", "password": "كلمة المرور", "login": "تسجيل الدخول", "register": "التسجيل" },
-  "profile": { "title": "الملف الشخصي", "settings": "الإعدادات", "logout": "تسجيل الخروج" },
-  "matches": { "title": "المباريات", "live": "مباشر", "upcoming": "قادمة" }
+  "common": {
+    "loading": "جاري التحميل...",
+    "error": "خطأ",
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "close": "إغلاق",
+    "delete": "حذف",
+    "edit": "تعديل",
+    "back": "رجوع",
+    "next": "التالي",
+    "done": "تم",
+    "continue": "متابعة",
+    "getStarted": "ابدأ",
+    "info": "معلومات"
+  },
+  "languageSelection": {
+    "title": "اختيار اللغة",
+    "subtitle": "يرجى اختيار لغتك"
+  },
+  "dashboard": {
+    "title": "لوحة تحكم المحلل",
+    "analyst": "محلل",
+    "streak": "سلسلة",
+    "upcomingMatches": "المباريات القادمة والمباشرة",
+    "liveMatch": "مباشر",
+    "liveTracking": "تتبع مباشر",
+    "predictButton": "أدخل تحليلك",
+    "strategicFocus": "اختر تركيز التحليل",
+    "strategicFocusSubtitle": "التركيز المختار يمنح مضاعف x1.25 نقطة",
+    "recentPerformance": "أداؤك الأخير",
+    "viewAllBadges": "عرض جميع شاراتي",
+    "noUpcomingMatches": "لا توجد مباريات خلال 24 ساعة",
+    "noMatchHistory": "لا يوجد سجل مباريات بعد",
+    "points": "نقاط",
+    "accuracy": "الدقة"
+  },
+  "strategicFocus": {
+    "tempo": {
+      "name": "تحليل الإيقاع",
+      "description": "التركيز على سرعة المباراة",
+      "advice": "متوقع مباراة سريعة الإيقاع!"
+    },
+    "discipline": {
+      "name": "تحليل الانضباط",
+      "description": "توقع التدخلات القوية",
+      "advice": "هذا الحكم يحب البطاقات، تركيزك صحيح!"
+    },
+    "fitness": {
+      "name": "تحليل اللياقة",
+      "description": "تقييم الحالة البدنية",
+      "advice": "اللياقة حاسمة في الموسم الطويل!"
+    },
+    "star": {
+      "name": "تحليل النجوم",
+      "description": "تتبع اللاعبين النجوم",
+      "advice": "اللاعبون النجوم سيكونون في الملعب!"
+    }
+  },
+  "badges": {
+    "title": "الشارات",
+    "earned": "مكتسبة",
+    "locked": "مقفلة",
+    "howToEarn": "كيفية الحصول عليها",
+    "progress": "التقدم",
+    "progressHint": "مباراة إضافية للفوز!",
+    "earnedDate": "تم الحصول عليها:",
+    "noBadges": "لا توجد شارات بعد",
+    "startPredicting": "توقع المباريات واربح الشارات!",
+    "tiers": {
+      "rookie": "مبتدئ",
+      "amateur": "هاوي",
+      "pro": "محترف",
+      "expert": "خبير",
+      "legend": "أسطورة"
+    }
+  },
+  "profile": {
+    "title": "الملف الشخصي",
+    "level": "المستوى",
+    "points": "النقاط",
+    "rank": "الترتيب",
+    "settings": "الإعدادات",
+    "logout": "تسجيل الخروج",
+    "favoriteTeams": "الفرق المفضلة",
+    "statistics": "الإحصائيات",
+    "achievements": "الإنجازات"
+  },
+  "matches": {
+    "title": "المباريات",
+    "past": "السابقة",
+    "live": "مباشر",
+    "upcoming": "القادمة",
+    "allMatches": "جميع المباريات",
+    "noMatches": "لم يتم العثور على مباريات",
+    "minute": "دقيقة",
+    "vs": "ضد"
+  },
+  "leaderboard": {
+    "title": "الترتيب",
+    "overall": "العام",
+    "weekly": "الأسبوعي",
+    "monthly": "الشهري",
+    "rank": "المركز",
+    "user": "المستخدم",
+    "points": "النقاط"
+  },
+  "scoring": {
+    "bonusApplied": "تم تطبيق المكافأة!",
+    "strategicBonus": "مكافأة التركيز الاستراتيجي",
+    "totalPoints": "إجمالي النقاط",
+    "breakdown": "تفصيل النقاط"
+  },
+  "notifications": {
+    "title": "الإشعارات",
+    "noNotifications": "لا توجد إشعارات",
+    "matchStartingSoon": "المباراة تبدأ قريباً!",
+    "predictionReminder": "لا تنسَ التوقع!",
+    "badgeEarned": "حصلت على شارة جديدة!"
+  },
+  "errors": {
+    "networkError": "خطأ في الاتصال",
+    "serverError": "خطأ في الخادم",
+    "notFound": "غير موجود",
+    "unauthorized": "وصول غير مصرح",
+    "tryAgain": "حاول مرة أخرى"
+  },
+  "auth": {
+    "title": "مرحباً",
+    "subtitle": "اكتشف استراتيجيات كرة القدم",
+    "email": "البريد الإلكتروني",
+    "password": "كلمة المرور",
+    "login": "تسجيل الدخول",
+    "register": "التسجيل",
+    "forgotPassword": "نسيت كلمة المرور",
+    "orContinueWith": "أو تابع مع",
+    "emailRequired": "البريد الإلكتروني مطلوب",
+    "emailInvalid": "أدخل بريداً إلكترونياً صالحاً",
+    "passwordRequired": "كلمة المرور مطلوبة",
+    "passwordMinLength": "كلمة المرور يجب أن تكون 6 أحرف على الأقل",
+    "loginSuccess": "تم تسجيل الدخول بنجاح!",
+    "loginFailed": "فشل تسجيل الدخول",
+    "socialLoginFailed": "فشل تسجيل الدخول عبر",
+    "errorOccurred": "حدث خطأ",
+    "checkingEmail": "جاري التحقق من البريد...",
+    "emailAvailable": "البريد الإلكتروني متاح",
+    "emailTaken": "هذا البريد مستخدم بالفعل"
+  },
+  "ageGate": {
+    "title": "التحقق من العمر",
+    "subtitle": "اختر تاريخ ميلادك",
+    "year": "السنة",
+    "month": "الشهر",
+    "day": "اليوم",
+    "yearsOld": "سنة",
+    "selectYear": "اختر السنة",
+    "selectMonth": "اختر الشهر",
+    "selectDay": "اختر اليوم",
+    "info": "هذه المعلومات مطلوبة لسلامتك والامتثال القانوني.",
+    "pleaseEnterDate": "يرجى إدخال تاريخ ميلادك",
+    "invalidDate": "تاريخ ميلاد غير صالح",
+    "minorNotice": "موافقة الوالدين مطلوبة لمن هم دون 18"
+  },
+  "legal": {
+    "title": "المستندات القانونية",
+    "subtitle": "يرجى مراجعة المستندات التالية والموافقة عليها",
+    "iAccept": "قرأت وأوافق",
+    "minorNotice": "موافقة الوالدين مطلوبة للمستخدمين دون 18 عاماً",
+    "terms": {
+      "title": "شروط الاستخدام",
+      "desc": "شروط الخدمة ومسؤوليات المستخدم",
+      "fullContent": "آخر تحديث: 1 يناير 2026\n\n1. المقدمة والقبول\nهذه الشروط هي اتفاقية قانونية بينك وبين TacticIQ.\n\n2. العناصر الافتراضية\nالنقاط وXP لا يمكن تحويلها إلى أموال حقيقية.\n\n3. الملكية الفكرية\nجميع الحقوق محفوظة لـ TacticIQ.\n\n4. التواصل\nlegal@tacticiq.app"
+    },
+    "privacy": {
+      "title": "سياسة الخصوصية",
+      "desc": "متوافق مع GDPR وCCPA وKVKK",
+      "fullContent": "آخر تحديث: 1 يناير 2026\n\n1. جمع البيانات\nنقوم بمعالجة معرف الجهاز وIP والموقع وبيانات النشاط.\n\n2. حقوقك\nيمكنك طلب حذف البيانات.\n\n3. التواصل\nprivacy@tacticiq.app"
+    },
+    "cookies": {
+      "title": "سياسة ملفات تعريف الارتباط",
+      "desc": "استخدام ملفات تعريف الارتباط",
+      "fullContent": "آخر تحديث: 1 يناير 2026\n\n1. استخدام ملفات تعريف الارتباط\nنستخدم ملفات تعريف الارتباط لتحسين تجربتك.\n\n2. الأنواع\n- أساسية\n- وظيفية\n- تحليلية\n- تسويقية\n\n3. الإدارة\nقائمة الإعدادات"
+    },
+    "kvkk": {
+      "title": "إفصاح KVKK",
+      "desc": "قانون حماية البيانات الشخصية",
+      "fullContent": "مراقب البيانات: TacticIQ\nkvkk@tacticiq.app\n\nالبيانات المعالجة:\n- الهوية\n- التواصل\n- النشاط\n- الجهاز/IP\n\nحقوقك:\nkvkk@tacticiq.app"
+    }
+  },
+  "cookies": {
+    "essential": "ملفات تعريف الارتباط الأساسية",
+    "essentialDesc": "مطلوبة لعمل التطبيق",
+    "analytics": "ملفات تعريف الارتباط التحليلية",
+    "analyticsDesc": "تساعدنا على التحسين",
+    "marketing": "ملفات تعريف الارتباط التسويقية",
+    "marketingDesc": "تقدم محتوى مخصص"
+  },
+  "consent": {
+    "title": "تفضيلات الخصوصية",
+    "subtitle": "اختر كيفية استخدام بياناتك",
+    "error": "خطأ",
+    "mustAccept": "يجب قبول المستندات القانونية للمتابعة",
+    "saveFailed": "فشل الحفظ",
+    "essential": "ملفات تعريف الارتباط الأساسية",
+    "essentialDesc": "ملفات تعريف الارتباط الأساسية لعمل التطبيق",
+    "analytics": "ملفات تعريف الارتباط التحليلية",
+    "analyticsDesc": "تستخدم لتحليل أداء التطبيق",
+    "marketing": "ملفات تعريف الارتباط التسويقية",
+    "marketingDesc": "إشعارات للحملات والعروض الخاصة"
+  },
+  "countries": {
+    "Turkey": "تركيا",
+    "Germany": "ألمانيا",
+    "France": "فرنسا",
+    "England": "إنجلترا",
+    "Spain": "إسبانيا",
+    "Italy": "إيطاليا",
+    "Brazil": "البرازيل",
+    "Argentina": "الأرجنتين",
+    "Portugal": "البرتغال",
+    "Netherlands": "هولندا",
+    "Belgium": "بلجيكا",
+    "Croatia": "كرواتيا",
+    "Poland": "بولندا",
+    "Ukraine": "أوكرانيا",
+    "Russia": "روسيا",
+    "Sweden": "السويد",
+    "Austria": "النمسا",
+    "Switzerland": "سويسرا",
+    "USA": "الولايات المتحدة",
+    "Mexico": "المكسيك",
+    "Japan": "اليابان",
+    "South-Korea": "كوريا الجنوبية",
+    "Australia": "أستراليا",
+    "Saudi-Arabia": "المملكة العربية السعودية",
+    "Unknown": "غير معروف"
+  },
+  "teamSelection": {
+    "selectNationalTeam": "اختر منتخبك الوطني",
+    "selectClubTeam": "اختر ناديك المفضل",
+    "selectClubTeam2": "اختر ناديك المفضل الثاني",
+    "selectClubTeam3": "اختر ناديك المفضل الثالث",
+    "selectClubTeam4": "اختر ناديك المفضل الرابع",
+    "selectClubTeam5": "اختر ناديك المفضل الخامس",
+    "searchPlaceholder": "ابحث عن فريق...",
+    "noTeamsFound": "لم يتم العثور على فرق"
+  },
+  "profileEdit": {
+    "firstName": "الاسم الأول",
+    "lastName": "اسم العائلة",
+    "nickname": "اسم المستخدم",
+    "saveChanges": "حفظ التغييرات",
+    "editing": "جاري التعديل...",
+    "saved": "تم الحفظ!"
+  }
 }

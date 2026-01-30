@@ -1,12 +1,256 @@
 {
-  "common": { "loading": "Chargement...", "error": "Erreur", "save": "Enregistrer", "cancel": "Annuler", "close": "Fermer", "delete": "Supprimer", "edit": "Modifier", "back": "Retour", "next": "Suivant", "done": "Terminé", "continue": "Continuer", "getStarted": "Commencer", "info": "Info" },
-  "languageSelection": { "title": "Sélection de la langue", "subtitle": "Veuillez sélectionner votre langue" },
-  "dashboard": { "title": "Panneau d'Analyste", "analyst": "Analyste", "streak": "Série", "upcomingMatches": "Matchs à Venir", "liveMatch": "EN DIRECT", "liveTracking": "Suivi en Direct", "predictButton": "Entrer l'Analyse", "strategicFocus": "Choisir le Focus", "strategicFocusSubtitle": "x1.25 multiplicateur", "recentPerformance": "Performance Récente", "viewAllBadges": "Voir Tous les Badges", "noUpcomingMatches": "Pas de match dans 24h", "noMatchHistory": "Pas d'historique", "points": "Points", "accuracy": "Précision" },
-  "ageGate": { "title": "Vérification de l'Âge", "subtitle": "Sélectionnez votre date de naissance", "year": "Année", "month": "Mois", "day": "Jour", "yearsOld": "ans", "selectYear": "Sélectionner l'Année", "selectMonth": "Sélectionner le Mois", "selectDay": "Sélectionner le Jour", "minorNotice": "Consentement parental requis pour les moins de 18 ans" },
-  "legal": { "title": "Documents Légaux", "subtitle": "Veuillez lire et accepter", "iAccept": "J'ai lu et j'accepte", "minorNotice": "Consentement parental requis pour les moins de 18 ans", "terms": { "title": "Conditions d'Utilisation", "desc": "Règles d'utilisation", "fullContent": "Dernière mise à jour: 1er janvier 2026\n\nConditions de TacticIQ.\n\nContact: legal@tacticiq.app" }, "privacy": { "title": "Politique de Confidentialité", "desc": "Conforme au RGPD", "fullContent": "Politique de confidentialité\n\nContact: privacy@tacticiq.app" }, "cookies": { "title": "Politique des Cookies", "desc": "Utilisation des cookies", "fullContent": "Nous utilisons des cookies." }, "kvkk": { "title": "Divulgation KVKK", "desc": "Protection des données", "fullContent": "Informations KVKK" } },
-  "cookies": { "essential": "Cookies Essentiels", "essentialDesc": "Requis", "analytics": "Cookies Analytiques", "analyticsDesc": "Améliorer", "marketing": "Cookies Marketing", "marketingDesc": "Personnalisé" },
-  "consent": { "title": "Préférences de Confidentialité", "subtitle": "Choisissez vos préférences", "error": "Erreur", "mustAccept": "Vous devez accepter les documents", "saveFailed": "Échec de l'enregistrement" },
-  "auth": { "title": "Bienvenue", "subtitle": "Découvrez les stratégies de football", "email": "Email", "password": "Mot de passe", "login": "Connexion", "register": "S'inscrire" },
-  "profile": { "title": "Profil", "settings": "Paramètres", "logout": "Déconnexion" },
-  "matches": { "title": "Matchs", "live": "En Direct", "upcoming": "À Venir" }
+  "common": {
+    "loading": "Chargement...",
+    "error": "Erreur",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "close": "Fermer",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "back": "Retour",
+    "next": "Suivant",
+    "done": "Terminé",
+    "continue": "Continuer",
+    "getStarted": "Commencer",
+    "info": "Info"
+  },
+  "languageSelection": {
+    "title": "Sélection de la langue",
+    "subtitle": "Veuillez sélectionner votre langue"
+  },
+  "dashboard": {
+    "title": "Tableau de Bord Analyste",
+    "analyst": "Analyste",
+    "streak": "Série",
+    "upcomingMatches": "Matchs à Venir et En Direct",
+    "liveMatch": "EN DIRECT",
+    "liveTracking": "Suivi en Direct",
+    "predictButton": "Entrer l'Analyse",
+    "strategicFocus": "Choisir le Focus d'Analyse",
+    "strategicFocusSubtitle": "Le focus sélectionné donne un multiplicateur x1.25",
+    "recentPerformance": "Ta Performance Récente",
+    "viewAllBadges": "Voir Tous mes Badges",
+    "noUpcomingMatches": "Pas de match dans les 24 prochaines heures",
+    "noMatchHistory": "Pas encore d'historique",
+    "points": "Points",
+    "accuracy": "Précision"
+  },
+  "strategicFocus": {
+    "tempo": {
+      "name": "Analyse du Tempo",
+      "description": "Focus sur le rythme du match",
+      "advice": "Un match à rythme rapide est attendu !"
+    },
+    "discipline": {
+      "name": "Analyse de la Discipline",
+      "description": "Prévoir les fautes dures",
+      "advice": "Cet arbitre aime les cartons, ton focus est juste !"
+    },
+    "fitness": {
+      "name": "Analyse de la Condition",
+      "description": "Évaluer la condition physique",
+      "advice": "La condition physique est cruciale dans une longue saison !"
+    },
+    "star": {
+      "name": "Analyse des Stars",
+      "description": "Suivre les joueurs vedettes",
+      "advice": "Les joueurs vedettes seront sur le terrain !"
+    }
+  },
+  "badges": {
+    "title": "Badges",
+    "earned": "Obtenu",
+    "locked": "Verrouillé",
+    "howToEarn": "Comment l'Obtenir",
+    "progress": "Progression",
+    "progressHint": "matchs de plus à gagner !",
+    "earnedDate": "Obtenu le :",
+    "noBadges": "Pas encore de badges",
+    "startPredicting": "Prédis des matchs et gagne des badges !",
+    "tiers": {
+      "rookie": "Débutant",
+      "amateur": "Amateur",
+      "pro": "Professionnel",
+      "expert": "Expert",
+      "legend": "Légende"
+    }
+  },
+  "profile": {
+    "title": "Profil",
+    "level": "Niveau",
+    "points": "Points",
+    "rank": "Classement",
+    "settings": "Paramètres",
+    "logout": "Déconnexion",
+    "favoriteTeams": "Équipes Favorites",
+    "statistics": "Statistiques",
+    "achievements": "Réalisations"
+  },
+  "matches": {
+    "title": "Matchs",
+    "past": "Passés",
+    "live": "En Direct",
+    "upcoming": "À Venir",
+    "allMatches": "Tous les Matchs",
+    "noMatches": "Aucun match trouvé",
+    "minute": "Minute",
+    "vs": "VS"
+  },
+  "leaderboard": {
+    "title": "Classement",
+    "overall": "Général",
+    "weekly": "Hebdomadaire",
+    "monthly": "Mensuel",
+    "rank": "Rang",
+    "user": "Utilisateur",
+    "points": "Points"
+  },
+  "scoring": {
+    "bonusApplied": "Bonus Appliqué !",
+    "strategicBonus": "Bonus de Focus Stratégique",
+    "totalPoints": "Points Totaux",
+    "breakdown": "Répartition des Points"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "noNotifications": "Pas de notifications",
+    "matchStartingSoon": "Le match commence bientôt !",
+    "predictionReminder": "N'oublie pas de prédire !",
+    "badgeEarned": "Nouveau badge obtenu !"
+  },
+  "errors": {
+    "networkError": "Erreur de connexion",
+    "serverError": "Erreur serveur",
+    "notFound": "Non trouvé",
+    "unauthorized": "Non autorisé",
+    "tryAgain": "Réessayer"
+  },
+  "auth": {
+    "title": "Bienvenue",
+    "subtitle": "Découvre les stratégies de football",
+    "email": "Email",
+    "password": "Mot de passe",
+    "login": "Connexion",
+    "register": "S'inscrire",
+    "forgotPassword": "Mot de passe oublié",
+    "orContinueWith": "ou continuer avec",
+    "emailRequired": "L'email est obligatoire",
+    "emailInvalid": "Entrez un email valide",
+    "passwordRequired": "Le mot de passe est obligatoire",
+    "passwordMinLength": "Le mot de passe doit avoir au moins 6 caractères",
+    "loginSuccess": "Connexion réussie !",
+    "loginFailed": "Échec de la connexion",
+    "socialLoginFailed": "Échec de la connexion avec",
+    "errorOccurred": "Une erreur s'est produite",
+    "checkingEmail": "Vérification de l'email...",
+    "emailAvailable": "Email disponible",
+    "emailTaken": "Cet email est déjà utilisé"
+  },
+  "ageGate": {
+    "title": "Vérification de l'Âge",
+    "subtitle": "Sélectionnez votre date de naissance",
+    "year": "Année",
+    "month": "Mois",
+    "day": "Jour",
+    "yearsOld": "ans",
+    "selectYear": "Sélectionner l'Année",
+    "selectMonth": "Sélectionner le Mois",
+    "selectDay": "Sélectionner le Jour",
+    "info": "Cette information est requise pour votre sécurité et la conformité légale.",
+    "pleaseEnterDate": "Veuillez entrer votre date de naissance",
+    "invalidDate": "Date de naissance invalide",
+    "minorNotice": "Consentement parental requis pour les moins de 18 ans"
+  },
+  "legal": {
+    "title": "Documents Légaux",
+    "subtitle": "Veuillez lire et accepter les documents suivants",
+    "iAccept": "J'ai lu et j'accepte",
+    "minorNotice": "Consentement parental requis pour les moins de 18 ans",
+    "terms": {
+      "title": "Conditions d'Utilisation",
+      "desc": "Conditions de service et responsabilités de l'utilisateur",
+      "fullContent": "Dernière mise à jour : 1er janvier 2026\n\n1. INTRODUCTION ET ACCEPTATION\nCes Conditions constituent un accord légal entre vous et TacticIQ.\n\n2. OBJETS VIRTUELS\nLes points et XP ne peuvent pas être convertis en argent réel.\n\n3. PROPRIÉTÉ INTELLECTUELLE\nTous les droits appartiennent à TacticIQ.\n\n4. CONTACT\nlegal@tacticiq.app"
+    },
+    "privacy": {
+      "title": "Politique de Confidentialité",
+      "desc": "Conforme RGPD, CCPA, KVKK",
+      "fullContent": "Dernière mise à jour : 1er janvier 2026\n\n1. COLLECTE DE DONNÉES\nNous traitons l'ID de l'appareil, l'IP, la localisation et les données d'activité.\n\n2. VOS DROITS\nVous pouvez demander la suppression de vos données.\n\n3. CONTACT\nprivacy@tacticiq.app"
+    },
+    "cookies": {
+      "title": "Politique des Cookies",
+      "desc": "Utilisation des cookies",
+      "fullContent": "Dernière mise à jour : 1er janvier 2026\n\n1. UTILISATION DES COOKIES\nNous utilisons des cookies pour améliorer votre expérience.\n\n2. TYPES DE COOKIES\n- Essentiels\n- Fonctionnels\n- Analytiques\n- Marketing\n\n3. GESTION\nMenu des paramètres"
+    },
+    "kvkk": {
+      "title": "Divulgation KVKK",
+      "desc": "Loi turque sur la protection des données",
+      "fullContent": "RESPONSABLE DES DONNÉES : TacticIQ\nkvkk@tacticiq.app\n\nDONNÉES TRAITÉES :\n- Identité\n- Contact\n- Activité\n- Appareil/IP\n\nVOS DROITS :\nkvkk@tacticiq.app"
+    }
+  },
+  "cookies": {
+    "essential": "Cookies Essentiels",
+    "essentialDesc": "Requis pour le fonctionnement de l'app",
+    "analytics": "Cookies Analytiques",
+    "analyticsDesc": "Nous aident à améliorer",
+    "marketing": "Cookies Marketing",
+    "marketingDesc": "Contenu personnalisé"
+  },
+  "consent": {
+    "title": "Préférences de Confidentialité",
+    "subtitle": "Choisissez comment vos données sont utilisées",
+    "error": "Erreur",
+    "mustAccept": "Vous devez accepter les documents légaux pour continuer",
+    "saveFailed": "Échec de l'enregistrement",
+    "essential": "Cookies Essentiels",
+    "essentialDesc": "Cookies de base pour le fonctionnement de l'app",
+    "analytics": "Cookies Analytiques",
+    "analyticsDesc": "Utilisés pour analyser les performances de l'app",
+    "marketing": "Cookies Marketing",
+    "marketingDesc": "Notifications de campagnes et offres spéciales"
+  },
+  "countries": {
+    "Turkey": "Turquie",
+    "Germany": "Allemagne",
+    "France": "France",
+    "England": "Angleterre",
+    "Spain": "Espagne",
+    "Italy": "Italie",
+    "Brazil": "Brésil",
+    "Argentina": "Argentine",
+    "Portugal": "Portugal",
+    "Netherlands": "Pays-Bas",
+    "Belgium": "Belgique",
+    "Croatia": "Croatie",
+    "Poland": "Pologne",
+    "Ukraine": "Ukraine",
+    "Russia": "Russie",
+    "Sweden": "Suède",
+    "Austria": "Autriche",
+    "Switzerland": "Suisse",
+    "USA": "États-Unis",
+    "Mexico": "Mexique",
+    "Japan": "Japon",
+    "South-Korea": "Corée du Sud",
+    "Australia": "Australie",
+    "Saudi-Arabia": "Arabie Saoudite",
+    "Unknown": "Inconnu"
+  },
+  "teamSelection": {
+    "selectNationalTeam": "Sélectionnez votre équipe nationale",
+    "selectClubTeam": "Sélectionnez votre club favori",
+    "selectClubTeam2": "Sélectionnez votre 2e club favori",
+    "selectClubTeam3": "Sélectionnez votre 3e club favori",
+    "selectClubTeam4": "Sélectionnez votre 4e club favori",
+    "selectClubTeam5": "Sélectionnez votre 5e club favori",
+    "searchPlaceholder": "Rechercher une équipe...",
+    "noTeamsFound": "Aucune équipe trouvée"
+  },
+  "profileEdit": {
+    "firstName": "Prénom",
+    "lastName": "Nom",
+    "nickname": "Nom d'utilisateur",
+    "saveChanges": "Enregistrer les Modifications",
+    "editing": "Modification...",
+    "saved": "Enregistré !"
+  }
 }

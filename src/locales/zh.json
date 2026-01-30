@@ -1,12 +1,256 @@
 {
-  "common": { "loading": "加载中...", "error": "错误", "save": "保存", "cancel": "取消", "close": "关闭", "delete": "删除", "edit": "编辑", "back": "返回", "next": "下一步", "done": "完成", "continue": "继续", "getStarted": "开始", "info": "信息" },
-  "languageSelection": { "title": "语言选择", "subtitle": "请选择您的语言" },
-  "dashboard": { "title": "分析师面板", "analyst": "分析师", "streak": "连续", "upcomingMatches": "即将到来的比赛", "liveMatch": "直播", "liveTracking": "实时追踪", "predictButton": "输入分析", "strategicFocus": "选择焦点", "strategicFocusSubtitle": "x1.25倍数", "recentPerformance": "最近表现", "viewAllBadges": "查看所有徽章", "noUpcomingMatches": "24小时内无比赛", "noMatchHistory": "无历史记录", "points": "积分", "accuracy": "准确性" },
-  "ageGate": { "title": "年龄验证", "subtitle": "选择您的出生日期", "year": "年", "month": "月", "day": "日", "yearsOld": "岁", "selectYear": "选择年份", "selectMonth": "选择月份", "selectDay": "选择日期", "minorNotice": "18岁以下需要父母同意" },
-  "legal": { "title": "法律文件", "subtitle": "请阅读并接受", "iAccept": "我已阅读并接受", "minorNotice": "18岁以下需要父母同意", "terms": { "title": "服务条款", "desc": "使用规则", "fullContent": "最后更新：2026年1月1日\n\nTacticIQ条款。\n\n联系：legal@tacticiq.app" }, "privacy": { "title": "隐私政策", "desc": "符合GDPR", "fullContent": "隐私政策\n\n联系：privacy@tacticiq.app" }, "cookies": { "title": "Cookie政策", "desc": "Cookie使用", "fullContent": "我们使用Cookie。" }, "kvkk": { "title": "KVKK披露", "desc": "数据保护", "fullContent": "KVKK信息" } },
-  "cookies": { "essential": "必要Cookie", "essentialDesc": "必需", "analytics": "分析Cookie", "analyticsDesc": "改进", "marketing": "营销Cookie", "marketingDesc": "个性化" },
-  "consent": { "title": "隐私偏好", "subtitle": "选择您的偏好", "error": "错误", "mustAccept": "您必须接受文件", "saveFailed": "保存失败" },
-  "auth": { "title": "欢迎", "subtitle": "发现足球策略", "email": "邮箱", "password": "密码", "login": "登录", "register": "注册" },
-  "profile": { "title": "个人资料", "settings": "设置", "logout": "退出" },
-  "matches": { "title": "比赛", "live": "直播", "upcoming": "即将到来" }
+  "common": {
+    "loading": "加载中...",
+    "error": "错误",
+    "save": "保存",
+    "cancel": "取消",
+    "close": "关闭",
+    "delete": "删除",
+    "edit": "编辑",
+    "back": "返回",
+    "next": "下一步",
+    "done": "完成",
+    "continue": "继续",
+    "getStarted": "开始",
+    "info": "信息"
+  },
+  "languageSelection": {
+    "title": "语言选择",
+    "subtitle": "请选择您的语言"
+  },
+  "dashboard": {
+    "title": "分析师控制面板",
+    "analyst": "分析师",
+    "streak": "连胜",
+    "upcomingMatches": "即将进行和直播中的比赛",
+    "liveMatch": "直播",
+    "liveTracking": "实时追踪",
+    "predictButton": "输入分析",
+    "strategicFocus": "选择分析焦点",
+    "strategicFocusSubtitle": "选择的焦点可获得x1.25积分倍数",
+    "recentPerformance": "你的近期表现",
+    "viewAllBadges": "查看我的所有徽章",
+    "noUpcomingMatches": "未来24小时内无比赛",
+    "noMatchHistory": "暂无比赛历史",
+    "points": "积分",
+    "accuracy": "准确率"
+  },
+  "strategicFocus": {
+    "tempo": {
+      "name": "节奏分析",
+      "description": "关注比赛节奏",
+      "advice": "预计比赛节奏快速！"
+    },
+    "discipline": {
+      "name": "纪律分析",
+      "description": "预测粗野犯规",
+      "advice": "这位裁判喜欢出牌，你的焦点正确！"
+    },
+    "fitness": {
+      "name": "体能分析",
+      "description": "评估身体状态",
+      "advice": "在漫长的赛季中体能至关重要！"
+    },
+    "star": {
+      "name": "球星分析",
+      "description": "追踪球星球员",
+      "advice": "球星们将登场比赛！"
+    }
+  },
+  "badges": {
+    "title": "徽章",
+    "earned": "已获得",
+    "locked": "未解锁",
+    "howToEarn": "如何获得",
+    "progress": "进度",
+    "progressHint": "场比赛还需获胜！",
+    "earnedDate": "获得日期：",
+    "noBadges": "暂无徽章",
+    "startPredicting": "预测比赛并赢取徽章！",
+    "tiers": {
+      "rookie": "新手",
+      "amateur": "业余",
+      "pro": "职业",
+      "expert": "专家",
+      "legend": "传奇"
+    }
+  },
+  "profile": {
+    "title": "个人资料",
+    "level": "等级",
+    "points": "积分",
+    "rank": "排名",
+    "settings": "设置",
+    "logout": "退出登录",
+    "favoriteTeams": "喜爱的球队",
+    "statistics": "统计数据",
+    "achievements": "成就"
+  },
+  "matches": {
+    "title": "比赛",
+    "past": "已结束",
+    "live": "直播中",
+    "upcoming": "即将开始",
+    "allMatches": "所有比赛",
+    "noMatches": "未找到比赛",
+    "minute": "分钟",
+    "vs": "VS"
+  },
+  "leaderboard": {
+    "title": "排行榜",
+    "overall": "总榜",
+    "weekly": "周榜",
+    "monthly": "月榜",
+    "rank": "名次",
+    "user": "用户",
+    "points": "积分"
+  },
+  "scoring": {
+    "bonusApplied": "奖励已应用！",
+    "strategicBonus": "战略焦点奖励",
+    "totalPoints": "总积分",
+    "breakdown": "积分明细"
+  },
+  "notifications": {
+    "title": "通知",
+    "noNotifications": "没有通知",
+    "matchStartingSoon": "比赛即将开始！",
+    "predictionReminder": "别忘了预测！",
+    "badgeEarned": "获得新徽章！"
+  },
+  "errors": {
+    "networkError": "网络错误",
+    "serverError": "服务器错误",
+    "notFound": "未找到",
+    "unauthorized": "未授权",
+    "tryAgain": "重试"
+  },
+  "auth": {
+    "title": "欢迎",
+    "subtitle": "探索足球战术",
+    "email": "邮箱",
+    "password": "密码",
+    "login": "登录",
+    "register": "注册",
+    "forgotPassword": "忘记密码",
+    "orContinueWith": "或继续使用",
+    "emailRequired": "邮箱为必填项",
+    "emailInvalid": "请输入有效的邮箱",
+    "passwordRequired": "密码为必填项",
+    "passwordMinLength": "密码至少需要6个字符",
+    "loginSuccess": "登录成功！",
+    "loginFailed": "登录失败",
+    "socialLoginFailed": "社交登录失败",
+    "errorOccurred": "发生错误",
+    "checkingEmail": "正在检查邮箱...",
+    "emailAvailable": "邮箱可用",
+    "emailTaken": "此邮箱已被使用"
+  },
+  "ageGate": {
+    "title": "年龄验证",
+    "subtitle": "选择您的出生日期",
+    "year": "年",
+    "month": "月",
+    "day": "日",
+    "yearsOld": "岁",
+    "selectYear": "选择年份",
+    "selectMonth": "选择月份",
+    "selectDay": "选择日期",
+    "info": "此信息用于您的安全和法律合规。",
+    "pleaseEnterDate": "请输入您的出生日期",
+    "invalidDate": "无效的出生日期",
+    "minorNotice": "18岁以下需要父母同意"
+  },
+  "legal": {
+    "title": "法律文件",
+    "subtitle": "请阅读并接受以下文件",
+    "iAccept": "我已阅读并接受",
+    "minorNotice": "18岁以下需要父母同意",
+    "terms": {
+      "title": "服务条款",
+      "desc": "服务条件和用户责任",
+      "fullContent": "最后更新：2026年1月1日\n\n1. 简介和接受\n这些条款是您与TacticIQ之间的法律协议。\n\n2. 虚拟物品\n积分和经验值不能兑换成真实货币。\n\n3. 知识产权\n所有权利归TacticIQ所有。\n\n4. 联系方式\nlegal@tacticiq.app"
+    },
+    "privacy": {
+      "title": "隐私政策",
+      "desc": "符合GDPR、CCPA、KVKK标准",
+      "fullContent": "最后更新：2026年1月1日\n\n1. 数据收集\n我们处理设备ID、IP、位置和活动数据。\n\n2. 您的权利\n您可以要求删除您的数据。\n\n3. 联系方式\nprivacy@tacticiq.app"
+    },
+    "cookies": {
+      "title": "Cookie政策",
+      "desc": "Cookie使用说明",
+      "fullContent": "最后更新：2026年1月1日\n\n1. Cookie使用\n我们使用Cookie来改善您的体验。\n\n2. Cookie类型\n- 必要\n- 功能性\n- 分析\n- 营销\n\n3. 管理\n设置菜单"
+    },
+    "kvkk": {
+      "title": "KVKK披露",
+      "desc": "土耳其数据保护法",
+      "fullContent": "数据控制者：TacticIQ\nkvkk@tacticiq.app\n\n处理的数据：\n- 身份\n- 联系方式\n- 活动\n- 设备/IP\n\n您的权利：\nkvkk@tacticiq.app"
+    }
+  },
+  "cookies": {
+    "essential": "必要Cookie",
+    "essentialDesc": "应用运行所必需",
+    "analytics": "分析Cookie",
+    "analyticsDesc": "帮助我们改进",
+    "marketing": "营销Cookie",
+    "marketingDesc": "个性化内容"
+  },
+  "consent": {
+    "title": "隐私偏好",
+    "subtitle": "选择您的数据使用方式",
+    "error": "错误",
+    "mustAccept": "您必须接受法律文件才能继续",
+    "saveFailed": "保存失败",
+    "essential": "必要Cookie",
+    "essentialDesc": "应用运行所需的基本Cookie",
+    "analytics": "分析Cookie",
+    "analyticsDesc": "用于分析应用性能",
+    "marketing": "营销Cookie",
+    "marketingDesc": "活动和特别优惠的通知"
+  },
+  "countries": {
+    "Turkey": "土耳其",
+    "Germany": "德国",
+    "France": "法国",
+    "England": "英格兰",
+    "Spain": "西班牙",
+    "Italy": "意大利",
+    "Brazil": "巴西",
+    "Argentina": "阿根廷",
+    "Portugal": "葡萄牙",
+    "Netherlands": "荷兰",
+    "Belgium": "比利时",
+    "Croatia": "克罗地亚",
+    "Poland": "波兰",
+    "Ukraine": "乌克兰",
+    "Russia": "俄罗斯",
+    "Sweden": "瑞典",
+    "Austria": "奥地利",
+    "Switzerland": "瑞士",
+    "USA": "美国",
+    "Mexico": "墨西哥",
+    "Japan": "日本",
+    "South-Korea": "韩国",
+    "Australia": "澳大利亚",
+    "Saudi-Arabia": "沙特阿拉伯",
+    "Unknown": "未知"
+  },
+  "teamSelection": {
+    "selectNationalTeam": "选择您的国家队",
+    "selectClubTeam": "选择您喜爱的俱乐部",
+    "selectClubTeam2": "选择您第2喜爱的俱乐部",
+    "selectClubTeam3": "选择您第3喜爱的俱乐部",
+    "selectClubTeam4": "选择您第4喜爱的俱乐部",
+    "selectClubTeam5": "选择您第5喜爱的俱乐部",
+    "searchPlaceholder": "搜索球队...",
+    "noTeamsFound": "未找到球队"
+  },
+  "profileEdit": {
+    "firstName": "名",
+    "lastName": "姓",
+    "nickname": "用户名",
+    "saveChanges": "保存更改",
+    "editing": "编辑中...",
+    "saved": "已保存！"
+  }
 }

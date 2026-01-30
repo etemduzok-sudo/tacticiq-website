@@ -2,263 +2,415 @@
   "nav": {
     "home": "Startseite",
     "features": "Funktionen",
-    "how_it_works": "Wie Es Funktioniert",
+    "how_it_works": "So funktioniert's",
     "pricing": "Preise",
     "blog": "Blog",
     "login": "Anmelden",
     "signup": "Registrieren"
   },
   "hero": {
-    "title": "Meistern Sie Fußballvorhersagen",
-    "subtitle": "Entwickeln Sie Ihre Fähigkeiten, denken Sie strategisch und beweisen Sie Ihr Fußballwissen mit TacticIQ.",
-    "not_betting": "Kein Wetten, Skill-Spiel",
-    "description": "Kein Geld zu gewinnen oder zu verlieren. Entwickeln Sie einfach Ihr Fußballwissen und analytische Fähigkeiten.",
-    "cta_primary": "Kostenlos Starten",
-    "cta_secondary": "Wie Funktioniert Es?"
+    "badge": "Keine Wettplattform - Fähigkeitsbasierte Analyse",
+    "title": "Fußball-Intelligenz",
+    "subtitle": "Professionelle Spielanalyse-Plattform",
+    "notBetting": "Keine Wetten • Skill-basiertes Spiel",
+    "description": "Analysiere Spiele wie ein Profi. Mache datengestützte Vorhersagen, bewerte taktische Entscheidungen und entwickle deine Fußball-Intelligenz.",
+    "cta": {
+      "primary": "Warteliste beitreten",
+      "secondary": "Mehr erfahren"
+    },
+    "stats": {
+      "users": "Aktive Nutzer",
+      "predictions": "Vorhersagen gemacht",
+      "leagues": "Ligen abgedeckt"
+    }
   },
   "product": {
     "title": "Was ist TacticIQ?",
-    "subtitle": "Kein Wetten, Taktische Intelligenz",
-    "description": "TacticIQ ist eine skill-basierte Vorhersage- und Analyseplattform für Fußballspiele.",
-    "non_gambling_title": "❌ Keine Wettplattform",
-    "non_gambling_desc": "TacticIQ ist keine Wettplattform. Es gibt keine Ein- oder Auszahlungen.",
-    "skill_based_title": "✅ Skill-Basiert",
-    "skill_based_desc": "Ihre Vorhersagen basieren auf Ihrem Fußballwissen und analytischen Fähigkeiten.",
-    "educational_title": "📚 Pädagogisch",
-    "educational_desc": "Verbessern Sie Ihr Fußballwissen mit Leistungsberichten und detaillierten Analysen.",
-    "competitive_title": "🏆 Wettbewerbsfähige Bestenliste",
-    "competitive_desc": "Konkurrieren Sie mit anderen Benutzern durch globale und saisonale Ranglisten."
+    "subtitle": "Professionelle Fußballanalyse-Plattform - Keine Wettseite",
+    "description": "TacticIQ ist eine skill-basierte Vorhersage- und Analyseplattform, auf der du deine taktische Intelligenz entwickelst, Spielergebnisse in 14 verschiedenen Kategorien vorhersagst, Spielerleistungen analysierst und in globalen Ranglisten konkurrierst.",
+    "notGambling": "❌ Dies ist KEINE Wettplattform",
+    "notGamblingDesc": "Keine Einzahlungen, keine Auszahlungen, kein echtes Geld. TacticIQ ist ein Geschicklichkeitsspiel, das sich darauf konzentriert, dein Fußballwissen und deine analytischen Fähigkeiten zu verbessern.",
+    "features": {
+      "squad": {
+        "title": "⚽ Kader-Builder",
+        "desc": "26 verschiedene Formationen. Baue deine Startelf und wähle Ersatzspieler. Sage Spielerleistungen voraus."
+      },
+      "predictions": {
+        "title": "🎯 14 Vorhersage-Kategorien",
+        "desc": "Ergebnis, Karten, Schüsse, Ecken, Ballbesitz, Tempo, Szenario-Vorhersagen und mehr."
+      },
+      "focus": {
+        "title": "⭐ Strategisches Fokus-System",
+        "desc": "Wähle deine 3 sichersten Vorhersagen. Richtig = 2,0x Punkte, Falsch = -1,5x Strafe."
+      },
+      "training": {
+        "title": "💪 Trainings-Multiplikatoren",
+        "desc": "Wähle Trainingstyp für Bonuspunkte in bestimmten Kategorien. Verteidigung (+20%), Angriff (+20%), Mittelfeld (+15%)."
+      },
+      "players": {
+        "title": "👤 Spieler-Vorhersagen",
+        "desc": "Sage Tore, Assists, gelbe/rote Karten, Auswechslungen für jeden Spieler der Startelf voraus."
+      },
+      "analysis": {
+        "title": "📊 Leistungsanalyse",
+        "desc": "Detaillierte Berichte, die deine Stärken, kategoriebasierte Erfolgsquoten und Verbesserungsbereiche zeigen."
+      }
+    }
   },
   "features": {
-    "title": "Funktionen",
-    "subtitle": "Was Können Sie Mit TacticIQ Tun?",
-    "match_predictions": {
-      "title": "Spielvorhersagen",
-      "desc": "Detaillierte Vorhersagen für Ergebnisse, Karten, Statistiken und mehr."
-    },
-    "player_predictions": {
-      "title": "Spielervorhersagen",
-      "desc": "Vorhersagen für Tore, Assists und Karten für Spieler in der Startelf."
-    },
-    "strategic_focus": {
-      "title": "Strategisches Fokussystem",
-      "desc": "Wählen Sie Ihre 3 sichersten Vorhersagen und verdienen Sie 2x Punkte."
-    },
-    "training_multipliers": {
-      "title": "Trainingsmultiplikatoren",
-      "desc": "Wählen Sie Training, um Bonuspunkte in bestimmten Vorhersagekategorien zu verdienen."
-    },
-    "live_tracking": {
-      "title": "Live-Spielverfolgung",
-      "desc": "Echtzeit-Updates und Vorhersageergebnisse während der Spiele."
-    },
-    "performance_analysis": {
-      "title": "Leistungsanalyse",
-      "desc": "Analysieren Sie Ihre Leistung mit detaillierten Berichten, Statistiken und Fortschrittsdiagrammen."
-    },
-    "leaderboard": {
-      "title": "Bestenliste",
-      "desc": "Konkurrieren Sie in globalen und saisonalen Ranglisten."
-    },
-    "badge_system": {
-      "title": "Abzeichensystem",
-      "desc": "Belohnen Sie Ihre Erfolge durch das Verdienen von Abzeichen."
-    }
-  },
-  "how_it_works": {
-    "title": "Wie Funktioniert Es?",
-    "subtitle": "TacticIQ in 6 Einfachen Schritten",
-    "step1": {
-      "title": "Registrieren und Lieblingsteam Wählen",
-      "desc": "Erstellen Sie ein kostenloses Konto und wählen Sie mindestens 1 Lieblingsteam."
-    },
-    "step2": {
-      "title": "Spiel Wählen",
-      "desc": "Wählen Sie ein Spiel aus den kommenden Spielen aus, für das Sie Vorhersagen treffen möchten."
-    },
-    "step3": {
-      "title": "Startelf Festlegen",
-      "desc": "Wählen Sie aus 26 verschiedenen Formationen und platzieren Sie Spieler in der Startelf."
-    },
-    "step4": {
-      "title": "Detaillierte Vorhersagen Treffen",
-      "desc": "Vorhersagen in 14 verschiedenen Kategorien: Ergebnis, Karten, Schüsse und mehr."
-    },
-    "step5": {
-      "title": "Spielervorhersagen Treffen",
-      "desc": "Vorhersagen für Tore, Assists und Karten für Spieler in der Startelf."
-    },
-    "step6": {
-      "title": "Ergebnisse Beobachten und Punkte Verdienen",
-      "desc": "Nach Spielende werden Ihre Vorhersagen automatisch ausgewertet."
-    }
-  },
-  "pricing": {
-    "title": "Preise",
-    "subtitle": "Wählen Sie Den Richtigen Plan Für Sich",
-    "free": {
-      "name": "Kostenlos",
-      "price": "Kostenlos",
-      "desc": "Perfekt zum Einstieg",
-      "features": {
-        "predictions": "Unbegrenzte Vorhersagen",
-        "teams": "3 Lieblingsteams",
-        "stats": "Grundlegende Statistiken",
-        "leaderboard": "Bestenlisten-Zugriff",
-        "badges": "Basis-Abzeichen",
-        "ads": "Werbung angezeigt"
+    "title": "14 Vorhersage-Kategorien",
+    "subtitle": "Mache detaillierte taktische Vorhersagen",
+    "categories": {
+      "halftime_score": {
+        "title": "⚽ Halbzeit-Ergebnis",
+        "desc": "Sage das Halbzeitergebnis voraus (0-5+ für jedes Team)",
+        "focusable": true
       },
-      "cta": "Kostenlos Starten"
-    },
-    "pro": {
-      "name": "Pro",
-      "price": "€4,99",
-      "period": "/Monat",
-      "desc": "Unbegrenzte Funktionen",
-      "features": {
-        "predictions": "Unbegrenzte Vorhersagen",
-        "teams": "Unbegrenzte Lieblingsteams",
-        "stats": "Erweiterte Statistiken",
-        "leaderboard": "Exklusive Pro-Bestenliste",
-        "badges": "Exklusive Pro-Abzeichen",
-        "ads": "Werbefreies Erlebnis",
-        "priority": "Prioritäts-Support",
-        "early": "Früher Zugang zu neuen Funktionen"
+      "halftime_extra": {
+        "title": "⏱️ Nachspielzeit 1. Halbzeit",
+        "desc": "Sage die Nachspielzeit-Minuten voraus (+1 bis +5+ Minuten)",
+        "focusable": false
       },
-      "cta": "Pro Werden",
-      "popular": "Am Beliebtesten"
-    }
-  },
-  "blog": {
-    "title": "Blog",
-    "subtitle": "Neuigkeiten und Tipps von TacticIQ",
-    "read_more": "Mehr Lesen",
-    "post1": {
-      "title": "Erfolgreiche Vorhersagestrategien",
-      "desc": "Wie können Sie Ihre Vorhersagen verbessern?",
-      "date": "10. Januar 2026"
+      "fulltime_score": {
+        "title": "⚽ Endergebnis",
+        "desc": "Sage das finale Spielergebnis voraus (0-5+ für jedes Team)",
+        "focusable": true
+      },
+      "fulltime_extra": {
+        "title": "⏱️ Nachspielzeit 2. Halbzeit",
+        "desc": "Sage die Nachspielzeit der 2. Halbzeit voraus (+1 bis +5+ Minuten)",
+        "focusable": false
+      },
+      "total_goals": {
+        "title": "🧮 Gesamtanzahl Tore",
+        "desc": "Sage die Gesamtzahl der Tore im Spiel voraus (0-1, 2-3, 4-5, 6+)",
+        "focusable": true
+      },
+      "first_goal": {
+        "title": "⏰ Zeitpunkt erstes Tor",
+        "desc": "Wann wird das erste Tor erzielt? (1-15, 16-30, 31-45, 46-60, 61-75, 76-90+ Minuten)",
+        "focusable": false
+      },
+      "yellow_cards": {
+        "title": "🟨 Gelbe Karten gesamt",
+        "desc": "Sage die Gesamtzahl gelber Karten voraus (0-2, 3-4, 5-6, 7+)",
+        "focusable": false
+      },
+      "red_cards": {
+        "title": "🟥 Rote Karten gesamt",
+        "desc": "Sage die Gesamtzahl roter Karten voraus (0, 1, 2, 3+)",
+        "focusable": false
+      },
+      "possession": {
+        "title": "📊 Ballbesitz",
+        "desc": "Sage den Ballbesitz-Prozentsatz voraus (30-70% Bereich)",
+        "focusable": false
+      },
+      "total_shots": {
+        "title": "🎯 Schüsse gesamt",
+        "desc": "Sage die Gesamtzahl der Schüsse im Spiel voraus (0-10, 11-20, 21-30, 31+)",
+        "focusable": false
+      },
+      "shots_on_target": {
+        "title": "🎯 Schüsse aufs Tor",
+        "desc": "Sage die Schüsse aufs Tor voraus (0-5, 6-10, 11-15, 16+)",
+        "focusable": false
+      },
+      "corners": {
+        "title": "🚩 Ecken gesamt",
+        "desc": "Sage die Gesamtzahl der Ecken voraus (0-6, 7-12, 12+)",
+        "focusable": false
+      },
+      "tempo": {
+        "title": "🏃‍♂️ Spieltempo",
+        "desc": "Sage das Spieltempo voraus (Niedrig, Mittel, Hoch)",
+        "focusable": false
+      },
+      "scenario": {
+        "title": "🧠 Spielszenario",
+        "desc": "Sage den Spielstil voraus (Ballbesitz, Pressing, Konter, Standards)",
+        "focusable": false
+      }
     },
-    "post2": {
-      "title": "Spielerkartenvorhersagesystem Detaillierter Leitfaden",
-      "desc": "Wie machen Sie genaue Vorhersagen für Spieler?",
-      "date": "8. Januar 2026"
-    },
-    "post3": {
-      "title": "Strategisches Fokussystem: Wie Verdient Man 2x Punkte?",
-      "desc": "Verdoppeln Sie Ihre Punkte durch Auswahl Ihrer sichersten Vorhersagen!",
-      "date": "5. Januar 2026"
-    }
-  },
-  "cta": {
-    "title": "Bereit, Ihr Fußballwissen Zu Beweisen?",
-    "subtitle": "Melden Sie sich kostenlos an und treffen Sie Ihre erste Vorhersage!",
-    "email_placeholder": "Ihre E-Mail-Adresse",
-    "button": "Kostenlos Starten",
-    "privacy": "🔒 Ihre E-Mail ist sicher. Wir senden keinen Spam."
-  },
-  "footer": {
-    "tagline": "Fähigkeit und Intelligenz bei Fußballvorhersagen",
-    "description": "TacticIQ ist eine skill-basierte Vorhersage- und Analyseplattform für Fußballfans.",
-    "not_betting": "Keine Wettplattform",
-    "not_betting_desc": "TacticIQ ist keine Wettplattform.",
-    "skill_based": "Skill-Basiert",
-    "product": "Produkt",
-    "features": "Funktionen",
-    "pricing": "Preise",
-    "how_it_works": "Wie es funktioniert",
-    "legal": "Rechtliches",
-    "privacy": "Datenschutz",
-    "terms": "Nutzungsbedingungen",
-    "support": "Support",
-    "faq": "FAQ",
-    "contact": "Kontakt",
-    "copyright": "© 2026 TacticIQ. Alle Rechte vorbehalten."
-  },
-  "game": {
-    "badge": "Überall Spielen - Web & Mobil",
-    "title": "TacticIQ Spiel Spielen",
-    "description": "Machen Sie Ihre Vorhersagen direkt im Web. Testen Sie Ihr Fußballwissen und wetteifern Sie mit Spielern weltweit.",
-    "playNow": "Jetzt Spielen",
-    "notBetting": "🎮 Geschicklichkeitsspiel • Kein echtes Geld • Nur virtuelle Punkte",
-    "features": {
-      "predictions": "Vorhersagen Treffen",
-      "predictionsDesc": "14 verschiedene Vorhersagekategorien für jedes Spiel",
-      "leaderboard": "Globale Rangliste",
-      "leaderboardDesc": "Wetteifern Sie mit Spielern weltweit und steigen Sie in der Rangliste auf",
-      "skills": "Verbessern Sie Ihre Fähigkeiten",
-      "skillsDesc": "Verfolgen Sie Ihre Leistung und verbessern Sie Ihr taktisches Wissen",
-      "fairPlay": "Fair Play Garantiert",
-      "fairPlayDesc": "Sicheres, transparentes und nur auf Fähigkeiten basierendes Gameplay"
-    },
-    "security": {
-      "title": "Sicher & Geschützt",
-      "description": "Alle Spieldaten werden verschlüsselt und mit Industriestandard-Sicherheitsmaßnahmen geschützt. Ihr Gameplay ist fair, transparent und sicher."
-    },
-    "interface": {
-      "title": "Spiel-Interface",
-      "comingSoon": "Spiel-Interface Bereit",
-      "comingSoonDesc": "Das Spiel-Interface ist einsatzbereit. Verbinden Sie sich mit dem Backend, um zu spielen.",
-      "backendRequired": "Backend-Verbindung Erforderlich"
-    }
-  },
-  "fairPlay": {
-    "title": "Fair Play Garantiert",
-    "description": "TacticIQ bietet ein sicheres, transparentes und nur auf Fähigkeiten basierendes Gameplay. Kein Wetten, nur Skill-Spiel.",
-    "features": {
-      "noBetting": "Kein Wetten",
-      "skillBased": "Skill-basiert",
-      "transparent": "Transparent",
-      "secure": "Sicher"
-    }
+    "focusNote": "⭐ Du kannst maximal 3 Vorhersagen für 2x Punkte fokussieren (oder -1,5x Strafe)",
+    "totalCategories": "14 verschiedene Kategorien • Detaillierte taktische Analyse"
   },
   "player": {
     "title": "Spieler-Vorhersagesystem",
-    "subtitle": "Leistungsvorhersage für Startelf-Spieler in 8 Kategorien",
+    "subtitle": "Sage Leistungen für Startelf-Spieler in 8 Kategorien voraus",
     "predictions": {
       "goal": {
-        "title": "⚽ Wird Tore Erzielen",
+        "title": "⚽ Wird treffen",
         "options": "1 Tor, 2 Tore, 3+ Tore"
       },
       "assist": {
-        "title": "🅰️ Wird Assistieren",
-        "options": "1 Vorlage, 2 Vorlagen, 3+ Vorlagen"
+        "title": "🅰️ Wird Assist geben",
+        "options": "1 Assist, 2 Assists, 3+ Assists"
       },
       "yellow": {
         "title": "🟨 Gelbe Karte",
         "options": "Ja/Nein"
       },
       "second_yellow": {
-        "title": "🟨🟥 Zweite Gelbe Karte",
-        "options": "Ja/Nein (wählt automatisch gelbe Karte aus)"
+        "title": "🟨🟥 Gelb-Rot",
+        "options": "Ja/Nein (wählt automatisch Gelb)"
       },
       "red": {
         "title": "🟥 Direkte Rote Karte",
         "options": "Ja/Nein"
       },
       "substituted": {
-        "title": "🔄 Wird Ausgewechselt",
-        "options": "Ersatzspieler auswählen"
+        "title": "🔄 Wird ausgewechselt",
+        "options": "Ersatzspieler wählen"
       },
       "injured": {
-        "title": "🚑 Verletzungswechsel",
-        "options": "Ersatzspieler auswählen"
+        "title": "🚑 Verletzungsauswechslung",
+        "options": "Ersatzspieler wählen"
       },
       "mvp": {
-        "title": "🏆 Spieler des Spiels (MOTM)",
-        "options": "Dieser Spieler wird der beste sein"
+        "title": "🏆 Spieler des Spiels",
+        "options": "Dieser Spieler wird der Beste sein"
       }
     },
-    "note": "Klicken Sie auf einen Spieler in der Startelf, um Vorhersagen zu treffen"
+    "note": "Klicke auf einen Spieler der Startelf, um Vorhersagen zu machen"
+  },
+  "training": {
+    "title": "Trainings-Multiplikator-System",
+    "subtitle": "Wähle Training für Bonuspunkte",
+    "types": {
+      "defense": {
+        "name": "🛡️ Defensiv-Training",
+        "bonus": "+20% Disziplin + Physisch",
+        "desc": "Bonuspunkte für Karten- und Physik-Vorhersagen"
+      },
+      "attack": {
+        "name": "⚔️ Offensiv-Training",
+        "bonus": "+20% Tempo + Individuell",
+        "desc": "Bonuspunkte für Tore, Tempo und Spielerleistung"
+      },
+      "midfield": {
+        "name": "🎯 Mittelfeld-Training",
+        "bonus": "+15% Tempo + Disziplin",
+        "desc": "Bonuspunkte für Tempo- und Disziplin-Vorhersagen"
+      },
+      "physical": {
+        "name": "💪 Physisches Training",
+        "bonus": "+25% Physisch",
+        "desc": "Maximaler Bonus für Verletzungs- und Auswechslungs-Vorhersagen"
+      },
+      "tactical": {
+        "name": "🧠 Taktisches Training",
+        "bonus": "+15% Tempo + Individuell",
+        "desc": "Bonuspunkte für taktische und Spieler-Vorhersagen"
+      }
+    },
+    "example": "Beispiel: 20 Basispunkte + Defensiv-Training = 20 × 1,2 = 24 Punkte"
+  },
+  "howItWorks": {
+    "title": "Wie funktioniert TacticIQ?",
+    "subtitle": "6 einfache Schritte zum Meistern von Fußball-Vorhersagen",
+    "steps": {
+      "step1": {
+        "title": "1. Kostenlos registrieren",
+        "desc": "Erstelle dein Konto und wähle mindestens 1 Lieblingsmannschaft (bis zu 3 kostenlos, unbegrenzt für Pro)"
+      },
+      "step2": {
+        "title": "2. Spiel auswählen",
+        "desc": "Wähle aus kommenden Spielen. Die Spiele deiner Lieblingsmannschaften sind hervorgehoben"
+      },
+      "step3": {
+        "title": "3. Kader aufstellen",
+        "desc": "Wähle aus 26 Formationen und platziere Spieler in der Startelf. Vergiss die Ersatzspieler nicht!"
+      },
+      "step4": {
+        "title": "4. Spielvorhersagen machen",
+        "desc": "Sage in 14 Kategorien voraus: Ergebnis, Karten, Schüsse, Ecken, Ballbesitz, Tempo und Szenario"
+      },
+      "step5": {
+        "title": "5. Spielervorhersagen + Fokus",
+        "desc": "Sage Tore, Assists, Karten für jeden Spieler voraus. Wähle 3 sicherste Vorhersagen als Fokus (2x Punkte!)"
+      },
+      "step6": {
+        "title": "6. Punkte sammeln & aufsteigen",
+        "desc": "Nach dem Spiel werden Vorhersagen automatisch ausgewertet. Sammle Punkte und steige in der globalen Rangliste auf!"
+      }
+    },
+    "formula": {
+      "title": "Punkteberechnungs-Formel",
+      "desc": "Endpunkte = Basispunkte × Trainings-Multiplikator × Fokus-Multiplikator",
+      "example": "Beispiel: 20 Punkte × 1,2 (Defensiv) × 2,0 (Fokus) = 48 Punkte"
+    }
+  },
+  "pricing": {
+    "title": "Einfache, transparente Preise",
+    "subtitle": "Starte kostenlos oder wähle Pro für erweiterte Funktionen",
+    "free": {
+      "name": "Kostenlos",
+      "price": "0€",
+      "period": "für immer",
+      "desc": "Perfekt zum Starten",
+      "features": {
+        "predictions": "✅ Unbegrenzte Vorhersagen",
+        "teams": "✅ 3 Lieblingsmannschaften",
+        "categories": "✅ Alle 14 Vorhersage-Kategorien",
+        "focus": "✅ Strategisches Fokus-System (3x)",
+        "training": "✅ Trainings-Multiplikatoren",
+        "stats": "✅ Basis-Statistiken",
+        "leaderboard": "✅ Globale Rangliste",
+        "badges": "✅ Basis-Abzeichen",
+        "ads": "❌ Werbung wird angezeigt"
+      },
+      "cta": "Kostenlos starten"
+    },
+    "pro": {
+      "name": "Pro",
+      "price": "4,99€",
+      "period": "/Monat",
+      "desc": "Alles freischalten",
+      "popular": "Am beliebtesten",
+      "features": {
+        "predictions": "✅ Unbegrenzte Vorhersagen",
+        "teams": "✅ Unbegrenzte Lieblingsmannschaften",
+        "categories": "✅ Alle 14 Vorhersage-Kategorien",
+        "focus": "✅ Strategisches Fokus-System (3x)",
+        "training": "✅ Trainings-Multiplikatoren",
+        "stats": "✅ Erweiterte Statistiken & KI-Einblicke",
+        "leaderboard": "✅ Global + Pro-exklusive Rangliste",
+        "badges": "✅ Exklusive Pro-Abzeichen",
+        "ads": "✅ Werbefreies Erlebnis",
+        "priority": "✅ Prioritäts-Support",
+        "early": "✅ Früher Zugang zu neuen Funktionen",
+        "analysis": "✅ Tiefe Leistungsanalyse"
+      },
+      "cta": "Auf Pro upgraden"
+    },
+    "comparison": {
+      "title": "Funktionsvergleich",
+      "note": "Alle Funktionen, keine versteckten Gebühren. Jederzeit kündbar."
+    }
+  },
+  "blog": {
+    "title": "Neuestes von TacticIQ",
+    "subtitle": "Anleitungen, Tipps und Fußball-Analysen",
+    "readMore": "Mehr lesen",
+    "viewAll": "Alle Beiträge ansehen",
+    "posts": {
+      "post1": {
+        "title": "Strategisches Fokus-System effektiv nutzen",
+        "desc": "Lerne, die richtigen Vorhersagen für 2x Punkte auszuwählen und Strafen zu vermeiden. Expertentipps für maximale Punkte.",
+        "date": "10. Januar 2026",
+        "category": "Strategie"
+      },
+      "post2": {
+        "title": "Spieler-Karten-Vorhersage: Gelb vs Rot",
+        "desc": "Statistische Analyse, wann Spieler am wahrscheinlichsten Karten erhalten. Verbessere deine Disziplin-Vorhersagegenauigkeit.",
+        "date": "8. Januar 2026",
+        "category": "Analyse"
+      },
+      "post3": {
+        "title": "Trainings-Multiplikatoren erklärt: Welchen wählen?",
+        "desc": "Tiefgehende Analyse von Defensiv-, Offensiv-, Mittelfeld-, Physisch- und Taktik-Training. Optimiere deine Bonuspunkte.",
+        "date": "5. Januar 2026",
+        "category": "Anleitung"
+      }
+    }
+  },
+  "cta": {
+    "title": "Bereit, dein Fußballwissen zu beweisen?",
+    "subtitle": "Schließe dich 10.000+ Nutzern an, die intelligente Vorhersagen machen. Keine Kreditkarte erforderlich.",
+    "emailPlaceholder": "E-Mail-Adresse eingeben",
+    "button": "Kostenlos starten - Jetzt registrieren",
+    "privacy": "🔒 Deine E-Mail ist sicher. Wir versenden niemals Spam. Jederzeit abmelden.",
+    "features": {
+      "free": "✅ 100% kostenlos zum Starten",
+      "no_card": "✅ Keine Kreditkarte nötig",
+      "skill": "✅ Skill-basiert, kein Glücksspiel",
+      "virtual": "✅ Nur virtuelle Punkte"
+    }
+  },
+  "footer": {
+    "tagline": "Taktische Intelligenz bei Fußball-Vorhersagen",
+    "description": "TacticIQ ist eine professionelle skill-basierte Vorhersage- und Analyseplattform für Fußballfans. Kein Geld involviert - verbessere einfach dein Fußballwissen, mache intelligente Vorhersagen und konkurriere global.",
+    "notBetting": {
+      "title": "❌ Keine Wetten",
+      "desc": "Keine Einzahlungen, keine Auszahlungen, kein echtes Geld. Reines Geschicklichkeitsspiel."
+    },
+    "skillBased": {
+      "title": "✅ Skill-basiert",
+      "desc": "Vorhersagen basieren nur auf deinem Fußballwissen und deinen analytischen Fähigkeiten."
+    },
+    "virtualPoints": {
+      "title": "🎮 Virtuelle Punkte",
+      "desc": "Konkurriere mit virtuellen Punkten und steige in der Rangliste auf. Kein Geld auf dem Spiel."
+    },
+    "educational": {
+      "title": "📚 Lehrreich",
+      "desc": "Verbessere deinen Fußball-IQ mit detaillierten Berichten, Statistiken und Leistungsanalysen."
+    },
+    "product": "Produkt",
+    "features": "Funktionen",
+    "pricing": "Preise",
+    "howItWorks": "So funktioniert's",
+    "leaderboard": "Rangliste",
+    "legal": "Rechtliches",
+    "privacy": "Datenschutz",
+    "terms": "Nutzungsbedingungen",
+    "fairPlay": "Fair-Play-Richtlinie",
+    "responsible": "Verantwortungsvolle Nutzung",
+    "support": "Support",
+    "faq": "FAQ",
+    "contact": "Kontakt",
+    "help": "Hilfecenter",
+    "community": "Community",
+    "social": "Folge uns",
+    "copyright": "© 2026 TacticIQ. Alle Rechte vorbehalten.",
+    "location": "Mit ⚽ für Fußballfans weltweit gemacht"
+  },
+  "game": {
+    "badge": "Überall spielen - Web & Mobil",
+    "title": "TacticIQ Spiel spielen",
+    "description": "Mache deine Vorhersagen direkt im Web. Teste dein Fußballwissen und konkurriere mit Spielern weltweit.",
+    "playNow": "Jetzt spielen",
+    "notBetting": "🎮 Skill-basiertes Spiel • Kein echtes Geld • Nur virtuelle Punkte",
+    "features": {
+      "predictions": "Vorhersagen machen",
+      "predictionsDesc": "14 verschiedene Vorhersage-Kategorien pro Spiel",
+      "leaderboard": "Globale Rangliste",
+      "leaderboardDesc": "Konkurriere mit Spielern weltweit und steige auf",
+      "skills": "Verbessere deine Skills",
+      "skillsDesc": "Verfolge deine Leistung und verbessere dein taktisches Wissen",
+      "fairPlay": "Fair Play garantiert",
+      "fairPlayDesc": "Sicheres, transparentes und nur skill-basiertes Gameplay"
+    },
+    "security": {
+      "title": "Sicher & geschützt",
+      "description": "Alle Spieldaten sind verschlüsselt und mit branchenüblichen Sicherheitsmaßnahmen geschützt. Dein Gameplay ist fair, transparent und sicher."
+    },
+    "interface": {
+      "title": "Spieloberfläche",
+      "comingSoon": "Spieloberfläche bereit",
+      "comingSoonDesc": "Die Spieloberfläche ist einsatzbereit. Verbinde dich mit dem Backend zum Spielen.",
+      "backendRequired": "Backend-Verbindung erforderlich"
+    }
+  },
+  "fairPlay": {
+    "title": "Fair Play & verantwortungsvolle Nutzung",
+    "noBetting": "❌ Keine Wetten oder Einsätze",
+    "noOdds": "❌ Keine Quoten oder Glücksspiel-Mechaniken",
+    "skillBased": "✅ 100% skill- und wissensbasiert",
+    "virtualPoints": "✅ Nur virtuelle Punkte, kein echtes Geld",
+    "educational": "✅ Lehrreich und entwickelnd",
+    "competitive": "✅ Fairer Wettbewerb mit globaler Rangliste"
   },
   "changePassword": {
-    "title": "Passwort Ändern",
-    "description": "Wählen Sie ein sicheres Passwort für Ihre Kontosicherheit.",
+    "title": "Passwort ändern",
+    "description": "Wähle ein starkes Passwort für deine Kontosicherheit.",
     "currentPassword": "Aktuelles Passwort",
-    "currentPasswordPlaceholder": "Geben Sie Ihr aktuelles Passwort ein",
+    "currentPasswordPlaceholder": "Gib dein aktuelles Passwort ein",
     "newPassword": "Neues Passwort",
     "newPasswordPlaceholder": "Mindestens 8 Zeichen",
-    "confirmPassword": "Neues Passwort Bestätigen",
-    "confirmPasswordPlaceholder": "Geben Sie Ihr neues Passwort erneut ein",
+    "confirmPassword": "Neues Passwort bestätigen",
+    "confirmPasswordPlaceholder": "Gib dein neues Passwort erneut ein",
     "requirements": {
       "length": "Mindestens 8 Zeichen",
       "uppercase": "Mindestens ein Großbuchstabe",
@@ -269,44 +421,44 @@
       "passwordsMismatch": "Passwörter stimmen nicht überein"
     },
     "errors": {
-      "currentPasswordRequired": "Geben Sie Ihr aktuelles Passwort ein",
-      "newPasswordRequired": "Geben Sie Ihr neues Passwort ein",
-      "minLength": "Neues Passwort muss mindestens 8 Zeichen lang sein",
-      "sameAsOld": "Neues Passwort darf nicht mit dem alten Passwort übereinstimmen",
+      "currentPasswordRequired": "Gib dein aktuelles Passwort ein",
+      "newPasswordRequired": "Gib dein neues Passwort ein",
+      "minLength": "Neues Passwort muss mindestens 8 Zeichen haben",
+      "sameAsOld": "Neues Passwort darf nicht gleich dem alten sein",
       "passwordsMismatch": "Passwörter stimmen nicht überein"
     },
     "button": {
       "cancel": "Abbrechen",
-      "submit": "Passwort Ändern",
+      "submit": "Passwort ändern",
       "submitting": "Wird geändert..."
     },
-    "success": "Ihr Passwort wurde erfolgreich geändert!"
+    "success": "Dein Passwort wurde erfolgreich geändert!"
   },
   "newsletter": {
     "badge": "NEWSLETTER",
-    "title": "Verpassen Sie Keine Analyse",
-    "subtitle": "Erhalten Sie wöchentliche Analyseberichte, exklusive Vorhersagen und taktische Einblicke in Ihrem Posteingang.",
+    "title": "Verpasse keine Analyse",
+    "subtitle": "Erhalte wöchentliche Analyseberichte, exklusive Vorhersagen und taktische Einblicke in deinem Posteingang.",
     "benefit1": "Wöchentliche Spielanalysen und Vorhersagen",
     "benefit2": "Exklusive taktische Einblicke und Berichte",
-    "benefit3": "Erfahren Sie als Erster von neuen Funktionen",
+    "benefit3": "Sei der Erste, der von neuen Funktionen erfährt",
     "form": {
       "title": "Abonnieren",
-      "description": "Geben Sie Ihre E-Mail ein, um wöchentliche Einblicke zu erhalten",
-      "placeholder": "Geben Sie Ihre E-Mail-Adresse ein",
+      "description": "Gib deine E-Mail für wöchentliche Einblicke ein",
+      "placeholder": "E-Mail-Adresse eingeben",
       "subscribe": "Abonnieren",
-      "subscribing": "Abonniere...",
-      "privacy": "Jederzeit abbestellen.",
-      "privacyLink": "Datenschutzerklärung"
+      "subscribing": "Wird abonniert...",
+      "privacy": "Jederzeit abmelden.",
+      "privacyLink": "Datenschutzrichtlinie"
     },
     "subscribed": {
-      "title": "Erfolgreich Abonniert!",
-      "description": "Überprüfen Sie Ihren Posteingang für die Bestätigungs-E-Mail."
+      "title": "Erfolgreich abonniert!",
+      "description": "Prüfe deinen Posteingang für die Bestätigungs-E-Mail."
     },
     "stats": {
       "subscribers": "Aktive Abonnenten",
       "weekly": "Wöchentliche Berichte"
     },
-    "error": "Bitte geben Sie eine gültige E-Mail-Adresse ein",
-    "success": "Erfolgreich für Newsletter angemeldet!"
+    "error": "Bitte gib eine gültige E-Mail-Adresse ein",
+    "success": "Erfolgreich für den Newsletter angemeldet!"
   }
 }

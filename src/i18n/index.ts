@@ -14,8 +14,9 @@ import it from '../locales/it.json';
 import ar from '../locales/ar.json';
 import ru from '../locales/ru.json';
 
-// RTL languages
-const RTL_LANGUAGES = ['ar', 'he', 'fa', 'ur'];
+// RTL languages - Arabic excluded per user request (only text translation, no layout change)
+// Keep Hebrew, Farsi, Urdu for future RTL support if needed
+const RTL_LANGUAGES = ['he', 'fa', 'ur'];
 
 // Storage key for language preference
 const LANGUAGE_STORAGE_KEY = 'tacticiq-language';
