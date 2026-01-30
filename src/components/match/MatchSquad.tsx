@@ -1099,7 +1099,7 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
       setShowFormationModal(false);
       Alert.alert('Atak Formasyonu Seçildi!', `${formation?.name}\n\nŞimdi 11 oyuncunuzu pozisyonlara yerleştirin.`);
     } else {
-      // ✅ Defans formasyonu değiştiğinde HER ZAMAN defans oyuncuları sıfırlanır
+      // ✅ Defans formasyonu değiştiğinde: Sadece defans oyuncuları sıfırlanır, ATAK ve TAHMİNLER korunur
       setDefenseFormation(formationId);
       
       // ✅ Defans oyuncularını sıfırla ve sadece kaleci otomatik ata
@@ -1111,20 +1111,40 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
       setEditingMode('defense');
       
       setShowFormationModal(false);
-      Alert.alert('Defans Formasyonu Seçildi!', `${formation?.name}\n\nKaleci otomatik yerleştirildi. Diğer 10 oyuncuyu defans pozisyonlarına yerleştirin.`);
+      Alert.alert(
+        'Defans Formasyonu Güncellendi',
+        `${formation?.name}\n\nAtak formasyonu ve tahminleriniz aynen korundu. Kaleci otomatik yerleştirildi – diğer 10 oyuncuyu defans pozisyonlarına yerleştirin.`
+      );
     }
-    // isCompleted sıfırla (Tahmin sekmesinde saha boş olsun)
-    (async () => {
-      try {
-        const key = squadStorageKey;
-        const raw = await AsyncStorage.getItem(key);
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          parsed.isCompleted = false;
-          await AsyncStorage.setItem(key, JSON.stringify(parsed));
-        }
-      } catch (e) { console.warn('isCompleted reset failed', e); }
-    })();
+    // isCompleted sadece ATAK formasyonu değiştiğinde sıfırlanır (defans değişikliği tahminleri silmez)
+    if (editingMode === 'attack') {
+      (async () => {
+        try {
+          const key = squadStorageKey;
+          const raw = await AsyncStorage.getItem(key);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            parsed.isCompleted = false;
+            await AsyncStorage.setItem(key, JSON.stringify(parsed));
+          }
+        } catch (e) { console.warn('isCompleted reset failed', e); }
+      })();
+    } else {
+      // Defans formasyonu: isCompleted sıfırla (defans yerleştirmesi gerekiyor) ama tahminler silinmez
+      (async () => {
+        try {
+          const key = squadStorageKey;
+          const raw = await AsyncStorage.getItem(key);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            parsed.isCompleted = false;
+            parsed.attackPlayersArray = Object.values(attackPlayers).filter(Boolean);
+            parsed.attackFormation = attackFormation;
+            await AsyncStorage.setItem(key, JSON.stringify(parsed));
+          }
+        } catch (e) { console.warn('Defense formation state save failed', e); }
+      })();
+    }
   };
 
   const handleFormationSelect = async (formationId: string) => {
@@ -1690,7 +1710,7 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
         <ConfirmModal
           visible={true}
           title="Atak formasyonu değişikliği"
-          message="Bu maç için kadro tamamlanmış. Atak formasyonu değişince tüm tahmin verileri silinecek ve Tahmin sekmesi sıfırlanacak. Onaylıyor musunuz?"
+          message="Sadece ATAK formasyonu değişiyor – tüm tahmin verileriniz silinecek. Defans formasyonu veya oyuncu değişikliği bu uyarıyı göstermez. Devam?"
           buttons={[
             {
               text: 'İptal',
@@ -1879,6 +1899,11 @@ const FormationModal = ({ visible, formations, formationType, onSelect, onClose,
                      hoveredFormation.type === 'defense' ? '🛡️ Defans' : '⚖️ Dengeli'}
                   </Text>
                 </View>
+                {formationType === 'defense' && (
+                  <Text style={styles.formationPreviewContextHint}>
+                    🛡️ Bu formasyon defans dizilişi için seçiliyor
+                  </Text>
+                )}
               </View>
 
               {/* Description */}
@@ -1942,7 +1967,9 @@ const FormationModal = ({ visible, formations, formationType, onSelect, onClose,
                     style={styles.formationPreviewSelectGradient}
                   >
                     <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" />
-                    <Text style={styles.formationPreviewSelectText}>Bu Dizilişi Seç</Text>
+                    <Text style={styles.formationPreviewSelectText}>
+                      {formationType === 'defense' ? 'Bu Defans Dizilişini Seç' : 'Bu Dizilişi Seç'}
+                    </Text>
                   </LinearGradient>
                 </TouchableOpacity>
               </View>
@@ -3136,6 +3163,12 @@ const styles = StyleSheet.create({
   formationPreviewTypeText: {
     fontSize: 12,
     fontWeight: '600',
+  },
+  formationPreviewContextHint: {
+    fontSize: 12,
+    color: '#3B82F6',
+    marginTop: 8,
+    fontWeight: '500',
   },
   formationPreviewDesc: {
     fontSize: 14,

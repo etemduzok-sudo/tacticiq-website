@@ -309,6 +309,42 @@ router.get('/date/:date', async (req, res) => {
   }
 });
 
+// Helper: Transform DB match row to API-Football format (frontend expects this)
+function dbRowToApiMatch(row) {
+  if (!row) return null;
+  const home = row.home_team || { id: row.home_team_id, name: '', logo: null };
+  const away = row.away_team || { id: row.away_team_id, name: '', logo: null };
+  const league = row.league || { id: row.league_id, name: '', country: '', logo: null };
+  const date = row.fixture_date ? new Date(row.fixture_date) : new Date(row.fixture_timestamp * 1000);
+  return {
+    fixture: {
+      id: row.id,
+      date: date.toISOString(),
+      timestamp: row.fixture_timestamp || Math.floor(date.getTime() / 1000),
+      timezone: row.timezone || 'UTC',
+      status: {
+        short: row.status || 'NS',
+        long: row.status_long || 'Not Started',
+        elapsed: row.elapsed ?? null,
+      },
+      venue: row.venue_name ? { name: row.venue_name, city: row.venue_city } : null,
+      referee: row.referee,
+    },
+    league: { id: league.id, name: league.name, country: league.country || '', logo: league.logo, season: row.season, round: row.round },
+    teams: {
+      home: { id: home.id, name: home.name, logo: home.logo },
+      away: { id: away.id, name: away.name, logo: away.logo },
+    },
+    goals: { home: row.home_score ?? null, away: row.away_score ?? null },
+    score: {
+      halftime: { home: row.halftime_home ?? null, away: row.halftime_away ?? null },
+      fulltime: { home: row.fulltime_home ?? null, away: row.fulltime_away ?? null },
+      extratime: { home: row.extratime_home ?? null, away: row.extratime_away ?? null },
+      penalty: { home: row.penalty_home ?? null, away: row.penalty_away ?? null },
+    },
+  };
+}
+
 // GET /api/matches/team/:teamId/season/:season - Get all matches for a team in a season
 router.get('/team/:teamId/season/:season', async (req, res) => {
   try {
@@ -335,11 +371,12 @@ router.get('/team/:teamId/season/:season', async (req, res) => {
     // 2. TRY DATABASE (much faster than API!)
     if (databaseService.enabled) {
       try {
-        const dbMatches = await databaseService.getTeamMatches(teamId, season);
-        if (dbMatches && dbMatches.length > 0) {
+        const dbRows = await databaseService.getTeamMatches(teamId, season);
+        if (dbRows && dbRows.length > 0) {
+          const dbMatches = dbRows.map(dbRowToApiMatch).filter(Boolean);
           console.log(`✅ Found ${dbMatches.length} matches in DATABASE (fast!)`);
           
-          // 🔥 CACHE IN MEMORY
+          // 🔥 CACHE IN MEMORY (API format)
           API_CACHE.teamMatches.set(cacheKey, {
             data: dbMatches,
             timestamp: Date.now(),

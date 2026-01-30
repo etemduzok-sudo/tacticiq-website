@@ -430,6 +430,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
             matchData={matchData}
             matchId={matchId}
             predictionTeamId={predictionTeamId}
+            initialAnalysisFocus={effectiveAnalysisFocus}
             onPredictionsSaved={() => checkPredictions(homeId, awayId, bothFavorites)}
             onPredictionsSavedForTeam={(savedTeamId) => {
               checkPredictions(homeId, awayId, bothFavorites);

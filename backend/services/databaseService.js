@@ -291,6 +291,32 @@ class DatabaseService {
     }
   }
 
+  // Get all matches for a team in a season (for favorites feed - past + upcoming)
+  async getTeamMatches(teamId, season) {
+    if (!this.enabled) return [];
+
+    try {
+      const seasonNum = parseInt(String(season), 10);
+      const { data, error } = await supabase
+        .from('matches')
+        .select(`
+          *,
+          league:leagues(*),
+          home_team:teams!home_team_id(*),
+          away_team:teams!away_team_id(*)
+        `)
+        .or(`home_team_id.eq.${teamId},away_team_id.eq.${teamId}`)
+        .eq('season', seasonNum)
+        .order('fixture_timestamp', { ascending: true });
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('❌ Error getting team season matches from DB:', error.message);
+      return [];
+    }
+  }
+
   // Get match by ID
   async getMatchById(matchId) {
     if (!this.enabled) return null;

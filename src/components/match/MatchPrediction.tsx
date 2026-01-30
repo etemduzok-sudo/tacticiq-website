@@ -172,6 +172,8 @@ interface MatchPredictionScreenProps {
   onPredictionsSaved?: () => void;
   /** İki favori maçta tahmin kaydedildiğinde hangi takım için kaydedildiği (diğer takım teklifi için) */
   onPredictionsSavedForTeam?: (teamId: number) => void;
+  /** Analiz odağı – Dashboard/Modal'dan seçildiğinde yıldızlar otomatik işaretlenir */
+  initialAnalysisFocus?: AnalysisFocusType | null;
 }
 
 // Mock Formation Data
@@ -342,6 +344,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
   predictionTeamId,
   onPredictionsSaved,
   onPredictionsSavedForTeam,
+  initialAnalysisFocus,
 }) => {
   const [selectedPlayer, setSelectedPlayer] = useState<typeof mockPlayers[0] | null>(null);
   const [playerPredictions, setPlayerPredictions] = useState<{[key: number]: any}>({});
@@ -381,7 +384,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
     message: string;
     buttons: ConfirmButton[];
   } | null>(null);
-  // Load squad data on mount – Kadro tamamlandıysa (isCompleted) atak/defans hiç boş gelmemeli
+  // Load squad data on mount – Atak 11 tamamsa yükle (defans formasyonu değişince isCompleted false olsa da tahminler kaybolmasın)
   React.useEffect(() => {
     const loadSquad = async () => {
       try {
@@ -390,18 +393,17 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
         const squadData = await AsyncStorage.getItem(key);
         if (squadData) {
           const parsed = JSON.parse(squadData);
-          if (parsed.isCompleted === true) {
-            let arr: any[] = [];
-            if (parsed.attackPlayersArray && Array.isArray(parsed.attackPlayersArray) && parsed.attackPlayersArray.length >= 11) {
-              arr = parsed.attackPlayersArray;
-            } else if (parsed.attackPlayers && typeof parsed.attackPlayers === 'object') {
-              arr = Object.values(parsed.attackPlayers).filter(Boolean);
-            }
-            if (arr.length >= 11) {
-              setAttackPlayersArray(arr);
-              setAttackFormation(parsed.attackFormation || null);
-              setIsSquadCompleted(true);
-            }
+          let arr: any[] = [];
+          if (parsed.attackPlayersArray && Array.isArray(parsed.attackPlayersArray) && parsed.attackPlayersArray.length >= 11) {
+            arr = parsed.attackPlayersArray;
+          } else if (parsed.attackPlayers && typeof parsed.attackPlayers === 'object') {
+            arr = Object.values(parsed.attackPlayers).filter(Boolean);
+          }
+          // Atak kadrosu 11 ise yükle – isCompleted sadece defans formasyonu değişikliğinde false olabilir
+          if (arr.length >= 11 && parsed.attackFormation) {
+            setAttackPlayersArray(arr);
+            setAttackFormation(parsed.attackFormation || null);
+            setIsSquadCompleted(true);
           }
           setSquadLoaded(true);
         } else {
@@ -466,6 +468,13 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
     };
     load();
   }, [predictionStorageKey, matchData?.id, predictionTeamId]);
+
+  // ✅ Analiz odağına göre yıldızlar işaretlensin – Dashboard/Modal'dan gelen focus kullanılır
+  React.useEffect(() => {
+    if (initialAnalysisFocus) {
+      setSelectedAnalysisFocus(initialAnalysisFocus);
+    }
+  }, [initialAnalysisFocus]);
 
   const handlePlayerPredictionChange = (category: string, value: string | boolean) => {
     if (!selectedPlayer) return;
@@ -969,10 +978,10 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                 </View>
                 <View style={[styles.focusButtonWrap, { pointerEvents: 'box-none' }]} collapsable={false}>
                   <Pressable
-                    onPress={() => toggleFocus('firstHalfHomeScore')}
+                    onPress={() => showFocusExplanationModal('firstHalfHomeScore')}
                     style={({ pressed }) => [styles.focusButton, pressed && styles.focusButtonPressed]}
                     hitSlop={16}
-                    accessibilityLabel="Odak yıldızı (ilk yarı ev sahibi gol)"
+                    accessibilityLabel="Tahmin odağı (ilk yarı skoru)"
                   >
                     <Ionicons
                       name={isFocused('firstHalfHomeScore') ? 'star' : 'star-outline'}
@@ -1091,13 +1100,13 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
               <View style={styles.categoryHeader}>
                 <Text style={styles.categoryLabel}>⚽ Maç Sonu Skoru</Text>
                 <TouchableOpacity 
-                  onPress={() => showFocusExplanationModal('fullTimeHomeScore')}
+                  onPress={() => showFocusExplanationModal('secondHalfHomeScore')}
                   style={styles.focusButton}
                 >
                   <Ionicons 
-                    name={isFocused('fullTimeHomeScore') ? 'star' : 'star-outline'}
+                    name={isFocused('secondHalfHomeScore') ? 'star' : 'star-outline'}
                     size={24} 
-                    color={isFocused('fullTimeHomeScore') ? '#F59E0B' : '#6B7280'} 
+                    color={isFocused('secondHalfHomeScore') ? '#F59E0B' : '#6B7280'} 
                   />
                 </TouchableOpacity>
               </View>
@@ -1254,24 +1263,24 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
             </View>
           </View>
 
-          {/* 4. İlk Gol Zamanı - Kompakt Grid */}
+          {/* 4. İlk Gol Zamanı - Görseldeki formata uygun */}
           <View style={styles.predictionCategory}>
-            <Text style={styles.categoryTitle}>⏰ İlk Gol Zamanı</Text>
-            
+            <View style={styles.categoryTitleRow}>
+              <Text style={styles.categoryTitle}>⏰ İlk Gol Zamanı</Text>
+              <Pressable
+                onPress={() => showFocusExplanationModal('firstGoalTime')}
+                style={({ pressed }) => [styles.focusButton, pressed && styles.focusButtonPressed]}
+                hitSlop={16}
+                accessibilityLabel="Tahmin odağı (ilk gol zamanı)"
+              >
+                <Ionicons
+                  name={isFocused('firstGoalTime') ? 'star' : 'star-outline'}
+                  size={24}
+                  color={isFocused('firstGoalTime') ? '#F59E0B' : '#6B7280'}
+                />
+              </Pressable>
+            </View>
             <View style={styles.categoryCard}>
-              <View style={styles.categoryHeader}>
-                <Text style={styles.categoryLabel}>⏰ İlk Gol Zamanı</Text>
-                <TouchableOpacity 
-                  onPress={() => showFocusExplanationModal('firstGoalTime')}
-                  style={styles.focusButton}
-                >
-                  <Ionicons 
-                    name={isFocused('firstGoalTime') ? 'star' : 'star-outline'}
-                    size={24} 
-                    color={isFocused('firstGoalTime') ? '#F59E0B' : '#6B7280'} 
-                  />
-                </TouchableOpacity>
-              </View>
               <View style={styles.firstGoalTimeGrid}>
                 {(() => {
                   const row1 = MATCH_TIME_RANGES.slice(0, 4);
@@ -1365,13 +1374,13 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
               <View style={styles.categoryHeader}>
                 <Text style={styles.categoryLabel}>🟥 Toplam Kırmızı Kart Sayısı</Text>
                 <TouchableOpacity 
-                  onPress={() => showFocusExplanationModal('redCard')}
+                  onPress={() => showFocusExplanationModal('redCards')}
                   style={styles.focusButton}
                 >
                   <Ionicons 
-                    name={isFocused('redCard') ? 'star' : 'star-outline'}
+                    name={isFocused('redCards') ? 'star' : 'star-outline'}
                     size={24} 
-                    color={isFocused('redCard') ? '#F59E0B' : '#6B7280'} 
+                    color={isFocused('redCards') ? '#F59E0B' : '#6B7280'} 
                   />
                 </TouchableOpacity>
               </View>
