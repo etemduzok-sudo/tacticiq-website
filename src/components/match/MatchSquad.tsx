@@ -56,9 +56,13 @@ interface MatchSquadProps {
   lineups?: any[];
   /** Sadece bu takım(lar)ın kadrosu gösterilir; rakip gizlenir. Boşsa tüm kadro gösterilir. */
   favoriteTeamIds?: number[];
+  /** İki favori takım maçında hangi takım için kadro seçildiği; verilirse kadro/tahmin bu takıma özel saklanır. */
+  predictionTeamId?: number;
   onComplete: () => void;
   /** Atak formasyonu değişikliği onaylandıktan sonra (tahminler silindikten sonra) çağrılır – örn. Dashboard'a dönüp analiz odağı seçimi gösterilsin */
   onAttackFormationChangeConfirmed?: () => void;
+  /** Kadro sekmesi görünür olduğunda true – Tahmin'den geri dönüldüğünde storage'dan tekrar yüklenir */
+  isVisible?: boolean;
 }
 
 /** API'den gelen tüm kaleci varyantlarını tanı (G, GK, Goalkeeper vb.) */
@@ -642,12 +646,18 @@ const FootballField = ({ children, style }: any) => (
   </View>
 );
 
-export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], onComplete, onAttackFormationChangeConfirmed }: MatchSquadProps) {
+export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], predictionTeamId, onComplete, onAttackFormationChangeConfirmed, isVisible = true }: MatchSquadProps) {
   // ✅ Takım ID'lerini matchData'dan al
   const homeTeamId = matchData?.teams?.home?.id || matchData?.homeTeam?.id;
   const awayTeamId = matchData?.teams?.away?.id || matchData?.awayTeam?.id;
   const homeTeamName = matchData?.teams?.home?.name || matchData?.homeTeam?.name || 'Ev Sahibi';
   const awayTeamName = matchData?.teams?.away?.name || matchData?.awayTeam?.name || 'Deplasman';
+
+  // ✅ İki favori maçta takıma özel kadro anahtarı
+  const squadStorageKey = React.useMemo(
+    () => (predictionTeamId != null ? `fan-manager-squad-${matchId}-${predictionTeamId}` : `fan-manager-squad-${matchId}`),
+    [matchId, predictionTeamId]
+  );
 
   // ✅ Takım kadrosu için state (lineups yoksa API'den çekilecek)
   const [squadPlayers, setSquadPlayers] = React.useState<any[]>([]);
@@ -676,21 +686,57 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
 
       try {
         const homePromise = fetchHome
-          ? fetch(`http://localhost:3001/api/teams/${homeTeamId}/squad`)
-              .then(r => r.ok ? r.json() : null)
-              .catch(() => null)
+          ? fetch(`http://localhost:3001/api/teams/${homeTeamId}/squad`, {
+              method: 'GET',
+              headers: { 'Content-Type': 'application/json' },
+            })
+              .then(async (r) => {
+                if (!r.ok) {
+                  const errorText = await r.text();
+                  console.error(`❌ Home squad fetch failed (${r.status}):`, errorText);
+                  return null;
+                }
+                const json = await r.json();
+                if (!json.success) {
+                  console.error('❌ Home squad API error:', json.error);
+                  return null;
+                }
+                return json;
+              })
+              .catch((err) => {
+                console.error('❌ Home squad fetch exception:', err.message);
+                return null;
+              })
           : Promise.resolve(null);
         const awayPromise = fetchAway
-          ? fetch(`http://localhost:3001/api/teams/${awayTeamId}/squad`)
-              .then(r => r.ok ? r.json() : null)
-              .catch(() => null)
+          ? fetch(`http://localhost:3001/api/teams/${awayTeamId}/squad`, {
+              method: 'GET',
+              headers: { 'Content-Type': 'application/json' },
+            })
+              .then(async (r) => {
+                if (!r.ok) {
+                  const errorText = await r.text();
+                  console.error(`❌ Away squad fetch failed (${r.status}):`, errorText);
+                  return null;
+                }
+                const json = await r.json();
+                if (!json.success) {
+                  console.error('❌ Away squad API error:', json.error);
+                  return null;
+                }
+                return json;
+              })
+              .catch((err) => {
+                console.error('❌ Away squad fetch exception:', err.message);
+                return null;
+              })
           : Promise.resolve(null);
 
         const [homeRes, awayRes] = await Promise.all([homePromise, awayPromise]);
 
         const allPlayers: any[] = [];
 
-        if (fetchHome && homeRes?.data?.players) {
+        if (fetchHome && homeRes?.data?.players && Array.isArray(homeRes.data.players)) {
           homeRes.data.players.forEach((p: any) => {
             allPlayers.push({
               id: p.id, name: p.name, position: normalizePosition(p.position), 
@@ -702,7 +748,7 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
             });
           });
         }
-        if (fetchAway && awayRes?.data?.players) {
+        if (fetchAway && awayRes?.data?.players && Array.isArray(awayRes.data.players)) {
           awayRes.data.players.forEach((p: any) => {
             allPlayers.push({
               id: p.id, name: p.name, position: normalizePosition(p.position), 
@@ -715,10 +761,18 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
           });
         }
 
-        console.log('✅ Squad players loaded:', allPlayers.length, showOnlyFavorites ? '(favori takım only)' : '');
+        if (allPlayers.length === 0) {
+          console.warn('⚠️ No squad players loaded. Backend may be down or API-Football has no data.');
+          if (!homeRes && !awayRes) {
+            console.error('❌ Both API calls failed - Backend may not be running on port 3001');
+          }
+        } else {
+          console.log('✅ Squad players loaded:', allPlayers.length, showOnlyFavorites ? '(favori takım only)' : '');
+        }
         setSquadPlayers(allPlayers);
-      } catch (err) {
-        console.error('❌ Squad fetch error:', err);
+      } catch (err: any) {
+        console.error('❌ Squad fetch error:', err?.message || err);
+        setSquadPlayers([]); // Hata durumunda boş array set et
       } finally {
         setIsLoadingSquad(false);
       }
@@ -837,7 +891,22 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
     console.log('⚠️ No players available');
     return [];
   }, [lineups, squadPlayers, favoriteTeamIds]);
-  
+
+  // ✅ Atak kadrosu = tek takım. İki favori maçta predictionTeamId; yoksa favori tek veya ev sahibi.
+  const attackTeamId = React.useMemo(() => {
+    if (predictionTeamId != null) return predictionTeamId;
+    if (!homeTeamId || !awayTeamId) return homeTeamId || awayTeamId;
+    if (favoriteTeamIds.length === 1 && (favoriteTeamIds[0] === homeTeamId || favoriteTeamIds[0] === awayTeamId))
+      return favoriteTeamIds[0];
+    return homeTeamId;
+  }, [homeTeamId, awayTeamId, favoriteTeamIds, predictionTeamId]);
+
+  // ✅ Atak modunda sadece atak takımının oyuncuları (rakip atanamaz)
+  const attackTeamPlayers = React.useMemo(() => {
+    if (!attackTeamId) return realPlayers;
+    return realPlayers.filter((p: any) => p.teamId === attackTeamId);
+  }, [realPlayers, attackTeamId]);
+
   // ✅ Attack & Defense Formation States
   const [attackFormation, setAttackFormation] = useState<string | null>(null);
   const [defenseFormation, setDefenseFormation] = useState<string | null>(null);
@@ -857,54 +926,73 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
   // ✅ State restore edildi mi?
   const [stateRestored, setStateRestored] = useState(false);
   
-  // ✅ Mount olunca partial state'i AsyncStorage'dan yükle (sekme değişimlerinde kaybolmasın)
-  React.useEffect(() => {
-    const restoreState = async () => {
-      try {
-        const key = `fan-manager-squad-${matchId}`;
-        const raw = await AsyncStorage.getItem(key);
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          if (parsed.attackFormation) setAttackFormation(parsed.attackFormation);
-          if (parsed.defenseFormation) setDefenseFormation(parsed.defenseFormation);
-          if (parsed.attackPlayers) setAttackPlayers(parsed.attackPlayers);
-          if (parsed.defensePlayers) setDefensePlayers(parsed.defensePlayers);
-          if (parsed.editingMode) setEditingMode(parsed.editingMode);
-          
-          // ✅ defenseConfirmShown: Eğer defenseFormation varsa true, yoksa false
-          // Bu sayede popup tekrar açılabilir veya buton aktif olabilir
-          const shouldConfirmBeShown = parsed.defenseFormation ? true : (parsed.defenseConfirmShown || false);
-          setDefenseConfirmShown(shouldConfirmBeShown);
-        }
-      } catch (e) {
-        console.warn('State restore failed', e);
+  // ✅ Mount ve Kadro sekmesi görünür olduğunda AsyncStorage'dan yükle (Tahmin'den geri dönünce kadro görünsün)
+  const runRestore = React.useCallback(async () => {
+    try {
+      const key = squadStorageKey;
+      const raw = await AsyncStorage.getItem(key);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed.attackFormation) setAttackFormation(parsed.attackFormation);
+        if (parsed.defenseFormation) setDefenseFormation(parsed.defenseFormation);
+        if (parsed.attackPlayers) setAttackPlayers(parsed.attackPlayers);
+        if (parsed.defensePlayers) setDefensePlayers(parsed.defensePlayers);
+        if (parsed.editingMode) setEditingMode(parsed.editingMode);
+        const shouldConfirmBeShown = parsed.defenseFormation ? true : (parsed.defenseConfirmShown || false);
+        setDefenseConfirmShown(shouldConfirmBeShown);
       }
-      setStateRestored(true);
-    };
-    restoreState();
-  }, [matchId]);
+    } catch (e) {
+      console.warn('State restore failed', e);
+    }
+    setStateRestored(true);
+  }, [squadStorageKey]);
+
+  React.useEffect(() => {
+    runRestore();
+  }, [squadStorageKey]);
+
+  // ✅ Kadro sekmesine geçildiğinde tekrar yükle (Tahmin'den dönünce yerleşmiş oyuncular görünsün)
+  React.useEffect(() => {
+    if (isVisible) runRestore();
+  }, [isVisible, runRestore]);
   
   // ✅ Her state değişikliğinde AsyncStorage'a kaydet (sekme değişimlerinde korunsun)
   // Kadro tamamlandıysa (isCompleted) attackPlayersArray/defensePlayersArray asla silinmez.
+  // ✅ Kadro sekmesine geri dönüldüğünde restore henüz state'e yansımadan save'in boş yazmaması için: existing'de tam kadro varsa boş state ile ezme.
   React.useEffect(() => {
     if (!stateRestored) return; // İlk yüklemede kaydetme
     
     const savePartialState = async () => {
       try {
-        const key = `fan-manager-squad-${matchId}`;
+        const key = squadStorageKey;
         const raw = await AsyncStorage.getItem(key);
         const existing = raw ? JSON.parse(raw) : {};
         const wasCompleted = existing.isCompleted === true;
+        const existingAttackCount = existing.attackPlayers && typeof existing.attackPlayers === 'object'
+          ? Object.keys(existing.attackPlayers).filter((k: string) => existing.attackPlayers[k]).length
+          : 0;
+        const currentAttackCount = Object.keys(attackPlayers).filter(k => attackPlayers[parseInt(k)]).length;
+        // Restore sonrası ilk save: state henüz güncellenmemişse (current boş, existing dolu) mevcut kadroyu koru
+        const preserveRestored = wasCompleted && existingAttackCount >= 11 && currentAttackCount < 11;
+        // ✅ Kadro sekmesine dönüldüğünde state henüz boşsa storage'daki kadroyu state'e de yansıt (ekranda görünsün)
+        if (preserveRestored && existing.attackFormation) {
+          setAttackFormation(existing.attackFormation);
+          setAttackPlayers(existing.attackPlayers || {});
+          setDefenseFormation(existing.defenseFormation ?? null);
+          setDefensePlayers(existing.defensePlayers || {});
+          if (existing.editingMode) setEditingMode(existing.editingMode);
+          setDefenseConfirmShown(existing.defenseConfirmShown ?? false);
+        }
         
         const updated: Record<string, any> = {
           ...existing,
           matchId,
-          attackFormation,
-          defenseFormation,
-          attackPlayers,
-          defensePlayers,
-          editingMode,
-          defenseConfirmShown,
+          attackFormation: preserveRestored ? existing.attackFormation : attackFormation,
+          defenseFormation: preserveRestored ? existing.defenseFormation : defenseFormation,
+          attackPlayers: preserveRestored ? existing.attackPlayers : attackPlayers,
+          defensePlayers: preserveRestored ? existing.defensePlayers : defensePlayers,
+          editingMode: preserveRestored ? (existing.editingMode || 'attack') : editingMode,
+          defenseConfirmShown: preserveRestored ? (existing.defenseConfirmShown ?? false) : defenseConfirmShown,
           isCompleted: wasCompleted || false,
         };
         
@@ -913,7 +1001,9 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
           if (existing.attackPlayersArray && existing.attackPlayersArray.length >= 11) {
             updated.attackPlayersArray = existing.attackPlayersArray;
           } else {
-            const arr = Object.values(attackPlayers).filter(Boolean);
+            const arr = preserveRestored && existing.attackPlayersArray?.length >= 11
+              ? existing.attackPlayersArray
+              : Object.values(attackPlayers).filter(Boolean);
             if (arr.length >= 11) updated.attackPlayersArray = arr;
           }
           if (existing.defensePlayersArray && existing.defensePlayersArray.length >= 11) {
@@ -931,7 +1021,7 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
       }
     };
     savePartialState();
-  }, [attackFormation, defenseFormation, attackPlayers, defensePlayers, editingMode, defenseConfirmShown, stateRestored, matchId]);
+  }, [attackFormation, defenseFormation, attackPlayers, defensePlayers, editingMode, defenseConfirmShown, stateRestored, matchId, squadStorageKey]);
   
   // Legacy compatibility (will be mapped to attack/defense)
   const selectedFormation = editingMode === 'attack' ? attackFormation : defenseFormation;
@@ -1000,23 +1090,24 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
       setShowFormationModal(false);
       Alert.alert('Atak Formasyonu Seçildi!', `${formation?.name}\n\nŞimdi 11 oyuncunuzu pozisyonlara yerleştirin.`);
     } else {
+      // ✅ Defans formasyonu değiştiğinde HER ZAMAN defans oyuncuları sıfırlanır
       setDefenseFormation(formationId);
-      const defFormation = formations.find(f => f.id === formationId);
-      if (defFormation && Object.keys(attackPlayers).length === 11) {
-        const defPlayers: Record<number, typeof players[0] | null> = {};
-        const attackPlayersList = Object.values(attackPlayers).filter(Boolean) as typeof players;
-        const goalkeeper = attackPlayersList.find(p => isGoalkeeperPlayer(p));
-        if (goalkeeper) defPlayers[0] = goalkeeper;
-        setDefensePlayers(defPlayers);
-        setEditingMode('defense');
-      }
+      
+      // ✅ Defans oyuncularını sıfırla ve sadece kaleci otomatik ata
+      const defPlayers: Record<number, typeof players[0] | null> = {};
+      const attackPlayersList = Object.values(attackPlayers).filter(Boolean) as typeof players;
+      const goalkeeper = attackPlayersList.find(p => isGoalkeeperPlayer(p));
+      if (goalkeeper) defPlayers[0] = goalkeeper;
+      setDefensePlayers(defPlayers); // ✅ Her durumda sıfırla
+      setEditingMode('defense');
+      
       setShowFormationModal(false);
       Alert.alert('Defans Formasyonu Seçildi!', `${formation?.name}\n\nKaleci otomatik yerleştirildi. Diğer 10 oyuncuyu defans pozisyonlarına yerleştirin.`);
     }
     // isCompleted sıfırla (Tahmin sekmesinde saha boş olsun)
     (async () => {
       try {
-        const key = `fan-manager-squad-${matchId}`;
+        const key = squadStorageKey;
         const raw = await AsyncStorage.getItem(key);
         if (raw) {
           const parsed = JSON.parse(raw);
@@ -1039,7 +1130,7 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
       // ✅ Uyarı SADECE kadro "Tamamla" ile tamamlanmışsa gösterilir (oyuncu atanmış + Tamamla basılmış)
       let squadIsCompleted = false;
       try {
-        const squadRaw = await AsyncStorage.getItem(`fan-manager-squad-${matchId}`);
+        const squadRaw = await AsyncStorage.getItem(squadStorageKey);
         if (squadRaw) {
           const squad = JSON.parse(squadRaw);
           squadIsCompleted = squad?.isCompleted === true;
@@ -1049,15 +1140,20 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
       if (squadIsCompleted) {
         const clearAndApply = async () => {
           try {
-            await AsyncStorage.removeItem(STORAGE_KEYS.PREDICTIONS + matchId);
-            await AsyncStorage.removeItem(`fan-manager-predictions-${matchId}`);
+            if (predictionTeamId != null) {
+              await AsyncStorage.removeItem(`${STORAGE_KEYS.PREDICTIONS}${matchId}-${predictionTeamId}`);
+              await AsyncStorage.removeItem(`fan-manager-predictions-${matchId}-${predictionTeamId}`);
+            } else {
+              await AsyncStorage.removeItem(STORAGE_KEYS.PREDICTIONS + matchId);
+              await AsyncStorage.removeItem(`fan-manager-predictions-${matchId}`);
+            }
             const userDataStr = await AsyncStorage.getItem(STORAGE_KEYS.USER);
             const userData = userDataStr ? JSON.parse(userDataStr) : null;
             const userId = userData?.id;
             if (userId) {
               await predictionsDb.deletePredictionsByMatch(userId, String(matchId));
             }
-            const key = `fan-manager-squad-${matchId}`;
+            const key = squadStorageKey;
             const raw = await AsyncStorage.getItem(key);
             if (raw) {
               const parsed = JSON.parse(raw);
@@ -1080,17 +1176,22 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
     const id = formationConfirmModal?.formationId;
     if (!id) return;
     try {
-      await AsyncStorage.removeItem(STORAGE_KEYS.PREDICTIONS + matchId);
-      await AsyncStorage.removeItem(`fan-manager-predictions-${matchId}`);
+      if (predictionTeamId != null) {
+        await AsyncStorage.removeItem(`${STORAGE_KEYS.PREDICTIONS}${matchId}-${predictionTeamId}`);
+        await AsyncStorage.removeItem(`fan-manager-predictions-${matchId}-${predictionTeamId}`);
+      } else {
+        await AsyncStorage.removeItem(STORAGE_KEYS.PREDICTIONS + matchId);
+        await AsyncStorage.removeItem(`fan-manager-predictions-${matchId}`);
+      }
       const userDataStr = await AsyncStorage.getItem(STORAGE_KEYS.USER);
       const userData = userDataStr ? JSON.parse(userDataStr) : null;
       const userId = userData?.id;
       if (userId) await predictionsDb.deletePredictionsByMatch(userId, String(matchId));
-      const raw = await AsyncStorage.getItem(`fan-manager-squad-${matchId}`);
+      const raw = await AsyncStorage.getItem(squadStorageKey);
       if (raw) {
         const parsed = JSON.parse(raw);
         parsed.isCompleted = false;
-        await AsyncStorage.setItem(`fan-manager-squad-${matchId}`, JSON.stringify(parsed));
+        await AsyncStorage.setItem(squadStorageKey, JSON.stringify(parsed));
       }
     } catch (e) { console.warn('Clear predictions failed', e); }
     applyFormationChange(id);
@@ -1145,6 +1246,33 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
       
       if (editingMode === 'attack') {
         setAttackPlayers({ ...attackPlayers, [selectedSlot]: player });
+        // ✅ Kadro tamamlandıktan sonra atakta oyuncu değişikliği: defansı sıfırla, uyarı ver, defans formasyonu tekrar sorulsun
+        if (defenseFormation != null) {
+          setDefenseFormation(null);
+          setDefensePlayers({});
+          setDefenseConfirmShown(false);
+          (async () => {
+            try {
+              const key = squadStorageKey;
+              const raw = await AsyncStorage.getItem(key);
+              if (raw) {
+                const parsed = JSON.parse(raw);
+                parsed.isCompleted = false;
+                await AsyncStorage.setItem(key, JSON.stringify(parsed));
+              }
+            } catch (e) { console.warn('isCompleted reset failed', e); }
+          })();
+          setSelectedSlot(null);
+          setShowPlayerModal(false);
+          setTimeout(() => {
+            Alert.alert(
+              'Defans Formasyonunu Güncelleyin',
+              'Oyuncu değişikliği yaptınız. Defans formasyonu ve oyuncu yerleşimini de güncellemeniz gerekiyor. Aynı formasyonla devam etmek veya yeni defans formasyonu seçmek için Tamam\'a basın.',
+              [{ text: 'Tamam', onPress: () => setShowDefenseConfirmModal(true) }]
+            );
+          }, 300);
+          return;
+        }
       } else {
         setDefensePlayers({ ...defensePlayers, [selectedSlot]: player });
       }
@@ -1171,7 +1299,7 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
         
         // ✅ isCompleted sıfırla (Tahmin sekmesinde saha boş olsun)
         try {
-          const key = `fan-manager-squad-${matchId}`;
+          const key = squadStorageKey;
           const raw = await AsyncStorage.getItem(key);
           if (raw) {
             const parsed = JSON.parse(raw);
@@ -1227,7 +1355,7 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
       };
       
       await AsyncStorage.setItem(
-        `fan-manager-squad-${matchId}`, // ✅ Use matchId prop for consistency
+        squadStorageKey,
         JSON.stringify(squadData)
       );
       
@@ -1312,7 +1440,7 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
           </TouchableOpacity>
         </View>
 
-        {/* Formation Modal */}
+        {/* Formation Modal - Defans sekmesi sadece atak 11 tamamlandığında açılır */}
         <FormationModal
           visible={showFormationModal}
           formations={formations}
@@ -1320,6 +1448,7 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
           onSelect={handleFormationSelect}
           onClose={() => setShowFormationModal(false)}
           onTabChange={setFormationType}
+          canSelectDefense={false}
         />
       </View>
     );
@@ -1464,12 +1593,14 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
         </View>
       </View>
 
-      {/* Player Selection Modal */}
+      {/* Player Selection Modal - Atak: sadece atak takımı. Defans: sadece atak 11'inden (zaten atanmış olanlar diğer slotlarda hariç). */}
       <PlayerModal
         visible={showPlayerModal}
-        players={editingMode === 'defense' && attackSquadPlayers.length === 11 
-          ? attackSquadPlayers 
-          : realPlayers} // ✅ Mock kaldırıldı - sadece gerçek kadro
+        players={editingMode === 'defense' && attackSquadPlayers.length === 11
+          ? attackSquadPlayers.filter((p: any) =>
+              !Object.entries(defensePlayers).some(([i, pl]) => Number(i) !== selectedSlot && pl?.id === p.id)
+            )
+          : attackTeamPlayers}
         selectedPlayers={selectedPlayers}
         positionLabel={selectedSlot !== null ? formation?.positions[selectedSlot] : ''}
         onSelect={handlePlayerSelect}
@@ -1478,9 +1609,11 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
           setSelectedSlot(null);
         }}
         isDefenseMode={editingMode === 'defense'}
+        isLoadingSquad={isLoadingSquad}
+        hasBackendError={!isLoadingSquad && squadPlayers.length === 0 && !lineups?.length && editingMode === 'attack'}
       />
 
-      {/* Formation Modal */}
+      {/* Formation Modal - Defans sekmesi sadece atak formasyonu seçilip 11 oyuncu yerleştirildiyse aktif */}
       <FormationModal
         visible={showFormationModal}
         formations={formations}
@@ -1488,6 +1621,7 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
         onSelect={handleFormationSelect}
         onClose={() => setShowFormationModal(false)}
         onTabChange={setFormationType}
+        canSelectDefense={attackFormation != null && attackCount === 11}
       />
 
       {/* Player Detail Modal */}
@@ -1592,12 +1726,18 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
 }
 
 // Formation Modal Component - 3 COLUMN GRID
-const FormationModal = ({ visible, formations, formationType, onSelect, onClose, onTabChange }: any) => {
+const FormationModal = ({ visible, formations, formationType, onSelect, onClose, onTabChange, canSelectDefense = true }: any) => {
   const [selectedFormationForDetail, setSelectedFormationForDetail] = useState<any>(null);
   const [hoveredFormation, setHoveredFormation] = useState<any>(null); // ✅ Önizleme için
   
+  // ✅ Defans sekmesi sadece atak formasyonu seçilip 11 oyuncu yerleştirildiyse seçilebilir
+  React.useEffect(() => {
+    if (visible && formationType === 'defense' && !canSelectDefense) {
+      onTabChange('attack');
+    }
+  }, [visible, formationType, canSelectDefense, onTabChange]);
+  
   // Filter formations: show all formations for both attack and defense
-  // Defense type formations can also be used for attack, and vice versa
   const filteredFormations = formations; // Show all 27 formations
 
   return (
@@ -1639,12 +1779,25 @@ const FormationModal = ({ visible, formations, formationType, onSelect, onClose,
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.formationModalTab, formationType === 'defense' && styles.formationModalTabActive]}
-                onPress={() => onTabChange('defense')}
+                style={[
+                  styles.formationModalTab,
+                  formationType === 'defense' && styles.formationModalTabActive,
+                  !canSelectDefense && styles.formationModalTabDisabled,
+                ]}
+                onPress={() => {
+                  if (!canSelectDefense) {
+                    Alert.alert(
+                      'Önce Atak Kadrosu',
+                      'Defans formasyonu seçebilmek için önce atak formasyonunu seçin ve 11 oyuncuyu yerleştirin.'
+                    );
+                    return;
+                  }
+                  onTabChange('defense');
+                }}
                 activeOpacity={0.8}
               >
-                <Ionicons name="shield-checkmark" size={18} color={formationType === 'defense' ? '#FFFFFF' : '#3B82F6'} />
-                <Text style={[styles.formationModalTabText, formationType === 'defense' && styles.formationModalTabTextActive]}>
+                <Ionicons name="shield-checkmark" size={18} color={formationType === 'defense' ? '#FFFFFF' : canSelectDefense ? '#3B82F6' : '#6B7280'} />
+                <Text style={[styles.formationModalTabText, formationType === 'defense' && styles.formationModalTabTextActive, !canSelectDefense && formationType !== 'defense' && styles.formationModalTabTextDisabled]}>
                   Defans
                 </Text>
               </TouchableOpacity>
@@ -1904,7 +2057,7 @@ const FormationDetailModal = ({ formation, onClose, onSelect }: any) => (
 
 // Player Modal Component - COMPLETE
 // Kaleci pozisyonuna yalnızca kaleci, saha pozisyonlarına yalnızca saha oyuncusu atanabilir.
-const PlayerModal = ({ visible, players, selectedPlayers, positionLabel, onSelect, onClose, isDefenseMode }: any) => {
+const PlayerModal = ({ visible, players, selectedPlayers, positionLabel, onSelect, onClose, isDefenseMode, isLoadingSquad = false, hasBackendError = false }: any) => {
   const [previewPlayer, setPreviewPlayer] = useState<any>(null);
 
   const isGKPosition = positionLabel === 'GK';
@@ -2028,15 +2181,31 @@ const PlayerModal = ({ visible, players, selectedPlayers, positionLabel, onSelec
                 const noData = !players || players.length === 0;
                 return (
                   <View style={{ alignItems: 'center', padding: 32, marginTop: 40 }}>
-                    <Ionicons name="football-outline" size={48} color="rgba(31, 162, 166, 0.5)" />
-                    <Text style={{ fontSize: 18, fontWeight: '600', color: '#FFFFFF', marginTop: 16 }}>
-                      {noData ? 'Kadro Bilgisi Yok' : 'Bu Pozisyon İçin Uygun Oyuncu Yok'}
-                    </Text>
-                    <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)', textAlign: 'center', marginTop: 8, lineHeight: 20 }}>
-                      {noData
-                        ? 'Bu maç için kadro bilgisi henüz yayınlanmadı. Maç yaklaştığında kadro bilgileri güncellenecektir.'
-                        : (isGKPosition ? 'Kadroda kaleci yok veya hepsi seçildi. Önce kalecinizi kale pozisyonuna yerleştirin.' : 'Kadroda saha oyuncusu yok veya hepsi seçildi.')}
-                    </Text>
+                    {isLoadingSquad ? (
+                      <>
+                        <Ionicons name="hourglass-outline" size={48} color="rgba(31, 162, 166, 0.5)" />
+                        <Text style={{ fontSize: 18, fontWeight: '600', color: '#FFFFFF', marginTop: 16 }}>
+                          Kadro Yükleniyor...
+                        </Text>
+                        <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)', textAlign: 'center', marginTop: 8, lineHeight: 20 }}>
+                          Takım kadrosu API'den çekiliyor. Lütfen bekleyin...
+                        </Text>
+                      </>
+                    ) : (
+                      <>
+                        <Ionicons name="football-outline" size={48} color="rgba(31, 162, 166, 0.5)" />
+                        <Text style={{ fontSize: 18, fontWeight: '600', color: '#FFFFFF', marginTop: 16 }}>
+                          {hasBackendError ? 'Backend Bağlantı Hatası' : noData ? 'Kadro Bilgisi Yok' : 'Bu Pozisyon İçin Uygun Oyuncu Yok'}
+                        </Text>
+                        <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)', textAlign: 'center', marginTop: 8, lineHeight: 20 }}>
+                          {hasBackendError
+                            ? 'Backend servisi çalışmıyor olabilir. Lütfen backend\'in port 3001\'de çalıştığından emin olun ve sayfayı yenileyin.'
+                            : noData
+                            ? 'Bu maç için kadro bilgisi henüz yayınlanmadı. Maç yaklaştığında kadro bilgileri güncellenecektir.'
+                            : (isGKPosition ? 'Kadroda kaleci yok veya hepsi seçildi. Önce kalecinizi kale pozisyonuna yerleştirin.' : 'Kadroda saha oyuncusu yok veya hepsi seçildi.')}
+                        </Text>
+                      </>
+                    )}
                   </View>
                 );
               }}
@@ -2780,6 +2949,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#1FA2A6',
     borderColor: '#1FA2A6',
   },
+  formationModalTabDisabled: {
+    opacity: 0.6,
+  },
   formationModalTabText: {
     fontSize: 14,
     fontWeight: '600',
@@ -2787,6 +2959,9 @@ const styles = StyleSheet.create({
   },
   formationModalTabTextActive: {
     color: '#FFFFFF',
+  },
+  formationModalTabTextDisabled: {
+    color: '#6B7280',
   },
   modalCloseButton: {
     width: 36,

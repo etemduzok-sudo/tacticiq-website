@@ -2,9 +2,14 @@
 # Backend (API) + Expo Web başlatır, Edge'de mobil görünümde açar.
 # localhost bağlanmayı reddetti hatası = Backend kapalı; bu script ikisini de açar.
 
+# Proje kökü = script'in bulunduğu klasör (Expo BURADAN başlamalı)
+$projectRoot = (Resolve-Path $PSScriptRoot).Path
+Set-Location $projectRoot
+
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "  TacticIQ - Mobil Web Baslatiliyor" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
+Write-Host "Proje: $projectRoot" -ForegroundColor Gray
 Write-Host ""
 
 # 1. Mevcut Expo / Node süreçlerini kapat (backend dahil)
@@ -20,14 +25,15 @@ Write-Host "   Cache temizlendi!" -ForegroundColor Green
 
 # 3. Backend (API) başlat – localhost:3001
 Write-Host "[3/4] Backend (API) baslatiliyor – http://localhost:3001 ..." -ForegroundColor Yellow
-$backendDir = Join-Path $PSScriptRoot "backend"
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "`$env:PORT='3001'; cd '$backendDir'; Write-Host 'BACKEND API (port 3001)' -ForegroundColor Green; npm run dev" -WindowStyle Normal
+$backendDir = Join-Path $projectRoot "backend"
+$backendCommand = "Set-Location '$backendDir'; Write-Host 'BACKEND API (port 3001)' -ForegroundColor Green; npm run dev"
+Start-Process powershell -ArgumentList "-NoExit", "-Command", $backendCommand -WindowStyle Normal
 Start-Sleep -Seconds 5
 Write-Host "   Backend basladi!" -ForegroundColor Green
 
-# 4. Expo Web'i başlat
-Write-Host "[4/4] Expo Web baslatiliyor..." -ForegroundColor Yellow
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$PSScriptRoot'; Write-Host 'EXPO WEB (Mobil)' -ForegroundColor Magenta; npx expo start --web --clear" -WindowStyle Normal
+# 4. Expo Web'i başlat – MUTLAKA proje kökünde (backend DEĞİL)
+Write-Host "[4/4] Expo Web baslatiliyor (proje kokunde)..." -ForegroundColor Yellow
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "Set-Location '$projectRoot'; Write-Host 'EXPO WEB (Mobil) - Proje: $projectRoot' -ForegroundColor Magenta; npx expo start --web --clear" -WindowStyle Normal
 Start-Sleep -Seconds 8
 
 # 5. Edge'i mobil görünümde aç

@@ -14,6 +14,7 @@ import {
   Alert,
   Platform,
   ViewStyle,
+  Dimensions,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import i18n from '../i18n';
@@ -1218,11 +1219,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     checkAndSetNickname();
   }, [loading, nickname, generateAutoNickname, autoSaveProfile]);
 
-  const achievements = [
-    { id: 'winner', icon: '🏆', name: 'Winner', description: '10 doğru tahmin' },
-    { id: 'streak', icon: '🔥', name: 'Streak Master', description: '5 gün üst üste' },
-    { id: 'expert', icon: '⭐', name: 'Expert', description: 'Level 10\'a ulaştı' },
-  ];
+  /** Son kazanılan 3 rozet (en yeni önce) */
+  const last3EarnedBadges = useMemo(() => {
+    const earned = allBadges.filter((b) => b.earned && b.earnedAt);
+    return earned
+      .sort((a, b) => new Date(b.earnedAt!).getTime() - new Date(a.earnedAt!).getTime())
+      .slice(0, 3);
+  }, [allBadges]);
 
   const rankPercentage = ((user.totalPlayers - user.countryRank) / user.totalPlayers) * 100;
   const topPercentage = ((user.countryRank / user.totalPlayers) * 100).toFixed(1);
@@ -1252,6 +1255,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
+          <View style={styles.scrollContentInner}>
           {/* Profile Header Card - Web ile uyumlu profesyonel tasarım */}
           <Animated.View
             entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(0)}
@@ -1385,20 +1389,33 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             </View>
           </Animated.View>
 
-          {/* Achievements Card - Web ile aynı stil */}
-          <Animated.View entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(100)} style={styles.card}>
-            <View style={styles.cardHeader}>
+          {/* Son Başarımlar - Son 3 rozet, konteynere sığar (kaydırma yok) */}
+          <Animated.View entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(100)} style={[styles.card, styles.cardContentCentered]}>
+            <View style={[styles.cardHeader, styles.cardHeaderCentered]}>
               <Ionicons name="star" size={20} color={theme.accent} />
-              <Text style={styles.cardTitle}>Başarımlar</Text>
+              <Text style={styles.cardTitle}>Son Başarımlar</Text>
             </View>
-            <View style={styles.achievementsGrid}>
-              {achievements.map((achievement) => (
-                <View key={achievement.id} style={styles.achievementCard}>
-                  <Text style={styles.achievementIcon}>{achievement.icon}</Text>
-                  <Text style={styles.achievementName}>{achievement.name}</Text>
-                  <Text style={styles.achievementDescription}>{achievement.description}</Text>
+            <View style={styles.latestBadgesRow}>
+              {last3EarnedBadges.length > 0 ? (
+                last3EarnedBadges.map((badge) => (
+                  <TouchableOpacity
+                    key={badge.id}
+                    style={[styles.latestBadgeCard, { borderColor: (badge.color || theme.accent) + '44' }]}
+                    onPress={() => setSelectedBadge(badge)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.latestBadgeIcon}>{badge.icon}</Text>
+                    <Text style={styles.latestBadgeName} numberOfLines={1}>{badge.name}</Text>
+                    <Text style={styles.latestBadgeDescription} numberOfLines={2}>{badge.description}</Text>
+                  </TouchableOpacity>
+                ))
+              ) : (
+                <View style={styles.latestBadgesEmpty}>
+                  <Ionicons name="trophy-outline" size={32} color={theme.mutedForeground} />
+                  <Text style={styles.latestBadgesEmptyText}>Henüz rozet kazanılmadı</Text>
+                  <Text style={styles.latestBadgesEmptyHint}>Tahmin yaparak rozet kazan</Text>
                 </View>
-              ))}
+              )}
             </View>
           </Animated.View>
 
@@ -2485,7 +2502,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
           {/* ✅ Kaydet butonu kaldırıldı - Otomatik kaydetme aktif */}
           <View style={{ marginBottom: 120 }} />
-
+          </View>
         </ScrollView>
 
         {/* Badges bölümü ProfileCard'a taşındı - tab bar kaldırıldı */}
@@ -2826,9 +2843,15 @@ const createStyles = (isDark: boolean = true) => {
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 16, // ✅ Yatay padding (24 → 16, standart)
-    paddingTop: Platform.OS === 'ios' ? 245 : 235, // ✅ Dashboard/MatchList ile aynı hiza
-    paddingBottom: 96 + SIZES.tabBarHeight, // Footer navigation için extra padding
+    paddingHorizontal: 16,
+    paddingTop: Platform.OS === 'ios' ? 245 : 235,
+    paddingBottom: 96 + SIZES.tabBarHeight,
+    alignItems: 'center',
+  },
+  scrollContentInner: {
+    width: '100%',
+    maxWidth: Math.min(Dimensions.get('window').width, 560),
+    alignSelf: 'center',
   },
 
   // Profile Header Card - Web ile uyumlu
@@ -3123,6 +3146,60 @@ const createStyles = (isDark: boolean = true) => {
     textAlign: 'center',
   },
 
+  // Son Başarımlar - son 3 rozet, konteynere sığar (kaydırma yok)
+  latestBadgesRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    paddingVertical: 8,
+  },
+  latestBadgeCard: {
+    flex: 1,
+    minWidth: 90,
+    maxWidth: 140,
+    minHeight: 88,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: SPACING.sm,
+    backgroundColor: theme.card,
+    borderWidth: 1.5,
+    borderRadius: SIZES.radiusMd,
+  },
+  latestBadgeIcon: {
+    fontSize: 28,
+    marginBottom: 6,
+  },
+  latestBadgeName: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: theme.cardForeground,
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  latestBadgeDescription: {
+    fontSize: 11,
+    color: theme.mutedForeground,
+    textAlign: 'center',
+  },
+  latestBadgesEmpty: {
+    paddingVertical: 24,
+    paddingHorizontal: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 200,
+  },
+  latestBadgesEmptyText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.mutedForeground,
+    marginTop: 8,
+  },
+  latestBadgesEmptyHint: {
+    fontSize: 12,
+    color: theme.mutedForeground,
+    marginTop: 4,
+  },
+
   // Level & Points
   levelPointsContainer: {
     flexDirection: 'row',
@@ -3182,6 +3259,13 @@ const createStyles = (isDark: boolean = true) => {
     paddingBottom: SPACING.sm,
     borderBottomWidth: 1,
     borderBottomColor: theme.border + '40', // Subtle divider
+  },
+  cardContentCentered: {
+    alignItems: 'center',
+  },
+  cardHeaderCentered: {
+    justifyContent: 'center',
+    alignSelf: 'stretch',
   },
   cardTitle: {
     ...TYPOGRAPHY.h4,
@@ -3810,22 +3894,27 @@ const createStyles = (isDark: boolean = true) => {
     marginLeft: 8,
   },
   
-  // ✅ Rozetlerim Section - Inline badges grid
+  // ✅ Rozetlerim Section - Diğer kartlarla aynı genişlik, ortalı (%75 azaltılmış boşluk)
   badgesSectionCard: {
     backgroundColor: theme.card,
     borderRadius: SIZES.radiusLg,
     borderWidth: 1,
     borderColor: theme.border,
     padding: SPACING.base,
-    marginTop: SPACING.base,
-    marginBottom: SPACING.base, // Ayarlar kartı ile arasında standart boşluk
+    marginTop: SPACING.md,
+    marginBottom: SPACING.md,
+    width: '100%',
+    alignItems: 'center',
   },
   badgesSectionHeader: {
-    marginBottom: SPACING.sm, // 8px - daha kompakt header
+    marginBottom: SPACING.sm,
+    alignItems: 'center',
+    width: '100%',
   },
   badgesSectionTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: SPACING.sm,
     marginBottom: SPACING.sm,
   },
@@ -3838,6 +3927,9 @@ const createStyles = (isDark: boolean = true) => {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+    width: '100%',
+    maxWidth: 320,
+    alignSelf: 'center',
   },
   badgesSectionCount: {
     fontSize: 13,
@@ -3858,17 +3950,19 @@ const createStyles = (isDark: boolean = true) => {
   badgesGridInline: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
+    gap: 6,
     rowGap: 8,
+    width: '100%',
   },
   badgeItemInline: {
-    // 5 sütun için sabit genişlik: (100% - 4*4px gap) / 5 = ~19%
-    width: '19%',
-    aspectRatio: 0.85,
+    // 5 sütun x 6 satır (30 rozet) – satırda tam 5 hücre sığacak genişlik
+    width: '17%',
+    aspectRatio: 0.9,
     backgroundColor: theme.card,
     borderRadius: SIZES.radiusMd,
     borderWidth: 1.5,
-    padding: 3,
+    padding: 5,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
@@ -3884,32 +3978,31 @@ const createStyles = (isDark: boolean = true) => {
   },
   badgeLockOverlay: {
     position: 'absolute',
-    top: 3,
-    right: 3,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+    top: 4,
+    right: 4,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     backgroundColor: 'rgba(30, 41, 59, 0.95)',
     borderWidth: 1.5,
     borderColor: 'rgba(148, 163, 184, 0.6)',
     alignItems: 'center',
     justifyContent: 'center',
-    // ✅ Daha belirgin kilit ikonu - rozetler renkli olduğu için bu önemli
   },
   badgeEarnedCheck: {
     position: 'absolute',
-    top: 2,
-    right: 2,
-    width: 14,
-    height: 14,
-    borderRadius: 7,
+    top: 3,
+    right: 3,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
     backgroundColor: '#10B981',
     alignItems: 'center',
     justifyContent: 'center',
   },
   badgeEmojiInline: {
-    fontSize: 24,
-    marginBottom: 2,
+    fontSize: 28,
+    marginBottom: 3,
   },
   badgeEmojiLocked: {
     // ✅ Grayscale ve opacity kaldırıldı - rozetler renkli görünecek
@@ -3917,11 +4010,11 @@ const createStyles = (isDark: boolean = true) => {
     opacity: 0.85, // Hafif soluk ama renkli
   } as any,
   badgeNameInline: {
-    fontSize: 8,
+    fontSize: 9,
     fontWeight: '600',
     color: theme.foreground,
     textAlign: 'center',
-    lineHeight: 10,
+    lineHeight: 11,
   },
   badgeNameLocked: {
     color: '#94A3B8', // Biraz daha okunabilir renk

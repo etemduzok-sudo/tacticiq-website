@@ -6,12 +6,12 @@ import {
   StyleSheet,
   ScrollView,
   SafeAreaView,
-  Image,
   Platform,
+  Modal,
+  Pressable,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useTranslation } from '../hooks/useTranslation';
 import { LEGAL_DOCUMENTS, getLegalContent, getLegalContentSync } from '../data/legalContent';
 
@@ -29,20 +29,20 @@ export const LegalDocumentScreen: React.FC<LegalDocumentScreenProps> = ({
   const [selectedDoc, setSelectedDoc] = useState<string | null>(documentType || 'terms');
   const [currentDoc, setCurrentDoc] = useState<{ title: string; content: string } | null>(null);
   const [loading, setLoading] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  const selectedDocDef = LEGAL_DOCUMENTS.find((d) => d.id === selectedDoc);
 
   // Load document content
   useEffect(() => {
     if (selectedDoc) {
-      // Pre-load admin documents if cache is empty
       const loadContent = async () => {
         setLoading(true);
         try {
-          // Try async first (will populate cache)
           const doc = await getLegalContent(selectedDoc, t, language);
           if (doc) {
             setCurrentDoc(doc);
           } else {
-            // Fallback to sync
             const syncDoc = getLegalContentSync(selectedDoc, t, language);
             setCurrentDoc(syncDoc);
           }
@@ -58,27 +58,28 @@ export const LegalDocumentScreen: React.FC<LegalDocumentScreenProps> = ({
     }
   }, [selectedDoc, language, t]);
 
-  // Initialize with first document if none selected
   useEffect(() => {
     if (!selectedDoc && LEGAL_DOCUMENTS.length > 0) {
       setSelectedDoc(LEGAL_DOCUMENTS[0].id);
     }
   }, []);
 
-  // Initial load from prop
   useEffect(() => {
     if (documentType && documentType !== selectedDoc) {
       setSelectedDoc(documentType);
     }
   }, [documentType]);
 
+  const onSelectDoc = (id: string) => {
+    setSelectedDoc(id);
+    setDropdownOpen(false);
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        {/* Grid Pattern Background */}
         <View style={styles.gridPattern} />
-        
-        {/* Header */}
+
         <View style={styles.header}>
           <TouchableOpacity onPress={onBack} style={styles.backButton}>
             <Ionicons name="chevron-back" size={24} color="#1FA2A6" />
@@ -88,70 +89,93 @@ export const LegalDocumentScreen: React.FC<LegalDocumentScreenProps> = ({
           <View style={styles.headerSpacer} />
         </View>
 
-        {/* Main Content - Split View */}
         <View style={styles.mainContent}>
-          {/* Document List - Left Side */}
-          <View style={styles.menuContainer}>
-            <ScrollView
-              style={styles.menuScroll}
-              contentContainerStyle={styles.menuScrollContent}
-              showsVerticalScrollIndicator={true}
+          {/* Tek satır dropdown */}
+          <View style={styles.dropdownWrap}>
+            <TouchableOpacity
+              style={styles.dropdownTrigger}
+              onPress={() => setDropdownOpen((o) => !o)}
+              activeOpacity={0.8}
             >
-              {LEGAL_DOCUMENTS.map((doc) => (
-                <TouchableOpacity
-                  key={doc.id}
-                  onPress={() => setSelectedDoc(doc.id)}
-                  style={[
-                    styles.menuItem,
-                    selectedDoc === doc.id && styles.menuItemActive,
-                  ]}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.menuItemIcon}>{doc.icon}</Text>
-                  <View style={styles.menuItemContent}>
-                    <Text style={[
-                      styles.menuItemTitle,
-                      selectedDoc === doc.id && styles.menuItemTitleActive,
-                    ]}>
-                      {doc.titleKey}
-                    </Text>
-                    <Text style={styles.menuItemDescription} numberOfLines={2}>
-                      {doc.descriptionKey}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+              <Text style={styles.dropdownTriggerIcon}>{selectedDocDef?.icon ?? '📋'}</Text>
+              <Text style={styles.dropdownTriggerLabel} numberOfLines={1}>
+                {selectedDocDef?.titleKey ?? 'Belge seçin'}
+              </Text>
+              <Ionicons
+                name={dropdownOpen ? 'chevron-up' : 'chevron-down'}
+                size={20}
+                color="#9CA3AF"
+              />
+            </TouchableOpacity>
+
+            <Modal
+              visible={dropdownOpen}
+              transparent
+              animationType="fade"
+              onRequestClose={() => setDropdownOpen(false)}
+            >
+              <Pressable style={styles.dropdownBackdrop} onPress={() => setDropdownOpen(false)}>
+                <View style={styles.dropdownList} onStartShouldSetResponder={() => true}>
+                  <ScrollView
+                    style={styles.dropdownListScroll}
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={true}
+                  >
+                    {LEGAL_DOCUMENTS.map((doc) => (
+                      <TouchableOpacity
+                        key={doc.id}
+                        style={[
+                          styles.dropdownItem,
+                          selectedDoc === doc.id && styles.dropdownItemActive,
+                        ]}
+                        onPress={() => onSelectDoc(doc.id)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={styles.dropdownItemIcon}>{doc.icon}</Text>
+                        <Text
+                          style={[
+                            styles.dropdownItemTitle,
+                            selectedDoc === doc.id && styles.dropdownItemTitleActive,
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {doc.titleKey}
+                        </Text>
+                        {selectedDoc === doc.id && (
+                          <Ionicons name="checkmark" size={18} color="#1FA2A6" />
+                        )}
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              </Pressable>
+            </Modal>
           </View>
 
-          {/* Document Content - Right Side */}
-          <View style={styles.contentContainer}>
+          {/* Geniş okuma alanı */}
+          <View style={styles.readingArea}>
             {loading ? (
               <View style={styles.loadingContainer}>
                 <Text style={styles.loadingText}>Yükleniyor...</Text>
               </View>
             ) : currentDoc ? (
-              <View style={styles.contentWrapper}>
-                <View style={styles.contentHeader}>
-                  <Text style={styles.contentTitle}>{currentDoc.title}</Text>
-                </View>
-                <ScrollView
-                  style={styles.contentScroll}
-                  contentContainerStyle={styles.contentScrollContent}
-                  showsVerticalScrollIndicator={true}
-                >
-                  <Text style={styles.contentText}>{currentDoc.content}</Text>
-                </ScrollView>
-              </View>
+              <ScrollView
+                style={styles.readingScroll}
+                contentContainerStyle={styles.readingScrollContent}
+                showsVerticalScrollIndicator={true}
+              >
+                <Text style={styles.readingTitle}>{currentDoc.title}</Text>
+                <Text style={styles.readingMeta}>Son Güncelleme: 1 Ocak 2026</Text>
+                <Text style={styles.readingText}>{currentDoc.content}</Text>
+              </ScrollView>
             ) : (
               <View style={styles.emptyContainer}>
-                <Text style={styles.emptyText}>Bir belge seçin</Text>
+                <Text style={styles.emptyText}>Yukarıdan bir belge seçin</Text>
               </View>
             )}
           </View>
         </View>
 
-        {/* Footer */}
         <View style={styles.footer}>
           <TouchableOpacity onPress={onBack} activeOpacity={0.8}>
             <LinearGradient
@@ -231,124 +255,118 @@ const styles = StyleSheet.create({
     width: 80, // Balance with back button
   },
 
-  // Main Content - Split View
   mainContent: {
     flex: 1,
-    flexDirection: Platform.OS === 'web' ? 'row' : 'column',
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
     paddingBottom: 12,
     gap: 12,
     overflow: 'hidden',
     zIndex: 1,
-    minHeight: 0, // Important for ScrollView to work properly
+    minHeight: 0,
   },
 
-  // Menu Container (Left)
-  menuContainer: {
-    ...Platform.select({
-      web: {
-        width: 140,
-      },
-      default: {
-        height: 120,
-        marginBottom: 12,
-      },
-    }),
-    backgroundColor: 'rgba(15, 42, 36, 0.9)', // ✅ Koyu yeşil - uygulama teması ile uyumlu
-    borderWidth: 1,
-    borderColor: 'rgba(31, 162, 166, 0.3)',
-    borderRadius: 12,
-    overflow: 'hidden',
+  dropdownWrap: {
+    zIndex: 10,
   },
-  menuScroll: {
-    flex: 1,
-  },
-  menuScrollContent: {
-    padding: 8,
-  },
-  menuItem: {
+  dropdownTrigger: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 6,
-    backgroundColor: 'transparent',
+    alignItems: 'center',
+    backgroundColor: 'rgba(15, 42, 36, 0.95)',
     borderWidth: 1,
-    borderColor: 'rgba(31, 162, 166, 0.2)',
+    borderColor: 'rgba(31, 162, 166, 0.4)',
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    gap: 10,
   },
-  menuItemActive: {
-    backgroundColor: 'rgba(31, 162, 166, 0.15)',
-    borderColor: 'rgba(31, 162, 166, 0.5)',
-  },
-  menuItemIcon: {
+  dropdownTriggerIcon: {
     fontSize: 20,
-    ...Platform.select({
-      web: {
-        marginRight: 8,
-        marginTop: 2,
-      },
-      default: {
-        marginRight: 8,
-        marginTop: 2,
-      },
-    }),
   },
-  menuItemContent: {
+  dropdownTriggerLabel: {
     flex: 1,
-    ...Platform.select({
-      web: {},
-      default: {
-        flex: 1,
-      },
-    }),
-  },
-  menuItemTitle: {
-    fontSize: 12,
+    fontSize: 15,
     fontWeight: '600',
+    color: '#E5E7EB',
+  },
+  dropdownBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-start',
+    paddingHorizontal: 16,
+    paddingTop: 100,
+  },
+  dropdownList: {
+    backgroundColor: 'rgba(15, 42, 36, 0.98)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.4)',
+    overflow: 'hidden',
+    maxHeight: 360,
+  },
+  dropdownListScroll: {
+    maxHeight: 360,
+  },
+  dropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    gap: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(31, 162, 166, 0.15)',
+  },
+  dropdownItemActive: {
+    backgroundColor: 'rgba(31, 162, 166, 0.12)',
+  },
+  dropdownItemIcon: {
+    fontSize: 18,
+  },
+  dropdownItemTitle: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '500',
     color: '#D1D5DB',
-    marginBottom: 4,
   },
-  menuItemTitleActive: {
+  dropdownItemTitleActive: {
     color: '#1FA2A6',
-  },
-  menuItemDescription: {
-    fontSize: 10,
-    color: '#9CA3AF',
-    lineHeight: 14,
+    fontWeight: '600',
   },
 
-  // Content Container (Right)
-  contentContainer: {
+  readingArea: {
     flex: 1,
-    backgroundColor: 'rgba(15, 42, 36, 0.9)', // ✅ Koyu yeşil - uygulama teması ile uyumlu
+    backgroundColor: 'rgba(15, 42, 36, 0.9)',
     borderWidth: 1,
     borderColor: 'rgba(31, 162, 166, 0.3)',
     borderRadius: 12,
     overflow: 'hidden',
+    minHeight: 0,
   },
-  contentWrapper: {
+  readingScroll: {
     flex: 1,
   },
-  contentHeader: {
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(31, 162, 166, 0.2)',
+  readingScrollContent: {
+    padding: 24,
+    paddingBottom: 32,
+    maxWidth: 720,
+    alignSelf: 'center',
+    width: '100%',
   },
-  contentTitle: {
-    fontSize: 20,
-    fontWeight: '600',
+  readingTitle: {
+    fontSize: 22,
+    fontWeight: '700',
     color: '#FFFFFF',
+    marginBottom: 8,
   },
-  contentScroll: {
-    flex: 1,
+  readingMeta: {
+    fontSize: 13,
+    color: '#9CA3AF',
+    marginBottom: 20,
   },
-  contentScrollContent: {
-    padding: 20,
-  },
-  contentText: {
-    fontSize: 14,
+  readingText: {
+    fontSize: 15,
     color: '#D1D5DB',
-    lineHeight: 22,
+    lineHeight: 26,
+    letterSpacing: 0.2,
   },
 
   // Loading & Empty States

@@ -30,14 +30,46 @@ import Svg, {
   Path, 
 } from 'react-native-svg';
 import { Platform } from 'react-native';
-
-// Web için animasyonları devre dışı bırak
-const isWeb = Platform.OS === 'web';
 import { FocusPrediction, SCORING_CONSTANTS } from '../../types/prediction.types';
 import { SCORING, TEXT, STORAGE_KEYS } from '../../config/constants';
 import { handleError, ErrorType, ErrorSeverity } from '../../utils/GlobalErrorHandler';
 import { predictionsDb } from '../../services/databaseService';
 import { ConfirmModal, ConfirmButton } from '../ui/ConfirmModal';
+import { ANALYSIS_FOCUSES, type AnalysisFocus, type AnalysisFocusType } from '../AnalysisFocusModal';
+
+// 🌟 Her analiz odağının kapsadığı tahmin kategorileri
+// Bir kategori SADECE BİR odağa ait olabilir (karşılıklı dışlama)
+const FOCUS_CATEGORY_MAPPING: Record<AnalysisFocusType, string[]> = {
+  defense: ['yellowCards', 'redCards'], // Savunma: Sarı/kırmızı kartlar
+  offense: ['firstHalfHomeScore', 'firstHalfAwayScore', 'secondHalfHomeScore', 'secondHalfAwayScore', 'totalGoals', 'firstGoalTime', 'goal'], // Hücum: Skorlar, goller
+  midfield: ['assist', 'possession'], // Orta saha: Asistler, top hakimiyeti
+  physical: ['firstHalfInjuryTime', 'secondHalfInjuryTime'], // Fiziksel: Uzatma süreleri
+  tactical: ['tempo', 'scenario'], // Taktik: Maç temposu, senaryo
+  player: ['substitutedOut', 'injuredOut', 'substitutePlayer', 'injurySubstitutePlayer'], // Oyuncu: Değişiklikler
+};
+
+// Bir kategorinin hangi odağa ait olduğunu bul
+const getCategoryFocus = (category: string): AnalysisFocusType | null => {
+  for (const [focusId, categories] of Object.entries(FOCUS_CATEGORY_MAPPING)) {
+    if (categories.includes(category)) {
+      return focusId as AnalysisFocusType;
+    }
+  }
+  return null;
+};
+
+// Oyuncu tahminleri ile ilgili tüm kategoriler (saha yıldızı için)
+const PLAYER_RELATED_CATEGORIES = ['goal', 'assist', 'yellowCards', 'redCards', 'substitutedOut', 'injuredOut', 'substitutePlayer', 'injurySubstitutePlayer'];
+
+// Seçili odağın oyuncu tahminlerini kapsayıp kapsamadığını kontrol et
+const doesFocusIncludePlayerPredictions = (focusType: AnalysisFocusType | null): boolean => {
+  if (!focusType) return false;
+  const focusCategories = FOCUS_CATEGORY_MAPPING[focusType] || [];
+  return PLAYER_RELATED_CATEGORIES.some(cat => focusCategories.includes(cat));
+};
+
+// Web için animasyonları devre dışı bırak
+const isWeb = Platform.OS === 'web';
 
 // Web için Slider polyfill
 import SliderNative from '@react-native-community/slider';
@@ -69,6 +101,15 @@ if (Platform.OS === 'web') {
 }
 
 const { width, height } = Dimensions.get('window');
+
+/** API'den gelen tüm kaleci varyantlarını tanı (G, GK, Goalkeeper vb.) */
+function isGoalkeeperPlayer(p: { position?: string; pos?: string } | null | undefined): boolean {
+  if (!p) return false;
+  const pos = (p.position ?? p.pos ?? '') as string;
+  if (!pos) return false;
+  const lower = pos.toLowerCase();
+  return pos === 'GK' || pos === 'G' || lower === 'goalkeeper' || lower.startsWith('goalkeeper');
+}
 
 // ✅ Pozisyon isimlerini kısaltmaya çevir (MatchSquad ile uyumlu)
 function getPositionAbbreviation(position: string): string {
@@ -125,6 +166,12 @@ function getPositionAbbreviation(position: string): string {
 interface MatchPredictionScreenProps {
   matchData: any;
   matchId?: string;
+  /** İki favori takım maçında hangi takım için tahmin; verilirse tahmin bu takıma özel saklanır. */
+  predictionTeamId?: number;
+  /** Tahminler kaydedildiğinde çağrılır (MatchDetail'da yıldızı güncellemek için) */
+  onPredictionsSaved?: () => void;
+  /** İki favori maçta tahmin kaydedildiğinde hangi takım için kaydedildiği (diğer takım teklifi için) */
+  onPredictionsSavedForTeam?: (teamId: number) => void;
 }
 
 // Mock Formation Data
@@ -237,7 +284,7 @@ const mockPlayers = [
   },
 ];
 
-// Substitute Players
+// Substitute Players (Yedek kadro)
 const substitutePlayers = [
   { id: 101, name: 'Günay', position: 'GK', rating: 72, number: 25 },
   { id: 102, name: 'Boey', position: 'RB', rating: 76, number: 93 },
@@ -247,6 +294,9 @@ const substitutePlayers = [
   { id: 106, name: 'Tetê', position: 'RW', rating: 77, number: 11 },
   { id: 107, name: 'Batshuayi', position: 'ST', rating: 78, number: 23 },
 ];
+
+// Tüm takım kadrosu (ilk 11 + yedekler) - oyuncu değişikliği için kullanılır
+const allSquadPlayers = [...mockPlayers, ...substitutePlayers];
 
 // Formation Positions
 const mockPositions = [
@@ -289,13 +339,34 @@ const FootballField = ({ children, style }: any) => (
 export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
   matchData,
   matchId,
+  predictionTeamId,
+  onPredictionsSaved,
+  onPredictionsSavedForTeam,
 }) => {
   const [selectedPlayer, setSelectedPlayer] = useState<typeof mockPlayers[0] | null>(null);
   const [playerPredictions, setPlayerPredictions] = useState<{[key: number]: any}>({});
-  const [showSubstituteModal, setShowSubstituteModal] = useState(false);
-  const [substituteType, setSubstituteType] = useState<'normal' | 'injury'>('normal');
-  const [substituteForPlayer, setSubstituteForPlayer] = useState<typeof mockPlayers[0] | null>(null);
+
+  /** Oyuncu tahmin objesinde en az bir gerçek (anlamlı) tahmin var mı? Boş/null/false değerler sayılmaz. */
+  const hasAnyRealPlayerPrediction = (preds: Record<string, any> | null | undefined): boolean => {
+    if (!preds || typeof preds !== 'object') return false;
+    return Object.entries(preds).some(([, v]) => {
+      if (v === null || v === undefined) return false;
+      if (typeof v === 'boolean') return v === true;
+      if (typeof v === 'string') return v.trim().length > 0;
+      return true;
+    });
+  };
   
+  // ✅ İki favori maçta takıma özel anahtarlar
+  const squadStorageKey = React.useMemo(
+    () => (matchId && predictionTeamId != null ? `fan-manager-squad-${matchId}-${predictionTeamId}` : matchId ? `fan-manager-squad-${matchId}` : null),
+    [matchId, predictionTeamId]
+  );
+  const predictionStorageKey = React.useMemo(
+    () => (matchData?.id && predictionTeamId != null ? `${STORAGE_KEYS.PREDICTIONS}${matchData.id}-${predictionTeamId}` : matchData?.id ? `${STORAGE_KEYS.PREDICTIONS}${matchData.id}` : null),
+    [matchData?.id, predictionTeamId]
+  );
+
   // ✅ Load attack squad from AsyncStorage
   const [attackPlayersArray, setAttackPlayersArray] = useState<any[]>([]);
   const [attackFormation, setAttackFormation] = useState<string | null>(null);
@@ -303,6 +374,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
   const [isSquadCompleted, setIsSquadCompleted] = useState(false); // ✅ Tamamla basıldı mı?
   
   // 🌟 STRATEGIC FOCUS SYSTEM
+  const [selectedAnalysisFocus, setSelectedAnalysisFocus] = useState<AnalysisFocusType | null>(null);
   const [focusedPredictions, setFocusedPredictions] = useState<FocusPrediction[]>([]);
   const [confirmModal, setConfirmModal] = useState<{
     title: string;
@@ -313,7 +385,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
   React.useEffect(() => {
     const loadSquad = async () => {
       try {
-        const key = matchId ? `fan-manager-squad-${matchId}` : null;
+        const key = squadStorageKey;
         if (!key) { setSquadLoaded(true); return; }
         const squadData = await AsyncStorage.getItem(key);
         if (squadData) {
@@ -341,7 +413,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
       }
     };
     loadSquad();
-  }, [matchId]);
+  }, [squadStorageKey]);
 
   React.useEffect(() => {
     if (__DEV__) console.log('📌 MatchPrediction mounted (build: focus+confirm+tamamla-fix)');
@@ -367,11 +439,29 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
     scenario: null as string | null,
   });
 
+  // ✅ Tahminleri storage'dan yükle (tekrar maça girildiğinde; iki favori maçta takıma özel anahtar)
+  React.useEffect(() => {
+    if (!predictionStorageKey) return;
+    const load = async () => {
+      try {
+        const altKey = predictionTeamId != null ? `fan-manager-predictions-${matchData?.id}-${predictionTeamId}` : `fan-manager-predictions-${matchData?.id}`;
+        const data = await AsyncStorage.getItem(predictionStorageKey) || await AsyncStorage.getItem(altKey);
+        if (!data) return;
+        const parsed = JSON.parse(data);
+        if (parsed.matchPredictions) setPredictions(prev => ({ ...prev, ...parsed.matchPredictions }));
+        if (parsed.playerPredictions && typeof parsed.playerPredictions === 'object') setPlayerPredictions(parsed.playerPredictions);
+        if (Array.isArray(parsed.focusedPredictions)) setFocusedPredictions(parsed.focusedPredictions);
+        if (parsed.selectedAnalysisFocus) setSelectedAnalysisFocus(parsed.selectedAnalysisFocus);
+      } catch (_) {}
+    };
+    load();
+  }, [predictionStorageKey, matchData?.id, predictionTeamId]);
+
   const handlePlayerPredictionChange = (category: string, value: string | boolean) => {
     if (!selectedPlayer) return;
     
     setPlayerPredictions(prev => {
-      const currentPredictions = prev[selectedPlayer.id] || {};
+      const currentPredictions = prev[selectedPlayer.id] ?? prev[String(selectedPlayer.id)] ?? {};
       const newPredictions = {
         ...currentPredictions,
         [category]: currentPredictions[category] === value ? null : value
@@ -380,6 +470,23 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
       // ✅ 2. Sarıdan Kırmızı seçilirse, otomatik Sarı Kart da seçilsin
       if (category === 'secondYellowRed' && value === true) {
         newPredictions.yellowCard = true;
+        newPredictions.directRedCard = null; // Direkt kırmızı ile aynı anda seçilemez
+      }
+      // ✅ Direkt Kırmızı seçilirse, 2. Sarıdan Kırmızı sönsün
+      if (category === 'directRedCard' && value === true) {
+        newPredictions.secondYellowRed = null;
+      }
+      // ✅ Oyundan Çıkar seçilirse, Sakatlanarak Çıkar sönsün (karşılıklı dışlama)
+      if (category === 'substitutedOut' && value === true) {
+        newPredictions.injuredOut = null;
+        newPredictions.injurySubstitutePlayer = null;
+        newPredictions.injurySubstituteMinute = null;
+      }
+      // ✅ Sakatlanarak Çıkar seçilirse, Oyundan Çıkar sönsün (karşılıklı dışlama)
+      if (category === 'injuredOut' && value === true) {
+        newPredictions.substitutedOut = null;
+        newPredictions.substitutePlayer = null;
+        newPredictions.substituteMinute = null;
       }
       
       return {
@@ -393,27 +500,45 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
     try {
       // Check if at least some predictions are made
       const hasMatchPredictions = Object.values(predictions).some(v => v !== null);
-      const hasPlayerPredictions = Object.keys(playerPredictions).length > 0;
+      const cleanedPlayerPredictions = Object.fromEntries(
+        Object.entries(playerPredictions).filter(([, predData]) => hasAnyRealPlayerPrediction(predData))
+      );
+      const hasPlayerPredictions = Object.keys(cleanedPlayerPredictions).length > 0;
 
       if (!hasMatchPredictions && !hasPlayerPredictions) {
         Alert.alert('Uyarı!', 'Lütfen en az bir tahmin yapın.');
         return;
       }
 
-      // Prepare prediction data
+      // Toplam gol: kullanıcı elle seçmediyse maç sonu skorundan türetilen değer kullanılır
+      const matchPredictionsToSave = {
+        ...predictions,
+        totalGoals: predictions.totalGoals ?? (() => {
+          const h = predictions.secondHalfHomeScore ?? 0;
+          const a = predictions.secondHalfAwayScore ?? 0;
+          if (predictions.secondHalfHomeScore === null && predictions.secondHalfAwayScore === null) return null;
+          const sum = h + a;
+          if (sum <= 1) return '0-1 gol';
+          if (sum <= 3) return '2-3 gol';
+          if (sum <= 5) return '4-5 gol';
+          return '6+ gol';
+        })(),
+      };
+
+      // Prepare prediction data (boş oyuncu tahminleri kaydedilmez)
       const predictionData = {
         matchId: matchData.id,
-        matchPredictions: predictions,
-        playerPredictions: playerPredictions,
+        matchPredictions: matchPredictionsToSave,
+        playerPredictions: cleanedPlayerPredictions,
         focusedPredictions: focusedPredictions, // 🌟 Strategic Focus
+        selectedAnalysisFocus: selectedAnalysisFocus, // 🎯 Seçilen analiz odağı
         timestamp: new Date().toISOString(),
       };
       
-      // 💾 SAVE TO ASYNCSTORAGE (Local backup)
-      await AsyncStorage.setItem(
-        `${STORAGE_KEYS.PREDICTIONS}${matchData.id}`,
-        JSON.stringify(predictionData)
-      );
+      // 💾 SAVE TO ASYNCSTORAGE (Local backup) – takıma özel anahtar kullan (iki favori maç)
+      const storageKey = predictionStorageKey || `${STORAGE_KEYS.PREDICTIONS}${matchData.id}`;
+      await AsyncStorage.setItem(storageKey, JSON.stringify(predictionData));
+      setPlayerPredictions(cleanedPlayerPredictions);
       
       // 🗄️ SAVE TO SUPABASE (Database)
       try {
@@ -425,8 +550,8 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
         // Save each prediction to database
         const predictionPromises: Promise<any>[] = [];
 
-        // Save match predictions
-        Object.entries(predictions).forEach(([type, value]) => {
+        // Save match predictions (toplam gol dahil efektif değerler)
+        Object.entries(matchPredictionsToSave).forEach(([type, value]) => {
           if (value !== null && value !== undefined) {
             predictionPromises.push(
               predictionsDb.createPrediction({
@@ -439,8 +564,8 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
           }
         });
 
-        // Save player predictions
-        Object.entries(playerPredictions).forEach(([playerId, predData]) => {
+        // Save player predictions (sadece anlamlı tahminleri kaydet)
+        Object.entries(cleanedPlayerPredictions).forEach(([playerId, predData]) => {
           Object.entries(predData).forEach(([type, value]) => {
             if (value !== null && value !== undefined) {
               predictionPromises.push(
@@ -493,6 +618,10 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
         'Tahminleriniz başarıyla kaydedildi. Maç başladığında puanlarınız hesaplanacak!',
         [{ text: 'Tamam' }]
       );
+      // ✅ MatchDetail'da yıldızı güncelle
+      onPredictionsSaved?.();
+      // ✅ İki favori maçta diğer takım teklifi için hangi takım kaydedildi
+      if (predictionTeamId != null) onPredictionsSavedForTeam?.(predictionTeamId);
     } catch (error) {
       console.error('Error saving predictions:', error);
       handleError(error as Error, {
@@ -509,6 +638,28 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
       ...prev,
       [category]: prev[category as keyof typeof prev] === value ? null : value
     }));
+  };
+
+  // 🎯 Analiz odağı seçildiğinde çağrılır - otomatik olarak o odağa ait kategoriler odaklanır
+  const handleAnalysisFocusSelect = (focusType: AnalysisFocusType) => {
+    setSelectedAnalysisFocus(focusType);
+    
+    // O odağa ait kategorileri otomatik olarak odakla
+    const categories = FOCUS_CATEGORY_MAPPING[focusType] || [];
+    const newFocusedPredictions: FocusPrediction[] = categories.map(category => ({
+      category,
+      playerId: undefined,
+      isFocused: true,
+    }));
+    
+    setFocusedPredictions(newFocusedPredictions);
+  };
+
+  // 🌟 Bir kategorinin seçili analiz odağına ait olup olmadığını kontrol et
+  const isCategoryInSelectedFocus = (category: string): boolean => {
+    if (!selectedAnalysisFocus) return false;
+    const categories = FOCUS_CATEGORY_MAPPING[selectedAnalysisFocus] || [];
+    return categories.includes(category);
   };
 
   // 🌟 Toggle Focus (Star) – uygulama içi ConfirmModal popup (tarayıcı confirm/alert yok)
@@ -552,20 +703,124 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
   };
 
   // Check if a prediction is focused
+  // 1. Manuel olarak focusedPredictions'a eklenmişse
+  // 2. VEYA seçili analiz odağının kategorileri arasındaysa (otomatik)
   const isFocused = (category: string, playerId?: number): boolean => {
-    return focusedPredictions.some(
+    // Manuel odaklanma kontrolü
+    const manuallyFocused = focusedPredictions.some(
       fp => fp.category === category && fp.playerId === playerId
     );
+    if (manuallyFocused) return true;
+    
+    // Analiz odağına göre otomatik odaklanma kontrolü
+    if (selectedAnalysisFocus) {
+      const focusCategories = FOCUS_CATEGORY_MAPPING[selectedAnalysisFocus] || [];
+      // Oyuncu tahminleri için playerId varsa ve kategori oyuncu odağındaysa
+      if (playerId !== undefined) {
+        // Oyuncu tahminleri: player veya defense odağında
+        return focusCategories.includes(category);
+      }
+      // Genel kategoriler için
+      return focusCategories.includes(category);
+    }
+    
+    return false;
+  };
+
+  /** Yıldıza tıklanınca: tahmin odağı açıklaması + odakla / odaktan çıkar seçeneği */
+  const showFocusExplanationModal = (category: string, playerId?: number) => {
+    const focused = isFocused(category, playerId);
+    const atMax = focusedPredictions.length >= SCORING_CONSTANTS.MAX_FOCUS;
+    const explanation =
+      'Odakladığınız tahmin doğru bilindiğinde 2x puan kazanırsınız. En fazla ' +
+      SCORING_CONSTANTS.MAX_FOCUS +
+      ' tahmine odaklanabilirsiniz.';
+
+    if (focused) {
+      setConfirmModal({
+        title: 'Tahmin odağı',
+        message: explanation + '\n\nBu tahmin şu an odakta. Odaktan çıkarmak ister misiniz?',
+        buttons: [
+          { text: 'Tamam', style: 'cancel', onPress: () => setConfirmModal(null) },
+          {
+            text: 'Odaktan çıkar',
+            style: 'destructive',
+            onPress: () => {
+              setFocusedPredictions(prev =>
+                prev.filter(fp => !(fp.category === category && fp.playerId === playerId))
+              );
+              setConfirmModal(null);
+            },
+          },
+        ],
+      });
+      return;
+    }
+    if (atMax) {
+      setConfirmModal({
+        title: 'Tahmin odağı',
+        message: explanation + '\n\nEn fazla ' + SCORING_CONSTANTS.MAX_FOCUS + ' tahmine odaklanabilirsiniz. Başka bir tahmini odaktan çıkarın.',
+        buttons: [{ text: 'Tamam', onPress: () => setConfirmModal(null) }],
+      });
+      return;
+    }
+    setConfirmModal({
+      title: 'Tahmin odağı',
+      message: explanation + '\n\nBu tahmini odaklamak ister misiniz?',
+      buttons: [
+        { text: 'İptal', style: 'cancel', onPress: () => setConfirmModal(null) },
+        {
+          text: 'Odakla',
+          onPress: () => {
+            setFocusedPredictions(prev => [...prev, { category, playerId, isFocused: true }]);
+            setConfirmModal(null);
+          },
+        },
+      ],
+    });
   };
 
   const handleScoreChange = (category: 'firstHalfHomeScore' | 'firstHalfAwayScore' | 'secondHalfHomeScore' | 'secondHalfAwayScore', value: number) => {
-    setPredictions(prev => ({
-      ...prev,
-      [category]: prev[category] === value ? null : value
-    }));
+    setPredictions(prev => {
+      const minHome = prev.firstHalfHomeScore ?? 0;
+      const minAway = prev.firstHalfAwayScore ?? 0;
+      if (category === 'secondHalfHomeScore' && value < minHome) return prev;
+      if (category === 'secondHalfAwayScore' && value < minAway) return prev;
+
+      let next = { ...prev, [category]: prev[category] === value ? null : value };
+
+      // İlk yarı değişince maç sonu ön tanımlı olarak ilk yarı skoruna getirilir (veya ilk yarının altındaysa düzeltilir)
+      if (category === 'firstHalfHomeScore' && next.firstHalfHomeScore != null) {
+        if (next.secondHalfHomeScore == null || next.secondHalfHomeScore < next.firstHalfHomeScore)
+          next = { ...next, secondHalfHomeScore: next.firstHalfHomeScore };
+      }
+      if (category === 'firstHalfAwayScore' && next.firstHalfAwayScore != null) {
+        if (next.secondHalfAwayScore == null || next.secondHalfAwayScore < next.firstHalfAwayScore)
+          next = { ...next, secondHalfAwayScore: next.firstHalfAwayScore };
+      }
+
+      return next;
+    });
   };
 
-  const currentPlayerPredictions = selectedPlayer ? playerPredictions[selectedPlayer.id] || {} : {};
+  // Maç sonu skorundan türetilen toplam gol aralığı (kullanıcı toplam golü elle seçmediyse bu kullanılır)
+  const TOTAL_GOALS_RANGES = ['0-1 gol', '2-3 gol', '4-5 gol', '6+ gol'] as const;
+  const getDerivedTotalGoals = (): string | null => {
+    const home = predictions.secondHalfHomeScore ?? 0;
+    const away = predictions.secondHalfAwayScore ?? 0;
+    if (predictions.secondHalfHomeScore === null && predictions.secondHalfAwayScore === null) return null;
+    const sum = home + away; // 5+ butonu 5 olarak saklanıyor
+    if (sum <= 1) return '0-1 gol';
+    if (sum <= 3) return '2-3 gol';
+    if (sum <= 5) return '4-5 gol';
+    return '6+ gol';
+  };
+  const effectiveTotalGoals = predictions.totalGoals ?? getDerivedTotalGoals();
+
+  // ✅ Kayıtlı tahminlerde anahtar string olabilir (AsyncStorage); hem number hem string ile oku
+  const currentPlayerPredictions = selectedPlayer
+    ? (playerPredictions[selectedPlayer.id] ?? playerPredictions[String(selectedPlayer.id)] ?? {})
+    : {};
 
   return (
     <SafeAreaView style={styles.container}>
@@ -574,19 +829,32 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* 🌟 ODAK SİSTEMİ BİLGİLENDİRME */}
-        {focusedPredictions.length > 0 && (
-          <Animated.View entering={isWeb ? undefined : FadeIn.duration(300)} style={styles.focusInfoBanner}>
-            <Ionicons name="star" size={20} color="#F59E0B" />
-            <Text style={styles.focusInfoText}>
-              {focusedPredictions.length} / {SCORING_CONSTANTS.MAX_FOCUS} tahmin odaklandı. 
-              Doğru tahminler 2x puan, yanlışlar -1.5x ceza!
-            </Text>
-          </Animated.View>
-        )}
-
         {/* Football Field with Players – Kadro sekmesindeki saha ile aynı boyut */}
         <FootballField style={styles.mainField}>
+          {/* 🌟 Saha Üzerinde Analiz Odağı Yıldızı - Sağ üst köşe */}
+          <TouchableOpacity 
+            style={styles.fieldFocusStarContainer}
+            onPress={() => {
+              const isPlayerFocused = doesFocusIncludePlayerPredictions(selectedAnalysisFocus);
+              const focusName = selectedAnalysisFocus 
+                ? ANALYSIS_FOCUSES.find(f => f.id === selectedAnalysisFocus)?.title || selectedAnalysisFocus
+                : null;
+              setConfirmModal({
+                title: 'Oyuncu Tahminleri Odağı',
+                message: isPlayerFocused 
+                  ? `Analiz odağınız "${focusName}" olduğu için bu oyuncu tahminleri 2x puan kazandırır.`
+                  : 'Oyuncu tahminlerinden 2x puan kazanmak için ilgili analiz odağını seçmelisiniz (Hücum, Savunma, Orta Saha veya Oyuncu Odaklı).',
+                buttons: [{ text: 'Tamam', onPress: () => setConfirmModal(null) }],
+              });
+            }}
+            activeOpacity={0.7}
+          >
+            <Ionicons 
+              name={doesFocusIncludePlayerPredictions(selectedAnalysisFocus) ? 'star' : 'star-outline'} 
+              size={20} 
+              color={doesFocusIncludePlayerPredictions(selectedAnalysisFocus) ? '#F59E0B' : '#6B7280'} 
+            />
+          </TouchableOpacity>
           <View style={styles.playersContainer}>
             {(() => {
               // ✅ SADECE Tamamla basıldıysa ve 11 oyuncu varsa kartları göster
@@ -614,8 +882,9 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                 if (!player) return null;
                 // Kadro sekmesiyle aynı pozisyon etiketi (formasyon slot: GK, LB, CB, RB, CDM, CAM, ST vb.)
                 const positionLabel = slotLabels[index] || getPositionAbbreviation(player.position || '');
-                const hasPredictions = playerPredictions[player.id] && 
-                  Object.keys(playerPredictions[player.id]).length > 0;
+                const playerPreds = playerPredictions[player.id] || playerPredictions[String(player.id)] || {};
+                const hasPredictions = hasAnyRealPlayerPrediction(playerPreds);
+                const hasSubstitution = !!(playerPreds.substitutedOut || playerPreds.injuredOut);
 
                 return (
                   <View
@@ -640,8 +909,13 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                         style={styles.playerCardGradient}
                       >
                         {hasPredictions && (
-                          <View style={styles.alertBadge}>
-                            <View style={styles.alertDot} />
+                          <View style={styles.predictionCheckBadge}>
+                            <Ionicons name="checkmark" size={10} color="#FFFFFF" />
+                          </View>
+                        )}
+                        {hasSubstitution && (
+                          <View style={styles.substitutionBadge}>
+                            <Ionicons name="swap-horizontal" size={10} color="#FFFFFF" />
                           </View>
                         )}
                         <View style={styles.jerseyNumberBadge}>
@@ -666,41 +940,24 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
           </View>
         </FootballField>
 
-        {/* Info Note */}
+        {/* ✅ Bildirim: Oyuncu kartlarına tıklayın ve aşağı kaydırın – her zaman gösterilir */}
         <View style={styles.infoNote}>
           <Ionicons name="information-circle" size={16} color="#9CA3AF" />
           <Text style={styles.infoText}>
-            Tahmin yapmak için oyuncu kartlarına tıklayın ve ekranı aşağı kaydırın
+            Tahmin yapmak için oyuncu kartlarına tıklayın ve aşağı kaydırın
           </Text>
         </View>
 
         {/* PREDICTION CATEGORIES - COMPLETE */}
         <View style={styles.predictionsSection}>
-          {/* Focus Info Banner */}
-          {focusedPredictions.length > 0 && (
-            <Animated.View entering={isWeb ? undefined : FadeIn} style={styles.focusInfoBanner}>
-              <Ionicons name="star" size={20} color="#F59E0B" />
-              <Text style={styles.focusInfoText}>
-                {focusedPredictions.length}/{SCORING_CONSTANTS.MAX_FOCUS} Odak Seçildi
-              </Text>
-              <Text style={styles.focusInfoHint}>
-                Doğruysa 2x puan, yanlışsa -1.5x ceza
-              </Text>
-            </Animated.View>
-          )}
-
-          {/* 1. İlk Yarı Tahminleri */}
+          {/* Maça ait tahminler – İlk yarı skoru */}
           <View style={styles.predictionCategory}>
-            <Text style={styles.categoryTitle}>⏱️ İlk Yarı Tahminleri</Text>
-            
-            {/* İlk Yarı Skoru */}
             <View style={styles.categoryCard}>
               <View style={styles.categoryHeader}>
                 <View>
                   <Text style={styles.categoryLabel}>⚽ İlk Yarı Skoru</Text>
-                  <Text style={styles.categoryHint}>Ev sahibi - Deplasman</Text>
                 </View>
-                <View style={styles.focusButtonWrap} collapsable={false} pointerEvents="box-none">
+                <View style={[styles.focusButtonWrap, { pointerEvents: 'box-none' }]} collapsable={false}>
                   <Pressable
                     onPress={() => toggleFocus('firstHalfHomeScore')}
                     style={({ pressed }) => [styles.focusButton, pressed && styles.focusButtonPressed]}
@@ -771,63 +1028,99 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
               </View>
             </View>
 
-            {/* İlk Yarı Uzatma Süresi */}
+            {/* İlk Yarı Uzatma Süresi - İlk yarı skoru altında */}
             <View style={styles.categoryCard}>
-              <Text style={styles.categoryLabel}>⏱️ İlk Yarı Uzatma Süresi</Text>
-              <View style={styles.buttonRow}>
-                {['+1 dk', '+2 dk', '+3 dk', '+4 dk', '+5+ dk'].map((time) => (
-                  <TouchableOpacity 
-                    key={time} 
-                    style={[
-                      styles.optionButton,
-                      predictions.firstHalfInjuryTime === time && styles.optionButtonActive
-                    ]}
-                    onPress={() => handlePredictionChange('firstHalfInjuryTime', time)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[
-                      styles.optionText,
-                      predictions.firstHalfInjuryTime === time && styles.optionTextActive
-                    ]}>
-                      {time}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+              <View style={styles.categoryHeader}>
+                <Text style={styles.categoryLabel}>⏱️ İlk Yarı Uzatma Süresi</Text>
+                <TouchableOpacity 
+                  onPress={() => showFocusExplanationModal('firstHalfInjuryTime')}
+                  style={styles.focusButton}
+                >
+                  <Ionicons 
+                    name={isFocused('firstHalfInjuryTime') ? 'star' : 'star-outline'}
+                    size={24} 
+                    color={isFocused('firstHalfInjuryTime') ? '#F59E0B' : '#6B7280'} 
+                  />
+                </TouchableOpacity>
               </View>
+              {(() => {
+                const row1 = ['+1 dk', '+2 dk', '+3 dk', '+4 dk', '+5 dk'];
+                const row2 = ['+6 dk', '+7 dk', '+8 dk', '+9 dk', '+10 dk'];
+                return (
+                  <View style={styles.injuryTimeGrid}>
+                    <View style={styles.injuryTimeRow}>{row1.map((time) => {
+                      const isSelected = predictions.firstHalfInjuryTime === time;
+                      return (
+                        <TouchableOpacity key={time} style={[styles.minuteRangeButtonCompact, styles.injuryTimeButton, styles.injuryTimeButtonPadding, isSelected && styles.minuteRangeButtonCompactSelected]} onPress={() => handlePredictionChange('firstHalfInjuryTime', time)} activeOpacity={0.7}>
+                          <Text style={[styles.minuteRangeTextCompact, styles.injuryTimeButtonText, isSelected && styles.minuteRangeTextCompactSelected]} numberOfLines={1}>{time.replace(' dk', '')}</Text>
+                          {isSelected && <View style={styles.minuteRangeCheckmark}><Ionicons name="checkmark" size={12} color="#FFFFFF" /></View>}
+                        </TouchableOpacity>
+                      );
+                    })}</View>
+                    <View style={styles.injuryTimeRow}>{row2.map((time) => {
+                      const isSelected = predictions.firstHalfInjuryTime === time;
+                      return (
+                        <TouchableOpacity key={time} style={[styles.minuteRangeButtonCompact, styles.injuryTimeButton, styles.injuryTimeButtonPadding, isSelected && styles.minuteRangeButtonCompactSelected]} onPress={() => handlePredictionChange('firstHalfInjuryTime', time)} activeOpacity={0.7}>
+                          <Text style={[styles.minuteRangeTextCompact, styles.injuryTimeButtonText, isSelected && styles.minuteRangeTextCompactSelected]} numberOfLines={1}>{time.replace(' dk', '')}</Text>
+                          {isSelected && <View style={styles.minuteRangeCheckmark}><Ionicons name="checkmark" size={12} color="#FFFFFF" /></View>}
+                        </TouchableOpacity>
+                      );
+                    })}</View>
+                  </View>
+                );
+              })()}
             </View>
+
           </View>
 
           {/* 2. Maç Sonu Tahminleri */}
           <View style={styles.predictionCategory}>
-            <Text style={styles.categoryTitle}>⏱️ Maç Sonu Tahminleri</Text>
+            <Text style={styles.categoryTitle}>⚽ Maç Sonu Tahminleri</Text>
             
-            {/* Maç Sonu Skoru */}
+            {/* Maç Sonu Skoru - İlk yarı skorunun altı seçilemez (en az ilk yarı kadar olmalı) */}
             <View style={styles.categoryCard}>
-              <Text style={styles.categoryLabel}>⚽ Maç Sonu Skoru</Text>
-              <Text style={styles.categoryHint}>Ev sahibi - Deplasman</Text>
-              
+              <View style={styles.categoryHeader}>
+                <Text style={styles.categoryLabel}>⚽ Maç Sonu Skoru</Text>
+                <TouchableOpacity 
+                  onPress={() => showFocusExplanationModal('fullTimeHomeScore')}
+                  style={styles.focusButton}
+                >
+                  <Ionicons 
+                    name={isFocused('fullTimeHomeScore') ? 'star' : 'star-outline'}
+                    size={24} 
+                    color={isFocused('fullTimeHomeScore') ? '#F59E0B' : '#6B7280'} 
+                  />
+                </TouchableOpacity>
+              </View>
               <View style={styles.scorePickerContainer}>
                 <View style={styles.scorePickerColumn}>
                   <Text style={styles.scorePickerLabel}>Ev Sahibi Golü</Text>
                   <View style={styles.scoreButtons}>
-                    {[0, 1, 2, 3, 4, 5].map((score) => (
-                      <TouchableOpacity
-                        key={score}
-                        style={[
-                          styles.scoreButton,
-                          predictions.secondHalfHomeScore === score && styles.scoreButtonActive
-                        ]}
-                        onPress={() => handleScoreChange('secondHalfHomeScore', score)}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={[
-                          styles.scoreButtonText,
-                          predictions.secondHalfHomeScore === score && styles.scoreButtonTextActive
-                        ]}>
-                          {score === 5 ? '5+' : score}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
+                    {[0, 1, 2, 3, 4, 5].map((score) => {
+                      const minHome = predictions.firstHalfHomeScore ?? 0;
+                      const isDisabled = score < minHome;
+                      return (
+                        <TouchableOpacity
+                          key={score}
+                          style={[
+                            styles.scoreButton,
+                            predictions.secondHalfHomeScore === score && styles.scoreButtonActive,
+                            isDisabled && styles.scoreButtonDisabled
+                          ]}
+                          onPress={() => !isDisabled && handleScoreChange('secondHalfHomeScore', score)}
+                          activeOpacity={0.7}
+                          disabled={isDisabled}
+                        >
+                          <Text style={[
+                            styles.scoreButtonText,
+                            predictions.secondHalfHomeScore === score && styles.scoreButtonTextActive,
+                            isDisabled && styles.scoreButtonTextDisabled
+                          ]}>
+                            {score === 5 ? '5+' : score}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
                   </View>
                 </View>
 
@@ -838,91 +1131,112 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                 <View style={styles.scorePickerColumn}>
                   <Text style={styles.scorePickerLabel}>Deplasman Golü</Text>
                   <View style={styles.scoreButtons}>
-                    {[0, 1, 2, 3, 4, 5].map((score) => (
-                      <TouchableOpacity
-                        key={score}
-                        style={[
-                          styles.scoreButton,
-                          predictions.secondHalfAwayScore === score && styles.scoreButtonActive
-                        ]}
-                        onPress={() => handleScoreChange('secondHalfAwayScore', score)}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={[
-                          styles.scoreButtonText,
-                          predictions.secondHalfAwayScore === score && styles.scoreButtonTextActive
-                        ]}>
-                          {score === 5 ? '5+' : score}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
+                    {[0, 1, 2, 3, 4, 5].map((score) => {
+                      const minAway = predictions.firstHalfAwayScore ?? 0;
+                      const isDisabled = score < minAway;
+                      return (
+                        <TouchableOpacity
+                          key={score}
+                          style={[
+                            styles.scoreButton,
+                            predictions.secondHalfAwayScore === score && styles.scoreButtonActive,
+                            isDisabled && styles.scoreButtonDisabled
+                          ]}
+                          onPress={() => !isDisabled && handleScoreChange('secondHalfAwayScore', score)}
+                          activeOpacity={0.7}
+                          disabled={isDisabled}
+                        >
+                          <Text style={[
+                            styles.scoreButtonText,
+                            predictions.secondHalfAwayScore === score && styles.scoreButtonTextActive,
+                            isDisabled && styles.scoreButtonTextDisabled
+                          ]}>
+                            {score === 5 ? '5+' : score}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
                   </View>
                 </View>
               </View>
             </View>
 
-            {/* İkinci Yarı Uzatma Süresi */}
+            {/* Maç Sonu Uzatma Süresi - Maç sonu skoru altında (sadece ikinci yarı) */}
             <View style={styles.categoryCard}>
-              <Text style={styles.categoryLabel}>⏱️ İkinci Yarı Uzatma Süresi</Text>
-              <View style={styles.buttonRow}>
-                {['+1 dk', '+2 dk', '+3 dk', '+4 dk', '+5+ dk'].map((time) => (
-                  <TouchableOpacity 
-                    key={time} 
-                    style={[
-                      styles.optionButton,
-                      predictions.secondHalfInjuryTime === time && styles.optionButtonActive
-                    ]}
-                    onPress={() => handlePredictionChange('secondHalfInjuryTime', time)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[
-                      styles.optionText,
-                      predictions.secondHalfInjuryTime === time && styles.optionTextActive
-                    ]}>
-                      {time}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+              <View style={styles.categoryHeader}>
+                <Text style={styles.categoryLabel}>⏱️ Maç Sonu Uzatma Süresi</Text>
+                <TouchableOpacity 
+                  onPress={() => showFocusExplanationModal('secondHalfInjuryTime')}
+                  style={styles.focusButton}
+                >
+                  <Ionicons 
+                    name={isFocused('secondHalfInjuryTime') ? 'star' : 'star-outline'}
+                    size={24} 
+                    color={isFocused('secondHalfInjuryTime') ? '#F59E0B' : '#6B7280'} 
+                  />
+                </TouchableOpacity>
               </View>
+              {(() => {
+                const row1 = ['+1 dk', '+2 dk', '+3 dk', '+4 dk', '+5 dk'];
+                const row2 = ['+6 dk', '+7 dk', '+8 dk', '+9 dk', '+10 dk'];
+                return (
+                  <View style={styles.injuryTimeGrid}>
+                    <View style={styles.injuryTimeRow}>{row1.map((time) => {
+                      const isSelected = predictions.secondHalfInjuryTime === time;
+                      return (
+                        <TouchableOpacity key={time} style={[styles.minuteRangeButtonCompact, styles.injuryTimeButton, styles.injuryTimeButtonPadding, isSelected && styles.minuteRangeButtonCompactSelected]} onPress={() => handlePredictionChange('secondHalfInjuryTime', time)} activeOpacity={0.7}>
+                          <Text style={[styles.minuteRangeTextCompact, styles.injuryTimeButtonText, isSelected && styles.minuteRangeTextCompactSelected]} numberOfLines={1}>{time.replace(' dk', '')}</Text>
+                          {isSelected && <View style={styles.minuteRangeCheckmark}><Ionicons name="checkmark" size={12} color="#FFFFFF" /></View>}
+                        </TouchableOpacity>
+                      );
+                    })}</View>
+                    <View style={styles.injuryTimeRow}>{row2.map((time) => {
+                      const isSelected = predictions.secondHalfInjuryTime === time;
+                      return (
+                        <TouchableOpacity key={time} style={[styles.minuteRangeButtonCompact, styles.injuryTimeButton, styles.injuryTimeButtonPadding, isSelected && styles.minuteRangeButtonCompactSelected]} onPress={() => handlePredictionChange('secondHalfInjuryTime', time)} activeOpacity={0.7}>
+                          <Text style={[styles.minuteRangeTextCompact, styles.injuryTimeButtonText, isSelected && styles.minuteRangeTextCompactSelected]} numberOfLines={1}>{time.replace(' dk', '')}</Text>
+                          {isSelected && <View style={styles.minuteRangeCheckmark}><Ionicons name="checkmark" size={12} color="#FFFFFF" /></View>}
+                        </TouchableOpacity>
+                      );
+                    })}</View>
+                  </View>
+                );
+              })()}
             </View>
           </View>
 
-          {/* 3. Toplam Gol Sayısı */}
+          {/* 3. Toplam Gol Sayısı - başlık ve yıldız konteyner dışında */}
           <View style={styles.predictionCategory}>
-            <Text style={styles.categoryTitle}>🧮 Toplam Gol Sayısı</Text>
-            
+            <View style={styles.categoryTitleRow}>
+              <Text style={styles.categoryTitle}>🧮 Toplam Gol Sayısı</Text>
+              <Pressable
+                onPress={() => showFocusExplanationModal('totalGoals')}
+                style={({ pressed }) => [styles.focusButton, pressed && styles.focusButtonPressed]}
+                hitSlop={16}
+                accessibilityLabel="Tahmin odağı (toplam gol) – açıklama ve değiştir"
+              >
+                <Ionicons
+                  name={isFocused('totalGoals') ? 'star' : 'star-outline'}
+                  size={24}
+                  color={isFocused('totalGoals') ? '#F59E0B' : '#6B7280'}
+                />
+              </Pressable>
+            </View>
             <View style={styles.categoryCard}>
-              <View style={styles.categoryHeader}>
-                <Text style={styles.categoryLabel}>⚽ Toplam Gol Sayısı</Text>
-                <View style={styles.focusButtonWrap} collapsable={false} pointerEvents="box-none">
-                  <Pressable
-                    onPress={() => toggleFocus('totalGoals')}
-                    style={({ pressed }) => [styles.focusButton, pressed && styles.focusButtonPressed]}
-                    hitSlop={16}
-                    accessibilityLabel="Odak yıldızı (toplam gol)"
-                  >
-                    <Ionicons
-                      name={isFocused('totalGoals') ? 'star' : 'star-outline'}
-                      size={24}
-                      color={isFocused('totalGoals') ? '#F59E0B' : '#6B7280'}
-                    />
-                  </Pressable>
-                </View>
-              </View>
               <View style={styles.buttonRow}>
-                {['0-1 gol', '2-3 gol', '4-5 gol', '6+ gol'].map((range) => (
+                {TOTAL_GOALS_RANGES.map((range) => (
                   <TouchableOpacity 
                     key={range} 
                     style={[
                       styles.optionButton,
-                      predictions.totalGoals === range && styles.optionButtonActive
+                      effectiveTotalGoals === range && styles.optionButtonActive
                     ]}
                     onPress={() => handlePredictionChange('totalGoals', range)}
                     activeOpacity={0.7}
                   >
                     <Text style={[
                       styles.optionText,
-                      predictions.totalGoals === range && styles.optionTextActive
+                      effectiveTotalGoals === range && styles.optionTextActive
                     ]}>
                       {range}
                     </Text>
@@ -932,31 +1246,77 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
             </View>
           </View>
 
-          {/* 4. İlk Gol Zamanı */}
+          {/* 4. İlk Gol Zamanı - Kompakt Grid */}
           <View style={styles.predictionCategory}>
             <Text style={styles.categoryTitle}>⏰ İlk Gol Zamanı</Text>
             
             <View style={styles.categoryCard}>
-              <Text style={styles.categoryLabel}>⏰ İlk Gol Zamanı</Text>
-              <View style={styles.buttonGrid}>
-                {['1-15 dk', '16-30 dk', '31-45 dk', '46-60 dk', '61-75 dk', '76-90+ dk'].map((range) => (
-                  <TouchableOpacity 
-                    key={range} 
-                    style={[
-                      styles.optionButtonGrid,
-                      predictions.firstGoalTime === range && styles.optionButtonActive
-                    ]}
-                    onPress={() => handlePredictionChange('firstGoalTime', range)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[
-                      styles.optionText,
-                      predictions.firstGoalTime === range && styles.optionTextActive
-                    ]}>
-                      {range}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+              <View style={styles.categoryHeader}>
+                <Text style={styles.categoryLabel}>⏰ İlk Gol Zamanı</Text>
+                <TouchableOpacity 
+                  onPress={() => showFocusExplanationModal('firstGoalTime')}
+                  style={styles.focusButton}
+                >
+                  <Ionicons 
+                    name={isFocused('firstGoalTime') ? 'star' : 'star-outline'}
+                    size={24} 
+                    color={isFocused('firstGoalTime') ? '#F59E0B' : '#6B7280'} 
+                  />
+                </TouchableOpacity>
+              </View>
+              <View style={styles.firstGoalTimeGrid}>
+                {(() => {
+                  const row1 = MATCH_TIME_RANGES.slice(0, 4);
+                  const row2 = MATCH_TIME_RANGES.slice(4, 8);
+                  return (
+                    <>
+                      <View style={styles.injuryTimeRow}>
+                        {row1.map((range) => {
+                          const isSelected = predictions.firstGoalTime === range.value;
+                          return (
+                            <TouchableOpacity
+                              key={range.value}
+                              style={[styles.minuteRangeButtonCompact, styles.injuryTimeButton, isSelected && styles.minuteRangeButtonCompactSelected]}
+                              onPress={() => handlePredictionChange('firstGoalTime', range.value)}
+                              activeOpacity={0.7}
+                            >
+                              <Text style={[styles.minuteRangeTextCompact, styles.injuryTimeButtonText, isSelected && styles.minuteRangeTextCompactSelected]} numberOfLines={1}>
+                                {range.label}
+                              </Text>
+                              {isSelected && (
+                                <View style={styles.minuteRangeCheckmark}>
+                                  <Ionicons name="checkmark" size={12} color="#FFFFFF" />
+                                </View>
+                              )}
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                      <View style={styles.injuryTimeRow}>
+                        {row2.map((range) => {
+                          const isSelected = predictions.firstGoalTime === range.value;
+                          return (
+                            <TouchableOpacity
+                              key={range.value}
+                              style={[styles.minuteRangeButtonCompact, styles.injuryTimeButton, isSelected && styles.minuteRangeButtonCompactSelected]}
+                              onPress={() => handlePredictionChange('firstGoalTime', range.value)}
+                              activeOpacity={0.7}
+                            >
+                              <Text style={[styles.minuteRangeTextCompact, styles.injuryTimeButtonText, isSelected && styles.minuteRangeTextCompactSelected]} numberOfLines={1}>
+                                {range.label}
+                              </Text>
+                              {isSelected && (
+                                <View style={styles.minuteRangeCheckmark}>
+                                  <Ionicons name="checkmark" size={12} color="#FFFFFF" />
+                                </View>
+                              )}
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    </>
+                  );
+                })()}
               </View>
             </View>
           </View>
@@ -967,7 +1327,19 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
             
             {/* Toplam Sarı Kart */}
             <View style={styles.categoryCard}>
-              <Text style={styles.categoryLabel}>🟨 Toplam Sarı Kart Sayısı</Text>
+              <View style={styles.categoryHeader}>
+                <Text style={styles.categoryLabel}>🟨 Toplam Sarı Kart Sayısı</Text>
+                <TouchableOpacity 
+                  onPress={() => showFocusExplanationModal('yellowCards')}
+                  style={styles.focusButton}
+                >
+                  <Ionicons 
+                    name={isFocused('yellowCards') ? 'star' : 'star-outline'}
+                    size={24} 
+                    color={isFocused('yellowCards') ? '#F59E0B' : '#6B7280'} 
+                  />
+                </TouchableOpacity>
+              </View>
               <View style={styles.buttonRow}>
                 {['0-2', '3-4', '5-6', '7+'].map((range) => (
                   <TouchableOpacity 
@@ -992,7 +1364,19 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
 
             {/* Toplam Kırmızı Kart */}
             <View style={styles.categoryCard}>
-              <Text style={styles.categoryLabel}>🟥 Toplam Kırmızı Kart Sayısı</Text>
+              <View style={styles.categoryHeader}>
+                <Text style={styles.categoryLabel}>🟥 Toplam Kırmızı Kart Sayısı</Text>
+                <TouchableOpacity 
+                  onPress={() => showFocusExplanationModal('redCard')}
+                  style={styles.focusButton}
+                >
+                  <Ionicons 
+                    name={isFocused('redCard') ? 'star' : 'star-outline'}
+                    size={24} 
+                    color={isFocused('redCard') ? '#F59E0B' : '#6B7280'} 
+                  />
+                </TouchableOpacity>
+              </View>
               <View style={styles.buttonRow}>
                 {['0', '1', '2', '3+'].map((count) => (
                   <TouchableOpacity 
@@ -1211,6 +1595,56 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
             </View>
           </View>
 
+          {/* Analiz odağı – 6 odak kartı (sadece görsel, değiştirilemez) + açıklama */}
+          <View style={styles.predictionCategory}>
+            <View style={styles.categoryCard}>
+              <View style={styles.categoryHeader}>
+                <View style={styles.focusExplanationRow}>
+                  <Ionicons name="star" size={24} color="#F59E0B" />
+                  <Text style={styles.categoryLabel}>
+                    Analiz odağı
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.focusExplanationContent}>
+                <Text style={styles.focusExplanationText}>
+                  {focusedPredictions.length > 0
+                    ? `${focusedPredictions.length} / ${SCORING_CONSTANTS.MAX_FOCUS} odak seçildi. Doğru tahmin 2x puan.`
+                    : `En fazla ${SCORING_CONSTANTS.MAX_FOCUS} tahmine odaklanabilirsiniz. Doğru tahmin 2x puan.`}
+                </Text>
+              </View>
+              {/* 6 analiz odağı – seçim ekranındaki butonların ve içeriklerin aynısı, sadece görsel (bu aşamada değiştirilemez) */}
+              <View style={styles.focusDisplayGrid} pointerEvents="none">
+                {ANALYSIS_FOCUSES.map((focus: AnalysisFocus) => (
+                  <View
+                    key={focus.id}
+                    style={[
+                      styles.focusDisplayCard,
+                      { borderColor: focus.borderColor, backgroundColor: focus.backgroundColor },
+                    ]}
+                  >
+                    <View style={styles.focusDisplayIconRow}>
+                      <View style={[styles.focusDisplayIconContainer, { borderColor: `${focus.color}40` }]}>
+                        <Ionicons name={focus.icon} size={14} color={focus.color} />
+                      </View>
+                    </View>
+                    <View style={styles.focusDisplayTitleRow}>
+                      <Text style={styles.focusDisplayTitle} numberOfLines={2}>{focus.title}</Text>
+                    </View>
+                    <View style={styles.focusDisplayBadgeRow}>
+                      <View style={[styles.focusDisplayBonusBadge, { borderColor: focus.color, backgroundColor: `${focus.color}15` }]}>
+                        <Text style={[styles.focusDisplayBonusText, { color: focus.color }]}>{focus.bonus}</Text>
+                      </View>
+                    </View>
+                    <View style={styles.focusDisplayDescriptionRow}>
+                      <Text style={styles.focusDisplayDescription} numberOfLines={3}>{focus.description}</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </View>
+          </View>
+
           {/* Submit Button */}
           <TouchableOpacity 
             style={styles.submitButton}
@@ -1227,52 +1661,51 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
         </View>
       </ScrollView>
 
-      {/* Player Prediction Modal */}
+      {/* Player Prediction Modal - inline dropdown hemen butonların altında */}
       {selectedPlayer && (
         <PlayerPredictionModal
           player={selectedPlayer}
           predictions={currentPlayerPredictions}
           onClose={() => setSelectedPlayer(null)}
           onPredictionChange={handlePlayerPredictionChange}
-          onOpenSubstitute={(type) => {
-            setSubstituteType(type);
-            setSubstituteForPlayer(selectedPlayer);
-            setShowSubstituteModal(true);
+          startingXI={attackPlayersArray}
+          reservePlayers={allSquadPlayers}
+          onSubstituteConfirm={(type, playerId, minute) => {
+            if (!selectedPlayer) return;
+            const category = type === 'normal' ? 'substitutePlayer' : 'injurySubstitutePlayer';
+            const minuteCategory = type === 'normal' ? 'substituteMinute' : 'injurySubstituteMinute';
+            const outCategory = type === 'normal' ? 'substitutedOut' : 'injuredOut';
+            
+            setPlayerPredictions(prev => {
+              const currentPreds = prev[selectedPlayer.id] || {};
+              const newPreds: any = {
+                ...currentPreds,
+                [category]: playerId.toString(),
+                [minuteCategory]: minute,
+                [outCategory]: true,
+              };
+              
+              // ✅ Karşılıklı dışlama: Normal değişiklik seçilirse sakatlık temizlenir
+              if (type === 'normal') {
+                newPreds.injuredOut = null;
+                newPreds.injurySubstitutePlayer = null;
+                newPreds.injurySubstituteMinute = null;
+              }
+              // ✅ Karşılıklı dışlama: Sakatlık seçilirse normal değişiklik temizlenir
+              if (type === 'injury') {
+                newPreds.substitutedOut = null;
+                newPreds.substitutePlayer = null;
+                newPreds.substituteMinute = null;
+              }
+              
+              return {
+                ...prev,
+                [selectedPlayer.id]: newPreds
+              };
+            });
           }}
         />
       )}
-
-      {/* Substitute Selection Modal */}
-      <SubstituteModal
-        visible={showSubstituteModal}
-        players={substitutePlayers}
-        type={substituteType}
-        playerName={substituteForPlayer?.name || ''}
-        selectedSubstitute={
-          substituteForPlayer && substituteType === 'normal' 
-            ? playerPredictions[substituteForPlayer.id]?.substitutePlayer 
-            : substituteForPlayer 
-              ? playerPredictions[substituteForPlayer.id]?.injurySubstitutePlayer
-              : null
-        }
-        onSelect={(playerId) => {
-          if (!substituteForPlayer) return;
-          
-          const category = substituteType === 'normal' ? 'substitutePlayer' : 'injurySubstitutePlayer';
-          
-          // Update predictions for the specific player
-          setPlayerPredictions(prev => ({
-            ...prev,
-            [substituteForPlayer.id]: {
-              ...(prev[substituteForPlayer.id] || {}),
-              [category]: playerId.toString()
-            }
-          }));
-          
-          setShowSubstituteModal(false);
-        }}
-        onClose={() => setShowSubstituteModal(false)}
-      />
 
       {/* Uygulama içi onay popup (yıldız odaktan çıkar / maksimum odak) */}
       {confirmModal && (
@@ -1289,290 +1722,920 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
   );
 };
 
-// Player Prediction Modal Component - FULL
-const PlayerPredictionModal = ({ 
-  player, 
-  predictions, 
-  onClose, 
+// Dakika aralıkları (inline dropdown ile ortak) - 8 dilim: 0+ dan 90+ ya kadar
+const SUBSTITUTE_MINUTE_RANGES = [
+  { label: '0-15', value: '0-15' },
+  { label: '16-30', value: '16-30' },
+  { label: '31-45', value: '31-45' },
+  { label: '45+', value: '45+' },
+  { label: '46-60', value: '46-60' },
+  { label: '61-75', value: '61-75' },
+  { label: '76-90', value: '76-90' },
+  { label: '90+', value: '90+' },
+];
+
+// Maç tahminleri için zaman aralıkları - aynı stil (8 dilim)
+const MATCH_TIME_RANGES = [
+  { label: '0-15', value: '0-15 dk' },
+  { label: '16-30', value: '16-30 dk' },
+  { label: '31-45', value: '31-45 dk' },
+  { label: '45+', value: '45+ dk' },
+  { label: '46-60', value: '46-60 dk' },
+  { label: '61-75', value: '61-75 dk' },
+  { label: '76-90', value: '76-90 dk' },
+  { label: '90+', value: '90+ dk' },
+];
+
+// Player Prediction Modal - inline dropdown hemen "Oyundan Çıkar" / "Sakatlanarak Çıkar" butonlarının altında
+const PlayerPredictionModal = ({
+  player,
+  predictions,
+  onClose,
   onPredictionChange,
-  onOpenSubstitute,
-}: any) => (
-  <Modal
-    visible={true}
-    animationType="slide"
-    transparent={true}
-    onRequestClose={onClose}
-  >
-    <View style={styles.modalOverlay}>
-      <Animated.View 
-        entering={isWeb ? undefined : SlideInDown.duration(300)}
-        exiting={isWeb ? undefined : SlideOutDown.duration(300)}
-        style={styles.playerModalContent}
-      >
-        <LinearGradient
-          colors={['#1E3A3A', '#0F2A24']}
-          style={styles.playerModalHeader}
-        >
-          <TouchableOpacity onPress={onClose} style={styles.modalCloseButton}>
-            <Ionicons name="close" size={24} color="#FFFFFF" />
-          </TouchableOpacity>
+  startingXI = [],
+  reservePlayers = [],
+  onSubstituteConfirm,
+}: {
+  player: any;
+  predictions: any;
+  onClose: () => void;
+  onPredictionChange: (category: string, value: string | boolean) => void;
+  startingXI?: any[];
+  reservePlayers?: any[];
+  onSubstituteConfirm?: (type: 'normal' | 'injury', playerId: string, minute: string) => void;
+}) => {
+  const [expandedSubstituteType, setExpandedSubstituteType] = useState<'normal' | 'injury' | null>(null);
+  const [localSubstituteId, setLocalSubstituteId] = useState<string | null>(null);
+  const [localMinuteRange, setLocalMinuteRange] = useState<string | null>(null);
+  const [showPlayerDropdown, setShowPlayerDropdown] = useState(false);
 
-          <View style={styles.playerModalInfo}>
-            <View style={styles.playerNumberCircle}>
-              <Text style={styles.playerNumberLarge}>{player.number}</Text>
-              <View style={styles.playerRatingCircle}>
-                <Text style={styles.playerRatingSmall}>{player.rating}</Text>
-              </View>
-            </View>
+  // ✅ Çıkan oyuncunun pozisyonuna göre uygun yedekleri filtrele
+  const availableSubstitutes = useMemo(() => {
+    const startingXIIds = new Set((startingXI || []).map((p: any) => p.id));
+    const allReserves = (reservePlayers || []).filter((p: any) => !startingXIIds.has(p.id));
+    
+    // Çıkan oyuncu kaleci ise sadece kalecileri, oyuncu ise sadece oyuncuları göster
+    const isPlayerGK = isGoalkeeperPlayer(player);
+    return allReserves.filter((p: any) => {
+      const isSubstituteGK = isGoalkeeperPlayer(p);
+      return isPlayerGK === isSubstituteGK; // Aynı tip olmalı
+    });
+  }, [startingXI, reservePlayers, player]);
 
-            <View style={styles.playerDetails}>
-              <Text style={styles.playerNameLarge}>{player.name}</Text>
-              <Text style={styles.playerPosition}>
-                {player.position} • Form: <Text style={styles.formText}>{player.form}%</Text>
-              </Text>
-            </View>
+  const getSubstituteName = (id: string | null) =>
+    id ? (reservePlayers || []).find((p: any) => p.id.toString() === id)?.name : null;
+
+  const openDropdown = (type: 'normal' | 'injury') => {
+    if (expandedSubstituteType === type) {
+      setExpandedSubstituteType(null);
+      setLocalSubstituteId(null);
+      setLocalMinuteRange(null);
+      setShowPlayerDropdown(false);
+      return;
+    }
+    
+    // ✅ Karşılıklı dışlama: Diğer seçeneği temizle
+    if (type === 'normal' && predictions.injuredOut) {
+      // Sakatlık seçiliyse, önce onu temizle
+      onPredictionChange('injuredOut', false);
+      onPredictionChange('injurySubstitutePlayer', null);
+      onPredictionChange('injurySubstituteMinute', null);
+    } else if (type === 'injury' && predictions.substitutedOut) {
+      // Normal değişiklik seçiliyse, önce onu temizle
+      onPredictionChange('substitutedOut', false);
+      onPredictionChange('substitutePlayer', null);
+      onPredictionChange('substituteMinute', null);
+    }
+    
+    setExpandedSubstituteType(type);
+    setShowPlayerDropdown(false); // Diğer dropdown'ı kapat
+    const currentId = type === 'normal' ? predictions.substitutePlayer : predictions.injurySubstitutePlayer;
+    const currentMin = type === 'normal' ? predictions.substituteMinute : predictions.injurySubstituteMinute;
+    setLocalSubstituteId(currentId || null);
+    setLocalMinuteRange(currentMin || null);
+  };
+
+  // ✅ Otomatik kaydet - hem oyuncu hem dakika seçildiğinde
+  React.useEffect(() => {
+    if (expandedSubstituteType && localSubstituteId && localMinuteRange && onSubstituteConfirm) {
+      // Kısa bir gecikme ile otomatik kaydet (kullanıcı seçimini görebilsin)
+      const timer = setTimeout(() => {
+        onSubstituteConfirm(expandedSubstituteType, localSubstituteId, localMinuteRange);
+        // Dropdown'ı kapat ama seçimi göster
+        setExpandedSubstituteType(null);
+        setShowPlayerDropdown(false);
+        // Local state'i temizleme - kaydedildiğini göstermek için
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [expandedSubstituteType, localSubstituteId, localMinuteRange, onSubstituteConfirm]);
+
+  // ✅ Tek satır bildirim metni - Çıkar: x Girer: x dk 1-15 formatında
+  const buttonLabelNormal = predictions.substitutePlayer && predictions.substituteMinute
+    ? (
+        <View style={styles.substituteButtonSingleLine}>
+          <View style={styles.substituteButtonSingleRow}>
+            <Ionicons name="arrow-down" size={14} color="#EF4444" />
+            <Text style={styles.substituteButtonLabel}>Çıkar:</Text>
+            <Text style={styles.substituteButtonPlayerNameSingle}>{player.name.split(' ').pop()}</Text>
           </View>
-        </LinearGradient>
-
-        <ScrollView 
-          style={styles.playerPredictionsScroll}
-          contentContainerStyle={styles.playerPredictionsContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Gol Atar */}
-          <View style={styles.predictionGroup}>
-            <TouchableOpacity
-              style={[
-                styles.predictionButton,
-                predictions.willScore && styles.predictionButtonActive,
-              ]}
-              onPress={() => onPredictionChange('willScore', true)}
-              activeOpacity={0.8}
-            >
-              <Text style={[
-                styles.predictionButtonText,
-                predictions.willScore && styles.predictionButtonTextActive,
-              ]}>
-                ⚽ Gol Atar
-              </Text>
-            </TouchableOpacity>
-
-            <View style={styles.subOptions}>
-              <Text style={styles.subOptionsLabel}>Kaç gol?</Text>
-              <View style={styles.subOptionsRow}>
-                {['1', '2', '3+'].map((count) => (
-                  <TouchableOpacity
-                    key={count}
-                    style={[
-                      styles.subOptionButton,
-                      predictions.goalCount === count && styles.subOptionButtonActive,
-                    ]}
-                    onPress={() => onPredictionChange('goalCount', count)}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={[
-                      styles.subOptionText,
-                      predictions.goalCount === count && styles.subOptionTextActive,
-                    ]}>
-                      {count}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
+          <View style={styles.substituteButtonSingleRow}>
+            <Ionicons name="arrow-up" size={14} color="#10B981" />
+            <Text style={styles.substituteButtonLabel}>Girer:</Text>
+            <Text style={styles.substituteButtonSubstituteNameSingle}>{getSubstituteName(predictions.substitutePlayer)?.split(' ').pop()}</Text>
           </View>
-
-          {/* Asist Yapar */}
-          <View style={styles.predictionGroup}>
-            <TouchableOpacity
-              style={[
-                styles.predictionButton,
-                predictions.willAssist && styles.predictionButtonActive,
-              ]}
-              onPress={() => onPredictionChange('willAssist', true)}
-              activeOpacity={0.8}
-            >
-              <Text style={[
-                styles.predictionButtonText,
-                predictions.willAssist && styles.predictionButtonTextActive,
-              ]}>
-                🅰️ Asist Yapar
-              </Text>
-            </TouchableOpacity>
-
-            <View style={styles.subOptions}>
-              <Text style={styles.subOptionsLabel}>Kaç asist?</Text>
-              <View style={styles.subOptionsRow}>
-                {['1', '2', '3+'].map((count) => (
-                  <TouchableOpacity
-                    key={count}
-                    style={[
-                      styles.subOptionButton,
-                      predictions.assistCount === count && styles.subOptionButtonActive,
-                    ]}
-                    onPress={() => onPredictionChange('assistCount', count)}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={[
-                      styles.subOptionText,
-                      predictions.assistCount === count && styles.subOptionTextActive,
-                    ]}>
-                      {count}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
+          <View style={styles.substituteButtonSingleRow}>
+            <Ionicons name="time-outline" size={12} color="#9CA3AF" />
+            <Text style={styles.substituteButtonTimeTextSingle}>dk {predictions.substituteMinute}</Text>
           </View>
-
-          {/* Sarı Kart */}
-          <TouchableOpacity
-            style={[
-              styles.predictionButton,
-              predictions.yellowCard && styles.predictionButtonActive,
-            ]}
-            onPress={() => onPredictionChange('yellowCard', true)}
-            activeOpacity={0.8}
-          >
-            <Text style={[
-              styles.predictionButtonText,
-              predictions.yellowCard && styles.predictionButtonTextActive,
-            ]}>
-              🟨 Sarı Kart Görür
-            </Text>
-          </TouchableOpacity>
-
-          {/* 2. Sarıdan Kırmızı */}
-          <TouchableOpacity
-            style={[
-              styles.predictionButton,
-              predictions.secondYellowRed && styles.predictionButtonActive,
-            ]}
-            onPress={() => onPredictionChange('secondYellowRed', true)}
-            activeOpacity={0.8}
-          >
-            <Text style={[
-              styles.predictionButtonText,
-              predictions.secondYellowRed && styles.predictionButtonTextActive,
-            ]}>
-              🟨🟥 2. Sarıdan Kırmızı
-            </Text>
-          </TouchableOpacity>
-
-          {/* Direkt Kırmızı */}
-          <TouchableOpacity
-            style={[
-              styles.predictionButton,
-              predictions.directRedCard && styles.predictionButtonActive,
-            ]}
-            onPress={() => onPredictionChange('directRedCard', true)}
-            activeOpacity={0.8}
-          >
-            <Text style={[
-              styles.predictionButtonText,
-              predictions.directRedCard && styles.predictionButtonTextActive,
-            ]}>
-              🟥 Direkt Kırmızı Kart
-            </Text>
-          </TouchableOpacity>
-
-          {/* Oyundan Çıkar */}
-          <View style={styles.predictionGroup}>
-            <TouchableOpacity
-              style={[
-                styles.predictionButton,
-                predictions.substitutedOut && styles.predictionButtonActive,
-              ]}
-              onPress={() => {
-                onPredictionChange('substitutedOut', true);
-                onOpenSubstitute('normal');
-              }}
-              activeOpacity={0.8}
-            >
-              <Text style={[
-                styles.predictionButtonText,
-                predictions.substitutedOut && styles.predictionButtonTextActive,
-              ]}>
-                {predictions.substitutePlayer ? (
-                  `🔄 ${player.name} çıkar - ${substitutePlayers.find(p => p.id.toString() === predictions.substitutePlayer)?.name} girer`
-                ) : (
-                  '🔄 Oyundan Çıkar'
-                )}
-              </Text>
-            </TouchableOpacity>
-
-            {predictions.substitutePlayer && (
-              <View style={styles.selectedSubstitute}>
-                <TouchableOpacity onPress={() => onOpenSubstitute('normal')}>
-                  <Text style={styles.changeSubstituteButton}>Değiştir</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-
-          {/* Sakatlanarak Çıkar */}
-          <View style={styles.predictionGroup}>
-            <TouchableOpacity
-              style={[
-                styles.predictionButton,
-                predictions.injuredOut && styles.predictionButtonActive,
-              ]}
-              onPress={() => {
-                onPredictionChange('injuredOut', true);
-                onOpenSubstitute('injury');
-              }}
-              activeOpacity={0.8}
-            >
-              <Text style={[
-                styles.predictionButtonText,
-                predictions.injuredOut && styles.predictionButtonTextActive,
-              ]}>
-                {predictions.injurySubstitutePlayer ? (
-                  `🚑 ${player.name} çıkar - ${substitutePlayers.find(p => p.id.toString() === predictions.injurySubstitutePlayer)?.name} girer`
-                ) : (
-                  '🚑 Sakatlanarak Çıkar'
-                )}
-              </Text>
-            </TouchableOpacity>
-
-            {predictions.injurySubstitutePlayer && (
-              <View style={styles.selectedSubstitute}>
-                <TouchableOpacity onPress={() => onOpenSubstitute('injury')}>
-                  <Text style={styles.changeSubstituteButton}>Değiştir</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-        </ScrollView>
-
-        <View style={styles.playerModalActions}>
-          <TouchableOpacity
-            style={styles.cancelButton}
-            onPress={onClose}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.cancelButtonText}>İptal Et</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.saveButton}
-            onPress={onClose}
-            activeOpacity={0.8}
-          >
-            <LinearGradient
-              colors={['#1FA2A6', '#047857']}
-              style={styles.saveButtonGradient}
-            >
-              <Text style={styles.saveButtonText}>Kaydet</Text>
-            </LinearGradient>
-          </TouchableOpacity>
         </View>
-      </Animated.View>
-    </View>
-  </Modal>
-);
+      )
+    : 'Oyundan Çıkar';
+  const buttonLabelInjury = predictions.injurySubstitutePlayer && predictions.injurySubstituteMinute
+    ? (
+        <View style={styles.substituteButtonSingleLine}>
+          <View style={styles.substituteButtonSingleRow}>
+            <Ionicons name="arrow-down" size={14} color="#EF4444" />
+            <Text style={styles.substituteButtonLabel}>Çıkar:</Text>
+            <Text style={styles.substituteButtonPlayerNameSingle}>{player.name.split(' ').pop()}</Text>
+          </View>
+          <View style={styles.substituteButtonSingleRow}>
+            <Ionicons name="arrow-up" size={14} color="#10B981" />
+            <Text style={styles.substituteButtonLabel}>Girer:</Text>
+            <Text style={styles.substituteButtonSubstituteNameSingle}>{getSubstituteName(predictions.injurySubstitutePlayer)?.split(' ').pop()}</Text>
+          </View>
+          <View style={styles.substituteButtonSingleRow}>
+            <Ionicons name="time-outline" size={12} color="#9CA3AF" />
+            <Text style={styles.substituteButtonTimeTextSingle}>dk {predictions.injurySubstituteMinute}</Text>
+          </View>
+        </View>
+      )
+    : 'Sakatlanarak Çıkar';
 
-// Substitute Selection Modal - FULL
-const SubstituteModal = ({ visible, players, type, playerName, selectedSubstitute, onSelect, onClose }: any) => (
+  return (
+    <Modal
+      visible={true}
+      animationType="slide"
+      transparent={true}
+      onRequestClose={onClose}
+    >
+      <View style={styles.modalOverlay}>
+        <Animated.View
+          entering={isWeb ? undefined : SlideInDown.duration(300)}
+          exiting={isWeb ? undefined : SlideOutDown.duration(300)}
+          style={styles.playerModalContent}
+        >
+          <LinearGradient
+            colors={['#1E3A3A', '#0F2A24']}
+            style={styles.playerModalHeader}
+          >
+            <TouchableOpacity onPress={onClose} style={styles.modalCloseButton}>
+              <Ionicons name="close" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+
+            <View style={styles.playerModalInfo}>
+              <View style={styles.playerNumberCircle}>
+                <Text style={styles.playerNumberLarge}>{player.number}</Text>
+                <View style={styles.playerRatingCircle}>
+                  <Text style={styles.playerRatingSmall}>{player.rating}</Text>
+                </View>
+              </View>
+
+              <View style={styles.playerDetails}>
+                <Text style={styles.playerNameLarge}>{player.name}</Text>
+                <Text style={styles.playerPosition}>
+                  {player.position} • Form: <Text style={styles.formText}>{player.form}%</Text>
+                </Text>
+              </View>
+            </View>
+            {/* Tahmin yapılan oyuncu her zaman görünsün */}
+            <View style={styles.tahminYapilanOyuncuBar}>
+              <Ionicons name="person" size={14} color="#1FA2A6" />
+              <Text style={styles.tahminYapilanOyuncuText}>Tahmin: {player.name}</Text>
+            </View>
+          </LinearGradient>
+
+          {expandedSubstituteType ? (
+            <ScrollView
+              style={styles.playerPredictionsScroll}
+              contentContainerStyle={styles.playerPredictionsContent}
+              showsVerticalScrollIndicator={true}
+              keyboardShouldPersistTaps="handled"
+            >
+            {/* Gol Atar */}
+            <View style={styles.predictionGroup}>
+              <TouchableOpacity
+                style={[
+                  styles.predictionButton,
+                  predictions.willScore && styles.predictionButtonActive,
+                ]}
+                onPress={() => onPredictionChange('willScore', true)}
+                activeOpacity={0.8}
+              >
+                <Text style={[
+                  styles.predictionButtonText,
+                  predictions.willScore && styles.predictionButtonTextActive,
+                ]}>
+                  ⚽ Gol Atar
+                </Text>
+              </TouchableOpacity>
+
+              <View style={styles.subOptions}>
+                <Text style={styles.subOptionsLabel}>Kaç gol?</Text>
+                <View style={styles.subOptionsRow}>
+                  {['1', '2', '3+'].map((count) => (
+                    <TouchableOpacity
+                      key={count}
+                      style={[
+                        styles.subOptionButton,
+                        predictions.goalCount === count && styles.subOptionButtonActive,
+                      ]}
+                      onPress={() => onPredictionChange('goalCount', count)}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={[
+                        styles.subOptionText,
+                        predictions.goalCount === count && styles.subOptionTextActive,
+                      ]}>
+                        {count}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            </View>
+
+            {/* Asist Yapar */}
+            <View style={styles.predictionGroup}>
+              <TouchableOpacity
+                style={[
+                  styles.predictionButton,
+                  predictions.willAssist && styles.predictionButtonActive,
+                ]}
+                onPress={() => onPredictionChange('willAssist', true)}
+                activeOpacity={0.8}
+              >
+                <Text style={[
+                  styles.predictionButtonText,
+                  predictions.willAssist && styles.predictionButtonTextActive,
+                ]}>
+                  🅰️ Asist Yapar
+                </Text>
+              </TouchableOpacity>
+
+              <View style={styles.subOptions}>
+                <Text style={styles.subOptionsLabel}>Kaç asist?</Text>
+                <View style={styles.subOptionsRow}>
+                  {['1', '2', '3+'].map((count) => (
+                    <TouchableOpacity
+                      key={count}
+                      style={[
+                        styles.subOptionButton,
+                        predictions.assistCount === count && styles.subOptionButtonActive,
+                      ]}
+                      onPress={() => onPredictionChange('assistCount', count)}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={[
+                        styles.subOptionText,
+                        predictions.assistCount === count && styles.subOptionTextActive,
+                      ]}>
+                        {count}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            </View>
+
+            {/* Sarı Kart */}
+            <TouchableOpacity
+              style={[
+                styles.predictionButton,
+                predictions.yellowCard && styles.predictionButtonActive,
+              ]}
+              onPress={() => onPredictionChange('yellowCard', true)}
+              activeOpacity={0.8}
+            >
+              <Text style={[
+                styles.predictionButtonText,
+                predictions.yellowCard && styles.predictionButtonTextActive,
+              ]}>
+                🟨 Sarı Kart Görür
+              </Text>
+            </TouchableOpacity>
+
+            {/* 2. Sarıdan Kırmızı */}
+            <TouchableOpacity
+              style={[
+                styles.predictionButton,
+                predictions.secondYellowRed && styles.predictionButtonActive,
+              ]}
+              onPress={() => onPredictionChange('secondYellowRed', true)}
+              activeOpacity={0.8}
+            >
+              <Text style={[
+                styles.predictionButtonText,
+                predictions.secondYellowRed && styles.predictionButtonTextActive,
+              ]}>
+                🟨🟥 2. Sarıdan Kırmızı
+              </Text>
+            </TouchableOpacity>
+
+            {/* Direkt Kırmızı */}
+            <TouchableOpacity
+              style={[
+                styles.predictionButton,
+                predictions.directRedCard && styles.predictionButtonActive,
+              ]}
+              onPress={() => onPredictionChange('directRedCard', true)}
+              activeOpacity={0.8}
+            >
+              <Text style={[
+                styles.predictionButtonText,
+                predictions.directRedCard && styles.predictionButtonTextActive,
+              ]}>
+                🟥 Direkt Kırmızı Kart
+              </Text>
+            </TouchableOpacity>
+
+            {/* Oyundan Çıkar - butonun hemen altında dropdown */}
+            <View style={styles.predictionGroup}>
+              <Pressable
+                style={[
+                  styles.predictionButton,
+                  predictions.substitutedOut && styles.predictionButtonActive,
+                ]}
+                onPress={() => openDropdown('normal')}
+                hitSlop={16}
+              >
+                {typeof buttonLabelNormal === 'string' ? (
+                  <Text style={[
+                    styles.predictionButtonText,
+                    predictions.substitutedOut && styles.predictionButtonTextActive,
+                  ]}>
+                    🔄 {buttonLabelNormal}
+                  </Text>
+                ) : (
+                  buttonLabelNormal
+                )}
+              </Pressable>
+
+              {expandedSubstituteType === 'normal' && (
+                <View style={styles.inlineSubstituteDropdown}>
+                  <Text style={styles.inlineSubstituteTitle}>Yerine girecek oyuncu & dakika aralığı</Text>
+                  
+                  {/* Oyuncu Dropdown */}
+                  <View style={styles.dropdownContainer}>
+                    <Text style={styles.dropdownLabel}>Yerine Girecek Oyuncu</Text>
+                    <TouchableOpacity
+                      style={styles.dropdownButton}
+                      onPress={() => setShowPlayerDropdown(!showPlayerDropdown)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.dropdownButtonContent}>
+                        {localSubstituteId ? (
+                          <>
+                            <View style={styles.dropdownSelectedPlayer}>
+                              <View style={styles.dropdownPlayerNumber}>
+                                <Text style={styles.dropdownPlayerNumberText}>
+                                  {availableSubstitutes.find((p: any) => p.id.toString() === localSubstituteId)?.number || ''}
+                                </Text>
+                              </View>
+                              <Text style={styles.dropdownSelectedText}>
+                                {getSubstituteName(localSubstituteId)}
+                              </Text>
+                            </View>
+                          </>
+                        ) : (
+                          <Text style={styles.dropdownPlaceholder}>Oyuncu seçin...</Text>
+                        )}
+                        <Ionicons 
+                          name={showPlayerDropdown ? 'chevron-up' : 'chevron-down'} 
+                          size={20} 
+                          color="#9CA3AF" 
+                        />
+                      </View>
+                    </TouchableOpacity>
+                    
+                    {showPlayerDropdown && (
+                      <View style={styles.dropdownMenu}>
+                        {availableSubstitutes.length === 0 ? (
+                          <View style={styles.dropdownEmptyState}>
+                            <Ionicons name="alert-circle" size={24} color="#9CA3AF" />
+                            <Text style={styles.dropdownEmptyText}>
+                              {isGoalkeeperPlayer(player) 
+                                ? 'Yedek kaleci bulunamadı. Kaleci sadece kaleci ile değiştirilebilir.'
+                                : 'Yedek oyuncu bulunamadı. Oyuncu sadece oyuncu ile değiştirilebilir.'}
+                            </Text>
+                          </View>
+                        ) : (
+                          <FlatList
+                            data={availableSubstitutes}
+                            keyExtractor={(item) => item.id.toString()}
+                            renderItem={({ item }) => {
+                              const isSelected = localSubstituteId === item.id.toString();
+                              return (
+                                <TouchableOpacity
+                                  style={[styles.dropdownMenuItem, isSelected && styles.dropdownMenuItemSelected]}
+                                  onPress={() => {
+                                    setLocalSubstituteId(item.id.toString());
+                                    setShowPlayerDropdown(false);
+                                  }}
+                                  activeOpacity={0.7}
+                                >
+                                  <View style={styles.dropdownMenuItemContent}>
+                                    <View style={styles.dropdownPlayerNumberSmall}>
+                                      <Text style={styles.dropdownPlayerNumberTextSmall}>{item.number}</Text>
+                                    </View>
+                                    <Text style={[styles.dropdownMenuItemText, isSelected && styles.dropdownMenuItemTextSelected]}>
+                                      {item.name}
+                                    </Text>
+                                  </View>
+                                  {isSelected && <Ionicons name="checkmark" size={18} color="#1FA2A6" />}
+                                </TouchableOpacity>
+                              );
+                            }}
+                            style={styles.dropdownMenuList}
+                            nestedScrollEnabled={true}
+                          />
+                        )}
+                      </View>
+                    )}
+                  </View>
+
+                  {/* Dakika Aralığı - 2 satır (4+4) */}
+                  <View style={styles.minuteRangeContainer}>
+                    <Text style={styles.dropdownLabel}>Değişiklik Dakikası</Text>
+                    <View style={styles.minuteRanges2RowGridCompact}>
+                      <View style={styles.minuteRangesRowCompact}>
+                        {SUBSTITUTE_MINUTE_RANGES.slice(0, 4).map((range) => {
+                          const isSelected = localMinuteRange === range.value;
+                          return (
+                            <TouchableOpacity
+                              key={range.value}
+                              style={[styles.minuteRangeButtonCompact, styles.minuteRangeButtonCompact2Row, isSelected && styles.minuteRangeButtonCompactSelected]}
+                              onPress={() => setLocalMinuteRange(range.value)}
+                              activeOpacity={0.7}
+                            >
+                              <Text style={[styles.minuteRangeTextCompact, isSelected && styles.minuteRangeTextCompactSelected]}>
+                                {range.label}
+                              </Text>
+                              {isSelected && (
+                                <View style={styles.minuteRangeCheckmark}>
+                                  <Ionicons name="checkmark" size={12} color="#FFFFFF" />
+                                </View>
+                              )}
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                      <View style={styles.minuteRangesRowCompact}>
+                        {SUBSTITUTE_MINUTE_RANGES.slice(4).map((range) => {
+                          const isSelected = localMinuteRange === range.value;
+                          return (
+                            <TouchableOpacity
+                              key={range.value}
+                              style={[styles.minuteRangeButtonCompact, styles.minuteRangeButtonCompact2Row, isSelected && styles.minuteRangeButtonCompactSelected]}
+                              onPress={() => setLocalMinuteRange(range.value)}
+                              activeOpacity={0.7}
+                            >
+                              <Text style={[styles.minuteRangeTextCompact, isSelected && styles.minuteRangeTextCompactSelected]}>
+                                {range.label}
+                              </Text>
+                              {isSelected && (
+                                <View style={styles.minuteRangeCheckmark}>
+                                  <Ionicons name="checkmark" size={12} color="#FFFFFF" />
+                                </View>
+                              )}
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    </View>
+                  </View>
+                  
+                  {/* Bilgilendirme: Seçim yapıldığında otomatik kaydedilir */}
+                  {localSubstituteId && localMinuteRange && (
+                    <View style={styles.autoSaveInfo}>
+                      <Ionicons name="checkmark-circle" size={16} color="#10B981" />
+                      <Text style={styles.autoSaveInfoText}>Seçim otomatik kaydedildi</Text>
+                    </View>
+                  )}
+                </View>
+              )}
+            </View>
+
+            {/* Sakatlanarak Çıkar - butonun hemen altında dropdown */}
+            <View style={styles.predictionGroup}>
+              <Pressable
+                style={[
+                  styles.predictionButton,
+                  predictions.injuredOut && styles.predictionButtonActive,
+                ]}
+                onPress={() => openDropdown('injury')}
+                hitSlop={16}
+              >
+                {typeof buttonLabelInjury === 'string' ? (
+                  <Text style={[
+                    styles.predictionButtonText,
+                    predictions.injuredOut && styles.predictionButtonTextActive,
+                  ]}>
+                    🚑 {buttonLabelInjury}
+                  </Text>
+                ) : (
+                  buttonLabelInjury
+                )}
+              </Pressable>
+
+              {expandedSubstituteType === 'injury' && (
+                <View style={styles.inlineSubstituteDropdown}>
+                  <Text style={styles.inlineSubstituteTitle}>Yerine girecek oyuncu & dakika aralığı</Text>
+                  
+                  {/* Oyuncu Dropdown */}
+                  <View style={styles.dropdownContainer}>
+                    <Text style={styles.dropdownLabel}>Yerine Girecek Oyuncu</Text>
+                    <TouchableOpacity
+                      style={styles.dropdownButton}
+                      onPress={() => setShowPlayerDropdown(!showPlayerDropdown)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.dropdownButtonContent}>
+                        {localSubstituteId ? (
+                          <>
+                            <View style={styles.dropdownSelectedPlayer}>
+                              <View style={styles.dropdownPlayerNumber}>
+                                <Text style={styles.dropdownPlayerNumberText}>
+                                  {availableSubstitutes.find((p: any) => p.id.toString() === localSubstituteId)?.number || ''}
+                                </Text>
+                              </View>
+                              <Text style={styles.dropdownSelectedText}>
+                                {getSubstituteName(localSubstituteId)}
+                              </Text>
+                            </View>
+                          </>
+                        ) : (
+                          <Text style={styles.dropdownPlaceholder}>Oyuncu seçin...</Text>
+                        )}
+                        <Ionicons 
+                          name={showPlayerDropdown ? 'chevron-up' : 'chevron-down'} 
+                          size={20} 
+                          color="#9CA3AF" 
+                        />
+                      </View>
+                    </TouchableOpacity>
+                    
+                    {showPlayerDropdown && (
+                      <View style={styles.dropdownMenu}>
+                        {availableSubstitutes.length === 0 ? (
+                          <View style={styles.dropdownEmptyState}>
+                            <Ionicons name="alert-circle" size={24} color="#9CA3AF" />
+                            <Text style={styles.dropdownEmptyText}>
+                              {isGoalkeeperPlayer(player) 
+                                ? 'Yedek kaleci bulunamadı. Kaleci sadece kaleci ile değiştirilebilir.'
+                                : 'Yedek oyuncu bulunamadı. Oyuncu sadece oyuncu ile değiştirilebilir.'}
+                            </Text>
+                          </View>
+                        ) : (
+                          <FlatList
+                            data={availableSubstitutes}
+                            keyExtractor={(item) => item.id.toString()}
+                            renderItem={({ item }) => {
+                              const isSelected = localSubstituteId === item.id.toString();
+                              return (
+                                <TouchableOpacity
+                                  style={[styles.dropdownMenuItem, isSelected && styles.dropdownMenuItemSelected]}
+                                  onPress={() => {
+                                    setLocalSubstituteId(item.id.toString());
+                                    setShowPlayerDropdown(false);
+                                  }}
+                                  activeOpacity={0.7}
+                                >
+                                  <View style={styles.dropdownMenuItemContent}>
+                                    <View style={styles.dropdownPlayerNumberSmall}>
+                                      <Text style={styles.dropdownPlayerNumberTextSmall}>{item.number}</Text>
+                                    </View>
+                                    <Text style={[styles.dropdownMenuItemText, isSelected && styles.dropdownMenuItemTextSelected]}>
+                                      {item.name}
+                                    </Text>
+                                  </View>
+                                  {isSelected && <Ionicons name="checkmark" size={18} color="#1FA2A6" />}
+                                </TouchableOpacity>
+                              );
+                            }}
+                            style={styles.dropdownMenuList}
+                            nestedScrollEnabled={true}
+                          />
+                        )}
+                      </View>
+                    )}
+                  </View>
+
+                  {/* Dakika Aralığı - 2 satır (4+4) */}
+                  <View style={styles.minuteRangeContainer}>
+                    <Text style={styles.dropdownLabel}>Değişiklik Dakikası</Text>
+                    <View style={styles.minuteRanges2RowGridCompact}>
+                      <View style={styles.minuteRangesRowCompact}>
+                        {SUBSTITUTE_MINUTE_RANGES.slice(0, 4).map((range) => {
+                          const isSelected = localMinuteRange === range.value;
+                          return (
+                            <TouchableOpacity
+                              key={range.value}
+                              style={[styles.minuteRangeButtonCompact, styles.minuteRangeButtonCompact2Row, isSelected && styles.minuteRangeButtonCompactSelected]}
+                              onPress={() => setLocalMinuteRange(range.value)}
+                              activeOpacity={0.7}
+                            >
+                              <Text style={[styles.minuteRangeTextCompact, isSelected && styles.minuteRangeTextCompactSelected]}>
+                                {range.label}
+                              </Text>
+                              {isSelected && (
+                                <View style={styles.minuteRangeCheckmark}>
+                                  <Ionicons name="checkmark" size={12} color="#FFFFFF" />
+                                </View>
+                              )}
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                      <View style={styles.minuteRangesRowCompact}>
+                        {SUBSTITUTE_MINUTE_RANGES.slice(4).map((range) => {
+                          const isSelected = localMinuteRange === range.value;
+                          return (
+                            <TouchableOpacity
+                              key={range.value}
+                              style={[styles.minuteRangeButtonCompact, styles.minuteRangeButtonCompact2Row, isSelected && styles.minuteRangeButtonCompactSelected]}
+                              onPress={() => setLocalMinuteRange(range.value)}
+                              activeOpacity={0.7}
+                            >
+                              <Text style={[styles.minuteRangeTextCompact, isSelected && styles.minuteRangeTextCompactSelected]}>
+                                {range.label}
+                              </Text>
+                              {isSelected && (
+                                <View style={styles.minuteRangeCheckmark}>
+                                  <Ionicons name="checkmark" size={12} color="#FFFFFF" />
+                                </View>
+                              )}
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    </View>
+                  </View>
+                  
+                  {/* Bilgilendirme: Seçim yapıldığında otomatik kaydedilir */}
+                  {localSubstituteId && localMinuteRange && (
+                    <View style={styles.autoSaveInfo}>
+                      <Ionicons name="checkmark-circle" size={16} color="#10B981" />
+                      <Text style={styles.autoSaveInfoText}>Seçim otomatik kaydedildi</Text>
+                    </View>
+                  )}
+                </View>
+              )}
+            </View>
+            </ScrollView>
+          ) : (
+            <View style={styles.playerPredictionsScroll}>
+              <View style={styles.playerPredictionsContent}>
+            {/* Gol Atar */}
+            <View style={styles.predictionGroup}>
+              <TouchableOpacity
+                style={[
+                  styles.predictionButton,
+                  predictions.willScore && styles.predictionButtonActive,
+                ]}
+                onPress={() => onPredictionChange('willScore', true)}
+                activeOpacity={0.8}
+              >
+                <Text style={[
+                  styles.predictionButtonText,
+                  predictions.willScore && styles.predictionButtonTextActive,
+                ]}>
+                  ⚽ Gol Atar
+                </Text>
+              </TouchableOpacity>
+
+              <View style={styles.subOptions}>
+                <Text style={styles.subOptionsLabel}>Kaç gol?</Text>
+                <View style={styles.subOptionsRow}>
+                  {['1', '2', '3+'].map((count) => (
+                    <TouchableOpacity
+                      key={count}
+                      style={[
+                        styles.subOptionButton,
+                        predictions.goalCount === count && styles.subOptionButtonActive,
+                      ]}
+                      onPress={() => onPredictionChange('goalCount', count)}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={[
+                        styles.subOptionText,
+                        predictions.goalCount === count && styles.subOptionTextActive,
+                      ]}>
+                        {count}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            </View>
+
+            {/* Asist Yapar */}
+            <View style={styles.predictionGroup}>
+              <TouchableOpacity
+                style={[
+                  styles.predictionButton,
+                  predictions.willAssist && styles.predictionButtonActive,
+                ]}
+                onPress={() => onPredictionChange('willAssist', true)}
+                activeOpacity={0.8}
+              >
+                <Text style={[
+                  styles.predictionButtonText,
+                  predictions.willAssist && styles.predictionButtonTextActive,
+                ]}>
+                  🅰️ Asist Yapar
+                </Text>
+              </TouchableOpacity>
+
+              <View style={styles.subOptions}>
+                <Text style={styles.subOptionsLabel}>Kaç asist?</Text>
+                <View style={styles.subOptionsRow}>
+                  {['1', '2', '3+'].map((count) => (
+                    <TouchableOpacity
+                      key={count}
+                      style={[
+                        styles.subOptionButton,
+                        predictions.assistCount === count && styles.subOptionButtonActive,
+                      ]}
+                      onPress={() => onPredictionChange('assistCount', count)}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={[
+                        styles.subOptionText,
+                        predictions.assistCount === count && styles.subOptionTextActive,
+                      ]}>
+                        {count}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            </View>
+
+            {/* Sarı Kart */}
+            <TouchableOpacity
+              style={[
+                styles.predictionButton,
+                predictions.yellowCard && styles.predictionButtonActive,
+              ]}
+              onPress={() => onPredictionChange('yellowCard', true)}
+              activeOpacity={0.8}
+            >
+              <Text style={[
+                styles.predictionButtonText,
+                predictions.yellowCard && styles.predictionButtonTextActive,
+              ]}>
+                🟨 Sarı Kart Görür
+              </Text>
+            </TouchableOpacity>
+
+            {/* 2. Sarıdan Kırmızı */}
+            <TouchableOpacity
+              style={[
+                styles.predictionButton,
+                predictions.secondYellowRed && styles.predictionButtonActive,
+              ]}
+              onPress={() => onPredictionChange('secondYellowRed', true)}
+              activeOpacity={0.8}
+            >
+              <Text style={[
+                styles.predictionButtonText,
+                predictions.secondYellowRed && styles.predictionButtonTextActive,
+              ]}>
+                🟨🟥 2. Sarıdan Kırmızı
+              </Text>
+            </TouchableOpacity>
+
+            {/* Direkt Kırmızı */}
+            <TouchableOpacity
+              style={[
+                styles.predictionButton,
+                predictions.directRedCard && styles.predictionButtonActive,
+              ]}
+              onPress={() => onPredictionChange('directRedCard', true)}
+              activeOpacity={0.8}
+            >
+              <Text style={[
+                styles.predictionButtonText,
+                predictions.directRedCard && styles.predictionButtonTextActive,
+              ]}>
+                🟥 Direkt Kırmızı Kart
+              </Text>
+            </TouchableOpacity>
+
+            {/* Oyundan Çıkar */}
+            <View style={styles.predictionGroup}>
+              <Pressable
+                style={[
+                  styles.predictionButton,
+                  predictions.substitutedOut && styles.predictionButtonActive,
+                ]}
+                onPress={() => openDropdown('normal')}
+                hitSlop={16}
+              >
+                {typeof buttonLabelNormal === 'string' ? (
+                  <Text style={[
+                    styles.predictionButtonText,
+                    predictions.substitutedOut && styles.predictionButtonTextActive,
+                  ]}>
+                    🔄 {buttonLabelNormal}
+                  </Text>
+                ) : (
+                  buttonLabelNormal
+                )}
+              </Pressable>
+            </View>
+
+            {/* Sakatlanarak Çıkar */}
+            <View style={styles.predictionGroup}>
+              <Pressable
+                style={[
+                  styles.predictionButton,
+                  predictions.injuredOut && styles.predictionButtonActive,
+                ]}
+                onPress={() => openDropdown('injury')}
+                hitSlop={16}
+              >
+                {typeof buttonLabelInjury === 'string' ? (
+                  <Text style={[
+                    styles.predictionButtonText,
+                    predictions.injuredOut && styles.predictionButtonTextActive,
+                  ]}>
+                    🚑 {buttonLabelInjury}
+                  </Text>
+                ) : (
+                  buttonLabelInjury
+                )}
+              </Pressable>
+            </View>
+              </View>
+            </View>
+          )}
+
+          <View style={styles.playerModalActions}>
+            <TouchableOpacity style={styles.cancelButton} onPress={onClose} activeOpacity={0.7}>
+              <Text style={styles.cancelButtonText}>İptal Et</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.saveButton} onPress={onClose} activeOpacity={0.8}>
+              <LinearGradient colors={['#1FA2A6', '#047857']} style={styles.saveButtonGradient}>
+                <Text style={styles.saveButtonText}>Kaydet</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
+      </View>
+    </Modal>
+  );
+};
+
+// Substitute Selection Modal - Yedek seçimi + Dakika seçimi + Kaydet/İptal
+const SubstituteModal = ({ visible, players, startingXI = [], type, playerName, selectedSubstitute, selectedMinute, onSave, onClose }: any) => {
+  const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(selectedSubstitute || null);
+  const [selectedMinuteRange, setSelectedMinuteRange] = useState<string | null>(selectedMinute || null);
+
+  // ✅ İlk 11'deki oyuncuları filtrele - sadece yedekler gösterilsin
+  const availableSubstitutes = useMemo(() => {
+    const startingXIIds = new Set(startingXI.map((p: any) => p.id));
+    return players.filter((p: any) => !startingXIIds.has(p.id));
+  }, [players, startingXI]);
+
+  // ✅ Dakika aralıkları (10 dakikalık)
+  const minuteRanges = [
+    { label: '1-10', value: '1-10' },
+    { label: '11-20', value: '11-20' },
+    { label: '21-30', value: '21-30' },
+    { label: '31-40', value: '31-40' },
+    { label: '41-50', value: '41-50' },
+    { label: '51-60', value: '51-60' },
+    { label: '61-70', value: '61-70' },
+    { label: '71-80', value: '71-80' },
+    { label: '81-90+', value: '81-90+' },
+  ];
+
+  React.useEffect(() => {
+    if (visible) {
+      setSelectedPlayerId(selectedSubstitute || null);
+      setSelectedMinuteRange(selectedMinute || null);
+    }
+  }, [visible, selectedSubstitute, selectedMinute]);
+
+  const handleSave = () => {
+    if (selectedPlayerId && selectedMinuteRange) {
+      onSave(selectedPlayerId, selectedMinuteRange);
+    }
+  };
+
+  return (
   <Modal
     visible={visible}
     animationType="slide"
@@ -1588,11 +2651,11 @@ const SubstituteModal = ({ visible, players, type, playerName, selectedSubstitut
         <View style={styles.substituteModalHeader}>
           <View>
             <Text style={styles.substituteModalTitle}>
-              {type === 'normal' ? 'Yerine Kim Girer?' : 'Sakatlık Yedeği'}
+              {type === 'normal' ? 'Oyundan Çıkar' : 'Sakatlanarak Çıkar'}
             </Text>
             {playerName && (
               <Text style={styles.substituteModalSubtitle}>
-                {playerName} için yedek seçin
+                {playerName} için yedek ve dakika seçin
               </Text>
             )}
           </View>
@@ -1601,47 +2664,139 @@ const SubstituteModal = ({ visible, players, type, playerName, selectedSubstitut
           </TouchableOpacity>
         </View>
 
-        <FlatList
-          data={players}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={({ item }) => {
-            const isSelected = selectedSubstitute === item.id.toString();
-            
-            return (
-              <TouchableOpacity
-                style={[
-                  styles.substituteItem,
-                  isSelected && styles.substituteItemSelected
-                ]}
-                onPress={() => onSelect(item.id)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.substituteItemLeft}>
-                  <View style={styles.substituteNumber}>
-                    <Text style={styles.substituteNumberText}>{item.number}</Text>
-                  </View>
-                  <View style={styles.substituteInfo}>
-                    <Text style={styles.substituteName}>{item.name}</Text>
-                    <Text style={styles.substitutePosition}>
-                      {item.position} • {item.rating}
-                    </Text>
-                  </View>
-                </View>
-                <Ionicons 
-                  name={isSelected ? "checkmark-circle" : "add-circle-outline"} 
-                  size={24} 
-                  color={isSelected ? "#1FA2A6" : "#6B7280"} 
-                />
-              </TouchableOpacity>
-            );
-          }}
+        <ScrollView 
+          style={styles.substituteModalScroll}
+          contentContainerStyle={styles.substituteModalScrollContent}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.substituteList}
-        />
+        >
+          {/* Yerine Kim Girer? */}
+          <View style={styles.substituteSection}>
+            <Text style={styles.substituteSectionTitle}>Yerine Kim Girer?</Text>
+            <Text style={styles.substituteSectionHint}>Yedeklerden seçin (İlk 11'dekiler listede yok)</Text>
+            {availableSubstitutes.length === 0 ? (
+              <View style={styles.noSubstitutes}>
+                <Ionicons name="alert-circle" size={24} color="#64748B" />
+                <Text style={styles.noSubstitutesText}>Yedek oyuncu bulunamadı</Text>
+              </View>
+            ) : (
+              <View style={styles.substituteList}>
+                {availableSubstitutes.map((item: any) => {
+                  const isSelected = selectedPlayerId === item.id.toString();
+                  return (
+                    <TouchableOpacity
+                      key={item.id}
+                      style={[
+                        styles.substituteItem,
+                        isSelected && styles.substituteItemSelected
+                      ]}
+                      onPress={() => setSelectedPlayerId(item.id.toString())}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.substituteItemLeft}>
+                        <View style={styles.substituteNumber}>
+                          <Text style={styles.substituteNumberText}>{item.number}</Text>
+                        </View>
+                        <View style={styles.substituteInfo}>
+                          <Text style={styles.substituteName}>{item.name}</Text>
+                          <Text style={styles.substitutePosition}>
+                            {item.position} • {item.rating}
+                          </Text>
+                        </View>
+                      </View>
+                      <Ionicons 
+                        name={isSelected ? "checkmark-circle" : "add-circle-outline"} 
+                        size={24} 
+                        color={isSelected ? "#1FA2A6" : "#6B7280"} 
+                      />
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
+          </View>
+
+          {/* Değişiklik Dakikası - 2 satır halinde */}
+          <View style={styles.substituteSection}>
+            <Text style={styles.substituteSectionTitle}>Değişiklik Dakikası</Text>
+            <View style={styles.minuteRanges2RowGrid}>
+              {/* İlk satır: 0-45 (ilk yarı) */}
+              <View style={styles.minuteRangesRow}>
+                {minuteRanges.slice(0, 5).map((range) => {
+                  const isSelected = selectedMinuteRange === range.value;
+                  return (
+                    <TouchableOpacity
+                      key={range.value}
+                      style={[
+                        styles.minuteRangeButton2Row,
+                        isSelected && styles.minuteRangeButtonSelected
+                      ]}
+                      onPress={() => setSelectedMinuteRange(range.value)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[
+                        styles.minuteRangeText,
+                        isSelected && styles.minuteRangeTextSelected
+                      ]}>
+                        {range.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+              {/* İkinci satır: 46-90+ (ikinci yarı) */}
+              <View style={styles.minuteRangesRow}>
+                {minuteRanges.slice(5).map((range) => {
+                  const isSelected = selectedMinuteRange === range.value;
+                  return (
+                    <TouchableOpacity
+                      key={range.value}
+                      style={[
+                        styles.minuteRangeButton2Row,
+                        isSelected && styles.minuteRangeButtonSelected
+                      ]}
+                      onPress={() => setSelectedMinuteRange(range.value)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[
+                        styles.minuteRangeText,
+                        isSelected && styles.minuteRangeTextSelected
+                      ]}>
+                        {range.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          </View>
+        </ScrollView>
+
+        {/* Kaydet / İptal Butonları */}
+        <View style={styles.substituteModalFooter}>
+          <TouchableOpacity
+            style={styles.substituteCancelButton}
+            onPress={onClose}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.substituteCancelButtonText}>İptal Et</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.substituteSaveButton,
+              (!selectedPlayerId || !selectedMinuteRange) && styles.substituteSaveButtonDisabled
+            ]}
+            onPress={handleSave}
+            disabled={!selectedPlayerId || !selectedMinuteRange}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.substituteSaveButtonText}>Kaydet</Text>
+          </TouchableOpacity>
+        </View>
       </Animated.View>
     </View>
   </Modal>
-);
+  );
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -1653,6 +2808,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: 80,
+    paddingHorizontal: 12,
   },
 
   // Football Field – Kadro ile AYNI boyut, yükseklik (y) %5 artırıldı
@@ -1717,6 +2873,30 @@ const styles = StyleSheet.create({
     height: (width - 24) * 1.35 * 1.05 * 1.02, // ✅ Kadro sekmesiyle aynı oran, y ekseni +5% +2%
     alignSelf: 'center',
     marginBottom: 8,
+  },
+  // 🌟 Saha üzerinde analiz odağı yıldızı - sağ üst köşe
+  fieldFocusStarContainer: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(15, 42, 36, 0.9)',
+    borderWidth: 2,
+    borderColor: 'rgba(31, 162, 166, 0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 100,
+    ...Platform.select({
+      web: {
+        cursor: 'pointer',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+      },
+      default: {
+        elevation: 5,
+      },
+    }),
   },
   // Oyuncu kartları – Kadro ile aynı boyut (64x76) ve yerleşim
   playerSlot: {
@@ -1831,6 +3011,34 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     backgroundColor: '#F59E0B',
   },
+  predictionCheckBadge: {
+    position: 'absolute',
+    top: 3,
+    right: 3,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#10B981',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+  },
+  substitutionBadge: {
+    position: 'absolute',
+    top: 4,
+    left: 4,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#1FA2A6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+  },
   playerName: {
     fontSize: 9,
     fontWeight: '500',
@@ -1896,6 +3104,12 @@ const styles = StyleSheet.create({
   predictionCategory: {
     gap: 12,
   },
+  categoryTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
   categoryTitle: {
     fontSize: 16,
     fontWeight: 'bold',
@@ -1919,6 +3133,13 @@ const styles = StyleSheet.create({
     zIndex: 10,
     elevation: 10,
   },
+  focusStarPlaceholder: {
+    padding: 12,
+    minWidth: 48,
+    minHeight: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   focusButton: {
     padding: 12,
     minWidth: 48,
@@ -1940,7 +3161,79 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#9CA3AF', // ✅ Design System: Muted foreground (gri ton)
   },
-  
+  focusExplanationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  focusExplanationContent: {
+    marginTop: 0,
+  },
+  focusExplanationText: {
+    fontSize: 14,
+    color: '#E6E6E6',
+    lineHeight: 20,
+  },
+  focusDisplayGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginTop: 12,
+  },
+  focusDisplayCard: {
+    width: width > 600 ? '32%' : '48%',
+    borderRadius: 12,
+    borderWidth: 1.5,
+    padding: 10,
+    marginBottom: 8,
+    overflow: 'hidden',
+  },
+  focusDisplayIconRow: {
+    marginBottom: 6,
+  },
+  focusDisplayIconContainer: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+  },
+  focusDisplayTitleRow: {
+    marginBottom: 6,
+    overflow: 'hidden',
+  },
+  focusDisplayTitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    lineHeight: 14,
+  },
+  focusDisplayBadgeRow: {
+    marginBottom: 6,
+    overflow: 'hidden',
+  },
+  focusDisplayBonusBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  focusDisplayBonusText: {
+    fontSize: 9,
+    fontWeight: '600',
+  },
+  focusDisplayDescriptionRow: {
+    overflow: 'hidden',
+  },
+  focusDisplayDescription: {
+    fontSize: 9,
+    color: '#94A3B8',
+    lineHeight: 12,
+  },
+
   // Score Picker
   scorePickerContainer: {
     flexDirection: 'row',
@@ -1963,7 +3256,7 @@ const styles = StyleSheet.create({
   },
   scoreButton: {
     width: 36,
-    height: 36,
+    height: 48,
     backgroundColor: 'rgba(15, 42, 36, 0.6)', // ✅ Design System: Primary opacity
     borderRadius: 8,
     alignItems: 'center',
@@ -1983,6 +3276,14 @@ const styles = StyleSheet.create({
   scoreButtonTextActive: {
     color: '#FFFFFF',
     fontWeight: 'bold',
+  },
+  scoreButtonDisabled: {
+    backgroundColor: 'rgba(15, 42, 36, 0.35)',
+    borderColor: 'rgba(31, 162, 166, 0.15)',
+    opacity: 0.6,
+  },
+  scoreButtonTextDisabled: {
+    color: '#6B7280',
   },
   scoreSeparator: {
     alignItems: 'center',
@@ -2126,10 +3427,25 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     maxHeight: height * 0.9,
+    flex: 1,
   },
   playerModalHeader: {
-    padding: 16,
-    paddingBottom: 20,
+    padding: 12,
+    paddingBottom: 10,
+  },
+  tahminYapilanOyuncuBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(31, 162, 166, 0.3)',
+  },
+  tahminYapilanOyuncuText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#1FA2A6',
   },
   modalCloseButton: {
     position: 'absolute',
@@ -2146,11 +3462,11 @@ const styles = StyleSheet.create({
   playerModalInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
   },
   playerNumberCircle: {
-    width: 56,
-    height: 56,
+    width: 48,
+    height: 48,
     borderRadius: 12,
     backgroundColor: '#1FA2A6',
     alignItems: 'center',
@@ -2159,16 +3475,16 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   playerNumberLarge: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '900',
     color: '#FFFFFF',
   },
   playerRatingCircle: {
     position: 'absolute',
-    top: -4,
-    right: -4,
-    width: 20,
-    height: 20,
+    top: -2,
+    right: -2,
+    width: 18,
+    height: 18,
     borderRadius: 10,
     backgroundColor: '#F59E0B',
     alignItems: 'center',
@@ -2185,12 +3501,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   playerNameLarge: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '900',
     color: '#FFFFFF',
   },
   playerPosition: {
-    fontSize: 12,
+    fontSize: 11,
     color: 'rgba(255, 255, 255, 0.7)',
     fontWeight: '500',
     marginTop: 2,
@@ -2200,26 +3516,29 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   
-  // Player Predictions
+  // Player Predictions (tek sayfa, scroll yok)
   playerPredictionsScroll: {
     flex: 1,
+    minHeight: 0,
   },
   playerPredictionsContent: {
-    padding: 16,
-    gap: 12,
-    paddingBottom: 100,
+    padding: 12,
+    gap: 6,
+    paddingBottom: 12,
   },
   predictionGroup: {
-    gap: 8,
+    gap: 4,
   },
   predictionButton: {
-    height: 50,
+    height: 44,
     backgroundColor: 'rgba(15, 23, 42, 0.8)',
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: 'rgba(100, 116, 139, 0.5)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
   predictionButtonActive: {
     backgroundColor: '#1FA2A6',
@@ -2235,8 +3554,8 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   subOptions: {
-    paddingLeft: 12,
-    gap: 6,
+    paddingLeft: 10,
+    gap: 4,
   },
   subOptionsLabel: {
     fontSize: 10,
@@ -2244,11 +3563,11 @@ const styles = StyleSheet.create({
   },
   subOptionsRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
   },
   subOptionButton: {
     flex: 1,
-    height: 36,
+    height: 32,
     backgroundColor: 'rgba(30, 41, 59, 0.5)',
     borderRadius: 8,
     alignItems: 'center',
@@ -2365,8 +3684,421 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
     marginTop: 4,
   },
-  substituteList: {
+  substituteModalScroll: {
+    flex: 1,
+  },
+  substituteModalScrollContent: {
     paddingBottom: 20,
+  },
+  substituteSection: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+  },
+  substituteSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginBottom: 4,
+  },
+  substituteSectionHint: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    marginBottom: 12,
+  },
+  inlineSubstituteDropdown: {
+    marginTop: 4,
+    padding: 8,
+    backgroundColor: 'rgba(15, 42, 36, 0.8)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.3)',
+    gap: 8,
+  },
+  inlineSubstituteTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#E6E6E6',
+    marginBottom: 4,
+  },
+  inlineSubstituteActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 8,
+  },
+  // Dropdown Styles
+  dropdownContainer: {
+    marginBottom: 10,
+    zIndex: 10,
+  },
+  dropdownLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#E6E6E6',
+    marginBottom: 8,
+  },
+  dropdownButton: {
+    backgroundColor: 'rgba(30, 41, 59, 0.8)',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(100, 116, 139, 0.3)',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    minHeight: 48,
+  },
+  dropdownButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  dropdownSelectedPlayer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  dropdownPlayerNumber: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: '#1FA2A6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dropdownPlayerNumberText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  dropdownSelectedText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    flex: 1,
+  },
+  dropdownPlaceholder: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    flex: 1,
+  },
+  dropdownMenu: {
+    marginTop: 4,
+    backgroundColor: 'rgba(30, 41, 59, 0.95)',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(100, 116, 139, 0.3)',
+    maxHeight: 160,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: { elevation: 8 },
+      web: { boxShadow: '0 4px 12px rgba(0,0,0,0.4)' },
+    }),
+  },
+  dropdownMenuList: {
+    maxHeight: 160,
+  },
+  dropdownMenuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(100, 116, 139, 0.1)',
+  },
+  dropdownMenuItemSelected: {
+    backgroundColor: 'rgba(31, 162, 166, 0.15)',
+  },
+  dropdownMenuItemContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  dropdownPlayerNumberSmall: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    backgroundColor: '#1FA2A6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dropdownPlayerNumberTextSmall: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  dropdownMenuItemText: {
+    fontSize: 14,
+    color: '#E6E6E6',
+    flex: 1,
+  },
+  dropdownMenuItemTextSelected: {
+    color: '#1FA2A6',
+    fontWeight: '600',
+  },
+  dropdownEmptyState: {
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  dropdownEmptyText: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    lineHeight: 16,
+  },
+  // Tek Satır Bildirim Buton Stilleri - Çıkar: x Girer: x dk 1-15
+  substituteButtonWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    justifyContent: 'center',
+  },
+  substituteButtonSingleLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    flexWrap: 'wrap',
+    width: '100%',
+  },
+  substituteButtonSingleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  substituteButtonLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#E5E7EB',
+  },
+  substituteButtonPlayerNameSingle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  substituteButtonSubstituteNameSingle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  substituteButtonTimeTextSingle: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#E5E7EB',
+    marginLeft: 2,
+  },
+  autoSaveInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 12,
+    padding: 10,
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.3)',
+  },
+  autoSaveInfoText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#10B981',
+  },
+  // Minute Range Compact Styles
+  minuteRangeContainer: {
+    marginBottom: 16,
+  },
+  minuteRangesGridCompact: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    width: '100%',
+  },
+  minuteRanges2RowGridCompact: {
+    gap: 8,
+    width: '100%',
+  },
+  minuteRangesRowCompact: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  minuteRangeButtonCompact2Row: {
+    flex: 1,
+    minWidth: 0,
+  },
+  minuteRangeButtonCompactGridItem: {
+    flex: 1,
+    minWidth: 0,
+  },
+  injuryTimeGrid: {
+    gap: 4,
+    width: '100%',
+  },
+  firstGoalTimeGrid: {
+    gap: 6,
+    width: '100%',
+  },
+  injuryTimeSubLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#9CA3AF',
+    marginBottom: 4,
+  },
+  injuryTimeRow: {
+    flexDirection: 'row',
+    flexWrap: 'nowrap',
+    gap: 4,
+    width: '100%',
+  },
+  injuryTimeButton: {
+    flex: 1,
+    minWidth: 0,
+  },
+  injuryTimeButtonText: {
+    fontSize: 13,
+  },
+  injuryTimeButtonPadding: {
+    paddingHorizontal: 6,
+  },
+  minuteRangeButtonCompact: {
+    height: 48,
+    paddingVertical: 0,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    backgroundColor: 'rgba(15, 42, 36, 0.6)',
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    flexDirection: 'row',
+    gap: 6,
+  },
+  minuteRangeButtonCompactSelected: {
+    backgroundColor: '#1FA2A6',
+    borderColor: '#1FA2A6',
+    borderWidth: 2,
+  },
+  minuteRangeTextCompact: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#E6E6E6',
+  },
+  minuteRangeTextCompactSelected: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  minuteRangeCheckmark: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#1FA2A6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  noSubstitutes: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 32,
+    gap: 8,
+  },
+  noSubstitutesText: {
+    fontSize: 14,
+    color: '#64748B',
+    textAlign: 'center',
+  },
+  substituteList: {
+    gap: 8,
+  },
+  minuteRangesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8,
+  },
+  minuteRanges2RowGrid: {
+    gap: 8,
+    marginTop: 8,
+  },
+  minuteRangesRow: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  minuteRangeButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: 'rgba(100, 116, 139, 0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(100, 116, 139, 0.3)',
+    minWidth: 70,
+    alignItems: 'center',
+  },
+  minuteRangeButton2Row: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 6,
+    borderRadius: 8,
+    backgroundColor: 'rgba(100, 116, 139, 0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(100, 116, 139, 0.3)',
+    alignItems: 'center',
+  },
+  minuteRangeButtonSelected: {
+    backgroundColor: 'rgba(31, 162, 166, 0.2)',
+    borderColor: '#1FA2A6',
+    borderWidth: 2,
+  },
+  minuteRangeText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#9CA3AF',
+  },
+  minuteRangeTextSelected: {
+    color: '#1FA2A6',
+  },
+  substituteModalFooter: {
+    flexDirection: 'row',
+    padding: 20,
+    gap: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  substituteCancelButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: 'rgba(100, 116, 139, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  substituteCancelButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#9CA3AF',
+  },
+  substituteSaveButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: '#1FA2A6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  substituteSaveButtonDisabled: {
+    backgroundColor: 'rgba(31, 162, 166, 0.3)',
+    opacity: 0.5,
+  },
+  substituteSaveButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
   substituteItem: {
     flexDirection: 'row',

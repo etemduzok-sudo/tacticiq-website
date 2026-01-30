@@ -247,13 +247,13 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
                 </View>
               </View>
               
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.badgesScroll}
-              >
-                {earnedBadges.length > 0 ? (
-                  earnedBadges.map((badge, index) => {
+              {earnedBadges.length > 0 ? (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.badgesScroll}
+                >
+                  {earnedBadges.map((badge, index) => {
                     const shortName = badge.name.split(' ')[0];
                     const isNewBadge = newBadge && newBadge.id === badge.id;
                     const tierColor = getBadgeTierColor(badge.tier as 1 | 2 | 3 | 4 | 5);
@@ -288,8 +288,10 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
                         </LinearGradient>
                       </Animated.View>
                     );
-                  })
-                ) : (
+                  })}
+                </ScrollView>
+              ) : (
+                <View style={styles.noBadgesWrapper}>
                   <View style={styles.noBadgesContainer}>
                     <View style={styles.noBadgesIconWrapper}>
                       <LinearGradient
@@ -304,102 +306,11 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
                       <Text style={styles.noBadgesHint}>Tahmin yaparak rozet kazan</Text>
                     </View>
                   </View>
-                )}
-              </ScrollView>
+                </View>
+              )}
             </View>
             </TouchableOpacity>
 
-            {/* ✅ Takım Filtre Barı - TouchableOpacity dışında; chip tıklamaları sadece filtreyi günceller */}
-            {showTeamFilter && (
-              <View style={styles.teamFilterSection}>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.teamFilterScroll}
-                >
-                  {/* Tümü Chip */}
-                  <TouchableOpacity
-                    style={[
-                      styles.teamChip,
-                      selectedTeamIds.length === 0 && styles.teamChipActive
-                    ]}
-                    onPress={() => onTeamSelect?.(null)}
-                    activeOpacity={0.8}
-                  >
-                    <Ionicons 
-                      name="apps" 
-                      size={14} 
-                      color={selectedTeamIds.length === 0 ? '#FFFFFF' : '#94A3B8'} 
-                    />
-                    <Text style={[
-                      styles.teamChipText,
-                      selectedTeamIds.length === 0 && styles.teamChipTextActive
-                    ]}>
-                      Tümü
-                    </Text>
-                  </TouchableOpacity>
-
-                  {/* Favori Takım Chip'leri */}
-                  {favoriteTeams.slice(0, 6).map((team) => {
-                    const tid = Number(team.id);
-                    const isSelected = !Number.isNaN(tid) && selectedTeamIds.includes(tid);
-                    return (
-                      <TouchableOpacity
-                        key={team.id}
-                        style={[
-                          styles.teamChip,
-                          isSelected && styles.teamChipActive,
-                          { 
-                            backgroundColor: isSelected 
-                              ? (team.colors?.[0] || getTeamColors(team.name)[0] || '#1FA2A6')
-                              : 'rgba(31, 41, 55, 0.6)',
-                            borderColor: team.colors?.[0] || getTeamColors(team.name)[0] || '#1FA2A6' 
-                          }
-                        ]}
-                        onPress={() => onTeamSelect?.(tid)}
-                        activeOpacity={0.8}
-                      >
-                        {(() => {
-                          const colors = team.colors && team.colors.length > 0 
-                            ? team.colors 
-                            : getTeamColors(team.name);
-                          return colors && colors.length > 0 && (
-                            <View style={styles.teamChipBadge}>
-                              <View style={[styles.teamChipStripe, { backgroundColor: colors[0] }]} />
-                              {colors[1] && (
-                                <View style={[styles.teamChipStripe, { backgroundColor: colors[1] }]} />
-                              )}
-                            </View>
-                          );
-                        })()}
-                        <Text 
-                          style={[
-                            styles.teamChipText,
-                            isSelected && styles.teamChipTextActive
-                          ]}
-                          numberOfLines={1}
-                        >
-                          {team.name}
-                        </Text>
-                        {isSelected && (
-                          <View style={styles.teamChipCheck}>
-                            <Ionicons name="checkmark" size={12} color="#FFFFFF" />
-                          </View>
-                        )}
-                      </TouchableOpacity>
-                    );
-                  })}
-
-                  {/* Takım yoksa bilgi */}
-                  {favoriteTeams.length === 0 && (
-                    <View style={styles.noTeamsContainer}>
-                      <Ionicons name="heart-outline" size={14} color="#64748B" />
-                      <Text style={styles.noTeamsText}>Profilde takım seçin</Text>
-                    </View>
-                  )}
-                </ScrollView>
-              </View>
-            )}
             </View>
           </View>
         </View>
@@ -471,15 +382,16 @@ const styles = StyleSheet.create({
     marginTop: 0,
     marginBottom: 0,
   },
-  // Card wrapper with grid pattern background - Üst köşeler düz (ekranın en üstüne kadar)
+  // Card wrapper - max yükseklik kadro sekmesindeki maç kartı ile aynı (~220px)
   cardWrapper: {
     position: 'relative',
-    borderTopLeftRadius: 0, // Üst sol köşe düz
-    borderTopRightRadius: 0, // Üst sağ köşe düz
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
     borderBottomLeftRadius: 12,
     borderBottomRightRadius: 12,
     overflow: 'hidden',
-    backgroundColor: '#0F2A24', // Koyu yeşil taban
+    backgroundColor: '#0F2A24',
+    maxHeight: 220, // Kadro sekmesindeki maç kartı yüksekliği kadar
   },
   // Grid Pattern Background - Splash screen ile uyumlu (40px, flu)
   gridPattern: {
@@ -705,6 +617,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFFFFF',
   },
+  noBadgesWrapper: {
+    width: '100%',
+  },
   noBadgesContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -714,7 +629,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     borderColor: 'rgba(245, 158, 11, 0.25)',
-    minWidth: 200,
+    width: '100%',
   },
   noBadgesIconWrapper: {
     marginRight: 10,
@@ -805,11 +720,11 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   teamChipBadge: {
-    flexDirection: 'row',
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
     overflow: 'hidden',
+    position: 'relative',
   },
   teamChipStripe: {
     flex: 1,

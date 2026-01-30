@@ -1,5 +1,5 @@
 // Badge System Constants
-// 25 Progressive Badges across 5 difficulty tiers
+// 30 Progressive Badges – 5 satır x 6 sütun
 
 export interface BadgeDefinition {
   id: string;
@@ -308,6 +308,63 @@ export const ALL_BADGES: BadgeDefinition[] = [
     tierName: 'Efsane',
     color: '#06B6D4',
     category: 'Genel',
+  },
+
+  // Ek 5 rozet (toplam 30 – 5 satır x 6 sütun)
+  {
+    id: 'early-bird',
+    name: 'Erken Kuş',
+    description: 'Maç başlamadan 1 saat önce tahmin yaptın',
+    howToEarn: 'Maç başlamadan en az 1 saat önce tahminini tamamla',
+    emoji: '🐦',
+    tier: 1,
+    tierName: 'Çaylak',
+    color: '#10B981',
+    category: 'Genel',
+  },
+  {
+    id: 'corner-king',
+    name: 'Korner Kralı',
+    description: 'Korner tahminlerinde 5 doğru yaptın',
+    howToEarn: 'Tek maçta korner sayısı tahmininde 5 doğru yap',
+    emoji: '🚩',
+    tier: 2,
+    tierName: 'Amatör',
+    color: '#F59E0B',
+    category: 'Tempo',
+  },
+  {
+    id: 'possession-master',
+    name: 'Top Hakimiyeti',
+    description: 'Possesyon tahminini 3 maç üst üste doğru yaptın',
+    howToEarn: 'Possesyon yüzdesi tahminini 3 maç üst üste doğru yap',
+    emoji: '⚽',
+    tier: 2,
+    tierName: 'Amatör',
+    color: '#F59E0B',
+    category: 'Tempo',
+  },
+  {
+    id: 'hat-trick-hero',
+    name: 'Hat-Trick Kahramanı',
+    description: 'Bir maçta skor, toplam gol ve ilk gol dakikasını doğru tahmin ettin',
+    howToEarn: 'Aynı maçta skor, toplam gol ve ilk gol dakikasını doğru tahmin et',
+    emoji: '⚡',
+    tier: 3,
+    tierName: 'Profesyonel',
+    color: '#EF4444',
+    category: 'Yıldız',
+  },
+  {
+    id: 'season-veteran',
+    name: 'Sezon Veteranı',
+    description: 'Bir sezonda 50 maç tahminini tamamladın',
+    howToEarn: 'Tek sezonda 50 maç tahminini tamamla',
+    emoji: '📅',
+    tier: 4,
+    tierName: 'Uzman',
+    color: '#8B5CF6',
+    category: 'Disiplin',
   },
 ];
 

@@ -24,7 +24,7 @@ export type AnalysisFocusType =
   | 'tactical' 
   | 'player';
 
-interface AnalysisFocus {
+export interface AnalysisFocus {
   id: AnalysisFocusType;
   title: string;
   bonus: string;
@@ -35,8 +35,8 @@ interface AnalysisFocus {
   backgroundColor: string; // Kart zemin rengi
 }
 
-// Web tasarımına uygun renkler - her kart farklı zemin
-const ANALYSIS_FOCUSES: AnalysisFocus[] = [
+// Web tasarımına uygun renkler - her kart farklı zemin (Tahmin sayfasında sadece görsel gösterim için export)
+export const ANALYSIS_FOCUSES: AnalysisFocus[] = [
   {
     id: 'defense',
     title: 'Savunma Odaklı Analiz',

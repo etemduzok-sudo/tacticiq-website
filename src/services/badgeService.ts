@@ -13,9 +13,39 @@ import {
   PREDICTION_GOD_BADGES,
 } from '../types/badges.types';
 import { AnalysisCluster } from '../types/prediction.types';
+import { ALL_BADGES } from '../constants/badges';
 
 const STORAGE_KEY = 'tacticiq-user-badges';
 const SHOWN_BADGES_KEY = 'tacticiq-shown-badges'; // Track which badges have been shown in notifications
+
+/** Geliştirme: Profilde 5 rozet kazanmış gibi göster (0 = kapalı) */
+const MOCK_EARNED_BADGES_COUNT = __DEV__ ? 5 : 0;
+
+const tierToBadgeTier = (tier: number): BadgeTier => {
+  const map: Record<number, BadgeTier> = {
+    1: BadgeTier.BRONZE,
+    2: BadgeTier.SILVER,
+    3: BadgeTier.GOLD,
+    4: BadgeTier.PLATINUM,
+    5: BadgeTier.DIAMOND,
+  };
+  return map[tier] ?? BadgeTier.BRONZE;
+};
+
+const getMockEarnedBadges = (count: number): Badge[] => {
+  return ALL_BADGES.slice(0, count).map((b) => ({
+    id: b.id,
+    name: b.name,
+    description: b.description,
+    icon: b.emoji,
+    color: b.color,
+    requirement: b.howToEarn,
+    category: BadgeCategory.PREDICTION_GOD,
+    tier: tierToBadgeTier(b.tier),
+    earned: true,
+    earnedAt: new Date().toISOString(),
+  }));
+};
 
 /**
  * User Stats Interface
@@ -50,10 +80,13 @@ export interface UserStats {
 }
 
 /**
- * Get user badges from storage
+ * Get user badges from storage (geliştirme modunda 5 rozet mock döner)
  */
 export const getUserBadges = async (): Promise<Badge[]> => {
   try {
+    if (MOCK_EARNED_BADGES_COUNT > 0) {
+      return getMockEarnedBadges(MOCK_EARNED_BADGES_COUNT);
+    }
     const badgesJson = await AsyncStorage.getItem(STORAGE_KEY);
     if (!badgesJson) return [];
     return JSON.parse(badgesJson);

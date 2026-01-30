@@ -115,7 +115,7 @@ export function ConfirmModal({
           activeOpacity={1}
           onPress={onRequestClose}
         />
-        <View style={styles.card} pointerEvents="auto">
+        <View style={[styles.card, { pointerEvents: 'auto' }]}>
           <View style={styles.iconRow}>
             <Ionicons name="warning" size={40} color="#F59E0B" />
           </View>

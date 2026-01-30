@@ -26,6 +26,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { profileService } from '../services/profileService';
 import { isSuperAdmin } from '../config/constants';
 import { AnalysisFocusModal, AnalysisFocusType } from './AnalysisFocusModal';
+import { ConfirmModal } from './ui/ConfirmModal';
 import { getTeamColors } from '../utils/teamColors';
 import { useMatchesWithPredictions } from '../hooks/useMatchesWithPredictions';
 
@@ -67,6 +68,8 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
   // ✅ Analiz Odağı Modal State
   const [analysisFocusModalVisible, setAnalysisFocusModalVisible] = useState(false);
   const [selectedMatchForAnalysis, setSelectedMatchForAnalysis] = useState<any>(null);
+  // ✅ Tahmin silme popup state
+  const [deletePredictionModal, setDeletePredictionModal] = useState<{ matchId: number; onDelete: () => void } | null>(null);
   
   // ✅ Maça tıklandığında: tahmin varsa doğrudan Tahmin sekmesine git, yoksa analiz odağı modal'ını aç
   const handleMatchPress = (match: any) => {
@@ -642,19 +645,13 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
               style={styles.matchCardPredictionStarHitArea}
               onPress={(e) => {
                 e?.stopPropagation?.();
-                Alert.alert(
-                  'Tahmini sil',
-                  'Bu maça yaptığınız tahmini silmek istiyor musunuz?',
-                  [
-                    { text: 'Vazgeç', style: 'cancel' },
-                    { text: 'Sil', style: 'destructive', onPress: () => onDeletePrediction(matchId) },
-                  ]
-                );
+                setDeletePredictionModal({ matchId, onDelete: () => onDeletePrediction(matchId) });
               }}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              activeOpacity={1}
+              activeOpacity={0.7}
             >
               <Ionicons name="star" size={20} color="#fbbf24" />
+              <Text style={styles.matchCardPredictionStarText}>Tahmin{'\n'}Yapıldı</Text>
             </TouchableOpacity>
           )}
         </LinearGradient>
@@ -974,6 +971,27 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
           })
         } : undefined}
       />
+
+      {/* ✅ Tahmin silme popup - Dashboard maç kartındaki yıldız */}
+      {deletePredictionModal && (
+        <ConfirmModal
+          visible={true}
+          title="Tahmini sil"
+          message="Bu maça yaptığınız tahmini silmek istiyor musunuz?"
+          buttons={[
+            { text: 'Vazgeç', style: 'cancel', onPress: () => setDeletePredictionModal(null) },
+            {
+              text: 'Sil',
+              style: 'destructive',
+              onPress: () => {
+                deletePredictionModal.onDelete();
+                setDeletePredictionModal(null);
+              },
+            },
+          ]}
+          onRequestClose={() => setDeletePredictionModal(null)}
+        />
+      )}
     </View>
   );
 });
@@ -1033,16 +1051,16 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent', // Grid pattern görünsün
   },
 
-  // Section
+  // Section - %75 azaltılmış boşluklar
   section: {
-    marginBottom: SPACING.base,
+    marginBottom: SPACING.md,
     paddingHorizontal: SPACING.base,
-    marginTop: SPACING.base,
+    marginTop: SPACING.md,
   },
   sectionWithDropdown: {
-    marginBottom: SPACING.base,
+    marginBottom: SPACING.md,
     paddingHorizontal: SPACING.base,
-    marginTop: SPACING.xl,
+    marginTop: SPACING.lg,
     zIndex: 10000,
     elevation: 10000,
     position: 'relative',
@@ -1930,7 +1948,18 @@ const styles = StyleSheet.create({
     top: 10,
     right: 12,
     zIndex: 10,
-    padding: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+  },
+  matchCardPredictionStarText: {
+    fontSize: 8,
+    fontWeight: '600',
+    color: '#fbbf24',
+    textAlign: 'center',
+    marginTop: 2,
+    lineHeight: 10,
   },
   matchCardWrapper: {
     width: '100%',

@@ -79,24 +79,96 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
   const [showAnalysisFocusModal, setShowAnalysisFocusModal] = useState(false);
   const [analysisFocusOverride, setAnalysisFocusOverride] = useState<AnalysisFocusType | null>(null);
   const [showResetPredictionsModal, setShowResetPredictionsModal] = useState(false);
+  const [hasPrediction, setHasPrediction] = useState(false);
   const effectiveAnalysisFocus = analysisFocusOverride ?? analysisFocus;
 
-  const handleResetPredictionsConfirm = async () => {
-    setShowResetPredictionsModal(false);
+  // ✅ İki favori takım maçı: ev sahibi ve deplasman favorilerde
+  const [selectedPredictionTeamId, setSelectedPredictionTeamId] = useState<number | null>(null);
+  const [showTeamPickerModal, setShowTeamPickerModal] = useState(false);
+  const [showOfferOtherTeamModal, setShowOfferOtherTeamModal] = useState(false);
+  const [otherTeamIdForOffer, setOtherTeamIdForOffer] = useState<number | null>(null);
+  const [resetTargetTeamId, setResetTargetTeamId] = useState<number | null>(null);
+  const [showResetTeamPickerModal, setShowResetTeamPickerModal] = useState(false);
+
+  // ✅ Tahmin kontrolü fonksiyonu - tek takım veya iki takım (favori) maçı
+  const checkPredictions = React.useCallback(async (homeId?: number, awayId?: number, bothFav?: boolean) => {
+    if (!matchId) return;
     try {
-      await AsyncStorage.removeItem(STORAGE_KEYS.PREDICTIONS + matchId);
-      await AsyncStorage.removeItem(`fan-manager-predictions-${matchId}`);
-      const userDataStr = await AsyncStorage.getItem(STORAGE_KEYS.USER);
-      const userData = userDataStr ? JSON.parse(userDataStr) : null;
-      const userId = userData?.id;
-      if (userId) await predictionsDb.deletePredictionsByMatch(userId, String(matchId));
-      const squadKey = `fan-manager-squad-${matchId}`;
-      const raw = await AsyncStorage.getItem(squadKey);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        parsed.isCompleted = false;
-        await AsyncStorage.setItem(squadKey, JSON.stringify(parsed));
+      if (bothFav && homeId != null && awayId != null) {
+        const key1 = `${STORAGE_KEYS.PREDICTIONS}${matchId}-${homeId}`;
+        const key2 = `${STORAGE_KEYS.PREDICTIONS}${matchId}-${awayId}`;
+        const alt1 = `fan-manager-predictions-${matchId}-${homeId}`;
+        const alt2 = `fan-manager-predictions-${matchId}-${awayId}`;
+        const raw1 = await AsyncStorage.getItem(key1) || await AsyncStorage.getItem(alt1);
+        const raw2 = await AsyncStorage.getItem(key2) || await AsyncStorage.getItem(alt2);
+        let has = false;
+        if (raw1) {
+          const p = JSON.parse(raw1);
+          has = has || !!(p?.matchPredictions && Object.values(p.matchPredictions).some((v: any) => v != null)) || !!(p?.playerPredictions && Object.keys(p.playerPredictions).length > 0);
+        }
+        if (raw2) {
+          const p = JSON.parse(raw2);
+          has = has || !!(p?.matchPredictions && Object.values(p.matchPredictions).some((v: any) => v != null)) || !!(p?.playerPredictions && Object.keys(p.playerPredictions).length > 0);
+        }
+        setHasPrediction(has);
+        return;
       }
+      const predRaw = await AsyncStorage.getItem(STORAGE_KEYS.PREDICTIONS + matchId)
+        || await AsyncStorage.getItem(`fan-manager-predictions-${matchId}`);
+      if (predRaw) {
+        const pred = JSON.parse(predRaw);
+        const hasMatchPred = pred?.matchPredictions && Object.values(pred.matchPredictions).some((v: any) => v != null);
+        const hasPlayerPred = pred?.playerPredictions && Object.keys(pred.playerPredictions).length > 0;
+        setHasPrediction(!!hasMatchPred || !!hasPlayerPred);
+      } else {
+        setHasPrediction(false);
+      }
+    } catch (e) {
+      setHasPrediction(false);
+    }
+  }, [matchId]);
+
+  const handleResetPredictionsConfirm = async (targetTeamId?: number | null) => {
+    const teamToReset = targetTeamId ?? resetTargetTeamId;
+    setShowResetPredictionsModal(false);
+    setResetTargetTeamId(null);
+    const homeId = matchData?.teams?.home?.id ?? matchData?.homeTeam?.id;
+    const awayId = matchData?.teams?.away?.id ?? matchData?.awayTeam?.id;
+    const bothFavorites = homeId != null && awayId != null && favoriteTeamIds.includes(homeId) && favoriteTeamIds.includes(awayId);
+
+    try {
+      if (bothFavorites && teamToReset != null) {
+        await AsyncStorage.removeItem(`${STORAGE_KEYS.PREDICTIONS}${matchId}-${teamToReset}`);
+        await AsyncStorage.removeItem(`fan-manager-predictions-${matchId}-${teamToReset}`);
+        const squadKey = `fan-manager-squad-${matchId}-${teamToReset}`;
+        const raw = await AsyncStorage.getItem(squadKey);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          parsed.isCompleted = false;
+          await AsyncStorage.setItem(squadKey, JSON.stringify(parsed));
+        }
+        const userDataStr = await AsyncStorage.getItem(STORAGE_KEYS.USER);
+        const userData = userDataStr ? JSON.parse(userDataStr) : null;
+        const userId = userData?.id;
+        if (userId) await predictionsDb.deletePredictionsByMatch(userId, String(matchId)); // DB'de match bazlı; ek filtre gerekebilir
+      } else {
+        await AsyncStorage.removeItem(STORAGE_KEYS.PREDICTIONS + matchId);
+        await AsyncStorage.removeItem(`fan-manager-predictions-${matchId}`);
+        const userDataStr = await AsyncStorage.getItem(STORAGE_KEYS.USER);
+        const userData = userDataStr ? JSON.parse(userDataStr) : null;
+        const userId = userData?.id;
+        if (userId) await predictionsDb.deletePredictionsByMatch(userId, String(matchId));
+        const squadKey = `fan-manager-squad-${matchId}`;
+        const raw = await AsyncStorage.getItem(squadKey);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          parsed.isCompleted = false;
+          await AsyncStorage.setItem(squadKey, JSON.stringify(parsed));
+        }
+      }
+      setHasPrediction(false);
+      if (bothFavorites) checkPredictions(homeId, awayId, true);
+      else checkPredictions();
     } catch (e) { console.warn('Reset predictions failed', e); }
     setShowAnalysisFocusModal(true);
   };
@@ -126,6 +198,22 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
   // ✅ preloadedMatch varsa onu kullan, yoksa API'den gelen veriyi kullan
   const match = preloadedMatch || apiMatch;
   const loading = shouldFetchFromApi ? apiLoading : false;
+
+  // ✅ Tahmin kontrolü - match yüklendikten sonra; iki favori maçta çift anahtar
+  React.useEffect(() => {
+    if (!match?.teams?.home?.id || !match?.teams?.away?.id) {
+      checkPredictions();
+      const interval = setInterval(checkPredictions, 2000);
+      return () => clearInterval(interval);
+    }
+    const hid = match.teams.home.id;
+    const aid = match.teams.away.id;
+    const bothFav = favoriteTeamIds.includes(hid) && favoriteTeamIds.includes(aid);
+    const fn = () => (bothFav ? checkPredictions(hid, aid, true) : checkPredictions());
+    fn();
+    const interval = setInterval(fn, 2000);
+    return () => clearInterval(interval);
+  }, [match?.teams?.home?.id, match?.teams?.away?.id, favoriteTeamIds, checkPredictions]);
 
   // ✅ Teknik direktör bilgilerini çek
   React.useEffect(() => {
@@ -267,6 +355,18 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
   
   const countdownData = getCountdownData();
 
+  // ✅ İki favori takım maçı: ev sahibi ve deplasman favorilerde
+  const homeId = matchData?.teams?.home?.id ?? matchData?.homeTeam?.id;
+  const awayId = matchData?.teams?.away?.id ?? matchData?.awayTeam?.id;
+  const bothFavorites = homeId != null && awayId != null && favoriteTeamIds.includes(homeId) && favoriteTeamIds.includes(awayId);
+
+  // ✅ İki favori maçta girişte takım seçici göster (seçim yapılmamışsa)
+  React.useEffect(() => {
+    if (matchData && bothFavorites && selectedPredictionTeamId === null) {
+      setShowTeamPickerModal(true);
+    }
+  }, [matchData, bothFavorites, selectedPredictionTeamId]);
+
   // Loading state
   if (loading || !matchData) {
     return (
@@ -292,22 +392,54 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
   }
 
   const renderContent = () => {
+    const predictionTeamId = bothFavorites ? (selectedPredictionTeamId ?? undefined) : undefined;
+
     switch (activeTab) {
       case 'squad':
+        if (bothFavorites && !selectedPredictionTeamId) {
+          return (
+            <View style={styles.centerContent}>
+              <Text style={styles.placeholderText}>Hangi takım için kadro seçeceğinizi yukarıdaki pencereden seçin.</Text>
+            </View>
+          );
+        }
         return (
-          <MatchSquad 
+          <MatchSquad
+            key={`squad-${matchId}-${predictionTeamId ?? 'all'}`}
             matchData={matchData}
             matchId={matchId}
             lineups={lineups}
             favoriteTeamIds={favoriteTeamIds}
+            predictionTeamId={predictionTeamId}
             onComplete={() => setActiveTab('prediction')}
             onAttackFormationChangeConfirmed={() => setShowAnalysisFocusModal(true)}
+            isVisible={activeTab === 'squad'}
           />
         );
       
       case 'prediction':
+        if (bothFavorites && !selectedPredictionTeamId) {
+          return (
+            <View style={styles.centerContent}>
+              <Text style={styles.placeholderText}>Hangi takım için tahmin yapacağınızı yukarıdaki pencereden seçin.</Text>
+            </View>
+          );
+        }
         return (
-          <MatchPrediction matchData={matchData} matchId={matchId} />
+          <MatchPrediction
+            matchData={matchData}
+            matchId={matchId}
+            predictionTeamId={predictionTeamId}
+            onPredictionsSaved={() => checkPredictions(homeId, awayId, bothFavorites)}
+            onPredictionsSavedForTeam={(savedTeamId) => {
+              checkPredictions(homeId, awayId, bothFavorites);
+              if (bothFavorites && savedTeamId != null) {
+                const otherId = savedTeamId === homeId ? awayId : homeId;
+                setOtherTeamIdForOffer(otherId ?? null);
+                setShowOfferOtherTeamModal(true);
+              }
+            }}
+          />
         );
       
       case 'live':
@@ -336,7 +468,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
 
       {/* Sticky Match Card Header - ProfileCard overlay gibi */}
       <View style={styles.matchCardOverlay}>
-        {/* ✅ Home Team Color Bar - Overlay'in tam yüksekliğinde */}
+        {/* ✅ Home Team Color Bar – beyaz varsa diğer takımla farklı konumda (biri üstte biri altta) */}
         <LinearGradient
           colors={matchData.homeTeam.color}
           style={styles.colorBarLeft}
@@ -344,9 +476,17 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
           end={{ x: 0, y: 1 }}
         />
 
-        {/* ✅ Away Team Color Bar - Overlay'in tam yüksekliğinde */}
+        {/* ✅ Away Team Color Bar – ikisinde de beyaz varsa deplasmanın beyazı ters tarafta (görsel ayrım) */}
         <LinearGradient
-          colors={matchData.awayTeam.color}
+          colors={(() => {
+            const home = matchData.homeTeam.color as string[];
+            const away = matchData.awayTeam.color as string[];
+            const white = (c: string) => (c || '').toUpperCase() === '#FFFFFF' || (c || '').toUpperCase() === '#FFF';
+            const homeHasWhite = home?.some(white);
+            const awayHasWhite = away?.some(white);
+            if (homeHasWhite && awayHasWhite && away?.length >= 2) return [...away].reverse();
+            return away;
+          })()}
           style={styles.colorBarRight}
           start={{ x: 0, y: 0 }}
           end={{ x: 0, y: 1 }}
@@ -364,14 +504,20 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
             <Text style={styles.leagueText}>{matchData.league}</Text>
           </View>
 
-          <TouchableOpacity
-            onPress={() => setShowResetPredictionsModal(true)}
-            style={styles.starButton}
-            hitSlop={12}
-            accessibilityLabel="Tahminleri silmek istiyor musunuz?"
-          >
-            <Ionicons name="star" size={24} color="#F59E0B" />
-          </TouchableOpacity>
+          {hasPrediction && (
+            <TouchableOpacity
+              onPress={() => {
+                if (bothFavorites) setShowResetTeamPickerModal(true);
+                else setShowResetPredictionsModal(true);
+              }}
+              style={styles.starButton}
+              hitSlop={12}
+              accessibilityLabel="Tahminleri silmek istiyor musunuz?"
+            >
+              <Ionicons name="star" size={24} color="#F59E0B" />
+              <Text style={styles.starButtonText}>Tahmin{'\n'}Yapıldı</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Match Info */}
@@ -419,7 +565,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
         {renderContent()}
       </View>
 
-      {/* Tahminleri sil popup – header yıldızına basınca */}
+      {/* Tahminleri sil popup – header yıldızına basınca (tek takım) */}
       {showResetPredictionsModal && (
         <ConfirmModal
           visible={true}
@@ -427,9 +573,51 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
           message="Bu maça yapılan tahminleri silmek istiyor musunuz?"
           buttons={[
             { text: 'Hayır', style: 'cancel', onPress: () => { setShowResetPredictionsModal(false); setActiveTab('squad'); } },
-            { text: 'Sil', style: 'destructive', onPress: handleResetPredictionsConfirm },
+            { text: 'Sil', style: 'destructive', onPress: () => handleResetPredictionsConfirm() },
           ]}
           onRequestClose={() => setShowResetPredictionsModal(false)}
+        />
+      )}
+
+      {/* İki favori maç: Hangi takım için tahmin yapmak / değiştirmek istiyorsunuz? */}
+      {showTeamPickerModal && matchData && bothFavorites && (
+        <ConfirmModal
+          visible={true}
+          title="Hangi favori takıma tahmin yapmak istersiniz?"
+          message="Önce bir takım seçin; kadro ve tahmin süreci o takım için açılacak."
+          buttons={[
+            { text: String(matchData.homeTeam?.name ?? 'Ev Sahibi'), onPress: () => { setSelectedPredictionTeamId(homeId!); setShowTeamPickerModal(false); } },
+            { text: String(matchData.awayTeam?.name ?? 'Deplasman'), onPress: () => { setSelectedPredictionTeamId(awayId!); setShowTeamPickerModal(false); } },
+          ]}
+          onRequestClose={() => setShowTeamPickerModal(false)}
+        />
+      )}
+
+      {/* İki favori maç: Yıldıza basınca – Hangi takım için tahmini silmek istiyorsunuz? */}
+      {showResetTeamPickerModal && matchData && bothFavorites && (
+        <ConfirmModal
+          visible={true}
+          title="Hangi takım için tahmini silmek istiyorsunuz?"
+          message="Silmek istediğiniz takımın tahminlerini seçin."
+          buttons={[
+            { text: String(matchData.homeTeam?.name ?? 'Ev Sahibi'), onPress: () => { setShowResetTeamPickerModal(false); handleResetPredictionsConfirm(homeId!); } },
+            { text: String(matchData.awayTeam?.name ?? 'Deplasman'), onPress: () => { setShowResetTeamPickerModal(false); handleResetPredictionsConfirm(awayId!); } },
+          ]}
+          onRequestClose={() => setShowResetTeamPickerModal(false)}
+        />
+      )}
+
+      {/* İki favori maç: Tahmin kaydedildikten sonra – Diğer takım için de tahmin yapmak ister misin? */}
+      {showOfferOtherTeamModal && matchData && otherTeamIdForOffer != null && (
+        <ConfirmModal
+          visible={true}
+          title="Diğer takım için de tahmin yapmak ister misiniz?"
+          message={`${otherTeamIdForOffer === homeId ? matchData.homeTeam?.name : matchData.awayTeam?.name} için de tahmin yapabilirsiniz.`}
+          buttons={[
+            { text: 'Hayır', style: 'cancel', onPress: () => { setShowOfferOtherTeamModal(false); setOtherTeamIdForOffer(null); } },
+            { text: 'Evet', onPress: () => { setSelectedPredictionTeamId(otherTeamIdForOffer); setActiveTab('squad'); setShowOfferOtherTeamModal(false); setOtherTeamIdForOffer(null); } },
+          ]}
+          onRequestClose={() => { setShowOfferOtherTeamModal(false); setOtherTeamIdForOffer(null); }}
         />
       )}
 
@@ -631,14 +819,24 @@ const styles = StyleSheet.create({
     color: '#1FA2A6', // ✅ Design System: Secondary/Turkuaz
   },
   starButton: {
-    width: 40,
-    height: 40,
+    width: 50,
+    minHeight: 50,
     borderRadius: 12,
     backgroundColor: 'rgba(15, 42, 36, 0.95)',
     borderWidth: 1,
     borderColor: 'rgba(245, 158, 11, 0.4)',
     alignItems: 'center',
     justifyContent: 'center',
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+  },
+  starButtonText: {
+    fontSize: 9,
+    fontWeight: '600',
+    color: '#F59E0B',
+    textAlign: 'center',
+    marginTop: 2,
+    lineHeight: 11,
   },
   
   // Match Info
