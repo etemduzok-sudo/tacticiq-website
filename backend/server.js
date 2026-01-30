@@ -8,6 +8,9 @@ require('dotenv').config();
 // ✅ SECURITY: Import auth middleware for protected endpoints
 const { authenticateApiKey } = require('./middleware/auth');
 
+// 📊 Player Ratings Scheduler (Haftalık güncelleme)
+const playerRatingsScheduler = require('./services/playerRatingsScheduler');
+
 // 🛡️ Global Error Handlers - Backend'in sürekli durmasını engeller
 process.on('uncaughtException', (error) => {
   const timestamp = new Date().toISOString();
@@ -432,6 +435,42 @@ app.post('/api/services/auto-restart', (req, res) => {
   res.json({ success: true, enabled: autoRestartEnabled });
 });
 
+// ============================================
+// PLAYER RATINGS API
+// ============================================
+
+// GET /api/admin/player-ratings/status - Scheduler durumu
+app.get('/api/admin/player-ratings/status', authenticateApiKey, (req, res) => {
+  const status = playerRatingsScheduler.getSchedulerStatus();
+  res.json({ success: true, ...status });
+});
+
+// POST /api/admin/player-ratings/update - Manuel güncelleme tetikle
+app.post('/api/admin/player-ratings/update', authenticateApiKey, async (req, res) => {
+  const { leagueId } = req.body;
+  
+  try {
+    const result = await playerRatingsScheduler.triggerManualUpdate(leagueId || null);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// GET /api/admin/player-ratings/leagues - Desteklenen ligler
+app.get('/api/admin/player-ratings/leagues', authenticateApiKey, (req, res) => {
+  const { SUPPORTED_LEAGUES } = require('./scripts/update-all-player-ratings');
+  res.json({ 
+    success: true, 
+    leagues: Object.entries(SUPPORTED_LEAGUES).map(([name, info]) => ({
+      name,
+      id: info.id,
+      country: info.country,
+      priority: info.priority,
+    }))
+  });
+});
+
 // Error handler
 app.use((err, req, res, next) => {
   console.error('Error:', err);
@@ -521,6 +560,21 @@ app.listen(PORT, () => {
   }
   
   // ============================================
+  // 5. PLAYER RATINGS SCHEDULER
+  // ============================================
+  // Haftalık oyuncu rating güncellemesi
+  // Her Pazartesi 03:00 (tam güncelleme)
+  // Her gün 04:00 (öncelikli ligler)
+  // ============================================
+  
+  try {
+    playerRatingsScheduler.startScheduler();
+    console.log(`📊 Player ratings scheduler started`);
+  } catch (error) {
+    console.warn('⚠️ Player ratings scheduler could not be started:', error.message);
+  }
+  
+  // ============================================
   // STARTUP COMPLETE
   // ============================================
   console.log('\n');
@@ -532,6 +586,7 @@ app.listen(PORT, () => {
   console.log('║   • Static Teams (2x/day) - Team data updates             ║');
   console.log('║   • Leaderboard Snapshots - Daily/weekly rankings         ║');
   console.log('║   • Monitoring - Health checks & alerts                   ║');
+  console.log('║   • Player Ratings (Weekly) - Attributes & ratings        ║');
   console.log('╚════════════════════════════════════════════════════════════╝');
   console.log('\n');
 });
