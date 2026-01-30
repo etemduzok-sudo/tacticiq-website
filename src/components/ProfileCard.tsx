@@ -311,6 +311,76 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
             </View>
             </TouchableOpacity>
 
+            {/* ✅ Takım Filtre Barı - Header olmadan sadece chip'ler */}
+            {showTeamFilter && favoriteTeams.length > 0 && (
+              <View style={styles.teamFilterSection}>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.teamFilterScroll}
+                >
+                  {/* Tümü Chip */}
+                  <TouchableOpacity
+                    style={[
+                      styles.teamFilterChip,
+                      selectedTeamIds.length === 0 && styles.teamFilterChipActive,
+                    ]}
+                    onPress={() => onTeamSelect?.(null)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons 
+                      name="grid" 
+                      size={14} 
+                      color={selectedTeamIds.length === 0 ? '#FFFFFF' : '#94A3B8'} 
+                    />
+                    <Text style={[
+                      styles.teamFilterChipText,
+                      selectedTeamIds.length === 0 && styles.teamFilterChipTextActive,
+                    ]}>
+                      Tümü
+                    </Text>
+                  </TouchableOpacity>
+
+                  {/* Favori Takım Chip'leri */}
+                  {favoriteTeams.map((team) => {
+                    const isSelected = selectedTeamIds.includes(team.id);
+                    const colors = getTeamColors(team.name);
+                    return (
+                      <TouchableOpacity
+                        key={team.id}
+                        style={[
+                          styles.teamFilterChip,
+                          isSelected && styles.teamFilterChipActive,
+                        ]}
+                        onPress={() => onTeamSelect?.(team.id)}
+                        activeOpacity={0.7}
+                      >
+                        {/* Takım renk badge */}
+                        <View style={styles.teamChipBadge}>
+                          <View style={[styles.teamChipStripe, { backgroundColor: colors[0] }]} />
+                          <View style={[styles.teamChipStripe, { backgroundColor: colors[1] }]} />
+                        </View>
+                        <Text 
+                          style={[
+                            styles.teamFilterChipText,
+                            isSelected && styles.teamFilterChipTextActive,
+                          ]} 
+                          numberOfLines={1}
+                        >
+                          {team.name.length > 12 ? team.name.substring(0, 10) + '...' : team.name}
+                        </Text>
+                        {isSelected && (
+                          <View style={styles.teamChipCheck}>
+                            <Ionicons name="checkmark" size={10} color="#FFFFFF" />
+                          </View>
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            )}
+
             </View>
           </View>
         </View>
@@ -382,7 +452,7 @@ const styles = StyleSheet.create({
     marginTop: 0,
     marginBottom: 0,
   },
-  // Card wrapper - max yükseklik kadro sekmesindeki maç kartı ile aynı (~220px)
+  // Card wrapper - takım filtresi dahil
   cardWrapper: {
     position: 'relative',
     borderTopLeftRadius: 0,
@@ -391,7 +461,7 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 12,
     overflow: 'hidden',
     backgroundColor: '#0F2A24',
-    maxHeight: 220, // Kadro sekmesindeki maç kartı yüksekliği kadar
+    // maxHeight kaldırıldı - takım filtresi barı için alan gerekli
   },
   // Grid Pattern Background - Splash screen ile uyumlu (40px, flu)
   gridPattern: {

@@ -1034,6 +1034,15 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
   const [formationType, setFormationType] = useState<'attack' | 'defense' | 'balanced'>('attack');
   const [selectedPlayerForDetail, setSelectedPlayerForDetail] = useState<typeof players[0] | null>(null);
   
+  // ✅ editingMode değiştiğinde formationType'ı senkronize et
+  React.useEffect(() => {
+    if (editingMode === 'defense') {
+      setFormationType('defense');
+    } else if (editingMode === 'attack') {
+      setFormationType('attack');
+    }
+  }, [editingMode]);
+  
   // Player Predictions State
   const [playerPredictions, setPlayerPredictions] = useState<Record<number, any>>({});
   
@@ -1560,7 +1569,11 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
           <View style={styles.bottomBarLeft}>
             <TouchableOpacity
               style={styles.changeFormationButton}
-              onPress={() => setShowFormationModal(true)}
+              onPress={() => {
+                // ✅ Modal açılırken formationType'ı editingMode ile senkronize et
+                setFormationType(editingMode === 'defense' ? 'defense' : 'attack');
+                setShowFormationModal(true);
+              }}
               activeOpacity={0.7}
             >
               <Ionicons name="swap-horizontal" size={16} color="#1FA2A6" />
