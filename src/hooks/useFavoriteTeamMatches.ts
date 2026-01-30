@@ -225,13 +225,14 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
     // ✅ Sadece takım çıkarıldıysa: Mevcut maçları filtrele (cache temizleme gerekmez)
     else if (removedTeamIds.length > 0) {
       logger.info('🗑️ Teams removed, filtering existing matches...', { removedTeams: removedTeamIds }, 'MATCHES');
-      const favoriteTeamIds = favoriteTeams.map(t => t.id);
+      const favoriteTeamIds = new Set(favoriteTeams.map(t => Number(t.id)));
       const filterMatches = (matches: Match[]) => {
         if (!matches || matches.length === 0) return [];
-        return matches.filter(m => 
-          favoriteTeamIds.includes(m.teams?.home?.id) || 
-          favoriteTeamIds.includes(m.teams?.away?.id)
-        );
+        return matches.filter(m => {
+          const homeId = m.teams?.home?.id != null ? Number(m.teams.home.id) : null;
+          const awayId = m.teams?.away?.id != null ? Number(m.teams.away.id) : null;
+          return (homeId != null && favoriteTeamIds.has(homeId)) || (awayId != null && favoriteTeamIds.has(awayId));
+        });
       };
       
       setPastMatches(prev => filterMatches(prev));
@@ -508,15 +509,18 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
         }
       };
       
-      // 🚀 Tüm takımları PARALEL olarak çek
+      // 🚀 Tüm takımları PARALEL olarak çek (bir takım hata verse bile diğerlerinin verisi kalsın)
       const teamMatchPromises = favoriteTeams.map(fetchTeamMatches);
-      const teamMatchResults = await Promise.all(teamMatchPromises);
+      const settled = await Promise.allSettled(teamMatchPromises);
       
-      // Log her takım için kaç maç geldi
-      teamMatchResults.forEach((matches, index) => {
+      settled.forEach((result, index) => {
         const team = favoriteTeams[index];
-        logger.debug(`✅ Team ${team.name} (${team.id}): ${matches.length} matches`, undefined, 'MATCHES');
-        allMatches.push(...matches);
+        if (result.status === 'fulfilled' && Array.isArray(result.value)) {
+          logger.debug(`✅ Team ${team.name} (${team.id}): ${result.value.length} matches`, undefined, 'MATCHES');
+          allMatches.push(...result.value);
+        } else {
+          logger.warn(`⚠️ Team ${team.name} (${team.id}): fetch failed`, result.status === 'rejected' ? { reason: (result as PromiseRejectedResult).reason } : {}, 'MATCHES');
+        }
       });
       
       logger.info('✅ All teams fetched', { 
@@ -557,21 +561,22 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
         duplicatesRemoved: allMatches.length - uniqueMatches.length
       }, 'MATCHES');
       
-      // ✅ KRITIK: Sadece favori takımların maçlarını filtrele (ID-based)
-      const favoriteTeamIds = favoriteTeams.map(t => t.id);
+      // ✅ KRITIK: Sadece favori takımların maçlarını filtrele (ID-based, number/string güvenli)
+      const favoriteTeamIds = favoriteTeams.map(t => Number(t.id));
+      const favoriteIdSet = new Set(favoriteTeamIds);
       let favoriteMatchCount = 0;
       const favoriteMatches = uniqueMatches.filter(m => {
-        const homeId = m.teams?.home?.id;
-        const awayId = m.teams?.away?.id;
-        const isFavorite = favoriteTeamIds.includes(homeId) || favoriteTeamIds.includes(awayId);
+        const homeId = m.teams?.home?.id != null ? Number(m.teams.home.id) : null;
+        const awayId = m.teams?.away?.id != null ? Number(m.teams.away.id) : null;
+        const isFavorite = (homeId != null && favoriteIdSet.has(homeId)) || (awayId != null && favoriteIdSet.has(awayId));
         
         // Log first few matches for debugging
         if (isFavorite && favoriteMatchCount < 3) {
           favoriteMatchCount++;
           logger.debug('✅ Favorite match found', {
             teams: `${m.teams?.home?.name} (${homeId}) vs ${m.teams?.away?.name} (${awayId})`,
-            homeInFavorites: favoriteTeamIds.includes(homeId),
-            awayInFavorites: favoriteTeamIds.includes(awayId)
+            homeInFavorites: homeId != null && favoriteIdSet.has(homeId),
+            awayInFavorites: awayId != null && favoriteIdSet.has(awayId)
           }, 'MATCHES');
         }
         

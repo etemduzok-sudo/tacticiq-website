@@ -419,13 +419,13 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
     if (__DEV__) console.log('📌 MatchPrediction mounted (build: focus+confirm+tamamla-fix)');
   }, []);
 
-  // Match predictions state - COMPLETE
+  // Match predictions state - COMPLETE (skorlar varsayılan 0-0)
   const [predictions, setPredictions] = useState({
-    firstHalfHomeScore: null as number | null,
-    firstHalfAwayScore: null as number | null,
+    firstHalfHomeScore: 0 as number | null,
+    firstHalfAwayScore: 0 as number | null,
     firstHalfInjuryTime: null as string | null,
-    secondHalfHomeScore: null as number | null,
-    secondHalfAwayScore: null as number | null,
+    secondHalfHomeScore: 0 as number | null,
+    secondHalfAwayScore: 0 as number | null,
     secondHalfInjuryTime: null as string | null,
     totalGoals: null as string | null,
     firstGoalTime: null as string | null,
@@ -448,7 +448,17 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
         const data = await AsyncStorage.getItem(predictionStorageKey) || await AsyncStorage.getItem(altKey);
         if (!data) return;
         const parsed = JSON.parse(data);
-        if (parsed.matchPredictions) setPredictions(prev => ({ ...prev, ...parsed.matchPredictions }));
+        if (parsed.matchPredictions) {
+          const loaded = parsed.matchPredictions as Record<string, unknown>;
+          setPredictions(prev => ({
+            ...prev,
+            ...loaded,
+            firstHalfHomeScore: loaded.firstHalfHomeScore != null ? (loaded.firstHalfHomeScore as number) : 0,
+            firstHalfAwayScore: loaded.firstHalfAwayScore != null ? (loaded.firstHalfAwayScore as number) : 0,
+            secondHalfHomeScore: loaded.secondHalfHomeScore != null ? (loaded.secondHalfHomeScore as number) : 0,
+            secondHalfAwayScore: loaded.secondHalfAwayScore != null ? (loaded.secondHalfAwayScore as number) : 0,
+          }));
+        }
         if (parsed.playerPredictions && typeof parsed.playerPredictions === 'object') setPlayerPredictions(parsed.playerPredictions);
         if (Array.isArray(parsed.focusedPredictions)) setFocusedPredictions(parsed.focusedPredictions);
         if (parsed.selectedAnalysisFocus) setSelectedAnalysisFocus(parsed.selectedAnalysisFocus);
@@ -1046,14 +1056,14 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
               {(() => {
                 const row1 = ['+1 dk', '+2 dk', '+3 dk', '+4 dk', '+5 dk'];
                 const row2 = ['+6 dk', '+7 dk', '+8 dk', '+9 dk', '+10 dk'];
+                const injuryTimeLabel = (t: string) => (t === '+10 dk' ? '10+' : t.replace(' dk', ''));
                 return (
                   <View style={styles.injuryTimeGrid}>
                     <View style={styles.injuryTimeRow}>{row1.map((time) => {
                       const isSelected = predictions.firstHalfInjuryTime === time;
                       return (
                         <TouchableOpacity key={time} style={[styles.minuteRangeButtonCompact, styles.injuryTimeButton, styles.injuryTimeButtonPadding, isSelected && styles.minuteRangeButtonCompactSelected]} onPress={() => handlePredictionChange('firstHalfInjuryTime', time)} activeOpacity={0.7}>
-                          <Text style={[styles.minuteRangeTextCompact, styles.injuryTimeButtonText, isSelected && styles.minuteRangeTextCompactSelected]} numberOfLines={1}>{time.replace(' dk', '')}</Text>
-                          {isSelected && <View style={styles.minuteRangeCheckmark}><Ionicons name="checkmark" size={12} color="#FFFFFF" /></View>}
+                          <Text style={[styles.minuteRangeTextCompact, styles.injuryTimeButtonText, isSelected && styles.minuteRangeTextCompactSelected]} numberOfLines={1}>{injuryTimeLabel(time)}</Text>
                         </TouchableOpacity>
                       );
                     })}</View>
@@ -1061,8 +1071,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                       const isSelected = predictions.firstHalfInjuryTime === time;
                       return (
                         <TouchableOpacity key={time} style={[styles.minuteRangeButtonCompact, styles.injuryTimeButton, styles.injuryTimeButtonPadding, isSelected && styles.minuteRangeButtonCompactSelected]} onPress={() => handlePredictionChange('firstHalfInjuryTime', time)} activeOpacity={0.7}>
-                          <Text style={[styles.minuteRangeTextCompact, styles.injuryTimeButtonText, isSelected && styles.minuteRangeTextCompactSelected]} numberOfLines={1}>{time.replace(' dk', '')}</Text>
-                          {isSelected && <View style={styles.minuteRangeCheckmark}><Ionicons name="checkmark" size={12} color="#FFFFFF" /></View>}
+                          <Text style={[styles.minuteRangeTextCompact, styles.injuryTimeButtonText, isSelected && styles.minuteRangeTextCompactSelected]} numberOfLines={1}>{injuryTimeLabel(time)}</Text>
                         </TouchableOpacity>
                       );
                     })}</View>
@@ -1179,14 +1188,14 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
               {(() => {
                 const row1 = ['+1 dk', '+2 dk', '+3 dk', '+4 dk', '+5 dk'];
                 const row2 = ['+6 dk', '+7 dk', '+8 dk', '+9 dk', '+10 dk'];
+                const injuryTimeLabel = (t: string) => (t === '+10 dk' ? '10+' : t.replace(' dk', ''));
                 return (
                   <View style={styles.injuryTimeGrid}>
                     <View style={styles.injuryTimeRow}>{row1.map((time) => {
                       const isSelected = predictions.secondHalfInjuryTime === time;
                       return (
                         <TouchableOpacity key={time} style={[styles.minuteRangeButtonCompact, styles.injuryTimeButton, styles.injuryTimeButtonPadding, isSelected && styles.minuteRangeButtonCompactSelected]} onPress={() => handlePredictionChange('secondHalfInjuryTime', time)} activeOpacity={0.7}>
-                          <Text style={[styles.minuteRangeTextCompact, styles.injuryTimeButtonText, isSelected && styles.minuteRangeTextCompactSelected]} numberOfLines={1}>{time.replace(' dk', '')}</Text>
-                          {isSelected && <View style={styles.minuteRangeCheckmark}><Ionicons name="checkmark" size={12} color="#FFFFFF" /></View>}
+                          <Text style={[styles.minuteRangeTextCompact, styles.injuryTimeButtonText, isSelected && styles.minuteRangeTextCompactSelected]} numberOfLines={1}>{injuryTimeLabel(time)}</Text>
                         </TouchableOpacity>
                       );
                     })}</View>
@@ -1194,8 +1203,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                       const isSelected = predictions.secondHalfInjuryTime === time;
                       return (
                         <TouchableOpacity key={time} style={[styles.minuteRangeButtonCompact, styles.injuryTimeButton, styles.injuryTimeButtonPadding, isSelected && styles.minuteRangeButtonCompactSelected]} onPress={() => handlePredictionChange('secondHalfInjuryTime', time)} activeOpacity={0.7}>
-                          <Text style={[styles.minuteRangeTextCompact, styles.injuryTimeButtonText, isSelected && styles.minuteRangeTextCompactSelected]} numberOfLines={1}>{time.replace(' dk', '')}</Text>
-                          {isSelected && <View style={styles.minuteRangeCheckmark}><Ionicons name="checkmark" size={12} color="#FFFFFF" /></View>}
+                          <Text style={[styles.minuteRangeTextCompact, styles.injuryTimeButtonText, isSelected && styles.minuteRangeTextCompactSelected]} numberOfLines={1}>{injuryTimeLabel(time)}</Text>
                         </TouchableOpacity>
                       );
                     })}</View>
@@ -1283,11 +1291,6 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                               <Text style={[styles.minuteRangeTextCompact, styles.injuryTimeButtonText, isSelected && styles.minuteRangeTextCompactSelected]} numberOfLines={1}>
                                 {range.label}
                               </Text>
-                              {isSelected && (
-                                <View style={styles.minuteRangeCheckmark}>
-                                  <Ionicons name="checkmark" size={12} color="#FFFFFF" />
-                                </View>
-                              )}
                             </TouchableOpacity>
                           );
                         })}
@@ -1305,11 +1308,6 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                               <Text style={[styles.minuteRangeTextCompact, styles.injuryTimeButtonText, isSelected && styles.minuteRangeTextCompactSelected]} numberOfLines={1}>
                                 {range.label}
                               </Text>
-                              {isSelected && (
-                                <View style={styles.minuteRangeCheckmark}>
-                                  <Ionicons name="checkmark" size={12} color="#FFFFFF" />
-                                </View>
-                              )}
                             </TouchableOpacity>
                           );
                         })}
@@ -2152,7 +2150,6 @@ const PlayerPredictionModal = ({
                                       {item.name}
                                     </Text>
                                   </View>
-                                  {isSelected && <Ionicons name="checkmark" size={18} color="#1FA2A6" />}
                                 </TouchableOpacity>
                               );
                             }}
@@ -2164,7 +2161,7 @@ const PlayerPredictionModal = ({
                     )}
                   </View>
 
-                  {/* Dakika Aralığı - 2 satır (4+4) */}
+                  {/* Dakika Aralığı - seçim sadece renkle gösterilir */}
                   <View style={styles.minuteRangeContainer}>
                     <Text style={styles.dropdownLabel}>Değişiklik Dakikası</Text>
                     <View style={styles.minuteRanges2RowGridCompact}>
@@ -2181,11 +2178,6 @@ const PlayerPredictionModal = ({
                               <Text style={[styles.minuteRangeTextCompact, isSelected && styles.minuteRangeTextCompactSelected]}>
                                 {range.label}
                               </Text>
-                              {isSelected && (
-                                <View style={styles.minuteRangeCheckmark}>
-                                  <Ionicons name="checkmark" size={12} color="#FFFFFF" />
-                                </View>
-                              )}
                             </TouchableOpacity>
                           );
                         })}
@@ -2203,11 +2195,6 @@ const PlayerPredictionModal = ({
                               <Text style={[styles.minuteRangeTextCompact, isSelected && styles.minuteRangeTextCompactSelected]}>
                                 {range.label}
                               </Text>
-                              {isSelected && (
-                                <View style={styles.minuteRangeCheckmark}>
-                                  <Ionicons name="checkmark" size={12} color="#FFFFFF" />
-                                </View>
-                              )}
                             </TouchableOpacity>
                           );
                         })}
@@ -2319,7 +2306,6 @@ const PlayerPredictionModal = ({
                                       {item.name}
                                     </Text>
                                   </View>
-                                  {isSelected && <Ionicons name="checkmark" size={18} color="#1FA2A6" />}
                                 </TouchableOpacity>
                               );
                             }}
@@ -2331,7 +2317,7 @@ const PlayerPredictionModal = ({
                     )}
                   </View>
 
-                  {/* Dakika Aralığı - 2 satır (4+4) */}
+                  {/* Dakika Aralığı - seçim sadece renkle gösterilir */}
                   <View style={styles.minuteRangeContainer}>
                     <Text style={styles.dropdownLabel}>Değişiklik Dakikası</Text>
                     <View style={styles.minuteRanges2RowGridCompact}>
@@ -2348,11 +2334,6 @@ const PlayerPredictionModal = ({
                               <Text style={[styles.minuteRangeTextCompact, isSelected && styles.minuteRangeTextCompactSelected]}>
                                 {range.label}
                               </Text>
-                              {isSelected && (
-                                <View style={styles.minuteRangeCheckmark}>
-                                  <Ionicons name="checkmark" size={12} color="#FFFFFF" />
-                                </View>
-                              )}
                             </TouchableOpacity>
                           );
                         })}
@@ -2370,11 +2351,6 @@ const PlayerPredictionModal = ({
                               <Text style={[styles.minuteRangeTextCompact, isSelected && styles.minuteRangeTextCompactSelected]}>
                                 {range.label}
                               </Text>
-                              {isSelected && (
-                                <View style={styles.minuteRangeCheckmark}>
-                                  <Ionicons name="checkmark" size={12} color="#FFFFFF" />
-                                </View>
-                              )}
                             </TouchableOpacity>
                           );
                         })}
@@ -3958,7 +3934,7 @@ const styles = StyleSheet.create({
   },
   injuryTimeButton: {
     flex: 1,
-    minWidth: 0,
+    minWidth: 36,
   },
   injuryTimeButtonText: {
     fontSize: 13,

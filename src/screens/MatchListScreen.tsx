@@ -65,15 +65,16 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
   const { liveMatches = [], pastMatches = [], loading, error, hasLoadedOnce } = matchData;
 
   // ✅ Takım filtresi: boş = tüm favoriler, dolu = sadece seçili takımların maçları
+  // ID tip tutarlılığı: API bazen number bazen string dönebilir, hepsini number ile karşılaştır
   const filterByTeamIds = React.useCallback((matches: any[], teamIds: number[]) => {
     if (!matches.length) return [];
     if (favoriteTeams.length === 0) return matches;
-    const ids = teamIds.length === 0 ? favoriteTeams.map(t => t.id) : teamIds;
+    const ids = teamIds.length === 0 ? favoriteTeams.map(t => Number(t.id)) : teamIds.map(id => Number(id));
     const idSet = new Set(ids);
     return matches.filter(m => {
-      const homeId = m.teams?.home?.id;
-      const awayId = m.teams?.away?.id;
-      return homeId != null && idSet.has(homeId) || awayId != null && idSet.has(awayId);
+      const homeId = m.teams?.home?.id != null ? Number(m.teams.home.id) : null;
+      const awayId = m.teams?.away?.id != null ? Number(m.teams.away.id) : null;
+      return (homeId != null && idSet.has(homeId)) || (awayId != null && idSet.has(awayId));
     });
   }, [favoriteTeams]);
 

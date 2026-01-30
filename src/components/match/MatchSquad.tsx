@@ -1254,33 +1254,11 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
       }
       
       if (editingMode === 'attack') {
-        setAttackPlayers({ ...attackPlayers, [selectedSlot]: player });
-        // ✅ Kadro tamamlandıktan sonra atakta oyuncu değişikliği: defansı sıfırla, uyarı ver, defans formasyonu tekrar sorulsun
+        const newAttack = { ...attackPlayers, [selectedSlot]: player };
+        setAttackPlayers(newAttack);
+        // ✅ Formasyon değişmeden oyuncu değişikliği: sadece defans kadrosu (form) yenilenir, formasyon aynı kalır
         if (defenseFormation != null) {
-          setDefenseFormation(null);
-          setDefensePlayers({});
-          setDefenseConfirmShown(false);
-          (async () => {
-            try {
-              const key = squadStorageKey;
-              const raw = await AsyncStorage.getItem(key);
-              if (raw) {
-                const parsed = JSON.parse(raw);
-                parsed.isCompleted = false;
-                await AsyncStorage.setItem(key, JSON.stringify(parsed));
-              }
-            } catch (e) { console.warn('isCompleted reset failed', e); }
-          })();
-          setSelectedSlot(null);
-          setShowPlayerModal(false);
-          setTimeout(() => {
-            Alert.alert(
-              'Defans Formasyonunu Güncelleyin',
-              'Oyuncu değişikliği yaptınız. Defans formasyonu ve oyuncu yerleşimini de güncellemeniz gerekiyor. Aynı formasyonla devam etmek veya yeni defans formasyonu seçmek için Tamam\'a basın.',
-              [{ text: 'Tamam', onPress: () => setShowDefenseConfirmModal(true) }]
-            );
-          }, 300);
-          return;
+          setDefensePlayers(prev => ({ ...prev, [selectedSlot]: player }));
         }
       } else {
         setDefensePlayers({ ...defensePlayers, [selectedSlot]: player });
@@ -1290,33 +1268,33 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
       setShowPlayerModal(false);
       
       const modeText = editingMode === 'attack' ? 'atak' : 'defans';
-      Alert.alert('Oyuncu Yerleştirildi!', `${player.name} ${modeText} kadronuza eklendi`);
+      const message = editingMode === 'attack' && defenseFormation != null
+        ? `${player.name} atak kadronuza güncellendi. Defans kadrosu da aynı değişiklikle yenilendi.`
+        : `${player.name} ${modeText} kadronuza eklendi`;
+      Alert.alert('Oyuncu Yerleştirildi!', message);
     }
   };
 
   const handleRemovePlayer = async (slotIndex: number) => {
     const player = selectedPlayers[slotIndex];
     if (player) {
-      // Directly remove player without confirmation for smoother UX
       setSelectedPlayers({ ...selectedPlayers, [slotIndex]: null });
       
-      // ✅ Atak modunda oyuncu çıkarılırsa, defans ayarlarını sıfırla (tekrar sorulsun)
-      if (editingMode === 'attack') {
-        setDefenseFormation(null);
-        setDefensePlayers({});
-        setDefenseConfirmShown(false);
-        
-        // ✅ isCompleted sıfırla (Tahmin sekmesinde saha boş olsun)
-        try {
-          const key = squadStorageKey;
-          const raw = await AsyncStorage.getItem(key);
-          if (raw) {
-            const parsed = JSON.parse(raw);
-            parsed.isCompleted = false;
-            await AsyncStorage.setItem(key, JSON.stringify(parsed));
-          }
-        } catch (e) { console.warn('isCompleted reset failed', e); }
+      // ✅ Atak modunda oyuncu çıkarılırsa: formasyon aynı kalır, sadece defans kadrosunda aynı slot boşalır
+      if (editingMode === 'attack' && defenseFormation != null) {
+        setDefensePlayers(prev => ({ ...prev, [slotIndex]: null }));
       }
+      
+      // Kadro artık 10 kişi (eksik) → isCompleted sıfırla
+      try {
+        const key = squadStorageKey;
+        const raw = await AsyncStorage.getItem(key);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          parsed.isCompleted = false;
+          await AsyncStorage.setItem(key, JSON.stringify(parsed));
+        }
+      } catch (e) { console.warn('isCompleted reset failed', e); }
     }
   };
 
