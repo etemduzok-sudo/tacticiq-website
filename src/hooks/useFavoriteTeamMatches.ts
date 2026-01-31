@@ -526,9 +526,9 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
       logger.info('✅ All teams fetched', { 
         totalMatches: allMatches.length,
         teamsProcessed: favoriteTeams.length,
-        matchesPerTeam: teamMatchResults.map((matches, i) => ({
-          team: favoriteTeams[i].name,
-          count: matches.length
+        matchesPerTeam: settled.map((result, i) => ({
+          team: favoriteTeams[i]?.name || 'Unknown',
+          count: result.status === 'fulfilled' && Array.isArray(result.value) ? result.value.length : 0
         }))
       }, 'MATCHES');
 
