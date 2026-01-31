@@ -33,7 +33,12 @@
     "noUpcomingMatches": "Nessuna partita nelle prossime 24 ore",
     "noMatchHistory": "Ancora nessuna cronologia partite",
     "points": "Punti",
-    "accuracy": "Precisione"
+    "accuracy": "Precisione",
+    "matchLoadError": "Errore nel caricamento. Riprova.",
+    "retry": "Riprova",
+    "selectFavoriteTeam": "Seleziona una squadra preferita dal profilo",
+    "noMatchesFound": "Nessuna partita trovata per le tue squadre",
+    "selectTeam": "Seleziona squadra"
   },
   "strategicFocus": {
     "tempo": {
@@ -59,6 +64,7 @@
   },
   "badges": {
     "title": "Badge",
+    "myBadges": "I Miei Badge",
     "earned": "Ottenuto",
     "locked": "Bloccato",
     "howToEarn": "Come Ottenerlo",

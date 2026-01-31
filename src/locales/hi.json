@@ -33,7 +33,12 @@
     "noUpcomingMatches": "अगले 24 घंटों में कोई मैच नहीं",
     "noMatchHistory": "अभी तक कोई मैच इतिहास नहीं",
     "points": "अंक",
-    "accuracy": "सटीकता"
+    "accuracy": "सटीकता",
+    "matchLoadError": "मैच लोड करने में त्रुटि। कृपया पुनः प्रयास करें।",
+    "retry": "पुनः प्रयास करें",
+    "selectFavoriteTeam": "प्रोफ़ाइल से अपनी पसंदीदा टीम चुनें",
+    "noMatchesFound": "आपकी टीमों के मैच नहीं मिले",
+    "selectTeam": "टीम चुनें"
   },
   "strategicFocus": {
     "tempo": {
@@ -59,6 +64,7 @@
   },
   "badges": {
     "title": "बैज",
+    "myBadges": "मेरे बैज",
     "earned": "अर्जित",
     "locked": "लॉक्ड",
     "howToEarn": "कैसे कमाएं",

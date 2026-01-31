@@ -16,6 +16,7 @@ import { getUserBadges } from '../services/badgeService';
 import { profileService } from '../services/profileService';
 import { UnifiedUserProfile } from '../types/profile.types';
 import { getTeamColors } from '../utils/teamColors';
+import { useTranslation } from '../hooks/useTranslation';
 
 interface FavoriteTeam {
   id: number;
@@ -56,6 +57,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
   onTeamSelect,
   showTeamFilter = false,
 }) => {
+  const { t } = useTranslation();
   const [showBadgePopup, setShowBadgePopup] = useState(false);
   const [earnedBadges, setEarnedBadges] = useState<Array<{ id: string; name: string; emoji: string; tier: number }>>([]);
   const badgeSlideAnim = useRef(new Animated.Value(-100)).current;
@@ -241,7 +243,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
             <View style={styles.badgesContainer}>
               <View style={styles.badgesHeader}>
                 <Ionicons name="ribbon" size={14} color="#F79F1B" />
-                <Text style={styles.badgesTitle}>Rozetlerim</Text>
+                <Text style={styles.badgesTitle}>{t('badges.myBadges')}</Text>
                 <View style={styles.badgeCount}>
                   <Text style={styles.badgeCountText}>{earnedBadges.length}</Text>
                 </View>

@@ -33,7 +33,12 @@
     "noUpcomingMatches": "24 saat içinde maç yok",
     "noMatchHistory": "Henüz maç geçmişin yok",
     "points": "Puan",
-    "accuracy": "Doğruluk"
+    "accuracy": "Doğruluk",
+    "matchLoadError": "Maçlar yüklenirken hata oluştu. Lütfen tekrar deneyin.",
+    "retry": "Tekrar Dene",
+    "selectFavoriteTeam": "Maçları görmek için profil ekranından favori takım seçin",
+    "noMatchesFound": "Favori takımlarınızın maçı bulunamadı",
+    "selectTeam": "Takım Seç"
   },
   "strategicFocus": {
     "tempo": {
@@ -59,6 +64,7 @@
   },
   "badges": {
     "title": "Rozetler",
+    "myBadges": "Rozetlerim",
     "earned": "Kazanıldı",
     "locked": "Kilitli",
     "howToEarn": "Nasıl Kazanılır",

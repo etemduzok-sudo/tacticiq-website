@@ -33,7 +33,12 @@
     "noUpcomingMatches": "未来24小时内无比赛",
     "noMatchHistory": "暂无比赛历史",
     "points": "积分",
-    "accuracy": "准确率"
+    "accuracy": "准确率",
+    "matchLoadError": "加载比赛时出错，请重试。",
+    "retry": "重试",
+    "selectFavoriteTeam": "请在个人资料中选择最爱的球队",
+    "noMatchesFound": "未找到您球队的比赛",
+    "selectTeam": "选择球队"
   },
   "strategicFocus": {
     "tempo": {
@@ -59,6 +64,7 @@
   },
   "badges": {
     "title": "徽章",
+    "myBadges": "我的徽章",
     "earned": "已获得",
     "locked": "未解锁",
     "howToEarn": "如何获得",

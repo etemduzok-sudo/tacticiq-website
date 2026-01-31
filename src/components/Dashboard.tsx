@@ -29,6 +29,7 @@ import { AnalysisFocusModal, AnalysisFocusType } from './AnalysisFocusModal';
 import { ConfirmModal } from './ui/ConfirmModal';
 import { getTeamColors } from '../utils/teamColors';
 import { useMatchesWithPredictions } from '../hooks/useMatchesWithPredictions';
+import { useTranslation } from '../hooks/useTranslation';
 
 // Coach cache - takım ID'sine göre teknik direktör isimlerini cache'le
 const coachCache: Record<number, string> = {};
@@ -55,6 +56,7 @@ interface DashboardProps {
 }
 
 export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, selectedTeamIds = [] }: DashboardProps) {
+  const { t } = useTranslation();
   const [isPremium, setIsPremium] = useState(false);
   // ✅ selectedTeamIds artık App.tsx'ten prop olarak geliyor
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -921,10 +923,10 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
             <Ionicons name="football-outline" size={48} color="#64748B" />
             <Text style={styles.emptyText}>
               {favoriteTeams.length === 0 
-                ? 'Maçları görmek için profil ekranından favori takım seçin'
+                ? t('dashboard.selectFavoriteTeam')
                 : error 
-                  ? 'Maçlar yüklenirken hata oluştu. Lütfen tekrar deneyin.'
-                  : 'Favori takımlarınızın maçı bulunamadı'}
+                  ? t('dashboard.matchLoadError')
+                  : t('dashboard.noMatchesFound')}
             </Text>
             {favoriteTeams.length === 0 && (
               <TouchableOpacity 
@@ -932,7 +934,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
                 onPress={() => onNavigate?.('profile')}
               >
                 <Ionicons name="heart-outline" size={16} color="#1FA2A6" />
-                <Text style={styles.selectTeamText}>Takım Seç</Text>
+                <Text style={styles.selectTeamText}>{t('dashboard.selectTeam')}</Text>
               </TouchableOpacity>
             )}
             {error && favoriteTeams.length > 0 && refetch && (
@@ -941,7 +943,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
                 onPress={() => refetch()}
               >
                 <Ionicons name="refresh-outline" size={16} color="#1FA2A6" />
-                <Text style={styles.selectTeamText}>Tekrar Dene</Text>
+                <Text style={styles.selectTeamText}>{t('dashboard.retry')}</Text>
               </TouchableOpacity>
             )}
           </View>
