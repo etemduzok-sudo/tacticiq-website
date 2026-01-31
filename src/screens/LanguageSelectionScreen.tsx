@@ -425,12 +425,13 @@ const styles = StyleSheet.create({
   logoContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: SPACING.xl,
-    marginBottom: SPACING.xl,
+    marginTop: 10, // Tüm ekranlarda aynı
+    marginBottom: 6,
+    height: 200,
   },
   logoImage: {
-    width: 864, // %300 büyük (288px * 3)
-    height: 864,
+    width: 200, // Tüm ekranlarda aynı logo boyutu
+    height: 200,
   },
   
   // Bilgilendirme Alanı

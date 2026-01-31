@@ -26,6 +26,7 @@ import {
   WEBSITE_ICON_SIZES,
   WEBSITE_TYPOGRAPHY as WDS_TYPOGRAPHY,
 } from '../config/WebsiteDesignSystem';
+import { AUTH_LOGO_SIZE, AUTH_LOGO_MARGIN_TOP, AUTH_LOGO_MARGIN_BOTTOM } from '../constants/logoConstants';
 // import authService from '../services/authService'; // Real Supabase
 import authService from '../services/mockAuthService'; // Mock (geçici test için)
 import socialAuthService from '../services/socialAuthService'; // Google & Apple Sign In
@@ -287,12 +288,12 @@ export default function RegisterScreen({
                   <img 
                     src="/TacticIQ.svg" 
                     alt="TacticIQ" 
-                    style={{ width: 270, height: 270 }} 
+                    style={{ width: AUTH_LOGO_SIZE, height: AUTH_LOGO_SIZE }} 
                   />
                 ) : (
                   <Image
                     source={require('../../assets/logo.png')}
-                    style={{ width: 270, height: 270 }}
+                    style={{ width: AUTH_LOGO_SIZE, height: AUTH_LOGO_SIZE }}
                     resizeMode="contain"
                   />
                 )}
@@ -556,9 +557,9 @@ const styles = StyleSheet.create({
   brandZone: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 30, // LOGO_MARGIN_TOP ile aynı
-    marginBottom: 6, // AuthScreen ile aynı
-    height: 270, // LOGO_SIZE ile aynı
+    marginTop: AUTH_LOGO_MARGIN_TOP,
+    marginBottom: AUTH_LOGO_MARGIN_BOTTOM,
+    height: AUTH_LOGO_SIZE,
     paddingVertical: 0,
   },
   brandTitle: {

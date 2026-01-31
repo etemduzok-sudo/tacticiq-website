@@ -415,10 +415,10 @@ const getNationalTeamColors = (countryName: string): string[] => {
   return NATIONAL_TEAM_COLORS[countryName] || ['#1FA2A6', '#0F2A24']; // Default colors
 };
 
-// Logo ve spacing constants (diğer ekranlarla uyumlu)
-const LOGO_SIZE = 270;
-const LOGO_MARGIN_TOP = 32;
-const LOGO_MARGIN_BOTTOM = 20;
+// Logo ve spacing constants - Tüm giriş ekranlarında aynı (200px)
+const LOGO_SIZE = 200;
+const LOGO_MARGIN_TOP = 10;
+const LOGO_MARGIN_BOTTOM = 6;
 
 export default function ProfileSetupScreen({
   onComplete,

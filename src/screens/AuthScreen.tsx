@@ -32,6 +32,7 @@ import {
   WEBSITE_ICON_SIZES,
   WEBSITE_TYPOGRAPHY as WDS_TYPOGRAPHY,
 } from '../config/WebsiteDesignSystem';
+import { AUTH_LOGO_SIZE, AUTH_LOGO_MARGIN_TOP, AUTH_LOGO_MARGIN_BOTTOM } from '../constants/logoConstants';
 
 // ============================================
 // SHARED LAYOUT CONSTANTS (MUST BE IDENTICAL)
@@ -225,12 +226,12 @@ export default function AuthScreen({
               <img 
                 src="/TacticIQ.svg" 
                 alt="TacticIQ" 
-                style={{ width: 200, height: 200, marginBottom: 32 }} 
+                style={{ width: AUTH_LOGO_SIZE, height: AUTH_LOGO_SIZE, marginBottom: 32 }} 
               />
             ) : (
               <Image
                 source={require('../../assets/logo.png')}
-                style={{ width: 200, height: 200, marginBottom: 32 }}
+                style={{ width: AUTH_LOGO_SIZE, height: AUTH_LOGO_SIZE, marginBottom: 32 }}
                 resizeMode="contain"
               />
             )}
@@ -268,18 +269,18 @@ export default function AuthScreen({
             <View style={styles.contentWrapper}>
 
               <View style={styles.content}>
-              {/* [B] BRAND ZONE - OnboardingScreen ile aynı konum (sıçrama olmasın) */}
+              {/* [B] BRAND ZONE - Tüm giriş ekranlarında aynı logo boyutu (200px) */}
               <View style={styles.brandZone}>
                 {Platform.OS === 'web' ? (
                   <img 
                     src="/TacticIQ.svg" 
                     alt="TacticIQ" 
-                    style={{ width: 270, height: 270 }} 
+                    style={{ width: 180, height: 180 }} 
                   />
                 ) : (
                   <Image
                     source={require('../../assets/logo.png')}
-                    style={{ width: 270, height: 270 }}
+                    style={{ width: 180, height: 180 }}
                     resizeMode="contain"
                   />
                 )}
@@ -528,9 +529,9 @@ const styles = StyleSheet.create({
   brandZone: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 30, // LOGO_MARGIN_TOP ile aynı
-    marginBottom: 6, // Biraz daha azaltıldı
-    height: 270, // LOGO_SIZE ile aynı
+    marginTop: 12, // Tüm ekranlarda aynı
+    marginBottom: 8,
+    height: 180, // Tüm ekranlarda aynı logo boyutu
     paddingVertical: 0,
   },
   brandTitle: {

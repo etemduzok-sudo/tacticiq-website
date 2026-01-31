@@ -43,6 +43,7 @@ import {
   WEBSITE_ICON_SIZES,
   WEBSITE_TYPOGRAPHY,
 } from '../config/WebsiteDesignSystem';
+import { AUTH_LOGO_SIZE, AUTH_LOGO_MARGIN_TOP, AUTH_LOGO_MARGIN_BOTTOM } from '../constants/logoConstants';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -85,10 +86,7 @@ const languages = [
   { code: 'hi', name: 'हिन्दी' },
 ];
 
-// Logo yüksekliği - dil seçimi için daha kompakt
-const LOGO_SIZE = 150; // 10 dil için optimize edildi
-const LOGO_MARGIN_TOP = 10;
-const LOGO_MARGIN_BOTTOM = 8;
+// Logo sabitleri logoConstants.ts'den import ediliyor (AUTH_LOGO_SIZE, AUTH_LOGO_MARGIN_TOP, AUTH_LOGO_MARGIN_BOTTOM)
 
 export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
   const { t, i18n } = useTranslation();
@@ -398,7 +396,7 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
     return translations[key]?.[selectedLanguage] || translations[key]?.['en'] || t(key) || key;
   };
 
-  // ===== LANGUAGE STEP - PREMIUM DESIGN =====
+  // ===== LANGUAGE STEP - PREMIUM DESIGN (No Scroll) =====
   const renderLanguageStep = () => (
     <View style={styles.stepContainer}>
       {/* 🌍 Animasyonlu dönen subtitle - tüm dillerde */}
@@ -406,18 +404,14 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
         opacity: subtitleFade,
         alignItems: 'center',
         justifyContent: 'center',
-        marginBottom: 12,
+        marginBottom: 10,
         marginTop: 0,
       }}>
-        <Text style={[styles.stepSubtitle, { fontSize: 16, fontWeight: '600', marginBottom: 0 }]}>{subtitleTranslations[subtitleLangIndex].text}</Text>
+        <Text style={[styles.stepSubtitle, { fontSize: 15, fontWeight: '600', marginBottom: 0 }]}>{subtitleTranslations[subtitleLangIndex].text}</Text>
       </Animated.View>
 
-      {/* 2 sütun 5 satır grid - 10 dil için */}
-      <ScrollView 
-        style={styles.languageScrollView} 
-        contentContainerStyle={styles.languageGridPremium}
-        showsVerticalScrollIndicator={false}
-      >
+      {/* 2 sütun 5 satır grid - 10 dil için - NO SCROLL */}
+      <View style={styles.languageGridPremium}>
         {languages.map((lang) => (
           <TouchableOpacity
             key={lang.code}
@@ -438,7 +432,7 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
             </LinearGradient>
           </TouchableOpacity>
         ))}
-      </ScrollView>
+      </View>
     </View>
   );
 
@@ -807,12 +801,12 @@ const styles = StyleSheet.create({
   // Logo - Her sayfada aynı (sıçrama yok)
   logoContainer: {
     alignItems: 'center',
-    marginTop: LOGO_MARGIN_TOP, 
-    marginBottom: LOGO_MARGIN_BOTTOM,
-    height: LOGO_SIZE,
+    marginTop: AUTH_LOGO_MARGIN_TOP, 
+    marginBottom: AUTH_LOGO_MARGIN_BOTTOM,
+    height: AUTH_LOGO_SIZE,
     justifyContent: 'center',
   },
-  logo: { width: LOGO_SIZE, height: LOGO_SIZE },
+  logo: { width: AUTH_LOGO_SIZE, height: AUTH_LOGO_SIZE },
 
   // Progress - Tüm sayfalarda altta (sıçrama ve çakışma önleme)
   progressRow: { 
@@ -863,45 +857,38 @@ const styles = StyleSheet.create({
     marginBottom: WEBSITE_SPACING.lg,
   },
 
-  // Language ScrollView
-  languageScrollView: {
-    flex: 1,
-    maxHeight: 420, // 5 satır için yeterli
-  },
-  // PREMIUM Language Grid - 2 sütun 5 satır (10 dil için)
+  // PREMIUM Language Grid - 2 sütun 5 satır (10 dil için) - NO SCROLL
   languageGridPremium: { 
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
+    gap: 5,
     justifyContent: 'space-between',
-    paddingBottom: 8,
   },
   languageCardPremium: { 
     width: '48%',
-    borderRadius: WEBSITE_BORDER_RADIUS.lg, 
+    borderRadius: 10, 
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: `rgba(31,162,166,${0.25})`,
-    marginBottom: 6,
+    marginBottom: 5,
   },
   languageCardGradient: {
     alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 6,
   },
   flagWrapperGrid: { 
-    width: 32, 
-    height: 32, 
+    width: 28, 
+    height: 28, 
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 4,
+    marginBottom: 3,
   },
   languageNameGrid: { 
-    fontSize: 13, 
+    fontSize: 12, 
     fontWeight: '600', 
     color: WEBSITE_BRAND_COLORS.white,
     textAlign: 'center',
-    letterSpacing: 0.2,
   },
 
   // Date Row

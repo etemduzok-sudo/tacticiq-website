@@ -152,12 +152,12 @@ export default function ForgotPasswordScreen({
                       <img 
                         src="/TacticIQ.svg" 
                         alt="TacticIQ" 
-                        style={{ width: 270, height: 270 }} 
+                        style={{ width: 180, height: 180 }} 
                       />
                     ) : (
                       <Image
                         source={require('../../assets/logo.png')}
-                        style={{ width: 270, height: 270 }}
+                        style={{ width: 180, height: 180 }}
                         resizeMode="contain"
                       />
                     )}
@@ -240,7 +240,7 @@ export default function ForgotPasswordScreen({
                   <View style={styles.brandZone}>
                     <Image
                       source={Platform.OS === 'web' ? { uri: '/TacticIQ.svg' } : require('../../assets/logo.png')}
-                      style={{ width: 270, height: 270 }}
+                      style={{ width: 180, height: 180 }}
                       resizeMode="contain"
                     />
                   </View>
@@ -366,9 +366,9 @@ const styles = StyleSheet.create({
   brandZone: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 30, // LOGO_MARGIN_TOP ile aynı
-    marginBottom: 16, // Biraz azaltıldı (24'ten 16'ya)
-    height: 270, // LOGO_SIZE ile aynı
+    marginTop: 12, // Tüm ekranlarda aynı
+    marginBottom: 8,
+    height: 180, // Tüm ekranlarda aynı logo boyutu
     paddingVertical: 0,
   },
   brandTitle: {
