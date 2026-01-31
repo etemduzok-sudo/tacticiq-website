@@ -88,7 +88,7 @@ export function SEOHead({
     canonicalLink.setAttribute('href', finalCanonical);
 
     // Alternate language links
-    const languages = ['en', 'de', 'fr', 'es', 'it', 'tr', 'ar', 'zh'];
+    const languages = ['en', 'de', 'fr', 'es', 'it', 'tr', 'ar', 'zh', 'ru', 'hi'];
     languages.forEach(lang => {
       let alternateLang = document.querySelector(`link[hreflang="${lang}"]`);
       if (!alternateLang) {

@@ -1,0 +1,264 @@
+{
+  "common": {
+    "loading": "लोड हो रहा है...",
+    "error": "त्रुटि",
+    "save": "सहेजें",
+    "cancel": "रद्द करें",
+    "close": "बंद करें",
+    "delete": "हटाएं",
+    "edit": "संपादित करें",
+    "back": "वापस",
+    "next": "अगला",
+    "done": "पूर्ण",
+    "continue": "जारी रखें",
+    "getStarted": "शुरू करें",
+    "info": "जानकारी"
+  },
+  "languageSelection": {
+    "title": "भाषा चयन",
+    "subtitle": "कृपया अपनी भाषा चुनें"
+  },
+  "dashboard": {
+    "title": "विश्लेषक नियंत्रण कक्ष",
+    "analyst": "विश्लेषक",
+    "streak": "स्ट्रीक",
+    "upcomingMatches": "आगामी और लाइव मैच",
+    "liveMatch": "लाइव",
+    "liveTracking": "लाइव ट्रैकिंग",
+    "predictButton": "विश्लेषण दर्ज करें",
+    "strategicFocus": "विश्लेषण फोकस चुनें",
+    "strategicFocusSubtitle": "चयनित फोकस x1.25 पॉइंट मल्टीप्लायर देता है",
+    "recentPerformance": "आपका हालिया प्रदर्शन",
+    "viewAllBadges": "मेरे सभी बैज देखें",
+    "noUpcomingMatches": "अगले 24 घंटों में कोई मैच नहीं",
+    "noMatchHistory": "अभी तक कोई मैच इतिहास नहीं",
+    "points": "अंक",
+    "accuracy": "सटीकता"
+  },
+  "strategicFocus": {
+    "tempo": {
+      "name": "टेम्पो विश्लेषण",
+      "description": "मैच की गति पर ध्यान दें",
+      "advice": "तेज़ गति वाला मैच अपेक्षित!"
+    },
+    "discipline": {
+      "name": "अनुशासन विश्लेषण",
+      "description": "कठोर खेल की भविष्यवाणी करें",
+      "advice": "इस रेफरी को कार्ड पसंद हैं, आपका फोकस सही है!"
+    },
+    "fitness": {
+      "name": "फिटनेस विश्लेषण",
+      "description": "शारीरिक स्थिति का मूल्यांकन करें",
+      "advice": "लंबे सीज़न में फिटनेस महत्वपूर्ण है!"
+    },
+    "star": {
+      "name": "स्टार विश्लेषण",
+      "description": "स्टार खिलाड़ियों को ट्रैक करें",
+      "advice": "स्टार खिलाड़ी मैदान पर होंगे!"
+    }
+  },
+  "badges": {
+    "title": "बैज",
+    "earned": "अर्जित",
+    "locked": "लॉक्ड",
+    "howToEarn": "कैसे कमाएं",
+    "progress": "प्रगति",
+    "progressHint": "जीतने के लिए और मैच!",
+    "earnedDate": "अर्जित:",
+    "noBadges": "अभी तक कोई बैज नहीं",
+    "startPredicting": "मैचों की भविष्यवाणी करें और बैज कमाएं!",
+    "tiers": {
+      "rookie": "रूकी",
+      "amateur": "शौकिया",
+      "pro": "पेशेवर",
+      "expert": "विशेषज्ञ",
+      "legend": "लीजेंड"
+    }
+  },
+  "profile": {
+    "title": "प्रोफ़ाइल",
+    "level": "स्तर",
+    "points": "अंक",
+    "rank": "रैंक",
+    "settings": "सेटिंग्स",
+    "logout": "लॉगआउट",
+    "favoriteTeams": "पसंदीदा टीमें",
+    "statistics": "आंकड़े",
+    "achievements": "उपलब्धियां"
+  },
+  "matches": {
+    "title": "मैच",
+    "past": "पिछले",
+    "live": "लाइव",
+    "upcoming": "आगामी",
+    "allMatches": "सभी मैच",
+    "noMatches": "कोई मैच नहीं मिला",
+    "minute": "मिनट",
+    "vs": "बनाम"
+  },
+  "leaderboard": {
+    "title": "लीडरबोर्ड",
+    "overall": "कुल",
+    "weekly": "साप्ताहिक",
+    "monthly": "मासिक",
+    "rank": "रैंक",
+    "user": "उपयोगकर्ता",
+    "points": "अंक"
+  },
+  "scoring": {
+    "bonusApplied": "बोनस लागू!",
+    "strategicBonus": "रणनीतिक फोकस बोनस",
+    "totalPoints": "कुल अंक",
+    "breakdown": "अंक विवरण"
+  },
+  "notifications": {
+    "title": "सूचनाएं",
+    "noNotifications": "कोई सूचना नहीं",
+    "matchStartingSoon": "मैच जल्द शुरू होगा!",
+    "predictionReminder": "भविष्यवाणी करना न भूलें!",
+    "badgeEarned": "नया बैज अर्जित!"
+  },
+  "errors": {
+    "networkError": "नेटवर्क त्रुटि",
+    "serverError": "सर्वर त्रुटि",
+    "notFound": "नहीं मिला",
+    "unauthorized": "अनधिकृत",
+    "tryAgain": "पुनः प्रयास करें"
+  },
+  "auth": {
+    "title": "स्वागत है",
+    "subtitle": "फुटबॉल रणनीतियों की खोज करें",
+    "email": "ईमेल",
+    "password": "पासवर्ड",
+    "login": "लॉगिन",
+    "register": "रजिस्टर",
+    "signUp": "साइन अप",
+    "forgotPassword": "पासवर्ड भूल गए",
+    "orContinueWith": "या जारी रखें",
+    "signInWithGoogle": "Google से साइन इन करें",
+    "signInWithApple": "Apple से साइन इन करें",
+    "noAccount": "खाता नहीं है?",
+    "loggingIn": "लॉगिन हो रहा है...",
+    "pleaseWait": "कृपया प्रतीक्षा करें",
+    "allRightsReserved": "सर्वाधिकार सुरक्षित।",
+    "emailRequired": "ईमेल आवश्यक है",
+    "emailInvalid": "वैध ईमेल दर्ज करें",
+    "passwordRequired": "पासवर्ड आवश्यक है",
+    "passwordMinLength": "पासवर्ड कम से कम 6 अक्षर का होना चाहिए",
+    "loginSuccess": "लॉगिन सफल!",
+    "loginFailed": "लॉगिन विफल",
+    "socialLoginFailed": "सोशल लॉगिन विफल",
+    "errorOccurred": "एक त्रुटि हुई",
+    "checkingEmail": "ईमेल जांच रहे हैं...",
+    "emailAvailable": "ईमेल उपलब्ध है",
+    "emailTaken": "यह ईमेल पहले से उपयोग में है"
+  },
+  "ageGate": {
+    "title": "आयु सत्यापन",
+    "subtitle": "अपनी जन्म तिथि चुनें",
+    "year": "वर्ष",
+    "month": "महीना",
+    "day": "दिन",
+    "yearsOld": "वर्ष की आयु",
+    "selectYear": "वर्ष चुनें",
+    "selectMonth": "महीना चुनें",
+    "selectDay": "दिन चुनें",
+    "info": "यह जानकारी आपकी सुरक्षा और कानूनी अनुपालन के लिए आवश्यक है।",
+    "pleaseEnterDate": "कृपया अपनी जन्म तिथि दर्ज करें",
+    "invalidDate": "अमान्य जन्म तिथि",
+    "minorNotice": "18 वर्ष से कम आयु के उपयोगकर्ताओं के लिए माता-पिता की सहमति आवश्यक"
+  },
+  "legal": {
+    "title": "कानूनी दस्तावेज़",
+    "subtitle": "कृपया निम्नलिखित दस्तावेज़ों की समीक्षा करें और स्वीकार करें",
+    "iAccept": "मैंने पढ़ा और स्वीकार किया",
+    "minorNotice": "18 वर्ष से कम आयु के उपयोगकर्ताओं के लिए माता-पिता की सहमति आवश्यक",
+    "terms": {
+      "title": "सेवा की शर्तें",
+      "desc": "सेवा की शर्तें और उपयोगकर्ता जिम्मेदारियां",
+      "fullContent": "अंतिम अपडेट: 1 जनवरी, 2026\n\n1. परिचय और स्वीकृति\nये शर्तें आपके और TacticIQ के बीच एक कानूनी समझौता है।\n\n2. वर्चुअल आइटम\nअंक और XP को वास्तविक पैसे में परिवर्तित नहीं किया जा सकता।\n\n3. बौद्धिक संपदा\nसभी अधिकार TacticIQ के हैं।\n\n4. संपर्क\nlegal@tacticiq.app"
+    },
+    "privacy": {
+      "title": "गोपनीयता नीति",
+      "desc": "GDPR, CCPA, KVKK अनुपालक",
+      "fullContent": "अंतिम अपडेट: 1 जनवरी, 2026\n\n1. डेटा संग्रह\nहम डिवाइस ID, IP, स्थान और गतिविधि डेटा प्रोसेस करते हैं।\n\n2. आपके अधिकार\nआप अपने डेटा को हटाने का अनुरोध कर सकते हैं।\n\n3. संपर्क\nprivacy@tacticiq.app"
+    },
+    "cookies": {
+      "title": "कुकी नीति",
+      "desc": "कुकी उपयोग",
+      "fullContent": "अंतिम अपडेट: 1 जनवरी, 2026\n\n1. कुकी उपयोग\nहम आपके अनुभव को बेहतर बनाने के लिए कुकीज़ का उपयोग करते हैं।\n\n2. कुकी प्रकार\n- आवश्यक\n- कार्यात्मक\n- विश्लेषण\n- विपणन\n\n3. प्रबंधन\nसेटिंग्स मेनू"
+    },
+    "kvkk": {
+      "title": "KVKK प्रकटीकरण",
+      "desc": "तुर्की डेटा सुरक्षा कानून",
+      "fullContent": "डेटा नियंत्रक: TacticIQ\nkvkk@tacticiq.app\n\nप्रोसेस किया गया डेटा:\n- पहचान\n- संपर्क\n- गतिविधि\n- डिवाइस/IP\n\nआपके अधिकार:\nkvkk@tacticiq.app"
+    }
+  },
+  "cookies": {
+    "essential": "आवश्यक कुकीज़",
+    "essentialDesc": "ऐप के कार्य के लिए आवश्यक",
+    "analytics": "विश्लेषण कुकीज़",
+    "analyticsDesc": "सुधार में मदद करें",
+    "marketing": "विपणन कुकीज़",
+    "marketingDesc": "व्यक्तिगत सामग्री"
+  },
+  "consent": {
+    "title": "गोपनीयता प्राथमिकताएं",
+    "subtitle": "चुनें कि आपका डेटा कैसे उपयोग किया जाए",
+    "error": "त्रुटि",
+    "mustAccept": "जारी रखने के लिए आपको कानूनी दस्तावेज़ स्वीकार करने होंगे",
+    "saveFailed": "सहेजने में विफल",
+    "essential": "आवश्यक कुकीज़",
+    "essentialDesc": "ऐप के कार्य के लिए आवश्यक बुनियादी कुकीज़",
+    "analytics": "विश्लेषण कुकीज़",
+    "analyticsDesc": "ऐप प्रदर्शन विश्लेषण के लिए उपयोग",
+    "marketing": "विपणन कुकीज़",
+    "marketingDesc": "अभियानों और विशेष ऑफ़र के लिए सूचनाएं"
+  },
+  "countries": {
+    "Turkey": "तुर्की",
+    "Germany": "जर्मनी",
+    "France": "फ्रांस",
+    "England": "इंग्लैंड",
+    "Spain": "स्पेन",
+    "Italy": "इटली",
+    "Brazil": "ब्राज़ील",
+    "Argentina": "अर्जेंटीना",
+    "Portugal": "पुर्तगाल",
+    "Netherlands": "नीदरलैंड",
+    "Belgium": "बेल्जियम",
+    "Croatia": "क्रोएशिया",
+    "Poland": "पोलैंड",
+    "Ukraine": "यूक्रेन",
+    "Russia": "रूस",
+    "Sweden": "स्वीडन",
+    "Austria": "ऑस्ट्रिया",
+    "Switzerland": "स्विट्जरलैंड",
+    "USA": "अमेरिका",
+    "Mexico": "मेक्सिको",
+    "Japan": "जापान",
+    "South-Korea": "दक्षिण कोरिया",
+    "Australia": "ऑस्ट्रेलिया",
+    "Saudi-Arabia": "सऊदी अरब",
+    "India": "भारत",
+    "Unknown": "अज्ञात"
+  },
+  "teamSelection": {
+    "selectNationalTeam": "अपनी राष्ट्रीय टीम चुनें",
+    "selectClubTeam": "अपनी पसंदीदा क्लब टीम चुनें",
+    "selectClubTeam2": "अपनी दूसरी पसंदीदा क्लब चुनें",
+    "selectClubTeam3": "अपनी तीसरी पसंदीदा क्लब चुनें",
+    "selectClubTeam4": "अपनी चौथी पसंदीदा क्लब चुनें",
+    "selectClubTeam5": "अपनी पांचवीं पसंदीदा क्लब चुनें",
+    "searchPlaceholder": "टीमें खोजें...",
+    "noTeamsFound": "कोई टीम नहीं मिली"
+  },
+  "profileEdit": {
+    "firstName": "पहला नाम",
+    "lastName": "उपनाम",
+    "nickname": "उपयोगकर्ता नाम",
+    "saveChanges": "परिवर्तन सहेजें",
+    "editing": "संपादन...",
+    "saved": "सहेजा गया!"
+  }
+}

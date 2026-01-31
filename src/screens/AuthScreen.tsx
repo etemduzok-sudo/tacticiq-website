@@ -235,8 +235,8 @@ export default function AuthScreen({
               />
             )}
             <ActivityIndicator size="large" color="#1FA2A6" style={{ marginBottom: 16 }} />
-            <Text style={styles.oauthLoadingText}>Giriş yapılıyor...</Text>
-            <Text style={styles.oauthLoadingSubtext}>Lütfen bekleyin</Text>
+            <Text style={styles.oauthLoadingText}>{t('auth.loggingIn')}</Text>
+            <Text style={styles.oauthLoadingSubtext}>{t('auth.pleaseWait')}</Text>
           </View>
         </LinearGradient>
       </SafeAreaView>
@@ -294,7 +294,7 @@ export default function AuthScreen({
                 >
                   <Ionicons name="logo-google" size={20} color="#4285F4" />
                   <Text style={styles.googleButtonText} numberOfLines={1} adjustsFontSizeToFit>
-                    Google ile Giriş Yap
+                    {t('auth.signInWithGoogle')}
                   </Text>
                 </TouchableOpacity>
 
@@ -305,7 +305,7 @@ export default function AuthScreen({
                 >
                   <Ionicons name="logo-apple" size={20} color="#FFFFFF" />
                   <Text style={styles.appleButtonText} numberOfLines={1} adjustsFontSizeToFit>
-                    Apple ile Giriş Yap
+                    {t('auth.signInWithApple')}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -390,7 +390,7 @@ export default function AuthScreen({
                   onPress={onForgotPassword}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.forgotPasswordText}>Şifremi Unuttum</Text>
+                  <Text style={styles.forgotPasswordText}>{t('auth.forgotPassword')}</Text>
                 </TouchableOpacity>
 
                 {/* [G] PRIMARY CTA BUTTON */}
@@ -419,10 +419,10 @@ export default function AuthScreen({
 
               {/* Secondary Link */}
               <View style={styles.secondaryLinkContainer}>
-                <Text style={styles.secondaryLinkText}>Hesabınız yok mu? </Text>
+                <Text style={styles.secondaryLinkText}>{t('auth.noAccount')} </Text>
                 <TouchableOpacity onPress={onRegister} activeOpacity={0.7}>
                   <Text style={styles.secondaryLink} numberOfLines={1} adjustsFontSizeToFit>
-                    Kayıt Ol
+                    {t('auth.signUp')}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -445,7 +445,7 @@ export default function AuthScreen({
             {/* [H] FOOTER ZONE - FIXED AT BOTTOM (OUTSIDE SCROLLABLE CONTENT) */}
             <View style={styles.footerZone}>
               <Text style={styles.footer}>
-                © 2026. Tüm hakları saklıdır.
+                © 2026. {t('auth.allRightsReserved')}
               </Text>
             </View>
           </View>

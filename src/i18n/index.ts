@@ -13,6 +13,7 @@ import fr from '../locales/fr.json';
 import it from '../locales/it.json';
 import ar from '../locales/ar.json';
 import ru from '../locales/ru.json';
+import hi from '../locales/hi.json';
 
 // RTL languages - Arabic excluded per user request (only text translation, no layout change)
 // Keep Hebrew, Farsi, Urdu for future RTL support if needed
@@ -34,7 +35,7 @@ const getDeviceLanguage = async (): Promise<string> => {
           // Browser language detection (sadece browser'da)
           if (typeof navigator !== 'undefined' && navigator.language) {
             const browserLang = navigator.language.split('-')[0];
-            const supportedLanguages = ['tr', 'en', 'es', 'de', 'fr', 'it', 'ar', 'ru'];
+            const supportedLanguages = ['tr', 'en', 'es', 'de', 'fr', 'it', 'ar', 'ru', 'hi'];
             if (supportedLanguages.includes(browserLang)) return browserLang;
           }
         }
@@ -51,7 +52,7 @@ const getDeviceLanguage = async (): Promise<string> => {
     }
     
     const deviceLocale = Localization.getLocales()[0]?.languageCode || 'en';
-    const supportedLanguages = ['tr', 'en', 'es', 'de', 'fr', 'it', 'ar', 'ru'];
+    const supportedLanguages = ['tr', 'en', 'es', 'de', 'fr', 'it', 'ar', 'ru', 'hi'];
     
     return supportedLanguages.includes(deviceLocale) ? deviceLocale : 'en';
   } catch (error) {
@@ -91,6 +92,7 @@ const initI18n = async () => {
         it: { translation: it },
         ar: { translation: ar },
         ru: { translation: ru },
+        hi: { translation: hi },
       },
       lng: language,
       fallbackLng: 'en',
@@ -141,6 +143,7 @@ if (!i18n.isInitialized) {
         it: { translation: it },
         ar: { translation: ar },
         ru: { translation: ru },
+        hi: { translation: hi },
       },
       lng: 'en', // Default, runtime'da güncellenecek
       fallbackLng: 'en',

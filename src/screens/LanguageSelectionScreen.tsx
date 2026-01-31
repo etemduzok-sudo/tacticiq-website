@@ -13,7 +13,7 @@ import {
   Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { FlagDE, FlagGB, FlagES, FlagFR, FlagIT, FlagTR, FlagAR, FlagCN } from '../components/flags';
+import { FlagDE, FlagGB, FlagES, FlagFR, FlagIT, FlagTR, FlagAR, FlagCN, FlagRU, FlagIN } from '../components/flags';
 import { AUTH_GRADIENT } from '../theme/gradients';
 import { STANDARD_LAYOUT, STANDARD_COLORS } from '../constants/standardLayout';
 import { useTranslation } from '../hooks/useTranslation';
@@ -57,6 +57,8 @@ export default function LanguageSelectionScreen({
     'Benvenuto',    // Italiano
     'مرحبا',        // Arabic
     '欢迎',          // Chinese
+    'Добро пожаловать', // Russian
+    'स्वागत है',      // Hindi
   ];
   // ✅ 8 dilde tek satırda yanyana, her dil arasında " • " ayırıcı
   const welcomeString = welcomeTexts.join('  •  ') + '  •  ';
@@ -118,6 +120,8 @@ export default function LanguageSelectionScreen({
       case 'tr': return <FlagTR size={48} />;
       case 'ar': return <FlagAR size={48} />;
       case 'zh': return <FlagCN size={48} />;
+      case 'ru': return <FlagRU size={48} />;
+      case 'hi': return <FlagIN size={48} />;
       default: return null;
     }
   };
@@ -131,6 +135,8 @@ export default function LanguageSelectionScreen({
     { code: 'tr', name: 'Türkçe' },
     { code: 'ar', name: 'العربية' },
     { code: 'zh', name: '中文' },
+    { code: 'ru', name: 'Русский' },
+    { code: 'hi', name: 'हिन्दी' },
   ];
 
   const getLanguageName = (code: string) => {

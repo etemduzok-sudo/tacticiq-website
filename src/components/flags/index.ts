@@ -7,3 +7,4 @@ export { FlagIT } from './FlagIT';
 export { FlagAR } from './FlagAR';
 export { FlagCN } from './FlagCN';
 export { FlagRU } from './FlagRU';
+export { FlagIN } from './FlagIN';

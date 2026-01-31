@@ -6,6 +6,8 @@ import it from '@/translations/it';
 import tr from '@/translations/tr';
 import ar from '@/translations/ar';
 import zh from '@/translations/zh';
+import ru from '@/translations/ru';
+import hi from '@/translations/hi';
 
 export const translations = {
   en,
@@ -16,4 +18,6 @@ export const translations = {
   tr,
   ar,
   zh,
+  ru,
+  hi,
 };

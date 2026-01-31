@@ -22,7 +22,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { FlagDE, FlagGB, FlagES, FlagFR, FlagIT, FlagTR, FlagAR, FlagCN } from '../components/flags';
+import { FlagDE, FlagGB, FlagES, FlagFR, FlagIT, FlagTR, FlagAR, FlagCN, FlagRU, FlagIN } from '../components/flags';
 import { useTranslation } from '../hooks/useTranslation';
 import { changeLanguage as changeI18nLanguage } from '../i18n';
 import { getLegalContent, getLegalContentSync } from '../data/legalContent';
@@ -68,6 +68,8 @@ const MONTHS_BY_LANG: Record<string, string[]> = {
   it: ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'],
   ar: ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'],
   zh: ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'],
+  ru: ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'],
+  hi: ['जनवरी', 'फ़रवरी', 'मार्च', 'अप्रैल', 'मई', 'जून', 'जुलाई', 'अगस्त', 'सितंबर', 'अक्टूबर', 'नवंबर', 'दिसंबर'],
 };
 
 const languages = [
@@ -79,12 +81,14 @@ const languages = [
   { code: 'it', name: 'Italiano' },
   { code: 'ar', name: 'العربية' },
   { code: 'zh', name: '中文' },
+  { code: 'ru', name: 'Русский' },
+  { code: 'hi', name: 'हिन्दी' },
 ];
 
-// Logo yüksekliği her sayfada aynı (sıçrama olmasın) - %50 büyütüldü
-const LOGO_SIZE = 270; // 180 * 1.5
-const LOGO_MARGIN_TOP = 30;
-const LOGO_MARGIN_BOTTOM = 16; // Biraz azaltıldı (24'ten 16'ya) - diğer sayfalarla uyumlu
+// Logo yüksekliği - dil seçimi için daha kompakt
+const LOGO_SIZE = 150; // 10 dil için optimize edildi
+const LOGO_MARGIN_TOP = 10;
+const LOGO_MARGIN_BOTTOM = 8;
 
 export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
   const { t, i18n } = useTranslation();
@@ -133,6 +137,8 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
     { lang: 'it', text: 'Seleziona la tua lingua' },
     { lang: 'ar', text: 'يرجى اختيار لغتك' },
     { lang: 'zh', text: '请选择您的语言' },
+    { lang: 'ru', text: 'Пожалуйста, выберите ваш язык' },
+    { lang: 'hi', text: 'कृपया अपनी भाषा चुनें' },
   ];
   
   // Subtitle döngüsü efekti
@@ -321,7 +327,7 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
   };
 
   const FlagComponent = ({ code }: { code: string }) => {
-    const size = 40;
+    const size = 28; // Kompakt kartlar için küçültüldü
     switch (code) {
       case 'de': return <FlagDE size={size} />;
       case 'en': return <FlagGB size={size} />;
@@ -331,6 +337,8 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
       case 'tr': return <FlagTR size={size} />;
       case 'ar': return <FlagAR size={size} />;
       case 'zh': return <FlagCN size={size} />;
+      case 'ru': return <FlagRU size={size} />;
+      case 'hi': return <FlagIN size={size} />;
       default: return null;
     }
   };
@@ -344,46 +352,48 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
     const translations: Record<string, Record<string, string>> = {
       'languageSelection.title': {
         tr: 'Dil Seçimi', en: 'Language Selection', de: 'Sprachauswahl', es: 'Selección de idioma',
-        fr: 'Sélection de la langue', it: 'Selezione della lingua', ar: 'اختيار اللغة', zh: '语言选择'
+        fr: 'Sélection de la langue', it: 'Selezione della lingua', ar: 'اختيار اللغة', zh: '语言选择',
+        ru: 'Выбор языка', hi: 'भाषा चयन'
       },
       'languageSelection.subtitle': {
         tr: 'Lütfen dilinizi seçin', en: 'Please select your language', de: 'Bitte wählen Sie Ihre Sprache',
         es: 'Por favor seleccione su idioma', fr: 'Veuillez sélectionner votre langue', it: 'Seleziona la tua lingua',
-        ar: 'يرجى اختيار لغتك', zh: '请选择您的语言'
+        ar: 'يرجى اختيار لغتك', zh: '请选择您的语言', ru: 'Пожалуйста, выберите ваш язык', hi: 'कृपया अपनी भाषा चुनें'
       },
       'ageGate.title': {
         tr: 'Yaş Doğrulama', en: 'Age Verification', de: 'Altersverifikation', es: 'Verificación de edad',
-        fr: "Vérification de l'âge", it: "Verifica dell'età", ar: 'التحقق من العمر', zh: '年龄验证'
+        fr: "Vérification de l'âge", it: "Verifica dell'età", ar: 'التحقق من العمر', zh: '年龄验证',
+        ru: 'Проверка возраста', hi: 'आयु सत्यापन'
       },
       'ageGate.subtitle': {
         tr: 'Doğum tarihinizi seçin', en: 'Select your date of birth', de: 'Wählen Sie Ihr Geburtsdatum',
         es: 'Seleccione su fecha de nacimiento', fr: 'Sélectionnez votre date de naissance', it: 'Seleziona la tua data di nascita',
-        ar: 'اختر تاريخ ميلادك', zh: '选择您的出生日期'
+        ar: 'اختر تاريخ ميلادك', zh: '选择您的出生日期', ru: 'Выберите дату рождения', hi: 'अपनी जन्म तिथि चुनें'
       },
-      'ageGate.day': { tr: 'Gün', en: 'Day', de: 'Tag', es: 'Día', fr: 'Jour', it: 'Giorno', ar: 'اليوم', zh: '日' },
-      'ageGate.month': { tr: 'Ay', en: 'Month', de: 'Monat', es: 'Mes', fr: 'Mois', it: 'Mese', ar: 'الشهر', zh: '月' },
-      'ageGate.year': { tr: 'Yıl', en: 'Year', de: 'Jahr', es: 'Año', fr: 'Année', it: 'Anno', ar: 'السنة', zh: '年' },
-      'ageGate.yearsOld': { tr: 'yaşında', en: 'years old', de: 'Jahre alt', es: 'años', fr: 'ans', it: 'anni', ar: 'سنة', zh: '岁' },
-      'ageGate.selectDay': { tr: 'Gün Seçin', en: 'Select Day', de: 'Tag wählen', es: 'Seleccionar día', fr: 'Sélectionner le jour', it: 'Seleziona giorno', ar: 'اختر اليوم', zh: '选择日' },
-      'ageGate.selectMonth': { tr: 'Ay Seçin', en: 'Select Month', de: 'Monat wählen', es: 'Seleccionar mes', fr: 'Sélectionner le mois', it: 'Seleziona mese', ar: 'اختر الشهر', zh: '选择月' },
-      'ageGate.selectYear': { tr: 'Yıl Seçin', en: 'Select Year', de: 'Jahr wählen', es: 'Seleccionar año', fr: "Sélectionner l'année", it: 'Seleziona anno', ar: 'اختر السنة', zh: '选择年' },
-      'legal.title': { tr: 'Yasal Belgeler', en: 'Legal Documents', de: 'Rechtliche Dokumente', es: 'Documentos legales', fr: 'Documents légaux', it: 'Documenti legali', ar: 'المستندات القانونية', zh: '法律文件' },
-      'legal.subtitle': { tr: 'Lütfen belgeleri inceleyin', en: 'Please review the documents', de: 'Bitte überprüfen Sie die Dokumente', es: 'Por favor revise los documentos', fr: 'Veuillez lire les documents', it: 'Si prega di leggere i documenti', ar: 'يرجى مراجعة المستندات', zh: '请阅读文件' },
-      'legal.iAccept': { tr: 'Okudum ve kabul ediyorum', en: 'I have read and accept', de: 'Ich habe gelesen und akzeptiere', es: 'He leído y acepto', fr: "J'ai lu et j'accepte", it: 'Ho letto e accetto', ar: 'قرأت وأوافق', zh: '我已阅读并接受' },
-      'legal.minorNotice': { tr: '18 yaş altı için ebeveyn onayı gerekli', en: 'Parental consent required for under 18', de: 'Elterliche Zustimmung für unter 18', es: 'Consentimiento parental requerido para menores de 18', fr: 'Consentement parental requis pour les moins de 18 ans', it: 'Consenso parentale richiesto per i minori di 18 anni', ar: 'موافقة الوالدين مطلوبة لمن هم دون 18', zh: '18岁以下需要父母同意' },
-      'legal.terms.title': { tr: 'Kullanım Koşulları', en: 'Terms of Service', de: 'Nutzungsbedingungen', es: 'Términos de servicio', fr: "Conditions d'utilisation", it: 'Termini di servizio', ar: 'شروط الخدمة', zh: '服务条款', ru: 'Условия использования' },
-      'legal.privacy.title': { tr: 'Gizlilik Politikası', en: 'Privacy Policy', de: 'Datenschutzrichtlinie', es: 'Política de privacidad', fr: 'Politique de confidentialité', it: 'Informativa sulla privacy', ar: 'سياسة الخصوصية', zh: '隐私政策', ru: 'Политика конфиденциальности' },
-      'legal.cookies.title': { tr: 'Çerez Politikası', en: 'Cookie Policy', de: 'Cookie-Richtlinie', es: 'Política de cookies', fr: 'Politique des cookies', it: 'Politica sui cookie', ar: 'سياسة ملفات تعريف الارتباط', zh: 'Cookie政策', ru: 'Политика Cookie' },
-      'legal.kvkk.title': { tr: 'KVKK Aydınlatma', en: 'KVKK Disclosure', de: 'KVKK-Offenlegung', es: 'Divulgación KVKK', fr: 'Divulgation KVKK', it: 'Informativa KVKK', ar: 'إفصاح KVKK', zh: 'KVKK披露' },
-      'legal.consent.title': { tr: 'Açık Rıza Metni', en: 'Consent Form', de: 'Einwilligungsformular', es: 'Formulario de consentimiento', fr: 'Formulaire de consentement', it: 'Modulo di consenso', ar: 'نموذج الموافقة', zh: '同意书' },
-      'legal.sales.title': { tr: 'Mesafeli Satış Sözleşmesi', en: 'Distance Sales Agreement', de: 'Fernabsatzvertrag', es: 'Contrato de venta a distancia', fr: 'Contrat de vente à distance', it: 'Contratto di vendita a distanza', ar: 'اتفاقية البيع عن بعد', zh: '远程销售协议' },
-      'legal.copyright.title': { tr: 'Telif Hakkı Bildirimi', en: 'Copyright Notice', de: 'Urheberrechtshinweis', es: 'Aviso de derechos de autor', fr: 'Avis de droit d\'auteur', it: 'Avviso di copyright', ar: 'إشعار حقوق النشر', zh: '版权声明' },
-      'common.continue': { tr: 'Devam Et', en: 'Continue', de: 'Weiter', es: 'Continuar', fr: 'Continuer', it: 'Continua', ar: 'متابعة', zh: '继续' },
-      'common.getStarted': { tr: 'Başla', en: 'Get Started', de: 'Loslegen', es: 'Empezar', fr: 'Commencer', it: 'Inizia', ar: 'ابدأ', zh: '开始' },
-      'common.back': { tr: 'Geri', en: 'Back', de: 'Zurück', es: 'Atrás', fr: 'Retour', it: 'Indietro', ar: 'رجوع', zh: '返回' },
-      'common.close': { tr: 'Kapat', en: 'Close', de: 'Schließen', es: 'Cerrar', fr: 'Fermer', it: 'Chiudi', ar: 'إغلاق', zh: '关闭' },
-      'consent.error': { tr: 'Hata', en: 'Error', de: 'Fehler', es: 'Error', fr: 'Erreur', it: 'Errore', ar: 'خطأ', zh: '错误' },
-      'consent.mustAccept': { tr: 'Devam etmek için yasal belgeleri kabul etmelisiniz', en: 'You must accept the legal documents to continue', de: 'Sie müssen die Dokumente akzeptieren', es: 'Debe aceptar los documentos para continuar', fr: 'Vous devez accepter les documents', it: 'Devi accettare i documenti', ar: 'يجب قبول المستندات للمتابعة', zh: '您必须接受文件才能继续' },
+      'ageGate.day': { tr: 'Gün', en: 'Day', de: 'Tag', es: 'Día', fr: 'Jour', it: 'Giorno', ar: 'اليوم', zh: '日', ru: 'День', hi: 'दिन' },
+      'ageGate.month': { tr: 'Ay', en: 'Month', de: 'Monat', es: 'Mes', fr: 'Mois', it: 'Mese', ar: 'الشهر', zh: '月', ru: 'Месяц', hi: 'महीना' },
+      'ageGate.year': { tr: 'Yıl', en: 'Year', de: 'Jahr', es: 'Año', fr: 'Année', it: 'Anno', ar: 'السنة', zh: '年', ru: 'Год', hi: 'वर्ष' },
+      'ageGate.yearsOld': { tr: 'yaşında', en: 'years old', de: 'Jahre alt', es: 'años', fr: 'ans', it: 'anni', ar: 'سنة', zh: '岁', ru: 'лет', hi: 'वर्ष' },
+      'ageGate.selectDay': { tr: 'Gün Seçin', en: 'Select Day', de: 'Tag wählen', es: 'Seleccionar día', fr: 'Sélectionner le jour', it: 'Seleziona giorno', ar: 'اختر اليوم', zh: '选择日', ru: 'Выберите день', hi: 'दिन चुनें' },
+      'ageGate.selectMonth': { tr: 'Ay Seçin', en: 'Select Month', de: 'Monat wählen', es: 'Seleccionar mes', fr: 'Sélectionner le mois', it: 'Seleziona mese', ar: 'اختر الشهر', zh: '选择月', ru: 'Выберите месяц', hi: 'महीना चुनें' },
+      'ageGate.selectYear': { tr: 'Yıl Seçin', en: 'Select Year', de: 'Jahr wählen', es: 'Seleccionar año', fr: "Sélectionner l'année", it: 'Seleziona anno', ar: 'اختر السنة', zh: '选择年', ru: 'Выберите год', hi: 'वर्ष चुनें' },
+      'legal.title': { tr: 'Yasal Belgeler', en: 'Legal Documents', de: 'Rechtliche Dokumente', es: 'Documentos legales', fr: 'Documents légaux', it: 'Documenti legali', ar: 'المستندات القانونية', zh: '法律文件', ru: 'Правовые документы', hi: 'कानूनी दस्तावेज़' },
+      'legal.subtitle': { tr: 'Lütfen belgeleri inceleyin', en: 'Please review the documents', de: 'Bitte überprüfen Sie die Dokumente', es: 'Por favor revise los documentos', fr: 'Veuillez lire les documents', it: 'Si prega di leggere i documenti', ar: 'يرجى مراجعة المستندات', zh: '请阅读文件', ru: 'Пожалуйста, ознакомьтесь', hi: 'कृपया दस्तावेज़ देखें' },
+      'legal.iAccept': { tr: 'Okudum ve kabul ediyorum', en: 'I have read and accept', de: 'Ich habe gelesen und akzeptiere', es: 'He leído y acepto', fr: "J'ai lu et j'accepte", it: 'Ho letto e accetto', ar: 'قرأت وأوافق', zh: '我已阅读并接受', ru: 'Я прочитал и принимаю', hi: 'मैंने पढ़ा और स्वीकार करता हूं' },
+      'legal.minorNotice': { tr: '18 yaş altı için ebeveyn onayı gerekli', en: 'Parental consent required for under 18', de: 'Elterliche Zustimmung für unter 18', es: 'Consentimiento parental requerido para menores de 18', fr: 'Consentement parental requis pour les moins de 18 ans', it: 'Consenso parentale richiesto per i minori di 18 anni', ar: 'موافقة الوالدين مطلوبة لمن هم دون 18', zh: '18岁以下需要父母同意', ru: 'Требуется согласие родителей для лиц младше 18 лет', hi: '18 वर्ष से कम आयु के लिए माता-पिता की सहमति आवश्यक' },
+      'legal.terms.title': { tr: 'Kullanım Koşulları', en: 'Terms of Service', de: 'Nutzungsbedingungen', es: 'Términos de servicio', fr: "Conditions d'utilisation", it: 'Termini di servizio', ar: 'شروط الخدمة', zh: '服务条款', ru: 'Условия использования', hi: 'सेवा की शर्तें' },
+      'legal.privacy.title': { tr: 'Gizlilik Politikası', en: 'Privacy Policy', de: 'Datenschutzrichtlinie', es: 'Política de privacidad', fr: 'Politique de confidentialité', it: 'Informativa sulla privacy', ar: 'سياسة الخصوصية', zh: '隐私政策', ru: 'Политика конфиденциальности', hi: 'गोपनीयता नीति' },
+      'legal.cookies.title': { tr: 'Çerez Politikası', en: 'Cookie Policy', de: 'Cookie-Richtlinie', es: 'Política de cookies', fr: 'Politique des cookies', it: 'Politica sui cookie', ar: 'سياسة ملفات تعريف الارتباط', zh: 'Cookie政策', ru: 'Политика Cookie', hi: 'कुकी नीति' },
+      'legal.kvkk.title': { tr: 'KVKK Aydınlatma', en: 'KVKK Disclosure', de: 'KVKK-Offenlegung', es: 'Divulgación KVKK', fr: 'Divulgation KVKK', it: 'Informativa KVKK', ar: 'إفصاح KVKK', zh: 'KVKK披露', ru: 'Раскрытие KVKK', hi: 'KVKK प्रकटीकरण' },
+      'legal.consent.title': { tr: 'Açık Rıza Metni', en: 'Consent Form', de: 'Einwilligungsformular', es: 'Formulario de consentimiento', fr: 'Formulaire de consentement', it: 'Modulo di consenso', ar: 'نموذج الموافقة', zh: '同意书', ru: 'Форма согласия', hi: 'सहमति फॉर्म' },
+      'legal.sales.title': { tr: 'Mesafeli Satış Sözleşmesi', en: 'Distance Sales Agreement', de: 'Fernabsatzvertrag', es: 'Contrato de venta a distancia', fr: 'Contrat de vente à distance', it: 'Contratto di vendita a distanza', ar: 'اتفاقية البيع عن بعد', zh: '远程销售协议', ru: 'Договор дистанционной продажи', hi: 'दूरस्थ बिक्री समझौता' },
+      'legal.copyright.title': { tr: 'Telif Hakkı Bildirimi', en: 'Copyright Notice', de: 'Urheberrechtshinweis', es: 'Aviso de derechos de autor', fr: 'Avis de droit d\'auteur', it: 'Avviso di copyright', ar: 'إشعار حقوق النشر', zh: '版权声明', ru: 'Уведомление об авторских правах', hi: 'कॉपीराइट नोटिस' },
+      'common.continue': { tr: 'Devam Et', en: 'Continue', de: 'Weiter', es: 'Continuar', fr: 'Continuer', it: 'Continua', ar: 'متابعة', zh: '继续', ru: 'Продолжить', hi: 'जारी रखें' },
+      'common.getStarted': { tr: 'Başla', en: 'Get Started', de: 'Loslegen', es: 'Empezar', fr: 'Commencer', it: 'Inizia', ar: 'ابدأ', zh: '开始', ru: 'Начать', hi: 'शुरू करें' },
+      'common.back': { tr: 'Geri', en: 'Back', de: 'Zurück', es: 'Atrás', fr: 'Retour', it: 'Indietro', ar: 'رجوع', zh: '返回', ru: 'Назад', hi: 'वापस' },
+      'common.close': { tr: 'Kapat', en: 'Close', de: 'Schließen', es: 'Cerrar', fr: 'Fermer', it: 'Chiudi', ar: 'إغلاق', zh: '关闭', ru: 'Закрыть', hi: 'बंद करें' },
+      'consent.error': { tr: 'Hata', en: 'Error', de: 'Fehler', es: 'Error', fr: 'Erreur', it: 'Errore', ar: 'خطأ', zh: '错误', ru: 'Ошибка', hi: 'त्रुटि' },
+      'consent.mustAccept': { tr: 'Devam etmek için yasal belgeleri kabul etmelisiniz', en: 'You must accept the legal documents to continue', de: 'Sie müssen die Dokumente akzeptieren', es: 'Debe aceptar los documentos para continuar', fr: 'Vous devez accepter les documents', it: 'Devi accettare i documenti', ar: 'يجب قبول المستندات للمتابعة', zh: '您必须接受文件才能继续', ru: 'Вы должны принять документы', hi: 'जारी रखने के लिए आपको दस्तावेज़ स्वीकार करने होंगे' },
     };
     return translations[key]?.[selectedLanguage] || translations[key]?.['en'] || t(key) || key;
   };
@@ -391,19 +401,23 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
   // ===== LANGUAGE STEP - PREMIUM DESIGN =====
   const renderLanguageStep = () => (
     <View style={styles.stepContainer}>
-      {/* 🌍 Animasyonlu dönen subtitle - tüm dillerde (bayraklar kaldırıldı) */}
+      {/* 🌍 Animasyonlu dönen subtitle - tüm dillerde */}
       <Animated.View style={{ 
         opacity: subtitleFade,
         alignItems: 'center',
         justifyContent: 'center',
-        marginBottom: 24,
-        marginTop: 8,
+        marginBottom: 12,
+        marginTop: 0,
       }}>
-        <Text style={[styles.stepSubtitle, { fontSize: 18, fontWeight: '600' }]}>{subtitleTranslations[subtitleLangIndex].text}</Text>
+        <Text style={[styles.stepSubtitle, { fontSize: 16, fontWeight: '600', marginBottom: 0 }]}>{subtitleTranslations[subtitleLangIndex].text}</Text>
       </Animated.View>
 
-      {/* 2 sütun 4 satır grid */}
-      <View style={styles.languageGridPremium}>
+      {/* 2 sütun 5 satır grid - 10 dil için */}
+      <ScrollView 
+        style={styles.languageScrollView} 
+        contentContainerStyle={styles.languageGridPremium}
+        showsVerticalScrollIndicator={false}
+      >
         {languages.map((lang) => (
           <TouchableOpacity
             key={lang.code}
@@ -424,7 +438,7 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
             </LinearGradient>
           </TouchableOpacity>
         ))}
-      </View>
+      </ScrollView>
     </View>
   );
 
@@ -820,17 +834,18 @@ const styles = StyleSheet.create({
   progressDotActive: { backgroundColor: WEBSITE_BRAND_COLORS.secondary, borderColor: WEBSITE_BRAND_COLORS.secondary },
   progressLine: { width: 28, height: 2, backgroundColor: 'rgba(255,255,255,0.2)', marginHorizontal: 4 },
 
-  // Content Wrapper - İçerik alta yakın (scroll yok)
+  // Content Wrapper - İçerik merkeze yakın
   contentWrapper: {
     flex: 1,
-    justifyContent: 'flex-end',
-    paddingBottom: 8, // Progress indicator için alan bırak
+    justifyContent: 'flex-start',
+    paddingBottom: 8,
   },
   
   stepContainer: { 
-    maxWidth: 480,
+    maxWidth: 400,
     width: '100%',
     alignSelf: 'center',
+    flex: 1,
   },
   stepTitle: {
     fontSize: WEBSITE_TYPOGRAPHY['2xl'], 
@@ -848,37 +863,42 @@ const styles = StyleSheet.create({
     marginBottom: WEBSITE_SPACING.lg,
   },
 
-  // PREMIUM Language Grid - 2 sütun 4 satır
+  // Language ScrollView
+  languageScrollView: {
+    flex: 1,
+    maxHeight: 420, // 5 satır için yeterli
+  },
+  // PREMIUM Language Grid - 2 sütun 5 satır (10 dil için)
   languageGridPremium: { 
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 6,
     justifyContent: 'space-between',
-    marginBottom: 16, // Progress dots ile çakışmayı önle (tüm sayfalarda progress altta)
+    paddingBottom: 8,
   },
   languageCardPremium: { 
     width: '48%',
-    borderRadius: WEBSITE_BORDER_RADIUS.xl, 
+    borderRadius: WEBSITE_BORDER_RADIUS.lg, 
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: `rgba(31,162,166,${0.25})`,
-    marginBottom: WEBSITE_SPACING.md,
+    marginBottom: 6,
   },
   languageCardGradient: {
     alignItems: 'center',
-    paddingVertical: WEBSITE_SPACING.lg - 2,
-    paddingHorizontal: WEBSITE_SPACING.lg - 2,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
   },
   flagWrapperGrid: { 
-    width: WEBSITE_ICON_SIZES.xl, 
-    height: WEBSITE_ICON_SIZES.xl, 
+    width: 32, 
+    height: 32, 
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: WEBSITE_SPACING.sm,
+    marginBottom: 4,
   },
   languageNameGrid: { 
-    fontSize: WEBSITE_TYPOGRAPHY.sm, 
-    fontWeight: WEBSITE_TYPOGRAPHY.weights.semibold, 
+    fontSize: 13, 
+    fontWeight: '600', 
     color: WEBSITE_BRAND_COLORS.white,
     textAlign: 'center',
     letterSpacing: 0.2,

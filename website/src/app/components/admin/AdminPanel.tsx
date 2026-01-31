@@ -7479,6 +7479,8 @@ function LegalDocumentsContent() {
     { code: 'it', name: 'Italiano' },
     { code: 'ar', name: 'العربية' },
     { code: 'zh', name: '中文' },
+    { code: 'ru', name: 'Русский' },
+    { code: 'hi', name: 'हिन्दी' },
   ];
 
   if (!contextData) {

@@ -17,6 +17,8 @@ const languages = [
   { code: 'tr', name: 'Türkçe' },
   { code: 'ar', name: 'العربية' },
   { code: 'zh', name: '中文' },
+  { code: 'ru', name: 'Русский' },
+  { code: 'hi', name: 'हिन्दी' },
 ];
 
 export function LanguageSwitcher() {
