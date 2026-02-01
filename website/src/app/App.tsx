@@ -274,6 +274,9 @@ function AppContent() {
         {/* Pricing Section - Admin kontrollü */}
         {sectionSettings.pricing.enabled && <PricingSection />}
         
+        {/* Profil ve Rozetler - Giriş yapan kullanıcılar için (yukarı taşındı - daha görünür) */}
+        {sectionSettings.profile?.enabled !== false && isAuthenticated && <UserProfileSection />}
+        
         {/* App Download Section - Admin kontrollü */}
         {sectionSettings.appDownload.enabled && <AppDownloadSection />}
         
@@ -306,9 +309,6 @@ function AppContent() {
         
         {/* Contact Section - Admin kontrollü - EN ALTA TAŞINDI */}
         {sectionSettings.contact.enabled && <ContactSection />}
-        
-        {/* Profil ve Rozetler - Giriş yapan kullanıcılar için (admin kontrollü) */}
-        {sectionSettings.profile?.enabled !== false && isAuthenticated && <UserProfileSection />}
       </main>
 
       {/* Footer - Admin kontrollü */}
