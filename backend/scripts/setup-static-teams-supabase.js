@@ -47,48 +47,9 @@ const NATIONAL_TEAMS = [
   { api_football_id: 13, name: 'Denmark', country: 'Denmark', league: 'International', league_type: 'international', team_type: 'national', colors: ['#C60C30', '#FFFFFF'], colors_primary: '#C60C30', colors_secondary: '#FFFFFF', flag_url: 'https://flagcdn.com/w80/dk.png' },
 ];
 
-const CLUB_TEAMS = [
-  // Türk Süper Lig
-  { api_football_id: 611, name: 'Fenerbahce', country: 'Turkey', league: 'Süper Lig', league_type: 'domestic_top', team_type: 'club', colors: ['#FFED00', '#00205B'], colors_primary: '#FFED00', colors_secondary: '#00205B' },
-  { api_football_id: 645, name: 'Galatasaray', country: 'Turkey', league: 'Süper Lig', league_type: 'domestic_top', team_type: 'club', colors: ['#FF0000', '#FFD700'], colors_primary: '#FF0000', colors_secondary: '#FFD700' },
-  { api_football_id: 549, name: 'Besiktas', country: 'Turkey', league: 'Süper Lig', league_type: 'domestic_top', team_type: 'club', colors: ['#000000', '#FFFFFF'], colors_primary: '#000000', colors_secondary: '#FFFFFF' },
-  { api_football_id: 551, name: 'Trabzonspor', country: 'Turkey', league: 'Süper Lig', league_type: 'domestic_top', team_type: 'club', colors: ['#632134', '#00BFFF'], colors_primary: '#632134', colors_secondary: '#00BFFF' },
-  { api_football_id: 3570, name: 'Basaksehir', country: 'Turkey', league: 'Süper Lig', league_type: 'domestic_top', team_type: 'club', colors: ['#F37021', '#000000'], colors_primary: '#F37021', colors_secondary: '#000000' },
-  { api_football_id: 607, name: 'Adana Demirspor', country: 'Turkey', league: 'Süper Lig', league_type: 'domestic_top', team_type: 'club', colors: ['#0000FF', '#FFFFFF'], colors_primary: '#0000FF', colors_secondary: '#FFFFFF' },
-  { api_football_id: 562, name: 'Antalyaspor', country: 'Turkey', league: 'Süper Lig', league_type: 'domestic_top', team_type: 'club', colors: ['#FF0000', '#FFFFFF'], colors_primary: '#FF0000', colors_secondary: '#FFFFFF' },
-  { api_football_id: 556, name: 'Konyaspor', country: 'Turkey', league: 'Süper Lig', league_type: 'domestic_top', team_type: 'club', colors: ['#006633', '#FFFFFF'], colors_primary: '#006633', colors_secondary: '#FFFFFF' },
-  { api_football_id: 564, name: 'Sivasspor', country: 'Turkey', league: 'Süper Lig', league_type: 'domestic_top', team_type: 'club', colors: ['#FF0000', '#FFFFFF'], colors_primary: '#FF0000', colors_secondary: '#FFFFFF' },
-  { api_football_id: 3571, name: 'Kasimpasa', country: 'Turkey', league: 'Süper Lig', league_type: 'domestic_top', team_type: 'club', colors: ['#000066', '#FFFFFF'], colors_primary: '#000066', colors_secondary: '#FFFFFF' },
-  
-  // Premier League
-  { api_football_id: 50, name: 'Manchester City', country: 'England', league: 'Premier League', league_type: 'domestic_top', team_type: 'club', colors: ['#6CABDD', '#1C2C5B'], colors_primary: '#6CABDD', colors_secondary: '#1C2C5B' },
-  { api_football_id: 33, name: 'Manchester United', country: 'England', league: 'Premier League', league_type: 'domestic_top', team_type: 'club', colors: ['#DA291C', '#FBE122'], colors_primary: '#DA291C', colors_secondary: '#FBE122' },
-  { api_football_id: 40, name: 'Liverpool', country: 'England', league: 'Premier League', league_type: 'domestic_top', team_type: 'club', colors: ['#C8102E', '#00B2A9'], colors_primary: '#C8102E', colors_secondary: '#00B2A9' },
-  { api_football_id: 42, name: 'Arsenal', country: 'England', league: 'Premier League', league_type: 'domestic_top', team_type: 'club', colors: ['#EF0107', '#FFFFFF'], colors_primary: '#EF0107', colors_secondary: '#FFFFFF' },
-  { api_football_id: 49, name: 'Chelsea', country: 'England', league: 'Premier League', league_type: 'domestic_top', team_type: 'club', colors: ['#034694', '#FFFFFF'], colors_primary: '#034694', colors_secondary: '#FFFFFF' },
-  { api_football_id: 47, name: 'Tottenham', country: 'England', league: 'Premier League', league_type: 'domestic_top', team_type: 'club', colors: ['#132257', '#FFFFFF'], colors_primary: '#132257', colors_secondary: '#FFFFFF' },
-  
-  // La Liga
-  { api_football_id: 541, name: 'Real Madrid', country: 'Spain', league: 'La Liga', league_type: 'domestic_top', team_type: 'club', colors: ['#FFFFFF', '#00529F'], colors_primary: '#FFFFFF', colors_secondary: '#00529F' },
-  { api_football_id: 529, name: 'Barcelona', country: 'Spain', league: 'La Liga', league_type: 'domestic_top', team_type: 'club', colors: ['#004D98', '#A50044'], colors_primary: '#004D98', colors_secondary: '#A50044' },
-  { api_football_id: 530, name: 'Atletico Madrid', country: 'Spain', league: 'La Liga', league_type: 'domestic_top', team_type: 'club', colors: ['#CB3524', '#FFFFFF'], colors_primary: '#CB3524', colors_secondary: '#FFFFFF' },
-  
-  // Bundesliga
-  { api_football_id: 157, name: 'Bayern Munich', country: 'Germany', league: 'Bundesliga', league_type: 'domestic_top', team_type: 'club', colors: ['#DC052D', '#FFFFFF'], colors_primary: '#DC052D', colors_secondary: '#FFFFFF' },
-  { api_football_id: 165, name: 'Borussia Dortmund', country: 'Germany', league: 'Bundesliga', league_type: 'domestic_top', team_type: 'club', colors: ['#FDE100', '#000000'], colors_primary: '#FDE100', colors_secondary: '#000000' },
-  { api_football_id: 168, name: 'Bayer Leverkusen', country: 'Germany', league: 'Bundesliga', league_type: 'domestic_top', team_type: 'club', colors: ['#E32221', '#000000'], colors_primary: '#E32221', colors_secondary: '#000000' },
-  
-  // Serie A
-  { api_football_id: 489, name: 'AC Milan', country: 'Italy', league: 'Serie A', league_type: 'domestic_top', team_type: 'club', colors: ['#AC1818', '#000000'], colors_primary: '#AC1818', colors_secondary: '#000000' },
-  { api_football_id: 505, name: 'Inter', country: 'Italy', league: 'Serie A', league_type: 'domestic_top', team_type: 'club', colors: ['#010E80', '#000000'], colors_primary: '#010E80', colors_secondary: '#000000' },
-  { api_football_id: 496, name: 'Juventus', country: 'Italy', league: 'Serie A', league_type: 'domestic_top', team_type: 'club', colors: ['#000000', '#FFFFFF'], colors_primary: '#000000', colors_secondary: '#FFFFFF' },
-  { api_football_id: 492, name: 'Napoli', country: 'Italy', league: 'Serie A', league_type: 'domestic_top', team_type: 'club', colors: ['#12A0D7', '#FFFFFF'], colors_primary: '#12A0D7', colors_secondary: '#FFFFFF' },
-  
-  // Ligue 1
-  { api_football_id: 85, name: 'Paris Saint Germain', country: 'France', league: 'Ligue 1', league_type: 'domestic_top', team_type: 'club', colors: ['#004170', '#DA291C'], colors_primary: '#004170', colors_secondary: '#DA291C' },
-  { api_football_id: 81, name: 'Marseille', country: 'France', league: 'Ligue 1', league_type: 'domestic_top', team_type: 'club', colors: ['#2FAEE0', '#FFFFFF'], colors_primary: '#2FAEE0', colors_secondary: '#FFFFFF' },
-  { api_football_id: 80, name: 'Lyon', country: 'France', league: 'Ligue 1', league_type: 'domestic_top', team_type: 'club', colors: ['#0046A0', '#E10000'], colors_primary: '#0046A0', colors_secondary: '#E10000' },
-];
+// Tüm liglerden takımlar - teamsData.js'den
+const { getClubTeamsForBackend } = require('./teamsData');
+const CLUB_TEAMS = getClubTeamsForBackend();
 
 async function runSetup() {
   console.log('🚀 Starting Static Teams Setup via Supabase...\n');

@@ -17,6 +17,8 @@ import { profileService } from '../services/profileService';
 import { UnifiedUserProfile } from '../types/profile.types';
 import { getTeamColors } from '../utils/teamColors';
 import { useTranslation } from '../hooks/useTranslation';
+import { getCountryRankingLabel } from '../utils/countryUtils';
+import { getDeviceCountryCode } from '../utils/deviceCountry';
 
 interface FavoriteTeam {
   id: number;
@@ -226,7 +228,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
               
               <View style={styles.profileRight}>
                 <View style={styles.rankingCard}>
-                  <Text style={styles.rankingLabel}>Türkiye Sıralaması</Text>
+                  <Text style={styles.rankingLabel}>{getCountryRankingLabel(getDeviceCountryCode())}</Text>
                   <View style={styles.rankingValueContainer}>
                     <View style={styles.rankingGradient}>
                       <Ionicons name="trophy" size={12} color="#F79F1B" />

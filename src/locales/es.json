@@ -81,6 +81,10 @@
       "legend": "Leyenda"
     }
   },
+  "settings": {
+    "language": "Idioma",
+    "timezone": "Zona horaria"
+  },
   "profile": {
     "title": "Perfil",
     "level": "Nivel",

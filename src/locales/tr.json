@@ -81,6 +81,10 @@
       "legend": "Efsane"
     }
   },
+  "settings": {
+    "language": "Dil",
+    "timezone": "Saat Dilimi"
+  },
   "profile": {
     "title": "Profil",
     "level": "Seviye",

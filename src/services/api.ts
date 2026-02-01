@@ -4,6 +4,7 @@
 
 import { Platform } from 'react-native';
 import { matchesDb, teamsDb, leaguesDb } from './databaseService';
+import { formatDateInUserTimezoneSync } from '../utils/timezoneUtils';
 // Mock data imports removed - using real API only
 import { getApiEndpoint, API_CONFIG } from '../config/AppVersion';
 import { handleNetworkError, handleApiError } from '../utils/GlobalErrorHandler';
@@ -417,19 +418,17 @@ export function getDateRange(days: number): string[] {
   return dates;
 }
 
-// Format match time
+// Format match time - kullanıcının seçtiği saat dilimine göre
 export function formatMatchTime(timestamp: number): string {
-  const date = new Date(timestamp * 1000);
-  return date.toLocaleTimeString('tr-TR', {
+  return formatDateInUserTimezoneSync(timestamp * 1000, undefined, {
     hour: '2-digit',
     minute: '2-digit',
   });
 }
 
-// Format match date
+// Format match date - kullanıcının seçtiği saat dilimine göre
 export function formatMatchDate(timestamp: number): string {
-  const date = new Date(timestamp * 1000);
-  return date.toLocaleDateString('tr-TR', {
+  return formatDateInUserTimezoneSync(timestamp * 1000, undefined, {
     day: '2-digit',
     month: 'long',
     year: 'numeric',

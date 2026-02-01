@@ -81,6 +81,10 @@
       "legend": "أسطورة"
     }
   },
+  "settings": {
+    "language": "اللغة",
+    "timezone": "المنطقة الزمنية"
+  },
   "profile": {
     "title": "الملف الشخصي",
     "level": "المستوى",

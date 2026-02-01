@@ -81,6 +81,10 @@
       "legend": "Leggenda"
     }
   },
+  "settings": {
+    "language": "Lingua",
+    "timezone": "Fuso orario"
+  },
   "profile": {
     "title": "Profilo",
     "level": "Livello",

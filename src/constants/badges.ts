@@ -1,10 +1,10 @@
 // Badge System Constants
-// 30 Progressive Badges – 5 satır x 6 sütun
+// 40 Progressive Badges – 10 satır x 4 sütun
 
 export interface BadgeDefinition {
   id: string;
   name: string;
-  shortName: string; // Tek kelime kısa isim
+  shortName?: string; // Tek kelime kısa isim (opsiyonel)
   description: string;
   howToEarn: string;
   emoji: string;
@@ -366,6 +366,18 @@ export const ALL_BADGES: BadgeDefinition[] = [
     color: '#8B5CF6',
     category: 'Disiplin',
   },
+
+  // Ek 10 rozet (toplam 40 – 10 satır x 4 sütun)
+  { id: 'momentum-builder', name: 'Momentum', shortName: 'Momentum', description: '5 maç üst üste puan kazandın', howToEarn: 'Üst üste 5 maçta puan kazan', emoji: '📈', tier: 2, tierName: 'Amatör', color: '#F59E0B', category: 'Disiplin' },
+  { id: 'clean-sheet', name: 'Temiz Sayfa', shortName: 'Temiz', description: 'Skor tahmininde 3 maç üst üste doğru yaptın', howToEarn: 'Skor tahmininde 3 maç üst üste doğru bil', emoji: '🛡️', tier: 2, tierName: 'Amatör', color: '#F59E0B', category: 'Genel' },
+  { id: 'goalscorer', name: 'Gol Ustası', shortName: 'Gol', description: 'Toplam gol tahmininde 10 doğru yaptın', howToEarn: 'Toplam gol tahmininde 10 doğru yap', emoji: '⚽', tier: 2, tierName: 'Amatör', color: '#F59E0B', category: 'Tempo' },
+  { id: 'form-guide', name: 'Form Rehberi', shortName: 'Form', description: 'Takım formu analiziyle 5 doğru tahmin yaptın', howToEarn: 'Form analizi ile 5 doğru tahmin yap', emoji: '📊', tier: 3, tierName: 'Profesyonel', color: '#EF4444', category: 'Yıldız' },
+  { id: 'derby-master', name: 'Derbi Ustası', shortName: 'Derbi', description: 'Derbi maçında doğru tahmin yaptın', howToEarn: 'Bir derbi maçında doğru tahmin yap', emoji: '🏟️', tier: 3, tierName: 'Profesyonel', color: '#EF4444', category: 'Genel' },
+  { id: 'underdog', name: 'Sürpriz Avcı', shortName: 'Sürpriz', description: 'Favori dışı sonuçta doğru tahmin yaptın', howToEarn: 'Favori olmayan takım kazandığında doğru tahmin et', emoji: '🎲', tier: 3, tierName: 'Profesyonel', color: '#EF4444', category: 'Yıldız' },
+  { id: 'consistency-king', name: 'Tutarlılık Kralı', shortName: 'Tutarlı', description: '10 maçta %80+ doğruluk oranı tuttun', howToEarn: '10 maçta ortalama %80+ doğruluk oranı tut', emoji: '🎯', tier: 4, tierName: 'Uzman', color: '#8B5CF6', category: 'Disiplin' },
+  { id: 'predictor-pro', name: 'Tahmin Profesörü', shortName: 'Profesör', description: '100 maç tahminini tamamladın', howToEarn: 'Toplamda 100 maç tahminini tamamla', emoji: '🎓', tier: 4, tierName: 'Uzman', color: '#8B5CF6', category: 'Genel' },
+  { id: 'champion-mind', name: 'Şampiyon Zihni', shortName: 'Şampiyon', description: 'Lig şampiyonunu sezon başında doğru tahmin ettin', howToEarn: 'Lig şampiyonunu sezon başında doğru tahmin et', emoji: '👑', tier: 5, tierName: 'Efsane', color: '#06B6D4', category: 'Yıldız' },
+  { id: 'tacticiq-legend', name: 'TacticIQ Efsanesi', shortName: 'Efsane', description: 'Tüm rozetlerin %50\'sinden fazlasını kazandın', howToEarn: '40 rozetin 20\'sinden fazlasını kazan', emoji: '💎', tier: 5, tierName: 'Efsane', color: '#06B6D4', category: 'Genel' },
 ];
 
 // Helper functions

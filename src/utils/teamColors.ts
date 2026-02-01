@@ -1,6 +1,8 @@
 // Team Colors Utility
-// Takım renklerini static_teams tablosundan veya hardcoded mapping'den alır
+// Takım renklerini static_teams tablosundan veya staticTeamsData'dan alır
 // ✅ TEK KAYNAK: Tüm uygulama bu dosyayı kullanır
+
+import { getTeamColorsById as getStaticColorsById, getTeamColorsByName as getStaticColorsByName } from '../data/staticTeamsData';
 
 // ✅ API'den gelen renkleri cache'le (runtime)
 const teamColorsCache: Record<number, string[]> = {};
@@ -29,9 +31,15 @@ export const getTeamColors = (teamName: string, teamId?: number): string[] => {
     return teamColorsCache[teamId];
   }
   
+  // 2. staticTeamsData - ID ile (tüm ligler 200+ takım)
+  if (teamId) {
+    const byId = getStaticColorsById(teamId);
+    if (byId) return byId;
+  }
+  
   const name = teamName.toLowerCase();
   
-  // ✅ Hardcoded renkler (static_teams tablosu ile uyumlu)
+  // 3. Hardcoded renkler (alias'lar için: spurs, man city, vs.)
   const teamColors: Record<string, string[]> = {
     // Türk Süper Lig
     'galatasaray': ['#E30613', '#FDB913'], // Kırmızı-Sarı
@@ -279,12 +287,15 @@ export const getTeamColors = (teamName: string, teamId?: number): string[] => {
     'romania': ['#FFCD00', '#002B7F'],
   };
   
-  // Takım ismine göre eşleştirme
   for (const [key, colors] of Object.entries(teamColors)) {
     if (name.includes(key)) return colors;
   }
   
-  // Varsayılan renkler (mavi-beyaz)
+  // 4. staticTeamsData - isim ile (tam isim eşleşmesi)
+  const byName = getStaticColorsByName(teamName);
+  if (byName) return byName;
+  
+  // 5. Varsayılan renkler (mavi-beyaz)
   return ['#1E40AF', '#FFFFFF'];
 };
 

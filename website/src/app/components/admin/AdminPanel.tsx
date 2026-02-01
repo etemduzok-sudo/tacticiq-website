@@ -5573,6 +5573,8 @@ function SettingsContent() {
                   <SelectItem value="Türkçe">Türkçe</SelectItem>
                   <SelectItem value="العربية">العربية (Arapça)</SelectItem>
                   <SelectItem value="中文">中文 (Çince)</SelectItem>
+                  <SelectItem value="Русский">Русский (Rusça)</SelectItem>
+                  <SelectItem value="हिन्दी">हिन्दी (Hintçe)</SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">Dil değiştiğinde saat dilimi otomatik ayarlanır</p>

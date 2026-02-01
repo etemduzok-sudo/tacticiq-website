@@ -81,6 +81,10 @@
       "legend": "Legend"
     }
   },
+  "settings": {
+    "language": "Language",
+    "timezone": "Timezone"
+  },
   "profile": {
     "title": "Profile",
     "level": "Level",

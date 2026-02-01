@@ -81,6 +81,10 @@
       "legend": "लीजेंड"
     }
   },
+  "settings": {
+    "language": "भाषा",
+    "timezone": "समय क्षेत्र"
+  },
   "profile": {
     "title": "प्रोफ़ाइल",
     "level": "स्तर",

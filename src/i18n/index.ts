@@ -110,9 +110,25 @@ const initI18n = async () => {
 // Change language function
 export const changeLanguage = async (language: string) => {
   try {
-    await AsyncStorage.setItem(LANGUAGE_STORAGE_KEY, language);
+    // Web için localStorage'a kaydet
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.setItem(LANGUAGE_STORAGE_KEY, language);
+      window.localStorage.setItem('@user_language', language);
+    }
+    
+    // Native için AsyncStorage'a kaydet
+    if (Platform.OS !== 'web') {
+      await AsyncStorage.setItem(LANGUAGE_STORAGE_KEY, language);
+      await AsyncStorage.setItem('@user_language', language);
+    }
+    
     configureRTL(language);
     await i18n.changeLanguage(language);
+    
+    // Force re-render için event dispatch (web için)
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('languagechange'));
+    }
   } catch (error) {
     console.error('Error changing language:', error);
   }

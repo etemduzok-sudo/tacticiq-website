@@ -21,6 +21,8 @@ export const LANGUAGE_CODE_TO_NAME: Record<string, string> = {
   'it': 'Italiano',
   'ar': 'العربية',
   'zh': '中文',
+  'ru': 'Русский',
+  'hi': 'हिन्दी',
 };
 
 // Dil - Para Birimi Eşleştirmesi
@@ -33,6 +35,8 @@ export const LANGUAGE_CURRENCY_MAP: Record<string, 'TRY' | 'USD' | 'EUR' | 'GBP'
   'Italiano': 'EUR',
   'العربية': 'AED',
   '中文': 'CNY',
+  'Русский': 'USD',
+  'हिन्दी': 'USD',
   // Dil kodları için direkt mapping (ek güvenlik)
   'tr': 'TRY',
   'en': 'USD',
@@ -42,6 +46,8 @@ export const LANGUAGE_CURRENCY_MAP: Record<string, 'TRY' | 'USD' | 'EUR' | 'GBP'
   'it': 'EUR',
   'ar': 'AED',
   'zh': 'CNY',
+  'ru': 'USD',
+  'hi': 'USD',
 };
 
 // Para Birimi Sembolleri

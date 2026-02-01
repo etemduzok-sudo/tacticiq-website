@@ -33,7 +33,8 @@ const tierToBadgeTier = (tier: number): BadgeTier => {
 };
 
 const getMockEarnedBadges = (count: number): Badge[] => {
-  return ALL_BADGES.slice(0, count).map((b) => ({
+  const now = Date.now();
+  return ALL_BADGES.slice(0, count).map((b, i) => ({
     id: b.id,
     name: b.name,
     description: b.description,
@@ -43,7 +44,8 @@ const getMockEarnedBadges = (count: number): Badge[] => {
     category: BadgeCategory.PREDICTION_GOD,
     tier: tierToBadgeTier(b.tier),
     earned: true,
-    earnedAt: new Date().toISOString(),
+    // Son kazanılan en yeni - farklı tarihlerle (ilk kazanılan en eski)
+    earnedAt: new Date(now - (count - 1 - i) * 86400000).toISOString(),
   }));
 };
 

@@ -15,6 +15,7 @@ import { logger } from './src/utils/logger';
 import { useAppNavigation } from './src/hooks/useAppNavigation';
 import { useOAuth } from './src/hooks/useOAuth';
 import { initWebZoomPrevention } from './src/utils/webZoomPrevention';
+import { getUserTimezone } from './src/utils/timezoneUtils';
 
 // Web için React Native'in built-in Animated API'sini kullan, native için reanimated
 import { Animated as RNAnimated } from 'react-native';
@@ -184,6 +185,11 @@ export default function App() {
   const matchData = useFavoriteTeamMatches(favoriteTeams);
   
   // 🔍 DEBUG: Favori takımlar ve maç durumunu logla
+  // Saat dilimi cache'ini uygulama başında yükle (maç saatleri doğru gösterilsin)
+  useEffect(() => {
+    getUserTimezone().catch(() => {});
+  }, []);
+
   useEffect(() => {
     if (favoriteTeams && favoriteTeams.length > 0) {
       console.log('✅ Favori takımlar yüklendi:', favoriteTeams.map(t => `${t.name} (${t.id})`));

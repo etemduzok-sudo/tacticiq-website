@@ -208,7 +208,7 @@ export interface PlayerCounts {
 }
 
 /**
- * Top yüzdelik hesaplama
+ * Top yüzdelik hesaplama (ülke sıralaması için)
  */
 export function calculateTopPercent(rank: number, total: number): string {
   if (rank <= 0 || total <= 0) return '';
@@ -219,4 +219,21 @@ export function calculateTopPercent(rank: number, total: number): string {
   if (percent <= 25) return 'Top %25';
   if (percent <= 50) return 'Top %50';
   return `Top %${Math.ceil(percent)}`;
+}
+
+/**
+ * Dünya sıralaması gösterimi: İlk 100 sıra numarası (#45), diğerleri yüzdelik (İlk %5 içinde)
+ */
+export function formatWorldRankingDisplay(globalRank: number, globalTotal: number = 50000): string {
+  if (globalRank <= 0 || globalTotal <= 0) return '';
+  if (globalRank <= 100) {
+    return `#${globalRank}`;
+  }
+  const percent = (globalRank / globalTotal) * 100;
+  if (percent <= 1) return 'İlk %1 içinde';
+  if (percent <= 5) return 'İlk %5 içinde';
+  if (percent <= 10) return 'İlk %10 içinde';
+  if (percent <= 25) return 'İlk %25 içinde';
+  if (percent <= 50) return 'İlk %50 içinde';
+  return `İlk %${Math.ceil(percent)} içinde`;
 }

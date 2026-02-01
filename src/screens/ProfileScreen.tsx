@@ -18,6 +18,9 @@ import {
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import i18n from '../i18n';
+import { changeLanguage as changeI18nLanguage } from '../i18n';
+import { setUserTimezone } from '../utils/timezoneUtils';
+import { getFallbackClubTeamsForProfile } from '../data/staticTeamsData';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -44,7 +47,9 @@ import { containerStyles } from '../utils/styleHelpers';
 import { ChangePasswordModal } from '../components/profile/ChangePasswordModal';
 import authService from '../services/authService';
 import { LegalDocumentScreen } from './LegalDocumentScreen';
-import { translateCountry, formatCountryDisplay, getCountryFlag } from '../utils/countryUtils';
+import { translateCountry, formatCountryDisplay, getCountryFlag, getCountryFlagUrl, getCountryRankingLabel, getCountryFromCode } from '../utils/countryUtils';
+import { getDeviceCountryCode } from '../utils/deviceCountry';
+import { formatWorldRankingDisplay } from '../types/profile.types';
 
 // ❌ Kaldırıldı - Theme artık component içinde dinamik olarak alınıyor
 // const theme = COLORS.dark;
@@ -70,7 +75,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   setAllFavoriteTeamsFromApp,
   initialTab = 'profile',
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n: i18nInstance } = useTranslation();
+  const [languageKey, setLanguageKey] = useState(0); // Dil değişikliği için key
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [showLegalModal, setShowLegalModal] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -105,7 +111,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const { favoriteTeams, addFavoriteTeam, removeFavoriteTeam, setAllFavoriteTeams, isFavorite, refetch } = useFavoriteTeams();
   
   // ✅ Takım seçim state'leri
-  const [selectedNationalTeam, setSelectedNationalTeam] = useState<{ id: number; name: string; colors: string[]; country: string; league: string; coach?: string } | null>(null);
+  const [selectedNationalTeam, setSelectedNationalTeam] = useState<{ id: number; name: string; colors: string[]; country: string; league: string; coach?: string; flag?: string } | null>(null);
   const [selectedClubTeams, setSelectedClubTeams] = useState<Array<{ id: number; name: string; colors: string[]; country: string; league: string; coach?: string } | null>>([null, null, null, null, null]);
   
   // ✅ useFavoriteTeams hook'undan gelen verilerle state'leri senkronize et
@@ -116,13 +122,15 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       // Milli takımı bul
       const nationalTeam = favoriteTeams.find((t: any) => t.type === 'national');
       if (nationalTeam) {
+        const country = (nationalTeam as any).country || 'Milli Takım';
         setSelectedNationalTeam({
           id: nationalTeam.id,
           name: nationalTeam.name,
           colors: nationalTeam.colors || ['#1E40AF', '#FFFFFF'],
-          country: (nationalTeam as any).country || 'Milli Takım',
+          country,
           league: (nationalTeam as any).league || 'UEFA',
           coach: (nationalTeam as any).coach || 'Bilinmiyor',
+          flag: (nationalTeam as any).flag || getCountryFlagUrl(country),
         });
       }
       
@@ -238,56 +246,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     { id: 78, name: 'New Zealand', country: 'New Zealand', type: 'national' as const, colors: ['#000000', '#FFFFFF'], flag: 'https://flagcdn.com/w80/nz.png' },
   ];
 
-  const FALLBACK_CLUB_TEAMS = [
-    // Türk Takımları
-    { id: 611, name: 'Fenerbahçe', country: 'Turkey', league: 'Süper Lig', type: 'club' as const, colors: ['#FFED00', '#00205B'] },
-    { id: 645, name: 'Galatasaray', country: 'Turkey', league: 'Süper Lig', type: 'club' as const, colors: ['#FF0000', '#FFD700'] },
-    { id: 549, name: 'Beşiktaş', country: 'Turkey', league: 'Süper Lig', type: 'club' as const, colors: ['#000000', '#FFFFFF'] },
-    { id: 551, name: 'Trabzonspor', country: 'Turkey', league: 'Süper Lig', type: 'club' as const, colors: ['#632134', '#00BFFF'] },
-    { id: 607, name: 'Başakşehir', country: 'Turkey', league: 'Süper Lig', type: 'club' as const, colors: ['#F26522', '#1E3A5F'] },
-    { id: 556, name: 'Konyaspor', country: 'Turkey', league: 'Süper Lig', type: 'club' as const, colors: ['#006633', '#FFFFFF'] },
-    { id: 562, name: 'Antalyaspor', country: 'Turkey', league: 'Süper Lig', type: 'club' as const, colors: ['#ED1C24', '#FFFFFF'] },
-    { id: 1005, name: 'Kasımpaşa', country: 'Turkey', league: 'Süper Lig', type: 'club' as const, colors: ['#1E4D78', '#FFFFFF'] },
-    // Premier League
-    { id: 50, name: 'Manchester City', country: 'England', league: 'Premier League', type: 'club' as const, colors: ['#6CABDD', '#1C2C5B'] },
-    { id: 33, name: 'Manchester United', country: 'England', league: 'Premier League', type: 'club' as const, colors: ['#DA291C', '#FBE122'] },
-    { id: 40, name: 'Liverpool', country: 'England', league: 'Premier League', type: 'club' as const, colors: ['#C8102E', '#00B2A9'] },
-    { id: 42, name: 'Arsenal', country: 'England', league: 'Premier League', type: 'club' as const, colors: ['#EF0107', '#FFFFFF'] },
-    { id: 49, name: 'Chelsea', country: 'England', league: 'Premier League', type: 'club' as const, colors: ['#034694', '#FFFFFF'] },
-    { id: 47, name: 'Tottenham', country: 'England', league: 'Premier League', type: 'club' as const, colors: ['#132257', '#FFFFFF'] },
-    { id: 66, name: 'Aston Villa', country: 'England', league: 'Premier League', type: 'club' as const, colors: ['#670E36', '#95BFE5'] },
-    { id: 34, name: 'Newcastle', country: 'England', league: 'Premier League', type: 'club' as const, colors: ['#241F20', '#FFFFFF'] },
-    { id: 48, name: 'West Ham', country: 'England', league: 'Premier League', type: 'club' as const, colors: ['#7A263A', '#1BB1E7'] },
-    { id: 45, name: 'Everton', country: 'England', league: 'Premier League', type: 'club' as const, colors: ['#003399', '#FFFFFF'] },
-    // La Liga
-    { id: 541, name: 'Real Madrid', country: 'Spain', league: 'La Liga', type: 'club' as const, colors: ['#FFFFFF', '#00529F'] },
-    { id: 529, name: 'Barcelona', country: 'Spain', league: 'La Liga', type: 'club' as const, colors: ['#004D98', '#A50044'] },
-    { id: 530, name: 'Atletico Madrid', country: 'Spain', league: 'La Liga', type: 'club' as const, colors: ['#CB3524', '#FFFFFF'] },
-    { id: 536, name: 'Sevilla', country: 'Spain', league: 'La Liga', type: 'club' as const, colors: ['#FF0000', '#FFFFFF'] },
-    { id: 533, name: 'Villarreal', country: 'Spain', league: 'La Liga', type: 'club' as const, colors: ['#FFFF00', '#004F9E'] },
-    { id: 548, name: 'Real Sociedad', country: 'Spain', league: 'La Liga', type: 'club' as const, colors: ['#0067B1', '#FFFFFF'] },
-    // Bundesliga
-    { id: 157, name: 'Bayern Munich', country: 'Germany', league: 'Bundesliga', type: 'club' as const, colors: ['#DC052D', '#FFFFFF'] },
-    { id: 165, name: 'Borussia Dortmund', country: 'Germany', league: 'Bundesliga', type: 'club' as const, colors: ['#FDE100', '#000000'] },
-    { id: 173, name: 'RB Leipzig', country: 'Germany', league: 'Bundesliga', type: 'club' as const, colors: ['#DD0741', '#FFFFFF'] },
-    { id: 168, name: 'Bayer Leverkusen', country: 'Germany', league: 'Bundesliga', type: 'club' as const, colors: ['#E32221', '#000000'] },
-    // Serie A
-    { id: 489, name: 'AC Milan', country: 'Italy', league: 'Serie A', type: 'club' as const, colors: ['#AC1F2E', '#000000'] },
-    { id: 505, name: 'Inter Milan', country: 'Italy', league: 'Serie A', type: 'club' as const, colors: ['#010E80', '#000000'] },
-    { id: 496, name: 'Juventus', country: 'Italy', league: 'Serie A', type: 'club' as const, colors: ['#FFFFFF', '#000000'] },
-    { id: 492, name: 'Napoli', country: 'Italy', league: 'Serie A', type: 'club' as const, colors: ['#12A0D7', '#FFFFFF'] },
-    { id: 497, name: 'Roma', country: 'Italy', league: 'Serie A', type: 'club' as const, colors: ['#8E1F2F', '#F0BC42'] },
-    { id: 487, name: 'Lazio', country: 'Italy', league: 'Serie A', type: 'club' as const, colors: ['#87D8F7', '#FFFFFF'] },
-    // Ligue 1
-    { id: 85, name: 'Paris Saint-Germain', country: 'France', league: 'Ligue 1', type: 'club' as const, colors: ['#004170', '#DA291C'] },
-    { id: 81, name: 'Marseille', country: 'France', league: 'Ligue 1', type: 'club' as const, colors: ['#2FAEE0', '#FFFFFF'] },
-    { id: 80, name: 'Lyon', country: 'France', league: 'Ligue 1', type: 'club' as const, colors: ['#FFFFFF', '#DA291C', '#041E42'] },
-    { id: 91, name: 'Monaco', country: 'France', league: 'Ligue 1', type: 'club' as const, colors: ['#DA291C', '#FFFFFF'] },
-    // Portekiz
-    { id: 211, name: 'Benfica', country: 'Portugal', league: 'Primeira Liga', type: 'club' as const, colors: ['#FF0000', '#FFFFFF'] },
-    { id: 212, name: 'Porto', country: 'Portugal', league: 'Primeira Liga', type: 'club' as const, colors: ['#003893', '#FFFFFF'] },
-    { id: 228, name: 'Sporting CP', country: 'Portugal', league: 'Primeira Liga', type: 'club' as const, colors: ['#008754', '#FFFFFF'] },
-  ];
+  // Tüm liglerden kulüp takımları - staticTeamsData'dan (tek kaynak)
+  const FALLBACK_CLUB_TEAMS = getFallbackClubTeamsForProfile();
 
   // ✅ Gelişmiş arama fonksiyonu - Türkçe karakter desteği ile
   const normalizeText = useCallback((text: string): string => {
@@ -321,6 +281,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         type: team.type,
         colors: team.colors || ['#1E40AF', '#FFFFFF'],
         coach: undefined,
+        flag: (team as any).flag || getCountryFlagUrl(team.country),
       })));
     } else {
       // Normalize edilmiş sorgu
@@ -352,6 +313,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         type: team.type,
         colors: team.colors || ['#1E40AF', '#FFFFFF'],
         coach: undefined,
+        flag: (team as any).flag || getCountryFlagUrl(team.country),
       })));
     }
   }, [normalizeText]);
@@ -404,6 +366,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 type: team.type || type,
                 colors: team.colors || ['#1E40AF', '#FFFFFF'],
                 coach: team.coach || null,
+                flag: team.flag || (type === 'national' ? getCountryFlagUrl(team.country) : null),
               }));
               
             if (backendTeams.length > 0) {
@@ -467,7 +430,25 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   } | null>(null);
 
   // ⚙️ SETTINGS STATE - Web ile aynı
-  const [selectedLanguage, setSelectedLanguage] = useState('tr');
+  // Dil kodu normalize et (en-US -> en)
+  const normalizeLangCode = (lng: string) => (lng || 'tr').split('-')[0];
+  const [selectedLanguage, setSelectedLanguage] = useState(normalizeLangCode(i18nInstance.language || 'tr'));
+  
+  // i18n dil değişikliğini dinle + başlangıçta storage'dan senkronize et
+  useEffect(() => {
+    const handleLanguageChange = (lng: string) => {
+      setSelectedLanguage(normalizeLangCode(lng));
+    };
+    
+    // Mevcut dil ile senkronize et
+    setSelectedLanguage(normalizeLangCode(i18nInstance.language || 'tr'));
+    
+    i18nInstance.on('languageChanged', handleLanguageChange);
+    
+    return () => {
+      i18nInstance.off('languageChanged', handleLanguageChange);
+    };
+  }, [i18nInstance]);
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
   const [showTimezoneDropdown, setShowTimezoneDropdown] = useState(false);
   const [selectedTimezone, setSelectedTimezone] = useState('Europe/Istanbul');
@@ -481,6 +462,30 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const [showDeleteAccountDialog, setShowDeleteAccountDialog] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleting, setDeleting] = useState(false);
+
+  // Dil ve saat dilimini storage'dan yükle (profil yüklemeden önce)
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        if (Platform.OS === 'web' && typeof window?.localStorage !== 'undefined') {
+          const lang = window.localStorage.getItem('tacticiq-language') || window.localStorage.getItem('@user_language');
+          const tz = window.localStorage.getItem('@user_timezone');
+          if (lang) setSelectedLanguage(normalizeLangCode(lang));
+          if (tz) setSelectedTimezone(tz);
+        } else {
+          const [lang, tz] = await Promise.all([
+            AsyncStorage.getItem('tacticiq-language'),
+            AsyncStorage.getItem('@user_timezone'),
+          ]);
+          if (lang) setSelectedLanguage(normalizeLangCode(lang));
+          if (tz) setSelectedTimezone(tz);
+        }
+      } catch (e) {
+        // ignore
+      }
+    };
+    loadSettings();
+  }, []);
 
   // Push notification permission kontrolü
   useEffect(() => {
@@ -936,7 +941,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
   // ✅ Takım seçildiğinde kaydet - DÜZELTILMIŞ
   const handleTeamSelect = useCallback(async (
-    team: { id: number; name: string; colors: string[]; country: string; league: string },
+    team: { id: number; name: string; colors: string[]; country: string; league: string; flag?: string },
     type: 'national' | 'club',
     index?: number
   ) => {
@@ -953,8 +958,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     
     // State'i hemen güncelle
     if (type === 'national') {
-      newNationalTeam = team;
-      setSelectedNationalTeam(team);
+      newNationalTeam = { ...team, flag: team.flag || getCountryFlagUrl(team.country) };
+      setSelectedNationalTeam(newNationalTeam);
       console.log('✅ National team state updated:', team.name);
     } else if (type === 'club' && index !== undefined && index >= 0 && index < 5) {
       newClubTeams[index] = team;
@@ -1219,7 +1224,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     checkAndSetNickname();
   }, [loading, nickname, generateAutoNickname, autoSaveProfile]);
 
-  /** Son kazanılan 3 rozet (en yeni önce) */
+  /** Son kazanılan 3 rozet (en yeni önce - earnedAt'e göre) */
   const last3EarnedBadges = useMemo(() => {
     const earned = allBadges.filter((b) => b.earned && b.earnedAt);
     return earned
@@ -1229,6 +1234,12 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
   const rankPercentage = ((user.totalPlayers - user.countryRank) / user.totalPlayers) * 100;
   const topPercentage = ((user.countryRank / user.totalPlayers) * 100).toFixed(1);
+
+  // Cihaz ülkesi - sıralama etiketi dinamik (TR→Türkiye, FR→Fransa, BR→Brezilya, GH→Gana vs.)
+  const deviceCountryCode = getDeviceCountryCode();
+  const countryRankingLabel = getCountryRankingLabel(deviceCountryCode);
+  const countryDisplayName = getCountryFromCode(deviceCountryCode) || deviceCountryCode;
+  const countryFlagUrl = getCountryFlagUrl(countryDisplayName);
 
   // Show loading state
   if (loading) {
@@ -1251,9 +1262,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         
         {/* Profile Content - Tab bar kaldırıldı */}
           <ScrollView
+          key={`profile-lang-${languageKey}`}
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          scrollEnabled={!showLanguageDropdown && !showTimezoneDropdown}
         >
           <View style={styles.scrollContentInner}>
           {/* Profile Header Card - Web ile uyumlu profesyonel tasarım */}
@@ -1332,7 +1345,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                     </View>
                     <View style={styles.rankingTableHeaderCell}>
                       <Ionicons name="trophy" size={16} color={theme.secondary} />
-                      <Text style={styles.rankingTableHeaderText}>Türkiye Sırası</Text>
+                      <Text style={styles.rankingTableHeaderText}>{countryRankingLabel}</Text>
                     </View>
                     <View style={styles.rankingTableHeaderCell}>
                       <Ionicons name="globe" size={16} color={theme.primary} />
@@ -1342,13 +1355,17 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   
                   {/* Table Row */}
                   <View style={styles.rankingTableRow}>
-                    {/* Ülke Cell */}
+                    {/* Ülke Cell - bayrak + ülke adı */}
                     <View style={styles.rankingTableCell}>
-                      <Text style={styles.flagEmoji}>🇹🇷</Text>
-                      <Text style={styles.rankingTableCountryText}>TR Türkiye</Text>
+                      {countryFlagUrl ? (
+                        <Image source={{ uri: countryFlagUrl }} style={{ width: 24, height: 18, marginRight: 6, borderRadius: 2 }} resizeMode="cover" />
+                      ) : (
+                        <Text style={styles.flagEmoji}>{getCountryFlag(countryDisplayName) || '🏳️'}</Text>
+                      )}
+                      <Text style={styles.rankingTableCountryText}>{deviceCountryCode} {translateCountry(countryDisplayName)}</Text>
                     </View>
                     
-                    {/* Türkiye Sırası Cell */}
+                    {/* Ülke Sırası Cell */}
                     <View style={styles.rankingTableCell}>
                       {user.countryRank > 0 ? (
                         <View style={styles.rankingTableCellContent}>
@@ -1366,13 +1383,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                       )}
                     </View>
                     
-                    {/* Dünya Sırası Cell */}
+                    {/* Dünya Sırası Cell - İlk 100 sıra, diğerleri yüzdelik */}
                     <View style={styles.rankingTableCell}>
                       {user.globalRank > 0 ? (
                         <View style={styles.rankingTableCellContent}>
                           <View style={[styles.rankingBadge, { backgroundColor: theme.primary + '33', borderColor: theme.primary + '4D' }]}>
                             <Text style={[styles.rankingBadgeText, { color: theme.primary }]}>
-                              {calculateTopPercent(user.globalRank, 50000)}
+                              {formatWorldRankingDisplay(user.globalRank, 50000)}
                             </Text>
                           </View>
                           <Text style={styles.rankingTableValue}>
@@ -1389,8 +1406,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             </View>
           </Animated.View>
 
-          {/* Son Başarımlar - Son 3 rozet, konteynere sığar (kaydırma yok) */}
-          <Animated.View entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(100)} style={[styles.card, styles.cardContentCentered]}>
+          {/* Son Başarımlar - Son 3 rozet, konteynere sığar */}
+          <Animated.View entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(100)} style={[styles.card, styles.cardContentCentered, { overflow: 'hidden' }]}>
             <View style={[styles.cardHeader, styles.cardHeaderCentered]}>
               <Ionicons name="star" size={20} color={theme.accent} />
               <Text style={styles.cardTitle}>Son Başarımlar</Text>
@@ -1406,7 +1423,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   >
                     <Text style={styles.latestBadgeIcon}>{badge.icon}</Text>
                     <Text style={styles.latestBadgeName} numberOfLines={1}>{badge.name}</Text>
-                    <Text style={styles.latestBadgeDescription} numberOfLines={2}>{badge.description}</Text>
+                    <Text style={styles.latestBadgeDescription} numberOfLines={1}>{badge.description}</Text>
                   </TouchableOpacity>
                 ))
               ) : (
@@ -1481,7 +1498,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               >
                 {selectedNationalTeam ? (
                   <View style={styles.dropdownSelectedContent}>
-                    <Ionicons name="flag" size={18} color={theme.secondary} />
+                    {(selectedNationalTeam.flag || getCountryFlagUrl(selectedNationalTeam.country)) ? (
+                      <Image source={{ uri: selectedNationalTeam.flag || getCountryFlagUrl(selectedNationalTeam.country)! }} style={{ width: 24, height: 18, borderRadius: 2 }} resizeMode="cover" />
+                    ) : (
+                      <Ionicons name="flag" size={18} color={theme.secondary} />
+                    )}
                     <Text style={styles.dropdownButtonTextSelected}>{selectedNationalTeam.name}</Text>
                     <View style={styles.searchHintInline}>
                       <Ionicons name="search" size={12} color={theme.mutedForeground} />
@@ -1553,15 +1574,22 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                                 colors: team.colors || ['#1E40AF', '#FFFFFF'],
                                 country: team.country || 'Unknown',
                                 league: team.league || '',
+                                flag: (team as any).flag || getCountryFlagUrl(team.country),
                               };
-                              // handleTeamSelect zaten setSelectedNationalTeam ve modal kapatmayı yapıyor
                               handleTeamSelect(teamToAdd, 'national');
                               console.log('✅ National team selected:', teamToAdd.name);
                             }}
                           >
-                            <View style={{ flex: 1 }}>
-                            <Text style={styles.dropdownItemName}>{team.name}</Text>
-                              <Text style={styles.dropdownItemMeta}>{translateCountry(team.country)}</Text>
+                            <View style={styles.dropdownItemLeft}>
+                              {((team as any).flag || getCountryFlagUrl(team.country)) ? (
+                                <Image source={{ uri: (team as any).flag || getCountryFlagUrl(team.country)! }} style={styles.teamFlagImage} resizeMode="cover" />
+                              ) : (
+                                <Ionicons name="flag" size={20} color={theme.mutedForeground} />
+                              )}
+                              <View style={{ flex: 1 }}>
+                                <Text style={styles.dropdownItemName}>{team.name}</Text>
+                                <Text style={styles.dropdownItemMeta}>{translateCountry(team.country)}</Text>
+                              </View>
                             </View>
                           </TouchableOpacity>
                         ))}
@@ -1958,100 +1986,201 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 style={styles.settingsField}
                 onPress={() => setShowLanguageDropdown(!showLanguageDropdown)}
               >
-                <Text style={styles.formLabel}>Dil</Text>
+                <Text style={styles.formLabel}>{t('settings.language')}</Text>
                 <View style={styles.settingsValue}>
-                  <Text style={styles.flagEmoji}>
-                    {selectedLanguage === 'tr' ? '🇹🇷' : selectedLanguage === 'en' ? '🇬🇧' : '🇩🇪'}
-                  </Text>
+                  <Image
+                    source={{ uri: selectedLanguage === 'tr' ? 'https://flagcdn.com/w40/tr.png' : 
+                     selectedLanguage === 'en' ? 'https://flagcdn.com/w40/gb.png' : 
+                     selectedLanguage === 'de' ? 'https://flagcdn.com/w40/de.png' :
+                     selectedLanguage === 'es' ? 'https://flagcdn.com/w40/es.png' :
+                     selectedLanguage === 'fr' ? 'https://flagcdn.com/w40/fr.png' :
+                     selectedLanguage === 'it' ? 'https://flagcdn.com/w40/it.png' :
+                     selectedLanguage === 'ru' ? 'https://flagcdn.com/w40/ru.png' :
+                     selectedLanguage === 'hi' ? 'https://flagcdn.com/w40/in.png' : 'https://flagcdn.com/w40/tr.png' }}
+                    style={{ width: 24, height: 18, borderRadius: 2, marginRight: 8 }}
+                    resizeMode="cover"
+                  />
                   <Text style={styles.settingsValueText}>
-                    {selectedLanguage === 'tr' ? 'Türkçe' : selectedLanguage === 'en' ? 'English' : 'Deutsch'}
+                    {selectedLanguage === 'tr' ? 'Türkçe' : 
+                     selectedLanguage === 'en' ? 'English' : 
+                     selectedLanguage === 'de' ? 'Deutsch' :
+                     selectedLanguage === 'es' ? 'Español' :
+                     selectedLanguage === 'fr' ? 'Français' :
+                     selectedLanguage === 'it' ? 'Italiano' :
+                     selectedLanguage === 'ru' ? 'Русский' :
+                     selectedLanguage === 'hi' ? 'हिन्दी' : 'Türkçe'}
                   </Text>
                   <Ionicons name={showLanguageDropdown ? "chevron-up" : "chevron-down"} size={16} color={theme.mutedForeground} />
                 </View>
               </TouchableOpacity>
               
-              {/* Dil Dropdown */}
-              {showLanguageDropdown && (
-                <View style={styles.languageDropdown}>
-                  {[
-                    { code: 'tr', name: 'Türkçe', flag: '🇹🇷' },
-                    { code: 'en', name: 'English', flag: '🇬🇧' },
-                    { code: 'de', name: 'Deutsch', flag: '🇩🇪' },
-                  ].map((lang) => (
-                    <TouchableOpacity
-                      key={lang.code}
-                      style={[
-                        styles.languageOption,
-                        selectedLanguage === lang.code && styles.languageOptionSelected
-                      ]}
-                      onPress={async () => {
-                        setSelectedLanguage(lang.code);
-                        await profileService.updateProfile({ preferredLanguage: lang.code });
-                        i18n.changeLanguage(lang.code);
-                        setShowLanguageDropdown(false);
-                      }}
-                    >
-                      <Text style={styles.languageFlag}>{lang.flag}</Text>
-                      <Text style={[
-                        styles.languageName,
-                        selectedLanguage === lang.code && styles.languageNameSelected
-                      ]}>{lang.name}</Text>
-                      {selectedLanguage === lang.code && (
-                        <Ionicons name="checkmark" size={18} color={theme.primary} />
-                      )}
-                    </TouchableOpacity>
-                  ))}
+              {/* Dil Dropdown - Modal içinde (overlay tıklamayı engelleme) */}
+              <Modal
+                visible={showLanguageDropdown}
+                transparent={true}
+                animationType="fade"
+                onRequestClose={() => setShowLanguageDropdown(false)}
+              >
+                <View style={styles.modalOverlay}>
+                  <Pressable 
+                    style={[StyleSheet.absoluteFill, { zIndex: 0 }]}
+                    onPress={() => setShowLanguageDropdown(false)}
+                  />
+                  <ScrollView 
+                    style={[styles.languageDropdownModal, { zIndex: 1 }]}
+                    contentContainerStyle={styles.languageDropdownContent}
+                    onStartShouldSetResponder={() => true}
+                    showsVerticalScrollIndicator={true}
+                  >
+                    {[
+                      { code: 'tr', name: 'Türkçe', flagUrl: 'https://flagcdn.com/w40/tr.png' },
+                      { code: 'en', name: 'English', flagUrl: 'https://flagcdn.com/w40/gb.png' },
+                      { code: 'de', name: 'Deutsch', flagUrl: 'https://flagcdn.com/w40/de.png' },
+                      { code: 'es', name: 'Español', flagUrl: 'https://flagcdn.com/w40/es.png' },
+                      { code: 'fr', name: 'Français', flagUrl: 'https://flagcdn.com/w40/fr.png' },
+                      { code: 'it', name: 'Italiano', flagUrl: 'https://flagcdn.com/w40/it.png' },
+                      { code: 'ru', name: 'Русский', flagUrl: 'https://flagcdn.com/w40/ru.png' },
+                      { code: 'hi', name: 'हिन्दी', flagUrl: 'https://flagcdn.com/w40/in.png' },
+                    ].map((lang) => (
+                      <TouchableOpacity
+                        key={lang.code}
+                        style={[
+                          styles.languageOption,
+                          selectedLanguage === lang.code && styles.languageOptionSelected
+                        ]}
+                        onPress={async () => {
+                          setShowLanguageDropdown(false);
+                          
+                          try {
+                            // Önce dil değiştir (changeI18nLanguage storage + i18n.changeLanguage yapar)
+                            await changeI18nLanguage(lang.code);
+                            
+                            if (Platform.OS === 'web' && typeof window?.localStorage !== 'undefined') {
+                              window.localStorage.setItem('@user_language', lang.code);
+                              window.localStorage.setItem('tacticiq-language', lang.code);
+                            } else {
+                              await AsyncStorage.setItem('@user_language', lang.code);
+                              await AsyncStorage.setItem('tacticiq-language', lang.code);
+                            }
+                            
+                            await profileService.updateProfile({ preferredLanguage: lang.code }).catch(() => {});
+                            
+                            setSelectedLanguage(lang.code);
+                            setLanguageKey(prev => prev + 1);
+                          } catch (error) {
+                            console.error('Error changing language:', error);
+                          }
+                        }}
+                      >
+                        <Image source={{ uri: lang.flagUrl }} style={{ width: 28, height: 20, borderRadius: 2, marginRight: 10 }} resizeMode="cover" />
+                        <Text style={[
+                          styles.languageName,
+                          selectedLanguage === lang.code && styles.languageNameSelected
+                        ]}>{lang.name}</Text>
+                        {selectedLanguage === lang.code && (
+                          <Ionicons name="checkmark" size={18} color={theme.primary} />
+                        )}
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
                 </View>
-              )}
-              <TouchableOpacity 
+              </Modal>
+              <TouchableOpacity
                 style={styles.settingsField}
                 onPress={() => setShowTimezoneDropdown(!showTimezoneDropdown)}
               >
-                <Text style={styles.formLabel}>Saat Dilimi</Text>
+                <Text style={styles.formLabel}>{t('settings.timezone')}</Text>
                 <View style={styles.settingsValue}>
                   <Text style={styles.settingsValueText}>
                     {selectedTimezone === 'Europe/Istanbul' ? 'İstanbul (UTC+3)' :
                      selectedTimezone === 'Europe/London' ? 'Londra (UTC+0)' :
                      selectedTimezone === 'Europe/Berlin' ? 'Berlin (UTC+1)' :
+                     selectedTimezone === 'Europe/Paris' ? 'Paris (UTC+1)' :
+                     selectedTimezone === 'Europe/Rome' ? 'Roma (UTC+1)' :
+                     selectedTimezone === 'Europe/Madrid' ? 'Madrid (UTC+1)' :
+                     selectedTimezone === 'Europe/Moscow' ? 'Moskova (UTC+3)' :
+                     selectedTimezone === 'Asia/Dubai' ? 'Dubai (UTC+4)' :
+                     selectedTimezone === 'Asia/Kolkata' ? 'Mumbai (UTC+5:30)' :
+                     selectedTimezone === 'Asia/Shanghai' ? 'Şangay (UTC+8)' :
+                     selectedTimezone === 'Asia/Tokyo' ? 'Tokyo (UTC+9)' :
                      selectedTimezone === 'America/New_York' ? 'New York (UTC-5)' :
+                     selectedTimezone === 'America/Chicago' ? 'Chicago (UTC-6)' :
+                     selectedTimezone === 'America/Denver' ? 'Denver (UTC-7)' :
+                     selectedTimezone === 'America/Los_Angeles' ? 'Los Angeles (UTC-8)' :
+                     selectedTimezone === 'America/Sao_Paulo' ? 'São Paulo (UTC-3)' :
+                     selectedTimezone === 'America/Mexico_City' ? 'Mexico City (UTC-6)' :
+                     selectedTimezone === 'Australia/Sydney' ? 'Sydney (UTC+10)' :
+                     selectedTimezone === 'Pacific/Auckland' ? 'Auckland (UTC+12)' :
                      selectedTimezone}
                   </Text>
                   <Ionicons name={showTimezoneDropdown ? "chevron-up" : "chevron-down"} size={16} color={theme.mutedForeground} />
                 </View>
               </TouchableOpacity>
               
-              {/* Saat Dilimi Dropdown */}
-              {showTimezoneDropdown && (
-                <View style={styles.languageDropdown}>
-                  {[
-                    { id: 'Europe/Istanbul', name: 'İstanbul (UTC+3)' },
-                    { id: 'Europe/London', name: 'Londra (UTC+0)' },
-                    { id: 'Europe/Berlin', name: 'Berlin (UTC+1)' },
-                    { id: 'America/New_York', name: 'New York (UTC-5)' },
-                  ].map((tz) => (
-                    <TouchableOpacity
-                      key={tz.id}
-                      style={[
-                        styles.languageOption,
-                        selectedTimezone === tz.id && styles.languageOptionSelected
-                      ]}
-                      onPress={async () => {
-                        setSelectedTimezone(tz.id);
-                        await profileService.updateProfile({ timezone: tz.id });
-                        setShowTimezoneDropdown(false);
-                      }}
-                    >
-                      <Text style={[
-                        styles.languageName,
-                        selectedTimezone === tz.id && styles.languageNameSelected
-                      ]}>{tz.name}</Text>
-                      {selectedTimezone === tz.id && (
-                        <Ionicons name="checkmark" size={18} color={theme.primary} />
-                      )}
-                    </TouchableOpacity>
-                  ))}
+              {/* Saat Dilimi Dropdown - Modal içinde (overlay tıklamayı engelleme) */}
+              <Modal
+                visible={showTimezoneDropdown}
+                transparent={true}
+                animationType="fade"
+                onRequestClose={() => setShowTimezoneDropdown(false)}
+              >
+                <View style={styles.modalOverlay}>
+                  <Pressable 
+                    style={[StyleSheet.absoluteFill, { zIndex: 0 }]}
+                    onPress={() => setShowTimezoneDropdown(false)}
+                  />
+                  <ScrollView 
+                    style={[styles.languageDropdownModal, { zIndex: 1 }]}
+                    contentContainerStyle={styles.languageDropdownContent}
+                    onStartShouldSetResponder={() => true}
+                    showsVerticalScrollIndicator={true}
+                  >
+                    {[
+                      { id: 'Europe/Istanbul', name: 'İstanbul (UTC+3)' },
+                      { id: 'Europe/London', name: 'Londra (UTC+0)' },
+                      { id: 'Europe/Berlin', name: 'Berlin (UTC+1)' },
+                      { id: 'Europe/Paris', name: 'Paris (UTC+1)' },
+                      { id: 'Europe/Rome', name: 'Roma (UTC+1)' },
+                      { id: 'Europe/Madrid', name: 'Madrid (UTC+1)' },
+                      { id: 'Europe/Moscow', name: 'Moskova (UTC+3)' },
+                      { id: 'Asia/Dubai', name: 'Dubai (UTC+4)' },
+                      { id: 'Asia/Kolkata', name: 'Mumbai (UTC+5:30)' },
+                      { id: 'Asia/Shanghai', name: 'Şangay (UTC+8)' },
+                      { id: 'Asia/Tokyo', name: 'Tokyo (UTC+9)' },
+                      { id: 'America/New_York', name: 'New York (UTC-5)' },
+                      { id: 'America/Chicago', name: 'Chicago (UTC-6)' },
+                      { id: 'America/Denver', name: 'Denver (UTC-7)' },
+                      { id: 'America/Los_Angeles', name: 'Los Angeles (UTC-8)' },
+                      { id: 'America/Sao_Paulo', name: 'São Paulo (UTC-3)' },
+                      { id: 'America/Mexico_City', name: 'Mexico City (UTC-6)' },
+                      { id: 'Australia/Sydney', name: 'Sydney (UTC+10)' },
+                      { id: 'Pacific/Auckland', name: 'Auckland (UTC+12)' },
+                    ].map((tz) => (
+                      <TouchableOpacity
+                        key={tz.id}
+                        style={[
+                          styles.languageOption,
+                          selectedTimezone === tz.id && styles.languageOptionSelected
+                        ]}
+                        onPress={async () => {
+                          setSelectedTimezone(tz.id);
+                          setShowTimezoneDropdown(false);
+                          await setUserTimezone(tz.id);
+                          await profileService.updateProfile({ timezone: tz.id }).catch(() => {});
+                        }}
+                      >
+                        <Text style={[
+                          styles.languageName,
+                          selectedTimezone === tz.id && styles.languageNameSelected
+                        ]}>{tz.name}</Text>
+                        {selectedTimezone === tz.id && (
+                          <Ionicons name="checkmark" size={18} color={theme.primary} />
+                        )}
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
                 </View>
-              )}
+              </Modal>
             </View>
 
             {/* Tema Seçimi - Açık/Koyu Mod */}
@@ -2090,7 +2219,12 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   <Text style={styles.settingRow_desc}>Maç sonuçları ve tahmin hatırlatmaları</Text>
                 </View>
                 <TouchableOpacity
-                  style={[styles.settingRow_switch, emailNotifications && { backgroundColor: theme.primary }]}
+                  style={[
+                    styles.settingRow_switch,
+                    emailNotifications
+                      ? { backgroundColor: theme.primary, justifyContent: 'flex-end' }
+                      : { backgroundColor: theme.muted, justifyContent: 'flex-start' }
+                  ]}
                   onPress={async () => {
                     const newValue = !emailNotifications;
                     setEmailNotifications(newValue);
@@ -2099,7 +2233,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                     Alert.alert('Başarılı', newValue ? 'E-posta bildirimleri açıldı' : 'E-posta bildirimleri kapatıldı');
                   }}
                 >
-                  <View style={[styles.settingRow_switchThumb, emailNotifications && styles.settingRow_switchThumbActive]} />
+                  <View style={styles.settingRow_switchThumb} />
                 </TouchableOpacity>
               </View>
 
@@ -3113,25 +3247,26 @@ const createStyles = (isDark: boolean = true) => {
     color: theme.mutedForeground,
   },
 
-  // Achievements Grid - Web ile aynı stil
+  // Achievements Grid - 4 sütun, taşma yok
   achievementsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: SPACING.md,
+    gap: SPACING.sm,
+    overflow: 'hidden',
   },
   achievementCard: {
-    flex: 1,
-    minWidth: '30%',
+    width: '23%',
+    minWidth: 72,
     alignItems: 'center',
-    padding: SPACING.base,
-    backgroundColor: theme.accent + '1A', // 10% opacity
+    padding: SPACING.sm,
+    backgroundColor: theme.accent + '1A',
     borderWidth: 1,
-    borderColor: theme.accent + '33', // 20% opacity
+    borderColor: theme.accent + '33',
     borderRadius: SIZES.radiusMd,
   },
   achievementIcon: {
-    fontSize: 32,
-    marginBottom: SPACING.sm,
+    fontSize: 36,
+    marginBottom: SPACING.xs,
   },
   achievementName: {
     ...TYPOGRAPHY.bodySmall,
@@ -3146,27 +3281,29 @@ const createStyles = (isDark: boolean = true) => {
     textAlign: 'center',
   },
 
-  // Son Başarımlar - son 3 rozet, konteynere sığar (kaydırma yok)
+  // Son Başarımlar - son 3 rozet, diğer rozetlerle aynı boyut
   latestBadgesRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    paddingVertical: 8,
+    flexWrap: 'nowrap',
+    gap: SPACING.sm,
+    width: '100%',
   },
   latestBadgeCard: {
     flex: 1,
-    minWidth: 90,
-    maxWidth: 140,
-    minHeight: 88,
+    minWidth: 0,
+    maxWidth: '33%',
+    minHeight: 100,
     alignItems: 'center',
-    justifyContent: 'center',
-    padding: SPACING.sm,
-    backgroundColor: theme.card,
-    borderWidth: 1.5,
+    justifyContent: 'flex-start',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    backgroundColor: theme.accent + '1A',
+    borderWidth: 1,
+    borderColor: theme.accent + '33',
     borderRadius: SIZES.radiusMd,
   },
   latestBadgeIcon: {
-    fontSize: 28,
+    fontSize: 36,
     marginBottom: 6,
   },
   latestBadgeName: {
@@ -3180,6 +3317,7 @@ const createStyles = (isDark: boolean = true) => {
     fontSize: 11,
     color: theme.mutedForeground,
     textAlign: 'center',
+    lineHeight: 14,
   },
   latestBadgesEmpty: {
     paddingVertical: 24,
@@ -5094,6 +5232,17 @@ const createStyles = (isDark: boolean = true) => {
     color: theme.secondary,
     fontWeight: TYPOGRAPHY.medium,
   },
+  dropdownItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 12,
+  },
+  teamFlagImage: {
+    width: 28,
+    height: 20,
+    borderRadius: 3,
+  },
 
   // Selected Teams Badges - Estetik Tasarım
   selectedTeamsBadges: {
@@ -5267,12 +5416,14 @@ const createStyles = (isDark: boolean = true) => {
   },
   settingsField: {
     flex: 1,
+    minHeight: 60, // Kayma önleme - her iki field aynı yükseklikte
   },
   settingsValue: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.sm,
     marginTop: SPACING.xs,
+    minHeight: 24, // Değer alanı için minimum yükseklik
   },
   settingsValueText: {
     ...TYPOGRAPHY.body,
@@ -5287,6 +5438,30 @@ const createStyles = (isDark: boolean = true) => {
     marginTop: SPACING.xs,
     marginBottom: SPACING.sm,
     overflow: 'hidden',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  languageDropdownModal: {
+    backgroundColor: theme.card,
+    borderRadius: SIZES.radiusMd,
+    borderWidth: 1,
+    borderColor: theme.border,
+    minWidth: 280,
+    maxWidth: 320,
+    maxHeight: 400,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+    zIndex: 10, // Dropdown backdrop üstünde olsun
+  },
+  languageDropdownContent: {
+    padding: SPACING.sm,
   },
   languageOption: {
     flexDirection: 'row',
