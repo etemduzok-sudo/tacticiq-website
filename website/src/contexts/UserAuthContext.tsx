@@ -427,34 +427,32 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
       // Mark that auth state was handled by onAuthStateChange
       authStateHandled = true;
       
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+      const setSessionAndProfile = (s: NonNullable<typeof session>) => {
+        if (!s?.user) return;
+        const metadata = s.user.user_metadata;
+        const metadataName = metadata?.name || metadata?.full_name || metadata?.display_name || null;
+        const immediateName = metadataName || s.user.email?.split('@')[0] || 'User';
+        const immediateProfile: UserProfile = {
+          id: s.user.id,
+          email: s.user.email || '',
+          name: immediateName,
+          nickname: immediateName,
+          avatar: metadata?.avatar_url || metadata?.picture,
+          plan: 'free',
+          favoriteTeams: [],
+          preferredLanguage: 'tr',
+          createdAt: new Date().toISOString(),
+        };
+        setSession(s);
+        setUser(s.user);
+        setProfile(immediateProfile);
+        setIsLoading(false);
+      };
+      
+      if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         if (session?.user) {
-          console.log('✅ User signed in:', session.user.email);
-          
-          // CRITICAL: Create immediate profile FIRST
-          const metadata = session.user.user_metadata;
-          const metadataName = metadata?.name || metadata?.full_name || metadata?.display_name || null;
-          const immediateName = metadataName || session.user.email?.split('@')[0] || 'User';
-          const immediateProfile: UserProfile = {
-            id: session.user.id,
-            email: session.user.email || '',
-            name: immediateName,
-            nickname: immediateName,
-            avatar: metadata?.avatar_url || metadata?.picture,
-            plan: 'free',
-            favoriteTeams: [],
-            preferredLanguage: 'tr',
-            createdAt: new Date().toISOString(),
-          };
-          
-          // Set ALL states together BEFORE any async operation
-          setSession(session);
-          setUser(session.user);
-          setProfile(immediateProfile);
-          setIsLoading(false);
-          console.log('✅ Immediate profile set:', immediateProfile.email);
-          
-          // Then fetch from DB in background to update (non-blocking)
+          if (event !== 'INITIAL_SESSION') console.log('✅ User signed in:', session.user.email);
+          setSessionAndProfile(session);
           fetchProfile(
             session.user.id, 
             session.user.email || '',

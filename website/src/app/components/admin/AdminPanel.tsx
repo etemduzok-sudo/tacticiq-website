@@ -7855,6 +7855,8 @@ interface ServiceStatus {
 }
 
 function SystemMonitoringContent() {
+  const isLocalDev = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
   const [services, setServices] = useState<ServiceStatus[]>([
     { id: 'backend', name: 'Backend', description: 'Ana API sunucusu', status: 'loading', port: 3001 },
     { id: 'expo', name: 'Expo', description: 'Mobil uygulama (web)', status: 'loading', port: 8081 },
@@ -7887,6 +7889,10 @@ function SystemMonitoringContent() {
 
   // Toggle auto-restart
   const toggleAutoRestart = async () => {
+    if (!isLocalDev) {
+      toast.info('Servis kontrolü sadece yerel ortamda (localhost) kullanılabilir.');
+      return;
+    }
     try {
       const response = await fetch('http://localhost:3001/api/services/auto-restart', {
         method: 'POST',
@@ -7907,6 +7913,16 @@ function SystemMonitoringContent() {
   const checkServiceHealth = async () => {
     setIsRefreshing(true);
     const updatedServices = [...services];
+
+    if (!isLocalDev) {
+      updatedServices.forEach((_, i) => {
+        updatedServices[i] = { ...updatedServices[i], status: 'stopped' as const, lastCheck: new Date(), errorMessage: 'Sadece yerel ortamda kullanılabilir' };
+      });
+      setServices(updatedServices);
+      setLastRefresh(new Date());
+      setIsRefreshing(false);
+      return;
+    }
     
     // Check Backend
     try {
@@ -8088,6 +8104,10 @@ function SystemMonitoringContent() {
   }, []);
 
   const handleServiceAction = async (serviceId: string, action: 'start' | 'stop' | 'restart') => {
+    if (!isLocalDev) {
+      toast.info('Servis kontrolü sadece yerel ortamda (localhost) kullanılabilir.');
+      return;
+    }
     setActionLoading(`${serviceId}-${action}`);
     toast.info(`${action === 'start' ? 'Başlatılıyor' : action === 'stop' ? 'Durduruluyor' : 'Yeniden başlatılıyor'}...`);
     
@@ -8200,6 +8220,10 @@ function SystemMonitoringContent() {
   };
 
   const handleAllServicesAction = async (action: 'start' | 'stop' | 'restart') => {
+    if (!isLocalDev) {
+      toast.info('Servis kontrolü sadece yerel ortamda (localhost) kullanılabilir.');
+      return;
+    }
     setActionLoading(`all-${action}`);
     
     // Check if backend is running first
@@ -8303,6 +8327,12 @@ function SystemMonitoringContent() {
 
   return (
     <div className="space-y-6">
+      {!isLocalDev && (
+        <div className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-4 text-sm text-amber-800 dark:text-amber-200">
+          <p className="font-semibold">ℹ️ Servis kontrolü sadece yerel ortamda kullanılabilir</p>
+          <p className="mt-1 text-muted-foreground">Bu sayfa (Vercel / canlı site) üzerinde backend ve diğer servisler localhost’ta çalışmadığı için başlat/durdur butonları kullanılamaz. Servis kontrolünü kullanmak için projeyi bilgisayarınızda çalıştırın (localhost).</p>
+        </div>
+      )}
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
