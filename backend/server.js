@@ -714,7 +714,11 @@ app.use((err, req, res, next) => {
 
 // Start server - Render için callback minimal olmalı (port scan timeout önleme)
 app.listen(PORT, () => {
-  console.log(`Server listening on port ${PORT}`);
+  // Render port scan için kritik - hemen ve belirgin log
+  console.log('='.repeat(60));
+  console.log(`✅ Server listening on port ${PORT}`);
+  console.log(`✅ Health check: http://0.0.0.0:${PORT}/health`);
+  console.log('='.repeat(60));
   
   // Servisleri async başlat (port bind edildikten sonra)
   setImmediate(() => {
