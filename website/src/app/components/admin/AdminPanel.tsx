@@ -1098,82 +1098,50 @@ function AnalyticsContent() {
     localStorage.setItem('admin_store_analytics', JSON.stringify(data));
   };
 
-  // Simulate connecting to store
+  // Mağaza / indirme verilerini sıfırla (sahte verileri temizle)
+  const handleResetStoreAnalytics = () => {
+    saveStoreAnalytics(JSON.parse(JSON.stringify(DEFAULT_STORE_ANALYTICS)));
+    toast.success('Mağaza verileri sıfırlandı. Backend bağlandığında gerçek veriler görünecek.');
+  };
+
+  // Mağaza bağlantısı (gerçek API yoksa sadece "bağlı" işaretlenir; veriler backend/API ile gelecek)
   const handleConnectStore = (platform: 'google_play' | 'app_store') => {
     toast.loading(`${platform === 'google_play' ? 'Google Play' : 'App Store'} bağlanıyor...`);
-    
-    // Simulate API connection
     setTimeout(() => {
-      const sampleCountries = [
-        { country: 'Türkiye', countryCode: 'TR', downloads: Math.floor(Math.random() * 5000) + 1000, revenue: Math.floor(Math.random() * 50000) + 10000, percentage: 45 },
-        { country: 'Almanya', countryCode: 'DE', downloads: Math.floor(Math.random() * 2000) + 500, revenue: Math.floor(Math.random() * 30000) + 5000, percentage: 20 },
-        { country: 'Amerika', countryCode: 'US', downloads: Math.floor(Math.random() * 1500) + 300, revenue: Math.floor(Math.random() * 25000) + 3000, percentage: 15 },
-        { country: 'İngiltere', countryCode: 'GB', downloads: Math.floor(Math.random() * 1000) + 200, revenue: Math.floor(Math.random() * 15000) + 2000, percentage: 10 },
-        { country: 'Fransa', countryCode: 'FR', downloads: Math.floor(Math.random() * 500) + 100, revenue: Math.floor(Math.random() * 8000) + 1000, percentage: 5 },
-      ];
-      
-      const totalDownloads = sampleCountries.reduce((sum, c) => sum + c.downloads, 0);
-      const totalRevenue = sampleCountries.reduce((sum, c) => sum + c.revenue, 0);
-      
       const updated = {
         ...storeAnalytics,
         [platform]: {
           ...storeAnalytics[platform],
           connected: true,
           lastSync: new Date().toISOString(),
-          totalDownloads,
-          totalRevenue,
-          activeInstalls: Math.floor(totalDownloads * 0.7),
-          rating: 4.5 + Math.random() * 0.4,
-          reviews: Math.floor(totalDownloads * 0.05),
-          countries: sampleCountries,
+          totalDownloads: 0,
+          totalRevenue: 0,
+          activeInstalls: 0,
+          rating: 0,
+          reviews: 0,
+          countries: [],
         },
       };
-      
       saveStoreAnalytics(updated);
       toast.dismiss();
-      toast.success(`${platform === 'google_play' ? 'Google Play' : 'App Store'} başarıyla bağlandı!`);
+      toast.success(`${platform === 'google_play' ? 'Google Play' : 'App Store'} bağlandı. Gerçek veriler backend/API bağlandığında görünecek.`);
       setShowConnectDialog(false);
-    }, 2000);
+    }, 1000);
   };
 
-  // Sync store data
+  // Sync store data (gerçek backend/API bağlandığında burada veri çekilecek)
   const handleSyncStore = (platform: 'google_play' | 'app_store') => {
     if (!storeAnalytics[platform].connected) {
       toast.error('Önce mağazayı bağlamanız gerekiyor');
       return;
     }
-    
-    toast.loading('Veriler senkronize ediliyor...');
-    
-    setTimeout(() => {
-      // Update with new random data
-      const currentData = storeAnalytics[platform];
-      const updatedCountries = currentData.countries.map(c => ({
-        ...c,
-        downloads: c.downloads + Math.floor(Math.random() * 100),
-        revenue: c.revenue + Math.floor(Math.random() * 1000),
-      }));
-      
-      const totalDownloads = updatedCountries.reduce((sum, c) => sum + c.downloads, 0);
-      const totalRevenue = updatedCountries.reduce((sum, c) => sum + c.revenue, 0);
-      
-      const updated = {
-        ...storeAnalytics,
-        [platform]: {
-          ...currentData,
-          lastSync: new Date().toISOString(),
-          totalDownloads,
-          totalRevenue,
-          activeInstalls: Math.floor(totalDownloads * 0.7),
-          countries: updatedCountries,
-        },
-      };
-      
-      saveStoreAnalytics(updated);
-      toast.dismiss();
-      toast.success('Veriler güncellendi!');
-    }, 1500);
+    const currentData = storeAnalytics[platform];
+    const updated = {
+      ...storeAnalytics,
+      [platform]: { ...currentData, lastSync: new Date().toISOString() },
+    };
+    saveStoreAnalytics(updated);
+    toast.info('Senkronizasyon backend/API bağlandığında gerçek veri çekecek. Şu an sadece zaman güncellendi.');
   };
 
   if (!contextData || !stats) {
@@ -1185,9 +1153,15 @@ function AnalyticsContent() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold mb-1">Analytics & Mağaza Verileri</h2>
-        <p className="text-sm text-muted-foreground">Google Play ve App Store verileri ile detaylı analizler</p>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold mb-1">Analytics & Mağaza Verileri</h2>
+          <p className="text-sm text-muted-foreground">Google Play ve App Store verileri ile detaylı analizler. Backend çalışınca gerçek veriler burada görünecek.</p>
+        </div>
+        <Button variant="outline" size="sm" onClick={handleResetStoreAnalytics} className="text-muted-foreground">
+          <RotateCw className="size-4 mr-2" />
+          Verileri sıfırla
+        </Button>
       </div>
 
       {/* Tab Navigation */}
@@ -1243,7 +1217,7 @@ function AnalyticsContent() {
                 <span className="text-sm text-muted-foreground">Toplam İndirme</span>
               </div>
               <div className="text-2xl font-bold">{totalDownloads.toLocaleString()}</div>
-              <div className="text-xs text-green-600 mt-1">+{Math.floor(Math.random() * 100 + 50)} bugün</div>
+              {totalDownloads > 0 ? <div className="text-xs text-muted-foreground mt-1">Backend/mağaza bağlandığında günlük görünecek</div> : <div className="text-xs text-muted-foreground mt-1">—</div>}
             </Card>
             <Card className="p-4">
               <div className="flex items-center gap-2 mb-2">
@@ -1251,7 +1225,7 @@ function AnalyticsContent() {
                 <span className="text-sm text-muted-foreground">Toplam Gelir</span>
               </div>
               <div className="text-2xl font-bold">₺{totalRevenue.toLocaleString()}</div>
-              <div className="text-xs text-green-600 mt-1">+₺{Math.floor(Math.random() * 5000 + 1000)} bugün</div>
+              {totalRevenue > 0 ? <div className="text-xs text-muted-foreground mt-1">Backend/mağaza bağlandığında günlük görünecek</div> : <div className="text-xs text-muted-foreground mt-1">—</div>}
             </Card>
             <Card className="p-4">
               <div className="flex items-center gap-2 mb-2">
@@ -1260,8 +1234,8 @@ function AnalyticsContent() {
               </div>
               <div className="text-2xl font-bold">{storeAnalytics.google_play.totalDownloads.toLocaleString()}</div>
               <div className="flex items-center gap-1 mt-1">
-                <span className="text-xs">⭐ {storeAnalytics.google_play.rating.toFixed(1)}</span>
-                <span className="text-xs text-muted-foreground">({storeAnalytics.google_play.reviews} yorum)</span>
+                <span className="text-xs">⭐ {(storeAnalytics.google_play.rating ?? 0).toFixed(1)}</span>
+                <span className="text-xs text-muted-foreground">({storeAnalytics.google_play.reviews ?? 0} yorum)</span>
               </div>
             </Card>
             <Card className="p-4">
@@ -1271,8 +1245,8 @@ function AnalyticsContent() {
               </div>
               <div className="text-2xl font-bold">{storeAnalytics.app_store.totalDownloads.toLocaleString()}</div>
               <div className="flex items-center gap-1 mt-1">
-                <span className="text-xs">⭐ {storeAnalytics.app_store.rating.toFixed(1)}</span>
-                <span className="text-xs text-muted-foreground">({storeAnalytics.app_store.reviews} yorum)</span>
+                <span className="text-xs">⭐ {(storeAnalytics.app_store.rating ?? 0).toFixed(1)}</span>
+                <span className="text-xs text-muted-foreground">({storeAnalytics.app_store.reviews ?? 0} yorum)</span>
               </div>
             </Card>
           </div>
@@ -7958,11 +7932,17 @@ function SystemMonitoringContent() {
           const backendIdx = updatedServices.findIndex(s => s.id === 'backend');
           updatedServices[backendIdx] = { ...updatedServices[backendIdx], status: 'running', lastCheck: new Date(), uptime: backendData.uptime, errorMessage: undefined };
         } else throw new Error(`HTTP ${backendRes.status}`);
-      } catch (error) {
+      } catch (error: unknown) {
         const backendIdx = updatedServices.findIndex(s => s.id === 'backend');
-        const errorMsg = error instanceof Error && error.name === 'TimeoutError' 
-          ? 'Backend yanıt vermiyor (Render free tier spin-down olabilir, ilk istek 50+ saniye sürebilir)'
-          : 'Uzaktan backend bağlantı hatası';
+        let errorMsg = 'Backend\'e ulaşılamadı';
+        if (error instanceof Error) {
+          if (error.name === 'TimeoutError' || error.name === 'AbortError')
+            errorMsg = 'Backend yanıt vermiyor (sunucu uyuyor olabilir; Render free tier ilk istek ~1 dk sürebilir). Yenile veya 1 dk sonra tekrar dene.';
+          else if (error.message?.includes('fetch') || error.message?.toLowerCase().includes('failed to fetch'))
+            errorMsg = 'Backend adresine bağlanılamadı. Vercel\'de VITE_BACKEND_URL doğru mu kontrol et (sonunda / olmasın).';
+          else
+            errorMsg = error.message || errorMsg;
+        }
         updatedServices[backendIdx] = { ...updatedServices[backendIdx], status: 'stopped', lastCheck: new Date(), errorMessage: errorMsg };
       }
       // Expo/Website: uzakta yok
@@ -7991,7 +7971,7 @@ function SystemMonitoringContent() {
       try {
         const rateRes = await fetch(`${backendBaseUrl}/api/rate-limit/stats`, { signal: AbortSignal.timeout(5000) });
         const rateData = await rateRes.json();
-        setApiStats({ dailyCalls: rateData.todaysCalls || 0, remaining: rateData.remaining || 7500, limit: rateData.limit || 7500 });
+        setApiStats({ dailyCalls: rateData.todaysCalls ?? rateData.current ?? 0, remaining: rateData.remaining ?? 7500, limit: rateData.limit ?? 7500 });
       } catch { /* ignore */ }
       const supabaseIdx = updatedServices.findIndex(s => s.id === 'supabase');
       updatedServices[supabaseIdx] = { ...updatedServices[supabaseIdx], status: 'running', lastCheck: new Date() };
@@ -8138,9 +8118,9 @@ function SystemMonitoringContent() {
       const rateRes = await fetch(`${backendBaseUrl}/api/rate-limit/stats`, { signal: AbortSignal.timeout(5000) });
       const rateData = await rateRes.json();
       setApiStats({
-        dailyCalls: rateData.todaysCalls || 0,
-        remaining: rateData.remaining || 7500,
-        limit: rateData.limit || 7500,
+        dailyCalls: rateData.todaysCalls ?? rateData.current ?? 0,
+        remaining: rateData.remaining ?? 7500,
+        limit: rateData.limit ?? 7500,
       });
     } catch (e) {
       // Ignore rate limit errors
@@ -8523,6 +8503,53 @@ function SystemMonitoringContent() {
         </div>
       </div>
 
+      {/* Backend durumu — tek bakışta çalışıyor mu çalışmıyor mu */}
+      {(() => {
+        const backend = services.find(s => s.id === 'backend');
+        const isRunning = backend?.status === 'running';
+        const url = backendBaseUrl || 'https://...';
+        return (
+          <Card className={isRunning ? 'border-green-500 bg-green-500/10' : 'border-amber-500/50 bg-amber-500/5'}>
+            <CardContent className="py-4">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className={`text-3xl font-bold ${isRunning ? 'text-green-500' : 'text-amber-500'}`}>
+                    {isRunning ? 'Backend çalışıyor ✓' : 'Backend çalışmıyor'}
+                  </div>
+                  {backendBaseUrl && (
+                    <a
+                      href={`${backendBaseUrl}/health`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-primary hover:underline break-all"
+                    >
+                      {backendBaseUrl}/health
+                    </a>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open(`${backendBaseUrl || ''}/health`, '_blank')}
+                    disabled={!backendBaseUrl}
+                  >
+                    Backend'i tarayıcıda aç
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={checkServiceHealth} disabled={isRefreshing}>
+                    <RefreshCw className={`size-4 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
+                    Yeniden kontrol et
+                  </Button>
+                </div>
+              </div>
+              {!isRunning && backend?.errorMessage && (
+                <p className="text-sm text-amber-600 mt-2">{backend.errorMessage}</p>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })()}
+
       {/* System Overview */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="border-green-500/30 bg-green-500/5">
@@ -8553,6 +8580,7 @@ function SystemMonitoringContent() {
               <div>
                 <p className="text-sm text-muted-foreground">Durdu</p>
                 <p className="text-3xl font-bold text-gray-500">{stoppedCount}</p>
+                <p className="text-xs text-muted-foreground mt-1">Expo/Website yerel ortamda; uzaktan panelde normal</p>
               </div>
               <WifiOff className="size-10 text-gray-500/50" />
             </div>
@@ -8562,12 +8590,15 @@ function SystemMonitoringContent() {
           <CardContent className="pt-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">API Kullanımı</p>
+                <p className="text-sm text-muted-foreground">API-Football günlük</p>
                 <p className="text-2xl font-bold text-primary">
                   {apiStats ? `${apiStats.dailyCalls.toLocaleString()}` : '...'}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {apiStats ? `/ ${apiStats.limit.toLocaleString()} günlük` : ''}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {apiStats ? (apiStats.dailyCalls === 0 ? 'Backend\'den; 0 = bugün çağrı yok' : 'Backend\'den') : 'Backend yanıt verince güncellenir'}
                 </p>
               </div>
               <Zap className="size-10 text-primary/50" />
@@ -8740,6 +8771,14 @@ function SystemMonitoringContent() {
                       )}
                     </div>
                     <p className="text-sm text-muted-foreground">{service.description}</p>
+                    {service.id === 'backend' && (
+                      <p className={`text-xs font-medium mt-1 ${service.status === 'running' ? 'text-green-600' : 'text-amber-600'}`}>
+                        {service.status === 'running' ? '✓ Çalışıyor' : '✗ Çalışmıyor'}
+                        {canUseRemoteControl && backendBaseUrl && (
+                          <span className="text-muted-foreground font-normal"> — {backendBaseUrl}</span>
+                        )}
+                      </p>
+                    )}
                     {service.errorMessage && (
                       <p className="text-xs text-red-500 mt-1">{service.errorMessage}</p>
                     )}
@@ -8816,8 +8855,9 @@ function SystemMonitoringContent() {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="p-4 bg-muted/30 rounded-lg">
-              <p className="text-sm text-muted-foreground">Günlük API Çağrısı</p>
-              <p className="text-2xl font-bold">{apiStats?.dailyCalls?.toLocaleString() || '0'}</p>
+              <p className="text-sm text-muted-foreground">API-Football günlük çağrı</p>
+              <p className="text-2xl font-bold">{apiStats?.dailyCalls?.toLocaleString() ?? '0'}</p>
+              <p className="text-xs text-muted-foreground">Backend'den; 0 = bugün henüz çağrı yok</p>
               <div className="mt-2 h-2 bg-muted rounded-full overflow-hidden">
                 <div 
                   className="h-full bg-primary transition-all"
@@ -9014,29 +9054,42 @@ function DataFlowHealthSection() {
               }
             } catch (err: any) {
               const latency = Date.now() - startTime;
-              updatedFlows[i] = { ...flow, status: 'error', errorMessage: err.message || 'Backend yanıt vermiyor', latency, lastSync: new Date() };
+              const msg = err?.message?.includes('fetch') || err?.name === 'AbortError'
+                ? 'Backend yanıt vermiyor (uzak sunucu uyuyor olabilir)'
+                : (err?.message || 'Backend yanıt vermiyor');
+              updatedFlows[i] = { ...flow, status: 'error', errorMessage: msg, latency, lastSync: new Date() };
             }
           } else {
             updatedFlows[i] = { ...flow, status: 'degraded', errorMessage: 'Backend URL yok (yerel veya VITE_BACKEND_URL)' };
           }
         } else if (flow.id === 'mobile-db' || flow.id === 'db-mobile') {
-          // Check if Expo is running (proxy for mobile)
-          try {
-            await fetch('http://localhost:8081', { signal: AbortSignal.timeout(2000), mode: 'no-cors' });
-            const latency = Date.now() - startTime;
-            updatedFlows[i] = {
-              ...flow,
-              status: 'healthy',
-              latency,
-              lastSync: new Date(),
-            };
-          } catch {
+          // Uzaktan panelde (Vercel) Expo yerelde çalışmaz; sadece yerel ortamda test edilebilir
+          const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+          if (!isLocal) {
             updatedFlows[i] = {
               ...flow,
               status: 'degraded',
-              errorMessage: 'Mobil uygulama çalışmıyor',
+              errorMessage: 'Yalnızca yerel ortamda test edilir (Expo çalışırken)',
               lastSync: new Date(),
             };
+          } else {
+            try {
+              await fetch('http://localhost:8081', { signal: AbortSignal.timeout(2000), mode: 'no-cors' });
+              const latency = Date.now() - startTime;
+              updatedFlows[i] = {
+                ...flow,
+                status: 'healthy',
+                latency,
+                lastSync: new Date(),
+              };
+            } catch {
+              updatedFlows[i] = {
+                ...flow,
+                status: 'degraded',
+                errorMessage: 'Expo (localhost:8081) çalışmıyor',
+                lastSync: new Date(),
+              };
+            }
           }
         } else if (flow.id === 'api-db') {
           if (!backendUrl) {
@@ -9077,27 +9130,27 @@ function DataFlowHealthSection() {
 
     setDataFlows(updatedFlows);
 
-    // Simulate DB stats
-    setDbStats({
-      totalUsers: Math.floor(Math.random() * 1000) + 500,
-      totalPredictions: Math.floor(Math.random() * 10000) + 5000,
-      totalMatches: Math.floor(Math.random() * 500) + 100,
-      lastWrite: new Date(Date.now() - Math.random() * 60000),
-      lastRead: new Date(Date.now() - Math.random() * 10000),
-    });
-
-    // Simulate recent operations
-    const operations: typeof recentOperations = [];
-    for (let i = 0; i < 10; i++) {
-      operations.push({
-        type: Math.random() > 0.3 ? 'read' : 'write',
-        table: ['user_profiles', 'predictions', 'matches', 'badges', 'teams'][Math.floor(Math.random() * 5)],
-        timestamp: new Date(Date.now() - i * Math.random() * 60000),
-        success: Math.random() > 0.05,
-        source: Math.random() > 0.5 ? 'web' : 'mobile',
+    // Gerçek DB istatistikleri (Supabase count) — kafadan sayı yok
+    try {
+      const [usersRes, predictionsRes, matchesRes] = await Promise.all([
+        supabase.from('user_profiles').select('*', { count: 'exact', head: true }),
+        supabase.from('predictions').select('*', { count: 'exact', head: true }),
+        supabase.from('matches').select('*', { count: 'exact', head: true }),
+      ]);
+      const getCount = (r: { count?: number | null } | null) => (r && typeof r.count === 'number' ? r.count : 0);
+      setDbStats({
+        totalUsers: getCount(usersRes as { count?: number | null }),
+        totalPredictions: getCount(predictionsRes as { count?: number | null }),
+        totalMatches: getCount(matchesRes as { count?: number | null }),
+        lastWrite: null,
+        lastRead: new Date(),
       });
+    } catch {
+      setDbStats(null);
     }
-    setRecentOperations(operations);
+
+    // Son işlemler backend loglarından alınabilir; şimdilik boş bırak
+    setRecentOperations([]);
 
     setIsChecking(false);
   };
@@ -9260,6 +9313,9 @@ function DataFlowHealthSection() {
             Son Veritabanı İşlemleri
           </h4>
           <div className="max-h-48 overflow-y-auto space-y-1">
+            {recentOperations.length === 0 ? (
+              <p className="text-xs text-muted-foreground py-2">Son işlemler backend loglarından alınabilir.</p>
+            ) : null}
             {recentOperations.map((op, idx) => (
               <div
                 key={idx}
@@ -9291,26 +9347,29 @@ function DataFlowHealthSection() {
           </div>
         </div>
 
-        {/* DB Stats Summary */}
+        {/* DB Stats Summary — Supabase'den canlı, gerçek sayılar */}
         {dbStats && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div className="p-3 bg-muted/30 rounded-lg text-center">
-              <p className="text-2xl font-bold">{dbStats.totalUsers}</p>
-              <p className="text-xs text-muted-foreground">Kullanıcı</p>
-            </div>
-            <div className="p-3 bg-muted/30 rounded-lg text-center">
-              <p className="text-2xl font-bold">{dbStats.totalPredictions}</p>
-              <p className="text-xs text-muted-foreground">Tahmin</p>
-            </div>
-            <div className="p-3 bg-muted/30 rounded-lg text-center">
-              <p className="text-2xl font-bold">{dbStats.totalMatches}</p>
-              <p className="text-xs text-muted-foreground">Maç</p>
-            </div>
-            <div className="p-3 bg-muted/30 rounded-lg text-center">
-              <p className="text-sm font-medium">
-                {dbStats.lastWrite?.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
-              </p>
-              <p className="text-xs text-muted-foreground">Son Yazma</p>
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">Supabase'den canlı çekiliyor (gerçek veri)</p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="p-3 bg-muted/30 rounded-lg text-center">
+                <p className="text-2xl font-bold">{dbStats.totalUsers}</p>
+                <p className="text-xs text-muted-foreground">Kullanıcı</p>
+              </div>
+              <div className="p-3 bg-muted/30 rounded-lg text-center">
+                <p className="text-2xl font-bold">{dbStats.totalPredictions}</p>
+                <p className="text-xs text-muted-foreground">Tahmin</p>
+              </div>
+              <div className="p-3 bg-muted/30 rounded-lg text-center">
+                <p className="text-2xl font-bold">{dbStats.totalMatches}</p>
+                <p className="text-xs text-muted-foreground">Maç</p>
+              </div>
+              <div className="p-3 bg-muted/30 rounded-lg text-center">
+                <p className="text-sm font-medium">
+                  {dbStats.lastWrite ? dbStats.lastWrite.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '—'}
+                </p>
+                <p className="text-xs text-muted-foreground">Son Yazma</p>
+              </div>
             </div>
           </div>
         )}

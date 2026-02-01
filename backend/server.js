@@ -158,22 +158,36 @@ app.use('/api/timeline', require('./routes/timeline')); // 📊 Maç akışı
 app.use('/api/leaderboard/snapshots', require('./routes/leaderboardSnapshots')); // 📸 Sıralama geçmişi
 app.use('/api/squad-predictions', squadPredictionsRouter); // 📋 Kadro tahminleri ve istatistikler
 
-// 🔥 Rate Limiter Stats
+// 🔥 Rate Limiter Stats (Backend istek sayısı + API-Football günlük kullanım)
 app.get('/api/rate-limit/stats', (req, res) => {
   const stats = getStats();
+  let todaysCalls = stats.current;
+  let remaining = stats.remaining;
+  const limit = 7500;
+  try {
+    const aggressiveCacheService = require('./services/aggressiveCacheService');
+    const cacheStats = aggressiveCacheService.getStats();
+    todaysCalls = cacheStats.callsToday ?? stats.current;
+    remaining = cacheStats.remaining ?? (limit - todaysCalls);
+  } catch (e) { /* API-Football sayacı yoksa rate limiter kullan */ }
   res.json({
     success: true,
     ...stats,
+    todaysCalls,
+    remaining,
+    limit,
   });
 });
 
 // 🚀 Aggressive Cache Stats
 app.get('/api/cache/stats', (req, res) => {
-  const cacheStats = aggressiveCacheService.getStats();
-  res.json({
-    success: true,
-    ...cacheStats,
-  });
+  try {
+    const aggressiveCacheService = require('./services/aggressiveCacheService');
+    const cacheStats = aggressiveCacheService.getStats();
+    res.json({ success: true, ...cacheStats });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
 });
 
 // ============================================
