@@ -8594,6 +8594,11 @@ function SystemMonitoringContent() {
               </CardTitle>
               <CardDescription>
                 Aşağıdaki servisler şu an çalışmıyor veya hata veriyor. Backend uzaktaysa Expo/Website &quot;yerel&quot; olduğu için burada görünmesi normaldir.
+                {isLocalDev && (
+                  <span className="block mt-2 text-green-600 dark:text-green-400">
+                    Yerel test: Backend localhost:3001&apos;de çalışıyorsa Expo ve Website için <strong>Başlat</strong> / <strong>Yeniden Başlat</strong> ile yerelde başlatabilirsiniz.
+                  </span>
+                )}
               </CardDescription>
             </CardHeader>
             <CardContent>

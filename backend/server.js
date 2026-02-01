@@ -351,6 +351,12 @@ app.post('/api/services/control', authenticateApiKey, async (req, res) => {
       }
       
       case 'expo': {
+        // Expo sadece yerel ortamda başlatılabilir (Render'da spawn yok)
+        if (process.env.NODE_ENV === 'production' || process.env.RENDER === 'true') {
+          result.success = false;
+          result.message = 'Expo sadece yerel ortamda (backend localhost\'ta çalışırken) Başlat ile açılabilir.';
+          break;
+        }
         // Expo Web servisi kontrolü
         if (action === 'stop') {
           // Windows'ta port 8081'i kullanan process'i durdur
@@ -407,6 +413,12 @@ app.post('/api/services/control', authenticateApiKey, async (req, res) => {
       }
       
       case 'website': {
+        // Website sadece yerel ortamda başlatılabilir (Render'da spawn yok)
+        if (process.env.NODE_ENV === 'production' || process.env.RENDER === 'true') {
+          result.success = false;
+          result.message = 'Website sadece yerel ortamda (backend localhost\'ta çalışırken) Başlat ile açılabilir.';
+          break;
+        }
         // Website (Vite) servisi kontrolü
         if (action === 'stop') {
           // Windows'ta port 5173'ü kullanan process'i durdur
