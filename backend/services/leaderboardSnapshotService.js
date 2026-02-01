@@ -5,13 +5,8 @@
 // Kullanıcılar geçmiş sıralamaları görebilir
 // ============================================
 
-const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config();
-
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-);
+const { supabase } = require('../config/supabase');
 
 let snapshotTimer = null;
 let lastDailySnapshot = null;

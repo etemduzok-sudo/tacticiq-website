@@ -6,14 +6,9 @@
 // Aylık API kullanımı: 62 çağrı (31 gün × 2)
 // ============================================
 
-const { createClient } = require('@supabase/supabase-js');
 const axios = require('axios');
 require('dotenv').config();
-
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-);
+const { supabase } = require('../config/supabase');
 
 // API-Football Config
 const API_FOOTBALL_BASE_URL = 'https://v3.football.api-sports.io';

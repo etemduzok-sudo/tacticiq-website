@@ -7,14 +7,8 @@
 const express = require('express');
 const router = express.Router();
 const { body, param, validationResult } = require('express-validator');
-const { createClient } = require('@supabase/supabase-js');
+const { supabase } = require('../config/supabase');
 const { authenticateToken, optionalAuth } = require('../middleware/auth');
-
-// Supabase client
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-);
 
 // ============================================
 // VALIDATION MIDDLEWARE

@@ -5,13 +5,8 @@
 // Her 12 saniyede bir API'den gelen eventleri DB'ye yazar
 // ============================================
 
-const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config();
-
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-);
+const { supabase } = require('../config/supabase');
 
 // Daha önce kaydedilmiş eventleri takip et (duplicate önleme)
 const processedEvents = new Map(); // match_id -> Set of event keys

@@ -5,14 +5,9 @@
 // Her gün API-Football'dan veri çekip Supabase'e kaydeder
 // ============================================
 
-const { createClient } = require('@supabase/supabase-js');
 const footballApi = require('./footballApi');
 const databaseService = require('./databaseService');
-
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-);
+const { supabase } = require('../config/supabase');
 
 // ============================================
 // CONFIGURATION
