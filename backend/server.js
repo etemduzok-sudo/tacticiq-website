@@ -6,6 +6,7 @@ const compression = require('compression');
 const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
+const axios = require('axios');
 require('dotenv').config();
 
 // ✅ SECURITY: Import auth middleware for protected endpoints
@@ -240,7 +241,7 @@ app.get('/api/system-status', (req, res) => {
 // ============================================
 
 // Control a specific service
-app.post('/api/services/control', authenticateApiKey, (req, res) => {
+app.post('/api/services/control', authenticateApiKey, async (req, res) => {
   const { serviceId, action } = req.body;
   
   if (!serviceId || !action) {
@@ -440,9 +441,44 @@ app.post('/api/services/control', authenticateApiKey, (req, res) => {
       }
       
       case 'backend': {
-        // Backend kendisini kontrol edemez, sadece bilgi ver
-        result.success = false;
-        result.message = 'Backend kendisini kontrol edemez. Lütfen terminalden manuel olarak yönetin.';
+        // Render API ile backend'i restart et
+        if (action === 'restart' || action === 'start') {
+          const renderApiKey = process.env.RENDER_API_KEY;
+          const renderServiceId = process.env.RENDER_SERVICE_ID || 'srv-d5vim9juibrs73cr23cg';
+          
+          if (!renderApiKey) {
+            result.success = false;
+            result.message = 'Render API Key bulunamadı. Backend .env dosyasına RENDER_API_KEY ekleyin.';
+            break;
+          }
+          
+          try {
+            const renderRes = await axios.post(
+              `https://api.render.com/v1/services/${renderServiceId}/deploys`,
+              { clearBuildCache: false },
+              {
+                headers: {
+                  'Authorization': `Bearer ${renderApiKey}`,
+                  'Content-Type': 'application/json',
+                },
+                timeout: 30000,
+              }
+            );
+            
+            result.success = true;
+            result.message = `Backend restart tetiklendi. Deploy ID: ${renderRes.data.deploy?.id || 'N/A'}`;
+            result.deployId = renderRes.data.deploy?.id;
+          } catch (error) {
+            result.success = false;
+            result.message = `Render API hatası: ${error.response?.data?.message || error.message}`;
+          }
+        } else if (action === 'stop') {
+          result.success = false;
+          result.message = 'Backend\'i durdurmak için Render Dashboard kullanın.';
+        } else {
+          result.success = false;
+          result.message = 'Backend kendisini kontrol edemez. Lütfen terminalden manuel olarak yönetin.';
+        }
         break;
       }
       
