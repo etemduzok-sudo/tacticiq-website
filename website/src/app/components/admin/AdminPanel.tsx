@@ -7856,6 +7856,10 @@ interface ServiceStatus {
 
 function SystemMonitoringContent() {
   const isLocalDev = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+  // Uzaktan servis kontrolü: Vercel/canlı sitede VITE_BACKEND_URL ile backend'e bağlan
+  const remoteBackendUrl = (import.meta.env.VITE_BACKEND_URL || '').replace(/\/$/, '');
+  const backendBaseUrl = isLocalDev ? 'http://localhost:3001' : (remoteBackendUrl || '');
+  const canUseRemoteControl = !isLocalDev && !!remoteBackendUrl;
 
   const [services, setServices] = useState<ServiceStatus[]>([
     { id: 'backend', name: 'Backend', description: 'Ana API sunucusu', status: 'loading', port: 3001 },
@@ -7887,14 +7891,14 @@ function SystemMonitoringContent() {
     };
   };
 
-  // Toggle auto-restart
+  // Toggle auto-restart (yerel veya uzaktan backend)
   const toggleAutoRestart = async () => {
-    if (!isLocalDev) {
-      toast.info('Servis kontrolü sadece yerel ortamda (localhost) kullanılabilir.');
+    if (!backendBaseUrl) {
+      toast.info('Servis kontrolü için projeyi yerelde çalıştırın veya VITE_BACKEND_URL ayarlayın.');
       return;
     }
     try {
-      const response = await fetch('http://localhost:3001/api/services/auto-restart', {
+      const response = await fetch(`${backendBaseUrl}/api/services/auto-restart`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({ enabled: !autoRestartEnabled }),
@@ -7909,24 +7913,77 @@ function SystemMonitoringContent() {
     }
   };
 
-  // Health check for all services
+  // Health check for all services (yerel veya uzaktan backend)
   const checkServiceHealth = async () => {
     setIsRefreshing(true);
     const updatedServices = [...services];
 
-    if (!isLocalDev) {
+    if (!isLocalDev && !canUseRemoteControl) {
       updatedServices.forEach((_, i) => {
-        updatedServices[i] = { ...updatedServices[i], status: 'stopped' as const, lastCheck: new Date(), errorMessage: 'Sadece yerel ortamda kullanılabilir' };
+        updatedServices[i] = { ...updatedServices[i], status: 'stopped' as const, lastCheck: new Date(), errorMessage: 'Yerel ortam veya VITE_BACKEND_URL gerekli' };
       });
       setServices(updatedServices);
       setLastRefresh(new Date());
       setIsRefreshing(false);
       return;
     }
+
+    if (canUseRemoteControl) {
+      // Uzaktan: sadece backend ve backend içi servisleri kontrol et
+      try {
+        const backendRes = await fetch(`${backendBaseUrl}/health`, { signal: AbortSignal.timeout(5000), method: 'GET' });
+        if (backendRes.ok) {
+          const backendData = await backendRes.json();
+          const backendIdx = updatedServices.findIndex(s => s.id === 'backend');
+          updatedServices[backendIdx] = { ...updatedServices[backendIdx], status: 'running', lastCheck: new Date(), uptime: backendData.uptime, errorMessage: undefined };
+        } else throw new Error(`HTTP ${backendRes.status}`);
+      } catch {
+        const backendIdx = updatedServices.findIndex(s => s.id === 'backend');
+        updatedServices[backendIdx] = { ...updatedServices[backendIdx], status: 'stopped', lastCheck: new Date(), errorMessage: 'Uzaktan backend bağlantı hatası' };
+      }
+      // Expo/Website: uzakta yok
+      const expoIdx = updatedServices.findIndex(s => s.id === 'expo');
+      updatedServices[expoIdx] = { ...updatedServices[expoIdx], status: 'stopped', lastCheck: new Date(), errorMessage: 'Sadece yerel' };
+      const viteIdx = updatedServices.findIndex(s => s.id === 'website');
+      updatedServices[viteIdx] = { ...updatedServices[viteIdx], status: 'stopped', lastCheck: new Date(), errorMessage: 'Sadece yerel' };
+      try {
+        const systemRes = await fetch(`${backendBaseUrl}/api/system-status`, { signal: AbortSignal.timeout(5000) });
+        const systemData = await systemRes.json();
+        if (systemData.success && systemData.services) {
+          const smartSyncIdx = updatedServices.findIndex(s => s.id === 'smartSync');
+          const syncStatus = systemData.services.worldwideSync;
+          updatedServices[smartSyncIdx] = { ...updatedServices[smartSyncIdx], status: syncStatus?.isRunning ? 'running' : 'stopped', lastCheck: new Date(), apiCalls: syncStatus?.apiCallsToday, uptime: syncStatus?.currentInterval };
+          const staticTeamsIdx = updatedServices.findIndex(s => s.id === 'staticTeams');
+          const teamsStatus = systemData.services.staticTeams;
+          updatedServices[staticTeamsIdx] = { ...updatedServices[staticTeamsIdx], status: teamsStatus?.isRunning ? 'running' : 'stopped', lastCheck: new Date(), apiCalls: teamsStatus?.apiCallsThisMonth };
+          const leaderboardIdx = updatedServices.findIndex(s => s.id === 'leaderboard');
+          const snapshotStatus = systemData.services.leaderboardSnapshots;
+          updatedServices[leaderboardIdx] = { ...updatedServices[leaderboardIdx], status: snapshotStatus?.isRunning ? 'running' : 'stopped', lastCheck: new Date() };
+        }
+      } catch {
+        const smartSyncIdx = updatedServices.findIndex(s => s.id === 'smartSync');
+        updatedServices[smartSyncIdx] = { ...updatedServices[smartSyncIdx], status: 'error', lastCheck: new Date(), errorMessage: 'Durum alınamadı' };
+      }
+      try {
+        const rateRes = await fetch(`${backendBaseUrl}/api/rate-limit/stats`, { signal: AbortSignal.timeout(5000) });
+        const rateData = await rateRes.json();
+        setApiStats({ dailyCalls: rateData.todaysCalls || 0, remaining: rateData.remaining || 7500, limit: rateData.limit || 7500 });
+      } catch { /* ignore */ }
+      const supabaseIdx = updatedServices.findIndex(s => s.id === 'supabase');
+      updatedServices[supabaseIdx] = { ...updatedServices[supabaseIdx], status: 'running', lastCheck: new Date() };
+      const cacheIdx = updatedServices.findIndex(s => s.id === 'cache');
+      updatedServices[cacheIdx] = { ...updatedServices[cacheIdx], status: 'running', lastCheck: new Date() };
+      const monitoringIdx = updatedServices.findIndex(s => s.id === 'monitoring');
+      updatedServices[monitoringIdx] = { ...updatedServices[monitoringIdx], status: 'running', lastCheck: new Date() };
+      setServices(updatedServices);
+      setLastRefresh(new Date());
+      setIsRefreshing(false);
+      return;
+    }
     
-    // Check Backend
+    // Yerel: Check Backend
     try {
-      const backendRes = await fetch('http://localhost:3001/health', { 
+      const backendRes = await fetch(`${backendBaseUrl}/health`, { 
         signal: AbortSignal.timeout(5000),
         method: 'GET',
       });
@@ -7994,7 +8051,7 @@ function SystemMonitoringContent() {
 
     // Check System Status (all services at once)
     try {
-      const systemRes = await fetch('http://localhost:3001/api/system-status', { signal: AbortSignal.timeout(5000) });
+      const systemRes = await fetch(`${backendBaseUrl}/api/system-status`, { signal: AbortSignal.timeout(5000) });
       const systemData = await systemRes.json();
       
       if (systemData.success && systemData.services) {
@@ -8031,7 +8088,7 @@ function SystemMonitoringContent() {
     } catch (e) {
       // Fallback to individual sync-status check
       try {
-        const syncRes = await fetch('http://localhost:3001/api/sync-status', { signal: AbortSignal.timeout(5000) });
+        const syncRes = await fetch(`${backendBaseUrl}/api/sync-status`, { signal: AbortSignal.timeout(5000) });
         const syncData = await syncRes.json();
         
         const smartSyncIdx = updatedServices.findIndex(s => s.id === 'smartSync');
@@ -8054,7 +8111,7 @@ function SystemMonitoringContent() {
 
     // Check Rate Limiter Stats
     try {
-      const rateRes = await fetch('http://localhost:3001/api/rate-limit/stats', { signal: AbortSignal.timeout(5000) });
+      const rateRes = await fetch(`${backendBaseUrl}/api/rate-limit/stats`, { signal: AbortSignal.timeout(5000) });
       const rateData = await rateRes.json();
       setApiStats({
         dailyCalls: rateData.todaysCalls || 0,
@@ -8104,15 +8161,22 @@ function SystemMonitoringContent() {
   }, []);
 
   const handleServiceAction = async (serviceId: string, action: 'start' | 'stop' | 'restart') => {
-    if (!isLocalDev) {
-      toast.info('Servis kontrolü sadece yerel ortamda (localhost) kullanılabilir.');
+    if (!backendBaseUrl) {
+      toast.info('Servis kontrolü için projeyi yerelde çalıştırın veya VITE_BACKEND_URL ayarlayın.');
       return;
+    }
+    // Uzaktan modda sadece backend yeniden başlatma desteklenir
+    if (canUseRemoteControl && serviceId !== 'backend') {
+      if (['start', 'stop', 'restart'].includes(action)) {
+        toast.info('Uzaktan modda sadece Backend servisi yeniden başlatılabilir.');
+        return;
+      }
     }
     setActionLoading(`${serviceId}-${action}`);
     toast.info(`${action === 'start' ? 'Başlatılıyor' : action === 'stop' ? 'Durduruluyor' : 'Yeniden başlatılıyor'}...`);
     
-    // Special handling for backend service - backend kendisini kontrol edemez
-    if (serviceId === 'backend') {
+    // Yerelde backend kendisini başlatamaz; uzakta API ile restart edilebilir
+    if (serviceId === 'backend' && isLocalDev) {
       if (action === 'start') {
         toast.info(
           <div className="space-y-2">
@@ -8147,7 +8211,7 @@ function SystemMonitoringContent() {
     }
     
     try {
-      const response = await fetch('http://localhost:3001/api/services/control', {
+      const response = await fetch(`${backendBaseUrl}/api/services/control`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({ serviceId, action }),
@@ -8220,8 +8284,8 @@ function SystemMonitoringContent() {
   };
 
   const handleAllServicesAction = async (action: 'start' | 'stop' | 'restart') => {
-    if (!isLocalDev) {
-      toast.info('Servis kontrolü sadece yerel ortamda (localhost) kullanılabilir.');
+    if (!backendBaseUrl) {
+      toast.info('Servis kontrolü için projeyi yerelde çalıştırın veya VITE_BACKEND_URL ayarlayın.');
       return;
     }
     setActionLoading(`all-${action}`);
@@ -8253,7 +8317,7 @@ function SystemMonitoringContent() {
     toast.info(`Tüm servisler ${action === 'start' ? 'başlatılıyor' : action === 'stop' ? 'durduruluyor' : 'yeniden başlatılıyor'}...`);
     
     try {
-      const response = await fetch('http://localhost:3001/api/services/restart-all', {
+      const response = await fetch(`${backendBaseUrl}/api/services/restart-all`, {
         method: 'POST',
         headers: getHeaders(),
         signal: AbortSignal.timeout(10000), // 10 saniye timeout
@@ -8291,7 +8355,7 @@ function SystemMonitoringContent() {
         toast.error(
           <div className="space-y-1">
             <p className="font-semibold">❌ Backend bağlantısı kurulamadı</p>
-            <p className="text-sm">Backend'in çalıştığından ve http://localhost:3001 adresinde dinlediğinden emin olun.</p>
+            <p className="text-sm">Backend'in çalıştığından ve doğru adreste dinlediğinden emin olun.</p>
           </div>,
           { duration: 8000 }
         );
@@ -8327,10 +8391,24 @@ function SystemMonitoringContent() {
 
   return (
     <div className="space-y-6">
-      {!isLocalDev && (
-        <div className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-4 text-sm text-amber-800 dark:text-amber-200">
-          <p className="font-semibold">ℹ️ Servis kontrolü sadece yerel ortamda kullanılabilir</p>
-          <p className="mt-1 text-muted-foreground">Bu sayfa (Vercel / canlı site) üzerinde backend ve diğer servisler localhost’ta çalışmadığı için başlat/durdur butonları kullanılamaz. Servis kontrolünü kullanmak için projeyi bilgisayarınızda çalıştırın (localhost).</p>
+      {!isLocalDev && !canUseRemoteControl && (
+        <div className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-4 text-sm text-amber-800 dark:text-amber-200 space-y-2">
+          <p className="font-semibold">ℹ️ Uzaktan servis kontrolü için backend URL gerekli</p>
+          <p className="text-muted-foreground">
+            <strong>Uzaktan backend ne demek?</strong> Sitenin hangi sunucuya bağlanacağını Vercel üzerinden belirlemek demektir. Bilgisayar başında olmadan, tarayıcıdan backend adresini değiştirebilirsiniz.
+          </p>
+          <p className="mt-1 text-muted-foreground">Bu sayfa (Vercel / canlı site) üzerinde backend localhost’ta çalışmadığı için başlat/durdur kullanılamıyor. <strong>Uzaktan kontrol:</strong> Backend’i Railway, Render veya bir VPS’e deploy edin, ardından Vercel ortam değişkenlerine <code className="bg-muted px-1 rounded">VITE_BACKEND_URL</code> ve <code className="bg-muted px-1 rounded">VITE_BACKEND_API_KEY</code> ekleyin. Yerel kullanım için projeyi bilgisayarınızda çalıştırın (localhost).</p>
+          <div className="mt-2 rounded-md bg-amber-600/20 border border-amber-600/40 p-2 text-xs">
+            <p className="font-semibold">⚠️ Backend URL’nin sonunda <code>/</code> (slash) OLMAMALI</p>
+            <p className="mt-1 text-muted-foreground">Doğru: <code>https://api.tacticiq.app</code> — Yanlış: <code>https://api.tacticiq.app/</code></p>
+          </div>
+        </div>
+      )}
+      {canUseRemoteControl && (
+        <div className="rounded-lg border border-green-500/50 bg-green-500/10 p-4 text-sm text-green-800 dark:text-green-200">
+          <p className="font-semibold">🌐 Uzaktan backend kullanılıyor</p>
+          <p className="mt-1 text-muted-foreground">Backend: <code className="bg-muted px-1 rounded">{remoteBackendUrl}</code>. Sadece Backend servisi buradan yeniden başlatılabilir; Expo ve Website sadece yerel ortamda kontrol edilir.</p>
+          <p className="mt-1 text-xs text-muted-foreground">Vercel’de URL değiştirirken sonunda <code>/</code> (slash) kullanmayın.</p>
         </div>
       )}
       {/* Header */}
@@ -8793,6 +8871,8 @@ interface DataFlowStatus {
 }
 
 function DataFlowHealthSection() {
+  const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+  const backendUrl = isLocal ? 'http://localhost:3001' : ((import.meta.env.VITE_BACKEND_URL || '').replace(/\/$/, '') || '');
   const [dataFlows, setDataFlows] = useState<DataFlowStatus[]>([
     { id: 'web-db', name: 'Web → Database', source: 'Website', target: 'Supabase', status: 'checking' },
     { id: 'db-web', name: 'Database → Web', source: 'Supabase', target: 'Website', status: 'checking' },
@@ -8829,14 +8909,13 @@ function DataFlowHealthSection() {
       try {
         // Check backend health as proxy for data flow
         if (flow.id === 'web-db' || flow.id === 'db-web') {
-          const res = await fetch('http://localhost:3001/health', { signal: AbortSignal.timeout(3000) });
-          const latency = Date.now() - startTime;
-          updatedFlows[i] = {
-            ...flow,
-            status: res.ok ? 'healthy' : 'error',
-            latency,
-            lastSync: new Date(),
-          };
+          if (backendUrl) {
+            const res = await fetch(`${backendUrl}/health`, { signal: AbortSignal.timeout(3000) });
+            const latency = Date.now() - startTime;
+            updatedFlows[i] = { ...flow, status: res.ok ? 'healthy' : 'error', latency, lastSync: new Date() };
+          } else {
+            updatedFlows[i] = { ...flow, status: 'degraded', errorMessage: 'Backend URL yok (yerel veya VITE_BACKEND_URL)' };
+          }
         } else if (flow.id === 'mobile-db' || flow.id === 'db-mobile') {
           // Check if Expo is running (proxy for mobile)
           try {
@@ -8857,9 +8936,11 @@ function DataFlowHealthSection() {
             };
           }
         } else if (flow.id === 'api-db') {
-          // Check sync status
+          if (!backendUrl) {
+            updatedFlows[i] = { ...flow, status: 'degraded', errorMessage: 'Backend URL yok' };
+          } else {
           try {
-            const syncRes = await fetch('http://localhost:3001/api/sync-status', { signal: AbortSignal.timeout(3000) });
+            const syncRes = await fetch(`${backendUrl}/api/sync-status`, { signal: AbortSignal.timeout(3000) });
             const syncData = await syncRes.json();
             const latency = Date.now() - startTime;
             updatedFlows[i] = {
@@ -8870,11 +8951,8 @@ function DataFlowHealthSection() {
               recordCount: syncData.totalApiCalls,
             };
           } catch {
-            updatedFlows[i] = {
-              ...flow,
-              status: 'error',
-              errorMessage: 'Sync servisi yanıt vermiyor',
-            };
+            updatedFlows[i] = { ...flow, status: 'error', errorMessage: 'Sync servisi yanıt vermiyor' };
+          }
           }
         } else if (flow.id === 'realtime') {
           // Realtime is healthy if backend is running

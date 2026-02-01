@@ -166,8 +166,8 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
   }, [user, session, isAuthenticated, profile]);
 
   // Fetch user profile from Supabase or localStorage
-  const fetchProfile = useCallback(async (userId: string, userEmail: string, userMetadata?: Record<string, unknown>): Promise<UserProfile> => {
-    setProfileLoading(true);
+  const fetchProfile = useCallback(async (userId: string, userEmail: string, userMetadata?: Record<string, unknown>, options?: { background?: boolean }): Promise<UserProfile> => {
+    if (!options?.background) setProfileLoading(true);
     try {
       if (import.meta.env.DEV) {
         console.log('🔍 Fetching profile for:', userId, userEmail, 'metadata:', userMetadata);
@@ -392,7 +392,8 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
           fetchProfile(
             currentSession.user.id, 
             currentSession.user.email || '',
-            currentSession.user.user_metadata
+            currentSession.user.user_metadata,
+            { background: true }
           ).then(() => {
             console.log('✅ Profile updated from DB (init)');
           }).catch(err => {
@@ -403,12 +404,19 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
           console.log('⏳ Session check timeout, waiting for onAuthStateChange...');
           setIsLoading(false);
         } else {
-          // No session
-          console.log('ℹ️ No active session');
-          setSession(null);
-          setUser(null);
-          setProfile(null);
-          setIsLoading(false);
+          // No session - onAuthStateChange (INITIAL_SESSION) bazen biraz sonra gelir, hemen null atamayalım
+          setTimeout(() => {
+            if (!mounted) return;
+            if (authStateHandled) {
+              setIsLoading(false);
+              return;
+            }
+            console.log('ℹ️ No active session');
+            setSession(null);
+            setUser(null);
+            setProfile(null);
+            setIsLoading(false);
+          }, 350);
         }
       } catch (err) {
         console.error('❌ Auth init error:', err);
@@ -456,7 +464,8 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
           fetchProfile(
             session.user.id, 
             session.user.email || '',
-            session.user.user_metadata
+            session.user.user_metadata,
+            { background: true }
           ).then(() => {
             console.log('✅ Profile updated from DB');
           }).catch(err => {

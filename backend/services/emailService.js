@@ -218,11 +218,36 @@ const sendWelcomeEmail = async (email, userName) => {
 // Send email to admin (for alerts)
 const sendAdminEmail = async (subject, html, text) => {
   return await sendEmail({
-    to: 'etemduzok@gmail.com',
+    to: process.env.ADMIN_NOTIFY_EMAIL || 'etemduzok@gmail.com',
     subject,
     html,
     text,
   });
+};
+
+// Admin giriş bildirimi: "Admin X şu tarihte şu IP'den giriş yaptı"
+const sendAdminLoginNotification = async (adminEmail, ip, userAgent = '') => {
+  const to = process.env.ADMIN_NOTIFY_EMAIL || adminEmail || 'etemduzok@gmail.com';
+  const date = new Date().toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' });
+  const subject = `TacticIQ Admin Girişi – ${adminEmail} – ${date}`;
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="utf-8"><style>body{font-family:sans-serif;background:#0f172a;color:#e2e8f0;padding:20px;} .box{background:#1e293b;padding:20px;border-radius:12px;margin:16px 0;} .label{color:#94a3b8;} strong{color:#fff;}</style></head>
+    <body>
+      <div class="box">
+        <p><span class="label">TacticIQ</span> – Admin panele giriş yapıldı.</p>
+        <p><span class="label">E-posta:</span> <strong>${adminEmail}</strong></p>
+        <p><span class="label">Tarih:</span> ${date}</p>
+        <p><span class="label">IP:</span> ${ip || 'Bilinmiyor'}</p>
+        ${userAgent ? `<p><span class="label">Tarayıcı:</span> <small>${userAgent}</small></p>` : ''}
+      </div>
+      <p style="color:#64748b;font-size:12px;">Bu e-posta otomatik gönderilmiştir.</p>
+    </body>
+    </html>
+  `;
+  const text = `TacticIQ Admin Girişi\nE-posta: ${adminEmail}\nTarih: ${date}\nIP: ${ip || 'Bilinmiyor'}`;
+  return await sendEmail({ to, subject, html, text });
 };
 
 module.exports = {
@@ -230,4 +255,5 @@ module.exports = {
   sendPasswordResetEmail,
   sendWelcomeEmail,
   sendAdminEmail,
+  sendAdminLoginNotification,
 };

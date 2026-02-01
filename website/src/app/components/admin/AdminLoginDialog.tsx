@@ -11,14 +11,18 @@ import {
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
 import { Label } from '@/app/components/ui/label';
-import { Lock, LogOut, Shield } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
+import { Lock, LogOut, Shield, Mail } from 'lucide-react';
 import { toast } from 'sonner';
+import { adminAuthService } from '@/config/supabase';
 
 export function AdminLoginDialog() {
   const { isAdmin, login, logout, loading } = useAdmin();
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [magicLinkEmail, setMagicLinkEmail] = useState('');
+  const [magicLinkLoading, setMagicLinkLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,6 +41,28 @@ export function AdminLoginDialog() {
     } else {
       toast.error('Hatalı e-posta veya şifre');
       setPassword('');
+    }
+  };
+
+  const handleSendMagicLink = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!magicLinkEmail?.trim()) {
+      toast.error('E-posta adresi girin');
+      return;
+    }
+    setMagicLinkLoading(true);
+    try {
+      const result = await adminAuthService.sendMagicLink(magicLinkEmail.trim());
+      if (result.success) {
+        if (typeof sessionStorage !== 'undefined') sessionStorage.setItem('admin_magic_link_sent', '1');
+        toast.success(result.message || 'E-postanıza giriş linki gönderildi. Linke tıklayın.');
+        setOpen(false);
+        setMagicLinkEmail('');
+      } else {
+        toast.error(result.error || 'Link gönderilemedi');
+      }
+    } finally {
+      setMagicLinkLoading(false);
     }
   };
 
@@ -84,52 +110,97 @@ export function AdminLoginDialog() {
             Admin Girişi
           </DialogTitle>
           <DialogDescription>
-            Yönetim paneline erişmek için şifrenizi girin
+            Yönetim paneline erişmek için şifre ile giriş yapın veya e-postanıza giriş linki gönderin. Giriş bildirimleri yetkisiz admin erişimlerini anında fark etmeniz için tasarlanmıştır.
           </DialogDescription>
+          <p className="text-xs text-muted-foreground mt-2 rounded-md bg-muted/50 p-2 border border-border/50">
+            🔒 Admin girişi footer’da görünür olsa bile, yetkisiz kullanıcılar e-posta + şifre veya giriş linki olmadan panele erişemez. Tüm giriş denemeleri doğrulanır ve kayıt altına alınır.
+          </p>
         </DialogHeader>
-        <form onSubmit={handleLogin} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="admin-login-email">E-posta</Label>
-            <Input
-              id="admin-login-email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@tacticiq.app"
-              autoFocus
-              disabled={loading}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Şifre</Label>
-            <Input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Admin şifresini girin"
-              disabled={loading}
-            />
-          </div>
-          <div className="flex justify-end gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                setOpen(false);
-                setEmail('');
-                setPassword('');
-              }}
-              disabled={loading}
-            >
-              İptal
-            </Button>
-            <Button type="submit" className="gap-2" disabled={loading}>
+        <Tabs defaultValue="password" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="password" className="gap-1.5">
               <Lock className="size-4" />
-              {loading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
-            </Button>
-          </div>
-        </form>
+              Şifre ile
+            </TabsTrigger>
+            <TabsTrigger value="magic" className="gap-1.5">
+              <Mail className="size-4" />
+              E-posta linki
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent value="password" className="space-y-4 mt-4">
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="admin-login-email">E-posta</Label>
+                <Input
+                  id="admin-login-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="admin@tacticiq.app"
+                  autoFocus
+                  disabled={loading}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Şifre</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Admin şifresini girin"
+                  disabled={loading}
+                />
+              </div>
+              <div className="flex justify-end gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => { setOpen(false); setEmail(''); setPassword(''); }}
+                  disabled={loading}
+                >
+                  İptal
+                </Button>
+                <Button type="submit" className="gap-2" disabled={loading}>
+                  <Lock className="size-4" />
+                  {loading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
+                </Button>
+              </div>
+            </form>
+          </TabsContent>
+          <TabsContent value="magic" className="space-y-4 mt-4">
+            <p className="text-sm text-muted-foreground">
+              E-postanıza tek kullanımlık giriş linki gönderilir. Linke tıklayarak güvenli giriş yapabilirsiniz.
+            </p>
+            <form onSubmit={handleSendMagicLink} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="magic-email">Admin e-posta adresi</Label>
+                <Input
+                  id="magic-email"
+                  type="email"
+                  value={magicLinkEmail}
+                  onChange={(e) => setMagicLinkEmail(e.target.value)}
+                  placeholder="admin@tacticiq.app"
+                  disabled={magicLinkLoading}
+                />
+              </div>
+              <div className="flex justify-end gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => { setOpen(false); setMagicLinkEmail(''); }}
+                  disabled={magicLinkLoading}
+                >
+                  İptal
+                </Button>
+                <Button type="submit" className="gap-2" disabled={magicLinkLoading}>
+                  <Mail className="size-4" />
+                  {magicLinkLoading ? 'Gönderiliyor...' : 'Giriş linki gönder'}
+                </Button>
+              </div>
+            </form>
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );

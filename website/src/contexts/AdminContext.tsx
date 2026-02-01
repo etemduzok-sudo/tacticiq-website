@@ -19,6 +19,24 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     checkAdminSession();
   }, []);
 
+  // Admin giriş bildirimi: backend'e e-posta gönder (başarısız olsa da girişi engellemez)
+  const notifyAdminLogin = (email: string) => {
+    const url = import.meta.env.VITE_BACKEND_URL || (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://localhost:3001' : '');
+    if (!url) return;
+    const base = (url as string).replace(/\/$/, '');
+    fetch(`${base}/api/admin/login-notify`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': import.meta.env.VITE_BACKEND_API_KEY || 'admin-dev-key',
+      },
+      body: JSON.stringify({
+        email,
+        userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : '',
+      }),
+    }).catch(() => {});
+  };
+
   const checkAdminSession = async () => {
     // Loading'i true yapma - sadece background kontrol
     try {
@@ -32,6 +50,12 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       
       if (result.success && result.session) {
         setIsAdmin(true);
+        // Magic link ile yeni giriş yapıldıysa bildirim gönder (bir kez)
+        if (typeof window !== 'undefined' && sessionStorage.getItem('admin_magic_link_sent') === '1') {
+          const email = result.session?.user?.email;
+          if (email) notifyAdminLogin(email);
+          sessionStorage.removeItem('admin_magic_link_sent');
+        }
       } else {
         setIsAdmin(false);
       }
@@ -54,6 +78,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       
       if (success) {
         setIsAdmin(true);
+        notifyAdminLogin(email);
         setLoading(false);
         return true;
       }

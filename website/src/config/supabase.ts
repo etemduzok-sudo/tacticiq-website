@@ -149,4 +149,25 @@ export const adminAuthService = {
       return { success: false, user: null };
     }
   },
+
+  // E-posta ile giriş linki (Magic Link) – sadece admin e-posta ile kullanılmalı
+  async sendMagicLink(email: string) {
+    try {
+      const redirectTo = typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname || '/'}` : undefined;
+      const { data, error } = await supabase.auth.signInWithOtp({
+        email: email.trim(),
+        options: {
+          emailRedirectTo: redirectTo,
+        },
+      });
+      if (error) {
+        console.error('Magic link error:', error);
+        return { success: false, error: error.message };
+      }
+      return { success: true, message: 'E-postanıza giriş linki gönderildi. Linke tıklayın.' };
+    } catch (error) {
+      console.error('Magic link exception:', error);
+      return { success: false, error: 'Link gönderilemedi' };
+    }
+  },
 };

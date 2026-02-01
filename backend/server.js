@@ -61,6 +61,7 @@ const allowedOrigins = [
   // Production
   'https://tacticiq.app',
   'https://www.tacticiq.app',
+  'https://admin.tacticiq.app',
   'https://tacticiq-website.vercel.app',
   // Development only (NODE_ENV check)
   ...(process.env.NODE_ENV === 'development' ? [
@@ -642,6 +643,26 @@ app.post('/api/services/auto-restart', (req, res) => {
 // ============================================
 
 // GET /api/admin/player-ratings/status - Scheduler durumu
+// Admin giriş bildirimi: giriş yapıldığında e-posta gönder (API key gerekli)
+const { sendAdminLoginNotification } = require('./services/emailService');
+app.post('/api/admin/login-notify', authenticateApiKey, async (req, res) => {
+  try {
+    const { email, userAgent } = req.body || {};
+    if (!email || typeof email !== 'string') {
+      return res.status(400).json({ success: false, error: 'email gerekli' });
+    }
+    const ip = req.ip || req.socket?.remoteAddress || '';
+    const result = await sendAdminLoginNotification(email.trim(), ip, userAgent || '');
+    if (result.success) {
+      return res.json({ success: true, message: 'Bildirim gönderildi' });
+    }
+    return res.status(500).json({ success: false, error: result.error || 'E-posta gönderilemedi' });
+  } catch (error) {
+    console.error('Admin login-notify error:', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 app.get('/api/admin/player-ratings/status', authenticateApiKey, (req, res) => {
   const status = playerRatingsScheduler.getSchedulerStatus();
   res.json({ success: true, ...status });
@@ -683,7 +704,7 @@ app.use((err, req, res, next) => {
 });
 
 // Start server
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log('\n');
   console.log('╔════════════════════════════════════════════════════════════╗');
   console.log('║           🚀 TACTICIQ BACKEND STARTED 🚀                   ║');
