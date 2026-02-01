@@ -12,6 +12,24 @@
 
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
+
+// Supabase env kontrolü - yoksa script sessizce çık, backend'i çökertme
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey =
+  process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  process.env.SUPABASE_SERVICE_KEY ||
+  process.env.SUPABASE_KEY;
+
+if (!supabaseUrl || !supabaseKey) {
+  console.warn('⚠️ Supabase env missing. update-all-player-ratings SKIPPED.');
+  process.exit(0);
+}
+
+if (!supabaseKey.startsWith('sb_')) {
+  console.warn('⚠️ Supabase key is not an API key (sb_*). SKIPPED.');
+  process.exit(0);
+}
+
 const { createClient } = require('@supabase/supabase-js');
 const footballApi = require('../services/footballApi');
 const {
@@ -21,10 +39,7 @@ const {
   clamp0_100,
 } = require('../utils/playerRatingFromStats');
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-);
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 // =====================================================
 // DESTEKLENEN LİGLER (API-Football League IDs)
