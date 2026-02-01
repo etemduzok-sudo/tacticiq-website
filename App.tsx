@@ -84,7 +84,7 @@ if (Platform.OS === 'web') {
   }
 }
 import './src/i18n'; // Initialize i18n
-import i18n from './src/i18n'; // For languageChanged listener
+import i18n from './src/i18n';
 import { useTranslation } from 'react-i18next';
 
 // Web için UIManager polyfills
@@ -147,16 +147,22 @@ LogBox.ignoreLogs([
 ]);
 
 export default function App() {
-  // 🌍 useTranslation - dil değişince App otomatik yeniden render olur
-  useTranslation();
+  const { i18n: i18nInstance } = useTranslation();
   
-  // Dil değişikliği için key - tüm içeriği force remount eder
-  const [languageKey, setLanguageKey] = useState(0);
+  // 🌍 Dil değişikliğini zorla algıla - useTranslation + manuel listener
+  const [forceUpdateKey, setForceUpdateKey] = useState(0);
+  
   useEffect(() => {
-    const handler = () => setLanguageKey(prev => prev + 1);
+    const handler = (lng: string) => {
+      console.log('[App] Language changed to:', lng);
+      setForceUpdateKey(prev => prev + 1);
+    };
     i18n.on('languageChanged', handler);
     return () => i18n.off('languageChanged', handler);
   }, []);
+  
+  // i18n.language her zaman güncel dili verir
+  const currentLang = i18nInstance?.language?.split('-')[0] || i18n.language || 'en';
 
   // Use Navigation Hook
   const { state: navState, actions: navActions, handlers: navHandlers, refs: navRefs } = useAppNavigation();
@@ -507,7 +513,7 @@ export default function App() {
   }
 
   return (
-    <ErrorBoundary key={`app-${languageKey}`}>
+    <ErrorBoundary>
       <SafeAreaProvider>
         <ThemeProvider>
           <PredictionProvider>
@@ -516,7 +522,7 @@ export default function App() {
               {isMaintenanceMode ? (
                 <MaintenanceScreen />
               ) : (
-                <View key={`app-content-${languageKey}`} style={{ flex: 1, backgroundColor: '#0F2A24' }}>
+                <View key={`content-${currentLang}-${forceUpdateKey}`} style={{ flex: 1, backgroundColor: '#0F2A24' }}>
                   {renderScreen()}
                   
                   {/* Fixed Profile Card Overlay - Only on home, matches, leaderboard */}

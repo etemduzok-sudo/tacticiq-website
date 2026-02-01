@@ -301,5 +301,12 @@
     "saveChanges": "Değişiklikleri Kaydet",
     "editing": "Düzenleniyor...",
     "saved": "Kaydedildi!"
+  },
+  "navigation": {
+    "matches": "Maçlar",
+    "live": "Oynanıyor",
+    "finished": "Biten",
+    "leaderboard": "Sıralama",
+    "profile": "Profil"
   }
 }

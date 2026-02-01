@@ -301,5 +301,12 @@
     "saveChanges": "حفظ التغييرات",
     "editing": "جاري التعديل...",
     "saved": "تم الحفظ!"
+  },
+  "navigation": {
+    "matches": "المباريات",
+    "live": "مباشر",
+    "finished": "منتهية",
+    "leaderboard": "الترتيب",
+    "profile": "الملف الشخصي"
   }
 }

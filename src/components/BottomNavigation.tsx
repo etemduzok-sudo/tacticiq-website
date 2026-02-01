@@ -2,26 +2,28 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, { useAnimatedStyle, withSpring } from 'react-native-reanimated';
+import { useTranslation } from 'react-i18next';
 
 interface BottomNavigationProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
 }
 
-const tabs = [
-  { id: 'home', label: 'Maçlar', icon: 'calendar-outline', activeIcon: 'calendar' },
-  { id: 'matches', label: 'Oynanıyor', icon: 'radio-outline', activeIcon: 'radio' },
-  { id: 'finished', label: 'Biten Maçlar', icon: 'checkmark-done-outline', activeIcon: 'checkmark-done' },
-  { id: 'leaderboard', label: 'Sıralama', icon: 'trophy-outline', activeIcon: 'trophy' },
-  { id: 'profile', label: 'Profil', icon: 'person-outline', activeIcon: 'person' },
+const tabConfig = [
+  { id: 'home', labelKey: 'navigation.matches', icon: 'calendar-outline', activeIcon: 'calendar' },
+  { id: 'matches', labelKey: 'navigation.live', icon: 'radio-outline', activeIcon: 'radio' },
+  { id: 'finished', labelKey: 'navigation.finished', icon: 'checkmark-done-outline', activeIcon: 'checkmark-done' },
+  { id: 'leaderboard', labelKey: 'navigation.leaderboard', icon: 'trophy-outline', activeIcon: 'trophy' },
+  { id: 'profile', labelKey: 'navigation.profile', icon: 'person-outline', activeIcon: 'person' },
 ];
 
 export function BottomNavigation({ activeTab, onTabChange }: BottomNavigationProps) {
+  const { t } = useTranslation();
+  
   return (
     <View style={styles.container}>
       <View style={styles.tabContainer}>
-        {tabs.map((tab) => {
+        {tabConfig.map((tab) => {
           const isActive = activeTab === tab.id;
 
           return (
@@ -41,9 +43,9 @@ export function BottomNavigation({ activeTab, onTabChange }: BottomNavigationPro
                 color={isActive ? '#059669' : '#64748B'}
               />
 
-              {/* Label */}
+              {/* Label - Çeviri ile */}
               <Text style={[styles.label, isActive && styles.activeLabel]}>
-                {tab.label}
+                {t(tab.labelKey)}
               </Text>
 
               {/* Active Indicator - Yazının altında */}

@@ -236,7 +236,7 @@ export function UserProfileSection() {
   // Show loading state while auth is initializing
   if (isLoading) {
     return (
-      <section id="profile" className="py-20 md:py-28 bg-gradient-to-b from-background to-muted/20">
+      <section id="profile" className="py-20 md:py-28 bg-gradient-to-b from-background to-muted/20 scroll-mt-20" style={{ animation: 'none' }}>
         <div className="container mx-auto px-4 max-w-4xl">
           <div className="flex items-center justify-center py-20">
             <div className="text-center">
@@ -316,7 +316,7 @@ export function UserProfileSection() {
   const topPercentage = ((userStats.countryRank / userStats.totalPlayers) * 100).toFixed(1);
 
   return (
-    <section id="profile" className="py-20 md:py-28 bg-gradient-to-b from-background to-muted/20">
+    <section id="profile" className="py-20 md:py-28 bg-gradient-to-b from-background to-muted/20 scroll-mt-20" style={{ animation: 'none' }}>
       <div className="container mx-auto px-4 max-w-4xl">
         
         {/* Profil içerik - mobildeki gibi tek sayfa, rozetler inline */}

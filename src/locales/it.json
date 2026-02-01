@@ -301,5 +301,12 @@
     "saveChanges": "Salva Modifiche",
     "editing": "Modifica...",
     "saved": "Salvato!"
+  },
+  "navigation": {
+    "matches": "Partite",
+    "live": "In Diretta",
+    "finished": "Terminate",
+    "leaderboard": "Classifica",
+    "profile": "Profilo"
   }
 }

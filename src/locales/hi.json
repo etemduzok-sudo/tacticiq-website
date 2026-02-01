@@ -302,5 +302,12 @@
     "saveChanges": "परिवर्तन सहेजें",
     "editing": "संपादन...",
     "saved": "सहेजा गया!"
+  },
+  "navigation": {
+    "matches": "मैच",
+    "live": "लाइव",
+    "finished": "समाप्त",
+    "leaderboard": "रैंकिंग",
+    "profile": "प्रोफ़ाइल"
   }
 }

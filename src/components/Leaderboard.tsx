@@ -15,6 +15,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown, ZoomIn, FadeIn } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useTranslation } from 'react-i18next';
 import { Badge, BadgeTier, getBadgeColor, getBadgeTierName } from '../types/badges.types';
 
 const { width } = Dimensions.get('window');
@@ -53,10 +54,10 @@ const leaderboardData = {
   ],
 };
 
-const tabs = [
-  { id: 'overall', label: 'Genel', icon: 'globe' },
-  { id: 'weekly', label: 'Haftalık', icon: 'calendar' },
-  { id: 'monthly', label: 'Aylık', icon: 'calendar-outline' },
+const tabConfig = [
+  { id: 'overall', labelKey: 'leaderboard.overall', icon: 'globe' },
+  { id: 'weekly', labelKey: 'leaderboard.weekly', icon: 'calendar' },
+  { id: 'monthly', labelKey: 'leaderboard.monthly', icon: 'calendar-outline' },
 ];
 
 interface LeaderboardProps {
@@ -64,6 +65,7 @@ interface LeaderboardProps {
 }
 
 export function Leaderboard({ onNavigate }: LeaderboardProps = {}) {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<'overall' | 'weekly' | 'monthly' | 'friends'>('overall');
   const [isLoading, setIsLoading] = useState(true);
 
@@ -118,7 +120,7 @@ export function Leaderboard({ onNavigate }: LeaderboardProps = {}) {
             </View>
           </Animated.View>
           <ActivityIndicator size="large" color="#1FA2A6" style={{ marginTop: 16 }} />
-          <Text style={styles.loadingText}>Sıralama yükleniyor...</Text>
+          <Text style={styles.loadingText}>{t('common.loading')}</Text>
         </View>
       </View>
     );
@@ -172,7 +174,7 @@ export function Leaderboard({ onNavigate }: LeaderboardProps = {}) {
       {/* Tabs */}
       <View style={styles.tabsContainer}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabs}>
-          {tabs.map((tab) => {
+          {tabConfig.map((tab) => {
             const isActive = activeTab === tab.id;
             return (
               <TouchableOpacity
@@ -182,7 +184,7 @@ export function Leaderboard({ onNavigate }: LeaderboardProps = {}) {
                 activeOpacity={0.8}
               >
                 <Ionicons name={tab.icon as any} size={18} color={isActive ? '#059669' : '#64748B'} />
-                <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]}>{tab.label}</Text>
+                <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]}>{t(tab.labelKey)}</Text>
               </TouchableOpacity>
             );
           })}

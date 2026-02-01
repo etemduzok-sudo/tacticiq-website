@@ -301,5 +301,12 @@
     "saveChanges": "Сохранить Изменения",
     "editing": "Редактирование...",
     "saved": "Сохранено!"
+  },
+  "navigation": {
+    "matches": "Матчи",
+    "live": "Вживую",
+    "finished": "Завершённые",
+    "leaderboard": "Рейтинг",
+    "profile": "Профиль"
   }
 }

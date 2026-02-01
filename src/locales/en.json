@@ -301,5 +301,12 @@
     "saveChanges": "Save Changes",
     "editing": "Editing...",
     "saved": "Saved!"
+  },
+  "navigation": {
+    "matches": "Matches",
+    "live": "Live",
+    "finished": "Finished",
+    "leaderboard": "Ranking",
+    "profile": "Profile"
   }
 }

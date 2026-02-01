@@ -69,7 +69,9 @@ export function Header({ onNavigate }: HeaderProps) {
     } else {
       const element = document.getElementById(href.replace('#', ''));
       if (element) {
-        element.scrollIntoView({ behavior: 'smooth' });
+        requestAnimationFrame(() => {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
       }
     }
     

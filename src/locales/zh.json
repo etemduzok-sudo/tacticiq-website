@@ -301,5 +301,12 @@
     "saveChanges": "保存更改",
     "editing": "编辑中...",
     "saved": "已保存！"
+  },
+  "navigation": {
+    "matches": "比赛",
+    "live": "直播",
+    "finished": "已结束",
+    "leaderboard": "排名",
+    "profile": "个人资料"
   }
 }

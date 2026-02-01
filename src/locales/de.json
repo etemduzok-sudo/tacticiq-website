@@ -301,5 +301,12 @@
     "saveChanges": "Änderungen speichern",
     "editing": "Bearbeiten...",
     "saved": "Gespeichert!"
+  },
+  "navigation": {
+    "matches": "Spiele",
+    "live": "Live",
+    "finished": "Beendet",
+    "leaderboard": "Rangliste",
+    "profile": "Profil"
   }
 }

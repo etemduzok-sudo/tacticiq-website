@@ -220,14 +220,16 @@ function AppContent() {
   const { sectionSettings } = adminData;
 
   const handleNavigate = (section: string) => {
-    setTimeout(() => {
-      const element = document.getElementById(section);
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth' });
-      } else if (section === 'home') {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      }
-    }, 100);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const element = document.getElementById(section);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else if (section === 'home') {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      });
+    });
   };
 
   const handleDiscountClaim = () => {
