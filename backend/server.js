@@ -705,6 +705,7 @@ app.use((err, req, res, next) => {
 
 // Start server
 app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server listening on port ${PORT}`);
   console.log('\n');
   console.log('╔════════════════════════════════════════════════════════════╗');
   console.log('║           🚀 TACTICIQ BACKEND STARTED 🚀                   ║');
@@ -790,11 +791,16 @@ app.listen(PORT, '0.0.0.0', () => {
   // Her gün 04:00 (öncelikli ligler)
   // ============================================
   
-  try {
-    playerRatingsScheduler.startScheduler();
-    console.log(`📊 Player ratings scheduler started`);
-  } catch (error) {
-    console.warn('⚠️ Player ratings scheduler could not be started:', error.message);
+  // Player ratings scheduler - sadece RUN_PLAYER_RATINGS_JOB=true ise çalıştır
+  if (process.env.RUN_PLAYER_RATINGS_JOB === 'true') {
+    try {
+      playerRatingsScheduler.startScheduler();
+      console.log(`📊 Player ratings scheduler started`);
+    } catch (error) {
+      console.warn('⚠️ Player ratings scheduler could not be started:', error.message);
+    }
+  } else {
+    console.log('⏭️  Player ratings scheduler skipped (RUN_PLAYER_RATINGS_JOB not set)');
   }
   
   // ============================================
