@@ -4,12 +4,8 @@
 // Strategic Focus System ile puan hesaplama
 // ============================================
 
-const { createClient } = require('@supabase/supabase-js');
-
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-);
+// Merkezi Supabase config kullan (eksik key'lerde null döner, crash olmaz)
+const { supabase } = require('../config/supabase');
 
 // ============================================
 // SCORING RULES (from gameRules.ts)
@@ -139,6 +135,12 @@ function calculateCornersPoints(prediction, result) {
 // ============================================
 
 async function calculatePredictionScore(predictionId, matchResult = null) {
+  // Guard: Supabase not configured
+  if (!supabase) {
+    console.warn('⚠️ scoringService: Supabase not configured, skipping calculation');
+    return { success: false, error: 'Supabase not configured' };
+  }
+
   try {
     // 1. Get prediction
     const { data: prediction, error: predError } = await supabase
@@ -298,6 +300,12 @@ async function calculatePredictionScore(predictionId, matchResult = null) {
 // ============================================
 
 async function finalizeMatch(matchId) {
+  // Guard: Supabase not configured
+  if (!supabase) {
+    console.warn('⚠️ scoringService: Supabase not configured, skipping finalization');
+    return { success: false, error: 'Supabase not configured' };
+  }
+
   try {
     console.log(`🎯 Finalizing match ${matchId}...`);
 

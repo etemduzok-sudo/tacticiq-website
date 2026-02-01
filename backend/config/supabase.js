@@ -8,7 +8,9 @@ const SUPABASE_URL = process.env.SUPABASE_URL || process.env.SUPABASE_PROJECT_UR
 // Supabase Key - fallback sırası (öncelikli: service_role, son: anon)
 const SUPABASE_KEY = 
   process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  process.env.SUPABASE_SERVICE_KEY ||
   process.env.SUPABASE_ANON_KEY ||
+  process.env.SUPABASE_KEY ||
   '';
 
 if (!SUPABASE_URL || !SUPABASE_KEY) {
