@@ -195,7 +195,7 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto overflow-x-hidden">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-center">
             {mode === 'signin' ? t('auth.signin.title') : t('auth.signup.title')}
@@ -205,7 +205,7 @@ export function AuthModal({ open, onOpenChange }: AuthModalProps) {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
+        <div className="space-y-4 py-4 overflow-x-hidden min-w-0">
           {/* Social Auth Buttons */}
           <div className="space-y-3">
             {/* Google OAuth - Admin ayarlarına göre */}

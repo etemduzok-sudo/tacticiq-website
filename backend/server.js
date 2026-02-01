@@ -3,6 +3,9 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
+const { spawn } = require('child_process');
+const path = require('path');
+const fs = require('fs');
 require('dotenv').config();
 
 // ✅ SECURITY: Import auth middleware for protected endpoints
@@ -350,6 +353,138 @@ app.post('/api/services/control', authenticateApiKey, (req, res) => {
         break;
       }
       
+      case 'expo': {
+        // Expo Web servisi kontrolü
+        if (action === 'stop') {
+          // Windows'ta port 8081'i kullanan process'i durdur
+          try {
+            if (process.platform === 'win32') {
+              spawn('taskkill', ['/F', '/IM', 'node.exe', '/FI', 'WINDOWTITLE eq *Expo*'], { shell: true, detached: true });
+            } else {
+              spawn('pkill', ['-f', 'expo.*web'], { shell: true, detached: true });
+            }
+            result.message = 'Expo Web durduruldu';
+          } catch (error) {
+            result.success = false;
+            result.message = `Expo durdurulamadı: ${error.message}`;
+          }
+        } else if (action === 'start' || action === 'restart') {
+          try {
+            const projectRoot = path.resolve(__dirname, '..');
+            const isWindows = process.platform === 'win32';
+            
+            if (action === 'restart') {
+              // Önce durdur
+              if (isWindows) {
+                spawn('taskkill', ['/F', '/IM', 'node.exe', '/FI', 'WINDOWTITLE eq *Expo*'], { shell: true, detached: true });
+              } else {
+                spawn('pkill', ['-f', 'expo.*web'], { shell: true, detached: true });
+              }
+              // Kısa bir bekleme (non-blocking)
+              setTimeout(() => {
+                // Restart işlemi devam ediyor
+              }, 1000);
+            }
+            
+            // Expo'yu başlat
+            const expoProcess = spawn(
+              isWindows ? 'npx.cmd' : 'npx',
+              ['expo', 'start', '--web', '--clear'],
+              {
+                cwd: projectRoot,
+                detached: true,
+                stdio: 'ignore',
+                shell: isWindows,
+                windowsVerbatimArguments: false,
+              }
+            );
+            
+            expoProcess.unref();
+            result.message = 'Expo Web başlatıldı (arka planda çalışıyor)';
+          } catch (error) {
+            result.success = false;
+            result.message = `Expo başlatılamadı: ${error.message}. Lütfen terminalden manuel olarak başlatın: npx expo start --web`;
+          }
+        }
+        break;
+      }
+      
+      case 'website': {
+        // Website (Vite) servisi kontrolü
+        if (action === 'stop') {
+          // Windows'ta port 5173'ü kullanan process'i durdur
+          try {
+            if (process.platform === 'win32') {
+              spawn('taskkill', ['/F', '/IM', 'node.exe', '/FI', 'WINDOWTITLE eq *Website*'], { shell: true, detached: true });
+            } else {
+              spawn('pkill', ['-f', 'vite.*5173'], { shell: true, detached: true });
+            }
+            result.message = 'Website durduruldu';
+          } catch (error) {
+            result.success = false;
+            result.message = `Website durdurulamadı: ${error.message}`;
+          }
+        } else if (action === 'start' || action === 'restart') {
+          try {
+            const websiteDir = path.resolve(__dirname, '..', 'website');
+            
+            // Website klasörünün var olduğunu kontrol et
+            if (!fs.existsSync(websiteDir)) {
+              result.success = false;
+              result.message = 'Website klasörü bulunamadı';
+              break;
+            }
+            
+            if (action === 'restart') {
+              // Önce durdur
+              if (process.platform === 'win32') {
+                spawn('taskkill', ['/F', '/IM', 'node.exe', '/FI', 'WINDOWTITLE eq *Website*'], { shell: true, detached: true });
+              } else {
+                spawn('pkill', ['-f', 'vite.*5173'], { shell: true, detached: true });
+              }
+              // Kısa bir bekleme (non-blocking)
+              setTimeout(() => {
+                // Restart işlemi devam ediyor
+              }, 1000);
+            }
+            
+            // Website'i başlat
+            const websiteProcess = spawn(
+              process.platform === 'win32' ? 'npm.cmd' : 'npm',
+              ['run', 'dev'],
+              {
+                cwd: websiteDir,
+                detached: true,
+                stdio: 'ignore',
+                shell: process.platform === 'win32',
+                windowsVerbatimArguments: false,
+              }
+            );
+            
+            websiteProcess.unref();
+            result.message = 'Website başlatıldı (arka planda çalışıyor)';
+          } catch (error) {
+            result.success = false;
+            result.message = `Website başlatılamadı: ${error.message}. Lütfen terminalden manuel olarak başlatın: cd website && npm run dev`;
+          }
+        }
+        break;
+      }
+      
+      case 'backend': {
+        // Backend kendisini kontrol edemez, sadece bilgi ver
+        result.success = false;
+        result.message = 'Backend kendisini kontrol edemez. Lütfen terminalden manuel olarak yönetin.';
+        break;
+      }
+      
+      case 'supabase': {
+        // Supabase cloud servis, kontrol edilemez
+        result.success = false;
+        result.message = 'Supabase cloud servisidir ve buradan kontrol edilemez. Durum kontrolü için Supabase Dashboard kullanın.';
+        break;
+      }
+      
       default:
         return res.status(400).json({ success: false, error: `Unknown service: ${serviceId}` });
     }
@@ -371,22 +506,89 @@ app.post('/api/services/restart-all', authenticateApiKey, (req, res) => {
     const snapshotService = require('./services/leaderboardSnapshotService');
     const aggressiveCacheService = require('./services/aggressiveCacheService');
     
-    // Stop all
-    smartSyncService.stopSync();
-    staticTeamsScheduler.stopScheduler();
-    snapshotService.stopSnapshotService();
-    aggressiveCacheService.stopAggressiveCaching();
+    // Stop all backend services
+    try {
+      smartSyncService.stopSync();
+    } catch (e) { console.warn('Sync stop error:', e.message); }
+    
+    try {
+      staticTeamsScheduler.stopScheduler();
+    } catch (e) { console.warn('Teams stop error:', e.message); }
+    
+    try {
+      snapshotService.stopSnapshotService();
+    } catch (e) { console.warn('Leaderboard stop error:', e.message); }
+    
+    try {
+      aggressiveCacheService.stopAggressiveCaching();
+    } catch (e) { console.warn('Cache stop error:', e.message); }
+    
+    // Stop Expo and Website if running
+    try {
+      if (process.platform === 'win32') {
+        spawn('taskkill', ['/F', '/IM', 'node.exe', '/FI', 'WINDOWTITLE eq *Expo*'], { shell: true, detached: true });
+        spawn('taskkill', ['/F', '/IM', 'node.exe', '/FI', 'WINDOWTITLE eq *Website*'], { shell: true, detached: true });
+      } else {
+        spawn('pkill', ['-f', 'expo.*web'], { shell: true, detached: true });
+        spawn('pkill', ['-f', 'vite.*5173'], { shell: true, detached: true });
+      }
+    } catch (e) { console.warn('External services stop error:', e.message); }
     
     // Wait a bit then start all
     setTimeout(() => {
-      smartSyncService.startSync();
-      staticTeamsScheduler.startScheduler();
-      snapshotService.startSnapshotService();
-      aggressiveCacheService.startAggressiveCaching();
-    }, 1000);
+      try {
+        smartSyncService.startSync();
+        staticTeamsScheduler.startScheduler();
+        snapshotService.startSnapshotService();
+        aggressiveCacheService.startAggressiveCaching();
+      } catch (e) {
+        console.error('Error starting backend services:', e.message);
+      }
+      
+      // Start Expo and Website
+      try {
+        const projectRoot = path.resolve(__dirname, '..');
+        const websiteDir = path.resolve(__dirname, '..', 'website');
+        const isWindows = process.platform === 'win32';
+        
+        // Start Expo
+        if (fs.existsSync(projectRoot)) {
+          const expoProcess = spawn(
+            isWindows ? 'npx.cmd' : 'npx',
+            ['expo', 'start', '--web', '--clear'],
+            {
+              cwd: projectRoot,
+              detached: true,
+              stdio: 'ignore',
+              shell: isWindows,
+              windowsVerbatimArguments: false,
+            }
+          );
+          expoProcess.unref();
+        }
+        
+        // Start Website
+        if (fs.existsSync(websiteDir)) {
+          const websiteProcess = spawn(
+            isWindows ? 'npm.cmd' : 'npm',
+            ['run', 'dev'],
+            {
+              cwd: websiteDir,
+              detached: true,
+              stdio: 'ignore',
+              shell: isWindows,
+              windowsVerbatimArguments: false,
+            }
+          );
+          websiteProcess.unref();
+        }
+      } catch (e) {
+        console.warn('Error starting external services:', e.message);
+      }
+    }, 2000);
     
-    console.log('🔄 All services restarted');
-    res.json({ success: true, message: 'Tüm servisler yeniden başlatıldı' });
+    console.log('🔄 All services restart initiated');
+    res.json({ success: true, message: 'Tüm servisler yeniden başlatılıyor (arka planda)...' });
   } catch (error) {
     console.error('❌ Restart all services error:', error);
     res.json({ success: false, error: error.message });

@@ -7872,12 +7872,25 @@ function SystemMonitoringContent() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [autoRestartEnabled, setAutoRestartEnabled] = useState(true);
 
+  // Get API key from environment or use default for development
+  const getApiKey = () => {
+    return import.meta.env.VITE_BACKEND_API_KEY || 'admin-dev-key';
+  };
+
+  // Helper function to create headers with API key
+  const getHeaders = () => {
+    return {
+      'Content-Type': 'application/json',
+      'X-API-Key': getApiKey(),
+    };
+  };
+
   // Toggle auto-restart
   const toggleAutoRestart = async () => {
     try {
       const response = await fetch('http://localhost:3001/api/services/auto-restart', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getHeaders(),
         body: JSON.stringify({ enabled: !autoRestartEnabled }),
       });
       const result = await response.json();
@@ -7897,22 +7910,31 @@ function SystemMonitoringContent() {
     
     // Check Backend
     try {
-      const backendRes = await fetch('http://localhost:3001/health', { signal: AbortSignal.timeout(5000) });
-      const backendData = await backendRes.json();
-      const backendIdx = updatedServices.findIndex(s => s.id === 'backend');
-      updatedServices[backendIdx] = {
-        ...updatedServices[backendIdx],
-        status: backendRes.ok ? 'running' : 'error',
-        lastCheck: new Date(),
-        uptime: backendData.uptime,
-      };
-    } catch (e) {
+      const backendRes = await fetch('http://localhost:3001/health', { 
+        signal: AbortSignal.timeout(5000),
+        method: 'GET',
+      });
+      
+      if (backendRes.ok) {
+        const backendData = await backendRes.json();
+        const backendIdx = updatedServices.findIndex(s => s.id === 'backend');
+        updatedServices[backendIdx] = {
+          ...updatedServices[backendIdx],
+          status: 'running',
+          lastCheck: new Date(),
+          uptime: backendData.uptime,
+          errorMessage: undefined,
+        };
+      } else {
+        throw new Error(`HTTP ${backendRes.status}`);
+      }
+    } catch (e: any) {
       const backendIdx = updatedServices.findIndex(s => s.id === 'backend');
       updatedServices[backendIdx] = {
         ...updatedServices[backendIdx],
         status: 'stopped',
         lastCheck: new Date(),
-        errorMessage: 'Bağlantı kurulamadı',
+        errorMessage: 'Bağlantı kurulamadı - Backend çalışmıyor olabilir',
       };
     }
 
@@ -8069,21 +8091,106 @@ function SystemMonitoringContent() {
     setActionLoading(`${serviceId}-${action}`);
     toast.info(`${action === 'start' ? 'Başlatılıyor' : action === 'stop' ? 'Durduruluyor' : 'Yeniden başlatılıyor'}...`);
     
+    // Special handling for backend service - backend kendisini kontrol edemez
+    if (serviceId === 'backend') {
+      if (action === 'start') {
+        toast.info(
+          <div className="space-y-2">
+            <p className="font-semibold">Backend'i Başlatma Talimatları:</p>
+            <ol className="list-decimal list-inside space-y-1 text-sm">
+              <li>Terminali açın ve proje klasörüne gidin</li>
+              <li>Backend klasörüne gidin: <code className="bg-muted px-1 rounded">cd backend</code></li>
+              <li>Backend'i başlatın: <code className="bg-muted px-1 rounded">npm start</code> veya <code className="bg-muted px-1 rounded">node server.js</code></li>
+            </ol>
+            <p className="text-xs text-muted-foreground mt-2">Backend başladıktan sonra bu sayfayı yenileyin.</p>
+          </div>,
+          { duration: 10000 }
+        );
+        setActionLoading(null);
+        return;
+      } else if (action === 'stop') {
+        toast.warning('Backend\'i durdurmak için terminalde Ctrl+C tuşlarına basın.');
+        setActionLoading(null);
+        return;
+      } else if (action === 'restart') {
+        toast.info('Backend\'i yeniden başlatmak için terminalde Ctrl+C ile durdurun, sonra tekrar başlatın.');
+        setActionLoading(null);
+        return;
+      }
+    }
+    
+    // Supabase için özel mesaj
+    if (serviceId === 'supabase') {
+      toast.info('Supabase cloud servisidir ve buradan kontrol edilemez. Durum kontrolü için Supabase Dashboard kullanın.');
+      setActionLoading(null);
+      return;
+    }
+    
     try {
       const response = await fetch('http://localhost:3001/api/services/control', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getHeaders(),
         body: JSON.stringify({ serviceId, action }),
+        signal: AbortSignal.timeout(10000), // 10 saniye timeout
       });
+      
+      if (!response.ok) {
+        // Check if it's an API key error
+        if (response.status === 401 || response.status === 403) {
+          const errorData = await response.json().catch(() => ({}));
+          toast.error(
+            <div className="space-y-1">
+              <p className="font-semibold">🔐 Yetkilendirme Hatası</p>
+              <p className="text-sm">{errorData.error || 'API key eksik veya geçersiz.'}</p>
+              <p className="text-xs text-muted-foreground mt-1">Backend .env dosyasında VALID_API_KEYS kontrol edin.</p>
+            </div>,
+            { duration: 8000 }
+          );
+          setActionLoading(null);
+          return;
+        }
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+      
       const result = await response.json();
       
       if (result.success) {
-        toast.success(result.message || `Servis ${action === 'start' ? 'başlatıldı' : action === 'stop' ? 'durduruldu' : 'yeniden başlatıldı'}`);
+        toast.success(result.message || `✅ Servis ${action === 'start' ? 'başlatıldı' : action === 'stop' ? 'durduruldu' : 'yeniden başlatıldı'}`);
+        // Status'u yenile
+        setTimeout(() => checkServiceHealth(), 1500);
       } else {
-        toast.error(result.error || 'İşlem başarısız');
+        toast.error(result.error || '❌ İşlem başarısız');
       }
     } catch (error: any) {
-      toast.error('Backend bağlantısı kurulamadı');
+      console.error('Service action error:', error);
+      
+      // If backend is not running, show helpful message
+      if (serviceId !== 'backend' && serviceId !== 'supabase') {
+        const backendStatus = services.find(s => s.id === 'backend')?.status;
+        if (backendStatus !== 'running' || error.name === 'AbortError' || error.message?.includes('fetch')) {
+          toast.error(
+            <div className="space-y-2">
+              <p className="font-semibold">❌ Backend çalışmıyor!</p>
+              <div className="text-sm space-y-1">
+                <p>Servisleri kontrol etmek için önce backend'i başlatın:</p>
+                <ol className="list-decimal list-inside space-y-1 ml-2">
+                  <li>Terminal: <code className="bg-muted px-1 rounded">cd backend</code></li>
+                  <li>Başlat: <code className="bg-muted px-1 rounded">npm start</code></li>
+                </ol>
+              </div>
+            </div>,
+            { duration: 8000 }
+          );
+        } else {
+          toast.error(`❌ Hata: ${error.message || 'Bilinmeyen hata'}`);
+        }
+      } else {
+        // Backend veya Supabase için özel mesaj zaten gösterildi
+        if (serviceId === 'backend') {
+          // Backend için mesaj zaten gösterildi, buraya gelmemeli
+        }
+      }
     }
     
     setActionLoading(null);
@@ -8094,27 +8201,82 @@ function SystemMonitoringContent() {
 
   const handleAllServicesAction = async (action: 'start' | 'stop' | 'restart') => {
     setActionLoading(`all-${action}`);
+    
+    // Check if backend is running first
+    const backendStatus = services.find(s => s.id === 'backend')?.status;
+    
+    if (backendStatus !== 'running') {
+      // Backend çalışmıyorsa, kullanıcıya talimat ver
+      toast.error(
+        <div className="space-y-2">
+          <p className="font-semibold">⚠️ Backend çalışmıyor!</p>
+          <div className="text-sm space-y-1">
+            <p><strong>Backend'i başlatmak için:</strong></p>
+            <ol className="list-decimal list-inside space-y-1 ml-2">
+              <li>Terminali açın ve proje klasörüne gidin</li>
+              <li>Backend klasörüne gidin: <code className="bg-muted px-1 rounded">cd backend</code></li>
+              <li>Backend'i başlatın: <code className="bg-muted px-1 rounded">npm start</code></li>
+            </ol>
+            <p className="mt-2 text-xs text-muted-foreground">Backend başladıktan sonra bu sayfayı yenileyin ve tekrar deneyin.</p>
+          </div>
+        </div>,
+        { duration: 12000 }
+      );
+      setActionLoading(null);
+      return;
+    }
+    
     toast.info(`Tüm servisler ${action === 'start' ? 'başlatılıyor' : action === 'stop' ? 'durduruluyor' : 'yeniden başlatılıyor'}...`);
     
     try {
       const response = await fetch('http://localhost:3001/api/services/restart-all', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getHeaders(),
+        signal: AbortSignal.timeout(10000), // 10 saniye timeout
       });
+      
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          const errorData = await response.json().catch(() => ({}));
+          toast.error(
+            <div className="space-y-1">
+              <p className="font-semibold">Yetkilendirme Hatası</p>
+              <p className="text-sm">{errorData.error || 'API key eksik veya geçersiz. Backend .env dosyasında VALID_API_KEYS kontrol edin.'}</p>
+            </div>,
+            { duration: 8000 }
+          );
+          setActionLoading(null);
+          return;
+        }
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+      
       const result = await response.json();
       
       if (result.success) {
-        toast.success(result.message || 'Tüm servisler yeniden başlatıldı');
+        toast.success(result.message || 'Tüm servisler başarıyla işlendi');
+        // Status'u yenile
+        setTimeout(() => checkServiceHealth(), 2000);
       } else {
         toast.error(result.error || 'İşlem başarısız');
       }
     } catch (error: any) {
-      toast.error('Backend bağlantısı kurulamadı');
+      console.error('All services action error:', error);
+      if (error.name === 'AbortError' || error.message?.includes('fetch')) {
+        toast.error(
+          <div className="space-y-1">
+            <p className="font-semibold">❌ Backend bağlantısı kurulamadı</p>
+            <p className="text-sm">Backend'in çalıştığından ve http://localhost:3001 adresinde dinlediğinden emin olun.</p>
+          </div>,
+          { duration: 8000 }
+        );
+      } else {
+        toast.error(`Hata: ${error.message || 'Bilinmeyen hata'}`);
+      }
     }
     
     setActionLoading(null);
-    
-    setTimeout(() => checkServiceHealth(), 2000);
   };
 
   const getStatusColor = (status: ServiceStatus['status']) => {
@@ -8246,7 +8408,7 @@ function SystemMonitoringContent() {
               variant="default"
               onClick={() => handleAllServicesAction('start')}
               disabled={actionLoading !== null}
-              className="bg-green-600 hover:bg-green-700"
+              className="bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Play className="size-4 mr-2" />
               Tümünü Başlat
@@ -8255,6 +8417,7 @@ function SystemMonitoringContent() {
               variant="destructive"
               onClick={() => handleAllServicesAction('stop')}
               disabled={actionLoading !== null}
+              className="disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Square className="size-4 mr-2" />
               Tümünü Durdur
@@ -8263,6 +8426,7 @@ function SystemMonitoringContent() {
               variant="secondary"
               onClick={() => handleAllServicesAction('restart')}
               disabled={actionLoading !== null}
+              className="disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <RotateCw className="size-4 mr-2" />
               Tümünü Yeniden Başlat
@@ -8557,26 +8721,26 @@ function ServiceBlock({ service, onAction, actionLoading, large }: ServiceBlockP
       </div>
       <div className="flex justify-center gap-1 mt-2">
         <button
-          className="p-1 rounded hover:bg-green-500/20 text-green-500 disabled:opacity-50"
+          className="p-1 rounded hover:bg-green-500/20 text-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
           onClick={() => onAction(service.id, 'start')}
-          disabled={actionLoading !== null || service.status === 'running'}
-          title="Başlat"
+          disabled={actionLoading !== null || (service.status === 'running' && service.id !== 'backend' && service.id !== 'supabase')}
+          title={service.id === 'backend' || service.id === 'supabase' ? 'Başlat (Talimatlar gösterilecek)' : 'Başlat'}
         >
           <Play className="size-3" />
         </button>
         <button
-          className="p-1 rounded hover:bg-red-500/20 text-red-500 disabled:opacity-50"
+          className="p-1 rounded hover:bg-red-500/20 text-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
           onClick={() => onAction(service.id, 'stop')}
-          disabled={actionLoading !== null || service.status === 'stopped'}
-          title="Durdur"
+          disabled={actionLoading !== null || (service.status === 'stopped' && service.id !== 'backend' && service.id !== 'supabase')}
+          title={service.id === 'backend' || service.id === 'supabase' ? 'Durdur (Talimatlar gösterilecek)' : 'Durdur'}
         >
           <Square className="size-3" />
         </button>
         <button
-          className="p-1 rounded hover:bg-yellow-500/20 text-yellow-500 disabled:opacity-50"
+          className="p-1 rounded hover:bg-yellow-500/20 text-yellow-500 disabled:opacity-50 disabled:cursor-not-allowed"
           onClick={() => onAction(service.id, 'restart')}
           disabled={actionLoading !== null}
-          title="Yeniden Başlat"
+          title={service.id === 'backend' || service.id === 'supabase' ? 'Yeniden Başlat (Talimatlar gösterilecek)' : 'Yeniden Başlat'}
         >
           <RotateCw className="size-3" />
         </button>
