@@ -153,6 +153,15 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Root path health check (Render compatibility)
+app.get('/', (req, res) => {
+  res.json({
+    status: 'ok',
+    service: 'TacticIQ Backend API',
+    version: '2.0.0',
+  });
+});
+
 // 🔥 Rate Limiter Stats
 app.get('/api/rate-limit/stats', (req, res) => {
   const stats = getStats();
