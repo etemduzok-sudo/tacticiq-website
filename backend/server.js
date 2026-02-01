@@ -106,19 +106,28 @@ app.use(cors({
 app.use(compression()); // Compress responses
 app.use(express.json());
 
+// ========== RENDER HEALTH CHECK - EN BAŞTA (rate limit öncesi) ==========
+app.get('/health', (req, res) => {
+  res.status(200).setHeader('Content-Type', 'application/json').end(JSON.stringify({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+  }));
+});
+app.get('/', (req, res) => {
+  res.status(200).setHeader('Content-Type', 'application/json').end(JSON.stringify({
+    status: 'ok',
+    service: 'TacticIQ Backend API',
+    version: '2.0.0',
+  }));
+});
+// ========== /HEALTH BİTTİ ==========
+
 // 🔥 API Rate Limiter (7,500 calls/day)
 const { rateLimiterMiddleware, getStats } = require('./middleware/rateLimiter');
 app.use(rateLimiterMiddleware);
 
-// 🚀 Aggressive Cache Service (maximize API usage)
-try {
-  const aggressiveCacheService = require('./services/aggressiveCacheService');
-  aggressiveCacheService.startAggressiveCaching();
-} catch (error) {
-  console.error('❌ Failed to start aggressive cache service:', error.message);
-  console.error('Stack:', error.stack);
-  // Don't exit - continue without aggressive caching
-}
+// 🚀 Aggressive Cache Service: Render için listen'den SONRA başlatılacak (setImmediate içinde)
 
 // Routes
 const matchesRouter = require('./routes/matches');
@@ -143,24 +152,6 @@ app.use('/api/static-teams', staticTeamsRouter); // ⚡ Hızlı statik takımlar
 app.use('/api/timeline', require('./routes/timeline')); // 📊 Maç akışı
 app.use('/api/leaderboard/snapshots', require('./routes/leaderboardSnapshots')); // 📸 Sıralama geçmişi
 app.use('/api/squad-predictions', squadPredictionsRouter); // 📋 Kadro tahminleri ve istatistikler
-
-// Health check - Render için KRİTİK (hemen cevap vermeli)
-app.get('/health', (req, res) => {
-  res.status(200).json({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-  });
-});
-
-// Root - Render health check (tek route, 200 dönmeli)
-app.get('/', (req, res) => {
-  res.status(200).json({
-    status: 'ok',
-    service: 'TacticIQ Backend API',
-    version: '2.0.0',
-  });
-});
 
 // 🔥 Rate Limiter Stats
 app.get('/api/rate-limit/stats', (req, res) => {
@@ -694,6 +685,17 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`║ Health: http://localhost:${PORT}/health                       ║`);
     console.log('╚════════════════════════════════════════════════════════════╝');
     
+    // ============================================
+    // 0. AGGRESSIVE CACHE (Render: listen sonrası, health check önceliği)
+    // ============================================
+    try {
+      const aggressiveCacheService = require('./services/aggressiveCacheService');
+      aggressiveCacheService.startAggressiveCaching();
+      console.log(`🚀 Aggressive cache service started`);
+    } catch (error) {
+      console.error('❌ Failed to start aggressive cache service:', error.message);
+    }
+
     // ============================================
     // 1. WORLDWIDE SYNC SERVICE (Sabit 12s)
     // ============================================
