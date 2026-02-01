@@ -518,20 +518,41 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
 
       if (signInError) {
         // User-friendly error messages
-        let errorMsg = signInError.message;
-        if (signInError.message.includes('Invalid login credentials')) {
+        const rawMsg = signInError?.message || String(signInError) || 'Giriş yapılamadı';
+        let errorMsg = rawMsg;
+        if (rawMsg.includes('Invalid login credentials')) {
           errorMsg = 'E-posta veya şifre hatalı. Lütfen kontrol edin.';
-        } else if (signInError.message.includes('Email not confirmed')) {
+        } else if (rawMsg.includes('Email not confirmed')) {
           errorMsg = 'E-posta adresinizi doğrulamanız gerekiyor. Gelen kutunuzu kontrol edin.';
-        } else if (signInError.message.includes('401') || signInError.message.includes('Unauthorized')) {
+        } else if (rawMsg.includes('401') || rawMsg.includes('Unauthorized')) {
           errorMsg = 'Giriş yapılamadı. Lütfen sistem yöneticisine başvurun.';
+        } else if (rawMsg.includes('Bağlantı zaman aşımı') || rawMsg.includes('timeout')) {
+          errorMsg = 'Bağlantı zaman aşımına uğradı. Lütfen tekrar deneyin.';
         }
         setError(errorMsg);
         setIsLoading(false);
         return { success: false, error: errorMsg };
       }
 
-      if (data.user) {
+      if (data?.user) {
+        // Session'ı hemen güncelle (UI'ın giriş yapmış göstermesi için)
+        const session = (await supabase.auth.getSession()).data.session;
+        if (session) {
+          setSession(session);
+          setUser(session.user);
+          const metadata = session.user.user_metadata;
+          const name = metadata?.name || metadata?.full_name || session.user.email?.split('@')[0] || 'User';
+          setProfile({
+            id: session.user.id,
+            email: session.user.email || '',
+            name,
+            nickname: name,
+            plan: 'free',
+            favoriteTeams: [],
+            preferredLanguage: 'tr',
+            createdAt: new Date().toISOString(),
+          });
+        }
         // Profile fetch'i background'da yap
         fetchProfile(
           data.user.id, 
@@ -545,12 +566,14 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
     } catch (err: unknown) {
       // Handle network errors
       const error = err as ErrorLike;
-      if (error.code === 'ECONNREFUSED' || error.message?.includes('network')) {
+      const errorMsg = error?.message || (typeof err === 'string' ? err : 'Giriş başarısız');
+      
+      if (error?.code === 'ECONNREFUSED' || errorMsg?.toLowerCase().includes('network') || errorMsg?.toLowerCase().includes('fetch')) {
+        setError('Bağlantı hatası. İnternet bağlantınızı ve Supabase erişimini kontrol edin.');
         setIsLoading(false);
         return { success: false, error: 'Bağlantı hatası. İnternet bağlantınızı kontrol edin.' };
       }
       
-      const errorMsg = err.message || 'Giriş başarısız';
       setError(errorMsg);
       setIsLoading(false);
       return { success: false, error: errorMsg };

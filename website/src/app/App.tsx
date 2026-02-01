@@ -123,7 +123,7 @@ function AppContent() {
 
       console.log('🔍 OAuth callback detected in URL');
 
-      // Parse hash and query params
+      // Parse hash and query params (hash'i henüz silme - Supabase okuyabilsin)
       const hashParams = new URLSearchParams(window.location.hash.substring(1));
       const queryParams = new URLSearchParams(window.location.search);
       const error = hashParams.get('error') || queryParams.get('error');
@@ -131,65 +131,67 @@ function AppContent() {
 
       if (error) {
         console.error('❌ OAuth error:', error, errorDescription);
-        // Clear hash/query and show error
         window.history.replaceState(null, '', window.location.pathname);
         return;
       }
 
-      // Import supabase client
       const { supabase } = await import('@/config/supabase');
-      
       console.log('⏳ Processing OAuth callback...');
       
-      // Clear hash immediately to prevent re-processing
-      const hash = window.location.hash;
-      window.history.replaceState(null, '', window.location.pathname);
+      // Önce hash'ten manuel session kur (Supabase bazen hash'i otomatik işlemeden önce sayfa temizlenebiliyor)
+      const accessToken = hashParams.get('access_token') || queryParams.get('access_token');
+      const refreshToken = hashParams.get('refresh_token') || queryParams.get('refresh_token');
       
-      // Wait for Supabase to process the session from hash
-      // Try multiple times with increasing delays
+      if (accessToken && refreshToken) {
+        try {
+          const { data, error: setError } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+          if (setError) {
+            console.warn('⚠️ setSession error:', setError.message);
+          } else if (data?.session?.user) {
+            console.log('✅ OAuth session set from hash:', data.session.user.email);
+            window.history.replaceState(null, '', window.location.pathname);
+            await new Promise(resolve => setTimeout(resolve, 300));
+            window.location.reload();
+            return;
+          }
+        } catch (e) {
+          console.warn('⚠️ Manual setSession failed:', e);
+        }
+      }
+      
+      // Fallback: getSession ile bekle (hash hâlâ URL'de)
       let session = null;
       let attempts = 0;
-      const maxAttempts = 5;
+      const maxAttempts = 8;
       
       while (!session && attempts < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, 500 + (attempts * 200)));
-        
-        const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError) {
-          console.error(`❌ Session error (attempt ${attempts + 1}):`, sessionError.message);
-        } else if (currentSession?.user) {
+        await new Promise(resolve => setTimeout(resolve, 300 + (attempts * 150)));
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        if (currentSession?.user) {
           session = currentSession;
           console.log('✅ OAuth session established:', session.user.email);
           break;
         }
-        
         attempts++;
       }
 
-      if (!session?.user) {
-        console.warn('⚠️ No session found after OAuth callback after', maxAttempts, 'attempts');
-        // Try to get session from URL hash manually as fallback
-        if (hash.includes('access_token')) {
-          console.log('🔄 Attempting manual session recovery from hash...');
-          // Let Supabase handle it naturally via onAuthStateChange
-          return;
-        }
+      if (session?.user) {
+        window.history.replaceState(null, '', window.location.pathname);
+        await new Promise(resolve => setTimeout(resolve, 300));
+        window.location.reload();
         return;
       }
 
-      // Session is established, wait a bit for auth context to update
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Reload page to refresh all auth state
-      console.log('🔄 Reloading page to refresh auth state...');
-      window.location.reload();
+      console.warn('⚠️ No session after OAuth callback');
+      window.history.replaceState(null, '', window.location.pathname);
     };
 
-    // Small delay to ensure all imports are ready
     const timeoutId = setTimeout(() => {
       handleOAuthCallback();
-    }, 100);
+    }, 150);
 
     return () => clearTimeout(timeoutId);
   }, []);

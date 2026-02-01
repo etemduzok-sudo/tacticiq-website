@@ -211,7 +211,7 @@ function AdminDataProviderInternal({ children }: { children: ReactNode }) {
   });
 
   // Get users, activities, and logs from AdminUsersContext
-  const { users, activities, logs, addUser, updateUser, deleteUser, filterLogs, _addLog } = usersContext;
+  const { users, activities, logs, addUser, updateUser, deleteUser, filterLogs, _addLog, _addActivity } = usersContext;
 
   // Contents - Gerçek veriler localStorage'dan yüklenecek veya API'den gelecek
   const [contents, setContents] = useState<Content[]>(() => {
@@ -659,14 +659,11 @@ function AdminDataProviderInternal({ children }: { children: ReactNode }) {
     };
     setContents([newContent, ...contents]);
 
-    const newActivity: Activity = {
-      id: Date.now().toString(),
+    _addActivity({
       type: 'content',
       title: 'Yeni İçerik Eklendi',
       description: content.title,
-      time: 'Az önce',
-    };
-    setActivities([newActivity, ...activities]);
+    });
 
     _addLog({
       type: 'success',
@@ -1770,10 +1767,7 @@ function AdminDataProviderInternal({ children }: { children: ReactNode }) {
 
         // localStorage'dan yedek veriler (Supabase'de olmayan)
         const savedEmailAutoReply = localStorage.getItem('admin_email_auto_reply');
-        const savedUsers = localStorage.getItem('admin_users');
         const savedContents = localStorage.getItem('admin_contents');
-        const savedActivities = localStorage.getItem('admin_activities');
-        const savedLogs = localStorage.getItem('admin_logs');
         const savedStats = localStorage.getItem('admin_stats');
 
         if (savedEmailAutoReply) {
@@ -1784,14 +1778,7 @@ function AdminDataProviderInternal({ children }: { children: ReactNode }) {
           }
         }
 
-        if (savedUsers) {
-          try {
-            setUsers(JSON.parse(savedUsers));
-          } catch (e) {
-            console.error('Error loading users:', e);
-          }
-        }
-
+        // users ve activities AdminUsersContext tarafından yönetilir, localStorage'dan orada yüklenir
         if (savedContents) {
           try {
             setContents(JSON.parse(savedContents));
@@ -1800,13 +1787,7 @@ function AdminDataProviderInternal({ children }: { children: ReactNode }) {
           }
         }
 
-        if (savedActivities) {
-          try {
-            setActivities(JSON.parse(savedActivities));
-          } catch (e) {
-            console.error('Error loading activities:', e);
-          }
-        }
+        // activities AdminUsersContext tarafından yönetilir, localStorage'dan orada yüklenir
 
         // Logs are managed by AdminUsersContext, skip here
         // They will be loaded by AdminUsersContext from localStorage
