@@ -1844,8 +1844,8 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
                         </CardContent>
                       </Card>
 
-                      {/* Badges Grid - 1 satıra 5 rozet */}
-                      <div className="grid grid-cols-5 gap-2">
+                      {/* Badges Grid - 4 sütun x 10 satır */}
+                      <div className="grid grid-cols-4 gap-3">
                         {allBadges.map((badge) => (
                           <Card 
                             key={badge.id} 

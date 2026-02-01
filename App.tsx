@@ -512,9 +512,9 @@ export default function App() {
   }
 
   return (
-    <ErrorBoundary>
+    <ErrorBoundary key={`app-${languageKey}`}>
       <SafeAreaProvider>
-        <ThemeProvider key={`theme-${languageKey}`}>
+        <ThemeProvider>
           <PredictionProvider>
             <MatchProvider>
               {/* Maintenance Mode Check */}

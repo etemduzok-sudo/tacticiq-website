@@ -103,6 +103,8 @@ const initI18n = async () => {
       },
       react: {
         useSuspense: false,
+        bindI18n: 'languageChanged loaded',
+        bindI18nStore: 'added removed',
       },
     });
   
@@ -171,6 +173,8 @@ if (!i18n.isInitialized) {
       },
       react: {
         useSuspense: false,
+        bindI18n: 'languageChanged loaded',
+        bindI18nStore: 'added removed',
       },
     });
   

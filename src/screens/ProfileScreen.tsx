@@ -1914,7 +1914,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               </View>
             </View>
 
-            {/* Badges Grid - 5 sütun */}
+            {/* Badges Grid - 4 sütun x 10 satır */}
             <View style={styles.badgesGridInline}>
               {allBadges.map((badge, index) => (
                 <TouchableOpacity
@@ -2676,7 +2676,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               </View>
             </View>
 
-            {/* Badges Grid - Web ile aynı (5 sütun) */}
+            {/* Badges Grid - 4 sütun x 10 satır */}
             <View style={styles.badgeGrid}>
               {allBadges.map((badge, index) => (
                 <Animated.View 
@@ -4100,9 +4100,9 @@ const createStyles = (isDark: boolean = true) => {
     width: '100%',
   },
   badgeItemInline: {
-    // 5 sütun x 6 satır (30 rozet) – satırda tam 5 hücre sığacak genişlik
-    width: '17%',
-    aspectRatio: 0.9,
+    // 4 sütun x 10 satır (40 rozet) – satırda tam 4 hücre sığacak genişlik
+    width: '22%',
+    aspectRatio: 0.85,
     backgroundColor: theme.card,
     borderRadius: SIZES.radiusMd,
     borderWidth: 1.5,
@@ -4474,9 +4474,9 @@ const createStyles = (isDark: boolean = true) => {
     justifyContent: 'flex-start',
   },
   badgeCard: {
-    width: '19%', // 5 sütun için ~19% (web ile aynı grid-cols-5), gap ile birlikte
-    minWidth: 65,
-    aspectRatio: 0.65, // Web ile aynı oran
+    width: '23%', // 4 sütun için ~23% (web ile aynı grid-cols-4), gap ile birlikte
+    minWidth: 70,
+    aspectRatio: 0.7, // Web ile aynı oran
     backgroundColor: theme.card,
     borderRadius: SIZES.radiusMd,
     borderWidth: 1,

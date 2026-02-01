@@ -841,8 +841,8 @@ export function UserProfileSection() {
               </div>
             </Card>
 
-            {/* Badges Grid */}
-            <div className="grid grid-cols-5 gap-4">
+            {/* Badges Grid - 4 sütun x 10 satır */}
+            <div className="grid grid-cols-4 gap-4">
               {allBadges.map((badge) => (
                 <Card 
                   key={badge.id} 
