@@ -1995,6 +1995,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                      selectedLanguage === 'es' ? 'https://flagcdn.com/w40/es.png' :
                      selectedLanguage === 'fr' ? 'https://flagcdn.com/w40/fr.png' :
                      selectedLanguage === 'it' ? 'https://flagcdn.com/w40/it.png' :
+                     selectedLanguage === 'ar' ? 'https://flagcdn.com/w40/sa.png' :
+                     selectedLanguage === 'zh' ? 'https://flagcdn.com/w40/cn.png' :
                      selectedLanguage === 'ru' ? 'https://flagcdn.com/w40/ru.png' :
                      selectedLanguage === 'hi' ? 'https://flagcdn.com/w40/in.png' : 'https://flagcdn.com/w40/tr.png' }}
                     style={{ width: 24, height: 18, borderRadius: 2, marginRight: 8 }}
@@ -2007,6 +2009,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                      selectedLanguage === 'es' ? 'Español' :
                      selectedLanguage === 'fr' ? 'Français' :
                      selectedLanguage === 'it' ? 'Italiano' :
+                     selectedLanguage === 'ar' ? 'العربية' :
+                     selectedLanguage === 'zh' ? '中文' :
                      selectedLanguage === 'ru' ? 'Русский' :
                      selectedLanguage === 'hi' ? 'हिन्दी' : 'Türkçe'}
                   </Text>
@@ -2039,6 +2043,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                       { code: 'es', name: 'Español', flagUrl: 'https://flagcdn.com/w40/es.png' },
                       { code: 'fr', name: 'Français', flagUrl: 'https://flagcdn.com/w40/fr.png' },
                       { code: 'it', name: 'Italiano', flagUrl: 'https://flagcdn.com/w40/it.png' },
+                      { code: 'ar', name: 'العربية', flagUrl: 'https://flagcdn.com/w40/sa.png' },
+                      { code: 'zh', name: '中文', flagUrl: 'https://flagcdn.com/w40/cn.png' },
                       { code: 'ru', name: 'Русский', flagUrl: 'https://flagcdn.com/w40/ru.png' },
                       { code: 'hi', name: 'हिन्दी', flagUrl: 'https://flagcdn.com/w40/in.png' },
                     ].map((lang) => (

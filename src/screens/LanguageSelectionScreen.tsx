@@ -329,7 +329,8 @@ export default function LanguageSelectionScreen({
                  selectedLanguage === 'fr' ? 'Sélection de la Langue' :
                  selectedLanguage === 'it' ? 'Selezione Lingua' :
                  selectedLanguage === 'ar' ? 'اختيار اللغة' :
-                 selectedLanguage === 'ru' ? 'Выбор языка' : 'Language Selection'}
+                 selectedLanguage === 'ru' ? 'Выбор языка' :
+                 selectedLanguage === 'hi' ? 'भाषा चयन' : 'Language Selection'}
               </Text>
               <Text style={styles.infoSubtitle}>
                 {selectedLanguage === 'tr' ? 'Lütfen tercih ettiğiniz dili seçin' : 
@@ -339,7 +340,8 @@ export default function LanguageSelectionScreen({
                  selectedLanguage === 'fr' ? 'Veuillez sélectionner votre langue préférée' :
                  selectedLanguage === 'it' ? 'Seleziona la tua lingua preferita' :
                  selectedLanguage === 'ar' ? 'يرجى اختيار لغتك المفضلة' :
-                 selectedLanguage === 'ru' ? 'Пожалуйста, выберите предпочитаемый язык' : 'Please select your preferred language'}
+                 selectedLanguage === 'ru' ? 'Пожалуйста, выберите предпочитаемый язык' :
+                 selectedLanguage === 'hi' ? 'कृपया अपनी भाषा चुनें' : 'Please select your preferred language'}
               </Text>
             </View>
 
