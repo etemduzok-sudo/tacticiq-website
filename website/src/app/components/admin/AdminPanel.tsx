@@ -8177,7 +8177,69 @@ function SystemMonitoringContent() {
     if (canUseRemoteControl && cannotControlRemotely.includes(serviceId)) {
       if (['start', 'stop', 'restart'].includes(action)) {
         if (serviceId === 'backend') {
-          toast.info('Backend servisini uzaktan yeniden başlatmak için Render Dashboard kullanın.');
+          // Render API ile backend'i restart et
+          const renderApiKey = import.meta.env.VITE_RENDER_API_KEY;
+          const renderServiceId = import.meta.env.VITE_RENDER_SERVICE_ID || 'srv-d5vim9juibrs73cr23cg';
+          
+          if (!renderApiKey) {
+            toast.error(
+              <div className="space-y-2">
+                <p className="font-semibold">🔐 Render API Key Gerekli</p>
+                <p className="text-sm">Backend'i uzaktan başlatmak için Vercel'de <code className="bg-muted px-1 rounded">VITE_RENDER_API_KEY</code> environment variable'ını ekleyin.</p>
+                <p className="text-xs text-muted-foreground mt-1">Render Dashboard → Account Settings → API Keys</p>
+              </div>,
+              { duration: 10000 }
+            );
+            setActionLoading(null);
+            return;
+          }
+          
+          // Render API ile deploy tetikle (restart)
+          try {
+            const renderRes = await fetch(`https://api.render.com/v1/services/${renderServiceId}/deploys`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${renderApiKey}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                clearBuildCache: false,
+              }),
+              signal: AbortSignal.timeout(30000),
+            });
+            
+            if (!renderRes.ok) {
+              const errorData = await renderRes.json().catch(() => ({}));
+              throw new Error(errorData.message || `HTTP ${renderRes.status}`);
+            }
+            
+            const deployData = await renderRes.json();
+            toast.success(
+              <div className="space-y-1">
+                <p className="font-semibold">✅ Backend restart tetiklendi</p>
+                <p className="text-sm">Render'da yeni deploy başlatıldı. Birkaç dakika içinde backend çalışacak.</p>
+                <p className="text-xs text-muted-foreground">Deploy ID: {deployData.deploy?.id || 'N/A'}</p>
+              </div>,
+              { duration: 8000 }
+            );
+            
+            // Status'u yenile
+            setTimeout(() => checkServiceHealth(), 5000);
+            setActionLoading(null);
+            return;
+          } catch (error: any) {
+            console.error('Render API error:', error);
+            toast.error(
+              <div className="space-y-1">
+                <p className="font-semibold">❌ Render API Hatası</p>
+                <p className="text-sm">{error.message || 'Backend restart tetiklenemedi'}</p>
+                <p className="text-xs text-muted-foreground">Render Dashboard'dan manuel olarak restart yapabilirsiniz.</p>
+              </div>,
+              { duration: 8000 }
+            );
+            setActionLoading(null);
+            return;
+          }
         } else {
           toast.info(`${serviceId === 'expo' || serviceId === 'website' ? 'Expo ve Website' : 'Supabase'} sadece yerel ortamda kontrol edilebilir.`);
         }
