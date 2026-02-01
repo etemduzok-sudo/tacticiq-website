@@ -361,8 +361,8 @@ export function LegalDocumentsModal({ open, onOpenChange, documentId }: LegalDoc
                   </div>
                 </DropdownMenuItem>
               ))}
-            </DropdownMenuContent>
-          </Dropdown>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
           {/* İçerik alanı - mobildeki gibi */}
           <div className="flex-1 min-h-0 border rounded-lg bg-muted/20 overflow-hidden">
