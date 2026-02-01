@@ -77,7 +77,8 @@ const TIMEZONES = [
 export function UserProfileSection() {
   const { t, language, setLanguage } = useLanguage();
   const { user, profile, signOut, updateProfile, deleteAccount, isLoading } = useUserAuth();
-  const { profilePromoSettings, priceSettings } = useAdminData();
+  const { profilePromoSettings, priceSettings, sectionSettings } = useAdminData();
+  const showBadgesTab = sectionSettings?.profile?.showBadges !== false;
   const [isEditing, setIsEditing] = useState(false);
   
   // Profil Promosyon State
@@ -308,38 +309,40 @@ export function UserProfileSection() {
     <section id="profile" className="py-20 md:py-28 bg-gradient-to-b from-background to-muted/20">
       <div className="container mx-auto px-4 max-w-4xl">
         
-        {/* Tab Navigation - Mobile App ile tutarlı */}
-        <div className="flex bg-card/50 backdrop-blur rounded-xl p-1 mb-8 border">
-          <button
-            onClick={() => setActiveTab('profile')}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-medium transition-all ${
-              activeTab === 'profile' 
-                ? 'bg-background shadow-sm text-foreground' 
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <User className="size-5" />
-            Profil
-          </button>
-          <button
-            onClick={() => setActiveTab('badges')}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-medium transition-all ${
-              activeTab === 'badges' 
-                ? 'bg-background shadow-sm text-foreground' 
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <Trophy className="size-5" />
-            Rozetlerim
-            {userStats.badgeCount > 0 && (
-              <span className="bg-amber-500 text-black text-xs font-bold px-2 py-0.5 rounded-full">
-                {userStats.badgeCount}
-              </span>
-            )}
-          </button>
-        </div>
+        {/* Tab Navigation - sadece Rozetler açıksa göster */}
+        {showBadgesTab && (
+          <div className="flex bg-card/50 backdrop-blur rounded-xl p-1 mb-8 border">
+            <button
+              onClick={() => setActiveTab('profile')}
+              className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-medium transition-all ${
+                activeTab === 'profile' 
+                  ? 'bg-background shadow-sm text-foreground' 
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <User className="size-5" />
+              Profil
+            </button>
+            <button
+              onClick={() => setActiveTab('badges')}
+              className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-medium transition-all ${
+                activeTab === 'badges' 
+                  ? 'bg-background shadow-sm text-foreground' 
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <Trophy className="size-5" />
+              Rozetlerim
+              {userStats.badgeCount > 0 && (
+                <span className="bg-amber-500 text-black text-xs font-bold px-2 py-0.5 rounded-full">
+                  {userStats.badgeCount}
+                </span>
+              )}
+            </button>
+          </div>
+        )}
 
-        {activeTab === 'profile' ? (
+        {(activeTab === 'profile' || !showBadgesTab) ? (
           <>
             {/* Profile Header Card - Mobile App ile tutarlı */}
             <Card className="mb-6 overflow-hidden border-secondary/20">

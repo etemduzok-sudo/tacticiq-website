@@ -32,7 +32,7 @@ import { AboutSection } from '@/app/components/sections/AboutSection';
 import { PartnersSection } from '@/app/components/sections/PartnersSection';
 import { PressSection } from '@/app/components/sections/PressSection';
 import { StatsSection } from '@/app/components/sections/StatsSection';
-// UserProfileSection removed - now shown as popup modal from UserMenu
+import { UserProfileSection } from '@/app/components/profile/UserProfileSection';
 import { SEOHead } from '@/app/components/seo/SEOHead';
 import { Analytics } from '@/app/components/analytics/Analytics';
 import { CookieConsent } from '@/app/components/legal/CookieConsent';
@@ -307,7 +307,8 @@ function AppContent() {
         {/* Contact Section - Admin kontrollü - EN ALTA TAŞINDI */}
         {sectionSettings.contact.enabled && <ContactSection />}
         
-        {/* User Profile - Now shown as popup modal from UserMenu (sağ üstten açılır) */}
+        {/* Profil ve Rozetler - Giriş yapan kullanıcılar için (admin kontrollü) */}
+        {sectionSettings.profile?.enabled !== false && isAuthenticated && <UserProfileSection />}
       </main>
 
       {/* Footer - Admin kontrollü */}

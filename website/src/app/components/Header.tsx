@@ -48,6 +48,7 @@ export function Header({ onNavigate }: HeaderProps) {
   // NOT: 'product' sekmesi kaldırıldı (kullanıcı isteği)
   const navItems = [
     { key: 'home', label: t('nav.home'), href: '#', enabled: true },
+    { key: 'profile', label: t('profile.title') || 'Profil', href: '#profile', enabled: (sectionSettings?.profile?.enabled ?? true) && isLoggedIn },
     { key: 'features', label: t('nav.features'), href: '#features', enabled: sectionSettings?.features?.enabled ?? true },
     { key: 'how-it-works', label: t('nav.how_it_works'), href: '#how-it-works', enabled: sectionSettings?.howItWorks?.enabled ?? true },
     { key: 'pricing', label: t('nav.pricing'), href: '#pricing', enabled: sectionSettings?.pricing?.enabled ?? true },

@@ -531,6 +531,11 @@ function AdminDataProviderInternal({ children }: { children: ReactNode }) {
       showSocialLinks: true,
       showAppDownloadButtons: true,
     },
+    // Profil ve Rozetler (Giriş yapan kullanıcılar için)
+    profile: {
+      enabled: true,
+      showBadges: true,
+    },
     // Kayıt/Giriş Ayarları
     auth: {
       enabled: true,
@@ -573,6 +578,7 @@ function AdminDataProviderInternal({ children }: { children: ReactNode }) {
           contact: { ...defaultSectionSettings.contact, ...(parsed.contact || {}) },
           newsletter: { ...defaultSectionSettings.newsletter, ...(parsed.newsletter || {}) },
           footer: { ...defaultSectionSettings.footer, ...(parsed.footer || {}) },
+          profile: { ...defaultSectionSettings.profile, ...(parsed.profile || {}) },
           auth: { ...defaultSectionSettings.auth, ...(parsed.auth || {}) },
         };
       } catch (e) {
@@ -1478,6 +1484,10 @@ function AdminDataProviderInternal({ children }: { children: ReactNode }) {
       footer: {
         ...sectionSettings.footer,
         ...(updatedSettings.footer || {}),
+      },
+      profile: {
+        ...(sectionSettings.profile || { enabled: true, showBadges: true }),
+        ...(updatedSettings.profile || {}),
       },
       auth: {
         ...sectionSettings.auth,

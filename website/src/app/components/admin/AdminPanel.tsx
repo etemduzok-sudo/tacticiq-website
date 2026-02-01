@@ -731,6 +731,20 @@ function SectionsContent() {
             enabled={editedSections.newsletter?.enabled ?? true}
             onToggle={() => handleToggleSection('newsletter')}
           />
+          <SettingToggle 
+            label="👤 Profil & Rozetler" 
+            description="Giriş yapan kullanıcılar için profil bölümünü göster (#profile). Header'da Profil linki görünür."
+            enabled={editedSections.profile?.enabled ?? true}
+            onToggle={() => handleToggleSection('profile')}
+          />
+          <div className="ml-6 space-y-2 border-l-2 border-muted pl-4">
+            <SettingToggle 
+              label="Rozetler Sekmesi" 
+              description="Profil içinde Rozetlerim sekmesini göster (25 rozet - Bronz, Gümüş, Altın, Platin, Elmas)"
+              enabled={editedSections.profile?.showBadges ?? true}
+              onToggle={() => handleToggleSection('profile', 'showBadges')}
+            />
+          </div>
         </CardContent>
       </Card>
 

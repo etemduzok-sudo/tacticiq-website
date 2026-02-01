@@ -393,6 +393,11 @@ export interface SectionSettings {
     showSocialLinks: boolean; // Sosyal medya linklerini göster
     showAppDownloadButtons: boolean; // Uygulama indirme butonlarını göster
   };
+  // Profil ve Rozetler (Giriş yapan kullanıcılar için)
+  profile: {
+    enabled: boolean; // Profil bölümü görünür mü? (giriş yapınca ana sayfada #profile)
+    showBadges: boolean; // Rozetler sekmesini göster
+  };
   // Kayıt/Giriş Ayarları
   auth: {
     enabled: boolean; // Kayıt/giriş sistemi aktif mi?
