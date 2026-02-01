@@ -8,14 +8,13 @@ const SUPABASE_URL = process.env.SUPABASE_URL || process.env.SUPABASE_PROJECT_UR
 // Supabase Key - fallback sırası (öncelikli: service_role, son: anon)
 const SUPABASE_KEY = 
   process.env.SUPABASE_SERVICE_ROLE_KEY ||
-  process.env.SUPABASE_SERVICE_KEY ||
   process.env.SUPABASE_ANON_KEY ||
   '';
 
 if (!SUPABASE_URL || !SUPABASE_KEY) {
   console.warn('⚠️  WARNING: Supabase credentials not found in .env');
   console.warn('   Database features will be disabled.');
-  console.warn('   Add SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (or SUPABASE_SERVICE_KEY) to .env file.');
+  console.warn('   Add SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (or SUPABASE_ANON_KEY) to .env file.');
 }
 
 // Create Supabase client with service role key (bypasses RLS)

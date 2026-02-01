@@ -704,7 +704,7 @@ app.use((err, req, res, next) => {
 });
 
 // Start server
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
   console.log('\n');
   console.log('╔════════════════════════════════════════════════════════════╗');
