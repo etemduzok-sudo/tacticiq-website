@@ -8503,19 +8503,22 @@ function SystemMonitoringContent() {
         </div>
       </div>
 
-      {/* Backend durumu — tek bakışta çalışıyor mu çalışmıyor mu */}
+      {/* Backend durumu — tek bakışta çalışıyor mu, uptime, tek tuşla yeniden başlat */}
       {(() => {
         const backend = services.find(s => s.id === 'backend');
         const isRunning = backend?.status === 'running';
-        const url = backendBaseUrl || 'https://...';
+        const uptimeMin = backend?.uptime != null ? Math.floor(backend.uptime / 60) : 0;
         return (
           <Card className={isRunning ? 'border-green-500 bg-green-500/10' : 'border-amber-500/50 bg-amber-500/5'}>
             <CardContent className="py-4">
               <div className="flex flex-wrap items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
+                <div className="flex flex-wrap items-center gap-4">
                   <div className={`text-3xl font-bold ${isRunning ? 'text-green-500' : 'text-amber-500'}`}>
                     {isRunning ? 'Backend çalışıyor ✓' : 'Backend çalışmıyor'}
                   </div>
+                  {isRunning && uptimeMin >= 0 && (
+                    <p className="text-sm text-muted-foreground">Çalışma süresi: {uptimeMin} dk</p>
+                  )}
                   {backendBaseUrl && (
                     <a
                       href={`${backendBaseUrl}/health`}
@@ -8527,7 +8530,32 @@ function SystemMonitoringContent() {
                     </a>
                   )}
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  {canUseRemoteControl && (
+                    <>
+                      <Button
+                        variant="default"
+                        size="sm"
+                        className="bg-amber-600 hover:bg-amber-700"
+                        onClick={() => handleServiceAction('backend', 'restart')}
+                        disabled={actionLoading !== null}
+                        title="Render üzerinde backend deploy'unu tetikler"
+                      >
+                        <RotateCw className={`size-4 mr-1 ${actionLoading === 'backend-restart' ? 'animate-spin' : ''}`} />
+                        Yeniden Başlat
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleServiceAction('backend', 'start')}
+                        disabled={actionLoading !== null || isRunning}
+                        title="Backend kapalıysa Render deploy tetikler"
+                      >
+                        <Play className="size-4 mr-1" />
+                        Başlat
+                      </Button>
+                    </>
+                  )}
                   <Button
                     variant="outline"
                     size="sm"
@@ -8545,6 +8573,52 @@ function SystemMonitoringContent() {
               {!isRunning && backend?.errorMessage && (
                 <p className="text-sm text-amber-600 mt-2">{backend.errorMessage}</p>
               )}
+              {canUseRemoteControl && !isRunning && (
+                <p className="text-xs text-muted-foreground mt-2">Backend kapalıyken yeniden başlatma için Render dashboard kullanabilir veya &quot;Başlat&quot; ile deploy tetikleyebilirsiniz.</p>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })()}
+
+      {/* Çalışmayan / sorunlu servisler — ortak gösterim alanı */}
+      {(() => {
+        const notRunning = services.filter(s => s.status !== 'running' && s.status !== 'loading');
+        if (notRunning.length === 0) return null;
+        return (
+          <Card className="border-amber-500/50 bg-amber-500/5">
+            <CardHeader className="py-3">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <AlertCircle className="size-5 text-amber-500" />
+                Çalışmayan / Sorunlu servisler ({notRunning.length})
+              </CardTitle>
+              <CardDescription>
+                Aşağıdaki servisler şu an çalışmıyor veya hata veriyor. Backend uzaktaysa Expo/Website &quot;yerel&quot; olduğu için burada görünmesi normaldir.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-2">
+                {notRunning.map(s => (
+                  <li key={s.id} className="flex flex-wrap items-start justify-between gap-2 p-3 rounded-lg bg-muted/30 border border-amber-500/20">
+                    <div>
+                      <span className="font-medium">{s.name}</span>
+                      {s.port && <Badge variant="outline" className="ml-2 text-xs">:{s.port}</Badge>}
+                      <span className={`ml-2 text-sm ${s.status === 'error' ? 'text-red-500' : 'text-amber-600'}`}>
+                        {s.status === 'error' ? 'Hatalı' : 'Durdu'}
+                      </span>
+                      {s.errorMessage && <p className="text-xs text-muted-foreground mt-1">{s.errorMessage}</p>}
+                    </div>
+                    <div className="flex gap-1">
+                      <Button size="sm" variant="outline" onClick={() => handleServiceAction(s.id, 'start')} disabled={actionLoading !== null}>
+                        <Play className="size-3 mr-1" /> Başlat
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => handleServiceAction(s.id, 'restart')} disabled={actionLoading !== null}>
+                        <RotateCw className="size-3 mr-1" /> Yeniden Başlat
+                      </Button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
             </CardContent>
           </Card>
         );

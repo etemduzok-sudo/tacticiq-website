@@ -59,7 +59,17 @@ app.use(helmet({
 })); // Security headers
 
 // ========== RENDER HEALTH CHECK - EN BAŞTA (CORS'dan ÖNCE) ==========
+// Panelden fetch yapıldığında CORS gerekli; yoksa tarayıcı yanıtı engeller ve "çalışmıyor" görünür
+function setHealthCors(req, res) {
+  const origin = req.headers.origin;
+  res.setHeader('Access-Control-Allow-Origin', origin || '*');
+}
+app.options('/health', (req, res) => {
+  setHealthCors(req, res);
+  res.sendStatus(204);
+});
 app.get('/health', (req, res) => {
+  setHealthCors(req, res);
   res.status(200).setHeader('Content-Type', 'application/json').end(JSON.stringify({
     status: 'ok',
     timestamp: new Date().toISOString(),
@@ -158,18 +168,22 @@ app.use('/api/timeline', require('./routes/timeline')); // 📊 Maç akışı
 app.use('/api/leaderboard/snapshots', require('./routes/leaderboardSnapshots')); // 📸 Sıralama geçmişi
 app.use('/api/squad-predictions', squadPredictionsRouter); // 📋 Kadro tahminleri ve istatistikler
 
-// 🔥 Rate Limiter Stats (Backend istek sayısı + API-Football günlük kullanım)
+// 🔥 Rate Limiter Stats — API-Football günlük çağrı (smartSync 12s + aggressiveCache toplamı)
 app.get('/api/rate-limit/stats', (req, res) => {
   const stats = getStats();
-  let todaysCalls = stats.current;
-  let remaining = stats.remaining;
   const limit = 7500;
+  let todaysCalls = 0;
+  try {
+    const smartSyncService = require('./services/smartSyncService');
+    const syncStatus = smartSyncService.getStatus();
+    todaysCalls += (syncStatus && typeof syncStatus.apiCallsToday === 'number') ? syncStatus.apiCallsToday : 0;
+  } catch (e) { /* smartSync yoksa 0 */ }
   try {
     const aggressiveCacheService = require('./services/aggressiveCacheService');
     const cacheStats = aggressiveCacheService.getStats();
-    todaysCalls = cacheStats.callsToday ?? stats.current;
-    remaining = cacheStats.remaining ?? (limit - todaysCalls);
-  } catch (e) { /* API-Football sayacı yoksa rate limiter kullan */ }
+    todaysCalls += (cacheStats && typeof cacheStats.callsToday === 'number') ? cacheStats.callsToday : 0;
+  } catch (e) { /* aggressiveCache yoksa 0 */ }
+  const remaining = Math.max(0, limit - todaysCalls);
   res.json({
     success: true,
     ...stats,
