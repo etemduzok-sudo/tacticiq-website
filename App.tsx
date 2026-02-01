@@ -84,7 +84,8 @@ if (Platform.OS === 'web') {
   }
 }
 import './src/i18n'; // Initialize i18n
-import i18n from './src/i18n'; // i18n instance for language change listener
+import i18n from './src/i18n'; // For languageChanged listener
+import { useTranslation } from 'react-i18next';
 
 // Web için UIManager polyfills
 if (Platform.OS === 'web') {
@@ -146,21 +147,15 @@ LogBox.ignoreLogs([
 ]);
 
 export default function App() {
-  // 🌍 Dil değişikliği için key - dil değişince tüm uygulama yeniden render edilir
-  const [languageKey, setLanguageKey] = useState(0);
+  // 🌍 useTranslation - dil değişince App otomatik yeniden render olur
+  useTranslation();
   
-  // Dil değişikliği dinleyicisi
+  // Dil değişikliği için key - tüm içeriği force remount eder
+  const [languageKey, setLanguageKey] = useState(0);
   useEffect(() => {
-    const handleLanguageChange = (lng: string) => {
-      console.log('🌍 Dil değişti:', lng);
-      setLanguageKey(prev => prev + 1);
-    };
-    
-    i18n.on('languageChanged', handleLanguageChange);
-    
-    return () => {
-      i18n.off('languageChanged', handleLanguageChange);
-    };
+    const handler = () => setLanguageKey(prev => prev + 1);
+    i18n.on('languageChanged', handler);
+    return () => i18n.off('languageChanged', handler);
   }, []);
 
   // Use Navigation Hook
@@ -521,7 +516,7 @@ export default function App() {
               {isMaintenanceMode ? (
                 <MaintenanceScreen />
               ) : (
-                <View style={{ flex: 1, backgroundColor: '#0F2A24' }}>
+                <View key={`app-content-${languageKey}`} style={{ flex: 1, backgroundColor: '#0F2A24' }}>
                   {renderScreen()}
                   
                   {/* Fixed Profile Card Overlay - Only on home, matches, leaderboard */}

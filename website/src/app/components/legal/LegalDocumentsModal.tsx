@@ -9,8 +9,13 @@ import {
 } from '@/app/components/ui/dialog';
 import { Button } from '@/app/components/ui/button';
 import { ScrollArea } from '@/app/components/ui/scroll-area';
-import { Separator } from '@/app/components/ui/separator';
-import { FileText, Lock, Cookie, Scale, CheckCircle, CreditCard, Copyright } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/app/components/ui/dropdown-menu';
+import { FileText, Lock, Cookie, Scale, CheckCircle, CreditCard, Copyright, ChevronDown } from 'lucide-react';
 import { legalDocumentsService } from '@/services/adminSupabaseService';
 
 interface LegalDocumentsModalProps {
@@ -283,8 +288,8 @@ export function LegalDocumentsModal({ open, onOpenChange, documentId }: LegalDoc
   }, [open, language]);
 
   useEffect(() => {
-    if (documentId && open) {
-      setSelectedDoc(documentId);
+    if (open) {
+      setSelectedDoc(documentId || 'terms');
     }
   }, [documentId, open]);
 
@@ -315,9 +320,17 @@ export function LegalDocumentsModal({ open, onOpenChange, documentId }: LegalDoc
     }
   }
 
+  const selectedDocDef = LEGAL_DOCUMENTS.find((d) => d.id === selectedDoc);
+  const getDocTitle = (id: string) => {
+    const doc = LEGAL_DOCUMENTS.find((d) => d.id === id);
+    if (!doc) return '';
+    const key = LEGAL_DOC_KEYS[id];
+    return key && t(key.titleKey) !== key.titleKey ? t(key.titleKey) : doc.title;
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[95vw] w-[95vw] max-h-[90vh] flex flex-col overflow-hidden">
+      <DialogContent className="max-w-[95vw] w-[95vw] sm:max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle>{t('legal.title') || 'Yasal Belgeler'}</DialogTitle>
           <DialogDescription>
@@ -325,44 +338,36 @@ export function LegalDocumentsModal({ open, onOpenChange, documentId }: LegalDoc
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 md:grid-cols-[200px_6fr] gap-6 flex-1 min-h-0 overflow-hidden">
-          {/* Document List */}
-          <div className="flex flex-col min-h-0 overflow-hidden">
-            <ScrollArea className="flex-1 pr-2" style={{ height: 'calc(90vh - 180px)' }}>
-              <div className="space-y-2 pb-4">
-                {LEGAL_DOCUMENTS.map((doc) => (
-                  <button
-                    key={doc.id}
-                    onClick={() => setSelectedDoc(doc.id)}
-                    className={`w-full text-left p-3 rounded-lg border transition-colors ${
-                      selectedDoc === doc.id
-                        ? 'border-primary bg-primary/10'
-                        : 'border-border hover:bg-muted/50'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="text-primary">{doc.icon}</div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm">
-                          {LEGAL_DOC_KEYS[doc.id] 
-                            ? (t(LEGAL_DOC_KEYS[doc.id].titleKey) !== LEGAL_DOC_KEYS[doc.id].titleKey
-                                ? t(LEGAL_DOC_KEYS[doc.id].titleKey)
-                                : doc.title)
-                            : doc.title}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{doc.description}</p>
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </ScrollArea>
-          </div>
+        {/* Mobildeki gibi: üstte dropdown, altta içerik */}
+        <div className="flex flex-col gap-4 flex-1 min-h-0 overflow-hidden">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex items-center justify-between w-full px-4 py-3 rounded-lg border bg-background hover:bg-muted/50 transition-colors text-left">
+                <div className="flex items-center gap-3">
+                  <span className="text-primary">{selectedDocDef?.icon ?? <FileText className="size-5" />}</span>
+                  <span className="font-medium truncate">
+                    {selectedDoc ? getDocTitle(selectedDoc) : (t('legal.select') || 'Belge seçin')}
+                  </span>
+                </div>
+                <ChevronDown className="size-4 text-muted-foreground shrink-0" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-[var(--radix-dropdown-menu-trigger-width)] max-h-60 overflow-y-auto">
+              {LEGAL_DOCUMENTS.map((doc) => (
+                <DropdownMenuItem key={doc.id} onClick={() => setSelectedDoc(doc.id)}>
+                  <div className="flex items-center gap-3 w-full">
+                    <span className="text-primary">{doc.icon}</span>
+                    <span className="truncate">{getDocTitle(doc.id)}</span>
+                  </div>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </Dropdown>
 
-          {/* Document Content */}
-          <div className="flex flex-col min-h-0 border rounded-lg bg-muted/20 overflow-hidden">
-            <ScrollArea className="flex-1" style={{ height: 'calc(90vh - 180px)' }}>
-              <div className="p-6">
+          {/* İçerik alanı - mobildeki gibi */}
+          <div className="flex-1 min-h-0 border rounded-lg bg-muted/20 overflow-hidden">
+            <ScrollArea className="h-[calc(90vh-220px)]">
+              <div className="p-4 sm:p-6">
                 {loading ? (
                   <div className="text-center py-12 text-muted-foreground">
                     <div className="animate-spin size-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4" />
@@ -370,7 +375,8 @@ export function LegalDocumentsModal({ open, onOpenChange, documentId }: LegalDoc
                   </div>
                 ) : currentDoc ? (
                   <div className="prose prose-sm dark:prose-invert max-w-none">
-                    <h2 className="text-xl font-bold mb-4 text-foreground">{currentDoc.title}</h2>
+                    <h2 className="text-lg font-bold mb-3 text-foreground">{currentDoc.title}</h2>
+                    <p className="text-xs text-muted-foreground mb-4">Son Güncelleme: 1 Ocak 2026</p>
                     <div className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
                       {currentDoc.content}
                     </div>
@@ -378,7 +384,7 @@ export function LegalDocumentsModal({ open, onOpenChange, documentId }: LegalDoc
                 ) : (
                   <div className="text-center py-12 text-muted-foreground">
                     <FileText className="size-12 mx-auto mb-4 opacity-50" />
-                    <p>{t('legal.select') || 'Bir belge seçin'}</p>
+                    <p>{t('legal.select') || 'Yukarıdan bir belge seçin'}</p>
                   </div>
                 )}
               </div>
@@ -386,8 +392,8 @@ export function LegalDocumentsModal({ open, onOpenChange, documentId }: LegalDoc
           </div>
         </div>
 
-        <div className="flex justify-end gap-2 pt-4 flex-shrink-0 border-t">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+        <div className="flex justify-end pt-4 flex-shrink-0 border-t">
+          <Button onClick={() => onOpenChange(false)}>
             {t('legal.close') || t('common.close') || 'Kapat'}
           </Button>
         </div>

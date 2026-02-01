@@ -16,9 +16,8 @@ import zh from '../locales/zh.json';
 import ru from '../locales/ru.json';
 import hi from '../locales/hi.json';
 
-// RTL languages - Arabic excluded per user request (only text translation, no layout change)
-// Keep Hebrew, Farsi, Urdu for future RTL support if needed
-const RTL_LANGUAGES = ['he', 'fa', 'ur'];
+// RTL languages - Arapça sağ-sol (RTL) sayfa yapısı
+const RTL_LANGUAGES = ['ar', 'he', 'fa', 'ur'];
 
 // Storage key for language preference
 const LANGUAGE_STORAGE_KEY = 'tacticiq-language';
@@ -114,21 +113,39 @@ const initI18n = async () => {
 // Change language function
 export const changeLanguage = async (language: string) => {
   try {
+    const wasRTL = RTL_LANGUAGES.includes(i18n.language || '');
+    const willBeRTL = RTL_LANGUAGES.includes(language);
+
     // Web için localStorage'a kaydet
     if (Platform.OS === 'web' && typeof window !== 'undefined' && window.localStorage) {
       window.localStorage.setItem(LANGUAGE_STORAGE_KEY, language);
       window.localStorage.setItem('@user_language', language);
     }
-    
+
     // Native için AsyncStorage'a kaydet
     if (Platform.OS !== 'web') {
       await AsyncStorage.setItem(LANGUAGE_STORAGE_KEY, language);
       await AsyncStorage.setItem('@user_language', language);
     }
-    
+
     configureRTL(language);
     await i18n.changeLanguage(language);
-    
+
+    // Web için RTL - document.dir ayarla
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      document.documentElement.setAttribute('dir', willBeRTL ? 'rtl' : 'ltr');
+    }
+
+    // RTL değiştiyse native'de uygulamayı yeniden yükle (I18nManager.forceRTL için gerekli)
+    if (Platform.OS !== 'web' && wasRTL !== willBeRTL) {
+      try {
+        const Updates = require('expo-updates').default;
+        if (Updates.reloadAsync) await Updates.reloadAsync();
+      } catch (_) {
+        // expo-updates yoksa veya hata varsa devam et
+      }
+    }
+
     // Force re-render için event dispatch (web için)
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
       window.dispatchEvent(new Event('languagechange'));

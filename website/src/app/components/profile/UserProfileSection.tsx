@@ -78,7 +78,7 @@ export function UserProfileSection() {
   const { t, language, setLanguage } = useLanguage();
   const { user, profile, signOut, updateProfile, deleteAccount, isLoading } = useUserAuth();
   const { profilePromoSettings, priceSettings, sectionSettings } = useAdminData();
-  const showBadgesTab = sectionSettings?.profile?.showBadges !== false;
+  const showBadges = sectionSettings?.profile?.showBadges !== false;
   const [isEditing, setIsEditing] = useState(false);
   
   // Profil Promosyon State
@@ -92,7 +92,6 @@ export function UserProfileSection() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleting, setDeleting] = useState(false);
-  const [activeTab, setActiveTab] = useState<'profile' | 'badges'>('profile');
   
   // Notification preferences state
   const [emailNotifications, setEmailNotifications] = useState(false);
@@ -185,42 +184,53 @@ export function UserProfileSection() {
     { id: 'expert', icon: '⭐', name: 'Expert', description: 'Level 10\'a ulaştı' },
   ];
 
-  // Badges (mobile app ile tutarlı - 25 rozet)
+  // Badges - 40 rozet, 8 sütun x 5 satır
   const allBadges = [
-    // Bronz Tier
+    // Bronz Tier (8)
     { id: 'first_prediction', name: 'İlk Tahmin', icon: '🎯', tier: 'bronze', earned: false, howToEarn: 'İlk tahmininizi yapın' },
     { id: 'rookie', name: 'Çaylak', icon: '🌱', tier: 'bronze', earned: false, howToEarn: '5 tahmin yapın' },
     { id: 'streak_3', name: '3\'lü Seri', icon: '🔥', tier: 'bronze', earned: false, howToEarn: '3 ardışık doğru tahmin' },
     { id: 'early_bird', name: 'Erken Kuş', icon: '🐦', tier: 'bronze', earned: false, howToEarn: 'Maçtan 24 saat önce tahmin yapın' },
     { id: 'daily_player', name: 'Günlük Oyuncu', icon: '📅', tier: 'bronze', earned: false, howToEarn: '7 gün üst üste aktif olun' },
-    
-    // Gümüş Tier
+    { id: 'first_goal', name: 'İlk Gol', icon: '⚽', tier: 'bronze', earned: false, howToEarn: 'İlk gol tahminini doğru yapın' },
+    { id: 'weekend_warrior', name: 'Hafta Sonu Savaşçısı', icon: '🗓️', tier: 'bronze', earned: false, howToEarn: 'Hafta sonu 5 maç tahmin edin' },
+    { id: 'early_riser', name: 'Erken Kalkan', icon: '🌅', tier: 'bronze', earned: false, howToEarn: 'Sabah maçında tahmin yapın' },
+    // Gümüş Tier (8)
     { id: 'streak_5', name: '5\'li Seri', icon: '🔥', tier: 'silver', earned: false, howToEarn: '5 ardışık doğru tahmin' },
     { id: 'league_expert', name: 'Lig Uzmanı', icon: '🏟️', tier: 'silver', earned: false, howToEarn: 'Tek bir ligde 20 doğru tahmin' },
     { id: 'team_supporter', name: 'Takım Destekçisi', icon: '🎽', tier: 'silver', earned: false, howToEarn: 'Favori takımınızın 10 maçını tahmin edin' },
     { id: 'quick_learner', name: 'Hızlı Öğrenen', icon: '📚', tier: 'silver', earned: false, howToEarn: 'İlk haftada 50 puan kazanın' },
     { id: 'night_owl', name: 'Gece Kuşu', icon: '🦉', tier: 'silver', earned: false, howToEarn: 'Gece 00:00 sonrası 10 tahmin yapın' },
-    
-    // Altın Tier
+    { id: 'score_hunter', name: 'Skor Avcısı', icon: '🎯', tier: 'silver', earned: false, howToEarn: '10 skor tahminini doğru yapın' },
+    { id: 'derby_master', name: 'Derbi Ustası', icon: '⚔️', tier: 'silver', earned: false, howToEarn: 'Derbi maçında doğru tahmin yapın' },
+    { id: 'midweek_hero', name: 'Hafta İçi Kahramanı', icon: '📆', tier: 'silver', earned: false, howToEarn: 'Hafta içi 15 maç tahmin edin' },
+    // Altın Tier (8)
     { id: 'streak_10', name: '10\'lu Seri', icon: '🔥', tier: 'gold', earned: false, howToEarn: '10 ardışık doğru tahmin' },
     { id: 'perfect_week', name: 'Mükemmel Hafta', icon: '⭐', tier: 'gold', earned: false, howToEarn: 'Bir haftada %100 başarı' },
     { id: 'multi_league', name: 'Çoklu Lig Ustası', icon: '🌍', tier: 'gold', earned: false, howToEarn: '5 farklı ligde tahmin yapın' },
     { id: 'prediction_wizard', name: 'Tahmin Büyücüsü', icon: '🧙', tier: 'gold', earned: false, howToEarn: '%75+ başarı oranı (min 50 tahmin)' },
     { id: 'consistency_champ', name: 'Tutarlılık Şampiyonu', icon: '📊', tier: 'gold', earned: false, howToEarn: '30 gün üst üste aktif olun' },
-    
-    // Platin Tier
+    { id: 'big_match', name: 'Büyük Maç Uzmanı', icon: '🏆', tier: 'gold', earned: false, howToEarn: 'Büyük final maçında doğru tahmin' },
+    { id: 'comeback_king', name: 'Geri Dönüş Kralı', icon: '👑', tier: 'gold', earned: false, howToEarn: '5 maçta geri dönüşlü skoru tahmin edin' },
+    { id: 'trend_follower', name: 'Trend Takipçisi', icon: '📈', tier: 'gold', earned: false, howToEarn: '5 ardışık maçta form trendini yakalayın' },
+    // Platin Tier (8)
     { id: 'streak_20', name: '20\'li Seri', icon: '🔥', tier: 'platinum', earned: false, howToEarn: '20 ardışık doğru tahmin' },
     { id: 'champion', name: 'Şampiyon', icon: '🏆', tier: 'platinum', earned: false, howToEarn: 'Haftalık liderlik tablosunda 1. olun' },
     { id: 'legend', name: 'Efsane', icon: '👑', tier: 'platinum', earned: false, howToEarn: '1000 doğru tahmin yapın' },
     { id: 'legendary_analyst', name: 'Efsanevi Analist', icon: '🔮', tier: 'platinum', earned: false, howToEarn: '%85+ başarı oranı (min 100 tahmin)' },
     { id: 'pro_predictor', name: 'Pro Tahmincu', icon: '💎', tier: 'platinum', earned: false, howToEarn: 'Pro üye olun ve 100 tahmin yapın' },
-    
-    // Elmas Tier
+    { id: 'continental', name: 'Kıtasal Uzman', icon: '🌐', tier: 'platinum', earned: false, howToEarn: '3 farklı kıtadan ligde tahmin yapın' },
+    { id: 'season_veteran', name: 'Sezon Emektarı', icon: '📋', tier: 'platinum', earned: false, howToEarn: 'Bir sezonda 200+ tahmin yapın' },
+    { id: 'top_percent', name: 'Top %10', icon: '💯', tier: 'platinum', earned: false, howToEarn: 'Liderlikte top %10\'a girin' },
+    // Elmas Tier (8)
     { id: 'streak_50', name: '50\'li Seri', icon: '🔥', tier: 'diamond', earned: false, howToEarn: '50 ardışık doğru tahmin' },
-    { id: 'tacticiq_master', name: 'TacticIQ Master', icon: '🎓', tier: 'diamond', earned: false, howToEarn: 'Diğer 24 rozeti kazanın' },
+    { id: 'tacticiq_master', name: 'TacticIQ Master', icon: '🎓', tier: 'diamond', earned: false, howToEarn: 'Diğer 39 rozeti kazanın' },
     { id: 'world_champion', name: 'Dünya Şampiyonu', icon: '🌟', tier: 'diamond', earned: false, howToEarn: 'Global liderlik tablosunda 1. olun' },
     { id: 'perfect_month', name: 'Mükemmel Ay', icon: '🌙', tier: 'diamond', earned: false, howToEarn: 'Bir ayda %90+ başarı oranı' },
     { id: 'ultimate_fan', name: 'Ultimate Fan', icon: '⚽', tier: 'diamond', earned: false, howToEarn: '5000 puan kazanın' },
+    { id: 'unstoppable', name: 'Durdurulamaz', icon: '🚀', tier: 'diamond', earned: false, howToEarn: '20 maç üst üste doğru tahmin' },
+    { id: 'oracle', name: 'Kâhin', icon: '🔮', tier: 'diamond', earned: false, howToEarn: '%95+ başarı (min 20 tahmin)' },
+    { id: 'immortal', name: 'Ölümsüz', icon: '🛡️', tier: 'diamond', earned: false, howToEarn: 'Tüm tier rozetlerini kazanın' },
   ];
 
   // Show loading state while auth is initializing
@@ -309,41 +319,8 @@ export function UserProfileSection() {
     <section id="profile" className="py-20 md:py-28 bg-gradient-to-b from-background to-muted/20">
       <div className="container mx-auto px-4 max-w-4xl">
         
-        {/* Tab Navigation - sadece Rozetler açıksa göster */}
-        {showBadgesTab && (
-          <div className="flex bg-card/50 backdrop-blur rounded-xl p-1 mb-8 border">
-            <button
-              onClick={() => setActiveTab('profile')}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-medium transition-all ${
-                activeTab === 'profile' 
-                  ? 'bg-background shadow-sm text-foreground' 
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <User className="size-5" />
-              Profil
-            </button>
-            <button
-              onClick={() => setActiveTab('badges')}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-medium transition-all ${
-                activeTab === 'badges' 
-                  ? 'bg-background shadow-sm text-foreground' 
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <Trophy className="size-5" />
-              Rozetlerim
-              {userStats.badgeCount > 0 && (
-                <span className="bg-amber-500 text-black text-xs font-bold px-2 py-0.5 rounded-full">
-                  {userStats.badgeCount}
-                </span>
-              )}
-            </button>
-          </div>
-        )}
-
-        {(activeTab === 'profile' || !showBadgesTab) ? (
-          <>
+        {/* Profil içerik - mobildeki gibi tek sayfa, rozetler inline */}
+        <>
             {/* Profile Header Card - Mobile App ile tutarlı */}
             <Card className="mb-6 overflow-hidden border-secondary/20">
               <div className="h-24 bg-gradient-to-r from-secondary/20 via-accent/10 to-secondary/20" />
@@ -516,6 +493,68 @@ export function UserProfileSection() {
               </CardContent>
             </Card>
 
+            {/* Rozetlerim - mobildeki gibi inline (ayrı sekme yok) */}
+            {showBadges && (
+              <Card className="mb-6">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Trophy className="size-5 text-amber-500" />
+                      <CardTitle className="text-lg">Rozetlerim</CardTitle>
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      {allBadges.filter(b => b.earned).length} / {allBadges.length}
+                    </div>
+                  </div>
+                  <div className="mt-2 h-2 bg-muted rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-gradient-to-r from-amber-500 to-yellow-400 rounded-full transition-all"
+                      style={{ width: `${(allBadges.filter(b => b.earned).length / allBadges.length) * 100}%` }}
+                    />
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3">
+                    {allBadges.map((badge) => (
+                      <Card 
+                        key={badge.id} 
+                        className={`text-center p-3 cursor-pointer transition-all hover:scale-105 group relative ${
+                          badge.earned 
+                            ? 'border-amber-500/50 bg-amber-500/5' 
+                            : 'border-border/50 bg-card'
+                        }`}
+                        title={badge.earned ? `${badge.name} - Kazanıldı!` : `${badge.name} - ${badge.howToEarn}`}
+                      >
+                        <div className="relative flex items-center justify-center">
+                          {!badge.earned && (
+                            <div className="absolute -top-2 -right-2 size-5 rounded-full bg-muted border-2 border-background flex items-center justify-center z-10">
+                              <Lock className="size-2.5 text-muted-foreground" />
+                            </div>
+                          )}
+                          {badge.earned && (
+                            <div className="absolute -top-2 -right-2 size-5 rounded-full bg-green-500 border-2 border-background flex items-center justify-center z-10">
+                              <span className="text-white text-xs">✓</span>
+                            </div>
+                          )}
+                          <span className="text-3xl block">{badge.icon}</span>
+                        </div>
+                        <p className="text-[10px] font-medium mt-2 line-clamp-2">{badge.name}</p>
+                        <Badge variant="outline" className={`text-[8px] mt-1 px-1 py-0 ${
+                          badge.tier === 'bronze' ? 'text-orange-600 border-orange-600/30' :
+                          badge.tier === 'silver' ? 'text-slate-400 border-slate-400/30' :
+                          badge.tier === 'gold' ? 'text-amber-500 border-amber-500/30' :
+                          badge.tier === 'platinum' ? 'text-purple-500 border-purple-500/30' :
+                          'text-cyan-400 border-cyan-400/30'
+                        }`}>
+                          {badge.tier === 'bronze' ? 'Bronz' : badge.tier === 'silver' ? 'Gümüş' : badge.tier === 'gold' ? 'Altın' : badge.tier === 'platinum' ? 'Platin' : 'Elmas'}
+                        </Badge>
+                      </Card>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Achievements Card - Mobile App ile tutarlı */}
             <Card className="mb-6">
               <CardHeader className="pb-3">
@@ -679,22 +718,22 @@ export function UserProfileSection() {
                     <Badge variant="secondary" className="text-xs">Aktif</Badge>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
 
-            {/* Legal Documents */}
-            <Card className="mb-6">
-              <CardHeader className="pb-3">
-                <div className="flex items-center gap-2">
-                  <FileText className="size-5 text-muted-foreground" />
-                  <CardTitle className="text-lg">Yasal Belgeler</CardTitle>
+                <Separator className="my-4" />
+
+                {/* Yasal Bilgilendirmeler - mobildeki gibi ayarlar içinde */}
+                <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <FileText className="size-4 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium text-sm">Yasal Bilgilendirmeler</p>
+                      <p className="text-xs text-muted-foreground">Platform kullanım koşulları ve yasal belgeler</p>
+                    </div>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => setShowLegalModal(true)}>
+                    Görüntüle
+                  </Button>
                 </div>
-              </CardHeader>
-              <CardContent>
-                <Button variant="outline" onClick={() => setShowLegalModal(true)} className="w-full">
-                  <FileText className="size-4 mr-2" />
-                  Yasal Belgeleri Görüntüle
-                </Button>
               </CardContent>
             </Card>
 
@@ -821,93 +860,6 @@ export function UserProfileSection() {
               </CardContent>
             </Card>
           </>
-        ) : (
-          /* Badges Tab - Mobile App ile tutarlı (25 rozet) */
-          <div className="space-y-6">
-            {/* Badge Stats */}
-            <Card className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Kazanılan Rozetler</p>
-                  <p className="text-3xl font-bold text-amber-500">{allBadges.filter(b => b.earned).length}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm text-muted-foreground">Toplam Rozetler</p>
-                  <p className="text-3xl font-bold">{allBadges.length}</p>
-                </div>
-              </div>
-              <div className="mt-3 h-2 bg-muted rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-gradient-to-r from-amber-500 to-yellow-400 rounded-full transition-all"
-                  style={{ width: `${(allBadges.filter(b => b.earned).length / allBadges.length) * 100}%` }}
-                />
-              </div>
-            </Card>
-
-            {/* Badges Grid - 10 sütun x 4 satır */}
-            <div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-2">
-              {allBadges.map((badge) => (
-                <div 
-                  key={badge.id} 
-                  className={`text-center p-2 cursor-pointer transition-all hover:scale-110 group relative rounded-lg border ${
-                    badge.earned 
-                      ? 'border-amber-500/50 bg-amber-500/10' 
-                      : 'border-border/30 bg-card/50 opacity-60'
-                  }`}
-                  title={badge.earned 
-                    ? `${badge.name} - Kazanıldı!` 
-                    : `${badge.name} - Nasıl Kazanılır: ${badge.howToEarn}`
-                  }
-                >
-                  <div className="relative flex items-center justify-center">
-                    {!badge.earned && (
-                      <div className="absolute -top-1 -right-1 size-4 rounded-full bg-muted border border-background flex items-center justify-center z-10">
-                        <Lock className="size-2 text-muted-foreground" />
-                      </div>
-                    )}
-                    {badge.earned && (
-                      <div className="absolute -top-1 -right-1 size-4 rounded-full bg-green-500 border border-background flex items-center justify-center z-10">
-                        <span className="text-white text-[8px]">✓</span>
-                      </div>
-                    )}
-                    <span className="text-2xl sm:text-3xl block">{badge.icon}</span>
-                  </div>
-                  <p className="text-[8px] sm:text-[9px] font-medium mt-1 line-clamp-1">{badge.name}</p>
-                  
-                  {/* Tooltip on hover */}
-                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-20">
-                    <div className="bg-popover text-popover-foreground text-xs p-2 rounded-lg shadow-lg border whitespace-nowrap max-w-[180px]">
-                      <p className="font-semibold">{badge.name}</p>
-                      <p className={`text-[8px] mt-0.5 ${
-                        badge.tier === 'bronze' ? 'text-orange-600' :
-                        badge.tier === 'silver' ? 'text-slate-400' :
-                        badge.tier === 'gold' ? 'text-amber-500' :
-                        badge.tier === 'platinum' ? 'text-purple-500' :
-                        'text-cyan-400'
-                      }`}>
-                        {badge.tier === 'bronze' ? 'Bronz' :
-                         badge.tier === 'silver' ? 'Gümüş' :
-                         badge.tier === 'gold' ? 'Altın' :
-                         badge.tier === 'platinum' ? 'Platin' : 'Elmas'}
-                      </p>
-                      <p className="text-muted-foreground text-[9px] mt-1 whitespace-normal">
-                        {badge.earned ? '✅ Kazanıldı!' : `🎯 ${badge.howToEarn}`}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-            
-            {allBadges.length === 0 && (
-              <div className="text-center py-16 text-muted-foreground">
-                <Trophy className="size-16 mx-auto mb-4 opacity-30" />
-                <p className="text-lg font-medium">Henüz rozet yok</p>
-                <p className="text-sm">Maçlara tahmin yap ve rozetleri kazan!</p>
-              </div>
-            )}
-          </div>
-        )}
       </div>
 
       {/* Legal Documents Modal */}
