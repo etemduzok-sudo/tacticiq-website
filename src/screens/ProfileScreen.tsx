@@ -2056,7 +2056,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                           if (lang.code === selectedLanguage) return;
 
                           try {
-                            // 1. i18n dilini değiştir (t() hemen yeni dilde döner)
+                            // 1. i18n dilini değiştir → App.tsx'teki languageChanged dinleyicisi forceUpdateKey ile tüm uygulamayı yeniden render eder
                             await changeI18nLanguage(lang.code);
 
                             // 2. Storage'ı güncelle (changeLanguage zaten yapıyor, backup)

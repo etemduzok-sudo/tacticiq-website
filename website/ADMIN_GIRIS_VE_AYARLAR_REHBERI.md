@@ -119,6 +119,15 @@ Admin panele ayrı bir adresle girmek isterseniz:
 
 ---
 
+## Admin Panel Yapısı
+
+- **Web Yönetimi:** Gösterge Paneli, Analitik, Kullanıcılar, İçerik, Reklam, Ekip, vb.
+- **Test Alanı:** Test Bot (ayrı bölüm, altta değil).
+- **Sistem İzleme:** Servisler & Veri Akışı (ayrı bölüm, altta değil).
+- **Mobil Admin:** Mobil uygulama yönetimi (placeholder).
+
+---
+
 ## Özet Tablo
 
 | Ne yapmak istiyorsunuz? | Nereye gideceksiniz? | Ne yapacaksınız? |

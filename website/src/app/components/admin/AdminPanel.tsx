@@ -361,6 +361,44 @@ export function AdminPanel() {
           </div>
           )}
 
+          {/* Test Alanı - Web araçları, altta değil ayrı bölüm */}
+          {!['mobile-placeholder'].includes(activeSection) && (
+          <div className="px-2 py-2 mt-3 bg-amber-500/10 rounded-lg border border-amber-500/30">
+            <div className="flex items-center gap-2 mb-2">
+              <Bot className="size-4 text-amber-600 dark:text-amber-400" />
+              <span className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider">Test Alanı</span>
+            </div>
+            <div className="space-y-1 ml-6">
+              <MenuButton
+                icon={Bot}
+                label="Test Bot"
+                active={activeSection === 'test'}
+                onClick={() => setActiveSection('test')}
+                badge={true}
+              />
+            </div>
+          </div>
+          )}
+
+          {/* Sistem İzleme - Ayrı bölüm, altta değil */}
+          {!['mobile-placeholder'].includes(activeSection) && (
+          <div className="px-2 py-2 mt-3 bg-emerald-500/10 rounded-lg border border-emerald-500/30">
+            <div className="flex items-center gap-2 mb-2">
+              <Server className="size-4 text-emerald-600 dark:text-emerald-400" />
+              <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">Sistem İzleme</span>
+            </div>
+            <div className="space-y-1 ml-6">
+              <MenuButton
+                icon={Server}
+                label="Servisler & Veri Akışı"
+                active={activeSection === 'system'}
+                onClick={() => setActiveSection('system')}
+                badge={true}
+              />
+            </div>
+          </div>
+          )}
+
           {/* Mobil Admin Section - Only show when in mobile admin mode */}
           {['mobile-placeholder'].includes(activeSection) && (
           <div className="px-2 py-2 bg-secondary/10 rounded-lg border border-secondary/30">
@@ -374,29 +412,7 @@ export function AdminPanel() {
           </div>
           )}
 
-          {/* Ortak Araçlar - Her iki modda da görünür */}
-          <div className="px-2 py-2 mt-2 bg-gradient-to-r from-accent/10 to-secondary/10 rounded-lg border border-accent/30">
-            <div className="flex items-center gap-2 mb-2">
-              <Bot className="size-4 text-accent" />
-              <span className="text-xs font-semibold text-accent uppercase tracking-wider">Ortak Araçlar</span>
-            </div>
-            <div className="space-y-1 ml-6">
-              <MenuButton
-                icon={Bot}
-                label="Test Bot"
-                active={activeSection === 'test'}
-                onClick={() => setActiveSection('test')}
-                badge={true}
-              />
-              <MenuButton
-                icon={Server}
-                label="Sistem İzleme"
-                active={activeSection === 'system'}
-                onClick={() => setActiveSection('system')}
-                badge={true}
-              />
-            </div>
-          </div>
+          {/* Ortak Araçlar kaldırıldı: Test Bot ve Sistem İzleme yukarıda ayrı bölümlerde */}
         </div>
       </Card>
 
