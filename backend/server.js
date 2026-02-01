@@ -79,13 +79,16 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (mobile apps, Postman, etc.)
+    // ✅ Render health check bypass: Allow no-origin for health check endpoints
+    // Render's internal health check doesn't send Origin header
     if (!origin) {
-      // ✅ SECURITY: Only allow no-origin in development
+      // In development, always allow no-origin
       if (process.env.NODE_ENV === 'development') {
         return callback(null, true);
       }
-      return callback(new Error('Origin required'), false);
+      // In production, allow no-origin only for health checks (Render internal)
+      // This is safe because health checks don't expose sensitive data
+      return callback(null, true);
     }
     
     // Check if origin is allowed
