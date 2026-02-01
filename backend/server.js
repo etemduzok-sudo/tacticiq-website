@@ -153,7 +153,7 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Root path health check (Render compatibility)
+// Root - Render health check (tek route, 200 dönmeli)
 app.get('/', (req, res) => {
   res.status(200).json({
     status: 'ok',
@@ -177,43 +177,6 @@ app.get('/api/cache/stats', (req, res) => {
   res.json({
     success: true,
     ...cacheStats,
-  });
-});
-
-// Root endpoint
-app.get('/', (req, res) => {
-  res.json({
-    name: 'TacticIQ API',
-    version: '2.0.0',
-    description: 'Worldwide Football Data Platform',
-    endpoints: {
-      core: [
-        '/api/matches',
-        '/api/leagues',
-        '/api/teams',
-        '/api/players',
-        '/api/predictions',
-        '/api/scoring',
-      ],
-      data: [
-        '/api/static-teams',
-        '/api/timeline/:matchId',
-        '/api/timeline/:matchId/goals',
-        '/api/timeline/:matchId/summary',
-      ],
-      leaderboard: [
-        '/api/leaderboard/snapshots',
-        '/api/leaderboard/snapshots/weekly',
-        '/api/leaderboard/user/:userId/history',
-      ],
-      status: [
-        '/health',
-        '/api/sync-status',
-        '/api/static-teams/status',
-        '/api/leaderboard/snapshot-status',
-        '/api/system-status',
-      ],
-    },
   });
 });
 
@@ -712,8 +675,8 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Start server - Render için callback minimal olmalı (port scan timeout önleme)
-app.listen(PORT, () => {
+// Start server - Render: host 0.0.0.0 ZORUNLU (port scan timeout önleme)
+app.listen(PORT, '0.0.0.0', () => {
   // Render port scan için KRİTİK - hemen log (setImmediate'den ÖNCE)
   console.log('\n');
   console.log('============================================================');
