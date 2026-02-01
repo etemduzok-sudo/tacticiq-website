@@ -8169,10 +8169,17 @@ function SystemMonitoringContent() {
       toast.info('Servis kontrolü için projeyi yerelde çalıştırın veya VITE_BACKEND_URL ayarlayın.');
       return;
     }
-    // Uzaktan modda sadece backend yeniden başlatma desteklenir
-    if (canUseRemoteControl && serviceId !== 'backend') {
+    // Uzaktan modda: Backend içindeki servisler kontrol edilebilir, ama Backend/Expo/Website kendileri kontrol edilemez
+    const backendInternalServices = ['smartSync', 'staticTeams', 'leaderboard', 'cache', 'monitoring'];
+    const cannotControlRemotely = ['backend', 'expo', 'website', 'supabase'];
+    
+    if (canUseRemoteControl && cannotControlRemotely.includes(serviceId)) {
       if (['start', 'stop', 'restart'].includes(action)) {
-        toast.info('Uzaktan modda sadece Backend servisi yeniden başlatılabilir.');
+        if (serviceId === 'backend') {
+          toast.info('Backend servisini uzaktan yeniden başlatmak için Render Dashboard kullanın.');
+        } else {
+          toast.info(`${serviceId === 'expo' || serviceId === 'website' ? 'Expo ve Website' : 'Supabase'} sadece yerel ortamda kontrol edilebilir.`);
+        }
         return;
       }
     }
