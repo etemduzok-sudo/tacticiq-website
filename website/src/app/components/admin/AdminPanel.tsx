@@ -7880,8 +7880,11 @@ function SystemMonitoringContent() {
   const [autoRestartEnabled, setAutoRestartEnabled] = useState(true);
 
   // Get API key from environment or use default for development
+  // If VITE_BACKEND_API_KEY is a comma-separated list, use the first one
   const getApiKey = () => {
-    return import.meta.env.VITE_BACKEND_API_KEY || 'admin-dev-key';
+    const apiKey = import.meta.env.VITE_BACKEND_API_KEY || 'admin-dev-key';
+    // If it's a comma-separated list, take the first key
+    return apiKey.split(',')[0].trim();
   };
 
   // Helper function to create headers with API key
