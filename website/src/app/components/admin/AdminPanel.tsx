@@ -70,6 +70,7 @@ import { TeamManagement } from '@/app/components/admin/TeamManagement';
 import { PressReleaseManagement } from '@/app/components/admin/PressReleaseManagement';
 import { PartnerManagement } from '@/app/components/admin/PartnerManagement';
 import { AdminTestBot } from '@/app/components/admin/AdminTestBot';
+import { supabase } from '@/config/supabase';
 
 type MenuSection = 
   | 'dashboard' 
@@ -8918,12 +8919,41 @@ function DataFlowHealthSection() {
       const startTime = Date.now();
       
       try {
-        // Check backend health as proxy for data flow
-        if (flow.id === 'web-db' || flow.id === 'db-web') {
-          if (backendUrl) {
-            const res = await fetch(`${backendUrl}/health`, { signal: AbortSignal.timeout(3000) });
+        // Website → Supabase: Gerçek Supabase bağlantı testi
+        if (flow.id === 'web-db') {
+          try {
+            // Basit bir query ile Supabase bağlantısını test et
+            const { data, error } = await Promise.race([
+              supabase.from('user_profiles').select('id').limit(1),
+              new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 10000))
+            ]) as any;
             const latency = Date.now() - startTime;
-            updatedFlows[i] = { ...flow, status: res.ok ? 'healthy' : 'error', latency, lastSync: new Date() };
+            if (error) {
+              updatedFlows[i] = { ...flow, status: 'error', errorMessage: `Supabase hatası: ${error.message}`, latency, lastSync: new Date() };
+            } else {
+              updatedFlows[i] = { ...flow, status: 'healthy', latency, lastSync: new Date() };
+            }
+          } catch (err: any) {
+            const latency = Date.now() - startTime;
+            updatedFlows[i] = { ...flow, status: 'error', errorMessage: err.message || 'Bağlantı hatası', latency, lastSync: new Date() };
+          }
+        } 
+        // Supabase → Website: Backend üzerinden kontrol (backend Supabase'e bağlı)
+        else if (flow.id === 'db-web') {
+          if (backendUrl) {
+            try {
+              const res = await fetch(`${backendUrl}/health`, { signal: AbortSignal.timeout(60000) });
+              const latency = Date.now() - startTime;
+              if (res.ok) {
+                // Backend çalışıyorsa Supabase → Website bağlantısı da çalışıyor demektir
+                updatedFlows[i] = { ...flow, status: 'healthy', latency, lastSync: new Date() };
+              } else {
+                updatedFlows[i] = { ...flow, status: 'error', errorMessage: `Backend HTTP ${res.status}`, latency, lastSync: new Date() };
+              }
+            } catch (err: any) {
+              const latency = Date.now() - startTime;
+              updatedFlows[i] = { ...flow, status: 'error', errorMessage: err.message || 'Backend yanıt vermiyor', latency, lastSync: new Date() };
+            }
           } else {
             updatedFlows[i] = { ...flow, status: 'degraded', errorMessage: 'Backend URL yok (yerel veya VITE_BACKEND_URL)' };
           }
@@ -8951,7 +8981,7 @@ function DataFlowHealthSection() {
             updatedFlows[i] = { ...flow, status: 'degraded', errorMessage: 'Backend URL yok' };
           } else {
           try {
-            const syncRes = await fetch(`${backendUrl}/api/sync-status`, { signal: AbortSignal.timeout(3000) });
+            const syncRes = await fetch(`${backendUrl}/api/sync-status`, { signal: AbortSignal.timeout(60000) });
             const syncData = await syncRes.json();
             const latency = Date.now() - startTime;
             updatedFlows[i] = {
@@ -8961,8 +8991,8 @@ function DataFlowHealthSection() {
               lastSync: syncData.lastSync ? new Date(syncData.lastSync) : new Date(),
               recordCount: syncData.totalApiCalls,
             };
-          } catch {
-            updatedFlows[i] = { ...flow, status: 'error', errorMessage: 'Sync servisi yanıt vermiyor' };
+          } catch (err: any) {
+            updatedFlows[i] = { ...flow, status: 'error', errorMessage: err.message || 'Sync servisi yanıt vermiyor' };
           }
           }
         } else if (flow.id === 'realtime') {
