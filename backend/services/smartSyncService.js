@@ -6,7 +6,7 @@
 // Günlük: 7,200 API çağrısı (%96 kullanım)
 // ============================================
 
-const { createClient } = require('@supabase/supabase-js');
+const { supabase } = require('../config/supabase');
 const footballApi = require('./footballApi');
 const databaseService = require('./databaseService');
 
@@ -19,10 +19,9 @@ try {
   timelineService = null;
 }
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-);
+if (!supabase) {
+  console.warn('⚠️ Supabase not configured in smartSyncService.js - sync will be disabled');
+}
 
 // ============================================
 // CONFIGURATION - SABİT 12 SANİYE

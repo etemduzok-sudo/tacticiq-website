@@ -3,12 +3,11 @@ const express = require('express');
 const router = express.Router();
 const footballApi = require('../services/footballApi');
 const { calculateRatingFromStats } = require('../utils/playerRatingFromStats');
-const { createClient } = require('@supabase/supabase-js');
+const { supabase } = require('../config/supabase');
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-);
+if (!supabase) {
+  console.warn('⚠️ Supabase not configured in routes/teams.js - some features will be disabled');
+}
 
 // GET /api/teams/search/:query - Search teams by name
 router.get('/search/:query', async (req, res) => {
