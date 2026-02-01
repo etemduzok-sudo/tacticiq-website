@@ -1844,15 +1844,15 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
                         </CardContent>
                       </Card>
 
-                      {/* Badges Grid - 4 sütun x 10 satır */}
-                      <div className="grid grid-cols-4 gap-3">
+                      {/* Badges Grid - 10 sütun x 4 satır */}
+                      <div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-2">
                         {allBadges.map((badge) => (
-                          <Card 
+                          <div 
                             key={badge.id} 
-                            className={`text-center p-3 cursor-pointer transition-all hover:scale-105 group relative ${
+                            className={`text-center p-2 cursor-pointer transition-all hover:scale-110 group relative rounded-lg border ${
                               badge.earned 
-                                ? 'border-amber-500/50 bg-amber-500/5' 
-                                : 'border-border/50 bg-card'
+                                ? 'border-amber-500/50 bg-amber-500/10' 
+                                : 'border-border/30 bg-card/50 opacity-60'
                             }`}
                             title={badge.earned 
                               ? `${badge.name} - Kazanıldı!` 
@@ -1861,34 +1861,41 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
                           >
                             <div className="relative flex items-center justify-center">
                               {!badge.earned && (
-                                <div className="absolute -top-2 -right-2 size-6 rounded-full bg-muted border-2 border-background flex items-center justify-center z-10 shadow-md">
-                                  <Lock className="size-3.5 text-muted-foreground" />
+                                <div className="absolute -top-1 -right-1 size-4 rounded-full bg-muted border border-background flex items-center justify-center z-10">
+                                  <Lock className="size-2 text-muted-foreground" />
                                 </div>
                               )}
                               {badge.earned && (
-                                <div className="absolute -top-2 -right-2 size-6 rounded-full bg-green-500 border-2 border-background flex items-center justify-center z-10 shadow-md">
-                                  <span className="text-white text-xs font-bold">✓</span>
+                                <div className="absolute -top-1 -right-1 size-4 rounded-full bg-green-500 border border-background flex items-center justify-center z-10">
+                                  <span className="text-white text-[8px]">✓</span>
                                 </div>
                               )}
-                              <span className="text-5xl block">{badge.icon}</span>
+                              <span className="text-2xl sm:text-3xl block">{badge.icon}</span>
                             </div>
-                            <p className="text-xs font-medium mt-2 line-clamp-2">{badge.name}</p>
-                            <Badge 
-                              variant="outline" 
-                              className={`text-[10px] mt-2 px-1.5 py-0.5 ${
-                                badge.tier === 'bronze' ? 'text-orange-600 border-orange-600/30' :
-                                badge.tier === 'silver' ? 'text-slate-400 border-slate-400/30' :
-                                badge.tier === 'gold' ? 'text-amber-500 border-amber-500/30' :
-                                badge.tier === 'platinum' ? 'text-purple-500 border-purple-500/30' :
-                                'text-cyan-400 border-cyan-400/30'
-                              }`}
-                            >
-                              {badge.tier === 'bronze' ? 'Bronz' :
-                               badge.tier === 'silver' ? 'Gümüş' :
-                               badge.tier === 'gold' ? 'Altın' :
-                               badge.tier === 'platinum' ? 'Platin' : 'Elmas'}
-                            </Badge>
-                          </Card>
+                            <p className="text-[8px] sm:text-[9px] font-medium mt-1 line-clamp-1">{badge.name}</p>
+                            
+                            {/* Tooltip on hover */}
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-20">
+                              <div className="bg-popover text-popover-foreground text-xs p-2 rounded-lg shadow-lg border whitespace-nowrap max-w-[180px]">
+                                <p className="font-semibold">{badge.name}</p>
+                                <p className={`text-[8px] mt-0.5 ${
+                                  badge.tier === 'bronze' ? 'text-orange-600' :
+                                  badge.tier === 'silver' ? 'text-slate-400' :
+                                  badge.tier === 'gold' ? 'text-amber-500' :
+                                  badge.tier === 'platinum' ? 'text-purple-500' :
+                                  'text-cyan-400'
+                                }`}>
+                                  {badge.tier === 'bronze' ? 'Bronz' :
+                                   badge.tier === 'silver' ? 'Gümüş' :
+                                   badge.tier === 'gold' ? 'Altın' :
+                                   badge.tier === 'platinum' ? 'Platin' : 'Elmas'}
+                                </p>
+                                <p className="text-muted-foreground text-[9px] mt-1 whitespace-normal">
+                                  {badge.earned ? '✅ Kazanıldı!' : `🎯 ${badge.howToEarn}`}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
                         ))}
                       </div>
                     </CardContent>

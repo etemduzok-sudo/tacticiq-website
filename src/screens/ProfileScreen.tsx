@@ -1914,7 +1914,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               </View>
             </View>
 
-            {/* Badges Grid - 4 sütun x 10 satır */}
+            {/* Badges Grid - 10 sütun x 4 satır */}
             <View style={styles.badgesGridInline}>
               {allBadges.map((badge, index) => (
                 <TouchableOpacity
@@ -2676,7 +2676,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               </View>
             </View>
 
-            {/* Badges Grid - 4 sütun x 10 satır */}
+            {/* Badges Grid - 10 sütun x 4 satır */}
             <View style={styles.badgeGrid}>
               {allBadges.map((badge, index) => (
                 <Animated.View 
@@ -4100,9 +4100,9 @@ const createStyles = (isDark: boolean = true) => {
     width: '100%',
   },
   badgeItemInline: {
-    // 4 sütun x 10 satır (40 rozet) – satırda tam 4 hücre sığacak genişlik
-    width: '22%',
-    aspectRatio: 0.85,
+    // 10 sütun x 4 satır (40 rozet) – satırda tam 10 hücre sığacak genişlik
+    width: '9%',
+    aspectRatio: 1,
     backgroundColor: theme.card,
     borderRadius: SIZES.radiusMd,
     borderWidth: 1.5,
@@ -4122,31 +4122,31 @@ const createStyles = (isDark: boolean = true) => {
   },
   badgeLockOverlay: {
     position: 'absolute',
-    top: 4,
-    right: 4,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    top: 2,
+    right: 2,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
     backgroundColor: 'rgba(30, 41, 59, 0.95)',
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: 'rgba(148, 163, 184, 0.6)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   badgeEarnedCheck: {
     position: 'absolute',
-    top: 3,
-    right: 3,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
+    top: 2,
+    right: 2,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
     backgroundColor: '#10B981',
     alignItems: 'center',
     justifyContent: 'center',
   },
   badgeEmojiInline: {
-    fontSize: 28,
-    marginBottom: 3,
+    fontSize: 20,
+    marginBottom: 2,
   },
   badgeEmojiLocked: {
     // ✅ Grayscale ve opacity kaldırıldı - rozetler renkli görünecek
@@ -4154,11 +4154,11 @@ const createStyles = (isDark: boolean = true) => {
     opacity: 0.85, // Hafif soluk ama renkli
   } as any,
   badgeNameInline: {
-    fontSize: 9,
+    fontSize: 6,
     fontWeight: '600',
     color: theme.foreground,
     textAlign: 'center',
-    lineHeight: 11,
+    lineHeight: 8,
   },
   badgeNameLocked: {
     color: '#94A3B8', // Biraz daha okunabilir renk
@@ -4474,9 +4474,9 @@ const createStyles = (isDark: boolean = true) => {
     justifyContent: 'flex-start',
   },
   badgeCard: {
-    width: '23%', // 4 sütun için ~23% (web ile aynı grid-cols-4), gap ile birlikte
-    minWidth: 70,
-    aspectRatio: 0.7, // Web ile aynı oran
+    width: '9%', // 10 sütun için ~9% (web ile aynı grid-cols-10), gap ile birlikte
+    minWidth: 32,
+    aspectRatio: 1, // Kare oran
     backgroundColor: theme.card,
     borderRadius: SIZES.radiusMd,
     borderWidth: 1,
@@ -4496,24 +4496,24 @@ const createStyles = (isDark: boolean = true) => {
     opacity: 0.8,
   },
   badgeEmoji: {
-    fontSize: 48, // text-5xl (web ile aynı)
-    marginBottom: SPACING.xs,
+    fontSize: 24, // Küçük emoji (10 sütun için)
+    marginBottom: 2,
   },
   badgeName: {
     ...TYPOGRAPHY.bodySmall,
-    fontSize: 10,
+    fontSize: 7,
     fontWeight: TYPOGRAPHY.medium,
     color: theme.foreground,
     textAlign: 'center',
-    marginBottom: SPACING.xs,
-    lineHeight: 13,
+    marginBottom: 2,
+    lineHeight: 9,
   },
-  // Badge Tier Labels - Web ile aynı renkler
+  // Badge Tier Labels - Web ile aynı renkler (10 sütun için küçük)
   badgeTierLabel: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    borderWidth: 1,
+    paddingHorizontal: 3,
+    paddingVertical: 1,
+    borderRadius: 3,
+    borderWidth: 0.5,
   },
   badgeTierBronze: {
     backgroundColor: 'transparent',
@@ -4536,7 +4536,7 @@ const createStyles = (isDark: boolean = true) => {
     borderColor: '#22D3EE4D', // cyan-400/30
   },
   badgeTierText: {
-    fontSize: 10,
+    fontSize: 6,
     fontWeight: TYPOGRAPHY.bold,
   },
   badgeTierTextBronze: {
@@ -4557,29 +4557,28 @@ const createStyles = (isDark: boolean = true) => {
   // Lock Icon - Web ile aynı (muted background, mutedForeground color)
   badgeLockIcon: {
     position: 'absolute',
-    top: -4,
-    right: -4,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    top: -2,
+    right: -2,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
     backgroundColor: theme.muted,
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: theme.background,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 10,
-    ...SHADOWS.md,
   },
   // Checkmark - Web ile aynı (green-500 background)
   badgeCheckmark: {
     position: 'absolute',
-    top: -4,
-    right: -4,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    top: -2,
+    right: -2,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
     backgroundColor: '#22C55E', // green-500 (web ile aynı)
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: theme.background,
     alignItems: 'center',
     justifyContent: 'center',
