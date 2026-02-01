@@ -7930,16 +7930,20 @@ function SystemMonitoringContent() {
 
     if (canUseRemoteControl) {
       // Uzaktan: sadece backend ve backend içi servisleri kontrol et
+      // Render free tier spin-down için uzun timeout (ilk istek 50+ saniye sürebilir)
       try {
-        const backendRes = await fetch(`${backendBaseUrl}/health`, { signal: AbortSignal.timeout(5000), method: 'GET' });
+        const backendRes = await fetch(`${backendBaseUrl}/health`, { signal: AbortSignal.timeout(60000), method: 'GET' });
         if (backendRes.ok) {
           const backendData = await backendRes.json();
           const backendIdx = updatedServices.findIndex(s => s.id === 'backend');
           updatedServices[backendIdx] = { ...updatedServices[backendIdx], status: 'running', lastCheck: new Date(), uptime: backendData.uptime, errorMessage: undefined };
         } else throw new Error(`HTTP ${backendRes.status}`);
-      } catch {
+      } catch (error) {
         const backendIdx = updatedServices.findIndex(s => s.id === 'backend');
-        updatedServices[backendIdx] = { ...updatedServices[backendIdx], status: 'stopped', lastCheck: new Date(), errorMessage: 'Uzaktan backend bağlantı hatası' };
+        const errorMsg = error instanceof Error && error.name === 'TimeoutError' 
+          ? 'Backend yanıt vermiyor (Render free tier spin-down olabilir, ilk istek 50+ saniye sürebilir)'
+          : 'Uzaktan backend bağlantı hatası';
+        updatedServices[backendIdx] = { ...updatedServices[backendIdx], status: 'stopped', lastCheck: new Date(), errorMessage: errorMsg };
       }
       // Expo/Website: uzakta yok
       const expoIdx = updatedServices.findIndex(s => s.id === 'expo');
@@ -7947,7 +7951,7 @@ function SystemMonitoringContent() {
       const viteIdx = updatedServices.findIndex(s => s.id === 'website');
       updatedServices[viteIdx] = { ...updatedServices[viteIdx], status: 'stopped', lastCheck: new Date(), errorMessage: 'Sadece yerel' };
       try {
-        const systemRes = await fetch(`${backendBaseUrl}/api/system-status`, { signal: AbortSignal.timeout(5000) });
+        const systemRes = await fetch(`${backendBaseUrl}/api/system-status`, { signal: AbortSignal.timeout(60000) });
         const systemData = await systemRes.json();
         if (systemData.success && systemData.services) {
           const smartSyncIdx = updatedServices.findIndex(s => s.id === 'smartSync');
