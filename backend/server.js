@@ -144,9 +144,9 @@ app.use('/api/timeline', require('./routes/timeline')); // 📊 Maç akışı
 app.use('/api/leaderboard/snapshots', require('./routes/leaderboardSnapshots')); // 📸 Sıralama geçmişi
 app.use('/api/squad-predictions', squadPredictionsRouter); // 📋 Kadro tahminleri ve istatistikler
 
-// Health check
+// Health check - Render için KRİTİK (hemen cevap vermeli)
 app.get('/health', (req, res) => {
-  res.json({
+  res.status(200).json({
     status: 'ok',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
@@ -155,7 +155,7 @@ app.get('/health', (req, res) => {
 
 // Root path health check (Render compatibility)
 app.get('/', (req, res) => {
-  res.json({
+  res.status(200).json({
     status: 'ok',
     service: 'TacticIQ Backend API',
     version: '2.0.0',
