@@ -56,6 +56,24 @@ app.use(helmet({
   contentSecurityPolicy: false, // Web için esnek
   crossOriginEmbedderPolicy: false,
 })); // Security headers
+
+// ========== RENDER HEALTH CHECK - EN BAŞTA (CORS'dan ÖNCE) ==========
+app.get('/health', (req, res) => {
+  res.status(200).setHeader('Content-Type', 'application/json').end(JSON.stringify({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+  }));
+});
+app.get('/', (req, res) => {
+  res.status(200).setHeader('Content-Type', 'application/json').end(JSON.stringify({
+    status: 'ok',
+    service: 'TacticIQ Backend API',
+    version: '2.0.0',
+  }));
+});
+// ========== /HEALTH BİTTİ ==========
+
 // ✅ SECURITY: Restrictive CORS configuration
 const allowedOrigins = [
   // Production
@@ -108,23 +126,6 @@ app.use(cors({
 })); // Enable CORS for web
 app.use(compression()); // Compress responses
 app.use(express.json());
-
-// ========== RENDER HEALTH CHECK - EN BAŞTA (rate limit öncesi) ==========
-app.get('/health', (req, res) => {
-  res.status(200).setHeader('Content-Type', 'application/json').end(JSON.stringify({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-  }));
-});
-app.get('/', (req, res) => {
-  res.status(200).setHeader('Content-Type', 'application/json').end(JSON.stringify({
-    status: 'ok',
-    service: 'TacticIQ Backend API',
-    version: '2.0.0',
-  }));
-});
-// ========== /HEALTH BİTTİ ==========
 
 // 🔥 API Rate Limiter (7,500 calls/day)
 const { rateLimiterMiddleware, getStats } = require('./middleware/rateLimiter');
