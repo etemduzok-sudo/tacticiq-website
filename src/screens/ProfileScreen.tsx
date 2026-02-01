@@ -1914,7 +1914,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               </View>
             </View>
 
-            {/* Badges Grid - 10 sütun x 4 satır */}
+            {/* Badges Grid */}
             <View style={styles.badgesGridInline}>
               {allBadges.map((badge, index) => (
                 <TouchableOpacity
@@ -1968,7 +1968,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             {allBadges.length === 0 && (
               <View style={styles.noBadgesInline}>
                 <Ionicons name="trophy-outline" size={48} color="#64748B" />
-                <Text style={styles.noBadgesText}>Rozet yükleniyor...</Text>
+                <Text style={styles.noBadgesText}>{t('common.loading')}</Text>
               </View>
             )}
           </Animated.View>
@@ -1977,7 +1977,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           <Animated.View entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(300)} style={styles.card}>
             <View style={styles.cardHeader}>
               <Ionicons name="settings-outline" size={20} color={theme.primary} />
-              <Text style={styles.cardTitle}>Ayarlar</Text>
+              <Text style={styles.cardTitle}>{t('profile.settings')}</Text>
             </View>
 
             {/* Dil ve Saat Dilimi - Web uyumlu */}
@@ -2193,7 +2193,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             <View style={styles.themeToggleContainer}>
               <View style={styles.themeToggleLeft}>
                 <Ionicons name={isDarkMode ? "moon" : "sunny"} size={20} color={theme.primary} />
-                <Text style={styles.themeToggleLabel}>Tema</Text>
+                <Text style={styles.themeToggleLabel}>{t('settings.theme')}</Text>
               </View>
               <View style={styles.themeToggleButtons}>
                 <TouchableOpacity
@@ -2201,14 +2201,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   onPress={() => setAppTheme('light')}
                 >
                   <Ionicons name="sunny" size={16} color={!isDarkMode ? '#000' : theme.mutedForeground} />
-                  <Text style={[styles.themeButtonText, !isDarkMode && styles.themeButtonTextActive]}>Açık</Text>
+                  <Text style={[styles.themeButtonText, !isDarkMode && styles.themeButtonTextActive]}>{t('settings.light')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.themeButton, isDarkMode && styles.themeButtonActive]}
                   onPress={() => setAppTheme('dark')}
                 >
                   <Ionicons name="moon" size={16} color={isDarkMode ? '#000' : theme.mutedForeground} />
-                  <Text style={[styles.themeButtonText, isDarkMode && styles.themeButtonTextActive]}>Koyu</Text>
+                  <Text style={[styles.themeButtonText, isDarkMode && styles.themeButtonTextActive]}>{t('settings.dark')}</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -2217,12 +2217,12 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
             {/* Bildirimler - Web ile aynı, çalışır Switch'ler */}
             <View style={styles.notificationsSection}>
-              <Text style={styles.sectionTitle}>Mobil Bildirimler</Text>
+              <Text style={styles.sectionTitle}>{t('settings.mobileNotifications')}</Text>
               
               <View style={styles.settingRow}>
                 <View style={styles.settingRow_left}>
-                  <Text style={styles.settingRow_title}>E-posta Bildirimleri</Text>
-                  <Text style={styles.settingRow_desc}>Maç sonuçları ve tahmin hatırlatmaları</Text>
+                  <Text style={styles.settingRow_title}>{t('settings.emailNotifications')}</Text>
+                  <Text style={styles.settingRow_desc}>{t('settings.emailNotificationsDesc')}</Text>
                 </View>
                 <TouchableOpacity
                   style={[
@@ -2236,7 +2236,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                     setEmailNotifications(newValue);
                     // Supabase'e kaydet
                     await profileService.updateProfile({ notificationsEnabled: newValue });
-                    Alert.alert('Başarılı', newValue ? 'E-posta bildirimleri açıldı' : 'E-posta bildirimleri kapatıldı');
+                    Alert.alert(
+                      t('common.success'),
+                      newValue ? t('settings.emailEnabled') : t('settings.emailDisabled')
+                    );
                   }}
                 >
                   <View style={styles.settingRow_switchThumb} />
@@ -2247,8 +2250,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
               <View style={styles.settingRow}>
                 <View style={styles.settingRow_left}>
-                  <Text style={styles.settingRow_title}>Haftalık Özet</Text>
-                  <Text style={styles.settingRow_desc}>Haftalık performans özeti</Text>
+                  <Text style={styles.settingRow_title}>{t('settings.weeklySummary')}</Text>
+                  <Text style={styles.settingRow_desc}>{t('settings.weeklySummaryDesc')}</Text>
                 </View>
                 <TouchableOpacity
                   style={[
@@ -2261,7 +2264,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                     const newValue = !weeklySummary;
                     setWeeklySummary(newValue);
                     // TODO: Supabase'e özel notification settings tablosuna kaydet
-                    Alert.alert('Başarılı', newValue ? 'Haftalık özet açıldı' : 'Haftalık özet kapatıldı');
+                    Alert.alert(
+                      t('common.success'),
+                      newValue ? t('settings.weeklyEnabled') : t('settings.weeklyDisabled')
+                    );
                   }}
                 >
                   <View style={styles.settingRow_switchThumb} />
@@ -2272,8 +2278,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
               <View style={styles.settingRow}>
                 <View style={styles.settingRow_left}>
-                  <Text style={styles.settingRow_title}>Kampanya Bildirimleri</Text>
-                  <Text style={styles.settingRow_desc}>İndirim ve özel teklifler</Text>
+                  <Text style={styles.settingRow_title}>{t('settings.campaignNotifications')}</Text>
+                  <Text style={styles.settingRow_desc}>{t('settings.campaignNotificationsDesc')}</Text>
                 </View>
                 <TouchableOpacity
                   style={[
@@ -2286,7 +2292,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                     const newValue = !campaignNotifications;
                     setCampaignNotifications(newValue);
                     // TODO: Supabase'e özel notification settings tablosuna kaydet
-                    Alert.alert('Başarılı', newValue ? 'Kampanya bildirimleri açıldı' : 'Kampanya bildirimleri kapatıldı');
+                    Alert.alert(
+                      t('common.success'),
+                      newValue ? t('settings.campaignEnabled') : t('settings.campaignDisabled')
+                    );
                   }}
                 >
                   <View style={styles.settingRow_switchThumb} />
@@ -2299,22 +2308,22 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   <View style={styles.settingsDivider} />
                   <View style={styles.settingRow}>
                     <View style={styles.settingRow_left}>
-                      <Text style={styles.settingRow_title}>Canlı Bildirimler</Text>
+                      <Text style={styles.settingRow_title}>{t('settings.liveNotifications')}</Text>
                       <Text style={styles.settingRow_desc}>
                         {Platform.OS === 'web' 
-                          ? 'Tarayıcı bildirim izni - Maç sonuçları ve canlı güncellemeler'
-                          : 'Mobil bildirim izni - Maç sonuçları ve canlı güncellemeler'}
+                          ? t('settings.liveNotificationsDescWeb')
+                          : t('settings.liveNotificationsDescMobile')}
                       </Text>
                     </View>
                     {pushNotificationPermission === 'granted' ? (
                       <View style={[styles.pushNotificationBadge, { backgroundColor: theme.primary }]}>
                         <Ionicons name="checkmark" size={16} color="#FFFFFF" />
-                        <Text style={styles.pushNotificationBadgeText}>Aktif</Text>
+                        <Text style={styles.pushNotificationBadgeText}>{t('settings.permissionActive')}</Text>
                       </View>
                     ) : pushNotificationPermission === 'denied' ? (
                       <View style={[styles.pushNotificationBadge, { backgroundColor: theme.destructive }]}>
                         <Ionicons name="close" size={16} color="#FFFFFF" />
-                        <Text style={styles.pushNotificationBadgeText}>İzin Yok</Text>
+                        <Text style={styles.pushNotificationBadgeText}>{t('settings.permissionDenied')}</Text>
                       </View>
                     ) : (
                       <TouchableOpacity
@@ -2326,35 +2335,35 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                               setPushNotificationPermission(permission);
                               
                               if (permission === 'granted') {
-                                Alert.alert('Başarılı', 'Canlı bildirim izni verildi!');
+                                Alert.alert(t('common.success'), t('settings.permissionGrantedAlert'));
                                 // Test notification gönder
                                 new Notification('TacticIQ', {
-                                  body: 'Canlı bildirimler aktif! Maç sonuçları ve önemli güncellemeler için bildirim alacaksınız.',
+                                  body: t('settings.liveNotificationTestBody'),
                                   icon: '/favicon.ico',
                                 });
                               } else if (permission === 'denied') {
-                                Alert.alert('Bildirim İzni', 'Bildirim izni reddedildi. Tarayıcı ayarlarından değiştirebilirsiniz.');
+                                Alert.alert(t('settings.permissionDeniedAlertTitle'), t('settings.permissionDeniedAlert'));
                               }
                             } else if (Platform.OS === 'ios' || Platform.OS === 'android') {
                               // React Native için expo-notifications kullanılabilir
-                              Alert.alert('Bildirim İzni', 'Mobil bildirim izni ayarlardan açılabilir.');
+                              Alert.alert(t('settings.permissionDeniedAlertTitle'), t('settings.permissionMobileInfo'));
                             }
                           } catch (error: any) {
                             console.error('Notification permission error:', error);
-                            Alert.alert('Hata', 'Bildirim izni alınamadı. Lütfen ayarları kontrol edin.');
+                            Alert.alert(t('settings.permissionErrorTitle'), t('settings.permissionError'));
                           }
                         }}
                       >
                         <Ionicons name="flash" size={16} color={theme.primary} />
-                        <Text style={[styles.pushNotificationButtonText, { color: theme.primary }]}>İzin Ver</Text>
+                        <Text style={[styles.pushNotificationButtonText, { color: theme.primary }]}>{t('settings.permissionAllow')}</Text>
                       </TouchableOpacity>
                     )}
                   </View>
                   {pushNotificationPermission === 'denied' && (
                     <Text style={styles.pushNotificationHint}>
                       {Platform.OS === 'web' 
-                        ? 'Bildirim izni tarayıcı ayarlarından açılabilir. Ayarlar → Site İzinleri → Bildirimler'
-                        : 'Bildirim izni cihaz ayarlarından açılabilir.'}
+                        ? t('settings.permissionHintWeb')
+                        : t('settings.permissionHintMobile')}
                     </Text>
                   )}
                 </>
@@ -2676,7 +2685,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               </View>
             </View>
 
-            {/* Badges Grid - 10 sütun x 4 satır */}
+            {/* Badges Grid */}
             <View style={styles.badgeGrid}>
               {allBadges.map((badge, index) => (
                 <Animated.View 
