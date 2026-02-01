@@ -463,23 +463,30 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleting, setDeleting] = useState(false);
 
-  // Dil ve saat dilimini storage'dan yükle (profil yüklemeden önce)
+  // Dil ve saat dilimini storage'dan yükle - i18n ile senkronize et (bayrak+dil uyumsuzluğunu önler)
   useEffect(() => {
     const loadSettings = async () => {
       try {
+        let lang: string | null = null;
+        let tz: string | null = null;
         if (Platform.OS === 'web' && typeof window?.localStorage !== 'undefined') {
-          const lang = window.localStorage.getItem('tacticiq-language') || window.localStorage.getItem('@user_language');
-          const tz = window.localStorage.getItem('@user_timezone');
-          if (lang) setSelectedLanguage(normalizeLangCode(lang));
-          if (tz) setSelectedTimezone(tz);
+          lang = window.localStorage.getItem('tacticiq-language') || window.localStorage.getItem('@user_language');
+          tz = window.localStorage.getItem('@user_timezone');
         } else {
-          const [lang, tz] = await Promise.all([
+          [lang, tz] = await Promise.all([
             AsyncStorage.getItem('tacticiq-language'),
             AsyncStorage.getItem('@user_timezone'),
           ]);
-          if (lang) setSelectedLanguage(normalizeLangCode(lang));
-          if (tz) setSelectedTimezone(tz);
         }
+        if (lang) {
+          const norm = normalizeLangCode(lang);
+          setSelectedLanguage(norm);
+          // i18n dilini de güncelle - t() doğru dilde dönsün
+          if (i18nInstance.language !== norm) {
+            await changeI18nLanguage(norm);
+          }
+        }
+        if (tz) setSelectedTimezone(tz);
       } catch (e) {
         // ignore
       }
@@ -1989,30 +1996,20 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 <Text style={styles.formLabel}>{t('settings.language')}</Text>
                 <View style={styles.settingsValue}>
                   <Image
-                    source={{ uri: selectedLanguage === 'tr' ? 'https://flagcdn.com/w40/tr.png' : 
-                     selectedLanguage === 'en' ? 'https://flagcdn.com/w40/gb.png' : 
-                     selectedLanguage === 'de' ? 'https://flagcdn.com/w40/de.png' :
-                     selectedLanguage === 'es' ? 'https://flagcdn.com/w40/es.png' :
-                     selectedLanguage === 'fr' ? 'https://flagcdn.com/w40/fr.png' :
-                     selectedLanguage === 'it' ? 'https://flagcdn.com/w40/it.png' :
-                     selectedLanguage === 'ar' ? 'https://flagcdn.com/w40/sa.png' :
-                     selectedLanguage === 'zh' ? 'https://flagcdn.com/w40/cn.png' :
-                     selectedLanguage === 'ru' ? 'https://flagcdn.com/w40/ru.png' :
-                     selectedLanguage === 'hi' ? 'https://flagcdn.com/w40/in.png' : 'https://flagcdn.com/w40/tr.png' }}
+                    source={{ uri: (() => {
+                      const lng = i18nInstance.language?.split('-')[0] || selectedLanguage;
+                      const map: Record<string, string> = { tr: 'tr', en: 'gb', de: 'de', es: 'es', fr: 'fr', it: 'it', ar: 'sa', zh: 'cn', ru: 'ru', hi: 'in' };
+                      return `https://flagcdn.com/w40/${map[lng] || 'tr'}.png`;
+                    })()}}
                     style={{ width: 24, height: 18, borderRadius: 2, marginRight: 8 }}
                     resizeMode="cover"
                   />
                   <Text style={styles.settingsValueText}>
-                    {selectedLanguage === 'tr' ? 'Türkçe' : 
-                     selectedLanguage === 'en' ? 'English' : 
-                     selectedLanguage === 'de' ? 'Deutsch' :
-                     selectedLanguage === 'es' ? 'Español' :
-                     selectedLanguage === 'fr' ? 'Français' :
-                     selectedLanguage === 'it' ? 'Italiano' :
-                     selectedLanguage === 'ar' ? 'العربية' :
-                     selectedLanguage === 'zh' ? '中文' :
-                     selectedLanguage === 'ru' ? 'Русский' :
-                     selectedLanguage === 'hi' ? 'हिन्दी' : 'Türkçe'}
+                    {(() => {
+                      const lng = i18nInstance.language?.split('-')[0] || selectedLanguage;
+                      const names: Record<string, string> = { tr: 'Türkçe', en: 'English', de: 'Deutsch', es: 'Español', fr: 'Français', it: 'Italiano', ar: 'العربية', zh: '中文', ru: 'Русский', hi: 'हिन्दी' };
+                      return names[lng] || 'Türkçe';
+                    })()}
                   </Text>
                   <Ionicons name={showLanguageDropdown ? "chevron-up" : "chevron-down"} size={16} color={theme.mutedForeground} />
                 </View>
@@ -2056,11 +2053,13 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                         ]}
                         onPress={async () => {
                           setShowLanguageDropdown(false);
-                          
+                          if (lang.code === selectedLanguage) return;
+
                           try {
-                            // Önce dil değiştir (changeI18nLanguage storage + i18n.changeLanguage yapar)
+                            // 1. i18n dilini değiştir (t() hemen yeni dilde döner)
                             await changeI18nLanguage(lang.code);
-                            
+
+                            // 2. Storage'ı güncelle (changeLanguage zaten yapıyor, backup)
                             if (Platform.OS === 'web' && typeof window?.localStorage !== 'undefined') {
                               window.localStorage.setItem('@user_language', lang.code);
                               window.localStorage.setItem('tacticiq-language', lang.code);
@@ -2068,11 +2067,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                               await AsyncStorage.setItem('@user_language', lang.code);
                               await AsyncStorage.setItem('tacticiq-language', lang.code);
                             }
-                            
-                            await profileService.updateProfile({ preferredLanguage: lang.code }).catch(() => {});
-                            
+
                             setSelectedLanguage(lang.code);
-                            setLanguageKey(prev => prev + 1);
+                            setLanguageKey(prev => prev + 1); // İçeriği yeniden mount et
+                            await profileService.updateProfile({ preferredLanguage: lang.code }).catch(() => {});
                           } catch (error) {
                             console.error('Error changing language:', error);
                           }
