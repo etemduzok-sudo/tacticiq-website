@@ -84,6 +84,7 @@ if (Platform.OS === 'web') {
   }
 }
 import './src/i18n'; // Initialize i18n
+import i18n from './src/i18n'; // i18n instance for language change listener
 
 // Web için UIManager polyfills
 if (Platform.OS === 'web') {
@@ -145,6 +146,23 @@ LogBox.ignoreLogs([
 ]);
 
 export default function App() {
+  // 🌍 Dil değişikliği için key - dil değişince tüm uygulama yeniden render edilir
+  const [languageKey, setLanguageKey] = useState(0);
+  
+  // Dil değişikliği dinleyicisi
+  useEffect(() => {
+    const handleLanguageChange = (lng: string) => {
+      console.log('🌍 Dil değişti:', lng);
+      setLanguageKey(prev => prev + 1);
+    };
+    
+    i18n.on('languageChanged', handleLanguageChange);
+    
+    return () => {
+      i18n.off('languageChanged', handleLanguageChange);
+    };
+  }, []);
+
   // Use Navigation Hook
   const { state: navState, actions: navActions, handlers: navHandlers, refs: navRefs } = useAppNavigation();
   const { 
@@ -496,7 +514,7 @@ export default function App() {
   return (
     <ErrorBoundary>
       <SafeAreaProvider>
-        <ThemeProvider>
+        <ThemeProvider key={`theme-${languageKey}`}>
           <PredictionProvider>
             <MatchProvider>
               {/* Maintenance Mode Check */}

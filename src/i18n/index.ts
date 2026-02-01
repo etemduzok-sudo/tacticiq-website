@@ -12,6 +12,7 @@ import de from '../locales/de.json';
 import fr from '../locales/fr.json';
 import it from '../locales/it.json';
 import ar from '../locales/ar.json';
+import zh from '../locales/zh.json';
 import ru from '../locales/ru.json';
 import hi from '../locales/hi.json';
 
@@ -35,7 +36,7 @@ const getDeviceLanguage = async (): Promise<string> => {
           // Browser language detection (sadece browser'da)
           if (typeof navigator !== 'undefined' && navigator.language) {
             const browserLang = navigator.language.split('-')[0];
-            const supportedLanguages = ['tr', 'en', 'es', 'de', 'fr', 'it', 'ar', 'ru', 'hi'];
+            const supportedLanguages = ['tr', 'en', 'es', 'de', 'fr', 'it', 'ar', 'zh', 'ru', 'hi'];
             if (supportedLanguages.includes(browserLang)) return browserLang;
           }
         }
@@ -52,7 +53,7 @@ const getDeviceLanguage = async (): Promise<string> => {
     }
     
     const deviceLocale = Localization.getLocales()[0]?.languageCode || 'en';
-    const supportedLanguages = ['tr', 'en', 'es', 'de', 'fr', 'it', 'ar', 'ru', 'hi'];
+    const supportedLanguages = ['tr', 'en', 'es', 'de', 'fr', 'it', 'ar', 'zh', 'ru', 'hi'];
     
     return supportedLanguages.includes(deviceLocale) ? deviceLocale : 'en';
   } catch (error) {
@@ -91,6 +92,7 @@ const initI18n = async () => {
         fr: { translation: fr },
         it: { translation: it },
         ar: { translation: ar },
+        zh: { translation: zh },
         ru: { translation: ru },
         hi: { translation: hi },
       },
@@ -158,6 +160,7 @@ if (!i18n.isInitialized) {
         fr: { translation: fr },
         it: { translation: it },
         ar: { translation: ar },
+        zh: { translation: zh },
         ru: { translation: ru },
         hi: { translation: hi },
       },
