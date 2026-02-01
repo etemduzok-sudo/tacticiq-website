@@ -712,105 +712,84 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Start server
+// Start server - Render için callback minimal olmalı (port scan timeout önleme)
 app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
-  console.log('\n');
-  console.log('╔════════════════════════════════════════════════════════════╗');
-  console.log('║           🚀 TACTICIQ BACKEND STARTED 🚀                   ║');
-  console.log('╠════════════════════════════════════════════════════════════╣');
-  console.log(`║ Port: ${PORT}                                                  ║`);
-  console.log(`║ Health: http://localhost:${PORT}/health                       ║`);
-  console.log('╚════════════════════════════════════════════════════════════╝');
   
-  // ============================================
-  // 1. WORLDWIDE SYNC SERVICE (Sabit 12s)
-  // ============================================
-  // Dünya genelinde her an maç var - SABİT 12s interval
-  // Günlük: 7,200 API çağrısı (%96 kullanım)
-  // Timeline service ile maç akışını kaydeder
-  // ============================================
-  
-  try {
-    const smartSyncService = require('./services/smartSyncService');
-    smartSyncService.startSync();
-    console.log(`🌍 Worldwide sync started (fixed 12s interval)`);
-  } catch (error) {
-    console.error('❌ Failed to start smart sync service:', error.message);
-    // Don't exit - continue without smart sync
-  }
-  
-  // ============================================
-  // 2. STATIC TEAMS SCHEDULER (Günde 2x)
-  // ============================================
-  // Takım verilerini günde 2 kez günceller (08:00 ve 20:00 UTC)
-  // Aylık API bütçesi: 62 çağrı (31 gün × 2)
-  // ============================================
-  
-  try {
-    const staticTeamsScheduler = require('./services/staticTeamsScheduler');
-    staticTeamsScheduler.startScheduler();
-    console.log(`🏆 Static teams scheduler started (daily at 08:00 & 20:00 UTC)`);
-  } catch (error) {
-    console.error('❌ Failed to start static teams scheduler:', error.message);
-    // Don't exit - continue without scheduler
-  }
-  
-  // ============================================
-  // 3. LEADERBOARD SNAPSHOT SERVICE
-  // ============================================
-  // Günlük, haftalık ve aylık sıralama snapshot'ları
-  // Kullanıcılar geçmiş sıralamaları görebilir
-  // ============================================
-  
-  try {
-    const snapshotService = require('./services/leaderboardSnapshotService');
-    snapshotService.startSnapshotService();
-    console.log(`📸 Leaderboard snapshot service started`);
-  } catch (error) {
-    console.error('❌ Failed to start snapshot service:', error.message);
-    // Don't exit - continue without snapshots
-  }
-  
-  // ============================================
-  // 4. MONITORING SERVICE
-  // ============================================
-  // Backend'i izler, çökerse otomatik restart yapar
-  // ============================================
-  
-  try {
-    const monitoringService = require('./services/monitoringService');
-    setTimeout(() => {
-      try {
-        monitoringService.startMonitoring();
-        console.log(`🔍 Monitoring service started`);
-      } catch (error) {
-        console.error('❌ Failed to start monitoring service:', error.message);
-      }
-    }, 10000); // 10 saniye sonra başlat
-  } catch (error) {
-    console.warn('⚠️ Monitoring service could not be loaded:', error.message);
-  }
-  
-  // ============================================
-  // 5. PLAYER RATINGS SCHEDULER
-  // ============================================
-  // Haftalık oyuncu rating güncellemesi
-  // Her Pazartesi 03:00 (tam güncelleme)
-  // Her gün 04:00 (öncelikli ligler)
-  // ============================================
-  
-  // Player ratings scheduler - sadece RUN_PLAYER_RATINGS_JOB=true ise çalıştır
-  if (process.env.RUN_PLAYER_RATINGS_JOB === 'true') {
+  // Servisleri async başlat (port bind edildikten sonra)
+  setImmediate(() => {
+    console.log('\n');
+    console.log('╔════════════════════════════════════════════════════════════╗');
+    console.log('║           🚀 TACTICIQ BACKEND STARTED 🚀                   ║');
+    console.log('╠════════════════════════════════════════════════════════════╣');
+    console.log(`║ Port: ${PORT}                                                  ║`);
+    console.log(`║ Health: http://localhost:${PORT}/health                       ║`);
+    console.log('╚════════════════════════════════════════════════════════════╝');
+    
+    // ============================================
+    // 1. WORLDWIDE SYNC SERVICE (Sabit 12s)
+    // ============================================
     try {
-      playerRatingsScheduler.startScheduler();
-      console.log(`📊 Player ratings scheduler started`);
+      const smartSyncService = require('./services/smartSyncService');
+      smartSyncService.startSync();
+      console.log(`🌍 Worldwide sync started (fixed 12s interval)`);
     } catch (error) {
-      console.warn('⚠️ Player ratings scheduler could not be started:', error.message);
+      console.error('❌ Failed to start smart sync service:', error.message);
     }
-  } else {
-    console.log('⏭️  Player ratings scheduler skipped (RUN_PLAYER_RATINGS_JOB not set)');
-  }
+    
+    // ============================================
+    // 2. STATIC TEAMS SCHEDULER (Günde 2x)
+    // ============================================
+    try {
+      const staticTeamsScheduler = require('./services/staticTeamsScheduler');
+      staticTeamsScheduler.startScheduler();
+      console.log(`🏆 Static teams scheduler started (daily at 08:00 & 20:00 UTC)`);
+    } catch (error) {
+      console.error('❌ Failed to start static teams scheduler:', error.message);
+    }
+    
+    // ============================================
+    // 3. LEADERBOARD SNAPSHOT SERVICE
+    // ============================================
+    try {
+      const snapshotService = require('./services/leaderboardSnapshotService');
+      snapshotService.startSnapshotService();
+      console.log(`📸 Leaderboard snapshot service started`);
+    } catch (error) {
+      console.error('❌ Failed to start snapshot service:', error.message);
+    }
+    
+    // ============================================
+    // 4. MONITORING SERVICE
+    // ============================================
+    try {
+      const monitoringService = require('./services/monitoringService');
+      setTimeout(() => {
+        try {
+          monitoringService.startMonitoring();
+          console.log(`🔍 Monitoring service started`);
+        } catch (error) {
+          console.error('❌ Failed to start monitoring service:', error.message);
+        }
+      }, 10000);
+    } catch (error) {
+      console.warn('⚠️ Monitoring service could not be loaded:', error.message);
+    }
+    
+    // ============================================
+    // 5. PLAYER RATINGS SCHEDULER
+    // ============================================
+    if (process.env.RUN_PLAYER_RATINGS_JOB === 'true') {
+      try {
+        playerRatingsScheduler.startScheduler();
+        console.log(`📊 Player ratings scheduler started`);
+      } catch (error) {
+        console.warn('⚠️ Player ratings scheduler could not be started:', error.message);
+      }
+    } else {
+      console.log('⏭️  Player ratings scheduler skipped (RUN_PLAYER_RATINGS_JOB not set)');
+    }
+  });
   
   // ============================================
   // STARTUP COMPLETE
