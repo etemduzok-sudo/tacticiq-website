@@ -76,7 +76,7 @@ export interface AnalysisFocus {
   backgroundColor: string; // Kart zemin rengi
 }
 
-// Web tasarımına uygun renkler - her kart farklı zemin (Tahmin sayfasında sadece görsel gösterim için export)
+// Web tasarımına uygun renkler - daha canlı ve okunabilir
 export const ANALYSIS_FOCUSES: AnalysisFocus[] = [
   {
     id: 'defense',
@@ -84,9 +84,9 @@ export const ANALYSIS_FOCUSES: AnalysisFocus[] = [
     bonus: '+20% Defansif',
     description: 'Sarı/kırmızı kartlar, isabetli şutlar',
     icon: 'shield-outline',
-    color: '#60A5FA',
-    borderColor: '#1E40AF',
-    backgroundColor: '#0C1929',
+    color: '#93C5FD', // ✅ Daha parlak mavi
+    borderColor: '#3B82F6',
+    backgroundColor: '#0F172A', // ✅ Daha derin koyu mavi
   },
   {
     id: 'offense',
@@ -94,9 +94,9 @@ export const ANALYSIS_FOCUSES: AnalysisFocus[] = [
     bonus: '+20% Ofansif',
     description: 'Gol tahminleri, ilk gol, toplam şut',
     icon: 'flash-outline',
-    color: '#F87171',
-    borderColor: '#991B1B',
-    backgroundColor: '#1C0A0A',
+    color: '#FCA5A5', // ✅ Daha parlak kırmızı
+    borderColor: '#EF4444',
+    backgroundColor: '#1F0A0A', // ✅ Daha derin koyu kırmızı
   },
   {
     id: 'midfield',
@@ -104,9 +104,9 @@ export const ANALYSIS_FOCUSES: AnalysisFocus[] = [
     bonus: '+15% Orta Saha',
     description: 'Top hakimiyeti, pas, anahtar pas',
     icon: 'radio-button-on-outline',
-    color: '#C084FC',
-    borderColor: '#7C3AED',
-    backgroundColor: '#1A0A2E',
+    color: '#D8B4FE', // ✅ Daha parlak mor
+    borderColor: '#A855F7',
+    backgroundColor: '#1E1033', // ✅ Daha derin koyu mor
   },
   {
     id: 'physical',
@@ -114,9 +114,9 @@ export const ANALYSIS_FOCUSES: AnalysisFocus[] = [
     bonus: '+15% Fiziksel',
     description: 'Maç temposu, koşu, sprint sayısı',
     icon: 'pulse-outline',
-    color: '#4ADE80',
-    borderColor: '#16A34A',
-    backgroundColor: '#052E16',
+    color: '#86EFAC', // ✅ Daha parlak yeşil
+    borderColor: '#22C55E',
+    backgroundColor: '#052E16', // ✅ Derin yeşil
   },
   {
     id: 'tactical',
@@ -124,9 +124,9 @@ export const ANALYSIS_FOCUSES: AnalysisFocus[] = [
     bonus: '+25% Taktiksel',
     description: 'Formasyon, maç senaryosu, strateji',
     icon: 'layers-outline',
-    color: '#FBBF24',
-    borderColor: '#B45309',
-    backgroundColor: '#1C1708',
+    color: '#FDE047', // ✅ Daha parlak sarı
+    borderColor: '#EAB308',
+    backgroundColor: '#1C1A05', // ✅ Derin sarı-kahve
   },
   {
     id: 'player',
@@ -134,9 +134,9 @@ export const ANALYSIS_FOCUSES: AnalysisFocus[] = [
     bonus: '+30% Bireysel',
     description: 'Golcü, asist kralı, maçın oyuncusu',
     icon: 'people-outline',
-    color: '#FB923C',
-    borderColor: '#C2410C',
-    backgroundColor: '#1C0F08',
+    color: '#FDBA74', // ✅ Daha parlak turuncu
+    borderColor: '#F97316',
+    backgroundColor: '#1C1006', // ✅ Derin turuncu-kahve
   },
 ];
 
@@ -187,8 +187,8 @@ export const AnalysisFocusModal: React.FC<AnalysisFocusModalProps> = ({
       >
         {/* İkon */}
         <View style={styles.iconRow}>
-          <View style={[styles.focusIconContainer, { borderColor: `${focus.color}40` }]}>
-            <Ionicons name={focus.icon} size={14} color={focus.color} />
+          <View style={[styles.focusIconContainer, { borderColor: `${focus.color}60`, backgroundColor: `${focus.color}15` }]}>
+            <Ionicons name={focus.icon} size={16} color={focus.color} />
           </View>
         </View>
         
@@ -331,9 +331,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   subtitle: {
-    fontSize: 12, // ✅ Daha küçük alt başlık
-    color: '#94A3B8',
+    fontSize: 13,
+    color: '#CBD5E1', // ✅ Daha okunabilir
     textAlign: 'center',
+    lineHeight: 18,
   },
   gridContainer: {
     marginBottom: SPACING.md,
@@ -381,57 +382,62 @@ const styles = StyleSheet.create({
     overflow: 'hidden', // ✅ Taşma önle
   },
   focusIconContainer: {
-    width: 28, // ✅ Daha küçük ikon kutusu
+    width: 28,
     height: 28,
-    borderRadius: 6,
-    borderWidth: 1,
+    borderRadius: 8,
+    borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
   },
   focusTitle: {
-    fontSize: 11, // ✅ Daha küçük başlık
+    fontSize: 12, // ✅ Daha okunabilir başlık
     fontWeight: '700',
     color: '#FFFFFF',
-    lineHeight: 14,
+    lineHeight: 15,
+    letterSpacing: 0.2,
   },
   bonusBadge: {
     alignSelf: 'flex-start',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 8,
-    borderWidth: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
   },
   bonusText: {
-    fontSize: 9, // ✅ Daha küçük bonus text
-    fontWeight: '600',
+    fontSize: 10, // ✅ Daha okunabilir bonus
+    fontWeight: '700',
   },
   focusDescription: {
-    fontSize: 9, // ✅ Daha küçük açıklama
-    color: '#94A3B8',
-    lineHeight: 12,
+    fontSize: 10, // ✅ Daha okunabilir açıklama
+    color: '#CBD5E1', // ✅ Daha parlak gri - okunabilirlik artırıldı
+    lineHeight: 13,
   },
   focusBonusLabel: {
-    fontSize: 8,
+    fontSize: 9,
     marginTop: 4,
-    fontWeight: '600',
+    fontWeight: '700',
+    opacity: 0.9,
   },
   infoBox: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.sm,
-    backgroundColor: 'rgba(251, 191, 36, 0.08)',
+    backgroundColor: 'rgba(251, 191, 36, 0.12)',
     paddingVertical: SPACING.sm,
     paddingHorizontal: SPACING.md,
-    borderRadius: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(251, 191, 36, 0.25)',
   },
   infoText: {
     flex: 1,
-    fontSize: 11,
-    color: '#FBBF24',
-    lineHeight: 16,
+    fontSize: 12,
+    color: '#FDE68A', // ✅ Daha parlak sarı - okunabilirlik
+    lineHeight: 17,
     textAlign: 'center',
+    fontWeight: '500',
   },
 });
 

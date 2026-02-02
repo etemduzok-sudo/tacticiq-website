@@ -16,60 +16,67 @@ export function TrainingSection() {
     return null;
   }
 
+  // Mobil ile aynı renk paleti (web görseli)
   const trainingTypes = [
     {
       icon: Shield,
       key: 'defense',
-      color: 'text-blue-500',
-      bgColor: 'bg-blue-500/10',
-      borderColor: 'border-blue-500/30',
+      cardBg: 'bg-[#2A3642]',
+      borderColor: 'border-[#4C7C9E]',
+      iconColor: 'text-blue-400',
+      pillBg: 'bg-[#4C7C9E]',
     },
     {
       icon: Swords,
       key: 'attack',
-      color: 'text-red-500',
-      bgColor: 'bg-red-500/10',
-      borderColor: 'border-red-500/30',
+      cardBg: 'bg-[#412F34]',
+      borderColor: 'border-[#7B3F4A]',
+      iconColor: 'text-red-400',
+      pillBg: 'bg-[#7B3F4A]',
     },
     {
       icon: Target,
       key: 'midfield',
-      color: 'text-purple-500',
-      bgColor: 'bg-purple-500/10',
-      borderColor: 'border-purple-500/30',
+      cardBg: 'bg-[#3D304D]',
+      borderColor: 'border-[#6B4B8A]',
+      iconColor: 'text-purple-400',
+      pillBg: 'bg-[#6B4B8A]',
     },
     {
       icon: Activity,
       key: 'physical',
-      color: 'text-green-500',
-      bgColor: 'bg-green-500/10',
-      borderColor: 'border-green-500/30',
+      cardBg: 'bg-[#314736]',
+      borderColor: 'border-[#528A5B]',
+      iconColor: 'text-green-400',
+      pillBg: 'bg-[#528A5B]',
     },
     {
       icon: Layers,
       key: 'tactical',
-      color: 'text-accent',
-      bgColor: 'bg-accent/10',
-      borderColor: 'border-accent/30',
+      cardBg: 'bg-[#3C3F2B]',
+      borderColor: 'border-[#8D7A4D]',
+      iconColor: 'text-amber-400',
+      pillBg: 'bg-[#8D7A4D]',
     },
     {
       icon: Brain,
       key: 'player',
-      color: 'text-orange-500',
-      bgColor: 'bg-orange-500/10',
-      borderColor: 'border-orange-500/30',
+      cardBg: 'bg-[#4C392D]',
+      borderColor: 'border-[#9E6B3F]',
+      iconColor: 'text-orange-400',
+      pillBg: 'bg-[#9E6B3F]',
     },
   ];
 
   return (
-    <section id="analysis-focus" className="py-16 md:py-24 bg-muted/30">
+    <section id="analysis-focus" className="py-16 md:py-24 bg-[#0F2A24]">
       <div className="container mx-auto px-4">
         {/* Section Header */}
         <div className="text-center mb-12 space-y-4">
-          <h2 className="text-3xl md:text-4xl font-bold">
+          <h2 className="text-3xl md:text-4xl font-bold text-white">
             {t('analysisFocus.title')}
           </h2>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+          <p className="text-lg text-slate-200 max-w-2xl mx-auto">
             {t('analysisFocus.subtitle')}
           </p>
         </div>
@@ -81,29 +88,29 @@ export function TrainingSection() {
             return (
               <Card 
                 key={index} 
-                className={`p-6 hover:shadow-lg transition-all border-2 ${training.borderColor} ${training.bgColor}`}
+                className={`p-6 hover:shadow-lg transition-all border-2 ${training.cardBg} ${training.borderColor} text-white`}
               >
                 <div className="space-y-4">
                   {/* Icon */}
-                  <div className={`${training.color}`}>
+                  <div className={training.iconColor}>
                     <Icon className="size-8" />
                   </div>
                   
                   {/* Name */}
-                  <h3 className="font-semibold text-base">
+                  <h3 className="font-semibold text-base text-white">
                     {t(`analysisFocus.types.${training.key}.name`)}
                   </h3>
                   
                   {/* Bonus Badge */}
                   <Badge 
                     variant="secondary" 
-                    className={`${training.bgColor} ${training.color} border ${training.borderColor}`}
+                    className={`${training.pillBg} text-white border-0`}
                   >
                     {t(`analysisFocus.types.${training.key}.bonus`)}
                   </Badge>
                   
                   {/* Description */}
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-slate-200">
                     {t(`analysisFocus.types.${training.key}.desc`)}
                   </p>
                 </div>
@@ -114,9 +121,9 @@ export function TrainingSection() {
 
         {/* Example Note */}
         <div className="text-center">
-          <Card className="inline-block p-4 border-2 border-border/50 bg-muted/50">
-            <p className="text-sm text-muted-foreground max-w-3xl">
-              {t('analysisFocus.example')}
+          <Card className="inline-block p-4 border-2 border-amber-500/30 bg-amber-500/10">
+            <p className="text-sm text-amber-100 max-w-3xl">
+              💡 {t('analysisFocus.example')}
             </p>
           </Card>
         </div>
