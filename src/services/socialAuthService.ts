@@ -47,6 +47,15 @@ class SocialAuthService {
       console.log('🔑 [socialAuth] Google Sign In başlatıldı...');
       console.log('📍 Redirect URI:', redirectUri);
       
+      // ✅ Dev'de localhost dönüş için kaydet
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        const origin = window.location.origin;
+        if (origin.includes('localhost')) {
+          localStorage.setItem('tacticiq_dev_origin', origin);
+          console.log('📍 [socialAuth] Dev origin saved:', origin);
+        }
+      }
+      
       // ✅ GERÇEK SUPABASE OAUTH
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -70,21 +79,9 @@ class SocialAuthService {
       
       console.log('🌐 [socialAuth] OAuth URL açılıyor...');
       
-      // Tarayıcıda OAuth sayfasını aç
       if (Platform.OS === 'web') {
-        // Web'de yönlendirme yap
-        // ✅ ÖNEMLİ: window.location.href ayarlandıktan sonra JavaScript çalışmaya devam eder
-        // Bu yüzden burada "success: true" dönersek AuthScreen bunu işler ve home'a yönlendirir
-        // Bu da "flaş" sorununa neden olur. Çözüm: redirecting flag'i ile işaretleyip
-        // asla success olarak dönmemek.
         window.location.href = data.url;
-        
-        // ✅ Sayfa yönlendiriliyor - AuthScreen bu durumda hiçbir şey yapmamalı
-        // Sonsuza kadar bekle (sayfa zaten yönlendirilecek)
-        return new Promise(() => {
-          // Bu promise asla resolve olmaz - sayfa yönlendirilene kadar bekler
-          // Bu sayede AuthScreen'deki kod çalışmaz ve flaş olmaz
-        });
+        return new Promise(() => {});
       } else {
         // Mobilde in-app browser kullan
         const result = await WebBrowser.openAuthSessionAsync(

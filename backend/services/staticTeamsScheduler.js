@@ -22,8 +22,8 @@ let lastSyncDate = null;
 let lastSyncHour = null;
 let syncTimer = null;
 
-// Monthly API budget for static teams
-const MONTHLY_API_BUDGET = 62; // 31 days × 2 syncs
+// Monthly API budget for static teams (tüm ligler + kadro kotası aşılmaması için makul)
+const MONTHLY_API_BUDGET = 450; // ~1 full sync/day (25 lig + milli)
 let apiCallsThisMonth = 0;
 let currentMonth = new Date().getMonth();
 
@@ -69,29 +69,43 @@ async function rateLimitedRequest(endpoint) {
 }
 
 // ============================================
-// TAKİP EDİLEN LİGLER
+// TAKİP EDİLEN LİGLER – Tüm 5 kategori
 // ============================================
-const TRACKED_LEAGUES = [
-  // Avrupa Üst Ligler
-  { id: 39, name: 'Premier League', country: 'England' },
-  { id: 140, name: 'La Liga', country: 'Spain' },
-  { id: 135, name: 'Serie A', country: 'Italy' },
-  { id: 78, name: 'Bundesliga', country: 'Germany' },
-  { id: 61, name: 'Ligue 1', country: 'France' },
-  { id: 203, name: 'Süper Lig', country: 'Turkey' },
-  { id: 94, name: 'Primeira Liga', country: 'Portugal' },
-  { id: 88, name: 'Eredivisie', country: 'Netherlands' },
-  
-  // UEFA Kupaları
-  { id: 2, name: 'UEFA Champions League', country: 'World' },
-  { id: 3, name: 'UEFA Europa League', country: 'World' },
-  { id: 848, name: 'UEFA Conference League', country: 'World' },
-  
-  // Diğer önemli ligler
-  { id: 253, name: 'MLS', country: 'USA' },
-  { id: 71, name: 'Serie A', country: 'Brazil' },
-  { id: 128, name: 'Liga Profesional', country: 'Argentina' },
-];
+const {
+  getAllTrackedLeagues,
+  DOMESTIC_TOP_TIER,
+  CONTINENTAL_CLUB,
+  CONTINENTAL_NATIONAL,
+  CONFEDERATION_LEAGUE_FORMAT,
+  GLOBAL_COMPETITIONS,
+} = require('../config/leaguesScope');
+const TRACKED_LEAGUES = getAllTrackedLeagues();
+
+// Lig ID'sine göre kategori belirleme
+function getLeagueType(leagueId) {
+  // 1. Domestic Top Tier
+  if (DOMESTIC_TOP_TIER.some(l => l.id === leagueId)) {
+    return 'domestic_top';
+  }
+  // 2. Continental Club
+  if (CONTINENTAL_CLUB.some(l => l.id === leagueId)) {
+    return 'continental_club';
+  }
+  // 3. Continental National
+  if (CONTINENTAL_NATIONAL.some(l => l.id === leagueId)) {
+    return 'continental_national';
+  }
+  // 4. Confederation League Format
+  if (CONFEDERATION_LEAGUE_FORMAT.some(l => l.id === leagueId)) {
+    return 'confederation_format';
+  }
+  // 5. Global Competitions
+  if (GLOBAL_COMPETITIONS.some(l => l.id === leagueId)) {
+    return 'global';
+  }
+  // Default (eski kod uyumluluğu için)
+  return leagueId < 100 ? 'domestic_top' : 'continental';
+}
 
 // ============================================
 // TAKIM RENKLERİ (Bilinen takımlar için)
@@ -127,6 +141,22 @@ const KNOWN_TEAM_COLORS = {
   
   // Fransa
   'Paris Saint Germain': { primary: '#004170', secondary: '#DA291C' },
+
+  // Arjantin / Güney Amerika – Boca, River, vb.
+  'Boca Juniors': { primary: '#0066B3', secondary: '#FBD914' },
+  'River Plate': { primary: '#E30613', secondary: '#FFFFFF' },
+  'Boca': { primary: '#0066B3', secondary: '#FBD914' },
+  'River': { primary: '#E30613', secondary: '#FFFFFF' },
+  // Brezilya
+  'Corinthians': { primary: '#000000', secondary: '#FFFFFF' },
+  'Flamengo': { primary: '#CC0000', secondary: '#000000' },
+  'Palmeiras': { primary: '#006437', secondary: '#FFFFFF' },
+  'Sao Paulo': { primary: '#E30613', secondary: '#FFFFFF' },
+  'Santos': { primary: '#FFFFFF', secondary: '#000000' },
+  // Meksika
+  'America': { primary: '#FBD914', secondary: '#C8102E' },
+  'Chivas': { primary: '#E30613', secondary: '#FFFFFF' },
+  'Cruz Azul': { primary: '#0047AB', secondary: '#FFFFFF' },
 };
 
 function getTeamColors(teamName) {
@@ -164,6 +194,8 @@ async function syncTeamsForLeague(league) {
       const team = item.team;
       const colors = getTeamColors(team.name);
       
+      const leagueType = getLeagueType(league.id);
+      
       const { data, error } = await supabase
         .from('static_teams')
         .upsert({
@@ -171,7 +203,7 @@ async function syncTeamsForLeague(league) {
           name: team.name,
           country: league.country,
           league: league.name,
-          league_type: league.id < 100 ? 'domestic_top' : 'continental',
+          league_type: leagueType,
           team_type: 'club',
           colors: JSON.stringify([colors.primary, colors.secondary]),
           colors_primary: colors.primary,
@@ -214,8 +246,8 @@ async function syncNationalTeams() {
     
     let synced = 0;
     
-    // Sadece önemli milli takımları al (FIFA ranking top 50)
-    const importantTeams = teams.slice(0, 50);
+    // Tüm milli takımlar (FIFA üyeleri – seçilebilir olsun)
+    const importantTeams = teams.slice(0, 150);
     
     for (const item of importantTeams) {
       const team = item.team;

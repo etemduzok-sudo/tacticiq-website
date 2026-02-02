@@ -232,94 +232,78 @@ router.get('/:id/coach', async (req, res) => {
   }
 });
 
-// GET /api/teams/:id/squad - Get team squad (players)
+// GET /api/teams/:id/squad - Get team squad from DB; yoksa tek seferlik API'den çek ve kaydet
 router.get('/:id/squad', async (req, res) => {
   try {
-    const { id } = req.params;
+    const teamId = parseInt(req.params.id, 10);
     const { season } = req.query;
-    const currentSeason = season || 2025;
-    console.log(`👥 Fetching squad for team ${id}, season ${currentSeason}`);
-    
-    // 1. API-Football'dan takım kadrosunu çek
-    const data = await footballApi.getTeamSquad(id, currentSeason);
-    
-    if (!data.response || data.response.length === 0) {
+    const currentSeason = parseInt(season, 10) || 2025;
+
+    if (!supabase) {
+      return res.status(503).json({
+        success: false,
+        error: 'Database not configured',
+      });
+    }
+
+    const { data: row, error } = await supabase
+      .from('team_squads')
+      .select('team_id, team_name, team_data, players, updated_at')
+      .eq('team_id', teamId)
+      .eq('season', currentSeason)
+      .maybeSingle();
+
+    if (error) {
+      console.warn('⚠️ team_squads read error:', error.message);
+      return res.status(500).json({
+        success: false,
+        error: error.message,
+      });
+    }
+
+    // Kadro DB'de yoksa tek seferlik API'den çek ve kaydet (on-demand sync)
+    if (!row || !row.players || (Array.isArray(row.players) && row.players.length === 0)) {
+      console.log(`🔄 Squad missing for team ${teamId}, triggering on-demand sync...`);
+      try {
+        const squadSyncService = require('../services/squadSyncService');
+        const result = await squadSyncService.syncOneTeamSquad(teamId, null);
+        if (result.ok) {
+          // Tekrar DB'den oku
+          const { data: newRow, error: newError } = await supabase
+            .from('team_squads')
+            .select('team_id, team_name, team_data, players, updated_at')
+            .eq('team_id', teamId)
+            .eq('season', currentSeason)
+            .maybeSingle();
+
+          if (!newError && newRow?.players?.length > 0) {
+            return res.json({
+              success: true,
+              data: {
+                team: newRow.team_data || { id: newRow.team_id, name: newRow.team_name },
+                players: newRow.players,
+              },
+              cached: false,
+            });
+          }
+        }
+      } catch (syncErr) {
+        console.warn('⚠️ On-demand squad sync failed:', syncErr.message);
+      }
+
       return res.status(404).json({
         success: false,
-        error: 'Squad not found for this team',
+        error: 'Squad not found for this team. Kadro henüz senkronize edilmedi veya API\'de veri yok.',
       });
     }
-    
-    // Extract players from response
-    const squadData = data.response[0];
-    const players = squadData.players || [];
-    
-    // 2. DB'den tüm oyuncuların rating'lerini tek seferde çek
-    const playerIds = players.map(p => p.id);
-    let dbPlayersMap = {};
-    
-    try {
-      const { data: dbPlayers, error } = await supabase
-        .from('players')
-        .select('id, rating, age, nationality, position')
-        .in('id', playerIds);
-      
-      if (!error && dbPlayers) {
-        dbPlayersMap = dbPlayers.reduce((acc, p) => {
-          acc[p.id] = p;
-          return acc;
-        }, {});
-      }
-    } catch (dbError) {
-      console.warn('⚠️ DB batch query failed:', dbError.message);
-    }
-    
-    // 3. Oyuncuları zenginleştir - DB'de varsa kullan, yoksa pozisyon bazlı default
-    const enhancedPlayers = players.map((player) => {
-      const dbPlayer = dbPlayersMap[player.id];
-      let rating = 75; // Default rating
-      
-      if (dbPlayer && dbPlayer.rating) {
-        rating = dbPlayer.rating;
-      } else {
-        // Pozisyon bazlı default rating
-        const pos = (player.position || '').toLowerCase();
-        if (pos.includes('goalkeeper')) rating = 78;
-        else if (pos.includes('defender')) rating = 75;
-        else if (pos.includes('midfielder')) rating = 76;
-        else if (pos.includes('attacker')) rating = 77;
-      }
-      
-      return {
-        id: player.id,
-        name: player.name,
-        age: player.age || dbPlayer?.age || null,
-        number: player.number,
-        position: player.position,
-        nationality: player.nationality || dbPlayer?.nationality || null,
-        rating: Math.round(rating), // ✅ Gerçek rating
-        photo: null, // ⚠️ TELİF: Oyuncu fotoğrafları telifli - kullanmıyoruz
-      };
-    });
-    
-    // 4. Arka planda DB'de olmayan oyuncuları API'den çekip kaydet (rate limit için)
-    const missingPlayerIds = playerIds.filter(id => !dbPlayersMap[id]);
-    if (missingPlayerIds.length > 0) {
-      // Async olarak arka planda çalıştır - response'u bekletme
-      fetchAndSavePlayerRatings(missingPlayerIds, players, id, currentSeason).catch(err => {
-        console.warn('⚠️ Background player fetch failed:', err.message);
-      });
-    }
-    
-    console.log(`✅ Found ${enhancedPlayers.length} players for team ${id} (${Object.keys(dbPlayersMap).length} from DB)`);
-    
+
     res.json({
       success: true,
       data: {
-        team: squadData.team,
-        players: enhancedPlayers,
+        team: row.team_data || { id: row.team_id, name: row.team_name },
+        players: row.players,
       },
-      cached: data.cached || false,
+      cached: true,
     });
   } catch (error) {
     console.error(`❌ Error fetching squad for team ${req.params.id}:`, error.message);

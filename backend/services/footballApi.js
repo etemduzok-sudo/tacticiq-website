@@ -184,11 +184,12 @@ function filterMatches(matches) {
       return false;
     }
     
-    // ✅ INCLUDE: Sadece belirtilen maçlar
+    // ✅ INCLUDE: Sadece belirtilen maçlar (leaguesScope ile uyumlu)
     
-    // 1. Ülkelerin en üst klasman erkek futbol takımlarının maçları
+    // 1. Ülkelerin en üst klasman erkek futbol ligleri (Domestic Top Tier)
     const isTopLeague = leagueName.includes('premier league') ||
                        leagueName.includes('la liga') ||
+                       leagueName.includes('laliga') ||
                        leagueName.includes('serie a') ||
                        leagueName.includes('bundesliga') ||
                        leagueName.includes('ligue 1') ||
@@ -201,6 +202,21 @@ function filterMatches(matches) {
                        leagueName.includes('austrian bundesliga') ||
                        leagueName.includes('swiss super league') ||
                        leagueName.includes('russian premier league') ||
+                       leagueName.includes('liga profesional') ||
+                       leagueName.includes('primera división') ||
+                       leagueName.includes('brasileirão') ||
+                       leagueName.includes('brasileiro') ||
+                       leagueName.includes('campeonato brasileiro') ||
+                       leagueName.includes('liga mx') ||
+                       leagueName.includes('ligamx') ||
+                       leagueName.includes('primera a') ||
+                       leagueName.includes('mls') ||
+                       leagueName.includes('j1 league') ||
+                       leagueName.includes('j-league') ||
+                       leagueName.includes('professional league') ||
+                       leagueName.includes('uae pro league') ||
+                       leagueName.includes('a-league') ||
+                       leagueName.includes('super league') ||
                        (leagueName.includes('championship') && country === 'england');
     
     // 2. Ülkedeki yerel turnuvalar (Türkiye Kupası, FA Cup, Copa del Rey, vb.)
@@ -246,8 +262,25 @@ function filterMatches(matches) {
                    !leagueName.includes('women') &&
                    !leagueName.includes('youth');
     
+    // 5. CONMEBOL kulüp turnuvaları (Boca, Palmeiras vb.)
+    const isCONMEBOL = (leagueName.includes('copa libertadores') ||
+                       leagueName.includes('copa sudamericana') ||
+                       leagueName.includes('recopa sudamericana') ||
+                       leagueName.includes('conmebol')) &&
+                       !leagueName.includes('women') &&
+                       !leagueName.includes('youth');
+    
+    // 6. Diğer kıta turnuvaları (AFC, CAF, CONCACAF)
+    const isOtherContinental = (leagueName.includes('afc champions') ||
+                               leagueName.includes('caf champions') ||
+                               leagueName.includes('caf confederation') ||
+                               leagueName.includes('concacaf champions') ||
+                               leagueName.includes('ofc champions')) &&
+                               !leagueName.includes('women') &&
+                               !leagueName.includes('youth');
+    
     // ✅ Sadece bu kategorilerden maçlar çekilecek
-    return isTopLeague || isLocalCup || isFIFA || isUEFA;
+    return isTopLeague || isLocalCup || isFIFA || isUEFA || isCONMEBOL || isOtherContinental;
   });
 }
 
@@ -402,6 +435,16 @@ async function getTeamUpcomingMatches(teamId, limit = 10) {
 // Get team squad (players)
 async function getTeamSquad(teamId, season = 2024) {
   return makeRequest('/players/squads', { team: teamId }, `team-squad-${teamId}-${season}`, 86400); // 24 hour cache
+}
+
+// Get injuries/suspensions for a team (sakatlık, sarı/kırmızı kart cezalılar)
+async function getTeamInjuries(teamId, season = 2025) {
+  try {
+    const data = await makeRequest('/injuries', { team: teamId, season }, `team-injuries-${teamId}-${season}`, 43200); // 12h cache
+    return data?.response || [];
+  } catch (err) {
+    return [];
+  }
 }
 
 // Get team coach (teknik direktör)
@@ -596,6 +639,7 @@ module.exports = {
   getTeamLastMatches,
   getTeamUpcomingMatches,
   getTeamSquad,
+  getTeamInjuries,
   getTeamCoach,
   getTeamSeasons,
   getCountries,

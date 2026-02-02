@@ -96,7 +96,9 @@ const allowedOrigins = [
   ...(process.env.NODE_ENV === 'development' ? [
     'http://localhost:8081',   // Expo default
     'http://localhost:8082',   // Expo alternative port
-    'http://localhost:19006',  // Expo web
+    'http://localhost:8085',   // Expo web (current)
+    'http://localhost:8086',   // Expo web alternative
+    'http://localhost:19006',  // Expo web (old)
     'http://localhost:3000',   // Self
     'http://localhost:3001',   // Self (correct port)
     'http://localhost:5173',   // Vite (Website)
@@ -108,15 +110,8 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: (origin, callback) => {
-    // ✅ Render health check bypass: Allow no-origin for health check endpoints
-    // Render's internal health check doesn't send Origin header
-    if (!origin) {
-      // In development, always allow no-origin
-      if (process.env.NODE_ENV === 'development') {
-        return callback(null, true);
-      }
-      // In production, allow no-origin only for health checks (Render internal)
-      // This is safe because health checks don't expose sensitive data
+    // Development'ta her türlü localhost originine izin ver
+    if (!origin || (process.env.NODE_ENV === 'development' && origin.includes('localhost'))) {
       return callback(null, true);
     }
     
@@ -796,6 +791,17 @@ app.listen(PORT, '0.0.0.0', () => {
       console.log(`🏆 Static teams scheduler started (daily at 08:00 & 20:00 UTC)`);
     } catch (error) {
       console.error('❌ Failed to start static teams scheduler:', error.message);
+    }
+
+    // ============================================
+    // 2.5 KADRO SYNC (Günde 1 kez - API kotası aşılmaz)
+    // ============================================
+    try {
+      const squadSyncService = require('./services/squadSyncService');
+      squadSyncService.startDailySquadSync();
+      console.log(`👥 Kadro sync started (every 24h, app reads from DB only)`);
+    } catch (error) {
+      console.error('❌ Failed to start squad sync:', error.message);
     }
     
     // ============================================

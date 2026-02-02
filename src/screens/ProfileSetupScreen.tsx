@@ -29,6 +29,7 @@ import {
   WEBSITE_TYPOGRAPHY,
 } from '../config/WebsiteDesignSystem';
 import { teamsApi } from '../services/api';
+import { filterAndSortStringList } from '../utils/teamFilterUtils';
 import { STORAGE_KEYS } from '../config/constants';
 import { logger } from '../utils/logger';
 
@@ -446,6 +447,7 @@ export default function ProfileSetupScreen({
   const [teamModalType, setTeamModalType] = useState<'national' | 'club' | null>(null);
   const [showNationalDropdown, setShowNationalDropdown] = useState(false);
   const [nationalTeamSearch, setNationalTeamSearch] = useState('');
+  const nationalListRef = useRef<FlatList>(null);
   
   // Animation
   const opacity = useRef(new Animated.Value(1)).current;
@@ -644,6 +646,8 @@ export default function ProfileSetupScreen({
     }
   };
   
+  const normalizeForSort = (s: string) => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  
   const searchTeams = async (query: string, type: 'national' | 'club') => {
     if (query.length < 2) {
       setApiTeams([]);
@@ -652,22 +656,24 @@ export default function ProfileSetupScreen({
     
     setIsSearching(true);
     try {
-      const response = await teamsApi.searchTeams(query);
-      // Filter teams by type if response has data
+      const response = await teamsApi.searchTeams(query, type);
       let filteredTeams: Team[] = [];
       if (response && response.data) {
         filteredTeams = response.data.filter((team: any) => {
-          // If team has type property, filter by it
-          if (team.type) {
-            return team.type === type;
-          }
-          // Otherwise, try to determine from team properties
-          // National teams usually have country but no league
-          if (type === 'national') {
-            return team.country && (!team.league || team.league === 'National');
-          } else {
-            return team.league && team.league !== 'National';
-          }
+          if (team.type) return team.type === type;
+          if (type === 'national') return team.country && (!team.league || team.league === 'National');
+          return team.league && team.league !== 'National';
+        });
+        // Relevans: sorguyla başlayanlar önce (boca→Boca, palme→Palmeiras)
+        const q = normalizeForSort(query);
+        filteredTeams.sort((a, b) => {
+          const na = normalizeForSort(a.name);
+          const nb = normalizeForSort(b.name);
+          const aStarts = na.startsWith(q);
+          const bStarts = nb.startsWith(q);
+          if (aStarts && !bStarts) return -1;
+          if (!aStarts && bStarts) return 1;
+          return na.localeCompare(nb);
         });
       }
       setApiTeams(filteredTeams);
@@ -802,10 +808,10 @@ export default function ProfileSetupScreen({
   );
   
   const renderNationalTeamStep = () => {
-    // Filter teams based on search
-    const filteredNationalTeams = NATIONAL_TEAMS.filter(team =>
-      team.toLowerCase().includes(nationalTeamSearch.toLowerCase())
-    );
+    // Filter + relevans sıralaması (palme→Palmeiras mantığı tüm filtrelemede)
+    const filteredNationalTeams = nationalTeamSearch.trim()
+      ? filterAndSortStringList(NATIONAL_TEAMS, nationalTeamSearch)
+      : NATIONAL_TEAMS;
     
     // Extract country name from team string (remove flag emoji)
     const getCountryName = (teamString: string) => {
@@ -882,7 +888,10 @@ export default function ProfileSetupScreen({
                 placeholder="Milli takım ara..."
                 placeholderTextColor="rgba(255, 255, 255, 0.5)"
                 value={nationalTeamSearch}
-                onChangeText={setNationalTeamSearch}
+                onChangeText={(t) => {
+                  setNationalTeamSearch(t);
+                  nationalListRef.current?.scrollToOffset?.({ offset: 0, animated: true });
+                }}
                 autoCapitalize="none"
               />
             </View>
@@ -890,6 +899,7 @@ export default function ProfileSetupScreen({
             {/* Teams List - Scrollable */}
             <View style={styles.dropdownList}>
               <FlatList
+                ref={nationalListRef}
                 data={filteredNationalTeams}
                 keyExtractor={(item, index) => `national-${index}`}
                 renderItem={({ item, index }) => {

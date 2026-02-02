@@ -113,6 +113,11 @@ const initI18n = async () => {
 // Change language function
 export const changeLanguage = async (language: string) => {
   try {
+    // Aynı dil seçilirse işlem yapma (loop önleme)
+    if (i18n.language === language) {
+      return;
+    }
+    
     const wasRTL = RTL_LANGUAGES.includes(i18n.language || '');
     const willBeRTL = RTL_LANGUAGES.includes(language);
 

@@ -76,7 +76,7 @@ INSERT INTO static_teams (api_football_id, name, country, league, league_type, t
 (3570, 'Basaksehir', 'Turkey', 'Süper Lig', 'domestic_top', 'club', '["#F37021", "#000000"]', '#F37021', '#000000'),
 (607, 'Adana Demirspor', 'Turkey', 'Süper Lig', 'domestic_top', 'club', '["#0000FF", "#FFFFFF"]', '#0000FF', '#FFFFFF'),
 (562, 'Antalyaspor', 'Turkey', 'Süper Lig', 'domestic_top', 'club', '["#FF0000", "#FFFFFF"]', '#FF0000', '#FFFFFF'),
-(556, 'Konyaspor', 'Turkey', 'Süper Lig', 'domestic_top', 'club', '["#006633", "#FFFFFF"]', '#006633', '#FFFFFF')
+(557, 'Konyaspor', 'Turkey', 'Süper Lig', 'domestic_top', 'club', '["#006633", "#FFFFFF"]', '#006633', '#FFFFFF')
 ON CONFLICT (api_football_id) DO UPDATE SET name = EXCLUDED.name, colors = EXCLUDED.colors, last_updated = NOW();
 
 -- Premier League

@@ -522,7 +522,7 @@ export default function App() {
               {isMaintenanceMode ? (
                 <MaintenanceScreen />
               ) : (
-                <View key={`content-${currentLang}-${forceUpdateKey}`} style={{ flex: 1, backgroundColor: '#0F2A24' }}>
+                <View key={currentScreen === 'onboarding' ? 'content-onboarding' : `content-${currentLang}-${forceUpdateKey}`} style={{ flex: 1, backgroundColor: '#0F2A24' }}>
                   {renderScreen()}
                   
                   {/* Fixed Profile Card Overlay - Only on home, matches, leaderboard */}

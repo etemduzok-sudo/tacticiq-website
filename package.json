@@ -24,6 +24,10 @@
     "test:profile:mobile": "npm run detox:test:ios -- e2e/profile-test-bot.test.ts",
     "lint": "eslint . --ext .ts,.tsx",
     "type-check": "tsc --noEmit",
+    "workspace:check": "powershell -ExecutionPolicy Bypass -File ./scripts/sync-worktrees.ps1 check",
+    "workspace:list": "powershell -ExecutionPolicy Bypass -File ./scripts/sync-worktrees.ps1 list",
+    "sync-from-worktree": "powershell -ExecutionPolicy Bypass -File ./scripts/sync-worktrees.ps1 worktree-to-main",
+    "sync-to-worktree": "powershell -ExecutionPolicy Bypass -File ./scripts/sync-worktrees.ps1 main-to-worktree",
     "clean": "rm -rf node_modules && npm install",
     "nuclear-clean": "rm -rf node_modules package-lock.json && npm install"
   },

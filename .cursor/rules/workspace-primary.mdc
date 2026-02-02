@@ -1,0 +1,25 @@
+---
+description: Ana workspace kuralları - TacticIQ projesinde çalışırken uygulanır
+alwaysApply: true
+---
+
+# TacticIQ - Ana Workspace Kuralları
+
+## KRİTİK: Tek Ana Workspace Kullan
+
+**Ana workspace:** `c:\TacticIQ`
+
+### Çalışma Kuralları:
+1. **Tüm kod değişikliklerini sadece `c:\TacticIQ` klasöründe yap**
+2. Test ve geliştirme bu klasörden yapılır
+3. Worktree'ler (`C:\Users\EtemD\.cursor\worktrees\TacticIQ\*`) sadece geçici/paralel çalışma içindir
+
+### Worktree Kullanıyorsan:
+- Değişiklikleri **önce ana workspace'e** taşı veya oraya uygula
+- `npm run sync-from-worktree` ile worktree'den ana klasöre senkronize et
+- Commit'leri **ana workspace'ten** yap
+
+### AI Asistanı İçin:
+- Düzenleme yaparken path olarak `c:\TacticIQ\...` kullan
+- Worktree path'leri (`qlv`, `zpf` vb.) kullanma — bunlar senkron değil
+- Kullanıcı farklı bir klasörden test ediyorsa uyar

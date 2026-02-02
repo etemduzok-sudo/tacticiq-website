@@ -11,24 +11,32 @@ import { handleNetworkError, handleApiError } from '../utils/GlobalErrorHandler'
 import { logger, logApiCall } from '../utils/logger';
 
 // Platform-specific API URL
+// In development: use localhost by default so the app works when you run the backend locally.
+// Set EXPO_PUBLIC_USE_PRODUCTION_API=true to use https://api.tacticiq.com/api in dev (when that domain is live).
 const getApiBaseUrl = () => {
-  // Web/Dev mode - detect if on LAN or localhost
+  const useProductionInDev =
+    typeof process !== 'undefined' &&
+    process.env?.EXPO_PUBLIC_USE_PRODUCTION_API === 'true';
+
+  // Web/Dev mode
   if (Platform.OS === 'web' || __DEV__ || typeof window !== 'undefined') {
-    // Check if running on LAN IP (not localhost)
+    if (useProductionInDev) {
+      logger.info('Using production API (dev override)', { url: API_CONFIG.backend.production }, 'API');
+      return API_CONFIG.backend.production;
+    }
     if (typeof window !== 'undefined' && window.location) {
       const hostname = window.location.hostname;
-      // If not localhost, use the same host with backend port
       if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
         const lanUrl = `http://${hostname.replace(':8081', '')}:3001/api`;
-        logger.debug('Using LAN URL (development mode)', { url: lanUrl }, 'API');
+        logger.debug('Using LAN URL (dev)', { url: lanUrl }, 'API');
         return lanUrl;
       }
     }
-    logger.debug('Using localhost (development mode)', undefined, 'API');
+    logger.debug('Using localhost (dev)', { url: 'http://localhost:3001/api' }, 'API');
     return 'http://localhost:3001/api';
   }
-  
-  // Production - Use centralized config
+
+  // Production build - always use production API
   logger.info('Using production API', undefined, 'API');
   return getApiEndpoint();
 };

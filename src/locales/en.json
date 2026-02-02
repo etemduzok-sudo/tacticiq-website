@@ -13,7 +13,9 @@
     "continue": "Continue",
     "getStarted": "Get Started",
     "info": "Info",
-    "success": "Success"
+    "success": "Success",
+    "all": "All",
+    "new": "NEW!"
   },
   "languageSelection": {
     "title": "Language Selection",
@@ -74,13 +76,118 @@
     "earnedDate": "Earned:",
     "noBadges": "No badges yet",
     "startPredicting": "Predict matches and earn badges!",
+    "comingSoon": "Badges coming soon!",
+    "earnByPredicting": "Earn badges by making predictions",
+    "notEarnedYet": "No badges earned yet",
     "tiers": {
       "rookie": "Rookie",
       "amateur": "Amateur",
       "pro": "Professional",
       "expert": "Expert",
       "legend": "Legend"
+    },
+    "names": {
+      "first-analysis": "First Analysis",
+      "warm-up": "Warm-up Round",
+      "strategist": "Strategist",
+      "punctual": "Punctual",
+      "streak-starter": "Streak Starter",
+      "card-master": "Card Master",
+      "squad-engineer": "Squad Engineer",
+      "local-hero": "Local Hero",
+      "tempo-master": "Tempo Master",
+      "var-referee": "VAR Referee",
+      "super-sub": "Super Sub",
+      "star-hunter": "Star Hunter",
+      "unbreakable-streak": "Unbreakable Streak",
+      "doctor": "Doctor",
+      "ninety-plus": "90+",
+      "global-analyst": "Global Analyst",
+      "perfect-analysis": "Perfect Analysis",
+      "diamond-focus": "Diamond Focus",
+      "league-king": "League King",
+      "tacticiq-master": "TacticIQ Master",
+      "quick-learner": "Quick Learner",
+      "team-supporter": "Team Supporter",
+      "prediction-wizard": "Prediction Wizard",
+      "consistency-champion": "Consistency Champion",
+      "legendary-analyst": "Legendary Analyst",
+      "early-bird": "Early Bird",
+      "corner-king": "Corner King",
+      "possession-master": "Possession Master",
+      "hat-trick-hero": "Hat-Trick Hero",
+      "season-veteran": "Season Veteran",
+      "momentum-builder": "Momentum",
+      "clean-sheet": "Clean Sheet",
+      "goalscorer": "Goalscorer",
+      "form-guide": "Form Guide",
+      "derby-master": "Derby Master",
+      "underdog": "Underdog Hunter",
+      "consistency-king": "Consistency King",
+      "predictor-pro": "Predictor Pro",
+      "champion-mind": "Champion Mind",
+      "tacticiq-legend": "TacticIQ Legend"
+    },
+    "descriptions": {
+      "first-analysis": "You completed your first match prediction",
+      "warm-up": "You passed the 100 point threshold",
+      "strategist": "You completed a match by selecting Analysis Focus",
+      "punctual": "You predicted a goal minute within ±5 minutes",
+      "streak-starter": "You scored points in 3 consecutive matches",
+      "card-master": "You got 10 card predictions correct",
+      "squad-engineer": "You got 5 substitution predictions right",
+      "local-hero": "You analysed your favourite team with 70% accuracy",
+      "tempo-master": "You hit 80% success 5 times in Tempo Analysis mode",
+      "var-referee": "You predicted penalty decisions correctly in 3 different matches",
+      "super-sub": "You predicted a goal by a substitute",
+      "star-hunter": "You got Man of the Match right in 10 different matches",
+      "unbreakable-streak": "You scored 300+ points in 10 consecutive matches",
+      "doctor": "You reached 90% accuracy on injury predictions",
+      "ninety-plus": "You predicted an injury-time goal on the minute",
+      "global-analyst": "You earned badges in 5 different leagues",
+      "perfect-analysis": "You got every prediction in a match 100% correct",
+      "diamond-focus": "You scored 1000+ in one match with Analysis Focus multiplier",
+      "league-king": "You made the global leaderboard top 10",
+      "tacticiq-master": "You collected all badges - you are a legend!",
+      "quick-learner": "You hit 60%+ accuracy in your first 3 matches",
+      "team-supporter": "You analysed 5 matches of the same team",
+      "prediction-wizard": "You scored 500+ in a single match",
+      "consistency-champion": "You had 70%+ accuracy in 10 consecutive matches",
+      "legendary-analyst": "You have analysed 1000+ matches in total",
+      "early-bird": "You made a prediction at least 1 hour before kick-off",
+      "corner-king": "You got 5 corner predictions correct",
+      "possession-master": "You got possession prediction right 3 matches in a row",
+      "hat-trick-hero": "You predicted score, total goals and first goal minute in one match",
+      "season-veteran": "You completed 50 match predictions in one season",
+      "momentum-builder": "You scored points in 5 consecutive matches",
+      "clean-sheet": "You got the score right 3 matches in a row",
+      "goalscorer": "You got 10 total goals predictions correct",
+      "form-guide": "You made 5 correct predictions using form analysis",
+      "derby-master": "You predicted a derby match correctly",
+      "underdog": "You predicted an upset correctly",
+      "consistency-king": "You kept 80%+ accuracy over 10 matches",
+      "predictor-pro": "You completed 100 match predictions in total",
+      "champion-mind": "You predicted the league champion at the start of the season",
+      "tacticiq-legend": "You earned more than half of all badges"
+    },
+    "close": "Close",
+    "earnedDateLabel": "Earned:",
+    "howToEarnLabel": "How to Earn:",
+    "progressLabel": "Progress",
+    "progressHintExample": "more matches to win!",
+    "congrats": "Congratulations!",
+    "tierLabels": {
+      "bronze": "Bronze",
+      "silver": "Silver",
+      "gold": "Gold",
+      "platinum": "Platinum",
+      "diamond": "Diamond"
     }
+  },
+  "bestCluster": {
+    "accuracy": "Accuracy Rate",
+    "expert": "Expert",
+    "hint": "You're strong in this area! Keep it up! 💪"
   },
   "settings": {
     "language": "Language",
@@ -121,7 +228,18 @@
     "title": "Profile",
     "level": "Level",
     "points": "Points",
+    "changePhoto": "Change Profile Photo",
+    "totalPoints": "Total Points",
     "rank": "Rank",
+    "countryRanking": {
+      "TR": "Turkey Ranking",
+      "DE": "Germany Ranking",
+      "FR": "France Ranking",
+      "GB": "England Ranking",
+      "ES": "Spain Ranking",
+      "IT": "Italy Ranking",
+      "BR": "Brazil Ranking"
+    },
     "settings": "Settings",
     "logout": "Logout",
     "favoriteTeams": "Favorite Teams",
@@ -137,6 +255,17 @@
     "noMatches": "No matches found",
     "minute": "Minute",
     "vs": "VS"
+  },
+  "matchLive": {
+    "tabs": {
+      "all": "All",
+      "goals": "Goals",
+      "cards": "Cards",
+      "substitutions": "Substitutions",
+      "var": "VAR",
+      "other": "Other"
+    },
+    "noEventsForCategory": "No events for this category"
   },
   "leaderboard": {
     "title": "Leaderboard",
@@ -308,5 +437,32 @@
     "finished": "Finished",
     "leaderboard": "Ranking",
     "profile": "Profile"
+  },
+  "leagueCategories": {
+    "domesticTopTier": {
+      "title": "Domestic Top Tier Leagues",
+      "subtitle": "Each country's top-tier professional men's football league",
+      "short": "Domestic Top Tier"
+    },
+    "continentalClub": {
+      "title": "Continental Club Competitions",
+      "subtitle": "Continental top-tier official club competitions",
+      "short": "Continental Club"
+    },
+    "continentalNational": {
+      "title": "Continental National Team Tournaments",
+      "subtitle": "Main continental tournaments for national teams",
+      "short": "Continental National"
+    },
+    "confederationLeagueFormat": {
+      "title": "Confederation-Based League & Format Competitions",
+      "subtitle": "League-style or periodic official competitions",
+      "short": "Confederation Formats"
+    },
+    "globalCompetitions": {
+      "title": "Global Football Competitions",
+      "subtitle": "Cross-continental global organizations",
+      "short": "Global Competitions"
+    }
   }
 }

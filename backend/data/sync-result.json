@@ -1,0 +1,13 @@
+{
+  "completedAt": "2026-02-02T03:20:11.385Z",
+  "duration": 29,
+  "stats": {
+    "apiRequests": 252,
+    "leaguesProcessed": 0,
+    "teamsFound": 0,
+    "teamsInserted": 0,
+    "squadsFound": 0,
+    "squadsInserted": 0,
+    "errors": []
+  }
+}

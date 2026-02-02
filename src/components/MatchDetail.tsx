@@ -271,6 +271,19 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
     return isHome ? ['#1FA2A6', '#0F2A24'] : ['#C9A44C', '#8B7833'];
   };
 
+  // Teknik direktör: önce coaches API, yoksa lineups'tan al
+  const getManagerFromLineups = (teamId: number) => {
+    const arr = Array.isArray(lineups) ? lineups : lineups?.data;
+    if (!arr?.length) return '';
+    const lineup = arr.find((l: any) => l.team?.id === teamId);
+    const coach = lineup?.coach;
+    if (typeof coach === 'string') return coach;
+    if (coach?.name) return coach.name;
+    return '';
+  };
+  const homeManager = coaches.home || getManagerFromLineups(match?.teams?.home?.id);
+  const awayManager = coaches.away || getManagerFromLineups(match?.teams?.away?.id);
+
   // Transform API data to component format
   const matchData = match ? {
     id: match.fixture.id.toString(),
@@ -279,14 +292,14 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
       name: match.teams.home.name,
       logo: match.teams.home.logo || '⚽',
       color: getTeamColors(match.teams.home),
-      manager: coaches.home || '', // ✅ Teknik direktör API'den
+      manager: homeManager,
     },
     awayTeam: {
       id: match.teams.away.id, // ✅ Team ID eklendi
       name: match.teams.away.name,
       logo: match.teams.away.logo || '⚽',
       color: getTeamColors(match.teams.away),
-      manager: coaches.away || '', // ✅ Teknik direktör API'den
+      manager: awayManager,
     },
     // ✅ Geriye uyumluluk için teams objesi de ekle
     teams: {
@@ -494,18 +507,24 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
         />
 
         <View style={styles.matchCard}>
-        {/* League Header with Back Button */}
-        <View style={styles.leagueHeader}>
+        {/* Top Row: Back Button + League Badge + Prediction Star */}
+        <View style={styles.topRow}>
           <TouchableOpacity onPress={onBack} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
+            <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
           </TouchableOpacity>
 
-          <View style={styles.leagueBadge}>
-            <Ionicons name="trophy" size={14} color="#1FA2A6" />
-            <Text style={styles.leagueText}>{matchData.league}</Text>
+          <View style={styles.centerBadges}>
+            <View style={styles.leagueBadge}>
+              <Ionicons name="trophy" size={12} color="#1FA2A6" />
+              <Text style={styles.leagueText}>{matchData.league}</Text>
+            </View>
+            <View style={styles.stadiumBadge}>
+              <Ionicons name="location" size={10} color="#94A3B8" />
+              <Text style={styles.stadiumText}>{matchData.stadium}</Text>
+            </View>
           </View>
 
-          {hasPrediction && (
+          {hasPrediction ? (
             <TouchableOpacity
               onPress={() => {
                 if (bothFavorites) setShowResetTeamPickerModal(true);
@@ -515,47 +534,73 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
               hitSlop={12}
               accessibilityLabel="Tahminleri silmek istiyor musunuz?"
             >
-              <Ionicons name="star" size={24} color="#F59E0B" />
+              <Ionicons name="star" size={20} color="#EAB308" />
               <Text style={styles.starButtonText}>Tahmin{'\n'}Yapıldı</Text>
             </TouchableOpacity>
+          ) : (
+            <View style={styles.emptySpace} />
           )}
         </View>
 
-        {/* Match Info */}
-        <View style={styles.matchInfo}>
+        {/* Main Match Info - Teams & Time */}
+        <View style={styles.matchInfoRow}>
           {/* Home Team */}
-          <View style={styles.teamContainer}>
-            <Text style={styles.teamName}>{matchData.homeTeam.name}</Text>
-            {matchData.homeTeam.manager ? (
-              <Text style={styles.managerName}>{matchData.homeTeam.manager}</Text>
-            ) : null}
+          <View style={styles.teamSide}>
+            <Text style={styles.teamNameLarge}>{matchData.homeTeam.name}</Text>
+            {matchData.homeTeam.manager && (
+              <Text style={styles.managerText}>{matchData.homeTeam.manager}</Text>
+            )}
+            {/* Team Color Strip */}
+            <LinearGradient
+              colors={matchData.homeTeam.color as string[]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.teamColorStrip}
+            />
           </View>
 
-          {/* Time & Stadium & Countdown */}
-          <View style={styles.vsContainer}>
-            <Text style={styles.matchTime}>{matchData.time}</Text>
-            <Text style={styles.matchDate}>{matchData.date}</Text>
-            {/* ✅ Geri Sayım - Basit metin olarak */}
-            {countdownData && (
-              <Text style={[styles.countdownText, { color: countdownData.color }]}>
-                {countdownData.type === 'days' 
-                  ? `${countdownData.days} gün kaldı`
-                  : `${String(countdownData.hours).padStart(2, '0')}:${String(countdownData.minutes).padStart(2, '0')}:${String(countdownData.seconds).padStart(2, '0')}`
-                }
+          {/* Center: Date, Time, Countdown */}
+          <View style={styles.centerInfo}>
+            <Text style={styles.dateText}>● {matchData.date}</Text>
+            <Text style={styles.timeText}>{matchData.time}</Text>
+            
+            {/* Countdown Boxes */}
+            {countdownData && countdownData.type === 'countdown' && (
+              <View style={styles.countdownRow}>
+                <View style={[styles.countdownBox, styles.countdownBoxHours]}>
+                  <Text style={styles.countdownNumber}>{String(countdownData.hours).padStart(2, '0')}</Text>
+                  <Text style={styles.countdownLabel}>Saat</Text>
+                </View>
+                <View style={[styles.countdownBox, styles.countdownBoxMinutes]}>
+                  <Text style={styles.countdownNumber}>{String(countdownData.minutes).padStart(2, '0')}</Text>
+                  <Text style={styles.countdownLabel}>Dakika</Text>
+                </View>
+                <View style={[styles.countdownBox, styles.countdownBoxSeconds]}>
+                  <Text style={styles.countdownNumber}>{String(countdownData.seconds).padStart(2, '0')}</Text>
+                  <Text style={styles.countdownLabel}>Saniye</Text>
+                </View>
+              </View>
+            )}
+            {countdownData && countdownData.type === 'days' && (
+              <Text style={[styles.daysText, { color: countdownData.color }]}>
+                {countdownData.days} gün kaldı
               </Text>
             )}
-            <View style={styles.stadiumBadge}>
-              <Ionicons name="location" size={10} color="#64748B" />
-              <Text style={styles.stadiumText}>{matchData.stadium}</Text>
-            </View>
           </View>
 
           {/* Away Team */}
-          <View style={styles.teamContainer}>
-            <Text style={styles.teamName}>{matchData.awayTeam.name}</Text>
-            {matchData.awayTeam.manager ? (
-              <Text style={styles.managerName}>{matchData.awayTeam.manager}</Text>
-            ) : null}
+          <View style={styles.teamSide}>
+            <Text style={styles.teamNameLarge}>{matchData.awayTeam.name}</Text>
+            {matchData.awayTeam.manager && (
+              <Text style={styles.managerText}>{matchData.awayTeam.manager}</Text>
+            )}
+            {/* Team Color Strip */}
+            <LinearGradient
+              colors={matchData.awayTeam.color as string[]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.teamColorStrip}
+            />
           </View>
         </View>
         </View>
@@ -738,179 +783,185 @@ const styles = StyleSheet.create({
     position: 'relative',
     zIndex: 1, // ✅ İçerik renk çubuklarının üstünde
   },
-  // ✅ Sol kenar gradient şerit - Daha belirgin
+  // ✅ Sol kenar gradient şerit - Zarif ve ince
   colorBarLeft: {
     position: 'absolute',
     left: 0,
     top: 0,
     bottom: 0,
-    width: 10, // ✅ 6px → 10px: Daha belirgin
+    width: 5,
     zIndex: 0,
-    borderBottomLeftRadius: 12, // ✅ Overlay ile aynı yuvarlaklık
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 2, height: 0 },
-        shadowOpacity: 0.3,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 4,
-      },
-      web: {
-        boxShadow: '2px 0 8px rgba(0, 0, 0, 0.3)',
-      },
-    }),
+    borderBottomLeftRadius: 12,
+    opacity: 0.9,
   },
-  // ✅ Sağ kenar gradient şerit - Daha belirgin
+  // ✅ Sağ kenar gradient şerit - Zarif ve ince
   colorBarRight: {
     position: 'absolute',
     right: 0,
     top: 0,
     bottom: 0,
-    width: 10, // ✅ 6px → 10px: Daha belirgin
+    width: 5,
     zIndex: 0,
-    borderBottomRightRadius: 12, // ✅ Overlay ile aynı yuvarlaklık
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: -2, height: 0 },
-        shadowOpacity: 0.3,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 4,
-      },
-      web: {
-        boxShadow: '-2px 0 8px rgba(0, 0, 0, 0.3)',
-      },
-    }),
+    borderBottomRightRadius: 12,
+    opacity: 0.9,
   },
-  leagueHeader: {
+  // Top Row - Back + Badges + Star
+  topRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    marginBottom: 12,
+    paddingHorizontal: 12,
+    marginBottom: 8,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: 'rgba(15, 42, 36, 0.95)', // ✅ Standart: Diğer ekranlarla aynı
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: 'rgba(15, 42, 36, 0.95)',
     borderWidth: 1,
-    borderColor: 'rgba(31, 162, 166, 0.3)', // ✅ Turkuaz ince border
+    borderColor: 'rgba(31, 162, 166, 0.25)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  centerBadges: {
+    alignItems: 'center',
+    gap: 4,
   },
   leagueBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(15, 42, 36, 0.95)', // ✅ Standart: Geri tuşuyla aynı
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
+    gap: 5,
+    backgroundColor: 'rgba(15, 42, 36, 0.95)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: 'rgba(31, 162, 166, 0.2)',
   },
   leagueText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#1FA2A6', // ✅ Design System: Secondary/Turkuaz
-  },
-  starButton: {
-    width: 50,
-    minHeight: 50,
-    borderRadius: 12,
-    backgroundColor: 'rgba(15, 42, 36, 0.95)',
-    borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.4)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 4,
-    paddingHorizontal: 6,
-  },
-  starButtonText: {
-    fontSize: 9,
-    fontWeight: '600',
-    color: '#F59E0B',
-    textAlign: 'center',
-    marginTop: 2,
-    lineHeight: 11,
-  },
-  
-  // Match Info
-  matchInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-  },
-  teamContainer: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  teamName: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#F8FAFB',
-    textAlign: 'center',
-    marginBottom: 4,
-  },
-  managerName: {
-    fontSize: 10,
-    color: '#64748B',
-    textAlign: 'center',
-  },
-  vsContainer: {
-    alignItems: 'center',
-    paddingHorizontal: 16,
-  },
-  vsText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#1FA2A6', // ✅ Design System: Secondary/Turkuaz
-    marginBottom: 4,
-  },
-  matchTime: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#F8FAFB',
-    marginBottom: 4, // ✅ Eşit boşluk
-  },
-  matchDate: {
     fontSize: 11,
-    color: '#64748B',
-    marginBottom: 4, // ✅ Eşit boşluk
+    fontWeight: '600',
+    color: '#1FA2A6',
   },
   stadiumBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: 'rgba(100, 116, 139, 0.1)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
   },
   stadiumText: {
     fontSize: 9,
-    color: '#64748B',
+    color: '#94A3B8',
+  },
+  starButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 2,
+  },
+  starButtonText: {
+    fontSize: 8,
+    fontWeight: '600',
+    color: '#EAB308',
+    textAlign: 'center',
+    marginTop: 1,
+    lineHeight: 10,
+  },
+  emptySpace: {
+    width: 36,
   },
   
-  // ✅ Geri Sayım - Basit metin stili
-  countdownText: {
+  // Main Match Info Row
+  matchInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+  },
+  teamSide: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  teamNameLarge: {
     fontSize: 12,
     fontWeight: '700',
+    color: '#F8FAFB',
+    textAlign: 'center',
+    marginBottom: 3,
+  },
+  managerText: {
+    fontSize: 9,
+    color: '#94A3B8',
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  teamColorStrip: {
+    width: 40,
+    height: 3,
+    borderRadius: 2,
+    marginTop: 6,
+  },
+  centerInfo: {
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    backgroundColor: 'rgba(15, 42, 36, 0.6)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.15)',
+    paddingVertical: 8,
+    minWidth: 160,
+  },
+  dateText: {
+    fontSize: 10,
+    color: '#94A3B8',
+    marginBottom: 2,
+  },
+  timeText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#F8FAFB',
+    marginBottom: 6,
+  },
+  countdownRow: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  countdownBox: {
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    minWidth: 40,
+  },
+  countdownBoxHours: {
+    backgroundColor: 'rgba(31, 162, 166, 0.8)',
+  },
+  countdownBoxMinutes: {
+    backgroundColor: 'rgba(59, 130, 246, 0.8)',
+  },
+  countdownBoxSeconds: {
+    backgroundColor: 'rgba(234, 179, 8, 0.8)',
+  },
+  countdownNumber: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFF',
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-    marginBottom: 4, // ✅ Eşit boşluk
-    letterSpacing: 1,
+  },
+  countdownLabel: {
+    fontSize: 7,
+    color: 'rgba(255,255,255,0.8)',
+    fontWeight: '500',
+    marginTop: 1,
+  },
+  daysText: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 4,
   },
   
   // Content
   contentContainer: {
     flex: 1,
-    paddingTop: Platform.OS === 'ios' ? 200 : 156,
+    paddingTop: Platform.OS === 'ios' ? 210 : 175,
     paddingBottom: Platform.OS === 'ios' ? 100 : 80,
   },
   

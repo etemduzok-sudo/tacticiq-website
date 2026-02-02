@@ -15,6 +15,7 @@ import {
   Platform,
   ViewStyle,
   Dimensions,
+  useWindowDimensions,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import i18n from '../i18n';
@@ -161,6 +162,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [apiTeams, setApiTeams] = useState<Array<{ id: number; name: string; colors: string[]; country: string; league: string; type: 'club' | 'national'; coach?: string }>>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const clubDropdownScrollRef = React.useRef<ScrollView>(null);
+  const nationalDropdownScrollRef = React.useRef<ScrollView>(null);
   
   // ✅ TÜM MİLLİ TAKIMLAR - 50+ ülke
   const FALLBACK_NATIONAL_TEAMS = [
@@ -249,10 +252,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   // Tüm liglerden kulüp takımları - staticTeamsData'dan (tek kaynak)
   const FALLBACK_CLUB_TEAMS = getFallbackClubTeamsForProfile();
 
-  // ✅ Gelişmiş arama fonksiyonu - Türkçe karakter desteği ile
+  // ✅ Gelişmiş arama fonksiyonu - TÜM DİLLERDE karakter desteği ile
   const normalizeText = useCallback((text: string): string => {
     return text
       .toLowerCase()
+      // Türkçe
       .replace(/ı/g, 'i')
       .replace(/ğ/g, 'g')
       .replace(/ü/g, 'u')
@@ -264,7 +268,24 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       .replace(/Ü/g, 'u')
       .replace(/Ş/g, 's')
       .replace(/Ö/g, 'o')
-      .replace(/Ç/g, 'c');
+      .replace(/Ç/g, 'c')
+      // Portekizce / İspanyolca / Fransızca / Almanca aksanlar
+      .replace(/[àáâãäå]/g, 'a')
+      .replace(/[èéêë]/g, 'e')
+      .replace(/[ìíîï]/g, 'i')
+      .replace(/[òóôõö]/g, 'o')
+      .replace(/[ùúûü]/g, 'u')
+      .replace(/[ñ]/g, 'n')
+      .replace(/[ß]/g, 'ss')
+      .replace(/[æ]/g, 'ae')
+      .replace(/[œ]/g, 'oe')
+      // Büyük harf versiyonları
+      .replace(/[ÀÁÂÃÄÅ]/g, 'a')
+      .replace(/[ÈÉÊË]/g, 'e')
+      .replace(/[ÌÍÎÏ]/g, 'i')
+      .replace(/[ÒÓÔÕÖ]/g, 'o')
+      .replace(/[ÙÚÛÜ]/g, 'u')
+      .replace(/[Ñ]/g, 'n');
   }, []);
 
   // ✅ Fallback takımları filtrele ve göster - GELİŞTİRİLMİŞ
@@ -292,20 +313,73 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         normalizedQuery.includes(normalizeText(t))
       );
       
-      // Sorguya göre filtrele - SADECE TAKIM ADI
+      // Sorguya göre filtrele - TÜM DİLLER + kelime bazlı (palme → Palmeiras, boca → Boca)
       const filtered = fallbackList.filter(team => {
         const normalizedName = normalizeText(team.name);
+        const normalizedLeague = normalizeText((team as any).league || '');
+        const normalizedCountry = normalizeText(team.country || '');
         
         // Türkiye araması ise Türk milli takımlarını dahil et
         if (isTurkeySearch && team.country === 'Turkey' && type === 'national') {
           return true;
         }
         
-        // SADECE takım adında ara (ülke ve lig adında ARAMA)
-        return normalizedName.includes(normalizedQuery);
+        // 1. Tam takım adı eşleşmesi
+        if (normalizedName === normalizedQuery) return true;
+        
+        // 2. Takım adı başlangıç eşleşmesi (boca → Boca Juniors)
+        if (normalizedName.startsWith(normalizedQuery)) return true;
+        
+        // 3. Kelimelerin herhangi biri sorgu ile başlıyorsa (Boca Juniors → "jun" matches "Juniors")
+        const words = normalizedName.split(/[\s\-\/]+/);
+        if (words.some((w: string) => w.startsWith(normalizedQuery))) return true;
+        
+        // 4. Sorgu takım adının herhangi bir yerinde geçiyorsa (palme → Palmeiras)
+        if (normalizedName.includes(normalizedQuery)) return true;
+        
+        // 5. Lig adında ara (Brasileirão, Süper Lig vb.) - 3+ karakter gerekli
+        if (normalizedQuery.length >= 3 && normalizedLeague.includes(normalizedQuery)) return true;
+        
+        // 6. Ülke adında ara
+        if (normalizedQuery.length >= 2 && normalizedCountry.includes(normalizedQuery)) return true;
+        
+        return false;
       });
       
-      setApiTeams(filtered.map(team => ({
+      // GELİŞTİRİLMİŞ Relevans sıralaması:
+      // 1. Tam eşleşme en üstte
+      // 2. İsim başlangıç eşleşmesi
+      // 3. Kelime başlangıç eşleşmesi (Boca → Boca Juniors)
+      // 4. İçerme eşleşmesi
+      const sorted = [...filtered].sort((a, b) => {
+        const nameA = normalizeText(a.name);
+        const nameB = normalizeText(b.name);
+        const wordsA = nameA.split(/[\s\-\/]+/);
+        const wordsB = nameB.split(/[\s\-\/]+/);
+        
+        // Tam eşleşme (en yüksek öncelik)
+        const aExact = nameA === normalizedQuery;
+        const bExact = nameB === normalizedQuery;
+        if (aExact && !bExact) return -1;
+        if (!aExact && bExact) return 1;
+        
+        // İsim başlangıç eşleşmesi
+        const aNameStarts = nameA.startsWith(normalizedQuery);
+        const bNameStarts = nameB.startsWith(normalizedQuery);
+        if (aNameStarts && !bNameStarts) return -1;
+        if (!aNameStarts && bNameStarts) return 1;
+        
+        // Kelime başlangıç eşleşmesi (boca → "Boca" Juniors)
+        const aWordStarts = wordsA.some((w: string) => w.startsWith(normalizedQuery));
+        const bWordStarts = wordsB.some((w: string) => w.startsWith(normalizedQuery));
+        if (aWordStarts && !bWordStarts) return -1;
+        if (!aWordStarts && bWordStarts) return 1;
+        
+        // Eşit öncelik: alfabetik sırala
+        return nameA.localeCompare(nameB);
+      });
+      
+      setApiTeams(sorted.map(team => ({
         id: team.id,
         name: team.name,
         country: team.country || 'Unknown',
@@ -331,72 +405,48 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     }
   }, [openDropdown, useFallbackTeams]);
 
-  // ✅ Arama debounce - sıçramayı önler
+  // ✅ Arama sonuçları değişince scroll'u en üste al (tüm filtrelemede)
+  useEffect(() => {
+    if (!openDropdown || apiTeams.length === 0) return;
+    const ref = openDropdown === 'club' ? clubDropdownScrollRef : nationalDropdownScrollRef;
+    setTimeout(() => ref.current?.scrollTo?.({ y: 0, animated: true }), 50);
+  }, [apiTeams, openDropdown]);
+
+  // ✅ Arama debounce - sıçramayı önler (150ms gecikme)
   const searchTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+  const lastSearchTypeRef = React.useRef<'club' | 'national'>('club');
   
   const handleTeamSearch = useCallback((query: string, type: 'club' | 'national') => {
-    // Önce fallback'ten hemen filtrele (anında sonuç) - bu stabildir
-    useFallbackTeams(query, type);
+    lastSearchTypeRef.current = type;
     
-    // Backend aramasını debounce et - ama fallback sonuçlarını silme
+    // Önceki timeout'u temizle
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
     }
     
-    // Backend araması sadece 3+ karakter için ve sadece ek sonuç bulmak için
-    // Fallback zaten çalışıyor, backend ek takımlar getirirse birleştir
-    if (query.length >= 3) {
-      searchTimeoutRef.current = setTimeout(async () => {
-        try {
-          const response = await teamsApi.searchTeams(query, type);
-          if (response.success && response.data && response.data.length > 0) {
-            // ✅ Backend sonuçlarını SADECE TAKIM ADINA göre filtrele (ülke/lig hariç)
-            const normalizedQuery = normalizeText(query);
-            const backendTeams = response.data
-              .filter((team: any) => {
-                // ✅ SADECE takım adında ara - ülke ve lig adında ARAMA
-                const normalizedName = normalizeText(team.name);
-                return normalizedName.includes(normalizedQuery);
-              })
-              .map((team: any) => ({
-                id: team.id,
-                name: team.name,
-                country: team.country || 'Unknown',
-                league: team.league || '',
-                type: team.type || type,
-                colors: team.colors || ['#1E40AF', '#FFFFFF'],
-                coach: team.coach || null,
-                flag: team.flag || (type === 'national' ? getCountryFlagUrl(team.country) : null),
-              }));
-              
-            if (backendTeams.length > 0) {
-              setApiTeams(prev => {
-                // Mevcut ID'leri topla
-                const existingIds = new Set(prev.map(t => t.id));
-                
-                // Backend'den gelen yeni takımları ekle
-                const newTeams = backendTeams.filter((t: any) => !existingIds.has(t.id));
-                
-                // Eğer yeni takım yoksa mevcut listeyi koru
-                if (newTeams.length === 0) return prev;
-                
-                return [...prev, ...newTeams];
-              });
-            }
-          }
-          // Backend boş döndüyse fallback zaten gösteriliyor, değiştirme
-        } catch (error) {
-          // Backend hatası - fallback zaten gösteriliyor, değiştirme
-          console.warn('Backend arama hatası, fallback kullanılıyor');
-        }
-      }, 500); // 500ms debounce - daha uzun bekle
-    }
-  }, [useFallbackTeams, normalizeText]);
+    // Debounce: 150ms sonra ara (sıçramayı önler)
+    searchTimeoutRef.current = setTimeout(() => {
+      useFallbackTeams(query, type);
+    }, 150);
+  }, [useFallbackTeams]);
+  
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, []);
   
   // 🌙 TEMA STATE - ThemeContext'ten al
   const { theme: currentTheme, setTheme: setAppTheme } = useTheme();
   const isDarkMode = currentTheme === 'dark';
-  
+  const { width: screenWidth } = useWindowDimensions();
+  // Rozetler: mobil/tablet dar ekranda kesin 4 sütun (3 sütun görünmesin)
+  const isNarrowBadgeGrid = screenWidth < 1024;
+  const badgeItemWidthFor4Cols = isNarrowBadgeGrid ? '23%' as const : undefined; // 4×23% + gap ≈ 4 sütun
+
   // 🎨 Dinamik stiller - tema değişince yeniden oluştur
   const styles = useMemo(() => createStyles(isDarkMode), [isDarkMode]);
   const theme = useMemo(() => isDarkMode ? COLORS.dark : COLORS.light, [isDarkMode]);
@@ -1429,15 +1479,19 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                     activeOpacity={0.8}
                   >
                     <Text style={styles.latestBadgeIcon}>{badge.icon}</Text>
-                    <Text style={styles.latestBadgeName} numberOfLines={1}>{badge.name}</Text>
-                    <Text style={styles.latestBadgeDescription} numberOfLines={1}>{badge.description}</Text>
+                    <Text style={styles.latestBadgeName} numberOfLines={1}>
+                      {t(`badges.names.${badge.id}`, { defaultValue: badge.name })}
+                    </Text>
+                    <Text style={styles.latestBadgeDescription} numberOfLines={1}>
+                      {t(`badges.descriptions.${badge.id}`, { defaultValue: badge.description })}
+                    </Text>
                   </TouchableOpacity>
                 ))
               ) : (
                 <View style={styles.latestBadgesEmpty}>
                   <Ionicons name="trophy-outline" size={32} color={theme.mutedForeground} />
-                  <Text style={styles.latestBadgesEmptyText}>Henüz rozet kazanılmadı</Text>
-                  <Text style={styles.latestBadgesEmptyHint}>Tahmin yaparak rozet kazan</Text>
+                  <Text style={styles.latestBadgesEmptyText}>{t('badges.notEarnedYet')}</Text>
+                  <Text style={styles.latestBadgesEmptyHint}>{t('badges.earnByPredicting')}</Text>
                 </View>
               )}
             </View>
@@ -1481,7 +1535,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 +{user.xpGainThisWeek}
               </Text>
               <Text style={[styles.xpGainTotal, { color: theme.mutedForeground }]}>
-                Toplam Puan: {user.points.toLocaleString()}
+                {t('profile.totalPoints')}: {user.points.toLocaleString()}
               </Text>
             </View>
           </Animated.View>
@@ -1554,6 +1608,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                         onChangeText={(text) => {
                           setSearchQuery(text);
                           handleTeamSearch(text, 'national');
+                          nationalDropdownScrollRef.current?.scrollTo?.({ y: 0, animated: true });
                         }}
                         placeholderTextColor={theme.mutedForeground}
                         autoFocus={true}
@@ -1564,13 +1619,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                       )}
                       
                       <ScrollView 
+                        ref={nationalDropdownScrollRef}
                         style={styles.dropdownList}
                         keyboardShouldPersistTaps="always"
                         nestedScrollEnabled={true}
                       >
-                        {apiTeams.map(team => (
+                        {apiTeams.map((team, idx) => (
                           <TouchableOpacity
-                            key={team.id}
+                            key={`${team.id}-${team.name}-${idx}`}
                             style={styles.dropdownItem}
                             activeOpacity={0.7}
                             onPress={() => {
@@ -1708,6 +1764,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                           onChangeText={(text) => {
                             setSearchQuery(text);
                             handleTeamSearch(text, 'club');
+                            clubDropdownScrollRef.current?.scrollTo?.({ y: 0, animated: true });
                           }}
                           placeholderTextColor={theme.mutedForeground}
                           autoFocus={true}
@@ -1718,13 +1775,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                         )}
                         
                         <ScrollView 
+                          ref={clubDropdownScrollRef}
                           style={styles.dropdownList}
                           keyboardShouldPersistTaps="always"
                           nestedScrollEnabled={true}
                         >
-                          {apiTeams.filter(t => !selectedClubTeams.some(ct => ct && ct.id === t.id)).map(team => (
+                          {apiTeams.filter(t => !selectedClubTeams.some(ct => ct && ct.id === t.id)).map((team, idx) => (
                             <TouchableOpacity
-                              key={team.id}
+                              key={`${team.id}-${team.name}-${idx}`}
                               style={styles.dropdownItem}
                               activeOpacity={0.7}
                               onPress={() => {
@@ -1921,7 +1979,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               </View>
             </View>
 
-            {/* Badges Grid */}
+            {/* Badges Grid - 4 sütun x 10 satır mobilde */}
             <View style={styles.badgesGridInline}>
               {allBadges.map((badge, index) => (
                 <TouchableOpacity
@@ -1931,6 +1989,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                     badge.earned 
                       ? styles.badgeItemEarned 
                       : styles.badgeItemLocked,
+                    // 4 sütun her zaman
                   ]}
                   onPress={() => setSelectedBadge(badge)}
                   activeOpacity={0.7}
@@ -1965,7 +2024,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                     ]}
                     numberOfLines={2}
                   >
-                    {badge.name}
+                    {t(`badges.names.${badge.id}`, { defaultValue: badge.name })}
                   </Text>
               </TouchableOpacity>
               ))}
@@ -2056,21 +2115,12 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                           if (lang.code === selectedLanguage) return;
 
                           try {
-                            // 1. i18n dilini değiştir → App.tsx'teki languageChanged dinleyicisi forceUpdateKey ile tüm uygulamayı yeniden render eder
+                            // changeI18nLanguage zaten storage'a kaydediyor ve languageChanged event'i tetikliyor
+                            // handleLanguageChange listener (satır 439-451) selectedLanguage'ı otomatik güncelleyecek
                             await changeI18nLanguage(lang.code);
-
-                            // 2. Storage'ı güncelle (changeLanguage zaten yapıyor, backup)
-                            if (Platform.OS === 'web' && typeof window?.localStorage !== 'undefined') {
-                              window.localStorage.setItem('@user_language', lang.code);
-                              window.localStorage.setItem('tacticiq-language', lang.code);
-                            } else {
-                              await AsyncStorage.setItem('@user_language', lang.code);
-                              await AsyncStorage.setItem('tacticiq-language', lang.code);
-                            }
-
-                            setSelectedLanguage(lang.code);
-                            setLanguageKey(prev => prev + 1); // İçeriği yeniden mount et
-                            await profileService.updateProfile({ preferredLanguage: lang.code }).catch(() => {});
+                            
+                            // Profile'ı güncelle (async, hata olursa devam et)
+                            profileService.updateProfile({ preferredLanguage: lang.code }).catch(() => {});
                           } catch (error) {
                             console.error('Error changing language:', error);
                           }
@@ -2625,16 +2675,16 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   <Text style={styles.bestClusterName}>{bestCluster.name}</Text>
                   <View style={styles.bestClusterStats}>
                     <View style={styles.bestClusterStat}>
-                      <Text style={styles.bestClusterLabel}>Doğruluk Oranı</Text>
+                      <Text style={styles.bestClusterLabel}>{t('bestCluster.accuracy')}</Text>
                       <Text style={styles.bestClusterValue}>{bestCluster.accuracy}%</Text>
                     </View>
                     <View style={styles.bestClusterBadge}>
                       <Ionicons name="trophy" size={16} color="#F59E0B" />
-                      <Text style={styles.bestClusterBadgeText}>Uzman</Text>
+                      <Text style={styles.bestClusterBadgeText}>{t('bestCluster.expert')}</Text>
                     </View>
                   </View>
                   <Text style={styles.bestClusterHint}>
-                    Bu alanda çok güçlüsün! Devam et! 💪
+                    {t('bestCluster.hint')}
                   </Text>
                 </LinearGradient>
               </View>
@@ -2701,8 +2751,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                     // @ts-ignore - Web için title attribute (tooltip)
                     {...(Platform.OS === 'web' && {
                       title: badge.earned 
-                        ? `${badge.name} - Kazanıldı!` 
-                        : `${badge.name} - Nasıl Kazanılır: ${badge.requirement || badge.description}`,
+                        ? `${t(`badges.names.${badge.id}`, { defaultValue: badge.name })} - ${t('badges.earned')}!` 
+                        : `${t(`badges.names.${badge.id}`, { defaultValue: badge.name })} - ${t('badges.howToEarn')}: ${t(`badges.descriptions.${badge.id}`, { defaultValue: badge.requirement || badge.description })}`,
                     })}
                   >
                     {/* Lock Icon (Top Right) - Web ile aynı stil */}
@@ -2729,7 +2779,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                       style={styles.badgeName}
                       numberOfLines={2}
                     >
-                      {badge.name}
+                      {t(`badges.names.${badge.id}`, { defaultValue: badge.name })}
                     </Text>
 
                     {/* Badge Tier - Web ile aynı stil */}
@@ -2753,10 +2803,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                           badge.tier === 'diamond' && styles.badgeTierTextDiamond,
                         ]}
                       >
-                        {badge.tier === 'bronze' ? 'Bronz' :
-                         badge.tier === 'silver' ? 'Gümüş' :
-                         badge.tier === 'gold' ? 'Altın' :
-                         badge.tier === 'platinum' ? 'Platin' : 'Elmas'}
+                        {t(`badges.tierLabels.${badge.tier}`, { defaultValue: badge.tier })}
                       </Text>
                     </View>
                   </Pressable>
@@ -2808,7 +2855,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                     </View>
 
                     {/* Badge Name */}
-                    <Text style={styles.badgeDetailName}>{selectedBadge.name}</Text>
+                    <Text style={styles.badgeDetailName}>{t(`badges.names.${selectedBadge.id}`, { defaultValue: selectedBadge.name })}</Text>
 
                     {/* Badge Tier */}
                     {selectedBadge.earned && (
@@ -2824,14 +2871,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                             { color: getBadgeColor(selectedBadge.tier) },
                           ]}
                         >
-                          {getBadgeTierName(selectedBadge.tier)}
+                          {t(`badges.tierLabels.${selectedBadge.tier}`, { defaultValue: getBadgeTierName(selectedBadge.tier) })}
                         </Text>
                       </View>
                     )}
 
                     {/* Badge Description */}
                     <Text style={styles.badgeDetailDescription}>
-                      {selectedBadge.description}
+                      {t(`badges.descriptions.${selectedBadge.id}`, { defaultValue: selectedBadge.description })}
                     </Text>
 
                     {/* Requirement */}
@@ -2843,8 +2890,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                       />
                       <Text style={styles.badgeDetailRequirementText}>
                         {selectedBadge.earned
-                          ? `Kazanıldı: ${new Date(selectedBadge.earnedAt!).toLocaleDateString('tr-TR')}`
-                          : `Nasıl Kazanılır: ${selectedBadge.requirement}`}
+                          ? `${t('badges.earnedDateLabel')} ${new Date(selectedBadge.earnedAt!).toLocaleDateString()}`
+                          : `${t('badges.howToEarnLabel')} ${t(`badges.descriptions.${selectedBadge.id}`, { defaultValue: selectedBadge.requirement || selectedBadge.description })}`}
                       </Text>
                     </View>
 
@@ -2852,7 +2899,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                     {!selectedBadge.earned && (
                       <View style={styles.badgeProgressSection}>
                         <View style={styles.badgeProgressHeader}>
-                          <Text style={styles.badgeProgressLabel}>İlerleme</Text>
+                          <Text style={styles.badgeProgressLabel}>{t('badges.progressLabel')}</Text>
                           <Text style={styles.badgeProgressValue}>12 / 20</Text>
                         </View>
                         <View style={styles.badgeProgressBarContainer}>
@@ -2863,7 +2910,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                             style={[styles.badgeProgressBarFill, { width: '60%' }]}
                           />
                         </View>
-                        <Text style={styles.badgeProgressHint}>🎯 8 maç daha kazanman gerekiyor!</Text>
+                        <Text style={styles.badgeProgressHint}>🎯 8 {t('badges.progressHintExample')}</Text>
                       </View>
                     )}
 
@@ -2876,7 +2923,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                         colors={['#059669', '#047857']}
                         style={styles.badgeDetailCloseGradient}
                       >
-                        <Text style={styles.badgeDetailCloseText}>Kapat</Text>
+                        <Text style={styles.badgeDetailCloseText}>{t('badges.close')}</Text>
                       </LinearGradient>
                     </TouchableOpacity>
                   </>
@@ -2896,7 +2943,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Profil Fotoğrafı Değiştir</Text>
+                <Text style={styles.modalTitle}>{t('profile.changePhoto')}</Text>
                 <TouchableOpacity onPress={() => setShowAvatarPicker(false)}>
                   <Ionicons name="close" size={24} color="#9CA3AF" />
                 </TouchableOpacity>
@@ -4101,16 +4148,16 @@ const createStyles = (isDark: boolean = true) => {
   badgesGridInline: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     gap: 6,
     rowGap: 8,
     width: '100%',
   },
   badgeItemInline: {
-    // Mobil: 4 sütun x 10 satır | Web: 8 sütun x 5 satır
+    // Web: 8 sütun | Mobil: 4 sütun - calc ile kesin boyut
     ...Platform.select({
-      web: { width: '11.5%' as const, aspectRatio: 0.9 },
-      default: { width: '23.5%' as const, aspectRatio: 0.95 }, // 4 sütun mobilde
+      web: { width: 'calc(12.5% - 6px)' as any, aspectRatio: 0.9 },  // 8 sütun = 100/8 = 12.5%
+      default: { width: 'calc(25% - 6px)' as any, aspectRatio: 0.95 }, // 4 sütun = 100/4 = 25%
     }),
     backgroundColor: theme.card,
     borderRadius: SIZES.radiusMd,
@@ -4163,11 +4210,11 @@ const createStyles = (isDark: boolean = true) => {
     opacity: 0.85, // Hafif soluk ama renkli
   } as any,
   badgeNameInline: {
-    fontSize: 8,
+    fontSize: 10,
     fontWeight: '600',
     color: theme.foreground,
     textAlign: 'center',
-    lineHeight: 10,
+    lineHeight: 12,
   },
   badgeNameLocked: {
     color: '#94A3B8', // Biraz daha okunabilir renk
@@ -4475,7 +4522,7 @@ const createStyles = (isDark: boolean = true) => {
     height: '100%',
     borderRadius: 4,
   },
-  // Badges Grid - Mobil: 4 sütun x 10 satır | Web: 8 sütun x 5 satır
+  // Badges Grid - Mobil: 4 sütun x 10 satır | Web: 4 sütun (kullanıcı isteği)
   badgeGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -4483,10 +4530,10 @@ const createStyles = (isDark: boolean = true) => {
     justifyContent: 'flex-start',
   },
   badgeCard: {
-    // Mobil: 4 sütun | Web: 8 sütun
+    // Mobil ve Web: 4 sütun (24% genişlik)
     ...Platform.select({
-      web: { width: '11.5%' as const, minWidth: 45, aspectRatio: 0.85 },
-      default: { width: '23.5%' as const, minWidth: 70, aspectRatio: 0.9 }, // 4 sütun mobilde
+      web: { width: '24%' as const, minWidth: 70, aspectRatio: 0.9 }, // 4 sütun web'de de
+      default: { width: '24%' as const, minWidth: 70, aspectRatio: 0.9 }, // 4 sütun mobilde
     }),
     backgroundColor: theme.card,
     borderRadius: SIZES.radiusMd,

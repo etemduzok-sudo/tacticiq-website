@@ -21,6 +21,7 @@ import Animated, {
 import { Platform } from 'react-native';
 import api from '../../services/api';
 import { handleErrorWithContext, NetworkError } from '../../utils/errorUtils';
+import { useTranslation } from '../../hooks/useTranslation';
 
 const { width, height } = Dimensions.get('window');
 
@@ -89,6 +90,7 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
     halfTimeScore: { home: 0, away: 0 },
     currentScore: { home: 0, away: 0 },
   });
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true); // Start with loading true
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>('all'); // ✅ Active tab state
@@ -411,7 +413,7 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
                 <Text style={styles.emptyStateText}>
                   {liveEvents.length === 0 
                     ? 'Henüz canlı event yok'
-                    : `${EVENT_TABS.find(t => t.id === activeTab)?.label || 'Bu kategori'} için event yok`}
+                    : t('matchLive.noEventsForCategory')}
                 </Text>
                 <Text style={styles.emptyStateSubtext}>
                   {liveEvents.length === 0

@@ -436,11 +436,26 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
           />
           
           <View style={styles.matchCardContent}>
-              {/* Turnuva Badge - En Üstte Ortada */}
-            <View style={styles.matchCardTournamentBadge}>
-              <Ionicons name="trophy" size={9} color={COLORS.dark.primaryLight} />
-              <Text style={styles.matchCardTournamentText}>{match.league.name}</Text>
-            </View>
+              {/* Turnuva Badge - En Üstte Ortada (Tahmin varsa sarı ve tıklanabilir) */}
+            {hasPrediction && matchId != null && onDeletePrediction ? (
+              <TouchableOpacity
+                style={styles.matchCardTournamentBadgePrediction}
+                onPress={(e) => {
+                  e?.stopPropagation?.();
+                  setDeletePredictionModal({ matchId, onDelete: () => onDeletePrediction(matchId) });
+                }}
+                activeOpacity={0.7}
+                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+              >
+                <Ionicons name="trophy" size={9} color="#fbbf24" />
+                <Text style={styles.matchCardTournamentTextPrediction}>{match.league.name}</Text>
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.matchCardTournamentBadge}>
+                <Ionicons name="trophy" size={9} color={COLORS.dark.primaryLight} />
+                <Text style={styles.matchCardTournamentText}>{match.league.name}</Text>
+              </View>
+            )}
             
             {/* Stadyum Bilgisi - Turnuva Badge'in Altında */}
             {(() => {
@@ -641,21 +656,6 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
               ) : null
             )}
           </View>
-          {/* Tahmin yaptınız: sarı yıldız — en üstte (son child) ki tıklanabilsin */}
-          {hasPrediction && matchId != null && onDeletePrediction && (
-            <TouchableOpacity
-              style={styles.matchCardPredictionStarHitArea}
-              onPress={(e) => {
-                e?.stopPropagation?.();
-                setDeletePredictionModal({ matchId, onDelete: () => onDeletePrediction(matchId) });
-              }}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="star" size={20} color="#fbbf24" />
-              <Text style={styles.matchCardPredictionStarText}>Tahmin{'\n'}Yapıldı</Text>
-            </TouchableOpacity>
-          )}
         </LinearGradient>
       </TouchableOpacity>
     );
@@ -2262,6 +2262,21 @@ const styles = StyleSheet.create({
     borderColor: `rgba(16, 185, 129, 0.2)`, // COLORS.dark.success with opacity
     marginBottom: SPACING.xs,
   },
+  // ✅ Tahmin yapılmış maçlar için sarı turnuva badge (tıklanabilir)
+  matchCardTournamentBadgePrediction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+    gap: 3,
+    backgroundColor: `rgba(251, 191, 36, 0.15)`, // Altın sarısı arka plan
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: 2,
+    borderRadius: SIZES.radiusLg,
+    borderWidth: 1,
+    borderColor: 'rgba(251, 191, 36, 0.4)',
+    marginBottom: SPACING.xs,
+  },
   matchCardTeamsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -2305,6 +2320,12 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.caption,
     fontWeight: '600',
     color: COLORS.dark.success,
+  },
+  // ✅ Tahmin yapılmış maçlar için sarı turnuva yazısı
+  matchCardTournamentTextPrediction: {
+    ...TYPOGRAPHY.caption,
+    fontWeight: '700',
+    color: '#fbbf24', // Altın sarısı
   },
   matchCardVenueContainer: {
     flexDirection: 'row',

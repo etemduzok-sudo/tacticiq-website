@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import SafeIcon from '../components/SafeIcon';
 import { useTheme } from '../contexts/ThemeContext';
+import { useTranslation } from '../hooks/useTranslation';
 import { COLORS, TYPOGRAPHY, SPACING, SIZES } from '../theme/theme';
 import { MatchCard } from '../components/molecules';
 import { Badge } from '../components/atoms';
@@ -22,14 +23,15 @@ interface MatchesScreenProps {
 
 export default function MatchesScreen({ onMatchSelect, onBack }: MatchesScreenProps) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const colors = theme === 'dark' ? COLORS.dark : COLORS.light;
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
 
   const filters: { label: string; value: FilterType; icon: string }[] = [
-    { label: 'Tümü', value: 'all', icon: 'trophy' },
-    { label: 'Canlı', value: 'live', icon: 'clock' },
-    { label: 'Yaklaşan', value: 'upcoming', icon: 'calendar' },
-    { label: 'Biten', value: 'finished', icon: 'check-circle' },
+    { label: t('common.all'), value: 'all', icon: 'trophy' },
+    { label: t('matches.live'), value: 'live', icon: 'clock' },
+    { label: t('matches.upcoming'), value: 'upcoming', icon: 'calendar' },
+    { label: t('matches.past'), value: 'finished', icon: 'check-circle' },
   ];
 
   const matches = [

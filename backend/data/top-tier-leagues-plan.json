@@ -1,0 +1,1938 @@
+{
+  "createdAt": "2026-02-02T02:20:28.840Z",
+  "summary": {
+    "totalLeagues": 127,
+    "estimatedTeams": 2286,
+    "estimatedApiCalls": 2413,
+    "daysNeeded": 1
+  },
+  "byContinent": {
+    "Europe": [
+      {
+        "country": "England",
+        "id": 39,
+        "name": "Premier League"
+      },
+      {
+        "country": "Spain",
+        "id": 140,
+        "name": "La Liga"
+      },
+      {
+        "country": "Germany",
+        "id": 78,
+        "name": "Bundesliga"
+      },
+      {
+        "country": "Italy",
+        "id": 135,
+        "name": "Serie A"
+      },
+      {
+        "country": "France",
+        "id": 61,
+        "name": "Ligue 1"
+      },
+      {
+        "country": "Netherlands",
+        "id": 88,
+        "name": "Eredivisie"
+      },
+      {
+        "country": "Portugal",
+        "id": 94,
+        "name": "Primeira Liga"
+      },
+      {
+        "country": "Belgium",
+        "id": 144,
+        "name": "Jupiler Pro League"
+      },
+      {
+        "country": "Turkey",
+        "id": 203,
+        "name": "Süper Lig"
+      },
+      {
+        "country": "Russia",
+        "id": 235,
+        "name": "Premier League"
+      },
+      {
+        "country": "Ukraine",
+        "id": 333,
+        "name": "Premier League"
+      },
+      {
+        "country": "Scotland",
+        "id": 179,
+        "name": "Premiership"
+      },
+      {
+        "country": "Austria",
+        "id": 218,
+        "name": "Bundesliga"
+      },
+      {
+        "country": "Switzerland",
+        "id": 207,
+        "name": "Super League"
+      },
+      {
+        "country": "Greece",
+        "id": 197,
+        "name": "Super League"
+      },
+      {
+        "country": "Denmark",
+        "id": 119,
+        "name": "Superliga"
+      },
+      {
+        "country": "Norway",
+        "id": 103,
+        "name": "Eliteserien"
+      },
+      {
+        "country": "Sweden",
+        "id": 113,
+        "name": "Allsvenskan"
+      },
+      {
+        "country": "Poland",
+        "id": 106,
+        "name": "Ekstraklasa"
+      },
+      {
+        "country": "Czech-Republic",
+        "id": 345,
+        "name": "Czech Liga"
+      },
+      {
+        "country": "Croatia",
+        "id": 210,
+        "name": "HNL"
+      },
+      {
+        "country": "Serbia",
+        "id": 286,
+        "name": "Super Liga"
+      },
+      {
+        "country": "Romania",
+        "id": 283,
+        "name": "Liga I"
+      },
+      {
+        "country": "Bulgaria",
+        "id": 172,
+        "name": "First League"
+      },
+      {
+        "country": "Hungary",
+        "id": 271,
+        "name": "NB I"
+      },
+      {
+        "country": "Cyprus",
+        "id": 318,
+        "name": "First Division"
+      },
+      {
+        "country": "Israel",
+        "id": 384,
+        "name": "Ligat Ha'al"
+      },
+      {
+        "country": "Finland",
+        "id": 244,
+        "name": "Veikkausliiga"
+      },
+      {
+        "country": "Iceland",
+        "id": 164,
+        "name": "Úrvalsdeild"
+      },
+      {
+        "country": "Ireland",
+        "id": 357,
+        "name": "Premier Division"
+      },
+      {
+        "country": "Northern-Ireland",
+        "id": 408,
+        "name": "Premiership"
+      },
+      {
+        "country": "Wales",
+        "id": 110,
+        "name": "Premier League"
+      },
+      {
+        "country": "Slovakia",
+        "id": 332,
+        "name": "Super Liga"
+      },
+      {
+        "country": "Slovenia",
+        "id": 373,
+        "name": "PrvaLiga"
+      },
+      {
+        "country": "Belarus",
+        "id": 116,
+        "name": "Premier League"
+      },
+      {
+        "country": "Kazakhstan",
+        "id": 387,
+        "name": "Premier League"
+      },
+      {
+        "country": "Azerbaijan",
+        "id": 420,
+        "name": "Premyer Liqa"
+      },
+      {
+        "country": "Georgia",
+        "id": 325,
+        "name": "Erovnuli Liga"
+      },
+      {
+        "country": "Armenia",
+        "id": 342,
+        "name": "Premier League"
+      },
+      {
+        "country": "Moldova",
+        "id": 441,
+        "name": "Super Liga"
+      },
+      {
+        "country": "Bosnia",
+        "id": 155,
+        "name": "Premijer Liga"
+      },
+      {
+        "country": "North-Macedonia",
+        "id": 428,
+        "name": "First League"
+      },
+      {
+        "country": "Montenegro",
+        "id": 423,
+        "name": "First League"
+      },
+      {
+        "country": "Albania",
+        "id": 310,
+        "name": "Superliga"
+      },
+      {
+        "country": "Kosovo",
+        "id": 409,
+        "name": "Superliga"
+      },
+      {
+        "country": "Luxembourg",
+        "id": 261,
+        "name": "National Division"
+      },
+      {
+        "country": "Malta",
+        "id": 392,
+        "name": "Premier League"
+      },
+      {
+        "country": "Estonia",
+        "id": 329,
+        "name": "Meistriliiga"
+      },
+      {
+        "country": "Latvia",
+        "id": 363,
+        "name": "Virsliga"
+      },
+      {
+        "country": "Lithuania",
+        "id": 360,
+        "name": "A Lyga"
+      },
+      {
+        "country": "Faroe-Islands",
+        "id": 370,
+        "name": "Premier League"
+      }
+    ],
+    "South America": [
+      {
+        "country": "Brazil",
+        "id": 71,
+        "name": "Serie A"
+      },
+      {
+        "country": "Argentina",
+        "id": 128,
+        "name": "Liga Profesional"
+      },
+      {
+        "country": "Colombia",
+        "id": 239,
+        "name": "Liga BetPlay"
+      },
+      {
+        "country": "Chile",
+        "id": 265,
+        "name": "Primera División"
+      },
+      {
+        "country": "Uruguay",
+        "id": 268,
+        "name": "Primera División"
+      },
+      {
+        "country": "Paraguay",
+        "id": 274,
+        "name": "División Profesional"
+      },
+      {
+        "country": "Peru",
+        "id": 281,
+        "name": "Liga 1"
+      },
+      {
+        "country": "Ecuador",
+        "id": 242,
+        "name": "Liga Pro"
+      },
+      {
+        "country": "Venezuela",
+        "id": 299,
+        "name": "Primera División"
+      },
+      {
+        "country": "Bolivia",
+        "id": 158,
+        "name": "División Profesional"
+      }
+    ],
+    "North/Central America": [
+      {
+        "country": "Mexico",
+        "id": 262,
+        "name": "Liga MX"
+      },
+      {
+        "country": "USA",
+        "id": 253,
+        "name": "MLS"
+      },
+      {
+        "country": "Canada",
+        "id": 253,
+        "name": "MLS"
+      },
+      {
+        "country": "Costa-Rica",
+        "id": 162,
+        "name": "Primera División"
+      },
+      {
+        "country": "Honduras",
+        "id": 247,
+        "name": "Liga Nacional"
+      },
+      {
+        "country": "Guatemala",
+        "id": 240,
+        "name": "Liga Nacional"
+      },
+      {
+        "country": "El-Salvador",
+        "id": 230,
+        "name": "Primera División"
+      },
+      {
+        "country": "Panama",
+        "id": 277,
+        "name": "Liga Panameña"
+      },
+      {
+        "country": "Jamaica",
+        "id": 256,
+        "name": "Premier League"
+      }
+    ],
+    "Asia": [
+      {
+        "country": "Japan",
+        "id": 98,
+        "name": "J1 League"
+      },
+      {
+        "country": "South-Korea",
+        "id": 292,
+        "name": "K League 1"
+      },
+      {
+        "country": "China",
+        "id": 169,
+        "name": "Super League"
+      },
+      {
+        "country": "Saudi-Arabia",
+        "id": 307,
+        "name": "Pro League"
+      },
+      {
+        "country": "United-Arab-Emirates",
+        "id": 301,
+        "name": "Pro League"
+      },
+      {
+        "country": "Qatar",
+        "id": 305,
+        "name": "Stars League"
+      },
+      {
+        "country": "Iran",
+        "id": 252,
+        "name": "Persian Gulf Pro League"
+      },
+      {
+        "country": "Thailand",
+        "id": 296,
+        "name": "Thai League 1"
+      },
+      {
+        "country": "Australia",
+        "id": 188,
+        "name": "A-League"
+      },
+      {
+        "country": "India",
+        "id": 323,
+        "name": "Indian Super League"
+      },
+      {
+        "country": "Indonesia",
+        "id": 249,
+        "name": "Liga 1"
+      },
+      {
+        "country": "Malaysia",
+        "id": 378,
+        "name": "Super League"
+      },
+      {
+        "country": "Singapore",
+        "id": 382,
+        "name": "Premier League"
+      },
+      {
+        "country": "Vietnam",
+        "id": 340,
+        "name": "V.League 1"
+      },
+      {
+        "country": "Iraq",
+        "id": 254,
+        "name": "Stars League"
+      },
+      {
+        "country": "Jordan",
+        "id": 258,
+        "name": "Pro League"
+      },
+      {
+        "country": "Kuwait",
+        "id": 259,
+        "name": "Premier League"
+      },
+      {
+        "country": "Bahrain",
+        "id": 149,
+        "name": "Premier League"
+      },
+      {
+        "country": "Oman",
+        "id": 269,
+        "name": "Professional League"
+      },
+      {
+        "country": "Lebanon",
+        "id": 390,
+        "name": "Premier League"
+      },
+      {
+        "country": "Syria",
+        "id": 440,
+        "name": "Premier League"
+      },
+      {
+        "country": "Uzbekistan",
+        "id": 352,
+        "name": "Super League"
+      },
+      {
+        "country": "Hong-Kong",
+        "id": 365,
+        "name": "Premier League"
+      }
+    ],
+    "Africa": [
+      {
+        "country": "Egypt",
+        "id": 233,
+        "name": "Premier League"
+      },
+      {
+        "country": "Morocco",
+        "id": 200,
+        "name": "Botola Pro"
+      },
+      {
+        "country": "Tunisia",
+        "id": 202,
+        "name": "Ligue 1"
+      },
+      {
+        "country": "Algeria",
+        "id": 186,
+        "name": "Ligue 1"
+      },
+      {
+        "country": "South-Africa",
+        "id": 288,
+        "name": "Premier Soccer League"
+      },
+      {
+        "country": "Nigeria",
+        "id": 267,
+        "name": "NPFL"
+      },
+      {
+        "country": "Ghana",
+        "id": 237,
+        "name": "Premier League"
+      },
+      {
+        "country": "Ivory-Coast",
+        "id": 355,
+        "name": "Ligue 1"
+      },
+      {
+        "country": "Senegal",
+        "id": 368,
+        "name": "Ligue 1"
+      },
+      {
+        "country": "Cameroon",
+        "id": 159,
+        "name": "Elite One"
+      },
+      {
+        "country": "DR-Congo",
+        "id": 228,
+        "name": "Linafoot"
+      },
+      {
+        "country": "Tanzania",
+        "id": 419,
+        "name": "Premier League"
+      },
+      {
+        "country": "Kenya",
+        "id": 396,
+        "name": "Premier League"
+      },
+      {
+        "country": "Uganda",
+        "id": 412,
+        "name": "Premier League"
+      },
+      {
+        "country": "Zambia",
+        "id": 255,
+        "name": "Super League"
+      },
+      {
+        "country": "Zimbabwe",
+        "id": 351,
+        "name": "Premier Soccer League"
+      },
+      {
+        "country": "Angola",
+        "id": 381,
+        "name": "Girabola"
+      },
+      {
+        "country": "Mozambique",
+        "id": 372,
+        "name": "Moçambola"
+      },
+      {
+        "country": "Ethiopia",
+        "id": 358,
+        "name": "Premier League"
+      },
+      {
+        "country": "Sudan",
+        "id": 398,
+        "name": "Premier League"
+      },
+      {
+        "country": "Libya",
+        "id": 374,
+        "name": "Premier League"
+      },
+      {
+        "country": "Mali",
+        "id": 375,
+        "name": "Première Division"
+      },
+      {
+        "country": "Burkina-Faso",
+        "id": 324,
+        "name": "Premier League"
+      },
+      {
+        "country": "Niger",
+        "id": 400,
+        "name": "Ligue 1"
+      },
+      {
+        "country": "Guinea",
+        "id": 320,
+        "name": "Ligue 1"
+      },
+      {
+        "country": "Benin",
+        "id": 316,
+        "name": "Ligue Pro"
+      },
+      {
+        "country": "Togo",
+        "id": 399,
+        "name": "Championnat National"
+      },
+      {
+        "country": "Rwanda",
+        "id": 385,
+        "name": "Premier League"
+      },
+      {
+        "country": "Burundi",
+        "id": 354,
+        "name": "Ligue A"
+      },
+      {
+        "country": "Malawi",
+        "id": 376,
+        "name": "Super League"
+      },
+      {
+        "country": "Botswana",
+        "id": 359,
+        "name": "Premier League"
+      },
+      {
+        "country": "Namibia",
+        "id": 377,
+        "name": "Premier League"
+      },
+      {
+        "country": "Mauritius",
+        "id": 397,
+        "name": "Premier League"
+      }
+    ],
+    "Oceania": [
+      {
+        "country": "New-Zealand",
+        "id": 167,
+        "name": "Premiership"
+      }
+    ]
+  },
+  "syncPlan": [
+    {
+      "day": 1,
+      "leagues": [
+        {
+          "country": "England",
+          "name": "Premier League",
+          "id": 39,
+          "requests": 19
+        },
+        {
+          "country": "Spain",
+          "name": "La Liga",
+          "id": 140,
+          "requests": 19
+        },
+        {
+          "country": "Germany",
+          "name": "Bundesliga",
+          "id": 78,
+          "requests": 19
+        },
+        {
+          "country": "Italy",
+          "name": "Serie A",
+          "id": 135,
+          "requests": 19
+        },
+        {
+          "country": "France",
+          "name": "Ligue 1",
+          "id": 61,
+          "requests": 19
+        },
+        {
+          "country": "Netherlands",
+          "name": "Eredivisie",
+          "id": 88,
+          "requests": 19
+        },
+        {
+          "country": "Portugal",
+          "name": "Primeira Liga",
+          "id": 94,
+          "requests": 19
+        },
+        {
+          "country": "Belgium",
+          "name": "Jupiler Pro League",
+          "id": 144,
+          "requests": 19
+        },
+        {
+          "country": "Turkey",
+          "name": "Süper Lig",
+          "id": 203,
+          "requests": 19
+        },
+        {
+          "country": "Russia",
+          "name": "Premier League",
+          "id": 235,
+          "requests": 19
+        },
+        {
+          "country": "Ukraine",
+          "name": "Premier League",
+          "id": 333,
+          "requests": 19
+        },
+        {
+          "country": "Scotland",
+          "name": "Premiership",
+          "id": 179,
+          "requests": 19
+        },
+        {
+          "country": "Austria",
+          "name": "Bundesliga",
+          "id": 218,
+          "requests": 19
+        },
+        {
+          "country": "Switzerland",
+          "name": "Super League",
+          "id": 207,
+          "requests": 19
+        },
+        {
+          "country": "Greece",
+          "name": "Super League",
+          "id": 197,
+          "requests": 19
+        },
+        {
+          "country": "Denmark",
+          "name": "Superliga",
+          "id": 119,
+          "requests": 19
+        },
+        {
+          "country": "Norway",
+          "name": "Eliteserien",
+          "id": 103,
+          "requests": 19
+        },
+        {
+          "country": "Sweden",
+          "name": "Allsvenskan",
+          "id": 113,
+          "requests": 19
+        },
+        {
+          "country": "Poland",
+          "name": "Ekstraklasa",
+          "id": 106,
+          "requests": 19
+        },
+        {
+          "country": "Czech-Republic",
+          "name": "Czech Liga",
+          "id": 345,
+          "requests": 19
+        },
+        {
+          "country": "Croatia",
+          "name": "HNL",
+          "id": 210,
+          "requests": 19
+        },
+        {
+          "country": "Serbia",
+          "name": "Super Liga",
+          "id": 286,
+          "requests": 19
+        },
+        {
+          "country": "Romania",
+          "name": "Liga I",
+          "id": 283,
+          "requests": 19
+        },
+        {
+          "country": "Bulgaria",
+          "name": "First League",
+          "id": 172,
+          "requests": 19
+        },
+        {
+          "country": "Hungary",
+          "name": "NB I",
+          "id": 271,
+          "requests": 19
+        },
+        {
+          "country": "Cyprus",
+          "name": "First Division",
+          "id": 318,
+          "requests": 19
+        },
+        {
+          "country": "Israel",
+          "name": "Ligat Ha'al",
+          "id": 384,
+          "requests": 19
+        },
+        {
+          "country": "Finland",
+          "name": "Veikkausliiga",
+          "id": 244,
+          "requests": 19
+        },
+        {
+          "country": "Iceland",
+          "name": "Úrvalsdeild",
+          "id": 164,
+          "requests": 19
+        },
+        {
+          "country": "Ireland",
+          "name": "Premier Division",
+          "id": 357,
+          "requests": 19
+        },
+        {
+          "country": "Northern-Ireland",
+          "name": "Premiership",
+          "id": 408,
+          "requests": 19
+        },
+        {
+          "country": "Wales",
+          "name": "Premier League",
+          "id": 110,
+          "requests": 19
+        },
+        {
+          "country": "Slovakia",
+          "name": "Super Liga",
+          "id": 332,
+          "requests": 19
+        },
+        {
+          "country": "Slovenia",
+          "name": "PrvaLiga",
+          "id": 373,
+          "requests": 19
+        },
+        {
+          "country": "Belarus",
+          "name": "Premier League",
+          "id": 116,
+          "requests": 19
+        },
+        {
+          "country": "Kazakhstan",
+          "name": "Premier League",
+          "id": 387,
+          "requests": 19
+        },
+        {
+          "country": "Azerbaijan",
+          "name": "Premyer Liqa",
+          "id": 420,
+          "requests": 19
+        },
+        {
+          "country": "Georgia",
+          "name": "Erovnuli Liga",
+          "id": 325,
+          "requests": 19
+        },
+        {
+          "country": "Armenia",
+          "name": "Premier League",
+          "id": 342,
+          "requests": 19
+        },
+        {
+          "country": "Moldova",
+          "name": "Super Liga",
+          "id": 441,
+          "requests": 19
+        },
+        {
+          "country": "Bosnia",
+          "name": "Premijer Liga",
+          "id": 155,
+          "requests": 19
+        },
+        {
+          "country": "North-Macedonia",
+          "name": "First League",
+          "id": 428,
+          "requests": 19
+        },
+        {
+          "country": "Montenegro",
+          "name": "First League",
+          "id": 423,
+          "requests": 19
+        },
+        {
+          "country": "Albania",
+          "name": "Superliga",
+          "id": 310,
+          "requests": 19
+        },
+        {
+          "country": "Kosovo",
+          "name": "Superliga",
+          "id": 409,
+          "requests": 19
+        },
+        {
+          "country": "Luxembourg",
+          "name": "National Division",
+          "id": 261,
+          "requests": 19
+        },
+        {
+          "country": "Malta",
+          "name": "Premier League",
+          "id": 392,
+          "requests": 19
+        },
+        {
+          "country": "Estonia",
+          "name": "Meistriliiga",
+          "id": 329,
+          "requests": 19
+        },
+        {
+          "country": "Latvia",
+          "name": "Virsliga",
+          "id": 363,
+          "requests": 19
+        },
+        {
+          "country": "Lithuania",
+          "name": "A Lyga",
+          "id": 360,
+          "requests": 19
+        },
+        {
+          "country": "Faroe-Islands",
+          "name": "Premier League",
+          "id": 370,
+          "requests": 19
+        },
+        {
+          "country": "Brazil",
+          "name": "Serie A",
+          "id": 71,
+          "requests": 19
+        },
+        {
+          "country": "Argentina",
+          "name": "Liga Profesional",
+          "id": 128,
+          "requests": 19
+        },
+        {
+          "country": "Colombia",
+          "name": "Liga BetPlay",
+          "id": 239,
+          "requests": 19
+        },
+        {
+          "country": "Chile",
+          "name": "Primera División",
+          "id": 265,
+          "requests": 19
+        },
+        {
+          "country": "Uruguay",
+          "name": "Primera División",
+          "id": 268,
+          "requests": 19
+        },
+        {
+          "country": "Paraguay",
+          "name": "División Profesional",
+          "id": 274,
+          "requests": 19
+        },
+        {
+          "country": "Peru",
+          "name": "Liga 1",
+          "id": 281,
+          "requests": 19
+        },
+        {
+          "country": "Ecuador",
+          "name": "Liga Pro",
+          "id": 242,
+          "requests": 19
+        },
+        {
+          "country": "Venezuela",
+          "name": "Primera División",
+          "id": 299,
+          "requests": 19
+        },
+        {
+          "country": "Bolivia",
+          "name": "División Profesional",
+          "id": 158,
+          "requests": 19
+        },
+        {
+          "country": "Mexico",
+          "name": "Liga MX",
+          "id": 262,
+          "requests": 19
+        },
+        {
+          "country": "USA",
+          "name": "MLS",
+          "id": 253,
+          "requests": 19
+        },
+        {
+          "country": "Canada",
+          "name": "MLS",
+          "id": 253,
+          "requests": 19
+        },
+        {
+          "country": "Costa-Rica",
+          "name": "Primera División",
+          "id": 162,
+          "requests": 19
+        },
+        {
+          "country": "Honduras",
+          "name": "Liga Nacional",
+          "id": 247,
+          "requests": 19
+        },
+        {
+          "country": "Guatemala",
+          "name": "Liga Nacional",
+          "id": 240,
+          "requests": 19
+        },
+        {
+          "country": "El-Salvador",
+          "name": "Primera División",
+          "id": 230,
+          "requests": 19
+        },
+        {
+          "country": "Panama",
+          "name": "Liga Panameña",
+          "id": 277,
+          "requests": 19
+        },
+        {
+          "country": "Jamaica",
+          "name": "Premier League",
+          "id": 256,
+          "requests": 19
+        },
+        {
+          "country": "Japan",
+          "name": "J1 League",
+          "id": 98,
+          "requests": 19
+        },
+        {
+          "country": "South-Korea",
+          "name": "K League 1",
+          "id": 292,
+          "requests": 19
+        },
+        {
+          "country": "China",
+          "name": "Super League",
+          "id": 169,
+          "requests": 19
+        },
+        {
+          "country": "Saudi-Arabia",
+          "name": "Pro League",
+          "id": 307,
+          "requests": 19
+        },
+        {
+          "country": "United-Arab-Emirates",
+          "name": "Pro League",
+          "id": 301,
+          "requests": 19
+        },
+        {
+          "country": "Qatar",
+          "name": "Stars League",
+          "id": 305,
+          "requests": 19
+        },
+        {
+          "country": "Iran",
+          "name": "Persian Gulf Pro League",
+          "id": 252,
+          "requests": 19
+        },
+        {
+          "country": "Thailand",
+          "name": "Thai League 1",
+          "id": 296,
+          "requests": 19
+        },
+        {
+          "country": "Australia",
+          "name": "A-League",
+          "id": 188,
+          "requests": 19
+        },
+        {
+          "country": "India",
+          "name": "Indian Super League",
+          "id": 323,
+          "requests": 19
+        },
+        {
+          "country": "Indonesia",
+          "name": "Liga 1",
+          "id": 249,
+          "requests": 19
+        },
+        {
+          "country": "Malaysia",
+          "name": "Super League",
+          "id": 378,
+          "requests": 19
+        },
+        {
+          "country": "Singapore",
+          "name": "Premier League",
+          "id": 382,
+          "requests": 19
+        },
+        {
+          "country": "Vietnam",
+          "name": "V.League 1",
+          "id": 340,
+          "requests": 19
+        },
+        {
+          "country": "Iraq",
+          "name": "Stars League",
+          "id": 254,
+          "requests": 19
+        },
+        {
+          "country": "Jordan",
+          "name": "Pro League",
+          "id": 258,
+          "requests": 19
+        },
+        {
+          "country": "Kuwait",
+          "name": "Premier League",
+          "id": 259,
+          "requests": 19
+        },
+        {
+          "country": "Bahrain",
+          "name": "Premier League",
+          "id": 149,
+          "requests": 19
+        },
+        {
+          "country": "Oman",
+          "name": "Professional League",
+          "id": 269,
+          "requests": 19
+        },
+        {
+          "country": "Lebanon",
+          "name": "Premier League",
+          "id": 390,
+          "requests": 19
+        },
+        {
+          "country": "Syria",
+          "name": "Premier League",
+          "id": 440,
+          "requests": 19
+        },
+        {
+          "country": "Uzbekistan",
+          "name": "Super League",
+          "id": 352,
+          "requests": 19
+        },
+        {
+          "country": "Hong-Kong",
+          "name": "Premier League",
+          "id": 365,
+          "requests": 19
+        },
+        {
+          "country": "Egypt",
+          "name": "Premier League",
+          "id": 233,
+          "requests": 19
+        },
+        {
+          "country": "Morocco",
+          "name": "Botola Pro",
+          "id": 200,
+          "requests": 19
+        },
+        {
+          "country": "Tunisia",
+          "name": "Ligue 1",
+          "id": 202,
+          "requests": 19
+        },
+        {
+          "country": "Algeria",
+          "name": "Ligue 1",
+          "id": 186,
+          "requests": 19
+        },
+        {
+          "country": "South-Africa",
+          "name": "Premier Soccer League",
+          "id": 288,
+          "requests": 19
+        },
+        {
+          "country": "Nigeria",
+          "name": "NPFL",
+          "id": 267,
+          "requests": 19
+        },
+        {
+          "country": "Ghana",
+          "name": "Premier League",
+          "id": 237,
+          "requests": 19
+        },
+        {
+          "country": "Ivory-Coast",
+          "name": "Ligue 1",
+          "id": 355,
+          "requests": 19
+        },
+        {
+          "country": "Senegal",
+          "name": "Ligue 1",
+          "id": 368,
+          "requests": 19
+        },
+        {
+          "country": "Cameroon",
+          "name": "Elite One",
+          "id": 159,
+          "requests": 19
+        },
+        {
+          "country": "DR-Congo",
+          "name": "Linafoot",
+          "id": 228,
+          "requests": 19
+        },
+        {
+          "country": "Tanzania",
+          "name": "Premier League",
+          "id": 419,
+          "requests": 19
+        },
+        {
+          "country": "Kenya",
+          "name": "Premier League",
+          "id": 396,
+          "requests": 19
+        },
+        {
+          "country": "Uganda",
+          "name": "Premier League",
+          "id": 412,
+          "requests": 19
+        },
+        {
+          "country": "Zambia",
+          "name": "Super League",
+          "id": 255,
+          "requests": 19
+        },
+        {
+          "country": "Zimbabwe",
+          "name": "Premier Soccer League",
+          "id": 351,
+          "requests": 19
+        },
+        {
+          "country": "Angola",
+          "name": "Girabola",
+          "id": 381,
+          "requests": 19
+        },
+        {
+          "country": "Mozambique",
+          "name": "Moçambola",
+          "id": 372,
+          "requests": 19
+        },
+        {
+          "country": "Ethiopia",
+          "name": "Premier League",
+          "id": 358,
+          "requests": 19
+        },
+        {
+          "country": "Sudan",
+          "name": "Premier League",
+          "id": 398,
+          "requests": 19
+        },
+        {
+          "country": "Libya",
+          "name": "Premier League",
+          "id": 374,
+          "requests": 19
+        },
+        {
+          "country": "Mali",
+          "name": "Première Division",
+          "id": 375,
+          "requests": 19
+        },
+        {
+          "country": "Burkina-Faso",
+          "name": "Premier League",
+          "id": 324,
+          "requests": 19
+        },
+        {
+          "country": "Niger",
+          "name": "Ligue 1",
+          "id": 400,
+          "requests": 19
+        },
+        {
+          "country": "Guinea",
+          "name": "Ligue 1",
+          "id": 320,
+          "requests": 19
+        },
+        {
+          "country": "Benin",
+          "name": "Ligue Pro",
+          "id": 316,
+          "requests": 19
+        },
+        {
+          "country": "Togo",
+          "name": "Championnat National",
+          "id": 399,
+          "requests": 19
+        },
+        {
+          "country": "Rwanda",
+          "name": "Premier League",
+          "id": 385,
+          "requests": 19
+        },
+        {
+          "country": "Burundi",
+          "name": "Ligue A",
+          "id": 354,
+          "requests": 19
+        },
+        {
+          "country": "Malawi",
+          "name": "Super League",
+          "id": 376,
+          "requests": 19
+        },
+        {
+          "country": "Botswana",
+          "name": "Premier League",
+          "id": 359,
+          "requests": 19
+        },
+        {
+          "country": "Namibia",
+          "name": "Premier League",
+          "id": 377,
+          "requests": 19
+        },
+        {
+          "country": "Mauritius",
+          "name": "Premier League",
+          "id": 397,
+          "requests": 19
+        },
+        {
+          "country": "New-Zealand",
+          "name": "Premiership",
+          "id": 167,
+          "requests": 19
+        }
+      ],
+      "estimatedRequests": 2413
+    }
+  ],
+  "leagues": {
+    "England": {
+      "id": 39,
+      "name": "Premier League"
+    },
+    "Spain": {
+      "id": 140,
+      "name": "La Liga"
+    },
+    "Germany": {
+      "id": 78,
+      "name": "Bundesliga"
+    },
+    "Italy": {
+      "id": 135,
+      "name": "Serie A"
+    },
+    "France": {
+      "id": 61,
+      "name": "Ligue 1"
+    },
+    "Netherlands": {
+      "id": 88,
+      "name": "Eredivisie"
+    },
+    "Portugal": {
+      "id": 94,
+      "name": "Primeira Liga"
+    },
+    "Belgium": {
+      "id": 144,
+      "name": "Jupiler Pro League"
+    },
+    "Turkey": {
+      "id": 203,
+      "name": "Süper Lig"
+    },
+    "Russia": {
+      "id": 235,
+      "name": "Premier League"
+    },
+    "Ukraine": {
+      "id": 333,
+      "name": "Premier League"
+    },
+    "Scotland": {
+      "id": 179,
+      "name": "Premiership"
+    },
+    "Austria": {
+      "id": 218,
+      "name": "Bundesliga"
+    },
+    "Switzerland": {
+      "id": 207,
+      "name": "Super League"
+    },
+    "Greece": {
+      "id": 197,
+      "name": "Super League"
+    },
+    "Denmark": {
+      "id": 119,
+      "name": "Superliga"
+    },
+    "Norway": {
+      "id": 103,
+      "name": "Eliteserien"
+    },
+    "Sweden": {
+      "id": 113,
+      "name": "Allsvenskan"
+    },
+    "Poland": {
+      "id": 106,
+      "name": "Ekstraklasa"
+    },
+    "Czech-Republic": {
+      "id": 345,
+      "name": "Czech Liga"
+    },
+    "Croatia": {
+      "id": 210,
+      "name": "HNL"
+    },
+    "Serbia": {
+      "id": 286,
+      "name": "Super Liga"
+    },
+    "Romania": {
+      "id": 283,
+      "name": "Liga I"
+    },
+    "Bulgaria": {
+      "id": 172,
+      "name": "First League"
+    },
+    "Hungary": {
+      "id": 271,
+      "name": "NB I"
+    },
+    "Cyprus": {
+      "id": 318,
+      "name": "First Division"
+    },
+    "Israel": {
+      "id": 384,
+      "name": "Ligat Ha'al"
+    },
+    "Finland": {
+      "id": 244,
+      "name": "Veikkausliiga"
+    },
+    "Iceland": {
+      "id": 164,
+      "name": "Úrvalsdeild"
+    },
+    "Ireland": {
+      "id": 357,
+      "name": "Premier Division"
+    },
+    "Northern-Ireland": {
+      "id": 408,
+      "name": "Premiership"
+    },
+    "Wales": {
+      "id": 110,
+      "name": "Premier League"
+    },
+    "Slovakia": {
+      "id": 332,
+      "name": "Super Liga"
+    },
+    "Slovenia": {
+      "id": 373,
+      "name": "PrvaLiga"
+    },
+    "Belarus": {
+      "id": 116,
+      "name": "Premier League"
+    },
+    "Kazakhstan": {
+      "id": 387,
+      "name": "Premier League"
+    },
+    "Azerbaijan": {
+      "id": 420,
+      "name": "Premyer Liqa"
+    },
+    "Georgia": {
+      "id": 325,
+      "name": "Erovnuli Liga"
+    },
+    "Armenia": {
+      "id": 342,
+      "name": "Premier League"
+    },
+    "Moldova": {
+      "id": 441,
+      "name": "Super Liga"
+    },
+    "Bosnia": {
+      "id": 155,
+      "name": "Premijer Liga"
+    },
+    "North-Macedonia": {
+      "id": 428,
+      "name": "First League"
+    },
+    "Montenegro": {
+      "id": 423,
+      "name": "First League"
+    },
+    "Albania": {
+      "id": 310,
+      "name": "Superliga"
+    },
+    "Kosovo": {
+      "id": 409,
+      "name": "Superliga"
+    },
+    "Luxembourg": {
+      "id": 261,
+      "name": "National Division"
+    },
+    "Malta": {
+      "id": 392,
+      "name": "Premier League"
+    },
+    "Estonia": {
+      "id": 329,
+      "name": "Meistriliiga"
+    },
+    "Latvia": {
+      "id": 363,
+      "name": "Virsliga"
+    },
+    "Lithuania": {
+      "id": 360,
+      "name": "A Lyga"
+    },
+    "Faroe-Islands": {
+      "id": 370,
+      "name": "Premier League"
+    },
+    "Brazil": {
+      "id": 71,
+      "name": "Serie A"
+    },
+    "Argentina": {
+      "id": 128,
+      "name": "Liga Profesional"
+    },
+    "Colombia": {
+      "id": 239,
+      "name": "Liga BetPlay"
+    },
+    "Chile": {
+      "id": 265,
+      "name": "Primera División"
+    },
+    "Uruguay": {
+      "id": 268,
+      "name": "Primera División"
+    },
+    "Paraguay": {
+      "id": 274,
+      "name": "División Profesional"
+    },
+    "Peru": {
+      "id": 281,
+      "name": "Liga 1"
+    },
+    "Ecuador": {
+      "id": 242,
+      "name": "Liga Pro"
+    },
+    "Venezuela": {
+      "id": 299,
+      "name": "Primera División"
+    },
+    "Bolivia": {
+      "id": 158,
+      "name": "División Profesional"
+    },
+    "Mexico": {
+      "id": 262,
+      "name": "Liga MX"
+    },
+    "USA": {
+      "id": 253,
+      "name": "MLS"
+    },
+    "Canada": {
+      "id": 253,
+      "name": "MLS"
+    },
+    "Costa-Rica": {
+      "id": 162,
+      "name": "Primera División"
+    },
+    "Honduras": {
+      "id": 247,
+      "name": "Liga Nacional"
+    },
+    "Guatemala": {
+      "id": 240,
+      "name": "Liga Nacional"
+    },
+    "El-Salvador": {
+      "id": 230,
+      "name": "Primera División"
+    },
+    "Panama": {
+      "id": 277,
+      "name": "Liga Panameña"
+    },
+    "Jamaica": {
+      "id": 256,
+      "name": "Premier League"
+    },
+    "Japan": {
+      "id": 98,
+      "name": "J1 League"
+    },
+    "South-Korea": {
+      "id": 292,
+      "name": "K League 1"
+    },
+    "China": {
+      "id": 169,
+      "name": "Super League"
+    },
+    "Saudi-Arabia": {
+      "id": 307,
+      "name": "Pro League"
+    },
+    "United-Arab-Emirates": {
+      "id": 301,
+      "name": "Pro League"
+    },
+    "Qatar": {
+      "id": 305,
+      "name": "Stars League"
+    },
+    "Iran": {
+      "id": 252,
+      "name": "Persian Gulf Pro League"
+    },
+    "Thailand": {
+      "id": 296,
+      "name": "Thai League 1"
+    },
+    "Australia": {
+      "id": 188,
+      "name": "A-League"
+    },
+    "India": {
+      "id": 323,
+      "name": "Indian Super League"
+    },
+    "Indonesia": {
+      "id": 249,
+      "name": "Liga 1"
+    },
+    "Malaysia": {
+      "id": 378,
+      "name": "Super League"
+    },
+    "Singapore": {
+      "id": 382,
+      "name": "Premier League"
+    },
+    "Vietnam": {
+      "id": 340,
+      "name": "V.League 1"
+    },
+    "Iraq": {
+      "id": 254,
+      "name": "Stars League"
+    },
+    "Jordan": {
+      "id": 258,
+      "name": "Pro League"
+    },
+    "Kuwait": {
+      "id": 259,
+      "name": "Premier League"
+    },
+    "Bahrain": {
+      "id": 149,
+      "name": "Premier League"
+    },
+    "Oman": {
+      "id": 269,
+      "name": "Professional League"
+    },
+    "Lebanon": {
+      "id": 390,
+      "name": "Premier League"
+    },
+    "Syria": {
+      "id": 440,
+      "name": "Premier League"
+    },
+    "Uzbekistan": {
+      "id": 352,
+      "name": "Super League"
+    },
+    "Hong-Kong": {
+      "id": 365,
+      "name": "Premier League"
+    },
+    "Egypt": {
+      "id": 233,
+      "name": "Premier League"
+    },
+    "Morocco": {
+      "id": 200,
+      "name": "Botola Pro"
+    },
+    "Tunisia": {
+      "id": 202,
+      "name": "Ligue 1"
+    },
+    "Algeria": {
+      "id": 186,
+      "name": "Ligue 1"
+    },
+    "South-Africa": {
+      "id": 288,
+      "name": "Premier Soccer League"
+    },
+    "Nigeria": {
+      "id": 267,
+      "name": "NPFL"
+    },
+    "Ghana": {
+      "id": 237,
+      "name": "Premier League"
+    },
+    "Ivory-Coast": {
+      "id": 355,
+      "name": "Ligue 1"
+    },
+    "Senegal": {
+      "id": 368,
+      "name": "Ligue 1"
+    },
+    "Cameroon": {
+      "id": 159,
+      "name": "Elite One"
+    },
+    "DR-Congo": {
+      "id": 228,
+      "name": "Linafoot"
+    },
+    "Tanzania": {
+      "id": 419,
+      "name": "Premier League"
+    },
+    "Kenya": {
+      "id": 396,
+      "name": "Premier League"
+    },
+    "Uganda": {
+      "id": 412,
+      "name": "Premier League"
+    },
+    "Zambia": {
+      "id": 255,
+      "name": "Super League"
+    },
+    "Zimbabwe": {
+      "id": 351,
+      "name": "Premier Soccer League"
+    },
+    "Angola": {
+      "id": 381,
+      "name": "Girabola"
+    },
+    "Mozambique": {
+      "id": 372,
+      "name": "Moçambola"
+    },
+    "Ethiopia": {
+      "id": 358,
+      "name": "Premier League"
+    },
+    "Sudan": {
+      "id": 398,
+      "name": "Premier League"
+    },
+    "Libya": {
+      "id": 374,
+      "name": "Premier League"
+    },
+    "Mali": {
+      "id": 375,
+      "name": "Première Division"
+    },
+    "Burkina-Faso": {
+      "id": 324,
+      "name": "Premier League"
+    },
+    "Niger": {
+      "id": 400,
+      "name": "Ligue 1"
+    },
+    "Guinea": {
+      "id": 320,
+      "name": "Ligue 1"
+    },
+    "Benin": {
+      "id": 316,
+      "name": "Ligue Pro"
+    },
+    "Togo": {
+      "id": 399,
+      "name": "Championnat National"
+    },
+    "Rwanda": {
+      "id": 385,
+      "name": "Premier League"
+    },
+    "Burundi": {
+      "id": 354,
+      "name": "Ligue A"
+    },
+    "Malawi": {
+      "id": 376,
+      "name": "Super League"
+    },
+    "Botswana": {
+      "id": 359,
+      "name": "Premier League"
+    },
+    "Namibia": {
+      "id": 377,
+      "name": "Premier League"
+    },
+    "Mauritius": {
+      "id": 397,
+      "name": "Premier League"
+    },
+    "New-Zealand": {
+      "id": 167,
+      "name": "Premiership"
+    }
+  }
+}

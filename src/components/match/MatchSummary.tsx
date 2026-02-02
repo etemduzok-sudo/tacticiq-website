@@ -628,7 +628,7 @@ const styles = StyleSheet.create({
   tabTextActive: { color: '#1FA2A6' },
   tabIndicator: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 2, backgroundColor: '#1FA2A6' },
   content: { flex: 1 },
-  contentContainer: { padding: 16, paddingBottom: 100 },
+  contentContainer: { padding: 16, paddingBottom: 8 }, // ✅ Kadro sekmesiyle aynı
   section: { marginBottom: 16 },
   card: { backgroundColor: '#1E3A3A', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: 'rgba(100, 116, 139, 0.3)' },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },

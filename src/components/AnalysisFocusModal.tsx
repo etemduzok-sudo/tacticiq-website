@@ -13,8 +13,49 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { SPACING, SIZES } from '../theme/theme';
+import { ANALYSIS_FOCUS_PREDICTIONS } from '../config/analysisFocusMapping';
 
 const { width, height } = Dimensions.get('window');
+
+/** Tahmin kategorisinin okunabilir etiketi */
+const CATEGORY_LABELS: Record<string, string> = {
+  // Maç tahminleri
+  yellowCards: 'Sarı Kart',
+  redCards: 'Kırmızı Kart',
+  shotsOnTarget: 'İsabetli Şut',
+  totalShots: 'Toplam Şut',
+  firstHalfHomeScore: 'İlk Yarı Skor',
+  firstHalfAwayScore: 'İlk Yarı Skor',
+  secondHalfHomeScore: 'Maç Sonu Skor',
+  secondHalfAwayScore: 'Maç Sonu Skor',
+  totalGoals: 'Toplam Gol',
+  firstGoalTime: 'İlk Gol',
+  possession: 'Top Hakimiyeti',
+  tempo: 'Tempo',
+  scenario: 'Maç Senaryosu',
+  totalCorners: 'Korner',
+  firstHalfInjuryTime: 'Uzatma Süresi',
+  secondHalfInjuryTime: 'Maç Sonu Uzatma',
+  // Oyuncu tahminleri
+  willScore: 'Gol Atar',
+  willAssist: 'Asist Yapar',
+  manOfTheMatch: 'MVP',
+  yellowCard: 'Sarı Kart (Oyuncu)',
+  redCard: 'Kırmızı Kart (Oyuncu)',
+  secondYellowRed: '2. Sarıdan Kırmızı',
+  directRedCard: 'Direkt Kırmızı',
+  substitutedOut: 'Oyundan Çıkar',
+  injuredOut: 'Sakatlanarak Çıkar',
+  substitutePlayer: 'Değişen Oyuncu',
+  injurySubstitutePlayer: 'Sakatlık Değişikliği',
+};
+
+const getBonusLabels = (focusId: string): string => {
+  const m = ANALYSIS_FOCUS_PREDICTIONS[focusId as keyof typeof ANALYSIS_FOCUS_PREDICTIONS];
+  if (!m) return '';
+  const primary = m.primary.slice(0, 4).map((c) => CATEGORY_LABELS[c] || c).join(', ');
+  return primary + (m.primary.length > 4 ? '...' : '');
+};
 
 export type AnalysisFocusType = 
   | 'defense' 
@@ -165,7 +206,10 @@ export const AnalysisFocusModal: React.FC<AnalysisFocusModalProps> = ({
         
         {/* Açıklama - Esnek alan */}
         <View style={styles.descriptionRow}>
-          <Text style={styles.focusDescription} numberOfLines={3}>{focus.description}</Text>
+          <Text style={styles.focusDescription} numberOfLines={2}>{focus.description}</Text>
+          <Text style={[styles.focusBonusLabel, { color: focus.color }]}>
+            ⭐ Bonus: {getBonusLabels(focus.id)}
+          </Text>
         </View>
       </TouchableOpacity>
     );
@@ -367,6 +411,11 @@ const styles = StyleSheet.create({
     fontSize: 9, // ✅ Daha küçük açıklama
     color: '#94A3B8',
     lineHeight: 12,
+  },
+  focusBonusLabel: {
+    fontSize: 8,
+    marginTop: 4,
+    fontWeight: '600',
   },
   infoBox: {
     flexDirection: 'row',

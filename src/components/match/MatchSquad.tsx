@@ -16,7 +16,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../../config/supabase';
 import { STORAGE_KEYS } from '../../config/constants';
-import { squadPredictionsApi } from '../../services/api';
+import { squadPredictionsApi, teamsApi } from '../../services/api';
 import { predictionsDb } from '../../services/databaseService';
 import { ConfirmModal, ConfirmButton } from '../ui/ConfirmModal';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -36,6 +36,7 @@ import Svg, {
   Line, 
   Path,
 } from 'react-native-svg';
+import { CommunitySignalPopup } from './CommunitySignalPopup';
 
 const { width, height } = Dimensions.get('window');
 
@@ -662,8 +663,13 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
   // ✅ Takım kadrosu için state (lineups yoksa API'den çekilecek)
   const [squadPlayers, setSquadPlayers] = React.useState<any[]>([]);
   const [isLoadingSquad, setIsLoadingSquad] = React.useState(false);
+  const [squadRetryKey, setSquadRetryKey] = React.useState(0);
 
-  // ✅ Lineups yoksa API'den takım kadrosunu çek – sadece favori takım(lar) varsa onların kadrosu
+  const retrySquadFetch = React.useCallback(() => {
+    setSquadRetryKey((k) => k + 1);
+  }, []);
+
+  // ✅ Lineups yoksa API'den her iki takımın kadrosunu çek
   React.useEffect(() => {
     const fetchSquads = async () => {
       if (lineups && lineups.length > 0) return;
@@ -672,71 +678,24 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
         return;
       }
 
-      const showOnlyFavorites = favoriteTeamIds && favoriteTeamIds.length > 0;
-      const fetchHome = !showOnlyFavorites || favoriteTeamIds!.includes(homeTeamId);
-      const fetchAway = !showOnlyFavorites || favoriteTeamIds!.includes(awayTeamId);
-      if (showOnlyFavorites && !fetchHome && !fetchAway) {
-        setSquadPlayers([]);
-        setIsLoadingSquad(false);
-        return;
-      }
-
       setIsLoadingSquad(true);
-      console.log('📥 Fetching team squads...', { homeTeamId, awayTeamId, favoriteOnly: showOnlyFavorites });
+      console.log('📥 Fetching team squads...', { homeTeamId, awayTeamId });
 
       try {
-        const homePromise = fetchHome
-          ? fetch(`http://localhost:3001/api/teams/${homeTeamId}/squad`, {
-              method: 'GET',
-              headers: { 'Content-Type': 'application/json' },
-            })
-              .then(async (r) => {
-                if (!r.ok) {
-                  const errorText = await r.text();
-                  console.error(`❌ Home squad fetch failed (${r.status}):`, errorText);
-                  return null;
-                }
-                const json = await r.json();
-                if (!json.success) {
-                  console.error('❌ Home squad API error:', json.error);
-                  return null;
-                }
-                return json;
-              })
-              .catch((err) => {
-                console.error('❌ Home squad fetch exception:', err.message);
-                return null;
-              })
-          : Promise.resolve(null);
-        const awayPromise = fetchAway
-          ? fetch(`http://localhost:3001/api/teams/${awayTeamId}/squad`, {
-              method: 'GET',
-              headers: { 'Content-Type': 'application/json' },
-            })
-              .then(async (r) => {
-                if (!r.ok) {
-                  const errorText = await r.text();
-                  console.error(`❌ Away squad fetch failed (${r.status}):`, errorText);
-                  return null;
-                }
-                const json = await r.json();
-                if (!json.success) {
-                  console.error('❌ Away squad API error:', json.error);
-                  return null;
-                }
-                return json;
-              })
-              .catch((err) => {
-                console.error('❌ Away squad fetch exception:', err.message);
-                return null;
-              })
-          : Promise.resolve(null);
+        const homePromise = teamsApi.getTeamSquad(homeTeamId).then((json) => json).catch((err) => {
+          console.error('❌ Home squad fetch exception:', err.message);
+          return null;
+        });
+        const awayPromise = teamsApi.getTeamSquad(awayTeamId).then((json) => json).catch((err) => {
+          console.error('❌ Away squad fetch exception:', err.message);
+          return null;
+        });
 
         const [homeRes, awayRes] = await Promise.all([homePromise, awayPromise]);
 
         const allPlayers: any[] = [];
 
-        if (fetchHome && homeRes?.data?.players && Array.isArray(homeRes.data.players)) {
+        if (homeRes?.data?.players && Array.isArray(homeRes.data.players)) {
           homeRes.data.players.forEach((p: any) => {
             allPlayers.push({
               id: p.id, name: p.name, position: normalizePosition(p.position), 
@@ -748,7 +707,7 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
             });
           });
         }
-        if (fetchAway && awayRes?.data?.players && Array.isArray(awayRes.data.players)) {
+        if (awayRes?.data?.players && Array.isArray(awayRes.data.players)) {
           awayRes.data.players.forEach((p: any) => {
             allPlayers.push({
               id: p.id, name: p.name, position: normalizePosition(p.position), 
@@ -767,7 +726,7 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
             console.error('❌ Both API calls failed - Backend may not be running on port 3001');
           }
         } else {
-          console.log('✅ Squad players loaded:', allPlayers.length, showOnlyFavorites ? '(favori takım only)' : '');
+          console.log('✅ Squad players loaded:', allPlayers.length);
         }
         setSquadPlayers(allPlayers);
       } catch (err: any) {
@@ -779,7 +738,7 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
     };
 
     fetchSquads();
-  }, [lineups, homeTeamId, awayTeamId, homeTeamName, awayTeamName, favoriteTeamIds]);
+  }, [lineups, homeTeamId, awayTeamId, homeTeamName, awayTeamName, squadRetryKey]);
 
   // ✅ GERÇEK VERİ: Önce lineups, yoksa squadPlayers kullan
   const realPlayers = React.useMemo(() => {
@@ -892,12 +851,22 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
     return [];
   }, [lineups, squadPlayers, favoriteTeamIds]);
 
-  // ✅ Atak kadrosu = tek takım. İki favori maçta predictionTeamId; yoksa favori tek veya ev sahibi.
+  // ✅ Atak kadrosu = favori takım. Favori ev sahibi veya deplasman fark etmez, her zaman favori takımın kadrosu gelir.
   const attackTeamId = React.useMemo(() => {
+    // İki favori maçta (predictionTeamId varsa) onu kullan
     if (predictionTeamId != null) return predictionTeamId;
+    
     if (!homeTeamId || !awayTeamId) return homeTeamId || awayTeamId;
-    if (favoriteTeamIds.length === 1 && (favoriteTeamIds[0] === homeTeamId || favoriteTeamIds[0] === awayTeamId))
-      return favoriteTeamIds[0];
+    
+    // ✅ KRİTİK: Favori takımlardan biri maçta oynuyorsa, O TAKIM SEÇİLİR (ev sahibi veya deplasman fark etmez!)
+    // Önce ev sahibi favori mi kontrol et
+    if (favoriteTeamIds.includes(homeTeamId)) return homeTeamId;
+    
+    // Sonra deplasman favori mi kontrol et
+    if (favoriteTeamIds.includes(awayTeamId)) return awayTeamId;
+    
+    // Hiçbir favori maçta değilse fallback olarak ev sahibi (bu durum normalde olmamalı)
+    console.warn('⚠️ No favorite team found in match, falling back to home team');
     return homeTeamId;
   }, [homeTeamId, awayTeamId, favoriteTeamIds, predictionTeamId]);
 
@@ -1033,6 +1002,12 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
   const [showPlayerModal, setShowPlayerModal] = useState(false);
   const [formationType, setFormationType] = useState<'attack' | 'defense' | 'balanced'>('attack');
   const [selectedPlayerForDetail, setSelectedPlayerForDetail] = useState<typeof players[0] | null>(null);
+  
+  // ✅ Community Signal Popup State
+  const [showCommunitySignal, setShowCommunitySignal] = useState(false);
+  const [communitySignalPlayer, setCommunitySignalPlayer] = useState<{ id: number; name: string; position: string } | null>(null);
+  // Session-based spam prevention: track which players have been shown signal in this session
+  const communitySignalShownRef = React.useRef<Set<number>>(new Set());
   
   // ✅ editingMode değiştiğinde formationType'ı senkronize et
   React.useEffect(() => {
@@ -1257,6 +1232,14 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
   };
 
   const handlePlayerSelect = (player: typeof players[0]) => {
+    // ✅ Sakat veya cezalı oyuncu kadroya eklenemez (kısıt kalkınca tekrar eklenebilir)
+    if (player.eligible_for_selection === false || player.injured || player.suspended) {
+      Alert.alert(
+        'Kadroya Eklenemez',
+        'Bu oyuncu sakat veya cezalı. Kadroya ekleyemezsiniz. Sakatlık/ceza kalkınca tekrar ekleyebilirsiniz.'
+      );
+      return;
+    }
     if (selectedSlot !== null) {
       const currentFormation = editingMode === 'attack' ? attackFormation : defenseFormation;
       const formationData = formations.find(f => f.id === currentFormation);
@@ -1483,6 +1466,27 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
                   {player ? (
                     <View style={styles.playerCardWrapper}>
                         {/* Remove button - Top Right */}
+                        {/* Replace button - Top Left */}
+                        <TouchableOpacity
+                          style={styles.replaceButton}
+                          onPress={() => {
+                            // Community Signal: Show popup when replacing
+                            const playerForSignal = { id: player.id, name: player.name, position: positionLabel };
+                            setCommunitySignalPlayer(playerForSignal);
+                            // Only show if not shown for this player in this session
+                            if (!communitySignalShownRef.current.has(player.id)) {
+                              setShowCommunitySignal(true);
+                              communitySignalShownRef.current.add(player.id);
+                            }
+                            setSelectedSlot(index);
+                            setShowPlayerModal(true);
+                          }}
+                          activeOpacity={0.7}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                          <Ionicons name="swap-horizontal" size={14} color="#1FA2A6" />
+                        </TouchableOpacity>
+
                         <TouchableOpacity
                           style={styles.removeButton}
                           onPress={() => handleRemovePlayer(index)}
@@ -1622,6 +1626,26 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
         isDefenseMode={editingMode === 'defense'}
         isLoadingSquad={isLoadingSquad}
         hasBackendError={!isLoadingSquad && squadPlayers.length === 0 && !lineups?.length && editingMode === 'attack'}
+        onRetrySquad={retrySquadFetch}
+      />
+
+      {/* ✅ Community Signal Popup - Shows when user initiates player replacement */}
+      <CommunitySignalPopup
+        visible={showCommunitySignal}
+        onClose={() => setShowCommunitySignal(false)}
+        onSelectReplacement={(player) => {
+          // When user selects a replacement from community suggestions
+          if (selectedSlot !== null) {
+            handlePlayerSelect(player);
+          }
+          setShowCommunitySignal(false);
+        }}
+        matchId={parseInt(matchId, 10) || 0}
+        teamId={predictionTeamId || attackTeamId || 0}
+        currentPlayer={communitySignalPlayer}
+        userLineup={selectedPlayers}
+        formationId={selectedFormation || '4-3-3'}
+        availablePlayers={editingMode === 'defense' ? attackSquadPlayers : attackTeamPlayers}
       />
 
       {/* Formation Modal - Defans sekmesi sadece atak formasyonu seçilip 11 oyuncu yerleştirildiyse aktif */}
@@ -2075,7 +2099,7 @@ const FormationDetailModal = ({ formation, onClose, onSelect }: any) => (
 
 // Player Modal Component - COMPLETE
 // Kaleci pozisyonuna yalnızca kaleci, saha pozisyonlarına yalnızca saha oyuncusu atanabilir.
-const PlayerModal = ({ visible, players, selectedPlayers, positionLabel, onSelect, onClose, isDefenseMode, isLoadingSquad = false, hasBackendError = false }: any) => {
+const PlayerModal = ({ visible, players, selectedPlayers, positionLabel, onSelect, onClose, isDefenseMode, isLoadingSquad = false, hasBackendError = false, onRetrySquad }: any) => {
   const [previewPlayer, setPreviewPlayer] = useState<any>(null);
 
   const isGKPosition = positionLabel === 'GK';
@@ -2084,11 +2108,12 @@ const PlayerModal = ({ visible, players, selectedPlayers, positionLabel, onSelec
   const isPlayerEligible = (player: any) =>
     isGKPosition ? isGoalkeeperPlayer(player) : !isGoalkeeperPlayer(player);
 
-  // Filter: not already selected AND eligible for this position
+  // Filter: not already selected AND eligible for this position (sakat/cezalı listede görünsün ama pasif)
   const eligiblePlayers = players.filter(
     (p: any) =>
       !Object.values(selectedPlayers).some((sp: any) => sp?.id === p.id) && isPlayerEligible(p)
   );
+  const canAddToSquad = (p: any) => p.eligible_for_selection !== false && !p.injured && !p.suspended;
 
   // Forma numarasına göre küçükten büyüğe sırala (yoksa sonda)
   const sortedPlayers = [...eligiblePlayers].sort((a, b) => {
@@ -2099,6 +2124,13 @@ const PlayerModal = ({ visible, players, selectedPlayers, positionLabel, onSelec
 
   const handlePlayerSelect = (player: any) => {
     setPreviewPlayer(null);
+    if (player.eligible_for_selection === false || player.injured || player.suspended) {
+      Alert.alert(
+        'Kadroya Eklenemez',
+        'Bu oyuncu sakat veya cezalı. Kadroya ekleyemezsiniz. Sakatlık/ceza kalkınca tekrar ekleyebilirsiniz.'
+      );
+      return;
+    }
     onSelect(player);
   };
 
@@ -2217,11 +2249,19 @@ const PlayerModal = ({ visible, players, selectedPlayers, positionLabel, onSelec
                         </Text>
                         <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)', textAlign: 'center', marginTop: 8, lineHeight: 20 }}>
                           {hasBackendError
-                            ? 'Backend servisi çalışmıyor olabilir. Lütfen backend\'in port 3001\'de çalıştığından emin olun ve sayfayı yenileyin.'
+                            ? 'Backend servisi çalışmıyor olabilir. Lütfen backend\'in port 3001\'de çalıştığından emin olun.'
                             : noData
-                            ? 'Bu maç için kadro bilgisi henüz yayınlanmadı. Maç yaklaştığında kadro bilgileri güncellenecektir.'
+                            ? 'Kadro henüz yüklenmedi. Backend kadroyu çekiyor olabilir. Yeniden deneyin.'
                             : (isGKPosition ? 'Kadroda kaleci yok veya hepsi seçildi. Önce kalecinizi kale pozisyonuna yerleştirin.' : 'Kadroda saha oyuncusu yok veya hepsi seçildi.')}
                         </Text>
+                        {(noData || hasBackendError) && onRetrySquad && (
+                          <TouchableOpacity
+                            onPress={onRetrySquad}
+                            style={{ marginTop: 16, paddingVertical: 10, paddingHorizontal: 20, backgroundColor: 'rgba(31, 162, 166, 0.3)', borderRadius: 8 }}
+                          >
+                            <Text style={{ color: '#1FA2A6', fontWeight: '600' }}>Yeniden Dene</Text>
+                          </TouchableOpacity>
+                        )}
                       </>
                     )}
                   </View>
@@ -2632,7 +2672,7 @@ const styles = StyleSheet.create({
     width: width - 24,
     height: (width - 24) * 1.35 * 1.05 * 1.02, // ✅ MatchPrediction ile aynı oran, y ekseni +5% +2%
     alignSelf: 'center',
-    marginBottom: 6,
+    marginBottom: 0,
   },
   playersContainer: {
     flex: 1,
@@ -2719,6 +2759,35 @@ const styles = StyleSheet.create({
       },
       web: {
         boxShadow: '0 2px 8px rgba(239, 68, 68, 0.5)',
+      },
+    }),
+  },
+  replaceButton: {
+    position: 'absolute',
+    top: -8,
+    left: -8,
+    zIndex: 9999,
+    elevation: 9999,
+    backgroundColor: '#0F2A24',
+    borderRadius: 13,
+    width: 26,
+    height: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#1FA2A6',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 999,
+      },
+      web: {
+        boxShadow: '0 2px 8px rgba(31, 162, 166, 0.4)',
       },
     }),
   },
@@ -2852,17 +2921,19 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   
+  // ✅ Tahmin sekmesindeki infoNote ile AYNI stil (sıçrama olmaması için)
   bottomBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#1E3A3A', // ✅ Design System: Primary tonu (koyu yeşil kart)
-    borderRadius: 10,
-    paddingVertical: 8,
+    backgroundColor: '#1E3A3A',
+    borderRadius: 8,
+    paddingVertical: 6,
     paddingHorizontal: 10,
     borderWidth: 1,
-    borderColor: 'rgba(31, 162, 166, 0.3)', // ✅ Design System: Secondary opacity
-    marginTop: 6,
+    borderColor: 'rgba(31, 162, 166, 0.3)',
+    marginTop: 6, // ✅ 2px yukarı taşındı
+    marginBottom: 8,
   },
   bottomBarLeft: {
     flex: 1,

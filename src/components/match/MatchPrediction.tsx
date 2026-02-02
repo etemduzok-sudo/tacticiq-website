@@ -37,15 +37,22 @@ import { predictionsDb } from '../../services/databaseService';
 import { ConfirmModal, ConfirmButton } from '../ui/ConfirmModal';
 import { ANALYSIS_FOCUSES, type AnalysisFocus, type AnalysisFocusType } from '../AnalysisFocusModal';
 
-// 🌟 Her analiz odağının kapsadığı tahmin kategorileri
-// Bir kategori SADECE BİR odağa ait olabilir (karşılıklı dışlama)
+// 🌟 Her analiz odağının BİRİNCİL tahmin kategorileri (UI gösterimi için)
+// Merkezi mapping: src/config/analysisFocusMapping.ts
+// NOT: Tempo hem Orta Saha hem Fiziksel'de birincil (her ikisinde de bonus!)
 const FOCUS_CATEGORY_MAPPING: Record<AnalysisFocusType, string[]> = {
-  defense: ['yellowCards', 'redCards'], // Savunma: Sarı/kırmızı kartlar
-  offense: ['firstHalfHomeScore', 'firstHalfAwayScore', 'secondHalfHomeScore', 'secondHalfAwayScore', 'totalGoals', 'firstGoalTime', 'goal'], // Hücum: Skorlar, goller
-  midfield: ['assist', 'possession'], // Orta saha: Asistler, top hakimiyeti
-  physical: ['firstHalfInjuryTime', 'secondHalfInjuryTime'], // Fiziksel: Uzatma süreleri
-  tactical: ['tempo', 'scenario'], // Taktik: Maç temposu, senaryo
-  player: ['substitutedOut', 'injuredOut', 'substitutePlayer', 'injurySubstitutePlayer'], // Oyuncu: Değişiklikler
+  // 🛡️ Savunma: Disiplin, sertlik (kartlar)
+  defense: ['yellowCards', 'redCards', 'yellowCard', 'redCard', 'secondYellowRed', 'directRedCard'],
+  // ⚔️ Hücum: Gol, skor, bitiricilik
+  offense: ['firstHalfHomeScore', 'firstHalfAwayScore', 'secondHalfHomeScore', 'secondHalfAwayScore', 'totalGoals', 'firstGoalTime', 'goal', 'willScore'],
+  // 🎯 Orta Saha: Oyun kontrolü, pas, top hakimiyeti
+  midfield: ['possession', 'tempo'],
+  // 🏃 Fiziksel: Tempo, yorgunluk, değişiklikler (tempo burada da birincil!)
+  physical: ['tempo', 'injuredOut', 'injurySubstitutePlayer', 'substitutedOut', 'substitutePlayer'],
+  // ♟️ Taktik: Maç planı, senaryo, uzatma tahminleri
+  tactical: ['scenario', 'firstHalfInjuryTime', 'secondHalfInjuryTime'],
+  // 👤 Oyuncu: MVP, gol, asist
+  player: ['manOfTheMatch', 'goal', 'assist', 'willScore', 'willAssist'],
 };
 
 // Bir kategorinin hangi odağa ait olduğunu bul
@@ -59,7 +66,12 @@ const getCategoryFocus = (category: string): AnalysisFocusType | null => {
 };
 
 // Oyuncu tahminleri ile ilgili tüm kategoriler (saha yıldızı için)
-const PLAYER_RELATED_CATEGORIES = ['goal', 'assist', 'yellowCards', 'redCards', 'substitutedOut', 'injuredOut', 'substitutePlayer', 'injurySubstitutePlayer'];
+// Oyuncu odaklı: MVP, gol, asist (birincil) + kart, değişiklik, sakatlanma (ikincil)
+const PLAYER_RELATED_CATEGORIES = [
+  'manOfTheMatch', 'goal', 'assist', 'willScore', 'willAssist',  // Birincil
+  'yellowCard', 'redCard', 'secondYellowRed', 'directRedCard',   // İkincil (kart)
+  'substitutedOut', 'injuredOut', 'substitutePlayer', 'injurySubstitutePlayer', // İkincil (değişiklik)
+];
 
 // Seçili odağın oyuncu tahminlerini kapsayıp kapsamadığını kontrol et
 const doesFocusIncludePlayerPredictions = (focusType: AnalysisFocusType | null): boolean => {
@@ -76,8 +88,9 @@ import SliderNative from '@react-native-community/slider';
 
 let Slider: any;
 if (Platform.OS === 'web') {
-  // Web'de basit bir input range kullan
-  Slider = ({ value, onValueChange, minimumValue, maximumValue, step, ...props }: any) => {
+  // Web'de basit bir input range kullan - ince track
+  Slider = ({ value, onValueChange, minimumValue, maximumValue, step, minimumTrackTintColor, maximumTrackTintColor, ...props }: any) => {
+    const percent = ((value - minimumValue) / (maximumValue - minimumValue)) * 100;
     return (
       <input
         type="range"
@@ -88,9 +101,12 @@ if (Platform.OS === 'web') {
         onChange={(e) => onValueChange(parseFloat(e.target.value))}
         style={{
           width: '100%',
-          height: 4,
-          borderRadius: 2,
+          height: 2,
+          borderRadius: 1,
           outline: 'none',
+          cursor: 'pointer',
+          WebkitAppearance: 'none',
+          background: `linear-gradient(to right, ${minimumTrackTintColor || '#F59E0B'} 0%, ${minimumTrackTintColor || '#F59E0B'} ${percent}%, ${maximumTrackTintColor || 'rgba(100,116,139,0.1)'} ${percent}%, ${maximumTrackTintColor || 'rgba(100,116,139,0.1)'} 100%)`,
           ...props.style,
         }}
       />
@@ -969,635 +985,690 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
 
         {/* PREDICTION CATEGORIES - COMPLETE */}
         <View style={styles.predictionsSection}>
-          {/* Maça ait tahminler – İlk yarı skoru */}
-          <View style={styles.predictionCategory}>
-            <View style={styles.categoryCard}>
-              <View style={styles.categoryHeader}>
-                <View>
-                  <Text style={styles.categoryLabel}>⚽ İlk Yarı Skoru</Text>
+          {/* ═══════════════════════════════════════════════════════════
+              1. İLK YARI - Skor + Uzatma Süresi (Kombine Kart)
+          ═══════════════════════════════════════════════════════════ */}
+          <View style={[styles.categoryCardCombined, styles.categoryCardFirstHalf]}>
+            <View style={styles.cardAccentFirstHalf} />
+            
+            {/* Kart Başlığı */}
+            <View style={styles.combinedCardHeader}>
+              <View style={styles.combinedCardTitleRow}>
+                <View style={[styles.cardIconSmall, styles.cardIconFirstHalf]}>
+                  <Text style={styles.cardEmoji}>⏱️</Text>
                 </View>
-                <View style={[styles.focusButtonWrap, { pointerEvents: 'box-none' }]} collapsable={false}>
-                  <Pressable
-                    onPress={() => showFocusExplanationModal('firstHalfHomeScore')}
-                    style={({ pressed }) => [styles.focusButton, pressed && styles.focusButtonPressed]}
-                    hitSlop={16}
-                    accessibilityLabel="Tahmin odağı (ilk yarı skoru)"
+                <Text style={styles.combinedCardTitle}>İlk Yarı</Text>
+              </View>
+            </View>
+            
+            {/* Minimalist Skor Seçici */}
+            <View style={styles.scoreDisplayMinimal}>
+              <View style={styles.scoreTeamMinimal}>
+                <Text style={[styles.scoreTeamLabelMinimal, styles.scoreTeamLabelFirstHalf]}>EV</Text>
+                <View style={styles.scoreValueContainerMinimal}>
+                  <TouchableOpacity 
+                    style={styles.scoreAdjustBtn} 
+                    onPress={() => handleScoreChange('firstHalfHomeScore', Math.max(0, (predictions.firstHalfHomeScore ?? 0) - 1))}
                   >
-                    <Ionicons
-                      name={isFocused('firstHalfHomeScore') ? 'star' : 'star-outline'}
-                      size={24}
-                      color={isFocused('firstHalfHomeScore') ? '#F59E0B' : '#6B7280'}
-                    />
-                  </Pressable>
+                    <Ionicons name="remove" size={18} color="#64748B" />
+                  </TouchableOpacity>
+                  <Text style={[styles.scoreValueMinimal, styles.scoreValueFirstHalf]}>{predictions.firstHalfHomeScore ?? 0}</Text>
+                  <TouchableOpacity 
+                    style={styles.scoreAdjustBtn}
+                    onPress={() => handleScoreChange('firstHalfHomeScore', Math.min(9, (predictions.firstHalfHomeScore ?? 0) + 1))}
+                  >
+                    <Ionicons name="add" size={18} color="#64748B" />
+                  </TouchableOpacity>
                 </View>
               </View>
               
-              <View style={styles.scorePickerContainer}>
-                <View style={styles.scorePickerColumn}>
-                  <Text style={styles.scorePickerLabel}>Ev Sahibi Golü</Text>
-                  <View style={styles.scoreButtons}>
-                    {[0, 1, 2, 3, 4, 5].map((score) => (
-                      <TouchableOpacity
-                        key={score}
-                        style={[
-                          styles.scoreButton,
-                          predictions.firstHalfHomeScore === score && styles.scoreButtonActive
-                        ]}
-                        onPress={() => handleScoreChange('firstHalfHomeScore', score)}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={[
-                          styles.scoreButtonText,
-                          predictions.firstHalfHomeScore === score && styles.scoreButtonTextActive
-                        ]}>
-                          {score === 5 ? '5+' : score}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </View>
-
-                <View style={styles.scoreSeparator}>
-                  <Text style={styles.scoreSeparatorText}>-</Text>
-                </View>
-
-                <View style={styles.scorePickerColumn}>
-                  <Text style={styles.scorePickerLabel}>Deplasman Golü</Text>
-                  <View style={styles.scoreButtons}>
-                    {[0, 1, 2, 3, 4, 5].map((score) => (
-                      <TouchableOpacity
-                        key={score}
-                        style={[
-                          styles.scoreButton,
-                          predictions.firstHalfAwayScore === score && styles.scoreButtonActive
-                        ]}
-                        onPress={() => handleScoreChange('firstHalfAwayScore', score)}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={[
-                          styles.scoreButtonText,
-                          predictions.firstHalfAwayScore === score && styles.scoreButtonTextActive
-                        ]}>
-                          {score === 5 ? '5+' : score}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
+              <View style={styles.scoreDashMinimal}>
+                <Text style={styles.scoreDashTextMinimal}>:</Text>
+              </View>
+              
+              <View style={styles.scoreTeamMinimal}>
+                <Text style={[styles.scoreTeamLabelMinimal, styles.scoreTeamLabelFirstHalf]}>DEP</Text>
+                <View style={styles.scoreValueContainerMinimal}>
+                  <TouchableOpacity 
+                    style={styles.scoreAdjustBtn}
+                    onPress={() => handleScoreChange('firstHalfAwayScore', Math.max(0, (predictions.firstHalfAwayScore ?? 0) - 1))}
+                  >
+                    <Ionicons name="remove" size={18} color="#64748B" />
+                  </TouchableOpacity>
+                  <Text style={[styles.scoreValueMinimal, styles.scoreValueFirstHalf]}>{predictions.firstHalfAwayScore ?? 0}</Text>
+                  <TouchableOpacity 
+                    style={styles.scoreAdjustBtn}
+                    onPress={() => handleScoreChange('firstHalfAwayScore', Math.min(9, (predictions.firstHalfAwayScore ?? 0) + 1))}
+                  >
+                    <Ionicons name="add" size={18} color="#64748B" />
+                  </TouchableOpacity>
                 </View>
               </View>
             </View>
-
-            {/* İlk Yarı Uzatma Süresi - İlk yarı skoru altında */}
-            <View style={styles.categoryCard}>
-              <View style={styles.categoryHeader}>
-                <Text style={styles.categoryLabel}>⏱️ İlk Yarı Uzatma Süresi</Text>
-                <TouchableOpacity 
-                  onPress={() => showFocusExplanationModal('firstHalfInjuryTime')}
-                  style={styles.focusButton}
-                >
-                  <Ionicons 
-                    name={isFocused('firstHalfInjuryTime') ? 'star' : 'star-outline'}
-                    size={24} 
-                    color={isFocused('firstHalfInjuryTime') ? '#F59E0B' : '#6B7280'} 
-                  />
-                </TouchableOpacity>
+            
+            <View style={[styles.cardDividerCombined, styles.cardDividerFirstHalf]} />
+            
+            {/* Uzatma Süresi Slider */}
+            <View style={styles.sliderSectionCombined}>
+              <View style={styles.sliderHeaderCombined}>
+                <Ionicons name="time-outline" size={12} color="#64748B" />
+                <Text style={styles.sliderLabelCombined}>Uzatma Süresi</Text>
+                <View style={[styles.sliderValueBadgeCombined, styles.sliderValueBadgeFirstHalf]}>
+                  <Text style={styles.sliderValueTextCombined}>
+                    +{(() => {
+                      const val = predictions.firstHalfInjuryTime;
+                      if (!val) return '0';
+                      const num = parseInt(val.replace(/[^0-9]/g, ''));
+                      return num >= 10 ? '10+' : num;
+                    })()}
+                  </Text>
+                </View>
               </View>
-              {(() => {
-                const row1 = ['+1 dk', '+2 dk', '+3 dk', '+4 dk', '+5 dk'];
-                const row2 = ['+6 dk', '+7 dk', '+8 dk', '+9 dk', '+10 dk'];
-                const injuryTimeLabel = (t: string) => (t === '+10 dk' ? '10+' : t.replace(' dk', ''));
-                return (
-                  <View style={styles.injuryTimeGrid}>
-                    <View style={styles.injuryTimeRow}>{row1.map((time) => {
-                      const isSelected = predictions.firstHalfInjuryTime === time;
-                      return (
-                        <TouchableOpacity key={time} style={[styles.minuteRangeButtonCompact, styles.injuryTimeButton, styles.injuryTimeButtonPadding, isSelected && styles.minuteRangeButtonCompactSelected]} onPress={() => handlePredictionChange('firstHalfInjuryTime', time)} activeOpacity={0.7}>
-                          <Text style={[styles.minuteRangeTextCompact, styles.injuryTimeButtonText, isSelected && styles.minuteRangeTextCompactSelected]} numberOfLines={1}>{injuryTimeLabel(time)}</Text>
-                        </TouchableOpacity>
-                      );
-                    })}</View>
-                    <View style={styles.injuryTimeRow}>{row2.map((time) => {
-                      const isSelected = predictions.firstHalfInjuryTime === time;
-                      return (
-                        <TouchableOpacity key={time} style={[styles.minuteRangeButtonCompact, styles.injuryTimeButton, styles.injuryTimeButtonPadding, isSelected && styles.minuteRangeButtonCompactSelected]} onPress={() => handlePredictionChange('firstHalfInjuryTime', time)} activeOpacity={0.7}>
-                          <Text style={[styles.minuteRangeTextCompact, styles.injuryTimeButtonText, isSelected && styles.minuteRangeTextCompactSelected]} numberOfLines={1}>{injuryTimeLabel(time)}</Text>
-                        </TouchableOpacity>
-                      );
-                    })}</View>
-                  </View>
-                );
-              })()}
+              <View style={styles.sliderTrackContainer}>
+                <Slider
+                  value={(() => {
+                    const val = predictions.firstHalfInjuryTime;
+                    if (!val) return 0;
+                    return parseInt(val.replace(/[^0-9]/g, '')) || 0;
+                  })()}
+                  onValueChange={(v: number) => handlePredictionChange('firstHalfInjuryTime', `+${Math.round(v)} dk`)}
+                  minimumValue={0}
+                  maximumValue={10}
+                  step={1}
+                  minimumTrackTintColor="rgba(234, 179, 8, 0.5)"
+                  maximumTrackTintColor="rgba(148, 163, 184, 0.1)"
+                  thumbTintColor="#EAB308"
+                  style={styles.sliderCombined}
+                />
+                <View style={styles.sliderMarksCombined}>
+                  {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((mark) => (
+                    <Text key={String(mark)} style={styles.sliderMarkCombined}>{mark === 10 ? '10+' : mark}</Text>
+                  ))}
+                </View>
+              </View>
             </View>
-
           </View>
 
-          {/* 2. Maç Sonu Tahminleri */}
-          <View style={styles.predictionCategory}>
-            <Text style={styles.categoryTitle}>⚽ Maç Sonu Tahminleri</Text>
+          {/* ═══════════════════════════════════════════════════════════
+              2. MAÇ SONU - Skor + Uzatma Süresi (Kombine Kart)
+          ═══════════════════════════════════════════════════════════ */}
+          <View style={[styles.categoryCardCombined, styles.categoryCardFullTime]}>
+            <View style={styles.cardAccentFullTime} />
             
-            {/* Maç Sonu Skoru - İlk yarı skorunun altı seçilemez (en az ilk yarı kadar olmalı) */}
-            <View style={styles.categoryCard}>
-              <View style={styles.categoryHeader}>
-                <Text style={styles.categoryLabel}>⚽ Maç Sonu Skoru</Text>
-                <TouchableOpacity 
-                  onPress={() => showFocusExplanationModal('secondHalfHomeScore')}
-                  style={styles.focusButton}
-                >
-                  <Ionicons 
-                    name={isFocused('secondHalfHomeScore') ? 'star' : 'star-outline'}
-                    size={24} 
-                    color={isFocused('secondHalfHomeScore') ? '#F59E0B' : '#6B7280'} 
-                  />
-                </TouchableOpacity>
+            {/* Kart Başlığı */}
+            <View style={styles.combinedCardHeader}>
+              <View style={styles.combinedCardTitleRow}>
+                <View style={[styles.cardIconSmall, styles.cardIconFullTime]}>
+                  <Text style={styles.cardEmoji}>🏆</Text>
+                </View>
+                <Text style={styles.combinedCardTitle}>Maç Sonu</Text>
               </View>
-              <View style={styles.scorePickerContainer}>
-                <View style={styles.scorePickerColumn}>
-                  <Text style={styles.scorePickerLabel}>Ev Sahibi Golü</Text>
-                  <View style={styles.scoreButtons}>
-                    {[0, 1, 2, 3, 4, 5].map((score) => {
+            </View>
+            
+            {/* Minimalist Skor Seçici */}
+            <View style={styles.scoreDisplayMinimal}>
+              <View style={styles.scoreTeamMinimal}>
+                <Text style={[styles.scoreTeamLabelMinimal, styles.scoreTeamLabelFullTime]}>EV</Text>
+                <View style={styles.scoreValueContainerMinimal}>
+                  <TouchableOpacity 
+                    style={styles.scoreAdjustBtn} 
+                    onPress={() => {
                       const minHome = predictions.firstHalfHomeScore ?? 0;
-                      const isDisabled = score < minHome;
-                      return (
-                        <TouchableOpacity
-                          key={score}
-                          style={[
-                            styles.scoreButton,
-                            predictions.secondHalfHomeScore === score && styles.scoreButtonActive,
-                            isDisabled && styles.scoreButtonDisabled
-                          ]}
-                          onPress={() => !isDisabled && handleScoreChange('secondHalfHomeScore', score)}
-                          activeOpacity={0.7}
-                          disabled={isDisabled}
-                        >
-                          <Text style={[
-                            styles.scoreButtonText,
-                            predictions.secondHalfHomeScore === score && styles.scoreButtonTextActive,
-                            isDisabled && styles.scoreButtonTextDisabled
-                          ]}>
-                            {score === 5 ? '5+' : score}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
+                      const newVal = Math.max(minHome, (predictions.secondHalfHomeScore ?? 0) - 1);
+                      handleScoreChange('secondHalfHomeScore', newVal);
+                    }}
+                  >
+                    <Ionicons name="remove" size={18} color="#64748B" />
+                  </TouchableOpacity>
+                  <Text style={[styles.scoreValueMinimal, styles.scoreValueFullTime]}>{predictions.secondHalfHomeScore ?? 0}</Text>
+                  <TouchableOpacity 
+                    style={styles.scoreAdjustBtn}
+                    onPress={() => handleScoreChange('secondHalfHomeScore', Math.min(9, (predictions.secondHalfHomeScore ?? 0) + 1))}
+                  >
+                    <Ionicons name="add" size={18} color="#64748B" />
+                  </TouchableOpacity>
                 </View>
-
-                <View style={styles.scoreSeparator}>
-                  <Text style={styles.scoreSeparatorText}>-</Text>
-                </View>
-
-                <View style={styles.scorePickerColumn}>
-                  <Text style={styles.scorePickerLabel}>Deplasman Golü</Text>
-                  <View style={styles.scoreButtons}>
-                    {[0, 1, 2, 3, 4, 5].map((score) => {
+              </View>
+              
+              <View style={styles.scoreDashMinimal}>
+                <Text style={styles.scoreDashTextMinimal}>:</Text>
+              </View>
+              
+              <View style={styles.scoreTeamMinimal}>
+                <Text style={[styles.scoreTeamLabelMinimal, styles.scoreTeamLabelFullTime]}>DEP</Text>
+                <View style={styles.scoreValueContainerMinimal}>
+                  <TouchableOpacity 
+                    style={styles.scoreAdjustBtn}
+                    onPress={() => {
                       const minAway = predictions.firstHalfAwayScore ?? 0;
-                      const isDisabled = score < minAway;
-                      return (
-                        <TouchableOpacity
-                          key={score}
-                          style={[
-                            styles.scoreButton,
-                            predictions.secondHalfAwayScore === score && styles.scoreButtonActive,
-                            isDisabled && styles.scoreButtonDisabled
-                          ]}
-                          onPress={() => !isDisabled && handleScoreChange('secondHalfAwayScore', score)}
-                          activeOpacity={0.7}
-                          disabled={isDisabled}
-                        >
-                          <Text style={[
-                            styles.scoreButtonText,
-                            predictions.secondHalfAwayScore === score && styles.scoreButtonTextActive,
-                            isDisabled && styles.scoreButtonTextDisabled
-                          ]}>
-                            {score === 5 ? '5+' : score}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
+                      const newVal = Math.max(minAway, (predictions.secondHalfAwayScore ?? 0) - 1);
+                      handleScoreChange('secondHalfAwayScore', newVal);
+                    }}
+                  >
+                    <Ionicons name="remove" size={18} color="#64748B" />
+                  </TouchableOpacity>
+                  <Text style={[styles.scoreValueMinimal, styles.scoreValueFullTime]}>{predictions.secondHalfAwayScore ?? 0}</Text>
+                  <TouchableOpacity 
+                    style={styles.scoreAdjustBtn}
+                    onPress={() => handleScoreChange('secondHalfAwayScore', Math.min(9, (predictions.secondHalfAwayScore ?? 0) + 1))}
+                  >
+                    <Ionicons name="add" size={18} color="#64748B" />
+                  </TouchableOpacity>
                 </View>
               </View>
             </View>
-
-            {/* Maç Sonu Uzatma Süresi - Maç sonu skoru altında (sadece ikinci yarı) */}
-            <View style={styles.categoryCard}>
-              <View style={styles.categoryHeader}>
-                <Text style={styles.categoryLabel}>⏱️ Maç Sonu Uzatma Süresi</Text>
-                <TouchableOpacity 
-                  onPress={() => showFocusExplanationModal('secondHalfInjuryTime')}
-                  style={styles.focusButton}
-                >
-                  <Ionicons 
-                    name={isFocused('secondHalfInjuryTime') ? 'star' : 'star-outline'}
-                    size={24} 
-                    color={isFocused('secondHalfInjuryTime') ? '#F59E0B' : '#6B7280'} 
-                  />
-                </TouchableOpacity>
-              </View>
-              {(() => {
-                const row1 = ['+1 dk', '+2 dk', '+3 dk', '+4 dk', '+5 dk'];
-                const row2 = ['+6 dk', '+7 dk', '+8 dk', '+9 dk', '+10 dk'];
-                const injuryTimeLabel = (t: string) => (t === '+10 dk' ? '10+' : t.replace(' dk', ''));
-                return (
-                  <View style={styles.injuryTimeGrid}>
-                    <View style={styles.injuryTimeRow}>{row1.map((time) => {
-                      const isSelected = predictions.secondHalfInjuryTime === time;
-                      return (
-                        <TouchableOpacity key={time} style={[styles.minuteRangeButtonCompact, styles.injuryTimeButton, styles.injuryTimeButtonPadding, isSelected && styles.minuteRangeButtonCompactSelected]} onPress={() => handlePredictionChange('secondHalfInjuryTime', time)} activeOpacity={0.7}>
-                          <Text style={[styles.minuteRangeTextCompact, styles.injuryTimeButtonText, isSelected && styles.minuteRangeTextCompactSelected]} numberOfLines={1}>{injuryTimeLabel(time)}</Text>
-                        </TouchableOpacity>
-                      );
-                    })}</View>
-                    <View style={styles.injuryTimeRow}>{row2.map((time) => {
-                      const isSelected = predictions.secondHalfInjuryTime === time;
-                      return (
-                        <TouchableOpacity key={time} style={[styles.minuteRangeButtonCompact, styles.injuryTimeButton, styles.injuryTimeButtonPadding, isSelected && styles.minuteRangeButtonCompactSelected]} onPress={() => handlePredictionChange('secondHalfInjuryTime', time)} activeOpacity={0.7}>
-                          <Text style={[styles.minuteRangeTextCompact, styles.injuryTimeButtonText, isSelected && styles.minuteRangeTextCompactSelected]} numberOfLines={1}>{injuryTimeLabel(time)}</Text>
-                        </TouchableOpacity>
-                      );
-                    })}</View>
-                  </View>
-                );
-              })()}
-            </View>
-          </View>
-
-          {/* 3. Toplam Gol Sayısı - başlık ve yıldız konteyner dışında */}
-          <View style={styles.predictionCategory}>
-            <View style={styles.categoryTitleRow}>
-              <Text style={styles.categoryTitle}>🧮 Toplam Gol Sayısı</Text>
-              <Pressable
-                onPress={() => showFocusExplanationModal('totalGoals')}
-                style={({ pressed }) => [styles.focusButton, pressed && styles.focusButtonPressed]}
-                hitSlop={16}
-                accessibilityLabel="Tahmin odağı (toplam gol) – açıklama ve değiştir"
-              >
-                <Ionicons
-                  name={isFocused('totalGoals') ? 'star' : 'star-outline'}
-                  size={24}
-                  color={isFocused('totalGoals') ? '#F59E0B' : '#6B7280'}
-                />
-              </Pressable>
-            </View>
-            <View style={styles.categoryCard}>
-              <View style={styles.buttonRow}>
-                {TOTAL_GOALS_RANGES.map((range) => (
-                  <TouchableOpacity 
-                    key={range} 
-                    style={[
-                      styles.optionButton,
-                      effectiveTotalGoals === range && styles.optionButtonActive
-                    ]}
-                    onPress={() => handlePredictionChange('totalGoals', range)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[
-                      styles.optionText,
-                      effectiveTotalGoals === range && styles.optionTextActive
-                    ]}>
-                      {range}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-          </View>
-
-          {/* 4. İlk Gol Zamanı - Görseldeki formata uygun */}
-          <View style={styles.predictionCategory}>
-            <View style={styles.categoryTitleRow}>
-              <Text style={styles.categoryTitle}>⏰ İlk Gol Zamanı</Text>
-              <Pressable
-                onPress={() => showFocusExplanationModal('firstGoalTime')}
-                style={({ pressed }) => [styles.focusButton, pressed && styles.focusButtonPressed]}
-                hitSlop={16}
-                accessibilityLabel="Tahmin odağı (ilk gol zamanı)"
-              >
-                <Ionicons
-                  name={isFocused('firstGoalTime') ? 'star' : 'star-outline'}
-                  size={24}
-                  color={isFocused('firstGoalTime') ? '#F59E0B' : '#6B7280'}
-                />
-              </Pressable>
-            </View>
-            <View style={styles.categoryCard}>
-              <View style={styles.firstGoalTimeGrid}>
-                {(() => {
-                  const row1 = MATCH_TIME_RANGES.slice(0, 4);
-                  const row2 = MATCH_TIME_RANGES.slice(4, 8);
-                  return (
-                    <>
-                      <View style={styles.injuryTimeRow}>
-                        {row1.map((range) => {
-                          const isSelected = predictions.firstGoalTime === range.value;
-                          return (
-                            <TouchableOpacity
-                              key={range.value}
-                              style={[styles.minuteRangeButtonCompact, styles.injuryTimeButton, isSelected && styles.minuteRangeButtonCompactSelected]}
-                              onPress={() => handlePredictionChange('firstGoalTime', range.value)}
-                              activeOpacity={0.7}
-                            >
-                              <Text style={[styles.minuteRangeTextCompact, styles.injuryTimeButtonText, isSelected && styles.minuteRangeTextCompactSelected]} numberOfLines={1}>
-                                {range.label}
-                              </Text>
-                            </TouchableOpacity>
-                          );
-                        })}
-                      </View>
-                      <View style={styles.injuryTimeRow}>
-                        {row2.map((range) => {
-                          const isSelected = predictions.firstGoalTime === range.value;
-                          return (
-                            <TouchableOpacity
-                              key={range.value}
-                              style={[styles.minuteRangeButtonCompact, styles.injuryTimeButton, isSelected && styles.minuteRangeButtonCompactSelected]}
-                              onPress={() => handlePredictionChange('firstGoalTime', range.value)}
-                              activeOpacity={0.7}
-                            >
-                              <Text style={[styles.minuteRangeTextCompact, styles.injuryTimeButtonText, isSelected && styles.minuteRangeTextCompactSelected]} numberOfLines={1}>
-                                {range.label}
-                              </Text>
-                            </TouchableOpacity>
-                          );
-                        })}
-                      </View>
-                    </>
-                  );
-                })()}
-              </View>
-            </View>
-          </View>
-
-          {/* 5. Disiplin Tahminleri */}
-          <View style={styles.predictionCategory}>
-            <Text style={styles.categoryTitle}>🟨🟥 Disiplin Tahminleri</Text>
             
-            {/* Toplam Sarı Kart */}
-            <View style={styles.categoryCard}>
-              <View style={styles.categoryHeader}>
-                <Text style={styles.categoryLabel}>🟨 Toplam Sarı Kart Sayısı</Text>
-                <TouchableOpacity 
-                  onPress={() => showFocusExplanationModal('yellowCards')}
-                  style={styles.focusButton}
-                >
-                  <Ionicons 
-                    name={isFocused('yellowCards') ? 'star' : 'star-outline'}
-                    size={24} 
-                    color={isFocused('yellowCards') ? '#F59E0B' : '#6B7280'} 
-                  />
-                </TouchableOpacity>
+            <View style={[styles.cardDividerCombined, styles.cardDividerFullTime]} />
+            
+            {/* Uzatma Süresi Slider */}
+            <View style={styles.sliderSectionCombined}>
+              <View style={styles.sliderHeaderCombined}>
+                <Ionicons name="time-outline" size={12} color="#64748B" />
+                <Text style={styles.sliderLabelCombined}>Uzatma Süresi</Text>
+                <View style={[styles.sliderValueBadgeCombined, styles.sliderValueBadgeFullTime]}>
+                  <Text style={styles.sliderValueTextCombined}>
+                    +{(() => {
+                      const val = predictions.secondHalfInjuryTime;
+                      if (!val) return '0';
+                      const num = parseInt(val.replace(/[^0-9]/g, ''));
+                      return num >= 10 ? '10+' : num;
+                    })()}
+                  </Text>
+                </View>
               </View>
-              <View style={styles.buttonRow}>
-                {['0-2', '3-4', '5-6', '7+'].map((range) => (
-                  <TouchableOpacity 
-                    key={range} 
-                    style={[
-                      styles.optionButton,
-                      predictions.yellowCards === range && styles.optionButtonActive
-                    ]}
-                    onPress={() => handlePredictionChange('yellowCards', range)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[
-                      styles.optionText,
-                      predictions.yellowCards === range && styles.optionTextActive
-                    ]}>
-                      {range}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+              <View style={styles.sliderTrackContainer}>
+                <Slider
+                  value={(() => {
+                    const val = predictions.secondHalfInjuryTime;
+                    if (!val) return 0;
+                    return parseInt(val.replace(/[^0-9]/g, '')) || 0;
+                  })()}
+                  onValueChange={(v: number) => handlePredictionChange('secondHalfInjuryTime', `+${Math.round(v)} dk`)}
+                  minimumValue={0}
+                  maximumValue={10}
+                  step={1}
+                  minimumTrackTintColor="rgba(59, 130, 246, 0.5)"
+                  maximumTrackTintColor="rgba(148, 163, 184, 0.1)"
+                  thumbTintColor="#60A5FA"
+                  style={styles.sliderCombined}
+                />
+                <View style={styles.sliderMarksCombined}>
+                  {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((mark) => (
+                    <Text key={String(mark)} style={styles.sliderMarkCombined}>{mark === 10 ? '10+' : mark}</Text>
+                  ))}
+                </View>
               </View>
             </View>
+          </View>
 
-            {/* Toplam Kırmızı Kart */}
-            <View style={styles.categoryCard}>
-              <View style={styles.categoryHeader}>
-                <Text style={styles.categoryLabel}>🟥 Toplam Kırmızı Kart Sayısı</Text>
-                <TouchableOpacity 
-                  onPress={() => showFocusExplanationModal('redCards')}
-                  style={styles.focusButton}
-                >
-                  <Ionicons 
-                    name={isFocused('redCards') ? 'star' : 'star-outline'}
-                    size={24} 
-                    color={isFocused('redCards') ? '#F59E0B' : '#6B7280'} 
-                  />
-                </TouchableOpacity>
+          {/* ═══════════════════════════════════════════════════════════
+              3. GOL TAHMİNLERİ - Toplam Gol + İlk Gol Zamanı (Kombine Kart)
+          ═══════════════════════════════════════════════════════════ */}
+          <View style={[styles.categoryCardCombined, styles.categoryCardGoal]}>
+            <View style={styles.cardAccentGoal} />
+            
+            {/* Kart Başlığı */}
+            <View style={styles.combinedCardHeader}>
+              <View style={styles.combinedCardTitleRow}>
+                <Ionicons name="football-outline" size={18} color="#10B981" style={{ marginRight: 4 }} />
+                <Text style={styles.combinedCardTitle}>Gol Tahminleri</Text>
               </View>
-              <View style={styles.buttonRow}>
-                {['0', '1', '2', '3+'].map((count) => (
-                  <TouchableOpacity 
-                    key={count} 
-                    style={[
-                      styles.optionButton,
-                      predictions.redCards === count && styles.optionButtonActive
-                    ]}
-                    onPress={() => handlePredictionChange('redCards', count)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[
-                      styles.optionText,
-                      predictions.redCards === count && styles.optionTextActive
-                    ]}>
-                      {count}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+            </View>
+            
+            {/* Toplam Gol - Disiplin Tarzı Zarif */}
+            <View style={styles.disciplineBarSection}>
+              <View style={styles.disciplineBarHeader}>
+                <Text style={styles.disciplineBarEmoji}>⚽</Text>
+                <Text style={styles.disciplineBarTitle}>Toplam Gol</Text>
+                <Text style={[styles.disciplineBarValue, { color: '#10B981' }]}>{effectiveTotalGoals || '?'}</Text>
+              </View>
+              <View style={styles.disciplineBarTrack}>
+                {TOTAL_GOALS_RANGES.map((range) => {
+                  const isSelected = effectiveTotalGoals === range;
+                  return (
+                    <TouchableOpacity
+                      key={range}
+                      style={[
+                        styles.disciplineBarSegment,
+                        isSelected && styles.disciplineBarSegmentActiveEmerald
+                      ]}
+                      onPress={() => handlePredictionChange('totalGoals', range)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.disciplineBarSegmentText, isSelected && styles.disciplineBarSegmentTextActive]}>
+                        {range}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+            
+            <View style={[styles.cardDividerCombined, styles.cardDividerGoal]} />
+            
+            {/* İlk Gol Zamanı */}
+            <View style={styles.combinedCardHeader}>
+              <View style={styles.combinedCardTitleRow}>
+                <View style={[styles.cardIconSmall, styles.cardIconTime]}>
+                  <Text style={styles.cardEmoji}>⏰</Text>
+                </View>
+                <Text style={styles.combinedCardTitle}>İlk Gol Zamanı</Text>
+              </View>
+            </View>
+            
+            <View style={styles.firstGoalTimeline}>
+              {/* 1. Yarı (1-15', 16-30', 31-45', 45+) */}
+              <View style={styles.timelineRow}>
+                <Text style={styles.timelineRowLabel}>1Y</Text>
+                <View style={styles.timelineRowButtons}>
+                  {[
+                    { label: "1-15'", value: '1-15' },
+                    { label: "16-30'", value: '16-30' },
+                    { label: "31-45'", value: '31-45' },
+                    { label: "45+'", value: '45+' },
+                  ].map((t) => {
+                    const isSelected = predictions.firstGoalTime === t.value;
+                    return (
+                      <TouchableOpacity 
+                        key={t.value} 
+                        style={[
+                          styles.timelineBtnCompact,
+                          isSelected && styles.timelineBtnCompactActiveFirst
+                        ]}
+                        onPress={() => handlePredictionChange('firstGoalTime', t.value)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[styles.timelineBtnTextCompact, isSelected && styles.timelineBtnTextCompactActive]}>
+                          {t.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+              
+              {/* 2. Yarı (46-60', 61-75', 76-90', 90+) */}
+              <View style={styles.timelineRow}>
+                <Text style={styles.timelineRowLabel}>2Y</Text>
+                <View style={styles.timelineRowButtons}>
+                  {[
+                    { label: "46-60'", value: '46-60' },
+                    { label: "61-75'", value: '61-75' },
+                    { label: "76-90'", value: '76-90' },
+                    { label: "90+'", value: '90+' },
+                  ].map((t) => {
+                    const isSelected = predictions.firstGoalTime === t.value;
+                    return (
+                      <TouchableOpacity 
+                        key={t.value} 
+                        style={[
+                          styles.timelineBtnCompact,
+                          isSelected && styles.timelineBtnCompactActiveSecond
+                        ]}
+                        onPress={() => handlePredictionChange('firstGoalTime', t.value)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[styles.timelineBtnTextCompact, isSelected && styles.timelineBtnTextCompactActive]}>
+                          {t.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+              
+              {/* Gol Yok Olabilir */}
+              <TouchableOpacity 
+                style={[styles.noGoalBtn, predictions.firstGoalTime === 'no_goal' && styles.noGoalBtnActive]}
+                onPress={() => handlePredictionChange('firstGoalTime', 'no_goal')}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="close-circle-outline" size={12} color={predictions.firstGoalTime === 'no_goal' ? '#FFF' : '#94A3B8'} />
+                <Text style={[styles.noGoalBtnText, predictions.firstGoalTime === 'no_goal' && styles.noGoalBtnTextActive]}>Gol yok</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* ═══════════════════════════════════════════════════════════
+              5. DİSİPLİN TAHMİNLERİ - Dikey Çubuklar (Soldan Sağa Artan)
+          ═══════════════════════════════════════════════════════════ */}
+          <View style={[styles.categoryCardCombined, styles.categoryCardDiscipline]}>
+            <View style={styles.cardAccentDiscipline} />
+            
+            <View style={styles.combinedCardHeader}>
+              <View style={styles.combinedCardTitleRow}>
+                <Ionicons name="card-outline" size={18} color="#FBBF24" style={{ marginRight: 4 }} />
+                <Text style={styles.combinedCardTitle}>Disiplin</Text>
+              </View>
+            </View>
+            
+            <View style={styles.disciplineColumnsContainer}>
+              {/* Sarı Kart - Dikey Çubuklar */}
+              <View style={styles.disciplineColumn}>
+                <View style={styles.disciplineColumnHeader}>
+                  <Text style={styles.disciplineBarEmoji}>🟨</Text>
+                  <Text style={styles.disciplineColumnTitle}>Sarı Kart</Text>
+                  <Text style={[styles.disciplineColumnValue, { color: '#FBBF24' }]}>{predictions.yellowCards || '?'}</Text>
+                </View>
+                <View style={styles.verticalBarsContainer}>
+                  {[
+                    { label: '0-2', height: 24 },
+                    { label: '3-4', height: 36 },
+                    { label: '5-6', height: 48 },
+                    { label: '7+', height: 60 },
+                  ].map((item) => {
+                    const isSelected = predictions.yellowCards === item.label;
+                    return (
+                      <TouchableOpacity
+                        key={item.label}
+                        style={styles.verticalBarWrapper}
+                        onPress={() => handlePredictionChange('yellowCards', item.label)}
+                        activeOpacity={0.7}
+                      >
+                        <View 
+                          style={[
+                            styles.verticalBar,
+                            { height: item.height },
+                            isSelected ? styles.verticalBarActiveYellow : styles.verticalBarInactiveYellow
+                          ]}
+                        />
+                        <Text style={[styles.verticalBarLabel, isSelected && { color: '#FBBF24', fontWeight: '600' }]}>
+                          {item.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+              
+              {/* Ayırıcı Çizgi */}
+              <View style={styles.disciplineColumnDivider} />
+              
+              {/* Kırmızı Kart - Dikey Çubuklar */}
+              <View style={styles.disciplineColumn}>
+                <View style={styles.disciplineColumnHeader}>
+                  <Text style={styles.disciplineBarEmoji}>🟥</Text>
+                  <Text style={styles.disciplineColumnTitle}>Kırmızı Kart</Text>
+                  <Text style={[styles.disciplineColumnValue, { color: '#F87171' }]}>{predictions.redCards || '?'}</Text>
+                </View>
+                <View style={styles.verticalBarsContainer}>
+                  {[
+                    { label: '0', height: 24 },
+                    { label: '1', height: 36 },
+                    { label: '2', height: 48 },
+                    { label: '3+', height: 60 },
+                  ].map((item) => {
+                    const isSelected = predictions.redCards === item.label;
+                    return (
+                      <TouchableOpacity
+                        key={item.label}
+                        style={styles.verticalBarWrapper}
+                        onPress={() => handlePredictionChange('redCards', item.label)}
+                        activeOpacity={0.7}
+                      >
+                        <View 
+                          style={[
+                            styles.verticalBar,
+                            { height: item.height },
+                            isSelected ? styles.verticalBarActiveRed : styles.verticalBarInactiveRed
+                          ]}
+                        />
+                        <Text style={[styles.verticalBarLabel, isSelected && { color: '#F87171', fontWeight: '600' }]}>
+                          {item.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
               </View>
             </View>
           </View>
 
           {/* 6. Oyun Kontrolü - Topa Sahip Olma */}
-          <View style={styles.predictionCategory}>
-            <Text style={styles.categoryTitle}>📊 Oyun Kontrolü – Topa Sahip Olma</Text>
+          <View style={[styles.categoryCardCombined, styles.categoryCardPossession]}>
+            <View style={styles.cardAccentPossession} />
             
-            <View style={styles.categoryCard}>
-              <Text style={styles.categoryLabel}>🔵 Ev Sahibi / Deplasman Topa Sahip Olma (%)</Text>
-              
-              {/* Display Values */}
-              <View style={styles.possessionDisplay}>
-                <View style={styles.possessionTeam}>
-                  <Text style={styles.possessionTeamLabel}>Ev Sahibi</Text>
-                  <Text style={styles.possessionTeamValue}>
-                    {predictions.possession}%
-                  </Text>
+            <View style={styles.combinedCardHeader}>
+              <View style={styles.combinedCardTitleRow}>
+                <View style={[styles.cardIconSmall, styles.cardIconPossession]}>
+                  <Text style={styles.cardEmoji}>📊</Text>
                 </View>
-                
-                <Text style={styles.possessionVs}>vs</Text>
-                
-                <View style={styles.possessionTeam}>
-                  <Text style={styles.possessionTeamLabel}>Deplasman</Text>
-                  <Text style={styles.possessionTeamValue}>
-                    {100 - parseInt(predictions.possession)}%
-                  </Text>
-                </View>
+                <Text style={styles.combinedCardTitle}>Topa Sahip Olma</Text>
               </View>
+            </View>
+            
+            {/* Zarif Display */}
+            <View style={styles.possessionDisplayElegant}>
+              <View style={styles.possessionTeamElegant}>
+                <Text style={styles.possessionTeamLabelElegant}>EV</Text>
+                <Text style={styles.possessionTeamValueElegant}>
+                  {predictions.possession}%
+                </Text>
+              </View>
+              
+              <View style={styles.possessionBarContainer}>
+                <View style={[styles.possessionBarSegment, styles.possessionBarHome, { flex: parseInt(predictions.possession) }]} />
+                <View style={[styles.possessionBarSegment, styles.possessionBarAway, { flex: 100 - parseInt(predictions.possession) }]} />
+              </View>
+              
+              <View style={styles.possessionTeamElegant}>
+                <Text style={styles.possessionTeamLabelElegant}>DEP</Text>
+                <Text style={[styles.possessionTeamValueElegant, { color: '#94A3B8' }]}>
+                  {100 - parseInt(predictions.possession)}%
+                </Text>
+              </View>
+            </View>
 
-              {/* Slider */}
-              <View style={styles.sliderContainer}>
+            {/* Minimalist Slider */}
+            <View style={styles.sliderSectionCombined}>
+              <View style={styles.sliderTrackContainer}>
                 <Slider
-                  style={styles.slider}
+                  value={parseInt(predictions.possession)}
+                  onValueChange={(value) => handlePredictionChange('possession', value.toString())}
                   minimumValue={30}
                   maximumValue={70}
                   step={5}
-                  value={parseInt(predictions.possession)}
-                  onValueChange={(value) => handlePredictionChange('possession', value.toString())}
-                  minimumTrackTintColor="#1FA2A6"
-                  maximumTrackTintColor="rgba(100, 116, 139, 0.3)"
-                  thumbTintColor="#FFFFFF"
+                  minimumTrackTintColor="rgba(45, 212, 191, 0.5)"
+                  maximumTrackTintColor="rgba(148, 163, 184, 0.12)"
+                  thumbTintColor="#5EEAD4"
+                  style={styles.sliderCombined}
                 />
-                
-                {/* Labels */}
-                <View style={styles.sliderLabels}>
-                  <Text style={styles.sliderLabelLeft}>← Ev Sahibi Üstünlüğü</Text>
-                  <Text style={styles.sliderLabelRight}>Deplasman Üstünlüğü →</Text>
+                <View style={styles.sliderMarksCombined}>
+                  {[30, 35, 40, 45, 50, 55, 60, 65, 70].map((mark) => (
+                    <Text key={String(mark)} style={styles.sliderMarkCombined}>{mark}</Text>
+                  ))}
                 </View>
               </View>
             </View>
           </View>
 
-          {/* 7. Toplam ve İsabetli Şut Sayıları */}
-          <View style={styles.predictionCategory}>
-            <Text style={styles.categoryTitle}>🎯 Toplam ve İsabetli Şut Sayıları</Text>
+          {/* ═══════════════════════════════════════════════════════════
+              7. ŞUT TAHMİNLERİ - Disiplin Tarzı Zarif Barlar
+          ═══════════════════════════════════════════════════════════ */}
+          <View style={[styles.categoryCardCombined, styles.categoryCardShots]}>
+            <View style={styles.cardAccentShots} />
             
-            {/* Toplam Şut Sayısı */}
-            <View style={styles.categoryCard}>
-              <Text style={styles.categoryLabel}>⚽ Toplam Şut Sayısı</Text>
-              <View style={styles.buttonRow}>
-                {['0-10', '11-20', '21-30', '31+'].map((range) => (
-                  <TouchableOpacity 
-                    key={range} 
-                    style={[
-                      styles.optionButton,
-                      predictions.totalShots === range && styles.optionButtonActive
-                    ]}
-                    onPress={() => handlePredictionChange('totalShots', range)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[
-                      styles.optionText,
-                      predictions.totalShots === range && styles.optionTextActive
-                    ]}>
-                      {range}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+            <View style={styles.combinedCardHeader}>
+              <View style={styles.combinedCardTitleRow}>
+                <View style={[styles.cardIconSmall, styles.cardIconShots]}>
+                  <Text style={styles.cardEmoji}>🎯</Text>
+                </View>
+                <Text style={styles.combinedCardTitle}>Şut İstatistikleri</Text>
               </View>
             </View>
-
-            {/* İsabetli Şut Sayısı */}
-            <View style={styles.categoryCard}>
-              <Text style={styles.categoryLabel}>🎯 İsabetli Şut Sayısı</Text>
-              <View style={styles.buttonRow}>
-                {['0-5', '6-10', '11-15', '16+'].map((range) => (
-                  <TouchableOpacity 
-                    key={range} 
-                    style={[
-                      styles.optionButton,
-                      predictions.shotsOnTarget === range && styles.optionButtonActive
-                    ]}
-                    onPress={() => handlePredictionChange('shotsOnTarget', range)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[
-                      styles.optionText,
-                      predictions.shotsOnTarget === range && styles.optionTextActive
-                    ]}>
-                      {range}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+            
+            {/* Toplam Şut - Disiplin Tarzı */}
+            <View style={styles.disciplineBarSection}>
+              <View style={styles.disciplineBarHeader}>
+                <Text style={styles.disciplineBarEmoji}>⚽</Text>
+                <Text style={styles.disciplineBarTitle}>Toplam Şut</Text>
+                <Text style={[styles.disciplineBarValue, { color: '#60A5FA' }]}>{predictions.totalShots || '?'}</Text>
+              </View>
+              <View style={styles.disciplineBarTrack}>
+                {['0-10', '11-20', '21-30', '31+'].map((range) => {
+                  const isSelected = predictions.totalShots === range;
+                  return (
+                    <TouchableOpacity
+                      key={range}
+                      style={[
+                        styles.disciplineBarSegment,
+                        isSelected && styles.disciplineBarSegmentActiveBlue
+                      ]}
+                      onPress={() => handlePredictionChange('totalShots', range)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.disciplineBarSegmentText, isSelected && styles.disciplineBarSegmentTextActive]}>
+                        {range}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             </View>
-          </View>
-
-          {/* 8. Toplam Korner Aralığı */}
-          <View style={styles.predictionCategory}>
-            <Text style={styles.categoryTitle}>⚽ Toplam Korner Aralığı</Text>
             
-            <View style={styles.categoryCard}>
-              <Text style={styles.categoryLabel}>🚩 Toplam Korner Sayısı</Text>
-              <View style={styles.buttonRow}>
-                {['0-6', '7-12', '12+'].map((range) => (
-                  <TouchableOpacity 
-                    key={range} 
-                    style={[
-                      styles.optionButton,
-                      predictions.totalCorners === range && styles.optionButtonActive
-                    ]}
-                    onPress={() => handlePredictionChange('totalCorners', range)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[
-                      styles.optionText,
-                      predictions.totalCorners === range && styles.optionTextActive
-                    ]}>
-                      {range}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+            <View style={[styles.cardDividerCombined, { backgroundColor: 'rgba(16, 185, 129, 0.1)' }]} />
+            
+            {/* İsabetli Şut - Disiplin Tarzı */}
+            <View style={styles.disciplineBarSection}>
+              <View style={styles.disciplineBarHeader}>
+                <Text style={styles.disciplineBarEmoji}>✅</Text>
+                <Text style={styles.disciplineBarTitle}>İsabetli Şut</Text>
+                <Text style={[styles.disciplineBarValue, { color: '#34D399' }]}>{predictions.shotsOnTarget || '?'}</Text>
+              </View>
+              <View style={styles.disciplineBarTrack}>
+                {['0-5', '6-10', '11-15', '16+'].map((range) => {
+                  const isSelected = predictions.shotsOnTarget === range;
+                  return (
+                    <TouchableOpacity
+                      key={range}
+                      style={[
+                        styles.disciplineBarSegment,
+                        isSelected && styles.disciplineBarSegmentActiveGreen
+                      ]}
+                      onPress={() => handlePredictionChange('shotsOnTarget', range)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.disciplineBarSegmentText, isSelected && styles.disciplineBarSegmentTextActive]}>
+                        {range}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             </View>
-          </View>
-
-          {/* 9. Maçın Genel Temposu */}
-          <View style={styles.predictionCategory}>
-            <Text style={styles.categoryTitle}>⚡ Maçın Genel Temposu</Text>
             
-            <View style={styles.categoryCard}>
-              <Text style={styles.categoryLabel}>🏃‍♂️ Oyun Hızı / Tempo</Text>
-              <View style={styles.buttonRow}>
-                {['Düşük tempo', 'Orta tempo', 'Yüksek tempo'].map((tempo) => (
-                  <TouchableOpacity 
-                    key={tempo} 
-                    style={[
-                      styles.optionButton,
-                      predictions.tempo === tempo && styles.optionButtonActive
-                    ]}
-                    onPress={() => handlePredictionChange('tempo', tempo)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[
-                      styles.optionText,
-                      predictions.tempo === tempo && styles.optionTextActive
-                    ]}>
-                      {tempo}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+            <View style={[styles.cardDividerCombined, { backgroundColor: 'rgba(245, 158, 11, 0.1)' }]} />
+            
+            {/* Korner - Disiplin Tarzı */}
+            <View style={styles.disciplineBarSection}>
+              <View style={styles.disciplineBarHeader}>
+                <Text style={styles.disciplineBarEmoji}>🚩</Text>
+                <Text style={styles.disciplineBarTitle}>Toplam Korner</Text>
+                <Text style={[styles.disciplineBarValue, { color: '#F59E0B' }]}>{predictions.totalCorners || '?'}</Text>
+              </View>
+              <View style={styles.disciplineBarTrack}>
+                {['0-6', '7-10', '11-14', '15+'].map((range) => {
+                  const isSelected = predictions.totalCorners === range;
+                  return (
+                    <TouchableOpacity
+                      key={range}
+                      style={[
+                        styles.disciplineBarSegment,
+                        isSelected && styles.disciplineBarSegmentActiveOrange
+                      ]}
+                      onPress={() => handlePredictionChange('totalCorners', range)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.disciplineBarSegmentText, isSelected && styles.disciplineBarSegmentTextActive]}>
+                        {range}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             </View>
           </View>
 
-          {/* 10. Maç Senaryosu */}
-          <View style={styles.predictionCategory}>
-            <Text style={styles.categoryTitle}>🧠 Maç Senaryosu (Makro)</Text>
+          {/* ═══════════════════════════════════════════════════════════
+              9. TAKTİK TAHMİNLERİ - Tempo + Senaryo (Kombine Kart)
+          ═══════════════════════════════════════════════════════════ */}
+          <View style={[styles.categoryCardCombined, styles.categoryCardTactical]}>
+            <View style={styles.cardAccentTactical} />
             
-            <View style={styles.categoryCard}>
-              <View style={styles.buttonGrid}>
+            <View style={styles.combinedCardHeader}>
+              <View style={styles.combinedCardTitleRow}>
+                <Ionicons name="bulb-outline" size={18} color="#F59E0B" style={{ marginRight: 4 }} />
+                <Text style={styles.combinedCardTitle}>Taktik Tahminleri</Text>
+              </View>
+            </View>
+            
+            {/* Tempo - İkonlu Butonlar */}
+            <View style={styles.disciplineBarSection}>
+              <View style={styles.disciplineBarHeader}>
+                <Ionicons name="speedometer-outline" size={14} color="#F59E0B" />
+                <Text style={styles.disciplineBarTitle}>Oyun Temposu</Text>
+                <Text style={[styles.disciplineBarValue, { color: '#F59E0B' }]}>{predictions.tempo ? predictions.tempo.split(' ')[0] : '?'}</Text>
+              </View>
+              <View style={styles.tempoButtonRow}>
                 {[
-                  'Kontrollü oyun',
-                  'Baskılı oyun',
-                  'Geçiş oyunu ağırlıklı',
-                  'Duran toplar belirleyici olur'
-                ].map((scenario) => (
-                  <TouchableOpacity 
-                    key={scenario} 
-                    style={[
-                      styles.optionButtonGrid,
-                      predictions.scenario === scenario && styles.optionButtonActive
-                    ]}
-                    onPress={() => handlePredictionChange('scenario', scenario)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[
-                      styles.optionTextSmall,
-                      predictions.scenario === scenario && styles.optionTextActive
-                    ]}>
-                      {scenario}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+                  { label: 'Düşük', value: 'Düşük tempo', icon: 'remove-circle-outline', color: '#60A5FA' },
+                  { label: 'Orta', value: 'Orta tempo', icon: 'pause-circle-outline', color: '#FBBF24' },
+                  { label: 'Yüksek', value: 'Yüksek tempo', icon: 'flash-outline', color: '#F87171' },
+                ].map((item) => {
+                  const isSelected = predictions.tempo === item.value;
+                  return (
+                    <TouchableOpacity 
+                      key={item.value} 
+                      style={[
+                        styles.tempoBtn,
+                        isSelected && [styles.tempoBtnActive, { borderColor: item.color, backgroundColor: `${item.color}15` }]
+                      ]}
+                      onPress={() => handlePredictionChange('tempo', item.value)}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name={item.icon as any} size={16} color={isSelected ? item.color : '#64748B'} />
+                      <Text style={[styles.tempoBtnText, isSelected && { color: item.color }]}>
+                        {item.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+            
+            <View style={[styles.cardDividerCombined, { backgroundColor: 'rgba(245, 158, 11, 0.1)' }]} />
+            
+            {/* Senaryo - İkonlu Grid */}
+            <View style={styles.disciplineBarSection}>
+              <View style={styles.disciplineBarHeader}>
+                <Ionicons name="git-branch-outline" size={14} color="#A78BFA" />
+                <Text style={styles.disciplineBarTitle}>Maç Senaryosu</Text>
+              </View>
+              <View style={styles.scenarioGrid}>
+                {[
+                  { label: 'Kontrollü', value: 'Kontrollü oyun', icon: 'shield-checkmark-outline', color: '#60A5FA' },
+                  { label: 'Baskılı', value: 'Baskılı oyun', icon: 'arrow-forward-circle-outline', color: '#F87171' },
+                  { label: 'Geçiş oyunu', value: 'Geçiş oyunu ağırlıklı', icon: 'swap-horizontal-outline', color: '#34D399' },
+                  { label: 'Duran top', value: 'Duran toplar belirleyici olur', icon: 'flag-outline', color: '#FBBF24' },
+                ].map((item) => {
+                  const isSelected = predictions.scenario === item.value;
+                  return (
+                    <TouchableOpacity 
+                      key={item.value} 
+                      style={[
+                        styles.scenarioBtn,
+                        isSelected && [styles.scenarioBtnActive, { borderColor: item.color, backgroundColor: `${item.color}15` }]
+                      ]}
+                      onPress={() => handlePredictionChange('scenario', item.value)}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name={item.icon as any} size={18} color={isSelected ? item.color : '#64748B'} />
+                      <Text style={[styles.scenarioBtnText, isSelected && { color: item.color }]}>
+                        {item.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             </View>
           </View>
@@ -1910,7 +1981,7 @@ const PlayerPredictionModal = ({
 
               <View style={styles.playerDetails}>
                 <Text style={styles.playerNameLarge}>{player.name}</Text>
-                <Text style={styles.playerPosition}>
+                <Text style={styles.playerPositionModal}>
                   {player.position} • Form: <Text style={styles.formText}>{player.form}%</Text>
                 </Text>
               </View>
@@ -2792,18 +2863,19 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 80,
+    paddingTop: 8, // ✅ Kadro sekmesiyle aynı
+    paddingBottom: 8,
     paddingHorizontal: 12,
   },
 
-  // Football Field – Kadro ile AYNI boyut, yükseklik (y) %5 artırıldı
+  // Football Field – Kadro ile AYNI boyut (sıçrama olmaması için)
   fieldContainer: {
     width: width - 24,
-    height: (width - 24) * 1.35 * 1.05 * 1.02, // ✅ Kadro sekmesiyle aynı oran, y ekseni +5% +2%
+    height: (width - 24) * 1.35 * 1.05 * 1.02, // ✅ Kadro sekmesiyle aynı oran
     alignSelf: 'center',
     borderRadius: 12,
     overflow: 'hidden',
-    marginTop: 8,
+    // marginTop yok - scrollContent'ten paddingTop: 8 geliyor (Kadro ile aynı)
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -2857,37 +2929,28 @@ const styles = StyleSheet.create({
     width: width - 24,
     height: (width - 24) * 1.35 * 1.05 * 1.02, // ✅ Kadro sekmesiyle aynı oran, y ekseni +5% +2%
     alignSelf: 'center',
-    marginBottom: 8,
+    marginBottom: 0, // ✅ Kadro sekmesiyle aynı (sıçrama olmaması için)
   },
-  // 🌟 Saha üzerinde analiz odağı yıldızı - sağ üst köşe
+  // 🌟 Saha üzerinde analiz odağı yıldızı - sağ üst köşe (daire yok, sadece yıldız)
   fieldFocusStarContainer: {
     position: 'absolute',
     top: 12,
     right: 12,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(15, 42, 36, 0.9)',
-    borderWidth: 2,
-    borderColor: 'rgba(31, 162, 166, 0.5)',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 100,
+    padding: 8,
     ...Platform.select({
-      web: {
-        cursor: 'pointer',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-      },
-      default: {
-        elevation: 5,
-      },
+      web: { cursor: 'pointer' },
+      default: {},
     }),
   },
   // Oyuncu kartları – Kadro ile aynı boyut (64x76) ve yerleşim
   playerSlot: {
     position: 'absolute',
     transform: [{ translateX: -32 }, { translateY: -38 }],
-    zIndex: 1,
+    zIndex: 5, // ✅ Kadro sekmesiyle aynı
+    elevation: 5, // ✅ Kadro sekmesiyle aynı
   },
   playerCard: {
     width: 64,
@@ -3034,7 +3097,6 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     flexGrow: 0,
     maxHeight: 22,
-    paddingHorizontal: 2,
     letterSpacing: 0.3,
   },
   playerPosition: {
@@ -3045,19 +3107,25 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   
-  // Info Note
+  // Info Note - Kadro sekmesiyle aynı tarz konteyner
+  // ✅ Kadro sekmesindeki bottomBar ile AYNI stil (sıçrama olmaması için)
   infoNote: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     gap: 8,
-    paddingVertical: 12,
-    marginHorizontal: 16,
+    paddingVertical: 7,
+    paddingHorizontal: 10,
+    marginTop: 6, // ✅ Kadro sekmesiyle aynı (2px yukarı)
+    marginBottom: 8,
+    backgroundColor: '#1E3A3A',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.3)',
   },
   infoText: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    textAlign: 'center',
+    fontSize: 13,
+    color: '#E6E6E6', // ✅ Daha okunabilir beyaz
     flex: 1,
   },
   
@@ -3108,6 +3176,735 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(31, 162, 166, 0.3)', // ✅ Design System: Secondary opacity
     gap: 12,
+  },
+  
+  // ═══════════════════════════════════════════════════════════════════════════
+  // KOMBİNE KART STİLLERİ - Zarif Glass Morphism
+  // ═══════════════════════════════════════════════════════════════════════════
+  categoryCardCombined: {
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 0.5,
+    overflow: 'hidden',
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 4 },
+      android: { elevation: 2 },
+      web: { backdropFilter: 'blur(8px)', boxShadow: '0 1px 8px rgba(0,0,0,0.08)' },
+    }),
+  },
+  categoryCardFirstHalf: {
+    backgroundColor: 'rgba(234, 179, 8, 0.04)',
+    borderColor: 'rgba(234, 179, 8, 0.2)',
+  },
+  categoryCardFullTime: {
+    backgroundColor: 'rgba(59, 130, 246, 0.04)',
+    borderColor: 'rgba(59, 130, 246, 0.2)',
+  },
+  categoryCardGoal: {
+    backgroundColor: 'rgba(16, 185, 129, 0.04)',
+    borderColor: 'rgba(16, 185, 129, 0.25)',
+  },
+  cardAccentFirstHalf: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 3,
+    backgroundColor: '#EAB308',
+    borderTopLeftRadius: 14,
+    borderBottomLeftRadius: 14,
+  },
+  cardAccentFullTime: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 3,
+    backgroundColor: '#3B82F6',
+    borderTopLeftRadius: 14,
+    borderBottomLeftRadius: 14,
+  },
+  cardAccentGoal: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 3,
+    backgroundColor: '#10B981',
+    borderTopLeftRadius: 14,
+    borderBottomLeftRadius: 14,
+  },
+  combinedCardHeader: {
+    marginBottom: 10,
+  },
+  combinedCardTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  cardIconSmall: {
+    width: 28,
+    height: 28,
+    borderRadius: 7,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardIconFirstHalf: {
+    backgroundColor: 'rgba(234, 179, 8, 0.15)',
+  },
+  cardIconFullTime: {
+    backgroundColor: 'rgba(59, 130, 246, 0.15)',
+  },
+  cardIconGoal: {
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+  },
+  cardIconTime: {
+    backgroundColor: 'rgba(234, 179, 8, 0.15)',
+  },
+  cardEmoji: {
+    fontSize: 14,
+  },
+  combinedCardTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#F1F5F9',
+    letterSpacing: 0.2,
+  },
+  cardDividerCombined: {
+    height: 0.5,
+    marginVertical: 12,
+  },
+  cardDividerFirstHalf: {
+    backgroundColor: 'rgba(234, 179, 8, 0.12)',
+  },
+  cardDividerFullTime: {
+    backgroundColor: 'rgba(59, 130, 246, 0.12)',
+  },
+  cardDividerGoal: {
+    backgroundColor: 'rgba(16, 185, 129, 0.12)',
+  },
+  
+  // Zarif Skor Gösterimi
+  scoreDisplayMinimal: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scoreTeamMinimal: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  scoreTeamLabelMinimal: {
+    fontSize: 9,
+    fontWeight: '600',
+    marginBottom: 6,
+    letterSpacing: 0.8,
+    opacity: 0.7,
+  },
+  scoreTeamLabelFirstHalf: {
+    color: '#EAB308',
+  },
+  scoreTeamLabelFullTime: {
+    color: '#60A5FA',
+  },
+  scoreValueContainerMinimal: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  scoreAdjustBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(100, 116, 139, 0.1)',
+  },
+  scoreValueMinimal: {
+    fontSize: 24,
+    fontWeight: '200',
+    minWidth: 28,
+    textAlign: 'center',
+    letterSpacing: -0.5,
+  },
+  scoreValueFirstHalf: {
+    color: '#EAB308',
+  },
+  scoreValueFullTime: {
+    color: '#60A5FA',
+  },
+  scoreDashMinimal: {
+    paddingHorizontal: 12,
+  },
+  scoreDashTextMinimal: {
+    fontSize: 20,
+    fontWeight: '200',
+    color: '#475569',
+  },
+  
+  // Zarif Slider Stilleri
+  sliderSectionCombined: {
+    gap: 4,
+  },
+  sliderHeaderCombined: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  sliderLabelCombined: {
+    fontSize: 10,
+    color: '#CBD5E1',
+    fontWeight: '500',
+    flex: 1,
+  },
+  sliderValueBadgeCombined: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  sliderValueBadgeFirstHalf: {
+    backgroundColor: 'rgba(234, 179, 8, 0.9)',
+  },
+  sliderValueBadgeFullTime: {
+    backgroundColor: 'rgba(59, 130, 246, 0.9)',
+  },
+  sliderValueTextCombined: {
+    fontSize: 9,
+    fontWeight: '500',
+    color: '#FFF',
+    letterSpacing: -0.2,
+  },
+  sliderTrackContainer: {
+    gap: 0,
+  },
+  sliderCombined: {
+    width: '100%',
+    height: 16,
+  },
+  sliderMarksCombined: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 0,
+    marginTop: 6,
+    marginHorizontal: 0,
+  },
+  sliderMarkCombined: {
+    fontSize: 8,
+    color: '#94A3B8',
+    fontWeight: '400',
+    width: 16,
+    textAlign: 'center',
+  },
+  
+  // Zarif Gol Sayısı Stilleri
+  goalCountRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  goalCountBtn: {
+    flex: 1,
+    height: 48,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(15, 23, 42, 0.3)',
+    borderWidth: 0.5,
+    borderColor: 'rgba(16, 185, 129, 0.15)',
+  },
+  goalCountBtnActive: {
+    backgroundColor: 'rgba(16, 185, 129, 0.9)',
+    borderColor: 'rgba(16, 185, 129, 0.9)',
+  },
+  goalCountNumber: {
+    fontSize: 14,
+    fontWeight: '400',
+    color: '#34D399',
+    letterSpacing: -0.3,
+  },
+  goalCountNumberActive: {
+    color: '#FFF',
+  },
+  goalCountLabel: {
+    fontSize: 8,
+    color: '#64748B',
+    fontWeight: '400',
+    marginTop: 1,
+  },
+  goalCountLabelActive: {
+    color: 'rgba(255,255,255,0.7)',
+  },
+  
+  // Zarif İlk Gol Zamanı Timeline Stilleri
+  firstGoalTimeline: {
+    gap: 8,
+  },
+  timelineRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  timelineRowLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#CBD5E1',
+    width: 20,
+    textAlign: 'center',
+  },
+  timelineRowButtons: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: 4,
+  },
+  timelineBtnCompact: {
+    flex: 1,
+    height: 36,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(15, 23, 42, 0.3)',
+    borderWidth: 0.5,
+    borderColor: 'rgba(100, 116, 139, 0.15)',
+  },
+  timelineBtnCompactActiveFirst: {
+    backgroundColor: 'rgba(234, 179, 8, 0.85)',
+    borderColor: 'rgba(234, 179, 8, 0.85)',
+  },
+  timelineBtnCompactActiveSecond: {
+    backgroundColor: 'rgba(59, 130, 246, 0.85)',
+    borderColor: 'rgba(59, 130, 246, 0.85)',
+  },
+  timelineBtnTextCompact: {
+    fontSize: 10,
+    fontWeight: '400',
+    color: '#CBD5E1',
+    letterSpacing: -0.2,
+  },
+  timelineBtnTextCompactActive: {
+    color: '#FFF',
+    fontWeight: '500',
+  },
+  noGoalBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: 'rgba(15, 23, 42, 0.25)',
+    borderWidth: 0.5,
+    borderColor: 'rgba(239, 68, 68, 0.15)',
+  },
+  noGoalBtnActive: {
+    backgroundColor: 'rgba(239, 68, 68, 0.85)',
+    borderColor: 'rgba(239, 68, 68, 0.85)',
+  },
+  noGoalBtnText: {
+    fontSize: 10,
+    fontWeight: '500',
+    color: '#CBD5E1',
+  },
+  noGoalBtnTextActive: {
+    color: '#FFF',
+    fontWeight: '500',
+  },
+  timelineTrack: {
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: 'rgba(100, 116, 139, 0.15)',
+    overflow: 'hidden',
+  },
+  timelineGradient: {
+    flex: 1,
+    borderRadius: 1,
+    opacity: 0.7,
+  },
+  timelineButtons: {
+    flexDirection: 'row',
+    gap: 4,
+  },
+  timelineBtn: {
+    flex: 1,
+    height: 42,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(15, 23, 42, 0.3)',
+    borderWidth: 0.5,
+    borderColor: 'rgba(100, 116, 139, 0.15)',
+  },
+  timelineBtnActive: {
+    backgroundColor: 'rgba(245, 158, 11, 0.9)',
+    borderColor: 'rgba(245, 158, 11, 0.9)',
+  },
+  timelineBtnText: {
+    fontSize: 9,
+    fontWeight: '400',
+    color: '#94A3B8',
+    letterSpacing: -0.2,
+  },
+  timelineBtnTextActive: {
+    color: '#FFF',
+    fontWeight: '500',
+  },
+  timelinePeriod: {
+    fontSize: 7,
+    color: '#64748B',
+    fontWeight: '400',
+    marginTop: 1,
+  },
+  timelinePeriodActive: {
+    color: 'rgba(255,255,255,0.7)',
+  },
+  timelineExtras: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  timelineExtraBtn: {
+    flex: 1,
+    height: 32,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 4,
+    backgroundColor: 'rgba(15, 23, 42, 0.3)',
+    borderWidth: 0.5,
+    borderColor: 'rgba(100, 116, 139, 0.15)',
+  },
+  timelineExtraBtnAlt: {
+    borderColor: 'rgba(239, 68, 68, 0.2)',
+  },
+  timelineExtraBtnActive: {
+    backgroundColor: 'rgba(245, 158, 11, 0.9)',
+    borderColor: 'rgba(245, 158, 11, 0.9)',
+  },
+  timelineExtraBtnNoGoalActive: {
+    backgroundColor: 'rgba(239, 68, 68, 0.9)',
+    borderColor: 'rgba(239, 68, 68, 0.9)',
+  },
+  timelineExtraBtnText: {
+    fontSize: 9,
+    fontWeight: '400',
+    color: '#64748B',
+    letterSpacing: -0.2,
+  },
+  timelineExtraBtnTextActive: {
+    color: '#FFF',
+    fontWeight: '500',
+  },
+  
+  // ═══════════════════════════════════════════════════════════════════════════
+  // DİSİPLİN KARTLARI - Zarif Horizontal Bar Stilleri
+  // ═══════════════════════════════════════════════════════════════════════════
+  categoryCardDiscipline: {
+    backgroundColor: 'rgba(239, 68, 68, 0.03)',
+    borderColor: 'rgba(239, 68, 68, 0.2)',
+  },
+  cardAccentDiscipline: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 3,
+    backgroundColor: '#EF4444',
+    borderTopLeftRadius: 14,
+    borderBottomLeftRadius: 14,
+  },
+  cardIconDiscipline: {
+    backgroundColor: 'rgba(251, 191, 36, 0.15)',
+  },
+  disciplineBarSection: {
+    gap: 6,
+  },
+  disciplineBarHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  disciplineBarEmoji: {
+    fontSize: 12,
+  },
+  disciplineBarTitle: {
+    fontSize: 10,
+    fontWeight: '500',
+    color: '#CBD5E1',
+    flex: 1,
+  },
+  disciplineBarValue: {
+    fontSize: 11,
+    fontWeight: '500',
+    minWidth: 30,
+    textAlign: 'right',
+    letterSpacing: -0.2,
+  },
+  disciplineBarTrack: {
+    flexDirection: 'row',
+    height: 28,
+    borderRadius: 6,
+    overflow: 'hidden',
+    backgroundColor: 'transparent',
+  },
+  disciplineBarSegment: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+    borderWidth: 0.5,
+    borderColor: 'rgba(100, 116, 139, 0.12)',
+    marginHorizontal: 2,
+    borderRadius: 5,
+  },
+  disciplineBarSegmentActiveYellow: {
+    backgroundColor: 'rgba(251, 191, 36, 0.85)',
+    borderColor: 'rgba(251, 191, 36, 0.85)',
+  },
+  disciplineBarSegmentActiveRed: {
+    backgroundColor: 'rgba(248, 113, 113, 0.85)',
+    borderColor: 'rgba(248, 113, 113, 0.85)',
+  },
+  disciplineBarSegmentActiveBlue: {
+    backgroundColor: 'rgba(96, 165, 250, 0.85)',
+    borderColor: 'rgba(96, 165, 250, 0.85)',
+  },
+  disciplineBarSegmentActiveGreen: {
+    backgroundColor: 'rgba(52, 211, 153, 0.85)',
+    borderColor: 'rgba(52, 211, 153, 0.85)',
+  },
+  disciplineBarSegmentActiveOrange: {
+    backgroundColor: 'rgba(251, 191, 36, 0.85)',
+    borderColor: 'rgba(251, 191, 36, 0.85)',
+  },
+  disciplineBarSegmentActiveEmerald: {
+    backgroundColor: 'rgba(16, 185, 129, 0.9)',
+    borderColor: 'rgba(16, 185, 129, 0.9)',
+  },
+  disciplineBarSegmentText: {
+    fontSize: 9,
+    fontWeight: '400',
+    color: '#64748B',
+    letterSpacing: -0.2,
+  },
+  disciplineBarSegmentTextActive: {
+    color: '#FFF',
+    fontWeight: '500',
+  },
+  
+  // Dikey Çubuk Stilleri (Disiplin için)
+  disciplineColumnsContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  disciplineColumn: {
+    flex: 1,
+  },
+  disciplineColumnHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 10,
+  },
+  disciplineColumnTitle: {
+    fontSize: 10,
+    fontWeight: '500',
+    color: '#CBD5E1',
+    flex: 1,
+  },
+  disciplineColumnValue: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  disciplineColumnDivider: {
+    width: 1,
+    height: '100%',
+    backgroundColor: 'rgba(100, 116, 139, 0.1)',
+  },
+  verticalBarsContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-around',
+    height: 70,
+  },
+  verticalBarWrapper: {
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    flex: 1,
+  },
+  verticalBar: {
+    width: 20,
+    borderRadius: 4,
+    marginBottom: 4,
+  },
+  verticalBarInactiveYellow: {
+    backgroundColor: 'rgba(251, 191, 36, 0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(251, 191, 36, 0.3)',
+  },
+  verticalBarActiveYellow: {
+    backgroundColor: 'rgba(251, 191, 36, 0.9)',
+    borderWidth: 1,
+    borderColor: '#FBBF24',
+  },
+  verticalBarInactiveRed: {
+    backgroundColor: 'rgba(248, 113, 113, 0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(248, 113, 113, 0.3)',
+  },
+  verticalBarActiveRed: {
+    backgroundColor: 'rgba(248, 113, 113, 0.9)',
+    borderWidth: 1,
+    borderColor: '#F87171',
+  },
+  verticalBarLabel: {
+    fontSize: 9,
+    fontWeight: '400',
+    color: '#94A3B8',
+    marginTop: 2,
+  },
+  
+  // Tempo & Senaryo Stilleri
+  categoryCardTactical: {
+    backgroundColor: 'rgba(245, 158, 11, 0.04)',
+    borderColor: 'rgba(245, 158, 11, 0.2)',
+  },
+  cardAccentTactical: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 3,
+    backgroundColor: '#F59E0B',
+    borderTopLeftRadius: 14,
+    borderBottomLeftRadius: 14,
+  },
+  tempoButtonRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  tempoBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderRadius: 10,
+    backgroundColor: 'rgba(15, 23, 42, 0.3)',
+    borderWidth: 1,
+    borderColor: 'rgba(100, 116, 139, 0.15)',
+  },
+  tempoBtnActive: {
+    backgroundColor: 'rgba(15, 23, 42, 0.5)',
+  },
+  tempoBtnText: {
+    fontSize: 10,
+    fontWeight: '500',
+    color: '#94A3B8',
+  },
+  scenarioGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  scenarioBtn: {
+    width: '48%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderRadius: 10,
+    backgroundColor: 'rgba(15, 23, 42, 0.3)',
+    borderWidth: 1,
+    borderColor: 'rgba(100, 116, 139, 0.15)',
+  },
+  scenarioBtnActive: {
+    backgroundColor: 'rgba(15, 23, 42, 0.5)',
+  },
+  scenarioBtnText: {
+    fontSize: 9,
+    fontWeight: '500',
+    color: '#94A3B8',
+  },
+  
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ŞUT TAHMİNLERİ - Zarif Horizontal Bar Stilleri
+  // ═══════════════════════════════════════════════════════════════════════════
+  categoryCardShots: {
+    backgroundColor: 'rgba(59, 130, 246, 0.04)',
+    borderColor: 'rgba(59, 130, 246, 0.3)',
+  },
+  cardAccentShots: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 3,
+    backgroundColor: '#3B82F6',
+    borderTopLeftRadius: 16,
+    borderBottomLeftRadius: 16,
+  },
+  cardIconShots: {
+    backgroundColor: 'rgba(59, 130, 246, 0.15)',
+  },
+  horizontalBarSection: {
+    gap: 8,
+  },
+  horizontalBarHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  horizontalBarTitle: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#94A3B8',
+    flex: 1,
+  },
+  horizontalBarValue: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#60A5FA',
+    minWidth: 36,
+    textAlign: 'right',
+    letterSpacing: -0.2,
+  },
+  horizontalBarTrack: {
+    flexDirection: 'row',
+    height: 28,
+    borderRadius: 6,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(15, 23, 42, 0.2)',
+  },
+  horizontalBarSegment: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRightWidth: 0.5,
+    borderRightColor: 'rgba(100, 116, 139, 0.1)',
+  },
+  horizontalBarSegmentActiveBlue: {
+    backgroundColor: 'rgba(96, 165, 250, 0.8)',
+  },
+  horizontalBarSegmentActiveGreen: {
+    backgroundColor: 'rgba(52, 211, 153, 0.8)',
+  },
+  horizontalBarSegmentActiveOrange: {
+    backgroundColor: 'rgba(251, 191, 36, 0.8)',
+  },
+  horizontalBarSegmentActiveEmerald: {
+    backgroundColor: 'rgba(16, 185, 129, 0.8)',
+  },
+  horizontalBarSegmentText: {
+    fontSize: 9,
+    fontWeight: '400',
+    color: '#64748B',
+    letterSpacing: -0.2,
+  },
+  horizontalBarSegmentTextActive: {
+    color: '#FFF',
+    fontWeight: '500',
   },
   categoryHeader: {
     flexDirection: 'row',
@@ -3334,53 +4131,62 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   
-  // Possession Slider
-  possessionDisplay: {
+  // Possession - Zarif Stil
+  categoryCardPossession: {
+    borderColor: 'rgba(31, 162, 166, 0.15)',
+  },
+  cardAccentPossession: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 3,
+    backgroundColor: '#2DD4BF',
+    borderTopLeftRadius: 14,
+    borderBottomLeftRadius: 14,
+  },
+  cardIconPossession: {
+    backgroundColor: 'rgba(45, 212, 191, 0.15)',
+  },
+  possessionDisplayElegant: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  possessionTeam: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  possessionTeamLabel: {
-    fontSize: 11,
-    color: '#9CA3AF',
-    marginBottom: 4,
-  },
-  possessionTeamValue: {
-    fontSize: 28,
-    fontWeight: '900',
-    color: '#1FA2A6',
-  },
-  possessionVs: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#9CA3AF',
-    paddingHorizontal: 16,
-  },
-  sliderContainer: {
     gap: 12,
+    marginBottom: 12,
   },
-  slider: {
-    width: '100%',
-    height: 40,
+  possessionTeamElegant: {
+    alignItems: 'center',
+    minWidth: 44,
   },
-  sliderLabels: {
+  possessionTeamLabelElegant: {
+    fontSize: 9,
+    color: '#94A3B8',
+    fontWeight: '500',
+    marginBottom: 2,
+    letterSpacing: 0.5,
+  },
+  possessionTeamValueElegant: {
+    fontSize: 18,
+    fontWeight: '300',
+    color: '#2DD4BF',
+    letterSpacing: -0.5,
+  },
+  possessionBarContainer: {
+    flex: 1,
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    height: 3,
+    borderRadius: 1.5,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(15, 23, 42, 0.2)',
   },
-  sliderLabelLeft: {
-    fontSize: 11,
-    color: '#1FA2A6',
-    fontWeight: '600',
+  possessionBarSegment: {
+    height: '100%',
   },
-  sliderLabelRight: {
-    fontSize: 11,
-    color: '#9CA3AF',
-    fontWeight: '600',
+  possessionBarHome: {
+    backgroundColor: 'rgba(45, 212, 191, 0.6)',
+  },
+  possessionBarAway: {
+    backgroundColor: 'rgba(148, 163, 184, 0.3)',
   },
   
   // Submit Button
@@ -3490,7 +4296,7 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     color: '#FFFFFF',
   },
-  playerPosition: {
+  playerPositionModal: {
     fontSize: 11,
     color: 'rgba(255, 255, 255, 0.7)',
     fontWeight: '500',
@@ -4129,25 +4935,5 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#9CA3AF',
     marginTop: 2,
-  },
-  
-  // 🌟 Focus Info Banner
-  focusInfoBanner: {
-    marginHorizontal: 16,
-    marginBottom: 12,
-    backgroundColor: 'rgba(245, 158, 11, 0.1)',
-    borderRadius: 12,
-    padding: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.3)',
-  },
-  focusInfoText: {
-    fontSize: 13,
-    color: '#F59E0B',
-    fontWeight: '500',
-    flex: 1,
   },
 });

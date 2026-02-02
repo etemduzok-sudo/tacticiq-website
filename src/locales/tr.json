@@ -13,7 +13,9 @@
     "continue": "Devam Et",
     "getStarted": "Başla",
     "info": "Bilgi",
-    "success": "Başarılı"
+    "success": "Başarılı",
+    "all": "Tümü",
+    "new": "YENİ!"
   },
   "languageSelection": {
     "title": "Dil Seçimi",
@@ -74,13 +76,118 @@
     "earnedDate": "Kazanıldı:",
     "noBadges": "Henüz rozet yok",
     "startPredicting": "Maçlara tahmin yap ve rozetleri kazan!",
+    "comingSoon": "Yakında rozetler gelecek!",
+    "earnByPredicting": "Tahmin yaparak rozet kazan",
+    "notEarnedYet": "Henüz rozet kazanılmadı",
     "tiers": {
       "rookie": "Çaylak",
       "amateur": "Amatör",
       "pro": "Profesyonel",
       "expert": "Uzman",
       "legend": "Efsane"
+    },
+    "names": {
+      "first-analysis": "İlk Analiz",
+      "warm-up": "Isınma Turu",
+      "strategist": "Stratejist",
+      "punctual": "Dakik",
+      "streak-starter": "Seri Başı",
+      "card-master": "Kart Hamili",
+      "squad-engineer": "Kadro Mühendisi",
+      "local-hero": "Yerel Kahraman",
+      "tempo-master": "Tempo Ustası",
+      "var-referee": "VAR Hakemi",
+      "super-sub": "Süper Yedek",
+      "star-hunter": "Yıldız Avcısı",
+      "unbreakable-streak": "Yıkılmaz Seri",
+      "doctor": "Doktor",
+      "ninety-plus": "90+",
+      "global-analyst": "Global Analist",
+      "perfect-analysis": "Kusursuz Analiz",
+      "diamond-focus": "Elmas Odak",
+      "league-king": "Ligin Kralı",
+      "tacticiq-master": "TacticIQ Master",
+      "quick-learner": "Hızlı Öğrenen",
+      "team-supporter": "Takım Destekçisi",
+      "prediction-wizard": "Tahmin Büyücüsü",
+      "consistency-champion": "Tutarlılık Şampiyonu",
+      "legendary-analyst": "Efsanevi Analist",
+      "early-bird": "Erken Kuş",
+      "corner-king": "Korner Kralı",
+      "possession-master": "Top Hakimiyeti",
+      "hat-trick-hero": "Hat-Trick Kahramanı",
+      "season-veteran": "Sezon Veteranı",
+      "momentum-builder": "Momentum",
+      "clean-sheet": "Temiz Sayfa",
+      "goalscorer": "Gol Ustası",
+      "form-guide": "Form Rehberi",
+      "derby-master": "Derbi Ustası",
+      "underdog": "Sürpriz Avcı",
+      "consistency-king": "Tutarlılık Kralı",
+      "predictor-pro": "Tahmin Profesörü",
+      "champion-mind": "Şampiyon Zihni",
+      "tacticiq-legend": "TacticIQ Efsanesi"
+    },
+    "descriptions": {
+      "first-analysis": "İlk maç tahminini tamamladın",
+      "warm-up": "100 puan barajını geçtin",
+      "strategist": "Analiz Odağı seçerek maç tamamladın",
+      "punctual": "Gol dakikasını ±5 dakika sapmayla bildin",
+      "streak-starter": "Üst üste 3 maçta puan kazandın",
+      "card-master": "10 kez kart tahminini doğru yaptın",
+      "squad-engineer": "5 kez oyuncu değişikliği tahmininde başarılı oldun",
+      "local-hero": "Favori takımını %70 isabetle analiz ettin",
+      "tempo-master": "Tempo Analizi modunda 5 kez %80 başarı yakaladın",
+      "var-referee": "3 farklı maçta penaltı kararlarını doğru tahmin ettin",
+      "super-sub": "Oyuna sonradan giren oyuncunun golünü tahmin ettin",
+      "star-hunter": "10 farklı maçta Maçın Adamı'nı doğru bildin",
+      "unbreakable-streak": "Üst üste 10 maçta 300+ puan topladın",
+      "doctor": "Sakatlık tahminlerinde %90 isabet oranına ulaştın",
+      "ninety-plus": "Uzatma dakikasındaki golü tam vaktinde tahmin ettin",
+      "global-analyst": "5 farklı ligde rozet kazandın",
+      "perfect-analysis": "Bir maçtaki tüm tahminleri %100 doğru yaptın",
+      "diamond-focus": "Analiz Odağı çarpanıyla tek maçta 1000+ puan aldın",
+      "league-king": "Global Leaderboard'da ilk 10 içine girdin",
+      "tacticiq-master": "Tüm rozetleri topladın - Efsane oldun!",
+      "quick-learner": "İlk 3 maçta %60+ başarı oranı yakaladın",
+      "team-supporter": "Aynı takımın 5 maçını analiz ettin",
+      "prediction-wizard": "Tek maçta 500+ puan topladın",
+      "consistency-champion": "10 maçta üst üste %70+ başarı oranı",
+      "legendary-analyst": "Toplam 1000+ maç analiz ettin",
+      "early-bird": "Maç başlamadan 1 saat önce tahmin yaptın",
+      "corner-king": "Korner tahminlerinde 5 doğru yaptın",
+      "possession-master": "Possesyon tahminini 3 maç üst üste doğru yaptın",
+      "hat-trick-hero": "Bir maçta skor, toplam gol ve ilk gol dakikasını doğru tahmin ettin",
+      "season-veteran": "Bir sezonda 50 maç tahminini tamamladın",
+      "momentum-builder": "5 maç üst üste puan kazandın",
+      "clean-sheet": "Skor tahmininde 3 maç üst üste doğru yaptın",
+      "goalscorer": "Toplam gol tahmininde 10 doğru yaptın",
+      "form-guide": "Takım formu analiziyle 5 doğru tahmin yaptın",
+      "derby-master": "Derbi maçında doğru tahmin yaptın",
+      "underdog": "Favori dışı sonuçta doğru tahmin yaptın",
+      "consistency-king": "10 maçta %80+ doğruluk oranı tuttun",
+      "predictor-pro": "100 maç tahminini tamamladın",
+      "champion-mind": "Lig şampiyonunu sezon başında doğru tahmin ettin",
+      "tacticiq-legend": "Tüm rozetlerin %50'sinden fazlasını kazandın"
+    },
+    "close": "Kapat",
+    "earnedDateLabel": "Kazanıldı:",
+    "howToEarnLabel": "Nasıl Kazanılır:",
+    "progressLabel": "İlerleme",
+    "progressHintExample": "maç daha kazanman gerekiyor!",
+    "congrats": "Tebrikler!",
+    "tierLabels": {
+      "bronze": "Bronz",
+      "silver": "Gümüş",
+      "gold": "Altın",
+      "platinum": "Platin",
+      "diamond": "Elmas"
     }
+  },
+  "bestCluster": {
+    "accuracy": "Doğruluk Oranı",
+    "expert": "Uzman",
+    "hint": "Bu alanda çok güçlüsün! Devam et! 💪"
   },
   "settings": {
     "language": "Dil",
@@ -121,7 +228,18 @@
     "title": "Profil",
     "level": "Seviye",
     "points": "Puan",
+    "changePhoto": "Profil Fotoğrafı Değiştir",
+    "totalPoints": "Toplam Puan",
     "rank": "Sıralama",
+    "countryRanking": {
+      "TR": "Türkiye Sıralaması",
+      "DE": "Almanya Sıralaması",
+      "FR": "Fransa Sıralaması",
+      "GB": "İngiltere Sıralaması",
+      "ES": "İspanya Sıralaması",
+      "IT": "İtalya Sıralaması",
+      "BR": "Brezilya Sıralaması"
+    },
     "settings": "Ayarlar",
     "logout": "Çıkış Yap",
     "favoriteTeams": "Favori Takımlar",
@@ -137,6 +255,17 @@
     "noMatches": "Maç bulunamadı",
     "minute": "Dakika",
     "vs": "VS"
+  },
+  "matchLive": {
+    "tabs": {
+      "all": "Tümü",
+      "goals": "Goller",
+      "cards": "Kartlar",
+      "substitutions": "Değişiklikler",
+      "var": "VAR",
+      "other": "Diğer"
+    },
+    "noEventsForCategory": "Bu kategori için event yok"
   },
   "leaderboard": {
     "title": "Sıralama",
@@ -308,5 +437,32 @@
     "finished": "Biten",
     "leaderboard": "Sıralama",
     "profile": "Profil"
+  },
+  "leagueCategories": {
+    "domesticTopTier": {
+      "title": "Ülkelerin En Üst Klasman Erkek Futbol Ligleri",
+      "subtitle": "Her ülkenin 1. seviye profesyonel erkek ligi",
+      "short": "Yerel Üst Ligler"
+    },
+    "continentalClub": {
+      "title": "Kıta Kulüp Turnuvaları",
+      "subtitle": "Kıtaların kulüpler arası en üst düzey resmi turnuvaları",
+      "short": "Kıta Kulüp Turnuvaları"
+    },
+    "continentalNational": {
+      "title": "Kıta Millî Takım Turnuvaları",
+      "subtitle": "Millî takımların kıta bazlı ana turnuvaları",
+      "short": "Kıta Millî Takım Turnuvaları"
+    },
+    "confederationLeagueFormat": {
+      "title": "Kıta Organizasyonlarının Lig / Format Bazlı Organizasyonları",
+      "subtitle": "Lig sistemi gibi işleyen veya periyodik resmi organizasyonlar",
+      "short": "Konfederasyon Lig Formatları"
+    },
+    "globalCompetitions": {
+      "title": "Dünya Çapında Organize Edilen Turnuvalar",
+      "subtitle": "Kıta üstü – global organizasyonlar",
+      "short": "Global Turnuvalar"
+    }
   }
 }

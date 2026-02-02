@@ -686,7 +686,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 80,
+    paddingBottom: 8, // ✅ Kadro sekmesiyle aynı
   },
   
   // Match Stats

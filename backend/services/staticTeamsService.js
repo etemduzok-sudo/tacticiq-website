@@ -15,6 +15,42 @@ const axios = require('axios');
 const { Pool } = require('pg');
 require('dotenv').config();
 
+// Lig kategorileri için import
+const {
+  getAllTrackedLeagues,
+  DOMESTIC_TOP_TIER,
+  CONTINENTAL_CLUB,
+  CONTINENTAL_NATIONAL,
+  CONFEDERATION_LEAGUE_FORMAT,
+  GLOBAL_COMPETITIONS,
+} = require('../config/leaguesScope');
+
+// Lig ID'sine göre kategori belirleme
+function getLeagueTypeFromId(leagueId) {
+  // 1. Domestic Top Tier
+  if (DOMESTIC_TOP_TIER.some(l => l.id === leagueId)) {
+    return 'domestic_top';
+  }
+  // 2. Continental Club
+  if (CONTINENTAL_CLUB.some(l => l.id === leagueId)) {
+    return 'continental_club';
+  }
+  // 3. Continental National
+  if (CONTINENTAL_NATIONAL.some(l => l.id === leagueId)) {
+    return 'continental_national';
+  }
+  // 4. Confederation League Format
+  if (CONFEDERATION_LEAGUE_FORMAT.some(l => l.id === leagueId)) {
+    return 'confederation_format';
+  }
+  // 5. Global Competitions
+  if (GLOBAL_COMPETITIONS.some(l => l.id === leagueId)) {
+    return 'global';
+  }
+  // Default (eski kod uyumluluğu için)
+  return 'domestic_top';
+}
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL || process.env.SUPABASE_DB_URL,
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
@@ -293,44 +329,26 @@ async function syncAllTeams() {
     let teamsAdded = 0;
     let teamsUpdated = 0;
     
-    // 1. Üst lig takımları
-    const topLeagues = await fetchTopLeagues();
-    for (const league of topLeagues) {
-      console.log(`📋 Processing ${league.league?.name}...`);
-      const teams = await fetchLeagueTeams(league.league?.id, 2025);
+    // Tüm takip edilen ligler için sync (leaguesScope.js'den)
+    const trackedLeagues = getAllTrackedLeagues();
+    
+    for (const league of trackedLeagues) {
+      console.log(`📋 Processing ${league.name} (${league.id})...`);
+      const teams = await fetchLeagueTeams(league.id, 2025);
+      
+      // Lig tipini belirle
+      const leagueType = getLeagueTypeFromId(league.id);
+      // Takım tipi: Continental National ve Global (World Cup) için 'national', diğerleri için 'club'
+      const teamType = (leagueType === 'continental_national' || leagueType === 'global') ? 'national' : 'club';
       
       for (const team of teams) {
-        const saved = await saveTeam(team, league, 'domestic_top', 'club');
+        const saved = await saveTeam(team, { league: { name: league.name }, country: { name: league.country } }, leagueType, teamType);
         if (saved) teamsAdded++;
         await delay(100); // Rate limiting
       }
     }
     
-    // 2. Yerel kupalar
-    const domesticCups = await fetchDomesticCups();
-    for (const cup of domesticCups.slice(0, 50)) { // İlk 50 kupa
-      const teams = await fetchLeagueTeams(cup.league?.id, 2025);
-      
-      for (const team of teams) {
-        const saved = await saveTeam(team, cup, 'domestic_cup', 'club');
-        if (saved) teamsAdded++;
-        await delay(100);
-      }
-    }
-    
-    // 3. Kıta kupaları
-    const continentalLeagues = await fetchContinentalLeagues();
-    for (const league of continentalLeagues) {
-      const teams = await fetchLeagueTeams(league.league?.id, 2025);
-      
-      for (const team of teams) {
-        const saved = await saveTeam(team, league, 'continental', 'club');
-        if (saved) teamsAdded++;
-        await delay(100);
-      }
-    }
-    
-    // 4. Milli takımlar
+    // Milli takımlar (tüm FIFA üyeleri)
     const nationalTeams = await fetchNationalTeams();
     for (const team of nationalTeams) {
       const saved = await saveTeam(team, null, 'international', 'national');
@@ -383,15 +401,25 @@ const FALLBACK_TEAMS = [
   { api_football_id: 26, name: 'Argentina', country: 'Argentina', league: 'International', league_type: 'international', team_type: 'national', colors: ['#74ACDF', '#FFFFFF'], colors_primary: '#74ACDF', colors_secondary: '#FFFFFF', flag_url: 'https://flagcdn.com/w80/ar.png' },
   { api_football_id: 27, name: 'Portugal', country: 'Portugal', league: 'International', league_type: 'international', team_type: 'national', colors: ['#006600', '#FF0000'], colors_primary: '#006600', colors_secondary: '#FF0000', flag_url: 'https://flagcdn.com/w80/pt.png' },
   { api_football_id: 1118, name: 'Netherlands', country: 'Netherlands', league: 'International', league_type: 'international', team_type: 'national', colors: ['#FF6600', '#FFFFFF'], colors_primary: '#FF6600', colors_secondary: '#FFFFFF', flag_url: 'https://flagcdn.com/w80/nl.png' },
-  // Turkish Super Lig
+  // Turkish Super Lig - API-Football v3 IDs (2026-02-02 verified)
   { api_football_id: 611, name: 'Fenerbahce', country: 'Turkey', league: 'Süper Lig', league_type: 'domestic_top', team_type: 'club', colors: ['#FFED00', '#00205B'], colors_primary: '#FFED00', colors_secondary: '#00205B' },
   { api_football_id: 645, name: 'Galatasaray', country: 'Turkey', league: 'Süper Lig', league_type: 'domestic_top', team_type: 'club', colors: ['#FF0000', '#FFD700'], colors_primary: '#FF0000', colors_secondary: '#FFD700' },
   { api_football_id: 549, name: 'Besiktas', country: 'Turkey', league: 'Süper Lig', league_type: 'domestic_top', team_type: 'club', colors: ['#000000', '#FFFFFF'], colors_primary: '#000000', colors_secondary: '#FFFFFF' },
-  { api_football_id: 551, name: 'Trabzonspor', country: 'Turkey', league: 'Süper Lig', league_type: 'domestic_top', team_type: 'club', colors: ['#632134', '#00BFFF'], colors_primary: '#632134', colors_secondary: '#00BFFF' },
-  { api_football_id: 3570, name: 'Basaksehir', country: 'Turkey', league: 'Süper Lig', league_type: 'domestic_top', team_type: 'club', colors: ['#F37021', '#000000'], colors_primary: '#F37021', colors_secondary: '#000000' },
-  { api_football_id: 607, name: 'Adana Demirspor', country: 'Turkey', league: 'Süper Lig', league_type: 'domestic_top', team_type: 'club', colors: ['#0000FF', '#FFFFFF'], colors_primary: '#0000FF', colors_secondary: '#FFFFFF' },
-  { api_football_id: 562, name: 'Antalyaspor', country: 'Turkey', league: 'Süper Lig', league_type: 'domestic_top', team_type: 'club', colors: ['#FF0000', '#FFFFFF'], colors_primary: '#FF0000', colors_secondary: '#FFFFFF' },
-  { api_football_id: 556, name: 'Konyaspor', country: 'Turkey', league: 'Süper Lig', league_type: 'domestic_top', team_type: 'club', colors: ['#006633', '#FFFFFF'], colors_primary: '#006633', colors_secondary: '#FFFFFF' },
+  { api_football_id: 998, name: 'Trabzonspor', country: 'Turkey', league: 'Süper Lig', league_type: 'domestic_top', team_type: 'club', colors: ['#632134', '#00BFFF'], colors_primary: '#632134', colors_secondary: '#00BFFF' },
+  { api_football_id: 564, name: 'Basaksehir', country: 'Turkey', league: 'Süper Lig', league_type: 'domestic_top', team_type: 'club', colors: ['#F37021', '#000000'], colors_primary: '#F37021', colors_secondary: '#000000' },
+  { api_football_id: 3563, name: 'Adana Demirspor', country: 'Turkey', league: 'Süper Lig', league_type: 'domestic_top', team_type: 'club', colors: ['#0000FF', '#FFFFFF'], colors_primary: '#0000FF', colors_secondary: '#FFFFFF' },
+  { api_football_id: 1005, name: 'Antalyaspor', country: 'Turkey', league: 'Süper Lig', league_type: 'domestic_top', team_type: 'club', colors: ['#FF0000', '#FFFFFF'], colors_primary: '#FF0000', colors_secondary: '#FFFFFF' },
+  { api_football_id: 607, name: 'Konyaspor', country: 'Turkey', league: 'Süper Lig', league_type: 'domestic_top', team_type: 'club', colors: ['#006633', '#FFFFFF'], colors_primary: '#006633', colors_secondary: '#FFFFFF' },
+  { api_football_id: 1002, name: 'Sivasspor', country: 'Turkey', league: 'Süper Lig', league_type: 'domestic_top', team_type: 'club', colors: ['#FF0000', '#FFFFFF'], colors_primary: '#FF0000', colors_secondary: '#FFFFFF' },
+  { api_football_id: 1004, name: 'Kasimpasa', country: 'Turkey', league: 'Süper Lig', league_type: 'domestic_top', team_type: 'club', colors: ['#000066', '#FFFFFF'], colors_primary: '#000066', colors_secondary: '#FFFFFF' },
+  { api_football_id: 994, name: 'Goztepe', country: 'Turkey', league: 'Süper Lig', league_type: 'domestic_top', team_type: 'club', colors: ['#FFD700', '#C8102E'], colors_primary: '#FFD700', colors_secondary: '#C8102E' },
+  { api_football_id: 1001, name: 'Kayserispor', country: 'Turkey', league: 'Süper Lig', league_type: 'domestic_top', team_type: 'club', colors: ['#FF0000', '#FFD700'], colors_primary: '#FF0000', colors_secondary: '#FFD700' },
+  { api_football_id: 1007, name: 'Rizespor', country: 'Turkey', league: 'Süper Lig', league_type: 'domestic_top', team_type: 'club', colors: ['#006633', '#0000FF'], colors_primary: '#006633', colors_secondary: '#0000FF' },
+  { api_football_id: 3575, name: 'Hatayspor', country: 'Turkey', league: 'Süper Lig', league_type: 'domestic_top', team_type: 'club', colors: ['#006633', '#C8102E'], colors_primary: '#006633', colors_secondary: '#C8102E' },
+  { api_football_id: 3603, name: 'Samsunspor', country: 'Turkey', league: 'Süper Lig', league_type: 'domestic_top', team_type: 'club', colors: ['#C8102E', '#FFFFFF'], colors_primary: '#C8102E', colors_secondary: '#FFFFFF' },
+  { api_football_id: 3573, name: 'Gaziantep FK', country: 'Turkey', league: 'Süper Lig', league_type: 'domestic_top', team_type: 'club', colors: ['#C8102E', '#000000'], colors_primary: '#C8102E', colors_secondary: '#000000' },
+  { api_football_id: 996, name: 'Alanyaspor', country: 'Turkey', league: 'Süper Lig', league_type: 'domestic_top', team_type: 'club', colors: ['#FF6600', '#006633'], colors_primary: '#FF6600', colors_secondary: '#006633' },
+  { api_football_id: 556, name: 'Qarabag', country: 'Azerbaijan', league: 'Premyer Liqa', league_type: 'domestic_top', team_type: 'club', colors: ['#00AA00', '#FFFFFF'], colors_primary: '#00AA00', colors_secondary: '#FFFFFF' },
   // Premier League
   { api_football_id: 50, name: 'Manchester City', country: 'England', league: 'Premier League', league_type: 'domestic_top', team_type: 'club', colors: ['#6CABDD', '#1C2C5B'], colors_primary: '#6CABDD', colors_secondary: '#1C2C5B' },
   { api_football_id: 33, name: 'Manchester United', country: 'England', league: 'Premier League', league_type: 'domestic_top', team_type: 'club', colors: ['#DA291C', '#FBE122'], colors_primary: '#DA291C', colors_secondary: '#FBE122' },
@@ -416,6 +444,24 @@ const FALLBACK_TEAMS = [
   { api_football_id: 85, name: 'Paris Saint Germain', country: 'France', league: 'Ligue 1', league_type: 'domestic_top', team_type: 'club', colors: ['#004170', '#DA291C'], colors_primary: '#004170', colors_secondary: '#DA291C' },
   { api_football_id: 81, name: 'Marseille', country: 'France', league: 'Ligue 1', league_type: 'domestic_top', team_type: 'club', colors: ['#2FAEE0', '#FFFFFF'], colors_primary: '#2FAEE0', colors_secondary: '#FFFFFF' },
   { api_football_id: 80, name: 'Lyon', country: 'France', league: 'Ligue 1', league_type: 'domestic_top', team_type: 'club', colors: ['#0046A0', '#E10000'], colors_primary: '#0046A0', colors_secondary: '#E10000' },
+  // Arjantin / Güney Amerika - API-Football v3 IDs (2026-02-02 verified)
+  { api_football_id: 451, name: 'Boca Juniors', country: 'Argentina', league: 'Liga Profesional', league_type: 'domestic_top', team_type: 'club', colors: ['#0066B3', '#FBD914'], colors_primary: '#0066B3', colors_secondary: '#FBD914' },
+  { api_football_id: 435, name: 'River Plate', country: 'Argentina', league: 'Liga Profesional', league_type: 'domestic_top', team_type: 'club', colors: ['#E30613', '#FFFFFF'], colors_primary: '#E30613', colors_secondary: '#FFFFFF' },
+  { api_football_id: 460, name: 'San Lorenzo', country: 'Argentina', league: 'Liga Profesional', league_type: 'domestic_top', team_type: 'club', colors: ['#E30613', '#0000FF'], colors_primary: '#E30613', colors_secondary: '#0000FF' },
+  { api_football_id: 436, name: 'Racing Club', country: 'Argentina', league: 'Liga Profesional', league_type: 'domestic_top', team_type: 'club', colors: ['#FFFFFF', '#0066B3'], colors_primary: '#FFFFFF', colors_secondary: '#0066B3' },
+  { api_football_id: 453, name: 'Independiente', country: 'Argentina', league: 'Liga Profesional', league_type: 'domestic_top', team_type: 'club', colors: ['#E30613', '#FFFFFF'], colors_primary: '#E30613', colors_secondary: '#FFFFFF' },
+  // Brasileirão - API-Football v3 IDs
+  { api_football_id: 131, name: 'Corinthians', country: 'Brazil', league: 'Brasileirao', league_type: 'domestic_top', team_type: 'club', colors: ['#000000', '#FFFFFF'], colors_primary: '#000000', colors_secondary: '#FFFFFF' },
+  { api_football_id: 127, name: 'Flamengo', country: 'Brazil', league: 'Brasileirao', league_type: 'domestic_top', team_type: 'club', colors: ['#CC0000', '#000000'], colors_primary: '#CC0000', colors_secondary: '#000000' },
+  { api_football_id: 121, name: 'Palmeiras', country: 'Brazil', league: 'Brasileirao', league_type: 'domestic_top', team_type: 'club', colors: ['#006437', '#FFFFFF'], colors_primary: '#006437', colors_secondary: '#FFFFFF' },
+  { api_football_id: 1062, name: 'Atletico-MG', country: 'Brazil', league: 'Brasileirao', league_type: 'domestic_top', team_type: 'club', colors: ['#000000', '#FFFFFF'], colors_primary: '#000000', colors_secondary: '#FFFFFF' },
+  // La Liga extras
+  { api_football_id: 534, name: 'Las Palmas', country: 'Spain', league: 'La Liga', league_type: 'domestic_top', team_type: 'club', colors: ['#FFD700', '#0000FF'], colors_primary: '#FFD700', colors_secondary: '#0000FF' },
+  // Bundesliga extras
+  { api_football_id: 160, name: 'SC Freiburg', country: 'Germany', league: 'Bundesliga', league_type: 'domestic_top', team_type: 'club', colors: ['#E2001A', '#000000'], colors_primary: '#E2001A', colors_secondary: '#000000' },
+  // Eredivisie
+  { api_football_id: 201, name: 'AZ Alkmaar', country: 'Netherlands', league: 'Eredivisie', league_type: 'domestic_top', team_type: 'club', colors: ['#E30613', '#FFFFFF'], colors_primary: '#E30613', colors_secondary: '#FFFFFF' },
+  { api_football_id: 209, name: 'Feyenoord', country: 'Netherlands', league: 'Eredivisie', league_type: 'domestic_top', team_type: 'club', colors: ['#E30613', '#FFFFFF'], colors_primary: '#E30613', colors_secondary: '#FFFFFF' },
 ];
 
 /**
@@ -438,10 +484,12 @@ async function searchTeams(query, type = null) {
     params.push(type);
   }
   
-  // Son 2 ay içinde güncellenmiş takımlar (view mantığı)
-  sql += ` AND (last_updated >= NOW() - INTERVAL '2 months' OR last_updated IS NULL)`;
+  // Tüm kayıtlı takımlar aranabilsin (Boca, River vb. eski sync’te gelse bile)
+  sql += ` AND (last_updated >= NOW() - INTERVAL '12 months' OR last_updated IS NULL)`;
   
-  sql += ` ORDER BY country, name LIMIT 50`;
+  const prefixParam = type ? 3 : 2;
+  params.push(query.toLowerCase());
+  sql += ` ORDER BY CASE WHEN LOWER(name) LIKE $${prefixParam} || '%' THEN 0 WHEN LOWER(name) LIKE $1 THEN 1 ELSE 2 END, name LIMIT 80`;
   
   try {
     const result = await pool.query(sql, params);
@@ -450,17 +498,9 @@ async function searchTeams(query, type = null) {
     const errorMessage = error.message || String(error);
     console.warn('⚠️  Static teams DB error, using fallback:', errorMessage.substring(0, 100));
     
-    // Fallback: local array'den ara
-    const queryLower = query.toLowerCase();
-    let filtered = FALLBACK_TEAMS.filter(team => 
-      team.name.toLowerCase().includes(queryLower) ||
-      team.country.toLowerCase().includes(queryLower)
-    );
-    
-    if (type) {
-      filtered = filtered.filter(team => team.team_type === type);
-    }
-    
+    const { filterAndSortTeams } = require('../utils/teamFilter');
+    let filtered = filterAndSortTeams(FALLBACK_TEAMS, query, t => t.name);
+    if (type) filtered = filtered.filter(team => team.team_type === type);
     return filtered.slice(0, 50);
   }
 }

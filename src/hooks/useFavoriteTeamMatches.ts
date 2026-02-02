@@ -356,7 +356,7 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
       // ✅ Fetch ALL season matches for favorite teams (all competitions)
       const allMatches: Match[] = [];
       const liveMatchesFromAPI: Match[] = [];
-      const currentSeason = 2025; // 2025-26 sezonu (aktif sezon)
+      const currentSeason = 2025; // Sadece mevcut sezon
       let backendConnectionError = false; // Backend bağlantı hatası flag'i
       let successfulFetches = 0; // Başarılı fetch sayısı
       
@@ -444,59 +444,24 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
             const seasonResults = await Promise.all(seasonPromises);
             seasonResults.forEach(matches => teamMatches.push(...matches));
           } else {
-            // Kulüp takımı: Sadece güncel sezon
+            // Kulüp takımı: Sadece mevcut sezon
             try {
               const url = `/matches/team/${team.id}/season/${currentSeason}`;
               const fullUrl = `${api.getBaseUrl()}${url}`;
-              logger.debug(`📥 Fetching ${team.name} season ${currentSeason} matches...`, { url: fullUrl }, 'MATCHES');
               const result = await fetch(fullUrl, {
                 headers: { 'Content-Type': 'application/json' },
                 signal: AbortSignal.timeout(25000)
               });
               if (result.ok) {
                 const response = await result.json();
-                logger.debug(`📥 ${team.name} season ${currentSeason} raw response`, { 
-                  success: response.success, 
-                  dataLength: response.data?.length || 0,
-                  source: response.source,
-                  hasData: !!response.data
-                }, 'MATCHES');
                 if (response.success && response.data) {
                   const matches = Array.isArray(response.data) ? response.data : [];
                   teamMatches.push(...matches);
                   successfulFetches++;
-                  logger.debug(`✅ ${team.name} season ${currentSeason}: ${matches.length} matches`, undefined, 'MATCHES');
-                } else {
-                  logger.warn(`⚠️ ${team.name} season ${currentSeason}: No data in response`, { response }, 'MATCHES');
                 }
-              } else {
-                const errorText = await result.text();
-                logger.warn(`⚠️ ${team.name} season ${currentSeason}: HTTP ${result.status}`, { error: errorText }, 'MATCHES');
               }
             } catch (err: any) {
-              logger.error(`❌ ${team.name} season ${currentSeason} fetch error`, { error: err.message, stack: err.stack }, 'MATCHES');
-              // Bir kez daha dene (timeout/geçici hata için)
-              if (err?.name === 'TimeoutError' || err?.message?.includes('timed out')) {
-                try {
-                  const url = `/matches/team/${team.id}/season/${currentSeason}`;
-                  const fullUrl = `${api.getBaseUrl()}${url}`;
-                  const retryResult = await fetch(fullUrl, {
-                    headers: { 'Content-Type': 'application/json' },
-                    signal: AbortSignal.timeout(30000)
-                  });
-                  if (retryResult.ok) {
-                    const response = await retryResult.json();
-                    if (response.success && response.data) {
-                      const matches = Array.isArray(response.data) ? response.data : [];
-                      teamMatches.push(...matches);
-                      successfulFetches++;
-                      logger.info(`✅ ${team.name} retry OK: ${matches.length} matches`, undefined, 'MATCHES');
-                    }
-                  }
-                } catch (retryErr: any) {
-                  logger.warn(`❌ ${team.name} retry failed`, { error: retryErr.message }, 'MATCHES');
-                }
-              }
+              logger.debug(`❌ ${team.name} season ${currentSeason} fetch error`, { error: (err as Error).message }, 'MATCHES');
             }
           }
           

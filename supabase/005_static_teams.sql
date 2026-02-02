@@ -198,7 +198,7 @@ VALUES
     (3570, 'Başakşehir', 'Turkey', 'Süper Lig', 'domestic_top', 'club', '["#F37021", "#000000"]', '#F37021', '#000000'),
     (607, 'Adana Demirspor', 'Turkey', 'Süper Lig', 'domestic_top', 'club', '["#0000FF", "#FFFFFF"]', '#0000FF', '#FFFFFF'),
     (562, 'Antalyaspor', 'Turkey', 'Süper Lig', 'domestic_top', 'club', '["#FF0000", "#FFFFFF"]', '#FF0000', '#FFFFFF'),
-    (556, 'Konyaspor', 'Turkey', 'Süper Lig', 'domestic_top', 'club', '["#006633", "#FFFFFF"]', '#006633', '#FFFFFF'),
+    (557, 'Konyaspor', 'Turkey', 'Süper Lig', 'domestic_top', 'club', '["#006633", "#FFFFFF"]', '#006633', '#FFFFFF'),
     (564, 'Sivasspor', 'Turkey', 'Süper Lig', 'domestic_top', 'club', '["#FF0000", "#FFFFFF"]', '#FF0000', '#FFFFFF'),
     (3571, 'Kasimpasa', 'Turkey', 'Süper Lig', 'domestic_top', 'club', '["#000066", "#FFFFFF"]', '#000066', '#FFFFFF'),
     (550, 'Goztepe', 'Turkey', 'Süper Lig', 'domestic_top', 'club', '["#FFD700", "#C8102E"]', '#FFD700', '#C8102E'),

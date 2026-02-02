@@ -135,7 +135,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
           .filter(badgeDef => earnedIds.has(badgeDef.id))
           .map(badgeDef => ({
             id: badgeDef.id,
-            name: badgeDef.name,
+            name: t(`badges.names.${badgeDef.id}`, { defaultValue: badgeDef.name }),
             emoji: badgeDef.emoji,
             tier: badgeDef.tier,
           }));
@@ -220,7 +220,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
                   <View style={styles.statsRow}>
                     <Ionicons name="trending-up" size={11} color="#F79F1B" />
                     <Text style={styles.profileStats}>
-                      Level {userLevel} • {userPoints.toLocaleString()} Puan
+                      {t('profile.level', { defaultValue: 'Level' })} {userLevel} • {userPoints.toLocaleString()} {t('profile.points', { defaultValue: 'Puan' })}
                     </Text>
                   </View>
                 </View>
@@ -228,7 +228,11 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
               
               <View style={styles.profileRight}>
                 <View style={styles.rankingCard}>
-                  <Text style={styles.rankingLabel}>{getCountryRankingLabel(getDeviceCountryCode())}</Text>
+                  <Text style={styles.rankingLabel}>
+                    {t(`profile.countryRanking.${getDeviceCountryCode()?.toUpperCase() || 'TR'}`, { 
+                      defaultValue: getCountryRankingLabel(getDeviceCountryCode()) 
+                    })}
+                  </Text>
                   <View style={styles.rankingValueContainer}>
                     <View style={styles.rankingGradient}>
                       <Ionicons name="trophy" size={12} color="#F79F1B" />
@@ -258,7 +262,9 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
                   contentContainerStyle={styles.badgesScroll}
                 >
                   {earnedBadges.map((badge, index) => {
-                    const shortName = badge.name.split(' ')[0];
+                    // i18n'den badge ismini çek, yoksa fallback olarak badge.name kullan
+                    const badgeName = t(`badges.names.${badge.id}`, { defaultValue: badge.name });
+                    const shortName = badgeName.split(' ')[0];
                     const isNewBadge = newBadge && newBadge.id === badge.id;
                     const tierColor = getBadgeTierColor(badge.tier as 1 | 2 | 3 | 4 | 5);
                     
@@ -285,7 +291,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
                             </Text>
                             {isNewBadge && (
                               <View style={styles.newBadgeIndicator}>
-                                <Text style={styles.newBadgeText}>YENİ!</Text>
+                                <Text style={styles.newBadgeText}>{t('common.new', { defaultValue: 'YENİ!' })}</Text>
                               </View>
                             )}
                           </View>
@@ -306,8 +312,8 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
                       </LinearGradient>
                     </View>
                     <View style={styles.noBadgesTextContainer}>
-                      <Text style={styles.noBadgesText}>Yakında rozetler gelecek!</Text>
-                      <Text style={styles.noBadgesHint}>Tahmin yaparak rozet kazan</Text>
+                      <Text style={styles.noBadgesText}>{t('badges.comingSoon')}</Text>
+                      <Text style={styles.noBadgesHint}>{t('badges.earnByPredicting')}</Text>
                     </View>
                   </View>
                 </View>
@@ -341,7 +347,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
                       styles.teamFilterChipText,
                       selectedTeamIds.length === 0 && styles.teamFilterChipTextActive,
                     ]}>
-                      Tümü
+                      {t('common.all')}
                     </Text>
                   </TouchableOpacity>
 
@@ -421,9 +427,9 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
               </View>
 
               {/* Congrats Text */}
-              <Text style={styles.congratsText}>🎉 Tebrikler!</Text>
-              <Text style={styles.badgeNamePopup}>{newBadge?.name}</Text>
-              <Text style={styles.badgeDescriptionPopup}>{newBadge?.description}</Text>
+              <Text style={styles.congratsText}>🎉 {t('badges.congrats')}</Text>
+              <Text style={styles.badgeNamePopup}>{newBadge ? t(`badges.names.${newBadge.id}`, { defaultValue: newBadge.name }) : ''}</Text>
+              <Text style={styles.badgeDescriptionPopup}>{newBadge ? t(`badges.descriptions.${newBadge.id}`, { defaultValue: newBadge.description }) : ''}</Text>
 
               {/* Tier Badge */}
               <View style={[styles.tierBadgePopup, { backgroundColor: newBadge ? getBadgeTierColor(newBadge.tier as 1 | 2 | 3 | 4 | 5) : '#9CA3AF' }]}>
@@ -438,7 +444,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                 >
-                  <Text style={styles.continueButtonText}>Devam Et</Text>
+                  <Text style={styles.continueButtonText}>{t('common.continue')}</Text>
                   <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
                 </LinearGradient>
               </TouchableOpacity>

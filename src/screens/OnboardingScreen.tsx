@@ -115,6 +115,7 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
   const [selectedLegalDoc, setSelectedLegalDoc] = useState<string | null>(null);
   const [showDatePicker, setShowDatePicker] = useState<'year' | 'month' | 'day' | null>(null);
   const [loading, setLoading] = useState(false);
+  const languageSelectingRef = useRef(false);
 
   // Animasyon değerleri
   const fadeAnim = useRef(new Animated.Value(1)).current;
@@ -249,16 +250,22 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
     }
   };
 
-  const handleLanguageSelect = async (code: string) => {
+  const handleLanguageSelect = (code: string) => {
+    if (languageSelectingRef.current) return;
+    languageSelectingRef.current = true;
     setSelectedLanguage(code);
-    await changeI18nLanguage(code);
-    await AsyncStorage.setItem('@user_language', code);
-    await AsyncStorage.setItem('tacticiq-language', code);
-    
-    // Animasyonlu geçiş
-    animateTransition('forward', () => {
-      setCurrentStep('age');
-    });
+    setCurrentStep('age');
+    (async () => {
+      try {
+        await changeI18nLanguage(code);
+        await AsyncStorage.setItem('@user_language', code);
+        await AsyncStorage.setItem('tacticiq-language', code);
+      } catch (error) {
+        console.error('Language change error:', error);
+      } finally {
+        languageSelectingRef.current = false;
+      }
+    })();
   };
 
   const calculateAge = (): number => {
@@ -769,6 +776,7 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   gridPattern: {
     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 1, zIndex: 0,
+    pointerEvents: 'none',
     ...Platform.select({
       web: { 
         backgroundImage: `linear-gradient(to right, rgba(31, 162, 166, 0.12) 1px, transparent 1px), linear-gradient(to bottom, rgba(31, 162, 166, 0.12) 1px, transparent 1px)`, 
@@ -779,6 +787,7 @@ const styles = StyleSheet.create({
   },
   mainContent: { 
     flex: 1,
+    zIndex: 1,
     paddingHorizontal: WEBSITE_SPACING.xxl,
     paddingTop: WEBSITE_SPACING.xl + WEBSITE_ICON_SIZES.xl + WEBSITE_SPACING.md, // Tüm sayfalarla aynı (56px)
   },
@@ -871,6 +880,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: `rgba(31,162,166,${0.25})`,
     marginBottom: 5,
+    ...(Platform.OS === 'web' ? { cursor: 'pointer' } : {}),
   },
   languageCardGradient: {
     alignItems: 'center',

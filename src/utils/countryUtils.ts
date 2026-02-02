@@ -163,6 +163,7 @@ export function getCountryFromCode(code: string): string {
 /**
  * Cihaz/kullanıcı ülkesine göre sıralama etiketi
  * Örn: TR → "Türkiye Sıralaması", FR → "Fransa Sıralaması"
+ * NOT: Bu fonksiyon i18n kullanmıyor - çağıran component'te i18n kullanılmalı
  */
 export function getCountryRankingLabel(countryCodeOrName: string): string {
   if (!countryCodeOrName) return 'Türkiye Sıralaması';

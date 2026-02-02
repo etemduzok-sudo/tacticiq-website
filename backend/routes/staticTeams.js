@@ -8,6 +8,7 @@
 const express = require('express');
 const router = express.Router();
 const staticTeamsService = require('../services/staticTeamsService');
+const { filterAndSortTeams } = require('../utils/teamFilter');
 const { Pool } = require('pg');
 require('dotenv').config();
 
@@ -61,6 +62,12 @@ const FALLBACK_CLUB_TEAMS = [
   { id: 496, name: 'Juventus', country: 'Italy', league: 'Serie A', type: 'club', colors: ['#000000', '#FFFFFF'], logo: null },
   // Ligue 1
   { id: 85, name: 'Paris Saint Germain', country: 'France', league: 'Ligue 1', type: 'club', colors: ['#004170', '#DA291C'], logo: null },
+  // Arjantin / Güney Amerika
+  { id: 114, name: 'Boca Juniors', country: 'Argentina', league: 'Liga Profesional', type: 'club', colors: ['#0066B3', '#FBD914'], logo: null },
+  { id: 435, name: 'River Plate', country: 'Argentina', league: 'Liga Profesional', type: 'club', colors: ['#E30613', '#FFFFFF'], logo: null },
+  { id: 131, name: 'Corinthians', country: 'Brazil', league: 'Serie A', type: 'club', colors: ['#000000', '#FFFFFF'], logo: null },
+  { id: 127, name: 'Flamengo', country: 'Brazil', league: 'Serie A', type: 'club', colors: ['#CC0000', '#000000'], logo: null },
+  { id: 126, name: 'Palmeiras', country: 'Brazil', league: 'Serie A', type: 'club', colors: ['#006437', '#FFFFFF'], logo: null },
 ];
 
 /**
@@ -116,11 +123,8 @@ router.get('/search', async (req, res) => {
                           typeParam === 'club' ? FALLBACK_CLUB_TEAMS : 
                           [...FALLBACK_NATIONAL_TEAMS, ...FALLBACK_CLUB_TEAMS];
     
-    // Query ile filtrele
-    const filteredTeams = queryParam ? fallbackTeams.filter(team => 
-      team.name.toLowerCase().includes(queryParam.toLowerCase()) ||
-      team.country.toLowerCase().includes(queryParam.toLowerCase())
-    ) : fallbackTeams;
+    // Query ile filtrele + relevans sıralaması (tüm filtreleme mantığı)
+    const filteredTeams = filterAndSortTeams(fallbackTeams, queryParam || '', t => t.name);
     
     return res.json({
       success: true,

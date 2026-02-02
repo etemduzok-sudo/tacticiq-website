@@ -84,14 +84,63 @@ export function validateFavoriteTeams(data: any): boolean {
   );
 }
 
-// ✅ MIGRATION: Eski / yanlış takım ID'lerini API-Football ID'lerine çevir (maç API uyumu)
-const OLD_TO_NEW_TEAM_IDS: Record<number, number> = {
-  2003: 777,   // Türkiye (kadın) -> Türkiye (erkek)
-  2004: 25,    // Almanya (eski) -> Almanya (yeni)
-  2005: 6,     // Brezilya (eski) -> Brezilya (yeni)
-  2006: 26,    // Arjantin (eski) -> Arjantin (yeni)
-  6890: 562,   // Antalyaspor (fallback yanlış ID) -> API-Football 562
-  3563: 556,   // Konyaspor (fallback yanlış ID) -> API-Football 556
+// ✅ MIGRATION: Takım ismine göre doğru API-Football ID'lerini ata
+// 2026-02-02: API-Football v3 ile tam senkronize edildi
+const TEAM_NAME_TO_CORRECT_ID: Record<string, number> = {
+  // Turkish Süper Lig
+  'konyaspor': 607,
+  'trabzonspor': 998,
+  'başakşehir': 564,
+  'basaksehir': 564,
+  'göztepe': 994,
+  'goztepe': 994,
+  'alanyaspor': 996,
+  'kayserispor': 1001,
+  'sivasspor': 1002,
+  'kasımpaşa': 1004,
+  'kasimpasa': 1004,
+  'antalyaspor': 1005,
+  'rizespor': 1007,
+  'hatayspor': 3575,
+  'samsunspor': 3603,
+  'gaziantep': 3573,
+  'gazişehir': 3573,
+  'adana demirspor': 3563,
+  'eyüpspor': 3588,
+  'eyupspor': 3588,
+  // Argentine Primera
+  'boca juniors': 451,
+  'boca': 451,
+  'san lorenzo': 460,
+  'racing club': 436,
+  'racing': 436,
+  'independiente': 453,
+  'estudiantes': 450,
+  'vélez sarsfield': 438,
+  'velez sarsfield': 438,
+  'vélez': 438,
+  'velez': 438,
+  // Bundesliga
+  'freiburg': 160,
+  'sc freiburg': 160,
+  // Eredivisie
+  'az alkmaar': 201,
+  'feyenoord': 209,
+  'utrecht': 207,
+  'sparta rotterdam': 426,
+  'heerenveen': 210,
+  'groningen': 202,
+  'twente': 415,
+  // Brasileirão
+  'atlético-mg': 1062,
+  'atletico-mg': 1062,
+  'atlético mineiro': 1062,
+  'atletico mineiro': 1062,
+  // Las Palmas
+  'las palmas': 534,
+  // Other
+  'qarabag': 556,
+  'qarabağ': 556,
 };
 
 // Get favorite teams safely with ID migration
@@ -103,16 +152,19 @@ export async function getFavoriteTeams() {
   
   if (!teams) return null;
   
-  // ✅ Migrate old IDs to new IDs
+  // ✅ Migrate to correct API-Football IDs based on team name
   let needsUpdate = false;
   const migratedTeams = teams.map(team => {
-    if (OLD_TO_NEW_TEAM_IDS[team.id]) {
-      const newId = OLD_TO_NEW_TEAM_IDS[team.id];
-      console.log(`🔄 Migrating team ID: ${team.id} -> ${newId} (${team.name})`);
+    const teamNameLower = team.name?.toLowerCase().trim() || '';
+    const correctId = TEAM_NAME_TO_CORRECT_ID[teamNameLower];
+    
+    // İsme göre doğru ID'yi bul ve güncelle
+    if (correctId && team.id !== correctId) {
+      console.log(`🔄 Migrating ${team.name}: ${team.id} -> ${correctId}`);
       needsUpdate = true;
       const logo = team.logo && typeof team.logo === 'string'
-        ? team.logo.replace(`/${team.id}.png`, `/${newId}.png`) : (team.logo ?? '');
-      return { ...team, id: newId, logo };
+        ? team.logo.replace(`/${team.id}.png`, `/${correctId}.png`) : (team.logo ?? '');
+      return { ...team, id: correctId, logo };
     }
     return team;
   });

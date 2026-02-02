@@ -62,6 +62,7 @@ import {
 } from '@/app/components/ui/dialog';
 import { Alert, AlertDescription } from '@/app/components/ui/alert';
 import { teamsService, TeamSearchResult } from '@/services/teamsService';
+import { filterAndSortStringList } from '@/utils/teamFilter';
 
 interface UserProfileModalProps {
   open: boolean;
@@ -1300,9 +1301,7 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
                                         📋 Statik Liste
                                       </div>
                                     )}
-                                    {(nationalTeamSearch.length >= 3 ? nationalTeams.filter(team => 
-                                      team.toLowerCase().includes(nationalTeamSearch.toLowerCase())
-                                    ) : nationalTeams.slice(0, 20)).map(team => (
+                                    {(nationalTeamSearch.length >= 3 ? filterAndSortStringList(nationalTeams, nationalTeamSearch) : nationalTeams.slice(0, 20)).map(team => (
                                       <button
                                         key={team}
                                         onClick={async () => {
@@ -1321,9 +1320,7 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
                                         )}
                                       </button>
                                     ))}
-                                    {nationalTeamSearch.length >= 3 && nationalTeams.filter(team => 
-                                      team.toLowerCase().includes(nationalTeamSearch.toLowerCase())
-                                    ).length === 0 && (
+                                    {nationalTeamSearch.length >= 3 && filterAndSortStringList(nationalTeams, nationalTeamSearch).length === 0 && (
                                       <div className="p-2 text-sm text-muted-foreground text-center">
                                         Sonuç bulunamadı
                                       </div>
@@ -1456,9 +1453,9 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
                                           📋 Statik Liste
                                         </div>
                                       )}
-                                      {(clubTeamSearch.length >= 3 ? clubTeamsList.filter(team => 
-                                        team.toLowerCase().includes(clubTeamSearch.toLowerCase()) &&
-                                        !selectedClubTeams.includes(team)
+                                      {(clubTeamSearch.length >= 3 ? filterAndSortStringList(
+                                        clubTeamsList.filter(t => !selectedClubTeams.includes(t)),
+                                        clubTeamSearch
                                       ) : clubTeamsList.filter(team => !selectedClubTeams.includes(team))).map(team => (
                                         <button
                                           key={team}
@@ -1482,9 +1479,9 @@ export function UserProfileModal({ open, onOpenChange }: UserProfileModalProps) 
                                   )}
                                   
                                   {/* Sonuç bulunamadı mesajı */}
-                                  {!isSearchingClub && apiClubTeams.length === 0 && clubTeamSearch.length >= 3 && clubTeamsList.filter(team => 
-                                    team.toLowerCase().includes(clubTeamSearch.toLowerCase()) &&
-                                    !selectedClubTeams.includes(team)
+                                  {!isSearchingClub && apiClubTeams.length === 0 && clubTeamSearch.length >= 3 && filterAndSortStringList(
+                                    clubTeamsList.filter(t => !selectedClubTeams.includes(t)),
+                                    clubTeamSearch
                                   ).length === 0 && (
                                     <div className="p-2 text-sm text-muted-foreground text-center">
                                       {selectedClubTeams.length >= 5 ? 'Maksimum 5 kulüp takımı seçebilirsiniz' : 'Sonuç bulunamadı'}
