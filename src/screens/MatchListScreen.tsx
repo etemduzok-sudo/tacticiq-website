@@ -931,13 +931,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  liveMatchCardWrapper: {
+    width: '100%',
+    minHeight: 145,
+    marginBottom: 12,
+  },
+  matchCardWrapper: {
+    width: '100%',
+    paddingHorizontal: 16,
+    minHeight: 145,
+    marginBottom: 12,
+  },
 });
 
 // Match Card Styles (Dashboard'daki renderMatchCard için)
 const matchCardStyles = StyleSheet.create({
   matchCardContainer: {
     width: '100%',
-    marginBottom: 16,
+    maxWidth: 768,
+    minHeight: 145,
+    marginBottom: 12,
   },
   matchCardPredictionStarHitArea: {
     position: 'absolute',
@@ -949,7 +962,7 @@ const matchCardStyles = StyleSheet.create({
   matchCard: {
     width: '100%',
     maxWidth: 768,
-    minHeight: 175,
+    minHeight: 145,
     borderRadius: 16,
     borderBottomLeftRadius: 25,
     borderBottomRightRadius: 25,
@@ -1116,6 +1129,7 @@ const matchCardStyles = StyleSheet.create({
     gap: 12,
     marginBottom: 8,
     marginTop: 2,
+    minHeight: 36,
   },
   matchCardLiveBadge: {
     flexDirection: 'row',
@@ -1174,7 +1188,9 @@ const matchCardStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    marginTop: 8,
+    marginTop: 2,
+    marginBottom: 8,
+    minHeight: 36,
     paddingVertical: 6,
     paddingHorizontal: 12,
     backgroundColor: 'rgba(100, 116, 139, 0.15)',

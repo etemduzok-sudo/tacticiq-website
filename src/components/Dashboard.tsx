@@ -1938,7 +1938,7 @@ const styles = StyleSheet.create({
   matchCardContainer: {
     width: '100%',
     maxWidth: 768,
-    minHeight: 175,
+    minHeight: 145,
   },
   matchCardPredictionStarHitArea: {
     position: 'absolute',
@@ -1961,7 +1961,7 @@ const styles = StyleSheet.create({
   matchCardWrapper: {
     width: '100%',
     paddingHorizontal: SPACING.base,
-    marginBottom: SPACING.md,
+    marginBottom: 12,
   },
   matchesListContainer: {
     width: '100%',
@@ -2195,7 +2195,7 @@ const styles = StyleSheet.create({
 
   matchCard: {
     width: '100%',
-    minHeight: 175,
+    minHeight: 145,
     borderRadius: SIZES.radiusXl,
     borderBottomLeftRadius: 25, // ✅ Profil kartı gibi yuvarlatılmış alt köşeler
     borderBottomRightRadius: 25, // ✅ Profil kartı gibi yuvarlatılmış alt köşeler
