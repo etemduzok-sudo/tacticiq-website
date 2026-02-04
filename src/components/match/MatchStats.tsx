@@ -242,7 +242,7 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
 
             {/* Momentum Badge */}
             <Animated.View
-              entering={FadeIn.delay(300)}
+              entering={isWeb ? undefined : FadeIn.delay(300)}
               style={styles.momentumBadge}
             >
               <LinearGradient
@@ -264,7 +264,7 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
               {topPlayers.home.map((player, index) => (
                 <Animated.View
                   key={`home-${player.number}`}
-                  entering={FadeIn.delay(index * 50)}
+                  entering={isWeb ? undefined : FadeIn.delay(index * 50)}
                   style={styles.playerCard}
                 >
                   {/* Player Header */}
@@ -459,7 +459,7 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
               {topPlayers.away.map((player, index) => (
                 <Animated.View
                   key={`away-${player.number}`}
-                  entering={FadeIn.delay(index * 50)}
+                  entering={isWeb ? undefined : FadeIn.delay(index * 50)}
                   style={styles.playerCard}
                 >
                   {/* Player Header */}
