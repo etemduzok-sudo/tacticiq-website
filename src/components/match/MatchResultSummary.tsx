@@ -29,10 +29,17 @@ if (isWeb) {
   FadeInDown = undefined;
   FadeIn = undefined;
 } else {
-  const Reanimated = require('react-native-reanimated');
-  Animated = Reanimated.default || Reanimated;
-  FadeInDown = Reanimated.FadeInDown;
-  FadeIn = Reanimated.FadeIn;
+  try {
+    const Reanimated = require('react-native-reanimated');
+    Animated = Reanimated.default || Reanimated;
+    FadeInDown = Reanimated.FadeInDown;
+    FadeIn = Reanimated.FadeIn;
+  } catch (_e) {
+    const RNAnimated = require('react-native').Animated;
+    Animated = { View: RNAnimated.View };
+    FadeInDown = undefined;
+    FadeIn = undefined;
+  }
 }
 
 interface MatchResultSummaryProps {
@@ -414,116 +421,164 @@ export function MatchResultSummary({ matchId, matchData }: MatchResultSummaryPro
             )}
           </View>
 
-          {/* Genişletilmiş Detaylı İstatistikler */}
+          {/* Genişletilmiş Detaylı İstatistikler - Geliştirilmiş Görünüm */}
           {isExpanded && (
             <View style={styles.playerExpandedStats}>
-              {/* Grup 1: Hücum */}
-              <Text style={styles.expandedGroupTitle}>Hücum</Text>
-              <View style={styles.expandedStatsGrid}>
-                {player.stats.shots !== undefined && (
-                  <View style={styles.expandedStatItem}>
-                    <Text style={styles.expandedStatValue}>{player.stats.shots}</Text>
-                    <Text style={styles.expandedStatLabel}>Şut</Text>
-                  </View>
-                )}
-                {player.stats.shotsOnTarget !== undefined && (
-                  <View style={styles.expandedStatItem}>
-                    <Text style={styles.expandedStatValue}>{player.stats.shotsOnTarget}</Text>
-                    <Text style={styles.expandedStatLabel}>İsabetli</Text>
-                  </View>
-                )}
-                {player.stats.shotsInsideBox !== undefined && player.stats.shotsInsideBox > 0 && (
-                  <View style={styles.expandedStatItem}>
-                    <Text style={styles.expandedStatValue}>{player.stats.shotsInsideBox}</Text>
-                    <Text style={styles.expandedStatLabel}>Ceza Sahası</Text>
-                  </View>
-                )}
-                {player.stats.dribbleAttempts !== undefined && (
-                  <View style={styles.expandedStatItem}>
-                    <Text style={styles.expandedStatValue}>{player.stats.dribbleSuccess ?? 0}/{player.stats.dribbleAttempts}</Text>
-                    <Text style={styles.expandedStatLabel}>Dripling</Text>
-                  </View>
-                )}
+              {/* Hücum - Yeşil tema */}
+              <View style={[styles.statGroupCard, styles.statGroupAttack]}>
+                <View style={styles.statGroupHeader}>
+                  <Ionicons name="flash" size={16} color="#10B981" />
+                  <Text style={[styles.statGroupTitle, { color: '#10B981' }]}>Hücum</Text>
+                </View>
+                <View style={styles.statRows}>
+                  {player.stats.shots !== undefined && (
+                    <View style={styles.statRowItem}>
+                      <Ionicons name="football-outline" size={14} color="#10B981" />
+                      <Text style={styles.statRowLabel}>Şut</Text>
+                      <Text style={styles.statRowValue}>{player.stats.shots}</Text>
+                    </View>
+                  )}
+                  {player.stats.shotsOnTarget !== undefined && (
+                    <View style={styles.statRowItem}>
+                      <Ionicons name="locate-outline" size={14} color="#10B981" />
+                      <Text style={styles.statRowLabel}>İsabetli</Text>
+                      <Text style={styles.statRowValue}>{player.stats.shotsOnTarget}</Text>
+                    </View>
+                  )}
+                  {player.stats.shotsInsideBox !== undefined && player.stats.shotsInsideBox > 0 && (
+                    <View style={styles.statRowItem}>
+                      <Ionicons name="navigate-outline" size={14} color="#10B981" />
+                      <Text style={styles.statRowLabel}>Ceza Sahası</Text>
+                      <Text style={styles.statRowValue}>{player.stats.shotsInsideBox}</Text>
+                    </View>
+                  )}
+                  {player.stats.dribbleAttempts !== undefined && (
+                    <View style={styles.statRowItem}>
+                      <Ionicons name="swap-horizontal-outline" size={14} color="#10B981" />
+                      <Text style={styles.statRowLabel}>Dripling</Text>
+                      <View style={styles.statRowRight}>
+                        <View style={styles.miniBarBg}>
+                          <View style={[styles.miniBarFill, { width: `${((player.stats.dribbleSuccess ?? 0) / player.stats.dribbleAttempts) * 100}%`, backgroundColor: '#10B981' }]} />
+                        </View>
+                        <Text style={styles.statRowValue}>{player.stats.dribbleSuccess ?? 0}/{player.stats.dribbleAttempts}</Text>
+                      </View>
+                    </View>
+                  )}
+                </View>
               </View>
-              {/* Grup 2: Pas */}
-              <Text style={styles.expandedGroupTitle}>Pas</Text>
-              <View style={styles.expandedStatsGrid}>
-                {player.stats.passes !== undefined && (
-                  <View style={styles.expandedStatItem}>
-                    <Text style={styles.expandedStatValue}>{player.stats.passes}</Text>
-                    <Text style={styles.expandedStatLabel}>Toplam</Text>
-                  </View>
-                )}
-                {player.stats.passAccuracy !== undefined && (
-                  <View style={styles.expandedStatItem}>
-                    <Text style={styles.expandedStatValue}>{player.stats.passAccuracy}%</Text>
-                    <Text style={styles.expandedStatLabel}>İsabet</Text>
-                  </View>
-                )}
-                {player.stats.keyPasses !== undefined && (
-                  <View style={styles.expandedStatItem}>
-                    <Text style={styles.expandedStatValue}>{player.stats.keyPasses}</Text>
-                    <Text style={styles.expandedStatLabel}>Kilit Pas</Text>
-                  </View>
-                )}
-                {player.stats.longBalls !== undefined && player.stats.longBalls > 0 && (
-                  <View style={styles.expandedStatItem}>
-                    <Text style={styles.expandedStatValue}>{player.stats.longBallsAccuracy ?? 0}/{player.stats.longBalls}</Text>
-                    <Text style={styles.expandedStatLabel}>Uzun Top</Text>
-                  </View>
-                )}
+
+              {/* Pas - Mavi tema */}
+              <View style={[styles.statGroupCard, styles.statGroupPass]}>
+                <View style={styles.statGroupHeader}>
+                  <Ionicons name="git-branch-outline" size={16} color="#3B82F6" />
+                  <Text style={[styles.statGroupTitle, { color: '#3B82F6' }]}>Pas</Text>
+                </View>
+                <View style={styles.statRows}>
+                  {player.stats.passes !== undefined && (
+                    <View style={styles.statRowItem}>
+                      <Ionicons name="arrow-redo-outline" size={14} color="#3B82F6" />
+                      <Text style={styles.statRowLabel}>Toplam</Text>
+                      <Text style={styles.statRowValue}>{player.stats.passes}</Text>
+                    </View>
+                  )}
+                  {player.stats.passAccuracy !== undefined && (
+                    <View style={styles.statRowItem}>
+                      <Ionicons name="analytics-outline" size={14} color="#3B82F6" />
+                      <Text style={styles.statRowLabel}>İsabet</Text>
+                      <View style={styles.statRowRight}>
+                        <View style={styles.miniBarBg}>
+                          <View style={[styles.miniBarFill, { width: `${player.stats.passAccuracy}%`, backgroundColor: '#3B82F6' }]} />
+                        </View>
+                        <Text style={styles.statRowValue}>{player.stats.passAccuracy}%</Text>
+                      </View>
+                    </View>
+                  )}
+                  {player.stats.keyPasses !== undefined && player.stats.keyPasses > 0 && (
+                    <View style={styles.statRowItem}>
+                      <Ionicons name="key-outline" size={14} color="#3B82F6" />
+                      <Text style={styles.statRowLabel}>Kilit Pas</Text>
+                      <Text style={styles.statRowValue}>{player.stats.keyPasses}</Text>
+                    </View>
+                  )}
+                  {player.stats.longBalls !== undefined && player.stats.longBalls > 0 && (
+                    <View style={styles.statRowItem}>
+                      <Ionicons name="arrow-up-outline" size={14} color="#3B82F6" />
+                      <Text style={styles.statRowLabel}>Uzun Top</Text>
+                      <Text style={styles.statRowValue}>{player.stats.longBallsAccuracy ?? 0}/{player.stats.longBalls}</Text>
+                    </View>
+                  )}
+                </View>
               </View>
-              {/* Grup 3: Mücadele */}
-              <Text style={styles.expandedGroupTitle}>Mücadele</Text>
-              <View style={styles.expandedStatsGrid}>
-                {player.stats.duelsWon !== undefined && player.stats.duelsTotal !== undefined && (
-                  <View style={styles.expandedStatItem}>
-                    <Text style={styles.expandedStatValue}>{player.stats.duelsWon}/{player.stats.duelsTotal}</Text>
-                    <Text style={styles.expandedStatLabel}>İkili</Text>
-                  </View>
-                )}
-                {player.stats.aerialDuelsWon !== undefined && player.stats.aerialDuelsTotal !== undefined && player.stats.aerialDuelsTotal > 0 && (
-                  <View style={styles.expandedStatItem}>
-                    <Text style={styles.expandedStatValue}>{player.stats.aerialDuelsWon}/{player.stats.aerialDuelsTotal}</Text>
-                    <Text style={styles.expandedStatLabel}>Havada</Text>
-                  </View>
-                )}
-                {player.stats.tackles !== undefined && (
-                  <View style={styles.expandedStatItem}>
-                    <Text style={styles.expandedStatValue}>{player.stats.tackles}</Text>
-                    <Text style={styles.expandedStatLabel}>Müdahale</Text>
-                  </View>
-                )}
-                {player.stats.interceptions !== undefined && (
-                  <View style={styles.expandedStatItem}>
-                    <Text style={styles.expandedStatValue}>{player.stats.interceptions}</Text>
-                    <Text style={styles.expandedStatLabel}>Top Kapma</Text>
-                  </View>
-                )}
-                {player.stats.clearances !== undefined && player.stats.clearances > 0 && (
-                  <View style={styles.expandedStatItem}>
-                    <Text style={styles.expandedStatValue}>{player.stats.clearances}</Text>
-                    <Text style={styles.expandedStatLabel}>Temizlik</Text>
-                  </View>
-                )}
-                {player.stats.dispossessed !== undefined && player.stats.dispossessed > 0 && (
-                  <View style={styles.expandedStatItem}>
-                    <Text style={styles.expandedStatValue}>{player.stats.dispossessed}</Text>
-                    <Text style={styles.expandedStatLabel}>Top Kaybı</Text>
-                  </View>
-                )}
-                {player.stats.foulsCommitted !== undefined && player.stats.foulsCommitted > 0 && (
-                  <View style={styles.expandedStatItem}>
-                    <Text style={styles.expandedStatValue}>{player.stats.foulsCommitted}</Text>
-                    <Text style={styles.expandedStatLabel}>Faul</Text>
-                  </View>
-                )}
+
+              {/* Mücadele - Turuncu tema */}
+              <View style={[styles.statGroupCard, styles.statGroupDuels]}>
+                <View style={styles.statGroupHeader}>
+                  <Ionicons name="shield-outline" size={16} color="#F59E0B" />
+                  <Text style={[styles.statGroupTitle, { color: '#F59E0B' }]}>Mücadele</Text>
+                </View>
+                <View style={styles.statRows}>
+                  {player.stats.duelsWon !== undefined && player.stats.duelsTotal !== undefined && (
+                    <View style={styles.statRowItem}>
+                      <Ionicons name="body-outline" size={14} color="#F59E0B" />
+                      <Text style={styles.statRowLabel}>İkili</Text>
+                      <View style={styles.statRowRight}>
+                        <View style={styles.miniBarBg}>
+                          <View style={[styles.miniBarFill, { width: `${(player.stats.duelsWon / player.stats.duelsTotal) * 100}%`, backgroundColor: '#F59E0B' }]} />
+                        </View>
+                        <Text style={styles.statRowValue}>{player.stats.duelsWon}/{player.stats.duelsTotal}</Text>
+                      </View>
+                    </View>
+                  )}
+                  {player.stats.aerialDuelsWon !== undefined && player.stats.aerialDuelsTotal !== undefined && player.stats.aerialDuelsTotal > 0 && (
+                    <View style={styles.statRowItem}>
+                      <Ionicons name="airplane-outline" size={14} color="#F59E0B" />
+                      <Text style={styles.statRowLabel}>Havada</Text>
+                      <Text style={styles.statRowValue}>{player.stats.aerialDuelsWon}/{player.stats.aerialDuelsTotal}</Text>
+                    </View>
+                  )}
+                  {player.stats.tackles !== undefined && player.stats.tackles > 0 && (
+                    <View style={styles.statRowItem}>
+                      <Ionicons name="hand-left-outline" size={14} color="#F59E0B" />
+                      <Text style={styles.statRowLabel}>Müdahale</Text>
+                      <Text style={styles.statRowValue}>{player.stats.tackles}</Text>
+                    </View>
+                  )}
+                  {player.stats.interceptions !== undefined && player.stats.interceptions > 0 && (
+                    <View style={styles.statRowItem}>
+                      <Ionicons name="repeat-outline" size={14} color="#F59E0B" />
+                      <Text style={styles.statRowLabel}>Top Kapma</Text>
+                      <Text style={styles.statRowValue}>{player.stats.interceptions}</Text>
+                    </View>
+                  )}
+                  {player.stats.clearances !== undefined && player.stats.clearances > 0 && (
+                    <View style={styles.statRowItem}>
+                      <Ionicons name="trash-outline" size={14} color="#F59E0B" />
+                      <Text style={styles.statRowLabel}>Temizlik</Text>
+                      <Text style={styles.statRowValue}>{player.stats.clearances}</Text>
+                    </View>
+                  )}
+                  {player.stats.dispossessed !== undefined && player.stats.dispossessed > 0 && (
+                    <View style={styles.statRowItem}>
+                      <Ionicons name="remove-circle-outline" size={14} color="#F59E0B" />
+                      <Text style={styles.statRowLabel}>Top Kaybı</Text>
+                      <Text style={styles.statRowValue}>{player.stats.dispossessed}</Text>
+                    </View>
+                  )}
+                  {player.stats.foulsCommitted !== undefined && player.stats.foulsCommitted > 0 && (
+                    <View style={styles.statRowItem}>
+                      <Ionicons name="warning-outline" size={14} color="#F59E0B" />
+                      <Text style={styles.statRowLabel}>Faul</Text>
+                      <Text style={styles.statRowValue}>{player.stats.foulsCommitted}</Text>
+                    </View>
+                  )}
+                </View>
               </View>
-              {/* Oyuncu Isı Haritası - API desteği */}
+
+              {/* Isı Haritası Placeholder */}
               <View style={styles.playerHeatMapPlaceholder}>
-                <Ionicons name="thermometer-outline" size={24} color="#64748B" />
-                <Text style={styles.heatMapSubtitle}>
-                  {player.name} - Isı haritası API desteği eklendiğinde görüntülenecek
+                <Ionicons name="thermometer-outline" size={22} color="#1FA2A6" />
+                <Text style={styles.playerHeatMapText}>
+                  {player.name} — Isı haritası API desteği eklendiğinde görüntülenecek
                 </Text>
               </View>
             </View>
@@ -692,7 +747,8 @@ const styles = StyleSheet.create({
   },
   tabContentWrapper: {
     flex: 1,
-    minHeight: 400,
+    minHeight: 0,
+    overflow: 'hidden',
   },
   heatMapPlaceholder: {
     alignItems: 'center',
@@ -718,12 +774,19 @@ const styles = StyleSheet.create({
   playerHeatMapPlaceholder: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginTop: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    backgroundColor: 'rgba(31, 162, 166, 0.06)',
-    borderRadius: 8,
+    gap: 10,
+    marginTop: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    backgroundColor: 'rgba(31, 162, 166, 0.1)',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.2)',
+  },
+  playerHeatMapText: {
+    flex: 1,
+    fontSize: 11,
+    color: '#94A3B8',
   },
   expandedGroupTitle: {
     fontSize: 12,
@@ -731,6 +794,72 @@ const styles = StyleSheet.create({
     color: '#64748B',
     marginTop: 16,
     marginBottom: 8,
+  },
+  statGroupCard: {
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 12,
+    borderLeftWidth: 4,
+  },
+  statGroupAttack: {
+    backgroundColor: 'rgba(16, 185, 129, 0.12)',
+    borderLeftColor: '#10B981',
+  },
+  statGroupPass: {
+    backgroundColor: 'rgba(59, 130, 246, 0.12)',
+    borderLeftColor: '#3B82F6',
+  },
+  statGroupDuels: {
+    backgroundColor: 'rgba(245, 158, 11, 0.12)',
+    borderLeftColor: '#F59E0B',
+  },
+  statGroupHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 10,
+  },
+  statGroupTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  statRows: {
+    gap: 6,
+  },
+  statRowItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    backgroundColor: 'rgba(0,0,0,0.15)',
+    borderRadius: 8,
+    gap: 10,
+  },
+  statRowLabel: {
+    flex: 1,
+    fontSize: 12,
+    color: '#94A3B8',
+  },
+  statRowValue: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  statRowRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  miniBarBg: {
+    width: 48,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    overflow: 'hidden',
+  },
+  miniBarFill: {
+    height: '100%',
+    borderRadius: 3,
   },
   
   // Score Card

@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#0A1A14',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    maxHeight: height * 0.9,
+    height: height * 0.78,
   },
   contentWrap: {
     paddingBottom: Platform.OS === 'ios' ? 34 : 20,
@@ -209,8 +209,7 @@ const styles = StyleSheet.create({
   },
   summaryWrapper: {
     flex: 1,
-    maxHeight: height * 0.75,
-    minHeight: 300,
+    minHeight: 0,
   },
 });
 
