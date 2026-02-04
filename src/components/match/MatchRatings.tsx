@@ -733,7 +733,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
           style={styles.badgePopupOverlay}
           onPress={() => setShowBadgePopup(false)}
         >
-          <Animated.View entering={ZoomIn.duration(400)} style={styles.badgePopupContainer}>
+          <Animated.View entering={!isWeb && ZoomIn ? ZoomIn.duration(400) : undefined} style={styles.badgePopupContainer}>
             <Pressable onPress={(e) => e.stopPropagation()}>
               {newBadges[currentBadgeIndex] && (
                 <>
