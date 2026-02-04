@@ -450,7 +450,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
             </TouchableOpacity>
 
             {showAnalysis && (
-              <Animated.View entering={FadeIn.duration(300)}>
+              <Animated.View entering={!isWeb && FadeIn ? FadeIn.duration(300) : undefined}>
                 {/* Analyst Note */}
                 <View style={styles.analystNote}>
                   <Text style={styles.analystNoteTitle}>📊 Maç Sonu Analist Notu</Text>
