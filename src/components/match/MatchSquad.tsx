@@ -7,6 +7,7 @@ import {
   StyleSheet,
   ScrollView,
   Dimensions,
+  useWindowDimensions,
   Modal,
   FlatList,
   Alert,
@@ -38,10 +39,12 @@ import Svg, {
 } from 'react-native-svg';
 import { CommunitySignalPopup } from './CommunitySignalPopup';
 
-const { width, height } = Dimensions.get('window');
-
-// Web için animasyonları devre dışı bırak
+// Web için dinamik boyutlandırma
 const isWeb = Platform.OS === 'web';
+const screenDimensions = Dimensions.get('window');
+// Web'de max 500px, mobilde ekran genişliği
+const width = isWeb ? Math.min(screenDimensions.width, 500) : screenDimensions.width;
+const height = screenDimensions.height;
 
 // Helper function to get color based on stat value
 const getStatColor = (value: number): string => {
@@ -648,6 +651,12 @@ const FootballField = ({ children, style }: any) => (
 );
 
 export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], predictionTeamId, onComplete, onAttackFormationChangeConfirmed, isVisible = true }: MatchSquadProps) {
+  const { width: winW, height: winH } = useWindowDimensions();
+  // Web'de saha viewport'tan taşmasın; mobilde sabit oran
+  const fieldHeightStyle = isWeb && winH > 0
+    ? { height: Math.min(650, Math.max(320, winH - 320)), maxHeight: Math.min(650, winH - 320) }
+    : {};
+
   // ✅ Takım ID'lerini matchData'dan al
   const homeTeamId = matchData?.teams?.home?.id || matchData?.homeTeam?.id;
   const awayTeamId = matchData?.teams?.away?.id || matchData?.awayTeam?.id;
@@ -1580,7 +1589,7 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
     return (
       <View style={styles.container}>
         <View style={styles.emptyStateContainer}>
-          <FootballField>
+          <FootballField style={fieldHeightStyle}>
             <View style={styles.emptyStateContent}>
               <Animated.View style={[styles.emptyStateBall, animatedBallStyle]}>
                 <Text style={styles.emptyStateBallEmoji}>⚽</Text>
@@ -1628,7 +1637,7 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
     <View style={styles.container}>
       <View style={styles.mainContainer}>
         {/* Football Field with Players */}
-        <FootballField style={styles.mainField}>
+        <FootballField style={[styles.mainField, fieldHeightStyle]}>
           <View style={styles.playersContainer}>
             {positions?.map((pos, index) => {
               const player = selectedPlayers[index];
@@ -2816,8 +2825,9 @@ const styles = StyleSheet.create({
   
   // Football Field – yükseklik (y) %5 artırıldı
   fieldContainer: {
-    width: width - 24,
-    height: (width - 24) * 1.35 * 1.05 * 1.02, // ✅ MatchPrediction ile aynı oran, y ekseni +5% +2%
+    width: isWeb ? '100%' : width - 24,
+    maxWidth: isWeb ? 476 : undefined, // Web'de max genişlik
+    height: isWeb ? 650 : (width - 24) * 1.35 * 1.05 * 1.02, // Web'de sabit yükseklik
     alignSelf: 'center',
     borderRadius: 12,
     overflow: 'hidden',
@@ -2830,6 +2840,9 @@ const styles = StyleSheet.create({
       },
       android: {
         elevation: 8,
+      },
+      web: {
+        boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.3)',
       },
     }),
   },
@@ -2852,8 +2865,9 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   mainField: {
-    width: width - 24,
-    height: (width - 24) * 1.35 * 1.05 * 1.02, // ✅ MatchPrediction ile aynı oran, y ekseni +5% +2%
+    width: isWeb ? '100%' : width - 24,
+    maxWidth: isWeb ? 476 : undefined, // Web'de max genişlik
+    height: isWeb ? 650 : (width - 24) * 1.35 * 1.05 * 1.02, // Web'de sabit yükseklik
     alignSelf: 'center',
     marginBottom: 0,
   },

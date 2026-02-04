@@ -303,7 +303,7 @@ export function MatchResultSummary({ matchId, matchData }: MatchResultSummaryPro
       {/* Skor Kartı */}
       <View style={styles.scoreCard}>
         <View style={styles.scoreTeam}>
-          <Text style={styles.scoreTeamName} numberOfLines={1}>{homeTeam?.name || 'Ev Sahibi'}</Text>
+          <Text style={styles.scoreTeamName} numberOfLines={1} ellipsizeMode="tail">{homeTeam?.name || 'Ev Sahibi'}</Text>
           <Text style={styles.scoreValue}>{homeScore}</Text>
         </View>
         <View style={styles.scoreDivider}>
@@ -311,7 +311,7 @@ export function MatchResultSummary({ matchId, matchData }: MatchResultSummaryPro
           <Text style={styles.scoreStatus}>Maç Sonu</Text>
         </View>
         <View style={styles.scoreTeam}>
-          <Text style={styles.scoreTeamName} numberOfLines={1}>{awayTeam?.name || 'Deplasman'}</Text>
+          <Text style={styles.scoreTeamName} numberOfLines={1} ellipsizeMode="tail">{awayTeam?.name || 'Deplasman'}</Text>
           <Text style={styles.scoreValue}>{awayScore}</Text>
         </View>
       </View>
@@ -878,6 +878,7 @@ const styles = StyleSheet.create({
   },
   scoreTeam: {
     flex: 1,
+    minWidth: 0,
     alignItems: 'center',
   },
   scoreTeamName: {

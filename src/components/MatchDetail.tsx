@@ -5,10 +5,10 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Dimensions,
   Platform,
   StatusBar,
   ActivityIndicator,
+  useWindowDimensions,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
@@ -30,8 +30,6 @@ import { STORAGE_KEYS, LEGACY_STORAGE_KEYS } from '../config/constants';
 import { predictionsDb } from '../services/databaseService';
 import { BRAND, COLORS, SPACING, SIZES } from '../theme/theme';
 import { getTeamColors as getTeamColorsUtil } from '../utils/teamColors';
-
-const { width, height } = Dimensions.get('window');
 
 interface MatchDetailProps {
   matchId: string;
@@ -73,6 +71,11 @@ const tabs = [
 ];
 
 export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFocus, preloadedMatch, forceResultSummary }: MatchDetailProps) {
+  const { width: windowWidth } = useWindowDimensions();
+  const isNarrow = windowWidth < 420;
+  const centerInfoMinWidth = isNarrow ? 100 : 160;
+  const countdownPadding = isNarrow ? 4 : 8;
+
   // ✅ Maç durumuna göre varsayılan sekme belirlenir (biten maçlar için stats/ratings)
   const [activeTab, setActiveTab] = useState(initialTab);
   const [initialTabSet, setInitialTabSet] = useState(false);
@@ -593,7 +596,9 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
         <View style={styles.matchInfoRow}>
           {/* Home Team */}
           <View style={styles.teamSide}>
-            <Text style={styles.teamNameLarge}>{matchData.homeTeam.name}</Text>
+            <View style={styles.teamNameWrap}>
+              <Text style={styles.teamNameLarge} numberOfLines={1} ellipsizeMode="tail">{matchData.homeTeam.name}</Text>
+            </View>
             {matchData.homeTeam.manager?.trim() ? (
               <Text style={styles.managerText}>{matchData.homeTeam.manager.trim()}</Text>
             ) : (
@@ -608,7 +613,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
           </View>
 
           {/* Center: Date, Time, Countdown OR Live Status */}
-          <View style={styles.centerInfo}>
+          <View style={[styles.centerInfo, { minWidth: centerInfoMinWidth, paddingHorizontal: countdownPadding }]}>
             {matchData.isLive ? (
               <>
                 {/* CANLI Badge */}
@@ -632,15 +637,15 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
                 {/* Countdown Boxes */}
                 {countdownData && countdownData.type === 'countdown' && (
                   <View style={styles.countdownRow}>
-                    <View style={[styles.countdownBox, styles.countdownBoxHours]}>
+                    <View style={[styles.countdownBox, styles.countdownBoxHours, { paddingHorizontal: countdownPadding }]}>
                       <Text style={styles.countdownNumber}>{String(countdownData.hours).padStart(2, '0')}</Text>
                       <Text style={styles.countdownLabel}>Saat</Text>
                     </View>
-                    <View style={[styles.countdownBox, styles.countdownBoxMinutes]}>
+                    <View style={[styles.countdownBox, styles.countdownBoxMinutes, { paddingHorizontal: countdownPadding }]}>
                       <Text style={styles.countdownNumber}>{String(countdownData.minutes).padStart(2, '0')}</Text>
                       <Text style={styles.countdownLabel}>Dakika</Text>
                     </View>
-                    <View style={[styles.countdownBox, styles.countdownBoxSeconds]}>
+                    <View style={[styles.countdownBox, styles.countdownBoxSeconds, { paddingHorizontal: countdownPadding }]}>
                       <Text style={styles.countdownNumber}>{String(countdownData.seconds).padStart(2, '0')}</Text>
                       <Text style={styles.countdownLabel}>Saniye</Text>
                     </View>
@@ -656,8 +661,10 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
           </View>
 
           {/* Away Team */}
-          <View style={styles.teamSide}>
-            <Text style={styles.teamNameLarge}>{matchData.awayTeam.name}</Text>
+          <View style={[styles.teamSide, styles.teamSideAway]}>
+            <View style={styles.teamNameWrap}>
+              <Text style={styles.teamNameLarge} numberOfLines={1} ellipsizeMode="tail">{matchData.awayTeam.name}</Text>
+            </View>
             {matchData.awayTeam.manager?.trim() ? (
               <Text style={styles.managerText}>{matchData.awayTeam.manager.trim()}</Text>
             ) : (
@@ -991,6 +998,13 @@ const styles = StyleSheet.create({
   },
   teamSide: {
     flex: 1,
+    minWidth: 0,
+    alignItems: 'center',
+  },
+  teamSideAway: {},
+  teamNameWrap: {
+    width: '100%',
+    minWidth: 0,
     alignItems: 'center',
   },
   teamNameLarge: {
@@ -1020,7 +1034,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(31, 162, 166, 0.15)',
     paddingVertical: 8,
-    minWidth: 160,
+    minWidth: 100,
+    flexShrink: 0,
   },
   dateText: {
     fontSize: 10,
@@ -1039,10 +1054,10 @@ const styles = StyleSheet.create({
   },
   countdownBox: {
     alignItems: 'center',
-    paddingHorizontal: 8,
+    paddingHorizontal: 6,
     paddingVertical: 4,
     borderRadius: 8,
-    minWidth: 40,
+    minWidth: 32,
   },
   countdownBoxHours: {
     backgroundColor: 'rgba(31, 162, 166, 0.8)',

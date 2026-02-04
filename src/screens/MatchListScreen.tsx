@@ -366,7 +366,7 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
             <View style={matchCardStyles.matchCardTeamsContainer}>
               {/* Ev Sahibi Takım */}
               <View style={matchCardStyles.matchCardTeamLeft}>
-                <Text style={matchCardStyles.matchCardTeamName} numberOfLines={1}>{getDisplayTeamName(match.teams.home.name)}</Text>
+                <Text style={matchCardStyles.matchCardTeamName} numberOfLines={1} ellipsizeMode="tail">{getDisplayTeamName(match.teams.home.name)}</Text>
                 <Text style={matchCardStyles.matchCardCoachName}>{getCoachName(match.teams.home.name)}</Text>
                 {(status === 'live' || status === 'finished') && (
                   <View style={status === 'live' ? matchCardStyles.matchCardScoreBoxLive : matchCardStyles.matchCardScoreBox}>
@@ -408,7 +408,7 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
               
               {/* Deplasman Takım */}
               <View style={matchCardStyles.matchCardTeamRight}>
-                <Text style={[matchCardStyles.matchCardTeamName, matchCardStyles.matchCardTeamNameRight]} numberOfLines={1}>{getDisplayTeamName(match.teams.away.name)}</Text>
+                <Text style={[matchCardStyles.matchCardTeamName, matchCardStyles.matchCardTeamNameRight]} numberOfLines={1} ellipsizeMode="tail">{getDisplayTeamName(match.teams.away.name)}</Text>
                 <Text style={matchCardStyles.matchCardCoachNameAway}>{getCoachName(match.teams.away.name)}</Text>
                 {(status === 'live' || status === 'finished') && (
                   <View style={status === 'live' ? matchCardStyles.matchCardScoreBoxLive : matchCardStyles.matchCardScoreBox}>

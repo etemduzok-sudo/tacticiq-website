@@ -494,7 +494,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
             <View style={styles.matchCardTeamsContainer}>
               {/* Ev Sahibi Takım */}
               <View style={styles.matchCardTeamLeft}>
-                <Text style={styles.matchCardTeamName} numberOfLines={1}>{getDisplayTeamName(match.teams.home.name)}</Text>
+                <Text style={styles.matchCardTeamName} numberOfLines={1} ellipsizeMode="tail">{getDisplayTeamName(match.teams.home.name)}</Text>
                 <Text style={styles.matchCardCoachName}>{getCoachName(match.teams.home.name)}</Text>
                 {(status === 'live' || status === 'finished') && (
                   <View style={status === 'live' ? styles.matchCardScoreBoxLive : styles.matchCardScoreBox}>
@@ -536,7 +536,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
               
               {/* Deplasman Takım */}
               <View style={styles.matchCardTeamRight}>
-                <Text style={[styles.matchCardTeamName, styles.matchCardTeamNameRight]} numberOfLines={1}>{getDisplayTeamName(match.teams.away.name)}</Text>
+                <Text style={[styles.matchCardTeamName, styles.matchCardTeamNameRight]} numberOfLines={1} ellipsizeMode="tail">{getDisplayTeamName(match.teams.away.name)}</Text>
                 <Text style={styles.matchCardCoachNameAway}>{getCoachName(match.teams.away.name)}</Text>
                 {(status === 'live' || status === 'finished') && (
                   <View style={status === 'live' ? styles.matchCardScoreBoxLive : styles.matchCardScoreBox}>
