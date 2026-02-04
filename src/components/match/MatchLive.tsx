@@ -619,12 +619,6 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
       {/* STATS TAB */}
       {activeTab === 'stats' && (
         <>
-          {/* Stats Color Bar - Sadece renk göstergesi */}
-          <View style={styles.statsColorBar}>
-            <View style={styles.statsColorHome} />
-            <View style={styles.statsColorDivider} />
-            <View style={styles.statsColorAway} />
-          </View>
 
           {/* Stats List */}
           <ScrollView 
@@ -773,24 +767,6 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     textAlign: 'center',
     lineHeight: 22,
-  },
-  
-  // Stats Color Bar - Renk göstergesi
-  statsColorBar: {
-    flexDirection: 'row',
-    height: 4,
-  },
-  statsColorHome: {
-    flex: 1,
-    backgroundColor: '#22D3EE', // Cyan - ev sahibi
-  },
-  statsColorDivider: {
-    width: 4,
-    backgroundColor: '#0F172A',
-  },
-  statsColorAway: {
-    flex: 1,
-    backgroundColor: '#FB923C', // Turuncu - deplasman
   },
   
   // Stats ScrollView
