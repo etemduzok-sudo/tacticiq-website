@@ -4523,27 +4523,28 @@ const createStyles = (isDark: boolean = true) => {
     height: '100%',
     borderRadius: 4,
   },
-  // Badges Grid - Mobil: 4 sütun x 10 satır | Web: 4 sütun (kullanıcı isteği)
+  // Badges Grid - 4 sütun x 10 satır, yeterince büyük kartlar
   badgeGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: SPACING.xs,
+    gap: SPACING.sm,
     justifyContent: 'flex-start',
   },
   badgeCard: {
-    // Mobil ve Web: 4 sütun (24% genişlik)
-    ...Platform.select({
-      web: { width: '24%' as const, minWidth: 70, aspectRatio: 0.9 }, // 4 sütun web'de de
-      default: { width: '24%' as const, minWidth: 70, aspectRatio: 0.9 }, // 4 sütun mobilde
-    }),
+    width: '23%' as const,
+    minWidth: 80,
+    aspectRatio: 1.05,
     backgroundColor: theme.card,
     borderRadius: SIZES.radiusMd,
     borderWidth: 1,
-    padding: SPACING.sm,
+    padding: SPACING.md,
     alignItems: 'center',
     justifyContent: 'flex-start',
     position: 'relative',
-    marginBottom: SPACING.xs,
+    ...Platform.select({
+      web: { flexBasis: '23%' as const, maxWidth: '23%' as const },
+      default: {},
+    }),
   },
   badgeCardEarned: {
     borderColor: '#F59E0B80', // amber-500/50 (web ile aynı)
@@ -4555,17 +4556,17 @@ const createStyles = (isDark: boolean = true) => {
     opacity: 0.8,
   },
   badgeEmoji: {
-    fontSize: 32,
-    marginBottom: SPACING.xs,
+    fontSize: 40,
+    marginBottom: SPACING.sm,
   },
   badgeName: {
     ...TYPOGRAPHY.bodySmall,
-    fontSize: 9,
+    fontSize: 11,
     fontWeight: TYPOGRAPHY.medium,
     color: theme.foreground,
     textAlign: 'center',
     marginBottom: SPACING.xs,
-    lineHeight: 12,
+    lineHeight: 14,
   },
   // Badge Tier Labels - Web ile aynı renkler
   badgeTierLabel: {
@@ -4595,7 +4596,7 @@ const createStyles = (isDark: boolean = true) => {
     borderColor: '#22D3EE4D', // cyan-400/30
   },
   badgeTierText: {
-    fontSize: 8,
+    fontSize: 9,
     fontWeight: TYPOGRAPHY.bold,
   },
   badgeTierTextBronze: {

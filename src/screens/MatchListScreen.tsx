@@ -431,6 +431,15 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
                   <Text style={matchCardStyles.matchCardLiveText}>OYNANIYOR</Text>
                 </LinearGradient>
               </View>
+            ) : status === 'finished' ? (
+              /* Biten maçlar için bilgi notu */
+              <View style={matchCardStyles.matchCardFinishedHint}>
+                <Ionicons name="stats-chart" size={12} color="#64748B" />
+                <Text style={matchCardStyles.matchCardFinishedHintText}>
+                  İstatistikler ve maç özeti için tıklayın
+                </Text>
+                <Ionicons name="chevron-forward" size={12} color="#64748B" />
+              </View>
             ) : null}
           </View>
           {/* Tahmin yaptınız: sarı yıldız — en üstte (son child) ki tıklanabilsin */}
@@ -924,14 +933,12 @@ const styles = StyleSheet.create({
   },
   liveMatchCardWrapper: {
     width: '100%',
-    minHeight: 145,
-    marginBottom: 12,
+    marginBottom: 8,
   },
   matchCardWrapper: {
     width: '100%',
     paddingHorizontal: 16,
-    minHeight: 145,
-    marginBottom: 12,
+    marginBottom: 8,
   },
 });
 
@@ -940,8 +947,8 @@ const matchCardStyles = StyleSheet.create({
   matchCardContainer: {
     width: '100%',
     maxWidth: 768,
-    minHeight: 145,
-    marginBottom: 12,
+    minHeight: 158,
+    marginBottom: 0,
   },
   matchCardPredictionStarHitArea: {
     position: 'absolute',
@@ -953,7 +960,7 @@ const matchCardStyles = StyleSheet.create({
   matchCard: {
     width: '100%',
     maxWidth: 768,
-    minHeight: 145,
+    minHeight: 158,
     borderRadius: 16,
     borderBottomLeftRadius: 25,
     borderBottomRightRadius: 25,
@@ -1179,13 +1186,13 @@ const matchCardStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    marginTop: 2,
-    marginBottom: 8,
-    minHeight: 36,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
+    marginTop: 0,
+    marginBottom: 0,
+    minHeight: 24,
+    paddingVertical: 3,
+    paddingHorizontal: 10,
     backgroundColor: 'rgba(100, 116, 139, 0.15)',
-    borderRadius: 8,
+    borderRadius: 6,
   },
   matchCardFinishedHintText: {
     fontSize: 11,

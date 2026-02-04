@@ -33,11 +33,17 @@ if (isWeb) {
   FadeIn = undefined;
   ZoomIn = undefined;
 } else {
-  // Native için reanimated kullan
-  const Reanimated = require('react-native-reanimated');
-  Animated = Reanimated.default || Reanimated;
-  FadeIn = Reanimated.FadeIn;
-  ZoomIn = Reanimated.ZoomIn;
+  // Native için reanimated kullan; yüklenemezse fallback
+  try {
+    const Reanimated = require('react-native-reanimated');
+    Animated = Reanimated.default || Reanimated;
+    FadeIn = Reanimated.FadeIn;
+    ZoomIn = Reanimated.ZoomIn;
+  } catch (_e) {
+    Animated = { View: RNAnimated.View };
+    FadeIn = undefined;
+    ZoomIn = undefined;
+  }
 }
 import {
   generateMatchAnalysisReport,

@@ -25,8 +25,9 @@ if (!supabaseUrl || !supabaseKey) {
   process.exit(0);
 }
 
-if (!supabaseKey.startsWith('sb_')) {
-  console.warn('⚠️ Supabase key is not an API key (sb_*). SKIPPED.');
+// Supabase key formatı: 'eyJ...' (JWT) veya 'sb_...' olabilir
+if (!supabaseKey || supabaseKey.trim() === '') {
+  console.warn('⚠️ Supabase key empty. SKIPPED.');
   process.exit(0);
 }
 
@@ -122,36 +123,59 @@ async function rateLimitedRequest(fn) {
 }
 
 // =====================================================
-// YARDIMCI FONKSİYONLAR
+// YARDIMCI FONKSİYONLAR (DB-FIRST)
 // =====================================================
 
 /**
- * Lig takımlarını çek
+ * DB'den tüm takımları ve kadrolarını çek (team_squads tablosu)
+ * API çağrısı YOK - veriler zaten DB'de
+ * Supabase 1000 satır limiti var, pagination ile tümünü çek
  */
-async function getLeagueTeams(leagueId, season = CURRENT_SEASON) {
+async function getAllTeamsFromDB() {
   try {
-    const response = await rateLimitedRequest(() => 
-      footballApi.apiRequest('/teams', { league: leagueId, season }, `teams-${leagueId}-${season}`, 3600)
-    );
-    return response?.response || [];
+    const allTeams = [];
+    let page = 0;
+    const pageSize = 1000;
+    
+    while (true) {
+      const { data, error } = await supabase
+        .from('team_squads')
+        .select('team_id, team_name, players, team_data, season')
+        .not('players', 'is', null)
+        .order('team_name', { ascending: true })
+        .range(page * pageSize, (page + 1) * pageSize - 1);
+      
+      if (error) throw error;
+      if (!data || data.length === 0) break;
+      
+      allTeams.push(...data);
+      console.log(`📦 Sayfa ${page + 1}: ${data.length} takım (toplam: ${allTeams.length})`);
+      
+      if (data.length < pageSize) break; // Son sayfa
+      page++;
+    }
+    
+    console.log(`📦 DB'den toplam ${allTeams.length} takım kadrosu yüklendi`);
+    return allTeams;
   } catch (error) {
-    console.warn(`⚠️ Lig ${leagueId} takımları çekilemedi:`, error.message);
+    console.warn(`⚠️ DB'den takımlar çekilemedi:`, error.message);
     return [];
   }
 }
 
 /**
- * Takım kadrosunu çek
+ * DB'den toplam oyuncu sayısını hesapla
  */
-async function getTeamSquad(teamId, season = CURRENT_SEASON) {
+async function countTotalPlayersInDB() {
   try {
-    const response = await rateLimitedRequest(() => 
-      footballApi.getTeamSquad(teamId, season)
-    );
-    return response?.response?.[0]?.players || [];
+    const teams = await getAllTeamsFromDB();
+    let total = 0;
+    for (const team of teams) {
+      total += (team.players || []).length;
+    }
+    return total;
   } catch (error) {
-    console.warn(`⚠️ Takım ${teamId} kadrosu çekilemedi:`, error.message);
-    return [];
+    return 0;
   }
 }
 
@@ -353,110 +377,111 @@ function getDefaultAttributesByPosition(position) {
 }
 
 /**
- * Tek bir ligi işle
+ * Tüm takımları DB'den işle (lig ayrımı yok)
+ * @param {boolean} fetchApiStats - API'den istatistik çek (7500 limit!)
  */
-async function processLeague(leagueName, leagueInfo, season = CURRENT_SEASON) {
-  console.log(`\n🏆 ${leagueName} (ID: ${leagueInfo.id}) işleniyor...`);
+async function processAllTeamsFromDB(fetchApiStats = false, season = CURRENT_SEASON) {
+  console.log(`\n🏆 TÜM TAKIMLAR İŞLENİYOR (DB-FIRST)...`);
+  console.log(`   📡 API Stats: ${fetchApiStats ? 'EVET (7500 limit!)' : 'HAYIR (pozisyon default)'}`);
   
-  const teams = await getLeagueTeams(leagueInfo.id, season);
-  console.log(`   📋 ${teams.length} takım bulundu`);
+  // DB'den tüm takımları çek (API çağrısı YOK)
+  const teams = await getAllTeamsFromDB();
+  console.log(`   📋 ${teams.length} takım bulundu (DB'den)`);
   
   let totalPlayers = 0;
   let processedPlayers = 0;
   let errors = 0;
+  let apiCalls = 0;
+  const MAX_API_CALLS = 7400; // Güvenlik marjı
   
   for (const teamData of teams) {
-    const team = teamData.team || teamData;
-    console.log(`   ⚽ ${team.name} kadrosu işleniyor...`);
+    const teamId = teamData.team_id;
+    const teamName = teamData.team_name || teamData.team_data?.name || `Team ${teamId}`;
+    const players = teamData.players || [];
     
-    const players = await getTeamSquad(team.id, season);
+    if (players.length === 0) continue;
+    
+    console.log(`   ⚽ ${teamName} (${players.length} oyuncu)`);
     totalPlayers += players.length;
     
     for (const player of players) {
       try {
-        await processPlayer(player, team.id, leagueInfo.id, season);
-        processedPlayers++;
-        
-        // Her 20 oyuncuda bir ilerleme göster
-        if (processedPlayers % 20 === 0) {
-          console.log(`      ✅ ${processedPlayers} oyuncu işlendi`);
+        // API limit kontrolü
+        if (fetchApiStats && apiCalls >= MAX_API_CALLS) {
+          console.log(`\n⚠️ API limit yaklaşıyor (${apiCalls}/${MAX_API_CALLS}). Durduruluyor...`);
+          return { total: totalPlayers, processed: processedPlayers, errors, apiCalls };
         }
         
-        // Rate limiting
-        await delay(200);
+        await processPlayerFromDB(player, teamId, season, fetchApiStats);
+        processedPlayers++;
+        if (fetchApiStats) apiCalls++;
+        
+        // Her 50 oyuncuda bir ilerleme göster
+        if (processedPlayers % 50 === 0) {
+          console.log(`      ✅ ${processedPlayers} oyuncu işlendi${fetchApiStats ? ` (${apiCalls} API)` : ''}`);
+        }
+        
+        // Rate limiting (sadece API çağrısı varsa)
+        if (fetchApiStats) await delay(300);
       } catch (error) {
         errors++;
-        console.warn(`      ⚠️ ${player.name} işlenemedi:`, error.message);
       }
     }
   }
   
-  console.log(`   ✅ ${leagueName} tamamlandı: ${processedPlayers}/${totalPlayers} oyuncu (${errors} hata)`);
+  console.log(`\n✅ TAMAMLANDI: ${processedPlayers}/${totalPlayers} oyuncu (${errors} hata, ${apiCalls} API çağrısı)`);
   
-  return { total: totalPlayers, processed: processedPlayers, errors };
+  return { total: totalPlayers, processed: processedPlayers, errors, apiCalls };
 }
 
 /**
- * Tüm ligleri işle
+ * DB'deki oyuncu verisini kullanarak rating hesapla ve kaydet
  */
-async function processAllLeagues(season = CURRENT_SEASON) {
-  console.log('🌍 TÜM LİGLER İŞLENİYOR...');
-  console.log(`📅 Sezon: ${season}`);
-  console.log('='.repeat(50));
+async function processPlayerFromDB(player, teamId, season, fetchApiStats = false) {
+  let attrs = getDefaultAttributesByPosition(player.position);
   
-  // Önceliğe göre sırala (1 = en yüksek öncelik)
-  const sortedLeagues = Object.entries(SUPPORTED_LEAGUES)
-    .sort((a, b) => a[1].priority - b[1].priority);
-  
-  const stats = {
-    totalLeagues: sortedLeagues.length,
-    processedLeagues: 0,
-    totalPlayers: 0,
-    processedPlayers: 0,
-    errors: 0,
-    startTime: Date.now(),
-  };
-  
-  for (const [name, info] of sortedLeagues) {
-    try {
-      const result = await processLeague(name, info, season);
-      stats.totalPlayers += result.total;
-      stats.processedPlayers += result.processed;
-      stats.errors += result.errors;
-      stats.processedLeagues++;
-    } catch (error) {
-      console.error(`❌ ${name} ligi işlenirken hata:`, error.message);
+  // API'den istatistik çek (opsiyonel - 7500 limit!)
+  if (fetchApiStats && player.id) {
+    const playerStats = await getPlayerStats(player.id, season);
+    if (playerStats?.statistics?.length > 0) {
+      const latestStats = playerStats.statistics[0];
+      const playerData = playerStats.player || {};
+      const calculated = calculatePlayerAttributesFromStats(latestStats, playerData);
+      attrs = { ...attrs, ...calculated };
     }
   }
   
-  const duration = ((Date.now() - stats.startTime) / 1000 / 60).toFixed(2);
+  // Mevcut rating varsa koru, yoksa hesaplananı kullan
+  const finalRating = player.rating || attrs.rating;
   
-  console.log('\n' + '='.repeat(50));
-  console.log('📊 SONUÇ ÖZETİ');
-  console.log('='.repeat(50));
-  console.log(`   Ligler: ${stats.processedLeagues}/${stats.totalLeagues}`);
-  console.log(`   Oyuncular: ${stats.processedPlayers}/${stats.totalPlayers}`);
-  console.log(`   Hatalar: ${stats.errors}`);
-  console.log(`   Süre: ${duration} dakika`);
-  console.log('='.repeat(50));
+  // Oyuncu tablosuna kaydet
+  const playerRecord = {
+    id: player.id,
+    name: player.name,
+    age: player.age || null,
+    nationality: player.nationality || null,
+    position: player.position || null,
+    rating: finalRating,
+    team_id: teamId,
+    photo: player.photo || null,
+    updated_at: new Date().toISOString(),
+  };
   
-  return stats;
+  await savePlayerToDb(playerRecord);
+  return attrs;
 }
+
 
 // =====================================================
 // CLI
 // =====================================================
 const args = process.argv.slice(2);
-let targetLeague = null;
-let processAll = false;
+let fetchApiStats = false;
 let season = CURRENT_SEASON;
 
 args.forEach(arg => {
-  if (arg.startsWith('--league=')) {
-    targetLeague = parseInt(arg.split('=')[1], 10);
-  }
-  if (arg === '--all') {
-    processAll = true;
+  if (arg === '--api' || arg === '--with-api') {
+    fetchApiStats = true;
   }
   if (arg.startsWith('--season=')) {
     season = parseInt(arg.split('=')[1], 10);
@@ -464,40 +489,46 @@ args.forEach(arg => {
 });
 
 async function main() {
-  console.log('🚀 TacticIQ Oyuncu Rating Güncelleme Sistemi');
+  console.log('🚀 TacticIQ Oyuncu Rating Güncelleme Sistemi (DB-FIRST)');
+  console.log('='.repeat(50));
+  console.log(`📅 Sezon: ${season}`);
+  console.log(`📦 Kaynak: team_squads tablosu (DB)`);
+  console.log(`📡 API Stats: ${fetchApiStats ? 'EVET (istatistik çekilecek)' : 'HAYIR (sadece pozisyon default)'}`);
   console.log('='.repeat(50));
   
-  if (processAll) {
-    await processAllLeagues(season);
-  } else if (targetLeague) {
-    const leagueEntry = Object.entries(SUPPORTED_LEAGUES)
-      .find(([, info]) => info.id === targetLeague);
-    
-    if (leagueEntry) {
-      await processLeague(leagueEntry[0], leagueEntry[1], season);
-    } else {
-      console.error(`❌ Lig bulunamadı: ${targetLeague}`);
-      console.log('Desteklenen ligler:');
-      Object.entries(SUPPORTED_LEAGUES).forEach(([name, info]) => {
-        console.log(`   ${info.id}: ${name}`);
-      });
-    }
-  } else {
-    // Default: Sadece Süper Lig
-    console.log('💡 Varsayılan: Sadece Süper Lig işlenecek');
-    console.log('   Tüm ligler için: node update-all-player-ratings.js --all');
-    await processLeague('Süper Lig', SUPPORTED_LEAGUES['Süper Lig'], season);
+  if (fetchApiStats) {
+    console.log('\n⚠️  UYARI: API istatistik çekme aktif!');
+    console.log('   - 7500 günlük API limiti var');
+    console.log('   - ~50,000 oyuncu için ~7 günde tamamlanır');
+    console.log('   - Her gün bu script çalıştırılmalı\n');
   }
+  
+  // DB'deki tüm takımları işle
+  const result = await processAllTeamsFromDB(fetchApiStats, season);
+  
+  console.log('\n📊 SONUÇ ÖZETİ');
+  console.log('='.repeat(50));
+  console.log(`   Toplam Oyuncu: ${result.total}`);
+  console.log(`   İşlenen: ${result.processed}`);
+  console.log(`   Hatalar: ${result.errors}`);
+  console.log(`   API Çağrısı: ${result.apiCalls || 0}`);
+  console.log('='.repeat(50));
 }
 
-main().catch(err => {
-  console.error('❌ Fatal error:', err);
-  process.exit(1);
-});
+// ✅ SADECE DOĞRUDAN ÇALIŞTIRILDIĞINDA ÇALIŞ
+// require() ile import edildiğinde çalışmasın!
+if (require.main === module) {
+  main().catch(err => {
+    console.error('❌ Fatal error:', err);
+    process.exit(1);
+  });
+}
 
+// Scheduler için export
 module.exports = {
-  processAllLeagues,
-  processLeague,
-  processPlayer,
+  processAllTeamsFromDB,
+  getAllTeamsFromDB,
+  getDefaultAttributesByPosition,
   SUPPORTED_LEAGUES,
+  CURRENT_SEASON,
 };

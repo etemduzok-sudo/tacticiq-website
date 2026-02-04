@@ -13,11 +13,11 @@
 const cron = require('node-cron');
 const path = require('path');
 
-// Güncelleme scripti
+// Güncelleme scripti (DB-FIRST yaklaşım)
 const {
-  processAllLeagues,
-  processLeague,
+  processAllTeamsFromDB,
   SUPPORTED_LEAGUES,
+  CURRENT_SEASON,
 } = require('../scripts/update-all-player-ratings');
 
 // Scheduler durumu
@@ -35,11 +35,12 @@ const weeklyFullUpdate = cron.schedule('0 0 * * 1', async () => {
     return;
   }
   
-  console.log('🌙 Haftalık tam güncelleme başladı...');
+  console.log('🌙 Haftalık tam güncelleme başladı (DB-FIRST)...');
   isRunning = true;
   
   try {
-    lastRunStats = await processAllLeagues();
+    // DB'den tüm takımları işle, API stats çekme (false)
+    lastRunStats = await processAllTeamsFromDB(false, CURRENT_SEASON);
     lastRunTime = new Date();
     console.log('✅ Haftalık güncelleme tamamlandı');
   } catch (error) {
@@ -62,20 +63,14 @@ const dailyPriorityUpdate = cron.schedule('0 1 * * *', async () => {
     return;
   }
   
-  console.log('🌅 Günlük öncelikli lig güncellemesi başladı...');
+  console.log('🌅 Günlük öncelikli güncelleme başladı (DB-FIRST)...');
   isRunning = true;
   
   try {
-    // Sadece öncelik 1 ligleri güncelle
-    const priorityLeagues = Object.entries(SUPPORTED_LEAGUES)
-      .filter(([, info]) => info.priority === 1);
-    
-    for (const [name, info] of priorityLeagues) {
-      await processLeague(name, info);
-    }
-    
+    // DB'den tüm takımları işle (lig ayrımı yok - hepsi DB'de)
+    lastRunStats = await processAllTeamsFromDB(false, CURRENT_SEASON);
     lastRunTime = new Date();
-    console.log('✅ Günlük öncelikli güncelleme tamamlandı');
+    console.log('✅ Günlük güncelleme tamamlandı');
   } catch (error) {
     console.error('❌ Günlük güncelleme hatası:', error);
   } finally {
@@ -112,7 +107,7 @@ function stopScheduler() {
 /**
  * Manuel güncelleme tetikle
  */
-async function triggerManualUpdate(leagueId = null) {
+async function triggerManualUpdate(fetchApiStats = false) {
   if (isRunning) {
     return { success: false, message: 'Güncelleme zaten çalışıyor' };
   }
@@ -120,21 +115,10 @@ async function triggerManualUpdate(leagueId = null) {
   isRunning = true;
   
   try {
-    if (leagueId) {
-      const leagueEntry = Object.entries(SUPPORTED_LEAGUES)
-        .find(([, info]) => info.id === leagueId);
-      
-      if (leagueEntry) {
-        await processLeague(leagueEntry[0], leagueEntry[1]);
-        return { success: true, message: `${leagueEntry[0]} güncellendi` };
-      } else {
-        return { success: false, message: 'Lig bulunamadı' };
-      }
-    } else {
-      lastRunStats = await processAllLeagues();
-      lastRunTime = new Date();
-      return { success: true, message: 'Tüm ligler güncellendi', stats: lastRunStats };
-    }
+    // DB'den tüm takımları işle
+    lastRunStats = await processAllTeamsFromDB(fetchApiStats, CURRENT_SEASON);
+    lastRunTime = new Date();
+    return { success: true, message: 'Tüm takımlar güncellendi (DB-FIRST)', stats: lastRunStats };
   } catch (error) {
     return { success: false, message: error.message };
   } finally {

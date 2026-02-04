@@ -72,7 +72,7 @@ export function MatchPredictionSummaryCard({ matchId, matchData, onViewDetails }
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: -4,
+    marginTop: 0,
     marginHorizontal: 12,
     marginBottom: 0,
     borderRadius: 8,
