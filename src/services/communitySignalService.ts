@@ -244,6 +244,60 @@ function createEmptySignal(): CommunitySignalData {
 }
 
 /**
+ * Mock maç için mock community signal verisi oluştur
+ */
+function generateMockCommunitySignal(
+  currentPlayerId: number,
+  position: string,
+  availablePlayers: any[]
+): CommunitySignalData & { lineupCompatibility: number } {
+  // Aynı pozisyondaki oyuncuları bul
+  const samePositionPlayers = availablePlayers.filter(
+    p => p.id !== currentPlayerId && (p.position === position || getPositionCategory(p.position) === getPositionCategory(position))
+  );
+  
+  // Mock replacement önerileri oluştur
+  const topReplacements = samePositionPlayers.slice(0, 3).map((player, index) => ({
+    player: {
+      id: player.id,
+      name: player.name,
+      position: player.position,
+      number: player.number,
+      rating: player.rating || 75 + Math.floor(Math.random() * 10)
+    },
+    percentage: Math.max(15, 45 - (index * 12) + Math.floor(Math.random() * 8)),
+    count: Math.max(5, 25 - (index * 6) + Math.floor(Math.random() * 5))
+  }));
+  
+  const mockSampleSize = 47 + Math.floor(Math.random() * 30); // 47-77 arası
+  const lineupCompatibility = 62 + Math.floor(Math.random() * 25); // 62-87 arası
+  const replacementPercentage = topReplacements.length > 0 
+    ? Math.min(75, topReplacements.reduce((sum, r) => sum + r.percentage, 0))
+    : 35;
+  
+  return {
+    compatibilityScore: 100 - replacementPercentage,
+    hasSufficientData: true,
+    sampleSize: mockSampleSize,
+    replacementPercentage,
+    topReplacements,
+    lineupCompatibility
+  };
+}
+
+/**
+ * Pozisyon kategorisini belirle (benzer pozisyonları grupla)
+ */
+function getPositionCategory(position: string): string {
+  const pos = position?.toUpperCase() || '';
+  if (pos === 'GK' || pos === 'G') return 'GK';
+  if (['CB', 'LB', 'RB', 'LWB', 'RWB', 'D'].some(p => pos.includes(p))) return 'DEF';
+  if (['CM', 'CDM', 'CAM', 'LM', 'RM', 'DM', 'AM', 'M'].some(p => pos.includes(p))) return 'MID';
+  if (['ST', 'CF', 'LW', 'RW', 'SS', 'F', 'A'].some(p => pos.includes(p))) return 'ATT';
+  return 'MID'; // varsayılan
+}
+
+/**
  * Topluluk sinyali verilerini tek seferde al
  */
 export async function getCommunitySignal(
@@ -255,6 +309,15 @@ export async function getCommunitySignal(
   formationId: string,
   availablePlayers: any[]
 ): Promise<CommunitySignalData & { lineupCompatibility: number }> {
+  // Mock maç kontrolü (999999)
+  const matchIdNum = typeof matchId === 'string' ? parseInt(matchId) : matchId;
+  if (matchIdNum === 999999) {
+    console.log('🎭 [CommunitySignal] Mock maç için mock veri döndürülüyor');
+    // Küçük bir gecikme ekle (gerçekçi görünsün)
+    await new Promise(resolve => setTimeout(resolve, 300 + Math.random() * 400));
+    return generateMockCommunitySignal(currentPlayerId, position, availablePlayers);
+  }
+  
   const [compatibility, replacements] = await Promise.all([
     calculateLineupCompatibility(matchId, teamId, userLineup, formationId),
     getReplacementSuggestions(matchId, teamId, currentPlayerId, position, availablePlayers)
