@@ -370,6 +370,11 @@ export function getTeamColorsByName(name: string): string[] | null {
   return contains?.colors ?? null;
 }
 
+// Profil ekranı için fallback kulüp takımları listesi (API yokken/arama için)
+export function getFallbackClubTeamsForProfile(): StaticTeam[] {
+  return ALL_CLUB_TEAMS;
+}
+
 export default {
   ALL_CLUB_TEAMS,
   ALL_NATIONAL_TEAMS,
@@ -377,6 +382,7 @@ export default {
   getTeamById,
   getTeamColorsById,
   getTeamColorsByName,
+  getFallbackClubTeamsForProfile,
   searchTeams,
   getTeamsByCountry,
   getTeamsByLeague,

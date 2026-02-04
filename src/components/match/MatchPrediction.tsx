@@ -32,7 +32,7 @@ import Svg, {
 } from 'react-native-svg';
 import { Platform } from 'react-native';
 import { FocusPrediction, SCORING_CONSTANTS } from '../../types/prediction.types';
-import { SCORING, TEXT, STORAGE_KEYS } from '../../config/constants';
+import { SCORING, TEXT, STORAGE_KEYS, LEGACY_STORAGE_KEYS } from '../../config/constants';
 import { handleError, ErrorType, ErrorSeverity } from '../../utils/GlobalErrorHandler';
 import { predictionsDb } from '../../services/databaseService';
 import { ConfirmModal, ConfirmButton } from '../ui/ConfirmModal';
@@ -390,7 +390,11 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
   
   // ✅ İki favori maçta takıma özel anahtarlar
   const squadStorageKey = React.useMemo(
-    () => (matchId && predictionTeamId != null ? `fan-manager-squad-${matchId}-${predictionTeamId}` : matchId ? `fan-manager-squad-${matchId}` : null),
+    () => (matchId && predictionTeamId != null ? `${STORAGE_KEYS.SQUAD}${matchId}-${predictionTeamId}` : matchId ? `${STORAGE_KEYS.SQUAD}${matchId}` : null),
+    [matchId, predictionTeamId]
+  );
+  const legacySquadStorageKey = React.useMemo(
+    () => (matchId && predictionTeamId != null ? `${LEGACY_STORAGE_KEYS.SQUAD}${matchId}-${predictionTeamId}` : matchId ? `${LEGACY_STORAGE_KEYS.SQUAD}${matchId}` : null),
     [matchId, predictionTeamId]
   );
   const predictionStorageKey = React.useMemo(
@@ -539,7 +543,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
     if (!predictionStorageKey) return;
     const load = async () => {
       try {
-        const altKey = predictionTeamId != null ? `fan-manager-predictions-${matchData?.id}-${predictionTeamId}` : `fan-manager-predictions-${matchData?.id}`;
+        const altKey = predictionTeamId != null ? `${LEGACY_STORAGE_KEYS.PREDICTIONS}${matchData?.id}-${predictionTeamId}` : `${LEGACY_STORAGE_KEYS.PREDICTIONS}${matchData?.id}`;
         const data = await AsyncStorage.getItem(predictionStorageKey) || await AsyncStorage.getItem(altKey);
         if (!data) return;
         const parsed = JSON.parse(data);

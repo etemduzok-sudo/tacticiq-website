@@ -75,7 +75,7 @@ async function main() {
       const fixtures = data?.response || [];
 
       if (fixtures.length > 0) {
-        const saved = await databaseService.upsertMatches(fixtures);
+        const saved = await databaseService.upsertMatches(fixtures, { quiet: true, bulk: true });
         const count = Array.isArray(saved) ? saved.length : 0;
         totalSaved += count;
         totalMatches += fixtures.length;

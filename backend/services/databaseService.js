@@ -154,7 +154,9 @@ class DatabaseService {
 
       if (error) throw error;
       
-      console.log(`💾 Synced match to DB: ${matchData.teams?.home?.name} vs ${matchData.teams?.away?.name}`);
+      if (!matchData._quiet) {
+        console.log(`💾 Synced match to DB: ${matchData.teams?.home?.name} vs ${matchData.teams?.away?.name}`);
+      }
       return data;
     } catch (error) {
       console.error('❌ Error upserting match:', error.message);
@@ -162,18 +164,78 @@ class DatabaseService {
     }
   }
 
-  // Bulk upsert matches
-  async upsertMatches(matchesArray) {
+  // Bulk upsert matches (opts.quiet = true: no per-match log)
+  // opts.bulk = true: fast batch upsert (teams/leagues/matches in batches)
+  async upsertMatches(matchesArray, opts = {}) {
     if (!this.enabled) return [];
+
+    if (opts.bulk && matchesArray.length > 10) {
+      return this._bulkUpsertMatches(matchesArray, opts);
+    }
 
     const results = [];
     for (const match of matchesArray) {
+      if (opts.quiet) match._quiet = true;
       const result = await this.upsertMatch(match);
       if (result) results.push(result);
     }
     
-    console.log(`💾 Synced ${results.length}/${matchesArray.length} matches to database`);
+    if (!opts.quiet || results.length > 0) {
+      console.log(`💾 Synced ${results.length}/${matchesArray.length} matches to database`);
+    }
     return results;
+  }
+
+  async _bulkUpsertMatches(fixtures, opts = {}) {
+    const teamsMap = new Map();
+    const leaguesMap = new Map();
+    for (const f of fixtures) {
+      if (f.teams?.home) teamsMap.set(f.teams.home.id, f.teams.home);
+      if (f.teams?.away) teamsMap.set(f.teams.away.id, f.teams.away);
+      if (f.league) leaguesMap.set(f.league.id, { league: f.league, country: { name: f.league.country || 'Unknown' }, seasons: [{ year: f.league.season }] });
+    }
+    for (const [, t] of teamsMap) {
+      await this.upsertTeam({ team: t });
+    }
+    for (const [, l] of leaguesMap) {
+      await this.upsertLeague(l);
+    }
+    const BATCH = 80;
+    let saved = 0;
+    for (let i = 0; i < fixtures.length; i += BATCH) {
+      const batch = fixtures.slice(i, i + BATCH);
+      const rows = batch.map(f => ({
+        id: f.fixture?.id,
+        league_id: f.league?.id,
+        season: f.league?.season,
+        round: f.league?.round,
+        fixture_date: f.fixture?.date ? new Date(f.fixture.date) : null,
+        fixture_timestamp: f.fixture?.timestamp,
+        timezone: f.fixture?.timezone,
+        venue_name: f.fixture?.venue?.name,
+        venue_city: f.fixture?.venue?.city,
+        referee: f.fixture?.referee,
+        status: f.fixture?.status?.short,
+        status_long: f.fixture?.status?.long,
+        elapsed: f.fixture?.status?.elapsed,
+        home_team_id: f.teams?.home?.id,
+        away_team_id: f.teams?.away?.id,
+        home_score: f.goals?.home,
+        away_score: f.goals?.away,
+        halftime_home: f.score?.halftime?.home,
+        halftime_away: f.score?.halftime?.away,
+        fulltime_home: f.score?.fulltime?.home,
+        fulltime_away: f.score?.fulltime?.away,
+        extratime_home: f.score?.extratime?.home,
+        extratime_away: f.score?.extratime?.away,
+        penalty_home: f.score?.penalty?.home,
+        penalty_away: f.score?.penalty?.away,
+      })).filter(r => r.id);
+      const { data, error } = await supabase.from('matches').upsert(rows, { onConflict: 'id' });
+      if (!error) saved += rows.length;
+    }
+    if (!opts.quiet) console.log(`💾 Synced ${saved}/${fixtures.length} matches to database`);
+    return Array(saved).fill({});
   }
 
   // ==========================================

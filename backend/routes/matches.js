@@ -1,9 +1,12 @@
 // Matches Routes
+// DB-FIRST STRATEGY: Sync script'leri (sync-planned-matches, sync-all-teams-matches) DB'yi doldurur.
+// Uygulama /date ve /team/season endpoint'lerinde önce DB'den okur, boşsa API fallback.
+// Bu sayede API kotası korunur, yanıt süreleri düşer.
 const express = require('express');
 const router = express.Router();
 const footballApi = require('../services/footballApi');
 const databaseService = require('../services/databaseService');
-const { calculateRatingFromStats, calculatePlayerAttributesFromStats } = require('../utils/playerRatingFromStats');
+const { calculateRatingFromStats, calculatePlayerAttributesFromStats, getDefaultRatingByPosition } = require('../utils/playerRatingFromStats');
 const { supabase } = require('../config/supabase');
 
 if (!supabase) {
@@ -335,7 +338,7 @@ router.get('/live', async (req, res) => {
 });
 
 // GET /api/matches/date/:date - Get matches by date (format: YYYY-MM-DD)
-// Önce DB'den çek (sync-planned-matches ile doldurulur), yoksa API
+// DB-FIRST: Önce DB'den çek (sync-planned-matches ile doldurulur), boşsa API fallback
 router.get('/date/:date', async (req, res) => {
   try {
     const { date } = req.params;
@@ -415,6 +418,7 @@ function dbRowToApiMatch(row) {
 }
 
 // GET /api/matches/team/:teamId/season/:season - Get all matches for a team in a season
+// DB-FIRST: Memory cache → DB (sync-all-teams-matches / sync-planned-matches ile dolu) → API fallback
 router.get('/team/:teamId/season/:season', async (req, res) => {
   try {
     const { teamId, season } = req.params;
@@ -1389,18 +1393,15 @@ router.get('/:id/lineups', async (req, res) => {
           const playerId = player.id;
           
           if (!playerId) {
-            // Fallback: Eğer player ID yoksa basit rating kullan
-            const posCode = player.pos || player.position?.charAt(0) || 'M';
-            const positionRatings = {
-              'G': 78, 'D': 75, 'M': 76, 'F': 77,
-            };
+            // Fallback: Eğer player ID yoksa pozisyona göre gerçekçi varsayılan
+            const posStr = player.pos || player.position || 'Midfielder';
             return {
               id: null,
               name: player.name,
               number: player.number,
               position: player.pos || player.position,
               grid: item.player?.grid || player.grid,
-              rating: positionRatings[posCode] || 75,
+              rating: getDefaultRatingByPosition(posStr),
               age: player.age || null,
               nationality: player.nationality || null,
             };
@@ -1423,8 +1424,9 @@ router.get('/:id/lineups', async (req, res) => {
           }
           
           // 2. Eğer DB'de yoksa veya güncel değilse API'den çek
+          const positionStr = player.pos || player.position || dbPlayer?.position || '';
           let playerStats = null;
-          let calculatedRating = 75; // Default rating
+          let calculatedRating = getDefaultRatingByPosition(positionStr); // Pozisyona göre gerçekçi varsayılan (70/72 değil)
           let statsFromApi = null; // API'den gelen 6 öznitelik (pace, shooting, ...)
           
           if (!dbPlayer || !dbPlayer.rating) {
@@ -1510,11 +1512,11 @@ router.get('/:id/lineups', async (req, res) => {
             }
           } else {
             // DB'de varsa onu kullan
-            calculatedRating = dbPlayer.rating || 75;
+            calculatedRating = dbPlayer.rating || getDefaultRatingByPosition(positionStr);
           }
           
           // ✅ Rating'i clamp et: minimum 65, maximum 95 (FIFA benzeri)
-          let finalRating = Math.round(Number(calculatedRating)) || 75;
+          let finalRating = Math.round(Number(calculatedRating)) || getDefaultRatingByPosition(positionStr);
           if (finalRating < 65) {
             console.warn(`⚠️ Rating too low for player ${playerId}: ${finalRating}, clamping to 65`);
             finalRating = 65;
@@ -1523,7 +1525,7 @@ router.get('/:id/lineups', async (req, res) => {
             finalRating = 95;
           }
           
-          const positionStr = player.pos || player.position || dbPlayer?.position || '';
+          // positionStr zaten 1427. satırda tanımlı - tekrar tanımlamıyoruz
           
           // ✅ Stats: API'den gelmediyse derivePlayerStats kullan, ama rating düşükse bile pozisyona göre mantıklı değerler üret
           let stats = statsFromApi;

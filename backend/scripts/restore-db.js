@@ -16,12 +16,15 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABA
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } });
 
-// Tablo restore sırası (foreign key bağımlılıkları için)
+// Tablo restore sırası (matches → teams, leagues FK bağımlılığı)
 const RESTORE_ORDER = [
+  'leagues',
+  'teams',
   'static_teams',
   'team_squads',
-  'profiles',
+  'players',       // Rating'ler (API + kullanıcı katkılı)
   'matches',
+  'profiles',
   'predictions',
   'squad_predictions',
   'user_badges'
@@ -29,8 +32,11 @@ const RESTORE_ORDER = [
 
 // Her tablonun primary key'i
 const TABLE_KEYS = {
+  'leagues': 'id',
+  'teams': 'id',
   'static_teams': 'api_football_id',
   'team_squads': ['team_id', 'season'],
+  'players': 'id',
   'profiles': 'id',
   'matches': 'id',
   'predictions': 'id',

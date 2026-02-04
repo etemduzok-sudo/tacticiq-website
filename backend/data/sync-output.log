@@ -1,0 +1,2796 @@
+
+╔════════════════════════════════════════════════════════════════╗
+║   API SIFIRLAMA SONRASI - TAM SENKRON                           ║
+║   2026-02-04 01:16:24                              ║
+╚════════════════════════════════════════════════════════════════╝
+
+
+▶ Tüm takımlar maç listesi (sync-all-teams-matches.js)...
+💾 Database service enabled
+╔════════════════════════════════════════════════════════════════╗
+║   TÜM TAKIMLAR - TÜM MAÇ LİSTESİ                                ║
+║   Lig bazlı sezon maçları → DB                                  ║
+╚════════════════════════════════════════════════════════════════╝
+
+📋 147 lig işlenecek (sezon 2025)
+
+🔄 Kaldığı yerden: 48/147
+
+❌ Cache MISS: fixtures-league-333-2025
+📡 API Request #1/7500: /fixtures
+💾 Cached: fixtures-league-333-2025 (3600s)
+💾 Synced match to DB: Metalist 1925 Kharkiv vs Veres Rivne
+💾 Synced match to DB: Kolos Kovalivka vs Kryvbas KR
+💾 Synced match to DB: Ruh Lviv vs SK Poltava
+💾 Synced match to DB: Veres Rivne vs Dynamo Kyiv
+💾 Synced match to DB: Zorya Luhansk vs LNZ Cherkasy
+💾 Synced match to DB: Kudrivka vs Oleksandria
+💾 Synced match to DB: Epitsentr Dunayivtsi vs Shakhtar Donetsk
+💾 Synced match to DB: Karpaty vs Polessya
+💾 Synced match to DB: Metalist 1925 Kharkiv vs Obolon'-Brovar
+💾 Synced match to DB: SK Poltava vs Veres Rivne
+💾 Synced match to DB: Ruh Lviv vs Dynamo Kyiv
+💾 Synced match to DB: Kryvbas KR vs Metalist 1925 Kharkiv
+💾 Synced match to DB: LNZ Cherkasy vs Epitsentr Dunayivtsi
+💾 Synced match to DB: Obolon'-Brovar vs Oleksandria
+💾 Synced match to DB: Polessya vs Kolos Kovalivka
+💾 Synced match to DB: Karpaty vs Shakhtar Donetsk
+💾 Synced match to DB: Zorya Luhansk vs Kudrivka
+💾 Synced match to DB: Ruh Lviv vs Obolon'-Brovar
+💾 Synced match to DB: Oleksandria vs Metalist 1925 Kharkiv
+💾 Synced match to DB: Kolos Kovalivka vs Karpaty
+💾 Synced match to DB: Epitsentr Dunayivtsi vs Dynamo Kyiv
+💾 Synced match to DB: Kudrivka vs SK Poltava
+💾 Synced match to DB: Veres Rivne vs Shakhtar Donetsk
+💾 Synced match to DB: Polessya vs LNZ Cherkasy
+💾 Synced match to DB: Zorya Luhansk vs Kryvbas KR
+💾 Synced match to DB: SK Poltava vs Zorya Luhansk
+💾 Synced match to DB: Kudrivka vs Karpaty
+💾 Synced match to DB: Kryvbas KR vs Obolon'-Brovar
+💾 Synced match to DB: Kolos Kovalivka vs Epitsentr Dunayivtsi
+💾 Synced match to DB: Metalist 1925 Kharkiv vs Ruh Lviv
+💾 Synced match to DB: LNZ Cherkasy vs Veres Rivne
+💾 Synced match to DB: Dynamo Kyiv vs Polessya
+💾 Synced match to DB: Shakhtar Donetsk vs Oleksandria
+💾 Synced match to DB: Oleksandria vs LNZ Cherkasy
+💾 Synced match to DB: Veres Rivne vs Kudrivka
+💾 Synced match to DB: Ruh Lviv vs Epitsentr Dunayivtsi
+💾 Synced match to DB: Obolon'-Brovar vs Dynamo Kyiv
+💾 Synced match to DB: Metalist 1925 Kharkiv vs Shakhtar Donetsk
+💾 Synced match to DB: Kryvbas KR vs Polessya
+💾 Synced match to DB: Zorya Luhansk vs Kolos Kovalivka
+💾 Synced match to DB: Karpaty vs SK Poltava
+💾 Synced match to DB: Kolos Kovalivka vs Veres Rivne
+💾 Synced match to DB: Polessya vs Kudrivka
+💾 Synced match to DB: SK Poltava vs Metalist 1925 Kharkiv
+💾 Synced match to DB: LNZ Cherkasy vs Ruh Lviv
+💾 Synced match to DB: Epitsentr Dunayivtsi vs Kryvbas KR
+💾 Synced match to DB: Obolon'-Brovar vs Karpaty
+💾 Synced match to DB: Dynamo Kyiv vs Oleksandria
+💾 Synced match to DB: Shakhtar Donetsk vs Zorya Luhansk
+💾 Synced match to DB: Kudrivka vs Epitsentr Dunayivtsi
+💾 Synced match to DB: Oleksandria vs SK Poltava
+💾 Synced match to DB: Zorya Luhansk vs Obolon'-Brovar
+💾 Synced match to DB: Karpaty vs Dynamo Kyiv
+💾 Synced match to DB: LNZ Cherkasy vs Kryvbas KR
+💾 Synced match to DB: Metalist 1925 Kharkiv vs Kolos Kovalivka
+💾 Synced match to DB: Ruh Lviv vs Shakhtar Donetsk
+💾 Synced match to DB: Veres Rivne vs Polessya
+💾 Synced match to DB: Kolos Kovalivka vs Ruh Lviv
+💾 Synced match to DB: Epitsentr Dunayivtsi vs Zorya Luhansk
+💾 Synced match to DB: Oleksandria vs Karpaty
+💾 Synced match to DB: Obolon'-Brovar vs Veres Rivne
+💾 Synced match to DB: Polessya vs SK Poltava
+💾 Synced match to DB: Kryvbas KR vs Kudrivka
+💾 Synced match to DB: Dynamo Kyiv vs Metalist 1925 Kharkiv
+💾 Synced match to DB: Shakhtar Donetsk vs LNZ Cherkasy
+💾 Synced match to DB: SK Poltava vs Obolon'-Brovar
+💾 Synced match to DB: Ruh Lviv vs Kryvbas KR
+💾 Synced match to DB: Zorya Luhansk vs Dynamo Kyiv
+💾 Synced match to DB: Polessya vs Shakhtar Donetsk
+💾 Synced match to DB: LNZ Cherkasy vs Kolos Kovalivka
+💾 Synced match to DB: Veres Rivne vs Oleksandria
+💾 Synced match to DB: Karpaty vs Epitsentr Dunayivtsi
+💾 Synced match to DB: Kudrivka vs Metalist 1925 Kharkiv
+💾 Synced match to DB: Oleksandria vs Epitsentr Dunayivtsi
+💾 Synced match to DB: Veres Rivne vs Zorya Luhansk
+💾 Synced match to DB: Metalist 1925 Kharkiv vs LNZ Cherkasy
+💾 Synced match to DB: Karpaty vs Ruh Lviv
+💾 Synced match to DB: Obolon'-Brovar vs Polessya
+💾 Synced match to DB: SK Poltava vs Kolos Kovalivka
+💾 Synced match to DB: Shakhtar Donetsk vs Kudrivka
+💾 Synced match to DB: Dynamo Kyiv vs Kryvbas KR
+💾 Synced match to DB: Kudrivka vs Obolon'-Brovar
+💾 Synced match to DB: Kryvbas KR vs SK Poltava
+💾 Synced match to DB: Kolos Kovalivka vs Oleksandria
+💾 Synced match to DB: Epitsentr Dunayivtsi vs Veres Rivne
+💾 Synced match to DB: Zorya Luhansk vs Ruh Lviv
+💾 Synced match to DB: Shakhtar Donetsk vs Dynamo Kyiv
+💾 Synced match to DB: LNZ Cherkasy vs Karpaty
+💾 Synced match to DB: Polessya vs Metalist 1925 Kharkiv
+💾 Synced match to DB: Epitsentr Dunayivtsi vs Obolon'-Brovar
+💾 Synced match to DB: Kudrivka vs Kolos Kovalivka
+💾 Synced match to DB: Metalist 1925 Kharkiv vs Zorya Luhansk
+💾 Synced match to DB: Veres Rivne vs Ruh Lviv
+💾 Synced match to DB: Karpaty vs Kryvbas KR
+💾 Synced match to DB: Oleksandria vs Polessya
+💾 Synced match to DB: Dynamo Kyiv vs LNZ Cherkasy
+💾 Synced match to DB: Shakhtar Donetsk vs SK Poltava
+💾 Synced match to DB: SK Poltava vs LNZ Cherkasy
+💾 Synced match to DB: Karpaty vs Metalist 1925 Kharkiv
+💾 Synced match to DB: Kolos Kovalivka vs Dynamo Kyiv
+💾 Synced match to DB: Obolon'-Brovar vs Shakhtar Donetsk
+💾 Synced match to DB: Kryvbas KR vs Veres Rivne
+💾 Synced match to DB: Polessya vs Epitsentr Dunayivtsi
+💾 Synced match to DB: Ruh Lviv vs Kudrivka
+💾 Synced match to DB: Zorya Luhansk vs Oleksandria
+💾 Synced match to DB: Obolon'-Brovar vs Kolos Kovalivka
+💾 Synced match to DB: LNZ Cherkasy vs Kudrivka
+💾 Synced match to DB: Veres Rivne vs Karpaty
+💾 Synced match to DB: Oleksandria vs Ruh Lviv
+💾 Synced match to DB: Epitsentr Dunayivtsi vs Metalist 1925 Kharkiv
+💾 Synced match to DB: Polessya vs Zorya Luhansk
+💾 Synced match to DB: Dynamo Kyiv vs SK Poltava
+💾 Synced match to DB: Shakhtar Donetsk vs Kryvbas KR
+💾 Synced match to DB: Zorya Luhansk vs Karpaty
+💾 Synced match to DB: LNZ Cherkasy vs Obolon'-Brovar
+💾 Synced match to DB: Kolos Kovalivka vs Shakhtar Donetsk
+💾 Synced match to DB: Kudrivka vs Dynamo Kyiv
+💾 Synced match to DB: Kryvbas KR vs Oleksandria
+💾 Synced match to DB: Ruh Lviv vs Polessya
+💾 Synced match to DB: SK Poltava vs Epitsentr Dunayivtsi
+💾 Synced match to DB: Oleksandria vs Kudrivka
+💾 Synced match to DB: Obolon'-Brovar vs Metalist 1925 Kharkiv
+💾 Synced match to DB: Kryvbas KR vs Kolos Kovalivka
+💾 Synced match to DB: LNZ Cherkasy vs Zorya Luhansk
+💾 Synced match to DB: Polessya vs Karpaty
+💾 Synced match to DB: SK Poltava vs Ruh Lviv
+💾 Synced match to DB: Dynamo Kyiv vs Veres Rivne
+💾 Synced match to DB: Shakhtar Donetsk vs Epitsentr Dunayivtsi
+💾 Synced match to DB: Shakhtar Donetsk vs Karpaty
+💾 Synced match to DB: Dynamo Kyiv vs Ruh Lviv
+💾 Synced match to DB: Oleksandria vs Obolon'-Brovar
+💾 Synced match to DB: Kolos Kovalivka vs Polessya
+💾 Synced match to DB: Metalist 1925 Kharkiv vs Kryvbas KR
+💾 Synced match to DB: Veres Rivne vs SK Poltava
+💾 Synced match to DB: Epitsentr Dunayivtsi vs LNZ Cherkasy
+💾 Synced match to DB: Kudrivka vs Zorya Luhansk
+💾 Synced match to DB: Shakhtar Donetsk vs Veres Rivne
+💾 Synced match to DB: Dynamo Kyiv vs Epitsentr Dunayivtsi
+💾 Synced match to DB: Karpaty vs Kolos Kovalivka
+💾 Synced match to DB: Metalist 1925 Kharkiv vs Oleksandria
+💾 Synced match to DB: Obolon'-Brovar vs Ruh Lviv
+💾 Synced match to DB: Kryvbas KR vs Zorya Luhansk
+💾 Synced match to DB: LNZ Cherkasy vs Polessya
+💾 Synced match to DB: SK Poltava vs Kudrivka
+💾 Synced match to DB: Zorya Luhansk vs SK Poltava
+💾 Synced match to DB: Karpaty vs Kudrivka
+💾 Synced match to DB: Oleksandria vs Shakhtar Donetsk
+💾 Synced match to DB: Obolon'-Brovar vs Kryvbas KR
+💾 Synced match to DB: Ruh Lviv vs Metalist 1925 Kharkiv
+💾 Synced match to DB: Polessya vs Dynamo Kyiv
+💾 Synced match to DB: Veres Rivne vs LNZ Cherkasy
+💾 Synced match to DB: Epitsentr Dunayivtsi vs Kolos Kovalivka
+💾 Synced match to DB: Shakhtar Donetsk vs Metalist 1925 Kharkiv
+💾 Synced match to DB: Dynamo Kyiv vs Obolon'-Brovar
+💾 Synced match to DB: Kolos Kovalivka vs Zorya Luhansk
+💾 Synced match to DB: Polessya vs Kryvbas KR
+💾 Synced match to DB: Epitsentr Dunayivtsi vs Ruh Lviv
+💾 Synced match to DB: LNZ Cherkasy vs Oleksandria
+💾 Synced match to DB: SK Poltava vs Karpaty
+💾 Synced match to DB: Kudrivka vs Veres Rivne
+💾 Synced match to DB: Zorya Luhansk vs Shakhtar Donetsk
+💾 Synced match to DB: Karpaty vs Obolon'-Brovar
+💾 Synced match to DB: Oleksandria vs Dynamo Kyiv
+💾 Synced match to DB: Metalist 1925 Kharkiv vs SK Poltava
+💾 Synced match to DB: Ruh Lviv vs LNZ Cherkasy
+💾 Synced match to DB: Kryvbas KR vs Epitsentr Dunayivtsi
+💾 Synced match to DB: Veres Rivne vs Kolos Kovalivka
+💾 Synced match to DB: Kudrivka vs Polessya
+💾 Synced match to DB: Shakhtar Donetsk vs Ruh Lviv
+💾 Synced match to DB: Dynamo Kyiv vs Karpaty
+💾 Synced match to DB: Kolos Kovalivka vs Metalist 1925 Kharkiv
+💾 Synced match to DB: Obolon'-Brovar vs Zorya Luhansk
+💾 Synced match to DB: Kryvbas KR vs LNZ Cherkasy
+💾 Synced match to DB: Polessya vs Veres Rivne
+💾 Synced match to DB: Epitsentr Dunayivtsi vs Kudrivka
+💾 Synced match to DB: SK Poltava vs Oleksandria
+💾 Synced match to DB: Zorya Luhansk vs Epitsentr Dunayivtsi
+💾 Synced match to DB: Karpaty vs Oleksandria
+💾 Synced match to DB: Metalist 1925 Kharkiv vs Dynamo Kyiv
+💾 Synced match to DB: Ruh Lviv vs Kolos Kovalivka
+💾 Synced match to DB: Veres Rivne vs Obolon'-Brovar
+💾 Synced match to DB: LNZ Cherkasy vs Shakhtar Donetsk
+💾 Synced match to DB: SK Poltava vs Polessya
+💾 Synced match to DB: Kudrivka vs Kryvbas KR
+💾 Synced match to DB: Shakhtar Donetsk vs Polessya
+💾 Synced match to DB: Dynamo Kyiv vs Zorya Luhansk
+💾 Synced match to DB: Oleksandria vs Veres Rivne
+💾 Synced match to DB: Kolos Kovalivka vs LNZ Cherkasy
+💾 Synced match to DB: Metalist 1925 Kharkiv vs Kudrivka
+💾 Synced match to DB: Obolon'-Brovar vs SK Poltava
+💾 Synced match to DB: Kryvbas KR vs Ruh Lviv
+💾 Synced match to DB: Epitsentr Dunayivtsi vs Karpaty
+💾 Synced match to DB: Zorya Luhansk vs Veres Rivne
+💾 Synced match to DB: Kolos Kovalivka vs SK Poltava
+💾 Synced match to DB: Ruh Lviv vs Karpaty
+💾 Synced match to DB: Kryvbas KR vs Dynamo Kyiv
+💾 Synced match to DB: Polessya vs Obolon'-Brovar
+💾 Synced match to DB: Epitsentr Dunayivtsi vs Oleksandria
+💾 Synced match to DB: LNZ Cherkasy vs Metalist 1925 Kharkiv
+💾 Synced match to DB: Kudrivka vs Shakhtar Donetsk
+💾 Synced match to DB: Dynamo Kyiv vs Shakhtar Donetsk
+💾 Synced match to DB: Karpaty vs LNZ Cherkasy
+💾 Synced match to DB: Oleksandria vs Kolos Kovalivka
+💾 Synced match to DB: Metalist 1925 Kharkiv vs Polessya
+💾 Synced match to DB: Obolon'-Brovar vs Kudrivka
+💾 Synced match to DB: Ruh Lviv vs Zorya Luhansk
+💾 Synced match to DB: Veres Rivne vs Epitsentr Dunayivtsi
+💾 Synced match to DB: SK Poltava vs Kryvbas KR
+💾 Synced match to DB: Zorya Luhansk vs Metalist 1925 Kharkiv
+💾 Synced match to DB: Kolos Kovalivka vs Kudrivka
+💾 Synced match to DB: Obolon'-Brovar vs Epitsentr Dunayivtsi
+💾 Synced match to DB: Ruh Lviv vs Veres Rivne
+💾 Synced match to DB: Kryvbas KR vs Karpaty
+💾 Synced match to DB: Polessya vs Oleksandria
+💾 Synced match to DB: LNZ Cherkasy vs Dynamo Kyiv
+💾 Synced match to DB: SK Poltava vs Shakhtar Donetsk
+💾 Synced match to DB: Shakhtar Donetsk vs Obolon'-Brovar
+💾 Synced match to DB: Dynamo Kyiv vs Kolos Kovalivka
+💾 Synced match to DB: Oleksandria vs Zorya Luhansk
+💾 Synced match to DB: Metalist 1925 Kharkiv vs Karpaty
+💾 Synced match to DB: Veres Rivne vs Kryvbas KR
+💾 Synced match to DB: Epitsentr Dunayivtsi vs Polessya
+💾 Synced match to DB: LNZ Cherkasy vs SK Poltava
+💾 Synced match to DB: Kudrivka vs Ruh Lviv
+💾 Synced match to DB: Zorya Luhansk vs Polessya
+💾 Synced match to DB: Karpaty vs Veres Rivne
+💾 Synced match to DB: Kolos Kovalivka vs Obolon'-Brovar
+💾 Synced match to DB: Metalist 1925 Kharkiv vs Epitsentr Dunayivtsi
+💾 Synced match to DB: Ruh Lviv vs Oleksandria
+💾 Synced match to DB: Kryvbas KR vs Shakhtar Donetsk
+💾 Synced match to DB: SK Poltava vs Dynamo Kyiv
+💾 Synced match to DB: Kudrivka vs LNZ Cherkasy
+💾 Synced match to DB: Shakhtar Donetsk vs Kolos Kovalivka
+💾 Synced match to DB: Dynamo Kyiv vs Kudrivka
+💾 Synced match to DB: Karpaty vs Zorya Luhansk
+💾 Synced match to DB: Oleksandria vs Kryvbas KR
+💾 Synced match to DB: Obolon'-Brovar vs LNZ Cherkasy
+💾 Synced match to DB: Polessya vs Ruh Lviv
+💾 Synced match to DB: Veres Rivne vs Metalist 1925 Kharkiv
+💾 Synced match to DB: Epitsentr Dunayivtsi vs SK Poltava
+💾 Synced 0/240 matches to database
+   [49/147] Lig 333: 240 maç → DB
+❌ Cache MISS: fixtures-league-218-2025
+📡 API Request #2/7500: /fixtures
+💾 Cached: fixtures-league-218-2025 (3600s)
+💾 Synced match to DB: Lask Linz vs Sturm Graz
+💾 Synced match to DB: Wolfsberger AC vs SCR Altach
+💾 Synced match to DB: WSG Wattens vs TSV Hartberg
+💾 Synced match to DB: Ried vs Red Bull Salzburg
+💾 Synced match to DB: Rapid Vienna vs FC BW Linz
+💾 Synced match to DB: Grazer AK vs Austria Vienna
+💾 Synced match to DB: SCR Altach vs Ried
+💾 Synced match to DB: FC BW Linz vs TSV Hartberg
+💾 Synced match to DB: Red Bull Salzburg vs Grazer AK
+💾 Synced match to DB: Austria Vienna vs Wolfsberger AC
+💾 Synced match to DB: Sturm Graz vs Rapid Vienna
+💾 Synced match to DB: WSG Wattens vs Lask Linz
+💾 Synced match to DB: TSV Hartberg vs Red Bull Salzburg
+💾 Synced match to DB: Grazer AK vs WSG Wattens
+💾 Synced match to DB: Ried vs Sturm Graz
+💾 Synced match to DB: Rapid Vienna vs SCR Altach
+💾 Synced match to DB: Wolfsberger AC vs FC BW Linz
+💾 Synced match to DB: Lask Linz vs Austria Vienna
+💾 Synced match to DB: Red Bull Salzburg vs Lask Linz
+💾 Synced match to DB: FC BW Linz vs Ried
+💾 Synced match to DB: Austria Vienna vs TSV Hartberg
+💾 Synced match to DB: SCR Altach vs Grazer AK
+💾 Synced match to DB: Wolfsberger AC vs Rapid Vienna
+💾 Synced match to DB: Red Bull Salzburg vs FC BW Linz
+💾 Synced match to DB: Lask Linz vs Ried
+💾 Synced match to DB: Grazer AK vs Sturm Graz
+💾 Synced match to DB: Austria Vienna vs SCR Altach
+💾 Synced match to DB: TSV Hartberg vs Rapid Vienna
+💾 Synced match to DB: WSG Wattens vs Wolfsberger AC
+💾 Synced match to DB: SCR Altach vs Lask Linz
+💾 Synced match to DB: Wolfsberger AC vs Red Bull Salzburg
+💾 Synced match to DB: FC BW Linz vs Grazer AK
+💾 Synced match to DB: Rapid Vienna vs WSG Wattens
+💾 Synced match to DB: Ried vs TSV Hartberg
+💾 Synced match to DB: Sturm Graz vs Austria Vienna
+💾 Synced match to DB: Red Bull Salzburg vs Sturm Graz
+💾 Synced match to DB: Austria Vienna vs Ried
+💾 Synced match to DB: TSV Hartberg vs Wolfsberger AC
+💾 Synced match to DB: SCR Altach vs WSG Wattens
+💾 Synced match to DB: Lask Linz vs FC BW Linz
+💾 Synced match to DB: Grazer AK vs Rapid Vienna
+💾 Synced match to DB: Wolfsberger AC vs Lask Linz
+💾 Synced match to DB: Ried vs Grazer AK
+💾 Synced match to DB: FC BW Linz vs SCR Altach
+💾 Synced match to DB: Sturm Graz vs TSV Hartberg
+💾 Synced match to DB: WSG Wattens vs Red Bull Salzburg
+💾 Synced match to DB: Rapid Vienna vs Austria Vienna
+💾 Synced match to DB: Austria Vienna vs FC BW Linz
+💾 Synced match to DB: Ried vs WSG Wattens
+💾 Synced match to DB: Grazer AK vs Wolfsberger AC
+💾 Synced match to DB: SCR Altach vs Sturm Graz
+💾 Synced match to DB: Lask Linz vs TSV Hartberg
+💾 Synced match to DB: Red Bull Salzburg vs Rapid Vienna
+💾 Synced match to DB: Wolfsberger AC vs Ried
+💾 Synced match to DB: WSG Wattens vs Austria Vienna
+💾 Synced match to DB: Grazer AK vs TSV Hartberg
+💾 Synced match to DB: Red Bull Salzburg vs SCR Altach
+💾 Synced match to DB: FC BW Linz vs Sturm Graz
+💾 Synced match to DB: Rapid Vienna vs Lask Linz
+💾 Synced match to DB: SCR Altach vs TSV Hartberg
+💾 Synced match to DB: Lask Linz vs Grazer AK
+💾 Synced match to DB: WSG Wattens vs FC BW Linz
+💾 Synced match to DB: Sturm Graz vs Wolfsberger AC
+💾 Synced match to DB: Ried vs Rapid Vienna
+💾 Synced match to DB: Austria Vienna vs Red Bull Salzburg
+💾 Synced match to DB: TSV Hartberg vs Austria Vienna
+💾 Synced match to DB: FC BW Linz vs Lask Linz
+💾 Synced match to DB: Grazer AK vs SCR Altach
+💾 Synced match to DB: Red Bull Salzburg vs Ried
+💾 Synced match to DB: Wolfsberger AC vs WSG Wattens
+💾 Synced match to DB: Rapid Vienna vs Sturm Graz
+💾 Synced match to DB: Austria Vienna vs Grazer AK
+💾 Synced match to DB: Wolfsberger AC vs TSV Hartberg
+💾 Synced match to DB: Ried vs FC BW Linz
+💾 Synced match to DB: Lask Linz vs SCR Altach
+💾 Synced match to DB: WSG Wattens vs Rapid Vienna
+💾 Synced match to DB: Sturm Graz vs Red Bull Salzburg
+💾 Synced match to DB: SCR Altach vs Wolfsberger AC
+💾 Synced match to DB: TSV Hartberg vs Ried
+💾 Synced match to DB: FC BW Linz vs Austria Vienna
+💾 Synced match to DB: Red Bull Salzburg vs WSG Wattens
+💾 Synced match to DB: Sturm Graz vs Lask Linz
+💾 Synced match to DB: Rapid Vienna vs Grazer AK
+💾 Synced match to DB: Austria Vienna vs WSG Wattens
+💾 Synced match to DB: Ried vs Wolfsberger AC
+💾 Synced match to DB: Grazer AK vs FC BW Linz
+💾 Synced match to DB: SCR Altach vs Red Bull Salzburg
+💾 Synced match to DB: TSV Hartberg vs Sturm Graz
+💾 Synced match to DB: Lask Linz vs Rapid Vienna
+💾 Synced match to DB: Sturm Graz vs WSG Wattens
+💾 Synced match to DB: Rapid Vienna vs Ried
+💾 Synced match to DB: TSV Hartberg vs Lask Linz
+💾 Synced match to DB: FC BW Linz vs Red Bull Salzburg
+💾 Synced match to DB: Wolfsberger AC vs Austria Vienna
+💾 Synced match to DB: WSG Wattens vs SCR Altach
+💾 Synced match to DB: Sturm Graz vs Grazer AK
+💾 Synced match to DB: Ried vs SCR Altach
+💾 Synced match to DB: TSV Hartberg vs WSG Wattens
+💾 Synced match to DB: Grazer AK vs Lask Linz
+💾 Synced match to DB: Red Bull Salzburg vs Wolfsberger AC
+💾 Synced match to DB: FC BW Linz vs Rapid Vienna
+💾 Synced match to DB: Austria Vienna vs Sturm Graz
+💾 Synced match to DB: Red Bull Salzburg vs Austria Vienna
+💾 Synced match to DB: Rapid Vienna vs TSV Hartberg
+💾 Synced match to DB: Lask Linz vs WSG Wattens
+💾 Synced match to DB: SCR Altach vs FC BW Linz
+💾 Synced match to DB: Wolfsberger AC vs Grazer AK
+💾 Synced match to DB: Sturm Graz vs Ried
+💾 Synced match to DB: Ried vs Lask Linz
+💾 Synced match to DB: TSV Hartberg vs SCR Altach
+💾 Synced match to DB: WSG Wattens vs Sturm Graz
+💾 Synced match to DB: FC BW Linz vs Wolfsberger AC
+💾 Synced match to DB: Grazer AK vs Red Bull Salzburg
+💾 Synced match to DB: Austria Vienna vs Rapid Vienna
+💾 Synced match to DB: SCR Altach vs Austria Vienna
+💾 Synced match to DB: Rapid Vienna vs Wolfsberger AC
+💾 Synced match to DB: TSV Hartberg vs Grazer AK
+💾 Synced match to DB: Sturm Graz vs FC BW Linz
+💾 Synced match to DB: WSG Wattens vs Ried
+💾 Synced match to DB: Lask Linz vs Red Bull Salzburg
+💾 Synced match to DB: Red Bull Salzburg vs TSV Hartberg
+💾 Synced match to DB: Austria Vienna vs Lask Linz
+💾 Synced match to DB: SCR Altach vs Rapid Vienna
+💾 Synced match to DB: Wolfsberger AC vs Sturm Graz
+💾 Synced match to DB: FC BW Linz vs WSG Wattens
+💾 Synced match to DB: Grazer AK vs Ried
+💾 Synced match to DB: Sturm Graz vs SCR Altach
+💾 Synced match to DB: Rapid Vienna vs Red Bull Salzburg
+💾 Synced match to DB: Lask Linz vs Wolfsberger AC
+💾 Synced match to DB: Ried vs Austria Vienna
+💾 Synced match to DB: TSV Hartberg vs FC BW Linz
+💾 Synced match to DB: WSG Wattens vs Grazer AK
+💾 Synced 0/132 matches to database
+   [50/147] Lig 218: 132 maç → DB
+❌ Cache MISS: fixtures-league-119-2025
+📡 API Request #3/7500: /fixtures
+💾 Cached: fixtures-league-119-2025 (3600s)
+❌ Cache MISS: fixtures-league-103-2025
+📡 API Request #4/7500: /fixtures
+💾 Cached: fixtures-league-103-2025 (3600s)
+❌ Cache MISS: fixtures-league-113-2025
+📡 API Request #5/7500: /fixtures
+💾 Cached: fixtures-league-113-2025 (3600s)
+❌ Cache MISS: fixtures-league-106-2025
+📡 API Request #6/7500: /fixtures
+💾 Cached: fixtures-league-106-2025 (3600s)
+❌ Cache MISS: fixtures-league-345-2025
+📡 API Request #7/7500: /fixtures
+💾 Cached: fixtures-league-345-2025 (3600s)
+❌ Cache MISS: fixtures-league-210-2025
+📡 API Request #8/7500: /fixtures
+💾 Cached: fixtures-league-210-2025 (3600s)
+❌ Cache MISS: fixtures-league-286-2025
+📡 API Request #9/7500: /fixtures
+💾 Cached: fixtures-league-286-2025 (3600s)
+💾 Synced match to DB: FK Crvena Zvezda vs Javor
+💾 Synced match to DB: Cukaricki vs Napredak
+💾 Synced match to DB: Mladost Lucani vs IMT Novi Beograd
+💾 Synced match to DB: Vojvodina vs Radnik Surdulica
+💾 Synced match to DB: TSC Backa Topola vs Radnicki NIS
+💾 Synced match to DB: Železničar Pančevo vs FK Partizan
+💾 Synced match to DB: OFK Beograd vs FK Spartak Zdrepceva KRV
+💾 Synced match to DB: FK Crvena Zvezda vs OFK Beograd
+💾 Synced match to DB: Radnicki NIS vs Mladost Lucani
+💾 Synced match to DB: Radnik Surdulica vs TSC Backa Topola
+💾 Synced match to DB: Napredak vs Novi Pazar
+💾 Synced match to DB: Radnicki 1923 vs Železničar Pančevo
+💾 Synced match to DB: IMT Novi Beograd vs Cukaricki
+💾 Synced match to DB: FK Spartak Zdrepceva KRV vs Vojvodina
+💾 Synced match to DB: Mladost Lucani vs Radnik Surdulica
+💾 Synced match to DB: OFK Beograd vs Javor
+💾 Synced match to DB: TSC Backa Topola vs FK Spartak Zdrepceva KRV
+💾 Synced match to DB: Cukaricki vs Radnicki NIS
+💾 Synced match to DB: FK Partizan vs Radnicki 1923
+💾 Synced match to DB: Novi Pazar vs IMT Novi Beograd
+💾 Synced match to DB: Železničar Pančevo vs Napredak
+💾 Synced match to DB: Radnik Surdulica vs Cukaricki
+💾 Synced match to DB: FK Crvena Zvezda vs TSC Backa Topola
+💾 Synced match to DB: FK Spartak Zdrepceva KRV vs Mladost Lucani
+💾 Synced match to DB: OFK Beograd vs Vojvodina
+💾 Synced match to DB: Radnicki NIS vs Novi Pazar
+💾 Synced match to DB: Napredak vs FK Partizan
+💾 Synced match to DB: Javor vs Radnicki 1923
+💾 Synced match to DB: IMT Novi Beograd vs Železničar Pančevo
+💾 Synced match to DB: Mladost Lucani vs FK Crvena Zvezda
+💾 Synced match to DB: Cukaricki vs FK Spartak Zdrepceva KRV
+💾 Synced match to DB: Novi Pazar vs Radnik Surdulica
+💾 Synced match to DB: Vojvodina vs Javor
+💾 Synced match to DB: Radnicki 1923 vs Napredak
+💾 Synced match to DB: TSC Backa Topola vs OFK Beograd
+💾 Synced match to DB: Železničar Pančevo vs Radnicki NIS
+💾 Synced match to DB: FK Partizan vs IMT Novi Beograd
+💾 Synced match to DB: Javor vs Napredak
+💾 Synced match to DB: OFK Beograd vs Mladost Lucani
+💾 Synced match to DB: Vojvodina vs TSC Backa Topola
+💾 Synced match to DB: Radnik Surdulica vs Železničar Pančevo
+💾 Synced match to DB: IMT Novi Beograd vs Radnicki 1923
+💾 Synced match to DB: Radnicki NIS vs FK Partizan
+💾 Synced match to DB: FK Spartak Zdrepceva KRV vs Novi Pazar
+💾 Synced match to DB: Cukaricki vs OFK Beograd
+💾 Synced match to DB: TSC Backa Topola vs Javor
+💾 Synced match to DB: FK Partizan vs Radnik Surdulica
+💾 Synced match to DB: Mladost Lucani vs Vojvodina
+💾 Synced match to DB: Novi Pazar vs FK Crvena Zvezda
+💾 Synced match to DB: Radnicki 1923 vs Radnicki NIS
+💾 Synced match to DB: Napredak vs IMT Novi Beograd
+💾 Synced match to DB: Železničar Pančevo vs FK Spartak Zdrepceva KRV
+💾 Synced match to DB: Javor vs IMT Novi Beograd
+💾 Synced match to DB: Radnik Surdulica vs Radnicki 1923
+💾 Synced match to DB: OFK Beograd vs Novi Pazar
+💾 Synced match to DB: Vojvodina vs Cukaricki
+💾 Synced match to DB: Radnicki NIS vs Napredak
+💾 Synced match to DB: FK Crvena Zvezda vs Železničar Pančevo
+💾 Synced match to DB: TSC Backa Topola vs Mladost Lucani
+💾 Synced match to DB: FK Spartak Zdrepceva KRV vs FK Partizan
+💾 Synced match to DB: Napredak vs Radnik Surdulica
+💾 Synced match to DB: Radnicki 1923 vs FK Spartak Zdrepceva KRV
+💾 Synced match to DB: Novi Pazar vs Vojvodina
+💾 Synced match to DB: FK Partizan vs FK Crvena Zvezda
+💾 Synced match to DB: Železničar Pančevo vs OFK Beograd
+💾 Synced match to DB: IMT Novi Beograd vs Radnicki NIS
+💾 Synced match to DB: Cukaricki vs TSC Backa Topola
+💾 Synced match to DB: Mladost Lucani vs Javor
+💾 Synced match to DB: Novi Pazar vs Radnicki 1923
+💾 Synced match to DB: Radnik Surdulica vs IMT Novi Beograd
+💾 Synced match to DB: Javor vs Radnicki NIS
+💾 Synced match to DB: OFK Beograd vs FK Partizan
+💾 Synced match to DB: Vojvodina vs Železničar Pančevo
+💾 Synced match to DB: TSC Backa Topola vs Novi Pazar
+💾 Synced match to DB: Mladost Lucani vs Cukaricki
+💾 Synced match to DB: FK Spartak Zdrepceva KRV vs Napredak
+💾 Synced match to DB: FK Crvena Zvezda vs Radnicki 1923
+💾 Synced match to DB: Radnicki NIS vs Radnik Surdulica
+💾 Synced match to DB: Novi Pazar vs Mladost Lucani
+💾 Synced match to DB: Radnicki 1923 vs OFK Beograd
+💾 Synced match to DB: Železničar Pančevo vs TSC Backa Topola
+💾 Synced match to DB: FK Partizan vs Vojvodina
+💾 Synced match to DB: Cukaricki vs Javor
+💾 Synced match to DB: IMT Novi Beograd vs FK Spartak Zdrepceva KRV
+💾 Synced match to DB: Napredak vs FK Crvena Zvezda
+💾 Synced match to DB: OFK Beograd vs Napredak
+💾 Synced match to DB: Javor vs Radnik Surdulica
+💾 Synced match to DB: Vojvodina vs Radnicki 1923
+💾 Synced match to DB: TSC Backa Topola vs FK Partizan
+💾 Synced match to DB: Cukaricki vs Novi Pazar
+💾 Synced match to DB: Mladost Lucani vs Železničar Pančevo
+💾 Synced match to DB: FK Crvena Zvezda vs IMT Novi Beograd
+💾 Synced match to DB: FK Spartak Zdrepceva KRV vs Radnicki NIS
+💾 Synced match to DB: Napredak vs Vojvodina
+💾 Synced match to DB: FK Partizan vs Mladost Lucani
+💾 Synced match to DB: Novi Pazar vs Javor
+💾 Synced match to DB: Radnicki 1923 vs TSC Backa Topola
+💾 Synced match to DB: IMT Novi Beograd vs OFK Beograd
+💾 Synced match to DB: Radnik Surdulica vs FK Spartak Zdrepceva KRV
+💾 Synced match to DB: Železničar Pančevo vs Cukaricki
+💾 Synced match to DB: Radnicki NIS vs FK Crvena Zvezda
+💾 Synced match to DB: Vojvodina vs FK Crvena Zvezda
+💾 Synced match to DB: Javor vs FK Spartak Zdrepceva KRV
+💾 Synced match to DB: Cukaricki vs FK Partizan
+💾 Synced match to DB: Novi Pazar vs Železničar Pančevo
+💾 Synced match to DB: TSC Backa Topola vs Napredak
+💾 Synced match to DB: FK Crvena Zvezda vs Radnik Surdulica
+💾 Synced match to DB: Vojvodina vs IMT Novi Beograd
+💾 Synced match to DB: OFK Beograd vs Radnicki NIS
+💾 Synced match to DB: Javor vs FK Partizan
+💾 Synced match to DB: Radnik Surdulica vs OFK Beograd
+💾 Synced match to DB: Napredak vs Mladost Lucani
+💾 Synced match to DB: Radnicki NIS vs Vojvodina
+💾 Synced match to DB: Železničar Pančevo vs Javor
+💾 Synced match to DB: FK Spartak Zdrepceva KRV vs FK Crvena Zvezda
+💾 Synced match to DB: IMT Novi Beograd vs TSC Backa Topola
+💾 Synced match to DB: FK Partizan vs Novi Pazar
+💾 Synced match to DB: Radnik Surdulica vs Vojvodina
+💾 Synced match to DB: Napredak vs Cukaricki
+💾 Synced match to DB: FK Partizan vs Železničar Pančevo
+💾 Synced match to DB: FK Spartak Zdrepceva KRV vs OFK Beograd
+💾 Synced match to DB: IMT Novi Beograd vs Mladost Lucani
+💾 Synced match to DB: Radnicki NIS vs TSC Backa Topola
+💾 Synced match to DB: Javor vs FK Crvena Zvezda
+💾 Synced match to DB: Radnicki 1923 vs Novi Pazar
+💾 Synced match to DB: Cukaricki vs IMT Novi Beograd
+💾 Synced match to DB: Železničar Pančevo vs Radnicki 1923
+💾 Synced match to DB: Mladost Lucani vs Radnicki NIS
+💾 Synced match to DB: Vojvodina vs FK Spartak Zdrepceva KRV
+💾 Synced match to DB: Novi Pazar vs Napredak
+💾 Synced match to DB: FK Partizan vs Javor
+💾 Synced match to DB: TSC Backa Topola vs Radnik Surdulica
+💾 Synced match to DB: OFK Beograd vs FK Crvena Zvezda
+💾 Synced match to DB: Mladost Lucani vs Radnicki 1923
+💾 Synced match to DB: FK Crvena Zvezda vs Cukaricki
+💾 Synced match to DB: Javor vs OFK Beograd
+💾 Synced match to DB: Napredak vs Železničar Pančevo
+💾 Synced match to DB: Radnicki 1923 vs FK Partizan
+💾 Synced match to DB: IMT Novi Beograd vs Novi Pazar
+💾 Synced match to DB: FK Crvena Zvezda vs Vojvodina
+💾 Synced match to DB: Radnik Surdulica vs Mladost Lucani
+💾 Synced match to DB: Radnicki NIS vs Cukaricki
+💾 Synced match to DB: FK Spartak Zdrepceva KRV vs TSC Backa Topola
+💾 Synced match to DB: Cukaricki vs Radnik Surdulica
+💾 Synced match to DB: Radnicki 1923 vs Javor
+💾 Synced match to DB: Vojvodina vs OFK Beograd
+💾 Synced match to DB: Železničar Pančevo vs IMT Novi Beograd
+💾 Synced match to DB: FK Partizan vs Napredak
+💾 Synced match to DB: Mladost Lucani vs FK Spartak Zdrepceva KRV
+💾 Synced match to DB: Novi Pazar vs Radnicki NIS
+💾 Synced match to DB: TSC Backa Topola vs FK Crvena Zvezda
+💾 Synced match to DB: Radnicki 1923 vs Cukaricki
+💾 Synced match to DB: Radnicki NIS vs Železničar Pančevo
+💾 Synced match to DB: Javor vs Vojvodina
+💾 Synced match to DB: FK Crvena Zvezda vs Mladost Lucani
+💾 Synced match to DB: IMT Novi Beograd vs FK Partizan
+💾 Synced match to DB: OFK Beograd vs TSC Backa Topola
+💾 Synced match to DB: FK Spartak Zdrepceva KRV vs Cukaricki
+💾 Synced match to DB: Radnik Surdulica vs Novi Pazar
+💾 Synced match to DB: Napredak vs Radnicki 1923
+💾 Synced match to DB: Radnicki 1923 vs IMT Novi Beograd
+💾 Synced match to DB: Napredak vs Javor
+💾 Synced match to DB: FK Partizan vs Radnicki NIS
+💾 Synced match to DB: Železničar Pančevo vs Radnik Surdulica
+💾 Synced match to DB: Mladost Lucani vs OFK Beograd
+💾 Synced match to DB: Novi Pazar vs FK Spartak Zdrepceva KRV
+💾 Synced match to DB: TSC Backa Topola vs Vojvodina
+💾 Synced match to DB: Cukaricki vs FK Crvena Zvezda
+💾 Synced match to DB: Javor vs TSC Backa Topola
+💾 Synced match to DB: Radnik Surdulica vs FK Partizan
+💾 Synced match to DB: FK Crvena Zvezda vs Novi Pazar
+💾 Synced match to DB: Radnicki NIS vs Radnicki 1923
+💾 Synced match to DB: IMT Novi Beograd vs Napredak
+💾 Synced match to DB: FK Spartak Zdrepceva KRV vs Železničar Pančevo
+💾 Synced match to DB: Vojvodina vs Mladost Lucani
+💾 Synced match to DB: OFK Beograd vs Cukaricki
+💾 Synced match to DB: FK Partizan vs FK Spartak Zdrepceva KRV
+💾 Synced match to DB: Mladost Lucani vs TSC Backa Topola
+💾 Synced match to DB: Novi Pazar vs OFK Beograd
+💾 Synced match to DB: Radnicki 1923 vs Radnik Surdulica
+💾 Synced match to DB: Napredak vs Radnicki NIS
+💾 Synced match to DB: Cukaricki vs Vojvodina
+💾 Synced match to DB: IMT Novi Beograd vs Javor
+💾 Synced match to DB: Železničar Pančevo vs FK Crvena Zvezda
+💾 Synced match to DB: FK Crvena Zvezda vs FK Partizan
+💾 Synced match to DB: Vojvodina vs Novi Pazar
+💾 Synced match to DB: FK Spartak Zdrepceva KRV vs Radnicki 1923
+💾 Synced match to DB: Radnicki NIS vs IMT Novi Beograd
+💾 Synced match to DB: OFK Beograd vs Železničar Pančevo
+💾 Synced match to DB: TSC Backa Topola vs Cukaricki
+💾 Synced match to DB: Javor vs Mladost Lucani
+💾 Synced match to DB: Radnik Surdulica vs Napredak
+💾 Synced match to DB: FK Partizan vs OFK Beograd
+💾 Synced match to DB: Radnicki NIS vs Javor
+💾 Synced match to DB: Novi Pazar vs TSC Backa Topola
+💾 Synced match to DB: Radnicki 1923 vs FK Crvena Zvezda
+💾 Synced match to DB: Napredak vs FK Spartak Zdrepceva KRV
+💾 Synced match to DB: Cukaricki vs Mladost Lucani
+💾 Synced match to DB: IMT Novi Beograd vs Radnik Surdulica
+💾 Synced match to DB: Železničar Pančevo vs Vojvodina
+💾 Synced match to DB: FK Crvena Zvezda vs Napredak
+💾 Synced match to DB: Mladost Lucani vs Novi Pazar
+💾 Synced match to DB: Vojvodina vs FK Partizan
+💾 Synced match to DB: FK Spartak Zdrepceva KRV vs IMT Novi Beograd
+💾 Synced match to DB: OFK Beograd vs Radnicki 1923
+💾 Synced match to DB: TSC Backa Topola vs Železničar Pančevo
+💾 Synced match to DB: Javor vs Cukaricki
+💾 Synced match to DB: Radnik Surdulica vs Radnicki NIS
+💾 Synced match to DB: FK Partizan vs TSC Backa Topola
+💾 Synced match to DB: Radnicki NIS vs FK Spartak Zdrepceva KRV
+💾 Synced match to DB: Novi Pazar vs Cukaricki
+💾 Synced match to DB: Radnicki 1923 vs Vojvodina
+💾 Synced match to DB: Napredak vs OFK Beograd
+💾 Synced match to DB: Radnik Surdulica vs Javor
+💾 Synced match to DB: IMT Novi Beograd vs FK Crvena Zvezda
+💾 Synced match to DB: Železničar Pančevo vs Mladost Lucani
+💾 Synced match to DB: FK Crvena Zvezda vs Radnicki NIS
+💾 Synced match to DB: Mladost Lucani vs FK Partizan
+💾 Synced match to DB: Vojvodina vs Napredak
+💾 Synced match to DB: FK Spartak Zdrepceva KRV vs Radnik Surdulica
+💾 Synced match to DB: OFK Beograd vs IMT Novi Beograd
+💾 Synced match to DB: TSC Backa Topola vs Radnicki 1923
+💾 Synced match to DB: Javor vs Novi Pazar
+💾 Synced match to DB: Cukaricki vs Železničar Pančevo
+💾 Synced match to DB: FK Partizan vs Cukaricki
+💾 Synced match to DB: FK Spartak Zdrepceva KRV vs Javor
+💾 Synced match to DB: Radnicki NIS vs OFK Beograd
+💾 Synced match to DB: Radnicki 1923 vs Mladost Lucani
+💾 Synced match to DB: Napredak vs TSC Backa Topola
+💾 Synced match to DB: Radnik Surdulica vs FK Crvena Zvezda
+💾 Synced match to DB: IMT Novi Beograd vs Vojvodina
+💾 Synced match to DB: Železničar Pančevo vs Novi Pazar
+💾 Synced match to DB: FK Crvena Zvezda vs FK Spartak Zdrepceva KRV
+💾 Synced match to DB: Mladost Lucani vs Napredak
+💾 Synced match to DB: Vojvodina vs Radnicki NIS
+💾 Synced match to DB: OFK Beograd vs Radnik Surdulica
+💾 Synced match to DB: Novi Pazar vs FK Partizan
+💾 Synced match to DB: TSC Backa Topola vs IMT Novi Beograd
+💾 Synced match to DB: Javor vs Železničar Pančevo
+💾 Synced match to DB: Cukaricki vs Radnicki 1923
+💾 Synced 0/240 matches to database
+   [57/147] Lig 286: 240 maç → DB
+❌ Cache MISS: fixtures-league-172-2025
+📡 API Request #10/7500: /fixtures
+💾 Cached: fixtures-league-172-2025 (3600s)
+❌ Cache MISS: fixtures-league-318-2025
+📡 API Request #11/7500: /fixtures
+💾 Cached: fixtures-league-318-2025 (3600s)
+❌ Cache MISS: fixtures-league-244-2025
+📡 API Request #12/7500: /fixtures
+💾 Cached: fixtures-league-244-2025 (3600s)
+❌ Cache MISS: fixtures-league-164-2025
+📡 API Request #13/7500: /fixtures
+💾 Cached: fixtures-league-164-2025 (3600s)
+❌ Cache MISS: fixtures-league-357-2025
+📡 API Request #14/7500: /fixtures
+💾 Cached: fixtures-league-357-2025 (3600s)
+❌ Cache MISS: fixtures-league-408-2025
+📡 API Request #15/7500: /fixtures
+💾 Cached: fixtures-league-408-2025 (3600s)
+❌ Cache MISS: fixtures-league-110-2025
+📡 API Request #16/7500: /fixtures
+💾 Cached: fixtures-league-110-2025 (3600s)
+💾 Synced match to DB: Bala Town vs Flint Town United
+💾 Synced match to DB: llanelli AFC vs Barry Town
+💾 Synced match to DB: Haverfordwest County AFC vs Penybont
+💾 Synced match to DB: Cardiff MET vs Caernarfon Town
+💾 Synced match to DB: The New Saints vs Briton Ferry
+💾 Synced match to DB: Colwyn Bay vs GAP Connah S Quay FC
+💾 Synced match to DB: Briton Ferry vs Cardiff MET
+💾 Synced match to DB: Barry Town vs Colwyn Bay
+💾 Synced match to DB: Caernarfon Town vs llanelli AFC
+💾 Synced match to DB: Penybont vs The New Saints
+💾 Synced match to DB: Bala Town vs Colwyn Bay
+💾 Synced match to DB: The New Saints vs GAP Connah S Quay FC
+💾 Synced match to DB: llanelli AFC vs Briton Ferry
+💾 Synced match to DB: Barry Town vs Penybont
+💾 Synced match to DB: Haverfordwest County AFC vs Cardiff MET
+💾 Synced match to DB: Flint Town United vs Caernarfon Town
+💾 Synced match to DB: Cardiff MET vs Barry Town
+💾 Synced match to DB: Caernarfon Town vs Bala Town
+💾 Synced match to DB: Penybont vs llanelli AFC
+💾 Synced match to DB: Briton Ferry vs Haverfordwest County AFC
+💾 Synced match to DB: Colwyn Bay vs The New Saints
+💾 Synced match to DB: GAP Connah S Quay FC vs Flint Town United
+💾 Synced match to DB: llanelli AFC vs Bala Town
+💾 Synced match to DB: Barry Town vs The New Saints
+💾 Synced match to DB: Penybont vs GAP Connah S Quay FC
+💾 Synced match to DB: Colwyn Bay vs Briton Ferry
+💾 Synced match to DB: Flint Town United vs Cardiff MET
+💾 Synced match to DB: Haverfordwest County AFC vs Caernarfon Town
+💾 Synced match to DB: GAP Connah S Quay FC vs Bala Town
+💾 Synced match to DB: Bala Town vs Penybont
+💾 Synced match to DB: Cardiff MET vs Colwyn Bay
+💾 Synced match to DB: The New Saints vs Haverfordwest County AFC
+💾 Synced match to DB: llanelli AFC vs Flint Town United
+💾 Synced match to DB: Caernarfon Town vs Barry Town
+💾 Synced match to DB: The New Saints vs llanelli AFC
+💾 Synced match to DB: GAP Connah S Quay FC vs Cardiff MET
+💾 Synced match to DB: Barry Town vs Bala Town
+💾 Synced match to DB: Penybont vs Flint Town United
+💾 Synced match to DB: Briton Ferry vs Caernarfon Town
+💾 Synced match to DB: Colwyn Bay vs Haverfordwest County AFC
+💾 Synced match to DB: Bala Town vs Briton Ferry
+💾 Synced match to DB: Cardiff MET vs The New Saints
+💾 Synced match to DB: llanelli AFC vs Colwyn Bay
+💾 Synced match to DB: Haverfordwest County AFC vs GAP Connah S Quay FC
+💾 Synced match to DB: Flint Town United vs Barry Town
+💾 Synced match to DB: Caernarfon Town vs Penybont
+💾 Synced match to DB: Cardiff MET vs Penybont
+💾 Synced match to DB: The New Saints vs Flint Town United
+💾 Synced match to DB: GAP Connah S Quay FC vs Caernarfon Town
+💾 Synced match to DB: Haverfordwest County AFC vs Barry Town
+💾 Synced match to DB: Briton Ferry vs llanelli AFC
+💾 Synced match to DB: Colwyn Bay vs Bala Town
+💾 Synced match to DB: Bala Town vs The New Saints
+💾 Synced match to DB: llanelli AFC vs Haverfordwest County AFC
+💾 Synced match to DB: Barry Town vs GAP Connah S Quay FC
+💾 Synced match to DB: Penybont vs Colwyn Bay
+💾 Synced match to DB: Flint Town United vs Briton Ferry
+💾 Synced match to DB: Caernarfon Town vs Cardiff MET
+💾 Synced match to DB: Briton Ferry vs Penybont
+💾 Synced match to DB: GAP Connah S Quay FC vs llanelli AFC
+💾 Synced match to DB: Cardiff MET vs Bala Town
+💾 Synced match to DB: The New Saints vs Barry Town
+💾 Synced match to DB: Haverfordwest County AFC vs Flint Town United
+💾 Synced match to DB: Colwyn Bay vs Caernarfon Town
+💾 Synced match to DB: Bala Town vs GAP Connah S Quay FC
+💾 Synced match to DB: llanelli AFC vs Cardiff MET
+💾 Synced match to DB: Caernarfon Town vs The New Saints
+💾 Synced match to DB: Barry Town vs Briton Ferry
+💾 Synced match to DB: Penybont vs Haverfordwest County AFC
+💾 Synced match to DB: Flint Town United vs Colwyn Bay
+💾 Synced match to DB: Haverfordwest County AFC vs Bala Town
+💾 Synced match to DB: Briton Ferry vs GAP Connah S Quay FC
+💾 Synced match to DB: Barry Town vs Caernarfon Town
+💾 Synced match to DB: Colwyn Bay vs Cardiff MET
+💾 Synced match to DB: Flint Town United vs llanelli AFC
+💾 Synced match to DB: The New Saints vs Penybont
+💾 Synced match to DB: llanelli AFC vs The New Saints
+💾 Synced match to DB: GAP Connah S Quay FC vs Haverfordwest County AFC
+💾 Synced match to DB: Bala Town vs Barry Town
+💾 Synced match to DB: Penybont vs Caernarfon Town
+💾 Synced match to DB: Briton Ferry vs Colwyn Bay
+💾 Synced match to DB: Cardiff MET vs Flint Town United
+💾 Synced match to DB: Bala Town vs llanelli AFC
+💾 Synced match to DB: Cardiff MET vs GAP Connah S Quay FC
+💾 Synced match to DB: Caernarfon Town vs Briton Ferry
+💾 Synced match to DB: Haverfordwest County AFC vs The New Saints
+💾 Synced match to DB: Flint Town United vs Penybont
+💾 Synced match to DB: Colwyn Bay vs Barry Town
+💾 Synced match to DB: The New Saints vs Cardiff MET
+💾 Synced match to DB: Briton Ferry vs Bala Town
+💾 Synced match to DB: Caernarfon Town vs Haverfordwest County AFC
+💾 Synced match to DB: Barry Town vs Flint Town United
+💾 Synced match to DB: Colwyn Bay vs llanelli AFC
+💾 Synced match to DB: GAP Connah S Quay FC vs Penybont
+💾 Synced match to DB: Flint Town United vs The New Saints
+💾 Synced match to DB: llanelli AFC vs Caernarfon Town
+💾 Synced match to DB: Penybont vs Bala Town
+💾 Synced match to DB: Haverfordwest County AFC vs Colwyn Bay
+💾 Synced match to DB: The New Saints vs Caernarfon Town
+💾 Synced match to DB: Barry Town vs Haverfordwest County AFC
+💾 Synced match to DB: Bala Town vs Cardiff MET
+💾 Synced match to DB: llanelli AFC vs GAP Connah S Quay FC
+💾 Synced match to DB: Briton Ferry vs Flint Town United
+💾 Synced match to DB: Colwyn Bay vs Penybont
+💾 Synced match to DB: Bala Town vs Haverfordwest County AFC
+💾 Synced match to DB: Cardiff MET vs llanelli AFC
+💾 Synced match to DB: Caernarfon Town vs Flint Town United
+💾 Synced match to DB: GAP Connah S Quay FC vs Colwyn Bay
+💾 Synced match to DB: Penybont vs Barry Town
+💾 Synced match to DB: Briton Ferry vs The New Saints
+💾 Synced match to DB: Cardiff MET vs Briton Ferry
+💾 Synced match to DB: Flint Town United vs Haverfordwest County AFC
+💾 Synced match to DB: GAP Connah S Quay FC vs Briton Ferry
+💾 Synced match to DB: Barry Town vs Cardiff MET
+💾 Synced match to DB: Penybont vs Briton Ferry
+💾 Synced match to DB: Haverfordwest County AFC vs llanelli AFC
+💾 Synced match to DB: Flint Town United vs GAP Connah S Quay FC
+💾 Synced match to DB: Caernarfon Town vs Colwyn Bay
+💾 Synced match to DB: Cardiff MET vs Haverfordwest County AFC
+💾 Synced match to DB: Bala Town vs Caernarfon Town
+💾 Synced match to DB: Briton Ferry vs Barry Town
+💾 Synced match to DB: GAP Connah S Quay FC vs The New Saints
+💾 Synced match to DB: Colwyn Bay vs Flint Town United
+💾 Synced match to DB: llanelli AFC vs Penybont
+💾 Synced match to DB: GAP Connah S Quay FC vs Barry Town
+💾 Synced match to DB: The New Saints vs Bala Town
+💾 Synced match to DB: The New Saints vs Colwyn Bay
+💾 Synced match to DB: Caernarfon Town vs GAP Connah S Quay FC
+💾 Synced match to DB: Barry Town vs llanelli AFC
+💾 Synced match to DB: Penybont vs Cardiff MET
+💾 Synced match to DB: Haverfordwest County AFC vs Briton Ferry
+💾 Synced match to DB: Flint Town United vs Bala Town
+💾 Synced match to DB: Bala Town vs Flint Town United
+💾 Synced match to DB: Cardiff MET vs Haverfordwest County AFC
+💾 Synced match to DB: Briton Ferry vs llanelli AFC
+💾 Synced match to DB: The New Saints vs Barry Town
+💾 Synced match to DB: Penybont vs Caernarfon Town
+💾 Synced match to DB: Colwyn Bay vs GAP Connah S Quay FC
+💾 Synced match to DB: GAP Connah S Quay FC vs Caernarfon Town
+💾 Synced match to DB: Briton Ferry vs Haverfordwest County AFC
+💾 Synced match to DB: The New Saints vs Penybont
+💾 Synced match to DB: Bala Town vs Cardiff MET
+💾 Synced match to DB: llanelli AFC vs Flint Town United
+💾 Synced match to DB: Barry Town vs Colwyn Bay
+💾 Synced match to DB: Cardiff MET vs llanelli AFC
+💾 Synced match to DB: Haverfordwest County AFC vs Bala Town
+💾 Synced match to DB: Colwyn Bay vs The New Saints
+💾 Synced match to DB: Penybont vs GAP Connah S Quay FC
+💾 Synced match to DB: Caernarfon Town vs Barry Town
+💾 Synced match to DB: Flint Town United vs Briton Ferry
+💾 Synced match to DB: The New Saints vs Caernarfon Town
+💾 Synced match to DB: llanelli AFC vs Haverfordwest County AFC
+💾 Synced match to DB: Briton Ferry vs Bala Town
+💾 Synced match to DB: Barry Town vs GAP Connah S Quay FC
+💾 Synced match to DB: Colwyn Bay vs Penybont
+💾 Synced match to DB: Flint Town United vs Cardiff MET
+💾 Synced match to DB: Bala Town vs llanelli AFC
+💾 Synced match to DB: Cardiff MET vs Briton Ferry
+💾 Synced match to DB: Caernarfon Town vs Colwyn Bay
+💾 Synced match to DB: Haverfordwest County AFC vs Flint Town United
+💾 Synced match to DB: GAP Connah S Quay FC vs The New Saints
+💾 Synced match to DB: Barry Town vs Penybont
+💾 Synced match to DB: llanelli AFC vs Briton Ferry
+💾 Synced match to DB: Caernarfon Town vs GAP Connah S Quay FC
+💾 Synced match to DB: Haverfordwest County AFC vs Cardiff MET
+💾 Synced match to DB: Flint Town United vs Bala Town
+💾 Synced match to DB: Penybont vs The New Saints
+💾 Synced match to DB: Colwyn Bay vs Barry Town
+💾 Synced match to DB: Bala Town vs Haverfordwest County AFC
+💾 Synced match to DB: The New Saints vs Colwyn Bay
+💾 Synced match to DB: llanelli AFC vs Cardiff MET
+💾 Synced match to DB: GAP Connah S Quay FC vs Penybont
+💾 Synced match to DB: Barry Town vs Caernarfon Town
+💾 Synced match to DB: Briton Ferry vs Flint Town United
+💾 Synced match to DB: Caernarfon Town vs The New Saints
+💾 Synced match to DB: Haverfordwest County AFC vs Briton Ferry
+💾 Synced match to DB: Cardiff MET vs Bala Town
+💾 Synced match to DB: Penybont vs Colwyn Bay
+💾 Synced match to DB: Flint Town United vs llanelli AFC
+💾 Synced match to DB: GAP Connah S Quay FC vs Barry Town
+💾 Synced match to DB: The New Saints vs GAP Connah S Quay FC
+💾 Synced match to DB: llanelli AFC vs Bala Town
+💾 Synced match to DB: Penybont vs Barry Town
+💾 Synced match to DB: Briton Ferry vs Cardiff MET
+💾 Synced match to DB: Colwyn Bay vs Caernarfon Town
+💾 Synced match to DB: Flint Town United vs Haverfordwest County AFC
+💾 Synced match to DB: Bala Town vs Briton Ferry
+💾 Synced match to DB: Cardiff MET vs Flint Town United
+💾 Synced match to DB: Caernarfon Town vs Penybont
+💾 Synced match to DB: GAP Connah S Quay FC vs Colwyn Bay
+💾 Synced match to DB: Barry Town vs The New Saints
+💾 Synced match to DB: Haverfordwest County AFC vs llanelli AFC
+💾 Synced 0/192 matches to database
+   [64/147] Lig 110: 192 maç → DB
+❌ Cache MISS: fixtures-league-332-2025
+📡 API Request #17/7500: /fixtures
+💾 Cached: fixtures-league-332-2025 (3600s)
+💾 Synced match to DB: Dunajska Streda vs Zemplín Michalovce
+💾 Synced match to DB: Komárno vs AS Trencin
+💾 Synced match to DB: Tatran Prešov vs Slovan Bratislava
+💾 Synced match to DB: Podbrezová vs FK Košice
+💾 Synced match to DB: Skalica vs Žilina
+💾 Synced match to DB: Spartak Trnava vs Ružomberok
+💾 Synced match to DB: Zemplín Michalovce vs Komárno
+💾 Synced match to DB: Slovan Bratislava vs Podbrezová
+💾 Synced match to DB: AS Trencin vs Spartak Trnava
+💾 Synced match to DB: Žilina vs Tatran Prešov
+💾 Synced match to DB: Zemplín Michalovce vs Žilina
+💾 Synced match to DB: Skalica vs Podbrezová
+💾 Synced match to DB: Dunajska Streda vs Ružomberok
+💾 Synced match to DB: FK Košice vs AS Trencin
+💾 Synced match to DB: Spartak Trnava vs Tatran Prešov
+💾 Synced match to DB: Ružomberok vs Skalica
+💾 Synced match to DB: Slovan Bratislava vs Skalica
+💾 Synced match to DB: Podbrezová vs Komárno
+💾 Synced match to DB: Ružomberok vs Zemplín Michalovce
+💾 Synced match to DB: Tatran Prešov vs Dunajska Streda
+💾 Synced match to DB: AS Trencin vs Žilina
+💾 Synced match to DB: FK Košice vs Ružomberok
+💾 Synced match to DB: Skalica vs Tatran Prešov
+💾 Synced match to DB: Dunajska Streda vs AS Trencin
+💾 Synced match to DB: Komárno vs Spartak Trnava
+💾 Synced match to DB: Zemplín Michalovce vs Slovan Bratislava
+💾 Synced match to DB: Žilina vs Podbrezová
+💾 Synced match to DB: Komárno vs Skalica
+💾 Synced match to DB: Tatran Prešov vs AS Trencin
+💾 Synced match to DB: Podbrezová vs Zemplín Michalovce
+💾 Synced match to DB: Slovan Bratislava vs FK Košice
+💾 Synced match to DB: Ružomberok vs Žilina
+💾 Synced match to DB: Spartak Trnava vs Dunajska Streda
+💾 Synced match to DB: AS Trencin vs Ružomberok
+💾 Synced match to DB: FK Košice vs Komárno
+💾 Synced match to DB: Skalica vs Spartak Trnava
+💾 Synced match to DB: Žilina vs Slovan Bratislava
+💾 Synced match to DB: Zemplín Michalovce vs Tatran Prešov
+💾 Synced match to DB: Dunajska Streda vs Podbrezová
+💾 Synced match to DB: Podbrezová vs AS Trencin
+💾 Synced match to DB: Skalica vs FK Košice
+💾 Synced match to DB: Tatran Prešov vs Ružomberok
+💾 Synced match to DB: Slovan Bratislava vs Dunajska Streda
+💾 Synced match to DB: Komárno vs Žilina
+💾 Synced match to DB: Spartak Trnava vs Zemplín Michalovce
+💾 Synced match to DB: AS Trencin vs Slovan Bratislava
+💾 Synced match to DB: Dunajska Streda vs Komárno
+💾 Synced match to DB: Zemplín Michalovce vs Skalica
+💾 Synced match to DB: FK Košice vs Tatran Prešov
+💾 Synced match to DB: Ružomberok vs Podbrezová
+💾 Synced match to DB: Žilina vs Spartak Trnava
+💾 Synced match to DB: FK Košice vs Dunajska Streda
+💾 Synced match to DB: Zemplín Michalovce vs AS Trencin
+💾 Synced match to DB: Komárno vs Tatran Prešov
+💾 Synced match to DB: Žilina vs FK Košice
+💾 Synced match to DB: Skalica vs Dunajska Streda
+💾 Synced match to DB: AS Trencin vs Skalica
+💾 Synced match to DB: Ružomberok vs Komárno
+💾 Synced match to DB: Tatran Prešov vs Podbrezová
+💾 Synced match to DB: Spartak Trnava vs Slovan Bratislava
+💾 Synced match to DB: FK Košice vs Zemplín Michalovce
+💾 Synced match to DB: Dunajska Streda vs Žilina
+💾 Synced match to DB: AS Trencin vs Komárno
+💾 Synced match to DB: Zemplín Michalovce vs Dunajska Streda
+💾 Synced match to DB: Žilina vs Skalica
+💾 Synced match to DB: FK Košice vs Podbrezová
+💾 Synced match to DB: Ružomberok vs Spartak Trnava
+💾 Synced match to DB: Slovan Bratislava vs Tatran Prešov
+💾 Synced match to DB: Spartak Trnava vs FK Košice
+💾 Synced match to DB: Komárno vs Slovan Bratislava
+💾 Synced match to DB: Podbrezová vs Slovan Bratislava
+💾 Synced match to DB: Skalica vs Ružomberok
+💾 Synced match to DB: Tatran Prešov vs Žilina
+💾 Synced match to DB: Dunajska Streda vs FK Košice
+💾 Synced match to DB: Komárno vs Zemplín Michalovce
+💾 Synced match to DB: Spartak Trnava vs AS Trencin
+💾 Synced match to DB: AS Trencin vs FK Košice
+💾 Synced match to DB: Podbrezová vs Skalica
+💾 Synced match to DB: Ružomberok vs Dunajska Streda
+💾 Synced match to DB: Žilina vs Zemplín Michalovce
+💾 Synced match to DB: Slovan Bratislava vs Komárno
+💾 Synced match to DB: Tatran Prešov vs Spartak Trnava
+💾 Synced match to DB: Žilina vs AS Trencin
+💾 Synced match to DB: Komárno vs Podbrezová
+💾 Synced match to DB: Skalica vs Slovan Bratislava
+💾 Synced match to DB: FK Košice vs Spartak Trnava
+💾 Synced match to DB: Zemplín Michalovce vs Ružomberok
+💾 Synced match to DB: Dunajska Streda vs Tatran Prešov
+💾 Synced match to DB: Spartak Trnava vs Komárno
+💾 Synced match to DB: Ružomberok vs FK Košice
+💾 Synced match to DB: Tatran Prešov vs Skalica
+💾 Synced match to DB: AS Trencin vs Dunajska Streda
+💾 Synced match to DB: Slovan Bratislava vs Zemplín Michalovce
+💾 Synced match to DB: Podbrezová vs Žilina
+💾 Synced match to DB: Slovan Bratislava vs Ružomberok
+💾 Synced match to DB: Podbrezová vs Spartak Trnava
+💾 Synced match to DB: Zemplín Michalovce vs Podbrezová
+💾 Synced match to DB: Žilina vs Ružomberok
+💾 Synced match to DB: Skalica vs Komárno
+💾 Synced match to DB: FK Košice vs Slovan Bratislava
+💾 Synced match to DB: AS Trencin vs Tatran Prešov
+💾 Synced match to DB: Dunajska Streda vs Spartak Trnava
+💾 Synced match to DB: Spartak Trnava vs Skalica
+💾 Synced match to DB: Podbrezová vs Dunajska Streda
+💾 Synced match to DB: Ružomberok vs AS Trencin
+💾 Synced match to DB: Tatran Prešov vs Zemplín Michalovce
+💾 Synced match to DB: Komárno vs FK Košice
+💾 Synced match to DB: Slovan Bratislava vs Žilina
+💾 Synced match to DB: AS Trencin vs Podbrezová
+💾 Synced match to DB: Ružomberok vs Tatran Prešov
+💾 Synced match to DB: FK Košice vs Skalica
+💾 Synced match to DB: Dunajska Streda vs Slovan Bratislava
+💾 Synced match to DB: Žilina vs Komárno
+💾 Synced match to DB: Zemplín Michalovce vs Spartak Trnava
+💾 Synced match to DB: Slovan Bratislava vs AS Trencin
+💾 Synced match to DB: Podbrezová vs Ružomberok
+💾 Synced match to DB: Skalica vs Zemplín Michalovce
+💾 Synced match to DB: Tatran Prešov vs FK Košice
+💾 Synced match to DB: Komárno vs Dunajska Streda
+💾 Synced match to DB: Spartak Trnava vs Žilina
+💾 Synced match to DB: AS Trencin vs Zemplín Michalovce
+💾 Synced match to DB: Dunajska Streda vs Skalica
+💾 Synced match to DB: Tatran Prešov vs Komárno
+💾 Synced match to DB: Spartak Trnava vs Podbrezová
+💾 Synced match to DB: Ružomberok vs Slovan Bratislava
+💾 Synced match to DB: FK Košice vs Žilina
+💾 Synced match to DB: Slovan Bratislava vs Spartak Trnava
+💾 Synced match to DB: Podbrezová vs Tatran Prešov
+💾 Synced match to DB: Zemplín Michalovce vs FK Košice
+💾 Synced match to DB: Žilina vs Dunajska Streda
+💾 Synced match to DB: Komárno vs Ružomberok
+💾 Synced match to DB: Skalica vs AS Trencin
+💾 Synced 0/132 matches to database
+   [65/147] Lig 332: 132 maç → DB
+❌ Cache MISS: fixtures-league-373-2025
+📡 API Request #18/7500: /fixtures
+💾 Cached: fixtures-league-373-2025 (3600s)
+❌ Cache MISS: fixtures-league-116-2025
+📡 API Request #19/7500: /fixtures
+💾 Cached: fixtures-league-116-2025 (3600s)
+💾 Synced match to DB: FC Minsk vs Naftan
+💾 Synced match to DB: FC Isloch Minsk R. vs Slavia Mozyr
+💾 Synced match to DB: FC Gomel vs Torpedo Zhodino
+💾 Synced match to DB: Neman vs Molodechno-DYuSSh 4
+💾 Synced match to DB: FC Vitebsk vs Bate Borisov
+💾 Synced match to DB: Arsenal vs Dinamo Brest
+💾 Synced match to DB: FC Slutsk vs ML Vitebsk
+💾 Synced match to DB: Dinamo Minsk vs Smorgon
+💾 Synced match to DB: Slavia Mozyr vs Molodechno-DYuSSh 4
+💾 Synced match to DB: Bate Borisov vs FC Isloch Minsk R.
+💾 Synced match to DB: ML Vitebsk vs Arsenal
+💾 Synced match to DB: FC Slutsk vs Smorgon
+💾 Synced match to DB: FC Minsk vs FC Vitebsk
+💾 Synced match to DB: Torpedo Zhodino vs Dinamo Minsk
+💾 Synced match to DB: Naftan vs Dinamo Brest
+💾 Synced match to DB: Neman vs FC Gomel
+💾 Synced match to DB: FC Slutsk vs Torpedo Zhodino
+💾 Synced match to DB: Dinamo Brest vs ML Vitebsk
+💾 Synced match to DB: Molodechno-DYuSSh 4 vs Bate Borisov
+💾 Synced match to DB: FC Vitebsk vs Naftan
+💾 Synced match to DB: FC Isloch Minsk R. vs FC Minsk
+💾 Synced match to DB: Arsenal vs Smorgon
+💾 Synced match to DB: FC Gomel vs Slavia Mozyr
+💾 Synced match to DB: FC Vitebsk vs FC Isloch Minsk R.
+💾 Synced match to DB: Neman vs FC Slutsk
+💾 Synced match to DB: Naftan vs ML Vitebsk
+💾 Synced match to DB: Torpedo Zhodino vs Arsenal
+💾 Synced match to DB: Bate Borisov vs FC Gomel
+💾 Synced match to DB: FC Minsk vs Molodechno-DYuSSh 4
+💾 Synced match to DB: Slavia Mozyr vs Dinamo Minsk
+💾 Synced match to DB: Dinamo Brest vs Smorgon
+💾 Synced match to DB: FC Slutsk vs Slavia Mozyr
+💾 Synced match to DB: FC Minsk vs FC Gomel
+💾 Synced match to DB: Molodechno-DYuSSh 4 vs FC Vitebsk
+💾 Synced match to DB: Arsenal vs Neman
+💾 Synced match to DB: FC Isloch Minsk R. vs Naftan
+💾 Synced match to DB: Dinamo Minsk vs Bate Borisov
+💾 Synced match to DB: ML Vitebsk vs Smorgon
+💾 Synced match to DB: Dinamo Brest vs Torpedo Zhodino
+💾 Synced match to DB: Bate Borisov vs FC Slutsk
+💾 Synced match to DB: Slavia Mozyr vs Arsenal
+💾 Synced match to DB: Naftan vs Smorgon
+💾 Synced match to DB: FC Vitebsk vs FC Gomel
+💾 Synced match to DB: Neman vs Dinamo Brest
+💾 Synced match to DB: FC Isloch Minsk R. vs Molodechno-DYuSSh 4
+💾 Synced match to DB: Torpedo Zhodino vs ML Vitebsk
+💾 Synced match to DB: Dinamo Minsk vs FC Minsk
+💾 Synced match to DB: Molodechno-DYuSSh 4 vs Naftan
+💾 Synced match to DB: Arsenal vs Bate Borisov
+💾 Synced match to DB: Dinamo Minsk vs FC Vitebsk
+💾 Synced match to DB: Smorgon vs Torpedo Zhodino
+💾 Synced match to DB: ML Vitebsk vs Neman
+💾 Synced match to DB: Dinamo Brest vs Slavia Mozyr
+💾 Synced match to DB: FC Gomel vs FC Isloch Minsk R.
+💾 Synced match to DB: FC Slutsk vs FC Minsk
+💾 Synced match to DB: FC Minsk vs Arsenal
+💾 Synced match to DB: Molodechno-DYuSSh 4 vs FC Gomel
+💾 Synced match to DB: Bate Borisov vs Dinamo Brest
+💾 Synced match to DB: FC Vitebsk vs FC Slutsk
+💾 Synced match to DB: FC Isloch Minsk R. vs Dinamo Minsk
+💾 Synced match to DB: Neman vs Smorgon
+💾 Synced match to DB: Naftan vs Torpedo Zhodino
+💾 Synced match to DB: Slavia Mozyr vs ML Vitebsk
+💾 Synced match to DB: Smorgon vs Slavia Mozyr
+💾 Synced match to DB: Torpedo Zhodino vs Neman
+💾 Synced match to DB: FC Gomel vs Naftan
+💾 Synced match to DB: FC Slutsk vs FC Isloch Minsk R.
+💾 Synced match to DB: Dinamo Brest vs FC Minsk
+💾 Synced match to DB: Dinamo Minsk vs Molodechno-DYuSSh 4
+💾 Synced match to DB: Arsenal vs FC Vitebsk
+💾 Synced match to DB: ML Vitebsk vs Bate Borisov
+💾 Synced match to DB: Naftan vs Neman
+💾 Synced match to DB: Slavia Mozyr vs Torpedo Zhodino
+💾 Synced match to DB: FC Isloch Minsk R. vs Arsenal
+💾 Synced match to DB: FC Vitebsk vs Dinamo Brest
+💾 Synced match to DB: FC Minsk vs ML Vitebsk
+💾 Synced match to DB: Molodechno-DYuSSh 4 vs FC Slutsk
+💾 Synced match to DB: FC Gomel vs Dinamo Minsk
+💾 Synced match to DB: Bate Borisov vs Smorgon
+💾 Synced match to DB: Dinamo Brest vs FC Isloch Minsk R.
+💾 Synced match to DB: Torpedo Zhodino vs Bate Borisov
+💾 Synced match to DB: Neman vs Slavia Mozyr
+💾 Synced match to DB: Dinamo Minsk vs Naftan
+💾 Synced match to DB: ML Vitebsk vs FC Vitebsk
+💾 Synced match to DB: FC Slutsk vs FC Gomel
+💾 Synced match to DB: Smorgon vs FC Minsk
+💾 Synced match to DB: Arsenal vs Molodechno-DYuSSh 4
+💾 Synced match to DB: Molodechno-DYuSSh 4 vs Dinamo Brest
+💾 Synced match to DB: FC Gomel vs Arsenal
+💾 Synced match to DB: FC Minsk vs Torpedo Zhodino
+💾 Synced match to DB: FC Slutsk vs Dinamo Minsk
+💾 Synced match to DB: Dinamo Minsk vs FC Slutsk
+💾 Synced match to DB: Bate Borisov vs Neman
+💾 Synced match to DB: Naftan vs Slavia Mozyr
+💾 Synced match to DB: FC Isloch Minsk R. vs ML Vitebsk
+💾 Synced match to DB: FC Vitebsk vs Smorgon
+💾 Synced match to DB: Dinamo Minsk vs Neman
+💾 Synced match to DB: Smorgon vs FC Isloch Minsk R.
+💾 Synced match to DB: Slavia Mozyr vs Bate Borisov
+💾 Synced match to DB: FC Slutsk vs Naftan
+💾 Synced match to DB: Dinamo Brest vs FC Gomel
+💾 Synced match to DB: ML Vitebsk vs Molodechno-DYuSSh 4
+💾 Synced match to DB: Arsenal vs Dinamo Minsk
+💾 Synced match to DB: Neman vs FC Minsk
+💾 Synced match to DB: Torpedo Zhodino vs FC Vitebsk
+💾 Synced match to DB: Molodechno-DYuSSh 4 vs Smorgon
+💾 Synced match to DB: FC Minsk vs Slavia Mozyr
+💾 Synced match to DB: FC Isloch Minsk R. vs Torpedo Zhodino
+💾 Synced match to DB: FC Vitebsk vs Neman
+💾 Synced match to DB: FC Gomel vs ML Vitebsk
+💾 Synced match to DB: Dinamo Minsk vs Dinamo Brest
+💾 Synced match to DB: Naftan vs Bate Borisov
+💾 Synced match to DB: FC Slutsk vs Arsenal
+💾 Synced match to DB: ML Vitebsk vs Dinamo Minsk
+💾 Synced match to DB: Torpedo Zhodino vs Molodechno-DYuSSh 4
+💾 Synced match to DB: Dinamo Brest vs FC Slutsk
+💾 Synced match to DB: Neman vs FC Isloch Minsk R.
+💾 Synced match to DB: Smorgon vs FC Gomel
+💾 Synced match to DB: Slavia Mozyr vs FC Vitebsk
+💾 Synced match to DB: Bate Borisov vs FC Minsk
+💾 Synced match to DB: Arsenal vs Naftan
+💾 Synced match to DB: Bate Borisov vs FC Vitebsk
+💾 Synced match to DB: Naftan vs FC Minsk
+💾 Synced match to DB: Slavia Mozyr vs FC Isloch Minsk R.
+💾 Synced match to DB: Dinamo Brest vs Arsenal
+💾 Synced match to DB: ML Vitebsk vs FC Slutsk
+💾 Synced match to DB: Molodechno-DYuSSh 4 vs Slavia Mozyr
+💾 Synced match to DB: Smorgon vs FC Slutsk
+💾 Synced match to DB: FC Isloch Minsk R. vs Bate Borisov
+💾 Synced match to DB: FC Vitebsk vs FC Minsk
+💾 Synced match to DB: Dinamo Brest vs Naftan
+💾 Synced match to DB: Arsenal vs ML Vitebsk
+💾 Synced match to DB: Dinamo Minsk vs Torpedo Zhodino
+💾 Synced match to DB: Smorgon vs Arsenal
+💾 Synced match to DB: Slavia Mozyr vs FC Gomel
+💾 Synced match to DB: Bate Borisov vs Molodechno-DYuSSh 4
+💾 Synced match to DB: Naftan vs FC Vitebsk
+💾 Synced match to DB: Torpedo Zhodino vs FC Slutsk
+💾 Synced match to DB: FC Minsk vs FC Isloch Minsk R.
+💾 Synced match to DB: ML Vitebsk vs Dinamo Brest
+💾 Synced match to DB: FC Gomel vs Bate Borisov
+💾 Synced match to DB: ML Vitebsk vs Naftan
+💾 Synced match to DB: Smorgon vs Dinamo Brest
+💾 Synced match to DB: Molodechno-DYuSSh 4 vs FC Minsk
+💾 Synced match to DB: Arsenal vs Torpedo Zhodino
+💾 Synced match to DB: FC Isloch Minsk R. vs FC Vitebsk
+💾 Synced match to DB: Dinamo Minsk vs Slavia Mozyr
+💾 Synced match to DB: Naftan vs FC Isloch Minsk R.
+💾 Synced match to DB: FC Gomel vs FC Minsk
+💾 Synced match to DB: FC Vitebsk vs Molodechno-DYuSSh 4
+💾 Synced match to DB: Smorgon vs ML Vitebsk
+💾 Synced match to DB: Slavia Mozyr vs FC Slutsk
+💾 Synced match to DB: Bate Borisov vs Dinamo Minsk
+💾 Synced match to DB: Torpedo Zhodino vs Dinamo Brest
+💾 Synced match to DB: Molodechno-DYuSSh 4 vs Neman
+💾 Synced match to DB: Arsenal vs Slavia Mozyr
+💾 Synced match to DB: Smorgon vs Naftan
+💾 Synced match to DB: FC Slutsk vs Bate Borisov
+💾 Synced match to DB: ML Vitebsk vs Torpedo Zhodino
+💾 Synced match to DB: Molodechno-DYuSSh 4 vs FC Isloch Minsk R.
+💾 Synced match to DB: FC Minsk vs Dinamo Minsk
+💾 Synced match to DB: Dinamo Brest vs Neman
+💾 Synced match to DB: FC Gomel vs FC Vitebsk
+💾 Synced match to DB: Naftan vs Molodechno-DYuSSh 4
+💾 Synced match to DB: Torpedo Zhodino vs Smorgon
+💾 Synced match to DB: FC Isloch Minsk R. vs FC Gomel
+💾 Synced match to DB: FC Vitebsk vs Dinamo Minsk
+💾 Synced match to DB: Neman vs ML Vitebsk
+💾 Synced match to DB: Bate Borisov vs Arsenal
+💾 Synced match to DB: Slavia Mozyr vs Dinamo Brest
+💾 Synced match to DB: FC Minsk vs FC Slutsk
+💾 Synced match to DB: Smorgon vs Dinamo Minsk
+💾 Synced match to DB: FC Gomel vs Neman
+💾 Synced match to DB: Torpedo Zhodino vs Naftan
+💾 Synced match to DB: Arsenal vs FC Minsk
+💾 Synced match to DB: FC Slutsk vs FC Vitebsk
+💾 Synced match to DB: Dinamo Brest vs Bate Borisov
+💾 Synced match to DB: ML Vitebsk vs Slavia Mozyr
+💾 Synced match to DB: FC Gomel vs Molodechno-DYuSSh 4
+💾 Synced match to DB: Smorgon vs Neman
+💾 Synced match to DB: Dinamo Minsk vs FC Isloch Minsk R.
+💾 Synced match to DB: FC Minsk vs Dinamo Brest
+💾 Synced match to DB: Bate Borisov vs ML Vitebsk
+💾 Synced match to DB: Naftan vs FC Gomel
+💾 Synced match to DB: Molodechno-DYuSSh 4 vs Dinamo Minsk
+💾 Synced match to DB: Neman vs Torpedo Zhodino
+💾 Synced match to DB: FC Vitebsk vs Arsenal
+💾 Synced match to DB: FC Isloch Minsk R. vs FC Slutsk
+💾 Synced match to DB: Slavia Mozyr vs Smorgon
+💾 Synced match to DB: Neman vs Arsenal
+💾 Synced match to DB: FC Slutsk vs Neman
+💾 Synced match to DB: Arsenal vs FC Isloch Minsk R.
+💾 Synced match to DB: Dinamo Brest vs FC Vitebsk
+💾 Synced match to DB: Smorgon vs Bate Borisov
+💾 Synced match to DB: Torpedo Zhodino vs Slavia Mozyr
+💾 Synced match to DB: Dinamo Minsk vs FC Gomel
+💾 Synced match to DB: FC Slutsk vs Molodechno-DYuSSh 4
+💾 Synced match to DB: Neman vs Naftan
+💾 Synced match to DB: ML Vitebsk vs FC Minsk
+💾 Synced match to DB: FC Minsk vs Smorgon
+💾 Synced match to DB: Naftan vs Dinamo Minsk
+💾 Synced match to DB: Slavia Mozyr vs Neman
+💾 Synced match to DB: FC Gomel vs FC Slutsk
+💾 Synced match to DB: Bate Borisov vs Torpedo Zhodino
+💾 Synced match to DB: FC Isloch Minsk R. vs Dinamo Brest
+💾 Synced match to DB: Molodechno-DYuSSh 4 vs Arsenal
+💾 Synced match to DB: FC Vitebsk vs ML Vitebsk
+💾 Synced match to DB: Torpedo Zhodino vs FC Gomel
+💾 Synced match to DB: Neman vs Dinamo Minsk
+💾 Synced match to DB: Dinamo Brest vs Molodechno-DYuSSh 4
+💾 Synced match to DB: Smorgon vs FC Vitebsk
+💾 Synced match to DB: Slavia Mozyr vs Naftan
+💾 Synced match to DB: ML Vitebsk vs FC Isloch Minsk R.
+💾 Synced match to DB: Arsenal vs FC Gomel
+💾 Synced match to DB: Dinamo Minsk vs FC Slutsk
+💾 Synced match to DB: Neman vs Bate Borisov
+💾 Synced match to DB: Torpedo Zhodino vs FC Minsk
+💾 Synced match to DB: Molodechno-DYuSSh 4 vs ML Vitebsk
+💾 Synced match to DB: FC Gomel vs Dinamo Brest
+💾 Synced match to DB: Naftan vs FC Slutsk
+💾 Synced match to DB: FC Minsk vs Neman
+💾 Synced match to DB: Dinamo Minsk vs Arsenal
+💾 Synced match to DB: FC Isloch Minsk R. vs Smorgon
+💾 Synced match to DB: Bate Borisov vs Slavia Mozyr
+💾 Synced match to DB: FC Vitebsk vs Torpedo Zhodino
+💾 Synced match to DB: Neman vs FC Vitebsk
+💾 Synced match to DB: Arsenal vs FC Slutsk
+💾 Synced match to DB: Bate Borisov vs Naftan
+💾 Synced match to DB: Smorgon vs Molodechno-DYuSSh 4
+💾 Synced match to DB: Torpedo Zhodino vs FC Isloch Minsk R.
+💾 Synced match to DB: Slavia Mozyr vs FC Minsk
+💾 Synced match to DB: Dinamo Brest vs Dinamo Minsk
+💾 Synced match to DB: ML Vitebsk vs FC Gomel
+💾 Synced match to DB: FC Slutsk vs Dinamo Brest
+💾 Synced match to DB: FC Vitebsk vs Slavia Mozyr
+💾 Synced match to DB: FC Gomel vs Smorgon
+💾 Synced match to DB: FC Isloch Minsk R. vs Neman
+💾 Synced match to DB: Dinamo Minsk vs ML Vitebsk
+💾 Synced match to DB: Naftan vs Arsenal
+💾 Synced match to DB: FC Minsk vs Bate Borisov
+💾 Synced match to DB: Molodechno-DYuSSh 4 vs Torpedo Zhodino
+💾 Synced match to DB: Smorgon vs Belshina
+💾 Synced match to DB: Belshina vs Smorgon
+💾 Synced 0/243 matches to database
+   [67/147] Lig 116: 243 maç → DB
+❌ Cache MISS: fixtures-league-387-2025
+📡 API Request #20/7500: /fixtures
+💾 Cached: fixtures-league-387-2025 (3600s)
+❌ Cache MISS: fixtures-league-420-2025
+📡 API Request #21/7500: /fixtures
+💾 Cached: fixtures-league-420-2025 (3600s)
+💾 Synced match to DB: Qaradağ Lökbatan vs Ağdaş
+💾 Synced match to DB: Dinamo Bakı vs Kür-Araz
+💾 Synced match to DB: Ağstafa Gəncləri vs Şirvan FK
+💾 Synced match to DB: Şəki PFK vs Araz Saatlı
+💾 Synced match to DB: Goy-Gol vs Şəmkir
+💾 Synced match to DB: Hypers Guba vs Xankəndi FK
+💾 Synced match to DB: Kapaz vs Ağstafa Gəncləri
+💾 Synced match to DB: Qaradağ Lökbatan vs Mil-Muğan
+💾 Synced match to DB: Karvan vs Şəki PFK
+💾 Synced match to DB: Goy-Gol vs Baku Sportinq
+💾 Synced match to DB: Cəbrayıl vs Safa Baku
+💾 Synced match to DB: Dinamo Bakı vs Turan
+💾 Synced match to DB: Zaqatala vs Sumqayıt
+💾 Synced match to DB: Şimal vs Şahdağ
+💾 Synced match to DB: Xankəndi FK vs Difai Ağsu
+💾 Synced match to DB: Qabala vs Mingəçevir
+💾 Synced match to DB: Səbail vs Keshla FC
+💾 Synced match to DB: Neftchi Baku vs MOIK
+💾 Synced match to DB: Şahdağ vs Turan
+💾 Synced match to DB: Zira vs Neftchi Baku
+💾 Synced match to DB: Keshla FC vs Baku Sportinq
+💾 Synced match to DB: Mil-Muğan vs Sabah FA
+💾 Synced match to DB: Qarabag vs Karvan
+💾 Synced match to DB: Qabala vs Safa Baku
+💾 Synced match to DB: Araz vs Kapaz
+💾 Synced match to DB: Difai Ağsu vs Sumqayıt
+💾 Synced match to DB: Sumqayıt vs Zira
+💾 Synced match to DB: Sabah FA vs Qabala
+💾 Synced match to DB: Keshla FC vs Qarabag
+💾 Synced match to DB: Turan vs Kapaz
+💾 Synced match to DB: Qarabag vs Keshla FC
+💾 Synced match to DB: Qabala vs Sabah FA
+💾 Synced match to DB: Zira vs Sumqayıt
+💾 Synced match to DB: Kapaz vs Turan
+💾 Synced 0/34 matches to database
+   [69/147] Lig 420: 34 maç → DB
+❌ Cache MISS: fixtures-league-325-2025
+📡 API Request #22/7500: /fixtures
+💾 Cached: fixtures-league-325-2025 (3600s)
+❌ Cache MISS: fixtures-league-342-2025
+📡 API Request #23/7500: /fixtures
+💾 Cached: fixtures-league-342-2025 (3600s)
+💾 Synced match to DB: Gandzasar vs Ararat
+💾 Synced match to DB: BKMA vs FC Urartu
+💾 Synced match to DB: FC Noah vs Shirak
+💾 Synced match to DB: Alashkert vs Pyunik Yerevan
+💾 Synced match to DB: Van vs Ararat-Armenia
+💾 Synced match to DB: Ararat vs Van
+💾 Synced match to DB: FC Urartu vs Gandzasar
+💾 Synced match to DB: Shirak vs Pyunik Yerevan
+💾 Synced match to DB: Van vs FC Urartu
+💾 Synced match to DB: Alashkert vs Ararat
+💾 Synced match to DB: BKMA vs Shirak
+💾 Synced match to DB: FC Noah vs Gandzasar
+💾 Synced match to DB: Ararat vs Pyunik Yerevan
+💾 Synced match to DB: FC Urartu vs Alashkert
+💾 Synced match to DB: BKMA vs Gandzasar
+💾 Synced match to DB: Shirak vs Ararat-Armenia
+💾 Synced match to DB: BKMA vs Van
+💾 Synced match to DB: Pyunik Yerevan vs FC Urartu
+💾 Synced match to DB: Gandzasar vs Shirak
+💾 Synced match to DB: Ararat-Armenia vs Ararat
+💾 Synced match to DB: Alashkert vs FC Noah
+💾 Synced match to DB: Gandzasar vs Van
+💾 Synced match to DB: Shirak vs Ararat
+💾 Synced match to DB: BKMA vs Alashkert
+💾 Synced match to DB: FC Urartu vs Ararat-Armenia
+💾 Synced match to DB: FC Noah vs Pyunik Yerevan
+💾 Synced match to DB: Van vs Shirak
+💾 Synced match to DB: FC Urartu vs Ararat
+💾 Synced match to DB: Pyunik Yerevan vs BKMA
+💾 Synced match to DB: Ararat-Armenia vs FC Noah
+💾 Synced match to DB: Alashkert vs Gandzasar
+💾 Synced match to DB: FC Noah vs Van
+💾 Synced match to DB: Ararat-Armenia vs Alashkert
+💾 Synced match to DB: Shirak vs FC Urartu
+💾 Synced match to DB: Gandzasar vs Pyunik Yerevan
+💾 Synced match to DB: FC Noah vs Ararat
+💾 Synced match to DB: Van vs Alashkert
+💾 Synced match to DB: BKMA vs Ararat-Armenia
+💾 Synced match to DB: Alashkert vs Shirak
+💾 Synced match to DB: Pyunik Yerevan vs Van
+💾 Synced match to DB: Ararat vs BKMA
+💾 Synced match to DB: Ararat-Armenia vs Gandzasar
+💾 Synced match to DB: FC Urartu vs FC Noah
+💾 Synced match to DB: Shirak vs Alashkert
+💾 Synced match to DB: Van vs Pyunik Yerevan
+💾 Synced match to DB: FC Noah vs FC Urartu
+💾 Synced match to DB: Gandzasar vs Ararat-Armenia
+💾 Synced match to DB: BKMA vs Ararat
+💾 Synced match to DB: Alashkert vs Van
+💾 Synced match to DB: FC Urartu vs Shirak
+💾 Synced match to DB: Pyunik Yerevan vs Gandzasar
+💾 Synced match to DB: Ararat-Armenia vs BKMA
+💾 Synced match to DB: Ararat vs FC Noah
+💾 Synced match to DB: FC Noah vs Ararat-Armenia
+💾 Synced match to DB: BKMA vs Pyunik Yerevan
+💾 Synced match to DB: Shirak vs Van
+💾 Synced match to DB: Gandzasar vs Alashkert
+💾 Synced match to DB: Ararat vs FC Urartu
+💾 Synced match to DB: Alashkert vs BKMA
+💾 Synced match to DB: Ararat-Armenia vs FC Urartu
+💾 Synced match to DB: Van vs Gandzasar
+💾 Synced match to DB: Ararat vs Shirak
+💾 Synced match to DB: Ararat vs Ararat-Armenia
+💾 Synced match to DB: FC Urartu vs Pyunik Yerevan
+💾 Synced match to DB: Shirak vs Gandzasar
+💾 Synced match to DB: FC Noah vs Alashkert
+💾 Synced match to DB: Van vs BKMA
+💾 Synced match to DB: Pyunik Yerevan vs Ararat-Armenia
+💾 Synced match to DB: Gandzasar vs BKMA
+💾 Synced match to DB: Alashkert vs FC Urartu
+💾 Synced match to DB: Pyunik Yerevan vs Ararat
+💾 Synced match to DB: Ararat-Armenia vs Shirak
+💾 Synced match to DB: Van vs FC Noah
+💾 Synced match to DB: FC Noah vs BKMA
+💾 Synced match to DB: FC Noah vs BKMA
+💾 Synced match to DB: Pyunik Yerevan vs FC Noah
+💾 Synced 0/76 matches to database
+   [71/147] Lig 342: 76 maç → DB
+❌ Cache MISS: fixtures-league-441-2025
+📡 API Request #24/7500: /fixtures
+💾 Cached: fixtures-league-441-2025 (3600s)
+❌ Cache MISS: fixtures-league-155-2025
+📡 API Request #25/7500: /fixtures
+💾 Cached: fixtures-league-155-2025 (3600s)
+❌ Cache MISS: fixtures-league-428-2025
+📡 API Request #26/7500: /fixtures
+💾 Cached: fixtures-league-428-2025 (3600s)
+❌ Cache MISS: fixtures-league-423-2025
+📡 API Request #27/7500: /fixtures
+💾 Cached: fixtures-league-423-2025 (3600s)
+💾 Synced match to DB: ASFA-Yennenga vs SONABEL
+💾 Synced match to DB: ASFB vs Salitas
+💾 Synced match to DB: Sporting Cascades vs AJEB
+💾 Synced match to DB: CFFEB vs Douanes
+💾 Synced match to DB: Etoile Filante vs Réal du Faso
+💾 Synced match to DB: Majestic vs RCK
+💾 Synced match to DB: AJEB vs Etoile Filante
+💾 Synced match to DB: ASFB vs SONABEL
+💾 Synced match to DB: Majestic vs Sporting Cascades
+💾 Synced match to DB: Réal du Faso vs ASFA-Yennenga
+💾 Synced match to DB: Douanes vs Salitas
+💾 Synced match to DB: Vitesse vs CFFEB
+💾 Synced match to DB: ASFA-Yennenga vs AJEB
+💾 Synced match to DB: USFA vs Majestic
+💾 Synced match to DB: Salitas vs Vitesse
+💾 Synced match to DB: Etoile Filante vs Sporting Cascades
+💾 Synced match to DB: RCK vs Rahimo
+💾 Synced match to DB: SONABEL vs Douanes
+💾 Synced match to DB: RC Bobo-Dioulasso vs CFFEB
+💾 Synced match to DB: Réal du Faso vs ASFB
+💾 Synced match to DB: Rahimo vs Vitesse
+💾 Synced match to DB: USFA vs RC Bobo-Dioulasso
+💾 Synced match to DB: AJEB vs Douanes
+💾 Synced match to DB: ASFB vs Etoile Filante
+💾 Synced match to DB: CFFEB vs Majestic
+💾 Synced match to DB: SONABEL vs RC Bobo-Dioulasso
+💾 Synced match to DB: Vitesse vs Réal du Faso
+💾 Synced match to DB: Sporting Cascades vs ASFA-Yennenga
+💾 Synced match to DB: Salitas vs RCK
+💾 Synced match to DB: Douanes vs Vitesse
+💾 Synced match to DB: ASFA-Yennenga vs RCK
+💾 Synced match to DB: ASFB vs RC Bobo-Dioulasso
+💾 Synced match to DB: Majestic vs Etoile Filante
+💾 Synced match to DB: Sporting Cascades vs Salitas
+💾 Synced match to DB: CFFEB vs SONABEL
+💾 Synced match to DB: ASFA-Yennenga vs ASFB
+💾 Synced match to DB: Majestic vs Salitas
+💾 Synced match to DB: RC Bobo-Dioulasso vs Réal du Faso
+💾 Synced match to DB: Etoile Filante vs Douanes
+💾 Synced match to DB: AJEB vs Vitesse
+💾 Synced match to DB: RCK vs SONABEL
+💾 Synced match to DB: ASFB vs Sporting Cascades
+💾 Synced match to DB: Réal du Faso vs RCK
+💾 Synced match to DB: CFFEB vs Rahimo
+💾 Synced match to DB: Salitas vs USFA
+💾 Synced match to DB: AJEB vs RC Bobo-Dioulasso
+💾 Synced match to DB: SONABEL vs Majestic
+💾 Synced match to DB: Douanes vs ASFA-Yennenga
+💾 Synced match to DB: Vitesse vs Etoile Filante
+💾 Synced match to DB: RCK vs USFA
+💾 Synced match to DB: RC Bobo-Dioulasso vs Rahimo
+💾 Synced match to DB: Réal du Faso vs Douanes
+💾 Synced match to DB: SONABEL vs Vitesse
+💾 Synced match to DB: ASFB vs AJEB
+💾 Synced match to DB: CFFEB vs RCK
+💾 Synced match to DB: Etoile Filante vs ASFA-Yennenga
+💾 Synced match to DB: Majestic vs Rahimo
+💾 Synced match to DB: RC Bobo-Dioulasso vs Salitas
+💾 Synced match to DB: Sporting Cascades vs USFA
+💾 Synced match to DB: Rahimo vs SONABEL
+💾 Synced match to DB: USFA vs Réal du Faso
+💾 Synced match to DB: Salitas vs CFFEB
+💾 Synced match to DB: ASFA-Yennenga vs RC Bobo-Dioulasso
+💾 Synced match to DB: Sporting Cascades vs Douanes
+💾 Synced match to DB: AJEB vs Majestic
+💾 Synced match to DB: RCK vs Etoile Filante
+💾 Synced match to DB: Vitesse vs ASFB
+💾 Synced match to DB: Rahimo vs USFA
+💾 Synced match to DB: Douanes vs ASFB
+💾 Synced match to DB: ASFA-Yennenga vs Vitesse
+💾 Synced match to DB: Majestic vs Réal du Faso
+💾 Synced match to DB: CFFEB vs Sporting Cascades
+💾 Synced match to DB: Rahimo vs Salitas
+💾 Synced match to DB: Etoile Filante vs RC Bobo-Dioulasso
+💾 Synced match to DB: RCK vs AJEB
+💾 Synced match to DB: USFA vs SONABEL
+💾 Synced match to DB: RC Bobo-Dioulasso vs Douanes
+💾 Synced match to DB: Réal du Faso vs CFFEB
+💾 Synced match to DB: Etoile Filante vs USFA
+💾 Synced match to DB: Majestic vs ASFA-Yennenga
+💾 Synced match to DB: AJEB vs Rahimo
+💾 Synced match to DB: SONABEL vs Salitas
+💾 Synced match to DB: Vitesse vs Sporting Cascades
+💾 Synced match to DB: ASFB vs RCK
+💾 Synced match to DB: USFA vs AJEB
+💾 Synced match to DB: Réal du Faso vs Rahimo
+💾 Synced match to DB: ASFB vs Majestic
+💾 Synced match to DB: RC Bobo-Dioulasso vs Vitesse
+💾 Synced match to DB: Douanes vs RCK
+💾 Synced match to DB: Sporting Cascades vs SONABEL
+💾 Synced match to DB: AJEB vs CFFEB
+💾 Synced match to DB: Rahimo vs Etoile Filante
+💾 Synced match to DB: Salitas vs Réal du Faso
+💾 Synced match to DB: ASFA-Yennenga vs USFA
+💾 Synced match to DB: Rahimo vs ASFA-Yennenga
+💾 Synced match to DB: RCK vs Vitesse
+💾 Synced match to DB: Majestic vs Douanes
+💾 Synced match to DB: Sporting Cascades vs RC Bobo-Dioulasso
+💾 Synced match to DB: CFFEB vs Etoile Filante
+💾 Synced match to DB: Salitas vs AJEB
+💾 Synced match to DB: USFA vs ASFB
+💾 Synced match to DB: Réal du Faso vs SONABEL
+💾 Synced match to DB: SONABEL vs AJEB
+💾 Synced match to DB: Vitesse vs Majestic
+💾 Synced match to DB: Réal du Faso vs Sporting Cascades
+💾 Synced match to DB: ASFB vs Rahimo
+💾 Synced match to DB: Douanes vs USFA
+💾 Synced match to DB: Etoile Filante vs Salitas
+💾 Synced match to DB: ASFA-Yennenga vs CFFEB
+💾 Synced match to DB: RC Bobo-Dioulasso vs RCK
+💾 Synced match to DB: Rahimo vs Sporting Cascades
+💾 Synced match to DB: USFA vs CFFEB
+💾 Synced match to DB: Etoile Filante vs SONABEL
+💾 Synced match to DB: RCK vs Sporting Cascades
+💾 Synced match to DB: ASFB vs CFFEB
+💾 Synced match to DB: Majestic vs RC Bobo-Dioulasso
+💾 Synced match to DB: AJEB vs Réal du Faso
+💾 Synced match to DB: ASFA-Yennenga vs Salitas
+💾 Synced match to DB: USFA vs Vitesse
+💾 Synced match to DB: Rahimo vs Douanes
+💾 Synced match to DB: SONABEL vs Etoile Filante
+💾 Synced match to DB: RC Bobo-Dioulasso vs Majestic
+💾 Synced match to DB: Sporting Cascades vs RCK
+💾 Synced match to DB: CFFEB vs ASFB
+💾 Synced match to DB: Salitas vs ASFA-Yennenga
+💾 Synced match to DB: Vitesse vs USFA
+💾 Synced match to DB: Réal du Faso vs AJEB
+💾 Synced match to DB: Douanes vs Rahimo
+💾 Synced match to DB: Salitas vs Etoile Filante
+💾 Synced match to DB: RCK vs RC Bobo-Dioulasso
+💾 Synced match to DB: Majestic vs Vitesse
+💾 Synced match to DB: Sporting Cascades vs Réal du Faso
+💾 Synced match to DB: AJEB vs SONABEL
+💾 Synced match to DB: CFFEB vs ASFA-Yennenga
+💾 Synced match to DB: Rahimo vs ASFB
+💾 Synced match to DB: USFA vs Douanes
+💾 Synced match to DB: SONABEL vs Réal du Faso
+💾 Synced match to DB: AJEB vs Salitas
+💾 Synced match to DB: ASFA-Yennenga vs Rahimo
+💾 Synced match to DB: ASFB vs USFA
+💾 Synced match to DB: Douanes vs Majestic
+💾 Synced match to DB: Vitesse vs RCK
+💾 Synced match to DB: Etoile Filante vs CFFEB
+💾 Synced match to DB: RC Bobo-Dioulasso vs Sporting Cascades
+💾 Synced match to DB: SONABEL vs Sporting Cascades
+💾 Synced match to DB: Majestic vs ASFB
+💾 Synced match to DB: USFA vs ASFA-Yennenga
+💾 Synced match to DB: Vitesse vs RC Bobo-Dioulasso
+💾 Synced match to DB: Etoile Filante vs Rahimo
+💾 Synced match to DB: CFFEB vs AJEB
+💾 Synced match to DB: RCK vs Douanes
+💾 Synced match to DB: Réal du Faso vs Salitas
+💾 Synced match to DB: Douanes vs RC Bobo-Dioulasso
+💾 Synced match to DB: CFFEB vs Réal du Faso
+💾 Synced match to DB: Rahimo vs AJEB
+💾 Synced match to DB: RCK vs ASFB
+💾 Synced match to DB: ASFA-Yennenga vs Majestic
+💾 Synced match to DB: Sporting Cascades vs Vitesse
+💾 Synced match to DB: Salitas vs SONABEL
+💾 Synced match to DB: USFA vs Etoile Filante
+💾 Synced match to DB: Vitesse vs ASFA-Yennenga
+💾 Synced match to DB: Réal du Faso vs Majestic
+💾 Synced match to DB: Salitas vs Rahimo
+💾 Synced match to DB: ASFB vs Douanes
+💾 Synced match to DB: Sporting Cascades vs CFFEB
+💾 Synced match to DB: AJEB vs RCK
+💾 Synced match to DB: SONABEL vs USFA
+💾 Synced match to DB: RC Bobo-Dioulasso vs Etoile Filante
+💾 Synced match to DB: SONABEL vs Rahimo
+💾 Synced match to DB: Majestic vs AJEB
+💾 Synced match to DB: RC Bobo-Dioulasso vs ASFA-Yennenga
+💾 Synced match to DB: Réal du Faso vs USFA
+💾 Synced match to DB: CFFEB vs Salitas
+💾 Synced match to DB: Etoile Filante vs RCK
+💾 Synced match to DB: ASFB vs Vitesse
+💾 Synced match to DB: Douanes vs Sporting Cascades
+💾 Synced match to DB: USFA vs Sporting Cascades
+💾 Synced match to DB: Douanes vs Réal du Faso
+💾 Synced match to DB: Vitesse vs SONABEL
+💾 Synced match to DB: Salitas vs RC Bobo-Dioulasso
+💾 Synced match to DB: RCK vs CFFEB
+💾 Synced match to DB: AJEB vs ASFB
+💾 Synced match to DB: Rahimo vs Majestic
+💾 Synced match to DB: ASFA-Yennenga vs Etoile Filante
+💾 Synced match to DB: Rahimo vs CFFEB
+💾 Synced match to DB: RCK vs Réal du Faso
+💾 Synced match to DB: Sporting Cascades vs ASFB
+💾 Synced match to DB: Etoile Filante vs Vitesse
+💾 Synced match to DB: Majestic vs SONABEL
+💾 Synced match to DB: RC Bobo-Dioulasso vs AJEB
+💾 Synced match to DB: USFA vs Salitas
+💾 Synced match to DB: ASFA-Yennenga vs Douanes
+💾 Synced match to DB: ASFB vs ASFA-Yennenga
+💾 Synced match to DB: Réal du Faso vs RC Bobo-Dioulasso
+💾 Synced match to DB: CFFEB vs USFA
+💾 Synced match to DB: SONABEL vs RCK
+💾 Synced match to DB: Douanes vs Etoile Filante
+💾 Synced match to DB: Vitesse vs AJEB
+💾 Synced match to DB: Sporting Cascades vs Rahimo
+💾 Synced match to DB: Salitas vs Majestic
+💾 Synced match to DB: Salitas vs Sporting Cascades
+💾 Synced match to DB: Vitesse vs Douanes
+💾 Synced match to DB: SONABEL vs CFFEB
+💾 Synced match to DB: RCK vs ASFA-Yennenga
+💾 Synced match to DB: RC Bobo-Dioulasso vs ASFB
+💾 Synced match to DB: Rahimo vs Réal du Faso
+💾 Synced match to DB: Etoile Filante vs Majestic
+💾 Synced match to DB: AJEB vs USFA
+💾 Synced match to DB: ASFA-Yennenga vs Sporting Cascades
+💾 Synced match to DB: Douanes vs AJEB
+💾 Synced match to DB: Etoile Filante vs ASFB
+💾 Synced match to DB: Majestic vs CFFEB
+💾 Synced match to DB: RC Bobo-Dioulasso vs SONABEL
+💾 Synced match to DB: Réal du Faso vs Vitesse
+💾 Synced match to DB: RCK vs Salitas
+💾 Synced match to DB: USFA vs Rahimo
+💾 Synced match to DB: Rahimo vs RCK
+💾 Synced match to DB: ASFB vs Réal du Faso
+💾 Synced match to DB: Majestic vs USFA
+💾 Synced match to DB: Douanes vs SONABEL
+💾 Synced match to DB: Vitesse vs Salitas
+💾 Synced match to DB: Sporting Cascades vs Etoile Filante
+💾 Synced match to DB: AJEB vs ASFA-Yennenga
+💾 Synced match to DB: CFFEB vs RC Bobo-Dioulasso
+💾 Synced match to DB: Rahimo vs RC Bobo-Dioulasso
+💾 Synced match to DB: Salitas vs Douanes
+💾 Synced match to DB: Etoile Filante vs AJEB
+💾 Synced match to DB: SONABEL vs ASFB
+💾 Synced match to DB: ASFA-Yennenga vs Réal du Faso
+💾 Synced match to DB: USFA vs RCK
+💾 Synced match to DB: Sporting Cascades vs Majestic
+💾 Synced match to DB: CFFEB vs Vitesse
+💾 Synced match to DB: Salitas vs ASFB
+💾 Synced match to DB: SONABEL vs ASFA-Yennenga
+💾 Synced match to DB: RCK vs Majestic
+💾 Synced match to DB: RC Bobo-Dioulasso vs USFA
+💾 Synced match to DB: Douanes vs CFFEB
+💾 Synced match to DB: Vitesse vs Rahimo
+💾 Synced match to DB: Réal du Faso vs Etoile Filante
+💾 Synced match to DB: AJEB vs Sporting Cascades
+💾 Synced 0/240 matches to database
+   [75/147] Lig 423: 240 maç → DB
+❌ Cache MISS: fixtures-league-310-2025
+📡 API Request #28/7500: /fixtures
+💾 Cached: fixtures-league-310-2025 (3600s)
+❌ Cache MISS: fixtures-league-409-2025
+📡 API Request #29/7500: /fixtures
+💾 Cached: fixtures-league-409-2025 (3600s)
+❌ Cache MISS: fixtures-league-261-2025
+📡 API Request #30/7500: /fixtures
+💾 Cached: fixtures-league-261-2025 (3600s)
+❌ Cache MISS: fixtures-league-392-2025
+📡 API Request #31/7500: /fixtures
+💾 Cached: fixtures-league-392-2025 (3600s)
+❌ Cache MISS: fixtures-league-329-2025
+📡 API Request #32/7500: /fixtures
+💾 Cached: fixtures-league-329-2025 (3600s)
+❌ Cache MISS: fixtures-league-363-2025
+📡 API Request #33/7500: /fixtures
+💾 Cached: fixtures-league-363-2025 (3600s)
+💾 Synced match to DB: Mebrat Hayl vs Sheger Ketema
+💾 Synced match to DB: Welwalo Adigrat Uni vs Sidama Bunna
+💾 Synced match to DB: Negelle Arsi vs Arba Minch Kenema
+💾 Synced match to DB: Dire Dawa Kenema vs Awassa Kenema
+💾 Synced match to DB: Ethiopia Bunna vs Kedus Giorgis
+💾 Synced match to DB: Fasil Ketema vs Ethiopia Nigd Bank
+💾 Synced match to DB: Mekelakeya vs Welayta Dicha
+💾 Synced match to DB: Adama Kenema vs Ethiopian Medhin
+💾 Synced match to DB: Bahardar vs Hadiya Hosaena
+💾 Synced match to DB: Suhul Shire vs Mekelle Kenema
+💾 Synced match to DB: Ethiopia Bunna vs Negelle Arsi
+💾 Synced match to DB: Welwalo Adigrat Uni vs Fasil Ketema
+💾 Synced match to DB: Sheger Ketema vs Adama Kenema
+💾 Synced match to DB: Welayta Dicha vs Dire Dawa Kenema
+💾 Synced match to DB: Arba Minch Kenema vs Bahardar
+💾 Synced match to DB: Mekelle Kenema vs Mekelakeya
+💾 Synced match to DB: Hadiya Hosaena vs Mebrat Hayl
+💾 Synced match to DB: Ethiopia Nigd Bank vs Suhul Shire
+💾 Synced match to DB: Sidama Bunna vs Awassa Kenema
+💾 Synced match to DB: Mebrat Hayl vs Arba Minch Kenema
+💾 Synced match to DB: Suhul Shire vs Welwalo Adigrat Uni
+💾 Synced match to DB: Bahardar vs Ethiopia Bunna
+💾 Synced match to DB: Mekelakeya vs Ethiopia Nigd Bank
+💾 Synced match to DB: Awassa Kenema vs Welayta Dicha
+💾 Synced match to DB: Negelle Arsi vs Kedus Giorgis
+💾 Synced match to DB: Fasil Ketema vs Sidama Bunna
+💾 Synced match to DB: Adama Kenema vs Hadiya Hosaena
+💾 Synced match to DB: Dire Dawa Kenema vs Mekelle Kenema
+💾 Synced match to DB: Ethiopia Bunna vs Mebrat Hayl
+💾 Synced match to DB: Sidama Bunna vs Welayta Dicha
+💾 Synced match to DB: Negelle Arsi vs Bahardar
+💾 Synced match to DB: Fasil Ketema vs Suhul Shire
+💾 Synced match to DB: Hadiya Hosaena vs Ethiopian Medhin
+💾 Synced match to DB: Kedus Giorgis vs Sheger Ketema
+💾 Synced match to DB: Mekelle Kenema vs Awassa Kenema
+💾 Synced match to DB: Arba Minch Kenema vs Adama Kenema
+💾 Synced match to DB: Ethiopia Nigd Bank vs Dire Dawa Kenema
+💾 Synced match to DB: Welwalo Adigrat Uni vs Mekelakeya
+💾 Synced match to DB: Mebrat Hayl vs Negelle Arsi
+💾 Synced match to DB: Welayta Dicha vs Mekelle Kenema
+💾 Synced match to DB: Bahardar vs Kedus Giorgis
+💾 Synced match to DB: Suhul Shire vs Sidama Bunna
+💾 Synced match to DB: Ethiopian Medhin vs Arba Minch Kenema
+💾 Synced match to DB: Dire Dawa Kenema vs Welwalo Adigrat Uni
+💾 Synced match to DB: Adama Kenema vs Ethiopia Bunna
+💾 Synced match to DB: Awassa Kenema vs Ethiopia Nigd Bank
+💾 Synced match to DB: Sheger Ketema vs Hadiya Hosaena
+💾 Synced match to DB: Mekelakeya vs Fasil Ketema
+💾 Synced match to DB: Kedus Giorgis vs Ethiopian Medhin
+💾 Synced match to DB: Sidama Bunna vs Mekelle Kenema
+💾 Synced match to DB: Negelle Arsi vs Adama Kenema
+💾 Synced match to DB: Welwalo Adigrat Uni vs Awassa Kenema
+💾 Synced match to DB: Ethiopia Bunna vs Ethiopian Medhin
+💾 Synced match to DB: Ethiopia Nigd Bank vs Welayta Dicha
+💾 Synced match to DB: Kedus Giorgis vs Hadiya Hosaena
+💾 Synced match to DB: Suhul Shire vs Mekelakeya
+💾 Synced match to DB: Arba Minch Kenema vs Sheger Ketema
+💾 Synced match to DB: Fasil Ketema vs Dire Dawa Kenema
+💾 Synced match to DB: Bahardar vs Mebrat Hayl
+💾 Synced match to DB: Adama Kenema vs Bahardar
+💾 Synced match to DB: Welayta Dicha vs Welwalo Adigrat Uni
+💾 Synced match to DB: Ethiopian Medhin vs Negelle Arsi
+💾 Synced match to DB: Mekelakeya vs Sidama Bunna
+💾 Synced match to DB: Mebrat Hayl vs Kedus Giorgis
+💾 Synced match to DB: Awassa Kenema vs Fasil Ketema
+💾 Synced match to DB: Sheger Ketema vs Ethiopia Bunna
+💾 Synced match to DB: Dire Dawa Kenema vs Suhul Shire
+💾 Synced match to DB: Mekelle Kenema vs Ethiopia Nigd Bank
+💾 Synced match to DB: Hadiya Hosaena vs Arba Minch Kenema
+💾 Synced match to DB: Fasil Ketema vs Welayta Dicha
+💾 Synced match to DB: Bahardar vs Ethiopian Medhin
+💾 Synced match to DB: Welwalo Adigrat Uni vs Mekelle Kenema
+💾 Synced match to DB: Mebrat Hayl vs Adama Kenema
+💾 Synced match to DB: Suhul Shire vs Awassa Kenema
+💾 Synced match to DB: Ethiopia Bunna vs Hadiya Hosaena
+💾 Synced match to DB: Sidama Bunna vs Ethiopia Nigd Bank
+💾 Synced match to DB: Kedus Giorgis vs Arba Minch Kenema
+💾 Synced match to DB: Mekelakeya vs Dire Dawa Kenema
+💾 Synced match to DB: Negelle Arsi vs Sheger Ketema
+💾 Synced match to DB: Welayta Dicha vs Suhul Shire
+💾 Synced match to DB: Ethiopian Medhin vs Mebrat Hayl
+💾 Synced match to DB: Ethiopia Nigd Bank vs Welwalo Adigrat Uni
+💾 Synced match to DB: Adama Kenema vs Kedus Giorgis
+💾 Synced match to DB: Dire Dawa Kenema vs Sidama Bunna
+💾 Synced match to DB: Sheger Ketema vs Bahardar
+💾 Synced match to DB: Awassa Kenema vs Mekelakeya
+💾 Synced match to DB: Hadiya Hosaena vs Negelle Arsi
+💾 Synced match to DB: Mekelle Kenema vs Fasil Ketema
+💾 Synced match to DB: Arba Minch Kenema vs Ethiopia Bunna
+💾 Synced match to DB: Ethiopian Medhin vs Sheger Ketema
+💾 Synced match to DB: Ethiopia Nigd Bank vs Arba Minch Kenema
+💾 Synced match to DB: Suhul Shire vs Bahardar
+💾 Synced match to DB: Mekelle Kenema vs Hadiya Hosaena
+💾 Synced match to DB: Welwalo Adigrat Uni vs Ethiopia Bunna
+💾 Synced match to DB: Welayta Dicha vs Sheger Ketema
+💾 Synced match to DB: Fasil Ketema vs Negelle Arsi
+💾 Synced match to DB: Awassa Kenema vs Ethiopian Medhin
+💾 Synced match to DB: Dire Dawa Kenema vs Adama Kenema
+💾 Synced match to DB: Mekelakeya vs Mebrat Hayl
+💾 Synced match to DB: Sidama Bunna vs Kedus Giorgis
+💾 Synced match to DB: Negelle Arsi vs Welwalo Adigrat Uni
+💾 Synced match to DB: Arba Minch Kenema vs Mekelle Kenema
+💾 Synced match to DB: Bahardar vs Fasil Ketema
+💾 Synced match to DB: Hadiya Hosaena vs Welayta Dicha
+💾 Synced match to DB: Mebrat Hayl vs Suhul Shire
+💾 Synced match to DB: Sheger Ketema vs Awassa Kenema
+💾 Synced match to DB: Ethiopia Bunna vs Dire Dawa Kenema
+💾 Synced match to DB: Kedus Giorgis vs Ethiopia Nigd Bank
+💾 Synced match to DB: Adama Kenema vs Mekelakeya
+💾 Synced match to DB: Ethiopian Medhin vs Sidama Bunna
+💾 Synced match to DB: Fasil Ketema vs Mebrat Hayl
+💾 Synced match to DB: Welayta Dicha vs Arba Minch Kenema
+💾 Synced match to DB: Welwalo Adigrat Uni vs Bahardar
+💾 Synced match to DB: Mekelle Kenema vs Kedus Giorgis
+💾 Synced match to DB: Dire Dawa Kenema vs Negelle Arsi
+💾 Synced match to DB: Awassa Kenema vs Hadiya Hosaena
+💾 Synced match to DB: Suhul Shire vs Adama Kenema
+💾 Synced match to DB: Sidama Bunna vs Sheger Ketema
+💾 Synced match to DB: Mekelakeya vs Ethiopia Bunna
+💾 Synced match to DB: Ethiopia Nigd Bank vs Ethiopian Medhin
+💾 Synced match to DB: Adama Kenema vs Fasil Ketema
+💾 Synced match to DB: Kedus Giorgis vs Welayta Dicha
+💾 Synced match to DB: Mebrat Hayl vs Welwalo Adigrat Uni
+💾 Synced match to DB: Arba Minch Kenema vs Awassa Kenema
+💾 Synced match to DB: Negelle Arsi vs Mekelakeya
+💾 Synced match to DB: Sheger Ketema vs Ethiopia Nigd Bank
+💾 Synced match to DB: Ethiopia Bunna vs Suhul Shire
+💾 Synced match to DB: Hadiya Hosaena vs Sidama Bunna
+💾 Synced match to DB: Bahardar vs Dire Dawa Kenema
+💾 Synced match to DB: Ethiopian Medhin vs Mekelle Kenema
+💾 Synced match to DB: Suhul Shire vs Negelle Arsi
+💾 Synced match to DB: Sidama Bunna vs Arba Minch Kenema
+💾 Synced match to DB: Welwalo Adigrat Uni vs Adama Kenema
+💾 Synced match to DB: Awassa Kenema vs Kedus Giorgis
+💾 Synced match to DB: Dire Dawa Kenema vs Mebrat Hayl
+💾 Synced match to DB: Mekelle Kenema vs Sheger Ketema
+💾 Synced match to DB: Mekelakeya vs Bahardar
+💾 Synced match to DB: Ethiopia Nigd Bank vs Hadiya Hosaena
+💾 Synced match to DB: Fasil Ketema vs Ethiopia Bunna
+💾 Synced match to DB: Welayta Dicha vs Ethiopian Medhin
+💾 Synced match to DB: Ethiopian Medhin vs Welwalo Adigrat Uni
+💾 Synced match to DB: Bahardar vs Mekelle Kenema
+💾 Synced match to DB: Sheger Ketema vs Fasil Ketema
+💾 Synced match to DB: Negelle Arsi vs Welayta Dicha
+💾 Synced match to DB: Hadiya Hosaena vs Suhul Shire
+💾 Synced match to DB: Mebrat Hayl vs Ethiopia Nigd Bank
+💾 Synced match to DB: Arba Minch Kenema vs Mekelakeya
+💾 Synced match to DB: Ethiopia Bunna vs Awassa Kenema
+💾 Synced match to DB: Kedus Giorgis vs Dire Dawa Kenema
+💾 Synced match to DB: Adama Kenema vs Sidama Bunna
+💾 Synced match to DB: Welayta Dicha vs Bahardar
+💾 Synced match to DB: Mekelle Kenema vs Mebrat Hayl
+💾 Synced match to DB: Welwalo Adigrat Uni vs Sheger Ketema
+💾 Synced match to DB: Ethiopia Nigd Bank vs Adama Kenema
+💾 Synced match to DB: Suhul Shire vs Arba Minch Kenema
+💾 Synced match to DB: Awassa Kenema vs Negelle Arsi
+💾 Synced match to DB: Dire Dawa Kenema vs Ethiopian Medhin
+💾 Synced match to DB: Mekelakeya vs Kedus Giorgis
+💾 Synced match to DB: Sidama Bunna vs Ethiopia Bunna
+💾 Synced match to DB: Hadiya Hosaena vs Welwalo Adigrat Uni
+💾 Synced match to DB: Adama Kenema vs Mekelle Kenema
+💾 Synced match to DB: Arba Minch Kenema vs Fasil Ketema
+💾 Synced match to DB: Bahardar vs Awassa Kenema
+💾 Synced match to DB: Kedus Giorgis vs Suhul Shire
+💾 Synced match to DB: Mebrat Hayl vs Welayta Dicha
+💾 Synced match to DB: Ethiopian Medhin vs Mekelakeya
+💾 Synced match to DB: Sheger Ketema vs Dire Dawa Kenema
+💾 Synced match to DB: Negelle Arsi vs Sidama Bunna
+💾 Synced match to DB: Ethiopia Bunna vs Ethiopia Nigd Bank
+💾 Synced match to DB: Awassa Kenema vs Mebrat Hayl
+💾 Synced match to DB: Suhul Shire vs Ethiopian Medhin
+💾 Synced match to DB: Welayta Dicha vs Adama Kenema
+💾 Synced match to DB: Dire Dawa Kenema vs Hadiya Hosaena
+💾 Synced match to DB: Mekelakeya vs Sheger Ketema
+💾 Synced match to DB: Sidama Bunna vs Bahardar
+💾 Synced match to DB: Welwalo Adigrat Uni vs Arba Minch Kenema
+💾 Synced match to DB: Mekelle Kenema vs Ethiopia Bunna
+💾 Synced match to DB: Fasil Ketema vs Kedus Giorgis
+💾 Synced match to DB: Ethiopia Nigd Bank vs Negelle Arsi
+💾 Synced match to DB: Fasil Ketema vs Hadiya Hosaena
+💾 Synced match to DB: Sheger Ketema vs Suhul Shire
+💾 Synced match to DB: Mebrat Hayl vs Sidama Bunna
+💾 Synced match to DB: Hadiya Hosaena vs Mekelakeya
+💾 Synced match to DB: Ethiopian Medhin vs Fasil Ketema
+💾 Synced match to DB: Bahardar vs Ethiopia Nigd Bank
+💾 Synced match to DB: Negelle Arsi vs Mekelle Kenema
+💾 Synced match to DB: Kedus Giorgis vs Welwalo Adigrat Uni
+💾 Synced match to DB: Arba Minch Kenema vs Dire Dawa Kenema
+💾 Synced match to DB: Adama Kenema vs Awassa Kenema
+💾 Synced match to DB: Ethiopia Bunna vs Welayta Dicha
+💾 Synced 0/190 matches to database
+   [81/147] Lig 363: 190 maç → DB
+❌ Cache MISS: fixtures-league-360-2025
+📡 API Request #34/7500: /fixtures
+💾 Cached: fixtures-league-360-2025 (3600s)
+❌ Cache MISS: fixtures-league-370-2025
+📡 API Request #35/7500: /fixtures
+💾 Cached: fixtures-league-370-2025 (3600s)
+❌ Cache MISS: fixtures-league-265-2025
+📡 API Request #36/7500: /fixtures
+💾 Cached: fixtures-league-265-2025 (3600s)
+💾 Synced match to DB: Deportes Iquique vs Coquimbo Unido
+💾 Synced match to DB: Palestino vs Cobresal
+💾 Synced match to DB: O'Higgins vs Huachipato
+💾 Synced match to DB: Universidad de Chile vs Nublense
+💾 Synced match to DB: D. La Serena vs Colo Colo
+💾 Synced match to DB: Deportes Limache vs Everton de Vina
+💾 Synced match to DB: U. Catolica vs A. Italiano
+💾 Synced match to DB: Union La Calera vs Union Espanola
+💾 Synced match to DB: Union Espanola vs Palestino
+💾 Synced match to DB: A. Italiano vs Deportes Iquique
+💾 Synced match to DB: Coquimbo Unido vs U. Catolica
+💾 Synced match to DB: Nublense vs Deportes Limache
+💾 Synced match to DB: Huachipato vs Everton de Vina
+💾 Synced match to DB: Cobresal vs D. La Serena
+💾 Synced match to DB: Universidad de Chile vs Union La Calera
+💾 Synced match to DB: Colo Colo vs O'Higgins
+💾 Synced match to DB: Deportes Limache vs Coquimbo Unido
+💾 Synced match to DB: D. La Serena vs Union Espanola
+💾 Synced match to DB: Palestino vs A. Italiano
+💾 Synced match to DB: U. Catolica vs Deportes Iquique
+💾 Synced match to DB: Everton de Vina vs Nublense
+💾 Synced match to DB: Huachipato vs Colo Colo
+💾 Synced match to DB: Cobresal vs Universidad de Chile
+💾 Synced match to DB: Union La Calera vs O'Higgins
+💾 Synced match to DB: Union La Calera vs Huachipato
+💾 Synced match to DB: Nublense vs U. Catolica
+💾 Synced match to DB: Deportes Iquique vs Palestino
+💾 Synced match to DB: A. Italiano vs Deportes Limache
+💾 Synced match to DB: Coquimbo Unido vs Cobresal
+💾 Synced match to DB: O'Higgins vs D. La Serena
+💾 Synced match to DB: Colo Colo vs Everton de Vina
+💾 Synced match to DB: A. Italiano vs Universidad de Chile
+💾 Synced match to DB: Deportes Limache vs Huachipato
+💾 Synced match to DB: Everton de Vina vs Coquimbo Unido
+💾 Synced match to DB: D. La Serena vs Union La Calera
+💾 Synced match to DB: Palestino vs Nublense
+💾 Synced match to DB: Cobresal vs O'Higgins
+💾 Synced match to DB: Deportes Iquique vs Union Espanola
+💾 Synced match to DB: Colo Colo vs Palestino
+💾 Synced match to DB: Everton de Vina vs Universidad de Chile
+💾 Synced match to DB: Union Espanola vs U. Catolica
+💾 Synced match to DB: Nublense vs Deportes Iquique
+💾 Synced match to DB: O'Higgins vs Deportes Limache
+💾 Synced match to DB: Huachipato vs D. La Serena
+💾 Synced match to DB: Coquimbo Unido vs A. Italiano
+💾 Synced match to DB: Union La Calera vs Cobresal
+💾 Synced match to DB: Coquimbo Unido vs Huachipato
+💾 Synced match to DB: Cobresal vs U. Catolica
+💾 Synced match to DB: A. Italiano vs O'Higgins
+💾 Synced match to DB: D. La Serena vs Everton de Vina
+💾 Synced match to DB: Palestino vs Union La Calera
+💾 Synced match to DB: Union Espanola vs Nublense
+💾 Synced match to DB: Deportes Limache vs Deportes Iquique
+💾 Synced match to DB: Universidad de Chile vs D. La Serena
+💾 Synced match to DB: A. Italiano vs Union Espanola
+💾 Synced match to DB: Huachipato vs Cobresal
+💾 Synced match to DB: U. Catolica vs Deportes Limache
+💾 Synced match to DB: Everton de Vina vs Union La Calera
+💾 Synced match to DB: O'Higgins vs Palestino
+💾 Synced match to DB: Nublense vs Coquimbo Unido
+💾 Synced match to DB: Union La Calera vs A. Italiano
+💾 Synced match to DB: Nublense vs D. La Serena
+💾 Synced match to DB: U. Catolica vs Everton de Vina
+💾 Synced match to DB: Cobresal vs Deportes Limache
+💾 Synced match to DB: Colo Colo vs Coquimbo Unido
+💾 Synced match to DB: O'Higgins vs Deportes Iquique
+💾 Synced match to DB: Palestino vs Universidad de Chile
+💾 Synced match to DB: Huachipato vs Union Espanola
+💾 Synced match to DB: Deportes Limache vs Colo Colo
+💾 Synced match to DB: Union Espanola vs Cobresal
+💾 Synced match to DB: Everton de Vina vs Palestino
+💾 Synced match to DB: Universidad de Chile vs U. Catolica
+💾 Synced match to DB: Coquimbo Unido vs O'Higgins
+💾 Synced match to DB: Deportes Iquique vs Huachipato
+💾 Synced match to DB: A. Italiano vs D. La Serena
+💾 Synced match to DB: Nublense vs Union La Calera
+💾 Synced match to DB: Union La Calera vs Coquimbo Unido
+💾 Synced match to DB: Cobresal vs A. Italiano
+💾 Synced match to DB: O'Higgins vs U. Catolica
+💾 Synced match to DB: Deportes Limache vs Palestino
+💾 Synced match to DB: Universidad de Chile vs Huachipato
+💾 Synced match to DB: Union Espanola vs Everton de Vina
+💾 Synced match to DB: Colo Colo vs Nublense
+💾 Synced match to DB: D. La Serena vs Deportes Iquique
+💾 Synced match to DB: Deportes Limache vs Universidad de Chile
+💾 Synced match to DB: Everton de Vina vs Cobresal
+💾 Synced match to DB: Colo Colo vs Union Espanola
+💾 Synced match to DB: Coquimbo Unido vs Palestino
+💾 Synced match to DB: Nublense vs O'Higgins
+💾 Synced match to DB: U. Catolica vs D. La Serena
+💾 Synced match to DB: Deportes Iquique vs Union La Calera
+💾 Synced match to DB: A. Italiano vs Huachipato
+💾 Synced match to DB: Huachipato vs Nublense
+💾 Synced match to DB: D. La Serena vs Coquimbo Unido
+💾 Synced match to DB: Universidad de Chile vs O'Higgins
+💾 Synced match to DB: Everton de Vina vs A. Italiano
+💾 Synced match to DB: Palestino vs U. Catolica
+💾 Synced match to DB: Union La Calera vs Colo Colo
+💾 Synced match to DB: Cobresal vs Deportes Iquique
+💾 Synced match to DB: Union Espanola vs Deportes Limache
+💾 Synced match to DB: Deportes Iquique vs Colo Colo
+💾 Synced match to DB: Deportes Limache vs Union La Calera
+💾 Synced match to DB: Palestino vs D. La Serena
+💾 Synced match to DB: U. Catolica vs Huachipato
+💾 Synced match to DB: O'Higgins vs Union Espanola
+💾 Synced match to DB: Coquimbo Unido vs Universidad de Chile
+💾 Synced match to DB: Nublense vs A. Italiano
+💾 Synced match to DB: Deportes Iquique vs Everton de Vina
+💾 Synced match to DB: Colo Colo vs Cobresal
+💾 Synced match to DB: Union La Calera vs U. Catolica
+💾 Synced match to DB: Union Espanola vs Coquimbo Unido
+💾 Synced match to DB: Universidad de Chile vs Deportes Iquique
+💾 Synced match to DB: Huachipato vs Palestino
+💾 Synced match to DB: D. La Serena vs Deportes Limache
+💾 Synced match to DB: A. Italiano vs Colo Colo
+💾 Synced match to DB: Cobresal vs Nublense
+💾 Synced match to DB: Everton de Vina vs O'Higgins
+💾 Synced match to DB: Union Espanola vs Universidad de Chile
+💾 Synced match to DB: U. Catolica vs Colo Colo
+💾 Synced match to DB: Universidad de Chile vs Colo Colo
+💾 Synced match to DB: Everton de Vina vs Deportes Limache
+💾 Synced match to DB: Union Espanola vs Union La Calera
+💾 Synced match to DB: Colo Colo vs D. La Serena
+💾 Synced match to DB: Coquimbo Unido vs Deportes Iquique
+💾 Synced match to DB: A. Italiano vs U. Catolica
+💾 Synced match to DB: Nublense vs Universidad de Chile
+💾 Synced match to DB: Huachipato vs O'Higgins
+💾 Synced match to DB: Deportes Limache vs Nublense
+💾 Synced match to DB: D. La Serena vs Cobresal
+💾 Synced match to DB: Everton de Vina vs Huachipato
+💾 Synced match to DB: O'Higgins vs Colo Colo
+💾 Synced match to DB: Palestino vs Union Espanola
+💾 Synced match to DB: U. Catolica vs Coquimbo Unido
+💾 Synced match to DB: Deportes Iquique vs A. Italiano
+💾 Synced match to DB: Union La Calera vs Universidad de Chile
+💾 Synced match to DB: A. Italiano vs Palestino
+💾 Synced match to DB: Union Espanola vs D. La Serena
+💾 Synced match to DB: Coquimbo Unido vs Deportes Limache
+💾 Synced match to DB: Deportes Iquique vs U. Catolica
+💾 Synced match to DB: O'Higgins vs Union La Calera
+💾 Synced match to DB: Colo Colo vs Huachipato
+💾 Synced match to DB: Nublense vs Everton de Vina
+💾 Synced match to DB: Universidad de Chile vs Cobresal
+💾 Synced match to DB: Palestino vs Deportes Iquique
+💾 Synced match to DB: Huachipato vs Union La Calera
+💾 Synced match to DB: Universidad de Chile vs Union Espanola
+💾 Synced match to DB: D. La Serena vs O'Higgins
+💾 Synced match to DB: Everton de Vina vs Colo Colo
+💾 Synced match to DB: Cobresal vs Coquimbo Unido
+💾 Synced match to DB: Deportes Limache vs A. Italiano
+💾 Synced match to DB: Union Espanola vs Deportes Iquique
+💾 Synced match to DB: Union La Calera vs D. La Serena
+💾 Synced match to DB: Nublense vs Palestino
+💾 Synced match to DB: Colo Colo vs U. Catolica
+💾 Synced match to DB: O'Higgins vs Cobresal
+💾 Synced match to DB: Universidad de Chile vs A. Italiano
+💾 Synced match to DB: Huachipato vs Deportes Limache
+💾 Synced match to DB: Coquimbo Unido vs Everton de Vina
+💾 Synced match to DB: Palestino vs Colo Colo
+💾 Synced match to DB: Deportes Limache vs O'Higgins
+💾 Synced match to DB: Cobresal vs Union La Calera
+💾 Synced match to DB: A. Italiano vs Coquimbo Unido
+💾 Synced match to DB: U. Catolica vs Union Espanola
+💾 Synced match to DB: D. La Serena vs Huachipato
+💾 Synced match to DB: Deportes Iquique vs Nublense
+💾 Synced match to DB: Everton de Vina vs D. La Serena
+💾 Synced match to DB: Union La Calera vs Palestino
+💾 Synced match to DB: Huachipato vs Coquimbo Unido
+💾 Synced match to DB: O'Higgins vs A. Italiano
+💾 Synced match to DB: U. Catolica vs Cobresal
+💾 Synced match to DB: Deportes Iquique vs Deportes Limache
+💾 Synced match to DB: Colo Colo vs Universidad de Chile
+💾 Synced match to DB: Nublense vs Union Espanola
+💾 Synced match to DB: Cobresal vs Palestino
+💾 Synced match to DB: Coquimbo Unido vs Nublense
+💾 Synced match to DB: Union La Calera vs Everton de Vina
+💾 Synced match to DB: Union Espanola vs A. Italiano
+💾 Synced match to DB: Palestino vs O'Higgins
+💾 Synced match to DB: Cobresal vs Huachipato
+💾 Synced match to DB: Deportes Limache vs U. Catolica
+💾 Synced match to DB: Colo Colo vs Deportes Iquique
+💾 Synced match to DB: D. La Serena vs Universidad de Chile
+💾 Synced match to DB: U. Catolica vs Nublense
+💾 Synced match to DB: Union Espanola vs Huachipato
+💾 Synced match to DB: Universidad de Chile vs Palestino
+💾 Synced match to DB: A. Italiano vs Union La Calera
+💾 Synced match to DB: Deportes Iquique vs O'Higgins
+💾 Synced match to DB: D. La Serena vs Nublense
+💾 Synced match to DB: Deportes Limache vs Cobresal
+💾 Synced match to DB: Coquimbo Unido vs Colo Colo
+💾 Synced match to DB: Everton de Vina vs U. Catolica
+💾 Synced match to DB: Palestino vs Everton de Vina
+💾 Synced match to DB: D. La Serena vs A. Italiano
+💾 Synced match to DB: Huachipato vs Deportes Iquique
+💾 Synced match to DB: U. Catolica vs Universidad de Chile
+💾 Synced match to DB: Cobresal vs Union Espanola
+💾 Synced match to DB: O'Higgins vs Coquimbo Unido
+💾 Synced match to DB: Union La Calera vs Nublense
+💾 Synced match to DB: Colo Colo vs Deportes Limache
+💾 Synced match to DB: A. Italiano vs Cobresal
+💾 Synced match to DB: Deportes Iquique vs D. La Serena
+💾 Synced match to DB: Nublense vs Colo Colo
+💾 Synced match to DB: Huachipato vs Universidad de Chile
+💾 Synced match to DB: Coquimbo Unido vs Union La Calera
+💾 Synced match to DB: U. Catolica vs O'Higgins
+💾 Synced match to DB: Everton de Vina vs Union Espanola
+💾 Synced match to DB: Palestino vs Deportes Limache
+💾 Synced match to DB: Universidad de Chile vs Everton de Vina
+💾 Synced match to DB: Union La Calera vs Deportes Iquique
+💾 Synced match to DB: D. La Serena vs U. Catolica
+💾 Synced match to DB: Union Espanola vs Colo Colo
+💾 Synced match to DB: Palestino vs Coquimbo Unido
+💾 Synced match to DB: O'Higgins vs Nublense
+💾 Synced match to DB: Huachipato vs A. Italiano
+💾 Synced match to DB: Universidad de Chile vs Deportes Limache
+💾 Synced match to DB: Cobresal vs Everton de Vina
+💾 Synced match to DB: Concepción vs Antofagasta
+💾 Synced match to DB: Rangers de Talca vs San Marcos de Arica
+💾 Synced match to DB: Santiago Wanderers vs Cobreloa
+💾 Synced match to DB: Deportes Iquique vs Cobresal
+💾 Synced match to DB: A. Italiano vs Everton de Vina
+💾 Synced match to DB: Deportes Limache vs Union Espanola
+💾 Synced match to DB: Coquimbo Unido vs D. La Serena
+💾 Synced match to DB: U. Catolica vs Palestino
+💾 Synced match to DB: Antofagasta vs Concepción
+💾 Synced match to DB: San Marcos de Arica vs Rangers de Talca
+💾 Synced match to DB: O'Higgins vs Universidad de Chile
+💾 Synced match to DB: Cobreloa vs Santiago Wanderers
+💾 Synced match to DB: Colo Colo vs Union La Calera
+💾 Synced match to DB: Nublense vs Huachipato
+💾 Synced match to DB: San Marcos de Arica vs Cobreloa
+💾 Synced match to DB: Concepción vs Deportes Copiapo
+💾 Synced match to DB: Cobresal vs Colo Colo
+💾 Synced match to DB: Huachipato vs U. Catolica
+💾 Synced match to DB: D. La Serena vs Palestino
+💾 Synced match to DB: Union Espanola vs O'Higgins
+💾 Synced match to DB: Everton de Vina vs Deportes Iquique
+💾 Synced match to DB: Union La Calera vs Deportes Limache
+💾 Synced match to DB: Cobreloa vs San Marcos de Arica
+💾 Synced match to DB: Deportes Copiapo vs Concepción
+💾 Synced match to DB: A. Italiano vs Nublense
+💾 Synced match to DB: Universidad de Chile vs Coquimbo Unido
+💾 Synced match to DB: Concepción vs Cobreloa
+💾 Synced match to DB: Palestino vs Huachipato
+💾 Synced match to DB: Deportes Iquique vs Universidad de Chile
+💾 Synced match to DB: O'Higgins vs Everton de Vina
+💾 Synced match to DB: Coquimbo Unido vs Union Espanola
+💾 Synced match to DB: U. Catolica vs Union La Calera
+💾 Synced match to DB: Deportes Limache vs D. La Serena
+💾 Synced match to DB: Colo Colo vs A. Italiano
+💾 Synced match to DB: Nublense vs Cobresal
+💾 Synced match to DB: Cobreloa vs Concepción
+💾 Synced 0/252 matches to database
+   [84/147] Lig 265: 252 maç → DB
+❌ Cache MISS: fixtures-league-274-2025
+📡 API Request #37/7500: /fixtures
+💾 Cached: fixtures-league-274-2025 (3600s)
+❌ Cache MISS: fixtures-league-281-2025
+📡 API Request #38/7500: /fixtures
+💾 Cached: fixtures-league-281-2025 (3600s)
+❌ Cache MISS: fixtures-league-242-2025
+📡 API Request #39/7500: /fixtures
+💾 Cached: fixtures-league-242-2025 (3600s)
+❌ Cache MISS: fixtures-league-299-2025
+📡 API Request #40/7500: /fixtures
+💾 Cached: fixtures-league-299-2025 (3600s)
+❌ Cache MISS: fixtures-league-158-2025
+📡 API Request #41/7500: /fixtures
+💾 Cached: fixtures-league-158-2025 (3600s)
+❌ Cache MISS: fixtures-league-162-2025
+📡 API Request #42/7500: /fixtures
+💾 Cached: fixtures-league-162-2025 (3600s)
+❌ Cache MISS: fixtures-league-247-2025
+📡 API Request #43/7500: /fixtures
+💾 Cached: fixtures-league-247-2025 (3600s)
+❌ Cache MISS: fixtures-league-240-2025
+📡 API Request #44/7500: /fixtures
+💾 Cached: fixtures-league-240-2025 (3600s)
+❌ Cache MISS: fixtures-league-230-2025
+📡 API Request #45/7500: /fixtures
+💾 Cached: fixtures-league-230-2025 (3600s)
+❌ Cache MISS: fixtures-league-277-2025
+📡 API Request #46/7500: /fixtures
+💾 Cached: fixtures-league-277-2025 (3600s)
+❌ Cache MISS: fixtures-league-256-2025
+📡 API Request #47/7500: /fixtures
+💾 Cached: fixtures-league-256-2025 (3600s)
+❌ Cache MISS: fixtures-league-98-2025
+📡 API Request #48/7500: /fixtures
+💾 Cached: fixtures-league-98-2025 (3600s)
+❌ Cache MISS: fixtures-league-292-2025
+📡 API Request #49/7500: /fixtures
+💾 Cached: fixtures-league-292-2025 (3600s)
+❌ Cache MISS: fixtures-league-252-2025
+📡 API Request #50/7500: /fixtures
+💾 Cached: fixtures-league-252-2025 (3600s)
+❌ Cache MISS: fixtures-league-296-2025
+📡 API Request #51/7500: /fixtures
+💾 Cached: fixtures-league-296-2025 (3600s)
+❌ Cache MISS: fixtures-league-188-2025
+📡 API Request #52/7500: /fixtures
+💾 Cached: fixtures-league-188-2025 (3600s)
+❌ Cache MISS: fixtures-league-323-2025
+📡 API Request #53/7500: /fixtures
+💾 Cached: fixtures-league-323-2025 (3600s)
+❌ Cache MISS: fixtures-league-249-2025
+❌ Cache MISS: fixtures-league-378-2025
+❌ Cache MISS: fixtures-league-382-2025
+❌ Cache MISS: fixtures-league-340-2025
+❌ Cache MISS: fixtures-league-254-2025
+❌ Cache MISS: fixtures-league-258-2025
+❌ Cache MISS: fixtures-league-259-2025
+❌ Cache MISS: fixtures-league-149-2025
+❌ Cache MISS: fixtures-league-390-2025
+❌ Cache MISS: fixtures-league-440-2025
+❌ Cache MISS: fixtures-league-352-2025
+❌ Cache MISS: fixtures-league-365-2025
+❌ Cache MISS: fixtures-league-233-2025
+❌ Cache MISS: fixtures-league-200-2025
+❌ Cache MISS: fixtures-league-202-2025
+❌ Cache MISS: fixtures-league-186-2025
+❌ Cache MISS: fixtures-league-288-2025
+❌ Cache MISS: fixtures-league-267-2025
+❌ Cache MISS: fixtures-league-237-2025
+❌ Cache MISS: fixtures-league-355-2025
+❌ Cache MISS: fixtures-league-368-2025
+❌ Cache MISS: fixtures-league-159-2025
+❌ Cache MISS: fixtures-league-228-2025
+❌ Cache MISS: fixtures-league-419-2025
+❌ Cache MISS: fixtures-league-396-2025
+❌ Cache MISS: fixtures-league-412-2025
+❌ Cache MISS: fixtures-league-255-2025
+❌ Cache MISS: fixtures-league-351-2025
+❌ Cache MISS: fixtures-league-381-2025
+❌ Cache MISS: fixtures-league-372-2025
+📡 API Request #54/7500: /fixtures
+💾 Cached: fixtures-league-372-2025 (3600s)
+❌ Cache MISS: fixtures-league-358-2025
+📡 API Request #55/7500: /fixtures
+💾 Cached: fixtures-league-358-2025 (3600s)
+❌ Cache MISS: fixtures-league-398-2025
+📡 API Request #56/7500: /fixtures
+💾 Cached: fixtures-league-398-2025 (3600s)
+❌ Cache MISS: fixtures-league-374-2025
+📡 API Request #57/7500: /fixtures
+💾 Cached: fixtures-league-374-2025 (3600s)
+❌ Cache MISS: fixtures-league-375-2025
+📡 API Request #58/7500: /fixtures
+💾 Cached: fixtures-league-375-2025 (3600s)
+❌ Cache MISS: fixtures-league-324-2025
+📡 API Request #59/7500: /fixtures
+💾 Cached: fixtures-league-324-2025 (3600s)
+❌ Cache MISS: fixtures-league-400-2025
+📡 API Request #60/7500: /fixtures
+💾 Cached: fixtures-league-400-2025 (3600s)
+❌ Cache MISS: fixtures-league-320-2025
+📡 API Request #61/7500: /fixtures
+💾 Cached: fixtures-league-320-2025 (3600s)
+❌ Cache MISS: fixtures-league-316-2025
+📡 API Request #62/7500: /fixtures
+💾 Cached: fixtures-league-316-2025 (3600s)
+❌ Cache MISS: fixtures-league-399-2025
+📡 API Request #63/7500: /fixtures
+💾 Cached: fixtures-league-399-2025 (3600s)
+❌ Cache MISS: fixtures-league-385-2025
+📡 API Request #64/7500: /fixtures
+💾 Cached: fixtures-league-385-2025 (3600s)
+❌ Cache MISS: fixtures-league-354-2025
+📡 API Request #65/7500: /fixtures
+💾 Cached: fixtures-league-354-2025 (3600s)
+❌ Cache MISS: fixtures-league-376-2025
+📡 API Request #66/7500: /fixtures
+💾 Cached: fixtures-league-376-2025 (3600s)
+❌ Cache MISS: fixtures-league-359-2025
+📡 API Request #67/7500: /fixtures
+💾 Cached: fixtures-league-359-2025 (3600s)
+❌ Cache MISS: fixtures-league-377-2025
+📡 API Request #68/7500: /fixtures
+💾 Cached: fixtures-league-377-2025 (3600s)
+❌ Cache MISS: fixtures-league-397-2025
+📡 API Request #69/7500: /fixtures
+💾 Cached: fixtures-league-397-2025 (3600s)
+❌ Cache MISS: fixtures-league-167-2025
+📡 API Request #70/7500: /fixtures
+💾 Cached: fixtures-league-167-2025 (3600s)
+
+═══════════════════════════════════════════════════
+✅ Tamamlandı: 1971 maç işlendi, DB'ye kaydedildi
+═══════════════════════════════════════════════════
+
+   ✅ Tüm takımlar maç listesi tamamlandı
+
+▶ Planlanmış maçlar (tarih) (sync-planned-matches.js)...
+💾 Database service enabled
+╔════════════════════════════════════════════════════════════════╗
+║   PLANLANMIŞ MAÇLAR - DB SENKRONU (1 API çağrısı!)              ║
+║   Bugün + 30 gün | from-to date range → Supabase                ║
+╚════════════════════════════════════════════════════════════════╝
+
+📅 Tarih aralığı: 2026-02-04 → 2026-03-06 (1 API çağrısı)
+
+❌ Cache MISS: fixtures-2026-02-04-2026-03-06
+📡 API Request #1/7500: /fixtures
+💾 Cached: fixtures-2026-02-04-2026-03-06 (1800s)
+   Bu aralıkta maç bulunamadı
+
+═══════════════════════════════════════════════════
+✅ Tamamlandı: 0 maç işlendi, DB'ye kaydedildi
+═══════════════════════════════════════════════════
+
+   ✅ Planlanmış maçlar (tarih) tamamlandı
+
+▶ Teknik direktörler (backfill-coaches.js)...
+🔧 Teknik Direktör Backfill Başlıyor...
+
+📊 Coach eksik kadro: 579/1000
+
+🔄 Kaldığı yerden: 250 zaten tamamlandı
+
+   ✅ 50 güncellendi...
+   ✅ 100 güncellendi...
+   ✅ 150 güncellendi...
+   ✅ 200 güncellendi...
+   ✅ 250 güncellendi...
+   ✅ 300 güncellendi...
+   ✅ 350 güncellendi...
+
+✅ Tamamlandı: 364 kadroya coach eklendi
+📡 API Calls: 364
+   ✅ Teknik direktörler tamamlandı
+
+▶ Lig/Takım/Kadro (sync-all-world-leagues.js)...
+╔════════════════════════════════════════════════════════════════╗
+║   TÜM DÜNYA 1. LİGLERİ - TAM SENKRONİZASYON                    ║
+║   127 Lig | ~2300 Takım | ~2300 Kadro                          ║
+╚════════════════════════════════════════════════════════════════╝
+
+📊 İşlenecek lig sayısı: 126
+
+🔄 Kaldığı yerden devam ediliyor: 36/126
+
+
+[37/126] ════════════════════════════════════
+
+📋 Azerbaijan - Premyer Liqa (ID: 420)
+   ⚠️ Takım bulunamadı
+
+[38/126] ════════════════════════════════════
+
+📋 Georgia - Erovnuli Liga (ID: 325)
+   ⚠️ Takım bulunamadı
+
+[39/126] ════════════════════════════════════
+
+📋 Armenia - Premier League (ID: 342)
+   ⚠️ Takım bulunamadı
+
+[40/126] ════════════════════════════════════
+
+📋 Moldova - Super Liga (ID: 441)
+   ⚠️ Takım bulunamadı
+
+📊 İLERLEME: 40/126 lig | 0 takım | 0 kadro | 80 API | 1s
+
+[41/126] ════════════════════════════════════
+
+📋 Bosnia - Premijer Liga (ID: 155)
+   ⚠️ Takım bulunamadı
+
+[42/126] ════════════════════════════════════
+
+📋 North-Macedonia - First League (ID: 428)
+   ⚠️ Takım bulunamadı
+
+[43/126] ════════════════════════════════════
+
+📋 Montenegro - First League (ID: 423)
+   ⚠️ Takım bulunamadı
+
+[44/126] ════════════════════════════════════
+
+📋 Albania - Superliga (ID: 310)
+   ⚠️ Takım bulunamadı
+
+[45/126] ════════════════════════════════════
+
+📋 Kosovo - Superliga (ID: 409)
+   ⚠️ Takım bulunamadı
+
+[46/126] ════════════════════════════════════
+
+📋 Luxembourg - National Division (ID: 261)
+   ⚠️ Takım bulunamadı
+
+[47/126] ════════════════════════════════════
+
+📋 Malta - Premier League (ID: 392)
+   ⚠️ Takım bulunamadı
+
+[48/126] ════════════════════════════════════
+
+📋 Estonia - Meistriliiga (ID: 329)
+   ⚠️ Takım bulunamadı
+
+[49/126] ════════════════════════════════════
+
+📋 Latvia - Virsliga (ID: 363)
+   ⚠️ Takım bulunamadı
+
+[50/126] ════════════════════════════════════
+
+📋 Lithuania - A Lyga (ID: 360)
+   ⚠️ Takım bulunamadı
+
+📊 İLERLEME: 50/126 lig | 0 takım | 0 kadro | 100 API | 3s
+
+[51/126] ════════════════════════════════════
+
+📋 Faroe-Islands - Premier League (ID: 370)
+   ⚠️ Takım bulunamadı
+
+[52/126] ════════════════════════════════════
+
+📋 Brazil - Serie A (ID: 71)
+   ⚠️ Takım bulunamadı
+
+[53/126] ════════════════════════════════════
+
+📋 Argentina - Liga Profesional (ID: 128)
+   ⚠️ Takım bulunamadı
+
+[54/126] ════════════════════════════════════
+
+📋 Colombia - Liga BetPlay (ID: 239)
+   ⚠️ Takım bulunamadı
+
+[55/126] ════════════════════════════════════
+
+📋 Chile - Primera División (ID: 265)
+   ⚠️ Takım bulunamadı
+
+[56/126] ════════════════════════════════════
+
+📋 Uruguay - Primera División (ID: 268)
+   ⚠️ Takım bulunamadı
+
+[57/126] ════════════════════════════════════
+
+📋 Paraguay - División Profesional (ID: 274)
+   ⚠️ Takım bulunamadı
+
+[58/126] ════════════════════════════════════
+
+📋 Peru - Liga 1 (ID: 281)
+   ⚠️ Takım bulunamadı
+
+[59/126] ════════════════════════════════════
+
+📋 Ecuador - Liga Pro (ID: 242)
+   ⚠️ Takım bulunamadı
+
+[60/126] ════════════════════════════════════
+
+📋 Venezuela - Primera División (ID: 299)
+   ⚠️ Takım bulunamadı
+
+📊 İLERLEME: 60/126 lig | 0 takım | 0 kadro | 120 API | 5s
+
+[61/126] ════════════════════════════════════
+
+📋 Bolivia - División Profesional (ID: 158)
+   ⚠️ Takım bulunamadı
+
+[62/126] ════════════════════════════════════
+
+📋 Mexico - Liga MX (ID: 262)
+   ⚠️ Takım bulunamadı
+
+[63/126] ════════════════════════════════════
+
+📋 USA - MLS (ID: 253)
+   ⚠️ Takım bulunamadı
+
+[64/126] ════════════════════════════════════
+
+📋 Costa-Rica - Primera División (ID: 162)
+   ⚠️ Takım bulunamadı
+
+[65/126] ════════════════════════════════════
+
+📋 Honduras - Liga Nacional (ID: 247)
+   ⚠️ Takım bulunamadı
+
+[66/126] ════════════════════════════════════
+
+📋 Guatemala - Liga Nacional (ID: 240)
+   ⚠️ Takım bulunamadı
+
+[67/126] ════════════════════════════════════
+
+📋 El-Salvador - Primera División (ID: 230)
+   ⚠️ Takım bulunamadı
+
+[68/126] ════════════════════════════════════
+
+📋 Panama - Liga Panameña (ID: 277)
+   ⚠️ Takım bulunamadı
+
+[69/126] ════════════════════════════════════
+
+📋 Jamaica - Premier League (ID: 256)
+   ⚠️ Takım bulunamadı
+
+[70/126] ════════════════════════════════════
+
+📋 Japan - J1 League (ID: 98)
+   ⚠️ Takım bulunamadı
+
+📊 İLERLEME: 70/126 lig | 0 takım | 0 kadro | 140 API | 7s
+
+[71/126] ════════════════════════════════════
+
+📋 South-Korea - K League 1 (ID: 292)
+   ⚠️ Takım bulunamadı
+
+[72/126] ════════════════════════════════════
+
+📋 China - Super League (ID: 169)
+   ⚠️ Takım bulunamadı
+
+[73/126] ════════════════════════════════════
+
+📋 Saudi-Arabia - Pro League (ID: 307)
+   ⚠️ Takım bulunamadı
+
+[74/126] ════════════════════════════════════
+
+📋 United-Arab-Emirates - Pro League (ID: 301)
+   ⚠️ Takım bulunamadı
+
+[75/126] ════════════════════════════════════
+
+📋 Qatar - Stars League (ID: 305)
+   ⚠️ Takım bulunamadı
+
+[76/126] ════════════════════════════════════
+
+📋 Iran - Persian Gulf Pro League (ID: 252)
+   ⚠️ Takım bulunamadı
+
+[77/126] ════════════════════════════════════
+
+📋 Thailand - Thai League 1 (ID: 296)
+   ⚠️ Takım bulunamadı
+
+[78/126] ════════════════════════════════════
+
+📋 Australia - A-League (ID: 188)
+   ⚠️ Takım bulunamadı
+
+[79/126] ════════════════════════════════════
+
+📋 India - Indian Super League (ID: 323)
+   ⚠️ Takım bulunamadı
+
+[80/126] ════════════════════════════════════
+
+📋 Indonesia - Liga 1 (ID: 249)
+   ⚠️ Takım bulunamadı
+
+📊 İLERLEME: 80/126 lig | 0 takım | 0 kadro | 160 API | 9s
+
+[81/126] ════════════════════════════════════
+
+📋 Malaysia - Super League (ID: 378)
+   ⚠️ Takım bulunamadı
+
+[82/126] ════════════════════════════════════
+
+📋 Singapore - Premier League (ID: 382)
+   ⚠️ Takım bulunamadı
+
+[83/126] ════════════════════════════════════
+
+📋 Vietnam - V.League 1 (ID: 340)
+   ⚠️ Takım bulunamadı
+
+[84/126] ════════════════════════════════════
+
+📋 Iraq - Stars League (ID: 254)
+   ⚠️ Takım bulunamadı
+
+[85/126] ════════════════════════════════════
+
+📋 Jordan - Pro League (ID: 258)
+   ⚠️ Takım bulunamadı
+
+[86/126] ════════════════════════════════════
+
+📋 Kuwait - Premier League (ID: 259)
+   ⚠️ Takım bulunamadı
+
+[87/126] ════════════════════════════════════
+
+📋 Bahrain - Premier League (ID: 149)
+   ⚠️ Takım bulunamadı
+
+[88/126] ════════════════════════════════════
+
+📋 Oman - Professional League (ID: 269)
+   ⚠️ Takım bulunamadı
+
+[89/126] ════════════════════════════════════
+
+📋 Lebanon - Premier League (ID: 390)
+   ⚠️ Takım bulunamadı
+
+[90/126] ════════════════════════════════════
+
+📋 Syria - Premier League (ID: 440)
+   ⚠️ Takım bulunamadı
+
+📊 İLERLEME: 90/126 lig | 0 takım | 0 kadro | 180 API | 11s
+
+[91/126] ════════════════════════════════════
+
+📋 Uzbekistan - Super League (ID: 352)
+   ⚠️ Takım bulunamadı
+
+[92/126] ════════════════════════════════════
+
+📋 Hong-Kong - Premier League (ID: 365)
+   ⚠️ Takım bulunamadı
+
+[93/126] ════════════════════════════════════
+
+📋 Egypt - Premier League (ID: 233)
+   ⚠️ Takım bulunamadı
+
+[94/126] ════════════════════════════════════
+
+📋 Morocco - Botola Pro (ID: 200)
+   ⚠️ Takım bulunamadı
+
+[95/126] ════════════════════════════════════
+
+📋 Tunisia - Ligue 1 (ID: 202)
+   ⚠️ Takım bulunamadı
+
+[96/126] ════════════════════════════════════
+
+📋 Algeria - Ligue 1 (ID: 186)
+   ⚠️ Takım bulunamadı
+
+[97/126] ════════════════════════════════════
+
+📋 South-Africa - Premier Soccer League (ID: 288)
+   ⚠️ Takım bulunamadı
+
+[98/126] ════════════════════════════════════
+
+📋 Nigeria - NPFL (ID: 267)
+   ⚠️ Takım bulunamadı
+
+[99/126] ════════════════════════════════════
+
+📋 Ghana - Premier League (ID: 237)
+   ⚠️ Takım bulunamadı
+
+[100/126] ════════════════════════════════════
+
+📋 Ivory-Coast - Ligue 1 (ID: 355)
+   ⚠️ Takım bulunamadı
+
+📊 İLERLEME: 100/126 lig | 0 takım | 0 kadro | 200 API | 13s
+
+[101/126] ════════════════════════════════════
+
+📋 Senegal - Ligue 1 (ID: 368)
+   ⚠️ Takım bulunamadı
+
+[102/126] ════════════════════════════════════
+
+📋 Cameroon - Elite One (ID: 159)
+   ⚠️ Takım bulunamadı
+
+[103/126] ════════════════════════════════════
+
+📋 DR-Congo - Linafoot (ID: 228)
+   ⚠️ Takım bulunamadı
+
+[104/126] ════════════════════════════════════
+
+📋 Tanzania - Premier League (ID: 419)
+   ⚠️ Takım bulunamadı
+
+[105/126] ════════════════════════════════════
+
+📋 Kenya - Premier League (ID: 396)
+   ⚠️ Takım bulunamadı
+
+[106/126] ════════════════════════════════════
+
+📋 Uganda - Premier League (ID: 412)
+   ⚠️ Takım bulunamadı
+
+[107/126] ════════════════════════════════════
+
+📋 Zambia - Super League (ID: 255)
+   ⚠️ Takım bulunamadı
+
+[108/126] ════════════════════════════════════
+
+📋 Zimbabwe - Premier Soccer League (ID: 351)
+   ⚠️ Takım bulunamadı
+
+[109/126] ════════════════════════════════════
+
+📋 Angola - Girabola (ID: 381)
+   ⚠️ Takım bulunamadı
+
+[110/126] ════════════════════════════════════
+
+📋 Mozambique - Moçambola (ID: 372)
+   ⚠️ Takım bulunamadı
+
+📊 İLERLEME: 110/126 lig | 0 takım | 0 kadro | 220 API | 15s
+
+[111/126] ════════════════════════════════════
+
+📋 Ethiopia - Premier League (ID: 358)
+   ⚠️ Takım bulunamadı
+
+[112/126] ════════════════════════════════════
+
+📋 Sudan - Premier League (ID: 398)
+   ⚠️ Takım bulunamadı
+
+[113/126] ════════════════════════════════════
+
+📋 Libya - Premier League (ID: 374)
+   ⚠️ Takım bulunamadı
+
+[114/126] ════════════════════════════════════
+
+📋 Mali - Première Division (ID: 375)
+   ⚠️ Takım bulunamadı
+
+[115/126] ════════════════════════════════════
+
+📋 Burkina-Faso - Premier League (ID: 324)
+   ⚠️ Takım bulunamadı
+
+[116/126] ════════════════════════════════════
+
+📋 Niger - Ligue 1 (ID: 400)
+   ⏳ Rate limit! 60 saniye bekleniyor...
+   ⚠️ Takım bulunamadı
+
+[117/126] ════════════════════════════════════
+
+📋 Guinea - Ligue 1 (ID: 320)
+   ⚠️ Takım bulunamadı
+
+[118/126] ════════════════════════════════════
+
+📋 Benin - Ligue Pro (ID: 316)
+   ⚠️ Takım bulunamadı
+
+[119/126] ════════════════════════════════════
+
+📋 Togo - Championnat National (ID: 399)
+   ⚠️ Takım bulunamadı
+
+[120/126] ════════════════════════════════════
+
+📋 Rwanda - Premier League (ID: 385)
+   ⚠️ Takım bulunamadı
+
+📊 İLERLEME: 120/126 lig | 0 takım | 0 kadro | 241 API | 78s
+
+[121/126] ════════════════════════════════════
+
+📋 Burundi - Ligue A (ID: 354)
+   ⚠️ Takım bulunamadı
+
+[122/126] ════════════════════════════════════
+
+📋 Malawi - Super League (ID: 376)
+   ⚠️ Takım bulunamadı
+
+[123/126] ════════════════════════════════════
+
+📋 Botswana - Premier League (ID: 359)
+   ⚠️ Takım bulunamadı
+
+[124/126] ════════════════════════════════════
+
+📋 Namibia - Premier League (ID: 377)
+   ⚠️ Takım bulunamadı
+
+[125/126] ════════════════════════════════════
+
+📋 Mauritius - Premier League (ID: 397)
+   ⚠️ Takım bulunamadı
+
+[126/126] ════════════════════════════════════
+
+📋 New-Zealand - Premiership (ID: 167)
+   ⚠️ Takım bulunamadı
+
+
+══════════════════════════════════════════════════════════════════════
+📊 TAMAMLANDI!
+══════════════════════════════════════════════════════════════════════
+   Toplam süre       : 1 dakika 19 saniye
+   API istekleri     : 253
+   İşlenen lig       : 0
+   Bulunan takım     : 0
+   Kaydedilen takım  : 0
+   Bulunan kadro     : 0
+   Kaydedilen kadro  : 0
+   Hatalar           : 0
+
+💾 Sonuçlar kaydedildi: C:\TacticIQ\backend\data\sync-result.json
+   ✅ Lig/Takım/Kadro tamamlandı
+
+═══════════════════════════════════════════════════
+✅ Tüm senkron işlemleri bitti (244dk 10sn)
+═══════════════════════════════════════════════════
+

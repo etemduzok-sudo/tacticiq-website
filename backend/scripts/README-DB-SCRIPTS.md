@@ -86,12 +86,19 @@ backend/
 
 ## ⚽ Planlanmış Maçlar & API Sıfırlama Sonrası
 
-### Planlanmış Maç Senkronu
+### DB-FIRST Stratejisi
+Uygulama maç verisi alırken **önce DB'den okur**, boşsa API fallback yapar:
+- `GET /api/matches/date/:date` → DB (sync-planned-matches ile dolu)
+- `GET /api/matches/team/:id/season/:season` → DB (sync-all-teams-matches ile dolu)
+Böylece API kotası korunur, yanıt süreleri düşer.
+
+### Planlanmış Maç Senkronu (1 API çağrısı!)
 ```bash
 node scripts/sync-planned-matches.js
 ```
-- Bugün + 30 gün maçları API'den çekip DB'ye kaydeder
-- Uygulama maçları DB'den okur (API limiti korunur)
+- **1 API çağrısı** ile bugün → sezon sonu (30 Haziran) tüm maçları çeker
+- `getFixturesByDateRange(from, to)` kullanır
+- DB'ye bulk upsert (quiet, bulk mode)
 
 ### Tüm Takımlar Maç Listesi
 ```bash
@@ -104,9 +111,9 @@ node scripts/sync-all-teams-matches.js
 ```bash
 node scripts/post-reset-full-sync.js
 ```
-Sırayla çalıştırır:
-1. **Tüm takımlar maç listesi** (lig bazlı, tüm sezon)
-2. Planlanmış maçlar (tarih bazlı, bugün+30 gün)
+Sırayla çalıştırır (minimum API önceliği):
+1. **Planlanmış maçlar** (1 API, bugün → sezon sonu)
+2. Tüm takımlar maç listesi (lig bazlı)
 3. Eksik teknik direktörler
 4. Lig/Takım/Kadro (sync-all-world-leagues)
 
@@ -116,7 +123,14 @@ Sırayla çalıştırır:
 
 ## 🔧 Önerilen Kullanım
 
-1. **Günlük 03:00**: `post-reset-full-sync.js` (API sıfırlandıktan sonra)
-2. **Manuel**: `sync-planned-matches.js` ile sadece maç listesi
-3. **Haftalık**: `backup-db.js` ile yedek al
-4. **Sorun durumunda**: `restore-db.js` ile geri yükle
+1. **Günlük 03:00**: `post-reset-full-sync.js` (API sıfırlandıktan sonra) → `schedule-post-reset.bat`
+2. **Günlük 04:00**: `backup-db.js` (sync sonrası yedek) → `schedule-backup.bat`
+3. **Manuel**: `sync-planned-matches.js` ile sadece maç listesi
+4. **Sorun durumunda**: `restore-db.js backup-YYYY-MM-DDTHH-MM-SS` ile geri yükle
+
+## 📋 Yedekleme Detayları
+
+- **Yedeklenen tablolar**: leagues, teams, static_teams, team_squads, players, matches, profiles, predictions, squad_predictions, user_badges
+- **Geri dönüş süresi**: ~2–10 dakika (kayıt sayısına göre)
+- **Ne kadar geriye**: Alınan her yedek noktasına dönülebilir
+- **Detaylı plan**: `backend/docs/YEDEKLEME_VE_KURTARMA_PLANI.md`

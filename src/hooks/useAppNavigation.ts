@@ -17,6 +17,8 @@ export function useAppNavigation() {
   const [legalDocumentType, setLegalDocumentType] = useState<string>('terms');
   const [activeTab, setActiveTab] = useState<string>('home');
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
+  const screenBeforeMatchDetailRef = useRef<string>('home');
+  const activeTabBeforeMatchDetailRef = useRef<string>('home');
   const [selectedTeamIds, setSelectedTeamIds] = useState<number[]>([]);
   const [isMaintenanceMode, setIsMaintenanceMode] = useState<boolean>(false);
   const [isProcessingOAuth, setIsProcessingOAuth] = useState<boolean>(() => {
@@ -116,7 +118,7 @@ export function useAppNavigation() {
   // 2. Language Selection
   const handleLanguageSelect = useCallback(async (lang: string) => {
     logger.info('Language selected', { lang }, 'LANGUAGE');
-    await AsyncStorage.setItem('fan-manager-language', lang);
+    await AsyncStorage.setItem(STORAGE_KEYS.LANGUAGE, lang);
     logNavigation('age-gate');
     setPreviousScreen(currentScreen);
     setCurrentScreen('age-gate');
@@ -213,11 +215,23 @@ export function useAppNavigation() {
 
   const handleMatchSelect = useCallback((matchId: string, options?: { initialTab?: string }) => {
     logNavigation('match-detail', { matchId, ...options });
+    screenBeforeMatchDetailRef.current = currentScreen;
+    activeTabBeforeMatchDetailRef.current = activeTab;
     setSelectedMatchId(matchId);
     const matchParams = { initialTab: options?.initialTab || 'squad' };
     if (typeof global !== 'undefined') (global as any).__matchDetailParams = matchParams;
     if (typeof window !== 'undefined') (window as any).__matchDetailParams = matchParams;
     setCurrentScreen('match-detail');
+  }, [currentScreen, activeTab]);
+
+  const handleMatchDetailBack = useCallback(() => {
+    const restoreScreen = screenBeforeMatchDetailRef.current || 'home';
+    const restoreTab = activeTabBeforeMatchDetailRef.current || 'home';
+    setSelectedMatchId(null);
+    if (typeof global !== 'undefined') (global as any).__matchDetailParams = {};
+    if (typeof window !== 'undefined') (window as any).__matchDetailParams = {};
+    setActiveTab(restoreTab);
+    setCurrentScreen(restoreScreen);
   }, []);
 
   const handleMatchResultSelect = useCallback((matchId: string) => {
@@ -256,6 +270,8 @@ export function useAppNavigation() {
         break;
       case 'match-detail':
         if (params?.id) {
+          screenBeforeMatchDetailRef.current = currentScreen;
+          activeTabBeforeMatchDetailRef.current = activeTab;
           setSelectedMatchId(params.id);
           const matchParams = {
             initialTab: params?.initialTab || 'squad',
@@ -380,6 +396,7 @@ export function useAppNavigation() {
       handleTabChange,
       handleMatchSelect,
       handleMatchResultSelect,
+      handleMatchDetailBack,
       handleDashboardNavigate,
       handleProfileSettings,
       handleProUpgrade,

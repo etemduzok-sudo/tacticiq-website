@@ -11,19 +11,34 @@ import {
   Alert,
   Modal,
   Pressable,
+  Platform,
+  Animated as RNAnimated,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
-import Animated, { 
-  FadeIn,
-  ZoomIn,
-} from 'react-native-reanimated';
-import { Platform } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 
 // Web için animasyonları devre dışı bırak
 const isWeb = Platform.OS === 'web';
+
+// Web için reanimated animasyonları desteklenmiyor
+let Animated: any;
+let FadeIn: any;
+let ZoomIn: any;
+
+if (isWeb) {
+  // Web için React Native Animated kullan (animasyon yok)
+  Animated = { View: RNAnimated.View };
+  FadeIn = undefined;
+  ZoomIn = undefined;
+} else {
+  // Native için reanimated kullan
+  const Reanimated = require('react-native-reanimated');
+  Animated = Reanimated.default || Reanimated;
+  FadeIn = Reanimated.FadeIn;
+  ZoomIn = Reanimated.ZoomIn;
+}
 import {
   generateMatchAnalysisReport,
   getClusterName,
@@ -31,7 +46,7 @@ import {
 } from '../../services/predictionScoringService';
 import { TrainingType, FocusPrediction, AnalysisCluster } from '../../types/prediction.types';
 import ScoringEngine from '../../logic/ScoringEngine';
-import { STORAGE_KEYS, TEXT } from '../../config/constants';
+import { STORAGE_KEYS, LEGACY_STORAGE_KEYS, TEXT } from '../../config/constants';
 import { handleError, ErrorType } from '../../utils/GlobalErrorHandler';
 import { checkAndAwardBadges, UserStats, BadgeAwardResult } from '../../services/badgeService';
 import { getBadgeColor, getBadgeTierName } from '../../types/badges.types';
@@ -132,8 +147,11 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
 
   const loadPredictionsAndCalculateScores = async () => {
     try {
+      // Try new key first, fallback to legacy key
       const predictionDataStr = await AsyncStorage.getItem(
-        `fan-manager-predictions-${matchData.id}`
+        `${STORAGE_KEYS.PREDICTIONS}${matchData.id}`
+      ) || await AsyncStorage.getItem(
+        `${LEGACY_STORAGE_KEYS.PREDICTIONS}${matchData.id}`
       );
       
       if (!predictionDataStr) return;
@@ -179,7 +197,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
       };
       
       await AsyncStorage.setItem(
-        `fan-manager-ratings-${matchData.id}`,
+        `${STORAGE_KEYS.RATINGS}${matchData.id}`,
         JSON.stringify(ratingsData)
       );
       
@@ -408,7 +426,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
 
         {/* 🌟 PREDICTION ANALYSIS CARD */}
         {predictionReport && (
-          <Animated.View entering={isWeb ? undefined : FadeIn.delay(200)} style={styles.analysisCard}>
+          <Animated.View entering={!isWeb && FadeIn ? FadeIn.delay(200) : undefined} style={styles.analysisCard}>
             <TouchableOpacity
               onPress={() => setShowAnalysis(!showAnalysis)}
               activeOpacity={0.8}
@@ -447,7 +465,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
                   {predictionReport.clusterScores.map((cluster: any, index: number) => (
                     <Animated.View
                       key={cluster.cluster}
-                      entering={FadeIn.delay(index * 100)}
+                      entering={!isWeb && FadeIn ? FadeIn.delay(index * 100) : undefined}
                       style={styles.clusterScoreCard}
                     >
                       <View style={styles.clusterScoreHeader}>
@@ -510,7 +528,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
 
                 {/* 📊 KÜME BAZINDA PUAN DAĞILIMI TABLOSU */}
                 {predictionReport && predictionReport.clusterScores.length > 0 && (
-                  <Animated.View entering={FadeIn.delay(300)} style={styles.clusterBreakdownCard}>
+                  <Animated.View entering={!isWeb && FadeIn ? FadeIn.delay(300) : undefined} style={styles.clusterBreakdownCard}>
                     <View style={styles.clusterBreakdownHeader}>
                       <Ionicons name="bar-chart" size={20} color="#1FA2A6" />
                       <Text style={styles.clusterBreakdownTitle}>Küme Bazında Puan Dağılımı</Text>
@@ -524,7 +542,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
                       return (
                         <Animated.View 
                           key={cluster.cluster} 
-                          entering={FadeIn.delay(320 + index * 50)}
+                          entering={!isWeb && FadeIn ? FadeIn.delay(320 + index * 50) : undefined}
                           style={styles.clusterRow}
                         >
                           <View style={styles.clusterRowLeft}>
@@ -581,7 +599,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
             return (
               <Animated.View
                 key={category.id}
-                entering={FadeIn.delay(index * 80)}
+                entering={!isWeb && FadeIn ? FadeIn.delay(index * 80) : undefined}
                 style={styles.categoryCard}
               >
                 {/* Category Header */}
@@ -609,7 +627,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
                         activeOpacity={0.7}
                       >
                         <Animated.View
-                          entering={ZoomIn.delay(star * 30)}
+                          entering={!isWeb && ZoomIn ? ZoomIn.delay(star * 30) : undefined}
                           style={[
                             styles.star,
                             star <= userRating && styles.starActive,
@@ -732,7 +750,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
 
                   {/* Badge Icon */}
                   <Animated.View
-                    entering={ZoomIn.delay(200).springify()}
+                    entering={!isWeb && ZoomIn ? ZoomIn.delay(200).springify() : undefined}
                     style={[
                       styles.badgePopupIconContainer,
                       {

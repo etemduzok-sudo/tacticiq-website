@@ -24,7 +24,10 @@ async function fetchCoach(teamId) {
   
   try {
     const res = await fetch(`https://v3.football.api-sports.io/coachs?team=${teamId}`, {
-      headers: { 'x-apisports-key': API_KEY }
+      headers: {
+        'x-rapidapi-key': API_KEY,
+        'x-rapidapi-host': 'v3.football.api-sports.io',
+      }
     });
     const data = await res.json();
     await new Promise(r => setTimeout(r, RATE_MS));

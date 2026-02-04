@@ -378,12 +378,7 @@ export default function App() {
               initialTab={matchDetailParams.initialTab || 'squad'}
               analysisFocus={matchDetailParams.analysisFocus}
               preloadedMatch={matchDetailParams.matchData}
-              onBack={() => {
-                navActions.setSelectedMatchId(null);
-                if (typeof global !== 'undefined') (global as any).__matchDetailParams = {};
-                if (typeof window !== 'undefined') (window as any).__matchDetailParams = {};
-                navActions.setCurrentScreen('home');
-              }}
+              onBack={navHandlers.handleMatchDetailBack}
             />
           );
         

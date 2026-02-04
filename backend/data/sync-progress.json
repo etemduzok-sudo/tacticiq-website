@@ -1,13 +1,13 @@
 {
-  "completedAt": "2026-02-04T05:20:33.764Z",
-  "duration": 79,
+  "lastProcessedIndex": 87,
   "stats": {
-    "apiRequests": 253,
+    "apiRequests": 183,
     "leaguesProcessed": 0,
     "teamsFound": 0,
     "teamsInserted": 0,
     "squadsFound": 0,
     "squadsInserted": 0,
     "errors": []
-  }
+  },
+  "updatedAt": "2026-02-04T05:26:08.258Z"
 }

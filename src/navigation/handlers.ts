@@ -4,6 +4,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { logger, logNavigation } from '../utils/logger';
 import { Screen } from './types';
+import { STORAGE_KEYS } from '../config/constants';
 
 /**
  * 1. Onboarding Complete (replaces splash, language, age-gate flow)
@@ -107,7 +108,7 @@ export const handleLanguageSelect = async (
   setCurrentScreen: (screen: Screen) => void
 ) => {
   logger.info('Language selected', { lang }, 'LANGUAGE');
-  await AsyncStorage.setItem('fan-manager-language', lang);
+  await AsyncStorage.setItem(STORAGE_KEYS.LANGUAGE, lang);
   
   logNavigation('age-gate');
   setPreviousScreen(currentScreen);
@@ -195,7 +196,7 @@ export const handleRegisterSuccess = async (
 ) => {
   logger.info('Register success', undefined, 'REGISTER');
   // ✅ Her zaman Pro yap
-  await AsyncStorage.setItem('fan-manager-user', JSON.stringify({ 
+  await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify({ 
     authenticated: true,
     is_pro: true,
     isPro: true,
@@ -440,7 +441,7 @@ export const handleLogout = async (
   logger.info('Logging out', undefined, 'AUTH');
   try {
     // Sadece user session'ı temizle - dil ve takım seçimini koru
-    await AsyncStorage.removeItem('fan-manager-user');
+    await AsyncStorage.removeItem(STORAGE_KEYS.USER);
     logger.debug('User session cleared', undefined, 'AUTH');
     logNavigation('auth');
     setCurrentScreen('auth');

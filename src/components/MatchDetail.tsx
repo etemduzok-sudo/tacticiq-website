@@ -22,10 +22,11 @@ import { MatchPrediction } from './match/MatchPrediction';
 import { MatchLive } from './match/MatchLive';
 import { MatchStats } from './match/MatchStats';
 import { MatchRatings } from './match/MatchRatings';
-import { MatchSummary } from './match/MatchSummary';
+// MatchSummary artık kullanılmıyor - Özet bilgileri biten maç kartlarında gösteriliyor
+// import { MatchSummary } from './match/MatchSummary';
 import { AnalysisFocusModal, AnalysisFocusType } from './AnalysisFocusModal';
 import { ConfirmModal } from './ui/ConfirmModal';
-import { STORAGE_KEYS } from '../config/constants';
+import { STORAGE_KEYS, LEGACY_STORAGE_KEYS } from '../config/constants';
 import { predictionsDb } from '../services/databaseService';
 import { BRAND, COLORS, SPACING, SIZES } from '../theme/theme';
 import { getTeamColors as getTeamColorsUtil } from '../utils/teamColors';
@@ -67,11 +68,13 @@ const tabs = [
   { id: 'live', label: 'Canlı', icon: 'pulse' },
   { id: 'stats', label: 'İstatistik', icon: 'bar-chart' },
   { id: 'ratings', label: 'Reyting', icon: 'star' },
-  { id: 'summary', label: 'Özet', icon: 'document-text' },
+  // Özet sekmesi kaldırıldı - Artık biten maç kartlarında gösteriliyor
 ];
 
 export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFocus, preloadedMatch }: MatchDetailProps) {
+  // ✅ Maç durumuna göre varsayılan sekme belirlenir (biten maçlar için stats/ratings)
   const [activeTab, setActiveTab] = useState(initialTab);
+  const [initialTabSet, setInitialTabSet] = useState(false);
   const [coaches, setCoaches] = useState<{ home: string; away: string }>({ home: '', away: '' });
   const [countdownTicker, setCountdownTicker] = useState(0); // ✅ Geri sayım için ticker
   const { favoriteTeams } = useFavoriteTeams();
@@ -109,8 +112,8 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
       if (bothFav && homeId != null && awayId != null) {
         const key1 = `${STORAGE_KEYS.PREDICTIONS}${matchId}-${homeId}`;
         const key2 = `${STORAGE_KEYS.PREDICTIONS}${matchId}-${awayId}`;
-        const alt1 = `fan-manager-predictions-${matchId}-${homeId}`;
-        const alt2 = `fan-manager-predictions-${matchId}-${awayId}`;
+        const alt1 = `${LEGACY_STORAGE_KEYS.PREDICTIONS}${matchId}-${homeId}`;
+        const alt2 = `${LEGACY_STORAGE_KEYS.PREDICTIONS}${matchId}-${awayId}`;
         const raw1 = await AsyncStorage.getItem(key1) || await AsyncStorage.getItem(alt1);
         const raw2 = await AsyncStorage.getItem(key2) || await AsyncStorage.getItem(alt2);
         let has = false;
@@ -126,7 +129,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
         return;
       }
       const predRaw = await AsyncStorage.getItem(STORAGE_KEYS.PREDICTIONS + matchId)
-        || await AsyncStorage.getItem(`fan-manager-predictions-${matchId}`);
+        || await AsyncStorage.getItem(`${LEGACY_STORAGE_KEYS.PREDICTIONS}${matchId}`);
       if (predRaw) {
         const pred = JSON.parse(predRaw);
         const hasMatchPred = pred?.matchPredictions && Object.values(pred.matchPredictions).some((v: any) => v != null);
@@ -151,8 +154,8 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
     try {
       if (bothFavorites && teamToReset != null) {
         await AsyncStorage.removeItem(`${STORAGE_KEYS.PREDICTIONS}${matchId}-${teamToReset}`);
-        await AsyncStorage.removeItem(`fan-manager-predictions-${matchId}-${teamToReset}`);
-        const squadKey = `fan-manager-squad-${matchId}-${teamToReset}`;
+        await AsyncStorage.removeItem(`${LEGACY_STORAGE_KEYS.PREDICTIONS}${matchId}-${teamToReset}`);
+        const squadKey = `${STORAGE_KEYS.SQUAD}${matchId}-${teamToReset}`;
         const raw = await AsyncStorage.getItem(squadKey);
         if (raw) {
           const parsed = JSON.parse(raw);
@@ -165,12 +168,12 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
         if (userId) await predictionsDb.deletePredictionsByMatch(userId, String(matchId)); // DB'de match bazlı; ek filtre gerekebilir
       } else {
         await AsyncStorage.removeItem(STORAGE_KEYS.PREDICTIONS + matchId);
-        await AsyncStorage.removeItem(`fan-manager-predictions-${matchId}`);
+        await AsyncStorage.removeItem(`${LEGACY_STORAGE_KEYS.PREDICTIONS}${matchId}`);
         const userDataStr = await AsyncStorage.getItem(STORAGE_KEYS.USER);
         const userData = userDataStr ? JSON.parse(userDataStr) : null;
         const userId = userData?.id;
         if (userId) await predictionsDb.deletePredictionsByMatch(userId, String(matchId));
-        const squadKey = `fan-manager-squad-${matchId}`;
+        const squadKey = `${STORAGE_KEYS.SQUAD}${matchId}`;
         const raw = await AsyncStorage.getItem(squadKey);
         if (raw) {
           const parsed = JSON.parse(raw);
@@ -296,6 +299,28 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
   const homeManager = coaches.home || getManagerFromLineups(match?.teams?.home?.id);
   const awayManager = coaches.away || getManagerFromLineups(match?.teams?.away?.id);
 
+  // ✅ Maç canlı mı kontrol et
+  const LIVE_STATUSES = ['1H', '2H', 'HT', 'ET', 'BT', 'P', 'LIVE'];
+  const FINISHED_STATUSES = ['FT', 'AET', 'PEN', 'AWD', 'WO']; // Biten maç statüleri
+  const matchStatus = match?.fixture?.status?.short || '';
+  const isMatchLive = LIVE_STATUSES.includes(matchStatus);
+  const isMatchFinished = FINISHED_STATUSES.includes(matchStatus);
+  const matchMinute = match?.fixture?.status?.elapsed || 0;
+  const homeScore = match?.goals?.home ?? 0;
+  const awayScore = match?.goals?.away ?? 0;
+  const halftimeScore = match?.score?.halftime || null;
+  
+  // ✅ Biten maçlar için varsayılan sekme ayarı
+  React.useEffect(() => {
+    if (match && !initialTabSet && initialTab === 'squad') {
+      // Eğer maç bitmişse ve initialTab belirtilmemişse, stats sekmesine git
+      if (isMatchFinished) {
+        setActiveTab('stats');
+        setInitialTabSet(true);
+      }
+    }
+  }, [match, isMatchFinished, initialTab, initialTabSet]);
+
   // Transform API data to component format
   const matchData = match ? {
     id: match.fixture.id.toString(),
@@ -323,6 +348,13 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
     date: new Date(match.fixture.date).toLocaleDateString('tr-TR'),
     time: api.utils.formatMatchTime(new Date(match.fixture.date).getTime() / 1000),
     timestamp: match.fixture.timestamp || new Date(match.fixture.date).getTime() / 1000, // ✅ Geri sayım için
+    // ✅ Canlı maç bilgileri
+    isLive: isMatchLive,
+    minute: matchMinute,
+    homeScore: homeScore,
+    awayScore: awayScore,
+    halftimeScore: halftimeScore,
+    status: matchStatus,
   } : null;
   
   // ✅ Geri sayım hesaplama
@@ -480,8 +512,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
       case 'ratings':
         return <MatchRatings matchData={matchData} />;
       
-      case 'summary':
-        return <MatchSummary matchData={matchData} />;
+      // Özet sekmesi kaldırıldı - Artık biten maç kartlarında gösteriliyor
       
       default:
         return null;
@@ -557,7 +588,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
           )}
         </View>
 
-        {/* Main Match Info - Teams & Time */}
+        {/* Main Match Info - Teams & Time/Score */}
         <View style={styles.matchInfoRow}>
           {/* Home Team */}
           <View style={styles.teamSide}>
@@ -565,40 +596,59 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
             {matchData.homeTeam.manager && (
               <Text style={styles.managerText}>{matchData.homeTeam.manager}</Text>
             )}
-            {/* Team Color Strip */}
-            <LinearGradient
-              colors={matchData.homeTeam.color as string[]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.teamColorStrip}
-            />
-          </View>
-
-          {/* Center: Date, Time, Countdown */}
-          <View style={styles.centerInfo}>
-            <Text style={styles.dateText}>● {matchData.date}</Text>
-            <Text style={styles.timeText}>{matchData.time}</Text>
-            {/* Countdown Boxes */}
-            {countdownData && countdownData.type === 'countdown' && (
-              <View style={styles.countdownRow}>
-                <View style={[styles.countdownBox, styles.countdownBoxHours]}>
-                  <Text style={styles.countdownNumber}>{String(countdownData.hours).padStart(2, '0')}</Text>
-                  <Text style={styles.countdownLabel}>Saat</Text>
-                </View>
-                <View style={[styles.countdownBox, styles.countdownBoxMinutes]}>
-                  <Text style={styles.countdownNumber}>{String(countdownData.minutes).padStart(2, '0')}</Text>
-                  <Text style={styles.countdownLabel}>Dakika</Text>
-                </View>
-                <View style={[styles.countdownBox, styles.countdownBoxSeconds]}>
-                  <Text style={styles.countdownNumber}>{String(countdownData.seconds).padStart(2, '0')}</Text>
-                  <Text style={styles.countdownLabel}>Saniye</Text>
-                </View>
+            {/* Canlı maçta skor göster */}
+            {matchData.isLive && (
+              <View style={styles.liveScoreBox}>
+                <Text style={styles.liveScoreText}>{matchData.homeScore}</Text>
               </View>
             )}
-            {countdownData && countdownData.type === 'days' && (
-              <Text style={[styles.daysText, { color: countdownData.color }]}>
-                {countdownData.days} gün kaldı
-              </Text>
+          </View>
+
+          {/* Center: Date, Time, Countdown OR Live Status */}
+          <View style={styles.centerInfo}>
+            {matchData.isLive ? (
+              <>
+                {/* CANLI Badge */}
+                <View style={styles.liveBadge}>
+                  <View style={styles.liveDot} />
+                  <Text style={styles.liveBadgeText}>CANLI</Text>
+                </View>
+                {/* Dakika */}
+                <Text style={styles.liveMinuteText}>{matchData.minute}'</Text>
+                {/* İlk yarı skoru */}
+                {matchData.halftimeScore && (
+                  <Text style={styles.halftimeText}>
+                    İY: {matchData.halftimeScore.home}-{matchData.halftimeScore.away}
+                  </Text>
+                )}
+              </>
+            ) : (
+              <>
+                <Text style={styles.dateText}>● {matchData.date}</Text>
+                <Text style={styles.timeText}>{matchData.time}</Text>
+                {/* Countdown Boxes */}
+                {countdownData && countdownData.type === 'countdown' && (
+                  <View style={styles.countdownRow}>
+                    <View style={[styles.countdownBox, styles.countdownBoxHours]}>
+                      <Text style={styles.countdownNumber}>{String(countdownData.hours).padStart(2, '0')}</Text>
+                      <Text style={styles.countdownLabel}>Saat</Text>
+                    </View>
+                    <View style={[styles.countdownBox, styles.countdownBoxMinutes]}>
+                      <Text style={styles.countdownNumber}>{String(countdownData.minutes).padStart(2, '0')}</Text>
+                      <Text style={styles.countdownLabel}>Dakika</Text>
+                    </View>
+                    <View style={[styles.countdownBox, styles.countdownBoxSeconds]}>
+                      <Text style={styles.countdownNumber}>{String(countdownData.seconds).padStart(2, '0')}</Text>
+                      <Text style={styles.countdownLabel}>Saniye</Text>
+                    </View>
+                  </View>
+                )}
+                {countdownData && countdownData.type === 'days' && (
+                  <Text style={[styles.daysText, { color: countdownData.color }]}>
+                    {countdownData.days} gün kaldı
+                  </Text>
+                )}
+              </>
             )}
           </View>
 
@@ -608,13 +658,12 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
             {matchData.awayTeam.manager && (
               <Text style={styles.managerText}>{matchData.awayTeam.manager}</Text>
             )}
-            {/* Team Color Strip */}
-            <LinearGradient
-              colors={matchData.awayTeam.color as string[]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.teamColorStrip}
-            />
+            {/* Canlı maçta skor göster */}
+            {matchData.isLive && (
+              <View style={styles.liveScoreBox}>
+                <Text style={styles.liveScoreText}>{matchData.awayScore}</Text>
+              </View>
+            )}
           </View>
         </View>
         </View>
@@ -1015,6 +1064,55 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     marginTop: 4,
+  },
+  
+  // ✅ Canlı Maç Stilleri - Kompakt tasarım (maç kartı yüksekliği tutarlı olsun)
+  liveScoreBox: {
+    backgroundColor: '#0F2A24',
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    marginTop: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.3)',
+  },
+  liveScoreText: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    textAlign: 'center',
+  },
+  liveBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#1FA2A6',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+    marginBottom: 2,
+  },
+  liveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#FFFFFF',
+  },
+  liveBadgeText: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
+  liveMinuteText: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#ef4444',
+  },
+  halftimeText: {
+    fontSize: 10,
+    color: '#64748B',
+    marginTop: 1,
   },
   
   // Content

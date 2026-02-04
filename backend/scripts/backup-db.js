@@ -15,10 +15,13 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABA
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } });
 
-// Yedeklenecek tablolar
+// Yedeklenecek tablolar (matches FK için leagues ve teams önce yedeklenir)
 const TABLES_TO_BACKUP = [
+  'leagues',
+  'teams',
   'static_teams',
   'team_squads',
+  'players',       // Rating'ler (API + kullanıcı katkılı) - geri getirilebilir olmalı
   'matches',
   'profiles',
   'predictions',

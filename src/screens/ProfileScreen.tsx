@@ -975,14 +975,15 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   // 💾 Fotoğrafı Kaydetme
   const saveProfilePhoto = async (photoUri: string) => {
     try {
-      const userData = await AsyncStorage.getItem('fan-manager-user');
+      // Try new key first, fallback to legacy
+      const userData = await AsyncStorage.getItem(STORAGE_KEYS.USER);
       if (userData) {
         const parsedData = JSON.parse(userData);
         const updatedData = {
           ...parsedData,
           avatar: photoUri,
         };
-        await AsyncStorage.setItem('fan-manager-user', JSON.stringify(updatedData));
+        await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(updatedData));
         
         // State'i güncelle
         setUser(prev => ({ ...prev, avatar: photoUri }));

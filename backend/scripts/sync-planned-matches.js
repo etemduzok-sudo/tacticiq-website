@@ -1,7 +1,7 @@
 /**
  * Planlanmış maç listesini API-Football'dan çekip DB'ye kaydeder
- * Bugün + önümüzdeki 30 gün (toplam 31 gün)
- * Uygulama maçları DB'den çeker - API limitini korumak için
+ * Sezonun kalanı için tüm belirlenmiş maçlar (bugün → sezon sonu)
+ * 1 API çağrısı ile tüm tarih aralığı (from-to) - minimum API kullanımı
  */
 
 require('dotenv').config();
@@ -10,24 +10,26 @@ const databaseService = require('../services/databaseService');
 const path = require('path');
 const fs = require('fs');
 
-const DAYS_AHEAD = 30; // Bugün dahil 31 gün
-const RATE_MS = 250;
 const PROGRESS_FILE = path.join(__dirname, '..', 'data', 'planned-matches-progress.json');
 
+// Sezon sonu: Avrupa ligleri genelde Haziran, Güney Amerika Aralık
+// Bugünden 2026-06-30'a kadar (Avrupa sezonu kapsar)
 function getDateRange() {
-  const dates = [];
-  for (let i = 0; i <= DAYS_AHEAD; i++) {
-    const d = new Date();
-    d.setDate(d.getDate() + i);
-    dates.push(d.toISOString().split('T')[0]);
-  }
-  return dates;
+  const from = new Date();
+  const y = from.getFullYear();
+  const m = from.getMonth();
+  // Şu an Ocak-Haziran arasıysa bu sezon, Temmuz+ ise gelecek sezon
+  const seasonEnd = (m >= 6) ? new Date(y + 1, 5, 30) : new Date(y, 5, 30); // 30 Haziran
+  return {
+    from: from.toISOString().split('T')[0],
+    to: seasonEnd.toISOString().split('T')[0],
+  };
 }
 
 async function main() {
   console.log('╔════════════════════════════════════════════════════════════════╗');
-  console.log('║   PLANLANMIŞ MAÇLAR - DB SENKRONU                              ║');
-  console.log('║   Bugün + 30 gün | API → Supabase matches                      ║');
+  console.log('║   PLANLANMIŞ MAÇLAR - SEZONUN KALANI (1 API çağrısı!)           ║');
+  console.log('║   Bugün → sezon sonu | from-to → Supabase                       ║');
   console.log('╚════════════════════════════════════════════════════════════════╝\n');
 
   if (!databaseService.enabled) {
@@ -35,30 +37,26 @@ async function main() {
     process.exit(1);
   }
 
-  const dates = getDateRange();
-  console.log(`📅 İşlenecek tarihler: ${dates[0]} → ${dates[dates.length - 1]} (${dates.length} gün)\n`);
+  const { from, to } = getDateRange();
+  console.log(`📅 Tarih aralığı: ${from} → ${to} (1 API çağrısı)\n`);
 
   let totalMatches = 0;
   let totalSaved = 0;
 
-  for (const date of dates) {
-    try {
-      const response = await footballApi.getFixturesByDate(date);
-      const fixtures = response?.response || [];
-      
-      if (fixtures.length > 0) {
-        const saved = await databaseService.upsertMatches(fixtures);
-        totalSaved += Array.isArray(saved) ? saved.length : 0;
-        totalMatches += fixtures.length;
-        console.log(`   ${date}: ${fixtures.length} maç → DB'ye kaydedildi`);
-      } else {
-        console.log(`   ${date}: maç yok`);
-      }
-      
-      await new Promise(r => setTimeout(r, RATE_MS));
-    } catch (error) {
-      console.error(`   ❌ ${date}: ${error.message}`);
+  try {
+    const response = await footballApi.getFixturesByDateRange(from, to);
+    const fixtures = response?.response || [];
+    
+    if (fixtures.length > 0) {
+      const saved = await databaseService.upsertMatches(fixtures, { quiet: true, bulk: true });
+      totalSaved = Array.isArray(saved) ? saved.length : fixtures.length;
+      totalMatches = fixtures.length;
+      console.log(`   ✅ ${totalMatches} maç tek çağrıda çekildi → DB'ye kaydedildi`);
+    } else {
+      console.log(`   Bu aralıkta maç bulunamadı`);
     }
+  } catch (error) {
+    console.error(`   ❌ Hata: ${error.message}`);
   }
 
   // Progress kaydet (opsiyonel - son çalışma zamanı)
@@ -66,7 +64,7 @@ async function main() {
   if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
   fs.writeFileSync(PROGRESS_FILE, JSON.stringify({
     lastRun: new Date().toISOString(),
-    datesProcessed: dates.length,
+    dateRange: { from, to },
     totalMatches,
     totalSaved
   }, null, 2));

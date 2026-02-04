@@ -316,6 +316,21 @@ async function getFixturesByDate(date) {
   return data;
 }
 
+// Get fixtures by date range (1 API call = many days) - MAX data per call
+async function getFixturesByDateRange(fromDate, toDate) {
+  const cacheKey = `fixtures-${fromDate}-${toDate}`;
+  const data = await makeRequest('/fixtures', { from: fromDate, to: toDate }, cacheKey, 1800);
+  if (data.response && data.response.length > 0) {
+    const filtered = filterMatches(data.response);
+    return {
+      ...data,
+      response: filtered,
+      results: filtered.length,
+    };
+  }
+  return data;
+}
+
 // Get fixtures by league
 async function getFixturesByLeague(leagueId, season = 2024) {
   const data = await makeRequest('/fixtures', { league: leagueId, season }, `fixtures-league-${leagueId}-${season}`, 3600);
@@ -625,6 +640,7 @@ module.exports = {
   apiRequest: makeRequest,
   getLiveMatches,
   getFixturesByDate,
+  getFixturesByDateRange,
   getFixturesByLeague,
   getFixturesByTeam,
   getFixtureDetails,

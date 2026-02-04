@@ -518,15 +518,17 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
                     </Text>
                   </View>
                   
-                  {/* Saat */}
+                  {/* Saat veya canlı dakika */}
                   <LinearGradient
-                    colors={[BRAND.primary, BRAND.primaryDark || '#047857']} // Sistem renkleri
+                    colors={status === 'live' ? ['#dc2626', '#b91c1c'] : [BRAND.primary, BRAND.primaryDark || '#047857']}
                     style={styles.matchCardTimeBadge}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                   >
-                    <Text style={styles.matchCardTimeText}>
-                      {api.utils.formatMatchTime(match.fixture.timestamp)}
+                    <Text style={[styles.matchCardTimeText, status === 'live' && styles.matchCardTimeTextLive]}>
+                      {status === 'live' && match.fixture?.status?.elapsed != null
+                        ? `${match.fixture.status.elapsed}'`
+                        : api.utils.formatMatchTime(match.fixture.timestamp)}
                     </Text>
                   </LinearGradient>
                 </View>
@@ -556,13 +558,6 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
                   <View style={styles.matchCardLiveDot} />
                   <Text style={styles.matchCardLiveText}>OYNANIYOR</Text>
                 </LinearGradient>
-                
-                {match.fixture.status?.elapsed && (
-                  <View style={styles.matchCardLiveMinuteBadge}>
-                    <Ionicons name="time" size={14} color={BRAND.primary} />
-                    <Text style={styles.matchCardLiveMinuteText}>{match.fixture.status.elapsed}'</Text>
-                  </View>
-                )}
               </View>
             ) : status === 'finished' ? (
               <View style={styles.matchCardFinishedContainer}>
@@ -2394,6 +2389,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
     color: BRAND.white,
+  },
+  matchCardTimeTextLive: {
+    color: '#ef4444',
   },
   matchCardLiveContainer: {
     flexDirection: 'row',

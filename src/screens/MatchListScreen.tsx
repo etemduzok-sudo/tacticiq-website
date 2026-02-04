@@ -29,6 +29,7 @@ import { logger } from '../utils/logger';
 import { translateCountry } from '../utils/countryUtils';
 import { getTeamColors as getTeamColorsUtil } from '../utils/teamColors';
 import { useMatchesWithPredictions } from '../hooks/useMatchesWithPredictions';
+import { MatchPredictionSummaryCard } from '../components/match/MatchPredictionSummaryCard';
 
 const { width } = Dimensions.get('window');
 
@@ -396,7 +397,7 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                   >
-                    <Text style={matchCardStyles.matchCardTimeText}>
+                    <Text style={[matchCardStyles.matchCardTimeText, status === 'live' && matchCardStyles.matchCardTimeTextLive]}>
                       {status === 'live' && match.fixture?.status?.elapsed != null
                         ? `${match.fixture.status.elapsed}'`
                         : api.utils.formatMatchTime(match.fixture.timestamp)}
@@ -429,13 +430,6 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
                   <RNAnimated.View style={[matchCardStyles.matchCardLiveDot, { opacity: pulseAnim }]} />
                   <Text style={matchCardStyles.matchCardLiveText}>OYNANIYOR</Text>
                 </LinearGradient>
-                
-                {match.fixture.status?.elapsed && (
-                  <View style={matchCardStyles.matchCardLiveMinuteBadge}>
-                    <Ionicons name="time" size={14} color="#10b981" />
-                    <Text style={matchCardStyles.matchCardLiveMinuteText}>{match.fixture.status.elapsed}'</Text>
-                  </View>
-                )}
               </View>
             ) : status === 'finished' ? (
               /* ✅ Biten maçlar için bilgi notu */
@@ -557,26 +551,48 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
                 </View>
               )}
 
-              {/* Finished Matches */}
+              {/* Finished Matches + Tahmin Özeti */}
               {filteredFinishedMatches.length > 0 && (
                 <View style={styles.section}>
                   {filteredFinishedMatches.map((match, index) => {
                     const matchId = String(match.fixture?.id || match.id);
+                    const numericMatchId = match.fixture?.id || parseInt(match.id);
+                    const hasPrediction = numericMatchId != null && matchIdsWithPredictions.has(numericMatchId);
+                    
                     return (
-                      <Animated.View 
-                        key={matchId} 
-                        entering={getEnteringAnimation(index)} 
-                        style={styles.liveMatchCardWrapper}
-                        onLayout={(event) => {
-                          const { y } = event.nativeEvent.layout;
-                          matchCardPositions.current[matchId] = y;
-                        }}
-                      >
+                      <View key={matchId}>
+                        <Animated.View 
+                          entering={getEnteringAnimation(index)} 
+                          style={styles.liveMatchCardWrapper}
+                          onLayout={(event) => {
+                            const { y } = event.nativeEvent.layout;
+                            matchCardPositions.current[matchId] = y;
+                          }}
+                        >
                         {renderMatchCard(match, 'finished', () => {
-                          const hasPred = (match.fixture?.id != null && matchIdsWithPredictions.has(match.fixture.id));
-                          onMatchResultSelect?.(matchId) || onMatchSelect(matchId, hasPred ? { initialTab: 'prediction' } : undefined);
+                          // Biten maçlar için: tahmin varsa Reyting, yoksa İstatistik sekmesine git
+                          onMatchResultSelect?.(matchId) || onMatchSelect(matchId, { initialTab: hasPrediction ? 'ratings' : 'stats' });
                         })}
-                      </Animated.View>
+                        </Animated.View>
+                        
+                        {/* ✅ Tahmin yapıldıysa özet kartı göster */}
+                        {hasPrediction && (
+                          <MatchPredictionSummaryCard
+                            matchId={numericMatchId}
+                            matchData={{
+                              homeTeam: match.teams?.home?.name || 'Ev Sahibi',
+                              awayTeam: match.teams?.away?.name || 'Deplasman',
+                              homeScore: match.goals?.home ?? 0,
+                              awayScore: match.goals?.away ?? 0,
+                              status: match.fixture?.status?.short || 'FT',
+                            }}
+                            onViewDetails={() => {
+                              // Detaylı puan bilgisi için Reyting sekmesine git
+                              onMatchSelect(matchId, { initialTab: 'ratings' });
+                            }}
+                          />
+                        )}
+                      </View>
                     );
                   })}
                 </View>
@@ -1080,6 +1096,10 @@ const matchCardStyles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
     color: '#ffffff',
+  },
+  matchCardTimeTextLive: {
+    color: '#ffffff', // Kırmızı arka plan üzerinde beyaz text
+    fontWeight: '900',
   },
   matchCardLiveContainer: {
     flexDirection: 'row',

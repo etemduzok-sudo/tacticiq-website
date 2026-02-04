@@ -173,7 +173,7 @@ class MockAuthService {
   // Sign out
   async signOut() {
     try {
-      await AsyncStorage.removeItem('fan-manager-user');
+      await AsyncStorage.removeItem(STORAGE_KEYS.USER);
       return { success: true };
     } catch (error: any) {
       return { success: false, error: error.message };

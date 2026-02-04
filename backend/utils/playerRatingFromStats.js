@@ -271,6 +271,19 @@ function calculateRatingFromStats(latestStats, playerData = {}) {
   return out.rating;
 }
 
+/**
+ * Veri yokken kullanılacak pozisyon bazlı başlangıç rating (70/70 değil, gerçekçi fark).
+ * FIFA/Transfermarkt benzeri: Kaleci/Defans/Orta/Forvet farklı baz.
+ */
+function getDefaultRatingByPosition(position) {
+  const pos = (position || '').toLowerCase();
+  if (pos.includes('goalkeeper') || pos === 'gk' || pos === 'g') return POSITION_BASE.Goalkeeper;
+  if (pos.includes('defender') || pos.includes('back') || /cb|lb|rb|lwb|rwb/i.test(pos)) return POSITION_BASE.Defender;
+  if (pos.includes('midfielder') || pos.includes('mid') || /cm|cdm|cam|lm|rm|dm|am/i.test(pos)) return POSITION_BASE.Midfielder;
+  if (pos.includes('attacker') || pos.includes('forward') || pos.includes('striker') || /st|cf|lw|rw|w/i.test(pos)) return POSITION_BASE.Attacker;
+  return 71;
+}
+
 module.exports = {
   calculateRatingFromStats,
   calculatePlayerAttributesFromStats,
@@ -279,7 +292,9 @@ module.exports = {
   calculateForm,
   calculateDiscipline,
   getFitnessMultiplier,
+  getDefaultRatingByPosition,
   normalizePositionForWeights,
   parseNum,
   clamp0_100,
+  POSITION_BASE,
 };

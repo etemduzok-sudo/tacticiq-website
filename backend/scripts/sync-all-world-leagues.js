@@ -28,7 +28,8 @@ if (!API_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, { auth: { persistSession: false } });
 const BASE_URL = 'https://v3.football.api-sports.io';
 const headers = {
-  'x-apisports-key': API_KEY,
+  'x-rapidapi-key': API_KEY,
+  'x-rapidapi-host': 'v3.football.api-sports.io',
 };
 
 // 127 dünya 1. ligi
@@ -225,18 +226,15 @@ function sleep(ms) {
 
 async function fetchTeamsForLeague(leagueId, leagueName, country) {
   try {
-    const data = await apiRequest('/teams', { league: leagueId, season: 2024 });
-    
-    if (!data.response || data.response.length === 0) {
-      // 2025 sezonunu dene
-      const data2025 = await apiRequest('/teams', { league: leagueId, season: 2025 });
-      if (data2025.response && data2025.response.length > 0) {
-        return data2025.response;
+    // 2024 ve 2025 sezonlarını dene (liglere göre farklı sezon dönemleri)
+    for (const season of [2025, 2024, 2023]) {
+      const data = await apiRequest('/teams', { league: leagueId, season });
+      if (data.response && data.response.length > 0) {
+        return data.response;
       }
-      return [];
+      await sleep(100);
     }
-    
-    return data.response;
+    return [];
   } catch (error) {
     stats.errors.push(`Teams fetch error for ${leagueName}: ${error.message}`);
     return [];
