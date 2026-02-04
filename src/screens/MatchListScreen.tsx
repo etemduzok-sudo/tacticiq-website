@@ -570,8 +570,8 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
                           }}
                         >
                         {renderMatchCard(match, 'finished', () => {
-                          // Biten maçlar için: tahmin varsa Reyting, yoksa İstatistik sekmesine git
-                          onMatchResultSelect?.(matchId) || onMatchSelect(matchId, { initialTab: hasPrediction ? 'ratings' : 'stats' });
+                          // Biten maçlar için: Her zaman İstatistik sekmesine git
+                          onMatchResultSelect?.(matchId) || onMatchSelect(matchId, { initialTab: 'stats' });
                         })}
                         </Animated.View>
                         
@@ -587,8 +587,8 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
                               status: match.fixture?.status?.short || 'FT',
                             }}
                             onViewDetails={() => {
-                              // Detaylı puan bilgisi için Reyting sekmesine git
-                              onMatchSelect(matchId, { initialTab: 'ratings' });
+                              // Detaylı bilgi için İstatistik sekmesine git
+                              onMatchSelect(matchId, { initialTab: 'stats' });
                             }}
                           />
                         )}
