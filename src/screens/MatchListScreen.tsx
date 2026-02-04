@@ -949,22 +949,26 @@ const matchCardStyles = StyleSheet.create({
   matchCard: {
     width: '100%',
     maxWidth: 768,
+    minHeight: 175,
     borderRadius: 16,
+    borderBottomLeftRadius: 25,
+    borderBottomRightRadius: 25,
     overflow: 'hidden',
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: 'rgba(31, 162, 166, 0.25)',
+    backgroundColor: '#1A3A34',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
+        shadowOpacity: 0.3,
+        shadowRadius: 6,
       },
       android: {
         elevation: 6,
       },
       web: {
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
+        boxShadow: '0 4px 16px rgba(0, 0, 0, 0.4), 0 2px 6px rgba(100, 116, 139, 0.15)',
       },
     }),
   },

@@ -1,6 +1,6 @@
 // MatchResultSummary.tsx - Biten Maçlar İçin Özet Sayfası
-// 3 Ana Bölüm: Maç İstatistikleri, Oyuncu İstatistikleri, Kullanıcı Puanları
-import React, { useState, useEffect, useCallback } from 'react';
+// 2 Sekme: Maç İstatistikleri, Oyuncu İstatistikleri
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,10 +12,7 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../../services/api';
-import { STORAGE_KEYS, LEGACY_STORAGE_KEYS } from '../../config/constants';
 import { useFavoriteTeams } from '../../hooks/useFavoriteTeams';
 
 const { width } = Dimensions.get('window');
@@ -44,7 +41,7 @@ interface MatchResultSummaryProps {
 }
 
 // Tab tipleri
-type TabType = 'match' | 'players' | 'points';
+type TabType = 'match' | 'players';
 
 // İstatistik tipi
 interface MatchStat {
@@ -53,7 +50,7 @@ interface MatchStat {
   away: number | string | null;
 }
 
-// Oyuncu istatistik tipi
+// Oyuncu istatistik tipi - genişletilmiş
 interface PlayerStat {
   id: number;
   name: string;
@@ -68,38 +65,29 @@ interface PlayerStat {
     assists?: number;
     shots?: number;
     shotsOnTarget?: number;
+    shotsInsideBox?: number;
+    shotsOutsideBox?: number;
     passes?: number;
     passAccuracy?: number;
     keyPasses?: number;
+    longBalls?: number;
+    longBallsAccuracy?: number;
     tackles?: number;
     interceptions?: number;
     duelsWon?: number;
     duelsTotal?: number;
-    fouls?: number;
+    aerialDuelsWon?: number;
+    aerialDuelsTotal?: number;
+    dribbleAttempts?: number;
+    dribbleSuccess?: number;
+    dispossessed?: number;
+    foulsCommitted?: number;
+    wasFouled?: number;
+    clearances?: number;
+    blockedShots?: number;
+    saves?: number;
     yellowCards?: number;
     redCards?: number;
-    saves?: number;
-  };
-}
-
-// Kullanıcı puan detayları
-interface UserPointsBreakdown {
-  hasPrediction: boolean;
-  totalPoints: number;
-  maxPossiblePoints: number;
-  breakdown: {
-    scorePrediction: { points: number; correct: boolean; predicted: string; actual: string };
-    goalsPrediction: { points: number; correct: boolean; predicted: string; actual: string };
-    firstGoalPrediction: { points: number; correct: boolean; predicted: string; actual: string };
-    halftimePrediction: { points: number; correct: boolean; predicted: string; actual: string };
-    playerPredictions: {
-      goalScorers: { points: number; correct: number; total: number };
-      assists: { points: number; correct: number; total: number };
-      cards: { points: number; correct: number; total: number };
-      mvp: { points: number; correct: boolean; predicted: string; actual: string };
-    };
-    bonusPoints: number;
-    timingBonus: number;
   };
 }
 
@@ -108,7 +96,6 @@ export function MatchResultSummary({ matchId, matchData }: MatchResultSummaryPro
   const [loading, setLoading] = useState(true);
   const [matchStats, setMatchStats] = useState<MatchStat[]>([]);
   const [playerStats, setPlayerStats] = useState<PlayerStat[]>([]);
-  const [userPoints, setUserPoints] = useState<UserPointsBreakdown | null>(null);
   const [expandedPlayers, setExpandedPlayers] = useState<Set<number>>(new Set());
 
   // Favori takımları al
@@ -136,7 +123,6 @@ export function MatchResultSummary({ matchId, matchData }: MatchResultSummaryPro
       await Promise.all([
         loadMatchStats(),
         loadPlayerStats(),
-        loadUserPoints(),
       ]);
     } catch (error) {
       console.error('Error loading match result data:', error);
@@ -191,26 +177,6 @@ export function MatchResultSummary({ matchId, matchData }: MatchResultSummaryPro
     }
   };
 
-  // Kullanıcı puanlarını yükle
-  const loadUserPoints = async () => {
-    try {
-      const predKey = `${STORAGE_KEYS.PREDICTIONS}${matchId}`;
-      const legacyPredKey = `${LEGACY_STORAGE_KEYS.PREDICTIONS}${matchId}`;
-      const predData = await AsyncStorage.getItem(predKey) || await AsyncStorage.getItem(legacyPredKey);
-      
-      if (predData) {
-        const parsed = JSON.parse(predData);
-        // Gerçek puan hesaplaması yapılacak - şimdilik mock
-        setUserPoints(calculateUserPoints(parsed, matchData));
-      } else {
-        setUserPoints(null);
-      }
-    } catch (error) {
-      console.error('Error loading user points:', error);
-      setUserPoints(null);
-    }
-  };
-
   // Mock maç istatistikleri
   const generateMockMatchStats = (): MatchStat[] => [
     { type: 'Ball Possession', home: '58%', away: '42%' },
@@ -229,81 +195,57 @@ export function MatchResultSummary({ matchId, matchData }: MatchResultSummaryPro
     { type: 'Passes %', home: '86%', away: '84%' },
   ];
 
-  // Mock oyuncu istatistikleri
+  // Mock oyuncu istatistikleri - detaylı
   const generateMockPlayerStats = (): PlayerStat[] => [
     {
       id: 1001, name: 'Mock Striker', number: 9, position: 'ST', rating: 8.5, team: 'home',
-      stats: { minutes: 90, goals: 1, assists: 1, shots: 5, shotsOnTarget: 3, passes: 28, passAccuracy: 85, keyPasses: 3, duelsWon: 8, duelsTotal: 12 }
+      stats: { minutes: 90, goals: 1, assists: 1, shots: 5, shotsOnTarget: 3, shotsInsideBox: 4, shotsOutsideBox: 1,
+        passes: 28, passAccuracy: 85, keyPasses: 3, longBalls: 2, longBallsAccuracy: 1,
+        duelsWon: 8, duelsTotal: 12, aerialDuelsWon: 3, aerialDuelsTotal: 5,
+        dribbleAttempts: 6, dribbleSuccess: 4, dispossessed: 2, foulsCommitted: 1, wasFouled: 3,
+        tackles: 0, interceptions: 0, clearances: 0, blockedShots: 0 }
     },
     {
       id: 1002, name: 'Mock Midfielder', number: 10, position: 'CAM', rating: 8.2, team: 'home',
-      stats: { minutes: 90, goals: 1, assists: 0, shots: 3, shotsOnTarget: 2, passes: 65, passAccuracy: 91, keyPasses: 5, duelsWon: 6, duelsTotal: 10 }
+      stats: { minutes: 90, goals: 1, assists: 0, shots: 3, shotsOnTarget: 2, shotsInsideBox: 2,
+        passes: 65, passAccuracy: 91, keyPasses: 5, longBalls: 8, longBallsAccuracy: 6,
+        duelsWon: 6, duelsTotal: 10, aerialDuelsWon: 1, aerialDuelsTotal: 2,
+        dribbleAttempts: 4, dribbleSuccess: 3, dispossessed: 1, foulsCommitted: 0, wasFouled: 2,
+        tackles: 2, interceptions: 1, clearances: 0, blockedShots: 1 }
     },
     {
       id: 1003, name: 'Mock Winger', number: 7, position: 'LW', rating: 7.8, team: 'home',
-      stats: { minutes: 78, goals: 0, assists: 1, shots: 2, shotsOnTarget: 1, passes: 42, passAccuracy: 82, keyPasses: 4, duelsWon: 7, duelsTotal: 14 }
+      stats: { minutes: 78, goals: 0, assists: 1, shots: 2, shotsOnTarget: 1, shotsInsideBox: 1,
+        passes: 42, passAccuracy: 82, keyPasses: 4, longBalls: 1, longBallsAccuracy: 1,
+        duelsWon: 7, duelsTotal: 14, aerialDuelsWon: 0, aerialDuelsTotal: 1,
+        dribbleAttempts: 10, dribbleSuccess: 7, dispossessed: 3, foulsCommitted: 1, wasFouled: 4,
+        tackles: 1, interceptions: 0, clearances: 0, blockedShots: 0 }
     },
     {
       id: 1004, name: 'Mock Defender', number: 4, position: 'CB', rating: 7.5, team: 'home',
-      stats: { minutes: 90, goals: 0, assists: 0, shots: 1, shotsOnTarget: 0, passes: 58, passAccuracy: 88, tackles: 4, interceptions: 3, duelsWon: 9, duelsTotal: 11 }
+      stats: { minutes: 90, goals: 0, assists: 0, shots: 1, shotsOnTarget: 0, shotsInsideBox: 0,
+        passes: 58, passAccuracy: 88, keyPasses: 0, longBalls: 12, longBallsAccuracy: 9,
+        duelsWon: 9, duelsTotal: 11, aerialDuelsWon: 6, aerialDuelsTotal: 8,
+        dribbleAttempts: 0, dribbleSuccess: 0, dispossessed: 0, foulsCommitted: 2, wasFouled: 1,
+        tackles: 4, interceptions: 3, clearances: 8, blockedShots: 2 }
     },
     {
       id: 2001, name: 'Away Forward', number: 11, position: 'ST', rating: 7.2, team: 'away',
-      stats: { minutes: 90, goals: 1, assists: 0, shots: 4, shotsOnTarget: 2, passes: 22, passAccuracy: 78, keyPasses: 1, duelsWon: 5, duelsTotal: 12 }
+      stats: { minutes: 90, goals: 1, assists: 0, shots: 4, shotsOnTarget: 2, shotsInsideBox: 3,
+        passes: 22, passAccuracy: 78, keyPasses: 1, longBalls: 0, longBallsAccuracy: 0,
+        duelsWon: 5, duelsTotal: 12, aerialDuelsWon: 2, aerialDuelsTotal: 4,
+        dribbleAttempts: 5, dribbleSuccess: 3, dispossessed: 4, foulsCommitted: 2, wasFouled: 2,
+        tackles: 0, interceptions: 0, clearances: 0, blockedShots: 0 }
     },
     {
       id: 2002, name: 'Away Midfielder', number: 8, position: 'CM', rating: 6.8, team: 'away',
-      stats: { minutes: 90, goals: 0, assists: 1, shots: 1, shotsOnTarget: 0, passes: 48, passAccuracy: 83, keyPasses: 2, duelsWon: 4, duelsTotal: 9 }
+      stats: { minutes: 90, goals: 0, assists: 1, shots: 1, shotsOnTarget: 0, shotsInsideBox: 0,
+        passes: 48, passAccuracy: 83, keyPasses: 2, longBalls: 5, longBallsAccuracy: 3,
+        duelsWon: 4, duelsTotal: 9, aerialDuelsWon: 1, aerialDuelsTotal: 2,
+        dribbleAttempts: 2, dribbleSuccess: 1, dispossessed: 2, foulsCommitted: 1, wasFouled: 1,
+        tackles: 3, interceptions: 2, clearances: 1, blockedShots: 0 }
     },
   ];
-
-  // Kullanıcı puanlarını hesapla (mock)
-  const calculateUserPoints = (prediction: any, match: any): UserPointsBreakdown => {
-    // Gerçek hesaplama için ScoringEngine kullanılacak
-    // Şimdilik mock değerler
-    const totalPoints = Math.floor(Math.random() * 80) + 40;
-    const maxPossible = 180;
-    
-    return {
-      hasPrediction: true,
-      totalPoints,
-      maxPossiblePoints: maxPossible,
-      breakdown: {
-        scorePrediction: {
-          points: prediction.score === `${homeScore}-${awayScore}` ? 30 : 0,
-          correct: prediction.score === `${homeScore}-${awayScore}`,
-          predicted: prediction.score || '-',
-          actual: `${homeScore}-${awayScore}`,
-        },
-        goalsPrediction: {
-          points: 15,
-          correct: true,
-          predicted: prediction.totalGoals || '-',
-          actual: `${homeScore + awayScore} gol`,
-        },
-        firstGoalPrediction: {
-          points: 10,
-          correct: true,
-          predicted: prediction.firstGoal || 'Ev Sahibi',
-          actual: 'Ev Sahibi',
-        },
-        halftimePrediction: {
-          points: 0,
-          correct: false,
-          predicted: prediction.halftime || '-',
-          actual: '1-0',
-        },
-        playerPredictions: {
-          goalScorers: { points: 20, correct: 2, total: 3 },
-          assists: { points: 10, correct: 1, total: 2 },
-          cards: { points: 5, correct: 1, total: 2 },
-          mvp: { points: 15, correct: true, predicted: 'Mock Striker', actual: 'Mock Striker' },
-        },
-        bonusPoints: 10,
-        timingBonus: 5,
-      },
-    };
-  };
 
   // İstatistik label çevirisi
   const translateStatLabel = (type: string): string => {
@@ -342,9 +284,8 @@ export function MatchResultSummary({ matchId, matchData }: MatchResultSummaryPro
 
   // Tab butonları
   const tabs: { id: TabType; label: string; icon: string }[] = [
-    { id: 'match', label: 'Maç', icon: 'football-outline' },
-    { id: 'players', label: 'Oyuncular', icon: 'people-outline' },
-    { id: 'points', label: 'Puanlarım', icon: 'trophy-outline' },
+    { id: 'match', label: 'Maç İstatistikleri', icon: 'stats-chart-outline' },
+    { id: 'players', label: 'Oyuncu İstatistikleri', icon: 'people-outline' },
   ];
 
   // ==================== RENDER FUNCTIONS ====================
@@ -398,6 +339,15 @@ export function MatchResultSummary({ matchId, matchData }: MatchResultSummaryPro
             </View>
           );
         })}
+      </View>
+
+      {/* Maç Isı Haritası - API desteği geldiğinde */}
+      <View style={styles.heatMapPlaceholder}>
+        <Ionicons name="map-outline" size={32} color="#64748B" />
+        <Text style={styles.heatMapTitle}>Maç Isı Haritası</Text>
+        <Text style={styles.heatMapSubtitle}>
+          API desteği eklendiğinde takımların sahada yoğunluk dağılımı burada görüntülenecek
+        </Text>
       </View>
     </ScrollView>
   );
@@ -464,9 +414,11 @@ export function MatchResultSummary({ matchId, matchData }: MatchResultSummaryPro
             )}
           </View>
 
-          {/* Genişletilmiş İstatistikler */}
+          {/* Genişletilmiş Detaylı İstatistikler */}
           {isExpanded && (
             <View style={styles.playerExpandedStats}>
+              {/* Grup 1: Hücum */}
+              <Text style={styles.expandedGroupTitle}>Hücum</Text>
               <View style={styles.expandedStatsGrid}>
                 {player.stats.shots !== undefined && (
                   <View style={styles.expandedStatItem}>
@@ -480,16 +432,32 @@ export function MatchResultSummary({ matchId, matchData }: MatchResultSummaryPro
                     <Text style={styles.expandedStatLabel}>İsabetli</Text>
                   </View>
                 )}
+                {player.stats.shotsInsideBox !== undefined && player.stats.shotsInsideBox > 0 && (
+                  <View style={styles.expandedStatItem}>
+                    <Text style={styles.expandedStatValue}>{player.stats.shotsInsideBox}</Text>
+                    <Text style={styles.expandedStatLabel}>Ceza Sahası</Text>
+                  </View>
+                )}
+                {player.stats.dribbleAttempts !== undefined && (
+                  <View style={styles.expandedStatItem}>
+                    <Text style={styles.expandedStatValue}>{player.stats.dribbleSuccess ?? 0}/{player.stats.dribbleAttempts}</Text>
+                    <Text style={styles.expandedStatLabel}>Dripling</Text>
+                  </View>
+                )}
+              </View>
+              {/* Grup 2: Pas */}
+              <Text style={styles.expandedGroupTitle}>Pas</Text>
+              <View style={styles.expandedStatsGrid}>
                 {player.stats.passes !== undefined && (
                   <View style={styles.expandedStatItem}>
                     <Text style={styles.expandedStatValue}>{player.stats.passes}</Text>
-                    <Text style={styles.expandedStatLabel}>Pas</Text>
+                    <Text style={styles.expandedStatLabel}>Toplam</Text>
                   </View>
                 )}
                 {player.stats.passAccuracy !== undefined && (
                   <View style={styles.expandedStatItem}>
                     <Text style={styles.expandedStatValue}>{player.stats.passAccuracy}%</Text>
-                    <Text style={styles.expandedStatLabel}>Pas %</Text>
+                    <Text style={styles.expandedStatLabel}>İsabet</Text>
                   </View>
                 )}
                 {player.stats.keyPasses !== undefined && (
@@ -498,10 +466,26 @@ export function MatchResultSummary({ matchId, matchData }: MatchResultSummaryPro
                     <Text style={styles.expandedStatLabel}>Kilit Pas</Text>
                   </View>
                 )}
+                {player.stats.longBalls !== undefined && player.stats.longBalls > 0 && (
+                  <View style={styles.expandedStatItem}>
+                    <Text style={styles.expandedStatValue}>{player.stats.longBallsAccuracy ?? 0}/{player.stats.longBalls}</Text>
+                    <Text style={styles.expandedStatLabel}>Uzun Top</Text>
+                  </View>
+                )}
+              </View>
+              {/* Grup 3: Mücadele */}
+              <Text style={styles.expandedGroupTitle}>Mücadele</Text>
+              <View style={styles.expandedStatsGrid}>
                 {player.stats.duelsWon !== undefined && player.stats.duelsTotal !== undefined && (
                   <View style={styles.expandedStatItem}>
                     <Text style={styles.expandedStatValue}>{player.stats.duelsWon}/{player.stats.duelsTotal}</Text>
-                    <Text style={styles.expandedStatLabel}>İkili Mücadele</Text>
+                    <Text style={styles.expandedStatLabel}>İkili</Text>
+                  </View>
+                )}
+                {player.stats.aerialDuelsWon !== undefined && player.stats.aerialDuelsTotal !== undefined && player.stats.aerialDuelsTotal > 0 && (
+                  <View style={styles.expandedStatItem}>
+                    <Text style={styles.expandedStatValue}>{player.stats.aerialDuelsWon}/{player.stats.aerialDuelsTotal}</Text>
+                    <Text style={styles.expandedStatLabel}>Havada</Text>
                   </View>
                 )}
                 {player.stats.tackles !== undefined && (
@@ -516,6 +500,31 @@ export function MatchResultSummary({ matchId, matchData }: MatchResultSummaryPro
                     <Text style={styles.expandedStatLabel}>Top Kapma</Text>
                   </View>
                 )}
+                {player.stats.clearances !== undefined && player.stats.clearances > 0 && (
+                  <View style={styles.expandedStatItem}>
+                    <Text style={styles.expandedStatValue}>{player.stats.clearances}</Text>
+                    <Text style={styles.expandedStatLabel}>Temizlik</Text>
+                  </View>
+                )}
+                {player.stats.dispossessed !== undefined && player.stats.dispossessed > 0 && (
+                  <View style={styles.expandedStatItem}>
+                    <Text style={styles.expandedStatValue}>{player.stats.dispossessed}</Text>
+                    <Text style={styles.expandedStatLabel}>Top Kaybı</Text>
+                  </View>
+                )}
+                {player.stats.foulsCommitted !== undefined && player.stats.foulsCommitted > 0 && (
+                  <View style={styles.expandedStatItem}>
+                    <Text style={styles.expandedStatValue}>{player.stats.foulsCommitted}</Text>
+                    <Text style={styles.expandedStatLabel}>Faul</Text>
+                  </View>
+                )}
+              </View>
+              {/* Oyuncu Isı Haritası - API desteği */}
+              <View style={styles.playerHeatMapPlaceholder}>
+                <Ionicons name="thermometer-outline" size={24} color="#64748B" />
+                <Text style={styles.heatMapSubtitle}>
+                  {player.name} - Isı haritası API desteği eklendiğinde görüntülenecek
+                </Text>
               </View>
             </View>
           )}
@@ -586,213 +595,6 @@ export function MatchResultSummary({ matchId, matchData }: MatchResultSummaryPro
     );
   };
 
-  // Kullanıcı puanları tab'ı
-  const renderPointsTab = () => {
-    if (!userPoints?.hasPrediction) {
-      return (
-        <View style={styles.noPointsContainer}>
-          <Ionicons name="alert-circle-outline" size={64} color="#64748B" />
-          <Text style={styles.noPointsTitle}>Tahmin Yapılmadı</Text>
-          <Text style={styles.noPointsSubtitle}>
-            Bu maç için tahmin yapmadınız. Gelecek maçlarda tahmin yaparak puan kazanabilirsiniz!
-          </Text>
-        </View>
-      );
-    }
-
-    const { breakdown, totalPoints, maxPossiblePoints } = userPoints;
-    const successRate = Math.round((totalPoints / maxPossiblePoints) * 100);
-    const successColor = successRate >= 70 ? '#10B981' : successRate >= 50 ? '#F59E0B' : '#EF4444';
-
-    return (
-      <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
-        {/* Toplam Puan Kartı */}
-        <LinearGradient
-          colors={['#0F2A24', '#1A3D35']}
-          style={styles.totalPointsCard}
-        >
-          <View style={styles.totalPointsHeader}>
-            <Ionicons name="trophy" size={32} color="#EAB308" />
-            <Text style={styles.totalPointsLabel}>Toplam Puan</Text>
-          </View>
-          <View style={styles.totalPointsRow}>
-            <Text style={styles.totalPointsValue}>{totalPoints}</Text>
-            <Text style={styles.totalPointsMax}>/ {maxPossiblePoints}</Text>
-          </View>
-          <View style={styles.successRateContainer}>
-            <View style={styles.successRateBar}>
-              <View style={[styles.successRateFill, { width: `${successRate}%`, backgroundColor: successColor }]} />
-            </View>
-            <Text style={[styles.successRateText, { color: successColor }]}>%{successRate} Başarı</Text>
-          </View>
-        </LinearGradient>
-
-        {/* Maç Tahminleri */}
-        <View style={styles.pointsSection}>
-          <Text style={styles.pointsSectionTitle}>Maç Tahminleri</Text>
-          
-          <View style={styles.pointItem}>
-            <View style={styles.pointItemLeft}>
-              <View style={[styles.pointIcon, breakdown.scorePrediction.correct ? styles.pointIconCorrect : styles.pointIconWrong]}>
-                <Ionicons name={breakdown.scorePrediction.correct ? 'checkmark' : 'close'} size={14} color="#FFF" />
-              </View>
-              <View>
-                <Text style={styles.pointItemTitle}>Skor Tahmini</Text>
-                <Text style={styles.pointItemDetail}>
-                  Tahmin: {breakdown.scorePrediction.predicted} | Sonuç: {breakdown.scorePrediction.actual}
-                </Text>
-              </View>
-            </View>
-            <Text style={[styles.pointItemValue, breakdown.scorePrediction.points > 0 && styles.pointItemValuePositive]}>
-              +{breakdown.scorePrediction.points}
-            </Text>
-          </View>
-
-          <View style={styles.pointItem}>
-            <View style={styles.pointItemLeft}>
-              <View style={[styles.pointIcon, breakdown.goalsPrediction.correct ? styles.pointIconCorrect : styles.pointIconWrong]}>
-                <Ionicons name={breakdown.goalsPrediction.correct ? 'checkmark' : 'close'} size={14} color="#FFF" />
-              </View>
-              <View>
-                <Text style={styles.pointItemTitle}>Toplam Gol</Text>
-                <Text style={styles.pointItemDetail}>
-                  Tahmin: {breakdown.goalsPrediction.predicted} | Sonuç: {breakdown.goalsPrediction.actual}
-                </Text>
-              </View>
-            </View>
-            <Text style={[styles.pointItemValue, breakdown.goalsPrediction.points > 0 && styles.pointItemValuePositive]}>
-              +{breakdown.goalsPrediction.points}
-            </Text>
-          </View>
-
-          <View style={styles.pointItem}>
-            <View style={styles.pointItemLeft}>
-              <View style={[styles.pointIcon, breakdown.firstGoalPrediction.correct ? styles.pointIconCorrect : styles.pointIconWrong]}>
-                <Ionicons name={breakdown.firstGoalPrediction.correct ? 'checkmark' : 'close'} size={14} color="#FFF" />
-              </View>
-              <View>
-                <Text style={styles.pointItemTitle}>İlk Gol</Text>
-                <Text style={styles.pointItemDetail}>
-                  Tahmin: {breakdown.firstGoalPrediction.predicted} | Sonuç: {breakdown.firstGoalPrediction.actual}
-                </Text>
-              </View>
-            </View>
-            <Text style={[styles.pointItemValue, breakdown.firstGoalPrediction.points > 0 && styles.pointItemValuePositive]}>
-              +{breakdown.firstGoalPrediction.points}
-            </Text>
-          </View>
-
-          <View style={styles.pointItem}>
-            <View style={styles.pointItemLeft}>
-              <View style={[styles.pointIcon, breakdown.halftimePrediction.correct ? styles.pointIconCorrect : styles.pointIconWrong]}>
-                <Ionicons name={breakdown.halftimePrediction.correct ? 'checkmark' : 'close'} size={14} color="#FFF" />
-              </View>
-              <View>
-                <Text style={styles.pointItemTitle}>İlk Yarı Skoru</Text>
-                <Text style={styles.pointItemDetail}>
-                  Tahmin: {breakdown.halftimePrediction.predicted} | Sonuç: {breakdown.halftimePrediction.actual}
-                </Text>
-              </View>
-            </View>
-            <Text style={[styles.pointItemValue, breakdown.halftimePrediction.points > 0 && styles.pointItemValuePositive]}>
-              +{breakdown.halftimePrediction.points}
-            </Text>
-          </View>
-        </View>
-
-        {/* Oyuncu Tahminleri */}
-        <View style={styles.pointsSection}>
-          <Text style={styles.pointsSectionTitle}>Oyuncu Tahminleri</Text>
-          
-          <View style={styles.pointItem}>
-            <View style={styles.pointItemLeft}>
-              <Ionicons name="football" size={18} color="#10B981" />
-              <View>
-                <Text style={styles.pointItemTitle}>Gol Atacaklar</Text>
-                <Text style={styles.pointItemDetail}>
-                  {breakdown.playerPredictions.goalScorers.correct}/{breakdown.playerPredictions.goalScorers.total} doğru
-                </Text>
-              </View>
-            </View>
-            <Text style={[styles.pointItemValue, breakdown.playerPredictions.goalScorers.points > 0 && styles.pointItemValuePositive]}>
-              +{breakdown.playerPredictions.goalScorers.points}
-            </Text>
-          </View>
-
-          <View style={styles.pointItem}>
-            <View style={styles.pointItemLeft}>
-              <Ionicons name="git-branch" size={18} color="#3B82F6" />
-              <View>
-                <Text style={styles.pointItemTitle}>Asist Yapacaklar</Text>
-                <Text style={styles.pointItemDetail}>
-                  {breakdown.playerPredictions.assists.correct}/{breakdown.playerPredictions.assists.total} doğru
-                </Text>
-              </View>
-            </View>
-            <Text style={[styles.pointItemValue, breakdown.playerPredictions.assists.points > 0 && styles.pointItemValuePositive]}>
-              +{breakdown.playerPredictions.assists.points}
-            </Text>
-          </View>
-
-          <View style={styles.pointItem}>
-            <View style={styles.pointItemLeft}>
-              <View style={[styles.cardIcon, { backgroundColor: '#FBBF24', marginRight: 8 }]} />
-              <View>
-                <Text style={styles.pointItemTitle}>Kart Görecekler</Text>
-                <Text style={styles.pointItemDetail}>
-                  {breakdown.playerPredictions.cards.correct}/{breakdown.playerPredictions.cards.total} doğru
-                </Text>
-              </View>
-            </View>
-            <Text style={[styles.pointItemValue, breakdown.playerPredictions.cards.points > 0 && styles.pointItemValuePositive]}>
-              +{breakdown.playerPredictions.cards.points}
-            </Text>
-          </View>
-
-          <View style={styles.pointItem}>
-            <View style={styles.pointItemLeft}>
-              <Ionicons name="star" size={18} color="#EAB308" />
-              <View>
-                <Text style={styles.pointItemTitle}>MVP Tahmini</Text>
-                <Text style={styles.pointItemDetail}>
-                  Tahmin: {breakdown.playerPredictions.mvp.predicted}
-                </Text>
-              </View>
-            </View>
-            <Text style={[styles.pointItemValue, breakdown.playerPredictions.mvp.points > 0 && styles.pointItemValuePositive]}>
-              +{breakdown.playerPredictions.mvp.points}
-            </Text>
-          </View>
-        </View>
-
-        {/* Bonus Puanlar */}
-        <View style={styles.pointsSection}>
-          <Text style={styles.pointsSectionTitle}>Bonus Puanlar</Text>
-          
-          <View style={styles.pointItem}>
-            <View style={styles.pointItemLeft}>
-              <Ionicons name="gift" size={18} color="#8B5CF6" />
-              <Text style={styles.pointItemTitle}>Erken Tahmin Bonusu</Text>
-            </View>
-            <Text style={[styles.pointItemValue, styles.pointItemValuePositive]}>
-              +{breakdown.timingBonus}
-            </Text>
-          </View>
-
-          <View style={styles.pointItem}>
-            <View style={styles.pointItemLeft}>
-              <Ionicons name="sparkles" size={18} color="#EC4899" />
-              <Text style={styles.pointItemTitle}>Ek Bonuslar</Text>
-            </View>
-            <Text style={[styles.pointItemValue, styles.pointItemValuePositive]}>
-              +{breakdown.bonusPoints}
-            </Text>
-          </View>
-        </View>
-      </ScrollView>
-    );
-  };
-
   // Loading state
   if (loading) {
     return (
@@ -826,10 +628,11 @@ export function MatchResultSummary({ matchId, matchData }: MatchResultSummaryPro
         ))}
       </View>
 
-      {/* Tab Content */}
-      {activeTab === 'match' && renderMatchStatsTab()}
-      {activeTab === 'players' && renderPlayersTab()}
-      {activeTab === 'points' && renderPointsTab()}
+      {/* Tab Content - minHeight ile sekme geçişinde sıçrama önlenir */}
+      <View style={styles.tabContentWrapper}>
+        {activeTab === 'match' && renderMatchStatsTab()}
+        {activeTab === 'players' && renderPlayersTab()}
+      </View>
     </View>
   );
 }
@@ -886,6 +689,48 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 12,
     paddingTop: 12,
+  },
+  tabContentWrapper: {
+    flex: 1,
+    minHeight: 400,
+  },
+  heatMapPlaceholder: {
+    alignItems: 'center',
+    paddingVertical: 24,
+    marginTop: 16,
+    backgroundColor: 'rgba(31, 162, 166, 0.08)',
+    borderRadius: 12,
+    marginHorizontal: 0,
+  },
+  heatMapTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#94A3B8',
+    marginTop: 8,
+  },
+  heatMapSubtitle: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 4,
+    textAlign: 'center',
+    paddingHorizontal: 16,
+  },
+  playerHeatMapPlaceholder: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    backgroundColor: 'rgba(31, 162, 166, 0.06)',
+    borderRadius: 8,
+  },
+  expandedGroupTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#64748B',
+    marginTop: 16,
+    marginBottom: 8,
   },
   
   // Score Card
