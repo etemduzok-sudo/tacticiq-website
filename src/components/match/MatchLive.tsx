@@ -536,6 +536,25 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
     );
   }
 
+  // Error state - API connection failed or other error
+  if (error && liveEvents.length === 0) {
+    return (
+      <SafeAreaView style={styles.container} edges={[]}>
+        <View style={styles.notStartedContainer}>
+          <View style={styles.notStartedCard}>
+            <View style={styles.notStartedIconContainer}>
+              <Ionicons name="cloud-offline-outline" size={48} color="#F59E0B" />
+            </View>
+            <Text style={styles.notStartedTitle}>Bağlantı Hatası</Text>
+            <Text style={styles.notStartedSubtitle}>
+              Canlı maç verisi alınamadı.{'\n'}Lütfen internet bağlantınızı kontrol edin.
+            </Text>
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   // Takım isimlerini al
   const homeTeamName = matchData?.homeTeam?.name || matchData?.teams?.home?.name || 'Ev Sahibi';
   const awayTeamName = matchData?.awayTeam?.name || matchData?.teams?.away?.name || 'Deplasman';

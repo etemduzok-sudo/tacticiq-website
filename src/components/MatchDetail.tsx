@@ -39,6 +39,7 @@ interface MatchDetailProps {
   initialTab?: string; // ✅ Başlangıç sekmesi (squad, prediction, live, stats, ratings, summary)
   analysisFocus?: string; // ✅ Analiz odağı (defense, offense, midfield, physical, tactical, player)
   preloadedMatch?: any; // ✅ Dashboard'dan gelen maç verisi (API çağrısını atlar)
+  forceResultSummary?: boolean; // ✅ Biten maçlar için sonuç özetini zorla göster
 }
 
 // Mock match data
@@ -593,8 +594,10 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
           {/* Home Team */}
           <View style={styles.teamSide}>
             <Text style={styles.teamNameLarge}>{matchData.homeTeam.name}</Text>
-            {matchData.homeTeam.manager && (
-              <Text style={styles.managerText}>{matchData.homeTeam.manager}</Text>
+            {matchData.homeTeam.manager?.trim() ? (
+              <Text style={styles.managerText}>{matchData.homeTeam.manager.trim()}</Text>
+            ) : (
+              <View style={{ height: 16 }} />
             )}
             {/* Canlı maçta skor göster */}
             {matchData.isLive && (
@@ -655,8 +658,10 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
           {/* Away Team */}
           <View style={styles.teamSide}>
             <Text style={styles.teamNameLarge}>{matchData.awayTeam.name}</Text>
-            {matchData.awayTeam.manager && (
-              <Text style={styles.managerText}>{matchData.awayTeam.manager}</Text>
+            {matchData.awayTeam.manager?.trim() ? (
+              <Text style={styles.managerText}>{matchData.awayTeam.manager.trim()}</Text>
+            ) : (
+              <View style={{ height: 16 }} />
             )}
             {/* Canlı maçta skor göster */}
             {matchData.isLive && (

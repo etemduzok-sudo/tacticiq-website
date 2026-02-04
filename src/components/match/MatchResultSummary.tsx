@@ -650,19 +650,25 @@ export function MatchResultSummary({ matchId, matchData }: MatchResultSummaryPro
     );
   };
 
-  // Loading state
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#1FA2A6" />
-        <Text style={styles.loadingText}>Yükleniyor...</Text>
-      </View>
-    );
-  }
+  // Tab içeriğini render et (loading durumunda loading göster)
+  const renderTabContent = () => {
+    if (loading) {
+      return (
+        <View style={styles.tabContentLoading}>
+          <ActivityIndicator size="large" color="#1FA2A6" />
+          <Text style={styles.loadingText}>İstatistikler yükleniyor...</Text>
+        </View>
+      );
+    }
+    
+    if (activeTab === 'match') return renderMatchStatsTab();
+    if (activeTab === 'players') return renderPlayersTab();
+    return null;
+  };
 
   return (
     <View style={styles.container}>
-      {/* Tab Switcher */}
+      {/* Tab Switcher - Her zaman göster */}
       <View style={styles.tabSwitcher}>
         {tabs.map((tab) => (
           <TouchableOpacity
@@ -683,10 +689,9 @@ export function MatchResultSummary({ matchId, matchData }: MatchResultSummaryPro
         ))}
       </View>
 
-      {/* Tab Content - minHeight ile sekme geçişinde sıçrama önlenir */}
+      {/* Tab Content - Loading durumunda da göster */}
       <View style={styles.tabContentWrapper}>
-        {activeTab === 'match' && renderMatchStatsTab()}
-        {activeTab === 'players' && renderPlayersTab()}
+        {renderTabContent()}
       </View>
     </View>
   );

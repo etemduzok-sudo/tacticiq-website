@@ -7,7 +7,6 @@ import {
   Pressable,
   StyleSheet,
   ScrollView,
-  SafeAreaView,
   Dimensions,
   Modal,
   FlatList,
@@ -984,13 +983,13 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
     : {};
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <ScrollView 
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Football Field with Players – Kadro sekmesindeki saha ile aynı boyut */}
+        {/* Football Field with Players – Kadro sekmesindeki saha ile aynı boyut ve konum */}
         <FootballField style={styles.mainField}>
           {/* 🌟 Saha Üzerinde Analiz Odağı Yıldızı - Sağ üst köşe */}
           <TouchableOpacity 
@@ -1991,7 +1990,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
         />
       )}
 
-    </SafeAreaView>
+    </View>
   );
 };
 
