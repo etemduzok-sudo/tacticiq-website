@@ -40,6 +40,7 @@ interface MatchDetailProps {
   initialTab?: string; // ✅ Başlangıç sekmesi (squad, prediction, live, stats, ratings, summary)
   analysisFocus?: string; // ✅ Analiz odağı (defense, offense, midfield, physical, tactical, player)
   preloadedMatch?: any; // ✅ Dashboard'dan gelen maç verisi (API çağrısını atlar)
+  forceResultSummary?: boolean; // ✅ Biten maç listesinden gelindiyse MatchResultSummary göster
 }
 
 // Mock match data
@@ -72,7 +73,7 @@ const tabs = [
   // Özet sekmesi kaldırıldı - Artık biten maç kartlarında gösteriliyor
 ];
 
-export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFocus, preloadedMatch }: MatchDetailProps) {
+export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFocus, preloadedMatch, forceResultSummary }: MatchDetailProps) {
   // ✅ Maç durumuna göre varsayılan sekme belirlenir (biten maçlar için stats/ratings)
   const [activeTab, setActiveTab] = useState(initialTab);
   const [initialTabSet, setInitialTabSet] = useState(false);
@@ -508,9 +509,14 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
         return <MatchLive matchData={matchData} matchId={matchId} events={events} />;
       
       case 'stats':
-        // Biten maçlar için MatchResultSummary, devam eden/gelecek maçlar için MatchStats
-        if (isMatchFinished) {
-          return <MatchResultSummary matchId={matchId} matchData={matchData} />;
+        // Biten maçlar veya biten maç listesinden gelindiyse MatchResultSummary
+        if (isMatchFinished || forceResultSummary) {
+          const summaryMatchData = matchData ? {
+            ...matchData,
+            teams: matchData.teams || { home: matchData.homeTeam, away: matchData.awayTeam },
+            goals: match?.goals || { home: matchData?.homeScore ?? 0, away: matchData?.awayScore ?? 0 },
+          } : match;
+          return <MatchResultSummary matchId={matchId} matchData={summaryMatchData || {}} />;
         }
         return <MatchStats matchData={matchData} />;
       

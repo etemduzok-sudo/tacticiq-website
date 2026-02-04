@@ -235,9 +235,12 @@ export function useAppNavigation() {
   }, []);
 
   const handleMatchResultSelect = useCallback((matchId: string) => {
-    logNavigation('match-result-summary', { matchId });
+    logNavigation('match-detail', { matchId, initialTab: 'stats', forceResultSummary: true });
     setSelectedMatchId(matchId);
-    setCurrentScreen('match-result-summary');
+    const matchParams = { initialTab: 'stats', forceResultSummary: true };
+    if (typeof global !== 'undefined') (global as any).__matchDetailParams = matchParams;
+    if (typeof window !== 'undefined') (window as any).__matchDetailParams = matchParams;
+    setCurrentScreen('match-detail');
   }, []);
 
   const handleDashboardNavigate = useCallback((screen: string, params?: any) => {

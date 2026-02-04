@@ -378,6 +378,7 @@ export default function App() {
               initialTab={matchDetailParams.initialTab || 'squad'}
               analysisFocus={matchDetailParams.analysisFocus}
               preloadedMatch={matchDetailParams.matchData}
+              forceResultSummary={matchDetailParams.forceResultSummary}
               onBack={navHandlers.handleMatchDetailBack}
             />
           );
