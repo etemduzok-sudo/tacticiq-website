@@ -104,6 +104,36 @@ const SUPPORTED_LEAGUES = {
 
 const CURRENT_SEASON = 2025;
 
+// API limit: 7500 günlük - 250 yedek = 7250 kullanılabilir
+const API_RESERVE = 250;
+const API_DAILY_LIMIT = 7500;
+const MAX_API_CALLS = API_DAILY_LIMIT - API_RESERVE;
+
+// En büyük ligler (öncelik sırası - 1 = en yüksek)
+const LEAGUE_PRIORITY = {
+  39: 1,   // Premier League
+  140: 2,  // La Liga
+  78: 3,   // Bundesliga
+  135: 4,  // Serie A
+  61: 5,   // Ligue 1
+  203: 6,  // Süper Lig
+  2: 7,    // Champions League
+  3: 8,    // Europa League
+  88: 9,   // Eredivisie
+  94: 10,  // Primeira Liga
+  4: 11,   // Euro
+  1: 12,   // World Cup
+  848: 13, // Conference League
+  40: 14,  // Championship
+  141: 15, // La Liga 2
+  79: 16,  // 2. Bundesliga
+  136: 17, // Serie B
+  62: 18,  // Ligue 2
+  204: 19, // TFF 1. Lig
+  144: 20, // Pro League
+  235: 21, // Russian Premier League
+};
+
 // Rate limiting
 let requestCount = 0;
 const MAX_REQUESTS_PER_MINUTE = 10;
@@ -161,6 +191,65 @@ async function getAllTeamsFromDB() {
     console.warn(`⚠️ DB'den takımlar çekilemedi:`, error.message);
     return [];
   }
+}
+
+/**
+ * Maçlardan takım->lig eşlemesi (en büyük liglerden başlamak için)
+ */
+async function getTeamToLeagueMap() {
+  try {
+    const teamToLeague = new Map();
+    let page = 0;
+    const pageSize = 1000;
+    
+    while (true) {
+      const { data, error } = await supabase
+        .from('matches')
+        .select('home_team_id, away_team_id, league_id')
+        .not('league_id', 'is', null)
+        .range(page * pageSize, (page + 1) * pageSize - 1);
+      
+      if (error) throw error;
+      if (!data || data.length === 0) break;
+      
+      for (const row of data) {
+        if (row.home_team_id && row.league_id) {
+          const existing = teamToLeague.get(row.home_team_id);
+          const pri = LEAGUE_PRIORITY[row.league_id] ?? 99;
+          if (!existing || pri < LEAGUE_PRIORITY[existing]) {
+            teamToLeague.set(row.home_team_id, row.league_id);
+          }
+        }
+        if (row.away_team_id && row.league_id) {
+          const existing = teamToLeague.get(row.away_team_id);
+          const pri = LEAGUE_PRIORITY[row.league_id] ?? 99;
+          if (!existing || pri < LEAGUE_PRIORITY[existing]) {
+            teamToLeague.set(row.away_team_id, row.league_id);
+          }
+        }
+      }
+      if (data.length < pageSize) break;
+      page++;
+    }
+    
+    console.log(`   🏆 ${teamToLeague.size} takım için lig eşlemesi yapıldı`);
+    return teamToLeague;
+  } catch (error) {
+    console.warn('   ⚠️ Lig eşlemesi yapılamadı, alfabetik sıra kullanılacak:', error.message);
+    return new Map();
+  }
+}
+
+/**
+ * Takımları lig önceliğine göre sırala (en büyük ligler önce)
+ */
+function sortTeamsByLeaguePriority(teams, teamToLeague) {
+  return [...teams].sort((a, b) => {
+    const priA = LEAGUE_PRIORITY[teamToLeague.get(a.team_id)] ?? 99;
+    const priB = LEAGUE_PRIORITY[teamToLeague.get(b.team_id)] ?? 99;
+    if (priA !== priB) return priA - priB;
+    return (a.team_name || '').localeCompare(b.team_name || '');
+  });
 }
 
 /**
@@ -382,17 +471,23 @@ function getDefaultAttributesByPosition(position) {
  */
 async function processAllTeamsFromDB(fetchApiStats = false, season = CURRENT_SEASON) {
   console.log(`\n🏆 TÜM TAKIMLAR İŞLENİYOR (DB-FIRST)...`);
-  console.log(`   📡 API Stats: ${fetchApiStats ? 'EVET (7500 limit!)' : 'HAYIR (pozisyon default)'}`);
+  console.log(`   📡 API Stats: ${fetchApiStats ? `EVET (max ${MAX_API_CALLS} çağrı, ${API_RESERVE} yedek)` : 'HAYIR (pozisyon default)'}`);
   
   // DB'den tüm takımları çek (API çağrısı YOK)
-  const teams = await getAllTeamsFromDB();
+  let teams = await getAllTeamsFromDB();
   console.log(`   📋 ${teams.length} takım bulundu (DB'den)`);
+  
+  // API kullanılacaksa en büyük liglerden başla
+  if (fetchApiStats && teams.length > 0) {
+    console.log(`   🏆 En büyük liglerden başlayarak sıralanıyor...`);
+    const teamToLeague = await getTeamToLeagueMap();
+    teams = sortTeamsByLeaguePriority(teams, teamToLeague);
+  }
   
   let totalPlayers = 0;
   let processedPlayers = 0;
   let errors = 0;
   let apiCalls = 0;
-  const MAX_API_CALLS = 7400; // Güvenlik marjı
   
   for (const teamData of teams) {
     const teamId = teamData.team_id;
@@ -497,10 +592,9 @@ async function main() {
   console.log('='.repeat(50));
   
   if (fetchApiStats) {
-    console.log('\n⚠️  UYARI: API istatistik çekme aktif!');
-    console.log('   - 7500 günlük API limiti var');
-    console.log('   - ~50,000 oyuncu için ~7 günde tamamlanır');
-    console.log('   - Her gün bu script çalıştırılmalı\n');
+    console.log(`\n⚠️  API istatistik çekme aktif!`);
+    console.log(`   - Max ${MAX_API_CALLS} API çağrısı (${API_RESERVE} yedek bırakıldı)`);
+    console.log(`   - En büyük liglerden başlayarak işlenecek\n`);
   }
   
   // DB'deki tüm takımları işle

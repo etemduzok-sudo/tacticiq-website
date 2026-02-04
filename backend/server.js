@@ -243,6 +243,16 @@ app.get('/api/system-status', (req, res) => {
     const staticTeamsScheduler = require('./services/staticTeamsScheduler');
     const snapshotService = require('./services/leaderboardSnapshotService');
     
+    // Player Ratings Scheduler durumu
+    let playerRatingsStatus = null;
+    try {
+      if (process.env.RUN_PLAYER_RATINGS_JOB === 'true') {
+        playerRatingsStatus = playerRatingsScheduler.getSchedulerStatus();
+      }
+    } catch (err) {
+      playerRatingsStatus = { error: err.message };
+    }
+    
     res.json({
       success: true,
       timestamp: new Date().toISOString(),
@@ -251,6 +261,7 @@ app.get('/api/system-status', (req, res) => {
         worldwideSync: smartSyncService.getStatus(),
         staticTeams: staticTeamsScheduler.getStatus(),
         leaderboardSnapshots: snapshotService.getStatus(),
+        playerRatings: playerRatingsStatus,
       }
     });
   } catch (error) {

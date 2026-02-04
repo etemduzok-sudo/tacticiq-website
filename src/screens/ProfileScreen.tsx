@@ -443,9 +443,8 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const { theme: currentTheme, setTheme: setAppTheme } = useTheme();
   const isDarkMode = currentTheme === 'dark';
   const { width: screenWidth } = useWindowDimensions();
-  // Rozetler: mobil/tablet dar ekranda kesin 4 sütun (3 sütun görünmesin)
-  const isNarrowBadgeGrid = screenWidth < 1024;
-  const badgeItemWidthFor4Cols = isNarrowBadgeGrid ? '23%' as const : undefined; // 4×23% + gap ≈ 4 sütun
+  // Rozetler: mobilde 4 sütun, web'de 8 sütun
+  const badgeColumnCount = screenWidth < 600 ? 4 : 8;
 
   // 🎨 Dinamik stiller - tema değişince yeniden oluştur
   const styles = useMemo(() => createStyles(isDarkMode), [isDarkMode]);
@@ -1990,7 +1989,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                     badge.earned 
                       ? styles.badgeItemEarned 
                       : styles.badgeItemLocked,
-                    // 4 sütun her zaman
+                    badgeColumnCount === 4 
+                      ? styles.badgeItem4Col 
+                      : styles.badgeItem8Col,
                   ]}
                   onPress={() => setSelectedBadge(badge)}
                   activeOpacity={0.7}
@@ -4149,17 +4150,12 @@ const createStyles = (isDark: boolean = true) => {
   badgesGridInline: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'flex-start',
-    gap: 6,
-    rowGap: 8,
+    justifyContent: 'space-between',
     width: '100%',
   },
   badgeItemInline: {
-    // Web: 8 sütun | Mobil: 4 sütun - calc ile kesin boyut
-    ...Platform.select({
-      web: { width: 'calc(12.5% - 6px)' as any, aspectRatio: 0.9 },  // 8 sütun = 100/8 = 12.5%
-      default: { width: 'calc(25% - 6px)' as any, aspectRatio: 0.95 }, // 4 sütun = 100/4 = 25%
-    }),
+    marginBottom: 8,
+    aspectRatio: 0.83, // 1/1.2 = yükseklik %20 artırıldı
     backgroundColor: theme.card,
     borderRadius: SIZES.radiusMd,
     borderWidth: 1.5,
@@ -4175,7 +4171,16 @@ const createStyles = (isDark: boolean = true) => {
   badgeItemLocked: {
     borderColor: 'rgba(100, 116, 139, 0.4)',
     backgroundColor: 'rgba(30, 41, 59, 0.6)',
-    // ✅ Opacity kaldırıldı - rozetler renkli görünecek, sadece kilit ikonu olacak
+  },
+  // 4 sütun için: %23 genişlik (4x23=92, kalan 8% boşluk olarak dağılır)
+  badgeItem4Col: {
+    width: '23%' as any,
+    maxWidth: '23%' as any,
+  },
+  // 8 sütun için: %11.5 genişlik
+  badgeItem8Col: {
+    width: '11.5%' as any,
+    maxWidth: '11.5%' as any,
   },
   badgeLockOverlay: {
     position: 'absolute',
