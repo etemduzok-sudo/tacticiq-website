@@ -17,6 +17,8 @@ export function useAppNavigation() {
   const [legalDocumentType, setLegalDocumentType] = useState<string>('terms');
   const [activeTab, setActiveTab] = useState<string>('home');
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
+  const [showMatchResultPopup, setShowMatchResultPopup] = useState(false);
+  const [matchIdForResultPopup, setMatchIdForResultPopup] = useState<string | null>(null);
   const screenBeforeMatchDetailRef = useRef<string>('home');
   const activeTabBeforeMatchDetailRef = useRef<string>('home');
   const [selectedTeamIds, setSelectedTeamIds] = useState<number[]>([]);
@@ -235,12 +237,14 @@ export function useAppNavigation() {
   }, []);
 
   const handleMatchResultSelect = useCallback((matchId: string) => {
-    logNavigation('match-detail', { matchId, initialTab: 'stats', forceResultSummary: true });
-    setSelectedMatchId(matchId);
-    const matchParams = { initialTab: 'stats', forceResultSummary: true };
-    if (typeof global !== 'undefined') (global as any).__matchDetailParams = matchParams;
-    if (typeof window !== 'undefined') (window as any).__matchDetailParams = matchParams;
-    setCurrentScreen('match-detail');
+    logNavigation('match-result-popup', { matchId });
+    setMatchIdForResultPopup(matchId);
+    setShowMatchResultPopup(true);
+  }, []);
+
+  const handleCloseMatchResultPopup = useCallback(() => {
+    setShowMatchResultPopup(false);
+    setMatchIdForResultPopup(null);
   }, []);
 
   const handleDashboardNavigate = useCallback((screen: string, params?: any) => {
@@ -369,6 +373,8 @@ export function useAppNavigation() {
       activeTab,
       selectedMatchId,
       selectedTeamIds,
+      showMatchResultPopup,
+      matchIdForResultPopup,
       isMaintenanceMode,
       isProcessingOAuth,
       oauthCompleted
@@ -399,6 +405,7 @@ export function useAppNavigation() {
       handleTabChange,
       handleMatchSelect,
       handleMatchResultSelect,
+      handleCloseMatchResultPopup,
       handleMatchDetailBack,
       handleDashboardNavigate,
       handleProfileSettings,

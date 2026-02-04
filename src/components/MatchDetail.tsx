@@ -22,7 +22,6 @@ import { MatchPrediction } from './match/MatchPrediction';
 import { MatchLive } from './match/MatchLive';
 import { MatchStats } from './match/MatchStats';
 import { MatchRatings } from './match/MatchRatings';
-import { MatchResultSummary } from './match/MatchResultSummary';
 // MatchSummary artık kullanılmıyor - Özet bilgileri biten maç kartlarında gösteriliyor
 // import { MatchSummary } from './match/MatchSummary';
 import { AnalysisFocusModal, AnalysisFocusType } from './AnalysisFocusModal';
@@ -40,7 +39,6 @@ interface MatchDetailProps {
   initialTab?: string; // ✅ Başlangıç sekmesi (squad, prediction, live, stats, ratings, summary)
   analysisFocus?: string; // ✅ Analiz odağı (defense, offense, midfield, physical, tactical, player)
   preloadedMatch?: any; // ✅ Dashboard'dan gelen maç verisi (API çağrısını atlar)
-  forceResultSummary?: boolean; // ✅ Biten maç listesinden gelindiyse MatchResultSummary göster
 }
 
 // Mock match data
@@ -509,15 +507,6 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
         return <MatchLive matchData={matchData} matchId={matchId} events={events} />;
       
       case 'stats':
-        // Biten maçlar veya biten maç listesinden gelindiyse MatchResultSummary
-        if (isMatchFinished || forceResultSummary) {
-          const summaryMatchData = matchData ? {
-            ...matchData,
-            teams: matchData.teams || { home: matchData.homeTeam, away: matchData.awayTeam },
-            goals: match?.goals || { home: matchData?.homeScore ?? 0, away: matchData?.awayScore ?? 0 },
-          } : match;
-          return <MatchResultSummary matchId={matchId} matchData={summaryMatchData || {}} />;
-        }
         return <MatchStats matchData={matchData} />;
       
       case 'ratings':

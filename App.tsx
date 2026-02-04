@@ -136,6 +136,7 @@ import ProUpgradeScreen from './src/screens/ProUpgradeScreen';
 import { Dashboard } from './src/components/Dashboard';
 import { BottomNavigation } from './src/components/BottomNavigation';
 import { MatchDetail } from './src/components/MatchDetail';
+import { MatchResultSummaryPopup } from './src/components/match/MatchResultSummaryPopup';
 import { MatchResultSummaryScreen } from './src/screens/MatchResultSummaryScreen';
 import { Leaderboard } from './src/components/Leaderboard';
 import { DatabaseTestScreen } from './src/screens/DatabaseTestScreen';
@@ -168,7 +169,8 @@ export default function App() {
   const { state: navState, actions: navActions, handlers: navHandlers, refs: navRefs } = useAppNavigation();
   const { 
     currentScreen, previousScreen, activeTab, selectedMatchId, 
-    selectedTeamIds, isMaintenanceMode, isProcessingOAuth, oauthCompleted 
+    selectedTeamIds, showMatchResultPopup, matchIdForResultPopup,
+    isMaintenanceMode, isProcessingOAuth, oauthCompleted 
   } = navState;
 
   // Use OAuth Hook
@@ -378,7 +380,6 @@ export default function App() {
               initialTab={matchDetailParams.initialTab || 'squad'}
               analysisFocus={matchDetailParams.analysisFocus}
               preloadedMatch={matchDetailParams.matchData}
-              forceResultSummary={matchDetailParams.forceResultSummary}
               onBack={navHandlers.handleMatchDetailBack}
             />
           );
@@ -562,6 +563,13 @@ export default function App() {
                       onTabChange={navHandlers.handleTabChange}
                     />
                   )}
+
+                  {/* Biten maç özeti - alttan açılan popup */}
+                  <MatchResultSummaryPopup
+                    visible={showMatchResultPopup}
+                    matchId={matchIdForResultPopup}
+                    onClose={navHandlers.handleCloseMatchResultPopup}
+                  />
                 </View>
               )}
             </MatchProvider>
