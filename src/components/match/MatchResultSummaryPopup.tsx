@@ -15,12 +15,26 @@ import {
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, { SlideInDown, SlideOutDown } from 'react-native-reanimated';
 import { MatchResultSummary } from './MatchResultSummary';
 import api from '../../services/api';
 
 const { width, height } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
+
+// Conditional Reanimated import for non-web
+let Animated: any;
+let SlideInDown: any;
+let SlideOutDown: any;
+
+if (!isWeb) {
+  const Reanimated = require('react-native-reanimated');
+  Animated = Reanimated.default || Reanimated;
+  SlideInDown = Reanimated.SlideInDown;
+  SlideOutDown = Reanimated.SlideOutDown;
+} else {
+  const { View } = require('react-native');
+  Animated = { View };
+}
 
 interface MatchResultSummaryPopupProps {
   visible: boolean;
@@ -76,7 +90,7 @@ export function MatchResultSummaryPopup({
     <Modal
       visible={visible}
       transparent
-      animationType="none"
+      animationType={isWeb ? "slide" : "none"}
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
@@ -86,10 +100,9 @@ export function MatchResultSummaryPopup({
           onPress={onClose}
         />
         <Animated.View
-          entering={isWeb ? undefined : SlideInDown.duration(300)}
-          exiting={isWeb ? undefined : SlideOutDown.duration(200)}
+          entering={!isWeb && SlideInDown ? SlideInDown.duration(300) : undefined}
+          exiting={!isWeb && SlideOutDown ? SlideOutDown.duration(200) : undefined}
           style={styles.container}
-          pointerEvents="box-none"
         >
           <TouchableOpacity
             activeOpacity={1}
@@ -149,6 +162,7 @@ const styles = StyleSheet.create({
     height: height * 0.78,
   },
   contentWrap: {
+    flex: 1,
     paddingBottom: Platform.OS === 'ios' ? 34 : 20,
   },
   handleBar: {
@@ -209,7 +223,6 @@ const styles = StyleSheet.create({
   },
   summaryWrapper: {
     flex: 1,
-    minHeight: 0,
   },
 });
 
