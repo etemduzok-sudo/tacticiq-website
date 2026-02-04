@@ -16,6 +16,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../../services/api';
 import { STORAGE_KEYS, LEGACY_STORAGE_KEYS } from '../../config/constants';
+import { useFavoriteTeams } from '../../hooks/useFavoriteTeams';
 
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
@@ -110,10 +111,19 @@ export function MatchResultSummary({ matchId, matchData }: MatchResultSummaryPro
   const [userPoints, setUserPoints] = useState<UserPointsBreakdown | null>(null);
   const [expandedPlayers, setExpandedPlayers] = useState<Set<number>>(new Set());
 
+  // Favori takımları al
+  const { favoriteTeams } = useFavoriteTeams();
+  const favoriteTeamIds = favoriteTeams.map(t => t.id);
+
   const homeTeam = matchData?.teams?.home;
   const awayTeam = matchData?.teams?.away;
   const homeScore = matchData?.goals?.home ?? 0;
   const awayScore = matchData?.goals?.away ?? 0;
+
+  // Hangi takımlar favori?
+  const isHomeFavorite = favoriteTeamIds.includes(homeTeam?.id);
+  const isAwayFavorite = favoriteTeamIds.includes(awayTeam?.id);
+  const bothFavorite = isHomeFavorite && isAwayFavorite;
 
   // Verileri yükle
   useEffect(() => {
@@ -513,25 +523,65 @@ export function MatchResultSummary({ matchId, matchData }: MatchResultSummaryPro
       );
     };
 
+    // Sadece favori takımın oyuncularını göster
+    // İki takım da favoriyse, her ikisini de göster
+    const showHomePlayers = isHomeFavorite || (!isHomeFavorite && !isAwayFavorite);
+    const showAwayPlayers = isAwayFavorite || (!isHomeFavorite && !isAwayFavorite);
+
+    // Hiç favori yoksa (örneğin mock maç) ev sahibini göster
+    const hasAnyFavorite = isHomeFavorite || isAwayFavorite;
+
     return (
       <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
-        {/* Ev Sahibi Oyuncular */}
-        <View style={styles.teamPlayersSection}>
-          <View style={styles.teamHeader}>
-            <View style={[styles.teamColorBar, { backgroundColor: '#22D3EE' }]} />
-            <Text style={styles.teamTitle}>{homeTeam?.name || 'Ev Sahibi'}</Text>
+        {/* İki favori takım bilgilendirmesi */}
+        {bothFavorite && (
+          <View style={styles.bothFavoriteNotice}>
+            <Ionicons name="heart" size={16} color="#EF4444" />
+            <Text style={styles.bothFavoriteText}>
+              Her iki takım da favorilerinizde! Her iki takımın oyuncu istatistikleri aşağıda.
+            </Text>
           </View>
-          {homePlayers.map(renderPlayerCard)}
-        </View>
+        )}
 
-        {/* Deplasman Oyuncuları */}
-        <View style={styles.teamPlayersSection}>
-          <View style={styles.teamHeader}>
-            <View style={[styles.teamColorBar, { backgroundColor: '#FB923C' }]} />
-            <Text style={styles.teamTitle}>{awayTeam?.name || 'Deplasman'}</Text>
+        {/* Ev Sahibi Oyuncular - sadece favori ise veya hiç favori yoksa */}
+        {(showHomePlayers || !hasAnyFavorite) && (
+          <View style={styles.teamPlayersSection}>
+            <View style={styles.teamHeader}>
+              <View style={[styles.teamColorBar, { backgroundColor: '#22D3EE' }]} />
+              <Text style={styles.teamTitle}>{homeTeam?.name || 'Ev Sahibi'}</Text>
+              {isHomeFavorite && (
+                <View style={styles.favoriteIndicator}>
+                  <Ionicons name="heart" size={12} color="#EF4444" />
+                </View>
+              )}
+            </View>
+            {homePlayers.length > 0 ? (
+              homePlayers.map(renderPlayerCard)
+            ) : (
+              <Text style={styles.noPlayersText}>Oyuncu verisi bulunamadı</Text>
+            )}
           </View>
-          {awayPlayers.map(renderPlayerCard)}
-        </View>
+        )}
+
+        {/* Deplasman Oyuncuları - sadece favori ise */}
+        {showAwayPlayers && isAwayFavorite && (
+          <View style={styles.teamPlayersSection}>
+            <View style={styles.teamHeader}>
+              <View style={[styles.teamColorBar, { backgroundColor: '#FB923C' }]} />
+              <Text style={styles.teamTitle}>{awayTeam?.name || 'Deplasman'}</Text>
+              {isAwayFavorite && (
+                <View style={styles.favoriteIndicator}>
+                  <Ionicons name="heart" size={12} color="#EF4444" />
+                </View>
+              )}
+            </View>
+            {awayPlayers.length > 0 ? (
+              awayPlayers.map(renderPlayerCard)
+            ) : (
+              <Text style={styles.noPlayersText}>Oyuncu verisi bulunamadı</Text>
+            )}
+          </View>
+        )}
       </ScrollView>
     );
   };
@@ -965,6 +1015,32 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#FFFFFF',
+    flex: 1,
+  },
+  favoriteIndicator: {
+    marginLeft: 8,
+  },
+  bothFavoriteNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 16,
+    gap: 8,
+  },
+  bothFavoriteText: {
+    flex: 1,
+    fontSize: 12,
+    color: '#F87171',
+    lineHeight: 18,
+  },
+  noPlayersText: {
+    fontSize: 13,
+    color: '#64748B',
+    fontStyle: 'italic',
+    textAlign: 'center',
+    paddingVertical: 20,
   },
   
   // Player Card
