@@ -570,8 +570,12 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
                           }}
                         >
                         {renderMatchCard(match, 'finished', () => {
-                          // Biten maçlar için: Her zaman İstatistik sekmesine git
-                          onMatchResultSelect?.(matchId) || onMatchSelect(matchId, { initialTab: 'stats' });
+                          // Biten maçlar için: MatchResultSummary (match-detail stats)
+                          if (onMatchResultSelect) {
+                            onMatchResultSelect(matchId);
+                          } else {
+                            onMatchSelect(matchId, { initialTab: 'stats' });
+                          }
                         })}
                         </Animated.View>
                         
