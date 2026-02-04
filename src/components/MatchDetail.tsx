@@ -22,6 +22,7 @@ import { MatchPrediction } from './match/MatchPrediction';
 import { MatchLive } from './match/MatchLive';
 import { MatchStats } from './match/MatchStats';
 import { MatchRatings } from './match/MatchRatings';
+import { MatchResultSummary } from './match/MatchResultSummary';
 // MatchSummary artık kullanılmıyor - Özet bilgileri biten maç kartlarında gösteriliyor
 // import { MatchSummary } from './match/MatchSummary';
 import { AnalysisFocusModal, AnalysisFocusType } from './AnalysisFocusModal';
@@ -507,6 +508,10 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
         return <MatchLive matchData={matchData} matchId={matchId} events={events} />;
       
       case 'stats':
+        // Biten maçlar için MatchResultSummary, devam eden/gelecek maçlar için MatchStats
+        if (isMatchFinished) {
+          return <MatchResultSummary matchId={matchId} matchData={matchData} />;
+        }
         return <MatchStats matchData={matchData} />;
       
       case 'ratings':
