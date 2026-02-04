@@ -431,15 +431,6 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
                   <Text style={matchCardStyles.matchCardLiveText}>OYNANIYOR</Text>
                 </LinearGradient>
               </View>
-            ) : status === 'finished' ? (
-              /* ✅ Biten maçlar için bilgi notu */
-              <View style={matchCardStyles.matchCardFinishedHint}>
-                <Ionicons name="stats-chart" size={12} color="#64748B" />
-                <Text style={matchCardStyles.matchCardFinishedHintText}>
-                  İstatistikler ve maç özeti için tıklayın
-                </Text>
-                <Ionicons name="chevron-forward" size={12} color="#64748B" />
-              </View>
             ) : null}
           </View>
           {/* Tahmin yaptınız: sarı yıldız — en üstte (son child) ki tıklanabilsin */}
