@@ -248,6 +248,13 @@ export const matchesApi = {
   // Get match details (try DB first)
   getMatchDetails: async (matchId: number) => {
     try {
+      // ✅ Mock maç (999999) için doğrudan backend kullan – DB formatı uyumsuz olabilir
+      if (matchId === 999999) {
+        logger.debug(`Match ${matchId} MOCK – using backend directly`, { matchId }, 'API');
+        const backendResult = await request(`/matches/${matchId}`);
+        return backendResult;
+      }
+
       // Try database first
       const dbResult = await matchesDb.getMatchById(matchId);
       if (dbResult.success && dbResult.data) {
@@ -277,6 +284,14 @@ export const matchesApi = {
 
   // Get match events (goals, cards, etc.)
   getMatchEvents: (matchId: number) => request(`/matches/${matchId}/events`),
+
+  // Get live events (DB + API hybrid, 15sn güncelleme) - maç başlamadıysa matchNotStarted: true
+  getMatchEventsLive: (matchId: number | string) =>
+    request(`/matches/${matchId}/events/live`),
+
+  // Get community stats (topluluk tahmin istatistikleri)
+  getCommunityStats: (matchId: number | string) =>
+    request(`/matches/${matchId}/community-stats`),
 
   // Get prediction data (statistics + events combined)
   getPredictionData: (matchId: number) => request(`/matches/${matchId}/prediction-data`),

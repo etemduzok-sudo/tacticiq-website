@@ -1,5 +1,5 @@
 // src/components/MatchDetail.tsx
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -81,6 +81,18 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
   const [showResetPredictionsModal, setShowResetPredictionsModal] = useState(false);
   const [hasPrediction, setHasPrediction] = useState(false);
   const effectiveAnalysisFocus = analysisFocusOverride ?? analysisFocus;
+
+  // ✅ Kaydedilmemiş değişiklik kontrolü
+  const [predictionHasUnsavedChanges, setPredictionHasUnsavedChanges] = useState(false);
+  const [predictionSaveFn, setPredictionSaveFn] = useState<(() => Promise<void>) | null>(null);
+  const [showUnsavedChangesModal, setShowUnsavedChangesModal] = useState(false);
+  const [pendingTabChange, setPendingTabChange] = useState<string | null>(null);
+
+  // ✅ Memoize onHasUnsavedChanges callback to prevent infinite re-renders
+  const handleHasUnsavedChanges = useCallback((hasChanges: boolean, saveFn: () => Promise<void>) => {
+    setPredictionHasUnsavedChanges(hasChanges);
+    setPredictionSaveFn(() => saveFn);
+  }, []);
 
   // ✅ İki favori takım maçı: ev sahibi ve deplasman favorilerde
   const [selectedPredictionTeamId, setSelectedPredictionTeamId] = useState<number | null>(null);
@@ -444,6 +456,8 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
             matchId={matchId}
             predictionTeamId={predictionTeamId}
             initialAnalysisFocus={effectiveAnalysisFocus}
+            lineups={lineups}
+            favoriteTeamIds={favoriteTeamIds}
             onPredictionsSaved={() => checkPredictions(homeId, awayId, bothFavorites)}
             onPredictionsSavedForTeam={(savedTeamId) => {
               checkPredictions(homeId, awayId, bothFavorites);
@@ -453,6 +467,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
                 setShowOfferOtherTeamModal(true);
               }
             }}
+            onHasUnsavedChanges={handleHasUnsavedChanges}
           />
         );
       
@@ -563,7 +578,6 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
           <View style={styles.centerInfo}>
             <Text style={styles.dateText}>● {matchData.date}</Text>
             <Text style={styles.timeText}>{matchData.time}</Text>
-            
             {/* Countdown Boxes */}
             {countdownData && countdownData.type === 'countdown' && (
               <View style={styles.countdownRow}>
@@ -667,6 +681,43 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
         />
       )}
 
+      {/* ✅ Kaydedilmemiş değişiklik uyarısı - Tab değiştirilirken gösterilir */}
+      {showUnsavedChangesModal && (
+        <ConfirmModal
+          visible={true}
+          title="Kaydedilmemiş Değişiklikler"
+          message="Tahminlerinizde kaydedilmemiş değişiklikler var. Kaydetmek ister misiniz?"
+          buttons={[
+            { 
+              text: 'Kaydetme', 
+              style: 'cancel', 
+              onPress: () => { 
+                setShowUnsavedChangesModal(false);
+                setPredictionHasUnsavedChanges(false);
+                if (pendingTabChange) {
+                  setActiveTab(pendingTabChange);
+                  setPendingTabChange(null);
+                }
+              } 
+            },
+            { 
+              text: 'Kaydet', 
+              onPress: async () => { 
+                if (predictionSaveFn) {
+                  await predictionSaveFn();
+                }
+                setShowUnsavedChangesModal(false);
+                if (pendingTabChange) {
+                  setActiveTab(pendingTabChange);
+                  setPendingTabChange(null);
+                }
+              } 
+            },
+          ]}
+          onRequestClose={() => { setShowUnsavedChangesModal(false); setPendingTabChange(null); }}
+        />
+      )}
+
       {/* Analiz Odağı Modal - Onay (formasyon değişikliği) sonrası gösterilir */}
       <AnalysisFocusModal
         visible={showAnalysisFocusModal}
@@ -690,7 +741,15 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
           return (
             <TouchableOpacity
               key={tab.id}
-              onPress={() => setActiveTab(tab.id)}
+              onPress={() => {
+                // ✅ Tahmin sekmesinden ayrılırken kaydedilmemiş değişiklik kontrolü
+                if (activeTab === 'prediction' && tab.id !== 'prediction' && predictionHasUnsavedChanges) {
+                  setPendingTabChange(tab.id);
+                  setShowUnsavedChangesModal(true);
+                } else {
+                  setActiveTab(tab.id);
+                }
+              }}
               style={styles.tab}
               activeOpacity={0.7}
             >

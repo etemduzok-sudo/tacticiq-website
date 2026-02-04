@@ -278,8 +278,8 @@ function AppContent() {
         {/* Pricing Section - Admin kontrollü */}
         {sectionSettings.pricing.enabled && <PricingSection />}
         
-        {/* Profil ve Rozetler - Giriş yapan kullanıcılar için (yukarı taşındı - daha görünür) */}
-        {sectionSettings.profile?.enabled !== false && isAuthenticated && <UserProfileSection />}
+        {/* ✅ Profil artık inline gösterilmiyor - Header'daki kullanıcı menüsünden modal olarak açılır */}
+        {/* UserProfileSection kaldırıldı - UserProfileModal kullanılıyor */}
         
         {/* App Download Section - Admin kontrollü */}
         {sectionSettings.appDownload.enabled && <AppDownloadSection />}

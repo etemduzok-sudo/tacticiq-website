@@ -12,6 +12,7 @@ import {
   Modal,
   FlatList,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -190,6 +191,12 @@ interface MatchPredictionScreenProps {
   onPredictionsSavedForTeam?: (teamId: number) => void;
   /** Analiz odağı – Dashboard/Modal'dan seçildiğinde yıldızlar otomatik işaretlenir */
   initialAnalysisFocus?: AnalysisFocusType | null;
+  /** Kaydedilmemiş değişiklik var mı callback'i - MatchDetail tab değiştiğinde sormak için */
+  onHasUnsavedChanges?: (hasChanges: boolean, saveFn: () => Promise<void>) => void;
+  /** Maç kadrosu (lineups) - yedek oyuncular için */
+  lineups?: any[];
+  /** Favori takım ID'leri */
+  favoriteTeamIds?: number[];
 }
 
 // Mock Formation Data
@@ -361,9 +368,14 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
   onPredictionsSaved,
   onPredictionsSavedForTeam,
   initialAnalysisFocus,
+  onHasUnsavedChanges,
+  lineups,
+  favoriteTeamIds = [],
 }) => {
   const [selectedPlayer, setSelectedPlayer] = useState<typeof mockPlayers[0] | null>(null);
   const [playerPredictions, setPlayerPredictions] = useState<{[key: number]: any}>({});
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false); // ✅ Kaydedilmemiş değişiklik var mı?
+  const [initialPredictionsLoaded, setInitialPredictionsLoaded] = useState(false); // ✅ İlk yükleme tamamlandı mı?
 
   /** Oyuncu tahmin objesinde en az bir gerçek (anlamlı) tahmin var mı? Boş/null/false değerler sayılmaz. */
   const hasAnyRealPlayerPrediction = (preds: Record<string, any> | null | undefined): boolean => {
@@ -388,9 +400,11 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
 
   // ✅ Load attack squad from AsyncStorage
   const [attackPlayersArray, setAttackPlayersArray] = useState<any[]>([]);
+  const [allTeamPlayers, setAllTeamPlayers] = useState<any[]>([]); // ✅ Tüm takım kadrosu (yedekler dahil)
   const [attackFormation, setAttackFormation] = useState<string | null>(null);
   const [squadLoaded, setSquadLoaded] = useState(false);
   const [isSquadCompleted, setIsSquadCompleted] = useState(false); // ✅ Tamamla basıldı mı?
+  const [isSaving, setIsSaving] = useState(false); // ✅ Kaydetme işlemi devam ediyor mu?
   
   // 🌟 STRATEGIC FOCUS SYSTEM
   const [selectedAnalysisFocus, setSelectedAnalysisFocus] = useState<AnalysisFocusType | null>(null);
@@ -420,6 +434,10 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
             setAttackPlayersArray(arr);
             setAttackFormation(parsed.attackFormation || null);
             setIsSquadCompleted(true);
+            // ✅ Tüm takım kadrosunu yükle (yedek oyuncu seçimi için)
+            if (parsed.allTeamPlayers && Array.isArray(parsed.allTeamPlayers)) {
+              setAllTeamPlayers(parsed.allTeamPlayers);
+            }
           }
           setSquadLoaded(true);
         } else {
@@ -432,6 +450,65 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
     };
     loadSquad();
   }, [squadStorageKey]);
+
+  // ✅ Yedek oyuncuları hesapla (tüm kadro - ilk 11)
+  const reserveTeamPlayers = React.useMemo(() => {
+    // İlk 11'deki oyuncu ID'leri
+    const startingXIIds = new Set(attackPlayersArray.map(p => p.id));
+    
+    // 1. Önce AsyncStorage'dan gelen allTeamPlayers'ı dene
+    if (allTeamPlayers.length > 0) {
+      return allTeamPlayers.filter(p => !startingXIIds.has(p.id));
+    }
+    
+    // 2. allTeamPlayers yoksa lineups'tan yedekleri çıkar
+    if (lineups && lineups.length > 0 && predictionTeamId) {
+      // Tahmin yapılan takımın lineup'ını bul
+      const teamLineup = lineups.find((lineup: any) => lineup.team?.id === predictionTeamId);
+      
+      if (teamLineup?.substitutes) {
+        return teamLineup.substitutes.map((item: any) => {
+          const player = item.player || item;
+          return {
+            id: player.id,
+            name: player.name,
+            position: player.pos || player.position,
+            rating: player.rating || 70,
+            number: player.number,
+            teamId: predictionTeamId,
+          };
+        });
+      }
+    }
+    
+    // 3. Eğer predictionTeamId yoksa, ilk lineup'tan yedekleri al (favoriteTeamIds'e göre)
+    if (lineups && lineups.length > 0 && favoriteTeamIds.length > 0) {
+      // Önce ev sahibi favori mi kontrol et
+      const homeLineup = lineups.find((lineup: any, index: number) => index === 0);
+      const awayLineup = lineups.find((lineup: any, index: number) => index === 1);
+      
+      const targetLineup = 
+        homeLineup?.team?.id && favoriteTeamIds.includes(homeLineup.team.id) ? homeLineup :
+        awayLineup?.team?.id && favoriteTeamIds.includes(awayLineup.team.id) ? awayLineup :
+        homeLineup;
+      
+      if (targetLineup?.substitutes) {
+        return targetLineup.substitutes.map((item: any) => {
+          const player = item.player || item;
+          return {
+            id: player.id,
+            name: player.name,
+            position: player.pos || player.position,
+            rating: player.rating || 70,
+            number: player.number,
+            teamId: targetLineup.team?.id,
+          };
+        });
+      }
+    }
+    
+    return [];
+  }, [allTeamPlayers, attackPlayersArray, lineups, predictionTeamId, favoriteTeamIds]);
 
   React.useEffect(() => {
     if (__DEV__) console.log('📌 MatchPrediction mounted (build: focus+confirm+tamamla-fix)');
@@ -480,7 +557,11 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
         if (parsed.playerPredictions && typeof parsed.playerPredictions === 'object') setPlayerPredictions(parsed.playerPredictions);
         if (Array.isArray(parsed.focusedPredictions)) setFocusedPredictions(parsed.focusedPredictions);
         if (parsed.selectedAnalysisFocus) setSelectedAnalysisFocus(parsed.selectedAnalysisFocus);
-      } catch (_) {}
+        // ✅ İlk yükleme tamamlandı - artık değişiklikleri takip edebiliriz
+        setTimeout(() => setInitialPredictionsLoaded(true), 100);
+      } catch (_) {
+        setInitialPredictionsLoaded(true);
+      }
     };
     load();
   }, [predictionStorageKey, matchData?.id, predictionTeamId]);
@@ -495,12 +576,33 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
   const handlePlayerPredictionChange = (category: string, value: string | boolean) => {
     if (!selectedPlayer) return;
     
+    // ✅ Değişiklik yapıldı - kaydedilmemiş değişiklik var
+    if (initialPredictionsLoaded) setHasUnsavedChanges(true);
+    
     setPlayerPredictions(prev => {
       const currentPredictions = prev[selectedPlayer.id] ?? prev[String(selectedPlayer.id)] ?? {};
       const newPredictions = {
         ...currentPredictions,
         [category]: currentPredictions[category] === value ? null : value
       };
+      
+      // ✅ Gol sayısı seçildiğinde otomatik olarak "Gol Atar" da aktif olsun
+      if (category === 'goalCount' && value) {
+        newPredictions.willScore = true;
+      }
+      // ✅ "Gol Atar" kapatılırsa gol sayısı da sıfırlansın
+      if (category === 'willScore' && currentPredictions.willScore === true) {
+        newPredictions.goalCount = null;
+      }
+      
+      // ✅ Asist sayısı seçildiğinde otomatik olarak "Asist Yapar" da aktif olsun
+      if (category === 'assistCount' && value) {
+        newPredictions.willAssist = true;
+      }
+      // ✅ "Asist Yapar" kapatılırsa asist sayısı da sıfırlansın
+      if (category === 'willAssist' && currentPredictions.willAssist === true) {
+        newPredictions.assistCount = null;
+      }
       
       // ✅ 2. Sarıdan Kırmızı seçilirse, otomatik Sarı Kart da seçilsin
       if (category === 'secondYellowRed' && value === true) {
@@ -532,6 +634,8 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
   };
 
   const handleSavePredictions = async () => {
+    if (isSaving) return; // Zaten kaydediliyor, tekrar basılmasın
+    
     try {
       // Check if at least some predictions are made
       const hasMatchPredictions = Object.values(predictions).some(v => v !== null);
@@ -544,6 +648,8 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
         Alert.alert('Uyarı!', 'Lütfen en az bir tahmin yapın.');
         return;
       }
+      
+      setIsSaving(true); // ✅ Kaydetme başladı
 
       // Toplam gol: kullanıcı elle seçmediyse maç sonu skorundan türetilen değer kullanılır
       const matchPredictionsToSave = {
@@ -648,6 +754,8 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
         // Continue even if database save fails (we have local backup)
       }
       
+      setIsSaving(false); // ✅ Kaydetme tamamlandı
+      setHasUnsavedChanges(false); // ✅ Değişiklikler kaydedildi
       Alert.alert(
         'Tahminler Kaydedildi! 🎉',
         'Tahminleriniz başarıyla kaydedildi. Maç başladığında puanlarınız hesaplanacak!',
@@ -658,6 +766,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
       // ✅ İki favori maçta diğer takım teklifi için hangi takım kaydedildi
       if (predictionTeamId != null) onPredictionsSavedForTeam?.(predictionTeamId);
     } catch (error) {
+      setIsSaving(false); // ✅ Hata durumunda da kapat
       console.error('Error saving predictions:', error);
       handleError(error as Error, {
         type: ErrorType.UNKNOWN,
@@ -668,7 +777,17 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
     }
   };
 
+  // ✅ Kaydedilmemiş değişiklik durumunu parent'a bildir (tab değiştiğinde sorulması için)
+  React.useEffect(() => {
+    if (onHasUnsavedChanges) {
+      onHasUnsavedChanges(hasUnsavedChanges, handleSavePredictions);
+    }
+  }, [hasUnsavedChanges, onHasUnsavedChanges]);
+
   const handlePredictionChange = (category: string, value: string | number) => {
+    // ✅ Değişiklik yapıldı - kaydedilmemiş değişiklik var
+    if (initialPredictionsLoaded) setHasUnsavedChanges(true);
+    
     setPredictions(prev => ({
       ...prev,
       [category]: prev[category as keyof typeof prev] === value ? null : value
@@ -816,6 +935,9 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
   };
 
   const handleScoreChange = (category: 'firstHalfHomeScore' | 'firstHalfAwayScore' | 'secondHalfHomeScore' | 'secondHalfAwayScore', value: number) => {
+    // ✅ Değişiklik yapıldı - kaydedilmemiş değişiklik var
+    if (initialPredictionsLoaded) setHasUnsavedChanges(true);
+    
     setPredictions(prev => {
       const minHome = prev.firstHalfHomeScore ?? 0;
       const minAway = prev.firstHalfAwayScore ?? 0;
@@ -920,6 +1042,8 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                 const playerPreds = playerPredictions[player.id] || playerPredictions[String(player.id)] || {};
                 const hasPredictions = hasAnyRealPlayerPrediction(playerPreds);
                 const hasSubstitution = !!(playerPreds.substitutedOut || playerPreds.injuredOut);
+                const hasRedCard = !!(playerPreds.redCard);
+                const hasYellowCard = !!(playerPreds.yellowCard) && !hasRedCard;
 
                 return (
                   <View
@@ -951,6 +1075,16 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                         {hasSubstitution && (
                           <View style={styles.substitutionBadge}>
                             <Ionicons name="swap-horizontal" size={10} color="#FFFFFF" />
+                          </View>
+                        )}
+                        {hasRedCard && (
+                          <View style={styles.redCardBadge}>
+                            <Ionicons name="card" size={10} color="#FFFFFF" />
+                          </View>
+                        )}
+                        {hasYellowCard && (
+                          <View style={styles.yellowCardBadge}>
+                            <Ionicons name="card" size={10} color="#1E293B" />
                           </View>
                         )}
                         <View style={styles.jerseyNumberBadge}>
@@ -998,6 +1132,13 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                   <Text style={styles.cardEmoji}>⏱️</Text>
                 </View>
                 <Text style={styles.combinedCardTitle}>İlk Yarı</Text>
+                {/* 🌟 Analiz Odağı Yıldızı - Hücum odağında bonus */}
+                {isCategoryInSelectedFocus('firstHalfHomeScore') && (
+                  <View style={styles.focusBonusBadge}>
+                    <Ionicons name="star" size={14} color="#F59E0B" />
+                    <Text style={styles.focusBonusText}>+Bonus</Text>
+                  </View>
+                )}
               </View>
             </View>
             
@@ -1102,6 +1243,13 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                   <Text style={styles.cardEmoji}>🏆</Text>
                 </View>
                 <Text style={styles.combinedCardTitle}>Maç Sonu</Text>
+                {/* 🌟 Analiz Odağı Yıldızı - Hücum odağında bonus */}
+                {isCategoryInSelectedFocus('secondHalfHomeScore') && (
+                  <View style={styles.focusBonusBadge}>
+                    <Ionicons name="star" size={14} color="#F59E0B" />
+                    <Text style={styles.focusBonusText}>+Bonus</Text>
+                  </View>
+                )}
               </View>
             </View>
             
@@ -1212,6 +1360,13 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
               <View style={styles.combinedCardTitleRow}>
                 <Ionicons name="football-outline" size={18} color="#10B981" style={{ marginRight: 4 }} />
                 <Text style={styles.combinedCardTitle}>Gol Tahminleri</Text>
+                {/* 🌟 Analiz Odağı Yıldızı - Hücum odağında bonus */}
+                {(isCategoryInSelectedFocus('totalGoals') || isCategoryInSelectedFocus('firstGoalTime')) && (
+                  <View style={styles.focusBonusBadge}>
+                    <Ionicons name="star" size={14} color="#F59E0B" />
+                    <Text style={styles.focusBonusText}>+Bonus</Text>
+                  </View>
+                )}
               </View>
             </View>
             
@@ -1339,6 +1494,13 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
               <View style={styles.combinedCardTitleRow}>
                 <Ionicons name="card-outline" size={18} color="#FBBF24" style={{ marginRight: 4 }} />
                 <Text style={styles.combinedCardTitle}>Disiplin</Text>
+                {/* 🌟 Analiz Odağı Yıldızı - Savunma odağında bonus */}
+                {(isCategoryInSelectedFocus('yellowCards') || isCategoryInSelectedFocus('redCards')) && (
+                  <View style={styles.focusBonusBadge}>
+                    <Ionicons name="star" size={14} color="#F59E0B" />
+                    <Text style={styles.focusBonusText}>+Bonus</Text>
+                  </View>
+                )}
               </View>
             </View>
             
@@ -1434,6 +1596,13 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                   <Text style={styles.cardEmoji}>📊</Text>
                 </View>
                 <Text style={styles.combinedCardTitle}>Topa Sahip Olma</Text>
+                {/* 🌟 Analiz Odağı Yıldızı - Orta Saha veya Taktik odağında bonus */}
+                {isCategoryInSelectedFocus('possession') && (
+                  <View style={styles.focusBonusBadge}>
+                    <Ionicons name="star" size={14} color="#F59E0B" />
+                    <Text style={styles.focusBonusText}>+Bonus</Text>
+                  </View>
+                )}
               </View>
             </View>
             
@@ -1494,6 +1663,13 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                   <Text style={styles.cardEmoji}>🎯</Text>
                 </View>
                 <Text style={styles.combinedCardTitle}>Şut İstatistikleri</Text>
+                {/* 🌟 Analiz Odağı Yıldızı - Savunma veya Hücum odağında bonus */}
+                {(isCategoryInSelectedFocus('totalShots') || isCategoryInSelectedFocus('shotsOnTarget')) && (
+                  <View style={styles.focusBonusBadge}>
+                    <Ionicons name="star" size={14} color="#F59E0B" />
+                    <Text style={styles.focusBonusText}>+Bonus</Text>
+                  </View>
+                )}
               </View>
             </View>
             
@@ -1599,6 +1775,13 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
               <View style={styles.combinedCardTitleRow}>
                 <Ionicons name="bulb-outline" size={18} color="#F59E0B" style={{ marginRight: 4 }} />
                 <Text style={styles.combinedCardTitle}>Taktik Tahminleri</Text>
+                {/* 🌟 Analiz Odağı Yıldızı - Taktik veya Orta Saha odağında bonus */}
+                {(isCategoryInSelectedFocus('tempo') || isCategoryInSelectedFocus('scenario')) && (
+                  <View style={styles.focusBonusBadge}>
+                    <Ionicons name="star" size={14} color="#F59E0B" />
+                    <Text style={styles.focusBonusText}>+Bonus</Text>
+                  </View>
+                )}
               </View>
             </View>
             
@@ -1725,15 +1908,23 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
 
           {/* Submit Button */}
           <TouchableOpacity 
-            style={styles.submitButton}
+            style={[styles.submitButton, isSaving && styles.submitButtonDisabled]}
             activeOpacity={0.8}
             onPress={handleSavePredictions}
+            disabled={isSaving}
           >
             <LinearGradient
-              colors={['#1FA2A6', '#047857']}
+              colors={isSaving ? ['#4B5563', '#374151'] : ['#1FA2A6', '#047857']}
               style={styles.submitButtonGradient}
             >
-              <Text style={styles.submitButtonText}>Tahminleri Kaydet</Text>
+              {isSaving ? (
+                <View style={styles.submitButtonLoading}>
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                  <Text style={styles.submitButtonText}>Tahmin Kaydediliyor...</Text>
+                </View>
+              ) : (
+                <Text style={styles.submitButtonText}>Tahminleri Kaydet</Text>
+              )}
             </LinearGradient>
           </TouchableOpacity>
         </View>
@@ -1747,7 +1938,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
           onClose={() => setSelectedPlayer(null)}
           onPredictionChange={handlePlayerPredictionChange}
           startingXI={attackPlayersArray}
-          reservePlayers={allSquadPlayers}
+          reservePlayers={reserveTeamPlayers.length > 0 ? reserveTeamPlayers : allTeamPlayers}
           onSubstituteConfirm={(type, playerId, minute) => {
             if (!selectedPlayer) return;
             const category = type === 'normal' ? 'substitutePlayer' : 'injurySubstitutePlayer';
@@ -3087,6 +3278,36 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: '#FFFFFF',
   },
+  redCardBadge: {
+    position: 'absolute',
+    top: 4,
+    left: 4,
+    width: 18,
+    height: 18,
+    borderRadius: 4,
+    backgroundColor: '#EF4444',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+    transform: [{ rotate: '8deg' }],
+  },
+  yellowCardBadge: {
+    position: 'absolute',
+    top: 4,
+    left: 4,
+    width: 18,
+    height: 18,
+    borderRadius: 4,
+    backgroundColor: '#F59E0B',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+    transform: [{ rotate: '8deg' }],
+  },
   playerName: {
     fontSize: 9,
     fontWeight: '500',
@@ -3241,6 +3462,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    flex: 1,
+  },
+  // 🌟 Bonus Badge - Analiz odağında olan tahminler için
+  focusBonusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+    marginLeft: 'auto',
+  },
+  focusBonusText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#F59E0B',
   },
   cardIconSmall: {
     width: 28,
@@ -4201,6 +4439,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  submitButtonDisabled: {
+    opacity: 0.7,
+  },
+  submitButtonLoading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   submitButtonText: {
     fontSize: 16,
     fontWeight: 'bold',
@@ -4332,8 +4578,8 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   predictionButtonActive: {
-    backgroundColor: '#1FA2A6',
-    borderColor: '#1FA2A6',
+    backgroundColor: '#3B82F6', // ✅ Mavi renk
+    borderColor: '#3B82F6',
     transform: [{ scale: 1.02 }],
   },
   predictionButtonText: {
@@ -4343,6 +4589,7 @@ const styles = StyleSheet.create({
   },
   predictionButtonTextActive: {
     fontWeight: 'bold',
+    color: '#FFFFFF',
   },
   subOptions: {
     paddingLeft: 10,

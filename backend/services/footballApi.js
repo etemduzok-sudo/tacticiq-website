@@ -621,6 +621,8 @@ function clearCache() {
 
 // Export
 module.exports = {
+  // ✅ Internal API request function (for scripts)
+  apiRequest: makeRequest,
   getLiveMatches,
   getFixturesByDate,
   getFixturesByLeague,

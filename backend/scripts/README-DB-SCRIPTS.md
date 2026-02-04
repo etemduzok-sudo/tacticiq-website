@@ -84,8 +84,39 @@ backend/
 
 ---
 
+## ⚽ Planlanmış Maçlar & API Sıfırlama Sonrası
+
+### Planlanmış Maç Senkronu
+```bash
+node scripts/sync-planned-matches.js
+```
+- Bugün + 30 gün maçları API'den çekip DB'ye kaydeder
+- Uygulama maçları DB'den okur (API limiti korunur)
+
+### Tüm Takımlar Maç Listesi
+```bash
+node scripts/sync-all-teams-matches.js
+```
+- Her lig için sezon maçlarını çeker (~130 lig × 1 API)
+- Tüm takımların geçmiş + gelecek maçları DB'de
+
+### API Sıfırlama Sonrası Tam Senkron (03:00)
+```bash
+node scripts/post-reset-full-sync.js
+```
+Sırayla çalıştırır:
+1. **Tüm takımlar maç listesi** (lig bazlı, tüm sezon)
+2. Planlanmış maçlar (tarih bazlı, bugün+30 gün)
+3. Eksik teknik direktörler
+4. Lig/Takım/Kadro (sync-all-world-leagues)
+
+**Windows Görev Zamanlayıcı**: `schedule-post-reset.bat` ile 03:00'de her gün otomatik çalıştır.
+
+---
+
 ## 🔧 Önerilen Kullanım
 
-1. **Günlük**: `auto-sync-squads.js` çalıştır (API limiti varsa)
-2. **Haftalık**: `backup-db.js` ile yedek al
-3. **Sorun durumunda**: `restore-db.js` ile geri yükle
+1. **Günlük 03:00**: `post-reset-full-sync.js` (API sıfırlandıktan sonra)
+2. **Manuel**: `sync-planned-matches.js` ile sadece maç listesi
+3. **Haftalık**: `backup-db.js` ile yedek al
+4. **Sorun durumunda**: `restore-db.js` ile geri yükle

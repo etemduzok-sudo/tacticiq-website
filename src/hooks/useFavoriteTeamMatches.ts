@@ -11,6 +11,26 @@ const CACHE_KEY = 'tacticiq-matches-cache';
 const CACHE_TIMESTAMP_KEY = 'tacticiq-matches-cache-timestamp';
 const CACHE_DURATION = 6 * 60 * 60 * 1000; // 6 saat (ms)
 
+// ✅ Mock canlı maç - her zaman "Oynanıyor" sekmesinde görünsün (test/demo için)
+const MOCK_LIVE_MATCH: Match = {
+  fixture: {
+    id: 999999,
+    date: new Date().toISOString(),
+    timestamp: Math.floor(Date.now() / 1000) - 67 * 60,
+    status: { short: '2H', long: 'Second Half', elapsed: 67 },
+  },
+  league: { id: 999, name: 'Mock League', country: 'Mock Country', logo: null },
+  teams: {
+    home: { id: 9999, name: 'Mock Home Team', logo: null },
+    away: { id: 9998, name: 'Mock Away Team', logo: null },
+  },
+  goals: { home: 2, away: 1 },
+  score: {
+    halftime: { home: 1, away: 0 },
+    fulltime: { home: null, away: null },
+  },
+};
+
 // ✅ Clear cache when team IDs change (migration)
 export async function clearMatchesCache() {
   try {
@@ -134,10 +154,13 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
       const filterCachedMatches = (matches: Match[]) => {
         if (!matches || matches.length === 0) return [];
         if (favoriteTeamIds.length === 0) return matches;
-        return matches.filter(m => 
-          favoriteTeamIds.includes(m.teams?.home?.id) || 
-          favoriteTeamIds.includes(m.teams?.away?.id)
-        );
+        return matches.filter(m => {
+          const matchId = m.fixture?.id || (m as any).id;
+          // Mock maç her zaman görünsün
+          if (matchId === 999999) return true;
+          return favoriteTeamIds.includes(m.teams?.home?.id) || 
+                 favoriteTeamIds.includes(m.teams?.away?.id);
+        });
       };
       
       const filteredMerged = filterCachedMatches(uniqueById);
@@ -229,6 +252,9 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
       const filterMatches = (matches: Match[]) => {
         if (!matches || matches.length === 0) return [];
         return matches.filter(m => {
+          const matchId = m.fixture?.id || (m as any).id;
+          // Mock maç her zaman görünsün
+          if (matchId === 999999) return true;
           const homeId = m.teams?.home?.id != null ? Number(m.teams.home.id) : null;
           const awayId = m.teams?.away?.id != null ? Number(m.teams.away.id) : null;
           return (homeId != null && favoriteTeamIds.has(homeId)) || (awayId != null && favoriteTeamIds.has(awayId));
@@ -527,10 +553,17 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
       }, 'MATCHES');
       
       // ✅ KRITIK: Sadece favori takımların maçlarını filtrele (ID-based, number/string güvenli)
+      // Mock maç (ID: 999999) her zaman görünsün
       const favoriteTeamIds = favoriteTeams.map(t => Number(t.id));
       const favoriteIdSet = new Set(favoriteTeamIds);
       let favoriteMatchCount = 0;
       const favoriteMatches = uniqueMatches.filter(m => {
+        const matchId = m.fixture?.id || (m as any).id;
+        // Mock maç her zaman görünsün
+        if (matchId === 999999) {
+          return true;
+        }
+        
         const homeId = m.teams?.home?.id != null ? Number(m.teams.home.id) : null;
         const awayId = m.teams?.away?.id != null ? Number(m.teams.away.id) : null;
         const isFavorite = (homeId != null && favoriteIdSet.has(homeId)) || (awayId != null && favoriteIdSet.has(awayId));
@@ -710,9 +743,16 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
     return () => clearInterval(t);
   }, [hasLoadedOnce, favoriteTeamIdsString]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ✅ Mock canlı maçı her zaman liveMatches'a ekle (henüz yoksa)
+  const liveMatchesWithMock = useMemo(() => {
+    const hasMock = liveMatches.some(m => (m.fixture?.id || (m as any).id) === 999999);
+    if (hasMock) return liveMatches;
+    return [MOCK_LIVE_MATCH, ...liveMatches];
+  }, [liveMatches]);
+
   return {
     pastMatches,
-    liveMatches,
+    liveMatches: liveMatchesWithMock,
     upcomingMatches,
     loading,
     error,

@@ -68,10 +68,12 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
   // ID tip tutarlılığı: API bazen number bazen string dönebilir, hepsini number ile karşılaştır
   const filterByTeamIds = React.useCallback((matches: any[], teamIds: number[]) => {
     if (!matches.length) return [];
-    if (favoriteTeams.length === 0) return matches;
     const ids = teamIds.length === 0 ? favoriteTeams.map(t => Number(t.id)) : teamIds.map(id => Number(id));
     const idSet = new Set(ids);
     return matches.filter(m => {
+      const matchId = m.fixture?.id || m.id;
+      if (matchId === 999999) return true; // ✅ Mock maç her zaman görünsün
+      if (favoriteTeams.length === 0) return true;
       const homeId = m.teams?.home?.id != null ? Number(m.teams.home.id) : null;
       const awayId = m.teams?.away?.id != null ? Number(m.teams.away.id) : null;
       return (homeId != null && idSet.has(homeId)) || (awayId != null && idSet.has(awayId));
@@ -207,8 +209,20 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
   // Canlı maç yoksa boş array gösterilecek
 
   // ✅ Canlı maçları selectedTeamIds ile filtrele (Tümü = boş → tüm favoriler, tek/çoklu = seçili takımlar)
+  // ✅ SADECE gerçekten canlı olan maçları göster (status: 1H, 2H, HT, ET, BT, P, LIVE)
   const filteredLiveMatches = React.useMemo(() => {
-    const filtered = filterByTeamIds(liveMatches, selectedTeamIds);
+    const LIVE_STATUSES = ['1H', '2H', 'HT', 'ET', 'BT', 'P', 'LIVE'];
+    
+    // Önce gerçekten canlı olanları filtrele
+    const actuallyLive = liveMatches.filter(m => {
+      const status = m.fixture?.status?.short || '';
+      const matchId = m.fixture?.id || m.id;
+      // Mock maç (999999) her zaman canlı kabul edilsin
+      if (matchId === 999999) return true;
+      return LIVE_STATUSES.includes(status);
+    });
+    
+    const filtered = filterByTeamIds(actuallyLive, selectedTeamIds);
     const unique = filtered.reduce((acc: any[], m) => {
       const id = m.fixture?.id;
       if (id && !acc.some(x => x.fixture?.id === id)) acc.push(m);
@@ -375,15 +389,17 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
                     </Text>
                   </View>
                   
-                  {/* Saat */}
+                  {/* Saat veya Canlı Dakika */}
                   <LinearGradient
-                    colors={['#10b981', '#059669']}
+                    colors={status === 'live' ? ['#dc2626', '#b91c1c'] : ['#10b981', '#059669']}
                     style={matchCardStyles.matchCardTimeBadge}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                   >
                     <Text style={matchCardStyles.matchCardTimeText}>
-                      {api.utils.formatMatchTime(match.fixture.timestamp)}
+                      {status === 'live' && match.fixture?.status?.elapsed != null
+                        ? `${match.fixture.status.elapsed}'`
+                        : api.utils.formatMatchTime(match.fixture.timestamp)}
                     </Text>
                   </LinearGradient>
                 </View>

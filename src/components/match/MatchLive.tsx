@@ -1,120 +1,142 @@
-// MatchLiveScreen.tsx - React Native FULL VERSION
-import React, { useState, useEffect } from 'react';
+// src/components/match/MatchLive.tsx
+// ✅ Canlı Maç Akışı - TacticIQ Design System v1.0
+// Elit tasarım: Kadro ve Tahmin sekmeleriyle uyumlu
+
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
-  SafeAreaView,
-  Dimensions,
-  ActivityIndicator,
   TouchableOpacity,
+  ActivityIndicator,
+  Platform,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import Animated, { 
+import { SafeAreaView } from 'react-native-safe-area-context';
+import Animated, {
   FadeIn,
-  useAnimatedStyle,
+  useSharedValue,
   withRepeat,
   withTiming,
-  useSharedValue,
+  useAnimatedStyle,
 } from 'react-native-reanimated';
-import { Platform } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import api from '../../services/api';
-import { handleErrorWithContext, NetworkError } from '../../utils/errorUtils';
-import { useTranslation } from '../../hooks/useTranslation';
+import { BRAND, DARK_MODE, SPACING, SIZES } from '../../theme/theme';
 
-const { width, height } = Dimensions.get('window');
+// ✅ Ses efekti için Audio import (hazırlık)
+// import { Audio } from 'expo-av';
 
-// Web için animasyonları devre dışı bırak
 const isWeb = Platform.OS === 'web';
+
+// =====================================
+// TYPES
+// =====================================
+interface LiveEvent {
+  minute: number;
+  extraTime?: number | null;
+  type: string;
+  team: 'home' | 'away' | null;
+  player?: string | null;
+  assist?: string | null;
+  description: string;
+  detail?: string;
+  score?: string | null;
+}
+
+interface LiveStats {
+  status: string;
+  minute: number;
+  addedTime: number | null;
+  halfTimeScore: { home: number; away: number };
+  currentScore: { home: number; away: number };
+}
 
 interface MatchLiveScreenProps {
   matchData: any;
-  matchId?: string | number;
+  matchId: string;
   events?: any[];
 }
 
-// Mock match metadata
-const MOCK_LIVE_STATS = {
-  status: '2H',
-  minute: 67,
-  addedTime: null,
-  halfTimeScore: { home: 1, away: 0 },
-  currentScore: { home: 2, away: 1 },
+// =====================================
+// EVENT SOUND EFFECTS (Hazırlık)
+// =====================================
+const EVENT_SOUNDS = {
+  goal: 'goal.mp3',
+  yellowCard: 'yellow_card.mp3',
+  redCard: 'red_card.mp3',
+  substitution: 'substitution.mp3',
+  whistle: 'whistle.mp3',
+  var: 'var.mp3',
 };
 
-// Mock maç akışı olayları
-const MOCK_LIVE_EVENTS = [
-  { minute: 67, type: 'goal', team: 'home', player: 'Icardi', assist: 'Zaha', score: '2-1' },
-  { minute: 65, type: 'var-check', description: 'VAR İncelemesi', result: 'Gol onayla' },
-  { minute: 63, type: 'substitution', team: 'away', playerOut: 'Valencia', playerIn: 'Dzeko' },
-  { minute: 58, type: 'yellow', team: 'home', player: 'Nelsson' },
-  { minute: 55, type: 'penalty-missed', team: 'away', player: 'Mertens' },
-  { minute: 52, type: 'goal', team: 'away', player: 'Rossi', assist: 'Mertens', score: '1-1' },
-  { minute: 48, type: 'injury', team: 'home', player: 'Zaha', description: 'Sakatlık tedavisi' },
-  { minute: 46, type: 'kickoff', description: 'İkinci yarı başladı' },
-  { minute: 45, type: 'half-time', description: 'İlk yarı sona erdi' },
-  { minute: 40, type: 'var-check', description: 'VAR İncelemesi', result: 'Penaltı reddedildi' },
-  { minute: 34, type: 'yellow', team: 'away', player: 'Torreira' },
-  { minute: 28, type: 'goal', team: 'home', player: 'Icardi', assist: null, score: '1-0' },
-  { minute: 22, type: 'red', team: 'away', player: 'Torreira', reason: 'Direkt kırmızı' },
-  { minute: 19, type: 'penalty-saved', team: 'home', player: 'Muslera', penaltyTaker: 'Rossi' },
-  { minute: 15, type: 'own-goal', team: 'away', player: 'Nelsson', score: '1-0' },
-  { minute: 12, type: 'substitution', team: 'home', playerOut: 'Mertens', playerIn: 'Aktürkoğlu' },
-  { minute: 8, type: 'second-yellow', team: 'away', player: 'Fernandes' },
-  { minute: 3, type: 'goal-cancelled', team: 'home', player: 'Icardi', reason: 'Ofsayt' },
-  { minute: 1, type: 'kickoff', description: 'Maç başladı' },
+// ✅ Ses çalma fonksiyonu (şimdilik placeholder)
+const playEventSound = async (eventType: string) => {
+  // TODO: Ses dosyaları eklendikten sonra aktif edilecek
+  // const soundFile = EVENT_SOUNDS[eventType];
+  // if (soundFile) {
+  //   const { sound } = await Audio.Sound.createAsync(
+  //     require(`../../assets/sounds/${soundFile}`)
+  //   );
+  //   await sound.playAsync();
+  // }
+  console.log(`🔊 [Sound] Would play: ${eventType}`);
+};
+
+// =====================================
+// EVENT CATEGORIES
+// =====================================
+const EVENT_CATEGORIES = [
+  { id: 'all', label: 'Tümü', icon: 'grid', filter: () => true },
+  { id: 'goals', label: 'Goller', icon: 'football', filter: (e: LiveEvent) => e.type === 'goal' },
+  { id: 'cards', label: 'Kartlar', icon: 'card', filter: (e: LiveEvent) => e.type === 'card' },
+  { id: 'subs', label: 'Değişiklik', icon: 'swap-horizontal', filter: (e: LiveEvent) => e.type === 'substitution' },
 ];
 
-// Event categories for tabs
-const EVENT_TABS = [
-  { id: 'all', label: 'Tümü', icon: '📋' },
-  { id: 'goals', label: 'Goller', icon: '⚽' },
-  { id: 'cards', label: 'Kartlar', icon: '🟨' },
-  { id: 'substitutions', label: 'Değişiklikler', icon: '🔄' },
-  { id: 'var', label: 'VAR', icon: '📺' },
-  { id: 'other', label: 'Diğer', icon: '📝' },
-];
-
+// =====================================
+// COMPONENT
+// =====================================
 export const MatchLive: React.FC<MatchLiveScreenProps> = ({
   matchData,
   matchId,
   events: propEvents,
 }) => {
-  // State for live data - NO MORE MOCK DATA, start with empty
-  const [liveEvents, setLiveEvents] = useState<any[]>(propEvents || []);
-  const [liveStats, setLiveStats] = useState<any>({
+  const { t } = useTranslation();
+  
+  // States
+  const [liveEvents, setLiveEvents] = useState<LiveEvent[]>([]);
+  const [liveStats, setLiveStats] = useState<LiveStats>({
     status: 'NS',
     minute: 0,
     addedTime: null,
     halfTimeScore: { home: 0, away: 0 },
     currentScore: { home: 0, away: 0 },
   });
-  const { t } = useTranslation();
-  const [loading, setLoading] = useState(true); // Start with loading true
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<string>('all'); // ✅ Active tab state
-
-  // Pulsing CANLI badge animation
-  const scale = useSharedValue(1);
-  const opacity = useSharedValue(1);
-
-  React.useEffect(() => {
+  const [activeCategory, setActiveCategory] = useState('all');
+  const [matchNotStarted, setMatchNotStarted] = useState(false);
+  
+  // Animation for LIVE badge
+  const pulseScale = useSharedValue(1);
+  const pulseOpacity = useSharedValue(1);
+  
+  useEffect(() => {
     if (!isWeb) {
-      scale.value = withRepeat(
-        withTiming(1.1, { duration: 750 }),
-        -1,
-        true
-      );
-      opacity.value = withRepeat(
-        withTiming(0.7, { duration: 750 }),
-        -1,
-        true
-      );
+      pulseScale.value = withRepeat(withTiming(1.15, { duration: 800 }), -1, true);
+      pulseOpacity.value = withRepeat(withTiming(0.6, { duration: 800 }), -1, true);
     }
   }, []);
+  
+  const pulseStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pulseScale.value }],
+    opacity: pulseOpacity.value,
+  }));
 
-  // 🔴 FETCH LIVE DATA FROM API
+  // =====================================
+  // FETCH LIVE DATA
+  // =====================================
   useEffect(() => {
     if (!matchId) return;
 
@@ -123,767 +145,660 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
         setLoading(true);
         setError(null);
 
-        console.log('🔄 [NEW CODE] Fetching live data for match:', matchId);
+        const response = await api.matches.getMatchEventsLive(matchId);
         
-        // Fetch match events
-        try {
-          const response = await api.matches.getMatchEvents(matchId);
-          console.log('📥 Raw events response from API:', response);
+        if (response?.matchNotStarted) {
+          setMatchNotStarted(true);
+          setLiveEvents([]);
+          setLiveStats({
+            status: 'NS',
+            minute: 0,
+            addedTime: null,
+            halfTimeScore: { home: 0, away: 0 },
+            currentScore: { home: 0, away: 0 },
+          });
+          setLoading(false);
+          return;
+        }
+
+        setMatchNotStarted(false);
+        const events = response?.events || [];
+
+        setLiveStats({
+          status: response?.status || 'NS',
+          minute: response?.minute || 0,
+          addedTime: null,
+          halfTimeScore: response?.halftimeScore || { home: 0, away: 0 },
+          currentScore: response?.score || { home: 0, away: 0 },
+        });
+
+        if (events && events.length > 0) {
+          const transformedEvents = events
+            .filter((event: any) => event && event.time)
+            .map((event: any) => {
+              const eventType = event.type?.toLowerCase() || 'unknown';
+              const detail = event.detail?.toLowerCase() || '';
+              
+              let description = '';
+              let displayType = eventType;
+              
+              if (detail === 'match kick off' || detail === 'kick off') {
+                description = '⚽ Maç başladı!';
+                displayType = 'kickoff';
+              } else if (detail === 'half time' || detail === 'halftime') {
+                description = '⏸️ İlk yarı sona erdi';
+                displayType = 'halftime';
+              } else if (detail === 'second half started') {
+                description = '▶️ İkinci yarı başladı';
+                displayType = 'kickoff';
+              } else if (detail === 'match finished' || detail === 'full time') {
+                description = '🏁 Maç bitti';
+                displayType = 'fulltime';
+              } else if (eventType === 'goal') {
+                if (detail.includes('penalty')) {
+                  description = 'Penaltı golü!';
+                } else if (detail.includes('own goal')) {
+                  description = 'Kendi kalesine gol';
+                } else {
+                  description = 'GOL!';
+                }
+              } else if (eventType === 'card') {
+                if (detail.includes('yellow')) {
+                  description = 'Sarı kart';
+                } else if (detail.includes('red')) {
+                  description = 'Kırmızı kart';
+                }
+              } else if (eventType === 'subst') {
+                description = 'Oyuncu değişikliği';
+                displayType = 'substitution';
+              } else if (eventType === 'var') {
+                description = 'VAR incelemesi';
+              } else {
+                description = event.comments || event.detail || '';
+              }
+              
+              // Team matching
+              let teamSide: 'home' | 'away' | null = null;
+              if (event.team?.id) {
+                const homeTeamId = matchData?.teams?.home?.id || matchData?.homeTeam?.id;
+                const awayTeamId = matchData?.teams?.away?.id || matchData?.awayTeam?.id;
+                if (event.team.id === homeTeamId) teamSide = 'home';
+                else if (event.team.id === awayTeamId) teamSide = 'away';
+              } else if (event.team?.name) {
+                const homeTeamName = matchData?.teams?.home?.name || matchData?.homeTeam?.name || '';
+                teamSide = event.team.name.toLowerCase().includes(homeTeamName.toLowerCase()) ? 'home' : 'away';
+              }
+              
+              return {
+                minute: event.time?.elapsed || 0,
+                extraTime: event.time?.extra || null,
+                type: displayType,
+                team: teamSide,
+                player: typeof event.player === 'string' ? event.player : event.player?.name || null,
+                assist: typeof event.assist === 'string' ? event.assist : (event.assist?.name || null),
+                description: description,
+                detail: event.detail || '',
+                score: event.goals ? `${event.goals.home}-${event.goals.away}` : null,
+              };
+            })
+            .sort((a: any, b: any) => b.minute - a.minute);
           
-          const events = response?.data || [];
-          
-          if (events && events.length > 0) {
-            // Transform API events to our format
-            const transformedEvents = events
-              .filter((event: any) => event && event.time) // Filter out invalid events
-              .map((event: any) => {
-                const eventType = event.type?.toLowerCase() || 'unknown';
-                const detail = event.detail?.toLowerCase() || '';
-                
-                // Determine event description based on type and detail
-                let description = '';
-                let displayType = eventType;
-                
-                // Match status events
-                if (detail === 'match kick off' || detail === 'kick off') {
-                  description = '⚽ Maç başladı!';
-                  displayType = 'kickoff';
-                } else if (detail === 'half time' || detail === 'halftime') {
-                  description = '⏸️ İlk yarı sona erdi';
-                  displayType = 'halftime';
-                } else if (detail === 'second half started') {
-                  description = '▶️ İkinci yarı başladı';
-                  displayType = 'kickoff';
-                } else if (detail === 'match finished' || detail === 'full time') {
-                  description = '🏁 Maç bitti';
-                  displayType = 'fulltime';
-                }
-                // Goal events
-                else if (eventType === 'goal') {
-                  if (detail.includes('penalty')) {
-                    description = '⚽ Penaltı golü';
-                  } else if (detail.includes('own goal')) {
-                    description = '⚽ Kendi kalesine gol';
-                  } else {
-                    description = '⚽ GOL!';
-                  }
-                }
-                // Card events
-                else if (eventType === 'card') {
-                  if (detail.includes('yellow')) {
-                    description = '🟨 Sarı kart';
-                  } else if (detail.includes('red')) {
-                    description = '🟥 Kırmızı kart';
-                  }
-                }
-                // Substitution events
-                else if (eventType === 'subst') {
-                  description = '🔄 Oyuncu değişikliği';
-                  displayType = 'substitution';
-                }
-                // Var events
-                else if (eventType === 'var') {
-                  description = '📺 VAR incelemesi';
-                }
-                // Other events
-                else {
-                  description = event.comments || event.detail || '';
-                }
-                
-                return {
-                  minute: event.time?.elapsed || 0,
-                  extraTime: event.time?.extra || null,
-                  type: displayType,
-                  team: event.team?.name ? 
-                    (event.team.name.toLowerCase().includes(matchData?.homeTeam?.name?.toLowerCase() || '') ? 'home' : 'away') 
-                    : null,
-                  player: event.player?.name || null,
-                  assist: event.assist?.name || null,
-                  description: description,
-                  detail: event.detail || '',
-                  score: event.goals ? `${event.goals.home}-${event.goals.away}` : null,
-                };
-              })
-              .sort((a: any, b: any) => b.minute - a.minute); // Sort by minute descending
-            
-            setLiveEvents(transformedEvents);
-            console.log('✅ Live events loaded:', transformedEvents.length);
-            console.log('📊 Transformed events:', transformedEvents.slice(0, 3));
-            
-            // Calculate score from goal events
-            const homeGoals = transformedEvents.filter(e => e.type === 'goal' && e.team === 'home').length;
-            const awayGoals = transformedEvents.filter(e => e.type === 'goal' && e.team === 'away').length;
-            console.log('⚽ Goals from events - Home:', homeGoals, 'Away:', awayGoals);
-          } else {
-            console.log('⚠️ No events from API - empty array');
-            setLiveEvents([]);
-          }
-        } catch (eventErr) {
-          console.error('❌ Events API failed:', eventErr);
+          setLiveEvents(transformedEvents);
+          console.log('✅ Live events loaded:', transformedEvents.length);
+        } else {
           setLiveEvents([]);
         }
 
-        // Fetch match details for current score/minute
-        try {
-          const response = await api.matches.getMatchDetails(matchId);
-          console.log('📥 Raw match details response from API:', response);
-          
-          const match = response?.data;
-          if (match) {
-            // Get score from match data
-            const apiScore = match.goals || match.score || { home: 0, away: 0 };
-            
-            // Calculate score from events (more accurate for live matches)
-            const homeGoals = liveEvents.filter(e => e.type === 'goal' && e.team === 'home').length;
-            const awayGoals = liveEvents.filter(e => e.type === 'goal' && e.team === 'away').length;
-            
-            // Use event-based score if available, otherwise use API score
-            const finalScore = (homeGoals > 0 || awayGoals > 0) 
-              ? { home: homeGoals, away: awayGoals }
-              : apiScore;
-            
-            console.log('📊 Score - API:', apiScore, 'Events:', { home: homeGoals, away: awayGoals }, 'Final:', finalScore);
-            
-            setLiveStats({
-              status: match.fixture?.status?.short || match.status || '1H',
-              minute: match.fixture?.status?.elapsed || match.elapsed || 0,
-              addedTime: match.fixture?.status?.extra || null,
-              halfTimeScore: match.score?.halftime || { home: 0, away: 0 },
-              currentScore: finalScore,
-            });
-            console.log('✅ Live stats loaded:', match.fixture?.status || match.status);
-          }
-        } catch (statsErr) {
-          console.log('⚠️ Stats API failed:', statsErr);
-        }
-
         setLoading(false);
-      } catch (err) {
-        console.error('❌ Error fetching live data:', err);
-        handleErrorWithContext(
-          new NetworkError('Failed to fetch live match data', 0, `/matches/${matchId}/events`),
-          { matchId, action: 'fetch_live_data' },
-          { severity: 'medium', showAlert: false }
-        );
-        setError('Canlı veri yüklenemedi');
+      } catch (err: any) {
+        console.error('❌ Live data fetch error:', err);
+        setError(err.message);
         setLoading(false);
-        // Keep using mock data
       }
     };
 
     fetchLiveData();
-
-    // 🔄 Auto-refresh every 30 seconds for live matches
-    const interval = setInterval(fetchLiveData, 30000);
-
+    const interval = setInterval(fetchLiveData, 15000);
     return () => clearInterval(interval);
-  }, [matchId]);
+  }, [matchId, matchData]);
 
-  const animatedBadgeStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: isWeb ? 1 : scale.value }],
-    opacity: isWeb ? 1 : opacity.value,
-  }));
-
-  // Debug log
-  React.useEffect(() => {
-    console.log('📊 MatchLive render - Events count:', liveEvents.length);
-    console.log('📊 First 3 events:', liveEvents.slice(0, 3));
-  }, [liveEvents]);
-
-  // ✅ Filter events by category
-  const filterEventsByCategory = (events: any[], category: string) => {
-    if (category === 'all') return events;
-    
-    return events.filter(event => {
-      switch (category) {
-        case 'goals':
-          return event.type === 'goal' || event.type === 'penalty' || event.type === 'own-goal';
-        case 'cards':
-          return event.type === 'card' || event.type === 'yellow' || event.type === 'red' || event.type === 'second-yellow';
-        case 'substitutions':
-          return event.type === 'substitution' || event.type === 'subst';
-        case 'var':
-          return event.type === 'var' || event.type === 'var-check';
-        case 'other':
-          return !['goal', 'penalty', 'own-goal', 'card', 'yellow', 'red', 'second-yellow', 'substitution', 'subst', 'var', 'var-check'].includes(event.type);
-        default:
-          return true;
-      }
-    });
-  };
-
-  // ✅ Get filtered events for active tab
+  // =====================================
+  // FILTER EVENTS
+  // =====================================
   const filteredEvents = React.useMemo(() => {
-    return filterEventsByCategory(liveEvents, activeTab);
-  }, [liveEvents, activeTab]);
+    const category = EVENT_CATEGORIES.find(c => c.id === activeCategory);
+    if (!category) return liveEvents;
+    return liveEvents.filter(category.filter);
+  }, [liveEvents, activeCategory]);
 
-  // ✅ Get event count for each tab
-  const getTabEventCount = (category: string) => {
-    return filterEventsByCategory(liveEvents, category).length;
+  // =====================================
+  // GET EVENT ICON
+  // =====================================
+  const getEventIcon = (event: LiveEvent) => {
+    switch (event.type) {
+      case 'goal':
+        return { icon: 'football', color: BRAND.secondary, bg: 'rgba(31, 162, 166, 0.2)' };
+      case 'card':
+        if (event.detail?.includes('yellow')) {
+          return { icon: 'card', color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.2)' };
+        }
+        return { icon: 'card', color: '#EF4444', bg: 'rgba(239, 68, 68, 0.2)' };
+      case 'substitution':
+        return { icon: 'swap-horizontal', color: '#8B5CF6', bg: 'rgba(139, 92, 246, 0.2)' };
+      case 'var':
+        return { icon: 'tv', color: '#3B82F6', bg: 'rgba(59, 130, 246, 0.2)' };
+      case 'kickoff':
+      case 'halftime':
+      case 'fulltime':
+        return { icon: 'time', color: BRAND.accent, bg: 'rgba(201, 164, 76, 0.2)' };
+      default:
+        return { icon: 'ellipse', color: '#6B7280', bg: 'rgba(107, 114, 128, 0.2)' };
+    }
   };
 
-  return (
-    <SafeAreaView style={styles.container}>
-      {/* Loading State */}
-      {loading && (
-        <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color="#1FA2A6" />
+  // =====================================
+  // RENDER
+  // =====================================
+  
+  // Loading state
+  if (loading && liveEvents.length === 0) {
+    return (
+      <SafeAreaView style={styles.container} edges={[]}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={BRAND.secondary} />
           <Text style={styles.loadingText}>Canlı veriler yükleniyor...</Text>
         </View>
-      )}
+      </SafeAreaView>
+    );
+  }
 
-      {/* Compact Score Banner */}
-      <View style={styles.scoreBanner}>
-        <View style={styles.scoreContent}>
-          {/* Home Score */}
-          <View style={styles.scoreLeft}>
-            <Text style={styles.scoreText}>{liveStats.currentScore.home}</Text>
-          </View>
-
-          {/* Center Info */}
-          <View style={styles.scoreCenter}>
-            {/* CANLI Badge */}
-            <Animated.View style={[styles.canliBadge, animatedBadgeStyle]}>
-              <Text style={styles.canliText}>CANLI</Text>
-            </Animated.View>
-
-            {/* Minute */}
-            <Text style={styles.minuteText}>{liveStats.minute}'</Text>
-
-            {/* HT Score */}
-            <Text style={styles.htText}>
-              HT: {liveStats.halfTimeScore.home}-{liveStats.halfTimeScore.away}
+  // Match not started
+  if (matchNotStarted) {
+    return (
+      <SafeAreaView style={styles.container} edges={[]}>
+        <View style={styles.notStartedContainer}>
+          <View style={styles.notStartedCard}>
+            <View style={styles.notStartedIconContainer}>
+              <Ionicons name="time-outline" size={48} color={BRAND.accent} />
+            </View>
+            <Text style={styles.notStartedTitle}>Maç Henüz Başlamadı</Text>
+            <Text style={styles.notStartedSubtitle}>
+              Maç başladığında canlı olaylar{'\n'}burada görünecek
             </Text>
           </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
+  return (
+    <SafeAreaView style={styles.container} edges={[]}>
+      {/* Score Banner */}
+      <View style={styles.scoreBanner}>
+        <View style={styles.scoreRow}>
+          {/* Home Score */}
+          <View style={styles.scoreTeam}>
+            <Text style={styles.teamName} numberOfLines={1}>
+              {matchData?.homeTeam?.name || matchData?.teams?.home?.name || 'Ev Sahibi'}
+            </Text>
+            <Text style={styles.scoreValue}>{liveStats.currentScore.home}</Text>
+          </View>
+          
+          {/* Live Badge */}
+          <View style={styles.scoreCenterSection}>
+            <Animated.View style={[styles.liveBadge, !isWeb && pulseStyle]}>
+              <Text style={styles.liveBadgeText}>CANLI</Text>
+            </Animated.View>
+            <Text style={styles.minuteDisplay}>{liveStats.minute}'</Text>
+            {liveStats.halfTimeScore && (
+              <Text style={styles.htScore}>
+                İY: {liveStats.halfTimeScore.home}-{liveStats.halfTimeScore.away}
+              </Text>
+            )}
+          </View>
+          
           {/* Away Score */}
-          <View style={styles.scoreRight}>
-            <Text style={styles.scoreText}>{liveStats.currentScore.away}</Text>
+          <View style={styles.scoreTeam}>
+            <Text style={styles.teamName} numberOfLines={1}>
+              {matchData?.awayTeam?.name || matchData?.teams?.away?.name || 'Deplasman'}
+            </Text>
+            <Text style={styles.scoreValue}>{liveStats.currentScore.away}</Text>
           </View>
         </View>
       </View>
 
-      {/* ✅ Event Category Tabs */}
-      <ScrollView 
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.tabsContainer}
-        contentContainerStyle={styles.tabsContent}
-      >
-        {EVENT_TABS.map((tab) => {
-          const isActive = activeTab === tab.id;
-          const tabEventCount = getTabEventCount(tab.id);
-          
-          return (
-            <TouchableOpacity
-              key={tab.id}
-              style={[styles.tab, isActive && styles.tabActive]}
-              onPress={() => setActiveTab(tab.id)}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.tabIcon, isActive && styles.tabIconActive]}>{tab.icon}</Text>
-              <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]}>{tab.label}</Text>
-              {tabEventCount > 0 && (
-                <View style={[styles.tabBadge, isActive && styles.tabBadgeActive]}>
-                  <Text style={[styles.tabBadgeText, isActive && styles.tabBadgeTextActive]}>
-                    {tabEventCount}
-                  </Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
+      {/* Category Tabs - Favori Takım Filtre Stilinde */}
+      <View style={styles.categoryTabsSection}>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.categoryTabsContent}
+        >
+          {EVENT_CATEGORIES.map((category) => {
+            const isActive = activeCategory === category.id;
+            const count = category.id === 'all' 
+              ? liveEvents.length 
+              : liveEvents.filter(category.filter).length;
+            
+            // Kategori için renk
+            const getCategoryColor = () => {
+              if (category.id === 'goals') return ['#10B981', '#059669'];
+              if (category.id === 'cards') return ['#F59E0B', '#D97706'];
+              if (category.id === 'subs') return ['#8B5CF6', '#7C3AED'];
+              return [BRAND.secondary, BRAND.secondary];
+            };
+            const colors = getCategoryColor();
+            
+            return (
+              <TouchableOpacity
+                key={category.id}
+                style={[styles.categoryChip, isActive && styles.categoryChipActive]}
+                onPress={() => setActiveCategory(category.id)}
+                activeOpacity={0.7}
+              >
+                {/* Kategori renk badge */}
+                {category.id !== 'all' && (
+                  <View style={styles.categoryChipBadge}>
+                    <View style={[styles.categoryChipStripe, { backgroundColor: colors[0] }]} />
+                    <View style={[styles.categoryChipStripe, { backgroundColor: colors[1] }]} />
+                  </View>
+                )}
+                <Ionicons 
+                  name={category.icon as any} 
+                  size={14} 
+                  color={isActive ? '#FFFFFF' : '#94A3B8'} 
+                />
+                <Text style={[styles.categoryChipText, isActive && styles.categoryChipTextActive]}>
+                  {category.label}
+                </Text>
+                {count > 0 && isActive && (
+                  <View style={styles.categoryChipCheck}>
+                    <Text style={styles.categoryChipCheckText}>{count}</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
 
-      {/* Match Events Timeline */}
+      {/* Events List */}
       <ScrollView 
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        style={styles.eventsScrollView}
+        contentContainerStyle={styles.eventsContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.timelineContainer}>
-          {/* Center Timeline Line */}
-          <View style={styles.timelineLine} />
-
-          {/* Events */}
-          <View style={styles.eventsContainer}>
-            {/* Debug: Show event count */}
-            {filteredEvents.length === 0 && (
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyStateText}>
-                  {liveEvents.length === 0 
-                    ? 'Henüz canlı event yok'
-                    : t('matchLive.noEventsForCategory')}
-                </Text>
-                <Text style={styles.emptyStateSubtext}>
-                  {liveEvents.length === 0
-                    ? 'Maç başladığında eventler burada görünecek'
-                    : 'Diğer kategorilere bakabilirsiniz'}
-                </Text>
-              </View>
-            )}
-            
-            {filteredEvents.map((event, index) => {
-              const isCentered = !event.team || 
-                event.type === 'kickoff' || 
-                event.type === 'halftime' ||
-                event.type === 'fulltime' ||
-                event.type === 'var';
-              const isHome = event.team === 'home';
-
-              if (isCentered) {
-                // Determine emoji based on event type
-                let emoji = '⚽';
-                if (event.type === 'kickoff') emoji = '⚽';
-                else if (event.type === 'halftime') emoji = '⏸️';
-                else if (event.type === 'fulltime') emoji = '🏁';
-                else if (event.type === 'var') emoji = '📺';
-                
-                return (
-                  <Animated.View
-                    key={index}
-                    entering={isWeb ? undefined : FadeIn.delay(index * 50)}
-                    style={styles.centeredEventContainer}
-                  >
-                    <View style={styles.centeredEventCard}>
-                      <View style={styles.centeredEventIcon}>
-                        <Text style={styles.centeredEventEmoji}>{emoji}</Text>
-                      </View>
-                      <View style={styles.centeredEventInfo}>
-                        <Text style={styles.centeredEventMinute}>
-                          {event.minute}'
-                          {event.extraTime && <Text style={styles.extraTime}>+{event.extraTime}</Text>}
-                        </Text>
-                        <Text style={styles.centeredEventDescription}>{event.description}</Text>
-                        {event.score && (
-                          <Text style={styles.centeredEventResult}>{event.score}</Text>
-                        )}
-                      </View>
-                    </View>
-                  </Animated.View>
-                );
-              }
-
-              return (
-                <View key={index} style={styles.timelineEvent}>
-                  {/* Timeline Dot */}
-                  <View style={styles.timelineDot} />
-
-                  {/* Event Card */}
-                  <Animated.View
-                    entering={isWeb ? undefined : FadeIn.delay(index * 50)}
-                    style={[
-                      styles.eventCardWrapper,
-                      isHome ? styles.eventCardLeft : styles.eventCardRight,
-                    ]}
-                  >
-                    <View style={styles.eventCard}>
-                      {/* Header */}
-                      <View style={[
-                        styles.eventHeader,
-                        !isHome && styles.eventHeaderReverse,
-                      ]}>
-                        <Text style={styles.eventMinute}>
-                          {event.minute}'
-                          {event.extraTime && <Text style={styles.extraTime}>+{event.extraTime}</Text>}
-                        </Text>
-                        <Text style={styles.eventIcon}>
-                          {event.type === 'goal' && '⚽'}
-                          {event.type === 'card' && (event.detail?.includes('yellow') ? '🟨' : '🟥')}
-                          {event.type === 'substitution' && '🔄'}
-                          {event.type === 'var' && '📺'}
-                        </Text>
-                      </View>
-
-                      {/* Event Details */}
-                      <View style={styles.eventDetails}>
-                        {/* Description */}
-                        <Text style={styles.eventTitle}>{event.description}</Text>
-                        
-                        {/* Player name */}
-                        {event.player && (
-                          <Text style={styles.eventPlayer}>{event.player}</Text>
-                        )}
-                        
-                        {/* Assist */}
-                        {event.assist && (
-                          <Text style={styles.eventAssist}>Asist: {event.assist}</Text>
-                        )}
-                        
-                        {/* Score */}
-                        {event.score && (
-                          <Text style={styles.eventScore}>{event.score}</Text>
-                        )}
-                        
-                        {/* Additional detail */}
-                        {event.detail && event.detail !== event.description && (
-                          <Text style={styles.eventDetail}>{event.detail}</Text>
-                        )}
-                      </View>
-                    </View>
-                  </Animated.View>
-                </View>
-              );
-            })}
+        {filteredEvents.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Ionicons name="football-outline" size={48} color="#4B5563" />
+            <Text style={styles.emptyStateTitle}>
+              {liveEvents.length === 0 ? 'Henüz olay yok' : 'Bu kategoride olay yok'}
+            </Text>
+            <Text style={styles.emptyStateSubtitle}>
+              {liveEvents.length === 0 
+                ? 'Maç devam ederken olaylar burada görünecek'
+                : 'Diğer kategorilere bakabilirsiniz'}
+            </Text>
           </View>
-        </View>
+        ) : (
+          filteredEvents.map((event, index) => {
+            const eventIcon = getEventIcon(event);
+            const isSystemEvent = ['kickoff', 'halftime', 'fulltime'].includes(event.type);
+            
+            return (
+              <Animated.View
+                key={index}
+                entering={isWeb ? undefined : FadeIn.delay(index * 30)}
+                style={[
+                  styles.eventCard,
+                  isSystemEvent && styles.eventCardSystem,
+                ]}
+              >
+                {/* Event Icon */}
+                <View style={[styles.eventIconContainer, { backgroundColor: eventIcon.bg }]}>
+                  <Ionicons name={eventIcon.icon as any} size={20} color={eventIcon.color} />
+                </View>
+                
+                {/* Event Content */}
+                <View style={styles.eventContent}>
+                  <View style={styles.eventHeader}>
+                    <Text style={[styles.eventTitle, { color: eventIcon.color }]}>
+                      {event.description}
+                    </Text>
+                    <View style={styles.eventTimeBadge}>
+                      <Text style={styles.eventTimeText}>
+                        {event.minute}'
+                        {event.extraTime && <Text style={styles.extraTimeText}>+{event.extraTime}</Text>}
+                      </Text>
+                    </View>
+                  </View>
+                  
+                  {/* Player Info */}
+                  {event.player && (
+                    <Text style={styles.eventPlayer}>{event.player}</Text>
+                  )}
+                  
+                  {/* Assist */}
+                  {event.assist && (
+                    <Text style={styles.eventAssist}>Asist: {event.assist}</Text>
+                  )}
+                  
+                  {/* Score after goal */}
+                  {event.type === 'goal' && event.score && (
+                    <View style={styles.goalScoreBadge}>
+                      <Ionicons name="football" size={12} color={BRAND.secondary} />
+                      <Text style={styles.goalScoreText}>{event.score}</Text>
+                    </View>
+                  )}
+                  
+                  {/* Team indicator */}
+                  {event.team && !isSystemEvent && (
+                    <Text style={styles.eventTeam}>
+                      {event.team === 'home' 
+                        ? (matchData?.homeTeam?.name || matchData?.teams?.home?.name) 
+                        : (matchData?.awayTeam?.name || matchData?.teams?.away?.name)}
+                    </Text>
+                  )}
+                </View>
+              </Animated.View>
+            );
+          })
+        )}
       </ScrollView>
     </SafeAreaView>
   );
 };
 
+// =====================================
+// STYLES - Design System Uyumlu
+// =====================================
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'transparent', // ✅ Grid pattern görünsün - MatchDetail'den geliyor
+    backgroundColor: 'transparent',
+  },
+  
+  // Loading
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 16,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: '#94A3B8',
+    fontWeight: '500',
+  },
+  
+  // Not Started
+  notStartedContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  notStartedCard: {
+    backgroundColor: DARK_MODE.card,
+    borderRadius: 16,
+    padding: 32,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: DARK_MODE.border,
+    maxWidth: 320,
+  },
+  notStartedIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(201, 164, 76, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  notStartedTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 8,
+  },
+  notStartedSubtitle: {
+    fontSize: 14,
+    color: '#94A3B8',
+    textAlign: 'center',
+    lineHeight: 22,
   },
   
   // Score Banner
   scoreBanner: {
-    backgroundColor: 'rgba(30, 41, 59, 0.8)',
+    backgroundColor: DARK_MODE.card,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(100, 116, 139, 0.3)',
+    borderBottomColor: DARK_MODE.border,
   },
-  scoreContent: {
+  scoreRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 12,
+    justifyContent: 'space-between',
   },
-  scoreLeft: {
+  scoreTeam: {
     flex: 1,
-    alignItems: 'flex-end',
-  },
-  scoreRight: {
-    flex: 1,
-    alignItems: 'flex-start',
-  },
-  scoreText: {
-    fontSize: 28,
-    fontWeight: '900',
-    color: '#FFFFFF',
-  },
-  scoreCenter: {
     alignItems: 'center',
     gap: 4,
-    paddingHorizontal: 12,
   },
-  canliBadge: {
-    backgroundColor: '#1FA2A6',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 12,
-  },
-  canliText: {
-    fontSize: 9,
-    fontWeight: '900',
-    color: '#FFFFFF',
-    letterSpacing: 1,
-  },
-  minuteText: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#1FA2A6',
-  },
-  htText: {
-    fontSize: 10,
-    color: '#9CA3AF',
-  },
-  
-  // Timeline
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingVertical: 24,
-  },
-  timelineContainer: {
-    position: 'relative',
-    paddingHorizontal: 16,
-  },
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 60,
-    paddingHorizontal: 24,
-  },
-  emptyStateText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#9CA3AF',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  emptyStateSubtext: {
-    fontSize: 14,
-    color: '#6B7280',
-    textAlign: 'center',
-  },
-  timelineLine: {
-    position: 'absolute',
-    left: '50%',
-    top: 0,
-    bottom: 0,
-    width: 2,
-    backgroundColor: 'rgba(100, 116, 139, 0.3)',
-    transform: [{ translateX: -1 }],
-  },
-  eventsContainer: {
-    gap: 24,
-  },
-  
-  // Centered Event
-  centeredEventContainer: {
-    alignItems: 'center',
-    zIndex: 10,
-  },
-  centeredEventCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: 'rgba(30, 41, 59, 0.8)',
-    borderWidth: 1,
-    borderColor: 'rgba(100, 116, 139, 0.3)',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  centeredEventIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(100, 116, 139, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  centeredEventEmoji: {
-    fontSize: 20,
-  },
-  centeredEventInfo: {
-    gap: 2,
-  },
-  centeredEventMinute: {
+  teamName: {
     fontSize: 12,
-    fontWeight: 'bold',
-    color: '#1FA2A6',
+    fontWeight: '600',
+    color: '#94A3B8',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
-  centeredEventDescription: {
-    fontSize: 13,
-    fontWeight: '500',
+  scoreValue: {
+    fontSize: 36,
+    fontWeight: '900',
     color: '#FFFFFF',
   },
-  centeredEventResult: {
+  scoreCenterSection: {
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 20,
+  },
+  liveBadge: {
+    backgroundColor: BRAND.secondary,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  liveBadgeText: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    letterSpacing: 1.5,
+  },
+  minuteDisplay: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: BRAND.secondary,
+  },
+  htScore: {
     fontSize: 11,
-    color: '#9CA3AF',
+    color: '#64748B',
   },
   
-  // Timeline Event
-  timelineEvent: {
-    position: 'relative',
+  // Category Tabs - Favori Takım Filtre Stilinde
+  categoryTabsSection: {
+    paddingTop: 8,
+    paddingBottom: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(31, 162, 166, 0.15)',
   },
-  timelineDot: {
-    position: 'absolute',
-    left: '50%',
-    top: '50%',
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#1FA2A6',
-    borderWidth: 2,
-    borderColor: '#0F2A24',
-    transform: [{ translateX: -6 }, { translateY: -6 }],
-    zIndex: 20,
-  },
-  eventCardWrapper: {
-    width: '47%',
-  },
-  eventCardLeft: {
-    alignSelf: 'flex-start',
-  },
-  eventCardRight: {
-    alignSelf: 'flex-end',
-  },
-  eventCard: {
-    backgroundColor: 'rgba(30, 41, 59, 0.8)',
-    borderWidth: 1,
-    borderColor: 'rgba(100, 116, 139, 0.3)',
-    borderRadius: 12,
-    padding: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  eventHeader: {
+  categoryTabsContent: {
+    paddingHorizontal: 12,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 8,
+    paddingRight: 8,
   },
-  eventHeaderReverse: {
-    flexDirection: 'row-reverse',
-  },
-  eventMinute: {
-    fontSize: 11,
-    fontWeight: 'bold',
-    color: '#1FA2A6',
-  },
-  extraTime: {
-    fontSize: 9,
-    fontWeight: 'normal',
-    color: '#F59E0B',
-  },
-  eventIcon: {
-    fontSize: 16,
-  },
-  eventDetail: {
-    fontSize: 10,
-    color: '#9CA3AF',
-    fontStyle: 'italic',
-  },
-  eventDetails: {
-    gap: 4,
-  },
-  eventTitle: {
-    fontSize: 11,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  eventTitleSuccess: {
-    fontSize: 11,
-    fontWeight: 'bold',
-    color: '#1FA2A6',
-  },
-  eventTitleError: {
-    fontSize: 11,
-    fontWeight: 'bold',
-    color: '#EF4444',
-  },
-  eventTitleYellow: {
-    fontSize: 11,
-    fontWeight: 'bold',
-    color: '#EAB308',
-  },
-  eventTitleWarning: {
-    fontSize: 11,
-    fontWeight: 'bold',
-    color: '#F97316',
-  },
-  eventPlayer: {
-    fontSize: 11,
-    color: '#FFFFFF',
-  },
-  eventPlayerCancelled: {
-    fontSize: 11,
-    color: '#FFFFFF',
-    textDecorationLine: 'line-through',
-  },
-  eventAssist: {
-    fontSize: 10,
-    color: '#9CA3AF',
-  },
-  eventScore: {
-    fontSize: 10,
-    fontWeight: 'bold',
-    color: '#1FA2A6',
-  },
-  eventReason: {
-    fontSize: 10,
-    color: '#EF4444',
-  },
-  eventPlayerOut: {
-    fontSize: 10,
-    color: '#EF4444',
-  },
-  eventPlayerIn: {
-    fontSize: 10,
-    color: '#22C55E',
-  },
-  
-  // Loading Overlay
-  loadingOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(15, 23, 42, 0.8)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 1000,
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: '#FFFFFF',
-    fontWeight: '500',
-  },
-  
-  // ✅ Event Category Tabs
-  tabsContainer: {
-    backgroundColor: 'rgba(30, 41, 59, 0.6)',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(100, 116, 139, 0.3)',
-  },
-  tabsContent: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    gap: 8,
-  },
-  tab: {
+  categoryChip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: 'rgba(100, 116, 139, 0.2)',
-    borderWidth: 1,
-    borderColor: 'rgba(100, 116, 139, 0.3)',
-    marginRight: 8,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: 'rgba(31, 41, 55, 0.6)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(75, 85, 99, 0.4)',
   },
-  tabActive: {
-    backgroundColor: '#1FA2A6',
-    borderColor: '#1FA2A6',
+  categoryChipActive: {
+    backgroundColor: BRAND.secondary,
+    borderColor: BRAND.secondary,
   },
-  tabIcon: {
-    fontSize: 14,
-  },
-  tabIconActive: {
-    // Same for active
-  },
-  tabLabel: {
+  categoryChipText: {
     fontSize: 12,
+    fontWeight: '600',
+    color: '#94A3B8',
+    maxWidth: 80,
+  },
+  categoryChipTextActive: {
+    color: '#FFFFFF',
+  },
+  categoryChipBadge: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    overflow: 'hidden',
+    flexDirection: 'row',
+  },
+  categoryChipStripe: {
+    flex: 1,
+    height: '100%',
+  },
+  categoryChipCheck: {
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 2,
+  },
+  categoryChipCheckText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  
+  // Events List
+  eventsScrollView: {
+    flex: 1,
+  },
+  eventsContent: {
+    padding: 16,
+    gap: 12,
+  },
+  
+  // Empty State
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+    gap: 12,
+  },
+  emptyStateTitle: {
+    fontSize: 16,
     fontWeight: '600',
     color: '#9CA3AF',
   },
-  tabLabelActive: {
-    color: '#FFFFFF',
+  emptyStateSubtitle: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+    paddingHorizontal: 24,
   },
-  tabBadge: {
-    backgroundColor: 'rgba(100, 116, 139, 0.4)',
-    borderRadius: 10,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    minWidth: 20,
+  
+  // Event Card
+  eventCard: {
+    flexDirection: 'row',
+    backgroundColor: DARK_MODE.card,
+    borderRadius: 12,
+    padding: 14,
+    gap: 14,
+    borderWidth: 1,
+    borderColor: DARK_MODE.border,
+  },
+  eventCardSystem: {
+    backgroundColor: 'rgba(201, 164, 76, 0.08)',
+    borderColor: 'rgba(201, 164, 76, 0.2)',
+  },
+  eventIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  tabBadgeActive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+  eventContent: {
+    flex: 1,
+    gap: 4,
   },
-  tabBadgeText: {
-    fontSize: 10,
+  eventHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  eventTitle: {
+    fontSize: 14,
     fontWeight: '700',
-    color: '#9CA3AF',
+    flex: 1,
   },
-  tabBadgeTextActive: {
-    color: '#FFFFFF',
+  eventTimeBadge: {
+    backgroundColor: 'rgba(31, 162, 166, 0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  eventTimeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: BRAND.secondary,
+  },
+  extraTimeText: {
+    fontSize: 10,
+    color: '#F59E0B',
+  },
+  eventPlayer: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#E2E8F0',
+  },
+  eventAssist: {
+    fontSize: 12,
+    color: '#94A3B8',
+  },
+  goalScoreBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(31, 162, 166, 0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+    marginTop: 4,
+  },
+  goalScoreText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: BRAND.secondary,
+  },
+  eventTeam: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 2,
   },
 });
+
+export default MatchLive;

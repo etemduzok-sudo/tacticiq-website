@@ -27,9 +27,9 @@ const PRIORITY_COUNTRIES = [
   'Netherlands', 'Portugal', 'Belgium', 'Brazil', 'Argentina'
 ];
 
-// API limit ayarları
-const MAX_API_CALLS_PER_RUN = 300; // Güvenli limit (günlük 7500'ün bir kısmı)
-const RATE_LIMIT_MS = 300; // 300ms bekleme
+// API limit ayarları - tüm limit kullanılabilir
+const MAX_API_CALLS_PER_RUN = 7000; // Günlük 7500'ün büyük kısmı
+const RATE_LIMIT_MS = 200; // 200ms bekleme (hız için)
 
 let apiCalls = 0;
 
@@ -99,7 +99,7 @@ async function syncTeamSquad(teamId, teamName) {
     team_id: teamId,
     season: currentYear,
     team_name: teamName,
-    team_data: { id: teamId, name: teamName },
+    team_data: { id: teamId, name: teamName, coach: coach?.name || null },
     players: players.map(p => ({
       id: p.id,
       name: p.name,
@@ -108,10 +108,6 @@ async function syncTeamSquad(teamId, teamName) {
       position: p.position,
       photo: p.photo
     })),
-    coach_id: coach?.id || null,
-    coach_name: coach?.name || null,
-    coach_photo: coach?.photo || null,
-    coach_nationality: coach?.nationality || null,
     updated_at: new Date().toISOString()
   };
   

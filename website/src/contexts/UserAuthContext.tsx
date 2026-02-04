@@ -334,10 +334,11 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // Initialize auth state
+  // Initialize auth state - ONCE on mount only
   useEffect(() => {
     let authStateHandled = false; // Flag to prevent race condition
     let mounted = true;
+    let lastProcessedUserId: string | null = null; // Prevent duplicate processing
     
     const initAuth = async () => {
       try {
@@ -363,6 +364,14 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
         console.log('🔍 Initial session check:', currentSession ? 'Found' : 'Not found', sessionError?.message);
 
         if (currentSession?.user) {
+          // Prevent duplicate processing
+          if (lastProcessedUserId === currentSession.user.id) {
+            console.log('⏭️ User already processed, skipping');
+            setIsLoading(false);
+            return;
+          }
+          lastProcessedUserId = currentSession.user.id;
+          
           console.log('✅ Session found, setting user:', currentSession.user.email);
           
           // CRITICAL: Create immediate profile FIRST
@@ -428,9 +437,20 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
     
     // Listen for auth state changes (OAuth callbacks, sign out, etc.)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('🔔 Auth state change:', event, session?.user?.email || 'no user');
-      
       if (!mounted) return; // Component unmount olduysa işlemi durdur
+      
+      // ✅ CRITICAL: Prevent infinite loop - check if user already processed
+      if (session?.user?.id && lastProcessedUserId === session.user.id) {
+        // Same user - only update session for TOKEN_REFRESHED
+        if (event === 'TOKEN_REFRESHED') {
+          console.log('🔄 Token refreshed for:', session.user.email);
+          setSession(session);
+        }
+        // Skip all other duplicate events for same user
+        return;
+      }
+      
+      console.log('🔔 Auth state change:', event, session?.user?.email || 'no user');
       
       // Mark that auth state was handled by onAuthStateChange
       authStateHandled = true;
@@ -457,10 +477,15 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
         setIsLoading(false);
       };
       
-      if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+      if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
         if (session?.user) {
+          // Track this user as processed
+          lastProcessedUserId = session.user.id;
+          
           if (event !== 'INITIAL_SESSION') console.log('✅ User signed in:', session.user.email);
           setSessionAndProfile(session);
+          
+          // Background profile fetch (non-blocking, no state dependency)
           fetchProfile(
             session.user.id, 
             session.user.email || '',
@@ -474,6 +499,7 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
         }
       } else if (event === 'SIGNED_OUT') {
         console.log('👋 User signed out');
+        lastProcessedUserId = null; // Reset on sign out
         setSession(null);
         setUser(null);
         setProfile(null);
@@ -496,7 +522,8 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [fetchProfile]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // ✅ Empty dependency - run ONCE on mount only
 
   // Sign in with Email
   const signInWithEmail = async (email: string, password: string) => {

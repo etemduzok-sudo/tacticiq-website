@@ -211,7 +211,7 @@ router.get('/live', async (req, res) => {
       });
     }
 
-    // 2. Try database first
+    // 2. Try database first (mock maçı da dahil et)
     const { data: dbMatches, error: dbError } = await supabase
       .from('matches')
       .select(`
@@ -241,6 +241,31 @@ router.get('/live', async (req, res) => {
           return true;
         });
         
+        // Mock maçı ekle (her zaman görünsün) - API response'dan sonra
+        // (API response zaten uniqueMatches'e eklendi, mock maçı kontrol et)
+        const mockMatchExistsInApi = uniqueMatches.some(m => m.fixture?.id === 999999);
+        if (!mockMatchExistsInApi) {
+          const { data: mockMatch } = await supabase
+            .from('matches')
+            .select(`
+              *,
+              home_team:teams!matches_home_team_id_fkey(id, name, logo),
+              away_team:teams!matches_away_team_id_fkey(id, name, logo),
+              league:leagues(id, name, logo, country)
+            `)
+            .eq('id', 999999)
+            .single();
+          
+          if (mockMatch && ['1H', '2H', 'HT', 'ET', 'BT', 'P', 'LIVE'].includes(mockMatch.status)) {
+            // DB formatını API formatına çevir
+            const apiFormatMock = dbRowToApiMatch(mockMatch);
+            if (apiFormatMock) {
+              uniqueMatches.push(apiFormatMock);
+              console.log('✅ Mock canlı maç API response\'a eklendi');
+            }
+          }
+        }
+
         // 🔥 UPDATE CACHE with deduplicated data
         API_CACHE.liveMatches = {
           data: uniqueMatches,
@@ -265,12 +290,37 @@ router.get('/live', async (req, res) => {
       }
     }
 
-    // 4. Return database data or empty array
+    // 4. Mock maçı ekle (her zaman görünsün)
+    let finalMatches = (!dbError && dbMatches) ? dbMatches : [];
+    
+    // Mock maçı kontrol et ve ekle (API formatına çevir)
+    const mockMatchExists = finalMatches.some(m => (m.fixture?.id || m.id) === 999999);
+    if (!mockMatchExists) {
+      const { data: mockMatch } = await supabase
+        .from('matches')
+        .select(`
+          *,
+          home_team:teams!matches_home_team_id_fkey(id, name, logo),
+          away_team:teams!matches_away_team_id_fkey(id, name, logo),
+          league:leagues(id, name, logo, country)
+        `)
+        .eq('id', 999999)
+        .single();
+      
+      if (mockMatch && ['1H', '2H', 'HT', 'ET', 'BT', 'P', 'LIVE'].includes(mockMatch.status)) {
+        const apiFormatMock = dbRowToApiMatch(mockMatch);
+        if (apiFormatMock) {
+          finalMatches.push(apiFormatMock);
+          console.log('✅ Mock canlı maç eklendi (API formatında)');
+        }
+      }
+    }
+
     res.json({
       success: true,
-      data: (!dbError && dbMatches) ? dbMatches : [],
-      source: dbMatches && dbMatches.length > 0 ? 'database' : 'empty',
-      message: dbMatches && dbMatches.length === 0 ? 'No live matches at the moment' : undefined
+      data: finalMatches,
+      source: finalMatches.length > 0 ? 'database' : 'empty',
+      message: finalMatches.length === 0 ? 'No live matches at the moment' : undefined
     });
 
   } catch (error) {
@@ -285,12 +335,31 @@ router.get('/live', async (req, res) => {
 });
 
 // GET /api/matches/date/:date - Get matches by date (format: YYYY-MM-DD)
+// Önce DB'den çek (sync-planned-matches ile doldurulur), yoksa API
 router.get('/date/:date', async (req, res) => {
   try {
     const { date } = req.params;
-    const data = await footballApi.getFixturesByDate(date);
     
-    // Sync to database if enabled
+    // 1. Önce DB'den dene (planlanmış maçlar buradan gelir)
+    if (databaseService.enabled) {
+      try {
+        const dbRows = await databaseService.getMatchesByDate(date);
+        if (dbRows && dbRows.length > 0) {
+          const dbMatches = dbRows.map(dbRowToApiMatch).filter(Boolean);
+          return res.json({
+            success: true,
+            data: dbMatches,
+            cached: true,
+            source: 'database',
+          });
+        }
+      } catch (dbErr) {
+        console.warn('DB lookup failed for date:', date, dbErr.message);
+      }
+    }
+    
+    // 2. DB boşsa API'den çek ve kaydet
+    const data = await footballApi.getFixturesByDate(date);
     if (databaseService.enabled && data.response && data.response.length > 0) {
       await databaseService.upsertMatches(data.response);
     }
@@ -299,6 +368,7 @@ router.get('/date/:date', async (req, res) => {
       success: true,
       data: data.response,
       cached: data.cached || false,
+      source: 'api',
     });
   } catch (error) {
     res.status(500).json({
@@ -453,6 +523,107 @@ router.get('/league/:leagueId', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    const matchId = parseInt(id);
+    
+    // ✅ MOCK MATCH: ID 999999 için özel veri döndür (API çağrısı yapma)
+    if (matchId === 999999) {
+      const now = new Date();
+      return res.json({
+        success: true,
+        data: {
+          fixture: {
+            id: 999999,
+            referee: 'Mock Referee',
+            timezone: 'UTC',
+            date: now.toISOString(),
+            timestamp: Math.floor(now.getTime() / 1000) - 67 * 60,
+            venue: { id: 999, name: 'Mock Stadium', city: 'Mock City' },
+            status: { long: 'Second Half', short: '2H', elapsed: 67 }
+          },
+          league: { id: 999, name: 'Mock League', country: 'Mock Country', logo: null, flag: null, season: 2025, round: 'Round 1' },
+          teams: {
+            home: { id: 9999, name: 'Mock Home Team', logo: null, winner: true },
+            away: { id: 9998, name: 'Mock Away Team', logo: null, winner: false }
+          },
+          goals: { home: 2, away: 1 },
+          score: {
+            halftime: { home: 1, away: 0 },
+            fulltime: { home: null, away: null },
+            extratime: { home: null, away: null },
+            penalty: { home: null, away: null }
+          },
+          events: [
+            { time: { elapsed: 12, extra: null }, team: { id: 9999, name: 'Mock Home Team' }, player: { id: 1001, name: 'A. Yıldız' }, assist: { id: null, name: null }, type: 'Goal', detail: 'Normal Goal', comments: null },
+            { time: { elapsed: 38, extra: null }, team: { id: 9998, name: 'Mock Away Team' }, player: { id: 2003, name: 'C. Demir' }, assist: { id: null, name: null }, type: 'Card', detail: 'Yellow Card', comments: 'Foul' },
+            { time: { elapsed: 55, extra: null }, team: { id: 9998, name: 'Mock Away Team' }, player: { id: 2001, name: 'M. Kaya' }, assist: { id: 2002, name: 'E. Şahin' }, type: 'Goal', detail: 'Normal Goal', comments: null },
+            { time: { elapsed: 62, extra: null }, team: { id: 9999, name: 'Mock Home Team' }, player: { id: 1002, name: 'B. Öztürk' }, assist: { id: 1001, name: 'A. Yıldız' }, type: 'Goal', detail: 'Normal Goal', comments: null }
+          ],
+          lineups: [
+            {
+              team: { id: 9999, name: 'Mock Home Team', logo: null },
+              coach: { id: 101, name: 'Mock Coach A', photo: null },
+              formation: '4-3-3',
+              startXI: [
+                { player: { id: 1000, name: 'K. Kaleci', number: 1, pos: 'G', grid: '1:1' } },
+                { player: { id: 1010, name: 'S. Sağbek', number: 2, pos: 'D', grid: '2:4' } },
+                { player: { id: 1011, name: 'D. Stoper1', number: 4, pos: 'D', grid: '2:3' } },
+                { player: { id: 1012, name: 'D. Stoper2', number: 5, pos: 'D', grid: '2:2' } },
+                { player: { id: 1013, name: 'S. Solbek', number: 3, pos: 'D', grid: '2:1' } },
+                { player: { id: 1020, name: 'O. Sağ', number: 8, pos: 'M', grid: '3:3' } },
+                { player: { id: 1021, name: 'O. Merkez', number: 6, pos: 'M', grid: '3:2' } },
+                { player: { id: 1022, name: 'O. Sol', number: 10, pos: 'M', grid: '3:1' } },
+                { player: { id: 1001, name: 'A. Yıldız', number: 7, pos: 'F', grid: '4:3' } },
+                { player: { id: 1031, name: 'F. Santrafor', number: 9, pos: 'F', grid: '4:2' } },
+                { player: { id: 1002, name: 'B. Öztürk', number: 11, pos: 'F', grid: '4:1' } }
+              ],
+              substitutes: [
+                { player: { id: 1100, name: 'Y. Kaleci', number: 12, pos: 'G', grid: null } },
+                { player: { id: 1101, name: 'Y. Defans', number: 14, pos: 'D', grid: null } },
+                { player: { id: 1102, name: 'Y. Orta', number: 15, pos: 'M', grid: null } }
+              ]
+            },
+            {
+              team: { id: 9998, name: 'Mock Away Team', logo: null },
+              coach: { id: 102, name: 'Mock Coach B', photo: null },
+              formation: '4-4-2',
+              startXI: [
+                { player: { id: 2000, name: 'G. Kaleci', number: 1, pos: 'G', grid: '1:1' } },
+                { player: { id: 2010, name: 'D. Sağbek', number: 2, pos: 'D', grid: '2:4' } },
+                { player: { id: 2011, name: 'D. Stoper1', number: 4, pos: 'D', grid: '2:3' } },
+                { player: { id: 2012, name: 'D. Stoper2', number: 5, pos: 'D', grid: '2:2' } },
+                { player: { id: 2013, name: 'D. Solbek', number: 3, pos: 'D', grid: '2:1' } },
+                { player: { id: 2020, name: 'O. Sağkanat', number: 7, pos: 'M', grid: '3:4' } },
+                { player: { id: 2002, name: 'E. Şahin', number: 8, pos: 'M', grid: '3:3' } },
+                { player: { id: 2022, name: 'O. Merkez', number: 6, pos: 'M', grid: '3:2' } },
+                { player: { id: 2023, name: 'O. Solkanat', number: 11, pos: 'M', grid: '3:1' } },
+                { player: { id: 2001, name: 'M. Kaya', number: 9, pos: 'F', grid: '4:2' } },
+                { player: { id: 2003, name: 'C. Demir', number: 10, pos: 'F', grid: '4:1' } }
+              ],
+              substitutes: [
+                { player: { id: 2100, name: 'Y. Kaleci2', number: 12, pos: 'G', grid: null } },
+                { player: { id: 2101, name: 'Y. Defans2', number: 14, pos: 'D', grid: null } }
+              ]
+            }
+          ],
+          statistics: [
+            { team: { id: 9999, name: 'Mock Home Team' }, statistics: [
+              { type: 'Shots on Goal', value: 5 }, { type: 'Shots off Goal', value: 3 }, { type: 'Total Shots', value: 12 },
+              { type: 'Ball Possession', value: '58%' }, { type: 'Corner Kicks', value: 6 }, { type: 'Fouls', value: 9 },
+              { type: 'Yellow Cards', value: 1 }, { type: 'Red Cards', value: 0 }, { type: 'Total passes', value: 412 },
+              { type: 'Passes accurate', value: 356 }, { type: 'Passes %', value: '86%' }
+            ]},
+            { team: { id: 9998, name: 'Mock Away Team' }, statistics: [
+              { type: 'Shots on Goal', value: 3 }, { type: 'Shots off Goal', value: 4 }, { type: 'Total Shots', value: 9 },
+              { type: 'Ball Possession', value: '42%' }, { type: 'Corner Kicks', value: 3 }, { type: 'Fouls', value: 12 },
+              { type: 'Yellow Cards', value: 2 }, { type: 'Red Cards', value: 0 }, { type: 'Total passes', value: 298 },
+              { type: 'Passes accurate', value: 241 }, { type: 'Passes %', value: '81%' }
+            ]}
+          ]
+        },
+        source: 'mock',
+        cached: false
+      });
+    }
     
     // 1. Try to get from database first
     const { data: dbMatch, error: dbError } = await supabase
@@ -544,6 +715,30 @@ router.get('/:id', async (req, res) => {
 router.get('/:id/statistics', async (req, res) => {
   try {
     const { id } = req.params;
+    const matchId = parseInt(id);
+    
+    // ✅ MOCK MATCH: ID 999999 için özel istatistik döndür
+    if (matchId === 999999) {
+      return res.json({
+        success: true,
+        data: [
+          { team: { id: 9999, name: 'Mock Home Team' }, statistics: [
+            { type: 'Shots on Goal', value: 5 }, { type: 'Shots off Goal', value: 3 }, { type: 'Total Shots', value: 12 },
+            { type: 'Ball Possession', value: '58%' }, { type: 'Corner Kicks', value: 6 }, { type: 'Fouls', value: 9 },
+            { type: 'Yellow Cards', value: 1 }, { type: 'Red Cards', value: 0 }, { type: 'Total passes', value: 412 },
+            { type: 'Passes accurate', value: 356 }, { type: 'Passes %', value: '86%' }
+          ]},
+          { team: { id: 9998, name: 'Mock Away Team' }, statistics: [
+            { type: 'Shots on Goal', value: 3 }, { type: 'Shots off Goal', value: 4 }, { type: 'Total Shots', value: 9 },
+            { type: 'Ball Possession', value: '42%' }, { type: 'Corner Kicks', value: 3 }, { type: 'Fouls', value: 12 },
+            { type: 'Yellow Cards', value: 2 }, { type: 'Red Cards', value: 0 }, { type: 'Total passes', value: 298 },
+            { type: 'Passes accurate', value: 241 }, { type: 'Passes %', value: '81%' }
+          ]}
+        ],
+        source: 'mock',
+        cached: false
+      });
+    }
     
     // 1. Try database first
     const { data: dbStats, error: dbError } = await supabase
@@ -731,6 +926,227 @@ router.get('/:id/events', async (req, res) => {
   }
 });
 
+// GET /api/matches/:id/community-stats - Topluluk tahmin istatistikleri
+router.get('/:id/community-stats', async (req, res) => {
+  try {
+    const matchId = parseInt(req.params.id, 10);
+    
+    // Mock maç için özel veri
+    if (matchId === 999999) {
+      const { MOCK_COMMUNITY_DATA } = require('../scripts/create-mock-community-data');
+      return res.json({
+        success: true,
+        data: MOCK_COMMUNITY_DATA,
+        source: 'mock'
+      });
+    }
+    
+    // Gerçek maçlar için veritabanından topluluk verilerini çek
+    // TODO: Gerçek implementasyon - predictions tablosundan istatistikler
+    res.json({
+      success: true,
+      data: {
+        totalUsers: 0,
+        scorePredictions: {},
+        totalGoalsPredictions: {},
+        firstGoalPredictions: {},
+        cardPredictions: {},
+        playerPredictions: {}
+      },
+      source: 'database',
+      message: 'Community stats not yet implemented for real matches'
+    });
+  } catch (error) {
+    console.error('Error fetching community stats:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// GET /api/matches/:id/events/live - Hybrid: DB + API, 15sn güncelleme için
+// Maç henüz başlamadıysa status: NS döner
+router.get('/:id/events/live', async (req, res) => {
+  try {
+    const matchId = parseInt(req.params.id, 10);
+    if (!matchId) {
+      return res.status(400).json({ success: false, error: 'Invalid match ID' });
+    }
+
+    // ✅ MOCK MATCH: ID 999999 için özel canlı event'ler döndür
+    if (matchId === 999999) {
+      return res.json({
+        success: true,
+        status: '2H',
+        matchNotStarted: false,
+        minute: 67,
+        score: { home: 2, away: 1 },
+        halftimeScore: { home: 1, away: 0 },
+        events: [
+          { time: { elapsed: 12, extra: null }, type: 'Goal', detail: 'Normal Goal', team: { id: 9999, name: 'Mock Home Team' }, player: { name: 'A. Yıldız' }, assist: null, comments: null },
+          { time: { elapsed: 38, extra: null }, type: 'Card', detail: 'Yellow Card', team: { id: 9998, name: 'Mock Away Team' }, player: { name: 'C. Demir' }, assist: null, comments: 'Foul' },
+          { time: { elapsed: 55, extra: null }, type: 'Goal', detail: 'Normal Goal', team: { id: 9998, name: 'Mock Away Team' }, player: { name: 'M. Kaya' }, assist: { name: 'E. Şahin' }, comments: null },
+          { time: { elapsed: 62, extra: null }, type: 'Goal', detail: 'Normal Goal', team: { id: 9999, name: 'Mock Home Team' }, player: { name: 'B. Öztürk' }, assist: { name: 'A. Yıldız' }, comments: null }
+        ],
+        source: 'mock'
+      });
+    }
+
+    // 1. Maç durumunu al (DB veya API)
+    let matchStatus = 'NS';
+    let matchMinute = 0;
+    let score = { home: 0, away: 0 };
+    let halftimeScore = { home: 0, away: 0 };
+
+    let dbMatch = null;
+    if (supabase) {
+      const r = await supabase.from('matches')
+        .select('status, elapsed, home_score, away_score, halftime_home, halftime_away')
+        .eq('id', matchId)
+        .single();
+      dbMatch = r.data;
+    }
+
+    if (dbMatch) {
+      matchStatus = dbMatch.status || 'NS';
+      matchMinute = dbMatch.elapsed || 0;
+      score = { home: dbMatch.home_score || 0, away: dbMatch.away_score || 0 };
+      halftimeScore = { home: dbMatch.halftime_home || 0, away: dbMatch.halftime_away || 0 };
+    }
+
+    // Maç henüz başlamadıysa hemen dön
+    if (matchStatus === 'NS' || matchStatus === 'TBD' || matchStatus === 'PST') {
+      return res.json({
+        success: true,
+        status: matchStatus,
+        matchNotStarted: true,
+        events: [],
+        minute: 0,
+        score,
+        halftimeScore,
+      });
+    }
+
+    // 2. Önce DB'den eventleri al (match_events veya match_timeline)
+    let events = [];
+    if (supabase) {
+      // Önce match_events'i kontrol et (mock maçlar için)
+      const { data: matchEvents } = await supabase
+        .from('match_events')
+        .select('*')
+        .eq('match_id', matchId)
+        .order('elapsed', { ascending: true });
+
+      if (matchEvents && matchEvents.length > 0) {
+        // Takım isimlerini al
+        const teamIds = [...new Set(matchEvents.map(e => e.team_id).filter(Boolean))];
+        const teamMap = new Map();
+        if (teamIds.length > 0) {
+          const { data: teams } = await supabase
+            .from('teams')
+            .select('id, name')
+            .in('id', teamIds);
+          if (teams) {
+            teams.forEach(t => teamMap.set(t.id, t.name));
+          }
+        }
+
+        // match_events formatını API formatına çevir
+        events = matchEvents.map(e => ({
+          time: { elapsed: e.elapsed, extra: e.elapsed_plus || null },
+          type: e.type === 'Card' ? 'Card' : e.type === 'Goal' ? 'Goal' : e.type === 'subst' ? 'subst' : e.type,
+          detail: e.detail || null,
+          team: e.team_id ? { id: e.team_id, name: teamMap.get(e.team_id) || 'Team' } : null,
+          player: e.player_name ? { name: e.player_name } : null,
+          assist: e.assist_name ? { name: e.assist_name } : null,
+          comments: e.comments || null
+        }));
+      } else {
+        // match_timeline'ı kontrol et
+        const { data: dbEvents } = await supabase
+          .from('match_timeline')
+          .select('*')
+          .eq('match_id', matchId)
+          .order('elapsed', { ascending: true })
+          .order('elapsed_extra', { ascending: true });
+
+        if (dbEvents && dbEvents.length > 0) {
+          events = dbEvents.map(e => ({
+            time: { elapsed: e.elapsed, extra: e.elapsed_extra },
+            type: e.event_type,
+            detail: e.event_detail,
+            team: e.team_id ? { id: e.team_id, name: e.team_name } : null,
+            player: e.player_id ? { id: e.player_id, name: e.player_name } : null,
+            assist: e.assist_id ? { id: e.assist_id, name: e.assist_name } : null,
+            goals: { home: e.score_home, away: e.score_away },
+            comments: e.comments,
+          }));
+        }
+      }
+    }
+
+    // 3. Canlı maçlarda API'den güncel veri çek ve DB'ye yaz (mock maçlar hariç)
+    const isLive = ['1H', '2H', 'HT', 'ET', 'P', 'LIVE', 'BT'].includes(matchStatus);
+    const isMockMatch = matchId === 999999; // Mock maç için API çağrısı yapma
+    if (isLive && !isMockMatch) {
+      try {
+        const [fixtureData, eventsData] = await Promise.all([
+          footballApi.getFixtureDetails(matchId),
+          footballApi.getFixtureEvents(matchId),
+        ]);
+        const apiMatch = fixtureData?.response?.[0];
+        const apiEvents = eventsData?.response || [];
+
+        if (apiMatch) {
+          matchStatus = apiMatch.fixture?.status?.short || matchStatus;
+          matchMinute = apiMatch.fixture?.status?.elapsed || matchMinute;
+          score = { home: apiMatch.goals?.home || 0, away: apiMatch.goals?.away || 0 };
+          halftimeScore = apiMatch.score?.halftime || halftimeScore;
+        }
+
+        if (apiEvents.length > 0) {
+          const timelineService = require('../services/timelineService');
+          const mergedMatch = {
+            fixture: apiMatch?.fixture || { id: matchId, status: { short: matchStatus, elapsed: matchMinute } },
+            events: apiEvents,
+            goals: score,
+            teams: apiMatch?.teams || {},
+          };
+          await timelineService.saveMatchEvents(mergedMatch);
+          events = apiEvents.map(e => ({
+            time: e.time || {},
+            type: e.type,
+            detail: e.detail,
+            team: e.team,
+            player: e.player,
+            assist: e.assist,
+            goals: e.goals || {},
+            comments: e.comments,
+          }));
+        }
+      } catch (apiErr) {
+        console.warn('Live events API fallback failed:', apiErr?.message);
+      }
+    }
+
+    res.json({
+      success: true,
+      status: matchStatus,
+      matchNotStarted: false,
+      events,
+      minute: matchMinute,
+      score,
+      halftimeScore,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
 // GET /api/matches/:id/lineups - Get match lineups with team colors and player details
 // ?refresh=1 ile cache atlanır, API'den taze çekilir ve rating'ler güncellenir
 router.get('/:id/lineups', async (req, res) => {
@@ -738,6 +1154,62 @@ router.get('/:id/lineups', async (req, res) => {
     const { id } = req.params;
     const matchId = parseInt(id);
     const skipCache = req.query.refresh === '1' || req.query.refresh === 'true';
+    
+    // ✅ MOCK MATCH: ID 999999 için özel lineup döndür
+    if (matchId === 999999) {
+      return res.json({
+        success: true,
+        data: [
+          {
+            team: { id: 9999, name: 'Mock Home Team', logo: null, colors: { player: { primary: '#FF0000', number: '#FFFFFF', border: '#CC0000' }, goalkeeper: { primary: '#00FF00', number: '#000000', border: '#00CC00' } } },
+            coach: { id: 101, name: 'Mock Coach A', photo: null },
+            formation: '4-3-3',
+            startXI: [
+              { player: { id: 1000, name: 'K. Kaleci', number: 1, pos: 'G', grid: '1:1', rating: 82, stats: { pace: 48, shooting: 28, passing: 58, dribbling: 42, defending: 92, physical: 88 } } },
+              { player: { id: 1010, name: 'S. Sağbek', number: 2, pos: 'D', grid: '2:4', rating: 78, stats: { pace: 82, shooting: 42, passing: 68, dribbling: 58, defending: 85, physical: 78 } } },
+              { player: { id: 1011, name: 'D. Stoper1', number: 4, pos: 'D', grid: '2:3', rating: 80, stats: { pace: 65, shooting: 35, passing: 62, dribbling: 52, defending: 88, physical: 85 } } },
+              { player: { id: 1012, name: 'D. Stoper2', number: 5, pos: 'D', grid: '2:2', rating: 79, stats: { pace: 62, shooting: 32, passing: 65, dribbling: 48, defending: 86, physical: 82 } } },
+              { player: { id: 1013, name: 'S. Solbek', number: 3, pos: 'D', grid: '2:1', rating: 77, stats: { pace: 80, shooting: 45, passing: 72, dribbling: 68, defending: 82, physical: 75 } } },
+              { player: { id: 1020, name: 'O. Sağ', number: 8, pos: 'M', grid: '3:3', rating: 81, stats: { pace: 76, shooting: 68, passing: 85, dribbling: 82, defending: 68, physical: 72 } } },
+              { player: { id: 1021, name: 'O. Merkez', number: 6, pos: 'M', grid: '3:2', rating: 83, stats: { pace: 72, shooting: 62, passing: 88, dribbling: 78, defending: 75, physical: 78 } } },
+              { player: { id: 1022, name: 'O. Sol', number: 10, pos: 'M', grid: '3:1', rating: 85, stats: { pace: 78, shooting: 75, passing: 90, dribbling: 88, defending: 58, physical: 68 } } },
+              { player: { id: 1001, name: 'A. Yıldız', number: 7, pos: 'F', grid: '4:3', rating: 86, stats: { pace: 92, shooting: 85, passing: 78, dribbling: 90, defending: 35, physical: 68 } } },
+              { player: { id: 1031, name: 'F. Santrafor', number: 9, pos: 'F', grid: '4:2', rating: 84, stats: { pace: 85, shooting: 88, passing: 68, dribbling: 82, defending: 32, physical: 80 } } },
+              { player: { id: 1002, name: 'B. Öztürk', number: 11, pos: 'F', grid: '4:1', rating: 82, stats: { pace: 90, shooting: 82, passing: 72, dribbling: 85, defending: 38, physical: 72 } } }
+            ],
+            substitutes: [
+              { player: { id: 1100, name: 'Y. Kaleci', number: 12, pos: 'G', grid: null, rating: 75, stats: { pace: 45, shooting: 25, passing: 55, dribbling: 38, defending: 85, physical: 80 } } },
+              { player: { id: 1101, name: 'Y. Defans', number: 14, pos: 'D', grid: null, rating: 74, stats: { pace: 72, shooting: 38, passing: 62, dribbling: 55, defending: 78, physical: 75 } } },
+              { player: { id: 1102, name: 'Y. Orta', number: 15, pos: 'M', grid: null, rating: 76, stats: { pace: 74, shooting: 65, passing: 78, dribbling: 75, defending: 62, physical: 68 } } }
+            ]
+          },
+          {
+            team: { id: 9998, name: 'Mock Away Team', logo: null, colors: { player: { primary: '#0000FF', number: '#FFFFFF', border: '#0000CC' }, goalkeeper: { primary: '#FFFF00', number: '#000000', border: '#CCCC00' } } },
+            coach: { id: 102, name: 'Mock Coach B', photo: null },
+            formation: '4-4-2',
+            startXI: [
+              { player: { id: 2000, name: 'G. Kaleci', number: 1, pos: 'G', grid: '1:1', rating: 80, stats: { pace: 45, shooting: 25, passing: 55, dribbling: 40, defending: 88, physical: 85 } } },
+              { player: { id: 2010, name: 'D. Sağbek', number: 2, pos: 'D', grid: '2:4', rating: 76, stats: { pace: 78, shooting: 40, passing: 65, dribbling: 55, defending: 82, physical: 75 } } },
+              { player: { id: 2011, name: 'D. Stoper1', number: 4, pos: 'D', grid: '2:3', rating: 78, stats: { pace: 62, shooting: 32, passing: 60, dribbling: 48, defending: 85, physical: 82 } } },
+              { player: { id: 2012, name: 'D. Stoper2', number: 5, pos: 'D', grid: '2:2', rating: 77, stats: { pace: 60, shooting: 30, passing: 58, dribbling: 45, defending: 84, physical: 80 } } },
+              { player: { id: 2013, name: 'D. Solbek', number: 3, pos: 'D', grid: '2:1', rating: 75, stats: { pace: 75, shooting: 42, passing: 68, dribbling: 62, defending: 80, physical: 72 } } },
+              { player: { id: 2020, name: 'O. Sağkanat', number: 7, pos: 'M', grid: '3:4', rating: 79, stats: { pace: 85, shooting: 72, passing: 75, dribbling: 82, defending: 55, physical: 68 } } },
+              { player: { id: 2002, name: 'E. Şahin', number: 8, pos: 'M', grid: '3:3', rating: 82, stats: { pace: 74, shooting: 65, passing: 86, dribbling: 80, defending: 70, physical: 75 } } },
+              { player: { id: 2022, name: 'O. Merkez', number: 6, pos: 'M', grid: '3:2', rating: 80, stats: { pace: 70, shooting: 58, passing: 82, dribbling: 75, defending: 72, physical: 78 } } },
+              { player: { id: 2023, name: 'O. Solkanat', number: 11, pos: 'M', grid: '3:1', rating: 78, stats: { pace: 82, shooting: 70, passing: 72, dribbling: 78, defending: 52, physical: 65 } } },
+              { player: { id: 2001, name: 'M. Kaya', number: 9, pos: 'F', grid: '4:2', rating: 83, stats: { pace: 88, shooting: 85, passing: 65, dribbling: 80, defending: 30, physical: 78 } } },
+              { player: { id: 2003, name: 'C. Demir', number: 10, pos: 'F', grid: '4:1', rating: 81, stats: { pace: 82, shooting: 82, passing: 75, dribbling: 85, defending: 35, physical: 72 } } }
+            ],
+            substitutes: [
+              { player: { id: 2100, name: 'Y. Kaleci2', number: 12, pos: 'G', grid: null, rating: 73, stats: { pace: 42, shooting: 22, passing: 52, dribbling: 35, defending: 82, physical: 78 } } },
+              { player: { id: 2101, name: 'Y. Defans2', number: 14, pos: 'D', grid: null, rating: 72, stats: { pace: 70, shooting: 35, passing: 58, dribbling: 52, defending: 75, physical: 72 } } }
+            ]
+          }
+        ],
+        cached: false,
+        source: 'mock'
+      });
+    }
     
     // 1. Önce DB'den cache kontrol et (refresh=1 ise atla)
     const { data: cachedMatch, error: cacheError } = skipCache ? { data: null, error: null } : await supabase

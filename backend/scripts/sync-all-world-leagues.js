@@ -28,8 +28,7 @@ if (!API_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, { auth: { persistSession: false } });
 const BASE_URL = 'https://v3.football.api-sports.io';
 const headers = {
-  'x-rapidapi-key': API_KEY,
-  'x-rapidapi-host': 'v3.football.api-sports.io'
+  'x-apisports-key': API_KEY,
 };
 
 // 127 dünya 1. ligi
@@ -258,6 +257,16 @@ async function fetchSquad(teamId, teamName) {
   }
 }
 
+async function fetchCoach(teamId) {
+  try {
+    const data = await apiRequest('/coachs', { team: teamId });
+    const coach = data.response?.find(c => c.career?.some(car => car.team?.id === teamId && !car.end));
+    return coach?.name || null;
+  } catch (error) {
+    return null;
+  }
+}
+
 async function saveTeamToDB(team, country, leagueName) {
   const colors = getDefaultColors(country);
   
@@ -288,11 +297,12 @@ async function saveTeamToDB(team, country, leagueName) {
   return true;
 }
 
-async function saveSquadToDB(teamId, teamName, players) {
+async function saveSquadToDB(teamId, teamName, players, coachName) {
   const squadData = {
     team_id: teamId,
     team_name: teamName,
     season: 2025,
+    team_data: { id: teamId, name: teamName, coach: coachName || null },
     players: players,
     updated_at: new Date().toISOString()
   };
@@ -326,18 +336,20 @@ async function processLeague(country, league) {
   
   // 2. Her takımı işle
   for (const team of teams) {
-    // Takımı kaydet
+    // Takımı kaydet (renkler dahil)
     await saveTeamToDB(team, country, league.name);
     
-    // Kadroyu çek ve kaydet
+    // Kadro + Teknik direktör çek
     const players = await fetchSquad(team.team.id, team.team.name);
+    let coachName = null;
     if (players) {
       stats.squadsFound++;
-      await saveSquadToDB(team.team.id, team.team.name, players);
+      coachName = await fetchCoach(team.team.id);
+      await saveSquadToDB(team.team.id, team.team.name, players, coachName);
     }
     
-    // Rate limiting - 200ms arası
-    await sleep(200);
+    // Rate limiting - 250ms arası
+    await sleep(250);
   }
   
   stats.leaguesProcessed++;

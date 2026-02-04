@@ -254,9 +254,9 @@ class DatabaseService {
           home_team:teams!home_team_id(*),
           away_team:teams!away_team_id(*)
         `)
-        .gte('date', startOfDay.toISOString())
-        .lte('date', endOfDay.toISOString())
-        .order('date', { ascending: true });
+        .gte('fixture_date', startOfDay.toISOString())
+        .lte('fixture_date', endOfDay.toISOString())
+        .order('fixture_date', { ascending: true });
 
       if (error) throw error;
       return data || [];
@@ -280,7 +280,7 @@ class DatabaseService {
           away_team:teams!away_team_id(*)
         `)
         .or(`home_team_id.eq.${teamId},away_team_id.eq.${teamId}`)
-        .order('date', { ascending: false })
+        .order('fixture_date', { ascending: false })
         .limit(limit);
 
       if (error) throw error;

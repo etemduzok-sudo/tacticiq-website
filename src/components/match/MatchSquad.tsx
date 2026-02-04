@@ -832,11 +832,12 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
       const awayPlayers = allPlayers.filter((p: any) => p.teamId === awayTeamId);
       console.log(`🔍 Lineups team check: homeTeamId=${homeTeamId} (${homeTeamName}) → ${homePlayers.length} players, awayTeamId=${awayTeamId} (${awayTeamName}) → ${awayPlayers.length} players`);
 
-      // ✅ Sadece favori takım(lar)ın kadrosu – rakip gizlenir
-      const filtered = favoriteTeamIds.length > 0
-        ? allPlayers.filter((p: any) => p.teamId != null && favoriteTeamIds.includes(p.teamId))
-        : allPlayers;
-      console.log('✅ Real players loaded from LINEUPS:', filtered.length, favoriteTeamIds.length ? '(favori only)' : '');
+      // ✅ Mock maç (999999) için tüm oyuncuları göster, favori filtresi uygulama
+      const isMockMatch = matchId === 999999;
+      const filtered = (isMockMatch || favoriteTeamIds.length === 0)
+        ? allPlayers
+        : allPlayers.filter((p: any) => p.teamId != null && favoriteTeamIds.includes(p.teamId));
+      console.log('✅ Real players loaded from LINEUPS:', filtered.length, (isMockMatch ? '(mock - all players)' : favoriteTeamIds.length ? '(favori only)' : ''));
       return filtered;
     }
 
@@ -895,6 +896,13 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
   // ✅ State restore edildi mi?
   const [stateRestored, setStateRestored] = useState(false);
   
+  // ✅ Maç canlı mı kontrol et
+  const isMatchLive = React.useMemo(() => {
+    const status = matchData?.fixture?.status?.short || matchData?.status || '';
+    const liveStatuses = ['1H', '2H', 'HT', 'ET', 'BT', 'P', 'LIVE'];
+    return liveStatuses.includes(status);
+  }, [matchData]);
+
   // ✅ Mount ve Kadro sekmesi görünür olduğunda AsyncStorage'dan yükle (Tahmin'den geri dönünce kadro görünsün)
   const runRestore = React.useCallback(async () => {
     try {
@@ -915,6 +923,104 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
     }
     setStateRestored(true);
   }, [squadStorageKey]);
+
+  // ✅ MAÇ CANLI VE FORMASYON SEÇİLMEMİŞSE: En popüler formasyonu otomatik uygula
+  const [autoFormationApplied, setAutoFormationApplied] = React.useState(false);
+  
+  React.useEffect(() => {
+    // Sadece maç canlıysa, restore tamamlandıysa, formasyon yoksa ve henüz auto-apply yapılmadıysa
+    if (!isMatchLive || !stateRestored || attackFormation || autoFormationApplied) return;
+    if (attackTeamPlayers.length === 0) return; // Oyuncular yüklenmeden bekle
+    
+    const applyPopularFormation = async () => {
+      try {
+        console.log('🎯 Maç canlı - en popüler formasyon otomatik uygulanıyor...');
+        
+        // En popüler formasyonu API'den al
+        const popularRes = await squadPredictionsApi.getPopularFormations('attack');
+        let popularFormationId = '4-3-3'; // Varsayılan
+        
+        if (popularRes.success && popularRes.data && popularRes.data.length > 0) {
+          popularFormationId = popularRes.data[0].formation;
+          console.log('📊 En popüler formasyon:', popularFormationId);
+        }
+        
+        // Formasyonu bul
+        const formation = formations.find(f => f.id === popularFormationId) || formations.find(f => f.id === '4-3-3');
+        if (!formation) return;
+        
+        // Formasyonu uygula
+        setAttackFormation(formation.id);
+        
+        // Oyuncuları pozisyonlara otomatik yerleştir
+        const autoPlayers: Record<number, typeof players[0] | null> = {};
+        const usedPlayerIds = new Set<number>();
+        
+        // Her slot için en uygun oyuncuyu bul
+        formation.positions.forEach((pos, slotIndex) => {
+          const positionType = pos.role?.toUpperCase() || '';
+          
+          // Bu pozisyon için uygun oyuncuları filtrele
+          let candidates = attackTeamPlayers.filter((p: any) => {
+            if (usedPlayerIds.has(p.id)) return false;
+            
+            const playerPos = (p.position || p.pos || '').toUpperCase();
+            
+            // Kaleci sadece kaleci slotuna
+            if (slotIndex === 0 && positionType.includes('GK')) {
+              return isGoalkeeperPlayer(p);
+            }
+            // Kaleci olmayan slotlara kaleci konamaz
+            if (!positionType.includes('GK') && isGoalkeeperPlayer(p)) return false;
+            
+            // Pozisyon eşleştirme
+            if (positionType.includes('DEF') || positionType.includes('CB') || positionType.includes('LB') || positionType.includes('RB')) {
+              return playerPos.includes('D') || playerPos.includes('DEF') || playerPos.includes('BACK');
+            }
+            if (positionType.includes('MID') || positionType.includes('CM') || positionType.includes('DM') || positionType.includes('AM')) {
+              return playerPos.includes('M') || playerPos.includes('MID');
+            }
+            if (positionType.includes('FWD') || positionType.includes('ST') || positionType.includes('ATT') || positionType.includes('LW') || positionType.includes('RW')) {
+              return playerPos.includes('F') || playerPos.includes('ATT') || playerPos.includes('ST') || playerPos.includes('W');
+            }
+            
+            return true; // Eşleşme yoksa herkes aday
+          });
+          
+          // Rating'e göre sırala ve en iyiyi seç
+          candidates.sort((a: any, b: any) => (b.rating || 75) - (a.rating || 75));
+          
+          if (candidates.length > 0) {
+            autoPlayers[slotIndex] = candidates[0];
+            usedPlayerIds.add(candidates[0].id);
+          }
+        });
+        
+        setAttackPlayers(autoPlayers);
+        setAutoFormationApplied(true);
+        
+        // Storage'a kaydet
+        const key = squadStorageKey;
+        const raw = await AsyncStorage.getItem(key);
+        const existing = raw ? JSON.parse(raw) : {};
+        await AsyncStorage.setItem(key, JSON.stringify({
+          ...existing,
+          matchId,
+          attackFormation: formation.id,
+          attackPlayers: autoPlayers,
+          isAutoApplied: true,
+        }));
+        
+        console.log('✅ Popüler formasyon ve kadro otomatik uygulandı:', formation.id);
+      } catch (err) {
+        console.error('❌ Auto formation apply error:', err);
+      }
+    };
+    
+    // Kısa bir gecikme ile uygula (oyuncuların yüklenmesini bekle)
+    const timer = setTimeout(applyPopularFormation, 500);
+    return () => clearTimeout(timer);
+  }, [isMatchLive, stateRestored, attackFormation, autoFormationApplied, attackTeamPlayers, squadStorageKey, matchId]);
 
   React.useEffect(() => {
     runRestore();
@@ -1342,6 +1448,8 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
         playerPredictions: playerPredictions,
         timestamp: new Date().toISOString(),
         isCompleted: true, // ✅ Tamamla basıldı – Tahmin sekmesinde oyuncular görünecek
+        // ✅ Tüm takım kadrosu (yedekler dahil) - MatchPrediction'da oyuncu değişikliği için
+        allTeamPlayers: attackTeamPlayers,
       };
       
       await AsyncStorage.setItem(

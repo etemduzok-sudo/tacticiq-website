@@ -131,7 +131,7 @@ async function rateLimitedRequest(fn) {
 async function getLeagueTeams(leagueId, season = CURRENT_SEASON) {
   try {
     const response = await rateLimitedRequest(() => 
-      footballApi.apiRequest(`/teams?league=${leagueId}&season=${season}`)
+      footballApi.apiRequest('/teams', { league: leagueId, season }, `teams-${leagueId}-${season}`, 3600)
     );
     return response?.response || [];
   } catch (error) {

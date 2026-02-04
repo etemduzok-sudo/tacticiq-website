@@ -12,7 +12,7 @@ const { supabase } = require('../config/supabase');
 // CONFIGURATION
 // ============================================
 
-const POLLING_INTERVAL = 12000; // 12 seconds (günde 7400 defa = 86400 / 12)
+const POLLING_INTERVAL = 15000; // 15 seconds - canlı event senkronizasyonu
 const FINALIZATION_DELAY = 60000; // 1 minute after match ends
 
 let pollingTimer = null;
