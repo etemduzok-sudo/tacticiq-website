@@ -3321,7 +3321,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 76,
     borderRadius: 8,
-    overflow: 'hidden',
+    overflow: 'visible',
     borderWidth: 2,
     borderColor: 'rgba(100, 116, 139, 0.3)',
     ...Platform.select({
@@ -3371,6 +3371,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 1,
     padding: 4,
+    borderRadius: 6, // ✅ overflow: visible olduğu için köşeleri burada yuvarla
+    overflow: 'hidden', // Gradient içeriğini yuvarla
   },
   predictionGlow: {
     position: 'absolute',
