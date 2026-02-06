@@ -3474,19 +3474,19 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: '#FFFFFF',
   },
-  // ✅ Tahmin yapıldı tik - sağ üst köşede badge
+  // ✅ Tahmin yapıldı tik - sağ üst köşede badge (X ikonu gibi kartın dışına taşar)
   predictionCheckBadgeTopRight: {
     position: 'absolute',
-    top: 2,
-    right: 2,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
+    top: -8,
+    right: -8,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     backgroundColor: '#10B981',
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 10,
-    borderWidth: 1.5,
+    zIndex: 20,
+    borderWidth: 2,
     borderColor: '#FFFFFF',
   },
   substitutionBadge: {
