@@ -3621,7 +3621,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   focusInfoHint: {
-    fontSize: 11,
+    fontSize: 13,
     color: '#9CA3AF',
   },
   predictionCategory: {
@@ -3725,7 +3725,7 @@ const styles = StyleSheet.create({
     marginLeft: 'auto',
   },
   focusBonusText: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '600',
     color: '#F59E0B',
   },
@@ -3752,8 +3752,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   combinedCardTitle: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '700',
     color: '#F1F5F9',
     letterSpacing: 0.2,
   },
@@ -3782,7 +3782,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scoreTeamLabelMinimal: {
-    fontSize: 9,
+    fontSize: 12,
     fontWeight: '600',
     marginBottom: 6,
     letterSpacing: 0.8,
@@ -3839,9 +3839,9 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   sliderLabelCombined: {
-    fontSize: 10,
+    fontSize: 13,
     color: '#CBD5E1',
-    fontWeight: '500',
+    fontWeight: '600',
     flex: 1,
   },
   sliderValueBadgeCombined: {
@@ -3856,8 +3856,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(59, 130, 246, 0.9)',
   },
   sliderValueTextCombined: {
-    fontSize: 9,
-    fontWeight: '500',
+    fontSize: 12,
+    fontWeight: '600',
     color: '#FFF',
     letterSpacing: -0.2,
   },
@@ -3876,10 +3876,10 @@ const styles = StyleSheet.create({
     marginHorizontal: 0,
   },
   sliderMarkCombined: {
-    fontSize: 8,
+    fontSize: 11,
     color: '#94A3B8',
-    fontWeight: '400',
-    width: 16,
+    fontWeight: '500',
+    width: 20,
     textAlign: 'center',
   },
   
@@ -3912,9 +3912,9 @@ const styles = StyleSheet.create({
     color: '#FFF',
   },
   goalCountLabel: {
-    fontSize: 8,
+    fontSize: 11,
     color: '#64748B',
-    fontWeight: '400',
+    fontWeight: '500',
     marginTop: 1,
   },
   goalCountLabelActive: {
@@ -3931,10 +3931,10 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   timelineRowLabel: {
-    fontSize: 10,
+    fontSize: 13,
     fontWeight: '600',
     color: '#CBD5E1',
-    width: 20,
+    width: 24,
     textAlign: 'center',
   },
   timelineRowButtons: {
@@ -3961,14 +3961,14 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(59, 130, 246, 0.85)',
   },
   timelineBtnTextCompact: {
-    fontSize: 10,
-    fontWeight: '400',
+    fontSize: 13,
+    fontWeight: '500',
     color: '#CBD5E1',
     letterSpacing: -0.2,
   },
   timelineBtnTextCompactActive: {
     color: '#FFF',
-    fontWeight: '500',
+    fontWeight: '700',
   },
   noGoalBtn: {
     flexDirection: 'row',
@@ -3986,8 +3986,8 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(239, 68, 68, 0.85)',
   },
   noGoalBtnText: {
-    fontSize: 10,
-    fontWeight: '500',
+    fontSize: 13,
+    fontWeight: '600',
     color: '#CBD5E1',
   },
   noGoalBtnTextActive: {
@@ -4024,19 +4024,19 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(245, 158, 11, 0.9)',
   },
   timelineBtnText: {
-    fontSize: 9,
-    fontWeight: '400',
+    fontSize: 12,
+    fontWeight: '500',
     color: '#94A3B8',
     letterSpacing: -0.2,
   },
   timelineBtnTextActive: {
     color: '#FFF',
-    fontWeight: '500',
+    fontWeight: '700',
   },
   timelinePeriod: {
-    fontSize: 7,
+    fontSize: 10,
     color: '#64748B',
-    fontWeight: '400',
+    fontWeight: '500',
     marginTop: 1,
   },
   timelinePeriodActive: {
@@ -4070,8 +4070,8 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(239, 68, 68, 0.9)',
   },
   timelineExtraBtnText: {
-    fontSize: 9,
-    fontWeight: '400',
+    fontSize: 12,
+    fontWeight: '500',
     color: '#64748B',
     letterSpacing: -0.2,
   },
@@ -4192,14 +4192,14 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   disciplineColumnTitle: {
-    fontSize: 10,
-    fontWeight: '500',
+    fontSize: 13,
+    fontWeight: '600',
     color: '#CBD5E1',
     flex: 1,
   },
   disciplineColumnValue: {
-    fontSize: 11,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
   },
   disciplineColumnDivider: {
     width: 1,
@@ -4243,8 +4243,8 @@ const styles = StyleSheet.create({
     borderColor: '#F87171',
   },
   verticalBarLabel: {
-    fontSize: 9,
-    fontWeight: '400',
+    fontSize: 12,
+    fontWeight: '500',
     color: '#94A3B8',
     marginTop: 2,
   },
@@ -4285,8 +4285,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(15, 23, 42, 0.5)',
   },
   tempoBtnText: {
-    fontSize: 10,
-    fontWeight: '500',
+    fontSize: 13,
+    fontWeight: '600',
     color: '#94A3B8',
   },
   scenarioGrid: {
@@ -4311,8 +4311,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(15, 23, 42, 0.5)',
   },
   scenarioBtnText: {
-    fontSize: 9,
-    fontWeight: '500',
+    fontSize: 13,
+    fontWeight: '600',
     color: '#94A3B8',
   },
   
@@ -4345,14 +4345,14 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   horizontalBarTitle: {
-    fontSize: 11,
-    fontWeight: '500',
+    fontSize: 13,
+    fontWeight: '600',
     color: '#94A3B8',
     flex: 1,
   },
   horizontalBarValue: {
-    fontSize: 11,
-    fontWeight: '500',
+    fontSize: 13,
+    fontWeight: '600',
     color: '#60A5FA',
     minWidth: 36,
     textAlign: 'right',
@@ -4360,8 +4360,8 @@ const styles = StyleSheet.create({
   },
   horizontalBarTrack: {
     flexDirection: 'row',
-    height: 28,
-    borderRadius: 6,
+    height: 34,
+    borderRadius: 8,
     overflow: 'hidden',
     backgroundColor: 'rgba(15, 23, 42, 0.2)',
   },
@@ -4384,14 +4384,14 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(16, 185, 129, 0.8)',
   },
   horizontalBarSegmentText: {
-    fontSize: 9,
-    fontWeight: '400',
+    fontSize: 12,
+    fontWeight: '500',
     color: '#64748B',
     letterSpacing: -0.2,
   },
   horizontalBarSegmentTextActive: {
     color: '#FFF',
-    fontWeight: '500',
+    fontWeight: '700',
   },
   categoryHeader: {
     flexDirection: 'row',
@@ -4647,9 +4647,9 @@ const styles = StyleSheet.create({
     minWidth: 44,
   },
   possessionTeamLabelElegant: {
-    fontSize: 9,
+    fontSize: 12,
     color: '#94A3B8',
-    fontWeight: '500',
+    fontWeight: '600',
     marginBottom: 2,
     letterSpacing: 0.5,
   },
@@ -4819,7 +4819,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   playerPositionModal: {
-    fontSize: 11,
+    fontSize: 13,
     color: 'rgba(255, 255, 255, 0.7)',
     fontWeight: '500',
     marginTop: 2,
@@ -4872,7 +4872,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   subOptionsLabel: {
-    fontSize: 10,
+    fontSize: 13,
     color: '#9CA3AF',
   },
   subOptionsRow: {
@@ -4912,7 +4912,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   selectedSubstituteLabel: {
-    fontSize: 10,
+    fontSize: 13,
     color: '#9CA3AF',
   },
   selectedSubstituteRow: {
@@ -4927,7 +4927,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   changeSubstituteButton: {
-    fontSize: 11,
+    fontSize: 13,
     color: '#1FA2A6',
     fontWeight: '600',
   },
@@ -5203,7 +5203,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   substituteButtonTimeTextSingle: {
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: '500',
     color: '#E5E7EB',
     marginLeft: 2,
