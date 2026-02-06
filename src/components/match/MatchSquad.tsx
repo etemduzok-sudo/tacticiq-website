@@ -2016,8 +2016,18 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
           formations={formations}
           formationType={formationType}
           onSelect={handleFormationSelect}
-          onClose={() => setShowFormationModal(false)}
-          onTabChange={setFormationType}
+          onClose={() => {
+            setShowFormationModal(false);
+            setEditingMode(formationType === 'defense' ? 'defense' : 'attack');
+          }}
+          onTabChange={(type: string) => {
+            setFormationType(type);
+            if (type === 'defense') {
+              setEditingMode('defense');
+            } else {
+              setEditingMode('attack');
+            }
+          }}
           canSelectDefense={attackFormation != null && attackCount === 11}
           currentAttackFormation={attackFormation}
           currentDefenseFormation={defenseFormation}
@@ -2380,8 +2390,20 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
         formations={formations}
         formationType={formationType}
         onSelect={handleFormationSelect}
-        onClose={() => setShowFormationModal(false)}
-        onTabChange={setFormationType}
+        onClose={() => {
+          setShowFormationModal(false);
+          // ✅ Popup kapatıldığında formationType'a göre editingMode ayarla
+          setEditingMode(formationType === 'defense' ? 'defense' : 'attack');
+        }}
+        onTabChange={(type: string) => {
+          setFormationType(type);
+          // ✅ Popup'taki tab değişince sahada da doğru formasyon gösterilsin
+          if (type === 'defense') {
+            setEditingMode('defense');
+          } else {
+            setEditingMode('attack');
+          }
+        }}
         canSelectDefense={attackFormation != null && attackCount === 11}
         currentAttackFormation={attackFormation}
         currentDefenseFormation={defenseFormation}
@@ -4020,20 +4042,20 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   
-  // ✅ Kompakt toolbar - Tahmin sekmesi ile uyumlu yükseklik
+  // ✅ Kompakt toolbar - Tahmin sekmesi infoNote ile AYNI boyut
   bottomBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-start',
     backgroundColor: '#1E3A3A',
-    borderRadius: 8,
+    borderRadius: 12,
     paddingVertical: 5,
     paddingHorizontal: 8,
     borderWidth: 1,
     borderColor: 'rgba(31, 162, 166, 0.3)',
-    marginTop: 4,
-    marginBottom: 6,
-    minHeight: 42, // ✅ Sabit yükseklik - sıçrama önlenir
+    marginTop: 16, // ✅ Tahmin infoNote ile aynı marginTop
+    marginBottom: 0, // ✅ Tahmin infoNote ile aynı
+    height: 50, // ✅ Tahmin infoNote ile aynı sabit yükseklik
   },
   bottomBarLeft: {
     flex: 1,
