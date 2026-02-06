@@ -1235,12 +1235,6 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                         colors={['#1E3A3A', '#0F2A24']}
                         style={styles.playerCardGradient}
                       >
-                        {/* ✅ Maç öncesi: Sadece tek ✓ checkmark - tahmin yapıldı göstergesi */}
-                        {hasPredictions && (
-                          <View style={styles.predictionCheckBadge}>
-                            <Ionicons name="checkmark" size={10} color="#FFFFFF" />
-                          </View>
-                        )}
                         <View style={[
                           styles.jerseyNumberBadge,
                           // Elit oyuncu (85+) → altın arka plan
@@ -1255,11 +1249,19 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                         <Text style={styles.playerName} numberOfLines={1}>
                           {player.name.split(' ').pop()}
                         </Text>
-                        {/* Rating ve pozisyon - her zaman göster */}
-                        <View style={styles.playerBottomRow}>
-                          <Text style={styles.playerRatingBottom}>{player.rating}</Text>
-                          <Text style={styles.playerPositionBottom}>{positionLabel}</Text>
-                        </View>
+                        {/* ✅ Tahmin yapıldı tik işareti - ismin altında ortada */}
+                        {hasPredictions && (
+                          <View style={styles.predictionCheckCenter}>
+                            <Ionicons name="checkmark-circle" size={14} color="#10B981" />
+                          </View>
+                        )}
+                        {/* Rating ve pozisyon - tahmin yoksa göster */}
+                        {!hasPredictions && (
+                          <View style={styles.playerBottomRow}>
+                            <Text style={styles.playerRatingBottom}>{player.rating}</Text>
+                            <Text style={styles.playerPositionBottom}>{positionLabel}</Text>
+                          </View>
+                        )}
                         {/* Tahmin yapılmışsa glow efekti */}
                         {hasPredictions && <View style={styles.predictionGlow} />}
                       </LinearGradient>
@@ -2018,33 +2020,9 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
             </View>
           </View>
 
-          {/* ✅ Tahmin Kaydet Toolbar - Kilit + Tamamla Butonu */}
+          {/* ✅ Tahmin Kaydet Toolbar - Kadro sekmesiyle aynı tarz: [Kaydet Butonu] [Kilit] */}
           <View style={styles.predictionToolbar}>
-            {/* Kilit Butonu - Ortada */}
-            <TouchableOpacity
-              style={[
-                styles.predictionLockButton,
-                isPredictionLocked ? styles.predictionLockButtonLocked : styles.predictionLockButtonOpen
-              ]}
-              onPress={() => {
-                if (isPredictionLocked) {
-                  // Kilitli → Kilidi aç
-                  setIsPredictionLocked(false);
-                } else {
-                  // Açık → Kilitle (kaydet ve kilitle)
-                  handleSavePredictions();
-                }
-              }}
-              activeOpacity={0.7}
-            >
-              <Ionicons 
-                name={isPredictionLocked ? "lock-closed" : "lock-open"} 
-                size={22} 
-                color={isPredictionLocked ? '#EF4444' : '#10B981'} 
-              />
-            </TouchableOpacity>
-
-            {/* Kaydet Butonu */}
+            {/* Kaydet Butonu - Sol (flex: 1) */}
             <TouchableOpacity 
               style={[
                 styles.submitButton, 
@@ -2064,14 +2042,30 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                     <Text style={styles.submitButtonText}>Kaydediliyor...</Text>
                   </View>
                 ) : isPredictionLocked ? (
-                  <View style={styles.submitButtonLoading}>
-                    <Ionicons name="lock-closed" size={16} color="rgba(255,255,255,0.5)" />
-                    <Text style={[styles.submitButtonText, { opacity: 0.5 }]}>Tahminler Kilitli</Text>
-                  </View>
+                  <Text style={[styles.submitButtonText, { opacity: 0.5 }]}>Tahminler Kilitli</Text>
                 ) : (
                   <Text style={styles.submitButtonText}>Tahminleri Kaydet</Text>
                 )}
               </LinearGradient>
+            </TouchableOpacity>
+
+            {/* Kilit Butonu - Sağda (sadece aç/kapat, kaydetme yapmaz) */}
+            <TouchableOpacity
+              style={[
+                styles.predictionLockButton,
+                isPredictionLocked ? styles.predictionLockButtonLocked : styles.predictionLockButtonOpen
+              ]}
+              onPress={() => {
+                // Sadece kilit durumunu değiştir - kaydetme işlemi yapmaz
+                setIsPredictionLocked(!isPredictionLocked);
+              }}
+              activeOpacity={0.7}
+            >
+              <Ionicons 
+                name={isPredictionLocked ? "lock-closed" : "lock-open"} 
+                size={20} 
+                color={isPredictionLocked ? '#EF4444' : '#10B981'} 
+              />
             </TouchableOpacity>
           </View>
         </View>
@@ -3481,6 +3475,12 @@ const styles = StyleSheet.create({
     zIndex: 10,
     borderWidth: 1.5,
     borderColor: '#FFFFFF',
+  },
+  // ✅ Tahmin yapıldı tik - ismin altında ortada
+  predictionCheckCenter: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
   },
   substitutionBadge: {
     position: 'absolute',
