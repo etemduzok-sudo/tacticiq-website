@@ -1251,9 +1251,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                       >
                         <View style={[
                           styles.jerseyNumberBadge,
-                          // Elit oyuncu (85+) → altın arka plan
                           player.rating >= 85 && { backgroundColor: '#C9A44C' },
-                          // Kaleci → mavi arka plan (elit değilse)
                           player.rating < 85 && (player.position === 'GK' || isGoalkeeperPlayer(player)) && { backgroundColor: '#3B82F6' },
                         ]}>
                           <Text style={styles.jerseyNumberText}>
@@ -1263,21 +1261,19 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                         <Text style={styles.playerName} numberOfLines={1}>
                           {player.name.split(' ').pop()}
                         </Text>
-                        {/* ✅ Tahmin yapıldı tik işareti - sağ üst köşede badge */}
-                        {hasPredictions && (
-                          <View style={styles.predictionCheckBadgeTopRight}>
-                            <Ionicons name="checkmark" size={10} color="#FFFFFF" />
-                          </View>
-                        )}
-                        {/* Rating ve pozisyon - her zaman göster */}
                         <View style={styles.playerBottomRow}>
                           <Text style={styles.playerRatingBottom}>{player.rating}</Text>
                           <Text style={styles.playerPositionBottom}>{positionLabel}</Text>
                         </View>
-                        {/* Tahmin yapılmışsa glow efekti */}
                         {hasPredictions && <View style={styles.predictionGlow} />}
                       </LinearGradient>
                     </TouchableOpacity>
+                    {/* ✅ Tik badge - kartın dışında sağ üst köşede (View seviyesinde) */}
+                    {hasPredictions && (
+                      <View style={styles.predictionCheckBadgeTopRight}>
+                        <Ionicons name="checkmark" size={10} color="#FFFFFF" />
+                      </View>
+                    )}
                   </View>
                 );
               }).filter(Boolean);
@@ -3298,8 +3294,9 @@ const styles = StyleSheet.create({
   playerSlot: {
     position: 'absolute',
     transform: [{ translateX: -32 }, { translateY: -38 }],
-    zIndex: 5, // ✅ Kadro sekmesiyle aynı
-    elevation: 5, // ✅ Kadro sekmesiyle aynı
+    zIndex: 5,
+    elevation: 5,
+    overflow: 'visible', // ✅ Tik badge taşması için
   },
   predictionCardInfoIcon: {
     position: 'absolute',
@@ -3488,18 +3485,20 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: '#FFFFFF',
   },
-  // ✅ Tahmin yapıldı tik - sağ üst köşede kartın içinde
+  // ✅ Tahmin yapıldı tik - kartın sağ üst köşesinde (playerSlot seviyesinde)
   predictionCheckBadgeTopRight: {
     position: 'absolute',
-    top: 2,
-    right: 2,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
+    top: -6,
+    right: -6,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
     backgroundColor: '#10B981',
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 10,
+    zIndex: 20,
+    borderWidth: 2,
+    borderColor: '#0F2027',
   },
   substitutionBadge: {
     position: 'absolute',
