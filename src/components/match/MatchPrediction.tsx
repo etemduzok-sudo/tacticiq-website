@@ -1249,10 +1249,10 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                         <Text style={styles.playerName} numberOfLines={1}>
                           {player.name.split(' ').pop()}
                         </Text>
-                        {/* ✅ Tahmin yapıldı tik işareti - ismin altında ortada */}
+                        {/* ✅ Tahmin yapıldı tik işareti - sağ üst köşede badge */}
                         {hasPredictions && (
-                          <View style={styles.predictionCheckCenter}>
-                            <Ionicons name="checkmark-circle" size={12} color="#10B981" />
+                          <View style={styles.predictionCheckBadgeTopRight}>
+                            <Ionicons name="checkmark" size={10} color="#FFFFFF" />
                           </View>
                         )}
                         {/* Rating ve pozisyon - her zaman göster */}
@@ -3474,11 +3474,20 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: '#FFFFFF',
   },
-  // ✅ Tahmin yapıldı tik - ismin altında ortada
-  predictionCheckCenter: {
+  // ✅ Tahmin yapıldı tik - sağ üst köşede badge
+  predictionCheckBadgeTopRight: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#10B981',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 2,
+    zIndex: 10,
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
   },
   substitutionBadge: {
     position: 'absolute',
