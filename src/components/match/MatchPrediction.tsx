@@ -1268,10 +1268,10 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                         {hasPredictions && <View style={styles.predictionGlow} />}
                       </LinearGradient>
                     </TouchableOpacity>
-                    {/* ✅ Tik badge - kartın dışında sağ üst köşede (View seviyesinde) */}
+                    {/* ✅ Tik badge - kartın dışında sağ üst köşede (Kadro X ile aynı stil) */}
                     {hasPredictions && (
                       <View style={styles.predictionCheckBadgeTopRight}>
-                        <Ionicons name="checkmark" size={10} color="#FFFFFF" />
+                        <Ionicons name="checkmark" size={16} color="#FFFFFF" />
                       </View>
                     )}
                   </View>
@@ -3485,20 +3485,31 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: '#FFFFFF',
   },
-  // ✅ Tahmin yapıldı tik - kartın sağ üst köşesinde (playerSlot seviyesinde)
+  // ✅ Tahmin yapıldı tik - Kadro X butonu ile aynı stilde (yeşil versiyon)
   predictionCheckBadgeTopRight: {
     position: 'absolute',
-    top: -6,
-    right: -6,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+    top: -8,
+    right: -8,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     backgroundColor: '#10B981',
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 20,
+    zIndex: 9999,
+    elevation: 9999,
     borderWidth: 2,
-    borderColor: '#0F2027',
+    borderColor: '#FFFFFF',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.3,
+        shadowRadius: 2,
+      },
+      android: { elevation: 6 },
+      web: { boxShadow: '0 1px 4px rgba(0,0,0,0.4)' },
+    }),
   },
   substitutionBadge: {
     position: 'absolute',
@@ -4096,25 +4107,25 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   disciplineBarEmoji: {
-    fontSize: 12,
+    fontSize: 14,
   },
   disciplineBarTitle: {
-    fontSize: 10,
-    fontWeight: '500',
+    fontSize: 13,
+    fontWeight: '600',
     color: '#CBD5E1',
     flex: 1,
   },
   disciplineBarValue: {
-    fontSize: 11,
-    fontWeight: '500',
+    fontSize: 13,
+    fontWeight: '600',
     minWidth: 30,
     textAlign: 'right',
     letterSpacing: -0.2,
   },
   disciplineBarTrack: {
     flexDirection: 'row',
-    height: 28,
-    borderRadius: 6,
+    height: 34,
+    borderRadius: 8,
     overflow: 'hidden',
     backgroundColor: 'transparent',
   },
@@ -4153,14 +4164,14 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(16, 185, 129, 0.9)',
   },
   disciplineBarSegmentText: {
-    fontSize: 9,
-    fontWeight: '400',
+    fontSize: 12,
+    fontWeight: '500',
     color: '#64748B',
     letterSpacing: -0.2,
   },
   disciplineBarSegmentTextActive: {
     color: '#FFF',
-    fontWeight: '500',
+    fontWeight: '700',
   },
   
   // Dikey Çubuk Stilleri (Disiplin için)
@@ -4409,13 +4420,13 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   categoryLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#E6E6E6', // ✅ Design System: DARK_MODE.foreground
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#E6E6E6',
   },
   categoryHint: {
-    fontSize: 12,
-    color: '#9CA3AF', // ✅ Design System: Muted foreground (gri ton)
+    fontSize: 14,
+    color: '#9CA3AF',
   },
   focusExplanationRow: {
     flexDirection: 'row',
@@ -4501,9 +4512,10 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   scorePickerLabel: {
-    fontSize: 11,
-    color: '#9CA3AF', // ✅ Design System: Muted foreground (gri ton)
+    fontSize: 13,
+    color: '#9CA3AF',
     textAlign: 'center',
+    fontWeight: '500',
   },
   scoreButtons: {
     flexDirection: 'row',
@@ -4525,9 +4537,9 @@ const styles = StyleSheet.create({
     borderColor: '#1FA2A6',
   },
   scoreButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#E6E6E6', // ✅ Design System: DARK_MODE.foreground
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#E6E6E6',
   },
   scoreButtonTextActive: {
     color: '#FFFFFF',
@@ -4589,15 +4601,15 @@ const styles = StyleSheet.create({
     transform: [{ scale: 1.05 }],
   },
   optionText: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: '600',
-    color: '#E6E6E6', // ✅ Design System: DARK_MODE.foreground
+    color: '#E6E6E6',
     textAlign: 'center',
   },
   optionTextSmall: {
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: '600',
-    color: '#E6E6E6', // ✅ Design System: DARK_MODE.foreground
+    color: '#E6E6E6',
     textAlign: 'center',
   },
   optionTextActive: {
