@@ -1009,47 +1009,10 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
   const KADRO_LOCKED_MESSAGE = 'Maç başladığı için şu an kadro kurulumu yapılamaz.';
   const showKadroLockedToast = () => Alert.alert('Kadro kilitli', KADRO_LOCKED_MESSAGE);
 
-  // ✅ Kaydedilmemiş değişiklikleri takip et ve parent'a bildir
+  // ✅ Kaydedilmemiş değişiklikleri takip et - state'ler aşağıda tanımlandıktan sonra useEffect ile kullanılacak
   const [hasUnsavedChanges, setHasUnsavedChanges] = React.useState(false);
   // ✅ Kilit açıldıktan sonra gerçekten değişiklik yapıldı mı?
   const [hasModifiedSinceUnlock, setHasModifiedSinceUnlock] = React.useState(false);
-  // ✅ Önceki kilit durumu - kilit açıldığında reset flag
-  const prevSquadLockedRef = React.useRef(isSquadLocked);
-  
-  React.useEffect(() => {
-    // Kilit açıldığında modified flag'i sıfırla
-    if (prevSquadLockedRef.current === true && isSquadLocked === false) {
-      setHasModifiedSinceUnlock(false);
-    }
-    prevSquadLockedRef.current = isSquadLocked;
-  }, [isSquadLocked]);
-  
-  React.useEffect(() => {
-    // Canlı/biten maçlarda değişiklik yapılamaz
-    if (isKadroLocked) {
-      setHasUnsavedChanges(false);
-      onHasUnsavedChanges?.(false);
-      return;
-    }
-    
-    // ✅ Kadro kilitli ise (Tamamla basıldı) = kaydedilmiş, değişiklik yok
-    if (isSquadLocked) {
-      setHasUnsavedChanges(false);
-      onHasUnsavedChanges?.(false);
-      return;
-    }
-    
-    // Formasyon seçilmiş ve en az 1 oyuncu atanmışsa
-    const attackPlayerCount = Object.keys(attackPlayers).filter(k => attackPlayers[parseInt(k)]).length;
-    const hasFormationAndPlayers = attackFormation !== null && attackPlayerCount > 0;
-    
-    // ✅ Değişiklik yapıldıysa uyarı göster
-    // hasModifiedSinceUnlock: formasyon seçimi, oyuncu ekleme/çıkarma
-    const hasChanges = hasFormationAndPlayers && hasModifiedSinceUnlock;
-    
-    setHasUnsavedChanges(hasChanges);
-    onHasUnsavedChanges?.(hasChanges);
-  }, [attackFormation, attackPlayers, isKadroLocked, isSquadLocked, hasModifiedSinceUnlock, onHasUnsavedChanges]);
 
   // ✅ Mount ve Kadro sekmesi görünür olduğunda AsyncStorage'dan yükle (Tahmin'den geri dönünce kadro görünsün)
   // ✅ Tamamla basılmadan geri dönüldüyse (isCompleted !== true): HİÇBİR ŞEY yükleme - formasyon seçiminden başla
@@ -1540,6 +1503,44 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
   const [selectedPlayerForDetail, setSelectedPlayerForDetail] = useState<typeof players[0] | null>(null);
   const [isSaving, setIsSaving] = useState(false); // ✅ Kaydediliyor... göstergesi için
   const [isSquadLocked, setIsSquadLocked] = useState(false); // ✅ Kadro kilitli mi? (Tamamla sonrası)
+  
+  // ✅ Önceki kilit durumu - kilit açıldığında reset flag
+  const prevSquadLockedRef = React.useRef(isSquadLocked);
+  
+  // ✅ Kilit açıldığında modified flag'i sıfırla
+  React.useEffect(() => {
+    if (prevSquadLockedRef.current === true && isSquadLocked === false) {
+      setHasModifiedSinceUnlock(false);
+    }
+    prevSquadLockedRef.current = isSquadLocked;
+  }, [isSquadLocked]);
+  
+  // ✅ Kaydedilmemiş değişiklikleri parent'a bildir
+  React.useEffect(() => {
+    // Canlı/biten maçlarda değişiklik yapılamaz
+    if (isKadroLocked) {
+      setHasUnsavedChanges(false);
+      onHasUnsavedChanges?.(false);
+      return;
+    }
+    
+    // ✅ Kadro kilitli ise (Tamamla basıldı) = kaydedilmiş, değişiklik yok
+    if (isSquadLocked) {
+      setHasUnsavedChanges(false);
+      onHasUnsavedChanges?.(false);
+      return;
+    }
+    
+    // Formasyon seçilmiş ve en az 1 oyuncu atanmışsa
+    const attackPlayerCount = Object.keys(attackPlayers).filter(k => attackPlayers[parseInt(k)]).length;
+    const hasFormationAndPlayers = attackFormation !== null && attackPlayerCount > 0;
+    
+    // ✅ Değişiklik yapıldıysa uyarı göster
+    const hasChanges = hasFormationAndPlayers && hasModifiedSinceUnlock;
+    
+    setHasUnsavedChanges(hasChanges);
+    onHasUnsavedChanges?.(hasChanges);
+  }, [attackFormation, attackPlayers, isKadroLocked, isSquadLocked, hasModifiedSinceUnlock, onHasUnsavedChanges]);
   
   // ✅ Community Signal Popup State
   const [showCommunitySignal, setShowCommunitySignal] = useState(false);
