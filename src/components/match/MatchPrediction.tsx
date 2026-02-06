@@ -435,6 +435,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
   const [squadLoaded, setSquadLoaded] = useState(false);
   const [isSquadCompleted, setIsSquadCompleted] = useState(false); // ✅ Tamamla basıldı mı?
   const [isSaving, setIsSaving] = useState(false); // ✅ Kaydetme işlemi devam ediyor mu?
+  const [isPredictionLocked, setIsPredictionLocked] = useState(false); // ✅ Tahminler kilitli mi? (kırmızı kilit)
   
   // 🌟 STRATEGIC FOCUS SYSTEM
   const [selectedAnalysisFocus, setSelectedAnalysisFocus] = useState<AnalysisFocusType | null>(null);
@@ -672,6 +673,8 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
         if (parsed.playerPredictions && typeof parsed.playerPredictions === 'object') setPlayerPredictions(parsed.playerPredictions);
         if (Array.isArray(parsed.focusedPredictions)) setFocusedPredictions(parsed.focusedPredictions);
         if (parsed.selectedAnalysisFocus) setSelectedAnalysisFocus(parsed.selectedAnalysisFocus);
+        // ✅ Tahmin kilidi durumunu yükle (varsayılan: kilitli değil)
+        if (parsed.isPredictionLocked === true) setIsPredictionLocked(true);
         // ✅ İlk yükleme tamamlandı - artık değişiklikleri takip edebiliriz
         setTimeout(() => setInitialPredictionsLoaded(true), 100);
       } catch (_) {
@@ -690,6 +693,12 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
 
   const handlePlayerPredictionChange = (category: string, value: string | boolean) => {
     if (!selectedPlayer) return;
+    
+    // ✅ Tahminler kilitliyse değişiklik yapılamaz
+    if (isPredictionLocked) {
+      Alert.alert('Tahminler Kilitli', 'Değişiklik yapmak için önce kilidi açın.', [{ text: 'Tamam' }]);
+      return;
+    }
     
     // ✅ Değişiklik yapıldı - kaydedilmemiş değişiklik var
     if (initialPredictionsLoaded) setHasUnsavedChanges(true);
@@ -788,6 +797,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
         playerPredictions: cleanedPlayerPredictions,
         focusedPredictions: focusedPredictions, // 🌟 Strategic Focus
         selectedAnalysisFocus: selectedAnalysisFocus, // 🎯 Seçilen analiz odağı
+        isPredictionLocked: true, // ✅ Kaydedildi = kilitli
         timestamp: new Date().toISOString(),
       };
       
@@ -871,9 +881,10 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
       
       setIsSaving(false); // ✅ Kaydetme tamamlandı
       setHasUnsavedChanges(false); // ✅ Değişiklikler kaydedildi
+      setIsPredictionLocked(true); // ✅ Tahminler kaydedildi, kilitle (kırmızı kilit)
       Alert.alert(
-        'Tahminler Kaydedildi! 🎉',
-        'Tahminleriniz başarıyla kaydedildi. Maç başladığında puanlarınız hesaplanacak!',
+        'Tahminler Kaydedildi! 🔒',
+        'Tahminleriniz kaydedildi ve kilitlendi. Değişiklik yapmak için kilidi açın.',
         [{ text: 'Tamam' }]
       );
       // ✅ MatchDetail'da yıldızı güncelle
@@ -2007,77 +2018,62 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
             </View>
           </View>
 
-          {/* Analiz odağı – 6 odak kartı (sadece görsel, değiştirilemez) + açıklama */}
-          <View style={styles.predictionCategory}>
-            <View style={styles.categoryCard}>
-              <View style={styles.categoryHeader}>
-                <View style={styles.focusExplanationRow}>
-                  <Ionicons name="star" size={24} color="#F59E0B" />
-                  <Text style={styles.categoryLabel}>
-                    Analiz odağı
-                  </Text>
-                </View>
-              </View>
-              <View style={styles.focusExplanationContent}>
-                <Text style={styles.focusExplanationText}>
-                  {focusedPredictions.length > 0
-                    ? `${focusedPredictions.length} / ${SCORING_CONSTANTS.MAX_FOCUS} odak seçildi. Doğru tahmin 2x puan.`
-                    : `En fazla ${SCORING_CONSTANTS.MAX_FOCUS} tahmine odaklanabilirsiniz. Doğru tahmin 2x puan.`}
-                </Text>
-              </View>
-              {/* 6 analiz odağı – seçim ekranındaki butonların ve içeriklerin aynısı, sadece görsel (bu aşamada değiştirilemez) */}
-              <View style={styles.focusDisplayGrid} pointerEvents="none">
-                {ANALYSIS_FOCUSES.map((focus: AnalysisFocus) => (
-                  <View
-                    key={focus.id}
-                    style={[
-                      styles.focusDisplayCard,
-                      { borderColor: focus.borderColor, backgroundColor: focus.backgroundColor },
-                    ]}
-                  >
-                    <View style={styles.focusDisplayIconRow}>
-                      <View style={[styles.focusDisplayIconContainer, { borderColor: `${focus.color}40` }]}>
-                        <Ionicons name={focus.icon} size={14} color={focus.color} />
-                      </View>
-                    </View>
-                    <View style={styles.focusDisplayTitleRow}>
-                      <Text style={styles.focusDisplayTitle} numberOfLines={2}>{focus.title}</Text>
-                    </View>
-                    <View style={styles.focusDisplayBadgeRow}>
-                      <View style={[styles.focusDisplayBonusBadge, { borderColor: focus.color, backgroundColor: `${focus.color}15` }]}>
-                        <Text style={[styles.focusDisplayBonusText, { color: focus.color }]}>{focus.bonus}</Text>
-                      </View>
-                    </View>
-                    <View style={styles.focusDisplayDescriptionRow}>
-                      <Text style={styles.focusDisplayDescription} numberOfLines={3}>{focus.description}</Text>
-                    </View>
-                  </View>
-                ))}
-              </View>
-            </View>
-          </View>
-
-          {/* Submit Button */}
-          <TouchableOpacity 
-            style={[styles.submitButton, isSaving && styles.submitButtonDisabled]}
-            activeOpacity={0.8}
-            onPress={handleSavePredictions}
-            disabled={isSaving}
-          >
-            <LinearGradient
-              colors={isSaving ? ['#4B5563', '#374151'] : ['#1FA2A6', '#047857']}
-              style={styles.submitButtonGradient}
+          {/* ✅ Tahmin Kaydet Toolbar - Kilit + Tamamla Butonu */}
+          <View style={styles.predictionToolbar}>
+            {/* Kilit Butonu - Ortada */}
+            <TouchableOpacity
+              style={[
+                styles.predictionLockButton,
+                isPredictionLocked ? styles.predictionLockButtonLocked : styles.predictionLockButtonOpen
+              ]}
+              onPress={() => {
+                if (isPredictionLocked) {
+                  // Kilitli → Kilidi aç
+                  setIsPredictionLocked(false);
+                } else {
+                  // Açık → Kilitle (kaydet ve kilitle)
+                  handleSavePredictions();
+                }
+              }}
+              activeOpacity={0.7}
             >
-              {isSaving ? (
-                <View style={styles.submitButtonLoading}>
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                  <Text style={styles.submitButtonText}>Tahmin Kaydediliyor...</Text>
-                </View>
-              ) : (
-                <Text style={styles.submitButtonText}>Tahminleri Kaydet</Text>
-              )}
-            </LinearGradient>
-          </TouchableOpacity>
+              <Ionicons 
+                name={isPredictionLocked ? "lock-closed" : "lock-open"} 
+                size={22} 
+                color={isPredictionLocked ? '#EF4444' : '#10B981'} 
+              />
+            </TouchableOpacity>
+
+            {/* Kaydet Butonu */}
+            <TouchableOpacity 
+              style={[
+                styles.submitButton, 
+                (isSaving || isPredictionLocked) && styles.submitButtonDisabled
+              ]}
+              activeOpacity={0.8}
+              onPress={handleSavePredictions}
+              disabled={isSaving || isPredictionLocked}
+            >
+              <LinearGradient
+                colors={(isSaving || isPredictionLocked) ? ['#4B5563', '#374151'] : ['#1FA2A6', '#047857']}
+                style={styles.submitButtonGradient}
+              >
+                {isSaving ? (
+                  <View style={styles.submitButtonLoading}>
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                    <Text style={styles.submitButtonText}>Kaydediliyor...</Text>
+                  </View>
+                ) : isPredictionLocked ? (
+                  <View style={styles.submitButtonLoading}>
+                    <Ionicons name="lock-closed" size={16} color="rgba(255,255,255,0.5)" />
+                    <Text style={[styles.submitButtonText, { opacity: 0.5 }]}>Tahminler Kilitli</Text>
+                  </View>
+                ) : (
+                  <Text style={styles.submitButtonText}>Tahminleri Kaydet</Text>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
 
@@ -4649,12 +4645,38 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(148, 163, 184, 0.3)',
   },
   
+  // ✅ Tahmin Toolbar (Kilit + Kaydet)
+  predictionToolbar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 16,
+    marginTop: 16,
+    paddingHorizontal: 16,
+  },
+  predictionLockButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  predictionLockButtonLocked: {
+    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+    borderWidth: 2,
+    borderColor: '#EF4444',
+  },
+  predictionLockButtonOpen: {
+    backgroundColor: 'rgba(16, 185, 129, 0.2)',
+    borderWidth: 2,
+    borderColor: '#10B981',
+  },
   // Submit Button
   submitButton: {
+    flex: 1,
     height: 50,
     borderRadius: 12,
     overflow: 'hidden',
-    marginTop: 8,
   },
   submitButtonGradient: {
     flex: 1,
