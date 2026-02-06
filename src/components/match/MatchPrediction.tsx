@@ -3415,13 +3415,13 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   playerBottomRow: {
+    position: 'absolute',
+    bottom: 3,
+    left: 4,
+    right: 4,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    width: '100%',
-    paddingHorizontal: 2,
-    marginTop: 'auto',
-    flexShrink: 0,
   },
   playerRatingBottom: {
     fontSize: 10,

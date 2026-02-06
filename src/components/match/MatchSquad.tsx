@@ -3983,13 +3983,13 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   playerBottomRow: {
+    position: 'absolute',
+    bottom: 3,
+    left: 4,
+    right: 4,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    width: '100%',
-    paddingHorizontal: 4,
-    marginTop: 'auto', // Push to bottom
-    flexShrink: 0, // Prevent shrinking
   },
   playerRatingBottom: {
     fontSize: 10,

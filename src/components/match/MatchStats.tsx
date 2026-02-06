@@ -193,6 +193,9 @@ const topPlayers = {
   ],
 };
 
+// Maç başlamadı mı kontrolü
+const NOT_STARTED_STATUSES = ['NS', 'TBD', 'PST', 'CANC', 'ABD', 'AWD', 'WO'];
+
 export const MatchStats: React.FC<MatchStatsScreenProps> = ({
   matchData,
   matchId,
@@ -200,6 +203,10 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
   const [activeTab, setActiveTab] = useState<'match' | 'players'>('match');
   const [matchStats, setMatchStats] = useState<DisplayStat[]>(defaultDetailedStats);
   const [statsLoading, setStatsLoading] = useState(!!matchId);
+  
+  // ✅ Maç durumu kontrolü
+  const matchStatus = matchData?.fixture?.status?.short || matchData?.status?.short || matchData?.statusShort || '';
+  const isMatchNotStarted = NOT_STARTED_STATUSES.includes(matchStatus) || matchStatus === '';
 
   useEffect(() => {
     if (!matchId) return;
@@ -265,7 +272,28 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {activeTab === 'match' ? (
+        {/* ✅ Maç henüz başlamadıysa bildirim göster (Canlı sekmesiyle aynı tarz) */}
+        {isMatchNotStarted ? (
+          <View style={styles.notStartedContainer}>
+            <View style={styles.notStartedCard}>
+              <View style={styles.notStartedIconContainer}>
+                <Ionicons 
+                  name={activeTab === 'match' ? 'stats-chart-outline' : 'people-outline'} 
+                  size={48} 
+                  color={BRAND.accent} 
+                />
+              </View>
+              <Text style={styles.notStartedTitle}>
+                {activeTab === 'match' ? 'Maç İstatistikleri' : 'Oyuncu İstatistikleri'}
+              </Text>
+              <Text style={styles.notStartedSubtitle}>
+                {activeTab === 'match' 
+                  ? 'Maç başladığında istatistikler\nburada görünecek'
+                  : 'Maç başladığında oyuncu performansları\nburada görünecek'}
+              </Text>
+            </View>
+          </View>
+        ) : activeTab === 'match' ? (
           // MAÇ İSTATİSTİKLERİ (canlı API verisi veya varsayılan)
           <View style={styles.statsContainer}>
             {statsLoading ? (
@@ -815,6 +843,43 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#94A3B8',
     fontWeight: '500',
+  },
+  // ✅ Maç henüz başlamadı - Canlı sekmesiyle aynı stil
+  notStartedContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  notStartedCard: {
+    backgroundColor: DARK_MODE.card,
+    borderRadius: 16,
+    padding: 32,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: DARK_MODE.border,
+    maxWidth: 320,
+  },
+  notStartedIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(201, 164, 76, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  notStartedTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 8,
+  },
+  notStartedSubtitle: {
+    fontSize: 14,
+    color: '#94A3B8',
+    textAlign: 'center',
+    lineHeight: 22,
   },
   statRowCard: {
     backgroundColor: DARK_MODE.card,
