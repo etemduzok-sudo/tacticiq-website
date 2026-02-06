@@ -1252,16 +1252,14 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                         {/* ✅ Tahmin yapıldı tik işareti - ismin altında ortada */}
                         {hasPredictions && (
                           <View style={styles.predictionCheckCenter}>
-                            <Ionicons name="checkmark-circle" size={14} color="#10B981" />
+                            <Ionicons name="checkmark-circle" size={12} color="#10B981" />
                           </View>
                         )}
-                        {/* Rating ve pozisyon - tahmin yoksa göster */}
-                        {!hasPredictions && (
-                          <View style={styles.playerBottomRow}>
-                            <Text style={styles.playerRatingBottom}>{player.rating}</Text>
-                            <Text style={styles.playerPositionBottom}>{positionLabel}</Text>
-                          </View>
-                        )}
+                        {/* Rating ve pozisyon - her zaman göster */}
+                        <View style={styles.playerBottomRow}>
+                          <Text style={styles.playerRatingBottom}>{player.rating}</Text>
+                          <Text style={styles.playerPositionBottom}>{positionLabel}</Text>
+                        </View>
                         {/* Tahmin yapılmışsa glow efekti */}
                         {hasPredictions && <View style={styles.predictionGlow} />}
                       </LinearGradient>
