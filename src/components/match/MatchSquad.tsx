@@ -1010,8 +1010,19 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
   const showKadroLockedToast = () => Alert.alert('Kadro kilitli', KADRO_LOCKED_MESSAGE);
 
   // ✅ Kaydedilmemiş değişiklikleri takip et ve parent'a bildir
-  // Formasyon seçildiyse VE oyuncu atandıysa = değişiklik var
   const [hasUnsavedChanges, setHasUnsavedChanges] = React.useState(false);
+  // ✅ Kilit açıldıktan sonra gerçekten değişiklik yapıldı mı?
+  const [hasModifiedSinceUnlock, setHasModifiedSinceUnlock] = React.useState(false);
+  // ✅ Önceki kilit durumu - kilit açıldığında reset flag
+  const prevSquadLockedRef = React.useRef(isSquadLocked);
+  
+  React.useEffect(() => {
+    // Kilit açıldığında modified flag'i sıfırla
+    if (prevSquadLockedRef.current === true && isSquadLocked === false) {
+      setHasModifiedSinceUnlock(false);
+    }
+    prevSquadLockedRef.current = isSquadLocked;
+  }, [isSquadLocked]);
   
   React.useEffect(() => {
     // Canlı/biten maçlarda değişiklik yapılamaz
@@ -1021,13 +1032,24 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
       return;
     }
     
-    // Formasyon seçilmiş ve en az 1 oyuncu atanmışsa = kaydedilmemiş değişiklik var
+    // ✅ Kadro kilitli ise (Tamamla basıldı) = kaydedilmiş, değişiklik yok
+    if (isSquadLocked) {
+      setHasUnsavedChanges(false);
+      onHasUnsavedChanges?.(false);
+      return;
+    }
+    
+    // Formasyon seçilmiş ve en az 1 oyuncu atanmışsa
     const attackPlayerCount = Object.keys(attackPlayers).filter(k => attackPlayers[parseInt(k)]).length;
-    const hasChanges = attackFormation !== null && attackPlayerCount > 0;
+    const hasFormationAndPlayers = attackFormation !== null && attackPlayerCount > 0;
+    
+    // ✅ Değişiklik yapıldıysa uyarı göster
+    // hasModifiedSinceUnlock: formasyon seçimi, oyuncu ekleme/çıkarma
+    const hasChanges = hasFormationAndPlayers && hasModifiedSinceUnlock;
     
     setHasUnsavedChanges(hasChanges);
     onHasUnsavedChanges?.(hasChanges);
-  }, [attackFormation, attackPlayers, isKadroLocked, onHasUnsavedChanges]);
+  }, [attackFormation, attackPlayers, isKadroLocked, isSquadLocked, hasModifiedSinceUnlock, onHasUnsavedChanges]);
 
   // ✅ Mount ve Kadro sekmesi görünür olduğunda AsyncStorage'dan yükle (Tahmin'den geri dönünce kadro görünsün)
   // ✅ Tamamla basılmadan geri dönüldüyse (isCompleted !== true): HİÇBİR ŞEY yükleme - formasyon seçiminden başla
@@ -1590,6 +1612,7 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
       setDefenseFormation(null);
       setDefensePlayers({});
       setDefenseConfirmShown(false);
+      setHasModifiedSinceUnlock(true); // ✅ Formasyon değişti
       setShowFormationModal(false);
       Alert.alert('Atak Formasyonu Seçildi!', `${formation?.name}\n\nŞimdi 11 oyuncunuzu pozisyonlara yerleştirin.`);
     } else {
@@ -1618,6 +1641,7 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
       
       setDefensePlayers(defPlayers); // SADECE kaleci atanmış, diğer 10 pozisyon boş
       setEditingMode('defense');
+      setHasModifiedSinceUnlock(true); // ✅ Formasyon değişti
       
       setShowFormationModal(false);
       Alert.alert(
@@ -1806,6 +1830,9 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
         setDefensePlayers({ ...defensePlayers, [selectedSlot]: player });
       }
       
+      // ✅ Değişiklik yapıldı - kilit açıldıysa uyarı gösterilecek
+      setHasModifiedSinceUnlock(true);
+      
       setSelectedSlot(null);
       setShowPlayerModal(false);
       
@@ -1818,6 +1845,9 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
     const player = selectedPlayers[slotIndex];
     if (player) {
       setSelectedPlayers({ ...selectedPlayers, [slotIndex]: null });
+      
+      // ✅ Değişiklik yapıldı - kilit açıldıysa uyarı gösterilecek
+      setHasModifiedSinceUnlock(true);
       
       // ✅ Atak modunda oyuncu çıkarılırsa: defans kadrosu ETKİLENMEZ
       // Kullanıcı her kadroyu ayrı yönetir
