@@ -1163,8 +1163,8 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                 const hasAssist = !!(playerPreds.assist || playerPreds.willAssist);
                 const hasInjury = !!(playerPreds.injuredOut);
                 
-                // ✅ Topluluk çerçeve stili (en baskın tahmine göre renk)
-                const communityBorder = getCommunityBorderStyle(player.id);
+                // ✅ Topluluk çerçeve stili - sadece canlı/bitmiş maçlarda göster (maç öncesi sadece elit çerçeve ve glow)
+                const communityBorder = (isMatchLive || isMatchFinished) ? getCommunityBorderStyle(player.id) : null;
 
                 return (
                   <View
@@ -1203,17 +1203,19 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                     <TouchableOpacity
                       style={[
                         styles.playerCard,
+                        // 1️⃣ Tahmin yapılmış oyuncular - glow efekti (arka plan ışığı)
                         hasPredictions && styles.playerCardPredicted,
-                        player.rating >= 85 && styles.playerCardElite,
-                        // ✅ Topluluk çerçevesi (dinamik renk ve kalınlık)
+                        // 2️⃣ Maç öncesi: Elit oyuncular (85+) altın çerçeve, kaleciler mavi çerçeve
+                        !(isMatchLive || isMatchFinished) && player.rating >= 85 && styles.playerCardElite,
+                        !(isMatchLive || isMatchFinished) && player.rating < 85 && (player.position === 'GK' || isGoalkeeperPlayer(player)) && styles.playerCardGK,
+                        // 3️⃣ Canlı/bitmiş maç: Topluluk çerçevesi (dinamik renk ve kalınlık)
                         communityBorder && {
                           borderColor: communityBorder.color,
                           borderWidth: communityBorder.width,
                         },
-                        // Fallback stiller (topluluk verisi yoksa)
+                        // 4️⃣ Canlı/bitmiş maç fallback (topluluk verisi yoksa)
                         !communityBorder && (isMatchLive || isMatchFinished) && (positionLabel === 'GK' || isGoalkeeperPlayer(player)) && styles.playerCardGKCommunity,
                         !communityBorder && (isMatchLive || isMatchFinished) && (positionLabel === 'ST' || (player.position && String(player.position).toUpperCase() === 'ST')) && styles.playerCardSTCommunity,
-                        !communityBorder && !(isMatchLive || isMatchFinished) && (player.position === 'GK' || isGoalkeeperPlayer(player)) && styles.playerCardGK,
                       ]}
                       onPress={() => setSelectedPlayer(player)}
                       activeOpacity={0.8}
