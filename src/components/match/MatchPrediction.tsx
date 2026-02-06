@@ -911,6 +911,12 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
   }, [hasUnsavedChanges, onHasUnsavedChanges]);
 
   const handlePredictionChange = (category: string, value: string | number) => {
+    // ✅ Tahminler kilitliyse değişiklik yapılamaz
+    if (isPredictionLocked) {
+      Alert.alert('Tahminler Kilitli', 'Değişiklik yapmak için önce kilidi açın (yeşil kilite tıklayın).', [{ text: 'Tamam' }]);
+      return;
+    }
+    
     // ✅ Değişiklik yapıldı - kaydedilmemiş değişiklik var
     if (initialPredictionsLoaded) setHasUnsavedChanges(true);
     
@@ -1061,6 +1067,12 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
   };
 
   const handleScoreChange = (category: 'firstHalfHomeScore' | 'firstHalfAwayScore' | 'secondHalfHomeScore' | 'secondHalfAwayScore', value: number) => {
+    // ✅ Tahminler kilitliyse değişiklik yapılamaz
+    if (isPredictionLocked) {
+      Alert.alert('Tahminler Kilitli', 'Değişiklik yapmak için önce kilidi açın.', [{ text: 'Tamam' }]);
+      return;
+    }
+    
     // ✅ Değişiklik yapıldı - kaydedilmemiş değişiklik var
     if (initialPredictionsLoaded) setHasUnsavedChanges(true);
     
@@ -3286,6 +3298,7 @@ const styles = StyleSheet.create({
     transform: [{ translateX: -32 }, { translateY: -38 }],
     zIndex: 5, // ✅ Kadro sekmesiyle aynı
     elevation: 5, // ✅ Kadro sekmesiyle aynı
+    overflow: 'visible', // ✅ Badge'lerin kesilmemesi için
   },
   predictionCardInfoIcon: {
     position: 'absolute',
