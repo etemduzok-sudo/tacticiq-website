@@ -2194,62 +2194,49 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
                 <Text style={styles.changeFormationText} numberOfLines={1}>{formation?.name}</Text>
               </>
             ) : (
-              // ✅ TEK SATIR: [⚡4-3-3] [🛡️5-4-1] | 🔓 | [Tamamla]
-              <View style={styles.compactToolbar}>
-                {/* Sol: Formasyon Butonları */}
-                <View style={styles.formationButtonsRow}>
-                  {/* Atak Formasyon */}
-                  <TouchableOpacity
-                    style={[
-                      styles.formationPill, 
-                      editingMode === 'attack' && styles.formationPillActive
-                    ]}
-                    onPress={() => {
-                      setEditingMode('attack');
-                      setFormationType('attack');
-                      setShowFormationModal(true);
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons name="flash" size={12} color={editingMode === 'attack' ? '#FFFFFF' : '#1FA2A6'} />
+              // ✅ SİMETRİK TOOLBAR: [2 Satırlı Formasyon] | 🔓 | [Tamamla]
+              <View style={styles.symmetricToolbar}>
+                {/* Sol: 2 Satırlı Formasyon Butonu */}
+                <TouchableOpacity
+                  style={styles.dualLineFormationButton}
+                  onPress={() => {
+                    // Henüz formasyon seçilmediyse atak modal'ı aç
+                    setFormationType('attack');
+                    setShowFormationModal(true);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  {/* Satır 1: Atak */}
+                  <View style={[
+                    styles.formationLine,
+                    editingMode === 'attack' && styles.formationLineActive
+                  ]}>
+                    <Ionicons name="flash" size={14} color={editingMode === 'attack' ? '#F59E0B' : '#1FA2A6'} />
                     <Text style={[
-                      styles.formationPillText,
-                      editingMode === 'attack' && styles.formationPillTextActive
+                      styles.formationLineText,
+                      editingMode === 'attack' && styles.formationLineTextActive
                     ]} numberOfLines={1}>
-                      {attackFormation ? (formations.find(f => f.id === attackFormation)?.name || attackFormation).replace(' ', '') : 'Seç'}
+                      {attackFormation 
+                        ? formations.find(f => f.id === attackFormation)?.name || attackFormation
+                        : ''}
                     </Text>
-                  </TouchableOpacity>
-                  
-                  {/* Defans Formasyon */}
-                  <TouchableOpacity
-                    style={[
-                      styles.formationPill, 
-                      editingMode === 'defense' && styles.formationPillActive,
-                      !attackFormation && styles.formationPillDisabled
-                    ]}
-                    onPress={() => {
-                      if (!attackFormation) {
-                        Alert.alert('Önce Atak', 'Önce atak formasyonu seçmelisiniz.');
-                        return;
-                      }
-                      setEditingMode('defense');
-                      setFormationType('defense');
-                      setShowFormationModal(true);
-                    }}
-                    activeOpacity={attackFormation ? 0.7 : 1}
-                  >
-                    <Ionicons name="shield" size={12} color={editingMode === 'defense' ? '#FFFFFF' : (attackFormation ? '#1FA2A6' : '#64748B')} />
+                  </View>
+                  {/* Satır 2: Defans */}
+                  <View style={[
+                    styles.formationLine,
+                    editingMode === 'defense' && styles.formationLineActive
+                  ]}>
+                    <Ionicons name="shield" size={14} color={editingMode === 'defense' ? '#3B82F6' : '#1FA2A6'} />
                     <Text style={[
-                      styles.formationPillText,
-                      editingMode === 'defense' && styles.formationPillTextActive,
-                      !attackFormation && styles.formationPillTextDisabled
+                      styles.formationLineText,
+                      editingMode === 'defense' && styles.formationLineTextActive
                     ]} numberOfLines={1}>
                       {defenseFormation 
-                        ? (formations.find(f => f.id === defenseFormation)?.name || defenseFormation).replace(' ', '')
-                        : (attackFormation ? 'Seç' : '–')}
+                        ? formations.find(f => f.id === defenseFormation)?.name || defenseFormation
+                        : ''}
                     </Text>
-                  </TouchableOpacity>
-                </View>
+                  </View>
+                </TouchableOpacity>
 
                 {/* Orta: Kilit */}
                 {!isKadroLocked && (
@@ -2276,25 +2263,25 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
                   >
                     <Ionicons 
                       name={isSquadLocked ? "lock-closed" : "lock-open"} 
-                      size={18} 
+                      size={20} 
                       color={isSquadLocked ? '#EF4444' : (isCompleteButtonActive ? '#10B981' : '#64748B')} 
                     />
                   </TouchableOpacity>
                 )}
 
-                {/* Sağ: Tamamla */}
+                {/* Sağ: Tamamla - Sol butonla simetrik boyut */}
                 {!isKadroLocked && !isSquadLocked && (
                   <TouchableOpacity
                     style={[
-                      styles.completeButtonCompact,
-                      !isCompleteButtonActive && styles.completeButtonCompactDisabled,
+                      styles.completeButtonSymmetric,
+                      !isCompleteButtonActive && styles.completeButtonSymmetricDisabled,
                     ]}
                     onPress={handleComplete}
                     disabled={!isCompleteButtonActive}
                     activeOpacity={0.8}
                   >
-                    <Text style={styles.completeButtonCompactText}>Tamamla</Text>
-                    <Ionicons name="checkmark-circle" size={16} color="#FFFFFF" />
+                    <Text style={styles.completeButtonSymmetricText}>Tamamla</Text>
+                    <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" />
                   </TouchableOpacity>
                 )}
               </View>
@@ -4148,54 +4135,50 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   
-  // ✅ Kompakt Tek Satır Toolbar
-  compactToolbar: {
+  // ✅ Simetrik Toolbar: [Formasyon 2 satır] | 🔓 | [Tamamla]
+  symmetricToolbar: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'space-between',
     flex: 1,
   },
-  formationButtonsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  formationPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    borderRadius: 6,
-    backgroundColor: 'rgba(31, 162, 166, 0.15)',
+  // 2 Satırlı Formasyon Butonu
+  dualLineFormationButton: {
+    flexDirection: 'column',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: 'rgba(31, 162, 166, 0.1)',
     borderWidth: 1,
     borderColor: 'rgba(31, 162, 166, 0.3)',
+    minWidth: 110,
+    gap: 2,
   },
-  formationPillActive: {
-    backgroundColor: '#1FA2A6',
-    borderColor: '#1FA2A6',
+  formationLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 1,
   },
-  formationPillDisabled: {
-    opacity: 0.4,
+  formationLineActive: {
+    // Aktif satır için ek stil (isteğe bağlı)
   },
-  formationPillText: {
+  formationLineText: {
     fontSize: 11,
-    color: '#1FA2A6',
+    color: '#9CA3AF',
+    fontWeight: '500',
+  },
+  formationLineTextActive: {
+    color: '#FFFFFF',
     fontWeight: '600',
   },
-  formationPillTextActive: {
-    color: '#FFFFFF',
-  },
-  formationPillTextDisabled: {
-    color: '#64748B',
-  },
+  // Kilit Butonu - Ortada
   lockButtonCenter: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    marginHorizontal: 4,
   },
   lockButtonCenterLocked: {
     backgroundColor: 'rgba(239, 68, 68, 0.2)',
@@ -4208,23 +4191,27 @@ const styles = StyleSheet.create({
     borderColor: '#10B981',
   },
   lockButtonCenterDisabled: {
-    backgroundColor: 'rgba(100, 116, 139, 0.1)',
+    backgroundColor: 'rgba(100, 116, 139, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(100, 116, 139, 0.3)',
   },
-  completeButtonCompact: {
+  // Tamamla Butonu - Sol ile simetrik
+  completeButtonSymmetric: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    justifyContent: 'center',
+    gap: 6,
     paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 6,
+    paddingVertical: 8,
+    borderRadius: 8,
     backgroundColor: '#1FA2A6',
-    marginLeft: 'auto',
+    minWidth: 110,
   },
-  completeButtonCompactDisabled: {
+  completeButtonSymmetricDisabled: {
     backgroundColor: '#374151',
-    opacity: 0.6,
+    opacity: 0.5,
   },
-  completeButtonCompactText: {
+  completeButtonSymmetricText: {
     fontSize: 12,
     fontWeight: '600',
     color: '#FFFFFF',
