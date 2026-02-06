@@ -2090,6 +2090,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
           onPredictionChange={handlePlayerPredictionChange}
           startingXI={attackPlayersArray}
           reservePlayers={reserveTeamPlayers.length > 0 ? reserveTeamPlayers : allTeamPlayers}
+          allPlayerPredictions={playerPredictions}
           onSubstituteConfirm={(type, playerId, minute) => {
             if (!selectedPlayer) return;
             const category = type === 'normal' ? 'substitutePlayer' : 'injurySubstitutePlayer';
@@ -2175,6 +2176,7 @@ const PlayerPredictionModal = ({
   startingXI = [],
   reservePlayers = [],
   onSubstituteConfirm,
+  allPlayerPredictions = {},
 }: {
   player: any;
   predictions: any;
@@ -2183,6 +2185,7 @@ const PlayerPredictionModal = ({
   startingXI?: any[];
   reservePlayers?: any[];
   onSubstituteConfirm?: (type: 'normal' | 'injury', playerId: string, minute: string) => void;
+  allPlayerPredictions?: Record<string | number, any>;
 }) => {
   const [expandedSubstituteType, setExpandedSubstituteType] = useState<'normal' | 'injury' | null>(null);
   const [localSubstituteId, setLocalSubstituteId] = useState<string | null>(null);
@@ -2190,17 +2193,31 @@ const PlayerPredictionModal = ({
   const [showPlayerDropdown, setShowPlayerDropdown] = useState(false);
 
   // ✅ Çıkan oyuncunun pozisyonuna göre uygun yedekleri filtrele
+  // Zaten başka bir oyuncunun yerine girecek olarak seçilmiş oyuncuları da çıkar
   const availableSubstitutes = useMemo(() => {
     const startingXIIds = new Set((startingXI || []).map((p: any) => p.id));
     const allReserves = (reservePlayers || []).filter((p: any) => !startingXIIds.has(p.id));
+    
+    // ✅ Zaten başka bir oyuncunun yedeği olarak seçilmiş oyuncuları topla
+    const alreadySelectedAsSubstitute = new Set<string>();
+    Object.entries(allPlayerPredictions || {}).forEach(([playerId, preds]) => {
+      // Bu oyuncunun kendi tahmini değilse, yedek olarak seçileni bul
+      if (String(playerId) !== String(player.id)) {
+        if (preds?.substitutePlayer) alreadySelectedAsSubstitute.add(String(preds.substitutePlayer));
+        if (preds?.injurySubstitutePlayer) alreadySelectedAsSubstitute.add(String(preds.injurySubstitutePlayer));
+      }
+    });
     
     // Çıkan oyuncu kaleci ise sadece kalecileri, oyuncu ise sadece oyuncuları göster
     const isPlayerGK = isGoalkeeperPlayer(player);
     return allReserves.filter((p: any) => {
       const isSubstituteGK = isGoalkeeperPlayer(p);
-      return isPlayerGK === isSubstituteGK; // Aynı tip olmalı
+      if (isPlayerGK !== isSubstituteGK) return false; // Aynı tip olmalı
+      // ✅ Zaten başka birinin yerine girecekse gösterme
+      if (alreadySelectedAsSubstitute.has(String(p.id))) return false;
+      return true;
     });
-  }, [startingXI, reservePlayers, player]);
+  }, [startingXI, reservePlayers, player, allPlayerPredictions]);
 
   const getSubstituteName = (id: string | null) =>
     id ? (reservePlayers || []).find((p: any) => p.id.toString() === id)?.name : null;
@@ -3393,7 +3410,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   jerseyNumberText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '900',
     color: '#FFFFFF',
   },
@@ -3407,12 +3424,12 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   playerRatingBottom: {
-    fontSize: 8,
+    fontSize: 10,
     fontWeight: '700',
     color: '#C9A44C',
   },
   playerPositionBottom: {
-    fontSize: 8,
+    fontSize: 10,
     fontWeight: '600',
     color: '#9CA3AF',
   },
@@ -3558,8 +3575,8 @@ const styles = StyleSheet.create({
     transform: [{ rotate: '8deg' }],
   },
   playerName: {
-    fontSize: 9,
-    fontWeight: '500',
+    fontSize: 10,
+    fontWeight: '600',
     color: '#FFFFFF',
     textAlign: 'center',
     marginTop: 2,
