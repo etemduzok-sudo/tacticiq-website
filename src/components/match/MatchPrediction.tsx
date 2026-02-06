@@ -3385,9 +3385,10 @@ const styles = StyleSheet.create({
   playerCardGradient: {
     flex: 1,
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
     gap: 1,
     padding: 4,
+    paddingBottom: 18, // ✅ Alt kısım absolute playerBottomRow için boşluk
   },
   predictionGlow: {
     position: 'absolute',

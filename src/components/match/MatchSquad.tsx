@@ -3850,8 +3850,9 @@ const styles = StyleSheet.create({
   playerCardGradient: {
     flex: 1,
     padding: 4,
+    paddingBottom: 18, // ✅ Alt kısım absolute playerBottomRow için boşluk
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
     gap: 1,
   },
   removeButton: {
