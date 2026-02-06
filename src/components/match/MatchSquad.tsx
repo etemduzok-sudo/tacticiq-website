@@ -2194,128 +2194,110 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
                 <Text style={styles.changeFormationText} numberOfLines={1}>{formation?.name}</Text>
               </>
             ) : (
-              // ✅ 2 SATIR TOOLBAR: Üst satır Atak, alt satır Defans
-              <View style={styles.dualFormationToolbar}>
-                {/* Atak Satırı */}
-                <TouchableOpacity
-                  style={[
-                    styles.formationRowButton, 
-                    editingMode === 'attack' && styles.formationRowButtonActive
-                  ]}
-                  onPress={() => {
-                    setEditingMode('attack');
-                    setFormationType('attack');
-                    setShowFormationModal(true);
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="flash" size={14} color={editingMode === 'attack' ? '#1FA2A6' : '#64748B'} />
-                  <Text style={[
-                    styles.formationRowText,
-                    editingMode === 'attack' && styles.formationRowTextActive
-                  ]} numberOfLines={1}>
-                    {attackFormation ? formations.find(f => f.id === attackFormation)?.name || attackFormation : 'Atak Seç'}
-                  </Text>
-                </TouchableOpacity>
-                
-                {/* Defans Satırı */}
-                <TouchableOpacity
-                  style={[
-                    styles.formationRowButton, 
-                    editingMode === 'defense' && styles.formationRowButtonActive,
-                    !attackFormation && styles.formationRowButtonDisabled
-                  ]}
-                  onPress={() => {
-                    if (!attackFormation) {
-                      Alert.alert('Önce Atak', 'Önce atak formasyonu seçmelisiniz.');
-                      return;
-                    }
-                    setEditingMode('defense');
-                    setFormationType('defense');
-                    setShowFormationModal(true);
-                  }}
-                  activeOpacity={attackFormation ? 0.7 : 1}
-                >
-                  <Ionicons name="shield" size={14} color={editingMode === 'defense' ? '#1FA2A6' : '#64748B'} />
-                  <Text style={[
-                    styles.formationRowText,
-                    editingMode === 'defense' && styles.formationRowTextActive,
-                    !attackFormation && styles.formationRowTextDisabled
-                  ]} numberOfLines={1}>
-                    {defenseFormation 
-                      ? formations.find(f => f.id === defenseFormation)?.name || defenseFormation 
-                      : (attackFormation ? 'Defans Seç' : '–')}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-
-          <View style={styles.bottomBarRight}>
-            <Text style={styles.playerCount}>
-              {selectedCount}/11
-            </Text>
-            {!isKadroLocked && (
-              <>
-                {/* ✅ Kilit Butonu - Tamamla'dan sonra değişikliği engeller/izin verir */}
-                {isSquadLocked ? (
-                  <TouchableOpacity
-                    style={styles.lockButton}
-                    onPress={() => {
-                      Alert.alert(
-                        'Kadro Kilidi',
-                        'Kadro kilitli. Kilidi açarak değişiklik yapabilirsiniz.\n\nKilidi açmak istiyor musunuz?',
-                        [
-                          { text: 'İptal', style: 'cancel' },
-                          { 
-                            text: 'Kilidi Aç', 
-                            style: 'destructive',
-                            onPress: () => setIsSquadLocked(false) 
-                          },
-                        ]
-                      );
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons name="lock-closed" size={20} color="#EF4444" />
-                  </TouchableOpacity>
-                ) : isCompleteButtonActive ? (
-                  <TouchableOpacity
-                    style={styles.lockButtonOpen}
-                    onPress={() => {
-                      Alert.alert(
-                        'Kadro Açık',
-                        'Kadro düzenlenebilir durumda. Değişiklikleri tamamlamak için "Tamamla" butonuna basın.',
-                        [{ text: 'Tamam' }]
-                      );
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons name="lock-open" size={20} color="#10B981" />
-                  </TouchableOpacity>
-                ) : null}
-                
-                {/* ✅ Tamamla Butonu - Kilit açıksa göster */}
-                {!isSquadLocked && (
+              // ✅ TEK SATIR: [⚡4-3-3] [🛡️5-4-1] | 🔓 | [Tamamla]
+              <View style={styles.compactToolbar}>
+                {/* Sol: Formasyon Butonları */}
+                <View style={styles.formationButtonsRow}>
+                  {/* Atak Formasyon */}
                   <TouchableOpacity
                     style={[
-                      styles.completeButton,
-                      !isCompleteButtonActive && styles.completeButtonDisabled,
+                      styles.formationPill, 
+                      editingMode === 'attack' && styles.formationPillActive
+                    ]}
+                    onPress={() => {
+                      setEditingMode('attack');
+                      setFormationType('attack');
+                      setShowFormationModal(true);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="flash" size={12} color={editingMode === 'attack' ? '#FFFFFF' : '#1FA2A6'} />
+                    <Text style={[
+                      styles.formationPillText,
+                      editingMode === 'attack' && styles.formationPillTextActive
+                    ]} numberOfLines={1}>
+                      {attackFormation ? (formations.find(f => f.id === attackFormation)?.name || attackFormation).replace(' ', '') : 'Seç'}
+                    </Text>
+                  </TouchableOpacity>
+                  
+                  {/* Defans Formasyon */}
+                  <TouchableOpacity
+                    style={[
+                      styles.formationPill, 
+                      editingMode === 'defense' && styles.formationPillActive,
+                      !attackFormation && styles.formationPillDisabled
+                    ]}
+                    onPress={() => {
+                      if (!attackFormation) {
+                        Alert.alert('Önce Atak', 'Önce atak formasyonu seçmelisiniz.');
+                        return;
+                      }
+                      setEditingMode('defense');
+                      setFormationType('defense');
+                      setShowFormationModal(true);
+                    }}
+                    activeOpacity={attackFormation ? 0.7 : 1}
+                  >
+                    <Ionicons name="shield" size={12} color={editingMode === 'defense' ? '#FFFFFF' : (attackFormation ? '#1FA2A6' : '#64748B')} />
+                    <Text style={[
+                      styles.formationPillText,
+                      editingMode === 'defense' && styles.formationPillTextActive,
+                      !attackFormation && styles.formationPillTextDisabled
+                    ]} numberOfLines={1}>
+                      {defenseFormation 
+                        ? (formations.find(f => f.id === defenseFormation)?.name || defenseFormation).replace(' ', '')
+                        : (attackFormation ? 'Seç' : '–')}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Orta: Kilit */}
+                {!isKadroLocked && (
+                  <TouchableOpacity
+                    style={[
+                      styles.lockButtonCenter,
+                      isSquadLocked ? styles.lockButtonCenterLocked : (isCompleteButtonActive ? styles.lockButtonCenterOpen : styles.lockButtonCenterDisabled)
+                    ]}
+                    onPress={() => {
+                      if (isSquadLocked) {
+                        Alert.alert(
+                          'Kadro Kilidi',
+                          'Kadro kilitli. Kilidi açarak değişiklik yapabilirsiniz.\n\nKilidi açmak istiyor musunuz?',
+                          [
+                            { text: 'İptal', style: 'cancel' },
+                            { text: 'Kilidi Aç', style: 'destructive', onPress: () => setIsSquadLocked(false) },
+                          ]
+                        );
+                      } else if (isCompleteButtonActive) {
+                        Alert.alert('Kadro Açık', 'Değişiklikleri kaydetmek için "Tamamla" butonuna basın.', [{ text: 'Tamam' }]);
+                      }
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons 
+                      name={isSquadLocked ? "lock-closed" : "lock-open"} 
+                      size={18} 
+                      color={isSquadLocked ? '#EF4444' : (isCompleteButtonActive ? '#10B981' : '#64748B')} 
+                    />
+                  </TouchableOpacity>
+                )}
+
+                {/* Sağ: Tamamla */}
+                {!isKadroLocked && !isSquadLocked && (
+                  <TouchableOpacity
+                    style={[
+                      styles.completeButtonCompact,
+                      !isCompleteButtonActive && styles.completeButtonCompactDisabled,
                     ]}
                     onPress={handleComplete}
                     disabled={!isCompleteButtonActive}
                     activeOpacity={0.8}
                   >
-                    <LinearGradient
-                      colors={isCompleteButtonActive ? ['#1FA2A6', '#0F2A24'] : ['#374151', '#374151']} // ✅ Design System: Secondary → Primary gradient
-                      style={styles.completeButtonGradient}
-                    >
-                      <Text style={styles.completeButtonText}>Tamamla</Text>
-                      <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" />
-                    </LinearGradient>
+                    <Text style={styles.completeButtonCompactText}>Tamamla</Text>
+                    <Ionicons name="checkmark-circle" size={16} color="#FFFFFF" />
                   </TouchableOpacity>
                 )}
-              </>
+              </View>
             )}
           </View>
         </View>
@@ -4004,23 +3986,23 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   
-  // ✅ Tahmin sekmesindeki infoNote ile AYNI stil (sıçrama olmaması için)
+  // ✅ Kompakt toolbar - Tahmin sekmesi ile uyumlu yükseklik
   bottomBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
     backgroundColor: '#1E3A3A',
     borderRadius: 8,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
+    paddingVertical: 5,
+    paddingHorizontal: 8,
     borderWidth: 1,
     borderColor: 'rgba(31, 162, 166, 0.3)',
-    marginTop: 6, // ✅ 2px yukarı taşındı
-    marginBottom: 8,
+    marginTop: 4,
+    marginBottom: 6,
+    minHeight: 42, // ✅ Sabit yükseklik - sıçrama önlenir
   },
   bottomBarLeft: {
     flex: 1,
-    marginRight: 8,
   },
   // ✅ Tek satır: Tahminin/Gerçek 11/Topluluk + Atak/Defans (saha boyutu için kompakt)
   unifiedToolbarRow: {
@@ -4166,41 +4148,86 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   
-  // ✅ 2 Satır Formasyon Toolbar
-  dualFormationToolbar: {
-    flexDirection: 'column',
-    gap: 4,
-  },
-  formationRowButton: {
+  // ✅ Kompakt Tek Satır Toolbar
+  compactToolbar: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 10,
+    gap: 8,
+    flex: 1,
+  },
+  formationButtonsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  formationPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
     paddingVertical: 5,
     borderRadius: 6,
-    backgroundColor: 'rgba(31, 162, 166, 0.1)',
+    backgroundColor: 'rgba(31, 162, 166, 0.15)',
     borderWidth: 1,
-    borderColor: 'transparent',
+    borderColor: 'rgba(31, 162, 166, 0.3)',
   },
-  formationRowButtonActive: {
+  formationPillActive: {
+    backgroundColor: '#1FA2A6',
     borderColor: '#1FA2A6',
-    backgroundColor: 'rgba(31, 162, 166, 0.25)',
   },
-  formationRowButtonDisabled: {
+  formationPillDisabled: {
     opacity: 0.4,
   },
-  formationRowText: {
+  formationPillText: {
     fontSize: 11,
-    color: '#9CA3AF',
-    fontWeight: '500',
-    minWidth: 70,
-  },
-  formationRowTextActive: {
     color: '#1FA2A6',
     fontWeight: '600',
   },
-  formationRowTextDisabled: {
+  formationPillTextActive: {
+    color: '#FFFFFF',
+  },
+  formationPillTextDisabled: {
     color: '#64748B',
+  },
+  lockButtonCenter: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 4,
+  },
+  lockButtonCenterLocked: {
+    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+    borderWidth: 1.5,
+    borderColor: '#EF4444',
+  },
+  lockButtonCenterOpen: {
+    backgroundColor: 'rgba(16, 185, 129, 0.2)',
+    borderWidth: 1.5,
+    borderColor: '#10B981',
+  },
+  lockButtonCenterDisabled: {
+    backgroundColor: 'rgba(100, 116, 139, 0.1)',
+  },
+  completeButtonCompact: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+    backgroundColor: '#1FA2A6',
+    marginLeft: 'auto',
+  },
+  completeButtonCompactDisabled: {
+    backgroundColor: '#374151',
+    opacity: 0.6,
+  },
+  completeButtonCompactText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
   
   // Modal - Design System uyumlu
