@@ -3058,7 +3058,7 @@ const PlayerModal = ({ visible, players, selectedPlayers, positionLabel, onSelec
             <View style={styles.playerModalHeader}>
               <View style={styles.playerModalHeaderText}>
                 <Text style={styles.modalTitle}>
-                  {isDefenseMode ? '🛡️ Defans Oyuncusu Seç' : 'Oyuncu Seç'}
+                  {isDefenseMode ? '🛡️ Defans Oyuncusu Seç' : '⚡ Atak Oyuncusu Seç'}
                 </Text>
                 <Text style={styles.modalSubtitle}>Pozisyon: {positionLabel}</Text>
               </View>
@@ -3067,12 +3067,19 @@ const PlayerModal = ({ visible, players, selectedPlayers, positionLabel, onSelec
               </TouchableOpacity>
             </View>
             
-            {/* Defense Mode Info */}
-            {isDefenseMode && (
+            {/* Mode Info - Atak ve Defans için farklı uyarılar */}
+            {isDefenseMode ? (
               <View style={styles.defenseModeInfo}>
                 <Ionicons name="information-circle" size={16} color="#3B82F6" />
                 <Text style={styles.defenseModeInfoText}>
                   Sadece atak kadronuzdaki 11 oyuncudan seçim yapabilirsiniz.
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.attackModeInfo}>
+                <Ionicons name="football" size={16} color="#1FA2A6" />
+                <Text style={styles.attackModeInfoText}>
+                  Takımınızın ilk 11'ini kadrodaki oyuncular arasından belirleyin.
                 </Text>
               </View>
             )}
@@ -4354,6 +4361,24 @@ const styles = StyleSheet.create({
   defenseModeInfoText: {
     fontSize: 12,
     color: '#93C5FD',
+    flex: 1,
+  },
+  // ✅ Atak modu bilgi kutusu
+  attackModeInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(31, 162, 166, 0.15)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.3)',
+  },
+  attackModeInfoText: {
+    fontSize: 12,
+    color: '#5EEAD4',
     flex: 1,
   },
   modalCloseButtonAbsolute: {
