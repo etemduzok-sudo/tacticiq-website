@@ -91,17 +91,37 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
   const [hasPrediction, setHasPrediction] = useState(false);
   const effectiveAnalysisFocus = analysisFocusOverride ?? analysisFocus;
 
-  // ✅ Kaydedilmemiş değişiklik kontrolü
+  // ✅ Kaydedilmemiş değişiklik kontrolü - Tahmin sekmesi
   const [predictionHasUnsavedChanges, setPredictionHasUnsavedChanges] = useState(false);
   const [predictionSaveFn, setPredictionSaveFn] = useState<(() => Promise<void>) | null>(null);
   const [showUnsavedChangesModal, setShowUnsavedChangesModal] = useState(false);
   const [pendingTabChange, setPendingTabChange] = useState<string | null>(null);
+
+  // ✅ Kaydedilmemiş değişiklik kontrolü - Kadro sekmesi
+  const [squadHasUnsavedChanges, setSquadHasUnsavedChanges] = useState(false);
+  const [showSquadUnsavedModal, setShowSquadUnsavedModal] = useState(false);
+  const [pendingBackAction, setPendingBackAction] = useState(false);
 
   // ✅ Memoize onHasUnsavedChanges callback to prevent infinite re-renders
   const handleHasUnsavedChanges = useCallback((hasChanges: boolean, saveFn: () => Promise<void>) => {
     setPredictionHasUnsavedChanges(hasChanges);
     setPredictionSaveFn(() => saveFn);
   }, []);
+
+  // ✅ Kadro için unsaved changes callback
+  const handleSquadUnsavedChanges = useCallback((hasChanges: boolean) => {
+    setSquadHasUnsavedChanges(hasChanges);
+  }, []);
+
+  // ✅ Geri dönme kontrolü - kaydedilmemiş değişiklik varsa uyarı göster
+  const handleBackPress = useCallback(() => {
+    if (activeTab === 'squad' && squadHasUnsavedChanges) {
+      setShowSquadUnsavedModal(true);
+      setPendingBackAction(true);
+      return;
+    }
+    onBack();
+  }, [activeTab, squadHasUnsavedChanges, onBack]);
 
   // ✅ İki favori takım maçı: ev sahibi ve deplasman favorilerde
   const [selectedPredictionTeamId, setSelectedPredictionTeamId] = useState<number | null>(null);
@@ -350,7 +370,11 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
     },
     league: match.league.name,
     stadium: match.fixture.venue?.name || 'TBA',
-    date: new Date(match.fixture.date).toLocaleDateString('tr-TR'),
+    date: new Date(match.fixture.date).toLocaleDateString('tr-TR', { 
+      day: 'numeric', 
+      month: 'long', 
+      year: 'numeric' 
+    }),
     time: api.utils.formatMatchTime(new Date(match.fixture.date).getTime() / 1000),
     timestamp: match.fixture.timestamp || new Date(match.fixture.date).getTime() / 1000, // ✅ Geri sayım için
     // ✅ Canlı maç bilgileri
@@ -478,6 +502,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
             isVisible={activeTab === 'squad'}
             isMatchFinished={isMatchFinished}
             isMatchLive={isMatchLive}
+            onHasUnsavedChanges={handleSquadUnsavedChanges}
           />
         );
       
@@ -564,7 +589,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
         <View style={styles.matchCard}>
         {/* Top Row: Back Button + League Badge + Prediction Star */}
         <View style={styles.topRow}>
-          <TouchableOpacity onPress={onBack} style={styles.backButton}>
+          <TouchableOpacity onPress={handleBackPress} style={styles.backButton}>
             <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
           </TouchableOpacity>
 
@@ -642,29 +667,65 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
               </>
             ) : (
               <>
-                <Text style={styles.dateText}>● {matchData.date}</Text>
-                <Text style={styles.timeText}>{matchData.time}</Text>
-                {/* Countdown Boxes */}
+                {/* Tarih - Dashboard stili ile aynı */}
+                <View style={styles.dateInfoRow}>
+                  <Ionicons name="time" size={9} color="#94A3B8" />
+                  <Text style={styles.dateText}>{matchData.date}</Text>
+                </View>
+                
+                {/* Saat Badge - Dashboard stili ile aynı */}
+                <LinearGradient
+                  colors={['#1FA2A6', '#047857']}
+                  style={styles.timeBadge}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  <Text style={styles.timeBadgeText}>{matchData.time}</Text>
+                </LinearGradient>
+                
+                {/* Countdown - Dashboard stili ile aynı */}
                 {countdownData && countdownData.type === 'countdown' && (
                   <View style={styles.countdownRow}>
-                    <View style={[styles.countdownBox, styles.countdownBoxHours, { paddingHorizontal: countdownPadding }]}>
+                    <LinearGradient
+                      colors={[countdownData.color, countdownData.color === '#EF4444' ? '#B91C1C' : countdownData.color === '#F97316' ? '#EA580C' : countdownData.color === '#F59E0B' ? '#D97706' : countdownData.color === '#84CC16' ? '#65A30D' : '#059669']}
+                      style={styles.countdownBox}
+                    >
                       <Text style={styles.countdownNumber}>{String(countdownData.hours).padStart(2, '0')}</Text>
                       <Text style={styles.countdownLabel}>Saat</Text>
-                    </View>
-                    <View style={[styles.countdownBox, styles.countdownBoxMinutes, { paddingHorizontal: countdownPadding }]}>
+                    </LinearGradient>
+                    
+                    <Text style={[styles.countdownSeparator, { color: countdownData.color }]}>:</Text>
+                    
+                    <LinearGradient
+                      colors={[countdownData.color, countdownData.color === '#EF4444' ? '#B91C1C' : countdownData.color === '#F97316' ? '#EA580C' : countdownData.color === '#F59E0B' ? '#D97706' : countdownData.color === '#84CC16' ? '#65A30D' : '#059669']}
+                      style={styles.countdownBox}
+                    >
                       <Text style={styles.countdownNumber}>{String(countdownData.minutes).padStart(2, '0')}</Text>
                       <Text style={styles.countdownLabel}>Dakika</Text>
-                    </View>
-                    <View style={[styles.countdownBox, styles.countdownBoxSeconds, { paddingHorizontal: countdownPadding }]}>
+                    </LinearGradient>
+                    
+                    <Text style={[styles.countdownSeparator, { color: countdownData.color }]}>:</Text>
+                    
+                    <LinearGradient
+                      colors={[countdownData.color, countdownData.color === '#EF4444' ? '#B91C1C' : countdownData.color === '#F97316' ? '#EA580C' : countdownData.color === '#F59E0B' ? '#D97706' : countdownData.color === '#84CC16' ? '#65A30D' : '#059669']}
+                      style={styles.countdownBox}
+                    >
                       <Text style={styles.countdownNumber}>{String(countdownData.seconds).padStart(2, '0')}</Text>
                       <Text style={styles.countdownLabel}>Saniye</Text>
-                    </View>
+                    </LinearGradient>
                   </View>
                 )}
                 {countdownData && countdownData.type === 'days' && (
-                  <Text style={[styles.daysText, { color: countdownData.color }]}>
-                    {countdownData.days} gün kaldı
-                  </Text>
+                  <LinearGradient
+                    colors={['#f97316', '#ea580c']}
+                    style={styles.daysRemainingBadge}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                  >
+                    <Text style={styles.daysRemainingText}>
+                      MAÇA {countdownData.days} GÜN KALDI
+                    </Text>
+                  </LinearGradient>
                 )}
               </>
             )}
@@ -697,6 +758,35 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
       </View>
 
       {/* Bottom Navigation – overlay değil, akışta; bilgi kutusunu kesmez */}
+
+      {/* ✅ Kadro kaydedilmemiş değişiklik uyarısı */}
+      {showSquadUnsavedModal && (
+        <ConfirmModal
+          visible={true}
+          title="Kaydedilmemiş Değişiklikler"
+          message="Kadronuzda kaydedilmemiş değişiklikler var. Çıkmadan önce 'Tamamla' butonuna basarak kaydetmelisiniz, yoksa değişiklikler kaybolacak."
+          buttons={[
+            { 
+              text: 'Geri Dön', 
+              style: 'cancel', 
+              onPress: () => { 
+                setShowSquadUnsavedModal(false); 
+                setPendingBackAction(false); 
+              } 
+            },
+            { 
+              text: 'Kaydetmeden Çık', 
+              style: 'destructive', 
+              onPress: () => { 
+                setShowSquadUnsavedModal(false); 
+                setPendingBackAction(false);
+                onBack(); 
+              } 
+            },
+          ]}
+          onRequestClose={() => { setShowSquadUnsavedModal(false); setPendingBackAction(false); }}
+        />
+      )}
 
       {/* Tahminleri sil popup – header yıldızına basınca (tek takım) */}
       {showResetPredictionsModal && (
@@ -1050,53 +1140,72 @@ const styles = StyleSheet.create({
     minWidth: 100,
     flexShrink: 0,
   },
+  // ✅ Tarih satırı - Dashboard stili
+  dateInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 4,
+  },
   dateText: {
     fontSize: 10,
+    fontWeight: '600',
     color: '#94A3B8',
-    marginBottom: 2,
   },
-  timeText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#F8FAFB',
+  // ✅ Saat badge - Dashboard stili
+  timeBadge: {
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 8,
     marginBottom: 6,
   },
+  timeBadgeText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  // ✅ Geri sayım - Dashboard stili
   countdownRow: {
     flexDirection: 'row',
-    gap: 6,
+    alignItems: 'center',
+    gap: 4,
   },
   countdownBox: {
     alignItems: 'center',
-    paddingHorizontal: 6,
+    paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 8,
-    minWidth: 32,
-  },
-  countdownBoxHours: {
-    backgroundColor: 'rgba(31, 162, 166, 0.8)',
-  },
-  countdownBoxMinutes: {
-    backgroundColor: 'rgba(59, 130, 246, 0.8)',
-  },
-  countdownBoxSeconds: {
-    backgroundColor: 'rgba(234, 179, 8, 0.8)',
+    borderRadius: 6,
+    minWidth: 36,
   },
   countdownNumber: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '700',
-    color: '#FFF',
+    color: '#FFFFFF',
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
   countdownLabel: {
     fontSize: 7,
-    color: 'rgba(255,255,255,0.8)',
+    color: 'rgba(255,255,255,0.9)',
     fontWeight: '500',
     marginTop: 1,
   },
-  daysText: {
-    fontSize: 11,
-    fontWeight: '600',
+  countdownSeparator: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  // ✅ Gün kaldı badge - Dashboard stili
+  daysRemainingBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
     marginTop: 4,
+  },
+  daysRemainingText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   
   // ✅ Canlı Maç Stilleri - Dashboard ile uyumlu (fontSize 16)

@@ -13,6 +13,7 @@ import {
   Alert,
   Platform,
   InteractionManager,
+  ActivityIndicator,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../../config/supabase';
@@ -71,6 +72,8 @@ interface MatchSquadProps {
   isMatchFinished?: boolean;
   /** Canlı maç: Kadro VIEW-ONLY (sadece oynanan/canlı maç detayında kilit) */
   isMatchLive?: boolean;
+  /** Kaydedilmemiş değişiklik olduğunda çağrılır - parent component'e bildirir */
+  onHasUnsavedChanges?: (hasChanges: boolean) => void;
 }
 
 /** API'den gelen tüm kaleci varyantlarını tanı (G, GK, Goalkeeper vb.) */
@@ -654,7 +657,7 @@ const FootballField = ({ children, style }: any) => (
   </View>
 );
 
-export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], predictionTeamId, onComplete, onAttackFormationChangeConfirmed, isVisible = true, isMatchFinished = false, isMatchLive: isMatchLiveProp }: MatchSquadProps) {
+export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], predictionTeamId, onComplete, onAttackFormationChangeConfirmed, isVisible = true, isMatchFinished = false, isMatchLive: isMatchLiveProp, onHasUnsavedChanges }: MatchSquadProps) {
   const { width: winW, height: winH } = useWindowDimensions();
   
   // Saha boyutları - Tahmin ile BİREBİR aynı hesaplama (runtime'da)
@@ -1006,9 +1009,29 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
   const KADRO_LOCKED_MESSAGE = 'Maç başladığı için şu an kadro kurulumu yapılamaz.';
   const showKadroLockedToast = () => Alert.alert('Kadro kilitli', KADRO_LOCKED_MESSAGE);
 
+  // ✅ Kaydedilmemiş değişiklikleri takip et ve parent'a bildir
+  // Formasyon seçildiyse VE oyuncu atandıysa = değişiklik var
+  const [hasUnsavedChanges, setHasUnsavedChanges] = React.useState(false);
+  
+  React.useEffect(() => {
+    // Canlı/biten maçlarda değişiklik yapılamaz
+    if (isKadroLocked) {
+      setHasUnsavedChanges(false);
+      onHasUnsavedChanges?.(false);
+      return;
+    }
+    
+    // Formasyon seçilmiş ve en az 1 oyuncu atanmışsa = kaydedilmemiş değişiklik var
+    const attackPlayerCount = Object.keys(attackPlayers).filter(k => attackPlayers[parseInt(k)]).length;
+    const hasChanges = attackFormation !== null && attackPlayerCount > 0;
+    
+    setHasUnsavedChanges(hasChanges);
+    onHasUnsavedChanges?.(hasChanges);
+  }, [attackFormation, attackPlayers, isKadroLocked, onHasUnsavedChanges]);
+
   // ✅ Mount ve Kadro sekmesi görünür olduğunda AsyncStorage'dan yükle (Tahmin'den geri dönünce kadro görünsün)
-  // ✅ Tamamla basılmadan geri dönüldüyse (isCompleted !== true): sadece atak kadrosu yükle, defans formasyonu gösterme
-  // ✅ Oynanan maçta defans yarım kaldıysa atak modunda aç – atak dizilişi her zaman görünsün
+  // ✅ Tamamla basılmadan geri dönüldüyse (isCompleted !== true): HİÇBİR ŞEY yükleme - formasyon seçiminden başla
+  // ✅ Kullanıcı "Tamamla" butonu ile kadroyu tamamlayana kadar formasyon ve oyuncular gösterilmez
   const runRestore = React.useCallback(async () => {
     if (isMatchFinished) {
       setStateRestored(true);
@@ -1024,24 +1047,27 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
         const liveStatuses = ['1H', '2H', 'HT', 'ET', 'BT', 'P', 'LIVE'];
         const isLive = liveStatuses.includes(matchData?.fixture?.status?.short || matchData?.status || '');
 
-        if (parsed.attackFormation) setAttackFormation(parsed.attackFormation);
-        if (parsed.attackPlayers) setAttackPlayers(parsed.attackPlayers);
-
+        // ✅ SADECE "Tamamla" basıldıysa VEYA canlı maçta auto-apply yapıldıysa formasyon ve oyuncuları yükle
+        // Tamamla basılmadan çıkıldıysa HİÇBİR veri yüklenme - kullanıcı formasyon seçiminden başlar
         if (isCompleted || (isLive && isAutoApplied)) {
-          // ✅ Tamamla basıldıysa VEYA canlı maçta auto-apply yapıldıysa: defans formasyonu ve oyuncuları da yükle
+          if (parsed.attackFormation) setAttackFormation(parsed.attackFormation);
+          if (parsed.attackPlayers) setAttackPlayers(parsed.attackPlayers);
           if (parsed.defenseFormation) setDefenseFormation(parsed.defenseFormation);
           if (parsed.defensePlayers) setDefensePlayers(parsed.defensePlayers);
-          // ✅ editingMode'u restore ET AMA sadece sayfa ilk yüklenirken (isVisible değişince DEĞİL)
-          // editingMode kullanıcı tıklamasıyla değişir, restore'da override etmeyelim
+          // editingMode'u restore ET AMA sadece sayfa ilk yüklenirken
           if (parsed.editingMode && !stateRestored) setEditingMode(parsed.editingMode);
           setDefenseConfirmShown(parsed.defenseFormation ? true : (parsed.defenseConfirmShown || false));
+          // ✅ Tamamlanmış kadro kilitli olarak gelir
+          setIsSquadLocked(isCompleted);
         } else {
-          // Tamamla basılmadıysa ve canlı değilse: defans verisi sayılmaz
+          // ✅ Tamamla basılmadıysa: HİÇ formasyon/oyuncu yükleme - sıfırdan başla
+          // Kullanıcı formasyon seçmeli ve oyuncuları atayıp Tamamla basmalı
+          setAttackFormation(null);
+          setAttackPlayers({});
           setDefenseFormation(null);
           setDefensePlayers({});
-          // Sadece ilk restore'da attack'a al; sonradan kullanıcı Defans'a tıkladıysa dokunma
           if (!stateRestored) setEditingMode('attack');
-          setDefenseConfirmShown(parsed.defenseConfirmShown || false);
+          setDefenseConfirmShown(false);
         }
       }
     } catch (e) {
@@ -1462,9 +1488,10 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
       return editingMode === 'attack' ? attackFormation : (defenseFormation ?? attackFormation);
     }
     // Maç başlamadıysa (eski mantık)
+    // ✅ Defans modunda defans formasyonu yoksa atak formasyonunu göster (boş state'e düşmeyi önle)
     return editingMode === 'attack'
       ? attackFormation
-      : (defenseFormation ?? null);
+      : (defenseFormation ?? attackFormation ?? null);
   }, [isKadroLocked, viewSource, editingMode, attackFormation, defenseFormation, actualAttackFormation, actualDefenseFormation]);
   
   const defensePlayerCount = Object.keys(defensePlayers).filter(k => defensePlayers[parseInt(k)]).length;
@@ -1475,15 +1502,12 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
         return editingMode === 'attack' ? actualAttackPlayers : (Object.keys(actualDefensePlayers).length > 0 ? actualDefensePlayers : actualAttackPlayers);
       }
       // community ve user: mevcut attack/defense players
-      return editingMode === 'attack'
-        ? attackPlayers
-        : (defensePlayerCount < 11 ? attackPlayers : defensePlayers);
+      return editingMode === 'attack' ? attackPlayers : defensePlayers;
     }
-    // Maç başlamadıysa (eski mantık)
-    return editingMode === 'attack'
-      ? attackPlayers
-      : (defensePlayerCount < 11 ? attackPlayers : defensePlayers);
-  }, [isKadroLocked, viewSource, editingMode, attackPlayers, defensePlayers, defensePlayerCount, actualAttackPlayers, actualDefensePlayers]);
+    // ✅ Maç başlamadıysa: Defans modunda HER ZAMAN defensePlayers göster (boş bile olsa)
+    // Kullanıcı defans kadrosunu ayrı seçer
+    return editingMode === 'attack' ? attackPlayers : defensePlayers;
+  }, [isKadroLocked, viewSource, editingMode, attackPlayers, defensePlayers, actualAttackPlayers, actualDefensePlayers]);
   
   const setSelectedPlayers = editingMode === 'attack' ? setAttackPlayers : setDefensePlayers;
   
@@ -1492,6 +1516,8 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
   const [showPlayerModal, setShowPlayerModal] = useState(false);
   const [formationType, setFormationType] = useState<'attack' | 'defense' | 'balanced'>('attack');
   const [selectedPlayerForDetail, setSelectedPlayerForDetail] = useState<typeof players[0] | null>(null);
+  const [isSaving, setIsSaving] = useState(false); // ✅ Kaydediliyor... göstergesi için
+  const [isSquadLocked, setIsSquadLocked] = useState(false); // ✅ Kadro kilitli mi? (Tamamla sonrası)
   
   // ✅ Community Signal Popup State
   const [showCommunitySignal, setShowCommunitySignal] = useState(false);
@@ -1553,9 +1579,12 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
     transform: [{ scale: isWeb ? 1 : scale.value }],
   }));
 
-  const applyFormationChange = (formationId: string) => {
+  const applyFormationChange = (formationId: string, mode?: 'attack' | 'defense') => {
     const formation = formations.find(f => f.id === formationId);
-    if (editingMode === 'attack') {
+    // ✅ formationType state'ini kullan (modal'dan seçim yapılırken güncel)
+    const effectiveMode = mode || formationType;
+    
+    if (effectiveMode === 'attack') {
       setAttackFormation(formationId);
       setAttackPlayers({});
       setDefenseFormation(null);
@@ -1564,28 +1593,40 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
       setShowFormationModal(false);
       Alert.alert('Atak Formasyonu Seçildi!', `${formation?.name}\n\nŞimdi 11 oyuncunuzu pozisyonlara yerleştirin.`);
     } else {
-      // ✅ Defans formasyonu seçildiğinde: Aynı 11 oyuncuyu defans pozisyonlarına otomatik yerleştir (Tamamla hemen aktif olsun)
+      // ✅ Defans formasyonu seçildiğinde: SADECE kaleci otomatik atanır, diğer 10 pozisyon boş kalır
       setDefenseFormation(formationId);
       
+      const defFormation = formations.find((f: any) => f.id === formationId);
       const defPlayers: Record<number, typeof players[0] | null> = {};
-      const attackSlots = Object.keys(attackPlayers)
-        .map(Number)
-        .sort((a, b) => a - b);
-      attackSlots.forEach(slotIndex => {
-        const p = attackPlayers[slotIndex];
-        if (p) defPlayers[slotIndex] = p;
+      
+      // ✅ Önce atak kadrosundaki kaleci'yi bul
+      let goalkeeper: typeof players[0] | null = null;
+      Object.entries(attackPlayers).forEach(([slot, p]) => {
+        if (p && isGoalkeeperPlayer(p)) {
+          goalkeeper = p;
+        }
       });
-      setDefensePlayers(defPlayers); // Aynı 11 oyuncu, defans formasyonu yerleşimi
+      
+      // ✅ SADECE kaleci defans formasyonunun GK slotuna otomatik atanır
+      // Diğer 10 pozisyon BOŞ kalır - kullanıcı atak kadrosundan seçerek doldurur
+      if (goalkeeper && defFormation) {
+        const gkSlot = defFormation.positions.findIndex((pos: string) => pos === 'GK');
+        if (gkSlot !== -1) {
+          defPlayers[gkSlot] = goalkeeper;
+        }
+      }
+      
+      setDefensePlayers(defPlayers); // SADECE kaleci atanmış, diğer 10 pozisyon boş
       setEditingMode('defense');
       
       setShowFormationModal(false);
       Alert.alert(
         'Defans Formasyonu Seçildi',
-        `${formation?.name}\n\nAynı 11 oyuncunuz defans yerleşimine atandı. İsterseniz yerlerini değiştirebilir veya "Tamamla" ile kaydedip Tahmin sekmesine geçebilirsiniz.`
+        `${formation?.name}\n\n✅ Kaleci otomatik olarak defans kalesine atandı.\n\n📋 Şimdi atak kadronuzdan 10 oyuncuyu defans pozisyonlarına yerleştirin.`
       );
     }
     // isCompleted sadece ATAK formasyonu değiştiğinde sıfırlanır (defans değişikliği tahminleri silmez)
-    if (editingMode === 'attack') {
+    if (effectiveMode === 'attack') {
       (async () => {
         try {
           const key = squadStorageKey;
@@ -1720,7 +1761,13 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
       const formation = formations.find(f => f.id === attackFormation);
       Alert.alert(
         'Kadro Tamamlandı! ⚽',
-        `Atak ve defans için aynı sistem kullanılacak:\n\n${formation?.name}\n\nKadronuz kaydedilmeye hazır.`
+        `Atak ve defans için aynı formasyon kullanılacak:\n\n${formation?.name}\n\n⚠️ ÖNEMLİ: Bu sayfadan ayrılmadan önce değişiklikleri kaydetmek için "Tamamla" butonuna basmanız gerekiyor.\n\nTamamla'ya basmadan çıkarsanız değişiklikler kaydedilmez!`,
+        [
+          {
+            text: 'Anladım',
+            style: 'default',
+          }
+        ]
       );
     }
   };
@@ -1753,10 +1800,8 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
       if (editingMode === 'attack') {
         const newAttack = { ...attackPlayers, [selectedSlot]: player };
         setAttackPlayers(newAttack);
-        // ✅ Formasyon değişmeden oyuncu değişikliği: sadece defans kadrosu (form) yenilenir, formasyon aynı kalır
-        if (defenseFormation != null) {
-          setDefensePlayers(prev => ({ ...prev, [selectedSlot]: player }));
-        }
+        // ✅ ATAK OYUNCUSU DEFANSA OTOMATİK ATANMAZ
+        // Kullanıcı defans kadrosunu ayrı seçer
       } else {
         setDefensePlayers({ ...defensePlayers, [selectedSlot]: player });
       }
@@ -1765,10 +1810,7 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
       setShowPlayerModal(false);
       
       const modeText = editingMode === 'attack' ? 'atak' : 'defans';
-      const message = editingMode === 'attack' && defenseFormation != null
-        ? `${player.name} atak kadronuza güncellendi. Defans kadrosu da aynı değişiklikle yenilendi.`
-        : `${player.name} ${modeText} kadronuza eklendi`;
-      Alert.alert('Oyuncu Yerleştirildi!', message);
+      Alert.alert('Oyuncu Yerleştirildi!', `${player.name} ${modeText} kadronuza eklendi`);
     }
   };
 
@@ -1777,10 +1819,8 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
     if (player) {
       setSelectedPlayers({ ...selectedPlayers, [slotIndex]: null });
       
-      // ✅ Atak modunda oyuncu çıkarılırsa: formasyon aynı kalır, sadece defans kadrosunda aynı slot boşalır
-      if (editingMode === 'attack' && defenseFormation != null) {
-        setDefensePlayers(prev => ({ ...prev, [slotIndex]: null }));
-      }
+      // ✅ Atak modunda oyuncu çıkarılırsa: defans kadrosu ETKİLENMEZ
+      // Kullanıcı her kadroyu ayrı yönetir
       
       // Kadro artık 10 kişi (eksik) → isCompleted sıfırla
       try {
@@ -1815,6 +1855,9 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
       return;
     }
     
+    // ✅ Kaydediliyor... göster
+    setIsSaving(true);
+    
     try {
       // Save squad data to AsyncStorage (local backup)
       // Convert Record to array for easier access in MatchPrediction
@@ -1847,14 +1890,7 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
       
       console.log('✅ Squad saved to local storage!', squadData);
       
-      // ✅ Tahmin sekmesine hemen geç – backend kaydı bunu engellemesin
-      if (__DEV__) console.log('🔄 Switching to Prediction tab...');
-      InteractionManager.runAfterInteractions(() => {
-        if (__DEV__) console.log('🔄 onComplete() called');
-        onComplete();
-      });
-      
-      // ✅ Backend'e arka planda kaydet (başarısız olsa da sekme geçişi yapıldı)
+      // ✅ Backend'e arka planda kaydet (başarısız olsa da sekme geçişi yapılacak)
       (async () => {
         try {
           const { data: sessionData } = await supabase.auth.getSession();
@@ -1875,6 +1911,19 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
           console.warn('⚠️ Backend save failed (local OK):', e);
         }
       })();
+      
+      // ✅ Kadroyu kilitle
+      setIsSquadLocked(true);
+      
+      // ✅ 1 saniye bekle ve Tahmin sekmesine geç
+      setTimeout(() => {
+        setIsSaving(false);
+        if (__DEV__) console.log('🔄 Switching to Prediction tab...');
+        InteractionManager.runAfterInteractions(() => {
+          if (__DEV__) console.log('🔄 onComplete() called');
+          onComplete();
+        });
+      }, 1000);
     } catch (error) {
       console.error('Error saving squad:', error);
       Alert.alert('Hata!', 'Kadro kaydedilemedi. Lütfen tekrar deneyin.');
@@ -1902,9 +1951,9 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
               <Animated.View style={[styles.emptyStateBall, animatedBallStyle]}>
                 <Text style={styles.emptyStateBallEmoji}>⚽</Text>
               </Animated.View>
-              <Text style={styles.emptyStateTitle}>Stratejini Belirle</Text>
+              <Text style={styles.emptyStateTitle}>Kadro Oluştur</Text>
               <Text style={styles.emptyStateSubtitle}>
-                Devam etmek için bir formasyon seçiniz
+                Tahminlerinize başlamak için atak ve defans formasyonlarını seçip oyuncuları pozisyonlarına atayın
               </Text>
             </View>
           </FootballField>
@@ -1929,7 +1978,7 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
           </TouchableOpacity>
         </View>
 
-        {/* Formation Modal - Defans sekmesi sadece atak 11 tamamlandığında açılır */}
+        {/* Formation Modal - Boş state'te de defans seçilebilir (atak 11 tamamlandıysa) */}
         <FormationModal
           visible={showFormationModal}
           formations={formations}
@@ -1937,7 +1986,9 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
           onSelect={handleFormationSelect}
           onClose={() => setShowFormationModal(false)}
           onTabChange={setFormationType}
-          canSelectDefense={false}
+          canSelectDefense={attackFormation != null && attackCount === 11}
+          currentAttackFormation={attackFormation}
+          currentDefenseFormation={defenseFormation}
         />
       </View>
     );
@@ -1992,29 +2043,9 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
                             <Ionicons name="information-circle" size={20} color="#EF4444" />
                           </TouchableOpacity>
                         )}
-                        {/* Remove button - Top Right */}
-                        {/* Replace button - Top Left */}
-                        {!isKadroLocked && (
-                          <TouchableOpacity
-                            style={styles.replaceButton}
-                            onPress={() => {
-                              const playerForSignal = { id: player.id, name: player.name, position: positionLabel };
-                              setCommunitySignalPlayer(playerForSignal);
-                              if (!communitySignalShownRef.current.has(player.id)) {
-                                setShowCommunitySignal(true);
-                                communitySignalShownRef.current.add(player.id);
-                              }
-                              setSelectedSlot(index);
-                              setShowPlayerModal(true);
-                            }}
-                            activeOpacity={0.7}
-                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                          >
-                            <Ionicons name="swap-horizontal" size={14} color="#1FA2A6" />
-                          </TouchableOpacity>
-                        )}
-
-                        {!isKadroLocked && (
+                        {/* Remove button - Top Right (Değiştir ikonu kaldırıldı) */}
+                        {/* ✅ Kilit açıksa ve maç kilitli değilse göster */}
+                        {!isKadroLocked && !isSquadLocked && (
                           <TouchableOpacity
                             style={styles.removeButton}
                             onPress={() => handleRemovePlayer(index)}
@@ -2080,6 +2111,18 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
                       style={styles.emptySlot}
                       onPress={() => {
                         if (isKadroLocked) { showKadroLockedToast(); return; }
+                        // ✅ Kullanıcı kilidi kontrolü
+                        if (isSquadLocked) {
+                          Alert.alert(
+                            '🔒 Kadro Kilitli',
+                            'Kadro tamamlandı ve kilitli. Değişiklik yapmak için kilidi açın.',
+                            [
+                              { text: 'İptal', style: 'cancel' },
+                              { text: 'Kilidi Aç', style: 'destructive', onPress: () => setIsSquadLocked(false) },
+                            ]
+                          );
+                          return;
+                        }
                         setSelectedSlot(index);
                         setShowPlayerModal(true);
                       }}
@@ -2170,23 +2213,66 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
               {selectedCount}/11
             </Text>
             {!isKadroLocked && (
-            <TouchableOpacity
-              style={[
-                styles.completeButton,
-                !isCompleteButtonActive && styles.completeButtonDisabled,
-              ]}
-              onPress={handleComplete}
-              disabled={!isCompleteButtonActive}
-              activeOpacity={0.8}
-            >
-              <LinearGradient
-                colors={isCompleteButtonActive ? ['#1FA2A6', '#0F2A24'] : ['#374151', '#374151']} // ✅ Design System: Secondary → Primary gradient
-                style={styles.completeButtonGradient}
-              >
-                <Text style={styles.completeButtonText}>Tamamla</Text>
-                <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" />
-              </LinearGradient>
-            </TouchableOpacity>
+              <>
+                {/* ✅ Kilit Butonu - Tamamla'dan sonra değişikliği engeller/izin verir */}
+                {isSquadLocked ? (
+                  <TouchableOpacity
+                    style={styles.lockButton}
+                    onPress={() => {
+                      Alert.alert(
+                        'Kadro Kilidi',
+                        'Kadro kilitli. Kilidi açarak değişiklik yapabilirsiniz.\n\nKilidi açmak istiyor musunuz?',
+                        [
+                          { text: 'İptal', style: 'cancel' },
+                          { 
+                            text: 'Kilidi Aç', 
+                            style: 'destructive',
+                            onPress: () => setIsSquadLocked(false) 
+                          },
+                        ]
+                      );
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="lock-closed" size={20} color="#EF4444" />
+                  </TouchableOpacity>
+                ) : isCompleteButtonActive ? (
+                  <TouchableOpacity
+                    style={styles.lockButtonOpen}
+                    onPress={() => {
+                      Alert.alert(
+                        'Kadro Açık',
+                        'Kadro düzenlenebilir durumda. Değişiklikleri tamamlamak için "Tamamla" butonuna basın.',
+                        [{ text: 'Tamam' }]
+                      );
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="lock-open" size={20} color="#10B981" />
+                  </TouchableOpacity>
+                ) : null}
+                
+                {/* ✅ Tamamla Butonu - Kilit açıksa göster */}
+                {!isSquadLocked && (
+                  <TouchableOpacity
+                    style={[
+                      styles.completeButton,
+                      !isCompleteButtonActive && styles.completeButtonDisabled,
+                    ]}
+                    onPress={handleComplete}
+                    disabled={!isCompleteButtonActive}
+                    activeOpacity={0.8}
+                  >
+                    <LinearGradient
+                      colors={isCompleteButtonActive ? ['#1FA2A6', '#0F2A24'] : ['#374151', '#374151']} // ✅ Design System: Secondary → Primary gradient
+                      style={styles.completeButtonGradient}
+                    >
+                      <Text style={styles.completeButtonText}>Tamamla</Text>
+                      <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" />
+                    </LinearGradient>
+                  </TouchableOpacity>
+                )}
+              </>
             )}
           </View>
         </View>
@@ -2245,6 +2331,8 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
         onClose={() => setShowFormationModal(false)}
         onTabChange={setFormationType}
         canSelectDefense={attackFormation != null && attackCount === 11}
+        currentAttackFormation={attackFormation}
+        currentDefenseFormation={defenseFormation}
       />
 
       {/* Player Detail Modal */}
@@ -2252,6 +2340,8 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
         <PlayerDetailModal
           player={selectedPlayerForDetail}
           onClose={() => setSelectedPlayerForDetail(null)}
+          matchId={matchId}
+          positionLabel={selectedSlot !== null ? formation?.positions[selectedSlot] : selectedPlayerForDetail?.position}
         />
       )}
 
@@ -2344,14 +2434,118 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
           }}
         />
       )}
+      
+      {/* ✅ Kaydediliyor... Overlay */}
+      {isSaving && (
+        <Modal
+          visible={true}
+          transparent={true}
+          animationType="fade"
+        >
+          <View style={styles.savingOverlay}>
+            <View style={styles.savingContainer}>
+              <ActivityIndicator size="large" color="#1FA2A6" />
+              <Text style={styles.savingText}>Kaydediliyor...</Text>
+              <Text style={styles.savingSubtext}>Kadronuz kaydediliyor, lütfen bekleyin</Text>
+            </View>
+          </View>
+        </Modal>
+      )}
     </View>
   );
 }
 
 // Formation Modal Component - 3 COLUMN GRID
-const FormationModal = ({ visible, formations, formationType, onSelect, onClose, onTabChange, canSelectDefense = true }: any) => {
+const FormationModal = ({ visible, formations, formationType, onSelect, onClose, onTabChange, canSelectDefense = true, currentAttackFormation, currentDefenseFormation }: any) => {
+  // ✅ Mevcut sekmede seçili formasyon
+  const currentSelectedFormation = formationType === 'defense' ? currentDefenseFormation : currentAttackFormation;
   const [selectedFormationForDetail, setSelectedFormationForDetail] = useState<any>(null);
   const [hoveredFormation, setHoveredFormation] = useState<any>(null); // ✅ Önizleme için
+  
+  // ✅ Formasyon popülerlik verileri (API'den gelecek, şimdilik mock)
+  const [formationPopularity, setFormationPopularity] = React.useState<Record<string, number>>({});
+  const [popularityLoading, setPopularityLoading] = React.useState(true);
+  
+  // ✅ Formasyon popülerlik verilerini yükle
+  React.useEffect(() => {
+    if (!visible) return;
+    
+    const loadPopularity = async () => {
+      setPopularityLoading(true);
+      try {
+        // TODO: Gerçek API entegrasyonu
+        // const result = await squadPredictionsApi.getFormationPopularity(formationType);
+        
+        // ✅ Mock data - Toplam %100 olacak şekilde dağıtılmış (formationType'a göre)
+        // Atak için popüler formasyonlar
+        const attackPopularity: Record<string, number> = {
+          '4-3-3': 18,
+          '4-2-3-1': 14,
+          '4-4-2': 11,
+          '3-4-3': 9,
+          '4-1-2-3': 8,
+          '3-5-2': 7,
+          '4-3-3-holding': 6,
+          '4-3-3-false9': 5,
+          '4-1-4-1': 4,
+          '4-3-1-2': 4,
+          '3-4-1-2': 3,
+          '4-2-2-2': 3,
+          '4-4-2-diamond': 2,
+          '4-2-4': 2,
+          '2-3-5': 1,
+          '3-3-3-1': 1,
+          '3-3-4': 1,
+          '3-4-2-1': 1,
+        };
+        
+        // Defans için popüler formasyonlar
+        const defensePopularity: Record<string, number> = {
+          '5-4-1': 16,
+          '5-3-2': 14,
+          '4-5-1': 12,
+          '4-4-2': 10,
+          '4-1-4-1': 9,
+          '3-5-2': 8,
+          '4-2-3-1': 6,
+          '4-3-3-holding': 5,
+          '5-2-3': 4,
+          '4-4-1-1': 4,
+          '4-3-2-1': 3,
+          '4-1-3-2': 3,
+          '3-6-1': 2,
+          '4-3-3': 2,
+          '3-4-3': 1,
+          '4-3-1-2': 1,
+        };
+        
+        // Seçilen tipe göre popülerlik dağılımı
+        const baseData = formationType === 'defense' ? defensePopularity : attackPopularity;
+        const mockData: Record<string, number> = { ...baseData };
+        
+        // Eksik formasyonlara düşük değer ver (toplam %100 olsun)
+        let totalAssigned = Object.values(mockData).reduce((a, b) => a + b, 0);
+        const remaining = 100 - totalAssigned;
+        const unassignedFormations = formations.filter((f: any) => !mockData[f.id]);
+        
+        if (unassignedFormations.length > 0 && remaining > 0) {
+          const perFormation = Math.floor(remaining / unassignedFormations.length);
+          unassignedFormations.forEach((f: any, i: number) => {
+            mockData[f.id] = i === unassignedFormations.length - 1 
+              ? remaining - (perFormation * (unassignedFormations.length - 1)) // Son formasyona kalanı ver
+              : perFormation;
+          });
+        }
+        
+        setFormationPopularity(mockData);
+      } catch (error) {
+        console.warn('Formation popularity load failed', error);
+      }
+      setPopularityLoading(false);
+    };
+    
+    loadPopularity();
+  }, [visible, formationType, formations]);
   
   // ✅ Defans sekmesi sadece atak formasyonu seçilip 11 oyuncu yerleştirildiyse seçilebilir
   React.useEffect(() => {
@@ -2360,8 +2554,8 @@ const FormationModal = ({ visible, formations, formationType, onSelect, onClose,
     }
   }, [visible, formationType, canSelectDefense, onTabChange]);
   
-  // Filter formations: show all formations for both attack and defense
-  const filteredFormations = formations; // Show all 27 formations
+  // ✅ Tüm formasyonları göster (filtreleme yok - kullanıcı istediği formasyonu seçebilir)
+  const filteredFormations = formations;
 
   return (
     <>
@@ -2437,26 +2631,39 @@ const FormationModal = ({ visible, formations, formationType, onSelect, onClose,
               contentContainerStyle={styles.formationGridContainer}
               showsVerticalScrollIndicator={false}
             >
-              {filteredFormations.map((formation: any) => (
+              {filteredFormations.map((formation: any) => {
+                const isCurrentlySelected = formation.id === currentSelectedFormation;
+                return (
                 <View key={formation.id} style={styles.formationGridItem}>
                   <TouchableOpacity
                     style={[
                       styles.formationCard,
                       hoveredFormation?.id === formation.id && styles.formationCardSelected,
+                      isCurrentlySelected && styles.formationCardCurrentlySelected,
                     ]}
                     onPress={() => setHoveredFormation(formation)}
                     activeOpacity={0.8}
                   >
+                    {/* ✅ Seçili Formasyon Tik İşareti */}
+                    {isCurrentlySelected && (
+                      <View style={styles.formationSelectedBadge}>
+                        <Ionicons name="checkmark-circle" size={16} color="#10B981" />
+                      </View>
+                    )}
                     {/* Formation ID */}
                     <Text style={[
                       styles.formationCardId,
                       hoveredFormation?.id === formation.id && { color: '#1FA2A6' },
+                      isCurrentlySelected && { color: '#10B981' },
                     ]}>
                       {formation.id.replace(/-holding|-false9|-diamond|-attack/g, '')}
                     </Text>
 
                     {/* Formation Subtitle - From parentheses */}
-                    <Text style={styles.formationCardSubtitle} numberOfLines={1}>
+                    <Text style={[
+                      styles.formationCardSubtitle,
+                      isCurrentlySelected && { color: '#10B981' },
+                    ]} numberOfLines={1}>
                       {(() => {
                         const parts = formation.name.split('(');
                         if (parts.length > 1) {
@@ -2469,7 +2676,7 @@ const FormationModal = ({ visible, formations, formationType, onSelect, onClose,
                     </Text>
                   </TouchableOpacity>
                 </View>
-              ))}
+              );})}
             </ScrollView>
             
           </Animated.View>
@@ -2552,6 +2759,35 @@ const FormationModal = ({ visible, formations, formationType, onSelect, onClose,
                   <Text style={styles.formationPreviewBestForLabel}>En İyi: </Text>
                   {hoveredFormation.bestFor}
                 </Text>
+              </View>
+              
+              {/* ✅ Topluluk Tercihi - Formasyon Popülerliği - DİKKAT ÇEKİCİ */}
+              <View style={styles.formationPopularitySection}>
+                <View style={styles.formationPopularityHeader}>
+                  <Ionicons name="flame" size={18} color="#F97316" />
+                  <Text style={styles.formationPopularitySectionTitle}>🔥 Topluluk Tercihi</Text>
+                </View>
+                {popularityLoading ? (
+                  <Text style={styles.formationPopularityLoading}>Yükleniyor...</Text>
+                ) : (
+                  <View style={styles.formationPopularityContent}>
+                    <Text style={styles.formationPopularityText}>
+                      Kullanıcıların <Text style={styles.formationPopularityHighlight}>%{formationPopularity[hoveredFormation.id] || 0}</Text>'i {formationType === 'defense' ? 'defans' : 'atak'} için bu formasyonun olması gerektiğini düşünüyor
+                    </Text>
+                    <View style={styles.formationPopularityBarBg}>
+                      <View 
+                        style={[
+                          styles.formationPopularityBarFill,
+                          { 
+                            width: `${formationPopularity[hoveredFormation.id] || 0}%`,
+                            backgroundColor: (formationPopularity[hoveredFormation.id] || 0) >= 50 ? '#F97316' : 
+                              (formationPopularity[hoveredFormation.id] || 0) >= 25 ? '#FB923C' : '#FDBA74' // Turuncu tonları
+                          }
+                        ]}
+                      />
+                    </View>
+                  </View>
+                )}
               </View>
               
               {/* Buttons */}
@@ -2689,6 +2925,45 @@ const FormationDetailModal = ({ formation, onClose, onSelect }: any) => (
 // Kaleci pozisyonuna yalnızca kaleci, saha pozisyonlarına yalnızca saha oyuncusu atanabilir.
 const PlayerModal = ({ visible, players, selectedPlayers, positionLabel, onSelect, onClose, isDefenseMode, isLoadingSquad = false, hasBackendError = false, onRetrySquad }: any) => {
   const [previewPlayer, setPreviewPlayer] = useState<any>(null);
+  
+  // ✅ Preview oyuncusu için topluluk istatistikleri
+  const [previewCommunityStats, setPreviewCommunityStats] = React.useState<{
+    inStartingXI: number;
+    inThisPosition: number;
+    loading: boolean;
+  }>({ inStartingXI: 0, inThisPosition: 0, loading: true });
+  
+  // ✅ Preview oyuncusu değiştiğinde topluluk istatistiklerini yükle
+  React.useEffect(() => {
+    if (!previewPlayer) {
+      setPreviewCommunityStats({ inStartingXI: 0, inThisPosition: 0, loading: true });
+      return;
+    }
+    
+    const loadStats = async () => {
+      setPreviewCommunityStats(prev => ({ ...prev, loading: true }));
+      try {
+        // TODO: Gerçek API entegrasyonu
+        // Mock data - rating'e göre gerçekçi değerler
+        const baseXI = previewPlayer.rating >= 85 ? 78 : previewPlayer.rating >= 80 ? 62 : previewPlayer.rating >= 75 ? 48 : 32;
+        const basePosition = previewPlayer.rating >= 85 ? 68 : previewPlayer.rating >= 80 ? 52 : previewPlayer.rating >= 75 ? 38 : 24;
+        const variance = Math.floor(Math.random() * 12);
+        
+        // Kısa bir gecikme ile daha gerçekçi görünsün
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        setPreviewCommunityStats({
+          inStartingXI: Math.min(95, baseXI + variance),
+          inThisPosition: Math.min(90, basePosition + variance),
+          loading: false,
+        });
+      } catch (error) {
+        setPreviewCommunityStats({ inStartingXI: 0, inThisPosition: 0, loading: false });
+      }
+    };
+    
+    loadStats();
+  }, [previewPlayer]);
 
   const isGKPosition = positionLabel === 'GK';
 
@@ -2976,6 +3251,34 @@ const PlayerModal = ({ visible, players, selectedPlayers, positionLabel, onSelec
                   </View>
                 )}
 
+                {/* ✅ Topluluk Tercihleri - DİKKAT ÇEKİCİ */}
+                <View style={styles.playerPreviewCommunitySection}>
+                  <View style={styles.playerPreviewCommunityHeader}>
+                    <Ionicons name="people" size={16} color="#F97316" />
+                    <Text style={styles.playerPreviewCommunityTitle}>🔥 Topluluk Tercihi</Text>
+                  </View>
+                  {previewCommunityStats.loading ? (
+                    <Text style={styles.playerPreviewCommunityLoading}>Yükleniyor...</Text>
+                  ) : (
+                    <View style={styles.playerPreviewCommunityContent}>
+                      {/* İlk 11'e seçim */}
+                      <View style={styles.playerPreviewCommunityRow}>
+                        <Ionicons name="football" size={14} color="#1FA2A6" />
+                        <Text style={styles.playerPreviewCommunityText}>
+                          Kullanıcıların <Text style={styles.playerPreviewCommunityHighlight}>%{previewCommunityStats.inStartingXI}</Text>'i bu oyuncuyu ilk 11'e seçti
+                        </Text>
+                      </View>
+                      {/* Bu pozisyona atama */}
+                      <View style={styles.playerPreviewCommunityRow}>
+                        <Ionicons name="locate" size={14} color="#3B82F6" />
+                        <Text style={styles.playerPreviewCommunityText}>
+                          Bunların <Text style={styles.playerPreviewCommunityHighlight}>%{previewCommunityStats.inThisPosition}</Text>'i {positionLabel} pozisyonuna atadı
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+                </View>
+
                 {/* Position Assignment Info */}
                 <View style={styles.playerCardAssignInfo}>
                   <Ionicons name="locate" size={16} color="#1FA2A6" />
@@ -3029,8 +3332,40 @@ const PlayerModal = ({ visible, players, selectedPlayers, positionLabel, onSelec
   );
 };
 
-// Player Detail Modal - FULL STATS
-const PlayerDetailModal = ({ player, onClose }: any) => {
+// Player Detail Modal - FULL STATS + Community Stats
+const PlayerDetailModal = ({ player, onClose, matchId, positionLabel }: any) => {
+  // ✅ Kullanıcı istatistikleri state
+  const [communityStats, setCommunityStats] = React.useState<{
+    inStartingXI: number; // % kaçı ilk 11'de görmek istiyor
+    inThisPosition: number; // % kaçı bu pozisyonda görmek istiyor
+    loading: boolean;
+  }>({ inStartingXI: 0, inThisPosition: 0, loading: true });
+  
+  // ✅ Mock kullanıcı istatistiklerini yükle (gerçek API gelince değiştirilecek)
+  React.useEffect(() => {
+    const loadCommunityStats = async () => {
+      try {
+        // TODO: Gerçek API entegrasyonu yapılacak
+        // const result = await squadPredictionsApi.getPlayerCommunityStats(matchId, player.id, positionLabel);
+        // Mock data - rating'e göre daha gerçekçi değerler
+        const baseXI = player.rating >= 85 ? 75 : player.rating >= 80 ? 60 : player.rating >= 75 ? 45 : 30;
+        const basePosition = player.rating >= 85 ? 65 : player.rating >= 80 ? 50 : player.rating >= 75 ? 35 : 20;
+        const variance = Math.floor(Math.random() * 15);
+        
+        setCommunityStats({
+          inStartingXI: Math.min(95, baseXI + variance),
+          inThisPosition: Math.min(90, basePosition + variance),
+          loading: false,
+        });
+      } catch (error) {
+        console.warn('Community stats load failed', error);
+        setCommunityStats({ inStartingXI: 0, inThisPosition: 0, loading: false });
+      }
+    };
+    
+    loadCommunityStats();
+  }, [player.id, player.rating, matchId, positionLabel]);
+  
   return (
     <Modal
       visible={true}
@@ -3046,8 +3381,11 @@ const PlayerDetailModal = ({ player, onClose }: any) => {
         >
           {/* Header */}
           <LinearGradient
-            colors={['#1E3A3A', '#0F2A24']} // ✅ Design System
-            style={styles.playerDetailHeader}
+            colors={player.rating >= 85 ? ['#C9A44C', '#8B6914'] : ['#1E3A3A', '#0F2A24']} // ✅ Elit oyuncular için altın gradient
+            style={[
+              styles.playerDetailHeader,
+              player.rating >= 85 && styles.playerDetailHeaderElite, // Altın kenarlık
+            ]}
           >
             <TouchableOpacity onPress={onClose} style={styles.modalCloseButton}>
               <Ionicons name="close" size={24} color="#FFFFFF" />
@@ -3083,6 +3421,13 @@ const PlayerDetailModal = ({ player, onClose }: any) => {
                     <View style={styles.injuryBadgeLarge}>
                       <Ionicons name="warning" size={12} color="#EF4444" />
                       <Text style={styles.injuryTextLarge}>Sakatlık</Text>
+                    </View>
+                  )}
+                  {/* Elite badge for 85+ */}
+                  {player.rating >= 85 && (
+                    <View style={styles.eliteBadgeLarge}>
+                      <Ionicons name="star" size={12} color="#C9A44C" />
+                      <Text style={styles.eliteTextLarge}>Elit</Text>
                     </View>
                   )}
                 </View>
@@ -3145,6 +3490,67 @@ const PlayerDetailModal = ({ player, onClose }: any) => {
                 <Text style={styles.infoCardLabel}>Yaş</Text>
                 <Text style={styles.infoCardValue}>{player.age}</Text>
               </View>
+            </View>
+            
+            {/* ✅ Topluluk Tercihleri - Kullanıcı istatistikleri */}
+            <View style={styles.communityStatsSection}>
+              <Text style={styles.playerDetailSectionTitle}>👥 Topluluk Tercihleri</Text>
+              
+              {communityStats.loading ? (
+                <View style={styles.communityStatsLoading}>
+                  <Text style={styles.communityStatsLoadingText}>Yükleniyor...</Text>
+                </View>
+              ) : (
+                <View style={styles.communityStatsContainer}>
+                  {/* İlk 11'de görmek isteyenler */}
+                  <View style={styles.communityStatRow}>
+                    <View style={styles.communityStatIcon}>
+                      <Ionicons name="football" size={18} color="#1FA2A6" />
+                    </View>
+                    <View style={styles.communityStatContent}>
+                      <Text style={styles.communityStatLabel}>
+                        Kullanıcıların <Text style={styles.communityStatHighlight}>%{communityStats.inStartingXI}</Text>'i bu oyuncuyu ilk 11'de görmek istiyor
+                      </Text>
+                      <View style={styles.communityStatBarBg}>
+                        <View 
+                          style={[
+                            styles.communityStatBarFill, 
+                            { 
+                              width: `${communityStats.inStartingXI}%`,
+                              backgroundColor: communityStats.inStartingXI >= 60 ? '#10B981' : communityStats.inStartingXI >= 40 ? '#F59E0B' : '#64748B'
+                            }
+                          ]} 
+                        />
+                      </View>
+                    </View>
+                  </View>
+                  
+                  {/* Bu pozisyona atanmasını isteyenler */}
+                  {positionLabel && (
+                    <View style={styles.communityStatRow}>
+                      <View style={styles.communityStatIcon}>
+                        <Ionicons name="locate" size={18} color="#3B82F6" />
+                      </View>
+                      <View style={styles.communityStatContent}>
+                        <Text style={styles.communityStatLabel}>
+                          Bunların <Text style={styles.communityStatHighlight}>%{communityStats.inThisPosition}</Text>'i oyuncunun {positionLabel} pozisyonunda oynamasını istiyor
+                        </Text>
+                        <View style={styles.communityStatBarBg}>
+                          <View 
+                            style={[
+                              styles.communityStatBarFill, 
+                              { 
+                                width: `${communityStats.inThisPosition}%`,
+                                backgroundColor: communityStats.inThisPosition >= 50 ? '#3B82F6' : communityStats.inThisPosition >= 30 ? '#F59E0B' : '#64748B'
+                              }
+                            ]} 
+                          />
+                        </View>
+                      </View>
+                    </View>
+                  )}
+                </View>
+              )}
             </View>
           </ScrollView>
 
@@ -3340,7 +3746,21 @@ const styles = StyleSheet.create({
   },
   playerCardElite: {
     borderColor: '#C9A44C', // Gold border for elite players (85+)
-    borderWidth: 2,
+    borderWidth: 2.5,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#C9A44C',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.6,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 8,
+      },
+      web: {
+        boxShadow: '0 0 12px rgba(201, 164, 76, 0.5), 0 2px 4px rgba(0, 0, 0, 0.3)',
+      },
+    }),
   },
   playerCardGK: {
     borderColor: '#3B82F6', // Blue border for goalkeepers
@@ -3679,6 +4099,29 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FFFFFF',
   },
+  // ✅ Kilit Butonları
+  lockButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#EF4444',
+    marginRight: 8,
+  },
+  lockButtonOpen: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: 'rgba(16, 185, 129, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#10B981',
+    marginRight: 8,
+  },
   
   // Modal - Design System uyumlu
   modalOverlay: {
@@ -3870,6 +4313,21 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     backgroundColor: 'rgba(31, 162, 166, 0.15)',
   },
+  // ✅ Seçili formasyon (mevcut atak/defans formasyonu)
+  formationCardCurrentlySelected: {
+    borderColor: '#10B981',
+    borderWidth: 2,
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+  },
+  formationSelectedBadge: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    backgroundColor: '#0F2A24',
+    borderRadius: 10,
+    padding: 2,
+    zIndex: 10,
+  },
   
   // ✅ Formation Preview Modal - Ayrı popup
   formationPreviewOverlay: {
@@ -3995,6 +4453,74 @@ const styles = StyleSheet.create({
     color: '#FDE68A',
     flex: 1,
     lineHeight: 18,
+  },
+  // ✅ Formasyon Popülerlik Stilleri - DİKKAT ÇEKİCİ TASARIM
+  formationPopularitySection: {
+    backgroundColor: 'rgba(239, 68, 68, 0.15)', // Kırmızımsı arka plan
+    padding: 14,
+    borderRadius: 12,
+    marginBottom: 16,
+    borderWidth: 2,
+    borderColor: 'rgba(249, 115, 22, 0.6)', // Turuncu border
+    ...Platform.select({
+      ios: {
+        shadowColor: '#F97316',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
+  },
+  formationPopularityHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 10,
+    backgroundColor: 'rgba(249, 115, 22, 0.2)', // Turuncu header arka planı
+    padding: 8,
+    borderRadius: 8,
+    marginHorizontal: -6,
+    marginTop: -6,
+  },
+  formationPopularitySectionTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#F97316', // Turuncu başlık
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  formationPopularityLoading: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    padding: 8,
+  },
+  formationPopularityContent: {
+    gap: 10,
+  },
+  formationPopularityText: {
+    fontSize: 13,
+    color: '#F1F5F9', // Daha parlak text
+    lineHeight: 20,
+    fontWeight: '500',
+  },
+  formationPopularityHighlight: {
+    fontWeight: '800',
+    color: '#F97316', // Turuncu vurgu
+    fontSize: 16,
+  },
+  formationPopularityBarBg: {
+    height: 8, // Daha kalın bar
+    backgroundColor: 'rgba(100, 116, 139, 0.4)',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  formationPopularityBarFill: {
+    height: '100%',
+    borderRadius: 3,
   },
   formationPreviewButtons: {
     flexDirection: 'row',
@@ -4576,6 +5102,54 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
   },
+  // ✅ Oyuncu Preview - Topluluk Tercihleri Stilleri
+  playerPreviewCommunitySection: {
+    backgroundColor: 'rgba(249, 115, 22, 0.12)',
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 12,
+    borderWidth: 1.5,
+    borderColor: 'rgba(249, 115, 22, 0.4)',
+  },
+  playerPreviewCommunityHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 10,
+  },
+  playerPreviewCommunityTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#F97316',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  playerPreviewCommunityLoading: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    padding: 4,
+  },
+  playerPreviewCommunityContent: {
+    gap: 8,
+  },
+  playerPreviewCommunityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  playerPreviewCommunityText: {
+    fontSize: 11,
+    color: '#E2E8F0',
+    flex: 1,
+    lineHeight: 16,
+  },
+  playerPreviewCommunityHighlight: {
+    fontWeight: '700',
+    color: '#F97316',
+    fontSize: 12,
+  },
+  
   playerCardAssignInfo: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -4734,6 +5308,30 @@ const styles = StyleSheet.create({
     color: '#EF4444',
     fontWeight: '600',
   },
+  // ✅ Elit oyuncu badge
+  eliteBadgeLarge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(201, 164, 76, 0.2)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(201, 164, 76, 0.4)',
+  },
+  eliteTextLarge: {
+    fontSize: 11,
+    color: '#C9A44C',
+    fontWeight: '700',
+  },
+  // ✅ Elit oyuncu header stili
+  playerDetailHeaderElite: {
+    borderWidth: 2,
+    borderColor: '#C9A44C',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+  },
   playerDetailContent: {
     flex: 1,
     padding: 20,
@@ -4822,6 +5420,67 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   
+  // ✅ Topluluk istatistikleri stilleri
+  communityStatsSection: {
+    marginTop: 24,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  communityStatsLoading: {
+    alignItems: 'center',
+    padding: 20,
+  },
+  communityStatsLoadingText: {
+    fontSize: 14,
+    color: '#9CA3AF',
+  },
+  communityStatsContainer: {
+    gap: 16,
+  },
+  communityStatRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    backgroundColor: 'rgba(15, 23, 42, 0.5)',
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.2)',
+  },
+  communityStatIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: 'rgba(31, 162, 166, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  communityStatContent: {
+    flex: 1,
+    gap: 8,
+  },
+  communityStatLabel: {
+    fontSize: 13,
+    color: '#CBD5E1',
+    lineHeight: 18,
+  },
+  communityStatHighlight: {
+    color: '#1FA2A6',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  communityStatBarBg: {
+    height: 6,
+    backgroundColor: 'rgba(100, 116, 139, 0.3)',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  communityStatBarFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  
   // Button Gradient
   buttonGradient: {
     flex: 1,
@@ -4835,5 +5494,44 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+  
+  // ✅ Kaydediliyor... Overlay Stilleri
+  savingOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  savingContainer: {
+    backgroundColor: 'rgba(15, 42, 36, 0.95)',
+    borderRadius: 20,
+    padding: 32,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.3)',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#1FA2A6',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
+  },
+  savingText: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginTop: 16,
+  },
+  savingSubtext: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    marginTop: 8,
+    textAlign: 'center',
   },
 });

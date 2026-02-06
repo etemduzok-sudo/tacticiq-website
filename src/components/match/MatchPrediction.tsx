@@ -444,6 +444,91 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
     message: string;
     buttons: ConfirmButton[];
   } | null>(null);
+  
+  // ✅ TOPLULUK TAHMİN VERİLERİ (Backend'den gelecek, şimdilik mock)
+  // Her oyuncu için topluluk tahmin oranları (0.0 - 1.0)
+  const [communityPredictions, setCommunityPredictions] = useState<Record<number, {
+    goal: number;          // Gol atar oranı
+    assist: number;        // Asist yapar oranı
+    yellowCard: number;    // Sarı kart görür oranı
+    redCard: number;       // Kırmızı kart görür oranı
+    substitutedOut: number; // Oyundan çıkar oranı
+    injuredOut: number;    // Sakatlanarak çıkar oranı
+    totalPredictions: number; // Kaç kullanıcı tahmin yaptı
+  }>>({});
+  
+  // ✅ Topluluk verilerini yükle (mock - backend hazır olunca API'den çekilecek)
+  React.useEffect(() => {
+    if (!attackPlayersArray || attackPlayersArray.length === 0) return;
+    
+    // Mock community data - her oyuncu için rastgele oranlar
+    const mockCommunity: Record<number, any> = {};
+    attackPlayersArray.forEach((player: any) => {
+      // Forvet/hücumcular için gol/asist oranı yüksek
+      const isForward = ['ST', 'CF', 'LW', 'RW', 'SS'].includes(player.position?.toUpperCase()) || 
+                        player.position?.toLowerCase().includes('forward') ||
+                        player.position?.toLowerCase().includes('striker');
+      // Orta saha için asist oranı yüksek
+      const isMidfielder = ['CAM', 'CM', 'CDM', 'RM', 'LM', 'AM'].includes(player.position?.toUpperCase()) ||
+                           player.position?.toLowerCase().includes('midfield');
+      // Defans için kart oranı yüksek
+      const isDefender = ['CB', 'LB', 'RB', 'LWB', 'RWB'].includes(player.position?.toUpperCase()) ||
+                         player.position?.toLowerCase().includes('back') ||
+                         player.position?.toLowerCase().includes('defender');
+      
+      mockCommunity[player.id] = {
+        goal: isForward ? 0.15 + Math.random() * 0.35 : isMidfielder ? 0.05 + Math.random() * 0.15 : Math.random() * 0.08,
+        assist: isForward ? 0.10 + Math.random() * 0.20 : isMidfielder ? 0.15 + Math.random() * 0.25 : Math.random() * 0.10,
+        yellowCard: isDefender ? 0.15 + Math.random() * 0.25 : isMidfielder ? 0.10 + Math.random() * 0.15 : Math.random() * 0.12,
+        redCard: Math.random() * 0.08,
+        substitutedOut: 0.15 + Math.random() * 0.25, // Herkes için benzer
+        injuredOut: Math.random() * 0.05,
+        totalPredictions: Math.floor(50 + Math.random() * 200),
+      };
+    });
+    setCommunityPredictions(mockCommunity);
+  }, [attackPlayersArray]);
+  
+  // ✅ Topluluk oranına göre çerçeve kalınlığı hesapla (0-4)
+  const getCommunityBorderWidth = (rate: number): number => {
+    if (rate < 0.10) return 0;      // %10 altı: çerçeve yok
+    if (rate < 0.20) return 1;      // %10-20: ince
+    if (rate < 0.35) return 2;      // %20-35: orta
+    if (rate < 0.50) return 3;      // %35-50: kalın
+    return 4;                        // %50+: çok kalın
+  };
+  
+  // ✅ Topluluk tahminlerine göre en baskın renk ve kalınlık hesapla
+  const getCommunityBorderStyle = (playerId: number): { color: string; width: number; type: string } | null => {
+    const community = communityPredictions[playerId];
+    if (!community) return null;
+    
+    // Renk öncelikleri ve eşikleri
+    const predictions = [
+      { type: 'goal', rate: community.goal, color: '#10B981', minThreshold: 0.10 },        // Yeşil - Gol
+      { type: 'assist', rate: community.assist, color: '#3B82F6', minThreshold: 0.10 },    // Mavi - Asist
+      { type: 'yellowCard', rate: community.yellowCard, color: '#F59E0B', minThreshold: 0.15 }, // Sarı - Sarı kart
+      { type: 'redCard', rate: community.redCard, color: '#EF4444', minThreshold: 0.05 },  // Kırmızı - Kırmızı kart
+      { type: 'substitutedOut', rate: community.substitutedOut, color: '#F97316', minThreshold: 0.20 }, // Turuncu - Değişiklik
+      { type: 'injuredOut', rate: community.injuredOut, color: '#8B5CF6', minThreshold: 0.03 }, // Mor - Sakatlık
+    ];
+    
+    // En yüksek orana sahip tahmini bul (eşik üzerindeyse)
+    const validPredictions = predictions.filter(p => p.rate >= p.minThreshold);
+    if (validPredictions.length === 0) return null;
+    
+    const topPrediction = validPredictions.reduce((max, p) => p.rate > max.rate ? p : max, validPredictions[0]);
+    const width = getCommunityBorderWidth(topPrediction.rate);
+    
+    if (width === 0) return null;
+    
+    return {
+      color: topPrediction.color,
+      width: width,
+      type: topPrediction.type,
+    };
+  };
+  
   // Load squad data on mount – Atak 11 tamamsa yükle (defans formasyonu değişince isCompleted false olsa da tahminler kaybolmasın)
   React.useEffect(() => {
     const loadSquad = async () => {
@@ -1072,8 +1157,14 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                 const playerPreds = playerPredictions[player.id] || playerPredictions[String(player.id)] || {};
                 const hasPredictions = hasAnyRealPlayerPrediction(playerPreds);
                 const hasSubstitution = !!(playerPreds.substitutedOut || playerPreds.injuredOut);
-                const hasRedCard = !!(playerPreds.redCard);
+                const hasRedCard = !!(playerPreds.redCard || playerPreds.directRedCard || playerPreds.secondYellowRed);
                 const hasYellowCard = !!(playerPreds.yellowCard) && !hasRedCard;
+                const hasGoal = !!(playerPreds.goal || playerPreds.willScore);
+                const hasAssist = !!(playerPreds.assist || playerPreds.willAssist);
+                const hasInjury = !!(playerPreds.injuredOut);
+                
+                // ✅ Topluluk çerçeve stili (en baskın tahmine göre renk)
+                const communityBorder = getCommunityBorderStyle(player.id);
 
                 return (
                   <View
@@ -1086,11 +1177,23 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                     {(isMatchLive || isMatchFinished) && (
                       <TouchableOpacity
                         style={styles.predictionCardInfoIcon}
-                        onPress={() => Alert.alert(
-                          player.name,
-                          `${positionLabel}\n\nBu oyuncu için topluluk tahminleri ve analiz bilgisi burada gösterilir. Tahmin yapmak için karta tıklayın.`,
-                          [{ text: 'Tamam' }]
-                        )}
+                        onPress={() => {
+                          const community = communityPredictions[player.id];
+                          const communityInfo = community 
+                            ? `\n\n📊 Topluluk Tahminleri (${community.totalPredictions} kullanıcı):\n` +
+                              `⚽ Gol atar: %${Math.round(community.goal * 100)}\n` +
+                              `🅰️ Asist yapar: %${Math.round(community.assist * 100)}\n` +
+                              `🟨 Sarı kart: %${Math.round(community.yellowCard * 100)}\n` +
+                              `🟥 Kırmızı kart: %${Math.round(community.redCard * 100)}\n` +
+                              `🔄 Oyundan çıkar: %${Math.round(community.substitutedOut * 100)}\n` +
+                              `🏥 Sakatlanır: %${Math.round(community.injuredOut * 100)}`
+                            : '';
+                          Alert.alert(
+                            player.name,
+                            `${positionLabel}${communityInfo}`,
+                            [{ text: 'Tamam' }]
+                          );
+                        }}
                         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                         activeOpacity={0.7}
                       >
@@ -1102,9 +1205,15 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                         styles.playerCard,
                         hasPredictions && styles.playerCardPredicted,
                         player.rating >= 85 && styles.playerCardElite,
-                        (isMatchLive || isMatchFinished) && (positionLabel === 'GK' || isGoalkeeperPlayer(player)) && styles.playerCardGKCommunity,
-                        (isMatchLive || isMatchFinished) && (positionLabel === 'ST' || (player.position && String(player.position).toUpperCase() === 'ST')) && styles.playerCardSTCommunity,
-                        !(isMatchLive || isMatchFinished) && (player.position === 'GK' || isGoalkeeperPlayer(player)) && styles.playerCardGK,
+                        // ✅ Topluluk çerçevesi (dinamik renk ve kalınlık)
+                        communityBorder && {
+                          borderColor: communityBorder.color,
+                          borderWidth: communityBorder.width,
+                        },
+                        // Fallback stiller (topluluk verisi yoksa)
+                        !communityBorder && (isMatchLive || isMatchFinished) && (positionLabel === 'GK' || isGoalkeeperPlayer(player)) && styles.playerCardGKCommunity,
+                        !communityBorder && (isMatchLive || isMatchFinished) && (positionLabel === 'ST' || (player.position && String(player.position).toUpperCase() === 'ST')) && styles.playerCardSTCommunity,
+                        !communityBorder && !(isMatchLive || isMatchFinished) && (player.position === 'GK' || isGoalkeeperPlayer(player)) && styles.playerCardGK,
                       ]}
                       onPress={() => setSelectedPlayer(player)}
                       activeOpacity={0.8}
@@ -1141,10 +1250,48 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                         <Text style={styles.playerName} numberOfLines={1}>
                           {player.name.split(' ').pop()}
                         </Text>
-                        <View style={styles.playerBottomRow}>
-                          <Text style={styles.playerRatingBottom}>{player.rating}</Text>
-                          <Text style={styles.playerPositionBottom}>{positionLabel}</Text>
-                        </View>
+                        {/* ✅ Tahmin İkonları Satırı - Kullanıcının kendi tahminleri */}
+                        {hasPredictions && (
+                          <View style={styles.predictionIconsRow}>
+                            {hasGoal && (
+                              <View style={[styles.predictionIconBadge, styles.predictionIconGoal]}>
+                                <Text style={styles.predictionIconText}>⚽</Text>
+                              </View>
+                            )}
+                            {hasAssist && (
+                              <View style={[styles.predictionIconBadge, styles.predictionIconAssist]}>
+                                <Text style={styles.predictionIconText}>🅰️</Text>
+                              </View>
+                            )}
+                            {hasYellowCard && (
+                              <View style={[styles.predictionIconBadge, styles.predictionIconYellow]}>
+                                <Ionicons name="card" size={8} color="#1E293B" />
+                              </View>
+                            )}
+                            {hasRedCard && (
+                              <View style={[styles.predictionIconBadge, styles.predictionIconRed]}>
+                                <Ionicons name="card" size={8} color="#FFFFFF" />
+                              </View>
+                            )}
+                            {hasSubstitution && !hasInjury && (
+                              <View style={[styles.predictionIconBadge, styles.predictionIconSub]}>
+                                <Ionicons name="swap-horizontal" size={8} color="#FFFFFF" />
+                              </View>
+                            )}
+                            {hasInjury && (
+                              <View style={[styles.predictionIconBadge, styles.predictionIconInjury]}>
+                                <Ionicons name="medkit" size={8} color="#FFFFFF" />
+                              </View>
+                            )}
+                          </View>
+                        )}
+                        {/* Rating ve pozisyon - tahmin yoksa göster, varsa ikonlar yerine geçer */}
+                        {!hasPredictions && (
+                          <View style={styles.playerBottomRow}>
+                            <Text style={styles.playerRatingBottom}>{player.rating}</Text>
+                            <Text style={styles.playerPositionBottom}>{positionLabel}</Text>
+                          </View>
+                        )}
                         {hasPredictions && <View style={styles.predictionGlow} />}
                       </LinearGradient>
                     </TouchableOpacity>
@@ -3306,6 +3453,45 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#9CA3AF',
   },
+  // ✅ Tahmin İkonları Satırı - Oyuncu kartının altında
+  predictionIconsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 2,
+    marginTop: 'auto',
+    paddingHorizontal: 1,
+    flexWrap: 'wrap',
+    maxWidth: '100%',
+  },
+  predictionIconBadge: {
+    width: 14,
+    height: 14,
+    borderRadius: 3,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  predictionIconText: {
+    fontSize: 8,
+  },
+  predictionIconGoal: {
+    backgroundColor: 'rgba(16, 185, 129, 0.9)', // Yeşil - Gol
+  },
+  predictionIconAssist: {
+    backgroundColor: 'rgba(59, 130, 246, 0.9)', // Mavi - Asist
+  },
+  predictionIconYellow: {
+    backgroundColor: '#F59E0B', // Sarı - Sarı kart
+  },
+  predictionIconRed: {
+    backgroundColor: '#EF4444', // Kırmızı - Kırmızı kart
+  },
+  predictionIconSub: {
+    backgroundColor: '#F97316', // Turuncu - Değişiklik
+  },
+  predictionIconInjury: {
+    backgroundColor: '#8B5CF6', // Mor - Sakatlık
+  },
   alertBadge: {
     position: 'absolute',
     top: 4,
@@ -3402,18 +3588,19 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   
-  // Info Note - ScrollView İÇİNDE, Kadro bottomBar ile aynı stil
+  // Info Note - Kadro sekmesindeki selectFormationButton ile AYNI yükseklik ve margin
+  // Sıçramayı önlemek için aynı dikey alan kullanılıyor
   infoNote: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-start',
+    justifyContent: 'center',
     gap: 8,
-    paddingVertical: 7,
-    paddingHorizontal: 10,
-    marginTop: 6,
-    marginBottom: 8,
+    height: 50, // ✅ selectFormationButton ile aynı yükseklik
+    paddingHorizontal: 16,
+    marginTop: 16, // ✅ selectFormationButton ile aynı marginTop
+    marginBottom: 0,
     backgroundColor: '#1E3A3A',
-    borderRadius: 8,
+    borderRadius: 12, // ✅ selectFormationButton ile aynı borderRadius
     borderWidth: 1,
     borderColor: 'rgba(31, 162, 166, 0.3)',
   },
