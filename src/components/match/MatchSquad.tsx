@@ -4166,14 +4166,15 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   
-  // ✅ Simetrik Toolbar: [Formasyon 2 satır] | 🔓 | [Tamamla]
+  // ✅ Simetrik Toolbar: [Formasyon] | 🔓 | [Tamamla] - Kilit kesinlikle ortada
   symmetricToolbar: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center', // ✅ Ortala
     flex: 1,
+    position: 'relative', // ✅ Kilit için absolute container
   },
-  // 2 Satırlı Formasyon Butonu
+  // 2 Satırlı Formasyon Butonu - SOL
   dualLineFormationButton: {
     flexDirection: 'column',
     paddingHorizontal: 10,
@@ -4182,8 +4183,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(31, 162, 166, 0.1)',
     borderWidth: 1,
     borderColor: 'rgba(31, 162, 166, 0.3)',
-    minWidth: 110,
+    minWidth: 100,
+    maxWidth: 130,
     gap: 2,
+    position: 'absolute', // ✅ Sol tarafa sabitle
+    left: 0,
   },
   formationLine: {
     flexDirection: 'row',
@@ -4198,18 +4202,20 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#9CA3AF',
     fontWeight: '500',
+    flex: 1,
   },
   formationLineTextActive: {
     color: '#FFFFFF',
     fontWeight: '600',
   },
-  // Kilit Butonu - Ortada
+  // Kilit Butonu - KESİNLİKLE ORTADA
   lockButtonCenter: {
     width: 36,
     height: 36,
     borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
+    // Ortada kalması için position yok - normal flow'da
   },
   lockButtonCenterLocked: {
     backgroundColor: 'rgba(239, 68, 68, 0.2)',
@@ -4226,7 +4232,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(100, 116, 139, 0.3)',
   },
-  // Tamamla Butonu - Sol ile simetrik
+  // Tamamla Butonu - SAĞ tarafa sabitle
   completeButtonSymmetric: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -4236,7 +4242,10 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 8,
     backgroundColor: '#1FA2A6',
-    minWidth: 110,
+    minWidth: 100,
+    maxWidth: 130,
+    position: 'absolute', // ✅ Sağ tarafa sabitle
+    right: 0,
   },
   completeButtonSymmetricDisabled: {
     backgroundColor: '#374151',
