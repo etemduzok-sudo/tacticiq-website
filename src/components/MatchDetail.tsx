@@ -759,7 +759,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
 
       {/* Bottom Navigation – overlay değil, akışta; bilgi kutusunu kesmez */}
 
-      {/* ✅ Kadro kaydedilmemiş değişiklik uyarısı */}
+      {/* ✅ Kadro kaydedilmemiş değişiklik uyarısı - geri dönme veya sekme değiştirme */}
       {showSquadUnsavedModal && (
         <ConfirmModal
           visible={true}
@@ -771,7 +771,8 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
               style: 'cancel', 
               onPress: () => { 
                 setShowSquadUnsavedModal(false); 
-                setPendingBackAction(false); 
+                setPendingBackAction(false);
+                setPendingTabChange(null);
               } 
             },
             { 
@@ -780,11 +781,17 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
               onPress: () => { 
                 setShowSquadUnsavedModal(false); 
                 setPendingBackAction(false);
-                onBack(); 
+                // Sekme değişiyorsa sekmeyi değiştir, değilse geri dön
+                if (pendingTabChange) {
+                  setActiveTab(pendingTabChange);
+                  setPendingTabChange(null);
+                } else {
+                  onBack();
+                }
               } 
             },
           ]}
-          onRequestClose={() => { setShowSquadUnsavedModal(false); setPendingBackAction(false); }}
+          onRequestClose={() => { setShowSquadUnsavedModal(false); setPendingBackAction(false); setPendingTabChange(null); }}
         />
       )}
 
@@ -904,6 +911,12 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
             <TouchableOpacity
               key={tab.id}
               onPress={() => {
+                // ✅ Kadro sekmesinden ayrılırken kaydedilmemiş değişiklik kontrolü
+                if (activeTab === 'squad' && tab.id !== 'squad' && squadHasUnsavedChanges) {
+                  setPendingTabChange(tab.id);
+                  setShowSquadUnsavedModal(true);
+                  return;
+                }
                 // ✅ Tahmin sekmesinden ayrılırken kaydedilmemiş değişiklik kontrolü
                 if (activeTab === 'prediction' && tab.id !== 'prediction' && predictionHasUnsavedChanges) {
                   setPendingTabChange(tab.id);

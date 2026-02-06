@@ -2194,17 +2194,60 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
                 <Text style={styles.changeFormationText} numberOfLines={1}>{formation?.name}</Text>
               </>
             ) : (
-              <TouchableOpacity
-                style={styles.changeFormationButton}
-                onPress={() => {
-                  setFormationType(editingMode === 'defense' ? 'defense' : 'attack');
-                  setShowFormationModal(true);
-                }}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="swap-horizontal" size={16} color="#1FA2A6" />
-                <Text style={styles.changeFormationText} numberOfLines={1}>{formation?.name}</Text>
-              </TouchableOpacity>
+              // ✅ 2 SATIR TOOLBAR: Üst satır Atak, alt satır Defans
+              <View style={styles.dualFormationToolbar}>
+                {/* Atak Satırı */}
+                <TouchableOpacity
+                  style={[
+                    styles.formationRowButton, 
+                    editingMode === 'attack' && styles.formationRowButtonActive
+                  ]}
+                  onPress={() => {
+                    setEditingMode('attack');
+                    setFormationType('attack');
+                    setShowFormationModal(true);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="flash" size={14} color={editingMode === 'attack' ? '#1FA2A6' : '#64748B'} />
+                  <Text style={[
+                    styles.formationRowText,
+                    editingMode === 'attack' && styles.formationRowTextActive
+                  ]} numberOfLines={1}>
+                    {attackFormation ? formations.find(f => f.id === attackFormation)?.name || attackFormation : 'Atak Seç'}
+                  </Text>
+                </TouchableOpacity>
+                
+                {/* Defans Satırı */}
+                <TouchableOpacity
+                  style={[
+                    styles.formationRowButton, 
+                    editingMode === 'defense' && styles.formationRowButtonActive,
+                    !attackFormation && styles.formationRowButtonDisabled
+                  ]}
+                  onPress={() => {
+                    if (!attackFormation) {
+                      Alert.alert('Önce Atak', 'Önce atak formasyonu seçmelisiniz.');
+                      return;
+                    }
+                    setEditingMode('defense');
+                    setFormationType('defense');
+                    setShowFormationModal(true);
+                  }}
+                  activeOpacity={attackFormation ? 0.7 : 1}
+                >
+                  <Ionicons name="shield" size={14} color={editingMode === 'defense' ? '#1FA2A6' : '#64748B'} />
+                  <Text style={[
+                    styles.formationRowText,
+                    editingMode === 'defense' && styles.formationRowTextActive,
+                    !attackFormation && styles.formationRowTextDisabled
+                  ]} numberOfLines={1}>
+                    {defenseFormation 
+                      ? formations.find(f => f.id === defenseFormation)?.name || defenseFormation 
+                      : (attackFormation ? 'Defans Seç' : '–')}
+                  </Text>
+                </TouchableOpacity>
+              </View>
             )}
           </View>
 
@@ -4121,6 +4164,43 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: '#10B981',
     marginRight: 8,
+  },
+  
+  // ✅ 2 Satır Formasyon Toolbar
+  dualFormationToolbar: {
+    flexDirection: 'column',
+    gap: 4,
+  },
+  formationRowButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+    backgroundColor: 'rgba(31, 162, 166, 0.1)',
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  formationRowButtonActive: {
+    borderColor: '#1FA2A6',
+    backgroundColor: 'rgba(31, 162, 166, 0.25)',
+  },
+  formationRowButtonDisabled: {
+    opacity: 0.4,
+  },
+  formationRowText: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    fontWeight: '500',
+    minWidth: 70,
+  },
+  formationRowTextActive: {
+    color: '#1FA2A6',
+    fontWeight: '600',
+  },
+  formationRowTextDisabled: {
+    color: '#64748B',
   },
   
   // Modal - Design System uyumlu
