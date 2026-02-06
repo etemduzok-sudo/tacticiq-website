@@ -1283,12 +1283,13 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
           </View>
         </FootballField>
 
-        {/* ✅ Bildirim: Oyuncu kartlarına tıklayın – ScrollView İÇİNDE (scroll edilir) */}
+        {/* ✅ Bildirim: Oyuncu kartlarına tıklayın + kilit bilgisi */}
         <View style={styles.infoNote}>
           <Ionicons name="information-circle" size={16} color="#9CA3AF" />
-          <Text style={styles.infoText}>
-            Tahmin yapmak için oyuncu kartlarına tıklayın ve aşağı kaydırın
+          <Text style={styles.infoText} numberOfLines={2}>
+            Tahmin yapmak için oyuncu kartlarına tıklayın ve aşağı kaydırın. Tahminleri değiştirmek için kilidi açın
           </Text>
+          <Ionicons name="lock-open" size={14} color="#10B981" style={{ marginLeft: 4 }} />
         </View>
 
         {/* PREDICTION CATEGORIES - COMPLETE */}
@@ -2030,9 +2031,28 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
             </View>
           </View>
 
-          {/* ✅ Tahmin Kaydet Toolbar - Kadro sekmesiyle aynı tarz: [Kaydet Butonu] [Kilit] */}
+          {/* ✅ Tahmin Kaydet Toolbar - Kadro sekmesiyle tutarlı: [Kilit] [Kaydet Butonu] */}
           <View style={styles.predictionToolbar}>
-            {/* Kaydet Butonu - Sol (flex: 1) */}
+            {/* Kilit Butonu - Solda (sadece aç/kapat, kaydetme yapmaz) */}
+            <TouchableOpacity
+              style={[
+                styles.predictionLockButton,
+                isPredictionLocked ? styles.predictionLockButtonLocked : styles.predictionLockButtonOpen
+              ]}
+              onPress={() => {
+                // Sadece kilit durumunu değiştir - kaydetme işlemi yapmaz
+                setIsPredictionLocked(!isPredictionLocked);
+              }}
+              activeOpacity={0.7}
+            >
+              <Ionicons 
+                name={isPredictionLocked ? "lock-closed" : "lock-open"} 
+                size={20} 
+                color={isPredictionLocked ? '#EF4444' : '#10B981'} 
+              />
+            </TouchableOpacity>
+
+            {/* Kaydet Butonu - Sağda (flex: 1) */}
             <TouchableOpacity 
               style={[
                 styles.submitButton, 
@@ -2057,25 +2077,6 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                   <Text style={styles.submitButtonText}>Tahminleri Kaydet</Text>
                 )}
               </LinearGradient>
-            </TouchableOpacity>
-
-            {/* Kilit Butonu - Sağda (sadece aç/kapat, kaydetme yapmaz) */}
-            <TouchableOpacity
-              style={[
-                styles.predictionLockButton,
-                isPredictionLocked ? styles.predictionLockButtonLocked : styles.predictionLockButtonOpen
-              ]}
-              onPress={() => {
-                // Sadece kilit durumunu değiştir - kaydetme işlemi yapmaz
-                setIsPredictionLocked(!isPredictionLocked);
-              }}
-              activeOpacity={0.7}
-            >
-              <Ionicons 
-                name={isPredictionLocked ? "lock-closed" : "lock-open"} 
-                size={20} 
-                color={isPredictionLocked ? '#EF4444' : '#10B981'} 
-              />
             </TouchableOpacity>
           </View>
         </View>
@@ -3612,9 +3613,10 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(31, 162, 166, 0.3)',
   },
   infoText: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#E6E6E6', // ✅ Daha okunabilir beyaz
     flex: 1,
+    flexShrink: 1,
   },
   
   // Predictions Section

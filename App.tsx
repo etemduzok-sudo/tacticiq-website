@@ -4,6 +4,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider } from './src/contexts/ThemeContext';
 import { PredictionProvider } from './src/contexts/PredictionContext';
 import { MatchProvider } from './src/contexts/MatchContext';
+import { FavoriteSquadsProvider } from './src/contexts/FavoriteSquadsContext';
 import ErrorBoundary from './src/components/ErrorBoundary';
 import MaintenanceScreen from './src/components/MaintenanceScreen';
 import { useFavoriteTeamMatches } from './src/hooks/useFavoriteTeamMatches';
@@ -515,6 +516,7 @@ export default function App() {
         <ThemeProvider>
           <PredictionProvider>
             <MatchProvider>
+              <FavoriteSquadsProvider>
               {/* Maintenance Mode Check */}
               {isMaintenanceMode ? (
                 <MaintenanceScreen />
@@ -572,6 +574,7 @@ export default function App() {
                   />
                 </View>
               )}
+              </FavoriteSquadsProvider>
             </MatchProvider>
           </PredictionProvider>
         </ThemeProvider>

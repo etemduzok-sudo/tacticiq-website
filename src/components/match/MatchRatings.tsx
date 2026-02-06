@@ -1,5 +1,8 @@
 // MatchRatingsScreen.tsx - React Native FULL VERSION
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import api from '../../services/api';
+import { supabase } from '../../config/supabase';
+import { useFavoriteSquads } from '../../hooks/useFavoriteSquads';
 import {
   View,
   Text,
@@ -61,6 +64,16 @@ const { width, height } = Dimensions.get('window');
 
 interface MatchRatingsScreenProps {
   matchData: any;
+  lineups?: any;
+  favoriteTeamIds?: number[];
+}
+
+interface Player {
+  id: number;
+  number: number;
+  name: string;
+  position: string;
+  photo?: string | null;
 }
 
 // Coach Rating Categories
@@ -123,10 +136,256 @@ const coachCategories = [
   },
 ];
 
+import { BRAND, DARK_MODE } from '../../theme/theme';
+
+// ⚽ Saha oyuncusu değerlendirme kategorileri
+const OUTFIELD_RATING_CATEGORIES = [
+  { id: 'pace', emoji: '⚡', title: 'Hız', color: '#22C55E' },
+  { id: 'shooting', emoji: '🎯', title: 'Şut', color: '#EF4444' },
+  { id: 'passing', emoji: '🎨', title: 'Pas', color: '#3B82F6' },
+  { id: 'dribbling', emoji: '🌀', title: 'Dribling', color: '#F59E0B' },
+  { id: 'defending', emoji: '🛡️', title: 'Savunma', color: '#8B5CF6' },
+  { id: 'physical', emoji: '💪', title: 'Fizik', color: '#06B6D4' },
+];
+
+// 🧤 Kaleci değerlendirme kategorileri
+const GK_RATING_CATEGORIES = [
+  { id: 'reflexes', emoji: '⚡', title: 'Refleks', color: '#22C55E' },
+  { id: 'positioning', emoji: '📐', title: 'Pozisyon', color: '#3B82F6' },
+  { id: 'rushing', emoji: '🏃', title: 'Çıkış', color: '#EF4444' },
+  { id: 'handling', emoji: '🧤', title: 'El Becerisi', color: '#F59E0B' },
+  { id: 'communication', emoji: '📢', title: 'İletişim', color: '#8B5CF6' },
+  { id: 'longball', emoji: '🦶', title: 'Uzun Top', color: '#06B6D4' },
+];
+
+// Pozisyona göre kategori seçici
+const getRatingCategories = (position: string) => 
+  position === 'GK' ? GK_RATING_CATEGORIES : OUTFIELD_RATING_CATEGORIES;
+
 export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
   matchData,
+  lineups,
+  favoriteTeamIds = [],
 }) => {
+  // ⚽ Takım kadrosu state
+  const [squadPlayers, setSquadPlayers] = useState<Player[]>([]);
+  const [squadLoading, setSquadLoading] = useState(false);
+  
+  // Favori takım ID'sini belirle (önce favori takım, yoksa ev sahibi)
+  const homeTeamId = matchData?.homeTeam?.id || matchData?.teams?.home?.id;
+  const awayTeamId = matchData?.awayTeam?.id || matchData?.teams?.away?.id;
+  
+  // Favori takımı bul - eğer maçtaki takımlardan biri favoriyse onu kullan
+  const targetTeamId = useMemo(() => {
+    if (favoriteTeamIds.length > 0) {
+      if (homeTeamId && favoriteTeamIds.includes(homeTeamId)) return homeTeamId;
+      if (awayTeamId && favoriteTeamIds.includes(awayTeamId)) return awayTeamId;
+    }
+    return homeTeamId; // Favori yoksa ev sahibi
+  }, [homeTeamId, awayTeamId, favoriteTeamIds]);
+
+  // Favori takımın bilgileri (TD adı, takım adı)
+  const targetTeamInfo = useMemo(() => {
+    const isHomeTeam = targetTeamId === homeTeamId;
+    const teamData = isHomeTeam 
+      ? (matchData?.homeTeam || matchData?.teams?.home)
+      : (matchData?.awayTeam || matchData?.teams?.away);
+    
+    return {
+      name: teamData?.name || 'Takım',
+      manager: teamData?.manager || '',
+      logo: teamData?.logo || '⚽',
+    };
+  }, [targetTeamId, homeTeamId, matchData]);
+
+  // Favori kadro: DB'den (Supabase team_squads) yüklenir
+  const { getSquad: getCachedSquad, squads: favoriteSquads, loading: favoriteSquadsLoading, version: favoriteSquadsVersion } = useFavoriteSquads(favoriteTeamIds);
+
+  // Fallback kadroları (DB'de veri yoksa) - 2025/26 sezonu güncel
+  const FALLBACK_SQUADS: Record<number, Player[]> = useMemo(() => ({
+    // Galatasaray (645)
+    645: [
+      { id: 1, number: 1, name: 'F. Muslera', position: 'GK' },
+      { id: 2, number: 97, name: 'G. Güveli', position: 'GK' },
+      { id: 3, number: 2, name: 'D. Sanchez', position: 'DF' },
+      { id: 4, number: 3, name: 'A. Nelsson', position: 'DF' },
+      { id: 5, number: 4, name: 'Abdülkerim', position: 'DF' },
+      { id: 6, number: 22, name: 'S. Jakobs', position: 'DF' },
+      { id: 7, number: 42, name: 'K. Ayhan', position: 'DF' },
+      { id: 8, number: 55, name: 'Y. Sağlam', position: 'DF' },
+      { id: 9, number: 6, name: 'L. Torreira', position: 'MF' },
+      { id: 10, number: 7, name: 'K. Aktürkoğlu', position: 'MF' },
+      { id: 11, number: 8, name: 'B. Yılmaz', position: 'MF' },
+      { id: 12, number: 10, name: 'D. Mertens', position: 'MF' },
+      { id: 13, number: 14, name: 'Sergio Oliveira', position: 'MF' },
+      { id: 14, number: 20, name: 'Y. Kutlu', position: 'MF' },
+      { id: 15, number: 52, name: 'J. Sara', position: 'MF' },
+      { id: 16, number: 9, name: 'M. Icardi', position: 'FW' },
+      { id: 17, number: 11, name: 'H. Oğuz', position: 'FW' },
+      { id: 18, number: 18, name: 'D. Mata', position: 'FW' },
+      { id: 19, number: 19, name: 'E. Elmas', position: 'MF' },
+      { id: 20, number: 23, name: 'M. Demirbay', position: 'MF' },
+      { id: 21, number: 70, name: 'B. Yılmaz', position: 'FW' },
+      { id: 22, number: 77, name: 'E. Kılınç', position: 'FW' },
+      { id: 23, number: 89, name: 'O. Bulut', position: 'FW' },
+    ],
+    // Fenerbahçe (611)
+    611: [
+      { id: 101, number: 1, name: 'D. Livakovic', position: 'GK' },
+      { id: 102, number: 98, name: 'I. Bayındır', position: 'GK' },
+      { id: 103, number: 3, name: 'S. Aziz', position: 'DF' },
+      { id: 104, number: 4, name: 'C. Söyüncü', position: 'DF' },
+      { id: 105, number: 22, name: 'B. Osterwolde', position: 'DF' },
+      { id: 106, number: 24, name: 'B. Kadioglu', position: 'DF' },
+      { id: 107, number: 33, name: 'R. Becao', position: 'DF' },
+      { id: 108, number: 77, name: 'M. Djiku', position: 'DF' },
+      { id: 109, number: 5, name: 'F. Kadıoğlu', position: 'MF' },
+      { id: 110, number: 6, name: 'İ. Kahveci', position: 'MF' },
+      { id: 111, number: 8, name: 'M. Fred', position: 'MF' },
+      { id: 112, number: 10, name: 'D. Szymanski', position: 'MF' },
+      { id: 113, number: 14, name: 'İ. Yüksek', position: 'MF' },
+      { id: 114, number: 20, name: 'B. Arao', position: 'MF' },
+      { id: 115, number: 7, name: 'C. Ünder', position: 'FW' },
+      { id: 116, number: 9, name: 'E. Dzeko', position: 'FW' },
+      { id: 117, number: 11, name: 'M. Tadic', position: 'FW' },
+      { id: 118, number: 17, name: 'Y. En-Nesyri', position: 'FW' },
+      { id: 119, number: 19, name: 'S. Saint-Maximin', position: 'FW' },
+      { id: 120, number: 23, name: 'B. Yıldırım', position: 'FW' },
+      { id: 121, number: 99, name: 'E. Valencia', position: 'FW' },
+    ],
+    // Beşiktaş (549)
+    549: [
+      { id: 201, number: 1, name: 'M. Günok', position: 'GK' },
+      { id: 202, number: 3, name: 'A. Uçan', position: 'DF' },
+      { id: 203, number: 4, name: 'G. Paulista', position: 'DF' },
+      { id: 204, number: 13, name: 'F. Toprak', position: 'DF' },
+      { id: 205, number: 22, name: 'E. Matic', position: 'DF' },
+      { id: 206, number: 8, name: 'G. Fernandes', position: 'MF' },
+      { id: 207, number: 10, name: 'R. Ghezzal', position: 'MF' },
+      { id: 208, number: 14, name: 'C. Tosun', position: 'FW' },
+      { id: 209, number: 17, name: 'M. Muleka', position: 'FW' },
+      { id: 210, number: 70, name: 'S. Güler', position: 'FW' },
+    ],
+    // Trabzonspor (607)
+    607: [
+      { id: 301, number: 1, name: 'U. Çakır', position: 'GK' },
+      { id: 302, number: 3, name: 'Eren E.', position: 'DF' },
+      { id: 303, number: 4, name: 'B. Denswil', position: 'DF' },
+      { id: 304, number: 22, name: 'M. Cham', position: 'DF' },
+      { id: 305, number: 6, name: 'A. Bardakçı', position: 'MF' },
+      { id: 306, number: 10, name: 'E. Visca', position: 'MF' },
+      { id: 307, number: 23, name: 'T. Trezeguet', position: 'MF' },
+      { id: 308, number: 9, name: 'P. Onuachu', position: 'FW' },
+      { id: 309, number: 11, name: 'A. Ömür', position: 'FW' },
+      { id: 310, number: 17, name: 'M. Bakasetas', position: 'FW' },
+    ],
+  }), []);
+
+  // Lineups'tan oyuncuları çıkar (favori takım)
+  const getPlayersFromLineups = useMemo((): Player[] => {
+    if (!lineups) return [];
+    
+    const lineupsArray = Array.isArray(lineups) ? lineups : (lineups as any)?.data;
+    if (!lineupsArray?.length) return [];
+    
+    // Favori takımın lineup'ını bul
+    const teamLineup = lineupsArray.find((l: any) => l.team?.id === targetTeamId) || lineupsArray[0];
+    if (!teamLineup) return [];
+    
+    const players: Player[] = [];
+    
+    if (teamLineup.startXI) {
+      teamLineup.startXI.forEach((item: any, idx: number) => {
+        const p = item.player || item;
+        if (p) {
+          players.push({
+            id: p.id || idx + 1,
+            number: p.number || idx + 1,
+            name: p.name || 'Bilinmiyor',
+            position: p.pos || p.position || 'MF',
+            photo: p.photo || null,
+          });
+        }
+      });
+    }
+    
+    if (teamLineup.substitutes) {
+      teamLineup.substitutes.forEach((item: any, idx: number) => {
+        const p = item.player || item;
+        if (p) {
+          players.push({
+            id: p.id || 100 + idx,
+            number: p.number || 12 + idx,
+            name: p.name || 'Bilinmiyor',
+            position: p.pos || p.position || 'MF',
+            photo: p.photo || null,
+          });
+        }
+      });
+    }
+    
+    return players;
+  }, [lineups, targetTeamId]);
+
+  // ⚽ Kadro kaynağı: 1) Lineups, 2) DB cache (useFavoriteSquads), 3) Fallback
+  useEffect(() => {
+    if (!targetTeamId) return;
+    
+    // 1) Maç günü kadrosu (lineups varsa)
+    if (getPlayersFromLineups.length > 0) {
+      console.log('✅ [Ratings] Kadro: lineups →', getPlayersFromLineups.length, 'oyuncu');
+      setSquadPlayers(getPlayersFromLineups);
+      return;
+    }
+    
+    // 2) DB'den yüklenmiş kadro (useFavoriteSquads hook)
+    const cached = getCachedSquad(targetTeamId);
+    if (cached && cached.length > 0) {
+      console.log('✅ [Ratings] Kadro: DB cache →', cached.length, 'oyuncu (team', targetTeamId, ')');
+      setSquadPlayers(cached);
+      return;
+    }
+    
+    // DB yüklemesi devam ediyorsa bekle
+    if (favoriteSquadsLoading) {
+      console.log('⏳ [Ratings] DB cache yükleniyor, bekleniyor...');
+      return;
+    }
+    
+    // 3) DB'de yoksa fallback
+    if (FALLBACK_SQUADS[targetTeamId]) {
+      console.log('⚠️ [Ratings] Kadro: fallback → team', targetTeamId);
+      setSquadPlayers(FALLBACK_SQUADS[targetTeamId]);
+    } else {
+      console.log('❌ [Ratings] Kadro bulunamadı: team', targetTeamId);
+    }
+  }, [targetTeamId, getPlayersFromLineups, getCachedSquad, favoriteSquadsVersion, favoriteSquadsLoading, FALLBACK_SQUADS]);
+  
+  // Önce squad API'den, yoksa lineups'tan al
+  const playersFromLineups = squadPlayers.length > 0 ? squadPlayers : getPlayersFromLineups;
+  // Tab state
+  const [activeTab, setActiveTab] = useState<'coach' | 'player'>('coach');
+  const [showSavePopup, setShowSavePopup] = useState(false);
+  const [pendingTab, setPendingTab] = useState<'coach' | 'player' | null>(null);
+  
+  // Değişiklik takibi (ref = tıklamada her zaman güncel, stale closure önlenir)
+  const [coachRatingsChanged, setCoachRatingsChanged] = useState(false);
+  const [playerRatingsChanged, setPlayerRatingsChanged] = useState(false);
+  const coachRatingsChangedRef = useRef(false);
+  const playerRatingsChangedRef = useRef(false);
+  coachRatingsChangedRef.current = coachRatingsChanged;
+  playerRatingsChangedRef.current = playerRatingsChanged;
+  
   // Coach rating state
+  const initialCoachRatings = useRef<{[key: number]: number}>({
+    1: 7.5,
+    2: 8.0,
+    3: 6.5,
+    4: 7.0,
+    5: 8.5,
+    6: 7.5,
+    7: 8.0,
+  });
   const [coachRatings, setCoachRatings] = useState<{[key: number]: number}>({
     1: 7.5,
     2: 8.0,
@@ -136,6 +395,143 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
     6: 7.5,
     7: 8.0,
   });
+
+  // ⚽ Player rating state
+  const [expandedPlayerId, setExpandedPlayerId] = useState<number | null>(null);
+  const [playerRatings, setPlayerRatings] = useState<{[playerId: number]: {[categoryId: string]: number}}>({});
+  
+  // Scroll ref ve player card pozisyonları
+  const scrollViewRef = useRef<ScrollView>(null);
+  const playerCardRefs = useRef<{[playerId: number]: number}>({});
+  
+  // Futbolcuları forma numarasına göre sırala
+  const sortedPlayers = [...playersFromLineups].sort((a, b) => a.number - b.number);
+
+  // Topluluk değerlendirme verileri (mock - ileride API'den gelecek)
+  const getPlayerCommunityData = useCallback((playerId: number) => {
+    // Her oyuncu için rastgele ama tutarlı mock veri
+    const seed = playerId % 100;
+    const voters = 200 + (seed * 13) % 800;
+    const communityAvg = 5.5 + ((seed * 7) % 35) / 10;
+    return {
+      voters,
+      communityAvg: Math.min(9.5, communityAvg),
+    };
+  }, []);
+
+  // Futbolcuya tıklandığında kartı ekranın üstüne scroll et
+  const handlePlayerToggle = useCallback((playerId: number, isCurrentlyExpanded: boolean) => {
+    if (isCurrentlyExpanded) {
+      // Kapatıyoruz
+      setExpandedPlayerId(null);
+    } else {
+      // Açıyoruz
+      setExpandedPlayerId(playerId);
+      // Kısa gecikme ile scroll et (expanded panel renderlansin)
+      setTimeout(() => {
+        const cardY = playerCardRefs.current[playerId];
+        if (cardY !== undefined && scrollViewRef.current) {
+          // cardY: container içindeki offset
+          // scrollContent padding 16px, üstten 6px boşluk bırak
+          const scrollTarget = cardY + 10;
+          scrollViewRef.current.scrollTo({ y: Math.max(0, scrollTarget), animated: true });
+        }
+      }, 120);
+    }
+  }, []);
+
+  // Futbolcu değerlendirme güncelleme
+  const updatePlayerRating = (playerId: number, categoryId: string, value: number) => {
+    setPlayerRatings(prev => ({
+      ...prev,
+      [playerId]: {
+        ...(prev[playerId] || {}),
+        [categoryId]: value,
+      }
+    }));
+    setPlayerRatingsChanged(true);
+  };
+
+  // Tüm kategorilere aynı puanı ver
+  const setAllRatings = (playerId: number, position: string, score: number) => {
+    const categories = getRatingCategories(position);
+    const newRatings: {[key: string]: number} = {};
+    categories.forEach(cat => { newRatings[cat.id] = score; });
+    setPlayerRatings(prev => ({ ...prev, [playerId]: newRatings }));
+    setPlayerRatingsChanged(true);
+  };
+  
+  // 🔄 TAB DEĞİŞTİRME - kaydetme kontrolü (ref ile güncel değer, popup kesin çıkar)
+  const handleTabSwitch = useCallback((newTab: 'coach' | 'player') => {
+    if (newTab === activeTab) return;
+    
+    const coachChanged = coachRatingsChangedRef.current;
+    const playerChanged = playerRatingsChangedRef.current;
+    const hasUnsavedChanges = activeTab === 'coach' ? coachChanged : playerChanged;
+    
+    if (hasUnsavedChanges) {
+      setPendingTab(newTab);
+      setShowSavePopup(true);
+    } else {
+      setActiveTab(newTab);
+    }
+  }, [activeTab]);
+  
+  // Kaydet ve geç
+  const handleSaveAndSwitch = async () => {
+    if (activeTab === 'coach') {
+      await handleSaveRatings(true); // silent save
+    } else {
+      await handleSavePlayerRatings(true); // silent save
+    }
+    setShowSavePopup(false);
+    if (pendingTab) {
+      setActiveTab(pendingTab);
+      setPendingTab(null);
+    }
+  };
+  
+  // Kaydetmeden geç
+  const handleDiscardAndSwitch = () => {
+    setShowSavePopup(false);
+    if (pendingTab) {
+      // Değişiklikleri sıfırla
+      if (activeTab === 'coach') {
+        setCoachRatings({ ...initialCoachRatings.current });
+        setCoachRatingsChanged(false);
+      } else {
+        setPlayerRatingsChanged(false);
+      }
+      setActiveTab(pendingTab);
+      setPendingTab(null);
+    }
+  };
+
+  // Futbolcu ortalama puanı hesapla (tüm kategoriler için, varsayılan 5.0)
+  const getPlayerAverageRating = useCallback((playerId: number, position?: string): number => {
+    const ratings = playerRatings[playerId];
+    if (!ratings || Object.keys(ratings).length === 0) return 0;
+    
+    // Pozisyona göre kategorileri al
+    const playerPosition = position || sortedPlayers.find(p => p.id === playerId)?.position || 'MF';
+    const categories = getRatingCategories(playerPosition);
+    
+    // Tüm kategorilerin ortalamasını al (puanlanmamış için 5.0)
+    let total = 0;
+    categories.forEach(cat => {
+      total += ratings[cat.id] ?? 5.0; // Varsayılan 5.0
+    });
+    
+    return total / categories.length;
+  }, [playerRatings, sortedPlayers]);
+
+  // Puan rengini hesapla
+  const getRatingColor = (rating: number): string => {
+    if (rating >= 8) return '#22C55E';
+    if (rating >= 6) return '#F59E0B';
+    if (rating >= 4) return '#F97316';
+    return '#EF4444';
+  };
 
   // 🌟 PREDICTION SCORING STATE
   const [predictionReport, setPredictionReport] = useState<any>(null);
@@ -188,7 +584,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
     }
   };
 
-  const handleSaveRatings = async () => {
+  const handleSaveRatings = async (silent = false) => {
     try {
       // Calculate average rating
       const ratingsArray = Object.values(coachRatings);
@@ -207,19 +603,57 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
         JSON.stringify(ratingsData)
       );
       
-      console.log('✅ Ratings saved successfully!', ratingsData);
+      console.log('✅ Coach ratings saved!', ratingsData);
+      initialCoachRatings.current = { ...coachRatings };
+      setCoachRatingsChanged(false);
       
       // 🏆 CHECK AND AWARD BADGES
       await checkAndAwardBadgesForMatch();
       
-      Alert.alert(
-        'Değerlendirmeler Kaydedildi! ⭐',
-        `Teknik direktöre ortalama ${averageRating.toFixed(1)} puan verdiniz.`,
-        [{ text: 'Tamam' }]
-      );
+      if (!silent) {
+        Alert.alert(
+          'Değerlendirmeler Kaydedildi! ⭐',
+          `Teknik direktöre ortalama ${averageRating.toFixed(1)} puan verdiniz.`,
+          [{ text: 'Tamam' }]
+        );
+      }
     } catch (error) {
       console.error('Error saving ratings:', error);
-      Alert.alert('Hata!', 'Değerlendirmeler kaydedilemedi. Lütfen tekrar deneyin.');
+      if (!silent) {
+        Alert.alert('Hata!', 'Değerlendirmeler kaydedilemedi. Lütfen tekrar deneyin.');
+      }
+    }
+  };
+
+  // ⚽ Futbolcu değerlendirmelerini kaydet
+  const handleSavePlayerRatings = async (silent = false) => {
+    try {
+      const playerRatingsData = {
+        matchId: matchData.id,
+        playerRatings: playerRatings,
+        timestamp: new Date().toISOString(),
+      };
+      
+      await AsyncStorage.setItem(
+        `${STORAGE_KEYS.RATINGS}${matchData.id}_players`,
+        JSON.stringify(playerRatingsData)
+      );
+      
+      console.log('✅ Player ratings saved!', playerRatingsData);
+      setPlayerRatingsChanged(false);
+      
+      if (!silent) {
+        Alert.alert(
+          'Değerlendirmeler Kaydedildi! ⚽',
+          'Futbolcu değerlendirmeleriniz kaydedildi.',
+          [{ text: 'Tamam' }]
+        );
+      }
+    } catch (error) {
+      console.error('Error saving player ratings:', error);
+      if (!silent) {
+        Alert.alert('Hata!', 'Değerlendirmeler kaydedilemedi. Lütfen tekrar deneyin.');
+      }
     }
   };
 
@@ -327,6 +761,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
       ...prev,
       [categoryId]: rating
     }));
+    setCoachRatingsChanged(true);
   };
 
   const userScore = parseFloat(calculateTotalScore());
@@ -334,264 +769,172 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Tab Bar - İstatistik sekmesiyle aynı stil */}
+      <View style={styles.tabsContainer}>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'coach' && styles.tabActive]}
+          onPress={() => handleTabSwitch('coach')}
+          activeOpacity={0.7}
+        >
+          <Text style={[
+            styles.tabText,
+            activeTab === 'coach' && styles.tabTextActive
+          ]}>
+            👔 TD Değerlendirmesi
+          </Text>
+          {activeTab === 'coach' && <View style={styles.tabIndicator} />}
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'player' && styles.tabActive]}
+          onPress={() => handleTabSwitch('player')}
+          activeOpacity={0.7}
+        >
+          <Text style={[
+            styles.tabText,
+            activeTab === 'player' && styles.tabTextActive
+          ]}>
+            ⚽ Futbolcu Değerlendirmeleri
+          </Text>
+          {activeTab === 'player' && <View style={styles.tabIndicator} />}
+        </TouchableOpacity>
+      </View>
+
       <ScrollView
+        ref={scrollViewRef}
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header Card - Total Score */}
+        {activeTab === 'coach' ? (
+        <>
+        {/* Premium Header Card */}
         <Animated.View 
           entering={isWeb ? undefined : FadeIn.duration(400)}
           style={styles.headerCard}
         >
           <LinearGradient
-            colors={['rgba(5, 150, 105, 0.2)', 'rgba(5, 150, 105, 0.05)']}
+            colors={['rgba(15, 23, 42, 0.95)', 'rgba(5, 150, 105, 0.15)', 'rgba(15, 23, 42, 0.95)']}
             style={styles.headerGradient}
           >
-            <Text style={styles.headerTitle}>Teknik Direktör Değerlendirmesi</Text>
-            <Text style={styles.headerSubtitle}>Okan Buruk • Galatasaray</Text>
-
-            {/* Total Score Display */}
-            <View style={styles.totalScoreContainer}>
-              <View style={styles.scoreColumn}>
-                <Text style={styles.scoreLabel}>Sizin Puanınız</Text>
-                <View style={styles.scoreCircle}>
-                  <Svg width={100} height={100} style={styles.scoreSvg}>
-                    <Circle
-                      cx="50"
-                      cy="50"
-                      r="40"
-                      stroke="rgba(100, 116, 139, 0.2)"
-                      strokeWidth="8"
-                      fill="none"
-                    />
-                    <Circle
-                      cx="50"
-                      cy="50"
-                      r="40"
-                      stroke="#1FA2A6"
-                      strokeWidth="8"
-                      fill="none"
-                      strokeDasharray={`${(userScore / 10) * 251.2} 251.2`}
-                      strokeLinecap="round"
-                      rotation="-90"
-                      origin="50, 50"
-                    />
-                  </Svg>
-                  <View style={styles.scoreValue}>
-                    <Text style={styles.scoreText}>{userScore}</Text>
-                    <Text style={styles.scoreMax}>/10</Text>
-                  </View>
-                </View>
-              </View>
-
-              <View style={styles.scoreDivider}>
-                <View style={styles.scoreDividerLine} />
-                <Text style={styles.scoreDividerText}>vs</Text>
-                <View style={styles.scoreDividerLine} />
-              </View>
-
-              <View style={styles.scoreColumn}>
-                <Text style={styles.scoreLabel}>Topluluk Ortalaması</Text>
-                <View style={styles.scoreCircle}>
-                  <Svg width={100} height={100} style={styles.scoreSvg}>
-                    <Circle
-                      cx="50"
-                      cy="50"
-                      r="40"
-                      stroke="rgba(100, 116, 139, 0.2)"
-                      strokeWidth="8"
-                      fill="none"
-                    />
-                    <Circle
-                      cx="50"
-                      cy="50"
-                      r="40"
-                      stroke="#F59E0B"
-                      strokeWidth="8"
-                      fill="none"
-                      strokeDasharray={`${(communityScore / 10) * 251.2} 251.2`}
-                      strokeLinecap="round"
-                      rotation="-90"
-                      origin="50, 50"
-                    />
-                  </Svg>
-                  <View style={styles.scoreValue}>
-                    <Text style={styles.scoreTextCommunity}>{communityScore}</Text>
-                    <Text style={styles.scoreMax}>/10</Text>
-                  </View>
-                </View>
-              </View>
+            {/* Premium Badge */}
+            <View style={styles.premiumBadge}>
+              <LinearGradient
+                colors={['rgba(31, 162, 166, 0.3)', 'rgba(5, 150, 105, 0.1)']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.premiumBadgeGradient}
+              >
+                <Text style={styles.premiumBadgeText}>👔 TD DEĞERLENDİRMESİ</Text>
+              </LinearGradient>
             </View>
 
-            <Text style={styles.votersText}>
-              👥 {totalVoters.toLocaleString()} kullanıcı oy verdi
+            <Text style={styles.headerTitle}>
+              {targetTeamInfo.manager || 'Teknik Direktör'}
             </Text>
+            <Text style={styles.headerSubtitle}>
+              {targetTeamInfo.name} Teknik Direktörü
+            </Text>
+
+            {/* Score Comparison - Premium Design */}
+            <View style={styles.scoreComparisonCard}>
+              <LinearGradient
+                colors={['rgba(31, 162, 166, 0.08)', 'rgba(0, 0, 0, 0.2)', 'rgba(245, 158, 11, 0.08)']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.scoreComparisonGradient}
+              >
+                {/* User Score */}
+                <View style={styles.scoreColumn}>
+                  <View style={styles.scoreLabelRow}>
+                    <Ionicons name="person" size={12} color="#1FA2A6" />
+                    <Text style={[styles.scoreLabel, { color: '#1FA2A6' }]}>SİZİN PUANINIZ</Text>
+                  </View>
+                  <View style={styles.scoreCircle}>
+                    <Svg width={110} height={110} style={styles.scoreSvg}>
+                      <Circle
+                        cx="55"
+                        cy="55"
+                        r="45"
+                        stroke="rgba(31, 162, 166, 0.12)"
+                        strokeWidth="6"
+                        fill="none"
+                      />
+                      <Circle
+                        cx="55"
+                        cy="55"
+                        r="45"
+                        stroke="#1FA2A6"
+                        strokeWidth="6"
+                        fill="none"
+                        strokeDasharray={`${(userScore / 10) * 282.7} 282.7`}
+                        strokeLinecap="round"
+                        rotation="-90"
+                        origin="55, 55"
+                      />
+                    </Svg>
+                    <View style={styles.scoreValue}>
+                      <Text style={styles.scoreText}>{userScore}</Text>
+                      <Text style={styles.scoreMax}>/10</Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* VS Divider */}
+                <View style={styles.scoreDivider}>
+                  <View style={styles.scoreDividerDiamond}>
+                    <Text style={styles.scoreDividerText}>VS</Text>
+                  </View>
+                </View>
+
+                {/* Community Score */}
+                <View style={styles.scoreColumn}>
+                  <View style={styles.scoreLabelRow}>
+                    <Ionicons name="people" size={12} color="#F59E0B" />
+                    <Text style={[styles.scoreLabel, { color: '#F59E0B' }]}>TOPLULUK</Text>
+                  </View>
+                  <View style={styles.scoreCircle}>
+                    <Svg width={110} height={110} style={styles.scoreSvg}>
+                      <Circle
+                        cx="55"
+                        cy="55"
+                        r="45"
+                        stroke="rgba(245, 158, 11, 0.12)"
+                        strokeWidth="6"
+                        fill="none"
+                      />
+                      <Circle
+                        cx="55"
+                        cy="55"
+                        r="45"
+                        stroke="#F59E0B"
+                        strokeWidth="6"
+                        fill="none"
+                        strokeDasharray={`${(communityScore / 10) * 282.7} 282.7`}
+                        strokeLinecap="round"
+                        rotation="-90"
+                        origin="55, 55"
+                      />
+                    </Svg>
+                    <View style={styles.scoreValue}>
+                      <Text style={styles.scoreTextCommunity}>{communityScore}</Text>
+                      <Text style={styles.scoreMax}>/10</Text>
+                    </View>
+                  </View>
+                </View>
+              </LinearGradient>
+            </View>
+
+            {/* Voters Row */}
+            <View style={styles.votersRow}>
+              <View style={styles.votersDot} />
+              <Text style={styles.votersText}>
+                {totalVoters.toLocaleString()} kullanıcı değerlendirdi
+              </Text>
+              <View style={styles.votersDot} />
+            </View>
           </LinearGradient>
         </Animated.View>
-
-        {/* 🌟 PREDICTION ANALYSIS CARD */}
-        {predictionReport && (
-          <Animated.View entering={!isWeb && FadeIn ? FadeIn.delay(200) : undefined} style={styles.analysisCard}>
-            <TouchableOpacity
-              onPress={() => setShowAnalysis(!showAnalysis)}
-              activeOpacity={0.8}
-            >
-              <View style={styles.analysisHeader}>
-                <View style={styles.analysisHeaderLeft}>
-                  <Ionicons name="analytics" size={24} color="#F59E0B" />
-                  <View>
-                    <Text style={styles.analysisTitle}>Tahmin Analizi</Text>
-                    <Text style={styles.analysisSubtitle}>
-                      Toplam {predictionReport.totalPoints} Puan
-                    </Text>
-                  </View>
-                </View>
-                <Ionicons
-                  name={showAnalysis ? 'chevron-up' : 'chevron-down'}
-                  size={24}
-                  color="#9CA3AF"
-                />
-              </View>
-            </TouchableOpacity>
-
-            {showAnalysis && (
-              <Animated.View entering={!isWeb && FadeIn ? FadeIn.duration(300) : undefined}>
-                {/* Analyst Note */}
-                <View style={styles.analystNote}>
-                  <Text style={styles.analystNoteTitle}>📊 Maç Sonu Analist Notu</Text>
-                  <Text style={styles.analystNoteText}>
-                    {predictionReport.analystNote}
-                  </Text>
-                </View>
-
-                {/* Cluster Scores */}
-                <View style={styles.clusterScoresContainer}>
-                  <Text style={styles.clusterScoresTitle}>Küme Bazlı Puanlar</Text>
-                  {predictionReport.clusterScores.map((cluster: any, index: number) => (
-                    <Animated.View
-                      key={cluster.cluster}
-                      entering={!isWeb && FadeIn ? FadeIn.delay(index * 100) : undefined}
-                      style={styles.clusterScoreCard}
-                    >
-                      <View style={styles.clusterScoreHeader}>
-                        <Text style={styles.clusterIcon}>
-                          {getClusterIcon(cluster.cluster)}
-                        </Text>
-                        <Text style={styles.clusterName}>
-                          {getClusterName(cluster.cluster)}
-                        </Text>
-                      </View>
-                      <View style={styles.clusterScoreStats}>
-                        <View style={styles.clusterStat}>
-                          <Text style={styles.clusterStatLabel}>Puan</Text>
-                          <Text style={styles.clusterStatValue}>
-                            {cluster.totalPoints}
-                          </Text>
-                        </View>
-                        <View style={styles.clusterStat}>
-                          <Text style={styles.clusterStatLabel}>Doğruluk</Text>
-                          <Text style={styles.clusterStatValue}>
-                            %{cluster.accuracy}
-                          </Text>
-                        </View>
-                        <View style={styles.clusterStat}>
-                          <Text style={styles.clusterStatLabel}>Tahmin</Text>
-                          <Text style={styles.clusterStatValue}>
-                            {cluster.correctPredictions}/{cluster.totalPredictions}
-                          </Text>
-                        </View>
-                      </View>
-                    </Animated.View>
-                  ))}
-                </View>
-
-                {/* Focused Predictions Stats */}
-                {predictionReport.focusedPredictions.total > 0 && (
-                  <View style={styles.focusedStatsCard}>
-                    <View style={styles.focusedStatsHeader}>
-                      <Ionicons name="star" size={20} color="#F59E0B" />
-                      <Text style={styles.focusedStatsTitle}>
-                        Odaklanılan Tahminler
-                      </Text>
-                    </View>
-                    <View style={styles.focusedStatsRow}>
-                      <View style={styles.focusedStat}>
-                        <Text style={styles.focusedStatValue}>
-                          {predictionReport.focusedPredictions.correct}
-                        </Text>
-                        <Text style={styles.focusedStatLabel}>Doğru (2x)</Text>
-                      </View>
-                      <View style={styles.focusedStat}>
-                        <Text style={[styles.focusedStatValue, styles.focusedStatValueWrong]}>
-                          {predictionReport.focusedPredictions.wrong}
-                        </Text>
-                        <Text style={styles.focusedStatLabel}>Yanlış (-1.5x)</Text>
-                      </View>
-                    </View>
-                  </View>
-                )}
-
-                {/* 📊 KÜME BAZINDA PUAN DAĞILIMI TABLOSU */}
-                {predictionReport && predictionReport.clusterScores.length > 0 && (
-                  <Animated.View entering={!isWeb && FadeIn ? FadeIn.delay(300) : undefined} style={styles.clusterBreakdownCard}>
-                    <View style={styles.clusterBreakdownHeader}>
-                      <Ionicons name="bar-chart" size={20} color="#1FA2A6" />
-                      <Text style={styles.clusterBreakdownTitle}>Küme Bazında Puan Dağılımı</Text>
-                    </View>
-
-                    {predictionReport.clusterScores.map((cluster, index) => {
-                      const clusterIcon = getClusterIcon(cluster.cluster);
-                      const clusterName = getClusterName(cluster.cluster);
-                      const accuracyColor = cluster.accuracy >= 70 ? '#22C55E' : cluster.accuracy >= 50 ? '#F59E0B' : '#EF4444';
-
-                      return (
-                        <Animated.View 
-                          key={cluster.cluster} 
-                          entering={!isWeb && FadeIn ? FadeIn.delay(320 + index * 50) : undefined}
-                          style={styles.clusterRow}
-                        >
-                          <View style={styles.clusterRowLeft}>
-                            <Text style={styles.clusterRowIcon}>{clusterIcon}</Text>
-                            <View style={styles.clusterRowInfo}>
-                              <Text style={styles.clusterRowName}>{clusterName}</Text>
-                              <Text style={styles.clusterRowStats}>
-                                {cluster.correctPredictions}/{cluster.totalPredictions} doğru
-                              </Text>
-                            </View>
-                          </View>
-
-                          <View style={styles.clusterRowRight}>
-                            <View style={styles.clusterRowPoints}>
-                              <Text style={styles.clusterRowPointsValue}>+{cluster.totalPoints}</Text>
-                              <Text style={styles.clusterRowPointsLabel}>puan</Text>
-                            </View>
-                            <View style={[styles.clusterRowAccuracy, { backgroundColor: `${accuracyColor}20` }]}>
-                              <Text style={[styles.clusterRowAccuracyText, { color: accuracyColor }]}>
-                                %{cluster.accuracy}
-                              </Text>
-                            </View>
-                          </View>
-                        </Animated.View>
-                      );
-                    })}
-
-                    {/* Analist Notu */}
-                    <View style={styles.analystNoteContainer}>
-                      <View style={styles.analystNoteHeader}>
-                        <Ionicons name="chatbox-ellipses" size={18} color="#3B82F6" />
-                        <Text style={styles.analystNoteHeaderText}>Maç Sonu Analist Notu</Text>
-                      </View>
-                      <Text style={styles.analystNoteText}>
-                        {predictionReport.analystNote}
-                      </Text>
-                    </View>
-                  </Animated.View>
-                )}
-              </Animated.View>
-            )}
-          </Animated.View>
-        )}
 
         {/* Rating Categories */}
         <View style={styles.categoriesContainer}>
@@ -705,28 +1048,297 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
           })}
         </View>
 
-        {/* Submit Button */}
-        <TouchableOpacity
-          style={styles.submitButton}
-          activeOpacity={0.8}
-          onPress={handleSaveRatings}
-        >
-          <LinearGradient
-            colors={['#1FA2A6', '#047857']}
-            style={styles.submitGradient}
-          >
-            <Text style={styles.submitText}>Değerlendirmeyi Kaydet</Text>
-          </LinearGradient>
-        </TouchableOpacity>
-
         {/* Info Note */}
         <View style={styles.infoNote}>
           <Text style={styles.infoNoteEmoji}>💡</Text>
           <Text style={styles.infoNoteText}>
-            Puanlamalarınız kaydedildikten sonra değiştirilemez. Teknik direktörün performansını adil bir şekilde değerlendirin.
+            Değişiklik yaptıktan sonra sekmeden çıkarken kaydetme seçeneği sunulur.
           </Text>
         </View>
+        </>
+        ) : (
+          /* ⚽ FUTBOLCU DEĞERLENDİRMELERİ SEKMESİ */
+          <View
+            style={styles.playerRatingContainer}
+          >
+
+            {/* Oyuncu yoksa bilgi mesajı */}
+            {sortedPlayers.length === 0 && (
+              <View style={styles.noPlayersContainer}>
+                <Ionicons name="people-outline" size={48} color="#64748B" />
+                <Text style={styles.noPlayersTitle}>Kadro Bilgisi Yok</Text>
+                <Text style={styles.noPlayersText}>
+                  Bu maç için kadro bilgisi henüz yayınlanmadı.{'\n'}Maç yaklaştığında kadro görünecektir.
+                </Text>
+              </View>
+            )}
+
+            {/* Players List */}
+            {sortedPlayers.map((player, index) => {
+              const isExpanded = expandedPlayerId === player.id;
+              const avgRating = getPlayerAverageRating(player.id, player.position);
+              const hasRatings = Object.keys(playerRatings[player.id] || {}).length > 0;
+              const categories = getRatingCategories(player.position);
+              const isGK = player.position === 'GK';
+
+              return (
+                <Animated.View
+                  key={player.id}
+                  entering={!isWeb && FadeIn ? FadeIn.delay(Math.min(index * 30, 300)) : undefined}
+                  style={styles.playerCardWrapper}
+                  onLayout={(e: any) => {
+                    playerCardRefs.current[player.id] = e.nativeEvent.layout.y;
+                  }}
+                >
+                  {/* Player Card Header */}
+                  <TouchableOpacity
+                    style={[
+                      styles.playerCard,
+                      isExpanded && styles.playerCardExpanded,
+                      hasRatings && !isExpanded && { borderColor: `${getRatingColor(avgRating)}30` }
+                    ]}
+                    onPress={() => handlePlayerToggle(player.id, isExpanded)}
+                    activeOpacity={0.7}
+                  >
+                    {/* Jersey Number */}
+                    <LinearGradient
+                      colors={isGK ? ['#F59E0B', '#92400E'] : ['#1FA2A6', '#0F2A24']}
+                      style={styles.playerJerseyGradient}
+                    >
+                      <Text style={styles.playerJerseyNumber}>{player.number}</Text>
+                    </LinearGradient>
+
+                    {/* Player Info */}
+                    <View style={styles.playerInfoContainer}>
+                      <Text style={styles.playerName} numberOfLines={1}>{player.name}</Text>
+                      <View style={styles.playerPositionRow}>
+                        <View style={[styles.playerPositionBadge, isGK && styles.playerPositionBadgeGK]}>
+                          <Text style={[styles.playerPositionText, isGK && styles.playerPositionTextGK]}>
+                            {isGK ? '🧤 GK' : player.position}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+
+                    {/* Score Badge + Arrow */}
+                    <View style={styles.playerRightSection}>
+                      {hasRatings && (
+                        <View style={[styles.playerScoreBadge, { backgroundColor: `${getRatingColor(avgRating)}20`, borderColor: `${getRatingColor(avgRating)}40` }]}>
+                          <Text style={[styles.playerScoreText, { color: getRatingColor(avgRating) }]}>
+                            {avgRating.toFixed(1)}
+                          </Text>
+                        </View>
+                      )}
+                      <Ionicons
+                        name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                        size={20}
+                        color={isExpanded ? BRAND.secondary : '#64748B'}
+                      />
+                    </View>
+                  </TouchableOpacity>
+
+                  {/* Expanded Rating Panel - Premium */}
+                  {isExpanded && (
+                    <Animated.View
+                      entering={!isWeb && FadeIn ? FadeIn.duration(200) : undefined}
+                      style={styles.playerRatingPanel}
+                    >
+                      {/* Sizin Puanınız vs Topluluk Puanı */}
+                      {(() => {
+                        const communityData = getPlayerCommunityData(player.id);
+                        return (
+                          <View style={styles.playerScoreComparisonCard}>
+                            <View style={styles.playerScoreCompRow}>
+                              {/* Sizin Puanınız */}
+                              <View style={styles.playerScoreCompCol}>
+                                <View style={styles.playerScoreCompIconRow}>
+                                  <Ionicons name="person" size={11} color="#1FA2A6" />
+                                  <Text style={styles.playerScoreCompLabel}>Sizin Puanınız</Text>
+                                </View>
+                                <Text style={[styles.playerScoreCompValue, { color: hasRatings ? getRatingColor(avgRating) : '#475569' }]}>
+                                  {hasRatings ? avgRating.toFixed(1) : '—'}
+                                </Text>
+                              </View>
+
+                              {/* VS */}
+                              <View style={styles.playerScoreCompVs}>
+                                <Text style={styles.playerScoreCompVsText}>vs</Text>
+                              </View>
+
+                              {/* Topluluk Puanı */}
+                              <View style={styles.playerScoreCompCol}>
+                                <View style={styles.playerScoreCompIconRow}>
+                                  <Ionicons name="people" size={11} color="#F59E0B" />
+                                  <Text style={styles.playerScoreCompLabel}>Topluluk</Text>
+                                </View>
+                                <Text style={[styles.playerScoreCompValue, { color: '#F59E0B' }]}>
+                                  {communityData.communityAvg.toFixed(1)}
+                                </Text>
+                              </View>
+                            </View>
+                            {/* Voters */}
+                            <View style={styles.playerScoreCompVotersRow}>
+                              <Ionicons name="people-outline" size={11} color="#64748B" />
+                              <Text style={styles.playerScoreCompVotersText}>
+                                {communityData.voters.toLocaleString()} kişi değerlendirdi
+                              </Text>
+                            </View>
+                          </View>
+                        );
+                      })()}
+
+                      {/* Rating Categories - Premium Grid */}
+                      <View style={styles.ratingGrid}>
+                        {categories.map((category) => {
+                          const currentRating = playerRatings[player.id]?.[category.id] || 5;
+                          
+                          return (
+                            <View key={category.id} style={styles.ratingGridItem}>
+                              {/* Category Header */}
+                              <View style={[styles.ratingGridIconBg, { backgroundColor: `${category.color}15` }]}>
+                                <Text style={styles.ratingGridEmoji}>{category.emoji}</Text>
+                              </View>
+                              <Text style={styles.ratingGridTitle}>{category.title}</Text>
+                              
+                              {/* Rating Value */}
+                              <View style={[styles.ratingCircle, { borderColor: `${category.color}50`, backgroundColor: `${category.color}08` }]}>
+                                <Text style={[styles.ratingCircleValue, { color: category.color }]}>
+                                  {currentRating.toFixed(0) === '10' ? '10' : currentRating.toFixed(1)}
+                                </Text>
+                              </View>
+                              
+                              {/* Mini Progress Bar */}
+                              <View style={styles.ratingMiniBar}>
+                                <View style={[styles.ratingMiniBarFill, { width: `${(currentRating / 10) * 100}%`, backgroundColor: category.color }]} />
+                              </View>
+                              
+                              {/* +/- Controls */}
+                              <View style={styles.ratingMiniButtons}>
+                                <TouchableOpacity
+                                  style={[styles.ratingMiniBtn, { borderColor: 'rgba(239, 68, 68, 0.3)' }]}
+                                  onPress={() => updatePlayerRating(player.id, category.id, Math.max(1, currentRating - 0.5))}
+                                >
+                                  <Text style={styles.ratingMiniBtnTextMinus}>−</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                  style={[styles.ratingMiniBtn, { borderColor: 'rgba(74, 222, 128, 0.3)' }]}
+                                  onPress={() => updatePlayerRating(player.id, category.id, Math.min(10, currentRating + 0.5))}
+                                >
+                                  <Text style={styles.ratingMiniBtnTextPlus}>+</Text>
+                                </TouchableOpacity>
+                              </View>
+                            </View>
+                          );
+                        })}
+                      </View>
+
+                      {/* Quick Rating - Premium */}
+                      <View style={styles.quickRatingSection}>
+                        <View style={styles.quickRatingHeader}>
+                          <Ionicons name="flash" size={14} color="#F59E0B" />
+                          <Text style={styles.quickRatingLabel}>Hızlı Puan</Text>
+                        </View>
+                        <View style={styles.quickRatingRow}>
+                          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((score) => {
+                            const isActive = hasRatings && Math.round(avgRating) === score;
+                            const scoreColor = score >= 8 ? '#22C55E' : score >= 6 ? '#F59E0B' : score >= 4 ? '#F97316' : '#EF4444';
+                            return (
+                              <TouchableOpacity
+                                key={score}
+                                style={[
+                                  styles.quickRatingBtn,
+                                  isActive && { backgroundColor: scoreColor, borderColor: scoreColor, transform: [{ scale: 1.1 }] }
+                                ]}
+                                onPress={() => setAllRatings(player.id, player.position, score)}
+                              >
+                                <Text style={[
+                                  styles.quickRatingBtnText,
+                                  isActive && styles.quickRatingBtnTextActive
+                                ]}>{score}</Text>
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </View>
+                      </View>
+
+                      {/* empty - score comparison moved to top */}
+                    </Animated.View>
+                  )}
+                </Animated.View>
+              );
+            })}
+
+            {/* Info Note */}
+            {sortedPlayers.length > 0 && (
+              <View style={styles.playerInfoNote}>
+                <Ionicons name="information-circle-outline" size={14} color="#64748B" />
+                <Text style={styles.playerInfoNoteText}>
+                  Futbolcuya dokunarak detaylı puan verin. Çıkarken kaydetme seçeneği sunulur.
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
       </ScrollView>
+
+      {/* 💾 KAYDETME POPUP */}
+      <Modal
+        visible={showSavePopup}
+        transparent
+        animationType="fade"
+        onRequestClose={() => { setShowSavePopup(false); setPendingTab(null); }}
+      >
+        <Pressable
+          style={styles.savePopupOverlay}
+          onPress={() => { setShowSavePopup(false); setPendingTab(null); }}
+        >
+          <Pressable onPress={(e) => e.stopPropagation()} style={styles.savePopupContainer}>
+            {/* Icon */}
+            <View style={styles.savePopupIconContainer}>
+              <Ionicons name="save-outline" size={32} color="#1FA2A6" />
+            </View>
+
+            {/* Title */}
+            <Text style={styles.savePopupTitle}>Değişiklikleri Kaydet</Text>
+
+            {/* Description */}
+            <Text style={styles.savePopupDescription}>
+              {activeTab === 'coach' 
+                ? 'TD değerlendirmenizdeki değişiklikler kaydedilmedi. Kaydetmek istiyor musunuz?'
+                : 'Futbolcu değerlendirmelerinizdeki değişiklikler kaydedilmedi. Kaydetmek istiyor musunuz?'
+              }
+            </Text>
+
+            {/* Buttons */}
+            <View style={styles.savePopupButtons}>
+              <TouchableOpacity
+                style={styles.savePopupBtnCancel}
+                onPress={handleDiscardAndSwitch}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="close-circle-outline" size={18} color="#EF4444" />
+                <Text style={styles.savePopupBtnCancelText}>Kaydetme</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.savePopupBtnSave}
+                onPress={handleSaveAndSwitch}
+                activeOpacity={0.7}
+              >
+                <LinearGradient
+                  colors={['#1FA2A6', '#047857']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.savePopupBtnSaveGradient}
+                >
+                  <Ionicons name="checkmark-circle-outline" size={18} color="#FFFFFF" />
+                  <Text style={styles.savePopupBtnSaveText}>Kaydet</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       {/* 🎉 BADGE AWARD POPUP */}
       <Modal
@@ -844,6 +1456,52 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'transparent', // ✅ Grid pattern görünsün - MatchDetail'den geliyor
   },
+  
+  // Tab Bar - İstatistik sekmesiyle aynı stil
+  tabsContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#1E293B', // Solid arka plan - grid görünmesin
+    borderBottomWidth: 1,
+    borderBottomColor: DARK_MODE.border,
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    paddingBottom: 8,
+    gap: 8,
+  },
+  tab: {
+    flex: 1,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    borderRadius: 12,
+    backgroundColor: '#334155', // Solid arka plan - grid görünmesin
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  tabActive: {
+    backgroundColor: '#1D4044', // Solid arka plan - grid görünmesin (secondary tonu)
+    borderColor: `${BRAND.secondary}40`,
+  },
+  tabText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#94A3B8',
+  },
+  tabTextActive: {
+    color: BRAND.secondary,
+    fontWeight: '700',
+  },
+  tabIndicator: {
+    position: 'absolute',
+    bottom: 0,
+    left: 12,
+    right: 12,
+    height: 2,
+    backgroundColor: BRAND.secondary,
+    borderRadius: 1,
+  },
+  
   scrollView: {
     flex: 1,
   },
@@ -851,50 +1509,124 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 8, // ✅ Kadro sekmesiyle aynı
   },
-
-  // Header Card
-  headerCard: {
+  
+  // Oyuncu Değerlendirmesi
+  playerRatingContainer: {
+    flex: 1,
+    padding: 0,
+  },
+  // (Player section header removed - score comparison now inside each player card)
+  notStartedCard: {
+    backgroundColor: DARK_MODE.card,
     borderRadius: 16,
-    overflow: 'hidden',
-    marginBottom: 24,
+    padding: 32,
+    alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(5, 150, 105, 0.3)',
+    borderColor: DARK_MODE.border,
+    width: 300,
+    height: 240,
+    justifyContent: 'center',
+  },
+  notStartedIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(201, 164, 76, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  notStartedTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  notStartedSubtitle: {
+    fontSize: 14,
+    color: '#94A3B8',
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+
+  // Header Card - Premium
+  headerCard: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.25)',
   },
   headerGradient: {
     padding: 20,
+    paddingTop: 16,
+  },
+  premiumBadge: {
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  premiumBadgeGradient: {
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.3)',
+  },
+  premiumBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#1FA2A6',
+    letterSpacing: 1.5,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 20,
+    fontWeight: '800',
     color: '#FFFFFF',
     textAlign: 'center',
     marginBottom: 4,
+    letterSpacing: -0.3,
   },
   headerSubtitle: {
-    fontSize: 13,
-    color: '#9CA3AF',
+    fontSize: 12,
+    color: '#64748B',
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
+    letterSpacing: 0.3,
   },
-  totalScoreContainer: {
+  scoreComparisonCard: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(100, 116, 139, 0.15)',
+    marginBottom: 12,
+  },
+  scoreComparisonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 8,
   },
   scoreColumn: {
     flex: 1,
     alignItems: 'center',
   },
+  scoreLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 10,
+  },
   scoreLabel: {
-    fontSize: 11,
-    color: '#9CA3AF',
-    marginBottom: 12,
+    fontSize: 9,
+    fontWeight: '700',
+    letterSpacing: 1,
     textAlign: 'center',
   },
   scoreCircle: {
-    width: 100,
-    height: 100,
+    width: 110,
+    height: 110,
     position: 'relative',
     alignItems: 'center',
     justifyContent: 'center',
@@ -906,39 +1638,61 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   scoreText: {
-    fontSize: 32,
+    fontSize: 34,
     fontWeight: '900',
     color: '#1FA2A6',
+    letterSpacing: -1,
   },
   scoreTextCommunity: {
-    fontSize: 32,
+    fontSize: 34,
     fontWeight: '900',
     color: '#F59E0B',
+    letterSpacing: -1,
   },
   scoreMax: {
-    fontSize: 12,
-    color: '#9CA3AF',
+    fontSize: 11,
+    color: '#64748B',
     marginTop: -4,
+    fontWeight: '600',
   },
   scoreDivider: {
     alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 12,
+    justifyContent: 'center',
+    paddingHorizontal: 4,
   },
-  scoreDividerLine: {
-    width: 1,
-    height: 20,
-    backgroundColor: 'rgba(100, 116, 139, 0.3)',
+  scoreDividerDiamond: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(100, 116, 139, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(100, 116, 139, 0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   scoreDividerText: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#9CA3AF',
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#94A3B8',
+    letterSpacing: 1,
+  },
+  votersRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  votersDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(100, 116, 139, 0.3)',
   },
   votersText: {
-    fontSize: 12,
-    color: '#9CA3AF',
+    fontSize: 11,
+    color: '#64748B',
     textAlign: 'center',
+    fontWeight: '500',
   },
 
   // Categories
@@ -1383,6 +2137,88 @@ const styles = StyleSheet.create({
     color: '#3B82F6',
   },
 
+  // 💾 SAVE POPUP STYLES
+  savePopupOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  savePopupContainer: {
+    backgroundColor: '#1E293B',
+    borderRadius: 24,
+    padding: 28,
+    width: '85%',
+    maxWidth: 360,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.3)',
+  },
+  savePopupIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(31, 162, 166, 0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.25)',
+  },
+  savePopupTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  savePopupDescription: {
+    fontSize: 13,
+    color: '#94A3B8',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 24,
+  },
+  savePopupButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  savePopupBtnCancel: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 14,
+    borderRadius: 14,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.25)',
+  },
+  savePopupBtnCancelText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#EF4444',
+  },
+  savePopupBtnSave: {
+    flex: 1,
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  savePopupBtnSaveGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 14,
+  },
+  savePopupBtnSaveText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+
   // 🎉 BADGE POPUP STYLES
   badgePopupOverlay: {
     flex: 1,
@@ -1492,5 +2328,351 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+
+  // ⚽ FUTBOLCU DEĞERLENDİRME STİLLERİ
+  playerCardWrapper: {
+    marginBottom: 6,
+  },
+  playerCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(30, 41, 59, 0.7)',
+    borderRadius: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(100, 116, 139, 0.15)',
+    gap: 12,
+  },
+  playerCardExpanded: {
+    borderColor: `${BRAND.secondary}60`,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+    backgroundColor: 'rgba(30, 41, 59, 0.9)',
+  },
+  playerJerseyGradient: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+  },
+  playerJerseyNumber: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -0.5,
+  },
+  playerInfoContainer: {
+    flex: 1,
+  },
+  playerName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#F1F5F9',
+    marginBottom: 2,
+  },
+  playerPositionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  playerPositionBadge: {
+    backgroundColor: 'rgba(100, 116, 139, 0.2)',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  playerPositionBadgeGK: {
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+  },
+  playerPositionText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#94A3B8',
+    letterSpacing: 0.5,
+  },
+  playerPositionTextGK: {
+    color: '#F59E0B',
+  },
+  playerRightSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  playerScoreBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  playerScoreText: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+
+  // ⚽ EXPANDED RATING PANEL - Premium & Compact
+  playerRatingPanel: {
+    backgroundColor: 'rgba(10, 18, 35, 0.92)',
+    borderWidth: 1,
+    borderTopWidth: 0,
+    borderColor: `${BRAND.secondary}40`,
+    borderBottomLeftRadius: 14,
+    borderBottomRightRadius: 14,
+    padding: 10,
+    paddingTop: 8,
+  },
+
+  // ⚽ RATING GRID (3x2) - Compact
+  ratingGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    justifyContent: 'space-between',
+  },
+  ratingGridItem: {
+    width: '31%',
+    alignItems: 'center',
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    borderRadius: 12,
+    paddingVertical: 7,
+    paddingHorizontal: 3,
+    borderWidth: 1,
+    borderColor: 'rgba(100, 116, 139, 0.08)',
+  },
+  ratingGridIconBg: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 1,
+  },
+  ratingGridEmoji: {
+    fontSize: 13,
+  },
+  ratingGridTitle: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#CBD5E1',
+    marginBottom: 3,
+    letterSpacing: 0.3,
+  },
+  ratingCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    marginBottom: 4,
+  },
+  ratingCircleValue: {
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  ratingMiniBar: {
+    width: '80%',
+    height: 2,
+    backgroundColor: 'rgba(100, 116, 139, 0.2)',
+    borderRadius: 1,
+    overflow: 'hidden',
+    marginBottom: 4,
+  },
+  ratingMiniBarFill: {
+    height: '100%',
+    borderRadius: 1,
+  },
+  ratingMiniButtons: {
+    flexDirection: 'row',
+    gap: 4,
+  },
+  ratingMiniBtn: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(100, 116, 139, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(100, 116, 139, 0.2)',
+  },
+  ratingMiniBtnTextMinus: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#F87171',
+    lineHeight: 18,
+  },
+  ratingMiniBtnTextPlus: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#4ADE80',
+    lineHeight: 18,
+  },
+
+  // ⚡ QUICK RATING - Compact
+  quickRatingSection: {
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(100, 116, 139, 0.12)',
+  },
+  quickRatingHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    marginBottom: 6,
+  },
+  quickRatingLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#94A3B8',
+    letterSpacing: 0.3,
+  },
+  quickRatingRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  quickRatingBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 7,
+    backgroundColor: 'rgba(100, 116, 139, 0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(100, 116, 139, 0.15)',
+  },
+  quickRatingBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#64748B',
+  },
+  quickRatingBtnTextActive: {
+    color: '#FFFFFF',
+  },
+
+  // ⭐ PLAYER SCORE COMPARISON (per player in expanded card)
+  playerScoreComparisonCard: {
+    backgroundColor: 'rgba(0, 0, 0, 0.25)',
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(100, 116, 139, 0.1)',
+  },
+  playerScoreCompRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  playerScoreCompCol: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 4,
+  },
+  playerScoreCompIconRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  playerScoreCompLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#94A3B8',
+    letterSpacing: 0.3,
+  },
+  playerScoreCompValue: {
+    fontSize: 22,
+    fontWeight: '900',
+    letterSpacing: -0.5,
+  },
+  playerScoreCompVs: {
+    paddingHorizontal: 8,
+  },
+  playerScoreCompVsText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#475569',
+    letterSpacing: 0.5,
+  },
+  playerScoreCompVotersRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    marginTop: 6,
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(100, 116, 139, 0.1)',
+  },
+  playerScoreCompVotersText: {
+    fontSize: 10,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+
+  // 🚫 NO PLAYERS
+  noPlayersContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 20,
+  },
+  noPlayersTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#94A3B8',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  noPlayersText: {
+    fontSize: 13,
+    color: '#64748B',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+
+  // 💾 SAVE & INFO
+  savePlayerRatingsBtn: {
+    marginTop: 16,
+    marginBottom: 8,
+    borderRadius: 12,
+    overflow: 'hidden',
+    width: '100%',
+  },
+  savePlayerRatingsBtnGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    paddingVertical: 16,
+    width: '100%',
+  },
+  savePlayerRatingsBtnText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  playerInfoNote: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    backgroundColor: 'rgba(100, 116, 139, 0.08)',
+    borderRadius: 10,
+    marginTop: 4,
+  },
+  playerInfoNoteText: {
+    flex: 1,
+    fontSize: 11,
+    color: '#64748B',
+    lineHeight: 16,
   },
 });

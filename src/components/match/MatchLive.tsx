@@ -44,12 +44,23 @@ interface MatchLiveScreenProps {
 // =====================================
 // COMPONENT
 // =====================================
+// Maç başlamadı durumları
+const NOT_STARTED_STATUSES = ['NS', 'TBD', 'PST', 'CANC', 'ABD', 'AWD', 'WO'];
+
 export const MatchLive: React.FC<MatchLiveScreenProps> = ({
   matchData,
   matchId,
   events: propEvents,
 }) => {
   const { t } = useTranslation();
+  
+  // ✅ Maç durumunu matchData'dan kontrol et
+  // matchData.status direkt olarak MatchDetail'dan geliyor
+  const matchStatus = matchData?.status || '';
+  const isMatchNotStartedFromData = NOT_STARTED_STATUSES.includes(matchStatus) || matchStatus === '' || matchStatus === 'NS';
+  
+  // Debug log
+  console.log('🔍 MatchLive status check:', { matchStatus, isMatchNotStartedFromData, matchData: !!matchData });
   
   // States – sadece canlı olaylar (istatistikler İstatistik sekmesinde)
   const [liveEvents, setLiveEvents] = useState<LiveEvent[]>([]);
@@ -58,6 +69,14 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
   const [matchNotStarted, setMatchNotStarted] = useState(false);
   const matchNotStartedRef = useRef(false);
   matchNotStartedRef.current = matchNotStarted;
+  
+  // ✅ matchData.status değiştiğinde state'leri güncelle
+  useEffect(() => {
+    if (isMatchNotStartedFromData) {
+      setMatchNotStarted(true);
+      setLoading(false);
+    }
+  }, [isMatchNotStartedFromData]);
 
   // Mock maç (999999): 52. dk, skor 5-4, ilk yarı 1 dk uzadı, 45+1 ev sahibi kırmızı kart, en az 8 event
   const MOCK_999999_EVENTS = [
@@ -82,6 +101,14 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
   // =====================================
   useEffect(() => {
     if (!matchId) return;
+    
+    // ✅ Maç başlamadıysa API çağrısı yapma
+    if (isMatchNotStartedFromData) {
+      setMatchNotStarted(true);
+      setLoading(false);
+      return;
+    }
+    
     const isMockMatch = String(matchId) === '999999';
 
     const fetchLiveData = async () => {
@@ -392,22 +419,17 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
   // RENDER
   // =====================================
   
-  // Loading state
-  if (loading && liveEvents.length === 0) {
-    return (
-      <SafeAreaView style={styles.container} edges={[]}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={BRAND.secondary} />
-          <Text style={styles.loadingText}>Canlı veriler yükleniyor...</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
+  // ✅ Maç başlamadıysa önce bu kontrolü yap (loading'den önce)
   // Match not started
   if (matchNotStarted) {
     return (
       <SafeAreaView style={styles.container} edges={[]}>
+        {/* Tab bar benzeri başlık - İstatistik sekmesiyle aynı yükseklik ve görünüm */}
+        <View style={styles.liveTabHeader}>
+          <View style={styles.liveTabButton}>
+            <Text style={styles.liveTabText}>📡 Canlı Olaylar</Text>
+          </View>
+        </View>
         <View style={styles.notStartedContainer}>
           <View style={styles.notStartedCard}>
             <View style={styles.notStartedIconContainer}>
@@ -418,6 +440,18 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
               Maç başladığında canlı olaylar{'\n'}burada görünecek
             </Text>
           </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Loading state - sadece maç başladıysa göster
+  if (loading && liveEvents.length === 0) {
+    return (
+      <SafeAreaView style={styles.container} edges={[]}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={BRAND.secondary} />
+          <Text style={styles.loadingText}>Canlı veriler yükleniyor...</Text>
         </View>
       </SafeAreaView>
     );
@@ -511,9 +545,9 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   
-  // Not Started
+  // Not Started - Sabit boyut, tüm sekmelerde aynı görünüm (sıçrama önleme)
   notStartedContainer: {
-    flex: 1,
+    flex: 1, // Tüm alanı kapla
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
@@ -525,7 +559,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: DARK_MODE.border,
-    maxWidth: 320,
+    width: 300, // Sabit genişlik
+    height: 240, // Sabit yükseklik - sıçrama önleme
+    justifyContent: 'center',
   },
   notStartedIconContainer: {
     width: 80,
@@ -541,12 +577,39 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFFFFF',
     marginBottom: 8,
+    textAlign: 'center',
   },
   notStartedSubtitle: {
     fontSize: 14,
     color: '#94A3B8',
     textAlign: 'center',
     lineHeight: 22,
+  },
+  
+  // Tab header - İstatistik sekmesiyle aynı yükseklik ve stil (sıçrama önleme)
+  liveTabHeader: {
+    flexDirection: 'row',
+    backgroundColor: '#1E293B', // Solid arka plan - grid görünmesin
+    borderBottomWidth: 1,
+    borderBottomColor: DARK_MODE.border,
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    paddingBottom: 8,
+  },
+  liveTabButton: {
+    flex: 1,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
+    backgroundColor: '#1D4044', // Solid arka plan - grid görünmesin (secondary tonu)
+    borderWidth: 1,
+    borderColor: `${BRAND.secondary}40`,
+  },
+  liveTabText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: BRAND.secondary,
   },
   
   // Events ScrollView

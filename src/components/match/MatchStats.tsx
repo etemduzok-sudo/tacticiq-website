@@ -233,6 +233,65 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
     return () => { cancelled = true; };
   }, [matchId]);
 
+  // ✅ Maç henüz başlamadıysa - ScrollView kullanmadan sabit konteyner (Canlı sekmesiyle aynı)
+  if (isMatchNotStarted) {
+    return (
+      <SafeAreaView style={styles.container}>
+        {/* Tabs - her zaman göster */}
+        <View style={styles.tabsContainer}>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'match' && styles.tabActive]}
+            onPress={() => setActiveTab('match')}
+            activeOpacity={0.7}
+          >
+            <Text style={[
+              styles.tabText,
+              activeTab === 'match' && styles.tabTextActive
+            ]}>
+              📊 Maç İstatistikleri
+            </Text>
+            {activeTab === 'match' && <View style={styles.tabIndicator} />}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'players' && styles.tabActive]}
+            onPress={() => setActiveTab('players')}
+            activeOpacity={0.7}
+          >
+            <Text style={[
+              styles.tabText,
+              activeTab === 'players' && styles.tabTextActive
+            ]}>
+              ⭐ Oyuncu İstatistikleri
+            </Text>
+            {activeTab === 'players' && <View style={styles.tabIndicator} />}
+          </TouchableOpacity>
+        </View>
+
+        {/* Maç başlamadı bildirimi - sabit konteyner */}
+        <View style={styles.notStartedContainer}>
+          <View style={styles.notStartedCard}>
+            <View style={styles.notStartedIconContainer}>
+              <Ionicons 
+                name={activeTab === 'match' ? 'stats-chart-outline' : 'people-outline'} 
+                size={48} 
+                color={BRAND.accent} 
+              />
+            </View>
+            <Text style={styles.notStartedTitle}>
+              {activeTab === 'match' ? 'Maç İstatistikleri' : 'Oyuncu İstatistikleri'}
+            </Text>
+            <Text style={styles.notStartedSubtitle}>
+              {activeTab === 'match' 
+                ? 'Maç başladığında istatistikler\nburada görünecek'
+                : 'Maç başladığında oyuncu performansları\nburada görünecek'}
+            </Text>
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Tabs */}
@@ -272,28 +331,7 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* ✅ Maç henüz başlamadıysa bildirim göster (Canlı sekmesiyle aynı tarz) */}
-        {isMatchNotStarted ? (
-          <View style={styles.notStartedContainer}>
-            <View style={styles.notStartedCard}>
-              <View style={styles.notStartedIconContainer}>
-                <Ionicons 
-                  name={activeTab === 'match' ? 'stats-chart-outline' : 'people-outline'} 
-                  size={48} 
-                  color={BRAND.accent} 
-                />
-              </View>
-              <Text style={styles.notStartedTitle}>
-                {activeTab === 'match' ? 'Maç İstatistikleri' : 'Oyuncu İstatistikleri'}
-              </Text>
-              <Text style={styles.notStartedSubtitle}>
-                {activeTab === 'match' 
-                  ? 'Maç başladığında istatistikler\nburada görünecek'
-                  : 'Maç başladığında oyuncu performansları\nburada görünecek'}
-              </Text>
-            </View>
-          </View>
-        ) : activeTab === 'match' ? (
+        {activeTab === 'match' ? (
           // MAÇ İSTATİSTİKLERİ (canlı API verisi veya varsayılan)
           <View style={styles.statsContainer}>
             {statsLoading ? (
@@ -780,11 +818,12 @@ const styles = StyleSheet.create({
   // Tabs - elite
   tabsContainer: {
     flexDirection: 'row',
-    backgroundColor: DARK_MODE.card,
+    backgroundColor: '#1E293B', // Solid arka plan - grid görünmesin
     borderBottomWidth: 1,
     borderBottomColor: DARK_MODE.border,
     paddingHorizontal: 12,
     paddingTop: 8,
+    paddingBottom: 8,
     gap: 8,
   },
   tab: {
@@ -794,7 +833,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     position: 'relative',
     borderRadius: 12,
-    backgroundColor: 'rgba(30, 41, 59, 0.6)',
+    backgroundColor: '#334155', // Solid arka plan - grid görünmesin
     borderWidth: 1,
     borderColor: 'transparent',
   },
@@ -808,7 +847,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   tabActive: {
-    backgroundColor: `${BRAND.secondary}15`,
+    backgroundColor: '#1D4044', // Solid arka plan - grid görünmesin (secondary tonu)
     borderColor: `${BRAND.secondary}40`,
   },
   tabIndicator: {
@@ -844,9 +883,9 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     fontWeight: '500',
   },
-  // ✅ Maç henüz başlamadı - Canlı sekmesiyle aynı stil
+  // ✅ Maç henüz başlamadı - Canlı sekmesiyle aynı stil (sabit boyut, sıçrama önleme)
   notStartedContainer: {
-    flex: 1,
+    flex: 1, // Tüm alanı kapla
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
@@ -858,7 +897,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: DARK_MODE.border,
-    maxWidth: 320,
+    width: 300, // Sabit genişlik
+    height: 240, // Sabit yükseklik - sıçrama önleme
+    justifyContent: 'center',
   },
   notStartedIconContainer: {
     width: 80,
@@ -874,6 +915,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFFFFF',
     marginBottom: 8,
+    textAlign: 'center',
   },
   notStartedSubtitle: {
     fontSize: 14,

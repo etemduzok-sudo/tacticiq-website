@@ -232,13 +232,34 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
   const shouldFetchFromApi = !preloadedMatch;
   
   // Fetch match details from API (sadece preloadedMatch yoksa)
-  const { match: apiMatch, statistics, events, lineups, loading: apiLoading, error } = useMatchDetails(
+  const { match: apiMatch, statistics, events, lineups: apiLineups, loading: apiLoading, error } = useMatchDetails(
     shouldFetchFromApi ? Number(matchId) : 0 // 0 = API çağrısı yapılmaz
   );
   
   // ✅ preloadedMatch varsa onu kullan, yoksa API'den gelen veriyi kullan
   const match = preloadedMatch || apiMatch;
   const loading = shouldFetchFromApi ? apiLoading : false;
+  
+  // ✅ Lineups state - her zaman kullanılabilir
+  const [manualLineups, setManualLineups] = React.useState<any>(null);
+  const lineups = apiLineups || manualLineups;
+  
+  // ✅ preloadedMatch varken de lineups'ı çek (arka planda)
+  React.useEffect(() => {
+    if (preloadedMatch && matchId && !apiLineups) {
+      const fetchLineups = async () => {
+        try {
+          const response = await api.matches.getMatchLineups(Number(matchId));
+          if (response?.success && response?.data) {
+            setManualLineups(response.data);
+          }
+        } catch (e) {
+          // Sessizce başarısız ol
+        }
+      };
+      fetchLineups();
+    }
+  }, [preloadedMatch, matchId, apiLineups]);
 
   // ✅ Tahmin kontrolü - match yüklendikten sonra; iki favori maçta çift anahtar
   React.useEffect(() => {
@@ -256,32 +277,37 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
     return () => clearInterval(interval);
   }, [match?.teams?.home?.id, match?.teams?.away?.id, favoriteTeamIds, checkPredictions]);
 
-  // ✅ Teknik direktör bilgilerini çek
+  // ✅ Teknik direktör bilgilerini çek (timeout ile hızlı fallback)
   React.useEffect(() => {
     const fetchCoaches = async () => {
       if (!match?.teams?.home?.id || !match?.teams?.away?.id) return;
       
+      // ✅ 3 saniye timeout - daha hızlı fallback için
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Timeout')), 3000)
+      );
+      
       try {
         const [homeCoach, awayCoach] = await Promise.allSettled([
-          api.teams.getTeamCoach(match.teams.home.id),
-          api.teams.getTeamCoach(match.teams.away.id),
+          Promise.race([api.teams.getTeamCoach(match.teams.home.id), timeoutPromise]),
+          Promise.race([api.teams.getTeamCoach(match.teams.away.id), timeoutPromise]),
         ]);
         
-        setCoaches({
-          home: homeCoach.status === 'fulfilled' && homeCoach.value?.data?.coach?.name 
-            ? homeCoach.value.data.coach.name 
-            : '',
-          away: awayCoach.status === 'fulfilled' && awayCoach.value?.data?.coach?.name 
-            ? awayCoach.value.data.coach.name 
-            : '',
-        });
+        const homeName = homeCoach.status === 'fulfilled' && (homeCoach.value as any)?.data?.coach?.name 
+          ? (homeCoach.value as any).data.coach.name 
+          : '';
+        const awayName = awayCoach.status === 'fulfilled' && (awayCoach.value as any)?.data?.coach?.name 
+          ? (awayCoach.value as any).data.coach.name 
+          : '';
         
-        console.log('👔 Coaches loaded:', {
-          home: homeCoach.status === 'fulfilled' ? homeCoach.value?.data?.coach?.name : 'N/A',
-          away: awayCoach.status === 'fulfilled' ? awayCoach.value?.data?.coach?.name : 'N/A',
-        });
+        // Sadece API'den veri geldiyse güncelle
+        if (homeName || awayName) {
+          setCoaches({ home: homeName, away: awayName });
+          console.log('👔 Coaches loaded from API:', { home: homeName || 'N/A', away: awayName || 'N/A' });
+        }
       } catch (error) {
-        console.log('⚠️ Coach fetch error:', error);
+        // Timeout veya hata - fallback listesi kullanılacak
+        console.log('⚠️ Coach API timeout/error, using fallback list');
       }
     };
     
@@ -312,7 +338,59 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
     return isHome ? ['#1FA2A6', '#0F2A24'] : ['#C9A44C', '#8B7833'];
   };
 
-  // Teknik direktör: önce coaches API, yoksa lineups'tan al
+  // ✅ Fallback teknik direktör listesi (2026 Ocak güncel)
+  const getCoachFallback = (teamName: string): string => {
+    if (!teamName) return '';
+    const name = teamName.toLowerCase();
+    const coaches: Record<string, string> = {
+      // Türk Takımları (2026 Ocak güncel)
+      'galatasaray': 'Okan Buruk',
+      'fenerbahçe': 'Domenico Tedesco',
+      'fenerbahce': 'Domenico Tedesco',
+      'beşiktaş': 'Sergen Yalçın',
+      'besiktas': 'Sergen Yalçın',
+      'trabzonspor': 'Şenol Güneş',
+      'başakşehir': 'Çağdaş Atan',
+      'basaksehir': 'Çağdaş Atan',
+      'adana demirspor': 'Vincenzo Montella',
+      'konyaspor': 'Recep Uçar',
+      'antalyaspor': 'Alex de Souza',
+      'sivasspor': 'Bülent Uygun',
+      'kasımpaşa': 'Kemal Özdeş',
+      'kasimpasa': 'Kemal Özdeş',
+      'alanyaspor': 'Fatih Tekke',
+      'kayserispor': 'Burak Yılmaz',
+      'samsunspor': 'Thomas Reis',
+      'hatayspor': 'Serkan Özbalta',
+      'pendikspor': 'Ivo Vieira',
+      'karagümrük': 'Emre Belözoğlu',
+      'karagumruk': 'Emre Belözoğlu',
+      'istanbulspor': 'Osman Zeki Korkmaz',
+      'rizespor': 'İlhan Palut',
+      'gaziantep': 'Selçuk İnan',
+      // Avrupa Takımları
+      'real madrid': 'Carlo Ancelotti',
+      'barcelona': 'Hansi Flick',
+      'atletico madrid': 'Diego Simeone',
+      'bayern': 'Vincent Kompany',
+      'manchester city': 'Pep Guardiola',
+      'manchester united': 'Ruben Amorim',
+      'liverpool': 'Arne Slot',
+      'arsenal': 'Mikel Arteta',
+      'chelsea': 'Enzo Maresca',
+      'juventus': 'Thiago Motta',
+      'inter': 'Simone Inzaghi',
+      'milan': 'Sergio Conceição',
+      'psg': 'Luis Enrique',
+      'paris saint-germain': 'Luis Enrique',
+    };
+    for (const [key, coach] of Object.entries(coaches)) {
+      if (name.includes(key)) return coach;
+    }
+    return '';
+  };
+
+  // Teknik direktör: önce coaches API, yoksa lineups'tan al, yoksa fallback
   const getManagerFromLineups = (teamId: number) => {
     const arr = Array.isArray(lineups) ? lineups : lineups?.data;
     if (!arr?.length) return '';
@@ -322,8 +400,8 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
     if (coach?.name) return coach.name;
     return '';
   };
-  const homeManager = coaches.home || getManagerFromLineups(match?.teams?.home?.id);
-  const awayManager = coaches.away || getManagerFromLineups(match?.teams?.away?.id);
+  const homeManager = coaches.home || getManagerFromLineups(match?.teams?.home?.id) || getCoachFallback(match?.teams?.home?.name);
+  const awayManager = coaches.away || getManagerFromLineups(match?.teams?.away?.id) || getCoachFallback(match?.teams?.away?.name);
 
   // ✅ Maç canlı mı kontrol et
   const LIVE_STATUSES = ['1H', '2H', 'HT', 'ET', 'BT', 'P', 'LIVE'];
@@ -544,7 +622,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
         return <MatchStats matchData={matchData} matchId={matchId} />;
       
       case 'ratings':
-        return <MatchRatings matchData={matchData} />;
+        return <MatchRatings matchData={matchData} lineups={lineups} favoriteTeamIds={favoriteTeamIds} />;
       
       // Özet sekmesi kaldırıldı - Artık biten maç kartlarında gösteriliyor
       

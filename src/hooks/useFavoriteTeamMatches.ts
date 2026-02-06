@@ -190,20 +190,70 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
   }, [favoriteTeams]);
   
   // ✅ HIZLI BAŞLANGIÇ: Component mount olduğunda HEMEN cache'den yükle
+  // Bu effect en önce çalışmalı - favoriteTeams beklenmeden
   useEffect(() => {
     if (cacheLoadedRef.current) return; // Sadece bir kez çalış
     cacheLoadedRef.current = true;
     
     const quickLoad = async () => {
-      const cacheLoaded = await loadFromCache();
-      if (!cacheLoaded) {
-        // Cache yoksa loading'i göstermeye devam et
-        logger.debug('No cache available, waiting for fetch', undefined, 'CACHE');
+      // ✅ Önce raw cache'i yükle (filtre olmadan)
+      try {
+        const cachedData = await AsyncStorage.getItem(CACHE_KEY);
+        if (cachedData) {
+          const { past, live, upcoming } = JSON.parse(cachedData);
+          const allCached = [...(past || []), ...(live || []), ...(upcoming || [])];
+          
+          if (allCached.length > 0) {
+            // ✅ Inline kategorileme (fonksiyon henüz tanımlı değil)
+            const now = Date.now();
+            const LIVE_STATUSES = ['1H', '2H', 'HT', 'ET', 'BT', 'P', 'LIVE', 'INT'];
+            const FINISHED_STATUSES = ['FT', 'AET', 'PEN', 'AWD', 'WO', 'CANC', 'ABD', 'PST'];
+            
+            const rePast: Match[] = [];
+            const reLive: Match[] = [];
+            const reUpcoming: Match[] = [];
+            
+            for (const match of allCached) {
+              const status = match.fixture?.status?.short || '';
+              const timestamp = (match.fixture?.timestamp || 0) * 1000;
+              
+              if (LIVE_STATUSES.includes(status)) {
+                reLive.push(match);
+              } else if (FINISHED_STATUSES.includes(status) || (status !== 'NS' && timestamp < now - 3 * 60 * 60 * 1000)) {
+                rePast.push(match);
+              } else {
+                reUpcoming.push(match);
+              }
+            }
+            
+            // Sırala
+            rePast.sort((a, b) => (b.fixture?.timestamp || 0) - (a.fixture?.timestamp || 0));
+            reUpcoming.sort((a, b) => (a.fixture?.timestamp || 0) - (b.fixture?.timestamp || 0));
+            
+            setPastMatches(rePast);
+            setLiveMatches(reLive);
+            setUpcomingMatches(reUpcoming);
+            setHasLoadedOnce(true);
+            setLoading(false);
+            logger.info('⚡ INSTANT cache load', { 
+              total: allCached.length, 
+              past: rePast.length, 
+              live: reLive.length, 
+              upcoming: reUpcoming.length 
+            }, 'CACHE');
+            return;
+          }
+        }
+      } catch (e) {
+        logger.debug('Quick cache load failed', { error: e }, 'CACHE');
       }
+      
+      // Cache yoksa normal yüklemeyi bekle
+      logger.debug('No instant cache, waiting for fetch', undefined, 'CACHE');
     };
     
     quickLoad();
-  }, [loadFromCache]); // ✅ loadFromCache dependency olarak eklendi
+  }, []); // ✅ Hiç dependency yok - sadece mount'ta çalış
   
   // ✅ Favori takımlar değiştiğinde maçları yeniden fetch et (yeni takım eklendiğinde VEYA değiştirildiğinde)
   const previousTeamIdsRef = useRef<string>('');
