@@ -906,11 +906,13 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
   };
 
   // ✅ Kaydedilmemiş değişiklik durumunu parent'a bildir (tab değiştiğinde sorulması için)
+  // Kilit kırmızı (kilitli/kaydedilmiş) ise → kaydedilmemiş değişiklik YOK
   React.useEffect(() => {
     if (onHasUnsavedChanges) {
-      onHasUnsavedChanges(hasUnsavedChanges, handleSavePredictions);
+      const effectiveUnsaved = isPredictionLocked ? false : hasUnsavedChanges;
+      onHasUnsavedChanges(effectiveUnsaved, handleSavePredictions);
     }
-  }, [hasUnsavedChanges, onHasUnsavedChanges]);
+  }, [hasUnsavedChanges, isPredictionLocked, onHasUnsavedChanges]);
 
   const handlePredictionChange = (category: string, value: string | number) => {
     // ✅ Tahminler kilitliyse değişiklik yapılamaz
