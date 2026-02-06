@@ -1524,23 +1524,24 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
       return;
     }
     
-    // ✅ Kadro kilitli ise (Tamamla basıldı) = kaydedilmiş, değişiklik yok
+    // ✅ Kadro kilitli ise (Tamamla basıldı, kırmızı kilit) = kaydedilmiş, değişiklik yok
     if (isSquadLocked) {
       setHasUnsavedChanges(false);
       onHasUnsavedChanges?.(false);
       return;
     }
     
-    // Formasyon seçilmiş ve en az 1 oyuncu atanmışsa
+    // ✅ Kilit açık (yeşil) VE formasyon/oyuncu seçilmişse → her zaman uyarı göster
+    // Kilit açıldığında sekme değişirken mutlaka "kaydet" uyarısı gösterilmeli
     const attackPlayerCount = Object.keys(attackPlayers).filter(k => attackPlayers[parseInt(k)]).length;
     const hasFormationAndPlayers = attackFormation !== null && attackPlayerCount > 0;
     
-    // ✅ Değişiklik yapıldıysa uyarı göster
-    const hasChanges = hasFormationAndPlayers && hasModifiedSinceUnlock;
+    // Kilit yeşil (açık) ise → kaydedilmemiş sayılır (tamamla basılmamış)
+    const hasChanges = hasFormationAndPlayers;
     
     setHasUnsavedChanges(hasChanges);
     onHasUnsavedChanges?.(hasChanges);
-  }, [attackFormation, attackPlayers, isKadroLocked, isSquadLocked, hasModifiedSinceUnlock, onHasUnsavedChanges]);
+  }, [attackFormation, attackPlayers, isKadroLocked, isSquadLocked, onHasUnsavedChanges]);
   
   // ✅ Community Signal Popup State
   const [showCommunitySignal, setShowCommunitySignal] = useState(false);
@@ -2269,25 +2270,25 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
                   </View>
                 </TouchableOpacity>
 
-                {/* Orta: Kilit */}
+                {/* Orta: Kilit - Her zaman görünür ve tıklanabilir */}
                 {!isKadroLocked && (
                   <TouchableOpacity
                     style={[
                       styles.lockButtonCenter,
-                      isSquadLocked ? styles.lockButtonCenterLocked : (isCompleteButtonActive ? styles.lockButtonCenterOpen : styles.lockButtonCenterDisabled)
+                      isSquadLocked ? styles.lockButtonCenterLocked : styles.lockButtonCenterOpen
                     ]}
                     onPress={() => {
                       if (isSquadLocked) {
-                        Alert.alert(
-                          'Kadro Kilidi',
-                          'Kadro kilitli. Kilidi açarak değişiklik yapabilirsiniz.\n\nKilidi açmak istiyor musunuz?',
-                          [
-                            { text: 'İptal', style: 'cancel' },
-                            { text: 'Kilidi Aç', style: 'destructive', onPress: () => setIsSquadLocked(false) },
-                          ]
-                        );
-                      } else if (isCompleteButtonActive) {
-                        Alert.alert('Kadro Açık', 'Değişiklikleri kaydetmek için "Tamamla" butonuna basın.', [{ text: 'Tamam' }]);
+                        // Kilitli → Kilidi aç (yeşil olacak)
+                        setIsSquadLocked(false);
+                        setHasModifiedSinceUnlock(false); // Unlock sonrası değişiklik takibi sıfırla
+                      } else {
+                        // Açık → Kilitle (kırmızı olacak) - sadece 11 oyuncu tamamsa
+                        if (isCompleteButtonActive) {
+                          handleComplete(); // Tamamla ve kilitle
+                        } else {
+                          Alert.alert('Eksik Kadro', 'Kadroyu kilitlemek için önce 11 oyuncu seçmeniz gerekiyor.', [{ text: 'Tamam' }]);
+                        }
                       }
                     }}
                     activeOpacity={0.7}
@@ -2295,24 +2296,32 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
                     <Ionicons 
                       name={isSquadLocked ? "lock-closed" : "lock-open"} 
                       size={20} 
-                      color={isSquadLocked ? '#EF4444' : (isCompleteButtonActive ? '#10B981' : '#64748B')} 
+                      color={isSquadLocked ? '#EF4444' : '#10B981'} 
                     />
                   </TouchableOpacity>
                 )}
 
-                {/* Sağ: Tamamla - Sol butonla simetrik boyut */}
-                {!isKadroLocked && !isSquadLocked && (
+                {/* Sağ: Tamamla - Her zaman görünür, kilit kırmızıyken inaktif */}
+                {!isKadroLocked && (
                   <TouchableOpacity
                     style={[
                       styles.completeButtonSymmetric,
-                      !isCompleteButtonActive && styles.completeButtonSymmetricDisabled,
+                      // Kilit kırmızı (locked) veya 11 oyuncu yok → inaktif
+                      (isSquadLocked || !isCompleteButtonActive) && styles.completeButtonSymmetricDisabled,
                     ]}
                     onPress={handleComplete}
-                    disabled={!isCompleteButtonActive}
+                    disabled={isSquadLocked || !isCompleteButtonActive}
                     activeOpacity={0.8}
                   >
-                    <Text style={styles.completeButtonSymmetricText}>Tamamla</Text>
-                    <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" />
+                    <Text style={[
+                      styles.completeButtonSymmetricText,
+                      (isSquadLocked || !isCompleteButtonActive) && { opacity: 0.5 }
+                    ]}>Tamamla</Text>
+                    <Ionicons 
+                      name="checkmark-circle" 
+                      size={18} 
+                      color={isSquadLocked || !isCompleteButtonActive ? 'rgba(255,255,255,0.5)' : '#FFFFFF'} 
+                    />
                   </TouchableOpacity>
                 )}
               </View>
