@@ -1224,27 +1224,19 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                         colors={['#1E3A3A', '#0F2A24']}
                         style={styles.playerCardGradient}
                       >
+                        {/* ✅ Maç öncesi: Sadece tek ✓ checkmark - tahmin yapıldı göstergesi */}
                         {hasPredictions && (
                           <View style={styles.predictionCheckBadge}>
                             <Ionicons name="checkmark" size={10} color="#FFFFFF" />
                           </View>
                         )}
-                        {hasSubstitution && (
-                          <View style={styles.substitutionBadge}>
-                            <Ionicons name="swap-horizontal" size={10} color="#FFFFFF" />
-                          </View>
-                        )}
-                        {hasRedCard && (
-                          <View style={styles.redCardBadge}>
-                            <Ionicons name="card" size={10} color="#FFFFFF" />
-                          </View>
-                        )}
-                        {hasYellowCard && (
-                          <View style={styles.yellowCardBadge}>
-                            <Ionicons name="card" size={10} color="#1E293B" />
-                          </View>
-                        )}
-                        <View style={styles.jerseyNumberBadge}>
+                        <View style={[
+                          styles.jerseyNumberBadge,
+                          // Elit oyuncu (85+) → altın arka plan
+                          player.rating >= 85 && { backgroundColor: '#C9A44C' },
+                          // Kaleci → mavi arka plan (elit değilse)
+                          player.rating < 85 && (player.position === 'GK' || isGoalkeeperPlayer(player)) && { backgroundColor: '#3B82F6' },
+                        ]}>
                           <Text style={styles.jerseyNumberText}>
                             {player.number || player.id}
                           </Text>
@@ -1252,48 +1244,12 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                         <Text style={styles.playerName} numberOfLines={1}>
                           {player.name.split(' ').pop()}
                         </Text>
-                        {/* ✅ Tahmin İkonları Satırı - Kullanıcının kendi tahminleri */}
-                        {hasPredictions && (
-                          <View style={styles.predictionIconsRow}>
-                            {hasGoal && (
-                              <View style={[styles.predictionIconBadge, styles.predictionIconGoal]}>
-                                <Text style={styles.predictionIconText}>⚽</Text>
-                              </View>
-                            )}
-                            {hasAssist && (
-                              <View style={[styles.predictionIconBadge, styles.predictionIconAssist]}>
-                                <Text style={styles.predictionIconText}>🅰️</Text>
-                              </View>
-                            )}
-                            {hasYellowCard && (
-                              <View style={[styles.predictionIconBadge, styles.predictionIconYellow]}>
-                                <Ionicons name="card" size={8} color="#1E293B" />
-                              </View>
-                            )}
-                            {hasRedCard && (
-                              <View style={[styles.predictionIconBadge, styles.predictionIconRed]}>
-                                <Ionicons name="card" size={8} color="#FFFFFF" />
-                              </View>
-                            )}
-                            {hasSubstitution && !hasInjury && (
-                              <View style={[styles.predictionIconBadge, styles.predictionIconSub]}>
-                                <Ionicons name="swap-horizontal" size={8} color="#FFFFFF" />
-                              </View>
-                            )}
-                            {hasInjury && (
-                              <View style={[styles.predictionIconBadge, styles.predictionIconInjury]}>
-                                <Ionicons name="medkit" size={8} color="#FFFFFF" />
-                              </View>
-                            )}
-                          </View>
-                        )}
-                        {/* Rating ve pozisyon - tahmin yoksa göster, varsa ikonlar yerine geçer */}
-                        {!hasPredictions && (
-                          <View style={styles.playerBottomRow}>
-                            <Text style={styles.playerRatingBottom}>{player.rating}</Text>
-                            <Text style={styles.playerPositionBottom}>{positionLabel}</Text>
-                          </View>
-                        )}
+                        {/* Rating ve pozisyon - her zaman göster */}
+                        <View style={styles.playerBottomRow}>
+                          <Text style={styles.playerRatingBottom}>{player.rating}</Text>
+                          <Text style={styles.playerPositionBottom}>{positionLabel}</Text>
+                        </View>
+                        {/* Tahmin yapılmışsa glow efekti */}
                         {hasPredictions && <View style={styles.predictionGlow} />}
                       </LinearGradient>
                     </TouchableOpacity>
