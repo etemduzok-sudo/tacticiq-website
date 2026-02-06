@@ -227,8 +227,10 @@ export function useAppNavigation() {
   }, [currentScreen, activeTab]);
 
   const handleMatchDetailBack = useCallback(() => {
-    const restoreScreen = screenBeforeMatchDetailRef.current || 'home';
+    let restoreScreen = screenBeforeMatchDetailRef.current || 'home';
     const restoreTab = activeTabBeforeMatchDetailRef.current || 'home';
+    // ✅ Splash sadece ilk açılış için; geri dönüşte maçlar sayfasına veya home'a git
+    if (restoreScreen === 'splash') restoreScreen = 'home';
     setSelectedMatchId(null);
     if (typeof global !== 'undefined') (global as any).__matchDetailParams = {};
     if (typeof window !== 'undefined') (window as any).__matchDetailParams = {};
@@ -277,6 +279,7 @@ export function useAppNavigation() {
         break;
       case 'match-detail':
         if (params?.id) {
+          // ✅ Güncel ekranı kaydet (maçlar sayfasından gelindiyse geri dönüş oraya gitsin)
           screenBeforeMatchDetailRef.current = currentScreen;
           activeTabBeforeMatchDetailRef.current = activeTab;
           setSelectedMatchId(params.id);
@@ -296,7 +299,7 @@ export function useAppNavigation() {
       default:
         logger.warn('Unknown navigation target', { screen }, 'DASHBOARD');
     }
-  }, []);
+  }, [currentScreen, activeTab]);
 
   // Profile Settings Handlers
   const handleProfileSettings = useCallback(() => {

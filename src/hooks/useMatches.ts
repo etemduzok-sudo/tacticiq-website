@@ -173,6 +173,80 @@ export function useLeagueMatches(leagueId: number, season?: number) {
   return { matches, loading, error };
 }
 
+// ✅ Mock maç (999999) – Canlı: 52. dk, 1H, skor 5-4 (ev sahibi önde), ilk yarı 1 dk uzadı, 45+1'de ev sahibi kırmızı kart
+const MOCK_MATCH_999999 = {
+  fixture: {
+    id: 999999,
+    date: new Date().toISOString(),
+    timestamp: Math.floor(Date.now() / 1000) - 52 * 60,
+    status: { short: '2H', long: 'Second Half', elapsed: 52 },
+    venue: { name: 'Mock Stadium' },
+  },
+  league: { id: 999, name: 'Mock League', country: 'TR', logo: null },
+  teams: {
+    home: { id: 9999, name: 'Mock Home Team', logo: null },
+    away: { id: 9998, name: 'Mock Away Team', logo: null },
+  },
+  goals: { home: 5, away: 4 },
+  score: {
+    halftime: { home: 3, away: 2 },
+    fulltime: { home: 5, away: 4 },
+  },
+};
+
+// 3-5-2: Atak formasyonu (GK, CB, CB, CB, LWB, CM, CM, CM, RWB, ST, ST)
+const MOCK_352_POSITIONS = ['GK', 'CB', 'CB', 'CB', 'LWB', 'CM', 'CM', 'CM', 'RWB', 'ST', 'ST'];
+// 3-6-1: Defans formasyonu (GK, CB, CB, CB, LB, DM, DM, RB, LM, RM, ST)
+const MOCK_361_POSITIONS = ['GK', 'CB', 'CB', 'CB', 'LB', 'DM', 'DM', 'RB', 'LM', 'RM', 'ST'];
+
+const MOCK_HOME_NAMES = ['O. Yılmaz', 'E. Kaya', 'A. Demir', 'C. Şahin', 'M. Özkan', 'B. Arslan', 'K. Yıldız', 'S. Aydın', 'H. Çelik', 'F. Koç', 'D. Aksoy'];
+const MOCK_HOME_SUBS = ['T. Polat', 'U. Kurt', 'V. Acar', 'Y. Öztürk', 'Z. Bayrak'];
+const MOCK_AWAY_NAMES = ['R. Güneş', 'T. Yıldırım', 'U. Erdoğan', 'V. Kurt', 'Y. Acar', 'Z. Öztürk', 'G. Bayrak', 'İ. Koç', 'Ş. Aslan', 'Ö. Kılıç', 'Ç. Yılmaz'];
+const MOCK_AWAY_SUBS = ['A. Sol', 'B. Merkez', 'C. Sağ', 'D. Stoper', 'E. Forvet'];
+
+function buildMockLineups() {
+  const homeStartXI = MOCK_352_POSITIONS.map((pos, i) => ({
+    player: {
+      id: 9000 + i,
+      name: MOCK_HOME_NAMES[i],
+      pos,
+      number: i + 1,
+      rating: 75 + (i % 3),
+    },
+  }));
+  const homeSubs = MOCK_HOME_SUBS.map((name, i) => ({
+    player: {
+      id: 9016 + i,
+      name,
+      pos: i === 0 ? 'GK' : ['CB', 'CM', 'CM', 'ST'][i - 1],
+      number: 12 + i,
+      rating: 72 + i,
+    },
+  }));
+  const awayStartXI = MOCK_352_POSITIONS.map((pos, i) => ({
+    player: {
+      id: 9011 + i,
+      name: MOCK_AWAY_NAMES[i],
+      pos,
+      number: i + 1,
+      rating: 74 + (i % 3),
+    },
+  }));
+  const awaySubs = MOCK_AWAY_SUBS.map((name, i) => ({
+    player: {
+      id: 9022 + i,
+      name,
+      pos: i === 0 ? 'GK' : ['CB', 'CM', 'CM', 'ST'][i - 1],
+      number: 12 + i,
+      rating: 71 + i,
+    },
+  }));
+  return [
+    { team: { id: 9999, name: 'Mock Home Team' }, formation: '3-5-2', startXI: homeStartXI, substitutes: homeSubs },
+    { team: { id: 9998, name: 'Mock Away Team' }, formation: '3-5-2', startXI: awayStartXI, substitutes: awaySubs },
+  ];
+}
+
 // Hook for match details
 export function useMatchDetails(matchId: number) {
   const [match, setMatch] = useState<any>(null);
@@ -187,6 +261,24 @@ export function useMatchDetails(matchId: number) {
       try {
         setLoading(true);
         setError(null);
+
+        // ✅ matchId 0 veya negatif ise API çağrısı yapma (preloadedMatch kullanılıyor demektir)
+        if (!matchId || matchId <= 0) {
+          logger.info(`⏭️ Skipping API call - matchId is ${matchId} (preloadedMatch kullanılıyor)`, { matchId }, 'MATCH_DETAILS');
+          setLoading(false);
+          return;
+        }
+
+        // ✅ Mock maç (999999): API çağrısı yapma, anında mock veri set et (uygulama takılmasın)
+        if (matchId === 999999) {
+          logger.info(`🔄 Mock match 999999 – using local data (no API)`, { matchId }, 'MATCH_DETAILS');
+          setMatch(MOCK_MATCH_999999);
+          setLineups(buildMockLineups());
+          setStatistics(null);
+          setEvents([]);
+          setLoading(false);
+          return;
+        }
         
         logger.info(`🔄 Fetching match details for ${matchId}...`, { matchId }, 'MATCH_DETAILS');
 

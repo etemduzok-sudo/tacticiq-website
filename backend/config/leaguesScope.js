@@ -41,6 +41,28 @@ const DOMESTIC_TOP_TIER = [
   { id: 174, name: 'Pro League', country: 'Egypt' },
 ];
 
+// 1.5️⃣ YEREL KUPALAR (Domestic Cups)
+// Ülkelerin yerel kupa turnuvaları
+const DOMESTIC_CUP = [
+  // Türkiye
+  { id: 206, name: 'Türkiye Kupası', country: 'Turkey' },
+  // İngiltere
+  { id: 45, name: 'FA Cup', country: 'England' },
+  { id: 48, name: 'EFL Cup', country: 'England' },
+  // İspanya
+  { id: 143, name: 'Copa del Rey', country: 'Spain' },
+  // İtalya
+  { id: 135, name: 'Coppa Italia', country: 'Italy' },
+  // Almanya
+  { id: 81, name: 'DFB-Pokal', country: 'Germany' },
+  // Fransa
+  { id: 66, name: 'Coupe de France', country: 'France' },
+  // Portekiz
+  { id: 99, name: 'Taça de Portugal', country: 'Portugal' },
+  // Hollanda
+  { id: 90, name: 'KNVB Beker', country: 'Netherlands' },
+];
+
 // 2️⃣ KITA KULÜP TURNUVALARI (CL – Libertadores mantığı)
 const CONTINENTAL_CLUB = [
   // Avrupa
@@ -100,6 +122,7 @@ function getAllTrackedLeagues() {
   const byId = new Map();
   [
     ...DOMESTIC_TOP_TIER,
+    ...DOMESTIC_CUP,
     ...CONTINENTAL_CLUB,
     ...CONTINENTAL_NATIONAL,
     ...CONFEDERATION_LEAGUE_FORMAT,
@@ -112,6 +135,7 @@ function getAllTrackedLeagues() {
 
 module.exports = {
   DOMESTIC_TOP_TIER,
+  DOMESTIC_CUP,
   CONTINENTAL_CLUB,
   CONTINENTAL_NATIONAL,
   CONFEDERATION_LEAGUE_FORMAT,

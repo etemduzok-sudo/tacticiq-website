@@ -1,5 +1,5 @@
-// MatchStatsScreen.tsx - React Native FULL VERSION
-import React, { useState } from 'react';
+// MatchStatsScreen.tsx - Maç İstatistikleri + Oyuncu İstatistikleri (canlı veri API ile)
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,46 +8,108 @@ import {
   ScrollView,
   SafeAreaView,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import Animated, { 
-  FadeIn,
-  Layout,
-  useAnimatedStyle,
-  withTiming,
-} from 'react-native-reanimated';
+import Animated, { FadeIn } from 'react-native-reanimated';
 import { Platform } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
+import { Ionicons } from '@expo/vector-icons';
+import api from '../../services/api';
+import { BRAND, DARK_MODE } from '../../theme/theme';
 
 const { width, height } = Dimensions.get('window');
-
-// Web için animasyonları devre dışı bırak
 const isWeb = Platform.OS === 'web';
+
+// API'den gelen istatistik tipi
+interface ApiMatchStat {
+  type: string;
+  home: number | string | null;
+  away: number | string | null;
+}
+
+// Gösterim için: label + sayısal değerler (bar için)
+interface DisplayStat {
+  label: string;
+  home: number;
+  away: number;
+  homeDisplay: string | number;
+  awayDisplay: string | number;
+}
+
+const STAT_LABELS: Record<string, string> = {
+  'Ball Possession': 'Topla Oynama (%)',
+  'Total Shots': 'Toplam Şut',
+  'Shots on Goal': 'İsabetli Şut',
+  'Shots off Goal': 'İsabetsiz Şut',
+  'Blocked Shots': 'Şut Dışı',
+  'Corner Kicks': 'Korner',
+  'Offsides': 'Ofsayt',
+  'Fouls': 'Faul',
+  'Yellow Cards': 'Sarı Kart',
+  'Red Cards': 'Kırmızı Kart',
+  'Goalkeeper Saves': 'Kaleci Kurtarışı',
+  'Total Passes': 'Toplam Pas',
+  'Passes Accurate': 'İsabetli Pas',
+  'Passes %': 'Pas İsabeti (%)',
+  'Pass Accuracy': 'Pas İsabeti (%)',
+};
 
 interface MatchStatsScreenProps {
   matchData: any;
+  matchId?: string;
 }
 
-const detailedStats = [
-  { label: 'Topla Oynama (%)', home: 58, away: 42 },
-  { label: 'Toplam Şut', home: 12, away: 8 },
-  { label: 'İsabetli Şut', home: 5, away: 3 },
-  { label: 'İsabetsiz Şut', home: 3, away: 2 },
-  { label: 'Şut Dışı', home: 10, away: 7 },
-  { label: 'Korner', home: 6, away: 4 },
-  { label: 'Ofsayt', home: 3, away: 5 },
-  { label: 'Pas İsabeti (%)', home: 86, away: 81 },
-  { label: 'Toplam Pas', home: 412, away: 298 },
-  { label: 'İsabetli Pas', home: 356, away: 241 },
-  { label: 'Dripling Başarısı', home: 12, away: 8 },
-  { label: 'Top Kaybı', home: 52, away: 68 },
-  { label: 'Tehlikeli Atak', home: 28, away: 19 },
-  { label: 'Toplam Atak', home: 67, away: 52 },
-  { label: 'Faul', home: 8, away: 11 },
-  { label: 'Sarı Kart', home: 2, away: 3 },
-  { label: 'Kırmızı Kart', home: 0, away: 0 },
-  { label: 'Kaleci Kurtarışı', home: 3, away: 4 },
+// Canlı/API yoksa kullanılacak varsayılan veri
+const defaultDetailedStats: DisplayStat[] = [
+  { label: 'Topla Oynama (%)', home: 58, away: 42, homeDisplay: 58, awayDisplay: 42 },
+  { label: 'Toplam Şut', home: 12, away: 8, homeDisplay: 12, awayDisplay: 8 },
+  { label: 'İsabetli Şut', home: 5, away: 3, homeDisplay: 5, awayDisplay: 3 },
+  { label: 'Korner', home: 6, away: 4, homeDisplay: 6, awayDisplay: 4 },
+  { label: 'Ofsayt', home: 3, away: 5, homeDisplay: 3, awayDisplay: 5 },
+  { label: 'Pas İsabeti (%)', home: 86, away: 81, homeDisplay: 86, awayDisplay: 81 },
+  { label: 'Toplam Pas', home: 412, away: 298, homeDisplay: 412, awayDisplay: 298 },
+  { label: 'Faul', home: 8, away: 11, homeDisplay: 8, awayDisplay: 11 },
+  { label: 'Sarı Kart', home: 2, away: 3, homeDisplay: 2, awayDisplay: 3 },
+  { label: 'Kırmızı Kart', home: 0, away: 0, homeDisplay: 0, awayDisplay: 0 },
+  { label: 'Kaleci Kurtarışı', home: 3, away: 4, homeDisplay: 3, awayDisplay: 4 },
 ];
+
+function parseStatValue(v: number | string | null): number {
+  if (v == null) return 0;
+  if (typeof v === 'number') return v;
+  const n = parseFloat(String(v).replace(/%/g, ''));
+  return isNaN(n) ? 0 : n;
+}
+
+function apiStatsToDisplay(stats: ApiMatchStat[]): DisplayStat[] {
+  return stats.map((s) => {
+    const homeNum = parseStatValue(s.home);
+    const awayNum = parseStatValue(s.away);
+    const label = STAT_LABELS[s.type] || s.type;
+    return {
+      label,
+      home: homeNum,
+      away: awayNum,
+      homeDisplay: s.home ?? '-',
+      awayDisplay: s.away ?? '-',
+    };
+  }).filter((d) => d.label);
+}
+
+function getStatIconForLabel(label: string): string {
+  const l = label.toLowerCase();
+  if (l.includes('topla oynama') || l.includes('possession')) return 'pie-chart';
+  if (l.includes('şut')) return 'locate';
+  if (l.includes('korner')) return 'flag';
+  if (l.includes('ofsayt')) return 'hand-left';
+  if (l.includes('faul')) return 'warning';
+  if (l.includes('kart')) return 'card';
+  if (l.includes('kurtarış') || l.includes('save')) return 'hand-right';
+  if (l.includes('pas')) return 'arrow-forward';
+  if (l.includes('gol')) return 'football';
+  return 'stats-chart';
+}
 
 const topPlayers = {
   home: [
@@ -133,15 +195,43 @@ const topPlayers = {
 
 export const MatchStats: React.FC<MatchStatsScreenProps> = ({
   matchData,
+  matchId,
 }) => {
   const [activeTab, setActiveTab] = useState<'match' | 'players'>('match');
+  const [matchStats, setMatchStats] = useState<DisplayStat[]>(defaultDetailedStats);
+  const [statsLoading, setStatsLoading] = useState(!!matchId);
+
+  useEffect(() => {
+    if (!matchId) return;
+    const id = parseInt(matchId, 10);
+    if (isNaN(id)) {
+      setStatsLoading(false);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        setStatsLoading(true);
+        const response = await api.matches.getMatchStatistics(id);
+        if (cancelled) return;
+        if (response?.statistics && Array.isArray(response.statistics) && response.statistics.length > 0) {
+          setMatchStats(apiStatsToDisplay(response.statistics));
+        }
+      } catch (_e) {
+        if (!cancelled) setMatchStats(defaultDetailedStats);
+      } finally {
+        if (!cancelled) setStatsLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [matchId]);
 
   return (
     <SafeAreaView style={styles.container}>
       {/* Tabs */}
       <View style={styles.tabsContainer}>
         <TouchableOpacity
-          style={styles.tab}
+          style={[styles.tab, activeTab === 'match' && styles.tabActive]}
           onPress={() => setActiveTab('match')}
           activeOpacity={0.7}
         >
@@ -155,7 +245,7 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.tab}
+          style={[styles.tab, activeTab === 'players' && styles.tabActive]}
           onPress={() => setActiveTab('players')}
           activeOpacity={0.7}
         >
@@ -163,7 +253,7 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
             styles.tabText,
             activeTab === 'players' && styles.tabTextActive
           ]}>
-            ⭐ Oyuncular
+            ⭐ Oyuncu İstatistikleri
           </Text>
           {activeTab === 'players' && <View style={styles.tabIndicator} />}
         </TouchableOpacity>
@@ -176,69 +266,78 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
         showsVerticalScrollIndicator={false}
       >
         {activeTab === 'match' ? (
-          // MAÇ İSTATİSTİKLERİ
+          // MAÇ İSTATİSTİKLERİ (canlı API verisi veya varsayılan)
           <View style={styles.statsContainer}>
-            {detailedStats.map((stat, index) => {
-              const total = stat.home + stat.away;
-              const homePercent = (stat.home / total) * 100;
-              const awayPercent = (stat.away / total) * 100;
+            {statsLoading ? (
+              <View style={styles.statsLoadingWrap}>
+                <ActivityIndicator size="large" color={BRAND.secondary} />
+                <Text style={styles.statsLoadingText}>Maç istatistikleri yükleniyor...</Text>
+              </View>
+            ) : (
+              matchStats.map((stat, index) => {
+                const total = stat.home + stat.away || 1;
+                const homePercent = (stat.home / total) * 100;
+                const awayPercent = (stat.away / total) * 100;
+                const iconName = getStatIconForLabel(stat.label);
 
-              return (
-                <Animated.View
-                  key={stat.label}
-                  entering={isWeb ? undefined : FadeIn.delay(index * 30)}
-                  style={styles.statRow}
-                >
-                  {/* Values Row */}
-                  <View style={styles.statValues}>
-                    <View style={styles.statValueLeft}>
-                      <Text style={[
-                        styles.statValueText,
-                        stat.home > stat.away && styles.statValueTextWinner
-                      ]}>
-                        {stat.home}
-                      </Text>
+                return (
+                  <Animated.View
+                    key={`${stat.label}-${index}`}
+                    entering={isWeb ? undefined : FadeIn.delay(index * 30)}
+                    style={styles.statRowCard}
+                  >
+                    <View style={styles.statValues}>
+                      <View style={styles.statValueLeft}>
+                        <Text style={[
+                          styles.statValueText,
+                          stat.home > stat.away && styles.statValueTextWinner
+                        ]}>
+                          {stat.homeDisplay}
+                        </Text>
+                      </View>
+                      <View style={styles.statLabel}>
+                        <View style={styles.statIconWrap}>
+                          <Ionicons name={iconName as any} size={14} color={BRAND.secondary} />
+                        </View>
+                        <Text style={styles.statLabelText}>{stat.label}</Text>
+                        {stat.home > stat.away && (
+                          <Text style={styles.statTrendIcon}>📈</Text>
+                        )}
+                      </View>
+                      <View style={styles.statValueRight}>
+                        <Text style={[
+                          styles.statValueText,
+                          stat.away > stat.home && styles.statValueTextWinnerAway
+                        ]}>
+                          {stat.awayDisplay}
+                        </Text>
+                      </View>
                     </View>
-
-                    <View style={styles.statLabel}>
-                      <Text style={styles.statLabelText}>{stat.label}</Text>
-                      {stat.home > stat.away && (
-                        <Text style={styles.statTrendIcon}>📈</Text>
-                      )}
+                    <View style={styles.progressBarContainer}>
+                      <View style={styles.progressBar}>
+                        <Animated.View
+                          entering={isWeb ? undefined : FadeIn.delay(index * 30 + 200).duration(600)}
+                          style={[
+                            styles.progressBarHome,
+                            { width: `${homePercent}%` },
+                            stat.home > stat.away && styles.progressBarHomeHighlight
+                          ]}
+                        />
+                        <View style={styles.progressBarDivider} />
+                        <Animated.View
+                          entering={isWeb ? undefined : FadeIn.delay(index * 30 + 200).duration(600)}
+                          style={[
+                            styles.progressBarAway,
+                            { width: `${awayPercent}%` },
+                            stat.away > stat.home && styles.progressBarAwayHighlight
+                          ]}
+                        />
+                      </View>
                     </View>
-
-                    <View style={styles.statValueRight}>
-                      <Text style={[
-                        styles.statValueText,
-                        stat.away > stat.home && styles.statValueTextWinnerAway
-                      ]}>
-                        {stat.away}
-                      </Text>
-                    </View>
-                  </View>
-
-                  {/* Progress Bar */}
-                  <View style={styles.progressBarContainer}>
-                    <View style={styles.progressBar}>
-                      <Animated.View
-                        entering={isWeb ? undefined : FadeIn.delay(index * 30 + 200).duration(600)}
-                        style={[
-                          styles.progressBarHome,
-                          { width: `${homePercent}%` }
-                        ]}
-                      />
-                      <Animated.View
-                        entering={isWeb ? undefined : FadeIn.delay(index * 30 + 200).duration(600)}
-                        style={[
-                          styles.progressBarAway,
-                          { width: `${awayPercent}%` }
-                        ]}
-                      />
-                    </View>
-                  </View>
-                </Animated.View>
-              );
-            })}
+                  </Animated.View>
+                );
+              })
+            )}
 
             {/* Momentum Badge */}
             <Animated.View
@@ -650,35 +749,48 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent', // ✅ Grid pattern görünsün - MatchDetail'den geliyor
   },
   
-  // Tabs
+  // Tabs - elite
   tabsContainer: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(30, 41, 59, 0.8)',
+    backgroundColor: DARK_MODE.card,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(100, 116, 139, 0.3)',
+    borderBottomColor: DARK_MODE.border,
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    gap: 8,
   },
   tab: {
     flex: 1,
-    height: 50,
+    height: 48,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
+    borderRadius: 12,
+    backgroundColor: 'rgba(30, 41, 59, 0.6)',
+    borderWidth: 1,
+    borderColor: 'transparent',
   },
   tabText: {
-    fontSize: 10,
-    fontWeight: 'bold',
-    color: '#9CA3AF',
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#94A3B8',
   },
   tabTextActive: {
-    color: '#1FA2A6',
+    color: BRAND.secondary,
+    fontWeight: '700',
+  },
+  tabActive: {
+    backgroundColor: `${BRAND.secondary}15`,
+    borderColor: `${BRAND.secondary}40`,
   },
   tabIndicator: {
     position: 'absolute',
     bottom: 0,
-    left: 0,
-    right: 0,
+    left: 12,
+    right: 12,
     height: 2,
-    backgroundColor: '#1FA2A6',
+    backgroundColor: BRAND.secondary,
+    borderRadius: 1,
   },
   
   // Content
@@ -694,133 +806,179 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 24,
   },
-  statRow: {
-    gap: 8,
+  statsLoadingWrap: {
+    paddingVertical: 48,
+    alignItems: 'center',
+    gap: 12,
+  },
+  statsLoadingText: {
+    fontSize: 14,
+    color: '#94A3B8',
+    fontWeight: '500',
+  },
+  statRowCard: {
+    backgroundColor: DARK_MODE.card,
+    borderRadius: 14,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: DARK_MODE.border,
+    gap: 12,
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 6 },
+      android: { elevation: 2 },
+      web: { boxShadow: '0 2px 12px rgba(0,0,0,0.08)' },
+    }),
   },
   statValues: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    gap: 12,
   },
   statValueLeft: {
-    flex: 1,
+    minWidth: 44,
     alignItems: 'flex-start',
   },
   statValueRight: {
-    flex: 1,
+    minWidth: 44,
     alignItems: 'flex-end',
   },
   statValueText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#E2E8F0',
   },
   statValueTextWinner: {
-    color: '#1FA2A6',
+    color: BRAND.secondary,
   },
   statValueTextWinnerAway: {
     color: '#F59E0B',
   },
   statLabel: {
-    flex: 2,
+    flex: 1,
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 6,
+    gap: 8,
+  },
+  statIconWrap: {
+    width: 26,
+    height: 26,
+    borderRadius: 8,
+    backgroundColor: `${BRAND.secondary}20`,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   statLabelText: {
     fontSize: 12,
-    color: '#9CA3AF',
+    fontWeight: '600',
+    color: '#E2E8F0',
     textAlign: 'center',
   },
   statTrendIcon: {
     fontSize: 12,
   },
   progressBarContainer: {
-    height: 8,
+    height: 10,
   },
   progressBar: {
     flex: 1,
     flexDirection: 'row',
-    backgroundColor: 'rgba(100, 116, 139, 0.2)',
-    borderRadius: 4,
+    backgroundColor: 'rgba(51, 65, 85, 0.5)',
+    borderRadius: 5,
     overflow: 'hidden',
+    alignItems: 'stretch',
   },
   progressBarHome: {
-    backgroundColor: '#1FA2A6',
+    backgroundColor: 'rgba(31, 162, 166, 0.4)',
     height: '100%',
+    borderTopLeftRadius: 5,
+    borderBottomLeftRadius: 5,
+  },
+  progressBarHomeHighlight: {
+    backgroundColor: BRAND.secondary,
+  },
+  progressBarDivider: {
+    width: 2,
+    backgroundColor: 'rgba(15, 23, 42, 0.9)',
   },
   progressBarAway: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: 'rgba(245, 158, 11, 0.4)',
     height: '100%',
+    borderTopRightRadius: 5,
+    borderBottomRightRadius: 5,
+  },
+  progressBarAwayHighlight: {
+    backgroundColor: '#F59E0B',
   },
   
-  // Momentum Badge
+  // Momentum Badge - elite
   momentumBadge: {
-    marginTop: 8,
+    marginTop: 12,
     borderRadius: 16,
     overflow: 'hidden',
-    borderWidth: 2,
-    borderStyle: 'dashed',
-    borderColor: 'rgba(100, 116, 139, 0.3)',
+    borderWidth: 1,
+    borderColor: DARK_MODE.border,
+    backgroundColor: DARK_MODE.card,
   },
   momentumGradient: {
-    padding: 32,
+    padding: 28,
     alignItems: 'center',
   },
   momentumEmoji: {
-    fontSize: 32,
-    marginBottom: 12,
+    fontSize: 28,
+    marginBottom: 10,
   },
   momentumText: {
     fontSize: 13,
-    color: '#9CA3AF',
+    color: '#94A3B8',
     textAlign: 'center',
     lineHeight: 20,
+    fontWeight: '500',
   },
   
   // Players
   playersContainer: {
     padding: 16,
-    gap: 12,
+    gap: 14,
   },
   teamSection: {
-    gap: 12,
+    gap: 14,
   },
   teamDivider: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginVertical: 12,
+    gap: 12,
+    marginVertical: 16,
   },
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: 'rgba(100, 116, 139, 0.3)',
+    backgroundColor: DARK_MODE.border,
   },
   dividerText: {
-    fontSize: 10,
-    color: '#9CA3AF',
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#94A3B8',
     textTransform: 'uppercase',
-    letterSpacing: 1,
+    letterSpacing: 1.2,
   },
   
-  // Player Card
+  // Player Card - elite
   playerCard: {
-    backgroundColor: 'rgba(30, 41, 59, 0.8)',
+    backgroundColor: DARK_MODE.card,
     borderWidth: 1,
-    borderColor: 'rgba(100, 116, 139, 0.3)',
-    borderRadius: 12,
-    padding: 12,
+    borderColor: DARK_MODE.border,
+    borderRadius: 16,
+    padding: 16,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
       },
       android: { elevation: 3 },
-      web: { boxShadow: '0 2px 8px rgba(0,0,0,0.1)' },
+      web: { boxShadow: '0 4px 16px rgba(0,0,0,0.12)' },
     }),
   },
   playerHeader: {
@@ -836,25 +994,25 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   playerNumberBadge: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     borderRadius: 12,
-    backgroundColor: '#1FA2A6',
+    backgroundColor: BRAND.secondary,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
     position: 'relative',
   },
   playerNumberBadgeAway: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     borderRadius: 12,
     backgroundColor: '#F59E0B',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
     position: 'relative',
   },
   playerNumberText: {
@@ -900,16 +1058,16 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   playerName: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#F1F5F9',
   },
   fireEmoji: {
     fontSize: 12,
   },
   playerPosition: {
-    fontSize: 10,
-    color: '#9CA3AF',
+    fontSize: 11,
+    color: '#94A3B8',
     fontWeight: '500',
     marginTop: 2,
   },
@@ -928,113 +1086,117 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   ratingText: {
-    fontSize: 13,
-    fontWeight: 'bold',
-    color: '#1FA2A6',
+    fontSize: 14,
+    fontWeight: '800',
+    color: BRAND.secondary,
   },
   ratingTextAway: {
-    fontSize: 13,
-    fontWeight: 'bold',
+    fontSize: 14,
+    fontWeight: '800',
     color: '#F59E0B',
   },
   
-  // Quick Stats
+  // Quick Stats - elite
   quickStats: {
     flexDirection: 'row',
-    gap: 6,
-    marginBottom: 12,
+    gap: 8,
+    marginBottom: 14,
   },
   quickStatHome: {
     flex: 1,
-    backgroundColor: 'rgba(5, 150, 105, 0.2)',
-    borderRadius: 8,
-    padding: 8,
+    backgroundColor: `${BRAND.secondary}18`,
+    borderRadius: 10,
+    padding: 10,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(5, 150, 105, 0.1)',
+    borderColor: `${BRAND.secondary}30`,
   },
   quickStatAway: {
     flex: 1,
-    backgroundColor: 'rgba(245, 158, 11, 0.2)',
-    borderRadius: 8,
-    padding: 8,
+    backgroundColor: 'rgba(245, 158, 11, 0.12)',
+    borderRadius: 10,
+    padding: 10,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.1)',
+    borderColor: 'rgba(245, 158, 11, 0.25)',
   },
   quickStat: {
     flex: 1,
-    backgroundColor: 'rgba(100, 116, 139, 0.2)',
-    borderRadius: 8,
-    padding: 8,
+    backgroundColor: 'rgba(71, 85, 105, 0.2)',
+    borderRadius: 10,
+    padding: 10,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(100, 116, 139, 0.5)',
+    borderColor: DARK_MODE.border,
   },
   quickStatValueHome: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#1FA2A6',
+    fontSize: 17,
+    fontWeight: '800',
+    color: BRAND.secondary,
   },
   quickStatValueAway: {
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: 17,
+    fontWeight: '800',
     color: '#F59E0B',
   },
   quickStatValue: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#E2E8F0',
   },
   quickStatLabel: {
-    fontSize: 7,
-    color: '#9CA3AF',
+    fontSize: 10,
+    color: '#94A3B8',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginTop: 2,
+    fontWeight: '600',
   },
   
-  // Detailed Stats
+  // Detailed Stats - elite
   detailedStats: {
-    gap: 6,
+    gap: 10,
   },
   statSection: {
-    backgroundColor: 'rgba(100, 116, 139, 0.15)',
-    borderRadius: 8,
-    padding: 10,
+    backgroundColor: 'rgba(51, 65, 85, 0.25)',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: DARK_MODE.border,
   },
   statSectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginBottom: 8,
+    gap: 8,
+    marginBottom: 10,
   },
   statSectionEmoji: {
     fontSize: 14,
   },
   statSectionTitle: {
-    fontSize: 9,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#E2E8F0',
     textTransform: 'uppercase',
-    letterSpacing: 1,
+    letterSpacing: 0.8,
   },
   statSectionGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 10,
   },
   statItem: {
-    width: '48%',
+    width: '47%',
     gap: 2,
   },
   statItemValue: {
-    fontSize: 10,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#F1F5F9',
   },
   statItemLabel: {
-    fontSize: 10,
-    color: '#9CA3AF',
+    fontSize: 11,
+    color: '#94A3B8',
+    fontWeight: '500',
   },
 });

@@ -1,13 +1,19 @@
 /**
- * TacticIQ - Tüm Oyuncu Reytinglerini Güncelle
+ * TacticIQ - Tüm Oyuncu Reytingleri ve Yetenek Dağılımlarını Güncelle
  * =====================================================
- * Bu script tüm desteklenen liglerdeki oyuncuların:
- * - Rating (65-95 arası)
- * - Alt özellikler (pace, shooting, passing, dribbling, defending, physical)
- * - Form ve disiplin puanları
+ * Tek API çağrısı = 1 oyuncu için TAM veri:
+ *   GET /players?id=&season= → rating + pas, şut, dribling, defans, fizik, hız (6 öznitelik)
  * 
- * Güncelleme: Haftalık (Pazartesi 03:00)
- * Kullanım: node scripts/update-all-player-ratings.js [--league=203] [--all]
+ * DB'ye yazılanlar:
+ *   - players.rating (65-95)
+ *   - player_power_scores: shooting, passing, dribbling, defense, physical, pace, form, discipline, power_score
+ * 
+ * API tasarrufu:
+ *   - Gerçek rating/yetenek verisi olan oyuncular atlanır
+ *   - 250 yedek bırakılır, kalan günlük hak kullanılır
+ *   - En büyük liglerden başlanır
+ * 
+ * Kullanım: node scripts/update-all-player-ratings.js --api [--season=2025]
  */
 
 const path = require('path');
@@ -107,7 +113,48 @@ const CURRENT_SEASON = 2025;
 // API limit: 7500 günlük - 250 yedek = 7250 kullanılabilir
 const API_RESERVE = 250;
 const API_DAILY_LIMIT = 7500;
-const MAX_API_CALLS = API_DAILY_LIMIT - API_RESERVE;
+
+/**
+ * Mevcut API kullanımını kontrol et ve kalan hakkı hesapla
+ */
+async function getAvailableApiCalls() {
+  let usedToday = 0;
+  
+  // smartSyncService'den mevcut kullanımı al
+  try {
+    const smartSyncService = require('../services/smartSyncService');
+    const syncStatus = smartSyncService.getStatus();
+    if (syncStatus && typeof syncStatus.apiCallsToday === 'number') {
+      usedToday += syncStatus.apiCallsToday;
+    }
+  } catch (e) {
+    // smartSync yoksa devam et
+  }
+  
+  // aggressiveCacheService'den mevcut kullanımı al
+  try {
+    const aggressiveCacheService = require('../services/aggressiveCacheService');
+    const cacheStats = aggressiveCacheService.getStats();
+    if (cacheStats && typeof cacheStats.callsToday === 'number') {
+      usedToday += cacheStats.callsToday;
+    }
+  } catch (e) {
+    // aggressiveCache yoksa devam et
+  }
+  
+  const remaining = Math.max(0, API_DAILY_LIMIT - usedToday);
+  const available = Math.max(0, remaining - API_RESERVE);
+  
+  console.log(`📊 API Durumu:`);
+  console.log(`   Bugünkü kullanım: ${usedToday}`);
+  console.log(`   Kalan: ${remaining}`);
+  console.log(`   Kullanılabilir (${API_RESERVE} yedek hariç): ${available}`);
+  
+  return available;
+}
+
+// Dinamik olarak hesaplanacak
+let MAX_API_CALLS = 0;
 
 // En büyük ligler (öncelik sırası - 1 = en yüksek)
 const LEAGUE_PRIORITY = {
@@ -134,23 +181,16 @@ const LEAGUE_PRIORITY = {
   235: 21, // Russian Premier League
 };
 
-// Rate limiting
+// Rate limiting - API-Football PRO: 10 requests/minute
 let requestCount = 0;
 const MAX_REQUESTS_PER_MINUTE = 10;
-const REQUEST_INTERVAL = 6500; // 6.5 saniye (güvenli aralık)
+const REQUEST_INTERVAL = 6000; // 6 saniye (10 req/min = her 6 saniyede 1 req)
 
 async function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function rateLimitedRequest(fn) {
-  requestCount++;
-  if (requestCount % 10 === 0) {
-    console.log(`📊 ${requestCount} request completed, waiting for rate limit...`);
-    await delay(REQUEST_INTERVAL);
-  }
-  return fn();
-}
+// Rate limiting artık getPlayerStats içinde yapılıyor
 
 // =====================================================
 // YARDIMCI FONKSİYONLAR (DB-FIRST)
@@ -269,13 +309,20 @@ async function countTotalPlayersInDB() {
 }
 
 /**
- * Oyuncu istatistiklerini çek
+ * Oyuncu istatistiklerini çek (optimize edilmiş - cache kontrolü ile)
  */
 async function getPlayerStats(playerId, season = CURRENT_SEASON) {
   try {
-    const response = await rateLimitedRequest(() => 
-      footballApi.getPlayerInfo(playerId, season)
-    );
+    // Cache key ile API çağrısı yap (footballApi içinde cache var)
+    const response = await footballApi.getPlayerInfo(playerId, season);
+    
+    // Rate limiting tracking (her çağrıyı say)
+    requestCount++;
+    if (requestCount % 10 === 0) {
+      console.log(`📊 ${requestCount} oyuncu API çağrısı tamamlandı, rate limit kontrolü...`);
+      await delay(REQUEST_INTERVAL);
+    }
+    
     return response?.response?.[0] || null;
   } catch (error) {
     console.warn(`⚠️ Oyuncu ${playerId} istatistikleri çekilemedi:`, error.message);
@@ -466,6 +513,128 @@ function getDefaultAttributesByPosition(position) {
 }
 
 /**
+ * Default rating değerleri (pozisyon bazlı - bunlar gerçek API rating'i değil)
+ */
+const DEFAULT_RATINGS = [75, 76, 77, 78]; // Pozisyon default'ları
+
+/**
+ * player_power_scores tablosunda gerçek verileri olan oyuncuları kontrol et
+ */
+async function getPlayersWithoutPowerScores(teamId, playerIds, leagueId, season) {
+  try {
+    if (!playerIds || playerIds.length === 0) return [];
+    if (!leagueId) return playerIds; // League ID yoksa hepsini çek
+    
+    const { data, error } = await supabase
+      .from('player_power_scores')
+      .select('player_id, shooting, passing, dribbling, defense, physical, pace, updated_at')
+      .in('player_id', playerIds)
+      .eq('team_id', teamId)
+      .eq('league_id', leagueId)
+      .eq('season', season);
+    
+    if (error) {
+      console.warn(`⚠️ PowerScore kontrol hatası (team ${teamId}):`, error.message);
+      return playerIds; // Hata durumunda hepsini çek
+    }
+    
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    
+    // Gerçek yetenek verileri olan oyuncuları bul
+    const playersWithRealStats = new Set();
+    
+    (data || []).forEach(p => {
+      const updatedAt = p.updated_at ? new Date(p.updated_at) : null;
+      
+      // Tüm yetenekler null ise → çek
+      if (!p.shooting && !p.passing && !p.dribbling && !p.defense && !p.physical && !p.pace) {
+        return; // Bu oyuncuyu çek
+      }
+      
+      // updated_at çok eski ise (30 günden eski) → yenile
+      if (updatedAt && updatedAt < thirtyDaysAgo) {
+        return; // Bu oyuncuyu çek
+      }
+      
+      // Gerçek veriler var ve güncel → atla
+      playersWithRealStats.add(p.player_id);
+    });
+    
+    // Gerçek verileri olmayan oyuncuları filtrele
+    const playersWithoutStats = playerIds.filter(id => !playersWithRealStats.has(id));
+    
+    return playersWithoutStats;
+  } catch (error) {
+    console.warn(`⚠️ PowerScore kontrol hatası:`, error.message);
+    return playerIds; // Hata durumunda hepsini çek
+  }
+}
+
+/**
+ * DB'den gerçek rating'i olmayan oyuncuları filtrele (API çağrısından önce)
+ * - Rating null/0 olanlar → çek
+ * - Rating default değerlerden biri olanlar (75-78) → çek (bunlar pozisyon default'u)
+ * - Rating gerçek API'den çekilmiş görünüyorsa (65-95 arası, default değil) → atla
+ * - updated_at 30 günden eski ise → yenile
+ */
+async function getPlayersWithoutRatings(teamId, playerIds) {
+  try {
+    if (!playerIds || playerIds.length === 0) return [];
+    
+    const { data, error } = await supabase
+      .from('players')
+      .select('id, rating, updated_at')
+      .in('id', playerIds)
+      .eq('team_id', teamId);
+    
+    if (error) {
+      console.warn(`⚠️ DB kontrol hatası (team ${teamId}):`, error.message);
+      return playerIds; // Hata durumunda hepsini çek
+    }
+    
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    
+    // Gerçek rating'i olan oyuncuları bul
+    const playersWithRealRating = new Set();
+    
+    (data || []).forEach(p => {
+      const rating = p.rating;
+      const updatedAt = p.updated_at ? new Date(p.updated_at) : null;
+      
+      // Rating yoksa veya 0 ise → çek
+      if (!rating || rating === 0) {
+        return; // Bu oyuncuyu çek
+      }
+      
+      // Default rating değerlerinden biri ise → çek (gerçek değil)
+      if (DEFAULT_RATINGS.includes(rating)) {
+        return; // Bu oyuncuyu çek
+      }
+      
+      // updated_at çok eski ise (30 günden eski) → yenile
+      if (updatedAt && updatedAt < thirtyDaysAgo) {
+        return; // Bu oyuncuyu çek
+      }
+      
+      // Gerçek API rating'i var (65-95 arası, default değil, güncel) → atla
+      if (rating >= 65 && rating <= 95 && !DEFAULT_RATINGS.includes(rating)) {
+        playersWithRealRating.add(p.id);
+      }
+    });
+    
+    // Gerçek rating'i olmayan oyuncuları filtrele
+    const playersWithoutRating = playerIds.filter(id => !playersWithRealRating.has(id));
+    
+    return playersWithoutRating;
+  } catch (error) {
+    console.warn(`⚠️ Rating kontrol hatası:`, error.message);
+    return playerIds; // Hata durumunda hepsini çek
+  }
+}
+
+/**
  * Tüm takımları DB'den işle (lig ayrımı yok)
  * @param {boolean} fetchApiStats - API'den istatistik çek (7500 limit!)
  */
@@ -477,15 +646,19 @@ async function processAllTeamsFromDB(fetchApiStats = false, season = CURRENT_SEA
   let teams = await getAllTeamsFromDB();
   console.log(`   📋 ${teams.length} takım bulundu (DB'den)`);
   
-  // API kullanılacaksa en büyük liglerden başla
-  if (fetchApiStats && teams.length > 0) {
-    console.log(`   🏆 En büyük liglerden başlayarak sıralanıyor...`);
-    const teamToLeague = await getTeamToLeagueMap();
-    teams = sortTeamsByLeaguePriority(teams, teamToLeague);
+  // Takım->lig eşlemesi (sıralama + leagueId için tek seferde)
+  let teamToLeague = new Map();
+  if (teams.length > 0) {
+    teamToLeague = await getTeamToLeagueMap();
+    if (fetchApiStats) {
+      console.log(`   🏆 En büyük liglerden başlayarak sıralanıyor...`);
+      teams = sortTeamsByLeaguePriority(teams, teamToLeague);
+    }
   }
   
   let totalPlayers = 0;
   let processedPlayers = 0;
+  let skippedPlayers = 0; // Rating'i zaten olanlar
   let errors = 0;
   let apiCalls = 0;
   
@@ -493,46 +666,92 @@ async function processAllTeamsFromDB(fetchApiStats = false, season = CURRENT_SEA
     const teamId = teamData.team_id;
     const teamName = teamData.team_name || teamData.team_data?.name || `Team ${teamId}`;
     const players = teamData.players || [];
+    const leagueId = teamToLeague.get(teamId) || null; // Ekstra DB sorgusu yok
     
     if (players.length === 0) continue;
     
-    console.log(`   ⚽ ${teamName} (${players.length} oyuncu)`);
     totalPlayers += players.length;
     
-    for (const player of players) {
-      try {
-        // API limit kontrolü
-        if (fetchApiStats && apiCalls >= MAX_API_CALLS) {
-          console.log(`\n⚠️ API limit yaklaşıyor (${apiCalls}/${MAX_API_CALLS}). Durduruluyor...`);
-          return { total: totalPlayers, processed: processedPlayers, errors, apiCalls };
+    // API kullanılacaksa, sadece rating'i veya yetenek verileri olmayan oyuncuları filtrele
+    let playersToProcess = players;
+    if (fetchApiStats) {
+      const playerIds = players.map(p => p.id).filter(Boolean);
+      
+      // Önce rating kontrolü
+      const playersWithoutRating = await getPlayersWithoutRatings(teamId, playerIds);
+      
+      // Sonra PowerScore kontrolü (league_id teamToLeague'dan)
+      const playersWithoutPowerScores = leagueId 
+        ? await getPlayersWithoutPowerScores(teamId, playerIds, leagueId, season)
+        : playerIds;
+      
+      // Her iki kontrolü de geçen oyuncuları al (birinde eksik varsa çek)
+      const playersToFetch = new Set([
+        ...playersWithoutRating,
+        ...playersWithoutPowerScores
+      ]);
+      
+      playersToProcess = players.filter(p => playersToFetch.has(p.id));
+      skippedPlayers += (players.length - playersToProcess.length);
+      
+      if (playersToProcess.length === 0) {
+        continue; // Bu takımda işlenecek oyuncu yok
+      }
+    }
+    
+    console.log(`   ⚽ ${teamName} (${playersToProcess.length}/${players.length} oyuncu${fetchApiStats ? ` - ${players.length - playersToProcess.length} zaten rating'li` : ''})`);
+    
+    // Batch işlem: Aynı anda 5 oyuncu için API çağrısı yap (rate limit korunur)
+    // API-Football PRO: 10 req/min = her 6 saniyede 1 req, batch'ler arası 6s delay ile 5 paralel güvenli
+    const batchSize = fetchApiStats ? 5 : 10;
+    for (let i = 0; i < playersToProcess.length; i += batchSize) {
+      const batch = playersToProcess.slice(i, i + batchSize);
+      
+      // API limit kontrolü
+      if (fetchApiStats && apiCalls >= MAX_API_CALLS) {
+        console.log(`\n⚠️ API limit yaklaşıyor (${apiCalls}/${MAX_API_CALLS}). Durduruluyor...`);
+        return { total: totalPlayers, processed: processedPlayers, skipped: skippedPlayers, errors, apiCalls };
+      }
+      
+      // Batch'i paralel işle (sadece API çağrısı varsa)
+      await Promise.all(batch.map(async (player) => {
+        try {
+          await processPlayerFromDB(player, teamId, season, fetchApiStats, leagueId);
+          processedPlayers++;
+          if (fetchApiStats) apiCalls++;
+        } catch (error) {
+          errors++;
+          console.warn(`⚠️ Oyuncu ${player.id} işlenemedi:`, error.message);
         }
-        
-        await processPlayerFromDB(player, teamId, season, fetchApiStats);
-        processedPlayers++;
-        if (fetchApiStats) apiCalls++;
-        
-        // Her 50 oyuncuda bir ilerleme göster
-        if (processedPlayers % 50 === 0) {
-          console.log(`      ✅ ${processedPlayers} oyuncu işlendi${fetchApiStats ? ` (${apiCalls} API)` : ''}`);
-        }
-        
-        // Rate limiting (sadece API çağrısı varsa)
-        if (fetchApiStats) await delay(300);
-      } catch (error) {
-        errors++;
+      }));
+      
+      // Her 50 oyuncuda bir ilerleme göster
+      if (processedPlayers % 50 === 0) {
+        console.log(`      ✅ ${processedPlayers} oyuncu işlendi${fetchApiStats ? ` (${apiCalls} API, ${skippedPlayers} atlandı)` : ''}`);
+      }
+      
+      // Rate limiting (sadece API çağrısı varsa) - batch'ler arası delay
+      // API-Football PRO: 10 req/min = her 6 saniyede 1 req
+      if (fetchApiStats && i + batchSize < playersToProcess.length) {
+        await delay(REQUEST_INTERVAL); // Batch'ler arası 6 saniye (rate limit korunur)
       }
     }
   }
   
-  console.log(`\n✅ TAMAMLANDI: ${processedPlayers}/${totalPlayers} oyuncu (${errors} hata, ${apiCalls} API çağrısı)`);
+  console.log(`\n✅ TAMAMLANDI: ${processedPlayers}/${totalPlayers} oyuncu işlendi (${skippedPlayers} zaten rating'li, ${errors} hata, ${apiCalls} API çağrısı)`);
   
-  return { total: totalPlayers, processed: processedPlayers, errors, apiCalls };
+  return { total: totalPlayers, processed: processedPlayers, skipped: skippedPlayers, errors, apiCalls };
 }
 
 /**
- * DB'deki oyuncu verisini kullanarak rating hesapla ve kaydet
+ * DB'deki oyuncu verisini kullanarak rating ve tüm yetenekleri hesapla ve kaydet
+ * @param {object} player - Oyuncu objesi
+ * @param {number} teamId - Takım ID
+ * @param {number} season - Sezon
+ * @param {boolean} fetchApiStats - API'den istatistik çek
+ * @param {number|null} leagueId - Takımın lig ID'si (teamToLeague'dan, ekstra sorgu yok)
  */
-async function processPlayerFromDB(player, teamId, season, fetchApiStats = false) {
+async function processPlayerFromDB(player, teamId, season, fetchApiStats = false, leagueId = null) {
   let attrs = getDefaultAttributesByPosition(player.position);
   
   // API'den istatistik çek (opsiyonel - 7500 limit!)
@@ -549,7 +768,7 @@ async function processPlayerFromDB(player, teamId, season, fetchApiStats = false
   // Mevcut rating varsa koru, yoksa hesaplananı kullan
   const finalRating = player.rating || attrs.rating;
   
-  // Oyuncu tablosuna kaydet
+  // Oyuncu tablosuna kaydet (rating)
   const playerRecord = {
     id: player.id,
     name: player.name,
@@ -563,6 +782,31 @@ async function processPlayerFromDB(player, teamId, season, fetchApiStats = false
   };
   
   await savePlayerToDb(playerRecord);
+  
+  // player_power_scores tablosuna kaydet (pas, şut, dribling, defans, fizik, hız)
+  if (leagueId) {
+    const powerScoreRecord = {
+      player_id: player.id,
+      team_id: teamId,
+      league_id: leagueId,
+      season: season,
+      position: player.position || null,
+      power_score: attrs.powerScore || attrs.rating || 75,
+      shooting: attrs.shooting || null,
+      passing: attrs.passing || null,
+      dribbling: attrs.dribbling || null,
+      defense: attrs.defense || attrs.defending || null,
+      physical: attrs.physical || null,
+      pace: attrs.pace || null,
+      form: attrs.form || 50,
+      discipline: attrs.discipline || 70,
+      fitness_status: attrs.fitnessStatus || 'fit',
+      updated_at: new Date().toISOString(),
+    };
+    
+    await savePowerScore(powerScoreRecord);
+  }
+  
   return attrs;
 }
 
@@ -592,6 +836,16 @@ async function main() {
   console.log('='.repeat(50));
   
   if (fetchApiStats) {
+    // Mevcut API kullanımını kontrol et ve kalan hakkı hesapla
+    MAX_API_CALLS = await getAvailableApiCalls();
+    
+    if (MAX_API_CALLS <= 0) {
+      console.log(`\n⚠️  Kullanılabilir API hakkı yok!`);
+      console.log(`   Bugünkü limit dolmuş veya yeterli yedek yok.`);
+      console.log(`   Yarın tekrar deneyin veya --api parametresi olmadan çalıştırın.\n`);
+      return;
+    }
+    
     console.log(`\n⚠️  API istatistik çekme aktif!`);
     console.log(`   - Max ${MAX_API_CALLS} API çağrısı (${API_RESERVE} yedek bırakıldı)`);
     console.log(`   - En büyük liglerden başlayarak işlenecek\n`);
@@ -604,8 +858,14 @@ async function main() {
   console.log('='.repeat(50));
   console.log(`   Toplam Oyuncu: ${result.total}`);
   console.log(`   İşlenen: ${result.processed}`);
+  if (fetchApiStats && result.skipped) {
+    console.log(`   Atlandı (zaten rating'li): ${result.skipped}`);
+  }
   console.log(`   Hatalar: ${result.errors}`);
-  console.log(`   API Çağrısı: ${result.apiCalls || 0}`);
+  if (fetchApiStats) {
+    console.log(`   API Çağrısı: ${result.apiCalls || 0}`);
+    console.log(`   API Verimliliği: ${result.apiCalls > 0 ? ((result.processed / result.apiCalls) * 100).toFixed(1) : 0}% (${result.processed} oyuncu/${result.apiCalls} API)`);
+  }
   console.log('='.repeat(50));
 }
 

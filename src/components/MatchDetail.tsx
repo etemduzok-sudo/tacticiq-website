@@ -28,6 +28,7 @@ import { AnalysisFocusModal, AnalysisFocusType } from './AnalysisFocusModal';
 import { ConfirmModal } from './ui/ConfirmModal';
 import { STORAGE_KEYS, LEGACY_STORAGE_KEYS } from '../config/constants';
 import { predictionsDb } from '../services/databaseService';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BRAND, COLORS, SPACING, SIZES } from '../theme/theme';
 import { getTeamColors as getTeamColorsUtil } from '../utils/teamColors';
 
@@ -72,6 +73,7 @@ const tabs = [
 
 export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFocus, preloadedMatch, forceResultSummary }: MatchDetailProps) {
   const { width: windowWidth } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const isNarrow = windowWidth < 420;
   const centerInfoMinWidth = isNarrow ? 100 : 160;
   const countdownPadding = isNarrow ? 4 : 8;
@@ -314,10 +316,9 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
   const awayScore = match?.goals?.away ?? 0;
   const halftimeScore = match?.score?.halftime || null;
   
-  // ✅ Biten maçlar için varsayılan sekme ayarı
+  // ✅ Biten maçlar için varsayılan sekme (Canlı sekmesi kalır – oynanan maç olayları görünsün)
   React.useEffect(() => {
     if (match && !initialTabSet && initialTab === 'squad') {
-      // Eğer maç bitmişse ve initialTab belirtilmemişse, stats sekmesine git
       if (isMatchFinished) {
         setActiveTab('stats');
         setInitialTabSet(true);
@@ -475,6 +476,8 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
             onComplete={() => setActiveTab('prediction')}
             onAttackFormationChangeConfirmed={() => setShowAnalysisFocusModal(true)}
             isVisible={activeTab === 'squad'}
+            isMatchFinished={isMatchFinished}
+            isMatchLive={isMatchLive}
           />
         );
       
@@ -491,6 +494,8 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
             matchData={matchData}
             matchId={matchId}
             predictionTeamId={predictionTeamId}
+            isMatchLive={isMatchLive}
+            isMatchFinished={isMatchFinished}
             initialAnalysisFocus={effectiveAnalysisFocus}
             lineups={lineups}
             favoriteTeamIds={favoriteTeamIds}
@@ -511,7 +516,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
         return <MatchLive matchData={matchData} matchId={matchId} events={events} />;
       
       case 'stats':
-        return <MatchStats matchData={matchData} />;
+        return <MatchStats matchData={matchData} matchId={matchId} />;
       
       case 'ratings':
         return <MatchRatings matchData={matchData} />;
@@ -602,17 +607,17 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
             {matchData.homeTeam.manager?.trim() ? (
               <Text style={styles.managerText}>{matchData.homeTeam.manager.trim()}</Text>
             ) : (
-              <View style={{ height: 16 }} />
+              <View style={{ height: 14 }} />
             )}
-            {/* Canlı maçta skor göster */}
-            {matchData.isLive && (
+            {/* Canlı veya biten maçta skor göster */}
+            {(matchData.isLive || isMatchFinished) && (
               <View style={styles.liveScoreBox}>
                 <Text style={styles.liveScoreText}>{matchData.homeScore}</Text>
               </View>
             )}
           </View>
 
-          {/* Center: Date, Time, Countdown OR Live Status */}
+          {/* Center: Canlıda sadece CANLI + dakika (Rule 1/3); biten maçta tarih/saat; başlamamışta geri sayım */}
           <View style={[styles.centerInfo, { minWidth: centerInfoMinWidth, paddingHorizontal: countdownPadding }]}>
             {matchData.isLive ? (
               <>
@@ -629,6 +634,11 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
                     İY: {matchData.halftimeScore.home}-{matchData.halftimeScore.away}
                   </Text>
                 )}
+              </>
+            ) : isMatchFinished ? (
+              <>
+                <Text style={styles.dateText}>● {matchData.date}</Text>
+                <Text style={styles.liveMinuteText}>{matchData.minute ?? 90}'</Text>
               </>
             ) : (
               <>
@@ -668,10 +678,10 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
             {matchData.awayTeam.manager?.trim() ? (
               <Text style={styles.managerText}>{matchData.awayTeam.manager.trim()}</Text>
             ) : (
-              <View style={{ height: 16 }} />
+              <View style={{ height: 14 }} />
             )}
-            {/* Canlı maçta skor göster */}
-            {matchData.isLive && (
+            {/* Canlı veya biten maçta skor göster */}
+            {(matchData.isLive || isMatchFinished) && (
               <View style={styles.liveScoreBox}>
                 <Text style={styles.liveScoreText}>{matchData.awayScore}</Text>
               </View>
@@ -681,10 +691,12 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
         </View>
       </View>
 
-      {/* Tab Content */}
+      {/* Tab Content – flex ile bar'ın üstünde biter, bar içeriği kesmez */}
       <View style={styles.contentContainer}>
         {renderContent()}
       </View>
+
+      {/* Bottom Navigation – overlay değil, akışta; bilgi kutusunu kesmez */}
 
       {/* Tahminleri sil popup – header yıldızına basınca (tek takım) */}
       {showResetPredictionsModal && (
@@ -794,8 +806,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
         } : undefined}
       />
 
-      {/* Bottom Navigation - 6 Tabs - BottomNavigation gibi */}
-      <View style={styles.bottomNavOverlay}>
+      <View style={[styles.bottomNavBar, { paddingBottom: Math.max(insets.bottom, 8) }]}>
         <View style={styles.bottomNav}>
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
@@ -864,20 +875,22 @@ const styles = StyleSheet.create({
     }),
   },
   
-  // Match Card Overlay - ProfileCard ile aynı stil
+  // Match Card Overlay - Dashboard canlı maç kartı ile aynı yükseklik (~158px içerik + status bar)
   matchCardOverlay: {
     position: 'absolute',
     top: 0, // ✅ Ekranın en üstünden başla
     left: 0,
     right: 0,
     zIndex: 9999,
+    // ✅ Dashboard kartı minHeight: 158 kullanıyor; biz içerik + status bar padding
+    height: Platform.OS === 'ios' ? 200 : Platform.OS === 'web' ? 158 : 170, // iOS: 44 + 156, Web: 158, Android: 12 + 158
     backgroundColor: '#0F2A24', // ✅ ProfileCard ile aynı renk
     borderTopLeftRadius: 0, // ✅ Üst köşeler düz (ProfileCard gibi)
     borderTopRightRadius: 0,
     borderBottomLeftRadius: 12, // ✅ ProfileCard ile aynı (25 değil 12)
     borderBottomRightRadius: 12,
-    paddingTop: Platform.OS === 'ios' ? 50 : 12, // ✅ Status bar için padding
-    paddingBottom: 12,
+    paddingTop: Platform.OS === 'ios' ? 44 : Platform.OS === 'web' ? 8 : 12, // Status bar için padding
+    paddingBottom: 8,
     overflow: 'hidden', // ✅ Renk çubukları köşelerde kesilsin
     ...Platform.select({
       ios: {
@@ -931,12 +944,12 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     justifyContent: 'space-between',
     paddingHorizontal: 12,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   backButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+    width: 32,
+    height: 32,
+    borderRadius: 8,
     backgroundColor: 'rgba(15, 42, 36, 0.95)',
     borderWidth: 1,
     borderColor: 'rgba(31, 162, 166, 0.25)',
@@ -945,15 +958,15 @@ const styles = StyleSheet.create({
   },
   centerBadges: {
     alignItems: 'center',
-    gap: 4,
+    gap: 3,
   },
   leagueBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 4,
     backgroundColor: 'rgba(15, 42, 36, 0.95)',
     paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingVertical: 4,
     borderRadius: 10,
     borderWidth: 1,
     borderColor: 'rgba(31, 162, 166, 0.2)',
@@ -1012,7 +1025,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#F8FAFB',
     textAlign: 'center',
-    marginBottom: 3,
+    marginBottom: 2,
   },
   managerText: {
     fontSize: 9,
@@ -1033,7 +1046,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(31, 162, 166, 0.15)',
-    paddingVertical: 8,
+    paddingVertical: 6,
     minWidth: 100,
     flexShrink: 0,
   },
@@ -1086,18 +1099,18 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   
-  // ✅ Canlı Maç Stilleri - Kompakt tasarım (maç kartı yüksekliği tutarlı olsun)
+  // ✅ Canlı Maç Stilleri - Dashboard ile uyumlu (fontSize 16)
   liveScoreBox: {
     backgroundColor: '#0F2A24',
-    borderRadius: 6,
+    borderRadius: 8,
     paddingHorizontal: 10,
-    paddingVertical: 3,
+    paddingVertical: 4,
     marginTop: 4,
     borderWidth: 1,
     borderColor: 'rgba(31, 162, 166, 0.3)',
   },
   liveScoreText: {
-    fontSize: 22,
+    fontSize: 16, // Dashboard: 16
     fontWeight: '900',
     color: '#FFFFFF',
     textAlign: 'center',
@@ -1125,7 +1138,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   liveMinuteText: {
-    fontSize: 18,
+    fontSize: 16, // Dashboard: 16
     fontWeight: '800',
     color: '#ef4444',
   },
@@ -1135,11 +1148,11 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   
-  // Content
+  // Content – bar artık akışta; alt boşluk yok (her tab kendi paddingBottom'unu yönetir)
   contentContainer: {
     flex: 1,
-    paddingTop: Platform.OS === 'ios' ? 210 : 175,
-    paddingBottom: Platform.OS === 'ios' ? 100 : 80,
+    paddingTop: Platform.OS === 'ios' ? 208 : Platform.OS === 'web' ? 166 : 178, // ✅ Kart yüksekliği + 8px boşluk
+    paddingBottom: 0,
   },
   
   // Placeholder
@@ -1170,32 +1183,25 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   
-  // Bottom Navigation Overlay - BottomNavigation ile aynı stil
-  bottomNavOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    zIndex: 9999,
-    backgroundColor: '#0F2A24', // ✅ BottomNavigation ile aynı renk
+  // Bottom Navigation – overlay değil, layout akışında; üst çizgi yok (kesilme olmasın)
+  bottomNavBar: {
+    backgroundColor: '#0F2A24',
     borderTopLeftRadius: 25,
     borderTopRightRadius: 25,
-    borderTopWidth: 1, // ✅ Turkuaz ince border
-    borderTopColor: 'rgba(31, 162, 166, 0.2)',
+    borderTopWidth: 0,
     paddingTop: 8,
-    paddingBottom: Platform.OS === 'ios' ? 20 : 8,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
+        shadowOffset: { width: 0, height: -2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 6,
       },
       android: {
-        elevation: 10,
+        elevation: 8,
       },
       web: {
-        boxShadow: '0 -4px 20px rgba(0, 0, 0, 0.4), 0 -2px 8px rgba(31, 162, 166, 0.15)',
+        boxShadow: '0 -2px 12px rgba(0, 0, 0, 0.25)',
       },
     }),
   },

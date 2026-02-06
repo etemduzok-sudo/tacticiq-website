@@ -16,6 +16,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Rect, Line, Circle, Path, Defs, RadialGradient, Stop } from 'react-native-svg';
+import { PITCH_LAYOUT } from '../../config/constants';
 
 const { width } = Dimensions.get('window');
 
@@ -643,7 +644,7 @@ const styles = StyleSheet.create({
 
   // Field
   fieldContainer: {
-    width: width - 32, height: (width - 32) * 1.4, alignSelf: 'center', borderRadius: 16, overflow: 'hidden', marginTop: 12,
+    width: width - PITCH_LAYOUT.H_PADDING, height: (width - PITCH_LAYOUT.H_PADDING) * PITCH_LAYOUT.ASPECT_RATIO, alignSelf: 'center', borderRadius: 16, overflow: 'hidden', marginTop: 12,
     borderWidth: 2, borderColor: 'rgba(34, 197, 94, 0.4)',
     ...Platform.select({
       ios: { shadowColor: '#22C55E', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.3, shadowRadius: 20 },
@@ -653,7 +654,7 @@ const styles = StyleSheet.create({
   },
   fieldGradient: { flex: 1 },
   fieldSvg: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
-  mainField: { width: width - 32, height: (width - 32) * 1.4, alignSelf: 'center', marginBottom: 12 },
+  mainField: { width: width - PITCH_LAYOUT.H_PADDING, height: (width - PITCH_LAYOUT.H_PADDING) * PITCH_LAYOUT.ASPECT_RATIO, alignSelf: 'center', marginBottom: 12 },
   fieldFocusIcon: {
     position: 'absolute', top: 14, right: 14, zIndex: 100,
     ...Platform.select({

@@ -97,21 +97,21 @@ const MOCK_COMMUNITY_DATA = {
     { type: 'extraTime', value: '5-6', count: 234, percentage: 40.3 },
   ],
   
-  // Formasyon tahminleri - En çok seçilen formasyonlar
+  // Formasyon tahminleri - Mock 999999: atak 3-5-2, defans 3-6-1 en çok seçilmiş
   formationPredictions: {
     attack: {
+      '3-5-2': { count: 320, percentage: 55.2 },
       '4-3-3': { count: 234, percentage: 40.3 },
       '4-4-2': { count: 156, percentage: 26.9 },
-      '3-5-2': { count: 89, percentage: 15.3 },
       '4-2-3-1': { count: 67, percentage: 11.6 },
       '3-4-3': { count: 34, percentage: 5.9 }
     },
     defense: {
+      '3-6-1': { count: 290, percentage: 50.0 },
       '4-4-2': { count: 189, percentage: 32.6 },
       '5-4-1': { count: 145, percentage: 25.0 },
       '4-5-1': { count: 112, percentage: 19.3 },
-      '5-3-2': { count: 78, percentage: 13.4 },
-      '3-5-2': { count: 56, percentage: 9.7 }
+      '5-3-2': { count: 78, percentage: 13.4 }
     }
   },
   
@@ -165,6 +165,15 @@ const MOCK_COMMUNITY_DATA = {
     }
   },
   
+  // "Oyundan çıksın" topluluk oyları – Mock 999999: kaleci %26, santrafor (ST) %10
+  subOutByPlayer: {
+    totalPredictors: 580,
+    players: {
+      9000: { subOutVotes: 151, replacementName: 'T. Polat' },   // 26% kaleci
+      9009: { subOutVotes: 58, replacementName: 'T. Polat' },     // 10% santrafor (3-5-2'de ST slot 9)
+    }
+  },
+
   // Güncel canlı tahmin durumu (maç devam ederken)
   liveUpdates: {
     lastUpdate: new Date().toISOString(),

@@ -73,18 +73,20 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
   // ✅ Tahmin silme popup state
   const [deletePredictionModal, setDeletePredictionModal] = useState<{ matchId: number; onDelete: () => void } | null>(null);
   
-  // ✅ Maça tıklandığında: tahmin varsa doğrudan Tahmin sekmesine git, yoksa analiz odağı modal'ını aç
+  // ✅ Maça tıklandığında: tahmin kaydedilmişse direkt kadro sekmesine git (analiz odağı yok), yoksa analiz odağı modal'ını aç
   const handleMatchPress = (match: any) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const hasPrediction = match?.fixture?.id != null && matchIdsWithPredictions.has(match.fixture.id);
     if (hasPrediction) {
+      // ✅ Tahmin kaydedilmiş: kadro sekmesinde atak dizilişi görünsün, analiz odağı seçimi yok
       onNavigate('match-detail', {
         id: String(match.fixture.id),
-        initialTab: 'prediction',
+        initialTab: 'squad',
         matchData: match,
       });
       return;
     }
+    // Tahmin yok: analiz odağı seçimi göster
     setSelectedMatchForAnalysis(match);
     setAnalysisFocusModalVisible(true);
   };

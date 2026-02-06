@@ -12,21 +12,23 @@ const CACHE_TIMESTAMP_KEY = 'tacticiq-matches-cache-timestamp';
 const CACHE_DURATION = 6 * 60 * 60 * 1000; // 6 saat (ms)
 
 // ✅ Mock canlı maç - her zaman "Oynanıyor" sekmesinde görünsün (test/demo için)
+// useMatches.ts MOCK_MATCH_999999 ile SENKRON tutulmalı!
 const MOCK_LIVE_MATCH: Match = {
   fixture: {
     id: 999999,
     date: new Date().toISOString(),
-    timestamp: Math.floor(Date.now() / 1000) - 67 * 60,
-    status: { short: '2H', long: 'Second Half', elapsed: 67 },
+    timestamp: Math.floor(Date.now() / 1000) - 52 * 60, // 52. dakika
+    status: { short: '2H', long: 'Second Half', elapsed: 52 }, // ✅ useMatches.ts ile aynı
+    venue: { name: 'Mock Stadium' },
   },
-  league: { id: 999, name: 'Mock League', country: 'Mock Country', logo: null },
+  league: { id: 999, name: 'Mock League', country: 'TR', logo: null },
   teams: {
     home: { id: 9999, name: 'Mock Home Team', logo: null },
     away: { id: 9998, name: 'Mock Away Team', logo: null },
   },
-  goals: { home: 2, away: 1 },
+  goals: { home: 5, away: 4 }, // ✅ useMatches.ts ile aynı
   score: {
-    halftime: { home: 1, away: 0 },
+    halftime: { home: 3, away: 2 }, // ✅ useMatches.ts ile aynı
     fulltime: { home: null, away: null },
   },
 };

@@ -978,20 +978,30 @@ router.get('/:id/events/live', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Invalid match ID' });
     }
 
-    // ✅ MOCK MATCH: ID 999999 için özel canlı event'ler döndür
+    // ✅ MOCK MATCH: ID 999999 – 52. dk, skor 5-4, ilk yarı 1 dk uzadı, 45+1 ev sahibi kırmızı kart
     if (matchId === 999999) {
       return res.json({
         success: true,
         status: '2H',
         matchNotStarted: false,
-        minute: 67,
-        score: { home: 2, away: 1 },
-        halftimeScore: { home: 1, away: 0 },
+        minute: 52,
+        score: { home: 5, away: 4 },
+        halftimeScore: { home: 3, away: 2 },
         events: [
-          { time: { elapsed: 12, extra: null }, type: 'Goal', detail: 'Normal Goal', team: { id: 9999, name: 'Mock Home Team' }, player: { name: 'A. Yıldız' }, assist: null, comments: null },
-          { time: { elapsed: 38, extra: null }, type: 'Card', detail: 'Yellow Card', team: { id: 9998, name: 'Mock Away Team' }, player: { name: 'C. Demir' }, assist: null, comments: 'Foul' },
-          { time: { elapsed: 55, extra: null }, type: 'Goal', detail: 'Normal Goal', team: { id: 9998, name: 'Mock Away Team' }, player: { name: 'M. Kaya' }, assist: { name: 'E. Şahin' }, comments: null },
-          { time: { elapsed: 62, extra: null }, type: 'Goal', detail: 'Normal Goal', team: { id: 9999, name: 'Mock Home Team' }, player: { name: 'B. Öztürk' }, assist: { name: 'A. Yıldız' }, comments: null }
+          { time: { elapsed: 0, extra: null }, type: 'Goal', detail: 'Kick Off', team: null, player: null, assist: null, goals: null },
+          { time: { elapsed: 10, extra: null }, type: 'Goal', detail: 'Normal Goal', team: { id: 9999, name: 'Mock Home Team' }, player: { name: 'F. Koç' }, assist: null, goals: { home: 1, away: 0 } },
+          { time: { elapsed: 20, extra: null }, type: 'Goal', detail: 'Normal Goal', team: { id: 9998, name: 'Mock Away Team' }, player: { name: 'Ö. Kılıç' }, assist: null, goals: { home: 1, away: 1 } },
+          { time: { elapsed: 28, extra: null }, type: 'Goal', detail: 'Normal Goal', team: { id: 9999, name: 'Mock Home Team' }, player: { name: 'D. Aksoy' }, assist: { name: 'H. Çelik' }, goals: { home: 2, away: 1 } },
+          { time: { elapsed: 35, extra: null }, type: 'Goal', detail: 'Normal Goal', team: { id: 9998, name: 'Mock Away Team' }, player: { name: 'Ç. Yılmaz' }, assist: null, goals: { home: 2, away: 2 } },
+          { time: { elapsed: 40, extra: null }, type: 'Goal', detail: 'Normal Goal', team: { id: 9999, name: 'Mock Home Team' }, player: { name: 'B. Arslan' }, assist: null, goals: { home: 3, away: 2 } },
+          { time: { elapsed: 45, extra: null }, type: 'Goal', detail: 'First Half Extra Time', team: null, player: null, assist: null, goals: null, comments: '1' },
+          { time: { elapsed: 45, extra: 1 }, type: 'Card', detail: 'Red Card', team: { id: 9999, name: 'Mock Home Team' }, player: { name: 'C. Şahin' }, assist: null, goals: null },
+          { time: { elapsed: 45, extra: 1 }, type: 'Goal', detail: 'Half Time', team: null, player: null, assist: null, goals: null },
+          { time: { elapsed: 46, extra: null }, type: 'Goal', detail: 'Second Half Started', team: null, player: null, assist: null, goals: null },
+          { time: { elapsed: 47, extra: null }, type: 'Goal', detail: 'Normal Goal', team: { id: 9998, name: 'Mock Away Team' }, player: { name: 'Ş. Aslan' }, assist: null, goals: { home: 3, away: 3 } },
+          { time: { elapsed: 49, extra: null }, type: 'Goal', detail: 'Normal Goal', team: { id: 9999, name: 'Mock Home Team' }, player: { name: 'K. Yıldız' }, assist: { name: 'M. Özkan' }, goals: { home: 4, away: 3 } },
+          { time: { elapsed: 51, extra: null }, type: 'Goal', detail: 'Normal Goal', team: { id: 9999, name: 'Mock Home Team' }, player: { name: 'F. Koç' }, assist: null, goals: { home: 5, away: 3 } },
+          { time: { elapsed: 52, extra: null }, type: 'Goal', detail: 'Normal Goal', team: { id: 9998, name: 'Mock Away Team' }, player: { name: 'İ. Koç' }, assist: { name: 'G. Bayrak' }, goals: { home: 5, away: 4 } },
         ],
         source: 'mock'
       });

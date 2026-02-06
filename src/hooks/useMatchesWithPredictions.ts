@@ -1,4 +1,5 @@
 // Hangi maçlara tahmin yapıldığını AsyncStorage'dan tespit eder
+// ✅ Hem basit (squad-{matchId}) hem takıma özel (squad-{matchId}-{teamId}) anahtarları kontrol eder
 import { useState, useCallback, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEYS, LEGACY_STORAGE_KEYS } from '../config/constants';
@@ -17,36 +18,50 @@ export function useMatchesWithPredictions(matchIds: number[]) {
       return;
     }
     try {
-      const keys: string[] = [];
-      for (const id of matchIds) {
-        // New keys
-        keys.push(`${PREDICTION_KEY_PREFIX}${id}`);
-        keys.push(`${SQUAD_KEY_PREFIX}${id}`);
-        // Legacy keys for backward compatibility
-        keys.push(`${LEGACY_PREDICTION_KEY_PREFIX}${id}`);
-        keys.push(`${LEGACY_SQUAD_KEY_PREFIX}${id}`);
-      }
-      const pairs = await AsyncStorage.multiGet(keys);
+      // ✅ Tüm AsyncStorage anahtarlarını al (takıma özel anahtarları da bulmak için)
+      const allKeys = await AsyncStorage.getAllKeys();
+      
       const set = new Set<number>();
-      for (let i = 0; i < matchIds.length; i++) {
-        const matchId = matchIds[i];
-        // Check both new and legacy keys
+      for (const matchId of matchIds) {
+        // 1. Prediction key kontrolü (basit)
         const predKey = `${PREDICTION_KEY_PREFIX}${matchId}`;
         const legacyPredKey = `${LEGACY_PREDICTION_KEY_PREFIX}${matchId}`;
-        const squadKey = `${SQUAD_KEY_PREFIX}${matchId}`;
-        const legacySquadKey = `${LEGACY_SQUAD_KEY_PREFIX}${matchId}`;
         
-        const predPair = pairs.find(([k]) => k === predKey) || pairs.find(([k]) => k === legacyPredKey);
-        const squadPair = pairs.find(([k]) => k === squadKey) || pairs.find(([k]) => k === legacySquadKey);
+        // 2. Squad key kontrolü: hem basit hem takıma özel (squad-{matchId} ve squad-{matchId}-{teamId})
+        const squadKeyBase = `${SQUAD_KEY_PREFIX}${matchId}`;
+        const legacySquadKeyBase = `${LEGACY_SQUAD_KEY_PREFIX}${matchId}`;
         
-        const hasPred = predPair?.[1] != null && predPair[1].length > 0;
-        let hasSquad = false;
-        if (squadPair?.[1]) {
-          try {
-            const parsed = JSON.parse(squadPair[1]);
-            hasSquad = parsed?.isCompleted === true;
-          } catch (_) {}
+        // Tüm olası squad anahtarlarını bul (basit + takıma özel)
+        const squadKeys = allKeys.filter(k => 
+          k === squadKeyBase || k.startsWith(`${squadKeyBase}-`) ||
+          k === legacySquadKeyBase || k.startsWith(`${legacySquadKeyBase}-`)
+        );
+        
+        // Prediction kontrolü
+        const predKeys = [predKey, legacyPredKey].filter(k => allKeys.includes(k));
+        let hasPred = false;
+        if (predKeys.length > 0) {
+          const predPairs = await AsyncStorage.multiGet(predKeys);
+          hasPred = predPairs.some(([_, v]) => v != null && v.length > 0);
         }
+        
+        // Squad kontrolü (isCompleted check)
+        let hasSquad = false;
+        if (squadKeys.length > 0) {
+          const squadPairs = await AsyncStorage.multiGet(squadKeys);
+          for (const [_, value] of squadPairs) {
+            if (value) {
+              try {
+                const parsed = JSON.parse(value);
+                if (parsed?.isCompleted === true) {
+                  hasSquad = true;
+                  break;
+                }
+              } catch (_) {}
+            }
+          }
+        }
+        
         if (hasPred || hasSquad) set.add(matchId);
       }
       setMatchIdsWithPredictions(set);
@@ -62,13 +77,19 @@ export function useMatchesWithPredictions(matchIds: number[]) {
 
   const clearPredictionForMatch = useCallback(async (matchId: number) => {
     try {
-      // Remove both new and legacy keys
-      await AsyncStorage.multiRemove([
-        `${PREDICTION_KEY_PREFIX}${matchId}`,
-        `${SQUAD_KEY_PREFIX}${matchId}`,
-        `${LEGACY_PREDICTION_KEY_PREFIX}${matchId}`,
-        `${LEGACY_SQUAD_KEY_PREFIX}${matchId}`,
-      ]);
+      // ✅ Hem basit hem takıma özel anahtarları temizle
+      const allKeys = await AsyncStorage.getAllKeys();
+      const keysToRemove = allKeys.filter(k =>
+        k === `${PREDICTION_KEY_PREFIX}${matchId}` ||
+        k === `${SQUAD_KEY_PREFIX}${matchId}` ||
+        k.startsWith(`${SQUAD_KEY_PREFIX}${matchId}-`) ||
+        k === `${LEGACY_PREDICTION_KEY_PREFIX}${matchId}` ||
+        k === `${LEGACY_SQUAD_KEY_PREFIX}${matchId}` ||
+        k.startsWith(`${LEGACY_SQUAD_KEY_PREFIX}${matchId}-`)
+      );
+      if (keysToRemove.length > 0) {
+        await AsyncStorage.multiRemove(keysToRemove);
+      }
       setMatchIdsWithPredictions(prev => {
         const next = new Set(prev);
         next.delete(matchId);

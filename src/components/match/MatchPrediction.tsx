@@ -8,6 +8,7 @@ import {
   StyleSheet,
   ScrollView,
   Dimensions,
+  useWindowDimensions,
   Modal,
   FlatList,
   Alert,
@@ -31,7 +32,7 @@ import Svg, {
 } from 'react-native-svg';
 import { Platform } from 'react-native';
 import { FocusPrediction, SCORING_CONSTANTS } from '../../types/prediction.types';
-import { SCORING, TEXT, STORAGE_KEYS, LEGACY_STORAGE_KEYS } from '../../config/constants';
+import { SCORING, TEXT, STORAGE_KEYS, LEGACY_STORAGE_KEYS, PITCH_LAYOUT } from '../../config/constants';
 import { handleError, ErrorType, ErrorSeverity } from '../../utils/GlobalErrorHandler';
 import { predictionsDb } from '../../services/databaseService';
 import { ConfirmModal, ConfirmButton } from '../ui/ConfirmModal';
@@ -116,7 +117,10 @@ if (Platform.OS === 'web') {
   Slider = SliderNative;
 }
 
-const { width, height } = Dimensions.get('window');
+// Kadro ile aynı genişlik hesabı (web'de cap, mobilde tam ekran) – isWeb yukarıda tanımlı
+const screenDimensions = Dimensions.get('window');
+const width = isWeb ? Math.min(screenDimensions.width, 500) : screenDimensions.width;
+const height = screenDimensions.height;
 
 /** API'den gelen tüm kaleci varyantlarını tanı (G, GK, Goalkeeper vb.) */
 function isGoalkeeperPlayer(p: { position?: string; pos?: string } | null | undefined): boolean {
@@ -196,6 +200,10 @@ interface MatchPredictionScreenProps {
   lineups?: any[];
   /** Favori takım ID'leri */
   favoriteTeamIds?: number[];
+  /** Canlı maç (sadece bilgi (i) ikonu gösterilir, replace/remove yok) */
+  isMatchLive?: boolean;
+  /** Biten maç */
+  isMatchFinished?: boolean;
 }
 
 // Mock Formation Data
@@ -370,7 +378,26 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
   onHasUnsavedChanges,
   lineups,
   favoriteTeamIds = [],
+  isMatchLive = false,
+  isMatchFinished = false,
 }) => {
+  const { width: winW, height: winH } = useWindowDimensions();
+  
+  // Kadro ile BİREBİR aynı hesaplama (runtime'da)
+  const fieldWidth = isWeb ? Math.min(winW, 500) - PITCH_LAYOUT.H_PADDING : winW - PITCH_LAYOUT.H_PADDING;
+  const fieldHeight = isWeb 
+    ? Math.min(PITCH_LAYOUT.WEB_HEIGHT, Math.max(320, winH - 320))
+    : fieldWidth * PITCH_LAYOUT.ASPECT_RATIO;
+  
+  const fieldDynamicStyle: { width: number; height: number; maxWidth?: number; maxHeight?: number } = {
+    width: fieldWidth,
+    height: fieldHeight,
+  };
+  if (isWeb) {
+    fieldDynamicStyle.maxWidth = PITCH_LAYOUT.WEB_MAX_WIDTH;
+    fieldDynamicStyle.maxHeight = Math.min(PITCH_LAYOUT.WEB_HEIGHT, Math.max(0, winH - 320));
+  }
+
   const [selectedPlayer, setSelectedPlayer] = useState<typeof mockPlayers[0] | null>(null);
   const [playerPredictions, setPlayerPredictions] = useState<{[key: number]: any}>({});
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false); // ✅ Kaydedilmemiş değişiklik var mı?
@@ -989,8 +1016,8 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Football Field with Players – Kadro sekmesindeki saha ile aynı boyut ve konum */}
-        <FootballField style={styles.mainField}>
+        {/* Football Field with Players – Kadro sekmesindeki saha ile birebir aynı boyut */}
+        <FootballField style={[styles.mainField, fieldDynamicStyle]}>
           {/* 🌟 Saha Üzerinde Analiz Odağı Yıldızı - Sağ üst köşe */}
           <TouchableOpacity 
             style={styles.fieldFocusStarContainer}
@@ -1056,12 +1083,28 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                       { left: `${pos.x}%`, top: `${pos.y}%` }, // ✅ Sabit pozisyon
                     ]}
                   >
+                    {(isMatchLive || isMatchFinished) && (
+                      <TouchableOpacity
+                        style={styles.predictionCardInfoIcon}
+                        onPress={() => Alert.alert(
+                          player.name,
+                          `${positionLabel}\n\nBu oyuncu için topluluk tahminleri ve analiz bilgisi burada gösterilir. Tahmin yapmak için karta tıklayın.`,
+                          [{ text: 'Tamam' }]
+                        )}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons name="information-circle" size={20} color="#FFFFFF" />
+                      </TouchableOpacity>
+                    )}
                     <TouchableOpacity
                       style={[
                         styles.playerCard,
                         hasPredictions && styles.playerCardPredicted,
                         player.rating >= 85 && styles.playerCardElite,
-                        player.position === 'GK' && styles.playerCardGK,
+                        (isMatchLive || isMatchFinished) && (positionLabel === 'GK' || isGoalkeeperPlayer(player)) && styles.playerCardGKCommunity,
+                        (isMatchLive || isMatchFinished) && (positionLabel === 'ST' || (player.position && String(player.position).toUpperCase() === 'ST')) && styles.playerCardSTCommunity,
+                        !(isMatchLive || isMatchFinished) && (player.position === 'GK' || isGoalkeeperPlayer(player)) && styles.playerCardGK,
                       ]}
                       onPress={() => setSelectedPlayer(player)}
                       activeOpacity={0.8}
@@ -1112,7 +1155,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
           </View>
         </FootballField>
 
-        {/* ✅ Bildirim: Oyuncu kartlarına tıklayın ve aşağı kaydırın – her zaman gösterilir */}
+        {/* ✅ Bildirim: Oyuncu kartlarına tıklayın – ScrollView İÇİNDE (scroll edilir) */}
         <View style={styles.infoNote}>
           <Ionicons name="information-circle" size={16} color="#9CA3AF" />
           <Text style={styles.infoText}>
@@ -3057,19 +3100,19 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingTop: 8, // ✅ Kadro sekmesiyle aynı
-    paddingBottom: 8,
+    paddingTop: 8,
+    paddingBottom: 16,
     paddingHorizontal: 12,
   },
 
-  // Football Field – Kadro ile AYNI boyut (sıçrama olmaması için)
+  // Football Field – Kadro ile birebir aynı (PITCH_LAYOUT + web maxWidth/WEB_HEIGHT)
   fieldContainer: {
-    width: width - 24,
-    height: (width - 24) * 1.35 * 1.05 * 1.02, // ✅ Kadro sekmesiyle aynı oran
+    width: isWeb ? '100%' : width - PITCH_LAYOUT.H_PADDING,
+    maxWidth: isWeb ? PITCH_LAYOUT.WEB_MAX_WIDTH : undefined,
+    height: isWeb ? PITCH_LAYOUT.WEB_HEIGHT : (width - PITCH_LAYOUT.H_PADDING) * PITCH_LAYOUT.ASPECT_RATIO,
     alignSelf: 'center',
     borderRadius: 12,
     overflow: 'hidden',
-    // marginTop yok - scrollContent'ten paddingTop: 8 geliyor (Kadro ile aynı)
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -3078,7 +3121,7 @@ const styles = StyleSheet.create({
         shadowRadius: 8,
       },
       android: { elevation: 8 },
-      web: { boxShadow: '0 4px 16px rgba(0,0,0,0.3)' },
+      web: { boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.3)' },
     }),
   },
   fieldGradient: {
@@ -3120,10 +3163,11 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   mainField: {
-    width: width - 24,
-    height: (width - 24) * 1.35 * 1.05 * 1.02, // ✅ Kadro sekmesiyle aynı oran, y ekseni +5% +2%
+    width: isWeb ? '100%' : width - PITCH_LAYOUT.H_PADDING,
+    maxWidth: isWeb ? PITCH_LAYOUT.WEB_MAX_WIDTH : undefined,
+    height: isWeb ? PITCH_LAYOUT.WEB_HEIGHT : (width - PITCH_LAYOUT.H_PADDING) * PITCH_LAYOUT.ASPECT_RATIO,
     alignSelf: 'center',
-    marginBottom: 0, // ✅ Kadro sekmesiyle aynı (sıçrama olmaması için)
+    marginBottom: 0,
   },
   // 🌟 Saha üzerinde analiz odağı yıldızı - sağ üst köşe (daire yok, sadece yıldız)
   fieldFocusStarContainer: {
@@ -3145,6 +3189,23 @@ const styles = StyleSheet.create({
     transform: [{ translateX: -32 }, { translateY: -38 }],
     zIndex: 5, // ✅ Kadro sekmesiyle aynı
     elevation: 5, // ✅ Kadro sekmesiyle aynı
+  },
+  predictionCardInfoIcon: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    zIndex: 12,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#1FA2A6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.3, shadowRadius: 2 },
+      android: { elevation: 3 },
+      web: { boxShadow: '0 1px 4px rgba(0,0,0,0.3)' },
+    }),
   },
   playerCard: {
     width: 64,
@@ -3169,8 +3230,18 @@ const styles = StyleSheet.create({
     borderWidth: 2,
   },
   playerCardGK: {
-    borderColor: '#3B82F6', // Blue border for goalkeepers
+    borderColor: '#3B82F6', // Blue border for goalkeepers (maç öncesi)
     borderWidth: 2,
+  },
+  // Oynanan/canlı maç: topluluk %26 değişiklik istiyor → kalın kırmızı çerçeve
+  playerCardGKCommunity: {
+    borderColor: '#EF4444',
+    borderWidth: 4,
+  },
+  // Oynanan/canlı maç: topluluk %10 değişiklik istiyor → ince kırmızı çerçeve
+  playerCardSTCommunity: {
+    borderColor: '#EF4444',
+    borderWidth: 1.5,
   },
   playerCardPredicted: {
     ...Platform.select({
@@ -3331,8 +3402,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   
-  // Info Note - Kadro sekmesiyle aynı tarz konteyner
-  // ✅ Kadro sekmesindeki bottomBar ile AYNI stil (sıçrama olmaması için)
+  // Info Note - ScrollView İÇİNDE, Kadro bottomBar ile aynı stil
   infoNote: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -3340,7 +3410,7 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 7,
     paddingHorizontal: 10,
-    marginTop: 6, // ✅ Kadro sekmesiyle aynı (2px yukarı)
+    marginTop: 6,
     marginBottom: 8,
     backgroundColor: '#1E3A3A',
     borderRadius: 8,

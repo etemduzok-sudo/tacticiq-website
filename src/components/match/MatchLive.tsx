@@ -1,9 +1,8 @@
 // src/components/match/MatchLive.tsx
-// ✅ Canlı Maç Timeline + İstatistikler - TacticIQ Design System v2.1
-// Timeline formatı: 0. dk altta, son event üstte, ev sahibi sol, deplasman sağ
-// İstatistikler: Canlı maç istatistikleri (possession, shots, passes vb.)
+// ✅ Canlı Maç Timeline - TacticIQ Design System v2.1
+// Sadece canlı olaylar (gol, kart, değişiklik). Maç istatistikleri İstatistik sekmesinde.
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,7 +10,6 @@ import {
   ScrollView,
   ActivityIndicator,
   Platform,
-  TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
@@ -37,40 +35,11 @@ interface LiveEvent {
   score?: string | null;
 }
 
-interface MatchStatistic {
-  type: string;
-  home: number | string | null;
-  away: number | string | null;
-}
-
 interface MatchLiveScreenProps {
   matchData: any;
   matchId: string;
   events?: any[];
 }
-
-// =====================================
-// STAT LABELS (Turkish)
-// =====================================
-const STAT_LABELS: Record<string, string> = {
-  'Ball Possession': 'Topa Sahip Olma',
-  'Total Shots': 'Toplam Şut',
-  'Shots on Goal': 'İsabetli Şut',
-  'Shots off Goal': 'İsabetsiz Şut',
-  'Blocked Shots': 'Bloke Edilen Şut',
-  'Shots insidebox': 'Ceza Sahası İçi Şut',
-  'Shots outsidebox': 'Ceza Sahası Dışı Şut',
-  'Fouls': 'Faul',
-  'Corner Kicks': 'Korner',
-  'Offsides': 'Ofsayt',
-  'Yellow Cards': 'Sarı Kart',
-  'Red Cards': 'Kırmızı Kart',
-  'Goalkeeper Saves': 'Kaleci Kurtarışı',
-  'Total passes': 'Toplam Pas',
-  'Passes accurate': 'İsabetli Pas',
-  'Passes %': 'Pas İsabeti',
-  'expected_goals': 'Beklenen Gol (xG)',
-};
 
 // =====================================
 // COMPONENT
@@ -82,58 +51,110 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
 }) => {
   const { t } = useTranslation();
   
-  // States
-  const [activeTab, setActiveTab] = useState<'events' | 'stats'>('events');
+  // States – sadece canlı olaylar (istatistikler İstatistik sekmesinde)
   const [liveEvents, setLiveEvents] = useState<LiveEvent[]>([]);
-  const [liveStats, setLiveStats] = useState<MatchStatistic[]>([]);
   const [loading, setLoading] = useState(true);
-  const [statsLoading, setStatsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [matchNotStarted, setMatchNotStarted] = useState(false);
+  const matchNotStartedRef = useRef(false);
+  matchNotStartedRef.current = matchNotStarted;
+
+  // Mock maç (999999): 52. dk, skor 5-4, ilk yarı 1 dk uzadı, 45+1 ev sahibi kırmızı kart, en az 8 event
+  const MOCK_999999_EVENTS = [
+    { time: { elapsed: 0, extra: null }, type: 'Goal', detail: 'Kick Off', team: null, player: null, assist: null, goals: null },
+    { time: { elapsed: 10, extra: null }, type: 'Goal', detail: 'Normal Goal', team: { id: 9999, name: 'Mock Home Team' }, player: { name: 'F. Koç' }, assist: null, goals: { home: 1, away: 0 } },
+    { time: { elapsed: 20, extra: null }, type: 'Goal', detail: 'Normal Goal', team: { id: 9998, name: 'Mock Away Team' }, player: { name: 'Ö. Kılıç' }, assist: null, goals: { home: 1, away: 1 } },
+    { time: { elapsed: 28, extra: null }, type: 'Goal', detail: 'Normal Goal', team: { id: 9999, name: 'Mock Home Team' }, player: { name: 'D. Aksoy' }, assist: { name: 'H. Çelik' }, goals: { home: 2, away: 1 } },
+    { time: { elapsed: 35, extra: null }, type: 'Goal', detail: 'Normal Goal', team: { id: 9998, name: 'Mock Away Team' }, player: { name: 'Ç. Yılmaz' }, assist: null, goals: { home: 2, away: 2 } },
+    { time: { elapsed: 40, extra: null }, type: 'Goal', detail: 'Normal Goal', team: { id: 9999, name: 'Mock Home Team' }, player: { name: 'B. Arslan' }, assist: null, goals: { home: 3, away: 2 } },
+    { time: { elapsed: 45, extra: null }, type: 'Goal', detail: 'First Half Extra Time', team: null, player: null, assist: null, goals: null, comments: '1' },
+    { time: { elapsed: 45, extra: 1 }, type: 'Card', detail: 'Red Card', team: { id: 9999, name: 'Mock Home Team' }, player: { name: 'C. Şahin' }, assist: null, goals: null },
+    { time: { elapsed: 45, extra: 1 }, type: 'Goal', detail: 'Half Time', team: null, player: null, assist: null, goals: null },
+    { time: { elapsed: 46, extra: null }, type: 'Goal', detail: 'Second Half Started', team: null, player: null, assist: null, goals: null },
+    { time: { elapsed: 47, extra: null }, type: 'Goal', detail: 'Normal Goal', team: { id: 9998, name: 'Mock Away Team' }, player: { name: 'Ş. Aslan' }, assist: null, goals: { home: 3, away: 3 } },
+    { time: { elapsed: 49, extra: null }, type: 'Goal', detail: 'Normal Goal', team: { id: 9999, name: 'Mock Home Team' }, player: { name: 'K. Yıldız' }, assist: { name: 'M. Özkan' }, goals: { home: 4, away: 3 } },
+    { time: { elapsed: 51, extra: null }, type: 'Goal', detail: 'Normal Goal', team: { id: 9999, name: 'Mock Home Team' }, player: { name: 'F. Koç' }, assist: null, goals: { home: 5, away: 3 } },
+    { time: { elapsed: 52, extra: null }, type: 'Goal', detail: 'Normal Goal', team: { id: 9998, name: 'Mock Away Team' }, player: { name: 'İ. Koç' }, assist: { name: 'G. Bayrak' }, goals: { home: 5, away: 4 } },
+  ];
 
   // =====================================
   // FETCH LIVE EVENTS
   // =====================================
   useEffect(() => {
     if (!matchId) return;
+    const isMockMatch = String(matchId) === '999999';
 
     const fetchLiveData = async () => {
       try {
-        setLoading(true);
+        if (!matchNotStartedRef.current) {
+          setLoading(true);
+        }
         setError(null);
 
-        const response = await api.matches.getMatchEventsLive(matchId);
-        
-        if (response?.matchNotStarted) {
-          setMatchNotStarted(true);
-          setLiveEvents([]);
-          setLoading(false);
-          return;
+        let events: any[] = [];
+        // Mock maç (999999): Her zaman tam event listesi (45. dk uzatma, devre arası, 2. yarı) – API yanıtı kullanılmaz
+        if (isMockMatch) {
+          setMatchNotStarted(false);
+          events = MOCK_999999_EVENTS;
+        } else {
+          try {
+            const response = await api.matches.getMatchEventsLive(matchId);
+            if (response?.matchNotStarted) {
+              setMatchNotStarted(true);
+              setLiveEvents([]);
+              setLoading(false);
+              return;
+            }
+            setMatchNotStarted(false);
+            events = response?.events || [];
+          } catch (apiErr) {
+            throw apiErr;
+          }
         }
 
-        setMatchNotStarted(false);
-        const events = response?.events || [];
-
         if (events && events.length > 0) {
+          // API-Football event listesi: Kick Off, First Half Extra Time, Half Time, Second Half Started,
+          // Match Finished, Normal Goal, Penalty, Own Goal, Yellow/Red Card, Substitution, Var
           const transformedEvents = events
             .filter((event: any) => event && event.time)
             .map((event: any) => {
               const eventType = event.type?.toLowerCase() || 'unknown';
-              const detail = event.detail?.toLowerCase() || '';
+              const detail = (event.detail || '').toLowerCase();
+              const detailNorm = detail.replace(/-/g, ' ').trim();
               
               let description = '';
               let displayType = eventType;
               
-              if (detail === 'match kick off' || detail === 'kick off') {
+              // API-Football: Maç / yarı başlangıç ve bitiş
+              if (detail === 'match kick off' || detail === 'kick off' || detailNorm === '1st half' || detailNorm === 'first half') {
                 description = 'Maç başladı';
                 displayType = 'kickoff';
-              } else if (detail === 'half time' || detail === 'halftime') {
+              } else if (detailNorm.includes('first half extra time') && (event.time?.extra == null || event.time?.extra === 0)) {
+                const ex = Number(event.comments) || event.time?.extra || 0;
+                description = ex > 0 ? `45. dk +${ex} dk uzatma` : '45. dk uzatma';
+                displayType = 'stoppage';
+              } else if (event.time?.elapsed === 90 && (event.time?.extra != null && event.time.extra > 0)) {
+                const ex = event.time.extra;
+                description = `90. dk +${ex} dk uzatma`;
+                displayType = 'stoppage';
+              } else if (detailNorm.includes('second half extra time') || (detailNorm.includes('extra time') && event.time?.elapsed === 90)) {
+                const ex = event.time?.extra ?? 0;
+                description = ex > 0 ? `90. dk +${ex} dk uzatma` : '90. dk uzatma';
+                displayType = 'stoppage';
+              } else if (detailNorm.includes('first half extra time') && (event.time?.extra != null && event.time.extra > 0)) {
+                const ex = event.time?.extra ?? 0;
+                description = ex > 0 ? `45. dk +${ex} dk uzatma` : '45. dk uzatma';
+                displayType = 'stoppage';
+              } else if ((detail === 'half time' || detail === 'halftime' || detailNorm === 'half time') && (event.time?.extra != null && event.time.extra > 0)) {
+                description = 'İlk yarı bitti';
+                displayType = 'halftime';
+              } else if (detail === 'half time' || detail === 'halftime' || detailNorm === 'half time') {
                 description = 'İlk yarı sonu';
                 displayType = 'halftime';
-              } else if (detail === 'second half started') {
-                description = 'İkinci yarı';
+              } else if (detailNorm.includes('second half') || detail === '2nd half' || detail === 'second half started') {
+                description = 'İkinci yarı başladı';
                 displayType = 'kickoff';
-              } else if (detail === 'match finished' || detail === 'full time') {
+              } else if (detail === 'match finished' || detail === 'full time' || detailNorm.includes('full time')) {
                 description = 'Maç bitti';
                 displayType = 'fulltime';
               } else if (eventType === 'goal') {
@@ -141,6 +162,8 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
                   description = 'Penaltı golü';
                 } else if (detail.includes('own goal')) {
                   description = 'Kendi kalesine';
+                } else if (detail.includes('free kick') || detail.includes('direct free kick') || detailNorm.includes('serbest vuruş')) {
+                  description = 'Serbest vuruştan gol';
                 } else {
                   description = 'GOL!';
                 }
@@ -183,11 +206,15 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
                 score: event.goals ? `${event.goals.home}-${event.goals.away}` : null,
               };
             })
-            // Sırala: yüksek dakika üstte (en son event en üstte)
+            // Sırala: yüksek dakika üstte. Aynı dakikada (örn. 45+1): önce oyuncu olayları (kırmızı kart, gol), sonra sistem (İlk yarı bitti)
             .sort((a: LiveEvent, b: LiveEvent) => {
               const aTime = a.minute + (a.extraTime || 0) * 0.01;
               const bTime = b.minute + (b.extraTime || 0) * 0.01;
-              return bTime - aTime;
+              if (Math.abs(aTime - bTime) > 0.001) return bTime - aTime;
+              const sys = ['kickoff', 'halftime', 'fulltime', 'stoppage'];
+              const aSys = sys.includes(a.type) ? 0 : 1;
+              const bSys = sys.includes(b.type) ? 0 : 1;
+              return bSys - aSys;
             });
           
           setLiveEvents(transformedEvents);
@@ -208,76 +235,18 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
     return () => clearInterval(interval);
   }, [matchId, matchData]);
 
-  // =====================================
-  // FETCH LIVE STATISTICS
-  // =====================================
-  useEffect(() => {
-    if (!matchId || activeTab !== 'stats') return;
+  // Maçın şu anki dakikası (header ile tutarlı – timeline sadece bu dakikaya kadar gösterilir)
+  const currentMinute = matchData?.minute ?? matchData?.fixture?.status?.elapsed ?? 99;
+  const eventsUpToNow = liveEvents.filter((e) => {
+    const eventMin = e.minute + (e.extraTime ?? 0) * 0.01;
+    return eventMin <= currentMinute + 0.01;
+  });
 
-    const fetchStats = async () => {
-      try {
-        setStatsLoading(true);
-        const response = await api.matches.getMatchStatistics(Number(matchId));
-        
-        if (response?.data?.statistics || response?.statistics) {
-          const statsData = response?.data?.statistics || response?.statistics || [];
-          
-          // API'den gelen istatistikleri parse et
-          if (Array.isArray(statsData) && statsData.length >= 2) {
-            const homeStats = statsData[0]?.statistics || [];
-            const awayStats = statsData[1]?.statistics || [];
-            
-            const combined: MatchStatistic[] = homeStats.map((stat: any, idx: number) => ({
-              type: stat.type,
-              home: stat.value,
-              away: awayStats[idx]?.value ?? null,
-            }));
-            
-            setLiveStats(combined);
-          } else {
-            // Mock veri için fallback
-            setLiveStats(generateMockStats());
-          }
-        } else {
-          // Mock match için mock istatistikler
-          setLiveStats(generateMockStats());
-        }
-        
-        setStatsLoading(false);
-      } catch (err: any) {
-        console.error('❌ Stats fetch error:', err);
-        // Hata durumunda mock veri göster
-        setLiveStats(generateMockStats());
-        setStatsLoading(false);
-      }
-    };
-
-    fetchStats();
-    const interval = setInterval(fetchStats, 30000); // İstatistikler 30sn'de bir
-    return () => clearInterval(interval);
-  }, [matchId, activeTab]);
-
-  // =====================================
-  // GENERATE MOCK STATS
-  // =====================================
-  const generateMockStats = (): MatchStatistic[] => {
-    return [
-      { type: 'Ball Possession', home: '58%', away: '42%' },
-      { type: 'Total Shots', home: 14, away: 8 },
-      { type: 'Shots on Goal', home: 6, away: 3 },
-      { type: 'Shots off Goal', home: 5, away: 4 },
-      { type: 'Blocked Shots', home: 3, away: 1 },
-      { type: 'Corner Kicks', home: 7, away: 3 },
-      { type: 'Offsides', home: 2, away: 1 },
-      { type: 'Fouls', home: 12, away: 15 },
-      { type: 'Yellow Cards', home: 2, away: 3 },
-      { type: 'Red Cards', home: 0, away: 0 },
-      { type: 'Goalkeeper Saves', home: 2, away: 5 },
-      { type: 'Total passes', home: 456, away: 312 },
-      { type: 'Passes accurate', home: 389, away: 245 },
-      { type: 'Passes %', home: '85%', away: '78%' },
-    ];
-  };
+  // Dakika + uzatma metni (örn. 45+2, 90+3)
+  const formatMinute = (event: LiveEvent) =>
+    event.extraTime != null && event.extraTime > 0
+      ? `${event.minute}+${event.extraTime}`
+      : String(event.minute);
 
   // =====================================
   // GET EVENT STYLING
@@ -298,6 +267,7 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
       case 'kickoff':
       case 'halftime':
       case 'fulltime':
+      case 'stoppage':
         return { icon: 'time', color: BRAND.accent, bg: 'rgba(201, 164, 76, 0.15)' };
       default:
         return { icon: 'ellipse', color: '#6B7280', bg: 'rgba(107, 114, 128, 0.15)' };
@@ -305,94 +275,11 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
   };
 
   // =====================================
-  // GET STAT ICON
-  // =====================================
-  const getStatIcon = (type: string): string => {
-    const lowerType = type.toLowerCase();
-    if (lowerType.includes('possession')) return 'pie-chart';
-    if (lowerType.includes('shot')) return 'locate';
-    if (lowerType.includes('corner')) return 'flag';
-    if (lowerType.includes('offside')) return 'hand-left';
-    if (lowerType.includes('foul')) return 'warning';
-    if (lowerType.includes('card')) return 'card';
-    if (lowerType.includes('save')) return 'hand-right';
-    if (lowerType.includes('pass')) return 'arrow-forward';
-    if (lowerType.includes('goal') || lowerType.includes('xg')) return 'football';
-    return 'stats-chart';
-  };
-
-  // =====================================
-  // RENDER STAT BAR
-  // =====================================
-  const renderStatBar = (stat: MatchStatistic, index: number) => {
-    const homeVal = typeof stat.home === 'string' ? parseFloat(stat.home) : (stat.home || 0);
-    const awayVal = typeof stat.away === 'string' ? parseFloat(stat.away) : (stat.away || 0);
-    const total = homeVal + awayVal || 1;
-    const homePercent = (homeVal / total) * 100;
-    const awayPercent = (awayVal / total) * 100;
-    
-    const label = STAT_LABELS[stat.type] || stat.type;
-    const icon = getStatIcon(stat.type);
-    
-    // Hangi taraf öne çıkıyor?
-    const homeLeads = homeVal > awayVal;
-    const awayLeads = awayVal > homeVal;
-    
-    // İkon rengi belirleme
-    const getIconColor = () => {
-      const lowerType = stat.type.toLowerCase();
-      if (lowerType.includes('possession')) return '#22D3EE'; // Cyan
-      if (lowerType.includes('shot')) return '#10B981'; // Yeşil
-      if (lowerType.includes('corner')) return '#F59E0B'; // Sarı
-      if (lowerType.includes('offside')) return '#8B5CF6'; // Mor
-      if (lowerType.includes('foul')) return '#EF4444'; // Kırmızı
-      if (lowerType.includes('yellow')) return '#FBBF24'; // Sarı
-      if (lowerType.includes('red')) return '#DC2626'; // Kırmızı
-      if (lowerType.includes('save')) return '#3B82F6'; // Mavi
-      if (lowerType.includes('pass')) return '#14B8A6'; // Teal
-      if (lowerType.includes('goal') || lowerType.includes('xg')) return '#10B981'; // Yeşil
-      return '#94A3B8'; // Varsayılan gri
-    };
-    const iconColor = getIconColor();
-    
-    return (
-      <Animated.View
-        key={stat.type}
-        entering={isWeb ? undefined : FadeInDown.delay(index * 50)}
-        style={styles.statRow}
-      >
-        {/* Stat değerleri ve isim */}
-        <View style={styles.statHeader}>
-          <Text style={[styles.statValue, homeLeads && styles.statValueHighlight]}>
-            {stat.home ?? '-'}
-          </Text>
-          <View style={styles.statLabelContainer}>
-            <View style={[styles.statIconContainer, { backgroundColor: `${iconColor}20` }]}>
-              <Ionicons name={icon as any} size={16} color={iconColor} />
-            </View>
-            <Text style={styles.statLabel}>{label}</Text>
-          </View>
-          <Text style={[styles.statValue, styles.statValueRight, awayLeads && styles.statValueHighlightAway]}>
-            {stat.away ?? '-'}
-          </Text>
-        </View>
-        
-        {/* Progress Bar */}
-        <View style={styles.statBarContainer}>
-          <View style={[styles.statBarHome, { width: `${homePercent}%` }, homeLeads && styles.statBarHighlight]} />
-          <View style={styles.statBarDivider} />
-          <View style={[styles.statBarAway, { width: `${awayPercent}%` }, awayLeads && styles.statBarHighlightAway]} />
-        </View>
-      </Animated.View>
-    );
-  };
-
-  // =====================================
   // RENDER EVENT CARD
   // =====================================
   const renderEventCard = (event: LiveEvent, index: number) => {
     const style = getEventStyle(event);
-    const isSystemEvent = ['kickoff', 'halftime', 'fulltime'].includes(event.type);
+    const isSystemEvent = ['kickoff', 'halftime', 'fulltime', 'stoppage'].includes(event.type);
     const isHome = event.team === 'home';
     const isAway = event.team === 'away';
     
@@ -414,7 +301,7 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
               <Ionicons name={style.icon as any} size={12} color="#FFFFFF" />
             </View>
             <View style={styles.timelineMinuteBadge}>
-              <Text style={styles.timelineMinuteText}>{event.minute}'</Text>
+              <Text style={styles.timelineMinuteText}>{formatMinute(event)}'</Text>
             </View>
           </View>
           
@@ -469,7 +356,7 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
         <View style={styles.timelineCenter}>
           <View style={styles.timelineLine} />
           <View style={[styles.timelineDot, { backgroundColor: style.color }]}>
-            <Text style={styles.timelineDotText}>{event.minute}</Text>
+            <Text style={styles.timelineDotText}>{formatMinute(event)}</Text>
           </View>
         </View>
         
@@ -555,123 +442,48 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
     );
   }
 
-  // Takım isimlerini al
-  const homeTeamName = matchData?.homeTeam?.name || matchData?.teams?.home?.name || 'Ev Sahibi';
-  const awayTeamName = matchData?.awayTeam?.name || matchData?.teams?.away?.name || 'Deplasman';
-
   return (
     <SafeAreaView style={styles.container} edges={[]}>
-      {/* Tab Switcher - Olaylar / İstatistikler */}
-      <View style={styles.tabSwitcher}>
-        <TouchableOpacity
-          style={[styles.tabButton, activeTab === 'events' && styles.tabButtonActive]}
-          onPress={() => setActiveTab('events')}
-          activeOpacity={0.7}
-        >
-          <Ionicons 
-            name="list" 
-            size={16} 
-            color={activeTab === 'events' ? '#FFFFFF' : '#64748B'} 
-          />
-          <Text style={[styles.tabButtonText, activeTab === 'events' && styles.tabButtonTextActive]}>
-            Olaylar
-          </Text>
-          {liveEvents.length > 0 && (
-            <View style={[styles.tabBadge, activeTab === 'events' && styles.tabBadgeActive]}>
-              <Text style={styles.tabBadgeText}>{liveEvents.length}</Text>
+      {/* Canlı olay timeline – Olaylar/İstatistikler tab bar kaldırıldı; istatistikler İstatistik sekmesinde */}
+      <ScrollView 
+        style={styles.eventsScrollView}
+        contentContainerStyle={styles.eventsContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {eventsUpToNow.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Ionicons name="football-outline" size={48} color="#4B5563" />
+            <Text style={styles.emptyStateTitle}>Henüz olay yok</Text>
+            <Text style={styles.emptyStateSubtitle}>
+              Maç devam ederken olaylar burada görünecek
+            </Text>
+          </View>
+        ) : (
+          <>
+            {/* Sadece mevcut dakikaya kadar olan olaylar (header 65' ise 90+2 gösterilmez) */}
+            {/* Sırala: yüksek dakika üstte. Aynı dakikada: önce oyuncu olayları (gol, kart), sonra sistem olayları (devre arası) */}
+            {[...eventsUpToNow]
+              .sort((a, b) => {
+                const aTime = (a.minute || 0) + (a.extraTime || 0) * 0.01;
+                const bTime = (b.minute || 0) + (b.extraTime || 0) * 0.01;
+                if (Math.abs(aTime - bTime) > 0.001) return bTime - aTime;
+                // Aynı dakikada: sistem olayları (kickoff, halftime, fulltime, stoppage) en sona
+                const sys = ['kickoff', 'halftime', 'fulltime', 'stoppage'];
+                const aSys = sys.includes(a.type) ? 0 : 1;
+                const bSys = sys.includes(b.type) ? 0 : 1;
+                return bSys - aSys;
+              })
+              .map((event, index) => renderEventCard(event, index))}
+            <View style={styles.timelineStart}>
+              <View style={styles.timelineStartLine} />
+              <View style={styles.timelineStartDot}>
+                <Text style={styles.timelineStartText}>0'</Text>
+              </View>
+              <Text style={styles.timelineStartLabel}>Başlangıç</Text>
             </View>
-          )}
-        </TouchableOpacity>
-        
-        <TouchableOpacity
-          style={[styles.tabButton, activeTab === 'stats' && styles.tabButtonActive]}
-          onPress={() => setActiveTab('stats')}
-          activeOpacity={0.7}
-        >
-          <Ionicons 
-            name="stats-chart" 
-            size={16} 
-            color={activeTab === 'stats' ? '#FFFFFF' : '#64748B'} 
-          />
-          <Text style={[styles.tabButtonText, activeTab === 'stats' && styles.tabButtonTextActive]}>
-            İstatistikler
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* EVENTS TAB */}
-      {activeTab === 'events' && (
-        <>
-          {/* Events Timeline */}
-          <ScrollView 
-            style={styles.eventsScrollView}
-            contentContainerStyle={styles.eventsContent}
-            showsVerticalScrollIndicator={false}
-          >
-            {liveEvents.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Ionicons name="football-outline" size={48} color="#4B5563" />
-                <Text style={styles.emptyStateTitle}>Henüz olay yok</Text>
-                <Text style={styles.emptyStateSubtitle}>
-                  Maç devam ederken olaylar burada görünecek
-                </Text>
-              </View>
-            ) : (
-              <>
-                {/* Eventler: En son event üstte */}
-                {liveEvents.map((event, index) => renderEventCard(event, index))}
-                
-                {/* En altta başlangıç noktası */}
-                <View style={styles.timelineStart}>
-                  <View style={styles.timelineStartLine} />
-                  <View style={styles.timelineStartDot}>
-                    <Text style={styles.timelineStartText}>0'</Text>
-                  </View>
-                  <Text style={styles.timelineStartLabel}>Başlangıç</Text>
-                </View>
-              </>
-            )}
-          </ScrollView>
-        </>
-      )}
-
-      {/* STATS TAB */}
-      {activeTab === 'stats' && (
-        <>
-
-          {/* Stats List */}
-          <ScrollView 
-            style={styles.statsScrollView}
-            contentContainerStyle={styles.statsContent}
-            showsVerticalScrollIndicator={false}
-          >
-            {statsLoading ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={BRAND.secondary} />
-                <Text style={styles.loadingText}>İstatistikler yükleniyor...</Text>
-              </View>
-            ) : liveStats.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Ionicons name="bar-chart-outline" size={48} color="#4B5563" />
-                <Text style={styles.emptyStateTitle}>İstatistik yok</Text>
-                <Text style={styles.emptyStateSubtitle}>
-                  Maç devam ederken istatistikler burada görünecek
-                </Text>
-              </View>
-            ) : (
-              <>
-                {liveStats.map((stat, index) => renderStatBar(stat, index))}
-                
-                {/* Güncelleme notu */}
-                <View style={styles.statsUpdateNote}>
-                  <Ionicons name="refresh" size={12} color="#64748B" />
-                  <Text style={styles.statsUpdateText}>Her 30 saniyede güncellenir</Text>
-                </View>
-              </>
-            )}
-          </ScrollView>
-        </>
-      )}
+          </>
+        )}
+      </ScrollView>
     </SafeAreaView>
   );
 };
@@ -683,57 +495,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: 'transparent',
-  },
-  
-  // Tab Switcher
-  tabSwitcher: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    gap: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(31, 162, 166, 0.15)',
-  },
-  tabButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    borderRadius: 10,
-    backgroundColor: 'rgba(31, 41, 55, 0.5)',
-    borderWidth: 1,
-    borderColor: 'rgba(75, 85, 99, 0.3)',
-  },
-  tabButtonActive: {
-    backgroundColor: BRAND.secondary,
-    borderColor: BRAND.secondary,
-  },
-  tabButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#64748B',
-  },
-  tabButtonTextActive: {
-    color: '#FFFFFF',
-  },
-  tabBadge: {
-    minWidth: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: 'rgba(75, 85, 99, 0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 6,
-  },
-  tabBadgeActive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  tabBadgeText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#FFFFFF',
   },
   
   // Loading
@@ -786,115 +547,6 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     textAlign: 'center',
     lineHeight: 22,
-  },
-  
-  // Stats ScrollView
-  statsScrollView: {
-    flex: 1,
-  },
-  statsContent: {
-    padding: 16,
-    gap: 16,
-  },
-  
-  // Stat Row - Daha canlı ve iç açıcı renkler
-  statRow: {
-    backgroundColor: 'rgba(15, 23, 42, 0.6)',
-    borderRadius: 14,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(71, 85, 105, 0.3)',
-  },
-  statHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  statValue: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#CBD5E1',
-    minWidth: 55,
-  },
-  statValueRight: {
-    textAlign: 'right',
-  },
-  statValueHighlight: {
-    color: '#22D3EE', // Parlak cyan - ev sahibi öne çıktığında
-  },
-  statValueHighlightAway: {
-    color: '#FB923C', // Parlak turuncu - deplasman öne çıktığında
-  },
-  statLabelContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    flex: 1,
-    justifyContent: 'center',
-  },
-  statIconContainer: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  statLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#E2E8F0',
-    textAlign: 'center',
-  },
-  
-  // Stat Bar - Canlı gradient renkler
-  statBarContainer: {
-    flexDirection: 'row',
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: 'rgba(51, 65, 85, 0.4)',
-    overflow: 'hidden',
-  },
-  statBarHome: {
-    height: '100%',
-    backgroundColor: 'rgba(34, 211, 238, 0.35)', // Soft cyan
-    borderTopLeftRadius: 4,
-    borderBottomLeftRadius: 4,
-  },
-  statBarHighlight: {
-    backgroundColor: '#22D3EE', // Parlak cyan
-  },
-  statBarDivider: {
-    width: 3,
-    height: '100%',
-    backgroundColor: 'rgba(15, 23, 42, 0.8)',
-  },
-  statBarAway: {
-    height: '100%',
-    backgroundColor: 'rgba(251, 146, 60, 0.35)', // Soft turuncu
-    borderTopRightRadius: 4,
-    borderBottomRightRadius: 4,
-  },
-  statBarHighlightAway: {
-    backgroundColor: '#FB923C', // Parlak turuncu
-  },
-  
-  // Stats Update Note
-  statsUpdateNote: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 16,
-    marginTop: 8,
-    backgroundColor: 'rgba(34, 211, 238, 0.05)',
-    borderRadius: 10,
-    marginHorizontal: 0,
-  },
-  statsUpdateText: {
-    fontSize: 11,
-    color: '#94A3B8',
-    fontWeight: '500',
   },
   
   // Events ScrollView

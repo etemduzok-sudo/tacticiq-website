@@ -295,3 +295,38 @@ export const ADS = {
   },
   POSITIONS: ['top', 'bottom', 'middle'] as const,
 };
+
+/**
+ * Pitch (Football Field) Layout – TEK KAYNAK
+ * Kadro, Tahmin ve VisualOnly sahaları bu değerlerle aynı oranda kalır.
+ * Eski formül: (width - H_PADDING) * 1.35 * 1.05 * 1.02 ≈ 1.445
+ */
+export const PITCH_LAYOUT = {
+  /** Yatay boşluk (sol-sağ); width - H_PADDING = saha genişliği */
+  H_PADDING: 24,
+  /** Saha yükseklik çarpanı (genişlik × ASPECT_RATIO = yükseklik). 1.35*1.05*1.02 */
+  ASPECT_RATIO: 1.35 * 1.05 * 1.02,
+  /** Web: sabit yükseklik (px) */
+  WEB_HEIGHT: 650,
+  /** Web: max genişlik (px) */
+  WEB_MAX_WIDTH: 476,
+} as const;
+
+/**
+ * Ekran genişliğine göre saha boyutları (Kadro/Tahmin ile aynı oran).
+ * @param screenWidth useWindowDimensions().width veya Dimensions.get('window').width
+ * @param isWeb Platform.OS === 'web'
+ */
+export function getPitchDimensions(
+  screenWidth: number,
+  isWeb: boolean
+): { width: number; height: number; maxWidth?: number } {
+  const pad = PITCH_LAYOUT.H_PADDING;
+  const w = isWeb ? Math.min(screenWidth, PITCH_LAYOUT.WEB_MAX_WIDTH) : screenWidth - pad;
+  const h = isWeb ? PITCH_LAYOUT.WEB_HEIGHT : (screenWidth - pad) * PITCH_LAYOUT.ASPECT_RATIO;
+  return {
+    width: w,
+    height: h,
+    ...(isWeb ? { maxWidth: PITCH_LAYOUT.WEB_MAX_WIDTH } : {}),
+  };
+}
