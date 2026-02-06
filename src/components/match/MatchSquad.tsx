@@ -3924,7 +3924,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   jerseyNumberText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '900',
     color: '#FFFFFF',
   },
@@ -3964,19 +3964,19 @@ const styles = StyleSheet.create({
     zIndex: 50,
   },
   playerName: {
-    fontSize: 9,
-    fontWeight: '500',
+    fontSize: 10,
+    fontWeight: '600',
     color: '#FFFFFF',
     textAlign: 'center',
     marginTop: 2,
     paddingHorizontal: 2,
-    letterSpacing: 0.2,
+    letterSpacing: 0.3,
     flexShrink: 1,
     flexGrow: 0,
-    maxHeight: 20, // Prevent overflow
+    maxHeight: 22,
   },
   playerPosition: {
-    fontSize: 8,
+    fontSize: 10,
     color: '#9CA3AF',
     textAlign: 'center',
     fontWeight: '600',
@@ -3992,12 +3992,12 @@ const styles = StyleSheet.create({
     flexShrink: 0, // Prevent shrinking
   },
   playerRatingBottom: {
-    fontSize: 8,
+    fontSize: 10,
     fontWeight: '700',
-    color: '#C9A44C', // Gold color for rating
+    color: '#C9A44C',
   },
   playerPositionBottom: {
-    fontSize: 8,
+    fontSize: 10,
     fontWeight: '600',
     color: '#9CA3AF',
   },
