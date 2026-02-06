@@ -859,23 +859,25 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
         }
 
 
-        // Execute all database saves
-        const results = await Promise.allSettled(predictionPromises);
-        const successCount = results.filter(r => r.status === 'fulfilled').length;
-        const failCount = results.filter(r => r.status === 'rejected').length;
-
-        console.log(`✅ Predictions saved: ${successCount} success, ${failCount} failed`);
+        // Execute all database saves with timeout (5 saniye)
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Database timeout')), 5000)
+        );
         
-        if (failCount > 0) {
-          console.warn('⚠️ Some predictions failed to save to database, but local backup is available');
+        try {
+          const results = await Promise.race([
+            Promise.allSettled(predictionPromises),
+            timeoutPromise
+          ]) as PromiseSettledResult<any>[];
+          
+          const successCount = results.filter(r => r.status === 'fulfilled').length;
+          const failCount = results.filter(r => r.status === 'rejected').length;
+          console.log(`✅ Predictions saved: ${successCount} success, ${failCount} failed`);
+        } catch (timeoutErr) {
+          console.warn('⚠️ Database save timed out, but local backup is available');
         }
       } catch (dbError) {
         console.error('❌ Database save error:', dbError);
-        handleError(dbError as Error, {
-          type: ErrorType.DATABASE,
-          severity: ErrorSeverity.MEDIUM,
-          context: { matchId: matchData.id, action: 'save_predictions' },
-        });
         // Continue even if database save fails (we have local backup)
       }
       
@@ -3298,7 +3300,6 @@ const styles = StyleSheet.create({
     transform: [{ translateX: -32 }, { translateY: -38 }],
     zIndex: 5, // ✅ Kadro sekmesiyle aynı
     elevation: 5, // ✅ Kadro sekmesiyle aynı
-    overflow: 'visible', // ✅ Badge'lerin kesilmemesi için
   },
   predictionCardInfoIcon: {
     position: 'absolute',
@@ -3321,7 +3322,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 76,
     borderRadius: 8,
-    overflow: 'visible',
+    overflow: 'hidden',
     borderWidth: 2,
     borderColor: 'rgba(100, 116, 139, 0.3)',
     ...Platform.select({
@@ -3371,8 +3372,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 1,
     padding: 4,
-    borderRadius: 6, // ✅ overflow: visible olduğu için köşeleri burada yuvarla
-    overflow: 'hidden', // Gradient içeriğini yuvarla
   },
   predictionGlow: {
     position: 'absolute',
@@ -3489,20 +3488,18 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: '#FFFFFF',
   },
-  // ✅ Tahmin yapıldı tik - sağ üst köşede badge (X ikonu gibi kartın dışına taşar)
+  // ✅ Tahmin yapıldı tik - sağ üst köşede kartın içinde
   predictionCheckBadgeTopRight: {
     position: 'absolute',
-    top: -8,
-    right: -8,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    top: 2,
+    right: 2,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
     backgroundColor: '#10B981',
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 20,
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
+    zIndex: 10,
   },
   substitutionBadge: {
     position: 'absolute',
