@@ -244,14 +244,6 @@ export const AnalysisFocusModal: React.FC<AnalysisFocusModalProps> = ({
               {ANALYSIS_FOCUSES.map(renderFocusCard)}
             </View>
           </View>
-          
-          {/* Örnek Bilgi */}
-          <View style={styles.infoBox}>
-            <Ionicons name="bulb" size={14} color="#FBBF24" />
-            <Text style={styles.infoText}>
-              Örnek: Savunma odaklı analiz seçerseniz ve sarı kart sayısını doğru tahmin ederseniz, normal puanın %20 fazlasını kazanırsınız
-            </Text>
-          </View>
         </View>
       </View>
     </Modal>
@@ -264,7 +256,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#0F2A24', // ✅ Design System: Koyu yeşil taban
     justifyContent: 'center',
     alignItems: 'center',
-    padding: SPACING.md,
+    padding: SPACING.lg, // ✅ Boş alanı artırdık
   },
   // ✅ Grid Pattern Background - Dashboard ile aynı
   gridPattern: {
@@ -299,7 +291,7 @@ const styles = StyleSheet.create({
   modalContainer: {
     width: '100%',
     maxWidth: 700,
-    maxHeight: '90%', // ✅ Ekran taşmasını önle
+    maxHeight: '90%', // ✅ İçerik taşmasını önlemek için
     backgroundColor: '#0F2A24', // ✅ Design System: Koyu yeşil zemin
     borderRadius: 20,
     padding: SPACING.lg,
@@ -419,25 +411,6 @@ const styles = StyleSheet.create({
     marginTop: 4,
     fontWeight: '700',
     opacity: 0.9,
-  },
-  infoBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-    backgroundColor: 'rgba(251, 191, 36, 0.12)',
-    paddingVertical: SPACING.sm,
-    paddingHorizontal: SPACING.md,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(251, 191, 36, 0.25)',
-  },
-  infoText: {
-    flex: 1,
-    fontSize: 12,
-    color: '#FDE68A', // ✅ Daha parlak sarı - okunabilirlik
-    lineHeight: 17,
-    textAlign: 'center',
-    fontWeight: '500',
   },
 });
 

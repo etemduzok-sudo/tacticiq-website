@@ -422,15 +422,19 @@ export default function App() {
             navActions.setCurrentScreen('home');
             return null;
           }
-          return (
-            <MatchResultSummaryScreen
-              matchData={{ id: selectedMatchId }}
-              onBack={() => {
-                navActions.setSelectedMatchId(null);
-                navActions.setCurrentScreen('matches');
-              }}
-            />
-          );
+          // ✅ Oynanan maçlar için match-detail ekranına yönlendir (stats sekmesi ile)
+          // MatchResultSummaryScreen mock data kullanıyor, gerçek veri için MatchDetail kullan
+          const resultSummaryParams = {
+            initialTab: 'stats' as const,
+            matchData: null,
+            analysisFocus: undefined,
+            predictionTeamId: undefined,
+          };
+          if (typeof global !== 'undefined') (global as any).__matchDetailParams = resultSummaryParams;
+          if (typeof window !== 'undefined') (window as any).__matchDetailParams = resultSummaryParams;
+          navActions.setSelectedMatchId(selectedMatchId);
+          navActions.setCurrentScreen('match-detail');
+          return null;
         
         case 'profile':
           // Check if we should show badges tab (from Dashboard button)

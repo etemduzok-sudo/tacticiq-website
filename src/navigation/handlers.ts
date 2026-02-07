@@ -279,16 +279,25 @@ export const handleMatchSelect = (
 };
 
 /**
- * 12b. Matches → Match Result Summary (for finished matches)
+ * 12b. Matches → Match Detail (for finished matches - stats tab)
  */
 export const handleMatchResultSelect = (
   matchId: string,
   setSelectedMatchId: (id: string | null) => void,
   setCurrentScreen: (screen: Screen) => void
 ) => {
-  logNavigation('match-result-summary', { matchId });
+  logNavigation('match-detail', { matchId, initialTab: 'stats' });
+  // ✅ Oynanan maçlar için match-detail ekranına yönlendir (stats sekmesi ile)
+  const matchDetailParams = {
+    initialTab: 'stats' as const,
+    matchData: null,
+    analysisFocus: undefined,
+    predictionTeamId: undefined,
+  };
+  if (typeof global !== 'undefined') (global as any).__matchDetailParams = matchDetailParams;
+  if (typeof window !== 'undefined') (window as any).__matchDetailParams = matchDetailParams;
   setSelectedMatchId(matchId);
-  setCurrentScreen('match-result-summary');
+  setCurrentScreen('match-detail');
 };
 
 /**

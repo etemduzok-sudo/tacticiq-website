@@ -222,40 +222,38 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
                 description = 'Maç başladı';
                 displayType = 'kickoff';
               } else if (detailNorm.includes('first half extra time') && (event.time?.extra == null || event.time?.extra === 0)) {
+                // 45. dk'da uzatma bildirimi
                 const ex = Number(event.comments) || event.time?.extra || 0;
-                description = ex > 0 ? `45. dk +${ex} dk uzatma` : '45. dk uzatma';
-                displayType = 'stoppage';
-              } else if (event.time?.elapsed === 90 && (event.time?.extra != null && event.time.extra > 0)) {
-                const ex = event.time.extra;
-                description = `90. dk +${ex} dk uzatma`;
-                displayType = 'stoppage';
-              } else if (detailNorm.includes('second half extra time') || (detailNorm.includes('extra time') && event.time?.elapsed === 90)) {
-                const ex = event.time?.extra ?? 0;
-                description = ex > 0 ? `90. dk +${ex} dk uzatma` : '90. dk uzatma';
+                description = ex > 0 ? `45. dk'da ilk yarının sonuna +${ex} dk eklendi` : '45. dk uzatma';
                 displayType = 'stoppage';
               } else if (detailNorm.includes('first half extra time') && (event.time?.extra != null && event.time.extra > 0)) {
+                // 45. dk'da uzatma bildirimi (extraTime ile)
                 const ex = event.time?.extra ?? 0;
-                description = ex > 0 ? `45. dk +${ex} dk uzatma` : '45. dk uzatma';
+                description = ex > 0 ? `45. dk'da ilk yarının sonuna +${ex} dk eklendi` : '45. dk uzatma';
+                displayType = 'stoppage';
+              } else if (event.time?.elapsed === 90 && (event.time?.extra != null && event.time.extra > 0) && detailNorm.includes('second half extra time')) {
+                // 90. dk'da uzatma bildirimi
+                const ex = event.time.extra;
+                description = `90. dk'da maçın sonuna +${ex} dk eklendi`;
+                displayType = 'stoppage';
+              } else if (detailNorm.includes('second half extra time') || (detailNorm.includes('extra time') && event.time?.elapsed === 90)) {
+                // 90. dk'da uzatma bildirimi
+                const ex = event.time?.extra ?? 0;
+                description = ex > 0 ? `90. dk'da maçın sonuna +${ex} dk eklendi` : '90. dk uzatma';
                 displayType = 'stoppage';
               } else if ((detail === 'half time' || detail === 'halftime' || detailNorm === 'half time') && (event.time?.extra != null && event.time.extra > 0)) {
-                // ✅ İlk yarı bitiş düdüğü: "45 +X dk sonunda" formatında göster
-                const ex = event.time.extra;
-                description = `45 +${ex} dk sonunda`;
+                // ✅ İlk yarı bitiş düdüğü: "İlk yarı bitiş düdüğü" formatında göster
+                description = 'İlk yarı bitiş düdüğü';
                 displayType = 'halftime';
               } else if (detail === 'half time' || detail === 'halftime' || detailNorm === 'half time') {
-                description = 'İlk yarı sonu';
+                description = 'İlk yarı bitiş düdüğü';
                 displayType = 'halftime';
               } else if (detailNorm.includes('second half') || detail === '2nd half' || detail === 'second half started') {
                 description = 'İkinci yarı başladı';
                 displayType = 'kickoff';
               } else if (detail === 'match finished' || detail === 'full time' || detailNorm.includes('full time')) {
-                // ✅ Maç bitti eventini "90 +x dk sonunda" formatında göster
-                const ex = event.time?.extra ?? 0;
-                if (ex > 0) {
-                  description = `90 +${ex} dk sonunda`;
-                } else {
-                  description = 'Maç bitti';
-                }
+                // ✅ Maç bitti eventi: "Maç bitti" formatında göster
+                description = 'Maç bitti';
                 displayType = 'fulltime';
               } else if (eventType === 'goal') {
                 if (detail.includes('penalty')) {
@@ -403,14 +401,8 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
     return liveEvents.filter((e) => {
       if (e.type === 'kickoff') return false;
       
-      // ✅ Sistem eventlerini filtrele: "45 +X dk uzatma" ve "90 +X dk uzatma" sistem eventlerini gösterme
-      // Sadece "Half Time" ve "Match Finished" sistem eventleri gösterilecek
-      // Gerçek eventler (gol, kart, değişiklik) 90+x formatında gösterilecek
-      if (e.type === 'stoppage') {
-        // "First Half Extra Time" ve "Second Half Extra Time" sistem eventlerini gösterme
-        // Bunlar sadece toplam uzatma dakikasını gösteriyor, gerçek event değil
-        return false;
-      }
+      // ✅ Sistem eventlerini filtrele: stoppage eventleri gösterilmeli (uzatma bildirimleri)
+      // stoppage eventleri artık gösterilecek (45. dk +X dk eklendi, 90. dk +X dk eklendi)
       
       // ✅ "Half Time" ve "Match Finished" eventleri gösterilmeli (halftime ve fulltime type'ları)
       // Bu eventler zaten gösterilecek çünkü stoppage değiller
@@ -448,23 +440,61 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
           // Linear: elapsed = 60 + (eventMinute - 46)
           eventTotalElapsedMinute = 60 + (eventMinute - 46);
         } else if (eventMinute === 90) {
-          if (eventExtraTime > 0) {
-            // İkinci yarı uzatması: 90+1, 90+2, 90+3, 90+4 → elapsed 91, 92, 93, 94
+          // ✅ "Match Finished" eventi için özel kontrol
+          if (e.type === 'fulltime' && eventExtraTime > 0) {
+            // Maç bitiş eventi: uzatma dakikası bittikten sonra gösterilmeli
+            // Örnek: 90+4'te maç bitti → elapsed 94'te göster (uzatma dakikası bittikten sonra)
+            // API'den gelen veri: 90. dakikada, extraTime: 4 → bu 90+4'te gösterilmeli
             eventTotalElapsedMinute = 90 + eventExtraTime;
-          } else {
-            // Maç bitiş düdüğü → elapsed 94 (90+4 uzatma varsa)
-            // Match Finished event'i için 94. dakikada gösterilmeli
+          } else if (eventExtraTime > 0) {
+            // İkinci yarı uzatmasındaki diğer eventler: 90+1, 90+2, 90+3, 90+4 → elapsed 91, 92, 93, 94
+            eventTotalElapsedMinute = 90 + eventExtraTime;
+          } else if (e.type === 'fulltime') {
+            // Maç bitiş düdüğü (extraTime yok) → elapsed 94 (90+4 uzatma varsa)
             eventTotalElapsedMinute = 94; // Maç bitiş düdüğü
+          } else {
+            // Diğer 90. dakika eventleri
+            eventTotalElapsedMinute = 90;
           }
         } else {
           eventTotalElapsedMinute = 94;
         }
         
+        // ✅ Maç bittiğinde (elapsedMinutes >= 112) tüm eventleri göster
+        if (elapsedMinutes >= 112) {
+          return true;
+        }
+        
         // ✅ Event'in gerçekleştiği zamana kadar göster (eşit veya önceki eventler)
+        // ÖNEMLİ: "Match Finished" eventi için, uzatma dakikası bittikten sonra gösterilmeli
+        // Örnek: 90+4'te maç bitti → elapsedMinutes >= 94 olduğunda göster
         return elapsedMinutes >= eventTotalElapsedMinute;
       }
       
       // ✅ Gerçek maçlar için mevcut mantık - extraTime'ı da dikkate al
+      // Maç bittiğinde (FT status) tüm eventleri göster
+      const matchStatus = matchData?.status || matchData?.fixture?.status?.short || '';
+      if (matchStatus === 'FT') {
+        return true;
+      }
+      
+      // ✅ "Match Finished" eventi için özel kontrol: extraTime varsa, o uzatma dakikası bittikten sonra gösterilmeli
+      // API'den gelen veri: "Match Finished" eventi 90. dakikada, extraTime: 4 olarak gelir
+      // Bu, uzatma dakikası bittikten sonra gösterilmeli (90+4'te)
+      if (e.type === 'fulltime' && e.minute === 90 && e.extraTime != null && e.extraTime > 0) {
+        // Maç bitiş eventi: uzatma dakikası bittikten sonra gösterilmeli
+        // Örnek: 90+4'te maç bitti → currentMinute 90 ve currentExtraTime >= 4 olduğunda göster
+        // Event dakikası: 90 + extraTime (4) = 90.04
+        // Current dakika: currentMinute (90) + currentExtraTime (4) = 90.04
+        // Event gösterilmeli: currentMinute >= 90 && currentExtraTime >= eventExtraTime
+        if (currentMinute < 90) return false;
+        if (currentMinute === 90) {
+          return (currentExtraTime ?? 0) >= e.extraTime;
+        }
+        return true; // 90'dan sonra her zaman göster
+      }
+      
+      // ✅ Diğer eventler için normal kontrol
       const eventMin = e.minute + (e.extraTime ?? 0) * 0.01;
       const currentMin = currentMinute + (currentExtraTime ?? 0) * 0.01;
       return eventMin <= currentMin + 0.01;
@@ -506,7 +536,7 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
   // =====================================
   // RENDER EVENT CARD
   // =====================================
-  const renderEventCard = (event: LiveEvent, index: number) => {
+  const renderEventCard = (event: LiveEvent, index: number, totalEvents: number) => {
     const style = getEventStyle(event);
     const isSystemEvent = ['kickoff', 'halftime', 'fulltime', 'stoppage'].includes(event.type);
     const isHome = event.team === 'home';
@@ -525,7 +555,7 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
           
           {/* Orta çizgi + dakika */}
           <View style={styles.timelineCenter}>
-            <View style={styles.timelineLine} />
+            <View style={[styles.timelineLine, index === totalEvents - 1 && styles.timelineLineToStart]} />
             <View style={[styles.timelineDot, { backgroundColor: style.color }]}>
               <Ionicons name={style.icon as any} size={12} color="#FFFFFF" />
             </View>
@@ -602,7 +632,7 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
         
         {/* Orta çizgi + dakika */}
         <View style={styles.timelineCenter}>
-          <View style={styles.timelineLine} />
+          <View style={[styles.timelineLine, index === totalEvents - 1 && styles.timelineLineToStart]} />
           <View style={[styles.timelineDot, { backgroundColor: style.color }]}>
             <Text style={styles.timelineDotText}>{formatMinute(event)}</Text>
           </View>
@@ -764,7 +794,7 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
                   <View style={styles.timelineCenter}>
                     <View style={styles.timelineHalftimeLine} />
                     <View style={styles.timelineHalftimeDot}>
-                      <Ionicons name="pause" size={16} color="#F59E0B" />
+                      <Ionicons name="pause" size={16} color="#EF4444" />
                     </View>
                   </View>
                   <View style={styles.timelineSide} />
@@ -777,16 +807,17 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
               
               // Eventleri render et, devre arası görselini uygun yere ekle
               const result: any[] = [];
+              const totalEvents = sortedEvents.length;
               sortedEvents.forEach((event, index) => {
                 // Devre arası görseli: Half Time event'inden sonra ve 46. dakika eventinden önce
                 if (event.type === 'halftime' || (event.minute === 45 && event.extraTime === 3)) {
-                  result.push(renderEventCard(event, index));
+                  result.push(renderEventCard(event, index, totalEvents));
                   // Devre arası görselini ekle (eğer 46. dakika eventi varsa)
                   if (sortedEvents.some(e => e.minute === 46 && e.extraTime === null)) {
                     result.push(renderHalftimeBreak());
                   }
                 } else {
-                  result.push(renderEventCard(event, index));
+                  result.push(renderEventCard(event, index, totalEvents));
                 }
               });
               
@@ -937,6 +968,9 @@ const styles = StyleSheet.create({
     width: 2,
     backgroundColor: 'rgba(31, 162, 166, 0.3)',
   },
+  timelineLineToStart: {
+    bottom: -2000, // Başlangıca kadar uzat - kesintisiz çizgi
+  },
   timelineDot: {
     width: 28,
     height: 28,
@@ -1053,18 +1087,18 @@ const styles = StyleSheet.create({
   
   // Devre arası görseli
   timelineHalftimeLine: {
-    width: 2,
+    width: 3,
     flex: 1,
-    backgroundColor: '#F59E0B', // Turuncu çizgi - devre arası
-    opacity: 0.5,
+    backgroundColor: '#EF4444', // Kırmızı çizgi - devre arası
+    opacity: 0.6,
   },
   timelineHalftimeDot: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: 'rgba(245, 158, 11, 0.2)',
+    backgroundColor: 'rgba(239, 68, 68, 0.2)',
     borderWidth: 2,
-    borderColor: '#F59E0B',
+    borderColor: '#EF4444',
     alignItems: 'center',
     justifyContent: 'center',
     marginVertical: 8,
@@ -1073,9 +1107,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: '50%',
     marginLeft: -60,
-    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
     borderWidth: 1,
-    borderColor: '#F59E0B',
+    borderColor: '#EF4444',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 8,
@@ -1085,56 +1119,16 @@ const styles = StyleSheet.create({
   timelineHalftimeText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#F59E0B',
+    color: '#EF4444',
     letterSpacing: 0.5,
   },
   timelineHalftimeSubtext: {
     fontSize: 9,
-    color: '#F59E0B',
+    color: '#EF4444',
     marginTop: 2,
     opacity: 0.8,
   },
-  // Devre Arası Görseli
-  timelineHalftimeLine: {
-    width: 3,
-    flex: 1,
-    backgroundColor: '#F59E0B', // Turuncu çizgi - devre arası
-    opacity: 0.5,
-  },
-  timelineHalftimeDot: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(245, 158, 11, 0.2)',
-    borderWidth: 2,
-    borderColor: '#F59E0B',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginVertical: 8,
-  },
-  timelineHalftimeCard: {
-    position: 'absolute',
-    left: '50%',
-    marginLeft: -60,
-    backgroundColor: 'rgba(245, 158, 11, 0.15)',
-    borderWidth: 1,
-    borderColor: '#F59E0B',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    alignItems: 'center',
-    gap: 2,
-  },
-  timelineHalftimeText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#F59E0B',
-  },
-  timelineHalftimeSubtext: {
-    fontSize: 9,
-    color: '#F59E0B',
-    opacity: 0.7,
-  },
+  // Devre Arası Görseli (duplicate kaldırıldı - yukarıda zaten var)
   // Timeline Start (altta)
   timelineStart: {
     alignItems: 'center',

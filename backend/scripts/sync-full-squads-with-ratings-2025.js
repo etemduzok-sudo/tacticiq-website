@@ -60,7 +60,7 @@ const headers = {
   'x-rapidapi-host': 'v3.football.api-sports.io',
 };
 
-const CURRENT_SEASON = 2025;
+const CURRENT_SEASON = 2024; // 2025 sezonu için henüz veri yok, 2024 kullanıyoruz
 const API_LIMIT = 7350; // Kullanıcının API limiti
 const API_RESERVE = 50; // Yedek bırak
 const MAX_API_CALLS = API_LIMIT - API_RESERVE; // 7300 kullanılabilir
@@ -68,17 +68,17 @@ const MAX_API_CALLS = API_LIMIT - API_RESERVE; // 7300 kullanılabilir
 // Rate limiting: API-Football PRO = 10 requests/minute
 const REQUEST_INTERVAL = 6000; // 6 saniye (10 req/min)
 
-// ÖNCELİKLİ LİGLER (en önemlilerden başla)
+// ÖNCELİKLİ LİGLER (Süper Lig öncelikli!)
 const PRIORITY_LEAGUES = [
-  // Big 5
-  { id: 39, name: 'Premier League', country: 'England', priority: 1 },
-  { id: 140, name: 'La Liga', country: 'Spain', priority: 2 },
-  { id: 78, name: 'Bundesliga', country: 'Germany', priority: 3 },
-  { id: 135, name: 'Serie A', country: 'Italy', priority: 4 },
-  { id: 61, name: 'Ligue 1', country: 'France', priority: 5 },
+  // Türkiye - EN ÖNCE!
+  { id: 203, name: 'Süper Lig', country: 'Turkey', priority: 1 },
   
-  // Türkiye
-  { id: 203, name: 'Süper Lig', country: 'Turkey', priority: 6 },
+  // Big 5
+  { id: 39, name: 'Premier League', country: 'England', priority: 2 },
+  { id: 140, name: 'La Liga', country: 'Spain', priority: 3 },
+  { id: 78, name: 'Bundesliga', country: 'Germany', priority: 4 },
+  { id: 135, name: 'Serie A', country: 'Italy', priority: 5 },
+  { id: 61, name: 'Ligue 1', country: 'France', priority: 6 },
   
   // UEFA Kupaları
   { id: 2, name: 'Champions League', country: 'World', priority: 7 },
@@ -156,6 +156,11 @@ async function apiRequest(endpoint, params = {}) {
       console.log(`   ⚠️ API limit yaklaşıyor: ${remaining} kaldı`);
     }
     
+    // Debug: API yanıtını logla (ilk birkaç çağrı için)
+    if (stats.apiRequests <= 3) {
+      console.log(`   🔍 API Response: ${JSON.stringify(response.data).substring(0, 200)}...`);
+    }
+    
     return response.data;
   } catch (error) {
     if (error.response?.status === 429) {
@@ -213,16 +218,46 @@ function calculatePlayerAttributes(playerStats) {
  * Ligdeki takımları çek
  */
 async function fetchTeamsForLeague(leagueId, leagueName) {
-  try {
-    const data = await apiRequest('/teams', { league: leagueId, season: CURRENT_SEASON });
-    if (data.response && data.response.length > 0) {
-      return data.response;
+  // Birden fazla sezon dene (bazı ligler için 2024, bazıları için 2023 gerekebilir)
+  const seasonsToTry = [2024, 2023, 2025];
+  
+  for (const season of seasonsToTry) {
+    try {
+      console.log(`   🔍 API çağrısı: /teams?league=${leagueId}&season=${season}`);
+      const data = await apiRequest('/teams', { league: leagueId, season });
+      
+      if (!data) {
+        console.log(`   ⚠️ ${season} sezonu için API boş yanıt döndü`);
+        continue;
+      }
+      
+      if (data.errors && data.errors.length > 0) {
+        console.log(`   ⚠️ ${season} sezonu için API hatası: ${JSON.stringify(data.errors)}`);
+        continue;
+      }
+      
+      if (data.response && data.response.length > 0) {
+        console.log(`   ✅ ${season} sezonu için ${data.response.length} takım bulundu`);
+        return data.response;
+      }
+      
+      console.log(`   ⚠️ ${season} sezonu için takım yok (response length: ${data.response?.length || 0})`);
+    } catch (error) {
+      console.log(`   ❌ ${season} sezonu için hata: ${error.message}`);
+      if (error.response) {
+        console.log(`   📋 Status: ${error.response.status}`);
+      }
+      // Bir sonraki sezonu dene
+      continue;
     }
-    return [];
-  } catch (error) {
-    stats.errors.push(`Teams fetch error for ${leagueName}: ${error.message}`);
-    return [];
+    
+    // Rate limiting için kısa bekleme
+    await sleep(100);
   }
+  
+  // Hiçbir sezonda takım bulunamadı
+  stats.errors.push(`Teams fetch error for ${leagueName}: No teams found in any season`);
+  return [];
 }
 
 /**

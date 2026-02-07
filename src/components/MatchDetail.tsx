@@ -261,38 +261,43 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
   // ✅ Mock maçlar için sabit başlangıç zamanı (her render'da yeniden hesaplanmaması için)
   // Bu useEffect'i match yüklendikten sonra çalıştır
   React.useEffect(() => {
-    if (isMockTestMatch(Number(matchId)) && mockMatchStartTimeRef.current === null) {
-      // İlk render'da timestamp'i sabitle
-      // Öncelik sırası: preloadedMatch > match > getMatch1Start()
-      let timestampToUse: number | null = null;
+    if (isMockTestMatch(Number(matchId))) {
+      // ✅ Her zaman güncel başlangıç zamanını kullan (sayfa yenilendiğinde de doğru olsun)
+      const expectedStartTime = Number(matchId) === MOCK_MATCH_IDS.GS_FB ? getMatch1Start() : getMatch2Start();
       
-      if (preloadedMatch?.fixture?.timestamp) {
-        // preloadedMatch'ten gelen timestamp saniye cinsinden, milisaniyeye çevir
-        timestampToUse = preloadedMatch.fixture.timestamp * 1000;
-        console.log('📌 preloadedMatch.timestamp kullanılıyor:', new Date(timestampToUse).toISOString());
-      } else if (preloadedMatch?.fixture?.date) {
-        // date varsa onu kullan
-        timestampToUse = new Date(preloadedMatch.fixture.date).getTime();
-        console.log('📌 preloadedMatch.date kullanılıyor:', new Date(timestampToUse).toISOString());
-      } else if (match?.fixture?.timestamp) {
-        // match yüklendikten sonra timestamp'i sabitle
-        timestampToUse = match.fixture.timestamp * 1000;
-        console.log('📌 match.timestamp kullanılıyor:', new Date(timestampToUse).toISOString());
-      } else if (match?.fixture?.date) {
-        // date varsa onu kullan
-        timestampToUse = new Date(match.fixture.date).getTime();
-        console.log('📌 match.date kullanılıyor:', new Date(timestampToUse).toISOString());
-      } else {
-        // Hiçbiri yoksa getMatch1Start() kullan
-        timestampToUse = getMatch1Start();
-        console.log('📌 getMatch1Start() kullanılıyor:', new Date(timestampToUse).toISOString());
-      }
-      
-      // Timestamp'i sabitle
-      if (timestampToUse !== null) {
-        mockMatchStartTimeRef.current = timestampToUse;
-        const remainingSeconds = Math.floor((timestampToUse - Date.now()) / 1000);
-        console.log('🔒 Mock maç timestamp sabitlendi:', new Date(timestampToUse).toISOString(), 'Kalan süre:', remainingSeconds, 'saniye');
+      // Eğer ref null ise veya beklenen zamanla uyumsuzsa güncelle
+      if (mockMatchStartTimeRef.current === null || mockMatchStartTimeRef.current !== expectedStartTime) {
+        // Öncelik sırası: preloadedMatch > match > getMatch1Start/getMatch2Start
+        let timestampToUse: number | null = null;
+        
+        if (preloadedMatch?.fixture?.timestamp) {
+          // preloadedMatch'ten gelen timestamp saniye cinsinden, milisaniyeye çevir
+          timestampToUse = preloadedMatch.fixture.timestamp * 1000;
+          console.log('📌 preloadedMatch.timestamp kullanılıyor:', new Date(timestampToUse).toISOString());
+        } else if (preloadedMatch?.fixture?.date) {
+          // date varsa onu kullan
+          timestampToUse = new Date(preloadedMatch.fixture.date).getTime();
+          console.log('📌 preloadedMatch.date kullanılıyor:', new Date(timestampToUse).toISOString());
+        } else if (match?.fixture?.timestamp) {
+          // match yüklendikten sonra timestamp'i sabitle
+          timestampToUse = match.fixture.timestamp * 1000;
+          console.log('📌 match.timestamp kullanılıyor:', new Date(timestampToUse).toISOString());
+        } else if (match?.fixture?.date) {
+          // date varsa onu kullan
+          timestampToUse = new Date(match.fixture.date).getTime();
+          console.log('📌 match.date kullanılıyor:', new Date(timestampToUse).toISOString());
+        } else {
+          // Hiçbiri yoksa getMatch1Start/getMatch2Start kullan
+          timestampToUse = expectedStartTime;
+          console.log(`📌 ${Number(matchId) === MOCK_MATCH_IDS.GS_FB ? 'getMatch1Start' : 'getMatch2Start'}() kullanılıyor:`, new Date(timestampToUse).toISOString());
+        }
+        
+        // Timestamp'i sabitle
+        if (timestampToUse !== null) {
+          mockMatchStartTimeRef.current = timestampToUse;
+          const remainingSeconds = Math.floor((timestampToUse - Date.now()) / 1000);
+          console.log('🔒 Mock maç timestamp sabitlendi:', new Date(timestampToUse).toISOString(), 'Kalan süre:', remainingSeconds, 'saniye');
+        }
       }
     }
   }, [matchId, preloadedMatch, match]);
@@ -862,7 +867,8 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
             onAttackFormationChangeConfirmed={() => {
               // ✅ Sadece analiz odağı seçilmemişse modal'ı aç
               // Analiz odağı zaten seçilmişse tekrar açma
-              if (!effectiveAnalysisFocus) {
+              // ✅ Maç canlıysa ve kullanıcı tahmin yapmamışsa analiz odağı atlanır
+              if (!effectiveAnalysisFocus && !isMatchLive) {
                 setShowAnalysisFocusModal(true);
               }
             }}

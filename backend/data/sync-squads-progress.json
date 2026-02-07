@@ -1,8 +1,7 @@
 {
-  "completedAt": "2026-02-07T05:23:44.988Z",
-  "duration": 26,
+  "lastProcessedIndex": 12,
   "stats": {
-    "apiRequests": 42,
+    "apiRequests": 39,
     "leaguesProcessed": 0,
     "teamsProcessed": 0,
     "squadsProcessed": 0,
@@ -22,8 +21,8 @@
       "Teams fetch error for Primeira Liga: No teams found in any season",
       "Teams fetch error for Pro League: No teams found in any season",
       "Teams fetch error for Premier League: No teams found in any season",
-      "Teams fetch error for World Cup: No teams found in any season",
-      "Teams fetch error for Euro Championship: No teams found in any season"
+      "Teams fetch error for World Cup: No teams found in any season"
     ]
-  }
+  },
+  "updatedAt": "2026-02-07T05:24:22.500Z"
 }

@@ -122,7 +122,8 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
       
       let initialTab = 'squad'; // Varsayılan
       if (isLive) {
-        initialTab = 'live';
+        // ✅ Canlı maçta tahmin yoksa kadro sekmesine yönlendir
+        initialTab = hasPrediction ? 'live' : 'squad';
       } else if (isFinished) {
         initialTab = 'stats'; // Biten maçlar için stats
       } else if (hasPrediction) {
@@ -152,9 +153,12 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
     const hasPrediction = match?.fixture?.id != null && matchIdsWithPredictions.has(match.fixture.id);
     
     if (isLive) {
+      // ✅ Canlı maçta tahmin yoksa kadro sekmesine yönlendir
+      // Sistem otomatik kadro oluşturmuş olacak, kullanıcı tahmin yapabilir
+      const liveInitialTab = hasPrediction ? 'live' : 'squad';
       onNavigate('match-detail', {
         id: String(match.fixture.id),
-        initialTab: 'live',
+        initialTab: liveInitialTab,
         matchData: match,
       });
       return;

@@ -709,3 +709,460 @@ export function logMockTestInfo(): void {
   console.log(`🧪   Başlangıç: ${m2Remaining > 0 ? `${Math.floor(m2Remaining / 60)}:${String(m2Remaining % 60).padStart(2, '0')} kaldı` : '🔴 CANLI!'}`);
   console.log(`🧪 ═══════════════════════════════════════════\n`);
 }
+
+// ============================================================
+// 🎯 KULLANICI TERCİH İSTATİSTİKLERİ (Tahmin yapmayan kullanıcılar için)
+// Real Madrid - Barcelona maçı için mock veri
+// ============================================================
+
+/**
+ * Kullanıcı tercih istatistikleri veri yapısı
+ * Maç başlamadan önce tahmin yapmayan kullanıcılar için
+ * sistem bu verileri kullanarak otomatik kadro oluşturur
+ */
+export interface UserPreferenceStats {
+  matchId: number;
+  teamId: number;
+  teamName: string;
+  totalUsers: number; // Toplam tahmin yapan kullanıcı sayısı
+  attackFormation: {
+    selected: string; // En çok tercih edilen formasyon
+    stats: { formation: string; percentage: number; count: number }[];
+  };
+  defenseFormation: {
+    selected: string; // En çok tercih edilen formasyon
+    stats: { formation: string; percentage: number; count: number }[];
+  };
+  playerPositions: {
+    position: string; // 'GK', 'LB', 'CB1', 'CB2', 'RB', 'CM1', 'CM2', 'CM3', 'LW', 'ST', 'RW'
+    positionLabel: string; // 'Kaleci', 'Sol Bek', vb.
+    selectedPlayer: { id: number; name: string; percentage: number } | null;
+    preferences: { 
+      playerId: number; 
+      playerName: string; 
+      percentage: number; 
+      count: number;
+      isInStartingXI: boolean; // İlk 11'de mi?
+    }[];
+  }[];
+}
+
+/**
+ * Real Madrid taraftarlarının tercih istatistikleri
+ * Maç: Real Madrid vs Barcelona (888002)
+ */
+export const REAL_MADRID_USER_PREFERENCES: UserPreferenceStats = {
+  matchId: MOCK_MATCH_IDS.REAL_BARCA,
+  teamId: 541,
+  teamName: 'Real Madrid',
+  totalUsers: 12847, // Toplam tahmin yapan kullanıcı sayısı
+  attackFormation: {
+    selected: '4-3-3',
+    stats: [
+      { formation: '4-3-3', percentage: 42, count: 5396 },
+      { formation: '4-4-2', percentage: 28, count: 3597 },
+      { formation: '3-5-2', percentage: 18, count: 2312 },
+      { formation: '4-2-3-1', percentage: 12, count: 1542 },
+    ],
+  },
+  defenseFormation: {
+    selected: '4-4-2',
+    stats: [
+      { formation: '4-4-2', percentage: 35, count: 4496 },
+      { formation: '4-5-1', percentage: 28, count: 3597 },
+      { formation: '5-4-1', percentage: 22, count: 2826 },
+      { formation: '5-3-2', percentage: 15, count: 1928 },
+    ],
+  },
+  playerPositions: [
+    {
+      position: 'GK',
+      positionLabel: 'Kaleci',
+      selectedPlayer: { id: 50201, name: 'T. Courtois', percentage: 94 },
+      preferences: [
+        { playerId: 50201, playerName: 'T. Courtois', percentage: 94, count: 12076, isInStartingXI: true },
+        { playerId: 50212, playerName: 'A. Lunin', percentage: 6, count: 771, isInStartingXI: false },
+      ],
+    },
+    {
+      position: 'RB',
+      positionLabel: 'Sağ Bek',
+      selectedPlayer: { id: 50202, name: 'D. Carvajal', percentage: 87 },
+      preferences: [
+        { playerId: 50202, playerName: 'D. Carvajal', percentage: 87, count: 11177, isInStartingXI: true },
+        { playerId: 50213, playerName: 'E. Militão', percentage: 13, count: 1670, isInStartingXI: false },
+      ],
+    },
+    {
+      position: 'CB1',
+      positionLabel: 'Stoper (Sağ)',
+      selectedPlayer: { id: 50203, name: 'A. Rüdiger', percentage: 78 },
+      preferences: [
+        { playerId: 50203, playerName: 'A. Rüdiger', percentage: 78, count: 10021, isInStartingXI: true },
+        { playerId: 50213, playerName: 'E. Militão', percentage: 22, count: 2826, isInStartingXI: false },
+      ],
+    },
+    {
+      position: 'CB2',
+      positionLabel: 'Stoper (Sol)',
+      selectedPlayer: { id: 50204, name: 'D. Alaba', percentage: 68 },
+      preferences: [
+        { playerId: 50204, playerName: 'D. Alaba', percentage: 68, count: 8736, isInStartingXI: true },
+        { playerId: 50203, playerName: 'A. Rüdiger', percentage: 22, count: 2826, isInStartingXI: true },
+        { playerId: 50213, playerName: 'E. Militão', percentage: 10, count: 1285, isInStartingXI: false },
+      ],
+    },
+    {
+      position: 'LB',
+      positionLabel: 'Sol Bek',
+      selectedPlayer: { id: 50205, name: 'F. Mendy', percentage: 91 },
+      preferences: [
+        { playerId: 50205, playerName: 'F. Mendy', percentage: 91, count: 11691, isInStartingXI: true },
+        { playerId: 50204, playerName: 'D. Alaba', percentage: 9, count: 1156, isInStartingXI: true },
+      ],
+    },
+    {
+      position: 'CM1',
+      positionLabel: 'Merkez Orta Saha (Sağ)',
+      selectedPlayer: { id: 50206, name: 'T. Kroos', percentage: 62 },
+      preferences: [
+        { playerId: 50206, playerName: 'T. Kroos', percentage: 62, count: 7965, isInStartingXI: true },
+        { playerId: 50215, playerName: 'F. Valverde', percentage: 23, count: 2955, isInStartingXI: false },
+        { playerId: 50214, playerName: 'E. Camavinga', percentage: 15, count: 1927, isInStartingXI: false },
+      ],
+    },
+    {
+      position: 'CM2',
+      positionLabel: 'Merkez Orta Saha (Orta)',
+      selectedPlayer: { id: 50207, name: 'L. Modrić', percentage: 55 },
+      preferences: [
+        { playerId: 50207, playerName: 'L. Modrić', percentage: 55, count: 7066, isInStartingXI: true },
+        { playerId: 50215, playerName: 'F. Valverde', percentage: 28, count: 3597, isInStartingXI: false },
+        { playerId: 50214, playerName: 'E. Camavinga', percentage: 17, count: 2184, isInStartingXI: false },
+      ],
+    },
+    {
+      position: 'CM3',
+      positionLabel: 'Merkez Orta Saha (Sol)',
+      selectedPlayer: { id: 50208, name: 'J. Bellingham', percentage: 89 },
+      preferences: [
+        { playerId: 50208, playerName: 'J. Bellingham', percentage: 89, count: 11434, isInStartingXI: true },
+        { playerId: 50207, playerName: 'L. Modrić', percentage: 7, count: 899, isInStartingXI: true },
+        { playerId: 50214, playerName: 'E. Camavinga', percentage: 4, count: 514, isInStartingXI: false },
+      ],
+    },
+    {
+      position: 'LW',
+      positionLabel: 'Sol Kanat',
+      selectedPlayer: { id: 50209, name: 'Vinícius Jr.', percentage: 95 },
+      preferences: [
+        { playerId: 50209, playerName: 'Vinícius Jr.', percentage: 95, count: 12205, isInStartingXI: true },
+        { playerId: 50211, playerName: 'Rodrygo', percentage: 3, count: 385, isInStartingXI: true },
+        { playerId: 50216, playerName: 'E. Hazard', percentage: 2, count: 257, isInStartingXI: false },
+      ],
+    },
+    {
+      position: 'ST',
+      positionLabel: 'Santrafor',
+      selectedPlayer: { id: 50210, name: 'K. Mbappé', percentage: 88 },
+      preferences: [
+        { playerId: 50210, playerName: 'K. Mbappé', percentage: 88, count: 11305, isInStartingXI: true },
+        { playerId: 50209, playerName: 'Vinícius Jr.', percentage: 8, count: 1028, isInStartingXI: true },
+        { playerId: 50211, playerName: 'Rodrygo', percentage: 4, count: 514, isInStartingXI: true },
+      ],
+    },
+    {
+      position: 'RW',
+      positionLabel: 'Sağ Kanat',
+      selectedPlayer: { id: 50211, name: 'Rodrygo', percentage: 76 },
+      preferences: [
+        { playerId: 50211, playerName: 'Rodrygo', percentage: 76, count: 9764, isInStartingXI: true },
+        { playerId: 50210, playerName: 'K. Mbappé', percentage: 15, count: 1927, isInStartingXI: true },
+        { playerId: 50216, playerName: 'E. Hazard', percentage: 9, count: 1156, isInStartingXI: false },
+      ],
+    },
+  ],
+};
+
+/**
+ * Barcelona taraftarlarının tercih istatistikleri
+ * Maç: Real Madrid vs Barcelona (888002)
+ */
+export const BARCELONA_USER_PREFERENCES: UserPreferenceStats = {
+  matchId: MOCK_MATCH_IDS.REAL_BARCA,
+  teamId: 529,
+  teamName: 'Barcelona',
+  totalUsers: 15632, // Toplam tahmin yapan kullanıcı sayısı
+  attackFormation: {
+    selected: '4-3-3',
+    stats: [
+      { formation: '4-3-3', percentage: 48, count: 7503 },
+      { formation: '4-2-3-1', percentage: 25, count: 3908 },
+      { formation: '3-4-3', percentage: 18, count: 2814 },
+      { formation: '4-4-2', percentage: 9, count: 1407 },
+    ],
+  },
+  defenseFormation: {
+    selected: '4-5-1',
+    stats: [
+      { formation: '4-5-1', percentage: 38, count: 5940 },
+      { formation: '4-4-2', percentage: 32, count: 5002 },
+      { formation: '5-3-2', percentage: 18, count: 2814 },
+      { formation: '5-4-1', percentage: 12, count: 1876 },
+    ],
+  },
+  playerPositions: [
+    {
+      position: 'GK',
+      positionLabel: 'Kaleci',
+      selectedPlayer: { id: 50301, name: 'M. ter Stegen', percentage: 97 },
+      preferences: [
+        { playerId: 50301, playerName: 'M. ter Stegen', percentage: 97, count: 15163, isInStartingXI: true },
+        { playerId: 50312, playerName: 'İ. Peña', percentage: 3, count: 469, isInStartingXI: false },
+      ],
+    },
+    {
+      position: 'RB',
+      positionLabel: 'Sağ Bek',
+      selectedPlayer: { id: 50302, name: 'J. Cancelo', percentage: 72 },
+      preferences: [
+        { playerId: 50302, playerName: 'J. Cancelo', percentage: 72, count: 11255, isInStartingXI: true },
+        { playerId: 50313, playerName: 'J. Koundé', percentage: 28, count: 4377, isInStartingXI: false },
+      ],
+    },
+    {
+      position: 'CB1',
+      positionLabel: 'Stoper (Sağ)',
+      selectedPlayer: { id: 50303, name: 'R. Araújo', percentage: 85 },
+      preferences: [
+        { playerId: 50303, playerName: 'R. Araújo', percentage: 85, count: 13287, isInStartingXI: true },
+        { playerId: 50313, playerName: 'J. Koundé', percentage: 15, count: 2345, isInStartingXI: false },
+      ],
+    },
+    {
+      position: 'CB2',
+      positionLabel: 'Stoper (Sol)',
+      selectedPlayer: { id: 50304, name: 'A. Christensen', percentage: 65 },
+      preferences: [
+        { playerId: 50304, playerName: 'A. Christensen', percentage: 65, count: 10161, isInStartingXI: true },
+        { playerId: 50303, playerName: 'R. Araújo', percentage: 25, count: 3908, isInStartingXI: true },
+        { playerId: 50313, playerName: 'J. Koundé', percentage: 10, count: 1563, isInStartingXI: false },
+      ],
+    },
+    {
+      position: 'LB',
+      positionLabel: 'Sol Bek',
+      selectedPlayer: { id: 50305, name: 'A. Baldé', percentage: 88 },
+      preferences: [
+        { playerId: 50305, playerName: 'A. Baldé', percentage: 88, count: 13756, isInStartingXI: true },
+        { playerId: 50302, playerName: 'J. Cancelo', percentage: 12, count: 1876, isInStartingXI: true },
+      ],
+    },
+    {
+      position: 'CM1',
+      positionLabel: 'Merkez Orta Saha (Sağ)',
+      selectedPlayer: { id: 50306, name: 'Pedri', percentage: 78 },
+      preferences: [
+        { playerId: 50306, playerName: 'Pedri', percentage: 78, count: 12193, isInStartingXI: true },
+        { playerId: 50314, playerName: 'İ. Gündoğan', percentage: 15, count: 2345, isInStartingXI: false },
+        { playerId: 50315, playerName: 'F. Torres', percentage: 7, count: 1094, isInStartingXI: false },
+      ],
+    },
+    {
+      position: 'CM2',
+      positionLabel: 'Merkez Orta Saha (Orta)',
+      selectedPlayer: { id: 50307, name: 'F. de Jong', percentage: 68 },
+      preferences: [
+        { playerId: 50307, playerName: 'F. de Jong', percentage: 68, count: 10630, isInStartingXI: true },
+        { playerId: 50314, playerName: 'İ. Gündoğan', percentage: 22, count: 3439, isInStartingXI: false },
+        { playerId: 50306, playerName: 'Pedri', percentage: 10, count: 1563, isInStartingXI: true },
+      ],
+    },
+    {
+      position: 'CM3',
+      positionLabel: 'Merkez Orta Saha (Sol)',
+      selectedPlayer: { id: 50308, name: 'Gavi', percentage: 82 },
+      preferences: [
+        { playerId: 50308, playerName: 'Gavi', percentage: 82, count: 12818, isInStartingXI: true },
+        { playerId: 50315, playerName: 'F. Torres', percentage: 12, count: 1876, isInStartingXI: false },
+        { playerId: 50314, playerName: 'İ. Gündoğan', percentage: 6, count: 938, isInStartingXI: false },
+      ],
+    },
+    {
+      position: 'LW',
+      positionLabel: 'Sol Kanat',
+      selectedPlayer: { id: 50311, name: 'Raphinha', percentage: 72 },
+      preferences: [
+        { playerId: 50311, playerName: 'Raphinha', percentage: 72, count: 11255, isInStartingXI: true },
+        { playerId: 50316, playerName: 'A. Fati', percentage: 18, count: 2814, isInStartingXI: false },
+        { playerId: 50309, playerName: 'L. Yamal', percentage: 10, count: 1563, isInStartingXI: true },
+      ],
+    },
+    {
+      position: 'ST',
+      positionLabel: 'Santrafor',
+      selectedPlayer: { id: 50310, name: 'R. Lewandowski', percentage: 92 },
+      preferences: [
+        { playerId: 50310, playerName: 'R. Lewandowski', percentage: 92, count: 14381, isInStartingXI: true },
+        { playerId: 50316, playerName: 'A. Fati', percentage: 5, count: 782, isInStartingXI: false },
+        { playerId: 50315, playerName: 'F. Torres', percentage: 3, count: 469, isInStartingXI: false },
+      ],
+    },
+    {
+      position: 'RW',
+      positionLabel: 'Sağ Kanat',
+      selectedPlayer: { id: 50309, name: 'L. Yamal', percentage: 94 },
+      preferences: [
+        { playerId: 50309, playerName: 'L. Yamal', percentage: 94, count: 14694, isInStartingXI: true },
+        { playerId: 50311, playerName: 'Raphinha', percentage: 4, count: 625, isInStartingXI: true },
+        { playerId: 50316, playerName: 'A. Fati', percentage: 2, count: 313, isInStartingXI: false },
+      ],
+    },
+  ],
+};
+
+/**
+ * Maç ID'sine göre kullanıcı tercih istatistiklerini getir
+ * @param matchId Maç ID
+ * @param teamId Takım ID
+ * @returns Kullanıcı tercih istatistikleri veya null
+ */
+export function getUserPreferenceStats(matchId: number, teamId: number): UserPreferenceStats | null {
+  if (!MOCK_TEST_ENABLED) return null;
+  
+  if (matchId === MOCK_MATCH_IDS.REAL_BARCA) {
+    if (teamId === 541) return REAL_MADRID_USER_PREFERENCES;
+    if (teamId === 529) return BARCELONA_USER_PREFERENCES;
+  }
+  
+  return null;
+}
+
+/**
+ * İlk 11'de olmayan oyuncuları filtrele ve geçerli tercihleri döndür
+ * @param preferences Tüm tercihler
+ * @param startingXI İlk 11 oyuncu ID'leri
+ * @returns Sadece ilk 11'deki oyuncuların tercihleri
+ */
+export function filterValidPreferences(
+  preferences: { playerId: number; playerName: string; percentage: number; count: number; isInStartingXI: boolean }[],
+  startingXIIds: number[]
+): { playerId: number; playerName: string; percentage: number; count: number; isInStartingXI: boolean }[] {
+  const startingSet = new Set(startingXIIds);
+  const validPrefs = preferences.filter(p => startingSet.has(p.playerId));
+  
+  if (validPrefs.length === 0) return [];
+  
+  // Yüzdeleri yeniden hesapla (sadece geçerli oyuncular için)
+  const totalPercentage = validPrefs.reduce((sum, p) => sum + p.percentage, 0);
+  return validPrefs.map(p => ({
+    ...p,
+    percentage: Math.round((p.percentage / totalPercentage) * 100),
+  }));
+}
+
+/**
+ * Otomatik kadro oluştur (tahmin yapmayan kullanıcılar için)
+ * Maç başladığında tetiklenir
+ * @param matchId Maç ID
+ * @param teamId Takım ID
+ * @param startingXI API'den gelen ilk 11 oyuncuları
+ * @returns Otomatik oluşturulan kadro
+ */
+export interface AutoGeneratedSquad {
+  matchId: number;
+  teamId: number;
+  teamName: string;
+  attackFormation: { formation: string; percentage: number };
+  defenseFormation: { formation: string; percentage: number };
+  totalUsers: number;
+  positions: {
+    position: string;
+    positionLabel: string;
+    player: { id: number; name: string; number: number };
+    preferencePercentage: number;
+    totalPreferences: number;
+    allPreferences: { playerId: number; playerName: string; percentage: number; count: number }[];
+  }[];
+}
+
+export function generateAutoSquad(
+  matchId: number,
+  teamId: number,
+  startingXI: { player: { id: number; name: string; number: number; pos: string } }[]
+): AutoGeneratedSquad | null {
+  const prefs = getUserPreferenceStats(matchId, teamId);
+  if (!prefs) return null;
+  
+  const startingXIIds = startingXI.map(p => p.player.id);
+  const startingXIMap = new Map(startingXI.map(p => [p.player.id, p.player]));
+  
+  const positions = prefs.playerPositions.map(pos => {
+    // İlk 11'de olmayan oyuncuları filtrele
+    const validPrefs = filterValidPreferences(pos.preferences, startingXIIds);
+    
+    // En yüksek yüzdeli oyuncuyu seç
+    const selectedPref = validPrefs.length > 0 
+      ? validPrefs.reduce((a, b) => a.percentage > b.percentage ? a : b)
+      : null;
+    
+    const selectedPlayer = selectedPref 
+      ? startingXIMap.get(selectedPref.playerId)
+      : null;
+    
+    return {
+      position: pos.position,
+      positionLabel: pos.positionLabel,
+      player: selectedPlayer || { id: 0, name: 'Bilinmiyor', number: 0 },
+      preferencePercentage: selectedPref?.percentage || 0,
+      totalPreferences: validPrefs.reduce((sum, p) => sum + p.count, 0),
+      allPreferences: validPrefs.map(p => ({
+        playerId: p.playerId,
+        playerName: p.playerName,
+        percentage: p.percentage,
+        count: p.count,
+      })),
+    };
+  });
+  
+  return {
+    matchId,
+    teamId,
+    teamName: prefs.teamName,
+    attackFormation: {
+      formation: prefs.attackFormation.selected,
+      percentage: prefs.attackFormation.stats.find(s => s.formation === prefs.attackFormation.selected)?.percentage || 0,
+    },
+    defenseFormation: {
+      formation: prefs.defenseFormation.selected,
+      percentage: prefs.defenseFormation.stats.find(s => s.formation === prefs.defenseFormation.selected)?.percentage || 0,
+    },
+    totalUsers: prefs.totalUsers,
+    positions,
+  };
+}
+
+/**
+ * Tercih yüzdesine göre çerçeve rengi ve kalınlığı hesapla
+ * @param percentage Tercih yüzdesi (0-100)
+ * @returns Çerçeve stili
+ */
+export function getPreferenceBorderStyle(percentage: number): { color: string; width: number; opacity: number } {
+  // ✅ Daha ince ve şık çerçeveler - sadece kalınlık ile % gösterimi
+  if (percentage >= 90) {
+    // Çok yüksek tercih - Turkuaz (marka rengi)
+    return { color: '#1FA2A6', width: 2.5, opacity: 1 };
+  } else if (percentage >= 75) {
+    // Yüksek tercih - Yeşil
+    return { color: '#10B981', width: 2, opacity: 0.95 };
+  } else if (percentage >= 60) {
+    // Orta-yüksek tercih - Açık yeşil
+    return { color: '#34D399', width: 1.5, opacity: 0.9 };
+  } else if (percentage >= 40) {
+    // Orta tercih - Varsayılan (görünmez)
+    return { color: 'rgba(100, 116, 139, 0.3)', width: 2, opacity: 0.8 };
+  } else {
+    // Düşük tercih - Varsayılan
+    return { color: 'rgba(100, 116, 139, 0.3)', width: 2, opacity: 0.7 };
+  }
+}

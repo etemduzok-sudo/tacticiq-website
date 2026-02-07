@@ -666,7 +666,9 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
                             });
                           }
                           const hasPred = (match.fixture?.id != null && matchIdsWithPredictions.has(match.fixture.id));
-                          onMatchSelect(matchId, hasPred ? { initialTab: 'prediction' } : undefined);
+                          // ✅ Canlı maçta tahmin yoksa kadro sekmesine yönlendir
+                          // Sistem otomatik kadro oluşturmuş olacak
+                          onMatchSelect(matchId, { initialTab: hasPred ? 'live' : 'squad' });
                         })}
                       </Animated.View>
                     );
