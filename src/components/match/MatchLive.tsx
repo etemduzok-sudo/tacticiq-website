@@ -1094,6 +1094,47 @@ const styles = StyleSheet.create({
     marginTop: 2,
     opacity: 0.8,
   },
+  // Devre Arası Görseli
+  timelineHalftimeLine: {
+    width: 3,
+    flex: 1,
+    backgroundColor: '#F59E0B', // Turuncu çizgi - devre arası
+    opacity: 0.5,
+  },
+  timelineHalftimeDot: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(245, 158, 11, 0.2)',
+    borderWidth: 2,
+    borderColor: '#F59E0B',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 8,
+  },
+  timelineHalftimeCard: {
+    position: 'absolute',
+    left: '50%',
+    marginLeft: -60,
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    borderWidth: 1,
+    borderColor: '#F59E0B',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    alignItems: 'center',
+    gap: 2,
+  },
+  timelineHalftimeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#F59E0B',
+  },
+  timelineHalftimeSubtext: {
+    fontSize: 9,
+    color: '#F59E0B',
+    opacity: 0.7,
+  },
   // Timeline Start (altta)
   timelineStart: {
     alignItems: 'center',
