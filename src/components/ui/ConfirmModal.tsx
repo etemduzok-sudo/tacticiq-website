@@ -10,7 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 export type ConfirmButton = {
   text: string;
   style?: 'cancel' | 'destructive' | 'default';
-  onPress: () => void;
+  onPress: () => void | Promise<void>;
 };
 
 type Props = {
@@ -131,8 +131,17 @@ export function ConfirmModal({
                   b.style === 'destructive' && styles.btnDestructive,
                   (!b.style || b.style === 'default') && styles.btnDefault,
                 ]}
-                onPress={() => {
-                  b.onPress();
+                onPress={async () => {
+                  // ✅ Async işlemi await et (eğer Promise döndürüyorsa)
+                  const result = b.onPress();
+                  if (result instanceof Promise) {
+                    try {
+                      await result;
+                    } catch (error) {
+                      console.error('Button onPress error:', error);
+                    }
+                  }
+                  // ✅ İşlem tamamlandıktan sonra modal'ı kapat
                   onRequestClose?.();
                 }}
                 activeOpacity={0.8}

@@ -368,10 +368,12 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
               <View style={matchCardStyles.matchCardTeamLeft}>
                 <Text style={matchCardStyles.matchCardTeamName} numberOfLines={1} ellipsizeMode="tail">{getDisplayTeamName(match.teams.home.name)}</Text>
                 <Text style={matchCardStyles.matchCardCoachName}>{getCoachName(match.teams.home.name)}</Text>
-                {(status === 'live' || status === 'finished') && (
+                {(status === 'live' || status === 'finished') ? (
                   <View style={status === 'live' ? matchCardStyles.matchCardScoreBoxLive : matchCardStyles.matchCardScoreBox}>
                     <Text style={status === 'live' ? matchCardStyles.matchCardScoreTextLive : matchCardStyles.matchCardScoreText}>{match.goals?.home ?? 0}</Text>
                   </View>
+                ) : (
+                  <View style={matchCardStyles.matchCardScoreBoxPlaceholder} />
                 )}
               </View>
               
@@ -410,17 +412,19 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
               <View style={matchCardStyles.matchCardTeamRight}>
                 <Text style={[matchCardStyles.matchCardTeamName, matchCardStyles.matchCardTeamNameRight]} numberOfLines={1} ellipsizeMode="tail">{getDisplayTeamName(match.teams.away.name)}</Text>
                 <Text style={matchCardStyles.matchCardCoachNameAway}>{getCoachName(match.teams.away.name)}</Text>
-                {(status === 'live' || status === 'finished') && (
+                {(status === 'live' || status === 'finished') ? (
                   <View style={status === 'live' ? matchCardStyles.matchCardScoreBoxLive : matchCardStyles.matchCardScoreBox}>
                     <Text style={status === 'live' ? matchCardStyles.matchCardScoreTextLive : matchCardStyles.matchCardScoreText}>{match.goals?.away ?? 0}</Text>
                   </View>
+                ) : (
+                  <View style={matchCardStyles.matchCardScoreBoxPlaceholder} />
                 )}
               </View>
             </View>
             
-            {/* Durum Badge'i (Canlı) */}
-            {status === 'live' ? (
-              <View style={matchCardStyles.matchCardLiveContainer}>
+            {/* Durum Badge'i - Sabit yükseklik için her zaman render et */}
+            <View style={matchCardStyles.matchCardLiveContainer}>
+              {status === 'live' ? (
                 <LinearGradient
                   colors={['#dc2626', '#b91c1c']}
                   style={matchCardStyles.matchCardLiveBadge}
@@ -430,17 +434,16 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
                   <RNAnimated.View style={[matchCardStyles.matchCardLiveDot, { opacity: pulseAnim }]} />
                   <Text style={matchCardStyles.matchCardLiveText}>OYNANIYOR</Text>
                 </LinearGradient>
-              </View>
-            ) : status === 'finished' ? (
-              /* Biten maçlar için bilgi notu */
-              <View style={matchCardStyles.matchCardFinishedHint}>
-                <Ionicons name="stats-chart" size={12} color="#64748B" />
-                <Text style={matchCardStyles.matchCardFinishedHintText}>
-                  İstatistikler ve maç özeti için tıklayın
-                </Text>
-                <Ionicons name="chevron-forward" size={12} color="#64748B" />
-              </View>
-            ) : null}
+              ) : status === 'finished' ? (
+                <View style={matchCardStyles.matchCardFinishedHint}>
+                  <Ionicons name="stats-chart" size={12} color="#64748B" />
+                  <Text style={matchCardStyles.matchCardFinishedHintText}>
+                    İstatistikler ve maç özeti için tıklayın
+                  </Text>
+                  <Ionicons name="chevron-forward" size={12} color="#64748B" />
+                </View>
+              ) : null}
+            </View>
           </View>
           {/* Tahmin yaptınız: sarı yıldız — en üstte (son child) ki tıklanabilsin */}
           {hasPrediction && matchId != null && onDeletePrediction && (
@@ -765,7 +768,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingTop: Platform.OS === 'ios' ? 245 : 235, // ✅ Dashboard ile aynı - ProfileCard + team filter
+    paddingTop: Platform.OS === 'ios' ? 245 : 235, // ✅ Profil ile aynı: kişi kartı + favori takım barı
     paddingHorizontal: 16,
     paddingBottom: 100,
   },
@@ -947,7 +950,7 @@ const matchCardStyles = StyleSheet.create({
   matchCardContainer: {
     width: '100%',
     maxWidth: 768,
-    minHeight: 158,
+    height: 180, // ✅ Sabit yükseklik - %10 azaltıldı (200 → 180)
     marginBottom: 0,
   },
   matchCardPredictionStarHitArea: {
@@ -960,7 +963,7 @@ const matchCardStyles = StyleSheet.create({
   matchCard: {
     width: '100%',
     maxWidth: 768,
-    minHeight: 158,
+    height: 180, // ✅ Sabit yükseklik - %10 azaltıldı (200 → 180)
     borderRadius: 16,
     borderBottomLeftRadius: 25,
     borderBottomRightRadius: 25,
@@ -1000,8 +1003,12 @@ const matchCardStyles = StyleSheet.create({
     zIndex: 0,
   },
   matchCardContent: {
-    padding: 12,
+    flex: 1,
+    paddingTop: 6,
+    paddingHorizontal: 10,
+    paddingBottom: 2,
     zIndex: 1,
+    justifyContent: 'space-between',
   },
   matchCardTournamentBadge: {
     flexDirection: 'row',
@@ -1010,12 +1017,12 @@ const matchCardStyles = StyleSheet.create({
     alignSelf: 'center',
     gap: 3,
     backgroundColor: 'rgba(16, 185, 129, 0.1)',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(16, 185, 129, 0.2)',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   matchCardTournamentText: {
     fontSize: 9,
@@ -1027,8 +1034,8 @@ const matchCardStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
-    marginTop: 4,
-    marginBottom: 8,
+    marginTop: 1,
+    marginBottom: 3,
   },
   matchCardVenueText: {
     fontSize: 10,
@@ -1039,8 +1046,8 @@ const matchCardStyles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 10,
-    gap: 8,
+    marginBottom: 4,
+    gap: 6,
   },
   matchCardTeamLeft: {
     flex: 1,
@@ -1121,21 +1128,21 @@ const matchCardStyles = StyleSheet.create({
     fontWeight: '900',
   },
   matchCardLiveContainer: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
-    marginBottom: 8,
-    marginTop: 2,
-    minHeight: 36,
+    marginBottom: 0,
+    marginTop: 0,
+    height: 38, // ✅ Sabit yükseklik - Dashboard ile aynı
   },
   matchCardLiveBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 10,
+    gap: 5,
+    paddingHorizontal: 14,
+    paddingVertical: 0,
+    borderRadius: 8,
+    height: 30, // ✅ Tüm badge'ler 30px
     borderWidth: 1,
     borderColor: '#dc2626',
     ...Platform.select({
@@ -1185,12 +1192,12 @@ const matchCardStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
+    gap: 4,
     marginTop: 0,
     marginBottom: 0,
-    minHeight: 24,
-    paddingVertical: 3,
-    paddingHorizontal: 10,
+    height: 30, // ✅ Tüm badge'ler 30px
+    paddingVertical: 0,
+    paddingHorizontal: 8,
     backgroundColor: 'rgba(100, 116, 139, 0.15)',
     borderRadius: 6,
   },
@@ -1199,15 +1206,23 @@ const matchCardStyles = StyleSheet.create({
     color: '#94A3B8',
     fontWeight: '500',
   },
+  matchCardScoreBoxPlaceholder: {
+    marginTop: 3,
+    minWidth: 36,
+    width: 36,
+    height: 26, // Skor kutusu ile aynı yükseklik
+    opacity: 0,
+  },
   matchCardScoreBox: {
-    marginTop: 4,
+    marginTop: 3,
     backgroundColor: '#0F2A24',
     borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 45,
+    minWidth: 36,
+    height: 26, // ✅ Kompakt skor kutusu
     borderWidth: 1,
     borderColor: 'rgba(31, 162, 166, 0.2)',
     ...Platform.select({
@@ -1226,29 +1241,20 @@ const matchCardStyles = StyleSheet.create({
     }),
   },
   matchCardScoreText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
     color: '#ffffff',
-    ...Platform.select({
-      web: {
-        textShadow: '1px 1px 0px #1FA2A6',
-      },
-      default: {
-        textShadowColor: '#1FA2A6',
-        textShadowOffset: { width: 1, height: 1 },
-        textShadowRadius: 2,
-      },
-    }),
   },
   matchCardScoreBoxLive: {
-    marginTop: 4,
+    marginTop: 3,
     backgroundColor: '#0F2A24',
     borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 45,
+    minWidth: 36,
+    height: 26, // ✅ Kompakt skor kutusu
     borderWidth: 1,
     borderColor: 'rgba(31, 162, 166, 0.3)',
     ...Platform.select({
@@ -1267,18 +1273,8 @@ const matchCardStyles = StyleSheet.create({
     }),
   },
   matchCardScoreTextLive: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
     color: '#ffffff',
-    ...Platform.select({
-      web: {
-        textShadow: '1px 1px 0px #1FA2A6',
-      },
-      default: {
-        textShadowColor: '#1FA2A6',
-        textShadowOffset: { width: 1, height: 1 },
-        textShadowRadius: 2,
-      },
-    }),
   },
 });

@@ -1,9 +1,11 @@
 // useFavoriteTeams Hook - Get user's favorite teams
 // ✅ Supabase senkronizasyonu eklendi
-import { useState, useEffect } from 'react';
+// ✅ Bulk data download entegrasyonu eklendi
+import { useState, useEffect, useRef } from 'react';
 import { getFavoriteTeams, setFavoriteTeams as saveFavoriteTeams, validateFavoriteTeams } from '../utils/storageUtils';
 import { supabase } from '../config/supabase';
 import { logger } from '../utils/logger';
+import { downloadBulkData, isBulkDataValid, clearBulkData, BulkDownloadProgress } from '../services/bulkDataService';
 
 interface FavoriteTeam {
   id: number;
@@ -36,6 +38,9 @@ const jsonToTeams = (json: string | null): FavoriteTeam[] | null => {
 export function useFavoriteTeams() {
   const [favoriteTeams, setFavoriteTeams] = useState<FavoriteTeam[]>([]);
   const [loading, setLoading] = useState(true);
+  const [bulkDownloadProgress, setBulkDownloadProgress] = useState<BulkDownloadProgress | null>(null);
+  const [isBulkDownloading, setIsBulkDownloading] = useState(false);
+  const bulkDownloadingRef = useRef(false);
 
   useEffect(() => {
     loadFavoriteTeams();
@@ -50,6 +55,11 @@ export function useFavoriteTeams() {
         setFavoriteTeams(localTeams);
         setLoading(false); // ✅ Lokal yüklendi, loading'i hemen kapat
         logger.info('Loaded favorite teams from local', { count: localTeams.length }, 'FAVORITE_TEAMS');
+        // ✅ Kadrolar dahil tüm veriyi hemen uygulama belleğine çek (3 favori takım)
+        const ids = localTeams.map(t => t.id).filter(Boolean);
+        if (ids.length > 0) {
+          triggerBulkDownload(ids);
+        }
       } else {
         setFavoriteTeams([]);
         setLoading(false); // ✅ Takım yok, loading'i kapat
@@ -87,6 +97,9 @@ export function useFavoriteTeams() {
             setFavoriteTeams(supabaseTeams);
             await saveFavoriteTeams(supabaseTeams);
             logger.info('Synced favorite teams from Supabase', { count: supabaseTeams.length }, 'FAVORITE_TEAMS');
+            // ✅ Kadrolar dahil tüm veriyi hemen uygulama belleğine çek
+            const ids = supabaseTeams.map(t => t.id).filter(Boolean);
+            if (ids.length > 0) triggerBulkDownload(ids);
           } else {
             // İkisinde de takım varsa, lokali ana kaynak olarak tut ama Supabase'i güncelle
             await syncToSupabase(localTeams);
@@ -135,6 +148,12 @@ export function useFavoriteTeams() {
         setFavoriteTeams(updated);
         await syncToSupabase(updated); // ✅ Supabase'e senkronize et
         logger.info('Added favorite team', { teamName: team.name, teamId: team.id }, 'FAVORITE_TEAMS');
+        
+        // ✅ Yeni takım eklendiğinde bulk download tetikle
+        const teamIds = updated.map(t => t.id).filter(Boolean);
+        if (teamIds.length > 0) {
+          triggerBulkDownload(teamIds);
+        }
       }
     } catch (error) {
       logger.error('Error adding favorite team', { error, team }, 'FAVORITE_TEAMS');
@@ -156,6 +175,7 @@ export function useFavoriteTeams() {
   };
 
   // ✅ Tüm takımları bir seferde güncelle (ProfileScreen için)
+  // ✅ Takım seçimi sonrası otomatik bulk data download başlatır
   const setAllFavoriteTeams = async (teams: FavoriteTeam[]) => {
     try {
       const success = await saveFavoriteTeams(teams);
@@ -163,12 +183,77 @@ export function useFavoriteTeams() {
         setFavoriteTeams(teams);
         await syncToSupabase(teams); // ✅ Supabase'e senkronize et
         logger.info('Set all favorite teams', { count: teams.length, teams: teams.map(t => ({ name: t.name, type: t.type })) }, 'FAVORITE_TEAMS');
+        
+        // ✅ BULK DATA DOWNLOAD: Takım seçimi sonrası tüm verileri arka planda indir
+        const teamIds = teams.map(t => t.id).filter(Boolean);
+        if (teamIds.length > 0) {
+          triggerBulkDownload(teamIds);
+        }
+        
         return true;
       }
       return false;
     } catch (error) {
       logger.error('Error setting all favorite teams', { error }, 'FAVORITE_TEAMS');
       return false;
+    }
+  };
+
+  // ✅ Bulk data download - arka planda tüm takım verilerini indir
+  const triggerBulkDownload = async (teamIds: number[]) => {
+    // Concurrent indirme engelle
+    if (bulkDownloadingRef.current) {
+      logger.debug('Bulk download already running, skipping', undefined, 'BULK');
+      return;
+    }
+
+    bulkDownloadingRef.current = true;
+    setIsBulkDownloading(true);
+
+    try {
+      // Cache hala geçerliyse ve takımlar aynıysa skip
+      const cacheValid = await isBulkDataValid(teamIds);
+      if (cacheValid) {
+        logger.info('📦 Bulk cache still valid, skipping download', { teamIds }, 'BULK');
+        setBulkDownloadProgress({
+          phase: 'complete',
+          progress: 100,
+          message: 'Veriler zaten güncel',
+        });
+        setTimeout(() => setBulkDownloadProgress(null), 2000);
+        return;
+      }
+
+      // Eski cache'i temizle (takımlar değişmiş olabilir)
+      await clearBulkData();
+
+      logger.info('📦 Starting bulk download for new team selection', { teamIds }, 'BULK');
+
+      const result = await downloadBulkData(teamIds, (p) => {
+        setBulkDownloadProgress(p);
+      });
+
+      if (result) {
+        logger.info('📦 Bulk download complete!', {
+          teams: result.meta?.teamCount,
+          matches: result.meta?.totalMatches,
+          players: result.meta?.totalPlayers,
+          sizeKB: result.meta?.sizeKB,
+        }, 'BULK');
+      }
+    } catch (error: any) {
+      logger.error('Bulk download error', { error: error.message }, 'BULK');
+      setBulkDownloadProgress({
+        phase: 'error',
+        progress: 0,
+        message: 'Veri indirme hatası (arka plan)',
+        error: error.message,
+      });
+    } finally {
+      bulkDownloadingRef.current = false;
+      setIsBulkDownloading(false);
+      // 5 saniye sonra progress'i temizle
+      setTimeout(() => setBulkDownloadProgress(null), 5000);
     }
   };
 
@@ -184,5 +269,9 @@ export function useFavoriteTeams() {
     setAllFavoriteTeams,
     isFavorite,
     refetch: loadFavoriteTeams,
+    // Bulk data download state
+    bulkDownloadProgress,
+    isBulkDownloading,
+    triggerBulkDownload,
   };
 }

@@ -198,9 +198,31 @@ async function pollLiveMatches() {
 
     console.log(`🔴 ${liveMatches.length} matches currently live`);
 
+    // ✅ EVENT'LERİ KAYDET: API-Football /fixtures?live=all endpoint'i event'leri de içeriyor!
+    const timelineService = require('./timelineService');
+    let totalEventsSaved = 0;
+    let matchesWithEvents = 0;
+
     // 3. Update each live match
     for (const liveMatch of liveMatches) {
       const dbMatch = dbMatches.find(m => m.id === liveMatch.fixture.id);
+      
+      // ✅ Event'leri kaydet (API response'unda varsa)
+      if (liveMatch.events && Array.isArray(liveMatch.events) && liveMatch.events.length > 0) {
+        const matchData = {
+          fixture: liveMatch.fixture,
+          events: liveMatch.events,
+          goals: liveMatch.goals,
+          teams: liveMatch.teams,
+          league: liveMatch.league,
+        };
+        
+        const savedCount = await timelineService.saveMatchEvents(matchData);
+        if (savedCount > 0) {
+          totalEventsSaved += savedCount;
+          matchesWithEvents++;
+        }
+      }
       
       if (dbMatch) {
         // Detect changes
@@ -220,13 +242,18 @@ async function pollLiveMatches() {
           if (['FT', 'AET', 'PEN'].includes(liveMatch.fixture.status.short)) {
             console.log(`🏁 Match ${liveMatch.fixture.id} finished!`);
             
-            // Fetch full match data (with events and statistics)
-            const fullMatchData = await footballApi.getFixtureDetails(liveMatch.fixture.id);
-            const fullMatch = fullMatchData.response[0];
+            // ✅ Event'ler zaten liveMatch'te varsa kullan, yoksa ayrı çek
+            let events = liveMatch.events || [];
+            if (events.length === 0) {
+              // Fallback: Ayrı çek (eski yöntem)
+              const eventsData = await footballApi.getFixtureEvents(liveMatch.fixture.id);
+              events = eventsData.response || [];
+            }
             
-            // Fetch events
-            const eventsData = await footballApi.getFixtureEvents(liveMatch.fixture.id);
-            fullMatch.events = eventsData.response;
+            // Fetch full match data (with statistics)
+            const fullMatchData = await footballApi.getFixtureDetails(liveMatch.fixture.id);
+            const fullMatch = fullMatchData.response[0] || liveMatch;
+            fullMatch.events = events;
             
             // Fetch statistics
             const statsData = await footballApi.getFixtureStatistics(liveMatch.fixture.id);
@@ -244,6 +271,10 @@ async function pollLiveMatches() {
         }
       }
     }
+    
+    if (totalEventsSaved > 0) {
+      console.log(`✅ [LIVE] Saved ${totalEventsSaved} events from ${matchesWithEvents} matches`);
+    }
 
     console.log('✅ Polling complete');
   } catch (error) {
@@ -259,6 +290,11 @@ async function pollLiveMatches() {
 
 // Start polling
 function startPolling() {
+  // ⏸️ GEÇİCİ OLARAK DURDURULDU: API hakkı takım kadroları için kullanılıyor
+  console.log('⏸️ [LIVE POLLING] Temporarily disabled - API quota reserved for squad sync');
+  return;
+  
+  /* ORIGINAL CODE - Re-enable when squad sync is complete
   if (pollingTimer) {
     console.log('⚠️ Polling already running');
     return;
@@ -271,6 +307,7 @@ function startPolling() {
   
   // Then run on interval
   pollingTimer = setInterval(pollLiveMatches, POLLING_INTERVAL);
+  */
 }
 
 // Stop polling

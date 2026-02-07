@@ -17,6 +17,7 @@ import { useAppNavigation } from './src/hooks/useAppNavigation';
 import { useOAuth } from './src/hooks/useOAuth';
 import { initWebZoomPrevention } from './src/utils/webZoomPrevention';
 import { getUserTimezone } from './src/utils/timezoneUtils';
+import { restartMatch1In1Minute, MOCK_TEST_ENABLED } from './src/data/mockTestData';
 
 // Web için React Native'in built-in Animated API'sini kullan, native için reanimated
 import { Animated as RNAnimated } from 'react-native';
@@ -178,7 +179,25 @@ export default function App() {
   useOAuth({ navActions, navRefs });
 
   // ✅ Favori takımlar hook'u - ProfileCard'a aktarılacak ve ProfileScreen ile paylaşılacak
-  const { favoriteTeams, loading: teamsLoading, refetch: refetchFavoriteTeams, setAllFavoriteTeams } = useFavoriteTeams();
+  // ✅ Bulk data download desteği eklendi
+  const { favoriteTeams, loading: teamsLoading, refetch: refetchFavoriteTeams, setAllFavoriteTeams, bulkDownloadProgress, isBulkDownloading, triggerBulkDownload } = useFavoriteTeams();
+
+  // ✅ Uygulama açılışında bulk data cache'ini arka planda kontrol et ve güncelle
+  const bulkInitRef = useRef(false);
+  useEffect(() => {
+    if (bulkInitRef.current) return;
+    if (teamsLoading || !favoriteTeams || favoriteTeams.length === 0) return;
+    bulkInitRef.current = true;
+    
+    // Arka planda sessizce bulk data'yı güncelle (cache geçerliyse skip edecek)
+    const teamIds = favoriteTeams.map(t => t.id).filter(Boolean);
+    if (teamIds.length > 0) {
+      // Kısa bir delay ile başlat (UI'ı bloklamadan)
+      setTimeout(() => {
+        triggerBulkDownload(teamIds);
+      }, 3000);
+    }
+  }, [favoriteTeams, teamsLoading]);
 
   // 🎉 Yeni Rozet State (Test için başlangıçta bir rozet gösterelim)
   const [newBadge, setNewBadge] = useState<{ id: string; name: string; emoji: string; description: string; tier: number } | null>(null);
@@ -210,6 +229,28 @@ export default function App() {
   // Saat dilimi cache'ini uygulama başında yükle (maç saatleri doğru gösterilsin)
   useEffect(() => {
     getUserTimezone().catch(() => {});
+  }, []);
+
+  // 🧪 Mock maçı 1 dakika sonra tekrar başlat (test için)
+  useEffect(() => {
+    if (MOCK_TEST_ENABLED && typeof window !== 'undefined') {
+      // Global olarak erişilebilir yap (console'dan çağrılabilir)
+      (window as any).restartMockMatch = () => {
+        restartMatch1In1Minute();
+        console.log('🔄 Mock maç 1 dakika sonra tekrar başlatıldı! Sayfayı yenile (F5)');
+        // Sayfayı otomatik yenile (test için)
+        setTimeout(() => {
+          if (typeof window !== 'undefined' && window.location) {
+            window.location.reload();
+          }
+        }, 500);
+      };
+      console.log('💡 Mock maçı yeniden başlatmak için: window.restartMockMatch()');
+      
+      // ✅ Test için: Sayfa yüklendiğinde otomatik olarak maçı 1 dakika sonra başlat
+      restartMatch1In1Minute();
+      console.log('🔄 [AUTO] Mock maç otomatik olarak 1 dakika sonra başlatıldı');
+    }
   }, []);
 
   useEffect(() => {
@@ -341,17 +382,6 @@ export default function App() {
             />
           );
         
-        case 'matches':
-          return (
-            <MatchListScreen
-              onMatchSelect={navHandlers.handleMatchSelect}
-              onMatchResultSelect={navHandlers.handleMatchResultSelect}
-              onProfileClick={navHandlers.handleProfileClick}
-              matchData={matchData}
-              selectedTeamIds={selectedTeamIds}
-            />
-          );
-        
         case 'finished':
           return (
             <MatchListScreen
@@ -381,6 +411,7 @@ export default function App() {
               initialTab={matchDetailParams.initialTab || 'squad'}
               analysisFocus={matchDetailParams.analysisFocus}
               preloadedMatch={matchDetailParams.matchData}
+              predictionTeamId={matchDetailParams.predictionTeamId}
               onBack={navHandlers.handleMatchDetailBack}
             />
           );
@@ -503,7 +534,7 @@ export default function App() {
   };
   
   // Check if current screen should show bottom navigation
-  const shouldShowBottomNav = ['home', 'matches', 'finished', 'leaderboard', 'tournaments', 'profile'].includes(currentScreen);
+  const shouldShowBottomNav = ['home', 'finished', 'leaderboard', 'tournaments', 'profile'].includes(currentScreen);
 
   // Web için debug log
   if (Platform.OS === 'web' && __DEV__) {
@@ -524,7 +555,7 @@ export default function App() {
                 <View key={currentScreen === 'onboarding' ? 'content-onboarding' : `content-${currentLang}-${forceUpdateKey}`} style={{ flex: 1, backgroundColor: '#0F2A24' }}>
                   {renderScreen()}
                   
-                  {/* Fixed Profile Card Overlay - Only on home, matches, leaderboard */}
+                  {/* Kişi kartı + favori takım barı — Maç Takvimi, Biten Maçlar, Sıralama, Profil (hepsi aynı yapı) */}
                   {['home', 'matches', 'finished', 'leaderboard', 'profile'].includes(currentScreen) && (
                     <View style={styles.profileCardOverlay}>
                       <ProfileCard 

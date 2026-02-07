@@ -227,7 +227,9 @@ router.get('/live', async (req, res) => {
       .order('fixture_date', { ascending: true });
 
     // 3. If API key exists, try to get fresh data (ONLY if cache expired)
-    if (process.env.API_FOOTBALL_KEY) {
+    // ⏸️ GEÇİCİ OLARAK DURDURULDU: API hakkı takım kadroları için kullanılıyor
+    // Cache'den döndür, API çağrısı yapma
+    if (process.env.API_FOOTBALL_KEY && false) { // false = devre dışı
       try {
         console.log('🌐 [LIVE] Fetching from API-FOOTBALL (cache expired)');
         const data = await footballApi.getLiveMatches();
@@ -243,6 +245,34 @@ router.get('/live', async (req, res) => {
           seenIds.add(fixtureId);
           return true;
         });
+        
+        // ✅ EVENT'LERİ KAYDET: API-Football /fixtures?live=all endpoint'i event'leri de içeriyor!
+        const timelineService = require('../services/timelineService');
+        let totalEventsSaved = 0;
+        let matchesWithEvents = 0;
+        
+        for (const match of uniqueMatches) {
+          // Event'ler match.events array'inde geliyor (API-Football v3)
+          if (match.events && Array.isArray(match.events) && match.events.length > 0) {
+            const matchData = {
+              fixture: match.fixture,
+              events: match.events,
+              goals: match.goals,
+              teams: match.teams,
+              league: match.league,
+            };
+            
+            const savedCount = await timelineService.saveMatchEvents(matchData);
+            if (savedCount > 0) {
+              totalEventsSaved += savedCount;
+              matchesWithEvents++;
+            }
+          }
+        }
+        
+        if (totalEventsSaved > 0) {
+          console.log(`✅ [LIVE] Saved ${totalEventsSaved} events from ${matchesWithEvents} matches`);
+        }
         
         // Mock maçı ekle (her zaman görünsün) - API response'dan sonra
         // (API response zaten uniqueMatches'e eklendi, mock maçı kontrol et)
@@ -529,6 +559,41 @@ router.get('/:id', async (req, res) => {
     const { id } = req.params;
     const matchId = parseInt(id);
     
+    // 🧪 MOCK TEST: 888001 ve 888002 icin match detail
+    if (matchId === 888001 || matchId === 888002) {
+      const now = new Date();
+      const isGsFb = matchId === 888001;
+      return res.json({
+        success: true,
+        data: {
+          fixture: {
+            id: matchId,
+            referee: isGsFb ? 'C. Çakır' : 'F. Brych',
+            timezone: 'UTC',
+            date: now.toISOString(),
+            timestamp: Math.floor(now.getTime() / 1000),
+            venue: isGsFb 
+              ? { id: 888, name: 'Rams Park', city: 'İstanbul' }
+              : { id: 889, name: 'Santiago Bernabéu', city: 'Madrid' },
+            status: { long: 'Not Started', short: 'NS', elapsed: null },
+          },
+          league: isGsFb
+            ? { id: 203, name: 'Süper Lig', country: 'Turkey', logo: null, season: 2025 }
+            : { id: 140, name: 'La Liga', country: 'Spain', logo: null, season: 2025 },
+          teams: isGsFb
+            ? { home: { id: 645, name: 'Galatasaray', logo: null }, away: { id: 611, name: 'Fenerbahçe', logo: null } }
+            : { home: { id: 541, name: 'Real Madrid', logo: null }, away: { id: 529, name: 'Barcelona', logo: null } },
+          goals: { home: null, away: null },
+          score: { halftime: { home: null, away: null }, fulltime: { home: null, away: null }, extratime: { home: null, away: null }, penalty: { home: null, away: null } },
+          events: [],
+          lineups: [],
+          statistics: [],
+        },
+        source: 'mock-test',
+        cached: false,
+      });
+    }
+
     // ✅ MOCK MATCH: ID 999999 için özel veri döndür (API çağrısı yapma)
     if (matchId === 999999) {
       const now = new Date();
@@ -1169,6 +1234,126 @@ router.get('/:id/lineups', async (req, res) => {
     const matchId = parseInt(id);
     const skipCache = req.query.refresh === '1' || req.query.refresh === 'true';
     
+    // 🧪 MOCK TEST: GS vs FB (888001) ve Real vs Barça (888002) lineup
+    if (matchId === 888001) {
+      return res.json({
+        success: true,
+        data: [
+          {
+            team: { id: 645, name: 'Galatasaray', logo: null, colors: { primary: '#E30613', secondary: '#FDB913' } },
+            coach: { id: 901, name: 'Okan Buruk', photo: null },
+            formation: '4-3-3',
+            startXI: [
+              { player: { id: 50001, name: 'F. Muslera', number: 1, pos: 'G', grid: '1:1', rating: 83, stats: { pace: 48, shooting: 28, passing: 62, dribbling: 42, defending: 88, physical: 82 } } },
+              { player: { id: 50002, name: 'S. Boey', number: 20, pos: 'D', grid: '2:4', rating: 78, stats: { pace: 85, shooting: 45, passing: 68, dribbling: 62, defending: 80, physical: 78 } } },
+              { player: { id: 50003, name: 'D. Nelsson', number: 4, pos: 'D', grid: '2:3', rating: 81, stats: { pace: 68, shooting: 35, passing: 65, dribbling: 52, defending: 86, physical: 84 } } },
+              { player: { id: 50004, name: 'A. Bardakcı', number: 42, pos: 'D', grid: '2:2', rating: 79, stats: { pace: 65, shooting: 32, passing: 62, dribbling: 48, defending: 84, physical: 82 } } },
+              { player: { id: 50005, name: 'A. Kurzawa', number: 12, pos: 'D', grid: '2:1', rating: 76, stats: { pace: 78, shooting: 42, passing: 72, dribbling: 68, defending: 78, physical: 75 } } },
+              { player: { id: 50006, name: 'L. Torreira', number: 34, pos: 'M', grid: '3:3', rating: 82, stats: { pace: 72, shooting: 65, passing: 85, dribbling: 78, defending: 80, physical: 76 } } },
+              { player: { id: 50007, name: 'K. Aktürkoğlu', number: 7, pos: 'M', grid: '3:2', rating: 80, stats: { pace: 88, shooting: 75, passing: 78, dribbling: 85, defending: 45, physical: 72 } } },
+              { player: { id: 50008, name: 'D. Mertens', number: 14, pos: 'M', grid: '3:1', rating: 83, stats: { pace: 72, shooting: 82, passing: 86, dribbling: 84, defending: 42, physical: 65 } } },
+              { player: { id: 50009, name: 'B. Yılmaz', number: 17, pos: 'F', grid: '4:3', rating: 79, stats: { pace: 85, shooting: 80, passing: 72, dribbling: 82, defending: 35, physical: 78 } } },
+              { player: { id: 50010, name: 'M. Icardi', number: 9, pos: 'F', grid: '4:2', rating: 85, stats: { pace: 78, shooting: 90, passing: 68, dribbling: 82, defending: 32, physical: 82 } } },
+              { player: { id: 50011, name: 'V. Osimhen', number: 45, pos: 'F', grid: '4:1', rating: 88, stats: { pace: 92, shooting: 88, passing: 65, dribbling: 84, defending: 35, physical: 85 } } },
+            ],
+            substitutes: [
+              { player: { id: 50012, name: 'O. Bayram', number: 88, pos: 'G', grid: null, rating: 74, stats: { pace: 45, shooting: 25, passing: 58, dribbling: 38, defending: 82, physical: 78 } } },
+              { player: { id: 50013, name: 'K. Seri', number: 6, pos: 'M', grid: null, rating: 77, stats: { pace: 70, shooting: 62, passing: 82, dribbling: 76, defending: 72, physical: 74 } } },
+              { player: { id: 50014, name: 'Y. Bakasetas', number: 10, pos: 'M', grid: null, rating: 76, stats: { pace: 68, shooting: 78, passing: 80, dribbling: 75, defending: 48, physical: 70 } } },
+              { player: { id: 50015, name: 'E. Kılınç', number: 11, pos: 'F', grid: null, rating: 75, stats: { pace: 82, shooting: 72, passing: 70, dribbling: 78, defending: 38, physical: 72 } } },
+              { player: { id: 50016, name: 'H. Dervişoğlu', number: 99, pos: 'F', grid: null, rating: 74, stats: { pace: 80, shooting: 75, passing: 68, dribbling: 76, defending: 35, physical: 70 } } },
+            ],
+          },
+          {
+            team: { id: 611, name: 'Fenerbahçe', logo: null, colors: { primary: '#FFED00', secondary: '#00205B' } },
+            coach: { id: 902, name: 'José Mourinho', photo: null },
+            formation: '4-3-3',
+            startXI: [
+              { player: { id: 50101, name: 'D. Livakovic', number: 1, pos: 'G', grid: '1:1', rating: 84, stats: { pace: 48, shooting: 28, passing: 60, dribbling: 40, defending: 88, physical: 84 } } },
+              { player: { id: 50102, name: 'B. Osayi-Samuel', number: 2, pos: 'D', grid: '2:4', rating: 78, stats: { pace: 90, shooting: 52, passing: 68, dribbling: 72, defending: 76, physical: 80 } } },
+              { player: { id: 50103, name: 'A. Djiku', number: 4, pos: 'D', grid: '2:3', rating: 80, stats: { pace: 72, shooting: 35, passing: 62, dribbling: 50, defending: 85, physical: 84 } } },
+              { player: { id: 50104, name: 'Ç. Söyüncü', number: 3, pos: 'D', grid: '2:2', rating: 79, stats: { pace: 78, shooting: 38, passing: 65, dribbling: 52, defending: 84, physical: 82 } } },
+              { player: { id: 50105, name: 'F. Kadıoğlu', number: 5, pos: 'D', grid: '2:1', rating: 81, stats: { pace: 85, shooting: 58, passing: 78, dribbling: 78, defending: 80, physical: 76 } } },
+              { player: { id: 50106, name: 'İ. Kahveci', number: 6, pos: 'M', grid: '3:3', rating: 80, stats: { pace: 72, shooting: 82, passing: 80, dribbling: 78, defending: 55, physical: 72 } } },
+              { player: { id: 50107, name: 'F. Amrabat', number: 8, pos: 'M', grid: '3:2', rating: 79, stats: { pace: 74, shooting: 58, passing: 78, dribbling: 72, defending: 82, physical: 80 } } },
+              { player: { id: 50108, name: 'S. Szymanski', number: 10, pos: 'M', grid: '3:1', rating: 82, stats: { pace: 76, shooting: 78, passing: 85, dribbling: 82, defending: 48, physical: 70 } } },
+              { player: { id: 50109, name: 'D. Tadic', number: 11, pos: 'F', grid: '4:3', rating: 83, stats: { pace: 72, shooting: 82, passing: 86, dribbling: 84, defending: 42, physical: 68 } } },
+              { player: { id: 50110, name: 'E. Dzeko', number: 9, pos: 'F', grid: '4:2', rating: 82, stats: { pace: 68, shooting: 86, passing: 72, dribbling: 78, defending: 38, physical: 85 } } },
+              { player: { id: 50111, name: 'Ç. Ünder', number: 17, pos: 'F', grid: '4:1', rating: 80, stats: { pace: 88, shooting: 80, passing: 72, dribbling: 84, defending: 35, physical: 68 } } },
+            ],
+            substitutes: [
+              { player: { id: 50112, name: 'İ. Bayındır', number: 12, pos: 'G', grid: null, rating: 78, stats: { pace: 45, shooting: 25, passing: 55, dribbling: 38, defending: 85, physical: 80 } } },
+              { player: { id: 50113, name: 'J. Oosterwolde', number: 23, pos: 'D', grid: null, rating: 76, stats: { pace: 82, shooting: 48, passing: 70, dribbling: 68, defending: 78, physical: 76 } } },
+              { player: { id: 50114, name: 'M. Crespo', number: 7, pos: 'M', grid: null, rating: 75, stats: { pace: 72, shooting: 65, passing: 76, dribbling: 72, defending: 68, physical: 74 } } },
+              { player: { id: 50115, name: 'R. Batshuayi', number: 20, pos: 'F', grid: null, rating: 77, stats: { pace: 80, shooting: 82, passing: 62, dribbling: 74, defending: 32, physical: 78 } } },
+              { player: { id: 50116, name: 'E. Valencia', number: 18, pos: 'F', grid: null, rating: 76, stats: { pace: 85, shooting: 78, passing: 65, dribbling: 80, defending: 35, physical: 75 } } },
+            ],
+          },
+        ],
+        cached: false,
+        source: 'mock-test',
+      });
+    }
+    
+    if (matchId === 888002) {
+      return res.json({
+        success: true,
+        data: [
+          {
+            team: { id: 541, name: 'Real Madrid', logo: null, colors: { primary: '#FFFFFF', secondary: '#00529F' } },
+            coach: { id: 903, name: 'Carlo Ancelotti', photo: null },
+            formation: '4-3-3',
+            startXI: [
+              { player: { id: 50201, name: 'T. Courtois', number: 1, pos: 'G', grid: '1:1', rating: 89, stats: { pace: 50, shooting: 28, passing: 62, dribbling: 42, defending: 92, physical: 88 } } },
+              { player: { id: 50202, name: 'D. Carvajal', number: 2, pos: 'D', grid: '2:4', rating: 85, stats: { pace: 82, shooting: 58, passing: 78, dribbling: 72, defending: 84, physical: 80 } } },
+              { player: { id: 50203, name: 'A. Rüdiger', number: 22, pos: 'D', grid: '2:3', rating: 86, stats: { pace: 82, shooting: 42, passing: 65, dribbling: 55, defending: 88, physical: 88 } } },
+              { player: { id: 50204, name: 'D. Alaba', number: 4, pos: 'D', grid: '2:2', rating: 84, stats: { pace: 72, shooting: 55, passing: 78, dribbling: 68, defending: 86, physical: 82 } } },
+              { player: { id: 50205, name: 'F. Mendy', number: 23, pos: 'D', grid: '2:1', rating: 83, stats: { pace: 88, shooting: 48, passing: 72, dribbling: 72, defending: 82, physical: 84 } } },
+              { player: { id: 50206, name: 'T. Kroos', number: 8, pos: 'M', grid: '3:3', rating: 88, stats: { pace: 55, shooting: 78, passing: 92, dribbling: 82, defending: 72, physical: 72 } } },
+              { player: { id: 50207, name: 'L. Modrić', number: 10, pos: 'M', grid: '3:2', rating: 87, stats: { pace: 68, shooting: 76, passing: 90, dribbling: 88, defending: 72, physical: 68 } } },
+              { player: { id: 50208, name: 'J. Bellingham', number: 5, pos: 'M', grid: '3:1', rating: 88, stats: { pace: 82, shooting: 85, passing: 82, dribbling: 85, defending: 68, physical: 82 } } },
+              { player: { id: 50209, name: 'Vinícius Jr.', number: 7, pos: 'F', grid: '4:3', rating: 90, stats: { pace: 95, shooting: 82, passing: 78, dribbling: 92, defending: 32, physical: 72 } } },
+              { player: { id: 50210, name: 'K. Mbappé', number: 9, pos: 'F', grid: '4:2', rating: 91, stats: { pace: 97, shooting: 90, passing: 78, dribbling: 92, defending: 35, physical: 78 } } },
+              { player: { id: 50211, name: 'Rodrygo', number: 11, pos: 'F', grid: '4:1', rating: 85, stats: { pace: 88, shooting: 82, passing: 78, dribbling: 86, defending: 38, physical: 72 } } },
+            ],
+            substitutes: [
+              { player: { id: 50212, name: 'A. Lunin', number: 13, pos: 'G', grid: null, rating: 78, stats: { pace: 48, shooting: 25, passing: 58, dribbling: 38, defending: 84, physical: 80 } } },
+              { player: { id: 50213, name: 'E. Militão', number: 3, pos: 'D', grid: null, rating: 83, stats: { pace: 82, shooting: 42, passing: 62, dribbling: 55, defending: 85, physical: 85 } } },
+              { player: { id: 50214, name: 'E. Camavinga', number: 12, pos: 'M', grid: null, rating: 82, stats: { pace: 80, shooting: 68, passing: 80, dribbling: 80, defending: 75, physical: 82 } } },
+              { player: { id: 50215, name: 'F. Valverde', number: 15, pos: 'M', grid: null, rating: 86, stats: { pace: 88, shooting: 78, passing: 82, dribbling: 80, defending: 78, physical: 85 } } },
+            ],
+          },
+          {
+            team: { id: 529, name: 'Barcelona', logo: null, colors: { primary: '#004D98', secondary: '#A50044' } },
+            coach: { id: 904, name: 'Hansi Flick', photo: null },
+            formation: '4-3-3',
+            startXI: [
+              { player: { id: 50301, name: 'M. ter Stegen', number: 1, pos: 'G', grid: '1:1', rating: 88, stats: { pace: 48, shooting: 28, passing: 82, dribbling: 52, defending: 88, physical: 82 } } },
+              { player: { id: 50302, name: 'J. Cancelo', number: 2, pos: 'D', grid: '2:4', rating: 84, stats: { pace: 82, shooting: 68, passing: 85, dribbling: 82, defending: 78, physical: 76 } } },
+              { player: { id: 50303, name: 'R. Araújo', number: 4, pos: 'D', grid: '2:3', rating: 83, stats: { pace: 82, shooting: 38, passing: 62, dribbling: 52, defending: 86, physical: 88 } } },
+              { player: { id: 50304, name: 'A. Christensen', number: 15, pos: 'D', grid: '2:2', rating: 80, stats: { pace: 65, shooting: 35, passing: 72, dribbling: 58, defending: 84, physical: 80 } } },
+              { player: { id: 50305, name: 'A. Baldé', number: 3, pos: 'D', grid: '2:1', rating: 79, stats: { pace: 88, shooting: 52, passing: 72, dribbling: 78, defending: 76, physical: 78 } } },
+              { player: { id: 50306, name: 'Pedri', number: 8, pos: 'M', grid: '3:3', rating: 87, stats: { pace: 72, shooting: 72, passing: 90, dribbling: 90, defending: 65, physical: 68 } } },
+              { player: { id: 50307, name: 'F. de Jong', number: 21, pos: 'M', grid: '3:2', rating: 85, stats: { pace: 78, shooting: 68, passing: 88, dribbling: 86, defending: 72, physical: 78 } } },
+              { player: { id: 50308, name: 'Gavi', number: 6, pos: 'M', grid: '3:1', rating: 82, stats: { pace: 78, shooting: 72, passing: 82, dribbling: 82, defending: 72, physical: 78 } } },
+              { player: { id: 50309, name: 'L. Yamal', number: 19, pos: 'F', grid: '4:3', rating: 84, stats: { pace: 92, shooting: 78, passing: 82, dribbling: 90, defending: 32, physical: 62 } } },
+              { player: { id: 50310, name: 'R. Lewandowski', number: 9, pos: 'F', grid: '4:2', rating: 88, stats: { pace: 72, shooting: 92, passing: 78, dribbling: 82, defending: 42, physical: 82 } } },
+              { player: { id: 50311, name: 'Raphinha', number: 11, pos: 'F', grid: '4:1', rating: 84, stats: { pace: 88, shooting: 80, passing: 78, dribbling: 86, defending: 42, physical: 72 } } },
+            ],
+            substitutes: [
+              { player: { id: 50312, name: 'İ. Peña', number: 13, pos: 'G', grid: null, rating: 75, stats: { pace: 45, shooting: 22, passing: 55, dribbling: 38, defending: 80, physical: 76 } } },
+              { player: { id: 50313, name: 'J. Koundé', number: 23, pos: 'D', grid: null, rating: 84, stats: { pace: 85, shooting: 52, passing: 72, dribbling: 72, defending: 84, physical: 80 } } },
+              { player: { id: 50314, name: 'İ. Gündoğan', number: 22, pos: 'M', grid: null, rating: 84, stats: { pace: 65, shooting: 78, passing: 86, dribbling: 82, defending: 68, physical: 72 } } },
+              { player: { id: 50315, name: 'F. Torres', number: 17, pos: 'M', grid: null, rating: 80, stats: { pace: 78, shooting: 75, passing: 78, dribbling: 82, defending: 55, physical: 72 } } },
+              { player: { id: 50316, name: 'A. Fati', number: 10, pos: 'F', grid: null, rating: 78, stats: { pace: 85, shooting: 80, passing: 72, dribbling: 82, defending: 32, physical: 68 } } },
+            ],
+          },
+        ],
+        cached: false,
+        source: 'mock-test',
+      });
+    }
+
     // ✅ MOCK MATCH: ID 999999 için özel lineup döndür
     if (matchId === 999999) {
       return res.json({

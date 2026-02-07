@@ -233,6 +233,15 @@ export const STORAGE_KEYS = {
   ONBOARDING: 'tacticiq-onboarding-complete',
   PRO_STATUS: 'tacticiq-pro-status',
   PROFILE_SETUP: 'tacticiq-profile-setup',
+  // Bulk Data Keys (offline mode)
+  BULK_DATA: 'tacticiq-bulk-data',
+  BULK_TIMESTAMP: 'tacticiq-bulk-timestamp',
+  BULK_VERSION: 'tacticiq-bulk-version',
+  BULK_STATUS: 'tacticiq-bulk-status',
+  BULK_MATCHES_PREFIX: 'tacticiq-bulk-matches-',
+  BULK_SQUAD_PREFIX: 'tacticiq-bulk-squad-',
+  BULK_COACH_PREFIX: 'tacticiq-bulk-coach-',
+  BULK_INFO_PREFIX: 'tacticiq-bulk-info-',
 };
 
 // Legacy keys for backward compatibility (migration period)

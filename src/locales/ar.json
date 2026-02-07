@@ -404,8 +404,10 @@
   },
   "navigation": {
     "matches": "المباريات",
+    "matchCalendar": "التقويم",
     "live": "مباشر",
     "finished": "منتهية",
+    "finishedMatches": "النتائج",
     "leaderboard": "الترتيب",
     "profile": "الملف الشخصي"
   },

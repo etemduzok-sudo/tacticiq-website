@@ -404,8 +404,10 @@
   },
   "navigation": {
     "matches": "Partite",
+    "matchCalendar": "Calendario",
     "live": "In Diretta",
     "finished": "Terminate",
+    "finishedMatches": "Risultati",
     "leaderboard": "Classifica",
     "profile": "Profilo"
   },

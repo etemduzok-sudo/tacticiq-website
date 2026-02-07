@@ -406,8 +406,10 @@
   },
   "navigation": {
     "matches": "मैच",
+    "matchCalendar": "कैलेंडर",
     "live": "लाइव",
     "finished": "समाप्त",
+    "finishedMatches": "परिणाम",
     "leaderboard": "रैंकिंग",
     "profile": "प्रोफ़ाइल"
   },

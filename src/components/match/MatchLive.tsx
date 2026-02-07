@@ -2,7 +2,7 @@
 // ✅ Canlı Maç Timeline - TacticIQ Design System v2.1
 // Sadece canlı olaylar (gol, kart, değişiklik). Maç istatistikleri İstatistik sekmesinde.
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import api from '../../services/api';
 import { BRAND, DARK_MODE } from '../../theme/theme';
+import { MOCK_MATCH_IDS, isMockTestMatch, getMockMatchEvents, getMatch1Start, getMatch2Start } from '../../data/mockTestData';
 
 const isWeb = Platform.OS === 'web';
 
@@ -33,6 +34,8 @@ interface LiveEvent {
   description: string;
   detail?: string;
   score?: string | null;
+  playerOut?: string | null; // ✅ Substitution için: Kim çıktı
+  playerIn?: string | null; // ✅ Substitution için: Kim girdi
 }
 
 interface MatchLiveScreenProps {
@@ -70,13 +73,40 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
   const matchNotStartedRef = useRef(false);
   matchNotStartedRef.current = matchNotStarted;
   
-  // ✅ matchData.status değiştiğinde state'leri güncelle
+  // ✅ Mock maçlar için ticker - currentMinute'ın her saniye güncellenmesi için
+  // ✅ Maç başlamadan önce de çalışmalı ki maç başladığında hemen algılansın
+  const [ticker, setTicker] = useState(0);
   useEffect(() => {
-    if (isMatchNotStartedFromData) {
+    const isMockMatch = isMockTestMatch(Number(matchId));
+    if (!isMockMatch) return;
+    
+    const interval = setInterval(() => {
+      setTicker(prev => prev + 1);
+      
+      // ✅ Her saniye maç başlangıç zamanını kontrol et
+      const matchStart = Number(matchId) === MOCK_MATCH_IDS.GS_FB ? getMatch1Start() : getMatch2Start();
+      const now = Date.now();
+      const hasStarted = now >= matchStart;
+      
+      if (hasStarted && matchNotStartedRef.current) {
+        // Maç başladı, state'i güncelle - useEffect tekrar çalışacak ve canlı eventler yüklenecek
+        setMatchNotStarted(false);
+        matchNotStartedRef.current = false; // ✅ Ref'i de güncelle
+      }
+    }, 1000); // Her saniye güncelle
+    
+    return () => clearInterval(interval);
+  }, [matchId]);
+  
+  // ✅ matchData.status değiştiğinde state'leri güncelle (sadece gerçek maçlar için)
+  useEffect(() => {
+    const isMockMatch = isMockTestMatch(Number(matchId));
+    // Mock maçlar için bu kontrolü atla - gerçek zamandan kontrol edilecek
+    if (!isMockMatch && isMatchNotStartedFromData) {
       setMatchNotStarted(true);
       setLoading(false);
     }
-  }, [isMatchNotStartedFromData]);
+  }, [isMatchNotStartedFromData, matchId]);
 
   // Mock maç (999999): 52. dk, skor 5-4, ilk yarı 1 dk uzadı, 45+1 ev sahibi kırmızı kart, en az 8 event
   const MOCK_999999_EVENTS = [
@@ -102,14 +132,43 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
   useEffect(() => {
     if (!matchId) return;
     
-    // ✅ Maç başlamadıysa API çağrısı yapma
-    if (isMatchNotStartedFromData) {
-      setMatchNotStarted(true);
-      setLoading(false);
-      return;
-    }
+    const isMockMatch = String(matchId) === '999999' || isMockTestMatch(Number(matchId));
     
-    const isMockMatch = String(matchId) === '999999';
+    // ✅ Mock maçlar için gerçek zamandan kontrol et
+    if (isMockMatch) {
+      const matchStart = String(matchId) === '999999' 
+        ? Date.now() - 52 * 1000 // Mock 999999 için 52. dakikada
+        : (Number(matchId) === MOCK_MATCH_IDS.GS_FB ? getMatch1Start() : getMatch2Start());
+      const now = Date.now();
+      const hasStarted = now >= matchStart;
+      
+      if (!hasStarted) {
+        // Maç henüz başlamadı - sadece state'i güncelle, return etme
+        // Çünkü matchNotStarted dependency'de, maç başladığında tekrar çalışacak
+        if (!matchNotStarted) {
+          setMatchNotStarted(true);
+        }
+        setLoading(false);
+        return;
+      }
+      // Mock maç başladıysa devam et - matchNotStarted false olmalı
+      if (matchNotStarted) {
+        setMatchNotStarted(false);
+      }
+    } else {
+      // ✅ Gerçek maçlar için matchData.status kontrolü
+      if (isMatchNotStartedFromData) {
+        if (!matchNotStarted) {
+          setMatchNotStarted(true);
+        }
+        setLoading(false);
+        return;
+      }
+      // Gerçek maç başladıysa
+      if (matchNotStarted) {
+        setMatchNotStarted(false);
+      }
+    }
 
     const fetchLiveData = async () => {
       try {
@@ -119,10 +178,16 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
         setError(null);
 
         let events: any[] = [];
-        // Mock maç (999999): Her zaman tam event listesi (45. dk uzatma, devre arası, 2. yarı) – API yanıtı kullanılmaz
+        // Mock maç (999999 veya GS-FB 888001): Her zaman tam event listesi (45. dk uzatma, devre arası, 2. yarı) – API yanıtı kullanılmaz
         if (isMockMatch) {
           setMatchNotStarted(false);
-          events = MOCK_999999_EVENTS;
+          if (String(matchId) === '999999') {
+            events = MOCK_999999_EVENTS;
+          } else {
+            // GS-FB mock maçı için mockTestData'dan eventleri çek
+            // Bu eventler dinamik olarak computeLiveState tarafından filtrelenir
+            events = await getMockMatchEvents(Number(matchId));
+          }
         } else {
           try {
             const response = await api.matches.getMatchEventsLive(matchId);
@@ -173,7 +238,9 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
                 description = ex > 0 ? `45. dk +${ex} dk uzatma` : '45. dk uzatma';
                 displayType = 'stoppage';
               } else if ((detail === 'half time' || detail === 'halftime' || detailNorm === 'half time') && (event.time?.extra != null && event.time.extra > 0)) {
-                description = 'İlk yarı bitti';
+                // ✅ İlk yarı bitiş düdüğü: "45 +X dk sonunda" formatında göster
+                const ex = event.time.extra;
+                description = `45 +${ex} dk sonunda`;
                 displayType = 'halftime';
               } else if (detail === 'half time' || detail === 'halftime' || detailNorm === 'half time') {
                 description = 'İlk yarı sonu';
@@ -182,7 +249,13 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
                 description = 'İkinci yarı başladı';
                 displayType = 'kickoff';
               } else if (detail === 'match finished' || detail === 'full time' || detailNorm.includes('full time')) {
-                description = 'Maç bitti';
+                // ✅ Maç bitti eventini "90 +x dk sonunda" formatında göster
+                const ex = event.time?.extra ?? 0;
+                if (ex > 0) {
+                  description = `90 +${ex} dk sonunda`;
+                } else {
+                  description = 'Maç bitti';
+                }
                 displayType = 'fulltime';
               } else if (eventType === 'goal') {
                 if (detail.includes('penalty')) {
@@ -201,7 +274,7 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
                   description = 'Kırmızı kart';
                 }
               } else if (eventType === 'subst') {
-                description = 'Değişiklik';
+                description = 'Değişiklik'; // Alt satırda Çıkan / Giren ayrı gösterilecek
                 displayType = 'substitution';
               } else if (eventType === 'var') {
                 description = 'VAR';
@@ -221,16 +294,27 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
                 teamSide = event.team.name.toLowerCase().includes(homeTeamName.toLowerCase()) ? 'home' : 'away';
               }
               
+              // ✅ Substitution için playerOut ve playerIn bilgilerini ayrı tut
+              let playerOut: string | null = null;
+              let playerIn: string | null = null;
+              if (displayType === 'substitution') {
+                playerOut = typeof event.player === 'string' ? event.player : event.player?.name || null;
+                playerIn = event.comments || null;
+              }
+              
               return {
                 minute: event.time?.elapsed || 0,
                 extraTime: event.time?.extra || null,
                 type: displayType,
                 team: teamSide,
-                player: typeof event.player === 'string' ? event.player : event.player?.name || null,
+                player: displayType === 'substitution' ? playerOut : (typeof event.player === 'string' ? event.player : event.player?.name || null),
                 assist: typeof event.assist === 'string' ? event.assist : (event.assist?.name || null),
                 description: description,
                 detail: event.detail || '',
                 score: event.goals ? `${event.goals.home}-${event.goals.away}` : null,
+                // ✅ Substitution için ekstra bilgiler
+                playerOut: playerOut,
+                playerIn: playerIn,
               };
             })
             // Sırala: yüksek dakika üstte. Aynı dakikada (örn. 45+1): önce oyuncu olayları (kırmızı kart, gol), sonra sistem (İlk yarı bitti)
@@ -260,14 +344,132 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
     fetchLiveData();
     const interval = setInterval(fetchLiveData, 15000);
     return () => clearInterval(interval);
-  }, [matchId, matchData]);
+  }, [matchId, matchData, isMatchNotStartedFromData, matchNotStarted]); // ✅ matchNotStarted: maç başladığında tekrar çalışsın
 
-  // Maçın şu anki dakikası (header ile tutarlı – timeline sadece bu dakikaya kadar gösterilir)
-  const currentMinute = matchData?.minute ?? matchData?.fixture?.status?.elapsed ?? 99;
-  const eventsUpToNow = liveEvents.filter((e) => {
-    const eventMin = e.minute + (e.extraTime ?? 0) * 0.01;
-    return eventMin <= currentMinute + 0.01;
-  });
+  // Maçın şu anki dakikası ve uzatma bilgisi (header ile tutarlı – timeline sadece bu dakikaya kadar gösterilir)
+  // ✅ Mock maçlar için doğrudan hesapla (matchData.minute senkronize olmayabilir)
+  // ✅ useMemo ile hesapla ki her render'da güncel olsun
+  const { currentMinute, currentExtraTime } = useMemo(() => {
+    const isMockMatch = isMockTestMatch(Number(matchId));
+    
+    // ✅ Mock maçlarda her zaman gerçek zamandan hesapla (matchData.minute takılı kalmasın)
+    if (isMockMatch && matchId) {
+      const matchStart = Number(matchId) === MOCK_MATCH_IDS.GS_FB ? getMatch1Start() : getMatch2Start();
+      const now = Date.now();
+      const elapsedSeconds = Math.floor((now - matchStart) / 1000);
+      const elapsedMinutes = elapsedSeconds; // 1 sn = 1 dk
+      
+      if (elapsedMinutes < 0) return { currentMinute: 0, currentExtraTime: null };
+      if (elapsedMinutes >= 112) return { currentMinute: 90, currentExtraTime: 4 }; // Maç bitti (90+4)
+      
+      // ✅ İlk yarı: 0-45 dk (normal)
+      if (elapsedMinutes < 45) return { currentMinute: elapsedMinutes, currentExtraTime: null };
+      
+      // ✅ İlk yarı uzatması: 45-48 dk → 45+1, 45+2, 45+3
+      if (elapsedMinutes <= 48) {
+        const extraTime = elapsedMinutes - 45;
+        return { currentMinute: 45, currentExtraTime: extraTime };
+      }
+      
+      // ✅ Devre arası: 48-60 dk (15 dakika simülasyon)
+      if (elapsedMinutes < 60) return { currentMinute: 45, currentExtraTime: 3 };
+      
+      // ✅ İkinci yarı: 60-90 dk → 46. dk'dan başlar
+      if (elapsedMinutes < 90) {
+        const secondHalfMinute = 46 + (elapsedMinutes - 60);
+        return { currentMinute: secondHalfMinute, currentExtraTime: null };
+      }
+      
+      // ✅ İkinci yarı uzatması: 90-94 dk → 90+1, 90+2, 90+3, 90+4
+      if (elapsedMinutes <= 94) {
+        const extraTime = elapsedMinutes - 90;
+        return { currentMinute: 90, currentExtraTime: extraTime };
+      }
+      
+      return { currentMinute: 90, currentExtraTime: 4 };
+    }
+    
+    // Gerçek maçlar için API'den gelen bilgiyi kullan
+    const minute = matchData?.minute ?? matchData?.fixture?.status?.elapsed ?? 99;
+    const extraTime = matchData?.extraTime ?? matchData?.fixture?.status?.extraTime ?? null;
+    return { currentMinute: minute, currentExtraTime: extraTime };
+  }, [matchId, matchData?.minute, matchData?.extraTime, matchData?.fixture?.status?.elapsed, matchData?.fixture?.status?.extraTime, ticker]); // ✅ ticker: mock'ta her saniye güncelle
+  
+  // ✅ eventsUpToNow'u da useMemo ile hesapla
+  // ✅ Mock maçlarda gerçek zamandan filtreleme yap
+  const eventsUpToNow = useMemo(() => {
+    const isMockMatch = isMockTestMatch(Number(matchId));
+    
+    return liveEvents.filter((e) => {
+      if (e.type === 'kickoff') return false;
+      
+      // ✅ Sistem eventlerini filtrele: "45 +X dk uzatma" ve "90 +X dk uzatma" sistem eventlerini gösterme
+      // Sadece "Half Time" ve "Match Finished" sistem eventleri gösterilecek
+      // Gerçek eventler (gol, kart, değişiklik) 90+x formatında gösterilecek
+      if (e.type === 'stoppage') {
+        // "First Half Extra Time" ve "Second Half Extra Time" sistem eventlerini gösterme
+        // Bunlar sadece toplam uzatma dakikasını gösteriyor, gerçek event değil
+        return false;
+      }
+      
+      // ✅ "Half Time" ve "Match Finished" eventleri gösterilmeli (halftime ve fulltime type'ları)
+      // Bu eventler zaten gösterilecek çünkü stoppage değiller
+      
+      // ✅ Mock maçlarda gerçek zamandan kontrol et
+      if (isMockMatch && matchId) {
+        const matchStart = Number(matchId) === MOCK_MATCH_IDS.GS_FB ? getMatch1Start() : getMatch2Start();
+        const now = Date.now();
+        const elapsedSeconds = Math.floor((now - matchStart) / 1000);
+        const elapsedMinutes = elapsedSeconds; // Gerçek zaman (0-112)
+        
+        // Event'in maç dakikası ve uzatması (getMockMatchEvents'te zaten çevrilmiş)
+        // e.minute artık maç dakikasını gösteriyor (0-45, 46-90)
+        const eventMinute = e.minute;
+        const eventExtraTime = e.extraTime ?? 0;
+        
+        // Event'in gerçekleştiği toplam elapsed dakika (gerçek zaman 0-112)
+        let eventTotalElapsedMinute: number;
+        
+        if (eventMinute < 45) {
+          // İlk yarı normal dakikaları: 0-45
+          eventTotalElapsedMinute = eventMinute;
+        } else if (eventMinute === 45) {
+          if (eventExtraTime > 0) {
+            // İlk yarı uzatması: 45+1, 45+2, 45+3 → elapsed 46, 47, 48
+            eventTotalElapsedMinute = 45 + eventExtraTime;
+          } else {
+            // İlk yarı sonu → elapsed 48
+            eventTotalElapsedMinute = 48;
+          }
+        } else if (eventMinute < 90) {
+          // İkinci yarı normal dakikaları: 46-89
+          // 46. maç dk = 60. elapsed dk (ikinci yarı başlangıcı)
+          // 90. maç dk = 90. elapsed dk
+          // Linear: elapsed = 60 + (eventMinute - 46)
+          eventTotalElapsedMinute = 60 + (eventMinute - 46);
+        } else if (eventMinute === 90) {
+          if (eventExtraTime > 0) {
+            // İkinci yarı uzatması: 90+1, 90+2, 90+3, 90+4 → elapsed 91, 92, 93, 94
+            eventTotalElapsedMinute = 90 + eventExtraTime;
+          } else {
+            // Maç bitiş düdüğü → elapsed 94 (90+4 uzatma varsa)
+            // Match Finished event'i için 94. dakikada gösterilmeli
+            eventTotalElapsedMinute = 94; // Maç bitiş düdüğü
+          }
+        } else {
+          eventTotalElapsedMinute = 94;
+        }
+        
+        // ✅ Event'in gerçekleştiği zamana kadar göster (eşit veya önceki eventler)
+        return elapsedMinutes >= eventTotalElapsedMinute;
+      }
+      
+      // ✅ Gerçek maçlar için mevcut mantık - extraTime'ı da dikkate al
+      const eventMin = e.minute + (e.extraTime ?? 0) * 0.01;
+      const currentMin = currentMinute + (currentExtraTime ?? 0) * 0.01;
+      return eventMin <= currentMin + 0.01;
+    });
+  }, [liveEvents, currentMinute, currentExtraTime, matchId, ticker]); // ✅ ticker: mock'ta her saniye güncelle
 
   // Dakika + uzatma metni (örn. 45+2, 90+3)
   const formatMinute = (event: LiveEvent) =>
@@ -366,7 +568,26 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
                   {event.description}
                 </Text>
               </View>
-              {event.player && (
+              {event.type === 'substitution' && (event.playerOut || event.playerIn) ? (
+                <>
+                  {event.playerOut ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                      <Ionicons name="arrow-down-circle" size={14} color="#EF4444" />
+                      <Text style={styles.eventPlayer} numberOfLines={1}>
+                        <Text style={{ textDecorationLine: 'line-through', opacity: 0.8 }}>{event.playerOut}</Text>
+                      </Text>
+                    </View>
+                  ) : null}
+                  {event.playerIn ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                      <Ionicons name="arrow-up-circle" size={14} color="#10B981" />
+                      <Text style={styles.eventPlayer} numberOfLines={1}>
+                        <Text style={{ fontWeight: '700' }}>{event.playerIn}</Text>
+                      </Text>
+                    </View>
+                  ) : null}
+                </>
+              ) : event.player && (
                 <Text style={styles.eventPlayer} numberOfLines={1}>{event.player}</Text>
               )}
               {event.assist && (
@@ -399,7 +620,26 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
                   <Ionicons name={style.icon as any} size={14} color={style.color} />
                 </View>
               </View>
-              {event.player && (
+              {event.type === 'substitution' && (event.playerOut || event.playerIn) ? (
+                <>
+                  {event.playerOut ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2, justifyContent: 'flex-end' }}>
+                      <Text style={[styles.eventPlayer, styles.eventPlayerRight]} numberOfLines={1}>
+                        <Text style={{ textDecorationLine: 'line-through', opacity: 0.8 }}>{event.playerOut}</Text>
+                      </Text>
+                      <Ionicons name="arrow-down-circle" size={14} color="#EF4444" />
+                    </View>
+                  ) : null}
+                  {event.playerIn ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2, justifyContent: 'flex-end' }}>
+                      <Text style={[styles.eventPlayer, styles.eventPlayerRight]} numberOfLines={1}>
+                        <Text style={{ fontWeight: '700' }}>{event.playerIn}</Text>
+                      </Text>
+                      <Ionicons name="arrow-up-circle" size={14} color="#10B981" />
+                    </View>
+                  ) : null}
+                </>
+              ) : event.player && (
                 <Text style={[styles.eventPlayer, styles.eventPlayerRight]} numberOfLines={1}>{event.player}</Text>
               )}
               {event.assist && (
@@ -495,9 +735,10 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
         ) : (
           <>
             {/* Sadece mevcut dakikaya kadar olan olaylar (header 65' ise 90+2 gösterilmez) */}
-            {/* Sırala: yüksek dakika üstte. Aynı dakikada: önce oyuncu olayları (gol, kart), sonra sistem olayları (devre arası) */}
-            {[...eventsUpToNow]
-              .sort((a, b) => {
+            {/* Devre arası görseli ve eventleri birleştir */}
+            {(() => {
+              // Eventleri sırala
+              const sortedEvents = [...eventsUpToNow].sort((a, b) => {
                 const aTime = (a.minute || 0) + (a.extraTime || 0) * 0.01;
                 const bTime = (b.minute || 0) + (b.extraTime || 0) * 0.01;
                 if (Math.abs(aTime - bTime) > 0.001) return bTime - aTime;
@@ -506,8 +747,51 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
                 const aSys = sys.includes(a.type) ? 0 : 1;
                 const bSys = sys.includes(b.type) ? 0 : 1;
                 return bSys - aSys;
-              })
-              .map((event, index) => renderEventCard(event, index))}
+              });
+              
+              // Devre arası görseli ekle (45+3 ile 46. dakika arasına)
+              const halftimeIndex = sortedEvents.findIndex(e => 
+                e.type === 'halftime' || (e.minute === 45 && e.extraTime === 3)
+              );
+              const secondHalfStartIndex = sortedEvents.findIndex(e => 
+                e.minute === 46 && e.extraTime === null
+              );
+              
+              // Devre arası görseli için render fonksiyonu
+              const renderHalftimeBreak = () => (
+                <View key="halftime-break" style={styles.timelineRow}>
+                  <View style={styles.timelineSide} />
+                  <View style={styles.timelineCenter}>
+                    <View style={styles.timelineHalftimeLine} />
+                    <View style={styles.timelineHalftimeDot}>
+                      <Ionicons name="pause" size={16} color="#F59E0B" />
+                    </View>
+                  </View>
+                  <View style={styles.timelineSide} />
+                  <View style={styles.timelineHalftimeCard}>
+                    <Text style={styles.timelineHalftimeText}>DEVRE ARASI</Text>
+                    <Text style={styles.timelineHalftimeSubtext}>15 dakika</Text>
+                  </View>
+                </View>
+              );
+              
+              // Eventleri render et, devre arası görselini uygun yere ekle
+              const result: any[] = [];
+              sortedEvents.forEach((event, index) => {
+                // Devre arası görseli: Half Time event'inden sonra ve 46. dakika eventinden önce
+                if (event.type === 'halftime' || (event.minute === 45 && event.extraTime === 3)) {
+                  result.push(renderEventCard(event, index));
+                  // Devre arası görselini ekle (eğer 46. dakika eventi varsa)
+                  if (sortedEvents.some(e => e.minute === 46 && e.extraTime === null)) {
+                    result.push(renderHalftimeBreak());
+                  }
+                } else {
+                  result.push(renderEventCard(event, index));
+                }
+              });
+              
+              return result;
+            })()}
             <View style={styles.timelineStart}>
               <View style={styles.timelineStartLine} />
               <View style={styles.timelineStartDot}>
@@ -767,6 +1051,49 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   
+  // Devre arası görseli
+  timelineHalftimeLine: {
+    width: 2,
+    flex: 1,
+    backgroundColor: '#F59E0B', // Turuncu çizgi - devre arası
+    opacity: 0.5,
+  },
+  timelineHalftimeDot: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(245, 158, 11, 0.2)',
+    borderWidth: 2,
+    borderColor: '#F59E0B',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 8,
+  },
+  timelineHalftimeCard: {
+    position: 'absolute',
+    left: '50%',
+    marginLeft: -60,
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    borderWidth: 1,
+    borderColor: '#F59E0B',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    alignItems: 'center',
+    minWidth: 120,
+  },
+  timelineHalftimeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#F59E0B',
+    letterSpacing: 0.5,
+  },
+  timelineHalftimeSubtext: {
+    fontSize: 9,
+    color: '#F59E0B',
+    marginTop: 2,
+    opacity: 0.8,
+  },
   // Timeline Start (altta)
   timelineStart: {
     alignItems: 'center',

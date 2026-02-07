@@ -404,8 +404,10 @@
   },
   "navigation": {
     "matches": "Матчи",
+    "matchCalendar": "Календарь",
     "live": "Вживую",
     "finished": "Завершённые",
+    "finishedMatches": "Результаты",
     "leaderboard": "Рейтинг",
     "profile": "Профиль"
   },

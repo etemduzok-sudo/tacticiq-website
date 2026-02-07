@@ -1,5 +1,5 @@
 // src/components/MatchDetail.tsx
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -31,6 +31,7 @@ import { predictionsDb } from '../services/databaseService';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BRAND, COLORS, SPACING, SIZES } from '../theme/theme';
 import { getTeamColors as getTeamColorsUtil } from '../utils/teamColors';
+import { isMockTestMatch, MOCK_MATCH_IDS, getMatch1Start, getMatch2Start, MATCH_1_EVENTS, MATCH_2_EVENTS, computeLiveState } from '../data/mockTestData';
 
 interface MatchDetailProps {
   matchId: string;
@@ -39,6 +40,7 @@ interface MatchDetailProps {
   analysisFocus?: string; // ✅ Analiz odağı (defense, offense, midfield, physical, tactical, player)
   preloadedMatch?: any; // ✅ Dashboard'dan gelen maç verisi (API çağrısını atlar)
   forceResultSummary?: boolean; // ✅ Biten maçlar için sonuç özetini zorla göster
+  predictionTeamId?: number; // ✅ İki favori takım maçında hangi takım için tahmin yapılacağı
 }
 
 // Mock match data
@@ -71,7 +73,7 @@ const tabs = [
   // Özet sekmesi kaldırıldı - Artık biten maç kartlarında gösteriliyor
 ];
 
-export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFocus, preloadedMatch, forceResultSummary }: MatchDetailProps) {
+export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFocus, preloadedMatch, forceResultSummary, predictionTeamId }: MatchDetailProps) {
   const { width: windowWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const isNarrow = windowWidth < 420;
@@ -124,10 +126,12 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
   }, [activeTab, squadHasUnsavedChanges, onBack]);
 
   // ✅ İki favori takım maçı: ev sahibi ve deplasman favorilerde
-  const [selectedPredictionTeamId, setSelectedPredictionTeamId] = useState<number | null>(null);
-  const [showTeamPickerModal, setShowTeamPickerModal] = useState(false);
-  const [showOfferOtherTeamModal, setShowOfferOtherTeamModal] = useState(false);
-  const [otherTeamIdForOffer, setOtherTeamIdForOffer] = useState<number | null>(null);
+  // ✅ Dashboard'dan gelen predictionTeamId prop'unu kullan, yoksa null
+  const [selectedPredictionTeamId, setSelectedPredictionTeamId] = useState<number | null>(
+    predictionTeamId !== undefined ? predictionTeamId : null
+  );
+  // ✅ "Hangi favori takıma tahmin yapmak istersiniz?" modal'ı kaldırıldı (Dashboard'da zaten seçim yapılıyor)
+  // ✅ "Diğer takım için de tahmin yapmak ister misiniz?" modal'ı kaldırıldı
   const [resetTargetTeamId, setResetTargetTeamId] = useState<number | null>(null);
   const [showResetTeamPickerModal, setShowResetTeamPickerModal] = useState(false);
 
@@ -217,8 +221,22 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
   React.useEffect(() => {
     if (effectiveAnalysisFocus) {
       console.log('📊 Analiz Odağı:', effectiveAnalysisFocus);
+      // ✅ Analiz odağı seçildikten sonra modal'ı kapat (geri dönüşte tekrar açılmasını önle)
+      setShowAnalysisFocusModal(false);
     }
   }, [effectiveAnalysisFocus]);
+  
+  // ✅ Analiz odağı seçildikten sonra geri dönüşte modal'ın tekrar açılmasını önle
+  // Sadece gerçekten atak formasyonu değiştiğinde modal açılmalı
+  React.useEffect(() => {
+    // Eğer analiz odağı zaten seçilmişse, modal'ı açma
+    if (effectiveAnalysisFocus && showAnalysisFocusModal) {
+      setShowAnalysisFocusModal(false);
+    }
+  }, [effectiveAnalysisFocus, showAnalysisFocusModal]);
+  
+  // ✅ Mock maçlar için sabit başlangıç zamanı (her render'da yeniden hesaplanmaması için)
+  const mockMatchStartTimeRef = React.useRef<number | null>(null);
   
   // ✅ Geri sayım ticker - her saniye güncelle
   React.useEffect(() => {
@@ -239,6 +257,61 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
   // ✅ preloadedMatch varsa onu kullan, yoksa API'den gelen veriyi kullan
   const match = preloadedMatch || apiMatch;
   const loading = shouldFetchFromApi ? apiLoading : false;
+  
+  // ✅ Mock maçlar için sabit başlangıç zamanı (her render'da yeniden hesaplanmaması için)
+  // Bu useEffect'i match yüklendikten sonra çalıştır
+  React.useEffect(() => {
+    if (isMockTestMatch(Number(matchId)) && mockMatchStartTimeRef.current === null) {
+      // İlk render'da timestamp'i sabitle
+      // Öncelik sırası: preloadedMatch > match > getMatch1Start()
+      let timestampToUse: number | null = null;
+      
+      if (preloadedMatch?.fixture?.timestamp) {
+        // preloadedMatch'ten gelen timestamp saniye cinsinden, milisaniyeye çevir
+        timestampToUse = preloadedMatch.fixture.timestamp * 1000;
+        console.log('📌 preloadedMatch.timestamp kullanılıyor:', new Date(timestampToUse).toISOString());
+      } else if (preloadedMatch?.fixture?.date) {
+        // date varsa onu kullan
+        timestampToUse = new Date(preloadedMatch.fixture.date).getTime();
+        console.log('📌 preloadedMatch.date kullanılıyor:', new Date(timestampToUse).toISOString());
+      } else if (match?.fixture?.timestamp) {
+        // match yüklendikten sonra timestamp'i sabitle
+        timestampToUse = match.fixture.timestamp * 1000;
+        console.log('📌 match.timestamp kullanılıyor:', new Date(timestampToUse).toISOString());
+      } else if (match?.fixture?.date) {
+        // date varsa onu kullan
+        timestampToUse = new Date(match.fixture.date).getTime();
+        console.log('📌 match.date kullanılıyor:', new Date(timestampToUse).toISOString());
+      } else {
+        // Hiçbiri yoksa getMatch1Start() kullan
+        timestampToUse = getMatch1Start();
+        console.log('📌 getMatch1Start() kullanılıyor:', new Date(timestampToUse).toISOString());
+      }
+      
+      // Timestamp'i sabitle
+      if (timestampToUse !== null) {
+        mockMatchStartTimeRef.current = timestampToUse;
+        const remainingSeconds = Math.floor((timestampToUse - Date.now()) / 1000);
+        console.log('🔒 Mock maç timestamp sabitlendi:', new Date(timestampToUse).toISOString(), 'Kalan süre:', remainingSeconds, 'saniye');
+      }
+    }
+  }, [matchId, preloadedMatch, match]);
+  
+  // ✅ Canlı maçta otomatik olarak canlı sekmesine yönlendir
+  React.useEffect(() => {
+    if (!match || initialTabSet) return;
+    
+    const matchStatus = match?.fixture?.status?.short || match?.status || '';
+    const isLive = ['1H', '2H', 'HT', 'ET', 'P', 'LIVE', 'BT'].includes(matchStatus);
+    
+    if (isLive && initialTab !== 'live') {
+      // Canlı maçta ve henüz canlı sekmesine geçilmemişse, canlı sekmesine yönlendir
+      setActiveTab('live');
+      setInitialTabSet(true);
+    } else {
+      setInitialTabSet(true);
+    }
+  }, [match, initialTab, initialTabSet]);
   
   // ✅ Lineups state - her zaman kullanılabilir
   const [manualLineups, setManualLineups] = React.useState<any>(null);
@@ -406,13 +479,133 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
   // ✅ Maç canlı mı kontrol et
   const LIVE_STATUSES = ['1H', '2H', 'HT', 'ET', 'BT', 'P', 'LIVE'];
   const FINISHED_STATUSES = ['FT', 'AET', 'PEN', 'AWD', 'WO']; // Biten maç statüleri
-  const matchStatus = match?.fixture?.status?.short || '';
+  // ✅ Mock maçlar için gerçek zamandan status belirle - countdownTicker ile her saniye güncellensin
+  const matchStatus = useMemo(() => {
+    const apiStatus = match?.fixture?.status?.short || '';
+    if (!isMockTestMatch(Number(matchId))) {
+      return apiStatus;
+    }
+    // Mock maçlar için gerçek zamandan kontrol et
+    const matchStart = Number(matchId) === MOCK_MATCH_IDS.GS_FB ? getMatch1Start() : getMatch2Start();
+    const now = Date.now();
+    const elapsedMs = now - matchStart;
+    const elapsedSeconds = elapsedMs / 1000;
+    const elapsedMinutes = Math.floor(elapsedSeconds);
+    
+    if (elapsedMinutes < 0) {
+      return 'NS'; // Not Started
+    } else if (elapsedMinutes >= 112) {
+      return 'FT'; // Finished
+    } else if (elapsedMinutes < 45) {
+      return '1H'; // First Half
+    } else if (elapsedMinutes <= 48) {
+      return '1H'; // First Half Extra Time
+    } else if (elapsedMinutes < 60) {
+      return 'HT'; // Half Time
+    } else if (elapsedMinutes < 90) {
+      return '2H'; // Second Half
+    } else if (elapsedMinutes <= 94) {
+      return '2H'; // Second Half Extra Time
+    } else {
+      return 'FT'; // Finished
+    }
+  }, [matchId, match?.fixture?.status?.short, countdownTicker]); // ✅ countdownTicker: mock maçlar için her saniye güncelle
   const isMatchLive = LIVE_STATUSES.includes(matchStatus);
   const isMatchFinished = FINISHED_STATUSES.includes(matchStatus);
-  const matchMinute = match?.fixture?.status?.elapsed || 0;
-  const homeScore = match?.goals?.home ?? 0;
-  const awayScore = match?.goals?.away ?? 0;
-  const halftimeScore = match?.score?.halftime || null;
+  // ✅ Mock maçlarda dakika her saniye güncellenir (countdownTicker ile); yoksa API'den gelen elapsed
+  const rawMatchMinute = match?.fixture?.status?.elapsed ?? 0;
+  // ✅ Dakika, uzatma ve salise hesaplama (mock maçlarda gerçek zamandan)
+  const { matchMinute, matchExtraTime, matchSecond } = (() => {
+    if (!matchId || !match?.fixture) return { matchMinute: rawMatchMinute, matchExtraTime: null, matchSecond: 0 };
+    if (!isMockTestMatch(Number(matchId))) {
+      // Gerçek maçlar için API'den gelen extraTime bilgisini kullan
+      const extraTime = match?.fixture?.status?.extraTime ?? null;
+      return { matchMinute: rawMatchMinute, matchExtraTime: extraTime, matchSecond: 0 };
+    }
+    
+    const matchStart = Number(matchId) === MOCK_MATCH_IDS.GS_FB ? getMatch1Start() : getMatch2Start();
+    const now = Date.now();
+    const elapsedMs = now - matchStart;
+    const elapsedSeconds = elapsedMs / 1000; // Ondalıklı saniye (örn: 5.234)
+    const elapsedMinutes = Math.floor(elapsedSeconds); // Tam dakika (örn: 5)
+    const salise = Math.floor((elapsedSeconds - elapsedMinutes) * 100); // Salise (0-99)
+    
+    if (elapsedMinutes < 0) {
+      return { matchMinute: 0, matchExtraTime: null, matchSecond: 0 };
+    }
+    if (elapsedMinutes >= 112) {
+      return { matchMinute: 90, matchExtraTime: 4, matchSecond: 0 };
+    }
+    
+    // ✅ İlk yarı: 0-45 dk (normal)
+    if (elapsedMinutes < 45) {
+      return { matchMinute: elapsedMinutes, matchExtraTime: null, matchSecond: salise };
+    }
+    
+    // ✅ İlk yarı uzatması: 45-48 dk → "45+1", "45+2", "45+3" formatında
+    if (elapsedMinutes <= 48) {
+      const extraTime = elapsedMinutes - 45;
+      return { matchMinute: 45, matchExtraTime: extraTime, matchSecond: salise };
+    }
+    
+    // ✅ Devre arası: 48-60 dk (15 saniye = 15 dakika simülasyon)
+    if (elapsedMinutes < 60) {
+      return { matchMinute: 45, matchExtraTime: 3, matchSecond: 0 };
+    }
+    
+    // ✅ İkinci yarı: 60-90 dk → 46. dk'dan başlar (45+3'ten sonra)
+    if (elapsedMinutes < 90) {
+      const secondHalfMinute = 46 + (elapsedMinutes - 60); // 60. dk = 46. dk
+      return { matchMinute: secondHalfMinute, matchExtraTime: null, matchSecond: salise };
+    }
+    
+    // ✅ İkinci yarı uzatması: 90-94 dk → "90+1", "90+2", "90+3", "90+4" formatında
+    if (elapsedMinutes <= 94) {
+      const extraTime = elapsedMinutes - 90;
+      return { matchMinute: 90, matchExtraTime: extraTime, matchSecond: salise };
+    }
+    
+    return { matchMinute: 90, matchExtraTime: 4, matchSecond: 0 };
+  })();
+  // ✅ Mock maçlarda skorları gerçek zamandan hesapla (goller eventlerden gelir)
+  const { homeScore: computedHomeScore, awayScore: computedAwayScore, halftimeScore: computedHalftimeScore } = (() => {
+    if (!matchId || !match?.fixture || !isMockTestMatch(Number(matchId))) {
+      return {
+        homeScore: match?.goals?.home ?? 0,
+        awayScore: match?.goals?.away ?? 0,
+        halftimeScore: match?.score?.halftime || null,
+      };
+    }
+    
+    const matchStart = Number(matchId) === MOCK_MATCH_IDS.GS_FB ? getMatch1Start() : getMatch2Start();
+    const events = Number(matchId) === MOCK_MATCH_IDS.GS_FB ? MATCH_1_EVENTS : MATCH_2_EVENTS;
+    
+    // ✅ Güvenlik kontrolü: events undefined olabilir
+    if (!events || !Array.isArray(events)) {
+      return {
+        homeScore: match?.goals?.home ?? 0,
+        awayScore: match?.goals?.away ?? 0,
+        halftimeScore: match?.score?.halftime || null,
+      };
+    }
+    
+    const state = computeLiveState(matchStart, events);
+    
+    // İlk yarı skorunu hesapla (45. dakikaya kadar olan goller)
+    const firstHalfEvents = events.filter(e => e.minuteOffset <= 45 && e.type === 'Goal');
+    const firstHalfHomeGoals = firstHalfEvents.filter(e => e.teamSide === 'home').length;
+    const firstHalfAwayGoals = firstHalfEvents.filter(e => e.teamSide === 'away').length;
+    
+    return {
+      homeScore: state.homeGoals ?? 0,
+      awayScore: state.awayGoals ?? 0,
+      halftimeScore: matchMinute >= 45 ? { home: firstHalfHomeGoals, away: firstHalfAwayGoals } : null,
+    };
+  })();
+  
+  const homeScore = computedHomeScore;
+  const awayScore = computedAwayScore;
+  const halftimeScore = computedHalftimeScore;
   
   // ✅ Biten maçlar için varsayılan sekme (Canlı sekmesi kalır – oynanan maç olayları görünsün)
   React.useEffect(() => {
@@ -425,7 +618,8 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
   }, [match, isMatchFinished, initialTab, initialTabSet]);
 
   // Transform API data to component format
-  const matchData = match ? {
+  // ✅ useMemo ile sarmalayarak mock maçlar için timestamp'i sabitle
+  const matchData = useMemo(() => match ? {
     id: match.fixture.id.toString(),
     homeTeam: {
       id: match.teams.home.id, // ✅ Team ID eklendi
@@ -454,26 +648,102 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
       year: 'numeric' 
     }),
     time: api.utils.formatMatchTime(new Date(match.fixture.date).getTime() / 1000),
-    timestamp: match.fixture.timestamp || new Date(match.fixture.date).getTime() / 1000, // ✅ Geri sayım için
+    timestamp: (() => {
+      // ✅ Mock maçlar için sabit timestamp kullan
+      if (isMockTestMatch(Number(matchId))) {
+        // Öncelikle mockMatchStartTimeRef.current'i kullan (zaten sabitlenmişse)
+        if (mockMatchStartTimeRef.current !== null) {
+          return mockMatchStartTimeRef.current / 1000;
+        }
+        // Henüz sabitlenmemişse, match.fixture.timestamp'i kullan ve sabitle
+        // Bu sadece ilk render'da olacak
+        const ts = match.fixture.timestamp || new Date(match.fixture.date).getTime() / 1000;
+        // Hemen sabitle (synchronous olarak) - sadece bir kez
+        mockMatchStartTimeRef.current = ts * 1000;
+        console.log('🔒 Mock maç timestamp matchData içinde sabitlendi:', new Date(mockMatchStartTimeRef.current).toISOString(), 'Kalan:', Math.floor((mockMatchStartTimeRef.current - Date.now()) / 1000), 'sn');
+        // Sabitlenmiş değeri döndür
+        return mockMatchStartTimeRef.current / 1000;
+      }
+      // Normal maçlar için match.fixture.timestamp kullan
+      return match.fixture.timestamp || new Date(match.fixture.date).getTime() / 1000;
+    })(), // ✅ Geri sayım için
     // ✅ Canlı maç bilgileri
     isLive: isMatchLive,
     minute: matchMinute,
+    extraTime: matchExtraTime, // ✅ Uzatma dakikası (null veya 1-4 arası)
+    second: matchSecond, // ✅ Salise bilgisi (0-99)
     homeScore: homeScore,
     awayScore: awayScore,
     halftimeScore: halftimeScore,
     status: matchStatus,
-  } : null;
+  } : null, [
+    // ✅ match objesini dependency'den çıkar çünkü her render'da değişiyor
+    // Sadece gerçekten değişmesi gereken değerleri ekle
+    match?.fixture?.id, // Match ID değiştiğinde yeniden hesapla
+    match?.teams?.home?.id,
+    match?.teams?.away?.id,
+    match?.teams?.home?.name,
+    match?.teams?.away?.name,
+    match?.league?.name,
+    match?.fixture?.venue?.name,
+    match?.fixture?.date, // Date değiştiğinde yeniden hesapla
+    homeManager,
+    awayManager,
+    isMatchLive,
+    matchMinute,
+    matchExtraTime, // ✅ Uzatma dakikası
+    matchSecond, // ✅ Salise bilgisi
+    homeScore,
+    awayScore,
+    halftimeScore,
+    matchStatus,
+    matchId,
+    // ✅ Mock maçlarda dakika ve skor her saniye güncellensin (countdownTicker her saniye artar)
+    countdownTicker, // Skorlar da bu ticker'a bağlı (homeScore, awayScore, halftimeScore, matchStatus)
+    mockMatchStartTimeRef.current,
+    matchStatus, // ✅ Mock maçlar için status değiştiğinde güncellensin
+    ...(isMockTestMatch(Number(matchId)) ? [] : [match?.fixture?.timestamp]),
+  ]);
   
-  // ✅ Geri sayım hesaplama
-  const getCountdownData = () => {
-    if (!matchData?.timestamp) return null;
-    
+  // ✅ Geri sayım hesaplama - useMemo ile optimize et
+  const countdownData = useMemo(() => {
     // countdownTicker'ı kullanarak her saniye güncellemeyi tetikle
     const _ = countdownTicker;
     
     const now = Date.now() / 1000;
-    const matchTime = matchData.timestamp;
+    let matchTime: number | null = null;
+    
+    // ✅ Mock maçlar için özel geri sayım: Sabit başlangıç zamanını kullan
+    if (isMockTestMatch(Number(matchId))) {
+      // Sadece mockMatchStartTimeRef.current'i kullan (useEffect'te sabitlenmiş olmalı)
+      if (mockMatchStartTimeRef.current !== null) {
+        matchTime = mockMatchStartTimeRef.current / 1000;
+      } else {
+        // Henüz sabitlenmemişse, null döndür (useEffect henüz çalışmamış)
+        return null;
+      }
+    } else {
+      // Normal maçlar için matchData.timestamp kullan
+      if (!matchData?.timestamp) return null;
+      matchTime = matchData.timestamp;
+    }
+    
+    if (matchTime === null) return null;
+    
     const timeDiff = matchTime - now;
+    
+    // Debug log - her 5 saniyede bir
+    if (isMockTestMatch(Number(matchId)) && countdownTicker % 5 === 0) {
+      console.log('⏱️ Geri sayım:', {
+        matchTime: new Date(matchTime * 1000).toISOString(),
+        now: new Date(now * 1000).toISOString(),
+        timeDiff: Math.floor(timeDiff),
+        seconds: Math.floor(timeDiff % 60),
+        minutes: Math.floor((timeDiff % 3600) / 60),
+        mockRef: mockMatchStartTimeRef.current ? new Date(mockMatchStartTimeRef.current).toISOString() : 'null',
+        countdownTicker,
+      });
+    }
     
     // Maç başladıysa veya bittiyse geri sayım gösterme
     if (timeDiff <= 0) return null;
@@ -515,21 +785,30 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
       seconds: Math.floor(timeDiff % 60),
       color: countdownColor,
     };
-  };
-  
-  const countdownData = getCountdownData();
+  }, [
+    countdownTicker, // ✅ Her saniye güncelle (bu sayede geri sayım her saniye yeniden hesaplanır)
+    matchId,
+    // ✅ Normal maçlar için matchData?.timestamp'i dependency'ye ekle
+    // Mock maçlar için mockMatchStartTimeRef.current'i dependency'ye ekleme (ref olduğu için çalışmaz)
+    // Bunun yerine countdownTicker her saniye değiştiği için countdownData her saniye yeniden hesaplanacak
+    // ve mockMatchStartTimeRef.current her seferinde okunacak
+    isMockTestMatch(Number(matchId)) ? null : matchData?.timestamp,
+  ]);
 
   // ✅ İki favori takım maçı: ev sahibi ve deplasman favorilerde
   const homeId = matchData?.teams?.home?.id ?? matchData?.homeTeam?.id;
   const awayId = matchData?.teams?.away?.id ?? matchData?.awayTeam?.id;
   const bothFavorites = homeId != null && awayId != null && favoriteTeamIds.includes(homeId) && favoriteTeamIds.includes(awayId);
 
-  // ✅ İki favori maçta girişte takım seçici göster (seçim yapılmamışsa)
+  // ✅ Dashboard'dan gelen predictionTeamId prop'unu selectedPredictionTeamId'ye set et
   React.useEffect(() => {
-    if (matchData && bothFavorites && selectedPredictionTeamId === null) {
-      setShowTeamPickerModal(true);
+    if (predictionTeamId !== undefined) {
+      setSelectedPredictionTeamId(predictionTeamId ?? null);
     }
-  }, [matchData, bothFavorites, selectedPredictionTeamId]);
+  }, [predictionTeamId]);
+  
+  // ✅ "Hangi favori takıma tahmin yapmak istersiniz?" modal'ı kaldırıldı
+  // Dashboard'da zaten maç kartına tıklayınca takım seçimi yapılıyor
 
   // Loading state
   if (loading || !matchData) {
@@ -556,11 +835,15 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
   }
 
   const renderContent = () => {
-    const predictionTeamId = bothFavorites ? (selectedPredictionTeamId ?? undefined) : undefined;
+    // ✅ predictionTeamId prop'u varsa onu kullan, yoksa selectedPredictionTeamId state'ini kullan
+    const effectivePredictionTeamId = predictionTeamId !== undefined && predictionTeamId !== null
+      ? predictionTeamId 
+      : (bothFavorites ? selectedPredictionTeamId : null);
+    const predictionTeamIdForProps = bothFavorites ? (effectivePredictionTeamId ?? undefined) : undefined;
 
     switch (activeTab) {
       case 'squad':
-        if (bothFavorites && !selectedPredictionTeamId) {
+        if (bothFavorites && !effectivePredictionTeamId) {
           return (
             <View style={styles.centerContent}>
               <Text style={styles.placeholderText}>Hangi takım için kadro seçeceğinizi yukarıdaki pencereden seçin.</Text>
@@ -569,14 +852,20 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
         }
         return (
           <MatchSquad
-            key={`squad-${matchId}-${predictionTeamId ?? 'all'}`}
+            key={`squad-${matchId}-${predictionTeamIdForProps ?? 'all'}`}
             matchData={matchData}
             matchId={matchId}
             lineups={lineups}
             favoriteTeamIds={favoriteTeamIds}
-            predictionTeamId={predictionTeamId}
+            predictionTeamId={predictionTeamIdForProps}
             onComplete={() => setActiveTab('prediction')}
-            onAttackFormationChangeConfirmed={() => setShowAnalysisFocusModal(true)}
+            onAttackFormationChangeConfirmed={() => {
+              // ✅ Sadece analiz odağı seçilmemişse modal'ı aç
+              // Analiz odağı zaten seçilmişse tekrar açma
+              if (!effectiveAnalysisFocus) {
+                setShowAnalysisFocusModal(true);
+              }
+            }}
             isVisible={activeTab === 'squad'}
             isMatchFinished={isMatchFinished}
             isMatchLive={isMatchLive}
@@ -585,7 +874,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
         );
       
       case 'prediction':
-        if (bothFavorites && !selectedPredictionTeamId) {
+        if (bothFavorites && !effectivePredictionTeamId) {
           return (
             <View style={styles.centerContent}>
               <Text style={styles.placeholderText}>Hangi takım için tahmin yapacağınızı yukarıdaki pencereden seçin.</Text>
@@ -596,20 +885,17 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
           <MatchPrediction
             matchData={matchData}
             matchId={matchId}
-            predictionTeamId={predictionTeamId}
+            predictionTeamId={predictionTeamIdForProps}
             isMatchLive={isMatchLive}
             isMatchFinished={isMatchFinished}
             initialAnalysisFocus={effectiveAnalysisFocus}
             lineups={lineups}
             favoriteTeamIds={favoriteTeamIds}
             onPredictionsSaved={() => checkPredictions(homeId, awayId, bothFavorites)}
-            onPredictionsSavedForTeam={(savedTeamId) => {
-              checkPredictions(homeId, awayId, bothFavorites);
-              if (bothFavorites && savedTeamId != null) {
-                const otherId = savedTeamId === homeId ? awayId : homeId;
-                setOtherTeamIdForOffer(otherId ?? null);
-                setShowOfferOtherTeamModal(true);
-              }
+            onPredictionsSavedForTeam={async (savedTeamId) => {
+              // ✅ "Diğer takım için de tahmin yapmak ister misiniz?" popup'ı kaldırıldı
+              // Artık kullanıcı maç kartına tıklayınca baştan takım seçimi yapacak
+              await checkPredictions(homeId, awayId, bothFavorites);
             }}
             onHasUnsavedChanges={handleHasUnsavedChanges}
           />
@@ -729,19 +1015,26 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
                   <View style={styles.liveDot} />
                   <Text style={styles.liveBadgeText}>CANLI</Text>
                 </View>
-                {/* Dakika */}
-                <Text style={styles.liveMinuteText}>{matchData.minute}'</Text>
-                {/* İlk yarı skoru */}
-                {matchData.halftimeScore && (
-                  <Text style={styles.halftimeText}>
-                    İY: {matchData.halftimeScore.home}-{matchData.halftimeScore.away}
-                  </Text>
-                )}
+                {/* Dakika:Salise formatında göster - uzatma varsa "45+3" formatında */}
+                <Text style={styles.liveMinuteText}>
+                  {matchData.extraTime != null && matchData.extraTime > 0
+                    ? `${matchData.minute}+${matchData.extraTime}`
+                    : `${matchData.minute}:${String(matchData.second ?? 0).padStart(2, '0')}`}
+                </Text>
+                {/* İlk yarı / İkinci yarı bilgisi - skor gösterilmez (zaten takımların altında gösteriliyor) */}
+                {/* Mantık: 45+ uzatma dakikaları İLK YARIYA dahil, 90+ uzatma dakikaları İKİNCİ YARIYA dahil */}
+                <Text style={styles.halftimeText}>
+                  {(matchData.minute ?? 0) < 46 || ((matchData.minute ?? 0) === 45 && matchData.extraTime != null)
+                    ? 'İlk Yarı' 
+                    : 'İkinci Yarı'}
+                </Text>
               </>
             ) : isMatchFinished ? (
               <>
                 <Text style={styles.dateText}>● {matchData.date}</Text>
-                <Text style={styles.liveMinuteText}>{matchData.minute ?? 90}'</Text>
+                <Text style={styles.liveMinuteText}>
+                  {matchData.minute ?? 90}:{String(matchData.second ?? 0).padStart(2, '0')}
+                </Text>
               </>
             ) : (
               <>
@@ -888,18 +1181,8 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
       )}
 
       {/* İki favori maç: Hangi takım için tahmin yapmak / değiştirmek istiyorsunuz? */}
-      {showTeamPickerModal && matchData && bothFavorites && (
-        <ConfirmModal
-          visible={true}
-          title="Hangi favori takıma tahmin yapmak istersiniz?"
-          message="Önce bir takım seçin; kadro ve tahmin süreci o takım için açılacak."
-          buttons={[
-            { text: String(matchData.homeTeam?.name ?? 'Ev Sahibi'), onPress: () => { setSelectedPredictionTeamId(homeId!); setShowTeamPickerModal(false); } },
-            { text: String(matchData.awayTeam?.name ?? 'Deplasman'), onPress: () => { setSelectedPredictionTeamId(awayId!); setShowTeamPickerModal(false); } },
-          ]}
-          onRequestClose={() => setShowTeamPickerModal(false)}
-        />
-      )}
+      {/* ✅ "Hangi favori takıma tahmin yapmak istersiniz?" modal'ı kaldırıldı */}
+      {/* Dashboard'da zaten maç kartına tıklayınca takım seçimi yapılıyor */}
 
       {/* İki favori maç: Yıldıza basınca – Hangi takım için tahmini silmek istiyorsunuz? */}
       {showResetTeamPickerModal && matchData && bothFavorites && (
@@ -916,18 +1199,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
       )}
 
       {/* İki favori maç: Tahmin kaydedildikten sonra – Diğer takım için de tahmin yapmak ister misin? */}
-      {showOfferOtherTeamModal && matchData && otherTeamIdForOffer != null && (
-        <ConfirmModal
-          visible={true}
-          title="Diğer takım için de tahmin yapmak ister misiniz?"
-          message={`${otherTeamIdForOffer === homeId ? matchData.homeTeam?.name : matchData.awayTeam?.name} için de tahmin yapabilirsiniz.`}
-          buttons={[
-            { text: 'Hayır', style: 'cancel', onPress: () => { setShowOfferOtherTeamModal(false); setOtherTeamIdForOffer(null); } },
-            { text: 'Evet', onPress: () => { setSelectedPredictionTeamId(otherTeamIdForOffer); setActiveTab('squad'); setShowOfferOtherTeamModal(false); setOtherTeamIdForOffer(null); } },
-          ]}
-          onRequestClose={() => { setShowOfferOtherTeamModal(false); setOtherTeamIdForOffer(null); }}
-        />
-      )}
+      {/* ✅ "Diğer takım için de tahmin yapmak ister misiniz?" modal'ı kaldırıldı */}
 
       {/* ✅ Kaydedilmemiş değişiklik uyarısı - Tab değiştirilirken gösterilir */}
       {showUnsavedChangesModal && (
@@ -1303,15 +1575,33 @@ const styles = StyleSheet.create({
   liveScoreBox: {
     backgroundColor: '#0F2A24',
     borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    marginTop: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    marginTop: 3,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 36,
+    height: 26, // ✅ Sabit yükseklik - Dashboard ile aynı
     borderWidth: 1,
     borderColor: 'rgba(31, 162, 166, 0.3)',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#334155',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 3,
+      },
+      web: {
+        boxShadow: '0 2px 4px rgba(30, 41, 59, 0.3)',
+      },
+    }),
   },
   liveScoreText: {
-    fontSize: 16, // Dashboard: 16
-    fontWeight: '900',
+    fontSize: 14, // ✅ Dashboard ile aynı
+    fontWeight: 'bold',
     color: '#FFFFFF',
     textAlign: 'center',
   },
@@ -1343,9 +1633,11 @@ const styles = StyleSheet.create({
     color: '#ef4444',
   },
   halftimeText: {
-    fontSize: 10,
-    color: '#64748B',
-    marginTop: 1,
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#94A3B8', // Daha açık gri - daha okunabilir
+    marginTop: 2,
+    textAlign: 'center',
   },
   
   // Content – bar artık akışta; alt boşluk yok (her tab kendi paddingBottom'unu yönetir)

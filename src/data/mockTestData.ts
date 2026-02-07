@@ -1,0 +1,711 @@
+/**
+ * 🧪 MOCK TEST DATA - Canlı Maç Geçişi Testi
+ * 
+ * Bu dosya 2 mock maç oluşturur:
+ *   1. Galatasaray vs Fenerbahçe (Süper Lig Derbisi)
+ *   2. Real Madrid vs Barcelona (El Clásico)
+ * 
+ * Maçlar uygulama başladığında 5 dakika sonra canlıya geçer.
+ * Geri sayım, kadro, tahmin, canlı istatistik tüm akışı test edebilirsiniz.
+ * 
+ * ⚠️ TEST SONRASI: MOCK_TEST_ENABLED = false yaparak devre dışı bırakın
+ */
+
+// ============================================================
+// ⚡ ANA SWITCH - Test bitince false yap
+// ============================================================
+export const MOCK_TEST_ENABLED = true;
+
+// ============================================================
+// ⏱️ ZAMANLAMA
+// ============================================================
+/** Maçlar kaç dakika sonra başlasın (canlıya geçsin) — 1 dakika sonra başlayacak */
+const START_DELAY_MINUTES = 1;
+
+/** Bildirim gösterilecek zaman (maç başlamadan 1 dakika önce) */
+const NOTIFICATION_DELAY_MINUTES = START_DELAY_MINUTES - 1; // 1 dakika
+
+/**
+ * Maç 1 başlangıç zamanı - UYGULAMA BAŞLANGICINDA BİR KEZ SABİTLENİR
+ * Böylece geri sayım 60'tan 0'a düzgün iner (her render'da yeni zaman üretilmez)
+ */
+let _match1StartTimeMs: number | null = null;
+
+function getMatchStartTime(): number {
+  return Date.now() + START_DELAY_MINUTES * 60 * 1000;
+}
+
+/** Maç 1 başlangıç zamanı - ilk çağrıda sabitlenir, sonra hep aynı değer döner */
+export function getMatch1Start(): number {
+  if (_match1StartTimeMs === null) {
+    _match1StartTimeMs = Date.now() + START_DELAY_MINUTES * 60 * 1000;
+  }
+  return _match1StartTimeMs;
+}
+
+/** Sabitlenmiş maç 1 başlangıç zamanını sıfırla (test için sayfa yenilendiğinde yeni zaman) */
+export function resetMockMatch1StartTime(): void {
+  _match1StartTimeMs = null;
+}
+
+/** Maçı 1 dakika sonra tekrar başlat (test için) */
+export function restartMatch1In1Minute(): void {
+  _match1StartTimeMs = Date.now() + START_DELAY_MINUTES * 60 * 1000;
+  console.log('🔄 Maç 1 dakika sonra tekrar başlatıldı:', new Date(_match1StartTimeMs).toISOString());
+}
+
+function getMatchNotificationTime(): number {
+  return Date.now() + NOTIFICATION_DELAY_MINUTES * 60 * 1000;
+}
+
+/** Maç 1 bildirim zamanı (başlamadan 1 dakika önce) */
+export function getMatch1NotificationTime(): number {
+  return getMatchNotificationTime();
+}
+
+/** Maç 2 başlangıç zamanı (30 saniye sonra) - maç 1 sabitlendikten sonra hesaplanır */
+export function getMatch2Start(): number {
+  return getMatch1Start() + 30 * 1000;
+}
+
+/** Maç 2 bildirim zamanı (başlamadan 1 dakika önce) */
+export function getMatch2NotificationTime(): number {
+  return getMatch2Start() - 60 * 1000;
+}
+
+// ============================================================
+// 🆔 FIXTURE ID'LERİ (gerçek API ile çakışmasın)
+// ============================================================
+export const MOCK_MATCH_IDS = {
+  GS_FB: 888001,
+  REAL_BARCA: 888002,
+} as const;
+
+// ============================================================
+// ⚽ TAKIM KADROLARI
+// ============================================================
+
+/** Galatasaray Kadrosu */
+const GS_SQUAD = {
+  coach: { id: 901, name: 'Okan Buruk', nationality: 'Turkey' },
+  startXI: [
+    { player: { id: 50001, name: 'F. Muslera', number: 1, pos: 'G', grid: '1:1' } },
+    { player: { id: 50002, name: 'S. Boey', number: 20, pos: 'D', grid: '2:4' } },
+    { player: { id: 50003, name: 'D. Nelsson', number: 4, pos: 'D', grid: '2:3' } },
+    { player: { id: 50004, name: 'A. Bardakcı', number: 42, pos: 'D', grid: '2:2' } },
+    { player: { id: 50005, name: 'A. Kurzawa', number: 12, pos: 'D', grid: '2:1' } },
+    { player: { id: 50006, name: 'L. Torreira', number: 34, pos: 'M', grid: '3:3' } },
+    { player: { id: 50007, name: 'K. Aktürkoğlu', number: 7, pos: 'M', grid: '3:2' } },
+    { player: { id: 50008, name: 'D. Mertens', number: 14, pos: 'M', grid: '3:1' } },
+    { player: { id: 50009, name: 'B. Yılmaz', number: 17, pos: 'F', grid: '4:3' } },
+    { player: { id: 50010, name: 'M. Icardi', number: 9, pos: 'F', grid: '4:2' } },
+    { player: { id: 50011, name: 'V. Osimhen', number: 45, pos: 'F', grid: '4:1' } },
+  ],
+  substitutes: [
+    { player: { id: 50012, name: 'O. Bayram', number: 88, pos: 'G', grid: null } },
+    { player: { id: 50013, name: 'K. Seri', number: 6, pos: 'M', grid: null } },
+    { player: { id: 50014, name: 'Y. Bakasetas', number: 10, pos: 'M', grid: null } },
+    { player: { id: 50015, name: 'E. Kılınç', number: 11, pos: 'F', grid: null } },
+    { player: { id: 50016, name: 'H. Dervişoğlu', number: 99, pos: 'F', grid: null } },
+  ],
+};
+
+/** Fenerbahçe Kadrosu */
+const FB_SQUAD = {
+  coach: { id: 902, name: 'José Mourinho', nationality: 'Portugal' },
+  startXI: [
+    { player: { id: 50101, name: 'D. Livakovic', number: 1, pos: 'G', grid: '1:1' } },
+    { player: { id: 50102, name: 'B. Osayi-Samuel', number: 2, pos: 'D', grid: '2:4' } },
+    { player: { id: 50103, name: 'A. Djiku', number: 4, pos: 'D', grid: '2:3' } },
+    { player: { id: 50104, name: 'Ç. Söyüncü', number: 3, pos: 'D', grid: '2:2' } },
+    { player: { id: 50105, name: 'F. Kadıoğlu', number: 5, pos: 'D', grid: '2:1' } },
+    { player: { id: 50106, name: 'İ. Kahveci', number: 6, pos: 'M', grid: '3:3' } },
+    { player: { id: 50107, name: 'F. Amrabat', number: 8, pos: 'M', grid: '3:2' } },
+    { player: { id: 50108, name: 'S. Szymanski', number: 10, pos: 'M', grid: '3:1' } },
+    { player: { id: 50109, name: 'D. Tadic', number: 11, pos: 'F', grid: '4:3' } },
+    { player: { id: 50110, name: 'E. Dzeko', number: 9, pos: 'F', grid: '4:2' } },
+    { player: { id: 50111, name: 'Ç. Ünder', number: 17, pos: 'F', grid: '4:1' } },
+  ],
+  substitutes: [
+    { player: { id: 50112, name: 'İ. Bayındır', number: 12, pos: 'G', grid: null } },
+    { player: { id: 50113, name: 'J. Oosterwolde', number: 23, pos: 'D', grid: null } },
+    { player: { id: 50114, name: 'M. Crespo', number: 7, pos: 'M', grid: null } },
+    { player: { id: 50115, name: 'R. Batshuayi', number: 20, pos: 'F', grid: null } },
+    { player: { id: 50116, name: 'E. Valencia', number: 18, pos: 'F', grid: null } },
+  ],
+};
+
+/** Real Madrid Kadrosu */
+const REAL_SQUAD = {
+  coach: { id: 903, name: 'Carlo Ancelotti', nationality: 'Italy' },
+  startXI: [
+    { player: { id: 50201, name: 'T. Courtois', number: 1, pos: 'G', grid: '1:1' } },
+    { player: { id: 50202, name: 'D. Carvajal', number: 2, pos: 'D', grid: '2:4' } },
+    { player: { id: 50203, name: 'A. Rüdiger', number: 22, pos: 'D', grid: '2:3' } },
+    { player: { id: 50204, name: 'D. Alaba', number: 4, pos: 'D', grid: '2:2' } },
+    { player: { id: 50205, name: 'F. Mendy', number: 23, pos: 'D', grid: '2:1' } },
+    { player: { id: 50206, name: 'T. Kroos', number: 8, pos: 'M', grid: '3:3' } },
+    { player: { id: 50207, name: 'L. Modrić', number: 10, pos: 'M', grid: '3:2' } },
+    { player: { id: 50208, name: 'J. Bellingham', number: 5, pos: 'M', grid: '3:1' } },
+    { player: { id: 50209, name: 'Vinícius Jr.', number: 7, pos: 'F', grid: '4:3' } },
+    { player: { id: 50210, name: 'K. Mbappé', number: 9, pos: 'F', grid: '4:2' } },
+    { player: { id: 50211, name: 'Rodrygo', number: 11, pos: 'F', grid: '4:1' } },
+  ],
+  substitutes: [
+    { player: { id: 50212, name: 'A. Lunin', number: 13, pos: 'G', grid: null } },
+    { player: { id: 50213, name: 'E. Militão', number: 3, pos: 'D', grid: null } },
+    { player: { id: 50214, name: 'E. Camavinga', number: 12, pos: 'M', grid: null } },
+    { player: { id: 50215, name: 'F. Valverde', number: 15, pos: 'M', grid: null } },
+    { player: { id: 50216, name: 'E. Hazard', number: 7, pos: 'F', grid: null } },
+  ],
+};
+
+/** Barcelona Kadrosu */
+const BARCA_SQUAD = {
+  coach: { id: 904, name: 'Hansi Flick', nationality: 'Germany' },
+  startXI: [
+    { player: { id: 50301, name: 'M. ter Stegen', number: 1, pos: 'G', grid: '1:1' } },
+    { player: { id: 50302, name: 'J. Cancelo', number: 2, pos: 'D', grid: '2:4' } },
+    { player: { id: 50303, name: 'R. Araújo', number: 4, pos: 'D', grid: '2:3' } },
+    { player: { id: 50304, name: 'A. Christensen', number: 15, pos: 'D', grid: '2:2' } },
+    { player: { id: 50305, name: 'A. Baldé', number: 3, pos: 'D', grid: '2:1' } },
+    { player: { id: 50306, name: 'Pedri', number: 8, pos: 'M', grid: '3:3' } },
+    { player: { id: 50307, name: 'F. de Jong', number: 21, pos: 'M', grid: '3:2' } },
+    { player: { id: 50308, name: 'Gavi', number: 6, pos: 'M', grid: '3:1' } },
+    { player: { id: 50309, name: 'L. Yamal', number: 19, pos: 'F', grid: '4:3' } },
+    { player: { id: 50310, name: 'R. Lewandowski', number: 9, pos: 'F', grid: '4:2' } },
+    { player: { id: 50311, name: 'Raphinha', number: 11, pos: 'F', grid: '4:1' } },
+  ],
+  substitutes: [
+    { player: { id: 50312, name: 'İ. Peña', number: 13, pos: 'G', grid: null } },
+    { player: { id: 50313, name: 'J. Koundé', number: 23, pos: 'D', grid: null } },
+    { player: { id: 50314, name: 'İ. Gündoğan', number: 22, pos: 'M', grid: null } },
+    { player: { id: 50315, name: 'F. Torres', number: 17, pos: 'M', grid: null } },
+    { player: { id: 50316, name: 'A. Fati', number: 10, pos: 'F', grid: null } },
+  ],
+};
+
+// ============================================================
+// 🏟️ CANLI MAÇ SİMÜLASYONU (skor + olaylar zamanla değişir)
+// ============================================================
+
+interface MockEvent {
+  minuteOffset: number; // Maç başlangıcından kaç dakika sonra (gerçek zaman - her saniye 1 dakika ilerler)
+  extraTime?: number; // Uzatma dakikası (ilk yarı 3 dk, ikinci yarı 4 dk)
+  type: 'Goal' | 'Card' | 'Subst' | 'Var' | 'Penalty' | 'OwnGoal' | 'System';
+  detail: string;
+  teamSide: 'home' | 'away' | null;
+  playerName: string;
+  assistName?: string;
+  playerOut?: string; // Değişiklik için çıkan oyuncu
+  playerIn?: string; // Değişiklik için giren oyuncu
+}
+
+/** Maç 1 olayları: GS vs FB - Tüm event tipleri için mock eventler */
+export const MATCH_1_EVENTS: MockEvent[] = [
+  // İlk Yarı (0-45 dk)
+  { minuteOffset: 0, type: 'System', detail: 'Kick Off', teamSide: null, playerName: '' },
+  { minuteOffset: 5, type: 'Goal', detail: 'Normal Goal', teamSide: 'home', playerName: 'V. Osimhen', assistName: 'K. Aktürkoğlu' },
+  { minuteOffset: 8, type: 'Card', detail: 'Yellow Card', teamSide: 'away', playerName: 'F. Amrabat' },
+  { minuteOffset: 12, type: 'Goal', detail: 'Normal Goal', teamSide: 'away', playerName: 'E. Dzeko', assistName: 'S. Szymanski' },
+  { minuteOffset: 18, type: 'Goal', detail: 'Normal Goal', teamSide: 'home', playerName: 'M. Icardi' },
+  { minuteOffset: 22, type: 'Card', detail: 'Yellow Card', teamSide: 'home', playerName: 'L. Torreira' },
+  { minuteOffset: 28, type: 'Subst', detail: 'Substitution', teamSide: 'away', playerName: '', playerOut: 'Ç. Ünder', playerIn: 'R. Batshuayi' },
+  { minuteOffset: 32, type: 'Goal', detail: 'Penalty', teamSide: 'home', playerName: 'M. Icardi' },
+  { minuteOffset: 35, type: 'Card', detail: 'Red Card', teamSide: 'away', playerName: 'A. Djiku' },
+  { minuteOffset: 40, type: 'Subst', detail: 'Substitution', teamSide: 'home', playerName: '', playerOut: 'B. Yılmaz', playerIn: 'E. Kılınç' },
+  { minuteOffset: 42, type: 'Goal', detail: 'Own Goal', teamSide: 'away', playerName: 'Ç. Söyüncü' },
+  { minuteOffset: 45, type: 'System', detail: 'First Half Extra Time', teamSide: null, playerName: '', extraTime: 3 },
+  { minuteOffset: 45, extraTime: 1, type: 'Card', detail: 'Yellow Card', teamSide: 'home', playerName: 'D. Nelsson' },
+  { minuteOffset: 45, extraTime: 2, type: 'Goal', detail: 'Normal Goal', teamSide: 'away', playerName: 'D. Tadic', assistName: 'E. Dzeko' },
+  { minuteOffset: 48, type: 'System', detail: 'Half Time', teamSide: null, playerName: '' },
+  
+  // Devre Arası (15 saniye - 15 dakika yerine)
+  
+  // İkinci Yarı (60-105 dk, gerçek zaman 60-105 sn)
+  { minuteOffset: 60, type: 'System', detail: 'Second Half Started', teamSide: null, playerName: '' },
+  { minuteOffset: 65, type: 'Goal', detail: 'Normal Goal', teamSide: 'home', playerName: 'K. Aktürkoğlu', assistName: 'M. Icardi' },
+  { minuteOffset: 70, type: 'Subst', detail: 'Substitution', teamSide: 'away', playerName: '', playerOut: 'İ. Kahveci', playerIn: 'M. Crespo' },
+  { minuteOffset: 72, type: 'Card', detail: 'Yellow Card', teamSide: 'home', playerName: 'S. Boey' },
+  { minuteOffset: 75, type: 'Goal', detail: 'Normal Goal', teamSide: 'away', playerName: 'R. Batshuayi', assistName: 'D. Tadic' },
+  { minuteOffset: 78, type: 'Var', detail: 'VAR', teamSide: null, playerName: 'VAR Check' },
+  { minuteOffset: 80, type: 'Subst', detail: 'Substitution', teamSide: 'home', playerName: '', playerOut: 'V. Osimhen', playerIn: 'H. Dervişoğlu' },
+  { minuteOffset: 82, type: 'Goal', detail: 'Normal Goal', teamSide: 'home', playerName: 'D. Mertens' },
+  { minuteOffset: 85, type: 'Card', detail: 'Yellow Card', teamSide: 'away', playerName: 'F. Kadıoğlu' },
+  { minuteOffset: 88, type: 'Subst', detail: 'Substitution', teamSide: 'away', playerName: '', playerOut: 'F. Amrabat', playerIn: 'J. Oosterwolde' },
+  { minuteOffset: 90, type: 'System', detail: 'Second Half Extra Time', teamSide: null, playerName: '', extraTime: 4 },
+  { minuteOffset: 90, extraTime: 1, type: 'Goal', detail: 'Normal Goal', teamSide: 'away', playerName: 'E. Valencia', assistName: 'M. Crespo' },
+  { minuteOffset: 90, extraTime: 2, type: 'Card', detail: 'Red Card', teamSide: 'home', playerName: 'A. Kurzawa' },
+  { minuteOffset: 90, extraTime: 3, type: 'Goal', detail: 'Normal Goal', teamSide: 'home', playerName: 'E. Kılınç' },
+  { minuteOffset: 94, type: 'System', detail: 'Match Finished', teamSide: null, playerName: '' },
+];
+
+/** Maç 2 olayları: Real vs Barça */
+export const MATCH_2_EVENTS: MockEvent[] = [
+  { minuteOffset: 5, type: 'Goal', detail: 'Normal Goal', teamSide: 'home', playerName: 'K. Mbappé', assistName: 'J. Bellingham' },
+  { minuteOffset: 10, type: 'Card', detail: 'Yellow Card', teamSide: 'away', playerName: 'R. Araújo' },
+  { minuteOffset: 15, type: 'Goal', detail: 'Normal Goal', teamSide: 'away', playerName: 'R. Lewandowski', assistName: 'L. Yamal' },
+  { minuteOffset: 20, type: 'Goal', detail: 'Normal Goal', teamSide: 'home', playerName: 'Vinícius Jr.', assistName: 'L. Modrić' },
+];
+
+export function computeLiveState(matchStartTime: number, events: MockEvent[]) {
+  const now = Date.now();
+  // ✅ Her saniye 1 dakika ilerlesin: (now - matchStartTime) / 1000 = geçen saniye = geçen dakika
+  const elapsedSeconds = Math.floor((now - matchStartTime) / 1000);
+  const elapsedMinutes = elapsedSeconds; // 1 sn = 1 dk
+  const isLive = now >= matchStartTime;
+  
+  // ✅ Maç henüz başlamadıysa NS döndür
+  if (!isLive) {
+    return { status: 'NS', elapsed: null, extraTime: null, homeGoals: null, awayGoals: null, events: [] };
+  }
+
+  // ✅ Maç bitti mi? (112 dakika = 112 saniye)
+  if (elapsedMinutes >= 112) {
+    const allEvents = events.filter(e => e.minuteOffset <= 112);
+    const homeGoals = allEvents.filter(e => e.type === 'Goal' && e.teamSide === 'home').length;
+    const awayGoals = allEvents.filter(e => e.type === 'Goal' && e.teamSide === 'away').length;
+    return {
+      status: 'FT',
+      elapsed: 90,
+      extraTime: 4,
+      homeGoals,
+      awayGoals,
+      events: allEvents,
+    };
+  }
+
+  // Geçen süreye göre gerçekleşen olayları hesapla
+  // Event dakikası + extraTime kontrolü
+  const occurredEvents = events.filter(e => {
+    // Normal eventler (extraTime yok)
+    if (e.extraTime == null) {
+      return e.minuteOffset <= elapsedMinutes;
+    }
+    
+    // ExtraTime'lı eventler
+    // İlk yarı uzatması: 45. dk + extraTime (1, 2, 3)
+    if (e.minuteOffset === 45) {
+      if (elapsedMinutes < 45) return false;
+      if (elapsedMinutes >= 45 && elapsedMinutes <= 48) {
+        // Uzatma dakikası kontrolü
+        return elapsedMinutes >= (45 + e.extraTime);
+      }
+      // 48'den sonra tüm uzatma eventleri gösterilir
+      return true;
+    }
+    
+    // İkinci yarı uzatması: 90. dk + extraTime (1, 2, 3, 4)
+    if (e.minuteOffset === 90) {
+      if (elapsedMinutes < 90) return false;
+      if (elapsedMinutes >= 90 && elapsedMinutes <= 94) {
+        // Uzatma dakikası kontrolü
+        return elapsedMinutes >= (90 + e.extraTime);
+      }
+      // 94'ten sonra tüm uzatma eventleri gösterilir
+      return true;
+    }
+    
+    return false;
+  });
+
+  const homeGoals = occurredEvents.filter(e => e.type === 'Goal' && e.teamSide === 'home').length;
+  const awayGoals = occurredEvents.filter(e => e.type === 'Goal' && e.teamSide === 'away').length;
+
+  // ✅ İlk yarı: 0-48 dk (45+3 uzatma)
+  // ✅ Devre arası: 48-60 dk (15 saniye = 15 dakika simülasyon)
+  // ✅ İkinci yarı: 60-94 dk (45+4 uzatma)
+  let status = '1H';
+  let actualElapsed = elapsedMinutes;
+  let extraTime: number | null = null;
+  
+  if (elapsedMinutes < 45) {
+    status = '1H';
+    actualElapsed = elapsedMinutes;
+  } else if (elapsedMinutes >= 45 && elapsedMinutes <= 48) {
+    status = '1H';
+    actualElapsed = 45;
+    extraTime = elapsedMinutes - 45;
+  } else if (elapsedMinutes > 48 && elapsedMinutes < 60) {
+    status = 'HT';
+    actualElapsed = 45;
+    extraTime = 3;
+  } else if (elapsedMinutes >= 60 && elapsedMinutes < 90) {
+    status = '2H';
+    actualElapsed = 45 + (elapsedMinutes - 60);
+  } else if (elapsedMinutes >= 90 && elapsedMinutes <= 94) {
+    status = '2H';
+    actualElapsed = 90;
+    extraTime = elapsedMinutes - 90;
+  }
+
+  return {
+    status,
+    elapsed: actualElapsed,
+    extraTime,
+    homeGoals,
+    awayGoals,
+    events: occurredEvents,
+  };
+}
+
+// ============================================================
+// 🔄 DİNAMİK MOCK MAÇ ÜRETİCİ
+// Her çağrıda güncel zamana göre durum hesaplar
+// ============================================================
+
+export function getMockTestMatches(): any[] {
+  if (!MOCK_TEST_ENABLED) return [];
+
+  // ✅ Her çağrıda güncel başlangıç zamanlarını hesapla
+  const match1Start = getMatch1Start();
+  const match2Start = getMatch2Start();
+  
+  const state1 = computeLiveState(match1Start, MATCH_1_EVENTS);
+  const state2 = computeLiveState(match2Start, MATCH_2_EVENTS);
+
+  return [
+    // ── Maç 1: Galatasaray vs Fenerbahçe ──
+    {
+      fixture: {
+        id: MOCK_MATCH_IDS.GS_FB,
+        date: new Date(match1Start).toISOString(),
+        timestamp: Math.floor(match1Start / 1000),
+        status: {
+          short: state1.status,
+          long: state1.status === 'NS' ? 'Not Started' : state1.status === 'HT' ? 'Halftime' : state1.status === '2H' ? 'Second Half' : state1.status === 'FT' ? 'Match Finished' : 'First Half',
+          elapsed: state1.elapsed,
+          extra: state1.extraTime,
+        },
+        venue: { name: 'Rams Park', city: 'İstanbul' },
+        referee: 'C. Çakır',
+      },
+      league: { id: 203, name: 'Süper Lig', country: 'Turkey', logo: null, season: 2025, round: 'Regular Season - 25' },
+      teams: {
+        home: { id: 645, name: 'Galatasaray', logo: null },
+        away: { id: 611, name: 'Fenerbahçe', logo: null },
+      },
+      goals: { home: state1.homeGoals, away: state1.awayGoals },
+      score: {
+        halftime: { home: state1.status !== 'NS' && state1.elapsed != null && state1.elapsed >= 45 ? state1.homeGoals : null, away: state1.status !== 'NS' && state1.elapsed != null && state1.elapsed >= 45 ? state1.awayGoals : null },
+        fulltime: { home: null, away: null },
+      },
+    },
+    // ── Maç 2: Real Madrid vs Barcelona ──
+    {
+      fixture: {
+        id: MOCK_MATCH_IDS.REAL_BARCA,
+        date: new Date(match2Start).toISOString(),
+        timestamp: Math.floor(match2Start / 1000),
+        status: {
+          short: state2.status,
+          long: state2.status === 'NS' ? 'Not Started' : state2.status === 'HT' ? 'Halftime' : state2.status === '2H' ? 'Second Half' : 'First Half',
+          elapsed: state2.elapsed,
+        },
+        venue: { name: 'Santiago Bernabéu', city: 'Madrid' },
+        referee: 'F. Brych',
+      },
+      league: { id: 140, name: 'La Liga', country: 'Spain', logo: null, season: 2025, round: 'Regular Season - 30' },
+      teams: {
+        home: { id: 541, name: 'Real Madrid', logo: null },
+        away: { id: 529, name: 'Barcelona', logo: null },
+      },
+      goals: { home: state2.homeGoals, away: state2.awayGoals },
+      score: {
+        halftime: { home: state2.status !== 'NS' && state2.elapsed != null && state2.elapsed >= 45 ? state2.homeGoals : null, away: state2.status !== 'NS' && state2.elapsed != null && state2.elapsed >= 45 ? state2.awayGoals : null },
+        fulltime: { home: null, away: null },
+      },
+    },
+  ];
+}
+
+/**
+ * Belirli bir mock maçın lineup verisini döndür
+ * MatchDetail ekranında kadro yüklenirken kullanılır
+ */
+export function getMockLineup(fixtureId: number): any[] | null {
+  if (!MOCK_TEST_ENABLED) return null;
+
+  if (fixtureId === MOCK_MATCH_IDS.GS_FB) {
+    return [
+      {
+        team: { id: 645, name: 'Galatasaray', logo: null, colors: { primary: '#E30613', secondary: '#FDB913' } },
+        coach: GS_SQUAD.coach,
+        formation: '4-3-3',
+        startXI: GS_SQUAD.startXI.map(p => ({
+          player: { ...p.player, rating: 78 + Math.floor(Math.random() * 10), stats: { pace: 75, shooting: 72, passing: 78, dribbling: 74, defending: 68, physical: 76 } },
+        })),
+        substitutes: GS_SQUAD.substitutes.map(p => ({
+          player: { ...p.player, rating: 72 + Math.floor(Math.random() * 8), stats: { pace: 72, shooting: 68, passing: 74, dribbling: 70, defending: 65, physical: 72 } },
+        })),
+      },
+      {
+        team: { id: 611, name: 'Fenerbahçe', logo: null, colors: { primary: '#FFED00', secondary: '#00205B' } },
+        coach: FB_SQUAD.coach,
+        formation: '4-3-3',
+        startXI: FB_SQUAD.startXI.map(p => ({
+          player: { ...p.player, rating: 77 + Math.floor(Math.random() * 10), stats: { pace: 74, shooting: 71, passing: 77, dribbling: 73, defending: 70, physical: 75 } },
+        })),
+        substitutes: FB_SQUAD.substitutes.map(p => ({
+          player: { ...p.player, rating: 71 + Math.floor(Math.random() * 8), stats: { pace: 71, shooting: 67, passing: 72, dribbling: 68, defending: 64, physical: 71 } },
+        })),
+      },
+    ];
+  }
+
+  if (fixtureId === MOCK_MATCH_IDS.REAL_BARCA) {
+    return [
+      {
+        team: { id: 541, name: 'Real Madrid', logo: null, colors: { primary: '#FFFFFF', secondary: '#00529F' } },
+        coach: REAL_SQUAD.coach,
+        formation: '4-3-3',
+        startXI: REAL_SQUAD.startXI.map(p => ({
+          player: { ...p.player, rating: 82 + Math.floor(Math.random() * 10), stats: { pace: 82, shooting: 80, passing: 84, dribbling: 82, defending: 72, physical: 80 } },
+        })),
+        substitutes: REAL_SQUAD.substitutes.map(p => ({
+          player: { ...p.player, rating: 76 + Math.floor(Math.random() * 8), stats: { pace: 76, shooting: 74, passing: 78, dribbling: 75, defending: 70, physical: 76 } },
+        })),
+      },
+      {
+        team: { id: 529, name: 'Barcelona', logo: null, colors: { primary: '#004D98', secondary: '#A50044' } },
+        coach: BARCA_SQUAD.coach,
+        formation: '4-3-3',
+        startXI: BARCA_SQUAD.startXI.map(p => ({
+          player: { ...p.player, rating: 81 + Math.floor(Math.random() * 10), stats: { pace: 80, shooting: 78, passing: 86, dribbling: 84, defending: 70, physical: 76 } },
+        })),
+        substitutes: BARCA_SQUAD.substitutes.map(p => ({
+          player: { ...p.player, rating: 75 + Math.floor(Math.random() * 8), stats: { pace: 75, shooting: 72, passing: 78, dribbling: 76, defending: 68, physical: 74 } },
+        })),
+      },
+    ];
+  }
+
+  return null;
+}
+
+/**
+ * Mock maç ID mi kontrol et
+ */
+export function isMockTestMatch(fixtureId: number): boolean {
+  return MOCK_TEST_ENABLED && (fixtureId === MOCK_MATCH_IDS.GS_FB || fixtureId === MOCK_MATCH_IDS.REAL_BARCA);
+}
+
+/**
+ * Mock maçlarda "kullanıcının takımı": 888001 → Fenerbahçe (611), 888002 → Real Madrid (541)
+ * Kadro seçimi ve kayıt bu takıma göre yapılır.
+ */
+export function getMockUserTeamId(fixtureId: number): number | undefined {
+  if (!MOCK_TEST_ENABLED) return undefined;
+  if (fixtureId === MOCK_MATCH_IDS.GS_FB) return 611;   // FB
+  if (fixtureId === MOCK_MATCH_IDS.REAL_BARCA) return 541; // Real
+  return undefined;
+}
+
+/**
+ * Bir sonraki mock maç başlangıç zamanı (ms cinsinden)
+ * Timer ayarlamak için kullanılır
+ */
+export function getNextMockMatchStartTime(): number | null {
+  if (!MOCK_TEST_ENABLED) return null;
+  const match1Start = getMatch1Start();
+  const match2Start = getMatch2Start();
+  const now = Date.now();
+  if (now < match1Start) return match1Start;
+  if (now < match2Start) return match2Start;
+  return null;
+}
+
+/**
+ * Mock maçlardan herhangi biri henüz başlamadı mı?
+ */
+export function hasPendingMockMatches(): boolean {
+  if (!MOCK_TEST_ENABLED) return false;
+  const match2Start = getMatch2Start();
+  return Date.now() < match2Start;
+}
+
+/**
+ * Mock maç için event listesini API-Football formatına dönüştür
+ */
+export async function getMockMatchEvents(fixtureId: number): Promise<any[]> {
+  if (!MOCK_TEST_ENABLED) return [];
+  
+  let events: MockEvent[] = [];
+  if (fixtureId === MOCK_MATCH_IDS.GS_FB) {
+    events = MATCH_1_EVENTS;
+  } else if (fixtureId === MOCK_MATCH_IDS.REAL_BARCA) {
+    events = MATCH_2_EVENTS;
+  } else {
+    return [];
+  }
+  
+  const matchStart = fixtureId === MOCK_MATCH_IDS.GS_FB ? getMatch1Start() : getMatch2Start();
+  const state = computeLiveState(matchStart, events);
+  
+  // ✅ TÜM eventleri döndür (filtreleme MatchLive.tsx'de yapılacak)
+  // computeLiveState sadece status ve gol sayısı için kullanılıyor
+  // Event filtrelemesi MatchLive.tsx'deki currentMinute ile yapılacak
+  // Gol sayısını sırayla hesapla (tüm eventler için)
+  let currentHomeGoals = 0;
+  let currentAwayGoals = 0;
+  
+  // ✅ Tüm eventleri döndür, filtreleme MatchLive.tsx'de yapılacak
+  return events.map((event: MockEvent) => {
+    const team = event.teamSide === 'home' 
+      ? (fixtureId === MOCK_MATCH_IDS.GS_FB ? { id: 645, name: 'Galatasaray' } : { id: 541, name: 'Real Madrid' })
+      : event.teamSide === 'away'
+      ? (fixtureId === MOCK_MATCH_IDS.GS_FB ? { id: 611, name: 'Fenerbahçe' } : { id: 529, name: 'Barcelona' })
+      : null;
+    
+    let type = event.type;
+    let detail = event.detail;
+    
+    // Gol sayısını hesapla (sırayla)
+    if (event.type === 'Goal' && event.teamSide) {
+      if (event.teamSide === 'home') {
+        currentHomeGoals++;
+      } else {
+        currentAwayGoals++;
+      }
+    }
+    
+    // System eventlerini Goal type'ına çevir (API-Football formatı)
+    if (event.type === 'System') {
+      type = 'Goal';
+      if (event.detail === 'Kick Off') detail = 'Match Kick Off';
+      else if (event.detail === 'First Half Extra Time') detail = 'First Half Extra Time';
+      else if (event.detail === 'Half Time') detail = 'Half Time';
+      else if (event.detail === 'Second Half Started') detail = 'Second Half Started';
+      else if (event.detail === 'Second Half Extra Time') detail = 'Second Half Extra Time';
+      else if (event.detail === 'Match Finished') detail = 'Match Finished';
+    }
+    
+    // Substitution eventlerini düzelt
+    if (event.type === 'Subst') {
+      type = 'Subst';
+      detail = 'Substitution';
+    }
+    
+    // VAR eventlerini düzelt
+    if (event.type === 'Var') {
+      type = 'Var';
+      detail = 'VAR';
+    }
+    
+    // ✅ elapsed değerini maç dakikasına çevir
+    // minuteOffset: gerçek zaman (0-112 arası)
+    // elapsed: maç dakikası (0-45, 45+1-3, 46-90, 90+1-4)
+    let elapsed: number;
+    if (event.minuteOffset <= 45) {
+      // İlk yarı normal dakikaları
+      elapsed = event.minuteOffset;
+    } else if (event.minuteOffset <= 48) {
+      // İlk yarı uzatması: 45+1, 45+2, 45+3
+      elapsed = 45; // elapsed 45, extraTime ile gösterilir
+    } else if (event.minuteOffset < 60) {
+      // Devre arası: elapsed 45, extraTime 3
+      elapsed = 45;
+    } else if (event.minuteOffset < 90) {
+      // İkinci yarı normal dakikaları: 60. elapsed dk = 46. maç dk
+      elapsed = 46 + (event.minuteOffset - 60);
+    } else if (event.minuteOffset <= 94) {
+      // İkinci yarı uzatması: 90+1, 90+2, 90+3, 90+4
+      elapsed = 90; // elapsed 90, extraTime ile gösterilir
+    } else {
+      // Maç bitti (94. dakikada)
+      elapsed = 90;
+    }
+    
+    // ✅ "Half Time" ve "Match Finished" için extraTime - ilk yarı 45+3'te, maç 90+4'te biter
+    let extraTime = event.extraTime ?? null;
+    if (event.detail === 'Half Time' && event.minuteOffset === 48) {
+      extraTime = 3; // İlk yarı 45+3 dk sonunda biter (45+1, 45+2 eventlerinden sonra)
+    }
+    if (event.detail === 'Match Finished' && event.minuteOffset === 94) {
+      extraTime = 4; // İkinci yarı 90+4 dk sonunda biter
+    }
+    
+    return {
+      time: {
+        elapsed: elapsed,
+        extra: extraTime,
+      },
+      type,
+      detail,
+      team,
+      player: event.playerName ? { name: event.playerName } : (event.type === 'Subst' && event.playerOut ? { name: event.playerOut } : null),
+      assist: event.assistName ? { name: event.assistName } : null,
+      goals: event.type === 'Goal' && event.teamSide 
+        ? { home: currentHomeGoals, away: currentAwayGoals }
+        : null,
+      comments: event.extraTime ? String(event.extraTime) : (event.type === 'Subst' && event.playerIn ? event.playerIn : null),
+    };
+  });
+}
+
+/**
+ * Mock maç başlamadan 1 dakika önce bildirim gösterilmeli mi?
+ */
+export function shouldShowMatchNotification(matchId: number): boolean {
+  if (!MOCK_TEST_ENABLED) return false;
+  const now = Date.now();
+  
+  if (matchId === MOCK_MATCH_IDS.GS_FB) {
+    const match1Start = getMatch1Start();
+    const notificationTime = getMatch1NotificationTime();
+    // Bildirim zamanı geçti mi ve maç henüz başlamadı mı?
+    return now >= notificationTime && now < match1Start;
+  }
+  
+  if (matchId === MOCK_MATCH_IDS.REAL_BARCA) {
+    const match2Start = getMatch2Start();
+    const notificationTime = getMatch2NotificationTime();
+    // Bildirim zamanı geçti mi ve maç henüz başlamadı mı?
+    return now >= notificationTime && now < match2Start;
+  }
+  
+  return false;
+}
+
+/**
+ * Mock maç bildirim mesajı
+ */
+export function getMatchNotificationMessage(matchId: number): string | null {
+  if (!MOCK_TEST_ENABLED) return null;
+  
+  if (matchId === MOCK_MATCH_IDS.GS_FB) {
+    return 'Galatasaray vs Fenerbahçe maçı 1 dakika sonra başlayacak!';
+  }
+  
+  if (matchId === MOCK_MATCH_IDS.REAL_BARCA) {
+    return 'Real Madrid vs Barcelona maçı 1 dakika sonra başlayacak!';
+  }
+  
+  return null;
+}
+
+/** Konsola mock test bilgisi yaz */
+export function logMockTestInfo(): void {
+  if (!MOCK_TEST_ENABLED) return;
+  const now = Date.now();
+  const match1Start = getMatch1Start();
+  const match2Start = getMatch2Start();
+  const match1NotificationTime = getMatch1NotificationTime();
+  const match2NotificationTime = getMatch2NotificationTime();
+  
+  const m1Remaining = Math.max(0, Math.ceil((match1Start - now) / 1000));
+  const m2Remaining = Math.max(0, Math.ceil((match2Start - now) / 1000));
+  const m1NotificationRemaining = Math.max(0, Math.ceil((match1NotificationTime - now) / 1000));
+  const m2NotificationRemaining = Math.max(0, Math.ceil((match2NotificationTime - now) / 1000));
+  
+  console.log(`\n🧪 ═══════════════════════════════════════════`);
+  console.log(`🧪 MOCK TEST AKTİF`);
+  console.log(`🧪 ───────────────────────────────────────────`);
+  console.log(`🧪 Maç 1: GS vs FB`);
+  console.log(`🧪   Bildirim: ${m1NotificationRemaining > 0 ? `${Math.floor(m1NotificationRemaining / 60)}:${String(m1NotificationRemaining % 60).padStart(2, '0')} sonra` : (now >= match1NotificationTime && now < match1Start ? '🔔 ŞİMDİ!' : 'Geçti')}`);
+  console.log(`🧪   Başlangıç: ${m1Remaining > 0 ? `${Math.floor(m1Remaining / 60)}:${String(m1Remaining % 60).padStart(2, '0')} kaldı` : '🔴 CANLI!'}`);
+  console.log(`🧪 Maç 2: Real vs Barça`);
+  console.log(`🧪   Bildirim: ${m2NotificationRemaining > 0 ? `${Math.floor(m2NotificationRemaining / 60)}:${String(m2NotificationRemaining % 60).padStart(2, '0')} sonra` : (now >= match2NotificationTime && now < match2Start ? '🔔 ŞİMDİ!' : 'Geçti')}`);
+  console.log(`🧪   Başlangıç: ${m2Remaining > 0 ? `${Math.floor(m2Remaining / 60)}:${String(m2Remaining % 60).padStart(2, '0')} kaldı` : '🔴 CANLI!'}`);
+  console.log(`🧪 ═══════════════════════════════════════════\n`);
+}

@@ -407,7 +407,7 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'ios' ? 250 : 240, // ✅ ProfileCard + team filter için standart padding
+    paddingTop: Platform.OS === 'ios' ? 245 : 235, // ✅ Profil ile aynı: kişi kartı + favori takım barı
     paddingBottom: 16,
   },
   headerTitle: {
@@ -609,7 +609,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   leaderboardListContent: {
-    paddingTop: 200, // ✅ Space for ProfileCard overlay + safe area (52px safe + 148px card = 200px)
+    paddingTop: Platform.OS === 'ios' ? 245 : 235, // ✅ Profil ile aynı: kişi kartı + favori takım barı
     paddingHorizontal: 16,
     paddingBottom: 100,
   },

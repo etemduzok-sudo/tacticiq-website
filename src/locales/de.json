@@ -404,8 +404,10 @@
   },
   "navigation": {
     "matches": "Spiele",
+    "matchCalendar": "Spielplan",
     "live": "Live",
     "finished": "Beendet",
+    "finishedMatches": "Ergebnisse",
     "leaderboard": "Rangliste",
     "profile": "Profil"
   },

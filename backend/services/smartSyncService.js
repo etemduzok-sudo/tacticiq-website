@@ -148,7 +148,12 @@ async function smartFetch() {
     
     // ============================================
     // 1. CANLI MAÇLAR (Her 12 saniyede)
+    // ⏸️ GEÇİCİ OLARAK DURDURULDU: API hakkı takım kadroları için kullanılıyor
     // ============================================
+    // ⏸️ Live matches API çağrısı geçici olarak devre dışı
+    console.log('⏸️ [SMART SYNC] Live matches temporarily disabled - API quota reserved for squad sync');
+    
+    /* ORIGINAL CODE - Re-enable when squad sync is complete
     const liveResponse = await footballApi.getLiveMatches();
     trackApiCall();
     
@@ -167,6 +172,7 @@ async function smartFetch() {
       
       console.log(`🔴 Updated ${liveResponse.response.length} live matches`);
     }
+    */
     
     // ============================================
     // 2. BUGÜNÜN MAÇLARI (Her 5 dakikada bir)

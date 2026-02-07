@@ -240,6 +240,12 @@ router.get('/:id/squad', async (req, res) => {
     const currentSeason = parseInt(season, 10) || 2025;
 
     if (!supabase) {
+      // 🧪 Supabase yoksa bile mock test kadroları döndür
+      const mockFallback = getMockTestSquad(teamId);
+      if (mockFallback) {
+        console.log(`🧪 Returning mock squad for team ${teamId} (no supabase)`);
+        return res.json(mockFallback);
+      }
       return res.status(503).json({
         success: false,
         error: 'Database not configured',
@@ -289,6 +295,13 @@ router.get('/:id/squad', async (req, res) => {
         }
       } catch (syncErr) {
         console.warn('⚠️ On-demand squad sync failed:', syncErr.message);
+      }
+
+      // 🧪 MOCK TEST: Mock takımlar için kadro verisi döndür
+      const mockSquads = getMockTestSquad(teamId);
+      if (mockSquads) {
+        console.log(`🧪 Returning mock squad for team ${teamId}`);
+        return res.json(mockSquads);
       }
 
       return res.status(404).json({
@@ -460,5 +473,119 @@ router.get('/search/:query', async (req, res) => {
     });
   }
 });
+
+// 🧪 MOCK TEST: Takım kadroları (test bitince silinebilir)
+function getMockTestSquad(teamId) {
+  const squads = {
+    // Galatasaray
+    645: {
+      success: true,
+      data: {
+        team: { id: 645, name: 'Galatasaray' },
+        players: [
+          { id: 50001, name: 'F. Muslera', number: 1, age: 37, position: 'Goalkeeper', photo: null },
+          { id: 50002, name: 'S. Boey', number: 20, age: 24, position: 'Defender', photo: null },
+          { id: 50003, name: 'D. Nelsson', number: 4, age: 25, position: 'Defender', photo: null },
+          { id: 50004, name: 'A. Bardakcı', number: 42, age: 29, position: 'Defender', photo: null },
+          { id: 50005, name: 'A. Kurzawa', number: 12, age: 31, position: 'Defender', photo: null },
+          { id: 50006, name: 'L. Torreira', number: 34, age: 28, position: 'Midfielder', photo: null },
+          { id: 50007, name: 'K. Aktürkoğlu', number: 7, age: 25, position: 'Midfielder', photo: null },
+          { id: 50008, name: 'D. Mertens', number: 14, age: 37, position: 'Midfielder', photo: null },
+          { id: 50009, name: 'B. Yılmaz', number: 17, age: 39, position: 'Attacker', photo: null },
+          { id: 50010, name: 'M. Icardi', number: 9, age: 31, position: 'Attacker', photo: null },
+          { id: 50011, name: 'V. Osimhen', number: 45, age: 26, position: 'Attacker', photo: null },
+          { id: 50012, name: 'O. Bayram', number: 88, age: 25, position: 'Goalkeeper', photo: null },
+          { id: 50013, name: 'K. Seri', number: 6, age: 33, position: 'Midfielder', photo: null },
+          { id: 50014, name: 'Y. Bakasetas', number: 10, age: 31, position: 'Midfielder', photo: null },
+          { id: 50015, name: 'E. Kılınç', number: 11, age: 29, position: 'Attacker', photo: null },
+          { id: 50016, name: 'H. Dervişoğlu', number: 99, age: 25, position: 'Attacker', photo: null },
+        ],
+      },
+      cached: false,
+      source: 'mock-test',
+    },
+    // Fenerbahçe
+    611: {
+      success: true,
+      data: {
+        team: { id: 611, name: 'Fenerbahçe' },
+        players: [
+          { id: 50101, name: 'D. Livakovic', number: 1, age: 29, position: 'Goalkeeper', photo: null },
+          { id: 50102, name: 'B. Osayi-Samuel', number: 2, age: 26, position: 'Defender', photo: null },
+          { id: 50103, name: 'A. Djiku', number: 4, age: 29, position: 'Defender', photo: null },
+          { id: 50104, name: 'Ç. Söyüncü', number: 3, age: 28, position: 'Defender', photo: null },
+          { id: 50105, name: 'F. Kadıoğlu', number: 5, age: 24, position: 'Defender', photo: null },
+          { id: 50106, name: 'İ. Kahveci', number: 6, age: 28, position: 'Midfielder', photo: null },
+          { id: 50107, name: 'F. Amrabat', number: 8, age: 28, position: 'Midfielder', photo: null },
+          { id: 50108, name: 'S. Szymanski', number: 10, age: 25, position: 'Midfielder', photo: null },
+          { id: 50109, name: 'D. Tadic', number: 11, age: 35, position: 'Attacker', photo: null },
+          { id: 50110, name: 'E. Dzeko', number: 9, age: 38, position: 'Attacker', photo: null },
+          { id: 50111, name: 'Ç. Ünder', number: 17, age: 27, position: 'Attacker', photo: null },
+          { id: 50112, name: 'İ. Bayındır', number: 12, age: 26, position: 'Goalkeeper', photo: null },
+          { id: 50113, name: 'J. Oosterwolde', number: 23, age: 24, position: 'Defender', photo: null },
+          { id: 50114, name: 'M. Crespo', number: 7, age: 25, position: 'Midfielder', photo: null },
+          { id: 50115, name: 'R. Batshuayi', number: 20, age: 30, position: 'Attacker', photo: null },
+          { id: 50116, name: 'E. Valencia', number: 18, age: 28, position: 'Attacker', photo: null },
+        ],
+      },
+      cached: false,
+      source: 'mock-test',
+    },
+    // Real Madrid
+    541: {
+      success: true,
+      data: {
+        team: { id: 541, name: 'Real Madrid' },
+        players: [
+          { id: 50201, name: 'T. Courtois', number: 1, age: 32, position: 'Goalkeeper', photo: null },
+          { id: 50202, name: 'D. Carvajal', number: 2, age: 32, position: 'Defender', photo: null },
+          { id: 50203, name: 'A. Rüdiger', number: 22, age: 31, position: 'Defender', photo: null },
+          { id: 50204, name: 'D. Alaba', number: 4, age: 31, position: 'Defender', photo: null },
+          { id: 50205, name: 'F. Mendy', number: 23, age: 29, position: 'Defender', photo: null },
+          { id: 50206, name: 'T. Kroos', number: 8, age: 34, position: 'Midfielder', photo: null },
+          { id: 50207, name: 'L. Modrić', number: 10, age: 38, position: 'Midfielder', photo: null },
+          { id: 50208, name: 'J. Bellingham', number: 5, age: 21, position: 'Midfielder', photo: null },
+          { id: 50209, name: 'Vinícius Jr.', number: 7, age: 24, position: 'Attacker', photo: null },
+          { id: 50210, name: 'K. Mbappé', number: 9, age: 27, position: 'Attacker', photo: null },
+          { id: 50211, name: 'Rodrygo', number: 11, age: 23, position: 'Attacker', photo: null },
+          { id: 50212, name: 'A. Lunin', number: 13, age: 25, position: 'Goalkeeper', photo: null },
+          { id: 50213, name: 'E. Militão', number: 3, age: 26, position: 'Defender', photo: null },
+          { id: 50214, name: 'E. Camavinga', number: 12, age: 21, position: 'Midfielder', photo: null },
+          { id: 50215, name: 'F. Valverde', number: 15, age: 26, position: 'Midfielder', photo: null },
+        ],
+      },
+      cached: false,
+      source: 'mock-test',
+    },
+    // Barcelona
+    529: {
+      success: true,
+      data: {
+        team: { id: 529, name: 'Barcelona' },
+        players: [
+          { id: 50301, name: 'M. ter Stegen', number: 1, age: 32, position: 'Goalkeeper', photo: null },
+          { id: 50302, name: 'J. Cancelo', number: 2, age: 30, position: 'Defender', photo: null },
+          { id: 50303, name: 'R. Araújo', number: 4, age: 25, position: 'Defender', photo: null },
+          { id: 50304, name: 'A. Christensen', number: 15, age: 28, position: 'Defender', photo: null },
+          { id: 50305, name: 'A. Baldé', number: 3, age: 21, position: 'Defender', photo: null },
+          { id: 50306, name: 'Pedri', number: 8, age: 21, position: 'Midfielder', photo: null },
+          { id: 50307, name: 'F. de Jong', number: 21, age: 27, position: 'Midfielder', photo: null },
+          { id: 50308, name: 'Gavi', number: 6, age: 20, position: 'Midfielder', photo: null },
+          { id: 50309, name: 'L. Yamal', number: 19, age: 17, position: 'Attacker', photo: null },
+          { id: 50310, name: 'R. Lewandowski', number: 9, age: 36, position: 'Attacker', photo: null },
+          { id: 50311, name: 'Raphinha', number: 11, age: 27, position: 'Attacker', photo: null },
+          { id: 50312, name: 'İ. Peña', number: 13, age: 25, position: 'Goalkeeper', photo: null },
+          { id: 50313, name: 'J. Koundé', number: 23, age: 25, position: 'Defender', photo: null },
+          { id: 50314, name: 'İ. Gündoğan', number: 22, age: 33, position: 'Midfielder', photo: null },
+          { id: 50315, name: 'F. Torres', number: 17, age: 24, position: 'Midfielder', photo: null },
+          { id: 50316, name: 'A. Fati', number: 10, age: 22, position: 'Attacker', photo: null },
+        ],
+      },
+      cached: false,
+      source: 'mock-test',
+    },
+  };
+  return squads[teamId] || null;
+}
 
 module.exports = router;

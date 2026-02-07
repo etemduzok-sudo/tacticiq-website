@@ -321,7 +321,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
             </View>
             </TouchableOpacity>
 
-            {/* ✅ Takım Filtre Barı - Header olmadan sadece chip'ler */}
+            {/* ✅ Takım Filtre Barı - Modern pill tasarımı */}
             {showTeamFilter && favoriteTeams.length > 0 && (
               <View style={styles.teamFilterSection}>
                 <ScrollView
@@ -329,7 +329,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
                   showsHorizontalScrollIndicator={false}
                   contentContainerStyle={styles.teamFilterScroll}
                 >
-                  {/* Tümü Chip */}
+                  {/* Tümü Pill */}
                   <TouchableOpacity
                     style={[
                       styles.teamFilterChip,
@@ -338,11 +338,16 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
                     onPress={() => onTeamSelect?.(null)}
                     activeOpacity={0.7}
                   >
-                    <Ionicons 
-                      name="grid" 
-                      size={14} 
-                      color={selectedTeamIds.length === 0 ? '#FFFFFF' : '#94A3B8'} 
-                    />
+                    <View style={[
+                      styles.teamChipIconWrap,
+                      selectedTeamIds.length === 0 && { backgroundColor: 'rgba(255,255,255,0.2)' },
+                    ]}>
+                      <Ionicons 
+                        name="apps" 
+                        size={12} 
+                        color={selectedTeamIds.length === 0 ? '#FFFFFF' : '#64748B'} 
+                      />
+                    </View>
                     <Text style={[
                       styles.teamFilterChipText,
                       selectedTeamIds.length === 0 && styles.teamFilterChipTextActive,
@@ -351,7 +356,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
                     </Text>
                   </TouchableOpacity>
 
-                  {/* Favori Takım Chip'leri */}
+                  {/* Favori Takım Pill'leri */}
                   {favoriteTeams.map((team) => {
                     const isSelected = selectedTeamIds.includes(team.id);
                     const colors = getTeamColors(team.name);
@@ -360,28 +365,37 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
                         key={team.id}
                         style={[
                           styles.teamFilterChip,
-                          isSelected && styles.teamFilterChipActive,
+                          isSelected && {
+                            backgroundColor: `${colors[0]}22`,
+                            borderColor: colors[0],
+                          },
                         ]}
                         onPress={() => onTeamSelect?.(team.id)}
                         activeOpacity={0.7}
                       >
-                        {/* Takım renk badge */}
-                        <View style={styles.teamChipBadge}>
+                        {/* Takım renk rozeti - dikey iki şerit */}
+                        <View style={[
+                          styles.teamChipBadge,
+                          isSelected && { 
+                            borderWidth: 1.5,
+                            borderColor: 'rgba(255,255,255,0.3)',
+                          },
+                        ]}>
                           <View style={[styles.teamChipStripe, { backgroundColor: colors[0] }]} />
                           <View style={[styles.teamChipStripe, { backgroundColor: colors[1] }]} />
                         </View>
                         <Text 
                           style={[
                             styles.teamFilterChipText,
-                            isSelected && styles.teamFilterChipTextActive,
+                            isSelected && { color: '#F1F5F9' },
                           ]} 
                           numberOfLines={1}
                         >
-                          {team.name.length > 12 ? team.name.substring(0, 10) + '...' : team.name}
+                          {team.name.length > 13 ? team.name.substring(0, 11) + '..' : team.name}
                         </Text>
                         {isSelected && (
-                          <View style={styles.teamChipCheck}>
-                            <Ionicons name="checkmark" size={10} color="#FFFFFF" />
+                          <View style={[styles.teamChipCheck, { backgroundColor: colors[0] }]}>
+                            <Ionicons name="checkmark" size={9} color="#FFFFFF" />
                           </View>
                         )}
                       </TouchableOpacity>
@@ -736,104 +750,58 @@ const styles = StyleSheet.create({
     fontSize: 9,
     color: '#94A3B8',
   },
-  // ✅ Takım Filtre Stilleri
+  // ✅ Takım Filtre Stilleri - Modern pill tasarım
   teamFilterSection: {
-    marginTop: 8,
+    marginTop: 6,
     paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(31, 162, 166, 0.15)',
-  },
-  teamFilterHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  teamFilterTitle: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#E2E8F0',
-    marginLeft: 4,
-    flex: 1,
-  },
-  teamFilterCount: {
-    backgroundColor: '#1FA2A6',
-    borderRadius: 8,
-    minWidth: 20,
-    height: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 4,
-  },
-  teamFilterCountText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#FFFFFF',
+    borderTopColor: 'rgba(31, 162, 166, 0.1)',
   },
   teamFilterScroll: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
     paddingRight: 8,
+    paddingBottom: 2,
   },
   teamFilterChip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    backgroundColor: 'rgba(31, 41, 55, 0.6)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(75, 85, 99, 0.4)',
+    paddingVertical: 7,
+    borderRadius: 20,
+    backgroundColor: 'rgba(15, 23, 42, 0.5)',
+    borderWidth: 1,
+    borderColor: 'rgba(51, 65, 85, 0.5)',
   },
   teamFilterChipActive: {
-    backgroundColor: '#1FA2A6',
+    backgroundColor: 'rgba(31, 162, 166, 0.15)',
     borderColor: '#1FA2A6',
   },
   teamFilterChipText: {
     fontSize: 12,
     fontWeight: '600',
     color: '#94A3B8',
-    maxWidth: 80,
+    maxWidth: 90,
   },
   teamFilterChipTextActive: {
     color: '#FFFFFF',
   },
-  teamColorDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  teamChip: {
-    flexDirection: 'row',
+  teamChipIconWrap: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(51, 65, 85, 0.5)',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 16,
-    backgroundColor: 'rgba(31, 41, 55, 0.6)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(75, 85, 99, 0.4)',
-  },
-  teamChipActive: {
-    backgroundColor: '#1FA2A6',
-    borderColor: '#1FA2A6',
-  },
-  teamChipText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#94A3B8',
-    maxWidth: 80,
-  },
-  teamChipTextActive: {
-    color: '#FFFFFF',
+    justifyContent: 'center',
   },
   teamChipBadge: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
     overflow: 'hidden',
-    position: 'relative',
+    flexDirection: 'row',
   },
   teamChipStripe: {
     flex: 1,
@@ -843,10 +811,9 @@ const styles = StyleSheet.create({
     width: 16,
     height: 16,
     borderRadius: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: 2,
+    marginLeft: 1,
   },
   noTeamsContainer: {
     flexDirection: 'row',

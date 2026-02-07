@@ -1,9 +1,12 @@
 /**
- * Favori takımların kadrolarını Supabase (team_squads) üzerinden yükler.
- * Favori takımlar belirlendiğinde kadrolar uygulamaya direk yüklenir.
+ * Favori takımların kadrolarını yükler.
+ * ✅ Öncelik sırası: Bulk cache → Supabase (team_squads)
+ * Bulk cache varsa anında yükler (offline mod desteği)
  */
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../config/supabase';
+import { getBulkSquad, isBulkDataValid } from '../services/bulkDataService';
+import { logger } from '../utils/logger';
 
 export interface SquadPlayer {
   id: number;
@@ -50,7 +53,45 @@ export function useFavoriteSquads(favoriteTeamIds: number[]) {
     
     const load = async () => {
       setLoading(true);
-      console.log('📥 [FavSquads] Supabase sorgusu:', ids);
+      
+      // ✅ 1. Önce BULK CACHE'den dene (anında yükleme, offline desteği)
+      try {
+        const bulkValid = await isBulkDataValid(ids);
+        if (bulkValid) {
+          const next: Record<number, SquadPlayer[]> = {};
+          let foundFromBulk = 0;
+          
+          for (const teamId of ids) {
+            const bulkSquad = await getBulkSquad(teamId);
+            if (bulkSquad && bulkSquad.length > 0) {
+              next[teamId] = normalizePlayers(bulkSquad);
+              foundFromBulk++;
+            }
+          }
+          
+          if (foundFromBulk > 0 && !cancelled) {
+            logger.info('⚡ [FavSquads] Loaded from BULK cache', {
+              teams: foundFromBulk,
+              total: Object.values(next).reduce((acc, p) => acc + p.length, 0),
+            }, 'BULK_CACHE');
+            setSquads(next);
+            
+            // Tüm takımlar bulk'tan geldiyse, Supabase'e gitmeye gerek yok
+            if (foundFromBulk === ids.length) {
+              if (!cancelled) {
+                setLoading(false);
+                setVersion(v => v + 1);
+              }
+              return;
+            }
+          }
+        }
+      } catch (e) {
+        logger.debug('Bulk squad cache failed, falling back to Supabase', { error: e }, 'BULK_CACHE');
+      }
+      
+      // ✅ 2. Supabase'den çek (fallback veya bulk'ta olmayan takımlar için)
+      logger.debug('[FavSquads] Supabase sorgusu', { ids }, 'SQUADS');
       
       try {
         const { data, error } = await supabase
@@ -62,26 +103,36 @@ export function useFavoriteSquads(favoriteTeamIds: number[]) {
         if (cancelled) return;
         
         if (error) {
-          console.error('❌ [FavSquads] Hata:', error.message);
+          logger.error('[FavSquads] Supabase hata', { error: error.message }, 'SQUADS');
           setLoading(false);
           setVersion(v => v + 1);
           return;
         }
         
         const next: Record<number, SquadPlayer[]> = {};
+        
+        // Bulk'tan gelen verileri koru
+        const currentSquads = squads;
+        for (const [teamIdStr, players] of Object.entries(currentSquads)) {
+          if (players.length > 0) {
+            next[parseInt(teamIdStr, 10)] = players;
+          }
+        }
+        
+        // Supabase'den gelenleri ekle/güncelle
         if (data && data.length > 0) {
           data.forEach((row: any) => {
             if (row.players?.length > 0) {
               next[row.team_id] = normalizePlayers(row.players);
-              console.log(`✅ [FavSquads] ${row.team_name}: ${row.players.length} oyuncu`);
+              logger.debug(`[FavSquads] ${row.team_name}: ${row.players.length} oyuncu`, undefined, 'SQUADS');
             }
           });
         }
         
-        console.log('✅ [FavSquads] Toplam:', Object.keys(next).length, 'takım yüklendi');
+        logger.info('[FavSquads] Toplam: ' + Object.keys(next).length + ' takım yüklendi', undefined, 'SQUADS');
         setSquads(next);
       } catch (e: any) {
-        console.error('❌ [FavSquads] Exception:', e?.message);
+        logger.error('[FavSquads] Exception', { error: e?.message }, 'SQUADS');
       } finally {
         if (!cancelled) {
           setLoading(false);

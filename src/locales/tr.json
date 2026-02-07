@@ -433,8 +433,10 @@
   },
   "navigation": {
     "matches": "Maçlar",
+    "matchCalendar": "Maç Takvimi",
     "live": "Oynanıyor",
     "finished": "Biten",
+    "finishedMatches": "Biten Maçlar",
     "leaderboard": "Sıralama",
     "profile": "Profil"
   },

@@ -1,10 +1,14 @@
 // useFavoriteTeamMatches Hook - Get matches for favorite teams
+// ✅ Bulk data cache entegrasyonu - anında yükleme desteği
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../services/api';
 import { useFavoriteTeams } from './useFavoriteTeams';
 // Mock data kaldırıldı - sadece gerçek API verisi kullanılıyor
 import { logger } from '../utils/logger';
+import { getAllBulkMatches, isBulkDataValid } from '../services/bulkDataService';
+// 🧪 Mock test verileri
+import { MOCK_TEST_ENABLED, getMockTestMatches, MOCK_MATCH_IDS, getNextMockMatchStartTime, logMockTestInfo } from '../data/mockTestData';
 
 // Cache keys
 const CACHE_KEY = 'tacticiq-matches-cache';
@@ -191,12 +195,42 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
   
   // ✅ HIZLI BAŞLANGIÇ: Component mount olduğunda HEMEN cache'den yükle
   // Bu effect en önce çalışmalı - favoriteTeams beklenmeden
+  // ✅ Bulk data cache'den de okur (offline mod desteği)
   useEffect(() => {
     if (cacheLoadedRef.current) return; // Sadece bir kez çalış
     cacheLoadedRef.current = true;
     
     const quickLoad = async () => {
-      // ✅ Önce raw cache'i yükle (filtre olmadan)
+      // ✅ Inline kategorileme fonksiyonu
+      const now = Date.now();
+      const LIVE_STATUSES_QUICK = ['1H', '2H', 'HT', 'ET', 'BT', 'P', 'LIVE', 'INT'];
+      const FINISHED_STATUSES_QUICK = ['FT', 'AET', 'PEN', 'AWD', 'WO', 'CANC', 'ABD', 'PST'];
+      
+      const categorizeQuick = (allCached: Match[]) => {
+        const rePast: Match[] = [];
+        const reLive: Match[] = [];
+        const reUpcoming: Match[] = [];
+        
+        for (const match of allCached) {
+          const status = match.fixture?.status?.short || '';
+          const timestamp = (match.fixture?.timestamp || 0) * 1000;
+          
+          if (LIVE_STATUSES_QUICK.includes(status)) {
+            reLive.push(match);
+          } else if (FINISHED_STATUSES_QUICK.includes(status) || (status !== 'NS' && timestamp < now - 3 * 60 * 60 * 1000)) {
+            rePast.push(match);
+          } else {
+            reUpcoming.push(match);
+          }
+        }
+        
+        rePast.sort((a, b) => (b.fixture?.timestamp || 0) - (a.fixture?.timestamp || 0));
+        reUpcoming.sort((a, b) => (a.fixture?.timestamp || 0) - (b.fixture?.timestamp || 0));
+        
+        return { rePast, reLive, reUpcoming };
+      };
+      
+      // ✅ 1. Önce standard cache'den dene (en hızlı)
       try {
         const cachedData = await AsyncStorage.getItem(CACHE_KEY);
         if (cachedData) {
@@ -204,31 +238,7 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
           const allCached = [...(past || []), ...(live || []), ...(upcoming || [])];
           
           if (allCached.length > 0) {
-            // ✅ Inline kategorileme (fonksiyon henüz tanımlı değil)
-            const now = Date.now();
-            const LIVE_STATUSES = ['1H', '2H', 'HT', 'ET', 'BT', 'P', 'LIVE', 'INT'];
-            const FINISHED_STATUSES = ['FT', 'AET', 'PEN', 'AWD', 'WO', 'CANC', 'ABD', 'PST'];
-            
-            const rePast: Match[] = [];
-            const reLive: Match[] = [];
-            const reUpcoming: Match[] = [];
-            
-            for (const match of allCached) {
-              const status = match.fixture?.status?.short || '';
-              const timestamp = (match.fixture?.timestamp || 0) * 1000;
-              
-              if (LIVE_STATUSES.includes(status)) {
-                reLive.push(match);
-              } else if (FINISHED_STATUSES.includes(status) || (status !== 'NS' && timestamp < now - 3 * 60 * 60 * 1000)) {
-                rePast.push(match);
-              } else {
-                reUpcoming.push(match);
-              }
-            }
-            
-            // Sırala
-            rePast.sort((a, b) => (b.fixture?.timestamp || 0) - (a.fixture?.timestamp || 0));
-            reUpcoming.sort((a, b) => (a.fixture?.timestamp || 0) - (b.fixture?.timestamp || 0));
+            const { rePast, reLive, reUpcoming } = categorizeQuick(allCached);
             
             setPastMatches(rePast);
             setLiveMatches(reLive);
@@ -246,6 +256,35 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
         }
       } catch (e) {
         logger.debug('Quick cache load failed', { error: e }, 'CACHE');
+      }
+      
+      // ✅ 2. Standard cache boşsa BULK cache'den dene (offline mod desteği)
+      try {
+        const teamIds = favoriteTeams?.map(t => t.id).filter(Boolean) || [];
+        if (teamIds.length > 0) {
+          const bulkValid = await isBulkDataValid(teamIds);
+          if (bulkValid) {
+            const bulkMatches = await getAllBulkMatches(teamIds);
+            if (bulkMatches && bulkMatches.length > 0) {
+              const { rePast, reLive, reUpcoming } = categorizeQuick(bulkMatches as Match[]);
+              
+              setPastMatches(rePast);
+              setLiveMatches(reLive);
+              setUpcomingMatches(reUpcoming);
+              setHasLoadedOnce(true);
+              setLoading(false);
+              logger.info('⚡ INSTANT BULK cache load', { 
+                total: bulkMatches.length, 
+                past: rePast.length, 
+                live: reLive.length, 
+                upcoming: reUpcoming.length 
+              }, 'BULK_CACHE');
+              return;
+            }
+          }
+        }
+      } catch (e) {
+        logger.debug('Bulk cache load failed', { error: e }, 'BULK_CACHE');
       }
       
       // Cache yoksa normal yüklemeyi bekle
@@ -802,10 +841,73 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
     return [MOCK_LIVE_MATCH, ...liveMatches];
   }, [liveMatches]);
 
+  // 🧪 MOCK TEST: Mock test maçlarını enjekte et + canlıya geçiş timer'ı
+  const [mockTestTick, setMockTestTick] = useState(0);
+
+  // 🧪 Mock test bilgisini logla ve hasLoadedOnce'ı true yap (ilk mount'ta)
+  useEffect(() => {
+    if (MOCK_TEST_ENABLED) {
+      logMockTestInfo();
+      // Mock test aktifken loading'i kapat ki mock maçlar görünsün
+      if (!hasLoadedOnce) {
+        setHasLoadedOnce(true);
+        setLoading(false);
+      }
+    }
+  }, []);
+
+  // 🧪 Mock test timer: Her 5 saniyede mock maçların durumunu kontrol et
+  useEffect(() => {
+    if (!MOCK_TEST_ENABLED) return;
+    const interval = setInterval(() => {
+      setMockTestTick(prev => prev + 1);
+    }, 5000); // 5 saniyede bir güncelle (hem geri sayım hem canlı skor güncellemesi için)
+    return () => clearInterval(interval);
+  }, []);
+
+  // 🧪 Mock test maçlarını upcoming, live ve past listelerine enjekte et
+  const { finalUpcoming, finalLive, finalPast } = useMemo(() => {
+    if (!MOCK_TEST_ENABLED) {
+      return { finalUpcoming: upcomingMatches, finalLive: liveMatchesWithMock, finalPast: pastMatches };
+    }
+
+    // Her tick'te güncel mock veri al (status dinamik olarak değişir)
+    const _tick = mockTestTick; // dependency olarak kullan
+    const mockMatches = getMockTestMatches();
+    
+    const mockUpcoming: Match[] = [];
+    const mockLive: Match[] = [];
+    const mockPast: Match[] = [];
+
+    for (const mock of mockMatches) {
+      const status = mock.fixture?.status?.short || 'NS';
+      if (['1H', '2H', 'HT', 'ET', 'P', 'LIVE'].includes(status)) {
+        mockLive.push(mock as Match);
+      } else if (status === 'NS') {
+        mockUpcoming.push(mock as Match);
+      } else if (['FT', 'AET', 'PEN', 'AWD', 'WO'].includes(status)) {
+        // ✅ Biten maçları past listesine ekle
+        mockPast.push(mock as Match);
+      }
+    }
+
+    // Mock ID'leri olan maçları mevcut listelerden çıkar (duplikasyon önleme)
+    const mockIds = new Set([MOCK_MATCH_IDS.GS_FB, MOCK_MATCH_IDS.REAL_BARCA]);
+    const cleanUpcoming = upcomingMatches.filter(m => !mockIds.has(m.fixture?.id));
+    const cleanLive = liveMatchesWithMock.filter(m => !mockIds.has(m.fixture?.id));
+    const cleanPast = pastMatches.filter(m => !mockIds.has(m.fixture?.id));
+
+    return {
+      finalUpcoming: [...mockUpcoming, ...cleanUpcoming],
+      finalLive: [...mockLive, ...cleanLive],
+      finalPast: [...mockPast, ...cleanPast], // ✅ Biten mock maçları en üste ekle (en yeni önce)
+    };
+  }, [upcomingMatches, liveMatchesWithMock, pastMatches, mockTestTick]);
+
   return {
-    pastMatches,
-    liveMatches: liveMatchesWithMock,
-    upcomingMatches,
+    pastMatches: finalPast, // ✅ Mock maçlar dahil biten maçlar
+    liveMatches: finalLive,
+    upcomingMatches: finalUpcoming,
     loading,
     error,
     refetch: fetchMatches,

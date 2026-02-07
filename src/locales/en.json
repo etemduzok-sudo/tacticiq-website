@@ -433,8 +433,10 @@
   },
   "navigation": {
     "matches": "Matches",
+    "matchCalendar": "Calendar",
     "live": "Live",
     "finished": "Finished",
+    "finishedMatches": "Results",
     "leaderboard": "Ranking",
     "profile": "Profile"
   },

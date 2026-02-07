@@ -215,12 +215,15 @@ export function useAppNavigation() {
     setCurrentScreen(tab as Screen);
   }, []);
 
-  const handleMatchSelect = useCallback((matchId: string, options?: { initialTab?: string }) => {
+  const handleMatchSelect = useCallback((matchId: string, options?: { initialTab?: string; predictionTeamId?: number }) => {
     logNavigation('match-detail', { matchId, ...options });
     screenBeforeMatchDetailRef.current = currentScreen;
     activeTabBeforeMatchDetailRef.current = activeTab;
     setSelectedMatchId(matchId);
-    const matchParams = { initialTab: options?.initialTab || 'squad' };
+    const matchParams = { 
+      initialTab: options?.initialTab || 'squad',
+      predictionTeamId: options?.predictionTeamId,
+    };
     if (typeof global !== 'undefined') (global as any).__matchDetailParams = matchParams;
     if (typeof window !== 'undefined') (window as any).__matchDetailParams = matchParams;
     setCurrentScreen('match-detail');
@@ -257,6 +260,7 @@ export function useAppNavigation() {
         setCurrentScreen('notifications');
         break;
       case 'matches':
+        // ✅ "Oynanan" sekmesi kaldırıldı - canlı maçlar artık Dashboard'da gösteriliyor
         if (params?.teamId) {
           setSelectedTeamIds(prev => prev.includes(params.teamId) ? prev : [...prev, params.teamId]);
           if (Platform.OS === 'web') {
@@ -266,7 +270,8 @@ export function useAppNavigation() {
             };
           }
         }
-        setCurrentScreen('matches');
+        setActiveTab('home');
+        setCurrentScreen('home');
         break;
       case 'profile':
         const showBadgesTab = params?.showBadges === true;
@@ -287,6 +292,7 @@ export function useAppNavigation() {
             initialTab: params?.initialTab || 'squad',
             analysisFocus: params?.analysisFocus,
             matchData: params?.matchData,
+            predictionTeamId: params?.predictionTeamId, // ✅ predictionTeamId eklendi
           };
           if (typeof global !== 'undefined') (global as any).__matchDetailParams = matchParams;
           if (typeof window !== 'undefined') (window as any).__matchDetailParams = matchParams;

@@ -109,7 +109,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const [badgeCount, setBadgeCount] = useState(0);
   
   // ⚽ FAVORITE TEAMS STATE - useFavoriteTeams hook'unu kullan
-  const { favoriteTeams, addFavoriteTeam, removeFavoriteTeam, setAllFavoriteTeams, isFavorite, refetch } = useFavoriteTeams();
+  const { favoriteTeams, addFavoriteTeam, removeFavoriteTeam, setAllFavoriteTeams, isFavorite, refetch, bulkDownloadProgress, isBulkDownloading } = useFavoriteTeams();
   
   // ✅ Takım seçim state'leri
   const [selectedNationalTeam, setSelectedNationalTeam] = useState<{ id: number; name: string; colors: string[]; country: string; league: string; coach?: string; flag?: string } | null>(null);
@@ -2999,6 +2999,60 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         </Animated.View>
       )}
 
+      {/* ✅ Bulk Data Download Progress - Takım seçimi sonrası veri indirme */}
+      {bulkDownloadProgress && bulkDownloadProgress.phase !== 'complete' && (
+        <Animated.View
+          entering={Platform.OS === 'web' ? FadeIn : FadeIn.duration(300)}
+          exiting={Platform.OS === 'web' ? FadeOut : FadeOut.duration(300)}
+          style={{
+            position: 'absolute',
+            bottom: 80,
+            left: 16,
+            right: 16,
+            backgroundColor: bulkDownloadProgress.phase === 'error' ? 'rgba(239, 68, 68, 0.95)' : 'rgba(59, 130, 246, 0.95)',
+            borderRadius: 12,
+            padding: 14,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 10,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.3,
+            shadowRadius: 8,
+            elevation: 8,
+            zIndex: 1000,
+          }}
+        >
+          {bulkDownloadProgress.phase !== 'error' && (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          )}
+          {bulkDownloadProgress.phase === 'error' && (
+            <Ionicons name="alert-circle" size={20} color="#FFFFFF" />
+          )}
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '600' }}>
+              {bulkDownloadProgress.message}
+            </Text>
+            {bulkDownloadProgress.phase !== 'error' && (
+              <View style={{ 
+                height: 3, 
+                backgroundColor: 'rgba(255,255,255,0.3)', 
+                borderRadius: 2, 
+                marginTop: 6,
+                overflow: 'hidden',
+              }}>
+                <View style={{ 
+                  height: '100%', 
+                  width: `${bulkDownloadProgress.progress}%`, 
+                  backgroundColor: '#FFFFFF', 
+                  borderRadius: 2,
+                }} />
+              </View>
+            )}
+          </View>
+        </Animated.View>
+      )}
+
       {/* Otomatik kaydetme aktif - banner kaldırıldı */}
     </ScreenLayout>
   );
@@ -3040,7 +3094,7 @@ const createStyles = (isDark: boolean = true) => {
   },
   scrollContent: {
     paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'ios' ? 245 : 235,
+    paddingTop: Platform.OS === 'ios' ? 245 : 235, // Kişi kartı + favori takım barı (overlay ile aynı yükseklik)
     paddingBottom: 96 + SIZES.tabBarHeight,
     alignItems: 'center',
   },

@@ -1,5 +1,5 @@
 // MatchPredictionScreen.tsx - React Native FULL COMPLETE VERSION
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -436,6 +436,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
   const [isSquadCompleted, setIsSquadCompleted] = useState(false); // ✅ Tamamla basıldı mı?
   const [isSaving, setIsSaving] = useState(false); // ✅ Kaydetme işlemi devam ediyor mu?
   const [isPredictionLocked, setIsPredictionLocked] = useState(false); // ✅ Tahminler kilitli mi? (kırmızı kilit)
+  const [showLockedWarningModal, setShowLockedWarningModal] = useState(false); // ✅ Web için kilitli uyarı modal'ı
   
   // 🌟 STRATEGIC FOCUS SYSTEM
   const [selectedAnalysisFocus, setSelectedAnalysisFocus] = useState<AnalysisFocusType | null>(null);
@@ -673,8 +674,31 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
         if (parsed.playerPredictions && typeof parsed.playerPredictions === 'object') setPlayerPredictions(parsed.playerPredictions);
         if (Array.isArray(parsed.focusedPredictions)) setFocusedPredictions(parsed.focusedPredictions);
         if (parsed.selectedAnalysisFocus) setSelectedAnalysisFocus(parsed.selectedAnalysisFocus);
-        // ✅ Tahmin kilidi durumunu yükle (varsayılan: kilitli değil)
-        if (parsed.isPredictionLocked === true) setIsPredictionLocked(true);
+        // ✅ Tahmin kilidi durumunu yükle
+        // Kullanıcı manuel olarak kilidi açmadığı sürece, kaydedilmiş tahminler kilitli kalmalı
+        // AsyncStorage'da isPredictionLocked değeri varsa onu kullan (kullanıcı manuel olarak değiştirmişse)
+        // Eğer isPredictionLocked belirtilmemişse ama tahminler varsa, varsayılan olarak kilitli yap
+        const hasPredictions = (parsed.matchPredictions && Object.values(parsed.matchPredictions).some(v => v !== null)) || 
+                               (parsed.playerPredictions && Object.keys(parsed.playerPredictions).length > 0);
+        
+        if (parsed.isPredictionLocked !== undefined) {
+          // ✅ AsyncStorage'da açıkça belirtilmişse onu kullan (kullanıcı manuel olarak değiştirmiş)
+          setIsPredictionLocked(parsed.isPredictionLocked === true);
+        } else if (hasPredictions) {
+          // ✅ Tahminler varsa ama kilit durumu belirtilmemişse, varsayılan olarak kilitli yap
+          // Bu durumda AsyncStorage'a da kaydet ki bir sonraki girişte kilitli gelsin
+          setIsPredictionLocked(true);
+          // AsyncStorage'a kilit durumunu kaydet
+          try {
+            parsed.isPredictionLocked = true;
+            await AsyncStorage.setItem(predictionStorageKey || `${STORAGE_KEYS.PREDICTIONS}${matchData?.id}`, JSON.stringify(parsed));
+          } catch (e) {
+            console.warn('Kilit durumu kaydedilemedi:', e);
+          }
+        } else {
+          // Tahmin yoksa kilitli değil
+          setIsPredictionLocked(false);
+        }
         // ✅ İlk yükleme tamamlandı - artık değişiklikleri takip edebiliriz
         setTimeout(() => setInitialPredictionsLoaded(true), 100);
       } catch (_) {
@@ -691,12 +715,53 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
     }
   }, [initialAnalysisFocus]);
 
+  // ✅ İlk yarı ve maç sonu skorları seçildiğinde toplam golü otomatik hesapla
+  React.useEffect(() => {
+    // Eğer tahminler kilitliyse veya ilk yükleme tamamlanmamışsa, otomatik güncelleme yapma
+    if (isPredictionLocked || !initialPredictionsLoaded) return;
+    
+    // Maç sonu skorları kontrol et
+    const hasFullTimeScore = predictions.secondHalfHomeScore !== null && predictions.secondHalfAwayScore !== null;
+    
+    if (hasFullTimeScore) {
+      // Maç sonu skorlarından toplam golü hesapla
+      const home = predictions.secondHalfHomeScore ?? 0;
+      const away = predictions.secondHalfAwayScore ?? 0;
+      const sum = home + away;
+      
+      let calculatedRange: string | null = null;
+      if (sum <= 1) calculatedRange = '0-1 gol';
+      else if (sum <= 3) calculatedRange = '2-3 gol';
+      else if (sum <= 5) calculatedRange = '4-5 gol';
+      else calculatedRange = '6+ gol';
+      
+      // Otomatik hesaplanan değeri kontrol et
+      const derivedValue = getDerivedTotalGoals();
+      
+      // Eğer kullanıcı manuel olarak toplam gol seçmemişse (null ise) veya 
+      // mevcut değer otomatik hesaplanan değerle eşleşiyorsa, otomatik güncelle
+      if (predictions.totalGoals === null || predictions.totalGoals === derivedValue) {
+        setPredictions(prev => {
+          // Eğer zaten aynı değerse güncelleme yapma (sonsuz döngüyü önle)
+          if (prev.totalGoals === calculatedRange) return prev;
+          return {
+            ...prev,
+            totalGoals: calculatedRange
+          };
+        });
+        setHasUnsavedChanges(true);
+      }
+    }
+    // Skorlar boşsa: Kullanıcı manuel seçim yapabilir, otomatik temizleme yapma
+  }, [predictions.secondHalfHomeScore, predictions.secondHalfAwayScore, isPredictionLocked, initialPredictionsLoaded]);
+
   const handlePlayerPredictionChange = (category: string, value: string | boolean) => {
     if (!selectedPlayer) return;
     
     // ✅ Tahminler kilitliyse değişiklik yapılamaz
     if (isPredictionLocked) {
-      Alert.alert('Tahminler Kilitli', 'Değişiklik yapmak için önce kilidi açın.', [{ text: 'Tamam' }]);
+      // Web için özel modal kullan (Alert.alert web'de çalışmıyor)
+      setShowLockedWarningModal(true);
       return;
     }
     
@@ -917,7 +982,8 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
   const handlePredictionChange = (category: string, value: string | number) => {
     // ✅ Tahminler kilitliyse değişiklik yapılamaz
     if (isPredictionLocked) {
-      Alert.alert('Tahminler Kilitli', 'Değişiklik yapmak için önce kilidi açın (yeşil kilite tıklayın).', [{ text: 'Tamam' }]);
+      // Web için özel modal kullan (Alert.alert web'de çalışmıyor)
+      setShowLockedWarningModal(true);
       return;
     }
     
@@ -1073,7 +1139,8 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
   const handleScoreChange = (category: 'firstHalfHomeScore' | 'firstHalfAwayScore' | 'secondHalfHomeScore' | 'secondHalfAwayScore', value: number) => {
     // ✅ Tahminler kilitliyse değişiklik yapılamaz
     if (isPredictionLocked) {
-      Alert.alert('Tahminler Kilitli', 'Değişiklik yapmak için önce kilidi açın.', [{ text: 'Tamam' }]);
+      // Web için özel modal kullan (Alert.alert web'de çalışmıyor)
+      setShowLockedWarningModal(true);
       return;
     }
     
@@ -1244,7 +1311,16 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                         !communityBorder && (isMatchLive || isMatchFinished) && (positionLabel === 'GK' || isGoalkeeperPlayer(player)) && styles.playerCardGKCommunity,
                         !communityBorder && (isMatchLive || isMatchFinished) && (positionLabel === 'ST' || (player.position && String(player.position).toUpperCase() === 'ST')) && styles.playerCardSTCommunity,
                       ]}
-                      onPress={() => setSelectedPlayer(player)}
+                      onPress={() => {
+                        // ✅ Kilit kontrolü: Tahminler kilitliyken bilgilendirme göster
+                        if (isPredictionLocked) {
+                          // Web için özel modal kullan (Alert.alert web'de çalışmıyor)
+                          setShowLockedWarningModal(true);
+                          return;
+                        }
+                        // ✅ Kilit açıksa modal'ı aç
+                        setSelectedPlayer(player);
+                      }}
                       activeOpacity={0.8}
                     >
                       <LinearGradient
@@ -1297,7 +1373,17 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
           {/* ═══════════════════════════════════════════════════════════
               1. İLK YARI - Skor + Uzatma Süresi (Kombine Kart)
           ═══════════════════════════════════════════════════════════ */}
-          <View style={[styles.categoryCardCombined, styles.categoryCardFirstHalf]}>
+          <TouchableOpacity 
+            style={[styles.categoryCardCombined, styles.categoryCardFirstHalf]}
+            activeOpacity={1}
+            onPress={() => {
+              // ✅ Kilitliyse bildirim göster
+              if (isPredictionLocked) {
+                // Web için özel modal kullan (Alert.alert web'de çalışmıyor)
+                setShowLockedWarningModal(true);
+              }
+            }}
+          >
             <View style={styles.cardAccentFirstHalf} />
             
             {/* Kart Başlığı */}
@@ -1398,17 +1484,34 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                 />
                 <View style={styles.sliderMarksCombined}>
                   {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((mark) => (
-                    <Text key={String(mark)} style={styles.sliderMarkCombined}>{mark === 10 ? '10+' : mark}</Text>
+                    <TouchableOpacity
+                      key={String(mark)}
+                      onPress={() => handlePredictionChange('firstHalfInjuryTime', `+${mark} dk`)}
+                      hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.sliderMarkCombined}>{mark === 10 ? '10+' : mark}</Text>
+                    </TouchableOpacity>
                   ))}
                 </View>
               </View>
             </View>
-          </View>
+          </TouchableOpacity>
 
           {/* ═══════════════════════════════════════════════════════════
               2. MAÇ SONU - Skor + Uzatma Süresi (Kombine Kart)
           ═══════════════════════════════════════════════════════════ */}
-          <View style={[styles.categoryCardCombined, styles.categoryCardFullTime]}>
+          <TouchableOpacity 
+            style={[styles.categoryCardCombined, styles.categoryCardFullTime]}
+            activeOpacity={1}
+            onPress={() => {
+              // ✅ Kilitliyse bildirim göster
+              if (isPredictionLocked) {
+                // Web için özel modal kullan (Alert.alert web'de çalışmıyor)
+                setShowLockedWarningModal(true);
+              }
+            }}
+          >
             <View style={styles.cardAccentFullTime} />
             
             {/* Kart Başlığı */}
@@ -1517,17 +1620,34 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                 />
                 <View style={styles.sliderMarksCombined}>
                   {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((mark) => (
-                    <Text key={String(mark)} style={styles.sliderMarkCombined}>{mark === 10 ? '10+' : mark}</Text>
+                    <TouchableOpacity
+                      key={String(mark)}
+                      onPress={() => handlePredictionChange('secondHalfInjuryTime', `+${mark} dk`)}
+                      hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.sliderMarkCombined}>{mark === 10 ? '10+' : mark}</Text>
+                    </TouchableOpacity>
                   ))}
                 </View>
               </View>
             </View>
-          </View>
+          </TouchableOpacity>
 
           {/* ═══════════════════════════════════════════════════════════
               3. GOL TAHMİNLERİ - Toplam Gol + İlk Gol Zamanı (Kombine Kart)
           ═══════════════════════════════════════════════════════════ */}
-          <View style={[styles.categoryCardCombined, styles.categoryCardGoal]}>
+          <TouchableOpacity 
+            style={[styles.categoryCardCombined, styles.categoryCardGoal]}
+            activeOpacity={1}
+            onPress={() => {
+              // ✅ Kilitliyse bildirim göster
+              if (isPredictionLocked) {
+                // Web için özel modal kullan (Alert.alert web'de çalışmıyor)
+                setShowLockedWarningModal(true);
+              }
+            }}
+          >
             <View style={styles.cardAccentGoal} />
             
             {/* Kart Başlığı */}
@@ -1562,7 +1682,10 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                         styles.disciplineBarSegment,
                         isSelected && styles.disciplineBarSegmentActiveEmerald
                       ]}
-                      onPress={() => handlePredictionChange('totalGoals', range)}
+                      onPress={() => {
+                        // Manuel seçim yapıldığında, skorlar boş olsa bile seçimi kaydet
+                        handlePredictionChange('totalGoals', range);
+                      }}
                       activeOpacity={0.7}
                     >
                       <Text style={[styles.disciplineBarSegmentText, isSelected && styles.disciplineBarSegmentTextActive]}>
@@ -1657,12 +1780,22 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                 <Text style={[styles.noGoalBtnText, predictions.firstGoalTime === 'no_goal' && styles.noGoalBtnTextActive]}>Gol yok</Text>
               </TouchableOpacity>
             </View>
-          </View>
+          </TouchableOpacity>
 
           {/* ═══════════════════════════════════════════════════════════
               5. DİSİPLİN TAHMİNLERİ - Dikey Çubuklar (Soldan Sağa Artan)
           ═══════════════════════════════════════════════════════════ */}
-          <View style={[styles.categoryCardCombined, styles.categoryCardDiscipline]}>
+          <TouchableOpacity 
+            style={[styles.categoryCardCombined, styles.categoryCardDiscipline]}
+            activeOpacity={1}
+            onPress={() => {
+              // ✅ Kilitliyse bildirim göster
+              if (isPredictionLocked) {
+                // Web için özel modal kullan (Alert.alert web'de çalışmıyor)
+                setShowLockedWarningModal(true);
+              }
+            }}
+          >
             <View style={styles.cardAccentDiscipline} />
             
             <View style={styles.combinedCardHeader}>
@@ -1689,7 +1822,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                 </View>
                 <View style={styles.verticalBarsContainer}>
                   {[
-                    { label: '0-2', height: 24 },
+                    { label: '1-2', height: 24 },
                     { label: '3-4', height: 36 },
                     { label: '5-6', height: 48 },
                     { label: '7+', height: 60 },
@@ -1730,10 +1863,10 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                 </View>
                 <View style={styles.verticalBarsContainer}>
                   {[
-                    { label: '0', height: 24 },
-                    { label: '1', height: 36 },
-                    { label: '2', height: 48 },
-                    { label: '3+', height: 60 },
+                    { label: '1', height: 24 },
+                    { label: '2', height: 36 },
+                    { label: '3', height: 48 },
+                    { label: '4+', height: 60 },
                   ].map((item) => {
                     const isSelected = predictions.redCards === item.label;
                     return (
@@ -1759,10 +1892,20 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                 </View>
               </View>
             </View>
-          </View>
+          </TouchableOpacity>
 
           {/* 6. Oyun Kontrolü - Topa Sahip Olma */}
-          <View style={[styles.categoryCardCombined, styles.categoryCardPossession]}>
+          <TouchableOpacity 
+            style={[styles.categoryCardCombined, styles.categoryCardPossession]}
+            activeOpacity={1}
+            onPress={() => {
+              // ✅ Kilitliyse bildirim göster
+              if (isPredictionLocked) {
+                // Web için özel modal kullan (Alert.alert web'de çalışmıyor)
+                setShowLockedWarningModal(true);
+              }
+            }}
+          >
             <View style={styles.cardAccentPossession} />
             
             <View style={styles.combinedCardHeader}>
@@ -1824,12 +1967,22 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                 </View>
               </View>
             </View>
-          </View>
+          </TouchableOpacity>
 
           {/* ═══════════════════════════════════════════════════════════
               7. ŞUT TAHMİNLERİ - Disiplin Tarzı Zarif Barlar
           ═══════════════════════════════════════════════════════════ */}
-          <View style={[styles.categoryCardCombined, styles.categoryCardShots]}>
+          <TouchableOpacity 
+            style={[styles.categoryCardCombined, styles.categoryCardShots]}
+            activeOpacity={1}
+            onPress={() => {
+              // ✅ Kilitliyse bildirim göster
+              if (isPredictionLocked) {
+                // Web için özel modal kullan (Alert.alert web'de çalışmıyor)
+                setShowLockedWarningModal(true);
+              }
+            }}
+          >
             <View style={styles.cardAccentShots} />
             
             <View style={styles.combinedCardHeader}>
@@ -1938,12 +2091,22 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                 })}
               </View>
             </View>
-          </View>
+          </TouchableOpacity>
 
           {/* ═══════════════════════════════════════════════════════════
               9. TAKTİK TAHMİNLERİ - Tempo + Senaryo (Kombine Kart)
           ═══════════════════════════════════════════════════════════ */}
-          <View style={[styles.categoryCardCombined, styles.categoryCardTactical]}>
+          <TouchableOpacity 
+            style={[styles.categoryCardCombined, styles.categoryCardTactical]}
+            activeOpacity={1}
+            onPress={() => {
+              // ✅ Kilitliyse bildirim göster
+              if (isPredictionLocked) {
+                // Web için özel modal kullan (Alert.alert web'de çalışmıyor)
+                setShowLockedWarningModal(true);
+              }
+            }}
+          >
             <View style={styles.cardAccentTactical} />
             
             <View style={styles.combinedCardHeader}>
@@ -2029,7 +2192,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                 })}
               </View>
             </View>
-          </View>
+          </TouchableOpacity>
 
           {/* ✅ Tahmin Kaydet Toolbar - Kadro sekmesiyle tutarlı: [Kilit] [Kaydet Butonu] */}
           <View style={styles.predictionToolbar}>
@@ -2039,9 +2202,23 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                 styles.predictionLockButton,
                 isPredictionLocked ? styles.predictionLockButtonLocked : styles.predictionLockButtonOpen
               ]}
-              onPress={() => {
-                // Sadece kilit durumunu değiştir - kaydetme işlemi yapmaz
-                setIsPredictionLocked(!isPredictionLocked);
+              onPress={async () => {
+                // ✅ Kilit durumunu değiştir ve AsyncStorage'a kaydet
+                const newLockState = !isPredictionLocked;
+                setIsPredictionLocked(newLockState);
+                
+                // ✅ AsyncStorage'a kilit durumunu kaydet
+                try {
+                  const storageKey = predictionStorageKey || `${STORAGE_KEYS.PREDICTIONS}${matchData.id}`;
+                  const existing = await AsyncStorage.getItem(storageKey);
+                  if (existing) {
+                    const parsed = JSON.parse(existing);
+                    parsed.isPredictionLocked = newLockState;
+                    await AsyncStorage.setItem(storageKey, JSON.stringify(parsed));
+                  }
+                } catch (error) {
+                  console.warn('Kilit durumu kaydedilemedi:', error);
+                }
               }}
               activeOpacity={0.7}
             >
@@ -2072,7 +2249,10 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                     <Text style={styles.submitButtonText}>Kaydediliyor...</Text>
                   </View>
                 ) : isPredictionLocked ? (
-                  <Text style={[styles.submitButtonText, { opacity: 0.5 }]}>Tahminler Kilitli</Text>
+                  <View style={styles.submitButtonContent}>
+                    <Ionicons name="lock-closed" size={18} color="#EF4444" style={{ marginRight: 6 }} />
+                    <Text style={styles.submitButtonTextLocked}>Tahminler Kilitli</Text>
+                  </View>
                 ) : (
                   <Text style={styles.submitButtonText}>Tahminleri Kaydet</Text>
                 )}
@@ -2087,7 +2267,54 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
         <PlayerPredictionModal
           player={selectedPlayer}
           predictions={currentPlayerPredictions}
+          isPredictionLocked={isPredictionLocked}
+          onShowLockedWarning={() => setShowLockedWarningModal(true)}
           onClose={() => setSelectedPlayer(null)}
+          onCancel={() => {
+            // ✅ İptal Et: Onay dialog'u göster
+            if (!selectedPlayer) return;
+            
+            // Oyuncuya ait tahmin var mı kontrol et
+            const hasPredictions = currentPlayerPredictions && Object.keys(currentPlayerPredictions).some(key => {
+              const value = currentPlayerPredictions[key];
+              return value !== null && value !== undefined && value !== false;
+            });
+            
+            if (hasPredictions) {
+              // Tahmin varsa onay iste
+              Alert.alert(
+                'Tahmini Sil',
+                `${selectedPlayer.name} için yaptığınız tüm tahminleri silmek istediğinize emin misiniz?`,
+                [
+                  {
+                    text: 'Vazgeç',
+                    style: 'cancel',
+                    onPress: () => {} // Hiçbir şey yapma, modal açık kalsın
+                  },
+                  {
+                    text: 'Sil',
+                    style: 'destructive',
+                    onPress: () => {
+                      // ✅ Onaylandı: Oyuncuya ait tüm tahminleri temizle
+                      setPlayerPredictions(prev => {
+                        const newPredictions = { ...prev };
+                        // Bu oyuncuya ait tüm tahminleri kaldır
+                        delete newPredictions[selectedPlayer.id];
+                        return newPredictions;
+                      });
+                      setSelectedPlayer(null);
+                      // Kaydedilmemiş değişiklik var
+                      if (initialPredictionsLoaded) setHasUnsavedChanges(true);
+                    }
+                  }
+                ],
+                { cancelable: true }
+              );
+            } else {
+              // Tahmin yoksa direkt kapat
+              setSelectedPlayer(null);
+            }
+          }}
           onPredictionChange={handlePlayerPredictionChange}
           startingXI={attackPlayersArray}
           reservePlayers={reserveTeamPlayers.length > 0 ? reserveTeamPlayers : allTeamPlayers}
@@ -2103,9 +2330,15 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
               const newPreds: any = {
                 ...currentPreds,
                 [category]: playerId.toString(),
-                [minuteCategory]: minute,
                 [outCategory]: true,
               };
+              
+              // ✅ Dakika opsiyonel - sadece seçildiyse kaydet
+              if (minute) {
+                newPreds[minuteCategory] = minute;
+              } else {
+                newPreds[minuteCategory] = null;
+              }
               
               // ✅ Karşılıklı dışlama: Normal değişiklik seçilirse sakatlık temizlenir
               if (type === 'normal') {
@@ -2138,6 +2371,79 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
           buttons={confirmModal.buttons}
           onRequestClose={() => setConfirmModal(null)}
         />
+      )}
+
+      {/* ✅ Web için kilitli uyarı modal'ı (Alert.alert web'de çalışmıyor) */}
+      {showLockedWarningModal && (
+        <Modal
+          visible={true}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowLockedWarningModal(false)}
+          statusBarTranslucent
+        >
+          <View style={{
+            flex: 1,
+            backgroundColor: 'rgba(0,0,0,0.6)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: 24,
+          }}>
+            <TouchableOpacity
+              style={StyleSheet.absoluteFill}
+              activeOpacity={1}
+              onPress={() => setShowLockedWarningModal(false)}
+            />
+            <View style={{
+              width: '100%',
+              maxWidth: 360,
+              backgroundColor: '#1E3A3A',
+              borderRadius: 16,
+              borderWidth: 1,
+              borderColor: 'rgba(239, 68, 68, 0.4)',
+              overflow: 'hidden',
+              padding: 24,
+            }}>
+              <View style={{ alignItems: 'center', marginBottom: 16 }}>
+                <Ionicons name="lock-closed" size={40} color="#EF4444" />
+              </View>
+              <Text style={{
+                fontSize: 18,
+                fontWeight: '700',
+                color: '#EF4444',
+                textAlign: 'center',
+                marginBottom: 12,
+              }}>Tahminler Kilitli</Text>
+              <Text style={{
+                fontSize: 15,
+                color: '#E5E7EB',
+                lineHeight: 22,
+                textAlign: 'center',
+                marginBottom: 24,
+              }}>Oyunculara ve maça ait tahminlerde değişiklik yapmak için sayfanın en altındaki kilidi açın.</Text>
+              
+              <TouchableOpacity
+                style={{
+                  paddingVertical: 12,
+                  paddingHorizontal: 20,
+                  borderRadius: 10,
+                  alignItems: 'center',
+                  backgroundColor: 'rgba(239, 68, 68, 0.3)',
+                  borderWidth: 1,
+                  borderColor: 'rgba(239, 68, 68, 0.6)',
+                }}
+                onPress={() => setShowLockedWarningModal(false)}
+                activeOpacity={0.8}
+              >
+                <Text style={{
+                  fontSize: 15,
+                  fontWeight: '600',
+                  color: '#FFFFFF',
+                }}>Tamam</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       )}
 
     </View>
@@ -2173,25 +2479,33 @@ const PlayerPredictionModal = ({
   player,
   predictions,
   onClose,
+  onCancel,
   onPredictionChange,
   startingXI = [],
   reservePlayers = [],
   onSubstituteConfirm,
   allPlayerPredictions = {},
+  isPredictionLocked = false,
+  onShowLockedWarning,
 }: {
   player: any;
   predictions: any;
   onClose: () => void;
+  onCancel?: () => void;
   onPredictionChange: (category: string, value: string | boolean) => void;
   startingXI?: any[];
   reservePlayers?: any[];
   onSubstituteConfirm?: (type: 'normal' | 'injury', playerId: string, minute: string) => void;
   allPlayerPredictions?: Record<string | number, any>;
+  isPredictionLocked?: boolean;
+  onShowLockedWarning?: () => void;
 }) => {
   const [expandedSubstituteType, setExpandedSubstituteType] = useState<'normal' | 'injury' | null>(null);
   const [localSubstituteId, setLocalSubstituteId] = useState<string | null>(null);
   const [localMinuteRange, setLocalMinuteRange] = useState<string | null>(null);
   const [showPlayerDropdown, setShowPlayerDropdown] = useState(false);
+  const scrollViewRef = useRef<ScrollView>(null);
+  const saveButtonRef = useRef<TouchableOpacity>(null);
 
   // ✅ Çıkan oyuncunun pozisyonuna göre uygun yedekleri filtrele
   // Zaten başka bir oyuncunun yerine girecek olarak seçilmiş oyuncuları da çıkar
@@ -2224,6 +2538,42 @@ const PlayerPredictionModal = ({
     id ? (reservePlayers || []).find((p: any) => p.id.toString() === id)?.name : null;
 
   const openDropdown = (type: 'normal' | 'injury') => {
+    // ✅ Kilit kontrolü: Tahminler kilitliyken bilgilendirme göster
+    if (isPredictionLocked) {
+      // Web için özel modal kullan (Alert.alert web'de çalışmıyor)
+      if (onShowLockedWarning) {
+        onShowLockedWarning();
+      }
+      return;
+    }
+    
+    // ✅ Eğer aynı tip tahmin zaten varsa, tahmini geri al (sarı kart gibi toggle)
+    // Dakika opsiyonel - sadece oyuncu seçildiyse de toggle çalışır
+    if (type === 'normal' && predictions.substitutePlayer) {
+      // Normal değişiklik tahmini varsa, geri al
+      onPredictionChange('substitutedOut', false);
+      onPredictionChange('substitutePlayer', null);
+      onPredictionChange('substituteMinute', null);
+      setExpandedSubstituteType(null);
+      setLocalSubstituteId(null);
+      setLocalMinuteRange(null);
+      setShowPlayerDropdown(false);
+      return;
+    }
+    
+    if (type === 'injury' && predictions.injurySubstitutePlayer) {
+      // Sakatlık tahmini varsa, geri al
+      onPredictionChange('injuredOut', false);
+      onPredictionChange('injurySubstitutePlayer', null);
+      onPredictionChange('injurySubstituteMinute', null);
+      setExpandedSubstituteType(null);
+      setLocalSubstituteId(null);
+      setLocalMinuteRange(null);
+      setShowPlayerDropdown(false);
+      return;
+    }
+    
+    // ✅ Dropdown açık/kapalı toggle
     if (expandedSubstituteType === type) {
       setExpandedSubstituteType(null);
       setLocalSubstituteId(null);
@@ -2232,44 +2582,68 @@ const PlayerPredictionModal = ({
       return;
     }
     
-    // ✅ Karşılıklı dışlama: Diğer seçeneği temizle
-    if (type === 'normal' && predictions.injuredOut) {
+    // ✅ Karşılıklı dışlama: Diğer seçeneği temizle (önce temizle, sonra dropdown aç)
+    let shouldClearLocalState = false;
+    if (type === 'normal' && (predictions.injuredOut || predictions.injurySubstitutePlayer)) {
       // Sakatlık seçiliyse, önce onu temizle
       onPredictionChange('injuredOut', false);
       onPredictionChange('injurySubstitutePlayer', null);
       onPredictionChange('injurySubstituteMinute', null);
-    } else if (type === 'injury' && predictions.substitutedOut) {
+      shouldClearLocalState = true;
+    } else if (type === 'injury' && (predictions.substitutedOut || predictions.substitutePlayer)) {
       // Normal değişiklik seçiliyse, önce onu temizle
       onPredictionChange('substitutedOut', false);
       onPredictionChange('substitutePlayer', null);
       onPredictionChange('substituteMinute', null);
+      shouldClearLocalState = true;
     }
     
+    // ✅ Dropdown'ı aç ve mevcut tahmin varsa göster
     setExpandedSubstituteType(type);
     setShowPlayerDropdown(false); // Diğer dropdown'ı kapat
-    const currentId = type === 'normal' ? predictions.substitutePlayer : predictions.injurySubstitutePlayer;
-    const currentMin = type === 'normal' ? predictions.substituteMinute : predictions.injurySubstituteMinute;
-    setLocalSubstituteId(currentId || null);
-    setLocalMinuteRange(currentMin || null);
+    
+    // Eğer karşılıklı dışlama nedeniyle temizlendiyse, local state'i de temizle
+    if (shouldClearLocalState) {
+      setLocalSubstituteId(null);
+      setLocalMinuteRange(null);
+    } else {
+      // Mevcut tahmin varsa göster
+      const currentId = type === 'normal' ? predictions.substitutePlayer : predictions.injurySubstitutePlayer;
+      const currentMin = type === 'normal' ? predictions.substituteMinute : predictions.injurySubstituteMinute;
+      setLocalSubstituteId(currentId || null);
+      setLocalMinuteRange(currentMin || null);
+    }
   };
 
-  // ✅ Otomatik kaydet - hem oyuncu hem dakika seçildiğinde
+  // ✅ Dropdown açıldığında kaydet butonuna scroll yap (onLayout ile daha hassas kontrol)
   React.useEffect(() => {
-    if (expandedSubstituteType && localSubstituteId && localMinuteRange && onSubstituteConfirm) {
-      // Kısa bir gecikme ile otomatik kaydet (kullanıcı seçimini görebilsin)
+    if (expandedSubstituteType && scrollViewRef.current) {
+      // Kısa bir gecikme ile scroll yap (dropdown render olsun)
+      // onLayout daha hassas kontrol sağlar ama bu da yedek olarak çalışır
+      const timer = setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [expandedSubstituteType]);
+
+  // ✅ Otomatik kaydet - hem oyuncu hem dakika seçildiğinde (kullanıcıya seçim değiştirme şansı vermek için)
+  React.useEffect(() => {
+    if (!isPredictionLocked && expandedSubstituteType && localSubstituteId && localMinuteRange && onSubstituteConfirm) {
+      // Hem oyuncu hem dakika seçildiğinde otomatik kaydet (kullanıcı seçimini değiştirebilmesi için daha uzun gecikme)
       const timer = setTimeout(() => {
         onSubstituteConfirm(expandedSubstituteType, localSubstituteId, localMinuteRange);
         // Dropdown'ı kapat ama seçimi göster
         setExpandedSubstituteType(null);
         setShowPlayerDropdown(false);
         // Local state'i temizleme - kaydedildiğini göstermek için
-      }, 500);
+      }, 2000); // 2 saniye gecikme - kullanıcıya seçim değiştirme şansı ver
       return () => clearTimeout(timer);
     }
-  }, [expandedSubstituteType, localSubstituteId, localMinuteRange, onSubstituteConfirm]);
+  }, [isPredictionLocked, expandedSubstituteType, localSubstituteId, localMinuteRange, onSubstituteConfirm]);
 
-  // ✅ Tek satır bildirim metni - Çıkar: x Girer: x dk 1-15 formatında
-  const buttonLabelNormal = predictions.substitutePlayer && predictions.substituteMinute
+  // ✅ Tek satır bildirim metni - Çıkar: x Girer: x dk 1-15 formatında (dakika opsiyonel)
+  const buttonLabelNormal = predictions.substitutePlayer
     ? (
         <View style={styles.substituteButtonSingleLine}>
           <View style={styles.substituteButtonSingleRow}>
@@ -2282,14 +2656,16 @@ const PlayerPredictionModal = ({
             <Text style={styles.substituteButtonLabel}>Girer:</Text>
             <Text style={styles.substituteButtonSubstituteNameSingle}>{getSubstituteName(predictions.substitutePlayer)?.split(' ').pop()}</Text>
           </View>
-          <View style={styles.substituteButtonSingleRow}>
-            <Ionicons name="time-outline" size={12} color="#9CA3AF" />
-            <Text style={styles.substituteButtonTimeTextSingle}>dk {predictions.substituteMinute}</Text>
-          </View>
+          {predictions.substituteMinute && (
+            <View style={styles.substituteButtonSingleRow}>
+              <Ionicons name="time-outline" size={12} color="#9CA3AF" />
+              <Text style={styles.substituteButtonTimeTextSingle}>dk {predictions.substituteMinute}</Text>
+            </View>
+          )}
         </View>
       )
     : 'Oyundan Çıkar';
-  const buttonLabelInjury = predictions.injurySubstitutePlayer && predictions.injurySubstituteMinute
+  const buttonLabelInjury = predictions.injurySubstitutePlayer
     ? (
         <View style={styles.substituteButtonSingleLine}>
           <View style={styles.substituteButtonSingleRow}>
@@ -2302,10 +2678,12 @@ const PlayerPredictionModal = ({
             <Text style={styles.substituteButtonLabel}>Girer:</Text>
             <Text style={styles.substituteButtonSubstituteNameSingle}>{getSubstituteName(predictions.injurySubstitutePlayer)?.split(' ').pop()}</Text>
           </View>
-          <View style={styles.substituteButtonSingleRow}>
-            <Ionicons name="time-outline" size={12} color="#9CA3AF" />
-            <Text style={styles.substituteButtonTimeTextSingle}>dk {predictions.injurySubstituteMinute}</Text>
-          </View>
+          {predictions.injurySubstituteMinute && (
+            <View style={styles.substituteButtonSingleRow}>
+              <Ionicons name="time-outline" size={12} color="#9CA3AF" />
+              <Text style={styles.substituteButtonTimeTextSingle}>dk {predictions.injurySubstituteMinute}</Text>
+            </View>
+          )}
         </View>
       )
     : 'Sakatlanarak Çıkar';
@@ -2355,6 +2733,7 @@ const PlayerPredictionModal = ({
 
           {expandedSubstituteType ? (
             <ScrollView
+              ref={scrollViewRef}
               style={styles.playerPredictionsScroll}
               contentContainerStyle={styles.playerPredictionsContent}
               showsVerticalScrollIndicator={true}
@@ -2503,23 +2882,36 @@ const PlayerPredictionModal = ({
                 style={[
                   styles.predictionButton,
                   predictions.substitutedOut && styles.predictionButtonActive,
+                  isPredictionLocked && styles.predictionButtonDisabled,
                 ]}
                 onPress={() => openDropdown('normal')}
                 hitSlop={16}
+                disabled={isPredictionLocked}
               >
                 {typeof buttonLabelNormal === 'string' ? (
-                  <Text style={[
-                    styles.predictionButtonText,
-                    predictions.substitutedOut && styles.predictionButtonTextActive,
-                  ]}>
-                    🔄 {buttonLabelNormal}
-                  </Text>
+                  <View style={styles.predictionButtonContent}>
+                    {isPredictionLocked && (
+                      <Ionicons name="lock-closed" size={16} color="#EF4444" style={{ marginRight: 6 }} />
+                    )}
+                    <Text style={[
+                      styles.predictionButtonText,
+                      predictions.substitutedOut && styles.predictionButtonTextActive,
+                      isPredictionLocked && styles.predictionButtonTextDisabled,
+                    ]}>
+                      🔄 {buttonLabelNormal}
+                    </Text>
+                  </View>
                 ) : (
-                  buttonLabelNormal
+                  <View style={styles.predictionButtonContent}>
+                    {isPredictionLocked && (
+                      <Ionicons name="lock-closed" size={16} color="#EF4444" style={{ marginRight: 6 }} />
+                    )}
+                    {buttonLabelNormal}
+                  </View>
                 )}
               </Pressable>
 
-              {expandedSubstituteType === 'normal' && (
+              {expandedSubstituteType === 'normal' && !isPredictionLocked && (
                 <View style={styles.inlineSubstituteDropdown}>
                   <Text style={styles.inlineSubstituteTitle}>Yerine girecek oyuncu & dakika aralığı</Text>
                   
@@ -2642,12 +3034,49 @@ const PlayerPredictionModal = ({
                     </View>
                   </View>
                   
-                  {/* Bilgilendirme: Seçim yapıldığında otomatik kaydedilir */}
-                  {localSubstituteId && localMinuteRange && (
+                  {/* Bilgilendirme: Seçim durumu */}
+                  {localSubstituteId && (
                     <View style={styles.autoSaveInfo}>
                       <Ionicons name="checkmark-circle" size={16} color="#10B981" />
-                      <Text style={styles.autoSaveInfoText}>Seçim otomatik kaydedildi</Text>
+                      <Text style={styles.autoSaveInfoText}>
+                        {localMinuteRange 
+                          ? 'Hem oyuncu hem dakika seçildi - otomatik kaydedilecek' 
+                          : 'Oyuncu seçildi - dakika seçebilir veya kaydet butonuna basabilirsiniz'}
+                      </Text>
                     </View>
+                  )}
+                  
+                  {/* Manuel Kaydet Butonu - Sadece oyuncu seçildiyse göster */}
+                  {localSubstituteId && (
+                    <TouchableOpacity
+                      ref={expandedSubstituteType === 'normal' ? saveButtonRef : null}
+                      style={[
+                        styles.manualSaveButton,
+                        isPredictionLocked && styles.manualSaveButtonDisabled,
+                      ]}
+                      onPress={() => {
+                        if (!isPredictionLocked && onSubstituteConfirm && expandedSubstituteType === 'normal' && localSubstituteId) {
+                          onSubstituteConfirm('normal', localSubstituteId, localMinuteRange || null);
+                          setExpandedSubstituteType(null);
+                          setShowPlayerDropdown(false);
+                        }
+                      }}
+                      onLayout={() => {
+                        // Kaydet butonu render olduğunda scroll yap
+                        if (expandedSubstituteType === 'normal' && scrollViewRef.current) {
+                          setTimeout(() => {
+                            scrollViewRef.current?.scrollToEnd({ animated: true });
+                          }, 100);
+                        }
+                      }}
+                      activeOpacity={isPredictionLocked ? 1 : 0.7}
+                      disabled={isPredictionLocked}
+                    >
+                      <Text style={[
+                        styles.manualSaveButtonText,
+                        isPredictionLocked && styles.manualSaveButtonTextDisabled,
+                      ]}>Kaydet</Text>
+                    </TouchableOpacity>
                   )}
                 </View>
               )}
@@ -2659,23 +3088,36 @@ const PlayerPredictionModal = ({
                 style={[
                   styles.predictionButton,
                   predictions.injuredOut && styles.predictionButtonActive,
+                  isPredictionLocked && styles.predictionButtonDisabled,
                 ]}
                 onPress={() => openDropdown('injury')}
                 hitSlop={16}
+                disabled={isPredictionLocked}
               >
                 {typeof buttonLabelInjury === 'string' ? (
-                  <Text style={[
-                    styles.predictionButtonText,
-                    predictions.injuredOut && styles.predictionButtonTextActive,
-                  ]}>
-                    🚑 {buttonLabelInjury}
-                  </Text>
+                  <View style={styles.predictionButtonContent}>
+                    {isPredictionLocked && (
+                      <Ionicons name="lock-closed" size={16} color="#EF4444" style={{ marginRight: 6 }} />
+                    )}
+                    <Text style={[
+                      styles.predictionButtonText,
+                      predictions.injuredOut && styles.predictionButtonTextActive,
+                      isPredictionLocked && styles.predictionButtonTextDisabled,
+                    ]}>
+                      🚑 {buttonLabelInjury}
+                    </Text>
+                  </View>
                 ) : (
-                  buttonLabelInjury
+                  <View style={styles.predictionButtonContent}>
+                    {isPredictionLocked && (
+                      <Ionicons name="lock-closed" size={16} color="#EF4444" style={{ marginRight: 6 }} />
+                    )}
+                    {buttonLabelInjury}
+                  </View>
                 )}
               </Pressable>
 
-              {expandedSubstituteType === 'injury' && (
+              {expandedSubstituteType === 'injury' && !isPredictionLocked && (
                 <View style={styles.inlineSubstituteDropdown}>
                   <Text style={styles.inlineSubstituteTitle}>Yerine girecek oyuncu & dakika aralığı</Text>
                   
@@ -2798,12 +3240,49 @@ const PlayerPredictionModal = ({
                     </View>
                   </View>
                   
-                  {/* Bilgilendirme: Seçim yapıldığında otomatik kaydedilir */}
-                  {localSubstituteId && localMinuteRange && (
+                  {/* Bilgilendirme: Seçim durumu */}
+                  {localSubstituteId && (
                     <View style={styles.autoSaveInfo}>
                       <Ionicons name="checkmark-circle" size={16} color="#10B981" />
-                      <Text style={styles.autoSaveInfoText}>Seçim otomatik kaydedildi</Text>
+                      <Text style={styles.autoSaveInfoText}>
+                        {localMinuteRange 
+                          ? 'Hem oyuncu hem dakika seçildi - otomatik kaydedilecek' 
+                          : 'Oyuncu seçildi - dakika seçebilir veya kaydet butonuna basabilirsiniz'}
+                      </Text>
                     </View>
+                  )}
+                  
+                  {/* Manuel Kaydet Butonu - Sadece oyuncu seçildiyse göster */}
+                  {localSubstituteId && (
+                    <TouchableOpacity
+                      ref={expandedSubstituteType === 'injury' ? saveButtonRef : null}
+                      style={[
+                        styles.manualSaveButton,
+                        isPredictionLocked && styles.manualSaveButtonDisabled,
+                      ]}
+                      onPress={() => {
+                        if (!isPredictionLocked && onSubstituteConfirm && expandedSubstituteType === 'injury' && localSubstituteId) {
+                          onSubstituteConfirm('injury', localSubstituteId, localMinuteRange || null);
+                          setExpandedSubstituteType(null);
+                          setShowPlayerDropdown(false);
+                        }
+                      }}
+                      onLayout={() => {
+                        // Kaydet butonu render olduğunda scroll yap
+                        if (expandedSubstituteType === 'injury' && scrollViewRef.current) {
+                          setTimeout(() => {
+                            scrollViewRef.current?.scrollToEnd({ animated: true });
+                          }, 100);
+                        }
+                      }}
+                      activeOpacity={isPredictionLocked ? 1 : 0.7}
+                      disabled={isPredictionLocked}
+                    >
+                      <Text style={[
+                        styles.manualSaveButtonText,
+                        isPredictionLocked && styles.manualSaveButtonTextDisabled,
+                      ]}>Kaydet</Text>
+                    </TouchableOpacity>
                   )}
                 </View>
               )}
@@ -2955,14 +3434,17 @@ const PlayerPredictionModal = ({
                 style={[
                   styles.predictionButton,
                   predictions.substitutedOut && styles.predictionButtonActive,
+                  isPredictionLocked && styles.predictionButtonDisabled,
                 ]}
                 onPress={() => openDropdown('normal')}
                 hitSlop={16}
+                disabled={isPredictionLocked}
               >
                 {typeof buttonLabelNormal === 'string' ? (
                   <Text style={[
                     styles.predictionButtonText,
                     predictions.substitutedOut && styles.predictionButtonTextActive,
+                    isPredictionLocked && styles.predictionButtonTextDisabled,
                   ]}>
                     🔄 {buttonLabelNormal}
                   </Text>
@@ -2978,14 +3460,17 @@ const PlayerPredictionModal = ({
                 style={[
                   styles.predictionButton,
                   predictions.injuredOut && styles.predictionButtonActive,
+                  isPredictionLocked && styles.predictionButtonDisabled,
                 ]}
                 onPress={() => openDropdown('injury')}
                 hitSlop={16}
+                disabled={isPredictionLocked}
               >
                 {typeof buttonLabelInjury === 'string' ? (
                   <Text style={[
                     styles.predictionButtonText,
                     predictions.injuredOut && styles.predictionButtonTextActive,
+                    isPredictionLocked && styles.predictionButtonTextDisabled,
                   ]}>
                     🚑 {buttonLabelInjury}
                   </Text>
@@ -2999,12 +3484,45 @@ const PlayerPredictionModal = ({
           )}
 
           <View style={styles.playerModalActions}>
-            <TouchableOpacity style={styles.cancelButton} onPress={onClose} activeOpacity={0.7}>
+            <TouchableOpacity 
+              style={styles.cancelButton} 
+              onPress={() => {
+                // ✅ İptal Et: Oyuncuya ait tüm tahminleri temizle ve modal'ı kapat
+                if (onCancel) {
+                  onCancel();
+                } else {
+                  onClose();
+                }
+              }} 
+              activeOpacity={0.7}
+            >
               <Text style={styles.cancelButtonText}>İptal Et</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.saveButton} onPress={onClose} activeOpacity={0.8}>
-              <LinearGradient colors={['#1FA2A6', '#047857']} style={styles.saveButtonGradient}>
-                <Text style={styles.saveButtonText}>Kaydet</Text>
+            <TouchableOpacity 
+              style={[
+                styles.saveButton,
+                isPredictionLocked && styles.saveButtonDisabled,
+              ]} 
+              onPress={isPredictionLocked ? undefined : onClose} 
+              activeOpacity={isPredictionLocked ? 1 : 0.8}
+              disabled={isPredictionLocked}
+            >
+              <LinearGradient 
+                colors={isPredictionLocked ? ['#4B5563', '#374151'] : ['#1FA2A6', '#047857']} 
+                style={styles.saveButtonGradient}
+              >
+                {isPredictionLocked ? (
+                  <View style={styles.saveButtonContent}>
+                    <Ionicons name="lock-closed" size={18} color="#EF4444" style={{ marginRight: 6 }} />
+                    <Text style={styles.saveButtonTextLocked}>
+                      Tahminler Kilitli
+                    </Text>
+                  </View>
+                ) : (
+                  <Text style={styles.saveButtonText}>
+                    Kaydet
+                  </Text>
+                )}
               </LinearGradient>
             </TouchableOpacity>
           </View>
@@ -4748,6 +5266,16 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#FFFFFF',
   },
+  submitButtonTextLocked: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#EF4444',
+  },
+  submitButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   
   // Player Modal
   modalOverlay: {
@@ -4887,6 +5415,19 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#FFFFFF',
   },
+  predictionButtonDisabled: {
+    opacity: 0.5,
+    backgroundColor: 'rgba(15, 23, 42, 0.5)',
+    borderColor: 'rgba(239, 68, 68, 0.5)',
+  },
+  predictionButtonTextDisabled: {
+    opacity: 0.6,
+  },
+  predictionButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   subOptions: {
     paddingLeft: 10,
     gap: 4,
@@ -4991,6 +5532,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
     color: '#FFFFFF',
+  },
+  saveButtonTextLocked: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#EF4444',
+  },
+  saveButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  saveButtonDisabled: {
+    opacity: 1,
+  },
+  saveButtonTextDisabled: {
+    opacity: 1,
   },
   
   // Substitute Modal
@@ -5243,6 +5800,28 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
     color: '#10B981',
+  },
+  manualSaveButton: {
+    marginTop: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    backgroundColor: '#10B981',
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  manualSaveButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  manualSaveButtonDisabled: {
+    opacity: 0.5,
+    backgroundColor: '#4B5563',
+  },
+  manualSaveButtonTextDisabled: {
+    opacity: 0.6,
+    color: '#9CA3AF',
   },
   // Minute Range Compact Styles
   minuteRangeContainer: {

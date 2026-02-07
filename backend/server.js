@@ -149,6 +149,7 @@ const predictionsRouter = require('./routes/predictions');
 const scoringRouter = require('./routes/scoring');
 const staticTeamsRouter = require('./routes/staticTeams');
 const squadPredictionsRouter = require('./routes/squadPredictions'); // 📋 Kadro tahminleri
+const bulkDataRouter = require('./routes/bulkData'); // 📦 Bulk veri indirme
 
 app.use('/api/matches', matchesRouter);
 app.use('/api/leagues', leaguesRouter);
@@ -162,6 +163,7 @@ app.use('/api/static-teams', staticTeamsRouter); // ⚡ Hızlı statik takımlar
 app.use('/api/timeline', require('./routes/timeline')); // 📊 Maç akışı
 app.use('/api/leaderboard/snapshots', require('./routes/leaderboardSnapshots')); // 📸 Sıralama geçmişi
 app.use('/api/squad-predictions', squadPredictionsRouter); // 📋 Kadro tahminleri ve istatistikler
+app.use('/api/bulk-data', bulkDataRouter); // 📦 Tüm takım verilerini tek seferde indir (offline)
 
 // 🔥 Rate Limiter Stats — API-Football günlük çağrı (smartSync 12s + aggressiveCache toplamı)
 app.get('/api/rate-limit/stats', (req, res) => {

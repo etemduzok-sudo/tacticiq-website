@@ -91,19 +91,56 @@ function incrementCallCounter(type) {
 }
 
 // 1. Refresh Live Matches (every 12 seconds) - 7,200 calls/day
+// ⏸️ GEÇİCİ OLARAK DURDURULDU: API hakkı takım kadroları için kullanılıyor
+// ✅ API-Football /fixtures?live=all endpoint'i hem maçları hem event'leri içeriyor!
 async function refreshLiveMatches() {
+  // ⏸️ API hakkı takım kadroları için kullanılıyor - geçici olarak devre dışı
+  console.log('⏸️ [LIVE] Temporarily disabled - API quota reserved for squad sync');
+  return;
+  
+  /* ORIGINAL CODE - Re-enable when squad sync is complete
   try {
-    console.log('🔴 [LIVE] Fetching live matches...');
+    console.log('🔴 [LIVE] Fetching live matches with events...');
     const data = await footballApi.getLiveMatches();
     incrementCallCounter('liveMatches');
     
     if (data.response && data.response.length > 0) {
+      // ✅ Event'leri kaydet
+      const timelineService = require('./timelineService');
+      let totalEventsSaved = 0;
+      let matchesWithEvents = 0;
+      
+      for (const match of data.response) {
+        // Event'ler match.events array'inde geliyor (API-Football v3)
+        if (match.events && Array.isArray(match.events) && match.events.length > 0) {
+          const matchData = {
+            fixture: match.fixture,
+            events: match.events,
+            goals: match.goals,
+            teams: match.teams,
+            league: match.league,
+          };
+          
+          const savedCount = await timelineService.saveMatchEvents(matchData);
+          if (savedCount > 0) {
+            totalEventsSaved += savedCount;
+            matchesWithEvents++;
+          }
+        }
+      }
+      
+      // Maçları DB'ye kaydet
       await databaseService.upsertMatches(data.response);
+      
       console.log(`✅ [LIVE] Updated ${data.response.length} live matches`);
+      if (totalEventsSaved > 0) {
+        console.log(`   📊 Saved ${totalEventsSaved} events from ${matchesWithEvents} matches`);
+      }
     }
   } catch (error) {
     console.error('❌ [LIVE] Error:', error.message);
   }
+  */
 }
 
 // 2. Refresh Upcoming Matches (every 2 hours) - 72 calls/day

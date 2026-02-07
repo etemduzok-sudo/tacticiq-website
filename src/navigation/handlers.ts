@@ -310,17 +310,17 @@ export const handleDashboardNavigate = (
       setCurrentScreen('notifications');
       break;
     case 'matches':
-      // ✅ Takım seçildiğinde o takımın maçlarını göster
+      // ✅ "Oynanan" sekmesi kaldırıldı - canlı maçlar artık Dashboard'da
       if (params?.teamId) {
         setSelectedTeamIds(prev => prev.includes(params.teamId) ? prev : [...prev, params.teamId]);
-        // Parametreleri window'a kaydet (matches ekranında kullanmak için)
         (window as any).__matchParams = {
           teamId: params.teamId,
           teamName: params.teamName,
         };
-        logger.debug(`Navigating to matches with team: ${params.teamName}`, { teamId: params.teamId }, 'DASHBOARD');
+        logger.debug(`Navigating to home (matches merged) with team: ${params.teamName}`, { teamId: params.teamId }, 'DASHBOARD');
       }
-      setCurrentScreen('matches');
+      setActiveTab('home');
+      setCurrentScreen('home');
       break;
     case 'profile':
       // If navigating from Dashboard "Tüm Rozetlerimi Gör" button, show badges tab
@@ -339,6 +339,7 @@ export const handleDashboardNavigate = (
           initialTab: params?.initialTab || 'squad',
           analysisFocus: params?.analysisFocus,
           matchData: params?.matchData,
+          predictionTeamId: params?.predictionTeamId,
         };
         if (typeof global !== 'undefined') (global as any).__matchDetailParams = matchParams;
         if (typeof window !== 'undefined') (window as any).__matchDetailParams = matchParams;

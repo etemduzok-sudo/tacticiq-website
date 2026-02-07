@@ -1,0 +1,14 @@
+{
+  "completedAt": "2026-02-07T03:21:29.417Z",
+  "duration": 2020,
+  "stats": {
+    "apiRequests": 3741,
+    "leaguesProcessed": 4,
+    "teamsProcessed": 140,
+    "squadsProcessed": 128,
+    "playersProcessed": 4127,
+    "playersWithRatings": 2529,
+    "coachesProcessed": 79,
+    "errors": []
+  }
+}

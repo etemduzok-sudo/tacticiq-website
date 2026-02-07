@@ -404,8 +404,10 @@
   },
   "navigation": {
     "matches": "比赛",
+    "matchCalendar": "赛程",
     "live": "直播",
     "finished": "已结束",
+    "finishedMatches": "赛果",
     "leaderboard": "排名",
     "profile": "个人资料"
   },
