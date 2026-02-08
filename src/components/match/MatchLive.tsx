@@ -423,7 +423,9 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
     const isMockMatch = isMockTestMatch(Number(matchId));
     
     return liveEvents.filter((e) => {
-      if (e.type === 'kickoff') return false;
+      // ✅ "Maç başladı" (kickoff) eventini göster - sadece minute 0 olan kickoff eventini göster
+      // Diğer kickoff eventleri (ikinci yarı başladı) zaten gösterilecek
+      // if (e.type === 'kickoff') return false; // KALDIRILDI - "Maç başladı" eventini göstermek için
       
       // ✅ Sistem eventlerini filtrele: stoppage eventleri gösterilmeli (uzatma bildirimleri)
       // stoppage eventleri artık gösterilecek (45. dk +X dk eklendi, 90. dk +X dk eklendi)
