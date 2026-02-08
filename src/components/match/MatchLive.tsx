@@ -732,16 +732,21 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
   // RENDER
   // =====================================
   
-  // ✅ Maç başlamadıysa boş ekran göster (bildirim kaldırıldı)
+  // ✅ Maç başlamadıysa bildirim göster
   if (matchNotStarted) {
     return (
       <SafeAreaView style={styles.container} edges={[]}>
-        <View style={styles.liveTabBar}>
-          <View style={styles.liveTabButton}>
-            <Text style={styles.liveTabText}>📡 Canlı Olaylar</Text>
+        <View style={styles.notStartedContainer}>
+          <View style={styles.notStartedCard}>
+            <View style={styles.notStartedIconContainer}>
+              <Ionicons name="time-outline" size={48} color={BRAND.accent} />
+            </View>
+            <Text style={styles.notStartedTitle}>Maç Henüz Başlamadı</Text>
+            <Text style={styles.notStartedSubtitle}>
+              Maç başladığında canlı olaylar{'\n'}burada görünecek
+            </Text>
           </View>
         </View>
-        {/* ✅ Maç başlamadan önce boş ekran - bildirim kaldırıldı */}
       </SafeAreaView>
     );
   }
@@ -779,7 +784,7 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
 
   return (
     <SafeAreaView style={styles.container} edges={[]}>
-      {/* Canlı olay timeline – Olaylar/İstatistikler tab bar kaldırıldı; istatistikler İstatistik sekmesinde */}
+      {/* ✅ "Canlı Olaylar" başlık bar'ı kaldırıldı */}
       <ScrollView 
         ref={scrollViewRef}
         style={styles.eventsScrollView}
