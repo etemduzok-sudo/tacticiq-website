@@ -73,6 +73,10 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
   const matchNotStartedRef = useRef(false);
   matchNotStartedRef.current = matchNotStarted;
   
+  // ✅ ScrollView ref - yeni eventler geldiğinde otomatik scroll için
+  const scrollViewRef = useRef<ScrollView>(null);
+  const prevEventsLengthRef = useRef(0);
+  
   // ✅ Mock maçlar için ticker - currentMinute'ın her saniye güncellenmesi için
   // ✅ Maç başlamadan önce de çalışmalı ki maç başladığında hemen algılansın
   const [ticker, setTicker] = useState(0);
@@ -326,9 +330,29 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
               return bSys - aSys;
             });
           
+          // ✅ "Maç başladı" eventini otomatik ekle (eğer yoksa)
+          const hasKickoffEvent = transformedEvents.some(e => e.type === 'kickoff' && e.minute === 0);
+          if (!hasKickoffEvent && transformedEvents.length > 0) {
+            // İlk event'ten önce "Maç başladı" eventini ekle
+            transformedEvents.unshift({
+              minute: 0,
+              extraTime: null,
+              type: 'kickoff',
+              team: null,
+              description: 'Maç başladı',
+            });
+          }
+          
           setLiveEvents(transformedEvents);
         } else {
-          setLiveEvents([]);
+          // ✅ Event yoksa bile "Maç başladı" eventini ekle
+          setLiveEvents([{
+            minute: 0,
+            extraTime: null,
+            type: 'kickoff',
+            team: null,
+            description: 'Maç başladı',
+          }]);
         }
 
         setLoading(false);
@@ -500,6 +524,17 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
       return eventMin <= currentMin + 0.01;
     });
   }, [liveEvents, currentMinute, currentExtraTime, matchId, ticker]); // ✅ ticker: mock'ta her saniye güncelle
+  
+  // ✅ Yeni eventler geldiğinde otomatik scroll yap (en alta - "Maç başladı" eventine)
+  useEffect(() => {
+    if (eventsUpToNow.length > prevEventsLengthRef.current && scrollViewRef.current) {
+      // Yeni event eklendi, kısa bir gecikme sonrası en alta scroll yap
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    }
+    prevEventsLengthRef.current = eventsUpToNow.length;
+  }, [eventsUpToNow.length]);
 
   // Dakika + uzatma metni (örn. 45+2, 90+3)
   const formatMinute = (event: LiveEvent) =>
@@ -555,7 +590,10 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
           
           {/* Orta çizgi + dakika */}
           <View style={styles.timelineCenter}>
-            <View style={[styles.timelineLine, index === totalEvents - 1 && styles.timelineLineToStart]} />
+            {/* ✅ Başlangıç eventinden (index 0, minute 0) öncesine ait çizgi görünmesin */}
+            {!(event.minute === 0 && event.extraTime === null && event.type === 'kickoff') && (
+              <View style={[styles.timelineLine, index === totalEvents - 1 && styles.timelineLineToStart]} />
+            )}
             <View style={[styles.timelineDot, { backgroundColor: style.color }]}>
               <Ionicons name={style.icon as any} size={12} color="#FFFFFF" />
             </View>
@@ -632,7 +670,10 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
         
         {/* Orta çizgi + dakika */}
         <View style={styles.timelineCenter}>
-          <View style={[styles.timelineLine, index === totalEvents - 1 && styles.timelineLineToStart]} />
+          {/* ✅ Başlangıç eventinden (minute 0, kickoff) öncesine ait çizgi görünmesin */}
+          {!(event.minute === 0 && event.extraTime === null && event.type === 'kickoff') && (
+            <View style={[styles.timelineLine, index === totalEvents - 1 && styles.timelineLineToStart]} />
+          )}
           <View style={[styles.timelineDot, { backgroundColor: style.color }]}>
             <Text style={styles.timelineDotText}>{formatMinute(event)}</Text>
           </View>
@@ -750,9 +791,17 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
     <SafeAreaView style={styles.container} edges={[]}>
       {/* Canlı olay timeline – Olaylar/İstatistikler tab bar kaldırıldı; istatistikler İstatistik sekmesinde */}
       <ScrollView 
+        ref={scrollViewRef}
         style={styles.eventsScrollView}
         contentContainerStyle={styles.eventsContent}
         showsVerticalScrollIndicator={false}
+        onContentSizeChange={() => {
+          // ✅ İlk yüklemede ve yeni eventler geldiğinde en alta scroll yap
+          // "Maç başladı" eventi en altta görünsün
+          setTimeout(() => {
+            scrollViewRef.current?.scrollToEnd({ animated: false });
+          }, 50);
+        }}
       >
         {eventsUpToNow.length === 0 ? (
           <View style={styles.emptyState}>
@@ -767,16 +816,20 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
             {/* Sadece mevcut dakikaya kadar olan olaylar (header 65' ise 90+2 gösterilmez) */}
             {/* Devre arası görseli ve eventleri birleştir */}
             {(() => {
-              // Eventleri sırala
+              // ✅ Eventleri sırala - EN ESKİ EVENT EN ALTA (Maç başladı en altta görünsün)
               const sortedEvents = [...eventsUpToNow].sort((a, b) => {
                 const aTime = (a.minute || 0) + (a.extraTime || 0) * 0.01;
                 const bTime = (b.minute || 0) + (b.extraTime || 0) * 0.01;
-                if (Math.abs(aTime - bTime) > 0.001) return bTime - aTime;
-                // Aynı dakikada: sistem olayları (kickoff, halftime, fulltime, stoppage) en sona
-                const sys = ['kickoff', 'halftime', 'fulltime', 'stoppage'];
+                if (Math.abs(aTime - bTime) > 0.001) return aTime - bTime; // ✅ Küçükten büyüğe (en eski en altta)
+                // ✅ Aynı dakikada: "Maç bitti" (fulltime) eventi, uzatma bildirimi (stoppage) eventinden SONRA gelmeli
+                // Örnek: 90+4'te hem "4 dk eklendi" (stoppage) hem "Maç bitti" (fulltime) varsa, "Maç bitti" en alta
+                if (a.type === 'fulltime' && b.type === 'stoppage') return 1; // fulltime sonra
+                if (a.type === 'stoppage' && b.type === 'fulltime') return -1; // stoppage önce
+                // Diğer sistem olayları: kickoff, halftime, stoppage, fulltime en sona
+                const sys = ['kickoff', 'halftime', 'stoppage', 'fulltime'];
                 const aSys = sys.includes(a.type) ? 0 : 1;
                 const bSys = sys.includes(b.type) ? 0 : 1;
-                return bSys - aSys;
+                return aSys - bSys; // ✅ Sistem eventleri en alta
               });
               
               // Devre arası görseli ekle (45+3 ile 46. dakika arasına)
@@ -805,10 +858,12 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
                 </View>
               );
               
-              // Eventleri render et, devre arası görselini uygun yere ekle
+              // ✅ Eventleri render et, devre arası görselini uygun yere ekle
+              // Eventler artık en eskiden en yeniye sıralı (Maç başladı en altta)
               const result: any[] = [];
               const totalEvents = sortedEvents.length;
               sortedEvents.forEach((event, index) => {
+                // ✅ index artık 0'dan başlıyor (en eski event index 0, en yeni event index totalEvents-1)
                 // Devre arası görseli: Half Time event'inden sonra ve 46. dakika eventinden önce
                 if (event.type === 'halftime' || (event.minute === 45 && event.extraTime === 3)) {
                   result.push(renderEventCard(event, index, totalEvents));
@@ -823,13 +878,7 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
               
               return result;
             })()}
-            <View style={styles.timelineStart}>
-              <View style={styles.timelineStartLine} />
-              <View style={styles.timelineStartDot}>
-                <Text style={styles.timelineStartText}>0'</Text>
-              </View>
-              <Text style={styles.timelineStartLabel}>Başlangıç</Text>
-            </View>
+            {/* ✅ "Maç başladı" eventi zaten event listesinde gösteriliyor, ayrı "Başlangıç" görseli kaldırıldı */}
           </>
         )}
       </ScrollView>
@@ -933,6 +982,8 @@ const styles = StyleSheet.create({
   },
   eventsContent: {
     paddingVertical: 8,
+    flexGrow: 1, // ✅ İçerik en azından ekranı doldursun
+    justifyContent: 'flex-end', // ✅ Eventler en altta başlasın (Maç başladı en altta)
     paddingBottom: 40,
   },
   
@@ -969,7 +1020,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(31, 162, 166, 0.3)',
   },
   timelineLineToStart: {
-    bottom: -2000, // Başlangıca kadar uzat - kesintisiz çizgi
+    // ✅ Kaldırıldı - başlangıç eventinden öncesine ait çizgi görünmesin
+    // bottom: -2000, // Başlangıca kadar uzat - kesintisiz çizgi
   },
   timelineDot: {
     width: 28,

@@ -748,6 +748,278 @@ export interface UserPreferenceStats {
 }
 
 /**
+ * Galatasaray taraftarlarının tercih istatistikleri
+ * Maç: Galatasaray vs Fenerbahçe (888001)
+ */
+export const GALATASARAY_USER_PREFERENCES: UserPreferenceStats = {
+  matchId: MOCK_MATCH_IDS.GS_FB,
+  teamId: 645,
+  teamName: 'Galatasaray',
+  totalUsers: 18432, // Toplam tahmin yapan kullanıcı sayısı
+  attackFormation: {
+    selected: '4-3-3',
+    stats: [
+      { formation: '4-3-3', percentage: 45, count: 8294 },
+      { formation: '4-2-3-1', percentage: 28, count: 5161 },
+      { formation: '3-5-2', percentage: 18, count: 3318 },
+      { formation: '4-4-2', percentage: 9, count: 1659 },
+    ],
+  },
+  defenseFormation: {
+    selected: '4-4-2',
+    stats: [
+      { formation: '4-4-2', percentage: 38, count: 7004 },
+      { formation: '4-5-1', percentage: 32, count: 5898 },
+      { formation: '5-3-2', percentage: 20, count: 3686 },
+      { formation: '5-4-1', percentage: 10, count: 1844 },
+    ],
+  },
+  playerPositions: [
+    {
+      position: 'GK',
+      positionLabel: 'Kaleci',
+      selectedPlayer: { id: 50001, name: 'F. Muslera', percentage: 96 },
+      preferences: [
+        { playerId: 50001, playerName: 'F. Muslera', percentage: 96, count: 17695, isInStartingXI: true },
+        { playerId: 50012, playerName: 'G. Güvenç', percentage: 4, count: 737, isInStartingXI: false },
+      ],
+    },
+    {
+      position: 'RB',
+      positionLabel: 'Sağ Bek',
+      selectedPlayer: { id: 50002, name: 'S. Boey', percentage: 89 },
+      preferences: [
+        { playerId: 50002, playerName: 'S. Boey', percentage: 89, count: 16405, isInStartingXI: true },
+        { playerId: 50013, playerName: 'K. Ayhan', percentage: 11, count: 2027, isInStartingXI: false },
+      ],
+    },
+    {
+      position: 'CB1',
+      positionLabel: 'Stoper (Sağ)',
+      selectedPlayer: { id: 50003, name: 'D. Nelsson', percentage: 82 },
+      preferences: [
+        { playerId: 50003, playerName: 'D. Nelsson', percentage: 82, count: 15114, isInStartingXI: true },
+        { playerId: 50004, playerName: 'A. Bardakcı', percentage: 18, count: 3318, isInStartingXI: true },
+      ],
+    },
+    {
+      position: 'CB2',
+      positionLabel: 'Stoper (Sol)',
+      selectedPlayer: { id: 50004, name: 'A. Bardakcı', percentage: 75 },
+      preferences: [
+        { playerId: 50004, playerName: 'A. Bardakcı', percentage: 75, count: 13824, isInStartingXI: true },
+        { playerId: 50003, playerName: 'D. Nelsson', percentage: 25, count: 4608, isInStartingXI: true },
+      ],
+    },
+    {
+      position: 'LB',
+      positionLabel: 'Sol Bek',
+      selectedPlayer: { id: 50005, name: 'B. Yılmaz', percentage: 88 },
+      preferences: [
+        { playerId: 50005, playerName: 'B. Yılmaz', percentage: 88, count: 16220, isInStartingXI: true },
+        { playerId: 50014, playerName: 'K. Kökçü', percentage: 12, count: 2212, isInStartingXI: false },
+      ],
+    },
+    {
+      position: 'CM1',
+      positionLabel: 'Merkez Orta Saha (Sağ)',
+      selectedPlayer: { id: 50006, name: 'L. Torreira', percentage: 91 },
+      preferences: [
+        { playerId: 50006, playerName: 'L. Torreira', percentage: 91, count: 16773, isInStartingXI: true },
+        { playerId: 50007, playerName: 'K. Ayhan', percentage: 6, count: 1106, isInStartingXI: true },
+        { playerId: 50015, playerName: 'E. Kılınç', percentage: 3, count: 553, isInStartingXI: false },
+      ],
+    },
+    {
+      position: 'CM2',
+      positionLabel: 'Merkez Orta Saha (Orta)',
+      selectedPlayer: { id: 50007, name: 'K. Ayhan', percentage: 78 },
+      preferences: [
+        { playerId: 50007, playerName: 'K. Ayhan', percentage: 78, count: 14377, isInStartingXI: true },
+        { playerId: 50006, playerName: 'L. Torreira', percentage: 15, count: 2765, isInStartingXI: true },
+        { playerId: 50008, playerName: 'L. Demirbay', percentage: 7, count: 1290, isInStartingXI: true },
+      ],
+    },
+    {
+      position: 'CM3',
+      positionLabel: 'Merkez Orta Saha (Sol)',
+      selectedPlayer: { id: 50008, name: 'L. Demirbay', percentage: 72 },
+      preferences: [
+        { playerId: 50008, playerName: 'L. Demirbay', percentage: 72, count: 13271, isInStartingXI: true },
+        { playerId: 50007, playerName: 'K. Ayhan', percentage: 20, count: 3686, isInStartingXI: true },
+        { playerId: 50015, playerName: 'E. Kılınç', percentage: 8, count: 1475, isInStartingXI: false },
+      ],
+    },
+    {
+      position: 'LW',
+      positionLabel: 'Sol Kanat',
+      selectedPlayer: { id: 50009, name: 'K. Aktürkoğlu', percentage: 94 },
+      preferences: [
+        { playerId: 50009, playerName: 'K. Aktürkoğlu', percentage: 94, count: 17326, isInStartingXI: true },
+        { playerId: 50010, playerName: 'M. Icardi', percentage: 4, count: 737, isInStartingXI: true },
+        { playerId: 50016, playerName: 'H. Dervişoğlu', percentage: 2, count: 369, isInStartingXI: false },
+      ],
+    },
+    {
+      position: 'ST',
+      positionLabel: 'Santrafor',
+      selectedPlayer: { id: 50010, name: 'M. Icardi', percentage: 97 },
+      preferences: [
+        { playerId: 50010, playerName: 'M. Icardi', percentage: 97, count: 17879, isInStartingXI: true },
+        { playerId: 50009, playerName: 'K. Aktürkoğlu', percentage: 2, count: 369, isInStartingXI: true },
+        { playerId: 50016, playerName: 'H. Dervişoğlu', percentage: 1, count: 184, isInStartingXI: false },
+      ],
+    },
+    {
+      position: 'RW',
+      positionLabel: 'Sağ Kanat',
+      selectedPlayer: { id: 50011, name: 'Y. Akgün', percentage: 85 },
+      preferences: [
+        { playerId: 50011, playerName: 'Y. Akgün', percentage: 85, count: 15667, isInStartingXI: true },
+        { playerId: 50009, playerName: 'K. Aktürkoğlu', percentage: 10, count: 1843, isInStartingXI: true },
+        { playerId: 50015, playerName: 'E. Kılınç', percentage: 5, count: 922, isInStartingXI: false },
+      ],
+    },
+  ],
+};
+
+/**
+ * Fenerbahçe taraftarlarının tercih istatistikleri
+ * Maç: Galatasaray vs Fenerbahçe (888001)
+ */
+export const FENERBAHCE_USER_PREFERENCES: UserPreferenceStats = {
+  matchId: MOCK_MATCH_IDS.GS_FB,
+  teamId: 611,
+  teamName: 'Fenerbahçe',
+  totalUsers: 21568, // Toplam tahmin yapan kullanıcı sayısı
+  attackFormation: {
+    selected: '4-2-3-1',
+    stats: [
+      { formation: '4-2-3-1', percentage: 52, count: 11215 },
+      { formation: '4-3-3', percentage: 28, count: 6039 },
+      { formation: '3-4-3', percentage: 15, count: 3235 },
+      { formation: '4-4-2', percentage: 5, count: 1079 },
+    ],
+  },
+  defenseFormation: {
+    selected: '4-5-1',
+    stats: [
+      { formation: '4-5-1', percentage: 42, count: 9059 },
+      { formation: '4-4-2', percentage: 35, count: 7549 },
+      { formation: '5-3-2', percentage: 18, count: 3882 },
+      { formation: '5-4-1', percentage: 5, count: 1078 },
+    ],
+  },
+  playerPositions: [
+    {
+      position: 'GK',
+      positionLabel: 'Kaleci',
+      selectedPlayer: { id: 50101, name: 'D. Livakovic', percentage: 98 },
+      preferences: [
+        { playerId: 50101, playerName: 'D. Livakovic', percentage: 98, count: 21137, isInStartingXI: true },
+        { playerId: 50112, playerName: 'İ. Egribayat', percentage: 2, count: 431, isInStartingXI: false },
+      ],
+    },
+    {
+      position: 'RB',
+      positionLabel: 'Sağ Bek',
+      selectedPlayer: { id: 50102, name: 'B. Osayi-Samuel', percentage: 92 },
+      preferences: [
+        { playerId: 50102, playerName: 'B. Osayi-Samuel', percentage: 92, count: 19843, isInStartingXI: true },
+        { playerId: 50113, playerName: 'F. Kadıoğlu', percentage: 8, count: 1725, isInStartingXI: true },
+      ],
+    },
+    {
+      position: 'CB1',
+      positionLabel: 'Stoper (Sağ)',
+      selectedPlayer: { id: 50103, name: 'A. Djiku', percentage: 88 },
+      preferences: [
+        { playerId: 50103, playerName: 'A. Djiku', percentage: 88, count: 18980, isInStartingXI: true },
+        { playerId: 50104, playerName: 'S. Aziz', percentage: 12, count: 2588, isInStartingXI: true },
+      ],
+    },
+    {
+      position: 'CB2',
+      positionLabel: 'Stoper (Sol)',
+      selectedPlayer: { id: 50104, name: 'S. Aziz', percentage: 85 },
+      preferences: [
+        { playerId: 50104, playerName: 'S. Aziz', percentage: 85, count: 18333, isInStartingXI: true },
+        { playerId: 50103, playerName: 'A. Djiku', percentage: 15, count: 3235, isInStartingXI: true },
+      ],
+    },
+    {
+      position: 'LB',
+      positionLabel: 'Sol Bek',
+      selectedPlayer: { id: 50105, name: 'F. Kadıoğlu', percentage: 95 },
+      preferences: [
+        { playerId: 50105, playerName: 'F. Kadıoğlu', percentage: 95, count: 20490, isInStartingXI: true },
+        { playerId: 50113, playerName: 'J. King', percentage: 5, count: 1078, isInStartingXI: false },
+      ],
+    },
+    {
+      position: 'CM1',
+      positionLabel: 'Merkez Orta Saha (Sağ)',
+      selectedPlayer: { id: 50106, name: 'İ. Yüksek', percentage: 86 },
+      preferences: [
+        { playerId: 50106, playerName: 'İ. Yüksek', percentage: 86, count: 18548, isInStartingXI: true },
+        { playerId: 50107, playerName: 'F. Özil', percentage: 10, count: 2157, isInStartingXI: true },
+        { playerId: 50114, playerName: 'M. Zajc', percentage: 4, count: 863, isInStartingXI: false },
+      ],
+    },
+    {
+      position: 'CM2',
+      positionLabel: 'Merkez Orta Saha (Sol)',
+      selectedPlayer: { id: 50107, name: 'F. Özil', percentage: 82 },
+      preferences: [
+        { playerId: 50107, playerName: 'F. Özil', percentage: 82, count: 17686, isInStartingXI: true },
+        { playerId: 50106, playerName: 'İ. Yüksek', percentage: 12, count: 2588, isInStartingXI: true },
+        { playerId: 50114, playerName: 'M. Zajc', percentage: 6, count: 1294, isInStartingXI: false },
+      ],
+    },
+    {
+      position: 'AM',
+      positionLabel: 'Ofansif Orta Saha',
+      selectedPlayer: { id: 50108, name: 'S. Szymanski', percentage: 89 },
+      preferences: [
+        { playerId: 50108, playerName: 'S. Szymanski', percentage: 89, count: 19196, isInStartingXI: true },
+        { playerId: 50109, playerName: 'E. Dzeko', percentage: 7, count: 1510, isInStartingXI: true },
+        { playerId: 50115, playerName: 'M. Batshuayi', percentage: 4, count: 863, isInStartingXI: false },
+      ],
+    },
+    {
+      position: 'LW',
+      positionLabel: 'Sol Kanat',
+      selectedPlayer: { id: 50109, name: 'E. Dzeko', percentage: 78 },
+      preferences: [
+        { playerId: 50109, playerName: 'E. Dzeko', percentage: 78, count: 16823, isInStartingXI: true },
+        { playerId: 50110, playerName: 'S. Ünder', percentage: 15, count: 3235, isInStartingXI: true },
+        { playerId: 50115, playerName: 'M. Batshuayi', percentage: 7, count: 1510, isInStartingXI: false },
+      ],
+    },
+    {
+      position: 'ST',
+      positionLabel: 'Santrafor',
+      selectedPlayer: { id: 50110, name: 'S. Ünder', percentage: 91 },
+      preferences: [
+        { playerId: 50110, playerName: 'S. Ünder', percentage: 91, count: 19627, isInStartingXI: true },
+        { playerId: 50109, playerName: 'E. Dzeko', percentage: 6, count: 1294, isInStartingXI: true },
+        { playerId: 50115, playerName: 'M. Batshuayi', percentage: 3, count: 647, isInStartingXI: false },
+      ],
+    },
+    {
+      position: 'RW',
+      positionLabel: 'Sağ Kanat',
+      selectedPlayer: { id: 50111, name: 'J. King', percentage: 88 },
+      preferences: [
+        { playerId: 50111, playerName: 'J. King', percentage: 88, count: 18980, isInStartingXI: true },
+        { playerId: 50110, playerName: 'S. Ünder', percentage: 8, count: 1725, isInStartingXI: true },
+        { playerId: 50115, playerName: 'M. Batshuayi', percentage: 4, count: 863, isInStartingXI: false },
+      ],
+    },
+  ],
+};
+
+/**
  * Real Madrid taraftarlarının tercih istatistikleri
  * Maç: Real Madrid vs Barcelona (888002)
  */
@@ -1030,6 +1302,13 @@ export const BARCELONA_USER_PREFERENCES: UserPreferenceStats = {
 export function getUserPreferenceStats(matchId: number, teamId: number): UserPreferenceStats | null {
   if (!MOCK_TEST_ENABLED) return null;
   
+  // ✅ GS-FB maçı
+  if (matchId === MOCK_MATCH_IDS.GS_FB) {
+    if (teamId === 645) return GALATASARAY_USER_PREFERENCES;
+    if (teamId === 611) return FENERBAHCE_USER_PREFERENCES;
+  }
+  
+  // ✅ Real Madrid - Barcelona maçı
   if (matchId === MOCK_MATCH_IDS.REAL_BARCA) {
     if (teamId === 541) return REAL_MADRID_USER_PREFERENCES;
     if (teamId === 529) return BARCELONA_USER_PREFERENCES;
