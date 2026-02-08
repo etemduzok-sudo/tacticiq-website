@@ -527,12 +527,12 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
     });
   }, [liveEvents, currentMinute, currentExtraTime, matchId, ticker]); // ✅ ticker: mock'ta her saniye güncelle
   
-  // ✅ Yeni eventler geldiğinde otomatik scroll yap (en alta - "Maç başladı" eventine)
+  // ✅ Yeni eventler geldiğinde otomatik scroll yap (en üste - en yeni evente)
   useEffect(() => {
     if (eventsUpToNow.length > prevEventsLengthRef.current && scrollViewRef.current) {
-      // Yeni event eklendi, kısa bir gecikme sonrası en alta scroll yap
+      // Yeni event eklendi, kısa bir gecikme sonrası en üste scroll yap
       setTimeout(() => {
-        scrollViewRef.current?.scrollToEnd({ animated: true });
+        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
       }, 100);
     }
     prevEventsLengthRef.current = eventsUpToNow.length;
@@ -798,10 +798,9 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
         contentContainerStyle={styles.eventsContent}
         showsVerticalScrollIndicator={false}
         onContentSizeChange={() => {
-          // ✅ İlk yüklemede ve yeni eventler geldiğinde en alta scroll yap
-          // "Maç başladı" eventi en altta görünsün
+          // ✅ İlk yüklemede en üste scroll yap (en yeni eventler üstte)
           setTimeout(() => {
-            scrollViewRef.current?.scrollToEnd({ animated: false });
+            scrollViewRef.current?.scrollTo({ y: 0, animated: false });
           }, 50);
         }}
       >
@@ -818,20 +817,20 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
             {/* Sadece mevcut dakikaya kadar olan olaylar (header 65' ise 90+2 gösterilmez) */}
             {/* Devre arası görseli ve eventleri birleştir */}
             {(() => {
-              // ✅ Eventleri sırala - EN ESKİ EVENT EN ALTA (Maç başladı en altta görünsün)
+              // ✅ Eventleri sırala - EN YENİ EVENT EN ÜSTTE (normal timeline gibi)
               const sortedEvents = [...eventsUpToNow].sort((a, b) => {
                 const aTime = (a.minute || 0) + (a.extraTime || 0) * 0.01;
                 const bTime = (b.minute || 0) + (b.extraTime || 0) * 0.01;
-                if (Math.abs(aTime - bTime) > 0.001) return aTime - bTime; // ✅ Küçükten büyüğe (en eski en altta)
+                if (Math.abs(aTime - bTime) > 0.001) return bTime - aTime; // ✅ Büyükten küçüğe (en yeni en üstte)
                 // ✅ Aynı dakikada: "Maç bitti" (fulltime) eventi, uzatma bildirimi (stoppage) eventinden SONRA gelmeli
-                // Örnek: 90+4'te hem "4 dk eklendi" (stoppage) hem "Maç bitti" (fulltime) varsa, "Maç bitti" en alta
-                if (a.type === 'fulltime' && b.type === 'stoppage') return 1; // fulltime sonra
-                if (a.type === 'stoppage' && b.type === 'fulltime') return -1; // stoppage önce
-                // Diğer sistem olayları: kickoff, halftime, stoppage, fulltime en sona
+                // Örnek: 90+4'te hem "4 dk eklendi" (stoppage) hem "Maç bitti" (fulltime) varsa, "Maç bitti" en üstte
+                if (a.type === 'fulltime' && b.type === 'stoppage') return -1; // fulltime önce (üstte)
+                if (a.type === 'stoppage' && b.type === 'fulltime') return 1; // stoppage sonra (altta)
+                // Diğer sistem olayları: kickoff, halftime, stoppage, fulltime en üste
                 const sys = ['kickoff', 'halftime', 'stoppage', 'fulltime'];
                 const aSys = sys.includes(a.type) ? 0 : 1;
                 const bSys = sys.includes(b.type) ? 0 : 1;
-                return aSys - bSys; // ✅ Sistem eventleri en alta
+                return bSys - aSys; // ✅ Sistem eventleri en üste
               });
               
               // Devre arası görseli ekle (45+3 ile 46. dakika arasına)
@@ -861,21 +860,24 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
               );
               
               // ✅ Eventleri render et, devre arası görselini uygun yere ekle
-              // Eventler artık en eskiden en yeniye sıralı (Maç başladı en altta)
+              // Eventler artık en yeniden en eskiye sıralı (en yeni en üstte)
               const result: any[] = [];
               const totalEvents = sortedEvents.length;
+              let halftimeBreakAdded = false; // ✅ Devre arası görselini sadece bir kez ekle
+              
               sortedEvents.forEach((event, index) => {
-                // ✅ index artık 0'dan başlıyor (en eski event index 0, en yeni event index totalEvents-1)
-                // Devre arası görseli: Half Time event'inden sonra ve 46. dakika eventinden önce
-                if (event.type === 'halftime' || (event.minute === 45 && event.extraTime === 3)) {
-                  result.push(renderEventCard(event, index, totalEvents));
-                  // Devre arası görselini ekle (eğer 46. dakika eventi varsa)
-                  if (sortedEvents.some(e => e.minute === 46 && e.extraTime === null)) {
-                    result.push(renderHalftimeBreak());
-                  }
-                } else {
-                  result.push(renderEventCard(event, index, totalEvents));
+                // ✅ index artık 0'dan başlıyor (en yeni event index 0, en eski event index totalEvents-1)
+                // Devre arası görseli: Half Time event'inden SONRA ve 46. dakika eventinden ÖNCE ekle
+                // Eventler ters sıralı olduğu için: 46. dakika eventi önce, halftime eventi sonra gelecek
+                if (event.minute === 46 && event.extraTime === null && !halftimeBreakAdded) {
+                  // 46. dakika eventinden önce devre arası görselini ekle
+                  result.push(renderHalftimeBreak());
+                  halftimeBreakAdded = true;
                 }
+                
+                result.push(renderEventCard(event, index, totalEvents));
+                
+                // ✅ Half Time event'inden sonra devre arası görselini ekleme (zaten 46. dakika eventinden önce eklendi)
               });
               
               return result;
