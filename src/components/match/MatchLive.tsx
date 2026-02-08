@@ -36,6 +36,7 @@ interface LiveEvent {
   score?: string | null;
   playerOut?: string | null; // ✅ Substitution için: Kim çıktı
   playerIn?: string | null; // ✅ Substitution için: Kim girdi
+  isOwnGoal?: boolean; // ✅ Own goal flag'i
 }
 
 interface MatchLiveScreenProps {
@@ -296,6 +297,10 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
                 teamSide = event.team.name.toLowerCase().includes(homeTeamName.toLowerCase()) ? 'home' : 'away';
               }
               
+              // ✅ Kendi kalesine gol durumunda: teamSide DEĞİŞTİRİLMEZ (kendi takımında görünecek)
+              // Ama skor hesaplamasında rakip takıma yazılacak (event.goals zaten doğru)
+              // teamSide'ı değiştirmiyoruz çünkü event kendi takımının eventlerinde görünmeli
+              
               // ✅ Substitution için playerOut ve playerIn bilgilerini ayrı tut
               let playerOut: string | null = null;
               let playerIn: string | null = null;
@@ -304,19 +309,29 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
                 playerIn = event.comments || null;
               }
               
+              // ✅ Skor hesaplama: Own goal durumunda rakip takıma yazılacak
+              let calculatedScore: string | null = null;
+              if (event.goals) {
+                // Normal gol: event.goals zaten doğru
+                // Own goal: event.goals zaten doğru (rakip takıma yazılmış)
+                calculatedScore = `${event.goals.home}-${event.goals.away}`;
+              }
+              
               return {
                 minute: event.time?.elapsed || 0,
                 extraTime: event.time?.extra || null,
                 type: displayType,
-                team: teamSide,
+                team: teamSide, // ✅ Own goal durumunda da kendi takımında görünür
                 player: displayType === 'substitution' ? playerOut : (typeof event.player === 'string' ? event.player : event.player?.name || null),
                 assist: typeof event.assist === 'string' ? event.assist : (event.assist?.name || null),
                 description: description,
                 detail: event.detail || '',
-                score: event.goals ? `${event.goals.home}-${event.goals.away}` : null,
+                score: calculatedScore,
                 // ✅ Substitution için ekstra bilgiler
                 playerOut: playerOut,
                 playerIn: playerIn,
+                // ✅ Own goal flag'i ekle (skor hesaplaması için)
+                isOwnGoal: detail.includes('own goal'),
               };
             })
             // Sırala: yüksek dakika üstte. Aynı dakikada (örn. 45+1): önce oyuncu olayları (kırmızı kart, gol), sonra sistem (İlk yarı bitti)
@@ -810,20 +825,92 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
             {/* Sadece mevcut dakikaya kadar olan olaylar (header 65' ise 90+2 gösterilmez) */}
             {/* Devre arası görseli ve eventleri birleştir */}
             {(() => {
-              // ✅ Eventleri sırala - EN YENİ EVENT EN ÜSTTE (normal timeline gibi)
-              const sortedEvents = [...eventsUpToNow].sort((a, b) => {
+              // ✅ Skorları eventlerden hesapla (API skoruna bağlı kalma)
+              let currentHomeScore = 0;
+              let currentAwayScore = 0;
+              
+              // Eventleri kronolojik sıraya göre sırala (en eskiden en yeniye)
+              const chronologicalEvents = [...eventsUpToNow].sort((a, b) => {
                 const aTime = (a.minute || 0) + (a.extraTime || 0) * 0.01;
                 const bTime = (b.minute || 0) + (b.extraTime || 0) * 0.01;
-                if (Math.abs(aTime - bTime) > 0.001) return bTime - aTime; // ✅ Büyükten küçüğe (en yeni en üstte)
-                // ✅ Aynı dakikada: "Maç bitti" (fulltime) eventi, uzatma bildirimi (stoppage) eventinden SONRA gelmeli
-                // Örnek: 90+4'te hem "4 dk eklendi" (stoppage) hem "Maç bitti" (fulltime) varsa, "Maç bitti" en üstte
-                if (a.type === 'fulltime' && b.type === 'stoppage') return -1; // fulltime önce (üstte)
-                if (a.type === 'stoppage' && b.type === 'fulltime') return 1; // stoppage sonra (altta)
-                // Diğer sistem olayları: kickoff, halftime, stoppage, fulltime en üste
+                return aTime - bTime; // Küçükten büyüğe (en eski en başta)
+              });
+              
+              // Her event için skor hesapla
+              const eventsWithCalculatedScores = chronologicalEvents.map((event) => {
+                if (event.type === 'goal') {
+                  // Gol eventi: Skoru güncelle
+                  if (event.isOwnGoal) {
+                    // Own goal: Kendi takımında görünür ama gol rakip takıma yazılır
+                    if (event.team === 'home') {
+                      currentAwayScore++;
+                    } else if (event.team === 'away') {
+                      currentHomeScore++;
+                    }
+                  } else {
+                    // Normal gol
+                    if (event.team === 'home') {
+                      currentHomeScore++;
+                    } else if (event.team === 'away') {
+                      currentAwayScore++;
+                    }
+                  }
+                  return {
+                    ...event,
+                    score: `${currentHomeScore}-${currentAwayScore}`,
+                  };
+                }
+                return event;
+              });
+              
+              // ✅ Eventleri sırala - KRONOLOJİK SIRA (en eski üstte)
+              // Doğru görsel sırası (yukarıdan aşağıya, en eski üstte):
+              // 45' +3 dk eklendi → 45+3' İlk yarı bitiş → DEVRE ARASI → 46' İkinci yarı başladı → 51' GOL → 56' Değişiklik
+              const sortedEvents = [...eventsWithCalculatedScores].sort((a, b) => {
+                // ✅ Önce toplam dakikayı hesapla - elapsed + extraTime (küçük ağırlıkla)
+                const getEventTime = (e: any) => {
+                  const min = e.minute || 0;
+                  const extra = e.extraTime || 0;
+                  
+                  // ✅ Stoppage event'i (45'te eklenen süre bildirimi)
+                  // Bu event diğer 45' eventlerinden ÖNCE (daha eski) görünmeli
+                  if (e.type === 'stoppage') {
+                    return min - 0.1;
+                  }
+                  
+                  // ✅ Halftime (ilk yarı bitiş düdüğü) - 45+3' 
+                  // Uzatma dakikasına göre sırala: 45 + extra = 45.03 (extra/100)
+                  if (e.type === 'halftime') {
+                    return 45 + extra * 0.01 + 0.001; // stoppage'dan sonra, kickoff'tan önce
+                  }
+                  
+                  // ✅ Kickoff (ikinci yarı başladı) - 46'
+                  // Halftime'dan SONRA (daha yeni) ama 2. yarı eventlerinden ÖNCE (daha eski)
+                  if (e.type === 'kickoff' && min === 46) {
+                    return 46 - 0.001; // 46'dan hemen önce (46' normal eventlerinden önce)
+                  }
+                  
+                  // ✅ Fulltime (maç bitti) - 90+extra
+                  if (e.type === 'fulltime') {
+                    return 90 + extra * 0.01 + 0.001; // En son
+                  }
+                  
+                  // ✅ Normal eventler: minute + extraTime (küçük ağırlıkla)
+                  // 45+1 = 45.01, 45+2 = 45.02, 90+1 = 90.01
+                  return min + extra * 0.01;
+                };
+                
+                const aTime = getEventTime(a);
+                const bTime = getEventTime(b);
+                
+                // ✅ Küçükten büyüğe (kronolojik sıra - en eski üstte)
+                if (Math.abs(aTime - bTime) > 0.001) return aTime - bTime;
+                
+                // ✅ Aynı dakikada: sistem eventleri diğerlerinden önce (üstte)
                 const sys = ['kickoff', 'halftime', 'stoppage', 'fulltime'];
                 const aSys = sys.includes(a.type) ? 0 : 1;
                 const bSys = sys.includes(b.type) ? 0 : 1;
-                return bSys - aSys; // ✅ Sistem eventleri en üste
+                return aSys - bSys;
               });
               
               // Devre arası görseli ekle (45+3 ile 46. dakika arasına)
@@ -836,41 +923,33 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
               
               // Devre arası görseli için render fonksiyonu
               const renderHalftimeBreak = () => (
-                <View key="halftime-break" style={styles.timelineRow}>
-                  <View style={styles.timelineSide} />
-                  <View style={styles.timelineCenter}>
-                    <View style={styles.timelineHalftimeLine} />
-                    <View style={styles.timelineHalftimeDot}>
-                      <Ionicons name="pause" size={16} color="#EF4444" />
-                    </View>
-                  </View>
-                  <View style={styles.timelineSide} />
-                  <View style={styles.timelineHalftimeCard}>
+                <View key="halftime-break" style={styles.timelineHalftimeContainer}>
+                  {/* Orta çizgi */}
+                  <View style={styles.timelineHalftimeCenterLine} />
+                  {/* Devre arası kartı */}
+                  <View style={styles.timelineHalftimeCardNew}>
                     <Text style={styles.timelineHalftimeText}>DEVRE ARASI</Text>
-                    <Text style={styles.timelineHalftimeSubtext}>15 dakika</Text>
                   </View>
                 </View>
               );
               
               // ✅ Eventleri render et, devre arası görselini uygun yere ekle
-              // Eventler artık en yeniden en eskiye sıralı (en yeni en üstte)
+              // Timeline yukarıdan aşağıya sıralandığında en yeni event üstte:
+              // 51' GOL → 46' İkinci yarı başladı → DEVRE ARASI → 45+3' İlk yarı bitiş → 45' +3 dk eklendi
               const result: any[] = [];
               const totalEvents = sortedEvents.length;
               let halftimeBreakAdded = false; // ✅ Devre arası görselini sadece bir kez ekle
               
               sortedEvents.forEach((event, index) => {
-                // ✅ index artık 0'dan başlıyor (en yeni event index 0, en eski event index totalEvents-1)
-                // Devre arası görseli: Half Time event'inden SONRA ve 46. dakika eventinden ÖNCE ekle
-                // Eventler ters sıralı olduğu için: 46. dakika eventi önce, halftime eventi sonra gelecek
-                if (event.minute === 46 && event.extraTime === null && !halftimeBreakAdded) {
-                  // 46. dakika eventinden önce devre arası görselini ekle
+                // ✅ Event'i render et
+                result.push(renderEventCard(event, index, totalEvents));
+                
+                // ✅ Halftime (ilk yarı bitiş) eventinden SONRA devre arası görselini ekle
+                // Kronolojik sıra (en eski üstte): ... stoppage → halftime → DEVRE ARASI → kickoff (46') → ...
+                if (event.type === 'halftime' && !halftimeBreakAdded) {
                   result.push(renderHalftimeBreak());
                   halftimeBreakAdded = true;
                 }
-                
-                result.push(renderEventCard(event, index, totalEvents));
-                
-                // ✅ Half Time event'inden sonra devre arası görselini ekleme (zaten 46. dakika eventinden önce eklendi)
               });
               
               return result;
@@ -1132,11 +1211,37 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   
-  // Devre arası görseli
+  // Devre arası görseli - yeni basit layout
+  timelineHalftimeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    position: 'relative',
+  },
+  timelineHalftimeCenterLine: {
+    position: 'absolute',
+    left: '50%',
+    marginLeft: -1.5,
+    top: 0,
+    bottom: 0,
+    width: 3,
+    backgroundColor: 'rgba(239, 68, 68, 0.4)',
+  },
+  timelineHalftimeCardNew: {
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    borderWidth: 1,
+    borderColor: '#EF4444',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    zIndex: 10,
+  },
+  // Eski style'lar (kullanılmıyor ama uyumluluk için bırakıldı)
   timelineHalftimeLine: {
     width: 3,
     flex: 1,
-    backgroundColor: '#EF4444', // Kırmızı çizgi - devre arası
+    backgroundColor: '#EF4444',
     opacity: 0.6,
   },
   timelineHalftimeDot: {
@@ -1154,6 +1259,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: '50%',
     marginLeft: -60,
+    top: -12,
     backgroundColor: 'rgba(239, 68, 68, 0.15)',
     borderWidth: 1,
     borderColor: '#EF4444',
@@ -1162,6 +1268,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     alignItems: 'center',
     minWidth: 120,
+    zIndex: 10, // ✅ Dairenin üstünde görünsün
   },
   timelineHalftimeText: {
     fontSize: 11,

@@ -26,12 +26,13 @@ import { MatchRatings } from './match/MatchRatings';
 // import { MatchSummary } from './match/MatchSummary';
 import { AnalysisFocusModal, AnalysisFocusType } from './AnalysisFocusModal';
 import { ConfirmModal } from './ui/ConfirmModal';
+import { CountdownWarningModal } from './ui/CountdownWarningModal';
 import { STORAGE_KEYS, LEGACY_STORAGE_KEYS } from '../config/constants';
 import { predictionsDb } from '../services/databaseService';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BRAND, COLORS, SPACING, SIZES } from '../theme/theme';
 import { getTeamColors as getTeamColorsUtil } from '../utils/teamColors';
-import { isMockTestMatch, MOCK_MATCH_IDS, getMatch1Start, getMatch2Start, MATCH_1_EVENTS, MATCH_2_EVENTS, computeLiveState } from '../data/mockTestData';
+import { isMockTestMatch, MOCK_MATCH_IDS, getMatch1Start, getMatch2Start, MATCH_1_EVENTS, MATCH_2_EVENTS, computeLiveState, getMockUserTeamId } from '../data/mockTestData';
 
 interface MatchDetailProps {
   matchId: string;
@@ -90,7 +91,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
   const [showAnalysisFocusModal, setShowAnalysisFocusModal] = useState(false);
   const [analysisFocusOverride, setAnalysisFocusOverride] = useState<AnalysisFocusType | null>(null);
   const [showResetPredictionsModal, setShowResetPredictionsModal] = useState(false);
-  const [hasPrediction, setHasPrediction] = useState(false);
+  const [hasPrediction, setHasPrediction] = useState<boolean | null>(null); // null = henüz kontrol edilmedi
   const effectiveAnalysisFocus = analysisFocusOverride ?? analysisFocus;
 
   // ✅ Kaydedilmemiş değişiklik kontrolü - Tahmin sekmesi
@@ -103,6 +104,16 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
   const [squadHasUnsavedChanges, setSquadHasUnsavedChanges] = useState(false);
   const [showSquadUnsavedModal, setShowSquadUnsavedModal] = useState(false);
   const [pendingBackAction, setPendingBackAction] = useState(false);
+  // ✅ Maç başlangıcına yakın tahmin yapma uyarısı modal state
+  const [countdownWarningModal, setCountdownWarningModal] = useState<{
+    remainingSeconds: number;
+    onContinue: () => void;
+  } | null>(null);
+  // ✅ Kullanıcının sayfayı ne zaman açtığını takip et (120 sn kala kontrolü için)
+  const [pageOpenedAt, setPageOpenedAt] = useState<number | null>(null);
+  
+  // ✅ İlk 11 popup'ı gösterildi mi? (sekme değişse bile korunur)
+  const [startingXIPopupShown, setStartingXIPopupShown] = useState(false);
 
   // ✅ Memoize onHasUnsavedChanges callback to prevent infinite re-renders
   const handleHasUnsavedChanges = useCallback((hasChanges: boolean, saveFn: () => Promise<void>) => {
@@ -139,6 +150,10 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
   const checkPredictions = React.useCallback(async (homeId?: number, awayId?: number, bothFav?: boolean) => {
     if (!matchId) return;
     try {
+      const fixtureId = Number(matchId);
+      const isMockMatch = isMockTestMatch(fixtureId);
+      const effectiveTeamId = isMockMatch ? getMockUserTeamId(fixtureId) : (selectedPredictionTeamId ?? predictionTeamId);
+      
       if (bothFav && homeId != null && awayId != null) {
         const key1 = `${STORAGE_KEYS.PREDICTIONS}${matchId}-${homeId}`;
         const key2 = `${STORAGE_KEYS.PREDICTIONS}${matchId}-${awayId}`;
@@ -155,23 +170,49 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
           const p = JSON.parse(raw2);
           has = has || !!(p?.matchPredictions && Object.values(p.matchPredictions).some((v: any) => v != null)) || !!(p?.playerPredictions && Object.keys(p.playerPredictions).length > 0);
         }
+        // ✅ Mock maçlar için squad storage'ını da kontrol et
+        if (isMockMatch && effectiveTeamId != null) {
+          const squadKey = `${STORAGE_KEYS.SQUAD}${matchId}-${effectiveTeamId}`;
+          const squadRaw = await AsyncStorage.getItem(squadKey);
+          if (squadRaw) {
+            const squad = JSON.parse(squadRaw);
+            has = has || (squad.isCompleted === true && squad.matchId === fixtureId && squad.attackPlayersArray?.length >= 11);
+          }
+        }
         setHasPrediction(has);
         return;
       }
-      const predRaw = await AsyncStorage.getItem(STORAGE_KEYS.PREDICTIONS + matchId)
-        || await AsyncStorage.getItem(`${LEGACY_STORAGE_KEYS.PREDICTIONS}${matchId}`);
+      
+      // ✅ Tek favori takım veya mock maç
+      const predKey = effectiveTeamId != null ? `${STORAGE_KEYS.PREDICTIONS}${matchId}-${effectiveTeamId}` : `${STORAGE_KEYS.PREDICTIONS}${matchId}`;
+      const predRaw = await AsyncStorage.getItem(predKey)
+        || await AsyncStorage.getItem(effectiveTeamId != null ? `${LEGACY_STORAGE_KEYS.PREDICTIONS}${matchId}-${effectiveTeamId}` : `${LEGACY_STORAGE_KEYS.PREDICTIONS}${matchId}`);
+      
+      let hasPred = false;
       if (predRaw) {
         const pred = JSON.parse(predRaw);
         const hasMatchPred = pred?.matchPredictions && Object.values(pred.matchPredictions).some((v: any) => v != null);
         const hasPlayerPred = pred?.playerPredictions && Object.keys(pred.playerPredictions).length > 0;
-        setHasPrediction(!!hasMatchPred || !!hasPlayerPred);
-      } else {
-        setHasPrediction(false);
+        hasPred = !!hasMatchPred || !!hasPlayerPred;
       }
+      
+      // ✅ Mock maçlar için squad storage'ını da kontrol et
+      if (isMockMatch && effectiveTeamId != null) {
+        const squadKey = `${STORAGE_KEYS.SQUAD}${matchId}-${effectiveTeamId}`;
+        const squadRaw = await AsyncStorage.getItem(squadKey);
+        if (squadRaw) {
+          const squad = JSON.parse(squadRaw);
+          const hasSquad = squad.isCompleted === true && squad.matchId === fixtureId && squad.attackPlayersArray?.length >= 11;
+          hasPred = hasPred || hasSquad;
+        }
+      }
+      
+      setHasPrediction(hasPred);
     } catch (e) {
+      console.warn('checkPredictions error:', e);
       setHasPrediction(false);
     }
-  }, [matchId]);
+  }, [matchId, selectedPredictionTeamId, predictionTeamId]);
 
   const handleResetPredictionsConfirm = async (targetTeamId?: number | null) => {
     const teamToReset = targetTeamId ?? resetTargetTeamId;
@@ -180,42 +221,53 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
     const homeId = matchData?.teams?.home?.id ?? matchData?.homeTeam?.id;
     const awayId = matchData?.teams?.away?.id ?? matchData?.awayTeam?.id;
     const bothFavorites = homeId != null && awayId != null && favoriteTeamIds.includes(homeId) && favoriteTeamIds.includes(awayId);
+    
+    // ✅ Mock maçlar için doğru team ID'yi bul
+    const fixtureId = Number(matchId);
+    const isMockMatch = isMockTestMatch(fixtureId);
+    const effectiveTeamId = isMockMatch ? getMockUserTeamId(fixtureId) : (teamToReset ?? selectedPredictionTeamId ?? predictionTeamId);
 
     try {
-      if (bothFavorites && teamToReset != null) {
-        await AsyncStorage.removeItem(`${STORAGE_KEYS.PREDICTIONS}${matchId}-${teamToReset}`);
-        await AsyncStorage.removeItem(`${LEGACY_STORAGE_KEYS.PREDICTIONS}${matchId}-${teamToReset}`);
-        const squadKey = `${STORAGE_KEYS.SQUAD}${matchId}-${teamToReset}`;
-        const raw = await AsyncStorage.getItem(squadKey);
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          parsed.isCompleted = false;
-          await AsyncStorage.setItem(squadKey, JSON.stringify(parsed));
-        }
-        const userDataStr = await AsyncStorage.getItem(STORAGE_KEYS.USER);
-        const userData = userDataStr ? JSON.parse(userDataStr) : null;
-        const userId = userData?.id;
-        if (userId) await predictionsDb.deletePredictionsByMatch(userId, String(matchId)); // DB'de match bazlı; ek filtre gerekebilir
-      } else {
-        await AsyncStorage.removeItem(STORAGE_KEYS.PREDICTIONS + matchId);
-        await AsyncStorage.removeItem(`${LEGACY_STORAGE_KEYS.PREDICTIONS}${matchId}`);
+      // ✅ İki favori takım veya mock maç: Takıma özel storage key kullan
+      if ((bothFavorites && teamToReset != null) || (isMockMatch && effectiveTeamId != null)) {
+        const teamIdToUse = teamToReset ?? effectiveTeamId;
+        await AsyncStorage.removeItem(`${STORAGE_KEYS.PREDICTIONS}${matchId}-${teamIdToUse}`);
+        await AsyncStorage.removeItem(`${LEGACY_STORAGE_KEYS.PREDICTIONS}${matchId}-${teamIdToUse}`);
+        const squadKey = `${STORAGE_KEYS.SQUAD}${matchId}-${teamIdToUse}`;
+        // ✅ Storage'dan tamamen sil (isCompleted = false yapmak yerine)
+        await AsyncStorage.removeItem(squadKey);
+        await AsyncStorage.removeItem(`${LEGACY_STORAGE_KEYS.SQUAD}${matchId}-${teamIdToUse}`);
+        
         const userDataStr = await AsyncStorage.getItem(STORAGE_KEYS.USER);
         const userData = userDataStr ? JSON.parse(userDataStr) : null;
         const userId = userData?.id;
         if (userId) await predictionsDb.deletePredictionsByMatch(userId, String(matchId));
+      } else {
+        // ✅ Tek favori takım: Normal storage key kullan
+        await AsyncStorage.removeItem(STORAGE_KEYS.PREDICTIONS + matchId);
+        await AsyncStorage.removeItem(`${LEGACY_STORAGE_KEYS.PREDICTIONS}${matchId}`);
         const squadKey = `${STORAGE_KEYS.SQUAD}${matchId}`;
-        const raw = await AsyncStorage.getItem(squadKey);
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          parsed.isCompleted = false;
-          await AsyncStorage.setItem(squadKey, JSON.stringify(parsed));
-        }
+        // ✅ Storage'dan tamamen sil
+        await AsyncStorage.removeItem(squadKey);
+        await AsyncStorage.removeItem(`${LEGACY_STORAGE_KEYS.SQUAD}${matchId}`);
+        
+        const userDataStr = await AsyncStorage.getItem(STORAGE_KEYS.USER);
+        const userData = userDataStr ? JSON.parse(userDataStr) : null;
+        const userId = userData?.id;
+        if (userId) await predictionsDb.deletePredictionsByMatch(userId, String(matchId));
       }
+      
       setHasPrediction(false);
       if (bothFavorites) checkPredictions(homeId, awayId, true);
       else checkPredictions();
-    } catch (e) { console.warn('Reset predictions failed', e); }
-    setShowAnalysisFocusModal(true);
+      
+      console.log('✅ Tahminler silindi:', { matchId, teamId: teamToReset ?? effectiveTeamId, isMockMatch });
+    } catch (e) { 
+      console.error('❌ Reset predictions failed', e); 
+      Alert.alert('Hata', 'Tahminler silinirken bir hata oluştu. Lütfen tekrar deneyin.');
+    }
+    // ✅ Analiz odağı modal'ını açma - kullanıcı tahmin yapmadığı için gerek yok
+    // setShowAnalysisFocusModal(true);
   };
 
   React.useEffect(() => {
@@ -246,6 +298,11 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
     return () => clearInterval(interval);
   }, []);
   
+  // ✅ Kullanıcının sayfayı ne zaman açtığını takip et
+  React.useEffect(() => {
+    setPageOpenedAt(Date.now());
+  }, [matchId]);
+  
   // ✅ Eğer preloadedMatch varsa, API çağrısı yapma
   const shouldFetchFromApi = !preloadedMatch;
   
@@ -256,6 +313,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
   
   // ✅ preloadedMatch varsa onu kullan, yoksa API'den gelen veriyi kullan
   const match = preloadedMatch || apiMatch;
+
   const loading = shouldFetchFromApi ? apiLoading : false;
   
   // ✅ Mock maçlar için sabit başlangıç zamanı (her render'da yeniden hesaplanmaması için)
@@ -302,21 +360,31 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
     }
   }, [matchId, preloadedMatch, match]);
   
-  // ✅ Canlı maçta otomatik olarak canlı sekmesine yönlendir
+  // ✅ Canlı maçta otomatik olarak sekme yönlendirmesi
+  // - Tahmin yapılmamış canlı maç → Kadro sekmesi (İlk 11 popup gösterilecek)
+  // - Tahmin yapılmış canlı maç → Canlı sekmesi
   React.useEffect(() => {
     if (!match || initialTabSet) return;
+    if (hasPrediction === null) return; // ✅ Tahmin kontrolü henüz tamamlanmadı, bekle
     
     const matchStatus = match?.fixture?.status?.short || match?.status || '';
     const isLive = ['1H', '2H', 'HT', 'ET', 'P', 'LIVE', 'BT'].includes(matchStatus);
     
-    if (isLive && initialTab !== 'live') {
-      // Canlı maçta ve henüz canlı sekmesine geçilmemişse, canlı sekmesine yönlendir
-      setActiveTab('live');
+    if (isLive) {
+      if (hasPrediction) {
+        // ✅ Tahmin yapılmış canlı maç → Canlı sekmesine yönlendir
+        setActiveTab('live');
+        console.log('📺 Canlı maç (tahmin yapılmış) → Live sekmesine yönlendirildi');
+      } else {
+        // ✅ Tahmin yapılmamış canlı maç → Kadro sekmesinde kal (İlk 11 popup gösterilecek)
+        setActiveTab('squad');
+        console.log('📋 Canlı maç (tahmin yapılmamış) → Kadro sekmesinde kalındı');
+      }
       setInitialTabSet(true);
     } else {
       setInitialTabSet(true);
     }
-  }, [match, initialTab, initialTabSet]);
+  }, [match, initialTab, initialTabSet, hasPrediction]);
   
   // ✅ Lineups state - her zaman kullanılabilir
   const [manualLineups, setManualLineups] = React.useState<any>(null);
@@ -597,9 +665,20 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
     const state = computeLiveState(matchStart, events);
     
     // İlk yarı skorunu hesapla (45. dakikaya kadar olan goller)
+    // ✅ Kendi kalesine gol durumunda teamSide tersine çevrilir
     const firstHalfEvents = events.filter(e => e.minuteOffset <= 45 && e.type === 'Goal');
-    const firstHalfHomeGoals = firstHalfEvents.filter(e => e.teamSide === 'home').length;
-    const firstHalfAwayGoals = firstHalfEvents.filter(e => e.teamSide === 'away').length;
+    const firstHalfHomeGoals = firstHalfEvents.filter(e => {
+      if (e.detail === 'Own Goal') {
+        return e.teamSide === 'away'; // Away takımından own goal = home takımına gol
+      }
+      return e.teamSide === 'home';
+    }).length;
+    const firstHalfAwayGoals = firstHalfEvents.filter(e => {
+      if (e.detail === 'Own Goal') {
+        return e.teamSide === 'home'; // Home takımından own goal = away takımına gol
+      }
+      return e.teamSide === 'away';
+    }).length;
     
     return {
       homeScore: state.homeGoals ?? 0,
@@ -710,93 +789,98 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
     ...(isMockTestMatch(Number(matchId)) ? [] : [match?.fixture?.timestamp]),
   ]);
   
-  // ✅ Geri sayım hesaplama - useMemo ile optimize et
+  // ✅ Geri sayım hesaplama - sadece 120 sn kala giren kullanıcılar için ve maç başladıktan sonra ilk 120 sn
   const countdownData = useMemo(() => {
     // countdownTicker'ı kullanarak her saniye güncellemeyi tetikle
     const _ = countdownTicker;
     
-    const now = Date.now() / 1000;
-    let matchTime: number | null = null;
+    // ✅ Sadece 120 sn kala giren kullanıcılar için göster
+    if (!pageOpenedAt) return null;
+    
+    const now = Date.now();
+    let matchStartTime: number | null = null;
     
     // ✅ Mock maçlar için özel geri sayım: Sabit başlangıç zamanını kullan
     if (isMockTestMatch(Number(matchId))) {
-      // Sadece mockMatchStartTimeRef.current'i kullan (useEffect'te sabitlenmiş olmalı)
       if (mockMatchStartTimeRef.current !== null) {
-        matchTime = mockMatchStartTimeRef.current / 1000;
+        matchStartTime = mockMatchStartTimeRef.current;
       } else {
-        // Henüz sabitlenmemişse, null döndür (useEffect henüz çalışmamış)
         return null;
       }
     } else {
       // Normal maçlar için matchData.timestamp kullan
       if (!matchData?.timestamp) return null;
-      matchTime = matchData.timestamp;
+      matchStartTime = matchData.timestamp * 1000;
     }
     
-    if (matchTime === null) return null;
+    if (matchStartTime === null) return null;
     
-    const timeDiff = matchTime - now;
+    // Sayfa açıldığında maç başlangıcına kalan süre
+    const remainingMsWhenOpened = matchStartTime - pageOpenedAt;
+    const remainingSecondsWhenOpened = Math.floor(remainingMsWhenOpened / 1000);
     
-    // Debug log - her 5 saniyede bir
-    if (isMockTestMatch(Number(matchId)) && countdownTicker % 5 === 0) {
-      console.log('⏱️ Geri sayım:', {
-        matchTime: new Date(matchTime * 1000).toISOString(),
-        now: new Date(now * 1000).toISOString(),
-        timeDiff: Math.floor(timeDiff),
-        seconds: Math.floor(timeDiff % 60),
-        minutes: Math.floor((timeDiff % 3600) / 60),
-        mockRef: mockMatchStartTimeRef.current ? new Date(mockMatchStartTimeRef.current).toISOString() : 'null',
-        countdownTicker,
-      });
+    // ✅ Sadece 120 sn kala giren kullanıcılar için (0-120 sn arası)
+    if (remainingSecondsWhenOpened < 0 || remainingSecondsWhenOpened > 120) {
+      return null;
     }
     
-    // Maç başladıysa veya bittiyse geri sayım gösterme
-    if (timeDiff <= 0) return null;
+    // Şu anki durum
+    const elapsedSinceMatchStart = now - matchStartTime;
+    const elapsedSecondsSinceMatchStart = Math.floor(elapsedSinceMatchStart / 1000);
     
-    const hours24 = 24 * 60 * 60;
-    const days7 = 7 * 24 * 60 * 60;
+    // Grace period: Maç başladıktan sonra +2 dakika (120 saniye)
+    const GRACE_PERIOD_SECONDS = 120;
     
-    let countdownColor = '#10b981'; // Varsayılan yeşil
-    const hoursLeft = timeDiff / 3600;
+    let remainingSeconds: number;
+    let isBeforeMatchStart: boolean;
     
-    // Renk değişimi
-    if (hoursLeft <= 1) {
+    if (elapsedSinceMatchStart < 0) {
+      // Maç henüz başlamadı - maç başlangıcına kalan süre
+      remainingSeconds = Math.floor((matchStartTime - now) / 1000);
+      isBeforeMatchStart = true;
+    } else {
+      // Maç başladı - grace period'dan kalan süre
+      remainingSeconds = Math.max(0, GRACE_PERIOD_SECONDS - elapsedSecondsSinceMatchStart);
+      isBeforeMatchStart = false;
+      
+      // ✅ Maç başladıktan sonra ilk 120 sn boyunca göster, sonra kaybolsun
+      if (remainingSeconds <= 0) {
+        return null;
+      }
+    }
+    
+    // ✅ Yanıp sönme efekti: 2 saniyede bir (countdownTicker % 2 === 0 ise görünür)
+    const shouldBlink = isBeforeMatchStart || elapsedSecondsSinceMatchStart < GRACE_PERIOD_SECONDS;
+    const isVisible = shouldBlink && (countdownTicker % 2 === 0 || remainingSeconds <= 30); // Son 30 sn'de sürekli görünür
+    
+    if (!isVisible && remainingSeconds > 30) {
+      return { type: 'countdown', hours: 0, minutes: 0, seconds: remainingSeconds, color: '#EF4444', shouldBlink: true, isVisible: false };
+    }
+    
+    // Renk belirleme
+    let countdownColor = '#10B981'; // Yeşil
+    if (remainingSeconds <= 30) {
       countdownColor = '#EF4444'; // Kırmızı
-    } else if (hoursLeft <= 3) {
+    } else if (remainingSeconds <= 60) {
       countdownColor = '#F97316'; // Turuncu
-    } else if (hoursLeft <= 6) {
+    } else if (remainingSeconds <= 90) {
       countdownColor = '#F59E0B'; // Sarı
-    } else if (hoursLeft <= 12) {
-      countdownColor = '#84CC16'; // Açık yeşil
-    }
-    
-    // 7 günden fazla ise gün sayısını göster
-    if (timeDiff > days7) {
-      const days = Math.floor(timeDiff / (24 * 60 * 60));
-      return { type: 'days', days, color: countdownColor };
-    }
-    
-    // 24 saatten fazla ama 7 günden az ise gün sayısını göster
-    if (timeDiff > hours24) {
-      const days = Math.floor(timeDiff / (24 * 60 * 60));
-      return { type: 'days', days, color: countdownColor };
     }
     
     // 24 saatten az kaldıysa saat:dakika:saniye göster
     return {
       type: 'countdown',
-      hours: Math.floor(timeDiff / 3600),
-      minutes: Math.floor((timeDiff % 3600) / 60),
-      seconds: Math.floor(timeDiff % 60),
+      hours: Math.floor(remainingSeconds / 3600),
+      minutes: Math.floor((remainingSeconds % 3600) / 60),
+      seconds: remainingSeconds % 60,
       color: countdownColor,
+      shouldBlink: true,
+      isVisible: true,
     };
   }, [
-    countdownTicker, // ✅ Her saniye güncelle (bu sayede geri sayım her saniye yeniden hesaplanır)
+    countdownTicker, // ✅ Her saniye güncelle
     matchId,
-    // ✅ Normal maçlar için matchData?.timestamp'i dependency'ye ekle
-    // Mock maçlar için mockMatchStartTimeRef.current'i dependency'ye ekleme (ref olduğu için çalışmaz)
-    // Bunun yerine countdownTicker her saniye değiştiği için countdownData her saniye yeniden hesaplanacak
-    // ve mockMatchStartTimeRef.current her seferinde okunacak
+    pageOpenedAt,
     isMockTestMatch(Number(matchId)) ? null : matchData?.timestamp,
   ]);
 
@@ -855,6 +939,50 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
             </View>
           );
         }
+        // ✅ Kullanıcının 120 sn kala tıklayıp tıklamadığını kontrol et
+        const matchTimestamp = matchData?.timestamp;
+        const fixtureId = Number(matchId);
+        let matchStartTime: number | null = null;
+        
+        // Mock maçlar için özel kontrol
+        if (isMockTestMatch(fixtureId)) {
+          matchStartTime = fixtureId === MOCK_MATCH_IDS.GS_FB ? getMatch1Start() : getMatch2Start();
+        } else if (matchTimestamp) {
+          matchStartTime = matchTimestamp * 1000; // Saniye cinsinden, milisaniyeye çevir
+        }
+        
+        // ✅ Düzenleme izni verme mantığı:
+        // 1. Kullanıcı maç başlamadan ÖNCE 120 sn kala girdiyse → Maç başladıktan sonra +120 sn düzenleme izni
+        // 2. Kullanıcı maç başladıktan SONRA girdiyse → Düzenleme izni YOK (tahmin yapılmamış maç gibi davran)
+        let allowEditingAfterMatchStart = false;
+        if (matchStartTime && pageOpenedAt) {
+          const timeWhenPageOpened = pageOpenedAt;
+          const remainingMsWhenOpened = matchStartTime - timeWhenPageOpened;
+          const remainingSecondsWhenOpened = Math.floor(remainingMsWhenOpened / 1000);
+          
+          // ✅ Şu anki durumu da kontrol et
+          const now = Date.now();
+          const remainingMsNow = matchStartTime - now;
+          const remainingSecondsNow = Math.floor(remainingMsNow / 1000);
+          
+          // ✅ SADECE maç başlamadan ÖNCE (0-120 sn kala) girenler için düzenleme izni
+          // remainingSecondsWhenOpened > 0 → maç başlamadan önce girdi
+          // remainingSecondsWhenOpened <= 120 → 120 sn kala veya daha az kala girdi
+          const enteredBefore120SecToStart = remainingSecondsWhenOpened > 0 && remainingSecondsWhenOpened <= 120;
+          
+          // ✅ Şu an maç başladıktan 120 sn geçmedi mi?
+          const stillWithinEditWindow = remainingSecondsNow >= -120;
+          
+          if (enteredBefore120SecToStart && stillWithinEditWindow) {
+            allowEditingAfterMatchStart = true;
+          }
+          
+          // ✅ Debug log
+          if (enteredBefore120SecToStart && !stillWithinEditWindow) {
+            console.log('⏰ 120 sn düzenleme süresi doldu, kadro kilitlendi');
+          }
+        }
+        
         return (
           <MatchSquad
             key={`squad-${matchId}-${predictionTeamIdForProps ?? 'all'}`}
@@ -875,7 +1003,12 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
             isVisible={activeTab === 'squad'}
             isMatchFinished={isMatchFinished}
             isMatchLive={isMatchLive}
+            allowEditingAfterMatchStart={allowEditingAfterMatchStart}
             onHasUnsavedChanges={handleSquadUnsavedChanges}
+            countdownData={countdownData}
+            countdownTicker={countdownTicker}
+            startingXIPopupShown={startingXIPopupShown}
+            onStartingXIPopupShown={() => setStartingXIPopupShown(true)}
           />
         );
       
@@ -1013,7 +1146,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
           </View>
 
           {/* Center: Canlıda sadece CANLI + dakika (Rule 1/3); biten maçta tarih/saat; başlamamışta geri sayım */}
-          <View style={[styles.centerInfo, { minWidth: centerInfoMinWidth, paddingHorizontal: countdownPadding }]}>
+          <View style={styles.centerInfo}>
             {matchData.isLive ? (
               <>
                 {/* CANLI Badge */}
@@ -1060,38 +1193,51 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
                   <Text style={styles.timeBadgeText}>{matchData.time}</Text>
                 </LinearGradient>
                 
-                {/* Countdown - Dashboard stili ile aynı */}
-                {countdownData && countdownData.type === 'countdown' && (
-                  <View style={styles.countdownRow}>
-                    <LinearGradient
-                      colors={[countdownData.color, countdownData.color === '#EF4444' ? '#B91C1C' : countdownData.color === '#F97316' ? '#EA580C' : countdownData.color === '#F59E0B' ? '#D97706' : countdownData.color === '#84CC16' ? '#65A30D' : '#059669']}
-                      style={styles.countdownBox}
-                    >
-                      <Text style={styles.countdownNumber}>{String(countdownData.hours).padStart(2, '0')}</Text>
-                      <Text style={styles.countdownLabel}>Saat</Text>
-                    </LinearGradient>
-                    
-                    <Text style={[styles.countdownSeparator, { color: countdownData.color }]}>:</Text>
-                    
-                    <LinearGradient
-                      colors={[countdownData.color, countdownData.color === '#EF4444' ? '#B91C1C' : countdownData.color === '#F97316' ? '#EA580C' : countdownData.color === '#F59E0B' ? '#D97706' : countdownData.color === '#84CC16' ? '#65A30D' : '#059669']}
-                      style={styles.countdownBox}
-                    >
-                      <Text style={styles.countdownNumber}>{String(countdownData.minutes).padStart(2, '0')}</Text>
-                      <Text style={styles.countdownLabel}>Dakika</Text>
-                    </LinearGradient>
-                    
-                    <Text style={[styles.countdownSeparator, { color: countdownData.color }]}>:</Text>
-                    
-                    <LinearGradient
-                      colors={[countdownData.color, countdownData.color === '#EF4444' ? '#B91C1C' : countdownData.color === '#F97316' ? '#EA580C' : countdownData.color === '#F59E0B' ? '#D97706' : countdownData.color === '#84CC16' ? '#65A30D' : '#059669']}
-                      style={styles.countdownBox}
-                    >
-                      <Text style={styles.countdownNumber}>{String(countdownData.seconds).padStart(2, '0')}</Text>
-                      <Text style={styles.countdownLabel}>Saniye</Text>
-                    </LinearGradient>
-                  </View>
-                )}
+                {/* Countdown - Sadece 120 sn kala giren kullanıcılar için, yanıp söner */}
+                {/* ✅ Container her zaman render ediliyor - layout sabit kalıyor */}
+                <View style={styles.countdownRow}>
+                  {countdownData && countdownData.type === 'countdown' && countdownData.isVisible ? (
+                    <View style={styles.countdownContent} pointerEvents="none">
+                      <View style={{ opacity: countdownData.shouldBlink && countdownData.seconds > 30 ? (countdownTicker % 2 === 0 ? 1 : 0.3) : 1 }}>
+                        <LinearGradient
+                          colors={[countdownData.color, countdownData.color === '#EF4444' ? '#B91C1C' : countdownData.color === '#F97316' ? '#EA580C' : countdownData.color === '#F59E0B' ? '#D97706' : countdownData.color === '#84CC16' ? '#65A30D' : '#059669']}
+                          style={styles.countdownBox}
+                        >
+                          <Text style={styles.countdownNumber}>{String(countdownData.hours).padStart(2, '0')}</Text>
+                          <Text style={styles.countdownLabel}>Saat</Text>
+                        </LinearGradient>
+                      </View>
+                      
+                      <View style={{ opacity: countdownData.shouldBlink && countdownData.seconds > 30 ? (countdownTicker % 2 === 0 ? 1 : 0.3) : 1 }}>
+                        <Text style={[styles.countdownSeparator, { color: countdownData.color }]}>:</Text>
+                      </View>
+                      
+                      <View style={{ opacity: countdownData.shouldBlink && countdownData.seconds > 30 ? (countdownTicker % 2 === 0 ? 1 : 0.3) : 1 }}>
+                        <LinearGradient
+                          colors={[countdownData.color, countdownData.color === '#EF4444' ? '#B91C1C' : countdownData.color === '#F97316' ? '#EA580C' : countdownData.color === '#F59E0B' ? '#D97706' : countdownData.color === '#84CC16' ? '#65A30D' : '#059669']}
+                          style={styles.countdownBox}
+                        >
+                          <Text style={styles.countdownNumber}>{String(countdownData.minutes).padStart(2, '0')}</Text>
+                          <Text style={styles.countdownLabel}>Dakika</Text>
+                        </LinearGradient>
+                      </View>
+                      
+                      <View style={{ opacity: countdownData.shouldBlink && countdownData.seconds > 30 ? (countdownTicker % 2 === 0 ? 1 : 0.3) : 1 }}>
+                        <Text style={[styles.countdownSeparator, { color: countdownData.color }]}>:</Text>
+                      </View>
+                      
+                      <View style={{ opacity: countdownData.shouldBlink && countdownData.seconds > 30 ? (countdownTicker % 2 === 0 ? 1 : 0.3) : 1 }}>
+                        <LinearGradient
+                          colors={[countdownData.color, countdownData.color === '#EF4444' ? '#B91C1C' : countdownData.color === '#F97316' ? '#EA580C' : countdownData.color === '#F59E0B' ? '#D97706' : countdownData.color === '#84CC16' ? '#65A30D' : '#059669']}
+                          style={styles.countdownBox}
+                        >
+                          <Text style={styles.countdownNumber}>{String(countdownData.seconds).padStart(2, '0')}</Text>
+                          <Text style={styles.countdownLabel}>Saniye</Text>
+                        </LinearGradient>
+                      </View>
+                    </View>
+                  ) : null}
+                </View>
                 {countdownData && countdownData.type === 'days' && (
                   <LinearGradient
                     colors={['#f97316', '#ea580c']}
@@ -1259,6 +1405,16 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
         } : undefined}
       />
 
+      {/* ✅ Maç başlangıcına yakın tahmin yapma uyarısı modal */}
+      {countdownWarningModal && (
+        <CountdownWarningModal
+          visible={true}
+          remainingSeconds={countdownWarningModal.remainingSeconds}
+          onContinue={countdownWarningModal.onContinue}
+          onCancel={() => setCountdownWarningModal(null)}
+        />
+      )}
+
       <View style={[styles.bottomNavBar, { paddingBottom: Math.max(insets.bottom, 8) }]}>
         <View style={styles.bottomNav}>
         {tabs.map((tab) => {
@@ -1277,9 +1433,45 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
                 if (activeTab === 'prediction' && tab.id !== 'prediction' && predictionHasUnsavedChanges) {
                   setPendingTabChange(tab.id);
                   setShowUnsavedChangesModal(true);
-                } else {
-                  setActiveTab(tab.id);
+                  return;
                 }
+                
+                // ✅ Tahmin sekmesine geçiş kontrolü: Maç başlangıcına 120 saniye kala kontrolü
+                if (tab.id === 'prediction' && activeTab !== 'prediction') {
+                  const matchTimestamp = matchData?.timestamp;
+                  const fixtureId = Number(matchId);
+                  let matchStartTime: number | null = null;
+                  
+                  // Mock maçlar için özel kontrol
+                  if (isMockTestMatch(fixtureId)) {
+                    matchStartTime = fixtureId === MOCK_MATCH_IDS.GS_FB ? getMatch1Start() : getMatch2Start();
+                  } else if (matchTimestamp) {
+                    matchStartTime = matchTimestamp * 1000; // Saniye cinsinden, milisaniyeye çevir
+                  }
+                  
+                  if (matchStartTime) {
+                    const now = Date.now();
+                    const remainingMs = matchStartTime - now;
+                    const remainingSeconds = Math.floor(remainingMs / 1000);
+                    
+                    // Maç başlamamışsa ve 120 saniye veya daha az kaldıysa popup göster
+                    if (remainingSeconds > 0 && remainingSeconds <= 120) {
+                      // Tahmin yapılmamışsa popup göster
+                      if (!hasPrediction) {
+                        setCountdownWarningModal({
+                          remainingSeconds,
+                          onContinue: () => {
+                            setCountdownWarningModal(null);
+                            setActiveTab('prediction');
+                          },
+                        });
+                        return;
+                      }
+                    }
+                  }
+                }
+                
+                setActiveTab(tab.id);
               }}
               style={styles.tab}
               activeOpacity={0.7}
@@ -1506,8 +1698,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(31, 162, 166, 0.15)',
     paddingVertical: 6,
-    minWidth: 100,
+    width: 100, // ✅ Sabit genişlik - layout kaymasını önler
     flexShrink: 0,
+    // ✅ Layout'un sabit kalması için - opacity değişikliği layout'u etkilemesin
+    height: 80, // ✅ Sabit yükseklik - geri sayım için yeterli alan
+    justifyContent: 'center', // ✅ İçeriği dikey olarak ortala
   },
   // ✅ Tarih satırı - Dashboard stili
   dateInfoRow: {
@@ -1535,9 +1730,22 @@ const styles = StyleSheet.create({
   },
   // ✅ Geri sayım - Dashboard stili
   countdownRow: {
+    height: 32, // ✅ Sabit yükseklik - yanıp sönme sırasında layout kaymasını önler
+    width: '100%', // ✅ Tam genişlik
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative', // ✅ Layout'u etkilememesi için
+  },
+  countdownContent: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 4,
+    position: 'absolute', // ✅ Absolute positioning - layout'u etkilemez
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
   },
   countdownBox: {
     alignItems: 'center',

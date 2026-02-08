@@ -54,7 +54,12 @@ export function useMatchesWithPredictions(matchIds: number[]) {
             if (value) {
               try {
                 const parsed = JSON.parse(value);
-                if (parsed?.isCompleted === true) {
+                // ✅ Mock maçlar için: matchId eşleşmeli ve isCompleted true olmalı
+                const isValidSquad = parsed?.isCompleted === true && 
+                                    (!parsed?.matchId || parsed.matchId === matchId) &&
+                                    parsed?.attackPlayersArray &&
+                                    parsed.attackPlayersArray.length >= 11;
+                if (isValidSquad) {
                   hasSquad = true;
                   break;
                 }
@@ -105,6 +110,9 @@ export function useMatchesWithPredictions(matchIds: number[]) {
       
       if (keysToRemove.length > 0) {
         await AsyncStorage.multiRemove(keysToRemove);
+        console.log('✅ Tahmin silindi:', keysToRemove.length, 'anahtar temizlendi', keysToRemove);
+      } else {
+        console.log('⚠️ Silinecek anahtar bulunamadı, matchId:', matchId, 'teamId:', teamId);
       }
       
       // ✅ Veritabanından da tahminleri temizle
@@ -121,32 +129,25 @@ export function useMatchesWithPredictions(matchIds: number[]) {
         console.warn('Database cleanup failed:', dbError);
       }
       
-      // ✅ Eğer tüm tahminler silindiyse matchId'yi listeden çıkar
-      // Eğer sadece bir takım silindiyse, diğer takım için tahmin varsa listede kalmalı
-      if (teamId == null) {
-        setMatchIdsWithPredictions(prev => {
-          const next = new Set(prev);
-          next.delete(matchId);
-          return next;
-        });
-      } else {
-        // ✅ Bir takım silindi, diğer takım için tahmin var mı kontrol et
-        const remainingKeys = allKeys.filter(k =>
-          (k === `${PREDICTION_KEY_PREFIX}${matchId}` || k.startsWith(`${PREDICTION_KEY_PREFIX}${matchId}-`)) &&
-          !keysToRemove.includes(k)
-        );
-        if (remainingKeys.length === 0) {
-          setMatchIdsWithPredictions(prev => {
-            const next = new Set(prev);
-            next.delete(matchId);
-            return next;
-          });
-        }
-      }
+      // ✅ State'i manuel olarak güncelle (hemen)
+      console.log('🔄 State güncelleniyor, matchId siliniyor:', matchId);
+      setMatchIdsWithPredictions(prev => {
+        const next = new Set(prev);
+        next.delete(matchId);
+        console.log('🔄 Yeni set:', [...next]);
+        return next;
+      });
+      
+      // ✅ Sonra refresh çağır (tam kontrol için)
+      console.log('🔄 refresh() çağrılıyor...');
+      await refresh();
+      console.log('✅ clearPredictionForMatch tamamlandı, matchId:', matchId);
     } catch (e) {
-      console.warn('clearPredictionForMatch error:', e);
+      console.error('❌ clearPredictionForMatch error:', e);
+      // ✅ Hata durumunda throw et ki UI'da yakalanabilsin
+      throw e;
     }
-  }, []);
+  }, [refresh]);
 
   return { matchIdsWithPredictions, refresh, clearPredictionForMatch };
 }

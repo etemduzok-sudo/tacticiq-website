@@ -309,8 +309,24 @@ export function computeLiveState(matchStartTime: number, events: MockEvent[]) {
     return false;
   });
 
-  const homeGoals = occurredEvents.filter(e => e.type === 'Goal' && e.teamSide === 'home').length;
-  const awayGoals = occurredEvents.filter(e => e.type === 'Goal' && e.teamSide === 'away').length;
+  // ✅ Skor hesaplama: Kendi kalesine gol durumunda teamSide tersine çevrilir
+  const homeGoals = occurredEvents.filter(e => {
+    if (e.type !== 'Goal') return false;
+    // ✅ Kendi kalesine gol: teamSide tersine çevrilir (away takımından gol atıldıysa home'a yazılır)
+    if (e.detail === 'Own Goal') {
+      return e.teamSide === 'away'; // Away takımından own goal = home takımına gol
+    }
+    return e.teamSide === 'home';
+  }).length;
+  
+  const awayGoals = occurredEvents.filter(e => {
+    if (e.type !== 'Goal') return false;
+    // ✅ Kendi kalesine gol: teamSide tersine çevrilir (home takımından gol atıldıysa away'a yazılır)
+    if (e.detail === 'Own Goal') {
+      return e.teamSide === 'home'; // Home takımından own goal = away takımına gol
+    }
+    return e.teamSide === 'away';
+  }).length;
 
   // ✅ İlk yarı: 0-48 dk (45+3 uzatma)
   // ✅ Devre arası: 48-60 dk (15 saniye = 15 dakika simülasyon)

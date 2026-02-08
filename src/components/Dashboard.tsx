@@ -28,6 +28,7 @@ import { profileService } from '../services/profileService';
 import { isSuperAdmin } from '../config/constants';
 import { AnalysisFocusModal, AnalysisFocusType } from './AnalysisFocusModal';
 import { ConfirmModal } from './ui/ConfirmModal';
+import { CountdownWarningModal } from './ui/CountdownWarningModal';
 import { getTeamColors } from '../utils/teamColors';
 import { useMatchesWithPredictions } from '../hooks/useMatchesWithPredictions';
 import { useTranslation } from '../hooks/useTranslation';
@@ -95,6 +96,12 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
     isLive: boolean;
     isFinished: boolean;
   } | null>(null);
+  // ✅ Maç başlangıcına yakın tahmin yapma uyarısı modal state
+  const [countdownWarningModal, setCountdownWarningModal] = useState<{
+    match: any;
+    remainingSeconds: number;
+    onContinue: () => void;
+  } | null>(null);
   
   // ✅ Maça tıklandığında: İki favori takım varsa popup göster, yoksa direkt devam et
   const handleMatchPress = (match: any) => {
@@ -104,6 +111,49 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
       // Web'de Haptics çalışmayabilir, sorun değil
     }
     
+    // ✅ Maç başlangıcına 120 saniye kala kontrolü
+    const matchTimestamp = match?.fixture?.timestamp;
+    const fixtureId = match?.fixture?.id;
+    let matchStartTime: number | null = null;
+    
+    // Mock maçlar için özel kontrol
+    if (fixtureId && isMockTestMatch(Number(fixtureId))) {
+      matchStartTime = Number(fixtureId) === MOCK_MATCH_IDS.GS_FB ? getMatch1Start() : getMatch2Start();
+    } else if (matchTimestamp) {
+      matchStartTime = matchTimestamp * 1000; // Saniye cinsinden, milisaniyeye çevir
+    }
+    
+    if (matchStartTime) {
+      const now = Date.now();
+      const remainingMs = matchStartTime - now;
+      const remainingSeconds = Math.floor(remainingMs / 1000);
+      
+      // Maç başlamamışsa ve 120 saniye veya daha az kaldıysa popup göster
+      if (remainingSeconds > 0 && remainingSeconds <= 120) {
+        // Tahmin yapılmamışsa veya tahmin yapılmış ama kaydedilmemişse popup göster
+        const hasPrediction = fixtureId != null && matchIdsWithPredictions.has(fixtureId);
+        if (!hasPrediction) {
+          // Popup göster ve devam etme işlemini modal'a bırak
+          setCountdownWarningModal({
+            match,
+            remainingSeconds,
+            onContinue: () => {
+              setCountdownWarningModal(null);
+              // Normal akışa devam et
+              handleMatchPressInternal(match);
+            },
+          });
+          return;
+        }
+      }
+    }
+    
+    // Normal akışa devam et
+    handleMatchPressInternal(match);
+  };
+  
+  // ✅ İç fonksiyon: Normal maç kartı tıklama mantığı
+  const handleMatchPressInternal = (match: any) => {
     // ✅ İki favori takım kontrolü
     const homeId = match?.teams?.home?.id;
     const awayId = match?.teams?.away?.id;
@@ -561,7 +611,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
                     setSelectedTeamToDelete(null);
                   } else {
                     // ✅ Tek favori takım: direkt silme modal'ı göster
-                    setDeletePredictionModal({ matchId, onDelete: () => onDeletePrediction(matchId) });
+                    setDeletePredictionModal({ matchId, onDelete: async () => await onDeletePrediction(matchId) });
                   }
                 }}
                 activeOpacity={0.7}
@@ -1084,8 +1134,13 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
     });
   }, [allUpcomingMatches, selectedTeamIds, filterMatchesByTeam, filteredLiveMatches, mockTestIds]);
 
-  const upcomingMatchIds = React.useMemo(() => filteredUpcomingMatches.map(m => m.fixture.id), [filteredUpcomingMatches]);
-  const { matchIdsWithPredictions, clearPredictionForMatch, refresh: refreshPredictions } = useMatchesWithPredictions(upcomingMatchIds);
+  // ✅ Hem canlı hem yaklaşan maç ID'lerini birleştir (tahmin kontrolü için)
+  const allActiveMatchIds = React.useMemo(() => {
+    const upcomingIds = filteredUpcomingMatches.map(m => m.fixture.id);
+    const liveIds = filteredLiveMatches.map(m => m.fixture.id);
+    return [...new Set([...upcomingIds, ...liveIds])]; // Unique ID'ler
+  }, [filteredUpcomingMatches, filteredLiveMatches]);
+  const { matchIdsWithPredictions, clearPredictionForMatch, refresh: refreshPredictions } = useMatchesWithPredictions(allActiveMatchIds);
 
   // ✅ Maç kartı yüksekliği (sabit height + marginBottom)
   const MATCH_CARD_HEIGHT = 180 + SPACING.md; // Kart height: 180 (%10 azaltıldı)
@@ -1303,14 +1358,17 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
               style: 'destructive',
               onPress: async () => {
                 try {
+                  console.log('🗑️ Tahmin siliniyor, matchId:', deletePredictionModal.matchId);
                   // ✅ Async işlemi await et
                   await deletePredictionModal.onDelete();
+                  console.log('✅ Tahmin silme işlemi tamamlandı');
                   // ✅ İşlem tamamlandıktan sonra modal'ı kapat
                   setDeletePredictionModal(null);
-                  // ✅ Tahmin listesini yenile
-                  refreshPredictions();
+                  // ✅ Tahmin listesini yenile (refresh zaten clearPredictionForMatch içinde çağrılıyor ama emin olmak için tekrar çağırıyoruz)
+                  await refreshPredictions();
+                  console.log('✅ Tahmin listesi yenilendi');
                 } catch (error) {
-                  console.error('Tahmin silme hatası:', error);
+                  console.error('❌ Tahmin silme hatası:', error);
                   Alert.alert('Hata', 'Tahmin silinirken bir hata oluştu. Lütfen tekrar deneyin.');
                 }
               },
@@ -1541,6 +1599,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
                     if (!selectedTeamToDelete) return;
                     
                     try {
+                      console.log('🗑️ İki takım için tahmin siliniyor, matchId:', deletePredictionTeamModal.matchId, 'team:', selectedTeamToDelete);
                       if (selectedTeamToDelete === 'home') {
                         await clearPredictionForMatch(deletePredictionTeamModal.matchId, deletePredictionTeamModal.homeId);
                       } else if (selectedTeamToDelete === 'away') {
@@ -1548,11 +1607,14 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
                       } else if (selectedTeamToDelete === 'both') {
                         await clearPredictionForMatch(deletePredictionTeamModal.matchId);
                       }
-                      refreshPredictions();
+                      console.log('✅ İki takım için tahmin silme işlemi tamamlandı');
+                      // ✅ refreshPredictions zaten clearPredictionForMatch içinde çağrılıyor ama emin olmak için tekrar çağırıyoruz
+                      await refreshPredictions();
                       setDeletePredictionTeamModal(null);
                       setSelectedTeamToDelete(null);
+                      console.log('✅ Modal kapatıldı ve state güncellendi');
                     } catch (error) {
-                      console.error('Tahmin silme hatası:', error);
+                      console.error('❌ Tahmin silme hatası:', error);
                       Alert.alert('Hata', 'Tahmin silinirken bir hata oluştu. Lütfen tekrar deneyin.');
                     }
                   }}
@@ -1720,6 +1782,16 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
             </View>
           </View>
         </Modal>
+      )}
+
+      {/* ✅ Maç başlangıcına yakın tahmin yapma uyarısı modal */}
+      {countdownWarningModal && (
+        <CountdownWarningModal
+          visible={true}
+          remainingSeconds={countdownWarningModal.remainingSeconds}
+          onContinue={countdownWarningModal.onContinue}
+          onCancel={() => setCountdownWarningModal(null)}
+        />
       )}
     </View>
   );

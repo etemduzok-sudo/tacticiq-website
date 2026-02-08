@@ -37,6 +37,7 @@ import { handleError, ErrorType, ErrorSeverity } from '../../utils/GlobalErrorHa
 import { predictionsDb } from '../../services/databaseService';
 import { ConfirmModal, ConfirmButton } from '../ui/ConfirmModal';
 import { ANALYSIS_FOCUSES, type AnalysisFocus, type AnalysisFocusType } from '../AnalysisFocusModal';
+import { isMockTestMatch, MOCK_MATCH_IDS, getMatch1Start, getMatch2Start, getMockUserTeamId } from '../../data/mockTestData';
 
 // 🌟 Her analiz odağının BİRİNCİL tahmin kategorileri (UI gösterimi için)
 // Merkezi mapping: src/config/analysisFocusMapping.ts
@@ -415,13 +416,23 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
   };
   
   // ✅ İki favori maçta takıma özel anahtarlar
+  // ✅ Mock maçlar için de getMockUserTeamId kullan (MatchSquad ile aynı mantık)
+  const matchIdNum = React.useMemo(() => (matchId ? (typeof matchId === 'string' ? parseInt(matchId, 10) : matchId) : null), [matchId]);
+  const effectivePredictionTeamId = React.useMemo(() => {
+    if (predictionTeamId != null) return predictionTeamId;
+    if (matchIdNum && isMockTestMatch(matchIdNum)) {
+      return getMockUserTeamId(matchIdNum) ?? undefined;
+    }
+    return undefined;
+  }, [matchIdNum, predictionTeamId]);
+  
   const squadStorageKey = React.useMemo(
-    () => (matchId && predictionTeamId != null ? `${STORAGE_KEYS.SQUAD}${matchId}-${predictionTeamId}` : matchId ? `${STORAGE_KEYS.SQUAD}${matchId}` : null),
-    [matchId, predictionTeamId]
+    () => (matchId && effectivePredictionTeamId != null ? `${STORAGE_KEYS.SQUAD}${matchId}-${effectivePredictionTeamId}` : matchId ? `${STORAGE_KEYS.SQUAD}${matchId}` : null),
+    [matchId, effectivePredictionTeamId]
   );
   const legacySquadStorageKey = React.useMemo(
-    () => (matchId && predictionTeamId != null ? `${LEGACY_STORAGE_KEYS.SQUAD}${matchId}-${predictionTeamId}` : matchId ? `${LEGACY_STORAGE_KEYS.SQUAD}${matchId}` : null),
-    [matchId, predictionTeamId]
+    () => (matchId && effectivePredictionTeamId != null ? `${LEGACY_STORAGE_KEYS.SQUAD}${matchId}-${effectivePredictionTeamId}` : matchId ? `${LEGACY_STORAGE_KEYS.SQUAD}${matchId}` : null),
+    [matchId, effectivePredictionTeamId]
   );
   const predictionStorageKey = React.useMemo(
     () => (matchData?.id && predictionTeamId != null ? `${STORAGE_KEYS.PREDICTIONS}${matchData.id}-${predictionTeamId}` : matchData?.id ? `${STORAGE_KEYS.PREDICTIONS}${matchData.id}` : null),
@@ -437,6 +448,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
   const [isSaving, setIsSaving] = useState(false); // ✅ Kaydetme işlemi devam ediyor mu?
   const [isPredictionLocked, setIsPredictionLocked] = useState(false); // ✅ Tahminler kilitli mi? (kırmızı kilit)
   const [showLockedWarningModal, setShowLockedWarningModal] = useState(false); // ✅ Web için kilitli uyarı modal'ı
+  const predictionTimeoutRef = React.useRef<number | null>(null); // ✅ Maç başladıktan sonra 2 dakika timeout
   
   // 🌟 STRATEGIC FOCUS SYSTEM
   const [selectedAnalysisFocus, setSelectedAnalysisFocus] = useState<AnalysisFocusType | null>(null);
@@ -537,7 +549,15 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
       try {
         const key = squadStorageKey;
         if (!key) { setSquadLoaded(true); return; }
-        const squadData = await AsyncStorage.getItem(key);
+        
+        // ✅ Önce normal key'i kontrol et
+        let squadData = await AsyncStorage.getItem(key);
+        
+        // ✅ Eğer bulunamazsa legacy key'i de kontrol et
+        if (!squadData && legacySquadStorageKey) {
+          squadData = await AsyncStorage.getItem(legacySquadStorageKey);
+        }
+        
         if (squadData) {
           const parsed = JSON.parse(squadData);
           let arr: any[] = [];
@@ -546,27 +566,36 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
           } else if (parsed.attackPlayers && typeof parsed.attackPlayers === 'object') {
             arr = Object.values(parsed.attackPlayers).filter(Boolean);
           }
-          // Atak kadrosu 11 ise yükle – isCompleted sadece defans formasyonu değişikliğinde false olabilir
+          // ✅ Atak kadrosu 11 ise yükle - isCompleted kontrolü yapma, sadece 11 oyuncu varsa göster
           if (arr.length >= 11 && parsed.attackFormation) {
+            console.log('✅ [MatchPrediction] Kadro yüklendi:', arr.length, 'oyuncu, formasyon:', parsed.attackFormation);
             setAttackPlayersArray(arr);
             setAttackFormation(parsed.attackFormation || null);
+            // ✅ isCompleted kontrolü yapma - 11 oyuncu varsa kadro tamamlanmış sayılır
             setIsSquadCompleted(true);
             // ✅ Tüm takım kadrosunu yükle (yedek oyuncu seçimi için)
             if (parsed.allTeamPlayers && Array.isArray(parsed.allTeamPlayers)) {
               setAllTeamPlayers(parsed.allTeamPlayers);
             }
+          } else {
+            console.log('⚠️ [MatchPrediction] Kadro yüklenemedi - yetersiz oyuncu veya formasyon yok:', { 
+              oyuncuSayisi: arr.length, 
+              formasyon: parsed.attackFormation,
+              key 
+            });
           }
           setSquadLoaded(true);
         } else {
+          console.log('⚠️ [MatchPrediction] Kadro bulunamadı:', { key, legacyKey: legacySquadStorageKey });
           setSquadLoaded(true);
         }
       } catch (error) {
-        console.error('Error loading squad:', error);
+        console.error('❌ [MatchPrediction] Error loading squad:', error);
         setSquadLoaded(true);
       }
     };
     loadSquad();
-  }, [squadStorageKey]);
+  }, [squadStorageKey, legacySquadStorageKey]);
 
   // ✅ Yedek oyuncuları hesapla (tüm kadro - ilk 11)
   const reserveTeamPlayers = React.useMemo(() => {
@@ -826,6 +855,35 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
     if (isSaving) return; // Zaten kaydediliyor, tekrar basılmasın
     
     try {
+      // ✅ Maç başlangıcından sonra +2 dakika kontrolü
+      const matchTimestamp = matchData?.timestamp;
+      const fixtureId = matchId ? Number(matchId) : null;
+      let matchStartTime: number | null = null;
+      
+      // Mock maçlar için özel kontrol
+      if (fixtureId && isMockTestMatch(fixtureId)) {
+        matchStartTime = fixtureId === MOCK_MATCH_IDS.GS_FB ? getMatch1Start() : getMatch2Start();
+      } else if (matchTimestamp) {
+        matchStartTime = matchTimestamp * 1000; // Saniye cinsinden, milisaniyeye çevir
+      }
+      
+      if (matchStartTime) {
+        const now = Date.now();
+        const elapsedMs = now - matchStartTime;
+        const elapsedSeconds = Math.floor(elapsedMs / 1000);
+        const EXTRA_TIME_AFTER_START = 120; // 2 dakika = 120 saniye
+        
+        // Maç başladıysa ve 2 dakikadan fazla geçtiyse kaydetme
+        if (elapsedSeconds > EXTRA_TIME_AFTER_START) {
+          Alert.alert(
+            'Süre Doldu!',
+            'Maç başladıktan sonra 2 dakika içinde tahmin yapmanız gerekiyordu. Artık tahmin yapamazsınız.',
+            [{ text: 'Tamam' }]
+          );
+          return;
+        }
+      }
+      
       // Check if at least some predictions are made
       const hasMatchPredictions = Object.values(predictions).some(v => v !== null);
       const cleanedPlayerPredictions = Object.fromEntries(
@@ -978,6 +1036,68 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
       onHasUnsavedChanges(effectiveUnsaved, handleSavePredictions);
     }
   }, [hasUnsavedChanges, isPredictionLocked, onHasUnsavedChanges]);
+
+  // ✅ Maç başladıktan sonra +2 dakika içinde tahmin yapılmazsa veya kaydedilmezse, tahmin yapılmamış maç gibi davran
+  React.useEffect(() => {
+    if (isMatchFinished) return;
+    
+    const matchTimestamp = matchData?.timestamp;
+    const fixtureId = matchId ? Number(matchId) : null;
+    let matchStartTime: number | null = null;
+    
+    // Mock maçlar için özel kontrol
+    if (fixtureId && isMockTestMatch(fixtureId)) {
+      matchStartTime = fixtureId === MOCK_MATCH_IDS.GS_FB ? getMatch1Start() : getMatch2Start();
+    } else if (matchTimestamp) {
+      matchStartTime = matchTimestamp * 1000; // Saniye cinsinden, milisaniyeye çevir
+    }
+    
+    if (!matchStartTime) return;
+    
+    const now = Date.now();
+    const elapsedMs = now - matchStartTime;
+    const elapsedSeconds = Math.floor(elapsedMs / 1000);
+    const EXTRA_TIME_AFTER_START = 120; // 2 dakika = 120 saniye
+    
+    // Maç başladıysa ve henüz 2 dakika geçmediyse timeout kur
+    if (elapsedSeconds >= 0 && elapsedSeconds <= EXTRA_TIME_AFTER_START) {
+      const remainingMs = (EXTRA_TIME_AFTER_START - elapsedSeconds) * 1000;
+      
+      // Önceki timeout'u temizle
+      if (predictionTimeoutRef.current) {
+        clearTimeout(predictionTimeoutRef.current);
+      }
+      
+      // Kalan süre kadar sonra timeout
+      predictionTimeoutRef.current = setTimeout(() => {
+        // Tahmin yapılmamış veya kaydedilmemişse, tahmin yapılmamış maç gibi davran
+        if (!isPredictionLocked && hasUnsavedChanges) {
+          // Kaydedilmemiş değişiklikleri temizle
+          setHasUnsavedChanges(false);
+          // Tahminleri sıfırla (isteğe bağlı - kullanıcı deneyimi için)
+          console.log('⏰ Tahmin süresi doldu - tahmin yapılmamış maç gibi davranılıyor');
+        }
+        predictionTimeoutRef.current = null;
+      }, remainingMs) as unknown as number;
+      
+      return () => {
+        if (predictionTimeoutRef.current) {
+          clearTimeout(predictionTimeoutRef.current);
+          predictionTimeoutRef.current = null;
+        }
+      };
+    } else if (elapsedSeconds > EXTRA_TIME_AFTER_START) {
+      // Süre dolmuşsa hemen temizle
+      if (predictionTimeoutRef.current) {
+        clearTimeout(predictionTimeoutRef.current);
+        predictionTimeoutRef.current = null;
+      }
+      if (!isPredictionLocked && hasUnsavedChanges) {
+        setHasUnsavedChanges(false);
+        console.log('⏰ Tahmin süresi doldu - tahmin yapılmamış maç gibi davranılıyor');
+      }
+    }
+  }, [matchData?.timestamp, matchId, isMatchFinished, isPredictionLocked, hasUnsavedChanges]);
 
   const handlePredictionChange = (category: string, value: string | number) => {
     // ✅ Tahminler kilitliyse değişiklik yapılamaz
