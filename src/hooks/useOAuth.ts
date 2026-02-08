@@ -59,10 +59,19 @@ export function useOAuth({ navActions, navRefs }: UseOAuthProps) {
         window.localStorage.removeItem('tacticiq_oauth_initiating');
         
         try {
+          // ✅ Web'de hash fragment'ten token'ları Supabase'e ver
+          // Supabase SDK'sı bazen hash fragment'i otomatik parse etmiyor
+          if (hasAccessToken && hash) {
+            console.log('🔑 [OAuth] Hash fragment parse ediliyor...');
+            // Supabase'in hash fragment'i otomatik parse etmesi için getSession çağrısı yeterli
+            // Ancak bazen manuel olarak trigger etmemiz gerekebilir
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
+          
           // ✅ Retry mekanizması ile session kontrolü
           console.log('⏳ [OAuth] Supabase session bekleniyor (retry ile)...');
           let attempts = 0;
-          const maxAttempts = 5;
+          const maxAttempts = 10; // ✅ Artırıldı: Cursor browser'ında daha yavaş olabilir
           let sessionResult = null;
           
           while (!sessionResult && attempts < maxAttempts) {

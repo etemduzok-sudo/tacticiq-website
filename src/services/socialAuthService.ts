@@ -419,6 +419,16 @@ class SocialAuthService {
    */
   async checkSession(): Promise<SocialAuthResult> {
     try {
+      // ✅ Web'de hash fragment varsa Supabase'in parse etmesi için kısa bir bekleme
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        const hash = window.location.hash;
+        if (hash && (hash.includes('access_token') || hash.includes('error'))) {
+          console.log('🔑 [socialAuth] Hash fragment detected, waiting for Supabase to parse...');
+          // Supabase SDK'sının hash fragment'i parse etmesi için kısa bir bekleme
+          await new Promise(resolve => setTimeout(resolve, 200));
+        }
+      }
+      
       // Önce Supabase session'ını kontrol et
       const { data: { session }, error } = await supabase.auth.getSession();
       
