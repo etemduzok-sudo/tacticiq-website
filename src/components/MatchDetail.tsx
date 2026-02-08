@@ -700,6 +700,14 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
       }
     }
   }, [match, isMatchFinished, initialTab, initialTabSet]);
+  
+  // ✅ Biten maçlarda tahmin sekmesine geçişi engelle - stats'e yönlendir
+  React.useEffect(() => {
+    if (isMatchFinished && activeTab === 'prediction') {
+      setActiveTab('stats');
+      console.log('⚠️ Biten maçta tahmin sekmesi engellendi, stats sekmesine yönlendirildi');
+    }
+  }, [isMatchFinished, activeTab]);
 
   // Transform API data to component format
   // ✅ useMemo ile sarmalayarak mock maçlar için timestamp'i sabitle
@@ -1417,7 +1425,11 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
 
       <View style={[styles.bottomNavBar, { paddingBottom: Math.max(insets.bottom, 8) }]}>
         <View style={styles.bottomNav}>
-        {tabs.map((tab) => {
+        {tabs.filter(tab => {
+          // ✅ Biten maçlarda tahmin sekmesini gizle
+          if (tab.id === 'prediction' && isMatchFinished) return false;
+          return true;
+        }).map((tab) => {
           const isActive = activeTab === tab.id;
           return (
             <TouchableOpacity
