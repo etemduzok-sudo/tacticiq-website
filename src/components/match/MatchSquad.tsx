@@ -2858,9 +2858,8 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
                           </TouchableOpacity>
                         )}
                         {/* Remove button - Top Right (Değiştir ikonu kaldırıldı) */}
-                        {/* ✅ Kilit açıksa, maç kilitli değilse VE topluluk görünümünde değilse göster */}
-                        {/* ⚠️ Tahmin yapılmamış canlı maçlarda (viewSource='community') X butonu GÖSTERİLMEZ */}
-                        {!isKadroLocked && !isSquadLocked && !(isMatchLive && !hasPrediction) && (
+                        {/* ✅ X butonu SADECE tahmin yapılmış maçlarda gösterilir - tahmin yapılmamış maçlarda TAMAMEN KALDIRILIR */}
+                        {!isKadroLocked && !isSquadLocked && hasPrediction === true && (
                           <TouchableOpacity
                             style={styles.removeButton}
                             onPress={(e) => {
