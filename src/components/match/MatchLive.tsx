@@ -732,28 +732,16 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
   // RENDER
   // =====================================
   
-  // ✅ Maç başlamadıysa önce bu kontrolü yap (loading'den önce)
-  // Match not started
+  // ✅ Maç başlamadıysa boş ekran göster (bildirim kaldırıldı)
   if (matchNotStarted) {
     return (
       <SafeAreaView style={styles.container} edges={[]}>
-        {/* Tab bar benzeri başlık - İstatistik sekmesiyle aynı yükseklik ve görünüm */}
-        <View style={styles.liveTabHeader}>
+        <View style={styles.liveTabBar}>
           <View style={styles.liveTabButton}>
             <Text style={styles.liveTabText}>📡 Canlı Olaylar</Text>
           </View>
         </View>
-        <View style={styles.notStartedContainer}>
-          <View style={styles.notStartedCard}>
-            <View style={styles.notStartedIconContainer}>
-              <Ionicons name="time-outline" size={48} color={BRAND.accent} />
-            </View>
-            <Text style={styles.notStartedTitle}>Maç Henüz Başlamadı</Text>
-            <Text style={styles.notStartedSubtitle}>
-              Maç başladığında canlı olaylar{'\n'}burada görünecek
-            </Text>
-          </View>
-        </View>
+        {/* ✅ Maç başlamadan önce boş ekran - bildirim kaldırıldı */}
       </SafeAreaView>
     );
   }
@@ -986,8 +974,6 @@ const styles = StyleSheet.create({
   },
   eventsContent: {
     paddingVertical: 8,
-    flexGrow: 1, // ✅ İçerik en azından ekranı doldursun
-    justifyContent: 'flex-end', // ✅ Eventler en altta başlasın (Maç başladı en altta)
     paddingBottom: 40,
   },
   
