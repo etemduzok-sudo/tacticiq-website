@@ -306,7 +306,8 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
               let playerIn: string | null = null;
               if (displayType === 'substitution') {
                 playerOut = typeof event.player === 'string' ? event.player : event.player?.name || null;
-                playerIn = event.comments || null;
+                // ✅ API-Football'da giren oyuncu event.assist'te, event.comments'te değil
+                playerIn = typeof event.assist === 'string' ? event.assist : event.assist?.name || null;
               }
               
               // ✅ Skor hesaplama: Own goal durumunda rakip takıma yazılacak
@@ -381,7 +382,8 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
     fetchLiveData();
     const interval = setInterval(fetchLiveData, 15000);
     return () => clearInterval(interval);
-  }, [matchId, matchData, isMatchNotStartedFromData, matchNotStarted]); // ✅ matchNotStarted: maç başladığında tekrar çalışsın
+  // ✅ matchData objesi yerine scalar değerler kullan (gereksiz re-fetch'i önle)
+  }, [matchId, matchData?.fixture?.status?.short, isMatchNotStartedFromData, matchNotStarted]);
 
   // Maçın şu anki dakikası ve uzatma bilgisi (header ile tutarlı – timeline sadece bu dakikaya kadar gösterilir)
   // ✅ Mock maçlar için doğrudan hesapla (matchData.minute senkronize olmayabilir)
@@ -427,7 +429,8 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
     }
     
     // Gerçek maçlar için API'den gelen bilgiyi kullan
-    const minute = matchData?.minute ?? matchData?.fixture?.status?.elapsed ?? 99;
+    // ✅ Varsayılan 0 (veri yoksa hiç event gösterme, 99 ile tümü gösteriliyordu)
+    const minute = matchData?.minute ?? matchData?.fixture?.status?.elapsed ?? 0;
     const extraTime = matchData?.extraTime ?? matchData?.fixture?.status?.extraTime ?? null;
     return { currentMinute: minute, currentExtraTime: extraTime };
   }, [matchId, matchData?.minute, matchData?.extraTime, matchData?.fixture?.status?.elapsed, matchData?.fixture?.status?.extraTime, ticker]); // ✅ ticker: mock'ta her saniye güncelle
@@ -538,7 +541,8 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
       // ✅ Diğer eventler için normal kontrol
       const eventMin = e.minute + (e.extraTime ?? 0) * 0.01;
       const currentMin = currentMinute + (currentExtraTime ?? 0) * 0.01;
-      return eventMin <= currentMin + 0.01;
+      // ✅ Epsilon 0.005 (0.01 = 1 dakika uzamalı süre, çok büyüktü - eventler 1 dk erken görünüyordu)
+      return eventMin <= currentMin + 0.005;
     });
   }, [liveEvents, currentMinute, currentExtraTime, matchId, ticker]); // ✅ ticker: mock'ta her saniye güncelle
   
@@ -863,9 +867,9 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
                 return event;
               });
               
-              // ✅ Eventleri sırala - KRONOLOJİK SIRA (en eski üstte)
-              // Doğru görsel sırası (yukarıdan aşağıya, en eski üstte):
-              // 45' +3 dk eklendi → 45+3' İlk yarı bitiş → DEVRE ARASI → 46' İkinci yarı başladı → 51' GOL → 56' Değişiklik
+              // ✅ Eventleri sırala - EN YENİ ÜSTTE (ters kronolojik sıra)
+              // Doğru görsel sırası (yukarıdan aşağıya, en yeni üstte):
+              // 56' Değişiklik → 51' GOL → 46' İkinci yarı başladı → DEVRE ARASI → 45+3' İlk yarı bitiş → 45' +3 dk eklendi
               const sortedEvents = [...eventsWithCalculatedScores].sort((a, b) => {
                 // ✅ Önce toplam dakikayı hesapla - elapsed + extraTime (küçük ağırlıkla)
                 const getEventTime = (e: any) => {
@@ -903,14 +907,14 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
                 const aTime = getEventTime(a);
                 const bTime = getEventTime(b);
                 
-                // ✅ Küçükten büyüğe (kronolojik sıra - en eski üstte)
-                if (Math.abs(aTime - bTime) > 0.001) return aTime - bTime;
+                // ✅ Büyükten küçüğe (ters kronolojik sıra - en yeni üstte)
+                if (Math.abs(aTime - bTime) > 0.001) return bTime - aTime;
                 
-                // ✅ Aynı dakikada: sistem eventleri diğerlerinden önce (üstte)
+                // ✅ Aynı dakikada: sistem eventleri diğerlerinden sonra (altta)
                 const sys = ['kickoff', 'halftime', 'stoppage', 'fulltime'];
                 const aSys = sys.includes(a.type) ? 0 : 1;
                 const bSys = sys.includes(b.type) ? 0 : 1;
-                return aSys - bSys;
+                return bSys - aSys;
               });
               
               // Devre arası görseli ekle (45+3 ile 46. dakika arasına)
@@ -935,21 +939,22 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
               
               // ✅ Eventleri render et, devre arası görselini uygun yere ekle
               // Timeline yukarıdan aşağıya sıralandığında en yeni event üstte:
-              // 51' GOL → 46' İkinci yarı başladı → DEVRE ARASI → 45+3' İlk yarı bitiş → 45' +3 dk eklendi
+              // 56' Değişiklik → 51' GOL → 46' İkinci yarı başladı → DEVRE ARASI → 45+3' İlk yarı bitiş → 45' +3 dk eklendi
               const result: any[] = [];
               const totalEvents = sortedEvents.length;
               let halftimeBreakAdded = false; // ✅ Devre arası görselini sadece bir kez ekle
               
               sortedEvents.forEach((event, index) => {
-                // ✅ Event'i render et
-                result.push(renderEventCard(event, index, totalEvents));
-                
-                // ✅ Halftime (ilk yarı bitiş) eventinden SONRA devre arası görselini ekle
-                // Kronolojik sıra (en eski üstte): ... stoppage → halftime → DEVRE ARASI → kickoff (46') → ...
+                // ✅ Halftime (ilk yarı bitiş) eventinden ÖNCE devre arası görselini ekle
+                // Ters kronolojik sıra (en yeni üstte): ... kickoff (46') → DEVRE ARASI → halftime → stoppage → ...
+                // Devre arası görseli, halftime eventinden ÖNCE (yukarıda) görünmeli
                 if (event.type === 'halftime' && !halftimeBreakAdded) {
                   result.push(renderHalftimeBreak());
                   halftimeBreakAdded = true;
                 }
+                
+                // ✅ Event'i render et
+                result.push(renderEventCard(event, index, totalEvents));
               });
               
               return result;

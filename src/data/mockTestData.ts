@@ -31,10 +31,6 @@ const NOTIFICATION_DELAY_MINUTES = START_DELAY_MINUTES - 1; // 1 dakika
  */
 let _match1StartTimeMs: number | null = null;
 
-function getMatchStartTime(): number {
-  return Date.now() + START_DELAY_MINUTES * 60 * 1000;
-}
-
 /** Maç 1 başlangıç zamanı - ilk çağrıda sabitlenir, sonra hep aynı değer döner */
 export function getMatch1Start(): number {
   if (_match1StartTimeMs === null) {
@@ -263,8 +259,17 @@ export function computeLiveState(matchStartTime: number, events: MockEvent[]) {
   // ✅ Maç bitti mi? (112 dakika = 112 saniye)
   if (elapsedMinutes >= 112) {
     const allEvents = events.filter(e => e.minuteOffset <= 112);
-    const homeGoals = allEvents.filter(e => e.type === 'Goal' && e.teamSide === 'home').length;
-    const awayGoals = allEvents.filter(e => e.type === 'Goal' && e.teamSide === 'away').length;
+    // ✅ Own goal düzeltmesi: kendi kalesine gol rakibe yazılır
+    const homeGoals = allEvents.filter(e => {
+      if (e.type !== 'Goal') return false;
+      if (e.detail === 'Own Goal') return e.teamSide === 'away'; // Rakip takımın OG'si ev sahibine yazılır
+      return e.teamSide === 'home';
+    }).length;
+    const awayGoals = allEvents.filter(e => {
+      if (e.type !== 'Goal') return false;
+      if (e.detail === 'Own Goal') return e.teamSide === 'home'; // Ev sahibinin OG'si deplasmana yazılır
+      return e.teamSide === 'away';
+    }).length;
     return {
       status: 'FT',
       elapsed: 90,
@@ -403,8 +408,18 @@ export function getMockTestMatches(): any[] {
       },
       goals: { home: state1.homeGoals, away: state1.awayGoals },
       score: {
-        halftime: { home: state1.status !== 'NS' && state1.elapsed != null && state1.elapsed >= 45 ? state1.homeGoals : null, away: state1.status !== 'NS' && state1.elapsed != null && state1.elapsed >= 45 ? state1.awayGoals : null },
-        fulltime: { home: null, away: null },
+        // ✅ Halftime skoru: İlk yarıdaki gollerden hesapla (donmuş skor)
+        halftime: (() => {
+          if (state1.status === 'NS' || state1.elapsed == null || state1.elapsed < 45) return { home: null, away: null };
+          const htEvents = MATCH_1_EVENTS.filter(e => e.type === 'Goal' && e.minuteOffset <= 55); // 55 = ~45+HT
+          let htHome = 0, htAway = 0;
+          for (const e of htEvents) {
+            if (e.detail === 'Own Goal') { if (e.teamSide === 'home') htAway++; else htHome++; }
+            else { if (e.teamSide === 'home') htHome++; else htAway++; }
+          }
+          return { home: htHome, away: htAway };
+        })(),
+        fulltime: state1.status === 'FT' ? { home: state1.homeGoals, away: state1.awayGoals } : { home: null, away: null },
       },
     },
     // ── Maç 2: Real Madrid vs Barcelona ──
@@ -415,8 +430,9 @@ export function getMockTestMatches(): any[] {
         timestamp: Math.floor(match2Start / 1000),
         status: {
           short: state2.status,
-          long: state2.status === 'NS' ? 'Not Started' : state2.status === 'HT' ? 'Halftime' : state2.status === '2H' ? 'Second Half' : 'First Half',
+          long: state2.status === 'NS' ? 'Not Started' : state2.status === 'HT' ? 'Halftime' : state2.status === '2H' ? 'Second Half' : state2.status === 'FT' ? 'Match Finished' : 'First Half',
           elapsed: state2.elapsed,
+          extra: state2.extraTime,
         },
         venue: { name: 'Santiago Bernabéu', city: 'Madrid' },
         referee: 'F. Brych',
@@ -428,8 +444,18 @@ export function getMockTestMatches(): any[] {
       },
       goals: { home: state2.homeGoals, away: state2.awayGoals },
       score: {
-        halftime: { home: state2.status !== 'NS' && state2.elapsed != null && state2.elapsed >= 45 ? state2.homeGoals : null, away: state2.status !== 'NS' && state2.elapsed != null && state2.elapsed >= 45 ? state2.awayGoals : null },
-        fulltime: { home: null, away: null },
+        // ✅ Halftime skoru: İlk yarıdaki gollerden hesapla (donmuş skor)
+        halftime: (() => {
+          if (state2.status === 'NS' || state2.elapsed == null || state2.elapsed < 45) return { home: null, away: null };
+          const htEvents = MATCH_2_EVENTS.filter(e => e.type === 'Goal' && e.minuteOffset <= 55);
+          let htHome = 0, htAway = 0;
+          for (const e of htEvents) {
+            if (e.detail === 'Own Goal') { if (e.teamSide === 'home') htAway++; else htHome++; }
+            else { if (e.teamSide === 'home') htHome++; else htAway++; }
+          }
+          return { home: htHome, away: htAway };
+        })(),
+        fulltime: state2.status === 'FT' ? { home: state2.homeGoals, away: state2.awayGoals } : { home: null, away: null },
       },
     },
   ];
@@ -577,11 +603,15 @@ export async function getMockMatchEvents(fixtureId: number): Promise<any[]> {
     let detail = event.detail;
     
     // Gol sayısını hesapla (sırayla)
+    // ✅ Own goal düzeltmesi: kendi kalesine gol rakibe yazılır
     if (event.type === 'Goal' && event.teamSide) {
-      if (event.teamSide === 'home') {
-        currentHomeGoals++;
+      if (event.detail === 'Own Goal') {
+        // Own goal: atan takımın rakibine yazılır
+        if (event.teamSide === 'home') currentAwayGoals++;
+        else currentHomeGoals++;
       } else {
-        currentAwayGoals++;
+        if (event.teamSide === 'home') currentHomeGoals++;
+        else currentAwayGoals++;
       }
     }
     

@@ -99,6 +99,16 @@ export function ConfirmModal({
   buttons,
   onRequestClose,
 }: Props) {
+  // ✅ Loading state - çift tıklama koruması
+  const [isProcessing, setIsProcessing] = React.useState(false);
+  
+  // ✅ Modal kapandığında state'i sıfırla
+  React.useEffect(() => {
+    if (!visible) {
+      setIsProcessing(false);
+    }
+  }, [visible]);
+  
   if (!visible) return null;
 
   return (
@@ -113,7 +123,8 @@ export function ConfirmModal({
         <TouchableOpacity
           style={StyleSheet.absoluteFill}
           activeOpacity={1}
-          onPress={onRequestClose}
+          onPress={isProcessing ? undefined : onRequestClose}
+          disabled={isProcessing}
         />
         <View style={[styles.card, { pointerEvents: 'auto' }]}>
           <View style={styles.iconRow}>
@@ -130,21 +141,27 @@ export function ConfirmModal({
                   b.style === 'cancel' && styles.btnCancel,
                   b.style === 'destructive' && styles.btnDestructive,
                   (!b.style || b.style === 'default') && styles.btnDefault,
+                  isProcessing && { opacity: 0.5 }, // ✅ Disabled görünümü
                 ]}
                 onPress={async () => {
-                  // ✅ Async işlemi await et (eğer Promise döndürüyorsa)
-                  const result = b.onPress();
-                  if (result instanceof Promise) {
-                    try {
+                  // ✅ Çift tıklama koruması
+                  if (isProcessing) return;
+                  setIsProcessing(true);
+                  
+                  try {
+                    const result = b.onPress();
+                    if (result instanceof Promise) {
                       await result;
-                    } catch (error) {
-                      console.error('Button onPress error:', error);
                     }
+                  } catch (error) {
+                    console.error('Button onPress error:', error);
+                  } finally {
+                    setIsProcessing(false);
+                    onRequestClose?.();
                   }
-                  // ✅ İşlem tamamlandıktan sonra modal'ı kapat
-                  onRequestClose?.();
                 }}
                 activeOpacity={0.8}
+                disabled={isProcessing}
               >
                 <Text
                   style={[
@@ -152,7 +169,7 @@ export function ConfirmModal({
                     b.style === 'destructive' && styles.btnTextDestructive,
                   ]}
                 >
-                  {b.text}
+                  {isProcessing && b.style === 'destructive' ? 'İşleniyor...' : b.text}
                 </Text>
               </TouchableOpacity>
             ))}

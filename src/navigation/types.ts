@@ -8,6 +8,7 @@ export type Screen =
   | 'register'
   | 'forgot-password'
   | 'home'
+  | 'finished'
   | 'matches'
   | 'match-detail'
   | 'match-result-summary'

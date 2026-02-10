@@ -1251,6 +1251,7 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
       setStateRestored(true);
       return;
     }
+    
     try {
       const key = squadStorageKey;
       const raw = await AsyncStorage.getItem(key);
@@ -1261,9 +1262,11 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
         const liveStatuses = ['1H', '2H', 'HT', 'ET', 'BT', 'P', 'LIVE'];
         const isLive = liveStatuses.includes(matchData?.fixture?.status?.short || matchData?.status || '');
 
-        // ✅ SADECE "Tamamla" basıldıysa VEYA canlı maçta auto-apply yapıldıysa formasyon ve oyuncuları yükle
-        // Tamamla basılmadan çıkıldıysa HİÇBİR veri yüklenme - kullanıcı formasyon seçiminden başlar
+        // ✅ "Tamamla" basıldıysa: Her zaman yükle (maç başlamamış olsa bile)
+        // ✅ Canlı maçta auto-apply yapıldıysa da yükle
+        // ✅ Tamamla basılmadıysa VE maç başlamamışsa: HİÇBİR veri yükleme - empty state göster
         if (isCompleted || (isLive && isAutoApplied)) {
+          // ✅ Tamamla basıldıysa veya canlı maçta auto-apply yapıldıysa: Yükle
           if (parsed.attackFormation) setAttackFormation(parsed.attackFormation);
           if (parsed.attackPlayers) setAttackPlayers(parsed.attackPlayers);
           if (parsed.defenseFormation) setDefenseFormation(parsed.defenseFormation);
@@ -1271,11 +1274,18 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
           // editingMode'u restore ET AMA sadece sayfa ilk yüklenirken
           if (parsed.editingMode && !stateRestored) setEditingMode(parsed.editingMode);
           setDefenseConfirmShown(parsed.defenseFormation ? true : (parsed.defenseConfirmShown || false));
-          // ✅ Tamamlanmış kadro kilitli olarak gelir
+          // ✅ Tamamlanmış kadro kilitli olarak gelir (sadece isCompleted true ise)
           setIsSquadLocked(isCompleted);
+        } else if (!isMatchLive) {
+          // ✅ Maç başlamamış VE Tamamla basılmamışsa: HİÇBİR veri yükleme - empty state göster
+          setAttackFormation(null);
+          setAttackPlayers({});
+          setDefenseFormation(null);
+          setDefensePlayers({});
+          if (!stateRestored) setEditingMode('attack');
+          setDefenseConfirmShown(false);
         } else {
-          // ✅ Tamamla basılmadıysa: HİÇ formasyon/oyuncu yükleme - sıfırdan başla
-          // Kullanıcı formasyon seçmeli ve oyuncuları atayıp Tamamla basmalı
+          // ✅ Canlı maç ama Tamamla basılmamış ve auto-apply yapılmamış: Sıfırdan başla
           setAttackFormation(null);
           setAttackPlayers({});
           setDefenseFormation(null);
@@ -1283,12 +1293,27 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
           if (!stateRestored) setEditingMode('attack');
           setDefenseConfirmShown(false);
         }
+      } else {
+        // ✅ Storage'da veri yoksa: formasyon null - empty state göster
+        setAttackFormation(null);
+        setAttackPlayers({});
+        setDefenseFormation(null);
+        setDefensePlayers({});
+        if (!stateRestored) setEditingMode('attack');
+        setDefenseConfirmShown(false);
       }
     } catch (e) {
       console.warn('State restore failed', e);
+      // Hata durumunda da formasyon null yap
+      setAttackFormation(null);
+      setAttackPlayers({});
+      setDefenseFormation(null);
+      setDefensePlayers({});
+      if (!stateRestored) setEditingMode('attack');
+      setDefenseConfirmShown(false);
     }
     setStateRestored(true);
-  }, [squadStorageKey, matchData, isMatchFinished, stateRestored, autoSquadApplied]);
+  }, [squadStorageKey, matchData, isMatchFinished, stateRestored, autoSquadApplied, isMatchLive]);
 
   // ✅ MAÇ CANLI VE FORMASYON SEÇİLMEMİŞSE: En popüler formasyonu otomatik uygula
   const [autoFormationApplied, setAutoFormationApplied] = React.useState(false);
@@ -1867,6 +1892,8 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
   // ✅ Oynanan/canlı maçta atak dizilişi asla kaybolmasın: existing'de geçerli atak varsa boş/eksik state ile ezme.
   React.useEffect(() => {
     if (!stateRestored) return; // İlk yüklemede kaydetme
+    // ✅ handleComplete çalışırken savePartialState isCompleted'ı ezmesin
+    if (savingRef.current) return;
     
     const savePartialState = async () => {
       try {
@@ -1889,10 +1916,12 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
         const preserve = preserveRestored || preserveAttackForLive;
         // ⚠️ State güncellemeleri burada yapılMAMALI - infinite loop'a neden olur
         // runRestore fonksiyonu zaten state'i yükler, burada sadece storage güncellenir
+        // ✅ matchId'yi number olarak kaydet (karşılaştırma tip uyuşmazlığını önle)
+        const numericMatchId = typeof matchId === 'string' ? parseInt(matchId, 10) : matchId;
         
         const updated: Record<string, any> = {
           ...existing,
-          matchId,
+          matchId: numericMatchId,
           attackFormation: preserve ? existing.attackFormation : attackFormation,
           defenseFormation: preserve ? existing.defenseFormation : defenseFormation,
           attackPlayers: preserve ? existing.attackPlayers : attackPlayers,
@@ -1943,9 +1972,11 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
         if (raw) {
           const parsed = JSON.parse(raw);
           // ✅ Mock maçlar için: matchId eşleşmeli ve isCompleted true olmalı
+          // ✅ Tip uyuşmazlığını önlemek için Number() ile normalize et
+          const parsedMatchId = parsed.matchId != null ? Number(parsed.matchId) : null;
           if (isMockMatch) {
             const hasValidPrediction = parsed.isCompleted === true && 
-                                     parsed.matchId === fixtureId &&
+                                     parsedMatchId === fixtureId &&
                                      parsed.attackPlayersArray &&
                                      parsed.attackPlayersArray.length >= 11;
             setHasPrediction(hasValidPrediction);
@@ -2042,14 +2073,6 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
           : (editingMode === 'attack' ? attackPlayers : defensePlayers))
       : (editingMode === 'attack' ? attackPlayers : defensePlayers);
     
-    // Debug: selectedPlayers değiştiğinde log
-    console.log('✅ selectedPlayers useMemo updated:', {
-      editingMode,
-      attackPlayersKeys: Object.keys(attackPlayers).filter(k => attackPlayers[parseInt(k)]),
-      defensePlayersKeys: Object.keys(defensePlayers).filter(k => defensePlayers[parseInt(k)]),
-      selectedPlayersKeys: Object.keys(result).filter(k => result[parseInt(k)]),
-    });
-    
     return result;
   }, [isKadroLocked, viewSource, editingMode, attackPlayers, defensePlayers, actualAttackPlayers, actualDefensePlayers]);
   
@@ -2061,6 +2084,7 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
   const [formationType, setFormationType] = useState<'attack' | 'defense' | 'balanced'>('attack');
   const [selectedPlayerForDetail, setSelectedPlayerForDetail] = useState<typeof players[0] | null>(null);
   const [isSaving, setIsSaving] = useState(false); // ✅ Kaydediliyor... göstergesi için
+  const savingRef = React.useRef(false); // ✅ handleComplete sırasında savePartialState'i engelle
   const [isSquadLocked, setIsSquadLocked] = useState(false); // ✅ Kadro kilitli mi? (Tamamla sonrası)
   
   // ✅ Önceki kilit durumu - kilit açıldığında reset flag
@@ -2076,6 +2100,13 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
   
   // ✅ Kaydedilmemiş değişiklikleri parent'a bildir
   React.useEffect(() => {
+    // ✅ Biten maçlarda kaydedilmemiş değişiklik uyarısı gösterilmez
+    if (isMatchFinished) {
+      setHasUnsavedChanges(false);
+      onHasUnsavedChanges?.(false);
+      return;
+    }
+    
     // Canlı/biten maçlarda değişiklik yapılamaz
     if (isKadroLocked) {
       setHasUnsavedChanges(false);
@@ -2090,17 +2121,26 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
       return;
     }
     
+    // ✅ Otomatik kadro uygulandıysa VE kullanıcı henüz manuel değişiklik yapmadıysa → uyarı gösterme
+    // Sadece kullanıcı manuel olarak değişiklik yaptığında uyarı gösterilmeli
+    if (autoSquadApplied && !hasModifiedSinceUnlock) {
+      setHasUnsavedChanges(false);
+      onHasUnsavedChanges?.(false);
+      return;
+    }
+    
     // ✅ Kilit açık (yeşil) VE formasyon/oyuncu seçilmişse → her zaman uyarı göster
     // Kilit açıldığında sekme değişirken mutlaka "kaydet" uyarısı gösterilmeli
     const attackPlayerCount = Object.keys(attackPlayers).filter(k => attackPlayers[parseInt(k)]).length;
     const hasFormationAndPlayers = attackFormation !== null && attackPlayerCount > 0;
     
     // Kilit yeşil (açık) ise → kaydedilmemiş sayılır (tamamla basılmamış)
-    const hasChanges = hasFormationAndPlayers;
+    // Ama otomatik kadro uygulandıysa ve kullanıcı değişiklik yapmadıysa → false
+    const hasChanges = hasFormationAndPlayers && (hasModifiedSinceUnlock || !autoSquadApplied);
     
     setHasUnsavedChanges(hasChanges);
     onHasUnsavedChanges?.(hasChanges);
-  }, [attackFormation, attackPlayers, isKadroLocked, isSquadLocked, onHasUnsavedChanges]);
+  }, [attackFormation, attackPlayers, isKadroLocked, isSquadLocked, isMatchFinished, autoSquadApplied, hasModifiedSinceUnlock, onHasUnsavedChanges]);
   
   // ✅ Community Signal Popup State
   const [showCommunitySignal, setShowCommunitySignal] = useState(false);
@@ -2463,7 +2503,8 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
     setShowDefenseConfirmModal(false);
     setEditingMode('defense');
     setFormationType('defense');
-    if (isKadroLocked) return; // Oynanan/canlı maçta formasyon modalı açma (VIEW-ONLY)
+    // ✅ Canlı/biten maç veya kadro kilitli ise formasyon değişikliğine izin verme
+    if (isKadroLocked || isSquadLocked) return;
     setTimeout(() => {
       setShowFormationModal(true);
     }, 300);
@@ -2653,6 +2694,7 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
     
     // ✅ Kaydediliyor... göster
     setIsSaving(true);
+    savingRef.current = true; // ✅ savePartialState'in isCompleted'ı ezmesini engelle
     
     try {
       // Save squad data to AsyncStorage (local backup)
@@ -2663,8 +2705,10 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
         : attackPlayersArray;
       
       const formationName = formations.find(f => f.id === attackFormation)?.name || attackFormation;
+      // ✅ matchId'yi number olarak kaydet (karşılaştırma tip uyuşmazlığını önle)
+      const numericMatchId = typeof matchId === 'string' ? parseInt(matchId, 10) : matchId;
       const squadData = {
-        matchId: matchId,
+        matchId: numericMatchId,
         attackFormation: attackFormation,
         attackFormationName: formationName,
         defenseFormation: defenseFormation || attackFormation,
@@ -2708,12 +2752,14 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
         }
       })();
       
-      // ✅ Kadroyu kilitle
+      // ✅ Kadroyu kilitle ve tahmin durumunu güncelle
       setIsSquadLocked(true);
+      setHasPrediction(true); // ✅ Hemen tahmin yapıldı olarak işaretle
       
       // ✅ 1 saniye bekle ve Tahmin sekmesine geç
       setTimeout(() => {
         setIsSaving(false);
+        savingRef.current = false; // ✅ savePartialState'i tekrar aktif et
         if (__DEV__) console.log('🔄 Switching to Prediction tab...');
         InteractionManager.runAfterInteractions(() => {
           if (__DEV__) console.log('🔄 onComplete() called');
@@ -2722,6 +2768,8 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
       }, 1000);
     } catch (error) {
       console.error('Error saving squad:', error);
+      setIsSaving(false);
+      savingRef.current = false; // ✅ Hata durumunda da resetle
       Alert.alert('Hata!', 'Kadro kaydedilemedi. Lütfen tekrar deneyin.');
     }
   };
@@ -2740,7 +2788,8 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
   const isCompleteButtonActive = attackCount === 11 && (!defenseFormation || defenseCount === 11);
 
   // Empty State (No Formation Selected) - saha aynı minHeight ile küçülmesin
-  // ✅ Tahmin yapmayan kullanıcılar için boş saha gösterilmez - otomatik kadro gösterilir
+  // ✅ Maç başlamamış ve tahmin yapılmamışsa: Formasyon seç butonu göster
+  // ✅ Canlı maçta tahmin yapmayan kullanıcılar için boş saha gösterilmez - otomatik kadro gösterilir
   // ✅ Popup açıkken empty state gösterilmez
   if (!selectedFormation && !(isMatchLive && !hasPrediction && autoGeneratedSquad) && !showStartingXIPopup) {
     return (
@@ -2762,6 +2811,11 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
             style={styles.selectFormationButton}
             onPress={() => {
               if (isKadroLocked) { showKadroLockedToast(); return; }
+              // ✅ Kadro kilitliyken formasyon değişikliğine izin verme
+              if (isSquadLocked) {
+                Alert.alert('Kadro Kilitli', 'Formasyon değiştirmek için önce kilidi açın.');
+                return;
+              }
               setShowFormationModal(true);
             }}
             activeOpacity={0.8}
@@ -2814,11 +2868,6 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
             {positions?.map((pos, index) => {
               const player = selectedPlayers[index];
               const positionLabel = formation?.positions[index] || '';
-              
-              // Debug: player değiştiğinde log
-              if (index === 0) {
-                console.log('✅ Render slot 0:', { player: player?.name || 'null', selectedPlayers0: selectedPlayers[0] });
-              }
 
               return (
                 <View
@@ -2858,14 +2907,13 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
                             <Ionicons name="information-circle" size={20} color="#EF4444" />
                           </TouchableOpacity>
                         )}
-                        {/* Remove button - Top Right (Değiştir ikonu kaldırıldı) */}
-                        {/* ✅ X butonu SADECE tahmin yapılmış maçlarda gösterilir - tahmin yapılmamış maçlarda TAMAMEN KALDIRILIR */}
-                        {!isKadroLocked && !isSquadLocked && hasPrediction === true && (
+                        {/* Remove button - Top Right */}
+                        {/* ✅ X butonu: Kadro düzenlenebilir durumda gösterilir (maç başlamamış VE kadro kilitli değil) */}
+                        {!isKadroLocked && !isSquadLocked && (
                           <TouchableOpacity
                             style={styles.removeButton}
                             onPress={(e) => {
                               e?.stopPropagation?.();
-                              console.log('✅ X button pressed for slot', index, 'isKadroLocked:', isKadroLocked, 'isSquadLocked:', isSquadLocked);
                               handleRemovePlayer(index);
                             }}
                             activeOpacity={0.7}
@@ -3045,80 +3093,91 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
         )}
 
         {/* Bottom Info Bar – oynanan maçta tek satır: Tahminin/Gerçek 11/Topluluk + Atak/Defans */}
-        <View style={styles.bottomBar}>
-          <View style={styles.bottomBarLeft}>
-            {isKadroLocked ? (
-              <>
-                <View style={styles.unifiedToolbarRow}>
-                  {/* ✅ Kaynak seçimi */}
-                  <View style={styles.viewSourceRow}>
-                    {/* ✅ Tahmin yapan kullanıcılar için "Tahminin" göster */}
-                    {hasPrediction && (
+        {/* ✅ Tahmin yapılmamış maçlarda bottomBar gösterilmez - sadece preferenceStatsCardNew gösterilir */}
+        {/* ✅ BottomBar sadece: 1) Tahmin yapılmışsa VEYA 2) Maç başlamamışsa (kadro oluşturma modu) */}
+        {(hasPrediction || !isKadroLocked) && (
+          <View style={styles.bottomBar}>
+            <View style={styles.bottomBarLeft}>
+              {isKadroLocked ? (
+                <>
+                  <View style={styles.unifiedToolbarRow}>
+                    {/* ✅ Kaynak seçimi */}
+                    <View style={styles.viewSourceRow}>
+                      {/* ✅ Tahmin yapan kullanıcılar için "Tahminin" göster */}
+                      {hasPrediction && (
+                        <TouchableOpacity
+                          style={[styles.viewSourcePill, viewSource === 'user' && styles.viewSourcePillActive]}
+                          onPress={() => setViewSource('user')}
+                          activeOpacity={0.8}
+                        >
+                          <Ionicons name="person" size={12} color={viewSource === 'user' ? '#FFFFFF' : '#9CA3AF'} />
+                          <Text style={[styles.viewSourceText, viewSource === 'user' && styles.viewSourceTextActive]}>Tahminin</Text>
+                        </TouchableOpacity>
+                      )}
+                      {/* ✅ CANLI MAÇ + Tahmin yapmayan kullanıcılar için "Topluluk Tahmini" göster */}
+                      {isMatchLive && !hasPrediction && autoGeneratedSquad && (
+                        <View style={[styles.viewSourcePill, styles.viewSourcePillActive]}>
+                          <Ionicons name="people" size={12} color="#FFFFFF" />
+                          <Text style={[styles.viewSourceText, styles.viewSourceTextActive]}>Topluluk Tahmini</Text>
+                        </View>
+                      )}
+                      {/* ✅ Gerçek 11 - her zaman göster */}
                       <TouchableOpacity
-                        style={[styles.viewSourcePill, viewSource === 'user' && styles.viewSourcePillActive]}
-                        onPress={() => setViewSource('user')}
+                        style={[styles.viewSourcePill, viewSource === 'actual' && styles.viewSourcePillActive]}
+                        onPress={() => setViewSource('actual')}
                         activeOpacity={0.8}
                       >
-                        <Ionicons name="person" size={12} color={viewSource === 'user' ? '#FFFFFF' : '#9CA3AF'} />
-                        <Text style={[styles.viewSourceText, viewSource === 'user' && styles.viewSourceTextActive]}>Tahminin</Text>
-                      </TouchableOpacity>
-                    )}
-                    {/* ✅ CANLI MAÇ + Tahmin yapmayan kullanıcılar için "Topluluk Tahmini" göster */}
-                    {isMatchLive && !hasPrediction && autoGeneratedSquad && (
-                      <View style={[styles.viewSourcePill, styles.viewSourcePillActive]}>
-                        <Ionicons name="people" size={12} color="#FFFFFF" />
-                        <Text style={[styles.viewSourceText, styles.viewSourceTextActive]}>Topluluk Tahmini</Text>
-                      </View>
-                    )}
-                    {/* ✅ Gerçek 11 - her zaman göster */}
-                    <TouchableOpacity
-                      style={[styles.viewSourcePill, viewSource === 'actual' && styles.viewSourcePillActive]}
-                      onPress={() => setViewSource('actual')}
-                      activeOpacity={0.8}
-                    >
-                      <Ionicons name="football" size={12} color={viewSource === 'actual' ? '#FFFFFF' : '#9CA3AF'} />
-                      <Text style={[styles.viewSourceText, viewSource === 'actual' && styles.viewSourceTextActive]}>Gerçek 11</Text>
-                    </TouchableOpacity>
-                  </View>
-                  {/* ✅ Atak/Defans toggle - Sadece tahmin yapılmışsa veya canlı maçta topluluk tahmini varsa göster */}
-                  {(hasPrediction || (isMatchLive && autoGeneratedSquad)) && (
-                    <View style={styles.viewToggleRow}>
-                      <TouchableOpacity
-                        style={[styles.viewTogglePill, editingMode === 'attack' && styles.viewTogglePillActive]}
-                        onPress={() => setEditingMode('attack')}
-                        activeOpacity={0.8}
-                      >
-                        <Ionicons name="flash" size={10} color={editingMode === 'attack' ? '#F59E0B' : '#9CA3AF'} style={{ marginRight: 2 }} />
-                        <Text style={[styles.viewToggleText, editingMode === 'attack' && styles.viewToggleTextActive]}>Atak</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[styles.viewTogglePill, editingMode === 'defense' && styles.viewTogglePillActive]}
-                        onPress={() => setEditingMode('defense')}
-                        activeOpacity={0.8}
-                      >
-                        <Ionicons name="shield" size={10} color={editingMode === 'defense' ? '#3B82F6' : '#9CA3AF'} style={{ marginRight: 2 }} />
-                        <Text style={[styles.viewToggleText, editingMode === 'defense' && styles.viewToggleTextActive]}>Defans</Text>
+                        <Ionicons name="football" size={12} color={viewSource === 'actual' ? '#FFFFFF' : '#9CA3AF'} />
+                        <Text style={[styles.viewSourceText, viewSource === 'actual' && styles.viewSourceTextActive]}>Gerçek 11</Text>
                       </TouchableOpacity>
                     </View>
-                  )}
-                </View>
-                {/* ✅ Formasyon bilgisi */}
-                <Text style={styles.changeFormationText} numberOfLines={1}>
-                  {/* ✅ Biten maçta tahmin yoksa sadece formasyon göster (Atak/Defans yok) */}
-                  {isMatchFinished && !hasPrediction 
-                    ? `Formasyon: ${actualAttackFormation || attackFormation || '-'}`
-                    : (editingMode === 'attack' 
-                        ? `Atak: ${viewSource === 'actual' ? (actualAttackFormation || '-') : (attackFormation || '-')}` 
-                        : `Defans: ${viewSource === 'actual' ? (actualDefenseFormation || actualAttackFormation || '-') : (defenseFormation || '-')}`)}
-                </Text>
-              </>
-            ) : (
+                    {/* ✅ Atak/Defans toggle - Sadece tahmin yapılmışsa veya canlı maçta topluluk tahmini varsa göster */}
+                    {(hasPrediction || (isMatchLive && autoGeneratedSquad)) && (
+                      <View style={styles.viewToggleRow}>
+                        <TouchableOpacity
+                          style={[styles.viewTogglePill, editingMode === 'attack' && styles.viewTogglePillActive]}
+                          onPress={() => setEditingMode('attack')}
+                          activeOpacity={0.8}
+                        >
+                          <Ionicons name="flash" size={10} color={editingMode === 'attack' ? '#F59E0B' : '#9CA3AF'} style={{ marginRight: 2 }} />
+                          <Text style={[styles.viewToggleText, editingMode === 'attack' && styles.viewToggleTextActive]}>Atak</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.viewTogglePill, editingMode === 'defense' && styles.viewTogglePillActive]}
+                          onPress={() => setEditingMode('defense')}
+                          activeOpacity={0.8}
+                        >
+                          <Ionicons name="shield" size={10} color={editingMode === 'defense' ? '#3B82F6' : '#9CA3AF'} style={{ marginRight: 2 }} />
+                          <Text style={[styles.viewToggleText, editingMode === 'defense' && styles.viewToggleTextActive]}>Defans</Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+                  </View>
+                  {/* ✅ Formasyon bilgisi */}
+                  <Text style={styles.changeFormationText} numberOfLines={1}>
+                    {/* ✅ Biten maçta tahmin yoksa sadece formasyon göster (Atak/Defans yok) */}
+                    {isMatchFinished && !hasPrediction 
+                      ? `Formasyon: ${actualAttackFormation || attackFormation || '-'}`
+                      : (editingMode === 'attack' 
+                          ? `Atak: ${viewSource === 'actual' ? (actualAttackFormation || '-') : (attackFormation || '-')}` 
+                          : `Defans: ${viewSource === 'actual' ? (actualDefenseFormation || actualAttackFormation || '-') : (defenseFormation || '-')}`)}
+                  </Text>
+                </>
+              ) : (
               // ✅ SİMETRİK TOOLBAR: [2 Satırlı Formasyon] | 🔓 | [Tamamla]
               <View style={styles.symmetricToolbar}>
                 {/* Sol: 2 Satırlı Formasyon Butonu */}
                 <TouchableOpacity
-                  style={styles.dualLineFormationButton}
+                  style={[
+                    styles.dualLineFormationButton,
+                    isSquadLocked && { opacity: 0.5 } // ✅ Kilitliyken soluk göster
+                  ]}
                   onPress={() => {
+                    // ✅ Kadro kilitliyken formasyon değişikliğine izin verme
+                    if (isSquadLocked) {
+                      Alert.alert('Kadro Kilitli', 'Formasyon değiştirmek için önce kilidi açın.');
+                      return;
+                    }
                     // Henüz formasyon seçilmediyse atak modal'ı aç
                     setFormationType('attack');
                     setShowFormationModal(true);
@@ -3215,6 +3274,7 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds = [], 
             )}
           </View>
         </View>
+        )}
       </View>
 
       {/* Player Selection Modal - Defans: sadece atak 11'i. Canlı maçta atak: sadece mevcut 11 (formasyon/yerleşim değişikliği aynı 11 ile). */}
@@ -4994,8 +5054,31 @@ const PlayerDetailModal = ({ player, onClose, matchId, positionLabel }: any) => 
               <Text style={styles.playerDetailSectionTitle}>👥 Topluluk Tercihleri</Text>
               
               {communityStats.loading ? (
-                <View style={styles.communityStatsLoading}>
-                  <Text style={styles.communityStatsLoadingText}>Yükleniyor...</Text>
+                <View style={[styles.communityStatsContainer, styles.communityStatsLoadingPlaceholder]}>
+                  <View style={styles.communityStatRow}>
+                    <View style={styles.communityStatIcon}>
+                      <Ionicons name="football" size={18} color="#64748B" />
+                    </View>
+                    <View style={styles.communityStatContent}>
+                      <Text style={[styles.communityStatLabel, { color: '#64748B' }]}>Yükleniyor...</Text>
+                      <View style={styles.communityStatBarBg}>
+                        <View style={[styles.communityStatBarFill, { width: '0%', backgroundColor: '#64748B' }]} />
+                      </View>
+                    </View>
+                  </View>
+                  {positionLabel && (
+                    <View style={styles.communityStatRow}>
+                      <View style={styles.communityStatIcon}>
+                        <Ionicons name="locate" size={18} color="#64748B" />
+                      </View>
+                      <View style={styles.communityStatContent}>
+                        <Text style={[styles.communityStatLabel, { color: '#64748B' }]}>Yükleniyor...</Text>
+                        <View style={styles.communityStatBarBg}>
+                          <View style={[styles.communityStatBarFill, { width: '0%', backgroundColor: '#64748B' }]} />
+                        </View>
+                      </View>
+                    </View>
+                  )}
                 </View>
               ) : (
                 <View style={styles.communityStatsContainer}>
@@ -6114,6 +6197,7 @@ const styles = StyleSheet.create({
   // Main Container – y ekseni boşlukları azaltıldı, saha yüksekliği arttı
   mainContainer: {
     flex: 1,
+    flexDirection: 'column',
     paddingHorizontal: 12,
     paddingTop: 8,
     paddingBottom: 8,
@@ -7671,6 +7755,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 12,
     borderWidth: 1.5,
+    minHeight: 115, // ✅ Sabit minimum yükseklik - sıçramayı önler
     borderColor: 'rgba(249, 115, 22, 0.4)',
   },
   playerPreviewCommunityHeader: {
@@ -7690,10 +7775,11 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#9CA3AF',
     textAlign: 'center',
-    padding: 4,
+    paddingVertical: 28, // ✅ Loading durumunda da aynı yüksekliği koru
   },
   playerPreviewCommunityContent: {
     gap: 8,
+    minHeight: 72, // ✅ Sabit minimum yükseklik
   },
   playerPreviewCommunityRow: {
     flexDirection: 'row',
@@ -7989,16 +8075,11 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: 'rgba(255, 255, 255, 0.1)',
   },
-  communityStatsLoading: {
-    alignItems: 'center',
-    padding: 20,
-  },
-  communityStatsLoadingText: {
-    fontSize: 14,
-    color: '#9CA3AF',
-  },
   communityStatsContainer: {
     gap: 16,
+  },
+  communityStatsLoadingPlaceholder: {
+    opacity: 0.5,
   },
   communityStatRow: {
     flexDirection: 'row',

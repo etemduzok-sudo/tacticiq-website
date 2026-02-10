@@ -91,10 +91,10 @@ import { useTranslation } from 'react-i18next';
 
 // Web için UIManager polyfills
 if (Platform.OS === 'web') {
-  if (!UIManager || typeof UIManager.focus !== 'function') {
+  if (!UIManager || typeof (UIManager as any).focus !== 'function') {
     // @ts-ignore - Web için UIManager polyfills
     if (typeof UIManager === 'object') {
-      UIManager.focus = () => {
+      (UIManager as any).focus = () => {
         logger.warn('UIManager.focus is not supported on web', undefined, 'UIManager');
       };
       UIManager.measure = (node: any, callback: Function) => {
@@ -172,7 +172,7 @@ export default function App() {
   const { 
     currentScreen, previousScreen, activeTab, selectedMatchId, 
     selectedTeamIds, showMatchResultPopup, matchIdForResultPopup,
-    isMaintenanceMode, isProcessingOAuth, oauthCompleted 
+    isMaintenanceMode, isProcessingOAuth, oauthCompleted, legalDocumentType
   } = navState;
 
   // Use OAuth Hook

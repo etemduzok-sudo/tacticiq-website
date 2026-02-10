@@ -9,6 +9,7 @@ import {
   StatusBar,
   ActivityIndicator,
   useWindowDimensions,
+  Alert,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
@@ -125,16 +126,6 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
   const handleSquadUnsavedChanges = useCallback((hasChanges: boolean) => {
     setSquadHasUnsavedChanges(hasChanges);
   }, []);
-
-  // ✅ Geri dönme kontrolü - kaydedilmemiş değişiklik varsa uyarı göster
-  const handleBackPress = useCallback(() => {
-    if (activeTab === 'squad' && squadHasUnsavedChanges) {
-      setShowSquadUnsavedModal(true);
-      setPendingBackAction(true);
-      return;
-    }
-    onBack();
-  }, [activeTab, squadHasUnsavedChanges, onBack]);
 
   // ✅ İki favori takım maçı: ev sahibi ve deplasman favorilerde
   // ✅ Dashboard'dan gelen predictionTeamId prop'unu kullan, yoksa null
@@ -708,6 +699,24 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
       console.log('⚠️ Biten maçta tahmin sekmesi engellendi, stats sekmesine yönlendirildi');
     }
   }, [isMatchFinished, activeTab]);
+
+  // ✅ Geri dönme kontrolü - kaydedilmemiş değişiklik varsa uyarı göster
+  // ✅ Biten maçlarda uyarı gösterilmez (değişiklik yapılamaz)
+  // ✅ isMatchFinished tanımlandıktan sonra tanımlanmalı
+  const handleBackPress = useCallback(() => {
+    if (activeTab === 'squad' && squadHasUnsavedChanges && !isMatchFinished) {
+      setShowSquadUnsavedModal(true);
+      setPendingBackAction(true);
+      return;
+    }
+    // ✅ Tahmin sekmesinde de kaydedilmemiş değişiklik kontrolü
+    if (activeTab === 'prediction' && predictionHasUnsavedChanges && !isMatchFinished) {
+      setPendingBackAction(true);
+      setShowUnsavedChangesModal(true);
+      return;
+    }
+    onBack();
+  }, [activeTab, squadHasUnsavedChanges, predictionHasUnsavedChanges, isMatchFinished, onBack]);
 
   // Transform API data to component format
   // ✅ useMemo ile sarmalayarak mock maçlar için timestamp'i sabitle
@@ -1435,20 +1444,28 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
             <TouchableOpacity
               key={tab.id}
               onPress={() => {
+                // ✅ Biten maçlarda tahmin sekmesine geçiş engellenir
+                if (tab.id === 'prediction' && isMatchFinished) {
+                  return; // Biten maçlarda tahmin sekmesi gösterilmez
+                }
+                
                 // ✅ Kadro sekmesinden ayrılırken kaydedilmemiş değişiklik kontrolü
-                if (activeTab === 'squad' && tab.id !== 'squad' && squadHasUnsavedChanges) {
+                // ✅ Biten maçlarda uyarı gösterilmez (değişiklik yapılamaz)
+                if (activeTab === 'squad' && tab.id !== 'squad' && squadHasUnsavedChanges && !isMatchFinished) {
                   setPendingTabChange(tab.id);
                   setShowSquadUnsavedModal(true);
                   return;
                 }
                 // ✅ Tahmin sekmesinden ayrılırken kaydedilmemiş değişiklik kontrolü
-                if (activeTab === 'prediction' && tab.id !== 'prediction' && predictionHasUnsavedChanges) {
+                // ✅ Biten maçlarda uyarı gösterilmez (değişiklik yapılamaz)
+                if (activeTab === 'prediction' && tab.id !== 'prediction' && predictionHasUnsavedChanges && !isMatchFinished) {
                   setPendingTabChange(tab.id);
                   setShowUnsavedChangesModal(true);
                   return;
                 }
                 
                 // ✅ Tahmin sekmesine geçiş kontrolü: Maç başlangıcına 120 saniye kala kontrolü
+                // ✅ Biten maçlarda bu kontrol yapılmaz (zaten yukarıda engellendi)
                 if (tab.id === 'prediction' && activeTab !== 'prediction') {
                   const matchTimestamp = matchData?.timestamp;
                   const fixtureId = Number(matchId);

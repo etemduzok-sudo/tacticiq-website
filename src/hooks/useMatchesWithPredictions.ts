@@ -24,13 +24,19 @@ export function useMatchesWithPredictions(matchIds: number[]) {
       
       const set = new Set<number>();
       for (const matchId of matchIds) {
-        // 1. Prediction key kontrolü (basit)
-        const predKey = `${PREDICTION_KEY_PREFIX}${matchId}`;
-        const legacyPredKey = `${LEGACY_PREDICTION_KEY_PREFIX}${matchId}`;
+        // 1. Prediction key kontrolü: hem basit hem takıma özel
+        const predKeyBase = `${PREDICTION_KEY_PREFIX}${matchId}`;
+        const legacyPredKeyBase = `${LEGACY_PREDICTION_KEY_PREFIX}${matchId}`;
         
         // 2. Squad key kontrolü: hem basit hem takıma özel (squad-{matchId} ve squad-{matchId}-{teamId})
         const squadKeyBase = `${SQUAD_KEY_PREFIX}${matchId}`;
         const legacySquadKeyBase = `${LEGACY_SQUAD_KEY_PREFIX}${matchId}`;
+        
+        // ✅ Tüm olası prediction anahtarlarını bul (basit + takıma özel)
+        const predKeys = allKeys.filter(k => 
+          k === predKeyBase || k.startsWith(`${predKeyBase}-`) ||
+          k === legacyPredKeyBase || k.startsWith(`${legacyPredKeyBase}-`)
+        );
         
         // Tüm olası squad anahtarlarını bul (basit + takıma özel)
         const squadKeys = allKeys.filter(k => 
@@ -39,7 +45,6 @@ export function useMatchesWithPredictions(matchIds: number[]) {
         );
         
         // Prediction kontrolü
-        const predKeys = [predKey, legacyPredKey].filter(k => allKeys.includes(k));
         let hasPred = false;
         if (predKeys.length > 0) {
           const predPairs = await AsyncStorage.multiGet(predKeys);
@@ -54,9 +59,10 @@ export function useMatchesWithPredictions(matchIds: number[]) {
             if (value) {
               try {
                 const parsed = JSON.parse(value);
-                // ✅ Mock maçlar için: matchId eşleşmeli ve isCompleted true olmalı
+                // ✅ matchId karşılaştırması: hem string hem number olabilir, Number() ile normalize et
+                const parsedMatchId = parsed?.matchId != null ? Number(parsed.matchId) : null;
                 const isValidSquad = parsed?.isCompleted === true && 
-                                    (!parsed?.matchId || parsed.matchId === matchId) &&
+                                    (parsedMatchId == null || parsedMatchId === matchId) &&
                                     parsed?.attackPlayersArray &&
                                     parsed.attackPlayersArray.length >= 11;
                 if (isValidSquad) {
@@ -100,9 +106,11 @@ export function useMatchesWithPredictions(matchIds: number[]) {
         // ✅ Tüm tahminleri temizle (hem basit hem takıma özel)
         keysToRemove = allKeys.filter(k =>
           k === `${PREDICTION_KEY_PREFIX}${matchId}` ||
+          k.startsWith(`${PREDICTION_KEY_PREFIX}${matchId}-`) ||
           k === `${SQUAD_KEY_PREFIX}${matchId}` ||
           k.startsWith(`${SQUAD_KEY_PREFIX}${matchId}-`) ||
           k === `${LEGACY_PREDICTION_KEY_PREFIX}${matchId}` ||
+          k.startsWith(`${LEGACY_PREDICTION_KEY_PREFIX}${matchId}-`) ||
           k === `${LEGACY_SQUAD_KEY_PREFIX}${matchId}` ||
           k.startsWith(`${LEGACY_SQUAD_KEY_PREFIX}${matchId}-`)
         );
@@ -121,30 +129,30 @@ export function useMatchesWithPredictions(matchIds: number[]) {
         const userData = userDataStr ? JSON.parse(userDataStr) : null;
         const userId = userData?.id;
         if (userId) {
-          // ✅ Eğer teamId verilmişse, database'de de filtreleme yapılabilir ama şimdilik tümünü siliyoruz
-          // Database'de predictionTeamId bilgisi varsa filtreleme yapılabilir
           await predictionsDb.deletePredictionsByMatch(userId, String(matchId));
         }
       } catch (dbError) {
         console.warn('Database cleanup failed:', dbError);
       }
       
-      // ✅ State'i manuel olarak güncelle (hemen)
-      console.log('🔄 State güncelleniyor, matchId siliniyor:', matchId);
-      setMatchIdsWithPredictions(prev => {
-        const next = new Set(prev);
-        next.delete(matchId);
-        console.log('🔄 Yeni set:', [...next]);
-        return next;
-      });
+      // ✅ State güncelleme stratejisi:
+      // - teamId verilmişse: diğer takımın tahmini hala olabilir, refresh() ile kontrol et
+      // - teamId verilmemişse: tümü silinmiş, doğrudan state'ten kaldır
+      if (teamId != null) {
+        // ✅ Diğer takımın tahmini olabilir, yeniden kontrol et
+        await refresh();
+      } else {
+        // ✅ Tüm tahminler silinmiş, doğrudan kaldır (hızlı UI güncelleme)
+        setMatchIdsWithPredictions(prev => {
+          const next = new Set(prev);
+          next.delete(matchId);
+          return next;
+        });
+      }
       
-      // ✅ Sonra refresh çağır (tam kontrol için)
-      console.log('🔄 refresh() çağrılıyor...');
-      await refresh();
       console.log('✅ clearPredictionForMatch tamamlandı, matchId:', matchId);
     } catch (e) {
       console.error('❌ clearPredictionForMatch error:', e);
-      // ✅ Hata durumunda throw et ki UI'da yakalanabilsin
       throw e;
     }
   }, [refresh]);

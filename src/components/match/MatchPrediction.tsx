@@ -434,9 +434,10 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
     () => (matchId && effectivePredictionTeamId != null ? `${LEGACY_STORAGE_KEYS.SQUAD}${matchId}-${effectivePredictionTeamId}` : matchId ? `${LEGACY_STORAGE_KEYS.SQUAD}${matchId}` : null),
     [matchId, effectivePredictionTeamId]
   );
+  // ✅ predictionStorageKey: matchId ve effectivePredictionTeamId kullan (MatchSquad ile tutarlı)
   const predictionStorageKey = React.useMemo(
-    () => (matchData?.id && predictionTeamId != null ? `${STORAGE_KEYS.PREDICTIONS}${matchData.id}-${predictionTeamId}` : matchData?.id ? `${STORAGE_KEYS.PREDICTIONS}${matchData.id}` : null),
-    [matchData?.id, predictionTeamId]
+    () => (matchId && effectivePredictionTeamId != null ? `${STORAGE_KEYS.PREDICTIONS}${matchId}-${effectivePredictionTeamId}` : matchId ? `${STORAGE_KEYS.PREDICTIONS}${matchId}` : null),
+    [matchId, effectivePredictionTeamId]
   );
 
   // ✅ Load attack squad from AsyncStorage
@@ -608,9 +609,11 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
     }
     
     // 2. allTeamPlayers yoksa lineups'tan yedekleri çıkar
-    if (lineups && lineups.length > 0 && predictionTeamId) {
+    // ✅ effectivePredictionTeamId kullan (mock maçlar için de doğru takımı bul)
+    const resolvedTeamId = effectivePredictionTeamId ?? predictionTeamId;
+    if (lineups && lineups.length > 0 && resolvedTeamId) {
       // Tahmin yapılan takımın lineup'ını bul
-      const teamLineup = lineups.find((lineup: any) => lineup.team?.id === predictionTeamId);
+      const teamLineup = lineups.find((lineup: any) => lineup.team?.id === resolvedTeamId);
       
       if (teamLineup?.substitutes) {
         return teamLineup.substitutes.map((item: any) => {
@@ -1035,7 +1038,8 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
       const effectiveUnsaved = isPredictionLocked ? false : hasUnsavedChanges;
       onHasUnsavedChanges(effectiveUnsaved, handleSavePredictions);
     }
-  }, [hasUnsavedChanges, isPredictionLocked, onHasUnsavedChanges]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasUnsavedChanges, isPredictionLocked, onHasUnsavedChanges, handleSavePredictions]);
 
   // ✅ Maç başladıktan sonra +2 dakika içinde tahmin yapılmazsa veya kaydedilmezse, tahmin yapılmamış maç gibi davran
   React.useEffect(() => {

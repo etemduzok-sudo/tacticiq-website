@@ -13,6 +13,7 @@ import {
   Animated as RNAnimated,
   Alert,
   Modal,
+  AppState,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { 
@@ -166,8 +167,10 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
       const awayTeamName = match?.teams?.away?.name || 'Deplasman';
       
       // ✅ Maç durumuna göre initialTab belirle
-      const isLive = match?.fixture?.status?.short && ['1H', '2H', 'HT', 'ET', 'BT', 'P', 'LIVE'].includes(match.fixture.status.short);
-      const isFinished = match?.fixture?.status?.short === 'FT';
+      const FINISHED_STATUSES = ['FT', 'AET', 'PEN', 'AWD', 'WO'];
+      const matchStatus = match?.fixture?.status?.short || '';
+      const isLive = ['1H', '2H', 'HT', 'ET', 'BT', 'P', 'LIVE'].includes(matchStatus);
+      const isFinished = FINISHED_STATUSES.includes(matchStatus);
       const hasPrediction = match?.fixture?.id != null && matchIdsWithPredictions.has(match.fixture.id);
       
       let initialTab = 'squad'; // Varsayılan
@@ -198,8 +201,10 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
     }
     
     // ✅ Tek favori takım: Mevcut mantık
-    const isLive = match?.fixture?.status?.short && ['1H', '2H', 'HT', 'ET', 'BT', 'P', 'LIVE'].includes(match.fixture.status.short);
-    const isFinished = match?.fixture?.status?.short === 'FT';
+    const FINISHED_STATUSES_SINGLE = ['FT', 'AET', 'PEN', 'AWD', 'WO'];
+    const matchStatusSingle = match?.fixture?.status?.short || '';
+    const isLive = ['1H', '2H', 'HT', 'ET', 'BT', 'P', 'LIVE'].includes(matchStatusSingle);
+    const isFinished = FINISHED_STATUSES_SINGLE.includes(matchStatusSingle);
     const hasPrediction = match?.fixture?.id != null && matchIdsWithPredictions.has(match.fixture.id);
     
     if (isLive) {
@@ -1134,13 +1139,24 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
     });
   }, [allUpcomingMatches, selectedTeamIds, filterMatchesByTeam, filteredLiveMatches, mockTestIds]);
 
-  // ✅ Hem canlı hem yaklaşan maç ID'lerini birleştir (tahmin kontrolü için)
+  // ✅ Tüm maç ID'lerini birleştir (tahmin kontrolü için - canlı, yaklaşan VE biten)
   const allActiveMatchIds = React.useMemo(() => {
     const upcomingIds = filteredUpcomingMatches.map(m => m.fixture.id);
     const liveIds = filteredLiveMatches.map(m => m.fixture.id);
-    return [...new Set([...upcomingIds, ...liveIds])]; // Unique ID'ler
-  }, [filteredUpcomingMatches, filteredLiveMatches]);
+    const pastIds = pastMatches.map((m: any) => m.fixture?.id).filter(Boolean);
+    return [...new Set([...upcomingIds, ...liveIds, ...pastIds])]; // Unique ID'ler
+  }, [filteredUpcomingMatches, filteredLiveMatches, pastMatches]);
   const { matchIdsWithPredictions, clearPredictionForMatch, refresh: refreshPredictions } = useMatchesWithPredictions(allActiveMatchIds);
+  
+  // ✅ Dashboard'a geri dönüldüğünde tahminleri yenile (AppState listener)
+  React.useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active') {
+        refreshPredictions();
+      }
+    });
+    return () => subscription.remove();
+  }, [refreshPredictions]);
 
   // ✅ Maç kartı yüksekliği (sabit height + marginBottom)
   const MATCH_CARD_HEIGHT = 180 + SPACING.md; // Kart height: 180 (%10 azaltıldı)
@@ -1358,15 +1374,11 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
               style: 'destructive',
               onPress: async () => {
                 try {
-                  console.log('🗑️ Tahmin siliniyor, matchId:', deletePredictionModal.matchId);
-                  // ✅ Async işlemi await et
-                  await deletePredictionModal.onDelete();
-                  console.log('✅ Tahmin silme işlemi tamamlandı');
-                  // ✅ İşlem tamamlandıktan sonra modal'ı kapat
-                  setDeletePredictionModal(null);
-                  // ✅ Tahmin listesini yenile (refresh zaten clearPredictionForMatch içinde çağrılıyor ama emin olmak için tekrar çağırıyoruz)
-                  await refreshPredictions();
-                  console.log('✅ Tahmin listesi yenilendi');
+                  const matchId = deletePredictionModal.matchId;
+                  console.log('🗑️ Tahmin siliniyor, matchId:', matchId);
+                  // ✅ clearPredictionForMatch state'i otomatik günceller
+                  await clearPredictionForMatch(matchId);
+                  console.log('✅ Tahmin silme işlemi tamamlandı, matchId:', matchId);
                 } catch (error) {
                   console.error('❌ Tahmin silme hatası:', error);
                   Alert.alert('Hata', 'Tahmin silinirken bir hata oluştu. Lütfen tekrar deneyin.');
@@ -1599,20 +1611,19 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
                     if (!selectedTeamToDelete) return;
                     
                     try {
-                      console.log('🗑️ İki takım için tahmin siliniyor, matchId:', deletePredictionTeamModal.matchId, 'team:', selectedTeamToDelete);
+                      const matchId = deletePredictionTeamModal.matchId;
+                      console.log('🗑️ İki takım için tahmin siliniyor, matchId:', matchId, 'team:', selectedTeamToDelete);
                       if (selectedTeamToDelete === 'home') {
-                        await clearPredictionForMatch(deletePredictionTeamModal.matchId, deletePredictionTeamModal.homeId);
+                        await clearPredictionForMatch(matchId, deletePredictionTeamModal.homeId);
                       } else if (selectedTeamToDelete === 'away') {
-                        await clearPredictionForMatch(deletePredictionTeamModal.matchId, deletePredictionTeamModal.awayId);
+                        await clearPredictionForMatch(matchId, deletePredictionTeamModal.awayId);
                       } else if (selectedTeamToDelete === 'both') {
-                        await clearPredictionForMatch(deletePredictionTeamModal.matchId);
+                        await clearPredictionForMatch(matchId);
                       }
                       console.log('✅ İki takım için tahmin silme işlemi tamamlandı');
-                      // ✅ refreshPredictions zaten clearPredictionForMatch içinde çağrılıyor ama emin olmak için tekrar çağırıyoruz
-                      await refreshPredictions();
+                      // ✅ Modal'ı kapat
                       setDeletePredictionTeamModal(null);
                       setSelectedTeamToDelete(null);
-                      console.log('✅ Modal kapatıldı ve state güncellendi');
                     } catch (error) {
                       console.error('❌ Tahmin silme hatası:', error);
                       Alert.alert('Hata', 'Tahmin silinirken bir hata oluştu. Lütfen tekrar deneyin.');
