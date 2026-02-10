@@ -1036,91 +1036,48 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
             colors={['rgba(15, 42, 36, 0.95)', 'rgba(31, 162, 166, 0.15)', 'rgba(15, 42, 36, 0.95)']} // ✅ Design System
             style={styles.headerGradient}
           >
-            {/* Premium Badge */}
-            <View style={styles.premiumBadge}>
-              <LinearGradient
-                colors={['rgba(31, 162, 166, 0.3)', 'rgba(5, 150, 105, 0.1)']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.premiumBadgeGradient}
-              >
-                <Text style={styles.premiumBadgeText}>👔 TD DEĞERLENDİRMESİ</Text>
-              </LinearGradient>
-            </View>
-            
-            {/* 🔒 Kilit Göstergesi - Tıklanabilir */}
-            <TouchableOpacity
-              onPress={() => {
-                setLockPopupType('coach');
-                setShowLockPopup(true);
-              }}
-              activeOpacity={0.7}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 8,
-                marginTop: 12,
-                paddingHorizontal: 16,
-                paddingVertical: 10,
-                backgroundColor: ratingTimeInfo.isLocked 
-                  ? 'rgba(239, 68, 68, 0.15)' 
-                  : ratingTimeInfo.hoursRemaining <= 2 
-                    ? 'rgba(249, 115, 22, 0.15)'
+            {/* Premium Badge + Kilit İkonu */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <View style={styles.premiumBadge}>
+                <LinearGradient
+                  colors={['rgba(31, 162, 166, 0.3)', 'rgba(5, 150, 105, 0.1)']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.premiumBadgeGradient}
+                >
+                  <Text style={styles.premiumBadgeText}>👔 TD DEĞERLENDİRMESİ</Text>
+                </LinearGradient>
+              </View>
+              
+              {/* 🔒 Kilit İkonu - Tıklanabilir */}
+              <TouchableOpacity
+                onPress={() => {
+                  setLockPopupType('coach');
+                  setShowLockPopup(true);
+                }}
+                activeOpacity={0.7}
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 16,
+                  backgroundColor: ratingTimeInfo.isLocked 
+                    ? 'rgba(239, 68, 68, 0.15)' 
                     : 'rgba(16, 185, 129, 0.15)',
-                borderRadius: 12,
-                borderWidth: 1,
-                borderColor: ratingTimeInfo.isLocked 
-                  ? 'rgba(239, 68, 68, 0.3)' 
-                  : ratingTimeInfo.hoursRemaining <= 2 
-                    ? 'rgba(249, 115, 22, 0.3)'
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderWidth: 1,
+                  borderColor: ratingTimeInfo.isLocked 
+                    ? 'rgba(239, 68, 68, 0.3)' 
                     : 'rgba(16, 185, 129, 0.3)',
-              }}
-            >
-              <View style={{
-                width: 32,
-                height: 32,
-                borderRadius: 16,
-                backgroundColor: ratingTimeInfo.isLocked 
-                  ? 'rgba(239, 68, 68, 0.2)' 
-                  : 'rgba(16, 185, 129, 0.2)',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}>
+                }}
+              >
                 <Ionicons 
                   name={ratingTimeInfo.isLocked ? 'lock-closed' : 'lock-open'} 
-                  size={18} 
+                  size={16} 
                   color={ratingTimeInfo.isLocked ? '#EF4444' : '#10B981'} 
                 />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{
-                  fontSize: 12,
-                  fontWeight: '700',
-                  color: ratingTimeInfo.isLocked ? '#EF4444' : '#10B981',
-                }}>
-                  {ratingTimeInfo.isLocked ? 'Değerlendirme Kilitli' : 'Değerlendirme Açık'}
-                </Text>
-                {ratingTimeInfo.message ? (
-                  <Text style={{
-                    fontSize: 10,
-                    fontWeight: '500',
-                    color: ratingTimeInfo.isLocked 
-                      ? 'rgba(239, 68, 68, 0.8)' 
-                      : ratingTimeInfo.hoursRemaining <= 2 
-                        ? '#F97316'
-                        : 'rgba(16, 185, 129, 0.8)',
-                    marginTop: 2,
-                  }}>
-                    {ratingTimeInfo.message}
-                  </Text>
-                ) : null}
-              </View>
-              <Ionicons 
-                name="information-circle-outline" 
-                size={20} 
-                color={ratingTimeInfo.isLocked ? '#EF4444' : '#10B981'} 
-              />
-            </TouchableOpacity>
+              </TouchableOpacity>
+            </View>
 
             <Text style={styles.headerTitle}>
               {targetTeamInfo.manager || 'Teknik Direktör'}
