@@ -1036,48 +1036,35 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
             colors={['rgba(15, 42, 36, 0.95)', 'rgba(31, 162, 166, 0.15)', 'rgba(15, 42, 36, 0.95)']} // ✅ Design System
             style={styles.headerGradient}
           >
-            {/* Premium Badge + Kilit İkonu */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <View style={styles.premiumBadge}>
-                <LinearGradient
-                  colors={['rgba(31, 162, 166, 0.3)', 'rgba(5, 150, 105, 0.1)']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.premiumBadgeGradient}
-                >
-                  <Text style={styles.premiumBadgeText}>👔 TD DEĞERLENDİRMESİ</Text>
-                </LinearGradient>
-              </View>
-              
-              {/* 🔒 Kilit İkonu - Tıklanabilir */}
-              <TouchableOpacity
-                onPress={() => {
-                  setLockPopupType('coach');
-                  setShowLockPopup(true);
-                }}
-                activeOpacity={0.7}
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 16,
-                  backgroundColor: ratingTimeInfo.isLocked 
-                    ? 'rgba(239, 68, 68, 0.15)' 
-                    : 'rgba(16, 185, 129, 0.15)',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  borderWidth: 1,
-                  borderColor: ratingTimeInfo.isLocked 
-                    ? 'rgba(239, 68, 68, 0.3)' 
-                    : 'rgba(16, 185, 129, 0.3)',
-                }}
-              >
-                <Ionicons 
-                  name={ratingTimeInfo.isLocked ? 'lock-closed' : 'lock-open'} 
-                  size={16} 
-                  color={ratingTimeInfo.isLocked ? '#EF4444' : '#10B981'} 
-                />
-              </TouchableOpacity>
-            </View>
+            {/* 🔒 Kilit İkonu - Ortalanmış */}
+            <TouchableOpacity
+              onPress={() => {
+                setLockPopupType('coach');
+                setShowLockPopup(true);
+              }}
+              activeOpacity={0.7}
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 18,
+                backgroundColor: ratingTimeInfo.isLocked 
+                  ? 'rgba(239, 68, 68, 0.15)' 
+                  : 'rgba(16, 185, 129, 0.15)',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderWidth: 1,
+                borderColor: ratingTimeInfo.isLocked 
+                  ? 'rgba(239, 68, 68, 0.3)' 
+                  : 'rgba(16, 185, 129, 0.3)',
+                alignSelf: 'center',
+              }}
+            >
+              <Ionicons 
+                name={ratingTimeInfo.isLocked ? 'lock-closed' : 'lock-open'} 
+                size={18} 
+                color={ratingTimeInfo.isLocked ? '#EF4444' : '#10B981'} 
+              />
+            </TouchableOpacity>
 
             <Text style={styles.headerTitle}>
               {targetTeamInfo.manager || 'Teknik Direktör'}
@@ -1348,7 +1335,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
             )}
 
             {/* Players List */}
-            {/* 🔒 Kilit Göstergesi - Oyuncu Bölümü */}
+            {/* 🔒 Kilit İkonu - Ortalanmış */}
             <TouchableOpacity
               onPress={() => {
                 setLockPopupType('player');
@@ -1356,65 +1343,25 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
               }}
               activeOpacity={0.7}
               style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 8,
-                marginBottom: 16,
-                paddingHorizontal: 14,
-                paddingVertical: 10,
-                backgroundColor: ratingTimeInfo.isLocked 
-                  ? 'rgba(239, 68, 68, 0.1)' 
-                  : ratingTimeInfo.hoursRemaining <= 2 
-                    ? 'rgba(249, 115, 22, 0.1)'
-                    : 'rgba(16, 185, 129, 0.1)',
-                borderRadius: 10,
-                borderWidth: 1,
-                borderColor: ratingTimeInfo.isLocked 
-                  ? 'rgba(239, 68, 68, 0.25)' 
-                  : ratingTimeInfo.hoursRemaining <= 2 
-                    ? 'rgba(249, 115, 22, 0.25)'
-                    : 'rgba(16, 185, 129, 0.25)',
-              }}
-            >
-              <View style={{
-                width: 28,
-                height: 28,
-                borderRadius: 14,
+                width: 36,
+                height: 36,
+                borderRadius: 18,
                 backgroundColor: ratingTimeInfo.isLocked 
                   ? 'rgba(239, 68, 68, 0.15)' 
                   : 'rgba(16, 185, 129, 0.15)',
                 alignItems: 'center',
                 justifyContent: 'center',
-              }}>
-                <Ionicons 
-                  name={ratingTimeInfo.isLocked ? 'lock-closed' : 'lock-open'} 
-                  size={14} 
-                  color={ratingTimeInfo.isLocked ? '#EF4444' : '#10B981'} 
-                />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{
-                  fontSize: 11,
-                  fontWeight: '600',
-                  color: ratingTimeInfo.isLocked ? '#EF4444' : '#10B981',
-                }}>
-                  {ratingTimeInfo.isLocked ? 'Oyuncu Değerlendirmeleri Kilitli' : 'Oyuncu Değerlendirmeleri Açık'}
-                </Text>
-                {ratingTimeInfo.message ? (
-                  <Text style={{
-                    fontSize: 9,
-                    color: ratingTimeInfo.isLocked 
-                      ? 'rgba(239, 68, 68, 0.7)' 
-                      : 'rgba(16, 185, 129, 0.7)',
-                    marginTop: 1,
-                  }}>
-                    {ratingTimeInfo.message}
-                  </Text>
-                ) : null}
-              </View>
+                borderWidth: 1,
+                borderColor: ratingTimeInfo.isLocked 
+                  ? 'rgba(239, 68, 68, 0.3)' 
+                  : 'rgba(16, 185, 129, 0.3)',
+                alignSelf: 'center',
+                marginBottom: 16,
+              }}
+            >
               <Ionicons 
-                name="information-circle-outline" 
-                size={16} 
+                name={ratingTimeInfo.isLocked ? 'lock-closed' : 'lock-open'} 
+                size={18} 
                 color={ratingTimeInfo.isLocked ? '#EF4444' : '#10B981'} 
               />
             </TouchableOpacity>
