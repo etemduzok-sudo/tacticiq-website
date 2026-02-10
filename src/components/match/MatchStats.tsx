@@ -17,6 +17,7 @@ import Svg, { Circle } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../services/api';
 import { BRAND, DARK_MODE } from '../../theme/theme';
+import { isMockTestMatch, getMockMatchStatistics, getMockPlayerStatistics } from '../../data/mockTestData';
 
 const { width, height } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
@@ -202,11 +203,29 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'match' | 'players'>('match');
   const [matchStats, setMatchStats] = useState<DisplayStat[]>(defaultDetailedStats);
+  // ✅ Oyuncu kartları açılır/kapanır state
+  const [expandedPlayers, setExpandedPlayers] = useState<Set<string>>(new Set());
+  
+  const togglePlayerExpand = (playerId: string) => {
+    setExpandedPlayers(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(playerId)) {
+        newSet.delete(playerId);
+      } else {
+        newSet.add(playerId);
+      }
+      return newSet;
+    });
+  };
   const [statsLoading, setStatsLoading] = useState(!!matchId);
   
   // ✅ Maç durumu kontrolü
   const matchStatus = matchData?.fixture?.status?.short || matchData?.status?.short || matchData?.statusShort || '';
-  const isMatchNotStarted = NOT_STARTED_STATUSES.includes(matchStatus) || matchStatus === '';
+  const fixtureId = matchId ? parseInt(matchId, 10) : null;
+  
+  // ✅ Mock maçlarda istatistik varsa göster (maç canlı demektir)
+  const hasMockStats = fixtureId ? isMockTestMatch(fixtureId) && getMockMatchStatistics(fixtureId) !== null : false;
+  const isMatchNotStarted = !hasMockStats && (NOT_STARTED_STATUSES.includes(matchStatus) || matchStatus === '');
 
   useEffect(() => {
     if (!matchId) return;
@@ -215,6 +234,18 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
       setStatsLoading(false);
       return;
     }
+    
+    // ✅ Mock maç kontrolü
+    if (isMockTestMatch(id)) {
+      const mockStats = getMockMatchStatistics(id);
+      if (mockStats) {
+        setMatchStats(apiStatsToDisplay(mockStats));
+        setStatsLoading(false);
+        console.log('📊 [MatchStats] Mock maç istatistikleri yüklendi:', id);
+        return;
+      }
+    }
+    
     let cancelled = false;
     (async () => {
       try {
@@ -422,194 +453,233 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
             </Animated.View>
           </View>
         ) : (
-          // OYUNCU PERFORMANSLARI
+          // OYUNCU PERFORMANSLARI - Açılır/Kapanır Kartlar
           <View style={styles.playersContainer}>
             {/* Home Team Players */}
             <View style={styles.teamSection}>
-              {topPlayers.home.map((player, index) => (
-                <Animated.View
-                  key={`home-${player.number}`}
-                  entering={isWeb ? undefined : FadeIn.delay(index * 50)}
-                  style={styles.playerCard}
-                >
-                  {/* Player Header */}
-                  <View style={styles.playerHeader}>
-                    <View style={styles.playerInfo}>
-                      <View style={styles.playerNumberBadge}>
-                        <Text style={styles.playerNumberText}>{player.number}</Text>
-                        {player.rating >= 8.5 && (
-                          <View style={styles.starBadge}>
-                            <Text style={styles.starBadgeText}>⭐</Text>
-                          </View>
-                        )}
-                      </View>
-                      <View style={styles.playerDetails}>
-                        <View style={styles.playerNameRow}>
-                          <Text style={styles.playerName}>{player.name}</Text>
-                          {player.goals >= 2 && <Text style={styles.fireEmoji}>🔥</Text>}
+              {topPlayers.home.map((player, index) => {
+                const playerId = `home-${player.number}`;
+                const isExpanded = expandedPlayers.has(playerId);
+                
+                return (
+                  <Animated.View
+                    key={playerId}
+                    entering={isWeb ? undefined : FadeIn.delay(index * 50)}
+                    style={[styles.playerCard, isExpanded && styles.playerCardExpanded]}
+                  >
+                    {/* Player Header - Tıklanabilir */}
+                    <TouchableOpacity 
+                      style={styles.playerHeader}
+                      onPress={() => togglePlayerExpand(playerId)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.playerInfo}>
+                        <View style={styles.playerNumberBadge}>
+                          <Text style={styles.playerNumberText}>{player.number}</Text>
+                          {player.rating >= 8.5 && (
+                            <View style={styles.starBadge}>
+                              <Text style={styles.starBadgeText}>⭐</Text>
+                            </View>
+                          )}
                         </View>
-                        <Text style={styles.playerPosition}>
-                          {player.position} • {player.minutesPlayed}'
-                        </Text>
+                        <View style={styles.playerDetails}>
+                          <View style={styles.playerNameRow}>
+                            <Text style={styles.playerName}>{player.name}</Text>
+                            {player.goals >= 2 && <Text style={styles.fireEmoji}>🔥</Text>}
+                          </View>
+                          <Text style={styles.playerPosition}>
+                            {player.position} • {player.minutesPlayed}'
+                          </Text>
+                        </View>
                       </View>
-                    </View>
 
-                    {/* Rating Circle */}
-                    <View style={styles.ratingCircle}>
-                      <Svg width={48} height={48} style={styles.ratingSvg}>
-                        <Circle
-                          cx="24"
-                          cy="24"
-                          r="15"
-                          stroke="rgba(100, 116, 139, 0.2)"
-                          strokeWidth="2"
-                          fill="none"
+                      {/* Rating Circle + Expand Icon */}
+                      <View style={styles.headerRight}>
+                        <View style={styles.ratingCircle}>
+                          <Svg width={44} height={44} style={styles.ratingSvg}>
+                            <Circle
+                              cx="22"
+                              cy="22"
+                              r="14"
+                              stroke="rgba(100, 116, 139, 0.2)"
+                              strokeWidth="2"
+                              fill="none"
+                            />
+                            <Circle
+                              cx="22"
+                              cy="22"
+                              r="14"
+                              stroke={player.rating >= 8 ? '#10B981' : player.rating >= 7 ? '#1FA2A6' : '#F59E0B'}
+                              strokeWidth="2.5"
+                              fill="none"
+                              strokeDasharray={`${(player.rating / 10) * 88} 88`}
+                              strokeLinecap="round"
+                              rotation="-90"
+                              origin="22, 22"
+                            />
+                          </Svg>
+                          <View style={styles.ratingValue}>
+                            <Text style={[styles.ratingText, player.rating >= 8 && { color: '#10B981' }]}>{player.rating}</Text>
+                          </View>
+                        </View>
+                        <Ionicons 
+                          name={isExpanded ? 'chevron-up' : 'chevron-down'} 
+                          size={18} 
+                          color="#1FA2A6" 
                         />
-                        <Circle
-                          cx="24"
-                          cy="24"
-                          r="15"
-                          stroke="#1FA2A6"
-                          strokeWidth="2"
-                          fill="none"
-                          strokeDasharray={`${(player.rating / 10) * 94.2} 94.2`}
-                          strokeLinecap="round"
-                          rotation="-90"
-                          origin="24, 24"
-                        />
-                      </Svg>
-                      <View style={styles.ratingValue}>
-                        <Text style={styles.ratingText}>{player.rating}</Text>
+                      </View>
+                    </TouchableOpacity>
+
+                    {/* Quick Stats - Herzaman görünür */}
+                    <View style={styles.quickStats}>
+                      <View style={styles.quickStatHome}>
+                        <Text style={styles.quickStatValueHome}>{player.goals}</Text>
+                        <Text style={styles.quickStatLabel}>Gol</Text>
+                      </View>
+                      <View style={styles.quickStatHome}>
+                        <Text style={styles.quickStatValueHome}>{player.assists}</Text>
+                        <Text style={styles.quickStatLabel}>Asist</Text>
+                      </View>
+                      <View style={styles.quickStat}>
+                        <Text style={styles.quickStatValue}>{player.shots}</Text>
+                        <Text style={styles.quickStatLabel}>Şut</Text>
+                      </View>
+                      <View style={styles.quickStat}>
+                        <Text style={styles.quickStatValue}>{player.passAccuracy}%</Text>
+                        <Text style={styles.quickStatLabel}>Pas</Text>
                       </View>
                     </View>
-                  </View>
 
-                  {/* Quick Stats Grid */}
-                  <View style={styles.quickStats}>
-                    <View style={styles.quickStatHome}>
-                      <Text style={styles.quickStatValueHome}>{player.goals}</Text>
-                      <Text style={styles.quickStatLabel}>Gol</Text>
-                    </View>
-                    <View style={styles.quickStatHome}>
-                      <Text style={styles.quickStatValueHome}>{player.assists}</Text>
-                      <Text style={styles.quickStatLabel}>Asist</Text>
-                    </View>
-                    <View style={styles.quickStat}>
-                      <Text style={styles.quickStatValue}>{player.shots}</Text>
-                      <Text style={styles.quickStatLabel}>Şut</Text>
-                    </View>
-                    <View style={styles.quickStat}>
-                      <Text style={styles.quickStatValue}>{player.passAccuracy}%</Text>
-                      <Text style={styles.quickStatLabel}>Pas</Text>
-                    </View>
-                  </View>
-
-                  {/* Detailed Stats */}
-                  <View style={styles.detailedStats}>
-                    {/* Gol & Şut */}
-                    {(player.goals > 0 || player.assists > 0 || player.shots > 0) && (
-                      <View style={styles.statSection}>
-                        <View style={styles.statSectionHeader}>
-                          <Text style={styles.statSectionEmoji}>⚽</Text>
-                          <Text style={styles.statSectionTitle}>Gol & Şut</Text>
-                        </View>
-                        <View style={styles.statSectionGrid}>
-                          <View style={styles.statItem}>
-                            <Text style={styles.statItemValue}>{player.goals}</Text>
-                            <Text style={styles.statItemLabel}>Gol</Text>
+                    {/* Expanded Content - Sadece açıkken görünür */}
+                    {isExpanded && (
+                      <Animated.View entering={FadeIn.duration(200)}>
+                        {/* Isı Haritası Placeholder */}
+                        <View style={styles.heatmapContainer}>
+                          <View style={styles.heatmapHeader}>
+                            <Ionicons name="flame" size={16} color="#F59E0B" />
+                            <Text style={styles.heatmapTitle}>Isı Haritası</Text>
                           </View>
-                          <View style={styles.statItem}>
-                            <Text style={styles.statItemValue}>{player.assists}</Text>
-                            <Text style={styles.statItemLabel}>Asist</Text>
-                          </View>
-                          <View style={styles.statItem}>
-                            <Text style={styles.statItemValue}>{player.shotsOnTarget}</Text>
-                            <Text style={styles.statItemLabel}>İsabetli Şut</Text>
-                          </View>
-                          <View style={styles.statItem}>
-                            <Text style={styles.statItemValue}>{player.shotsInsideBox}</Text>
-                            <Text style={styles.statItemLabel}>Kale Önü</Text>
+                          <View style={styles.heatmapField}>
+                            <LinearGradient
+                              colors={['rgba(31, 162, 166, 0.1)', 'rgba(16, 185, 129, 0.2)', 'rgba(239, 68, 68, 0.3)']}
+                              start={{ x: 0, y: 0.5 }}
+                              end={{ x: 1, y: 0.5 }}
+                              style={styles.heatmapGradient}
+                            >
+                              <Text style={styles.heatmapPlaceholder}>Canlı veri ile görüntülenir</Text>
+                            </LinearGradient>
                           </View>
                         </View>
-                      </View>
+
+                        {/* Detailed Stats */}
+                        <View style={styles.detailedStats}>
+                          {/* Gol & Şut */}
+                          {(player.goals > 0 || player.assists > 0 || player.shots > 0) && (
+                            <View style={styles.statSection}>
+                              <View style={styles.statSectionHeader}>
+                                <Text style={styles.statSectionEmoji}>⚽</Text>
+                                <Text style={styles.statSectionTitle}>Gol & Şut</Text>
+                              </View>
+                              <View style={styles.statSectionGrid}>
+                                <View style={styles.statItem}>
+                                  <Text style={styles.statItemValue}>{player.goals}</Text>
+                                  <Text style={styles.statItemLabel}>Gol</Text>
+                                </View>
+                                <View style={styles.statItem}>
+                                  <Text style={styles.statItemValue}>{player.assists}</Text>
+                                  <Text style={styles.statItemLabel}>Asist</Text>
+                                </View>
+                                <View style={styles.statItem}>
+                                  <Text style={styles.statItemValue}>{player.shotsOnTarget}</Text>
+                                  <Text style={styles.statItemLabel}>İsabetli</Text>
+                                </View>
+                                <View style={styles.statItem}>
+                                  <Text style={styles.statItemValue}>{player.shotsInsideBox}</Text>
+                                  <Text style={styles.statItemLabel}>Kale Önü</Text>
+                                </View>
+                              </View>
+                            </View>
+                          )}
+
+                          {/* Pas & Oyun Kurma */}
+                          {player.totalPasses > 0 && (
+                            <View style={styles.statSection}>
+                              <View style={styles.statSectionHeader}>
+                                <Text style={styles.statSectionEmoji}>🧠</Text>
+                                <Text style={styles.statSectionTitle}>Pas & Oyun Kurma</Text>
+                              </View>
+                              <View style={styles.statSectionGrid}>
+                                <View style={styles.statItem}>
+                                  <Text style={styles.statItemValue}>{player.passAccuracy}%</Text>
+                                  <Text style={styles.statItemLabel}>İsabet</Text>
+                                </View>
+                                <View style={styles.statItem}>
+                                  <Text style={styles.statItemValue}>{player.keyPasses}</Text>
+                                  <Text style={styles.statItemLabel}>Kilit Pas</Text>
+                                </View>
+                                <View style={styles.statItem}>
+                                  <Text style={styles.statItemValue}>{player.longPasses}</Text>
+                                  <Text style={styles.statItemLabel}>Uzun</Text>
+                                </View>
+                                <View style={styles.statItem}>
+                                  <Text style={styles.statItemValue}>{player.totalPasses}</Text>
+                                  <Text style={styles.statItemLabel}>Toplam</Text>
+                                </View>
+                              </View>
+                            </View>
+                          )}
+
+                          {/* Dribbling & Hücum */}
+                          {player.dribbleAttempts > 0 && (
+                            <View style={styles.statSection}>
+                              <View style={styles.statSectionHeader}>
+                                <Text style={styles.statSectionEmoji}>🏃</Text>
+                                <Text style={styles.statSectionTitle}>Dribling</Text>
+                              </View>
+                              <View style={styles.statSectionGrid}>
+                                <View style={styles.statItem}>
+                                  <Text style={styles.statItemValue}>
+                                    {player.dribbleSuccess}/{player.dribbleAttempts}
+                                  </Text>
+                                  <Text style={styles.statItemLabel}>Başarılı</Text>
+                                </View>
+                                <View style={styles.statItem}>
+                                  <Text style={styles.statItemValue}>{player.dispossessed}</Text>
+                                  <Text style={styles.statItemLabel}>Kayıp</Text>
+                                </View>
+                              </View>
+                            </View>
+                          )}
+
+                          {/* İkili Mücadele */}
+                          {player.duelsTotal > 0 && (
+                            <View style={styles.statSection}>
+                              <View style={styles.statSectionHeader}>
+                                <Text style={styles.statSectionEmoji}>⚔️</Text>
+                                <Text style={styles.statSectionTitle}>Mücadele</Text>
+                              </View>
+                              <View style={styles.statSectionGrid}>
+                                <View style={styles.statItem}>
+                                  <Text style={styles.statItemValue}>
+                                    {player.duelsWon}/{player.duelsTotal}
+                                  </Text>
+                                  <Text style={styles.statItemLabel}>İkili</Text>
+                                </View>
+                                <View style={styles.statItem}>
+                                  <Text style={styles.statItemValue}>
+                                    {player.aerialWon}/{player.aerialDuels}
+                                  </Text>
+                                  <Text style={styles.statItemLabel}>Hava</Text>
+                                </View>
+                              </View>
+                            </View>
+                          )}
+                        </View>
+                      </Animated.View>
                     )}
-
-                    {/* Pas & Oyun Kurma */}
-                    {player.totalPasses > 0 && (
-                      <View style={styles.statSection}>
-                        <View style={styles.statSectionHeader}>
-                          <Text style={styles.statSectionEmoji}>🧠</Text>
-                          <Text style={styles.statSectionTitle}>Pas & Oyun Kurma</Text>
-                        </View>
-                        <View style={styles.statSectionGrid}>
-                          <View style={styles.statItem}>
-                            <Text style={styles.statItemValue}>{player.passAccuracy}%</Text>
-                            <Text style={styles.statItemLabel}>İsabet</Text>
-                          </View>
-                          <View style={styles.statItem}>
-                            <Text style={styles.statItemValue}>{player.keyPasses}</Text>
-                            <Text style={styles.statItemLabel}>Kilit Pas</Text>
-                          </View>
-                          <View style={styles.statItem}>
-                            <Text style={styles.statItemValue}>{player.longPasses}</Text>
-                            <Text style={styles.statItemLabel}>Uzun Pas</Text>
-                          </View>
-                          <View style={styles.statItem}>
-                            <Text style={styles.statItemValue}>{player.totalPasses}</Text>
-                            <Text style={styles.statItemLabel}>Toplam</Text>
-                          </View>
-                        </View>
-                      </View>
-                    )}
-
-                    {/* Dribbling & Hücum */}
-                    {player.dribbleAttempts > 0 && (
-                      <View style={styles.statSection}>
-                        <View style={styles.statSectionHeader}>
-                          <Text style={styles.statSectionEmoji}>🏃</Text>
-                          <Text style={styles.statSectionTitle}>Dribling & Hücum</Text>
-                        </View>
-                        <View style={styles.statSectionGrid}>
-                          <View style={styles.statItem}>
-                            <Text style={styles.statItemValue}>
-                              {player.dribbleSuccess}/{player.dribbleAttempts}
-                            </Text>
-                            <Text style={styles.statItemLabel}>Dribling</Text>
-                          </View>
-                          <View style={styles.statItem}>
-                            <Text style={styles.statItemValue}>{player.dispossessed}</Text>
-                            <Text style={styles.statItemLabel}>Top Kaybı</Text>
-                          </View>
-                        </View>
-                      </View>
-                    )}
-
-                    {/* İkili Mücadele */}
-                    {player.duelsTotal > 0 && (
-                      <View style={styles.statSection}>
-                        <View style={styles.statSectionHeader}>
-                          <Text style={styles.statSectionEmoji}>⚔️</Text>
-                          <Text style={styles.statSectionTitle}>Mücadele</Text>
-                        </View>
-                        <View style={styles.statSectionGrid}>
-                          <View style={styles.statItem}>
-                            <Text style={styles.statItemValue}>
-                              {player.duelsWon}/{player.duelsTotal}
-                            </Text>
-                            <Text style={styles.statItemLabel}>İkili</Text>
-                          </View>
-                          <View style={styles.statItem}>
-                            <Text style={styles.statItemValue}>
-                              {player.aerialWon}/{player.aerialDuels}
-                            </Text>
-                            <Text style={styles.statItemLabel}>Hava</Text>
-                          </View>
-                        </View>
-                      </View>
-                    )}
-                  </View>
-                </Animated.View>
-              ))}
+                  </Animated.View>
+                );
+              })}
             </View>
 
             {/* Away Team Divider */}
@@ -619,188 +689,227 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
               <View style={styles.dividerLine} />
             </View>
 
-            {/* Away Team Players */}
+            {/* Away Team Players - Açılır/Kapanır */}
             <View style={styles.teamSection}>
-              {topPlayers.away.map((player, index) => (
-                <Animated.View
-                  key={`away-${player.number}`}
-                  entering={isWeb ? undefined : FadeIn.delay(index * 50)}
-                  style={styles.playerCard}
-                >
-                  {/* Player Header */}
-                  <View style={styles.playerHeader}>
-                    <View style={styles.playerInfo}>
-                      <View style={styles.playerNumberBadgeAway}>
-                        <Text style={styles.playerNumberText}>{player.number}</Text>
-                        {player.rating >= 8.5 && (
-                          <View style={styles.starBadgeAway}>
-                            <Text style={styles.starBadgeText}>⭐</Text>
-                          </View>
-                        )}
-                      </View>
-                      <View style={styles.playerDetails}>
-                        <View style={styles.playerNameRow}>
-                          <Text style={styles.playerName}>{player.name}</Text>
-                          {player.goals >= 2 && <Text style={styles.fireEmoji}>🔥</Text>}
+              {topPlayers.away.map((player, index) => {
+                const playerId = `away-${player.number}`;
+                const isExpanded = expandedPlayers.has(playerId);
+                
+                return (
+                  <Animated.View
+                    key={playerId}
+                    entering={isWeb ? undefined : FadeIn.delay(index * 50)}
+                    style={[styles.playerCard, styles.playerCardAway, isExpanded && styles.playerCardExpanded]}
+                  >
+                    {/* Player Header - Tıklanabilir */}
+                    <TouchableOpacity 
+                      style={styles.playerHeader}
+                      onPress={() => togglePlayerExpand(playerId)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.playerInfo}>
+                        <View style={styles.playerNumberBadgeAway}>
+                          <Text style={styles.playerNumberText}>{player.number}</Text>
+                          {player.rating >= 8.5 && (
+                            <View style={styles.starBadgeAway}>
+                              <Text style={styles.starBadgeText}>⭐</Text>
+                            </View>
+                          )}
                         </View>
-                        <Text style={styles.playerPosition}>
-                          {player.position} • {player.minutesPlayed}'
-                        </Text>
+                        <View style={styles.playerDetails}>
+                          <View style={styles.playerNameRow}>
+                            <Text style={styles.playerName}>{player.name}</Text>
+                            {player.goals >= 2 && <Text style={styles.fireEmoji}>🔥</Text>}
+                          </View>
+                          <Text style={styles.playerPosition}>
+                            {player.position} • {player.minutesPlayed}'
+                          </Text>
+                        </View>
                       </View>
-                    </View>
 
-                    {/* Rating Circle Away */}
-                    <View style={styles.ratingCircle}>
-                      <Svg width={48} height={48} style={styles.ratingSvg}>
-                        <Circle
-                          cx="24"
-                          cy="24"
-                          r="15"
-                          stroke="rgba(100, 116, 139, 0.2)"
-                          strokeWidth="2"
-                          fill="none"
+                      {/* Rating Circle + Expand Icon */}
+                      <View style={styles.headerRight}>
+                        <View style={styles.ratingCircle}>
+                          <Svg width={44} height={44} style={styles.ratingSvg}>
+                            <Circle
+                              cx="22"
+                              cy="22"
+                              r="14"
+                              stroke="rgba(100, 116, 139, 0.2)"
+                              strokeWidth="2"
+                              fill="none"
+                            />
+                            <Circle
+                              cx="22"
+                              cy="22"
+                              r="14"
+                              stroke={player.rating >= 8 ? '#10B981' : player.rating >= 7 ? '#F59E0B' : '#EF4444'}
+                              strokeWidth="2.5"
+                              fill="none"
+                              strokeDasharray={`${(player.rating / 10) * 88} 88`}
+                              strokeLinecap="round"
+                              rotation="-90"
+                              origin="22, 22"
+                            />
+                          </Svg>
+                          <View style={styles.ratingValue}>
+                            <Text style={[styles.ratingTextAway, player.rating >= 8 && { color: '#10B981' }]}>{player.rating}</Text>
+                          </View>
+                        </View>
+                        <Ionicons 
+                          name={isExpanded ? 'chevron-up' : 'chevron-down'} 
+                          size={18} 
+                          color="#F59E0B" 
                         />
-                        <Circle
-                          cx="24"
-                          cy="24"
-                          r="15"
-                          stroke="#F59E0B"
-                          strokeWidth="2"
-                          fill="none"
-                          strokeDasharray={`${(player.rating / 10) * 94.2} 94.2`}
-                          strokeLinecap="round"
-                          rotation="-90"
-                          origin="24, 24"
-                        />
-                      </Svg>
-                      <View style={styles.ratingValue}>
-                        <Text style={styles.ratingTextAway}>{player.rating}</Text>
+                      </View>
+                    </TouchableOpacity>
+
+                    {/* Quick Stats - Herzaman görünür */}
+                    <View style={styles.quickStats}>
+                      <View style={styles.quickStatAway}>
+                        <Text style={styles.quickStatValueAway}>{player.goals}</Text>
+                        <Text style={styles.quickStatLabel}>Gol</Text>
+                      </View>
+                      <View style={styles.quickStatAway}>
+                        <Text style={styles.quickStatValueAway}>{player.assists}</Text>
+                        <Text style={styles.quickStatLabel}>Asist</Text>
+                      </View>
+                      <View style={styles.quickStat}>
+                        <Text style={styles.quickStatValue}>{player.shots}</Text>
+                        <Text style={styles.quickStatLabel}>Şut</Text>
+                      </View>
+                      <View style={styles.quickStat}>
+                        <Text style={styles.quickStatValue}>{player.passAccuracy}%</Text>
+                        <Text style={styles.quickStatLabel}>Pas</Text>
                       </View>
                     </View>
-                  </View>
 
-                  {/* Quick Stats Grid - Away */}
-                  <View style={styles.quickStats}>
-                    <View style={styles.quickStatAway}>
-                      <Text style={styles.quickStatValueAway}>{player.goals}</Text>
-                      <Text style={styles.quickStatLabel}>Gol</Text>
-                    </View>
-                    <View style={styles.quickStatAway}>
-                      <Text style={styles.quickStatValueAway}>{player.assists}</Text>
-                      <Text style={styles.quickStatLabel}>Asist</Text>
-                    </View>
-                    <View style={styles.quickStat}>
-                      <Text style={styles.quickStatValue}>{player.shots}</Text>
-                      <Text style={styles.quickStatLabel}>Şut</Text>
-                    </View>
-                    <View style={styles.quickStat}>
-                      <Text style={styles.quickStatValue}>{player.passAccuracy}%</Text>
-                      <Text style={styles.quickStatLabel}>Pas</Text>
-                    </View>
-                  </View>
-
-                  {/* Detailed Stats - Same structure as home */}
-                  <View style={styles.detailedStats}>
-                    {(player.goals > 0 || player.assists > 0 || player.shots > 0) && (
-                      <View style={styles.statSection}>
-                        <View style={styles.statSectionHeader}>
-                          <Text style={styles.statSectionEmoji}>⚽</Text>
-                          <Text style={styles.statSectionTitle}>Gol & Şut</Text>
-                        </View>
-                        <View style={styles.statSectionGrid}>
-                          <View style={styles.statItem}>
-                            <Text style={styles.statItemValue}>{player.goals}</Text>
-                            <Text style={styles.statItemLabel}>Gol</Text>
+                    {/* Expanded Content */}
+                    {isExpanded && (
+                      <Animated.View entering={FadeIn.duration(200)}>
+                        {/* Isı Haritası Placeholder */}
+                        <View style={[styles.heatmapContainer, styles.heatmapContainerAway]}>
+                          <View style={styles.heatmapHeader}>
+                            <Ionicons name="flame" size={16} color="#F59E0B" />
+                            <Text style={styles.heatmapTitle}>Isı Haritası</Text>
                           </View>
-                          <View style={styles.statItem}>
-                            <Text style={styles.statItemValue}>{player.assists}</Text>
-                            <Text style={styles.statItemLabel}>Asist</Text>
-                          </View>
-                          <View style={styles.statItem}>
-                            <Text style={styles.statItemValue}>{player.shotsOnTarget}</Text>
-                            <Text style={styles.statItemLabel}>İsabetli Şut</Text>
-                          </View>
-                          <View style={styles.statItem}>
-                            <Text style={styles.statItemValue}>{player.shotsInsideBox}</Text>
-                            <Text style={styles.statItemLabel}>Kale Önü</Text>
+                          <View style={styles.heatmapField}>
+                            <LinearGradient
+                              colors={['rgba(245, 158, 11, 0.1)', 'rgba(239, 68, 68, 0.2)', 'rgba(245, 158, 11, 0.3)']}
+                              start={{ x: 0, y: 0.5 }}
+                              end={{ x: 1, y: 0.5 }}
+                              style={styles.heatmapGradient}
+                            >
+                              <Text style={styles.heatmapPlaceholder}>Canlı veri ile görüntülenir</Text>
+                            </LinearGradient>
                           </View>
                         </View>
-                      </View>
+
+                        {/* Detailed Stats */}
+                        <View style={styles.detailedStats}>
+                          {(player.goals > 0 || player.assists > 0 || player.shots > 0) && (
+                            <View style={styles.statSection}>
+                              <View style={styles.statSectionHeader}>
+                                <Text style={styles.statSectionEmoji}>⚽</Text>
+                                <Text style={styles.statSectionTitle}>Gol & Şut</Text>
+                              </View>
+                              <View style={styles.statSectionGrid}>
+                                <View style={styles.statItem}>
+                                  <Text style={styles.statItemValue}>{player.goals}</Text>
+                                  <Text style={styles.statItemLabel}>Gol</Text>
+                                </View>
+                                <View style={styles.statItem}>
+                                  <Text style={styles.statItemValue}>{player.assists}</Text>
+                                  <Text style={styles.statItemLabel}>Asist</Text>
+                                </View>
+                                <View style={styles.statItem}>
+                                  <Text style={styles.statItemValue}>{player.shotsOnTarget}</Text>
+                                  <Text style={styles.statItemLabel}>İsabetli</Text>
+                                </View>
+                                <View style={styles.statItem}>
+                                  <Text style={styles.statItemValue}>{player.shotsInsideBox}</Text>
+                                  <Text style={styles.statItemLabel}>Kale Önü</Text>
+                                </View>
+                              </View>
+                            </View>
+                          )}
+
+                          {player.totalPasses > 0 && (
+                            <View style={styles.statSection}>
+                              <View style={styles.statSectionHeader}>
+                                <Text style={styles.statSectionEmoji}>🧠</Text>
+                                <Text style={styles.statSectionTitle}>Pas & Oyun Kurma</Text>
+                              </View>
+                              <View style={styles.statSectionGrid}>
+                                <View style={styles.statItem}>
+                                  <Text style={styles.statItemValue}>{player.passAccuracy}%</Text>
+                                  <Text style={styles.statItemLabel}>İsabet</Text>
+                                </View>
+                                <View style={styles.statItem}>
+                                  <Text style={styles.statItemValue}>{player.keyPasses}</Text>
+                                  <Text style={styles.statItemLabel}>Kilit Pas</Text>
+                                </View>
+                                <View style={styles.statItem}>
+                                  <Text style={styles.statItemValue}>{player.longPasses}</Text>
+                                  <Text style={styles.statItemLabel}>Uzun</Text>
+                                </View>
+                                <View style={styles.statItem}>
+                                  <Text style={styles.statItemValue}>{player.totalPasses}</Text>
+                                  <Text style={styles.statItemLabel}>Toplam</Text>
+                                </View>
+                              </View>
+                            </View>
+                          )}
+
+                          {player.dribbleAttempts > 0 && (
+                            <View style={styles.statSection}>
+                              <View style={styles.statSectionHeader}>
+                                <Text style={styles.statSectionEmoji}>🏃</Text>
+                                <Text style={styles.statSectionTitle}>Dribling</Text>
+                              </View>
+                              <View style={styles.statSectionGrid}>
+                                <View style={styles.statItem}>
+                                  <Text style={styles.statItemValue}>
+                                    {player.dribbleSuccess}/{player.dribbleAttempts}
+                                  </Text>
+                                  <Text style={styles.statItemLabel}>Başarılı</Text>
+                                </View>
+                                <View style={styles.statItem}>
+                                  <Text style={styles.statItemValue}>{player.dispossessed}</Text>
+                                  <Text style={styles.statItemLabel}>Kayıp</Text>
+                                </View>
+                              </View>
+                            </View>
+                          )}
+
+                          {player.duelsTotal > 0 && (
+                            <View style={styles.statSection}>
+                              <View style={styles.statSectionHeader}>
+                                <Text style={styles.statSectionEmoji}>⚔️</Text>
+                                <Text style={styles.statSectionTitle}>Mücadele</Text>
+                              </View>
+                              <View style={styles.statSectionGrid}>
+                                <View style={styles.statItem}>
+                                  <Text style={styles.statItemValue}>
+                                    {player.duelsWon}/{player.duelsTotal}
+                                  </Text>
+                                  <Text style={styles.statItemLabel}>İkili</Text>
+                                </View>
+                                <View style={styles.statItem}>
+                                  <Text style={styles.statItemValue}>
+                                    {player.aerialWon}/{player.aerialDuels}
+                                  </Text>
+                                  <Text style={styles.statItemLabel}>Hava</Text>
+                                </View>
+                              </View>
+                            </View>
+                          )}
+                        </View>
+                      </Animated.View>
                     )}
-
-                    {player.totalPasses > 0 && (
-                      <View style={styles.statSection}>
-                        <View style={styles.statSectionHeader}>
-                          <Text style={styles.statSectionEmoji}>🧠</Text>
-                          <Text style={styles.statSectionTitle}>Pas & Oyun Kurma</Text>
-                        </View>
-                        <View style={styles.statSectionGrid}>
-                          <View style={styles.statItem}>
-                            <Text style={styles.statItemValue}>{player.passAccuracy}%</Text>
-                            <Text style={styles.statItemLabel}>İsabet</Text>
-                          </View>
-                          <View style={styles.statItem}>
-                            <Text style={styles.statItemValue}>{player.keyPasses}</Text>
-                            <Text style={styles.statItemLabel}>Kilit Pas</Text>
-                          </View>
-                          <View style={styles.statItem}>
-                            <Text style={styles.statItemValue}>{player.longPasses}</Text>
-                            <Text style={styles.statItemLabel}>Uzun Pas</Text>
-                          </View>
-                          <View style={styles.statItem}>
-                            <Text style={styles.statItemValue}>{player.totalPasses}</Text>
-                            <Text style={styles.statItemLabel}>Toplam</Text>
-                          </View>
-                        </View>
-                      </View>
-                    )}
-
-                    {player.dribbleAttempts > 0 && (
-                      <View style={styles.statSection}>
-                        <View style={styles.statSectionHeader}>
-                          <Text style={styles.statSectionEmoji}>🏃</Text>
-                          <Text style={styles.statSectionTitle}>Dribling & Hücum</Text>
-                        </View>
-                        <View style={styles.statSectionGrid}>
-                          <View style={styles.statItem}>
-                            <Text style={styles.statItemValue}>
-                              {player.dribbleSuccess}/{player.dribbleAttempts}
-                            </Text>
-                            <Text style={styles.statItemLabel}>Dribling</Text>
-                          </View>
-                          <View style={styles.statItem}>
-                            <Text style={styles.statItemValue}>{player.dispossessed}</Text>
-                            <Text style={styles.statItemLabel}>Top Kaybı</Text>
-                          </View>
-                        </View>
-                      </View>
-                    )}
-
-                    {player.duelsTotal > 0 && (
-                      <View style={styles.statSection}>
-                        <View style={styles.statSectionHeader}>
-                          <Text style={styles.statSectionEmoji}>⚔️</Text>
-                          <Text style={styles.statSectionTitle}>Mücadele</Text>
-                        </View>
-                        <View style={styles.statSectionGrid}>
-                          <View style={styles.statItem}>
-                            <Text style={styles.statItemValue}>
-                              {player.duelsWon}/{player.duelsTotal}
-                            </Text>
-                            <Text style={styles.statItemLabel}>İkili</Text>
-                          </View>
-                          <View style={styles.statItem}>
-                            <Text style={styles.statItemValue}>
-                              {player.aerialWon}/{player.aerialDuels}
-                            </Text>
-                            <Text style={styles.statItemLabel}>Hava</Text>
-                          </View>
-                        </View>
-                      </View>
-                    )}
-                  </View>
-                </Animated.View>
-              ))}
+                  </Animated.View>
+                );
+              })}
             </View>
           </View>
         )}
@@ -815,12 +924,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent', // ✅ Grid pattern görünsün - MatchDetail'den geliyor
   },
   
-  // Tabs - elite
+  // Tabs - Design System uyumlu, tamamen saydam
   tabsContainer: {
     flexDirection: 'row',
-    backgroundColor: '#1E293B', // Solid arka plan - grid görünmesin
-    borderBottomWidth: 1,
-    borderBottomColor: DARK_MODE.border,
+    backgroundColor: 'transparent', // ✅ Grid pattern tamamen görünsün
     paddingHorizontal: 12,
     paddingTop: 8,
     paddingBottom: 8,
@@ -828,14 +935,14 @@ const styles = StyleSheet.create({
   },
   tab: {
     flex: 1,
-    height: 48,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
-    borderRadius: 12,
-    backgroundColor: '#334155', // Solid arka plan - grid görünmesin
+    borderRadius: 10,
+    backgroundColor: 'rgba(30, 58, 58, 0.6)', // ✅ Yarı saydam
     borderWidth: 1,
-    borderColor: 'transparent',
+    borderColor: 'rgba(31, 162, 166, 0.1)',
   },
   tabText: {
     fontSize: 12,
@@ -847,8 +954,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   tabActive: {
-    backgroundColor: '#1D4044', // Solid arka plan - grid görünmesin (secondary tonu)
-    borderColor: `${BRAND.secondary}40`,
+    backgroundColor: 'rgba(31, 162, 166, 0.2)', // ✅ Aktif tab - daha belirgin
+    borderColor: BRAND.secondary,
   },
   tabIndicator: {
     position: 'absolute',
@@ -865,7 +972,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 8, // ✅ Kadro sekmesiyle aynı
+    paddingBottom: 140, // ✅ Bottom navigation bar için yeterli boşluk
   },
   
   // Match Stats
@@ -924,16 +1031,17 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   statRowCard: {
-    backgroundColor: DARK_MODE.card,
-    borderRadius: 14,
-    padding: 16,
+    backgroundColor: 'rgba(30, 58, 58, 0.6)', // ✅ Tema uyumlu arka plan
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 10,
     borderWidth: 1,
-    borderColor: DARK_MODE.border,
-    gap: 12,
+    borderColor: 'rgba(31, 162, 166, 0.15)',
+    gap: 10,
     ...Platform.select({
-      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 6 },
-      android: { elevation: 2 },
-      web: { boxShadow: '0 2px 12px rgba(0,0,0,0.08)' },
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 8 },
+      android: { elevation: 4 },
+      web: { boxShadow: '0 4px 16px rgba(0,0,0,0.15)' },
     }),
   },
   statValues: {
@@ -985,18 +1093,18 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   progressBarContainer: {
-    height: 10,
+    height: 12,
   },
   progressBar: {
     flex: 1,
     flexDirection: 'row',
-    backgroundColor: 'rgba(51, 65, 85, 0.5)',
-    borderRadius: 5,
+    backgroundColor: 'rgba(51, 65, 85, 0.3)',
+    borderRadius: 6,
     overflow: 'hidden',
     alignItems: 'stretch',
   },
   progressBarHome: {
-    backgroundColor: 'rgba(31, 162, 166, 0.4)',
+    backgroundColor: 'rgba(31, 162, 166, 0.5)',
     height: '100%',
     borderTopLeftRadius: 5,
     borderBottomLeftRadius: 5,
@@ -1070,29 +1178,43 @@ const styles = StyleSheet.create({
     letterSpacing: 1.2,
   },
   
-  // Player Card - elite
+  // Player Card - elite - açılır/kapanır yapı
   playerCard: {
-    backgroundColor: DARK_MODE.card,
+    backgroundColor: 'rgba(30, 58, 58, 0.7)',
     borderWidth: 1,
-    borderColor: DARK_MODE.border,
+    borderColor: 'rgba(31, 162, 166, 0.2)',
     borderRadius: 16,
-    padding: 16,
+    padding: 14,
+    marginBottom: 10,
+    overflow: 'hidden',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 10,
       },
-      android: { elevation: 3 },
-      web: { boxShadow: '0 4px 16px rgba(0,0,0,0.12)' },
+      android: { elevation: 5 },
+      web: { boxShadow: '0 4px 20px rgba(0,0,0,0.2)' },
     }),
+  },
+  playerCardAway: {
+    borderColor: 'rgba(245, 158, 11, 0.2)',
+  },
+  playerCardExpanded: {
+    borderColor: 'rgba(31, 162, 166, 0.4)',
+    backgroundColor: 'rgba(30, 58, 58, 0.85)',
   },
   playerHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: 10,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   playerInfo: {
     flexDirection: 'row',
@@ -1258,6 +1380,47 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     marginTop: 2,
     fontWeight: '600',
+  },
+  
+  // Isı Haritası - Placeholder
+  heatmapContainer: {
+    marginBottom: 12,
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.2)',
+    backgroundColor: 'rgba(31, 162, 166, 0.05)',
+  },
+  heatmapContainerAway: {
+    borderColor: 'rgba(245, 158, 11, 0.2)',
+    backgroundColor: 'rgba(245, 158, 11, 0.05)',
+  },
+  heatmapHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+  },
+  heatmapTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#F59E0B',
+  },
+  heatmapField: {
+    height: 60,
+    position: 'relative',
+  },
+  heatmapGradient: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  heatmapPlaceholder: {
+    fontSize: 11,
+    color: 'rgba(255, 255, 255, 0.4)',
+    fontStyle: 'italic',
   },
   
   // Detailed Stats - elite

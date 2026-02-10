@@ -1031,15 +1031,25 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
     }
   };
 
+  // ✅ handleSavePredictions'ı ref'te tut - sonsuz döngüyü önle
+  const handleSavePredictionsRef = React.useRef(handleSavePredictions);
+  React.useEffect(() => {
+    handleSavePredictionsRef.current = handleSavePredictions;
+  });
+  
+  // ✅ Stable wrapper function - ref üzerinden çağırır
+  const stableSavePredictions = React.useCallback(async () => {
+    return handleSavePredictionsRef.current();
+  }, []);
+  
   // ✅ Kaydedilmemiş değişiklik durumunu parent'a bildir (tab değiştiğinde sorulması için)
   // Kilit kırmızı (kilitli/kaydedilmiş) ise → kaydedilmemiş değişiklik YOK
   React.useEffect(() => {
     if (onHasUnsavedChanges) {
       const effectiveUnsaved = isPredictionLocked ? false : hasUnsavedChanges;
-      onHasUnsavedChanges(effectiveUnsaved, handleSavePredictions);
+      onHasUnsavedChanges(effectiveUnsaved, stableSavePredictions);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasUnsavedChanges, isPredictionLocked, onHasUnsavedChanges, handleSavePredictions]);
+  }, [hasUnsavedChanges, isPredictionLocked, onHasUnsavedChanges, stableSavePredictions]);
 
   // ✅ Maç başladıktan sonra +2 dakika içinde tahmin yapılmazsa veya kaydedilmezse, tahmin yapılmamış maç gibi davran
   React.useEffect(() => {

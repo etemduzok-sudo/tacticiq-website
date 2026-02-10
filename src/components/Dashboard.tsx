@@ -74,6 +74,8 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
   // ✅ Analiz Odağı Modal State
   const [analysisFocusModalVisible, setAnalysisFocusModalVisible] = useState(false);
   const [selectedMatchForAnalysis, setSelectedMatchForAnalysis] = useState<any>(null);
+  // ✅ İki favori takım maçlarında seçilen takım ID'si (analiz odağı seçildikten sonra kullanılır)
+  const [selectedPredictionTeamIdForAnalysis, setSelectedPredictionTeamIdForAnalysis] = useState<number | null>(null);
   // ✅ Tahmin silme popup state
   const [deletePredictionModal, setDeletePredictionModal] = useState<{ matchId: number; onDelete: () => void } | null>(null);
   // ✅ İki favori takım için tahmin silme modal state (seçilebilir seçenekler + onay butonu)
@@ -251,9 +253,11 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
         analysisFocus: focus,
         initialTab: 'squad', // Kadro sekmesiyle başla
         matchData: selectedMatchForAnalysis, // ✅ Maç verisi doğrudan geçiriliyor - API çağrısı yok!
+        predictionTeamId: selectedPredictionTeamIdForAnalysis, // ✅ İki favori takım maçlarında seçilen takım
       });
     }
     setSelectedMatchForAnalysis(null);
+    setSelectedPredictionTeamIdForAnalysis(null);
   };
   
   // ✅ Load favorite teams
@@ -1373,16 +1377,12 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
               text: 'Sil',
               style: 'destructive',
               onPress: async () => {
-                try {
-                  const matchId = deletePredictionModal.matchId;
-                  console.log('🗑️ Tahmin siliniyor, matchId:', matchId);
-                  // ✅ clearPredictionForMatch state'i otomatik günceller
-                  await clearPredictionForMatch(matchId);
-                  console.log('✅ Tahmin silme işlemi tamamlandı, matchId:', matchId);
-                } catch (error) {
-                  console.error('❌ Tahmin silme hatası:', error);
-                  Alert.alert('Hata', 'Tahmin silinirken bir hata oluştu. Lütfen tekrar deneyin.');
-                }
+                const matchId = deletePredictionModal.matchId;
+                console.log('🗑️ Tahmin siliniyor, matchId:', matchId);
+                // ✅ clearPredictionForMatch state'i otomatik günceller
+                await clearPredictionForMatch(matchId);
+                console.log('✅ Tahmin silme işlemi tamamlandı, matchId:', matchId);
+                // ✅ Başarılı - modal ConfirmModal tarafından kapatılacak
               },
             },
           ]}
@@ -1717,6 +1717,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
                     } else {
                       // Tahmin yok: analiz odağı seçimi göster
                       setSelectedMatchForAnalysis(match);
+                      setSelectedPredictionTeamIdForAnalysis(homeId); // ✅ Seçilen takım ID'sini sakla
                       setAnalysisFocusModalVisible(true);
                     }
                     setTeamSelectionModal(null);
@@ -1755,6 +1756,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
                     } else {
                       // Tahmin yok: analiz odağı seçimi göster
                       setSelectedMatchForAnalysis(match);
+                      setSelectedPredictionTeamIdForAnalysis(awayId); // ✅ Seçilen takım ID'sini sakla
                       setAnalysisFocusModalVisible(true);
                     }
                     setTeamSelectionModal(null);

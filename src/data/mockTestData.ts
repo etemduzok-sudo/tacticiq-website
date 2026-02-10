@@ -1491,3 +1491,459 @@ export function getPreferenceBorderStyle(percentage: number): { color: string; w
     return { color: 'rgba(100, 116, 139, 0.3)', width: 2, opacity: 0.7 };
   }
 }
+
+/**
+ * Pozisyon grubuna göre renk şeması
+ * Her pozisyon grubu farklı renk ile gösterilir - görsel çeşitlilik sağlar
+ */
+export function getPositionGroupColor(position: string): { 
+  primary: string; 
+  secondary: string; 
+  background: string;
+  text: string;
+  name: string;
+} {
+  const pos = position.toUpperCase();
+  
+  // Kaleci
+  if (pos === 'GK' || pos === 'G') {
+    return {
+      primary: '#F59E0B',      // Altın sarısı
+      secondary: '#FBBF24',
+      background: 'rgba(245, 158, 11, 0.12)',
+      text: '#F59E0B',
+      name: 'Kaleci'
+    };
+  }
+  
+  // Defans (CB, RB, LB, RWB, LWB)
+  if (['CB', 'RB', 'LB', 'RWB', 'LWB', 'SW', 'DEF'].some(p => pos.includes(p))) {
+    return {
+      primary: '#3B82F6',      // Mavi
+      secondary: '#60A5FA',
+      background: 'rgba(59, 130, 246, 0.12)',
+      text: '#60A5FA',
+      name: 'Defans'
+    };
+  }
+  
+  // Defansif Orta Saha (CDM, DM)
+  if (['CDM', 'DM', 'DMF'].some(p => pos.includes(p))) {
+    return {
+      primary: '#8B5CF6',      // Mor
+      secondary: '#A78BFA',
+      background: 'rgba(139, 92, 246, 0.12)',
+      text: '#A78BFA',
+      name: 'D. Orta Saha'
+    };
+  }
+  
+  // Merkez Orta Saha (CM, MF)
+  if (['CM', 'MF', 'CMF'].some(p => pos.includes(p))) {
+    return {
+      primary: '#1FA2A6',      // Turkuaz (marka rengi)
+      secondary: '#2DD4BF',
+      background: 'rgba(31, 162, 166, 0.12)',
+      text: '#2DD4BF',
+      name: 'Orta Saha'
+    };
+  }
+  
+  // Ofansif Orta Saha (CAM, AM, RM, LM)
+  if (['CAM', 'AM', 'AMF', 'RM', 'LM', 'RMF', 'LMF'].some(p => pos.includes(p))) {
+    return {
+      primary: '#10B981',      // Yeşil
+      secondary: '#34D399',
+      background: 'rgba(16, 185, 129, 0.12)',
+      text: '#34D399',
+      name: 'O. Orta Saha'
+    };
+  }
+  
+  // Kanatlar (RW, LW, WF)
+  if (['RW', 'LW', 'WF', 'RWF', 'LWF'].some(p => pos.includes(p))) {
+    return {
+      primary: '#EC4899',      // Pembe
+      secondary: '#F472B6',
+      background: 'rgba(236, 72, 153, 0.12)',
+      text: '#F472B6',
+      name: 'Kanat'
+    };
+  }
+  
+  // Forvet (ST, CF, FW, SS)
+  if (['ST', 'CF', 'FW', 'SS', 'ATT'].some(p => pos.includes(p))) {
+    return {
+      primary: '#EF4444',      // Kırmızı
+      secondary: '#F87171',
+      background: 'rgba(239, 68, 68, 0.12)',
+      text: '#F87171',
+      name: 'Forvet'
+    };
+  }
+  
+  // Varsayılan
+  return {
+    primary: '#6B7280',
+    secondary: '#9CA3AF',
+    background: 'rgba(107, 114, 128, 0.12)',
+    text: '#9CA3AF',
+    name: 'Oyuncu'
+  };
+}
+
+// ============================================================
+// 📊 MOCK MAÇ İSTATİSTİKLERİ
+// ============================================================
+
+/**
+ * Maç istatistikleri (API formatında)
+ */
+export interface MockMatchStatistic {
+  type: string;
+  home: number | string | null;
+  away: number | string | null;
+}
+
+/**
+ * Oyuncu istatistikleri
+ */
+export interface MockPlayerStats {
+  name: string;
+  number: number;
+  position: string;
+  rating: number;
+  minutesPlayed: number;
+  goals: number;
+  assists: number;
+  shots: number;
+  shotsOnTarget: number;
+  shotsInsideBox: number;
+  totalPasses: number;
+  passesCompleted: number;
+  passAccuracy: number;
+  keyPasses: number;
+  longPasses: number;
+  dribbleAttempts: number;
+  dribbleSuccess: number;
+  dispossessed: number;
+  tackles: number;
+  duelsTotal: number;
+  duelsWon: number;
+  aerialDuels: number;
+  aerialWon: number;
+}
+
+/**
+ * GS vs FB maçı istatistikleri
+ * Maç başladığında ve devam ederken dinamik olarak güncellenir
+ */
+export function getMockMatchStatistics(fixtureId: number): MockMatchStatistic[] | null {
+  if (!MOCK_TEST_ENABLED) return null;
+  
+  const matchStart = fixtureId === MOCK_MATCH_IDS.GS_FB ? getMatch1Start() : 
+                     fixtureId === MOCK_MATCH_IDS.REAL_BARCA ? getMatch2Start() : null;
+  
+  if (!matchStart) return null;
+  
+  const now = Date.now();
+  const elapsedMs = now - matchStart;
+  
+  // Maç başlamadıysa null döndür
+  if (elapsedMs < 0) return null;
+  
+  const elapsedMinutes = Math.min(90, Math.floor(elapsedMs / 60000));
+  
+  // İstatistikler maç süresine göre artıyor
+  const progressFactor = elapsedMinutes / 90;
+  
+  if (fixtureId === MOCK_MATCH_IDS.GS_FB) {
+    // GS 7-4 FB (veya 5-2 gibi yüksek skorlu derbi)
+    // Minimum değerler + progress'e göre artış
+    const minProgress = Math.max(0.3, progressFactor); // En az %30 göster
+    const homeGoals = elapsedMinutes >= 85 ? 7 : elapsedMinutes >= 70 ? 6 : elapsedMinutes >= 55 ? 5 : elapsedMinutes >= 35 ? 4 : elapsedMinutes >= 20 ? 3 : 2;
+    const awayGoals = elapsedMinutes >= 80 ? 4 : elapsedMinutes >= 60 ? 3 : elapsedMinutes >= 40 ? 2 : 1;
+    
+    return [
+      { type: 'Ball Possession', home: `${Math.round(56 + Math.random() * 4)}%`, away: `${Math.round(44 - Math.random() * 4)}%` },
+      { type: 'Total Shots', home: Math.max(8, Math.round(18 * minProgress)), away: Math.max(5, Math.round(12 * minProgress)) },
+      { type: 'Shots on Goal', home: Math.max(5, Math.round(9 * minProgress)), away: Math.max(3, Math.round(6 * minProgress)) },
+      { type: 'Shots off Goal', home: Math.max(2, Math.round(6 * minProgress)), away: Math.max(1, Math.round(4 * minProgress)) },
+      { type: 'Blocked Shots', home: Math.max(1, Math.round(3 * minProgress)), away: Math.max(1, Math.round(2 * minProgress)) },
+      { type: 'Corner Kicks', home: Math.max(4, Math.round(9 * minProgress)), away: Math.max(2, Math.round(6 * minProgress)) },
+      { type: 'Offsides', home: Math.max(1, Math.round(4 * minProgress)), away: Math.max(2, Math.round(5 * minProgress)) },
+      { type: 'Fouls', home: Math.max(5, Math.round(14 * minProgress)), away: Math.max(6, Math.round(16 * minProgress)) },
+      { type: 'Yellow Cards', home: elapsedMinutes >= 60 ? 3 : 2, away: elapsedMinutes >= 45 ? 4 : 3 },
+      { type: 'Red Cards', home: 0, away: elapsedMinutes >= 75 ? 1 : 0 },
+      { type: 'Goalkeeper Saves', home: Math.max(2, Math.round(4 * minProgress)), away: Math.max(4, Math.round(7 * minProgress)) },
+      { type: 'Total Passes', home: Math.max(180, Math.round(520 * minProgress)), away: Math.max(140, Math.round(420 * minProgress)) },
+      { type: 'Passes Accurate', home: Math.max(155, Math.round(450 * minProgress)), away: Math.max(110, Math.round(340 * minProgress)) },
+      { type: 'Passes %', home: '87%', away: '81%' },
+    ];
+  }
+  
+  if (fixtureId === MOCK_MATCH_IDS.REAL_BARCA) {
+    // Real 2-3 Barca (El Clasico)
+    const minProgress = Math.max(0.3, progressFactor);
+    
+    return [
+      { type: 'Ball Possession', home: `${Math.round(46 + Math.random() * 4)}%`, away: `${Math.round(54 - Math.random() * 4)}%` },
+      { type: 'Total Shots', home: Math.max(6, Math.round(14 * minProgress)), away: Math.max(8, Math.round(17 * minProgress)) },
+      { type: 'Shots on Goal', home: Math.max(3, Math.round(6 * minProgress)), away: Math.max(5, Math.round(9 * minProgress)) },
+      { type: 'Shots off Goal', home: Math.max(2, Math.round(5 * minProgress)), away: Math.max(2, Math.round(5 * minProgress)) },
+      { type: 'Blocked Shots', home: Math.max(1, Math.round(3 * minProgress)), away: Math.max(1, Math.round(3 * minProgress)) },
+      { type: 'Corner Kicks', home: Math.max(3, Math.round(6 * minProgress)), away: Math.max(5, Math.round(10 * minProgress)) },
+      { type: 'Offsides', home: Math.max(1, Math.round(3 * minProgress)), away: Math.max(1, Math.round(4 * minProgress)) },
+      { type: 'Fouls', home: Math.max(4, Math.round(12 * minProgress)), away: Math.max(5, Math.round(13 * minProgress)) },
+      { type: 'Yellow Cards', home: elapsedMinutes >= 50 ? 2 : 1, away: elapsedMinutes >= 40 ? 3 : 2 },
+      { type: 'Red Cards', home: 0, away: 0 },
+      { type: 'Goalkeeper Saves', home: Math.max(4, Math.round(7 * minProgress)), away: Math.max(2, Math.round(5 * minProgress)) },
+      { type: 'Total Passes', home: Math.max(160, Math.round(460 * minProgress)), away: Math.max(200, Math.round(540 * minProgress)) },
+      { type: 'Passes Accurate', home: Math.max(135, Math.round(395 * minProgress)), away: Math.max(175, Math.round(475 * minProgress)) },
+      { type: 'Passes %', home: '86%', away: '88%' },
+    ];
+  }
+  
+  return null;
+}
+
+/**
+ * Mock maç oyuncu istatistikleri
+ */
+export function getMockPlayerStatistics(fixtureId: number): { home: MockPlayerStats[], away: MockPlayerStats[] } | null {
+  if (!MOCK_TEST_ENABLED) return null;
+  
+  const matchStart = fixtureId === MOCK_MATCH_IDS.GS_FB ? getMatch1Start() : 
+                     fixtureId === MOCK_MATCH_IDS.REAL_BARCA ? getMatch2Start() : null;
+  
+  if (!matchStart) return null;
+  
+  const now = Date.now();
+  const elapsedMs = now - matchStart;
+  
+  // Maç başlamadıysa null döndür
+  if (elapsedMs < 0) return null;
+  
+  const elapsedMinutes = Math.min(90, Math.floor(elapsedMs / 60000));
+  
+  if (fixtureId === MOCK_MATCH_IDS.GS_FB) {
+    return {
+      home: [
+        {
+          name: 'Mauro Icardi',
+          number: 9,
+          position: 'ST',
+          rating: 8.7,
+          minutesPlayed: elapsedMinutes,
+          goals: 2,
+          assists: 1,
+          shots: 5,
+          shotsOnTarget: 3,
+          shotsInsideBox: 4,
+          totalPasses: Math.round(25 * (elapsedMinutes / 90)),
+          passesCompleted: Math.round(21 * (elapsedMinutes / 90)),
+          passAccuracy: 84,
+          keyPasses: 2,
+          longPasses: 1,
+          dribbleAttempts: 6,
+          dribbleSuccess: 4,
+          dispossessed: 2,
+          tackles: 0,
+          duelsTotal: 10,
+          duelsWon: 7,
+          aerialDuels: 4,
+          aerialWon: 3,
+        },
+        {
+          name: 'Wilfried Zaha',
+          number: 14,
+          position: 'LW',
+          rating: 8.2,
+          minutesPlayed: elapsedMinutes,
+          goals: 1,
+          assists: 1,
+          shots: 4,
+          shotsOnTarget: 2,
+          shotsInsideBox: 3,
+          totalPasses: Math.round(38 * (elapsedMinutes / 90)),
+          passesCompleted: Math.round(32 * (elapsedMinutes / 90)),
+          passAccuracy: 84,
+          keyPasses: 3,
+          longPasses: 2,
+          dribbleAttempts: 10,
+          dribbleSuccess: 7,
+          dispossessed: 3,
+          tackles: 2,
+          duelsTotal: 14,
+          duelsWon: 9,
+          aerialDuels: 2,
+          aerialWon: 1,
+        },
+        {
+          name: 'Barış Alper Yılmaz',
+          number: 7,
+          position: 'RW',
+          rating: 7.8,
+          minutesPlayed: elapsedMinutes,
+          goals: 0,
+          assists: 2,
+          shots: 3,
+          shotsOnTarget: 1,
+          shotsInsideBox: 2,
+          totalPasses: Math.round(42 * (elapsedMinutes / 90)),
+          passesCompleted: Math.round(36 * (elapsedMinutes / 90)),
+          passAccuracy: 86,
+          keyPasses: 4,
+          longPasses: 3,
+          dribbleAttempts: 8,
+          dribbleSuccess: 5,
+          dispossessed: 3,
+          tackles: 1,
+          duelsTotal: 12,
+          duelsWon: 7,
+          aerialDuels: 1,
+          aerialWon: 0,
+        },
+      ],
+      away: [
+        {
+          name: 'Edin Dzeko',
+          number: 9,
+          position: 'ST',
+          rating: 7.5,
+          minutesPlayed: elapsedMinutes,
+          goals: 1,
+          assists: 0,
+          shots: 6,
+          shotsOnTarget: 2,
+          shotsInsideBox: 4,
+          totalPasses: Math.round(20 * (elapsedMinutes / 90)),
+          passesCompleted: Math.round(15 * (elapsedMinutes / 90)),
+          passAccuracy: 75,
+          keyPasses: 1,
+          longPasses: 2,
+          dribbleAttempts: 4,
+          dribbleSuccess: 2,
+          dispossessed: 2,
+          tackles: 0,
+          duelsTotal: 12,
+          duelsWon: 5,
+          aerialDuels: 8,
+          aerialWon: 5,
+        },
+        {
+          name: 'Dusan Tadic',
+          number: 10,
+          position: 'CAM',
+          rating: 7.2,
+          minutesPlayed: elapsedMinutes,
+          goals: 0,
+          assists: 1,
+          shots: 2,
+          shotsOnTarget: 1,
+          shotsInsideBox: 1,
+          totalPasses: Math.round(55 * (elapsedMinutes / 90)),
+          passesCompleted: Math.round(48 * (elapsedMinutes / 90)),
+          passAccuracy: 87,
+          keyPasses: 3,
+          longPasses: 5,
+          dribbleAttempts: 5,
+          dribbleSuccess: 3,
+          dispossessed: 2,
+          tackles: 2,
+          duelsTotal: 10,
+          duelsWon: 5,
+          aerialDuels: 2,
+          aerialWon: 1,
+        },
+        {
+          name: 'Ferdi Kadıoğlu',
+          number: 2,
+          position: 'LB',
+          rating: 7.0,
+          minutesPlayed: elapsedMinutes,
+          goals: 0,
+          assists: 0,
+          shots: 1,
+          shotsOnTarget: 0,
+          shotsInsideBox: 0,
+          totalPasses: Math.round(48 * (elapsedMinutes / 90)),
+          passesCompleted: Math.round(42 * (elapsedMinutes / 90)),
+          passAccuracy: 88,
+          keyPasses: 2,
+          longPasses: 6,
+          dribbleAttempts: 3,
+          dribbleSuccess: 2,
+          dispossessed: 1,
+          tackles: 4,
+          duelsTotal: 8,
+          duelsWon: 5,
+          aerialDuels: 1,
+          aerialWon: 1,
+        },
+      ],
+    };
+  }
+  
+  // Real vs Barcelona için de benzer yapı
+  if (fixtureId === MOCK_MATCH_IDS.REAL_BARCA) {
+    return {
+      home: [
+        {
+          name: 'Vinicius Jr',
+          number: 7,
+          position: 'LW',
+          rating: 8.5,
+          minutesPlayed: elapsedMinutes,
+          goals: 1,
+          assists: 1,
+          shots: 4,
+          shotsOnTarget: 2,
+          shotsInsideBox: 3,
+          totalPasses: Math.round(35 * (elapsedMinutes / 90)),
+          passesCompleted: Math.round(28 * (elapsedMinutes / 90)),
+          passAccuracy: 80,
+          keyPasses: 3,
+          longPasses: 1,
+          dribbleAttempts: 12,
+          dribbleSuccess: 8,
+          dispossessed: 4,
+          tackles: 1,
+          duelsTotal: 16,
+          duelsWon: 10,
+          aerialDuels: 2,
+          aerialWon: 1,
+        },
+      ],
+      away: [
+        {
+          name: 'Robert Lewandowski',
+          number: 9,
+          position: 'ST',
+          rating: 8.3,
+          minutesPlayed: elapsedMinutes,
+          goals: 2,
+          assists: 0,
+          shots: 5,
+          shotsOnTarget: 3,
+          shotsInsideBox: 4,
+          totalPasses: Math.round(22 * (elapsedMinutes / 90)),
+          passesCompleted: Math.round(18 * (elapsedMinutes / 90)),
+          passAccuracy: 82,
+          keyPasses: 1,
+          longPasses: 1,
+          dribbleAttempts: 4,
+          dribbleSuccess: 2,
+          dispossessed: 2,
+          tackles: 0,
+          duelsTotal: 10,
+          duelsWon: 6,
+          aerialDuels: 6,
+          aerialWon: 4,
+        },
+      ],
+    };
+  }
+  
+  return null;
+}

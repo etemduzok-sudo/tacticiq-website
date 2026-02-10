@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { View, Text, Modal, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, Modal, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 export type ConfirmButton = {
@@ -146,6 +146,13 @@ export function ConfirmModal({
                 onPress={async () => {
                   // ✅ Çift tıklama koruması
                   if (isProcessing) return;
+                  
+                  // Cancel butonlarını hemen işle, bekletme
+                  if (b.style === 'cancel') {
+                    b.onPress();
+                    return;
+                  }
+                  
                   setIsProcessing(true);
                   
                   try {
@@ -153,11 +160,18 @@ export function ConfirmModal({
                     if (result instanceof Promise) {
                       await result;
                     }
-                  } catch (error) {
+                    // ✅ Başarılı olursa modalı kapat
+                    onRequestClose?.();
+                  } catch (error: any) {
                     console.error('Button onPress error:', error);
+                    // ❌ Hata durumunda kullanıcıya bildir
+                    Alert.alert(
+                      'Hata',
+                      error?.message || 'İşlem sırasında bir hata oluştu.',
+                      [{ text: 'Tamam', style: 'default', onPress: () => onRequestClose?.() }]
+                    );
                   } finally {
                     setIsProcessing(false);
-                    onRequestClose?.();
                   }
                 }}
                 activeOpacity={0.8}

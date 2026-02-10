@@ -123,17 +123,21 @@ export function useMatchesWithPredictions(matchIds: number[]) {
         console.log('⚠️ Silinecek anahtar bulunamadı, matchId:', matchId, 'teamId:', teamId);
       }
       
-      // ✅ Veritabanından da tahminleri temizle
-      try {
-        const userDataStr = await AsyncStorage.getItem(STORAGE_KEYS.USER);
-        const userData = userDataStr ? JSON.parse(userDataStr) : null;
-        const userId = userData?.id;
-        if (userId) {
-          await predictionsDb.deletePredictionsByMatch(userId, String(matchId));
+      // ✅ Veritabanından da tahminleri temizle - arka planda, beklemeden
+      // UI'ı bloklamadan async olarak çalıştır
+      (async () => {
+        try {
+          const userDataStr = await AsyncStorage.getItem(STORAGE_KEYS.USER);
+          const userData = userDataStr ? JSON.parse(userDataStr) : null;
+          const userId = userData?.id;
+          if (userId) {
+            await predictionsDb.deletePredictionsByMatch(userId, String(matchId));
+            console.log('✅ Veritabanından tahmin silindi');
+          }
+        } catch (dbError) {
+          console.warn('Database cleanup failed (non-blocking):', dbError);
         }
-      } catch (dbError) {
-        console.warn('Database cleanup failed:', dbError);
-      }
+      })();
       
       // ✅ State güncelleme stratejisi:
       // - teamId verilmişse: diğer takımın tahmini hala olabilir, refresh() ile kontrol et

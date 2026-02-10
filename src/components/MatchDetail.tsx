@@ -87,8 +87,15 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
   const [initialTabSet, setInitialTabSet] = useState(false);
   const [coaches, setCoaches] = useState<{ home: string; away: string }>({ home: '', away: '' });
   const [countdownTicker, setCountdownTicker] = useState(0); // ✅ Geri sayım için ticker
-  const { favoriteTeams } = useFavoriteTeams();
+  const { favoriteTeams, loading: favoriteTeamsLoading } = useFavoriteTeams();
   const favoriteTeamIds = React.useMemo(() => favoriteTeams?.map(t => t.id) ?? [], [favoriteTeams]);
+  
+  // ✅ Debug: Favori takımların yüklenme durumu
+  React.useEffect(() => {
+    if (!favoriteTeamsLoading && favoriteTeamIds.length > 0) {
+      console.log('✅ [MatchDetail] Favori takımlar hazır:', favoriteTeamIds);
+    }
+  }, [favoriteTeamsLoading, favoriteTeamIds]);
   const [showAnalysisFocusModal, setShowAnalysisFocusModal] = useState(false);
   const [analysisFocusOverride, setAnalysisFocusOverride] = useState<AnalysisFocusType | null>(null);
   const [showResetPredictionsModal, setShowResetPredictionsModal] = useState(false);
@@ -916,8 +923,8 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
   // ✅ "Hangi favori takıma tahmin yapmak istersiniz?" modal'ı kaldırıldı
   // Dashboard'da zaten maç kartına tıklayınca takım seçimi yapılıyor
 
-  // Loading state
-  if (loading || !matchData) {
+  // Loading state - favoriteTeamIds hazır olana kadar bekle
+  if (loading || !matchData || favoriteTeamsLoading) {
     return (
       <View style={[styles.container, styles.centerContent]}>
         <ActivityIndicator size="large" color="#1FA2A6" />
@@ -1000,9 +1007,11 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
           }
         }
         
+        // ✅ MatchSquad her zaman render edilir - favoriteTeamIds boş olsa bile ev sahibi takım seçilir
+        // ✅ favoriteTeamIds değiştiğinde yeniden mount et (key değişir)
         return (
           <MatchSquad
-            key={`squad-${matchId}-${predictionTeamIdForProps ?? 'all'}`}
+            key={`squad-${matchId}-${predictionTeamIdForProps ?? 'all'}-fav${favoriteTeamIds.length}`}
             matchData={matchData}
             matchId={matchId}
             lineups={lineups}

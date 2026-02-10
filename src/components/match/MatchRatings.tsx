@@ -171,6 +171,9 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
   const [squadPlayers, setSquadPlayers] = useState<Player[]>([]);
   const [squadLoading, setSquadLoading] = useState(false);
   
+  // 🗑️ Silme onay modal state
+  const [deleteConfirmPlayer, setDeleteConfirmPlayer] = useState<{ id: number; name: string } | null>(null);
+  
   // Favori takım ID'sini belirle (önce favori takım, yoksa ev sahibi)
   const homeTeamId = matchData?.homeTeam?.id || matchData?.teams?.home?.id;
   const awayTeamId = matchData?.awayTeam?.id || matchData?.teams?.away?.id;
@@ -408,14 +411,42 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
   const sortedPlayers = [...playersFromLineups].sort((a, b) => a.number - b.number);
 
   // Topluluk değerlendirme verileri (mock - ileride API'den gelecek)
-  const getPlayerCommunityData = useCallback((playerId: number) => {
+  const getPlayerCommunityData = useCallback((playerId: number, position?: string) => {
     // Her oyuncu için rastgele ama tutarlı mock veri
     const seed = playerId % 100;
     const voters = 200 + (seed * 13) % 800;
-    const communityAvg = 5.5 + ((seed * 7) % 35) / 10;
+    
+    // Pozisyona göre doğru kategori ID'lerini kullan
+    const isGK = position === 'GK';
+    
+    // Her kategori için topluluk puanı - tutarlı olması için seed bazlı
+    // ✅ Kategori ID'leri OUTFIELD_RATING_CATEGORIES ve GK_RATING_CATEGORIES ile eşleşmeli
+    const categoryRatings: Record<string, number> = isGK ? {
+      // Kaleci kategorileri
+      reflexes: 5.0 + ((seed * 3) % 40) / 10,
+      positioning: 4.8 + ((seed * 5) % 45) / 10,
+      rushing: 5.2 + ((seed * 4) % 38) / 10,
+      handling: 5.0 + ((seed * 6) % 42) / 10,
+      communication: 5.5 + ((seed * 2) % 35) / 10,
+      longball: 5.3 + ((seed * 7) % 40) / 10,
+    } : {
+      // Saha oyuncusu kategorileri
+      pace: 5.0 + ((seed * 3) % 40) / 10,
+      shooting: 4.8 + ((seed * 5) % 45) / 10,
+      passing: 5.2 + ((seed * 4) % 38) / 10,
+      dribbling: 5.0 + ((seed * 6) % 42) / 10,
+      defending: 5.5 + ((seed * 2) % 35) / 10,
+      physical: 5.3 + ((seed * 7) % 40) / 10,
+    };
+    
+    // Ortalama: kategorilerin gerçek ortalaması
+    const categoryValues = Object.values(categoryRatings);
+    const communityAvg = categoryValues.reduce((a, b) => a + b, 0) / categoryValues.length;
+    
     return {
       voters,
       communityAvg: Math.min(9.5, communityAvg),
+      categoryRatings,
     };
   }, []);
 
@@ -525,12 +556,12 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
     return total / categories.length;
   }, [playerRatings, sortedPlayers]);
 
-  // Puan rengini hesapla
+  // Puan rengini hesapla - Design System uyumlu
   const getRatingColor = (rating: number): string => {
-    if (rating >= 8) return '#22C55E';
-    if (rating >= 6) return '#F59E0B';
-    if (rating >= 4) return '#F97316';
-    return '#EF4444';
+    if (rating >= 8) return '#1FA2A6'; // ✅ Turkuaz (iyi)
+    if (rating >= 6) return '#C9A44C'; // ✅ Altın (orta-iyi)
+    if (rating >= 4) return '#F59E0B'; // Sarı (orta)
+    return '#8C3A3A'; // ✅ Design System: Error rengi (kötü)
   };
 
   // 🌟 PREDICTION SCORING STATE
@@ -814,7 +845,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
           style={styles.headerCard}
         >
           <LinearGradient
-            colors={['rgba(15, 23, 42, 0.95)', 'rgba(5, 150, 105, 0.15)', 'rgba(15, 23, 42, 0.95)']}
+            colors={['rgba(15, 42, 36, 0.95)', 'rgba(31, 162, 166, 0.15)', 'rgba(15, 42, 36, 0.95)']} // ✅ Design System
             style={styles.headerGradient}
           >
             {/* Premium Badge */}
@@ -839,7 +870,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
             {/* Score Comparison - Premium Design */}
             <View style={styles.scoreComparisonCard}>
               <LinearGradient
-                colors={['rgba(31, 162, 166, 0.08)', 'rgba(0, 0, 0, 0.2)', 'rgba(245, 158, 11, 0.08)']}
+                colors={['rgba(31, 162, 166, 0.1)', 'rgba(15, 42, 36, 0.3)', 'rgba(201, 164, 76, 0.1)']} // ✅ Design System
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.scoreComparisonGradient}
@@ -869,8 +900,9 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
                         fill="none"
                         strokeDasharray={`${(userScore / 10) * 282.7} 282.7`}
                         strokeLinecap="round"
-                        rotation="-90"
-                        origin="55, 55"
+                        rotation={-90}
+                        originX={55}
+                        originY={55}
                       />
                     </Svg>
                     <View style={styles.scoreValue}>
@@ -890,8 +922,8 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
                 {/* Community Score */}
                 <View style={styles.scoreColumn}>
                   <View style={styles.scoreLabelRow}>
-                    <Ionicons name="people" size={12} color="#F59E0B" />
-                    <Text style={[styles.scoreLabel, { color: '#F59E0B' }]}>TOPLULUK</Text>
+                    <Ionicons name="people" size={12} color="#C9A44C" /> {/* ✅ Altın */}
+                    <Text style={[styles.scoreLabel, { color: '#C9A44C' }]}>TOPLULUK</Text>
                   </View>
                   <View style={styles.scoreCircle}>
                     <Svg width={110} height={110} style={styles.scoreSvg}>
@@ -899,7 +931,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
                         cx="55"
                         cy="55"
                         r="45"
-                        stroke="rgba(245, 158, 11, 0.12)"
+                        stroke="rgba(201, 164, 76, 0.15)" /* ✅ Altın */
                         strokeWidth="6"
                         fill="none"
                       />
@@ -907,13 +939,14 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
                         cx="55"
                         cy="55"
                         r="45"
-                        stroke="#F59E0B"
+                        stroke="#C9A44C" /* ✅ Altın */
                         strokeWidth="6"
                         fill="none"
                         strokeDasharray={`${(communityScore / 10) * 282.7} 282.7`}
                         strokeLinecap="round"
-                        rotation="-90"
-                        origin="55, 55"
+                        rotation={-90}
+                        originX={55}
+                        originY={55}
                       />
                     </Svg>
                     <View style={styles.scoreValue}>
@@ -1102,7 +1135,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
                   >
                     {/* Jersey Number */}
                     <LinearGradient
-                      colors={isGK ? ['#F59E0B', '#92400E'] : ['#1FA2A6', '#0F2A24']}
+                      colors={isGK ? ['#C9A44C', '#8B6914'] : ['#1FA2A6', '#0F2A24']} // ✅ Design System
                       style={styles.playerJerseyGradient}
                     >
                       <Text style={styles.playerJerseyNumber}>{player.number}</Text>
@@ -1120,148 +1153,214 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
                       </View>
                     </View>
 
-                    {/* Score Badge + Arrow */}
+                    {/* Score Badges + Arrow */}
                     <View style={styles.playerRightSection}>
-                      {hasRatings && (
-                        <View style={[styles.playerScoreBadge, { backgroundColor: `${getRatingColor(avgRating)}20`, borderColor: `${getRatingColor(avgRating)}40` }]}>
-                          <Text style={[styles.playerScoreText, { color: getRatingColor(avgRating) }]}>
-                            {avgRating.toFixed(1)}
+                      {/* Topluluk Puanı (Sol) */}
+                      <View style={styles.communityScoreBadge}>
+                        <Ionicons name="people" size={10} color="#C9A44C" />
+                        <Text style={styles.communityScoreText}>
+                          {getPlayerCommunityData(player.id, player.position).communityAvg.toFixed(1)}
+                        </Text>
+                      </View>
+                      
+                      {/* Kullanıcı Puanı (Sağ) - Silme butonu ile */}
+                      <View style={styles.userScoreBadgeWrapper}>
+                        {hasRatings && !isExpanded && (
+                          <TouchableOpacity
+                            style={styles.deleteRatingBtnCorner}
+                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                            activeOpacity={0.6}
+                            onPress={() => {
+                              console.log('🗑️ Delete rating button pressed for:', player.name);
+                              setDeleteConfirmPlayer({ id: player.id, name: player.name });
+                            }}
+                          >
+                            <Ionicons name="close" size={12} color="#FFF" />
+                          </TouchableOpacity>
+                        )}
+                        <View style={[
+                          styles.userScoreBadge, 
+                          hasRatings 
+                            ? { backgroundColor: `${getRatingColor(avgRating)}25`, borderColor: getRatingColor(avgRating) }
+                            : { backgroundColor: 'rgba(71, 85, 105, 0.3)', borderColor: '#475569' }
+                        ]}>
+                          <Text style={[
+                            styles.userScoreText, 
+                            { color: hasRatings ? getRatingColor(avgRating) : '#64748B' }
+                          ]}>
+                            {hasRatings ? avgRating.toFixed(1) : '—'}
                           </Text>
                         </View>
-                      )}
+                      </View>
+                      
                       <Ionicons
                         name={isExpanded ? 'chevron-up' : 'chevron-down'}
-                        size={20}
+                        size={18}
                         color={isExpanded ? BRAND.secondary : '#64748B'}
                       />
                     </View>
                   </TouchableOpacity>
 
-                  {/* Expanded Rating Panel - Premium */}
+                  {/* Expanded Rating Panel - FIFA Style */}
                   {isExpanded && (
                     <Animated.View
                       entering={!isWeb && FadeIn ? FadeIn.duration(200) : undefined}
-                      style={styles.playerRatingPanel}
+                      style={styles.fifaRatingPanel}
                     >
-                      {/* Sizin Puanınız vs Topluluk Puanı */}
                       {(() => {
-                        const communityData = getPlayerCommunityData(player.id);
+                        const communityData = getPlayerCommunityData(player.id, player.position);
+                        const userScore = hasRatings ? avgRating : 0;
+                        const communityScore = communityData.communityAvg;
+                        
                         return (
-                          <View style={styles.playerScoreComparisonCard}>
-                            <View style={styles.playerScoreCompRow}>
-                              {/* Sizin Puanınız */}
-                              <View style={styles.playerScoreCompCol}>
-                                <View style={styles.playerScoreCompIconRow}>
-                                  <Ionicons name="person" size={11} color="#1FA2A6" />
-                                  <Text style={styles.playerScoreCompLabel}>Sizin Puanınız</Text>
-                                </View>
-                                <Text style={[styles.playerScoreCompValue, { color: hasRatings ? getRatingColor(avgRating) : '#475569' }]}>
-                                  {hasRatings ? avgRating.toFixed(1) : '—'}
+                          <View style={styles.fifaContainer}>
+                            {/* 🏆 ÜST: BÜYÜK PUAN KARTI - FIFA Stili */}
+                            <LinearGradient
+                              colors={['#0F2A24', '#1E3A3A', '#0F2A24']} // ✅ Design System
+                              style={styles.fifaScoreCard}
+                              start={{ x: 0, y: 0 }}
+                              end={{ x: 1, y: 1 }}
+                            >
+                              {/* Sol: Kullanıcı Puanı */}
+                              <View style={styles.fifaScoreSide}>
+                                <Text style={styles.fifaScoreLabel}>SİZİN PUANINIZ</Text>
+                                <Text style={[styles.fifaScoreBig, { color: hasRatings ? getRatingColor(userScore) : '#475569' }]}>
+                                  {hasRatings ? userScore.toFixed(1) : '—'}
                                 </Text>
+                                <View style={styles.fifaScoreStars}>
+                                  {[1, 2, 3, 4, 5].map(star => (
+                                    <Ionicons
+                                      key={star}
+                                      name={userScore >= star * 2 ? 'star' : userScore >= star * 2 - 1 ? 'star-half' : 'star-outline'}
+                                      size={12}
+                                      color={userScore >= star * 2 - 1 ? '#FFD700' : '#475569'}
+                                    />
+                                  ))}
+                                </View>
                               </View>
 
-                              {/* VS */}
-                              <View style={styles.playerScoreCompVs}>
-                                <Text style={styles.playerScoreCompVsText}>vs</Text>
+                              {/* Orta: VS Badge */}
+                              <View style={styles.fifaVsBadge}>
+                                <Text style={styles.fifaVsText}>VS</Text>
                               </View>
 
-                              {/* Topluluk Puanı */}
-                              <View style={styles.playerScoreCompCol}>
-                                <View style={styles.playerScoreCompIconRow}>
-                                  <Ionicons name="people" size={11} color="#F59E0B" />
-                                  <Text style={styles.playerScoreCompLabel}>Topluluk</Text>
-                                </View>
-                                <Text style={[styles.playerScoreCompValue, { color: '#F59E0B' }]}>
-                                  {communityData.communityAvg.toFixed(1)}
+                              {/* Sağ: Topluluk Puanı */}
+                              <View style={styles.fifaScoreSide}>
+                                <Text style={styles.fifaScoreLabel}>TOPLULUK</Text>
+                                <Text style={[styles.fifaScoreBig, { color: '#C9A44C' }]}>
+                                  {communityScore.toFixed(1)}
                                 </Text>
+                                <View style={styles.fifaVotersBadge}>
+                                  <Ionicons name="people" size={10} color="#C9A44C" />
+                                  <Text style={styles.fifaVotersText}>{communityData.voters}</Text>
+                                </View>
+                              </View>
+                            </LinearGradient>
+
+                            {/* ⚡ HIZLI PUAN SEÇİCİ - Slider Stili */}
+                            <View style={styles.fifaQuickPicker}>
+                              <Text style={styles.fifaQuickLabel}>⚡ HIZLI PUAN</Text>
+                              <View style={styles.fifaQuickSlider}>
+                                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((score) => {
+                                  const isActive = hasRatings && Math.round(avgRating) === score;
+                                  const getScoreGradient = (s: number): [string, string] => {
+                                    if (s >= 9) return ['#00F260', '#0575E6'];
+                                    if (s >= 7) return ['#11998e', '#38ef7d'];
+                                    if (s >= 5) return ['#F7971E', '#FFD200'];
+                                    if (s >= 3) return ['#f12711', '#f5af19'];
+                                    return ['#CB356B', '#BD3F32'];
+                                  };
+                                  
+                                  return (
+                                    <TouchableOpacity
+                                      key={score}
+                                      onPress={() => setAllRatings(player.id, player.position, score)}
+                                      style={styles.fifaQuickBtnWrap}
+                                    >
+                                      {isActive ? (
+                                        <LinearGradient
+                                          colors={getScoreGradient(score)}
+                                          style={styles.fifaQuickBtnActive}
+                                        >
+                                          <Text style={styles.fifaQuickBtnTextActive}>{score}</Text>
+                                        </LinearGradient>
+                                      ) : (
+                                        <View style={styles.fifaQuickBtn}>
+                                          <Text style={styles.fifaQuickBtnText}>{score}</Text>
+                                        </View>
+                                      )}
+                                    </TouchableOpacity>
+                                  );
+                                })}
                               </View>
                             </View>
-                            {/* Voters */}
-                            <View style={styles.playerScoreCompVotersRow}>
-                              <Ionicons name="people-outline" size={11} color="#64748B" />
-                              <Text style={styles.playerScoreCompVotersText}>
-                                {communityData.voters.toLocaleString()} kişi değerlendirdi
-                              </Text>
+
+                            {/* 📊 KATEGORİLER - Hexagon Radar Stili */}
+                            <View style={styles.fifaCategorySection}>
+                              <Text style={styles.fifaCategoryTitle}>📊 YETENEKLERİ PUANLA</Text>
+                              
+                              {/* 2 Satır x 3 Sütun Grid */}
+                              <View style={styles.fifaCategoryGrid}>
+                                {categories.map((category) => {
+                                  const currentRating = playerRatings[player.id]?.[category.id] || 5;
+                                  const communityRating = communityData.categoryRatings[category.id] || 5;
+                                  const percentage = (currentRating / 10) * 100;
+                                  
+                                  return (
+                                    <View key={category.id} style={styles.fifaCategoryCard}>
+                                      {/* Kategori Başlığı */}
+                                      <View style={styles.fifaCatHeader}>
+                                        <Text style={styles.fifaCatEmoji}>{category.emoji}</Text>
+                                        <View style={styles.fifaCatTitleWrap}>
+                                          <Text style={styles.fifaCatTitle}>{category.title}</Text>
+                                          <Text style={[styles.fifaCatScore, { color: category.color }]}>
+                                            {currentRating.toFixed(1)}
+                                          </Text>
+                                        </View>
+                                      </View>
+                                      
+                                      {/* Progress Bar - Gradient */}
+                                      <View style={styles.fifaCatBarContainer}>
+                                        <View style={styles.fifaCatBarBg}>
+                                          <LinearGradient
+                                            colors={[category.color, `${category.color}88`]}
+                                            start={{ x: 0, y: 0 }}
+                                            end={{ x: 1, y: 0 }}
+                                            style={[styles.fifaCatBarFill, { width: `${percentage}%` }]}
+                                          />
+                                          {/* Topluluk İşareti */}
+                                          <View style={[styles.fifaCatCommunityMarker, { left: `${(communityRating / 10) * 100}%` }]}>
+                                            <View style={styles.fifaCatCommunityDot} />
+                                          </View>
+                                        </View>
+                                        <Text style={styles.fifaCatCommunityScore}>{communityRating.toFixed(1)}</Text>
+                                      </View>
+                                      
+                                      {/* +/- Butonları */}
+                                      <View style={styles.fifaCatBtnRow}>
+                                        <TouchableOpacity
+                                          style={styles.fifaCatBtnMinus}
+                                          onPress={() => updatePlayerRating(player.id, category.id, Math.max(1, currentRating - 0.5))}
+                                        >
+                                          <Text style={styles.fifaCatBtnMinusText}>−</Text>
+                                        </TouchableOpacity>
+                                        
+                                        <TouchableOpacity
+                                          style={styles.fifaCatBtnPlus}
+                                          onPress={() => updatePlayerRating(player.id, category.id, Math.min(10, currentRating + 0.5))}
+                                        >
+                                          <Text style={styles.fifaCatBtnPlusText}>+</Text>
+                                        </TouchableOpacity>
+                                      </View>
+                                    </View>
+                                  );
+                                })}
+                              </View>
                             </View>
                           </View>
                         );
                       })()}
 
-                      {/* Rating Categories - Premium Grid */}
-                      <View style={styles.ratingGrid}>
-                        {categories.map((category) => {
-                          const currentRating = playerRatings[player.id]?.[category.id] || 5;
-                          
-                          return (
-                            <View key={category.id} style={styles.ratingGridItem}>
-                              {/* Category Header */}
-                              <View style={[styles.ratingGridIconBg, { backgroundColor: `${category.color}15` }]}>
-                                <Text style={styles.ratingGridEmoji}>{category.emoji}</Text>
-                              </View>
-                              <Text style={styles.ratingGridTitle}>{category.title}</Text>
-                              
-                              {/* Rating Value */}
-                              <View style={[styles.ratingCircle, { borderColor: `${category.color}50`, backgroundColor: `${category.color}08` }]}>
-                                <Text style={[styles.ratingCircleValue, { color: category.color }]}>
-                                  {currentRating.toFixed(0) === '10' ? '10' : currentRating.toFixed(1)}
-                                </Text>
-                              </View>
-                              
-                              {/* Mini Progress Bar */}
-                              <View style={styles.ratingMiniBar}>
-                                <View style={[styles.ratingMiniBarFill, { width: `${(currentRating / 10) * 100}%`, backgroundColor: category.color }]} />
-                              </View>
-                              
-                              {/* +/- Controls */}
-                              <View style={styles.ratingMiniButtons}>
-                                <TouchableOpacity
-                                  style={[styles.ratingMiniBtn, { borderColor: 'rgba(239, 68, 68, 0.3)' }]}
-                                  onPress={() => updatePlayerRating(player.id, category.id, Math.max(1, currentRating - 0.5))}
-                                >
-                                  <Text style={styles.ratingMiniBtnTextMinus}>−</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                  style={[styles.ratingMiniBtn, { borderColor: 'rgba(74, 222, 128, 0.3)' }]}
-                                  onPress={() => updatePlayerRating(player.id, category.id, Math.min(10, currentRating + 0.5))}
-                                >
-                                  <Text style={styles.ratingMiniBtnTextPlus}>+</Text>
-                                </TouchableOpacity>
-                              </View>
-                            </View>
-                          );
-                        })}
-                      </View>
-
-                      {/* Quick Rating - Premium */}
-                      <View style={styles.quickRatingSection}>
-                        <View style={styles.quickRatingHeader}>
-                          <Ionicons name="flash" size={14} color="#F59E0B" />
-                          <Text style={styles.quickRatingLabel}>Hızlı Puan</Text>
-                        </View>
-                        <View style={styles.quickRatingRow}>
-                          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((score) => {
-                            const isActive = hasRatings && Math.round(avgRating) === score;
-                            const scoreColor = score >= 8 ? '#22C55E' : score >= 6 ? '#F59E0B' : score >= 4 ? '#F97316' : '#EF4444';
-                            return (
-                              <TouchableOpacity
-                                key={score}
-                                style={[
-                                  styles.quickRatingBtn,
-                                  isActive && { backgroundColor: scoreColor, borderColor: scoreColor, transform: [{ scale: 1.1 }] }
-                                ]}
-                                onPress={() => setAllRatings(player.id, player.position, score)}
-                              >
-                                <Text style={[
-                                  styles.quickRatingBtnText,
-                                  isActive && styles.quickRatingBtnTextActive
-                                ]}>{score}</Text>
-                              </TouchableOpacity>
-                            );
-                          })}
-                        </View>
-                      </View>
-
-                      {/* empty - score comparison moved to top */}
                     </Animated.View>
                   )}
                 </Animated.View>
@@ -1280,6 +1379,65 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
           </View>
         )}
       </ScrollView>
+
+      {/* 🗑️ SİLME ONAY POPUP */}
+      <Modal
+        visible={deleteConfirmPlayer !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setDeleteConfirmPlayer(null)}
+      >
+        <Pressable
+          style={styles.savePopupOverlay}
+          onPress={() => setDeleteConfirmPlayer(null)}
+        >
+          <Pressable onPress={(e) => e.stopPropagation()} style={styles.deleteConfirmContainer}>
+            {/* Icon */}
+            <View style={styles.deleteConfirmIcon}>
+              <Ionicons name="trash-outline" size={28} color="#EF4444" />
+            </View>
+
+            {/* Title */}
+            <Text style={styles.deleteConfirmTitle}>Değerlendirmeyi Sil</Text>
+
+            {/* Description */}
+            <Text style={styles.deleteConfirmDesc}>
+              <Text style={{ fontWeight: '600', color: '#F1F5F9' }}>{deleteConfirmPlayer?.name}</Text> için verdiğiniz puanları silmek istiyor musunuz?
+            </Text>
+
+            {/* Buttons */}
+            <View style={styles.deleteConfirmButtons}>
+              <TouchableOpacity
+                style={styles.deleteConfirmBtnCancel}
+                onPress={() => setDeleteConfirmPlayer(null)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.deleteConfirmBtnCancelText}>Vazgeç</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.deleteConfirmBtnDelete}
+                onPress={() => {
+                  if (deleteConfirmPlayer) {
+                    console.log('🗑️ Deleting ratings for:', deleteConfirmPlayer.id);
+                    setPlayerRatings(prev => {
+                      const updated = { ...prev };
+                      delete updated[deleteConfirmPlayer.id];
+                      return updated;
+                    });
+                    setPlayerRatingsChanged(true);
+                  }
+                  setDeleteConfirmPlayer(null);
+                }}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="trash" size={16} color="#FFF" />
+                <Text style={styles.deleteConfirmBtnDeleteText}>Sil</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       {/* 💾 KAYDETME POPUP */}
       <Modal
@@ -1432,7 +1590,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
                       onPress={showNextBadge}
                     >
                       <LinearGradient
-                        colors={['#F59E0B', '#D97706']}
+                        colors={['#C9A44C', '#8B6914']} // ✅ Design System: Altın accent
                         style={styles.badgePopupButtonGradient}
                       >
                         <Text style={styles.badgePopupButtonPrimaryText}>
@@ -1457,12 +1615,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent', // ✅ Grid pattern görünsün - MatchDetail'den geliyor
   },
   
-  // Tab Bar - İstatistik sekmesiyle aynı stil
+  // Tab Bar - Design System uyumlu, tamamen saydam
   tabsContainer: {
     flexDirection: 'row',
-    backgroundColor: '#1E293B', // Solid arka plan - grid görünmesin
-    borderBottomWidth: 1,
-    borderBottomColor: DARK_MODE.border,
+    backgroundColor: 'transparent', // ✅ Grid pattern tamamen görünsün
     paddingHorizontal: 12,
     paddingTop: 8,
     paddingBottom: 8,
@@ -1470,18 +1626,18 @@ const styles = StyleSheet.create({
   },
   tab: {
     flex: 1,
-    height: 48,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
-    borderRadius: 12,
-    backgroundColor: '#334155', // Solid arka plan - grid görünmesin
+    borderRadius: 10,
+    backgroundColor: 'rgba(30, 58, 58, 0.6)', // ✅ Yarı saydam
     borderWidth: 1,
-    borderColor: 'transparent',
+    borderColor: 'rgba(31, 162, 166, 0.1)',
   },
   tabActive: {
-    backgroundColor: '#1D4044', // Solid arka plan - grid görünmesin (secondary tonu)
-    borderColor: `${BRAND.secondary}40`,
+    backgroundColor: 'rgba(31, 162, 166, 0.2)', // ✅ Aktif tab - daha belirgin
+    borderColor: BRAND.secondary,
   },
   tabText: {
     fontSize: 12,
@@ -1507,7 +1663,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
-    paddingBottom: 8, // ✅ Kadro sekmesiyle aynı
+    paddingBottom: 140, // ✅ Bottom navigation bar için yeterli boşluk (tab bar + safe area)
   },
   
   // Oyuncu Değerlendirmesi
@@ -1517,12 +1673,12 @@ const styles = StyleSheet.create({
   },
   // (Player section header removed - score comparison now inside each player card)
   notStartedCard: {
-    backgroundColor: DARK_MODE.card,
+    backgroundColor: '#1E3A3A', // ✅ Design System: Card background
     borderRadius: 16,
     padding: 32,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: DARK_MODE.border,
+    borderColor: 'rgba(31, 162, 166, 0.15)',
     width: 300,
     height: 240,
     justifyContent: 'center',
@@ -1531,7 +1687,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: 'rgba(201, 164, 76, 0.1)',
+    backgroundColor: 'rgba(201, 164, 76, 0.15)', // ✅ Altın accent (biraz daha belirgin)
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 20,
@@ -1598,7 +1754,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(100, 116, 139, 0.15)',
+    borderColor: 'rgba(31, 162, 166, 0.15)', // ✅ Design System
     marginBottom: 12,
   },
   scoreComparisonGradient: {
@@ -1646,7 +1802,7 @@ const styles = StyleSheet.create({
   scoreTextCommunity: {
     fontSize: 34,
     fontWeight: '900',
-    color: '#F59E0B',
+    color: '#C9A44C', // ✅ Altın accent
     letterSpacing: -1,
   },
   scoreMax: {
@@ -1664,9 +1820,9 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(100, 116, 139, 0.15)',
+    backgroundColor: 'rgba(31, 162, 166, 0.1)', // ✅ Design System
     borderWidth: 1,
-    borderColor: 'rgba(100, 116, 139, 0.25)',
+    borderColor: 'rgba(31, 162, 166, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1686,7 +1842,7 @@ const styles = StyleSheet.create({
     width: 4,
     height: 4,
     borderRadius: 2,
-    backgroundColor: 'rgba(100, 116, 139, 0.3)',
+    backgroundColor: 'rgba(31, 162, 166, 0.3)', // ✅ Design System
   },
   votersText: {
     fontSize: 11,
@@ -1706,11 +1862,11 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   categoryCard: {
-    backgroundColor: 'rgba(30, 41, 59, 0.8)',
+    backgroundColor: 'rgba(30, 58, 58, 0.8)', // ✅ Design System: Yeşil tonlu card
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: 'rgba(100, 116, 139, 0.3)',
+    borderColor: 'rgba(31, 162, 166, 0.2)',
     gap: 12,
   },
   categoryHeader: {
@@ -1774,7 +1930,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(100, 116, 139, 0.5)',
+    borderColor: 'rgba(31, 162, 166, 0.3)', // ✅ Design System
   },
   starActive: {
     borderColor: 'transparent',
@@ -1817,7 +1973,7 @@ const styles = StyleSheet.create({
   comparisonValueCommunity: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#F59E0B',
+    color: '#C9A44C', // ✅ Altın accent
   },
   comparisonValueDiff: {
     fontSize: 16,
@@ -1835,7 +1991,7 @@ const styles = StyleSheet.create({
   comparisonDivider: {
     width: 1,
     height: 24,
-    backgroundColor: 'rgba(100, 116, 139, 0.3)',
+    backgroundColor: 'rgba(31, 162, 166, 0.2)', // ✅ Design System
   },
 
   // Progress Bars
@@ -1844,7 +2000,7 @@ const styles = StyleSheet.create({
   },
   progressBar: {
     height: 4,
-    backgroundColor: 'rgba(100, 116, 139, 0.2)',
+    backgroundColor: 'rgba(31, 162, 166, 0.15)', // ✅ Design System
     borderRadius: 2,
     overflow: 'hidden',
   },
@@ -1857,7 +2013,7 @@ const styles = StyleSheet.create({
   },
   progressFillCommunity: {
     height: '100%',
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#C9A44C', // ✅ Altın accent
     borderRadius: 2,
   },
 
@@ -1884,9 +2040,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 10,
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    backgroundColor: 'rgba(31, 162, 166, 0.1)', // ✅ Design System: Secondary
     borderWidth: 1,
-    borderColor: 'rgba(59, 130, 246, 0.3)',
+    borderColor: 'rgba(31, 162, 166, 0.25)',
     borderRadius: 12,
     padding: 12,
     marginTop: 16,
@@ -1903,12 +2059,12 @@ const styles = StyleSheet.create({
 
   // 🌟 PREDICTION ANALYSIS STYLES
   analysisCard: {
-    backgroundColor: 'rgba(30, 41, 59, 0.8)',
+    backgroundColor: 'rgba(30, 58, 58, 0.8)', // ✅ Design System
     borderRadius: 16,
     padding: 16,
     marginBottom: 24,
     borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.3)',
+    borderColor: 'rgba(201, 164, 76, 0.3)', // ✅ Altın accent
   },
   analysisHeader: {
     flexDirection: 'row',
@@ -1927,21 +2083,21 @@ const styles = StyleSheet.create({
   },
   analysisSubtitle: {
     fontSize: 13,
-    color: '#F59E0B',
+    color: '#C9A44C', // ✅ Altın accent
     marginTop: 2,
   },
   analystNote: {
-    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    backgroundColor: 'rgba(201, 164, 76, 0.1)', // ✅ Altın accent
     borderRadius: 12,
     padding: 16,
     marginTop: 16,
     borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.2)',
+    borderColor: 'rgba(201, 164, 76, 0.2)',
   },
   analystNoteTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#F59E0B',
+    color: '#C9A44C', // ✅ Altın accent
     marginBottom: 8,
   },
   analystNoteText: {
@@ -1960,11 +2116,11 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   clusterScoreCard: {
-    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    backgroundColor: 'rgba(15, 42, 36, 0.6)', // ✅ Design System: Primary tonlu
     borderRadius: 12,
     padding: 12,
     borderWidth: 1,
-    borderColor: 'rgba(100, 116, 139, 0.2)',
+    borderColor: 'rgba(31, 162, 166, 0.2)',
   },
   clusterScoreHeader: {
     flexDirection: 'row',
@@ -1998,12 +2154,12 @@ const styles = StyleSheet.create({
     color: '#1FA2A6',
   },
   focusedStatsCard: {
-    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    backgroundColor: 'rgba(201, 164, 76, 0.1)', // ✅ Altın accent
     borderRadius: 12,
     padding: 12,
     marginTop: 12,
     borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.2)',
+    borderColor: 'rgba(201, 164, 76, 0.2)',
   },
   focusedStatsHeader: {
     flexDirection: 'row',
@@ -2014,7 +2170,7 @@ const styles = StyleSheet.create({
   focusedStatsTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#F59E0B',
+    color: '#C9A44C', // ✅ Altın accent
   },
   focusedStatsRow: {
     flexDirection: 'row',
@@ -2039,12 +2195,12 @@ const styles = StyleSheet.create({
   
   // 📊 Cluster Breakdown Styles
   clusterBreakdownCard: {
-    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    backgroundColor: 'rgba(30, 58, 58, 0.6)', // ✅ Design System
     borderRadius: 16,
     padding: 16,
     marginTop: 16,
     borderWidth: 1,
-    borderColor: 'rgba(5, 150, 105, 0.2)',
+    borderColor: 'rgba(31, 162, 166, 0.2)',
   },
   clusterBreakdownHeader: {
     flexDirection: 'row',
@@ -2063,11 +2219,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 12,
     paddingHorizontal: 12,
-    backgroundColor: 'rgba(30, 41, 59, 0.4)',
+    backgroundColor: 'rgba(30, 58, 58, 0.4)', // ✅ Design System
     borderRadius: 12,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: 'rgba(100, 116, 139, 0.2)',
+    borderColor: 'rgba(31, 162, 166, 0.15)',
   },
   clusterRowLeft: {
     flexDirection: 'row',
@@ -2118,12 +2274,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   analystNoteContainer: {
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    backgroundColor: 'rgba(31, 162, 166, 0.1)', // ✅ Design System: Secondary
     borderRadius: 12,
     padding: 14,
     marginTop: 12,
     borderWidth: 1,
-    borderColor: 'rgba(59, 130, 246, 0.2)',
+    borderColor: 'rgba(31, 162, 166, 0.2)',
   },
   analystNoteHeader: {
     flexDirection: 'row',
@@ -2134,9 +2290,77 @@ const styles = StyleSheet.create({
   analystNoteHeaderText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#3B82F6',
+    color: '#1FA2A6', // ✅ Design System: Secondary
   },
 
+  // 🗑️ DELETE CONFIRM POPUP STYLES
+  deleteConfirmContainer: {
+    backgroundColor: '#1E3A3A', // ✅ Design System
+    borderRadius: 16,
+    padding: 24,
+    marginHorizontal: 32,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(140, 58, 58, 0.3)', // ✅ Error rengi
+  },
+  deleteConfirmIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(140, 58, 58, 0.2)', // ✅ Error rengi
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  deleteConfirmTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#F1F5F9',
+    marginBottom: 8,
+  },
+  deleteConfirmDesc: {
+    fontSize: 14,
+    color: '#94A3B8',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 20,
+  },
+  deleteConfirmButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  deleteConfirmBtnCancel: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(31, 162, 166, 0.1)', // ✅ Design System
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.2)',
+  },
+  deleteConfirmBtnCancelText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#94A3B8',
+  },
+  deleteConfirmBtnDelete: {
+    flex: 1,
+    flexDirection: 'row',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    backgroundColor: '#8C3A3A', // ✅ Design System: Error rengi
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  deleteConfirmBtnDeleteText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  
   // 💾 SAVE POPUP STYLES
   savePopupOverlay: {
     flex: 1,
@@ -2145,7 +2369,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   savePopupContainer: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#1E3A3A', // ✅ Design System
     borderRadius: 24,
     padding: 28,
     width: '85%',
@@ -2192,14 +2416,14 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingVertical: 14,
     borderRadius: 14,
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    backgroundColor: 'rgba(140, 58, 58, 0.15)', // ✅ Design System: Error rengi
     borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.25)',
+    borderColor: 'rgba(140, 58, 58, 0.3)',
   },
   savePopupBtnCancelText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#EF4444',
+    color: '#8C3A3A', // ✅ Design System: Error rengi
   },
   savePopupBtnSave: {
     flex: 1,
@@ -2227,14 +2451,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   badgePopupContainer: {
-    backgroundColor: '#1E3A3A',
+    backgroundColor: '#1E3A3A', // ✅ Design System: Zaten doğru
     borderRadius: 32,
     padding: 40,
     width: '90%',
     maxWidth: 400,
     alignItems: 'center',
     borderWidth: 3,
-    borderColor: '#F59E0B',
+    borderColor: '#C9A44C', // ✅ Altın accent
     position: 'relative',
   },
   confettiContainer: {
@@ -2252,7 +2476,7 @@ const styles = StyleSheet.create({
   badgePopupTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#F59E0B',
+    color: '#C9A44C', // ✅ Altın accent
     marginBottom: 24,
     textAlign: 'center',
     letterSpacing: 1,
@@ -2307,7 +2531,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 14,
     borderRadius: 12,
-    backgroundColor: '#334155',
+    backgroundColor: '#0F2A24', // ✅ Design System: Primary
     alignItems: 'center',
   },
   badgePopupButtonSecondaryText: {
@@ -2337,65 +2561,65 @@ const styles = StyleSheet.create({
   playerCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(30, 41, 59, 0.7)',
-    borderRadius: 14,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    backgroundColor: 'rgba(30, 58, 58, 0.6)', // ✅ Design System
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
     borderWidth: 1,
-    borderColor: 'rgba(100, 116, 139, 0.15)',
+    borderColor: 'rgba(31, 162, 166, 0.1)',
     gap: 12,
   },
   playerCardExpanded: {
     borderColor: `${BRAND.secondary}60`,
     borderBottomLeftRadius: 0,
     borderBottomRightRadius: 0,
-    backgroundColor: 'rgba(30, 41, 59, 0.9)',
+    backgroundColor: 'rgba(30, 58, 58, 0.9)', // ✅ Design System
   },
   playerJerseyGradient: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   playerJerseyNumber: {
-    fontSize: 16,
-    fontWeight: '800',
+    fontSize: 15,
+    fontWeight: '600',
     color: '#FFFFFF',
-    letterSpacing: -0.5,
+    letterSpacing: -0.3,
   },
   playerInfoContainer: {
     flex: 1,
   },
   playerName: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '500',
     color: '#F1F5F9',
-    marginBottom: 2,
+    marginBottom: 3,
   },
   playerPositionRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   playerPositionBadge: {
-    backgroundColor: 'rgba(100, 116, 139, 0.2)',
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: 4,
+    backgroundColor: 'rgba(31, 162, 166, 0.12)', // ✅ Design System
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
   },
   playerPositionBadgeGK: {
-    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    backgroundColor: 'rgba(201, 164, 76, 0.15)', // ✅ Altın accent
   },
   playerPositionText: {
     fontSize: 10,
-    fontWeight: '600',
+    fontWeight: '500',
     color: '#94A3B8',
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
   },
   playerPositionTextGK: {
-    color: '#F59E0B',
+    color: '#C9A44C', // ✅ Altın accent
   },
   playerRightSection: {
     flexDirection: 'row',
@@ -2415,7 +2639,7 @@ const styles = StyleSheet.create({
 
   // ⚽ EXPANDED RATING PANEL - Premium & Compact
   playerRatingPanel: {
-    backgroundColor: 'rgba(10, 18, 35, 0.92)',
+    backgroundColor: 'rgba(15, 42, 36, 0.95)', // ✅ Design System: Primary tonlu
     borderWidth: 1,
     borderTopWidth: 0,
     borderColor: `${BRAND.secondary}40`,
@@ -2435,12 +2659,12 @@ const styles = StyleSheet.create({
   ratingGridItem: {
     width: '31%',
     alignItems: 'center',
-    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    backgroundColor: 'rgba(15, 42, 36, 0.6)', // ✅ Design System
     borderRadius: 12,
     paddingVertical: 7,
     paddingHorizontal: 3,
     borderWidth: 1,
-    borderColor: 'rgba(100, 116, 139, 0.08)',
+    borderColor: 'rgba(31, 162, 166, 0.08)',
   },
   ratingGridIconBg: {
     width: 26,
@@ -2467,7 +2691,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    backgroundColor: 'rgba(15, 42, 36, 0.5)', // ✅ Design System
     marginBottom: 4,
   },
   ratingCircleValue: {
@@ -2477,7 +2701,7 @@ const styles = StyleSheet.create({
   ratingMiniBar: {
     width: '80%',
     height: 2,
-    backgroundColor: 'rgba(100, 116, 139, 0.2)',
+    backgroundColor: 'rgba(31, 162, 166, 0.15)', // ✅ Design System
     borderRadius: 1,
     overflow: 'hidden',
     marginBottom: 4,
@@ -2494,11 +2718,11 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: 'rgba(100, 116, 139, 0.15)',
+    backgroundColor: 'rgba(31, 162, 166, 0.1)', // ✅ Design System
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(100, 116, 139, 0.2)',
+    borderColor: 'rgba(31, 162, 166, 0.15)',
   },
   ratingMiniBtnTextMinus: {
     fontSize: 16,
@@ -2518,7 +2742,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(100, 116, 139, 0.12)',
+    borderTopColor: 'rgba(31, 162, 166, 0.12)', // ✅ Design System
   },
   quickRatingHeader: {
     flexDirection: 'row',
@@ -2542,11 +2766,11 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 7,
-    backgroundColor: 'rgba(100, 116, 139, 0.12)',
+    backgroundColor: 'rgba(31, 162, 166, 0.1)', // ✅ Design System
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(100, 116, 139, 0.15)',
+    borderColor: 'rgba(31, 162, 166, 0.12)',
   },
   quickRatingBtnText: {
     fontSize: 12,
@@ -2557,64 +2781,303 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
 
-  // ⭐ PLAYER SCORE COMPARISON (per player in expanded card)
-  playerScoreComparisonCard: {
-    backgroundColor: 'rgba(0, 0, 0, 0.25)',
+  // 🏷️ TOPLULUK PUAN BADGE (Sol) - Zarif
+  communityScoreBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(201, 164, 76, 0.1)', // ✅ Altın accent
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     borderRadius: 10,
-    padding: 10,
-    marginBottom: 8,
     borderWidth: 1,
-    borderColor: 'rgba(100, 116, 139, 0.1)',
+    borderColor: 'rgba(201, 164, 76, 0.2)',
   },
-  playerScoreCompRow: {
+  communityScoreText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#C9A44C', // ✅ Altın accent
+  },
+  
+  // 🏷️ KULLANICI PUAN BADGE WRAPPER (Sağ) - X butonu ile
+  userScoreBadgeWrapper: {
+    position: 'relative',
+  },
+  userScoreBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  userScoreText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  
+  // ❌ DELETE RATING BUTTON (Sol Üst Köşe) - Tıklanabilir
+  deleteRatingBtnCorner: {
+    position: 'absolute',
+    top: -7,
+    left: -7,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#8C3A3A', // ✅ Design System: Error rengi
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 100,
+    borderWidth: 2,
+    borderColor: '#0F2A24', // ✅ Design System: Primary
+    elevation: 5,
+  },
+  
+  // 🎮 FIFA STİLİ RATING PANEL - Zarif, Ferah, Ekrana Tam Sığar
+  fifaRatingPanel: {
+    backgroundColor: 'rgba(15, 42, 36, 0.95)', // ✅ Design System: Primary tonlu
+    borderRadius: 14,
+    marginTop: 6,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.15)',
+  },
+  fifaContainer: {
+    padding: 14,
+    gap: 12,
+  },
+  
+  // 🏆 PUAN KARTI - Zarif & Ferah
+  fifaScoreCard: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 215, 0, 0.1)',
   },
-  playerScoreCompCol: {
-    flex: 1,
+  fifaScoreSide: {
     alignItems: 'center',
-    gap: 4,
+    flex: 1,
   },
-  playerScoreCompIconRow: {
+  fifaScoreLabel: {
+    fontSize: 9,
+    fontWeight: '500',
+    color: '#64748B',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  fifaScoreBig: {
+    fontSize: 32,
+    fontWeight: '600',
+    letterSpacing: -0.5,
+  },
+  fifaScoreStars: {
+    flexDirection: 'row',
+    gap: 2,
+    marginTop: 4,
+  },
+  fifaVsBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(201, 164, 76, 0.1)', // ✅ Altın accent
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(201, 164, 76, 0.4)',
+  },
+  fifaVsText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#C9A44C', // ✅ Altın accent
+  },
+  fifaVotersBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    marginTop: 6,
+    backgroundColor: 'rgba(201, 164, 76, 0.08)', // ✅ Altın accent
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  fifaVotersText: {
+    fontSize: 10,
+    fontWeight: '500',
+    color: '#C9A44C', // ✅ Altın accent
+  },
+  
+  // ⚡ HIZLI PUAN SEÇİCİ - Ferah
+  fifaQuickPicker: {
+    backgroundColor: 'rgba(15, 42, 36, 0.4)', // ✅ Design System
+    borderRadius: 10,
+    padding: 10,
+  },
+  fifaQuickLabel: {
+    fontSize: 9,
+    fontWeight: '500',
+    color: '#64748B',
+    textAlign: 'center',
+    marginBottom: 8,
+    letterSpacing: 0.3,
+  },
+  fifaQuickSlider: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  fifaQuickBtnWrap: {
+    flex: 1,
+    maxWidth: 30,
+  },
+  fifaQuickBtn: {
+    height: 30,
+    borderRadius: 8,
+    backgroundColor: 'rgba(30, 58, 58, 0.4)', // ✅ Design System
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.12)',
+  },
+  fifaQuickBtnActive: {
+    height: 30,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fifaQuickBtnText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#64748B',
+  },
+  fifaQuickBtnTextActive: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  
+  // 📊 KATEGORİ BÖLÜMÜ - Ferah Grid
+  fifaCategorySection: {
+    gap: 8,
+  },
+  fifaCategoryTitle: {
+    fontSize: 10,
+    fontWeight: '500',
+    color: '#64748B',
+    textAlign: 'center',
+    letterSpacing: 0.3,
+  },
+  fifaCategoryGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  fifaCategoryCard: {
+    width: '31.5%',
+    backgroundColor: 'rgba(15, 42, 36, 0.4)', // ✅ Design System
+    borderRadius: 10,
+    padding: 10,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.08)',
+  },
+  fifaCatHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  fifaCatEmoji: {
+    fontSize: 16,
+  },
+  fifaCatTitleWrap: {
+    flex: 1,
+  },
+  fifaCatTitle: {
+    fontSize: 8,
+    fontWeight: '500',
+    color: '#64748B',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  fifaCatScore: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginTop: 0,
+  },
+  fifaCatBarContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
   },
-  playerScoreCompLabel: {
-    fontSize: 10,
+  fifaCatBarBg: {
+    flex: 1,
+    height: 5,
+    backgroundColor: 'rgba(31, 162, 166, 0.15)', // ✅ Design System
+    borderRadius: 2.5,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  fifaCatBarFill: {
+    height: '100%',
+    borderRadius: 2.5,
+  },
+  fifaCatCommunityMarker: {
+    position: 'absolute',
+    top: -1,
+    marginLeft: -3,
+  },
+  fifaCatCommunityDot: {
+    width: 7,
+    height: 7,
+    backgroundColor: '#C9A44C', // ✅ Altın accent
+    borderRadius: 3.5,
+    borderWidth: 1,
+    borderColor: '#FFF',
+  },
+  fifaCatCommunityScore: {
+    fontSize: 9,
     fontWeight: '600',
-    color: '#94A3B8',
-    letterSpacing: 0.3,
+    color: '#C9A44C', // ✅ Altın accent
+    width: 20,
+    textAlign: 'right',
   },
-  playerScoreCompValue: {
-    fontSize: 22,
-    fontWeight: '900',
-    letterSpacing: -0.5,
-  },
-  playerScoreCompVs: {
-    paddingHorizontal: 8,
-  },
-  playerScoreCompVsText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#475569',
-    letterSpacing: 0.5,
-  },
-  playerScoreCompVotersRow: {
+  fifaCatBtnRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 5,
-    marginTop: 6,
-    paddingTop: 6,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(100, 116, 139, 0.1)',
+    gap: 8,
   },
-  playerScoreCompVotersText: {
-    fontSize: 10,
-    color: '#64748B',
+  fifaCatBtnMinus: {
+    width: 28,
+    height: 24,
+    borderRadius: 6,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.25)',
+  },
+  fifaCatBtnMinusText: {
+    fontSize: 16,
     fontWeight: '500',
+    color: '#EF4444',
+    marginTop: -1,
+  },
+  fifaCatBtnPlus: {
+    width: 28,
+    height: 24,
+    borderRadius: 6,
+    backgroundColor: 'rgba(34, 197, 94, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(34, 197, 94, 0.25)',
+  },
+  fifaCatBtnPlusText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#22C55E',
+    marginTop: -1,
   },
 
   // 🚫 NO PLAYERS
@@ -2665,7 +3128,7 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 10,
     paddingHorizontal: 14,
-    backgroundColor: 'rgba(100, 116, 139, 0.08)',
+    backgroundColor: 'rgba(31, 162, 166, 0.08)', // ✅ Design System
     borderRadius: 10,
     marginTop: 4,
   },
