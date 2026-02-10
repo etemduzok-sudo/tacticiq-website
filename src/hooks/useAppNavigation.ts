@@ -232,13 +232,13 @@ export function useAppNavigation() {
   const handleMatchDetailBack = useCallback(() => {
     let restoreScreen = screenBeforeMatchDetailRef.current || 'home';
     const restoreTab = activeTabBeforeMatchDetailRef.current || 'home';
-    // ✅ Splash sadece ilk açılış için; geri dönüşte maçlar sayfasına veya home'a git
+    // ✅ Splash sadece ilk açılış için; geri dönüşte ana sayfaya git
     if (restoreScreen === 'splash') restoreScreen = 'home';
     setSelectedMatchId(null);
     if (typeof global !== 'undefined') (global as any).__matchDetailParams = {};
     if (typeof window !== 'undefined') (window as any).__matchDetailParams = {};
     setActiveTab(restoreTab);
-    setCurrentScreen(restoreScreen);
+    setCurrentScreen(restoreScreen as Screen);
   }, []);
 
   const handleMatchResultSelect = useCallback((matchId: string) => {
@@ -300,6 +300,8 @@ export function useAppNavigation() {
         }
         break;
       case 'home':
+      case 'matches':
+        setActiveTab('home');
         setCurrentScreen('home');
         break;
       default:

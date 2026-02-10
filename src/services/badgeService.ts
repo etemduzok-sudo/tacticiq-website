@@ -21,6 +21,21 @@ const SHOWN_BADGES_KEY = 'tacticiq-shown-badges'; // Track which badges have bee
 /** Geliştirme: Profilde 5 rozet kazanmış gibi göster (0 = kapalı) */
 const MOCK_EARNED_BADGES_COUNT = __DEV__ ? 5 : 0;
 
+// ✅ Senkron memory cache - ProfileCard için anında yükleme
+let cachedBadges: Badge[] | null = null;
+
+/**
+ * Senkron olarak cache'den rozetleri al (async çağrı yapmadan)
+ * ProfileCard'da 2 aşamalı yüklemeyi önlemek için kullanılır
+ */
+export const getCachedBadges = (): Badge[] => {
+  // Mock mode'da her zaman mock rozetler döndür
+  if (MOCK_EARNED_BADGES_COUNT > 0) {
+    return getMockEarnedBadges(MOCK_EARNED_BADGES_COUNT);
+  }
+  return cachedBadges || [];
+};
+
 const tierToBadgeTier = (tier: number): BadgeTier => {
   const map: Record<number, BadgeTier> = {
     1: BadgeTier.BRONZE,
@@ -87,11 +102,18 @@ export interface UserStats {
 export const getUserBadges = async (): Promise<Badge[]> => {
   try {
     if (MOCK_EARNED_BADGES_COUNT > 0) {
-      return getMockEarnedBadges(MOCK_EARNED_BADGES_COUNT);
+      const mockBadges = getMockEarnedBadges(MOCK_EARNED_BADGES_COUNT);
+      cachedBadges = mockBadges; // Cache'e kaydet
+      return mockBadges;
     }
     const badgesJson = await AsyncStorage.getItem(STORAGE_KEY);
-    if (!badgesJson) return [];
-    return JSON.parse(badgesJson);
+    if (!badgesJson) {
+      cachedBadges = [];
+      return [];
+    }
+    const badges = JSON.parse(badgesJson);
+    cachedBadges = badges; // Cache'e kaydet
+    return badges;
   } catch (error) {
     console.error('Error loading badges:', error);
     return [];

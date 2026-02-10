@@ -375,6 +375,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.8)',
     justifyContent: 'flex-end',
+    alignItems: 'center', // ✅ Yatay ortala
   },
   modalContent: {
     backgroundColor: DARK_MODE.card,
@@ -382,6 +383,8 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 24,
     padding: 24,
     maxHeight: '90%',
+    width: '100%',
+    maxWidth: 400, // ✅ STANDART popup genişliği
   },
   modalHeader: {
     flexDirection: 'row',

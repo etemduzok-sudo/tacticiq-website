@@ -249,7 +249,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
     setAnalysisFocusModalVisible(false);
     if (selectedMatchForAnalysis) {
       onNavigate('match-detail', { 
-        id: selectedMatchForAnalysis.fixture.id,
+        id: String(selectedMatchForAnalysis.fixture.id), // ✅ String'e çevir
         analysisFocus: focus,
         initialTab: 'squad', // Kadro sekmesiyle başla
         matchData: selectedMatchForAnalysis, // ✅ Maç verisi doğrudan geçiriliyor - API çağrısı yok!
@@ -1143,13 +1143,32 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
     });
   }, [allUpcomingMatches, selectedTeamIds, filterMatchesByTeam, filteredLiveMatches, mockTestIds]);
 
+  // ✅ Filtrelenmiş geçmiş maçlar (selectedTeamIds'e göre)
+  const filteredPastMatches = React.useMemo(() => {
+    const filtered = filterMatchesByTeam(pastMatches, selectedTeamIds);
+    
+    // ✅ Duplicate fixture ID'leri kaldır
+    const uniqueMatches = filtered.reduce((acc: any[], match) => {
+      const fixtureId = match.fixture?.id;
+      if (fixtureId && !acc.some(m => m.fixture?.id === fixtureId)) {
+        acc.push(match);
+      }
+      return acc;
+    }, []);
+    
+    // ✅ Sırala: En son biten maç en üstte
+    return uniqueMatches.sort((a, b) => {
+      return (b.fixture?.timestamp || 0) - (a.fixture?.timestamp || 0);
+    });
+  }, [pastMatches, selectedTeamIds, filterMatchesByTeam]);
+
   // ✅ Tüm maç ID'lerini birleştir (tahmin kontrolü için - canlı, yaklaşan VE biten)
   const allActiveMatchIds = React.useMemo(() => {
     const upcomingIds = filteredUpcomingMatches.map(m => m.fixture.id);
     const liveIds = filteredLiveMatches.map(m => m.fixture.id);
-    const pastIds = pastMatches.map((m: any) => m.fixture?.id).filter(Boolean);
+    const pastIds = filteredPastMatches.map((m: any) => m.fixture?.id).filter(Boolean);
     return [...new Set([...upcomingIds, ...liveIds, ...pastIds])]; // Unique ID'ler
-  }, [filteredUpcomingMatches, filteredLiveMatches, pastMatches]);
+  }, [filteredUpcomingMatches, filteredLiveMatches, filteredPastMatches]);
   const { matchIdsWithPredictions, clearPredictionForMatch, refresh: refreshPredictions } = useMatchesWithPredictions(allActiveMatchIds);
   
   // ✅ Dashboard'a geri dönüldüğünde tahminleri yenile (AppState listener)
@@ -1165,11 +1184,6 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
   // ✅ Maç kartı yüksekliği (sabit height + marginBottom)
   const MATCH_CARD_HEIGHT = 180 + SPACING.md; // Kart height: 180 (%10 azaltıldı)
 
-  // ✅ İlk scroll pozisyonu: her zaman en üstten başla (yaklaşan maçlar görünsün)
-  const initialScrollOffset = React.useMemo(() => {
-    // Biten maçlar küçültülmüş olduğu için direkt 0'dan başla
-    return 0;
-  }, []);
 
   // ✅ Mock maç bildirimleri - maç başlamadan 1 dakika önce göster
   const notificationShownRef = React.useRef<Set<number>>(new Set());
@@ -1203,16 +1217,20 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
     return () => clearInterval(interval);
   }, []);
 
-  // ✅ Sayfa hazır olduğunda işaretle (kıpırdama önleme)
+  // ✅ Scroll pozisyonunu kaydetmek için ref
+  const hasScrolledRef = React.useRef(false);
+  
+  // ✅ Sayfa hazır olduğunda görünür yap
+  // Geçmiş maç varsa onLayout'ta scroll yapılır, yoksa direkt görünür yap
   React.useEffect(() => {
-    if (!initialScrollDone) {
-      // Kısa bir gecikme ile içeriğin hazır olmasını bekle
+    if (!initialScrollDone && filteredPastMatches.length === 0) {
+      // Geçmiş maç yoksa direkt görünür yap (scroll gerekmiyor)
       const timer = setTimeout(() => {
         setInitialScrollDone(true);
-      }, 50);
+      }, 100);
       return () => clearTimeout(timer);
     }
-  }, [initialScrollDone]);
+  }, [initialScrollDone, filteredPastMatches.length]);
 
   // ✅ Scroll bırakıldığında en yakın maç kartına snap yap (sadece yaklaşan maçlar)
   const handleScrollEnd = React.useCallback((event: any) => {
@@ -1231,6 +1249,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
   // ✅ Loading durumunda da grid pattern göster
   // Maçlar yüklenirken veya backend çalışmıyorken bile UI gösterilmeli
   const showLoadingIndicator = loading && !hasLoadedOnce;
+  
 
   // ✅ handleTeamSelect artık App.tsx'te - ProfileCard üzerinden yönetiliyor
 
@@ -1248,7 +1267,6 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
         style={[styles.scrollView, { opacity: initialScrollDone ? 1 : 0 }]}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
-        contentOffset={{ x: 0, y: initialScrollOffset }}
         onMomentumScrollEnd={handleScrollEnd}
         onScrollEndDrag={(e) => {
           // Momentum yoksa (yavaş bırakma) direkt snap yap
@@ -1269,7 +1287,55 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
           </View>
         )}
 
-        {/* ✅ CANLI MAÇLAR - En üstte göster (oynanan maçlar) */}
+        {/* 
+          SCROLL YAPISI (yukarıdan aşağıya sıralama):
+          ─────────────────────────────────────────────
+          [Biten Maç 2 - en eski]     ← Ekranın en üstü (aşağı kaydırınca görünür)
+          [Biten Maç 1 - daha yeni]
+          ═══ ProfileCard alt çizgisi ═══ (SABİT, bu seviyede görünür)
+          [Canlı Maç]                 ← Sayfa açıldığında bu görünür
+          [Yaklaşan Maç 1 - en yakın]
+          [Yaklaşan Maç 2]
+          [Yaklaşan Maç 3 - en uzak]  ← Ekranın en altı (yukarı kaydırınca görünür)
+        */}
+
+        {/* ✅ BİTEN MAÇLAR - Aşağı kaydırınca görünür (en eski en üstte) */}
+        {!showLoadingIndicator && filteredPastMatches.length > 0 && (
+          <View 
+            style={styles.matchesListContainer}
+            onLayout={(e) => {
+              // Biten maçlar yüklendikten sonra canlı/yaklaşan maçlara scroll et
+              if (!hasScrolledRef.current && scrollViewRef.current) {
+                hasScrolledRef.current = true;
+                const pastMatchesHeight = e.nativeEvent.layout.height;
+                // Biten maçların sonuna scroll et - canlı/yaklaşan maç ProfileCard altında görünsün
+                setTimeout(() => {
+                  if (scrollViewRef.current) {
+                    (scrollViewRef.current as any).scrollTo?.({ y: pastMatchesHeight, animated: false });
+                    setInitialScrollDone(true);
+                  }
+                }, 50);
+              }
+            }}
+          >
+            {/* Biten maçları TERS sırada göster (en eski en üstte) */}
+            {[...filteredPastMatches].reverse().map((match, index) => (
+              <Animated.View 
+                key={`past-${match.fixture.id}`} 
+                entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(50 + index * 30).springify()}
+                style={styles.matchCardWrapper}
+              >
+                {renderMatchCard(match, 'finished', () => handleMatchPress(match), {
+                  hasPrediction: matchIdsWithPredictions.has(match.fixture.id),
+                  matchId: match.fixture.id,
+                  onDeletePrediction: clearPredictionForMatch,
+                })}
+              </Animated.View>
+            ))}
+          </View>
+        )}
+
+        {/* ✅ CANLI MAÇLAR - ProfileCard'ın hemen altında görünür */}
         {!showLoadingIndicator && filteredLiveMatches.length > 0 && (
           <View style={styles.matchesListContainer}>
             {filteredLiveMatches.map((match, index) => (
@@ -1288,7 +1354,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
           </View>
         )}
 
-        {/* ✅ YAKLAŞAN MAÇLAR */}
+        {/* ✅ YAKLAŞAN MAÇLAR - Yukarı kaydırınca görünür (en yakın en üstte) */}
         {!showLoadingIndicator && filteredUpcomingMatches.length > 0 && (
           <View style={styles.matchesListContainer}>
             {filteredUpcomingMatches.map((match, index) => (
@@ -1297,7 +1363,6 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
                 entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(50 + index * 30).springify()}
                 style={styles.matchCardWrapper}
               >
-                {/* ✅ Yaklaşan maçlarda Analiz Odağı Modal'ı aç */}
                 {renderMatchCard(match, 'upcoming', () => handleMatchPress(match), {
                   hasPrediction: matchIdsWithPredictions.has(match.fixture.id),
                   matchId: match.fixture.id,
@@ -1308,8 +1373,8 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
           </View>
         )}
 
-        {/* Boş Durum - Hiç maç yoksa (ne canlı ne yaklaşan) */}
-        {!showLoadingIndicator && filteredUpcomingMatches.length === 0 && filteredLiveMatches.length === 0 && (
+        {/* Boş Durum - Hiç maç yoksa (ne canlı ne yaklaşan ne geçmiş) */}
+        {!showLoadingIndicator && filteredUpcomingMatches.length === 0 && filteredLiveMatches.length === 0 && filteredPastMatches.length === 0 && (
           <View style={styles.emptyState}>
             <Ionicons name="football-outline" size={48} color="#64748B" />
             <Text style={styles.emptyText}>
@@ -1863,7 +1928,7 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   scrollContent: {
-    paddingTop: Platform.OS === 'ios' ? 245 : 235, // ✅ Profil ile aynı: kişi kartı + favori takım barı
+    paddingTop: Platform.OS === 'ios' ? 238 : 228, // ✅ ProfileCard yüksekliği + filtre barı + boşluk (2px yukarı)
     paddingBottom: 100 + SIZES.tabBarHeight, // ✅ Footer navigation için extra padding
     backgroundColor: 'transparent', // Grid pattern görünsün
   },
@@ -2758,7 +2823,7 @@ const styles = StyleSheet.create({
   matchCardContainer: {
     width: '100%',
     maxWidth: 768,
-    height: 180, // ✅ Sabit yükseklik - %10 azaltıldı (200 → 180)
+    height: 175, // ✅ Sabit yükseklik - tam 3 kart ekrana sığsın
   },
   matchCardPredictionStarHitArea: {
     position: 'absolute',
@@ -2827,19 +2892,43 @@ const styles = StyleSheet.create({
   pastMatchesExpandedList: {
     marginTop: SPACING.md,
   },
-  // ✅ Biten Maçlar Header (Küçültülebilir) - Eski stiller
+  // ✅ Canlı/Yaklaşan Maçlar Divider
+  liveMatchesDivider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: SPACING.md,
+    paddingHorizontal: SPACING.md,
+  },
+  // ✅ Biten Maçlar Header - Çizgili ayraç stili
   pastMatchesHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     paddingHorizontal: SPACING.base,
-    paddingVertical: SPACING.md,
+    paddingVertical: SPACING.lg,
     marginBottom: SPACING.sm,
-    backgroundColor: 'rgba(100, 116, 139, 0.1)',
-    borderRadius: 12,
-    marginHorizontal: SPACING.base,
-    borderWidth: 1,
-    borderColor: 'rgba(100, 116, 139, 0.2)',
+    marginTop: SPACING.md,
+  },
+  pastMatchesHeaderLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(100, 116, 139, 0.3)',
+  },
+  pastMatchesHeaderBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs,
+    backgroundColor: 'rgba(100, 116, 139, 0.15)',
+    borderRadius: 16,
+    marginHorizontal: SPACING.sm,
+  },
+  pastMatchesHeaderText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748B',
   },
   pastMatchesHeaderLeft: {
     flexDirection: 'row',
@@ -3015,7 +3104,7 @@ const styles = StyleSheet.create({
 
   matchCard: {
     width: '100%',
-    height: 180, // ✅ Sabit yükseklik - %10 azaltıldı (200 → 180)
+    height: 175, // ✅ Sabit yükseklik - tam 3 kart ekrana sığsın
     borderRadius: SIZES.radiusXl,
     borderBottomLeftRadius: 25, // ✅ Profil kartı gibi yuvarlatılmış alt köşeler
     borderBottomRightRadius: 25, // ✅ Profil kartı gibi yuvarlatılmış alt köşeler

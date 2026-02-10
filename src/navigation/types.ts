@@ -10,6 +10,7 @@ export type Screen =
   | 'home'
   | 'finished'
   | 'matches'
+  | 'badges'
   | 'match-detail'
   | 'match-result-summary'
   | 'leaderboard'

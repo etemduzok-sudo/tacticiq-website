@@ -432,12 +432,14 @@
     "saved": "Saved!"
   },
   "navigation": {
+    "home": "Home",
     "matches": "Matches",
     "matchCalendar": "Calendar",
     "live": "Live",
     "finished": "Finished",
     "finishedMatches": "Results",
     "leaderboard": "Ranking",
+    "badges": "Badges",
     "profile": "Profile"
   },
   "leagueCategories": {

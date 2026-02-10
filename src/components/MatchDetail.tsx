@@ -10,6 +10,8 @@ import {
   ActivityIndicator,
   useWindowDimensions,
   Alert,
+  Modal,
+  ScrollView,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
@@ -122,6 +124,10 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
   
   // ✅ İlk 11 popup'ı gösterildi mi? (sekme değişse bile korunur)
   const [startingXIPopupShown, setStartingXIPopupShown] = useState(false);
+  
+  // ✅ Maç sonu popup'ı - sonuçları, puanları ve rozetleri gösterir
+  const [showMatchEndPopup, setShowMatchEndPopup] = useState(false);
+  const [matchEndPopupShown, setMatchEndPopupShown] = useState(false); // Popup gösterildi mi?
 
   // ✅ Memoize onHasUnsavedChanges callback to prevent infinite re-renders
   const handleHasUnsavedChanges = useCallback((hasChanges: boolean, saveFn: () => Promise<void>) => {
@@ -583,6 +589,51 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
   }, [matchId, match?.fixture?.status?.short, countdownTicker]); // ✅ countdownTicker: mock maçlar için her saniye güncelle
   const isMatchLive = LIVE_STATUSES.includes(matchStatus);
   const isMatchFinished = FINISHED_STATUSES.includes(matchStatus);
+  
+  // ✅ Maç başladıktan sonra düzenleme izni (120 sn grace period)
+  // Component-level hesaplama - handleBackPress ve renderContent'te kullanılır
+  const allowEditingAfterMatchStart = useMemo(() => {
+    if (!pageOpenedAt) return false;
+    
+    const fixtureId = Number(matchId);
+    let matchStartTime: number | null = null;
+    
+    // Mock maçlar için özel kontrol
+    if (isMockTestMatch(fixtureId)) {
+      matchStartTime = fixtureId === MOCK_MATCH_IDS.GS_FB ? getMatch1Start() : getMatch2Start();
+    } else if (match?.fixture?.timestamp) {
+      matchStartTime = match.fixture.timestamp * 1000;
+    }
+    
+    if (!matchStartTime) return false;
+    
+    const remainingMsWhenOpened = matchStartTime - pageOpenedAt;
+    const remainingSecondsWhenOpened = Math.floor(remainingMsWhenOpened / 1000);
+    
+    // SADECE maç başlamadan ÖNCE (0-120 sn kala) girenler için düzenleme izni
+    const enteredBefore120SecToStart = remainingSecondsWhenOpened > 0 && remainingSecondsWhenOpened <= 120;
+    
+    // Şu an maç başladıktan 120 sn geçmedi mi?
+    const now = Date.now();
+    const remainingMsNow = matchStartTime - now;
+    const remainingSecondsNow = Math.floor(remainingMsNow / 1000);
+    const stillWithinEditWindow = remainingSecondsNow >= -120;
+    
+    return enteredBefore120SecToStart && stillWithinEditWindow;
+  }, [pageOpenedAt, matchId, match?.fixture?.timestamp, countdownTicker]); // countdownTicker: her saniye güncelle
+  
+  // ✅ Kadro kilitli mi? (maç canlı/bitti VE düzenleme izni yok)
+  const isKadroLocked = (isMatchLive || isMatchFinished) && !allowEditingAfterMatchStart;
+  
+  // ✅ Maç bittiğinde popup göster
+  React.useEffect(() => {
+    if (isMatchFinished && !matchEndPopupShown && hasPrediction) {
+      // Maç bitti ve daha önce popup gösterilmedi ve tahmin yapılmış
+      setShowMatchEndPopup(true);
+      setMatchEndPopupShown(true);
+    }
+  }, [isMatchFinished, matchEndPopupShown, hasPrediction]);
+  
   // ✅ Mock maçlarda dakika her saniye güncellenir (countdownTicker ile); yoksa API'den gelen elapsed
   const rawMatchMinute = match?.fixture?.status?.elapsed ?? 0;
   // ✅ Dakika, uzatma ve salise hesaplama (mock maçlarda gerçek zamandan)
@@ -699,31 +750,27 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
     }
   }, [match, isMatchFinished, initialTab, initialTabSet]);
   
-  // ✅ Biten maçlarda tahmin sekmesine geçişi engelle - stats'e yönlendir
-  React.useEffect(() => {
-    if (isMatchFinished && activeTab === 'prediction') {
-      setActiveTab('stats');
-      console.log('⚠️ Biten maçta tahmin sekmesi engellendi, stats sekmesine yönlendirildi');
-    }
-  }, [isMatchFinished, activeTab]);
+  // ✅ Biten maçlarda tahmin sekmesi görüntüleme modunda kalır (değişiklik yapılamaz ama görüntülenebilir)
 
   // ✅ Geri dönme kontrolü - kaydedilmemiş değişiklik varsa uyarı göster
-  // ✅ Biten maçlarda uyarı gösterilmez (değişiklik yapılamaz)
-  // ✅ isMatchFinished tanımlandıktan sonra tanımlanmalı
+  // ✅ Biten maçlarda veya kilitli kadrolarda uyarı gösterilmez (değişiklik yapılamaz)
+  // ✅ isMatchFinished ve isKadroLocked tanımlandıktan sonra tanımlanmalı
   const handleBackPress = useCallback(() => {
-    if (activeTab === 'squad' && squadHasUnsavedChanges && !isMatchFinished) {
+    // ✅ Kadro kilitliyse (maç canlı/bitti ve 2 dk geçti) uyarı gösterme
+    if (activeTab === 'squad' && squadHasUnsavedChanges && !isMatchFinished && !isKadroLocked) {
       setShowSquadUnsavedModal(true);
       setPendingBackAction(true);
       return;
     }
     // ✅ Tahmin sekmesinde de kaydedilmemiş değişiklik kontrolü
-    if (activeTab === 'prediction' && predictionHasUnsavedChanges && !isMatchFinished) {
+    // ✅ Kilitli durumda uyarı gösterme
+    if (activeTab === 'prediction' && predictionHasUnsavedChanges && !isMatchFinished && !isKadroLocked) {
       setPendingBackAction(true);
       setShowUnsavedChangesModal(true);
       return;
     }
     onBack();
-  }, [activeTab, squadHasUnsavedChanges, predictionHasUnsavedChanges, isMatchFinished, onBack]);
+  }, [activeTab, squadHasUnsavedChanges, predictionHasUnsavedChanges, isMatchFinished, isKadroLocked, onBack]);
 
   // Transform API data to component format
   // ✅ useMemo ile sarmalayarak mock maçlar için timestamp'i sabitle
@@ -963,50 +1010,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
             </View>
           );
         }
-        // ✅ Kullanıcının 120 sn kala tıklayıp tıklamadığını kontrol et
-        const matchTimestamp = matchData?.timestamp;
-        const fixtureId = Number(matchId);
-        let matchStartTime: number | null = null;
-        
-        // Mock maçlar için özel kontrol
-        if (isMockTestMatch(fixtureId)) {
-          matchStartTime = fixtureId === MOCK_MATCH_IDS.GS_FB ? getMatch1Start() : getMatch2Start();
-        } else if (matchTimestamp) {
-          matchStartTime = matchTimestamp * 1000; // Saniye cinsinden, milisaniyeye çevir
-        }
-        
-        // ✅ Düzenleme izni verme mantığı:
-        // 1. Kullanıcı maç başlamadan ÖNCE 120 sn kala girdiyse → Maç başladıktan sonra +120 sn düzenleme izni
-        // 2. Kullanıcı maç başladıktan SONRA girdiyse → Düzenleme izni YOK (tahmin yapılmamış maç gibi davran)
-        let allowEditingAfterMatchStart = false;
-        if (matchStartTime && pageOpenedAt) {
-          const timeWhenPageOpened = pageOpenedAt;
-          const remainingMsWhenOpened = matchStartTime - timeWhenPageOpened;
-          const remainingSecondsWhenOpened = Math.floor(remainingMsWhenOpened / 1000);
-          
-          // ✅ Şu anki durumu da kontrol et
-          const now = Date.now();
-          const remainingMsNow = matchStartTime - now;
-          const remainingSecondsNow = Math.floor(remainingMsNow / 1000);
-          
-          // ✅ SADECE maç başlamadan ÖNCE (0-120 sn kala) girenler için düzenleme izni
-          // remainingSecondsWhenOpened > 0 → maç başlamadan önce girdi
-          // remainingSecondsWhenOpened <= 120 → 120 sn kala veya daha az kala girdi
-          const enteredBefore120SecToStart = remainingSecondsWhenOpened > 0 && remainingSecondsWhenOpened <= 120;
-          
-          // ✅ Şu an maç başladıktan 120 sn geçmedi mi?
-          const stillWithinEditWindow = remainingSecondsNow >= -120;
-          
-          if (enteredBefore120SecToStart && stillWithinEditWindow) {
-            allowEditingAfterMatchStart = true;
-          }
-          
-          // ✅ Debug log
-          if (enteredBefore120SecToStart && !stillWithinEditWindow) {
-            console.log('⏰ 120 sn düzenleme süresi doldu, kadro kilitlendi');
-          }
-        }
-        
+        // ✅ allowEditingAfterMatchStart artık component-level useMemo'da hesaplanıyor
         // ✅ MatchSquad her zaman render edilir - favoriteTeamIds boş olsa bile ev sahibi takım seçilir
         // ✅ favoriteTeamIds değiştiğinde yeniden mount et (key değişir)
         return (
@@ -1053,6 +1057,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
             predictionTeamId={predictionTeamIdForProps}
             isMatchLive={isMatchLive}
             isMatchFinished={isMatchFinished}
+            hasPrediction={hasPrediction === true}
             initialAnalysisFocus={effectiveAnalysisFocus}
             lineups={lineups}
             favoriteTeamIds={favoriteTeamIds}
@@ -1443,31 +1448,22 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
 
       <View style={[styles.bottomNavBar, { paddingBottom: Math.max(insets.bottom, 8) }]}>
         <View style={styles.bottomNav}>
-        {tabs.filter(tab => {
-          // ✅ Biten maçlarda tahmin sekmesini gizle
-          if (tab.id === 'prediction' && isMatchFinished) return false;
-          return true;
-        }).map((tab) => {
+        {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
           return (
             <TouchableOpacity
               key={tab.id}
               onPress={() => {
-                // ✅ Biten maçlarda tahmin sekmesine geçiş engellenir
-                if (tab.id === 'prediction' && isMatchFinished) {
-                  return; // Biten maçlarda tahmin sekmesi gösterilmez
-                }
-                
                 // ✅ Kadro sekmesinden ayrılırken kaydedilmemiş değişiklik kontrolü
-                // ✅ Biten maçlarda uyarı gösterilmez (değişiklik yapılamaz)
-                if (activeTab === 'squad' && tab.id !== 'squad' && squadHasUnsavedChanges && !isMatchFinished) {
+                // ✅ Biten maçlarda veya kilitli kadrolarda uyarı gösterilmez (değişiklik yapılamaz)
+                if (activeTab === 'squad' && tab.id !== 'squad' && squadHasUnsavedChanges && !isMatchFinished && !isKadroLocked) {
                   setPendingTabChange(tab.id);
                   setShowSquadUnsavedModal(true);
                   return;
                 }
                 // ✅ Tahmin sekmesinden ayrılırken kaydedilmemiş değişiklik kontrolü
-                // ✅ Biten maçlarda uyarı gösterilmez (değişiklik yapılamaz)
-                if (activeTab === 'prediction' && tab.id !== 'prediction' && predictionHasUnsavedChanges && !isMatchFinished) {
+                // ✅ Biten maçlarda veya kilitli kadrolarda uyarı gösterilmez (değişiklik yapılamaz)
+                if (activeTab === 'prediction' && tab.id !== 'prediction' && predictionHasUnsavedChanges && !isMatchFinished && !isKadroLocked) {
                   setPendingTabChange(tab.id);
                   setShowUnsavedChangesModal(true);
                   return;
@@ -1529,9 +1525,284 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
         })}
         </View>
       </View>
+
+      {/* ✅ Maç Sonu Popup - Sonuçlar, Puanlar ve Rozetler */}
+      <Modal
+        visible={showMatchEndPopup}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setShowMatchEndPopup(false)}
+      >
+        <View style={matchEndStyles.overlay}>
+          <View style={matchEndStyles.modal}>
+            <LinearGradient
+              colors={['#0F2A24', '#1E3A3A', '#0F2A24']}
+              style={matchEndStyles.gradient}
+            >
+              {/* Header */}
+              <View style={matchEndStyles.header}>
+                <Ionicons name="trophy" size={32} color="#FFD700" />
+                <Text style={matchEndStyles.title}>Maç Sona Erdi!</Text>
+              </View>
+              
+              {/* Skor */}
+              <View style={matchEndStyles.scoreContainer}>
+                <View style={matchEndStyles.teamScore}>
+                  <Text style={matchEndStyles.teamName}>{matchData.homeName || 'Ev Sahibi'}</Text>
+                  <Text style={matchEndStyles.scoreText}>{matchData.homeScore ?? 0}</Text>
+                </View>
+                <Text style={matchEndStyles.scoreSeparator}>-</Text>
+                <View style={matchEndStyles.teamScore}>
+                  <Text style={matchEndStyles.teamName}>{matchData.awayName || 'Deplasman'}</Text>
+                  <Text style={matchEndStyles.scoreText}>{matchData.awayScore ?? 0}</Text>
+                </View>
+              </View>
+              
+              {/* Puan Özeti */}
+              <View style={matchEndStyles.summarySection}>
+                <Text style={matchEndStyles.sectionTitle}>Tahmin Puanlarınız</Text>
+                
+                <View style={matchEndStyles.pointsGrid}>
+                  <View style={matchEndStyles.pointItem}>
+                    <Ionicons name="people" size={20} color="#1FA2A6" />
+                    <Text style={matchEndStyles.pointLabel}>Kadro</Text>
+                    <Text style={matchEndStyles.pointValue}>+25</Text>
+                  </View>
+                  <View style={matchEndStyles.pointItem}>
+                    <Ionicons name="analytics" size={20} color="#8B5CF6" />
+                    <Text style={matchEndStyles.pointLabel}>Maç Tahmini</Text>
+                    <Text style={matchEndStyles.pointValue}>+15</Text>
+                  </View>
+                  <View style={matchEndStyles.pointItem}>
+                    <Ionicons name="person" size={20} color="#F59E0B" />
+                    <Text style={matchEndStyles.pointLabel}>Oyuncu</Text>
+                    <Text style={matchEndStyles.pointValue}>+10</Text>
+                  </View>
+                </View>
+                
+                <View style={matchEndStyles.totalPoints}>
+                  <Text style={matchEndStyles.totalLabel}>Toplam Puan</Text>
+                  <Text style={matchEndStyles.totalValue}>+50</Text>
+                </View>
+              </View>
+              
+              {/* Rozetler */}
+              <View style={matchEndStyles.badgeSection}>
+                <Text style={matchEndStyles.sectionTitle}>Kazanılan Rozetler</Text>
+                <View style={matchEndStyles.badgeRow}>
+                  <View style={matchEndStyles.badge}>
+                    <Text style={matchEndStyles.badgeEmoji}>🎯</Text>
+                    <Text style={matchEndStyles.badgeName}>Skor Tahmini</Text>
+                  </View>
+                  <View style={matchEndStyles.badge}>
+                    <Text style={matchEndStyles.badgeEmoji}>⚡</Text>
+                    <Text style={matchEndStyles.badgeName}>Hızlı Tahmin</Text>
+                  </View>
+                </View>
+              </View>
+              
+              {/* Butonlar */}
+              <View style={matchEndStyles.buttonContainer}>
+                <TouchableOpacity
+                  style={matchEndStyles.primaryButton}
+                  onPress={() => {
+                    setShowMatchEndPopup(false);
+                    setActiveTab('ratings'); // Reyting sekmesine git
+                  }}
+                >
+                  <LinearGradient
+                    colors={['#1FA2A6', '#047857']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={matchEndStyles.buttonGradient}
+                  >
+                    <Ionicons name="star" size={18} color="#FFFFFF" />
+                    <Text style={matchEndStyles.buttonText}>Puanlama Yap</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={matchEndStyles.secondaryButton}
+                  onPress={() => setShowMatchEndPopup(false)}
+                >
+                  <Text style={matchEndStyles.secondaryButtonText}>Daha Sonra</Text>
+                </TouchableOpacity>
+              </View>
+            </LinearGradient>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
+
+// ✅ Maç Sonu Popup Stilleri
+const matchEndStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modal: {
+    width: '100%',
+    maxWidth: 360,
+    borderRadius: 20,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.3)',
+  },
+  gradient: {
+    padding: 24,
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginTop: 12,
+  },
+  scoreContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+    paddingVertical: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+    borderRadius: 12,
+  },
+  teamScore: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  teamName: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    marginBottom: 4,
+  },
+  scoreText: {
+    fontSize: 36,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  scoreSeparator: {
+    fontSize: 24,
+    color: '#64748B',
+    marginHorizontal: 16,
+  },
+  summarySection: {
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#9CA3AF',
+    marginBottom: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  pointsGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  pointItem: {
+    alignItems: 'center',
+    flex: 1,
+    backgroundColor: 'rgba(31, 162, 166, 0.1)',
+    padding: 12,
+    borderRadius: 10,
+    marginHorizontal: 4,
+  },
+  pointLabel: {
+    fontSize: 10,
+    color: '#9CA3AF',
+    marginTop: 4,
+  },
+  pointValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#10B981',
+    marginTop: 2,
+  },
+  totalPoints: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    padding: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.3)',
+  },
+  totalLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  totalValue: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#10B981',
+  },
+  badgeSection: {
+    marginBottom: 24,
+  },
+  badgeRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 16,
+  },
+  badge: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 215, 0, 0.1)',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 215, 0, 0.3)',
+    minWidth: 80,
+  },
+  badgeEmoji: {
+    fontSize: 24,
+  },
+  badgeName: {
+    fontSize: 10,
+    color: '#FFD700',
+    marginTop: 4,
+    fontWeight: '600',
+  },
+  buttonContainer: {
+    gap: 12,
+  },
+  primaryButton: {
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  buttonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    gap: 8,
+  },
+  buttonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  secondaryButton: {
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  secondaryButtonText: {
+    fontSize: 14,
+    color: '#9CA3AF',
+  },
+});
 
 const styles = StyleSheet.create({
   container: {

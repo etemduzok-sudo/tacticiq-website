@@ -10,9 +10,9 @@ interface BottomNavigationProps {
 }
 
 const tabConfig = [
-  { id: 'home', labelKey: 'navigation.matchCalendar', icon: 'calendar-outline', activeIcon: 'calendar' },
-  { id: 'finished', labelKey: 'navigation.finishedMatches', icon: 'checkmark-done-outline', activeIcon: 'checkmark-done' },
+  { id: 'home', labelKey: 'navigation.home', icon: 'home-outline', activeIcon: 'home' },
   { id: 'leaderboard', labelKey: 'navigation.leaderboard', icon: 'trophy-outline', activeIcon: 'trophy' },
+  { id: 'badges', labelKey: 'navigation.badges', icon: 'ribbon-outline', activeIcon: 'ribbon' },
   { id: 'profile', labelKey: 'navigation.profile', icon: 'person-outline', activeIcon: 'person' },
 ];
 

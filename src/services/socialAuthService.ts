@@ -57,13 +57,15 @@ class SocialAuthService {
       }
       
       // ✅ GERÇEK SUPABASE OAUTH
+      // prompt: 'select_account' → sadece hesap seçimi, onay ekranı yok (daha önce izin verildiyse)
+      // prompt: 'consent' → her seferinde tam onay ekranı gösterir (kullanma!)
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: redirectUri,
           queryParams: {
             access_type: 'offline',
-            prompt: 'consent',
+            prompt: 'select_account',
           },
         },
       });

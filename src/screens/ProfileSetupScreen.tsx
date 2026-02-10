@@ -1509,6 +1509,7 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     width: '90%',
+    maxWidth: 400, // ✅ STANDART popup genişliği
     maxHeight: '80%',
     backgroundColor: WEBSITE_DARK_COLORS.background,
     borderRadius: WEBSITE_BORDER_RADIUS.lg,

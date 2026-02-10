@@ -314,8 +314,8 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
             </Text>
             <Text style={styles.notStartedSubtitle}>
               {activeTab === 'match' 
-                ? 'Maç başladığında istatistikler\nburada görünecek'
-                : 'Maç başladığında oyuncu performansları\nburada görünecek'}
+                ? 'Maç başladığında canlı istatistikler\nburada görünecek'
+                : 'Maç başladığında canlı oyuncu performansları\nburada görünecek'}
             </Text>
           </View>
         </View>
@@ -436,20 +436,70 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
               })
             )}
 
-            {/* Momentum Badge */}
+            {/* Takım Isı Haritası */}
             <Animated.View
               entering={isWeb ? undefined : FadeIn.delay(300)}
-              style={styles.momentumBadge}
+              style={styles.teamHeatmapSection}
             >
-              <LinearGradient
-                colors={['rgba(30, 41, 59, 0.8)', 'rgba(100, 116, 139, 0.3)']}
-                style={styles.momentumGradient}
-              >
-                <Text style={styles.momentumEmoji}>🔥</Text>
-                <Text style={styles.momentumText}>
-                  Isı haritası ve pozisyon analizi yakında...
-                </Text>
-              </LinearGradient>
+              <View style={styles.teamHeatmapHeader}>
+                <Ionicons name="flame" size={18} color="#F59E0B" />
+                <Text style={styles.teamHeatmapTitle}>Takım Isı Haritaları</Text>
+              </View>
+              
+              <View style={styles.teamHeatmapContainer}>
+                {/* Ev Sahibi Isı Haritası */}
+                <View style={styles.teamHeatmapCard}>
+                  <View style={styles.teamHeatmapCardHeader}>
+                    <Text style={styles.teamHeatmapTeamName}>{matchData?.homeName || 'Ev Sahibi'}</Text>
+                    <View style={styles.teamHeatmapAttack}>
+                      <Text style={styles.teamHeatmapAttackLabel}>Atak</Text>
+                      <Ionicons name="arrow-forward" size={10} color="#1FA2A6" />
+                    </View>
+                  </View>
+                  <View style={styles.teamHeatmapField}>
+                    <View style={styles.teamHeatmapFieldLines}>
+                      <View style={styles.teamHeatmapCenterLine} />
+                    </View>
+                    {/* Ev sahibi ısı noktaları - sağ tarafa yoğunlaşma (atak yönü) */}
+                    <View style={[styles.teamHeatPoint, { left: '60%', top: '50%', opacity: 0.9, backgroundColor: 'rgba(31, 162, 166, 0.8)' }]} />
+                    <View style={[styles.teamHeatPoint, { left: '70%', top: '35%', opacity: 0.7, backgroundColor: 'rgba(31, 162, 166, 0.6)' }]} />
+                    <View style={[styles.teamHeatPoint, { left: '70%', top: '65%', opacity: 0.7, backgroundColor: 'rgba(31, 162, 166, 0.6)' }]} />
+                    <View style={[styles.teamHeatPoint, { left: '50%', top: '50%', opacity: 0.5, backgroundColor: 'rgba(31, 162, 166, 0.4)' }]} />
+                    <View style={[styles.teamHeatPoint, { left: '80%', top: '50%', opacity: 0.6, backgroundColor: 'rgba(239, 68, 68, 0.7)' }]} />
+                    <View style={[styles.teamHeatPoint, { left: '40%', top: '40%', opacity: 0.3, backgroundColor: 'rgba(31, 162, 166, 0.3)' }]} />
+                    <View style={[styles.teamHeatPoint, { left: '40%', top: '60%', opacity: 0.3, backgroundColor: 'rgba(31, 162, 166, 0.3)' }]} />
+                  </View>
+                </View>
+                
+                {/* Deplasman Isı Haritası */}
+                <View style={styles.teamHeatmapCard}>
+                  <View style={styles.teamHeatmapCardHeader}>
+                    <Text style={[styles.teamHeatmapTeamName, { color: '#F59E0B' }]}>{matchData?.awayName || 'Deplasman'}</Text>
+                    <View style={styles.teamHeatmapAttack}>
+                      <Ionicons name="arrow-back" size={10} color="#F59E0B" />
+                      <Text style={[styles.teamHeatmapAttackLabel, { color: '#F59E0B' }]}>Atak</Text>
+                    </View>
+                  </View>
+                  <View style={styles.teamHeatmapField}>
+                    <View style={styles.teamHeatmapFieldLines}>
+                      <View style={styles.teamHeatmapCenterLine} />
+                    </View>
+                    {/* Deplasman ısı noktaları - sol tarafa yoğunlaşma (atak yönü) */}
+                    <View style={[styles.teamHeatPoint, { left: '40%', top: '50%', opacity: 0.8, backgroundColor: 'rgba(245, 158, 11, 0.7)' }]} />
+                    <View style={[styles.teamHeatPoint, { left: '30%', top: '35%', opacity: 0.6, backgroundColor: 'rgba(245, 158, 11, 0.5)' }]} />
+                    <View style={[styles.teamHeatPoint, { left: '30%', top: '65%', opacity: 0.6, backgroundColor: 'rgba(245, 158, 11, 0.5)' }]} />
+                    <View style={[styles.teamHeatPoint, { left: '50%', top: '50%', opacity: 0.4, backgroundColor: 'rgba(245, 158, 11, 0.3)' }]} />
+                    <View style={[styles.teamHeatPoint, { left: '20%', top: '50%', opacity: 0.5, backgroundColor: 'rgba(239, 68, 68, 0.6)' }]} />
+                    <View style={[styles.teamHeatPoint, { left: '60%', top: '45%', opacity: 0.3, backgroundColor: 'rgba(245, 158, 11, 0.3)' }]} />
+                  </View>
+                </View>
+              </View>
+              
+              <View style={styles.heatmapLegend}>
+                <Text style={styles.heatmapLegendText}>🔴 Yoğun Aktivite</Text>
+                <Text style={styles.heatmapLegendText}>🟡 Orta Aktivite</Text>
+                <Text style={styles.heatmapLegendText}>⚪ Düşük Aktivite</Text>
+              </View>
             </Animated.View>
           </View>
         ) : (
@@ -553,77 +603,183 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
                     {/* Expanded Content - Sadece açıkken görünür */}
                     {isExpanded && (
                       <Animated.View entering={FadeIn.duration(200)}>
-                        {/* Isı Haritası Placeholder */}
+                        {/* Isı Haritası - Mock Veri */}
                         <View style={styles.heatmapContainer}>
                           <View style={styles.heatmapHeader}>
                             <Ionicons name="flame" size={16} color="#F59E0B" />
                             <Text style={styles.heatmapTitle}>Isı Haritası</Text>
+                            <View style={styles.heatmapAttackDirection}>
+                              <Text style={styles.heatmapAttackText}>Atak Yönü</Text>
+                              <Ionicons name="arrow-forward" size={12} color="#10B981" />
+                            </View>
                           </View>
-                          <View style={styles.heatmapField}>
-                            <LinearGradient
-                              colors={['rgba(31, 162, 166, 0.1)', 'rgba(16, 185, 129, 0.2)', 'rgba(239, 68, 68, 0.3)']}
-                              start={{ x: 0, y: 0.5 }}
-                              end={{ x: 1, y: 0.5 }}
-                              style={styles.heatmapGradient}
-                            >
-                              <Text style={styles.heatmapPlaceholder}>Canlı veri ile görüntülenir</Text>
-                            </LinearGradient>
+                          <View style={styles.heatmapFieldReal}>
+                            {/* Saha çizgileri */}
+                            <View style={styles.heatmapFieldLines}>
+                              <View style={styles.heatmapCenterLine} />
+                              <View style={styles.heatmapCenterCircle} />
+                              <View style={styles.heatmapPenaltyAreaLeft} />
+                              <View style={styles.heatmapPenaltyAreaRight} />
+                            </View>
+                            {/* Isı noktaları - Mock veri pozisyona göre */}
+                            {(() => {
+                              const pos = player.position?.toUpperCase() || '';
+                              const isGK = pos.includes('GK') || pos.includes('G');
+                              const isDef = pos.includes('CB') || pos.includes('LB') || pos.includes('RB') || pos.includes('DEF');
+                              const isMid = pos.includes('CM') || pos.includes('CDM') || pos.includes('CAM') || pos.includes('MID');
+                              const isWing = pos.includes('LW') || pos.includes('RW') || pos.includes('LM') || pos.includes('RM');
+                              const isFwd = pos.includes('ST') || pos.includes('CF') || pos.includes('FWD');
+                              
+                              // Pozisyona göre ısı noktaları oluştur
+                              const heatPoints = [];
+                              if (isGK) {
+                                heatPoints.push({ x: 8, y: 50, intensity: 0.9 });
+                                heatPoints.push({ x: 15, y: 45, intensity: 0.4 });
+                                heatPoints.push({ x: 15, y: 55, intensity: 0.4 });
+                              } else if (isDef) {
+                                heatPoints.push({ x: 25, y: 50, intensity: 0.8 });
+                                heatPoints.push({ x: 30, y: 35, intensity: 0.6 });
+                                heatPoints.push({ x: 30, y: 65, intensity: 0.6 });
+                                heatPoints.push({ x: 40, y: 50, intensity: 0.3 });
+                              } else if (isMid) {
+                                heatPoints.push({ x: 50, y: 50, intensity: 0.9 });
+                                heatPoints.push({ x: 45, y: 35, intensity: 0.5 });
+                                heatPoints.push({ x: 55, y: 65, intensity: 0.5 });
+                                heatPoints.push({ x: 60, y: 50, intensity: 0.6 });
+                                heatPoints.push({ x: 35, y: 50, intensity: 0.4 });
+                              } else if (isWing) {
+                                const isLeft = pos.includes('L');
+                                heatPoints.push({ x: 65, y: isLeft ? 20 : 80, intensity: 0.9 });
+                                heatPoints.push({ x: 55, y: isLeft ? 25 : 75, intensity: 0.6 });
+                                heatPoints.push({ x: 75, y: isLeft ? 15 : 85, intensity: 0.7 });
+                                heatPoints.push({ x: 80, y: isLeft ? 30 : 70, intensity: 0.4 });
+                              } else if (isFwd) {
+                                heatPoints.push({ x: 80, y: 50, intensity: 0.9 });
+                                heatPoints.push({ x: 75, y: 35, intensity: 0.5 });
+                                heatPoints.push({ x: 75, y: 65, intensity: 0.5 });
+                                heatPoints.push({ x: 85, y: 50, intensity: 0.7 });
+                                heatPoints.push({ x: 65, y: 50, intensity: 0.3 });
+                              } else {
+                                // Varsayılan - orta alan
+                                heatPoints.push({ x: 50, y: 50, intensity: 0.7 });
+                                heatPoints.push({ x: 40, y: 40, intensity: 0.4 });
+                                heatPoints.push({ x: 60, y: 60, intensity: 0.4 });
+                              }
+                              
+                              return heatPoints.map((point, idx) => (
+                                <View
+                                  key={idx}
+                                  style={[
+                                    styles.heatPoint,
+                                    {
+                                      left: `${point.x}%`,
+                                      top: `${point.y}%`,
+                                      opacity: point.intensity,
+                                      transform: [{ scale: 0.5 + point.intensity * 0.5 }],
+                                    }
+                                  ]}
+                                />
+                              ));
+                            })()}
                           </View>
                         </View>
 
                         {/* Detailed Stats */}
                         <View style={styles.detailedStats}>
-                          {/* Gol & Şut */}
+                          {/* Gol & Şut - Anlamlı Akış */}
                           {(player.goals > 0 || player.assists > 0 || player.shots > 0) && (
                             <View style={styles.statSection}>
                               <View style={styles.statSectionHeader}>
                                 <Text style={styles.statSectionEmoji}>⚽</Text>
-                                <Text style={styles.statSectionTitle}>Gol & Şut</Text>
+                                <Text style={styles.statSectionTitle}>Hücum Performansı</Text>
                               </View>
-                              <View style={styles.statSectionGrid}>
-                                <View style={styles.statItem}>
-                                  <Text style={styles.statItemValue}>{player.goals}</Text>
-                                  <Text style={styles.statItemLabel}>Gol</Text>
+                              {/* Gol-Asist Ana Satır */}
+                              <View style={styles.goalAssistRow}>
+                                <View style={styles.goalBox}>
+                                  <Text style={styles.goalBoxValue}>{player.goals}</Text>
+                                  <Text style={styles.goalBoxLabel}>GOL</Text>
                                 </View>
-                                <View style={styles.statItem}>
-                                  <Text style={styles.statItemValue}>{player.assists}</Text>
-                                  <Text style={styles.statItemLabel}>Asist</Text>
+                                <View style={styles.goalPlusDivider}>
+                                  <Text style={styles.goalPlusText}>+</Text>
                                 </View>
-                                <View style={styles.statItem}>
-                                  <Text style={styles.statItemValue}>{player.shotsOnTarget}</Text>
-                                  <Text style={styles.statItemLabel}>İsabetli</Text>
+                                <View style={styles.assistBox}>
+                                  <Text style={styles.assistBoxValue}>{player.assists}</Text>
+                                  <Text style={styles.assistBoxLabel}>ASİST</Text>
                                 </View>
-                                <View style={styles.statItem}>
-                                  <Text style={styles.statItemValue}>{player.shotsInsideBox}</Text>
-                                  <Text style={styles.statItemLabel}>Kale Önü</Text>
+                                <View style={styles.goalContribDivider}>
+                                  <Text style={styles.goalContribEquals}>=</Text>
+                                </View>
+                                <View style={styles.contribBox}>
+                                  <Text style={styles.contribValue}>{player.goals + player.assists}</Text>
+                                  <Text style={styles.contribLabel}>G+A</Text>
+                                </View>
+                              </View>
+                              {/* Şut Detay */}
+                              <View style={styles.shotDetailRow}>
+                                <View style={styles.shotItem}>
+                                  <Text style={styles.shotItemValue}>{player.shots}</Text>
+                                  <Text style={styles.shotItemLabel}>Şut</Text>
+                                </View>
+                                <Ionicons name="arrow-forward" size={12} color="#475569" />
+                                <View style={styles.shotItem}>
+                                  <Text style={[styles.shotItemValue, { color: '#10B981' }]}>{player.shotsOnTarget}</Text>
+                                  <Text style={styles.shotItemLabel}>İsabetli</Text>
+                                </View>
+                                <Ionicons name="arrow-forward" size={12} color="#475569" />
+                                <View style={styles.shotItem}>
+                                  <Text style={[styles.shotItemValue, { color: '#F59E0B' }]}>{player.shotsInsideBox}</Text>
+                                  <Text style={styles.shotItemLabel}>Ceza Sahası</Text>
                                 </View>
                               </View>
                             </View>
                           )}
 
-                          {/* Pas & Oyun Kurma */}
+                          {/* Pas & Oyun Kurma - Anlamlı Akış */}
                           {player.totalPasses > 0 && (
                             <View style={styles.statSection}>
                               <View style={styles.statSectionHeader}>
-                                <Text style={styles.statSectionEmoji}>🧠</Text>
-                                <Text style={styles.statSectionTitle}>Pas & Oyun Kurma</Text>
+                                <Text style={styles.statSectionEmoji}>🎯</Text>
+                                <Text style={styles.statSectionTitle}>Pas İstatistikleri</Text>
                               </View>
-                              <View style={styles.statSectionGrid}>
-                                <View style={styles.statItem}>
-                                  <Text style={styles.statItemValue}>{player.passAccuracy}%</Text>
-                                  <Text style={styles.statItemLabel}>İsabet</Text>
+                              {/* Pas Özet Satırı */}
+                              <View style={styles.passSummaryRow}>
+                                <View style={styles.passSummaryItem}>
+                                  <Text style={styles.passSummaryValue}>{player.totalPasses}</Text>
+                                  <Text style={styles.passSummaryLabel}>Toplam Pas</Text>
                                 </View>
-                                <View style={styles.statItem}>
-                                  <Text style={styles.statItemValue}>{player.keyPasses}</Text>
-                                  <Text style={styles.statItemLabel}>Kilit Pas</Text>
+                                <View style={styles.passDivider}>
+                                  <Ionicons name="arrow-forward" size={16} color="#64748B" />
                                 </View>
-                                <View style={styles.statItem}>
-                                  <Text style={styles.statItemValue}>{player.longPasses}</Text>
-                                  <Text style={styles.statItemLabel}>Uzun</Text>
+                                <View style={styles.passSummaryItem}>
+                                  <Text style={[styles.passSummaryValue, { color: '#10B981' }]}>{Math.round(player.totalPasses * player.passAccuracy / 100)}</Text>
+                                  <Text style={styles.passSummaryLabel}>İsabetli</Text>
                                 </View>
-                                <View style={styles.statItem}>
-                                  <Text style={styles.statItemValue}>{player.totalPasses}</Text>
-                                  <Text style={styles.statItemLabel}>Toplam</Text>
+                                <View style={styles.passDivider}>
+                                  <Text style={styles.passPercentText}>{player.passAccuracy}%</Text>
+                                </View>
+                              </View>
+                              {/* Pas Detay Kartları */}
+                              <View style={styles.passDetailGrid}>
+                                <View style={styles.passDetailCard}>
+                                  <View style={styles.passDetailIconWrap}>
+                                    <Ionicons name="key" size={14} color="#8B5CF6" />
+                                  </View>
+                                  <Text style={styles.passDetailValue}>{player.keyPasses}</Text>
+                                  <Text style={styles.passDetailLabel}>Kilit Pas</Text>
+                                </View>
+                                <View style={styles.passDetailCard}>
+                                  <View style={[styles.passDetailIconWrap, { backgroundColor: 'rgba(59, 130, 246, 0.15)' }]}>
+                                    <Ionicons name="resize" size={14} color="#3B82F6" />
+                                  </View>
+                                  <Text style={styles.passDetailValue}>{player.longPasses}</Text>
+                                  <Text style={styles.passDetailLabel}>Uzun Pas</Text>
+                                </View>
+                                <View style={styles.passDetailCard}>
+                                  <View style={[styles.passDetailIconWrap, { backgroundColor: 'rgba(245, 158, 11, 0.15)' }]}>
+                                    <Ionicons name="flash" size={14} color="#F59E0B" />
+                                  </View>
+                                  <Text style={styles.passDetailValue}>{player.assists}</Text>
+                                  <Text style={styles.passDetailLabel}>Asist</Text>
                                 </View>
                               </View>
                             </View>
@@ -787,75 +943,178 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
                     {/* Expanded Content */}
                     {isExpanded && (
                       <Animated.View entering={FadeIn.duration(200)}>
-                        {/* Isı Haritası Placeholder */}
+                        {/* Isı Haritası - Mock Veri (Away) */}
                         <View style={[styles.heatmapContainer, styles.heatmapContainerAway]}>
                           <View style={styles.heatmapHeader}>
                             <Ionicons name="flame" size={16} color="#F59E0B" />
                             <Text style={styles.heatmapTitle}>Isı Haritası</Text>
+                            <View style={styles.heatmapAttackDirection}>
+                              <Ionicons name="arrow-back" size={12} color="#F59E0B" />
+                              <Text style={[styles.heatmapAttackText, { color: '#F59E0B' }]}>Atak Yönü</Text>
+                            </View>
                           </View>
-                          <View style={styles.heatmapField}>
-                            <LinearGradient
-                              colors={['rgba(245, 158, 11, 0.1)', 'rgba(239, 68, 68, 0.2)', 'rgba(245, 158, 11, 0.3)']}
-                              start={{ x: 0, y: 0.5 }}
-                              end={{ x: 1, y: 0.5 }}
-                              style={styles.heatmapGradient}
-                            >
-                              <Text style={styles.heatmapPlaceholder}>Canlı veri ile görüntülenir</Text>
-                            </LinearGradient>
+                          <View style={styles.heatmapFieldReal}>
+                            {/* Saha çizgileri */}
+                            <View style={styles.heatmapFieldLines}>
+                              <View style={styles.heatmapCenterLine} />
+                              <View style={styles.heatmapCenterCircle} />
+                              <View style={styles.heatmapPenaltyAreaLeft} />
+                              <View style={styles.heatmapPenaltyAreaRight} />
+                            </View>
+                            {/* Isı noktaları - Away atak yönü sola */}
+                            {(() => {
+                              const pos = player.position?.toUpperCase() || '';
+                              const isGK = pos.includes('GK') || pos.includes('G');
+                              const isDef = pos.includes('CB') || pos.includes('LB') || pos.includes('RB') || pos.includes('DEF');
+                              const isMid = pos.includes('CM') || pos.includes('CDM') || pos.includes('CAM') || pos.includes('MID');
+                              const isWing = pos.includes('LW') || pos.includes('RW') || pos.includes('LM') || pos.includes('RM');
+                              const isFwd = pos.includes('ST') || pos.includes('CF') || pos.includes('FWD');
+                              
+                              const heatPoints = [];
+                              // Away için atak yönü sola - koordinatları çevir
+                              if (isGK) {
+                                heatPoints.push({ x: 92, y: 50, intensity: 0.9 });
+                                heatPoints.push({ x: 85, y: 45, intensity: 0.4 });
+                                heatPoints.push({ x: 85, y: 55, intensity: 0.4 });
+                              } else if (isDef) {
+                                heatPoints.push({ x: 75, y: 50, intensity: 0.8 });
+                                heatPoints.push({ x: 70, y: 35, intensity: 0.6 });
+                                heatPoints.push({ x: 70, y: 65, intensity: 0.6 });
+                                heatPoints.push({ x: 60, y: 50, intensity: 0.3 });
+                              } else if (isMid) {
+                                heatPoints.push({ x: 50, y: 50, intensity: 0.9 });
+                                heatPoints.push({ x: 55, y: 35, intensity: 0.5 });
+                                heatPoints.push({ x: 45, y: 65, intensity: 0.5 });
+                                heatPoints.push({ x: 40, y: 50, intensity: 0.6 });
+                                heatPoints.push({ x: 65, y: 50, intensity: 0.4 });
+                              } else if (isWing) {
+                                const isLeft = pos.includes('L');
+                                heatPoints.push({ x: 35, y: isLeft ? 20 : 80, intensity: 0.9 });
+                                heatPoints.push({ x: 45, y: isLeft ? 25 : 75, intensity: 0.6 });
+                                heatPoints.push({ x: 25, y: isLeft ? 15 : 85, intensity: 0.7 });
+                                heatPoints.push({ x: 20, y: isLeft ? 30 : 70, intensity: 0.4 });
+                              } else if (isFwd) {
+                                heatPoints.push({ x: 20, y: 50, intensity: 0.9 });
+                                heatPoints.push({ x: 25, y: 35, intensity: 0.5 });
+                                heatPoints.push({ x: 25, y: 65, intensity: 0.5 });
+                                heatPoints.push({ x: 15, y: 50, intensity: 0.7 });
+                                heatPoints.push({ x: 35, y: 50, intensity: 0.3 });
+                              } else {
+                                heatPoints.push({ x: 50, y: 50, intensity: 0.7 });
+                                heatPoints.push({ x: 60, y: 40, intensity: 0.4 });
+                                heatPoints.push({ x: 40, y: 60, intensity: 0.4 });
+                              }
+                              
+                              return heatPoints.map((point, idx) => (
+                                <View
+                                  key={idx}
+                                  style={[
+                                    styles.heatPointAway,
+                                    {
+                                      left: `${point.x}%`,
+                                      top: `${point.y}%`,
+                                      opacity: point.intensity,
+                                      transform: [{ scale: 0.5 + point.intensity * 0.5 }],
+                                    }
+                                  ]}
+                                />
+                              ));
+                            })()}
                           </View>
                         </View>
 
-                        {/* Detailed Stats */}
+                        {/* Detailed Stats - Away */}
                         <View style={styles.detailedStats}>
+                          {/* Gol & Şut - Anlamlı Akış */}
                           {(player.goals > 0 || player.assists > 0 || player.shots > 0) && (
                             <View style={styles.statSection}>
                               <View style={styles.statSectionHeader}>
                                 <Text style={styles.statSectionEmoji}>⚽</Text>
-                                <Text style={styles.statSectionTitle}>Gol & Şut</Text>
+                                <Text style={styles.statSectionTitle}>Hücum Performansı</Text>
                               </View>
-                              <View style={styles.statSectionGrid}>
-                                <View style={styles.statItem}>
-                                  <Text style={styles.statItemValue}>{player.goals}</Text>
-                                  <Text style={styles.statItemLabel}>Gol</Text>
+                              <View style={styles.goalAssistRow}>
+                                <View style={[styles.goalBox, styles.goalBoxAway]}>
+                                  <Text style={styles.goalBoxValue}>{player.goals}</Text>
+                                  <Text style={styles.goalBoxLabel}>GOL</Text>
                                 </View>
-                                <View style={styles.statItem}>
-                                  <Text style={styles.statItemValue}>{player.assists}</Text>
-                                  <Text style={styles.statItemLabel}>Asist</Text>
+                                <View style={styles.goalPlusDivider}>
+                                  <Text style={styles.goalPlusText}>+</Text>
                                 </View>
-                                <View style={styles.statItem}>
-                                  <Text style={styles.statItemValue}>{player.shotsOnTarget}</Text>
-                                  <Text style={styles.statItemLabel}>İsabetli</Text>
+                                <View style={[styles.assistBox, styles.assistBoxAway]}>
+                                  <Text style={styles.assistBoxValue}>{player.assists}</Text>
+                                  <Text style={styles.assistBoxLabel}>ASİST</Text>
                                 </View>
-                                <View style={styles.statItem}>
-                                  <Text style={styles.statItemValue}>{player.shotsInsideBox}</Text>
-                                  <Text style={styles.statItemLabel}>Kale Önü</Text>
+                                <View style={styles.goalContribDivider}>
+                                  <Text style={styles.goalContribEquals}>=</Text>
+                                </View>
+                                <View style={[styles.contribBox, styles.contribBoxAway]}>
+                                  <Text style={styles.contribValue}>{player.goals + player.assists}</Text>
+                                  <Text style={styles.contribLabel}>G+A</Text>
+                                </View>
+                              </View>
+                              <View style={styles.shotDetailRow}>
+                                <View style={styles.shotItem}>
+                                  <Text style={styles.shotItemValue}>{player.shots}</Text>
+                                  <Text style={styles.shotItemLabel}>Şut</Text>
+                                </View>
+                                <Ionicons name="arrow-forward" size={12} color="#475569" />
+                                <View style={styles.shotItem}>
+                                  <Text style={[styles.shotItemValue, { color: '#10B981' }]}>{player.shotsOnTarget}</Text>
+                                  <Text style={styles.shotItemLabel}>İsabetli</Text>
+                                </View>
+                                <Ionicons name="arrow-forward" size={12} color="#475569" />
+                                <View style={styles.shotItem}>
+                                  <Text style={[styles.shotItemValue, { color: '#F59E0B' }]}>{player.shotsInsideBox}</Text>
+                                  <Text style={styles.shotItemLabel}>Ceza Sahası</Text>
                                 </View>
                               </View>
                             </View>
                           )}
 
+                          {/* Pas İstatistikleri - Anlamlı Akış */}
                           {player.totalPasses > 0 && (
                             <View style={styles.statSection}>
                               <View style={styles.statSectionHeader}>
-                                <Text style={styles.statSectionEmoji}>🧠</Text>
-                                <Text style={styles.statSectionTitle}>Pas & Oyun Kurma</Text>
+                                <Text style={styles.statSectionEmoji}>🎯</Text>
+                                <Text style={styles.statSectionTitle}>Pas İstatistikleri</Text>
                               </View>
-                              <View style={styles.statSectionGrid}>
-                                <View style={styles.statItem}>
-                                  <Text style={styles.statItemValue}>{player.passAccuracy}%</Text>
-                                  <Text style={styles.statItemLabel}>İsabet</Text>
+                              <View style={styles.passSummaryRow}>
+                                <View style={styles.passSummaryItem}>
+                                  <Text style={styles.passSummaryValue}>{player.totalPasses}</Text>
+                                  <Text style={styles.passSummaryLabel}>Toplam Pas</Text>
                                 </View>
-                                <View style={styles.statItem}>
-                                  <Text style={styles.statItemValue}>{player.keyPasses}</Text>
-                                  <Text style={styles.statItemLabel}>Kilit Pas</Text>
+                                <View style={styles.passDivider}>
+                                  <Ionicons name="arrow-forward" size={16} color="#64748B" />
                                 </View>
-                                <View style={styles.statItem}>
-                                  <Text style={styles.statItemValue}>{player.longPasses}</Text>
-                                  <Text style={styles.statItemLabel}>Uzun</Text>
+                                <View style={styles.passSummaryItem}>
+                                  <Text style={[styles.passSummaryValue, { color: '#10B981' }]}>{Math.round(player.totalPasses * player.passAccuracy / 100)}</Text>
+                                  <Text style={styles.passSummaryLabel}>İsabetli</Text>
                                 </View>
-                                <View style={styles.statItem}>
-                                  <Text style={styles.statItemValue}>{player.totalPasses}</Text>
-                                  <Text style={styles.statItemLabel}>Toplam</Text>
+                                <View style={styles.passDivider}>
+                                  <Text style={styles.passPercentText}>{player.passAccuracy}%</Text>
+                                </View>
+                              </View>
+                              <View style={styles.passDetailGrid}>
+                                <View style={styles.passDetailCard}>
+                                  <View style={styles.passDetailIconWrap}>
+                                    <Ionicons name="key" size={14} color="#8B5CF6" />
+                                  </View>
+                                  <Text style={styles.passDetailValue}>{player.keyPasses}</Text>
+                                  <Text style={styles.passDetailLabel}>Kilit Pas</Text>
+                                </View>
+                                <View style={styles.passDetailCard}>
+                                  <View style={[styles.passDetailIconWrap, { backgroundColor: 'rgba(59, 130, 246, 0.15)' }]}>
+                                    <Ionicons name="resize" size={14} color="#3B82F6" />
+                                  </View>
+                                  <Text style={styles.passDetailValue}>{player.longPasses}</Text>
+                                  <Text style={styles.passDetailLabel}>Uzun Pas</Text>
+                                </View>
+                                <View style={styles.passDetailCard}>
+                                  <View style={[styles.passDetailIconWrap, { backgroundColor: 'rgba(245, 158, 11, 0.15)' }]}>
+                                    <Ionicons name="flash" size={14} color="#F59E0B" />
+                                  </View>
+                                  <Text style={styles.passDetailValue}>{player.assists}</Text>
+                                  <Text style={styles.passDetailLabel}>Asist</Text>
                                 </View>
                               </View>
                             </View>
@@ -1421,6 +1680,399 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: 'rgba(255, 255, 255, 0.4)',
     fontStyle: 'italic',
+  },
+  
+  // Isı Haritası - Gerçek görünüm
+  heatmapAttackDirection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginLeft: 'auto',
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  heatmapAttackText: {
+    fontSize: 9,
+    fontWeight: '600',
+    color: '#10B981',
+    textTransform: 'uppercase',
+  },
+  heatmapFieldReal: {
+    height: 80,
+    position: 'relative',
+    backgroundColor: 'rgba(34, 87, 55, 0.6)',
+    borderRadius: 4,
+    margin: 8,
+    overflow: 'hidden',
+  },
+  heatmapFieldLines: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  heatmapCenterLine: {
+    position: 'absolute',
+    left: '50%',
+    top: 0,
+    bottom: 0,
+    width: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  heatmapCenterCircle: {
+    position: 'absolute',
+    left: '50%',
+    top: '50%',
+    width: 30,
+    height: 30,
+    marginLeft: -15,
+    marginTop: -15,
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  heatmapPenaltyAreaLeft: {
+    position: 'absolute',
+    left: 0,
+    top: '20%',
+    width: '12%',
+    height: '60%',
+    borderWidth: 1,
+    borderLeftWidth: 0,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  heatmapPenaltyAreaRight: {
+    position: 'absolute',
+    right: 0,
+    top: '20%',
+    width: '12%',
+    height: '60%',
+    borderWidth: 1,
+    borderRightWidth: 0,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  heatPoint: {
+    position: 'absolute',
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(31, 162, 166, 0.7)',
+    marginLeft: -12,
+    marginTop: -12,
+    ...Platform.select({
+      web: { boxShadow: '0 0 12px rgba(31, 162, 166, 0.6)' },
+      default: {},
+    }),
+  },
+  heatPointAway: {
+    position: 'absolute',
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(245, 158, 11, 0.7)',
+    marginLeft: -12,
+    marginTop: -12,
+    ...Platform.select({
+      web: { boxShadow: '0 0 12px rgba(245, 158, 11, 0.6)' },
+      default: {},
+    }),
+  },
+  
+  // Takım Isı Haritası Bölümü
+  teamHeatmapSection: {
+    marginTop: 16,
+    padding: 16,
+    backgroundColor: 'rgba(30, 41, 59, 0.5)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(71, 85, 105, 0.3)',
+  },
+  teamHeatmapHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 14,
+  },
+  teamHeatmapTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#F1F5F9',
+  },
+  teamHeatmapContainer: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  teamHeatmapCard: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 42, 36, 0.6)',
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.2)',
+  },
+  teamHeatmapCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+  },
+  teamHeatmapTeamName: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#1FA2A6',
+    textTransform: 'uppercase',
+  },
+  teamHeatmapAttack: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  teamHeatmapAttackLabel: {
+    fontSize: 8,
+    fontWeight: '600',
+    color: '#1FA2A6',
+    textTransform: 'uppercase',
+  },
+  teamHeatmapField: {
+    height: 70,
+    backgroundColor: 'rgba(34, 87, 55, 0.6)',
+    position: 'relative',
+  },
+  teamHeatmapFieldLines: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  teamHeatmapCenterLine: {
+    position: 'absolute',
+    left: '50%',
+    top: 0,
+    bottom: 0,
+    width: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+  },
+  teamHeatPoint: {
+    position: 'absolute',
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    marginLeft: -9,
+    marginTop: -9,
+    ...Platform.select({
+      web: { boxShadow: '0 0 8px currentColor' },
+      default: {},
+    }),
+  },
+  heatmapLegend: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 12,
+    marginTop: 12,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(71, 85, 105, 0.2)',
+  },
+  heatmapLegendText: {
+    fontSize: 9,
+    color: '#94A3B8',
+    fontWeight: '500',
+  },
+  
+  // Gol & Şut - Anlamlı Akış Stilleri
+  goalAssistRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+    gap: 8,
+  },
+  goalBox: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.3)',
+  },
+  goalBoxAway: {
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+  },
+  goalBoxValue: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#10B981',
+  },
+  goalBoxLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#10B981',
+    marginTop: 2,
+  },
+  goalPlusDivider: {
+    paddingHorizontal: 4,
+  },
+  goalPlusText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#64748B',
+  },
+  assistBox: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(139, 92, 246, 0.15)',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(139, 92, 246, 0.3)',
+  },
+  assistBoxAway: {
+    backgroundColor: 'rgba(59, 130, 246, 0.15)',
+    borderColor: 'rgba(59, 130, 246, 0.3)',
+  },
+  assistBoxValue: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#8B5CF6',
+  },
+  assistBoxLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#8B5CF6',
+    marginTop: 2,
+  },
+  goalContribDivider: {
+    paddingHorizontal: 4,
+  },
+  goalContribEquals: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#64748B',
+  },
+  contribBox: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(31, 162, 166, 0.2)',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: 'rgba(31, 162, 166, 0.5)',
+  },
+  contribBoxAway: {
+    backgroundColor: 'rgba(245, 158, 11, 0.2)',
+    borderColor: 'rgba(245, 158, 11, 0.5)',
+  },
+  contribValue: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#1FA2A6',
+  },
+  contribLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#1FA2A6',
+    marginTop: 2,
+  },
+  shotDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(51, 65, 85, 0.3)',
+    padding: 10,
+    borderRadius: 8,
+  },
+  shotItem: {
+    alignItems: 'center',
+    paddingHorizontal: 8,
+  },
+  shotItemValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#E2E8F0',
+  },
+  shotItemLabel: {
+    fontSize: 9,
+    color: '#94A3B8',
+    marginTop: 2,
+  },
+  
+  // Pas İstatistikleri - Anlamlı Akış Stilleri
+  passSummaryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(51, 65, 85, 0.3)',
+    padding: 12,
+    borderRadius: 10,
+    marginBottom: 10,
+    gap: 12,
+  },
+  passSummaryItem: {
+    alignItems: 'center',
+  },
+  passSummaryValue: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#E2E8F0',
+  },
+  passSummaryLabel: {
+    fontSize: 9,
+    color: '#94A3B8',
+    marginTop: 2,
+    fontWeight: '500',
+  },
+  passDivider: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  passPercentText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#10B981',
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  passDetailGrid: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  passDetailCard: {
+    flex: 1,
+    alignItems: 'center',
+    backgroundColor: 'rgba(30, 41, 59, 0.5)',
+    padding: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(71, 85, 105, 0.3)',
+  },
+  passDetailIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(139, 92, 246, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  passDetailValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#F1F5F9',
+  },
+  passDetailLabel: {
+    fontSize: 9,
+    color: '#94A3B8',
+    marginTop: 2,
   },
   
   // Detailed Stats - elite

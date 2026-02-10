@@ -37,7 +37,15 @@ import { handleError, ErrorType, ErrorSeverity } from '../../utils/GlobalErrorHa
 import { predictionsDb } from '../../services/databaseService';
 import { ConfirmModal, ConfirmButton } from '../ui/ConfirmModal';
 import { ANALYSIS_FOCUSES, type AnalysisFocus, type AnalysisFocusType } from '../AnalysisFocusModal';
-import { isMockTestMatch, MOCK_MATCH_IDS, getMatch1Start, getMatch2Start, getMockUserTeamId } from '../../data/mockTestData';
+import { isMockTestMatch, MOCK_MATCH_IDS, getMatch1Start, getMatch2Start, getMockUserTeamId, getMockCommunitySignals } from '../../data/mockTestData';
+import { 
+  SIGNAL_COLORS, 
+  SIGNAL_EMOJIS, 
+  SIGNAL_LABELS,
+  PlayerSignals,
+  getSignalBorderStyle,
+  getDominantSignal,
+} from '../../types/signals.types';
 
 // 🌟 Her analiz odağının BİRİNCİL tahmin kategorileri (UI gösterimi için)
 // Merkezi mapping: src/config/analysisFocusMapping.ts
@@ -205,6 +213,8 @@ interface MatchPredictionScreenProps {
   isMatchLive?: boolean;
   /** Biten maç */
   isMatchFinished?: boolean;
+  /** Kullanıcı bu maç için tahmin yapmış mı (topluluk verileri görünürlüğü için) */
+  hasPrediction?: boolean;
 }
 
 // Mock Formation Data
@@ -379,6 +389,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
   onHasUnsavedChanges,
   lineups,
   favoriteTeamIds = [],
+  hasPrediction = false,
   isMatchLive = false,
   isMatchFinished = false,
 }) => {
@@ -472,6 +483,22 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
     totalPredictions: number; // Kaç kullanıcı tahmin yaptı
   }>>({});
   
+  // ✅ TOPLULUK VERİLERİ GÖRÜNÜRLüK KONTROLÜ
+  // Kural: Tahmin kaydedildikten sonra VEYA maç canlı/bitmiş ise topluluk verileri görünür
+  const communityDataVisible = hasPrediction || isMatchLive || isMatchFinished;
+  
+  // ✅ CANLI MAÇ SİNYALLERİ (Community Signals)
+  // Sadece canlı maçlarda aktif - her oyuncu için sinyal verileri
+  const [liveSignals, setLiveSignals] = useState<Record<number, PlayerSignals>>({});
+  
+  // ✅ Sinyal detay popup state'i
+  const [signalPopupPlayer, setSignalPopupPlayer] = useState<{
+    playerId: number;
+    playerName: string;
+    positionLabel: string;
+    signals: PlayerSignals | null;
+  } | null>(null);
+  
   // ✅ Topluluk verilerini yükle (mock - backend hazır olunca API'den çekilecek)
   React.useEffect(() => {
     if (!attackPlayersArray || attackPlayersArray.length === 0) return;
@@ -503,6 +530,52 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
     });
     setCommunityPredictions(mockCommunity);
   }, [attackPlayersArray]);
+  
+  // ✅ Canlı maç sinyallerini yükle (sadece canlı maçlarda)
+  React.useEffect(() => {
+    if (!isMatchLive || !attackPlayersArray || attackPlayersArray.length === 0) {
+      setLiveSignals({});
+      return;
+    }
+    
+    // Mock sinyal verileri oluştur
+    const signalsMap: Record<number, PlayerSignals> = {};
+    attackPlayersArray.forEach((player: any) => {
+      const isGoalkeeper = player.position?.toUpperCase() === 'GK' || 
+                           player.position?.toLowerCase().includes('goalkeeper');
+      const teamId = predictionTeamId || 611; // Default FB
+      
+      signalsMap[player.id] = getMockCommunitySignals(
+        player.id,
+        player.name,
+        isGoalkeeper,
+        teamId,
+        45 // Mock dakika
+      );
+    });
+    setLiveSignals(signalsMap);
+    
+    // Her 30 saniyede güncelle (canlı maç simülasyonu)
+    const interval = setInterval(() => {
+      const updatedSignals: Record<number, PlayerSignals> = {};
+      attackPlayersArray.forEach((player: any) => {
+        const isGoalkeeper = player.position?.toUpperCase() === 'GK' || 
+                             player.position?.toLowerCase().includes('goalkeeper');
+        const teamId = predictionTeamId || 611;
+        
+        updatedSignals[player.id] = getMockCommunitySignals(
+          player.id,
+          player.name,
+          isGoalkeeper,
+          teamId,
+          45
+        );
+      });
+      setLiveSignals(updatedSignals);
+    }, 30000);
+    
+    return () => clearInterval(interval);
+  }, [isMatchLive, attackPlayersArray, predictionTeamId]);
   
   // ✅ Topluluk oranına göre çerçeve kalınlığı hesapla (0-4)
   const getCommunityBorderWidth = (rate: number): number => {
@@ -1393,6 +1466,12 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                 
                 // ✅ Topluluk çerçeve stili - sadece canlı/bitmiş maçlarda göster (maç öncesi sadece elit çerçeve ve glow)
                 const communityBorder = (isMatchLive || isMatchFinished) ? getCommunityBorderStyle(player.id) : null;
+                
+                // ✅ CANLI MAÇ SİNYAL ÇERÇEVESİ - Topluluk sinyallerine göre dinamik çerçeve
+                const playerSignals = liveSignals[player.id];
+                const signalBorderStyle = isMatchLive && playerSignals?.dominantSignal 
+                  ? getSignalBorderStyle(playerSignals.dominantSignal)
+                  : null;
 
                 return (
                   <View
@@ -1402,30 +1481,78 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                       { left: `${pos.x}%`, top: `${pos.y}%` }, // ✅ Sabit pozisyon
                     ]}
                   >
-                    {(isMatchLive || isMatchFinished) && (
+                    {/* ✅ "i" ikonu: Tahmin kaydedildikten VEYA maç canlı/bitmiş ise görünür */}
+                    {(hasPredictions || isMatchLive || isMatchFinished) && (
                       <TouchableOpacity
                         style={styles.predictionCardInfoIcon}
                         onPress={() => {
+                          // ✅ CANLI MAÇ: Sinyal popup'ını aç
+                          if (isMatchLive && playerSignals && playerSignals.signals.length > 0) {
+                            setSignalPopupPlayer({
+                              playerId: player.id,
+                              playerName: player.name,
+                              positionLabel,
+                              signals: playerSignals,
+                            });
+                            return;
+                          }
+                          
+                          // ✅ DİĞER DURUMLAR: Klasik Alert göster
                           const community = communityPredictions[player.id];
-                          const communityInfo = community 
-                            ? `\n\n📊 Topluluk Tahminleri (${community.totalPredictions} kullanıcı):\n` +
+                          
+                          // Kullanıcının bu oyuncu için yaptığı tahminler
+                          const userPredictionsList: string[] = [];
+                          if (playerPreds) {
+                            if (playerPreds.goal) userPredictionsList.push('⚽ Gol atar');
+                            if (playerPreds.assist) userPredictionsList.push('🅰️ Asist yapar');
+                            if (playerPreds.yellowCard) userPredictionsList.push('🟨 Sarı kart');
+                            if (playerPreds.redCard) userPredictionsList.push('🟥 Kırmızı kart');
+                            if (playerPreds.substitutedOut) userPredictionsList.push(`🔄 ${playerPreds.substitutedOutMinute || '?'}. dk çıkar`);
+                            if (playerPreds.injuredOut) userPredictionsList.push('🏥 Sakatlanır');
+                          }
+                          
+                          const userInfo = userPredictionsList.length > 0 
+                            ? `\n\n✅ Sizin Tahminleriniz:\n${userPredictionsList.join('\n')}`
+                            : '\n\n✅ Bu oyuncu için tahmin yapmadınız';
+                          
+                          // Topluluk verileri - communityDataVisible kontrolü
+                          let communityInfo = '';
+                          if (communityDataVisible && community) {
+                            // Topluluk verileri AÇIK - tüm yüzdeler görünür
+                            communityInfo = `\n\n📊 Topluluk Tahminleri (${community.totalPredictions} kullanıcı):\n` +
+                              `• Bu pozisyona atanma: %${Math.round(Math.random() * 30 + 70)}\n` +
                               `⚽ Gol atar: %${Math.round(community.goal * 100)}\n` +
                               `🅰️ Asist yapar: %${Math.round(community.assist * 100)}\n` +
                               `🟨 Sarı kart: %${Math.round(community.yellowCard * 100)}\n` +
                               `🟥 Kırmızı kart: %${Math.round(community.redCard * 100)}\n` +
                               `🔄 Oyundan çıkar: %${Math.round(community.substitutedOut * 100)}\n` +
-                              `🏥 Sakatlanır: %${Math.round(community.injuredOut * 100)}`
-                            : '';
+                              `  └ En popüler: ${Math.floor(Math.random() * 30 + 60)}. dk\n` +
+                              `🏥 Sakatlanır: %${Math.round(community.injuredOut * 100)}`;
+                          } else if (!communityDataVisible && community) {
+                            // Topluluk verileri GİZLİ - yüzdeler maskelenmiş
+                            communityInfo = `\n\n📊 Topluluk Tahminleri (${community.totalPredictions} kullanıcı):\n` +
+                              `• Bu pozisyona atanma: ??%\n` +
+                              `⚽ Gol atar: ??%\n` +
+                              `🅰️ Asist yapar: ??%\n` +
+                              `🟨 Sarı kart: ??%\n` +
+                              `🟥 Kırmızı kart: ??%\n` +
+                              `🔄 Oyundan çıkar: ??%\n` +
+                              `🏥 Sakatlanır: ??%\n\n` +
+                              `🔒 Tahminlerinizi kaydedin ve topluluk verilerini görün!`;
+                          } else {
+                            communityInfo = '\n\n📊 Henüz topluluk verisi yok';
+                          }
+                          
                           Alert.alert(
-                            player.name,
-                            `${positionLabel}${communityInfo}`,
+                            `${player.name} - ${positionLabel}`,
+                            `${userInfo}${communityInfo}`,
                             [{ text: 'Tamam' }]
                           );
                         }}
                         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                         activeOpacity={0.7}
                       >
-                        <Ionicons name="information-circle" size={20} color="#FFFFFF" />
+                        <Ionicons name="information-circle" size={20} color={isMatchLive && playerSignals ? '#F59E0B' : hasPredictions ? '#10B981' : '#FFFFFF'} />
                       </TouchableOpacity>
                     )}
                     <TouchableOpacity
@@ -1436,14 +1563,19 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                         // 2️⃣ Maç öncesi: Elit oyuncular (85+) altın çerçeve, kaleciler mavi çerçeve
                         !(isMatchLive || isMatchFinished) && player.rating >= 85 && styles.playerCardElite,
                         !(isMatchLive || isMatchFinished) && player.rating < 85 && (player.position === 'GK' || isGoalkeeperPlayer(player)) && styles.playerCardGK,
-                        // 3️⃣ Canlı/bitmiş maç: Topluluk çerçevesi (dinamik renk ve kalınlık)
-                        communityBorder && {
+                        // 3️⃣ CANLI MAÇ: Sinyal çerçevesi (en yüksek öncelikli sinyale göre)
+                        signalBorderStyle && {
+                          borderColor: signalBorderStyle.borderColor,
+                          borderWidth: signalBorderStyle.borderWidth,
+                        },
+                        // 4️⃣ Canlı/bitmiş maç: Topluluk çerçevesi (sinyal yoksa)
+                        !signalBorderStyle && communityBorder && {
                           borderColor: communityBorder.color,
                           borderWidth: communityBorder.width,
                         },
-                        // 4️⃣ Canlı/bitmiş maç fallback (topluluk verisi yoksa)
-                        !communityBorder && (isMatchLive || isMatchFinished) && (positionLabel === 'GK' || isGoalkeeperPlayer(player)) && styles.playerCardGKCommunity,
-                        !communityBorder && (isMatchLive || isMatchFinished) && (positionLabel === 'ST' || (player.position && String(player.position).toUpperCase() === 'ST')) && styles.playerCardSTCommunity,
+                        // 5️⃣ Canlı/bitmiş maç fallback (topluluk verisi yoksa)
+                        !signalBorderStyle && !communityBorder && (isMatchLive || isMatchFinished) && (positionLabel === 'GK' || isGoalkeeperPlayer(player)) && styles.playerCardGKCommunity,
+                        !signalBorderStyle && !communityBorder && (isMatchLive || isMatchFinished) && (positionLabel === 'ST' || (player.position && String(player.position).toUpperCase() === 'ST')) && styles.playerCardSTCommunity,
                       ]}
                       onPress={() => {
                         // ✅ Kilit kontrolü: Tahminler kilitliyken bilgilendirme göster
@@ -1484,6 +1616,27 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                     {hasPredictions && (
                       <View style={styles.predictionCheckBadgeTopRight}>
                         <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                      </View>
+                    )}
+                    
+                    {/* ✅ CANLI MAÇ SİNYAL BADGE'LERİ - Sol üst köşede küçük emoji göstergeleri */}
+                    {isMatchLive && playerSignals && playerSignals.signals.length > 0 && (
+                      <View style={styles.signalBadgesContainer}>
+                        {playerSignals.signals
+                          .filter(s => s.percentage >= 20) // Sadece %20+ sinyalleri göster
+                          .slice(0, 3) // En fazla 3 badge
+                          .map((signal, idx) => (
+                            <View 
+                              key={`signal-${signal.type}-${idx}`}
+                              style={[
+                                styles.signalBadge,
+                                { backgroundColor: SIGNAL_COLORS[signal.type] + '40' } // %25 opacity
+                              ]}
+                            >
+                              <Text style={styles.signalBadgeEmoji}>{SIGNAL_EMOJIS[signal.type]}</Text>
+                            </View>
+                          ))
+                        }
                       </View>
                     )}
                   </View>
@@ -2505,6 +2658,225 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
           buttons={confirmModal.buttons}
           onRequestClose={() => setConfirmModal(null)}
         />
+      )}
+
+      {/* ✅ CANLI MAÇ SİNYAL POPUP'I */}
+      {signalPopupPlayer && (
+        <Modal
+          visible={true}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setSignalPopupPlayer(null)}
+          statusBarTranslucent
+        >
+          <View style={{
+            flex: 1,
+            backgroundColor: 'rgba(0,0,0,0.7)',
+            justifyContent: 'flex-end',
+          }}>
+            <TouchableOpacity
+              style={StyleSheet.absoluteFill}
+              activeOpacity={1}
+              onPress={() => setSignalPopupPlayer(null)}
+            />
+            <View style={{
+              backgroundColor: '#0F2A24',
+              borderTopLeftRadius: 24,
+              borderTopRightRadius: 24,
+              borderWidth: 1,
+              borderColor: 'rgba(31, 162, 166, 0.3)',
+              maxHeight: '70%',
+              paddingBottom: 40,
+            }}>
+              {/* Header */}
+              <View style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: 16,
+                borderBottomWidth: 1,
+                borderBottomColor: 'rgba(255,255,255,0.1)',
+              }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <Ionicons name="pulse" size={24} color="#F59E0B" />
+                  <View>
+                    <Text style={{ fontSize: 16, fontWeight: '700', color: '#FFFFFF' }}>
+                      {signalPopupPlayer.playerName}
+                    </Text>
+                    <Text style={{ fontSize: 12, color: '#9CA3AF' }}>
+                      {signalPopupPlayer.positionLabel} - Canlı Sinyaller
+                    </Text>
+                  </View>
+                </View>
+                <TouchableOpacity onPress={() => setSignalPopupPlayer(null)}>
+                  <Ionicons name="close-circle" size={28} color="#6B7280" />
+                </TouchableOpacity>
+              </View>
+              
+              {/* Sinyaller Listesi */}
+              <ScrollView style={{ padding: 16 }} showsVerticalScrollIndicator={false}>
+                {signalPopupPlayer.signals?.signals
+                  .sort((a, b) => b.percentage - a.percentage)
+                  .map((signal, idx) => (
+                    <View 
+                      key={`signal-row-${signal.type}-${idx}`}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        padding: 12,
+                        marginBottom: 8,
+                        backgroundColor: signal.isRealized 
+                          ? 'rgba(16, 185, 129, 0.15)' // Gerçekleşenler yeşil arka plan
+                          : 'rgba(255,255,255,0.05)',
+                        borderRadius: 12,
+                        borderWidth: signal.isRealized ? 2 : 1,
+                        borderColor: signal.isRealized 
+                          ? '#10B981' // Gerçekleşenler yeşil çerçeve
+                          : signal.percentage >= 50 ? SIGNAL_COLORS[signal.type] + '80' : 'rgba(255,255,255,0.1)',
+                      }}
+                    >
+                      {/* Gerçekleşti Rozeti */}
+                      {signal.isRealized && (
+                        <View style={{
+                          position: 'absolute',
+                          top: -8,
+                          right: -8,
+                          backgroundColor: '#10B981',
+                          paddingHorizontal: 6,
+                          paddingVertical: 2,
+                          borderRadius: 8,
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: 2,
+                        }}>
+                          <Ionicons name="checkmark-circle" size={12} color="#FFFFFF" />
+                          <Text style={{ fontSize: 9, fontWeight: '700', color: '#FFFFFF' }}>
+                            GERÇEKLEŞTİ
+                          </Text>
+                        </View>
+                      )}
+                      
+                      {/* Emoji ve İsim */}
+                      <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 10 }}>
+                        <Text style={{ fontSize: 20 }}>{SIGNAL_EMOJIS[signal.type]}</Text>
+                        <View>
+                          <Text style={{ 
+                            fontSize: 14, 
+                            fontWeight: '600', 
+                            color: signal.isRealized ? '#10B981' : '#FFFFFF' 
+                          }}>
+                            {SIGNAL_LABELS[signal.type]}
+                          </Text>
+                          <Text style={{ fontSize: 11, color: '#9CA3AF' }}>
+                            {signal.totalVotes} kullanıcı
+                            {signal.isRealized && signal.userParticipated && (
+                              <Text style={{ color: '#10B981' }}> • +{
+                                // SIGNAL_BONUS_POINTS import edilmeli, burada inline kullanıyoruz
+                                signal.type === 'goal' ? 15 :
+                                signal.type === 'assist' ? 12 :
+                                signal.type === 'yellowCard' ? 8 :
+                                signal.type === 'redCard' ? 20 :
+                                signal.type === 'secondYellow' ? 18 :
+                                signal.type === 'substitution' ? 10 :
+                                signal.type === 'injury' ? 15 :
+                                signal.type === 'concede' ? 8 :
+                                signal.type === 'penaltySave' ? 25 : 5
+                              } puan</Text>
+                            )}
+                          </Text>
+                        </View>
+                      </View>
+                      
+                      {/* Yüzdeler */}
+                      <View style={{ alignItems: 'flex-end', gap: 2 }}>
+                        <View style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: 4,
+                          backgroundColor: SIGNAL_COLORS[signal.type] + '30',
+                          paddingHorizontal: 8,
+                          paddingVertical: 4,
+                          borderRadius: 8,
+                        }}>
+                          <Text style={{ 
+                            fontSize: 16, 
+                            fontWeight: '700', 
+                            color: SIGNAL_COLORS[signal.type] 
+                          }}>
+                            %{signal.percentage}
+                          </Text>
+                        </View>
+                        <Text style={{ fontSize: 10, color: '#6B7280' }}>
+                          Son 15dk: %{signal.percentageLast15Min}
+                        </Text>
+                      </View>
+                      
+                      {/* Katılım Butonu */}
+                      <TouchableOpacity
+                        style={{
+                          marginLeft: 10,
+                          paddingHorizontal: 10,
+                          paddingVertical: 6,
+                          backgroundColor: signal.userParticipated ? SIGNAL_COLORS[signal.type] : 'rgba(255,255,255,0.1)',
+                          borderRadius: 8,
+                          borderWidth: 1,
+                          borderColor: SIGNAL_COLORS[signal.type],
+                        }}
+                        onPress={() => {
+                          // TODO: API entegrasyonu - sinyal oylamasına katıl
+                          Alert.alert(
+                            signal.userParticipated ? 'Oyu Geri Çek' : 'Katıl',
+                            signal.userParticipated 
+                              ? `"${SIGNAL_LABELS[signal.type]}" sinyalinden çıkmak istiyor musunuz?`
+                              : `"${SIGNAL_LABELS[signal.type]}" sinyaline katılmak istiyor musunuz?`,
+                            [
+                              { text: 'İptal', style: 'cancel' },
+                              { 
+                                text: signal.userParticipated ? 'Geri Çek' : 'Katıl', 
+                                onPress: () => {
+                                  // Mock güncelleme
+                                  console.log('Sinyal oylaması:', signal.type, !signal.userParticipated);
+                                }
+                              },
+                            ]
+                          );
+                        }}
+                      >
+                        <Text style={{ 
+                          fontSize: 11, 
+                          fontWeight: '600', 
+                          color: signal.userParticipated ? '#0F2A24' : SIGNAL_COLORS[signal.type] 
+                        }}>
+                          {signal.userParticipated ? '✓ Katıldın' : 'Katıl'}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  ))
+                }
+                
+                {/* Bilgi Notu */}
+                <View style={{
+                  marginTop: 16,
+                  padding: 12,
+                  backgroundColor: 'rgba(249, 115, 22, 0.1)',
+                  borderRadius: 8,
+                  borderWidth: 1,
+                  borderColor: 'rgba(249, 115, 22, 0.3)',
+                }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                    <Ionicons name="information-circle" size={16} color="#F59E0B" />
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: '#F59E0B' }}>
+                      Sinyal Sistemi
+                    </Text>
+                  </View>
+                  <Text style={{ fontSize: 11, color: '#9CA3AF', lineHeight: 16 }}>
+                    Topluluk sinyallerine katılarak puan kazanabilirsiniz. Tahminleriniz gerçekleşirse bonus puan alırsınız. Son 15 dakikadaki veriler günceldir.
+                  </Text>
+                </View>
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
       )}
 
       {/* ✅ Web için kilitli uyarı modal'ı (Alert.alert web'de çalışmıyor) */}
@@ -4183,6 +4555,38 @@ const styles = StyleSheet.create({
       android: { elevation: 6 },
       web: { boxShadow: '0 1px 4px rgba(0,0,0,0.4)' },
     }),
+  },
+  // ✅ Canlı maç sinyal badge'leri container
+  signalBadgesContainer: {
+    position: 'absolute',
+    top: -6,
+    left: -6,
+    flexDirection: 'row',
+    gap: 2,
+    zIndex: 9998,
+  },
+  // ✅ Tekil sinyal badge
+  signalBadge: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.2,
+        shadowRadius: 2,
+      },
+      android: { elevation: 2 },
+      web: { boxShadow: '0 1px 2px rgba(0,0,0,0.3)' },
+    }),
+  },
+  signalBadgeEmoji: {
+    fontSize: 10,
   },
   substitutionBadge: {
     position: 'absolute',

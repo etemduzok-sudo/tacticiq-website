@@ -12,7 +12,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { ALL_BADGES } from '../constants/badges';
-import { getUserBadges } from '../services/badgeService';
+import { getUserBadges, getCachedBadges } from '../services/badgeService';
 import { profileService } from '../services/profileService';
 import { UnifiedUserProfile } from '../types/profile.types';
 import { getTeamColors } from '../utils/teamColors';
@@ -61,20 +61,65 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
 }) => {
   const { t } = useTranslation();
   const [showBadgePopup, setShowBadgePopup] = useState(false);
-  const [earnedBadges, setEarnedBadges] = useState<Array<{ id: string; name: string; emoji: string; tier: number }>>([]);
+  
+  // ✅ Rozetleri cache'den anında başlat (2 aşamalı yükleme önleme)
+  const getInitialBadges = () => {
+    const cached = getCachedBadges();
+    if (cached.length === 0) return [];
+    const earnedIds = new Set(cached.map(b => b.id));
+    return ALL_BADGES
+      .filter(badgeDef => earnedIds.has(badgeDef.id))
+      .map(badgeDef => ({
+        id: badgeDef.id,
+        name: badgeDef.name,
+        emoji: badgeDef.emoji,
+        tier: badgeDef.tier,
+      }));
+  };
+  
+  const [earnedBadges, setEarnedBadges] = useState<Array<{ id: string; name: string; emoji: string; tier: number }>>(getInitialBadges);
+  const [badgesLoading, setBadgesLoading] = useState(getInitialBadges().length === 0); // ✅ Cache varsa loading=false
   const badgeSlideAnim = useRef(new Animated.Value(-100)).current;
   const popupScaleAnim = useRef(new Animated.Value(0)).current;
   const shownBadgeIdsRef = useRef<Set<string>>(new Set());
   const cardPulseAnim = useRef(new Animated.Value(1)).current;
   
-  // ✅ Profil bilgilerini yükle
-  const [profile, setProfile] = useState<UnifiedUserProfile | null>(null);
-  const [userName, setUserName] = useState('TQ');
-  const [userDisplayName, setUserDisplayName] = useState('TacticIQ User');
-  const [userLevel, setUserLevel] = useState(1);
-  const [userPoints, setUserPoints] = useState(0);
-  const [countryRank, setCountryRank] = useState(0);
-  const [totalPlayers, setTotalPlayers] = useState(1000);
+  // ✅ Profil bilgilerini yükle - ANINDA cache'den başlat (2 aşamalı yükleme önleme)
+  // Helper: Profil'den state değerlerini çıkar
+  const extractProfileData = (userProfile: UnifiedUserProfile | null) => {
+    if (!userProfile) {
+      return { displayName: 'TacticIQ User', initials: 'TQ', level: 1, points: 0, rank: 0, total: 1000, isPro: false };
+    }
+    const displayName = userProfile.name || userProfile.nickname || userProfile.fullName || userProfile.firstName || userProfile.email || 'TacticIQ User';
+    const nameParts = displayName.trim().split(' ').filter((n: string) => n.length > 0);
+    let initials = 'TQ';
+    if (nameParts.length >= 2) {
+      initials = (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase();
+    } else if (nameParts.length === 1) {
+      initials = nameParts[0].substring(0, 2).toUpperCase();
+    }
+    return {
+      displayName,
+      initials,
+      level: userProfile.level || 1,
+      points: userProfile.totalPoints || userProfile.points || 0,
+      rank: userProfile.countryRank || 0,
+      total: userProfile.totalPlayers || 1000,
+      isPro: userProfile.isPro || false,
+    };
+  };
+  
+  // ✅ Senkron cache'den başlangıç değerlerini al (boş görünme önlenir)
+  const cachedProfile = profileService.getCachedProfile();
+  const initialData = extractProfileData(cachedProfile);
+  
+  const [profile, setProfile] = useState<UnifiedUserProfile | null>(cachedProfile);
+  const [userName, setUserName] = useState(initialData.initials);
+  const [userDisplayName, setUserDisplayName] = useState(initialData.displayName);
+  const [userLevel, setUserLevel] = useState(initialData.level);
+  const [userPoints, setUserPoints] = useState(initialData.points);
+  const [countryRank, setCountryRank] = useState(initialData.rank);
+  const [totalPlayers, setTotalPlayers] = useState(initialData.total);
   
   // ✅ Profil verilerini yükle (SINGLE SOURCE OF TRUTH: profileService)
   useEffect(() => {
@@ -83,28 +128,13 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
         const userProfile = await profileService.getProfile();
         if (userProfile) {
           setProfile(userProfile);
-          
-          // İsim ve avatar bilgileri - ProfileScreen ile AYNI mantık
-          // Öncelik: name > nickname > fullName > firstName > email
-          const displayName = userProfile.name || userProfile.nickname || userProfile.fullName || userProfile.firstName || userProfile.email || 'TacticIQ User';
-          setUserDisplayName(displayName);
-          
-          // Avatar için initials
-          const nameParts = displayName.trim().split(' ').filter((n: string) => n.length > 0);
-          if (nameParts.length >= 2) {
-            const initials = (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase();
-            setUserName(initials);
-          } else if (nameParts.length === 1) {
-            setUserName(nameParts[0].substring(0, 2).toUpperCase());
-          }
-          
-          // Puan ve level - totalPoints alanını da kontrol et
-          setUserPoints(userProfile.totalPoints || userProfile.points || 0);
-          setUserLevel(userProfile.level || 1);
-          
-          // Sıralama bilgileri
-          setCountryRank(userProfile.countryRank || 0);
-          setTotalPlayers(userProfile.totalPlayers || 1000);
+          const data = extractProfileData(userProfile);
+          setUserDisplayName(data.displayName);
+          setUserName(data.initials);
+          setUserPoints(data.points);
+          setUserLevel(data.level);
+          setCountryRank(data.rank);
+          setTotalPlayers(data.total);
         }
       } catch (error) {
         console.error('Error loading profile data in ProfileCard:', error);
@@ -143,6 +173,8 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
         setEarnedBadges(earned);
       } catch (error) {
         console.error('Error loading earned badges:', error);
+      } finally {
+        setBadgesLoading(false); // ✅ Yükleme tamamlandı
       }
     };
     
@@ -299,6 +331,28 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
                       </Animated.View>
                     );
                   })}
+                </ScrollView>
+              ) : badgesLoading ? (
+                // ✅ Yüklenirken placeholder rozetler göster (sıçrama önleme)
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.badgesScroll}
+                  scrollEnabled={false}
+                >
+                  {[1, 2, 3, 4, 5].map((_, index) => (
+                    <View
+                      key={`placeholder-${index}`}
+                      style={[styles.badgeItem, { opacity: 0.3 }]}
+                    >
+                      <View style={[styles.badgeGradient, { backgroundColor: 'rgba(100, 116, 139, 0.2)' }]}>
+                        <View style={[styles.badgeBorder, { borderColor: 'rgba(100, 116, 139, 0.3)' }]}>
+                          <Text style={styles.badgeIcon}>🏆</Text>
+                          <Text style={[styles.badgeLabel, { color: '#64748B' }]}>...</Text>
+                        </View>
+                      </View>
+                    </View>
+                  ))}
                 </ScrollView>
               ) : (
                 <View style={styles.noBadgesWrapper}>
@@ -635,6 +689,7 @@ const styles = StyleSheet.create({
   },
   badgesContainer: {
     marginTop: 2,
+    minHeight: 70, // ✅ Sabit minimum yükseklik - sıçrama önleme
   },
   badgesHeader: {
     flexDirection: 'row',

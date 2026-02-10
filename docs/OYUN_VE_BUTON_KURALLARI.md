@@ -1,6 +1,6 @@
 # Oyun ve Buton Kuralları
 
-Bu dosya TacticIQ uygulamasındaki kadro oluşturma, formasyon seçimi ve oyuncu yerleştirme kurallarını içerir.
+Bu dosya TacticIQ uygulamasındaki kadro oluşturma, formasyon seçimi, oyuncu yerleştirme ve canlı maç kurallarını içerir.
 **Bu dosya sadece onay alındıktan sonra güncellenir.**
 
 ---
@@ -195,6 +195,229 @@ Bu dosya TacticIQ uygulamasındaki kadro oluşturma, formasyon seçimi ve oyuncu
 
 ---
 
+## 10. Topluluk Verisi Görünürlük Kuralları (YENİ)
+
+### Gizli Mod (Tahmin Kaydedilmeden Önce)
+- Topluluk yüzdeleri `??%` olarak gösterilir
+- Formasyon tercih oranları maskelenir
+- Oyuncu pozisyon yüzdeleri gizlidir
+- "Tahminlerinizi kaydedin ve topluluk verilerini görün!" mesajı gösterilir
+
+### Açık Mod (Aşağıdaki Durumlardan Birinde)
+- Kullanıcı tahminlerini kaydettiyse
+- Maç canlı (live) durumda ise
+- Maç bitmiş (finished) durumda ise
+
+Bu durumların herhangi birinde tüm topluluk verileri görünür olur.
+
+---
+
+## 11. Canlı Maç Sinyal Sistemi (YENİ)
+
+### Sinyal Türleri
+
+**Saha Oyuncuları:**
+- `substitution` - Oyundan çıksın (turuncu)
+- `yellowCard` - Sarı kart görecek (sarı)
+- `secondYellow` - 2. sarıdan atılacak (sarı→kırmızı gradient)
+- `redCard` - Kırmızı kart görecek (kırmızı)
+- `injury` - Sakatlanacak (mor)
+- `goal` - Gol atacak (yeşil)
+- `assist` - Asist yapacak (turkuaz)
+
+**Kaleci Özel:**
+- `concede` - Gol yiyecek (pembe)
+- `penaltySave` - Penaltı kurtaracak (açık mavi)
+- `redCard` - Kırmızı kart (kırmızı)
+- `injury` - Sakatlanacak (mor)
+
+### Sinyal Öncelik Sırası (Yüksekten Düşüğe)
+1. Kırmızı kart
+2. 2. Sarı kart
+3. Sakatlanma
+4. Oyundan çıkma
+5. Gol yeme (kaleci)
+6. Sarı kart
+7. Gol atma
+8. Asist yapma
+9. Penaltı kurtarma (kaleci)
+
+### Görsel Gösterimler
+
+**Oyuncu Kartı Çerçevesi:**
+- %10-30: 1px çerçeve
+- %30-50: 2px çerçeve
+- %50-70: 3px çerçeve
+- %70+: 4px çerçeve + pulse animasyonu
+
+**Sinyal Badge'leri:**
+- Oyuncu kartının sol üst köşesinde
+- En fazla 3 badge gösterilir
+- %20+ sinyaller badge olarak görünür
+- Her sinyal kendi emoji'siyle gösterilir
+
+### Sinyal Popup'ı ("i" İkonuna Tıklanınca)
+- Tüm aktif sinyaller listesi
+- Her sinyal için: yüzde, son 15dk yüzdesi, oy sayısı
+- "Katıl" butonu ile oylamaya katılım
+- Gerçekleşen sinyaller yeşil işaretle gösterilir
+- Kullanıcı katıldı ve sinyal gerçekleştiyse bonus puan gösterilir
+
+### Çelişki Kontrolleri (Uyarı Gösterilir)
+- Oyundan çıkma + Gol atma
+- Oyundan çıkma + Asist yapma
+- Kırmızı kart + Gol atma
+- Kırmızı kart + Asist yapma
+- Sakatlanma + Gol atma
+- Sakatlanma + Asist yapma
+
+### Zaman Aşımı
+- Son 15 dakikadaki veriler ayrıca gösterilir
+- Sinyaller 15 dakika boyunca geçerli sayılır
+- Minimum 50 kullanıcı olmalı (mock modda 5)
+
+---
+
+## 12. Değerlendirme (Rating) 24 Saat Kuralı (YENİ)
+
+### Kural
+- TD ve oyuncu değerlendirmeleri maç bittikten sonra **24 saat boyunca** yapılabilir
+- 24 saat sonra değerlendirme sekmesi kilitlenir
+
+### Görsel Gösterim
+- **Yeşil (24+ saat kala):** "Kalan süre: X saat"
+- **Turuncu (2 saat veya daha az):** "Son X dakika!"
+- **Kırmızı (Süre dolmuş):** "Değerlendirme süresi doldu (24 saat)"
+
+### Kilit Sonrası
+- Kaydet butonu devre dışı
+- Değerlendirmeler salt okunur modda gösterilir
+- Kullanıcı ve topluluk puanları görüntülenebilir
+
+---
+
+## 13. Bonus Puan Sistemi (YENİ)
+
+### Sinyal Tahmin Puanları
+| Sinyal Türü | Doğru Tahmin Puanı |
+|-------------|-------------------|
+| Penaltı Kurtarma | 25 |
+| Kırmızı Kart | 20 |
+| 2. Sarı Kart | 18 |
+| Gol | 15 |
+| Sakatlanma | 15 |
+| Asist | 12 |
+| Oyundan Çıkma | 10 |
+| Sarı Kart | 8 |
+| Gol Yeme (Kaleci) | 8 |
+
+### Koşullar
+- Kullanıcı sinyale "Katıl" butonu ile katılmış olmalı
+- Sinyal gerçekleşmiş olmalı (maç içi olaylarla eşleşme)
+- Oyundan çıkma için dakika tahmini +/-5 dk toleranslı
+
+---
+
+## 14. Birleşik Maçlar Sekmesi (YENİ - Faz B)
+
+### Yeni Tab Bar Yapısı
+Eski yapı: `Maç Takvimi | Biten Maçlar | Sıralama | Profil`
+Yeni yapı: `Maçlar | Sıralama | Rozetler | Profil`
+
+### Maçlar Sekmesi (Unified)
+Tek bir scroll view'da tüm maçlar gösterilir:
+
+1. **Geçmiş Maçlar (Üst Kısım)**
+   - Profil kartının arkasından yukarı scroll ile görünür
+   - En son oynanan maç en üstte
+   - Maksimum 10 maç gösterilir, "daha fazla göster" butonu
+   - Gri status badge: "Bitti"
+
+2. **Canlı Maçlar (Orta - Sticky)**
+   - Kırmızı vurgulu bölüm
+   - Pulse animasyonlu canlı indicator
+   - "Canlı'ya Git" floating butonu (uzaklaşınca görünür)
+
+3. **Gelecek Maçlar (Alt Kısım)**
+   - Bottom bar'ın arkasına doğru aşağı scroll
+   - En yakın maç en üstte
+   - Turkuaz status badge ile tarih/saat
+
+### Maç Kartı Bilgileri
+- Takım logoları ve isimleri
+- Skor (canlı/biten) veya VS (gelecek)
+- Lig bilgisi
+- Tahmin yapıldı işareti (yeşil ✓)
+
+### Maç Kartına Tıklama
+- Her durumda 5 sekmeli maç detay ekranı açılır
+- Biten maçlar: `stats` sekmesi ile açılır
+- Gelecek/Canlı maçlar: `squad` sekmesi ile açılır
+
+### Rozetler Sekmesi
+- ProfileScreen'in `badges` tab'ı ile açılır
+- Kullanıcının kazandığı rozetleri gösterir
+- Profil ekranının tüm özelliklerine erişim
+
+---
+
+## 15. Ana Ekran (Dashboard) Scroll ve Maç Kartı Pozisyon Kuralları (YENİ)
+
+### Scroll Yapısı (Yukarıdan Aşağıya)
+```
+┌─────────────────────────────────────┐  ← ScrollView en üstü
+│  [Biten Maç - en eski]              │     (aşağı kaydırınca görünür)
+│  [Biten Maç - daha yeni]            │
+│  [Biten Maç - en yeni]              │
+└─────────────────────────────────────┘
+         │
+    ─────┴───── ProfileCard alt çizgisi (SABİT OVERLAY)
+         │
+┌─────────────────────────────────────┐
+│  [CANLI MAÇ] veya [En Yakın Maç]    │  ← SAYFA AÇILDIĞINDA BU GÖRÜNÜR
+│  [Yaklaşan Maç 2]                   │
+│  [Yaklaşan Maç 3 - en uzak]         │
+└─────────────────────────────────────┘  ← ScrollView en altı
+```
+
+### Başlangıç Pozisyonu Kuralı
+- **Sayfa açıldığında:** İlk görünen kart ProfileCard'ın hemen altında olmalı
+- **Canlı maç varsa:** Canlı maç kartı ProfileCard altında görünür
+- **Canlı maç yoksa:** En yakın yaklaşan maç kartı ProfileCard altında görünür
+- **ProfileCard alt çizgisi:** Biten maçlar ile canlı/yaklaşan maç arasındaki boşluğun tam ortasında
+
+### CSS/Style Ölçüleri
+- **scrollContent.paddingTop:** `238px` (iOS) / `228px` (Android/Web)
+- Bu değer ProfileCard yüksekliği + filtre barı + boşluk toplamıdır
+- İlk maç kartının üst kenarı ProfileCard alt çizgisinin hemen altında olmalı
+- Biten maç kartının alt çizgisi görünmemeli
+
+### Scroll Davranışları
+| Hareket | Sonuç |
+|---------|-------|
+| Aşağı kaydır (scroll down) | Biten maçlar görünür (ProfileCard arkasından çıkar) |
+| Yukarı kaydır (scroll up) | Yaklaşan maçlar görünür (ekranın altına doğru) |
+
+### Otomatik Scroll
+- Sayfa yüklendiğinde biten maçların toplam yüksekliği hesaplanır
+- ScrollView bu yükseklik kadar scroll edilir (animated: false)
+- Böylece canlı/yaklaşan maç ProfileCard altında görünür
+- Kullanıcı aşağı kaydırarak biten maçlara erişebilir
+
+### Maç Bitiş Sonrası Geçiş Kuralı
+- Maç bittikten **1 saat sonra** otomatik olarak "Biten Maçlar" bölümüne taşınır
+- Bu süre zarfında (0-60 dakika) maç hala canlı maç pozisyonunda kalır
+- Kullanıcı maç sonucu özetini görebilir, puan hesaplaması yapılabilir
+- 1 saat sonra maç kartı biten maçlar arasına kayar ve scroll pozisyonu güncellenir
+- **Otomatik kart yenileme:** Biten maç yukarı kayınca, bir alttaki maç (canlı varsa canlı, yoksa yaklaşan) otomatik olarak ProfileCard altındaki ana pozisyona gelir
+
+### Kod Referansları
+- **scrollContent paddingTop:** `Dashboard.tsx` ~satır 1890
+- **Otomatik scroll:** `Dashboard.tsx` ~satır 1306-1318 (onLayout)
+- **Biten maçlar (ters sıra):** `Dashboard.tsx` ~satır 1322 ([...filteredPastMatches].reverse())
+
+---
+
 ## Kod Referansları
 
 - **Formasyon butonları:** `MatchSquad.tsx` ~satır 3210-3290
@@ -203,13 +426,93 @@ Bu dosya TacticIQ uygulamasındaki kadro oluşturma, formasyon seçimi ve oyuncu
 - **handlePlayerSelect:** `MatchSquad.tsx` ~satır 2530
 - **handleRemovePlayer:** `MatchSquad.tsx` ~satır 2601
 - **FormationModal:** `MatchSquad.tsx` ~satır 3999
+- **Sinyal tipleri:** `types/signals.types.ts`
+- **Mock sinyaller:** `data/mockTestData.ts` ~satır 1950+
+- **24 saat kuralı:** `MatchRatings.tsx` ~satır 175+
+- **Birleşik Maçlar:** `screens/UnifiedMatchesScreen.tsx`
+- **Bottom Navigation:** `components/BottomNavigation.tsx`
+- **Navigation Types:** `navigation/types.ts`
 
 ---
 
 **Son Güncelleme:** 2026-02-10
-**Versiyon:** 1.2
+**Versiyon:** 2.2
+
+---
+
+## Bölüm 16: Popup/Modal Tasarım Standartları
+
+### Standart Popup Genişliği ve Stili
+Tüm popup ve modal'lar aşağıdaki standart stili kullanacak:
+
+```typescript
+// Standart Modal/Popup Stilleri
+modalOverlay: {
+  flex: 1,
+  backgroundColor: 'rgba(0, 0, 0, 0.8)',
+  justifyContent: 'center',         // Ortada açılan popup'lar için
+  // veya: justifyContent: 'flex-end',  // Alttan açılan popup'lar için
+  alignItems: 'center',
+  padding: 16,
+},
+modalContent: {
+  backgroundColor: '#1A2E2A',
+  borderRadius: 16,                  // Ortada: tüm köşeler yuvarlatılır
+  // veya: borderTopLeftRadius: 24,   // Alttan: sadece üst köşeler
+  //       borderTopRightRadius: 24,
+  width: '100%',
+  maxWidth: 400,                     // ✅ STANDART: Maksimum 400px genişlik
+  maxHeight: '90%',                  // Ekran yüksekliğinin %90'ı
+  borderWidth: 1,
+  borderColor: 'rgba(31, 162, 166, 0.2)',
+}
+```
+
+### Popup Türleri
+1. **Ortadan Açılan Popup'lar** (Alert, Onay, Bilgi):
+   - `justifyContent: 'center'`
+   - Tüm köşeler yuvarlatılır (`borderRadius: 16`)
+   - Örnek: "Maç Başlamak Üzere!" popup'ı
+
+2. **Alttan Açılan Popup'lar** (Seçim, Liste):
+   - `justifyContent: 'flex-end'`
+   - Sadece üst köşeler yuvarlatılır (`borderTopLeftRadius: 24`)
+   - Ekranın altından yukarı doğru açılır
+   - Örnek: Formasyon seçim popup'ı
+
+### Önemli Kurallar
+- **maxWidth: 400** tüm popup'larda sabit kalacak (mobil uyumlu genişlik)
+- Padding'ler tutarlı olacak: 16-20px
+- Arka plan rengi: `#1A2E2A` (koyu yeşil-mavi)
+- Border rengi: `rgba(31, 162, 166, 0.2)` (turkuaz %20 opacity)
+
+---
 
 ### Değişiklik Notları
+
+**v2.3 (2026-02-10):**
+- Bölüm 16 eklendi: Popup/Modal Tasarım Standartları
+- Standart popup genişliği belirlendi (maxWidth: 400px)
+- Popup türleri (ortadan/alttan açılan) açıklandı
+
+**v2.2 (2026-02-10):**
+- Bölüm 15 eklendi: Ana Ekran Scroll ve Maç Kartı Pozisyon Kuralları
+- paddingTop ölçüleri belgelendi (238px iOS / 228px Web)
+- Scroll yapısı ve otomatik scroll mantığı açıklandı
+- Biten/Canlı/Yaklaşan maç sıralaması belgelendi
+
+**v2.1 (2026-02-10):**
+- Bölüm 14 eklendi: Birleşik Maçlar Sekmesi (Faz B)
+- Tab bar yapısı güncellendi: Maçlar | Sıralama | Rozetler | Profil
+- UnifiedMatchesScreen eklendi
+- Kod referansları güncellendi
+
+**v2.0 (2026-02-10):**
+- Bölüm 10 eklendi: Topluluk Verisi Görünürlük Kuralları
+- Bölüm 11 eklendi: Canlı Maç Sinyal Sistemi (tüm detaylar)
+- Bölüm 12 eklendi: Değerlendirme 24 Saat Kuralı
+- Bölüm 13 eklendi: Bonus Puan Sistemi
+- Kod referansları güncellendi
 
 **v1.2 (2026-02-10):**
 - Bölüm 8: Veri kaynakları açıkça belirtildi (Gerçek İlk 11 = API, Topluluk = formasyon/atama)

@@ -432,12 +432,14 @@
     "saved": "Kaydedildi!"
   },
   "navigation": {
+    "home": "Ana Sayfa",
     "matches": "Maçlar",
     "matchCalendar": "Maç Takvimi",
     "live": "Oynanıyor",
     "finished": "Biten",
     "finishedMatches": "Biten Maçlar",
     "leaderboard": "Sıralama",
+    "badges": "Rozetler",
     "profile": "Profil"
   },
   "leagueCategories": {

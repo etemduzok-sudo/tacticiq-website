@@ -397,6 +397,29 @@ export default function App() {
         case 'leaderboard':
           return <Leaderboard onNavigate={navHandlers.handleProfileClick} />;
         
+        // ✅ Yeni: Rozetler Sekmesi (ProfileScreen'in badges tab'ı)
+        case 'badges':
+          return (
+            <ProfileScreen
+              onBack={() => {
+                navActions.setActiveTab('home');
+                navActions.setCurrentScreen('home');
+              }}
+              onSettings={navHandlers.handleProfileSettings}
+              onTeamSelect={(teamId, teamName) => {
+                logger.debug(`Team selected from badges: ${teamName}`, { teamId }, 'BADGES');
+                navActions.setSelectedTeamIds([teamId]);
+                navActions.setActiveTab('home');
+                navActions.setCurrentScreen('home');
+              }}
+              onTeamsChange={() => matchData.refetch()}
+              setAllFavoriteTeamsFromApp={setAllFavoriteTeams}
+              onProUpgrade={navHandlers.handleProUpgrade}
+              onDatabaseTest={() => navActions.setCurrentScreen('database-test')}
+              initialTab="badges"
+            />
+          );
+        
         case 'match-detail':
           if (!selectedMatchId) {
             logger.error('No matchId for MatchDetail', undefined, 'NAVIGATION');
@@ -451,7 +474,7 @@ export default function App() {
                 // ✅ Takım seçildiğinde o takımın maçlarını göster
                 logger.debug(`Team selected: ${teamName}`, { teamId }, 'PROFILE');
                 navActions.setSelectedTeamIds([teamId]); // Takım ID'sini kaydet (artık array)
-                navActions.setCurrentScreen('matches'); // Matches ekranına git, orada filtreleme yapılacak
+                navActions.setCurrentScreen('home'); // Home ekranına git, orada filtreleme yapılacak
               }}
               onTeamsChange={() => {
                 // ✅ Takım değiştiğinde maç verilerini güncelle (state zaten güncel)
@@ -538,7 +561,8 @@ export default function App() {
   };
   
   // Check if current screen should show bottom navigation
-  const shouldShowBottomNav = ['home', 'finished', 'leaderboard', 'tournaments', 'profile'].includes(currentScreen);
+  // ✅ Yeni sekme yapısı: matches (unified) | leaderboard | badges | profile
+  const shouldShowBottomNav = ['home', 'matches', 'finished', 'leaderboard', 'badges', 'profile'].includes(currentScreen);
 
   // Web için debug log
   if (Platform.OS === 'web' && __DEV__) {
@@ -559,8 +583,8 @@ export default function App() {
                 <View key={currentScreen === 'onboarding' ? 'content-onboarding' : `content-${currentLang}-${forceUpdateKey}`} style={{ flex: 1, backgroundColor: '#0F2A24' }}>
                   {renderScreen()}
                   
-                  {/* Kişi kartı + favori takım barı — Maç Takvimi, Biten Maçlar, Sıralama, Profil (hepsi aynı yapı) */}
-                  {['home', 'matches', 'finished', 'leaderboard', 'profile'].includes(currentScreen) && (
+                  {/* Kişi kartı + favori takım barı — Maçlar, Sıralama, Rozetler, Profil (hepsi aynı yapı) */}
+                  {['home', 'matches', 'finished', 'leaderboard', 'badges', 'profile'].includes(currentScreen) && (
                     <View style={styles.profileCardOverlay}>
                       <ProfileCard 
                         onPress={() => navHandlers.handleDashboardNavigate('profile')} 
@@ -588,7 +612,7 @@ export default function App() {
                             prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
                           );
                         }}
-                        showTeamFilter={['home', 'matches', 'finished', 'leaderboard', 'profile'].includes(currentScreen)}
+                        showTeamFilter={['home', 'matches', 'finished', 'leaderboard', 'badges', 'profile'].includes(currentScreen)}
                       />
                     </View>
                   )}

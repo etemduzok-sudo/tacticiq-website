@@ -158,9 +158,16 @@ const GK_RATING_CATEGORIES = [
   { id: 'longball', emoji: '🦶', title: 'Uzun Top', color: '#06B6D4' },
 ];
 
-// Pozisyona göre kategori seçici
+// Kaleci mi kontrolü - API'den G, GK, Goalkeeper vb. gelebilir
+const isGoalkeeperPosition = (pos: string) => {
+  if (!pos) return false;
+  const p = String(pos).toUpperCase();
+  return p === 'GK' || p === 'G' || pos.toLowerCase().includes('goalkeeper');
+};
+
+// Pozisyona göre kategori seçici - kaleciye GK yetenekleri, sahaya futbolcu yetenekleri
 const getRatingCategories = (position: string) => 
-  position === 'GK' ? GK_RATING_CATEGORIES : OUTFIELD_RATING_CATEGORIES;
+  isGoalkeeperPosition(position) ? GK_RATING_CATEGORIES : OUTFIELD_RATING_CATEGORIES;
 
 export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
   matchData,
@@ -173,6 +180,43 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
   
   // 🗑️ Silme onay modal state
   const [deleteConfirmPlayer, setDeleteConfirmPlayer] = useState<{ id: number; name: string } | null>(null);
+  
+  // ✅ 24 SAAT KURALI - Maç bittikten sonra 24 saat boyunca değerlendirme yapılabilir
+  const ratingTimeInfo = useMemo(() => {
+    // Maç bitiş zamanını al (fixture.timestamp + maç süresi yaklaşık 2 saat)
+    const matchTimestamp = matchData?.fixture?.timestamp 
+      ? matchData.fixture.timestamp * 1000 
+      : matchData?.timestamp 
+        ? new Date(matchData.timestamp).getTime()
+        : null;
+    
+    // Maç durumu kontrolü
+    const status = matchData?.fixture?.status?.short || matchData?.status || '';
+    const isFinished = status === 'FT' || status === 'AET' || status === 'PEN' || status === 'finished';
+    
+    if (!isFinished || !matchTimestamp) {
+      return { isLocked: false, hoursRemaining: 24, message: '' };
+    }
+    
+    // Maç bitiş zamanı (maç başlangıcından yaklaşık 2 saat sonra)
+    const matchEndTime = matchTimestamp + (2 * 60 * 60 * 1000);
+    const now = Date.now();
+    const hoursSinceEnd = (now - matchEndTime) / (1000 * 60 * 60);
+    const hoursRemaining = Math.max(0, 24 - hoursSinceEnd);
+    
+    const isLocked = hoursSinceEnd >= 24;
+    
+    let message = '';
+    if (isLocked) {
+      message = 'Değerlendirme süresi doldu (24 saat)';
+    } else if (hoursRemaining <= 1) {
+      message = `Son ${Math.ceil(hoursRemaining * 60)} dakika!`;
+    } else {
+      message = `Kalan süre: ${Math.floor(hoursRemaining)} saat`;
+    }
+    
+    return { isLocked, hoursRemaining, message };
+  }, [matchData]);
   
   // Favori takım ID'sini belirle (önce favori takım, yoksa ev sahibi)
   const homeTeamId = matchData?.homeTeam?.id || matchData?.teams?.home?.id;
@@ -417,7 +461,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
     const voters = 200 + (seed * 13) % 800;
     
     // Pozisyona göre doğru kategori ID'lerini kullan
-    const isGK = position === 'GK';
+    const isGK = isGoalkeeperPosition(position || '');
     
     // Her kategori için topluluk puanı - tutarlı olması için seed bazlı
     // ✅ Kategori ID'leri OUTFIELD_RATING_CATEGORIES ve GK_RATING_CATEGORIES ile eşleşmeli
@@ -616,6 +660,18 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
   };
 
   const handleSaveRatings = async (silent = false) => {
+    // ✅ 24 saat kilit kontrolü
+    if (ratingTimeInfo.isLocked) {
+      if (!silent) {
+        Alert.alert(
+          'Süre Doldu',
+          'Değerlendirme süresi sona erdi. Maç bittikten sonra 24 saat içinde değerlendirme yapabilirsiniz.',
+          [{ text: 'Tamam' }]
+        );
+      }
+      return;
+    }
+    
     try {
       // Calculate average rating
       const ratingsArray = Object.values(coachRatings);
@@ -658,6 +714,18 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
 
   // ⚽ Futbolcu değerlendirmelerini kaydet
   const handleSavePlayerRatings = async (silent = false) => {
+    // ✅ 24 saat kilit kontrolü
+    if (ratingTimeInfo.isLocked) {
+      if (!silent) {
+        Alert.alert(
+          'Süre Doldu',
+          'Değerlendirme süresi sona erdi. Maç bittikten sonra 24 saat içinde değerlendirme yapabilirsiniz.',
+          [{ text: 'Tamam' }]
+        );
+      }
+      return;
+    }
+    
     try {
       const playerRatingsData = {
         matchId: matchData.id,
@@ -787,11 +855,40 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
     return total.toFixed(1);
   };
 
-  const handleRatingChange = (categoryId: number, rating: number) => {
-    setCoachRatings(prev => ({
-      ...prev,
-      [categoryId]: rating
-    }));
+  // ✅ Yarım puan sistemi: 1 tık = 0.5 puan artışı, aynı kutuya 2. tık = 1 tam puan
+  // Kutuya tıklayınca: eğer mevcut değer < star - 0.5 → star - 0.5 (yarım)
+  //                    eğer mevcut değer = star - 0.5 → star (tam)
+  //                    eğer mevcut değer >= star → star - 0.5 (yarıma geri dön)
+  const handleRatingChange = (categoryId: number, star: number) => {
+    setCoachRatings(prev => {
+      const currentRating = prev[categoryId] || 5;
+      const halfValue = star - 0.5;
+      const fullValue = star;
+      
+      let newRating: number;
+      
+      if (currentRating < halfValue) {
+        // Mevcut değer bu kutunun yarımından küçük → yarıma git
+        newRating = halfValue;
+      } else if (currentRating === halfValue) {
+        // Zaten yarımda → tama git
+        newRating = fullValue;
+      } else if (currentRating === fullValue) {
+        // Zaten tamda → yarıma geri dön
+        newRating = halfValue;
+      } else {
+        // Mevcut değer bu kutunun üstünde → yarıma git
+        newRating = halfValue;
+      }
+      
+      // 0.5 ile 10 arasında sınırla
+      newRating = Math.max(0.5, Math.min(10, newRating));
+      
+      return {
+        ...prev,
+        [categoryId]: newRating
+      };
+    });
     setCoachRatingsChanged(true);
   };
 
@@ -859,6 +956,52 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
                 <Text style={styles.premiumBadgeText}>👔 TD DEĞERLENDİRMESİ</Text>
               </LinearGradient>
             </View>
+            
+            {/* ✅ 24 Saat Kural Göstergesi */}
+            {ratingTimeInfo.message && (
+              <View style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 6,
+                marginTop: 8,
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+                backgroundColor: ratingTimeInfo.isLocked 
+                  ? 'rgba(239, 68, 68, 0.2)' 
+                  : ratingTimeInfo.hoursRemaining <= 2 
+                    ? 'rgba(249, 115, 22, 0.2)'
+                    : 'rgba(16, 185, 129, 0.2)',
+                borderRadius: 8,
+                borderWidth: 1,
+                borderColor: ratingTimeInfo.isLocked 
+                  ? 'rgba(239, 68, 68, 0.4)' 
+                  : ratingTimeInfo.hoursRemaining <= 2 
+                    ? 'rgba(249, 115, 22, 0.4)'
+                    : 'rgba(16, 185, 129, 0.4)',
+              }}>
+                <Ionicons 
+                  name={ratingTimeInfo.isLocked ? 'lock-closed' : 'time-outline'} 
+                  size={14} 
+                  color={ratingTimeInfo.isLocked 
+                    ? '#EF4444' 
+                    : ratingTimeInfo.hoursRemaining <= 2 
+                      ? '#F97316'
+                      : '#10B981'
+                  } 
+                />
+                <Text style={{
+                  fontSize: 11,
+                  fontWeight: '600',
+                  color: ratingTimeInfo.isLocked 
+                    ? '#EF4444' 
+                    : ratingTimeInfo.hoursRemaining <= 2 
+                      ? '#F97316'
+                      : '#10B981',
+                }}>
+                  {ratingTimeInfo.message}
+                </Text>
+              </View>
+            )}
 
             <Text style={styles.headerTitle}>
               {targetTeamInfo.manager || 'Teknik Direktör'}
@@ -1001,30 +1144,52 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
                 {/* Rating Stars */}
                 <View style={styles.ratingContainer}>
                   <View style={styles.ratingStars}>
-                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((star) => (
-                      <TouchableOpacity
-                        key={star}
-                        style={styles.starButton}
-                        onPress={() => handleRatingChange(category.id, star)}
-                        activeOpacity={0.7}
-                      >
-                        <Animated.View
-                          entering={!isWeb && ZoomIn ? ZoomIn.delay(star * 30) : undefined}
-                          style={[
-                            styles.star,
-                            star <= userRating && styles.starActive,
-                            { backgroundColor: star <= userRating ? category.color : 'rgba(100, 116, 139, 0.2)' }
-                          ]}
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((star) => {
+                      // Yarım puan durumu: star - 0.5 = userRating ise yarım dolu
+                      const isFullyActive = star <= userRating;
+                      const isHalfActive = !isFullyActive && (star - 0.5) === userRating;
+                      const isActive = isFullyActive || isHalfActive;
+                      
+                      return (
+                        <TouchableOpacity
+                          key={star}
+                          style={styles.starButton}
+                          onPress={() => handleRatingChange(category.id, star)}
+                          activeOpacity={0.7}
                         >
-                          <Text style={[
-                            styles.starText,
-                            star <= userRating && styles.starTextActive
-                          ]}>
-                            {star}
-                          </Text>
-                        </Animated.View>
-                      </TouchableOpacity>
-                    ))}
+                          <Animated.View
+                            entering={!isWeb && ZoomIn ? ZoomIn.delay(star * 30) : undefined}
+                            style={[
+                              styles.star,
+                              { 
+                                backgroundColor: isFullyActive 
+                                  ? category.color 
+                                  : isHalfActive 
+                                    ? 'rgba(100, 116, 139, 0.2)' 
+                                    : 'rgba(100, 116, 139, 0.2)',
+                                overflow: 'hidden',
+                                position: 'relative'
+                              }
+                            ]}
+                          >
+                            {/* Yarım doluluk göstergesi */}
+                            {isHalfActive && (
+                              <View style={[
+                                styles.halfFill,
+                                { backgroundColor: category.color }
+                              ]} />
+                            )}
+                            <Text style={[
+                              styles.starText,
+                              isActive && styles.starTextActive,
+                              { zIndex: 1 }
+                            ]}>
+                              {star}
+                            </Text>
+                          </Animated.View>
+                        </TouchableOpacity>
+                      );
+                    })}
                   </View>
                 </View>
 
@@ -1112,7 +1277,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
               const avgRating = getPlayerAverageRating(player.id, player.position);
               const hasRatings = Object.keys(playerRatings[player.id] || {}).length > 0;
               const categories = getRatingCategories(player.position);
-              const isGK = player.position === 'GK';
+              const isGK = isGoalkeeperPosition(player.position || '');
 
               return (
                 <Animated.View
@@ -1944,6 +2109,16 @@ const styles = StyleSheet.create({
   starTextActive: {
     color: '#FFFFFF',
   },
+  // Yarım puan doluluk göstergesi
+  halfFill: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: '50%',
+    borderTopLeftRadius: 8,
+    borderBottomLeftRadius: 8,
+  },
 
   // Comparison
   comparisonContainer: {
@@ -2298,7 +2473,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#1E3A3A', // ✅ Design System
     borderRadius: 16,
     padding: 24,
-    marginHorizontal: 32,
+    width: '100%',
+    maxWidth: 360, // ✅ STANDART popup genişliği
+    marginHorizontal: 16,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: 'rgba(140, 58, 58, 0.3)', // ✅ Error rengi

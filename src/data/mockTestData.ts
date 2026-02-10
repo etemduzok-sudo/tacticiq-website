@@ -1947,3 +1947,210 @@ export function getMockPlayerStatistics(fixtureId: number): { home: MockPlayerSt
   
   return null;
 }
+
+// ============================================================
+// 📊 CANLI MAÇ SİNYALLERİ (Community Signals)
+// ============================================================
+
+import {
+  SignalType,
+  PlayerSignal,
+  PlayerSignals,
+  SubstitutionSignal,
+  getAvailableSignals,
+  getDominantSignal,
+  MIN_USERS_FOR_PERCENTAGE_MOCK,
+} from '../types/signals.types';
+
+/**
+ * Mock yedek oyuncular listesi (çıksın sinyali için)
+ */
+const MOCK_SUBSTITUTES: Record<number, Array<{ playerId: number; playerName: string }>> = {
+  // Fenerbahçe yedekleri
+  611: [
+    { playerId: 60101, playerName: 'Irfan Kahveci' },
+    { playerId: 60102, playerName: 'Cengiz Under' },
+    { playerId: 60103, playerName: 'Michy Batshuayi' },
+    { playerId: 60104, playerName: 'Sebastian Szymanski' },
+    { playerId: 60105, playerName: 'Emre Mor' },
+  ],
+  // Galatasaray yedekleri
+  645: [
+    { playerId: 50101, playerName: 'Y. Akgun' },
+    { playerId: 50102, playerName: 'H. Dervisoglu' },
+    { playerId: 50103, playerName: 'Zaha' },
+    { playerId: 50104, playerName: 'Sallai' },
+    { playerId: 50105, playerName: 'Berkan' },
+  ],
+};
+
+/**
+ * Rastgele yüzde üret (belirli aralıkta)
+ */
+function randomPercentage(min: number, max: number): number {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+/**
+ * Son 15 dakikadaki yüzdeyi hesapla (maç genelinden biraz farklı)
+ */
+function getLast15MinPercentage(overallPercentage: number): number {
+  const variance = randomPercentage(-15, 25);
+  return Math.max(0, Math.min(100, overallPercentage + variance));
+}
+
+/**
+ * Mock oyuncu sinyalleri üret
+ */
+export function getMockCommunitySignals(
+  playerId: number,
+  playerName: string,
+  isGoalkeeper: boolean,
+  teamId: number,
+  matchMinute: number = 45
+): PlayerSignals {
+  const availableSignals = getAvailableSignals(isGoalkeeper);
+  const signals: PlayerSignal[] = [];
+  
+  // Her sinyal türü için rastgele veri üret
+  availableSignals.forEach((signalType) => {
+    // Bazı sinyaller düşük, bazıları yüksek olsun
+    const basePercentage = randomPercentage(5, 70);
+    const percentage = basePercentage;
+    const percentageLast15Min = getLast15MinPercentage(percentage);
+    
+    // Eşik değeri kontrolü - düşük yüzdeler gösterilmez
+    if (percentage < 10) return;
+    
+    const signal: PlayerSignal = {
+      type: signalType,
+      percentage,
+      percentageLast15Min,
+      totalVotes: randomPercentage(50, 500),
+      userParticipated: Math.random() > 0.7, // %30 ihtimalle katılmış
+      isRealized: false,
+    };
+    
+    // Substitution sinyali için yedek oyuncular ekle
+    if (signalType === 'substitution') {
+      const substitutes = MOCK_SUBSTITUTES[teamId] || MOCK_SUBSTITUTES[611];
+      const subSignal = signal as SubstitutionSignal;
+      subSignal.replacementCandidates = substitutes.map((sub) => ({
+        playerId: sub.playerId,
+        playerName: sub.playerName,
+        percentage: randomPercentage(10, 50),
+      })).sort((a, b) => b.percentage - a.percentage);
+    }
+    
+    signals.push(signal);
+  });
+  
+  // En yüksek yüzdeli sinyali bul
+  const dominantSignal = getDominantSignal(signals);
+  
+  return {
+    playerId,
+    playerName,
+    isGoalkeeper,
+    signals,
+    dominantSignal,
+  };
+}
+
+/**
+ * Bir maçtaki tüm oyuncular için sinyal verisi üret
+ */
+export function getMockMatchSignals(
+  fixtureId: number,
+  matchMinute: number = 45
+): Map<number, PlayerSignals> {
+  const signalsMap = new Map<number, PlayerSignals>();
+  
+  if (fixtureId === MOCK_MATCH_IDS.GS_FB) {
+    // Fenerbahçe oyuncuları
+    const fbPlayers = [
+      { id: 60001, name: 'D. Livakovic', isGK: true },
+      { id: 60002, name: 'Osayi-Samuel', isGK: false },
+      { id: 60003, name: 'A. Djiku', isGK: false },
+      { id: 60004, name: 'C. Söyüncü', isGK: false },
+      { id: 60005, name: 'F. Kadıoğlu', isGK: false },
+      { id: 60006, name: 'I. Kahveci', isGK: false },
+      { id: 60007, name: 'F. Amrabat', isGK: false },
+      { id: 60008, name: 'S. Szymanski', isGK: false },
+      { id: 60009, name: 'E. Dzeko', isGK: false },
+      { id: 60010, name: 'D. Tadic', isGK: false },
+      { id: 60011, name: 'C. Ünder', isGK: false },
+    ];
+    
+    fbPlayers.forEach((player) => {
+      signalsMap.set(
+        player.id,
+        getMockCommunitySignals(player.id, player.name, player.isGK, 611, matchMinute)
+      );
+    });
+    
+    // Galatasaray oyuncuları
+    const gsPlayers = [
+      { id: 50001, name: 'F. Muslera', isGK: true },
+      { id: 50002, name: 'S. Boey', isGK: false },
+      { id: 50003, name: 'D. Nelsson', isGK: false },
+      { id: 50004, name: 'A. Bardakcı', isGK: false },
+      { id: 50005, name: 'A. Kurzawa', isGK: false },
+      { id: 50006, name: 'L. Torreira', isGK: false },
+      { id: 50007, name: 'K. Aktürkoğlu', isGK: false },
+      { id: 50008, name: 'D. Mertens', isGK: false },
+      { id: 50009, name: 'B. Yılmaz', isGK: false },
+      { id: 50010, name: 'M. Icardi', isGK: false },
+      { id: 50011, name: 'V. Osimhen', isGK: false },
+    ];
+    
+    gsPlayers.forEach((player) => {
+      signalsMap.set(
+        player.id,
+        getMockCommunitySignals(player.id, player.name, player.isGK, 645, matchMinute)
+      );
+    });
+  }
+  
+  return signalsMap;
+}
+
+/**
+ * Belirli bir oyuncu için gerçekleşen olayı işaretle
+ */
+export function markSignalAsRealized(
+  signals: PlayerSignals,
+  signalType: SignalType,
+  realizedAt: string
+): PlayerSignals {
+  const updatedSignals = signals.signals.map((signal) => {
+    if (signal.type === signalType) {
+      return {
+        ...signal,
+        isRealized: true,
+        realizedAt,
+      };
+    }
+    return signal;
+  });
+  
+  return {
+    ...signals,
+    signals: updatedSignals,
+    dominantSignal: getDominantSignal(updatedSignals),
+  };
+}
+
+/**
+ * Topluluk verisi yeterli mi kontrol et (mock için düşük eşik)
+ */
+export function hasEnoughCommunityData(totalVotes: number): boolean {
+  return totalVotes >= MIN_USERS_FOR_PERCENTAGE_MOCK;
+}
+
+/**
+ * Sinyal zamanlaması kontrolü - son 15 dakikadaki veriler geçerli mi?
+ */
+export function isSignalRecent(matchMinute: number, signalMinute: number): boolean {
+  return matchMinute - signalMinute <= 15;
+}
