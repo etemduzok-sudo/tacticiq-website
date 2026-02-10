@@ -228,6 +228,56 @@ export interface MatchPlayersResponse {
   away: MatchPlayerStats[];
 }
 
+// Heatmap Data Types
+// Used for visualizing player/team activity on the field
+export interface HeatmapPoint {
+  x: number; // 0-100 (percentage of field width)
+  y: number; // 0-100 (percentage of field height)
+  intensity: number; // 0-1 (activity intensity)
+  type?: 'touch' | 'pass' | 'shot' | 'tackle' | 'position'; // Activity type
+}
+
+export interface PlayerHeatmap {
+  playerId: number;
+  playerName: string;
+  position: string;
+  points: HeatmapPoint[];
+  // Aggregated zone data (field divided into zones)
+  zones?: {
+    defenseLeft: number;    // 0-100
+    defenseCenter: number;
+    defenseRight: number;
+    midfieldLeft: number;
+    midfieldCenter: number;
+    midfieldRight: number;
+    attackLeft: number;
+    attackCenter: number;
+    attackRight: number;
+  };
+}
+
+export interface TeamHeatmap {
+  teamId: number;
+  teamName: string;
+  isHome: boolean;
+  players: PlayerHeatmap[];
+  // Aggregated team zones
+  aggregatedZones?: {
+    defense: number;   // 0-100 (% of activity in defensive third)
+    midfield: number;  // 0-100 (% of activity in middle third)
+    attack: number;    // 0-100 (% of activity in attacking third)
+    leftFlank: number; // 0-100 (% of activity on left side)
+    center: number;    // 0-100 (% of activity in center)
+    rightFlank: number; // 0-100 (% of activity on right side)
+  };
+}
+
+export interface MatchHeatmapResponse {
+  home: TeamHeatmap;
+  away: TeamHeatmap;
+  source: 'api' | 'estimated' | 'mock'; // Data source indicator
+}
+
 // Match Status Helpers
 export type MatchStatus = 'NS' | 'TBD' | 'PST' | '1H' | 'HT' | '2H' | 'ET' | 'P' | 'FT' | 'AET' | 'PEN' | 'BT' | 'SUSP' | 'INT' | 'ABD' | 'AWD' | 'WO' | 'LIVE' | 'CANC';
 

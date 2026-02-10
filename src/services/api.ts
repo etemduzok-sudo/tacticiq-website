@@ -287,6 +287,11 @@ export const matchesApi = {
   // API: GET /matches/:id/players
   getMatchPlayers: (matchId: number) => request(`/matches/${matchId}/players`),
 
+  // Get heatmap data for a match
+  // Returns player and team heatmaps (estimated from stats or real tracking data)
+  // API: GET /matches/:id/heatmaps
+  getMatchHeatmaps: (matchId: number) => request(`/matches/${matchId}/heatmaps`),
+
   // Get match events (goals, cards, etc.)
   getMatchEvents: (matchId: number) => request(`/matches/${matchId}/events`),
 

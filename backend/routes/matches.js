@@ -1049,6 +1049,256 @@ function getMockPlayerStats(matchId) {
   return null;
 }
 
+// GET /api/matches/:id/heatmaps - Get player and team heatmaps
+// Estimated from player stats and positions (real tracking data requires additional API)
+router.get('/:id/heatmaps', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const matchId = parseInt(id, 10);
+
+    // Mock match check
+    if (matchId === 999999 || matchId === 888001 || matchId === 888002) {
+      return res.json({
+        success: true,
+        data: null,
+        message: 'Heatmap data not available for mock matches',
+        source: 'mock'
+      });
+    }
+
+    // Try to get lineup data for player positions
+    let lineupsData = null;
+    let playersData = null;
+
+    try {
+      // Fetch lineups and player stats in parallel
+      const [lineups, players] = await Promise.all([
+        footballApi.getFixtureLineups(matchId).catch(() => ({ response: [] })),
+        footballApi.getFixturePlayers(matchId).catch(() => ({ response: [] }))
+      ]);
+      lineupsData = lineups?.response || [];
+      playersData = players?.response || [];
+    } catch (apiError) {
+      console.error(`API error fetching heatmap data for match ${matchId}:`, apiError.message);
+    }
+
+    // If no data available, return null
+    if ((!lineupsData || lineupsData.length === 0) && (!playersData || playersData.length === 0)) {
+      return res.json({
+        success: true,
+        data: null,
+        message: 'Heatmap data not available for this match',
+        source: 'none'
+      });
+    }
+
+    // Generate estimated heatmaps from lineups + player stats
+    const heatmapData = generateEstimatedHeatmaps(lineupsData, playersData);
+
+    return res.json({
+      success: true,
+      data: heatmapData,
+      source: 'estimated'
+    });
+  } catch (error) {
+    console.error('Error in /matches/:id/heatmaps:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Helper: Generate estimated heatmaps from lineups and player stats
+function generateEstimatedHeatmaps(lineupsData, playersData) {
+  const result = {
+    home: null,
+    away: null,
+    source: 'estimated'
+  };
+
+  // Process each team
+  lineupsData.forEach((teamLineup, teamIndex) => {
+    const teamKey = teamIndex === 0 ? 'home' : 'away';
+    const teamId = teamLineup.team?.id;
+    const teamName = teamLineup.team?.name;
+    const formation = teamLineup.formation || '4-3-3';
+
+    // Find matching player stats
+    const teamPlayerStats = playersData.find(p => p.team?.id === teamId)?.players || [];
+
+    // Generate player heatmaps
+    const playerHeatmaps = [];
+
+    // Process starting XI
+    const startXI = teamLineup.startXI || [];
+    startXI.forEach(playerEntry => {
+      const player = playerEntry.player || {};
+      const playerId = player.id;
+      const playerName = player.name;
+      const position = player.pos || 'M';
+      const gridPos = player.grid; // e.g., "1:1", "2:3"
+
+      // Find player stats
+      const playerStat = teamPlayerStats.find(p => p.player?.id === playerId);
+      const stats = playerStat?.statistics?.[0] || {};
+
+      // Generate heatmap points based on position and stats
+      const points = generatePlayerHeatPoints(position, gridPos, stats, teamIndex === 0);
+
+      // Calculate zone percentages
+      const zones = calculatePlayerZones(position, stats);
+
+      playerHeatmaps.push({
+        playerId,
+        playerName,
+        position,
+        points,
+        zones
+      });
+    });
+
+    // Calculate aggregated team zones
+    const aggregatedZones = calculateTeamZones(playerHeatmaps, formation);
+
+    result[teamKey] = {
+      teamId,
+      teamName,
+      isHome: teamIndex === 0,
+      players: playerHeatmaps,
+      aggregatedZones
+    };
+  });
+
+  return result;
+}
+
+// Helper: Generate heat points for a player based on position and stats
+function generatePlayerHeatPoints(position, gridPos, stats, isHomeTeam) {
+  const points = [];
+  const pos = (position || 'M').toUpperCase();
+
+  // Base position from grid (e.g., "2:3" = row 2, column 3)
+  let baseX = 50; // Center by default
+  let baseY = 50;
+
+  if (gridPos) {
+    const [row, col] = gridPos.split(':').map(Number);
+    // Convert grid to percentage (1-5 rows, 1-5 cols typically)
+    baseY = (row / 5) * 100; // Y is vertical (goal line to goal line)
+    baseX = (col / 5) * 100; // X is horizontal (left to right)
+  }
+
+  // Adjust based on position type
+  const positionAdjustments = {
+    'G': { baseY: 5, spreadX: 10, spreadY: 5 },
+    'D': { baseY: 20, spreadX: 25, spreadY: 15 },
+    'M': { baseY: 50, spreadX: 30, spreadY: 25 },
+    'F': { baseY: 80, spreadX: 20, spreadY: 15 }
+  };
+
+  const adj = positionAdjustments[pos] || positionAdjustments['M'];
+
+  // Generate main activity point
+  points.push({
+    x: baseX,
+    y: isHomeTeam ? adj.baseY : (100 - adj.baseY),
+    intensity: 0.9,
+    type: 'position'
+  });
+
+  // Add activity spread based on stats
+  const passActivity = (stats.passes?.total || 0) / 100;
+  const tackleActivity = (stats.tackles?.total || 0) / 10;
+  const shotActivity = (stats.shots?.total || 0) / 5;
+
+  // Secondary points based on activity
+  if (passActivity > 0) {
+    points.push({
+      x: baseX + (Math.random() - 0.5) * adj.spreadX,
+      y: isHomeTeam ? adj.baseY + (Math.random() * adj.spreadY) : (100 - adj.baseY - Math.random() * adj.spreadY),
+      intensity: Math.min(0.7, passActivity),
+      type: 'pass'
+    });
+  }
+
+  if (tackleActivity > 0 && pos !== 'G' && pos !== 'F') {
+    points.push({
+      x: baseX + (Math.random() - 0.5) * adj.spreadX,
+      y: isHomeTeam ? adj.baseY - (Math.random() * 10) : (100 - adj.baseY + Math.random() * 10),
+      intensity: Math.min(0.6, tackleActivity),
+      type: 'tackle'
+    });
+  }
+
+  if (shotActivity > 0 && pos !== 'G' && pos !== 'D') {
+    points.push({
+      x: baseX + (Math.random() - 0.5) * 15,
+      y: isHomeTeam ? 85 + Math.random() * 10 : 5 + Math.random() * 10,
+      intensity: Math.min(0.8, shotActivity),
+      type: 'shot'
+    });
+  }
+
+  return points;
+}
+
+// Helper: Calculate player zone percentages
+function calculatePlayerZones(position, stats) {
+  const pos = (position || 'M').toUpperCase();
+
+  // Base zone distribution by position
+  const zoneTemplates = {
+    'G': { defense: 95, midfield: 5, attack: 0, left: 20, center: 60, right: 20 },
+    'D': { defense: 70, midfield: 25, attack: 5, left: 30, center: 40, right: 30 },
+    'M': { defense: 20, midfield: 60, attack: 20, left: 30, center: 40, right: 30 },
+    'F': { defense: 5, midfield: 30, attack: 65, left: 25, center: 50, right: 25 }
+  };
+
+  const template = zoneTemplates[pos] || zoneTemplates['M'];
+
+  // Adjust based on stats if available
+  const passAccuracy = stats.passes?.accuracy || 0;
+  const tackles = stats.tackles?.total || 0;
+
+  return {
+    defenseLeft: template.defense * (template.left / 100),
+    defenseCenter: template.defense * (template.center / 100),
+    defenseRight: template.defense * (template.right / 100),
+    midfieldLeft: template.midfield * (template.left / 100),
+    midfieldCenter: template.midfield * (template.center / 100),
+    midfieldRight: template.midfield * (template.right / 100),
+    attackLeft: template.attack * (template.left / 100),
+    attackCenter: template.attack * (template.center / 100),
+    attackRight: template.attack * (template.right / 100)
+  };
+}
+
+// Helper: Calculate aggregated team zones
+function calculateTeamZones(playerHeatmaps, formation) {
+  // Default balanced distribution
+  let zones = {
+    defense: 33,
+    midfield: 34,
+    attack: 33,
+    leftFlank: 30,
+    center: 40,
+    rightFlank: 30
+  };
+
+  // Adjust based on formation
+  const formationParts = formation.split('-').map(Number);
+  if (formationParts.length >= 3) {
+    const [def, mid, att] = formationParts;
+    const total = def + mid + att;
+    zones.defense = Math.round((def / total) * 100);
+    zones.midfield = Math.round((mid / total) * 100);
+    zones.attack = Math.round((att / total) * 100);
+  }
+
+  return zones;
+}
+
 // GET /api/matches/:id/prediction-data - Get prediction data from API-Football
 router.get('/:id/prediction-data', async (req, res) => {
   try {
