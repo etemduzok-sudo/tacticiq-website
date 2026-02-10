@@ -1219,6 +1219,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
 
   // ✅ Scroll pozisyonunu kaydetmek için ref
   const hasScrolledRef = React.useRef(false);
+  const pastSectionHeightRef = React.useRef(0);
   
   // ✅ Sayfa hazır olduğunda görünür yap
   // Geçmiş maç varsa onLayout'ta scroll yapılır, yoksa direkt görünür yap
@@ -1231,6 +1232,16 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
       return () => clearTimeout(timer);
     }
   }, [initialScrollDone, filteredPastMatches.length]);
+
+  // ✅ Canlı maç varken canlı bölümü göster (mock maç geç geldiğinde tekrar scroll)
+  React.useEffect(() => {
+    if (filteredLiveMatches.length > 0 && pastSectionHeightRef.current > 0 && scrollViewRef.current) {
+      const y = pastSectionHeightRef.current;
+      setTimeout(() => {
+        (scrollViewRef.current as any)?.scrollTo?.({ y, animated: false });
+      }, 100);
+    }
+  }, [filteredLiveMatches.length]);
 
   // ✅ Scroll bırakıldığında en yakın maç kartına snap yap (sadece yaklaşan maçlar)
   const handleScrollEnd = React.useCallback((event: any) => {
@@ -1304,10 +1315,11 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
           <View 
             style={styles.matchesListContainer}
             onLayout={(e) => {
+              const pastMatchesHeight = e.nativeEvent.layout.height;
+              pastSectionHeightRef.current = pastMatchesHeight;
               // Biten maçlar yüklendikten sonra canlı/yaklaşan maçlara scroll et
               if (!hasScrolledRef.current && scrollViewRef.current) {
                 hasScrolledRef.current = true;
-                const pastMatchesHeight = e.nativeEvent.layout.height;
                 // Biten maçların sonuna scroll et - canlı/yaklaşan maç ProfileCard altında görünsün
                 setTimeout(() => {
                   if (scrollViewRef.current) {

@@ -155,6 +155,79 @@ export interface ApiResponse<T> {
   error?: string;
 }
 
+// Match Player Statistics (from fixtures/players endpoint)
+// Used in MatchStats.tsx for detailed player stats
+export interface MatchPlayerStats {
+  // Player info
+  id: number;
+  name: string;
+  photo?: string;
+  number: number;
+  position: string; // 'G', 'D', 'M', 'F'
+  
+  // Game stats
+  rating: number;
+  minutesPlayed: number;
+  
+  // Goals & Assists
+  goals: number;
+  assists: number;
+  
+  // Shots
+  shots: number;
+  shotsOnTarget: number;
+  shotsInsideBox: number;
+  
+  // Passes
+  totalPasses: number;
+  passesCompleted: number;
+  passAccuracy: number;
+  keyPasses: number;
+  longPasses: number;
+  
+  // Dribbling
+  dribbleAttempts: number;
+  dribbleSuccess: number;
+  dispossessed: number;
+  
+  // Defending
+  tackles: number;
+  blocks: number;
+  interceptions: number;
+  
+  // Duels
+  duelsTotal: number;
+  duelsWon: number;
+  aerialDuels: number;
+  aerialWon: number;
+  
+  // Fouls & Cards
+  foulsDrawn: number;
+  foulsCommitted: number;
+  yellowCards: number;
+  redCards: number;
+  
+  // Penalty
+  penaltyWon: number;
+  penaltyScored: number;
+  penaltyMissed: number;
+  penaltySaved: number;
+  
+  // Goalkeeper specific
+  isGoalkeeper: boolean;
+  saves: number;
+  goalsAgainst: number;
+  
+  // Team info
+  teamId?: number;
+  teamName?: string;
+}
+
+export interface MatchPlayersResponse {
+  home: MatchPlayerStats[];
+  away: MatchPlayerStats[];
+}
+
 // Match Status Helpers
 export type MatchStatus = 'NS' | 'TBD' | 'PST' | '1H' | 'HT' | '2H' | 'ET' | 'P' | 'FT' | 'AET' | 'PEN' | 'BT' | 'SUSP' | 'INT' | 'ABD' | 'AWD' | 'WO' | 'LIVE' | 'CANC';
 

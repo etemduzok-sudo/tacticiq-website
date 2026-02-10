@@ -18,9 +18,18 @@ import { Ionicons } from '@expo/vector-icons';
 import api from '../../services/api';
 import { BRAND, DARK_MODE } from '../../theme/theme';
 import { isMockTestMatch, getMockMatchStatistics, getMockPlayerStatistics } from '../../data/mockTestData';
+import { PITCH_LAYOUT } from '../../config/constants';
 
 const { width, height } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
+
+// Isı haritası saha boyutları - YATAY görünüm (kuş bakışı)
+// Kadro/Tahmin dikey saha kullanıyor, ısı haritası yatay (90 derece döndürülmüş)
+// Gerçek futbol sahası oranı: ~105m x 68m = 1.54:1 (genişlik > yükseklik)
+// Yatay saha: genişlik / yükseklik ≈ 1.54
+const HEATMAP_FIELD_RATIO = 1.54; // Genişlik / Yükseklik
+const HEATMAP_FIELD_WIDTH = 350;
+const HEATMAP_FIELD_HEIGHT = Math.round(HEATMAP_FIELD_WIDTH / HEATMAP_FIELD_RATIO); // ~227
 
 // API'den gelen istatistik tipi
 interface ApiMatchStat {
@@ -42,8 +51,7 @@ const STAT_LABELS: Record<string, string> = {
   'Ball Possession': 'Topla Oynama (%)',
   'Total Shots': 'Toplam Şut',
   'Shots on Goal': 'İsabetli Şut',
-  'Shots off Goal': 'İsabetsiz Şut',
-  'Blocked Shots': 'Şut Dışı',
+  // 'Shots off Goal' ve 'Blocked Shots' kullanıcı isteği ile kaldırıldı
   'Corner Kicks': 'Korner',
   'Offsides': 'Ofsayt',
   'Fouls': 'Faul',
@@ -54,11 +62,39 @@ const STAT_LABELS: Record<string, string> = {
   'Passes Accurate': 'İsabetli Pas',
   'Passes %': 'Pas İsabeti (%)',
   'Pass Accuracy': 'Pas İsabeti (%)',
+  'expected_goals': 'Gol Beklentisi (xG)', // xG eklendi
 };
+
+// ═══════════════════════════════════════════════════════════════════
+// xG (Expected Goals) Hesaplama Fonksiyonu
+// Basitleştirilmiş xG formülü:
+// xG = (İsabetli Şut × 0.35) + (Toplam Şut × 0.10) + (Korner × 0.024)
+// Penaltı için: +0.76 (eğer veri varsa)
+// ═══════════════════════════════════════════════════════════════════
+function calculateXG(stats: DisplayStat[]): { home: number; away: number } {
+  const getStat = (label: string): { home: number; away: number } => {
+    const found = stats.find(s => s.label.toLowerCase().includes(label.toLowerCase()));
+    return found ? { home: found.home, away: found.away } : { home: 0, away: 0 };
+  };
+  
+  const shotsOnGoal = getStat('İsabetli Şut');
+  const totalShots = getStat('Toplam Şut');
+  const corners = getStat('Korner');
+  
+  // xG formülü: İsabetli şut ağırlıklı + toplam şut + korner katkısı
+  const homeXG = (shotsOnGoal.home * 0.35) + (totalShots.home * 0.08) + (corners.home * 0.024);
+  const awayXG = (shotsOnGoal.away * 0.35) + (totalShots.away * 0.08) + (corners.away * 0.024);
+  
+  return {
+    home: Math.round(homeXG * 100) / 100,
+    away: Math.round(awayXG * 100) / 100,
+  };
+}
 
 interface MatchStatsScreenProps {
   matchData: any;
   matchId?: string;
+  favoriteTeamIds?: number[];
 }
 
 // Canlı/API yoksa kullanılacak varsayılan veri
@@ -98,22 +134,66 @@ function apiStatsToDisplay(stats: ApiMatchStat[]): DisplayStat[] {
   }).filter((d) => d.label);
 }
 
-function getStatIconForLabel(label: string): string {
+function getStatIconForLabel(label: string): { icon: string; color: string } {
   const l = label.toLowerCase();
-  if (l.includes('topla oynama') || l.includes('possession')) return 'pie-chart';
-  if (l.includes('şut')) return 'locate';
-  if (l.includes('korner')) return 'flag';
-  if (l.includes('ofsayt')) return 'hand-left';
-  if (l.includes('faul')) return 'warning';
-  if (l.includes('kart')) return 'card';
-  if (l.includes('kurtarış') || l.includes('save')) return 'hand-right';
-  if (l.includes('pas')) return 'arrow-forward';
-  if (l.includes('gol')) return 'football';
-  return 'stats-chart';
+  if (l.includes('xg') || l.includes('gol beklentisi') || l.includes('expected')) return { icon: 'analytics', color: '#22D3EE' };
+  if (l.includes('topla oynama') || l.includes('possession')) return { icon: 'pie-chart', color: '#8B5CF6' };
+  if (l.includes('isabetli şut') || l.includes('shots on')) return { icon: 'checkmark-circle', color: '#10B981' };
+  if (l.includes('şut')) return { icon: 'locate', color: '#3B82F6' };
+  if (l.includes('korner')) return { icon: 'flag', color: '#F59E0B' };
+  if (l.includes('ofsayt')) return { icon: 'hand-left', color: '#EC4899' };
+  if (l.includes('faul')) return { icon: 'warning', color: '#F97316' };
+  if (l.includes('sarı')) return { icon: 'card', color: '#EAB308' };
+  if (l.includes('kırmızı')) return { icon: 'card', color: '#DC2626' };
+  if (l.includes('kart')) return { icon: 'card', color: '#EAB308' };
+  if (l.includes('kurtarış') || l.includes('save')) return { icon: 'hand-right', color: '#06B6D4' };
+  if (l.includes('pas')) return { icon: 'arrow-forward', color: '#14B8A6' };
+  if (l.includes('gol')) return { icon: 'football', color: '#22C55E' };
+  return { icon: 'stats-chart', color: '#7A9A94' };
 }
 
 const topPlayers = {
   home: [
+    {
+      name: 'Fernando Muslera',
+      number: 25,
+      position: 'GK',
+      rating: 7.5,
+      minutesPlayed: 90,
+      goals: 0,
+      assists: 0,
+      shots: 0,
+      shotsOnTarget: 0,
+      shotsInsideBox: 0,
+      totalPasses: 28,
+      passesCompleted: 22,
+      passAccuracy: 79,
+      keyPasses: 0,
+      longPasses: 8,
+      dribbleAttempts: 0,
+      dribbleSuccess: 0,
+      dispossessed: 0,
+      tackles: 0,
+      duelsTotal: 2,
+      duelsWon: 1,
+      aerialDuels: 2,
+      aerialWon: 2,
+      // Ek detaylar
+      blocks: 0,
+      interceptions: 0,
+      foulsDrawn: 0,
+      foulsCommitted: 0,
+      yellowCards: 0,
+      redCards: 0,
+      penaltyWon: 0,
+      penaltyScored: 0,
+      penaltyMissed: 0,
+      // Kaleci özel istatistikler
+      isGoalkeeper: true,
+      saves: 5,
+      goalsAgainst: 2,
+      penaltySaved: 1, // API: penalty.saved
+    },
     {
       name: 'Mauro Icardi',
       number: 9,
@@ -138,6 +218,16 @@ const topPlayers = {
       duelsWon: 8,
       aerialDuels: 5,
       aerialWon: 3,
+      // Ek detaylar
+      blocks: 0,
+      interceptions: 0,
+      foulsDrawn: 3,
+      foulsCommitted: 1,
+      yellowCards: 0,
+      redCards: 0,
+      penaltyWon: 1,
+      penaltyScored: 1,
+      penaltyMissed: 0,
     },
     {
       name: 'Wilfried Zaha',
@@ -163,6 +253,16 @@ const topPlayers = {
       duelsWon: 11,
       aerialDuels: 3,
       aerialWon: 2,
+      // Ek detaylar
+      blocks: 1,
+      interceptions: 2,
+      foulsDrawn: 4,
+      foulsCommitted: 2,
+      yellowCards: 1,
+      redCards: 0,
+      penaltyWon: 0,
+      penaltyScored: 0,
+      penaltyMissed: 0,
     },
   ],
   away: [
@@ -185,11 +285,61 @@ const topPlayers = {
       dribbleAttempts: 4,
       dribbleSuccess: 2,
       dispossessed: 3,
+      // Ek detaylar
+      blocks: 0,
+      interceptions: 1,
+      foulsDrawn: 2,
+      foulsCommitted: 3,
+      yellowCards: 1,
+      redCards: 0,
+      penaltyWon: 0,
+      penaltyScored: 0,
+      penaltyMissed: 0,
       tackles: 1,
       duelsTotal: 14,
       duelsWon: 8,
       aerialDuels: 8,
       aerialWon: 5,
+    },
+    {
+      name: 'Dominik Livakovic',
+      number: 1,
+      position: 'GK',
+      rating: 7.2,
+      minutesPlayed: 90,
+      goals: 0,
+      assists: 0,
+      shots: 0,
+      shotsOnTarget: 0,
+      shotsInsideBox: 0,
+      totalPasses: 24,
+      passesCompleted: 19,
+      passAccuracy: 79,
+      keyPasses: 0,
+      longPasses: 6,
+      dribbleAttempts: 0,
+      dribbleSuccess: 0,
+      dispossessed: 0,
+      tackles: 0,
+      duelsTotal: 3,
+      duelsWon: 2,
+      aerialDuels: 3,
+      aerialWon: 3,
+      // Ek detaylar
+      blocks: 0,
+      interceptions: 0,
+      foulsDrawn: 0,
+      foulsCommitted: 1,
+      yellowCards: 0,
+      redCards: 0,
+      penaltyWon: 0,
+      penaltyScored: 0,
+      penaltyMissed: 0,
+      // Kaleci özel istatistikler
+      isGoalkeeper: true,
+      saves: 4,
+      goalsAgainst: 3,
+      penaltySaved: 0, // API: penalty.saved
     },
   ],
 };
@@ -200,6 +350,7 @@ const NOT_STARTED_STATUSES = ['NS', 'TBD', 'PST', 'CANC', 'ABD', 'AWD', 'WO'];
 export const MatchStats: React.FC<MatchStatsScreenProps> = ({
   matchData,
   matchId,
+  favoriteTeamIds = [],
 }) => {
   const [activeTab, setActiveTab] = useState<'match' | 'players'>('match');
   const [matchStats, setMatchStats] = useState<DisplayStat[]>(defaultDetailedStats);
@@ -371,805 +522,687 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
                 <Text style={styles.statsLoadingText}>Maç istatistikleri yükleniyor...</Text>
               </View>
             ) : (
-              matchStats.map((stat, index) => {
+              <>
+                {/* xG (Gol Beklentisi) - Öne Çıkan Kart */}
+                {(() => {
+                  const xg = calculateXG(matchStats);
+                  const homeWins = xg.home > xg.away;
+                  const awayWins = xg.away > xg.home;
+                  
+                  return (
+                    <Animated.View
+                      entering={isWeb ? undefined : FadeIn.delay(50)}
+                      style={styles.xgCard}
+                    >
+                      <View style={styles.xgHeader}>
+                        <View style={styles.xgIconWrap}>
+                          <Ionicons name="analytics" size={18} color="#22D3EE" />
+                        </View>
+                        <Text style={styles.xgTitle}>Gol Beklentisi (xG)</Text>
+                        <TouchableOpacity style={styles.xgInfoBtn}>
+                          <Ionicons name="information-circle-outline" size={16} color="#7A9A94" />
+                        </TouchableOpacity>
+                      </View>
+                      <View style={styles.xgContent}>
+                        <View style={[styles.xgValueBox, homeWins && styles.xgValueBoxWinner]}>
+                          <Text style={[styles.xgValue, homeWins && styles.xgValueWinner]}>{xg.home.toFixed(2)}</Text>
+                          <Text style={styles.xgTeamLabel}>Ev Sahibi</Text>
+                        </View>
+                        <View style={styles.xgVsContainer}>
+                          <Text style={styles.xgVsText}>vs</Text>
+                        </View>
+                        <View style={[styles.xgValueBox, awayWins && styles.xgValueBoxWinnerAway]}>
+                          <Text style={[styles.xgValue, awayWins && styles.xgValueWinnerAway]}>{xg.away.toFixed(2)}</Text>
+                          <Text style={styles.xgTeamLabel}>Deplasman</Text>
+                        </View>
+                      </View>
+                      <Text style={styles.xgFormula}>
+                        xG = (İsabetli Şut × 0.35) + (Toplam Şut × 0.08) + (Korner × 0.024)
+                      </Text>
+                    </Animated.View>
+                  );
+                })()}
+                
+                {/* Diğer Maç İstatistikleri */}
+                {matchStats.map((stat, index) => {
                 const total = stat.home + stat.away || 1;
                 const homePercent = (stat.home / total) * 100;
                 const awayPercent = (stat.away / total) * 100;
-                const iconName = getStatIconForLabel(stat.label);
+                const { icon: iconName, color: iconColor } = getStatIconForLabel(stat.label);
 
                 return (
                   <Animated.View
                     key={`${stat.label}-${index}`}
-                    entering={isWeb ? undefined : FadeIn.delay(index * 30)}
+                    entering={isWeb ? undefined : FadeIn.delay(index * 25)}
                     style={styles.statRowCard}
                   >
-                    <View style={styles.statValues}>
-                      <View style={styles.statValueLeft}>
-                        <Text style={[
-                          styles.statValueText,
-                          stat.home > stat.away && styles.statValueTextWinner
-                        ]}>
-                          {stat.homeDisplay}
-                        </Text>
-                      </View>
-                      <View style={styles.statLabel}>
-                        <View style={styles.statIconWrap}>
-                          <Ionicons name={iconName as any} size={14} color={BRAND.secondary} />
+                    {/* Üst: Değerler ve Label */}
+                    <View style={styles.statHeader}>
+                      <Text style={[
+                        styles.statValueText,
+                        stat.home > stat.away && styles.statValueTextWinner
+                      ]}>
+                        {stat.homeDisplay}
+                      </Text>
+                      
+                      <View style={styles.statLabelCenter}>
+                        <View style={[styles.statIconBg, { backgroundColor: `${iconColor}20` }]}>
+                          <Ionicons name={iconName as any} size={16} color={iconColor} />
                         </View>
                         <Text style={styles.statLabelText}>{stat.label}</Text>
-                        {stat.home > stat.away && (
-                          <Text style={styles.statTrendIcon}>📈</Text>
-                        )}
                       </View>
-                      <View style={styles.statValueRight}>
-                        <Text style={[
-                          styles.statValueText,
-                          stat.away > stat.home && styles.statValueTextWinnerAway
-                        ]}>
-                          {stat.awayDisplay}
-                        </Text>
-                      </View>
+                      
+                      <Text style={[
+                        styles.statValueText,
+                        stat.away > stat.home && styles.statValueTextWinnerAway
+                      ]}>
+                        {stat.awayDisplay}
+                      </Text>
                     </View>
+                    
+                    {/* Alt: Progress Bar */}
                     <View style={styles.progressBarContainer}>
-                      <View style={styles.progressBar}>
-                        <Animated.View
-                          entering={isWeb ? undefined : FadeIn.delay(index * 30 + 200).duration(600)}
-                          style={[
-                            styles.progressBarHome,
-                            { width: `${homePercent}%` },
-                            stat.home > stat.away && styles.progressBarHomeHighlight
-                          ]}
-                        />
-                        <View style={styles.progressBarDivider} />
-                        <Animated.View
-                          entering={isWeb ? undefined : FadeIn.delay(index * 30 + 200).duration(600)}
-                          style={[
-                            styles.progressBarAway,
-                            { width: `${awayPercent}%` },
-                            stat.away > stat.home && styles.progressBarAwayHighlight
-                          ]}
-                        />
-                      </View>
+                      <Animated.View
+                        entering={isWeb ? undefined : FadeIn.delay(index * 25 + 80).duration(500)}
+                        style={[
+                          styles.progressBarHome,
+                          { width: `${homePercent}%` },
+                          stat.home > stat.away && styles.progressBarHomeHighlight
+                        ]}
+                      />
+                      <Animated.View
+                        entering={isWeb ? undefined : FadeIn.delay(index * 25 + 80).duration(500)}
+                        style={[
+                          styles.progressBarAway,
+                          { width: `${awayPercent}%` },
+                          stat.away > stat.home && styles.progressBarAwayHighlight
+                        ]}
+                      />
                     </View>
                   </Animated.View>
                 );
-              })
+              })}
+              </>
             )}
 
-            {/* Takım Isı Haritası */}
-            <Animated.View
-              entering={isWeb ? undefined : FadeIn.delay(300)}
-              style={styles.teamHeatmapSection}
-            >
-              <View style={styles.teamHeatmapHeader}>
-                <Ionicons name="flame" size={18} color="#F59E0B" />
-                <Text style={styles.teamHeatmapTitle}>Takım Isı Haritaları</Text>
-              </View>
+            {/* Takım Isı Haritaları - Favori takım önce, alt alta yerleşim */}
+            {(() => {
+              // Favori takım hangisi? Home mu Away mi?
+              const homeTeamId = matchData?.homeId || matchData?.teams?.home?.id;
+              const awayTeamId = matchData?.awayId || matchData?.teams?.away?.id;
+              const homeName = matchData?.homeName || matchData?.teams?.home?.name || 'Ev Sahibi';
+              const awayName = matchData?.awayName || matchData?.teams?.away?.name || 'Deplasman';
               
-              <View style={styles.teamHeatmapContainer}>
-                {/* Ev Sahibi Isı Haritası */}
-                <View style={styles.teamHeatmapCard}>
-                  <View style={styles.teamHeatmapCardHeader}>
-                    <Text style={styles.teamHeatmapTeamName}>{matchData?.homeName || 'Ev Sahibi'}</Text>
-                    <View style={styles.teamHeatmapAttack}>
-                      <Text style={styles.teamHeatmapAttackLabel}>Atak</Text>
-                      <Ionicons name="arrow-forward" size={10} color="#1FA2A6" />
-                    </View>
-                  </View>
-                  <View style={styles.teamHeatmapField}>
-                    <View style={styles.teamHeatmapFieldLines}>
-                      <View style={styles.teamHeatmapCenterLine} />
-                    </View>
-                    {/* Ev sahibi ısı noktaları - sağ tarafa yoğunlaşma (atak yönü) */}
-                    <View style={[styles.teamHeatPoint, { left: '60%', top: '50%', opacity: 0.9, backgroundColor: 'rgba(31, 162, 166, 0.8)' }]} />
-                    <View style={[styles.teamHeatPoint, { left: '70%', top: '35%', opacity: 0.7, backgroundColor: 'rgba(31, 162, 166, 0.6)' }]} />
-                    <View style={[styles.teamHeatPoint, { left: '70%', top: '65%', opacity: 0.7, backgroundColor: 'rgba(31, 162, 166, 0.6)' }]} />
-                    <View style={[styles.teamHeatPoint, { left: '50%', top: '50%', opacity: 0.5, backgroundColor: 'rgba(31, 162, 166, 0.4)' }]} />
-                    <View style={[styles.teamHeatPoint, { left: '80%', top: '50%', opacity: 0.6, backgroundColor: 'rgba(239, 68, 68, 0.7)' }]} />
-                    <View style={[styles.teamHeatPoint, { left: '40%', top: '40%', opacity: 0.3, backgroundColor: 'rgba(31, 162, 166, 0.3)' }]} />
-                    <View style={[styles.teamHeatPoint, { left: '40%', top: '60%', opacity: 0.3, backgroundColor: 'rgba(31, 162, 166, 0.3)' }]} />
-                  </View>
-                </View>
+              const isFavoriteHome = favoriteTeamIds.includes(homeTeamId);
+              const isFavoriteAway = favoriteTeamIds.includes(awayTeamId);
+              
+              // Favori takımı önce göster
+              const firstTeam = isFavoriteAway ? { name: awayName, id: awayTeamId, isFavorite: true, isHome: false } 
+                              : { name: homeName, id: homeTeamId, isFavorite: isFavoriteHome, isHome: true };
+              const secondTeam = isFavoriteAway ? { name: homeName, id: homeTeamId, isFavorite: false, isHome: true }
+                               : { name: awayName, id: awayTeamId, isFavorite: false, isHome: false };
+              
+              // Isı noktaları için mock veriler (favori takım yeşil tonları, rakip turuncu tonları)
+              const renderHeatPoints = (isFavorite: boolean, isHome: boolean) => {
+                const color = isFavorite ? 'rgba(16, 185, 129, 0.85)' : 'rgba(245, 158, 11, 0.85)';
+                const colorMid = isFavorite ? 'rgba(16, 185, 129, 0.6)' : 'rgba(245, 158, 11, 0.6)';
+                const colorLow = isFavorite ? 'rgba(16, 185, 129, 0.35)' : 'rgba(245, 158, 11, 0.35)';
+                const hotZone = 'rgba(239, 68, 68, 0.8)';
                 
-                {/* Deplasman Isı Haritası */}
-                <View style={styles.teamHeatmapCard}>
-                  <View style={styles.teamHeatmapCardHeader}>
-                    <Text style={[styles.teamHeatmapTeamName, { color: '#F59E0B' }]}>{matchData?.awayName || 'Deplasman'}</Text>
-                    <View style={styles.teamHeatmapAttack}>
-                      <Ionicons name="arrow-back" size={10} color="#F59E0B" />
-                      <Text style={[styles.teamHeatmapAttackLabel, { color: '#F59E0B' }]}>Atak</Text>
-                    </View>
-                  </View>
-                  <View style={styles.teamHeatmapField}>
-                    <View style={styles.teamHeatmapFieldLines}>
-                      <View style={styles.teamHeatmapCenterLine} />
-                    </View>
-                    {/* Deplasman ısı noktaları - sol tarafa yoğunlaşma (atak yönü) */}
-                    <View style={[styles.teamHeatPoint, { left: '40%', top: '50%', opacity: 0.8, backgroundColor: 'rgba(245, 158, 11, 0.7)' }]} />
-                    <View style={[styles.teamHeatPoint, { left: '30%', top: '35%', opacity: 0.6, backgroundColor: 'rgba(245, 158, 11, 0.5)' }]} />
-                    <View style={[styles.teamHeatPoint, { left: '30%', top: '65%', opacity: 0.6, backgroundColor: 'rgba(245, 158, 11, 0.5)' }]} />
-                    <View style={[styles.teamHeatPoint, { left: '50%', top: '50%', opacity: 0.4, backgroundColor: 'rgba(245, 158, 11, 0.3)' }]} />
-                    <View style={[styles.teamHeatPoint, { left: '20%', top: '50%', opacity: 0.5, backgroundColor: 'rgba(239, 68, 68, 0.6)' }]} />
-                    <View style={[styles.teamHeatPoint, { left: '60%', top: '45%', opacity: 0.3, backgroundColor: 'rgba(245, 158, 11, 0.3)' }]} />
-                  </View>
-                </View>
-              </View>
+                // Atak yönüne göre (home sağa atar, away sola atar)
+                const attackRight = isHome;
+                
+                return (
+                  <>
+                    {/* Orta saha yoğunluk */}
+                    <View style={[styles.heatPointNew, { left: '50%', top: '50%', width: 28, height: 28, borderRadius: 14, backgroundColor: colorMid }]} />
+                    
+                    {/* Atak bölgesi - yoğun */}
+                    <View style={[styles.heatPointNew, { left: attackRight ? '72%' : '28%', top: '50%', width: 32, height: 32, borderRadius: 16, backgroundColor: color }]} />
+                    <View style={[styles.heatPointNew, { left: attackRight ? '68%' : '32%', top: '30%', width: 24, height: 24, borderRadius: 12, backgroundColor: colorMid }]} />
+                    <View style={[styles.heatPointNew, { left: attackRight ? '68%' : '32%', top: '70%', width: 24, height: 24, borderRadius: 12, backgroundColor: colorMid }]} />
+                    
+                    {/* Ceza alanı - sıcak nokta */}
+                    <View style={[styles.heatPointNew, { left: attackRight ? '85%' : '15%', top: '50%', width: 26, height: 26, borderRadius: 13, backgroundColor: hotZone }]} />
+                    
+                    {/* Savunma bölgesi - düşük */}
+                    <View style={[styles.heatPointNew, { left: attackRight ? '25%' : '75%', top: '40%', width: 18, height: 18, borderRadius: 9, backgroundColor: colorLow }]} />
+                    <View style={[styles.heatPointNew, { left: attackRight ? '25%' : '75%', top: '60%', width: 18, height: 18, borderRadius: 9, backgroundColor: colorLow }]} />
+                    <View style={[styles.heatPointNew, { left: attackRight ? '18%' : '82%', top: '50%', width: 20, height: 20, borderRadius: 10, backgroundColor: colorLow }]} />
+                    
+                    {/* Kanat aktiviteleri */}
+                    <View style={[styles.heatPointNew, { left: attackRight ? '55%' : '45%', top: '18%', width: 20, height: 20, borderRadius: 10, backgroundColor: colorMid }]} />
+                    <View style={[styles.heatPointNew, { left: attackRight ? '55%' : '45%', top: '82%', width: 20, height: 20, borderRadius: 10, backgroundColor: colorMid }]} />
+                  </>
+                );
+              };
               
-              <View style={styles.heatmapLegend}>
-                <Text style={styles.heatmapLegendText}>🔴 Yoğun Aktivite</Text>
-                <Text style={styles.heatmapLegendText}>🟡 Orta Aktivite</Text>
-                <Text style={styles.heatmapLegendText}>⚪ Düşük Aktivite</Text>
-              </View>
-            </Animated.View>
+              return (
+                <Animated.View
+                  entering={isWeb ? undefined : FadeIn.delay(300)}
+                  style={styles.teamHeatmapSectionNew}
+                >
+                  <View style={styles.teamHeatmapHeaderNew}>
+                    <Ionicons name="flame" size={20} color="#F59E0B" />
+                    <Text style={styles.teamHeatmapTitleNew}>Takım Isı Haritaları</Text>
+                  </View>
+                  
+                  {/* Favori Takım - İlk */}
+                  <View style={[styles.heatmapCardNew, firstTeam.isFavorite && styles.heatmapCardFavorite]}>
+                    <View style={styles.heatmapCardHeaderNew}>
+                      <View style={styles.heatmapTeamInfoNew}>
+                        {firstTeam.isFavorite && (
+                          <View style={styles.favoriteStarBadge}>
+                            <Text style={styles.favoriteStarText}>⭐</Text>
+                          </View>
+                        )}
+                        <Text style={[styles.heatmapTeamNameNew, firstTeam.isFavorite && styles.heatmapTeamNameFavorite]}>
+                          {firstTeam.name}
+                        </Text>
+                      </View>
+                      <View style={styles.heatmapAttackDirNew}>
+                        {firstTeam.isHome ? (
+                          <>
+                            <Text style={styles.heatmapAttackTextNew}>Atak</Text>
+                            <Ionicons name="arrow-forward" size={14} color={firstTeam.isFavorite ? '#10B981' : '#1FA2A6'} />
+                          </>
+                        ) : (
+                          <>
+                            <Ionicons name="arrow-back" size={14} color={firstTeam.isFavorite ? '#10B981' : '#F59E0B'} />
+                            <Text style={styles.heatmapAttackTextNew}>Atak</Text>
+                          </>
+                        )}
+                      </View>
+                    </View>
+                    
+                    {/* Detaylı Saha */}
+                    <View style={styles.heatmapFieldNew}>
+                      {/* Saha çizgileri */}
+                      <View style={styles.fieldBorderNew} />
+                      
+                      {/* Orta çizgi */}
+                      <View style={styles.centerLineNew} />
+                      
+                      {/* Orta daire */}
+                      <View style={styles.centerCircleNew} />
+                      <View style={styles.centerDotNew} />
+                      
+                      {/* Sol penaltı alanı */}
+                      <View style={styles.penaltyAreaLeftNew} />
+                      <View style={styles.goalAreaLeftNew} />
+                      <View style={styles.penaltySpotLeftNew} />
+                      
+                      {/* Sağ penaltı alanı */}
+                      <View style={styles.penaltyAreaRightNew} />
+                      <View style={styles.goalAreaRightNew} />
+                      <View style={styles.penaltySpotRightNew} />
+                      
+                      {/* Kale çizgileri */}
+                      <View style={styles.goalLeftNew} />
+                      <View style={styles.goalRightNew} />
+                      
+                      {/* Isı noktaları */}
+                      {renderHeatPoints(firstTeam.isFavorite, firstTeam.isHome)}
+                    </View>
+                  </View>
+                  
+                  {/* Rakip Takım - İkinci */}
+                  <View style={styles.heatmapCardNew}>
+                    <View style={styles.heatmapCardHeaderNew}>
+                      <View style={styles.heatmapTeamInfoNew}>
+                        <Text style={[styles.heatmapTeamNameNew, { color: '#F59E0B' }]}>
+                          {secondTeam.name}
+                        </Text>
+                      </View>
+                      <View style={styles.heatmapAttackDirNew}>
+                        {secondTeam.isHome ? (
+                          <>
+                            <Text style={[styles.heatmapAttackTextNew, { color: '#F59E0B' }]}>Atak</Text>
+                            <Ionicons name="arrow-forward" size={14} color="#F59E0B" />
+                          </>
+                        ) : (
+                          <>
+                            <Ionicons name="arrow-back" size={14} color="#F59E0B" />
+                            <Text style={[styles.heatmapAttackTextNew, { color: '#F59E0B' }]}>Atak</Text>
+                          </>
+                        )}
+                      </View>
+                    </View>
+                    
+                    {/* Detaylı Saha */}
+                    <View style={styles.heatmapFieldNew}>
+                      {/* Saha çizgileri */}
+                      <View style={styles.fieldBorderNew} />
+                      
+                      {/* Orta çizgi */}
+                      <View style={styles.centerLineNew} />
+                      
+                      {/* Orta daire */}
+                      <View style={styles.centerCircleNew} />
+                      <View style={styles.centerDotNew} />
+                      
+                      {/* Sol penaltı alanı */}
+                      <View style={styles.penaltyAreaLeftNew} />
+                      <View style={styles.goalAreaLeftNew} />
+                      <View style={styles.penaltySpotLeftNew} />
+                      
+                      {/* Sağ penaltı alanı */}
+                      <View style={styles.penaltyAreaRightNew} />
+                      <View style={styles.goalAreaRightNew} />
+                      <View style={styles.penaltySpotRightNew} />
+                      
+                      {/* Kale çizgileri */}
+                      <View style={styles.goalLeftNew} />
+                      <View style={styles.goalRightNew} />
+                      
+                      {/* Isı noktaları */}
+                      {renderHeatPoints(false, secondTeam.isHome)}
+                    </View>
+                  </View>
+                  
+                  {/* Isı haritası açıklaması */}
+                  <View style={styles.heatmapLegendNew}>
+                    <View style={styles.legendItemNew}>
+                      <View style={[styles.legendDotNew, { backgroundColor: '#EF4444' }]} />
+                      <Text style={styles.legendTextNew}>Yoğun Aktivite</Text>
+                    </View>
+                    <View style={styles.legendItemNew}>
+                      <View style={[styles.legendDotNew, { backgroundColor: '#F59E0B' }]} />
+                      <Text style={styles.legendTextNew}>Orta Aktivite</Text>
+                    </View>
+                    <View style={styles.legendItemNew}>
+                      <View style={[styles.legendDotNew, { backgroundColor: 'rgba(148, 163, 184, 0.5)' }]} />
+                      <Text style={styles.legendTextNew}>Düşük Aktivite</Text>
+                    </View>
+                  </View>
+                </Animated.View>
+              );
+            })()}
           </View>
         ) : (
-          // OYUNCU PERFORMANSLARI - Açılır/Kapanır Kartlar
-          <View style={styles.playersContainer}>
-            {/* Home Team Players */}
-            <View style={styles.teamSection}>
-              {topPlayers.home.map((player, index) => {
-                const playerId = `home-${player.number}`;
-                const isExpanded = expandedPlayers.has(playerId);
-                
-                return (
-                  <Animated.View
-                    key={playerId}
-                    entering={isWeb ? undefined : FadeIn.delay(index * 50)}
-                    style={[styles.playerCard, isExpanded && styles.playerCardExpanded]}
+          // OYUNCU PERFORMANSLARI - Sadece Favori Takım
+          <View style={styles.playersContainerNew}>
+            {(() => {
+              // Favori takım hangisi?
+              const homeTeamId = matchData?.homeId || matchData?.teams?.home?.id;
+              const awayTeamId = matchData?.awayId || matchData?.teams?.away?.id;
+              const isFavoriteHome = favoriteTeamIds.includes(homeTeamId);
+              const isFavoriteAway = favoriteTeamIds.includes(awayTeamId);
+              
+              // Favori takımın oyuncularını seç
+              const favoriteTeamName = isFavoriteAway 
+                ? (matchData?.awayName || 'Deplasman')
+                : (matchData?.homeName || 'Ev Sahibi');
+              const rawPlayers = isFavoriteAway ? topPlayers.away : topPlayers.home;
+              // Kaleci her zaman en üstte olsun
+              const favoritePlayers = [...rawPlayers].sort((a, b) => {
+                if (a.isGoalkeeper && !b.isGoalkeeper) return -1;
+                if (!a.isGoalkeeper && b.isGoalkeeper) return 1;
+                return 0;
+              });
+              const teamColor = isFavoriteHome ? '#10B981' : '#F59E0B';
+              
+              return (
+                <>
+                  {favoritePlayers.map((player, index) => {
+              const playerId = `home-${player.number}`;
+              const isExpanded = expandedPlayers.has(playerId);
+              const ratingColor = player.rating >= 8 ? '#10B981' : player.rating >= 7 ? '#1FA2A6' : player.rating >= 6 ? '#F59E0B' : '#EF4444';
+              
+              return (
+                <Animated.View
+                  key={playerId}
+                  entering={isWeb ? undefined : FadeIn.delay(index * 40)}
+                  style={styles.playerDropdown}
+                >
+                  {/* Dropdown Header */}
+                  <TouchableOpacity 
+                    style={[styles.dropdownHeader, isExpanded && styles.dropdownHeaderActive]}
+                    onPress={() => togglePlayerExpand(playerId)}
+                    activeOpacity={0.7}
                   >
-                    {/* Player Header - Tıklanabilir */}
-                    <TouchableOpacity 
-                      style={styles.playerHeader}
-                      onPress={() => togglePlayerExpand(playerId)}
-                      activeOpacity={0.7}
-                    >
-                      <View style={styles.playerInfo}>
-                        <View style={styles.playerNumberBadge}>
-                          <Text style={styles.playerNumberText}>{player.number}</Text>
-                          {player.rating >= 8.5 && (
-                            <View style={styles.starBadge}>
-                              <Text style={styles.starBadgeText}>⭐</Text>
-                            </View>
-                          )}
-                        </View>
-                        <View style={styles.playerDetails}>
-                          <View style={styles.playerNameRow}>
-                            <Text style={styles.playerName}>{player.name}</Text>
-                            {player.goals >= 2 && <Text style={styles.fireEmoji}>🔥</Text>}
-                          </View>
-                          <Text style={styles.playerPosition}>
-                            {player.position} • {player.minutesPlayed}'
-                          </Text>
-                        </View>
+                    {/* Sol: Numara + İsim + Pozisyon */}
+                    <View style={styles.playerInfoNew}>
+                      <View style={[styles.playerNumberNew, { borderColor: ratingColor }]}>
+                        <Text style={styles.playerNumberTextNew}>{player.number}</Text>
                       </View>
-
-                      {/* Rating Circle + Expand Icon */}
-                      <View style={styles.headerRight}>
-                        <View style={styles.ratingCircle}>
-                          <Svg width={44} height={44} style={styles.ratingSvg}>
-                            <Circle
-                              cx="22"
-                              cy="22"
-                              r="14"
-                              stroke="rgba(100, 116, 139, 0.2)"
-                              strokeWidth="2"
-                              fill="none"
-                            />
-                            <Circle
-                              cx="22"
-                              cy="22"
-                              r="14"
-                              stroke={player.rating >= 8 ? '#10B981' : player.rating >= 7 ? '#1FA2A6' : '#F59E0B'}
-                              strokeWidth="2.5"
-                              fill="none"
-                              strokeDasharray={`${(player.rating / 10) * 88} 88`}
-                              strokeLinecap="round"
-                              rotation="-90"
-                              origin="22, 22"
-                            />
-                          </Svg>
-                          <View style={styles.ratingValue}>
-                            <Text style={[styles.ratingText, player.rating >= 8 && { color: '#10B981' }]}>{player.rating}</Text>
-                          </View>
-                        </View>
-                        <Ionicons 
-                          name={isExpanded ? 'chevron-up' : 'chevron-down'} 
-                          size={18} 
-                          color="#1FA2A6" 
-                        />
-                      </View>
-                    </TouchableOpacity>
-
-                    {/* Quick Stats - Herzaman görünür */}
-                    <View style={styles.quickStats}>
-                      <View style={styles.quickStatHome}>
-                        <Text style={styles.quickStatValueHome}>{player.goals}</Text>
-                        <Text style={styles.quickStatLabel}>Gol</Text>
-                      </View>
-                      <View style={styles.quickStatHome}>
-                        <Text style={styles.quickStatValueHome}>{player.assists}</Text>
-                        <Text style={styles.quickStatLabel}>Asist</Text>
-                      </View>
-                      <View style={styles.quickStat}>
-                        <Text style={styles.quickStatValue}>{player.shots}</Text>
-                        <Text style={styles.quickStatLabel}>Şut</Text>
-                      </View>
-                      <View style={styles.quickStat}>
-                        <Text style={styles.quickStatValue}>{player.passAccuracy}%</Text>
-                        <Text style={styles.quickStatLabel}>Pas</Text>
+                      <View style={styles.playerNameBlock}>
+                        <Text style={styles.playerNameNew}>{player.name}</Text>
+                        <Text style={styles.playerPosNew}>{player.position} • {player.minutesPlayed}'</Text>
                       </View>
                     </View>
-
-                    {/* Expanded Content - Sadece açıkken görünür */}
-                    {isExpanded && (
-                      <Animated.View entering={FadeIn.duration(200)}>
-                        {/* Isı Haritası - Mock Veri */}
-                        <View style={styles.heatmapContainer}>
-                          <View style={styles.heatmapHeader}>
-                            <Ionicons name="flame" size={16} color="#F59E0B" />
-                            <Text style={styles.heatmapTitle}>Isı Haritası</Text>
-                            <View style={styles.heatmapAttackDirection}>
-                              <Text style={styles.heatmapAttackText}>Atak Yönü</Text>
-                              <Ionicons name="arrow-forward" size={12} color="#10B981" />
-                            </View>
+                    
+                    {/* Sağ: Özet istatistik + Reyting + Chevron */}
+                    <View style={styles.playerRightNew}>
+                      <View style={styles.quickStatsRow}>
+                        {player.goals > 0 && (
+                          <View style={styles.quickStatBadge}>
+                            <Text style={styles.quickStatBadgeText}>⚽ {player.goals}</Text>
                           </View>
-                          <View style={styles.heatmapFieldReal}>
-                            {/* Saha çizgileri */}
-                            <View style={styles.heatmapFieldLines}>
-                              <View style={styles.heatmapCenterLine} />
-                              <View style={styles.heatmapCenterCircle} />
-                              <View style={styles.heatmapPenaltyAreaLeft} />
-                              <View style={styles.heatmapPenaltyAreaRight} />
-                            </View>
-                            {/* Isı noktaları - Mock veri pozisyona göre */}
-                            {(() => {
-                              const pos = player.position?.toUpperCase() || '';
-                              const isGK = pos.includes('GK') || pos.includes('G');
-                              const isDef = pos.includes('CB') || pos.includes('LB') || pos.includes('RB') || pos.includes('DEF');
-                              const isMid = pos.includes('CM') || pos.includes('CDM') || pos.includes('CAM') || pos.includes('MID');
-                              const isWing = pos.includes('LW') || pos.includes('RW') || pos.includes('LM') || pos.includes('RM');
-                              const isFwd = pos.includes('ST') || pos.includes('CF') || pos.includes('FWD');
-                              
-                              // Pozisyona göre ısı noktaları oluştur
-                              const heatPoints = [];
-                              if (isGK) {
-                                heatPoints.push({ x: 8, y: 50, intensity: 0.9 });
-                                heatPoints.push({ x: 15, y: 45, intensity: 0.4 });
-                                heatPoints.push({ x: 15, y: 55, intensity: 0.4 });
-                              } else if (isDef) {
-                                heatPoints.push({ x: 25, y: 50, intensity: 0.8 });
-                                heatPoints.push({ x: 30, y: 35, intensity: 0.6 });
-                                heatPoints.push({ x: 30, y: 65, intensity: 0.6 });
-                                heatPoints.push({ x: 40, y: 50, intensity: 0.3 });
-                              } else if (isMid) {
-                                heatPoints.push({ x: 50, y: 50, intensity: 0.9 });
-                                heatPoints.push({ x: 45, y: 35, intensity: 0.5 });
-                                heatPoints.push({ x: 55, y: 65, intensity: 0.5 });
-                                heatPoints.push({ x: 60, y: 50, intensity: 0.6 });
-                                heatPoints.push({ x: 35, y: 50, intensity: 0.4 });
-                              } else if (isWing) {
-                                const isLeft = pos.includes('L');
-                                heatPoints.push({ x: 65, y: isLeft ? 20 : 80, intensity: 0.9 });
-                                heatPoints.push({ x: 55, y: isLeft ? 25 : 75, intensity: 0.6 });
-                                heatPoints.push({ x: 75, y: isLeft ? 15 : 85, intensity: 0.7 });
-                                heatPoints.push({ x: 80, y: isLeft ? 30 : 70, intensity: 0.4 });
-                              } else if (isFwd) {
-                                heatPoints.push({ x: 80, y: 50, intensity: 0.9 });
-                                heatPoints.push({ x: 75, y: 35, intensity: 0.5 });
-                                heatPoints.push({ x: 75, y: 65, intensity: 0.5 });
-                                heatPoints.push({ x: 85, y: 50, intensity: 0.7 });
-                                heatPoints.push({ x: 65, y: 50, intensity: 0.3 });
-                              } else {
-                                // Varsayılan - orta alan
-                                heatPoints.push({ x: 50, y: 50, intensity: 0.7 });
-                                heatPoints.push({ x: 40, y: 40, intensity: 0.4 });
-                                heatPoints.push({ x: 60, y: 60, intensity: 0.4 });
-                              }
-                              
-                              return heatPoints.map((point, idx) => (
-                                <View
-                                  key={idx}
-                                  style={[
-                                    styles.heatPoint,
-                                    {
-                                      left: `${point.x}%`,
-                                      top: `${point.y}%`,
-                                      opacity: point.intensity,
-                                      transform: [{ scale: 0.5 + point.intensity * 0.5 }],
-                                    }
-                                  ]}
-                                />
-                              ));
-                            })()}
+                        )}
+                        {player.assists > 0 && (
+                          <View style={[styles.quickStatBadge, { backgroundColor: 'rgba(139, 92, 246, 0.2)' }]}>
+                            <Text style={[styles.quickStatBadgeText, { color: '#A78BFA' }]}>👟 {player.assists}</Text>
                           </View>
-                        </View>
-
-                        {/* Detailed Stats */}
-                        <View style={styles.detailedStats}>
-                          {/* Gol & Şut - Anlamlı Akış */}
-                          {(player.goals > 0 || player.assists > 0 || player.shots > 0) && (
-                            <View style={styles.statSection}>
-                              <View style={styles.statSectionHeader}>
-                                <Text style={styles.statSectionEmoji}>⚽</Text>
-                                <Text style={styles.statSectionTitle}>Hücum Performansı</Text>
-                              </View>
-                              {/* Gol-Asist Ana Satır */}
-                              <View style={styles.goalAssistRow}>
-                                <View style={styles.goalBox}>
-                                  <Text style={styles.goalBoxValue}>{player.goals}</Text>
-                                  <Text style={styles.goalBoxLabel}>GOL</Text>
-                                </View>
-                                <View style={styles.goalPlusDivider}>
-                                  <Text style={styles.goalPlusText}>+</Text>
-                                </View>
-                                <View style={styles.assistBox}>
-                                  <Text style={styles.assistBoxValue}>{player.assists}</Text>
-                                  <Text style={styles.assistBoxLabel}>ASİST</Text>
-                                </View>
-                                <View style={styles.goalContribDivider}>
-                                  <Text style={styles.goalContribEquals}>=</Text>
-                                </View>
-                                <View style={styles.contribBox}>
-                                  <Text style={styles.contribValue}>{player.goals + player.assists}</Text>
-                                  <Text style={styles.contribLabel}>G+A</Text>
-                                </View>
-                              </View>
-                              {/* Şut Detay */}
-                              <View style={styles.shotDetailRow}>
-                                <View style={styles.shotItem}>
-                                  <Text style={styles.shotItemValue}>{player.shots}</Text>
-                                  <Text style={styles.shotItemLabel}>Şut</Text>
-                                </View>
-                                <Ionicons name="arrow-forward" size={12} color="#475569" />
-                                <View style={styles.shotItem}>
-                                  <Text style={[styles.shotItemValue, { color: '#10B981' }]}>{player.shotsOnTarget}</Text>
-                                  <Text style={styles.shotItemLabel}>İsabetli</Text>
-                                </View>
-                                <Ionicons name="arrow-forward" size={12} color="#475569" />
-                                <View style={styles.shotItem}>
-                                  <Text style={[styles.shotItemValue, { color: '#F59E0B' }]}>{player.shotsInsideBox}</Text>
-                                  <Text style={styles.shotItemLabel}>Ceza Sahası</Text>
-                                </View>
-                              </View>
-                            </View>
-                          )}
-
-                          {/* Pas & Oyun Kurma - Anlamlı Akış */}
-                          {player.totalPasses > 0 && (
-                            <View style={styles.statSection}>
-                              <View style={styles.statSectionHeader}>
-                                <Text style={styles.statSectionEmoji}>🎯</Text>
-                                <Text style={styles.statSectionTitle}>Pas İstatistikleri</Text>
-                              </View>
-                              {/* Pas Özet Satırı */}
-                              <View style={styles.passSummaryRow}>
-                                <View style={styles.passSummaryItem}>
-                                  <Text style={styles.passSummaryValue}>{player.totalPasses}</Text>
-                                  <Text style={styles.passSummaryLabel}>Toplam Pas</Text>
-                                </View>
-                                <View style={styles.passDivider}>
-                                  <Ionicons name="arrow-forward" size={16} color="#64748B" />
-                                </View>
-                                <View style={styles.passSummaryItem}>
-                                  <Text style={[styles.passSummaryValue, { color: '#10B981' }]}>{Math.round(player.totalPasses * player.passAccuracy / 100)}</Text>
-                                  <Text style={styles.passSummaryLabel}>İsabetli</Text>
-                                </View>
-                                <View style={styles.passDivider}>
-                                  <Text style={styles.passPercentText}>{player.passAccuracy}%</Text>
-                                </View>
-                              </View>
-                              {/* Pas Detay Kartları */}
-                              <View style={styles.passDetailGrid}>
-                                <View style={styles.passDetailCard}>
-                                  <View style={styles.passDetailIconWrap}>
-                                    <Ionicons name="key" size={14} color="#8B5CF6" />
-                                  </View>
-                                  <Text style={styles.passDetailValue}>{player.keyPasses}</Text>
-                                  <Text style={styles.passDetailLabel}>Kilit Pas</Text>
-                                </View>
-                                <View style={styles.passDetailCard}>
-                                  <View style={[styles.passDetailIconWrap, { backgroundColor: 'rgba(59, 130, 246, 0.15)' }]}>
-                                    <Ionicons name="resize" size={14} color="#3B82F6" />
-                                  </View>
-                                  <Text style={styles.passDetailValue}>{player.longPasses}</Text>
-                                  <Text style={styles.passDetailLabel}>Uzun Pas</Text>
-                                </View>
-                                <View style={styles.passDetailCard}>
-                                  <View style={[styles.passDetailIconWrap, { backgroundColor: 'rgba(245, 158, 11, 0.15)' }]}>
-                                    <Ionicons name="flash" size={14} color="#F59E0B" />
-                                  </View>
-                                  <Text style={styles.passDetailValue}>{player.assists}</Text>
-                                  <Text style={styles.passDetailLabel}>Asist</Text>
-                                </View>
-                              </View>
-                            </View>
-                          )}
-
-                          {/* Dribbling & Hücum */}
-                          {player.dribbleAttempts > 0 && (
-                            <View style={styles.statSection}>
-                              <View style={styles.statSectionHeader}>
-                                <Text style={styles.statSectionEmoji}>🏃</Text>
-                                <Text style={styles.statSectionTitle}>Dribling</Text>
-                              </View>
-                              <View style={styles.statSectionGrid}>
-                                <View style={styles.statItem}>
-                                  <Text style={styles.statItemValue}>
-                                    {player.dribbleSuccess}/{player.dribbleAttempts}
-                                  </Text>
-                                  <Text style={styles.statItemLabel}>Başarılı</Text>
-                                </View>
-                                <View style={styles.statItem}>
-                                  <Text style={styles.statItemValue}>{player.dispossessed}</Text>
-                                  <Text style={styles.statItemLabel}>Kayıp</Text>
-                                </View>
-                              </View>
-                            </View>
-                          )}
-
-                          {/* İkili Mücadele */}
-                          {player.duelsTotal > 0 && (
-                            <View style={styles.statSection}>
-                              <View style={styles.statSectionHeader}>
-                                <Text style={styles.statSectionEmoji}>⚔️</Text>
-                                <Text style={styles.statSectionTitle}>Mücadele</Text>
-                              </View>
-                              <View style={styles.statSectionGrid}>
-                                <View style={styles.statItem}>
-                                  <Text style={styles.statItemValue}>
-                                    {player.duelsWon}/{player.duelsTotal}
-                                  </Text>
-                                  <Text style={styles.statItemLabel}>İkili</Text>
-                                </View>
-                                <View style={styles.statItem}>
-                                  <Text style={styles.statItemValue}>
-                                    {player.aerialWon}/{player.aerialDuels}
-                                  </Text>
-                                  <Text style={styles.statItemLabel}>Hava</Text>
-                                </View>
-                              </View>
-                            </View>
-                          )}
-                        </View>
-                      </Animated.View>
-                    )}
-                  </Animated.View>
-                );
-              })}
-            </View>
-
-            {/* Away Team Divider */}
-            <View style={styles.teamDivider}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>Deplasman</Text>
-              <View style={styles.dividerLine} />
-            </View>
-
-            {/* Away Team Players - Açılır/Kapanır */}
-            <View style={styles.teamSection}>
-              {topPlayers.away.map((player, index) => {
-                const playerId = `away-${player.number}`;
-                const isExpanded = expandedPlayers.has(playerId);
-                
-                return (
-                  <Animated.View
-                    key={playerId}
-                    entering={isWeb ? undefined : FadeIn.delay(index * 50)}
-                    style={[styles.playerCard, styles.playerCardAway, isExpanded && styles.playerCardExpanded]}
-                  >
-                    {/* Player Header - Tıklanabilir */}
-                    <TouchableOpacity 
-                      style={styles.playerHeader}
-                      onPress={() => togglePlayerExpand(playerId)}
-                      activeOpacity={0.7}
-                    >
-                      <View style={styles.playerInfo}>
-                        <View style={styles.playerNumberBadgeAway}>
-                          <Text style={styles.playerNumberText}>{player.number}</Text>
-                          {player.rating >= 8.5 && (
-                            <View style={styles.starBadgeAway}>
-                              <Text style={styles.starBadgeText}>⭐</Text>
-                            </View>
-                          )}
-                        </View>
-                        <View style={styles.playerDetails}>
-                          <View style={styles.playerNameRow}>
-                            <Text style={styles.playerName}>{player.name}</Text>
-                            {player.goals >= 2 && <Text style={styles.fireEmoji}>🔥</Text>}
-                          </View>
-                          <Text style={styles.playerPosition}>
-                            {player.position} • {player.minutesPlayed}'
-                          </Text>
-                        </View>
+                        )}
                       </View>
-
-                      {/* Rating Circle + Expand Icon */}
-                      <View style={styles.headerRight}>
-                        <View style={styles.ratingCircle}>
-                          <Svg width={44} height={44} style={styles.ratingSvg}>
-                            <Circle
-                              cx="22"
-                              cy="22"
-                              r="14"
-                              stroke="rgba(100, 116, 139, 0.2)"
-                              strokeWidth="2"
-                              fill="none"
-                            />
-                            <Circle
-                              cx="22"
-                              cy="22"
-                              r="14"
-                              stroke={player.rating >= 8 ? '#10B981' : player.rating >= 7 ? '#F59E0B' : '#EF4444'}
-                              strokeWidth="2.5"
-                              fill="none"
-                              strokeDasharray={`${(player.rating / 10) * 88} 88`}
-                              strokeLinecap="round"
-                              rotation="-90"
-                              origin="22, 22"
-                            />
-                          </Svg>
-                          <View style={styles.ratingValue}>
-                            <Text style={[styles.ratingTextAway, player.rating >= 8 && { color: '#10B981' }]}>{player.rating}</Text>
-                          </View>
-                        </View>
-                        <Ionicons 
-                          name={isExpanded ? 'chevron-up' : 'chevron-down'} 
-                          size={18} 
-                          color="#F59E0B" 
-                        />
+                      <View style={[styles.ratingBadgeNew, { backgroundColor: `${ratingColor}20`, borderColor: ratingColor }]}>
+                        <Text style={[styles.ratingTextNew, { color: ratingColor }]}>{player.rating}</Text>
                       </View>
-                    </TouchableOpacity>
-
-                    {/* Quick Stats - Herzaman görünür */}
-                    <View style={styles.quickStats}>
-                      <View style={styles.quickStatAway}>
-                        <Text style={styles.quickStatValueAway}>{player.goals}</Text>
-                        <Text style={styles.quickStatLabel}>Gol</Text>
-                      </View>
-                      <View style={styles.quickStatAway}>
-                        <Text style={styles.quickStatValueAway}>{player.assists}</Text>
-                        <Text style={styles.quickStatLabel}>Asist</Text>
-                      </View>
-                      <View style={styles.quickStat}>
-                        <Text style={styles.quickStatValue}>{player.shots}</Text>
-                        <Text style={styles.quickStatLabel}>Şut</Text>
-                      </View>
-                      <View style={styles.quickStat}>
-                        <Text style={styles.quickStatValue}>{player.passAccuracy}%</Text>
-                        <Text style={styles.quickStatLabel}>Pas</Text>
-                      </View>
+                      <Ionicons 
+                        name={isExpanded ? 'chevron-up' : 'chevron-down'} 
+                        size={20} 
+                        color={isExpanded ? '#10B981' : '#7A9A94'} 
+                      />
                     </View>
-
-                    {/* Expanded Content */}
-                    {isExpanded && (
-                      <Animated.View entering={FadeIn.duration(200)}>
-                        {/* Isı Haritası - Mock Veri (Away) */}
-                        <View style={[styles.heatmapContainer, styles.heatmapContainerAway]}>
-                          <View style={styles.heatmapHeader}>
-                            <Ionicons name="flame" size={16} color="#F59E0B" />
-                            <Text style={styles.heatmapTitle}>Isı Haritası</Text>
-                            <View style={styles.heatmapAttackDirection}>
-                              <Ionicons name="arrow-back" size={12} color="#F59E0B" />
-                              <Text style={[styles.heatmapAttackText, { color: '#F59E0B' }]}>Atak Yönü</Text>
+                  </TouchableOpacity>
+                  
+                  {/* Dropdown Content */}
+                  {isExpanded && (
+                    <Animated.View entering={FadeIn.duration(250)} style={styles.dropdownContent}>
+                      {/* Ana İstatistik Kartları - Kaleci vs Saha Oyuncusu */}
+                      <View style={styles.statsGridNew}>
+                        {player.isGoalkeeper ? (
+                          // KALECİ İSTATİSTİKLERİ
+                          <>
+                            <View style={styles.statCardNew}>
+                              <View style={[styles.statCardIcon, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
+                                <Ionicons name="shield-checkmark" size={18} color="#10B981" />
+                              </View>
+                              <Text style={styles.statCardValue}>{player.saves || 0}</Text>
+                              <Text style={styles.statCardLabel}>Kurtarış</Text>
                             </View>
+                            <View style={styles.statCardNew}>
+                              <View style={[styles.statCardIcon, { backgroundColor: 'rgba(34, 211, 238, 0.15)' }]}>
+                                <Ionicons name="trending-up" size={18} color="#22D3EE" />
+                              </View>
+                              <Text style={styles.statCardValue}>
+                                {(player.saves || 0) + (player.goalsAgainst || 0) > 0 
+                                  ? Math.round(((player.saves || 0) / ((player.saves || 0) + (player.goalsAgainst || 0))) * 100) 
+                                  : 0}%
+                              </Text>
+                              <Text style={styles.statCardLabel}>Kurtarış %</Text>
+                            </View>
+                            <View style={styles.statCardNew}>
+                              <View style={[styles.statCardIcon, { backgroundColor: 'rgba(239, 68, 68, 0.15)' }]}>
+                                <Ionicons name="football" size={18} color="#EF4444" />
+                              </View>
+                              <Text style={styles.statCardValue}>{player.goalsAgainst || 0}</Text>
+                              <Text style={styles.statCardLabel}>Gol Yedi</Text>
+                            </View>
+                            <View style={styles.statCardNew}>
+                              <View style={[styles.statCardIcon, { backgroundColor: 'rgba(20, 184, 166, 0.15)' }]}>
+                                <Ionicons name="arrow-forward" size={18} color="#14B8A6" />
+                              </View>
+                              <Text style={styles.statCardValue}>{player.passAccuracy}%</Text>
+                              <Text style={styles.statCardLabel}>Pas İsabeti</Text>
+                            </View>
+                            <View style={styles.statCardNew}>
+                              <View style={[styles.statCardIcon, { backgroundColor: 'rgba(139, 92, 246, 0.15)' }]}>
+                                <Ionicons name="send" size={18} color="#8B5CF6" />
+                              </View>
+                              <Text style={styles.statCardValue}>{player.longPasses || 0}</Text>
+                              <Text style={styles.statCardLabel}>Uzun Pas</Text>
+                            </View>
+                            <View style={styles.statCardNew}>
+                              <View style={[styles.statCardIcon, { backgroundColor: 'rgba(100, 116, 139, 0.15)' }]}>
+                                <Ionicons name="airplane" size={18} color="#7A9A94" />
+                              </View>
+                              <Text style={styles.statCardValue}>{player.aerialWon}/{player.aerialDuels}</Text>
+                              <Text style={styles.statCardLabel}>Hava Topu</Text>
+                            </View>
+                            <View style={styles.statCardNew}>
+                              <View style={[styles.statCardIcon, { backgroundColor: 'rgba(245, 158, 11, 0.15)' }]}>
+                                <Ionicons name="time" size={18} color="#F59E0B" />
+                              </View>
+                              <Text style={styles.statCardValue}>{player.minutesPlayed}'</Text>
+                              <Text style={styles.statCardLabel}>Dakika</Text>
+                            </View>
+                            <View style={styles.statCardNew}>
+                              <View style={[styles.statCardIcon, { backgroundColor: 'rgba(59, 130, 246, 0.15)' }]}>
+                                <Ionicons name="swap-horizontal" size={18} color="#3B82F6" />
+                              </View>
+                              <Text style={styles.statCardValue}>{player.duelsWon}/{player.duelsTotal}</Text>
+                              <Text style={styles.statCardLabel}>İkili Mücadele</Text>
+                            </View>
+                          </>
+                        ) : (
+                          // SAHA OYUNCUSU İSTATİSTİKLERİ
+                          <>
+                            <View style={styles.statCardNew}>
+                              <View style={[styles.statCardIcon, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
+                                <Ionicons name="football" size={18} color="#10B981" />
+                              </View>
+                              <Text style={styles.statCardValue}>{player.goals}</Text>
+                              <Text style={styles.statCardLabel}>Gol</Text>
+                            </View>
+                            <View style={styles.statCardNew}>
+                              <View style={[styles.statCardIcon, { backgroundColor: 'rgba(139, 92, 246, 0.15)' }]}>
+                                <Ionicons name="git-branch" size={18} color="#8B5CF6" />
+                              </View>
+                              <Text style={styles.statCardValue}>{player.assists}</Text>
+                              <Text style={styles.statCardLabel}>Asist</Text>
+                            </View>
+                            <View style={styles.statCardNew}>
+                              <View style={[styles.statCardIcon, { backgroundColor: 'rgba(59, 130, 246, 0.15)' }]}>
+                                <Ionicons name="locate" size={18} color="#3B82F6" />
+                              </View>
+                              <Text style={styles.statCardValue}>{player.shotsOnTarget}/{player.shots}</Text>
+                              <Text style={styles.statCardLabel}>Şut (İsabetli)</Text>
+                            </View>
+                            <View style={styles.statCardNew}>
+                              <View style={[styles.statCardIcon, { backgroundColor: 'rgba(20, 184, 166, 0.15)' }]}>
+                                <Ionicons name="arrow-forward" size={18} color="#14B8A6" />
+                              </View>
+                              <Text style={styles.statCardValue}>{player.passAccuracy}%</Text>
+                              <Text style={styles.statCardLabel}>Pas İsabeti</Text>
+                            </View>
+                            <View style={styles.statCardNew}>
+                              <View style={[styles.statCardIcon, { backgroundColor: 'rgba(245, 158, 11, 0.15)' }]}>
+                                <Ionicons name="flash" size={18} color="#F59E0B" />
+                              </View>
+                              <Text style={styles.statCardValue}>{player.keyPasses}</Text>
+                              <Text style={styles.statCardLabel}>Kilit Pas</Text>
+                            </View>
+                            <View style={styles.statCardNew}>
+                              <View style={[styles.statCardIcon, { backgroundColor: 'rgba(236, 72, 153, 0.15)' }]}>
+                                <Ionicons name="walk" size={18} color="#EC4899" />
+                              </View>
+                              <Text style={styles.statCardValue}>{player.dribbleSuccess}/{player.dribbleAttempts}</Text>
+                              <Text style={styles.statCardLabel}>Dribling</Text>
+                            </View>
+                            <View style={styles.statCardNew}>
+                              <View style={[styles.statCardIcon, { backgroundColor: 'rgba(239, 68, 68, 0.15)' }]}>
+                                <Ionicons name="shield" size={18} color="#EF4444" />
+                              </View>
+                              <Text style={styles.statCardValue}>{player.duelsWon}/{player.duelsTotal}</Text>
+                              <Text style={styles.statCardLabel}>İkili Mücadele</Text>
+                            </View>
+                            <View style={styles.statCardNew}>
+                              <View style={[styles.statCardIcon, { backgroundColor: 'rgba(100, 116, 139, 0.15)' }]}>
+                                <Ionicons name="airplane" size={18} color="#7A9A94" />
+                              </View>
+                              <Text style={styles.statCardValue}>{player.aerialWon}/{player.aerialDuels}</Text>
+                              <Text style={styles.statCardLabel}>Hava Topu</Text>
+                            </View>
+                          </>
+                        )}
+                      </View>
+                      
+                      {/* Oyuncu Isı Haritası - Takım Isı Haritası ile aynı çizim */}
+                      <View style={styles.playerHeatmapSection}>
+                        <View style={styles.playerHeatmapHeader}>
+                          <Ionicons name="flame" size={16} color="#F59E0B" />
+                          <Text style={styles.playerHeatmapTitle}>Oyuncu Isı Haritası</Text>
+                        </View>
+                        <View style={styles.playerHeatmapField}>
+                          {/* Saha çizgileri - Takım ısı haritası ile aynı */}
+                          <View style={styles.fieldBorderNew} />
+                          <View style={styles.centerLineNew} />
+                          <View style={styles.centerCircleNew} />
+                          <View style={styles.centerDotNew} />
+                          <View style={styles.penaltyAreaLeftNew} />
+                          <View style={styles.goalAreaLeftNew} />
+                          <View style={styles.penaltySpotLeftNew} />
+                          <View style={styles.penaltyAreaRightNew} />
+                          <View style={styles.goalAreaRightNew} />
+                          <View style={styles.penaltySpotRightNew} />
+                          <View style={styles.goalLeftNew} />
+                          <View style={styles.goalRightNew} />
+                          
+                          {/* Pozisyona göre ısı noktaları */}
+                          {(() => {
+                            const pos = player.position?.toUpperCase() || '';
+                            const isGK = pos.includes('GK') || pos.includes('G');
+                            const isDef = pos.includes('CB') || pos.includes('LB') || pos.includes('RB') || pos.includes('DEF');
+                            const isMid = pos.includes('CM') || pos.includes('CDM') || pos.includes('CAM') || pos.includes('MID');
+                            const isWing = pos.includes('LW') || pos.includes('RW') || pos.includes('LM') || pos.includes('RM');
+                            const isFwd = pos.includes('ST') || pos.includes('CF') || pos.includes('FWD') || pos.includes('FW');
+                            
+                            const points: { x: number; y: number; size: number; color: string }[] = [];
+                            
+                            if (isGK) {
+                              points.push({ x: 8, y: 50, size: 28, color: 'rgba(16, 185, 129, 0.9)' });
+                              points.push({ x: 14, y: 42, size: 18, color: 'rgba(16, 185, 129, 0.5)' });
+                              points.push({ x: 14, y: 58, size: 18, color: 'rgba(16, 185, 129, 0.5)' });
+                            } else if (isDef) {
+                              points.push({ x: 22, y: 50, size: 26, color: 'rgba(59, 130, 246, 0.85)' });
+                              points.push({ x: 28, y: 32, size: 20, color: 'rgba(59, 130, 246, 0.6)' });
+                              points.push({ x: 28, y: 68, size: 20, color: 'rgba(59, 130, 246, 0.6)' });
+                              points.push({ x: 38, y: 50, size: 16, color: 'rgba(59, 130, 246, 0.4)' });
+                            } else if (isMid) {
+                              points.push({ x: 50, y: 50, size: 28, color: 'rgba(139, 92, 246, 0.9)' });
+                              points.push({ x: 42, y: 35, size: 20, color: 'rgba(139, 92, 246, 0.55)' });
+                              points.push({ x: 58, y: 65, size: 20, color: 'rgba(139, 92, 246, 0.55)' });
+                              points.push({ x: 62, y: 50, size: 18, color: 'rgba(139, 92, 246, 0.5)' });
+                              points.push({ x: 35, y: 50, size: 16, color: 'rgba(139, 92, 246, 0.4)' });
+                            } else if (isWing) {
+                              const isLeft = pos.includes('L');
+                              points.push({ x: 68, y: isLeft ? 18 : 82, size: 28, color: 'rgba(245, 158, 11, 0.9)' });
+                              points.push({ x: 55, y: isLeft ? 22 : 78, size: 20, color: 'rgba(245, 158, 11, 0.6)' });
+                              points.push({ x: 78, y: isLeft ? 28 : 72, size: 22, color: 'rgba(245, 158, 11, 0.7)' });
+                              points.push({ x: 85, y: isLeft ? 38 : 62, size: 18, color: 'rgba(239, 68, 68, 0.7)' });
+                            } else if (isFwd) {
+                              points.push({ x: 82, y: 50, size: 30, color: 'rgba(239, 68, 68, 0.9)' });
+                              points.push({ x: 75, y: 32, size: 20, color: 'rgba(16, 185, 129, 0.6)' });
+                              points.push({ x: 75, y: 68, size: 20, color: 'rgba(16, 185, 129, 0.6)' });
+                              points.push({ x: 88, y: 50, size: 22, color: 'rgba(239, 68, 68, 0.75)' });
+                              points.push({ x: 65, y: 50, size: 16, color: 'rgba(16, 185, 129, 0.4)' });
+                            } else {
+                              points.push({ x: 50, y: 50, size: 24, color: 'rgba(100, 116, 139, 0.7)' });
+                              points.push({ x: 40, y: 40, size: 16, color: 'rgba(100, 116, 139, 0.45)' });
+                              points.push({ x: 60, y: 60, size: 16, color: 'rgba(100, 116, 139, 0.45)' });
+                            }
+                            
+                            return points.map((p, i) => (
+                              <View
+                                key={i}
+                                style={[
+                                  styles.heatPointNew,
+                                  {
+                                    left: `${p.x}%`,
+                                    top: `${p.y}%`,
+                                    width: p.size,
+                                    height: p.size,
+                                    borderRadius: p.size / 2,
+                                    backgroundColor: p.color,
+                                    marginLeft: -p.size / 2,
+                                    marginTop: -p.size / 2,
+                                  }
+                                ]}
+                              />
+                            ));
+                          })()}
+                        </View>
+                      </View>
+                      
+                      {/* Ek Detaylar Bölümü - Ana kartlarla aynı boyut */}
+                      <View style={styles.extraDetailsSection}>
+                        <View style={styles.extraDetailsHeader}>
+                          <Ionicons name="list" size={16} color="#7A9A94" />
+                          <Text style={styles.extraDetailsTitle}>Ek Detaylar</Text>
+                        </View>
+                        <View style={styles.extraDetailsGrid}>
+                          {/* Müdahale */}
+                          <View style={styles.extraDetailItem}>
+                            <View style={[styles.statCardIcon, { backgroundColor: 'rgba(59, 130, 246, 0.15)' }]}>
+                              <Ionicons name="footsteps" size={18} color="#3B82F6" />
+                            </View>
+                            <Text style={styles.extraDetailValue}>{player.tackles}</Text>
+                            <Text style={styles.extraDetailLabel}>Müdahale</Text>
                           </View>
-                          <View style={styles.heatmapFieldReal}>
-                            {/* Saha çizgileri */}
-                            <View style={styles.heatmapFieldLines}>
-                              <View style={styles.heatmapCenterLine} />
-                              <View style={styles.heatmapCenterCircle} />
-                              <View style={styles.heatmapPenaltyAreaLeft} />
-                              <View style={styles.heatmapPenaltyAreaRight} />
+                          {/* Blok */}
+                          <View style={styles.extraDetailItem}>
+                            <View style={[styles.statCardIcon, { backgroundColor: 'rgba(139, 92, 246, 0.15)' }]}>
+                              <Ionicons name="stop" size={18} color="#8B5CF6" />
                             </View>
-                            {/* Isı noktaları - Away atak yönü sola */}
-                            {(() => {
-                              const pos = player.position?.toUpperCase() || '';
-                              const isGK = pos.includes('GK') || pos.includes('G');
-                              const isDef = pos.includes('CB') || pos.includes('LB') || pos.includes('RB') || pos.includes('DEF');
-                              const isMid = pos.includes('CM') || pos.includes('CDM') || pos.includes('CAM') || pos.includes('MID');
-                              const isWing = pos.includes('LW') || pos.includes('RW') || pos.includes('LM') || pos.includes('RM');
-                              const isFwd = pos.includes('ST') || pos.includes('CF') || pos.includes('FWD');
-                              
-                              const heatPoints = [];
-                              // Away için atak yönü sola - koordinatları çevir
-                              if (isGK) {
-                                heatPoints.push({ x: 92, y: 50, intensity: 0.9 });
-                                heatPoints.push({ x: 85, y: 45, intensity: 0.4 });
-                                heatPoints.push({ x: 85, y: 55, intensity: 0.4 });
-                              } else if (isDef) {
-                                heatPoints.push({ x: 75, y: 50, intensity: 0.8 });
-                                heatPoints.push({ x: 70, y: 35, intensity: 0.6 });
-                                heatPoints.push({ x: 70, y: 65, intensity: 0.6 });
-                                heatPoints.push({ x: 60, y: 50, intensity: 0.3 });
-                              } else if (isMid) {
-                                heatPoints.push({ x: 50, y: 50, intensity: 0.9 });
-                                heatPoints.push({ x: 55, y: 35, intensity: 0.5 });
-                                heatPoints.push({ x: 45, y: 65, intensity: 0.5 });
-                                heatPoints.push({ x: 40, y: 50, intensity: 0.6 });
-                                heatPoints.push({ x: 65, y: 50, intensity: 0.4 });
-                              } else if (isWing) {
-                                const isLeft = pos.includes('L');
-                                heatPoints.push({ x: 35, y: isLeft ? 20 : 80, intensity: 0.9 });
-                                heatPoints.push({ x: 45, y: isLeft ? 25 : 75, intensity: 0.6 });
-                                heatPoints.push({ x: 25, y: isLeft ? 15 : 85, intensity: 0.7 });
-                                heatPoints.push({ x: 20, y: isLeft ? 30 : 70, intensity: 0.4 });
-                              } else if (isFwd) {
-                                heatPoints.push({ x: 20, y: 50, intensity: 0.9 });
-                                heatPoints.push({ x: 25, y: 35, intensity: 0.5 });
-                                heatPoints.push({ x: 25, y: 65, intensity: 0.5 });
-                                heatPoints.push({ x: 15, y: 50, intensity: 0.7 });
-                                heatPoints.push({ x: 35, y: 50, intensity: 0.3 });
-                              } else {
-                                heatPoints.push({ x: 50, y: 50, intensity: 0.7 });
-                                heatPoints.push({ x: 60, y: 40, intensity: 0.4 });
-                                heatPoints.push({ x: 40, y: 60, intensity: 0.4 });
-                              }
-                              
-                              return heatPoints.map((point, idx) => (
-                                <View
-                                  key={idx}
-                                  style={[
-                                    styles.heatPointAway,
-                                    {
-                                      left: `${point.x}%`,
-                                      top: `${point.y}%`,
-                                      opacity: point.intensity,
-                                      transform: [{ scale: 0.5 + point.intensity * 0.5 }],
-                                    }
-                                  ]}
-                                />
-                              ));
-                            })()}
+                            <Text style={styles.extraDetailValue}>{player.blocks || 0}</Text>
+                            <Text style={styles.extraDetailLabel}>Blok</Text>
+                          </View>
+                          {/* Top Kapma */}
+                          <View style={styles.extraDetailItem}>
+                            <View style={[styles.statCardIcon, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
+                              <Ionicons name="hand-left" size={18} color="#10B981" />
+                            </View>
+                            <Text style={styles.extraDetailValue}>{player.interceptions || 0}</Text>
+                            <Text style={styles.extraDetailLabel}>Top Kapma</Text>
+                          </View>
+                          {/* Faul Kazanılan */}
+                          <View style={styles.extraDetailItem}>
+                            <View style={[styles.statCardIcon, { backgroundColor: 'rgba(34, 211, 238, 0.15)' }]}>
+                              <Ionicons name="add-circle" size={18} color="#22D3EE" />
+                            </View>
+                            <Text style={styles.extraDetailValue}>{player.foulsDrawn || 0}</Text>
+                            <Text style={styles.extraDetailLabel}>Faul Kazanılan</Text>
+                          </View>
+                          {/* Faul Yapılan */}
+                          <View style={styles.extraDetailItem}>
+                            <View style={[styles.statCardIcon, { backgroundColor: 'rgba(249, 115, 22, 0.15)' }]}>
+                              <Ionicons name="warning" size={18} color="#F97316" />
+                            </View>
+                            <Text style={styles.extraDetailValue}>{player.foulsCommitted || 0}</Text>
+                            <Text style={styles.extraDetailLabel}>Faul Yapılan</Text>
+                          </View>
+                          {/* Sarı Kart */}
+                          <View style={styles.extraDetailItem}>
+                            <View style={[styles.statCardIcon, { backgroundColor: 'rgba(234, 179, 8, 0.15)' }]}>
+                              <Ionicons name="card" size={18} color="#EAB308" />
+                            </View>
+                            <Text style={styles.extraDetailValue}>{player.yellowCards || 0}</Text>
+                            <Text style={styles.extraDetailLabel}>Sarı Kart</Text>
+                          </View>
+                          {/* Kırmızı Kart */}
+                          <View style={styles.extraDetailItem}>
+                            <View style={[styles.statCardIcon, { backgroundColor: 'rgba(220, 38, 38, 0.15)' }]}>
+                              <Ionicons name="card" size={18} color="#DC2626" />
+                            </View>
+                            <Text style={styles.extraDetailValue}>{player.redCards || 0}</Text>
+                            <Text style={styles.extraDetailLabel}>Kırmızı Kart</Text>
+                          </View>
+                          {/* Penaltı - Kaleci için Kurtarış, Oyuncu için Gol */}
+                          <View style={styles.extraDetailItem}>
+                            <View style={[styles.statCardIcon, { backgroundColor: player.isGoalkeeper ? 'rgba(16, 185, 129, 0.15)' : 'rgba(236, 72, 153, 0.15)' }]}>
+                              <Ionicons name={player.isGoalkeeper ? "hand-right" : "flag"} size={18} color={player.isGoalkeeper ? "#10B981" : "#EC4899"} />
+                            </View>
+                            <Text style={styles.extraDetailValue}>
+                              {player.isGoalkeeper 
+                                ? (player.penaltySaved || 0)
+                                : (player.penaltyScored || 0)}
+                            </Text>
+                            <Text style={styles.extraDetailLabel}>
+                              {player.isGoalkeeper ? 'Penaltı Kurtarış' : 'Penaltı Gol'}
+                            </Text>
                           </View>
                         </View>
-
-                        {/* Detailed Stats - Away */}
-                        <View style={styles.detailedStats}>
-                          {/* Gol & Şut - Anlamlı Akış */}
-                          {(player.goals > 0 || player.assists > 0 || player.shots > 0) && (
-                            <View style={styles.statSection}>
-                              <View style={styles.statSectionHeader}>
-                                <Text style={styles.statSectionEmoji}>⚽</Text>
-                                <Text style={styles.statSectionTitle}>Hücum Performansı</Text>
-                              </View>
-                              <View style={styles.goalAssistRow}>
-                                <View style={[styles.goalBox, styles.goalBoxAway]}>
-                                  <Text style={styles.goalBoxValue}>{player.goals}</Text>
-                                  <Text style={styles.goalBoxLabel}>GOL</Text>
-                                </View>
-                                <View style={styles.goalPlusDivider}>
-                                  <Text style={styles.goalPlusText}>+</Text>
-                                </View>
-                                <View style={[styles.assistBox, styles.assistBoxAway]}>
-                                  <Text style={styles.assistBoxValue}>{player.assists}</Text>
-                                  <Text style={styles.assistBoxLabel}>ASİST</Text>
-                                </View>
-                                <View style={styles.goalContribDivider}>
-                                  <Text style={styles.goalContribEquals}>=</Text>
-                                </View>
-                                <View style={[styles.contribBox, styles.contribBoxAway]}>
-                                  <Text style={styles.contribValue}>{player.goals + player.assists}</Text>
-                                  <Text style={styles.contribLabel}>G+A</Text>
-                                </View>
-                              </View>
-                              <View style={styles.shotDetailRow}>
-                                <View style={styles.shotItem}>
-                                  <Text style={styles.shotItemValue}>{player.shots}</Text>
-                                  <Text style={styles.shotItemLabel}>Şut</Text>
-                                </View>
-                                <Ionicons name="arrow-forward" size={12} color="#475569" />
-                                <View style={styles.shotItem}>
-                                  <Text style={[styles.shotItemValue, { color: '#10B981' }]}>{player.shotsOnTarget}</Text>
-                                  <Text style={styles.shotItemLabel}>İsabetli</Text>
-                                </View>
-                                <Ionicons name="arrow-forward" size={12} color="#475569" />
-                                <View style={styles.shotItem}>
-                                  <Text style={[styles.shotItemValue, { color: '#F59E0B' }]}>{player.shotsInsideBox}</Text>
-                                  <Text style={styles.shotItemLabel}>Ceza Sahası</Text>
-                                </View>
-                              </View>
-                            </View>
-                          )}
-
-                          {/* Pas İstatistikleri - Anlamlı Akış */}
-                          {player.totalPasses > 0 && (
-                            <View style={styles.statSection}>
-                              <View style={styles.statSectionHeader}>
-                                <Text style={styles.statSectionEmoji}>🎯</Text>
-                                <Text style={styles.statSectionTitle}>Pas İstatistikleri</Text>
-                              </View>
-                              <View style={styles.passSummaryRow}>
-                                <View style={styles.passSummaryItem}>
-                                  <Text style={styles.passSummaryValue}>{player.totalPasses}</Text>
-                                  <Text style={styles.passSummaryLabel}>Toplam Pas</Text>
-                                </View>
-                                <View style={styles.passDivider}>
-                                  <Ionicons name="arrow-forward" size={16} color="#64748B" />
-                                </View>
-                                <View style={styles.passSummaryItem}>
-                                  <Text style={[styles.passSummaryValue, { color: '#10B981' }]}>{Math.round(player.totalPasses * player.passAccuracy / 100)}</Text>
-                                  <Text style={styles.passSummaryLabel}>İsabetli</Text>
-                                </View>
-                                <View style={styles.passDivider}>
-                                  <Text style={styles.passPercentText}>{player.passAccuracy}%</Text>
-                                </View>
-                              </View>
-                              <View style={styles.passDetailGrid}>
-                                <View style={styles.passDetailCard}>
-                                  <View style={styles.passDetailIconWrap}>
-                                    <Ionicons name="key" size={14} color="#8B5CF6" />
-                                  </View>
-                                  <Text style={styles.passDetailValue}>{player.keyPasses}</Text>
-                                  <Text style={styles.passDetailLabel}>Kilit Pas</Text>
-                                </View>
-                                <View style={styles.passDetailCard}>
-                                  <View style={[styles.passDetailIconWrap, { backgroundColor: 'rgba(59, 130, 246, 0.15)' }]}>
-                                    <Ionicons name="resize" size={14} color="#3B82F6" />
-                                  </View>
-                                  <Text style={styles.passDetailValue}>{player.longPasses}</Text>
-                                  <Text style={styles.passDetailLabel}>Uzun Pas</Text>
-                                </View>
-                                <View style={styles.passDetailCard}>
-                                  <View style={[styles.passDetailIconWrap, { backgroundColor: 'rgba(245, 158, 11, 0.15)' }]}>
-                                    <Ionicons name="flash" size={14} color="#F59E0B" />
-                                  </View>
-                                  <Text style={styles.passDetailValue}>{player.assists}</Text>
-                                  <Text style={styles.passDetailLabel}>Asist</Text>
-                                </View>
-                              </View>
-                            </View>
-                          )}
-
-                          {player.dribbleAttempts > 0 && (
-                            <View style={styles.statSection}>
-                              <View style={styles.statSectionHeader}>
-                                <Text style={styles.statSectionEmoji}>🏃</Text>
-                                <Text style={styles.statSectionTitle}>Dribling</Text>
-                              </View>
-                              <View style={styles.statSectionGrid}>
-                                <View style={styles.statItem}>
-                                  <Text style={styles.statItemValue}>
-                                    {player.dribbleSuccess}/{player.dribbleAttempts}
-                                  </Text>
-                                  <Text style={styles.statItemLabel}>Başarılı</Text>
-                                </View>
-                                <View style={styles.statItem}>
-                                  <Text style={styles.statItemValue}>{player.dispossessed}</Text>
-                                  <Text style={styles.statItemLabel}>Kayıp</Text>
-                                </View>
-                              </View>
-                            </View>
-                          )}
-
-                          {player.duelsTotal > 0 && (
-                            <View style={styles.statSection}>
-                              <View style={styles.statSectionHeader}>
-                                <Text style={styles.statSectionEmoji}>⚔️</Text>
-                                <Text style={styles.statSectionTitle}>Mücadele</Text>
-                              </View>
-                              <View style={styles.statSectionGrid}>
-                                <View style={styles.statItem}>
-                                  <Text style={styles.statItemValue}>
-                                    {player.duelsWon}/{player.duelsTotal}
-                                  </Text>
-                                  <Text style={styles.statItemLabel}>İkili</Text>
-                                </View>
-                                <View style={styles.statItem}>
-                                  <Text style={styles.statItemValue}>
-                                    {player.aerialWon}/{player.aerialDuels}
-                                  </Text>
-                                  <Text style={styles.statItemLabel}>Hava</Text>
-                                </View>
-                              </View>
-                            </View>
-                          )}
-                        </View>
-                      </Animated.View>
-                    )}
-                  </Animated.View>
-                );
-              })}
-            </View>
+                      </View>
+                    </Animated.View>
+                  )}
+                </Animated.View>
+              );
+            })}
+                </>
+              );
+            })()}
           </View>
         )}
       </ScrollView>
@@ -1289,97 +1322,168 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 22,
   },
-  statRowCard: {
-    backgroundColor: 'rgba(30, 58, 58, 0.6)', // ✅ Tema uyumlu arka plan
+  // ═══════════════════════════════════════════════════════════════════
+  // xG (Gol Beklentisi) Kartı - Öne Çıkan
+  // ═══════════════════════════════════════════════════════════════════
+  xgCard: {
+    backgroundColor: 'rgba(34, 211, 238, 0.08)',
     borderRadius: 16,
-    padding: 14,
-    marginBottom: 10,
+    padding: 16,
+    marginBottom: 20,
     borderWidth: 1,
-    borderColor: 'rgba(31, 162, 166, 0.15)',
-    gap: 10,
-    ...Platform.select({
-      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 8 },
-      android: { elevation: 4 },
-      web: { boxShadow: '0 4px 16px rgba(0,0,0,0.15)' },
-    }),
+    borderColor: 'rgba(34, 211, 238, 0.25)',
   },
-  statValues: {
+  xgHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
+    marginBottom: 14,
   },
-  statValueLeft: {
-    minWidth: 44,
-    alignItems: 'flex-start',
+  xgIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: 'rgba(34, 211, 238, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  statValueRight: {
-    minWidth: 44,
-    alignItems: 'flex-end',
+  xgTitle: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#22D3EE',
+    letterSpacing: 0.3,
+  },
+  xgInfoBtn: {
+    padding: 4,
+  },
+  xgContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 16,
+    marginBottom: 12,
+  },
+  xgValueBox: {
+    flex: 1,
+    alignItems: 'center',
+    backgroundColor: 'rgba(15, 42, 36, 0.5)', // Marka yeşili
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.15)', // Turkuaz border
+  },
+  xgValueBoxWinner: {
+    borderColor: 'rgba(16, 185, 129, 0.5)',
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+  },
+  xgValueBoxWinnerAway: {
+    borderColor: 'rgba(245, 158, 11, 0.5)',
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+  },
+  xgValue: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#CBD5E1',
+    marginBottom: 4,
+  },
+  xgValueWinner: {
+    color: '#10B981',
+  },
+  xgValueWinnerAway: {
+    color: '#F59E0B',
+  },
+  xgTeamLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#7A9A94',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  xgVsContainer: {
+    paddingHorizontal: 8,
+  },
+  xgVsText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#475569',
+    textTransform: 'uppercase',
+  },
+  xgFormula: {
+    fontSize: 9,
+    color: '#7A9A94',
+    textAlign: 'center',
+    fontStyle: 'italic',
+    marginTop: 4,
+  },
+  
+  // ═══════════════════════════════════════════════════════════════════
+  // ELİT İSTATİSTİK BARLARI - Şık, minimal, modern
+  // ═══════════════════════════════════════════════════════════════════
+  statRowCard: {
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(31, 162, 166, 0.1)',
+  },
+  statHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  statLabelCenter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  statIconBg: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   statValueText: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: '#E2E8F0',
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#94A3B8',
+    minWidth: 40,
+    textAlign: 'center',
   },
   statValueTextWinner: {
-    color: BRAND.secondary,
+    color: '#10B981',
+    fontWeight: '800',
   },
   statValueTextWinnerAway: {
     color: '#F59E0B',
-  },
-  statLabel: {
-    flex: 1,
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  statIconWrap: {
-    width: 26,
-    height: 26,
-    borderRadius: 8,
-    backgroundColor: `${BRAND.secondary}20`,
-    alignItems: 'center',
-    justifyContent: 'center',
+    fontWeight: '800',
   },
   statLabelText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#E2E8F0',
-    textAlign: 'center',
-  },
-  statTrendIcon: {
-    fontSize: 12,
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#7A9A94',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
   },
   progressBarContainer: {
-    height: 12,
-  },
-  progressBar: {
-    flex: 1,
     flexDirection: 'row',
-    backgroundColor: 'rgba(51, 65, 85, 0.3)',
-    borderRadius: 6,
+    height: 5,
+    borderRadius: 3,
     overflow: 'hidden',
-    alignItems: 'stretch',
+    backgroundColor: 'rgba(51, 65, 85, 0.25)',
   },
   progressBarHome: {
-    backgroundColor: 'rgba(31, 162, 166, 0.5)',
+    backgroundColor: 'rgba(16, 185, 129, 0.4)',
     height: '100%',
-    borderTopLeftRadius: 5,
-    borderBottomLeftRadius: 5,
   },
   progressBarHomeHighlight: {
-    backgroundColor: BRAND.secondary,
-  },
-  progressBarDivider: {
-    width: 2,
-    backgroundColor: 'rgba(15, 23, 42, 0.9)',
+    backgroundColor: '#10B981',
   },
   progressBarAway: {
-    backgroundColor: 'rgba(245, 158, 11, 0.4)',
+    backgroundColor: 'rgba(245, 158, 11, 0.35)',
     height: '100%',
-    borderTopRightRadius: 5,
-    borderBottomRightRadius: 5,
   },
   progressBarAwayHighlight: {
     backgroundColor: '#F59E0B',
@@ -1610,7 +1714,7 @@ const styles = StyleSheet.create({
   },
   quickStat: {
     flex: 1,
-    backgroundColor: 'rgba(71, 85, 105, 0.2)',
+    backgroundColor: 'rgba(31, 162, 166, 0.15)',
     borderRadius: 10,
     padding: 10,
     alignItems: 'center',
@@ -1785,10 +1889,10 @@ const styles = StyleSheet.create({
   teamHeatmapSection: {
     marginTop: 16,
     padding: 16,
-    backgroundColor: 'rgba(30, 41, 59, 0.5)',
+    backgroundColor: 'rgba(15, 42, 36, 0.5)', // Marka yeşili
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(71, 85, 105, 0.3)',
+    borderColor: 'rgba(31, 162, 166, 0.2)', // Turkuaz border
   },
   teamHeatmapHeader: {
     flexDirection: 'row',
@@ -1876,7 +1980,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(71, 85, 105, 0.2)',
+    borderTopColor: 'rgba(31, 162, 166, 0.15)',
   },
   heatmapLegendText: {
     fontSize: 9,
@@ -1922,7 +2026,7 @@ const styles = StyleSheet.create({
   goalPlusText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#64748B',
+    color: '#7A9A94',
   },
   assistBox: {
     alignItems: 'center',
@@ -1954,7 +2058,7 @@ const styles = StyleSheet.create({
   goalContribEquals: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#64748B',
+    color: '#7A9A94',
   },
   contribBox: {
     alignItems: 'center',
@@ -2049,11 +2153,11 @@ const styles = StyleSheet.create({
   passDetailCard: {
     flex: 1,
     alignItems: 'center',
-    backgroundColor: 'rgba(30, 41, 59, 0.5)',
+    backgroundColor: 'rgba(15, 42, 36, 0.5)', // Marka yeşili
     padding: 10,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: 'rgba(71, 85, 105, 0.3)',
+    borderColor: 'rgba(31, 162, 166, 0.2)', // Turkuaz border
   },
   passDetailIconWrap: {
     width: 28,
@@ -2120,5 +2224,606 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#94A3B8',
     fontWeight: '500',
+  },
+  
+  // ═══════════════════════════════════════════════════════════════════
+  // YENİ ISI HARİTASI STİLLERİ - Alt alta, detaylı saha, favori takım önce
+  // ═══════════════════════════════════════════════════════════════════
+  teamHeatmapSectionNew: {
+    backgroundColor: 'rgba(15, 42, 36, 0.5)', // Marka yeşili
+    borderRadius: 16,
+    padding: 16,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.2)', // Turkuaz border
+  },
+  teamHeatmapHeaderNew: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 16,
+  },
+  teamHeatmapTitleNew: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#F1F5F9',
+    letterSpacing: 0.5,
+  },
+  heatmapCardNew: {
+    backgroundColor: 'rgba(15, 42, 36, 0.5)',
+    borderRadius: 14,
+    overflow: 'hidden',
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.2)',
+  },
+  heatmapCardFavorite: {
+    borderColor: 'rgba(16, 185, 129, 0.4)',
+    borderWidth: 2,
+  },
+  heatmapCardHeaderNew: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.25)',
+  },
+  heatmapTeamInfoNew: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  favoriteStarBadge: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: 'rgba(16, 185, 129, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  favoriteStarText: {
+    fontSize: 12,
+  },
+  heatmapTeamNameNew: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1FA2A6',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  heatmapTeamNameFavorite: {
+    color: '#10B981',
+  },
+  heatmapAttackDirNew: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+  },
+  heatmapAttackTextNew: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#10B981',
+    textTransform: 'uppercase',
+  },
+  
+  // Detaylı Saha Stilleri - Gerçek futbol sahası oranı (105m x 68m ≈ 1.54:1)
+  heatmapFieldNew: {
+    width: '100%',
+    aspectRatio: HEATMAP_FIELD_RATIO, // 1.54 - Oyuncu ısı haritasıyla aynı oran
+    alignSelf: 'center',
+    backgroundColor: '#1a5f3c',
+    position: 'relative',
+    overflow: 'hidden',
+    borderRadius: 8,
+    // Çim deseni efekti
+    ...Platform.select({
+      web: {
+        background: 'repeating-linear-gradient(0deg, #1a5f3c, #1a5f3c 10px, #1d6840 10px, #1d6840 20px)',
+      },
+      default: {},
+    }),
+  },
+  fieldBorderNew: {
+    position: 'absolute',
+    top: 4,
+    left: 4,
+    right: 4,
+    bottom: 4,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.35)',
+    borderRadius: 2,
+  },
+  centerLineNew: {
+    position: 'absolute',
+    left: '50%',
+    top: 4,
+    bottom: 4,
+    width: 2,
+    backgroundColor: 'rgba(255, 255, 255, 0.35)',
+    marginLeft: -1,
+  },
+  centerCircleNew: {
+    position: 'absolute',
+    left: '50%',
+    top: '50%',
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.35)',
+    marginLeft: -25,
+    marginTop: -25,
+  },
+  centerDotNew: {
+    position: 'absolute',
+    left: '50%',
+    top: '50%',
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    marginLeft: -3,
+    marginTop: -3,
+  },
+  // Sol penaltı alanı
+  penaltyAreaLeftNew: {
+    position: 'absolute',
+    left: 4,
+    top: '20%',
+    width: '16%',
+    height: '60%',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.35)',
+    borderLeftWidth: 0,
+    borderTopRightRadius: 2,
+    borderBottomRightRadius: 2,
+  },
+  goalAreaLeftNew: {
+    position: 'absolute',
+    left: 4,
+    top: '35%',
+    width: '7%',
+    height: '30%',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.35)',
+    borderLeftWidth: 0,
+  },
+  penaltySpotLeftNew: {
+    position: 'absolute',
+    left: '12%',
+    top: '50%',
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    marginTop: -2,
+  },
+  // Sağ penaltı alanı
+  penaltyAreaRightNew: {
+    position: 'absolute',
+    right: 4,
+    top: '20%',
+    width: '16%',
+    height: '60%',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.35)',
+    borderRightWidth: 0,
+    borderTopLeftRadius: 2,
+    borderBottomLeftRadius: 2,
+  },
+  goalAreaRightNew: {
+    position: 'absolute',
+    right: 4,
+    top: '35%',
+    width: '7%',
+    height: '30%',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.35)',
+    borderRightWidth: 0,
+  },
+  penaltySpotRightNew: {
+    position: 'absolute',
+    right: '12%',
+    top: '50%',
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    marginTop: -2,
+  },
+  // Kale çizgileri
+  goalLeftNew: {
+    position: 'absolute',
+    left: 0,
+    top: '40%',
+    width: 4,
+    height: '20%',
+    backgroundColor: 'rgba(255, 255, 255, 0.6)',
+    borderTopRightRadius: 2,
+    borderBottomRightRadius: 2,
+  },
+  goalRightNew: {
+    position: 'absolute',
+    right: 0,
+    top: '40%',
+    width: 4,
+    height: '20%',
+    backgroundColor: 'rgba(255, 255, 255, 0.6)',
+    borderTopLeftRadius: 2,
+    borderBottomLeftRadius: 2,
+  },
+  // Isı noktaları
+  heatPointNew: {
+    position: 'absolute',
+    marginLeft: -14,
+    marginTop: -14,
+    ...Platform.select({
+      web: {
+        boxShadow: '0 0 18px currentColor',
+        filter: 'blur(2px)',
+      },
+      default: {},
+    }),
+  },
+  // Legend
+  heatmapLegendNew: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 20,
+    marginTop: 4,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(31, 162, 166, 0.2)',
+  },
+  legendItemNew: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  legendDotNew: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  legendTextNew: {
+    fontSize: 10,
+    fontWeight: '500',
+    color: '#94A3B8',
+  },
+  
+  // ═══════════════════════════════════════════════════════════════════
+  // YENİ OYUNCU İSTATİSTİKLERİ - Elit Dropdown Tasarım
+  // ═══════════════════════════════════════════════════════════════════
+  playersContainerNew: {
+    padding: 16,
+    gap: 8,
+  },
+  teamHeaderNew: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 12,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(31, 162, 166, 0.15)',
+  },
+  teamHeaderBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  teamHeaderText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#10B981',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    flex: 1,
+  },
+  favoriteTag: {
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  favoriteTagText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#10B981',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  playerDropdown: {
+    backgroundColor: 'rgba(15, 42, 36, 0.5)', // Marka yeşili
+    borderRadius: 12,
+    marginBottom: 8,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.15)', // Turkuaz border
+  },
+  dropdownHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 12,
+  },
+  dropdownHeaderActive: {
+    backgroundColor: 'rgba(16, 185, 129, 0.08)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(16, 185, 129, 0.2)',
+  },
+  dropdownHeaderActiveAway: {
+    backgroundColor: 'rgba(245, 158, 11, 0.08)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(245, 158, 11, 0.2)',
+  },
+  playerInfoNew: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  playerNumberNew: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    borderWidth: 2,
+    backgroundColor: 'rgba(15, 42, 36, 0.7)', // Marka yeşili
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  playerNumberTextNew: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#E2E8F0',
+  },
+  playerNameBlock: {
+    flex: 1,
+  },
+  playerNameNew: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#F1F5F9',
+  },
+  playerPosNew: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#7A9A94',
+    marginTop: 2,
+  },
+  playerRightNew: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  quickStatsRow: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  quickStatBadge: {
+    backgroundColor: 'rgba(16, 185, 129, 0.2)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  quickStatBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#10B981',
+  },
+  ratingBadgeNew: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ratingTextNew: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  dropdownContent: {
+    padding: 14,
+    gap: 16,
+  },
+  
+  // Reyting Detayları
+  ratingSection: {
+    backgroundColor: 'rgba(15, 42, 36, 0.5)', // Marka yeşili
+    borderRadius: 12,
+    padding: 14,
+  },
+  ratingSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  ratingSectionTitle: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#E2E8F0',
+  },
+  overallRatingBig: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  overallRatingText: {
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  ratingGrid: {
+    gap: 10,
+  },
+  ratingItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  ratingItemLabel: {
+    width: 70,
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#94A3B8',
+  },
+  ratingBarBg: {
+    flex: 1,
+    height: 6,
+    backgroundColor: 'rgba(31, 162, 166, 0.2)',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  ratingBarFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  ratingItemValue: {
+    width: 32,
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#CBD5E1',
+    textAlign: 'right',
+  },
+  
+  // İstatistik Kartları Grid - 2 satır × 4 sütun
+  statsGridNew: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    rowGap: 8,
+  },
+  statCardNew: {
+    width: '23.5%',
+    backgroundColor: 'rgba(15, 42, 36, 0.6)', // Marka yeşili - #0F2A24
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.15)', // Secondary turkuaz border
+  },
+  statCardIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  statCardValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#F1F5F9',
+    marginBottom: 2,
+  },
+  statCardLabel: {
+    fontSize: 9,
+    fontWeight: '500',
+    color: '#7A9A94',
+    textAlign: 'center',
+  },
+  
+  // Oyuncu Isı Haritası
+  playerHeatmapSection: {
+    backgroundColor: 'rgba(15, 42, 36, 0.5)', // Marka yeşili - #0F2A24
+    borderRadius: 12,
+    padding: 12,
+  },
+  playerHeatmapHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 10,
+  },
+  playerHeatmapTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#E2E8F0',
+  },
+  playerHeatmapField: {
+    width: '100%',
+    aspectRatio: HEATMAP_FIELD_RATIO, // Takım ısı haritasıyla aynı oran (1.54)
+    backgroundColor: '#1a5f3c',
+    borderRadius: 8,
+    position: 'relative',
+    overflow: 'hidden',
+    ...Platform.select({
+      web: {
+        background: 'repeating-linear-gradient(0deg, #1a5f3c, #1a5f3c 10px, #1d6840 10px, #1d6840 20px)',
+      },
+      default: {},
+    }),
+  },
+  
+  // ═══════════════════════════════════════════════════════════════════
+  // EK DETAYLAR BÖLÜMÜ - Oyuncu dropdown içinde (Ana kartlarla aynı boyut)
+  // ═══════════════════════════════════════════════════════════════════
+  extraDetailsSection: {
+    backgroundColor: 'rgba(15, 42, 36, 0.4)', // Marka yeşili
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 8,
+  },
+  extraDetailsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(31, 162, 166, 0.2)', // Turkuaz border
+  },
+  extraDetailsTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#94A3B8',
+  },
+  extraDetailsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    rowGap: 8,
+  },
+  extraDetailItem: {
+    width: '23.5%',
+    backgroundColor: 'rgba(15, 42, 36, 0.6)', // Marka yeşili - statCardNew ile aynı
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.15)', // Turkuaz border
+  },
+  extraDetailIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  extraDetailValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#F1F5F9',
+    marginBottom: 2,
+  },
+  extraDetailLabel: {
+    fontSize: 9,
+    fontWeight: '500',
+    color: '#7A9A94', // Yeşil muted text
+    textAlign: 'center',
   },
 });

@@ -282,6 +282,11 @@ export const matchesApi = {
   // Get match statistics
   getMatchStatistics: (matchId: number) => request(`/matches/${matchId}/statistics`),
 
+  // Get player statistics for a match (from fixtures/players endpoint)
+  // Returns detailed player stats: goals, assists, shots, passes, tackles, cards, etc.
+  // API: GET /matches/:id/players
+  getMatchPlayers: (matchId: number) => request(`/matches/${matchId}/players`),
+
   // Get match events (goals, cards, etc.)
   getMatchEvents: (matchId: number) => request(`/matches/${matchId}/events`),
 

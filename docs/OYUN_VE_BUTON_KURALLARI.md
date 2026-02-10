@@ -195,7 +195,7 @@ Bu dosya TacticIQ uygulamasındaki kadro oluşturma, formasyon seçimi, oyuncu y
 
 ---
 
-## 10. Topluluk Verisi Görünürlük Kuralları (YENİ)
+## 10. Topluluk Verisi Görünürlük Kuralları (GÜNCELLEME)
 
 ### Gizli Mod (Tahmin Kaydedilmeden Önce)
 - Topluluk yüzdeleri `??%` olarak gösterilir
@@ -203,12 +203,16 @@ Bu dosya TacticIQ uygulamasındaki kadro oluşturma, formasyon seçimi, oyuncu y
 - Oyuncu pozisyon yüzdeleri gizlidir
 - "Tahminlerinizi kaydedin ve topluluk verilerini görün!" mesajı gösterilir
 
-### Açık Mod (Aşağıdaki Durumlardan Birinde)
-- Kullanıcı tahminlerini kaydettiyse
-- Maç canlı (live) durumda ise
-- Maç bitmiş (finished) durumda ise
+### Açık Mod (SADECE Tahmin Kaydedildiyse)
+- **Topluluk verileri SADECE kullanıcı kendi tahminini kaydettiyse görünür**
+- Maç canlı veya bitmiş olması YETERLİ DEĞİL
+- Kullanıcı tahmin yapmadan maça girerse topluluk verileri GİZLİ kalır
 
-Bu durumların herhangi birinde tüm topluluk verileri görünür olur.
+### Kod Referansı
+```typescript
+// MatchSquad.tsx
+const communityDataVisible = hasPrediction === true;
+```
 
 ---
 

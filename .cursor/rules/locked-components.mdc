@@ -1,0 +1,47 @@
+# Locked Components - Değiştirilmemesi Gereken Bileşenler
+
+## KRİTİK: Bu dosyalar kilitlenmiştir!
+
+Aşağıdaki bileşenler UI/UX olarak tamamlanmış ve test edilmiştir. **Bu dosyalarda değişiklik yapmayın** (kullanıcı açıkça istemediği sürece).
+
+### 🔒 Kilitli Dosyalar:
+
+1. **`src/components/match/MatchLive.tsx`**
+   - Canlı maç eventleri (goller, kartlar, değişiklikler)
+   - Event akışı ve timeline
+   - API entegrasyonu tamamlandı
+   - Mock veri fallback'i mevcut
+
+2. **`src/components/match/MatchStats.tsx`**
+   - Maç istatistikleri (topla oynama, şutlar, kornerler vb.)
+   - Oyuncu istatistikleri dropdown'ları
+   - xG (Expected Goals) hesaplaması
+   - Takım ve oyuncu ısı haritaları
+   - Kaleci istatistikleri
+   - Ek detaylar bölümü (müdahale, blok, kartlar vb.)
+   - API entegrasyonu tamamlandı (oyuncu/ısı haritası mock)
+
+### ✅ Bu dosyalarda yapılabilecek değişiklikler:
+
+- Bug fix (sadece kritik hatalar)
+- API entegrasyonu (mock → gerçek API geçişi)
+- Performans optimizasyonu (görsel değişiklik olmadan)
+
+### ❌ Bu dosyalarda YAPILMAMASI gerekenler:
+
+- UI/UX değişiklikleri
+- Renk/stil değişiklikleri
+- Layout değişiklikleri
+- Yeni özellik ekleme (kullanıcı istemediği sürece)
+
+### 📅 Kilitlenme Tarihi: 10 Şubat 2026
+
+### 📝 Not:
+Oyuncu istatistikleri ve ısı haritaları şu anda mock veri kullanıyor. Gelecekte API entegrasyonu yapılacak:
+- Oyuncu istatistikleri: `fixtures/players` endpoint'i
+- Isı haritaları: Pozisyon tracking API'si (varsa)
+
+API entegrasyonu yapılırken:
+1. Mock veri yapısını koru (interface'ler aynı kalsın)
+2. Sadece veri kaynağını değiştir
+3. Görsel çıktı aynı kalmalı

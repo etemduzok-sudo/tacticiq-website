@@ -17,7 +17,7 @@ import { useAppNavigation } from './src/hooks/useAppNavigation';
 import { useOAuth } from './src/hooks/useOAuth';
 import { initWebZoomPrevention } from './src/utils/webZoomPrevention';
 import { getUserTimezone } from './src/utils/timezoneUtils';
-import { restartMatch1In1Minute, MOCK_TEST_ENABLED } from './src/data/mockTestData';
+import { restartMatch1In1Minute, setMockMatch1StartTime, getMatch1Start, MOCK_TEST_ENABLED } from './src/data/mockTestData';
 
 // Web için React Native'in built-in Animated API'sini kullan, native için reanimated
 import { Animated as RNAnimated } from 'react-native';
@@ -236,8 +236,13 @@ export default function App() {
     if (MOCK_TEST_ENABLED && typeof window !== 'undefined') {
       // Global olarak erişilebilir yap (console'dan çağrılabilir)
       (window as any).restartMockMatch = () => {
+        // Session storage'ı temizle ve maçı yeniden başlat
+        sessionStorage.removeItem('tacticiq_mock_match_start_time');
         restartMatch1In1Minute();
-        console.log('🔄 Mock maç 1 dakika sonra tekrar başlatıldı! Sayfayı yenile (F5)');
+        // Yeni başlangıç zamanını session storage'a kaydet
+        const newStartTime = getMatch1Start();
+        sessionStorage.setItem('tacticiq_mock_match_start_time', newStartTime.toString());
+        console.log('🔄 Mock maç 1 dakika sonra tekrar başlatıldı!', new Date(newStartTime).toISOString());
         // Sayfayı otomatik yenile (test için)
         setTimeout(() => {
           if (typeof window !== 'undefined' && window.location) {
@@ -247,9 +252,12 @@ export default function App() {
       };
       console.log('💡 Mock maçı yeniden başlatmak için: window.restartMockMatch()');
       
-      // ✅ Test için: Sayfa yüklendiğinde otomatik olarak maçı 1 dakika sonra başlat
-      restartMatch1In1Minute();
-      console.log('🔄 [AUTO] Mock maç otomatik olarak 1 dakika sonra başlatıldı');
+      // ✅ Mock maç her zaman canlı başlasın (test için) - session'a bakmadan 55 dk önce sabitle
+      const mockMatchStartKey = 'tacticiq_mock_match_start_time';
+      restartMatch1In1Minute(); // 55 dk önce = canlı (MOCK_START_IMMEDIATELY_LIVE true)
+      const newStartTime = getMatch1Start();
+      sessionStorage.setItem(mockMatchStartKey, newStartTime.toString());
+      console.log('🔄 [AUTO] Mock maç CANLI ayarlandı:', new Date(newStartTime).toISOString(), '(sahanın altı alanı için)');
     }
   }, []);
 

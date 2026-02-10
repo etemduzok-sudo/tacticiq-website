@@ -382,6 +382,13 @@ async function getFixtureLineups(fixtureId) {
   return makeRequest('/fixtures/lineups', { fixture: fixtureId }, `lineups-${fixtureId}`, 300); // 5 min cache
 }
 
+// Get fixture player statistics (PRO plan)
+// Returns detailed stats for all players in a match
+// API endpoint: /fixtures/players?fixture={id}
+async function getFixturePlayers(fixtureId) {
+  return makeRequest('/fixtures/players', { fixture: fixtureId }, `fixture-players-${fixtureId}`, 300); // 5 min cache
+}
+
 // Search teams by name
 async function searchTeams(teamName) {
   return makeRequest('/teams', { search: teamName }, `team-search-${teamName}`, 86400); // 24 hour cache
@@ -647,6 +654,7 @@ module.exports = {
   getFixtureStatistics,
   getFixtureEvents,
   getFixtureLineups,
+  getFixturePlayers,
   searchTeams,
   getTeamInfo,
   getTeamStatistics,

@@ -162,8 +162,8 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
         if (favoriteTeamIds.length === 0) return matches;
         return matches.filter(m => {
           const matchId = m.fixture?.id || (m as any).id;
-          // Mock maç her zaman görünsün
-          if (matchId === 999999) return true;
+          // Mock maçlar (999999, GS-FB 888001, Real-Barça 888002) her zaman görünsün
+          if (matchId === 999999 || matchId === MOCK_MATCH_IDS.GS_FB || matchId === MOCK_MATCH_IDS.REAL_BARCA) return true;
           return favoriteTeamIds.includes(m.teams?.home?.id) || 
                  favoriteTeamIds.includes(m.teams?.away?.id);
         });
@@ -344,8 +344,8 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
         if (!matches || matches.length === 0) return [];
         return matches.filter(m => {
           const matchId = m.fixture?.id || (m as any).id;
-          // Mock maç her zaman görünsün
-          if (matchId === 999999) return true;
+          // Mock maçlar (999999, GS-FB 888001, Real-Barça 888002) her zaman görünsün
+          if (matchId === 999999 || matchId === MOCK_MATCH_IDS.GS_FB || matchId === MOCK_MATCH_IDS.REAL_BARCA) return true;
           const homeId = m.teams?.home?.id != null ? Number(m.teams.home.id) : null;
           const awayId = m.teams?.away?.id != null ? Number(m.teams.away.id) : null;
           return (homeId != null && favoriteTeamIds.has(homeId)) || (awayId != null && favoriteTeamIds.has(awayId));
@@ -650,8 +650,8 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
       let favoriteMatchCount = 0;
       const favoriteMatches = uniqueMatches.filter(m => {
         const matchId = m.fixture?.id || (m as any).id;
-        // Mock maç her zaman görünsün
-        if (matchId === 999999) {
+        // Mock maçlar (999999, GS-FB 888001, Real-Barça 888002) her zaman görünsün
+        if (matchId === 999999 || matchId === MOCK_MATCH_IDS.GS_FB || matchId === MOCK_MATCH_IDS.REAL_BARCA) {
           return true;
         }
         

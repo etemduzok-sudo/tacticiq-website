@@ -883,6 +883,172 @@ router.get('/:id/statistics', async (req, res) => {
   }
 });
 
+// GET /api/matches/:id/players - Get player statistics from fixtures/players endpoint
+// Returns detailed player stats for both teams
+// API-Football endpoint: fixtures/players?fixture={id}
+router.get('/:id/players', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const matchId = parseInt(id, 10);
+
+    // Mock match check
+    if (matchId === 999999 || matchId === 888001 || matchId === 888002) {
+      return res.json({
+        success: true,
+        data: getMockPlayerStats(matchId),
+        source: 'mock'
+      });
+    }
+
+    // Try to fetch from API-Football
+    try {
+      const playersData = await footballApi.getFixturePlayers(matchId);
+      
+      if (!playersData?.response || playersData.response.length === 0) {
+        return res.json({
+          success: true,
+          data: null,
+          message: 'Player statistics not available for this match'
+        });
+      }
+
+      // Transform API response to frontend format
+      const transformedData = transformPlayerStats(playersData.response);
+      
+      return res.json({
+        success: true,
+        data: transformedData,
+        source: 'api'
+      });
+    } catch (apiError) {
+      console.error(`API error fetching player stats for match ${matchId}:`, apiError.message);
+      return res.json({
+        success: true,
+        data: null,
+        message: 'Player statistics temporarily unavailable'
+      });
+    }
+  } catch (error) {
+    console.error('Error in /matches/:id/players:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Helper: Transform API-Football player stats to frontend format
+function transformPlayerStats(apiResponse) {
+  const result = {
+    home: [],
+    away: []
+  };
+
+  apiResponse.forEach((teamData, index) => {
+    const teamKey = index === 0 ? 'home' : 'away';
+    const teamId = teamData.team?.id;
+    const teamName = teamData.team?.name;
+
+    if (teamData.players && Array.isArray(teamData.players)) {
+      result[teamKey] = teamData.players.map(playerData => {
+        const player = playerData.player || {};
+        const stats = playerData.statistics?.[0] || {};
+        const games = stats.games || {};
+        const shots = stats.shots || {};
+        const goals = stats.goals || {};
+        const passes = stats.passes || {};
+        const tackles = stats.tackles || {};
+        const duels = stats.duels || {};
+        const dribbles = stats.dribbles || {};
+        const fouls = stats.fouls || {};
+        const cards = stats.cards || {};
+        const penalty = stats.penalty || {};
+
+        // Calculate derived stats
+        const isGoalkeeper = games.position === 'G';
+        const passAccuracy = passes.total > 0 
+          ? Math.round((passes.accuracy || 0)) 
+          : 0;
+
+        return {
+          // Player info
+          id: player.id,
+          name: player.name,
+          photo: player.photo,
+          number: games.number,
+          position: games.position || 'MF',
+          
+          // Game stats
+          rating: parseFloat(games.rating) || 0,
+          minutesPlayed: games.minutes || 0,
+          
+          // Goals & Assists
+          goals: goals.total || 0,
+          assists: goals.assists || 0,
+          
+          // Shots
+          shots: shots.total || 0,
+          shotsOnTarget: shots.on || 0,
+          shotsInsideBox: 0, // Not available in this endpoint
+          
+          // Passes
+          totalPasses: passes.total || 0,
+          passesCompleted: passes.accuracy ? Math.round((passes.total || 0) * (passes.accuracy / 100)) : 0,
+          passAccuracy: passAccuracy,
+          keyPasses: passes.key || 0,
+          longPasses: 0, // Not available
+          
+          // Dribbling
+          dribbleAttempts: dribbles.attempts || 0,
+          dribbleSuccess: dribbles.success || 0,
+          dispossessed: 0, // Not available
+          
+          // Defending
+          tackles: tackles.total || 0,
+          blocks: tackles.blocks || 0,
+          interceptions: tackles.interceptions || 0,
+          
+          // Duels
+          duelsTotal: duels.total || 0,
+          duelsWon: duels.won || 0,
+          aerialDuels: 0, // Not available directly
+          aerialWon: 0,
+          
+          // Fouls & Cards
+          foulsDrawn: fouls.drawn || 0,
+          foulsCommitted: fouls.committed || 0,
+          yellowCards: cards.yellow || 0,
+          redCards: cards.red || 0,
+          
+          // Penalty
+          penaltyWon: penalty.won || 0,
+          penaltyScored: penalty.scored || 0,
+          penaltyMissed: penalty.missed || 0,
+          penaltySaved: penalty.saved || 0,
+          
+          // Goalkeeper specific
+          isGoalkeeper: isGoalkeeper,
+          saves: isGoalkeeper ? (stats.goalkeeper?.saves || 0) : 0,
+          goalsAgainst: isGoalkeeper ? (goals.conceded || 0) : 0,
+          
+          // Team info
+          teamId: teamId,
+          teamName: teamName
+        };
+      });
+    }
+  });
+
+  return result;
+}
+
+// Helper: Get mock player stats for test matches
+function getMockPlayerStats(matchId) {
+  // Return null - actual mock data is in frontend mockTestData.ts
+  // This ensures consistent behavior with real API when no data available
+  return null;
+}
+
 // GET /api/matches/:id/prediction-data - Get prediction data from API-Football
 router.get('/:id/prediction-data', async (req, res) => {
   try {
@@ -1241,7 +1407,7 @@ router.get('/:id/lineups', async (req, res) => {
         data: [
           {
             team: { id: 645, name: 'Galatasaray', logo: null, colors: { primary: '#E30613', secondary: '#FDB913' } },
-            coach: { id: 901, name: 'Okan Buruk', photo: null },
+            coach: { id: 901, name: 'O. Buruk', photo: null },
             formation: '4-3-3',
             startXI: [
               { player: { id: 50001, name: 'F. Muslera', number: 1, pos: 'G', grid: '1:1', rating: 83, stats: { pace: 48, shooting: 28, passing: 62, dribbling: 42, defending: 88, physical: 82 } } },
@@ -1266,7 +1432,7 @@ router.get('/:id/lineups', async (req, res) => {
           },
           {
             team: { id: 611, name: 'Fenerbahçe', logo: null, colors: { primary: '#FFED00', secondary: '#00205B' } },
-            coach: { id: 902, name: 'José Mourinho', photo: null },
+            coach: { id: 902, name: 'D. Tedesco', photo: null },
             formation: '4-3-3',
             startXI: [
               { player: { id: 50101, name: 'D. Livakovic', number: 1, pos: 'G', grid: '1:1', rating: 84, stats: { pace: 48, shooting: 28, passing: 60, dribbling: 40, defending: 88, physical: 84 } } },

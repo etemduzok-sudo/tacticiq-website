@@ -22,6 +22,9 @@ export const MOCK_TEST_ENABLED = true;
 /** Maçlar kaç dakika sonra başlasın (canlıya geçsin) — 1 dakika sonra başlayacak */
 const START_DELAY_MINUTES = 1;
 
+/** 🧪 TEST: Maç hemen canlı başlasın (ikinci yarı 5. dk) - simülasyonda 1 sn = 1 dk */
+const MOCK_START_IMMEDIATELY_LIVE = true; // true = maç 65 sn önce başlamış (simülasyonda 2H 5. dk), false = 1 dk sonra başlar
+
 /** Bildirim gösterilecek zaman (maç başlamadan 1 dakika önce) */
 const NOTIFICATION_DELAY_MINUTES = START_DELAY_MINUTES - 1; // 1 dakika
 
@@ -31,8 +34,15 @@ const NOTIFICATION_DELAY_MINUTES = START_DELAY_MINUTES - 1; // 1 dakika
  */
 let _match1StartTimeMs: number | null = null;
 
-/** Maç 1 başlangıç zamanı - ilk çağrıda sabitlenir, sonra hep aynı değer döner */
+/** Maç 1 başlangıç zamanı - ilk çağrıda sabitlenir, sonra hep aynı değer döner (dakika oyun sonuna kadar ilerler) */
 export function getMatch1Start(): number {
+  // ✅ MOCK_START_IMMEDIATELY_LIVE: İlk çağrıda 65 sn önce sabitle; böylece elapsed = now - start her saniye artar (51→52→...→90+4→FT)
+  if (MOCK_START_IMMEDIATELY_LIVE) {
+    if (_match1StartTimeMs === null) {
+      _match1StartTimeMs = Date.now() - 65 * 1000; // 65 sn önce = simülasyonda 2. yarı 5. dk
+    }
+    return _match1StartTimeMs;
+  }
   if (_match1StartTimeMs === null) {
     _match1StartTimeMs = Date.now() + START_DELAY_MINUTES * 60 * 1000;
   }
@@ -44,10 +54,17 @@ export function resetMockMatch1StartTime(): void {
   _match1StartTimeMs = null;
 }
 
-/** Maçı 1 dakika sonra tekrar başlat (test için) */
+/** Maçı yeniden başlat (test için) - MOCK_START_IMMEDIATELY_LIVE true ise hemen canlı */
 export function restartMatch1In1Minute(): void {
-  _match1StartTimeMs = Date.now() + START_DELAY_MINUTES * 60 * 1000;
-  console.log('🔄 Maç 1 dakika sonra tekrar başlatıldı:', new Date(_match1StartTimeMs).toISOString());
+  _match1StartTimeMs = MOCK_START_IMMEDIATELY_LIVE
+    ? Date.now() - 65 * 1000  // 65 SANİYE önce = simülasyonda ikinci yarıda canlı
+    : Date.now() + START_DELAY_MINUTES * 60 * 1000;
+  console.log('🔄 Maç yeniden başlatıldı:', new Date(_match1StartTimeMs).toISOString(), MOCK_START_IMMEDIATELY_LIVE ? '(CANLI - 2H)' : '(1 dk sonra)');
+}
+
+/** Maç 1 başlangıç zamanını doğrudan ayarla (session restore için) */
+export function setMockMatch1StartTime(timestamp: number): void {
+  _match1StartTimeMs = timestamp;
 }
 
 function getMatchNotificationTime(): number {
@@ -83,7 +100,7 @@ export const MOCK_MATCH_IDS = {
 
 /** Galatasaray Kadrosu */
 const GS_SQUAD = {
-  coach: { id: 901, name: 'Okan Buruk', nationality: 'Turkey' },
+  coach: { id: 901, name: 'O. Buruk', nationality: 'Turkey' },
   startXI: [
     { player: { id: 50001, name: 'F. Muslera', number: 1, pos: 'G', grid: '1:1' } },
     { player: { id: 50002, name: 'S. Boey', number: 20, pos: 'D', grid: '2:4' } },
@@ -108,7 +125,7 @@ const GS_SQUAD = {
 
 /** Fenerbahçe Kadrosu */
 const FB_SQUAD = {
-  coach: { id: 902, name: 'José Mourinho', nationality: 'Portugal' },
+  coach: { id: 902, name: 'D. Tedesco', nationality: 'Germany' },
   startXI: [
     { player: { id: 50101, name: 'D. Livakovic', number: 1, pos: 'G', grid: '1:1' } },
     { player: { id: 50102, name: 'B. Osayi-Samuel', number: 2, pos: 'D', grid: '2:4' } },
@@ -378,7 +395,7 @@ export function computeLiveState(matchStartTime: number, events: MockEvent[]) {
 export function getMockTestMatches(): any[] {
   if (!MOCK_TEST_ENABLED) return [];
 
-  // ✅ Her çağrıda güncel başlangıç zamanlarını hesapla
+  // ✅ Aynı sabit başlangıç (getMatch1Start) kullanılsın ki dakika maç sonuna kadar ilerlesin
   const match1Start = getMatch1Start();
   const match2Start = getMatch2Start();
   

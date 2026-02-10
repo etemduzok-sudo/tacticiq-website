@@ -1075,7 +1075,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
         return <MatchLive matchData={matchData} matchId={matchId} events={events} />;
       
       case 'stats':
-        return <MatchStats matchData={matchData} matchId={matchId} />;
+        return <MatchStats matchData={matchData} matchId={matchId} favoriteTeamIds={favoriteTeamIds} />;
       
       case 'ratings':
         return <MatchRatings matchData={matchData} lineups={lineups} favoriteTeamIds={favoriteTeamIds} />;
