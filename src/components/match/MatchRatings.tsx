@@ -1379,10 +1379,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
                 <Animated.View
                   key={player.id}
                   entering={!isWeb && FadeIn ? FadeIn.delay(Math.min(index * 30, 300)) : undefined}
-                  style={[
-                    styles.playerCardWrapper,
-                    isPlayerLocked && { opacity: 0.7 }
-                  ]}
+                  style={styles.playerCardWrapper}
                   onLayout={(e: any) => {
                     playerCardRefs.current[player.id] = e.nativeEvent.layout.y;
                   }}
@@ -1392,17 +1389,14 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
                     style={[
                       styles.playerCard,
                       isExpanded && styles.playerCardExpanded,
-                      hasRatings && !isExpanded && { borderColor: `${getRatingColor(avgRating)}30` },
-                      isPlayerLocked && { borderColor: 'rgba(239, 68, 68, 0.2)' }
+                      hasRatings && !isExpanded && { borderColor: `${getRatingColor(avgRating)}30` }
                     ]}
                     onPress={() => handlePlayerToggle(player.id, isExpanded, player)}
                     activeOpacity={0.7}
                   >
                     {/* Jersey Number */}
                     <LinearGradient
-                      colors={isPlayerLocked 
-                        ? ['#6B7280', '#4B5563'] 
-                        : isGK ? ['#C9A44C', '#8B6914'] : ['#1FA2A6', '#0F2A24']}
+                      colors={isGK ? ['#C9A44C', '#8B6914'] : ['#1FA2A6', '#0F2A24']}
                       style={styles.playerJerseyGradient}
                     >
                       <Text style={styles.playerJerseyNumber}>{player.number}</Text>
@@ -1410,12 +1404,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
 
                     {/* Player Info */}
                     <View style={styles.playerInfoContainer}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                        <Text style={[styles.playerName, isPlayerLocked && { color: '#94A3B8' }]} numberOfLines={1}>{player.name}</Text>
-                        {isPlayerLocked && (
-                          <Ionicons name="lock-closed" size={12} color="#EF4444" />
-                        )}
-                      </View>
+                      <Text style={styles.playerName} numberOfLines={1}>{player.name}</Text>
                       <View style={styles.playerPositionRow}>
                         <View style={[styles.playerPositionBadge, isGK && styles.playerPositionBadgeGK]}>
                           <Text style={[styles.playerPositionText, isGK && styles.playerPositionTextGK]}>
@@ -1459,69 +1448,51 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
                       </View>
                     </View>
 
-                    {/* Score Badges + Arrow/Lock */}
+                    {/* Score Badges + Arrow */}
                     <View style={styles.playerRightSection}>
-                      {isPlayerLocked ? (
-                        /* Kilitli ise kilit göster */
-                        <View style={{
-                          width: 36,
-                          height: 36,
-                          borderRadius: 18,
-                          backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          borderWidth: 1,
-                          borderColor: 'rgba(239, 68, 68, 0.2)',
-                        }}>
-                          <Ionicons name="lock-closed" size={16} color="#EF4444" />
+                      {/* Topluluk Puanı (Sol) */}
+                      <View style={styles.communityScoreBadge}>
+                        <Ionicons name="people" size={10} color="#C9A44C" />
+                        <Text style={styles.communityScoreText}>
+                          {getPlayerCommunityData(player.id, player.position).communityAvg.toFixed(1)}
+                        </Text>
+                      </View>
+                      
+                      {/* Kullanıcı Puanı (Sağ) - Silme butonu ile */}
+                      <View style={styles.userScoreBadgeWrapper}>
+                        {hasRatings && !isExpanded && !ratingTimeInfo.isLocked && (
+                          <TouchableOpacity
+                            style={styles.deleteRatingBtnCorner}
+                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                            activeOpacity={0.6}
+                            onPress={() => {
+                              console.log('🗑️ Delete rating button pressed for:', player.name);
+                              setDeleteConfirmPlayer({ id: player.id, name: player.name });
+                            }}
+                          >
+                            <Ionicons name="close" size={12} color="#FFF" />
+                          </TouchableOpacity>
+                        )}
+                        <View style={[
+                          styles.userScoreBadge, 
+                          hasRatings 
+                            ? { backgroundColor: `${getRatingColor(avgRating)}25`, borderColor: getRatingColor(avgRating) }
+                            : { backgroundColor: 'rgba(71, 85, 105, 0.3)', borderColor: '#475569' }
+                        ]}>
+                          <Text style={[
+                            styles.userScoreText, 
+                            { color: hasRatings ? getRatingColor(avgRating) : '#64748B' }
+                          ]}>
+                            {hasRatings ? avgRating.toFixed(1) : '—'}
+                          </Text>
                         </View>
-                      ) : (
-                        <>
-                          {/* Topluluk Puanı (Sol) */}
-                          <View style={styles.communityScoreBadge}>
-                            <Ionicons name="people" size={10} color="#C9A44C" />
-                            <Text style={styles.communityScoreText}>
-                              {getPlayerCommunityData(player.id, player.position).communityAvg.toFixed(1)}
-                            </Text>
-                          </View>
-                          
-                          {/* Kullanıcı Puanı (Sağ) - Silme butonu ile */}
-                          <View style={styles.userScoreBadgeWrapper}>
-                            {hasRatings && !isExpanded && (
-                              <TouchableOpacity
-                                style={styles.deleteRatingBtnCorner}
-                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                activeOpacity={0.6}
-                                onPress={() => {
-                                  console.log('🗑️ Delete rating button pressed for:', player.name);
-                                  setDeleteConfirmPlayer({ id: player.id, name: player.name });
-                                }}
-                              >
-                                <Ionicons name="close" size={12} color="#FFF" />
-                              </TouchableOpacity>
-                            )}
-                            <View style={[
-                              styles.userScoreBadge, 
-                              hasRatings 
-                                ? { backgroundColor: `${getRatingColor(avgRating)}25`, borderColor: getRatingColor(avgRating) }
-                                : { backgroundColor: 'rgba(71, 85, 105, 0.3)', borderColor: '#475569' }
-                            ]}>
-                              <Text style={[
-                                styles.userScoreText, 
-                                { color: hasRatings ? getRatingColor(avgRating) : '#64748B' }
-                              ]}>
-                                {hasRatings ? avgRating.toFixed(1) : '—'}
-                              </Text>
-                            </View>
-                          </View>
-                          
-                          <Ionicons
-                            name={isExpanded ? 'chevron-up' : 'chevron-down'}
-                            size={18}
-                            color={isExpanded ? BRAND.secondary : '#64748B'}
-                          />
-                        </>
-                      )}
+                      </View>
+                      
+                      <Ionicons
+                        name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                        size={18}
+                        color={isExpanded ? BRAND.secondary : '#64748B'}
+                      />
                     </View>
                   </TouchableOpacity>
 
