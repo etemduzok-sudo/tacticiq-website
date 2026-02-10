@@ -74,6 +74,10 @@ interface Player {
   name: string;
   position: string;
   photo?: string | null;
+  isStarter?: boolean; // İlk 11'de mi?
+  isSubstitute?: boolean; // Yedek mi?
+  playedInMatch?: boolean; // Maçta oynadı mı? (starter veya oyuna girdi)
+  minutesPlayed?: number; // Oynadığı dakika
 }
 
 // Coach Rating Categories
@@ -181,7 +185,12 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
   // 🗑️ Silme onay modal state
   const [deleteConfirmPlayer, setDeleteConfirmPlayer] = useState<{ id: number; name: string } | null>(null);
   
-  // ✅ 24 SAAT KURALI - Maç bittikten sonra 24 saat boyunca değerlendirme yapılabilir
+  // 🔒 Kilit popup state
+  const [showLockPopup, setShowLockPopup] = useState(false);
+  const [lockPopupType, setLockPopupType] = useState<'coach' | 'player'>('coach');
+  const [lockedPlayerInfo, setLockedPlayerInfo] = useState<{ name: string; reason: string } | null>(null);
+  
+  // ✅ KİLİT MEKANİZMASI - Maç bitmeden kilitli, bittikten sonra 24 saat açık
   const ratingTimeInfo = useMemo(() => {
     // Maç bitiş zamanını al (fixture.timestamp + maç süresi yaklaşık 2 saat)
     const matchTimestamp = matchData?.fixture?.timestamp 
@@ -193,21 +202,52 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
     // Maç durumu kontrolü
     const status = matchData?.fixture?.status?.short || matchData?.status || '';
     const isFinished = status === 'FT' || status === 'AET' || status === 'PEN' || status === 'finished';
+    const isLive = ['1H', 'HT', '2H', 'ET', 'P', 'BT', 'LIVE'].includes(status);
+    const isNotStarted = ['NS', 'TBD', 'PST', 'CANC', 'ABD', 'AWD', 'WO'].includes(status);
     
-    if (!isFinished || !matchTimestamp) {
-      return { isLocked: false, hoursRemaining: 24, message: '' };
+    // Maç başlamadıysa veya devam ediyorsa → KİLİTLİ
+    if (isNotStarted) {
+      return { 
+        isLocked: true, 
+        lockReason: 'not_started',
+        hoursRemaining: 0, 
+        message: 'Maç henüz başlamadı',
+        unlockTime: matchTimestamp ? new Date(matchTimestamp + (2 * 60 * 60 * 1000)).toISOString() : null
+      };
     }
     
-    // Maç bitiş zamanı (maç başlangıcından yaklaşık 2 saat sonra)
+    if (isLive) {
+      return { 
+        isLocked: true, 
+        lockReason: 'live',
+        hoursRemaining: 0, 
+        message: 'Maç devam ediyor',
+        unlockTime: null
+      };
+    }
+    
+    // Maç bitmemişse veya timestamp yoksa → KİLİTLİ
+    if (!isFinished || !matchTimestamp) {
+      return { 
+        isLocked: true, 
+        lockReason: 'unknown',
+        hoursRemaining: 0, 
+        message: '',
+        unlockTime: null
+      };
+    }
+    
+    // Maç bitti → 24 saat hesapla
     const matchEndTime = matchTimestamp + (2 * 60 * 60 * 1000);
     const now = Date.now();
     const hoursSinceEnd = (now - matchEndTime) / (1000 * 60 * 60);
     const hoursRemaining = Math.max(0, 24 - hoursSinceEnd);
     
-    const isLocked = hoursSinceEnd >= 24;
+    // 24 saat geçtiyse → KİLİTLİ
+    const isExpired = hoursSinceEnd >= 24;
     
     let message = '';
-    if (isLocked) {
+    if (isExpired) {
       message = 'Değerlendirme süresi doldu (24 saat)';
     } else if (hoursRemaining <= 1) {
       message = `Son ${Math.ceil(hoursRemaining * 60)} dakika!`;
@@ -215,7 +255,14 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
       message = `Kalan süre: ${Math.floor(hoursRemaining)} saat`;
     }
     
-    return { isLocked, hoursRemaining, message };
+    return { 
+      isLocked: isExpired, 
+      lockReason: isExpired ? 'expired' : 'open',
+      hoursRemaining, 
+      message,
+      unlockTime: null,
+      expireTime: new Date(matchEndTime + (24 * 60 * 60 * 1000)).toISOString()
+    };
   }, [matchData]);
   
   // Favori takım ID'sini belirle (önce favori takım, yoksa ev sahibi)
@@ -328,7 +375,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
     ],
   }), []);
 
-  // Lineups'tan oyuncuları çıkar (favori takım)
+  // Lineups'tan oyuncuları çıkar (favori takım) - oynayan/oynamayan bilgisi ile
   const getPlayersFromLineups = useMemo((): Player[] => {
     if (!lineups) return [];
     
@@ -341,6 +388,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
     
     const players: Player[] = [];
     
+    // İlk 11 - hepsi oynamış sayılır
     if (teamLineup.startXI) {
       teamLineup.startXI.forEach((item: any, idx: number) => {
         const p = item.player || item;
@@ -351,21 +399,33 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
             name: p.name || 'Bilinmiyor',
             position: p.pos || p.position || 'MF',
             photo: p.photo || null,
+            isStarter: true,
+            isSubstitute: false,
+            playedInMatch: true, // Starter → kesinlikle oynadı
+            minutesPlayed: 90, // Varsayılan
           });
         }
       });
     }
     
+    // Yedekler - sadece oyuna girenler değerlendirilebilir
+    // API'den events çekildiğinde güncellenir, şimdilik hepsi "oynamadı" kabul
     if (teamLineup.substitutes) {
       teamLineup.substitutes.forEach((item: any, idx: number) => {
         const p = item.player || item;
         if (p) {
+          // API'den minutes bilgisi varsa kullan, yoksa 0 (oynamadı)
+          const minutes = p.minutes || p.statistics?.[0]?.games?.minutes || 0;
           players.push({
             id: p.id || 100 + idx,
             number: p.number || 12 + idx,
             name: p.name || 'Bilinmiyor',
             position: p.pos || p.position || 'MF',
             photo: p.photo || null,
+            isStarter: false,
+            isSubstitute: true,
+            playedInMatch: minutes > 0, // Dakika varsa oynadı
+            minutesPlayed: minutes,
           });
         }
       });
@@ -451,8 +511,16 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
   const scrollViewRef = useRef<ScrollView>(null);
   const playerCardRefs = useRef<{[playerId: number]: number}>({});
   
-  // Futbolcuları forma numarasına göre sırala
-  const sortedPlayers = [...playersFromLineups].sort((a, b) => a.number - b.number);
+  // Futbolcuları grupla ve sırala: Kaleciler + Saha Oyuncuları
+  const { goalkeepers, fieldPlayers, allPlayers } = useMemo(() => {
+    const gks = playersFromLineups.filter(p => isGoalkeeperPosition(p.position)).sort((a, b) => a.number - b.number);
+    const fps = playersFromLineups.filter(p => !isGoalkeeperPosition(p.position)).sort((a, b) => a.number - b.number);
+    // Kaleciler önce, sonra saha oyuncuları
+    return { goalkeepers: gks, fieldPlayers: fps, allPlayers: [...gks, ...fps] };
+  }, [playersFromLineups]);
+  
+  // Eski uyumluluk için
+  const sortedPlayers = allPlayers;
 
   // Topluluk değerlendirme verileri (mock - ileride API'den gelecek)
   const getPlayerCommunityData = useCallback((playerId: number, position?: string) => {
@@ -495,7 +563,23 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
   }, []);
 
   // Futbolcuya tıklandığında kartı ekranın üstüne scroll et
-  const handlePlayerToggle = useCallback((playerId: number, isCurrentlyExpanded: boolean) => {
+  const handlePlayerToggle = useCallback((playerId: number, isCurrentlyExpanded: boolean, player?: Player) => {
+    // 🔒 Kilit kontrolü - maç başlamadıysa veya süre dolduysa
+    if (ratingTimeInfo.isLocked) {
+      setLockPopupType('player');
+      setShowLockPopup(true);
+      return;
+    }
+    
+    // 🔒 Oynamayan oyuncu kontrolü
+    if (player && player.isSubstitute && !player.playedInMatch) {
+      setLockedPlayerInfo({ 
+        name: player.name, 
+        reason: 'oyuna girmedi' 
+      });
+      return;
+    }
+    
     if (isCurrentlyExpanded) {
       // Kapatıyoruz
       setExpandedPlayerId(null);
@@ -513,7 +597,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
         }
       }, 120);
     }
-  }, []);
+  }, [ratingTimeInfo.isLocked]);
 
   // Futbolcu değerlendirme güncelleme
   const updatePlayerRating = (playerId: number, categoryId: string, value: number) => {
@@ -860,6 +944,13 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
   //                    eğer mevcut değer = star - 0.5 → star (tam)
   //                    eğer mevcut değer >= star → star - 0.5 (yarıma geri dön)
   const handleRatingChange = (categoryId: number, star: number) => {
+    // 🔒 Kilit kontrolü
+    if (ratingTimeInfo.isLocked) {
+      setLockPopupType('coach');
+      setShowLockPopup(true);
+      return;
+    }
+    
     setCoachRatings(prev => {
       const currentRating = prev[categoryId] || 5;
       const halfValue = star - 0.5;
@@ -957,51 +1048,79 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
               </LinearGradient>
             </View>
             
-            {/* ✅ 24 Saat Kural Göstergesi */}
-            {ratingTimeInfo.message && (
-              <View style={{
+            {/* 🔒 Kilit Göstergesi - Tıklanabilir */}
+            <TouchableOpacity
+              onPress={() => {
+                setLockPopupType('coach');
+                setShowLockPopup(true);
+              }}
+              activeOpacity={0.7}
+              style={{
                 flexDirection: 'row',
                 alignItems: 'center',
-                gap: 6,
-                marginTop: 8,
-                paddingHorizontal: 12,
-                paddingVertical: 6,
+                gap: 8,
+                marginTop: 12,
+                paddingHorizontal: 16,
+                paddingVertical: 10,
                 backgroundColor: ratingTimeInfo.isLocked 
-                  ? 'rgba(239, 68, 68, 0.2)' 
+                  ? 'rgba(239, 68, 68, 0.15)' 
                   : ratingTimeInfo.hoursRemaining <= 2 
-                    ? 'rgba(249, 115, 22, 0.2)'
-                    : 'rgba(16, 185, 129, 0.2)',
-                borderRadius: 8,
+                    ? 'rgba(249, 115, 22, 0.15)'
+                    : 'rgba(16, 185, 129, 0.15)',
+                borderRadius: 12,
                 borderWidth: 1,
                 borderColor: ratingTimeInfo.isLocked 
-                  ? 'rgba(239, 68, 68, 0.4)' 
+                  ? 'rgba(239, 68, 68, 0.3)' 
                   : ratingTimeInfo.hoursRemaining <= 2 
-                    ? 'rgba(249, 115, 22, 0.4)'
-                    : 'rgba(16, 185, 129, 0.4)',
+                    ? 'rgba(249, 115, 22, 0.3)'
+                    : 'rgba(16, 185, 129, 0.3)',
+              }}
+            >
+              <View style={{
+                width: 32,
+                height: 32,
+                borderRadius: 16,
+                backgroundColor: ratingTimeInfo.isLocked 
+                  ? 'rgba(239, 68, 68, 0.2)' 
+                  : 'rgba(16, 185, 129, 0.2)',
+                alignItems: 'center',
+                justifyContent: 'center',
               }}>
                 <Ionicons 
-                  name={ratingTimeInfo.isLocked ? 'lock-closed' : 'time-outline'} 
-                  size={14} 
-                  color={ratingTimeInfo.isLocked 
-                    ? '#EF4444' 
-                    : ratingTimeInfo.hoursRemaining <= 2 
-                      ? '#F97316'
-                      : '#10B981'
-                  } 
+                  name={ratingTimeInfo.isLocked ? 'lock-closed' : 'lock-open'} 
+                  size={18} 
+                  color={ratingTimeInfo.isLocked ? '#EF4444' : '#10B981'} 
                 />
-                <Text style={{
-                  fontSize: 11,
-                  fontWeight: '600',
-                  color: ratingTimeInfo.isLocked 
-                    ? '#EF4444' 
-                    : ratingTimeInfo.hoursRemaining <= 2 
-                      ? '#F97316'
-                      : '#10B981',
-                }}>
-                  {ratingTimeInfo.message}
-                </Text>
               </View>
-            )}
+              <View style={{ flex: 1 }}>
+                <Text style={{
+                  fontSize: 12,
+                  fontWeight: '700',
+                  color: ratingTimeInfo.isLocked ? '#EF4444' : '#10B981',
+                }}>
+                  {ratingTimeInfo.isLocked ? 'Değerlendirme Kilitli' : 'Değerlendirme Açık'}
+                </Text>
+                {ratingTimeInfo.message ? (
+                  <Text style={{
+                    fontSize: 10,
+                    fontWeight: '500',
+                    color: ratingTimeInfo.isLocked 
+                      ? 'rgba(239, 68, 68, 0.8)' 
+                      : ratingTimeInfo.hoursRemaining <= 2 
+                        ? '#F97316'
+                        : 'rgba(16, 185, 129, 0.8)',
+                    marginTop: 2,
+                  }}>
+                    {ratingTimeInfo.message}
+                  </Text>
+                ) : null}
+              </View>
+              <Ionicons 
+                name="information-circle-outline" 
+                size={20} 
+                color={ratingTimeInfo.isLocked ? '#EF4444' : '#10B981'} 
+              />
+            </TouchableOpacity>
 
             <Text style={styles.headerTitle}>
               {targetTeamInfo.manager || 'Teknik Direktör'}
@@ -1272,18 +1391,94 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
             )}
 
             {/* Players List */}
+            {/* 🔒 Kilit Göstergesi - Oyuncu Bölümü */}
+            <TouchableOpacity
+              onPress={() => {
+                setLockPopupType('player');
+                setShowLockPopup(true);
+              }}
+              activeOpacity={0.7}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 8,
+                marginBottom: 16,
+                paddingHorizontal: 14,
+                paddingVertical: 10,
+                backgroundColor: ratingTimeInfo.isLocked 
+                  ? 'rgba(239, 68, 68, 0.1)' 
+                  : ratingTimeInfo.hoursRemaining <= 2 
+                    ? 'rgba(249, 115, 22, 0.1)'
+                    : 'rgba(16, 185, 129, 0.1)',
+                borderRadius: 10,
+                borderWidth: 1,
+                borderColor: ratingTimeInfo.isLocked 
+                  ? 'rgba(239, 68, 68, 0.25)' 
+                  : ratingTimeInfo.hoursRemaining <= 2 
+                    ? 'rgba(249, 115, 22, 0.25)'
+                    : 'rgba(16, 185, 129, 0.25)',
+              }}
+            >
+              <View style={{
+                width: 28,
+                height: 28,
+                borderRadius: 14,
+                backgroundColor: ratingTimeInfo.isLocked 
+                  ? 'rgba(239, 68, 68, 0.15)' 
+                  : 'rgba(16, 185, 129, 0.15)',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}>
+                <Ionicons 
+                  name={ratingTimeInfo.isLocked ? 'lock-closed' : 'lock-open'} 
+                  size={14} 
+                  color={ratingTimeInfo.isLocked ? '#EF4444' : '#10B981'} 
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{
+                  fontSize: 11,
+                  fontWeight: '600',
+                  color: ratingTimeInfo.isLocked ? '#EF4444' : '#10B981',
+                }}>
+                  {ratingTimeInfo.isLocked ? 'Oyuncu Değerlendirmeleri Kilitli' : 'Oyuncu Değerlendirmeleri Açık'}
+                </Text>
+                {ratingTimeInfo.message ? (
+                  <Text style={{
+                    fontSize: 9,
+                    color: ratingTimeInfo.isLocked 
+                      ? 'rgba(239, 68, 68, 0.7)' 
+                      : 'rgba(16, 185, 129, 0.7)',
+                    marginTop: 1,
+                  }}>
+                    {ratingTimeInfo.message}
+                  </Text>
+                ) : null}
+              </View>
+              <Ionicons 
+                name="information-circle-outline" 
+                size={16} 
+                color={ratingTimeInfo.isLocked ? '#EF4444' : '#10B981'} 
+              />
+            </TouchableOpacity>
+
             {sortedPlayers.map((player, index) => {
               const isExpanded = expandedPlayerId === player.id;
               const avgRating = getPlayerAverageRating(player.id, player.position);
               const hasRatings = Object.keys(playerRatings[player.id] || {}).length > 0;
               const categories = getRatingCategories(player.position);
               const isGK = isGoalkeeperPosition(player.position || '');
+              const canBeRated = player.isStarter || player.playedInMatch;
+              const isPlayerLocked = ratingTimeInfo.isLocked || (!canBeRated && player.isSubstitute);
 
               return (
                 <Animated.View
                   key={player.id}
                   entering={!isWeb && FadeIn ? FadeIn.delay(Math.min(index * 30, 300)) : undefined}
-                  style={styles.playerCardWrapper}
+                  style={[
+                    styles.playerCardWrapper,
+                    isPlayerLocked && { opacity: 0.7 }
+                  ]}
                   onLayout={(e: any) => {
                     playerCardRefs.current[player.id] = e.nativeEvent.layout.y;
                   }}
@@ -1293,14 +1488,17 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
                     style={[
                       styles.playerCard,
                       isExpanded && styles.playerCardExpanded,
-                      hasRatings && !isExpanded && { borderColor: `${getRatingColor(avgRating)}30` }
+                      hasRatings && !isExpanded && { borderColor: `${getRatingColor(avgRating)}30` },
+                      isPlayerLocked && { borderColor: 'rgba(239, 68, 68, 0.2)' }
                     ]}
-                    onPress={() => handlePlayerToggle(player.id, isExpanded)}
+                    onPress={() => handlePlayerToggle(player.id, isExpanded, player)}
                     activeOpacity={0.7}
                   >
                     {/* Jersey Number */}
                     <LinearGradient
-                      colors={isGK ? ['#C9A44C', '#8B6914'] : ['#1FA2A6', '#0F2A24']} // ✅ Design System
+                      colors={isPlayerLocked 
+                        ? ['#6B7280', '#4B5563'] 
+                        : isGK ? ['#C9A44C', '#8B6914'] : ['#1FA2A6', '#0F2A24']}
                       style={styles.playerJerseyGradient}
                     >
                       <Text style={styles.playerJerseyNumber}>{player.number}</Text>
@@ -1308,66 +1506,123 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
 
                     {/* Player Info */}
                     <View style={styles.playerInfoContainer}>
-                      <Text style={styles.playerName} numberOfLines={1}>{player.name}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Text style={[styles.playerName, isPlayerLocked && { color: '#94A3B8' }]} numberOfLines={1}>{player.name}</Text>
+                        {isPlayerLocked && (
+                          <Ionicons name="lock-closed" size={12} color="#EF4444" />
+                        )}
+                      </View>
                       <View style={styles.playerPositionRow}>
                         <View style={[styles.playerPositionBadge, isGK && styles.playerPositionBadgeGK]}>
                           <Text style={[styles.playerPositionText, isGK && styles.playerPositionTextGK]}>
                             {isGK ? '🧤 GK' : player.position}
                           </Text>
                         </View>
+                        {/* Starter / Yedek Rozeti */}
+                        {player.isStarter && (
+                          <View style={{
+                            backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                            paddingHorizontal: 6,
+                            paddingVertical: 2,
+                            borderRadius: 4,
+                            marginLeft: 4,
+                          }}>
+                            <Text style={{ fontSize: 8, color: '#10B981', fontWeight: '600' }}>İLK 11</Text>
+                          </View>
+                        )}
+                        {player.isSubstitute && player.playedInMatch && (
+                          <View style={{
+                            backgroundColor: 'rgba(249, 115, 22, 0.15)',
+                            paddingHorizontal: 6,
+                            paddingVertical: 2,
+                            borderRadius: 4,
+                            marginLeft: 4,
+                          }}>
+                            <Text style={{ fontSize: 8, color: '#F97316', fontWeight: '600' }}>OYUNA GİRDİ</Text>
+                          </View>
+                        )}
+                        {player.isSubstitute && !player.playedInMatch && (
+                          <View style={{
+                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                            paddingHorizontal: 6,
+                            paddingVertical: 2,
+                            borderRadius: 4,
+                            marginLeft: 4,
+                          }}>
+                            <Text style={{ fontSize: 8, color: '#EF4444', fontWeight: '600' }}>YEDEK</Text>
+                          </View>
+                        )}
                       </View>
                     </View>
 
-                    {/* Score Badges + Arrow */}
+                    {/* Score Badges + Arrow/Lock */}
                     <View style={styles.playerRightSection}>
-                      {/* Topluluk Puanı (Sol) */}
-                      <View style={styles.communityScoreBadge}>
-                        <Ionicons name="people" size={10} color="#C9A44C" />
-                        <Text style={styles.communityScoreText}>
-                          {getPlayerCommunityData(player.id, player.position).communityAvg.toFixed(1)}
-                        </Text>
-                      </View>
-                      
-                      {/* Kullanıcı Puanı (Sağ) - Silme butonu ile */}
-                      <View style={styles.userScoreBadgeWrapper}>
-                        {hasRatings && !isExpanded && (
-                          <TouchableOpacity
-                            style={styles.deleteRatingBtnCorner}
-                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                            activeOpacity={0.6}
-                            onPress={() => {
-                              console.log('🗑️ Delete rating button pressed for:', player.name);
-                              setDeleteConfirmPlayer({ id: player.id, name: player.name });
-                            }}
-                          >
-                            <Ionicons name="close" size={12} color="#FFF" />
-                          </TouchableOpacity>
-                        )}
-                        <View style={[
-                          styles.userScoreBadge, 
-                          hasRatings 
-                            ? { backgroundColor: `${getRatingColor(avgRating)}25`, borderColor: getRatingColor(avgRating) }
-                            : { backgroundColor: 'rgba(71, 85, 105, 0.3)', borderColor: '#475569' }
-                        ]}>
-                          <Text style={[
-                            styles.userScoreText, 
-                            { color: hasRatings ? getRatingColor(avgRating) : '#64748B' }
-                          ]}>
-                            {hasRatings ? avgRating.toFixed(1) : '—'}
-                          </Text>
+                      {isPlayerLocked ? (
+                        /* Kilitli ise kilit göster */
+                        <View style={{
+                          width: 36,
+                          height: 36,
+                          borderRadius: 18,
+                          backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          borderWidth: 1,
+                          borderColor: 'rgba(239, 68, 68, 0.2)',
+                        }}>
+                          <Ionicons name="lock-closed" size={16} color="#EF4444" />
                         </View>
-                      </View>
-                      
-                      <Ionicons
-                        name={isExpanded ? 'chevron-up' : 'chevron-down'}
-                        size={18}
-                        color={isExpanded ? BRAND.secondary : '#64748B'}
-                      />
+                      ) : (
+                        <>
+                          {/* Topluluk Puanı (Sol) */}
+                          <View style={styles.communityScoreBadge}>
+                            <Ionicons name="people" size={10} color="#C9A44C" />
+                            <Text style={styles.communityScoreText}>
+                              {getPlayerCommunityData(player.id, player.position).communityAvg.toFixed(1)}
+                            </Text>
+                          </View>
+                          
+                          {/* Kullanıcı Puanı (Sağ) - Silme butonu ile */}
+                          <View style={styles.userScoreBadgeWrapper}>
+                            {hasRatings && !isExpanded && (
+                              <TouchableOpacity
+                                style={styles.deleteRatingBtnCorner}
+                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                activeOpacity={0.6}
+                                onPress={() => {
+                                  console.log('🗑️ Delete rating button pressed for:', player.name);
+                                  setDeleteConfirmPlayer({ id: player.id, name: player.name });
+                                }}
+                              >
+                                <Ionicons name="close" size={12} color="#FFF" />
+                              </TouchableOpacity>
+                            )}
+                            <View style={[
+                              styles.userScoreBadge, 
+                              hasRatings 
+                                ? { backgroundColor: `${getRatingColor(avgRating)}25`, borderColor: getRatingColor(avgRating) }
+                                : { backgroundColor: 'rgba(71, 85, 105, 0.3)', borderColor: '#475569' }
+                            ]}>
+                              <Text style={[
+                                styles.userScoreText, 
+                                { color: hasRatings ? getRatingColor(avgRating) : '#64748B' }
+                              ]}>
+                                {hasRatings ? avgRating.toFixed(1) : '—'}
+                              </Text>
+                            </View>
+                          </View>
+                          
+                          <Ionicons
+                            name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                            size={18}
+                            color={isExpanded ? BRAND.secondary : '#64748B'}
+                          />
+                        </>
+                      )}
                     </View>
                   </TouchableOpacity>
 
-                  {/* Expanded Rating Panel - FIFA Style */}
-                  {isExpanded && (
+                  {/* Expanded Rating Panel - FIFA Style - Sadece kilitli değilse */}
+                  {isExpanded && !isPlayerLocked && (
                     <Animated.View
                       entering={!isWeb && FadeIn ? FadeIn.duration(200) : undefined}
                       style={styles.fifaRatingPanel}
@@ -1544,6 +1799,130 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
           </View>
         )}
       </ScrollView>
+
+      {/* 🗑️ SİLME ONAY POPUP */}
+      {/* 🔒 KİLİT BİLGİ POPUP */}
+      <Modal
+        visible={showLockPopup}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowLockPopup(false)}
+      >
+        <Pressable
+          style={styles.savePopupOverlay}
+          onPress={() => setShowLockPopup(false)}
+        >
+          <Pressable onPress={(e) => e.stopPropagation()} style={styles.lockPopupContainer}>
+            {/* Icon */}
+            <View style={[styles.lockPopupIcon, {
+              backgroundColor: ratingTimeInfo.isLocked 
+                ? 'rgba(239, 68, 68, 0.15)' 
+                : 'rgba(16, 185, 129, 0.15)',
+            }]}>
+              <Ionicons 
+                name={ratingTimeInfo.isLocked ? 'lock-closed' : 'lock-open'} 
+                size={32} 
+                color={ratingTimeInfo.isLocked ? '#EF4444' : '#10B981'} 
+              />
+            </View>
+
+            {/* Title */}
+            <Text style={[styles.lockPopupTitle, {
+              color: ratingTimeInfo.isLocked ? '#EF4444' : '#10B981',
+            }]}>
+              {ratingTimeInfo.isLocked ? 'Değerlendirme Kilitli' : 'Değerlendirme Açık'}
+            </Text>
+
+            {/* Description */}
+            <Text style={styles.lockPopupDesc}>
+              {ratingTimeInfo.lockReason === 'not_started' && (
+                <>Maç henüz başlamadı. Değerlendirme, maç bittikten sonra <Text style={{ fontWeight: '700', color: '#10B981' }}>24 saat</Text> boyunca açık olacak.</>
+              )}
+              {ratingTimeInfo.lockReason === 'live' && (
+                <>Maç devam ediyor. Değerlendirme, maç bittikten sonra <Text style={{ fontWeight: '700', color: '#10B981' }}>24 saat</Text> boyunca açık olacak.</>
+              )}
+              {ratingTimeInfo.lockReason === 'expired' && (
+                <>Değerlendirme süresi doldu. Maç bittikten sonra <Text style={{ fontWeight: '700', color: '#EF4444' }}>24 saat</Text> içinde değerlendirme yapabilirsiniz.</>
+              )}
+              {ratingTimeInfo.lockReason === 'open' && (
+                <>Değerlendirme açık! Kalan süre: <Text style={{ fontWeight: '700', color: '#10B981' }}>{ratingTimeInfo.message}</Text>. Bu süre içinde TD ve oyuncuları değerlendirebilirsiniz.</>
+              )}
+              {ratingTimeInfo.lockReason === 'unknown' && (
+                <>Maç durumu belirsiz. Lütfen daha sonra tekrar deneyin.</>
+              )}
+            </Text>
+
+            {/* Info Cards */}
+            <View style={styles.lockPopupInfoCards}>
+              <View style={styles.lockPopupInfoCard}>
+                <Ionicons name="timer-outline" size={20} color="#1FA2A6" />
+                <Text style={styles.lockPopupInfoCardTitle}>Kilit Açılışı</Text>
+                <Text style={styles.lockPopupInfoCardDesc}>Maç bitiş düdüğü</Text>
+              </View>
+              <View style={styles.lockPopupInfoCard}>
+                <Ionicons name="hourglass-outline" size={20} color="#F59E0B" />
+                <Text style={styles.lockPopupInfoCardTitle}>Süre</Text>
+                <Text style={styles.lockPopupInfoCardDesc}>24 saat</Text>
+              </View>
+              <View style={styles.lockPopupInfoCard}>
+                <Ionicons name="lock-closed-outline" size={20} color="#EF4444" />
+                <Text style={styles.lockPopupInfoCardTitle}>Kilit Kapanışı</Text>
+                <Text style={styles.lockPopupInfoCardDesc}>24 saat sonra</Text>
+              </View>
+            </View>
+
+            {/* Close Button */}
+            <TouchableOpacity
+              style={styles.lockPopupCloseBtn}
+              onPress={() => setShowLockPopup(false)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.lockPopupCloseBtnText}>Anladım</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* 🔒 OYUNCU KİLİT POPUP - Oynamayan oyuncular için */}
+      <Modal
+        visible={lockedPlayerInfo !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setLockedPlayerInfo(null)}
+      >
+        <Pressable
+          style={styles.savePopupOverlay}
+          onPress={() => setLockedPlayerInfo(null)}
+        >
+          <Pressable onPress={(e) => e.stopPropagation()} style={styles.lockPopupContainer}>
+            {/* Icon */}
+            <View style={[styles.lockPopupIcon, { backgroundColor: 'rgba(239, 68, 68, 0.15)' }]}>
+              <Ionicons name="person-remove" size={32} color="#EF4444" />
+            </View>
+
+            {/* Title */}
+            <Text style={[styles.lockPopupTitle, { color: '#EF4444' }]}>
+              Oyuncu Değerlendirilemez
+            </Text>
+
+            {/* Description */}
+            <Text style={styles.lockPopupDesc}>
+              <Text style={{ fontWeight: '700', color: '#F1F5F9' }}>{lockedPlayerInfo?.name}</Text> bu maçta {lockedPlayerInfo?.reason}.
+              {'\n\n'}
+              Sadece maçta oynayan oyuncular (ilk 11 + sonradan oyuna giren) değerlendirilebilir.
+            </Text>
+
+            {/* Close Button */}
+            <TouchableOpacity
+              style={styles.lockPopupCloseBtn}
+              onPress={() => setLockedPlayerInfo(null)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.lockPopupCloseBtnText}>Anladım</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       {/* 🗑️ SİLME ONAY POPUP */}
       <Modal
@@ -2466,6 +2845,80 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: '#1FA2A6', // ✅ Design System: Secondary
+  },
+
+  // 🔒 LOCK POPUP STYLES
+  lockPopupContainer: {
+    backgroundColor: '#1E3A3A',
+    borderRadius: 20,
+    padding: 24,
+    width: width * 0.88,
+    maxWidth: 400,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.3)',
+  },
+  lockPopupIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  lockPopupTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  lockPopupDesc: {
+    fontSize: 14,
+    color: '#94A3B8',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 20,
+  },
+  lockPopupInfoCards: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 20,
+    width: '100%',
+  },
+  lockPopupInfoCard: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 42, 36, 0.5)',
+    borderRadius: 12,
+    padding: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.15)',
+  },
+  lockPopupInfoCardTitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#E2E8F0',
+    marginTop: 6,
+    textAlign: 'center',
+  },
+  lockPopupInfoCardDesc: {
+    fontSize: 9,
+    color: '#7A9A94',
+    marginTop: 2,
+    textAlign: 'center',
+  },
+  lockPopupCloseBtn: {
+    backgroundColor: 'rgba(31, 162, 166, 0.2)',
+    paddingVertical: 12,
+    paddingHorizontal: 32,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.4)',
+  },
+  lockPopupCloseBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1FA2A6',
   },
 
   // 🗑️ DELETE CONFIRM POPUP STYLES
