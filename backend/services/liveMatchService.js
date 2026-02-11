@@ -290,11 +290,6 @@ async function pollLiveMatches() {
 
 // Start polling
 function startPolling() {
-  // ⏸️ GEÇİCİ OLARAK DURDURULDU: API hakkı takım kadroları için kullanılıyor
-  console.log('⏸️ [LIVE POLLING] Temporarily disabled - API quota reserved for squad sync');
-  return;
-  
-  /* ORIGINAL CODE - Re-enable when squad sync is complete
   if (pollingTimer) {
     console.log('⚠️ Polling already running');
     return;
@@ -307,7 +302,6 @@ function startPolling() {
   
   // Then run on interval
   pollingTimer = setInterval(pollLiveMatches, POLLING_INTERVAL);
-  */
 }
 
 // Stop polling

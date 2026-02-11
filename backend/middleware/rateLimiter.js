@@ -4,6 +4,9 @@
 const API_CALL_LIMIT = 7500; // Günlük limit
 const RESET_INTERVAL = 24 * 60 * 60 * 1000; // 24 saat (ms)
 
+// Development modunda rate limiter devre dışı bırakılabilir
+const DISABLE_RATE_LIMITER = process.env.DISABLE_RATE_LIMITER === 'true' || process.env.NODE_ENV === 'development';
+
 // In-memory counter (production'da Redis kullanılmalı)
 let apiCallCount = 0;
 let lastResetTime = Date.now();
@@ -67,10 +70,24 @@ function getStats() {
   };
 }
 
+// Manuel reset fonksiyonu (development için)
+function resetCounter() {
+  const oldCount = apiCallCount;
+  apiCallCount = 0;
+  lastResetTime = Date.now();
+  console.log(`🔄 [RATE LIMITER] Counter manually reset (was: ${oldCount})`);
+  return { oldCount, newCount: apiCallCount };
+}
+
 // Middleware
 function rateLimiterMiddleware(req, res, next) {
   // Skip rate limiting for non-API routes
   if (!req.path.startsWith('/api/')) {
+    return next();
+  }
+  
+  // Development modunda rate limiter'ı devre dışı bırak
+  if (DISABLE_RATE_LIMITER) {
     return next();
   }
   
@@ -105,4 +122,6 @@ module.exports = {
   getStats,
   incrementCounter,
   isLimitExceeded,
+  resetCounter,
+  DISABLE_RATE_LIMITER,
 };

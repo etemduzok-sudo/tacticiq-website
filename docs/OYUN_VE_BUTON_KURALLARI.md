@@ -492,7 +492,153 @@ modalContent: {
 
 ---
 
+## 17. Kadro ve Tahmin Sekmesi Kuralları (GÜNCEL - 120 sn Kuralı Kaldırıldı)
+
+### Kadro Sekmesi Kilit Kuralları
+
+**Yeni Kural (v3.0):**
+- **Maç öncesi:** Kullanıcı kadro oluşturabilir ve düzenleyebilir
+- **Maç başladığında:** Kadro otomatik kilitlenir, düzenleme yapılamaz
+- **Gerçek İlk 11:** API'den çekilir ve gösterilir
+- **Tahmin yapılmadıysa:** Topluluk formasyonu uygulanır
+
+**Kaldırılan Kurallar:**
+- ~~120 saniyelik grace period~~
+- ~~Maç başlamadan 120 sn kala uyarı popup'ı~~
+- ~~allowEditingAfterMatchStart prop'u~~
+- ~~CountdownWarningModal~~
+
+### Tahmin Sekmesi Kuralları
+
+**Yeni Kural (v3.0):**
+- **Maç öncesi:** Tam puan etkisi ile tahmin yapılır (x1.0)
+- **Maç sırasında:** Tahmin yapılabilir, puan etkisi azalır
+- **Olay sonrası:** Tahmin yapılabilir (çok düşük puan x0.1)
+- **ASLA KİLİTLENMEZ:** Tahminler maç boyunca ve sonrasında yapılabilir
+
+### Puan Etkisi Katsayıları
+
+| Durum | Katsayı | Açıklama |
+|-------|---------|----------|
+| 🟢 Canlı | x1.0 | Olay gerçekleşmeden önce yapılan tahmin |
+| 🟡 Geç | x0.5 | İkinci yarıda yapılan tahmin |
+| 🔵 Olay sonrası | x0.1 | Olay gerçekleştikten sonra yapılan tahmin |
+
+### Tahmin Doğruluk Gösterimi
+
+- ✅ Yeşil: Doğru tahmin (checkmark-circle ikonu)
+- ❌ Kırmızı: Yanlış tahmin (close-circle ikonu)
+- Tıklanınca: Karşılaştırma popup'ı açılır
+  - "Senin Tahminin" vs "Gerçek Sonuç"
+  - Topluluk istatistikleri
+
+### Reyting Sekmesi (Değişiklik Yok)
+
+- Maç bitmeden önce: Kilitli
+- Maç bittikten sonra 24 saat: Açık (TD ve oyuncu değerlendirmesi)
+- 24 saat sonra: Tekrar kilitli
+
+### Kod Referansları
+
+- **isKadroLocked:** `MatchDetail.tsx` ~satır 591, `MatchSquad.tsx` ~satır 1261
+- **Timing sistemi:** `utils/predictionTiming.ts`
+- **Karşılaştırma popup:** `MatchPrediction.tsx` ~satır 2750+
+
+---
+
+## 18. Kadro Tahmini Zorunluluğu ve Erişim Kuralları (YENİ)
+
+### Genel Kural
+
+**Kadro tahmini yapılmadan Tahmin ve Reyting sekmelerine erişim kısıtlıdır.**
+
+| Sekme | Kadro Tahmini Yapıldıysa | Kadro Tahmini Yapılmadıysa |
+|-------|--------------------------|----------------------------|
+| Kadro | Kullanıcının seçtiği formasyon ve oyuncular | Gerçek İlk 11 + Topluluk formasyonu |
+| Tahmin | Tam erişim (tahmin yapabilir, değiştirebilir) | İzleme modu (sadece topluluk verileri) |
+| Reyting | 24 saat boyunca değerlendirme yapabilir | İzleme modu (sadece topluluk puanları) |
+
+### Kadro Sekmesi (Biten Maç)
+
+**Kullanıcı tahmin yaptıysa:**
+- Kullanıcının seçtiği atak ve defans formasyonları görünür
+- Kullanıcının atadığı oyuncular görünür
+
+**Kullanıcı tahmin yapmadıysa:**
+- Gerçek İlk 11 (API'den) görünür
+- Topluluk tarafından en çok tercih edilen formasyon uygulanır
+- Her pozisyona en çok oy alan oyuncu yerleşir
+- Oyuncu kartlarında tercih yüzdesi (%65 tercih gibi) badge'i görünür
+
+### Tahmin Sekmesi (İzleme Modu)
+
+**Kadro tahmini yapılmadıysa:**
+- Oyuncu kartları görünür ama tıklanamaz (soluk görünüm)
+- Tahmin alanları devre dışı (opacity: 0.5, pointerEvents: none)
+- "i" butonları topluluk popup'ını gösterir:
+  - Gol atacak: %45 (234 oy)
+  - Asist yapacak: %30 (156 oy)
+  - Sarı kart: %20 (103 oy)
+  - Her kategori için oy sayısı ve yüzde
+- Kırmızı bilgilendirme banner'ı: "Kadro tahmini yapmadığınız için tahmin yapamazsınız."
+- Canlı eventler yine güncellenir (çerçeve renkleri, topluluk verileri)
+
+### Reyting Sekmesi (İzleme Modu)
+
+**Kadro tahmini yapılmadıysa:**
+- Slider'lar devre dışı (disabled={true})
+- Topluluk puanları görünür (TD: 7.2, Oyuncu X: 8.1 gibi)
+- Kaydet butonu gizli
+- Kırmızı bilgilendirme banner'ı: "Kadro tahmini yapmadığınız için değerlendirme yapamazsınız."
+
+### Canlı Event Çerçeve Renkleri
+
+| Event | Renk | Hex |
+|-------|------|-----|
+| Gol | Yeşil | #10B981 |
+| Asist | Turkuaz | #1FA2A6 |
+| Sarı Kart | Sarı | #FBBF24 |
+| Kırmızı Kart | Kırmızı | #EF4444 |
+| Sakatlanma | Mor | #8B5CF6 |
+| Oyundan Çıkma | Turuncu | #F59E0B |
+
+**Çerçeve Stili:**
+- İnce, şık çerçeveler (1-2.5px)
+- Yoğunluğa göre kalınlık: %30→1.5px, %50→2px, %70+→2.5px
+- Subtle glow efekti (boxShadow)
+
+### Slider Rakam Gösterimi
+
+Rating slider'ında 1-10 arası rakamlar scale markers altında görünür:
+- Seçili değer ve altındaki rakamlar renkli
+- Diğer rakamlar gri (#64748B)
+
+### Kod Referansları
+
+- **isViewOnlyMode:** `MatchPrediction.tsx` ~satır 1563
+- **İzleme modu banner:** `MatchRatings.tsx` ~satır 1220
+- **Topluluk formasyonu:** `MatchSquad.tsx` ~satır 2047
+- **Sinyal çerçeve stilleri:** `types/signals.types.ts` ~satır 277
+
+---
+
 ### Değişiklik Notları
+
+**v3.1 (2026-02-11):**
+- Bölüm 18 eklendi: Kadro Tahmini Zorunluluğu kuralları
+- Tahmin ve Reyting sekmesi izleme modu eklendi
+- Slider'da 1-10 rakam gösterimi eklendi
+- Canlı event çerçeve renkleri ve stilleri tanımlandı
+- Topluluk formasyonu gösterimi (biten maç) kuralları eklendi
+
+**v3.0 (2026-02-11):**
+- Bölüm 17 eklendi: Yeni Kadro ve Tahmin Kuralları
+- 120 saniyelik kural TAMAMEN KALDIRILDI
+- Kadro sekmesi: Maç başladığında kilitlenir (basit kural)
+- Tahmin sekmesi: Maç boyunca açık, event bazlı puan sistemi
+- Tahmin doğruluk görselleştirmesi eklendi (yeşil/kırmızı badge)
+- CountdownWarningModal kaldırıldı
+- predictionTiming.ts entegre edildi
 
 **v2.3 (2026-02-10):**
 - Bölüm 16 eklendi: Popup/Modal Tasarım Standartları

@@ -29,7 +29,7 @@ import { MatchRatings } from './match/MatchRatings';
 // import { MatchSummary } from './match/MatchSummary';
 import { AnalysisFocusModal, AnalysisFocusType } from './AnalysisFocusModal';
 import { ConfirmModal } from './ui/ConfirmModal';
-import { CountdownWarningModal } from './ui/CountdownWarningModal';
+// CountdownWarningModal kaldırıldı - 120 saniyelik kural artık yok
 import { STORAGE_KEYS, LEGACY_STORAGE_KEYS } from '../config/constants';
 import { predictionsDb } from '../services/databaseService';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -114,12 +114,8 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
   const [squadHasUnsavedChanges, setSquadHasUnsavedChanges] = useState(false);
   const [showSquadUnsavedModal, setShowSquadUnsavedModal] = useState(false);
   const [pendingBackAction, setPendingBackAction] = useState(false);
-  // ✅ Maç başlangıcına yakın tahmin yapma uyarısı modal state
-  const [countdownWarningModal, setCountdownWarningModal] = useState<{
-    remainingSeconds: number;
-    onContinue: () => void;
-  } | null>(null);
-  // ✅ Kullanıcının sayfayı ne zaman açtığını takip et (120 sn kala kontrolü için)
+  // ✅ 120 saniyelik kural kaldırıldı - artık maç başlayana kadar tahmin yapılabilir
+  // pageOpenedAt sadece analitik için korunuyor
   const [pageOpenedAt, setPageOpenedAt] = useState<number | null>(null);
   
   // ✅ İlk 11 popup'ı gösterildi mi? (sekme değişse bile korunur)
@@ -590,40 +586,9 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
   const isMatchLive = LIVE_STATUSES.includes(matchStatus);
   const isMatchFinished = FINISHED_STATUSES.includes(matchStatus);
   
-  // ✅ Maç başladıktan sonra düzenleme izni (120 sn grace period)
-  // Component-level hesaplama - handleBackPress ve renderContent'te kullanılır
-  const allowEditingAfterMatchStart = useMemo(() => {
-    if (!pageOpenedAt) return false;
-    
-    const fixtureId = Number(matchId);
-    let matchStartTime: number | null = null;
-    
-    // Mock maçlar için özel kontrol
-    if (isMockTestMatch(fixtureId)) {
-      matchStartTime = fixtureId === MOCK_MATCH_IDS.GS_FB ? getMatch1Start() : getMatch2Start();
-    } else if (match?.fixture?.timestamp) {
-      matchStartTime = match.fixture.timestamp * 1000;
-    }
-    
-    if (!matchStartTime) return false;
-    
-    const remainingMsWhenOpened = matchStartTime - pageOpenedAt;
-    const remainingSecondsWhenOpened = Math.floor(remainingMsWhenOpened / 1000);
-    
-    // SADECE maç başlamadan ÖNCE (0-120 sn kala) girenler için düzenleme izni
-    const enteredBefore120SecToStart = remainingSecondsWhenOpened > 0 && remainingSecondsWhenOpened <= 120;
-    
-    // Şu an maç başladıktan 120 sn geçmedi mi?
-    const now = Date.now();
-    const remainingMsNow = matchStartTime - now;
-    const remainingSecondsNow = Math.floor(remainingMsNow / 1000);
-    const stillWithinEditWindow = remainingSecondsNow >= -120;
-    
-    return enteredBefore120SecToStart && stillWithinEditWindow;
-  }, [pageOpenedAt, matchId, match?.fixture?.timestamp, countdownTicker]); // countdownTicker: her saniye güncelle
-  
-  // ✅ Kadro kilitli mi? (maç canlı/bitti VE düzenleme izni yok)
-  const isKadroLocked = (isMatchLive || isMatchFinished) && !allowEditingAfterMatchStart;
+  // ✅ YENİ KURAL: Kadro kilitli mi? (maç başladığında kilitlenir, 120 sn kuralı kaldırıldı)
+  // Maç canlı veya bitmişse kadro düzenlenemez
+  const isKadroLocked = isMatchLive || isMatchFinished;
   
   // ✅ Maç bittiğinde popup göster
   React.useEffect(() => {
@@ -860,100 +825,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
     ...(isMockTestMatch(Number(matchId)) ? [] : [match?.fixture?.timestamp]),
   ]);
   
-  // ✅ Geri sayım hesaplama - sadece 120 sn kala giren kullanıcılar için ve maç başladıktan sonra ilk 120 sn
-  const countdownData = useMemo(() => {
-    // countdownTicker'ı kullanarak her saniye güncellemeyi tetikle
-    const _ = countdownTicker;
-    
-    // ✅ Sadece 120 sn kala giren kullanıcılar için göster
-    if (!pageOpenedAt) return null;
-    
-    const now = Date.now();
-    let matchStartTime: number | null = null;
-    
-    // ✅ Mock maçlar için özel geri sayım: Sabit başlangıç zamanını kullan
-    if (isMockTestMatch(Number(matchId))) {
-      if (mockMatchStartTimeRef.current !== null) {
-        matchStartTime = mockMatchStartTimeRef.current;
-      } else {
-        return null;
-      }
-    } else {
-      // Normal maçlar için matchData.timestamp kullan
-      if (!matchData?.timestamp) return null;
-      matchStartTime = matchData.timestamp * 1000;
-    }
-    
-    if (matchStartTime === null) return null;
-    
-    // Sayfa açıldığında maç başlangıcına kalan süre
-    const remainingMsWhenOpened = matchStartTime - pageOpenedAt;
-    const remainingSecondsWhenOpened = Math.floor(remainingMsWhenOpened / 1000);
-    
-    // ✅ Sadece 120 sn kala giren kullanıcılar için (0-120 sn arası)
-    if (remainingSecondsWhenOpened < 0 || remainingSecondsWhenOpened > 120) {
-      return null;
-    }
-    
-    // Şu anki durum
-    const elapsedSinceMatchStart = now - matchStartTime;
-    const elapsedSecondsSinceMatchStart = Math.floor(elapsedSinceMatchStart / 1000);
-    
-    // Grace period: Maç başladıktan sonra +2 dakika (120 saniye)
-    const GRACE_PERIOD_SECONDS = 120;
-    
-    let remainingSeconds: number;
-    let isBeforeMatchStart: boolean;
-    
-    if (elapsedSinceMatchStart < 0) {
-      // Maç henüz başlamadı - maç başlangıcına kalan süre
-      remainingSeconds = Math.floor((matchStartTime - now) / 1000);
-      isBeforeMatchStart = true;
-    } else {
-      // Maç başladı - grace period'dan kalan süre
-      remainingSeconds = Math.max(0, GRACE_PERIOD_SECONDS - elapsedSecondsSinceMatchStart);
-      isBeforeMatchStart = false;
-      
-      // ✅ Maç başladıktan sonra ilk 120 sn boyunca göster, sonra kaybolsun
-      if (remainingSeconds <= 0) {
-        return null;
-      }
-    }
-    
-    // ✅ Yanıp sönme efekti: 2 saniyede bir (countdownTicker % 2 === 0 ise görünür)
-    const shouldBlink = isBeforeMatchStart || elapsedSecondsSinceMatchStart < GRACE_PERIOD_SECONDS;
-    const isVisible = shouldBlink && (countdownTicker % 2 === 0 || remainingSeconds <= 30); // Son 30 sn'de sürekli görünür
-    
-    if (!isVisible && remainingSeconds > 30) {
-      return { type: 'countdown', hours: 0, minutes: 0, seconds: remainingSeconds, color: '#EF4444', shouldBlink: true, isVisible: false };
-    }
-    
-    // Renk belirleme
-    let countdownColor = '#10B981'; // Yeşil
-    if (remainingSeconds <= 30) {
-      countdownColor = '#EF4444'; // Kırmızı
-    } else if (remainingSeconds <= 60) {
-      countdownColor = '#F97316'; // Turuncu
-    } else if (remainingSeconds <= 90) {
-      countdownColor = '#F59E0B'; // Sarı
-    }
-    
-    // 24 saatten az kaldıysa saat:dakika:saniye göster
-    return {
-      type: 'countdown',
-      hours: Math.floor(remainingSeconds / 3600),
-      minutes: Math.floor((remainingSeconds % 3600) / 60),
-      seconds: remainingSeconds % 60,
-      color: countdownColor,
-      shouldBlink: true,
-      isVisible: true,
-    };
-  }, [
-    countdownTicker, // ✅ Her saniye güncelle
-    matchId,
-    pageOpenedAt,
-    isMockTestMatch(Number(matchId)) ? null : matchData?.timestamp,
-  ]);
+  // ✅ 120 saniyelik geri sayım kaldırıldı - countdownData artık kullanılmıyor
 
   // ✅ İki favori takım maçı: ev sahibi ve deplasman favorilerde
   const homeId = matchData?.teams?.home?.id ?? matchData?.homeTeam?.id;
@@ -1010,7 +882,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
             </View>
           );
         }
-        // ✅ allowEditingAfterMatchStart artık component-level useMemo'da hesaplanıyor
+        // ✅ 120 saniyelik kural kaldırıldı - allowEditingAfterMatchStart, countdownData, countdownTicker artık geçilmiyor
         // ✅ MatchSquad her zaman render edilir - favoriteTeamIds boş olsa bile ev sahibi takım seçilir
         // ✅ favoriteTeamIds değiştiğinde yeniden mount et (key değişir)
         return (
@@ -1033,10 +905,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
             isVisible={activeTab === 'squad'}
             isMatchFinished={isMatchFinished}
             isMatchLive={isMatchLive}
-            allowEditingAfterMatchStart={allowEditingAfterMatchStart}
             onHasUnsavedChanges={handleSquadUnsavedChanges}
-            countdownData={countdownData}
-            countdownTicker={countdownTicker}
             startingXIPopupShown={startingXIPopupShown}
             onStartingXIPopupShown={() => setStartingXIPopupShown(true)}
           />
@@ -1078,7 +947,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
         return <MatchStats matchData={matchData} matchId={matchId} favoriteTeamIds={favoriteTeamIds} />;
       
       case 'ratings':
-        return <MatchRatings matchData={matchData} lineups={lineups} favoriteTeamIds={favoriteTeamIds} />;
+        return <MatchRatings matchData={matchData} lineups={lineups} favoriteTeamIds={favoriteTeamIds} hasPrediction={hasPrediction === true} />;
       
       // Özet sekmesi kaldırıldı - Artık biten maç kartlarında gösteriliyor
       
@@ -1436,15 +1305,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
         } : undefined}
       />
 
-      {/* ✅ Maç başlangıcına yakın tahmin yapma uyarısı modal */}
-      {countdownWarningModal && (
-        <CountdownWarningModal
-          visible={true}
-          remainingSeconds={countdownWarningModal.remainingSeconds}
-          onContinue={countdownWarningModal.onContinue}
-          onCancel={() => setCountdownWarningModal(null)}
-        />
-      )}
+      {/* ✅ 120 saniyelik CountdownWarningModal kaldırıldı - artık kullanılmıyor */}
 
       <View style={[styles.bottomNavBar, { paddingBottom: Math.max(insets.bottom, 8) }]}>
         <View style={styles.bottomNav}>
@@ -1469,41 +1330,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
                   return;
                 }
                 
-                // ✅ Tahmin sekmesine geçiş kontrolü: Maç başlangıcına 120 saniye kala kontrolü
-                // ✅ Biten maçlarda bu kontrol yapılmaz (zaten yukarıda engellendi)
-                if (tab.id === 'prediction' && activeTab !== 'prediction') {
-                  const matchTimestamp = matchData?.timestamp;
-                  const fixtureId = Number(matchId);
-                  let matchStartTime: number | null = null;
-                  
-                  // Mock maçlar için özel kontrol
-                  if (isMockTestMatch(fixtureId)) {
-                    matchStartTime = fixtureId === MOCK_MATCH_IDS.GS_FB ? getMatch1Start() : getMatch2Start();
-                  } else if (matchTimestamp) {
-                    matchStartTime = matchTimestamp * 1000; // Saniye cinsinden, milisaniyeye çevir
-                  }
-                  
-                  if (matchStartTime) {
-                    const now = Date.now();
-                    const remainingMs = matchStartTime - now;
-                    const remainingSeconds = Math.floor(remainingMs / 1000);
-                    
-                    // Maç başlamamışsa ve 120 saniye veya daha az kaldıysa popup göster
-                    if (remainingSeconds > 0 && remainingSeconds <= 120) {
-                      // Tahmin yapılmamışsa popup göster
-                      if (!hasPrediction) {
-                        setCountdownWarningModal({
-                          remainingSeconds,
-                          onContinue: () => {
-                            setCountdownWarningModal(null);
-                            setActiveTab('prediction');
-                          },
-                        });
-                        return;
-                      }
-                    }
-                  }
-                }
+                // ✅ 120 saniyelik tahmin uyarısı kaldırıldı - artık maç başlayana kadar serbestçe tahmin yapılabilir
                 
                 setActiveTab(tab.id);
               }}

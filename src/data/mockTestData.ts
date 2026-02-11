@@ -36,10 +36,10 @@ let _match1StartTimeMs: number | null = null;
 
 /** Maç 1 başlangıç zamanı - ilk çağrıda sabitlenir, sonra hep aynı değer döner (dakika oyun sonuna kadar ilerler) */
 export function getMatch1Start(): number {
-  // ✅ MOCK_START_IMMEDIATELY_LIVE: İlk çağrıda 65 sn önce sabitle; böylece elapsed = now - start her saniye artar (51→52→...→90+4→FT)
+  // ✅ MOCK_START_IMMEDIATELY_LIVE: İlk çağrıda 120 sn önce sabitle = MAÇ BİTMİŞ (FT) - Rating açık!
   if (MOCK_START_IMMEDIATELY_LIVE) {
     if (_match1StartTimeMs === null) {
-      _match1StartTimeMs = Date.now() - 65 * 1000; // 65 sn önce = simülasyonda 2. yarı 5. dk
+      _match1StartTimeMs = Date.now() - 120 * 1000; // 120 sn önce = simülasyonda FT (maç bitti, 24 saat rating açık)
     }
     return _match1StartTimeMs;
   }
@@ -54,12 +54,12 @@ export function resetMockMatch1StartTime(): void {
   _match1StartTimeMs = null;
 }
 
-/** Maçı yeniden başlat (test için) - MOCK_START_IMMEDIATELY_LIVE true ise hemen canlı */
+/** Maçı yeniden başlat (test için) - MOCK_START_IMMEDIATELY_LIVE true ise maç bitmiş (FT) */
 export function restartMatch1In1Minute(): void {
   _match1StartTimeMs = MOCK_START_IMMEDIATELY_LIVE
-    ? Date.now() - 65 * 1000  // 65 SANİYE önce = simülasyonda ikinci yarıda canlı
+    ? Date.now() - 120 * 1000  // 120 SANİYE önce = simülasyonda FT (maç bitti, rating açık)
     : Date.now() + START_DELAY_MINUTES * 60 * 1000;
-  console.log('🔄 Maç yeniden başlatıldı:', new Date(_match1StartTimeMs).toISOString(), MOCK_START_IMMEDIATELY_LIVE ? '(CANLI - 2H)' : '(1 dk sonra)');
+  console.log('🔄 Maç yeniden başlatıldı:', new Date(_match1StartTimeMs).toISOString(), MOCK_START_IMMEDIATELY_LIVE ? '(FT - Rating Açık)' : '(1 dk sonra)');
 }
 
 /** Maç 1 başlangıç zamanını doğrudan ayarla (session restore için) */
@@ -1511,7 +1511,8 @@ export function getPreferenceBorderStyle(percentage: number): { color: string; w
 
 /**
  * Pozisyon grubuna göre renk şeması
- * Her pozisyon grubu farklı renk ile gösterilir - görsel çeşitlilik sağlar
+ * ✅ ELİT RENK PALETİ - Koyu yeşil-turkuaz tema ile uyumlu
+ * Daha soft ve profesyonel görünüm
  */
 export function getPositionGroupColor(position: string): { 
   primary: string; 
@@ -1522,89 +1523,89 @@ export function getPositionGroupColor(position: string): {
 } {
   const pos = position.toUpperCase();
   
-  // Kaleci
+  // Kaleci - Altın/Bronz tonu (elit)
   if (pos === 'GK' || pos === 'G') {
     return {
-      primary: '#F59E0B',      // Altın sarısı
-      secondary: '#FBBF24',
-      background: 'rgba(245, 158, 11, 0.12)',
-      text: '#F59E0B',
+      primary: '#C9A44C',      // Koyu altın
+      secondary: '#D4AF61',
+      background: 'rgba(201, 164, 76, 0.08)',
+      text: '#D4AF61',
       name: 'Kaleci'
     };
   }
   
-  // Defans (CB, RB, LB, RWB, LWB)
+  // Defans (CB, RB, LB, RWB, LWB) - Deniz mavisi/Slate
   if (['CB', 'RB', 'LB', 'RWB', 'LWB', 'SW', 'DEF'].some(p => pos.includes(p))) {
     return {
-      primary: '#3B82F6',      // Mavi
-      secondary: '#60A5FA',
-      background: 'rgba(59, 130, 246, 0.12)',
-      text: '#60A5FA',
+      primary: '#64748B',      // Slate
+      secondary: '#94A3B8',
+      background: 'rgba(100, 116, 139, 0.08)',
+      text: '#94A3B8',
       name: 'Defans'
     };
   }
   
-  // Defansif Orta Saha (CDM, DM)
+  // Defansif Orta Saha (CDM, DM) - Mor/Lavanta tonu (soft)
   if (['CDM', 'DM', 'DMF'].some(p => pos.includes(p))) {
     return {
-      primary: '#8B5CF6',      // Mor
-      secondary: '#A78BFA',
-      background: 'rgba(139, 92, 246, 0.12)',
-      text: '#A78BFA',
+      primary: '#7C7A9C',      // Soft mor
+      secondary: '#9795B5',
+      background: 'rgba(124, 122, 156, 0.08)',
+      text: '#9795B5',
       name: 'D. Orta Saha'
     };
   }
   
-  // Merkez Orta Saha (CM, MF)
+  // Merkez Orta Saha (CM, MF) - Turkuaz (marka rengi, soft)
   if (['CM', 'MF', 'CMF'].some(p => pos.includes(p))) {
     return {
       primary: '#1FA2A6',      // Turkuaz (marka rengi)
-      secondary: '#2DD4BF',
-      background: 'rgba(31, 162, 166, 0.12)',
-      text: '#2DD4BF',
+      secondary: '#5BBDC0',
+      background: 'rgba(31, 162, 166, 0.08)',
+      text: '#5BBDC0',
       name: 'Orta Saha'
     };
   }
   
-  // Ofansif Orta Saha (CAM, AM, RM, LM)
+  // Ofansif Orta Saha (CAM, AM, RM, LM) - Yeşil/Zümrüt (soft)
   if (['CAM', 'AM', 'AMF', 'RM', 'LM', 'RMF', 'LMF'].some(p => pos.includes(p))) {
     return {
-      primary: '#10B981',      // Yeşil
-      secondary: '#34D399',
-      background: 'rgba(16, 185, 129, 0.12)',
-      text: '#34D399',
+      primary: '#4CAF7C',      // Soft yeşil
+      secondary: '#6BC294',
+      background: 'rgba(76, 175, 124, 0.08)',
+      text: '#6BC294',
       name: 'O. Orta Saha'
     };
   }
   
-  // Kanatlar (RW, LW, WF)
+  // Kanatlar (RW, LW, WF) - Soft turuncu/Coral
   if (['RW', 'LW', 'WF', 'RWF', 'LWF'].some(p => pos.includes(p))) {
     return {
-      primary: '#EC4899',      // Pembe
-      secondary: '#F472B6',
-      background: 'rgba(236, 72, 153, 0.12)',
-      text: '#F472B6',
+      primary: '#D97B5C',      // Soft coral
+      secondary: '#E69B82',
+      background: 'rgba(217, 123, 92, 0.08)',
+      text: '#E69B82',
       name: 'Kanat'
     };
   }
   
-  // Forvet (ST, CF, FW, SS)
+  // Forvet (ST, CF, FW, SS) - Koyu kırmızı/Bordo (soft)
   if (['ST', 'CF', 'FW', 'SS', 'ATT'].some(p => pos.includes(p))) {
     return {
-      primary: '#EF4444',      // Kırmızı
-      secondary: '#F87171',
-      background: 'rgba(239, 68, 68, 0.12)',
-      text: '#F87171',
+      primary: '#C75B5B',      // Soft kırmızı/bordo
+      secondary: '#D88484',
+      background: 'rgba(199, 91, 91, 0.08)',
+      text: '#D88484',
       name: 'Forvet'
     };
   }
   
-  // Varsayılan
+  // Varsayılan - Nötr gri
   return {
-    primary: '#6B7280',
-    secondary: '#9CA3AF',
-    background: 'rgba(107, 114, 128, 0.12)',
-    text: '#9CA3AF',
+    primary: '#5A6575',
+    secondary: '#7A8699',
+    background: 'rgba(90, 101, 117, 0.08)',
+    text: '#7A8699',
     name: 'Oyuncu'
   };
 }

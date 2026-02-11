@@ -149,11 +149,12 @@ export const checkSignalConflict = (
 
 /**
  * Sinyal yoğunluğuna göre çerçeve kalınlığı
+ * ✅ GÜNCELLEME: Daha ince, şık çerçeveler (1-2.5px arası)
  */
 export const getSignalBorderWidth = (percentage: number): number => {
-  if (percentage >= 70) return 4;
-  if (percentage >= 50) return 3;
-  if (percentage >= 30) return 2;
+  if (percentage >= 70) return 2.5;
+  if (percentage >= 50) return 2;
+  if (percentage >= 30) return 1.5;
   return 1;
 };
 
@@ -273,15 +274,22 @@ export const getDominantSignal = (signals: PlayerSignal[]): PlayerSignal | undef
 
 /**
  * Sinyal çerçeve stili oluştur
+ * ✅ GÜNCELLEME: Şık, ince çerçeveler + subtle glow efekti
  */
 export const getSignalBorderStyle = (signal: PlayerSignal | undefined) => {
   if (!signal || signal.percentage < 10) {
     return null;
   }
   
+  const color = SIGNAL_COLORS[signal.type];
+  const borderWidth = getSignalBorderWidth(signal.percentage);
+  
   return {
-    borderColor: SIGNAL_COLORS[signal.type],
-    borderWidth: getSignalBorderWidth(signal.percentage),
+    borderColor: color,
+    borderWidth: borderWidth,
     shouldPulse: shouldPulse(signal.percentage),
+    // ✅ Subtle glow efekti (web için boxShadow, native için shadowColor)
+    glowColor: color + '40', // 25% opacity
+    glowRadius: borderWidth >= 2 ? 8 : 4,
   };
 };

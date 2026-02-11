@@ -21,6 +21,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
+import { PlayerRatingSlider } from './PlayerRatingSlider';
 
 // Web için animasyonları devre dışı bırak
 const isWeb = Platform.OS === 'web';
@@ -66,6 +67,8 @@ interface MatchRatingsScreenProps {
   matchData: any;
   lineups?: any;
   favoriteTeamIds?: number[];
+  /** Kullanıcı bu maç için kadro tahmini yapmış mı? (izleme modu için) */
+  hasPrediction?: boolean;
 }
 
 interface Player {
@@ -142,24 +145,30 @@ const coachCategories = [
 
 import { BRAND, DARK_MODE } from '../../theme/theme';
 
-// ⚽ Saha oyuncusu değerlendirme kategorileri
+// ⚽ Saha oyuncusu değerlendirme kategorileri (9 Kategori)
 const OUTFIELD_RATING_CATEGORIES = [
-  { id: 'pace', emoji: '⚡', title: 'Hız', color: '#22C55E' },
-  { id: 'shooting', emoji: '🎯', title: 'Şut', color: '#EF4444' },
-  { id: 'passing', emoji: '🎨', title: 'Pas', color: '#3B82F6' },
-  { id: 'dribbling', emoji: '🌀', title: 'Dribling', color: '#F59E0B' },
-  { id: 'defending', emoji: '🛡️', title: 'Savunma', color: '#8B5CF6' },
-  { id: 'physical', emoji: '💪', title: 'Fizik', color: '#06B6D4' },
+  { id: 'shooting', emoji: '🎯', title: 'Şut', color: '#EF4444', apiFields: ['shots.total', 'shots.on'] },
+  { id: 'passing', emoji: '🎨', title: 'Pas', color: '#3B82F6', apiFields: ['passes.total', 'passes.accuracy', 'passes.key'] },
+  { id: 'dribbling', emoji: '🌀', title: 'Dribling', color: '#F59E0B', apiFields: ['dribbles.attempts', 'dribbles.success'] },
+  { id: 'defending', emoji: '🛡️', title: 'Savunma', color: '#8B5CF6', apiFields: ['tackles.total', 'tackles.blocks', 'tackles.interceptions'] },
+  { id: 'duels', emoji: '⚔️', title: 'İkili Mücadele', color: '#06B6D4', apiFields: ['duels.total', 'duels.won'] },
+  { id: 'discipline', emoji: '🟨', title: 'Disiplin', color: '#FBBF24', apiFields: ['cards.yellow', 'cards.red', 'fouls.committed'] },
+  { id: 'tactical', emoji: '🧠', title: 'Taktik', color: '#10B981', apiFields: [] },
+  { id: 'mental', emoji: '💪', title: 'Mental', color: '#6366F1', apiFields: [] },
+  { id: 'fitness', emoji: '❤️', title: 'Sağlık', color: '#EC4899', apiFields: [] },
 ];
 
-// 🧤 Kaleci değerlendirme kategorileri
+// 🧤 Kaleci değerlendirme kategorileri (9 Kategori)
 const GK_RATING_CATEGORIES = [
-  { id: 'reflexes', emoji: '⚡', title: 'Refleks', color: '#22C55E' },
-  { id: 'positioning', emoji: '📐', title: 'Pozisyon', color: '#3B82F6' },
-  { id: 'rushing', emoji: '🏃', title: 'Çıkış', color: '#EF4444' },
-  { id: 'handling', emoji: '🧤', title: 'El Becerisi', color: '#F59E0B' },
-  { id: 'communication', emoji: '📢', title: 'İletişim', color: '#8B5CF6' },
-  { id: 'longball', emoji: '🦶', title: 'Uzun Top', color: '#06B6D4' },
+  { id: 'saves', emoji: '🧤', title: 'Kurtarış', color: '#22C55E', apiFields: ['goalkeeper.saves', 'goals.conceded'] },
+  { id: 'penalty', emoji: '🥅', title: 'Penaltı', color: '#EF4444', apiFields: ['penalty.saved'] },
+  { id: 'aerial', emoji: '✈️', title: 'Hava Topu', color: '#3B82F6', apiFields: [] },
+  { id: 'reflexes', emoji: '⚡', title: 'Refleks', color: '#F59E0B', apiFields: [] },
+  { id: 'rushing', emoji: '🏃', title: 'Çıkış', color: '#8B5CF6', apiFields: [] },
+  { id: 'discipline', emoji: '🟨', title: 'Disiplin', color: '#FBBF24', apiFields: ['cards.yellow', 'cards.red', 'fouls.committed'] },
+  { id: 'tactical', emoji: '🧠', title: 'Taktik', color: '#10B981', apiFields: [] },
+  { id: 'mental', emoji: '💪', title: 'Mental', color: '#6366F1', apiFields: [] },
+  { id: 'fitness', emoji: '❤️', title: 'Sağlık', color: '#EC4899', apiFields: [] },
 ];
 
 // Kaleci mi kontrolü - API'den G, GK, Goalkeeper vb. gelebilir
@@ -177,7 +186,10 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
   matchData,
   lineups,
   favoriteTeamIds = [],
+  hasPrediction = true, // ✅ Varsayılan true - eski maçlar için geriye uyumluluk
 }) => {
+  // ✅ İZLEME MODU: Kadro tahmini yapılmadıysa değerlendirme yapılamaz
+  const isViewOnlyMode = !hasPrediction;
   // ⚽ Takım kadrosu state
   const [squadPlayers, setSquadPlayers] = useState<Player[]>([]);
   const [squadLoading, setSquadLoading] = useState(false);
@@ -190,8 +202,25 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
   const [lockPopupType, setLockPopupType] = useState<'coach' | 'player'>('coach');
   const [lockedPlayerInfo, setLockedPlayerInfo] = useState<{ name: string; reason: string } | null>(null);
   
+  // 👁️ İzleme modu popup state
+  const [showViewOnlyPopup, setShowViewOnlyPopup] = useState(false);
+  const [viewOnlyPopupShownOnEntry, setViewOnlyPopupShownOnEntry] = useState(false); // İlk giriş
+  const [viewOnlyPopupShownOnTabSwitch, setViewOnlyPopupShownOnTabSwitch] = useState(false); // İlk sekme değişikliği
+  
   // ✅ KİLİT MEKANİZMASI - Maç bitmeden kilitli, bittikten sonra 24 saat açık
+  // 🧪 TEST: Kilit devre dışı - her zaman açık
   const ratingTimeInfo = useMemo(() => {
+    // TEST MODE: Her zaman açık
+    return {
+      isLocked: false,
+      lockReason: 'open' as const,
+      hoursRemaining: 23,
+      message: 'Kalan süre: 23 saat',
+      unlockTime: null,
+      expireTime: new Date(Date.now() + 23 * 60 * 60 * 1000).toISOString()
+    };
+    
+    /* GERÇEK KOD - TEST SONRASI AKTİF ET
     // Maç bitiş zamanını al (fixture.timestamp + maç süresi yaklaşık 2 saat)
     const matchTimestamp = matchData?.fixture?.timestamp 
       ? matchData.fixture.timestamp * 1000 
@@ -238,7 +267,11 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
     }
     
     // Maç bitti → 24 saat hesapla
-    const matchEndTime = matchTimestamp + (2 * 60 * 60 * 1000);
+    // Mock test için: matchId 888001 veya 888002 ise maç 112 saniye'de biter (simülasyon)
+    const isMockMatch = matchData?.id === 888001 || matchData?.id === 888002 || 
+                        matchData?.fixture?.id === 888001 || matchData?.fixture?.id === 888002;
+    const matchDuration = isMockMatch ? 112 * 1000 : 2 * 60 * 60 * 1000; // Mock: 112 sn, Gerçek: 2 saat
+    const matchEndTime = matchTimestamp + matchDuration;
     const now = Date.now();
     const hoursSinceEnd = (now - matchEndTime) / (1000 * 60 * 60);
     const hoursRemaining = Math.max(0, 24 - hoursSinceEnd);
@@ -263,6 +296,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
       unlockTime: null,
       expireTime: new Date(matchEndTime + (24 * 60 * 60 * 1000)).toISOString()
     };
+    GERÇEK KOD SONU */
   }, [matchData]);
   
   // Favori takım ID'sini belirle (önce favori takım, yoksa ev sahibi)
@@ -475,6 +509,32 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
   const [showSavePopup, setShowSavePopup] = useState(false);
   const [pendingTab, setPendingTab] = useState<'coach' | 'player' | null>(null);
   
+  // ✅ İZLEME MODU: İlk giriş popup gösterimi
+  React.useEffect(() => {
+    if (isViewOnlyMode && !viewOnlyPopupShownOnEntry) {
+      // İlk girişte popup göster
+      const timer = setTimeout(() => {
+        setShowViewOnlyPopup(true);
+        setViewOnlyPopupShownOnEntry(true);
+      }, 300); // Kısa gecikme ile smooth geçiş
+      return () => clearTimeout(timer);
+    }
+  }, [isViewOnlyMode, viewOnlyPopupShownOnEntry]);
+  
+  // ✅ İZLEME MODU: İlk sekme değişikliğinde popup gösterimi
+  const previousTabRef = React.useRef(activeTab);
+  React.useEffect(() => {
+    if (isViewOnlyMode && previousTabRef.current !== activeTab) {
+      // Sekme değişti
+      if (!viewOnlyPopupShownOnTabSwitch) {
+        // İlk sekme değişikliği - popup göster
+        setShowViewOnlyPopup(true);
+        setViewOnlyPopupShownOnTabSwitch(true);
+      }
+      previousTabRef.current = activeTab;
+    }
+  }, [activeTab, isViewOnlyMode, viewOnlyPopupShownOnTabSwitch]);
+  
   // Değişiklik takibi (ref = tıklamada her zaman güncel, stale closure önlenir)
   const [coachRatingsChanged, setCoachRatingsChanged] = useState(false);
   const [playerRatingsChanged, setPlayerRatingsChanged] = useState(false);
@@ -483,44 +543,189 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
   coachRatingsChangedRef.current = coachRatingsChanged;
   playerRatingsChangedRef.current = playerRatingsChanged;
   
-  // Coach rating state
-  const initialCoachRatings = useRef<{[key: number]: number}>({
-    1: 7.5,
-    2: 8.0,
-    3: 6.5,
-    4: 7.0,
-    5: 8.5,
-    6: 7.5,
-    7: 8.0,
-  });
-  const [coachRatings, setCoachRatings] = useState<{[key: number]: number}>({
-    1: 7.5,
-    2: 8.0,
-    3: 6.5,
-    4: 7.0,
-    5: 8.5,
-    6: 7.5,
-    7: 8.0,
-  });
+  // ✅ Topluluk verileri (mock) - varsayılan değerler bu verilerden gelir
+  const communityRatingsDefault: {[key: number]: number} = {
+    1: 8.2,
+    2: 7.3,
+    3: 7.8,
+    4: 6.9,
+    5: 7.5,
+    6: 8.1,
+    7: 7.7,
+  };
+  
+  // Coach rating state - ✅ Varsayılan değerler = Topluluk verileri
+  const initialCoachRatings = useRef<{[key: number]: number}>({...communityRatingsDefault});
+  const [coachRatings, setCoachRatings] = useState<{[key: number]: number}>({...communityRatingsDefault});
 
   // ⚽ Player rating state
   const [expandedPlayerId, setExpandedPlayerId] = useState<number | null>(null);
   const [playerRatings, setPlayerRatings] = useState<{[playerId: number]: {[categoryId: string]: number}}>({});
   
+  // 🎯 Yeni UI: Seçili kategori ve oyuncu
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>('shooting');
+  const [selectedPlayerId, setSelectedPlayerId] = useState<number | null>(null);
+  const [hasUnsavedPlayerChanges, setHasUnsavedPlayerChanges] = useState(false);
+  const [initialPlayerRatings, setInitialPlayerRatings] = useState<{[playerId: number]: {[categoryId: string]: number}}>({});
+  const [categoryViewMode, setCategoryViewMode] = useState<'outfield' | 'goalkeeper'>('outfield');
+  const [ratingMode, setRatingMode] = useState<'detailed' | 'quick'>('detailed'); // Detaylı veya Hızlı değerlendirme
+  const [saveNotification, setSaveNotification] = useState<{visible: boolean; playerName: string; rating: number} | null>(null);
+  
   // Scroll ref ve player card pozisyonları
   const scrollViewRef = useRef<ScrollView>(null);
   const playerCardRefs = useRef<{[playerId: number]: number}>({});
   
-  // Futbolcuları grupla ve sırala: Kaleciler + Saha Oyuncuları
-  const { goalkeepers, fieldPlayers, allPlayers } = useMemo(() => {
-    const gks = playersFromLineups.filter(p => isGoalkeeperPosition(p.position)).sort((a, b) => a.number - b.number);
-    const fps = playersFromLineups.filter(p => !isGoalkeeperPosition(p.position)).sort((a, b) => a.number - b.number);
-    // Kaleciler önce, sonra saha oyuncuları
-    return { goalkeepers: gks, fieldPlayers: fps, allPlayers: [...gks, ...fps] };
+  // Futbolcuları grupla ve sırala: İlk 11 > Sonradan Girenler > Yedekler
+  const { starters, substitutesPlayed, substitutesNotPlayed, allPlayersSorted } = useMemo(() => {
+    // İlk 11 (starter)
+    const startersArr = playersFromLineups
+      .filter(p => p.isStarter)
+      .sort((a, b) => a.number - b.number);
+    
+    // Sonradan oyuna girenler (substitute ama oynadı)
+    const subsPlayedArr = playersFromLineups
+      .filter(p => p.isSubstitute && p.playedInMatch)
+      .sort((a, b) => a.number - b.number);
+    
+    // Yedekler (oyuna girmedi)
+    const subsNotPlayedArr = playersFromLineups
+      .filter(p => p.isSubstitute && !p.playedInMatch)
+      .sort((a, b) => a.number - b.number);
+    
+    return { 
+      starters: startersArr, 
+      substitutesPlayed: subsPlayedArr, 
+      substitutesNotPlayed: subsNotPlayedArr,
+      allPlayersSorted: [...startersArr, ...subsPlayedArr, ...subsNotPlayedArr]
+    };
   }, [playersFromLineups]);
   
   // Eski uyumluluk için
-  const sortedPlayers = allPlayers;
+  const sortedPlayers = allPlayersSorted;
+  
+  // Eski değişkenler (geriye uyumluluk)
+  const { goalkeepers, fieldPlayers, allPlayers } = useMemo(() => {
+    const gks = playersFromLineups.filter(p => isGoalkeeperPosition(p.position)).sort((a, b) => a.number - b.number);
+    const fps = playersFromLineups.filter(p => !isGoalkeeperPosition(p.position)).sort((a, b) => a.number - b.number);
+    return { goalkeepers: gks, fieldPlayers: fps, allPlayers: [...gks, ...fps] };
+  }, [playersFromLineups]);
+
+  // 🎨 Oyuncu satırı render fonksiyonu
+  const renderPlayerItem = useCallback((player: any, isDisabled = false) => {
+    const isGK = isGoalkeeperPosition(player.position || '');
+    const currentRating = playerRatings[player.id]?.[selectedCategoryId] || 5;
+    const hasRating = playerRatings[player.id]?.[selectedCategoryId] !== undefined;
+    const isSelected = selectedPlayerId === player.id;
+    const apiRating = ((player.id % 30) / 10 + 6).toFixed(1);
+    
+    // 🔒 Kategori uyumsuzluğu kontrolü: Kaleci toggle açıkken sadece kaleciler, Oyuncu toggle açıkken sadece saha oyuncuları
+    const isCategoryMismatch = (categoryViewMode === 'goalkeeper' && !isGK) || 
+                                (categoryViewMode === 'outfield' && isGK);
+    const isEffectivelyDisabled = isDisabled || isCategoryMismatch;
+    
+    return (
+      <TouchableOpacity
+        key={player.id}
+        style={[
+          styles.playerListItem2Row,
+          isSelected && styles.playerListItemSelected,
+          isEffectivelyDisabled && styles.playerListItemDisabled
+        ]}
+        onPress={() => {
+          // ✅ İzleme modu - işlem yapılmaz (popup sadece kilit ikonundan)
+          if (isViewOnlyMode) {
+            return;
+          }
+          if (ratingTimeInfo.isLocked) {
+            setLockPopupType('player');
+            setShowLockPopup(true);
+            return;
+          }
+          if (isDisabled) {
+            setLockedPlayerInfo({ name: player.name, reason: 'Oyuna girmedi' });
+            return;
+          }
+          if (isCategoryMismatch) {
+            const reason = categoryViewMode === 'goalkeeper' 
+              ? 'Kaleci kategorileri sadece kaleciler için geçerlidir' 
+              : 'Oyuncu kategorileri kaleciler için geçerli değildir';
+            setLockedPlayerInfo({ name: player.name, reason });
+            return;
+          }
+          setSelectedPlayerId(player.id);
+        }}
+        activeOpacity={0.7}
+      >
+        {/* Satır 1: Oyuncu Bilgisi + API + Kullanıcı Puanı */}
+        <View style={styles.playerListRow1}>
+          <LinearGradient
+            colors={isGK ? ['#C9A44C', '#8B6914'] : ['#1FA2A6', '#0F2A24']}
+            style={[styles.playerListJersey, isEffectivelyDisabled && { opacity: 0.5 }]}
+          >
+            <Text style={styles.playerListJerseyText}>{player.number}</Text>
+          </LinearGradient>
+          
+          <View style={styles.playerListInfo}>
+            <Text style={[styles.playerListName, isEffectivelyDisabled && { color: '#64748B' }]} numberOfLines={1}>
+              {player.name}
+            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <Text style={styles.playerListPosition}>{isGK ? 'GK' : player.position}</Text>
+              {isCategoryMismatch && (
+                <Text style={{ fontSize: 8, color: '#F97316' }}>
+                  {categoryViewMode === 'goalkeeper' ? '(Kaleci değil)' : '(Kaleci)'}
+                </Text>
+              )}
+            </View>
+          </View>
+          
+          <View style={styles.playerListScoreSection}>
+            <View style={styles.playerListApiScore}>
+              <Text style={styles.playerListApiLabel2}>API</Text>
+              <Text style={[styles.playerListApiScoreText, isEffectivelyDisabled && { opacity: 0.5 }]}>{apiRating}</Text>
+            </View>
+            
+            <View style={styles.playerListUserScore}>
+              <Text style={styles.playerListUserLabel2}>Siz</Text>
+              <Text style={[
+                styles.playerListUserScoreText,
+                { color: hasRating ? '#1FA2A6' : '#64748B' },
+                isEffectivelyDisabled && { opacity: 0.5 }
+              ]}>
+                {isEffectivelyDisabled ? '—' : (hasRating ? currentRating.toFixed(1) : '—')}
+              </Text>
+            </View>
+          </View>
+        </View>
+        
+        {/* Satır 2: Slider */}
+        {!isEffectivelyDisabled && (
+          <View style={styles.playerListRow2}>
+            <PlayerRatingSlider
+              value={currentRating}
+              onChange={(val) => {
+                // ✅ İzleme modu veya kilit durumu kontrolü
+                if (ratingTimeInfo.isLocked || isViewOnlyMode) return;
+                setPlayerRatings(prev => ({
+                  ...prev,
+                  [player.id]: {
+                    ...(prev[player.id] || {}),
+                    [selectedCategoryId]: val
+                  }
+                }));
+                setHasUnsavedPlayerChanges(true);
+                setSelectedPlayerId(player.id);
+              }}
+              disabled={ratingTimeInfo.isLocked || isViewOnlyMode}
+              showValue={false}
+              trackHeight={8}
+              thumbSize={26}
+            />
+          </View>
+        )}
+      </TouchableOpacity>
+    );
+  }, [playerRatings, selectedCategoryId, selectedPlayerId, ratingTimeInfo.isLocked, categoryViewMode, setLockPopupType, setShowLockPopup, setLockedPlayerInfo, setSelectedPlayerId, setPlayerRatings, setHasUnsavedPlayerChanges]);
 
   // Topluluk değerlendirme verileri (mock - ileride API'den gelecek)
   const getPlayerCommunityData = useCallback((playerId: number, position?: string) => {
@@ -534,21 +739,27 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
     // Her kategori için topluluk puanı - tutarlı olması için seed bazlı
     // ✅ Kategori ID'leri OUTFIELD_RATING_CATEGORIES ve GK_RATING_CATEGORIES ile eşleşmeli
     const categoryRatings: Record<string, number> = isGK ? {
-      // Kaleci kategorileri
-      reflexes: 5.0 + ((seed * 3) % 40) / 10,
-      positioning: 4.8 + ((seed * 5) % 45) / 10,
-      rushing: 5.2 + ((seed * 4) % 38) / 10,
-      handling: 5.0 + ((seed * 6) % 42) / 10,
-      communication: 5.5 + ((seed * 2) % 35) / 10,
-      longball: 5.3 + ((seed * 7) % 40) / 10,
+      // Kaleci kategorileri - GK_RATING_CATEGORIES ile aynı ID'ler
+      saves: 5.0 + ((seed * 3) % 40) / 10,
+      penalty: 4.8 + ((seed * 5) % 45) / 10,
+      aerial: 5.2 + ((seed * 4) % 38) / 10,
+      reflexes: 5.0 + ((seed * 6) % 42) / 10,
+      rushing: 5.5 + ((seed * 2) % 35) / 10,
+      discipline: 5.3 + ((seed * 7) % 40) / 10,
+      tactical: 5.1 + ((seed * 8) % 35) / 10,
+      mental: 5.4 + ((seed * 9) % 38) / 10,
+      fitness: 5.2 + ((seed * 11) % 36) / 10,
     } : {
-      // Saha oyuncusu kategorileri
-      pace: 5.0 + ((seed * 3) % 40) / 10,
+      // Saha oyuncusu kategorileri - OUTFIELD_RATING_CATEGORIES ile aynı ID'ler
       shooting: 4.8 + ((seed * 5) % 45) / 10,
       passing: 5.2 + ((seed * 4) % 38) / 10,
       dribbling: 5.0 + ((seed * 6) % 42) / 10,
       defending: 5.5 + ((seed * 2) % 35) / 10,
-      physical: 5.3 + ((seed * 7) % 40) / 10,
+      duels: 5.3 + ((seed * 7) % 40) / 10,
+      discipline: 5.1 + ((seed * 8) % 35) / 10,
+      tactical: 5.4 + ((seed * 9) % 38) / 10,
+      mental: 5.2 + ((seed * 11) % 36) / 10,
+      fitness: 5.0 + ((seed * 3) % 40) / 10,
     };
     
     // Ortalama: kategorilerin gerçek ortalaması
@@ -561,6 +772,35 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
       categoryRatings,
     };
   }, []);
+
+  // ✅ Oyuncu seçildiğinde varsayılan değerler = Topluluk verileri
+  // Kullanıcı henüz bu oyuncu için değerlendirme yapmadıysa, topluluk verileriyle başla
+  React.useEffect(() => {
+    if (!selectedPlayerId) return;
+    if (isViewOnlyMode) return; // İzleme modunda değerlendirme yapılamaz
+    
+    // Bu oyuncu için zaten değerlendirme var mı?
+    const existingRatings = playerRatings[selectedPlayerId];
+    if (existingRatings && Object.keys(existingRatings).length > 0) return;
+    
+    // Oyuncunun pozisyonunu bul
+    const player = allPlayersSorted.find(p => p.id === selectedPlayerId);
+    if (!player) return;
+    
+    // Topluluk verilerini al ve varsayılan değer olarak ata
+    const communityData = getPlayerCommunityData(selectedPlayerId, player.position);
+    
+    setPlayerRatings(prev => ({
+      ...prev,
+      [selectedPlayerId]: { ...communityData.categoryRatings }
+    }));
+    
+    // Initial values'ı da kaydet (değişiklik takibi için)
+    setInitialPlayerRatings(prev => ({
+      ...prev,
+      [selectedPlayerId]: { ...communityData.categoryRatings }
+    }));
+  }, [selectedPlayerId, isViewOnlyMode, playerRatings, allPlayersSorted, getPlayerCommunityData]);
 
   // Futbolcuya tıklandığında kartı ekranın üstüne scroll et
   const handlePlayerToggle = useCallback((playerId: number, isCurrentlyExpanded: boolean, player?: Player) => {
@@ -909,16 +1149,8 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
     }
   };
 
-  // Community average ratings (mock data)
-  const communityRatings: {[key: number]: number} = {
-    1: 8.2,
-    2: 7.3,
-    3: 7.8,
-    4: 6.9,
-    5: 7.5,
-    6: 8.1,
-    7: 7.7,
-  };
+  // Community average ratings (mock data) - ✅ Yukarıda tanımlanan communityRatingsDefault kullanılır
+  const communityRatings = communityRatingsDefault;
 
   const totalVoters = 1247;
 
@@ -944,6 +1176,10 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
   //                    eğer mevcut değer = star - 0.5 → star (tam)
   //                    eğer mevcut değer >= star → star - 0.5 (yarıma geri dön)
   const handleRatingChange = (categoryId: number, star: number) => {
+    // ✅ İZLEME MODU - işlem yapılmaz (popup sadece kilit ikonundan)
+    if (isViewOnlyMode) {
+      return;
+    }
     // 🔒 Kilit kontrolü
     if (ratingTimeInfo.isLocked) {
       setLockPopupType('coach');
@@ -1019,11 +1255,25 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
         </TouchableOpacity>
       </View>
 
+      {/* ✅ İZLEME MODU: Kırmızı kilit ikonu */}
+      {isViewOnlyMode && (
+        <TouchableOpacity 
+          style={styles.viewOnlyLockRow}
+          onPress={() => setShowViewOnlyPopup(true)}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="lock-closed" size={16} color="#EF4444" />
+          <Text style={styles.viewOnlyLockText}>İzleme Modu</Text>
+        </TouchableOpacity>
+      )}
+
       <ScrollView
         ref={scrollViewRef}
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        nestedScrollEnabled={true}
       >
         {activeTab === 'coach' ? (
         <>
@@ -1037,41 +1287,35 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
             style={styles.headerGradient}
           >
             {/* 🔒 Kilit İkonu - Ortalanmış */}
-            <TouchableOpacity
-              onPress={() => {
-                setLockPopupType('coach');
-                setShowLockPopup(true);
-              }}
-              activeOpacity={0.7}
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 18,
-                backgroundColor: ratingTimeInfo.isLocked 
-                  ? 'rgba(239, 68, 68, 0.15)' 
-                  : 'rgba(16, 185, 129, 0.15)',
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderWidth: 1,
-                borderColor: ratingTimeInfo.isLocked 
-                  ? 'rgba(239, 68, 68, 0.3)' 
-                  : 'rgba(16, 185, 129, 0.3)',
-                alignSelf: 'center',
-              }}
-            >
-              <Ionicons 
-                name={ratingTimeInfo.isLocked ? 'lock-closed' : 'lock-open'} 
-                size={18} 
-                color={ratingTimeInfo.isLocked ? '#EF4444' : '#10B981'} 
-              />
-            </TouchableOpacity>
-
-            <Text style={styles.headerTitle}>
-              {targetTeamInfo.manager || 'Teknik Direktör'}
-            </Text>
-            <Text style={styles.headerSubtitle}>
-              {targetTeamInfo.name} Teknik Direktörü
-            </Text>
+            {/* TD İsim + Kilit - Aynı Satır */}
+            <View style={styles.coachHeaderRow}>
+              <View style={styles.coachHeaderLeft}>
+                <Text style={styles.headerTitle}>
+                  {targetTeamInfo.manager || 'Teknik Direktör'}
+                </Text>
+                <Text style={styles.headerSubtitle}>
+                  {targetTeamInfo.name} Teknik Direktörü
+                </Text>
+              </View>
+              
+              {/* Kilit İkonu - Sağda (İzleme modunda gösterilmez) */}
+              {!isViewOnlyMode && (
+                <TouchableOpacity
+                  onPress={() => {
+                    setLockPopupType('coach');
+                    setShowLockPopup(true);
+                  }}
+                  activeOpacity={0.7}
+                  style={styles.coachLockBtn}
+                >
+                  <Ionicons 
+                    name={ratingTimeInfo.isLocked ? 'lock-closed' : 'lock-open'} 
+                    size={18} 
+                    color={ratingTimeInfo.isLocked ? '#EF4444' : '#10B981'} 
+                  />
+                </TouchableOpacity>
+              )}
+            </View>
 
             {/* Score Comparison - Premium Design */}
             <View style={styles.scoreComparisonCard}>
@@ -1081,41 +1325,49 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
                 end={{ x: 1, y: 0 }}
                 style={styles.scoreComparisonGradient}
               >
-                {/* User Score */}
-                <View style={styles.scoreColumn}>
+                {/* User Score - İzleme modunda gri/boş */}
+                <View style={[styles.scoreColumn, isViewOnlyMode && styles.scoreColumnDisabled]}>
                   <View style={styles.scoreLabelRow}>
-                    <Ionicons name="person" size={12} color="#1FA2A6" />
-                    <Text style={[styles.scoreLabel, { color: '#1FA2A6' }]}>SİZİN PUANINIZ</Text>
+                    <Ionicons name="person" size={12} color={isViewOnlyMode ? '#64748B' : '#1FA2A6'} />
+                    <Text style={[styles.scoreLabel, { color: isViewOnlyMode ? '#64748B' : '#1FA2A6' }]}>
+                      {isViewOnlyMode ? 'DEĞERLENDİRME YOK' : 'SİZİN PUANINIZ'}
+                    </Text>
                   </View>
-                  <View style={styles.scoreCircle}>
-                    <Svg width={110} height={110} style={styles.scoreSvg}>
-                      <Circle
-                        cx="55"
-                        cy="55"
-                        r="45"
-                        stroke="rgba(31, 162, 166, 0.12)"
-                        strokeWidth="6"
-                        fill="none"
-                      />
-                      <Circle
-                        cx="55"
-                        cy="55"
-                        r="45"
-                        stroke="#1FA2A6"
-                        strokeWidth="6"
-                        fill="none"
-                        strokeDasharray={`${(userScore / 10) * 282.7} 282.7`}
-                        strokeLinecap="round"
-                        rotation={-90}
-                        originX={55}
-                        originY={55}
-                      />
-                    </Svg>
-                    <View style={styles.scoreValue}>
-                      <Text style={styles.scoreText}>{userScore}</Text>
-                      <Text style={styles.scoreMax}>/10</Text>
+                  {isViewOnlyMode ? (
+                    <View style={styles.scoreCircleDisabled}>
+                      <Text style={styles.scoreTextDisabled}>—</Text>
                     </View>
-                  </View>
+                  ) : (
+                    <View style={styles.scoreCircle}>
+                      <Svg width={110} height={110} style={styles.scoreSvg}>
+                        <Circle
+                          cx="55"
+                          cy="55"
+                          r="45"
+                          stroke="rgba(31, 162, 166, 0.12)"
+                          strokeWidth="6"
+                          fill="none"
+                        />
+                        <Circle
+                          cx="55"
+                          cy="55"
+                          r="45"
+                          stroke="#1FA2A6"
+                          strokeWidth="6"
+                          fill="none"
+                          strokeDasharray={`${(userScore / 10) * 282.7} 282.7`}
+                          strokeLinecap="round"
+                          rotation={-90}
+                          originX={55}
+                          originY={55}
+                        />
+                      </Svg>
+                      <View style={styles.scoreValue}>
+                        <Text style={styles.scoreText}>{userScore}</Text>
+                        <Text style={styles.scoreMax}>/10</Text>
+                      </View>
+                    </View>
+                  )}
                 </View>
 
                 {/* VS Divider */}
@@ -1128,7 +1380,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
                 {/* Community Score */}
                 <View style={styles.scoreColumn}>
                   <View style={styles.scoreLabelRow}>
-                    <Ionicons name="people" size={12} color="#C9A44C" /> {/* ✅ Altın */}
+                    <Ionicons name="people" size={12} color="#C9A44C" />
                     <Text style={[styles.scoreLabel, { color: '#C9A44C' }]}>TOPLULUK</Text>
                   </View>
                   <View style={styles.scoreCircle}>
@@ -1205,9 +1457,26 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
                 </View>
 
                 {/* Rating Stars */}
-                <View style={styles.ratingContainer}>
+                <View style={[styles.ratingContainer, isViewOnlyMode && { opacity: 0.7 }]}>
                   <View style={styles.ratingStars}>
                     {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((star) => {
+                      // İzleme modunda: Topluluk puanına göre altın sarısı göster
+                      if (isViewOnlyMode) {
+                        const isActiveByCommunity = star <= communityRating;
+                        return (
+                          <View key={star} style={styles.starButton}>
+                            <View style={[
+                              styles.star, 
+                              { backgroundColor: isActiveByCommunity ? '#C9A44C' : 'rgba(100, 116, 139, 0.2)' }
+                            ]}>
+                              <Text style={[styles.starText, isActiveByCommunity && styles.starTextActive]}>
+                                {star}
+                              </Text>
+                            </View>
+                          </View>
+                        );
+                      }
+                      
                       // Yarım puan durumu: star - 0.5 = userRating ise yarım dolu
                       const isFullyActive = star <= userRating;
                       const isHalfActive = !isFullyActive && (star - 0.5) === userRating;
@@ -1260,8 +1529,10 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
                 <View style={styles.comparisonContainer}>
                   <View style={styles.comparisonRow}>
                     <View style={styles.comparisonItem}>
-                      <Text style={styles.comparisonLabel}>Sizin:</Text>
-                      <Text style={styles.comparisonValueUser}>{userRating.toFixed(1)}</Text>
+                      <Text style={[styles.comparisonLabel, isViewOnlyMode && { color: '#64748B' }]}>Sizin:</Text>
+                      <Text style={[styles.comparisonValueUser, isViewOnlyMode && { color: '#64748B' }]}>
+                        {isViewOnlyMode ? '—' : userRating.toFixed(1)}
+                      </Text>
                     </View>
                     
                     <View style={styles.comparisonDivider} />
@@ -1274,12 +1545,14 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
                     <View style={styles.comparisonDivider} />
 
                     <View style={styles.comparisonItem}>
-                      <Text style={styles.comparisonLabel}>Fark:</Text>
+                      <Text style={[styles.comparisonLabel, isViewOnlyMode && { color: '#64748B' }]}>Fark:</Text>
                       <Text style={[
                         styles.comparisonValueDiff,
-                        difference > 0 ? styles.comparisonPositive : difference < 0 ? styles.comparisonNegative : styles.comparisonNeutral
+                        isViewOnlyMode 
+                          ? { color: '#64748B' }
+                          : difference > 0 ? styles.comparisonPositive : difference < 0 ? styles.comparisonNegative : styles.comparisonNeutral
                       ]}>
-                        {difference > 0 ? '+' : ''}{difference.toFixed(1)}
+                        {isViewOnlyMode ? '—' : (difference > 0 ? '+' : '') + difference.toFixed(1)}
                       </Text>
                     </View>
                   </View>
@@ -1290,7 +1563,10 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
                       <View 
                         style={[
                           styles.progressFill,
-                          { width: `${(userRating / 10) * 100}%`, backgroundColor: category.color }
+                          { 
+                            width: isViewOnlyMode ? '0%' : `${(userRating / 10) * 100}%`, 
+                            backgroundColor: isViewOnlyMode ? '#64748B' : category.color 
+                          }
                         ]}
                       />
                     </View>
@@ -1309,19 +1585,67 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
           })}
         </View>
 
-        {/* Info Note */}
-        <View style={styles.infoNote}>
-          <Text style={styles.infoNoteEmoji}>💡</Text>
-          <Text style={styles.infoNoteText}>
-            Değişiklik yaptıktan sonra sekmeden çıkarken kaydetme seçeneği sunulur.
-          </Text>
-        </View>
+        {/* Info Note - İzleme modunda gizle */}
+        {!isViewOnlyMode && (
+          <View style={styles.infoNote}>
+            <Text style={styles.infoNoteEmoji}>💡</Text>
+            <Text style={styles.infoNoteText}>
+              Değişiklik yaptıktan sonra sekmeden çıkarken kaydetme seçeneği sunulur.
+            </Text>
+          </View>
+        )}
+        
+        {/* TD KAYDET FOOTER - İzleme modunda gizle */}
+        {!isViewOnlyMode && (
+          <View style={styles.coachSaveFooter}>
+            <LinearGradient
+              colors={['#0F2A24', '#1E3A3A']}
+              style={styles.coachSaveFooterGradient}
+            >
+              {/* Ortalama Puan */}
+              <View style={styles.coachSaveInfo}>
+                <Text style={styles.coachSaveLabel}>Ortalama Puan</Text>
+                <Text style={[styles.coachSaveScore, { color: getRatingColor(userScore) }]}>
+                  {userScore}
+                </Text>
+              </View>
+              
+              {/* Butonlar */}
+              <View style={styles.coachSaveButtons}>
+                <TouchableOpacity
+                  style={styles.coachSaveBtnCancel}
+                  onPress={() => {
+                    // Değişiklikleri geri al
+                    setCoachRatings({ ...initialCoachRatings.current });
+                    setCoachRatingsChanged(false);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="close" size={18} color="#EF4444" />
+                  <Text style={styles.coachSaveBtnCancelText}>İptal</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={styles.coachSaveBtnSave}
+                  onPress={() => handleSaveRatings(false)}
+                  activeOpacity={0.7}
+                >
+                  <LinearGradient
+                    colors={['#1FA2A6', '#059669']}
+                    style={styles.coachSaveBtnSaveGradient}
+                  >
+                    <Ionicons name="checkmark" size={18} color="#FFF" />
+                    <Text style={styles.coachSaveBtnSaveText}>Kaydet</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+            </LinearGradient>
+          </View>
+        )}
         </>
         ) : (
-          /* ⚽ FUTBOLCU DEĞERLENDİRMELERİ SEKMESİ */
-          <View
-            style={styles.playerRatingContainer}
-          >
+          /* ⚽ FUTBOLCU DEĞERLENDİRMELERİ SEKMESİ - YENİ TASARIM */
+          <View style={styles.playerRatingContainer}>
 
             {/* Oyuncu yoksa bilgi mesajı */}
             {sortedPlayers.length === 0 && (
@@ -1334,342 +1658,607 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
               </View>
             )}
 
-            {/* Players List */}
-            {/* 🔒 Kilit İkonu - Ortalanmış */}
-            <TouchableOpacity
-              onPress={() => {
-                setLockPopupType('player');
-                setShowLockPopup(true);
-              }}
-              activeOpacity={0.7}
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 18,
-                backgroundColor: ratingTimeInfo.isLocked 
-                  ? 'rgba(239, 68, 68, 0.15)' 
-                  : 'rgba(16, 185, 129, 0.15)',
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderWidth: 1,
-                borderColor: ratingTimeInfo.isLocked 
-                  ? 'rgba(239, 68, 68, 0.3)' 
-                  : 'rgba(16, 185, 129, 0.3)',
-                alignSelf: 'center',
-                marginBottom: 16,
-              }}
-            >
-              <Ionicons 
-                name={ratingTimeInfo.isLocked ? 'lock-closed' : 'lock-open'} 
-                size={18} 
-                color={ratingTimeInfo.isLocked ? '#EF4444' : '#10B981'} 
-              />
-            </TouchableOpacity>
-
-            {sortedPlayers.map((player, index) => {
-              const isExpanded = expandedPlayerId === player.id;
-              const avgRating = getPlayerAverageRating(player.id, player.position);
-              const hasRatings = Object.keys(playerRatings[player.id] || {}).length > 0;
-              const categories = getRatingCategories(player.position);
-              const isGK = isGoalkeeperPosition(player.position || '');
-              const canBeRated = player.isStarter || player.playedInMatch;
-              const isPlayerLocked = ratingTimeInfo.isLocked || (!canBeRated && player.isSubstitute);
-
-              return (
-                <Animated.View
-                  key={player.id}
-                  entering={!isWeb && FadeIn ? FadeIn.delay(Math.min(index * 30, 300)) : undefined}
-                  style={styles.playerCardWrapper}
-                  onLayout={(e: any) => {
-                    playerCardRefs.current[player.id] = e.nativeEvent.layout.y;
-                  }}
-                >
-                  {/* Player Card Header */}
-                  <TouchableOpacity
-                    style={[
-                      styles.playerCard,
-                      isExpanded && styles.playerCardExpanded,
-                      hasRatings && !isExpanded && { borderColor: `${getRatingColor(avgRating)}30` }
-                    ]}
-                    onPress={() => handlePlayerToggle(player.id, isExpanded, player)}
-                    activeOpacity={0.7}
-                  >
-                    {/* Jersey Number */}
-                    <LinearGradient
-                      colors={isGK ? ['#C9A44C', '#8B6914'] : ['#1FA2A6', '#0F2A24']}
-                      style={styles.playerJerseyGradient}
+            {sortedPlayers.length > 0 && (
+              <>
+                {/* 🎯 HEADER: Başlık + Kilit */}
+                <View style={styles.playerRatingHeader}>
+                  <View style={styles.playerRatingHeaderLeft}>
+                    <Text style={styles.playerRatingHeaderTitle}>⚽ Oyuncu Değerlendirmeleri</Text>
+                    <Text style={styles.playerRatingHeaderSubtitle}>
+                      {starters.length} İlk 11 • {substitutesPlayed.length} Oyuna Girdi
+                    </Text>
+                  </View>
+                  
+                  {/* Kilit İkonu (İzleme modunda gösterilmez) */}
+                  {!isViewOnlyMode && (
+                    <TouchableOpacity
+                      onPress={() => {
+                        setLockPopupType('player');
+                        setShowLockPopup(true);
+                      }}
+                      activeOpacity={0.7}
+                      style={styles.categoryLockBtn}
                     >
-                      <Text style={styles.playerJerseyNumber}>{player.number}</Text>
-                    </LinearGradient>
-
-                    {/* Player Info */}
-                    <View style={styles.playerInfoContainer}>
-                      <Text style={styles.playerName} numberOfLines={1}>{player.name}</Text>
-                      <View style={styles.playerPositionRow}>
-                        <View style={[styles.playerPositionBadge, isGK && styles.playerPositionBadgeGK]}>
-                          <Text style={[styles.playerPositionText, isGK && styles.playerPositionTextGK]}>
-                            {isGK ? '🧤 GK' : player.position}
-                          </Text>
-                        </View>
-                        {/* Starter / Yedek Rozeti */}
-                        {player.isStarter && (
-                          <View style={{
-                            backgroundColor: 'rgba(16, 185, 129, 0.15)',
-                            paddingHorizontal: 6,
-                            paddingVertical: 2,
-                            borderRadius: 4,
-                            marginLeft: 4,
-                          }}>
-                            <Text style={{ fontSize: 8, color: '#10B981', fontWeight: '600' }}>İLK 11</Text>
-                          </View>
-                        )}
-                        {player.isSubstitute && player.playedInMatch && (
-                          <View style={{
-                            backgroundColor: 'rgba(249, 115, 22, 0.15)',
-                            paddingHorizontal: 6,
-                            paddingVertical: 2,
-                            borderRadius: 4,
-                            marginLeft: 4,
-                          }}>
-                            <Text style={{ fontSize: 8, color: '#F97316', fontWeight: '600' }}>OYUNA GİRDİ</Text>
-                          </View>
-                        )}
-                        {player.isSubstitute && !player.playedInMatch && (
-                          <View style={{
-                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                            paddingHorizontal: 6,
-                            paddingVertical: 2,
-                            borderRadius: 4,
-                            marginLeft: 4,
-                          }}>
-                            <Text style={{ fontSize: 8, color: '#EF4444', fontWeight: '600' }}>YEDEK</Text>
-                          </View>
-                        )}
-                      </View>
-                    </View>
-
-                    {/* Score Badges + Arrow */}
-                    <View style={styles.playerRightSection}>
-                      {/* Topluluk Puanı (Sol) */}
-                      <View style={styles.communityScoreBadge}>
-                        <Ionicons name="people" size={10} color="#C9A44C" />
-                        <Text style={styles.communityScoreText}>
-                          {getPlayerCommunityData(player.id, player.position).communityAvg.toFixed(1)}
-                        </Text>
-                      </View>
-                      
-                      {/* Kullanıcı Puanı (Sağ) - Silme butonu ile */}
-                      <View style={styles.userScoreBadgeWrapper}>
-                        {hasRatings && !isExpanded && !ratingTimeInfo.isLocked && (
-                          <TouchableOpacity
-                            style={styles.deleteRatingBtnCorner}
-                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                            activeOpacity={0.6}
-                            onPress={() => {
-                              console.log('🗑️ Delete rating button pressed for:', player.name);
-                              setDeleteConfirmPlayer({ id: player.id, name: player.name });
-                            }}
-                          >
-                            <Ionicons name="close" size={12} color="#FFF" />
-                          </TouchableOpacity>
-                        )}
-                        <View style={[
-                          styles.userScoreBadge, 
-                          hasRatings 
-                            ? { backgroundColor: `${getRatingColor(avgRating)}25`, borderColor: getRatingColor(avgRating) }
-                            : { backgroundColor: 'rgba(71, 85, 105, 0.3)', borderColor: '#475569' }
-                        ]}>
-                          <Text style={[
-                            styles.userScoreText, 
-                            { color: hasRatings ? getRatingColor(avgRating) : '#64748B' }
-                          ]}>
-                            {hasRatings ? avgRating.toFixed(1) : '—'}
-                          </Text>
-                        </View>
-                      </View>
-                      
-                      <Ionicons
-                        name={isExpanded ? 'chevron-up' : 'chevron-down'}
-                        size={18}
-                        color={isExpanded ? BRAND.secondary : '#64748B'}
+                      <Ionicons 
+                        name={ratingTimeInfo.isLocked ? 'lock-closed' : 'lock-open'} 
+                        size={18} 
+                        color={ratingTimeInfo.isLocked ? '#EF4444' : '#10B981'} 
                       />
-                    </View>
-                  </TouchableOpacity>
+                    </TouchableOpacity>
+                  )}
+                </View>
 
-                  {/* Expanded Rating Panel - FIFA Style - Sadece kilitli değilse */}
-                  {isExpanded && !isPlayerLocked && (
-                    <Animated.View
-                      entering={!isWeb && FadeIn ? FadeIn.duration(200) : undefined}
-                      style={styles.fifaRatingPanel}
-                    >
-                      {(() => {
-                        const communityData = getPlayerCommunityData(player.id, player.position);
-                        const userScore = hasRatings ? avgRating : 0;
-                        const communityScore = communityData.communityAvg;
-                        
-                        return (
-                          <View style={styles.fifaContainer}>
-                            {/* 🏆 ÜST: BÜYÜK PUAN KARTI - FIFA Stili */}
-                            <LinearGradient
-                              colors={['#0F2A24', '#1E3A3A', '#0F2A24']} // ✅ Design System
-                              style={styles.fifaScoreCard}
-                              start={{ x: 0, y: 0 }}
-                              end={{ x: 1, y: 1 }}
+                {/* 👤 OYUNCU KARTLARI - YATAY SCROLL */}
+                <View style={styles.playerCardsHorizontalContainer}>
+                  <ScrollView 
+                    horizontal 
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.playerCardsHorizontalScroll}
+                    keyboardShouldPersistTaps="handled"
+                    nestedScrollEnabled={true}
+                  >
+                    {/* İlk 11 + Oyuna Girenler - Tümü değerlendirilebilir */}
+                    {[...starters, ...substitutesPlayed].map((player) => {
+                      const isGK = isGoalkeeperPosition(player.position || '');
+                      const isSelected = selectedPlayerId === player.id;
+                      const hasRatings = playerRatings[player.id] && Object.keys(playerRatings[player.id]).length > 0;
+                      
+                      // Ortalama puan hesapla
+                      const ratings = playerRatings[player.id] || {};
+                      const ratingValues = Object.values(ratings);
+                      const avgRating = ratingValues.length > 0 
+                        ? ratingValues.reduce((a, b) => a + b, 0) / ratingValues.length 
+                        : 0;
+                      
+                      return (
+                        <View key={player.id} style={styles.playerCardMiniWrapper}>
+                          {/* Silme Butonu - Kartın dışında, en üstte */}
+                          {hasRatings && (
+                            <TouchableOpacity
+                              style={styles.playerCardMiniDelete}
+                              onPress={(e) => {
+                                e.stopPropagation();
+                                setPlayerRatings(prev => {
+                                  const newRatings = { ...prev };
+                                  delete newRatings[player.id];
+                                  return newRatings;
+                                });
+                                setPlayerRatingsChanged(true);
+                                if (selectedPlayerId === player.id) {
+                                  setSelectedPlayerId(null);
+                                }
+                              }}
+                              hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
                             >
-                              {/* Sol: Kullanıcı Puanı */}
-                              <View style={styles.fifaScoreSide}>
-                                <Text style={styles.fifaScoreLabel}>SİZİN PUANINIZ</Text>
-                                <Text style={[styles.fifaScoreBig, { color: hasRatings ? getRatingColor(userScore) : '#475569' }]}>
-                                  {hasRatings ? userScore.toFixed(1) : '—'}
-                                </Text>
-                                <View style={styles.fifaScoreStars}>
-                                  {[1, 2, 3, 4, 5].map(star => (
-                                    <Ionicons
-                                      key={star}
-                                      name={userScore >= star * 2 ? 'star' : userScore >= star * 2 - 1 ? 'star-half' : 'star-outline'}
-                                      size={12}
-                                      color={userScore >= star * 2 - 1 ? '#FFD700' : '#475569'}
-                                    />
-                                  ))}
-                                </View>
+                              <Ionicons name="close" size={12} color="#FFFFFF" />
+                            </TouchableOpacity>
+                          )}
+                          
+                          <TouchableOpacity
+                            style={[
+                              styles.playerCardMini,
+                              isSelected && styles.playerCardMiniSelected,
+                              isGK && styles.playerCardMiniGK,
+                            ]}
+                            onPress={() => {
+                              // ✅ İzleme modunda da oyuncu seçilebilmeli (topluluk verileri gösterilir)
+                              if (ratingTimeInfo.isLocked && !isViewOnlyMode) {
+                                setLockPopupType('player');
+                                setShowLockPopup(true);
+                                return;
+                              }
+                              // Oyuncu seçildiğinde otomatik olarak pozisyonuna göre kategori ayarla
+                              setSelectedPlayerId(player.id);
+                              if (isGK) {
+                                setCategoryViewMode('goalkeeper');
+                                // Mevcut kategori kaleci kategorisi değilse ilk kaleci kategorisini seç
+                                if (!GK_RATING_CATEGORIES.find(c => c.id === selectedCategoryId)) {
+                                  setSelectedCategoryId('saves');
+                                }
+                              } else {
+                                setCategoryViewMode('outfield');
+                                // Mevcut kategori saha oyuncusu kategorisi değilse ilk saha kategorisini seç
+                                if (!OUTFIELD_RATING_CATEGORIES.find(c => c.id === selectedCategoryId)) {
+                                  setSelectedCategoryId('shooting');
+                                }
+                              }
+                            }}
+                            activeOpacity={0.7}
+                          >
+                            <LinearGradient
+                              colors={['#1E3A3A', '#0F2A24']}
+                              style={styles.playerCardMiniGradient}
+                            >
+                              {/* Forma Numarası Badge - Üstte */}
+                              <View style={[
+                                styles.playerCardMiniJerseyBadge,
+                                isGK && styles.playerCardMiniJerseyBadgeGK,
+                              ]}>
+                                <Text style={styles.playerCardMiniNumber}>{player.number}</Text>
                               </View>
-
-                              {/* Orta: VS Badge */}
-                              <View style={styles.fifaVsBadge}>
-                                <Text style={styles.fifaVsText}>VS</Text>
+                              
+                              {/* İsim */}
+                              <Text 
+                                style={styles.playerCardMiniName} 
+                                numberOfLines={1}
+                              >
+                                {player.name.split(' ').pop()}
+                              </Text>
+                              
+                              {/* Alt Satır: Puan + Status */}
+                              <View style={styles.playerCardMiniBottom}>
+                                {/* Puan Badge */}
+                                {avgRating > 0 ? (
+                                  <View style={[styles.playerCardMiniBadge, { backgroundColor: getRatingColor(avgRating) }]}>
+                                    <Text style={styles.playerCardMiniBadgeText}>{avgRating.toFixed(1)}</Text>
+                                  </View>
+                                ) : (
+                                  <View style={[styles.playerCardMiniStatus, player.isSubstitute && { backgroundColor: 'rgba(249, 115, 22, 0.2)' }]}>
+                                    <Text style={[styles.playerCardMiniStatusText, player.isSubstitute && { color: '#F97316' }]}>
+                                      {player.isSubstitute ? '🔄' : '⚽'}
+                                    </Text>
+                                  </View>
+                                )}
                               </View>
-
-                              {/* Sağ: Topluluk Puanı */}
-                              <View style={styles.fifaScoreSide}>
-                                <Text style={styles.fifaScoreLabel}>TOPLULUK</Text>
-                                <Text style={[styles.fifaScoreBig, { color: '#C9A44C' }]}>
-                                  {communityScore.toFixed(1)}
-                                </Text>
-                                <View style={styles.fifaVotersBadge}>
-                                  <Ionicons name="people" size={10} color="#C9A44C" />
-                                  <Text style={styles.fifaVotersText}>{communityData.voters}</Text>
+                            </LinearGradient>
+                          </TouchableOpacity>
+                        </View>
+                      );
+                    })}
+                    
+                    {/* Yedekler (Grayed out) */}
+                    {substitutesNotPlayed.map((player) => {
+                      const isGK = isGoalkeeperPosition(player.position || '');
+                      return (
+                        <View key={player.id} style={styles.playerCardMiniWrapper}>
+                          <TouchableOpacity
+                            style={[styles.playerCardMini, styles.playerCardMiniDisabled]}
+                            onPress={() => {
+                              setLockedPlayerInfo({ name: player.name, reason: 'Oyuna girmedi' });
+                            }}
+                            activeOpacity={0.5}
+                          >
+                            <LinearGradient
+                              colors={['#334155', '#1E293B']}
+                              style={styles.playerCardMiniGradient}
+                            >
+                              {/* Forma Numarası Badge */}
+                              <View style={[styles.playerCardMiniJerseyBadge, { backgroundColor: '#475569', opacity: 0.6 }]}>
+                                <Text style={[styles.playerCardMiniNumber, { opacity: 0.7 }]}>{player.number}</Text>
+                              </View>
+                              
+                              {/* İsim */}
+                              <Text style={[styles.playerCardMiniName, { color: '#64748B' }]} numberOfLines={1}>
+                                {player.name.split(' ').pop()}
+                              </Text>
+                              
+                              {/* Alt Satır: Status */}
+                              <View style={styles.playerCardMiniBottom}>
+                                <View style={[styles.playerCardMiniStatus, { backgroundColor: 'rgba(100, 116, 139, 0.2)' }]}>
+                                  <Text style={[styles.playerCardMiniStatusText, { color: '#64748B' }]}>🪑</Text>
                                 </View>
                               </View>
                             </LinearGradient>
+                          </TouchableOpacity>
+                        </View>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
 
-                            {/* ⚡ HIZLI PUAN SEÇİCİ - Slider Stili */}
-                            <View style={styles.fifaQuickPicker}>
-                              <Text style={styles.fifaQuickLabel}>⚡ HIZLI PUAN</Text>
-                              <View style={styles.fifaQuickSlider}>
-                                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((score) => {
-                                  const isActive = hasRatings && Math.round(avgRating) === score;
-                                  const getScoreGradient = (s: number): [string, string] => {
-                                    if (s >= 9) return ['#00F260', '#0575E6'];
-                                    if (s >= 7) return ['#11998e', '#38ef7d'];
-                                    if (s >= 5) return ['#F7971E', '#FFD200'];
-                                    if (s >= 3) return ['#f12711', '#f5af19'];
-                                    return ['#CB356B', '#BD3F32'];
-                                  };
-                                  
+                {/* 📊 SEÇİLİ OYUNCU DEĞERLENDİRME ALANI */}
+                {selectedPlayerId && (() => {
+                  const selectedPlayer = sortedPlayers.find(p => p.id === selectedPlayerId);
+                  if (!selectedPlayer) return null;
+                  
+                  const isGK = isGoalkeeperPosition(selectedPlayer.position || '');
+                  const categories = isGK ? GK_RATING_CATEGORIES : OUTFIELD_RATING_CATEGORIES;
+                  const communityData = getPlayerCommunityData(selectedPlayerId, selectedPlayer.position);
+                  const playerCategoryRatings = isViewOnlyMode 
+                    ? communityData.categoryRatings 
+                    : (playerRatings[selectedPlayerId] || {});
+                  const ratingValues = Object.values(playerCategoryRatings);
+                  const avgRating = ratingValues.length > 0 
+                    ? ratingValues.reduce((a, b) => a + b, 0) / ratingValues.length 
+                    : (isViewOnlyMode ? communityData.communityAvg : 0);
+                  
+                  return (
+                    <View style={styles.selectedPlayerPanel}>
+                      {/* Oyuncu Başlık */}
+                      <View style={styles.selectedPlayerHeader}>
+                        <LinearGradient
+                          colors={isGK ? ['#C9A44C', '#8B6914'] : ['#1FA2A6', '#0F2A24']}
+                          style={styles.selectedPlayerHeaderJersey}
+                        >
+                          <Text style={styles.selectedPlayerHeaderNumber}>{selectedPlayer.number}</Text>
+                        </LinearGradient>
+                        <View style={styles.selectedPlayerHeaderInfo}>
+                          <Text style={styles.selectedPlayerHeaderName}>{selectedPlayer.name}</Text>
+                          <Text style={styles.selectedPlayerHeaderPos}>
+                            {isGK ? '🧤 Kaleci' : `⚽ ${selectedPlayer.position}`}
+                          </Text>
+                        </View>
+                        <View style={styles.selectedPlayerHeaderAvg}>
+                          <Text style={[
+                            styles.selectedPlayerHeaderAvgLabel, 
+                            isViewOnlyMode && { color: '#C9A44C' }
+                          ]}>
+                            {isViewOnlyMode ? 'Topluluk' : 'Ortalama'}
+                          </Text>
+                          <Text style={[
+                            styles.selectedPlayerHeaderAvgValue, 
+                            { color: isViewOnlyMode ? '#C9A44C' : getRatingColor(avgRating) }
+                          ]}>
+                            {avgRating > 0 ? avgRating.toFixed(1) : '—'}
+                          </Text>
+                        </View>
+                      </View>
+                      
+                      {/* 🔀 Değerlendirme Modu Toggle - İzleme modunda gizle */}
+                      {isViewOnlyMode ? (
+                        <View style={styles.viewOnlyCommunityBadge}>
+                          <Ionicons name="people" size={14} color="#C9A44C" />
+                          <Text style={styles.viewOnlyCommunityText}>
+                            Topluluk Değerlendirmesi • {communityData.voters} oy
+                          </Text>
+                        </View>
+                      ) : (
+                        <View style={styles.ratingModeToggle}>
+                          <TouchableOpacity
+                            style={[
+                              styles.ratingModeBtn,
+                              ratingMode === 'detailed' && styles.ratingModeBtnActive
+                            ]}
+                            onPress={() => setRatingMode('detailed')}
+                            activeOpacity={0.7}
+                          >
+                            <Ionicons 
+                              name="options-outline" 
+                              size={16} 
+                              color={ratingMode === 'detailed' ? '#1FA2A6' : '#64748B'} 
+                            />
+                            <Text style={[
+                              styles.ratingModeBtnText,
+                              ratingMode === 'detailed' && styles.ratingModeBtnTextActive
+                            ]}>Detaylı</Text>
+                          </TouchableOpacity>
+                          
+                          <TouchableOpacity
+                            style={[
+                              styles.ratingModeBtn,
+                              ratingMode === 'quick' && styles.ratingModeBtnActive
+                            ]}
+                            onPress={() => setRatingMode('quick')}
+                            activeOpacity={0.7}
+                          >
+                            <Ionicons 
+                              name="flash-outline" 
+                              size={16} 
+                              color={ratingMode === 'quick' ? '#F59E0B' : '#64748B'} 
+                            />
+                            <Text style={[
+                              styles.ratingModeBtnText,
+                              ratingMode === 'quick' && { color: '#F59E0B' }
+                            ]}>Hızlı</Text>
+                          </TouchableOpacity>
+                        </View>
+                      )}
+                      
+                      {/* 📊 DETAYLI DEĞERLENDİRME */}
+                      {ratingMode === 'detailed' && (
+                        <>
+                          {/* Kategori Kartları - Topluluk + Kullanıcı Puanı */}
+                          {(() => {
+                            const communityData = getPlayerCommunityData(selectedPlayerId, selectedPlayer.position);
+                            return (
+                              <ScrollView 
+                                horizontal 
+                                showsHorizontalScrollIndicator={false}
+                                contentContainerStyle={styles.categoryCardsScroll}
+                                keyboardShouldPersistTaps="handled"
+                                nestedScrollEnabled={true}
+                                style={{ marginBottom: 12 }}
+                              >
+                                {categories.map((category) => {
+                                  const isSelected = selectedCategoryId === category.id;
+                                  const userRating = playerCategoryRatings[category.id];
+                                  const commRating = communityData.categoryRatings[category.id];
                                   return (
                                     <TouchableOpacity
-                                      key={score}
-                                      onPress={() => setAllRatings(player.id, player.position, score)}
-                                      style={styles.fifaQuickBtnWrap}
+                                      key={category.id}
+                                      style={[
+                                        styles.categoryCardFixed,
+                                        isSelected && styles.categoryCardSelected,
+                                        isSelected && { borderColor: category.color }
+                                      ]}
+                                      onPress={() => setSelectedCategoryId(category.id)}
+                                      activeOpacity={0.7}
                                     >
-                                      {isActive ? (
-                                        <LinearGradient
-                                          colors={getScoreGradient(score)}
-                                          style={styles.fifaQuickBtnActive}
-                                        >
-                                          <Text style={styles.fifaQuickBtnTextActive}>{score}</Text>
-                                        </LinearGradient>
-                                      ) : (
-                                        <View style={styles.fifaQuickBtn}>
-                                          <Text style={styles.fifaQuickBtnText}>{score}</Text>
+                                      <Text style={styles.categoryCardEmojiLarge}>{category.emoji}</Text>
+                                      <Text style={[
+                                        styles.categoryCardTitleFixed,
+                                        isSelected && { color: category.color }
+                                      ]}>{category.title}</Text>
+                                      
+                                      {/* Topluluk + Kullanıcı Puanları */}
+                                      <View style={styles.categoryCardScores}>
+                                        {/* Topluluk Puanı */}
+                                        <View style={styles.categoryCardScoreRow}>
+                                          <Text style={styles.categoryCardScoreLabel}>👥</Text>
+                                          <Text style={[styles.categoryCardScoreValue, { color: '#C9A44C' }]}>
+                                            {commRating?.toFixed(1) || '—'}
+                                          </Text>
+                                        </View>
+                                        {/* Kullanıcı - İzleme modunda gri */}
+                                        {!isViewOnlyMode && (
+                                          <View style={styles.categoryCardScoreRow}>
+                                            <Text style={styles.categoryCardScoreLabel}>👤</Text>
+                                            <Text style={[
+                                              styles.categoryCardScoreValue, 
+                                              { color: userRating !== undefined ? getRatingColor(userRating) : '#64748B' }
+                                            ]}>
+                                              {userRating !== undefined ? userRating.toFixed(1) : '—'}
+                                            </Text>
+                                          </View>
+                                        )}
+                                      </View>
+                                      {/* İzleme modunda: Oy sayısı ve % */}
+                                      {isViewOnlyMode && (
+                                        <View style={styles.categoryCardVoterInfo}>
+                                          <Text style={styles.categoryCardVoterText}>
+                                            {communityData.voters} oy
+                                          </Text>
                                         </View>
                                       )}
                                     </TouchableOpacity>
                                   );
                                 })}
-                              </View>
+                              </ScrollView>
+                            );
+                          })()}
+                          
+                          {/* Slider - İzleme modunda gizle */}
+                          {!isViewOnlyMode && (
+                            <View style={styles.selectedPlayerSliderContainer}>
+                              <Text style={styles.selectedPlayerSliderLabel}>
+                                {categories.find(c => c.id === selectedCategoryId)?.title || 'Kategori Seçin'}
+                              </Text>
+                              <PlayerRatingSlider
+                                value={playerCategoryRatings[selectedCategoryId] || 5}
+                                onChange={(val) => {
+                                  if (ratingTimeInfo.isLocked) return;
+                                  setPlayerRatings(prev => ({
+                                    ...prev,
+                                    [selectedPlayerId]: {
+                                      ...(prev[selectedPlayerId] || {}),
+                                      [selectedCategoryId]: val
+                                    }
+                                  }));
+                                  setPlayerRatingsChanged(true);
+                                  setHasUnsavedPlayerChanges(true);
+                                }}
+                                disabled={ratingTimeInfo.isLocked}
+                              />
                             </View>
+                          )}
+                        </>
+                      )}
 
-                            {/* 📊 KATEGORİLER - Hexagon Radar Stili */}
-                            <View style={styles.fifaCategorySection}>
-                              <Text style={styles.fifaCategoryTitle}>📊 YETENEKLERİ PUANLA</Text>
-                              
-                              {/* 2 Satır x 3 Sütun Grid */}
-                              <View style={styles.fifaCategoryGrid}>
-                                {categories.map((category) => {
-                                  const currentRating = playerRatings[player.id]?.[category.id] || 5;
-                                  const communityRating = communityData.categoryRatings[category.id] || 5;
-                                  const percentage = (currentRating / 10) * 100;
-                                  
-                                  return (
-                                    <View key={category.id} style={styles.fifaCategoryCard}>
-                                      {/* Kategori Başlığı */}
-                                      <View style={styles.fifaCatHeader}>
-                                        <Text style={styles.fifaCatEmoji}>{category.emoji}</Text>
-                                        <View style={styles.fifaCatTitleWrap}>
-                                          <Text style={styles.fifaCatTitle}>{category.title}</Text>
-                                          <Text style={[styles.fifaCatScore, { color: category.color }]}>
-                                            {currentRating.toFixed(1)}
-                                          </Text>
-                                        </View>
-                                      </View>
-                                      
-                                      {/* Progress Bar - Gradient */}
-                                      <View style={styles.fifaCatBarContainer}>
-                                        <View style={styles.fifaCatBarBg}>
-                                          <LinearGradient
-                                            colors={[category.color, `${category.color}88`]}
-                                            start={{ x: 0, y: 0 }}
-                                            end={{ x: 1, y: 0 }}
-                                            style={[styles.fifaCatBarFill, { width: `${percentage}%` }]}
-                                          />
-                                          {/* Topluluk İşareti */}
-                                          <View style={[styles.fifaCatCommunityMarker, { left: `${(communityRating / 10) * 100}%` }]}>
-                                            <View style={styles.fifaCatCommunityDot} />
-                                          </View>
-                                        </View>
-                                        <Text style={styles.fifaCatCommunityScore}>{communityRating.toFixed(1)}</Text>
-                                      </View>
-                                      
-                                      {/* +/- Butonları */}
-                                      <View style={styles.fifaCatBtnRow}>
-                                        <TouchableOpacity
-                                          style={styles.fifaCatBtnMinus}
-                                          onPress={() => updatePlayerRating(player.id, category.id, Math.max(1, currentRating - 0.5))}
-                                        >
-                                          <Text style={styles.fifaCatBtnMinusText}>−</Text>
-                                        </TouchableOpacity>
-                                        
-                                        <TouchableOpacity
-                                          style={styles.fifaCatBtnPlus}
-                                          onPress={() => updatePlayerRating(player.id, category.id, Math.min(10, currentRating + 0.5))}
-                                        >
-                                          <Text style={styles.fifaCatBtnPlusText}>+</Text>
-                                        </TouchableOpacity>
-                                      </View>
-                                    </View>
-                                  );
-                                })}
-                              </View>
-                            </View>
+                      {/* ⚡ HIZLI DEĞERLENDİRME - İzleme modunda gizle */}
+                      {ratingMode === 'quick' && !isViewOnlyMode && (
+                        <View style={styles.quickRatingContainer}>
+                          {/* Tek İkon + Açıklama */}
+                          <View style={styles.quickRatingHeader}>
+                            <Ionicons name="star" size={18} color={isViewOnlyMode ? '#C9A44C' : '#F59E0B'} />
+                            <Text style={styles.quickRatingLabel}>
+                              {isViewOnlyMode ? 'Topluluk ortalaması' : 'Tüm kategorilere aynı puanı ver'}
+                            </Text>
                           </View>
+                          
+                          {/* 1-10 Tek Satır - İzleme modunda topluluk verisiyle dolu */}
+                          <View style={styles.quickRatingButtonsSingle}>
+                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((score) => {
+                              // İzleme modunda topluluk ortalamasına göre doldur
+                              const communityAvgRounded = isViewOnlyMode ? Math.round(communityData.communityAvg) : 0;
+                              const isSelected = isViewOnlyMode ? score <= communityAvgRounded : avgRating === score;
+                              const isExactMatch = isViewOnlyMode ? score === communityAvgRounded : avgRating === score;
+                              
+                              return (
+                                <TouchableOpacity
+                                  key={score}
+                                  disabled={isViewOnlyMode}
+                                  style={[
+                                    styles.quickRatingBtnSmall,
+                                    isSelected && styles.quickRatingBtnSmallSelected,
+                                    isViewOnlyMode && isSelected && { backgroundColor: '#C9A44C', borderColor: '#C9A44C' },
+                                    !isViewOnlyMode && isExactMatch && { backgroundColor: getRatingColor(score), borderColor: getRatingColor(score) }
+                                  ]}
+                                  onPress={() => {
+                                    if (ratingTimeInfo.isLocked || isViewOnlyMode) return;
+                                    const newRatings: Record<string, number> = {};
+                                    categories.forEach(cat => { newRatings[cat.id] = score; });
+                                    setPlayerRatings(prev => ({ ...prev, [selectedPlayerId]: newRatings }));
+                                    setPlayerRatingsChanged(true);
+                                    setHasUnsavedPlayerChanges(true);
+                                  }}
+                                  activeOpacity={isViewOnlyMode ? 1 : 0.7}
+                                >
+                                  <Text style={[
+                                    styles.quickRatingBtnSmallText, 
+                                    { color: isSelected ? '#FFFFFF' : (isViewOnlyMode ? '#64748B' : getRatingColor(score)) }
+                                  ]}>{score}</Text>
+                                </TouchableOpacity>
+                              );
+                            })}
+                          </View>
+                        </View>
+                      )}
+                      
+                      {/* Kaydet Footer - İzleme modunda gizle */}
+                      {!isViewOnlyMode && (
+                        <View style={styles.selectedPlayerFooter}>
+                          <LinearGradient
+                            colors={['#0F2A24', '#1E3A3A']}
+                            style={styles.selectedPlayerFooterGradient}
+                          >
+                            <View style={styles.selectedPlayerInfo}>
+                              <Text style={styles.selectedPlayerAvg}>
+                                {selectedPlayer.name} - Ort: {avgRating > 0 ? avgRating.toFixed(1) : '—'}
+                              </Text>
+                            </View>
+                            
+                            <View style={styles.selectedPlayerButtons}>
+                              <TouchableOpacity
+                                style={styles.selectedPlayerBtnCancel}
+                                onPress={() => {
+                                  // Bu oyuncunun puanlarını sil
+                                  setPlayerRatings(prev => {
+                                    const newRatings = { ...prev };
+                                    delete newRatings[selectedPlayerId];
+                                    return newRatings;
+                                  });
+                                  setHasUnsavedPlayerChanges(false);
+                                }}
+                                activeOpacity={0.7}
+                              >
+                                <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                                <Text style={styles.selectedPlayerBtnCancelText}>Sil</Text>
+                              </TouchableOpacity>
+                              
+                              <TouchableOpacity
+                                style={styles.selectedPlayerBtnSave}
+                                onPress={() => {
+                                  handleSavePlayerRatings(true); // silent save - Alert gösterme
+                                  setInitialPlayerRatings({...playerRatings});
+                                  setHasUnsavedPlayerChanges(false);
+                                  
+                                  // ✅ Toast benzeri bildirim göster
+                                  setSaveNotification({
+                                    visible: true,
+                                    playerName: selectedPlayer.name,
+                                    rating: avgRating
+                                  });
+                                  
+                                  // ✅ Kartı kapat - yeni oyuncuya hazır
+                                  setSelectedPlayerId(null);
+                                  
+                                  // 2 saniye sonra bildirimi gizle
+                                  setTimeout(() => {
+                                    setSaveNotification(null);
+                                  }, 2000);
+                                }}
+                                activeOpacity={0.7}
+                              >
+                                <LinearGradient
+                                  colors={['#1FA2A6', '#059669']}
+                                  style={styles.selectedPlayerBtnSaveGradient}
+                                >
+                                  <Ionicons name="checkmark" size={18} color="#FFF" />
+                                  <Text style={styles.selectedPlayerBtnSaveText}>Kaydet</Text>
+                                </LinearGradient>
+                              </TouchableOpacity>
+                            </View>
+                          </LinearGradient>
+                        </View>
+                      )}
+                    </View>
+                  );
+                })()}
+                
+                {/* Oyuncu seçilmemişse info mesajı */}
+                {!selectedPlayerId && !saveNotification?.visible && (
+                  <View style={styles.selectPlayerPrompt}>
+                    <Ionicons name="hand-left-outline" size={32} color="#64748B" />
+                    <Text style={styles.selectPlayerPromptText}>
+                      Değerlendirmek için yukarıdan bir oyuncu seçin
+                    </Text>
+                  </View>
+                )}
+                
+                {/* ✅ Kaydedildi Toast Bildirimi */}
+                {saveNotification?.visible && (
+                  <View style={styles.saveNotificationContainer}>
+                    <LinearGradient
+                      colors={['#059669', '#10B981']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.saveNotificationGradient}
+                    >
+                      <Ionicons name="checkmark-circle" size={24} color="#FFF" />
+                      <View style={styles.saveNotificationTextContainer}>
+                        <Text style={styles.saveNotificationTitle}>Kaydedildi!</Text>
+                        <Text style={styles.saveNotificationSubtitle}>
+                          {saveNotification.playerName} - Ort: {saveNotification.rating.toFixed(1)}
+                        </Text>
+                      </View>
+                    </LinearGradient>
+                  </View>
+                )}
+                
+                {/* ✅ DEĞERLENDİRİLMİŞ OYUNCULAR LİSTESİ */}
+                {(() => {
+                  const ratedPlayers = [...starters, ...substitutesPlayed].filter(p => 
+                    playerRatings[p.id] && Object.keys(playerRatings[p.id]).length > 0
+                  );
+                  
+                  if (ratedPlayers.length === 0) return null;
+                  
+                  return (
+                    <View style={styles.ratedPlayersSection}>
+                      <View style={styles.ratedPlayersHeader}>
+                        <Ionicons name="checkmark-circle" size={16} color="#10B981" />
+                        <Text style={styles.ratedPlayersTitle}>
+                          Değerlendirilen Oyuncular ({ratedPlayers.length})
+                        </Text>
+                      </View>
+                      
+                      {ratedPlayers.map((player) => {
+                        const isGK = isGoalkeeperPosition(player.position || '');
+                        const ratings = playerRatings[player.id] || {};
+                        const ratingValues = Object.values(ratings);
+                        const avg = ratingValues.length > 0 
+                          ? ratingValues.reduce((a, b) => a + b, 0) / ratingValues.length 
+                          : 0;
+                        
+                        return (
+                          <TouchableOpacity
+                            key={player.id}
+                            style={styles.ratedPlayerRow}
+                            onPress={() => {
+                              setSelectedPlayerId(player.id);
+                              const playerIsGK = isGoalkeeperPosition(player.position || '');
+                              setCategoryViewMode(playerIsGK ? 'goalkeeper' : 'outfield');
+                              setSelectedCategoryId(playerIsGK ? 'saves' : 'shooting');
+                            }}
+                            activeOpacity={0.7}
+                          >
+                            <LinearGradient
+                              colors={isGK ? ['#C9A44C', '#8B6914'] : ['#1FA2A6', '#0F2A24']}
+                              style={styles.ratedPlayerJersey}
+                            >
+                              <Text style={styles.ratedPlayerNumber}>{player.number}</Text>
+                            </LinearGradient>
+                            
+                            <View style={styles.ratedPlayerInfo}>
+                              <Text style={styles.ratedPlayerName}>{player.name}</Text>
+                              <Text style={styles.ratedPlayerPos}>{isGK ? 'Kaleci' : player.position}</Text>
+                            </View>
+                            
+                            <View style={[styles.ratedPlayerScore, { backgroundColor: getRatingColor(avg) }]}>
+                              <Text style={styles.ratedPlayerScoreText}>{avg.toFixed(1)}</Text>
+                            </View>
+                            
+                            <Ionicons name="chevron-forward" size={16} color="#64748B" />
+                          </TouchableOpacity>
                         );
-                      })()}
-
-                    </Animated.View>
-                  )}
-                </Animated.View>
-              );
-            })}
-
-            {/* Info Note */}
-            {sortedPlayers.length > 0 && (
-              <View style={styles.playerInfoNote}>
-                <Ionicons name="information-circle-outline" size={14} color="#64748B" />
-                <Text style={styles.playerInfoNoteText}>
-                  Futbolcuya dokunarak detaylı puan verin. Çıkarken kaydetme seçeneği sunulur.
-                </Text>
-              </View>
+                      })}
+                    </View>
+                  );
+                })()}
+                
+                {/* Alt boşluk - sayfa sığması için */}
+                <View style={{ height: 100 }} />
+              </>
             )}
           </View>
         )}
@@ -1794,6 +2383,68 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
               activeOpacity={0.7}
             >
               <Text style={styles.lockPopupCloseBtnText}>Anladım</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* 👁️ İZLEME MODU POPUP - Birleşik (Kırmızı izleme modu + 24 saat kuralı) */}
+      <Modal
+        visible={showViewOnlyPopup}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowViewOnlyPopup(false)}
+      >
+        <Pressable
+          style={styles.savePopupOverlay}
+          onPress={() => setShowViewOnlyPopup(false)}
+        >
+          <Pressable onPress={(e) => e.stopPropagation()} style={styles.lockPopupContainer}>
+            {/* Icon */}
+            <View style={[styles.lockPopupIcon, { backgroundColor: 'rgba(239, 68, 68, 0.15)' }]}>
+              <Ionicons name="eye-off" size={32} color="#EF4444" />
+            </View>
+
+            {/* Title */}
+            <Text style={[styles.lockPopupTitle, { color: '#EF4444' }]}>
+              İzleme Modu
+            </Text>
+
+            {/* Description */}
+            <Text style={styles.lockPopupDesc}>
+              <Text style={{ fontWeight: '700', color: '#EF4444' }}>Kadro tahmini yapmadığınız</Text> için bu maç için değerlendirme yapamazsınız.
+              {'\n\n'}
+              Topluluk puanlarını görüntüleyebilir ancak kendi değerlendirmenizi yapamazsınız.
+            </Text>
+
+            {/* 24 Saat Kuralı Info Card */}
+            <View style={styles.viewOnlyRuleCard}>
+              <View style={styles.viewOnlyRuleHeader}>
+                <Ionicons name="time-outline" size={18} color="#10B981" />
+                <Text style={styles.viewOnlyRuleTitle}>Değerlendirme Kuralı</Text>
+              </View>
+              <Text style={styles.viewOnlyRuleText}>
+                Bu maça kadro tahmini yapan kullanıcılar, maç bittikten sonra{' '}
+                <Text style={{ fontWeight: '700', color: '#10B981' }}>{ratingTimeInfo.hoursRemaining} saat</Text>{' '}
+                boyunca TD ve oyuncuları değerlendirebilir.
+              </Text>
+            </View>
+
+            {/* Gelecek Maçlar Info Card */}
+            <View style={styles.viewOnlyInfoCard}>
+              <Ionicons name="bulb-outline" size={20} color="#F59E0B" />
+              <Text style={styles.viewOnlyInfoText}>
+                Gelecek maçlarda değerlendirme yapabilmek için maç başlamadan önce kadro tahmini yapmalısınız.
+              </Text>
+            </View>
+
+            {/* Close Button */}
+            <TouchableOpacity
+              style={styles.lockPopupCloseBtn}
+              onPress={() => setShowViewOnlyPopup(false)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.lockPopupCloseBtnText}>Anladım, İzlemeye Devam Et</Text>
             </TouchableOpacity>
           </Pressable>
         </Pressable>
@@ -2034,6 +2685,91 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent', // ✅ Grid pattern görünsün - MatchDetail'den geliyor
   },
   
+  // ✅ İzleme Modu - Kilit Satırı
+  viewOnlyLockRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginHorizontal: 12,
+    marginTop: 6,
+    marginBottom: 2,
+    paddingVertical: 6,
+  },
+  viewOnlyLockText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#EF4444',
+  },
+  
+  // ✅ İzleme Modu Popup - 24 Saat Kuralı Kartı
+  viewOnlyRuleCard: {
+    marginTop: 16,
+    padding: 12,
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.25)',
+  },
+  viewOnlyRuleHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  viewOnlyRuleTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#10B981',
+  },
+  viewOnlyRuleText: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: '#94A3B8',
+  },
+  
+  // ✅ İzleme Modu Popup Info Card
+  viewOnlyInfoCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    marginTop: 12,
+    marginBottom: 16, // ✅ Buton ile arasında boşluk
+    padding: 12,
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.25)',
+  },
+  viewOnlyInfoText: {
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 18,
+    color: '#94A3B8',
+  },
+  
+  // Eski stiller (kullanılmıyor ama backward compat için kalabilir)
+  viewOnlyBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginHorizontal: 12,
+    marginTop: 8,
+    marginBottom: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+  },
+  viewOnlyText: {
+    flex: 1,
+    fontSize: 12,
+    color: '#F87171',
+    lineHeight: 16,
+  },
+  
   // Tab Bar - Design System uyumlu, tamamen saydam
   tabsContainer: {
     flexDirection: 'row',
@@ -2082,7 +2818,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
-    paddingBottom: 140, // ✅ Bottom navigation bar için yeterli boşluk (tab bar + safe area)
+    paddingBottom: 180, // ✅ Bottom navigation bar + içerik için yeterli boşluk
   },
   
   // Oyuncu Değerlendirmesi
@@ -2090,6 +2826,871 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 0,
   },
+  
+  // 📊 YENİ UI - Kategori Kartları
+  // 🎯 PLAYER RATING HEADER
+  playerRatingHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+    gap: 10,
+  },
+  playerRatingHeaderLeft: {
+    flex: 1,
+  },
+  playerRatingHeaderTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#E2E8F0',
+  },
+  playerRatingHeaderSubtitle: {
+    fontSize: 11,
+    color: '#94A3B8',
+    marginTop: 2,
+  },
+  
+  // 👤 YATAY OYUNCU KARTLARI - Kadro sekmesi stili
+  playerCardsHorizontalContainer: {
+    marginBottom: 16,
+  },
+  playerCardsHorizontalScroll: {
+    paddingHorizontal: 4,
+    paddingTop: 10,
+    gap: 12,
+  },
+  playerCardMiniWrapper: {
+    position: 'relative',
+    zIndex: 10,
+  },
+  playerCardMini: {
+    width: 72,
+    height: 88,
+    borderRadius: 10,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: 'rgba(100, 116, 139, 0.3)',
+  },
+  playerCardMiniSelected: {
+    borderColor: '#1FA2A6',
+    borderWidth: 2.5,
+  },
+  playerCardMiniMismatch: {
+    opacity: 0.5,
+    borderColor: 'rgba(100, 116, 139, 0.3)',
+  },
+  playerCardMiniDisabled: {
+    opacity: 0.5,
+    borderColor: 'rgba(100, 116, 139, 0.2)',
+  },
+  playerCardMiniGK: {
+    borderColor: '#3B82F6',
+  },
+  playerCardMiniGradient: {
+    flex: 1,
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    gap: 4,
+  },
+  playerCardMiniDelete: {
+    position: 'absolute',
+    top: -8,
+    right: -8,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#EF4444',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 999,
+    elevation: 999,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 4,
+  },
+  playerCardMiniJerseyBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 7,
+    backgroundColor: '#1FA2A6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  playerCardMiniJerseyBadgeGK: {
+    backgroundColor: '#C9A44C',
+  },
+  playerCardMiniNumber: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: '#FFFFFF',
+  },
+  playerCardMiniName: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#E2E8F0',
+    textAlign: 'center',
+    width: '100%',
+  },
+  playerCardMiniBottom: {
+    marginTop: 'auto',
+    alignItems: 'center',
+  },
+  playerCardMiniBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 5,
+  },
+  playerCardMiniBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  playerCardMiniStatus: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    backgroundColor: 'rgba(31, 162, 166, 0.2)',
+  },
+  playerCardMiniStatusText: {
+    fontSize: 8,
+    color: '#1FA2A6',
+  },
+  
+  // 📊 SEÇİLİ OYUNCU PANELİ
+  selectedPlayerPanel: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.25)',
+    backgroundColor: 'rgba(15, 42, 36, 0.95)',
+    padding: 14,
+  },
+  selectedPlayerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    gap: 10,
+  },
+  selectedPlayerHeaderJersey: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  selectedPlayerHeaderNumber: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  selectedPlayerHeaderInfo: {
+    flex: 1,
+  },
+  selectedPlayerHeaderName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#E2E8F0',
+  },
+  selectedPlayerHeaderPos: {
+    fontSize: 11,
+    color: '#94A3B8',
+  },
+  selectedPlayerHeaderAvg: {
+    alignItems: 'flex-end',
+  },
+  selectedPlayerHeaderAvgLabel: {
+    fontSize: 9,
+    color: '#94A3B8',
+  },
+  selectedPlayerHeaderAvgValue: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  // 👁️ İzleme Modu - Topluluk Badge
+  viewOnlyCommunityBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(201, 164, 76, 0.12)',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(201, 164, 76, 0.3)',
+  },
+  viewOnlyCommunityText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#C9A44C',
+  },
+  // 🔀 Değerlendirme Modu Toggle
+  ratingModeToggle: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(15, 42, 36, 0.6)',
+    borderRadius: 10,
+    padding: 3,
+    marginBottom: 12,
+  },
+  ratingModeBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  ratingModeBtnActive: {
+    backgroundColor: 'rgba(31, 162, 166, 0.2)',
+  },
+  ratingModeBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  ratingModeBtnTextActive: {
+    color: '#1FA2A6',
+  },
+  
+  // ⚡ Hızlı Değerlendirme
+  quickRatingContainer: {
+    marginBottom: 12,
+    padding: 10,
+    backgroundColor: 'rgba(245, 158, 11, 0.06)',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.15)',
+  },
+  quickRatingHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginBottom: 10,
+  },
+  quickRatingLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#94A3B8',
+  },
+  quickRatingButtonsSingle: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 4,
+  },
+  quickRatingBtnSmall: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    backgroundColor: 'rgba(15, 42, 36, 0.6)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(100, 116, 139, 0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickRatingBtnSmallSelected: {
+    borderWidth: 2,
+  },
+  quickRatingBtnSmallText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  
+  selectedPlayerSliderContainer: {
+    marginBottom: 12,
+    paddingHorizontal: 4,
+  },
+  selectedPlayerSliderLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#94A3B8',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  categoryCardRatingBadge: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  categoryCardRatingText: {
+    fontSize: 8,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  categoryCardScores: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 6,
+  },
+  categoryCardScoreRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  categoryCardScoreLabel: {
+    fontSize: 10,
+  },
+  categoryCardScoreValue: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  categoryCardVoterInfo: {
+    marginTop: 4,
+    paddingTop: 4,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(201, 164, 76, 0.2)',
+    alignItems: 'center',
+  },
+  categoryCardVoterText: {
+    fontSize: 8,
+    color: '#C9A44C',
+    fontWeight: '500',
+  },
+  selectPlayerPrompt: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+    gap: 10,
+  },
+  selectPlayerPromptText: {
+    fontSize: 13,
+    color: '#64748B',
+    textAlign: 'center',
+  },
+  
+  // ✅ Kaydedildi Toast Bildirimi
+  saveNotificationContainer: {
+    marginVertical: 16,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  saveNotificationGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    gap: 12,
+  },
+  saveNotificationTextContainer: {
+    flex: 1,
+  },
+  saveNotificationTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFF',
+  },
+  saveNotificationSubtitle: {
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.9)',
+    marginTop: 2,
+  },
+  
+  // ✅ Değerlendirilen Oyuncular Listesi
+  ratedPlayersSection: {
+    marginTop: 16,
+    backgroundColor: 'rgba(16, 185, 129, 0.06)',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.15)',
+  },
+  ratedPlayersHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 10,
+  },
+  ratedPlayersTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#10B981',
+  },
+  ratedPlayerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(15, 42, 36, 0.5)',
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 6,
+    gap: 10,
+  },
+  ratedPlayerJersey: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ratedPlayerNumber: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  ratedPlayerInfo: {
+    flex: 1,
+  },
+  ratedPlayerName: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#E2E8F0',
+  },
+  ratedPlayerPos: {
+    fontSize: 10,
+    color: '#94A3B8',
+  },
+  ratedPlayerScore: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  ratedPlayerScoreText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  
+  categoryCardsContainer: {
+    marginBottom: 16,
+  },
+  categoryCardsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+    gap: 10,
+  },
+  categoryCardsTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#94A3B8',
+    display: 'none',
+  },
+  categoryToggleContainer: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(15, 42, 36, 0.6)',
+    borderRadius: 8,
+    padding: 2,
+    flex: 1,
+  },
+  categoryToggleContainerLeft: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(15, 42, 36, 0.7)',
+    borderRadius: 10,
+    padding: 3,
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.15)',
+  },
+  categoryToggleBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  categoryToggleBtnActive: {
+    backgroundColor: 'rgba(31, 162, 166, 0.25)',
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.4)',
+  },
+  categoryToggleBtnContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  categoryToggleEmoji: {
+    fontSize: 18,
+  },
+  categoryToggleBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  categoryToggleBtnTextActive: {
+    color: '#1FA2A6',
+  },
+  categoryLockBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(31, 162, 166, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.2)',
+  },
+  categoryCardsScroll: {
+    paddingRight: 16,
+    gap: 6,
+  },
+  categoryCard: {
+    backgroundColor: 'rgba(15, 42, 36, 0.5)',
+    borderRadius: 12,
+    padding: 12,
+    minWidth: 80,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.15)',
+  },
+  categoryCardFixed: {
+    backgroundColor: 'rgba(15, 42, 36, 0.5)',
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    width: 80,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.15)',
+  },
+  categoryCardSelected: {
+    backgroundColor: 'rgba(31, 162, 166, 0.15)',
+    borderWidth: 2,
+  },
+  categoryCardEmoji: {
+    fontSize: 20,
+    marginBottom: 4,
+  },
+  categoryCardEmojiLarge: {
+    fontSize: 26,
+    marginBottom: 6,
+  },
+  categoryCardTitle: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#94A3B8',
+    textAlign: 'center',
+  },
+  categoryCardTitleFixed: {
+    fontSize: 9,
+    fontWeight: '600',
+    color: '#94A3B8',
+    textAlign: 'center',
+  },
+  categoryCardApiBadge: {
+    backgroundColor: 'rgba(16, 185, 129, 0.2)',
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: 3,
+    marginTop: 4,
+  },
+  categoryCardApiText: {
+    fontSize: 7,
+    fontWeight: '700',
+    color: '#10B981',
+  },
+  
+  // 📋 Oyuncu Listesi
+  playerListContainer: {
+    backgroundColor: 'rgba(15, 42, 36, 0.3)',
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.1)',
+  },
+  playerListHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: 'rgba(31, 162, 166, 0.08)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(31, 162, 166, 0.1)',
+  },
+  playerListTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#94A3B8',
+  },
+  playerListHeaderRight: {
+    flexDirection: 'row',
+    gap: 24,
+  },
+  playerListApiLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#10B981',
+  },
+  playerListUserLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#1FA2A6',
+  },
+  playerListScroll: {
+    maxHeight: 320,
+  },
+  playerListItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(31, 162, 166, 0.05)',
+    gap: 8,
+  },
+  playerListItem2Row: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(31, 162, 166, 0.08)',
+  },
+  playerListRow1: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 8,
+  },
+  playerListRow2: {
+    paddingLeft: 38,
+  },
+  playerListScoreSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginLeft: 'auto',
+  },
+  playerListApiLabel2: {
+    fontSize: 8,
+    color: '#10B981',
+    fontWeight: '500',
+    marginBottom: 2,
+  },
+  playerListUserScore: {
+    alignItems: 'center',
+  },
+  playerListUserLabel2: {
+    fontSize: 8,
+    color: '#1FA2A6',
+    fontWeight: '500',
+    marginBottom: 2,
+  },
+  playerListUserScoreText: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  playerListItemSelected: {
+    backgroundColor: 'rgba(31, 162, 166, 0.12)',
+    borderRadius: 8,
+  },
+  playerListItemDisabled: {
+    opacity: 0.6,
+  },
+  playerGroupHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    gap: 10,
+  },
+  playerGroupBadge: {
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  playerGroupBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#10B981',
+    letterSpacing: 0.5,
+  },
+  playerGroupLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(16, 185, 129, 0.3)',
+  },
+  playerListJersey: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  playerListJerseyText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  playerListInfo: {
+    flex: 1,
+    minWidth: 60,
+  },
+  playerListName: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#E2E8F0',
+  },
+  playerListPosition: {
+    fontSize: 9,
+    color: '#64748B',
+  },
+  playerListApiScore: {
+    alignItems: 'center',
+  },
+  playerListApiScoreText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#10B981',
+  },
+  playerListApiScoreTextOld: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#10B981',
+  },
+  playerListSliderContainer: {
+    flex: 1,
+    maxWidth: 120,
+  },
+  
+  // 🦶 Seçili Oyuncu Footer
+  // 👔 TD KAYDET FOOTER
+  coachSaveFooter: {
+    marginTop: 16,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  coachSaveFooterGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 12,
+  },
+  coachSaveInfo: {
+    alignItems: 'flex-start',
+  },
+  coachSaveLabel: {
+    fontSize: 10,
+    color: '#94A3B8',
+    fontWeight: '500',
+  },
+  coachSaveScore: {
+    fontSize: 22,
+    fontWeight: '700',
+  },
+  coachSaveButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  coachSaveBtnCancel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+  },
+  coachSaveBtnCancelText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#EF4444',
+  },
+  coachSaveBtnSave: {
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  coachSaveBtnSaveGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  coachSaveBtnSaveText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  
+  // ⚽ OYUNCU KAYDET FOOTER
+  selectedPlayerFooter: {
+    marginTop: 16,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  selectedPlayerFooterGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 12,
+  },
+  selectedPlayerInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  selectedPlayerJersey: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  selectedPlayerJerseyText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  selectedPlayerName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#E2E8F0',
+  },
+  selectedPlayerAvg: {
+    fontSize: 11,
+    color: '#1FA2A6',
+    fontWeight: '500',
+  },
+  selectedPlayerButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  selectedPlayerBtnCancel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+  },
+  selectedPlayerBtnCancelText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#EF4444',
+  },
+  selectedPlayerBtnSave: {
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  selectedPlayerBtnSaveGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  selectedPlayerBtnSaveText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  
   // (Player section header removed - score comparison now inside each player card)
   notStartedCard: {
     backgroundColor: '#1E3A3A', // ✅ Design System: Card background
@@ -2154,19 +3755,39 @@ const styles = StyleSheet.create({
     color: '#1FA2A6',
     letterSpacing: 1.5,
   },
+  coachHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginBottom: 16,
+  },
+  coachHeaderLeft: {
+    flex: 1,
+  },
+  coachLockBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(31, 162, 166, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.2)',
+  },
   headerTitle: {
     fontSize: 20,
     fontWeight: '800',
     color: '#FFFFFF',
-    textAlign: 'center',
+    textAlign: 'left',
     marginBottom: 4,
     letterSpacing: -0.3,
   },
   headerSubtitle: {
     fontSize: 12,
     color: '#64748B',
-    textAlign: 'center',
-    marginBottom: 16,
+    textAlign: 'left',
+    marginBottom: 0,
     letterSpacing: 0.3,
   },
   scoreComparisonCard: {
@@ -2187,6 +3808,9 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
   },
+  scoreColumnDisabled: {
+    opacity: 0.6,
+  },
   scoreLabelRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2205,6 +3829,21 @@ const styles = StyleSheet.create({
     position: 'relative',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  scoreCircleDisabled: {
+    width: 110,
+    height: 110,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(100, 116, 139, 0.15)',
+    borderRadius: 55,
+    borderWidth: 6,
+    borderColor: 'rgba(100, 116, 139, 0.25)',
+  },
+  scoreTextDisabled: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: '#64748B',
   },
   scoreSvg: {
     position: 'absolute',

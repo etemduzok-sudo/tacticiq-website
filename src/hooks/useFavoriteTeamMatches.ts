@@ -488,11 +488,16 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
         }
       } catch (err: any) {
         logger.error('❌ Live matches fetch error', { error: err.message }, 'MATCHES');
-        // Backend bağlantı hatası kontrolü
+        // Backend bağlantı hatası kontrolü (timeout dahil)
         if (err.message?.includes('Failed to fetch') || 
             err.message?.includes('NetworkError') || 
             err.message?.includes('ERR_CONNECTION_REFUSED') ||
-            err.message?.includes('Backend bağlantısı')) {
+            err.message?.includes('Backend bağlantısı') ||
+            err.message?.includes('zaman aşımı') ||
+            err.message?.includes('timed out') ||
+            err.message?.includes('timeout') ||
+            err.name === 'TimeoutError' ||
+            err.name === 'AbortError') {
           backendConnectionError = true;
           logger.warn('Backend bağlantısı kurulamadı (live matches)', { error: err.message }, 'API');
         }
@@ -555,6 +560,13 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
                 }
               } catch (err: any) {
                 logger.error(`❌ ${team.name} season ${season} fetch error`, { error: err.message, stack: err.stack }, 'MATCHES');
+                // Timeout hatalarını yakala
+                if (err.name === 'AbortError' || 
+                    err.name === 'TimeoutError' ||
+                    err.message?.includes('timed out') ||
+                    err.message?.includes('timeout')) {
+                  backendConnectionError = true;
+                }
                 return [];
               }
             });
@@ -579,12 +591,25 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
               }
             } catch (err: any) {
               logger.debug(`❌ ${team.name} season ${currentSeason} fetch error`, { error: (err as Error).message }, 'MATCHES');
+              // Timeout hatalarını yakala
+              if (err.name === 'AbortError' || 
+                  err.name === 'TimeoutError' ||
+                  err.message?.includes('timed out') ||
+                  err.message?.includes('timeout')) {
+                backendConnectionError = true;
+              }
             }
           }
           
           return teamMatches;
         } catch (err: any) {
-          if (err.name === 'AbortError' || err.message?.includes('ERR_CONNECTION_REFUSED')) {
+          // Timeout ve connection hatalarını yakala
+          if (err.name === 'AbortError' || 
+              err.name === 'TimeoutError' ||
+              err.message?.includes('ERR_CONNECTION_REFUSED') ||
+              err.message?.includes('timed out') ||
+              err.message?.includes('timeout') ||
+              err.message?.includes('zaman aşımı')) {
             backendConnectionError = true;
           }
           return [];

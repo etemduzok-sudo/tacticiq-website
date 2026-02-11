@@ -29,7 +29,7 @@ import { profileService } from '../services/profileService';
 import { isSuperAdmin } from '../config/constants';
 import { AnalysisFocusModal, AnalysisFocusType } from './AnalysisFocusModal';
 import { ConfirmModal } from './ui/ConfirmModal';
-import { CountdownWarningModal } from './ui/CountdownWarningModal';
+// CountdownWarningModal kaldırıldı - 120 saniyelik kural artık yok
 import { getTeamColors } from '../utils/teamColors';
 import { useMatchesWithPredictions } from '../hooks/useMatchesWithPredictions';
 import { useTranslation } from '../hooks/useTranslation';
@@ -99,12 +99,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
     isLive: boolean;
     isFinished: boolean;
   } | null>(null);
-  // ✅ Maç başlangıcına yakın tahmin yapma uyarısı modal state
-  const [countdownWarningModal, setCountdownWarningModal] = useState<{
-    match: any;
-    remainingSeconds: number;
-    onContinue: () => void;
-  } | null>(null);
+  // ✅ 120 saniyelik uyarı state'i kaldırıldı - artık kullanılmıyor
   
   // ✅ Maça tıklandığında: İki favori takım varsa popup göster, yoksa direkt devam et
   const handleMatchPress = (match: any) => {
@@ -114,43 +109,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
       // Web'de Haptics çalışmayabilir, sorun değil
     }
     
-    // ✅ Maç başlangıcına 120 saniye kala kontrolü
-    const matchTimestamp = match?.fixture?.timestamp;
-    const fixtureId = match?.fixture?.id;
-    let matchStartTime: number | null = null;
-    
-    // Mock maçlar için özel kontrol
-    if (fixtureId && isMockTestMatch(Number(fixtureId))) {
-      matchStartTime = Number(fixtureId) === MOCK_MATCH_IDS.GS_FB ? getMatch1Start() : getMatch2Start();
-    } else if (matchTimestamp) {
-      matchStartTime = matchTimestamp * 1000; // Saniye cinsinden, milisaniyeye çevir
-    }
-    
-    if (matchStartTime) {
-      const now = Date.now();
-      const remainingMs = matchStartTime - now;
-      const remainingSeconds = Math.floor(remainingMs / 1000);
-      
-      // Maç başlamamışsa ve 120 saniye veya daha az kaldıysa popup göster
-      if (remainingSeconds > 0 && remainingSeconds <= 120) {
-        // Tahmin yapılmamışsa veya tahmin yapılmış ama kaydedilmemişse popup göster
-        const hasPrediction = fixtureId != null && matchIdsWithPredictions.has(fixtureId);
-        if (!hasPrediction) {
-          // Popup göster ve devam etme işlemini modal'a bırak
-          setCountdownWarningModal({
-            match,
-            remainingSeconds,
-            onContinue: () => {
-              setCountdownWarningModal(null);
-              // Normal akışa devam et
-              handleMatchPressInternal(match);
-            },
-          });
-          return;
-        }
-      }
-    }
-    
+    // ✅ 120 saniyelik uyarı kaldırıldı - artık maç başlayana kadar serbestçe tahmin yapılabilir
     // Normal akışa devam et
     handleMatchPressInternal(match);
   };
@@ -1874,15 +1833,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
         </Modal>
       )}
 
-      {/* ✅ Maç başlangıcına yakın tahmin yapma uyarısı modal */}
-      {countdownWarningModal && (
-        <CountdownWarningModal
-          visible={true}
-          remainingSeconds={countdownWarningModal.remainingSeconds}
-          onContinue={countdownWarningModal.onContinue}
-          onCancel={() => setCountdownWarningModal(null)}
-        />
-      )}
+      {/* ✅ 120 saniyelik CountdownWarningModal kaldırıldı - artık kullanılmıyor */}
     </View>
   );
 });

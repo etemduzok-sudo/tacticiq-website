@@ -134,8 +134,13 @@ app.use(compression()); // Compress responses
 app.use(express.json());
 
 // 🔥 API Rate Limiter (7,500 calls/day)
-const { rateLimiterMiddleware, getStats } = require('./middleware/rateLimiter');
+const { rateLimiterMiddleware, getStats, resetCounter, DISABLE_RATE_LIMITER } = require('./middleware/rateLimiter');
 app.use(rateLimiterMiddleware);
+
+// Development modunda rate limiter durumunu logla
+if (DISABLE_RATE_LIMITER) {
+  console.log('⚠️ [RATE LIMITER] Development modunda DEVRE DIŞI');
+}
 
 // 🚀 Aggressive Cache Service: Render için listen'den SONRA başlatılacak (setImmediate içinde)
 
@@ -187,7 +192,18 @@ app.get('/api/rate-limit/stats', (req, res) => {
     todaysCalls,
     remaining,
     limit,
+    rateLimiterDisabled: DISABLE_RATE_LIMITER,
   });
+});
+
+// 🔄 Rate Limiter Reset (Development only)
+app.post('/api/rate-limit/reset', (req, res) => {
+  if (process.env.NODE_ENV !== 'development') {
+    return res.status(403).json({ success: false, error: 'Only available in development mode' });
+  }
+  const result = resetCounter();
+  console.log('🔄 [RATE LIMITER] Counter reset via API');
+  res.json({ success: true, ...result, message: 'Rate limiter counter reset successfully' });
 });
 
 // 🚀 Aggressive Cache Stats

@@ -91,14 +91,8 @@ function incrementCallCounter(type) {
 }
 
 // 1. Refresh Live Matches (every 12 seconds) - 7,200 calls/day
-// ⏸️ GEÇİCİ OLARAK DURDURULDU: API hakkı takım kadroları için kullanılıyor
 // ✅ API-Football /fixtures?live=all endpoint'i hem maçları hem event'leri içeriyor!
 async function refreshLiveMatches() {
-  // ⏸️ API hakkı takım kadroları için kullanılıyor - geçici olarak devre dışı
-  console.log('⏸️ [LIVE] Temporarily disabled - API quota reserved for squad sync');
-  return;
-  
-  /* ORIGINAL CODE - Re-enable when squad sync is complete
   try {
     console.log('🔴 [LIVE] Fetching live matches with events...');
     const data = await footballApi.getLiveMatches();
@@ -140,7 +134,6 @@ async function refreshLiveMatches() {
   } catch (error) {
     console.error('❌ [LIVE] Error:', error.message);
   }
-  */
 }
 
 // 2. Refresh Upcoming Matches (every 2 hours) - 72 calls/day

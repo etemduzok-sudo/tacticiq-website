@@ -52,6 +52,15 @@ import {
   MIN_USERS_FOR_PERCENTAGE,
   MIN_USERS_FOR_PERCENTAGE_MOCK,
 } from '../../types/signals.types';
+import {
+  calculatePredictionTiming,
+  getMatchPhase,
+  getOccurredEvents,
+  getTimingBadgeProps,
+  TIMING_LABELS,
+  type MatchPhase,
+  type MatchEvent as TimingMatchEvent,
+} from '../../utils/predictionTiming';
 
 // 🌟 Her analiz odağının BİRİNCİL tahmin kategorileri (UI gösterimi için)
 // Merkezi mapping: src/config/analysisFocusMapping.ts
@@ -466,7 +475,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
   const [isSaving, setIsSaving] = useState(false); // ✅ Kaydetme işlemi devam ediyor mu?
   const [isPredictionLocked, setIsPredictionLocked] = useState(false); // ✅ Tahminler kilitli mi? (kırmızı kilit)
   const [showLockedWarningModal, setShowLockedWarningModal] = useState(false); // ✅ Web için kilitli uyarı modal'ı
-  const predictionTimeoutRef = React.useRef<number | null>(null); // ✅ Maç başladıktan sonra 2 dakika timeout
+  // ✅ 120 saniyelik timeout kaldırıldı - predictionTimeoutRef artık kullanılmıyor
   
   // 🌟 STRATEGIC FOCUS SYSTEM
   const [selectedAnalysisFocus, setSelectedAnalysisFocus] = useState<AnalysisFocusType | null>(null);
@@ -492,6 +501,185 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
   // ✅ TOPLULUK VERİLERİ GÖRÜNÜRLüK KONTROLÜ
   // Kural: Tahmin kaydedildikten sonra VEYA maç canlı/bitmiş ise topluluk verileri görünür
   const communityDataVisible = hasPrediction || isMatchLive || isMatchFinished;
+  
+  // ✅ MAÇ DURUMU VE TIMING SİSTEMİ
+  // Maç phase'i ve gerçekleşen olayları hesapla (predictionTiming.ts kullanarak)
+  const matchPhase = useMemo<MatchPhase>(() => {
+    const status = matchData?.status || matchData?.fixture?.status?.short || 'NS';
+    const elapsed = matchData?.fixture?.status?.elapsed || null;
+    return getMatchPhase(status, elapsed);
+  }, [matchData?.status, matchData?.fixture?.status?.short, matchData?.fixture?.status?.elapsed]);
+  
+  // ✅ Gerçekleşen olayları takip et (mock veya API'den)
+  const [occurredEvents, setOccurredEvents] = useState<TimingMatchEvent[]>([]);
+  
+  // ✅ Maç olaylarını izle ve güncelle
+  React.useEffect(() => {
+    if (!isMatchLive && !isMatchFinished) {
+      setOccurredEvents([]);
+      return;
+    }
+    
+    // Mock maçlar için olayları simüle et
+    const matchIdNum = matchId ? Number(matchId) : null;
+    if (matchIdNum && isMockTestMatch(matchIdNum)) {
+      const mockEvents: { type: string; detail?: string }[] = [];
+      // Mock eventleri oluştur (gerçek API'den gelecek)
+      const events = getOccurredEvents(mockEvents, matchPhase);
+      setOccurredEvents(events);
+    } else {
+      // Gerçek maçlar için matchData.events kullan
+      const realEvents = matchData?.events || [];
+      const events = getOccurredEvents(realEvents.map((e: any) => ({
+        type: e.type || '',
+        detail: e.detail || '',
+      })), matchPhase);
+      setOccurredEvents(events);
+    }
+  }, [matchPhase, isMatchLive, isMatchFinished, matchId, matchData?.events]);
+  
+  // ✅ Tahmin kategorisi için timing badge bilgisi al
+  const getTimingInfo = React.useCallback((category: string) => {
+    return getTimingBadgeProps(category, matchPhase, occurredEvents);
+  }, [matchPhase, occurredEvents]);
+  
+  // ✅ GERÇEK MAÇ SONUÇLARI (Tahmin doğruluk kontrolü için)
+  // Maç canlı veya bitmişse gerçek sonuçları takip et
+  const [actualResults, setActualResults] = useState<{
+    // Skor tahminleri
+    firstHalfHomeScore: number | null;
+    firstHalfAwayScore: number | null;
+    secondHalfHomeScore: number | null;
+    secondHalfAwayScore: number | null;
+    fullTimeHomeScore: number | null;
+    fullTimeAwayScore: number | null;
+    // Kart ve gol istatistikleri
+    totalYellowCards: number | null;
+    totalRedCards: number | null;
+    totalGoals: number | null;
+    firstGoalMinute: number | null;
+    // Oyuncu bazlı sonuçlar
+    playerEvents: Record<number, {
+      goals: number;
+      assists: number;
+      yellowCards: number;
+      redCards: number;
+      substitutedOut: boolean;
+      substituteMinute: number | null;
+    }>;
+  }>({
+    firstHalfHomeScore: null,
+    firstHalfAwayScore: null,
+    secondHalfHomeScore: null,
+    secondHalfAwayScore: null,
+    fullTimeHomeScore: null,
+    fullTimeAwayScore: null,
+    totalYellowCards: null,
+    totalRedCards: null,
+    totalGoals: null,
+    firstGoalMinute: null,
+    playerEvents: {},
+  });
+  
+  // ✅ Gerçek sonuçları güncelle (maç canlı veya bitmişse)
+  React.useEffect(() => {
+    if (!isMatchLive && !isMatchFinished) return;
+    
+    // Mock maçlar için sonuçları simüle et
+    const matchIdNum = matchId ? Number(matchId) : null;
+    if (matchIdNum && isMockTestMatch(matchIdNum)) {
+      // Mock sonuçlar - gerçek API'den gelecek
+      const mockResults = {
+        firstHalfHomeScore: matchPhase !== 'first_half' && matchPhase !== 'not_started' ? 1 : null,
+        firstHalfAwayScore: matchPhase !== 'first_half' && matchPhase !== 'not_started' ? 0 : null,
+        secondHalfHomeScore: isMatchFinished ? 2 : null,
+        secondHalfAwayScore: isMatchFinished ? 1 : null,
+        fullTimeHomeScore: isMatchFinished ? 3 : null,
+        fullTimeAwayScore: isMatchFinished ? 1 : null,
+        totalYellowCards: isMatchFinished ? 4 : null,
+        totalRedCards: isMatchFinished ? 0 : null,
+        totalGoals: isMatchFinished ? 4 : null,
+        firstGoalMinute: 23,
+        playerEvents: {},
+      };
+      setActualResults(mockResults);
+    } else {
+      // Gerçek maç - matchData'dan al
+      const homeScore = matchData?.goals?.home ?? matchData?.score?.home ?? null;
+      const awayScore = matchData?.goals?.away ?? matchData?.score?.away ?? null;
+      const htHome = matchData?.score?.halftime?.home ?? null;
+      const htAway = matchData?.score?.halftime?.away ?? null;
+      
+      setActualResults({
+        firstHalfHomeScore: htHome,
+        firstHalfAwayScore: htAway,
+        secondHalfHomeScore: homeScore !== null && htHome !== null ? homeScore - htHome : null,
+        secondHalfAwayScore: awayScore !== null && htAway !== null ? awayScore - htAway : null,
+        fullTimeHomeScore: homeScore,
+        fullTimeAwayScore: awayScore,
+        totalYellowCards: null, // API'den çekilecek
+        totalRedCards: null,
+        totalGoals: homeScore !== null && awayScore !== null ? homeScore + awayScore : null,
+        firstGoalMinute: null,
+        playerEvents: {},
+      });
+    }
+  }, [matchPhase, isMatchLive, isMatchFinished, matchId, matchData]);
+  
+  // ✅ Tahmin doğruluğunu kontrol et
+  const checkPredictionAccuracy = React.useCallback((category: string, predictedValue: any): { isCorrect: boolean | null; actualValue: any } => {
+    if (!isMatchLive && !isMatchFinished) {
+      return { isCorrect: null, actualValue: null };
+    }
+    
+    let actualValue: any = null;
+    let isCorrect: boolean | null = null;
+    
+    switch (category) {
+      case 'firstHalfHomeScore':
+        actualValue = actualResults.firstHalfHomeScore;
+        if (actualValue !== null) {
+          isCorrect = Number(predictedValue) === actualValue;
+        }
+        break;
+      case 'firstHalfAwayScore':
+        actualValue = actualResults.firstHalfAwayScore;
+        if (actualValue !== null) {
+          isCorrect = Number(predictedValue) === actualValue;
+        }
+        break;
+      case 'totalGoals':
+        actualValue = actualResults.totalGoals;
+        if (actualValue !== null && predictedValue) {
+          // Range kontrolü: '0-1 gol', '2-3 gol', '4-5 gol', '6+ gol'
+          const ranges: Record<string, [number, number]> = {
+            '0-1 gol': [0, 1],
+            '2-3 gol': [2, 3],
+            '4-5 gol': [4, 5],
+            '6+ gol': [6, 100],
+          };
+          const range = ranges[predictedValue];
+          if (range) {
+            isCorrect = actualValue >= range[0] && actualValue <= range[1];
+          }
+        }
+        break;
+      // Diğer kategoriler için benzer kontroller eklenebilir
+      default:
+        break;
+    }
+    
+    return { isCorrect, actualValue };
+  }, [actualResults, isMatchLive, isMatchFinished]);
+  
+  // ✅ Tahmin karşılaştırma popup state'i
+  const [comparisonModal, setComparisonModal] = useState<{
+    category: string;
+    categoryLabel: string;
+    predicted: any;
+    actual: any;
+    isCorrect: boolean;
+  } | null>(null);
   
   // ✅ CANLI MAÇ SİNYALLERİ (Community Signals)
   // Sadece canlı maçlarda aktif - her oyuncu için sinyal verileri
@@ -943,34 +1131,9 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
     if (isSaving) return; // Zaten kaydediliyor, tekrar basılmasın
     
     try {
-      // ✅ Maç başlangıcından sonra +2 dakika kontrolü
-      const matchTimestamp = matchData?.timestamp;
-      const fixtureId = matchId ? Number(matchId) : null;
-      let matchStartTime: number | null = null;
-      
-      // Mock maçlar için özel kontrol
-      if (fixtureId && isMockTestMatch(fixtureId)) {
-        matchStartTime = fixtureId === MOCK_MATCH_IDS.GS_FB ? getMatch1Start() : getMatch2Start();
-      } else if (matchTimestamp) {
-        matchStartTime = matchTimestamp * 1000; // Saniye cinsinden, milisaniyeye çevir
-      }
-      
-      if (matchStartTime) {
-        const now = Date.now();
-        const elapsedMs = now - matchStartTime;
-        const elapsedSeconds = Math.floor(elapsedMs / 1000);
-        const EXTRA_TIME_AFTER_START = 120; // 2 dakika = 120 saniye
-        
-        // Maç başladıysa ve 2 dakikadan fazla geçtiyse kaydetme
-        if (elapsedSeconds > EXTRA_TIME_AFTER_START) {
-          Alert.alert(
-            'Süre Doldu!',
-            'Maç başladıktan sonra 2 dakika içinde tahmin yapmanız gerekiyordu. Artık tahmin yapamazsınız.',
-            [{ text: 'Tamam' }]
-          );
-          return;
-        }
-      }
+      // ✅ YENİ KURAL: 120 saniyelik kısıtlama kaldırıldı
+      // Tahminler maç boyunca yapılabilir, sadece puan etkisi değişir (predictionTiming.ts)
+      // Maç bittikten sonra da tahmin yapılabilir (çok düşük puan ile)
       
       // Check if at least some predictions are made
       const hasMatchPredictions = Object.values(predictions).some(v => v !== null);
@@ -1136,67 +1299,8 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
     }
   }, [hasUnsavedChanges, isPredictionLocked, onHasUnsavedChanges, stableSavePredictions]);
 
-  // ✅ Maç başladıktan sonra +2 dakika içinde tahmin yapılmazsa veya kaydedilmezse, tahmin yapılmamış maç gibi davran
-  React.useEffect(() => {
-    if (isMatchFinished) return;
-    
-    const matchTimestamp = matchData?.timestamp;
-    const fixtureId = matchId ? Number(matchId) : null;
-    let matchStartTime: number | null = null;
-    
-    // Mock maçlar için özel kontrol
-    if (fixtureId && isMockTestMatch(fixtureId)) {
-      matchStartTime = fixtureId === MOCK_MATCH_IDS.GS_FB ? getMatch1Start() : getMatch2Start();
-    } else if (matchTimestamp) {
-      matchStartTime = matchTimestamp * 1000; // Saniye cinsinden, milisaniyeye çevir
-    }
-    
-    if (!matchStartTime) return;
-    
-    const now = Date.now();
-    const elapsedMs = now - matchStartTime;
-    const elapsedSeconds = Math.floor(elapsedMs / 1000);
-    const EXTRA_TIME_AFTER_START = 120; // 2 dakika = 120 saniye
-    
-    // Maç başladıysa ve henüz 2 dakika geçmediyse timeout kur
-    if (elapsedSeconds >= 0 && elapsedSeconds <= EXTRA_TIME_AFTER_START) {
-      const remainingMs = (EXTRA_TIME_AFTER_START - elapsedSeconds) * 1000;
-      
-      // Önceki timeout'u temizle
-      if (predictionTimeoutRef.current) {
-        clearTimeout(predictionTimeoutRef.current);
-      }
-      
-      // Kalan süre kadar sonra timeout
-      predictionTimeoutRef.current = setTimeout(() => {
-        // Tahmin yapılmamış veya kaydedilmemişse, tahmin yapılmamış maç gibi davran
-        if (!isPredictionLocked && hasUnsavedChanges) {
-          // Kaydedilmemiş değişiklikleri temizle
-          setHasUnsavedChanges(false);
-          // Tahminleri sıfırla (isteğe bağlı - kullanıcı deneyimi için)
-          console.log('⏰ Tahmin süresi doldu - tahmin yapılmamış maç gibi davranılıyor');
-        }
-        predictionTimeoutRef.current = null;
-      }, remainingMs) as unknown as number;
-      
-      return () => {
-        if (predictionTimeoutRef.current) {
-          clearTimeout(predictionTimeoutRef.current);
-          predictionTimeoutRef.current = null;
-        }
-      };
-    } else if (elapsedSeconds > EXTRA_TIME_AFTER_START) {
-      // Süre dolmuşsa hemen temizle
-      if (predictionTimeoutRef.current) {
-        clearTimeout(predictionTimeoutRef.current);
-        predictionTimeoutRef.current = null;
-      }
-      if (!isPredictionLocked && hasUnsavedChanges) {
-        setHasUnsavedChanges(false);
-        console.log('⏰ Tahmin süresi doldu - tahmin yapılmamış maç gibi davranılıyor');
-      }
-    }
-  }, [matchData?.timestamp, matchId, isMatchFinished, isPredictionLocked, hasUnsavedChanges]);
+  // ✅ 120 saniyelik timeout mantığı kaldırıldı - tahminler maç boyunca yapılabilir
+  // Event bazlı puan sistemi predictionTiming.ts'te tanımlı
 
   const handlePredictionChange = (category: string, value: string | number) => {
     // ✅ Tahminler kilitliyse değişiklik yapılamaz
@@ -1458,6 +1562,10 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                 );
               }
               
+              // ✅ YENİ KURAL: Kadro tahmini yapılmadıysa izleme modu
+              // hasPrediction = kullanıcının bu maç için kadro tahmini yapıp yapmadığı
+              const isViewOnlyMode = !hasPrediction && (isMatchLive || isMatchFinished);
+              
               const positions = formationPositions[attackFormation] || mockPositions;
               // ✅ Kadro ile aynı: formasyon slot etiketi (GK, LB, CB, CDM, ...) kullan
               const slotLabels = formationLabels[attackFormation] || [];
@@ -1570,10 +1678,14 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                         // 2️⃣ Maç öncesi: Elit oyuncular (85+) altın çerçeve, kaleciler mavi çerçeve
                         !(isMatchLive || isMatchFinished) && player.rating >= 85 && styles.playerCardElite,
                         !(isMatchLive || isMatchFinished) && player.rating < 85 && (player.position === 'GK' || isGoalkeeperPlayer(player)) && styles.playerCardGK,
-                        // 3️⃣ CANLI MAÇ: Sinyal çerçevesi (en yüksek öncelikli sinyale göre)
+                        // 3️⃣ CANLI MAÇ: Sinyal çerçevesi (şık, ince + glow efekti)
                         signalBorderStyle && {
                           borderColor: signalBorderStyle.borderColor,
                           borderWidth: signalBorderStyle.borderWidth,
+                          // Web için boxShadow ile glow efekti
+                          ...(Platform.OS === 'web' && signalBorderStyle.glowColor ? {
+                            boxShadow: `0 0 ${signalBorderStyle.glowRadius || 6}px ${signalBorderStyle.glowColor}`,
+                          } : {}),
                         },
                         // 4️⃣ Canlı/bitmiş maç: Topluluk çerçevesi (sinyal yoksa)
                         !signalBorderStyle && communityBorder && {
@@ -1583,8 +1695,19 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                         // 5️⃣ Canlı/bitmiş maç fallback (topluluk verisi yoksa)
                         !signalBorderStyle && !communityBorder && (isMatchLive || isMatchFinished) && (positionLabel === 'GK' || isGoalkeeperPlayer(player)) && styles.playerCardGKCommunity,
                         !signalBorderStyle && !communityBorder && (isMatchLive || isMatchFinished) && (positionLabel === 'ST' || (player.position && String(player.position).toUpperCase() === 'ST')) && styles.playerCardSTCommunity,
+                        // 6️⃣ İzleme modu: Kadro tahmini yapılmadıysa soluk görünüm
+                        isViewOnlyMode && { opacity: 0.7 },
                       ]}
                       onPress={() => {
+                        // ✅ İZLEME MODU: Kadro tahmini yapılmadıysa tahmin yapılamaz
+                        if (isViewOnlyMode) {
+                          Alert.alert(
+                            'İzleme Modu',
+                            'Kadro tahmini yapmadığınız için tahmin yapamazsınız.\n\nTopluluk tahminlerini görmek için "i" butonuna tıklayabilirsiniz.',
+                            [{ text: 'Tamam' }]
+                          );
+                          return;
+                        }
                         // ✅ Kilit kontrolü: Tahminler kilitliyken bilgilendirme göster
                         if (isPredictionLocked) {
                           // Web için özel modal kullan (Alert.alert web'de çalışmıyor)
@@ -1594,7 +1717,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                         // ✅ Kilit açıksa modal'ı aç
                         setSelectedPlayer(player);
                       }}
-                      activeOpacity={0.8}
+                      activeOpacity={isViewOnlyMode ? 1 : 0.8}
                     >
                       <LinearGradient
                         colors={['#1E3A3A', '#0F2A24']}
@@ -1629,17 +1752,30 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
           </View>
         </FootballField>
 
-        {/* ✅ Bildirim: Oyuncu kartlarına tıklayın + kilit bilgisi */}
-        <View style={styles.infoNote}>
-          <Ionicons name="information-circle" size={16} color="#9CA3AF" />
-          <Text style={styles.infoText} numberOfLines={2}>
-            Tahmin yapmak için oyuncu kartlarına tıklayın ve aşağı kaydırın. Tahminleri değiştirmek için kilidi açın
-          </Text>
-          <Ionicons name="lock-open" size={14} color="#10B981" style={{ marginLeft: 4 }} />
-        </View>
+        {/* ✅ Bildirim: Oyuncu kartlarına tıklayın + kilit bilgisi VEYA izleme modu mesajı */}
+        {!hasPrediction && (isMatchLive || isMatchFinished) ? (
+          <View style={[styles.infoNote, { backgroundColor: 'rgba(239, 68, 68, 0.15)', borderColor: 'rgba(239, 68, 68, 0.3)' }]}>
+            <Ionicons name="eye-outline" size={16} color="#EF4444" />
+            <Text style={[styles.infoText, { color: '#F87171' }]} numberOfLines={2}>
+              Kadro tahmini yapmadığınız için tahmin yapamazsınız. Topluluk verilerini görmek için "i" butonlarına tıklayın.
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.infoNote}>
+            <Ionicons name="information-circle" size={16} color="#9CA3AF" />
+            <Text style={styles.infoText} numberOfLines={2}>
+              Tahmin yapmak için oyuncu kartlarına tıklayın ve aşağı kaydırın. Tahminleri değiştirmek için kilidi açın
+            </Text>
+            <Ionicons name="lock-open" size={14} color="#10B981" style={{ marginLeft: 4 }} />
+          </View>
+        )}
 
         {/* PREDICTION CATEGORIES - COMPLETE */}
-        <View style={styles.predictionsSection}>
+        {/* ✅ İZLEME MODU: Kadro tahmini yapılmadıysa tüm tahmin alanları devre dışı */}
+        <View style={[
+          styles.predictionsSection,
+          !hasPrediction && (isMatchLive || isMatchFinished) && { opacity: 0.5, pointerEvents: 'none' as const }
+        ]}>
           {/* ═══════════════════════════════════════════════════════════
               1. İLK YARI - Skor + Uzatma Süresi (Kombine Kart)
           ═══════════════════════════════════════════════════════════ */}
@@ -1647,6 +1783,11 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
             style={[styles.categoryCardCombined, styles.categoryCardFirstHalf]}
             activeOpacity={1}
             onPress={() => {
+              // ✅ İzleme modu kontrolü
+              if (!hasPrediction && (isMatchLive || isMatchFinished)) {
+                Alert.alert('İzleme Modu', 'Kadro tahmini yapmadığınız için tahmin yapamazsınız.');
+                return;
+              }
               // ✅ Kilitliyse bildirim göster
               if (isPredictionLocked) {
                 // Web için özel modal kullan (Alert.alert web'de çalışmıyor)
@@ -2641,6 +2782,98 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
           buttons={confirmModal.buttons}
           onRequestClose={() => setConfirmModal(null)}
         />
+      )}
+
+      {/* ✅ TAHMİN KARŞILAŞTIRMA POPUP'I - Yeşil/Kırmızı sonuç gösterimi */}
+      {comparisonModal && (
+        <Modal
+          visible={true}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setComparisonModal(null)}
+          statusBarTranslucent
+        >
+          <View style={{
+            flex: 1,
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: 16,
+          }}>
+            <View style={{
+              backgroundColor: '#1A2E2A',
+              borderRadius: 16,
+              width: '100%',
+              maxWidth: 400,
+              padding: 20,
+              borderWidth: 2,
+              borderColor: comparisonModal.isCorrect ? '#10B981' : '#EF4444',
+            }}>
+              {/* Başlık */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+                <Ionicons 
+                  name={comparisonModal.isCorrect ? 'checkmark-circle' : 'close-circle'} 
+                  size={28} 
+                  color={comparisonModal.isCorrect ? '#10B981' : '#EF4444'} 
+                />
+                <Text style={{ 
+                  color: comparisonModal.isCorrect ? '#10B981' : '#EF4444', 
+                  fontSize: 18, 
+                  fontWeight: '700',
+                  marginLeft: 8,
+                }}>
+                  {comparisonModal.isCorrect ? 'Doğru Tahmin!' : 'Yanlış Tahmin'}
+                </Text>
+              </View>
+              
+              {/* Kategori */}
+              <Text style={{ color: '#94A3B8', fontSize: 14, marginBottom: 12 }}>
+                {comparisonModal.categoryLabel}
+              </Text>
+              
+              {/* Karşılaştırma */}
+              <View style={{ 
+                backgroundColor: 'rgba(0,0,0,0.3)', 
+                borderRadius: 12, 
+                padding: 16,
+                marginBottom: 16,
+              }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
+                  <View style={{ flex: 1, alignItems: 'center' }}>
+                    <Text style={{ color: '#64748B', fontSize: 12, marginBottom: 4 }}>Senin Tahminin</Text>
+                    <Text style={{ color: '#FFFFFF', fontSize: 20, fontWeight: '700' }}>
+                      {comparisonModal.predicted ?? '-'}
+                    </Text>
+                  </View>
+                  <View style={{ width: 1, backgroundColor: '#334155' }} />
+                  <View style={{ flex: 1, alignItems: 'center' }}>
+                    <Text style={{ color: '#64748B', fontSize: 12, marginBottom: 4 }}>Gerçek Sonuç</Text>
+                    <Text style={{ 
+                      color: comparisonModal.isCorrect ? '#10B981' : '#EF4444', 
+                      fontSize: 20, 
+                      fontWeight: '700' 
+                    }}>
+                      {comparisonModal.actual ?? '-'}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+              
+              {/* Kapat butonu */}
+              <TouchableOpacity
+                onPress={() => setComparisonModal(null)}
+                style={{
+                  backgroundColor: 'rgba(31, 162, 166, 0.2)',
+                  borderRadius: 8,
+                  paddingVertical: 12,
+                  alignItems: 'center',
+                }}
+              >
+                <Text style={{ color: '#1FA2A6', fontSize: 16, fontWeight: '600' }}>Kapat</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       )}
 
       {/* ✅ CANLI MAÇ SİNYAL POPUP'I – Scroll yok, 2 sütunlu grid */}
