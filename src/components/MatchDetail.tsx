@@ -858,6 +858,8 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
   ]);
   
   // ✅ 120 saniyelik geri sayım kaldırıldı - countdownData artık kullanılmıyor
+  const countdownData = null as any; // ✅ Kaldırılan countdown için placeholder
+  const countdownTicker = 0; // ✅ Kaldırılan countdown için placeholder
 
   // ✅ İki favori takım maçı: ev sahibi ve deplasman favorilerde
   const homeId = matchData?.teams?.home?.id ?? matchData?.homeTeam?.id;
