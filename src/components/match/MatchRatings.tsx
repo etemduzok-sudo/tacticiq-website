@@ -214,10 +214,10 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
     return {
       isLocked: false,
       lockReason: 'open' as const,
-      hoursRemaining: 23,
-      message: 'Kalan süre: 23 saat',
+      hoursRemaining: 24,
+      message: 'Kalan süre: 24 saat',
       unlockTime: null,
-      expireTime: new Date(Date.now() + 23 * 60 * 60 * 1000).toISOString()
+      expireTime: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
     };
     
     /* GERÇEK KOD - TEST SONRASI AKTİF ET

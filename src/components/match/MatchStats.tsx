@@ -586,7 +586,7 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
                       </Text>
                       
                       <View style={styles.statLabelCenter}>
-                        <View style={[styles.statIconBg, { backgroundColor: `${iconColor}20` }]}>
+                        <View style={[styles.statIconBg, { backgroundColor: `${iconColor}40` }]}>
                           <Ionicons name={iconName as any} size={16} color={iconColor} />
                         </View>
                         <Text style={styles.statLabelText}>{stat.label}</Text>
@@ -1326,12 +1326,12 @@ const styles = StyleSheet.create({
   // xG (Gol Beklentisi) Kartı - Öne Çıkan
   // ═══════════════════════════════════════════════════════════════════
   xgCard: {
-    backgroundColor: 'rgba(34, 211, 238, 0.08)',
+    backgroundColor: 'rgba(34, 211, 238, 0.2)',
     borderRadius: 16,
     padding: 16,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: 'rgba(34, 211, 238, 0.25)',
+    borderColor: 'rgba(34, 211, 238, 0.35)',
   },
   xgHeader: {
     flexDirection: 'row',
@@ -1343,7 +1343,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 10,
-    backgroundColor: 'rgba(34, 211, 238, 0.15)',
+    backgroundColor: 'rgba(34, 211, 238, 0.25)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1367,20 +1367,20 @@ const styles = StyleSheet.create({
   xgValueBox: {
     flex: 1,
     alignItems: 'center',
-    backgroundColor: 'rgba(15, 42, 36, 0.5)', // Marka yeşili
+    backgroundColor: 'rgba(15, 42, 36, 0.75)', // Marka yeşili - daha az transparan
     paddingVertical: 16,
     paddingHorizontal: 12,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(31, 162, 166, 0.15)', // Turkuaz border
+    borderColor: 'rgba(31, 162, 166, 0.25)', // Turkuaz border
   },
   xgValueBoxWinner: {
-    borderColor: 'rgba(16, 185, 129, 0.5)',
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    borderColor: 'rgba(16, 185, 129, 0.6)',
+    backgroundColor: 'rgba(16, 185, 129, 0.25)',
   },
   xgValueBoxWinnerAway: {
-    borderColor: 'rgba(245, 158, 11, 0.5)',
-    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    borderColor: 'rgba(245, 158, 11, 0.6)',
+    backgroundColor: 'rgba(245, 158, 11, 0.25)',
   },
   xgValue: {
     fontSize: 28,
@@ -1424,8 +1424,12 @@ const styles = StyleSheet.create({
   statRowCard: {
     paddingVertical: 10,
     paddingHorizontal: 4,
+    backgroundColor: 'rgba(15, 42, 36, 0.7)', // Daha az transparan arka plan
+    borderRadius: 12,
+    marginBottom: 8,
+    padding: 12,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(31, 162, 166, 0.1)',
+    borderBottomColor: 'rgba(31, 162, 166, 0.2)',
   },
   statHeader: {
     flexDirection: 'row',
@@ -2706,13 +2710,13 @@ const styles = StyleSheet.create({
   },
   statCardNew: {
     width: '23.5%',
-    backgroundColor: 'rgba(15, 42, 36, 0.6)', // Marka yeşili - #0F2A24
+    backgroundColor: 'rgba(15, 42, 36, 0.85)', // Marka yeşili - daha az transparan
     borderRadius: 10,
     paddingVertical: 10,
     paddingHorizontal: 4,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(31, 162, 166, 0.15)', // Secondary turkuaz border
+    borderColor: 'rgba(31, 162, 166, 0.25)', // Secondary turkuaz border
   },
   statCardIcon: {
     width: 36,

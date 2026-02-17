@@ -550,12 +550,31 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
   const awayManager = coaches.away || getManagerFromLineups(match?.teams?.away?.id) || getCoachFallback(match?.teams?.away?.name);
 
   // ✅ Maç canlı mı kontrol et
-  const LIVE_STATUSES = ['1H', '2H', 'HT', 'ET', 'BT', 'P', 'LIVE'];
-  const FINISHED_STATUSES = ['FT', 'AET', 'PEN', 'AWD', 'WO']; // Biten maç statüleri
+  const LIVE_STATUSES = ['1H', '2H', 'HT', 'ET', 'BT', 'P', 'LIVE', 'INT'];
+  const FINISHED_STATUSES = ['FT', 'AET', 'PEN', 'AWD', 'WO', 'ABD', 'CANC']; // Sadece gerçekten bitmiş/iptal maçlar
+  const POSTPONED_STATUSES = ['PST', 'SUSP', 'TBD']; // Ertelenmiş/askıya alınmış - bunlar bitmiş sayılmaz
+  
   // ✅ Mock maçlar için gerçek zamandan status belirle - countdownTicker ile her saniye güncellensin
   const matchStatus = useMemo(() => {
-    const apiStatus = match?.fixture?.status?.short || '';
+    // API'den gelen status farklı formatlarda olabilir
+    const statusRaw = match?.fixture?.status;
+    const apiStatus = typeof statusRaw === 'string' 
+      ? statusRaw 
+      : (statusRaw?.short || statusRaw?.long || '');
+    
     if (!isMockTestMatch(Number(matchId))) {
+      // ✅ Gerçek maçlar için ek kontrol: Maç tarihi geçmiş ve statü NS/TBD/boş ise, maç bitmiş sayılır
+      const matchTimestamp = match?.fixture?.timestamp;
+      if (matchTimestamp) {
+        const matchTime = matchTimestamp * 1000;
+        const now = Date.now();
+        const hoursSinceMatch = (now - matchTime) / (1000 * 60 * 60);
+        // Maç başlamasından 2+ saat geçtiyse ve statü hala NS, boş veya belirsiz ise, FT say
+        if (hoursSinceMatch > 2 && (apiStatus === 'NS' || apiStatus === '' || apiStatus === 'TBD' || !apiStatus)) {
+          console.log(`⚠️ [MatchDetail] Maç ${matchId} için statü güncellendi: "${apiStatus}" → FT (${hoursSinceMatch.toFixed(1)} saat geçmiş)`);
+          return 'FT';
+        }
+      }
       return apiStatus;
     }
     // Mock maçlar için gerçek zamandan kontrol et
@@ -582,9 +601,22 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
     } else {
       return 'FT'; // Finished
     }
-  }, [matchId, match?.fixture?.status?.short, countdownTicker]); // ✅ countdownTicker: mock maçlar için her saniye güncelle
+  }, [matchId, match?.fixture?.status, match?.fixture?.timestamp, countdownTicker]); // ✅ countdownTicker: mock maçlar için her saniye güncelle
+  
   const isMatchLive = LIVE_STATUSES.includes(matchStatus);
   const isMatchFinished = FINISHED_STATUSES.includes(matchStatus);
+  
+  // ✅ DEBUG: Maç statüsünü konsola yazdır
+  React.useEffect(() => {
+    console.log(`📊 [MatchDetail] Maç ${matchId} statüsü:`, {
+      matchStatus,
+      isMatchLive,
+      isMatchFinished,
+      hasPrediction,
+      apiStatus: match?.fixture?.status,
+      timestamp: match?.fixture?.timestamp,
+    });
+  }, [matchId, matchStatus, isMatchLive, isMatchFinished, hasPrediction, match?.fixture?.status, match?.fixture?.timestamp]);
   
   // ✅ YENİ KURAL: Kadro kilitli mi? (maç başladığında kilitlenir, 120 sn kuralı kaldırıldı)
   // Maç canlı veya bitmişse kadro düzenlenemez
@@ -897,8 +929,8 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
             onAttackFormationChangeConfirmed={() => {
               // ✅ Sadece analiz odağı seçilmemişse modal'ı aç
               // Analiz odağı zaten seçilmişse tekrar açma
-              // ✅ Maç canlıysa ve kullanıcı tahmin yapmamışsa analiz odağı atlanır
-              if (!effectiveAnalysisFocus && !isMatchLive) {
+              // ✅ Maç canlıysa VEYA bitmişse analiz odağı atlanır (tahmin yapılamaz)
+              if (!effectiveAnalysisFocus && !isMatchLive && !isMatchFinished) {
                 setShowAnalysisFocusModal(true);
               }
             }}

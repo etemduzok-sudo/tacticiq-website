@@ -306,8 +306,11 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
               let playerIn: string | null = null;
               if (displayType === 'substitution') {
                 playerOut = typeof event.player === 'string' ? event.player : event.player?.name || null;
-                // ✅ API-Football'da giren oyuncu event.assist'te, event.comments'te değil
-                playerIn = typeof event.assist === 'string' ? event.assist : event.assist?.name || null;
+                // ✅ API-Football'da giren oyuncu event.assist'te veya event.comments'te olabilir
+                playerIn = typeof event.assist === 'string' ? event.assist 
+                  : event.assist?.name 
+                  || (typeof event.comments === 'string' ? event.comments : null)
+                  || null;
               }
               
               // ✅ Skor hesaplama: Own goal durumunda rakip takıma yazılacak

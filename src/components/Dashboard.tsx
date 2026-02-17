@@ -128,10 +128,15 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
       const awayTeamName = match?.teams?.away?.name || 'Deplasman';
       
       // ✅ Maç durumuna göre initialTab belirle
-      const FINISHED_STATUSES = ['FT', 'AET', 'PEN', 'AWD', 'WO'];
+      const FINISHED_STATUSES = ['FT', 'AET', 'PEN', 'AWD', 'WO', 'ABD', 'CANC'];
       const matchStatus = match?.fixture?.status?.short || '';
-      const isLive = ['1H', '2H', 'HT', 'ET', 'BT', 'P', 'LIVE'].includes(matchStatus);
-      const isFinished = FINISHED_STATUSES.includes(matchStatus);
+      const isLive = ['1H', '2H', 'HT', 'ET', 'BT', 'P', 'LIVE', 'INT'].includes(matchStatus);
+      // ✅ Timestamp kontrolü: Maç tarihi 2+ saat geçmişse ve statü NS/boş ise bitmiş say
+      const matchTimestampBoth = match?.fixture?.timestamp;
+      const nowBoth = Date.now();
+      const hoursSinceMatchBoth = matchTimestampBoth ? (nowBoth - matchTimestampBoth * 1000) / (1000 * 60 * 60) : 0;
+      const isFinished = FINISHED_STATUSES.includes(matchStatus) || 
+        (hoursSinceMatchBoth > 2 && (matchStatus === 'NS' || matchStatus === '' || matchStatus === 'TBD'));
       const hasPrediction = match?.fixture?.id != null && matchIdsWithPredictions.has(match.fixture.id);
       
       let initialTab = 'squad'; // Varsayılan
@@ -162,11 +167,27 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
     }
     
     // ✅ Tek favori takım: Mevcut mantık
-    const FINISHED_STATUSES_SINGLE = ['FT', 'AET', 'PEN', 'AWD', 'WO'];
+    const FINISHED_STATUSES_SINGLE = ['FT', 'AET', 'PEN', 'AWD', 'WO', 'ABD', 'CANC'];
     const matchStatusSingle = match?.fixture?.status?.short || '';
-    const isLive = ['1H', '2H', 'HT', 'ET', 'BT', 'P', 'LIVE'].includes(matchStatusSingle);
-    const isFinished = FINISHED_STATUSES_SINGLE.includes(matchStatusSingle);
+    const isLive = ['1H', '2H', 'HT', 'ET', 'BT', 'P', 'LIVE', 'INT'].includes(matchStatusSingle);
+    // ✅ Timestamp kontrolü: Maç tarihi 2+ saat geçmişse ve statü NS/boş ise bitmiş say
+    const matchTimestamp = match?.fixture?.timestamp;
+    const now = Date.now();
+    const hoursSinceMatch = matchTimestamp ? (now - matchTimestamp * 1000) / (1000 * 60 * 60) : 0;
+    const isFinished = FINISHED_STATUSES_SINGLE.includes(matchStatusSingle) || 
+      (hoursSinceMatch > 2 && (matchStatusSingle === 'NS' || matchStatusSingle === '' || matchStatusSingle === 'TBD'));
     const hasPrediction = match?.fixture?.id != null && matchIdsWithPredictions.has(match.fixture.id);
+    
+    // ✅ DEBUG: Maç kontrolü
+    console.log('📊 [Dashboard] Maç tıklandı:', {
+      matchId: match?.fixture?.id,
+      status: matchStatusSingle,
+      isLive,
+      isFinished,
+      hasPrediction,
+      hoursSinceMatch: hoursSinceMatch.toFixed(1),
+      timestamp: matchTimestamp,
+    });
     
     if (isLive) {
       // ✅ Canlı maçta tahmin yoksa kadro sekmesine yönlendir

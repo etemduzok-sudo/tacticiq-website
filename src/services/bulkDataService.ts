@@ -319,8 +319,8 @@ async function saveBulkDataToStorage(
     const allMatches = Object.values(data).flatMap(td => td.matches || []);
     if (allMatches.length > 0) {
       const now = Date.now();
-      const LIVE_STATUSES = ['1H', '2H', 'HT', 'ET', 'BT', 'P', 'LIVE'];
-      const FINISHED_STATUSES = ['FT', 'AET', 'PEN', 'AWD', 'WO'];
+      const LIVE_STATUSES = ['1H', '2H', 'HT', 'ET', 'BT', 'P', 'LIVE', 'INT'];
+      const FINISHED_STATUSES = ['FT', 'AET', 'PEN', 'AWD', 'WO', 'ABD', 'CANC']; // ✅ ABD ve CANC eklendi
 
       const past: any[] = [];
       const live: any[] = [];

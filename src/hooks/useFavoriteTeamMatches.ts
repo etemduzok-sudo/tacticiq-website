@@ -201,10 +201,10 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
     cacheLoadedRef.current = true;
     
     const quickLoad = async () => {
-      // ✅ Inline kategorileme fonksiyonu
+      // ✅ Inline kategorileme fonksiyonu (PST = postponed, bitmiş değil!)
       const now = Date.now();
       const LIVE_STATUSES_QUICK = ['1H', '2H', 'HT', 'ET', 'BT', 'P', 'LIVE', 'INT'];
-      const FINISHED_STATUSES_QUICK = ['FT', 'AET', 'PEN', 'AWD', 'WO', 'CANC', 'ABD', 'PST'];
+      const FINISHED_STATUSES_QUICK = ['FT', 'AET', 'PEN', 'AWD', 'WO', 'CANC', 'ABD']; // ✅ PST kaldırıldı
       
       const categorizeQuick = (allCached: Match[]) => {
         const rePast: Match[] = [];
@@ -398,9 +398,9 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
     const upcoming: Match[] = [];
 
     // Basit ve net kategorileme: önce status, sonra timestamp
-    const LIVE_STATUSES = ['1H', 'HT', '2H', 'ET', 'P', 'BT', 'LIVE'];
-    const FINISHED_STATUSES = ['FT', 'AET', 'PEN', 'AWD', 'WO'];
-    const NOT_STARTED_STATUSES = ['NS', 'TBD', 'PST'];
+    const LIVE_STATUSES = ['1H', 'HT', '2H', 'ET', 'P', 'BT', 'LIVE', 'INT'];
+    const FINISHED_STATUSES = ['FT', 'AET', 'PEN', 'AWD', 'WO', 'ABD', 'CANC']; // ✅ ABD ve CANC eklendi
+    const NOT_STARTED_STATUSES = ['NS', 'TBD', 'PST', 'SUSP']; // ✅ SUSP eklendi
 
     matches.forEach(match => {
       if (!match || !match.fixture) {
@@ -783,8 +783,8 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
   }, [favoriteTeams]);
 
   // 🔴 CANLI MAÇ GÜNCELLEMESİ: Sadece /live endpoint'i, her 13 saniyede (dakika + biten maçlar hemen "Biten"e geçsin)
-  const LIVE_STATUSES = ['1H', 'HT', '2H', 'ET', 'P', 'BT', 'LIVE'];
-  const FINISHED_STATUSES = ['FT', 'AET', 'PEN', 'AWD', 'WO'];
+  const LIVE_STATUSES = ['1H', 'HT', '2H', 'ET', 'P', 'BT', 'LIVE', 'INT'];
+  const FINISHED_STATUSES = ['FT', 'AET', 'PEN', 'AWD', 'WO', 'ABD', 'CANC']; // ✅ ABD ve CANC eklendi
   const LIVE_POLL_INTERVAL_MS = 13 * 1000;
   const fetchLiveOnly = useCallback(async () => {
     try {

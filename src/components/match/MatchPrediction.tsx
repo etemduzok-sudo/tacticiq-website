@@ -475,6 +475,31 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
   const [isSaving, setIsSaving] = useState(false); // ✅ Kaydetme işlemi devam ediyor mu?
   const [isPredictionLocked, setIsPredictionLocked] = useState(false); // ✅ Tahminler kilitli mi? (kırmızı kilit)
   const [showLockedWarningModal, setShowLockedWarningModal] = useState(false); // ✅ Web için kilitli uyarı modal'ı
+  
+  // ✅ OYUNCU BİLGİ POPUP - Web için Alert yerine Modal
+  const [playerInfoPopup, setPlayerInfoPopup] = useState<{
+    playerName: string;
+    position: string;
+    rating: number | null;
+    userPredictions: string[];
+    communityData: {
+      totalUsers: number;
+      goal: number;
+      assist: number;
+      yellowCard: number;
+      redCard: number;
+      substitutedOut: number;
+      injuredOut: number;
+    } | null;
+    showCommunityData: boolean;
+  } | null>(null);
+  
+  // ✅ BÖLÜM TOPLULUK POPUP - Gol/Asist/Kart bölümleri için
+  const [sectionInfoPopup, setSectionInfoPopup] = useState<{
+    title: string;
+    description: string;
+    stats: { label: string; value: string; percentage: number }[];
+  } | null>(null);
   // ✅ 120 saniyelik timeout kaldırıldı - predictionTimeoutRef artık kullanılmıyor
   
   // 🌟 STRATEGIC FOCUS SYSTEM
@@ -501,6 +526,133 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
   // ✅ TOPLULUK VERİLERİ GÖRÜNÜRLüK KONTROLÜ
   // Kural: Tahmin kaydedildikten sonra VEYA maç canlı/bitmiş ise topluluk verileri görünür
   const communityDataVisible = hasPrediction || isMatchLive || isMatchFinished;
+  
+  // ✅ TOPLULUK TAHMİN VERİLERİ (Mock - Backend'den gelecek)
+  // İzleme modunda bu veriler öntanımlı olarak gösterilecek
+  const [communityMatchPredictions] = useState({
+    // İlk Yarı Skor
+    firstHalf: {
+      mostPopularScore: { home: 1, away: 0, percentage: 28 },
+      homeLeading: 42,
+      awayLeading: 35,
+      draw: 23,
+      avgHomeGoals: 0.8,
+      avgAwayGoals: 0.5,
+    },
+    // Maç Sonu Skor
+    fullTime: {
+      mostPopularScore: { home: 2, away: 1, percentage: 18 },
+      homeWin: 45,
+      awayWin: 27,
+      draw: 28,
+      avgHomeGoals: 1.8,
+      avgAwayGoals: 1.2,
+    },
+    // Gol Tahminleri
+    goals: {
+      ranges: [
+        { range: '0-2', percentage: 32 },
+        { range: '3-4', percentage: 45 },
+        { range: '5+', percentage: 23 },
+      ],
+      avgTotal: 2.8,
+      mostPopularFirstGoalTime: '16-30 dk',
+      firstGoalTimePercentage: 35,
+    },
+    // Disiplin
+    discipline: {
+      yellowCards: [
+        { range: '0-3', percentage: 28 },
+        { range: '4-6', percentage: 52 },
+        { range: '7+', percentage: 20 },
+      ],
+      avgYellow: 4.2,
+      redCardExpected: 15,
+    },
+    // Top Hakimiyeti
+    possession: {
+      homeDominant: 38, // 55%+
+      balanced: 42, // 45-55%
+      awayDominant: 20,
+      avgHomePossession: 52,
+    },
+    // Şut İstatistikleri
+    shots: {
+      totalRanges: [
+        { range: '0-10', percentage: 15 },
+        { range: '11-20', percentage: 45 },
+        { range: '21-30', percentage: 32 },
+        { range: '31+', percentage: 8 },
+      ],
+      avgTotal: 18,
+      onTargetPercentage: 35,
+    },
+    // Taktik
+    tactics: {
+      tempo: [
+        { type: 'Düşük', percentage: 22 },
+        { type: 'Orta', percentage: 48 },
+        { type: 'Yüksek', percentage: 30 },
+      ],
+      mostPopularScenario: 'Dengeli maç',
+      scenarioPercentage: 38,
+    },
+    totalUsers: Math.floor(Math.random() * 3000) + 1500,
+  });
+  
+  // ✅ İZLEME MODUNDA: Topluluk tahminlerini öntanımlı olarak yükle
+  const isViewOnlyMode = !hasPrediction && (isMatchLive || isMatchFinished);
+  
+  // ✅ TOPLULUK EN POPÜLER TAHMİNLERİ - UI'da işaretlenecek değerler
+  const communityTopPredictions = React.useMemo(() => ({
+    totalGoals: '3-4', // En popüler toplam gol aralığı
+    firstGoalTime: communityMatchPredictions.goals.mostPopularFirstGoalTime,
+    yellowCards: '3-4', // En popüler sarı kart aralığı (UI'da 0-2, 3-4, 5-6, 7+)
+    redCards: '0', // Çoğu maçta kırmızı kart yok
+    totalShots: '11-20', // En popüler şut aralığı
+    shotsOnTarget: '6-10', // En popüler isabetli şut (UI'da 0-5, 6-10, 11-15, 16+ var)
+    totalCorners: '7-10', // En popüler korner aralığı
+    tempo: 'Orta tempo', // En popüler tempo
+    scenario: 'Dengeli maç', // En popüler senaryo
+    possession: communityMatchPredictions.possession.avgHomePossession,
+  }), [communityMatchPredictions]);
+  
+  React.useEffect(() => {
+    // Sadece izleme modunda ve predictions henüz yüklenmemişse
+    if (isViewOnlyMode && !initialPredictionsLoaded) {
+      console.log('📊 [VIEW_ONLY] Topluluk tahminleri öntanımlı olarak yükleniyor...');
+      
+      // Topluluk verilerine göre en popüler tahminleri ayarla
+      setPredictions(prev => ({
+        ...prev,
+        // İlk yarı - en popüler skor
+        firstHalfHomeScore: communityMatchPredictions.firstHalf.mostPopularScore.home,
+        firstHalfAwayScore: communityMatchPredictions.firstHalf.mostPopularScore.away,
+        firstHalfInjuryTime: '+3',
+        // Maç sonu - ilk yarı + 1 gol ekle
+        secondHalfHomeScore: communityMatchPredictions.fullTime.mostPopularScore.home,
+        secondHalfAwayScore: communityMatchPredictions.fullTime.mostPopularScore.away,
+        secondHalfInjuryTime: '+5',
+        // Gol tahminleri
+        totalGoals: communityTopPredictions.totalGoals,
+        firstGoalTime: communityTopPredictions.firstGoalTime,
+        // Disiplin
+        yellowCards: communityTopPredictions.yellowCards,
+        redCards: communityTopPredictions.redCards,
+        // Top hakimiyeti
+        possession: String(communityTopPredictions.possession),
+        // Şut istatistikleri
+        totalShots: communityTopPredictions.totalShots,
+        shotsOnTarget: communityTopPredictions.shotsOnTarget,
+        totalCorners: communityTopPredictions.totalCorners,
+        // Taktik
+        tempo: communityTopPredictions.tempo,
+        scenario: communityTopPredictions.scenario,
+      }));
+      
+      setInitialPredictionsLoaded(true);
+    }
+  }, [isViewOnlyMode, initialPredictionsLoaded, communityMatchPredictions, communityTopPredictions]);
   
   // ✅ MAÇ DURUMU VE TIMING SİSTEMİ
   // Maç phase'i ve gerçekleşen olayları hesapla (predictionTiming.ts kullanarak)
@@ -1303,6 +1455,9 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
   // Event bazlı puan sistemi predictionTiming.ts'te tanımlı
 
   const handlePredictionChange = (category: string, value: string | number) => {
+    // ✅ İzleme modunda değişiklik yapılamaz
+    if (isViewOnlyMode) return;
+    
     // ✅ Tahminler kilitliyse değişiklik yapılamaz
     if (isPredictionLocked) {
       // Web için özel modal kullan (Alert.alert web'de çalışmıyor)
@@ -1460,6 +1615,9 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
   };
 
   const handleScoreChange = (category: 'firstHalfHomeScore' | 'firstHalfAwayScore' | 'secondHalfHomeScore' | 'secondHalfAwayScore', value: number) => {
+    // ✅ İzleme modunda değişiklik yapılamaz
+    if (isViewOnlyMode) return;
+    
     // ✅ Tahminler kilitliyse değişiklik yapılamaz
     if (isPredictionLocked) {
       // Web için özel modal kullan (Alert.alert web'de çalışmıyor)
@@ -1562,9 +1720,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                 );
               }
               
-              // ✅ YENİ KURAL: Kadro tahmini yapılmadıysa izleme modu
-              // hasPrediction = kullanıcının bu maç için kadro tahmini yapıp yapmadığı
-              const isViewOnlyMode = !hasPrediction && (isMatchLive || isMatchFinished);
+              // ✅ isViewOnlyMode zaten üstte tanımlandı (component seviyesinde)
               
               const positions = formationPositions[attackFormation] || mockPositions;
               // ✅ Kadro ile aynı: formasyon slot etiketi (GK, LB, CB, CDM, ...) kullan
@@ -1601,11 +1757,13 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                       { left: `${pos.x}%`, top: `${pos.y}%` }, // ✅ Sabit pozisyon
                     ]}
                   >
-                    {/* ✅ "i" ikonu: Her zaman görünür – kurallara göre tüm bilgi (pozisyon, reyting, tahminler, sinyaller) buradan açılır */}
+                    {/* ✅ "i" ikonu: KIRMIZI DAİRE - Her zaman görünür */}
                     <TouchableOpacity
-                      style={styles.predictionCardInfoIcon}
+                      style={styles.predictionCardInfoIconRed}
                       onPress={() => {
-                        // ✅ CANLI MAÇ: Sinyal popup'ını aç (kurallar Bölüm 11 – Sinyal Popup'ı "i" ikonuna tıklanınca)
+                        console.log('📋 [INFO] Oyuncu bilgi popup açılıyor:', player.name);
+                        
+                        // ✅ CANLI MAÇ: Sinyal popup'ını aç
                         if (isMatchLive && playerSignals && playerSignals.signals.length > 0) {
                           setSignalPopupPlayer({
                             playerId: player.id,
@@ -1616,10 +1774,8 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                           return;
                         }
                         
-                        // ✅ DİĞER DURUMLAR: Bilgi popup – pozisyon, reyting, tahminler, topluluk (kurallara uygun)
+                        // ✅ OYUNCU BİLGİ POPUP - Web için Modal kullan
                         const community = communityPredictions[player.id];
-                        const baseInfo = `Pozisyon: ${positionLabel}\nReyting: ${player.rating ?? '–'}`;
-                        
                         const userPredictionsList: string[] = [];
                         if (playerPreds) {
                           if (playerPreds.goal) userPredictionsList.push('⚽ Gol atar');
@@ -1630,45 +1786,27 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                           if (playerPreds.injuredOut) userPredictionsList.push('🏥 Sakatlanır');
                         }
                         
-                        const userInfo = userPredictionsList.length > 0 
-                          ? `\n\n✅ Sizin Tahminleriniz:\n${userPredictionsList.join('\n')}`
-                          : '\n\n✅ Bu oyuncu için tahmin yapmadınız';
-                        
-                        let communityInfo = '';
-                        if (communityDataVisible && community) {
-                          communityInfo = `\n\n📊 Topluluk Tahminleri (${community.totalPredictions} kullanıcı):\n` +
-                            `• Bu pozisyona atanma: %${Math.round(Math.random() * 30 + 70)}\n` +
-                            `⚽ Gol atar: %${Math.round(community.goal * 100)}\n` +
-                            `🅰️ Asist yapar: %${Math.round(community.assist * 100)}\n` +
-                            `🟨 Sarı kart: %${Math.round(community.yellowCard * 100)}\n` +
-                            `🟥 Kırmızı kart: %${Math.round(community.redCard * 100)}\n` +
-                            `🔄 Oyundan çıkar: %${Math.round(community.substitutedOut * 100)}\n` +
-                            `  └ En popüler: ${Math.floor(Math.random() * 30 + 60)}. dk\n` +
-                            `🏥 Sakatlanır: %${Math.round(community.injuredOut * 100)}`;
-                        } else if (!communityDataVisible && community) {
-                          communityInfo = `\n\n📊 Topluluk Tahminleri (${community.totalPredictions} kullanıcı):\n` +
-                            `• Bu pozisyona atanma: ??%\n` +
-                            `⚽ Gol atar: ??%\n` +
-                            `🅰️ Asist yapar: ??%\n` +
-                            `🟨 Sarı kart: ??%\n` +
-                            `🟥 Kırmızı kart: ??%\n` +
-                            `🔄 Oyundan çıkar: ??%\n` +
-                            `🏥 Sakatlanır: ??%\n\n` +
-                            `🔒 Tahminlerinizi kaydedin ve topluluk verilerini görün!`;
-                        } else {
-                          communityInfo = '\n\n📊 Henüz topluluk verisi yok';
-                        }
-                        
-                        Alert.alert(
-                          player.name,
-                          `${baseInfo}${userInfo}${communityInfo}`,
-                          [{ text: 'Tamam' }]
-                        );
+                        setPlayerInfoPopup({
+                          playerName: player.name,
+                          position: positionLabel,
+                          rating: player.rating ?? null,
+                          userPredictions: userPredictionsList,
+                          communityData: community ? {
+                            totalUsers: community.totalPredictions,
+                            goal: community.goal,
+                            assist: community.assist,
+                            yellowCard: community.yellowCard,
+                            redCard: community.redCard,
+                            substitutedOut: community.substitutedOut,
+                            injuredOut: community.injuredOut,
+                          } : null,
+                          showCommunityData: communityDataVisible || isViewOnlyMode,
+                        });
                       }}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                       activeOpacity={0.7}
                     >
-                      <Ionicons name="information-circle" size={20} color={isMatchLive && playerSignals ? '#F59E0B' : hasPredictions ? '#10B981' : '#94A3B8'} />
+                      <Text style={styles.infoIconText}>i</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={[
@@ -1695,17 +1833,39 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                         // 5️⃣ Canlı/bitmiş maç fallback (topluluk verisi yoksa)
                         !signalBorderStyle && !communityBorder && (isMatchLive || isMatchFinished) && (positionLabel === 'GK' || isGoalkeeperPlayer(player)) && styles.playerCardGKCommunity,
                         !signalBorderStyle && !communityBorder && (isMatchLive || isMatchFinished) && (positionLabel === 'ST' || (player.position && String(player.position).toUpperCase() === 'ST')) && styles.playerCardSTCommunity,
-                        // 6️⃣ İzleme modu: Kadro tahmini yapılmadıysa soluk görünüm
-                        isViewOnlyMode && { opacity: 0.7 },
+                        // 6️⃣ İzleme modu: Kadro tahmini yapılmadıysa hafif soluk görünüm
+                        isViewOnlyMode && { opacity: 0.85 },
                       ]}
                       onPress={() => {
-                        // ✅ İZLEME MODU: Kadro tahmini yapılmadıysa tahmin yapılamaz
+                        // ✅ İZLEME MODU: Kadro tahmini yapılmadıysa bilgi popup'ı aç ("i" butonu gibi)
                         if (isViewOnlyMode) {
-                          Alert.alert(
-                            'İzleme Modu',
-                            'Kadro tahmini yapmadığınız için tahmin yapamazsınız.\n\nTopluluk tahminlerini görmek için "i" butonuna tıklayabilirsiniz.',
-                            [{ text: 'Tamam' }]
-                          );
+                          const community = communityPredictions[player.id];
+                          const userPredictionsList: string[] = [];
+                          if (playerPreds) {
+                            if (playerPreds.goal) userPredictionsList.push('⚽ Gol atar');
+                            if (playerPreds.assist) userPredictionsList.push('🅰️ Asist yapar');
+                            if (playerPreds.yellowCard) userPredictionsList.push('🟨 Sarı kart');
+                            if (playerPreds.redCard) userPredictionsList.push('🟥 Kırmızı kart');
+                            if (playerPreds.substitutedOut) userPredictionsList.push(`🔄 ${playerPreds.substitutedOutMinute || '?'}. dk çıkar`);
+                            if (playerPreds.injuredOut) userPredictionsList.push('🏥 Sakatlanır');
+                          }
+                          
+                          setPlayerInfoPopup({
+                            playerName: player.name,
+                            position: positionLabel,
+                            rating: player.rating ?? null,
+                            userPredictions: userPredictionsList,
+                            communityData: community ? {
+                              totalUsers: community.totalPredictions,
+                              goal: community.goal,
+                              assist: community.assist,
+                              yellowCard: community.yellowCard,
+                              redCard: community.redCard,
+                              substitutedOut: community.substitutedOut,
+                              injuredOut: community.injuredOut,
+                            } : null,
+                            showCommunityData: true,
+                          });
                           return;
                         }
                         // ✅ Kilit kontrolü: Tahminler kilitliyken bilgilendirme göster
@@ -1754,10 +1914,10 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
 
         {/* ✅ Bildirim: Oyuncu kartlarına tıklayın + kilit bilgisi VEYA izleme modu mesajı */}
         {!hasPrediction && (isMatchLive || isMatchFinished) ? (
-          <View style={[styles.infoNote, { backgroundColor: 'rgba(239, 68, 68, 0.15)', borderColor: 'rgba(239, 68, 68, 0.3)' }]}>
-            <Ionicons name="eye-outline" size={16} color="#EF4444" />
-            <Text style={[styles.infoText, { color: '#F87171' }]} numberOfLines={2}>
-              Kadro tahmini yapmadığınız için tahmin yapamazsınız. Topluluk verilerini görmek için "i" butonlarına tıklayın.
+          <View style={[styles.infoNote, { backgroundColor: 'rgba(31, 162, 166, 0.1)', borderColor: 'rgba(31, 162, 166, 0.25)' }]}>
+            <Ionicons name="eye-outline" size={16} color="#1FA2A6" />
+            <Text style={[styles.infoText, { color: '#5EEAD4' }]} numberOfLines={2}>
+              Kadro tahmini yapmadığınız için bu maç için tahmin yapamazsınız. Topluluk verilerini görmek için oyuncu kartlarına tıklayın.
             </Text>
           </View>
         ) : (
@@ -1771,10 +1931,10 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
         )}
 
         {/* PREDICTION CATEGORIES - COMPLETE */}
-        {/* ✅ İZLEME MODU: Kadro tahmini yapılmadıysa tüm tahmin alanları devre dışı */}
+        {/* ✅ İZLEME MODU: Kadro tahmini yapılmadıysa tahmin alanları hafif soluk (ama tıklanabilir - i butonları için) */}
         <View style={[
           styles.predictionsSection,
-          !hasPrediction && (isMatchLive || isMatchFinished) && { opacity: 0.5, pointerEvents: 'none' as const }
+          !hasPrediction && (isMatchLive || isMatchFinished) && styles.predictionsSectionViewOnly
         ]}>
           {/* ═══════════════════════════════════════════════════════════
               1. İLK YARI - Skor + Uzatma Süresi (Kombine Kart)
@@ -1783,11 +1943,8 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
             style={[styles.categoryCardCombined, styles.categoryCardFirstHalf]}
             activeOpacity={1}
             onPress={() => {
-              // ✅ İzleme modu kontrolü
-              if (!hasPrediction && (isMatchLive || isMatchFinished)) {
-                Alert.alert('İzleme Modu', 'Kadro tahmini yapmadığınız için tahmin yapamazsınız.');
-                return;
-              }
+              // ✅ İzleme modu kontrolü - sessizce yoksay
+              if (!hasPrediction && (isMatchLive || isMatchFinished)) return;
               // ✅ Kilitliyse bildirim göster
               if (isPredictionLocked) {
                 // Web için özel modal kullan (Alert.alert web'de çalışmıyor)
@@ -1799,18 +1956,39 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
             
             {/* Kart Başlığı */}
             <View style={styles.combinedCardHeader}>
-              <View style={styles.combinedCardTitleRow}>
-                <View style={[styles.cardIconSmall, styles.cardIconFirstHalf]}>
-                  <Text style={styles.cardEmoji}>⏱️</Text>
-                </View>
-                <Text style={styles.combinedCardTitle}>İlk Yarı</Text>
-                {/* 🌟 Analiz Odağı Yıldızı - Hücum odağında bonus */}
-                {isCategoryInSelectedFocus('firstHalfHomeScore') && (
-                  <View style={styles.focusBonusBadge}>
-                    <Ionicons name="star" size={14} color="#F59E0B" />
-                    <Text style={styles.focusBonusText}>+Bonus</Text>
+              <View style={styles.combinedCardTitleRowWithInfo}>
+                <View style={styles.combinedCardTitleRow}>
+                  <View style={[styles.cardIconSmall, styles.cardIconFirstHalf]}>
+                    <Text style={styles.cardEmoji}>⏱️</Text>
                   </View>
-                )}
+                  <Text style={styles.combinedCardTitle}>İlk Yarı</Text>
+                  {/* Bonus badge sadece normal modda */}
+                  {!isViewOnlyMode && isCategoryInSelectedFocus('firstHalfHomeScore') && (
+                    <View style={styles.focusBonusBadge}>
+                      <Ionicons name="star" size={14} color="#F59E0B" />
+                      <Text style={styles.focusBonusText}>+Bonus</Text>
+                    </View>
+                  )}
+                </View>
+                {/* ✅ Info butonu - Topluluk istatistikleri */}
+                <TouchableOpacity
+                  style={styles.sectionInfoButton}
+                  onPress={() => setSectionInfoPopup({
+                    title: 'İlk Yarı Skor Tahmini',
+                    description: `${communityMatchPredictions.totalUsers.toLocaleString()} kullanıcının ilk yarı tahminleri:`,
+                    stats: [
+                      { label: 'Berabere', value: `%${communityMatchPredictions.firstHalf.draw}`, percentage: communityMatchPredictions.firstHalf.draw },
+                      { label: 'Ev sahibi önde', value: `%${communityMatchPredictions.firstHalf.homeLeading}`, percentage: communityMatchPredictions.firstHalf.homeLeading },
+                      { label: 'Deplasman önde', value: `%${communityMatchPredictions.firstHalf.awayLeading}`, percentage: communityMatchPredictions.firstHalf.awayLeading },
+                      { label: 'En popüler skor', value: `${communityMatchPredictions.firstHalf.mostPopularScore.home}-${communityMatchPredictions.firstHalf.mostPopularScore.away} (%${communityMatchPredictions.firstHalf.mostPopularScore.percentage})`, percentage: communityMatchPredictions.firstHalf.mostPopularScore.percentage },
+                      { label: 'Ort. ev sahibi gol', value: communityMatchPredictions.firstHalf.avgHomeGoals.toFixed(1), percentage: Math.round(communityMatchPredictions.firstHalf.avgHomeGoals * 50) },
+                      { label: 'Ort. deplasman gol', value: communityMatchPredictions.firstHalf.avgAwayGoals.toFixed(1), percentage: Math.round(communityMatchPredictions.firstHalf.avgAwayGoals * 50) },
+                    ],
+                  })}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Text style={styles.sectionInfoButtonText}>i</Text>
+                </TouchableOpacity>
               </View>
             </View>
             
@@ -1927,18 +2105,39 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
             
             {/* Kart Başlığı */}
             <View style={styles.combinedCardHeader}>
-              <View style={styles.combinedCardTitleRow}>
-                <View style={[styles.cardIconSmall, styles.cardIconFullTime]}>
-                  <Text style={styles.cardEmoji}>🏆</Text>
-                </View>
-                <Text style={styles.combinedCardTitle}>Maç Sonu</Text>
-                {/* 🌟 Analiz Odağı Yıldızı - Hücum odağında bonus */}
-                {isCategoryInSelectedFocus('secondHalfHomeScore') && (
-                  <View style={styles.focusBonusBadge}>
-                    <Ionicons name="star" size={14} color="#F59E0B" />
-                    <Text style={styles.focusBonusText}>+Bonus</Text>
+              <View style={styles.combinedCardTitleRowWithInfo}>
+                <View style={styles.combinedCardTitleRow}>
+                  <View style={[styles.cardIconSmall, styles.cardIconFullTime]}>
+                    <Text style={styles.cardEmoji}>🏆</Text>
                   </View>
-                )}
+                  <Text style={styles.combinedCardTitle}>Maç Sonu</Text>
+                  {/* Bonus badge sadece normal modda */}
+                  {!isViewOnlyMode && isCategoryInSelectedFocus('secondHalfHomeScore') && (
+                    <View style={styles.focusBonusBadge}>
+                      <Ionicons name="star" size={14} color="#F59E0B" />
+                      <Text style={styles.focusBonusText}>+Bonus</Text>
+                    </View>
+                  )}
+                </View>
+                {/* ✅ Info butonu - Topluluk istatistikleri */}
+                <TouchableOpacity
+                  style={styles.sectionInfoButton}
+                  onPress={() => setSectionInfoPopup({
+                    title: 'Maç Sonu Skor Tahmini',
+                    description: `${communityMatchPredictions.totalUsers.toLocaleString()} kullanıcının maç sonu tahminleri:`,
+                    stats: [
+                      { label: 'Ev sahibi kazanır', value: `%${communityMatchPredictions.fullTime.homeWin}`, percentage: communityMatchPredictions.fullTime.homeWin },
+                      { label: 'Berabere', value: `%${communityMatchPredictions.fullTime.draw}`, percentage: communityMatchPredictions.fullTime.draw },
+                      { label: 'Deplasman kazanır', value: `%${communityMatchPredictions.fullTime.awayWin}`, percentage: communityMatchPredictions.fullTime.awayWin },
+                      { label: 'En popüler skor', value: `${communityMatchPredictions.fullTime.mostPopularScore.home}-${communityMatchPredictions.fullTime.mostPopularScore.away} (%${communityMatchPredictions.fullTime.mostPopularScore.percentage})`, percentage: communityMatchPredictions.fullTime.mostPopularScore.percentage },
+                      { label: 'Ort. ev sahibi gol', value: communityMatchPredictions.fullTime.avgHomeGoals.toFixed(1), percentage: Math.round(communityMatchPredictions.fullTime.avgHomeGoals * 25) },
+                      { label: 'Ort. deplasman gol', value: communityMatchPredictions.fullTime.avgAwayGoals.toFixed(1), percentage: Math.round(communityMatchPredictions.fullTime.avgAwayGoals * 25) },
+                    ],
+                  })}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Text style={styles.sectionInfoButtonText}>i</Text>
+                </TouchableOpacity>
               </View>
             </View>
             
@@ -2063,43 +2262,63 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
             
             {/* Kart Başlığı */}
             <View style={styles.combinedCardHeader}>
-              <View style={styles.combinedCardTitleRow}>
-                <Ionicons name="football-outline" size={18} color="#10B981" style={{ marginRight: 4 }} />
-                <Text style={styles.combinedCardTitle}>Gol Tahminleri</Text>
-                {/* 🌟 Analiz Odağı Yıldızı - Hücum odağında bonus */}
-                {(isCategoryInSelectedFocus('totalGoals') || isCategoryInSelectedFocus('firstGoalTime')) && (
-                  <View style={styles.focusBonusBadge}>
-                    <Ionicons name="star" size={14} color="#F59E0B" />
-                    <Text style={styles.focusBonusText}>+Bonus</Text>
-                  </View>
-                )}
+              <View style={styles.combinedCardTitleRowWithInfo}>
+                <View style={styles.combinedCardTitleRow}>
+                  <Ionicons name="football-outline" size={18} color="#10B981" style={{ marginRight: 4 }} />
+                  <Text style={styles.combinedCardTitle}>Gol Tahminleri</Text>
+                  {/* Bonus badge sadece normal modda */}
+                  {!isViewOnlyMode && (isCategoryInSelectedFocus('totalGoals') || isCategoryInSelectedFocus('firstGoalTime')) && (
+                    <View style={styles.focusBonusBadge}>
+                      <Ionicons name="star" size={14} color="#F59E0B" />
+                      <Text style={styles.focusBonusText}>+Bonus</Text>
+                    </View>
+                  )}
+                </View>
+                {/* ✅ Info butonu - Topluluk istatistikleri */}
+                <TouchableOpacity
+                  style={styles.sectionInfoButton}
+                  onPress={() => setSectionInfoPopup({
+                    title: 'Gol Tahminleri',
+                    description: `${communityMatchPredictions.totalUsers.toLocaleString()} kullanıcının gol tahminleri:`,
+                    stats: [
+                      ...communityMatchPredictions.goals.ranges.map(r => ({
+                        label: `${r.range} gol`,
+                        value: `%${r.percentage}`,
+                        percentage: r.percentage,
+                      })),
+                      { label: 'Ortalama tahmin', value: `${communityMatchPredictions.goals.avgTotal} gol`, percentage: Math.round(communityMatchPredictions.goals.avgTotal * 15) },
+                      { label: 'İlk gol zamanı', value: `${communityMatchPredictions.goals.mostPopularFirstGoalTime} (%${communityMatchPredictions.goals.firstGoalTimePercentage})`, percentage: communityMatchPredictions.goals.firstGoalTimePercentage },
+                    ],
+                  })}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Text style={styles.sectionInfoButtonText}>i</Text>
+                </TouchableOpacity>
               </View>
             </View>
             
             {/* Toplam Gol - Disiplin Tarzı Zarif */}
             <View style={styles.disciplineBarSection}>
               <View style={styles.disciplineBarHeader}>
-                <Text style={styles.disciplineBarEmoji}>⚽</Text>
                 <Text style={styles.disciplineBarTitle}>Toplam Gol</Text>
-                <Text style={[styles.disciplineBarValue, { color: '#10B981' }]}>{effectiveTotalGoals || '?'}</Text>
+                {!isViewOnlyMode && <Text style={[styles.disciplineBarValue, { color: '#10B981' }]}>{effectiveTotalGoals || '?'}</Text>}
               </View>
               <View style={styles.disciplineBarTrack}>
                 {TOTAL_GOALS_RANGES.map((range) => {
                   const isSelected = effectiveTotalGoals === range;
+                  const isCommunityTop = isViewOnlyMode && communityTopPredictions.totalGoals === range;
                   return (
                     <TouchableOpacity
                       key={range}
                       style={[
                         styles.disciplineBarSegment,
-                        isSelected && styles.disciplineBarSegmentActiveEmerald
+                        (isSelected || isCommunityTop) && styles.disciplineBarSegmentActiveEmerald,
                       ]}
-                      onPress={() => {
-                        // Manuel seçim yapıldığında, skorlar boş olsa bile seçimi kaydet
-                        handlePredictionChange('totalGoals', range);
-                      }}
-                      activeOpacity={0.7}
+                      onPress={() => !isViewOnlyMode && handlePredictionChange('totalGoals', range)}
+                      activeOpacity={isViewOnlyMode ? 1 : 0.7}
+                      disabled={isViewOnlyMode}
                     >
-                      <Text style={[styles.disciplineBarSegmentText, isSelected && styles.disciplineBarSegmentTextActive]}>
+                      <Text style={[styles.disciplineBarSegmentText, (isSelected || isCommunityTop) && styles.disciplineBarSegmentTextActive]}>
                         {range}
                       </Text>
                     </TouchableOpacity>
@@ -2132,17 +2351,20 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                     { label: "45+'", value: '45+' },
                   ].map((t) => {
                     const isSelected = predictions.firstGoalTime === t.value;
+                    const isCommunityTop = isViewOnlyMode && communityTopPredictions.firstGoalTime === t.value;
+                    const isActive = isSelected || isCommunityTop;
                     return (
                       <TouchableOpacity 
                         key={t.value} 
                         style={[
                           styles.timelineBtnCompact,
-                          isSelected && styles.timelineBtnCompactActiveFirst
+                          isActive && styles.timelineBtnCompactActiveFirst,
                         ]}
-                        onPress={() => handlePredictionChange('firstGoalTime', t.value)}
-                        activeOpacity={0.7}
+                        onPress={() => !isViewOnlyMode && handlePredictionChange('firstGoalTime', t.value)}
+                        activeOpacity={isViewOnlyMode ? 1 : 0.7}
+                        disabled={isViewOnlyMode}
                       >
-                        <Text style={[styles.timelineBtnTextCompact, isSelected && styles.timelineBtnTextCompactActive]}>
+                        <Text style={[styles.timelineBtnTextCompact, isActive && styles.timelineBtnTextCompactActive]}>
                           {t.label}
                         </Text>
                       </TouchableOpacity>
@@ -2162,17 +2384,20 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                     { label: "90+'", value: '90+' },
                   ].map((t) => {
                     const isSelected = predictions.firstGoalTime === t.value;
+                    const isCommunityTop = isViewOnlyMode && communityTopPredictions.firstGoalTime === t.value;
+                    const isActive = isSelected || isCommunityTop;
                     return (
                       <TouchableOpacity 
                         key={t.value} 
                         style={[
                           styles.timelineBtnCompact,
-                          isSelected && styles.timelineBtnCompactActiveSecond
+                          isActive && styles.timelineBtnCompactActiveSecond,
                         ]}
-                        onPress={() => handlePredictionChange('firstGoalTime', t.value)}
-                        activeOpacity={0.7}
+                        onPress={() => !isViewOnlyMode && handlePredictionChange('firstGoalTime', t.value)}
+                        activeOpacity={isViewOnlyMode ? 1 : 0.7}
+                        disabled={isViewOnlyMode}
                       >
-                        <Text style={[styles.timelineBtnTextCompact, isSelected && styles.timelineBtnTextCompactActive]}>
+                        <Text style={[styles.timelineBtnTextCompact, isActive && styles.timelineBtnTextCompactActive]}>
                           {t.label}
                         </Text>
                       </TouchableOpacity>
@@ -2184,8 +2409,9 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
               {/* Gol Yok Olabilir */}
               <TouchableOpacity 
                 style={[styles.noGoalBtn, predictions.firstGoalTime === 'no_goal' && styles.noGoalBtnActive]}
-                onPress={() => handlePredictionChange('firstGoalTime', 'no_goal')}
-                activeOpacity={0.7}
+                onPress={() => !isViewOnlyMode && handlePredictionChange('firstGoalTime', 'no_goal')}
+                activeOpacity={isViewOnlyMode ? 1 : 0.7}
+                disabled={isViewOnlyMode}
               >
                 <Ionicons name="close-circle-outline" size={12} color={predictions.firstGoalTime === 'no_goal' ? '#FFF' : '#94A3B8'} />
                 <Text style={[styles.noGoalBtnText, predictions.firstGoalTime === 'no_goal' && styles.noGoalBtnTextActive]}>Gol yok</Text>
@@ -2210,16 +2436,38 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
             <View style={styles.cardAccentDiscipline} />
             
             <View style={styles.combinedCardHeader}>
-              <View style={styles.combinedCardTitleRow}>
-                <Ionicons name="card-outline" size={18} color="#FBBF24" style={{ marginRight: 4 }} />
-                <Text style={styles.combinedCardTitle}>Disiplin</Text>
-                {/* 🌟 Analiz Odağı Yıldızı - Savunma odağında bonus */}
-                {(isCategoryInSelectedFocus('yellowCards') || isCategoryInSelectedFocus('redCards')) && (
-                  <View style={styles.focusBonusBadge}>
-                    <Ionicons name="star" size={14} color="#F59E0B" />
-                    <Text style={styles.focusBonusText}>+Bonus</Text>
-                  </View>
-                )}
+              <View style={styles.combinedCardTitleRowWithInfo}>
+                <View style={styles.combinedCardTitleRow}>
+                  <Ionicons name="card-outline" size={18} color="#FBBF24" style={{ marginRight: 4 }} />
+                  <Text style={styles.combinedCardTitle}>Disiplin</Text>
+                  {/* Bonus badge sadece normal modda */}
+                  {!isViewOnlyMode && (isCategoryInSelectedFocus('yellowCards') || isCategoryInSelectedFocus('redCards')) && (
+                    <View style={styles.focusBonusBadge}>
+                      <Ionicons name="star" size={14} color="#F59E0B" />
+                      <Text style={styles.focusBonusText}>+Bonus</Text>
+                    </View>
+                  )}
+                </View>
+                {/* ✅ Info butonu - Topluluk istatistikleri */}
+                <TouchableOpacity
+                  style={styles.sectionInfoButton}
+                  onPress={() => setSectionInfoPopup({
+                    title: 'Disiplin Tahminleri',
+                    description: `${communityMatchPredictions.totalUsers.toLocaleString()} kullanıcının kart tahminleri:`,
+                    stats: [
+                      ...communityMatchPredictions.discipline.yellowCards.map(r => ({
+                        label: `Sarı kart (${r.range})`,
+                        value: `%${r.percentage}`,
+                        percentage: r.percentage,
+                      })),
+                      { label: 'Ortalama sarı kart', value: communityMatchPredictions.discipline.avgYellow.toFixed(1), percentage: Math.round(communityMatchPredictions.discipline.avgYellow * 10) },
+                      { label: 'Kırmızı kart beklentisi', value: `%${communityMatchPredictions.discipline.redCardExpected}`, percentage: communityMatchPredictions.discipline.redCardExpected },
+                    ],
+                  })}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Text style={styles.sectionInfoButtonText}>i</Text>
+                </TouchableOpacity>
               </View>
             </View>
             
@@ -2227,33 +2475,34 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
               {/* Sarı Kart - Dikey Çubuklar */}
               <View style={styles.disciplineColumn}>
                 <View style={styles.disciplineColumnHeader}>
-                  <Text style={styles.disciplineBarEmoji}>🟨</Text>
                   <Text style={styles.disciplineColumnTitle}>Sarı Kart</Text>
-                  <Text style={[styles.disciplineColumnValue, { color: '#FBBF24' }]}>{predictions.yellowCards || '?'}</Text>
+                  {!isViewOnlyMode && <Text style={[styles.disciplineColumnValue, { color: '#FBBF24' }]}>{predictions.yellowCards || '?'}</Text>}
                 </View>
                 <View style={styles.verticalBarsContainer}>
                   {[
-                    { label: '1-2', height: 24 },
-                    { label: '3-4', height: 36 },
-                    { label: '5-6', height: 48 },
-                    { label: '7+', height: 60 },
+                    { label: '0-2', height: 20, color: '#FBBF24' },
+                    { label: '3-4', height: 32, color: '#FBBF24' },
+                    { label: '5-6', height: 44, color: '#FBBF24' },
+                    { label: '7+', height: 56, color: '#FBBF24' },
                   ].map((item) => {
                     const isSelected = predictions.yellowCards === item.label;
+                    const isCommunityTop = isViewOnlyMode && communityTopPredictions.yellowCards === item.label;
                     return (
                       <TouchableOpacity
                         key={item.label}
                         style={styles.verticalBarWrapper}
-                        onPress={() => handlePredictionChange('yellowCards', item.label)}
-                        activeOpacity={0.7}
+                        onPress={() => !isViewOnlyMode && handlePredictionChange('yellowCards', item.label)}
+                        activeOpacity={isViewOnlyMode ? 1 : 0.7}
+                        disabled={isViewOnlyMode}
                       >
                         <View 
                           style={[
                             styles.verticalBar,
-                            { height: item.height },
-                            isSelected ? styles.verticalBarActiveYellow : styles.verticalBarInactiveYellow
+                            { height: item.height, backgroundColor: isSelected || isCommunityTop ? item.color : 'rgba(251, 191, 36, 0.2)' },
+                            (isSelected || isCommunityTop) && { borderWidth: 0 }
                           ]}
                         />
-                        <Text style={[styles.verticalBarLabel, isSelected && { color: '#FBBF24', fontWeight: '600' }]}>
+                        <Text style={[styles.verticalBarLabel, (isSelected || isCommunityTop) && { color: '#FBBF24', fontWeight: '600' }]}>
                           {item.label}
                         </Text>
                       </TouchableOpacity>
@@ -2268,33 +2517,34 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
               {/* Kırmızı Kart - Dikey Çubuklar */}
               <View style={styles.disciplineColumn}>
                 <View style={styles.disciplineColumnHeader}>
-                  <Text style={styles.disciplineBarEmoji}>🟥</Text>
                   <Text style={styles.disciplineColumnTitle}>Kırmızı Kart</Text>
-                  <Text style={[styles.disciplineColumnValue, { color: '#F87171' }]}>{predictions.redCards || '?'}</Text>
+                  {!isViewOnlyMode && <Text style={[styles.disciplineColumnValue, { color: '#F87171' }]}>{predictions.redCards || '?'}</Text>}
                 </View>
                 <View style={styles.verticalBarsContainer}>
                   {[
-                    { label: '1', height: 24 },
-                    { label: '2', height: 36 },
-                    { label: '3', height: 48 },
-                    { label: '4+', height: 60 },
+                    { label: '0', height: 16, color: '#F87171' },
+                    { label: '1', height: 28, color: '#F87171' },
+                    { label: '2', height: 44, color: '#F87171' },
+                    { label: '3+', height: 56, color: '#F87171' },
                   ].map((item) => {
                     const isSelected = predictions.redCards === item.label;
+                    const isCommunityTop = isViewOnlyMode && communityTopPredictions.redCards === item.label;
                     return (
                       <TouchableOpacity
                         key={item.label}
                         style={styles.verticalBarWrapper}
-                        onPress={() => handlePredictionChange('redCards', item.label)}
-                        activeOpacity={0.7}
+                        onPress={() => !isViewOnlyMode && handlePredictionChange('redCards', item.label)}
+                        activeOpacity={isViewOnlyMode ? 1 : 0.7}
+                        disabled={isViewOnlyMode}
                       >
                         <View 
                           style={[
                             styles.verticalBar,
-                            { height: item.height },
-                            isSelected ? styles.verticalBarActiveRed : styles.verticalBarInactiveRed
+                            { height: item.height, backgroundColor: isSelected || isCommunityTop ? item.color : 'rgba(248, 113, 113, 0.2)' },
+                            (isSelected || isCommunityTop) && { borderWidth: 0 }
                           ]}
                         />
-                        <Text style={[styles.verticalBarLabel, isSelected && { color: '#F87171', fontWeight: '600' }]}>
+                        <Text style={[styles.verticalBarLabel, (isSelected || isCommunityTop) && { color: '#F87171', fontWeight: '600' }]}>
                           {item.label}
                         </Text>
                       </TouchableOpacity>
@@ -2320,18 +2570,37 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
             <View style={styles.cardAccentPossession} />
             
             <View style={styles.combinedCardHeader}>
-              <View style={styles.combinedCardTitleRow}>
-                <View style={[styles.cardIconSmall, styles.cardIconPossession]}>
-                  <Text style={styles.cardEmoji}>📊</Text>
-                </View>
-                <Text style={styles.combinedCardTitle}>Topa Sahip Olma</Text>
-                {/* 🌟 Analiz Odağı Yıldızı - Orta Saha veya Taktik odağında bonus */}
-                {isCategoryInSelectedFocus('possession') && (
-                  <View style={styles.focusBonusBadge}>
-                    <Ionicons name="star" size={14} color="#F59E0B" />
-                    <Text style={styles.focusBonusText}>+Bonus</Text>
+              <View style={styles.combinedCardTitleRowWithInfo}>
+                <View style={styles.combinedCardTitleRow}>
+                  <View style={[styles.cardIconSmall, styles.cardIconPossession]}>
+                    <Text style={styles.cardEmoji}>📊</Text>
                   </View>
-                )}
+                  <Text style={styles.combinedCardTitle}>Topa Sahip Olma</Text>
+                  {/* Bonus badge sadece normal modda */}
+                  {!isViewOnlyMode && isCategoryInSelectedFocus('possession') && (
+                    <View style={styles.focusBonusBadge}>
+                      <Ionicons name="star" size={14} color="#F59E0B" />
+                      <Text style={styles.focusBonusText}>+Bonus</Text>
+                    </View>
+                  )}
+                </View>
+                {/* ✅ Info butonu - Topluluk istatistikleri */}
+                <TouchableOpacity
+                  style={styles.sectionInfoButton}
+                  onPress={() => setSectionInfoPopup({
+                    title: 'Top Hakimiyeti',
+                    description: `${communityMatchPredictions.totalUsers.toLocaleString()} kullanıcının top hakimiyeti tahminleri:`,
+                    stats: [
+                      { label: 'Ev sahibi dominant (55%+)', value: `%${communityMatchPredictions.possession.homeDominant}`, percentage: communityMatchPredictions.possession.homeDominant },
+                      { label: 'Dengeli (45-55%)', value: `%${communityMatchPredictions.possession.balanced}`, percentage: communityMatchPredictions.possession.balanced },
+                      { label: 'Deplasman dominant', value: `%${communityMatchPredictions.possession.awayDominant}`, percentage: communityMatchPredictions.possession.awayDominant },
+                      { label: 'Ortalama tahmin (ev)', value: `%${communityMatchPredictions.possession.avgHomePossession}`, percentage: communityMatchPredictions.possession.avgHomePossession },
+                    ],
+                  })}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Text style={styles.sectionInfoButtonText}>i</Text>
+                </TouchableOpacity>
               </View>
             </View>
             
@@ -2358,11 +2627,11 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
             </View>
 
             {/* Minimalist Slider */}
-            <View style={styles.sliderSectionCombined}>
+            <View style={[styles.sliderSectionCombined, isViewOnlyMode && { opacity: 0.7 }]}>
               <View style={styles.sliderTrackContainer}>
                 <Slider
                   value={parseInt(predictions.possession)}
-                  onValueChange={(value) => handlePredictionChange('possession', value.toString())}
+                  onValueChange={(value) => !isViewOnlyMode && handlePredictionChange('possession', value.toString())}
                   minimumValue={30}
                   maximumValue={70}
                   step={5}
@@ -2370,6 +2639,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                   maximumTrackTintColor="rgba(148, 163, 184, 0.12)"
                   thumbTintColor="#5EEAD4"
                   style={styles.sliderCombined}
+                  disabled={isViewOnlyMode}
                 />
                 <View style={styles.sliderMarksCombined}>
                   {[30, 35, 40, 45, 50, 55, 60, 65, 70].map((mark) => (
@@ -2397,42 +2667,65 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
             <View style={styles.cardAccentShots} />
             
             <View style={styles.combinedCardHeader}>
-              <View style={styles.combinedCardTitleRow}>
-                <View style={[styles.cardIconSmall, styles.cardIconShots]}>
-                  <Text style={styles.cardEmoji}>🎯</Text>
-                </View>
-                <Text style={styles.combinedCardTitle}>Şut İstatistikleri</Text>
-                {/* 🌟 Analiz Odağı Yıldızı - Savunma veya Hücum odağında bonus */}
-                {(isCategoryInSelectedFocus('totalShots') || isCategoryInSelectedFocus('shotsOnTarget')) && (
-                  <View style={styles.focusBonusBadge}>
-                    <Ionicons name="star" size={14} color="#F59E0B" />
-                    <Text style={styles.focusBonusText}>+Bonus</Text>
+              <View style={styles.combinedCardTitleRowWithInfo}>
+                <View style={styles.combinedCardTitleRow}>
+                  <View style={[styles.cardIconSmall, styles.cardIconShots]}>
+                    <Text style={styles.cardEmoji}>🎯</Text>
                   </View>
-                )}
+                  <Text style={styles.combinedCardTitle}>Şut İstatistikleri</Text>
+                  {/* Bonus badge sadece normal modda */}
+                  {!isViewOnlyMode && (isCategoryInSelectedFocus('totalShots') || isCategoryInSelectedFocus('shotsOnTarget')) && (
+                    <View style={styles.focusBonusBadge}>
+                      <Ionicons name="star" size={14} color="#F59E0B" />
+                      <Text style={styles.focusBonusText}>+Bonus</Text>
+                    </View>
+                  )}
+                </View>
+                {/* ✅ Info butonu - Topluluk istatistikleri */}
+                <TouchableOpacity
+                  style={styles.sectionInfoButton}
+                  onPress={() => setSectionInfoPopup({
+                    title: 'Şut İstatistikleri',
+                    description: `${communityMatchPredictions.totalUsers.toLocaleString()} kullanıcının şut tahminleri:`,
+                    stats: [
+                      ...communityMatchPredictions.shots.totalRanges.map(r => ({
+                        label: `Toplam şut (${r.range})`,
+                        value: `%${r.percentage}`,
+                        percentage: r.percentage,
+                      })),
+                      { label: 'Ortalama toplam şut', value: String(communityMatchPredictions.shots.avgTotal), percentage: Math.round(communityMatchPredictions.shots.avgTotal * 2.5) },
+                      { label: 'İsabetli şut oranı', value: `%${communityMatchPredictions.shots.onTargetPercentage}`, percentage: communityMatchPredictions.shots.onTargetPercentage },
+                    ],
+                  })}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Text style={styles.sectionInfoButtonText}>i</Text>
+                </TouchableOpacity>
               </View>
             </View>
             
             {/* Toplam Şut - Disiplin Tarzı */}
             <View style={styles.disciplineBarSection}>
               <View style={styles.disciplineBarHeader}>
-                <Text style={styles.disciplineBarEmoji}>⚽</Text>
                 <Text style={styles.disciplineBarTitle}>Toplam Şut</Text>
-                <Text style={[styles.disciplineBarValue, { color: '#60A5FA' }]}>{predictions.totalShots || '?'}</Text>
+                {!isViewOnlyMode && <Text style={[styles.disciplineBarValue, { color: '#60A5FA' }]}>{predictions.totalShots || '?'}</Text>}
               </View>
               <View style={styles.disciplineBarTrack}>
                 {['0-10', '11-20', '21-30', '31+'].map((range) => {
                   const isSelected = predictions.totalShots === range;
+                  const isCommunityTop = isViewOnlyMode && communityTopPredictions.totalShots === range;
                   return (
                     <TouchableOpacity
                       key={range}
                       style={[
                         styles.disciplineBarSegment,
-                        isSelected && styles.disciplineBarSegmentActiveBlue
+                        (isSelected || isCommunityTop) && styles.disciplineBarSegmentActiveBlue,
                       ]}
-                      onPress={() => handlePredictionChange('totalShots', range)}
-                      activeOpacity={0.7}
+                      onPress={() => !isViewOnlyMode && handlePredictionChange('totalShots', range)}
+                      activeOpacity={isViewOnlyMode ? 1 : 0.7}
+                      disabled={isViewOnlyMode}
                     >
-                      <Text style={[styles.disciplineBarSegmentText, isSelected && styles.disciplineBarSegmentTextActive]}>
+                      <Text style={[styles.disciplineBarSegmentText, (isSelected || isCommunityTop) && styles.disciplineBarSegmentTextActive]}>
                         {range}
                       </Text>
                     </TouchableOpacity>
@@ -2446,24 +2739,25 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
             {/* İsabetli Şut - Disiplin Tarzı */}
             <View style={styles.disciplineBarSection}>
               <View style={styles.disciplineBarHeader}>
-                <Text style={styles.disciplineBarEmoji}>✅</Text>
                 <Text style={styles.disciplineBarTitle}>İsabetli Şut</Text>
-                <Text style={[styles.disciplineBarValue, { color: '#34D399' }]}>{predictions.shotsOnTarget || '?'}</Text>
+                {!isViewOnlyMode && <Text style={[styles.disciplineBarValue, { color: '#34D399' }]}>{predictions.shotsOnTarget || '?'}</Text>}
               </View>
               <View style={styles.disciplineBarTrack}>
                 {['0-5', '6-10', '11-15', '16+'].map((range) => {
                   const isSelected = predictions.shotsOnTarget === range;
+                  const isCommunityTop = isViewOnlyMode && communityTopPredictions.shotsOnTarget === range;
                   return (
                     <TouchableOpacity
                       key={range}
                       style={[
                         styles.disciplineBarSegment,
-                        isSelected && styles.disciplineBarSegmentActiveGreen
+                        (isSelected || isCommunityTop) && styles.disciplineBarSegmentActiveGreen,
                       ]}
-                      onPress={() => handlePredictionChange('shotsOnTarget', range)}
-                      activeOpacity={0.7}
+                      onPress={() => !isViewOnlyMode && handlePredictionChange('shotsOnTarget', range)}
+                      activeOpacity={isViewOnlyMode ? 1 : 0.7}
+                      disabled={isViewOnlyMode}
                     >
-                      <Text style={[styles.disciplineBarSegmentText, isSelected && styles.disciplineBarSegmentTextActive]}>
+                      <Text style={[styles.disciplineBarSegmentText, (isSelected || isCommunityTop) && styles.disciplineBarSegmentTextActive]}>
                         {range}
                       </Text>
                     </TouchableOpacity>
@@ -2477,24 +2771,25 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
             {/* Korner - Disiplin Tarzı */}
             <View style={styles.disciplineBarSection}>
               <View style={styles.disciplineBarHeader}>
-                <Text style={styles.disciplineBarEmoji}>🚩</Text>
                 <Text style={styles.disciplineBarTitle}>Toplam Korner</Text>
-                <Text style={[styles.disciplineBarValue, { color: '#F59E0B' }]}>{predictions.totalCorners || '?'}</Text>
+                {!isViewOnlyMode && <Text style={[styles.disciplineBarValue, { color: '#F59E0B' }]}>{predictions.totalCorners || '?'}</Text>}
               </View>
               <View style={styles.disciplineBarTrack}>
                 {['0-6', '7-10', '11-14', '15+'].map((range) => {
                   const isSelected = predictions.totalCorners === range;
+                  const isCommunityTop = isViewOnlyMode && communityTopPredictions.totalCorners === range;
                   return (
                     <TouchableOpacity
                       key={range}
                       style={[
                         styles.disciplineBarSegment,
-                        isSelected && styles.disciplineBarSegmentActiveOrange
+                        (isSelected || isCommunityTop) && styles.disciplineBarSegmentActiveOrange
                       ]}
-                      onPress={() => handlePredictionChange('totalCorners', range)}
-                      activeOpacity={0.7}
+                      onPress={() => !isViewOnlyMode && handlePredictionChange('totalCorners', range)}
+                      activeOpacity={isViewOnlyMode ? 1 : 0.7}
+                      disabled={isViewOnlyMode}
                     >
-                      <Text style={[styles.disciplineBarSegmentText, isSelected && styles.disciplineBarSegmentTextActive]}>
+                      <Text style={[styles.disciplineBarSegmentText, (isSelected || isCommunityTop) && styles.disciplineBarSegmentTextActive]}>
                         {range}
                       </Text>
                     </TouchableOpacity>
@@ -2521,16 +2816,37 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
             <View style={styles.cardAccentTactical} />
             
             <View style={styles.combinedCardHeader}>
-              <View style={styles.combinedCardTitleRow}>
-                <Ionicons name="bulb-outline" size={18} color="#F59E0B" style={{ marginRight: 4 }} />
-                <Text style={styles.combinedCardTitle}>Taktik Tahminleri</Text>
-                {/* 🌟 Analiz Odağı Yıldızı - Taktik veya Orta Saha odağında bonus */}
-                {(isCategoryInSelectedFocus('tempo') || isCategoryInSelectedFocus('scenario')) && (
-                  <View style={styles.focusBonusBadge}>
-                    <Ionicons name="star" size={14} color="#F59E0B" />
-                    <Text style={styles.focusBonusText}>+Bonus</Text>
-                  </View>
-                )}
+              <View style={styles.combinedCardTitleRowWithInfo}>
+                <View style={styles.combinedCardTitleRow}>
+                  <Ionicons name="bulb-outline" size={18} color="#F59E0B" style={{ marginRight: 4 }} />
+                  <Text style={styles.combinedCardTitle}>Taktik Tahminleri</Text>
+                  {/* Bonus badge sadece normal modda */}
+                  {!isViewOnlyMode && (isCategoryInSelectedFocus('tempo') || isCategoryInSelectedFocus('scenario')) && (
+                    <View style={styles.focusBonusBadge}>
+                      <Ionicons name="star" size={14} color="#F59E0B" />
+                      <Text style={styles.focusBonusText}>+Bonus</Text>
+                    </View>
+                  )}
+                </View>
+                {/* ✅ Info butonu - Topluluk istatistikleri */}
+                <TouchableOpacity
+                  style={styles.sectionInfoButton}
+                  onPress={() => setSectionInfoPopup({
+                    title: 'Taktik Tahminleri',
+                    description: `${communityMatchPredictions.totalUsers.toLocaleString()} kullanıcının taktik tahminleri:`,
+                    stats: [
+                      ...communityMatchPredictions.tactics.tempo.map(t => ({
+                        label: `${t.type} tempo`,
+                        value: `%${t.percentage}`,
+                        percentage: t.percentage,
+                      })),
+                      { label: 'En popüler senaryo', value: `${communityMatchPredictions.tactics.mostPopularScenario} (%${communityMatchPredictions.tactics.scenarioPercentage})`, percentage: communityMatchPredictions.tactics.scenarioPercentage },
+                    ],
+                  })}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Text style={styles.sectionInfoButtonText}>i</Text>
+                </TouchableOpacity>
               </View>
             </View>
             
@@ -2539,7 +2855,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
               <View style={styles.disciplineBarHeader}>
                 <Ionicons name="speedometer-outline" size={14} color="#F59E0B" />
                 <Text style={styles.disciplineBarTitle}>Oyun Temposu</Text>
-                <Text style={[styles.disciplineBarValue, { color: '#F59E0B' }]}>{predictions.tempo ? predictions.tempo.split(' ')[0] : '?'}</Text>
+                {!isViewOnlyMode && <Text style={[styles.disciplineBarValue, { color: '#F59E0B' }]}>{predictions.tempo ? predictions.tempo.split(' ')[0] : '?'}</Text>}
               </View>
               <View style={styles.tempoButtonRow}>
                 {[
@@ -2548,18 +2864,21 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                   { label: 'Yüksek', value: 'Yüksek tempo', icon: 'flash-outline', color: '#F87171' },
                 ].map((item) => {
                   const isSelected = predictions.tempo === item.value;
+                  const isCommunityTop = isViewOnlyMode && communityTopPredictions.tempo === item.value;
+                  const isActive = isSelected || isCommunityTop;
                   return (
                     <TouchableOpacity 
                       key={item.value} 
                       style={[
                         styles.tempoBtn,
-                        isSelected && [styles.tempoBtnActive, { borderColor: item.color, backgroundColor: `${item.color}15` }]
+                        isActive && [styles.tempoBtnActive, { borderColor: item.color, backgroundColor: `${item.color}15` }],
                       ]}
-                      onPress={() => handlePredictionChange('tempo', item.value)}
-                      activeOpacity={0.7}
+                      onPress={() => !isViewOnlyMode && handlePredictionChange('tempo', item.value)}
+                      activeOpacity={isViewOnlyMode ? 1 : 0.7}
+                      disabled={isViewOnlyMode}
                     >
-                      <Ionicons name={item.icon as any} size={16} color={isSelected ? item.color : '#64748B'} />
-                      <Text style={[styles.tempoBtnText, isSelected && { color: item.color }]}>
+                      <Ionicons name={item.icon as any} size={16} color={isActive ? item.color : '#64748B'} />
+                      <Text style={[styles.tempoBtnText, isActive && { color: item.color }]}>
                         {item.label}
                       </Text>
                     </TouchableOpacity>
@@ -2581,21 +2900,24 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                   { label: 'Kontrollü', value: 'Kontrollü oyun', icon: 'shield-checkmark-outline', color: '#60A5FA' },
                   { label: 'Baskılı', value: 'Baskılı oyun', icon: 'arrow-forward-circle-outline', color: '#F87171' },
                   { label: 'Geçiş oyunu', value: 'Geçiş oyunu ağırlıklı', icon: 'swap-horizontal-outline', color: '#34D399' },
-                  { label: 'Duran top', value: 'Duran toplar belirleyici olur', icon: 'flag-outline', color: '#FBBF24' },
+                  { label: 'Dengeli maç', value: 'Dengeli maç', icon: 'scale-outline', color: '#A78BFA' },
                 ].map((item) => {
                   const isSelected = predictions.scenario === item.value;
+                  const isCommunityTop = isViewOnlyMode && communityTopPredictions.scenario === item.value;
+                  const isActive = isSelected || isCommunityTop;
                   return (
                     <TouchableOpacity 
                       key={item.value} 
                       style={[
                         styles.scenarioBtn,
-                        isSelected && [styles.scenarioBtnActive, { borderColor: item.color, backgroundColor: `${item.color}15` }]
+                        isActive && [styles.scenarioBtnActive, { borderColor: item.color, backgroundColor: `${item.color}15` }]
                       ]}
-                      onPress={() => handlePredictionChange('scenario', item.value)}
-                      activeOpacity={0.7}
+                      onPress={() => !isViewOnlyMode && handlePredictionChange('scenario', item.value)}
+                      activeOpacity={isViewOnlyMode ? 1 : 0.7}
+                      disabled={isViewOnlyMode}
                     >
-                      <Ionicons name={item.icon as any} size={18} color={isSelected ? item.color : '#64748B'} />
-                      <Text style={[styles.scenarioBtnText, isSelected && { color: item.color }]}>
+                      <Ionicons name={item.icon as any} size={18} color={isActive ? item.color : '#64748B'} />
+                      <Text style={[styles.scenarioBtnText, isActive && { color: item.color }]}>
                         {item.label}
                       </Text>
                     </TouchableOpacity>
@@ -2606,70 +2928,88 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
           </TouchableOpacity>
 
           {/* ✅ Tahmin Kaydet Toolbar - Kadro sekmesiyle tutarlı: [Kilit] [Kaydet Butonu] */}
-          <View style={styles.predictionToolbar}>
-            {/* Kilit Butonu - Solda (sadece aç/kapat, kaydetme yapmaz) */}
-            <TouchableOpacity
-              style={[
-                styles.predictionLockButton,
-                isPredictionLocked ? styles.predictionLockButtonLocked : styles.predictionLockButtonOpen
-              ]}
-              onPress={async () => {
-                // ✅ Kilit durumunu değiştir ve AsyncStorage'a kaydet
-                const newLockState = !isPredictionLocked;
-                setIsPredictionLocked(newLockState);
-                
-                // ✅ AsyncStorage'a kilit durumunu kaydet
-                try {
-                  const storageKey = predictionStorageKey || `${STORAGE_KEYS.PREDICTIONS}${matchData.id}`;
-                  const existing = await AsyncStorage.getItem(storageKey);
-                  if (existing) {
-                    const parsed = JSON.parse(existing);
-                    parsed.isPredictionLocked = newLockState;
-                    await AsyncStorage.setItem(storageKey, JSON.stringify(parsed));
-                  }
-                } catch (error) {
-                  console.warn('Kilit durumu kaydedilemedi:', error);
-                }
-              }}
-              activeOpacity={0.7}
-            >
-              <Ionicons 
-                name={isPredictionLocked ? "lock-closed" : "lock-open"} 
-                size={20} 
-                color={isPredictionLocked ? '#EF4444' : '#10B981'} 
-              />
-            </TouchableOpacity>
-
-            {/* Kaydet Butonu - Sağda (flex: 1) */}
-            <TouchableOpacity 
-              style={[
-                styles.submitButton, 
-                (isSaving || isPredictionLocked) && styles.submitButtonDisabled
-              ]}
-              activeOpacity={0.8}
-              onPress={handleSavePredictions}
-              disabled={isSaving || isPredictionLocked}
-            >
-              <LinearGradient
-                colors={(isSaving || isPredictionLocked) ? ['#4B5563', '#374151'] : ['#1FA2A6', '#047857']}
-                style={styles.submitButtonGradient}
-              >
-                {isSaving ? (
-                  <View style={styles.submitButtonLoading}>
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                    <Text style={styles.submitButtonText}>Kaydediliyor...</Text>
-                  </View>
-                ) : isPredictionLocked ? (
+          {isViewOnlyMode ? (
+            // İzleme Modu - Sadece görüntüleme
+            <View style={styles.predictionToolbar}>
+              <View style={[styles.submitButton, { flex: 1 }]}>
+                <LinearGradient
+                  colors={['#374151', '#1F2937']}
+                  style={styles.submitButtonGradient}
+                >
                   <View style={styles.submitButtonContent}>
-                    <Ionicons name="lock-closed" size={18} color="#EF4444" style={{ marginRight: 6 }} />
-                    <Text style={styles.submitButtonTextLocked}>Tahminler Kilitli</Text>
+                    <Ionicons name="eye" size={20} color="#9CA3AF" style={{ marginRight: 8 }} />
+                    <Text style={[styles.submitButtonText, { color: '#9CA3AF' }]}>İzleme Modu</Text>
                   </View>
-                ) : (
-                  <Text style={styles.submitButtonText}>Tahminleri Kaydet</Text>
-                )}
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
+                </LinearGradient>
+              </View>
+            </View>
+          ) : (
+            // Normal Mod - Kilit ve Kaydet butonları
+            <View style={styles.predictionToolbar}>
+              {/* Kilit Butonu - Solda (sadece aç/kapat, kaydetme yapmaz) */}
+              <TouchableOpacity
+                style={[
+                  styles.predictionLockButton,
+                  isPredictionLocked ? styles.predictionLockButtonLocked : styles.predictionLockButtonOpen
+                ]}
+                onPress={async () => {
+                  // ✅ Kilit durumunu değiştir ve AsyncStorage'a kaydet
+                  const newLockState = !isPredictionLocked;
+                  setIsPredictionLocked(newLockState);
+                  
+                  // ✅ AsyncStorage'a kilit durumunu kaydet
+                  try {
+                    const storageKey = predictionStorageKey || `${STORAGE_KEYS.PREDICTIONS}${matchData.id}`;
+                    const existing = await AsyncStorage.getItem(storageKey);
+                    if (existing) {
+                      const parsed = JSON.parse(existing);
+                      parsed.isPredictionLocked = newLockState;
+                      await AsyncStorage.setItem(storageKey, JSON.stringify(parsed));
+                    }
+                  } catch (error) {
+                    console.warn('Kilit durumu kaydedilemedi:', error);
+                  }
+                }}
+                activeOpacity={0.7}
+              >
+                <Ionicons 
+                  name={isPredictionLocked ? "lock-closed" : "lock-open"} 
+                  size={20} 
+                  color={isPredictionLocked ? '#EF4444' : '#10B981'} 
+                />
+              </TouchableOpacity>
+
+              {/* Kaydet Butonu - Sağda (flex: 1) */}
+              <TouchableOpacity 
+                style={[
+                  styles.submitButton, 
+                  (isSaving || isPredictionLocked) && styles.submitButtonDisabled
+                ]}
+                activeOpacity={0.8}
+                onPress={handleSavePredictions}
+                disabled={isSaving || isPredictionLocked}
+              >
+                <LinearGradient
+                  colors={(isSaving || isPredictionLocked) ? ['#4B5563', '#374151'] : ['#1FA2A6', '#047857']}
+                  style={styles.submitButtonGradient}
+                >
+                  {isSaving ? (
+                    <View style={styles.submitButtonLoading}>
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                      <Text style={styles.submitButtonText}>Kaydediliyor...</Text>
+                    </View>
+                  ) : isPredictionLocked ? (
+                    <View style={styles.submitButtonContent}>
+                      <Ionicons name="lock-closed" size={18} color="#EF4444" style={{ marginRight: 6 }} />
+                      <Text style={styles.submitButtonTextLocked}>Tahminler Kilitli</Text>
+                    </View>
+                  ) : (
+                    <Text style={styles.submitButtonText}>Tahminleri Kaydet</Text>
+                  )}
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       </ScrollView>
 
@@ -3248,6 +3588,386 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                   fontWeight: '600',
                   color: '#FFFFFF',
                 }}>Tamam</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      )}
+
+      {/* ✅ OYUNCU BİLGİ POPUP - Kırmızı "i" butonuna tıklanınca açılır */}
+      {playerInfoPopup && (
+        <Modal
+          visible={true}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setPlayerInfoPopup(null)}
+          statusBarTranslucent
+        >
+          <View style={{
+            flex: 1,
+            backgroundColor: 'rgba(0,0,0,0.7)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: 20,
+          }}>
+            <TouchableOpacity
+              style={StyleSheet.absoluteFill}
+              activeOpacity={1}
+              onPress={() => setPlayerInfoPopup(null)}
+            />
+            <View style={{
+              width: '100%',
+              maxWidth: 380,
+              backgroundColor: '#1E3A3A',
+              borderRadius: 16,
+              borderWidth: 1,
+              borderColor: 'rgba(31, 162, 166, 0.3)',
+              overflow: 'hidden',
+            }}>
+              {/* Header */}
+              <View style={{
+                backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                paddingVertical: 14,
+                paddingHorizontal: 16,
+                borderBottomWidth: 1,
+                borderBottomColor: 'rgba(239, 68, 68, 0.3)',
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <View style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: 14,
+                    backgroundColor: '#EF4444',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}>
+                    <Text style={{ color: '#FFF', fontWeight: '700', fontStyle: 'italic' }}>i</Text>
+                  </View>
+                  <Text style={{ fontSize: 18, fontWeight: '700', color: '#FFFFFF' }}>
+                    {playerInfoPopup.playerName}
+                  </Text>
+                </View>
+                <TouchableOpacity onPress={() => setPlayerInfoPopup(null)}>
+                  <Ionicons name="close" size={24} color="#94A3B8" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Content */}
+              <View style={{ padding: 16 }}>
+                {/* Pozisyon & Rating */}
+                <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
+                  <View style={{
+                    flex: 1,
+                    backgroundColor: 'rgba(31, 162, 166, 0.15)',
+                    padding: 12,
+                    borderRadius: 10,
+                    alignItems: 'center',
+                  }}>
+                    <Text style={{ fontSize: 12, color: '#94A3B8', marginBottom: 4 }}>Pozisyon</Text>
+                    <Text style={{ fontSize: 16, fontWeight: '700', color: '#1FA2A6' }}>{playerInfoPopup.position}</Text>
+                  </View>
+                  <View style={{
+                    flex: 1,
+                    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+                    padding: 12,
+                    borderRadius: 10,
+                    alignItems: 'center',
+                  }}>
+                    <Text style={{ fontSize: 12, color: '#94A3B8', marginBottom: 4 }}>Reyting</Text>
+                    <Text style={{ fontSize: 16, fontWeight: '700', color: '#F59E0B' }}>{playerInfoPopup.rating ?? '–'}</Text>
+                  </View>
+                </View>
+
+                {/* Kullanıcı Tahminleri */}
+                <View style={{ marginBottom: 16 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#10B981', marginBottom: 8 }}>
+                    ✅ Sizin Tahminleriniz
+                  </Text>
+                  {playerInfoPopup.userPredictions.length > 0 ? (
+                    <View style={{ gap: 6 }}>
+                      {playerInfoPopup.userPredictions.map((pred, idx) => (
+                        <Text key={idx} style={{ fontSize: 14, color: '#E2E8F0' }}>{pred}</Text>
+                      ))}
+                    </View>
+                  ) : (
+                    <Text style={{ fontSize: 13, color: '#64748B', fontStyle: 'italic' }}>
+                      Bu oyuncu için tahmin yapmadınız
+                    </Text>
+                  )}
+                </View>
+
+                {/* Topluluk Verileri */}
+                <View>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#3B82F6', marginBottom: 8 }}>
+                    📊 Topluluk Tahminleri
+                  </Text>
+                  {playerInfoPopup.communityData ? (
+                    playerInfoPopup.showCommunityData ? (
+                      <View style={{ gap: 8 }}>
+                        <Text style={{ fontSize: 12, color: '#94A3B8', marginBottom: 4 }}>
+                          {playerInfoPopup.communityData.totalUsers} kullanıcı tahmin yaptı
+                        </Text>
+                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                          {[
+                            { label: '⚽ Gol', value: playerInfoPopup.communityData.goal, color: '#10B981' },
+                            { label: '🅰️ Asist', value: playerInfoPopup.communityData.assist, color: '#3B82F6' },
+                            { label: '🟨 Sarı', value: playerInfoPopup.communityData.yellowCard, color: '#F59E0B' },
+                            { label: '🟥 Kırmızı', value: playerInfoPopup.communityData.redCard, color: '#EF4444' },
+                          ].map((item, idx) => (
+                            <View key={idx} style={{
+                              backgroundColor: `${item.color}15`,
+                              paddingHorizontal: 10,
+                              paddingVertical: 6,
+                              borderRadius: 8,
+                              borderWidth: 1,
+                              borderColor: `${item.color}30`,
+                            }}>
+                              <Text style={{ fontSize: 12, color: '#94A3B8' }}>{item.label}</Text>
+                              <Text style={{ fontSize: 14, fontWeight: '600', color: item.color }}>
+                                %{Math.round(item.value * 100)}
+                              </Text>
+                            </View>
+                          ))}
+                        </View>
+                        
+                        {/* ✅ Değişiklik Detayları - Çıkar ve Kim Girer */}
+                        {playerInfoPopup.communityData.substitutedOut > 0.05 && (
+                          <View style={{
+                            backgroundColor: 'rgba(249, 115, 22, 0.1)',
+                            padding: 12,
+                            borderRadius: 10,
+                            borderWidth: 1,
+                            borderColor: 'rgba(249, 115, 22, 0.2)',
+                            marginTop: 8,
+                          }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                              <Ionicons name="swap-horizontal" size={16} color="#F97316" />
+                              <Text style={{ fontSize: 13, fontWeight: '600', color: '#F97316' }}>
+                                Değişiklik Tahmini (%{Math.round(playerInfoPopup.communityData.substitutedOut * 100)})
+                              </Text>
+                            </View>
+                            <View style={{ gap: 6 }}>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                <Ionicons name="arrow-down-circle" size={14} color="#EF4444" />
+                                <Text style={{ fontSize: 12, color: '#94A3B8' }}>Çıkar:</Text>
+                                <Text style={{ fontSize: 12, fontWeight: '600', color: '#E2E8F0' }}>{playerInfoPopup.playerName}</Text>
+                              </View>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                <Ionicons name="arrow-up-circle" size={14} color="#10B981" />
+                                <Text style={{ fontSize: 12, color: '#94A3B8' }}>En çok tahmin edilen giren:</Text>
+                                <Text style={{ fontSize: 12, fontWeight: '600', color: '#10B981' }}>Yedek Oyuncu</Text>
+                              </View>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                <Ionicons name="time" size={14} color="#60A5FA" />
+                                <Text style={{ fontSize: 12, color: '#94A3B8' }}>Tahmin edilen dakika:</Text>
+                                <Text style={{ fontSize: 12, fontWeight: '600', color: '#60A5FA' }}>60-75'</Text>
+                              </View>
+                            </View>
+                          </View>
+                        )}
+                        
+                        {/* ✅ Sakatlık Detayları */}
+                        {playerInfoPopup.communityData.injuredOut > 0.02 && (
+                          <View style={{
+                            backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                            padding: 12,
+                            borderRadius: 10,
+                            borderWidth: 1,
+                            borderColor: 'rgba(139, 92, 246, 0.2)',
+                            marginTop: 8,
+                          }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                              <Ionicons name="medkit" size={16} color="#8B5CF6" />
+                              <Text style={{ fontSize: 13, fontWeight: '600', color: '#8B5CF6' }}>
+                                Sakatlık Riski (%{Math.round(playerInfoPopup.communityData.injuredOut * 100)})
+                              </Text>
+                            </View>
+                            <View style={{ gap: 6 }}>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                <Ionicons name="alert-circle" size={14} color="#EF4444" />
+                                <Text style={{ fontSize: 12, color: '#94A3B8' }}>Risk seviyesi:</Text>
+                                <Text style={{ fontSize: 12, fontWeight: '600', color: playerInfoPopup.communityData.injuredOut > 0.1 ? '#EF4444' : '#F59E0B' }}>
+                                  {playerInfoPopup.communityData.injuredOut > 0.1 ? 'Yüksek' : 'Düşük-Orta'}
+                                </Text>
+                              </View>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                <Ionicons name="arrow-up-circle" size={14} color="#10B981" />
+                                <Text style={{ fontSize: 12, color: '#94A3B8' }}>Yerine girer:</Text>
+                                <Text style={{ fontSize: 12, fontWeight: '600', color: '#10B981' }}>Acil yedek</Text>
+                              </View>
+                            </View>
+                          </View>
+                        )}
+                      </View>
+                    ) : (
+                      <View style={{
+                        backgroundColor: 'rgba(100, 116, 139, 0.1)',
+                        padding: 12,
+                        borderRadius: 8,
+                        alignItems: 'center',
+                      }}>
+                        <Ionicons name="lock-closed" size={20} color="#64748B" />
+                        <Text style={{ fontSize: 13, color: '#64748B', marginTop: 6, textAlign: 'center' }}>
+                          Tahminlerinizi kaydedin ve topluluk verilerini görün!
+                        </Text>
+                      </View>
+                    )
+                  ) : (
+                    <Text style={{ fontSize: 13, color: '#64748B', fontStyle: 'italic' }}>
+                      Henüz topluluk verisi yok
+                    </Text>
+                  )}
+                </View>
+              </View>
+
+              {/* Close Button */}
+              <TouchableOpacity
+                style={{
+                  margin: 16,
+                  marginTop: 0,
+                  paddingVertical: 12,
+                  borderRadius: 10,
+                  backgroundColor: 'rgba(31, 162, 166, 0.2)',
+                  borderWidth: 1,
+                  borderColor: 'rgba(31, 162, 166, 0.4)',
+                  alignItems: 'center',
+                }}
+                onPress={() => setPlayerInfoPopup(null)}
+              >
+                <Text style={{ fontSize: 15, fontWeight: '600', color: '#1FA2A6' }}>Tamam</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      )}
+
+      {/* ✅ BÖLÜM TOPLULUK POPUP - Tahmin bölümlerinin "i" butonlarına tıklanınca */}
+      {sectionInfoPopup && (
+        <Modal
+          visible={true}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setSectionInfoPopup(null)}
+          statusBarTranslucent
+        >
+          <View style={{
+            flex: 1,
+            backgroundColor: 'rgba(0,0,0,0.7)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: 20,
+          }}>
+            <TouchableOpacity
+              style={StyleSheet.absoluteFill}
+              activeOpacity={1}
+              onPress={() => setSectionInfoPopup(null)}
+            />
+            <View style={{
+              width: '100%',
+              maxWidth: 360,
+              backgroundColor: '#1E3A3A',
+              borderRadius: 16,
+              borderWidth: 1,
+              borderColor: 'rgba(239, 68, 68, 0.3)',
+              overflow: 'hidden',
+            }}>
+              {/* Header */}
+              <View style={{
+                backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                paddingVertical: 14,
+                paddingHorizontal: 16,
+                borderBottomWidth: 1,
+                borderBottomColor: 'rgba(239, 68, 68, 0.2)',
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <View style={{
+                    width: 26,
+                    height: 26,
+                    borderRadius: 13,
+                    backgroundColor: '#EF4444',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}>
+                    <Text style={{ color: '#FFF', fontWeight: '700', fontStyle: 'italic', fontSize: 13 }}>i</Text>
+                  </View>
+                  <Text style={{ fontSize: 16, fontWeight: '700', color: '#FFFFFF' }}>
+                    {sectionInfoPopup.title}
+                  </Text>
+                </View>
+                <TouchableOpacity onPress={() => setSectionInfoPopup(null)}>
+                  <Ionicons name="close" size={22} color="#94A3B8" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Content */}
+              <View style={{ padding: 16 }}>
+                <Text style={{ fontSize: 13, color: '#94A3B8', marginBottom: 14, lineHeight: 18 }}>
+                  {sectionInfoPopup.description}
+                </Text>
+
+                {/* Stats */}
+                <View style={{ gap: 10 }}>
+                  {sectionInfoPopup.stats.map((stat, idx) => (
+                    <View key={idx} style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      backgroundColor: 'rgba(59, 130, 246, 0.08)',
+                      padding: 12,
+                      borderRadius: 10,
+                      borderLeftWidth: 3,
+                      borderLeftColor: stat.percentage > 0 ? '#3B82F6' : '#64748B',
+                    }}>
+                      <Text style={{ fontSize: 14, color: '#E2E8F0', flex: 1 }}>{stat.label}</Text>
+                      <Text style={{ 
+                        fontSize: 15, 
+                        fontWeight: '700', 
+                        color: stat.percentage > 40 ? '#10B981' : stat.percentage > 25 ? '#3B82F6' : '#94A3B8',
+                      }}>
+                        {stat.value}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+
+                {/* Info Note */}
+                <View style={{
+                  marginTop: 14,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 8,
+                  backgroundColor: 'rgba(100, 116, 139, 0.1)',
+                  padding: 10,
+                  borderRadius: 8,
+                }}>
+                  <Ionicons name="people" size={16} color="#64748B" />
+                  <Text style={{ fontSize: 12, color: '#64748B', flex: 1 }}>
+                    Bu veriler tüm TacticIQ kullanıcılarının tahminlerinden hesaplanmıştır.
+                  </Text>
+                </View>
+              </View>
+
+              {/* Close Button */}
+              <TouchableOpacity
+                style={{
+                  margin: 16,
+                  marginTop: 0,
+                  paddingVertical: 12,
+                  borderRadius: 10,
+                  backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                  borderWidth: 1,
+                  borderColor: 'rgba(239, 68, 68, 0.3)',
+                  alignItems: 'center',
+                }}
+                onPress={() => setSectionInfoPopup(null)}
+              >
+                <Text style={{ fontSize: 15, fontWeight: '600', color: '#EF4444' }}>Kapat</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -4661,6 +5381,87 @@ const styles = StyleSheet.create({
       web: { boxShadow: '0 1px 4px rgba(0,0,0,0.3)' },
     }),
   },
+  // ✅ İZLEME MODU: Tahmin yapılmamış maçlarda "i" butonu daha belirgin
+  predictionCardInfoIconHighlighted: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    top: -10,
+    right: -10,
+    backgroundColor: '#3B82F6', // Parlak mavi
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    ...Platform.select({
+      ios: { shadowColor: '#3B82F6', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 8 },
+      android: { elevation: 8 },
+      web: { 
+        boxShadow: '0 0 12px rgba(59, 130, 246, 0.9), 0 0 24px rgba(59, 130, 246, 0.5), inset 0 0 4px rgba(255,255,255,0.3)',
+        cursor: 'pointer',
+      },
+    }),
+  },
+  // ✅ KIRMIZI DAİRE İÇİNDE "i" BUTONU - Oyuncu kartları için
+  predictionCardInfoIconRed: {
+    position: 'absolute',
+    top: -8,
+    right: -8,
+    zIndex: 15,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#EF4444', // Kırmızı
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Platform.select({
+      ios: { shadowColor: '#EF4444', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.6, shadowRadius: 4 },
+      android: { elevation: 6 },
+      web: { 
+        boxShadow: '0 0 8px rgba(239, 68, 68, 0.7), 0 2px 4px rgba(0,0,0,0.3)',
+        cursor: 'pointer',
+      },
+    }),
+  },
+  infoIconText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+    fontStyle: 'italic',
+  },
+  // ✅ BÖLÜM INFO BUTONU - Sağ üst köşe
+  sectionInfoButton: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#EF4444',
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 'auto',
+    ...Platform.select({
+      ios: { shadowColor: '#EF4444', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.5, shadowRadius: 3 },
+      android: { elevation: 4 },
+      web: { 
+        boxShadow: '0 0 6px rgba(239, 68, 68, 0.6)',
+        cursor: 'pointer',
+      },
+    }),
+  },
+  sectionInfoButtonText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '700',
+    fontStyle: 'italic',
+  },
+  // ✅ BAŞLIK SATIRI - Info butonu ile birlikte
+  combinedCardTitleRowWithInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
   playerCard: {
     width: 64,
     height: 76,
@@ -4980,6 +5781,11 @@ const styles = StyleSheet.create({
   predictionsSection: {
     padding: 16,
     gap: 24,
+  },
+  // ✅ İZLEME MODU: Tahmin yapılmamış maçlarda hafif soluk ama tıklanabilir (i butonları için)
+  predictionsSectionViewOnly: {
+    opacity: 0.85, // 0.5'ten 0.85'e yükseltildi - daha az flu
+    // pointerEvents kaldırıldı - i butonlarına tıklanabilsin
   },
   focusInfoBanner: {
     flexDirection: 'row',
@@ -5551,6 +6357,62 @@ const styles = StyleSheet.create({
   disciplineBarSegmentTextActive: {
     color: '#FFF',
     fontWeight: '700',
+  },
+  // ✅ TOPLULUK TAHMİNİ - Segment işareti
+  disciplineBarSegmentCommunity: {
+    borderWidth: 2,
+    borderColor: '#8B5CF6', // Mor renk - topluluk tahmini
+    backgroundColor: 'rgba(139, 92, 246, 0.15)',
+  },
+  // ✅ TOPLULUK BADGE - Mini ikon
+  communityBadgeMini: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#8B5CF6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#0F172A',
+    zIndex: 10,
+  },
+  communityBadgeMiniTempo: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#8B5CF6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#0F172A',
+    zIndex: 10,
+  },
+  // ✅ TIMELINE BUTONU - Topluluk işareti
+  timelineBtnCommunity: {
+    borderWidth: 2,
+    borderColor: '#8B5CF6',
+    backgroundColor: 'rgba(139, 92, 246, 0.15)',
+  },
+  // ✅ TEMPO BUTONU - Topluluk işareti
+  tempoBtnCommunity: {
+    borderWidth: 2,
+    borderColor: '#8B5CF6',
+    backgroundColor: 'rgba(139, 92, 246, 0.1)',
+  },
+  // ✅ VERTICAL BAR - Topluluk işareti
+  verticalBarWrapperCommunity: {
+    // wrapper stil
+  },
+  verticalBarCommunity: {
+    borderWidth: 2,
+    borderColor: '#8B5CF6',
+    backgroundColor: 'rgba(139, 92, 246, 0.3)',
   },
   
   // Dikey Çubuk Stilleri (Disiplin için)
