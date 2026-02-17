@@ -1933,10 +1933,10 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
 
         {/* ✅ Bildirim: Oyuncu kartlarına tıklayın + kilit bilgisi VEYA izleme modu mesajı */}
         {!hasPrediction && (isMatchLive || isMatchFinished) ? (
-          <View style={[styles.infoNote, { backgroundColor: 'rgba(31, 162, 166, 0.1)', borderColor: 'rgba(31, 162, 166, 0.25)' }]}>
-            <Ionicons name="eye-outline" size={16} color="#1FA2A6" />
-            <Text style={[styles.infoText, { color: '#5EEAD4' }]} numberOfLines={2}>
-              Kadro tahmini yapmadığınız için bu maç için tahmin yapamazsınız. Topluluk verilerini görmek için oyuncu kartlarına tıklayın.
+          <View style={[styles.infoNote, { backgroundColor: 'rgba(31, 162, 166, 0.15)', borderColor: 'rgba(31, 162, 166, 0.3)' }]}>
+            <Ionicons name="eye-outline" size={14} color="#1FA2A6" style={{ flexShrink: 0 }} />
+            <Text style={[styles.infoText, { color: '#5EEAD4', fontSize: 11 }]} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8}>
+              Kadro tahmini yapmadığınız için tahmin yapamazsınız. Topluluk verilerini görmek için oyuncu kartlarına tıklayın.
             </Text>
           </View>
         ) : (
@@ -5983,16 +5983,16 @@ const styles = StyleSheet.create({
     }),
   },
   categoryCardFirstHalf: {
-    backgroundColor: 'rgba(234, 179, 8, 0.04)',
-    borderColor: 'rgba(234, 179, 8, 0.2)',
+    backgroundColor: 'rgba(234, 179, 8, 0.12)',
+    borderColor: 'rgba(234, 179, 8, 0.35)',
   },
   categoryCardFullTime: {
-    backgroundColor: 'rgba(59, 130, 246, 0.04)',
-    borderColor: 'rgba(59, 130, 246, 0.2)',
+    backgroundColor: 'rgba(59, 130, 246, 0.12)',
+    borderColor: 'rgba(59, 130, 246, 0.35)',
   },
   categoryCardGoal: {
-    backgroundColor: 'rgba(16, 185, 129, 0.04)',
-    borderColor: 'rgba(16, 185, 129, 0.25)',
+    backgroundColor: 'rgba(16, 185, 129, 0.12)',
+    borderColor: 'rgba(16, 185, 129, 0.4)',
   },
   cardAccentFirstHalf: {
     position: 'absolute',
@@ -6404,8 +6404,8 @@ const styles = StyleSheet.create({
   // DİSİPLİN KARTLARI - Zarif Horizontal Bar Stilleri
   // ═══════════════════════════════════════════════════════════════════════════
   categoryCardDiscipline: {
-    backgroundColor: 'rgba(239, 68, 68, 0.03)',
-    borderColor: 'rgba(239, 68, 68, 0.2)',
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    borderColor: 'rgba(239, 68, 68, 0.35)',
   },
   cardAccentDiscipline: {
     position: 'absolute',
@@ -6627,8 +6627,8 @@ const styles = StyleSheet.create({
   
   // Tempo & Senaryo Stilleri
   categoryCardTactical: {
-    backgroundColor: 'rgba(245, 158, 11, 0.04)',
-    borderColor: 'rgba(245, 158, 11, 0.2)',
+    backgroundColor: 'rgba(245, 158, 11, 0.12)',
+    borderColor: 'rgba(245, 158, 11, 0.35)',
   },
   cardAccentTactical: {
     position: 'absolute',
@@ -6696,8 +6696,8 @@ const styles = StyleSheet.create({
   // ŞUT TAHMİNLERİ - Zarif Horizontal Bar Stilleri
   // ═══════════════════════════════════════════════════════════════════════════
   categoryCardShots: {
-    backgroundColor: 'rgba(59, 130, 246, 0.04)',
-    borderColor: 'rgba(59, 130, 246, 0.3)',
+    backgroundColor: 'rgba(59, 130, 246, 0.12)',
+    borderColor: 'rgba(59, 130, 246, 0.4)',
   },
   cardAccentShots: {
     position: 'absolute',
@@ -6997,7 +6997,8 @@ const styles = StyleSheet.create({
   
   // Possession - Zarif Stil
   categoryCardPossession: {
-    borderColor: 'rgba(31, 162, 166, 0.15)',
+    backgroundColor: 'rgba(31, 162, 166, 0.12)',
+    borderColor: 'rgba(31, 162, 166, 0.35)',
   },
   cardAccentPossession: {
     position: 'absolute',
