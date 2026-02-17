@@ -374,20 +374,20 @@ const FootballField = ({ children, style }: any) => (
       style={styles.fieldGradient}
     >
       <Svg width="100%" height="100%" viewBox="0 0 100 150" preserveAspectRatio="none" style={styles.fieldSvg}>
-        <Rect x="2" y="2" width="96" height="146" fill="none" stroke="white" strokeWidth="0.5" opacity="0.3" />
-        <Line x1="2" y1="75" x2="98" y2="75" stroke="white" strokeWidth="0.5" opacity="0.3" />
-        <Circle cx="50" cy="75" r="13.5" fill="none" stroke="white" strokeWidth="0.5" opacity="0.3" />
-        <Circle cx="50" cy="75" r="1" fill="white" opacity="0.3" />
-        <Rect x="20.35" y="2" width="59.3" height="23" fill="none" stroke="white" strokeWidth="0.5" opacity="0.3" />
-        <Rect x="36.55" y="2" width="26.9" height="7.7" fill="none" stroke="white" strokeWidth="0.5" opacity="0.3" />
-        <Circle cx="50" cy="17.3" r="0.8" fill="white" opacity="0.3" />
-        <Rect x="20.35" y="125" width="59.3" height="23" fill="none" stroke="white" strokeWidth="0.5" opacity="0.3" />
-        <Rect x="36.55" y="140.3" width="26.9" height="7.7" fill="none" stroke="white" strokeWidth="0.5" opacity="0.3" />
-        <Circle cx="50" cy="132.7" r="0.8" fill="white" opacity="0.3" />
-        <Path d="M 2 4.5 A 2.5 2.5 0 0 1 4.5 2" stroke="white" strokeWidth="0.5" fill="none" opacity="0.3" />
-        <Path d="M 95.5 2 A 2.5 2.5 0 0 1 98 4.5" stroke="white" strokeWidth="0.5" fill="none" opacity="0.3" />
-        <Path d="M 98 145.5 A 2.5 2.5 0 0 1 95.5 148" stroke="white" strokeWidth="0.5" fill="none" opacity="0.3" />
-        <Path d="M 4.5 148 A 2.5 2.5 0 0 1 2 145.5" stroke="white" strokeWidth="0.5" fill="none" opacity="0.3" />
+        <Rect x="2" y="2" width="96" height="146" fill="none" stroke="white" strokeWidth="0.4" opacity="0.15" />
+        <Line x1="2" y1="75" x2="98" y2="75" stroke="white" strokeWidth="0.4" opacity="0.15" />
+        <Circle cx="50" cy="75" r="13.5" fill="none" stroke="white" strokeWidth="0.4" opacity="0.15" />
+        <Circle cx="50" cy="75" r="1" fill="white" opacity="0.15" />
+        <Rect x="20.35" y="2" width="59.3" height="23" fill="none" stroke="white" strokeWidth="0.4" opacity="0.15" />
+        <Rect x="36.55" y="2" width="26.9" height="7.7" fill="none" stroke="white" strokeWidth="0.4" opacity="0.15" />
+        <Circle cx="50" cy="17.3" r="0.8" fill="white" opacity="0.15" />
+        <Rect x="20.35" y="125" width="59.3" height="23" fill="none" stroke="white" strokeWidth="0.4" opacity="0.15" />
+        <Rect x="36.55" y="140.3" width="26.9" height="7.7" fill="none" stroke="white" strokeWidth="0.4" opacity="0.15" />
+        <Circle cx="50" cy="132.7" r="0.8" fill="white" opacity="0.15" />
+        <Path d="M 2 4.5 A 2.5 2.5 0 0 1 4.5 2" stroke="white" strokeWidth="0.4" fill="none" opacity="0.15" />
+        <Path d="M 95.5 2 A 2.5 2.5 0 0 1 98 4.5" stroke="white" strokeWidth="0.4" fill="none" opacity="0.15" />
+        <Path d="M 98 145.5 A 2.5 2.5 0 0 1 95.5 148" stroke="white" strokeWidth="0.4" fill="none" opacity="0.15" />
+        <Path d="M 4.5 148 A 2.5 2.5 0 0 1 2 145.5" stroke="white" strokeWidth="0.4" fill="none" opacity="0.15" />
       </Svg>
       {children}
     </LinearGradient>
@@ -2948,16 +2948,16 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
 
           {/* ✅ Tahmin Kaydet Toolbar - Kadro sekmesiyle tutarlı: [Kilit] [Kaydet Butonu] */}
           {isViewOnlyMode ? (
-            // İzleme Modu - Sadece görüntüleme
+            // İzleme Modu - Sadece görüntüleme (Kırmızı tema)
             <View style={styles.predictionToolbar}>
               <View style={[styles.submitButton, { flex: 1 }]}>
                 <LinearGradient
-                  colors={['#374151', '#1F2937']}
+                  colors={['#7F1D1D', '#450A0A']}
                   style={styles.submitButtonGradient}
                 >
                   <View style={styles.submitButtonContent}>
-                    <Ionicons name="eye" size={20} color="#9CA3AF" style={{ marginRight: 8 }} />
-                    <Text style={[styles.submitButtonText, { color: '#9CA3AF' }]}>İzleme Modu</Text>
+                    <Ionicons name="eye-off" size={20} color="#EF4444" style={{ marginRight: 8 }} />
+                    <Text style={[styles.submitButtonText, { color: '#EF4444' }]}>İzleme Modu</Text>
                   </View>
                 </LinearGradient>
               </View>
@@ -5983,16 +5983,16 @@ const styles = StyleSheet.create({
     }),
   },
   categoryCardFirstHalf: {
-    backgroundColor: 'rgba(234, 179, 8, 0.12)',
-    borderColor: 'rgba(234, 179, 8, 0.35)',
+    backgroundColor: 'rgba(234, 179, 8, 0.18)',
+    borderColor: 'rgba(234, 179, 8, 0.45)',
   },
   categoryCardFullTime: {
-    backgroundColor: 'rgba(59, 130, 246, 0.12)',
-    borderColor: 'rgba(59, 130, 246, 0.35)',
+    backgroundColor: 'rgba(59, 130, 246, 0.18)',
+    borderColor: 'rgba(59, 130, 246, 0.45)',
   },
   categoryCardGoal: {
-    backgroundColor: 'rgba(16, 185, 129, 0.12)',
-    borderColor: 'rgba(16, 185, 129, 0.4)',
+    backgroundColor: 'rgba(16, 185, 129, 0.18)',
+    borderColor: 'rgba(16, 185, 129, 0.5)',
   },
   cardAccentFirstHalf: {
     position: 'absolute',
@@ -6404,8 +6404,8 @@ const styles = StyleSheet.create({
   // DİSİPLİN KARTLARI - Zarif Horizontal Bar Stilleri
   // ═══════════════════════════════════════════════════════════════════════════
   categoryCardDiscipline: {
-    backgroundColor: 'rgba(239, 68, 68, 0.12)',
-    borderColor: 'rgba(239, 68, 68, 0.35)',
+    backgroundColor: 'rgba(239, 68, 68, 0.18)',
+    borderColor: 'rgba(239, 68, 68, 0.45)',
   },
   cardAccentDiscipline: {
     position: 'absolute',
@@ -6627,8 +6627,8 @@ const styles = StyleSheet.create({
   
   // Tempo & Senaryo Stilleri
   categoryCardTactical: {
-    backgroundColor: 'rgba(245, 158, 11, 0.12)',
-    borderColor: 'rgba(245, 158, 11, 0.35)',
+    backgroundColor: 'rgba(245, 158, 11, 0.18)',
+    borderColor: 'rgba(245, 158, 11, 0.45)',
   },
   cardAccentTactical: {
     position: 'absolute',
@@ -6696,8 +6696,8 @@ const styles = StyleSheet.create({
   // ŞUT TAHMİNLERİ - Zarif Horizontal Bar Stilleri
   // ═══════════════════════════════════════════════════════════════════════════
   categoryCardShots: {
-    backgroundColor: 'rgba(59, 130, 246, 0.12)',
-    borderColor: 'rgba(59, 130, 246, 0.4)',
+    backgroundColor: 'rgba(59, 130, 246, 0.18)',
+    borderColor: 'rgba(59, 130, 246, 0.5)',
   },
   cardAccentShots: {
     position: 'absolute',
@@ -6997,8 +6997,8 @@ const styles = StyleSheet.create({
   
   // Possession - Zarif Stil
   categoryCardPossession: {
-    backgroundColor: 'rgba(31, 162, 166, 0.12)',
-    borderColor: 'rgba(31, 162, 166, 0.35)',
+    backgroundColor: 'rgba(31, 162, 166, 0.18)',
+    borderColor: 'rgba(31, 162, 166, 0.45)',
   },
   cardAccentPossession: {
     position: 'absolute',
