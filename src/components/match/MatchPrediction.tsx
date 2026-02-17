@@ -475,6 +475,8 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
   const [isSaving, setIsSaving] = useState(false); // ✅ Kaydetme işlemi devam ediyor mu?
   const [isPredictionLocked, setIsPredictionLocked] = useState(false); // ✅ Tahminler kilitli mi? (kırmızı kilit)
   const [showLockedWarningModal, setShowLockedWarningModal] = useState(false); // ✅ Web için kilitli uyarı modal'ı
+  const [showViewOnlyWarningModal, setShowViewOnlyWarningModal] = useState(false); // ✅ İzleme modu uyarı modal'ı
+  const [viewOnlyPopupShown, setViewOnlyPopupShown] = useState(false); // ✅ İlk giriş popup gösterildi mi?
   
   // ✅ OYUNCU BİLGİ POPUP - Web için Alert yerine Modal
   const [playerInfoPopup, setPlayerInfoPopup] = useState<{
@@ -556,7 +558,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
         { range: '5+', percentage: 23 },
       ],
       avgTotal: 2.8,
-      mostPopularFirstGoalTime: '16-30 dk',
+      mostPopularFirstGoalTime: '16-30',
       firstGoalTimePercentage: 35,
     },
     // Disiplin
@@ -602,6 +604,17 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
   
   // ✅ İZLEME MODUNDA: Topluluk tahminlerini öntanımlı olarak yükle
   const isViewOnlyMode = !hasPrediction && (isMatchLive || isMatchFinished);
+  
+  // ✅ İZLEME MODU: İlk giriş popup gösterimi
+  React.useEffect(() => {
+    if (isViewOnlyMode && !viewOnlyPopupShown) {
+      const timer = setTimeout(() => {
+        setShowViewOnlyWarningModal(true);
+        setViewOnlyPopupShown(true);
+      }, 500); // Kısa gecikme ile smooth geçiş
+      return () => clearTimeout(timer);
+    }
+  }, [isViewOnlyMode, viewOnlyPopupShown]);
   
   // ✅ TOPLULUK EN POPÜLER TAHMİNLERİ - UI'da işaretlenecek değerler
   const communityTopPredictions = React.useMemo(() => ({
@@ -1455,8 +1468,11 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
   // Event bazlı puan sistemi predictionTiming.ts'te tanımlı
 
   const handlePredictionChange = (category: string, value: string | number) => {
-    // ✅ İzleme modunda değişiklik yapılamaz
-    if (isViewOnlyMode) return;
+    // ✅ İzleme modunda değişiklik yapılamaz - popup göster
+    if (isViewOnlyMode) {
+      setShowViewOnlyWarningModal(true);
+      return;
+    }
     
     // ✅ Tahminler kilitliyse değişiklik yapılamaz
     if (isPredictionLocked) {
@@ -1615,8 +1631,11 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
   };
 
   const handleScoreChange = (category: 'firstHalfHomeScore' | 'firstHalfAwayScore' | 'secondHalfHomeScore' | 'secondHalfAwayScore', value: number) => {
-    // ✅ İzleme modunda değişiklik yapılamaz
-    if (isViewOnlyMode) return;
+    // ✅ İzleme modunda değişiklik yapılamaz - popup göster
+    if (isViewOnlyMode) {
+      setShowViewOnlyWarningModal(true);
+      return;
+    }
     
     // ✅ Tahminler kilitliyse değişiklik yapılamaz
     if (isPredictionLocked) {
@@ -3588,6 +3607,124 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                   fontWeight: '600',
                   color: '#FFFFFF',
                 }}>Tamam</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      )}
+
+      {/* 👁️ İZLEME MODU UYARI POPUP - Değiştirme denemesinde gösterilir */}
+      {showViewOnlyWarningModal && (
+        <Modal
+          visible={true}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowViewOnlyWarningModal(false)}
+          statusBarTranslucent
+        >
+          <View style={{
+            flex: 1,
+            backgroundColor: 'rgba(0,0,0,0.7)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: 24,
+          }}>
+            <TouchableOpacity
+              style={StyleSheet.absoluteFill}
+              activeOpacity={1}
+              onPress={() => setShowViewOnlyWarningModal(false)}
+            />
+            <View style={{
+              width: '100%',
+              maxWidth: 360,
+              backgroundColor: '#1E3A3A',
+              borderRadius: 16,
+              borderWidth: 1,
+              borderColor: 'rgba(239, 68, 68, 0.4)',
+              overflow: 'hidden',
+              padding: 24,
+            }}>
+              {/* Icon */}
+              <View style={{ 
+                alignItems: 'center', 
+                marginBottom: 16,
+                width: 64,
+                height: 64,
+                borderRadius: 32,
+                backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                alignSelf: 'center',
+                justifyContent: 'center',
+              }}>
+                <Ionicons name="eye-off" size={32} color="#EF4444" />
+              </View>
+
+              {/* Title */}
+              <Text style={{
+                fontSize: 20,
+                fontWeight: '700',
+                color: '#EF4444',
+                textAlign: 'center',
+                marginBottom: 12,
+              }}>İzleme Modu</Text>
+
+              {/* Description */}
+              <Text style={{
+                fontSize: 15,
+                color: '#E5E7EB',
+                lineHeight: 22,
+                textAlign: 'center',
+                marginBottom: 16,
+              }}>
+                <Text style={{ fontWeight: '700', color: '#EF4444' }}>Kadro tahmini yapmadığınız</Text> için bu maç için tahmin yapamazsınız.
+              </Text>
+
+              {/* Rule Card */}
+              <View style={{
+                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                borderRadius: 10,
+                padding: 12,
+                marginBottom: 16,
+                borderWidth: 1,
+                borderColor: 'rgba(16, 185, 129, 0.2)',
+              }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                  <Ionicons name="time-outline" size={18} color="#10B981" />
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#10B981' }}>Değerlendirme Kuralı</Text>
+                </View>
+                <Text style={{ fontSize: 13, color: '#94A3B8', lineHeight: 18 }}>
+                  Bu maça kadro tahmini yapan kullanıcılar, maç bittikten sonra{' '}
+                  <Text style={{ fontWeight: '700', color: '#10B981' }}>24 saat</Text>{' '}
+                  boyunca TD ve oyuncuları değerlendirebilir.
+                </Text>
+              </View>
+
+              {/* Tip Card */}
+              <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 20 }}>
+                <Ionicons name="bulb-outline" size={20} color="#F59E0B" />
+                <Text style={{ flex: 1, fontSize: 13, color: '#94A3B8', lineHeight: 18 }}>
+                  Gelecek maçlarda değerlendirme yapabilmek için maç başlamadan önce kadro tahmini yapmalısınız.
+                </Text>
+              </View>
+              
+              {/* Close Button */}
+              <TouchableOpacity
+                style={{
+                  paddingVertical: 14,
+                  paddingHorizontal: 20,
+                  borderRadius: 10,
+                  alignItems: 'center',
+                  backgroundColor: 'rgba(239, 68, 68, 0.25)',
+                  borderWidth: 1,
+                  borderColor: 'rgba(239, 68, 68, 0.5)',
+                }}
+                onPress={() => setShowViewOnlyWarningModal(false)}
+                activeOpacity={0.8}
+              >
+                <Text style={{
+                  fontSize: 15,
+                  fontWeight: '600',
+                  color: '#FFFFFF',
+                }}>Anladım, İzlemeye Devam Et</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -6131,9 +6268,9 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(15, 23, 42, 0.3)',
-    borderWidth: 0.5,
-    borderColor: 'rgba(100, 116, 139, 0.15)',
+    backgroundColor: 'rgba(15, 23, 42, 0.4)',
+    borderWidth: 1,
+    borderColor: 'rgba(100, 116, 139, 0.35)',
   },
   timelineBtnCompactActiveFirst: {
     backgroundColor: 'rgba(234, 179, 8, 0.85)',
@@ -6318,11 +6455,11 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'transparent',
-    borderWidth: 0.5,
-    borderColor: 'rgba(100, 116, 139, 0.12)',
+    backgroundColor: 'rgba(15, 23, 42, 0.4)',
+    borderWidth: 1,
+    borderColor: 'rgba(100, 116, 139, 0.35)',
     marginHorizontal: 2,
-    borderRadius: 5,
+    borderRadius: 6,
   },
   disciplineBarSegmentActiveYellow: {
     backgroundColor: 'rgba(251, 191, 36, 0.85)',
