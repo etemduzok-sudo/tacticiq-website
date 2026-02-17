@@ -210,19 +210,39 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
         const rePast: Match[] = [];
         const reLive: Match[] = [];
         const reUpcoming: Match[] = [];
+        const potentiallyLive: Match[] = []; // ✅ Maç zamanı geçmiş ama statü NS - muhtemelen canlı
         
         for (const match of allCached) {
           const status = match.fixture?.status?.short || '';
           const timestamp = (match.fixture?.timestamp || 0) * 1000;
+          const timeSinceStart = now - timestamp; // Maç başlangıcından bu yana geçen süre (ms)
           
           if (LIVE_STATUSES_QUICK.includes(status)) {
             reLive.push(match);
-          } else if (FINISHED_STATUSES_QUICK.includes(status) || (status !== 'NS' && timestamp < now - 3 * 60 * 60 * 1000)) {
+          } else if (FINISHED_STATUSES_QUICK.includes(status)) {
+            // ✅ Kesinlikle bitmiş (FT, AET, PEN vs.)
+            rePast.push(match);
+          } else if (status === 'NS' && timeSinceStart > 0 && timeSinceStart < 3 * 60 * 60 * 1000) {
+            // ✅ Maç başlamış olmalı ama statü hala NS - muhtemelen canlı (cache stale)
+            // 3 saatten az geçmişse potansiyel canlı olarak işaretle
+            potentiallyLive.push(match);
+            logger.info('🔴 Potansiyel canlı maç tespit edildi (NS ama zamanı geçmiş)', {
+              matchId: match.fixture?.id,
+              status,
+              timestamp: new Date(timestamp).toISOString(),
+              timeSinceStartMinutes: Math.floor(timeSinceStart / 60000),
+            }, 'CACHE');
+          } else if (timeSinceStart > 3 * 60 * 60 * 1000) {
+            // ✅ 3 saatten fazla geçmiş - muhtemelen bitmiş
             rePast.push(match);
           } else {
+            // ✅ Henüz başlamamış
             reUpcoming.push(match);
           }
         }
+        
+        // ✅ Potansiyel canlı maçları şimdilik live'a ekle (API güncellemesi ile düzeltilecek)
+        reLive.push(...potentiallyLive);
         
         rePast.sort((a, b) => (b.fixture?.timestamp || 0) - (a.fixture?.timestamp || 0));
         reUpcoming.sort((a, b) => (a.fixture?.timestamp || 0) - (b.fixture?.timestamp || 0));
@@ -412,26 +432,41 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
         ? statusRaw
         : (statusRaw?.short ?? statusRaw?.long ?? 'NS');
       const matchTime = match.fixture.timestamp * 1000;
+      const timeSinceStart = now - matchTime; // ✅ Maç başlangıcından bu yana geçen süre (ms)
       const isFuture = matchTime > now;
 
-      // 1) Canlı maçlar
+      // 1) Canlı maçlar (API'den gelen kesin canlı statü)
       if (LIVE_STATUSES.includes(status)) {
         live.push(match);
         return;
       }
 
-      // 2) Biten maçlar (skor belli)
+      // 2) Biten maçlar (skor belli - kesin bitmiş)
       if (FINISHED_STATUSES.includes(status)) {
         past.push(match);
         return;
       }
 
-      // 3) Henüz başlamamış veya bilinmeyen status → sadece zamana göre
+      // 3) ✅ YENİ: Maç zamanı geçmiş ama statü NS/TBD - muhtemelen canlı (cache stale)
+      // Son 3 saat içinde başlamış olmalı
+      if ((status === 'NS' || status === 'TBD') && timeSinceStart > 0 && timeSinceStart < 3 * 60 * 60 * 1000) {
+        logger.info('🔴 Potansiyel canlı maç (NS ama zamanı geçmiş)', {
+          matchId: match.fixture?.id,
+          homeTeam: (match.teams as any)?.home?.name,
+          awayTeam: (match.teams as any)?.away?.name,
+          status,
+          timeSinceStartMinutes: Math.floor(timeSinceStart / 60000),
+        }, 'MATCHES');
+        live.push(match); // ✅ Canlı olarak işaretle - API güncellemesi düzeltecek
+        return;
+      }
+
+      // 4) Henüz başlamamış veya 3 saatten fazla geçmiş
       if (NOT_STARTED_STATUSES.includes(status) || !FINISHED_STATUSES.includes(status)) {
         if (isFuture) {
           upcoming.push(match);
         } else {
-          past.push(match); // Geçmiş tarih = bitmiş/kaçırılmış say
+          past.push(match); // 3+ saat geçmiş = bitmiş/kaçırılmış say
         }
       }
     });

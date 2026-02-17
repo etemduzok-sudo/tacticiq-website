@@ -721,17 +721,42 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
                         } else {
                           displayTime = "90+4'";
                         }
-                      } else if (match.fixture?.status?.elapsed != null) {
-                        // ✅ Gerçek maçlar için API'den gelen elapsed dakikasını kullan
-                        const elapsed = match.fixture.status.elapsed;
-                        const extraTime = match.fixture.status.extraTime;
-                        if (extraTime != null && extraTime > 0) {
-                          displayTime = `${elapsed}+${extraTime}'`;
-                        } else {
-                          displayTime = `${elapsed}'`;
-                        }
                       } else {
-                        displayTime = api.utils.formatMatchTime(match.fixture.timestamp);
+                        // ✅ Gerçek maçlar için: API'den elapsed varsa kullan, yoksa timestamp'den hesapla
+                        const elapsed = match.fixture?.status?.elapsed;
+                        const extraTime = match.fixture?.status?.extraTime;
+                        const matchTimestamp = match.fixture?.timestamp * 1000;
+                        const nowMs = Date.now();
+                        const timeSinceStart = nowMs - matchTimestamp;
+                        
+                        if (elapsed != null && elapsed > 0) {
+                          // API'den gelen elapsed değeri var
+                          if (extraTime != null && extraTime > 0) {
+                            displayTime = `${elapsed}+${extraTime}'`;
+                          } else {
+                            displayTime = `${elapsed}'`;
+                          }
+                        } else if (timeSinceStart > 0 && timeSinceStart < 3 * 60 * 60 * 1000) {
+                          // ✅ YENİ: API'den elapsed yok ama maç başlamış olmalı (timestamp geçmiş)
+                          // Gerçek zamandan dakika hesapla (yaklaşık)
+                          const estimatedMinutes = Math.floor(timeSinceStart / 60000);
+                          
+                          if (estimatedMinutes < 45) {
+                            displayTime = `${estimatedMinutes}'`;
+                          } else if (estimatedMinutes < 60) {
+                            // Muhtemelen ilk yarı uzatması veya devre arası
+                            displayTime = `45+${Math.min(estimatedMinutes - 45, 5)}'`;
+                          } else if (estimatedMinutes < 105) {
+                            // İkinci yarı
+                            const secondHalfMinute = 46 + (estimatedMinutes - 60);
+                            displayTime = `${Math.min(secondHalfMinute, 90)}'`;
+                          } else {
+                            // İkinci yarı uzatması
+                            displayTime = `90+${Math.min(estimatedMinutes - 105, 5)}'`;
+                          }
+                        } else {
+                          displayTime = api.utils.formatMatchTime(match.fixture.timestamp);
+                        }
                       }
                       
                       return (
@@ -1021,8 +1046,11 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
   }, []);
 
   // ✅ Canlı maçları filtrele (Dashboard'da en üstte gösterilecek)
-  const LIVE_STATUSES = ['1H', '2H', 'HT', 'ET', 'BT', 'P', 'LIVE'];
+  const LIVE_STATUSES = ['1H', '2H', 'HT', 'ET', 'BT', 'P', 'LIVE', 'INT'];
   const filteredLiveMatches = React.useMemo(() => {
+    // ✅ Mevcut zaman (her render'da güncel)
+    const now = Date.now();
+    
     // ✅ Mock maçları da filtreleme fonksiyonundan geçir
     const allLive = liveMatches;
     const filtered = filterMatchesByTeam(allLive, selectedTeamIds);
@@ -1033,10 +1061,12 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
     // Sadece gerçekten canlı olanları tut
     const liveOnly = combined.filter(m => {
       const fixtureId = m.fixture?.id;
+      const matchTimestamp = (m.fixture?.timestamp || 0) * 1000;
+      const timeSinceStart = now - matchTimestamp;
+      
       // ✅ Mock maçlar için gerçek zamandan kontrol et
       if (fixtureId && mockTestIds.has(fixtureId)) {
         const matchStart = fixtureId === MOCK_MATCH_IDS.GS_FB ? getMatch1Start() : getMatch2Start();
-        const now = Date.now();
         const elapsedMs = now - matchStart;
         const elapsedSeconds = elapsedMs / 1000;
         const elapsedMinutes = Math.floor(elapsedSeconds);
@@ -1047,9 +1077,29 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
         }
         return false;
       }
-      // Gerçek maçlar için API status kontrolü
+      
+      // ✅ Gerçek maçlar için: API status VEYA timestamp kontrolü
       const status = m.fixture?.status?.short || '';
-      return LIVE_STATUSES.includes(status);
+      
+      // 1) API'den canlı statü geldiyse canlı
+      if (LIVE_STATUSES.includes(status)) {
+        return true;
+      }
+      
+      // 2) ✅ YENİ: Maç zamanı geçmiş ama statü NS/TBD - muhtemelen canlı (cache stale)
+      // Son 3 saat içinde başlamış olmalı
+      if ((status === 'NS' || status === 'TBD' || status === '') && timeSinceStart > 0 && timeSinceStart < 3 * 60 * 60 * 1000) {
+        console.log('🔴 Dashboard: Potansiyel canlı maç tespit edildi', {
+          matchId: fixtureId,
+          homeTeam: m.teams?.home?.name,
+          awayTeam: m.teams?.away?.name,
+          status,
+          timeSinceStartMinutes: Math.floor(timeSinceStart / 60000),
+        });
+        return true;
+      }
+      
+      return false;
     });
     
     // Duplicate kaldır

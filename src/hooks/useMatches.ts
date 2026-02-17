@@ -1,5 +1,5 @@
 // useMatches Hook - Fetch live match data
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import api from '../services/api';
 import { useFavoriteTeams } from './useFavoriteTeams';
 import { Match, ApiResponse } from '../types/match.types';
@@ -248,6 +248,7 @@ function buildMockLineups() {
 }
 
 // Hook for match details
+// ✅ Canlı maçlar için periyodik güncelleme desteği (30 saniye)
 export function useMatchDetails(matchId: number) {
   const [match, setMatch] = useState<any>(null);
   const [statistics, setStatistics] = useState<any>(null);
@@ -256,91 +257,134 @@ export function useMatchDetails(matchId: number) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchMatchDetails = async () => {
-      try {
+  // ✅ Canlı maç mı kontrol et
+  const LIVE_STATUSES = ['1H', '2H', 'HT', 'ET', 'P', 'BT', 'LIVE', 'INT'];
+  const isMatchLive = match?.fixture?.status?.short 
+    ? LIVE_STATUSES.includes(match.fixture.status.short)
+    : false;
+
+  // ✅ Maç timestamp'i geçmiş mi ama status NS mi (potansiyel canlı)?
+  const isPotentiallyLive = useMemo(() => {
+    if (!match?.fixture?.timestamp) return false;
+    const now = Date.now();
+    const matchTime = match.fixture.timestamp * 1000;
+    const timeSinceStart = now - matchTime;
+    const status = match?.fixture?.status?.short || '';
+    
+    // Maç zamanı geçmiş, 3 saatten az ve status NS/TBD
+    return (status === 'NS' || status === 'TBD' || status === '') 
+      && timeSinceStart > 0 
+      && timeSinceStart < 3 * 60 * 60 * 1000;
+  }, [match?.fixture?.timestamp, match?.fixture?.status?.short]);
+
+  // ✅ Fetch fonksiyonu - reusable
+  const fetchMatchDetails = useCallback(async (isRefresh: boolean = false) => {
+    try {
+      if (!isRefresh) {
         setLoading(true);
-        setError(null);
-
-        // ✅ matchId 0 veya negatif ise API çağrısı yapma (preloadedMatch kullanılıyor demektir)
-        if (!matchId || matchId <= 0) {
-          logger.info(`⏭️ Skipping API call - matchId is ${matchId} (preloadedMatch kullanılıyor)`, { matchId }, 'MATCH_DETAILS');
-          setLoading(false);
-          return;
-        }
-
-        // ✅ Mock maç (999999): API çağrısı yapma, anında mock veri set et (uygulama takılmasın)
-        if (matchId === 999999) {
-          logger.info(`🔄 Mock match 999999 – using local data (no API)`, { matchId }, 'MATCH_DETAILS');
-          setMatch(MOCK_MATCH_999999);
-          setLineups(buildMockLineups());
-          setStatistics(null);
-          setEvents([]);
-          setLoading(false);
-          return;
-        }
-        
-        logger.info(`🔄 Fetching match details for ${matchId}...`, { matchId }, 'MATCH_DETAILS');
-
-        // ✅ Timeout wrapper for each API call (10 seconds max)
-        const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number = 10000): Promise<T> => {
-          return Promise.race([
-            promise,
-            new Promise<T>((_, reject) => 
-              setTimeout(() => reject(new Error('Request timeout')), timeoutMs)
-            )
-          ]);
-        };
-
-        // ✅ Use Promise.allSettled to handle partial failures
-        const [matchRes, statsRes, eventsRes, lineupsRes] = await Promise.allSettled([
-          withTimeout(api.matches.getMatchDetails(matchId)),
-          withTimeout(api.matches.getMatchStatistics(matchId)),
-          withTimeout(api.matches.getMatchEvents(matchId)),
-          withTimeout(api.matches.getMatchLineups(matchId)),
-        ]);
-
-        // ✅ Process results - partial data is OK
-        if (matchRes.status === 'fulfilled' && matchRes.value.success) {
-          setMatch(matchRes.value.data);
-          logger.info(`✅ Match data loaded`, { matchId }, 'MATCH_DETAILS');
-        } else {
-          logger.warn(`⚠️ Match data failed`, { matchId, reason: matchRes.status === 'rejected' ? matchRes.reason : 'No data' }, 'MATCH_DETAILS');
-        }
-        
-        if (statsRes.status === 'fulfilled' && statsRes.value.success) {
-          setStatistics(statsRes.value.data);
-        }
-        
-        if (eventsRes.status === 'fulfilled' && eventsRes.value.success) {
-          setEvents(eventsRes.value.data);
-        }
-        
-        if (lineupsRes.status === 'fulfilled' && lineupsRes.value.success) {
-          setLineups(lineupsRes.value.data);
-        }
-
-        // ✅ If match data failed, set error
-        if (matchRes.status === 'rejected' || (matchRes.status === 'fulfilled' && !matchRes.value.success)) {
-          setError('Maç detayları yüklenemedi');
-        }
-
-        logger.info(`📊 Match details fetch complete`, { matchId }, 'MATCH_DETAILS');
-      } catch (err: any) {
-        logger.error('Error fetching match details', { error: err, matchId }, 'MATCH_DETAILS');
-        setError(err.message || 'Failed to fetch match details');
-      } finally {
-        setLoading(false);
       }
-    };
+      setError(null);
 
+      // ✅ matchId 0 veya negatif ise API çağrısı yapma (preloadedMatch kullanılıyor demektir)
+      if (!matchId || matchId <= 0) {
+        logger.info(`⏭️ Skipping API call - matchId is ${matchId} (preloadedMatch kullanılıyor)`, { matchId }, 'MATCH_DETAILS');
+        setLoading(false);
+        return;
+      }
+
+      // ✅ Mock maç (999999): API çağrısı yapma, anında mock veri set et (uygulama takılmasın)
+      if (matchId === 999999) {
+        logger.info(`🔄 Mock match 999999 – using local data (no API)`, { matchId }, 'MATCH_DETAILS');
+        setMatch(MOCK_MATCH_999999);
+        setLineups(buildMockLineups());
+        setStatistics(null);
+        setEvents([]);
+        setLoading(false);
+        return;
+      }
+      
+      logger.info(`🔄 ${isRefresh ? 'Refreshing' : 'Fetching'} match details for ${matchId}...`, { matchId, isRefresh }, 'MATCH_DETAILS');
+
+      // ✅ Timeout wrapper for each API call (10 seconds max)
+      const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number = 10000): Promise<T> => {
+        return Promise.race([
+          promise,
+          new Promise<T>((_, reject) => 
+            setTimeout(() => reject(new Error('Request timeout')), timeoutMs)
+          )
+        ]);
+      };
+
+      // ✅ Use Promise.allSettled to handle partial failures
+      const [matchRes, statsRes, eventsRes, lineupsRes] = await Promise.allSettled([
+        withTimeout(api.matches.getMatchDetails(matchId)),
+        withTimeout(api.matches.getMatchStatistics(matchId)),
+        withTimeout(api.matches.getMatchEvents(matchId)),
+        withTimeout(api.matches.getMatchLineups(matchId)),
+      ]);
+
+      // ✅ Process results - partial data is OK
+      if (matchRes.status === 'fulfilled' && matchRes.value.success) {
+        setMatch(matchRes.value.data);
+        logger.info(`✅ Match data loaded`, { matchId, status: matchRes.value.data?.fixture?.status?.short }, 'MATCH_DETAILS');
+      } else {
+        logger.warn(`⚠️ Match data failed`, { matchId, reason: matchRes.status === 'rejected' ? matchRes.reason : 'No data' }, 'MATCH_DETAILS');
+      }
+      
+      if (statsRes.status === 'fulfilled' && statsRes.value.success) {
+        setStatistics(statsRes.value.data);
+      }
+      
+      if (eventsRes.status === 'fulfilled' && eventsRes.value.success) {
+        setEvents(eventsRes.value.data);
+      }
+      
+      if (lineupsRes.status === 'fulfilled' && lineupsRes.value.success) {
+        setLineups(lineupsRes.value.data);
+      }
+
+      // ✅ If match data failed, set error
+      if (matchRes.status === 'rejected' || (matchRes.status === 'fulfilled' && !matchRes.value.success)) {
+        setError('Maç detayları yüklenemedi');
+      }
+
+      logger.info(`📊 Match details ${isRefresh ? 'refresh' : 'fetch'} complete`, { matchId }, 'MATCH_DETAILS');
+    } catch (err: any) {
+      logger.error('Error fetching match details', { error: err, matchId }, 'MATCH_DETAILS');
+      setError(err.message || 'Failed to fetch match details');
+    } finally {
+      setLoading(false);
+    }
+  }, [matchId]);
+
+  // ✅ İlk yükleme
+  useEffect(() => {
     if (matchId && matchId > 0) {
-      fetchMatchDetails();
+      fetchMatchDetails(false);
     } else {
       // ✅ matchId 0 ise loading false olsun
       setLoading(false);
     }
-  }, [matchId]);
+  }, [matchId, fetchMatchDetails]);
+
+  // ✅ Canlı maçlar için periyodik güncelleme (her 30 saniye)
+  useEffect(() => {
+    if (!matchId || matchId <= 0 || matchId === 999999) return;
+    
+    // Sadece canlı veya potansiyel canlı maçlarda güncelle
+    if (!isMatchLive && !isPotentiallyLive) return;
+
+    logger.info(`🔴 Canlı maç - periyodik güncelleme başlatılıyor`, { matchId, isMatchLive, isPotentiallyLive }, 'MATCH_DETAILS');
+    
+    const interval = setInterval(() => {
+      fetchMatchDetails(true);
+    }, 30000); // 30 saniye
+
+    return () => {
+      clearInterval(interval);
+      logger.info(`⏹️ Canlı maç güncelleme durduruldu`, { matchId }, 'MATCH_DETAILS');
+    };
+  }, [matchId, isMatchLive, isPotentiallyLive, fetchMatchDetails]);
 
   return { match, statistics, events, lineups, loading, error };
 }

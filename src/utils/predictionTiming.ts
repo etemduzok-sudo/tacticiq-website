@@ -20,6 +20,23 @@ export const TIMING_EFFECT_MULTIPLIERS = {
 } as const;
 
 /**
+ * ✅ BAĞIMSIZ TAHMİN BONUSU
+ * Kullanıcı topluluk verilerini görmeden tahmin yaparsa +%10 bonus alır
+ */
+export const INDEPENDENT_PREDICTION_BONUS = 0.10; // +%10 bonus
+
+/**
+ * Bağımsız tahmin bonusunu hesapla
+ * @param baseScore Temel puan
+ * @param hasIndependentBonus Bağımsız tahmin bonusu var mı?
+ * @returns Bonus uygulanmış puan
+ */
+export function applyIndependentBonus(baseScore: number, hasIndependentBonus: boolean): number {
+  if (!hasIndependentBonus) return baseScore;
+  return baseScore * (1 + INDEPENDENT_PREDICTION_BONUS);
+}
+
+/**
  * UI Etiketleri (Türkçe)
  */
 export const TIMING_LABELS = {
