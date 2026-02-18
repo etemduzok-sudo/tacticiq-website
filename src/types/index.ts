@@ -57,7 +57,8 @@ export type RootStackParamList = {
 
 export type TabParamList = {
   Home: undefined;
-  Matches: undefined;
-  Predictions: undefined;
+  Scoring: undefined;      // Puanlama sekmesi (eski Predictions yerine)
+  Leaderboard: undefined;  // Sıralama sekmesi
+  Chat: undefined;         // Sohbet sekmesi (Yakında)
   Profile: undefined;
 };

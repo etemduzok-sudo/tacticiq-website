@@ -206,3 +206,36 @@ export const SCORING_CONSTANTS = {
   INDEPENDENT_PREDICTION_BONUS: 1.10, // Topluluk görmeden tahmin = +%10 bonus
   AFTER_COMMUNITY_VIEWED_MULTIPLIER: 0.20, // Topluluk gördükten sonra silip yeni tahmin = sadece %20 puan
 };
+
+/**
+ * ✅ PENALTI TAHMİN KATEGORİLERİ
+ * Oyuncu tahminlerine eklenen penaltı seçenekleri
+ */
+export const PENALTY_PREDICTION_CATEGORIES = {
+  PENALTY_TAKER: {
+    id: 'penaltyTaker',
+    label: 'Penaltı Kullanacak',
+    emoji: '🥅',
+    points: 2,
+    description: 'Bu oyuncu maçta penaltı kullanacak',
+  },
+  PENALTY_SCORED: {
+    id: 'penaltyScored',
+    label: 'Penaltı Atacak',
+    emoji: '✅',
+    points: 3,
+    description: 'Bu oyuncu penaltı atacak (gol olacak)',
+  },
+  PENALTY_MISSED: {
+    id: 'penaltyMissed',
+    label: 'Penaltı Kaçıracak',
+    emoji: '❌',
+    points: 6,
+    description: 'Bu oyuncu penaltı kaçıracak',
+  },
+};
+
+/**
+ * Penaltı tahmin tipleri
+ */
+export type PenaltyPredictionType = 'penaltyTaker' | 'penaltyScored' | 'penaltyMissed';

@@ -18,6 +18,9 @@ import HomeScreen from '../screens/HomeScreen';
 import MatchesScreen from '../screens/MatchesScreen';
 import MatchDetailScreen from '../screens/MatchDetailScreen';
 import PredictionsScreen from '../screens/PredictionsScreen';
+import ScoringScreen from '../screens/ScoringScreen';
+import LeaderboardScreen from '../screens/LeaderboardScreen';
+import ChatScreen from '../screens/ChatScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import ProfileSettingsScreen from '../screens/ProfileSettingsScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
@@ -66,25 +69,36 @@ function BottomTabs() {
         }}
       />
       <Tab.Screen
-        name="Matches"
-        component={MatchesScreen}
-        options={{
-          headerShown: false,
-          tabBarIcon: ({ color, size }) => (
-            <SafeIcon name="football" size={size} color={color} />
-          ),
-          tabBarLabel: 'Maçlar',
-        }}
-      />
-      <Tab.Screen
-        name="Predictions"
-        component={PredictionsScreen}
+        name="Scoring"
+        component={ScoringScreen}
         options={{
           headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <SafeIcon name="stats-chart" size={size} color={color} />
           ),
-          tabBarLabel: 'Tahminler',
+          tabBarLabel: 'Puanlama',
+        }}
+      />
+      <Tab.Screen
+        name="Leaderboard"
+        component={LeaderboardScreen}
+        options={{
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => (
+            <SafeIcon name="trophy" size={size} color={color} />
+          ),
+          tabBarLabel: 'Sıralama',
+        }}
+      />
+      <Tab.Screen
+        name="Chat"
+        component={ChatScreen}
+        options={{
+          headerShown: false,
+          tabBarIcon: ({ color, size }) => (
+            <SafeIcon name="chatbubbles" size={size} color={color} />
+          ),
+          tabBarLabel: 'Sohbet',
         }}
       />
       <Tab.Screen

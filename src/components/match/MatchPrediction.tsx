@@ -68,16 +68,16 @@ import {
 const FOCUS_CATEGORY_MAPPING: Record<AnalysisFocusType, string[]> = {
   // 🛡️ Savunma: Disiplin, sertlik (kartlar)
   defense: ['yellowCards', 'redCards', 'yellowCard', 'redCard', 'secondYellowRed', 'directRedCard'],
-  // ⚔️ Hücum: Gol, skor, bitiricilik
-  offense: ['firstHalfHomeScore', 'firstHalfAwayScore', 'secondHalfHomeScore', 'secondHalfAwayScore', 'totalGoals', 'firstGoalTime', 'goal', 'willScore'],
+  // ⚔️ Hücum: Gol, skor, bitiricilik, penaltı
+  offense: ['firstHalfHomeScore', 'firstHalfAwayScore', 'secondHalfHomeScore', 'secondHalfAwayScore', 'totalGoals', 'firstGoalTime', 'goal', 'willScore', 'penaltyTaker', 'penaltyScored', 'penaltyMissed'],
   // 🎯 Orta Saha: Oyun kontrolü, pas, top hakimiyeti
   midfield: ['possession', 'tempo'],
   // 🏃 Fiziksel: Tempo, yorgunluk, değişiklikler (tempo burada da birincil!)
   physical: ['tempo', 'injuredOut', 'injurySubstitutePlayer', 'substitutedOut', 'substitutePlayer'],
   // ♟️ Taktik: Maç planı, senaryo, uzatma tahminleri
   tactical: ['scenario', 'firstHalfInjuryTime', 'secondHalfInjuryTime'],
-  // 👤 Oyuncu: MVP, gol, asist
-  player: ['manOfTheMatch', 'goal', 'assist', 'willScore', 'willAssist'],
+  // 👤 Oyuncu: MVP, gol, asist, penaltı
+  player: ['manOfTheMatch', 'goal', 'assist', 'willScore', 'willAssist', 'penaltyTaker', 'penaltyScored', 'penaltyMissed'],
 };
 
 // Bir kategorinin hangi odağa ait olduğunu bul
@@ -91,11 +91,12 @@ const getCategoryFocus = (category: string): AnalysisFocusType | null => {
 };
 
 // Oyuncu tahminleri ile ilgili tüm kategoriler (saha yıldızı için)
-// Oyuncu odaklı: MVP, gol, asist (birincil) + kart, değişiklik, sakatlanma (ikincil)
+// Oyuncu odaklı: MVP, gol, asist (birincil) + kart, değişiklik, sakatlanma, penaltı (ikincil)
 const PLAYER_RELATED_CATEGORIES = [
   'manOfTheMatch', 'goal', 'assist', 'willScore', 'willAssist',  // Birincil
   'yellowCard', 'redCard', 'secondYellowRed', 'directRedCard',   // İkincil (kart)
   'substitutedOut', 'injuredOut', 'substitutePlayer', 'injurySubstitutePlayer', // İkincil (değişiklik)
+  'penaltyTaker', 'penaltyScored', 'penaltyMissed', // ✅ Penaltı tahminleri
 ];
 
 // Seçili odağın oyuncu tahminlerini kapsayıp kapsamadığını kontrol et
@@ -4960,6 +4961,74 @@ const PlayerPredictionModal = ({
               </Text>
             </TouchableOpacity>
 
+            {/* ===== PENALTI TAHMİNLERİ ===== */}
+            <View style={styles.penaltySectionDivider}>
+              <View style={styles.penaltySectionLine} />
+              <Text style={styles.penaltySectionTitle}>Penaltı Tahminleri</Text>
+              <View style={styles.penaltySectionLine} />
+            </View>
+
+            {/* Penaltı Kullanacak */}
+            <TouchableOpacity
+              style={[
+                styles.predictionButton,
+                predictions.penaltyTaker && styles.predictionButtonActive,
+                { borderColor: predictions.penaltyTaker ? '#F59E0B' : 'rgba(255, 255, 255, 0.1)' },
+              ]}
+              onPress={() => onPredictionChange('penaltyTaker', true)}
+              activeOpacity={0.8}
+            >
+              <Text style={[
+                styles.predictionButtonText,
+                predictions.penaltyTaker && styles.predictionButtonTextActive,
+              ]}>
+                🥅 Penaltı Kullanacak (+2 puan)
+              </Text>
+            </TouchableOpacity>
+
+            {/* Penaltı Atacak */}
+            <TouchableOpacity
+              style={[
+                styles.predictionButton,
+                predictions.penaltyScored && styles.predictionButtonActive,
+                { borderColor: predictions.penaltyScored ? '#10B981' : 'rgba(255, 255, 255, 0.1)' },
+              ]}
+              onPress={() => onPredictionChange('penaltyScored', true)}
+              activeOpacity={0.8}
+            >
+              <Text style={[
+                styles.predictionButtonText,
+                predictions.penaltyScored && styles.predictionButtonTextActive,
+              ]}>
+                ✅ Penaltı Atacak (+3 puan)
+              </Text>
+            </TouchableOpacity>
+
+            {/* Penaltı Kaçıracak */}
+            <TouchableOpacity
+              style={[
+                styles.predictionButton,
+                predictions.penaltyMissed && styles.predictionButtonActive,
+                { borderColor: predictions.penaltyMissed ? '#EF4444' : 'rgba(255, 255, 255, 0.1)' },
+              ]}
+              onPress={() => onPredictionChange('penaltyMissed', true)}
+              activeOpacity={0.8}
+            >
+              <Text style={[
+                styles.predictionButtonText,
+                predictions.penaltyMissed && styles.predictionButtonTextActive,
+              ]}>
+                ❌ Penaltı Kaçıracak (+6 puan)
+              </Text>
+            </TouchableOpacity>
+
+            {/* ===== DEĞİŞİKLİK TAHMİNLERİ ===== */}
+            <View style={styles.penaltySectionDivider}>
+              <View style={styles.penaltySectionLine} />
+              <Text style={styles.penaltySectionTitle}>Değişiklik Tahmini</Text>
+              <View style={styles.penaltySectionLine} />
+            </View>
+
             {/* Oyundan Çıkar - butonun hemen altında dropdown */}
             <View style={styles.predictionGroup}>
               <Pressable
@@ -7644,6 +7713,25 @@ const styles = StyleSheet.create({
     padding: 12,
     gap: 6,
     paddingBottom: 12,
+  },
+  // ✅ Penaltı bölümü stilleri
+  penaltySectionDivider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 8,
+    gap: 8,
+  },
+  penaltySectionLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  penaltySectionTitle: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   predictionGroup: {
     gap: 4,
