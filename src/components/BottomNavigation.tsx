@@ -11,8 +11,9 @@ interface BottomNavigationProps {
 
 const tabConfig = [
   { id: 'home', labelKey: 'navigation.home', icon: 'home-outline', activeIcon: 'home' },
+  { id: 'scoring', labelKey: 'navigation.scoring', icon: 'stats-chart-outline', activeIcon: 'stats-chart' },
   { id: 'leaderboard', labelKey: 'navigation.leaderboard', icon: 'trophy-outline', activeIcon: 'trophy' },
-  { id: 'badges', labelKey: 'navigation.badges', icon: 'ribbon-outline', activeIcon: 'ribbon' },
+  { id: 'chat', labelKey: 'navigation.chat', icon: 'chatbubbles-outline', activeIcon: 'chatbubbles' },
   { id: 'profile', labelKey: 'navigation.profile', icon: 'person-outline', activeIcon: 'person' },
 ];
 

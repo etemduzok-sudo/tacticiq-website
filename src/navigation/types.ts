@@ -14,6 +14,8 @@ export type Screen =
   | 'match-detail'
   | 'match-result-summary'
   | 'leaderboard'
+  | 'scoring'
+  | 'chat'
   | 'tournaments'
   | 'profile'
   | 'profile-settings'

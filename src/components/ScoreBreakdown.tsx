@@ -1,9 +1,11 @@
 // ScoreBreakdown.tsx - Puanlama Şeffaflığı Komponenti
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown, ZoomIn } from 'react-native-reanimated';
+
+const isWeb = Platform.OS === 'web';
 
 interface ScoreBreakdownProps {
   basePoints: number;
@@ -29,7 +31,7 @@ export const ScoreBreakdown: React.FC<ScoreBreakdownProps> = ({
   return (
     <View style={styles.container}>
       {/* Header */}
-      <Animated.View entering={FadeInDown.delay(100).springify()} style={styles.header}>
+      <Animated.View entering={isWeb ? FadeInDown.delay(100) : FadeInDown.delay(100).springify()} style={styles.header}>
         <Ionicons name="analytics" size={24} color="#059669" />
         <Text style={styles.headerTitle}>Puan Dağılımı</Text>
       </Animated.View>
@@ -39,7 +41,7 @@ export const ScoreBreakdown: React.FC<ScoreBreakdownProps> = ({
         {breakdown.map((item, index) => (
           <Animated.View
             key={item.category}
-            entering={FadeInDown.delay(200 + index * 50).springify()}
+            entering={isWeb ? FadeInDown.delay(200 + index * 50) : FadeInDown.delay(200 + index * 50).springify()}
             style={styles.breakdownItem}
           >
             <View style={styles.breakdownLeft}>
@@ -53,7 +55,7 @@ export const ScoreBreakdown: React.FC<ScoreBreakdownProps> = ({
 
       {/* Base Points */}
       <Animated.View
-        entering={FadeInDown.delay(400).springify()}
+        entering={isWeb ? FadeInDown.delay(400) : FadeInDown.delay(400).springify()}
         style={styles.subtotalRow}
       >
         <Text style={styles.subtotalLabel}>Temel Puan</Text>
@@ -63,7 +65,7 @@ export const ScoreBreakdown: React.FC<ScoreBreakdownProps> = ({
       {/* Strategic Focus Bonus */}
       {strategicFocus && bonusPoints > 0 && (
         <Animated.View
-          entering={ZoomIn.delay(500).springify()}
+          entering={isWeb ? ZoomIn.delay(500) : ZoomIn.delay(500).springify()}
           style={styles.bonusContainer}
         >
           <LinearGradient
@@ -92,7 +94,7 @@ export const ScoreBreakdown: React.FC<ScoreBreakdownProps> = ({
 
       {/* Total Points */}
       <Animated.View
-        entering={ZoomIn.delay(600).springify()}
+        entering={isWeb ? ZoomIn.delay(600) : ZoomIn.delay(600).springify()}
         style={styles.totalContainer}
       >
         <LinearGradient
@@ -107,7 +109,7 @@ export const ScoreBreakdown: React.FC<ScoreBreakdownProps> = ({
       {/* Bonus Applied Badge */}
       {bonusPoints > 0 && (
         <Animated.View
-          entering={ZoomIn.delay(700).springify()}
+          entering={isWeb ? ZoomIn.delay(700) : ZoomIn.delay(700).springify()}
           style={styles.appliedBadge}
         >
           <Ionicons name="checkmark-circle" size={16} color="#22C55E" />

@@ -11,14 +11,16 @@ import {
   useWindowDimensions,
   Modal,
   FlatList,
-  Alert,
   ActivityIndicator,
   TextInput,
+  Platform,
 } from 'react-native';
+import { showAlert, showConfirm, showInfo, showError } from '../../utils/alertHelper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { formationPositions, formationLabels } from './MatchSquad';
+// ThreeFieldView kaldırıldı - FootballField tabanlı horizontal scroll kullanılıyor
 import Animated, { 
   FadeIn,
   SlideInDown,
@@ -31,14 +33,13 @@ import Svg, {
   Line, 
   Path, 
 } from 'react-native-svg';
-import { Platform } from 'react-native';
 import { FocusPrediction, SCORING_CONSTANTS } from '../../types/prediction.types';
 import { SCORING, TEXT, STORAGE_KEYS, LEGACY_STORAGE_KEYS, PITCH_LAYOUT } from '../../config/constants';
 import { handleError, ErrorType, ErrorSeverity } from '../../utils/GlobalErrorHandler';
 import { predictionsDb } from '../../services/databaseService';
 import { ConfirmModal, ConfirmButton } from '../ui/ConfirmModal';
 import { ANALYSIS_FOCUSES, type AnalysisFocus, type AnalysisFocusType } from '../AnalysisFocusModal';
-import { isMockTestMatch, MOCK_MATCH_IDS, getMatch1Start, getMatch2Start, getMockUserTeamId, getMockCommunitySignals } from '../../data/mockTestData';
+import { isMockTestMatch, MOCK_MATCH_IDS, getMatch1Start, getMatch2Start, getMockUserTeamId, getMockCommunitySignals, getMockLineup } from '../../data/mockTestData';
 import { 
   SIGNAL_COLORS, 
   SIGNAL_EMOJIS, 
@@ -481,9 +482,109 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
   const [showLockedWarningModal, setShowLockedWarningModal] = useState(false); // ✅ Web için kilitli uyarı modal'ı
   const [showViewOnlyWarningModal, setShowViewOnlyWarningModal] = useState(false); // ✅ İzleme modu uyarı modal'ı
   const [viewOnlyPopupShown, setViewOnlyPopupShown] = useState(false); // ✅ İlk giriş popup gösterildi mi?
+  const [threeFieldActiveIndex, setThreeFieldActiveIndex] = useState(0); // ✅ 3 saha görünümünde aktif sayfa
   
   // ✅ TOPLULUK VERİLERİ KİLİTLEME SİSTEMİ
   const [hasViewedCommunityData, setHasViewedCommunityData] = useState(false); // ✅ Topluluk verilerini gördü mü? (kalıcı kilit)
+  
+  // ✅ ThreeFieldView için veri hazırlama (Maç canlı/bittiyse 3 saha görünümü)
+  const threeFieldData = useMemo(() => {
+    if (!isMatchLive && !isMatchFinished) return null;
+    
+    // Kullanıcı kadrosu
+    const userSquad = attackPlayersArray.length >= 11 && attackFormation ? {
+      players: attackPlayersArray.map((p: any) => ({
+        id: p.id,
+        name: p.name,
+        number: p.number || p.jersey_number || 0,
+        position: p.position || '',
+        photo: p.photo,
+        rating: p.rating,
+      })),
+      formation: attackFormation,
+    } : null;
+    
+    // Gerçek kadro (lineups'tan)
+    const resolvedTeamId = effectivePredictionTeamId ?? predictionTeamId;
+    let actualPlayers: any[] = [];
+    let actualFormation = '4-3-3';
+    
+    // Önce lineups'tan dene
+    if (lineups && lineups.length > 0) {
+      const targetLineup = resolvedTeamId 
+        ? lineups.find((l: any) => l.team?.id === resolvedTeamId)
+        : lineups[0];
+      
+      if (targetLineup?.startXI) {
+        actualPlayers = targetLineup.startXI.map((item: any) => {
+          const player = item.player || item;
+          return {
+            id: player.id,
+            name: player.name,
+            number: player.number || 0,
+            position: player.pos || player.position || '',
+            photo: player.photo,
+            rating: player.rating,
+          };
+        });
+        actualFormation = targetLineup.formation || '4-3-3';
+      }
+    }
+    
+    // ✅ Mock maçlar için fallback - lineups boşsa mock lineup kullan
+    const matchIdNum = matchId ? Number(matchId) : null;
+    if (actualPlayers.length === 0 && matchIdNum && isMockTestMatch(matchIdNum)) {
+      const mockLineups = getMockLineup(matchIdNum);
+      if (mockLineups && mockLineups.length > 0) {
+        const targetLineup = resolvedTeamId 
+          ? mockLineups.find((l: any) => l.team?.id === resolvedTeamId)
+          : mockLineups[0];
+        
+        if (targetLineup?.startXI) {
+          actualPlayers = targetLineup.startXI.map((item: any) => {
+            const player = item.player || item;
+            return {
+              id: player.id,
+              name: player.name,
+              number: player.number || 0,
+              position: player.pos || player.position || '',
+              photo: player.photo,
+              rating: player.rating,
+            };
+          });
+          actualFormation = targetLineup.formation || '4-3-3';
+        }
+      }
+    }
+    
+    // Topluluk kadrosu (şimdilik gerçek kadroyu base al, farklı sırayla)
+    const communityPlayers = actualPlayers.length > 0 
+      ? [...actualPlayers].sort(() => Math.random() - 0.5).slice(0, 11)
+      : userSquad?.players || [];
+    
+    return {
+      userSquad,
+      communitySquad: {
+        players: communityPlayers,
+        formation: actualFormation,
+        voterCount: Math.floor(Math.random() * 500) + 100,
+      },
+      actualSquad: {
+        players: actualPlayers,
+        formation: actualFormation,
+      },
+      homeTeam: {
+        id: matchData?.homeTeam?.id || 0,
+        name: matchData?.homeTeam?.name || '',
+        logo: matchData?.homeTeam?.logo,
+      },
+      awayTeam: {
+        id: matchData?.awayTeam?.id || 0,
+        name: matchData?.awayTeam?.name || '',
+        logo: matchData?.awayTeam?.logo,
+      },
+    };
+  }, [isMatchLive, isMatchFinished, attackPlayersArray, attackFormation, lineups, effectivePredictionTeamId, predictionTeamId, matchData, matchId]);
   const [showCommunityConfirmModal, setShowCommunityConfirmModal] = useState(false); // ✅ Topluluk verileri görmek için onay modal'ı
   const [independentPredictionBonus, setIndependentPredictionBonus] = useState(true); // ✅ Bağımsız tahmin bonusu aktif mi?
   const [madeAfterCommunityViewed, setMadeAfterCommunityViewed] = useState(false); // ✅ Topluluk verilerini gördükten sonra silip yeni tahmin yaptı mı? (%80 puan kaybı)
@@ -1268,6 +1369,95 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
     // Skorlar boşsa: Kullanıcı manuel seçim yapabilir, otomatik temizleme yapma
   }, [predictions.secondHalfHomeScore, predictions.secondHalfAwayScore, isPredictionLocked, initialPredictionsLoaded]);
 
+  // ✅ OYUNCU TAHMİNLERİNDEN OTOMATİK KART/GOL HESAPLAMA
+  // Kullanıcı oyuncu bazında kart/gol tahmini yaptığında, toplam kart/gol değerlerini otomatik doldur
+  React.useEffect(() => {
+    if (isPredictionLocked || !initialPredictionsLoaded) return;
+    if (Object.keys(playerPredictions).length === 0) return;
+    
+    // Oyuncu tahminlerinden toplam sayıları hesapla
+    let totalYellowCards = 0;
+    let totalRedCards = 0;
+    let totalGoals = 0;
+    let hasAnyCardPrediction = false;
+    let hasAnyGoalPrediction = false;
+    
+    Object.values(playerPredictions).forEach((pred: any) => {
+      if (!pred) return;
+      
+      // Sarı kart tahmini
+      if (pred.yellowCard === true) {
+        totalYellowCards++;
+        hasAnyCardPrediction = true;
+      }
+      
+      // Kırmızı kart tahmini (direkt veya çift sarı)
+      if (pred.redCard === true || pred.directRedCard === true || pred.secondYellowRed === true) {
+        totalRedCards++;
+        hasAnyCardPrediction = true;
+      }
+      
+      // Gol tahmini
+      if (pred.willScore === true || pred.goal === true) {
+        // Gol sayısı belirtilmişse onu kullan
+        const goalCount = pred.goalCount ? parseInt(pred.goalCount, 10) : 1;
+        totalGoals += goalCount || 1;
+        hasAnyGoalPrediction = true;
+      }
+    });
+    
+    // ✅ Sarı kart aralığını belirle
+    if (hasAnyCardPrediction) {
+      let yellowCardRange: string;
+      if (totalYellowCards <= 2) yellowCardRange = '0-2';
+      else if (totalYellowCards <= 4) yellowCardRange = '3-4';
+      else if (totalYellowCards <= 6) yellowCardRange = '5-6';
+      else yellowCardRange = '7+';
+      
+      // Kullanıcı manuel seçim yapmamışsa otomatik güncelle
+      if (predictions.yellowCards === null) {
+        setPredictions(prev => {
+          if (prev.yellowCards === yellowCardRange) return prev;
+          return { ...prev, yellowCards: yellowCardRange };
+        });
+      }
+      
+      // Kırmızı kart aralığını belirle
+      let redCardRange: string;
+      if (totalRedCards === 0) redCardRange = '0';
+      else if (totalRedCards === 1) redCardRange = '1';
+      else if (totalRedCards === 2) redCardRange = '2';
+      else redCardRange = '3+';
+      
+      // Kullanıcı manuel seçim yapmamışsa otomatik güncelle
+      if (predictions.redCards === null) {
+        setPredictions(prev => {
+          if (prev.redCards === redCardRange) return prev;
+          return { ...prev, redCards: redCardRange };
+        });
+      }
+    }
+    
+    // ✅ Gol aralığını belirle (oyuncu tahminlerinden)
+    // NOT: Maç skoru tahmininden ayrı, oyuncu bazlı tahminlerden de hesaplanabilir
+    // Ancak maç skoru tahmini daha öncelikli olduğu için burada onu ezmiyoruz
+    // Sadece maç skoru tahmini yapılmamışsa oyuncu tahminlerinden türet
+    if (hasAnyGoalPrediction && predictions.secondHalfHomeScore === null && predictions.secondHalfAwayScore === null) {
+      let goalRange: string;
+      if (totalGoals <= 1) goalRange = '0-1 gol';
+      else if (totalGoals <= 3) goalRange = '2-3 gol';
+      else if (totalGoals <= 5) goalRange = '4-5 gol';
+      else goalRange = '6+ gol';
+      
+      if (predictions.totalGoals === null) {
+        setPredictions(prev => {
+          if (prev.totalGoals === goalRange) return prev;
+          return { ...prev, totalGoals: goalRange };
+        });
+      }
+    }
+  }, [playerPredictions, isPredictionLocked, initialPredictionsLoaded, predictions.yellowCards, predictions.redCards, predictions.totalGoals, predictions.secondHalfHomeScore, predictions.secondHalfAwayScore]);
+
   const handlePlayerPredictionChange = (category: string, value: string | boolean) => {
     if (!selectedPlayer) return;
     
@@ -1365,10 +1555,9 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
       const hasPlayerPredictions = Object.keys(cleanedPlayerPredictions).length > 0;
 
       if (!hasMatchPredictions && !hasPlayerPredictions) {
-        Alert.alert(
+        showInfo(
           'Tahmin Yapılmadı',
-          'Henüz hiçbir tahmin yapmadınız.\n\nAşağıdakilerden en az birini yapabilirsiniz:\n\n• Maç sonu skoru tahmini\n• Toplam gol tahmini\n• Kadro oluşturup oyuncu tahminleri',
-          [{ text: 'Tamam', style: 'default' }]
+          'Henüz hiçbir tahmin yapmadınız.\n\nAşağıdakilerden en az birini yapabilirsiniz:\n\n• Maç sonu skoru tahmini\n• Toplam gol tahmini\n• Kadro oluşturup oyuncu tahminleri'
         );
         return;
       }
@@ -1494,10 +1683,9 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
         setShowCommunityConfirmModal(true);
       } else {
         // Zaten görmüşse, normal mesaj göster
-        Alert.alert(
+        showInfo(
           'Tahminler Güncellendi!',
-          'Tahminleriniz güncellendi.',
-          [{ text: 'Tamam' }]
+          'Tahminleriniz güncellendi.'
         );
       }
       
@@ -1513,7 +1701,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
         severity: ErrorSeverity.HIGH,
         context: { matchId: matchData.id, action: 'save_predictions' },
       });
-      Alert.alert('Hata!', 'Tahminler kaydedilemedi. Lütfen tekrar deneyin.');
+      showError('Hata!', 'Tahminler kaydedilemedi. Lütfen tekrar deneyin.');
     }
   };
 
@@ -1831,7 +2019,262 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Football Field with Players – Kadro sekmesindeki saha ile birebir aynı boyut */}
+        {/* Football Field - Maç canlı/bitmiş ise horizontal scroll ile çoklu saha, değilse tek saha */}
+        {(isMatchLive || isMatchFinished) && threeFieldData && threeFieldData.actualSquad.players.length > 0 ? (
+          <View style={styles.multiFieldContainer}>
+            {/* Horizontal Scroll ile sahalar - pagingEnabled ile tam snap */}
+            {/* Başlıklar artık saha içinde (sol alt köşe) */}
+            <ScrollView
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.multiFieldScrollContent}
+              decelerationRate="fast"
+              snapToInterval={fieldWidth}
+              snapToAlignment="start"
+              onScroll={(e) => {
+                const offsetX = e.nativeEvent.contentOffset.x;
+                const newIndex = Math.round(offsetX / fieldWidth);
+                if (newIndex !== threeFieldActiveIndex) {
+                  setThreeFieldActiveIndex(newIndex);
+                }
+              }}
+              scrollEventThrottle={16}
+            >
+              {/* 1. Kullanıcı Tahmini (sadece tahmin yapıldıysa) */}
+              {threeFieldData.userSquad && threeFieldData.userSquad.players.length > 0 && (
+                <View style={[styles.multiFieldWrapper, { width: fieldWidth }]}>
+                  <FootballField style={[styles.mainField, fieldDynamicStyle]}>
+                    <View style={styles.playersContainer}>
+                      {(() => {
+                        const userFormation = threeFieldData.userSquad?.formation || '4-3-3';
+                        const positions = formationPositions[userFormation] || formationPositions['4-3-3'] || mockPositions;
+                        return threeFieldData.userSquad?.players.slice(0, 11).map((player: any, index: number) => {
+                          const pos = positions[index] || { x: 50, y: 50 };
+                          return (
+                            <View
+                              key={`user-field-${player.id}-${index}`}
+                              style={[styles.playerSlot, { left: `${pos.x}%`, top: `${pos.y}%` }]}
+                            >
+                              <View style={[styles.playerCard, player.rating >= 85 && styles.playerCardElite]}>
+                                <LinearGradient colors={['#1E3A3A', '#0F2A24']} style={styles.playerCardGradient}>
+                                  <View style={[styles.jerseyNumberBadge, player.rating >= 85 && { backgroundColor: '#C9A44C' }]}>
+                                    <Text style={styles.jerseyNumberText}>{player.number || player.id}</Text>
+                                  </View>
+                                  <Text style={styles.playerName} numberOfLines={1}>{player.name.split(' ').pop()}</Text>
+                                </LinearGradient>
+                              </View>
+                            </View>
+                          );
+                        });
+                      })()}
+                    </View>
+                    {/* Formasyon etiketi */}
+                    <View style={styles.fieldFormationBadge}>
+                      <Text style={styles.fieldFormationText}>{threeFieldData.userSquad?.formation}</Text>
+                    </View>
+                    {/* ✅ Saha içi başlık - sol alt köşe */}
+                    <View style={styles.fieldInnerLabel}>
+                      <Ionicons name="person" size={10} color="#1FA2A6" />
+                      <Text style={[styles.fieldInnerLabelText, { color: '#1FA2A6' }]}>Benim Tahminim</Text>
+                    </View>
+                  </FootballField>
+                </View>
+              )}
+              
+              {/* 2. Topluluk Kadrosu */}
+              <View style={[styles.multiFieldWrapper, { width: fieldWidth }]}>
+                <FootballField style={[styles.mainField, fieldDynamicStyle]}>
+                  <View style={styles.playersContainer}>
+                    {(() => {
+                      const commFormation = threeFieldData.communitySquad.formation || '4-3-3';
+                      const positions = formationPositions[commFormation] || formationPositions['4-3-3'] || mockPositions;
+                      return threeFieldData.communitySquad.players.slice(0, 11).map((player: any, index: number) => {
+                        const pos = positions[index] || { x: 50, y: 50 };
+                        return (
+                          <View
+                            key={`community-field-${player.id}-${index}`}
+                            style={[styles.playerSlot, { left: `${pos.x}%`, top: `${pos.y}%` }]}
+                          >
+                            <View style={[styles.playerCard, player.rating >= 85 && styles.playerCardElite]}>
+                              <LinearGradient colors={['#1E3A3A', '#0F2A24']} style={styles.playerCardGradient}>
+                                <View style={[styles.jerseyNumberBadge, player.rating >= 85 && { backgroundColor: '#C9A44C' }]}>
+                                  <Text style={styles.jerseyNumberText}>{player.number || player.id}</Text>
+                                </View>
+                                <Text style={styles.playerName} numberOfLines={1}>{player.name.split(' ').pop()}</Text>
+                              </LinearGradient>
+                            </View>
+                          </View>
+                        );
+                      });
+                    })()}
+                  </View>
+                  {/* Formasyon etiketi */}
+                  <View style={styles.fieldFormationBadge}>
+                    <Text style={styles.fieldFormationText}>{threeFieldData.communitySquad.formation}</Text>
+                  </View>
+                  {/* ✅ Saha içi başlık - sol alt köşe */}
+                  <View style={styles.fieldInnerLabel}>
+                    <Ionicons name="people" size={10} color="#F59E0B" />
+                    <Text style={[styles.fieldInnerLabelText, { color: '#F59E0B' }]}>Topluluk</Text>
+                  </View>
+                </FootballField>
+              </View>
+              
+              {/* 3. Gerçek Kadro (API) */}
+              <View style={[styles.multiFieldWrapper, { width: fieldWidth }]}>
+                <FootballField style={[styles.mainField, fieldDynamicStyle]}>
+                  <View style={styles.playersContainer}>
+                    {(() => {
+                      const actualFormation = threeFieldData.actualSquad.formation || '4-3-3';
+                      const positions = formationPositions[actualFormation] || formationPositions['4-3-3'] || mockPositions;
+                      return threeFieldData.actualSquad.players.slice(0, 11).map((player: any, index: number) => {
+                        const pos = positions[index] || { x: 50, y: 50 };
+                        return (
+                          <View
+                            key={`actual-field-${player.id}-${index}`}
+                            style={[styles.playerSlot, { left: `${pos.x}%`, top: `${pos.y}%` }]}
+                          >
+                            <View style={[styles.playerCard, player.rating >= 85 && styles.playerCardElite]}>
+                              <LinearGradient colors={['#1E3A3A', '#0F2A24']} style={styles.playerCardGradient}>
+                                <View style={[styles.jerseyNumberBadge, player.rating >= 85 && { backgroundColor: '#C9A44C' }]}>
+                                  <Text style={styles.jerseyNumberText}>{player.number || player.id}</Text>
+                                </View>
+                                <Text style={styles.playerName} numberOfLines={1}>{player.name.split(' ').pop()}</Text>
+                              </LinearGradient>
+                            </View>
+                          </View>
+                        );
+                      });
+                    })()}
+                  </View>
+                  {/* Formasyon etiketi */}
+                  <View style={styles.fieldFormationBadge}>
+                    <Text style={styles.fieldFormationText}>{threeFieldData.actualSquad.formation}</Text>
+                  </View>
+                  {/* ✅ Saha içi başlık - sol alt köşe */}
+                  <View style={styles.fieldInnerLabel}>
+                    <Ionicons name="football" size={10} color="#10B981" />
+                    <Text style={[styles.fieldInnerLabelText, { color: '#10B981' }]}>Gerçek</Text>
+                    {isMatchLive && (
+                      <>
+                        <View style={styles.fieldInnerLiveDot} />
+                        <Text style={styles.fieldInnerLiveText}>Canlı</Text>
+                      </>
+                    )}
+                  </View>
+                </FootballField>
+              </View>
+            </ScrollView>
+            
+            {/* ✅ Sayfa göstergeleri - scroll index'e göre aktif */}
+            <View style={styles.multiFieldPageIndicators}>
+              {[
+                ...(threeFieldData.userSquad && threeFieldData.userSquad.players.length > 0 ? [0] : []),
+                1,
+                2
+              ].map((_, index) => (
+                <View
+                  key={index}
+                  style={[
+                    styles.multiFieldPageDot,
+                    index === threeFieldActiveIndex && styles.multiFieldPageDotActive,
+                  ]}
+                />
+              ))}
+            </View>
+            
+            {/* ✅ Sahaların altındaki içerik alanı - aktif saha index'e göre değişir */}
+            <View style={styles.fieldBelowContent}>
+              {/* Saha 1 - Benim Tahminim: Formasyon seç, Kaydet, Kilitle */}
+              {threeFieldActiveIndex === 0 && threeFieldData.userSquad?.players.length > 0 && (
+                <View style={styles.fieldBelowSection}>
+                  <View style={styles.fieldBelowButtons}>
+                    <TouchableOpacity style={styles.fieldBelowBtn} onPress={() => setShowFormationModal(true)}>
+                      <Ionicons name="grid-outline" size={14} color="#1FA2A6" />
+                      <Text style={styles.fieldBelowBtnText}>Formasyon Seç</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      style={[styles.fieldBelowBtn, styles.fieldBelowBtnPrimary]} 
+                      onPress={handleSavePrediction}
+                    >
+                      <Ionicons name="save-outline" size={14} color="#FFFFFF" />
+                      <Text style={[styles.fieldBelowBtnText, { color: '#FFFFFF' }]}>Kaydet</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      style={[styles.fieldBelowBtn, isPredictionLocked && styles.fieldBelowBtnLocked]} 
+                      onPress={handleLockToggle}
+                    >
+                      <Ionicons name={isPredictionLocked ? "lock-closed" : "lock-open-outline"} size={14} color={isPredictionLocked ? "#EF4444" : "#10B981"} />
+                      <Text style={[styles.fieldBelowBtnText, { color: isPredictionLocked ? "#EF4444" : "#10B981" }]}>
+                        {isPredictionLocked ? "Kilidi Aç" : "Kilitle"}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                  <Text style={styles.fieldBelowHint}>
+                    Topluluk tahminleri ve gerçeği görmek için sağa kaydırın
+                  </Text>
+                </View>
+              )}
+              
+              {/* Saha 2 - Topluluk: İstatistikler */}
+              {threeFieldActiveIndex === (threeFieldData.userSquad?.players.length > 0 ? 1 : 0) && (
+                <View style={styles.fieldBelowSection}>
+                  <View style={styles.fieldBelowStats}>
+                    <View style={styles.fieldBelowStatItem}>
+                      <Ionicons name="people" size={16} color="#F59E0B" />
+                      <Text style={styles.fieldBelowStatValue}>{communityMatchPredictions.totalUsers.toLocaleString()}</Text>
+                      <Text style={styles.fieldBelowStatLabel}>Tahmin Yapan</Text>
+                    </View>
+                    <View style={styles.fieldBelowStatDivider} />
+                    <View style={styles.fieldBelowStatItem}>
+                      <Ionicons name="arrow-up" size={16} color="#EF4444" />
+                      <Text style={styles.fieldBelowStatValue}>{communityMatchPredictions.fullTime.homeWin}%</Text>
+                      <Text style={styles.fieldBelowStatLabel}>Ev Sahibi</Text>
+                    </View>
+                    <View style={styles.fieldBelowStatDivider} />
+                    <View style={styles.fieldBelowStatItem}>
+                      <Ionicons name="shield" size={16} color="#3B82F6" />
+                      <Text style={styles.fieldBelowStatValue}>{communityMatchPredictions.fullTime.awayWin}%</Text>
+                      <Text style={styles.fieldBelowStatLabel}>Deplasman</Text>
+                    </View>
+                  </View>
+                </View>
+              )}
+              
+              {/* Saha 3 - Gerçek: Canlı olaylar */}
+              {threeFieldActiveIndex === (threeFieldData.userSquad?.players.length > 0 ? 2 : 1) && (
+                <View style={styles.fieldBelowSection}>
+                  <View style={styles.fieldBelowLiveEvents}>
+                    <View style={styles.fieldBelowLiveHeader}>
+                      <View style={styles.fieldBelowLiveDot} />
+                      <Text style={styles.fieldBelowLiveTitle}>Maç Olayları</Text>
+                    </View>
+                    {matchData?.events && matchData.events.length > 0 ? (
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.fieldBelowEventsScroll}>
+                        {matchData.events.slice(-5).map((event: any, idx: number) => (
+                          <View key={idx} style={styles.fieldBelowEventChip}>
+                            <Ionicons 
+                              name={event.type === 'Goal' ? 'football' : event.type === 'Card' ? 'card' : 'swap-horizontal'} 
+                              size={12} 
+                              color={event.type === 'Goal' ? '#10B981' : event.type === 'Card' ? '#F59E0B' : '#3B82F6'} 
+                            />
+                            <Text style={styles.fieldBelowEventText} numberOfLines={1}>
+                              {event.time?.elapsed || 0}' {event.player?.name?.split(' ').pop() || ''}
+                            </Text>
+                          </View>
+                        ))}
+                      </ScrollView>
+                    ) : (
+                      <Text style={styles.fieldBelowNoEvents}>Henüz olay yok</Text>
+                    )}
+                  </View>
+                </View>
+              )}
+            </View>
+          </View>
+        ) : (
+        <View style={styles.fieldCenterContainer}>
         <FootballField style={[styles.mainField, fieldDynamicStyle]}>
           {/* 🌟 Saha Üzerinde Analiz Odağı Yıldızı - Sağ üst köşe */}
           <TouchableOpacity 
@@ -2067,6 +2510,8 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
             })()}
           </View>
         </FootballField>
+        </View>
+        )}
 
         {/* ✅ Bildirim: Oyuncu kartlarına tıklayın + kilit bilgisi VEYA izleme modu mesajı */}
         {!hasPrediction && (isMatchLive || isMatchFinished) ? (
@@ -3131,10 +3576,9 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                   
                   if (!hasAnyPrediction && !isPredictionLocked) {
                     // Kilit açmak değil, kilitlemek istiyorsa ve tahmin yoksa uyarı göster
-                    Alert.alert(
+                    showInfo(
                       '⚠️ Tahmin Yapılmadı',
-                      'Henüz hiçbir tahmin yapmadınız. Kilitlemek için önce tahmin yapmanız gerekir.\n\n• Maç tahminlerini yapın veya\n• Kadro oluşturun veya\n• Oyuncu tahminlerini yapın',
-                      [{ text: 'Tamam', style: 'default' }]
+                      'Henüz hiçbir tahmin yapmadınız. Kilitlemek için önce tahmin yapmanız gerekir.\n\n• Maç tahminlerini yapın veya\n• Kadro oluşturun veya\n• Oyuncu tahminlerini yapın'
                     );
                     return;
                   }
@@ -3246,7 +3690,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
           onShowLockedWarning={() => setShowLockedWarningModal(true)}
           onClose={() => setSelectedPlayer(null)}
           onCancel={() => {
-            // ✅ İptal Et: Onay dialog'u göster
+            // ✅ İptal Et: Modal'ı kapat (tahmin yoksa)
             if (!selectedPlayer) return;
             
             // Oyuncuya ait tahmin var mı kontrol et
@@ -3256,34 +3700,25 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
             });
             
             if (hasPredictions) {
-              // Tahmin varsa onay iste
-              Alert.alert(
+              // Web ve Native için uygun onay
+              const confirmDelete = () => {
+                setPlayerPredictions(prev => {
+                  const newPredictions = { ...prev };
+                  delete newPredictions[selectedPlayer.id];
+                  return newPredictions;
+                });
+                setSelectedPlayer(null);
+                if (initialPredictionsLoaded) setHasUnsavedChanges(true);
+              };
+              
+              // Cross-platform confirm dialog
+              showConfirm(
                 'Tahmini Sil',
                 `${selectedPlayer.name} için yaptığınız tüm tahminleri silmek istediğinize emin misiniz?`,
-                [
-                  {
-                    text: 'Vazgeç',
-                    style: 'cancel',
-                    onPress: () => {} // Hiçbir şey yapma, modal açık kalsın
-                  },
-                  {
-                    text: 'Sil',
-                    style: 'destructive',
-                    onPress: () => {
-                      // ✅ Onaylandı: Oyuncuya ait tüm tahminleri temizle
-                      setPlayerPredictions(prev => {
-                        const newPredictions = { ...prev };
-                        // Bu oyuncuya ait tüm tahminleri kaldır
-                        delete newPredictions[selectedPlayer.id];
-                        return newPredictions;
-                      });
-                      setSelectedPlayer(null);
-                      // Kaydedilmemiş değişiklik var
-                      if (initialPredictionsLoaded) setHasUnsavedChanges(true);
-                    }
-                  }
-                ],
-                { cancelable: true }
+                confirmDelete,
+                undefined,
+                'Sil',
+                'Vazgeç'
               );
             } else {
               // Tahmin yoksa direkt kapat
@@ -3368,7 +3803,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
               backgroundColor: '#1A2E2A',
               borderRadius: 16,
               width: '100%',
-              maxWidth: 400,
+              maxWidth: 380, // ✅ STANDART: 380px genişlik
               padding: 20,
               borderWidth: 2,
               borderColor: comparisonModal.isCorrect ? '#10B981' : '#EF4444',
@@ -3653,16 +4088,18 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                     }
                   }
                   if (conflictResult?.hasConflict) {
-                    Alert.alert(
-                      'Çelişkili tahmin',
-                      conflictResult.message + (conflictResult.blocked ? '\n\nBu sinyale katılamazsınız.' : '\n\nYine de katılmak istiyor musunuz?'),
-                      conflictResult.blocked
-                        ? [{ text: 'Tamam' }]
-                        : [
-                            { text: 'İptal', style: 'cancel' },
-                            { text: 'Yine de katıl', onPress: () => { console.log('Sinyal topluluk katılımı:', signalJoinModal.signal.type); setSignalJoinModal(null); } },
-                          ]
-                    );
+                    if (conflictResult.blocked) {
+                      showInfo('Çelişkili tahmin', conflictResult.message + '\n\nBu sinyale katılamazsınız.');
+                    } else {
+                      showConfirm(
+                        'Çelişkili tahmin',
+                        conflictResult.message + '\n\nYine de katılmak istiyor musunuz?',
+                        () => { console.log('Sinyal topluluk katılımı:', signalJoinModal.signal.type); setSignalJoinModal(null); },
+                        undefined,
+                        'Yine de katıl',
+                        'İptal'
+                      );
+                    }
                     return;
                   }
                   console.log('Sinyal topluluk katılımı:', signalJoinModal.signal.type);
@@ -3716,16 +4153,18 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                       }
                     }
                     if (conflictResult?.hasConflict) {
-                      Alert.alert(
-                        'Çelişkili tahmin',
-                        conflictResult.message + (conflictResult.blocked ? '\n\nBu tahmin kaydedilemez.' : '\n\nYine de kaydetmek istiyor musunuz?'),
-                        conflictResult.blocked
-                          ? [{ text: 'Tamam' }]
-                          : [
-                              { text: 'İptal', style: 'cancel' },
-                              { text: 'Yine de kaydet', onPress: () => { console.log('Kendi tahmini kaydedildi:', signalJoinModal.signal.type, ownPredictionNote); setSignalJoinModal(null); setOwnPredictionNote(''); } },
-                            ]
-                      );
+                      if (conflictResult.blocked) {
+                        showInfo('Çelişkili tahmin', conflictResult.message + '\n\nBu tahmin kaydedilemez.');
+                      } else {
+                        showConfirm(
+                          'Çelişkili tahmin',
+                          conflictResult.message + '\n\nYine de kaydetmek istiyor musunuz?',
+                          () => { console.log('Kendi tahmini kaydedildi:', signalJoinModal.signal.type, ownPredictionNote); setSignalJoinModal(null); setOwnPredictionNote(''); },
+                          undefined,
+                          'Yine de kaydet',
+                          'İptal'
+                        );
+                      }
                       return;
                     }
                     console.log('Kendi tahmini kaydedildi:', signalJoinModal.signal.type, ownPredictionNote);
@@ -3768,7 +4207,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
             />
             <View style={{
               width: '100%',
-              maxWidth: 360,
+              maxWidth: 380, // ✅ STANDART: 380px genişlik
               backgroundColor: '#1E3A3A',
               borderRadius: 16,
               borderWidth: 1,
@@ -3841,7 +4280,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
             />
             <View style={{
               width: '100%',
-              maxWidth: 360,
+              maxWidth: 380, // ✅ STANDART: 380px genişlik
               backgroundColor: '#1E3A3A',
               borderRadius: 16,
               borderWidth: 1,
@@ -4209,7 +4648,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
             />
             <View style={{
               width: '100%',
-              maxWidth: 360,
+              maxWidth: 380, // ✅ STANDART: 380px genişlik
               backgroundColor: '#1E3A3A',
               borderRadius: 16,
               borderWidth: 1,
@@ -4413,10 +4852,9 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                       console.warn('Topluluk verileri durumu kaydedilemedi:', e);
                     }
                     
-                    Alert.alert(
+                    showInfo(
                       'Topluluk Verileri Aktif',
-                      'Artık topluluk tahminlerini görebilirsiniz. Tahminleriniz kalıcı olarak kilitlendi.',
-                      [{ text: 'Tamam' }]
+                      'Artık topluluk tahminlerini görebilirsiniz. Tahminleriniz kalıcı olarak kilitlendi.'
                     );
                   }}
                 >
@@ -4910,57 +5348,6 @@ const PlayerPredictionModal = ({
               </View>
             </View>
 
-            {/* Sarı Kart */}
-            <TouchableOpacity
-              style={[
-                styles.predictionButton,
-                predictions.yellowCard && styles.predictionButtonActive,
-              ]}
-              onPress={() => onPredictionChange('yellowCard', true)}
-              activeOpacity={0.8}
-            >
-              <Text style={[
-                styles.predictionButtonText,
-                predictions.yellowCard && styles.predictionButtonTextActive,
-              ]}>
-                🟨 Sarı Kart Görür
-              </Text>
-            </TouchableOpacity>
-
-            {/* 2. Sarıdan Kırmızı */}
-            <TouchableOpacity
-              style={[
-                styles.predictionButton,
-                predictions.secondYellowRed && styles.predictionButtonActive,
-              ]}
-              onPress={() => onPredictionChange('secondYellowRed', true)}
-              activeOpacity={0.8}
-            >
-              <Text style={[
-                styles.predictionButtonText,
-                predictions.secondYellowRed && styles.predictionButtonTextActive,
-              ]}>
-                🟨🟥 2. Sarıdan Kırmızı
-              </Text>
-            </TouchableOpacity>
-
-            {/* Direkt Kırmızı */}
-            <TouchableOpacity
-              style={[
-                styles.predictionButton,
-                predictions.directRedCard && styles.predictionButtonActive,
-              ]}
-              onPress={() => onPredictionChange('directRedCard', true)}
-              activeOpacity={0.8}
-            >
-              <Text style={[
-                styles.predictionButtonText,
-                predictions.directRedCard && styles.predictionButtonTextActive,
-              ]}>
-                🟥 Direkt Kırmızı Kart
-              </Text>
-            </TouchableOpacity>
-
             {/* ===== PENALTI TAHMİNLERİ ===== */}
             <View style={styles.penaltySectionDivider}>
               <View style={styles.penaltySectionLine} />
@@ -4968,59 +5355,108 @@ const PlayerPredictionModal = ({
               <View style={styles.penaltySectionLine} />
             </View>
 
-            {/* Penaltı Kullanacak */}
-            <TouchableOpacity
-              style={[
-                styles.predictionButton,
-                predictions.penaltyTaker && styles.predictionButtonActive,
-                { borderColor: predictions.penaltyTaker ? '#F59E0B' : 'rgba(255, 255, 255, 0.1)' },
-              ]}
-              onPress={() => onPredictionChange('penaltyTaker', true)}
-              activeOpacity={0.8}
-            >
-              <Text style={[
-                styles.predictionButtonText,
-                predictions.penaltyTaker && styles.predictionButtonTextActive,
-              ]}>
-                🥅 Penaltı Kullanacak (+2 puan)
-              </Text>
-            </TouchableOpacity>
+            {/* Penaltı butonları - 3'lü grid */}
+            <View style={styles.gridRow}>
+              <TouchableOpacity
+                style={[
+                  styles.gridButton,
+                  predictions.penaltyTaker && styles.gridButtonActive,
+                ]}
+                onPress={() => onPredictionChange('penaltyTaker', true)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.gridButtonEmoji}>🥅</Text>
+                <Text style={[
+                  styles.gridButtonText,
+                  predictions.penaltyTaker && styles.gridButtonTextActive,
+                ]}>Kullanacak</Text>
+              </TouchableOpacity>
 
-            {/* Penaltı Atacak */}
-            <TouchableOpacity
-              style={[
-                styles.predictionButton,
-                predictions.penaltyScored && styles.predictionButtonActive,
-                { borderColor: predictions.penaltyScored ? '#10B981' : 'rgba(255, 255, 255, 0.1)' },
-              ]}
-              onPress={() => onPredictionChange('penaltyScored', true)}
-              activeOpacity={0.8}
-            >
-              <Text style={[
-                styles.predictionButtonText,
-                predictions.penaltyScored && styles.predictionButtonTextActive,
-              ]}>
-                ✅ Penaltı Atacak (+3 puan)
-              </Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.gridButton,
+                  predictions.penaltyScored && styles.gridButtonActive,
+                ]}
+                onPress={() => onPredictionChange('penaltyScored', true)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.gridButtonEmoji}>✅</Text>
+                <Text style={[
+                  styles.gridButtonText,
+                  predictions.penaltyScored && styles.gridButtonTextActive,
+                ]}>Gol Atacak</Text>
+              </TouchableOpacity>
 
-            {/* Penaltı Kaçıracak */}
-            <TouchableOpacity
-              style={[
-                styles.predictionButton,
-                predictions.penaltyMissed && styles.predictionButtonActive,
-                { borderColor: predictions.penaltyMissed ? '#EF4444' : 'rgba(255, 255, 255, 0.1)' },
-              ]}
-              onPress={() => onPredictionChange('penaltyMissed', true)}
-              activeOpacity={0.8}
-            >
-              <Text style={[
-                styles.predictionButtonText,
-                predictions.penaltyMissed && styles.predictionButtonTextActive,
-              ]}>
-                ❌ Penaltı Kaçıracak (+6 puan)
-              </Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.gridButton,
+                  predictions.penaltyMissed && styles.gridButtonActive,
+                ]}
+                onPress={() => onPredictionChange('penaltyMissed', true)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.gridButtonEmoji}>❌</Text>
+                <Text style={[
+                  styles.gridButtonText,
+                  predictions.penaltyMissed && styles.gridButtonTextActive,
+                ]}>Kaçıracak</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* ===== KART TAHMİNLERİ ===== */}
+            <View style={styles.penaltySectionDivider}>
+              <View style={styles.penaltySectionLine} />
+              <Text style={styles.penaltySectionTitle}>Kart Tahminleri</Text>
+              <View style={styles.penaltySectionLine} />
+            </View>
+
+            {/* Kart butonları - 3'lü grid */}
+            <View style={styles.gridRow}>
+              <TouchableOpacity
+                style={[
+                  styles.gridButton,
+                  predictions.yellowCard && styles.gridButtonActive,
+                ]}
+                onPress={() => onPredictionChange('yellowCard', true)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.gridButtonEmoji}>🟨</Text>
+                <Text style={[
+                  styles.gridButtonText,
+                  predictions.yellowCard && styles.gridButtonTextActive,
+                ]}>Sarı Kart</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.gridButton,
+                  predictions.secondYellowRed && styles.gridButtonActive,
+                ]}
+                onPress={() => onPredictionChange('secondYellowRed', true)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.gridButtonEmoji}>🟨🟥</Text>
+                <Text style={[
+                  styles.gridButtonText,
+                  predictions.secondYellowRed && styles.gridButtonTextActive,
+                ]}>2. Sarıdan</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.gridButton,
+                  predictions.directRedCard && styles.gridButtonActive,
+                ]}
+                onPress={() => onPredictionChange('directRedCard', true)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.gridButtonEmoji}>🟥</Text>
+                <Text style={[
+                  styles.gridButtonText,
+                  predictions.directRedCard && styles.gridButtonTextActive,
+                ]}>Direkt Kırmızı</Text>
+              </TouchableOpacity>
+            </View>
 
             {/* ===== DEĞİŞİKLİK TAHMİNLERİ ===== */}
             <View style={styles.penaltySectionDivider}>
@@ -5442,8 +5878,12 @@ const PlayerPredictionModal = ({
             </View>
             </ScrollView>
           ) : (
-            <View style={styles.playerPredictionsScroll}>
-              <View style={styles.playerPredictionsContent}>
+            <ScrollView
+              style={styles.playerPredictionsScroll}
+              contentContainerStyle={styles.playerPredictionsContent}
+              showsVerticalScrollIndicator={true}
+              keyboardShouldPersistTaps="handled"
+            >
             {/* Gol Atar */}
             <View style={styles.predictionGroup}>
               <TouchableOpacity
@@ -5530,6 +5970,71 @@ const PlayerPredictionModal = ({
               </View>
             </View>
 
+            {/* ===== PENALTI TAHMİNLERİ ===== */}
+            <View style={styles.penaltySectionDivider}>
+              <View style={styles.penaltySectionLine} />
+              <Text style={styles.penaltySectionTitle}>Penaltı Tahminleri</Text>
+              <View style={styles.penaltySectionLine} />
+            </View>
+
+            {/* Penaltı Kullanacak */}
+            <TouchableOpacity
+              style={[
+                styles.predictionButton,
+                predictions.penaltyTaker && styles.predictionButtonActive,
+              ]}
+              onPress={() => onPredictionChange('penaltyTaker', true)}
+              activeOpacity={0.8}
+            >
+              <Text style={[
+                styles.predictionButtonText,
+                predictions.penaltyTaker && styles.predictionButtonTextActive,
+              ]}>
+                🥅 Penaltı Kullanacak
+              </Text>
+            </TouchableOpacity>
+
+            {/* Penaltıdan Gol Atacak */}
+            <TouchableOpacity
+              style={[
+                styles.predictionButton,
+                predictions.penaltyScored && styles.predictionButtonActive,
+              ]}
+              onPress={() => onPredictionChange('penaltyScored', true)}
+              activeOpacity={0.8}
+            >
+              <Text style={[
+                styles.predictionButtonText,
+                predictions.penaltyScored && styles.predictionButtonTextActive,
+              ]}>
+                ✅ Penaltıdan Gol Atacak
+              </Text>
+            </TouchableOpacity>
+
+            {/* Penaltı Kaçıracak */}
+            <TouchableOpacity
+              style={[
+                styles.predictionButton,
+                predictions.penaltyMissed && styles.predictionButtonActive,
+              ]}
+              onPress={() => onPredictionChange('penaltyMissed', true)}
+              activeOpacity={0.8}
+            >
+              <Text style={[
+                styles.predictionButtonText,
+                predictions.penaltyMissed && styles.predictionButtonTextActive,
+              ]}>
+                ❌ Penaltı Kaçıracak
+              </Text>
+            </TouchableOpacity>
+
+            {/* ===== KART TAHMİNLERİ ===== */}
+            <View style={styles.penaltySectionDivider}>
+              <View style={styles.penaltySectionLine} />
+              <Text style={styles.penaltySectionTitle}>Kart Tahminleri</Text>
+              <View style={styles.penaltySectionLine} />
+            </View>
+
             {/* Sarı Kart */}
             <TouchableOpacity
               style={[
@@ -5580,6 +6085,13 @@ const PlayerPredictionModal = ({
                 🟥 Direkt Kırmızı Kart
               </Text>
             </TouchableOpacity>
+
+            {/* ===== DEĞİŞİKLİK TAHMİNLERİ ===== */}
+            <View style={styles.penaltySectionDivider}>
+              <View style={styles.penaltySectionLine} />
+              <Text style={styles.penaltySectionTitle}>Değişiklik Tahmini</Text>
+              <View style={styles.penaltySectionLine} />
+            </View>
 
             {/* Oyundan Çıkar */}
             <View style={styles.predictionGroup}>
@@ -5632,8 +6144,7 @@ const PlayerPredictionModal = ({
                 )}
               </Pressable>
             </View>
-              </View>
-            </View>
+            </ScrollView>
           )}
 
           <View style={styles.playerModalActions}>
@@ -5899,6 +6410,318 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
 
+  // Multi-Field Container - Horizontal scroll ile çoklu saha görünümü
+  multiFieldContainer: {
+    marginBottom: 16,
+  },
+  multiFieldHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    marginBottom: 8,
+  },
+  multiFieldTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  multiFieldLiveBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 6,
+  },
+  multiFieldLiveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#EF4444',
+  },
+  multiFieldLiveText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#EF4444',
+  },
+  multiFieldFinishedBadge: {
+    backgroundColor: 'rgba(16, 185, 129, 0.2)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  multiFieldFinishedText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#10B981',
+  },
+  multiFieldTabs: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  multiFieldTab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    gap: 4,
+  },
+  multiFieldTabEmoji: {
+    fontSize: 12,
+  },
+  multiFieldTabText: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    fontWeight: '500',
+  },
+  multiFieldScrollContent: {
+    // Her saha ortada durması için padding (ekran genişliği - saha genişliği) / 2
+    paddingHorizontal: isWeb ? (500 - PITCH_LAYOUT.WEB_MAX_WIDTH) / 2 : (width - (width - PITCH_LAYOUT.H_PADDING)) / 2,
+  },
+  multiFieldWrapper: {
+    alignItems: 'center',
+  },
+  // Formasyon etiketi (saha üstünde)
+  fieldFormationBadge: {
+    position: 'absolute',
+    bottom: 10,
+    right: 10,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  fieldFormationText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  // ✅ Saha içi başlık (sol alt köşe overlay)
+  fieldInnerLabel: {
+    position: 'absolute',
+    bottom: 10,
+    left: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    gap: 4,
+  },
+  fieldInnerLabelText: {
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  fieldInnerLiveDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: '#EF4444',
+    marginLeft: 4,
+  },
+  fieldInnerLiveText: {
+    fontSize: 9,
+    fontWeight: '600',
+    color: '#EF4444',
+  },
+  // Canlı göstergesi (saha üstünde)
+  fieldLiveIndicator: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(239, 68, 68, 0.8)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    gap: 4,
+  },
+  fieldLiveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#FFFFFF',
+  },
+  fieldLiveText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  // Sayfa göstergeleri (noktalar)
+  multiFieldPageIndicators: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 8,
+  },
+  multiFieldPageDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  multiFieldPageDotActive: {
+    width: 24,
+    backgroundColor: '#1FA2A6',
+  },
+  // ✅ Sahaların altındaki içerik alanı stilleri
+  fieldBelowContent: {
+    marginTop: 8,
+    paddingHorizontal: 16,
+    maxHeight: 80,
+  },
+  fieldBelowSection: {
+    backgroundColor: 'rgba(31, 41, 55, 0.5)',
+    borderRadius: 10,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(75, 85, 99, 0.3)',
+  },
+  fieldBelowButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  fieldBelowBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    backgroundColor: 'rgba(31, 162, 166, 0.1)',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.3)',
+  },
+  fieldBelowBtnPrimary: {
+    backgroundColor: '#1FA2A6',
+    borderColor: '#1FA2A6',
+  },
+  fieldBelowBtnLocked: {
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+  },
+  fieldBelowBtnText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#1FA2A6',
+  },
+  fieldBelowHint: {
+    fontSize: 10,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    marginTop: 8,
+    fontStyle: 'italic',
+  },
+  fieldBelowStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+  },
+  fieldBelowStatItem: {
+    alignItems: 'center',
+    gap: 2,
+  },
+  fieldBelowStatValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  fieldBelowStatLabel: {
+    fontSize: 10,
+    color: '#9CA3AF',
+  },
+  fieldBelowStatDivider: {
+    width: 1,
+    height: 30,
+    backgroundColor: 'rgba(75, 85, 99, 0.5)',
+  },
+  fieldBelowLiveEvents: {
+    gap: 8,
+  },
+  fieldBelowLiveHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  fieldBelowLiveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#EF4444',
+  },
+  fieldBelowLiveTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  fieldBelowEventsScroll: {
+    flexGrow: 0,
+  },
+  fieldBelowEventChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(31, 41, 55, 0.8)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginRight: 6,
+  },
+  fieldBelowEventText: {
+    fontSize: 10,
+    color: '#E5E7EB',
+    maxWidth: 80,
+  },
+  fieldBelowNoEvents: {
+    fontSize: 11,
+    color: '#6B7280',
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  // ✅ 3 Saha başlıkları satırı
+  threeFieldTitlesRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 12,
+    paddingHorizontal: 16,
+  },
+  threeFieldTitleBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    backgroundColor: 'rgba(100, 116, 139, 0.15)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(100, 116, 139, 0.2)',
+  },
+  threeFieldTitleBadgeActive: {
+    backgroundColor: 'rgba(31, 162, 166, 0.15)',
+    borderColor: 'rgba(31, 162, 166, 0.4)',
+  },
+  threeFieldTitleText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  threeFieldTitleTextActive: {
+    color: '#1FA2A6',
+  },
+
   // Football Field – Kadro ile birebir aynı (PITCH_LAYOUT + web maxWidth/WEB_HEIGHT)
   fieldContainer: {
     width: isWeb ? '100%' : width - PITCH_LAYOUT.H_PADDING,
@@ -5959,6 +6782,18 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.8)',
     textAlign: 'center',
     lineHeight: 20,
+  },
+  horizontalFieldScroll: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: PITCH_LAYOUT.H_PADDING / 2,
+  },
+  fieldCenterContainer: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: PITCH_LAYOUT.H_PADDING / 2,
   },
   mainField: {
     width: isWeb ? '100%' : width - PITCH_LAYOUT.H_PADDING,
@@ -7604,58 +8439,57 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   
-  // Player Modal
+  // Player Modal - Kompakt tasarım
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
     justifyContent: 'flex-end',
   },
   playerModalContent: {
-    backgroundColor: '#1E3A3A', // ✅ Design System
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    maxHeight: height * 0.9,
-    flex: 1,
+    backgroundColor: '#1E3A3A',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: height * 0.85,
   },
   playerModalHeader: {
-    padding: 12,
-    paddingBottom: 10,
+    padding: 10,
+    paddingBottom: 8,
   },
   tahminYapilanOyuncuBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginTop: 8,
-    paddingTop: 8,
+    gap: 4,
+    marginTop: 6,
+    paddingTop: 6,
     borderTopWidth: 1,
     borderTopColor: 'rgba(31, 162, 166, 0.3)',
   },
   tahminYapilanOyuncuText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
     color: '#1FA2A6',
   },
   modalCloseButton: {
     position: 'absolute',
-    top: 12,
-    right: 12,
-    width: 32,
-    height: 32,
+    top: 8,
+    right: 8,
+    width: 28,
+    height: 28,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 16,
+    borderRadius: 14,
     zIndex: 10,
   },
   playerModalInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
   },
   playerNumberCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
+    width: 40,
+    height: 40,
+    borderRadius: 10,
     backgroundColor: '#1FA2A6',
     alignItems: 'center',
     justifyContent: 'center',
@@ -7663,7 +8497,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   playerNumberLarge: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '900',
     color: '#FFFFFF',
   },
@@ -7671,17 +8505,17 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: -2,
     right: -2,
-    width: 18,
-    height: 18,
-    borderRadius: 10,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
     backgroundColor: '#F59E0B',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: '#FFFFFF',
   },
   playerRatingSmall: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: 'bold',
     color: '#0F2A24',
   },
@@ -7689,37 +8523,37 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   playerNameLarge: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '900',
     color: '#FFFFFF',
   },
   playerPositionModal: {
-    fontSize: 13,
+    fontSize: 12,
     color: 'rgba(255, 255, 255, 0.7)',
     fontWeight: '500',
-    marginTop: 2,
+    marginTop: 1,
   },
   formText: {
     color: '#F59E0B',
     fontWeight: 'bold',
   },
   
-  // Player Predictions (tek sayfa, scroll yok)
+  // Player Predictions - Kompakt
   playerPredictionsScroll: {
     flex: 1,
     minHeight: 0,
   },
   playerPredictionsContent: {
-    padding: 12,
-    gap: 6,
-    paddingBottom: 12,
+    padding: 10,
+    gap: 4,
+    paddingBottom: 10,
   },
-  // ✅ Penaltı bölümü stilleri
+  // Penaltı/Kart bölümü başlıkları - daha kompakt
   penaltySectionDivider: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 8,
-    gap: 8,
+    marginVertical: 4,
+    gap: 6,
   },
   penaltySectionLine: {
     flex: 1,
@@ -7727,33 +8561,32 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
   penaltySectionTitle: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#9CA3AF',
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   predictionGroup: {
-    gap: 4,
+    gap: 3,
   },
   predictionButton: {
-    height: 44,
+    height: 38,
     backgroundColor: 'rgba(15, 23, 42, 0.8)',
-    borderRadius: 12,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: 'rgba(100, 116, 139, 0.5)',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
   },
   predictionButtonActive: {
-    backgroundColor: '#3B82F6', // ✅ Mavi renk
+    backgroundColor: '#3B82F6',
     borderColor: '#3B82F6',
-    transform: [{ scale: 1.02 }],
   },
   predictionButtonText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: '#FFFFFF',
   },
@@ -7775,22 +8608,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   subOptions: {
-    paddingLeft: 10,
-    gap: 4,
+    paddingLeft: 8,
+    gap: 2,
   },
   subOptionsLabel: {
-    fontSize: 13,
+    fontSize: 11,
     color: '#9CA3AF',
   },
   subOptionsRow: {
     flexDirection: 'row',
-    gap: 6,
+    gap: 4,
   },
   subOptionButton: {
     flex: 1,
-    height: 32,
+    height: 28,
     backgroundColor: 'rgba(30, 41, 59, 0.5)',
-    borderRadius: 8,
+    borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
@@ -7807,6 +8640,39 @@ const styles = StyleSheet.create({
   },
   subOptionTextActive: {
     color: '#FFFFFF',
+  },
+  // Grid butonları - Penaltı ve Kart için
+  gridRow: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  gridButton: {
+    flex: 1,
+    height: 50,
+    backgroundColor: 'rgba(15, 23, 42, 0.8)',
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(100, 116, 139, 0.5)',
+    paddingVertical: 4,
+  },
+  gridButtonActive: {
+    backgroundColor: '#3B82F6',
+    borderColor: '#3B82F6',
+  },
+  gridButtonEmoji: {
+    fontSize: 16,
+    marginBottom: 2,
+  },
+  gridButtonText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    textAlign: 'center',
+  },
+  gridButtonTextActive: {
+    fontWeight: 'bold',
   },
   selectedSubstitute: {
     paddingLeft: 12,
@@ -7839,34 +8705,35 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   
-  // Player Modal Actions
+  // Player Modal Actions - Kompakt
   playerModalActions: {
     flexDirection: 'row',
-    gap: 12,
-    padding: 16,
+    gap: 10,
+    padding: 10,
+    paddingBottom: Platform.OS === 'ios' ? 24 : 10,
     borderTopWidth: 1,
     borderTopColor: 'rgba(31, 162, 166, 0.2)',
-    backgroundColor: '#1E3A3A', // ✅ Design System
+    backgroundColor: '#1E3A3A',
   },
   cancelButton: {
     flex: 1,
-    height: 50,
+    height: 42,
     backgroundColor: 'rgba(30, 41, 59, 0.8)',
-    borderRadius: 12,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: 'rgba(100, 116, 139, 0.5)',
   },
   cancelButtonText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: '#FFFFFF',
   },
   saveButton: {
     flex: 1,
-    height: 50,
-    borderRadius: 12,
+    height: 42,
+    borderRadius: 10,
     overflow: 'hidden',
   },
   saveButtonGradient: {
@@ -7875,12 +8742,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   saveButtonText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: 'bold',
     color: '#FFFFFF',
   },
   saveButtonTextLocked: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: 'bold',
     color: '#EF4444',
   },

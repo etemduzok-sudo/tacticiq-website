@@ -74,7 +74,6 @@ const tabs = [
   { id: 'live', label: 'Canlı', icon: 'pulse' },
   { id: 'stats', label: 'İstatistik', icon: 'bar-chart' },
   { id: 'ratings', label: 'Reyting', icon: 'star' },
-  // Özet sekmesi kaldırıldı - Artık biten maç kartlarında gösteriliyor
 ];
 
 export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFocus, preloadedMatch, forceResultSummary, predictionTeamId }: MatchDetailProps) {

@@ -273,30 +273,7 @@ router.get('/live', async (req, res) => {
           console.log(`✅ [LIVE] Saved ${totalEventsSaved} events from ${matchesWithEvents} matches`);
         }
         
-        // Mock maçı ekle (her zaman görünsün) - API response'dan sonra
-        // (API response zaten uniqueMatches'e eklendi, mock maçı kontrol et)
-        const mockMatchExistsInApi = uniqueMatches.some(m => m.fixture?.id === 999999);
-        if (!mockMatchExistsInApi) {
-          const { data: mockMatch } = await supabase
-            .from('matches')
-            .select(`
-              *,
-              home_team:teams!matches_home_team_id_fkey(id, name, logo),
-              away_team:teams!matches_away_team_id_fkey(id, name, logo),
-              league:leagues(id, name, logo, country)
-            `)
-            .eq('id', 999999)
-            .single();
-          
-          if (mockMatch && ['1H', '2H', 'HT', 'ET', 'BT', 'P', 'LIVE'].includes(mockMatch.status)) {
-            // DB formatını API formatına çevir
-            const apiFormatMock = dbRowToApiMatch(mockMatch);
-            if (apiFormatMock) {
-              uniqueMatches.push(apiFormatMock);
-              console.log('✅ Mock canlı maç API response\'a eklendi');
-            }
-          }
-        }
+        // ✅ Mock maç ekleme DEVRE DIŞI - gerçek maçlar için
 
         // 🔥 UPDATE CACHE with deduplicated data
         API_CACHE.liveMatches = {
@@ -322,31 +299,8 @@ router.get('/live', async (req, res) => {
       }
     }
 
-    // 4. Mock maçı ekle (her zaman görünsün)
+    // 4. DB'den gelen canlı maçları döndür (mock maç DEVRE DIŞI)
     let finalMatches = (!dbError && dbMatches) ? dbMatches : [];
-    
-    // Mock maçı kontrol et ve ekle (API formatına çevir)
-    const mockMatchExists = finalMatches.some(m => (m.fixture?.id || m.id) === 999999);
-    if (!mockMatchExists) {
-      const { data: mockMatch } = await supabase
-        .from('matches')
-        .select(`
-          *,
-          home_team:teams!matches_home_team_id_fkey(id, name, logo),
-          away_team:teams!matches_away_team_id_fkey(id, name, logo),
-          league:leagues(id, name, logo, country)
-        `)
-        .eq('id', 999999)
-        .single();
-      
-      if (mockMatch && ['1H', '2H', 'HT', 'ET', 'BT', 'P', 'LIVE'].includes(mockMatch.status)) {
-        const apiFormatMock = dbRowToApiMatch(mockMatch);
-        if (apiFormatMock) {
-          finalMatches.push(apiFormatMock);
-          console.log('✅ Mock canlı maç eklendi (API formatında)');
-        }
-      }
-    }
 
     res.json({
       success: true,

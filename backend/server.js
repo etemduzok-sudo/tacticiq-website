@@ -15,6 +15,9 @@ const { authenticateApiKey } = require('./middleware/auth');
 // 📊 Player Ratings Scheduler (Haftalık güncelleme)
 const playerRatingsScheduler = require('./services/playerRatingsScheduler');
 
+// 🔴 Live Match Service (Canlı maç senkronizasyonu)
+const liveMatchService = require('./services/liveMatchService');
+
 // 🛡️ Global Error Handlers - Backend'in sürekli durmasını engeller
 process.on('uncaughtException', (error) => {
   const timestamp = new Date().toISOString();
@@ -874,6 +877,16 @@ app.listen(PORT, '0.0.0.0', () => {
     } else {
       console.log('⏭️  Player ratings scheduler skipped (RUN_PLAYER_RATINGS_JOB not set)');
     }
+    
+    // ============================================
+    // 6. LIVE MATCH SERVICE (15s polling - canlı maç durumu senkronizasyonu)
+    // ============================================
+    try {
+      liveMatchService.startPolling();
+      console.log(`🔴 Live match polling started (15s interval)`);
+    } catch (error) {
+      console.error('❌ Failed to start live match polling:', error.message);
+    }
   });
   
   // ============================================
@@ -885,6 +898,7 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log('╠════════════════════════════════════════════════════════════╣');
   console.log('║ Active Services:                                          ║');
   console.log('║   • Worldwide Sync (12s) - Live matches & timeline        ║');
+  console.log('║   • Live Match Polling (15s) - Real-time status sync      ║');
   console.log('║   • Static Teams (2x/day) - Team data updates             ║');
   console.log('║   • Leaderboard Snapshots - Daily/weekly rankings         ║');
   console.log('║   • Monitoring - Health checks & alerts                   ║');

@@ -4,7 +4,8 @@
  */
 
 import React from 'react';
-import { View, Text, Modal, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, Text, Modal, TouchableOpacity, StyleSheet } from 'react-native';
+import { showAlert } from '../../utils/alertHelper';
 import { Ionicons } from '@expo/vector-icons';
 
 export type ConfirmButton = {
@@ -165,7 +166,7 @@ export function ConfirmModal({
                   } catch (error: any) {
                     console.error('Button onPress error:', error);
                     // ❌ Hata durumunda kullanıcıya bildir
-                    Alert.alert(
+                    showAlert(
                       'Hata',
                       error?.message || 'İşlem sırasında bir hata oluştu.',
                       [{ text: 'Tamam', style: 'default', onPress: () => onRequestClose?.() }]

@@ -13,11 +13,14 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, SPACING, FONTS } from '../theme/theme';
+import { useTranslation } from 'react-i18next';
+import { COLORS, SPACING } from '../theme/theme';
 import { useTheme } from '../contexts/ThemeContext';
 import {
   LEVEL_THRESHOLDS,
   ANALYSIS_FOCUS_MULTIPLIERS,
+  BASE_SCORES,
+  STREAK_BONUSES,
   MatchScoreDetail,
   UserScoringProfile,
   AnalysisFocusType,
@@ -138,6 +141,7 @@ const MOCK_RECENT_MATCHES: MatchScoreDetail[] = [
 
 export default function ScoringScreen() {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const colors = theme === 'dark' ? COLORS.dark : COLORS.light;
   
   const [userProfile, setUserProfile] = useState<UserScoringProfile>(MOCK_USER_PROFILE);
@@ -146,6 +150,7 @@ export default function ScoringScreen() {
   const [expandedMatch, setExpandedMatch] = useState<number | null>(0);
   const [timeFilter, setTimeFilter] = useState<'week' | 'month' | 'all'>('week');
   const [leagueFilter, setLeagueFilter] = useState<'all' | string>('all');
+  const [howItWorksExpanded, setHowItWorksExpanded] = useState(false);
   
   const matchScrollRef = useRef<FlatList>(null);
   const progressAnim = useRef(new Animated.Value(0)).current;
@@ -206,8 +211,8 @@ export default function ScoringScreen() {
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>Puanlarım</Text>
-          <Ionicons name="stats-chart" size={24} color={colors.primary} />
+          <Text style={[styles.headerTitle, { color: colors.text }]}>{t('scoring.title')}</Text>
+          <Ionicons name="stats-chart" size={24} color={colors.primary || '#1FA2A6'} />
         </View>
         
         {/* Profile Summary Card */}
@@ -218,7 +223,7 @@ export default function ScoringScreen() {
           <View style={styles.profileMainRow}>
             <View style={styles.profilePointsSection}>
               <Text style={styles.profilePointsValue}>{userProfile.totalPoints.toFixed(1)}</Text>
-              <Text style={styles.profilePointsLabel}>puan</Text>
+              <Text style={styles.profilePointsLabel}>{t('scoring.points')}</Text>
             </View>
             
             <View style={styles.profileLevelSection}>
@@ -264,12 +269,71 @@ export default function ScoringScreen() {
           </View>
         </LinearGradient>
         
+        {/* Nasıl puan kazanılır? - Puanlama mantığı */}
+        <View style={[styles.howItWorksCard, { backgroundColor: colors.card || 'rgba(255,255,255,0.03)' }]}>
+          <TouchableOpacity
+            style={styles.howItWorksHeader}
+            onPress={() => setHowItWorksExpanded(!howItWorksExpanded)}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="help-buoy" size={20} color={colors.primary || '#1FA2A6'} />
+            <Text style={[styles.howItWorksTitle, { color: colors.text }]}>{t('scoring.howItWorks')}</Text>
+            <Ionicons name={howItWorksExpanded ? 'chevron-up' : 'chevron-down'} size={20} color={colors.textSecondary || '#9CA3AF'} />
+          </TouchableOpacity>
+          {howItWorksExpanded && (
+            <View style={styles.howItWorksBody}>
+              <Text style={[styles.howItWorksDesc, { color: colors.textSecondary }]}>{t('scoring.howItWorksDesc')}</Text>
+              <View style={styles.howItWorksGrid}>
+                <View style={styles.howItWorksRow}>
+                  <Text style={[styles.howItWorksLabel, { color: colors.text }]}>{t('scoring.baseScores.scoreExact')}</Text>
+                  <Text style={styles.howItWorksValue}>+{BASE_SCORES.SCORE_EXACT}</Text>
+                </View>
+                <View style={styles.howItWorksRow}>
+                  <Text style={[styles.howItWorksLabel, { color: colors.text }]}>{t('scoring.baseScores.scoreGoalDiff')}</Text>
+                  <Text style={styles.howItWorksValue}>+{BASE_SCORES.SCORE_GOAL_DIFF}</Text>
+                </View>
+                <View style={styles.howItWorksRow}>
+                  <Text style={[styles.howItWorksLabel, { color: colors.text }]}>{t('scoring.baseScores.scoreWinner')}</Text>
+                  <Text style={styles.howItWorksValue}>+{BASE_SCORES.SCORE_WINNER}</Text>
+                </View>
+                <View style={styles.howItWorksRow}>
+                  <Text style={[styles.howItWorksLabel, { color: colors.text }]}>{t('scoring.baseScores.goalsExact')}</Text>
+                  <Text style={styles.howItWorksValue}>+{BASE_SCORES.TOTAL_GOALS_EXACT}</Text>
+                </View>
+                <View style={styles.howItWorksRow}>
+                  <Text style={[styles.howItWorksLabel, { color: colors.text }]}>{t('scoring.baseScores.goalsClose')}</Text>
+                  <Text style={styles.howItWorksValue}>+{BASE_SCORES.TOTAL_GOALS_CLOSE}</Text>
+                </View>
+                <View style={styles.howItWorksRow}>
+                  <Text style={[styles.howItWorksLabel, { color: colors.text }]}>{t('scoring.baseScores.squadPerPlayer')}</Text>
+                  <Text style={styles.howItWorksValue}>+{BASE_SCORES.SQUAD_PER_PLAYER}</Text>
+                </View>
+                <View style={styles.howItWorksRow}>
+                  <Text style={[styles.howItWorksLabel, { color: colors.text }]}>{t('scoring.baseScores.formationExact')}</Text>
+                  <Text style={styles.howItWorksValue}>+{BASE_SCORES.ATTACK_FORMATION_EXACT}/{BASE_SCORES.DEFENSE_FORMATION_EXACT}</Text>
+                </View>
+                <View style={styles.howItWorksRow}>
+                  <Text style={[styles.howItWorksLabel, { color: colors.text }]}>{t('scoring.focusMultipliers')}</Text>
+                  <Text style={styles.howItWorksValue}>×1.2–2.0</Text>
+                </View>
+                <View style={styles.howItWorksRow}>
+                  <Text style={[styles.howItWorksLabel, { color: colors.text }]}>{t('scoring.timeBonusDesc')}</Text>
+                </View>
+                <View style={styles.howItWorksRow}>
+                  <Text style={[styles.howItWorksLabel, { color: colors.text }]}>{t('scoring.streakBonusDesc')}</Text>
+                  <Text style={styles.howItWorksValue}>(+{STREAK_BONUSES.STREAK_3}/+{STREAK_BONUSES.STREAK_5}/+{STREAK_BONUSES.STREAK_7}/+{STREAK_BONUSES.STREAK_10})</Text>
+                </View>
+              </View>
+            </View>
+          )}
+        </View>
+
         {/* Success Rates */}
-        <View style={styles.successRatesContainer}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Başarı Oranları</Text>
+        <View style={[styles.successRatesContainer, { backgroundColor: colors.card || 'rgba(255,255,255,0.03)' }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('scoring.successRates')}</Text>
           <View style={styles.successRatesRow}>
             <View style={styles.successRateItem}>
-              <Text style={styles.successRateLabel}>Skor</Text>
+              <Text style={[styles.successRateLabel, { color: colors.textSecondary }]}>{t('scoring.score')}</Text>
               <Text style={[styles.successRateValue, { color: userProfile.successRates.score >= 40 ? '#10B981' : '#F59E0B' }]}>
                 %{userProfile.successRates.score}
               </Text>
@@ -278,7 +342,7 @@ export default function ScoringScreen() {
               </View>
             </View>
             <View style={styles.successRateItem}>
-              <Text style={styles.successRateLabel}>Kadro</Text>
+              <Text style={[styles.successRateLabel, { color: colors.textSecondary }]}>{t('scoring.squad')}</Text>
               <Text style={[styles.successRateValue, { color: userProfile.successRates.squad >= 60 ? '#10B981' : '#F59E0B' }]}>
                 %{userProfile.successRates.squad}
               </Text>
@@ -287,7 +351,7 @@ export default function ScoringScreen() {
               </View>
             </View>
             <View style={styles.successRateItem}>
-              <Text style={styles.successRateLabel}>Oyuncu</Text>
+              <Text style={[styles.successRateLabel, { color: colors.textSecondary }]}>{t('scoring.player')}</Text>
               <Text style={[styles.successRateValue, { color: userProfile.successRates.player >= 40 ? '#10B981' : '#F59E0B' }]}>
                 %{userProfile.successRates.player}
               </Text>
@@ -301,7 +365,7 @@ export default function ScoringScreen() {
           {userProfile.currentStreak >= 3 && (
             <View style={styles.streakBadge}>
               <Ionicons name="flame" size={16} color="#F59E0B" />
-              <Text style={styles.streakText}>Aktif Seri: {userProfile.currentStreak} maç</Text>
+              <Text style={styles.streakText}>{t('scoring.activeStreak')}: {userProfile.currentStreak} {t('scoring.matches')}</Text>
             </View>
           )}
         </View>
@@ -309,19 +373,19 @@ export default function ScoringScreen() {
         {/* Match History */}
         <View style={styles.matchHistoryContainer}>
           <View style={styles.matchHistoryHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Puan Geçmişi</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('scoring.matchHistory')}</Text>
             <View style={styles.filterRow}>
               <TouchableOpacity
                 style={[styles.filterButton, timeFilter === 'week' && styles.filterButtonActive]}
                 onPress={() => setTimeFilter('week')}
               >
-                <Text style={[styles.filterButtonText, timeFilter === 'week' && styles.filterButtonTextActive]}>Bu Hafta</Text>
+                <Text style={[styles.filterButtonText, timeFilter === 'week' && styles.filterButtonTextActive]}>{t('scoring.thisWeek')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.filterButton, timeFilter === 'all' && styles.filterButtonActive]}
                 onPress={() => setTimeFilter('all')}
               >
-                <Text style={[styles.filterButtonText, timeFilter === 'all' && styles.filterButtonTextActive]}>Tümü</Text>
+                <Text style={[styles.filterButtonText, timeFilter === 'all' && styles.filterButtonTextActive]}>{t('scoring.all')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -339,7 +403,7 @@ export default function ScoringScreen() {
           
           {/* Selected Match Detail */}
           {selectedMatch && (
-            <View style={styles.matchDetailContainer}>
+            <View style={[styles.matchDetailContainer, { backgroundColor: colors.card || 'rgba(255,255,255,0.03)' }]}>
               <View style={styles.matchDetailHeader}>
                 <Text style={styles.matchDetailTitle}>
                   {selectedMatch.homeTeam} {selectedMatch.baseScores.scoreCorrect === 10 ? '✓' : ''} vs {selectedMatch.awayTeam}
@@ -352,27 +416,27 @@ export default function ScoringScreen() {
               
               {/* Base Scores */}
               <View style={styles.scoreBreakdownSection}>
-                <Text style={styles.scoreBreakdownTitle}>Temel Tahminler</Text>
+                <Text style={[styles.scoreBreakdownTitle, { color: colors.textSecondary }]}>{t('scoring.basePredictions')}</Text>
                 <View style={styles.scoreBreakdownRow}>
-                  <Text style={styles.scoreBreakdownLabel}>🎯 Skor</Text>
+                  <Text style={[styles.scoreBreakdownLabel, { color: colors.text }]}>🎯 {t('scoring.exactScore')}</Text>
                   <Text style={[styles.scoreBreakdownValue, { color: selectedMatch.baseScores.scoreCorrect > 0 ? '#10B981' : '#9CA3AF' }]}>
                     {selectedMatch.baseScores.scoreCorrect > 0 ? `+${selectedMatch.baseScores.scoreCorrect}` : '0'}
                   </Text>
                 </View>
                 <View style={styles.scoreBreakdownRow}>
-                  <Text style={styles.scoreBreakdownLabel}>⚽ Toplam Gol</Text>
+                  <Text style={[styles.scoreBreakdownLabel, { color: colors.text }]}>⚽ {t('scoring.totalGoals')}</Text>
                   <Text style={[styles.scoreBreakdownValue, { color: selectedMatch.baseScores.totalGoalsCorrect > 0 ? '#10B981' : '#9CA3AF' }]}>
                     {selectedMatch.baseScores.totalGoalsCorrect > 0 ? `+${selectedMatch.baseScores.totalGoalsCorrect}` : '0'}
                   </Text>
                 </View>
                 <View style={styles.scoreBreakdownRow}>
-                  <Text style={styles.scoreBreakdownLabel}>👥 Kadro</Text>
+                  <Text style={[styles.scoreBreakdownLabel, { color: colors.text }]}>👥 {t('scoring.squad')}</Text>
                   <Text style={[styles.scoreBreakdownValue, { color: '#3B82F6' }]}>
                     +{selectedMatch.baseScores.squadCorrect}
                   </Text>
                 </View>
                 <View style={styles.scoreBreakdownRow}>
-                  <Text style={styles.scoreBreakdownLabel}>📋 Formasyon</Text>
+                  <Text style={[styles.scoreBreakdownLabel, { color: colors.text }]}>📋 {t('scoring.formation')}</Text>
                   <Text style={[styles.scoreBreakdownValue, { color: '#8B5CF6' }]}>
                     +{(selectedMatch.baseScores.attackFormationCorrect + selectedMatch.baseScores.defenseFormationCorrect).toFixed(1)}
                   </Text>
@@ -382,7 +446,7 @@ export default function ScoringScreen() {
               {/* Player Predictions */}
               {selectedMatch.playerPredictions.length > 0 && (
                 <View style={styles.scoreBreakdownSection}>
-                  <Text style={styles.scoreBreakdownTitle}>Oyuncu Tahminleri</Text>
+                  <Text style={[styles.scoreBreakdownTitle, { color: colors.textSecondary }]}>{t('scoring.playerPredictions')}</Text>
                   {selectedMatch.playerPredictions.map((pred, idx) => (
                     <View key={idx} style={styles.scoreBreakdownRow}>
                       <Text style={styles.scoreBreakdownLabel}>
@@ -398,10 +462,10 @@ export default function ScoringScreen() {
               
               {/* Bonuses */}
               <View style={styles.scoreBreakdownSection}>
-                <Text style={styles.scoreBreakdownTitle}>Bonuslar</Text>
+                <Text style={[styles.scoreBreakdownTitle, { color: colors.textSecondary }]}>{t('scoring.bonuses')}</Text>
                 {selectedMatch.multipliers.timeBonusMultiplier !== 1 && (
                   <View style={styles.scoreBreakdownRow}>
-                    <Text style={styles.scoreBreakdownLabel}>⏰ Zaman Bonusu</Text>
+                    <Text style={[styles.scoreBreakdownLabel, { color: colors.text }]}>⏰ {t('scoring.timeBonus')}</Text>
                     <Text style={[styles.scoreBreakdownValue, { color: selectedMatch.multipliers.timeBonusMultiplier > 1 ? '#10B981' : '#EF4444' }]}>
                       ×{selectedMatch.multipliers.timeBonusMultiplier.toFixed(2)}
                     </Text>
@@ -409,7 +473,7 @@ export default function ScoringScreen() {
                 )}
                 {selectedMatch.multipliers.streakBonus > 0 && (
                   <View style={styles.scoreBreakdownRow}>
-                    <Text style={styles.scoreBreakdownLabel}>🔥 Seri Bonusu</Text>
+                    <Text style={[styles.scoreBreakdownLabel, { color: colors.text }]}>🔥 {t('scoring.streakBonus')}</Text>
                     <Text style={[styles.scoreBreakdownValue, { color: '#F59E0B' }]}>
                       +{selectedMatch.multipliers.streakBonus}
                     </Text>
@@ -419,7 +483,7 @@ export default function ScoringScreen() {
               
               {/* Total */}
               <View style={styles.totalScoreContainer}>
-                <Text style={styles.totalScoreLabel}>TOPLAM</Text>
+                <Text style={styles.totalScoreLabel}>{t('scoring.total')}</Text>
                 <Text style={styles.totalScoreValue}>{selectedMatch.totalScore.toFixed(1)}</Text>
               </View>
             </View>
@@ -537,6 +601,54 @@ const styles = StyleSheet.create({
     height: 20,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     marginHorizontal: SPACING.lg,
+  },
+  howItWorksCard: {
+    marginHorizontal: SPACING.md,
+    borderRadius: 12,
+    padding: 0,
+    marginBottom: SPACING.md,
+    overflow: 'hidden',
+  },
+  howItWorksHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: SPACING.md,
+    gap: 10,
+  },
+  howItWorksTitle: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  howItWorksBody: {
+    paddingHorizontal: SPACING.md,
+    paddingBottom: SPACING.md,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  howItWorksDesc: {
+    fontSize: 12,
+    marginBottom: 12,
+    lineHeight: 18,
+  },
+  howItWorksGrid: {
+    gap: 6,
+  },
+  howItWorksRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  howItWorksLabel: {
+    fontSize: 13,
+    flex: 1,
+  },
+  howItWorksValue: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1FA2A6',
+    marginLeft: 8,
   },
   successRatesContainer: {
     marginHorizontal: SPACING.md,
@@ -669,7 +781,6 @@ const styles = StyleSheet.create({
     color: '#10B981',
   },
   matchDetailContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
     borderRadius: 12,
     padding: SPACING.md,
     marginTop: SPACING.md,

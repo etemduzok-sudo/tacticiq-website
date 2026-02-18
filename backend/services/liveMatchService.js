@@ -45,6 +45,70 @@ async function getTodayMatches() {
   }
 }
 
+// ✅ YENİ: Zamanı geçmiş ama hala NS statüsünde olan maçları bul
+// Bu maçlar muhtemelen başlamış ama API henüz güncellememiş
+async function getStaleNsMatches() {
+  const now = new Date();
+  const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000); // 1 saat önce
+  const threeHoursAgo = new Date(now.getTime() - 3 * 60 * 60 * 1000); // 3 saat önce
+  
+  try {
+    const { data, error } = await supabase
+      .from('matches')
+      .select('*')
+      .eq('status', 'NS')
+      .gte('fixture_timestamp', Math.floor(threeHoursAgo.getTime() / 1000)) // Son 3 saat içinde başlaması gerekiyordu
+      .lte('fixture_timestamp', Math.floor(now.getTime() / 1000)); // Şu andan önce başlaması gerekiyordu
+
+    if (error) throw error;
+    
+    if (data && data.length > 0) {
+      console.log(`⚠️ Found ${data.length} stale NS matches (should have started but still NS)`);
+      data.forEach(m => {
+        const startTime = new Date(m.fixture_timestamp * 1000);
+        const minutesAgo = Math.floor((now.getTime() - startTime.getTime()) / 60000);
+        console.log(`   - Match ${m.id}: Started ${minutesAgo} minutes ago, still NS`);
+      });
+    }
+    
+    return data || [];
+  } catch (error) {
+    console.error('Error fetching stale NS matches:', error);
+    return [];
+  }
+}
+
+// ✅ YENİ: Fixture ID ile direkt API'den maç statüsünü güncelle
+async function refreshMatchByFixtureId(fixtureId) {
+  try {
+    console.log(`🔄 Refreshing match ${fixtureId} by fixture ID...`);
+    
+    const fixtureData = await footballApi.getFixtureDetails(fixtureId, true); // skipCache = true
+    
+    if (!fixtureData.response || fixtureData.response.length === 0) {
+      console.log(`⚠️ No data returned for fixture ${fixtureId}`);
+      return null;
+    }
+    
+    const match = fixtureData.response[0];
+    const newStatus = match.fixture.status.short;
+    
+    console.log(`📊 Fixture ${fixtureId} status from API: ${newStatus}`);
+    
+    // DB'yi güncelle
+    const updated = await updateMatchInDatabase(match);
+    
+    if (updated) {
+      console.log(`✅ Match ${fixtureId} updated: status=${newStatus}, elapsed=${match.fixture.status.elapsed}`);
+    }
+    
+    return match;
+  } catch (error) {
+    console.error(`❌ Error refreshing match ${fixtureId}:`, error.message);
+    return null;
+  }
+}
+
 // Detect score changes
 function detectScoreChanges(oldMatch, newMatch) {
   const changes = [];
@@ -181,6 +245,18 @@ async function pollLiveMatches() {
   console.log('🔄 Polling live matches...');
 
   try {
+    // ✅ 0. STALE NS MAÇLARI KONTROL ET (zamanı geçmiş ama hala NS)
+    // Bu maçları fixture ID ile direkt API'den sorgula
+    const staleMatches = await getStaleNsMatches();
+    if (staleMatches.length > 0) {
+      console.log(`🔍 Checking ${staleMatches.length} stale NS matches by fixture ID...`);
+      for (const staleMatch of staleMatches) {
+        await refreshMatchByFixtureId(staleMatch.id);
+        // Rate limit: Her istek arasında 200ms bekle
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
+    }
+    
     // 1. Get today's live/upcoming matches from database
     const dbMatches = await getTodayMatches();
     
@@ -333,5 +409,8 @@ module.exports = {
   stopPolling,
   getPollingStatus,
   detectScoreChanges,
-  createMatchResult
+  createMatchResult,
+  // ✅ YENİ: Fixture ID bazlı güncelleme
+  getStaleNsMatches,
+  refreshMatchByFixtureId
 };

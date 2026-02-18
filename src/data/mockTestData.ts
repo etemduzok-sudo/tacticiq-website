@@ -14,37 +14,51 @@
 // ============================================================
 // ⚡ ANA SWITCH - Test bitince false yap
 // ============================================================
-export const MOCK_TEST_ENABLED = true;
+export const MOCK_TEST_ENABLED = false; // ✅ Gerçek maçları görmek için kapatıldı
 
 // ============================================================
-// ⏱️ ZAMANLAMA
+// ⏱️ ZAMANLAMA - Kullanıcı Test Ayarları
 // ============================================================
-/** Maçlar kaç dakika sonra başlasın (canlıya geçsin) — 1 dakika sonra başlayacak */
-const START_DELAY_MINUTES = 1;
+/** 
+ * 🎮 TEST MOD AYARLARI:
+ * - Geri sayım: 1.5 dk (90 saniye)
+ * - Maç süresi: 4.5 dk gerçek zamanda (270 saniye)
+ * - Rating süresi: Maç bittikten sonra 1.5 dk (90 saniye)
+ * 
+ * Simülasyon hızı: 94 maç dakikası / 270 saniye = ~0.35 dk/sn
+ * Her 2.87 saniye = 1 maç dakikası
+ */
+const START_DELAY_SECONDS = 90; // 1.5 dk geri sayım
+const MATCH_DURATION_SECONDS = 270; // 4.5 dk maç süresi (gerçek zamanda)
+const RATING_WINDOW_SECONDS = 90; // 1.5 dk rating süresi (maç bittikten sonra)
 
-/** 🧪 TEST: Maç hemen canlı başlasın (ikinci yarı 5. dk) - simülasyonda 1 sn = 1 dk */
-const MOCK_START_IMMEDIATELY_LIVE = true; // true = maç 65 sn önce başlamış (simülasyonda 2H 5. dk), false = 1 dk sonra başlar
+/** Simülasyon hızı: Kaç gerçek saniye = 1 maç dakikası */
+const SIMULATION_SPEED = MATCH_DURATION_SECONDS / 94; // 270/94 ≈ 2.87 sn/dk
 
-/** Bildirim gösterilecek zaman (maç başlamadan 1 dakika önce) */
-const NOTIFICATION_DELAY_MINUTES = START_DELAY_MINUTES - 1; // 1 dakika
+/** 🧪 TEST: Maç hemen canlı başlasın mı? */
+const MOCK_START_IMMEDIATELY_LIVE = false; // false = geri sayımdan sonra başlar, true = hemen canlı
+
+/** Bildirim gösterilecek zaman (maç başlamadan 30 saniye önce) */
+const NOTIFICATION_DELAY_SECONDS = Math.max(0, START_DELAY_SECONDS - 30); // 60 saniye önce (1.5dk - 30sn = 1dk)
 
 /**
  * Maç 1 başlangıç zamanı - UYGULAMA BAŞLANGICINDA BİR KEZ SABİTLENİR
- * Böylece geri sayım 60'tan 0'a düzgün iner (her render'da yeni zaman üretilmez)
+ * Böylece geri sayım düzgün çalışır (her render'da yeni zaman üretilmez)
  */
 let _match1StartTimeMs: number | null = null;
 
-/** Maç 1 başlangıç zamanı - ilk çağrıda sabitlenir, sonra hep aynı değer döner (dakika oyun sonuna kadar ilerler) */
+/** Maç 1 başlangıç zamanı - ilk çağrıda sabitlenir, sonra hep aynı değer döner */
 export function getMatch1Start(): number {
-  // ✅ MOCK_START_IMMEDIATELY_LIVE: İlk çağrıda 120 sn önce sabitle = MAÇ BİTMİŞ (FT) - Rating açık!
+  // ✅ MOCK_START_IMMEDIATELY_LIVE: Test için maç hemen canlı başlasın
   if (MOCK_START_IMMEDIATELY_LIVE) {
     if (_match1StartTimeMs === null) {
-      _match1StartTimeMs = Date.now() - 120 * 1000; // 120 sn önce = simülasyonda FT (maç bitti, 24 saat rating açık)
+      // Maçın ortasında başlat (ikinci yarı 5. dk = 65 maç dakikası = 65 * SIMULATION_SPEED saniye önce)
+      _match1StartTimeMs = Date.now() - Math.floor(65 * SIMULATION_SPEED * 1000);
     }
     return _match1StartTimeMs;
   }
   if (_match1StartTimeMs === null) {
-    _match1StartTimeMs = Date.now() + START_DELAY_MINUTES * 60 * 1000;
+    _match1StartTimeMs = Date.now() + START_DELAY_SECONDS * 1000; // 90 saniye = 1.5 dk sonra
   }
   return _match1StartTimeMs;
 }
@@ -54,12 +68,23 @@ export function resetMockMatch1StartTime(): void {
   _match1StartTimeMs = null;
 }
 
-/** Maçı yeniden başlat (test için) - MOCK_START_IMMEDIATELY_LIVE true ise maç bitmiş (FT) */
+/** 
+ * Maçı yeniden başlat (test için)
+ * - Geri sayım: 1.5 dk (90 saniye)
+ * - Maç süresi: 4.5 dk (270 saniye)
+ * - Rating süresi: 1.5 dk (90 saniye)
+ */
 export function restartMatch1In1Minute(): void {
   _match1StartTimeMs = MOCK_START_IMMEDIATELY_LIVE
-    ? Date.now() - 120 * 1000  // 120 SANİYE önce = simülasyonda FT (maç bitti, rating açık)
-    : Date.now() + START_DELAY_MINUTES * 60 * 1000;
-  console.log('🔄 Maç yeniden başlatıldı:', new Date(_match1StartTimeMs).toISOString(), MOCK_START_IMMEDIATELY_LIVE ? '(FT - Rating Açık)' : '(1 dk sonra)');
+    ? Date.now() - Math.floor(65 * SIMULATION_SPEED * 1000) // 2H 5. dk'dan başlat
+    : Date.now() + START_DELAY_SECONDS * 1000; // 90 saniye = 1.5 dk sonra
+  console.log('🔄 Mock maç ayarlandı:', {
+    başlangıç: new Date(_match1StartTimeMs).toISOString(),
+    geriSayım: `${START_DELAY_SECONDS} saniye (${(START_DELAY_SECONDS/60).toFixed(1)} dk)`,
+    maçSüresi: `${MATCH_DURATION_SECONDS} saniye (${(MATCH_DURATION_SECONDS/60).toFixed(1)} dk)`,
+    ratingSüresi: `${RATING_WINDOW_SECONDS} saniye (${(RATING_WINDOW_SECONDS/60).toFixed(1)} dk)`,
+    simülasyonHızı: `${SIMULATION_SPEED.toFixed(2)} sn/dk`,
+  });
 }
 
 /** Maç 1 başlangıç zamanını doğrudan ayarla (session restore için) */
@@ -68,7 +93,7 @@ export function setMockMatch1StartTime(timestamp: number): void {
 }
 
 function getMatchNotificationTime(): number {
-  return Date.now() + NOTIFICATION_DELAY_MINUTES * 60 * 1000;
+  return Date.now() + NOTIFICATION_DELAY_SECONDS * 1000;
 }
 
 /** Maç 1 bildirim zamanı (başlamadan 1 dakika önce) */
@@ -287,9 +312,9 @@ export const MATCH_2_EVENTS: MockEvent[] = [
 
 export function computeLiveState(matchStartTime: number, events: MockEvent[]) {
   const now = Date.now();
-  // ✅ Her saniye 1 dakika ilerlesin: (now - matchStartTime) / 1000 = geçen saniye = geçen dakika
+  // ✅ Simülasyon hızı: SIMULATION_SPEED saniye = 1 maç dakikası
   const elapsedSeconds = Math.floor((now - matchStartTime) / 1000);
-  const elapsedMinutes = elapsedSeconds; // 1 sn = 1 dk
+  const elapsedMinutes = Math.floor(elapsedSeconds / SIMULATION_SPEED); // 2.87 sn = 1 dk (4.5 dk'da 94 dk oynasın)
   const isLive = now >= matchStartTime;
   
   // ✅ Maç henüz başlamadıysa NS döndür
@@ -297,9 +322,9 @@ export function computeLiveState(matchStartTime: number, events: MockEvent[]) {
     return { status: 'NS', elapsed: null, extraTime: null, homeGoals: null, awayGoals: null, events: [] };
   }
 
-  // ✅ Maç bitti mi? (112 dakika = 112 saniye)
-  if (elapsedMinutes >= 112) {
-    const allEvents = events.filter(e => e.minuteOffset <= 112);
+  // ✅ Maç bitti mi? (94 maç dakikası = 90 + 4 uzatma)
+  if (elapsedMinutes >= 94) {
+    const allEvents = events.filter(e => e.minuteOffset <= 94);
     // ✅ Own goal düzeltmesi: kendi kalesine gol rakibe yazılır
     const homeGoals = allEvents.filter(e => {
       if (e.type !== 'Goal') return false;
@@ -771,6 +796,25 @@ export function getMatchNotificationMessage(matchId: number): string | null {
   return null;
 }
 
+/**
+ * Maç bitmiş mi ve rating penceresi açık mı?
+ * Rating penceresi: Maç bittikten sonra RATING_WINDOW_SECONDS (90 sn = 1.5 dk)
+ */
+export function isRatingWindowOpen(matchStartTime: number): boolean {
+  const now = Date.now();
+  const elapsedSeconds = Math.floor((now - matchStartTime) / 1000);
+  const elapsedMinutes = Math.floor(elapsedSeconds / SIMULATION_SPEED);
+  
+  // Maç bitti mi?
+  if (elapsedMinutes < 94) return false;
+  
+  // Rating penceresi süresi: Maç bittikten sonraki saniyeler
+  const matchEndTime = matchStartTime + Math.floor(94 * SIMULATION_SPEED * 1000);
+  const timeSinceEnd = now - matchEndTime;
+  
+  return timeSinceEnd <= RATING_WINDOW_SECONDS * 1000;
+}
+
 /** Konsola mock test bilgisi yaz */
 export function logMockTestInfo(): void {
   if (!MOCK_TEST_ENABLED) return;
@@ -785,15 +829,26 @@ export function logMockTestInfo(): void {
   const m1NotificationRemaining = Math.max(0, Math.ceil((match1NotificationTime - now) / 1000));
   const m2NotificationRemaining = Math.max(0, Math.ceil((match2NotificationTime - now) / 1000));
   
+  // Maç durumu hesapla
+  const state1 = computeLiveState(match1Start, MATCH_1_EVENTS);
+  const state2 = computeLiveState(match2Start, MATCH_2_EVENTS);
+  
+  const formatTime = (secs: number) => `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
+  
   console.log(`\n🧪 ═══════════════════════════════════════════`);
-  console.log(`🧪 MOCK TEST AKTİF`);
+  console.log(`🧪 MOCK TEST AKTİF - Hızlı Test Modu`);
   console.log(`🧪 ───────────────────────────────────────────`);
-  console.log(`🧪 Maç 1: GS vs FB`);
-  console.log(`🧪   Bildirim: ${m1NotificationRemaining > 0 ? `${Math.floor(m1NotificationRemaining / 60)}:${String(m1NotificationRemaining % 60).padStart(2, '0')} sonra` : (now >= match1NotificationTime && now < match1Start ? '🔔 ŞİMDİ!' : 'Geçti')}`);
-  console.log(`🧪   Başlangıç: ${m1Remaining > 0 ? `${Math.floor(m1Remaining / 60)}:${String(m1Remaining % 60).padStart(2, '0')} kaldı` : '🔴 CANLI!'}`);
-  console.log(`🧪 Maç 2: Real vs Barça`);
-  console.log(`🧪   Bildirim: ${m2NotificationRemaining > 0 ? `${Math.floor(m2NotificationRemaining / 60)}:${String(m2NotificationRemaining % 60).padStart(2, '0')} sonra` : (now >= match2NotificationTime && now < match2Start ? '🔔 ŞİMDİ!' : 'Geçti')}`);
-  console.log(`🧪   Başlangıç: ${m2Remaining > 0 ? `${Math.floor(m2Remaining / 60)}:${String(m2Remaining % 60).padStart(2, '0')} kaldı` : '🔴 CANLI!'}`);
+  console.log(`🧪 ⏱️ Geri sayım: ${START_DELAY_SECONDS}sn (${(START_DELAY_SECONDS/60).toFixed(1)}dk)`);
+  console.log(`🧪 ⚽ Maç süresi: ${MATCH_DURATION_SECONDS}sn (${(MATCH_DURATION_SECONDS/60).toFixed(1)}dk)`);
+  console.log(`🧪 ⭐ Rating süresi: ${RATING_WINDOW_SECONDS}sn (${(RATING_WINDOW_SECONDS/60).toFixed(1)}dk)`);
+  console.log(`🧪 🚀 Simülasyon: ${SIMULATION_SPEED.toFixed(2)}sn = 1 maç dk`);
+  console.log(`🧪 ───────────────────────────────────────────`);
+  console.log(`🧪 Maç 1: GS vs FB (${state1.status})`);
+  console.log(`🧪   Durum: ${state1.status === 'NS' ? `⏳ ${formatTime(m1Remaining)} sonra başlayacak` : state1.status === 'FT' ? `✅ Bitti ${isRatingWindowOpen(match1Start) ? '(Rating açık)' : '(Rating kapandı)'}` : `🔴 CANLI ${state1.elapsed}'`}`);
+  console.log(`🧪   Skor: ${state1.homeGoals ?? '-'} - ${state1.awayGoals ?? '-'}`);
+  console.log(`🧪 Maç 2: Real vs Barça (${state2.status})`);
+  console.log(`🧪   Durum: ${state2.status === 'NS' ? `⏳ ${formatTime(m2Remaining)} sonra başlayacak` : state2.status === 'FT' ? `✅ Bitti ${isRatingWindowOpen(match2Start) ? '(Rating açık)' : '(Rating kapandı)'}` : `🔴 CANLI ${state2.elapsed}'`}`);
+  console.log(`🧪   Skor: ${state2.homeGoals ?? '-'} - ${state2.awayGoals ?? '-'}`);
   console.log(`🧪 ═══════════════════════════════════════════\n`);
 }
 

@@ -18,6 +18,7 @@ import { useOAuth } from './src/hooks/useOAuth';
 import { initWebZoomPrevention } from './src/utils/webZoomPrevention';
 import { getUserTimezone } from './src/utils/timezoneUtils';
 import { restartMatch1In1Minute, setMockMatch1StartTime, getMatch1Start, MOCK_TEST_ENABLED } from './src/data/mockTestData';
+import { subscribeToast } from './src/utils/alertHelper';
 
 // Web için React Native'in built-in Animated API'sini kullan, native için reanimated
 import { Animated as RNAnimated } from 'react-native';
@@ -142,6 +143,8 @@ import { MatchResultSummaryPopup } from './src/components/match/MatchResultSumma
 import { MatchResultSummaryScreen } from './src/screens/MatchResultSummaryScreen';
 import { Leaderboard } from './src/components/Leaderboard';
 import { DatabaseTestScreen } from './src/screens/DatabaseTestScreen';
+import ScoringScreen from './src/screens/ScoringScreen';
+import ChatScreen from './src/screens/ChatScreen';
 
 // Ignore warnings
 LogBox.ignoreLogs([
@@ -242,7 +245,7 @@ export default function App() {
         // Yeni başlangıç zamanını session storage'a kaydet
         const newStartTime = getMatch1Start();
         sessionStorage.setItem('tacticiq_mock_match_start_time', newStartTime.toString());
-        console.log('🔄 Mock maç 1 dakika sonra tekrar başlatıldı!', new Date(newStartTime).toISOString());
+        console.log('🔄 Mock maç yeniden başlatıldı! Geri sayım: 1.5dk, Maç: 4.5dk, Rating: 1.5dk');
         // Sayfayı otomatik yenile (test için)
         setTimeout(() => {
           if (typeof window !== 'undefined' && window.location) {
@@ -251,13 +254,14 @@ export default function App() {
         }, 500);
       };
       console.log('💡 Mock maçı yeniden başlatmak için: window.restartMockMatch()');
+      console.log('📋 Test Ayarları: Geri sayım 1.5dk → Maç 4.5dk → Rating 1.5dk');
       
-      // ✅ Mock maç her zaman canlı başlasın (test için) - session'a bakmadan 55 dk önce sabitle
+      // ✅ Uygulama açıldığında mock maçı başlat (geri sayımdan başlar)
       const mockMatchStartKey = 'tacticiq_mock_match_start_time';
-      restartMatch1In1Minute(); // 55 dk önce = canlı (MOCK_START_IMMEDIATELY_LIVE true)
+      restartMatch1In1Minute();
       const newStartTime = getMatch1Start();
       sessionStorage.setItem(mockMatchStartKey, newStartTime.toString());
-      console.log('🔄 [AUTO] Mock maç CANLI ayarlandı:', new Date(newStartTime).toISOString(), '(sahanın altı alanı için)');
+      console.log('🎮 Mock maç hazır:', new Date(newStartTime).toISOString());
     }
   }, []);
 
@@ -401,6 +405,12 @@ export default function App() {
               showOnlyFinished={true}
             />
           );
+        
+        case 'scoring':
+          return <ScoringScreen />;
+        
+        case 'chat':
+          return <ChatScreen />;
         
         case 'leaderboard':
           return <Leaderboard onNavigate={navHandlers.handleProfileClick} />;
@@ -569,8 +579,22 @@ export default function App() {
   };
   
   // Check if current screen should show bottom navigation
-  // ✅ Yeni sekme yapısı: matches (unified) | leaderboard | badges | profile
-  const shouldShowBottomNav = ['home', 'matches', 'finished', 'leaderboard', 'badges', 'profile'].includes(currentScreen);
+  // ✅ Yeni sekme yapısı: home | scoring | leaderboard | chat | profile
+  const shouldShowBottomNav = ['home', 'matches', 'finished', 'scoring', 'leaderboard', 'chat', 'badges', 'profile'].includes(currentScreen);
+
+  // Web toast sistemi - showInfo/showError/showSuccess web'de window.alert yerine in-app toast gösterir
+  const [globalToast, setGlobalToast] = useState<{ title: string; message?: string; type: 'info' | 'error' | 'success' } | null>(null);
+  const globalToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const unsub = subscribeToast((data) => {
+      if (globalToastTimerRef.current) clearTimeout(globalToastTimerRef.current);
+      setGlobalToast(data);
+      globalToastTimerRef.current = setTimeout(() => setGlobalToast(null), 3500);
+    });
+    return unsub;
+  }, []);
 
   // Web için debug log
   if (Platform.OS === 'web' && __DEV__) {
@@ -639,6 +663,22 @@ export default function App() {
                     matchId={matchIdForResultPopup}
                     onClose={navHandlers.handleCloseMatchResultPopup}
                   />
+
+                  {/* Global in-app toast (web'de window.alert yerine) */}
+                  {Platform.OS === 'web' && globalToast && (
+                    <View style={styles.globalToastOverlay} pointerEvents="box-none">
+                      <View style={[
+                        styles.globalToast,
+                        globalToast.type === 'error' && styles.globalToastError,
+                        globalToast.type === 'success' && styles.globalToastSuccess,
+                      ]}>
+                        <Text style={styles.globalToastTitle}>{globalToast.title}</Text>
+                        {globalToast.message ? (
+                          <Text style={styles.globalToastMessage} numberOfLines={4}>{globalToast.message}</Text>
+                        ) : null}
+                      </View>
+                    </View>
+                  )}
                 </View>
               )}
               </FavoriteSquadsProvider>
@@ -671,16 +711,53 @@ const styles = StyleSheet.create({
   },
   profileCardOverlay: {
     position: 'absolute',
-    top: 0, // Ekranın en üstüne kadar
+    top: 0,
     left: 0,
     right: 0,
     zIndex: 9999,
     elevation: 10,
     backgroundColor: 'transparent',
-    paddingTop: 0, // Üst padding kaldırıldı - her ekran kendi padding'ini yönetir
+    paddingTop: 0,
     paddingBottom: 8,
     paddingHorizontal: 0,
     pointerEvents: 'box-none',
-    // Gölge ve border efektleri kaldırıldı
+  },
+  globalToastOverlay: {
+    position: 'absolute',
+    bottom: 100,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 99999,
+  },
+  globalToast: {
+    backgroundColor: 'rgba(15, 42, 36, 0.95)',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    maxWidth: 400,
+    minWidth: 240,
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.4)',
+    boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+  },
+  globalToastError: {
+    borderColor: 'rgba(239, 68, 68, 0.5)',
+  },
+  globalToastSuccess: {
+    borderColor: 'rgba(16, 185, 129, 0.5)',
+  },
+  globalToastTitle: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  globalToastMessage: {
+    color: '#D1D5DB',
+    fontSize: 12,
+    marginTop: 4,
+    textAlign: 'center',
+    lineHeight: 18,
   },
 });

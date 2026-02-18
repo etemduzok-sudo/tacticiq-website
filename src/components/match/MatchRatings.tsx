@@ -586,7 +586,6 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
   const [initialPlayerRatings, setInitialPlayerRatings] = useState<{[playerId: number]: {[categoryId: string]: number}}>({});
   const [categoryViewMode, setCategoryViewMode] = useState<'outfield' | 'goalkeeper'>('outfield');
   const [ratingMode, setRatingMode] = useState<'detailed' | 'quick'>('detailed'); // Detaylı veya Hızlı değerlendirme
-  const [saveNotification, setSaveNotification] = useState<{visible: boolean; playerName: string; rating: number} | null>(null);
   
   // ✅ KAYIT KİLİDİ: Reyting kaydedildikten sonra değiştirilemez
   const [isCoachRatingsSaved, setIsCoachRatingsSaved] = useState(false); // TD reytingi kaydedildi mi?
@@ -2307,20 +2306,8 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
                                     setInitialPlayerRatings({...playerRatings});
                                     setHasUnsavedPlayerChanges(false);
                                     
-                                    // ✅ Toast benzeri bildirim göster
-                                    setSaveNotification({
-                                      visible: true,
-                                      playerName: selectedPlayer.name,
-                                      rating: avgRating
-                                    });
-                                    
                                     // ✅ Kartı kapat - yeni oyuncuya hazır
                                     setSelectedPlayerId(null);
-                                    
-                                    // 2 saniye sonra bildirimi gizle
-                                    setTimeout(() => {
-                                      setSaveNotification(null);
-                                    }, 2000);
                                   }}
                                   activeOpacity={0.7}
                                 >
@@ -2342,32 +2329,12 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
                 })()}
                 
                 {/* Oyuncu seçilmemişse info mesajı */}
-                {!selectedPlayerId && !saveNotification?.visible && (
+                {!selectedPlayerId && (
                   <View style={styles.selectPlayerPrompt}>
                     <Ionicons name="hand-left-outline" size={32} color="#64748B" />
                     <Text style={styles.selectPlayerPromptText}>
                       Değerlendirmek için yukarıdan bir oyuncu seçin
                     </Text>
-                  </View>
-                )}
-                
-                {/* ✅ Kaydedildi Toast Bildirimi */}
-                {saveNotification?.visible && (
-                  <View style={styles.saveNotificationContainer}>
-                    <LinearGradient
-                      colors={['#059669', '#10B981']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={styles.saveNotificationGradient}
-                    >
-                      <Ionicons name="checkmark-circle" size={24} color="#FFF" />
-                      <View style={styles.saveNotificationTextContainer}>
-                        <Text style={styles.saveNotificationTitle}>Kaydedildi!</Text>
-                        <Text style={styles.saveNotificationSubtitle}>
-                          {saveNotification.playerName} - Ort: {saveNotification.rating.toFixed(1)}
-                        </Text>
-                      </View>
-                    </LinearGradient>
                   </View>
                 )}
                 
@@ -3423,33 +3390,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#64748B',
     textAlign: 'center',
-  },
-  
-  // ✅ Kaydedildi Toast Bildirimi
-  saveNotificationContainer: {
-    marginVertical: 16,
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  saveNotificationGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    gap: 12,
-  },
-  saveNotificationTextContainer: {
-    flex: 1,
-  },
-  saveNotificationTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#FFF',
-  },
-  saveNotificationSubtitle: {
-    fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.9)',
-    marginTop: 2,
   },
   
   // ✅ Değerlendirilen Oyuncular Listesi

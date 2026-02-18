@@ -291,8 +291,25 @@ function filterMatches(matches) {
 // Get live matches
 async function getLiveMatches() {
   const data = await makeRequest('/fixtures', { live: 'all' }, 'live-matches', 60); // 1 min cache
+  
+  // ✅ DEBUG: Ham API yanıtını logla (filtreleme öncesi)
+  const rawCount = data.response?.length || 0;
+  if (rawCount > 0) {
+    console.log(`🔍 [LIVE RAW] API'den ${rawCount} canlı maç geldi (filtreleme öncesi)`);
+    // İlk 5 maçı logla
+    data.response.slice(0, 5).forEach((m, i) => {
+      console.log(`   ${i + 1}. ${m.teams?.home?.name} vs ${m.teams?.away?.name} | ${m.league?.name} (${m.league?.country})`);
+    });
+  } else {
+    console.log(`🔍 [LIVE RAW] API'den 0 canlı maç geldi`);
+    if (data.errors && data.errors.length > 0) {
+      console.log(`   ❌ Errors:`, data.errors);
+    }
+  }
+  
   if (data.response && data.response.length > 0) {
     const filtered = filterMatches(data.response);
+    console.log(`🔍 [LIVE FILTERED] Filtreleme sonrası: ${filtered.length}/${rawCount} maç`);
     return {
       ...data,
       response: filtered,
@@ -305,8 +322,14 @@ async function getLiveMatches() {
 // Get fixtures by date
 async function getFixturesByDate(date) {
   const data = await makeRequest('/fixtures', { date }, `fixtures-${date}`, 1800); // 30 min cache
+  
+  // ✅ DEBUG: Ham API yanıtını logla
+  const rawCount = data.response?.length || 0;
+  console.log(`🔍 [DATE ${date}] API'den ${rawCount} maç geldi (filtreleme öncesi)`);
+  
   if (data.response && data.response.length > 0) {
     const filtered = filterMatches(data.response);
+    console.log(`🔍 [DATE ${date}] Filtreleme sonrası: ${filtered.length}/${rawCount} maç`);
     return {
       ...data,
       response: filtered,
@@ -353,9 +376,16 @@ async function getFixturesByTeam(teamId, season = 2025, last = null) { // 2025-2
   const cacheKey = last ? `fixtures-team-${teamId}-${season}-last${last}` : `fixtures-team-${teamId}-${season}`;
   const data = await makeRequest('/fixtures', params, cacheKey, last ? 300 : 3600); // last varsa 5dk cache
   
+  // ✅ DEBUG: Ham API yanıtını logla
+  const rawCount = data.response?.length || 0;
+  if (rawCount === 0) {
+    console.log(`🔍 [TEAM ${teamId}] API'den 0 maç geldi (sezon: ${season})`);
+  }
+  
   // ✅ Ortak filtreleme fonksiyonunu kullan
   if (data.response && data.response.length > 0) {
     const filtered = filterMatches(data.response);
+    console.log(`🔍 [TEAM ${teamId}] ${rawCount} -> ${filtered.length} maç (sezon: ${season})`);
     return {
       ...data,
       response: filtered,

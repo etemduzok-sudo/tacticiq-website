@@ -1057,71 +1057,14 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
     const allMatches = [...liveMatches, ...allUpcomingMatches, ...pastMatches];
     const filtered = filterMatchesByTeam(allMatches, selectedTeamIds);
     
-    // ✅ Canlı maç kontrolü fonksiyonu
+    // ✅ TEMİZ CANLI MAÇ KONTROLÜ: Sadece API statüsüne güven
     const isMatchLive = (m: any) => {
-      const fixtureId = m.fixture?.id;
-      const matchTimestamp = (m.fixture?.timestamp || 0) * 1000;
-      const timeSinceStart = now - matchTimestamp;
-      
-      // ✅ Mock maçlar için: Fixture status'tan kontrol et (simülasyonda 1 sn = 1 dk)
-      if (fixtureId && mockTestIds.has(fixtureId)) {
-        const mockStatus = m.fixture?.status?.short || '';
-        const isMockLive = ['1H', '2H', 'HT', 'ET', 'P', 'LIVE', 'INT'].includes(mockStatus);
-        
-        console.log('🧪 Mock maç isMatchLive kontrolü:', {
-          fixtureId,
-          mockStatus,
-          isMockLive,
-          home: m.teams?.home?.name,
-          away: m.teams?.away?.name,
-        });
-        
-        return isMockLive;
-      }
-      
-      // ✅ Gerçek maçlar için: API status VEYA timestamp kontrolü
       const status = m.fixture?.status?.short || '';
-      
-      // 1) API'den canlı statü geldiyse canlı
-      if (LIVE_STATUSES.includes(status)) {
-        return true;
-      }
-      
-      // 2) Maç zamanı geçmiş ama statü NS/TBD - muhtemelen canlı (cache stale)
-      // Son 3 saat içinde başlamış olmalı
-      if ((status === 'NS' || status === 'TBD' || status === '') && timeSinceStart > 0 && timeSinceStart < 3 * 60 * 60 * 1000) {
-        console.log('🔴 Dashboard: Potansiyel canlı maç tespit edildi', {
-          matchId: fixtureId,
-          homeTeam: m.teams?.home?.name,
-          awayTeam: m.teams?.away?.name,
-          status,
-          timeSinceStartMinutes: Math.floor(timeSinceStart / 60000),
-        });
-        return true;
-      }
-      
-      return false;
+      return LIVE_STATUSES.includes(status);
     };
-    
-    // ✅ DEBUG: Filtreleme öncesi ve sonrası kontrol
-    console.log('🔴 Dashboard filteredLiveMatches DEBUG:', {
-      allMatchesCount: allMatches.length,
-      liveMatchesCount: liveMatches.length,
-      liveMatchesIds: liveMatches.map((m: any) => ({ id: m.fixture?.id, home: m.teams?.home?.name, away: m.teams?.away?.name, status: m.fixture?.status?.short })),
-      filteredCount: filtered.length,
-      filteredIds: filtered.map((m: any) => ({ id: m.fixture?.id, home: m.teams?.home?.name, away: m.teams?.away?.name })),
-      selectedTeamIds,
-      favoriteTeamIds: favoriteTeams.map(t => ({ id: t.id, name: t.name })),
-    });
     
     // Sadece gerçekten canlı olanları tut
     const liveOnly = filtered.filter(isMatchLive);
-    
-    // ✅ DEBUG: isMatchLive sonrası kontrol
-    console.log('🔴 Dashboard liveOnly DEBUG:', {
-      liveOnlyCount: liveOnly.length,
-      liveOnlyIds: liveOnly.map((m: any) => ({ id: m.fixture?.id, home: m.teams?.home?.name, status: m.fixture?.status?.short })),
-    });
     
     // Duplicate kaldır
     const uniqueLive = liveOnly.reduce((acc: any[], match) => {
@@ -1235,7 +1178,8 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
   }, [refreshPredictions]);
 
   // ✅ Maç kartı yüksekliği (sabit height + marginBottom)
-  const MATCH_CARD_HEIGHT = 180 + SPACING.md; // Kart height: 180 (%10 azaltıldı)
+  // matchCardContainer.height (175) + matchCardWrapper.marginBottom (8) = 183
+  const MATCH_CARD_HEIGHT = 175 + 8;
 
 
   // ✅ Mock maç bildirimleri - maç başlamadan 1 dakika önce göster
@@ -1286,29 +1230,53 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
     }
   }, [initialScrollDone, filteredPastMatches.length]);
 
-  // ✅ Canlı maç varken canlı bölümü göster (mock maç geç geldiğinde tekrar scroll)
+  // ✅ Filtreleme değiştiğinde veya canlı maç geldiğinde doğru pozisyona scroll yap
+  // Canlı maç varsa ona, yoksa en yakın yaklaşan maça scroll et
+  const lastSelectedTeamIdsRef = React.useRef<number[]>([]);
   React.useEffect(() => {
-    if (filteredLiveMatches.length > 0 && pastSectionHeightRef.current > 0 && scrollViewRef.current) {
-      const y = pastSectionHeightRef.current;
+    // Filtre değişikliğini tespit et
+    const filterChanged = JSON.stringify(selectedTeamIds) !== JSON.stringify(lastSelectedTeamIdsRef.current);
+    lastSelectedTeamIdsRef.current = selectedTeamIds;
+    
+    if ((filterChanged || filteredLiveMatches.length > 0) && scrollViewRef.current) {
+      // Biten maçların yüksekliği kadar scroll et - canlı/yaklaşan maç görünsün
+      const targetY = pastSectionHeightRef.current;
       setTimeout(() => {
-        (scrollViewRef.current as any)?.scrollTo?.({ y, animated: false });
+        (scrollViewRef.current as any)?.scrollTo?.({ y: targetY, animated: filterChanged });
+        if (!initialScrollDone) {
+          setInitialScrollDone(true);
+        }
       }, 100);
     }
-  }, [filteredLiveMatches.length]);
+  }, [filteredLiveMatches.length, selectedTeamIds, initialScrollDone]);
 
-  // ✅ Scroll bırakıldığında en yakın maç kartına snap yap (sadece yaklaşan maçlar)
-  const handleScrollEnd = React.useCallback((event: any) => {
-    const scrollY = event.nativeEvent.contentOffset.y;
+  // ✅ Snap noktalarını hesapla - her maç kartının başlangıç noktası
+  // snapToOffsets prop'u için kullanılır
+  const snapOffsets = React.useMemo(() => {
+    const offsets: number[] = [];
+    const pastCount = filteredPastMatches.length;
+    const liveCount = filteredLiveMatches.length;
+    const upcomingCount = filteredUpcomingMatches.length;
     
-    // En yakın yaklaşan maç kartına snap yap
-    const cardIndex = Math.round(scrollY / MATCH_CARD_HEIGHT);
-    const snapPosition = Math.max(0, cardIndex * MATCH_CARD_HEIGHT);
+    // Biten maçlar (0'dan başlar)
+    for (let i = 0; i < pastCount; i++) {
+      offsets.push(i * MATCH_CARD_HEIGHT);
+    }
     
-    // Yumuşak animasyon ile scroll
-    setTimeout(() => {
-      scrollViewRef.current?.scrollTo({ y: snapPosition, animated: true });
-    }, 10);
-  }, [MATCH_CARD_HEIGHT]);
+    // Canlı maçlar (biten maçlardan sonra başlar)
+    const liveStart = pastCount * MATCH_CARD_HEIGHT;
+    for (let i = 0; i < liveCount; i++) {
+      offsets.push(liveStart + i * MATCH_CARD_HEIGHT);
+    }
+    
+    // Yaklaşan maçlar (canlı maçlardan sonra başlar)
+    const upcomingStart = liveStart + liveCount * MATCH_CARD_HEIGHT;
+    for (let i = 0; i < upcomingCount; i++) {
+      offsets.push(upcomingStart + i * MATCH_CARD_HEIGHT);
+    }
+    
+    return offsets;
+  }, [MATCH_CARD_HEIGHT, filteredPastMatches.length, filteredLiveMatches.length, filteredUpcomingMatches.length]);
 
   // ✅ Loading durumunda da grid pattern göster
   // Maçlar yüklenirken veya backend çalışmıyorken bile UI gösterilmeli
@@ -1331,14 +1299,8 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
         style={[styles.scrollView, { opacity: initialScrollDone ? 1 : 0 }]}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
-        onMomentumScrollEnd={handleScrollEnd}
-        onScrollEndDrag={(e) => {
-          // Momentum yoksa (yavaş bırakma) direkt snap yap
-          const velocity = e.nativeEvent.velocity?.y || 0;
-          if (Math.abs(velocity) < 0.5) {
-            handleScrollEnd(e);
-          }
-        }}
+        snapToOffsets={snapOffsets}
+        snapToAlignment="start"
         decelerationRate="fast"
         scrollEventThrottle={16}
       >

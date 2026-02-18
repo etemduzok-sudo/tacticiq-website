@@ -13,12 +13,18 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, { FadeInDown, ZoomIn, FadeIn } from 'react-native-reanimated';
+import Animated, { FadeInDown, FadeIn as FadeInNative } from 'react-native-reanimated';
+
+// ✅ Web platformunda FadeIn.delay() çalışmıyor - wrapper ile düzelt
+const FadeIn = Platform.OS === 'web' 
+  ? { duration: () => ({ delay: () => undefined }), delay: () => ({ duration: () => undefined }) }
+  : FadeInNative;
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from 'react-i18next';
 import { Badge, BadgeTier, getBadgeColor, getBadgeTierName } from '../types/badges.types';
 
 const { width } = Dimensions.get('window');
+const isWeb = Platform.OS === 'web';
 
 // Leaderboard Data with Badges
 const leaderboardData = {
@@ -77,9 +83,11 @@ export function Leaderboard({ onNavigate }: LeaderboardProps = {}) {
     return () => clearTimeout(timer);
   }, []);
 
-  // ✅ MEMOIZED: Only recalculate when activeTab changes
+  // ✅ Sıralama mantığı: Her sekmede puana göre azalan sıra (en yüksek puan = 1.)
   const currentData = useMemo(() => {
-    return leaderboardData[activeTab];
+    const list = leaderboardData[activeTab] || [];
+    const sorted = [...list].sort((a, b) => b.points - a.points);
+    return sorted.map((u, i) => ({ ...u, rank: i + 1 }));
   }, [activeTab]);
 
   // ✅ MEMOIZED: Only find user when data changes
@@ -114,7 +122,7 @@ export function Leaderboard({ onNavigate }: LeaderboardProps = {}) {
       <View style={styles.container}>
         <View style={styles.gridPattern} />
         <View style={styles.loadingContainer}>
-          <Animated.View entering={ZoomIn.springify()}>
+          <Animated.View entering={isWeb ? undefined : FadeInNative.duration(300)}>
             <View style={styles.loadingIconContainer}>
               <Ionicons name="trophy" size={48} color="#FFD700" />
             </View>
@@ -138,7 +146,7 @@ export function Leaderboard({ onNavigate }: LeaderboardProps = {}) {
 
         {/* Current User Stats Card */}
         {currentUserData && (
-          <Animated.View entering={ZoomIn.delay(100).springify()}>
+          <Animated.View entering={isWeb ? undefined : FadeInNative.delay(100).duration(300)}>
             <LinearGradient
               colors={['#059669', '#047857']}
               start={{ x: 0, y: 0 }}
@@ -191,12 +199,12 @@ export function Leaderboard({ onNavigate }: LeaderboardProps = {}) {
         </ScrollView>
       </View>
 
-      {/* Top 3 Podium */}
-      {activeTab === 'overall' && (
-        <Animated.View entering={FadeIn.delay(200)} style={styles.podiumContainer}>
+      {/* Top 3 Podium - sadece yeterli kayıt varken */}
+      {activeTab === 'overall' && currentData.length >= 3 && (
+        <Animated.View entering={isWeb ? undefined : FadeInNative.delay(200)} style={styles.podiumContainer}>
           <View style={styles.podium}>
             {/* 2nd Place */}
-            <Animated.View entering={FadeInDown.delay(300).springify()} style={styles.podiumItem}>
+            <Animated.View entering={isWeb ? FadeInDown.delay(300) : FadeInDown.delay(300).springify()} style={styles.podiumItem}>
               <LinearGradient
                 colors={getRankGradient(2)}
                 style={styles.podiumAvatarContainer}
@@ -214,7 +222,7 @@ export function Leaderboard({ onNavigate }: LeaderboardProps = {}) {
             </Animated.View>
 
             {/* 1st Place */}
-            <Animated.View entering={FadeInDown.delay(200).springify()} style={[styles.podiumItem, styles.podiumFirst]}>
+            <Animated.View entering={isWeb ? FadeInDown.delay(200) : FadeInDown.delay(200).springify()} style={[styles.podiumItem, styles.podiumFirst]}>
               <View style={styles.crownContainer}>
                 <Ionicons name="sparkles" size={20} color="#FFD700" />
               </View>
@@ -235,7 +243,7 @@ export function Leaderboard({ onNavigate }: LeaderboardProps = {}) {
             </Animated.View>
 
             {/* 3rd Place */}
-            <Animated.View entering={FadeInDown.delay(400).springify()} style={styles.podiumItem}>
+            <Animated.View entering={isWeb ? FadeInDown.delay(400) : FadeInDown.delay(400).springify()} style={styles.podiumItem}>
               <LinearGradient
                 colors={getRankGradient(3)}
                 style={styles.podiumAvatarContainer}
@@ -270,7 +278,7 @@ export function Leaderboard({ onNavigate }: LeaderboardProps = {}) {
           return (
             <Animated.View
               key={user.id}
-              entering={FadeInDown.delay(index * 50).springify()}
+              entering={isWeb ? FadeInDown.delay(index * 50) : FadeInDown.delay(index * 50).springify()}
             >
               <View
                 style={[
