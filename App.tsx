@@ -17,7 +17,6 @@ import { useAppNavigation } from './src/hooks/useAppNavigation';
 import { useOAuth } from './src/hooks/useOAuth';
 import { initWebZoomPrevention } from './src/utils/webZoomPrevention';
 import { getUserTimezone } from './src/utils/timezoneUtils';
-import { restartMatch1In1Minute, setMockMatch1StartTime, getMatch1Start, MOCK_TEST_ENABLED } from './src/data/mockTestData';
 import { subscribeToast } from './src/utils/alertHelper';
 
 // Web için React Native'in built-in Animated API'sini kullan, native için reanimated
@@ -232,37 +231,6 @@ export default function App() {
   // Saat dilimi cache'ini uygulama başında yükle (maç saatleri doğru gösterilsin)
   useEffect(() => {
     getUserTimezone().catch(() => {});
-  }, []);
-
-  // 🧪 Mock maçı 1 dakika sonra tekrar başlat (test için)
-  useEffect(() => {
-    if (MOCK_TEST_ENABLED && typeof window !== 'undefined') {
-      // Global olarak erişilebilir yap (console'dan çağrılabilir)
-      (window as any).restartMockMatch = () => {
-        // Session storage'ı temizle ve maçı yeniden başlat
-        sessionStorage.removeItem('tacticiq_mock_match_start_time');
-        restartMatch1In1Minute();
-        // Yeni başlangıç zamanını session storage'a kaydet
-        const newStartTime = getMatch1Start();
-        sessionStorage.setItem('tacticiq_mock_match_start_time', newStartTime.toString());
-        console.log('🔄 Mock maç yeniden başlatıldı! Geri sayım: 1.5dk, Maç: 4.5dk, Rating: 1.5dk');
-        // Sayfayı otomatik yenile (test için)
-        setTimeout(() => {
-          if (typeof window !== 'undefined' && window.location) {
-            window.location.reload();
-          }
-        }, 500);
-      };
-      console.log('💡 Mock maçı yeniden başlatmak için: window.restartMockMatch()');
-      console.log('📋 Test Ayarları: Geri sayım 1.5dk → Maç 4.5dk → Rating 1.5dk');
-      
-      // ✅ Uygulama açıldığında mock maçı başlat (geri sayımdan başlar)
-      const mockMatchStartKey = 'tacticiq_mock_match_start_time';
-      restartMatch1In1Minute();
-      const newStartTime = getMatch1Start();
-      sessionStorage.setItem(mockMatchStartKey, newStartTime.toString());
-      console.log('🎮 Mock maç hazır:', new Date(newStartTime).toISOString());
-    }
   }, []);
 
   useEffect(() => {

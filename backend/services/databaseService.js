@@ -357,6 +357,14 @@ class DatabaseService {
   async getTeamMatches(teamId, season) {
     if (!this.enabled) return [];
 
+    // TEST_MODE: Fenerbahçe (611) ve Beşiktaş (549) için test_matches
+    if (process.env.TEST_MODE === 'true') {
+      const tid = parseInt(String(teamId), 10);
+      if (tid === 611 || tid === 549) {
+        return this.getTestTeamMatches(tid);
+      }
+    }
+
     try {
       const seasonNum = parseInt(String(season), 10);
       const { data, error } = await supabase
@@ -384,6 +392,22 @@ class DatabaseService {
     if (!this.enabled) return null;
 
     try {
+      // TEST_MODE: test_matches'ten çek (900001-900010)
+      const isTestId = matchId >= 900001 && matchId <= 900010;
+      if (process.env.TEST_MODE === 'true' && isTestId) {
+        const { data, error } = await supabase
+          .from('test_matches')
+          .select(`
+            *,
+            league:leagues(id, name, logo, country),
+            home_team:teams!home_team_id(id, name, logo),
+            away_team:teams!away_team_id(id, name, logo)
+          `)
+          .eq('id', matchId)
+          .single();
+        if (!error && data) return data;
+      }
+
       const { data, error } = await supabase
         .from('matches')
         .select(`
@@ -400,6 +424,51 @@ class DatabaseService {
     } catch (error) {
       console.error('❌ Error getting match by ID from DB:', error.message);
       return null;
+    }
+  }
+
+  // TEST_MODE: test_matches'ten canlı maçları getir
+  async getTestLiveMatches() {
+    if (!this.enabled || process.env.TEST_MODE !== 'true') return [];
+    try {
+      const { data, error } = await supabase
+        .from('test_matches')
+        .select(`
+          *,
+          league:leagues(id, name, logo, country),
+          home_team:teams!home_team_id(id, name, logo),
+          away_team:teams!away_team_id(id, name, logo)
+        `)
+        .in('status', ['1H', '2H', 'HT', 'ET', 'P', 'BT', 'LIVE'])
+        .order('fixture_timestamp', { ascending: true });
+      if (error) throw error;
+      return data || [];
+    } catch (e) {
+      console.warn('Test live matches:', e.message);
+      return [];
+    }
+  }
+
+  // TEST_MODE: test_matches'ten takım maçlarını getir (FB 611, BJK 549)
+  async getTestTeamMatches(teamId) {
+    if (!this.enabled || process.env.TEST_MODE !== 'true') return [];
+    if (teamId !== 611 && teamId !== 549) return [];
+    try {
+      const { data, error } = await supabase
+        .from('test_matches')
+        .select(`
+          *,
+          league:leagues(id, name, logo, country),
+          home_team:teams!home_team_id(id, name, logo),
+          away_team:teams!away_team_id(id, name, logo)
+        `)
+        .or(`home_team_id.eq.${teamId},away_team_id.eq.${teamId}`)
+        .order('fixture_timestamp', { ascending: true });
+      if (error) throw error;
+      return data || [];
+    } catch (e) {
+      console.warn('Test team matches:', e.message);
+      return [];
     }
   }
 

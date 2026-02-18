@@ -33,8 +33,6 @@ import { ConfirmModal } from './ui/ConfirmModal';
 import { getTeamColors } from '../utils/teamColors';
 import { useMatchesWithPredictions } from '../hooks/useMatchesWithPredictions';
 import { useTranslation } from '../hooks/useTranslation';
-import { MOCK_TEST_ENABLED, MOCK_MATCH_IDS, shouldShowMatchNotification, getMatchNotificationMessage, getMatch1Start, getMatch2Start, isMockTestMatch } from '../data/mockTestData';
-
 // Coach cache - takım ID'sine göre teknik direktör isimlerini cache'le (global)
 // Bu global cache, component remount'larında bile korunur
 const globalCoachCache: Record<number, string> = {};
@@ -972,12 +970,6 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
       return matches.filter(match => {
         if (!match?.teams?.home || !match?.teams?.away) return false;
         
-        const fixtureId = match.fixture?.id;
-        // ✅ Mock maçları HER ZAMAN dahil et
-        if (fixtureId && mockTestIds.has(fixtureId)) {
-          return true;
-        }
-        
         const homeId = match.teams.home.id;
         const awayId = match.teams.away.id;
         return favoriteTeams.some(t => t.id === homeId || t.id === awayId);
@@ -986,13 +978,6 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
 
     const filtered = matches.filter(match => {
       if (!match?.teams?.home || !match?.teams?.away) return false;
-      
-      const fixtureId = match.fixture?.id;
-      
-      // ✅ Mock maçları HER ZAMAN dahil et (favori filtresi uygulanmaz)
-      if (fixtureId && mockTestIds.has(fixtureId)) {
-        return true;
-      }
       
       const homeId = match.teams.home.id;
       const awayId = match.teams.away.id;
@@ -1040,12 +1025,6 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
     return filtered;
   }, [favoriteTeams]);
 
-  // 🧪 Mock test maç ID'leri (filtreden muaf tutulacak)
-  const mockTestIds = React.useMemo(() => {
-    if (!MOCK_TEST_ENABLED) return new Set<number>();
-    return new Set([MOCK_MATCH_IDS.GS_FB, MOCK_MATCH_IDS.REAL_BARCA]);
-  }, []);
-
   // ✅ Canlı maçları filtrele (Dashboard'da biten/yaklaşan maçların arasında gösterilecek)
   const LIVE_STATUSES = ['1H', '2H', 'HT', 'ET', 'BT', 'P', 'LIVE', 'INT'];
   const filteredLiveMatches = React.useMemo(() => {
@@ -1075,26 +1054,9 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
       return acc;
     }, []);
     
-    // ✅ Sırala: Mock maçlar her zaman en üstte, mock maçlar arasında GS-FB önce, sonra gerçek maçlar timestamp'e göre
-    return uniqueLive.sort((a, b) => {
-      const aIsMock = mockTestIds.has(a.fixture?.id);
-      const bIsMock = mockTestIds.has(b.fixture?.id);
-      
-      // Mock maçlar her zaman gerçek maçlardan önce
-      if (aIsMock && !bIsMock) return -1;
-      if (!aIsMock && bIsMock) return 1;
-      
-      // İkisi de mock: GS-FB (888001) her zaman Real-Barça (888002) önce
-      if (aIsMock && bIsMock) {
-        if (a.fixture?.id === MOCK_MATCH_IDS.GS_FB) return -1;
-        if (b.fixture?.id === MOCK_MATCH_IDS.GS_FB) return 1;
-        return 0;
-      }
-      
-      // İkisi de gerçek: Timestamp'e göre (en yeni en üstte)
-      return (b.fixture?.timestamp || 0) - (a.fixture?.timestamp || 0);
-    });
-  }, [liveMatches, allUpcomingMatches, pastMatches, selectedTeamIds, filterMatchesByTeam, mockTestIds, countdownTicker]);
+    // Timestamp'e göre sırala (en yeni en üstte)
+    return uniqueLive.sort((a, b) => (b.fixture?.timestamp || 0) - (a.fixture?.timestamp || 0));
+  }, [liveMatches, allUpcomingMatches, pastMatches, selectedTeamIds, filterMatchesByTeam, countdownTicker]);
 
   const filteredUpcomingMatches = React.useMemo(() => {
     // ✅ Mock maçları da filtreleme fonksiyonundan geçir
@@ -1113,29 +1075,13 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
       return acc;
     }, []);
     
-    // ✅ Sırala: Mock maçlar her zaman en üstte, sonra tarih sırasına göre
+    // Tarih sırasına göre sırala (en yakın en üstte)
     return uniqueMatches.sort((a, b) => {
-      const aIsMock = mockTestIds.has(a.fixture?.id);
-      const bIsMock = mockTestIds.has(b.fixture?.id);
-      
-      // Mock maçlar her zaman gerçek maçlardan önce
-      if (aIsMock && !bIsMock) return -1;
-      if (!aIsMock && bIsMock) return 1;
-      
-      // İkisi de mock: GS-FB (888001) her zaman Real-Barça (888002) önce
-      if (aIsMock && bIsMock) {
-        if (a.fixture?.id === MOCK_MATCH_IDS.GS_FB) return -1;
-        if (b.fixture?.id === MOCK_MATCH_IDS.GS_FB) return 1;
-        return 0;
-      }
-      
-      // İkisi de gerçek: Tarih sırasına göre (en yakın en üstte)
-      // Aynı saatte başlayanlar için lig önceliğine göre sırala
       const timeDiff = a.fixture.timestamp - b.fixture.timestamp;
       if (timeDiff !== 0) return timeDiff;
       return getLeaguePriority(a.league.name) - getLeaguePriority(b.league.name);
     });
-  }, [allUpcomingMatches, selectedTeamIds, filterMatchesByTeam, filteredLiveMatches, mockTestIds]);
+  }, [allUpcomingMatches, selectedTeamIds, filterMatchesByTeam, filteredLiveMatches]);
 
   // ✅ Filtrelenmiş geçmiş maçlar (selectedTeamIds'e göre)
   const filteredPastMatches = React.useMemo(() => {
@@ -1181,38 +1127,6 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
   // matchCardContainer.height (175) + matchCardWrapper.marginBottom (8) = 183
   const MATCH_CARD_HEIGHT = 175 + 8;
 
-
-  // ✅ Mock maç bildirimleri - maç başlamadan 1 dakika önce göster
-  const notificationShownRef = React.useRef<Set<number>>(new Set());
-  React.useEffect(() => {
-    if (!MOCK_TEST_ENABLED) return;
-    
-    const checkNotifications = () => {
-      // Maç 1 bildirimi
-      if (shouldShowMatchNotification(MOCK_MATCH_IDS.GS_FB) && !notificationShownRef.current.has(MOCK_MATCH_IDS.GS_FB)) {
-        const message = getMatchNotificationMessage(MOCK_MATCH_IDS.GS_FB);
-        if (message) {
-          Alert.alert('⚽ Maç Başlıyor!', message, [{ text: 'Tamam' }]);
-          notificationShownRef.current.add(MOCK_MATCH_IDS.GS_FB);
-        }
-      }
-      
-      // Maç 2 bildirimi
-      if (shouldShowMatchNotification(MOCK_MATCH_IDS.REAL_BARCA) && !notificationShownRef.current.has(MOCK_MATCH_IDS.REAL_BARCA)) {
-        const message = getMatchNotificationMessage(MOCK_MATCH_IDS.REAL_BARCA);
-        if (message) {
-          Alert.alert('⚽ Maç Başlıyor!', message, [{ text: 'Tamam' }]);
-          notificationShownRef.current.add(MOCK_MATCH_IDS.REAL_BARCA);
-        }
-      }
-    };
-    
-    // Her 5 saniyede bir kontrol et
-    const interval = setInterval(checkNotifications, 5000);
-    checkNotifications(); // İlk kontrol hemen
-    
-    return () => clearInterval(interval);
-  }, []);
 
   // ✅ Scroll pozisyonunu kaydetmek için ref
   const hasScrolledRef = React.useRef(false);

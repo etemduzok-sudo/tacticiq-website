@@ -4,38 +4,13 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../services/api';
 import { useFavoriteTeams } from './useFavoriteTeams';
-// Mock data kaldırıldı - sadece gerçek API verisi kullanılıyor
 import { logger } from '../utils/logger';
 import { getAllBulkMatches, isBulkDataValid } from '../services/bulkDataService';
-// 🧪 Mock test verileri
-import { MOCK_TEST_ENABLED, getMockTestMatches, MOCK_MATCH_IDS, getNextMockMatchStartTime, logMockTestInfo } from '../data/mockTestData';
 
 // Cache keys
 const CACHE_KEY = 'tacticiq-matches-cache';
 const CACHE_TIMESTAMP_KEY = 'tacticiq-matches-cache-timestamp';
 const CACHE_DURATION = 6 * 60 * 60 * 1000; // 6 saat (ms)
-
-// ✅ Mock canlı maç - her zaman "Oynanıyor" sekmesinde görünsün (test/demo için)
-// useMatches.ts MOCK_MATCH_999999 ile SENKRON tutulmalı!
-const MOCK_LIVE_MATCH: Match = {
-  fixture: {
-    id: 999999,
-    date: new Date().toISOString(),
-    timestamp: Math.floor(Date.now() / 1000) - 52 * 60, // 52. dakika
-    status: { short: '2H', long: 'Second Half', elapsed: 52 }, // ✅ useMatches.ts ile aynı
-    venue: { name: 'Mock Stadium' },
-  },
-  league: { id: 999, name: 'Mock League', country: 'TR', logo: null },
-  teams: {
-    home: { id: 9999, name: 'Mock Home Team', logo: null },
-    away: { id: 9998, name: 'Mock Away Team', logo: null },
-  },
-  goals: { home: 5, away: 4 }, // ✅ useMatches.ts ile aynı
-  score: {
-    halftime: { home: 3, away: 2 }, // ✅ useMatches.ts ile aynı
-    fulltime: { home: null, away: null },
-  },
-};
 
 // ✅ Clear cache when team IDs change (migration)
 export async function clearMatchesCache() {
@@ -161,11 +136,9 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
         if (!matches || matches.length === 0) return [];
         if (favoriteTeamIds.length === 0) return matches;
         return matches.filter(m => {
-          const matchId = m.fixture?.id || (m as any).id;
-          // Mock maçlar (999999, GS-FB 888001, Real-Barça 888002) her zaman görünsün
-          if (matchId === 999999 || matchId === MOCK_MATCH_IDS.GS_FB || matchId === MOCK_MATCH_IDS.REAL_BARCA) return true;
-          return favoriteTeamIds.includes(m.teams?.home?.id) || 
-                 favoriteTeamIds.includes(m.teams?.away?.id);
+          const homeId = m.teams?.home?.id;
+          const awayId = m.teams?.away?.id;
+          return favoriteTeamIds.includes(homeId) || favoriteTeamIds.includes(awayId);
         });
       };
       
@@ -349,9 +322,6 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
       const filterMatches = (matches: Match[]) => {
         if (!matches || matches.length === 0) return [];
         return matches.filter(m => {
-          const matchId = m.fixture?.id || (m as any).id;
-          // Mock maçlar (999999, GS-FB 888001, Real-Barça 888002) her zaman görünsün
-          if (matchId === 999999 || matchId === MOCK_MATCH_IDS.GS_FB || matchId === MOCK_MATCH_IDS.REAL_BARCA) return true;
           const homeId = m.teams?.home?.id != null ? Number(m.teams.home.id) : null;
           const awayId = m.teams?.away?.id != null ? Number(m.teams.away.id) : null;
           return (homeId != null && favoriteTeamIds.has(homeId)) || (awayId != null && favoriteTeamIds.has(awayId));
@@ -678,12 +648,6 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
       const favoriteIdSet = new Set(favoriteTeamIds);
       let favoriteMatchCount = 0;
       const favoriteMatches = uniqueMatches.filter(m => {
-        const matchId = m.fixture?.id || (m as any).id;
-        // Mock maçlar (999999, GS-FB 888001, Real-Barça 888002) her zaman görünsün
-        if (matchId === 999999 || matchId === MOCK_MATCH_IDS.GS_FB || matchId === MOCK_MATCH_IDS.REAL_BARCA) {
-          return true;
-        }
-        
         const homeId = m.teams?.home?.id != null ? Number(m.teams.home.id) : null;
         const awayId = m.teams?.away?.id != null ? Number(m.teams.away.id) : null;
         const isFavorite = (homeId != null && favoriteIdSet.has(homeId)) || (awayId != null && favoriteIdSet.has(awayId));
@@ -941,81 +905,10 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
     return () => clearInterval(t);
   }, [hasLoadedOnce, favoriteTeamIdsString]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ✅ Mock canlı maçı sadece MOCK_TEST_ENABLED ise ekle
-  const liveMatchesWithMock = useMemo(() => {
-    if (!MOCK_TEST_ENABLED) return liveMatches; // Mock test kapalıysa ekleme
-    const hasMock = liveMatches.some(m => (m.fixture?.id || (m as any).id) === 999999);
-    if (hasMock) return liveMatches;
-    return [MOCK_LIVE_MATCH, ...liveMatches];
-  }, [liveMatches]);
-
-  // 🧪 MOCK TEST: Mock test maçlarını enjekte et + canlıya geçiş timer'ı
-  const [mockTestTick, setMockTestTick] = useState(0);
-
-  // 🧪 Mock test bilgisini logla ve hasLoadedOnce'ı true yap (ilk mount'ta)
-  useEffect(() => {
-    if (MOCK_TEST_ENABLED) {
-      logMockTestInfo();
-      // Mock test aktifken loading'i kapat ki mock maçlar görünsün
-      if (!hasLoadedOnce) {
-        setHasLoadedOnce(true);
-        setLoading(false);
-      }
-    }
-  }, []);
-
-  // 🧪 Mock test timer: Her 5 saniyede mock maçların durumunu kontrol et
-  useEffect(() => {
-    if (!MOCK_TEST_ENABLED) return;
-    const interval = setInterval(() => {
-      setMockTestTick(prev => prev + 1);
-    }, 5000); // 5 saniyede bir güncelle (hem geri sayım hem canlı skor güncellemesi için)
-    return () => clearInterval(interval);
-  }, []);
-
-  // 🧪 Mock test maçlarını upcoming, live ve past listelerine enjekte et
-  const { finalUpcoming, finalLive, finalPast } = useMemo(() => {
-    if (!MOCK_TEST_ENABLED) {
-      return { finalUpcoming: upcomingMatches, finalLive: liveMatchesWithMock, finalPast: pastMatches };
-    }
-
-    // Her tick'te güncel mock veri al (status dinamik olarak değişir)
-    const _tick = mockTestTick; // dependency olarak kullan
-    const mockMatches = getMockTestMatches();
-    
-    const mockUpcoming: Match[] = [];
-    const mockLive: Match[] = [];
-    const mockPast: Match[] = [];
-
-    for (const mock of mockMatches) {
-      const status = mock.fixture?.status?.short || 'NS';
-      if (['1H', '2H', 'HT', 'ET', 'P', 'LIVE'].includes(status)) {
-        mockLive.push(mock as Match);
-      } else if (status === 'NS') {
-        mockUpcoming.push(mock as Match);
-      } else if (['FT', 'AET', 'PEN', 'AWD', 'WO'].includes(status)) {
-        // ✅ Biten maçları past listesine ekle
-        mockPast.push(mock as Match);
-      }
-    }
-
-    // Mock ID'leri olan maçları mevcut listelerden çıkar (duplikasyon önleme)
-    const mockIds = new Set([MOCK_MATCH_IDS.GS_FB, MOCK_MATCH_IDS.REAL_BARCA]);
-    const cleanUpcoming = upcomingMatches.filter(m => !mockIds.has(m.fixture?.id));
-    const cleanLive = liveMatchesWithMock.filter(m => !mockIds.has(m.fixture?.id));
-    const cleanPast = pastMatches.filter(m => !mockIds.has(m.fixture?.id));
-
-    return {
-      finalUpcoming: [...mockUpcoming, ...cleanUpcoming],
-      finalLive: [...mockLive, ...cleanLive],
-      finalPast: [...mockPast, ...cleanPast], // ✅ Biten mock maçları en üste ekle (en yeni önce)
-    };
-  }, [upcomingMatches, liveMatchesWithMock, pastMatches, mockTestTick]);
-
   return {
-    pastMatches: finalPast, // ✅ Mock maçlar dahil biten maçlar
-    liveMatches: finalLive,
-    upcomingMatches: finalUpcoming,
+    pastMatches,
+    liveMatches,
+    upcomingMatches,
     loading,
     error,
     refetch: fetchMatches,
