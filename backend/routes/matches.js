@@ -227,9 +227,8 @@ router.get('/live', async (req, res) => {
       .order('fixture_date', { ascending: true });
 
     // 3. If API key exists, try to get fresh data (ONLY if cache expired)
-    // ⏸️ GEÇİCİ OLARAK DURDURULDU: API hakkı takım kadroları için kullanılıyor
-    // Cache'den döndür, API çağrısı yapma
-    if (process.env.API_FOOTBALL_KEY && false) { // false = devre dışı
+    // ✅ AKTİF: Canlı maç verileri için API çağrısı yapılıyor
+    if (process.env.API_FOOTBALL_KEY || process.env.FOOTBALL_API_KEY) {
       try {
         console.log('🌐 [LIVE] Fetching from API-FOOTBALL (cache expired)');
         const data = await footballApi.getLiveMatches();
@@ -781,10 +780,12 @@ router.get('/:id', async (req, res) => {
 });
 
 // GET /api/matches/:id/statistics - Get match statistics
+// ?refresh=1 ile cache atlanır
 router.get('/:id/statistics', async (req, res) => {
   try {
     const { id } = req.params;
     const matchId = parseInt(id);
+    const skipCache = req.query.refresh === '1' || req.query.refresh === 'true';
     
     // ✅ MOCK MATCH: ID 999999 için özel istatistik döndür
     if (matchId === 999999) {
@@ -818,15 +819,19 @@ router.get('/:id/statistics', async (req, res) => {
       `)
       .eq('match_id', id);
 
-    // 2. If match is finished and stats exist, return DB data
-    if (!dbError && dbStats && dbStats.length > 0) {
+    // 2. If match is finished and stats exist, return DB data (unless refresh=1)
+    // ✅ skipCache=true ise DB'yi atla ve API'den taze veri çek
+    if (!skipCache && !dbError && dbStats && dbStats.length > 0) {
       const { data: match } = await supabase
         .from('matches')
         .select('status')
         .eq('id', id)
         .single();
 
-      if (match && ['FT', 'AET', 'PEN'].includes(match.status)) {
+      // ✅ DB'deki statistics array'i dolu olmalı
+      const hasValidStats = dbStats.some(s => s.statistics && s.statistics.length > 0);
+      
+      if (match && ['FT', 'AET', 'PEN'].includes(match.status) && hasValidStats) {
         return res.json({
           success: true,
           data: dbStats,
@@ -837,9 +842,9 @@ router.get('/:id/statistics', async (req, res) => {
     }
 
     // 3. Fetch from API if available
-    if (process.env.API_FOOTBALL_KEY) {
+    if (process.env.API_FOOTBALL_KEY || process.env.FOOTBALL_API_KEY) {
       try {
-        const apiData = await footballApi.getFixtureStatistics(id);
+        const apiData = await footballApi.getFixtureStatistics(id, skipCache);
         
         if (apiData && apiData.response) {
           // Update database
@@ -1394,14 +1399,95 @@ router.get('/:id/prediction-data', async (req, res) => {
 });
 
 // GET /api/matches/:id/events - Get match events (goals, cards, etc.)
+// ?refresh=1 ile cache atlanır
+// ✅ Status-based sentetik eventler eklenir (Half Time, Match Finished)
 router.get('/:id/events', async (req, res) => {
   try {
     const { id } = req.params;
-    const data = await footballApi.getFixtureEvents(id);
+    const skipCache = req.query.refresh === '1' || req.query.refresh === 'true';
+    
+    // Paralel olarak events ve fixture details çek
+    const [eventsData, fixtureData] = await Promise.all([
+      footballApi.getFixtureEvents(id, skipCache),
+      footballApi.getFixtureDetails(id, skipCache)
+    ]);
+    
+    const events = eventsData.response || [];
+    const fixture = fixtureData.response?.[0];
+    const matchStatus = fixture?.fixture?.status?.short || '';
+    const halftimeScore = fixture?.score?.halftime || { home: null, away: null };
+    const fulltimeScore = fixture?.goals || { home: null, away: null };
+    
+    // ✅ Status-based sentetik eventler ekle (API bu eventleri vermiyor)
+    const syntheticEvents = [];
+    
+    // Devre arası veya sonrası için "Half Time" eventi
+    if (['HT', '2H', 'FT', 'AET', 'PEN'].includes(matchStatus)) {
+      const hasHalfTimeEvent = events.some(e => 
+        (e.detail?.toLowerCase() === 'half time' || e.detail?.toLowerCase() === 'halftime')
+      );
+      
+      if (!hasHalfTimeEvent) {
+        // Son ilk yarı eventinin uzatma dakikasını bul
+        const firstHalfEvents = events.filter(e => (e.time?.elapsed || 0) <= 45);
+        const maxExtra = firstHalfEvents.reduce((max, e) => Math.max(max, e.time?.extra || 0), 0);
+        
+        syntheticEvents.push({
+          time: { elapsed: 45, extra: maxExtra > 0 ? maxExtra : null },
+          type: 'status',
+          detail: 'Half Time',
+          team: null,
+          player: null,
+          assist: null,
+          goals: halftimeScore,
+          comments: 'İlk yarı bitiş düdüğü',
+          isSynthetic: true
+        });
+      }
+    }
+    
+    // Maç bitti için "Match Finished" eventi
+    if (['FT', 'AET', 'PEN'].includes(matchStatus)) {
+      const hasFullTimeEvent = events.some(e => 
+        (e.detail?.toLowerCase() === 'match finished' || e.detail?.toLowerCase() === 'full time')
+      );
+      
+      if (!hasFullTimeEvent) {
+        // Son eventin uzatma dakikasını bul
+        const secondHalfEvents = events.filter(e => (e.time?.elapsed || 0) >= 45);
+        const maxExtra = secondHalfEvents.reduce((max, e) => {
+          if ((e.time?.elapsed || 0) >= 90) return Math.max(max, e.time?.extra || 0);
+          return max;
+        }, 0);
+        
+        syntheticEvents.push({
+          time: { elapsed: 90, extra: maxExtra > 0 ? maxExtra : 4 },
+          type: 'status',
+          detail: 'Match Finished',
+          team: null,
+          player: null,
+          assist: null,
+          goals: fulltimeScore,
+          comments: 'Maç bitiş düdüğü',
+          isSynthetic: true
+        });
+      }
+    }
+    
+    // Tüm eventleri birleştir ve sırala
+    const allEvents = [...events, ...syntheticEvents].sort((a, b) => {
+      const aTime = (a.time?.elapsed || 0) + (a.time?.extra || 0) * 0.01;
+      const bTime = (b.time?.elapsed || 0) + (b.time?.extra || 0) * 0.01;
+      return aTime - bTime;
+    });
+    
     res.json({
       success: true,
-      data: data.response,
-      cached: data.cached || false,
+      data: allEvents,
+      status: matchStatus,
+      halftimeScore,
+      fulltimeScore,
+      cached: eventsData.cached || false,
     });
   } catch (error) {
     res.status(500).json({
@@ -1582,13 +1668,15 @@ router.get('/:id/events/live', async (req, res) => {
     }
 
     // 3. Canlı maçlarda API'den güncel veri çek ve DB'ye yaz (mock maçlar hariç)
+    // ✅ refresh=1 parametresi ile cache atlanır
+    const skipCache = req.query.refresh === '1' || req.query.refresh === 'true';
     const isLive = ['1H', '2H', 'HT', 'ET', 'P', 'LIVE', 'BT'].includes(matchStatus);
     const isMockMatch = matchId === 999999; // Mock maç için API çağrısı yapma
     if (isLive && !isMockMatch) {
       try {
         const [fixtureData, eventsData] = await Promise.all([
-          footballApi.getFixtureDetails(matchId),
-          footballApi.getFixtureEvents(matchId),
+          footballApi.getFixtureDetails(matchId, skipCache), // ✅ skipCache parametresi
+          footballApi.getFixtureEvents(matchId, skipCache),  // ✅ skipCache parametresi
         ]);
         const apiMatch = fixtureData?.response?.[0];
         const apiEvents = eventsData?.response || [];
@@ -1625,11 +1713,80 @@ router.get('/:id/events/live', async (req, res) => {
       }
     }
 
+    // ✅ Status-based sentetik eventler ekle (API bu eventleri vermiyor)
+    // Half Time, Match Finished gibi eventler API'nin fixture.status alanından geliyor
+    // Bu bilgileri events listesine sentetik event olarak ekliyoruz
+    const syntheticEvents = [];
+    
+    // ✅ Devre arası (HT) veya ikinci yarı/maç bitti durumunda "Half Time" eventi ekle
+    if (['HT', '2H', 'FT', 'AET', 'PEN'].includes(matchStatus)) {
+      // İlk yarı bitti eventi - 45. dakikada (veya son ilk yarı eventi dakikasında)
+      const firstHalfEvents = events.filter(e => (e.time?.elapsed || 0) <= 45);
+      const lastFirstHalfEvent = firstHalfEvents.length > 0 
+        ? firstHalfEvents.reduce((max, e) => (e.time?.elapsed || 0) > (max.time?.elapsed || 0) ? e : max, firstHalfEvents[0])
+        : null;
+      const htMinute = lastFirstHalfEvent?.time?.elapsed || 45;
+      const htExtra = lastFirstHalfEvent?.time?.extra || 0;
+      
+      // Zaten Half Time eventi var mı kontrol et
+      const hasHalfTimeEvent = events.some(e => 
+        (e.detail?.toLowerCase() === 'half time' || e.detail?.toLowerCase() === 'halftime') ||
+        (e.type?.toLowerCase() === 'halftime')
+      );
+      
+      if (!hasHalfTimeEvent) {
+        syntheticEvents.push({
+          time: { elapsed: 45, extra: htExtra > 0 ? htExtra : null },
+          type: 'status',
+          detail: 'Half Time',
+          team: null,
+          player: null,
+          assist: null,
+          goals: halftimeScore,
+          comments: 'Sentetik event - maç durumundan oluşturuldu',
+          isSynthetic: true
+        });
+      }
+    }
+    
+    // ✅ Maç bitti (FT/AET/PEN) durumunda "Match Finished" eventi ekle
+    if (['FT', 'AET', 'PEN'].includes(matchStatus)) {
+      // Son event dakikasını bul
+      const lastEvent = events.length > 0 
+        ? events.reduce((max, e) => (e.time?.elapsed || 0) > (max.time?.elapsed || 0) ? e : max, events[0])
+        : null;
+      const ftMinute = lastEvent?.time?.elapsed || 90;
+      const ftExtra = lastEvent?.time?.extra || 0;
+      
+      // Zaten Match Finished eventi var mı kontrol et
+      const hasFullTimeEvent = events.some(e => 
+        (e.detail?.toLowerCase() === 'match finished' || e.detail?.toLowerCase() === 'full time') ||
+        (e.type?.toLowerCase() === 'fulltime')
+      );
+      
+      if (!hasFullTimeEvent) {
+        syntheticEvents.push({
+          time: { elapsed: 90, extra: ftExtra > 0 ? ftExtra : 4 }, // Varsayılan +4 dk uzatma
+          type: 'status',
+          detail: 'Match Finished',
+          team: null,
+          player: null,
+          assist: null,
+          goals: score,
+          comments: 'Sentetik event - maç durumundan oluşturuldu',
+          isSynthetic: true
+        });
+      }
+    }
+    
+    // ✅ Sentetik eventleri ana listeye ekle
+    const allEvents = [...events, ...syntheticEvents];
+    
     res.json({
       success: true,
       status: matchStatus,
       matchNotStarted: false,
-      events,
+      events: allEvents,
       minute: matchMinute,
       score,
       halftimeScore,

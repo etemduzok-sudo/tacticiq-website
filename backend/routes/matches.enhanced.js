@@ -85,7 +85,7 @@ router.get('/date/:date', validateDate, async (req, res) => {
 router.get('/league/:leagueId', validateLeagueId, async (req, res) => {
   try {
     const { leagueId } = req.params;
-    const { season = 2024 } = req.query;
+    const { season = 2025 } = req.query;
     
     logger.info('Fetching matches by league', { leagueId, season });
     

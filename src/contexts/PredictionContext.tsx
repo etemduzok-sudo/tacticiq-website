@@ -78,9 +78,9 @@ export function PredictionProvider({ children }: PredictionProviderProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // API Base URL
+  // API Base URL - Backend 3001 portunda çalışıyor
   const API_URL = __DEV__ 
-    ? 'http://localhost:3000/api'
+    ? 'http://localhost:3001/api'
     : 'https://your-production-api.com/api';
 
   // ============================================

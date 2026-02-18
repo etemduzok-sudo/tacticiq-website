@@ -218,6 +218,7 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
               const eventType = event.type?.toLowerCase() || 'unknown';
               const detail = (event.detail || '').toLowerCase();
               const detailNorm = detail.replace(/-/g, ' ').trim();
+              const isSynthetic = event.isSynthetic === true; // Backend'den gelen sentetik event mi?
               
               let description = '';
               let displayType = eventType;
@@ -260,6 +261,18 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
                 // ✅ Maç bitti eventi: "Maç bitti" formatında göster
                 description = 'Maç bitti';
                 displayType = 'fulltime';
+              } else if (eventType === 'status') {
+                // ✅ Backend'den gelen sentetik status eventleri
+                if (detail === 'half time' || detail === 'halftime') {
+                  description = 'İlk yarı bitiş düdüğü';
+                  displayType = 'halftime';
+                } else if (detail === 'match finished' || detail === 'full time') {
+                  description = 'Maç bitti';
+                  displayType = 'fulltime';
+                } else {
+                  description = event.detail || 'Durum değişikliği';
+                  displayType = 'stoppage';
+                }
               } else if (eventType === 'goal') {
                 if (detail.includes('penalty')) {
                   description = 'Penaltı golü';
@@ -870,6 +883,10 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
                 return event;
               });
               
+              // ✅ Backend'den gelen sentetik eventler (Half Time, Match Finished) 
+              // artık events listesinde geliyor, manuel eklemeye gerek yok
+              // Bu eventler backend'de status'e göre oluşturuluyor
+              
               // ✅ Eventleri sırala - EN YENİ ÜSTTE (ters kronolojik sıra)
               // Doğru görsel sırası (yukarıdan aşağıya, en yeni üstte):
               // 56' Değişiklik → 51' GOL → 46' İkinci yarı başladı → DEVRE ARASI → 45+3' İlk yarı bitiş → 45' +3 dk eklendi
@@ -951,7 +968,10 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
                 // ✅ Halftime (ilk yarı bitiş) eventinden ÖNCE devre arası görselini ekle
                 // Ters kronolojik sıra (en yeni üstte): ... kickoff (46') → DEVRE ARASI → halftime → stoppage → ...
                 // Devre arası görseli, halftime eventinden ÖNCE (yukarıda) görünmeli
-                if (event.type === 'halftime' && !halftimeBreakAdded) {
+                // NOT: Backend'den gelen sentetik eventler type='status' olarak geliyor, displayType='halftime' olarak dönüştürülüyor
+                const isHalftimeEvent = event.type === 'halftime' || 
+                  (event.type === 'status' && event.description?.toLowerCase().includes('ilk yarı'));
+                if (isHalftimeEvent && !halftimeBreakAdded) {
                   result.push(renderHalftimeBreak());
                   halftimeBreakAdded = true;
                 }

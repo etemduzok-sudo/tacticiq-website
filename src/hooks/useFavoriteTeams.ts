@@ -149,6 +149,9 @@ export function useFavoriteTeams() {
         await syncToSupabase(updated); // ✅ Supabase'e senkronize et
         logger.info('Added favorite team', { teamName: team.name, teamId: team.id }, 'FAVORITE_TEAMS');
         
+        // ✅ Backend'de takım verilerini hemen sync et (kadro + coach)
+        triggerBackendSync(team.id, team.name);
+        
         // ✅ Yeni takım eklendiğinde bulk download tetikle
         const teamIds = updated.map(t => t.id).filter(Boolean);
         if (teamIds.length > 0) {
@@ -184,6 +187,11 @@ export function useFavoriteTeams() {
         await syncToSupabase(teams); // ✅ Supabase'e senkronize et
         logger.info('Set all favorite teams', { count: teams.length, teams: teams.map(t => ({ name: t.name, type: t.type })) }, 'FAVORITE_TEAMS');
         
+        // ✅ Backend'de tüm yeni takımları sync et (kadro + coach)
+        // Paralel olarak sync et - hızlı olsun
+        const syncPromises = teams.map(t => triggerBackendSync(t.id, t.name));
+        Promise.all(syncPromises).catch(() => {}); // Hataları yut, kritik değil
+        
         // ✅ BULK DATA DOWNLOAD: Takım seçimi sonrası tüm verileri arka planda indir
         const teamIds = teams.map(t => t.id).filter(Boolean);
         if (teamIds.length > 0) {
@@ -196,6 +204,29 @@ export function useFavoriteTeams() {
     } catch (error) {
       logger.error('Error setting all favorite teams', { error }, 'FAVORITE_TEAMS');
       return false;
+    }
+  };
+
+  // ✅ Backend'de takım verilerini hemen sync et (kadro + coach)
+  // NOT: Frontend artık her zaman API'den çekiyor, cache sadece offline fallback
+  const triggerBackendSync = async (teamId: number, teamName?: string) => {
+    try {
+      const { API_BASE_URL } = await import('../config/constants');
+      const response = await fetch(`${API_BASE_URL}/api/teams/${teamId}/sync`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ teamName }),
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        logger.info('Backend sync completed', { teamId, result }, 'FAVORITE_TEAMS');
+      } else {
+        logger.warn('Backend sync failed', { teamId, status: response.status }, 'FAVORITE_TEAMS');
+      }
+    } catch (error: any) {
+      // Backend sync hatası kritik değil, sessizce devam et
+      logger.debug('Backend sync error (non-critical)', { teamId, error: error.message }, 'FAVORITE_TEAMS');
     }
   };
 

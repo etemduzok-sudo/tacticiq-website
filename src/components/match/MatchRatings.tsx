@@ -208,19 +208,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
   const [viewOnlyPopupShownOnTabSwitch, setViewOnlyPopupShownOnTabSwitch] = useState(false); // İlk sekme değişikliği
   
   // ✅ KİLİT MEKANİZMASI - Maç bitmeden kilitli, bittikten sonra 24 saat açık
-  // 🧪 TEST: Kilit devre dışı - her zaman açık
   const ratingTimeInfo = useMemo(() => {
-    // TEST MODE: Her zaman açık
-    return {
-      isLocked: false,
-      lockReason: 'open' as const,
-      hoursRemaining: 24,
-      message: 'Kalan süre: 24 saat',
-      unlockTime: null,
-      expireTime: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-    };
-    
-    /* GERÇEK KOD - TEST SONRASI AKTİF ET
     // Maç bitiş zamanını al (fixture.timestamp + maç süresi yaklaşık 2 saat)
     const matchTimestamp = matchData?.fixture?.timestamp 
       ? matchData.fixture.timestamp * 1000 
@@ -238,20 +226,22 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
     if (isNotStarted) {
       return { 
         isLocked: true, 
-        lockReason: 'not_started',
+        lockReason: 'not_started' as const,
         hoursRemaining: 0, 
         message: 'Maç henüz başlamadı',
-        unlockTime: matchTimestamp ? new Date(matchTimestamp + (2 * 60 * 60 * 1000)).toISOString() : null
+        unlockTime: matchTimestamp ? new Date(matchTimestamp + (2 * 60 * 60 * 1000)).toISOString() : null,
+        expireTime: null
       };
     }
     
     if (isLive) {
       return { 
         isLocked: true, 
-        lockReason: 'live',
+        lockReason: 'live' as const,
         hoursRemaining: 0, 
         message: 'Maç devam ediyor',
-        unlockTime: null
+        unlockTime: null,
+        expireTime: null
       };
     }
     
@@ -259,10 +249,11 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
     if (!isFinished || !matchTimestamp) {
       return { 
         isLocked: true, 
-        lockReason: 'unknown',
+        lockReason: 'unknown' as const,
         hoursRemaining: 0, 
         message: '',
-        unlockTime: null
+        unlockTime: null,
+        expireTime: null
       };
     }
     
@@ -290,13 +281,12 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
     
     return { 
       isLocked: isExpired, 
-      lockReason: isExpired ? 'expired' : 'open',
+      lockReason: (isExpired ? 'expired' : 'open') as 'expired' | 'open',
       hoursRemaining, 
       message,
       unlockTime: null,
       expireTime: new Date(matchEndTime + (24 * 60 * 60 * 1000)).toISOString()
     };
-    GERÇEK KOD SONU */
   }, [matchData]);
   
   // Favori takım ID'sini belirle (önce favori takım, yoksa ev sahibi)
@@ -468,7 +458,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
     return players;
   }, [lineups, targetTeamId]);
 
-  // ⚽ Kadro kaynağı: 1) Lineups, 2) DB cache (useFavoriteSquads), 3) Fallback
+  // ⚽ Kadro kaynağı: 1) Lineups, 2) DB cache (useFavoriteSquads), 3) Backend API, 4) Fallback
   useEffect(() => {
     if (!targetTeamId) return;
     
@@ -493,13 +483,40 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
       return;
     }
     
-    // 3) DB'de yoksa fallback
-    if (FALLBACK_SQUADS[targetTeamId]) {
-      console.log('⚠️ [Ratings] Kadro: fallback → team', targetTeamId);
-      setSquadPlayers(FALLBACK_SQUADS[targetTeamId]);
-    } else {
-      console.log('❌ [Ratings] Kadro bulunamadı: team', targetTeamId);
-    }
+    // 3) Backend API'den kadro çek (DB'de yoksa)
+    const fetchFromBackend = async () => {
+      try {
+        console.log('🌐 [Ratings] Backend API\'den kadro çekiliyor: team', targetTeamId);
+        const response = await api.getTeamSquad(targetTeamId);
+        if (response?.players && response.players.length > 0) {
+          const normalized = response.players.map((p: any, idx: number) => ({
+            id: p.id ?? idx + 1,
+            number: p.number ?? idx + 1,
+            name: p.name ?? 'Bilinmiyor',
+            position: p.position || 'MF',
+            photo: p.photo ?? null,
+            isStarter: true, // Kadro listesi - hepsi potansiyel starter
+            isSubstitute: false,
+            playedInMatch: false,
+          }));
+          console.log('✅ [Ratings] Kadro: Backend API →', normalized.length, 'oyuncu');
+          setSquadPlayers(normalized);
+          return;
+        }
+      } catch (e) {
+        console.log('⚠️ [Ratings] Backend API hatası:', e);
+      }
+      
+      // 4) Backend'de de yoksa fallback
+      if (FALLBACK_SQUADS[targetTeamId]) {
+        console.log('⚠️ [Ratings] Kadro: fallback → team', targetTeamId);
+        setSquadPlayers(FALLBACK_SQUADS[targetTeamId]);
+      } else {
+        console.log('❌ [Ratings] Kadro bulunamadı: team', targetTeamId);
+      }
+    };
+    
+    fetchFromBackend();
   }, [targetTeamId, getPlayersFromLineups, getCachedSquad, favoriteSquadsVersion, favoriteSquadsLoading, FALLBACK_SQUADS]);
   
   // Önce squad API'den, yoksa lineups'tan al
@@ -570,6 +587,12 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
   const [categoryViewMode, setCategoryViewMode] = useState<'outfield' | 'goalkeeper'>('outfield');
   const [ratingMode, setRatingMode] = useState<'detailed' | 'quick'>('detailed'); // Detaylı veya Hızlı değerlendirme
   const [saveNotification, setSaveNotification] = useState<{visible: boolean; playerName: string; rating: number} | null>(null);
+  
+  // ✅ KAYIT KİLİDİ: Reyting kaydedildikten sonra değiştirilemez
+  const [isCoachRatingsSaved, setIsCoachRatingsSaved] = useState(false); // TD reytingi kaydedildi mi?
+  const [isPlayerRatingsSaved, setIsPlayerRatingsSaved] = useState(false); // Oyuncu reytingi kaydedildi mi?
+  const [showSaveConfirmModal, setShowSaveConfirmModal] = useState(false); // Kaydetme onay modal'ı
+  const [saveConfirmType, setSaveConfirmType] = useState<'coach' | 'player'>('coach'); // Hangi kayıt için onay
   
   // Scroll ref ve player card pozisyonları
   const scrollViewRef = useRef<ScrollView>(null);
@@ -704,8 +727,8 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
             <PlayerRatingSlider
               value={currentRating}
               onChange={(val) => {
-                // ✅ İzleme modu veya kilit durumu kontrolü
-                if (ratingTimeInfo.isLocked || isViewOnlyMode) return;
+                // ✅ İzleme modu veya kilit durumu kontrolü (kayıt kilidi dahil)
+                if (ratingTimeInfo.isLocked || isViewOnlyMode || isPlayerRatingsSaved) return;
                 setPlayerRatings(prev => ({
                   ...prev,
                   [player.id]: {
@@ -716,7 +739,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
                 setHasUnsavedPlayerChanges(true);
                 setSelectedPlayerId(player.id);
               }}
-              disabled={ratingTimeInfo.isLocked || isViewOnlyMode}
+              disabled={ratingTimeInfo.isLocked || isViewOnlyMode || isPlayerRatingsSaved}
               showValue={false}
               trackHeight={8}
               thumbSize={26}
@@ -804,6 +827,15 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
 
   // Futbolcuya tıklandığında kartı ekranın üstüne scroll et
   const handlePlayerToggle = useCallback((playerId: number, isCurrentlyExpanded: boolean, player?: Player) => {
+    // ✅ Kayıt kilidi kontrolü
+    if (isPlayerRatingsSaved) {
+      Alert.alert(
+        'Değerlendirme Kilitli',
+        'Futbolcu değerlendirmeleriniz daha önce kaydedildi ve artık değiştirilemez.',
+        [{ text: 'Tamam' }]
+      );
+      return;
+    }
     // 🔒 Kilit kontrolü - maç başlamadıysa veya süre dolduysa
     if (ratingTimeInfo.isLocked) {
       setLockPopupType('player');
@@ -876,12 +908,12 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
     }
   }, [activeTab]);
   
-  // Kaydet ve geç
+  // Kaydet ve geç (silent + skipConfirm çünkü zaten başka bir popup'tan geliyoruz)
   const handleSaveAndSwitch = async () => {
     if (activeTab === 'coach') {
-      await handleSaveRatings(true); // silent save
+      await handleSaveRatings(true, true); // silent save, skipConfirm
     } else {
-      await handleSavePlayerRatings(true); // silent save
+      await handleSavePlayerRatings(true, true); // silent save, skipConfirm
     }
     setShowSavePopup(false);
     if (pendingTab) {
@@ -945,6 +977,45 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
   React.useEffect(() => {
     loadPredictionsAndCalculateScores();
   }, []);
+  
+  // ✅ Kayıtlı reyting kilidi durumunu yükle
+  React.useEffect(() => {
+    const loadSavedRatingsLockStatus = async () => {
+      try {
+        // TD reytingi kontrol et
+        const coachRatingsStr = await AsyncStorage.getItem(`${STORAGE_KEYS.RATINGS}${matchData.id}`);
+        if (coachRatingsStr) {
+          const coachData = JSON.parse(coachRatingsStr);
+          if (coachData.isLocked === true) {
+            setIsCoachRatingsSaved(true);
+            // Kaydedilmiş değerleri yükle
+            if (coachData.coachRatings) {
+              setCoachRatings(coachData.coachRatings);
+              initialCoachRatings.current = coachData.coachRatings;
+            }
+          }
+        }
+        
+        // Oyuncu reytingi kontrol et
+        const playerRatingsStr = await AsyncStorage.getItem(`${STORAGE_KEYS.RATINGS}${matchData.id}_players`);
+        if (playerRatingsStr) {
+          const playerData = JSON.parse(playerRatingsStr);
+          if (playerData.isLocked === true) {
+            setIsPlayerRatingsSaved(true);
+            // Kaydedilmiş değerleri yükle
+            if (playerData.playerRatings) {
+              setPlayerRatings(playerData.playerRatings);
+              setInitialPlayerRatings(playerData.playerRatings);
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Reyting kilit durumu yüklenemedi:', e);
+      }
+    };
+    
+    loadSavedRatingsLockStatus();
+  }, [matchData.id]);
 
   const loadPredictionsAndCalculateScores = async () => {
     try {
@@ -983,7 +1054,19 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
     }
   };
 
-  const handleSaveRatings = async (silent = false) => {
+  const handleSaveRatings = async (silent = false, skipConfirm = false) => {
+    // ✅ Zaten kaydedilmişse (kilitli) işlem yapma
+    if (isCoachRatingsSaved) {
+      if (!silent) {
+        Alert.alert(
+          'Değerlendirme Kilitli',
+          'Teknik direktör değerlendirmeniz daha önce kaydedildi ve artık değiştirilemez.',
+          [{ text: 'Tamam' }]
+        );
+      }
+      return;
+    }
+    
     // ✅ 24 saat kilit kontrolü
     if (ratingTimeInfo.isLocked) {
       if (!silent) {
@@ -996,17 +1079,26 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
       return;
     }
     
+    // ✅ Onay modal'ı göster (skipConfirm false ise)
+    if (!skipConfirm && !silent) {
+      setSaveConfirmType('coach');
+      setShowSaveConfirmModal(true);
+      return;
+    }
+    
     try {
       // Calculate average rating
       const ratingsArray = Object.values(coachRatings);
       const averageRating = ratingsArray.reduce((a, b) => a + b, 0) / ratingsArray.length;
 
-      // Save ratings to AsyncStorage
+      // Save ratings to AsyncStorage - ✅ isLocked: true ekle
       const ratingsData = {
         matchId: matchData.id,
         coachRatings: coachRatings,
         averageRating: averageRating.toFixed(1),
         timestamp: new Date().toISOString(),
+        isLocked: true, // ✅ KALİCİ KİLİT
+        savedAt: new Date().toISOString(),
       };
       
       await AsyncStorage.setItem(
@@ -1014,17 +1106,18 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
         JSON.stringify(ratingsData)
       );
       
-      console.log('✅ Coach ratings saved!', ratingsData);
+      console.log('✅ Coach ratings saved and LOCKED!', ratingsData);
       initialCoachRatings.current = { ...coachRatings };
       setCoachRatingsChanged(false);
+      setIsCoachRatingsSaved(true); // ✅ Kilitle
       
       // 🏆 CHECK AND AWARD BADGES
       await checkAndAwardBadgesForMatch();
       
       if (!silent) {
         Alert.alert(
-          'Değerlendirmeler Kaydedildi! ⭐',
-          `Teknik direktöre ortalama ${averageRating.toFixed(1)} puan verdiniz.`,
+          'Değerlendirmeler Kaydedildi ve Kilitlendi! ⭐',
+          `Teknik direktöre ortalama ${averageRating.toFixed(1)} puan verdiniz. Bu değerlendirme artık değiştirilemez.`,
           [{ text: 'Tamam' }]
         );
       }
@@ -1037,7 +1130,19 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
   };
 
   // ⚽ Futbolcu değerlendirmelerini kaydet
-  const handleSavePlayerRatings = async (silent = false) => {
+  const handleSavePlayerRatings = async (silent = false, skipConfirm = false) => {
+    // ✅ Zaten kaydedilmişse (kilitli) işlem yapma
+    if (isPlayerRatingsSaved) {
+      if (!silent) {
+        Alert.alert(
+          'Değerlendirme Kilitli',
+          'Futbolcu değerlendirmeleriniz daha önce kaydedildi ve artık değiştirilemez.',
+          [{ text: 'Tamam' }]
+        );
+      }
+      return;
+    }
+    
     // ✅ 24 saat kilit kontrolü
     if (ratingTimeInfo.isLocked) {
       if (!silent) {
@@ -1050,11 +1155,20 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
       return;
     }
     
+    // ✅ Onay modal'ı göster (skipConfirm false ise ve silent değilse)
+    if (!skipConfirm && !silent) {
+      setSaveConfirmType('player');
+      setShowSaveConfirmModal(true);
+      return;
+    }
+    
     try {
       const playerRatingsData = {
         matchId: matchData.id,
         playerRatings: playerRatings,
         timestamp: new Date().toISOString(),
+        isLocked: true, // ✅ KALİCİ KİLİT
+        savedAt: new Date().toISOString(),
       };
       
       await AsyncStorage.setItem(
@@ -1062,13 +1176,15 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
         JSON.stringify(playerRatingsData)
       );
       
-      console.log('✅ Player ratings saved!', playerRatingsData);
+      console.log('✅ Player ratings saved and LOCKED!', playerRatingsData);
       setPlayerRatingsChanged(false);
+      setIsPlayerRatingsSaved(true); // ✅ Kilitle
+      setInitialPlayerRatings({...playerRatings});
       
       if (!silent) {
         Alert.alert(
-          'Değerlendirmeler Kaydedildi! ⚽',
-          'Futbolcu değerlendirmeleriniz kaydedildi.',
+          'Değerlendirmeler Kaydedildi ve Kilitlendi! ⚽',
+          'Futbolcu değerlendirmeleriniz kaydedildi. Bu değerlendirme artık değiştirilemez.',
           [{ text: 'Tamam' }]
         );
       }
@@ -1180,7 +1296,16 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
     if (isViewOnlyMode) {
       return;
     }
-    // 🔒 Kilit kontrolü
+    // ✅ Kayıt kilidi kontrolü
+    if (isCoachRatingsSaved) {
+      Alert.alert(
+        'Değerlendirme Kilitli',
+        'Teknik direktör değerlendirmeniz daha önce kaydedildi ve artık değiştirilemez.',
+        [{ text: 'Tamam' }]
+      );
+      return;
+    }
+    // 🔒 Kilit kontrolü (24 saat)
     if (ratingTimeInfo.isLocked) {
       setLockPopupType('coach');
       setShowLockPopup(true);
@@ -1610,35 +1735,55 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
                 </Text>
               </View>
               
-              {/* Butonlar */}
-              <View style={styles.coachSaveButtons}>
-                <TouchableOpacity
-                  style={styles.coachSaveBtnCancel}
-                  onPress={() => {
-                    // Değişiklikleri geri al
-                    setCoachRatings({ ...initialCoachRatings.current });
-                    setCoachRatingsChanged(false);
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="close" size={18} color="#EF4444" />
-                  <Text style={styles.coachSaveBtnCancelText}>İptal</Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity
-                  style={styles.coachSaveBtnSave}
-                  onPress={() => handleSaveRatings(false)}
-                  activeOpacity={0.7}
-                >
-                  <LinearGradient
-                    colors={['#1FA2A6', '#059669']}
-                    style={styles.coachSaveBtnSaveGradient}
+              {/* ✅ Kaydedilmişse "Kilitli" göster */}
+              {isCoachRatingsSaved ? (
+                <View style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 8,
+                  backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                  paddingHorizontal: 16,
+                  paddingVertical: 10,
+                  borderRadius: 8,
+                  borderWidth: 1,
+                  borderColor: 'rgba(239, 68, 68, 0.3)',
+                }}>
+                  <Ionicons name="lock-closed" size={18} color="#EF4444" />
+                  <Text style={{ color: '#EF4444', fontWeight: '600', fontSize: 13 }}>
+                    Değerlendirme Kilitli
+                  </Text>
+                </View>
+              ) : (
+                /* Butonlar */
+                <View style={styles.coachSaveButtons}>
+                  <TouchableOpacity
+                    style={styles.coachSaveBtnCancel}
+                    onPress={() => {
+                      // Değişiklikleri geri al
+                      setCoachRatings({ ...initialCoachRatings.current });
+                      setCoachRatingsChanged(false);
+                    }}
+                    activeOpacity={0.7}
                   >
-                    <Ionicons name="checkmark" size={18} color="#FFF" />
-                    <Text style={styles.coachSaveBtnSaveText}>Kaydet</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-              </View>
+                    <Ionicons name="close" size={18} color="#EF4444" />
+                    <Text style={styles.coachSaveBtnCancelText}>İptal</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity
+                    style={styles.coachSaveBtnSave}
+                    onPress={() => handleSaveRatings(false)}
+                    activeOpacity={0.7}
+                  >
+                    <LinearGradient
+                      colors={['#1FA2A6', '#059669']}
+                      style={styles.coachSaveBtnSaveGradient}
+                    >
+                      <Ionicons name="checkmark" size={18} color="#FFF" />
+                      <Text style={styles.coachSaveBtnSaveText}>Kaydet</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </View>
+              )}
             </LinearGradient>
           </View>
         )}
@@ -1647,8 +1792,19 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
           /* ⚽ FUTBOLCU DEĞERLENDİRMELERİ SEKMESİ - YENİ TASARIM */
           <View style={styles.playerRatingContainer}>
 
-            {/* Oyuncu yoksa bilgi mesajı */}
-            {sortedPlayers.length === 0 && (
+            {/* ⏳ Kadro yükleniyorsa loading göster */}
+            {sortedPlayers.length === 0 && favoriteSquadsLoading && (
+              <View style={styles.noPlayersContainer}>
+                <Ionicons name="hourglass-outline" size={48} color="#1FA2A6" />
+                <Text style={styles.noPlayersTitle}>Kadro Yükleniyor...</Text>
+                <Text style={styles.noPlayersText}>
+                  Oyuncu bilgileri getiriliyor, lütfen bekleyin.
+                </Text>
+              </View>
+            )}
+            
+            {/* Oyuncu yoksa bilgi mesajı (yükleme bitti ama veri yok) */}
+            {sortedPlayers.length === 0 && !favoriteSquadsLoading && (
               <View style={styles.noPlayersContainer}>
                 <Ionicons name="people-outline" size={48} color="#64748B" />
                 <Text style={styles.noPlayersTitle}>Kadro Bilgisi Yok</Text>
@@ -2074,7 +2230,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
                                     !isViewOnlyMode && isExactMatch && { backgroundColor: getRatingColor(score), borderColor: getRatingColor(score) }
                                   ]}
                                   onPress={() => {
-                                    if (ratingTimeInfo.isLocked || isViewOnlyMode) return;
+                                    if (ratingTimeInfo.isLocked || isViewOnlyMode || isPlayerRatingsSaved) return;
                                     const newRatings: Record<string, number> = {};
                                     categories.forEach(cat => { newRatings[cat.id] = score; });
                                     setPlayerRatings(prev => ({ ...prev, [selectedPlayerId]: newRatings }));
@@ -2107,57 +2263,77 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
                               </Text>
                             </View>
                             
-                            <View style={styles.selectedPlayerButtons}>
-                              <TouchableOpacity
-                                style={styles.selectedPlayerBtnCancel}
-                                onPress={() => {
-                                  // Bu oyuncunun puanlarını sil
-                                  setPlayerRatings(prev => {
-                                    const newRatings = { ...prev };
-                                    delete newRatings[selectedPlayerId];
-                                    return newRatings;
-                                  });
-                                  setHasUnsavedPlayerChanges(false);
-                                }}
-                                activeOpacity={0.7}
-                              >
-                                <Ionicons name="trash-outline" size={16} color="#EF4444" />
-                                <Text style={styles.selectedPlayerBtnCancelText}>Sil</Text>
-                              </TouchableOpacity>
-                              
-                              <TouchableOpacity
-                                style={styles.selectedPlayerBtnSave}
-                                onPress={() => {
-                                  handleSavePlayerRatings(true); // silent save - Alert gösterme
-                                  setInitialPlayerRatings({...playerRatings});
-                                  setHasUnsavedPlayerChanges(false);
-                                  
-                                  // ✅ Toast benzeri bildirim göster
-                                  setSaveNotification({
-                                    visible: true,
-                                    playerName: selectedPlayer.name,
-                                    rating: avgRating
-                                  });
-                                  
-                                  // ✅ Kartı kapat - yeni oyuncuya hazır
-                                  setSelectedPlayerId(null);
-                                  
-                                  // 2 saniye sonra bildirimi gizle
-                                  setTimeout(() => {
-                                    setSaveNotification(null);
-                                  }, 2000);
-                                }}
-                                activeOpacity={0.7}
-                              >
-                                <LinearGradient
-                                  colors={['#1FA2A6', '#059669']}
-                                  style={styles.selectedPlayerBtnSaveGradient}
+                            {/* ✅ Kaydedilmişse "Kilitli" göster */}
+                            {isPlayerRatingsSaved ? (
+                              <View style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                gap: 6,
+                                backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                                paddingHorizontal: 12,
+                                paddingVertical: 8,
+                                borderRadius: 8,
+                                borderWidth: 1,
+                                borderColor: 'rgba(239, 68, 68, 0.3)',
+                              }}>
+                                <Ionicons name="lock-closed" size={16} color="#EF4444" />
+                                <Text style={{ color: '#EF4444', fontWeight: '600', fontSize: 12 }}>
+                                  Kilitli
+                                </Text>
+                              </View>
+                            ) : (
+                              <View style={styles.selectedPlayerButtons}>
+                                <TouchableOpacity
+                                  style={styles.selectedPlayerBtnCancel}
+                                  onPress={() => {
+                                    // Bu oyuncunun puanlarını sil
+                                    setPlayerRatings(prev => {
+                                      const newRatings = { ...prev };
+                                      delete newRatings[selectedPlayerId];
+                                      return newRatings;
+                                    });
+                                    setHasUnsavedPlayerChanges(false);
+                                  }}
+                                  activeOpacity={0.7}
                                 >
-                                  <Ionicons name="checkmark" size={18} color="#FFF" />
-                                  <Text style={styles.selectedPlayerBtnSaveText}>Kaydet</Text>
-                                </LinearGradient>
-                              </TouchableOpacity>
-                            </View>
+                                  <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                                  <Text style={styles.selectedPlayerBtnCancelText}>Sil</Text>
+                                </TouchableOpacity>
+                                
+                                <TouchableOpacity
+                                  style={styles.selectedPlayerBtnSave}
+                                  onPress={() => {
+                                    handleSavePlayerRatings(true, true); // silent save, skipConfirm
+                                    setInitialPlayerRatings({...playerRatings});
+                                    setHasUnsavedPlayerChanges(false);
+                                    
+                                    // ✅ Toast benzeri bildirim göster
+                                    setSaveNotification({
+                                      visible: true,
+                                      playerName: selectedPlayer.name,
+                                      rating: avgRating
+                                    });
+                                    
+                                    // ✅ Kartı kapat - yeni oyuncuya hazır
+                                    setSelectedPlayerId(null);
+                                    
+                                    // 2 saniye sonra bildirimi gizle
+                                    setTimeout(() => {
+                                      setSaveNotification(null);
+                                    }, 2000);
+                                  }}
+                                  activeOpacity={0.7}
+                                >
+                                  <LinearGradient
+                                    colors={['#1FA2A6', '#059669']}
+                                    style={styles.selectedPlayerBtnSaveGradient}
+                                  >
+                                    <Ionicons name="checkmark" size={18} color="#FFF" />
+                                    <Text style={styles.selectedPlayerBtnSaveText}>Kaydet</Text>
+                                  </LinearGradient>
+                                </TouchableOpacity>
+                              </View>
+                            )}
                           </LinearGradient>
                         </View>
                       )}
@@ -2561,6 +2737,86 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
                 >
                   <Ionicons name="checkmark-circle-outline" size={18} color="#FFFFFF" />
                   <Text style={styles.savePopupBtnSaveText}>Kaydet</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* ✅ KAYDETME ONAY MODAL'I - Kaydet = Kilitle */}
+      <Modal
+        visible={showSaveConfirmModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowSaveConfirmModal(false)}
+      >
+        <Pressable
+          style={styles.savePopupOverlay}
+          onPress={() => setShowSaveConfirmModal(false)}
+        >
+          <Pressable onPress={(e) => e.stopPropagation()} style={styles.savePopupContainer}>
+            {/* Icon */}
+            <View style={{
+              width: 64,
+              height: 64,
+              borderRadius: 32,
+              backgroundColor: 'rgba(245, 158, 11, 0.15)',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: 16,
+            }}>
+              <Ionicons name="warning-outline" size={36} color="#F59E0B" />
+            </View>
+            
+            {/* Title */}
+            <Text style={[styles.savePopupTitle, { color: '#F59E0B' }]}>
+              Değerlendirmeyi Kaydet?
+            </Text>
+            
+            {/* Description */}
+            <Text style={styles.savePopupDesc}>
+              {saveConfirmType === 'coach' 
+                ? 'Teknik direktör değerlendirmeniz kaydedilecek ve artık değiştirilemeyecek.'
+                : 'Futbolcu değerlendirmeleriniz kaydedilecek ve artık değiştirilemeyecek.'
+              }
+            </Text>
+            
+            <Text style={[styles.savePopupDesc, { color: '#94A3B8', marginTop: 8, fontSize: 11 }]}>
+              ⚠️ Bu işlem geri alınamaz. Değerlendirmelerinizi kontrol ettiniz mi?
+            </Text>
+            
+            {/* Buttons */}
+            <View style={styles.savePopupBtns}>
+              <TouchableOpacity
+                style={styles.savePopupBtnCancel}
+                onPress={() => setShowSaveConfirmModal(false)}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="close-circle-outline" size={18} color="#EF4444" />
+                <Text style={styles.savePopupBtnCancelText}>Vazgeç</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.savePopupBtnSave}
+                onPress={async () => {
+                  setShowSaveConfirmModal(false);
+                  if (saveConfirmType === 'coach') {
+                    await handleSaveRatings(false, true); // not silent, skipConfirm
+                  } else {
+                    await handleSavePlayerRatings(false, true); // not silent, skipConfirm
+                  }
+                }}
+                activeOpacity={0.7}
+              >
+                <LinearGradient
+                  colors={['#F59E0B', '#D97706']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.savePopupBtnSaveGradient}
+                >
+                  <Ionicons name="lock-closed" size={18} color="#FFFFFF" />
+                  <Text style={styles.savePopupBtnSaveText}>Kaydet ve Kilitle</Text>
                 </LinearGradient>
               </TouchableOpacity>
             </View>

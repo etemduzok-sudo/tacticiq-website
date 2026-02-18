@@ -19,7 +19,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../../config/supabase';
 import { STORAGE_KEYS, LEGACY_STORAGE_KEYS, PITCH_LAYOUT } from '../../config/constants';
 import { squadPredictionsApi, teamsApi, matchesApi } from '../../services/api';
-import { getBulkSquad } from '../../services/bulkDataService';
+import { getBulkSquad, refreshBulkSquad } from '../../services/bulkDataService';
 import { predictionsDb } from '../../services/databaseService';
 import { ConfirmModal, ConfirmButton } from '../ui/ConfirmModal';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -93,6 +93,8 @@ interface MatchSquadProps {
   startingXIPopupShown?: boolean;
   /** İlk 11 popup'ı gösterildiğinde çağrılır - parent'a bildirir */
   onStartingXIPopupShown?: () => void;
+  /** ✅ Topluluk verilerini gördü mü? (görüldüyse kadro kilidi açılamaz) */
+  hasViewedCommunityData?: boolean;
 }
 
 /** API'den gelen tüm kaleci varyantlarını tanı (G, GK, Goalkeeper vb.) */
@@ -772,7 +774,7 @@ function getMockTestSquadPlayers(homeId: number, homeName: string, awayId: numbe
   return result;
 }
 
-export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favoriteTeamIdsProp = [], predictionTeamId, onComplete, onAttackFormationChangeConfirmed, isVisible = true, isMatchFinished = false, isMatchLive: isMatchLiveProp, onHasUnsavedChanges, startingXIPopupShown = false, onStartingXIPopupShown }: MatchSquadProps) {
+export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favoriteTeamIdsProp = [], predictionTeamId, onComplete, onAttackFormationChangeConfirmed, isVisible = true, isMatchFinished = false, isMatchLive: isMatchLiveProp, onHasUnsavedChanges, startingXIPopupShown = false, onStartingXIPopupShown, hasViewedCommunityData = false }: MatchSquadProps) {
   const { width: winW, height: winH } = useWindowDimensions();
   
   // ✅ Kendi hook'umuzla favori takımları al - prop boş gelebilir
@@ -877,6 +879,14 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favor
       stats: { pace: 70, shooting: 70, passing: 70, dribbling: 70, defending: 70, physical: 70 },
     });
 
+    /**
+     * ✅ DOĞRU MİMARİ: API-First, Cache-Second (Stale-While-Revalidate)
+     * 
+     * 1. Her zaman API'den güncel veriyi çek (Single Source of Truth = Backend DB)
+     * 2. API başarılıysa: Veriyi göster + cache'i güncelle
+     * 3. API başarısızsa: Cache'den göster (offline/hata durumu)
+     * 4. Cache sadece fallback, asla birincil kaynak değil
+     */
     const fetchSquads = async () => {
       if (lineups && lineups.length > 0) return;
       if (!homeTeamId || !awayTeamId) {
@@ -884,44 +894,22 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favor
         return;
       }
 
+      // 🧪 Mock test maçları için API'ye gitme
+      const matchIdNum = typeof matchId === 'string' ? parseInt(matchId, 10) : matchId;
+      if (isMockTestMatch(matchIdNum)) {
+        console.log('🧪 Mock test match – using mock squads (no API)', matchId);
+        const mockSquads = getMockTestSquadPlayers(homeTeamId, homeTeamName, awayTeamId, awayTeamName);
+        setSquadPlayers(mockSquads);
+        setIsLoadingSquad(false);
+        return;
+      }
+
       setIsLoadingSquad(true);
-      setSquadLoadingFromApi(false);
+      setSquadLoadingFromApi(true);
 
       try {
-        // 1) Önce uygulama cache'inden (bulk) oku – kayıt sonrası indirilen veri, çok hızlı
-        const [homeBulk, awayBulk] = await Promise.all([
-          getBulkSquad(homeTeamId),
-          getBulkSquad(awayTeamId),
-        ]);
-
-        const homeList = Array.isArray(homeBulk) ? homeBulk : [];
-        const awayList = Array.isArray(awayBulk) ? awayBulk : [];
-
-        if (homeList.length > 0 || awayList.length > 0) {
-          const allPlayers: any[] = [];
-          homeList.forEach((p: any) => allPlayers.push(mapBulkPlayer(p, homeTeamName, homeTeamId)));
-          awayList.forEach((p: any) => allPlayers.push(mapBulkPlayer(p, awayTeamName, awayTeamId)));
-          if (allPlayers.length > 0) {
-            console.log('✅ Squad loaded from app cache:', allPlayers.length);
-            setSquadPlayers(allPlayers);
-            setIsLoadingSquad(false);
-            return;
-          }
-        }
-
-        // 2) 🧪 Mock test maç (888001, 888002): Cache yoksa doğrudan mock kadro, API'ye gitme
-        const matchIdNum = typeof matchId === 'string' ? parseInt(matchId, 10) : matchId;
-        if (isMockTestMatch(matchIdNum)) {
-          console.log('🧪 Mock test match – using mock squads (no API)', matchId);
-          const mockSquads = getMockTestSquadPlayers(homeTeamId, homeTeamName, awayTeamId, awayTeamName);
-          setSquadPlayers(mockSquads);
-          setIsLoadingSquad(false);
-          return;
-        }
-
-        // 3) Cache yoksa API'den çek (fallback)
-        setSquadLoadingFromApi(true);
-        console.log('📥 Fetching team squads from API...', { homeTeamId, awayTeamId });
+        // ✅ ADIM 1: Her zaman API'den güncel veriyi çek (Backend DB = Single Source of Truth)
+        console.log('📥 Fetching team squads from API (source of truth)...', { homeTeamId, awayTeamId });
 
         const homePromise = teamsApi.getTeamSquad(homeTeamId).then((json) => json).catch((err) => {
           console.error('❌ Home squad fetch exception:', err.message);
@@ -961,27 +949,75 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favor
           });
         }
 
-        // 🧪 MOCK TEST: API'den kadro gelmediyse ve mock test maçıysa, mock kadro üret
-        if (allPlayers.length === 0 && isMockTestMatch(matchId)) {
-          console.log('🧪 Using mock test squads for match', matchId);
-          const mockSquads = getMockTestSquadPlayers(homeTeamId, homeTeamName, awayTeamId, awayTeamName);
-          setSquadPlayers(mockSquads);
-          setIsLoadingSquad(false);
-          setSquadLoadingFromApi(false);
+        // ✅ ADIM 2: API başarılıysa veriyi göster ve cache'i güncelle
+        if (allPlayers.length > 0) {
+          console.log('✅ Squad loaded from API (source of truth):', allPlayers.length);
+          setSquadPlayers(allPlayers);
+          
+          // Cache'i arka planda güncelle (sonraki offline erişim için)
+          if (homeRes?.data?.players) {
+            refreshBulkSquad(homeTeamId, homeRes.data.players).catch(() => {});
+          }
+          if (awayRes?.data?.players) {
+            refreshBulkSquad(awayTeamId, awayRes.data.players).catch(() => {});
+          }
           return;
         }
 
-        if (allPlayers.length === 0) {
-          console.warn('⚠️ No squad players loaded. Backend may be down or API-Football has no data.');
-          if (!homeRes && !awayRes) {
-            console.error('❌ Both API calls failed - Backend may not be running on port 3001');
+        // ✅ ADIM 3: API başarısız veya boş döndüyse → Cache'e fallback (offline/hata durumu)
+        console.log('⚠️ API returned no data, falling back to cache...');
+        
+        const [homeBulk, awayBulk] = await Promise.all([
+          getBulkSquad(homeTeamId),
+          getBulkSquad(awayTeamId),
+        ]);
+
+        const homeList = Array.isArray(homeBulk) ? homeBulk : [];
+        const awayList = Array.isArray(awayBulk) ? awayBulk : [];
+
+        if (homeList.length > 0 || awayList.length > 0) {
+          const cachedPlayers: any[] = [];
+          homeList.forEach((p: any) => cachedPlayers.push(mapBulkPlayer(p, homeTeamName, homeTeamId)));
+          awayList.forEach((p: any) => cachedPlayers.push(mapBulkPlayer(p, awayTeamName, awayTeamId)));
+          
+          if (cachedPlayers.length > 0) {
+            console.log('📦 Squad loaded from cache (fallback):', cachedPlayers.length);
+            setSquadPlayers(cachedPlayers);
+            return;
           }
-        } else {
-          console.log('✅ Squad players loaded from API:', allPlayers.length);
         }
-        setSquadPlayers(allPlayers);
+
+        // Her iki kaynak da başarısız
+        console.warn('⚠️ No squad data available from API or cache.');
+        if (!homeRes && !awayRes) {
+          console.error('❌ Both API calls failed - Backend may not be running on port 3001');
+        }
+        setSquadPlayers([]);
+
       } catch (err: any) {
         console.error('❌ Squad fetch error:', err?.message || err);
+        
+        // Hata durumunda cache'e fallback dene
+        try {
+          const [homeBulk, awayBulk] = await Promise.all([
+            getBulkSquad(homeTeamId),
+            getBulkSquad(awayTeamId),
+          ]);
+          const homeList = Array.isArray(homeBulk) ? homeBulk : [];
+          const awayList = Array.isArray(awayBulk) ? awayBulk : [];
+          
+          if (homeList.length > 0 || awayList.length > 0) {
+            const cachedPlayers: any[] = [];
+            homeList.forEach((p: any) => cachedPlayers.push(mapBulkPlayer(p, homeTeamName, homeTeamId)));
+            awayList.forEach((p: any) => cachedPlayers.push(mapBulkPlayer(p, awayTeamName, awayTeamId)));
+            console.log('📦 Squad loaded from cache after error:', cachedPlayers.length);
+            setSquadPlayers(cachedPlayers);
+            return;
+          }
+        } catch {
+          // Cache de başarısız
+        }
+        
         setSquadPlayers([]);
       } finally {
         setIsLoadingSquad(false);
@@ -3209,6 +3245,15 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favor
                         if (isKadroLocked) { showKadroLockedToast(); return; }
                         // ✅ Kullanıcı kilidi kontrolü
                         if (isSquadLocked) {
+                          // ✅ Topluluk verileri görüldüyse kilit açılamaz
+                          if (hasViewedCommunityData) {
+                            Alert.alert(
+                              '🔒 Kalıcı Kilit',
+                              'Topluluk verilerini gördüğünüz için kadro kilidi açılamaz. Tahminleriniz kalıcı olarak kilitlidir.',
+                              [{ text: 'Tamam', style: 'default' }]
+                            );
+                            return;
+                          }
                           Alert.alert(
                             '🔒 Kadro Kilitli',
                             'Kadro tamamlandı ve kilitli. Değişiklik yapmak için kilidi açın.',
@@ -3456,10 +3501,20 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favor
                   <TouchableOpacity
                     style={[
                       styles.lockButtonCenter,
-                      isSquadLocked ? styles.lockButtonCenterLocked : styles.lockButtonCenterOpen
+                      isSquadLocked ? styles.lockButtonCenterLocked : styles.lockButtonCenterOpen,
+                      hasViewedCommunityData && isSquadLocked && { opacity: 0.5 } // Topluluk görüldüyse soluk
                     ]}
                     onPress={() => {
                       if (isSquadLocked) {
+                        // ✅ Topluluk verileri görüldüyse kilit açılamaz
+                        if (hasViewedCommunityData) {
+                          Alert.alert(
+                            '🔒 Kalıcı Kilit',
+                            'Topluluk verilerini gördüğünüz için kadro kilidi açılamaz. Tahminleriniz kalıcı olarak kilitlidir.',
+                            [{ text: 'Tamam', style: 'default' }]
+                          );
+                          return;
+                        }
                         // Kilitli → Kilidi aç (yeşil olacak)
                         setIsSquadLocked(false);
                         setHasModifiedSinceUnlock(false); // Unlock sonrası değişiklik takibi sıfırla
@@ -3472,7 +3527,8 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favor
                         }
                       }
                     }}
-                    activeOpacity={0.7}
+                    activeOpacity={hasViewedCommunityData && isSquadLocked ? 1 : 0.7}
+                    disabled={hasViewedCommunityData && isSquadLocked}
                   >
                     <Ionicons 
                       name={isSquadLocked ? "lock-closed" : "lock-open"} 
@@ -3728,42 +3784,66 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favor
               
               {showPlayerRatingDropdown && (
                 <View style={styles.playerRatingDropdownContent}>
-                  {[
-                    { id: 'shooting', emoji: '🎯', title: 'Şut', rating: 7.2, voters: 1842 },
-                    { id: 'passing', emoji: '🌀', title: 'Pas', rating: 6.8, voters: 1756 },
-                    { id: 'dribbling', emoji: '🌀', title: 'Dribling', rating: 7.5, voters: 1821 },
-                    { id: 'defense', emoji: '🛡️', title: 'Savunma', rating: 6.3, voters: 1689 },
-                    { id: 'physical', emoji: '💪', title: 'Fizik', rating: 7.0, voters: 1734 },
-                    { id: 'speed', emoji: '⚡', title: 'Hız', rating: 6.9, voters: 1798 },
-                    { id: 'vision', emoji: '👁️', title: 'Vizyon', rating: 7.1, voters: 1667 },
-                    { id: 'positioning', emoji: '📍', title: 'Konumlanma', rating: 6.7, voters: 1712 },
-                    { id: 'stamina', emoji: '🔋', title: 'Dayanıklılık', rating: 7.3, voters: 1745 },
-                  ].map((cat) => (
-                    <View key={cat.id} style={styles.playerRatingDropdownRow}>
-                      <View style={styles.playerRatingDropdownRowLeft}>
-                        <Text style={styles.playerRatingDropdownEmoji}>{cat.emoji}</Text>
-                        <Text style={styles.playerRatingDropdownTitle}>{cat.title}</Text>
-                      </View>
-                      <View style={styles.playerRatingDropdownRowRight}>
-                        <View style={styles.playerRatingDropdownBar}>
-                          <View 
-                            style={[
-                              styles.playerRatingDropdownBarFill, 
-                              { 
-                                width: `${(cat.rating / 10) * 100}%`,
-                                backgroundColor: cat.rating >= 7 ? '#10B981' : cat.rating >= 5 ? '#F59E0B' : '#EF4444'
-                              }
-                            ]} 
-                          />
+                  {(() => {
+                    // ✅ Kaleci mi kontrol et (pozisyon GK ise)
+                    const isGoalkeeper = showPreferencePopup?.positionLabel?.toUpperCase() === 'GK' || 
+                                         showPreferencePopup?.positionLabel?.toLowerCase().includes('kaleci');
+                    
+                    // ✅ Kaleci özellikleri
+                    const goalkeeperCategories = [
+                      { id: 'diving', emoji: '🧤', title: 'Dalış', rating: 7.8, voters: 1842 },
+                      { id: 'reflexes', emoji: '⚡', title: 'Refleks', rating: 8.2, voters: 1756 },
+                      { id: 'handling', emoji: '🤲', title: 'Top Tutma', rating: 7.5, voters: 1821 },
+                      { id: 'positioning', emoji: '📍', title: 'Konumlanma', rating: 7.6, voters: 1689 },
+                      { id: 'kicking', emoji: '🦵', title: 'Uzun Top', rating: 6.8, voters: 1734 },
+                      { id: 'communication', emoji: '📢', title: 'İletişim', rating: 7.2, voters: 1798 },
+                      { id: 'aerialReach', emoji: '🙌', title: 'Hava Topu', rating: 7.9, voters: 1667 },
+                      { id: 'oneOnOne', emoji: '🎯', title: 'Bire Bir', rating: 7.4, voters: 1712 },
+                      { id: 'concentration', emoji: '🧠', title: 'Konsantrasyon', rating: 7.7, voters: 1745 },
+                    ];
+                    
+                    // ✅ Saha oyuncusu özellikleri
+                    const outfieldCategories = [
+                      { id: 'shooting', emoji: '🎯', title: 'Şut', rating: 7.2, voters: 1842 },
+                      { id: 'passing', emoji: '🌀', title: 'Pas', rating: 6.8, voters: 1756 },
+                      { id: 'dribbling', emoji: '🌀', title: 'Dribling', rating: 7.5, voters: 1821 },
+                      { id: 'defense', emoji: '🛡️', title: 'Savunma', rating: 6.3, voters: 1689 },
+                      { id: 'physical', emoji: '💪', title: 'Fizik', rating: 7.0, voters: 1734 },
+                      { id: 'speed', emoji: '⚡', title: 'Hız', rating: 6.9, voters: 1798 },
+                      { id: 'vision', emoji: '👁️', title: 'Vizyon', rating: 7.1, voters: 1667 },
+                      { id: 'positioning', emoji: '📍', title: 'Konumlanma', rating: 6.7, voters: 1712 },
+                      { id: 'stamina', emoji: '🔋', title: 'Dayanıklılık', rating: 7.3, voters: 1745 },
+                    ];
+                    
+                    const categories = isGoalkeeper ? goalkeeperCategories : outfieldCategories;
+                    
+                    return categories.map((cat) => (
+                      <View key={cat.id} style={styles.playerRatingDropdownRow}>
+                        <View style={styles.playerRatingDropdownRowLeft}>
+                          <Text style={styles.playerRatingDropdownEmoji}>{cat.emoji}</Text>
+                          <Text style={styles.playerRatingDropdownTitle}>{cat.title}</Text>
                         </View>
-                        <Text style={[
-                          styles.playerRatingDropdownValue,
-                          { color: cat.rating >= 7 ? '#10B981' : cat.rating >= 5 ? '#F59E0B' : '#EF4444' }
-                        ]}>{cat.rating.toFixed(1)}</Text>
-                        <Text style={styles.playerRatingDropdownVoters}>{cat.voters}</Text>
+                        <View style={styles.playerRatingDropdownRowRight}>
+                          <View style={styles.playerRatingDropdownBar}>
+                            <View 
+                              style={[
+                                styles.playerRatingDropdownBarFill, 
+                                { 
+                                  width: `${(cat.rating / 10) * 100}%`,
+                                  backgroundColor: cat.rating >= 7 ? '#10B981' : cat.rating >= 5 ? '#F59E0B' : '#EF4444'
+                                }
+                              ]} 
+                            />
+                          </View>
+                          <Text style={[
+                            styles.playerRatingDropdownValue,
+                            { color: cat.rating >= 7 ? '#10B981' : cat.rating >= 5 ? '#F59E0B' : '#EF4444' }
+                          ]}>{cat.rating.toFixed(1)}</Text>
+                          <Text style={styles.playerRatingDropdownVoters}>{cat.voters}</Text>
+                        </View>
                       </View>
-                    </View>
-                  ))}
+                    ));
+                  })()}
                 </View>
               )}
             </LinearGradient>
@@ -5108,26 +5188,48 @@ const PlayerModal = ({ visible, players, selectedPlayers, positionLabel, onSelec
                 {/* Stats Grid - 2x3 */}
                 {previewPlayer.stats && (
                   <View style={styles.playerCardStatsGrid}>
-                    {[
-                      { label: 'HIZ', value: previewPlayer.stats.pace ?? 70, icon: 'flash' },
-                      { label: 'ŞUT', value: previewPlayer.stats.shooting ?? 70, icon: 'football' },
-                      { label: 'PAS', value: previewPlayer.stats.passing ?? 70, icon: 'swap-horizontal' },
-                      { label: 'DRİBLİNG', value: previewPlayer.stats.dribbling ?? 70, icon: 'walk' },
-                      { label: 'DEFANS', value: previewPlayer.stats.defending ?? 70, icon: 'shield' },
-                      { label: 'FİZİK', value: previewPlayer.stats.physical ?? 70, icon: 'fitness' },
-                    ].map((stat, index) => (
-                      <View key={index} style={styles.playerCardStatItem}>
-                        <View style={[
-                          styles.playerCardStatCircle,
-                          { borderColor: getStatColor(stat.value) }
-                        ]}>
-                          <Text style={[styles.playerCardStatValue, { color: getStatColor(stat.value) }]}>
-                            {stat.value}
-                          </Text>
+                    {(() => {
+                      // ✅ Kaleci mi kontrol et
+                      const playerPos = (previewPlayer.position || previewPlayer.pos || '').toUpperCase();
+                      const isGK = playerPos === 'GK' || playerPos === 'G' || playerPos.toLowerCase().includes('goalkeeper') ||
+                                   positionLabel?.toUpperCase() === 'GK';
+                      
+                      // ✅ Kaleci özellikleri (pace→Dalış, shooting→Refleks, vb. mapping)
+                      const goalkeeperStats = [
+                        { label: 'DALIŞ', value: previewPlayer.stats.pace ?? 70, icon: 'hand-left' },
+                        { label: 'REFLEKS', value: previewPlayer.stats.shooting ?? 70, icon: 'flash' },
+                        { label: 'TOP TUT', value: previewPlayer.stats.passing ?? 70, icon: 'hand-right' },
+                        { label: 'KONUM', value: previewPlayer.stats.dribbling ?? 70, icon: 'locate' },
+                        { label: 'HAVA', value: previewPlayer.stats.defending ?? 70, icon: 'arrow-up' },
+                        { label: '1V1', value: previewPlayer.stats.physical ?? 70, icon: 'body' },
+                      ];
+                      
+                      // ✅ Saha oyuncusu özellikleri
+                      const outfieldStats = [
+                        { label: 'HIZ', value: previewPlayer.stats.pace ?? 70, icon: 'flash' },
+                        { label: 'ŞUT', value: previewPlayer.stats.shooting ?? 70, icon: 'football' },
+                        { label: 'PAS', value: previewPlayer.stats.passing ?? 70, icon: 'swap-horizontal' },
+                        { label: 'DRİBLİNG', value: previewPlayer.stats.dribbling ?? 70, icon: 'walk' },
+                        { label: 'DEFANS', value: previewPlayer.stats.defending ?? 70, icon: 'shield' },
+                        { label: 'FİZİK', value: previewPlayer.stats.physical ?? 70, icon: 'fitness' },
+                      ];
+                      
+                      const stats = isGK ? goalkeeperStats : outfieldStats;
+                      
+                      return stats.map((stat, index) => (
+                        <View key={index} style={styles.playerCardStatItem}>
+                          <View style={[
+                            styles.playerCardStatCircle,
+                            { borderColor: getStatColor(stat.value) }
+                          ]}>
+                            <Text style={[styles.playerCardStatValue, { color: getStatColor(stat.value) }]}>
+                              {stat.value}
+                            </Text>
+                          </View>
+                          <Text style={styles.playerCardStatLabel}>{stat.label}</Text>
                         </View>
-                        <Text style={styles.playerCardStatLabel}>{stat.label}</Text>
-                      </View>
-                    ))}
+                      ));
+                    })()}
                   </View>
                 )}
 
@@ -5333,12 +5435,28 @@ const PlayerDetailModal = ({ player, onClose, matchId, positionLabel, communityD
 
           {/* Stats & Info - SCROLL YOK, TEK SAYFADA SIĞMALI */}
           <View style={styles.playerDetailContentNoScroll}>
-            {/* ✅ Oyuncu İstatistikleri - 2 satır, 3 sütun grid */}
+            {/* ✅ Oyuncu İstatistikleri - 1 sütun 6 satır dikey layout */}
             <Text style={styles.playerDetailSectionTitleCompact}>📊 Oyuncu İstatistikleri</Text>
             
             <View style={styles.statsGridCompact}>
-              {Object.entries(player.stats || {}).map(([key, value]: [string, any]) => {
-                const statNames: Record<string, string> = {
+              {(() => {
+                // ✅ Kaleci mi kontrol et
+                const playerPos = (player.position || player.pos || '').toUpperCase();
+                const isGK = playerPos === 'GK' || playerPos === 'G' || playerPos.toLowerCase().includes('goalkeeper') || 
+                             positionLabel?.toUpperCase() === 'GK' || positionLabel?.toLowerCase().includes('kaleci');
+                
+                // ✅ Kaleci özellikleri (pace→Dalış, shooting→Refleks, vb. mapping)
+                const goalkeeperStatNames: Record<string, string> = {
+                  pace: 'Dalış',
+                  shooting: 'Refleks',
+                  passing: 'Top Tutma',
+                  dribbling: 'Konumlanma',
+                  defending: 'Hava Topu',
+                  physical: 'Bire Bir'
+                };
+                
+                // ✅ Saha oyuncusu özellikleri
+                const outfieldStatNames: Record<string, string> = {
                   pace: 'Hız',
                   shooting: 'Şut',
                   passing: 'Pas',
@@ -5347,26 +5465,31 @@ const PlayerDetailModal = ({ player, onClose, matchId, positionLabel, communityD
                   physical: 'Fizik'
                 };
                 
-                const clampedValue = Math.max(50, Math.min(99, Number(value) || 70));
-                const statColor = clampedValue >= 80 ? '#1FA2A6' : clampedValue >= 70 ? '#F59E0B' : '#9CA3AF';
+                const statNames = isGK ? goalkeeperStatNames : outfieldStatNames;
                 
-                return (
-                  <View key={key} style={styles.statItemCompact}>
-                    <View style={styles.statItemCompactHeader}>
-                      <Text style={styles.statLabelCompact}>{statNames[key]}</Text>
+                return Object.entries(player.stats || {}).map(([key, value]: [string, any]) => {
+                  const clampedValue = Math.max(50, Math.min(99, Number(value) || 70));
+                  const statColor = clampedValue >= 80 ? '#1FA2A6' : clampedValue >= 70 ? '#F59E0B' : '#9CA3AF';
+                  
+                  return (
+                    <View key={key} style={styles.statItemCompact}>
+                      {/* Label - Sol */}
+                      <Text style={styles.statLabelCompact}>{statNames[key] || key}</Text>
+                      {/* Progress Bar - Orta */}
+                      <View style={styles.statBarBackgroundCompact}>
+                        <View 
+                          style={[
+                            styles.statBarFillCompact, 
+                            { width: `${clampedValue}%`, backgroundColor: statColor }
+                          ]} 
+                        />
+                      </View>
+                      {/* Value - Sağ */}
                       <Text style={[styles.statValueCompact, { color: statColor }]}>{clampedValue}</Text>
                     </View>
-                    <View style={styles.statBarBackgroundCompact}>
-                      <View 
-                        style={[
-                          styles.statBarFillCompact, 
-                          { width: `${clampedValue}%`, backgroundColor: statColor }
-                        ]} 
-                      />
-                    </View>
-                  </View>
-                );
-              })}
+                  );
+                });
+              })()}
             </View>
 
             {/* ✅ Form/Pozisyon/Yaş - tek satır inline */}
@@ -8469,45 +8592,47 @@ const styles = StyleSheet.create({
   statsGrid: {
     gap: 12,
   },
-  // ✅ YENI: 2x3 grid istatistik
+  // ✅ YENI: 1 sütun 6 satır dikey layout - scroll yok, tek sayfada
   statsGridCompact: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+    flexDirection: 'column', // ✅ Dikey layout
+    gap: 6,
     marginBottom: 12,
   },
   statItemCompact: {
-    width: '31%', // 3 sütun
+    width: '100%', // ✅ Tam genişlik - tek sütun
     backgroundColor: 'rgba(15, 23, 42, 0.5)',
-    padding: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: 'rgba(31, 162, 166, 0.15)',
-  },
-  statItemCompactHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: 'row', // ✅ Yatay içerik: Label | Bar | Value
     alignItems: 'center',
-    marginBottom: 4,
+    gap: 10,
   },
+  // statItemCompactHeader artık kullanılmıyor - dikey layout'ta label/bar/value ayrı
   statLabelCompact: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '600',
     color: '#9CA3AF',
+    width: 55, // ✅ Sabit genişlik - label için
   },
   statValueCompact: {
     fontSize: 14,
     fontWeight: 'bold',
+    width: 28, // ✅ Sabit genişlik - value için
+    textAlign: 'right',
   },
   statBarBackgroundCompact: {
-    height: 4,
+    flex: 1, // ✅ Kalan alanı doldur
+    height: 6,
     backgroundColor: 'rgba(100, 116, 139, 0.3)',
-    borderRadius: 2,
+    borderRadius: 3,
     overflow: 'hidden',
   },
   statBarFillCompact: {
     height: '100%',
-    borderRadius: 2,
+    borderRadius: 3,
   },
   statItem: {
     gap: 6,

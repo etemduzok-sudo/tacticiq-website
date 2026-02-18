@@ -464,6 +464,10 @@ export async function getAllBulkMatches(teamIds: number[]): Promise<any[] | null
 
 /**
  * Belirli bir takımın kadrosunu bulk cache'den oku
+ * 
+ * ⚠️ NOT: Bu fonksiyon SADECE offline/hata durumunda fallback olarak kullanılır.
+ * Normal akışta her zaman API'den (Backend DB) güncel veri çekilir.
+ * Cache = Offline Fallback, API = Single Source of Truth
  */
 export async function getBulkSquad(teamId: number): Promise<any[] | null> {
   try {
@@ -474,6 +478,39 @@ export async function getBulkSquad(teamId: number): Promise<any[] | null> {
     return JSON.parse(raw);
   } catch {
     return null;
+  }
+}
+
+/**
+ * Belirli bir takımın kadro cache'ini güncelle
+ * API'den güncel veri alındığında çağrılır (offline fallback için saklanır)
+ * 
+ * @param teamId Takım ID
+ * @param squadData API'den gelen kadro verisi
+ */
+export async function refreshBulkSquad(teamId: number, squadData: any[]): Promise<void> {
+  try {
+    if (squadData && squadData.length > 0) {
+      await AsyncStorage.setItem(
+        `${BULK_STORAGE_KEYS.BULK_SQUAD_PREFIX}${teamId}`,
+        JSON.stringify(squadData)
+      );
+      logger.debug(`[BULK] Squad cache updated for team ${teamId}: ${squadData.length} players`);
+    }
+  } catch (err) {
+    logger.warn('[BULK] Failed to update squad cache:', err);
+  }
+}
+
+/**
+ * Belirli bir takımın kadro cache'ini temizle (sonraki fetch API'den çeker)
+ */
+export async function clearBulkSquad(teamId: number): Promise<void> {
+  try {
+    await AsyncStorage.removeItem(`${BULK_STORAGE_KEYS.BULK_SQUAD_PREFIX}${teamId}`);
+    logger.info(`[BULK] Squad cache cleared for team ${teamId}`);
+  } catch (err) {
+    logger.warn('[BULK] Failed to clear squad cache:', err);
   }
 }
 

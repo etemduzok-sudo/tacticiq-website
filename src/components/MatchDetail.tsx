@@ -102,6 +102,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
   const [analysisFocusOverride, setAnalysisFocusOverride] = useState<AnalysisFocusType | null>(null);
   const [showResetPredictionsModal, setShowResetPredictionsModal] = useState(false);
   const [hasPrediction, setHasPrediction] = useState<boolean | null>(null); // null = henüz kontrol edilmedi
+  const [hasViewedCommunityData, setHasViewedCommunityData] = useState(false); // ✅ Topluluk verilerini gördü mü?
   const effectiveAnalysisFocus = analysisFocusOverride ?? analysisFocus;
 
   // ✅ Kaydedilmemiş değişiklik kontrolü - Tahmin sekmesi
@@ -124,6 +125,10 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
   // ✅ Maç sonu popup'ı - sonuçları, puanları ve rozetleri gösterir
   const [showMatchEndPopup, setShowMatchEndPopup] = useState(false);
   const [matchEndPopupShown, setMatchEndPopupShown] = useState(false); // Popup gösterildi mi?
+  
+  // ✅ Reyting hatırlatıcısı - biten maçlar için
+  const [showRatingReminder, setShowRatingReminder] = useState(false);
+  const [pendingRatingMatches, setPendingRatingMatches] = useState<{matchId: string; teamName: string; date: string}[]>([]);
 
   // ✅ Memoize onHasUnsavedChanges callback to prevent infinite re-renders
   const handleHasUnsavedChanges = useCallback((hasChanges: boolean, saveFn: () => Promise<void>) => {
@@ -208,6 +213,26 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
       }
       
       setHasPrediction(hasPred);
+      
+      // ✅ hasViewedCommunityData değerini de oku
+      let viewedCommunity = false;
+      if (predRaw) {
+        try {
+          const pred = JSON.parse(predRaw);
+          if (pred?.hasViewedCommunityData === true) {
+            viewedCommunity = true;
+          }
+        } catch (_) {}
+      }
+      // ✅ Ayrı key kontrolü (tahmin silinip yeniden yapılmış olabilir)
+      if (!viewedCommunity) {
+        const communityKey = `community_viewed_${matchId}${effectiveTeamId != null ? `-${effectiveTeamId}` : ''}`;
+        const communityRaw = await AsyncStorage.getItem(communityKey);
+        if (communityRaw) {
+          viewedCommunity = true;
+        }
+      }
+      setHasViewedCommunityData(viewedCommunity);
     } catch (e) {
       console.warn('checkPredictions error:', e);
       setHasPrediction(false);
@@ -390,22 +415,93 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
   const [manualLineups, setManualLineups] = React.useState<any>(null);
   const lineups = apiLineups || manualLineups;
   
-  // ✅ preloadedMatch varken de lineups'ı çek (arka planda)
+  // ✅ Canlı maç verileri state (preloadedMatch kullanıldığında da güncellenir)
+  const [liveMatchData, setLiveMatchData] = React.useState<any>(null);
+  const [liveEvents, setLiveEvents] = React.useState<any[]>([]);
+  const [liveStatistics, setLiveStatistics] = React.useState<any>(null);
+  
+  // ✅ Canlı maç mı kontrol et (erken kontrol - canlı güncelleme için)
+  // preloadedMatch, match veya liveMatchData'dan herhangi biri canlı ise güncellemeye devam et
+  const LIVE_STATUSES_EARLY = ['1H', '2H', 'HT', 'ET', 'P', 'BT', 'LIVE', 'INT'];
+  const earlyMatchStatus = liveMatchData?.fixture?.status?.short || match?.fixture?.status?.short || match?.status?.short || preloadedMatch?.fixture?.status?.short || preloadedMatch?.status?.short || '';
+  const isMatchLiveEarly = LIVE_STATUSES_EARLY.includes(earlyMatchStatus) || 
+                           liveMatchData?.fixture?.status?.short === '2H' || 
+                           liveMatchData?.fixture?.status?.short === '1H';
+  
+  // ✅ preloadedMatch varken de lineups'ı çek (arka planda) - refresh=1 ile
   React.useEffect(() => {
-    if (preloadedMatch && matchId && !apiLineups) {
+    if (matchId) {
       const fetchLineups = async () => {
         try {
+          // ✅ Canlı maçlarda refresh=1 kullan
           const response = await api.matches.getMatchLineups(Number(matchId));
-          if (response?.success && response?.data) {
-            setManualLineups(response.data);
+          if (response?.success && response?.data && response.data.length > 0) {
+            // ✅ startXI'si dolu olan lineup'ları kabul et
+            const hasStartXI = response.data.some((l: any) => l.startXI && l.startXI.length > 0);
+            if (hasStartXI) {
+              setManualLineups(response.data);
+              console.log('📋 Lineups yüklendi:', response.data[0]?.team?.name, response.data[0]?.formation);
+            }
           }
         } catch (e) {
-          // Sessizce başarısız ol
+          console.log('📋 Lineups yükleme hatası:', e);
         }
       };
       fetchLineups();
     }
-  }, [preloadedMatch, matchId, apiLineups]);
+  }, [matchId]);
+  
+  // ✅ CANLI MAÇ GÜNCELLEME - preloadedMatch kullanılsa bile
+  React.useEffect(() => {
+    if (!matchId || !isMatchLiveEarly) return;
+    
+    console.log('🔴 Canlı maç güncelleme döngüsü başlatıldı:', matchId);
+    
+    const fetchLiveData = async () => {
+      try {
+        // ✅ Paralel olarak tüm canlı verileri çek - refresh=true ile cache'i atla
+        const [matchRes, eventsRes, statsRes] = await Promise.allSettled([
+          api.matches.getMatchDetails(Number(matchId), true),  // refresh=true
+          api.matches.getMatchEvents(Number(matchId), true),   // refresh=true
+          api.matches.getMatchStatistics(Number(matchId), true), // refresh=true
+        ]);
+        
+        if (matchRes.status === 'fulfilled' && matchRes.value?.success) {
+          setLiveMatchData(matchRes.value.data);
+        }
+        
+        if (eventsRes.status === 'fulfilled' && eventsRes.value?.success) {
+          setLiveEvents(eventsRes.value.data || []);
+        }
+        
+        if (statsRes.status === 'fulfilled' && statsRes.value?.success) {
+          setLiveStatistics(statsRes.value.data);
+        }
+        
+        console.log('🔄 Canlı veriler güncellendi:', {
+          elapsed: matchRes.status === 'fulfilled' ? matchRes.value?.data?.fixture?.status?.elapsed : null,
+          eventsCount: eventsRes.status === 'fulfilled' ? eventsRes.value?.data?.length : 0
+        });
+      } catch (e) {
+        console.log('🔴 Canlı veri güncelleme hatası:', e);
+      }
+    };
+    
+    // İlk çağrı
+    fetchLiveData();
+    
+    // Her 15 saniyede bir güncelle
+    const interval = setInterval(fetchLiveData, 15000);
+    
+    return () => {
+      console.log('⏹️ Canlı maç güncelleme döngüsü durduruldu');
+      clearInterval(interval);
+    };
+  }, [matchId, isMatchLiveEarly]);
+  
+  // ✅ Güncel maç verisi - canlı veri varsa onu kullan
+  const currentMatch = liveMatchData || match;
+  const currentEvents = (liveEvents.length > 0 ? liveEvents : events) || [];
 
   // ✅ Tahmin kontrolü - match yüklendikten sonra; iki favori maçta çift anahtar
   React.useEffect(() => {
@@ -524,7 +620,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
       'liverpool': 'Arne Slot',
       'arsenal': 'Mikel Arteta',
       'chelsea': 'Enzo Maresca',
-      'juventus': 'Thiago Motta',
+      'juventus': 'Luciano Spalletti', // 2025-26 sezonu
       'inter': 'Simone Inzaghi',
       'milan': 'Sergio Conceição',
       'psg': 'Luis Enrique',
@@ -536,41 +632,69 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
     return '';
   };
 
-  // Teknik direktör: önce coaches API, yoksa lineups'tan al, yoksa fallback
+  // ✅ Teknik direktör: önce lineups'tan al (maça özel, en güncel), yoksa fallback
   const getManagerFromLineups = (teamId: number) => {
     const arr = Array.isArray(lineups) ? lineups : lineups?.data;
     if (!arr?.length) return '';
     const lineup = arr.find((l: any) => l.team?.id === teamId);
     const coach = lineup?.coach;
-    if (typeof coach === 'string') return coach;
-    if (coach?.name) return coach.name;
-    return '';
+    return typeof coach === 'string' ? coach : coach?.name || '';
   };
-  const homeManager = coaches.home || getManagerFromLineups(match?.teams?.home?.id) || getCoachFallback(match?.teams?.home?.name);
-  const awayManager = coaches.away || getManagerFromLineups(match?.teams?.away?.id) || getCoachFallback(match?.teams?.away?.name);
+  
+  // ✅ Teknik direktör öncelik sırası (2025-26 sezonu):
+  // 1. Lineups'tan (maça özel, API'den güncel veri)
+  // 2. Teams/Coach API state'inden
+  // 3. Fallback listesinden (son çare)
+  const homeManager = getManagerFromLineups(match?.teams?.home?.id) 
+    || coaches.home 
+    || getCoachFallback(match?.teams?.home?.name);
+  const awayManager = getManagerFromLineups(match?.teams?.away?.id) 
+    || coaches.away 
+    || getCoachFallback(match?.teams?.away?.name);
 
-  // ✅ Maç canlı mı kontrol et
-  const LIVE_STATUSES = ['1H', '2H', 'HT', 'ET', 'BT', 'P', 'LIVE', 'INT'];
+  // ✅ LIVE_STATUSES zaten yukarıda tanımlı, burada tekrar tanımlama
   const FINISHED_STATUSES = ['FT', 'AET', 'PEN', 'AWD', 'WO', 'ABD', 'CANC']; // Sadece gerçekten bitmiş/iptal maçlar
   const POSTPONED_STATUSES = ['PST', 'SUSP', 'TBD']; // Ertelenmiş/askıya alınmış - bunlar bitmiş sayılmaz
   
   // ✅ Mock maçlar için gerçek zamandan status belirle - countdownTicker ile her saniye güncellensin
+  // ✅ DÜZELTME: currentMatch kullan (liveMatchData || match) - canlı güncelleme için
   const matchStatus = useMemo(() => {
     // API'den gelen status farklı formatlarda olabilir
-    const statusRaw = match?.fixture?.status;
+    const statusRaw = currentMatch?.fixture?.status;
     const apiStatus = typeof statusRaw === 'string' 
       ? statusRaw 
       : (statusRaw?.short || statusRaw?.long || '');
     
     if (!isMockTestMatch(Number(matchId))) {
-      // ✅ Gerçek maçlar için ek kontrol: Maç tarihi geçmiş ve statü NS/TBD/boş ise, maç bitmiş sayılır
-      const matchTimestamp = match?.fixture?.timestamp;
+      // ✅ Gerçek maçlar için timestamp kontrolü
+      const matchTimestamp = currentMatch?.fixture?.timestamp;
       if (matchTimestamp) {
         const matchTime = matchTimestamp * 1000;
         const now = Date.now();
-        const hoursSinceMatch = (now - matchTime) / (1000 * 60 * 60);
-        // Maç başlamasından 2+ saat geçtiyse ve statü hala NS, boş veya belirsiz ise, FT say
-        if (hoursSinceMatch > 2 && (apiStatus === 'NS' || apiStatus === '' || apiStatus === 'TBD' || !apiStatus)) {
+        const timeSinceStart = now - matchTime;
+        const hoursSinceMatch = timeSinceStart / (1000 * 60 * 60);
+        
+        // ✅ YENİ: Maç başlamış ama statü NS - muhtemelen canlı (cache stale)
+        // Son 3 saat içinde başlamış ve statü NS/TBD/boş ise → potansiyel canlı
+        if (timeSinceStart > 0 && timeSinceStart < 3 * 60 * 60 * 1000 && 
+            (apiStatus === 'NS' || apiStatus === '' || apiStatus === 'TBD' || !apiStatus)) {
+          const estimatedMinutes = Math.floor(timeSinceStart / 60000);
+          console.log(`🔴 [MatchDetail] Maç ${matchId} potansiyel canlı (NS ama ${estimatedMinutes}dk geçmiş) - 1H döndürülüyor`);
+          // ✅ 45 dakikadan az ise 1H, 45-60 arası HT, 60+ ise 2H varsay
+          if (estimatedMinutes < 45) {
+            return '1H';
+          } else if (estimatedMinutes < 60) {
+            return 'HT';
+          } else if (estimatedMinutes < 105) {
+            return '2H';
+          } else {
+            // 105+ dakika - muhtemelen bitmiş
+            return 'FT';
+          }
+        }
+        
+        // Maç başlamasından 3+ saat geçtiyse ve statü hala NS, boş veya belirsiz ise, FT say
+        if (hoursSinceMatch > 3 && (apiStatus === 'NS' || apiStatus === '' || apiStatus === 'TBD' || !apiStatus)) {
           console.log(`⚠️ [MatchDetail] Maç ${matchId} için statü güncellendi: "${apiStatus}" → FT (${hoursSinceMatch.toFixed(1)} saat geçmiş)`);
           return 'FT';
         }
@@ -601,9 +725,9 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
     } else {
       return 'FT'; // Finished
     }
-  }, [matchId, match?.fixture?.status, match?.fixture?.timestamp, countdownTicker]); // ✅ countdownTicker: mock maçlar için her saniye güncelle
+  }, [matchId, currentMatch?.fixture?.status, currentMatch?.fixture?.timestamp, liveMatchData, countdownTicker]); // ✅ countdownTicker: mock maçlar için her saniye güncelle, liveMatchData: canlı güncelleme
   
-  const isMatchLive = LIVE_STATUSES.includes(matchStatus);
+  const isMatchLive = LIVE_STATUSES_EARLY.includes(matchStatus);
   const isMatchFinished = FINISHED_STATUSES.includes(matchStatus);
   
   // ✅ DEBUG: Maç statüsünü konsola yazdır
@@ -631,14 +755,104 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
     }
   }, [isMatchFinished, matchEndPopupShown, hasPrediction]);
   
+  // ✅ Reyting hatırlatıcısı - yeni tahmin sayfasına girince biten maçları kontrol et
+  // MAX 3 KEZ: Her maç için en fazla 3 kez hatırlatma, sonra bırak
+  React.useEffect(() => {
+    // Sadece gelecek/canlı maçlarda kontrol et (biten maçta değilken)
+    if (isMatchFinished) return;
+    
+    const checkPendingRatings = async () => {
+      try {
+        const now = Date.now();
+        
+        // ✅ Biten maçları tara - RATINGS storage'ından kontrol et
+        const allKeys = await AsyncStorage.getAllKeys();
+        const ratingKeys = allKeys.filter(k => k.startsWith(STORAGE_KEYS.RATINGS));
+        const predictionKeys = allKeys.filter(k => 
+          k.startsWith(STORAGE_KEYS.PREDICTIONS) || k.startsWith(LEGACY_STORAGE_KEYS.PREDICTIONS)
+        );
+        
+        const pendingMatches: {matchId: string; teamName: string; date: string; reminderCount: number}[] = [];
+        
+        for (const key of predictionKeys) {
+          try {
+            const raw = await AsyncStorage.getItem(key);
+            if (!raw) continue;
+            
+            const pred = JSON.parse(raw);
+            // Match ID'yi key'den çıkar
+            const matchIdMatch = key.match(/predictions-(\d+)/);
+            if (!matchIdMatch) continue;
+            
+            const predMatchId = matchIdMatch[1];
+            
+            // ✅ Maç bitmiş mi kontrol et (24 saat içinde)
+            const matchEndTime = pred.matchEndTime ? new Date(pred.matchEndTime).getTime() : 0;
+            const hoursSinceEnd = (now - matchEndTime) / (1000 * 60 * 60);
+            
+            if (matchEndTime > 0 && hoursSinceEnd < 24) {
+              // ✅ Reyting verilmiş mi kontrol et
+              const ratingsKey = `${STORAGE_KEYS.RATINGS}${predMatchId}`;
+              const ratingsRaw = await AsyncStorage.getItem(ratingsKey);
+              const hasCoachRating = ratingsRaw ? JSON.parse(ratingsRaw).isLocked === true : false;
+              
+              const playerRatingsKey = `${STORAGE_KEYS.RATINGS}${predMatchId}_players`;
+              const playerRatingsRaw = await AsyncStorage.getItem(playerRatingsKey);
+              const hasPlayerRating = playerRatingsRaw ? JSON.parse(playerRatingsRaw).isLocked === true : false;
+              
+              // ✅ Her iki reyting de verilmediyse hatırlat
+              if (!hasCoachRating || !hasPlayerRating) {
+                // ✅ Hatırlatma sayısını kontrol et (max 3)
+                const reminderCountKey = `rating_reminder_count_${predMatchId}`;
+                const reminderCountRaw = await AsyncStorage.getItem(reminderCountKey);
+                const reminderCount = reminderCountRaw ? parseInt(reminderCountRaw, 10) : 0;
+                
+                if (reminderCount < 3) {
+                  pendingMatches.push({
+                    matchId: predMatchId,
+                    teamName: pred.teamName || 'Takım',
+                    date: pred.matchDate || '',
+                    reminderCount: reminderCount,
+                  });
+                }
+              }
+            }
+          } catch (_) {
+            // JSON parse hatası, devam et
+          }
+        }
+        
+        if (pendingMatches.length > 0) {
+          // ✅ En fazla 3 maç göster (en düşük reminder count önce)
+          pendingMatches.sort((a, b) => a.reminderCount - b.reminderCount);
+          setPendingRatingMatches(pendingMatches.slice(0, 3));
+          setShowRatingReminder(true);
+          
+          // ✅ Gösterilen maçların hatırlatma sayısını artır
+          for (const m of pendingMatches.slice(0, 3)) {
+            const reminderCountKey = `rating_reminder_count_${m.matchId}`;
+            await AsyncStorage.setItem(reminderCountKey, String(m.reminderCount + 1));
+          }
+        }
+      } catch (e) {
+        console.warn('Rating reminder check error:', e);
+      }
+    };
+    
+    // 2 saniye gecikme ile kontrol et (sayfa yüklensin)
+    const timer = setTimeout(checkPendingRatings, 2000);
+    return () => clearTimeout(timer);
+  }, [isMatchFinished]);
+  
   // ✅ Mock maçlarda dakika her saniye güncellenir (countdownTicker ile); yoksa API'den gelen elapsed
-  const rawMatchMinute = match?.fixture?.status?.elapsed ?? 0;
+  // ✅ DÜZELTME: currentMatch (liveMatchData || match) kullan (canlı güncelleme için)
+  const rawMatchMinute = currentMatch?.fixture?.status?.elapsed ?? 0;
   // ✅ Dakika, uzatma ve salise hesaplama (mock maçlarda gerçek zamandan)
   const { matchMinute, matchExtraTime, matchSecond } = (() => {
-    if (!matchId || !match?.fixture) return { matchMinute: rawMatchMinute, matchExtraTime: null, matchSecond: 0 };
+    if (!matchId || !currentMatch?.fixture) return { matchMinute: rawMatchMinute, matchExtraTime: null, matchSecond: 0 };
     if (!isMockTestMatch(Number(matchId))) {
       // Gerçek maçlar için API'den gelen extraTime bilgisini kullan
-      const extraTime = match?.fixture?.status?.extraTime ?? null;
+      const extraTime = currentMatch?.fixture?.status?.extraTime ?? null;
       return { matchMinute: rawMatchMinute, matchExtraTime: extraTime, matchSecond: 0 };
     }
     
@@ -688,11 +902,11 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
   })();
   // ✅ Mock maçlarda skorları gerçek zamandan hesapla (goller eventlerden gelir)
   const { homeScore: computedHomeScore, awayScore: computedAwayScore, halftimeScore: computedHalftimeScore } = (() => {
-    if (!matchId || !match?.fixture || !isMockTestMatch(Number(matchId))) {
+    if (!matchId || !currentMatch?.fixture || !isMockTestMatch(Number(matchId))) {
       return {
-        homeScore: match?.goals?.home ?? 0,
-        awayScore: match?.goals?.away ?? 0,
-        halftimeScore: match?.score?.halftime || null,
+        homeScore: currentMatch?.goals?.home ?? 0,
+        awayScore: currentMatch?.goals?.away ?? 0,
+        halftimeScore: currentMatch?.score?.halftime || null,
       };
     }
     
@@ -702,9 +916,9 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
     // ✅ Güvenlik kontrolü: events undefined olabilir
     if (!events || !Array.isArray(events)) {
       return {
-        homeScore: match?.goals?.home ?? 0,
-        awayScore: match?.goals?.away ?? 0,
-        halftimeScore: match?.score?.halftime || null,
+        homeScore: currentMatch?.goals?.home ?? 0,
+        awayScore: currentMatch?.goals?.away ?? 0,
+        halftimeScore: currentMatch?.score?.halftime || null,
       };
     }
     
@@ -771,35 +985,36 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
 
   // Transform API data to component format
   // ✅ useMemo ile sarmalayarak mock maçlar için timestamp'i sabitle
-  const matchData = useMemo(() => match ? {
-    id: match.fixture.id.toString(),
+  // ✅ currentMatch kullanarak canlı verileri yansıt
+  const matchData = useMemo(() => currentMatch ? {
+    id: currentMatch.fixture.id.toString(),
     homeTeam: {
-      id: match.teams.home.id, // ✅ Team ID eklendi
-      name: match.teams.home.name,
-      logo: match.teams.home.logo || '⚽',
-      color: getTeamColors(match.teams.home),
+      id: currentMatch.teams.home.id, // ✅ Team ID eklendi
+      name: currentMatch.teams.home.name,
+      logo: currentMatch.teams.home.logo || '⚽',
+      color: getTeamColors(currentMatch.teams.home),
       manager: homeManager,
     },
     awayTeam: {
-      id: match.teams.away.id, // ✅ Team ID eklendi
-      name: match.teams.away.name,
-      logo: match.teams.away.logo || '⚽',
-      color: getTeamColors(match.teams.away),
+      id: currentMatch.teams.away.id, // ✅ Team ID eklendi
+      name: currentMatch.teams.away.name,
+      logo: currentMatch.teams.away.logo || '⚽',
+      color: getTeamColors(currentMatch.teams.away),
       manager: awayManager,
     },
     // ✅ Geriye uyumluluk için teams objesi de ekle
     teams: {
-      home: { id: match.teams.home.id, name: match.teams.home.name },
-      away: { id: match.teams.away.id, name: match.teams.away.name },
+      home: { id: currentMatch.teams.home.id, name: currentMatch.teams.home.name },
+      away: { id: currentMatch.teams.away.id, name: currentMatch.teams.away.name },
     },
-    league: match.league.name,
-    stadium: match.fixture.venue?.name || 'TBA',
-    date: new Date(match.fixture.date).toLocaleDateString('tr-TR', { 
+    league: currentMatch.league.name,
+    stadium: currentMatch.fixture.venue?.name || 'TBA',
+    date: new Date(currentMatch.fixture.date).toLocaleDateString('tr-TR', { 
       day: 'numeric', 
       month: 'long', 
       year: 'numeric' 
     }),
-    time: api.utils.formatMatchTime(new Date(match.fixture.date).getTime() / 1000),
+    time: api.utils.formatMatchTime(new Date(currentMatch.fixture.date).getTime() / 1000),
     timestamp: (() => {
       // ✅ Mock maçlar için sabit timestamp kullan
       if (isMockTestMatch(Number(matchId))) {
@@ -807,17 +1022,17 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
         if (mockMatchStartTimeRef.current !== null) {
           return mockMatchStartTimeRef.current / 1000;
         }
-        // Henüz sabitlenmemişse, match.fixture.timestamp'i kullan ve sabitle
+        // Henüz sabitlenmemişse, currentMatch.fixture.timestamp'i kullan ve sabitle
         // Bu sadece ilk render'da olacak
-        const ts = match.fixture.timestamp || new Date(match.fixture.date).getTime() / 1000;
+        const ts = currentMatch.fixture.timestamp || new Date(currentMatch.fixture.date).getTime() / 1000;
         // Hemen sabitle (synchronous olarak) - sadece bir kez
         mockMatchStartTimeRef.current = ts * 1000;
         console.log('🔒 Mock maç timestamp matchData içinde sabitlendi:', new Date(mockMatchStartTimeRef.current).toISOString(), 'Kalan:', Math.floor((mockMatchStartTimeRef.current - Date.now()) / 1000), 'sn');
         // Sabitlenmiş değeri döndür
         return mockMatchStartTimeRef.current / 1000;
       }
-      // Normal maçlar için match.fixture.timestamp kullan
-      return match.fixture.timestamp || new Date(match.fixture.date).getTime() / 1000;
+      // Normal maçlar için currentMatch.fixture.timestamp kullan
+      return currentMatch.fixture.timestamp || new Date(currentMatch.fixture.date).getTime() / 1000;
     })(), // ✅ Geri sayım için
     // ✅ Canlı maç bilgileri
     isLive: isMatchLive,
@@ -829,16 +1044,19 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
     halftimeScore: halftimeScore,
     status: matchStatus,
   } : null, [
-    // ✅ match objesini dependency'den çıkar çünkü her render'da değişiyor
+    // ✅ currentMatch objesini dependency'e ekle çünkü canlı maçlarda güncelleniyor
     // Sadece gerçekten değişmesi gereken değerleri ekle
-    match?.fixture?.id, // Match ID değiştiğinde yeniden hesapla
-    match?.teams?.home?.id,
-    match?.teams?.away?.id,
-    match?.teams?.home?.name,
-    match?.teams?.away?.name,
-    match?.league?.name,
-    match?.fixture?.venue?.name,
-    match?.fixture?.date, // Date değiştiğinde yeniden hesapla
+    currentMatch?.fixture?.id, // Match ID değiştiğinde yeniden hesapla
+    currentMatch?.teams?.home?.id,
+    currentMatch?.teams?.away?.id,
+    currentMatch?.teams?.home?.name,
+    currentMatch?.teams?.away?.name,
+    currentMatch?.league?.name,
+    currentMatch?.fixture?.venue?.name,
+    currentMatch?.fixture?.date, // Date değiştiğinde yeniden hesapla
+    currentMatch?.goals?.home, // ✅ Canlı skor güncellemesi
+    currentMatch?.goals?.away, // ✅ Canlı skor güncellemesi
+    currentMatch?.fixture?.status?.elapsed, // ✅ Canlı dakika güncellemesi
     homeManager,
     awayManager,
     isMatchLive,
@@ -942,6 +1160,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
             onHasUnsavedChanges={handleSquadUnsavedChanges}
             startingXIPopupShown={startingXIPopupShown}
             onStartingXIPopupShown={() => setStartingXIPopupShown(true)}
+            hasViewedCommunityData={hasViewedCommunityData}
           />
         );
       
@@ -971,14 +1190,15 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
               await checkPredictions(homeId, awayId, bothFavorites);
             }}
             onHasUnsavedChanges={handleHasUnsavedChanges}
+            onViewedCommunityData={() => setHasViewedCommunityData(true)}
           />
         );
       
       case 'live':
-        return <MatchLive matchData={matchData} matchId={matchId} events={events} />;
+        return <MatchLive matchData={matchData} matchId={matchId} events={currentEvents} />;
       
       case 'stats':
-        return <MatchStats matchData={matchData} matchId={matchId} favoriteTeamIds={favoriteTeamIds} />;
+        return <MatchStats matchData={matchData} matchId={matchId} favoriteTeamIds={favoriteTeamIds} events={currentEvents} />;
       
       case 'ratings':
         return <MatchRatings matchData={matchData} lineups={lineups} favoriteTeamIds={favoriteTeamIds} hasPrediction={hasPrediction === true} />;
@@ -1487,6 +1707,84 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
                   onPress={() => setShowMatchEndPopup(false)}
                 >
                   <Text style={matchEndStyles.secondaryButtonText}>Daha Sonra</Text>
+                </TouchableOpacity>
+              </View>
+            </LinearGradient>
+          </View>
+        </View>
+      </Modal>
+      
+      {/* ✅ Reyting Hatırlatıcısı Modal - Biten maçlar için */}
+      <Modal
+        visible={showRatingReminder}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowRatingReminder(false)}
+      >
+        <View style={matchEndStyles.overlay}>
+          <View style={[matchEndStyles.modal, { maxWidth: 340 }]}>
+            <LinearGradient
+              colors={['#1A2F4D', '#0F2A24', '#1A2F4D']}
+              style={matchEndStyles.gradient}
+            >
+              {/* Header */}
+              <View style={matchEndStyles.header}>
+                <Ionicons name="notifications-outline" size={32} color="#F59E0B" />
+                <Text style={[matchEndStyles.title, { fontSize: 20 }]}>Reyting Hatırlatması</Text>
+                <Text style={{ color: '#94A3B8', fontSize: 12, textAlign: 'center', marginTop: 4 }}>
+                  Biten maçlarınız için reyting vermeyi unutmayın!
+                </Text>
+              </View>
+              
+              {/* Biten Maçlar Listesi */}
+              <View style={{ marginVertical: 16 }}>
+                {pendingRatingMatches.map((m, idx) => (
+                  <View key={idx} style={{
+                    backgroundColor: 'rgba(31, 162, 166, 0.1)',
+                    padding: 12,
+                    borderRadius: 8,
+                    marginBottom: 8,
+                    borderLeftWidth: 3,
+                    borderLeftColor: '#1FA2A6',
+                  }}>
+                    <Text style={{ color: '#FFFFFF', fontWeight: '600', fontSize: 13 }}>
+                      {m.teamName}
+                    </Text>
+                    {m.date && (
+                      <Text style={{ color: '#64748B', fontSize: 11, marginTop: 2 }}>
+                        {m.date}
+                      </Text>
+                    )}
+                  </View>
+                ))}
+              </View>
+              
+              {/* Butonlar */}
+              <View style={matchEndStyles.buttonContainer}>
+                <TouchableOpacity
+                  style={matchEndStyles.primaryButton}
+                  onPress={() => {
+                    setShowRatingReminder(false);
+                    // TODO: Biten maçlar listesine yönlendir
+                    // onNavigate?.('finished-matches');
+                  }}
+                >
+                  <LinearGradient
+                    colors={['#F59E0B', '#D97706']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={matchEndStyles.buttonGradient}
+                  >
+                    <Ionicons name="star" size={16} color="#FFFFFF" />
+                    <Text style={matchEndStyles.buttonText}>Reyting Ver</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={matchEndStyles.secondaryButton}
+                  onPress={() => setShowRatingReminder(false)}
+                >
+                  <Text style={matchEndStyles.secondaryButtonText}>Sonra Hatırlat</Text>
                 </TouchableOpacity>
               </View>
             </LinearGradient>

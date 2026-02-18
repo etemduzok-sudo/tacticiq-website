@@ -15,7 +15,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import api from '../services/api';
+import api, { teamsApi } from '../services/api';
 import { useFavoriteTeams } from '../hooks/useFavoriteTeams';
 
 // Platform-safe animation helper (web doesn't support .delay().springify())
@@ -107,81 +107,61 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
     return getTeamColorsUtil(teamName);
   };
 
-  // ✅ Teknik direktör ismini al (2026 Ocak güncel)
-  const getCoachName = (teamName: string): string => {
-    const name = teamName.toLowerCase();
-    // ✅ Fallback liste - Ocak 2026 güncel (web search ile doğrulandı)
-    const coaches: Record<string, string> = {
-      // Türk Takımları (2026 Ocak güncel)
-      'galatasaray': 'Okan Buruk',
-      'fenerbahçe': 'Domenico Tedesco', // ✅ Mourinho ayrıldı, Tedesco geldi
-      'fenerbahce': 'Domenico Tedesco',
-      'beşiktaş': 'Sergen Yalçın', // ✅ Solskjaer ayrıldı, Sergen geldi
-      'besiktas': 'Sergen Yalçın',
-      'trabzonspor': 'Şenol Güneş',
-      'başakşehir': 'Çağdaş Atan',
-      'basaksehir': 'Çağdaş Atan',
-      // La Liga
-      'real madrid': 'Carlo Ancelotti',
-      'barcelona': 'Hansi Flick',
-      'atletico madrid': 'Diego Simeone',
-      'sevilla': 'García Pimienta',
-      'villarreal': 'Marcelino',
-      'real sociedad': 'Imanol Alguacil',
-      // Premier League
-      'manchester city': 'Pep Guardiola',
-      'arsenal': 'Mikel Arteta',
-      'liverpool': 'Arne Slot',
-      'manchester united': 'Ruben Amorim',
-      'chelsea': 'Enzo Maresca',
-      'tottenham': 'Ange Postecoglou',
-      // Bundesliga
-      'bayern munich': 'Vincent Kompany',
-      'bayern': 'Vincent Kompany',
-      'borussia dortmund': 'Nuri Şahin',
-      'dortmund': 'Nuri Şahin',
-      'rb leipzig': 'Marco Rose',
-      'leverkusen': 'Xabi Alonso',
-      'bayer leverkusen': 'Xabi Alonso',
-      // Serie A
-      'juventus': 'Thiago Motta',
-      'inter': 'Simone Inzaghi',
-      'milan': 'Paulo Fonseca',
-      'ac milan': 'Paulo Fonseca',
-      'napoli': 'Antonio Conte',
-      'roma': 'Claudio Ranieri',
-      // Ligue 1
-      'paris saint germain': 'Luis Enrique',
-      'psg': 'Luis Enrique',
-      'marseille': 'Roberto De Zerbi',
-      // Milli Takımlar
-      'türkiye': 'Vincenzo Montella',
-      'turkey': 'Vincenzo Montella',
-      'almanya': 'Julian Nagelsmann',
-      'germany': 'Julian Nagelsmann',
-      'brezilya': 'Dorival Júnior',
-      'brazil': 'Dorival Júnior',
-      'arjantin': 'Lionel Scaloni',
-      'argentina': 'Lionel Scaloni',
-      'fransa': 'Didier Deschamps',
-      'france': 'Didier Deschamps',
-      'ingiltere': 'Thomas Tuchel',
-      'england': 'Thomas Tuchel',
-      'ispanya': 'Luis de la Fuente',
-      'spain': 'Luis de la Fuente',
-      'italya': 'Luciano Spalletti',
-      'italy': 'Luciano Spalletti',
-      'portekiz': 'Roberto Martínez',
-      'portugal': 'Roberto Martínez',
-      'hollanda': 'Ronald Koeman',
-      'netherlands': 'Ronald Koeman',
-      'belçika': 'Domenico Tedesco',
-      'belgium': 'Domenico Tedesco',
+  // ✅ Coach cache (component içinde)
+  const [coachCache, setCoachCache] = useState<Record<number, string>>({});
+  
+  // ✅ Maçlar yüklendiğinde coach verilerini API'den toplu çek
+  useEffect(() => {
+    const fetchCoaches = async () => {
+      const allMatches = [
+        ...(matchData.upcomingMatches || []),
+        ...matchData.liveMatches,
+        ...(matchData.pastMatches || []).slice(0, 10),
+      ];
+      
+      const teamIds: number[] = [];
+      allMatches.forEach(match => {
+        if (match.teams?.home?.id && !coachCache[match.teams.home.id]) {
+          teamIds.push(match.teams.home.id);
+        }
+        if (match.teams?.away?.id && !coachCache[match.teams.away.id]) {
+          teamIds.push(match.teams.away.id);
+        }
+      });
+      
+      const uniqueIds = [...new Set(teamIds)];
+      if (uniqueIds.length === 0) return;
+      
+      try {
+        const response = await teamsApi.getBulkCoaches(uniqueIds);
+        if (response?.success && response?.data) {
+          const newCache: Record<number, string> = { ...coachCache };
+          const coachData = response.data as Record<string, { coach: string | null }>;
+          
+          Object.entries(coachData).forEach(([teamId, data]) => {
+            if (data.coach) {
+              newCache[parseInt(teamId, 10)] = data.coach;
+            }
+          });
+          
+          setCoachCache(newCache);
+        }
+      } catch (error) {
+        logger.warn('Coach fetch failed', { error }, 'MatchListScreen');
+      }
     };
-    for (const [key, coach] of Object.entries(coaches)) {
-      if (name.includes(key)) return coach;
+    
+    if (matchData.hasLoadedOnce && !matchData.loading) {
+      fetchCoaches();
     }
-    return 'Bilinmiyor';
+  }, [matchData.hasLoadedOnce, matchData.loading]);
+  
+  // ✅ Teknik direktör ismini al - cache'ten oku (API'den doldurulur)
+  const getCoachName = (teamName: string, teamId?: number): string => {
+    if (teamId && coachCache[teamId]) {
+      return coachCache[teamId];
+    }
+    return teamId ? '...' : 'Bilinmiyor';
   };
 
   // ✅ Takım adını çevir (milli takımlar için)
@@ -367,7 +347,7 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
               {/* Ev Sahibi Takım */}
               <View style={matchCardStyles.matchCardTeamLeft}>
                 <Text style={matchCardStyles.matchCardTeamName} numberOfLines={1} ellipsizeMode="tail">{getDisplayTeamName(match.teams.home.name)}</Text>
-                <Text style={matchCardStyles.matchCardCoachName}>{getCoachName(match.teams.home.name)}</Text>
+                <Text style={matchCardStyles.matchCardCoachName}>{getCoachName(match.teams.home.name, match.teams.home.id)}</Text>
                 {(status === 'live' || status === 'finished') ? (
                   <View style={status === 'live' ? matchCardStyles.matchCardScoreBoxLive : matchCardStyles.matchCardScoreBox}>
                     <Text style={status === 'live' ? matchCardStyles.matchCardScoreTextLive : matchCardStyles.matchCardScoreText}>{match.goals?.home ?? 0}</Text>
@@ -411,7 +391,7 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
               {/* Deplasman Takım */}
               <View style={matchCardStyles.matchCardTeamRight}>
                 <Text style={[matchCardStyles.matchCardTeamName, matchCardStyles.matchCardTeamNameRight]} numberOfLines={1} ellipsizeMode="tail">{getDisplayTeamName(match.teams.away.name)}</Text>
-                <Text style={matchCardStyles.matchCardCoachNameAway}>{getCoachName(match.teams.away.name)}</Text>
+                <Text style={matchCardStyles.matchCardCoachNameAway}>{getCoachName(match.teams.away.name, match.teams.away.id)}</Text>
                 {(status === 'live' || status === 'finished') ? (
                   <View style={status === 'live' ? matchCardStyles.matchCardScoreBoxLive : matchCardStyles.matchCardScoreBox}>
                     <Text style={status === 'live' ? matchCardStyles.matchCardScoreTextLive : matchCardStyles.matchCardScoreText}>{match.goals?.away ?? 0}</Text>

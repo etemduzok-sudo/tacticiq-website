@@ -230,6 +230,8 @@ interface MatchPredictionScreenProps {
   isMatchFinished?: boolean;
   /** Kullanıcı bu maç için tahmin yapmış mı (topluluk verileri görünürlüğü için) */
   hasPrediction?: boolean;
+  /** ✅ Topluluk verilerini gördüğünde MatchDetail'a bildir (kadro kilidi için) */
+  onViewedCommunityData?: () => void;
 }
 
 // Mock Formation Data
@@ -407,6 +409,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
   hasPrediction = false,
   isMatchLive = false,
   isMatchFinished = false,
+  onViewedCommunityData,
 }) => {
   const { width: winW, height: winH } = useWindowDimensions();
   
@@ -482,6 +485,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
   const [hasViewedCommunityData, setHasViewedCommunityData] = useState(false); // ✅ Topluluk verilerini gördü mü? (kalıcı kilit)
   const [showCommunityConfirmModal, setShowCommunityConfirmModal] = useState(false); // ✅ Topluluk verileri görmek için onay modal'ı
   const [independentPredictionBonus, setIndependentPredictionBonus] = useState(true); // ✅ Bağımsız tahmin bonusu aktif mi?
+  const [madeAfterCommunityViewed, setMadeAfterCommunityViewed] = useState(false); // ✅ Topluluk verilerini gördükten sonra silip yeni tahmin yaptı mı? (%80 puan kaybı)
   
   // ✅ OYUNCU BİLGİ POPUP - Web için Alert yerine Modal
   const [playerInfoPopup, setPlayerInfoPopup] = useState<{
@@ -1187,9 +1191,29 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
             setIndependentPredictionBonus(false);
           }
         }
+        
+        // ✅ TOPLULUK GÖRDÜKTEN SONRA YENİ TAHMİN - madeAfterCommunityViewed yükle
+        // Bu değer true ise kullanıcı topluluk verilerini gördükten sonra silip yeni tahmin yapmış
+        if (parsed.madeAfterCommunityViewed !== undefined) {
+          setMadeAfterCommunityViewed(parsed.madeAfterCommunityViewed === true);
+        }
         // ✅ İlk yükleme tamamlandı - artık değişiklikleri takip edebiliriz
         setTimeout(() => setInitialPredictionsLoaded(true), 100);
       } catch (_) {
+        // ✅ Tahmin verisi yoksa, kullanıcı daha önce topluluk verilerini görüp silmiş mi kontrol et
+        // Eğer görüp silmişse, yeni tahmin %80 puan kaybına uğrar
+        try {
+          const communityViewedKey = `community_viewed_${matchData?.id}${predictionTeamId != null ? `-${predictionTeamId}` : ''}`;
+          const communityViewedData = await AsyncStorage.getItem(communityViewedKey);
+          if (communityViewedData) {
+            const parsed = JSON.parse(communityViewedData);
+            if (parsed.hadViewedCommunityData === true) {
+              setMadeAfterCommunityViewed(true);
+              setIndependentPredictionBonus(false);
+              console.log('⚠️ Kullanıcı topluluk verilerini gördükten sonra tahmini silmiş - yeni tahmin %80 puan kaybı');
+            }
+          }
+        } catch (__) {}
         setInitialPredictionsLoaded(true);
       }
     };
@@ -1340,7 +1364,11 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
       const hasPlayerPredictions = Object.keys(cleanedPlayerPredictions).length > 0;
 
       if (!hasMatchPredictions && !hasPlayerPredictions) {
-        Alert.alert('Uyarı!', 'Lütfen en az bir tahmin yapın.');
+        Alert.alert(
+          'Tahmin Yapılmadı',
+          'Henüz hiçbir tahmin yapmadınız.\n\nAşağıdakilerden en az birini yapabilirsiniz:\n\n• Maç sonu skoru tahmini\n• Toplam gol tahmini\n• Kadro oluşturup oyuncu tahminleri',
+          [{ text: 'Tamam', style: 'default' }]
+        );
         return;
       }
       
@@ -1370,7 +1398,8 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
         selectedAnalysisFocus: selectedAnalysisFocus, // 🎯 Seçilen analiz odağı
         isPredictionLocked: true, // ✅ Kaydedildi = kilitli
         hasViewedCommunityData: hasViewedCommunityData, // ✅ Topluluk verileri görüldü mü?
-        independentPredictionBonus: !hasViewedCommunityData, // ✅ Bağımsız tahmin bonusu (+%10)
+        independentPredictionBonus: !hasViewedCommunityData && !madeAfterCommunityViewed, // ✅ Bağımsız tahmin bonusu (+%10) - topluluk görüp silip yaptıysa yok
+        madeAfterCommunityViewed: madeAfterCommunityViewed, // ✅ Topluluk gördükten sonra silip yeni tahmin yaptı mı? (%80 puan kaybı)
         timestamp: new Date().toISOString(),
       };
       
@@ -1524,21 +1553,15 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
       return;
     }
     
-    // ✅ Tahminler kilitliyse ama topluluk verilerini görmemişse:
-    // SADECE ANALİZ ODAĞI KATEGORİLERİ değiştirilebilir (maç başlayana kadar)
-    if (isPredictionLocked && !isMatchLive && !isMatchFinished) {
-      const isInAnalysisFocus = isCategoryInSelectedFocus(category);
-      if (!isInAnalysisFocus) {
-        // Analiz odağı dışındaki kategoriler için kilit uyarısı göster
-        setShowLockedWarningModal(true);
-        return;
-      }
-      // Analiz odağındaki kategoriler değiştirilebilir - devam et
-    } else if (isPredictionLocked) {
-      // Maç başladıysa veya bittiyse, tüm tahminler kilitli
+    // ✅ Maç başladıysa veya bittiyse - tüm tahminler kilitli
+    if (isMatchLive || isMatchFinished) {
       setShowLockedWarningModal(true);
       return;
     }
+    
+    // ✅ TOPLULUK VERİLERİNİ GÖRMEDİYSE - TÜM TAHMİNLER DEĞİŞTİRİLEBİLİR
+    // Kilit durumuna bakılmaksızın, kullanıcı maç başlamadan önce istediği tahmini değiştirebilir
+    // (Topluluk verilerini görmediği sürece)
     
     // ✅ Değişiklik yapıldı - kaydedilmemiş değişiklik var
     if (initialPredictionsLoaded) setHasUnsavedChanges(true);
@@ -1839,13 +1862,14 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
               const showPlayers = isSquadCompleted && attackPlayersArray.length === 11 && attackFormation;
               
               if (!showPlayers) {
-                // ✅ Kadro tamamlanmadıysa uyarı göster
+                // ✅ Kadro tamamlanmadıysa boş saha göster (bilgi mesajı ile)
+                // Kullanıcı yine de aşağıdaki "Maça Ait Tahminler" bölümünü kullanabilir
                 return (
                   <View style={styles.squadIncompleteWarning}>
-                    <Ionicons name="football-outline" size={48} color="rgba(31, 162, 166, 0.6)" />
-                    <Text style={styles.squadIncompleteTitle}>Kadro Tamamlanmadı</Text>
-                    <Text style={styles.squadIncompleteText}>
-                      Tahmin yapabilmek için önce Kadro sekmesinden{'\n'}formasyonunuzu ve 11 oyuncunuzu seçin.
+                    <Ionicons name="football-outline" size={40} color="rgba(31, 162, 166, 0.4)" />
+                    <Text style={[styles.squadIncompleteTitle, { fontSize: 14, marginTop: 8 }]}>Kadro Oluşturulmadı</Text>
+                    <Text style={[styles.squadIncompleteText, { fontSize: 11, opacity: 0.7 }]}>
+                      Oyuncu tahminleri için Kadro sekmesinden{'\n'}kadronuzu oluşturun (isteğe bağlı)
                     </Text>
                   </View>
                 );
@@ -3085,12 +3109,35 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
             // Normal Mod - Kilit ve Kaydet butonları
             <View style={styles.predictionToolbar}>
               {/* Kilit Butonu - Solda (sadece aç/kapat, kaydetme yapmaz) */}
+              {/* ✅ Topluluk verileri görüldüyse kilit kalıcı olarak kilitli - buton devre dışı */}
               <TouchableOpacity
                 style={[
                   styles.predictionLockButton,
-                  isPredictionLocked ? styles.predictionLockButtonLocked : styles.predictionLockButtonOpen
+                  isPredictionLocked ? styles.predictionLockButtonLocked : styles.predictionLockButtonOpen,
+                  hasViewedCommunityData && { opacity: 0.5 } // Topluluk görüldüyse soluk
                 ]}
                 onPress={async () => {
+                  // ✅ TOPLULUK VERİLERİ GÖRÜLDÜYse KİLİT AÇILAMAZ
+                  if (hasViewedCommunityData) {
+                    setShowLockedWarningModal(true);
+                    return;
+                  }
+                  
+                  // ✅ Tahmin yoksa kilitleme yapılamaz
+                  const hasAnyPrediction = hasPrediction || 
+                    (matchPredictions && Object.values(matchPredictions).some(v => v !== null)) ||
+                    (playerPredictions && Object.keys(playerPredictions).length > 0);
+                  
+                  if (!hasAnyPrediction && !isPredictionLocked) {
+                    // Kilit açmak değil, kilitlemek istiyorsa ve tahmin yoksa uyarı göster
+                    Alert.alert(
+                      '⚠️ Tahmin Yapılmadı',
+                      'Henüz hiçbir tahmin yapmadınız. Kilitlemek için önce tahmin yapmanız gerekir.\n\n• Maç tahminlerini yapın veya\n• Kadro oluşturun veya\n• Oyuncu tahminlerini yapın',
+                      [{ text: 'Tamam', style: 'default' }]
+                    );
+                    return;
+                  }
+                  
                   // ✅ Kilit durumunu değiştir ve AsyncStorage'a kaydet
                   const newLockState = !isPredictionLocked;
                   setIsPredictionLocked(newLockState);
@@ -3108,7 +3155,8 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                     console.warn('Kilit durumu kaydedilemedi:', error);
                   }
                 }}
-                activeOpacity={0.7}
+                activeOpacity={hasViewedCommunityData ? 1 : 0.7}
+                disabled={hasViewedCommunityData} // Topluluk görüldüyse tıklanamaz
               >
                 <Ionicons 
                   name={isPredictionLocked ? "lock-closed" : "lock-open"} 
@@ -3119,7 +3167,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
 
               {/* Kaydet Butonu - Sağda (flex: 1) */}
               {/* ✅ Bağımsız Tahmin Bonusu Badge */}
-              {independentPredictionBonus && !hasViewedCommunityData && hasPrediction && (
+              {independentPredictionBonus && !hasViewedCommunityData && !madeAfterCommunityViewed && hasPrediction && (
                 <View style={{
                   backgroundColor: 'rgba(245, 158, 11, 0.15)',
                   paddingHorizontal: 10,
@@ -3133,6 +3181,24 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                 }}>
                   <Ionicons name="star" size={14} color="#F59E0B" />
                   <Text style={{ fontSize: 11, fontWeight: '600', color: '#F59E0B' }}>+10%</Text>
+                </View>
+              )}
+              
+              {/* ⚠️ Topluluk Verilerini Gördükten Sonra Yeni Tahmin - %80 Puan Kaybı Uyarısı */}
+              {madeAfterCommunityViewed && (
+                <View style={{
+                  backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                  paddingHorizontal: 10,
+                  paddingVertical: 6,
+                  borderRadius: 8,
+                  borderWidth: 1,
+                  borderColor: 'rgba(239, 68, 68, 0.3)',
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 4,
+                }}>
+                  <Ionicons name="warning" size={14} color="#EF4444" />
+                  <Text style={{ fontSize: 10, fontWeight: '600', color: '#EF4444' }}>%80 Puan Kaybı</Text>
                 </View>
               )}
 
@@ -4328,6 +4394,9 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                     setHasViewedCommunityData(true);
                     setIndependentPredictionBonus(false);
                     setShowCommunityConfirmModal(false);
+                    
+                    // ✅ Parent'a bildir (kadro kilidi için)
+                    onViewedCommunityData?.();
                     
                     // AsyncStorage'a kaydet
                     try {
@@ -5887,11 +5956,11 @@ const styles = StyleSheet.create({
       },
     }),
   },
-  // ✅ KIRMIZI DAİRE İÇİNDE "i" BUTONU - Oyuncu kartları için
+  // ✅ KIRMIZI DAİRE İÇİNDE "i" BUTONU - Oyuncu kartları için (SOL ÜST KÖŞE)
   predictionCardInfoIconRed: {
     position: 'absolute',
     top: -8,
-    right: -8,
+    left: -8, // ✅ Sol üst köşe - sağ üstteki tik ile simetrik
     zIndex: 15,
     width: 22,
     height: 22,

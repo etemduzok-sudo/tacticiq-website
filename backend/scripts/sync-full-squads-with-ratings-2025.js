@@ -60,7 +60,7 @@ const headers = {
   'x-rapidapi-host': 'v3.football.api-sports.io',
 };
 
-const CURRENT_SEASON = 2024; // 2025 sezonu için henüz veri yok, 2024 kullanıyoruz
+const CURRENT_SEASON = 2025; // 2025-26 sezonu
 const API_LIMIT = 7350; // Kullanıcının API limiti
 const API_RESERVE = 50; // Yedek bırak
 const MAX_API_CALLS = API_LIMIT - API_RESERVE; // 7300 kullanılabilir
@@ -219,7 +219,7 @@ function calculatePlayerAttributes(playerStats) {
  */
 async function fetchTeamsForLeague(leagueId, leagueName) {
   // Birden fazla sezon dene (bazı ligler için 2024, bazıları için 2023 gerekebilir)
-  const seasonsToTry = [2024, 2023, 2025];
+  const seasonsToTry = [2025, 2024]; // Önce 2025, yoksa 2024
   
   for (const season of seasonsToTry) {
     try {

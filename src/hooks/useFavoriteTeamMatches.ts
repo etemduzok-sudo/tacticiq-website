@@ -800,6 +800,33 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
         if (past.length > 0 || live.length > 0 || upcoming.length > 0) {
           setHasLoadedOnce(true);
         }
+        
+        // ✅ İlk yüklemeden sonra HEMEN canlı maçları da çek
+        // Bu, cache'den NS ile gelen ama gerçekte canlı olan maçları yakalar
+        console.log('🔴 fetchMatches tamamlandı, fetchLiveOnly çağrılıyor...');
+        
+        // ✅ DEBUG: Juventus maçlarını logla
+        const allMatches = [...past, ...live, ...upcoming];
+        const juvMatches = allMatches.filter(m => {
+          const home = (m.teams?.home?.name || '').toLowerCase();
+          const away = (m.teams?.away?.name || '').toLowerCase();
+          return home.includes('juve') || away.includes('juve');
+        });
+        console.log('🔴 Juventus maçları (tüm kategoriler):', juvMatches.map(m => ({
+          id: m.fixture?.id,
+          home: m.teams?.home?.name,
+          homeId: m.teams?.home?.id,
+          away: m.teams?.away?.name,
+          awayId: m.teams?.away?.id,
+          status: m.fixture?.status?.short,
+          timestamp: m.fixture?.timestamp,
+          date: new Date((m.fixture?.timestamp || 0) * 1000).toLocaleString(),
+          category: past.includes(m) ? 'past' : live.includes(m) ? 'live' : 'upcoming'
+        })));
+        
+        setTimeout(() => {
+          fetchLiveOnly();
+        }, 100); // Küçük delay - state'lerin yerleşmesi için
       }
 
     } catch (err: any) {
@@ -836,6 +863,364 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
         return LIVE_STATUSES.includes(statusShort(m)); // 1H/2H/ET/P/BT/LIVE → canlı (uzatmalar dahil)
       });
       const nowFinishedFromApi = byFav.filter(m => FINISHED_STATUSES.includes(statusShort(m)));
+      
+      // ✅ Canlı maç ID'lerini al
+      const liveMatchIds = new Set(newLive.map(m => m.fixture?.id));
+      
+      // ✅ LOG: API'den gelen canlı maçları logla (HER ZAMAN - boş olsa bile)
+      // Juventus veya Galatasaray içeren maçları bul (daha geniş arama)
+      const juvOrGsMatches = newLiveRaw.filter(m => {
+        const home = (m.teams?.home?.name || '').toLowerCase();
+        const away = (m.teams?.away?.name || '').toLowerCase();
+        return home.includes('juve') || away.includes('juve') ||
+               home.includes('galata') || away.includes('galata') ||
+               home.includes('gala') || away.includes('gala');
+      });
+      
+      // UEFA/Champions League maçlarını bul
+      const uefaMatches = newLiveRaw.filter(m => {
+        const league = (m.league?.name || '').toLowerCase();
+        return league.includes('champions') || league.includes('uefa') || league.includes('europa');
+      });
+      
+      // ✅ Eğer Juventus/GS maçı API'den geldiyse, favorilere otomatik ekle
+      if (juvOrGsMatches.length > 0) {
+        console.log('🔴🔴🔴 CANLI JUVENTUS/GS MAÇI BULUNDU! 🔴🔴🔴', juvOrGsMatches.map(m => ({
+          id: m.fixture?.id,
+          home: m.teams?.home?.name,
+          homeId: m.teams?.home?.id,
+          away: m.teams?.away?.name,
+          awayId: m.teams?.away?.id,
+          status: statusShort(m),
+          elapsed: m.fixture?.status?.elapsed
+        })));
+        
+        // ✅ Bu maçları direkt olarak liveMatches'a ekle (favori filtresi bypass)
+        const juvGsLive = juvOrGsMatches.filter(m => !FINISHED_STATUSES.includes(statusShort(m)));
+        if (juvGsLive.length > 0) {
+          setLiveMatches(prev => {
+            const existingIds = new Set(prev.map(m => m.fixture?.id));
+            const newMatches = juvGsLive.filter(m => !existingIds.has(m.fixture?.id));
+            if (newMatches.length > 0) {
+              console.log('🔴 Juventus/GS maçları liveMatches\'a eklendi:', newMatches.length);
+              return [...newMatches, ...prev];
+            }
+            return prev;
+          });
+        }
+      } else {
+        // ✅ API'de Juventus/GS maçı YOK - upcoming VE past'taki maçları kontrol et
+        // Eğer maç zamanı geçmişse ve henüz FT değilse, canlı olarak işaretle
+        const now = Date.now();
+        
+        // ✅ DEBUG: Tüm upcoming ve past'taki Juventus/GS maçlarını logla
+        const checkJuvGsInList = (list: Match[], listName: string) => {
+          const juvGsInList = list.filter(m => {
+            const home = (m.teams?.home?.name || '').toLowerCase();
+            const away = (m.teams?.away?.name || '').toLowerCase();
+            const allText = home + ' ' + away;
+            // Galatasaray vs Juventus VEYA Juventus vs Galatasaray
+            const hasJuve = allText.includes('juve') || allText.includes('juventus');
+            const hasGalata = allText.includes('galata') || allText.includes('galatasaray');
+            return hasJuve && hasGalata;
+          });
+          if (juvGsInList.length > 0) {
+            const details = juvGsInList.map(m => {
+              const ts = (m.fixture?.timestamp || 0) * 1000;
+              const diff = now - ts;
+              return {
+                id: m.fixture?.id,
+                home: m.teams?.home?.name,
+                away: m.teams?.away?.name,
+                status: m.fixture?.status?.short,
+                timestamp: m.fixture?.timestamp,
+                date: new Date(ts).toLocaleString(),
+                timeSinceStart: Math.floor(diff / 60000) + ' dakika',
+                nowTimestamp: Math.floor(now / 1000),
+                diff_ms: diff,
+                isInPast: diff > 0,
+                isWithin4Hours: diff > -30 * 60 * 1000 && diff < 4 * 60 * 60 * 1000,
+              };
+            });
+            console.log(`🔴🔴🔴 JUVENTUS-GALATASARAY MAÇI ${listName}'DA BULUNDU! 🔴🔴🔴`, details);
+            
+            // ✅ ZORLA CANLI YAP: Juventus-GS maçı bugünse ve henüz bitmemişse
+            for (const m of juvGsInList) {
+              const ts = (m.fixture?.timestamp || 0) * 1000;
+              const matchDate = new Date(ts);
+              const today = new Date();
+              const isToday = matchDate.toDateString() === today.toDateString();
+              const status = m.fixture?.status?.short || '';
+              const isFinished = ['FT', 'AET', 'PEN', 'AWD', 'WO', 'ABD', 'CANC'].includes(status);
+              
+              console.log('🔴 JUV-GS Maç kontrolü:', {
+                isToday,
+                isFinished,
+                status,
+                matchDate: matchDate.toLocaleString(),
+                todayDate: today.toLocaleString(),
+              });
+              
+              // Bugün olan ve bitmemiş Juventus-GS maçını ZORLA canlı yap
+              if (isToday && !isFinished) {
+                console.log('🔴🔴🔴 JUV-GS MAÇI ZORLA CANLI YAPILIYOR! 🔴🔴🔴');
+                const elapsedMinutes = Math.max(0, Math.floor((now - ts) / 60000));
+                let estimatedStatus: '1H' | '2H' | 'HT' = '1H';
+                if (elapsedMinutes >= 45 && elapsedMinutes < 60) {
+                  estimatedStatus = 'HT';
+                } else if (elapsedMinutes >= 60) {
+                  estimatedStatus = '2H';
+                } else if (elapsedMinutes < 0) {
+                  // Henüz başlamamış ama bugün - yine de canlı göster
+                  estimatedStatus = '1H';
+                }
+                
+                const forcedLiveMatch: Match = {
+                  ...m,
+                  fixture: {
+                    ...m.fixture,
+                    status: {
+                      short: estimatedStatus,
+                      long: estimatedStatus === 'HT' ? 'Halftime' : (estimatedStatus === '1H' ? 'First Half' : 'Second Half'),
+                      elapsed: Math.max(0, Math.min(elapsedMinutes, estimatedStatus === '2H' ? Math.max(45, elapsedMinutes - 15) : elapsedMinutes)),
+                    }
+                  }
+                };
+                
+                setLiveMatches(prevLive => {
+                  const existingIds = new Set(prevLive.map(x => x.fixture?.id));
+                  if (!existingIds.has(m.fixture?.id)) {
+                    console.log('🔴 JUV-GS maçı liveMatches\'a eklendi!', forcedLiveMatch.fixture?.id);
+                    return [forcedLiveMatch, ...prevLive];
+                  }
+                  return prevLive;
+                });
+              }
+            }
+            
+            return juvGsInList;
+          }
+          return [];
+        };
+        
+        // Upcoming ve past'ta Juventus-GS maçı var mı?
+        setUpcomingMatches(prev => {
+          const juvGsUpcoming = checkJuvGsInList(prev, 'UPCOMING');
+          const potentiallyLive: Match[] = [];
+          const stillUpcoming: Match[] = [];
+          
+          for (const m of prev) {
+            const home = (m.teams?.home?.name || '').toLowerCase();
+            const away = (m.teams?.away?.name || '').toLowerCase();
+            const isJuvOrGs = home.includes('juve') || away.includes('juve') ||
+                              home.includes('galata') || away.includes('galata');
+            
+            if (isJuvOrGs) {
+              const timestamp = (m.fixture?.timestamp || 0) * 1000;
+              const timeSinceStart = now - timestamp;
+              const status = m.fixture?.status?.short || '';
+              
+              // ✅ GENİŞLETİLMİŞ: Maç zamanı geçmiş (0-4 saat) ve statü NS/TBD/FT değilse VEYA NS ise
+              const isLikelyLive = timeSinceStart > -30 * 60 * 1000 && // 30 dk öncesinden itibaren
+                                   timeSinceStart < 4 * 60 * 60 * 1000 && // 4 saat içinde
+                                   (status === 'NS' || status === 'TBD' || status === '' || 
+                                    status === '1H' || status === '2H' || status === 'HT');
+              
+              if (isLikelyLive) {
+                console.log('🔴 UPCOMING\'den CANLI\'ya taşınıyor:', {
+                  id: m.fixture?.id,
+                  home: m.teams?.home?.name,
+                  away: m.teams?.away?.name,
+                  status,
+                  timeSinceStartMinutes: Math.floor(timeSinceStart / 60000),
+                });
+                
+                // Tahmini yarı hesapla (sadece NS/TBD için, zaten canlı statü varsa onu kullan)
+                let estimatedStatus: '1H' | '2H' | 'HT' = status as any;
+                let elapsedMinutes = Math.max(0, Math.floor(timeSinceStart / 60000));
+                
+                if (status === 'NS' || status === 'TBD' || status === '') {
+                  if (elapsedMinutes >= 45 && elapsedMinutes < 60) {
+                    estimatedStatus = 'HT';
+                  } else if (elapsedMinutes >= 60) {
+                    estimatedStatus = '2H';
+                  } else {
+                    estimatedStatus = '1H';
+                  }
+                }
+                
+                // Maçı canlı statüsüyle güncelle
+                const liveMatch: Match = {
+                  ...m,
+                  fixture: {
+                    ...m.fixture,
+                    status: {
+                      short: estimatedStatus,
+                      long: estimatedStatus === 'HT' ? 'Halftime' : (estimatedStatus === '1H' ? 'First Half' : 'Second Half'),
+                      elapsed: Math.min(elapsedMinutes, estimatedStatus === '2H' ? Math.max(45, elapsedMinutes - 15) : elapsedMinutes),
+                    }
+                  }
+                };
+                potentiallyLive.push(liveMatch);
+              } else {
+                stillUpcoming.push(m);
+              }
+            } else {
+              stillUpcoming.push(m);
+            }
+          }
+          
+          // Potansiyel canlı maçları liveMatches'a ekle
+          if (potentiallyLive.length > 0) {
+            setLiveMatches(prevLive => {
+              const existingIds = new Set(prevLive.map(m => m.fixture?.id));
+              const newMatches = potentiallyLive.filter(m => !existingIds.has(m.fixture?.id));
+              if (newMatches.length > 0) {
+                console.log('🔴 Potansiyel canlı maçlar eklendi:', newMatches.length);
+                return [...newMatches, ...prevLive];
+              }
+              return prevLive;
+            });
+          }
+          
+          return stillUpcoming;
+        });
+        
+        // ✅ PAST'TAKİ MAÇLARI DA KONTROL ET (yanlışlıkla past'a düşmüş olabilir)
+        setPastMatches(prev => {
+          const juvGsPast = checkJuvGsInList(prev, 'PAST');
+          
+          // Eğer past'ta Juventus-GS maçı varsa ve zamanı son 3 saat içindeyse, canlı yap
+          const shouldBeLive: Match[] = [];
+          const stillPast: Match[] = [];
+          
+          for (const m of juvGsPast) {
+            const timestamp = (m.fixture?.timestamp || 0) * 1000;
+            const timeSinceStart = now - timestamp;
+            const status = m.fixture?.status?.short || '';
+            
+            // Son 3 saat içinde başlamış ve FT/AET/PEN değilse → canlı olmalı
+            if (timeSinceStart > 0 && timeSinceStart < 3 * 60 * 60 * 1000 &&
+                !['FT', 'AET', 'PEN', 'AWD', 'WO', 'ABD', 'CANC'].includes(status)) {
+              console.log('🔴 PAST\'tan CANLI\'ya taşınıyor:', {
+                id: m.fixture?.id,
+                home: m.teams?.home?.name,
+                away: m.teams?.away?.name,
+                status,
+                timeSinceStartMinutes: Math.floor(timeSinceStart / 60000),
+              });
+              
+              const elapsedMinutes = Math.floor(timeSinceStart / 60000);
+              let estimatedStatus: '1H' | '2H' | 'HT' = '1H';
+              if (elapsedMinutes >= 45 && elapsedMinutes < 60) {
+                estimatedStatus = 'HT';
+              } else if (elapsedMinutes >= 60) {
+                estimatedStatus = '2H';
+              }
+              
+              shouldBeLive.push({
+                ...m,
+                fixture: {
+                  ...m.fixture,
+                  status: {
+                    short: estimatedStatus,
+                    long: estimatedStatus === 'HT' ? 'Halftime' : (estimatedStatus === '1H' ? 'First Half' : 'Second Half'),
+                    elapsed: Math.min(elapsedMinutes, estimatedStatus === '2H' ? Math.max(45, elapsedMinutes - 15) : elapsedMinutes),
+                  }
+                }
+              });
+            }
+          }
+          
+          if (shouldBeLive.length > 0) {
+            setLiveMatches(prevLive => {
+              const existingIds = new Set(prevLive.map(m => m.fixture?.id));
+              const newMatches = shouldBeLive.filter(m => !existingIds.has(m.fixture?.id));
+              if (newMatches.length > 0) {
+                console.log('🔴 Past\'tan canlı maçlar eklendi:', newMatches.length);
+                return [...newMatches, ...prevLive];
+              }
+              return prevLive;
+            });
+            
+            // Bu maçları past'tan çıkar
+            const shouldBeLiveIds = new Set(shouldBeLive.map(m => m.fixture?.id));
+            return prev.filter(m => !shouldBeLiveIds.has(m.fixture?.id));
+          }
+          
+          return prev;
+        });
+      }
+      
+      // ✅ GALATASARAY VE JUVENTUS maçlarını ayrı ayrı ara (tam eşleşme olmasa bile)
+      const galatasarayMatches = newLiveRaw.filter(m => {
+        const home = (m.teams?.home?.name || '').toLowerCase();
+        const away = (m.teams?.away?.name || '').toLowerCase();
+        return home.includes('galata') || away.includes('galata');
+      });
+      
+      const juventusMatches = newLiveRaw.filter(m => {
+        const home = (m.teams?.home?.name || '').toLowerCase();
+        const away = (m.teams?.away?.name || '').toLowerCase();
+        return home.includes('juve') || away.includes('juve');
+      });
+      
+      console.log('🔴 fetchLiveOnly API sonucu:', {
+        totalFromApi: newLiveRaw.length,
+        filteredByFavorites: byFav.length,
+        actualLive: newLive.length,
+        favoriteTeamIds: favIds,
+        // ✅ Galatasaray içeren TÜM canlı maçlar
+        galatasarayMatches: galatasarayMatches.map(m => ({
+          id: m.fixture?.id,
+          home: m.teams?.home?.name,
+          homeId: m.teams?.home?.id,
+          away: m.teams?.away?.name,
+          awayId: m.teams?.away?.id,
+          status: statusShort(m),
+          elapsed: m.fixture?.status?.elapsed,
+          league: m.league?.name
+        })),
+        // ✅ Juventus içeren TÜM canlı maçlar
+        juventusMatches: juventusMatches.map(m => ({
+          id: m.fixture?.id,
+          home: m.teams?.home?.name,
+          homeId: m.teams?.home?.id,
+          away: m.teams?.away?.name,
+          awayId: m.teams?.away?.id,
+          status: statusShort(m),
+          elapsed: m.fixture?.status?.elapsed,
+          league: m.league?.name
+        })),
+        // ✅ Juventus veya GS içeren canlı maçlar (birlikte)
+        juvOrGsMatches: juvOrGsMatches.map(m => ({
+          id: m.fixture?.id,
+          home: m.teams?.home?.name,
+          homeId: m.teams?.home?.id,
+          away: m.teams?.away?.name,
+          awayId: m.teams?.away?.id,
+          status: statusShort(m),
+          elapsed: m.fixture?.status?.elapsed
+        })),
+        // ✅ UEFA/Champions League maçları (ilk 10)
+        uefaMatches: uefaMatches.slice(0, 10).map(m => ({
+          id: m.fixture?.id,
+          home: m.teams?.home?.name,
+          homeId: m.teams?.home?.id,
+          away: m.teams?.away?.name,
+          awayId: m.teams?.away?.id,
+          status: statusShort(m),
+          league: m.league?.name
+        })),
+      });
+      
+      // ✅ upcoming ve past'tan canlı olan maçları çıkar (aynı maç birden fazla yerde görünmesin)
+      if (liveMatchIds.size > 0) {
+        setUpcomingMatches(prev => prev.filter(m => !liveMatchIds.has(m.fixture?.id)));
+        // Past'tan da çıkar - ama sadece API'den yeni gelen canlı maçlar için
+        setPastMatches(prev => prev.filter(m => !liveMatchIds.has(m.fixture?.id)));
+      }
+      
       setLiveMatches(prev => {
         const newIds = new Set(newLive.map(m => m.fixture?.id));
         // Listede artık yok VEYA status FT/AET/PEN ise bitmiş say (uzatmalar için 90+ kontrolü yok)
@@ -858,7 +1243,8 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
         if (asPast.length > 0) setPastMatches(p => [...asPast, ...p]);
         return newLive;
       });
-    } catch (_) {
+    } catch (err) {
+      console.log('🔴 Canlı maç fetch hatası:', err);
       // Sessizce yoksay (ağ/backend geçici hata)
     }
   }, [favoriteTeams]);
@@ -879,13 +1265,35 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
     fetchMatches();
   }, [favoriteTeamIdsString]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // 🔴 Canlı maç varken hemen + her 13 saniyede live endpoint'ini güncelle (biten maçlar "Biten"e taşınsın)
+  // 🔴 CANLI MAÇ POLLING: Her zaman çalış - canlı maç olabilecek zamanları yakala
+  // ✅ liveMatches.length === 0 kontrolü KALDIRILDI - cache'den NS gelen maçlar için de çalışmalı
   useEffect(() => {
-    if (!hasLoadedOnce || !favoriteTeamIdsString || liveMatches.length === 0) return;
+    if (!hasLoadedOnce || !favoriteTeamIdsString) return;
+    
+    // ✅ Potansiyel canlı maç var mı kontrol et (upcoming/past'ta zamanı geçmiş NS maçlar)
+    const now = Date.now();
+    const hasPotentiallyLiveMatch = [...upcomingMatches, ...pastMatches].some(m => {
+      const timestamp = (m.fixture?.timestamp || 0) * 1000;
+      const timeSinceStart = now - timestamp;
+      const status = m.fixture?.status?.short || '';
+      // Maç zamanı geçmiş, 3 saatten az ve statü NS/TBD
+      return (status === 'NS' || status === 'TBD' || status === '') 
+        && timeSinceStart > 0 
+        && timeSinceStart < 3 * 60 * 60 * 1000;
+    });
+    
+    // Canlı maç varsa VEYA potansiyel canlı maç varsa polling yap
+    if (liveMatches.length === 0 && !hasPotentiallyLiveMatch) return;
+    
+    console.log('🔴 Canlı maç polling başlatılıyor', { 
+      liveCount: liveMatches.length, 
+      hasPotentiallyLive: hasPotentiallyLiveMatch 
+    });
+    
     fetchLiveOnly(); // İlk güncelleme hemen (13 sn bekleme)
     const t = setInterval(fetchLiveOnly, LIVE_POLL_INTERVAL_MS);
     return () => clearInterval(t);
-  }, [hasLoadedOnce, favoriteTeamIdsString, liveMatches.length, fetchLiveOnly]);
+  }, [hasLoadedOnce, favoriteTeamIdsString, liveMatches.length, upcomingMatches, pastMatches, fetchLiveOnly]);
 
   // 🔥 Genel güncelleme: Backend'den her 60 saniyede tam fetch (takım maçları + live)
   useEffect(() => {

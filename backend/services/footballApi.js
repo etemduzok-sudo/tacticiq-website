@@ -332,7 +332,7 @@ async function getFixturesByDateRange(fromDate, toDate) {
 }
 
 // Get fixtures by league
-async function getFixturesByLeague(leagueId, season = 2024) {
+async function getFixturesByLeague(leagueId, season = 2025) {
   const data = await makeRequest('/fixtures', { league: leagueId, season }, `fixtures-league-${leagueId}-${season}`, 3600);
   if (data.response && data.response.length > 0) {
     const filtered = filterMatches(data.response);
@@ -346,8 +346,12 @@ async function getFixturesByLeague(leagueId, season = 2024) {
 }
 
 // Get fixtures by team (only top leagues, UEFA/FIFA, and local cups)
-async function getFixturesByTeam(teamId, season = 2025) { // 2025-26 sezonu
-  const data = await makeRequest('/fixtures', { team: teamId, season }, `fixtures-team-${teamId}-${season}`, 3600);
+// last: sadece son N maçı getir (varsayılan: tüm sezon)
+async function getFixturesByTeam(teamId, season = 2025, last = null) { // 2025-26 sezonu
+  const params = { team: teamId, season };
+  if (last) params.last = last;
+  const cacheKey = last ? `fixtures-team-${teamId}-${season}-last${last}` : `fixtures-team-${teamId}-${season}`;
+  const data = await makeRequest('/fixtures', params, cacheKey, last ? 300 : 3600); // last varsa 5dk cache
   
   // ✅ Ortak filtreleme fonksiyonunu kullan
   if (data.response && data.response.length > 0) {
@@ -363,30 +367,51 @@ async function getFixturesByTeam(teamId, season = 2025) { // 2025-26 sezonu
 }
 
 // Get fixture details
-async function getFixtureDetails(fixtureId) {
-  return makeRequest('/fixtures', { id: fixtureId }, `fixture-${fixtureId}`, 300); // 5 min cache
+// skipCache: true = cache'i atla ve API'den taze veri çek (canlı maçlar için)
+async function getFixtureDetails(fixtureId, skipCache = false) {
+  const cacheKey = `fixture-${fixtureId}`;
+  if (skipCache) {
+    cache.del(cacheKey); // Cache'i temizle
+  }
+  return makeRequest('/fixtures', { id: fixtureId }, cacheKey, 30); // ✅ 30 saniye cache (canlı maçlar için kısa)
 }
 
 // Get fixture statistics (PRO plan)
-async function getFixtureStatistics(fixtureId) {
-  return makeRequest('/fixtures/statistics', { fixture: fixtureId }, `stats-${fixtureId}`, 300); // 5 min cache
+async function getFixtureStatistics(fixtureId, skipCache = false) {
+  const cacheKey = `stats-${fixtureId}`;
+  if (skipCache) {
+    cache.del(cacheKey);
+  }
+  return makeRequest('/fixtures/statistics', { fixture: fixtureId }, cacheKey, 30); // ✅ 30 saniye cache
 }
 
 // Get fixture events (goals, cards, etc.)
-async function getFixtureEvents(fixtureId) {
-  return makeRequest('/fixtures/events', { fixture: fixtureId }, `events-${fixtureId}`, 120); // 2 min cache
+async function getFixtureEvents(fixtureId, skipCache = false) {
+  const cacheKey = `events-${fixtureId}`;
+  if (skipCache) {
+    cache.del(cacheKey);
+  }
+  return makeRequest('/fixtures/events', { fixture: fixtureId }, cacheKey, 30); // ✅ 30 saniye cache
 }
 
 // Get fixture lineups (PRO plan)
-async function getFixtureLineups(fixtureId) {
-  return makeRequest('/fixtures/lineups', { fixture: fixtureId }, `lineups-${fixtureId}`, 300); // 5 min cache
+async function getFixtureLineups(fixtureId, skipCache = false) {
+  const cacheKey = `lineups-${fixtureId}`;
+  if (skipCache) {
+    cache.del(cacheKey);
+  }
+  return makeRequest('/fixtures/lineups', { fixture: fixtureId }, cacheKey, 60); // 1 dakika cache (lineup sık değişmez)
 }
 
 // Get fixture player statistics (PRO plan)
 // Returns detailed stats for all players in a match
 // API endpoint: /fixtures/players?fixture={id}
-async function getFixturePlayers(fixtureId) {
-  return makeRequest('/fixtures/players', { fixture: fixtureId }, `fixture-players-${fixtureId}`, 300); // 5 min cache
+async function getFixturePlayers(fixtureId, skipCache = false) {
+  const cacheKey = `fixture-players-${fixtureId}`;
+  if (skipCache) {
+    cache.del(cacheKey);
+  }
+  return makeRequest('/fixtures/players', { fixture: fixtureId }, cacheKey, 30); // ✅ 30 saniye cache
 }
 
 // Search teams by name
@@ -400,12 +425,12 @@ async function getTeamInfo(teamId) {
 }
 
 // Get team statistics
-async function getTeamStatistics(teamId, leagueId, season = 2024) {
+async function getTeamStatistics(teamId, leagueId, season = 2025) {
   return makeRequest('/teams/statistics', { team: teamId, league: leagueId, season }, `team-stats-${teamId}-${leagueId}`, 3600);
 }
 
 // Get player information
-async function getPlayerInfo(playerId, season = 2024) {
+async function getPlayerInfo(playerId, season = 2025) {
   return makeRequest('/players', { id: playerId, season }, `player-${playerId}-${season}`, 3600);
 }
 
@@ -415,7 +440,7 @@ async function getHeadToHead(team1Id, team2Id) {
 }
 
 // Get league standings
-async function getLeagueStandings(leagueId, season = 2024) {
+async function getLeagueStandings(leagueId, season = 2025) {
   return makeRequest('/standings', { league: leagueId, season }, `standings-${leagueId}-${season}`, 3600);
 }
 
@@ -455,7 +480,7 @@ async function getTeamUpcomingMatches(teamId, limit = 10) {
 }
 
 // Get team squad (players)
-async function getTeamSquad(teamId, season = 2024) {
+async function getTeamSquad(teamId, season = 2025) {
   return makeRequest('/players/squads', { team: teamId }, `team-squad-${teamId}-${season}`, 86400); // 24 hour cache
 }
 
@@ -470,8 +495,15 @@ async function getTeamInjuries(teamId, season = 2025) {
 }
 
 // Get team coach (teknik direktör)
+// ✅ Bu endpoint HER ZAMAN güncel coach verisini döndürür (maç oynamamış takımlar için de)
 async function getTeamCoach(teamId) {
-  return makeRequest('/coachs', { team: teamId }, `team-coach-${teamId}`, 86400); // 24 hour cache - günde 1 kez güncellenir
+  return makeRequest('/coachs', { team: teamId }, `team-coach-${teamId}`, 43200); // 12 hour cache
+}
+
+// Get team transfers (son transferler)
+// ✅ Transfer döneminde güncel kadro için kritik
+async function getTeamTransfers(teamId) {
+  return makeRequest('/transfers', { team: teamId }, `team-transfers-${teamId}`, 43200); // 12 hour cache
 }
 
 // Get team seasons (available seasons for a team)
@@ -667,6 +699,7 @@ module.exports = {
   getTeamSquad,
   getTeamInjuries,
   getTeamCoach,
+  getTeamTransfers,
   getTeamSeasons,
   getCountries,
   extractTeamColors,

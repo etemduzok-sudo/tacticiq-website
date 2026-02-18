@@ -93,6 +93,7 @@ export function useMatchesWithPredictions(matchIds: number[]) {
       // Eğer teamId verilmemişse tüm tahminleri temizle
       const allKeys = await AsyncStorage.getAllKeys();
       let keysToRemove: string[] = [];
+      let predictionKeys: string[] = [];
       
       if (teamId != null) {
         // ✅ Sadece belirli takıma özel anahtarları temizle
@@ -101,6 +102,10 @@ export function useMatchesWithPredictions(matchIds: number[]) {
           k === `${SQUAD_KEY_PREFIX}${matchId}-${teamId}` ||
           k === `${LEGACY_PREDICTION_KEY_PREFIX}${matchId}-${teamId}` ||
           k === `${LEGACY_SQUAD_KEY_PREFIX}${matchId}-${teamId}`
+        );
+        predictionKeys = allKeys.filter(k =>
+          k === `${PREDICTION_KEY_PREFIX}${matchId}-${teamId}` ||
+          k === `${LEGACY_PREDICTION_KEY_PREFIX}${matchId}-${teamId}`
         );
       } else {
         // ✅ Tüm tahminleri temizle (hem basit hem takıma özel)
@@ -114,6 +119,42 @@ export function useMatchesWithPredictions(matchIds: number[]) {
           k === `${LEGACY_SQUAD_KEY_PREFIX}${matchId}` ||
           k.startsWith(`${LEGACY_SQUAD_KEY_PREFIX}${matchId}-`)
         );
+        predictionKeys = allKeys.filter(k =>
+          k === `${PREDICTION_KEY_PREFIX}${matchId}` ||
+          k.startsWith(`${PREDICTION_KEY_PREFIX}${matchId}-`) ||
+          k === `${LEGACY_PREDICTION_KEY_PREFIX}${matchId}` ||
+          k.startsWith(`${LEGACY_PREDICTION_KEY_PREFIX}${matchId}-`)
+        );
+      }
+      
+      // ✅ TOPLULUK VERİLERİNİ GÖRDÜKTEN SONRA SİLME - Bu durumu kaydet
+      // Eğer kullanıcı topluluk verilerini görmüşse ve tahmini siliyorsa,
+      // yeni tahmin yaptığında %80 puan kaybı olacak
+      let hadViewedCommunityData = false;
+      if (predictionKeys.length > 0) {
+        const predPairs = await AsyncStorage.multiGet(predictionKeys);
+        for (const [_, value] of predPairs) {
+          if (value) {
+            try {
+              const parsed = JSON.parse(value);
+              if (parsed.hasViewedCommunityData === true) {
+                hadViewedCommunityData = true;
+                break;
+              }
+            } catch (_) {}
+          }
+        }
+      }
+      
+      // ✅ Eğer topluluk verilerini görmüşse, bu durumu ayrı bir key'de sakla
+      // Böylece yeni tahmin yaptığında madeAfterCommunityViewed = true olacak
+      if (hadViewedCommunityData) {
+        const communityViewedKey = `community_viewed_${matchId}${teamId != null ? `-${teamId}` : ''}`;
+        await AsyncStorage.setItem(communityViewedKey, JSON.stringify({ 
+          hadViewedCommunityData: true, 
+          deletedAt: new Date().toISOString() 
+        }));
+        console.log('⚠️ Topluluk verileri görülmüş tahmin silindi - yeni tahmin %80 puan kaybı olacak');
       }
       
       if (keysToRemove.length > 0) {

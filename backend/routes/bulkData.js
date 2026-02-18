@@ -103,8 +103,8 @@ router.post('/download', async (req, res) => {
       // --- 1. MAÇLAR (en büyük veri) ---
       try {
         if (isNational) {
-          // Milli takım: 2024, 2025, 2026 sezonları paralel
-          const seasonPromises = [2024, 2025, 2026].map(async (s) => {
+          // Milli takım: 2025, 2026 sezonları paralel (2024 artık eski)
+          const seasonPromises = [2025, 2026].map(async (s) => {
             try {
               if (databaseService.enabled) {
                 const dbRows = await databaseService.getTeamMatches(tid, s);

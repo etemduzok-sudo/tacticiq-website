@@ -253,12 +253,36 @@ export const MATCH_1_EVENTS: MockEvent[] = [
   { minuteOffset: 94, type: 'System', detail: 'Match Finished', teamSide: null, playerName: '' },
 ];
 
-/** Maç 2 olayları: Real vs Barça */
+/** Maç 2 olayları: Real vs Barça - Tam timeline (0-94 dk) */
 export const MATCH_2_EVENTS: MockEvent[] = [
+  // Maç Başlangıcı
+  { minuteOffset: 0, type: 'System', detail: 'Kick Off', teamSide: null, playerName: '' },
+  
+  // İlk Yarı (0-45 dk)
   { minuteOffset: 5, type: 'Goal', detail: 'Normal Goal', teamSide: 'home', playerName: 'K. Mbappé', assistName: 'J. Bellingham' },
   { minuteOffset: 10, type: 'Card', detail: 'Yellow Card', teamSide: 'away', playerName: 'R. Araújo' },
   { minuteOffset: 15, type: 'Goal', detail: 'Normal Goal', teamSide: 'away', playerName: 'R. Lewandowski', assistName: 'L. Yamal' },
   { minuteOffset: 20, type: 'Goal', detail: 'Normal Goal', teamSide: 'home', playerName: 'Vinícius Jr.', assistName: 'L. Modrić' },
+  { minuteOffset: 28, type: 'Card', detail: 'Yellow Card', teamSide: 'home', playerName: 'A. Tchouaméni' },
+  { minuteOffset: 35, type: 'Card', detail: 'Yellow Card', teamSide: 'away', playerName: 'Pedri' },
+  { minuteOffset: 42, type: 'Subst', detail: 'Substitution', teamSide: 'away', playerName: 'F. de Jong', playerIn: 'F. de Jong', playerOut: 'Gavi' },
+  { minuteOffset: 45, extraTime: 2, type: 'System', detail: 'Half Time', teamSide: null, playerName: '' },
+  
+  // İkinci Yarı (45-90 dk)
+  { minuteOffset: 46, type: 'System', detail: 'Second Half Started', teamSide: null, playerName: '' },
+  { minuteOffset: 52, type: 'Card', detail: 'Yellow Card', teamSide: 'home', playerName: 'E. Camavinga' },
+  { minuteOffset: 58, type: 'Subst', detail: 'Substitution', teamSide: 'home', playerName: 'Rodrygo', playerIn: 'Rodrygo', playerOut: 'Brahim Díaz' },
+  { minuteOffset: 63, type: 'Subst', detail: 'Substitution', teamSide: 'away', playerName: 'Ferran Torres', playerIn: 'Ferran Torres', playerOut: 'R. Lewandowski' },
+  { minuteOffset: 70, type: 'Card', detail: 'Yellow Card', teamSide: 'home', playerName: 'D. Rüdiger' },
+  { minuteOffset: 75, type: 'Subst', detail: 'Substitution', teamSide: 'home', playerName: 'L. Vázquez', playerIn: 'L. Vázquez', playerOut: 'D. Carvajal' },
+  { minuteOffset: 78, type: 'Subst', detail: 'Substitution', teamSide: 'away', playerName: 'Ansu Fati', playerIn: 'Ansu Fati', playerOut: 'L. Yamal' },
+  { minuteOffset: 82, type: 'Card', detail: 'Yellow Card', teamSide: 'away', playerName: 'Ansu Fati' },
+  { minuteOffset: 85, type: 'Subst', detail: 'Substitution', teamSide: 'home', playerName: 'Joselu', playerIn: 'Joselu', playerOut: 'K. Mbappé' },
+  { minuteOffset: 88, type: 'Card', detail: 'Yellow Card', teamSide: 'home', playerName: 'J. Bellingham' },
+  
+  // Uzatma Dakikaları ve Maç Sonu
+  { minuteOffset: 90, extraTime: 0, type: 'System', detail: 'Added Time', teamSide: null, playerName: '' },
+  { minuteOffset: 90, extraTime: 4, type: 'System', detail: 'Match Finished', teamSide: null, playerName: '' },
 ];
 
 export function computeLiveState(matchStartTime: number, events: MockEvent[]) {

@@ -1,5 +1,5 @@
 // MatchStatsScreen.tsx - Maç İstatistikleri + Oyuncu İstatistikleri (canlı veri API ile)
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -66,10 +66,7 @@ const STAT_LABELS: Record<string, string> = {
 };
 
 // ═══════════════════════════════════════════════════════════════════
-// xG (Expected Goals) Hesaplama Fonksiyonu
-// Basitleştirilmiş xG formülü:
-// xG = (İsabetli Şut × 0.35) + (Toplam Şut × 0.10) + (Korner × 0.024)
-// Penaltı için: +0.76 (eğer veri varsa)
+// xG (Expected Goals) - API'den gelen değeri kullan, yoksa hesapla
 // ═══════════════════════════════════════════════════════════════════
 function calculateXG(stats: DisplayStat[]): { home: number; away: number } {
   const getStat = (label: string): { home: number; away: number } => {
@@ -77,6 +74,22 @@ function calculateXG(stats: DisplayStat[]): { home: number; away: number } {
     return found ? { home: found.home, away: found.away } : { home: 0, away: 0 };
   };
   
+  // ✅ Önce API'den gelen xG değerini ara
+  const xgStat = stats.find(s => 
+    s.label.toLowerCase().includes('xg') || 
+    s.label.toLowerCase().includes('gol beklentisi') ||
+    s.label.toLowerCase().includes('expected')
+  );
+  
+  // API'den xG geldiyse onu kullan
+  if (xgStat && (xgStat.home > 0 || xgStat.away > 0)) {
+    return {
+      home: xgStat.home,
+      away: xgStat.away,
+    };
+  }
+  
+  // API'den gelmediyse hesapla (fallback)
   const shotsOnGoal = getStat('İsabetli Şut');
   const totalShots = getStat('Toplam Şut');
   const corners = getStat('Korner');
@@ -95,6 +108,17 @@ interface MatchStatsScreenProps {
   matchData: any;
   matchId?: string;
   favoriteTeamIds?: number[];
+  events?: any[]; // ✅ Substitution bilgileri için event'ler
+}
+
+// ✅ Oyuncu giriş/çıkış bilgisi için helper
+interface SubstitutionInfo {
+  playerId: number;
+  playerName: string;
+  minuteIn?: number;   // Oyuna girdiği dakika (yedekten giren)
+  minuteOut?: number;  // Oyundan çıktığı dakika (değişen)
+  replacedBy?: string; // Yerine kim girdi
+  replacedFor?: string; // Kimin yerine girdi
 }
 
 // Canlı/API yoksa kullanılacak varsayılan veri
@@ -347,15 +371,145 @@ const topPlayers = {
 // Maç başlamadı mı kontrolü
 const NOT_STARTED_STATUSES = ['NS', 'TBD', 'PST', 'CANC', 'ABD', 'AWD', 'WO'];
 
+// ✅ Oyuncu istatistikleri tipi (API'den gelen)
+interface PlayerStats {
+  id: number;
+  name: string;
+  photo?: string;
+  number: number;
+  position: string;
+  rating: number;
+  minutesPlayed: number;
+  goals: number;
+  assists: number;
+  shots: number;
+  shotsOnTarget: number;
+  shotsInsideBox: number;
+  totalPasses: number;
+  passesCompleted: number;
+  passAccuracy: number;
+  keyPasses: number;
+  longPasses: number;
+  dribbleAttempts: number;
+  dribbleSuccess: number;
+  dispossessed: number;
+  tackles: number;
+  blocks: number;
+  interceptions: number;
+  duelsTotal: number;
+  duelsWon: number;
+  aerialDuels: number;
+  aerialWon: number;
+  foulsDrawn: number;
+  foulsCommitted: number;
+  yellowCards: number;
+  redCards: number;
+  penaltyWon: number;
+  penaltyScored: number;
+  penaltyMissed: number;
+  penaltySaved?: number;
+  isGoalkeeper: boolean;
+  saves: number;
+  goalsAgainst: number;
+  teamId?: number;
+  teamName?: string;
+}
+
 export const MatchStats: React.FC<MatchStatsScreenProps> = ({
   matchData,
   matchId,
   favoriteTeamIds = [],
+  events = [],
 }) => {
+  // ✅ Substitution bilgilerini parse et
+  const substitutionMap = useMemo(() => {
+    const map: Record<number, SubstitutionInfo> = {};
+    
+    if (!events || events.length === 0) return map;
+    
+    events.forEach((event: any) => {
+      if (event.type === 'subst' || event.type === 'Subst' || 
+          event.detail?.toLowerCase().includes('substitution')) {
+        const minute = event.time?.elapsed || event.minute || 0;
+        
+        // Çıkan oyuncu
+        if (event.player?.id) {
+          map[event.player.id] = {
+            playerId: event.player.id,
+            playerName: event.player.name,
+            minuteOut: minute,
+            replacedBy: event.assist?.name || '',
+          };
+        }
+        
+        // Giren oyuncu
+        if (event.assist?.id) {
+          map[event.assist.id] = {
+            playerId: event.assist.id,
+            playerName: event.assist.name,
+            minuteIn: minute,
+            replacedFor: event.player?.name || '',
+          };
+        }
+      }
+    });
+    
+    console.log('🔄 [MatchStats] Substitution map:', Object.keys(map).length, 'oyuncu');
+    return map;
+  }, [events]);
+  // ✅ Debug: matchData yapısını logla
+  console.log('📊 [MatchStats] RENDER - matchData:', {
+    id: matchId,
+    status: matchData?.status,
+    isLive: matchData?.isLive,
+    minute: matchData?.minute,
+    fixtureStatus: matchData?.fixture?.status,
+  });
+  
   const [activeTab, setActiveTab] = useState<'match' | 'players'>('match');
   const [matchStats, setMatchStats] = useState<DisplayStat[]>(defaultDetailedStats);
   // ✅ Oyuncu kartları açılır/kapanır state
   const [expandedPlayers, setExpandedPlayers] = useState<Set<string>>(new Set());
+  // ✅ API'den gelen oyuncu istatistikleri
+  const [playerStats, setPlayerStats] = useState<{ home: PlayerStats[]; away: PlayerStats[] }>({ home: [], away: [] });
+  const [playersLoading, setPlayersLoading] = useState(false);
+  
+  // ✅ API'den gelen ısı haritası verileri
+  interface HeatmapZones {
+    defense: number;
+    midfield: number;
+    attack: number;
+    leftFlank: number;
+    center: number;
+    rightFlank: number;
+  }
+  interface HeatmapPoint {
+    x: number;
+    y: number;
+    intensity: number;
+    type: string; // 'position' | 'pass' | 'shot' | 'tackle'
+  }
+  interface PlayerHeatmapData {
+    playerId: number;
+    playerName: string;
+    position: string;
+    points: HeatmapPoint[];
+    zones: {
+      defenseLeft: number;
+      defenseCenter: number;
+      defenseRight: number;
+      midfieldLeft: number;
+      midfieldCenter: number;
+      midfieldRight: number;
+      attackLeft: number;
+      attackCenter: number;
+      attackRight: number;
+    };
+  }
+  const [heatmapData, setHeatmapData] = useState<{
+    home: { teamName: string; aggregatedZones: HeatmapZones; players?: PlayerHeatmapData[] } | null;
+    away: { teamName: string; aggregatedZones: HeatmapZones; players?: PlayerHeatmapData[] } | null;
+  }>({ home: null, away: null });
   
   const togglePlayerExpand = (playerId: string) => {
     setExpandedPlayers(prev => {
@@ -371,12 +525,24 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
   const [statsLoading, setStatsLoading] = useState(!!matchId);
   
   // ✅ Maç durumu kontrolü
-  const matchStatus = matchData?.fixture?.status?.short || matchData?.status?.short || matchData?.statusShort || '';
+  // matchData.status direkt string olarak MatchDetail'dan geliyor
+  const matchStatus = typeof matchData?.status === 'string' 
+    ? matchData.status 
+    : (matchData?.fixture?.status?.short || matchData?.status?.short || matchData?.statusShort || '');
   const fixtureId = matchId ? parseInt(matchId, 10) : null;
+  
+  // ✅ Canlı maç durumlarını tanımla
+  const LIVE_STATUSES = ['1H', '2H', 'HT', 'ET', 'P', 'BT', 'LIVE', 'INT'];
+  const isLiveStatus = LIVE_STATUSES.includes(matchStatus);
+  
+  console.log('📊 [MatchStats] matchStatus:', matchStatus, 'isLive:', matchData?.isLive, 'isLiveStatus:', isLiveStatus);
   
   // ✅ Mock maçlarda istatistik varsa göster (maç canlı demektir)
   const hasMockStats = fixtureId ? isMockTestMatch(fixtureId) && getMockMatchStatistics(fixtureId) !== null : false;
-  const isMatchNotStarted = !hasMockStats && (NOT_STARTED_STATUSES.includes(matchStatus) || matchStatus === '');
+  
+  // ✅ Canlı maç kontrolü - matchData.isLive veya canlı status varsa maç başlamış demektir
+  // NOT: Boş status + isLive=true = canlı maç (cache stale olabilir)
+  const isMatchNotStarted = !hasMockStats && !matchData?.isLive && !isLiveStatus && (NOT_STARTED_STATUSES.includes(matchStatus) || matchStatus === '');
 
   useEffect(() => {
     if (!matchId) return;
@@ -403,10 +569,47 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
         setStatsLoading(true);
         const response = await api.matches.getMatchStatistics(id);
         if (cancelled) return;
-        if (response?.statistics && Array.isArray(response.statistics) && response.statistics.length > 0) {
+        
+        // ✅ API response.data içinde takım bazlı istatistikler döner
+        // Her takım için: { team: {...}, statistics: [{type, value}, ...] }
+        // Biz bunu birleştirip home/away formatına çeviriyoruz
+        const rawData = response?.data || response?.statistics;
+        
+        if (rawData && Array.isArray(rawData) && rawData.length >= 2) {
+          // API format: [{team: {...}, statistics: [...]}, {team: {...}, statistics: [...]}]
+          const homeStats = rawData[0]?.statistics || [];
+          const awayStats = rawData[1]?.statistics || [];
+          
+          // İstatistikleri birleştir
+          const mergedStats: ApiMatchStat[] = [];
+          const statTypes = new Set([
+            ...homeStats.map((s: any) => s.type),
+            ...awayStats.map((s: any) => s.type)
+          ]);
+          
+          statTypes.forEach(type => {
+            const homeStat = homeStats.find((s: any) => s.type === type);
+            const awayStat = awayStats.find((s: any) => s.type === type);
+            mergedStats.push({
+              type,
+              home: homeStat?.value ?? null,
+              away: awayStat?.value ?? null,
+            });
+          });
+          
+          console.log('📊 [MatchStats] API istatistikleri yüklendi:', { 
+            matchId: id, 
+            statCount: mergedStats.length,
+            sample: mergedStats.slice(0, 3)
+          });
+          
+          setMatchStats(apiStatsToDisplay(mergedStats));
+        } else if (response?.statistics && Array.isArray(response.statistics)) {
+          // Eski format desteği
           setMatchStats(apiStatsToDisplay(response.statistics));
         }
       } catch (_e) {
+        console.log('📊 [MatchStats] API hatası, varsayılan veriler kullanılıyor:', _e);
         if (!cancelled) setMatchStats(defaultDetailedStats);
       } finally {
         if (!cancelled) setStatsLoading(false);
@@ -414,6 +617,115 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
     })();
     return () => { cancelled = true; };
   }, [matchId]);
+
+  // ✅ Oyuncu istatistiklerini API'den çek
+  useEffect(() => {
+    if (!matchId) return;
+    const id = parseInt(matchId, 10);
+    if (isNaN(id)) return;
+    
+    // Mock maç kontrolü
+    if (isMockTestMatch(id)) {
+      const mockPlayerStats = getMockPlayerStatistics(id);
+      if (mockPlayerStats) {
+        setPlayerStats(mockPlayerStats as any);
+        console.log('⭐ [MatchStats] Mock oyuncu istatistikleri yüklendi:', id);
+        return;
+      }
+    }
+    
+    let cancelled = false;
+    (async () => {
+      try {
+        setPlayersLoading(true);
+        const response = await api.matches.getMatchPlayers(id);
+        if (cancelled) return;
+        
+        // API format: { data: { home: [...], away: [...] } }
+        const rawData = response?.data;
+        
+        if (rawData?.home && rawData?.away) {
+          // Sadece oynayan oyuncuları filtrele (minutesPlayed > 0 veya rating > 0)
+          const filterPlayed = (players: any[]) => 
+            players.filter((p: any) => (p.minutesPlayed && p.minutesPlayed > 0) || (p.rating && p.rating > 0));
+          
+          const homePlayers = filterPlayed(rawData.home || []);
+          const awayPlayers = filterPlayed(rawData.away || []);
+          
+          console.log('⭐ [MatchStats] Oyuncu istatistikleri yüklendi:', { 
+            matchId: id, 
+            homeCount: homePlayers.length,
+            awayCount: awayPlayers.length,
+            sampleHome: homePlayers[0]?.name
+          });
+          
+          setPlayerStats({
+            home: homePlayers,
+            away: awayPlayers
+          });
+        }
+      } catch (_e) {
+        console.log('⭐ [MatchStats] Oyuncu API hatası:', _e);
+        // Hata durumunda varsayılan mock veri kullan
+        setPlayerStats(topPlayers as any);
+      } finally {
+        if (!cancelled) setPlayersLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [matchId]);
+
+  // ✅ Isı haritası verilerini API'den çek
+  useEffect(() => {
+    if (!matchId) return;
+    const id = parseInt(matchId, 10);
+    if (isNaN(id)) return;
+    
+    // Mock maçlar için skip
+    if (isMockTestMatch(id)) return;
+    
+    let cancelled = false;
+    
+    const fetchHeatmaps = async () => {
+      try {
+        const response = await api.matches.getMatchHeatmaps(id);
+        if (cancelled) return;
+        
+        if (response?.success && response?.data) {
+          setHeatmapData({
+            home: response.data.home || null,
+            away: response.data.away || null,
+          });
+          console.log('🔥 [MatchStats] Isı haritası verileri yüklendi:', {
+            homeZones: response.data.home?.aggregatedZones,
+            awayZones: response.data.away?.aggregatedZones,
+            homePlayersCount: response.data.home?.players?.length,
+            awayPlayersCount: response.data.away?.players?.length,
+          });
+        }
+      } catch (_e) {
+        console.log('🔥 [MatchStats] Isı haritası API hatası:', _e);
+      }
+    };
+    
+    // İlk yükleme
+    fetchHeatmaps();
+    
+    // ✅ Canlı maçlarda 30 saniyede bir güncelle (ısı haritaları daha az sık güncellenir)
+    const matchStatus = matchData?.status || matchData?.fixture?.status?.short || '';
+    const isLive = ['1H', '2H', 'HT', 'ET', 'P', 'LIVE', 'BT', 'INT'].includes(matchStatus);
+    
+    let interval: ReturnType<typeof setInterval> | null = null;
+    if (isLive) {
+      interval = setInterval(fetchHeatmaps, 30000); // 30 saniye
+      console.log('🔥 [MatchStats] Canlı ısı haritası güncelleme başlatıldı (30s interval)');
+    }
+    
+    return () => { 
+      cancelled = true; 
+      if (interval) clearInterval(interval);
+    };
+  }, [matchId, matchData?.status, matchData?.fixture?.status?.short]);
 
   // ✅ Maç henüz başlamadıysa - ScrollView kullanmadan sabit konteyner (Canlı sekmesiyle aynı)
   if (isMatchNotStarted) {
@@ -642,7 +954,7 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
               const secondTeam = isFavoriteAway ? { name: homeName, id: homeTeamId, isFavorite: false, isHome: true }
                                : { name: awayName, id: awayTeamId, isFavorite: false, isHome: false };
               
-              // Isı noktaları için mock veriler (favori takım yeşil tonları, rakip turuncu tonları)
+              // ✅ API'den gelen zone verilerine göre ısı noktaları oluştur
               const renderHeatPoints = (isFavorite: boolean, isHome: boolean) => {
                 const color = isFavorite ? 'rgba(16, 185, 129, 0.85)' : 'rgba(245, 158, 11, 0.85)';
                 const colorMid = isFavorite ? 'rgba(16, 185, 129, 0.6)' : 'rgba(245, 158, 11, 0.6)';
@@ -652,27 +964,88 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
                 // Atak yönüne göre (home sağa atar, away sola atar)
                 const attackRight = isHome;
                 
+                // ✅ API'den gelen zone verilerini al
+                const zones = isHome ? heatmapData.home?.aggregatedZones : heatmapData.away?.aggregatedZones;
+                
+                // Zone yüzdelerine göre boyut hesapla (min 12, max 40)
+                const calcSize = (percentage: number) => Math.max(12, Math.min(40, 12 + (percentage * 0.5)));
+                
+                // Varsayılan değerler (API yoksa)
+                const defenseSize = zones ? calcSize(zones.defense) : 18;
+                const midfieldSize = zones ? calcSize(zones.midfield) : 28;
+                const attackSize = zones ? calcSize(zones.attack) : 32;
+                const leftFlankSize = zones ? calcSize(zones.leftFlank) : 20;
+                const rightFlankSize = zones ? calcSize(zones.rightFlank) : 20;
+                
+                // Yoğunluğa göre renk seç
+                const getZoneColor = (percentage: number) => {
+                  if (percentage >= 40) return hotZone;
+                  if (percentage >= 30) return color;
+                  if (percentage >= 20) return colorMid;
+                  return colorLow;
+                };
+                
                 return (
                   <>
                     {/* Orta saha yoğunluk */}
-                    <View style={[styles.heatPointNew, { left: '50%', top: '50%', width: 28, height: 28, borderRadius: 14, backgroundColor: colorMid }]} />
+                    <View style={[styles.heatPointNew, { 
+                      left: '50%', top: '50%', 
+                      width: midfieldSize, height: midfieldSize, borderRadius: midfieldSize / 2, 
+                      backgroundColor: zones ? getZoneColor(zones.midfield) : colorMid 
+                    }]} />
                     
-                    {/* Atak bölgesi - yoğun */}
-                    <View style={[styles.heatPointNew, { left: attackRight ? '72%' : '28%', top: '50%', width: 32, height: 32, borderRadius: 16, backgroundColor: color }]} />
-                    <View style={[styles.heatPointNew, { left: attackRight ? '68%' : '32%', top: '30%', width: 24, height: 24, borderRadius: 12, backgroundColor: colorMid }]} />
-                    <View style={[styles.heatPointNew, { left: attackRight ? '68%' : '32%', top: '70%', width: 24, height: 24, borderRadius: 12, backgroundColor: colorMid }]} />
+                    {/* Atak bölgesi */}
+                    <View style={[styles.heatPointNew, { 
+                      left: attackRight ? '72%' : '28%', top: '50%', 
+                      width: attackSize, height: attackSize, borderRadius: attackSize / 2, 
+                      backgroundColor: zones ? getZoneColor(zones.attack) : color 
+                    }]} />
+                    <View style={[styles.heatPointNew, { 
+                      left: attackRight ? '68%' : '32%', top: '30%', 
+                      width: attackSize * 0.7, height: attackSize * 0.7, borderRadius: attackSize * 0.35, 
+                      backgroundColor: zones ? getZoneColor(zones.attack * 0.8) : colorMid 
+                    }]} />
+                    <View style={[styles.heatPointNew, { 
+                      left: attackRight ? '68%' : '32%', top: '70%', 
+                      width: attackSize * 0.7, height: attackSize * 0.7, borderRadius: attackSize * 0.35, 
+                      backgroundColor: zones ? getZoneColor(zones.attack * 0.8) : colorMid 
+                    }]} />
                     
-                    {/* Ceza alanı - sıcak nokta */}
-                    <View style={[styles.heatPointNew, { left: attackRight ? '85%' : '15%', top: '50%', width: 26, height: 26, borderRadius: 13, backgroundColor: hotZone }]} />
+                    {/* Ceza alanı - en yoğun */}
+                    <View style={[styles.heatPointNew, { 
+                      left: attackRight ? '85%' : '15%', top: '50%', 
+                      width: attackSize * 0.8, height: attackSize * 0.8, borderRadius: attackSize * 0.4, 
+                      backgroundColor: hotZone 
+                    }]} />
                     
-                    {/* Savunma bölgesi - düşük */}
-                    <View style={[styles.heatPointNew, { left: attackRight ? '25%' : '75%', top: '40%', width: 18, height: 18, borderRadius: 9, backgroundColor: colorLow }]} />
-                    <View style={[styles.heatPointNew, { left: attackRight ? '25%' : '75%', top: '60%', width: 18, height: 18, borderRadius: 9, backgroundColor: colorLow }]} />
-                    <View style={[styles.heatPointNew, { left: attackRight ? '18%' : '82%', top: '50%', width: 20, height: 20, borderRadius: 10, backgroundColor: colorLow }]} />
+                    {/* Savunma bölgesi */}
+                    <View style={[styles.heatPointNew, { 
+                      left: attackRight ? '25%' : '75%', top: '40%', 
+                      width: defenseSize, height: defenseSize, borderRadius: defenseSize / 2, 
+                      backgroundColor: zones ? getZoneColor(zones.defense) : colorLow 
+                    }]} />
+                    <View style={[styles.heatPointNew, { 
+                      left: attackRight ? '25%' : '75%', top: '60%', 
+                      width: defenseSize, height: defenseSize, borderRadius: defenseSize / 2, 
+                      backgroundColor: zones ? getZoneColor(zones.defense) : colorLow 
+                    }]} />
+                    <View style={[styles.heatPointNew, { 
+                      left: attackRight ? '18%' : '82%', top: '50%', 
+                      width: defenseSize * 1.1, height: defenseSize * 1.1, borderRadius: defenseSize * 0.55, 
+                      backgroundColor: zones ? getZoneColor(zones.defense) : colorLow 
+                    }]} />
                     
                     {/* Kanat aktiviteleri */}
-                    <View style={[styles.heatPointNew, { left: attackRight ? '55%' : '45%', top: '18%', width: 20, height: 20, borderRadius: 10, backgroundColor: colorMid }]} />
-                    <View style={[styles.heatPointNew, { left: attackRight ? '55%' : '45%', top: '82%', width: 20, height: 20, borderRadius: 10, backgroundColor: colorMid }]} />
+                    <View style={[styles.heatPointNew, { 
+                      left: attackRight ? '55%' : '45%', top: '15%', 
+                      width: leftFlankSize, height: leftFlankSize, borderRadius: leftFlankSize / 2, 
+                      backgroundColor: zones ? getZoneColor(zones.leftFlank) : colorMid 
+                    }]} />
+                    <View style={[styles.heatPointNew, { 
+                      left: attackRight ? '55%' : '45%', top: '85%', 
+                      width: rightFlankSize, height: rightFlankSize, borderRadius: rightFlankSize / 2, 
+                      backgroundColor: zones ? getZoneColor(zones.rightFlank) : colorMid 
+                    }]} />
                   </>
                 );
               };
@@ -822,18 +1195,26 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
         ) : (
           // OYUNCU PERFORMANSLARI - Sadece Favori Takım
           <View style={styles.playersContainerNew}>
-            {(() => {
+            {playersLoading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={BRAND.accent} />
+                <Text style={styles.loadingText}>Oyuncu istatistikleri yükleniyor...</Text>
+              </View>
+            ) : (() => {
               // Favori takım hangisi?
               const homeTeamId = matchData?.homeId || matchData?.teams?.home?.id;
               const awayTeamId = matchData?.awayId || matchData?.teams?.away?.id;
               const isFavoriteHome = favoriteTeamIds.includes(homeTeamId);
               const isFavoriteAway = favoriteTeamIds.includes(awayTeamId);
               
-              // Favori takımın oyuncularını seç
+              // Favori takımın oyuncularını seç - API'den gelen veriler kullan
               const favoriteTeamName = isFavoriteAway 
                 ? (matchData?.awayName || 'Deplasman')
                 : (matchData?.homeName || 'Ev Sahibi');
-              const rawPlayers = isFavoriteAway ? topPlayers.away : topPlayers.home;
+              
+              // ✅ API'den gelen playerStats kullan, yoksa mock veri (topPlayers)
+              const apiPlayers = isFavoriteAway ? playerStats.away : playerStats.home;
+              const rawPlayers = apiPlayers.length > 0 ? apiPlayers : (isFavoriteAway ? topPlayers.away : topPlayers.home);
               // Kaleci her zaman en üstte olsun
               const favoritePlayers = [...rawPlayers].sort((a, b) => {
                 if (a.isGoalkeeper && !b.isGoalkeeper) return -1;
@@ -844,8 +1225,9 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
               
               return (
                 <>
-                  {favoritePlayers.map((player, index) => {
-              const playerId = `home-${player.number}`;
+                  {favoritePlayers.map((player: any, index: number) => {
+              // Player ID - API'den gelen id veya fallback olarak number
+              const playerId = `player-${player.id || player.number}-${index}`;
               const isExpanded = expandedPlayers.has(playerId);
               const ratingColor = player.rating >= 8 ? '#10B981' : player.rating >= 7 ? '#1FA2A6' : player.rating >= 6 ? '#F59E0B' : '#EF4444';
               
@@ -861,14 +1243,34 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
                     onPress={() => togglePlayerExpand(playerId)}
                     activeOpacity={0.7}
                   >
-                    {/* Sol: Numara + İsim + Pozisyon */}
+                    {/* Sol: Numara + İsim + Pozisyon + Giriş/Çıkış */}
                     <View style={styles.playerInfoNew}>
                       <View style={[styles.playerNumberNew, { borderColor: ratingColor }]}>
                         <Text style={styles.playerNumberTextNew}>{player.number}</Text>
                       </View>
                       <View style={styles.playerNameBlock}>
                         <Text style={styles.playerNameNew}>{player.name}</Text>
-                        <Text style={styles.playerPosNew}>{player.position} • {player.minutesPlayed}'</Text>
+                        <Text style={styles.playerPosNew}>
+                          {player.position} • {player.minutesPlayed}'
+                          {/* ✅ Giriş/Çıkış bilgisi */}
+                          {substitutionMap[player.id]?.minuteIn && (
+                            <Text style={{ color: '#10B981' }}> (↑{substitutionMap[player.id].minuteIn}')</Text>
+                          )}
+                          {substitutionMap[player.id]?.minuteOut && (
+                            <Text style={{ color: '#EF4444' }}> (↓{substitutionMap[player.id].minuteOut}')</Text>
+                          )}
+                        </Text>
+                        {/* ✅ Kimin yerine girdi / yerine kim girdi */}
+                        {substitutionMap[player.id]?.replacedFor && (
+                          <Text style={[styles.playerPosNew, { color: '#10B981', fontSize: 10 }]}>
+                            ↑ {substitutionMap[player.id].replacedFor} yerine
+                          </Text>
+                        )}
+                        {substitutionMap[player.id]?.replacedBy && (
+                          <Text style={[styles.playerPosNew, { color: '#EF4444', fontSize: 10 }]}>
+                            ↓ {substitutionMap[player.id].replacedBy} girdi
+                          </Text>
+                        )}
                       </View>
                     </View>
                     
@@ -903,18 +1305,18 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
                       {/* Ana İstatistik Kartları - Kaleci vs Saha Oyuncusu */}
                       <View style={styles.statsGridNew}>
                         {player.isGoalkeeper ? (
-                          // KALECİ İSTATİSTİKLERİ
+                          // KALECİ İSTATİSTİKLERİ - Kaleciye özel metrikler
                           <>
                             <View style={styles.statCardNew}>
                               <View style={[styles.statCardIcon, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
-                                <Ionicons name="shield-checkmark" size={18} color="#10B981" />
+                                <Ionicons name="hand-right" size={18} color="#10B981" />
                               </View>
                               <Text style={styles.statCardValue}>{player.saves || 0}</Text>
                               <Text style={styles.statCardLabel}>Kurtarış</Text>
                             </View>
                             <View style={styles.statCardNew}>
                               <View style={[styles.statCardIcon, { backgroundColor: 'rgba(34, 211, 238, 0.15)' }]}>
-                                <Ionicons name="trending-up" size={18} color="#22D3EE" />
+                                <Ionicons name="stats-chart" size={18} color="#22D3EE" />
                               </View>
                               <Text style={styles.statCardValue}>
                                 {(player.saves || 0) + (player.goalsAgainst || 0) > 0 
@@ -931,25 +1333,25 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
                               <Text style={styles.statCardLabel}>Gol Yedi</Text>
                             </View>
                             <View style={styles.statCardNew}>
+                              <View style={[styles.statCardIcon, { backgroundColor: 'rgba(139, 92, 246, 0.15)' }]}>
+                                <Ionicons name="shield-checkmark" size={18} color="#8B5CF6" />
+                              </View>
+                              <Text style={styles.statCardValue}>{player.penaltySaved || 0}</Text>
+                              <Text style={styles.statCardLabel}>Penaltı Kurtarış</Text>
+                            </View>
+                            <View style={styles.statCardNew}>
                               <View style={[styles.statCardIcon, { backgroundColor: 'rgba(20, 184, 166, 0.15)' }]}>
                                 <Ionicons name="arrow-forward" size={18} color="#14B8A6" />
                               </View>
-                              <Text style={styles.statCardValue}>{player.passAccuracy}%</Text>
-                              <Text style={styles.statCardLabel}>Pas İsabeti</Text>
-                            </View>
-                            <View style={styles.statCardNew}>
-                              <View style={[styles.statCardIcon, { backgroundColor: 'rgba(139, 92, 246, 0.15)' }]}>
-                                <Ionicons name="send" size={18} color="#8B5CF6" />
-                              </View>
-                              <Text style={styles.statCardValue}>{player.longPasses || 0}</Text>
-                              <Text style={styles.statCardLabel}>Uzun Pas</Text>
+                              <Text style={styles.statCardValue}>{player.totalPasses || 0}</Text>
+                              <Text style={styles.statCardLabel}>Toplam Pas</Text>
                             </View>
                             <View style={styles.statCardNew}>
                               <View style={[styles.statCardIcon, { backgroundColor: 'rgba(100, 116, 139, 0.15)' }]}>
-                                <Ionicons name="airplane" size={18} color="#7A9A94" />
+                                <Ionicons name="checkmark-circle" size={18} color="#7A9A94" />
                               </View>
-                              <Text style={styles.statCardValue}>{player.aerialWon}/{player.aerialDuels}</Text>
-                              <Text style={styles.statCardLabel}>Hava Topu</Text>
+                              <Text style={styles.statCardValue}>{player.passAccuracy || 0}%</Text>
+                              <Text style={styles.statCardLabel}>Pas İsabeti</Text>
                             </View>
                             <View style={styles.statCardNew}>
                               <View style={[styles.statCardIcon, { backgroundColor: 'rgba(245, 158, 11, 0.15)' }]}>
@@ -959,11 +1361,11 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
                               <Text style={styles.statCardLabel}>Dakika</Text>
                             </View>
                             <View style={styles.statCardNew}>
-                              <View style={[styles.statCardIcon, { backgroundColor: 'rgba(59, 130, 246, 0.15)' }]}>
-                                <Ionicons name="swap-horizontal" size={18} color="#3B82F6" />
+                              <View style={[styles.statCardIcon, { backgroundColor: (player.redCards || 0) > 0 ? 'rgba(239, 68, 68, 0.15)' : 'rgba(234, 179, 8, 0.15)' }]}>
+                                <Ionicons name="card" size={18} color={(player.redCards || 0) > 0 ? '#EF4444' : '#EAB308'} />
                               </View>
-                              <Text style={styles.statCardValue}>{player.duelsWon}/{player.duelsTotal}</Text>
-                              <Text style={styles.statCardLabel}>İkili Mücadele</Text>
+                              <Text style={styles.statCardValue}>{player.yellowCards || 0}/{player.redCards || 0}</Text>
+                              <Text style={styles.statCardLabel}>Sarı/Kırmızı</Text>
                             </View>
                           </>
                         ) : (
@@ -1029,14 +1431,14 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
                         )}
                       </View>
                       
-                      {/* Oyuncu Isı Haritası - Takım Isı Haritası ile aynı çizim */}
+                      {/* Oyuncu Isı Haritası - API verilerinden veya pozisyon bazlı çizim */}
                       <View style={styles.playerHeatmapSection}>
                         <View style={styles.playerHeatmapHeader}>
                           <Ionicons name="flame" size={16} color="#F59E0B" />
                           <Text style={styles.playerHeatmapTitle}>Oyuncu Isı Haritası</Text>
                         </View>
                         <View style={styles.playerHeatmapField}>
-                          {/* Saha çizgileri - Takım ısı haritası ile aynı */}
+                          {/* Saha çizgileri */}
                           <View style={styles.fieldBorderNew} />
                           <View style={styles.centerLineNew} />
                           <View style={styles.centerCircleNew} />
@@ -1050,14 +1452,75 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
                           <View style={styles.goalLeftNew} />
                           <View style={styles.goalRightNew} />
                           
-                          {/* Pozisyona göre ısı noktaları */}
+                          {/* ✅ API'den gelen oyuncu ısı haritası verileri veya pozisyon bazlı fallback */}
                           {(() => {
+                            // Oyuncunun takımını bul
+                            const isPlayerHome = player.teamId === matchData?.teams?.home?.id || 
+                                                 player.teamName === matchData?.teams?.home?.name;
+                            const playerHeatmapSource = isPlayerHome ? heatmapData.home?.players : heatmapData.away?.players;
+                            const playerApiData = playerHeatmapSource?.find(p => p.playerId === player.id);
+                            
+                            // API'den veri varsa onu kullan
+                            if (playerApiData && playerApiData.points && playerApiData.points.length > 0) {
+                              // Intensity'ye göre renk
+                              const getPointColor = (intensity: number, type: string) => {
+                                if (type === 'shot') return `rgba(239, 68, 68, ${Math.max(0.4, intensity)})`; // Kırmızı
+                                if (type === 'tackle') return `rgba(59, 130, 246, ${Math.max(0.4, intensity)})`; // Mavi
+                                if (type === 'pass') return `rgba(16, 185, 129, ${Math.max(0.3, intensity * 0.8)})`; // Yeşil
+                                return `rgba(245, 158, 11, ${Math.max(0.5, intensity)})`; // Sarı (position)
+                              };
+                              
+                              // Boyut hesapla (intensity ve type'a göre)
+                              const getPointSize = (intensity: number, type: string) => {
+                                const baseSize = type === 'position' ? 28 : 18;
+                                return Math.max(12, Math.min(35, baseSize * intensity));
+                              };
+                              
+                              // ✅ Koordinat dönüşümü: 
+                              // Backend: x=saha genişliği (0-100), y=saha uzunluğu (0=home kale, 100=away kale)
+                              // Frontend (yatay saha): left=saha uzunluğu (0=sol/home kale), top=saha genişliği
+                              // API zaten takım yönüne göre veriyor: home y=5 (kendi kalesi), away y=95 (kendi kalesi)
+                              const transformCoords = (apiX: number, apiY: number) => {
+                                // Saha yatay gösterimde:
+                                // - API y (0=home kale, 100=away kale) → left (0=sol, 100=sağ)
+                                // - API x (0-100 genişlik) → top (0=üst, 100=alt)
+                                // Backend zaten takım bazlı koordinat veriyor, direkt kullan
+                                const fieldLeft = apiY;
+                                const fieldTop = apiX;
+                                return { left: fieldLeft, top: fieldTop };
+                              };
+                              
+                              return playerApiData.points.map((point, i) => {
+                                const { left, top } = transformCoords(point.x, point.y);
+                                const size = getPointSize(point.intensity, point.type);
+                                return (
+                                  <View
+                                    key={i}
+                                    style={[
+                                      styles.heatPointNew,
+                                      {
+                                        left: `${left}%`,
+                                        top: `${top}%`,
+                                        width: size,
+                                        height: size,
+                                        borderRadius: size / 2,
+                                        backgroundColor: getPointColor(point.intensity, point.type),
+                                        marginLeft: -size / 2,
+                                        marginTop: -size / 2,
+                                      }
+                                    ]}
+                                  />
+                                );
+                              });
+                            }
+                            
+                            // Fallback: Pozisyon bazlı statik ısı haritası
                             const pos = player.position?.toUpperCase() || '';
-                            const isGK = pos.includes('GK') || pos.includes('G');
-                            const isDef = pos.includes('CB') || pos.includes('LB') || pos.includes('RB') || pos.includes('DEF');
-                            const isMid = pos.includes('CM') || pos.includes('CDM') || pos.includes('CAM') || pos.includes('MID');
+                            const isGK = pos.includes('GK') || pos === 'G';
+                            const isDef = pos.includes('CB') || pos.includes('LB') || pos.includes('RB') || pos === 'D' || pos.includes('DEF');
+                            const isMid = pos.includes('CM') || pos.includes('CDM') || pos.includes('CAM') || pos === 'M' || pos.includes('MID');
                             const isWing = pos.includes('LW') || pos.includes('RW') || pos.includes('LM') || pos.includes('RM');
-                            const isFwd = pos.includes('ST') || pos.includes('CF') || pos.includes('FWD') || pos.includes('FW');
+                            const isFwd = pos.includes('ST') || pos.includes('CF') || pos === 'F' || pos.includes('FWD') || pos.includes('FW');
                             
                             const points: { x: number; y: number; size: number; color: string }[] = [];
                             
@@ -2504,6 +2967,19 @@ const styles = StyleSheet.create({
   // ═══════════════════════════════════════════════════════════════════
   // YENİ OYUNCU İSTATİSTİKLERİ - Elit Dropdown Tasarım
   // ═══════════════════════════════════════════════════════════════════
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+    minHeight: 200,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#94A3B8',
+    textAlign: 'center',
+  },
   playersContainerNew: {
     padding: 16,
     gap: 8,

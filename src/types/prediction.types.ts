@@ -202,4 +202,7 @@ export const SCORING_CONSTANTS = {
     WRONG: -1.5,    // Odaklanılan tahmin yanlışsa -1.5x (ceza)
   },
   MAX_FOCUS: 3,     // Maksimum 3 tahmin odaklanabilir
+  // ✅ BAĞIMSIZ TAHMİN BONUSU VE TOPLULUK CEZASI
+  INDEPENDENT_PREDICTION_BONUS: 1.10, // Topluluk görmeden tahmin = +%10 bonus
+  AFTER_COMMUNITY_VIEWED_MULTIPLIER: 0.20, // Topluluk gördükten sonra silip yeni tahmin = sadece %20 puan
 };

@@ -245,13 +245,21 @@ export const matchesApi = {
     return request(`/matches/league/${leagueId}${params}`);
   },
 
-  // Get match details (try DB first)
-  getMatchDetails: async (matchId: number) => {
+  // Get match details (try DB first, unless refresh=true)
+  // refresh: true = DB'yi atla, backend'den taze veri çek (canlı maçlar için)
+  getMatchDetails: async (matchId: number, refresh = false) => {
     try {
       // ✅ Mock maç (999999) için doğrudan backend kullan – DB formatı uyumsuz olabilir
       if (matchId === 999999) {
         logger.debug(`Match ${matchId} MOCK – using backend directly`, { matchId }, 'API');
         const backendResult = await request(`/matches/${matchId}`);
+        return backendResult;
+      }
+
+      // ✅ Canlı güncelleme için refresh=true ise DB'yi atla
+      if (refresh) {
+        logger.debug(`Match ${matchId} REFRESH – using backend directly`, { matchId }, 'API');
+        const backendResult = await request(`/matches/${matchId}?refresh=1`);
         return backendResult;
       }
 
@@ -280,7 +288,9 @@ export const matchesApi = {
   },
 
   // Get match statistics
-  getMatchStatistics: (matchId: number) => request(`/matches/${matchId}/statistics`),
+  // refresh: true = backend cache'i atla, API'den taze veri çek
+  getMatchStatistics: (matchId: number, refresh = false) => 
+    request(`/matches/${matchId}/statistics${refresh ? '?refresh=1' : ''}`),
 
   // Get player statistics for a match (from fixtures/players endpoint)
   // Returns detailed player stats: goals, assists, shots, passes, tackles, cards, etc.
@@ -293,7 +303,9 @@ export const matchesApi = {
   getMatchHeatmaps: (matchId: number) => request(`/matches/${matchId}/heatmaps`),
 
   // Get match events (goals, cards, etc.)
-  getMatchEvents: (matchId: number) => request(`/matches/${matchId}/events`),
+  // refresh: true = backend cache'i atla, API'den taze veri çek
+  getMatchEvents: (matchId: number, refresh = false) => 
+    request(`/matches/${matchId}/events${refresh ? '?refresh=1' : ''}`),
 
   // Get live events (DB + API hybrid, 15sn güncelleme) - maç başlamadıysa matchNotStarted: true
   getMatchEventsLive: (matchId: number | string) =>
@@ -394,6 +406,12 @@ export const teamsApi = {
 
   // Get team coach (teknik direktör) - API'den dinamik
   getTeamCoach: (teamId: number) => request(`/teams/${teamId}/coach`),
+
+  // Get coaches for multiple teams at once (toplu coach çekme)
+  getBulkCoaches: (teamIds: number[]) => request('/teams/coaches/bulk', {
+    method: 'POST',
+    body: JSON.stringify({ teamIds }),
+  }),
 
   // Get team squad (oyuncu kadrosu)
   getTeamSquad: (teamId: number, season?: number) => {

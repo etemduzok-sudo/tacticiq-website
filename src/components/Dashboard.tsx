@@ -35,8 +35,9 @@ import { useMatchesWithPredictions } from '../hooks/useMatchesWithPredictions';
 import { useTranslation } from '../hooks/useTranslation';
 import { MOCK_TEST_ENABLED, MOCK_MATCH_IDS, shouldShowMatchNotification, getMatchNotificationMessage, getMatch1Start, getMatch2Start, isMockTestMatch } from '../data/mockTestData';
 
-// Coach cache - takım ID'sine göre teknik direktör isimlerini cache'le
-const coachCache: Record<number, string> = {};
+// Coach cache - takım ID'sine göre teknik direktör isimlerini cache'le (global)
+// Bu global cache, component remount'larında bile korunur
+const globalCoachCache: Record<number, string> = {};
 import { logger } from '../utils/logger';
 import { COLORS, SPACING, TYPOGRAPHY, SIZES, SHADOWS, BRAND } from '../theme/theme';
 import { WEBSITE_DARK_COLORS } from '../config/WebsiteDesignSystem';
@@ -359,88 +360,74 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
     };
   };
   
-  // ✅ Teknik direktör ismini al (2026 Ocak güncel - API fallback)
-  // Önce cache'e bak, yoksa fallback listesini kullan
-  // API endpoint'i: /api/teams/:id/coach (arka planda çekilecek)
+  // ✅ Coach cache state (component içinde re-render trigger için)
+  const [coachCacheVersion, setCoachCacheVersion] = useState(0);
+  
+  // ✅ Maçlar yüklendiğinde coach verilerini API'den toplu çek
+  useEffect(() => {
+    const fetchCoachesForMatches = async () => {
+      // Tüm maçlardaki takım ID'lerini topla
+      const allMatches = [
+        ...matchData.upcomingMatches,
+        ...matchData.liveMatches,
+        ...matchData.pastMatches.slice(0, 10), // Biten maçlardan sadece son 10
+      ];
+      
+      const teamIds: number[] = [];
+      allMatches.forEach(match => {
+        if (match.teams?.home?.id && !globalCoachCache[match.teams.home.id]) {
+          teamIds.push(match.teams.home.id);
+        }
+        if (match.teams?.away?.id && !globalCoachCache[match.teams.away.id]) {
+          teamIds.push(match.teams.away.id);
+        }
+      });
+      
+      // Benzersiz ID'leri al
+      const uniqueIds = [...new Set(teamIds)];
+      
+      if (uniqueIds.length === 0) return;
+      
+      try {
+        const response = await teamsApi.getBulkCoaches(uniqueIds);
+        if (response?.success && response?.data) {
+          const coachData = response.data as Record<string, { coach: string | null }>;
+          let updated = false;
+          
+          Object.entries(coachData).forEach(([teamId, data]) => {
+            if (data.coach) {
+              globalCoachCache[parseInt(teamId, 10)] = data.coach;
+              updated = true;
+            }
+          });
+          
+          // State'i güncelle (re-render trigger)
+          if (updated) {
+            setCoachCacheVersion(v => v + 1);
+          }
+        }
+      } catch (error) {
+        // API hatası - sessizce devam et
+        logger.warn('Coach bulk fetch failed', { error }, 'Dashboard');
+      }
+    };
+    
+    // Maçlar yüklendiğinde çek
+    if (matchData.hasLoadedOnce && !matchData.loading) {
+      fetchCoachesForMatches();
+    }
+  }, [matchData.hasLoadedOnce, matchData.loading, matchData.upcomingMatches.length, matchData.liveMatches.length]);
+  
+  // ✅ Teknik direktör ismini al - sadece cache'ten oku (DB/API'den doldurulur)
   const getCoachName = (teamName: string, teamId?: number): string => {
     // Eğer teamId varsa ve cache'te varsa, cache'ten döndür
-    if (teamId && coachCache[teamId]) {
-      return coachCache[teamId];
+    if (teamId && globalCoachCache[teamId]) {
+      return globalCoachCache[teamId];
     }
     
-    const name = teamName.toLowerCase();
-    // ✅ Fallback liste - Ocak 2026 güncel (web search ile doğrulandı)
-    const coaches: Record<string, string> = {
-      // Türk Takımları (2026 Ocak güncel)
-      'galatasaray': 'Okan Buruk',
-      'fenerbahçe': 'Domenico Tedesco', // ✅ Mourinho ayrıldı, Tedesco geldi
-      'fenerbahce': 'Domenico Tedesco',
-      'beşiktaş': 'Sergen Yalçın', // ✅ Solskjaer ayrıldı, Sergen geldi
-      'besiktas': 'Sergen Yalçın',
-      'trabzonspor': 'Şenol Güneş',
-      'başakşehir': 'Çağdaş Atan',
-      'basaksehir': 'Çağdaş Atan',
-      // La Liga
-      'real madrid': 'Carlo Ancelotti',
-      'barcelona': 'Hansi Flick',
-      'atletico madrid': 'Diego Simeone',
-      'sevilla': 'García Pimienta',
-      'villarreal': 'Marcelino',
-      'real sociedad': 'Imanol Alguacil',
-      // Premier League
-      'manchester city': 'Pep Guardiola',
-      'arsenal': 'Mikel Arteta',
-      'liverpool': 'Arne Slot',
-      'manchester united': 'Ruben Amorim',
-      'chelsea': 'Enzo Maresca',
-      'tottenham': 'Ange Postecoglou',
-      // Bundesliga
-      'bayern munich': 'Vincent Kompany',
-      'bayern': 'Vincent Kompany',
-      'borussia dortmund': 'Nuri Şahin',
-      'dortmund': 'Nuri Şahin',
-      'rb leipzig': 'Marco Rose',
-      'leverkusen': 'Xabi Alonso',
-      'bayer leverkusen': 'Xabi Alonso',
-      // Serie A
-      'juventus': 'Thiago Motta',
-      'inter': 'Simone Inzaghi',
-      'milan': 'Paulo Fonseca',
-      'ac milan': 'Paulo Fonseca',
-      'napoli': 'Antonio Conte',
-      'roma': 'Claudio Ranieri',
-      // Ligue 1
-      'paris saint germain': 'Luis Enrique',
-      'psg': 'Luis Enrique',
-      'marseille': 'Roberto De Zerbi',
-      // Milli Takımlar
-      'türkiye': 'Vincenzo Montella',
-      'turkey': 'Vincenzo Montella',
-      'almanya': 'Julian Nagelsmann',
-      'germany': 'Julian Nagelsmann',
-      'brezilya': 'Dorival Júnior',
-      'brazil': 'Dorival Júnior',
-      'arjantin': 'Lionel Scaloni',
-      'argentina': 'Lionel Scaloni',
-      'fransa': 'Didier Deschamps',
-      'france': 'Didier Deschamps',
-      'ingiltere': 'Thomas Tuchel',
-      'england': 'Thomas Tuchel',
-      'ispanya': 'Luis de la Fuente',
-      'spain': 'Luis de la Fuente',
-      'italya': 'Luciano Spalletti',
-      'italy': 'Luciano Spalletti',
-      'portekiz': 'Roberto Martínez',
-      'portugal': 'Roberto Martínez',
-      'hollanda': 'Ronald Koeman',
-      'netherlands': 'Ronald Koeman',
-      'belçika': 'Domenico Tedesco',
-      'belgium': 'Domenico Tedesco',
-    };
-    for (const [key, coach] of Object.entries(coaches)) {
-      if (name.includes(key)) return coach;
-    }
-    return 'Bilinmiyor';
+    // Cache'te yoksa "Yükleniyor..." veya boş göster
+    // Not: API bulk fetch arka planda çalışıyor, cache dolacak
+    return teamId ? '...' : 'Bilinmiyor';
   };
 
   // ✅ Takım adını çevir (milli takımlar için)
@@ -654,7 +641,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
               {/* Ev Sahibi Takım */}
               <View style={styles.matchCardTeamLeft}>
                 <Text style={styles.matchCardTeamName} numberOfLines={1} ellipsizeMode="tail">{getDisplayTeamName(match.teams.home.name)}</Text>
-                <Text style={styles.matchCardCoachName}>{getCoachName(match.teams.home.name)}</Text>
+                <Text style={styles.matchCardCoachName}>{getCoachName(match.teams.home.name, match.teams.home.id)}</Text>
                 {/* ✅ Her zaman aynı yükseklikte skor alanı - sıçrama olmasın */}
                 {(status === 'live' || status === 'finished') ? (
                   <View style={status === 'live' ? styles.matchCardScoreBoxLive : styles.matchCardScoreBox}>
@@ -785,7 +772,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
               {/* Deplasman Takım */}
               <View style={styles.matchCardTeamRight}>
                 <Text style={[styles.matchCardTeamName, styles.matchCardTeamNameRight]} numberOfLines={1} ellipsizeMode="tail">{getDisplayTeamName(match.teams.away.name)}</Text>
-                <Text style={styles.matchCardCoachNameAway}>{getCoachName(match.teams.away.name)}</Text>
+                <Text style={styles.matchCardCoachNameAway}>{getCoachName(match.teams.away.name, match.teams.away.id)}</Text>
                 {/* ✅ Her zaman aynı yükseklikte skor alanı - sıçrama olmasın */}
                 {(status === 'live' || status === 'finished') ? (
                   <View style={status === 'live' ? styles.matchCardScoreBoxLive : styles.matchCardScoreBox}>
@@ -984,6 +971,13 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
       // Bu durumda tüm favorilerin maçlarını göster
       return matches.filter(match => {
         if (!match?.teams?.home || !match?.teams?.away) return false;
+        
+        const fixtureId = match.fixture?.id;
+        // ✅ Mock maçları HER ZAMAN dahil et
+        if (fixtureId && mockTestIds.has(fixtureId)) {
+          return true;
+        }
+        
         const homeId = match.teams.home.id;
         const awayId = match.teams.away.id;
         return favoriteTeams.some(t => t.id === homeId || t.id === awayId);
@@ -992,6 +986,13 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
 
     const filtered = matches.filter(match => {
       if (!match?.teams?.home || !match?.teams?.away) return false;
+      
+      const fixtureId = match.fixture?.id;
+      
+      // ✅ Mock maçları HER ZAMAN dahil et (favori filtresi uygulanmaz)
+      if (fixtureId && mockTestIds.has(fixtureId)) {
+        return true;
+      }
       
       const homeId = match.teams.home.id;
       const awayId = match.teams.away.id;
@@ -1045,37 +1046,37 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
     return new Set([MOCK_MATCH_IDS.GS_FB, MOCK_MATCH_IDS.REAL_BARCA]);
   }, []);
 
-  // ✅ Canlı maçları filtrele (Dashboard'da en üstte gösterilecek)
+  // ✅ Canlı maçları filtrele (Dashboard'da biten/yaklaşan maçların arasında gösterilecek)
   const LIVE_STATUSES = ['1H', '2H', 'HT', 'ET', 'BT', 'P', 'LIVE', 'INT'];
   const filteredLiveMatches = React.useMemo(() => {
-    // ✅ Mevcut zaman (her render'da güncel)
+    // ✅ Mevcut zaman (her render'da güncel - countdownTicker her saniye tetikliyor)
     const now = Date.now();
     
-    // ✅ Mock maçları da filtreleme fonksiyonundan geçir
-    const allLive = liveMatches;
-    const filtered = filterMatchesByTeam(allLive, selectedTeamIds);
+    // ✅ TÜM maçlardan canlı olanları bul (liveMatches + upcomingMatches + pastMatches)
+    // Cache'den NS statüsü ile gelen ama gerçekte canlı olan maçlar upcoming/past'ta olabilir
+    const allMatches = [...liveMatches, ...allUpcomingMatches, ...pastMatches];
+    const filtered = filterMatchesByTeam(allMatches, selectedTeamIds);
     
-    // Birleştir: filtrelenmiş maçlar (mock + gerçek birlikte filtrelendi)
-    const combined = filtered;
-    
-    // Sadece gerçekten canlı olanları tut
-    const liveOnly = combined.filter(m => {
+    // ✅ Canlı maç kontrolü fonksiyonu
+    const isMatchLive = (m: any) => {
       const fixtureId = m.fixture?.id;
       const matchTimestamp = (m.fixture?.timestamp || 0) * 1000;
       const timeSinceStart = now - matchTimestamp;
       
-      // ✅ Mock maçlar için gerçek zamandan kontrol et
+      // ✅ Mock maçlar için: Fixture status'tan kontrol et (simülasyonda 1 sn = 1 dk)
       if (fixtureId && mockTestIds.has(fixtureId)) {
-        const matchStart = fixtureId === MOCK_MATCH_IDS.GS_FB ? getMatch1Start() : getMatch2Start();
-        const elapsedMs = now - matchStart;
-        const elapsedSeconds = elapsedMs / 1000;
-        const elapsedMinutes = Math.floor(elapsedSeconds);
+        const mockStatus = m.fixture?.status?.short || '';
+        const isMockLive = ['1H', '2H', 'HT', 'ET', 'P', 'LIVE', 'INT'].includes(mockStatus);
         
-        // Mock maç başladıysa ve bitmediyse canlı
-        if (elapsedMinutes >= 0 && elapsedMinutes < 112) {
-          return true;
-        }
-        return false;
+        console.log('🧪 Mock maç isMatchLive kontrolü:', {
+          fixtureId,
+          mockStatus,
+          isMockLive,
+          home: m.teams?.home?.name,
+          away: m.teams?.away?.name,
+        });
+        
+        return isMockLive;
       }
       
       // ✅ Gerçek maçlar için: API status VEYA timestamp kontrolü
@@ -1086,7 +1087,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
         return true;
       }
       
-      // 2) ✅ YENİ: Maç zamanı geçmiş ama statü NS/TBD - muhtemelen canlı (cache stale)
+      // 2) Maç zamanı geçmiş ama statü NS/TBD - muhtemelen canlı (cache stale)
       // Son 3 saat içinde başlamış olmalı
       if ((status === 'NS' || status === 'TBD' || status === '') && timeSinceStart > 0 && timeSinceStart < 3 * 60 * 60 * 1000) {
         console.log('🔴 Dashboard: Potansiyel canlı maç tespit edildi', {
@@ -1100,6 +1101,26 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
       }
       
       return false;
+    };
+    
+    // ✅ DEBUG: Filtreleme öncesi ve sonrası kontrol
+    console.log('🔴 Dashboard filteredLiveMatches DEBUG:', {
+      allMatchesCount: allMatches.length,
+      liveMatchesCount: liveMatches.length,
+      liveMatchesIds: liveMatches.map((m: any) => ({ id: m.fixture?.id, home: m.teams?.home?.name, away: m.teams?.away?.name, status: m.fixture?.status?.short })),
+      filteredCount: filtered.length,
+      filteredIds: filtered.map((m: any) => ({ id: m.fixture?.id, home: m.teams?.home?.name, away: m.teams?.away?.name })),
+      selectedTeamIds,
+      favoriteTeamIds: favoriteTeams.map(t => ({ id: t.id, name: t.name })),
+    });
+    
+    // Sadece gerçekten canlı olanları tut
+    const liveOnly = filtered.filter(isMatchLive);
+    
+    // ✅ DEBUG: isMatchLive sonrası kontrol
+    console.log('🔴 Dashboard liveOnly DEBUG:', {
+      liveOnlyCount: liveOnly.length,
+      liveOnlyIds: liveOnly.map((m: any) => ({ id: m.fixture?.id, home: m.teams?.home?.name, status: m.fixture?.status?.short })),
     });
     
     // Duplicate kaldır
@@ -1130,7 +1151,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
       // İkisi de gerçek: Timestamp'e göre (en yeni en üstte)
       return (b.fixture?.timestamp || 0) - (a.fixture?.timestamp || 0);
     });
-  }, [liveMatches, selectedTeamIds, filterMatchesByTeam, mockTestIds]);
+  }, [liveMatches, allUpcomingMatches, pastMatches, selectedTeamIds, filterMatchesByTeam, mockTestIds, countdownTicker]);
 
   const filteredUpcomingMatches = React.useMemo(() => {
     // ✅ Mock maçları da filtreleme fonksiyonundan geçir
@@ -1177,10 +1198,12 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
   const filteredPastMatches = React.useMemo(() => {
     const filtered = filterMatchesByTeam(pastMatches, selectedTeamIds);
     
-    // ✅ Duplicate fixture ID'leri kaldır
+    // ✅ Duplicate fixture ID'leri kaldır VE canlı maçları hariç tut
+    const liveIds = new Set(filteredLiveMatches.map(m => m.fixture?.id));
     const uniqueMatches = filtered.reduce((acc: any[], match) => {
       const fixtureId = match.fixture?.id;
-      if (fixtureId && !acc.some(m => m.fixture?.id === fixtureId)) {
+      // ✅ Canlı maçlar past listesinde görünmemeli
+      if (fixtureId && !acc.some(m => m.fixture?.id === fixtureId) && !liveIds.has(fixtureId)) {
         acc.push(match);
       }
       return acc;
@@ -1190,7 +1213,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
     return uniqueMatches.sort((a, b) => {
       return (b.fixture?.timestamp || 0) - (a.fixture?.timestamp || 0);
     });
-  }, [pastMatches, selectedTeamIds, filterMatchesByTeam]);
+  }, [pastMatches, selectedTeamIds, filterMatchesByTeam, filteredLiveMatches]);
 
   // ✅ Tüm maç ID'lerini birleştir (tahmin kontrolü için - canlı, yaklaşan VE biten)
   const allActiveMatchIds = React.useMemo(() => {

@@ -28,6 +28,80 @@ router.get('/search/:query', async (req, res) => {
   }
 });
 
+// POST /api/teams/coaches/bulk - Get coaches for multiple teams at once
+// ✅ Toplu coach çekme - maç listesi için optimize edilmiş
+// ⚠️ Bu route :id route'larından ÖNCE tanımlanmalı (Express routing order)
+router.post('/coaches/bulk', async (req, res) => {
+  try {
+    const { teamIds } = req.body;
+    
+    if (!teamIds || !Array.isArray(teamIds) || teamIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'teamIds array is required',
+      });
+    }
+    
+    // Max 20 takım sınırı (API rate limit koruma)
+    const limitedIds = teamIds.slice(0, 20);
+    console.log(`👔 Bulk coach fetch for ${limitedIds.length} teams`);
+    
+    const results = {};
+    
+    if (supabase) {
+      // Veritabanından toplu çek
+      const { data: teamsData, error: dbError } = await supabase
+        .from('static_teams')
+        .select('api_football_id, coach, coach_api_id, name, last_updated')
+        .in('api_football_id', limitedIds);
+      
+      if (!dbError && teamsData) {
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        
+        for (const team of teamsData) {
+          const lastUpdated = team.last_updated ? new Date(team.last_updated) : null;
+          const isRecent = lastUpdated && lastUpdated > sevenDaysAgo;
+          
+          results[team.api_football_id] = {
+            coach: team.coach || null,
+            coachId: team.coach_api_id || null,
+            teamName: team.name,
+            source: 'database',
+            isStale: !isRecent,
+          };
+        }
+        
+        console.log(`✅ DB'den ${teamsData.length} takımın coach bilgisi alındı`);
+      }
+    }
+    
+    // DB'de bulunmayanlar için null döndür (API'den çekmiyoruz - rate limit)
+    for (const id of limitedIds) {
+      if (!results[id]) {
+        results[id] = {
+          coach: null,
+          coachId: null,
+          teamName: null,
+          source: 'not_found',
+          isStale: true,
+        };
+      }
+    }
+    
+    res.json({
+      success: true,
+      data: results,
+      count: Object.keys(results).length,
+    });
+  } catch (error) {
+    console.error('❌ Error in bulk coach fetch:', error.message);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
 // GET /api/teams/:id - Get team information with colors and flags
 router.get('/:id', async (req, res) => {
   try {
@@ -180,12 +254,50 @@ router.get('/:id/flag', async (req, res) => {
 });
 
 // GET /api/teams/:id/coach - Get team coach (teknik direktör)
+// ✅ DB-first yaklaşımı: Önce veritabanına bak, yoksa/eskiyse API'den çek ve DB'ye kaydet
 router.get('/:id/coach', async (req, res) => {
   try {
     const { id } = req.params;
-    console.log(`👔 Fetching coach for team ${id}`);
+    const teamId = parseInt(id, 10);
+    const forceRefresh = req.query.refresh === 'true';
     
-    const data = await footballApi.getTeamCoach(id);
+    console.log(`👔 Fetching coach for team ${id}${forceRefresh ? ' (force refresh)' : ''}`);
+    
+    // 1. Önce veritabanından kontrol et (güncel mi?)
+    if (supabase && !forceRefresh) {
+      const { data: teamData, error: dbError } = await supabase
+        .from('static_teams')
+        .select('coach, coach_api_id, last_updated, name')
+        .eq('api_football_id', teamId)
+        .single();
+      
+      if (!dbError && teamData && teamData.coach) {
+        // Coach verisi var, güncelliğini kontrol et (7 gün içinde güncellenmişse kullan)
+        const lastUpdated = teamData.last_updated ? new Date(teamData.last_updated) : null;
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        
+        if (lastUpdated && lastUpdated > sevenDaysAgo) {
+          console.log(`✅ DB'den coach bulundu (${teamData.coach}) - güncel veri`);
+          return res.json({
+            success: true,
+            data: {
+              teamId: id,
+              coach: {
+                id: teamData.coach_api_id || null,
+                name: teamData.coach,
+              },
+              source: 'database',
+            },
+            cached: true,
+          });
+        } else {
+          console.log(`⚠️ DB'deki coach verisi eski (${lastUpdated?.toISOString()}), API'den güncellenecek`);
+        }
+      }
+    }
+    
+    // 2. API'den çek
+    const data = await footballApi.getTeamCoach(teamId);
     
     if (!data.response || data.response.length === 0) {
       return res.json({
@@ -199,12 +311,31 @@ router.get('/:id/coach', async (req, res) => {
       });
     }
     
-    // Get the current coach (most recent)
+    // Get the current coach (aktif olarak o takımda çalışan - end tarihi olmayan)
     const coaches = data.response;
-    const currentCoach = coaches.find(c => c.career && c.career.some(car => car.team?.id == id && !car.end)) 
-      || coaches[0];
+    const currentCoach = coaches.find(c => 
+      c.career && c.career.some(car => car.team?.id == teamId && !car.end)
+    ) || coaches[0];
     
-    console.log(`✅ Found coach for team ${id}: ${currentCoach.name}`);
+    console.log(`✅ API'den coach bulundu: ${currentCoach.name}`);
+    
+    // 3. Veritabanına kaydet (güncel tutmak için)
+    if (supabase && currentCoach) {
+      const { error: updateError } = await supabase
+        .from('static_teams')
+        .update({ 
+          coach: currentCoach.name,
+          coach_api_id: currentCoach.id,
+          last_updated: new Date().toISOString()
+        })
+        .eq('api_football_id', teamId);
+      
+      if (updateError) {
+        console.warn(`⚠️ Coach DB güncelleme hatası (team ${teamId}):`, updateError.message);
+      } else {
+        console.log(`💾 Coach DB'ye kaydedildi: ${currentCoach.name}`);
+      }
+    }
     
     res.json({
       success: true,
@@ -220,6 +351,7 @@ router.get('/:id/coach', async (req, res) => {
           // ⚠️ TELİF: Fotoğraflar telifli olabilir
           photo: null,
         },
+        source: 'api',
       },
       cached: data.cached || false,
     });
@@ -587,5 +719,82 @@ function getMockTestSquad(teamId) {
   };
   return squads[teamId] || null;
 }
+
+// ✅ GET /api/teams/:id/injuries - Takım sakatlık ve ceza listesi
+router.get('/:id/injuries', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const teamId = parseInt(id);
+    const { season = 2025 } = req.query;
+    
+    console.log(`🏥 [INJURIES] Fetching injuries for team ${teamId}`);
+    
+    const injuries = await footballApi.getTeamInjuries(teamId, parseInt(season));
+    
+    // API response formatı: [{ player: { id, name, photo, type, reason }, team: {...}, fixture: {...}, league: {...} }]
+    const injuryList = injuries.map(inj => ({
+      playerId: inj.player?.id,
+      playerName: inj.player?.name,
+      playerPhoto: inj.player?.photo,
+      type: inj.player?.type || 'Unknown', // "Missing Fixture", "Questionable", "Injury", "Suspension"
+      reason: inj.player?.reason || 'Unknown',
+      teamId: inj.team?.id,
+      teamName: inj.team?.name,
+    }));
+    
+    res.json({
+      success: true,
+      data: injuryList,
+      count: injuryList.length,
+    });
+  } catch (error) {
+    console.error(`❌ [INJURIES] Error:`, error.message);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      data: [],
+    });
+  }
+});
+
+// ✅ POST /api/teams/:id/sync - Favori takım eklendiğinde hemen sync tetikle
+// Bu endpoint kullanıcı bir takımı favorilere eklediğinde çağrılır
+// Kadro + Coach + Takım bilgileri hemen güncellenir
+router.post('/:id/sync', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const teamId = parseInt(id);
+    const { teamName } = req.body;
+    
+    console.log(`🔄 [FAVORITE SYNC] Team ${teamName || teamId} added to favorites, syncing...`);
+    
+    const squadSyncService = require('../services/squadSyncService');
+    const result = await squadSyncService.syncSingleTeamNow(teamId, teamName);
+    
+    if (result.ok) {
+      res.json({
+        success: true,
+        message: `Team ${teamName || teamId} synced successfully`,
+        data: {
+          playerCount: result.count,
+          coachUpdated: result.coachUpdated || false,
+          colorsUpdated: result.colorsUpdated || false,
+        },
+      });
+    } else {
+      res.json({
+        success: false,
+        message: `Sync failed: ${result.reason}`,
+        data: null,
+      });
+    }
+  } catch (error) {
+    console.error(`❌ [FAVORITE SYNC] Error:`, error.message);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
 
 module.exports = router;
