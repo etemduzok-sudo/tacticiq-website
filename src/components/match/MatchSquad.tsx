@@ -4884,7 +4884,21 @@ const PlayerModal = ({ visible, players, selectedPlayers, positionLabel, onSelec
                           )}
                         </View>
                         <View style={styles.playerItemBottomRow}>
-                          <Text style={styles.playerItemRatingBottom}>{item.rating}</Text>
+                          <Text style={styles.playerItemRatingBottom}>
+                            {(() => {
+                              // Rating'i normalize et: 6.6 gibi değerleri 65-95 arası tam sayıya çevir
+                              const rating = item.rating;
+                              if (rating == null) return '75';
+                              if (rating > 0 && rating <= 10) {
+                                const normalized = Math.round(65 + (rating / 10) * 30);
+                                return Math.max(65, Math.min(95, normalized)).toString();
+                              }
+                              if (rating >= 65 && rating <= 95) {
+                                return Math.round(rating).toString();
+                              }
+                              return Math.max(65, Math.min(95, Math.round(rating))).toString();
+                            })()}
+                          </Text>
                           <Text style={styles.playerItemPosition}>
                             {item.position} • {item.team}
                           </Text>
@@ -4998,7 +5012,24 @@ const PlayerModal = ({ visible, players, selectedPlayers, positionLabel, onSelec
                   <Text style={styles.playerCardInfoText}>
                     {previewPlayer.nationality || 'Unknown'} • {previewPlayer.age || '?'} yaş
                   </Text>
-                  <Text style={styles.playerCardRatingBottom}>{previewPlayer.rating}</Text>
+                  <Text style={styles.playerCardRatingBottom}>
+                    {(() => {
+                      // Rating'i normalize et: 6.6 gibi değerleri 65-95 arası tam sayıya çevir
+                      const rating = previewPlayer.rating;
+                      if (rating == null) return '75';
+                      // 0-10 arası ise (maç rating'i), 65-95'e çevir
+                      if (rating > 0 && rating <= 10) {
+                        const normalized = Math.round(65 + (rating / 10) * 30);
+                        return Math.max(65, Math.min(95, normalized)).toString();
+                      }
+                      // Zaten 65-95 arasındaysa tam sayıya yuvarla
+                      if (rating >= 65 && rating <= 95) {
+                        return Math.round(rating).toString();
+                      }
+                      // Diğer durumlar için normalize et
+                      return Math.max(65, Math.min(95, Math.round(rating))).toString();
+                    })()}
+                  </Text>
                 </View>
               </LinearGradient>
 
@@ -5050,27 +5081,68 @@ const PlayerModal = ({ visible, players, selectedPlayers, positionLabel, onSelec
                       const isGK = playerPos === 'GK' || playerPos === 'G' || playerPos.toLowerCase().includes('goalkeeper') ||
                                    positionLabel?.toUpperCase() === 'GK';
                       
+                      // ✅ Stats'leri al veya rating'den geriye doğru hesapla
+                      const stats = previewPlayer.stats || {};
+                      const normalizedRating = (() => {
+                        const rating = previewPlayer.rating;
+                        if (rating == null) return 75;
+                        if (rating > 0 && rating <= 10) {
+                          return Math.round(65 + (rating / 10) * 30);
+                        }
+                        if (rating >= 65 && rating <= 95) {
+                          return Math.round(rating);
+                        }
+                        return Math.max(65, Math.min(95, Math.round(rating)));
+                      })();
+                      
+                      // ✅ Eğer tüm stats 70 ise (default), rating'den geriye doğru hesapla
+                      const allStatsDefault = (
+                        (stats.pace ?? 70) === 70 &&
+                        (stats.shooting ?? 70) === 70 &&
+                        (stats.passing ?? 70) === 70 &&
+                        (stats.dribbling ?? 70) === 70 &&
+                        (stats.defending ?? 70) === 70 &&
+                        (stats.physical ?? 70) === 70
+                      );
+                      
+                      // ✅ Rating'den geriye doğru stats hesapla (eğer default ise)
+                      const calculatedStats = allStatsDefault ? {
+                        pace: normalizedRating,
+                        shooting: normalizedRating,
+                        passing: normalizedRating,
+                        dribbling: normalizedRating,
+                        defending: normalizedRating,
+                        physical: normalizedRating,
+                      } : {
+                        pace: stats.pace ?? 70,
+                        shooting: stats.shooting ?? 70,
+                        passing: stats.passing ?? 70,
+                        dribbling: stats.dribbling ?? 70,
+                        defending: stats.defending ?? 70,
+                        physical: stats.physical ?? 70,
+                      };
+                      
                       // ✅ Kaleci özellikleri (pace→Dalış, shooting→Refleks, vb. mapping)
                       const goalkeeperStats = [
-                        { label: 'DALIŞ', value: previewPlayer.stats.pace ?? 70, icon: 'hand-left' },
-                        { label: 'REFLEKS', value: previewPlayer.stats.shooting ?? 70, icon: 'flash' },
-                        { label: 'TOP TUT', value: previewPlayer.stats.passing ?? 70, icon: 'hand-right' },
-                        { label: 'KONUM', value: previewPlayer.stats.dribbling ?? 70, icon: 'locate' },
-                        { label: 'HAVA', value: previewPlayer.stats.defending ?? 70, icon: 'arrow-up' },
-                        { label: '1V1', value: previewPlayer.stats.physical ?? 70, icon: 'body' },
+                        { label: 'DALIŞ', value: calculatedStats.pace, icon: 'hand-left' },
+                        { label: 'REFLEKS', value: calculatedStats.shooting, icon: 'flash' },
+                        { label: 'TOP TUT', value: calculatedStats.passing, icon: 'hand-right' },
+                        { label: 'KONUM', value: calculatedStats.dribbling, icon: 'locate' },
+                        { label: 'HAVA', value: calculatedStats.defending, icon: 'arrow-up' },
+                        { label: '1V1', value: calculatedStats.physical, icon: 'body' },
                       ];
                       
                       // ✅ Saha oyuncusu özellikleri
                       const outfieldStats = [
-                        { label: 'HIZ', value: previewPlayer.stats.pace ?? 70, icon: 'flash' },
-                        { label: 'ŞUT', value: previewPlayer.stats.shooting ?? 70, icon: 'football' },
-                        { label: 'PAS', value: previewPlayer.stats.passing ?? 70, icon: 'swap-horizontal' },
-                        { label: 'DRİBLİNG', value: previewPlayer.stats.dribbling ?? 70, icon: 'walk' },
-                        { label: 'DEFANS', value: previewPlayer.stats.defending ?? 70, icon: 'shield' },
-                        { label: 'FİZİK', value: previewPlayer.stats.physical ?? 70, icon: 'fitness' },
+                        { label: 'HIZ', value: calculatedStats.pace, icon: 'flash' },
+                        { label: 'ŞUT', value: calculatedStats.shooting, icon: 'football' },
+                        { label: 'PAS', value: calculatedStats.passing, icon: 'swap-horizontal' },
+                        { label: 'DRİBLİNG', value: calculatedStats.dribbling, icon: 'walk' },
+                        { label: 'DEFANS', value: calculatedStats.defending, icon: 'shield' },
+                        { label: 'FİZİK', value: calculatedStats.physical, icon: 'fitness' },
                       ];
                       
-                      const stats = isGK ? goalkeeperStats : outfieldStats;
+                      const finalStats = isGK ? goalkeeperStats : outfieldStats;
                       
                       return stats.map((stat, index) => (
                         <View key={index} style={styles.playerCardStatItem}>
