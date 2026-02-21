@@ -142,15 +142,56 @@ export const matchesDb = {
    */
   getTestMatches: async () => {
     try {
-      const { data, error } = await supabase
+      // Try with explicit foreign key first, fallback to manual join if needed
+      let { data, error } = await supabase
         .from('test_matches')
         .select(`
           *,
-          home_team:teams!test_matches_home_team_id_fkey(id, name, logo),
-          away_team:teams!test_matches_away_team_id_fkey(id, name, logo),
-          league:leagues(id, name, country, logo)
+          home_team:teams!home_team_id(id, name, logo),
+          away_team:teams!away_team_id(id, name, logo),
+          league:leagues!league_id(id, name, country, logo)
         `)
         .order('fixture_date', { ascending: true });
+      
+      // If foreign key fails, try without explicit constraint name
+      if (error && error.message.includes('fkey')) {
+        console.log('⚠️ [DB] Foreign key constraint not found, trying manual join...');
+        const { data: matchesData, error: matchesError } = await supabase
+          .from('test_matches')
+          .select('*')
+          .order('fixture_date', { ascending: true });
+        
+        if (matchesError) {
+          throw matchesError;
+        }
+        
+        // Manual join for teams and leagues
+        if (matchesData && matchesData.length > 0) {
+          const teamIds = new Set<number>();
+          const leagueIds = new Set<number>();
+          matchesData.forEach((m: any) => {
+            if (m.home_team_id) teamIds.add(m.home_team_id);
+            if (m.away_team_id) teamIds.add(m.away_team_id);
+            if (m.league_id) leagueIds.add(m.league_id);
+          });
+          
+          const [teamsResult, leaguesResult] = await Promise.all([
+            supabase.from('teams').select('id, name, logo').in('id', Array.from(teamIds)),
+            supabase.from('leagues').select('id, name, country, logo').in('id', Array.from(leagueIds)),
+          ]);
+          
+          const teamsMap = new Map((teamsResult.data || []).map((t: any) => [t.id, t]));
+          const leaguesMap = new Map((leaguesResult.data || []).map((l: any) => [l.id, l]));
+          
+          data = matchesData.map((m: any) => ({
+            ...m,
+            home_team: teamsMap.get(m.home_team_id) || null,
+            away_team: teamsMap.get(m.away_team_id) || null,
+            league: leaguesMap.get(m.league_id) || null,
+          }));
+          error = null;
+        }
+      }
 
       if (error) throw error;
       
