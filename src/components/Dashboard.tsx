@@ -1122,9 +1122,14 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
     const loadMockMatches = async () => {
       setMockMatchesLoading(true);
       try {
+        console.log('🔍 [Dashboard] Loading mock matches...');
         const result = await matchesDb.getTestMatches();
+        console.log('🔍 [Dashboard] Mock matches result:', { success: result.success, count: result.data?.length || 0, error: result.error });
         if (result.success && result.data) {
+          console.log('✅ [Dashboard] Mock matches loaded:', result.data.length);
           setMockMatches(result.data);
+        } else {
+          console.log('⚠️ [Dashboard] Mock matches failed or empty:', result.error || 'No data');
         }
       } catch (error) {
         console.error('❌ Error loading mock matches:', error);

@@ -5144,7 +5144,7 @@ const PlayerModal = ({ visible, players, selectedPlayers, positionLabel, onSelec
                       
                       const finalStats = isGK ? goalkeeperStats : outfieldStats;
                       
-                      return stats.map((stat, index) => (
+                      return finalStats.map((stat, index) => (
                         <View key={index} style={styles.playerCardStatItem}>
                           <View style={[
                             styles.playerCardStatCircle,
