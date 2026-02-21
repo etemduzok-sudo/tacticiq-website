@@ -1170,7 +1170,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
       withoutPrediction: mockMatchesWithoutPrediction.length,
       loading: mockMatchesLoading
     });
-  }, [mockMatches, mockMatchesWithPrediction, mockMatchesWithoutPrediction, mockMatchesLoading]);
+  }, [mockMatches, mockMatchesLoading]); // mockMatchesWithPrediction ve mockMatchesWithoutPrediction useMemo ile hesaplanıyor, dependency'ye gerek yok
   
   // ✅ Dashboard'a geri dönüldüğünde tahminleri yenile (AppState listener)
   React.useEffect(() => {
