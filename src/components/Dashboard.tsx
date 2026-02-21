@@ -1124,22 +1124,44 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
       try {
         console.log('🔍 [Dashboard] Loading mock matches...');
         const result = await matchesDb.getTestMatches();
-        console.log('🔍 [Dashboard] Mock matches result:', { success: result.success, count: result.data?.length || 0, error: result.error });
-        if (result.success && result.data) {
-          console.log('✅ [Dashboard] Mock matches loaded:', result.data.length);
+        console.log('🔍 [Dashboard] Mock matches result:', { 
+          success: result.success, 
+          count: result.data?.length || 0, 
+          error: result.error,
+          data: result.data ? result.data.slice(0, 2) : null // İlk 2 maçı göster
+        });
+        if (result.success && result.data && result.data.length > 0) {
+          console.log('✅ [Dashboard] Mock matches loaded:', result.data.length, 'matches');
+          console.log('📋 [Dashboard] First mock match:', result.data[0]);
           setMockMatches(result.data);
         } else {
-          console.log('⚠️ [Dashboard] Mock matches failed or empty:', result.error || 'No data');
+          console.log('⚠️ [Dashboard] Mock matches failed or empty:', result.error || 'No data', { 
+            success: result.success, 
+            dataLength: result.data?.length || 0 
+          });
+          setMockMatches([]);
         }
-      } catch (error) {
-        console.error('❌ Error loading mock matches:', error);
+      } catch (error: any) {
+        console.error('❌ Error loading mock matches:', error?.message || error, error);
+        setMockMatches([]);
       } finally {
         setMockMatchesLoading(false);
+        console.log('🏁 [Dashboard] Mock matches loading finished');
       }
     };
     
     loadMockMatches();
   }, []);
+  
+  // Debug: Mock matches state değişikliklerini izle
+  React.useEffect(() => {
+    console.log('📊 [Dashboard] Mock matches state changed:', { 
+      count: mockMatches.length, 
+      withPrediction: mockMatchesWithPrediction.length,
+      withoutPrediction: mockMatchesWithoutPrediction.length,
+      loading: mockMatchesLoading
+    });
+  }, [mockMatches, mockMatchesWithPrediction, mockMatchesWithoutPrediction, mockMatchesLoading]);
   
   // ✅ Mock maçları tahmin yapılan/yapılmayan olarak kategorize et
   const mockMatchesWithPrediction = React.useMemo(() => {

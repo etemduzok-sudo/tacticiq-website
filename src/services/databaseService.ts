@@ -142,6 +142,7 @@ export const matchesDb = {
    */
   getTestMatches: async () => {
     try {
+      console.log('🔍 [DB] Fetching test_matches...');
       // Try with explicit foreign key first, fallback to manual join if needed
       let { data, error } = await supabase
         .from('test_matches')
@@ -153,9 +154,16 @@ export const matchesDb = {
         `)
         .order('fixture_date', { ascending: true });
       
+      console.log('🔍 [DB] test_matches query result:', { 
+        hasData: !!data, 
+        dataLength: data?.length || 0, 
+        error: error?.message || null,
+        errorCode: error?.code || null
+      });
+      
       // If foreign key fails, try without explicit constraint name
-      if (error && error.message.includes('fkey')) {
-        console.log('⚠️ [DB] Foreign key constraint not found, trying manual join...');
+      if (error && (error.message.includes('fkey') || error.message.includes('foreign key') || error.code === 'PGRST116')) {
+        console.log('⚠️ [DB] Foreign key constraint not found, trying manual join...', error.message);
         const { data: matchesData, error: matchesError } = await supabase
           .from('test_matches')
           .select('*')
@@ -246,9 +254,10 @@ export const matchesDb = {
         statistics: [],
       }));
 
+      console.log('✅ [DB] test_matches transformed:', { count: transformed.length });
       return { success: true, data: transformed };
     } catch (error: any) {
-      console.error('❌ Error fetching test matches from DB:', error.message);
+      console.error('❌ Error fetching test matches from DB:', error.message, error);
       return { success: false, error: error.message, data: [] };
     }
   },
