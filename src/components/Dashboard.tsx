@@ -1120,11 +1120,13 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
   
   // ✅ Mock maçları tahmin yapılan/yapılmayan olarak kategorize et (useMemo önce tanımlanmalı)
   const mockMatchesWithPrediction = React.useMemo(() => {
-    return mockMatches.filter(m => matchIdsWithPredictions.has(m.fixture.id));
+    if (!mockMatches || !matchIdsWithPredictions) return [];
+    return mockMatches.filter(m => m?.fixture?.id && matchIdsWithPredictions.has(m.fixture.id));
   }, [mockMatches, matchIdsWithPredictions]);
   
   const mockMatchesWithoutPrediction = React.useMemo(() => {
-    return mockMatches.filter(m => !matchIdsWithPredictions.has(m.fixture.id));
+    if (!mockMatches || !matchIdsWithPredictions) return [];
+    return mockMatches.filter(m => m?.fixture?.id && !matchIdsWithPredictions.has(m.fixture.id));
   }, [mockMatches, matchIdsWithPredictions]);
   
   React.useEffect(() => {
@@ -1164,13 +1166,15 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
   
   // Debug: Mock matches state değişikliklerini izle
   React.useEffect(() => {
-    console.log('📊 [Dashboard] Mock matches state changed:', { 
-      count: mockMatches.length, 
-      withPrediction: mockMatchesWithPrediction.length,
-      withoutPrediction: mockMatchesWithoutPrediction.length,
-      loading: mockMatchesLoading
-    });
-  }, [mockMatches, mockMatchesLoading]); // mockMatchesWithPrediction ve mockMatchesWithoutPrediction useMemo ile hesaplanıyor, dependency'ye gerek yok
+    if (mockMatches.length > 0) {
+      console.log('📊 [Dashboard] Mock matches state changed:', { 
+        count: mockMatches.length, 
+        withPrediction: mockMatchesWithPrediction.length,
+        withoutPrediction: mockMatchesWithoutPrediction.length,
+        loading: mockMatchesLoading
+      });
+    }
+  }, [mockMatches, mockMatchesLoading, mockMatchesWithPrediction.length, mockMatchesWithoutPrediction.length]);
   
   // ✅ Dashboard'a geri dönüldüğünde tahminleri yenile (AppState listener)
   React.useEffect(() => {
