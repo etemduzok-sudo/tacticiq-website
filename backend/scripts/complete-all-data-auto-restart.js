@@ -148,7 +148,7 @@ async function fillRatings(maxCalls) {
             height: p.player.height,
             weight: p.player.weight,
             photo: p.player.photo,
-            number: stats.games?.number || null,
+            number: (stats.games?.number != null && stats.games.number > 0 && stats.games.number <= 99) ? stats.games.number : null,
             position: stats.games?.position || p.player.position,
             rating: rating,
             appearances: stats.games?.appearences || 0,
@@ -268,7 +268,7 @@ async function fillSquads(maxCalls) {
           id: p.id,
           name: p.name,
           age: p.age,
-          number: p.number,
+          number: (p.number != null && p.number > 0 && p.number <= 99) ? p.number : null,
           position: p.position,
           photo: p.photo
         }));

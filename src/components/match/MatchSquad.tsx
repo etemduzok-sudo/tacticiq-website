@@ -3069,7 +3069,7 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favor
                             {/* Jersey Number Badge - Top Center */}
                             <View style={styles.jerseyNumberBadge}>
                               <Text style={styles.jerseyNumberText}>
-                                {player.number || player.id}
+                                {player.number != null && player.number > 0 ? player.number : '-'}
                               </Text>
                             </View>
 
@@ -4869,7 +4869,9 @@ const PlayerModal = ({ visible, players, selectedPlayers, positionLabel, onSelec
                         styles.playerItemJerseyNumber,
                         { backgroundColor: item.rating >= 85 ? '#C9A44C' : '#1FA2A6' }
                       ]}>
-                        <Text style={styles.playerItemJerseyNumberText}>{item.number ?? item.id}</Text>
+                        <Text style={styles.playerItemJerseyNumberText}>
+                          {item.number != null && item.number > 0 ? item.number : '-'}
+                        </Text>
                       </View>
                       <View style={styles.playerItemInfo}>
                         <View style={styles.playerItemNameRow}>
@@ -4977,7 +4979,9 @@ const PlayerModal = ({ visible, players, selectedPlayers, positionLabel, onSelec
 
                 {/* Jersey Number Circle */}
                 <View style={styles.playerCardRatingCircle}>
-                  <Text style={styles.playerCardRatingText}>{previewPlayer.number || previewPlayer.id}</Text>
+                  <Text style={styles.playerCardRatingText}>
+                    {previewPlayer.number != null && previewPlayer.number > 0 ? previewPlayer.number : '-'}
+                  </Text>
                 </View>
 
                 {/* Player Name & Position */}

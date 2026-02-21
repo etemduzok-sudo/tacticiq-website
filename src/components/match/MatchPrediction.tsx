@@ -2059,7 +2059,9 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                               <View style={[styles.playerCard, player.rating >= 85 && styles.playerCardElite]}>
                                 <LinearGradient colors={['#1E3A3A', '#0F2A24']} style={styles.playerCardGradient}>
                                   <View style={[styles.jerseyNumberBadge, player.rating >= 85 && { backgroundColor: '#C9A44C' }]}>
-                                    <Text style={styles.jerseyNumberText}>{player.number || player.id}</Text>
+                                    <Text style={styles.jerseyNumberText}>
+                                      {player.number != null && player.number > 0 ? player.number : '-'}
+                                    </Text>
                                   </View>
                                   <Text style={styles.playerName} numberOfLines={1}>{player.name.split(' ').pop()}</Text>
                                 </LinearGradient>
@@ -2488,7 +2490,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                           player.rating < 85 && (player.position === 'GK' || isGoalkeeperPlayer(player)) && { backgroundColor: '#3B82F6' },
                         ]}>
                           <Text style={styles.jerseyNumberText}>
-                            {player.number || player.id}
+                            {player.number != null && player.number > 0 ? player.number : '-'}
                           </Text>
                         </View>
                         <Text style={styles.playerName} numberOfLines={1}>

@@ -86,11 +86,17 @@ function buildEnhancedPlayers(players, dbPlayersMap, injuriesMap = {}) {
     const suspended = !!injuryInfo.suspended;
     const suspension_reason = injuryInfo.suspension_reason || null;
     const eligible_for_selection = !injured && !suspended;
+    // Forma numarası kontrolü: null, undefined veya 99'dan büyükse (player ID olabilir) null yap
+    let playerNumber = player.number;
+    if (playerNumber == null || playerNumber === '' || playerNumber > 99) {
+      playerNumber = null;
+    }
+    
     return {
       id: player.id,
       name: player.name,
       age: player.age || dbPlayer?.age || null,
-      number: player.number,
+      number: playerNumber,
       position: player.position,
       nationality: player.nationality || dbPlayer?.nationality || null,
       rating: Math.round(rating),
