@@ -136,6 +136,81 @@ export const matchesDb = {
       )
       .subscribe();
   },
+
+  /**
+   * Get test matches (mock matches) from test_matches table
+   */
+  getTestMatches: async () => {
+    try {
+      const { data, error } = await supabase
+        .from('test_matches')
+        .select(`
+          *,
+          home_team:teams!test_matches_home_team_id_fkey(id, name, logo),
+          away_team:teams!test_matches_away_team_id_fkey(id, name, logo),
+          league:leagues(id, name, country, logo)
+        `)
+        .order('fixture_date', { ascending: true });
+
+      if (error) throw error;
+      
+      // Transform test_matches format to match API format
+      const transformed = (data || []).map((match: any) => ({
+        fixture: {
+          id: match.id,
+          referee: match.referee || null,
+          timezone: match.timezone || 'UTC',
+          date: match.fixture_date,
+          timestamp: match.fixture_timestamp || Math.floor(new Date(match.fixture_date).getTime() / 1000),
+          venue: {
+            id: null,
+            name: match.venue_name || null,
+            city: match.venue_city || null,
+          },
+          status: {
+            long: match.status_long || match.status,
+            short: match.status,
+            elapsed: match.elapsed || null,
+          },
+        },
+        league: match.league || { id: match.league_id, name: null, country: null, logo: null },
+        teams: {
+          home: match.home_team || { id: match.home_team_id, name: null, logo: null },
+          away: match.away_team || { id: match.away_team_id, name: null, logo: null },
+        },
+        goals: {
+          home: match.home_score || null,
+          away: match.away_score || null,
+        },
+        score: {
+          halftime: {
+            home: match.halftime_home || null,
+            away: match.halftime_away || null,
+          },
+          fulltime: {
+            home: match.fulltime_home || null,
+            away: match.fulltime_away || null,
+          },
+          extratime: {
+            home: match.extratime_home || null,
+            away: match.extratime_away || null,
+          },
+          penalty: {
+            home: match.penalty_home || null,
+            away: match.penalty_away || null,
+          },
+        },
+        lineups: match.lineups || [],
+        events: [],
+        statistics: [],
+      }));
+
+      return { success: true, data: transformed };
+    } catch (error: any) {
+      console.error('❌ Error fetching test matches from DB:', error.message);
+      return { success: false, error: error.message, data: [] };
+    }
+  },
 };
 
 // ==========================================

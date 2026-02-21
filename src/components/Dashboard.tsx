@@ -33,6 +33,7 @@ import { ConfirmModal } from './ui/ConfirmModal';
 import { getTeamColors } from '../utils/teamColors';
 import { useMatchesWithPredictions } from '../hooks/useMatchesWithPredictions';
 import { useTranslation } from '../hooks/useTranslation';
+import { matchesDb } from '../services/databaseService';
 // Coach cache - takım ID'sine göre teknik direktör isimlerini cache'le (global)
 // Bu global cache, component remount'larında bile korunur
 const globalCoachCache: Record<number, string> = {};
@@ -1113,6 +1114,37 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
   }, [filteredUpcomingMatches, filteredLiveMatches, filteredPastMatches]);
   const { matchIdsWithPredictions, clearPredictionForMatch, refresh: refreshPredictions } = useMatchesWithPredictions(allActiveMatchIds);
   
+  // ✅ Mock maçları (test_matches) yükle
+  const [mockMatches, setMockMatches] = React.useState<any[]>([]);
+  const [mockMatchesLoading, setMockMatchesLoading] = React.useState(false);
+  
+  React.useEffect(() => {
+    const loadMockMatches = async () => {
+      setMockMatchesLoading(true);
+      try {
+        const result = await matchesDb.getTestMatches();
+        if (result.success && result.data) {
+          setMockMatches(result.data);
+        }
+      } catch (error) {
+        console.error('❌ Error loading mock matches:', error);
+      } finally {
+        setMockMatchesLoading(false);
+      }
+    };
+    
+    loadMockMatches();
+  }, []);
+  
+  // ✅ Mock maçları tahmin yapılan/yapılmayan olarak kategorize et
+  const mockMatchesWithPrediction = React.useMemo(() => {
+    return mockMatches.filter(m => matchIdsWithPredictions.has(m.fixture.id));
+  }, [mockMatches, matchIdsWithPredictions]);
+  
+  const mockMatchesWithoutPrediction = React.useMemo(() => {
+    return mockMatches.filter(m => !matchIdsWithPredictions.has(m.fixture.id));
+  }, [mockMatches, matchIdsWithPredictions]);
+  
   // ✅ Dashboard'a geri dönüldüğünde tahminleri yenile (AppState listener)
   React.useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextState) => {
@@ -1314,8 +1346,59 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
           </View>
         )}
 
-        {/* Boş Durum - Hiç maç yoksa (ne canlı ne yaklaşan ne geçmiş) */}
-        {!showLoadingIndicator && filteredUpcomingMatches.length === 0 && filteredLiveMatches.length === 0 && filteredPastMatches.length === 0 && (
+        {/* ✅ MOCK MAÇLAR - Test ortamı için */}
+        {!showLoadingIndicator && mockMatches.length > 0 && (
+          <>
+            {/* Tahmin Yapılan Mock Maçlar */}
+            {mockMatchesWithPrediction.length > 0 && (
+              <View style={styles.matchesListContainer}>
+                <View style={styles.sectionHeader}>
+                  <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+                  <Text style={styles.sectionTitle}>Tahmin Yapılan Mock Maçlar ({mockMatchesWithPrediction.length})</Text>
+                </View>
+                {mockMatchesWithPrediction.map((match, index) => (
+                  <Animated.View 
+                    key={`mock-predicted-${match.fixture.id}`} 
+                    entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(50 + index * 30).springify()}
+                    style={styles.matchCardWrapper}
+                  >
+                    {renderMatchCard(match, 'upcoming', () => handleMatchPress(match), {
+                      hasPrediction: true,
+                      matchId: match.fixture.id,
+                      onDeletePrediction: clearPredictionForMatch,
+                    })}
+                  </Animated.View>
+                ))}
+              </View>
+            )}
+            
+            {/* Tahmin Yapılmayan Mock Maçlar */}
+            {mockMatchesWithoutPrediction.length > 0 && (
+              <View style={styles.matchesListContainer}>
+                <View style={styles.sectionHeader}>
+                  <Ionicons name="ellipse-outline" size={20} color="#64748B" />
+                  <Text style={styles.sectionTitle}>Tahmin Yapılmayan Mock Maçlar ({mockMatchesWithoutPrediction.length})</Text>
+                </View>
+                {mockMatchesWithoutPrediction.map((match, index) => (
+                  <Animated.View 
+                    key={`mock-unpredicted-${match.fixture.id}`} 
+                    entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(50 + index * 30).springify()}
+                    style={styles.matchCardWrapper}
+                  >
+                    {renderMatchCard(match, 'upcoming', () => handleMatchPress(match), {
+                      hasPrediction: false,
+                      matchId: match.fixture.id,
+                      onDeletePrediction: clearPredictionForMatch,
+                    })}
+                  </Animated.View>
+                ))}
+              </View>
+            )}
+          </>
+        )}
+
+        {/* Boş Durum - Hiç maç yoksa (ne canlı ne yaklaşan ne geçmiş ne mock) */}
+        {!showLoadingIndicator && filteredUpcomingMatches.length === 0 && filteredLiveMatches.length === 0 && filteredPastMatches.length === 0 && mockMatches.length === 0 && (
           <View style={styles.emptyState}>
             <Ionicons name="football-outline" size={48} color="#64748B" />
             <Text style={styles.emptyText}>
