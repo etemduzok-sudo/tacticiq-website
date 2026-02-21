@@ -1118,6 +1118,15 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
   const [mockMatches, setMockMatches] = React.useState<any[]>([]);
   const [mockMatchesLoading, setMockMatchesLoading] = React.useState(false);
   
+  // ✅ Mock maçları tahmin yapılan/yapılmayan olarak kategorize et (useMemo önce tanımlanmalı)
+  const mockMatchesWithPrediction = React.useMemo(() => {
+    return mockMatches.filter(m => matchIdsWithPredictions.has(m.fixture.id));
+  }, [mockMatches, matchIdsWithPredictions]);
+  
+  const mockMatchesWithoutPrediction = React.useMemo(() => {
+    return mockMatches.filter(m => !matchIdsWithPredictions.has(m.fixture.id));
+  }, [mockMatches, matchIdsWithPredictions]);
+  
   React.useEffect(() => {
     const loadMockMatches = async () => {
       setMockMatchesLoading(true);
@@ -1162,15 +1171,6 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
       loading: mockMatchesLoading
     });
   }, [mockMatches, mockMatchesWithPrediction, mockMatchesWithoutPrediction, mockMatchesLoading]);
-  
-  // ✅ Mock maçları tahmin yapılan/yapılmayan olarak kategorize et
-  const mockMatchesWithPrediction = React.useMemo(() => {
-    return mockMatches.filter(m => matchIdsWithPredictions.has(m.fixture.id));
-  }, [mockMatches, matchIdsWithPredictions]);
-  
-  const mockMatchesWithoutPrediction = React.useMemo(() => {
-    return mockMatches.filter(m => !matchIdsWithPredictions.has(m.fixture.id));
-  }, [mockMatches, matchIdsWithPredictions]);
   
   // ✅ Dashboard'a geri dönüldüğünde tahminleri yenile (AppState listener)
   React.useEffect(() => {
