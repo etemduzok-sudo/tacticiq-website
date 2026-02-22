@@ -2790,7 +2790,7 @@ const styles = StyleSheet.create({
     // Çim deseni efekti
     ...Platform.select({
       web: {
-        background: 'repeating-linear-gradient(0deg, #1a5f3c, #1a5f3c 10px, #1d6840 10px, #1d6840 20px)',
+        backgroundImage: 'repeating-linear-gradient(0deg, #1a5f3c, #1a5f3c 10px, #1d6840 10px, #1d6840 20px)',
       },
       default: {},
     }),
@@ -3241,7 +3241,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     ...Platform.select({
       web: {
-        background: 'repeating-linear-gradient(0deg, #1a5f3c, #1a5f3c 10px, #1d6840 10px, #1d6840 20px)',
+        backgroundImage: 'repeating-linear-gradient(0deg, #1a5f3c, #1a5f3c 10px, #1d6840 10px, #1d6840 20px)',
       },
       default: {},
     }),

@@ -38,9 +38,9 @@ function checkAndResetCounter() {
 async function makeRequest(endpoint, params = {}, cacheKey = null, cacheDuration = 3600) {
   checkAndResetCounter();
 
-  // Check rate limit (7500 for PRO plan)
-  if (requestCount >= 7500) {
-    throw new Error('Daily API rate limit reached (7500 requests)');
+  // Check rate limit (75000 for PRO plan)
+  if (requestCount >= 75000) {
+    throw new Error('Daily API rate limit reached (75000 requests)');
   }
 
   // Check cache first
@@ -71,7 +71,7 @@ async function makeRequest(endpoint, params = {}, cacheKey = null, cacheDuration
     });
 
     requestCount++;
-    console.log(`📡 API Request #${requestCount}/7500: ${endpoint}`);
+    console.log(`📡 API Request #${requestCount}/75000: ${endpoint}`);
 
     const data = response.data;
 
@@ -510,8 +510,14 @@ async function getTeamUpcomingMatches(teamId, limit = 10) {
 }
 
 // Get team squad (players)
-async function getTeamSquad(teamId, season = 2025) {
-  return makeRequest('/players/squads', { team: teamId }, `team-squad-${teamId}-${season}`, 86400); // 24 hour cache
+// skipCache: true = sync için taze veri (kadro güncellemesi)
+async function getTeamSquad(teamId, season = 2025, skipCache = false) {
+  const cacheKey = skipCache ? null : `team-squad-${teamId}-${season}`;
+  const cacheDuration = skipCache ? 0 : 86400; // 24 hour cache
+  if (skipCache) {
+    cache.del(`team-squad-${teamId}-${season}`); // Eski cache'i temizle
+  }
+  return makeRequest('/players/squads', { team: teamId, season }, cacheKey, cacheDuration);
 }
 
 // Get injuries/suspensions for a team (sakatlık, sarı/kırmızı kart cezalılar)
@@ -692,8 +698,8 @@ function getCacheStats() {
     hits: cache.getStats().hits,
     misses: cache.getStats().misses,
     requestCount,
-    requestLimit: 7500,
-    requestsRemaining: 7500 - requestCount,
+    requestLimit: 75000,
+    requestsRemaining: 75000 - requestCount,
   };
 }
 

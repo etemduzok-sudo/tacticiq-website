@@ -59,6 +59,32 @@ const getStatColor = (value: number): string => {
   return '#EF4444'; // Red - Poor
 };
 
+// Rating normalizasyonu - TÜM rating'ler 100 üzerinden gösterilir
+// API'den gelen değerler:
+//   - Maç rating'i: 0-10 arası (örn: 7.4)
+//   - Genel rating: 65-99 arası (örn: 85)
+// Bu fonksiyon her iki formatı da 100 üzerinden değere çevirir
+const normalizeRatingTo100 = (rating: number | null | undefined): number => {
+  if (rating == null) return 75; // Default
+  
+  // 0-10 arası ise (maç rating'i) → 100'e çevir (65-95 arası)
+  if (rating > 0 && rating <= 10) {
+    return Math.round(65 + (rating / 10) * 30);
+  }
+  
+  // Zaten 100 üzerinden ise (11-100 arası) → direkt kullan
+  if (rating > 10 && rating <= 100) {
+    return Math.round(rating);
+  }
+  
+  return 75; // Fallback
+};
+
+// Rating görüntüleme için string formatı
+const formatRatingDisplay = (rating: number | null | undefined): string => {
+  return normalizeRatingTo100(rating).toString();
+};
+
 interface MatchSquadProps {
   matchData: any;
   matchId: string;
@@ -1122,6 +1148,8 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favor
   // ✅ Kullanıcı tahmin yapmış mı? (storage'da isCompleted === true)
   // ⚠️ Bu state useEffect'lerde kullanıldığı için erken tanımlanmalı
   const [hasPrediction, setHasPrediction] = React.useState(false);
+  // ✅ Storage kontrolü yapılmadan "Kadro oluşturulmadı" gösterme (kısa süreli yanıp sönmeyi önler)
+  const [hasCheckedSquadStorage, setHasCheckedSquadStorage] = React.useState(false);
   
   // ✅ Kullanıcı tercih istatistikleri (tahmin yapmayan kullanıcılar için)
   const [userPreferenceStats, setUserPreferenceStats] = useState<UserPreferenceStats | null>(null);
@@ -2054,8 +2082,9 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favor
     savePartialState();
   }, [attackFormation, defenseFormation, attackPlayers, defensePlayers, editingMode, defenseConfirmShown, stateRestored, matchId, squadStorageKey, isMatchLive, hasModifiedSinceUnlock]);
   
-  // ✅ Kullanıcı tahmin yapmış mı kontrol et (storage'dan yükle)
+  // ✅ Kullanıcı tahmin yapmış mı kontrol et (storage'dan yükle) – biten maçta "Kadro oluşturulmadı" yanıp sönmesin
   React.useEffect(() => {
+    setHasCheckedSquadStorage(false);
     (async () => {
       try {
         const fixtureId = Number(matchId);
@@ -2082,6 +2111,8 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favor
         }
       } catch (_) {
         setHasPrediction(false);
+      } finally {
+        setHasCheckedSquadStorage(true);
       }
     })();
   }, [squadStorageKey, matchId]);
@@ -2111,14 +2142,11 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favor
         return editingMode === 'attack' ? actualAttackFormation : (actualDefenseFormation ?? actualAttackFormation);
       }
       if (viewSource === 'community') {
-        // community = auto-applied formasyon (mevcut attackFormation/defenseFormation = popüler formasyon)
-        return editingMode === 'attack' ? attackFormation : (defenseFormation ?? attackFormation);
+        const userForm = editingMode === 'attack' ? attackFormation : (defenseFormation ?? attackFormation);
+        return userForm || null;
       }
-      // viewSource === 'user' → kullanıcının tahmini (aynı state ama sadece hasPrediction ise göster)
       return editingMode === 'attack' ? attackFormation : (defenseFormation ?? attackFormation);
     }
-    // Maç başlamadıysa (eski mantık)
-    // ✅ Defans modunda defans formasyonu yoksa atak formasyonunu göster (boş state'e düşmeyi önle)
     return editingMode === 'attack'
       ? attackFormation
       : (defenseFormation ?? attackFormation ?? null);
@@ -2127,13 +2155,19 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favor
   const defensePlayerCount = Object.keys(defensePlayers).filter(k => defensePlayers[parseInt(k)]).length;
   
   const selectedPlayers = React.useMemo(() => {
-    const result = isKadroLocked
-      ? (viewSource === 'actual'
-          ? (editingMode === 'attack' ? actualAttackPlayers : (Object.keys(actualDefensePlayers).length > 0 ? actualDefensePlayers : actualAttackPlayers))
-          : (editingMode === 'attack' ? attackPlayers : defensePlayers))
-      : (editingMode === 'attack' ? attackPlayers : defensePlayers);
-    
-    return result;
+    if (isKadroLocked) {
+      if (viewSource === 'actual') {
+        return editingMode === 'attack' ? actualAttackPlayers : (Object.keys(actualDefensePlayers).length > 0 ? actualDefensePlayers : actualAttackPlayers);
+      }
+      if (viewSource === 'community') {
+        const userPlayers = editingMode === 'attack' ? attackPlayers : defensePlayers;
+        const hasUserPlayers = Object.values(userPlayers).some(p => p != null);
+        if (hasUserPlayers) return userPlayers;
+        return {};
+      }
+      return editingMode === 'attack' ? attackPlayers : defensePlayers;
+    }
+    return editingMode === 'attack' ? attackPlayers : defensePlayers;
   }, [isKadroLocked, viewSource, editingMode, attackPlayers, defensePlayers, actualAttackPlayers, actualDefensePlayers]);
   
   const setSelectedPlayers = editingMode === 'attack' ? setAttackPlayers : setDefensePlayers;
@@ -2949,11 +2983,25 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favor
   }
 
   // Main Squad Screen (Formation Selected)
+  const showNoPredictionOverlay = hasCheckedSquadStorage && isKadroLocked && !hasPrediction && Object.values(selectedPlayers).every(p => p == null);
   return (
     <View style={styles.container}>
       <View style={styles.mainContainer}>
         {/* Football Field with Players */}
         <FootballField style={[styles.mainField, fieldDynamicStyle]}>
+          {showNoPredictionOverlay && (
+            <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', zIndex: 20, paddingHorizontal: 24 }}>
+              <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(239,68,68,0.15)', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
+                <Ionicons name="alert-circle" size={32} color="#EF4444" />
+              </View>
+              <Text style={{ color: '#EF4444', fontSize: 13, fontWeight: '700', textAlign: 'center' }}>
+                Kadro Oluşturulmadı
+              </Text>
+              <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, textAlign: 'center', marginTop: 4 }}>
+                Bu maç için kadro tahmini yapılmadı
+              </Text>
+            </View>
+          )}
           <View style={styles.playersContainer}>
             {positions?.map((pos, index) => {
               const player = selectedPlayers[index];
@@ -3019,7 +3067,7 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favor
                           style={[
                             styles.playerCard,
                             // Gold border for elite players (85+)
-                            player.rating >= 85 && styles.playerCardElite,
+                            normalizeRatingTo100(player.rating) >= 85 && styles.playerCardElite,
                             // Blue border for goalkeepers
                             isGoalkeeperPlayer(player) && styles.playerCardGK,
                             // ✅ Tercih çerçevesi (tahmin yapmayan kullanıcılar için)
@@ -3080,7 +3128,7 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favor
 
                             {/* Rating and Position - Same row, bottom */}
                             <View style={styles.playerBottomRow}>
-                              <Text style={styles.playerRatingBottom}>{player.rating}</Text>
+                              <Text style={styles.playerRatingBottom}>{formatRatingDisplay(player.rating)}</Text>
                               <Text style={styles.playerPositionBottom}>{positionLabel}</Text>
                             </View>
 
@@ -3190,81 +3238,26 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favor
           </View>
         )}
 
-        {/* Bottom Info Bar – oynanan maçta tek satır: Tahminin/Gerçek 11/Topluluk + Atak/Defans */}
-        {/* ✅ Tahmin yapılmamış maçlarda bottomBar gösterilmez - sadece preferenceStatsCardNew gösterilir */}
-        {/* ✅ BottomBar sadece: 1) Tahmin yapılmışsa VEYA 2) Maç başlamamışsa (kadro oluşturma modu) */}
+        {/* Kadro oluşturulmadığında saha altı bildirim */}
+        {showNoPredictionOverlay && (
+          <View style={{
+            marginHorizontal: 12, marginTop: 8, paddingVertical: 10, paddingHorizontal: 14,
+            backgroundColor: 'rgba(31, 162, 166, 0.12)', borderRadius: 10,
+            borderWidth: 1, borderColor: 'rgba(31, 162, 166, 0.25)',
+            flexDirection: 'row', alignItems: 'center', gap: 10,
+          }}>
+            <Ionicons name="eye-outline" size={16} color="#1FA2A6" style={{ flexShrink: 0 }} />
+            <Text style={{ color: '#5EEAD4', fontSize: 12, flex: 1, lineHeight: 18 }}>
+              Kadro tahmini yapmadığınız için tahmin yapamazsınız. Topluluk verilerini görmek için oyuncu kartlarına tıklayın.
+            </Text>
+          </View>
+        )}
+
+        {/* ✅ Saha altı: Sadece simetrik toolbar [Formasyon] | 🔓 | [Tamamla] – Tahminin/Gerçek 11/Atak Defans yapısı kaldırıldı */}
         {(hasPrediction || !isKadroLocked) && (
           <View style={styles.bottomBar}>
             <View style={styles.bottomBarLeft}>
-              {isKadroLocked ? (
-                <>
-                  <View style={styles.unifiedToolbarRow}>
-                    {/* ✅ Kaynak seçimi */}
-                    <View style={styles.viewSourceRow}>
-                      {/* ✅ Tahmin yapan kullanıcılar için "Tahminin" göster */}
-                      {hasPrediction && (
-                        <TouchableOpacity
-                          style={[styles.viewSourcePill, viewSource === 'user' && styles.viewSourcePillActive]}
-                          onPress={() => setViewSource('user')}
-                          activeOpacity={0.8}
-                        >
-                          <Ionicons name="person" size={12} color={viewSource === 'user' ? '#FFFFFF' : '#9CA3AF'} />
-                          <Text style={[styles.viewSourceText, viewSource === 'user' && styles.viewSourceTextActive]}>Tahminin</Text>
-                        </TouchableOpacity>
-                      )}
-                      {/* ✅ Tahmin yapmayan kullanıcılar için "Topluluk Formasyonu" göster (canlı veya biten maç) */}
-                      {!hasPrediction && autoGeneratedSquad && (
-                        <View style={[styles.viewSourcePill, viewSource === 'community' && styles.viewSourcePillActive]}>
-                          <Ionicons name="people" size={12} color={viewSource === 'community' ? '#FFFFFF' : '#9CA3AF'} />
-                          <Text style={[styles.viewSourceText, viewSource === 'community' && styles.viewSourceTextActive]}>
-                            {isMatchFinished ? 'Topluluk Formasyonu' : 'Topluluk Tahmini'}
-                          </Text>
-                        </View>
-                      )}
-                      {/* ✅ Gerçek 11 - her zaman göster */}
-                      <TouchableOpacity
-                        style={[styles.viewSourcePill, viewSource === 'actual' && styles.viewSourcePillActive]}
-                        onPress={() => setViewSource('actual')}
-                        activeOpacity={0.8}
-                      >
-                        <Ionicons name="football" size={12} color={viewSource === 'actual' ? '#FFFFFF' : '#9CA3AF'} />
-                        <Text style={[styles.viewSourceText, viewSource === 'actual' && styles.viewSourceTextActive]}>Gerçek 11</Text>
-                      </TouchableOpacity>
-                    </View>
-                    {/* ✅ Atak/Defans toggle - Sadece tahmin yapılmışsa veya canlı maçta topluluk tahmini varsa göster */}
-                    {(hasPrediction || (isMatchLive && autoGeneratedSquad)) && (
-                      <View style={styles.viewToggleRow}>
-                        <TouchableOpacity
-                          style={[styles.viewTogglePill, editingMode === 'attack' && styles.viewTogglePillActive]}
-                          onPress={() => setEditingMode('attack')}
-                          activeOpacity={0.8}
-                        >
-                          <Ionicons name="flash" size={10} color={editingMode === 'attack' ? '#F59E0B' : '#9CA3AF'} style={{ marginRight: 2 }} />
-                          <Text style={[styles.viewToggleText, editingMode === 'attack' && styles.viewToggleTextActive]}>Atak</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={[styles.viewTogglePill, editingMode === 'defense' && styles.viewTogglePillActive]}
-                          onPress={() => setEditingMode('defense')}
-                          activeOpacity={0.8}
-                        >
-                          <Ionicons name="shield" size={10} color={editingMode === 'defense' ? '#3B82F6' : '#9CA3AF'} style={{ marginRight: 2 }} />
-                          <Text style={[styles.viewToggleText, editingMode === 'defense' && styles.viewToggleTextActive]}>Defans</Text>
-                        </TouchableOpacity>
-                      </View>
-                    )}
-                  </View>
-                  {/* ✅ Formasyon bilgisi */}
-                  <Text style={styles.changeFormationText} numberOfLines={1}>
-                    {/* ✅ Biten maçta tahmin yoksa topluluk formasyonu göster */}
-                    {isMatchFinished && !hasPrediction 
-                      ? `Topluluk Formasyonu: ${attackFormation || actualAttackFormation || '-'}`
-                      : (editingMode === 'attack' 
-                          ? `Atak: ${viewSource === 'actual' ? (actualAttackFormation || '-') : (attackFormation || '-')}` 
-                          : `Defans: ${viewSource === 'actual' ? (actualDefenseFormation || actualAttackFormation || '-') : (defenseFormation || '-')}`)}
-                  </Text>
-                </>
-              ) : (
-              // ✅ SİMETRİK TOOLBAR: [2 Satırlı Formasyon] | 🔓 | [Tamamla]
+              {/* SİMETRİK TOOLBAR: [2 Satırlı Formasyon] | 🔓 | [Tamamla] */}
               <View style={styles.symmetricToolbar}>
                 {/* Sol: 2 Satırlı Formasyon Butonu */}
                 <View style={[
@@ -3349,72 +3342,69 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favor
                   </TouchableOpacity>
                 </View>
 
-                {/* Orta: Kilit - Her zaman görünür ve tıklanabilir */}
-                {!isKadroLocked && (
-                  <TouchableOpacity
-                    style={[
-                      styles.lockButtonCenter,
-                      isSquadLocked ? styles.lockButtonCenterLocked : styles.lockButtonCenterOpen,
-                      hasViewedCommunityData && isSquadLocked && { opacity: 0.5 } // Topluluk görüldüyse soluk
-                    ]}
-                    onPress={() => {
-                      if (isSquadLocked) {
-                        // ✅ Topluluk verileri görüldüyse kilit açılamaz
-                        if (hasViewedCommunityData) {
-                          showInfo(
-                            '🔒 Kalıcı Kilit',
-                            'Topluluk verilerini gördüğünüz için kadro kilidi açılamaz. Tahminleriniz kalıcı olarak kilitlidir.'
-                          );
-                          return;
-                        }
-                        // Kilitli → Kilidi aç (yeşil olacak)
-                        setIsSquadLocked(false);
-                        setHasModifiedSinceUnlock(false); // Unlock sonrası değişiklik takibi sıfırla
-                      } else {
-                        // Açık → Kilitle (kırmızı olacak) - sadece 11 oyuncu tamamsa
-                        if (isCompleteButtonActive) {
-                          handleComplete(); // Tamamla ve kilitle
-                        } else {
-                          showInfo('Eksik Kadro', 'Kadroyu kilitlemek için önce 11 oyuncu seçmeniz gerekiyor.');
-                        }
+                {/* Orta: Kilit - Her zaman görünür. Maç başladı/bitince açılamaz (kalıcı kilit). */}
+                <TouchableOpacity
+                  style={[
+                    styles.lockButtonCenter,
+                    (isSquadLocked || isKadroLocked) ? styles.lockButtonCenterLocked : styles.lockButtonCenterOpen,
+                    hasViewedCommunityData && isSquadLocked && { opacity: 0.5 },
+                    isKadroLocked && { opacity: 0.9 }
+                  ]}
+                  onPress={() => {
+                    // Maç başladı veya bittiyse kilit asla açılmaz
+                    if (isKadroLocked) {
+                      showInfo('🔒 Kilit Açılamaz', 'Maç başladığı veya bittiği için kadro kilidi artık açılamaz.');
+                      return;
+                    }
+                    if (isSquadLocked) {
+                      if (hasViewedCommunityData) {
+                        showInfo(
+                          '🔒 Kalıcı Kilit',
+                          'Topluluk verilerini gördüğünüz için kadro kilidi açılamaz. Tahminleriniz kalıcı olarak kilitlidir.'
+                        );
+                        return;
                       }
-                    }}
-                    activeOpacity={hasViewedCommunityData && isSquadLocked ? 1 : 0.7}
-                    disabled={hasViewedCommunityData && isSquadLocked}
-                  >
-                    <Ionicons 
-                      name={isSquadLocked ? "lock-closed" : "lock-open"} 
-                      size={20} 
-                      color={isSquadLocked ? '#EF4444' : '#10B981'} 
-                    />
-                  </TouchableOpacity>
-                )}
+                      setIsSquadLocked(false);
+                      setHasModifiedSinceUnlock(false);
+                    } else {
+                      if (isCompleteButtonActive) {
+                        handleComplete();
+                      } else {
+                        showInfo('Eksik Kadro', 'Kadroyu kilitlemek için önce 11 oyuncu seçmeniz gerekiyor.');
+                      }
+                    }
+                  }}
+                  activeOpacity={(hasViewedCommunityData && isSquadLocked) || isKadroLocked ? 1 : 0.7}
+                  disabled={hasViewedCommunityData && isSquadLocked}
+                >
+                  <Ionicons 
+                    name={(isSquadLocked || isKadroLocked) ? "lock-closed" : "lock-open"} 
+                    size={20} 
+                    color={(isSquadLocked || isKadroLocked) ? '#EF4444' : '#10B981'} 
+                  />
+                </TouchableOpacity>
 
-                {/* Sağ: Tamamla - Her zaman görünür, kilit kırmızıyken inaktif */}
-                {!isKadroLocked && (
-                  <TouchableOpacity
-                    style={[
-                      styles.completeButtonSymmetric,
-                      // Kilit kırmızı (locked) veya 11 oyuncu yok → inaktif
-                      (isSquadLocked || !isCompleteButtonActive) && styles.completeButtonSymmetricDisabled,
-                    ]}
-                    onPress={handleComplete}
-                    disabled={isSquadLocked || !isCompleteButtonActive}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={[
-                      styles.completeButtonSymmetricText,
-                      (isSquadLocked || !isCompleteButtonActive) && { opacity: 0.5 }
-                    ]}>Tamamla</Text>
-                    <Ionicons 
-                      name="checkmark-circle" 
-                      size={18} 
-                      color={isSquadLocked || !isCompleteButtonActive ? 'rgba(255,255,255,0.5)' : '#FFFFFF'} 
-                    />
-                  </TouchableOpacity>
-                )}
+                {/* Sağ: Tamamla - Her zaman görünür. Maç başladı/bitince veya kilitliyken inaktif */}
+                <TouchableOpacity
+                  style={[
+                    styles.completeButtonSymmetric,
+                    (isSquadLocked || !isCompleteButtonActive || isKadroLocked) && styles.completeButtonSymmetricDisabled,
+                  ]}
+                  onPress={handleComplete}
+                  disabled={isSquadLocked || !isCompleteButtonActive || isKadroLocked}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[
+                    styles.completeButtonSymmetricText,
+                    (isSquadLocked || !isCompleteButtonActive || isKadroLocked) && { opacity: 0.5 }
+                  ]}>Tamamla</Text>
+                  <Ionicons 
+                    name="checkmark-circle" 
+                    size={18} 
+                    color={(isSquadLocked || !isCompleteButtonActive || isKadroLocked) ? 'rgba(255,255,255,0.5)' : '#FFFFFF'} 
+                  />
+                </TouchableOpacity>
               </View>
-            )}
           </View>
         </View>
         )}
@@ -4687,7 +4677,8 @@ const PlayerModal = ({ visible, players, selectedPlayers, positionLabel, onSelec
         // Mock data - oyuncunun en çok atandığı pozisyonu ve bu pozisyon için en çok tercih edilen oyuncuyu bul
         
         // Rating'e göre ilk 11'e seçilme yüzdesi
-        const baseXI = previewPlayer.rating >= 85 ? 78 : previewPlayer.rating >= 80 ? 62 : previewPlayer.rating >= 75 ? 48 : 32;
+        const normRating = normalizeRatingTo100(previewPlayer.rating);
+        const baseXI = normRating >= 85 ? 78 : normRating >= 80 ? 62 : normRating >= 75 ? 48 : 32;
         const variance = Math.floor(Math.random() * 12);
         const inStartingXI = Math.min(95, baseXI + variance);
         
@@ -4741,8 +4732,9 @@ const PlayerModal = ({ visible, players, selectedPlayers, positionLabel, onSelec
           : null;
         
         const topPlayerForPosition = topPlayer?.name || 'Bilinmiyor';
+        const topRating = normalizeRatingTo100(topPlayer?.rating);
         const topPlayerPercentage = topPlayer 
-          ? (topPlayer.rating >= 85 ? 85 : topPlayer.rating >= 80 ? 72 : topPlayer.rating >= 75 ? 58 : 45) + Math.floor(Math.random() * 10)
+          ? (topRating >= 85 ? 85 : topRating >= 80 ? 72 : topRating >= 75 ? 58 : 45) + Math.floor(Math.random() * 10)
           : 0;
         
         // ✅ Mock data için beklemeden anında göster - sıçramayı önler
@@ -4850,8 +4842,9 @@ const PlayerModal = ({ visible, players, selectedPlayers, positionLabel, onSelec
               data={sortedPlayers}
               keyExtractor={(item) => item.id.toString()}
               renderItem={({ item }) => {
+                const itemRating = normalizeRatingTo100(item.rating);
                 const getBorderColor = () => {
-                  if (item.rating >= 85) return '#C9A44C'; // Gold for elite
+                  if (itemRating >= 85) return '#C9A44C'; // Gold for elite
                   if (isGoalkeeperPlayer(item)) return '#3B82F6'; // Blue for GK
                   return '#4B5563'; // Gray for others
                 };
@@ -4867,7 +4860,7 @@ const PlayerModal = ({ visible, players, selectedPlayers, positionLabel, onSelec
                     <View style={styles.playerItemLeft}>
                       <View style={[
                         styles.playerItemJerseyNumber,
-                        { backgroundColor: item.rating >= 85 ? '#C9A44C' : '#1FA2A6' }
+                        { backgroundColor: itemRating >= 85 ? '#C9A44C' : '#1FA2A6' }
                       ]}>
                         <Text style={styles.playerItemJerseyNumberText}>
                           {item.number != null && item.number > 0 ? item.number : '-'}
@@ -4885,19 +4878,7 @@ const PlayerModal = ({ visible, players, selectedPlayers, positionLabel, onSelec
                         </View>
                         <View style={styles.playerItemBottomRow}>
                           <Text style={styles.playerItemRatingBottom}>
-                            {(() => {
-                              // Rating'i normalize et: 6.6 gibi değerleri 65-95 arası tam sayıya çevir
-                              const rating = item.rating;
-                              if (rating == null) return '75';
-                              if (rating > 0 && rating <= 10) {
-                                const normalized = Math.round(65 + (rating / 10) * 30);
-                                return Math.max(65, Math.min(95, normalized)).toString();
-                              }
-                              if (rating >= 65 && rating <= 95) {
-                                return Math.round(rating).toString();
-                              }
-                              return Math.max(65, Math.min(95, Math.round(rating))).toString();
-                            })()}
+                            {formatRatingDisplay(item.rating)}
                           </Text>
                           <Text style={styles.playerItemPosition}>
                             {item.position} • {item.team}
@@ -4978,7 +4959,7 @@ const PlayerModal = ({ visible, players, selectedPlayers, positionLabel, onSelec
             >
               {/* Card Header with Gradient */}
               <LinearGradient
-                colors={previewPlayer.rating >= 85 ? ['#C9A44C', '#A67C00'] : ['#1FA2A6', '#0D7377']}
+                colors={normalizeRatingTo100(previewPlayer.rating) >= 85 ? ['#C9A44C', '#A67C00'] : ['#1FA2A6', '#0D7377']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.playerCardHeader}
@@ -5013,22 +4994,7 @@ const PlayerModal = ({ visible, players, selectedPlayers, positionLabel, onSelec
                     {previewPlayer.nationality || 'Unknown'} • {previewPlayer.age || '?'} yaş
                   </Text>
                   <Text style={styles.playerCardRatingBottom}>
-                    {(() => {
-                      // Rating'i normalize et: 6.6 gibi değerleri 65-95 arası tam sayıya çevir
-                      const rating = previewPlayer.rating;
-                      if (rating == null) return '75';
-                      // 0-10 arası ise (maç rating'i), 65-95'e çevir
-                      if (rating > 0 && rating <= 10) {
-                        const normalized = Math.round(65 + (rating / 10) * 30);
-                        return Math.max(65, Math.min(95, normalized)).toString();
-                      }
-                      // Zaten 65-95 arasındaysa tam sayıya yuvarla
-                      if (rating >= 65 && rating <= 95) {
-                        return Math.round(rating).toString();
-                      }
-                      // Diğer durumlar için normalize et
-                      return Math.max(65, Math.min(95, Math.round(rating))).toString();
-                    })()}
+                    {formatRatingDisplay(previewPlayer.rating)}
                   </Text>
                 </View>
               </LinearGradient>
@@ -5083,17 +5049,7 @@ const PlayerModal = ({ visible, players, selectedPlayers, positionLabel, onSelec
                       
                       // ✅ Stats'leri al veya rating'den geriye doğru hesapla
                       const stats = previewPlayer.stats || {};
-                      const normalizedRating = (() => {
-                        const rating = previewPlayer.rating;
-                        if (rating == null) return 75;
-                        if (rating > 0 && rating <= 10) {
-                          return Math.round(65 + (rating / 10) * 30);
-                        }
-                        if (rating >= 65 && rating <= 95) {
-                          return Math.round(rating);
-                        }
-                        return Math.max(65, Math.min(95, Math.round(rating)));
-                      })();
+                      const normalizedRating = normalizeRatingTo100(previewPlayer.rating);
                       
                       // ✅ Eğer tüm stats 70 ise (default), rating'den geriye doğru hesapla
                       const allStatsDefault = (
@@ -5274,8 +5230,9 @@ const PlayerDetailModal = ({ player, onClose, matchId, positionLabel, communityD
         // TODO: Gerçek API entegrasyonu yapılacak
         // const result = await squadPredictionsApi.getPlayerCommunityStats(matchId, player.id, positionLabel);
         // Mock data - rating'e göre daha gerçekçi değerler
-        const baseXI = player.rating >= 85 ? 75 : player.rating >= 80 ? 60 : player.rating >= 75 ? 45 : 30;
-        const basePosition = player.rating >= 85 ? 65 : player.rating >= 80 ? 50 : player.rating >= 75 ? 35 : 20;
+        const pRating = normalizeRatingTo100(player.rating);
+        const baseXI = pRating >= 85 ? 75 : pRating >= 80 ? 60 : pRating >= 75 ? 45 : 30;
+        const basePosition = pRating >= 85 ? 65 : pRating >= 80 ? 50 : pRating >= 75 ? 35 : 20;
         const variance = Math.floor(Math.random() * 15);
         
         setCommunityStats({
@@ -5307,10 +5264,10 @@ const PlayerDetailModal = ({ player, onClose, matchId, positionLabel, communityD
         >
           {/* Header */}
           <LinearGradient
-            colors={player.rating >= 85 ? ['#C9A44C', '#8B6914'] : ['#1E3A3A', '#0F2A24']} // ✅ Elit oyuncular için altın gradient
+            colors={normalizeRatingTo100(player.rating) >= 85 ? ['#C9A44C', '#8B6914'] : ['#1E3A3A', '#0F2A24']} // ✅ Elit oyuncular için altın gradient
             style={[
               styles.playerDetailHeader,
-              player.rating >= 85 && styles.playerDetailHeaderElite, // Altın kenarlık
+              normalizeRatingTo100(player.rating) >= 85 && styles.playerDetailHeaderElite, // Altın kenarlık
             ]}
           >
             <TouchableOpacity onPress={onClose} style={styles.modalCloseButton}>
@@ -5320,10 +5277,10 @@ const PlayerDetailModal = ({ player, onClose, matchId, positionLabel, communityD
             <View style={styles.playerDetailHeaderContent}>
               <View style={[
                 styles.playerDetailRating,
-                { backgroundColor: (player.rating || 75) >= 85 ? '#C9A44C' : '#1FA2A6' } // ✅ Design System
+                { backgroundColor: normalizeRatingTo100(player.rating) >= 85 ? '#C9A44C' : '#1FA2A6' } // ✅ Design System
               ]}>
                 <Text style={styles.playerDetailRatingText}>
-                  {Math.max(65, Math.min(95, player.rating || 75))}
+                  {formatRatingDisplay(player.rating)}
                 </Text>
               </View>
 
@@ -5350,7 +5307,7 @@ const PlayerDetailModal = ({ player, onClose, matchId, positionLabel, communityD
                     </View>
                   )}
                   {/* Elite badge for 85+ */}
-                  {player.rating >= 85 && (
+                  {normalizeRatingTo100(player.rating) >= 85 && (
                     <View style={styles.eliteBadgeLarge}>
                       <Ionicons name="star" size={12} color="#C9A44C" />
                       <Text style={styles.eliteTextLarge}>Elit</Text>

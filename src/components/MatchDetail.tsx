@@ -465,8 +465,12 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
           api.matches.getMatchStatistics(Number(matchId), true), // refresh=true
         ]);
         
-        if (matchRes.status === 'fulfilled' && matchRes.value?.success) {
-          setLiveMatchData(matchRes.value.data);
+        // ✅ Sadece geçerli fixture.status varsa güncelle (rate limit/500 sonrası boş status ile üzerine yazma)
+        if (matchRes.status === 'fulfilled' && matchRes.value?.success && matchRes.value.data?.fixture?.status != null) {
+          const short = matchRes.value.data.fixture.status?.short ?? matchRes.value.data.fixture.status?.long ?? '';
+          if (short !== '' || matchRes.value.data.fixture.status?.elapsed != null) {
+            setLiveMatchData(matchRes.value.data);
+          }
         }
         
         if (eventsRes.status === 'fulfilled' && eventsRes.value?.success) {
@@ -640,15 +644,15 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
     return typeof coach === 'string' ? coach : coach?.name || '';
   };
   
-  // ✅ Teknik direktör öncelik sırası (2025-26 sezonu):
-  // 1. Lineups'tan (maça özel, API'den güncel veri)
-  // 2. Teams/Coach API state'inden
+  // ✅ Teknik direktör öncelik sırası:
+  // 1. Teams/Coach API state'inden (en güncel, maça özel)
+  // 2. Lineups'tan (maça özel)
   // 3. Fallback listesinden (son çare)
-  const homeManager = getManagerFromLineups(match?.teams?.home?.id) 
-    || coaches.home 
+  const homeManager = coaches.home
+    || getManagerFromLineups(match?.teams?.home?.id) 
     || getCoachFallback(match?.teams?.home?.name);
-  const awayManager = getManagerFromLineups(match?.teams?.away?.id) 
-    || coaches.away 
+  const awayManager = coaches.away
+    || getManagerFromLineups(match?.teams?.away?.id) 
     || getCoachFallback(match?.teams?.away?.name);
 
   // ✅ LIVE_STATUSES zaten yukarıda tanımlı, burada tekrar tanımlama
@@ -656,12 +660,13 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
   const POSTPONED_STATUSES = ['PST', 'SUSP', 'TBD']; // Ertelenmiş/askıya alınmış - bunlar bitmiş sayılmaz
   
   // ✅ Mock maçlar için gerçek zamandan status belirle - countdownTicker ile her saniye güncellensin
-  // ✅ DÜZELTME: currentMatch kullan (liveMatchData || match) - canlı güncelleme için
+  // ✅ DÜZELTME: currentMatch kullan; boş status'ta match (preloaded) ile yedekle ki canlı maç "başlamadı" görünmesin
   const matchStatus = useMemo(() => {
-    // API'den gelen status farklı formatlarda olabilir
-    const statusRaw = currentMatch?.fixture?.status;
-    const apiStatus = typeof statusRaw === 'string' 
-      ? statusRaw 
+    const statusFromCurrent = currentMatch?.fixture?.status;
+    const statusFromMatch = match?.fixture?.status;
+    const statusRaw = statusFromCurrent || statusFromMatch;
+    const apiStatus = typeof statusRaw === 'string'
+      ? statusRaw
       : (statusRaw?.short || statusRaw?.long || '');
     
     if (!isMockTestMatch(Number(matchId))) {
@@ -724,7 +729,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
     } else {
       return 'FT'; // Finished
     }
-  }, [matchId, currentMatch?.fixture?.status, currentMatch?.fixture?.timestamp, liveMatchData, countdownTicker]); // ✅ countdownTicker: mock maçlar için her saniye güncelle, liveMatchData: canlı güncelleme
+  }, [matchId, currentMatch?.fixture?.status, currentMatch?.fixture?.timestamp, match?.fixture?.status, match?.fixture?.timestamp, liveMatchData, countdownTicker]);
   
   const isMatchLive = LIVE_STATUSES_EARLY.includes(matchStatus);
   const isMatchFinished = FINISHED_STATUSES.includes(matchStatus);
@@ -984,55 +989,52 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
 
   // Transform API data to component format
   // ✅ useMemo ile sarmalayarak mock maçlar için timestamp'i sabitle
-  // ✅ currentMatch kullanarak canlı verileri yansıt
-  const matchData = useMemo(() => currentMatch ? {
-    id: currentMatch.fixture.id.toString(),
+  // ✅ currentMatch kullanarak canlı verileri yansıt; eksik veri (rate limit vb.) durumunda match'e düş
+  const matchData = useMemo(() => {
+    const safe = (currentMatch?.fixture?.id != null && currentMatch?.teams?.home && currentMatch?.teams?.away)
+      ? currentMatch
+      : match;
+    if (!safe?.fixture?.id || !safe?.teams?.home || !safe?.teams?.away) return null;
+    const m = safe;
+    return {
+    id: m.fixture.id.toString(),
     homeTeam: {
-      id: currentMatch.teams.home.id, // ✅ Team ID eklendi
-      name: currentMatch.teams.home.name,
-      logo: currentMatch.teams.home.logo || '⚽',
-      color: getTeamColors(currentMatch.teams.home),
+      id: m.teams.home.id,
+      name: m.teams.home.name,
+      logo: m.teams.home.logo || '⚽',
+      color: getTeamColors(m.teams.home),
       manager: homeManager,
     },
     awayTeam: {
-      id: currentMatch.teams.away.id, // ✅ Team ID eklendi
-      name: currentMatch.teams.away.name,
-      logo: currentMatch.teams.away.logo || '⚽',
-      color: getTeamColors(currentMatch.teams.away),
+      id: m.teams.away.id,
+      name: m.teams.away.name,
+      logo: m.teams.away.logo || '⚽',
+      color: getTeamColors(m.teams.away),
       manager: awayManager,
     },
-    // ✅ Geriye uyumluluk için teams objesi de ekle
     teams: {
-      home: { id: currentMatch.teams.home.id, name: currentMatch.teams.home.name },
-      away: { id: currentMatch.teams.away.id, name: currentMatch.teams.away.name },
+      home: { id: m.teams.home.id, name: m.teams.home.name },
+      away: { id: m.teams.away.id, name: m.teams.away.name },
     },
-    league: currentMatch.league.name,
-    stadium: currentMatch.fixture.venue?.name || 'TBA',
-    date: new Date(currentMatch.fixture.date).toLocaleDateString('tr-TR', { 
-      day: 'numeric', 
-      month: 'long', 
-      year: 'numeric' 
+    league: m.league?.name ?? '',
+    stadium: m.fixture?.venue?.name || 'TBA',
+    date: new Date(m.fixture.date).toLocaleDateString('tr-TR', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
     }),
-    time: api.utils.formatMatchTime(new Date(currentMatch.fixture.date).getTime() / 1000),
+    time: api.utils.formatMatchTime(new Date(m.fixture.date).getTime() / 1000),
     timestamp: (() => {
-      // ✅ Mock maçlar için sabit timestamp kullan
       if (isMockTestMatch(Number(matchId))) {
-        // Öncelikle mockMatchStartTimeRef.current'i kullan (zaten sabitlenmişse)
         if (mockMatchStartTimeRef.current !== null) {
           return mockMatchStartTimeRef.current / 1000;
         }
-        // Henüz sabitlenmemişse, currentMatch.fixture.timestamp'i kullan ve sabitle
-        // Bu sadece ilk render'da olacak
-        const ts = currentMatch.fixture.timestamp || new Date(currentMatch.fixture.date).getTime() / 1000;
-        // Hemen sabitle (synchronous olarak) - sadece bir kez
+        const ts = m.fixture.timestamp || new Date(m.fixture.date).getTime() / 1000;
         mockMatchStartTimeRef.current = ts * 1000;
-        console.log('🔒 Mock maç timestamp matchData içinde sabitlendi:', new Date(mockMatchStartTimeRef.current).toISOString(), 'Kalan:', Math.floor((mockMatchStartTimeRef.current - Date.now()) / 1000), 'sn');
-        // Sabitlenmiş değeri döndür
         return mockMatchStartTimeRef.current / 1000;
       }
-      // Normal maçlar için currentMatch.fixture.timestamp kullan
-      return currentMatch.fixture.timestamp || new Date(currentMatch.fixture.date).getTime() / 1000;
-    })(), // ✅ Geri sayım için
+      return m.fixture.timestamp || new Date(m.fixture.date).getTime() / 1000;
+    })(),
     // ✅ Canlı maç bilgileri
     isLive: isMatchLive,
     minute: matchMinute,
@@ -1042,7 +1044,8 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
     awayScore: awayScore,
     halftimeScore: halftimeScore,
     status: matchStatus,
-  } : null, [
+  };
+  }, [
     // ✅ currentMatch objesini dependency'e ekle çünkü canlı maçlarda güncelleniyor
     // Sadece gerçekten değişmesi gereken değerleri ekle
     currentMatch?.fixture?.id, // Match ID değiştiğinde yeniden hesapla
@@ -1072,6 +1075,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
     mockMatchStartTimeRef.current,
     matchStatus, // ✅ Mock maçlar için status değiştiğinde güncellensin
     ...(isMockTestMatch(Number(matchId)) ? [] : [match?.fixture?.timestamp]),
+    match, // ✅ Eksik currentMatch durumunda fallback
   ]);
   
   // ✅ 120 saniyelik geri sayım kaldırıldı - countdownData artık kullanılmıyor

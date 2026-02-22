@@ -1,11 +1,15 @@
 /**
- * Mock test stub - Tüm mock fonksiyonlar devre dışı.
- * Test verisi backend TEST_MODE ile test_matches tablosundan gelir (900001-900010).
+ * Mock test data - KAPALI.
+ * Tüm mock veriler kaldırıldı; sadece gerçek API/DB maçları kullanılır.
  */
 
 export const MOCK_TEST_ENABLED = false;
 
-export const MOCK_MATCH_IDS = { GS_FB: 888001, REAL_BARCA: 888002 } as const;
+export const MOCK_MATCH_IDS = {} as Record<string, number>;
+
+export function getMockMatches(): any[] {
+  return [];
+}
 
 export function isMockTestMatch(_matchId: number): boolean {
   return false;

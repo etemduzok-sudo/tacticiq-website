@@ -84,7 +84,59 @@ interface UseFavoriteTeamMatchesResult {
   loading: boolean;
   error: string | null;
   refetch: () => void;
-  hasLoadedOnce: boolean; // Flag to prevent flickering on subsequent loads
+  hasLoadedOnce: boolean;
+}
+
+// ✅ Veri formatını normalize et - backend bazen DB formatında (home_team, away_team),
+// bazen API formatında (teams.home, teams.away) döndürüyor
+function normalizeMatchFormat(raw: any): Match | null {
+  if (!raw) return null;
+  
+  // Zaten API formatındaysa (fixture + teams var)
+  if (raw.fixture && raw.teams?.home?.id != null) {
+    return raw as Match;
+  }
+  
+  // DB formatından API formatına dönüştür
+  const fixtureId = raw.fixture?.id || raw.id || raw.source_match_id;
+  if (!fixtureId) return null;
+  
+  const homeTeam = raw.teams?.home || raw.home_team || { id: raw.home_team_id, name: null, logo: null };
+  const awayTeam = raw.teams?.away || raw.away_team || { id: raw.away_team_id, name: null, logo: null };
+  
+  // fixture.status normalize
+  let status = raw.fixture?.status;
+  if (!status || typeof status === 'string') {
+    status = {
+      short: (typeof raw.fixture?.status === 'string' ? raw.fixture.status : null) || raw.status || 'NS',
+      long: raw.status_long || 'Not Started',
+      elapsed: raw.elapsed || raw.fixture?.status?.elapsed || null,
+    };
+  }
+  
+  const timestamp = raw.fixture?.timestamp 
+    || raw.fixture_timestamp 
+    || (raw.fixture?.date ? new Date(raw.fixture.date).getTime() / 1000 : 0)
+    || (raw.fixture_date ? new Date(raw.fixture_date).getTime() / 1000 : 0);
+
+  return {
+    fixture: {
+      id: fixtureId,
+      date: raw.fixture?.date || raw.fixture_date || new Date().toISOString(),
+      timestamp,
+      status,
+    },
+    league: raw.league || { id: raw.league_id, name: null, country: null, logo: null },
+    teams: {
+      home: { id: homeTeam.id || homeTeam.api_football_id, name: homeTeam.name, logo: homeTeam.logo },
+      away: { id: awayTeam.id || awayTeam.api_football_id, name: awayTeam.name, logo: awayTeam.logo },
+    },
+    goals: raw.goals || { home: raw.home_score ?? null, away: raw.away_score ?? null },
+    score: raw.score || {
+      halftime: { home: raw.halftime_home ?? null, away: raw.halftime_away ?? null },
+      fulltime: { home: raw.fulltime_home ?? raw.home_score ?? null, away: raw.fulltime_away ?? raw.away_score ?? null },
+    },
+  } as Match;
 }
 
 // ✅ Dışarıdan favoriteTeams alabilir veya kendi hook'unu kullanabilir
@@ -98,9 +150,14 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
   const cacheLoadedRef = useRef(false); // ✅ Cache yüklenip yüklenmediğini takip et
 
   // ✅ Dışarıdan geçilen favoriteTeams varsa onu kullan, yoksa hook'tan al
-  // ⚠️ ÖNEMLİ: Bu tanımı yukarıya taşıdık çünkü loadFromCache ve useEffect'lerde kullanılıyor
   const { favoriteTeams: hookFavoriteTeams, loading: teamsLoading } = useFavoriteTeams();
   const favoriteTeams = externalFavoriteTeams || hookFavoriteTeams;
+  
+  // ✅ Güncel favoriteTeams referansı - closure stale olmaması için
+  const favoriteTeamsRef = useRef(favoriteTeams);
+  useEffect(() => {
+    favoriteTeamsRef.current = favoriteTeams;
+  }, [favoriteTeams]);
 
   // 💾 Cache'den maçları yükle - ÖNCELİKLİ ve HIZLI
   const loadFromCache = useCallback(async (): Promise<boolean> => {
@@ -308,11 +365,16 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
       currentCount: currentIds.length
     }, 'MATCHES');
     
-    // ✅ Yeni takım eklendiyse: Cache'i temizle ve TÜM maçları yeniden fetch et
+    // ✅ Yeni takım eklendiyse: Ref'i güncelle, cache'i temizle ve TÜM maçları yeniden fetch et
     if (addedTeamIds.length > 0) {
       logger.info('🆕 New teams added, clearing cache and fetching all matches...', { addedTeams: addedTeamIds }, 'MATCHES');
-      clearMatchesCache().then(() => {
-        fetchMatches();
+      // ✅ KRITIK: Ref'i hemen güncelle - fetchMatches ref'ten okuyacak
+      favoriteTeamsRef.current = favoriteTeams;
+      setLoading(true);
+      clearMatchesCache().then(async () => {
+        await fetchMatches();
+        // ✅ Canlı maçları da hemen kontrol et (yeni takımın canlı maçı olabilir)
+        fetchLiveOnly();
       });
     } 
     // ✅ Sadece takım çıkarıldıysa: Mevcut maçları filtrele (cache temizleme gerekmez)
@@ -377,6 +439,8 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
 
     const LIVE_STATUSES = ['1H', 'HT', '2H', 'ET', 'P', 'BT', 'LIVE', 'INT'];
     const FINISHED_STATUSES = ['FT', 'AET', 'PEN', 'AWD', 'WO', 'ABD', 'CANC'];
+    // Maç başlama saati geçti ama API/DB hâlâ NS döndürüyorsa bu süre içinde "Oynanıyor"da göster (yaklaşık maç süresi + uzatma)
+    const MAX_LIVE_WINDOW_MS = 3.5 * 60 * 60 * 1000;
 
     matches.forEach(match => {
       if (!match || !match.fixture) {
@@ -389,6 +453,8 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
         : (statusRaw?.short ?? statusRaw?.long ?? 'NS');
       const matchTime = match.fixture.timestamp * 1000;
       const isFuture = matchTime > now;
+      const startedAgo = now - matchTime;
+      const withinLiveWindow = startedAgo >= 0 && startedAgo <= MAX_LIVE_WINDOW_MS;
 
       // 1) Canlı maçlar (API'den gelen kesin canlı statü)
       if (LIVE_STATUSES.includes(status)) {
@@ -402,12 +468,17 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
         return;
       }
 
-      // 3) Henüz başlamamış veya belirsiz statü
-      // Backend fixture ID bazlı polling ile güncellenecek
+      // 3) Henüz başlamamış → yaklaşan
       if (isFuture) {
         upcoming.push(match);
+        return;
+      }
+
+      // 4) Başlama saati geçmiş ama statü hâlâ NS/TBD → "Oynanıyor"da göster (API 1H/2H/FT dönene kadar)
+      if (withinLiveWindow) {
+        live.push(match);
       } else {
-        // Geçmiş ama NS/TBD - backend güncelleme yapana kadar upcoming'de tut
+        // Çok eski ve hâlâ NS → Biten'e SADECE API FT döndüğünde geçecek, süreyle değil. Şimdilik yaklaşanda bırak.
         upcoming.push(match);
       }
     });
@@ -419,22 +490,23 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
   };
 
   const fetchMatches = useCallback(async () => {
+    // ✅ Her zaman en güncel favoriteTeams'i kullan (stale closure önleme)
+    const teams = favoriteTeamsRef.current;
+    
     logger.info('📡 fetchMatches started', { 
-      teamsCount: favoriteTeams?.length || 0, 
+      teamsCount: teams?.length || 0, 
       hasLoadedOnce,
-      teamIds: favoriteTeams?.map(t => t.id) || [],
-      teamNames: favoriteTeams?.map(t => t.name) || []
+      teamIds: teams?.map(t => t.id) || [],
+      teamNames: teams?.map(t => t.name) || []
     }, 'MATCHES');
     
     try {
-      // ✅ Sadece ilk yüklemede VE cache yoksa loading göster
-      // Cache varsa arka planda sessizce güncelle
       if (!hasLoadedOnce && pastMatches.length === 0 && upcomingMatches.length === 0) {
         setLoading(true);
       }
       setError(null);
 
-      if (!favoriteTeams || favoriteTeams.length === 0) {
+      if (!teams || teams.length === 0) {
         logger.warn('⚠️ No favorite teams to fetch matches for', undefined, 'MATCHES');
         setPastMatches([]);
         setLiveMatches([]);
@@ -457,7 +529,8 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
         const liveResponse = await api.matches.getLiveMatches();
         logger.info('✅ Live matches response', { success: liveResponse.success, count: liveResponse.data?.length || 0 }, 'MATCHES');
         if (liveResponse.success && liveResponse.data) {
-          liveMatchesFromAPI.push(...liveResponse.data);
+          const normalizedLive = (liveResponse.data as any[]).map(m => normalizeMatchFormat(m)).filter(Boolean) as Match[];
+          liveMatchesFromAPI.push(...normalizedLive);
           successfulFetches++;
         }
       } catch (err: any) {
@@ -479,8 +552,8 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
 
       // ✅ PARALEL FETCH - Tüm takımlar aynı anda çekilir (5-6x daha hızlı!)
       logger.info('⚡ Fetching all teams in PARALLEL...', { 
-        teamCount: favoriteTeams.length,
-        teams: favoriteTeams.map(t => ({ id: t.id, name: t.name, type: t.type }))
+        teamCount: teams.length,
+        teams: teams.map(t => ({ id: t.id, name: t.name, type: t.type }))
       }, 'MATCHES');
       
       const fetchTeamMatches = async (team: FavoriteTeam): Promise<Match[]> => {
@@ -575,7 +648,7 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
             }
           }
           
-          return teamMatches;
+          return teamMatches.map(m => normalizeMatchFormat(m)).filter(Boolean) as Match[];
         } catch (err: any) {
           // Timeout ve connection hatalarını yakala
           if (err.name === 'AbortError' || 
@@ -591,11 +664,11 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
       };
       
       // 🚀 Tüm takımları PARALEL olarak çek (bir takım hata verse bile diğerlerinin verisi kalsın)
-      const teamMatchPromises = favoriteTeams.map(fetchTeamMatches);
+      const teamMatchPromises = teams.map(fetchTeamMatches);
       const settled = await Promise.allSettled(teamMatchPromises);
       
       settled.forEach((result, index) => {
-        const team = favoriteTeams[index];
+        const team = teams[index];
         if (result.status === 'fulfilled' && Array.isArray(result.value)) {
           logger.debug(`✅ Team ${team.name} (${team.id}): ${result.value.length} matches`, undefined, 'MATCHES');
           allMatches.push(...result.value);
@@ -606,9 +679,9 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
       
       logger.info('✅ All teams fetched', { 
         totalMatches: allMatches.length,
-        teamsProcessed: favoriteTeams.length,
+        teamsProcessed: teams.length,
         matchesPerTeam: settled.map((result, i) => ({
-          team: favoriteTeams[i]?.name || 'Unknown',
+          team: teams[i]?.name || 'Unknown',
           count: result.status === 'fulfilled' && Array.isArray(result.value) ? result.value.length : 0
         }))
       }, 'MATCHES');
@@ -643,8 +716,7 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
       }, 'MATCHES');
       
       // ✅ KRITIK: Sadece favori takımların maçlarını filtrele (ID-based, number/string güvenli)
-      // Mock maç (ID: 999999) her zaman görünsün
-      const favoriteTeamIds = favoriteTeams.map(t => Number(t.id));
+      const favoriteTeamIds = teams.map(t => Number(t.id));
       const favoriteIdSet = new Set(favoriteTeamIds);
       let favoriteMatchCount = 0;
       const favoriteMatches = uniqueMatches.filter(m => {
@@ -668,7 +740,7 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
       logger.info('🔍 Favorite matches filtering', {
         totalUnique: uniqueMatches.length,
         favoriteTeamIds: favoriteTeamIds,
-        favoriteTeamNames: favoriteTeams.map(t => t.name),
+        favoriteTeamNames: teams.map(t => t.name),
         afterFilter: favoriteMatches.length,
         filtered: uniqueMatches.length - favoriteMatches.length,
         sampleMatches: favoriteMatches.slice(0, 3).map(m => ({
@@ -763,13 +835,13 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
       }
 
     } catch (err: any) {
-      logger.error('Error fetching favorite team matches', { error: err, favoriteTeamsCount: favoriteTeams.length }, 'MATCHES');
+      logger.error('Error fetching favorite team matches', { error: err, favoriteTeamsCount: teams.length }, 'MATCHES');
       setError(err.message || 'Maçlar yüklenemedi');
     } finally {
       logger.debug('Fetch complete, setting loading=false', undefined, 'MATCHES');
       setLoading(false);
     }
-  }, [favoriteTeams, hasLoadedOnce, pastMatches.length, upcomingMatches.length]); // ✅ Dependencies eklendi
+  }, [hasLoadedOnce, pastMatches.length, upcomingMatches.length]); // ✅ favoriteTeams çıkarıldı, ref kullanılıyor
 
   // ✅ Favori takım ID'lerini string olarak takip et (değişiklik algılama için)
   const favoriteTeamIdsString = useMemo(() => {
@@ -781,14 +853,24 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
   const LIVE_STATUSES = ['1H', 'HT', '2H', 'ET', 'P', 'BT', 'LIVE', 'INT'];
   const FINISHED_STATUSES = ['FT', 'AET', 'PEN', 'AWD', 'WO', 'ABD', 'CANC']; // ✅ ABD ve CANC eklendi
   const LIVE_POLL_INTERVAL_MS = 13 * 1000;
-  // ✅ TEMİZ CANLI MAÇ POLLING: Sadece API statüsüne güven, varsayım yapma
+  const MAX_LIVE_WINDOW_MS_POLL = 3.5 * 60 * 60 * 1000; // categorizeMatches ile aynı pencere
+  const isTimeBasedLive = (m: Match) => {
+    if (!m?.fixture?.timestamp) return false;
+    const startedAgo = Date.now() - m.fixture.timestamp * 1000;
+    return startedAgo >= 0 && startedAgo <= MAX_LIVE_WINDOW_MS_POLL;
+  };
+  // ✅ TEMİZ CANLI MAÇ POLLING: API + "saat bazlı canlı" (başlama saati geçti, statü güncellenmemiş)
   const fetchLiveOnly = useCallback(async () => {
     try {
       const res = await api.matches.getLiveMatches();
-      const newLiveRaw = (res?.data || []) as Match[];
+      const rawData = (res?.data || []) as any[];
       
-      // ✅ FIX: Team ID'leri number'a çevir (API string/number karışık dönebilir)
-      const favIds = favoriteTeams?.map(t => Number(t.id)) ?? [];
+      // ✅ Veri formatını normalize et (API ve DB formatı farklı olabiliyor)
+      const newLiveRaw = rawData.map(m => normalizeMatchFormat(m)).filter(Boolean) as Match[];
+      
+      // ✅ Her zaman en güncel favoriteTeams'i kullan (stale closure önleme)
+      const currentTeams = favoriteTeamsRef.current;
+      const favIds = currentTeams?.map(t => Number(t.id)) ?? [];
       
       // Favori takımların maçlarını filtrele - ID'leri number olarak karşılaştır
       const byFav = favIds.length === 0 ? newLiveRaw : newLiveRaw.filter(m => {
@@ -799,26 +881,23 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
       
       const statusShort = (m: Match) => typeof m.fixture?.status === 'string' ? m.fixture.status : (m.fixture?.status?.short ?? '');
       
-      // Sadece gerçekten canlı olanları tut
       const newLive = byFav.filter(m => {
         if (FINISHED_STATUSES.includes(statusShort(m))) return false;
         return LIVE_STATUSES.includes(statusShort(m));
       });
       
-      // Biten maçları al
       const nowFinishedFromApi = byFav.filter(m => FINISHED_STATUSES.includes(statusShort(m)));
       
-      // Canlı maç ID'lerini al
       const liveMatchIds = new Set(newLive.map(m => m.fixture?.id));
       
-      // Debug log - sadece değişiklik varsa
       if (newLiveRaw.length > 0) {
         console.log('🔴 fetchLiveOnly:', {
           total: newLiveRaw.length,
           filtered: byFav.length,
           live: newLive.length,
-          // İlk maçın detayları
-          firstMatch: newLiveRaw[0] ? `${newLiveRaw[0].teams?.home?.name} vs ${newLiveRaw[0].teams?.away?.name} (${statusShort(newLiveRaw[0])})` : null,
+          favIds: favIds.slice(0, 6),
+          firstMatch: newLiveRaw[0] ? `${newLiveRaw[0].teams?.home?.name} (${newLiveRaw[0].teams?.home?.id}) vs ${newLiveRaw[0].teams?.away?.name} (${newLiveRaw[0].teams?.away?.id}) [${statusShort(newLiveRaw[0])}]` : null,
+          rawFormat: rawData[0] ? { hasFixture: !!rawData[0].fixture, hasTeams: !!rawData[0].teams, hasHomeTeam: !!rawData[0].home_team, keys: Object.keys(rawData[0]).slice(0, 8) } : null,
         });
       }
       
@@ -828,44 +907,20 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
         setPastMatches(prev => prev.filter(m => !liveMatchIds.has(m.fixture?.id)));
       }
       
-      // Live maçları güncelle - sadece API'den gelen veriye güven
+      // Live maçları güncelle: API canlıları + "saat bazlı canlı". Biten'e SADECE API'den FT/bitiş statüsü gelince geçir.
       setLiveMatches(prev => {
         const newIds = new Set(newLive.map(m => m.fixture?.id));
-        
-        // API'den artık canlı olmayan maçları bitmiş olarak işaretle
-        const noLongerInLive = prev.filter(m => {
-          if (newIds.has(m.fixture?.id)) return false;
-          return true;
-        });
-        
-        const asPast = [
-          ...noLongerInLive.map(m => ({
-            ...m,
-            fixture: {
-              ...m.fixture,
-              status: { 
-                ...(m.fixture?.status || {}), 
-                short: 'FT' as const, 
-                long: 'Full Time', 
-                elapsed: (m.fixture?.status && typeof m.fixture.status === 'object' && 'elapsed' in m.fixture.status) 
-                  ? (m.fixture.status as { elapsed?: number }).elapsed 
-                  : undefined 
-              },
-            },
-          })),
-          ...nowFinishedFromApi,
-        ] as Match[];
-        
+        const timeBasedStillLive = prev.filter(m => isTimeBasedLive(m) && !newIds.has(m.fixture?.id));
+        const asPast = [...nowFinishedFromApi];
         if (asPast.length > 0) {
           setPastMatches(p => [...asPast, ...p]);
         }
-        
-        return newLive;
+        return [...newLive, ...timeBasedStillLive];
       });
     } catch (err) {
       console.log('🔴 Canlı maç fetch hatası:', err);
     }
-  }, [favoriteTeams]);
+  }, []); // ✅ favoriteTeams çıkarıldı, ref kullanılıyor
 
   // ✅ Sadece favori takım ID'leri değiştiğinde fetch yap (teamsLoading ile tekrara girme)
   useEffect(() => {
@@ -879,22 +934,24 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
     if (teamsLoading && !externalFavoriteTeams) return;
     if (!favoriteTeams || favoriteTeams.length === 0) return;
 
+    // ✅ Ref'i hemen güncelle - fetchMatches ref'ten okuyacak
+    favoriteTeamsRef.current = favoriteTeams;
     if (!hasLoadedOnce) setLoading(true);
     fetchMatches();
   }, [favoriteTeamIdsString]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // 🔴 CANLI MAÇ POLLING: Sadece canlı maç varsa polling yap
-  // Backend fixture ID bazlı polling ile stale NS maçları güncelleyecek
+  // 🔴 CANLI MAÇ POLLING: Canlı maç varsa sık, yoksa seyrek kontrol et
   useEffect(() => {
     if (!hasLoadedOnce || !favoriteTeamIdsString) return;
     
-    // Canlı maç yoksa polling yapma
-    if (liveMatches.length === 0) return;
+    const interval = liveMatches.length > 0 ? LIVE_POLL_INTERVAL_MS : 60 * 1000;
     
-    console.log('🔴 Canlı maç polling başlatılıyor', { liveCount: liveMatches.length });
+    if (liveMatches.length > 0) {
+      console.log('🔴 Canlı maç polling başlatılıyor', { liveCount: liveMatches.length });
+    }
     
     fetchLiveOnly();
-    const t = setInterval(fetchLiveOnly, LIVE_POLL_INTERVAL_MS);
+    const t = setInterval(fetchLiveOnly, interval);
     return () => clearInterval(t);
   }, [hasLoadedOnce, favoriteTeamIdsString, liveMatches.length, fetchLiveOnly]);
 

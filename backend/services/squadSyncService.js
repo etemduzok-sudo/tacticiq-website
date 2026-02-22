@@ -150,246 +150,154 @@ async function syncOneTeamSquad(teamId, teamName, options = {}) {
       }
     }
     
-    // 2. SON MAÇ KADROSUNU ÇEK (en güncel oyuncu listesi)
-    let lineupPlayers = [];
-    let lineupCoach = null;
-    
+    // 2. ÖNCELİK: /players/squads - TAM KADRO (resmi liste, transferler dahil)
+    //    Lineup sadece 18 oyuncu (11+7) ve son maça göre - güncel değil!
+    let squadData = null;
     try {
-      const fixturesData = await footballApi.getFixturesByTeam(teamId, CURRENT_SEASON, 1);
-      if (fixturesData.response && fixturesData.response.length > 0) {
-        const lastMatch = fixturesData.response[0];
-        const matchId = lastMatch.fixture.id;
-        
-        const lineupData = await footballApi.getFixtureLineups(matchId);
-        if (lineupData.response) {
-          const teamLineup = lineupData.response.find(l => l.team.id === teamId);
-          if (teamLineup) {
-            // Maç kadrosundan coach (sadece backup olarak kullanılır)
-            if (teamLineup.coach?.name && !currentCoach) {
-              lineupCoach = teamLineup.coach.name;
-            }
-            
-            // Oyuncular (ilk 11 + yedekler)
-            if (teamLineup.startXI) {
-              teamLineup.startXI.forEach(p => lineupPlayers.push({
-                id: p.player.id,
-                name: p.player.name,
-                number: p.player.number,
-                position: p.player.pos === 'G' ? 'Goalkeeper' : 
-                         p.player.pos === 'D' ? 'Defender' :
-                         p.player.pos === 'M' ? 'Midfielder' :
-                         p.player.pos === 'F' ? 'Attacker' : p.player.pos
-              }));
-            }
-            if (teamLineup.substitutes) {
-              teamLineup.substitutes.forEach(p => lineupPlayers.push({
-                id: p.player.id,
-                name: p.player.name,
-                number: p.player.number,
-                position: p.player.pos === 'G' ? 'Goalkeeper' : 
-                         p.player.pos === 'D' ? 'Defender' :
-                         p.player.pos === 'M' ? 'Midfielder' :
-                         p.player.pos === 'F' ? 'Attacker' : (p.player.pos || 'Unknown')
-              }));
-            }
-          }
-        }
+      const squadApi = await footballApi.getTeamSquad(teamId, CURRENT_SEASON, true); // skipCache = taze veri
+      if (squadApi.response && squadApi.response.length > 0 && squadApi.response[0].players?.length > 0) {
+        squadData = squadApi.response[0];
       }
-    } catch (lineupErr) {
-      console.warn(`⚠️ Lineup fetch failed for ${teamId}:`, lineupErr.message);
-    }
-    
-    // 3. Fallback: Eğer lineup yoksa /coachs'tan gelen coach'u kullan ve /players/squads dene
-    const finalCoach = currentCoach || lineupCoach;
-    
-    // Takım bilgilerini çek
-    let teamInfoData = { response: [] };
-    let injuriesList = [];
-    
-    if (syncTeamInfo || lineupPlayers.length === 0) {
-      const [injuries, teamInfo] = await Promise.all([
-        footballApi.getTeamInjuries(teamId, CURRENT_SEASON).catch(() => []),
-        syncTeamInfo ? footballApi.getTeamInfo(teamId).catch(() => ({ response: [] })) : Promise.resolve({ response: [] }),
-      ]);
-      injuriesList = injuries;
-      teamInfoData = teamInfo;
-    }
-    
-    // 4. Eğer lineup'tan oyuncular geldiyse onları kaydet
-    if (lineupPlayers.length > 0) {
-      if (supabase) {
-        const squadRecord = {
-          team_id: teamId,
-          season: CURRENT_SEASON,
-          team_name: teamName || `Team ${teamId}`,
-          team_data: { id: teamId, name: teamName, coach: finalCoach },
-          players: lineupPlayers,
-          updated_at: new Date().toISOString(),
-        };
-        
-        await supabase.from('team_squads').upsert(squadRecord, { onConflict: 'team_id,season' });
-        result.ok = true;
-        result.count = lineupPlayers.length;
-      }
-      
-      // Eğer /coachs'tan coach gelmemişse ve lineup'tan geldiyse güncelle
-      if (lineupCoach && !currentCoach && supabase) {
-        await supabase
-          .from('static_teams')
-          .update({ coach: lineupCoach, last_updated: new Date().toISOString() })
-          .eq('api_football_id', teamId);
-        result.coachUpdated = true;
-      }
-      
-      // Renkleri güncelle
-      if (syncTeamInfo && teamInfoData.response && teamInfoData.response.length > 0) {
-        let colors = null;
-        const teamData = teamInfoData.response[0];
-        try {
-          colors = await footballApi.getTeamColors(teamId, teamData);
-        } catch (colorErr) {}
-        
-        if (!colors || colors.length < 2 || colors[0] === '#333333') {
-          const fallbackColors = KNOWN_TEAM_COLORS[teamId];
-          if (fallbackColors) colors = fallbackColors;
-        }
-        
-        if (colors && colors.length >= 2 && supabase) {
-          await supabase
-            .from('static_teams')
-            .update({
-              colors: JSON.stringify(colors),
-              colors_primary: colors[0],
-              colors_secondary: colors[1],
-              last_updated: new Date().toISOString()
-            })
-            .eq('api_football_id', teamId);
-          result.colorsUpdated = true;
-        }
-      }
-      
-      return result;
-    }
-    
-    // 5. Lineup yoksa /players/squads endpoint'ine fallback
-    let data = { response: [] };
-    try {
-      data = await footballApi.getTeamSquad(teamId, CURRENT_SEASON);
     } catch (squadErr) {
       console.warn(`⚠️ Squad fetch failed for ${teamId}:`, squadErr.message);
     }
-    
-    // 6. Squad API boş döndüyse mevcut DB verisini koru, renkleri güncelle
-    // (Coach zaten yukarıda /coachs endpoint'inden güncellendi)
-    if (!data.response || data.response.length === 0) {
-      const updateData = { last_updated: new Date().toISOString() };
-      
-      // Renkleri güncelleyelim (API veya fallback)
-      if (syncTeamInfo) {
-        let colors = null;
-        
-        if (teamInfoData.response && teamInfoData.response.length > 0) {
-          const teamData = teamInfoData.response[0];
+
+    // 3. Lineup (son maç) - sadece /players/squads boşsa fallback
+    let lineupPlayers = [];
+    let lineupCoach = null;
+    if (!squadData || !squadData.players?.length) {
+      try {
+        const fixturesData = await footballApi.getFixturesByTeam(teamId, CURRENT_SEASON, 1);
+        if (fixturesData.response && fixturesData.response.length > 0) {
+          const lastMatch = fixturesData.response[0];
+          const matchId = lastMatch.fixture.id;
+          const lineupData = await footballApi.getFixtureLineups(matchId);
+          if (lineupData.response) {
+            const teamLineup = lineupData.response.find(l => l.team.id === teamId);
+            if (teamLineup) {
+              if (teamLineup.coach?.name && !currentCoach) lineupCoach = teamLineup.coach.name;
+              if (teamLineup.startXI) {
+                teamLineup.startXI.forEach(p => lineupPlayers.push({
+                  id: p.player.id, name: p.player.name, number: p.player.number,
+                  position: p.player.pos === 'G' ? 'Goalkeeper' : p.player.pos === 'D' ? 'Defender' :
+                    p.player.pos === 'M' ? 'Midfielder' : p.player.pos === 'F' ? 'Attacker' : p.player.pos
+                }));
+              }
+              if (teamLineup.substitutes) {
+                teamLineup.substitutes.forEach(p => lineupPlayers.push({
+                  id: p.player.id, name: p.player.name, number: p.player.number,
+                  position: p.player.pos === 'G' ? 'Goalkeeper' : p.player.pos === 'D' ? 'Defender' :
+                    p.player.pos === 'M' ? 'Midfielder' : p.player.pos === 'F' ? 'Attacker' : (p.player.pos || 'Unknown')
+                }));
+              }
+            }
+          }
+        }
+      } catch (lineupErr) {
+        console.warn(`⚠️ Lineup fetch failed for ${teamId}:`, lineupErr.message);
+      }
+    }
+
+    const finalCoach = currentCoach || lineupCoach;
+
+    // Takım bilgilerini çek (enhanced players için)
+    let teamInfoData = { response: [] };
+    let injuriesList = [];
+    const [injuries, teamInfo] = await Promise.all([
+      footballApi.getTeamInjuries(teamId, CURRENT_SEASON).catch(() => []),
+      syncTeamInfo ? footballApi.getTeamInfo(teamId).catch(() => ({ response: [] })) : Promise.resolve({ response: [] }),
+    ]);
+    injuriesList = injuries;
+    teamInfoData = teamInfo;
+
+    // 4a. /players/squads'tan tam kadro varsa kaydet (rating + sakatlık dahil)
+    if (squadData && squadData.players && squadData.players.length > 0) {
+      const fallbackPlayers = squadData.players;
+      const playerIds = fallbackPlayers.map((p) => p.id);
+      const injuriesMap = buildInjuriesMap(injuriesList);
+
+      let dbPlayersMap = {};
+      if (supabase && playerIds.length > 0) {
+        const { data: dbPlayers, error } = await supabase
+          .from('players')
+          .select('id, rating, age, nationality, position')
+          .in('id', playerIds);
+        if (!error && dbPlayers) {
+          dbPlayersMap = dbPlayers.reduce((acc, p) => { acc[p.id] = p; return acc; }, {});
+        }
+      }
+
+      const enhancedPlayers = buildEnhancedPlayers(fallbackPlayers, dbPlayersMap, injuriesMap);
+      const teamInfo = squadData.team || { id: teamId, name: teamName || null };
+
+      const { error } = await supabase.from('team_squads').upsert(
+        {
+          team_id: teamId,
+          season: CURRENT_SEASON,
+          team_name: teamInfo.name || teamName,
+          team_data: { ...teamInfo, coach: finalCoach },
+          players: enhancedPlayers,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'team_id,season' }
+      );
+
+      if (!error) {
+        result.ok = true;
+        result.count = enhancedPlayers.length;
+        result.source = 'players/squads';
+        // Renkleri güncelle
+        if (syncTeamInfo && teamInfoData.response?.length > 0) {
+          let colors = null;
           try {
-            colors = await footballApi.getTeamColors(teamId, teamData);
-          } catch (colorErr) {
-            // API hatası
+            colors = await footballApi.getTeamColors(teamId, teamInfoData.response[0]);
+          } catch (e) {}
+          if (!colors?.length || colors[0] === '#333333') colors = KNOWN_TEAM_COLORS[teamId];
+          if (colors?.length >= 2 && supabase) {
+            await supabase.from('static_teams').update({
+              colors: JSON.stringify(colors), colors_primary: colors[0], colors_secondary: colors[1],
+              last_updated: new Date().toISOString()
+            }).eq('api_football_id', teamId);
+            result.colorsUpdated = true;
           }
         }
-        
-        // Fallback
-        if (!colors || colors.length < 2 || colors[0] === '#333333') {
-          const fallbackColors = KNOWN_TEAM_COLORS[teamId];
-          if (fallbackColors) {
-            colors = fallbackColors;
-          }
-        }
-        
-        if (colors && colors.length >= 2) {
-          updateData.colors = JSON.stringify(colors);
-          updateData.colors_primary = colors[0];
-          updateData.colors_secondary = colors[1];
+        return result;
+      }
+    }
+
+    // 4b. Lineup fallback (sadece 18 oyuncu - /players/squads boşsa)
+    if (lineupPlayers.length > 0) {
+      if (supabase) {
+        await supabase.from('team_squads').upsert({
+          team_id: teamId, season: CURRENT_SEASON, team_name: teamName || `Team ${teamId}`,
+          team_data: { id: teamId, name: teamName, coach: finalCoach },
+          players: lineupPlayers, updated_at: new Date().toISOString(),
+        }, { onConflict: 'team_id,season' });
+        result.ok = true;
+        result.count = lineupPlayers.length;
+        result.source = 'lineup';
+      }
+      if (lineupCoach && !currentCoach && supabase) {
+        await supabase.from('static_teams').update({ coach: lineupCoach, last_updated: new Date().toISOString() }).eq('api_football_id', teamId);
+        result.coachUpdated = true;
+      }
+      if (syncTeamInfo && teamInfoData.response?.length > 0) {
+        let colors = null;
+        try { colors = await footballApi.getTeamColors(teamId, teamInfoData.response[0]); } catch (e) {}
+        if (!colors?.length || colors[0] === '#333333') colors = KNOWN_TEAM_COLORS[teamId];
+        if (colors?.length >= 2 && supabase) {
+          await supabase.from('static_teams').update({
+            colors: JSON.stringify(colors), colors_primary: colors[0], colors_secondary: colors[1],
+            last_updated: new Date().toISOString()
+          }).eq('api_football_id', teamId);
           result.colorsUpdated = true;
         }
       }
-      
-      // static_teams tablosunu güncelle
-      if (supabase && Object.keys(updateData).length > 1) {
-        await supabase
-          .from('static_teams')
-          .update(updateData)
-          .eq('api_football_id', teamId);
-      }
-      
-      // Mevcut DB'deki kadro sayısını döndür
-      if (supabase) {
-        const { data: existingSquad } = await supabase
-          .from('team_squads')
-          .select('players')
-          .eq('team_id', teamId)
-          .eq('season', CURRENT_SEASON)
-          .single();
-        
-        if (existingSquad?.players?.length > 0) {
-          result.ok = true;
-          result.count = existingSquad.players.length;
-          result.reason = 'cached';
-          return result;
-        }
-      }
-      
-      return { ...result, reason: 'empty' };
+      return result;
     }
 
-    const squadData = data.response[0];
-    const fallbackPlayers = squadData.players || [];
-    const playerIds = fallbackPlayers.map((p) => p.id);
-    const injuriesMap = buildInjuriesMap(injuriesList);
-
-    // 2. DB'den oyuncu rating'lerini çek
-    let dbPlayersMap = {};
-    if (supabase && playerIds.length > 0) {
-      const { data: dbPlayers, error } = await supabase
-        .from('players')
-        .select('id, rating, age, nationality, position')
-        .in('id', playerIds);
-      if (!error && dbPlayers) {
-        dbPlayersMap = dbPlayers.reduce((acc, p) => {
-          acc[p.id] = p;
-          return acc;
-        }, {});
-      }
-    }
-
-    const enhancedPlayers = buildEnhancedPlayers(fallbackPlayers, dbPlayersMap, injuriesMap);
-    const teamInfo = squadData.team || { id: teamId, name: teamName || null };
-
-    // 3. Kadroyu DB'ye kaydet
-    const { error } = await supabase.from('team_squads').upsert(
-      {
-        team_id: teamId,
-        season: CURRENT_SEASON,
-        team_name: teamInfo.name || teamName,
-        team_data: teamInfo,
-        players: enhancedPlayers,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: 'team_id,season' }
-    );
-
-    if (error) {
-      console.warn(`⚠️ Squad DB upsert failed for team ${teamId}:`, error.message);
-      return { ...result, reason: error.message };
-    }
-    
-    result.ok = true;
-    result.count = enhancedPlayers.length;
-
-    // 7. Takım bilgilerini güncelle (static_teams tablosunda)
-    // NOT: Coach zaten yukarıda /coachs endpoint'inden güncellendi
+    // 5. Her iki kaynak da boş - mevcut DB verisini koru, renkleri güncelle
     const updateData = { last_updated: new Date().toISOString() };
-    
-    // Takım renkleri (API'den, logo'dan veya fallback'ten)
     if (syncTeamInfo) {
       let colors = null;
       
@@ -419,19 +327,26 @@ async function syncOneTeamSquad(teamId, teamName, options = {}) {
       }
     }
     
-    // 6. static_teams tablosunu güncelle
-    if (Object.keys(updateData).length > 1) { // last_updated dışında veri varsa
-      const { error: updateError } = await supabase
-        .from('static_teams')
-        .update(updateData)
-        .eq('api_football_id', teamId);
-      
-      if (updateError) {
-        console.warn(`⚠️ static_teams update failed for team ${teamId}:`, updateError.message);
-      }
+    // static_teams tablosunu güncelle
+    if (supabase && Object.keys(updateData).length > 1) {
+      await supabase.from('static_teams').update(updateData).eq('api_football_id', teamId);
     }
 
-    return result;
+    // Mevcut DB'deki kadro varsa onu döndür
+    if (supabase) {
+      const { data: existingSquad } = await supabase
+        .from('team_squads')
+        .select('players')
+        .eq('team_id', teamId)
+        .eq('season', CURRENT_SEASON)
+        .maybeSingle();
+      if (existingSquad?.players?.length > 0) {
+        result.ok = true;
+        result.count = existingSquad.players.length;
+        result.reason = 'cached';
+      }
+    }
+    return { ...result, reason: result.reason || 'empty' };
   } catch (err) {
     console.warn(`⚠️ Team sync failed for ${teamId}:`, err.message);
     return { ...result, reason: err.message };

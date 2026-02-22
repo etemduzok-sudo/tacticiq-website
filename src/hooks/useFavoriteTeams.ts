@@ -35,9 +35,12 @@ const jsonToTeams = (json: string | null): FavoriteTeam[] | null => {
   }
 };
 
-// ✅ GLOBAL flag - tüm hook instance'ları için tek kontrol (session boyunca)
+  // ✅ GLOBAL flag - tüm hook instance'ları için tek kontrol (session boyunca)
 let globalBulkDownloadRunning = false;
 let globalBulkDownloadCompletedThisSession = false;
+
+/** Otomatik arka plan yenileme: 6 saatte bir sessizce verileri güncelle (kullanıcıya göstermeden) */
+const AUTO_REFRESH_INTERVAL_MS = 6 * 60 * 60 * 1000;
 
 export function useFavoriteTeams() {
   const [favoriteTeams, setFavoriteTeams] = useState<FavoriteTeam[]>([]);
@@ -72,7 +75,11 @@ export function useFavoriteTeams() {
     setIsBulkDownloading(true);
 
     try {
-      // Cache hala geçerliyse ve takımlar aynıysa skip
+      // forceDownload: cache'i temizle, kadro/maç verilerini yeniden indir
+      if (forceDownload) {
+        await clearBulkData();
+      }
+      // Cache hala geçerliyse ve takımlar aynıysa skip (forceDownload sonrası cache boş, geçersiz sayılır)
       const cacheValid = await isBulkDataValid(teamIds);
       if (cacheValid) {
         logger.info('📦 Bulk cache still valid, skipping download', { teamIds }, 'BULK');
@@ -120,6 +127,21 @@ export function useFavoriteTeams() {
       setTimeout(() => setBulkDownloadProgress(null), 3000);
     }
   }, []);
+
+  // ✅ Otomatik arka plan yenileme - 6 saatte bir sessizce verileri güncelle (kullanıcıya göstermeden)
+  const teamIdsKey = favoriteTeams?.map(t => t.id).filter(Boolean).sort().join(',') || '';
+  useEffect(() => {
+    if (!teamIdsKey) return;
+    const teamIds = teamIdsKey.split(',').map(id => parseInt(id, 10)).filter(n => !isNaN(n));
+    if (teamIds.length === 0) return;
+
+    const interval = setInterval(() => {
+      logger.info('🔄 [AUTO] Arka plan veri yenileme başlatılıyor...', { teamIds }, 'BULK');
+      triggerBulkDownload(teamIds, true); // forceDownload = cache temizle, yeniden indir
+    }, AUTO_REFRESH_INTERVAL_MS);
+
+    return () => clearInterval(interval);
+  }, [teamIdsKey, triggerBulkDownload]);
 
   // ✅ Supabase senkronizasyonu arka planda - UI'ı bloklamaz
   const syncWithSupabaseInBackground = useCallback(async (localTeams: FavoriteTeam[] | null) => {

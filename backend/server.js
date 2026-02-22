@@ -176,7 +176,7 @@ app.use('/api/bulk-data', bulkDataRouter); // 📦 Tüm takım verilerini tek se
 // 🔥 Rate Limiter Stats — API-Football günlük çağrı (smartSync 12s + aggressiveCache toplamı)
 app.get('/api/rate-limit/stats', (req, res) => {
   const stats = getStats();
-  const limit = 7500;
+  const limit = 75000;
   let todaysCalls = 0;
   try {
     const smartSyncService = require('./services/smartSyncService');

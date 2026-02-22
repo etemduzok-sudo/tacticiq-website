@@ -248,6 +248,23 @@ const ARGENTINE_PRIMERA: StaticTeam[] = [
   { id: 446, name: 'Lanús', country: 'Argentina', league: 'Liga Profesional', type: 'club', colors: ['#800020', '#FFFFFF'] },
   { id: 441, name: 'Unión Santa Fe', country: 'Argentina', league: 'Liga Profesional', type: 'club', colors: ['#FF0000', '#FFFFFF'] },
   { id: 445, name: 'Huracán', country: 'Argentina', league: 'Liga Profesional', type: 'club', colors: ['#FFFFFF', '#C8102E'] },
+  { id: 440, name: 'Banfield', country: 'Argentina', league: 'Liga Profesional', type: 'club', colors: ['#006633', '#FFFFFF'] },
+  { id: 448, name: 'Central Córdoba (SdE)', country: 'Argentina', league: 'Liga Profesional', type: 'club', colors: ['#800020', '#FFFFFF'] },
+  { id: 452, name: 'Tigre', country: 'Argentina', league: 'Liga Profesional', type: 'club', colors: ['#800020', '#006633'] },
+];
+
+// ==========================================
+// LIGA MX - API-Football IDs
+// ==========================================
+const LIGA_MX: StaticTeam[] = [
+  { id: 2283, name: 'Atlas', country: 'Mexico', league: 'Liga MX', type: 'club', colors: ['#800020', '#000000'] },
+  { id: 2269, name: 'Atletico San Luis', country: 'Mexico', league: 'Liga MX', type: 'club', colors: ['#006633', '#FFFFFF'] },
+  { id: 2267, name: 'América', country: 'Mexico', league: 'Liga MX', type: 'club', colors: ['#FFD700', '#800020'] },
+  { id: 2275, name: 'Guadalajara', country: 'Mexico', league: 'Liga MX', type: 'club', colors: ['#FFFFFF', '#E30613'] },
+  { id: 2286, name: 'Monterrey', country: 'Mexico', league: 'Liga MX', type: 'club', colors: ['#FFFFFF', '#003366'] },
+  { id: 2282, name: 'Tigres UANL', country: 'Mexico', league: 'Liga MX', type: 'club', colors: ['#800020', '#FFD700'] },
+  { id: 2271, name: 'Cruz Azul', country: 'Mexico', league: 'Liga MX', type: 'club', colors: ['#0066B3', '#FFFFFF'] },
+  { id: 2280, name: 'Puebla', country: 'Mexico', league: 'Liga MX', type: 'club', colors: ['#006633', '#FFFFFF'] },
 ];
 
 // ==========================================
@@ -313,6 +330,7 @@ export const ALL_CLUB_TEAMS: StaticTeam[] = [
   ...BRASILEIRAO,
   ...EREDIVISIE,
   ...ARGENTINE_PRIMERA,
+  ...LIGA_MX,
   ...SAUDI_PRO_LEAGUE,
   ...OTHER_CLUBS,
 ];

@@ -6,6 +6,7 @@ const express = require('express');
 const router = express.Router();
 const footballApi = require('../services/footballApi');
 const databaseService = require('../services/databaseService');
+const { filterTopLeagueMatches } = require('../utils/liveMatchFilter');
 const { calculateRatingFromStats, calculatePlayerAttributesFromStats, getDefaultRatingByPosition } = require('../utils/playerRatingFromStats');
 const { supabase } = require('../config/supabase');
 
@@ -233,17 +234,20 @@ router.get('/live', async (req, res) => {
         console.log('🌐 [LIVE] Fetching from API-FOOTBALL (cache expired)');
         const data = await footballApi.getLiveMatches();
         
-        // 🔥 DEDUPLİKASYON: fixture.id bazında tekil maçlar (ekstra güvenlik)
+        // 🔥 DEDUPLİKASYON: fixture.id bazında tekil maçlar
         const seenIds = new Set();
-        const uniqueMatches = (data.response || []).filter(match => {
+        let uniqueMatches = (data.response || []).filter(match => {
           const fixtureId = match.fixture?.id;
-          if (!fixtureId || seenIds.has(fixtureId)) {
-            console.log('⚠️ [LIVE] Duplicate match filtered:', fixtureId, match.teams?.home?.name, 'vs', match.teams?.away?.name);
-            return false;
-          }
+          if (!fixtureId || seenIds.has(fixtureId)) return false;
           seenIds.add(fixtureId);
           return true;
         });
+        // 🔥 SADECE ÜST LİG: Kadın, 2. lig, Deportivo Zap vb. hariç (Arjantin, Liga MX, Şili, CR, Kolombiya 1. lig dahil)
+        const beforeFilter = uniqueMatches.length;
+        uniqueMatches = filterTopLeagueMatches(uniqueMatches);
+        if (beforeFilter !== uniqueMatches.length) {
+          console.log('✅ [LIVE] Top-league filter:', beforeFilter, '->', uniqueMatches.length, 'matches');
+        }
         
         // ✅ EVENT'LERİ KAYDET: API-Football /fixtures?live=all endpoint'i event'leri de içeriyor!
         const timelineService = require('../services/timelineService');

@@ -10,6 +10,16 @@ const DEFAULT_TZ = 'Europe/Istanbul';
 
 let cachedTimezone: string | null = null;
 
+/** Cihazın yerel saat dilimi (KKTC, Türkiye vb. – kullanıcı profil saat dilimi seçene kadar) */
+function getDeviceTimezoneSync(): string {
+  try {
+    if (typeof Intl !== 'undefined' && Intl.DateTimeFormat) {
+      return new Intl.DateTimeFormat().resolvedOptions().timeZone || DEFAULT_TZ;
+    }
+  } catch (_) {}
+  return DEFAULT_TZ;
+}
+
 export async function getUserTimezone(): Promise<string> {
   if (cachedTimezone) return cachedTimezone;
   try {
@@ -18,9 +28,10 @@ export async function getUserTimezone(): Promise<string> {
     } else {
       cachedTimezone = await AsyncStorage.getItem(TIMEZONE_KEY);
     }
-    return cachedTimezone || DEFAULT_TZ;
+    cachedTimezone = cachedTimezone || getDeviceTimezoneSync() || DEFAULT_TZ;
+    return cachedTimezone;
   } catch {
-    return DEFAULT_TZ;
+    return getDeviceTimezoneSync() || DEFAULT_TZ;
   }
 }
 
@@ -53,16 +64,17 @@ export async function formatDateInUserTimezone(
 }
 
 /**
- * Senkron format - önce cached timezone kullan
+ * Senkron format - kullanıcı profil saat dilimi yoksa cihaz yerel saat dilimi kullanılır (KKTC vb.)
  */
 export function formatDateInUserTimezoneSync(
   timestamp: number | Date,
-  timezone: string = cachedTimezone || DEFAULT_TZ,
+  timezone: string = cachedTimezone ?? getDeviceTimezoneSync() ?? DEFAULT_TZ,
   options: Intl.DateTimeFormatOptions = {
     dateStyle: 'short',
     timeStyle: 'short',
   }
 ): string {
   const date = typeof timestamp === 'number' ? new Date(timestamp) : timestamp;
-  return new Intl.DateTimeFormat('tr-TR', { ...options, timeZone: timezone }).format(date);
+  const tz = timezone || cachedTimezone || getDeviceTimezoneSync() || DEFAULT_TZ;
+  return new Intl.DateTimeFormat('tr-TR', { ...options, timeZone: tz }).format(date);
 }

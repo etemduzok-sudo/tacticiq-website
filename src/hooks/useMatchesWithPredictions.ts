@@ -1,5 +1,5 @@
-// Hangi maçlara tahmin yapıldığını AsyncStorage'dan tespit eder
-// ✅ Hem basit (squad-{matchId}) hem takıma özel (squad-{matchId}-{teamId}) anahtarları kontrol eder
+// Hangi maçlara tahmin yapıldığını AsyncStorage + Supabase'den tespit eder
+// ✅ OAuth girişi sonrası Supabase'deki tahminler de gösterilir
 import { useState, useCallback, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { STORAGE_KEYS, LEGACY_STORAGE_KEYS } from '../config/constants';
@@ -19,47 +19,55 @@ export function useMatchesWithPredictions(matchIds: number[]) {
       return;
     }
     try {
-      // ✅ Tüm AsyncStorage anahtarlarını al (takıma özel anahtarları da bulmak için)
-      const allKeys = await AsyncStorage.getAllKeys();
-      
       const set = new Set<number>();
+      const matchIdsSet = new Set(matchIds);
+
+      const allKeys = await AsyncStorage.getAllKeys();
+      const predRelatedKeys = allKeys.filter(k => 
+        k.startsWith(PREDICTION_KEY_PREFIX) || k.startsWith(LEGACY_PREDICTION_KEY_PREFIX) || 
+        k.startsWith(SQUAD_KEY_PREFIX) || k.startsWith(LEGACY_SQUAD_KEY_PREFIX)
+      );
+      console.log(`🔄 [PREDICTIONS] Checking ${matchIds.length} matches, prediction/squad keys: ${predRelatedKeys.length}`, predRelatedKeys);
+
       for (const matchId of matchIds) {
-        // 1. Prediction key kontrolü: hem basit hem takıma özel
         const predKeyBase = `${PREDICTION_KEY_PREFIX}${matchId}`;
         const legacyPredKeyBase = `${LEGACY_PREDICTION_KEY_PREFIX}${matchId}`;
-        
-        // 2. Squad key kontrolü: hem basit hem takıma özel (squad-{matchId} ve squad-{matchId}-{teamId})
         const squadKeyBase = `${SQUAD_KEY_PREFIX}${matchId}`;
         const legacySquadKeyBase = `${LEGACY_SQUAD_KEY_PREFIX}${matchId}`;
         
-        // ✅ Tüm olası prediction anahtarlarını bul (basit + takıma özel)
-        const predKeys = allKeys.filter(k => 
+        const predKeys = predRelatedKeys.filter(k => 
           k === predKeyBase || k.startsWith(`${predKeyBase}-`) ||
           k === legacyPredKeyBase || k.startsWith(`${legacyPredKeyBase}-`)
         );
         
-        // Tüm olası squad anahtarlarını bul (basit + takıma özel)
-        const squadKeys = allKeys.filter(k => 
+        const squadKeys = predRelatedKeys.filter(k => 
           k === squadKeyBase || k.startsWith(`${squadKeyBase}-`) ||
           k === legacySquadKeyBase || k.startsWith(`${legacySquadKeyBase}-`)
         );
         
-        // Prediction kontrolü
         let hasPred = false;
         if (predKeys.length > 0) {
-          const predPairs = await AsyncStorage.multiGet(predKeys);
-          hasPred = predPairs.some(([_, v]) => v != null && v.length > 0);
+          for (const key of predKeys) {
+            try {
+              const val = await AsyncStorage.getItem(key);
+              if (val != null && val.length > 2) {
+                hasPred = true;
+                break;
+              }
+            } catch (_) {}
+          }
+          if (hasPred) {
+            console.log(`🏷️ [PREDICTIONS] Match ${matchId} has prediction keys:`, predKeys);
+          }
         }
         
-        // Squad kontrolü (isCompleted check)
         let hasSquad = false;
-        if (squadKeys.length > 0) {
-          const squadPairs = await AsyncStorage.multiGet(squadKeys);
-          for (const [_, value] of squadPairs) {
-            if (value) {
-              try {
+        if (!hasPred && squadKeys.length > 0) {
+          for (const key of squadKeys) {
+            try {
+              const value = await AsyncStorage.getItem(key);
+              if (value) {
                 const parsed = JSON.parse(value);
-                // ✅ matchId karşılaştırması: hem string hem number olabilir, Number() ile normalize et
                 const parsedMatchId = parsed?.matchId != null ? Number(parsed.matchId) : null;
                 const isValidSquad = parsed?.isCompleted === true && 
                                     (parsedMatchId == null || parsedMatchId === matchId) &&
@@ -69,14 +77,48 @@ export function useMatchesWithPredictions(matchIds: number[]) {
                   hasSquad = true;
                   break;
                 }
-              } catch (_) {}
-            }
+              }
+            } catch (_) {}
           }
         }
         
         if (hasPred || hasSquad) set.add(matchId);
       }
+
+      console.log(`✅ [PREDICTIONS] Found ${set.size} matches with predictions (local):`, Array.from(set));
       setMatchIdsWithPredictions(set);
+
+      // Supabase check in background (non-blocking)
+      (async () => {
+        try {
+          const userDataStr = await AsyncStorage.getItem(STORAGE_KEYS.USER);
+          const userData = userDataStr ? JSON.parse(userDataStr) : null;
+          const userId = userData?.id;
+          if (userId) {
+            const timeoutPromise = new Promise<{success: false}>((resolve) => 
+              setTimeout(() => resolve({ success: false }), 5000)
+            );
+            const res = await Promise.race([
+              predictionsDb.getUserPredictions(userId, 200),
+              timeoutPromise
+            ]);
+            if (res.success && (res as any).data?.length) {
+              let added = false;
+              for (const p of (res as any).data) {
+                const mid = p.match_id != null ? Number(p.match_id) : NaN;
+                if (!Number.isNaN(mid) && matchIdsSet.has(mid) && !set.has(mid)) {
+                  set.add(mid);
+                  added = true;
+                }
+              }
+              if (added) {
+                console.log(`✅ [PREDICTIONS] Updated with Supabase data, now ${set.size} matches`);
+                setMatchIdsWithPredictions(new Set(set));
+              }
+            }
+          }
+        } catch (_) {}
+      })();
     } catch (e) {
       console.warn('useMatchesWithPredictions refresh error:', e);
       setMatchIdsWithPredictions(new Set());

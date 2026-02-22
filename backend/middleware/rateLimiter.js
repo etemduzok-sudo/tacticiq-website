@@ -1,7 +1,7 @@
 // API Rate Limiter Middleware
-// Günlük 7,500 API call limiti
+// Günlük 75,000 API call limiti (PRO plan)
 
-const API_CALL_LIMIT = 7500; // Günlük limit
+const API_CALL_LIMIT = 75000;
 const RESET_INTERVAL = 24 * 60 * 60 * 1000; // 24 saat (ms)
 
 // Development modunda rate limiter devre dışı bırakılabilir

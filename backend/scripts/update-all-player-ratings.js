@@ -110,9 +110,9 @@ const SUPPORTED_LEAGUES = {
 
 const CURRENT_SEASON = 2025;
 
-// API limit: 7500 günlük - 250 yedek = 7250 kullanılabilir
-const API_RESERVE = 250;
-const API_DAILY_LIMIT = 7500;
+// API limit: 75000 günlük - 500 yedek = 74500 kullanılabilir
+const API_RESERVE = 500;
+const API_DAILY_LIMIT = 75000;
 
 /**
  * Mevcut API kullanımını kontrol et ve kalan hakkı hesapla
@@ -181,10 +181,10 @@ const LEAGUE_PRIORITY = {
   235: 21, // Russian Premier League
 };
 
-// Rate limiting - API-Football PRO: 10 requests/minute
+// Rate limiting - API-Football PRO: 60 requests/minute (optimized for 75k daily limit)
 let requestCount = 0;
-const MAX_REQUESTS_PER_MINUTE = 10;
-const REQUEST_INTERVAL = 6000; // 6 saniye (10 req/min = her 6 saniyede 1 req)
+const MAX_REQUESTS_PER_MINUTE = 60;
+const REQUEST_INTERVAL = 1000; // 1 saniye (60 req/min = her 1 saniyede 1 req)
 
 async function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -318,9 +318,8 @@ async function getPlayerStats(playerId, season = CURRENT_SEASON) {
     
     // Rate limiting tracking (her çağrıyı say)
     requestCount++;
-    if (requestCount % 10 === 0) {
+    if (requestCount % 50 === 0) {
       console.log(`📊 ${requestCount} oyuncu API çağrısı tamamlandı, rate limit kontrolü...`);
-      await delay(REQUEST_INTERVAL);
     }
     
     return response?.response?.[0] || null;
@@ -335,6 +334,12 @@ async function getPlayerStats(playerId, season = CURRENT_SEASON) {
  */
 async function savePlayerToDb(playerData) {
   try {
+    // Name null ise atla (DB constraint hatası önleme)
+    if (!playerData.name || playerData.name.trim() === '') {
+      console.warn(`⚠️ Oyuncu ${playerData.id} name bilgisi yok, atlanıyor`);
+      return false;
+    }
+    
     const { error } = await supabase
       .from('players')
       .upsert(playerData, { onConflict: 'id' });
@@ -399,9 +404,15 @@ async function processPlayer(player, teamId, leagueId, season) {
   }
   
   // Oyuncu tablosuna kaydet
+  // Name fallback: API'den gelen name yoksa mevcut name'i kullan veya firstname+lastname kombinasyonu
+  const playerName = player.name || 
+                     (playerStats?.player?.firstname && playerStats?.player?.lastname 
+                       ? `${playerStats.player.firstname} ${playerStats.player.lastname}` 
+                       : `Unknown Player ${player.id}`);
+  
   const playerRecord = {
     id: player.id,
-    name: player.name,
+    name: playerName,
     firstname: playerStats?.player?.firstname || null,
     lastname: playerStats?.player?.lastname || null,
     age: player.age || playerStats?.player?.age || null,
@@ -636,7 +647,7 @@ async function getPlayersWithoutRatings(teamId, playerIds) {
 
 /**
  * Tüm takımları DB'den işle (lig ayrımı yok)
- * @param {boolean} fetchApiStats - API'den istatistik çek (7500 limit!)
+ * @param {boolean} fetchApiStats - API'den istatistik çek (75000 limit!)
  */
 async function processAllTeamsFromDB(fetchApiStats = false, season = CURRENT_SEASON) {
   console.log(`\n🏆 TÜM TAKIMLAR İŞLENİYOR (DB-FIRST)...`);
@@ -701,9 +712,9 @@ async function processAllTeamsFromDB(fetchApiStats = false, season = CURRENT_SEA
     
     console.log(`   ⚽ ${teamName} (${playersToProcess.length}/${players.length} oyuncu${fetchApiStats ? ` - ${players.length - playersToProcess.length} zaten rating'li` : ''})`);
     
-    // Batch işlem: Aynı anda 5 oyuncu için API çağrısı yap (rate limit korunur)
-    // API-Football PRO: 10 req/min = her 6 saniyede 1 req, batch'ler arası 6s delay ile 5 paralel güvenli
-    const batchSize = fetchApiStats ? 5 : 10;
+    // Batch işlem: Aynı anda 20 oyuncu için API çağrısı yap (rate limit korunur)
+    // API-Football PRO: 60 req/min = her 1 saniyede 1 req, batch'ler arası 1s delay ile 20 paralel güvenli
+    const batchSize = fetchApiStats ? 20 : 40;
     for (let i = 0; i < playersToProcess.length; i += batchSize) {
       const batch = playersToProcess.slice(i, i + batchSize);
       
@@ -731,9 +742,9 @@ async function processAllTeamsFromDB(fetchApiStats = false, season = CURRENT_SEA
       }
       
       // Rate limiting (sadece API çağrısı varsa) - batch'ler arası delay
-      // API-Football PRO: 10 req/min = her 6 saniyede 1 req
+      // API-Football PRO: 60 req/min = her 1 saniyede 1 req
       if (fetchApiStats && i + batchSize < playersToProcess.length) {
-        await delay(REQUEST_INTERVAL); // Batch'ler arası 6 saniye (rate limit korunur)
+        await delay(REQUEST_INTERVAL); // Batch'ler arası 1 saniye (rate limit korunur)
       }
     }
   }
@@ -769,9 +780,12 @@ async function processPlayerFromDB(player, teamId, season, fetchApiStats = false
   const finalRating = player.rating || attrs.rating;
   
   // Oyuncu tablosuna kaydet (rating)
+  // Name fallback: API'den gelen name yoksa mevcut name'i kullan veya "Unknown Player" kullan
+  const playerName = player.name || `Unknown Player ${player.id}`;
+  
   const playerRecord = {
     id: player.id,
-    name: player.name,
+    name: playerName,
     age: player.age || null,
     nationality: player.nationality || null,
     position: player.position || null,

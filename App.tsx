@@ -359,6 +359,7 @@ export default function App() {
               onNavigate={navHandlers.handleDashboardNavigate}
               matchData={matchData}
               selectedTeamIds={selectedTeamIds}
+              hasFavoriteTeams={(favoriteTeams?.length ?? 0) > 0}
             />
           );
         

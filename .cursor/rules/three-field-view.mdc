@@ -1,87 +1,58 @@
-# TacticIQ - 3 Saha Görünümü Kuralları
+# TacticIQ - 3 Saha Görünümü & Tahmin Sekmesi Kuralları
 
 ## Genel Bakış
-Tahmin sekmesinde maç canlı veya bitmiş olduğunda 3 saha yan yana horizontal scroll ile gösterilir.
+Tahmin sekmesinde 3 saha yan yana horizontal scroll ile gösterilir: Benim Tahminim, Topluluk, Gerçek.
 
 ## Saha Yapısı
 
 ### Kullanıcı Tahmin Yaptıysa → 3 Saha
-1. **Sol Saha - Kullanıcı Tahmini**
-   - Kullanıcının maç başlamadan önce yaptığı kadro tahmini
-   - Altında: "Maç başlamadan önce yaptığın kadro tahmini"
+1. **Sol - Benim Tahminim**
+   - Kullanıcının kadro tahmini + formasyon
+   - Formasyon badge'ine tıklanınca formasyon seçimi açılır
+   - Saha üzerinde floating kaydet + kilit butonları (sağ alt köşe)
+   - Alt bar (Formasyon Seç/Kaydet/Kilitle) KALDIRILDI → saha üzeri floating butonlar
 
-2. **Orta Saha - Topluluk Verileri**
-   - Topluluk tercihlerine göre oluşturulmuş kadro
-   - Altında: "Topluluk verisi ile oluşturulmuştur"
-   - Atak formasyonu: En çok tercih edilen (örn: 4-3-3 %45)
-   - Defans formasyonu: En çok tercih edilen (örn: 4-4-2 %38)
+2. **Orta - Topluluk**
+   - Tahmin yapılmamışsa: blur/kilitli overlay
+   - Tahmin yapılmış ama topluluk verileri açılmamışsa: blur + "Maç başladığında açılacak" mesajı
+   - Topluluk verileri açıksa: net görünüm, oyuncu kartları tıklanabilir
+   - Saha altında: kompakt istatistikler (tahmin yapan, ev/berabere/dep %, detay butonu)
+   - Kazara kaydırma koruması: tahmin yapılmadan topluluk sahasına kaydırılırsa uyarı
 
-3. **Sağ Saha - Gerçek Kadro (API)**
-   - API'den gelen gerçek ilk 11 ve formasyon
-   - Veri gelmeden önce: "Henüz gerçek veriler ulaşmadı..."
-   - Gerçek maç event'leri (gol, kart, değişiklik) oyuncu kartlarında gösterilir
-   - Kullanıcı değişiklik önerisi yapabilir (çıksın/girsin oylaması)
+3. **Sağ - Gerçek**
+   - API'den gelen gerçek ilk 11
+   - Canlı maçta: oyuncu kartlarına tıklayınca reaction popup
+   - Dikey performans barı (sağ kenar) - sadece canlı maçta
+   - Saha altı: event akışı + tahmin karşılaştırması (doğru tahminler ✅ ile işaretli)
 
 ### Kullanıcı Tahmin Yapmadıysa → 2 Saha
-1. **Sol Saha - Topluluk Verileri** (yukarıdaki orta saha ile aynı)
-2. **Sağ Saha - Gerçek Kadro** (yukarıdaki sağ saha ile aynı)
-- Kullanıcı kadro tahmini yapmadığı için ilk saha gösterilmez
-- Ancak kullanıcı yine de gerçek kadro sahasında değişiklik önerisi yapabilir
+1. Topluluk (blur/kilitli)
+2. Gerçek
+
+## Oyuncu Kartları
+- Tüm sahalarda rating badge (sağ üst köşe, renk kodlu: altın 85+, yeşil 75+, mavi 65+, gri)
+- Benim Tahminim: tıklayınca PlayerPredictionModal açılır (topluluk görmediyse kilit durumuna bakılmaz)
+- Topluluk: tıklayınca topluluk verileri popup
+- Gerçek (canlı): tıklayınca reaction modal (🔥 İyi, 👎 Kötü, ⚽ Gol Yakın, 🟨 Kart Riski, 🔄 Değişmeli)
+- Gerçek (canlı değil): tıklayınca bilgi popup
+
+## Kilit & Kayıt Akışı
+1. Oyuncu kartına tıkla → tahmin yap → "Kaydet" floating butonu yeşile döner
+2. Kaydet → "Tahminler Kaydedildi" modal açılır
+3. İki seçenek:
+   - **Topluluk Verilerini Gör**: GERİ DÖNÜŞÜ YOK! Tahminler kalıcı kilitlenir, silinemez, değiştirilemez
+   - **Bağımsız Devam Et**: Maç başlayana kadar serbestçe düzenlenebilir → Maç başlayınca otomatik kilitleme + topluluk açılır + %10 bonus
+4. isPredictionLocked olsa bile, hasViewedCommunityData=false ise oyuncu kartlarına tıklanabilir (düzenlenebilir)
+
+## Canlı Maç Özellikleri
+- **Reaction Sistemi**: Oyuncu kartlarına tıkla → canlı değerlendirme gönder → kart çerçevesi renklenir
+- **Performans Barı**: Dikey power çubuğu, sağ kenar, tıklanabilir (1-10 puanlama)
+- **Event Akışı**: Saha altında son 6 event, tahmin karşılaştırmasıyla (✅ doğru tahminler)
+
+## Skor-Gol Senkronizasyonu
+- Maç sonu skoru değiştiğinde toplam gol HER ZAMAN otomatik güncellenir
+- 0+4=4 → "4-5 gol" | 0+1=1 → "0-1 gol" | 3+3=6 → "6+ gol"
 
 ## Scroll Davranışı
-- Sahalar sürüklenip bırakıldığında tam ortaya snap olacak
-- Ekran tarafından kesilmeden, ortalanmış pozisyonda duracak
-- `snapToAlignment="center"` ve `decelerationRate="fast"` kullanılacak
-
-## İlk 11 Popup'ı
-- Maç kartına **ilk girişte** ve o saha **ilk açıldığında** 1 kez gösterilecek
-- Sonraki girişlerde direkt sahada oyuncuların yerleşmiş halleri görünecek
-- AsyncStorage ile "popup gösterildi" flag'i tutulacak
-- Popup içeriği:
-  - Topluluk sahasında: "Topluluk tercihleri ile oluşturuldu" + oyuncu listesi
-  - Gerçek kadro sahasında: "Gerçek İlk 11" + oyuncu listesi
-
-## Saha Altı Bilgi Kartları
-
-### Topluluk Sahası Altı
-```
-┌──────────────────────────────────────────────┐
-│  👥 12.847    │  ⚡ Atak 4-3-3 %42  │
-│  kullanıcı   │  🛡 Def  4-4-2 %35  │
-└──────────────────────────────────────────────┘
-```
-
-### Gerçek Kadro Sahası Altı
-```
-┌──────────────────────────────────────────────┐
-│  ✓ Gerçek Kadro    │  Formasyon: 4-3-3      │
-│  API'den alındı    │  Teknik Direktör: X    │
-└──────────────────────────────────────────────┘
-```
-
-## Kadro Sekmesi - Kullanıcı İstatistikleri
-Tahmin yapılan maçta kadro sekmesi altında kullanıcıya özel:
-
-```
-┌────────────────────────────────────────────────────────┐
-│  ⚡ Atak Favoriniz:   4-3-3 (%45)    Doğruluk: %68    │
-│  🛡 Defans Favoriniz: 4-4-2 (%38)    Doğruluk: %72    │
-└────────────────────────────────────────────────────────┘
-```
-
-- **Favori Formasyon:** Kullanıcının en sık kullandığı formasyon ve yüzdesi
-- **Doğruluk:** Bu formasyondaki kadro doğruluk oranı (gerçek kadroyla eşleşme)
-
-## Event Gösterimi (Gerçek Kadro Sahasında)
-- Gol: ⚽ emoji + dakika
-- Sarı Kart: 🟨 emoji
-- Kırmızı Kart: 🟥 emoji
-- Değişiklik: 🔄 emoji
-- Event'ler oyuncu kartının köşesinde küçük badge olarak gösterilir
-
-## Oylama Sistemi (Sadece Canlı Maçlarda)
-- Gerçek kadro sahasındaki oyunculara tıklanınca oylama modal'ı açılır
-- "Çıksın" / "Kalsın" seçenekleri
-- Yüksek oy alan oyuncular görsel olarak işaretlenir:
-  - Kırmızı çerçeve: Çıkması isteniyor
-  - Yeşil çerçeve: Kalması isteniyor
+- snapToInterval + snapToAlignment="start" + decelerationRate="fast"
+- Sayfa göstergeleri (dots) aktif sahayla senkron
