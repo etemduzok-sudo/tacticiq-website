@@ -18,7 +18,7 @@ import { showAlert, showConfirm, showInfo, showError } from '../../utils/alertHe
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { formationPositions, formationLabels } from './MatchSquad';
+import { formationPositions, formationLabels } from '../../constants/formations';
 // ThreeFieldView kaldırıldı - FootballField tabanlı horizontal scroll kullanılıyor
 import Svg, { 
   Rect, 

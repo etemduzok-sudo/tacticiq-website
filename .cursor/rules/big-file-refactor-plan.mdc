@@ -32,13 +32,18 @@ Parçalamada KURAL: JSX/style/render kısmına DOKUNMA, sadece logic çıkar.
 
 ---
 
-## 2. MatchSquad.tsx (8,800 satır)
+## 2. MatchSquad.tsx - FAZ 2 TAMAMLANDI
 
-### Parçalama Planı:
-1. Formation seçim modal'ı → ayrı dosya
-2. Oyuncu seçim modal'ı → ayrı dosya
-3. Topluluk istatistik bileşeni → ayrı dosya
-4. Sabitler ve yardımcılar → ayrı dosya
+### Önceki: 8,800 satır → Şimdiki: 8,053 satır (-747 satır)
+
+### Yapılanlar:
+1. ✅ `formations` + `formationLabels` + `formationPositions` (465 satır) → `src/constants/formations.ts`
+   - MatchPrediction.tsx import'ı da güncellendi
+2. ✅ `FormationDetailModal` (92 satır) → SİLİNDİ (hiçbir yerde kullanılmıyordu)
+3. ✅ Mock `players` + `substitutePlayers` (65 satır) → SİLİNDİ (kullanılmıyordu)
+4. ✅ Kullanılmayan formationDetail stiller temizlendi (122 satır)
+5. ⏸️ FormationModal (385 satır) → Yerinde kaldı (styles bağımlılığı)
+6. ⏸️ PlayerModal/PlayerDetailModal → Ertelendi (paylaşımlı stiller)
 
 ---
 
