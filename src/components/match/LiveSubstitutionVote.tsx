@@ -62,69 +62,16 @@ interface LiveSubstitutionVoteProps {
   isActive: boolean;
 }
 
-// Mock data generator
+/**
+ * Değişiklik önerileri - gerçek topluluk verisi gelene kadar boş döner.
+ * Gerçek veri substitutionVoteService.ts üzerinden Supabase'den gelecek.
+ */
 export function generateMockSubstitutionSuggestions(
-  currentXI: Player[],
-  reserves: Player[],
-  matchMinute: number
+  _currentXI: Player[],
+  _reserves: Player[],
+  _matchMinute: number
 ): SubstitutionSuggestion[] {
-  if (currentXI.length === 0 || reserves.length === 0) return [];
-  
-  // En "popüler" 3-5 değişiklik önerisi oluştur
-  const suggestions: SubstitutionSuggestion[] = [];
-  
-  // İlk öneri - Forvet değişikliği
-  const forwardOut = currentXI.find(p => p.position?.includes('F') || p.position?.includes('ST') || p.position?.includes('W'));
-  const forwardIn = reserves.find(p => p.position?.includes('F') || p.position?.includes('ST') || p.position?.includes('W'));
-  
-  if (forwardOut && forwardIn) {
-    suggestions.push({
-      id: 'sug-1',
-      outPlayer: forwardOut,
-      inPlayer: forwardIn,
-      voteCount: 847,
-      votePercentage: 42,
-      hasUserVoted: false,
-      reason: 'Performans düşük',
-      createdAt: new Date(Date.now() - 10 * 60 * 1000),
-    });
-  }
-  
-  // İkinci öneri - Orta saha değişikliği
-  const midOut = currentXI.find(p => p.position?.includes('M') || p.position?.includes('CM'));
-  const midIn = reserves.find(p => p.position?.includes('M') || p.position?.includes('CM'));
-  
-  if (midOut && midIn && midOut.id !== forwardOut?.id) {
-    suggestions.push({
-      id: 'sug-2',
-      outPlayer: midOut,
-      inPlayer: midIn,
-      voteCount: 534,
-      votePercentage: 26,
-      hasUserVoted: false,
-      reason: 'Yorgunluk',
-      createdAt: new Date(Date.now() - 5 * 60 * 1000),
-    });
-  }
-  
-  // Üçüncü öneri - Defans değişikliği
-  const defOut = currentXI.find(p => p.position?.includes('B') || p.position?.includes('D'));
-  const defIn = reserves.find(p => p.position?.includes('B') || p.position?.includes('D'));
-  
-  if (defOut && defIn && defOut.id !== forwardOut?.id && defOut.id !== midOut?.id) {
-    suggestions.push({
-      id: 'sug-3',
-      outPlayer: defOut,
-      inPlayer: defIn,
-      voteCount: 321,
-      votePercentage: 16,
-      hasUserVoted: false,
-      reason: 'Taktik hamle',
-      createdAt: new Date(Date.now() - 2 * 60 * 1000),
-    });
-  }
-  
-  return suggestions;
+  return [];
 }
 
 // Tek bir öneri kartı

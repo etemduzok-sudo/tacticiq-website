@@ -27,8 +27,7 @@ import {
   WEBSITE_TYPOGRAPHY as WDS_TYPOGRAPHY,
 } from '../config/WebsiteDesignSystem';
 import { AUTH_LOGO_SIZE, AUTH_LOGO_MARGIN_TOP, AUTH_LOGO_MARGIN_BOTTOM } from '../constants/logoConstants';
-// import authService from '../services/authService'; // Real Supabase
-import authService from '../services/mockAuthService'; // Mock (geçici test için)
+import authService from '../services/authService';
 import socialAuthService from '../services/socialAuthService'; // Google & Apple Sign In
 import AsyncStorage from '@react-native-async-storage/async-storage';
 

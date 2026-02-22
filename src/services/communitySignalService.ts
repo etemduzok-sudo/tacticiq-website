@@ -309,15 +309,6 @@ export async function getCommunitySignal(
   formationId: string,
   availablePlayers: any[]
 ): Promise<CommunitySignalData & { lineupCompatibility: number }> {
-  // Mock maç kontrolü (999999)
-  const matchIdNum = typeof matchId === 'string' ? parseInt(matchId) : matchId;
-  if (matchIdNum === 999999) {
-    console.log('🎭 [CommunitySignal] Mock maç için mock veri döndürülüyor');
-    // Küçük bir gecikme ekle (gerçekçi görünsün)
-    await new Promise(resolve => setTimeout(resolve, 300 + Math.random() * 400));
-    return generateMockCommunitySignal(currentPlayerId, position, availablePlayers);
-  }
-  
   const [compatibility, replacements] = await Promise.all([
     calculateLineupCompatibility(matchId, teamId, userLineup, formationId),
     getReplacementSuggestions(matchId, teamId, currentPlayerId, position, availablePlayers)

@@ -27,8 +27,7 @@ import {
   WEBSITE_ICON_SIZES,
   WEBSITE_TYPOGRAPHY as WDS_TYPOGRAPHY,
 } from '../config/WebsiteDesignSystem';
-// import authService from '../services/authService'; // Real Supabase
-import authService from '../services/mockAuthService'; // Mock (geçici test için)
+import authService from '../services/authService';
 
 // ============================================
 // SHARED LAYOUT CONSTANTS (MUST BE IDENTICAL)

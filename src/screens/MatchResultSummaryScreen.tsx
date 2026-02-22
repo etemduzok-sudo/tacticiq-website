@@ -93,7 +93,7 @@ const manOfTheMatch = {
     shots: 5,
     passAccuracy: 87,
   },
-  votes: 1247,
+  votes: 0,
 };
 
 // Top Performers

@@ -14,8 +14,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-// import authService from '../services/authService'; // Real Supabase
-import authService from '../services/mockAuthService'; // Mock (geçici test için)
+import authService from '../services/authService';
 import socialAuthService from '../services/socialAuthService'; // Google & Apple Sign In
 // Animasyonlar kaldırıldı (sıçrama yok)
 import { BRAND, COLORS, SPACING, TYPOGRAPHY, SIZES } from '../theme/theme';

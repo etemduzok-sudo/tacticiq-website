@@ -560,20 +560,13 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
   coachRatingsChangedRef.current = coachRatingsChanged;
   playerRatingsChangedRef.current = playerRatingsChanged;
   
-  // ✅ Topluluk verileri (mock) - varsayılan değerler bu verilerden gelir
-  const communityRatingsDefault: {[key: number]: number} = {
-    1: 8.2,
-    2: 7.3,
-    3: 7.8,
-    4: 6.9,
-    5: 7.5,
-    6: 8.1,
-    7: 7.7,
-  };
+  // Topluluk verileri - gerçek veri gelene kadar boş başlar
+  const communityRatingsDefault: {[key: number]: number} = {};
+  const [hasCommunityData, setHasCommunityData] = useState(false);
   
-  // Coach rating state - ✅ Varsayılan değerler = Topluluk verileri
-  const initialCoachRatings = useRef<{[key: number]: number}>({...communityRatingsDefault});
-  const [coachRatings, setCoachRatings] = useState<{[key: number]: number}>({...communityRatingsDefault});
+  // Coach rating state - kullanıcı kendi puanını verir
+  const initialCoachRatings = useRef<{[key: number]: number}>({});
+  const [coachRatings, setCoachRatings] = useState<{[key: number]: number}>({});
 
   // ⚽ Player rating state
   const [expandedPlayerId, setExpandedPlayerId] = useState<number | null>(null);
@@ -749,49 +742,13 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
     );
   }, [playerRatings, selectedCategoryId, selectedPlayerId, ratingTimeInfo.isLocked, categoryViewMode, setLockPopupType, setShowLockPopup, setLockedPlayerInfo, setSelectedPlayerId, setPlayerRatings, setHasUnsavedPlayerChanges]);
 
-  // Topluluk değerlendirme verileri (mock - ileride API'den gelecek)
-  const getPlayerCommunityData = useCallback((playerId: number, position?: string) => {
-    // Her oyuncu için rastgele ama tutarlı mock veri
-    const seed = playerId % 100;
-    const voters = 200 + (seed * 13) % 800;
-    
-    // Pozisyona göre doğru kategori ID'lerini kullan
-    const isGK = isGoalkeeperPosition(position || '');
-    
-    // Her kategori için topluluk puanı - tutarlı olması için seed bazlı
-    // ✅ Kategori ID'leri OUTFIELD_RATING_CATEGORIES ve GK_RATING_CATEGORIES ile eşleşmeli
-    const categoryRatings: Record<string, number> = isGK ? {
-      // Kaleci kategorileri - GK_RATING_CATEGORIES ile aynı ID'ler
-      saves: 5.0 + ((seed * 3) % 40) / 10,
-      penalty: 4.8 + ((seed * 5) % 45) / 10,
-      aerial: 5.2 + ((seed * 4) % 38) / 10,
-      reflexes: 5.0 + ((seed * 6) % 42) / 10,
-      rushing: 5.5 + ((seed * 2) % 35) / 10,
-      discipline: 5.3 + ((seed * 7) % 40) / 10,
-      tactical: 5.1 + ((seed * 8) % 35) / 10,
-      mental: 5.4 + ((seed * 9) % 38) / 10,
-      fitness: 5.2 + ((seed * 11) % 36) / 10,
-    } : {
-      // Saha oyuncusu kategorileri - OUTFIELD_RATING_CATEGORIES ile aynı ID'ler
-      shooting: 4.8 + ((seed * 5) % 45) / 10,
-      passing: 5.2 + ((seed * 4) % 38) / 10,
-      dribbling: 5.0 + ((seed * 6) % 42) / 10,
-      defending: 5.5 + ((seed * 2) % 35) / 10,
-      duels: 5.3 + ((seed * 7) % 40) / 10,
-      discipline: 5.1 + ((seed * 8) % 35) / 10,
-      tactical: 5.4 + ((seed * 9) % 38) / 10,
-      mental: 5.2 + ((seed * 11) % 36) / 10,
-      fitness: 5.0 + ((seed * 3) % 40) / 10,
-    };
-    
-    // Ortalama: kategorilerin gerçek ortalaması
-    const categoryValues = Object.values(categoryRatings);
-    const communityAvg = categoryValues.reduce((a, b) => a + b, 0) / categoryValues.length;
-    
+  // Topluluk değerlendirme verileri - gerçek veri gelene kadar boş
+  const getPlayerCommunityData = useCallback((_playerId: number, _position?: string) => {
     return {
-      voters,
-      communityAvg: Math.min(9.5, communityAvg),
-      categoryRatings,
+      voters: 0,
+      communityAvg: 0,
+      categoryRatings: {} as Record<string, number>,
+      hasSufficientData: false,
     };
   }, []);
 
@@ -1259,10 +1216,8 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
     }
   };
 
-  // Community average ratings (mock data) - ✅ Yukarıda tanımlanan communityRatingsDefault kullanılır
   const communityRatings = communityRatingsDefault;
-
-  const totalVoters = 1247;
+  const totalVoters = 0;
 
   // Calculate total weighted score
   const calculateTotalScore = () => {
@@ -1539,7 +1494,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
             <View style={styles.votersRow}>
               <View style={styles.votersDot} />
               <Text style={styles.votersText}>
-                {totalVoters.toLocaleString()} kullanıcı değerlendirdi
+                {totalVoters > 0 ? `${totalVoters.toLocaleString()} kullanıcı değerlendirdi` : 'Henüz topluluk değerlendirmesi yok'}
               </Text>
               <View style={styles.votersDot} />
             </View>
