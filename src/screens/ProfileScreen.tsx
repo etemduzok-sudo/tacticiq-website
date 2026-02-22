@@ -66,6 +66,106 @@ interface ProfileScreenProps {
   initialTab?: 'profile' | 'badges'; // Initial tab to show
 }
 
+// ✅ TÜM MİLLİ TAKIMLAR - 50+ ülke
+const FALLBACK_NATIONAL_TEAMS = [
+  // Türkiye önce
+  { id: 777, name: 'Türkiye', country: 'Turkey', type: 'national' as const, colors: ['#E30A17', '#FFFFFF'], flag: 'https://flagcdn.com/w80/tr.png' },
+  // UEFA - Avrupa
+  { id: 25, name: 'Germany', country: 'Germany', type: 'national' as const, colors: ['#000000', '#DD0000', '#FFCC00'], flag: 'https://flagcdn.com/w80/de.png' },
+  { id: 2, name: 'France', country: 'France', type: 'national' as const, colors: ['#002395', '#FFFFFF', '#ED2939'], flag: 'https://flagcdn.com/w80/fr.png' },
+  { id: 10, name: 'England', country: 'England', type: 'national' as const, colors: ['#FFFFFF', '#CF081F'], flag: 'https://flagcdn.com/w80/gb-eng.png' },
+  { id: 9, name: 'Spain', country: 'Spain', type: 'national' as const, colors: ['#AA151B', '#F1BF00'], flag: 'https://flagcdn.com/w80/es.png' },
+  { id: 768, name: 'Italy', country: 'Italy', type: 'national' as const, colors: ['#009246', '#FFFFFF', '#CE2B37'], flag: 'https://flagcdn.com/w80/it.png' },
+  { id: 27, name: 'Portugal', country: 'Portugal', type: 'national' as const, colors: ['#006600', '#FF0000'], flag: 'https://flagcdn.com/w80/pt.png' },
+  { id: 1, name: 'Belgium', country: 'Belgium', type: 'national' as const, colors: ['#000000', '#FFCD00', '#FF0000'], flag: 'https://flagcdn.com/w80/be.png' },
+  { id: 4, name: 'Netherlands', country: 'Netherlands', type: 'national' as const, colors: ['#FF6600', '#FFFFFF'], flag: 'https://flagcdn.com/w80/nl.png' },
+  { id: 3, name: 'Croatia', country: 'Croatia', type: 'national' as const, colors: ['#FF0000', '#FFFFFF', '#0000FF'], flag: 'https://flagcdn.com/w80/hr.png' },
+  { id: 24, name: 'Poland', country: 'Poland', type: 'national' as const, colors: ['#FFFFFF', '#DC143C'], flag: 'https://flagcdn.com/w80/pl.png' },
+  { id: 772, name: 'Ukraine', country: 'Ukraine', type: 'national' as const, colors: ['#005BBB', '#FFD500'], flag: 'https://flagcdn.com/w80/ua.png' },
+  { id: 15, name: 'Austria', country: 'Austria', type: 'national' as const, colors: ['#ED2939', '#FFFFFF'], flag: 'https://flagcdn.com/w80/at.png' },
+  { id: 14, name: 'Switzerland', country: 'Switzerland', type: 'national' as const, colors: ['#FF0000', '#FFFFFF'], flag: 'https://flagcdn.com/w80/ch.png' },
+  { id: 21, name: 'Denmark', country: 'Denmark', type: 'national' as const, colors: ['#C8102E', '#FFFFFF'], flag: 'https://flagcdn.com/w80/dk.png' },
+  { id: 29, name: 'Wales', country: 'Wales', type: 'national' as const, colors: ['#C8102E', '#FFFFFF'], flag: 'https://flagcdn.com/w80/gb-wls.png' },
+  { id: 30, name: 'Scotland', country: 'Scotland', type: 'national' as const, colors: ['#0065BF', '#FFFFFF'], flag: 'https://flagcdn.com/w80/gb-sct.png' },
+  { id: 31, name: 'Ireland', country: 'Ireland', type: 'national' as const, colors: ['#169B62', '#FFFFFF', '#FF883E'], flag: 'https://flagcdn.com/w80/ie.png' },
+  { id: 32, name: 'Sweden', country: 'Sweden', type: 'national' as const, colors: ['#006AA7', '#FECC00'], flag: 'https://flagcdn.com/w80/se.png' },
+  { id: 33, name: 'Norway', country: 'Norway', type: 'national' as const, colors: ['#EF2B2D', '#002868'], flag: 'https://flagcdn.com/w80/no.png' },
+  { id: 34, name: 'Finland', country: 'Finland', type: 'national' as const, colors: ['#003580', '#FFFFFF'], flag: 'https://flagcdn.com/w80/fi.png' },
+  { id: 35, name: 'Czech Republic', country: 'Czech Republic', type: 'national' as const, colors: ['#D7141A', '#11457E'], flag: 'https://flagcdn.com/w80/cz.png' },
+  { id: 36, name: 'Hungary', country: 'Hungary', type: 'national' as const, colors: ['#CD2A3E', '#436F4D'], flag: 'https://flagcdn.com/w80/hu.png' },
+  { id: 37, name: 'Romania', country: 'Romania', type: 'national' as const, colors: ['#002B7F', '#FCD116', '#CE1126'], flag: 'https://flagcdn.com/w80/ro.png' },
+  { id: 38, name: 'Serbia', country: 'Serbia', type: 'national' as const, colors: ['#C6363C', '#0C4076'], flag: 'https://flagcdn.com/w80/rs.png' },
+  { id: 39, name: 'Greece', country: 'Greece', type: 'national' as const, colors: ['#0D5EAF', '#FFFFFF'], flag: 'https://flagcdn.com/w80/gr.png' },
+  { id: 40, name: 'Russia', country: 'Russia', type: 'national' as const, colors: ['#FFFFFF', '#0039A6', '#D52B1E'], flag: 'https://flagcdn.com/w80/ru.png' },
+  { id: 41, name: 'Slovenia', country: 'Slovenia', type: 'national' as const, colors: ['#005DA4', '#ED1C24'], flag: 'https://flagcdn.com/w80/si.png' },
+  { id: 42, name: 'Slovakia', country: 'Slovakia', type: 'national' as const, colors: ['#0B4EA2', '#EE1C25'], flag: 'https://flagcdn.com/w80/sk.png' },
+  { id: 43, name: 'Albania', country: 'Albania', type: 'national' as const, colors: ['#E41E20', '#000000'], flag: 'https://flagcdn.com/w80/al.png' },
+  { id: 44, name: 'North Macedonia', country: 'North Macedonia', type: 'national' as const, colors: ['#D20000', '#FFE600'], flag: 'https://flagcdn.com/w80/mk.png' },
+  { id: 45, name: 'Georgia', country: 'Georgia', type: 'national' as const, colors: ['#FFFFFF', '#FF0000'], flag: 'https://flagcdn.com/w80/ge.png' },
+  { id: 46, name: 'Iceland', country: 'Iceland', type: 'national' as const, colors: ['#02529C', '#DC1E35'], flag: 'https://flagcdn.com/w80/is.png' },
+  // CONMEBOL - Güney Amerika
+  { id: 6, name: 'Brazil', country: 'Brazil', type: 'national' as const, colors: ['#009C3B', '#FFDF00'], flag: 'https://flagcdn.com/w80/br.png' },
+  { id: 26, name: 'Argentina', country: 'Argentina', type: 'national' as const, colors: ['#74ACDF', '#FFFFFF'], flag: 'https://flagcdn.com/w80/ar.png' },
+  { id: 47, name: 'Uruguay', country: 'Uruguay', type: 'national' as const, colors: ['#0038A8', '#FFFFFF'], flag: 'https://flagcdn.com/w80/uy.png' },
+  { id: 48, name: 'Colombia', country: 'Colombia', type: 'national' as const, colors: ['#FCD116', '#003893', '#CE1126'], flag: 'https://flagcdn.com/w80/co.png' },
+  { id: 49, name: 'Chile', country: 'Chile', type: 'national' as const, colors: ['#D52B1E', '#0039A6'], flag: 'https://flagcdn.com/w80/cl.png' },
+  { id: 50, name: 'Peru', country: 'Peru', type: 'national' as const, colors: ['#D91023', '#FFFFFF'], flag: 'https://flagcdn.com/w80/pe.png' },
+  { id: 51, name: 'Ecuador', country: 'Ecuador', type: 'national' as const, colors: ['#FFD100', '#0033A0'], flag: 'https://flagcdn.com/w80/ec.png' },
+  { id: 52, name: 'Paraguay', country: 'Paraguay', type: 'national' as const, colors: ['#D52B1E', '#0038A8'], flag: 'https://flagcdn.com/w80/py.png' },
+  { id: 53, name: 'Venezuela', country: 'Venezuela', type: 'national' as const, colors: ['#FCE300', '#003DA5', '#EF3340'], flag: 'https://flagcdn.com/w80/ve.png' },
+  { id: 54, name: 'Bolivia', country: 'Bolivia', type: 'national' as const, colors: ['#D52B1E', '#F9E300', '#007934'], flag: 'https://flagcdn.com/w80/bo.png' },
+  // CONCACAF - Kuzey/Orta Amerika
+  { id: 22, name: 'USA', country: 'USA', type: 'national' as const, colors: ['#002868', '#BF0A30'], flag: 'https://flagcdn.com/w80/us.png' },
+  { id: 16, name: 'Mexico', country: 'Mexico', type: 'national' as const, colors: ['#006847', '#FFFFFF', '#CE1126'], flag: 'https://flagcdn.com/w80/mx.png' },
+  { id: 55, name: 'Canada', country: 'Canada', type: 'national' as const, colors: ['#FF0000', '#FFFFFF'], flag: 'https://flagcdn.com/w80/ca.png' },
+  { id: 56, name: 'Costa Rica', country: 'Costa Rica', type: 'national' as const, colors: ['#002B7F', '#CE1126'], flag: 'https://flagcdn.com/w80/cr.png' },
+  { id: 57, name: 'Jamaica', country: 'Jamaica', type: 'national' as const, colors: ['#009B3A', '#FED100', '#000000'], flag: 'https://flagcdn.com/w80/jm.png' },
+  { id: 58, name: 'Panama', country: 'Panama', type: 'national' as const, colors: ['#005293', '#D21034'], flag: 'https://flagcdn.com/w80/pa.png' },
+  // CAF - Afrika
+  { id: 59, name: 'Nigeria', country: 'Nigeria', type: 'national' as const, colors: ['#008751', '#FFFFFF'], flag: 'https://flagcdn.com/w80/ng.png' },
+  { id: 60, name: 'South Africa', country: 'South Africa', type: 'national' as const, colors: ['#007749', '#FFB81C', '#000000'], flag: 'https://flagcdn.com/w80/za.png' },
+  { id: 61, name: 'Egypt', country: 'Egypt', type: 'national' as const, colors: ['#CE1126', '#FFFFFF', '#000000'], flag: 'https://flagcdn.com/w80/eg.png' },
+  { id: 62, name: 'Morocco', country: 'Morocco', type: 'national' as const, colors: ['#C1272D', '#006233'], flag: 'https://flagcdn.com/w80/ma.png' },
+  { id: 63, name: 'Senegal', country: 'Senegal', type: 'national' as const, colors: ['#00853F', '#FDEF42', '#E31B23'], flag: 'https://flagcdn.com/w80/sn.png' },
+  { id: 64, name: 'Algeria', country: 'Algeria', type: 'national' as const, colors: ['#006233', '#FFFFFF', '#D21034'], flag: 'https://flagcdn.com/w80/dz.png' },
+  { id: 65, name: 'Tunisia', country: 'Tunisia', type: 'national' as const, colors: ['#E70013', '#FFFFFF'], flag: 'https://flagcdn.com/w80/tn.png' },
+  { id: 66, name: 'Cameroon', country: 'Cameroon', type: 'national' as const, colors: ['#007A5E', '#CE1126', '#FCD116'], flag: 'https://flagcdn.com/w80/cm.png' },
+  { id: 67, name: 'Ghana', country: 'Ghana', type: 'national' as const, colors: ['#006B3F', '#FCD116', '#CE1126'], flag: 'https://flagcdn.com/w80/gh.png' },
+  { id: 68, name: 'Ivory Coast', country: 'Ivory Coast', type: 'national' as const, colors: ['#F77F00', '#FFFFFF', '#009E60'], flag: 'https://flagcdn.com/w80/ci.png' },
+  { id: 69, name: 'DR Congo', country: 'DR Congo', type: 'national' as const, colors: ['#007FFF', '#CE1021', '#F7D618'], flag: 'https://flagcdn.com/w80/cd.png' },
+  { id: 70, name: 'Mali', country: 'Mali', type: 'national' as const, colors: ['#14B53A', '#FCD116', '#CE1126'], flag: 'https://flagcdn.com/w80/ml.png' },
+  // AFC - Asya
+  { id: 12, name: 'Japan', country: 'Japan', type: 'national' as const, colors: ['#FFFFFF', '#BC002D'], flag: 'https://flagcdn.com/w80/jp.png' },
+  { id: 17, name: 'South Korea', country: 'South Korea', type: 'national' as const, colors: ['#FFFFFF', '#C60C30'], flag: 'https://flagcdn.com/w80/kr.png' },
+  { id: 23, name: 'Australia', country: 'Australia', type: 'national' as const, colors: ['#00843D', '#FFCD00'], flag: 'https://flagcdn.com/w80/au.png' },
+  { id: 28, name: 'Saudi Arabia', country: 'Saudi Arabia', type: 'national' as const, colors: ['#006C35', '#FFFFFF'], flag: 'https://flagcdn.com/w80/sa.png' },
+  { id: 71, name: 'Iran', country: 'Iran', type: 'national' as const, colors: ['#239F40', '#FFFFFF', '#DA0000'], flag: 'https://flagcdn.com/w80/ir.png' },
+  { id: 72, name: 'Qatar', country: 'Qatar', type: 'national' as const, colors: ['#8D1B3D', '#FFFFFF'], flag: 'https://flagcdn.com/w80/qa.png' },
+  { id: 73, name: 'UAE', country: 'UAE', type: 'national' as const, colors: ['#00732F', '#FFFFFF', '#FF0000', '#000000'], flag: 'https://flagcdn.com/w80/ae.png' },
+  { id: 74, name: 'China', country: 'China', type: 'national' as const, colors: ['#DE2910', '#FFDE00'], flag: 'https://flagcdn.com/w80/cn.png' },
+  { id: 75, name: 'India', country: 'India', type: 'national' as const, colors: ['#FF9933', '#FFFFFF', '#138808'], flag: 'https://flagcdn.com/w80/in.png' },
+  { id: 76, name: 'Iraq', country: 'Iraq', type: 'national' as const, colors: ['#007A3D', '#FFFFFF', '#CE1126', '#000000'], flag: 'https://flagcdn.com/w80/iq.png' },
+  { id: 77, name: 'Uzbekistan', country: 'Uzbekistan', type: 'national' as const, colors: ['#1EB53A', '#0099B5', '#FFFFFF'], flag: 'https://flagcdn.com/w80/uz.png' },
+  // OFC - Okyanusya
+  { id: 78, name: 'New Zealand', country: 'New Zealand', type: 'national' as const, colors: ['#000000', '#FFFFFF'], flag: 'https://flagcdn.com/w80/nz.png' },
+];
+
+const normalizeText = (text: string): string => {
+  return text
+    .toLowerCase()
+    .replace(/ı/g, 'i').replace(/ğ/g, 'g').replace(/ü/g, 'u')
+    .replace(/ş/g, 's').replace(/ö/g, 'o').replace(/ç/g, 'c')
+    .replace(/İ/g, 'i').replace(/Ğ/g, 'g').replace(/Ü/g, 'u')
+    .replace(/Ş/g, 's').replace(/Ö/g, 'o').replace(/Ç/g, 'c')
+    .replace(/[àáâãäå]/g, 'a').replace(/[èéêë]/g, 'e')
+    .replace(/[ìíîï]/g, 'i').replace(/[òóôõö]/g, 'o')
+    .replace(/[ùúûü]/g, 'u').replace(/[ñ]/g, 'n')
+    .replace(/[ß]/g, 'ss').replace(/[æ]/g, 'ae').replace(/[œ]/g, 'oe')
+    .replace(/[ÀÁÂÃÄÅ]/g, 'a').replace(/[ÈÉÊË]/g, 'e')
+    .replace(/[ÌÍÎÏ]/g, 'i').replace(/[ÒÓÔÕÖ]/g, 'o')
+    .replace(/[ÙÚÛÜ]/g, 'u').replace(/[Ñ]/g, 'n');
+};
+
 export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   onBack,
   onSettings,
@@ -165,128 +265,10 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const clubDropdownScrollRef = React.useRef<ScrollView>(null);
   const nationalDropdownScrollRef = React.useRef<ScrollView>(null);
   
-  // ✅ TÜM MİLLİ TAKIMLAR - 50+ ülke
-  const FALLBACK_NATIONAL_TEAMS = [
-    // Türkiye önce
-    { id: 777, name: 'Türkiye', country: 'Turkey', type: 'national' as const, colors: ['#E30A17', '#FFFFFF'], flag: 'https://flagcdn.com/w80/tr.png' },
-    // UEFA - Avrupa
-    { id: 25, name: 'Germany', country: 'Germany', type: 'national' as const, colors: ['#000000', '#DD0000', '#FFCC00'], flag: 'https://flagcdn.com/w80/de.png' },
-    { id: 2, name: 'France', country: 'France', type: 'national' as const, colors: ['#002395', '#FFFFFF', '#ED2939'], flag: 'https://flagcdn.com/w80/fr.png' },
-    { id: 10, name: 'England', country: 'England', type: 'national' as const, colors: ['#FFFFFF', '#CF081F'], flag: 'https://flagcdn.com/w80/gb-eng.png' },
-    { id: 9, name: 'Spain', country: 'Spain', type: 'national' as const, colors: ['#AA151B', '#F1BF00'], flag: 'https://flagcdn.com/w80/es.png' },
-    { id: 768, name: 'Italy', country: 'Italy', type: 'national' as const, colors: ['#009246', '#FFFFFF', '#CE2B37'], flag: 'https://flagcdn.com/w80/it.png' },
-    { id: 27, name: 'Portugal', country: 'Portugal', type: 'national' as const, colors: ['#006600', '#FF0000'], flag: 'https://flagcdn.com/w80/pt.png' },
-    { id: 1, name: 'Belgium', country: 'Belgium', type: 'national' as const, colors: ['#000000', '#FFCD00', '#FF0000'], flag: 'https://flagcdn.com/w80/be.png' },
-    { id: 4, name: 'Netherlands', country: 'Netherlands', type: 'national' as const, colors: ['#FF6600', '#FFFFFF'], flag: 'https://flagcdn.com/w80/nl.png' },
-    { id: 3, name: 'Croatia', country: 'Croatia', type: 'national' as const, colors: ['#FF0000', '#FFFFFF', '#0000FF'], flag: 'https://flagcdn.com/w80/hr.png' },
-    { id: 24, name: 'Poland', country: 'Poland', type: 'national' as const, colors: ['#FFFFFF', '#DC143C'], flag: 'https://flagcdn.com/w80/pl.png' },
-    { id: 772, name: 'Ukraine', country: 'Ukraine', type: 'national' as const, colors: ['#005BBB', '#FFD500'], flag: 'https://flagcdn.com/w80/ua.png' },
-    { id: 15, name: 'Austria', country: 'Austria', type: 'national' as const, colors: ['#ED2939', '#FFFFFF'], flag: 'https://flagcdn.com/w80/at.png' },
-    { id: 14, name: 'Switzerland', country: 'Switzerland', type: 'national' as const, colors: ['#FF0000', '#FFFFFF'], flag: 'https://flagcdn.com/w80/ch.png' },
-    { id: 21, name: 'Denmark', country: 'Denmark', type: 'national' as const, colors: ['#C8102E', '#FFFFFF'], flag: 'https://flagcdn.com/w80/dk.png' },
-    { id: 29, name: 'Wales', country: 'Wales', type: 'national' as const, colors: ['#C8102E', '#FFFFFF'], flag: 'https://flagcdn.com/w80/gb-wls.png' },
-    { id: 30, name: 'Scotland', country: 'Scotland', type: 'national' as const, colors: ['#0065BF', '#FFFFFF'], flag: 'https://flagcdn.com/w80/gb-sct.png' },
-    { id: 31, name: 'Ireland', country: 'Ireland', type: 'national' as const, colors: ['#169B62', '#FFFFFF', '#FF883E'], flag: 'https://flagcdn.com/w80/ie.png' },
-    { id: 32, name: 'Sweden', country: 'Sweden', type: 'national' as const, colors: ['#006AA7', '#FECC00'], flag: 'https://flagcdn.com/w80/se.png' },
-    { id: 33, name: 'Norway', country: 'Norway', type: 'national' as const, colors: ['#EF2B2D', '#002868'], flag: 'https://flagcdn.com/w80/no.png' },
-    { id: 34, name: 'Finland', country: 'Finland', type: 'national' as const, colors: ['#003580', '#FFFFFF'], flag: 'https://flagcdn.com/w80/fi.png' },
-    { id: 35, name: 'Czech Republic', country: 'Czech Republic', type: 'national' as const, colors: ['#D7141A', '#11457E'], flag: 'https://flagcdn.com/w80/cz.png' },
-    { id: 36, name: 'Hungary', country: 'Hungary', type: 'national' as const, colors: ['#CD2A3E', '#436F4D'], flag: 'https://flagcdn.com/w80/hu.png' },
-    { id: 37, name: 'Romania', country: 'Romania', type: 'national' as const, colors: ['#002B7F', '#FCD116', '#CE1126'], flag: 'https://flagcdn.com/w80/ro.png' },
-    { id: 38, name: 'Serbia', country: 'Serbia', type: 'national' as const, colors: ['#C6363C', '#0C4076'], flag: 'https://flagcdn.com/w80/rs.png' },
-    { id: 39, name: 'Greece', country: 'Greece', type: 'national' as const, colors: ['#0D5EAF', '#FFFFFF'], flag: 'https://flagcdn.com/w80/gr.png' },
-    { id: 40, name: 'Russia', country: 'Russia', type: 'national' as const, colors: ['#FFFFFF', '#0039A6', '#D52B1E'], flag: 'https://flagcdn.com/w80/ru.png' },
-    { id: 41, name: 'Slovenia', country: 'Slovenia', type: 'national' as const, colors: ['#005DA4', '#ED1C24'], flag: 'https://flagcdn.com/w80/si.png' },
-    { id: 42, name: 'Slovakia', country: 'Slovakia', type: 'national' as const, colors: ['#0B4EA2', '#EE1C25'], flag: 'https://flagcdn.com/w80/sk.png' },
-    { id: 43, name: 'Albania', country: 'Albania', type: 'national' as const, colors: ['#E41E20', '#000000'], flag: 'https://flagcdn.com/w80/al.png' },
-    { id: 44, name: 'North Macedonia', country: 'North Macedonia', type: 'national' as const, colors: ['#D20000', '#FFE600'], flag: 'https://flagcdn.com/w80/mk.png' },
-    { id: 45, name: 'Georgia', country: 'Georgia', type: 'national' as const, colors: ['#FFFFFF', '#FF0000'], flag: 'https://flagcdn.com/w80/ge.png' },
-    { id: 46, name: 'Iceland', country: 'Iceland', type: 'national' as const, colors: ['#02529C', '#DC1E35'], flag: 'https://flagcdn.com/w80/is.png' },
-    // CONMEBOL - Güney Amerika
-    { id: 6, name: 'Brazil', country: 'Brazil', type: 'national' as const, colors: ['#009C3B', '#FFDF00'], flag: 'https://flagcdn.com/w80/br.png' },
-    { id: 26, name: 'Argentina', country: 'Argentina', type: 'national' as const, colors: ['#74ACDF', '#FFFFFF'], flag: 'https://flagcdn.com/w80/ar.png' },
-    { id: 47, name: 'Uruguay', country: 'Uruguay', type: 'national' as const, colors: ['#0038A8', '#FFFFFF'], flag: 'https://flagcdn.com/w80/uy.png' },
-    { id: 48, name: 'Colombia', country: 'Colombia', type: 'national' as const, colors: ['#FCD116', '#003893', '#CE1126'], flag: 'https://flagcdn.com/w80/co.png' },
-    { id: 49, name: 'Chile', country: 'Chile', type: 'national' as const, colors: ['#D52B1E', '#0039A6'], flag: 'https://flagcdn.com/w80/cl.png' },
-    { id: 50, name: 'Peru', country: 'Peru', type: 'national' as const, colors: ['#D91023', '#FFFFFF'], flag: 'https://flagcdn.com/w80/pe.png' },
-    { id: 51, name: 'Ecuador', country: 'Ecuador', type: 'national' as const, colors: ['#FFD100', '#0033A0'], flag: 'https://flagcdn.com/w80/ec.png' },
-    { id: 52, name: 'Paraguay', country: 'Paraguay', type: 'national' as const, colors: ['#D52B1E', '#0038A8'], flag: 'https://flagcdn.com/w80/py.png' },
-    { id: 53, name: 'Venezuela', country: 'Venezuela', type: 'national' as const, colors: ['#FCE300', '#003DA5', '#EF3340'], flag: 'https://flagcdn.com/w80/ve.png' },
-    { id: 54, name: 'Bolivia', country: 'Bolivia', type: 'national' as const, colors: ['#D52B1E', '#F9E300', '#007934'], flag: 'https://flagcdn.com/w80/bo.png' },
-    // CONCACAF - Kuzey/Orta Amerika
-    { id: 22, name: 'USA', country: 'USA', type: 'national' as const, colors: ['#002868', '#BF0A30'], flag: 'https://flagcdn.com/w80/us.png' },
-    { id: 16, name: 'Mexico', country: 'Mexico', type: 'national' as const, colors: ['#006847', '#FFFFFF', '#CE1126'], flag: 'https://flagcdn.com/w80/mx.png' },
-    { id: 55, name: 'Canada', country: 'Canada', type: 'national' as const, colors: ['#FF0000', '#FFFFFF'], flag: 'https://flagcdn.com/w80/ca.png' },
-    { id: 56, name: 'Costa Rica', country: 'Costa Rica', type: 'national' as const, colors: ['#002B7F', '#CE1126'], flag: 'https://flagcdn.com/w80/cr.png' },
-    { id: 57, name: 'Jamaica', country: 'Jamaica', type: 'national' as const, colors: ['#009B3A', '#FED100', '#000000'], flag: 'https://flagcdn.com/w80/jm.png' },
-    { id: 58, name: 'Panama', country: 'Panama', type: 'national' as const, colors: ['#005293', '#D21034'], flag: 'https://flagcdn.com/w80/pa.png' },
-    // CAF - Afrika
-    { id: 59, name: 'Nigeria', country: 'Nigeria', type: 'national' as const, colors: ['#008751', '#FFFFFF'], flag: 'https://flagcdn.com/w80/ng.png' },
-    { id: 60, name: 'South Africa', country: 'South Africa', type: 'national' as const, colors: ['#007749', '#FFB81C', '#000000'], flag: 'https://flagcdn.com/w80/za.png' },
-    { id: 61, name: 'Egypt', country: 'Egypt', type: 'national' as const, colors: ['#CE1126', '#FFFFFF', '#000000'], flag: 'https://flagcdn.com/w80/eg.png' },
-    { id: 62, name: 'Morocco', country: 'Morocco', type: 'national' as const, colors: ['#C1272D', '#006233'], flag: 'https://flagcdn.com/w80/ma.png' },
-    { id: 63, name: 'Senegal', country: 'Senegal', type: 'national' as const, colors: ['#00853F', '#FDEF42', '#E31B23'], flag: 'https://flagcdn.com/w80/sn.png' },
-    { id: 64, name: 'Algeria', country: 'Algeria', type: 'national' as const, colors: ['#006233', '#FFFFFF', '#D21034'], flag: 'https://flagcdn.com/w80/dz.png' },
-    { id: 65, name: 'Tunisia', country: 'Tunisia', type: 'national' as const, colors: ['#E70013', '#FFFFFF'], flag: 'https://flagcdn.com/w80/tn.png' },
-    { id: 66, name: 'Cameroon', country: 'Cameroon', type: 'national' as const, colors: ['#007A5E', '#CE1126', '#FCD116'], flag: 'https://flagcdn.com/w80/cm.png' },
-    { id: 67, name: 'Ghana', country: 'Ghana', type: 'national' as const, colors: ['#006B3F', '#FCD116', '#CE1126'], flag: 'https://flagcdn.com/w80/gh.png' },
-    { id: 68, name: 'Ivory Coast', country: 'Ivory Coast', type: 'national' as const, colors: ['#F77F00', '#FFFFFF', '#009E60'], flag: 'https://flagcdn.com/w80/ci.png' },
-    { id: 69, name: 'DR Congo', country: 'DR Congo', type: 'national' as const, colors: ['#007FFF', '#CE1021', '#F7D618'], flag: 'https://flagcdn.com/w80/cd.png' },
-    { id: 70, name: 'Mali', country: 'Mali', type: 'national' as const, colors: ['#14B53A', '#FCD116', '#CE1126'], flag: 'https://flagcdn.com/w80/ml.png' },
-    // AFC - Asya
-    { id: 12, name: 'Japan', country: 'Japan', type: 'national' as const, colors: ['#FFFFFF', '#BC002D'], flag: 'https://flagcdn.com/w80/jp.png' },
-    { id: 17, name: 'South Korea', country: 'South Korea', type: 'national' as const, colors: ['#FFFFFF', '#C60C30'], flag: 'https://flagcdn.com/w80/kr.png' },
-    { id: 23, name: 'Australia', country: 'Australia', type: 'national' as const, colors: ['#00843D', '#FFCD00'], flag: 'https://flagcdn.com/w80/au.png' },
-    { id: 28, name: 'Saudi Arabia', country: 'Saudi Arabia', type: 'national' as const, colors: ['#006C35', '#FFFFFF'], flag: 'https://flagcdn.com/w80/sa.png' },
-    { id: 71, name: 'Iran', country: 'Iran', type: 'national' as const, colors: ['#239F40', '#FFFFFF', '#DA0000'], flag: 'https://flagcdn.com/w80/ir.png' },
-    { id: 72, name: 'Qatar', country: 'Qatar', type: 'national' as const, colors: ['#8D1B3D', '#FFFFFF'], flag: 'https://flagcdn.com/w80/qa.png' },
-    { id: 73, name: 'UAE', country: 'UAE', type: 'national' as const, colors: ['#00732F', '#FFFFFF', '#FF0000', '#000000'], flag: 'https://flagcdn.com/w80/ae.png' },
-    { id: 74, name: 'China', country: 'China', type: 'national' as const, colors: ['#DE2910', '#FFDE00'], flag: 'https://flagcdn.com/w80/cn.png' },
-    { id: 75, name: 'India', country: 'India', type: 'national' as const, colors: ['#FF9933', '#FFFFFF', '#138808'], flag: 'https://flagcdn.com/w80/in.png' },
-    { id: 76, name: 'Iraq', country: 'Iraq', type: 'national' as const, colors: ['#007A3D', '#FFFFFF', '#CE1126', '#000000'], flag: 'https://flagcdn.com/w80/iq.png' },
-    { id: 77, name: 'Uzbekistan', country: 'Uzbekistan', type: 'national' as const, colors: ['#1EB53A', '#0099B5', '#FFFFFF'], flag: 'https://flagcdn.com/w80/uz.png' },
-    // OFC - Okyanusya
-    { id: 78, name: 'New Zealand', country: 'New Zealand', type: 'national' as const, colors: ['#000000', '#FFFFFF'], flag: 'https://flagcdn.com/w80/nz.png' },
-  ];
-
   // Tüm liglerden kulüp takımları - staticTeamsData'dan (tek kaynak)
   const FALLBACK_CLUB_TEAMS = getFallbackClubTeamsForProfile();
 
-  // ✅ Gelişmiş arama fonksiyonu - TÜM DİLLERDE karakter desteği ile
-  const normalizeText = useCallback((text: string): string => {
-    return text
-      .toLowerCase()
-      // Türkçe
-      .replace(/ı/g, 'i')
-      .replace(/ğ/g, 'g')
-      .replace(/ü/g, 'u')
-      .replace(/ş/g, 's')
-      .replace(/ö/g, 'o')
-      .replace(/ç/g, 'c')
-      .replace(/İ/g, 'i')
-      .replace(/Ğ/g, 'g')
-      .replace(/Ü/g, 'u')
-      .replace(/Ş/g, 's')
-      .replace(/Ö/g, 'o')
-      .replace(/Ç/g, 'c')
-      // Portekizce / İspanyolca / Fransızca / Almanca aksanlar
-      .replace(/[àáâãäå]/g, 'a')
-      .replace(/[èéêë]/g, 'e')
-      .replace(/[ìíîï]/g, 'i')
-      .replace(/[òóôõö]/g, 'o')
-      .replace(/[ùúûü]/g, 'u')
-      .replace(/[ñ]/g, 'n')
-      .replace(/[ß]/g, 'ss')
-      .replace(/[æ]/g, 'ae')
-      .replace(/[œ]/g, 'oe')
-      // Büyük harf versiyonları
-      .replace(/[ÀÁÂÃÄÅ]/g, 'a')
-      .replace(/[ÈÉÊË]/g, 'e')
-      .replace(/[ÌÍÎÏ]/g, 'i')
-      .replace(/[ÒÓÔÕÖ]/g, 'o')
-      .replace(/[ÙÚÛÜ]/g, 'u')
-      .replace(/[Ñ]/g, 'n');
-  }, []);
+  // normalizeText component dışında tanımlı (pure function)
 
   // ✅ Fallback takımları filtrele ve göster - GELİŞTİRİLMİŞ
   const useFallbackTeams = useCallback((query: string, type: 'club' | 'national') => {
@@ -2704,126 +2686,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           </View>
         </ScrollView>
 
-        {/* Badges bölümü ProfileCard'a taşındı - tab bar kaldırıldı */}
-        {/* Badge showcase content removed - badges shown in ProfileCard */}
-        {false && (
-          <ScrollView 
-            style={styles.badgeShowcaseContainer}
-            contentContainerStyle={styles.badgeShowcaseContent}
-            showsVerticalScrollIndicator={false}
-          >
-            {/* Badge Progress Card - Disabled */}
-            <View style={styles.badgeProgressCard}>
-              <View style={styles.badgeProgressHeader}>
-                <Text style={styles.badgeProgressCount}>
-                  {allBadges.filter(b => b.earned).length} / {allBadges.length}
-                </Text>
-                <Text style={styles.badgeProgressPercent}>
-                  {Math.round((allBadges.filter(b => b.earned).length / allBadges.length) * 100)}%
-                </Text>
-              </View>
-              <View style={styles.badgeProgressBarContainer}>
-                <LinearGradient
-                  colors={['#F59E0B', '#FCD34D']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={[
-                    styles.badgeProgressBarFill,
-                    { width: `${(allBadges.filter(b => b.earned).length / allBadges.length) * 100}%` }
-                  ]}
-                />
-              </View>
-            </View>
-
-            {/* Badges Grid */}
-            <View style={styles.badgeGrid}>
-              {allBadges.map((badge, index) => (
-                <Animated.View 
-                  key={badge.id}
-                  entering={Platform.OS === 'web' ? ZoomIn : ZoomIn.delay(index * 30)}
-                >
-                  <Pressable
-                    style={[
-                      styles.badgeCard,
-                      badge.earned 
-                        ? styles.badgeCardEarned 
-                        : styles.badgeCardLocked,
-                    ]}
-                    onPress={() => setSelectedBadge(badge)}
-                    // @ts-ignore - Web için title attribute (tooltip)
-                    {...(Platform.OS === 'web' && {
-                      title: badge.earned 
-                        ? `${t(`badges.names.${badge.id}`, { defaultValue: badge.name })} - ${t('badges.earned')}!` 
-                        : `${t(`badges.names.${badge.id}`, { defaultValue: badge.name })} - ${t('badges.howToEarn')}: ${t(`badges.descriptions.${badge.id}`, { defaultValue: badge.requirement || badge.description })}`,
-                    })}
-                  >
-                    {/* Lock Icon (Top Right) - Web ile aynı stil */}
-                    {!badge.earned && (
-                      <View style={styles.badgeLockIcon}>
-                        <Ionicons name="lock-closed" size={14} color={theme.mutedForeground} />
-                      </View>
-                    )}
-
-                    {/* Checkmark (Top Right) - Web ile aynı (yeşil badge) */}
-                    {badge.earned && (
-                      <View style={styles.badgeCheckmark}>
-                        <Text style={styles.badgeCheckmarkText}>✓</Text>
-                      </View>
-                    )}
-
-                    {/* Badge Icon - Web ile aynı (text-5xl = 48px) */}
-                    <Text style={styles.badgeEmoji}>
-                      {badge.icon}
-                    </Text>
-
-                    {/* Badge Name - Web ile aynı */}
-                    <Text
-                      style={styles.badgeName}
-                      numberOfLines={2}
-                    >
-                      {t(`badges.names.${badge.id}`, { defaultValue: badge.name })}
-                    </Text>
-
-                    {/* Badge Tier - Web ile aynı stil */}
-                    <View
-                      style={[
-                        styles.badgeTierLabel,
-                        badge.tier === 'bronze' && styles.badgeTierBronze,
-                        badge.tier === 'silver' && styles.badgeTierSilver,
-                        badge.tier === 'gold' && styles.badgeTierGold,
-                        badge.tier === 'platinum' && styles.badgeTierPlatinum,
-                        badge.tier === 'diamond' && styles.badgeTierDiamond,
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.badgeTierText,
-                          badge.tier === 'bronze' && styles.badgeTierTextBronze,
-                          badge.tier === 'silver' && styles.badgeTierTextSilver,
-                          badge.tier === 'gold' && styles.badgeTierTextGold,
-                          badge.tier === 'platinum' && styles.badgeTierTextPlatinum,
-                          badge.tier === 'diamond' && styles.badgeTierTextDiamond,
-                        ]}
-                      >
-                        {t(`badges.tierLabels.${badge.tier}`, { defaultValue: badge.tier })}
-                      </Text>
-                    </View>
-                  </Pressable>
-                </Animated.View>
-              ))}
-            </View>
-
-            {allBadges.length === 0 && (
-              <View style={styles.emptyBadgeState}>
-                <Ionicons name="trophy-outline" size={64} color="#64748B" />
-                <Text style={styles.emptyBadgeTitle}>{t('badges.noBadges')}</Text>
-                <Text style={styles.emptyBadgeText}>
-                  {t('badges.startPredicting')}
-                </Text>
-              </View>
-            )}
-          </ScrollView>
-        )}
+        {/* Badge showcase removed - badges shown inline in ProfileCard */}
 
         {/* 🔍 BADGE DETAIL MODAL */}
         <Modal

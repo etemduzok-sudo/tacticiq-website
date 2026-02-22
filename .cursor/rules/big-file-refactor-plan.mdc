@@ -47,12 +47,16 @@ Parçalamada KURAL: JSX/style/render kısmına DOKUNMA, sadece logic çıkar.
 
 ---
 
-## 3. ProfileScreen.tsx (5,812 satır)
+## 3. ProfileScreen.tsx - FAZ 3 TAMAMLANDI
 
-### Parçalama Planı:
-1. Profil ayarları bölümü → ayrı dosya
-2. İstatistik kartları → ayrı dosya
-3. Rozet/başarı bölümü → ayrı dosya
+### Önceki: 5,812 satır → Şimdiki: 5,675 satır (-137 satır)
+
+### Yapılanlar:
+1. ✅ `FALLBACK_NATIONAL_TEAMS` (82 satır) → component dışına taşındı (her render'da yeniden oluşturulması engellendi)
+2. ✅ `normalizeText` (34 satır) → pure function olarak component dışına çıkarıldı (useCallback gereksiz)
+3. ✅ Badge showcase ölü kodu (118 satır) → SİLİNDİ (`{false && (...)}` bloğu)
+4. ⏸️ Settings Card (456 satır) → Ertelendi (paylaşımlı state bağımlılığı çok yoğun)
+5. ⏸️ Profile Header Card → Ertelendi (aynı nedenle)
 
 ---
 
