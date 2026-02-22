@@ -1,20 +1,22 @@
 // Game Rules & Business Logic Constants
 // TacticIQ - Centralized Game Rules
+// KAYNAK: Backend scoringService.js - Frontend sadece gösterir
 
 /**
- * ⚽ PUANLAMA KURALLARI
- * Tüm puan hesaplamaları bu dosyadan yapılır
+ * PUANLAMA KURALLARI - 1000 Tam Puan Sistemi
+ * Gerçek hesaplama backend'de yapılır.
+ * Bu değerler UI'da zorluk göstergesi ve puan önizleme içindir.
  */
 
 // Base Points (Zorluk Seviyesine Göre)
 export const BASE_POINTS = {
-  TRIVIAL: 3,        // Çok kolay (örn: maç sonucu)
-  VERY_EASY: 5,      // Çok kolay (örn: toplam gol aralığı)
-  EASY: 10,          // Kolay (örn: sarı kart sayısı)
-  MEDIUM: 20,        // Orta (örn: ilk gol dakikası)
-  HARD: 30,          // Zor (örn: gol atan oyuncu)
-  VERY_HARD: 50,     // Çok zor (örn: maçın adamı)
-  EXPERT: 100,       // Uzman (örn: penaltı + dakika)
+  TRIVIAL: 10,       // Çok kolay (örn: maç sonucu)
+  VERY_EASY: 20,     // Kolay (örn: toplam gol aralığı)
+  EASY: 30,          // Kolay (örn: sarı kart sayısı)
+  MEDIUM: 40,        // Orta (örn: ilk gol dakikası)
+  HARD: 60,          // Zor (örn: gol atan oyuncu)
+  VERY_HARD: 100,    // Çok zor (örn: maçın adamı)
+  EXPERT: 150,       // Uzman (örn: penaltı + dakika)
 } as const;
 
 // Prediction Difficulty Mapping

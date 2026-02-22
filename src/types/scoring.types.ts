@@ -1,5 +1,6 @@
-// TacticIQ - Minimalist Puanlama Sistemi Tipleri
-// Puan skalası: 0 - ~5,000 (yıllık aktif kullanıcı)
+// TacticIQ - Puanlama Sistemi Tipleri
+// 1000 Tam Puan Sistemi (tek maç max ~1000 puan)
+// KAYNAK: Backend scoringService.js - Frontend sadece gösterir, hesaplamaz
 
 /**
  * Analiz Odağı Türleri
@@ -53,37 +54,48 @@ export const ANALYSIS_FOCUS_MULTIPLIERS: Record<AnalysisFocusType, {
 };
 
 /**
- * Temel Puan Değerleri (Minimalist)
+ * Temel Puan Değerleri - Backend ile Senkron
+ * Backend: backend/services/scoringService.js
+ * Bu değerler sadece frontend görüntüleme amaçlıdır.
+ * Gerçek hesaplama backend'de yapılır.
  */
 export const BASE_SCORES = {
-  // Skor Tahminleri
-  SCORE_EXACT: 10,           // Tam skor isabet (2-1 → 2-1)
-  SCORE_GOAL_DIFF: 5,        // Gol farkı doğru (2-1 → 3-2)
-  SCORE_WINNER: 2,           // Galibiyet doğru (2-1 → 1-0)
-  
+  // Skor Tahminleri (1000 puan sistemi)
+  SCORE_EXACT: 100,          // Tam skor isabet (2-1 → 2-1)
+  SCORE_GOAL_DIFF: 30,       // Gol farkı doğru (2-1 → 3-2)
+  SCORE_WINNER: 60,          // Galibiyet doğru (2-1 → 1-0)
+
   // Toplam Gol
-  TOTAL_GOALS_EXACT: 4,      // Tam isabet
-  TOTAL_GOALS_CLOSE: 2,      // ±1 fark
-  
+  TOTAL_GOALS_EXACT: 30,     // Tam isabet
+  TOTAL_GOALS_CLOSE: 15,     // ±1 fark
+
+  // İlk Gol
+  FIRST_GOAL: 40,            // İlk golü atan takım
+
   // Kadro Tahminleri
-  SQUAD_PER_PLAYER: 0.5,     // Her doğru oyuncu (max 5.5)
+  SQUAD_PER_PLAYER: 5,       // Her doğru oyuncu
   
   // Formasyon Tahminleri
-  ATTACK_FORMATION_EXACT: 3, // Atak formasyonu tam
-  ATTACK_FORMATION_SIMILAR: 1, // Benzer tip
-  DEFENSE_FORMATION_EXACT: 2, // Defans formasyonu tam
-  DEFENSE_FORMATION_SIMILAR: 0.5, // Benzer tip
+  ATTACK_FORMATION_EXACT: 20, // Atak formasyonu tam
+  ATTACK_FORMATION_SIMILAR: 10, // Benzer tip
+  DEFENSE_FORMATION_EXACT: 15, // Defans formasyonu tam
+  DEFENSE_FORMATION_SIMILAR: 5, // Benzer tip
   
+  // Detaylı Tahminler
+  YELLOW_CARDS: 20,          // Sarı kartlar (±1 tolerans)
+  RED_CARDS: 30,             // Kırmızı kartlar
+  CORNERS: 20,              // Kornerler (±2 tolerans)
+
   // Oyuncu Tahminleri
-  PLAYER_GOAL: 3,            // Gol atacak
-  PLAYER_ASSIST: 2.5,        // Asist yapacak
-  PLAYER_YELLOW_CARD: 1.5,   // Sarı kart
-  PLAYER_RED_CARD: 4,        // Kırmızı kart
-  PLAYER_SUBSTITUTED: 1,     // Oyundan çıkacak
-  PLAYER_MAN_OF_MATCH: 5,    // Maçın adamı
-  PLAYER_PENALTY_TAKER: 2,   // Penaltı kullanacak
-  PLAYER_PENALTY_SCORED: 3,  // Penaltı atacak
-  PLAYER_PENALTY_MISSED: 6,  // Penaltı kaçıracak
+  PLAYER_GOAL: 25,           // Gol atacak
+  PLAYER_ASSIST: 20,         // Asist yapacak
+  PLAYER_YELLOW_CARD: 10,    // Sarı kart
+  PLAYER_RED_CARD: 30,       // Kırmızı kart
+  PLAYER_SUBSTITUTED: 8,     // Oyundan çıkacak
+  PLAYER_MAN_OF_MATCH: 40,   // Maçın adamı
+  PLAYER_PENALTY_TAKER: 15,  // Penaltı kullanacak
+  PLAYER_PENALTY_SCORED: 25, // Penaltı atacak
+  PLAYER_PENALTY_MISSED: 50, // Penaltı kaçıracak
 };
 
 /**

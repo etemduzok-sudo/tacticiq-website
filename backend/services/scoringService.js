@@ -11,31 +11,33 @@ const { supabase } = require('../config/supabase');
 // SCORING RULES (from gameRules.ts)
 // ============================================
 
+// 1000 TAM PUAN SİSTEMİ
+// Maksimum base puan: 300 + Focus bonus + Training bonus = ~1000
 const SCORING_RULES = {
-  // Temel tahminler
-  EXACT_SCORE: 50,
-  CORRECT_WINNER: 30,
-  CORRECT_DRAW: 25,
-  GOAL_DIFFERENCE: 15,
-  
+  // Temel tahminler (toplam: 300 base puan)
+  EXACT_SCORE: 100,       // Tam skor tahmini
+  CORRECT_WINNER: 60,     // Doğru kazanan/berabere
+  CORRECT_DRAW: 50,       // Berabere doğru tahmin
+  GOAL_DIFFERENCE: 30,    // Gol farkı doğru
+
   // Detaylı tahminler
-  FIRST_GOAL: 20,
-  TOTAL_GOALS: 15,
-  YELLOW_CARDS: 10, // ±1 tolerans
-  RED_CARDS: 15,
-  CORNERS: 10, // ±2 tolerans
-  
+  FIRST_GOAL: 40,         // İlk golü atan
+  TOTAL_GOALS: 30,        // Toplam gol aralığı
+  YELLOW_CARDS: 20,       // Sarı kartlar (±1 tolerans)
+  RED_CARDS: 30,          // Kırmızı kartlar
+  CORNERS: 20,            // Kornerler (±2 tolerans)
+
   // Strategic Focus System
-  FOCUS_MULTIPLIER: 2.0, // 2x puan
-  FOCUS_PENALTY: -1.5, // -1.5x ceza
-  
+  FOCUS_MULTIPLIER: 2.0,  // 2x puan (doğru focus)
+  FOCUS_PENALTY: -1.5,    // -1.5x ceza (yanlış focus)
+
   // Training Multipliers
   TRAINING_BONUS: {
-    attack: 1.20, // %20 bonus
-    defense: 1.20, // %20 bonus
-    balanced: 1.10 // %10 bonus
+    attack: 1.20,   // %20 bonus (tempo + bireysel cluster)
+    defense: 1.20,  // %20 bonus (disiplin + fiziksel cluster)
+    balanced: 1.10  // %10 bonus (tüm cluster'lar)
   },
-  
+
   // Analysis Clusters
   CLUSTERS: {
     tempo: ['first_goal', 'total_goals'],

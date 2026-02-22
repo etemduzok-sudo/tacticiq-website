@@ -188,23 +188,17 @@ export const ANALYST_NOTES: Record<AnalysisCluster, { good: string[]; bad: strin
 };
 
 /**
- * Puan hesaplama sabitleri
+ * Puan hesaplama sabitleri - Backend ile senkron
+ * Gerçek hesaplama backend/services/scoringService.js'de yapılır
  */
 export const SCORING_CONSTANTS = {
-  BASE_POINTS: {
-    EASY: 10,      // Kolay tahminler (ör: toplam gol)
-    MEDIUM: 20,    // Orta zorluk (ör: ilk gol dakikası)
-    HARD: 30,      // Zor tahminler (ör: spesifik oyuncu)
-    VERY_HARD: 50, // Çok zor (ör: maçın adamı)
-  },
   FOCUS_MULTIPLIER: {
-    CORRECT: 2.0,   // Odaklanılan tahmin doğruysa 2x
-    WRONG: -1.5,    // Odaklanılan tahmin yanlışsa -1.5x (ceza)
+    CORRECT: 2.0,
+    WRONG: -1.5,
   },
-  MAX_FOCUS: 3,     // Maksimum 3 tahmin odaklanabilir
-  // ✅ BAĞIMSIZ TAHMİN BONUSU VE TOPLULUK CEZASI
-  INDEPENDENT_PREDICTION_BONUS: 1.10, // Topluluk görmeden tahmin = +%10 bonus
-  AFTER_COMMUNITY_VIEWED_MULTIPLIER: 0.20, // Topluluk gördükten sonra silip yeni tahmin = sadece %20 puan
+  MAX_FOCUS: 3,
+  INDEPENDENT_PREDICTION_BONUS: 1.10,
+  AFTER_COMMUNITY_VIEWED_MULTIPLIER: 0.20,
 };
 
 /**

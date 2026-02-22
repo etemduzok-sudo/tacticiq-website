@@ -2,59 +2,31 @@
 // TacticIQ - Centralized Constants Management
 
 /**
- * Scoring Constants
- * All point values and multipliers
+ * Scoring Constants - Backend ile senkron (1000 tam puan sistemi)
+ * Gerçek hesaplama: backend/services/scoringService.js
  */
 export const SCORING = {
-  // Base points by difficulty
-  BASE_POINTS: {
-    VERY_EASY: 5,
-    EASY: 10,
-    MEDIUM: 20,
-    HARD: 30,
-    VERY_HARD: 50,
-    EXPERT: 100,
-  },
-  
-  // Focus multipliers
+  MAX_POINTS_PER_MATCH: 1000,
+
   FOCUS: {
-    CORRECT: 2.0,   // 2x points if correct
-    WRONG: -1.5,    // -1.5x penalty if wrong
-    MAX_FOCUS: 3,   // Maximum 3 focused predictions
+    CORRECT: 2.0,
+    WRONG: -1.5,
+    MAX_FOCUS: 3,
   },
-  
-  // Training multipliers
+
   TRAINING: {
-    DEFENSE: {
-      DISCIPLINE: 1.2,
-      PHYSICAL: 1.2,
-    },
-    ATTACK: {
-      TEMPO: 1.2,
-      INDIVIDUAL: 1.2,
-    },
-    MIDFIELD: {
-      TEMPO: 1.15,
-      DISCIPLINE: 1.15,
-    },
-    PHYSICAL: {
-      PHYSICAL: 1.25,
-    },
-    TACTICAL: {
-      TEMPO: 1.15,
-      INDIVIDUAL: 1.15,
-    },
+    ATTACK: 1.20,
+    DEFENSE: 1.20,
+    BALANCED: 1.10,
   },
-  
-  // Accuracy bonuses
+
   ACCURACY_BONUS: {
-    PERFECT: 100,     // 100% accuracy
-    EXCELLENT: 50,    // 90%+ accuracy
-    GOOD: 25,         // 80%+ accuracy
-    DECENT: 10,       // 70%+ accuracy
+    PERFECT: 100,
+    EXCELLENT: 50,
+    GOOD: 25,
+    DECENT: 10,
   },
-  
-  // Streak bonuses
+
   STREAK_BONUS: {
     5: 50,
     10: 150,
