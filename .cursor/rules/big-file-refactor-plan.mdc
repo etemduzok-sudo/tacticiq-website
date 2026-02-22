@@ -1,0 +1,73 @@
+# Büyük Dosya Parçalama Planı
+
+## DURUM: Planlandı - Henüz uygulanmadı
+## TARİH: 22 Şubat 2026
+
+Bu dosyalar çok büyük ve parçalanması gerekiyor.
+Parçalamada KURAL: JSX/style/render kısmına DOKUNMA, sadece logic çıkar.
+
+---
+
+## 1. MatchPrediction.tsx (9,914 satır)
+
+### Mevcut Yapı:
+- Satır 1-65: Import'lar
+- Satır 66-221: Sabitler ve yardımcı fonksiyonlar (FOCUS_CATEGORY_MAPPING, getCategoryFocus vb.)
+- Satır 222-381: Interface tanımları (MatchPredictionScreenProps)
+- Satır 382-430: FootballField bileşeni (SVG saha çizimi)
+- Satır 431-5382: ANA BİLEŞEN + dakika seçenekleri sabitleri
+- Satır 5385-6588: PlayerPredictionModal (1203 satır) - AYRI DOSYAYA ÇIKARILABİLİR
+- Satır 6591-6788: SubstituteModal (197 satır) - AYRI DOSYAYA ÇIKARILABİLİR
+- Satır 6790-9914: StyleSheet (3124 satır)
+
+### Parçalama Planı:
+1. `PlayerPredictionModal` → `src/components/match/PlayerPredictionModal.tsx`
+   - Props: player, predictions, onClose, onCancel, onPredictionChange, startingXI, reservePlayers, onSubstituteConfirm, allPlayerPredictions
+   - İlgili style'ları da taşı
+   
+2. `SubstituteModal` → `src/components/match/SubstituteModal.tsx`
+   - Props: visible, players, startingXI, type, playerName, selectedSubstitute, selectedMinute, onSave, onClose
+   - İlgili style'ları da taşı
+
+3. `FootballField` → `src/components/match/FootballField.tsx`
+   - SVG saha çizimi, genel kullanılabilir
+
+4. Sabitler → `src/constants/predictionConstants.ts`
+   - FOCUS_CATEGORY_MAPPING, getCategoryFocus, MINUTE_OPTIONS vb.
+
+### Tahmini Kazanç: ~1600 satır çıkarılır → 8300 satıra düşer
+
+---
+
+## 2. MatchSquad.tsx (8,800 satır)
+
+### Parçalama Planı:
+1. Formation seçim modal'ı → ayrı dosya
+2. Oyuncu seçim modal'ı → ayrı dosya
+3. Topluluk istatistik bileşeni → ayrı dosya
+4. Sabitler ve yardımcılar → ayrı dosya
+
+---
+
+## 3. ProfileScreen.tsx (5,812 satır)
+
+### Parçalama Planı:
+1. Profil ayarları bölümü → ayrı dosya
+2. İstatistik kartları → ayrı dosya
+3. Rozet/başarı bölümü → ayrı dosya
+
+---
+
+## UYGULAMA SIRASI:
+1. Önce en güvenli parçayı çıkar (PlayerPredictionModal)
+2. Test et - çalışıyorsa devam
+3. SubstituteModal'ı çıkar
+4. Test et
+5. FootballField'ı çıkar
+6. Son olarak sabitleri çıkar
+
+## UYARI:
+- Her adımdan sonra uygulamayı test et
+- Style referanslarını dikkatli taşı
+- Import yollarını kontrol et
+- Görsellerde bozulma olursa GERİ AL
