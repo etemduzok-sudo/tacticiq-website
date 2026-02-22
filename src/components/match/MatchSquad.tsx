@@ -17,7 +17,7 @@ import {
 import { showAlert, showInfo } from '../../utils/alertHelper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../../config/supabase';
-import { STORAGE_KEYS, LEGACY_STORAGE_KEYS, PITCH_LAYOUT } from '../../config/constants';
+import { STORAGE_KEYS, PITCH_LAYOUT } from '../../config/constants';
 import { squadPredictionsApi, teamsApi, matchesApi } from '../../services/api';
 import { getBulkSquad, refreshBulkSquad } from '../../services/bulkDataService';
 import { predictionsDb } from '../../services/databaseService';
@@ -60,23 +60,12 @@ const getStatColor = (value: number): string => {
 };
 
 // Rating normalizasyonu - TÜM rating'ler 100 üzerinden gösterilir
-// API'den gelen değerler:
-//   - Maç rating'i: 0-10 arası (örn: 7.4)
-//   - Genel rating: 65-99 arası (örn: 85)
-// Bu fonksiyon her iki formatı da 100 üzerinden değere çevirir
+// API'den gelen: 0-10 (maç reytingi) veya 65-99 (genel). Hepsi 0-100 gösterim (60–70 farkı korunur, yuvarlamayla kaybedilmez).
 const normalizeRatingTo100 = (rating: number | null | undefined): number => {
   if (rating == null) return 75; // Default
-  
-  // 0-10 arası ise (maç rating'i) → 100'e çevir (65-95 arası)
-  if (rating > 0 && rating <= 10) {
-    return Math.round(65 + (rating / 10) * 30);
-  }
-  
-  // Zaten 100 üzerinden ise (11-100 arası) → direkt kullan
-  if (rating > 10 && rating <= 100) {
-    return Math.round(rating);
-  }
-  
+  const r = Number(rating);
+  if (r > 0 && r <= 10) return Math.min(100, Math.round(r * 10)); // 6.7 → 67
+  if (r > 10 && r <= 100) return Math.round(r); // 72.4 → 72
   return 75; // Fallback
 };
 
@@ -110,6 +99,8 @@ interface MatchSquadProps {
   onStartingXIPopupShown?: () => void;
   /** ✅ Topluluk verilerini gördü mü? (görüldüyse kadro kilidi açılamaz) */
   hasViewedCommunityData?: boolean;
+  /** Kadro yokken (canlı/biten maç) Tahmin / Canlı / İstatistik sekmelerine yönlendirmek için */
+  onNavigateToTab?: (tab: 'prediction' | 'live' | 'stats') => void;
 }
 
 /** API'den gelen tüm kaleci varyantlarını tanı (G, GK, Goalkeeper vb.) */
@@ -693,7 +684,7 @@ const FootballField = ({ children, style }: any) => (
   </View>
 );
 
-export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favoriteTeamIdsProp = [], predictionTeamId, onComplete, onAttackFormationChangeConfirmed, isVisible = true, isMatchFinished = false, isMatchLive: isMatchLiveProp, onHasUnsavedChanges, startingXIPopupShown = false, onStartingXIPopupShown, hasViewedCommunityData = false }: MatchSquadProps) {
+export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favoriteTeamIdsProp = [], predictionTeamId, onComplete, onAttackFormationChangeConfirmed, isVisible = true, isMatchFinished = false, isMatchLive: isMatchLiveProp, onHasUnsavedChanges, startingXIPopupShown = false, onStartingXIPopupShown, hasViewedCommunityData = false, onNavigateToTab }: MatchSquadProps) {
   const { width: winW, height: winH } = useWindowDimensions();
   
   // ✅ Kendi hook'umuzla favori takımları al - prop boş gelebilir
@@ -733,11 +724,6 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favor
     () => (effectivePredictionTeamId != null ? `${STORAGE_KEYS.SQUAD}${matchId}-${effectivePredictionTeamId}` : `${STORAGE_KEYS.SQUAD}${matchId}`),
     [matchId, effectivePredictionTeamId]
   );
-  const legacySquadStorageKey = React.useMemo(
-    () => (effectivePredictionTeamId != null ? `${LEGACY_STORAGE_KEYS.SQUAD}${matchId}-${effectivePredictionTeamId}` : `${LEGACY_STORAGE_KEYS.SQUAD}${matchId}`),
-    [matchId, effectivePredictionTeamId]
-  );
-
   // ✅ Takım kadrosu için state (önce uygulama cache'i, yoksa API)
   const [squadPlayers, setSquadPlayers] = React.useState<any[]>([]);
   const [isLoadingSquad, setIsLoadingSquad] = React.useState(false);
@@ -2175,6 +2161,7 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favor
   const [selectedSlot, setSelectedSlot] = useState<number | null>(null);
   const [showFormationModal, setShowFormationModal] = useState(false);
   const [showPlayerModal, setShowPlayerModal] = useState(false);
+  const [showNoSquadInfoModal, setShowNoSquadInfoModal] = useState(false);
   const [formationType, setFormationType] = useState<'attack' | 'defense' | 'balanced'>('attack');
   const [selectedPlayerForDetail, setSelectedPlayerForDetail] = useState<typeof players[0] | null>(null);
   const [isSaving, setIsSaving] = useState(false); // ✅ Kaydediliyor... göstergesi için
@@ -2394,10 +2381,8 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favor
         try {
           if (effectivePredictionTeamId != null) {
             await AsyncStorage.removeItem(`${STORAGE_KEYS.PREDICTIONS}${matchId}-${effectivePredictionTeamId}`);
-            await AsyncStorage.removeItem(`${LEGACY_STORAGE_KEYS.PREDICTIONS}${matchId}-${effectivePredictionTeamId}`);
           } else {
             await AsyncStorage.removeItem(STORAGE_KEYS.PREDICTIONS + matchId);
-            await AsyncStorage.removeItem(`${LEGACY_STORAGE_KEYS.PREDICTIONS}${matchId}`);
           }
           const userDataStr = await AsyncStorage.getItem(STORAGE_KEYS.USER);
           const userData = userDataStr ? JSON.parse(userDataStr) : null;
@@ -2525,10 +2510,8 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favor
           try {
             if (effectivePredictionTeamId != null) {
               await AsyncStorage.removeItem(`${STORAGE_KEYS.PREDICTIONS}${matchId}-${effectivePredictionTeamId}`);
-              await AsyncStorage.removeItem(`${LEGACY_STORAGE_KEYS.PREDICTIONS}${matchId}-${effectivePredictionTeamId}`);
             } else {
               await AsyncStorage.removeItem(STORAGE_KEYS.PREDICTIONS + matchId);
-              await AsyncStorage.removeItem(`${LEGACY_STORAGE_KEYS.PREDICTIONS}${matchId}`);
             }
             const userDataStr = await AsyncStorage.getItem(STORAGE_KEYS.USER);
             const userData = userDataStr ? JSON.parse(userDataStr) : null;
@@ -2561,10 +2544,8 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favor
     try {
       if (effectivePredictionTeamId != null) {
         await AsyncStorage.removeItem(`${STORAGE_KEYS.PREDICTIONS}${matchId}-${effectivePredictionTeamId}`);
-        await AsyncStorage.removeItem(`${LEGACY_STORAGE_KEYS.PREDICTIONS}${matchId}-${effectivePredictionTeamId}`);
       } else {
         await AsyncStorage.removeItem(STORAGE_KEYS.PREDICTIONS + matchId);
-        await AsyncStorage.removeItem(`${LEGACY_STORAGE_KEYS.PREDICTIONS}${matchId}`);
       }
       const userDataStr = await AsyncStorage.getItem(STORAGE_KEYS.USER);
       const userData = userDataStr ? JSON.parse(userDataStr) : null;
@@ -3238,19 +3219,58 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favor
           </View>
         )}
 
-        {/* Kadro oluşturulmadığında saha altı bildirim */}
+        {/* Kadro oluşturulmadığında: kompakt bildirim, tıklanınca popup */}
         {showNoPredictionOverlay && (
-          <View style={{
-            marginHorizontal: 12, marginTop: 8, paddingVertical: 10, paddingHorizontal: 14,
-            backgroundColor: 'rgba(31, 162, 166, 0.12)', borderRadius: 10,
-            borderWidth: 1, borderColor: 'rgba(31, 162, 166, 0.25)',
-            flexDirection: 'row', alignItems: 'center', gap: 10,
-          }}>
-            <Ionicons name="eye-outline" size={16} color="#1FA2A6" style={{ flexShrink: 0 }} />
-            <Text style={{ color: '#5EEAD4', fontSize: 12, flex: 1, lineHeight: 18 }}>
-              Kadro tahmini yapmadığınız için tahmin yapamazsınız. Topluluk verilerini görmek için oyuncu kartlarına tıklayın.
-            </Text>
-          </View>
+          <>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => setShowNoSquadInfoModal(true)}
+              style={{
+                marginHorizontal: 12, marginTop: 8, marginBottom: 12,
+                paddingVertical: 10, paddingHorizontal: 12,
+                backgroundColor: 'rgba(31, 162, 166, 0.12)', borderRadius: 10,
+                borderWidth: 1, borderColor: 'rgba(31, 162, 166, 0.25)',
+                flexDirection: 'row', alignItems: 'center', gap: 8,
+              }}
+            >
+              <Ionicons name="information-circle-outline" size={18} color="#1FA2A6" style={{ flexShrink: 0 }} />
+              <Text style={{ color: '#5EEAD4', fontSize: 12, flex: 1 }} numberOfLines={2}>
+                Kadro tahmini yapmadığınız için tahmin yapamazsınız. İzlemek için ilgili sekmelere geçin.
+              </Text>
+              <Ionicons name="chevron-forward" size={16} color="rgba(94, 234, 212, 0.7)" />
+            </TouchableOpacity>
+            <Modal visible={showNoSquadInfoModal} transparent animationType="fade">
+              <TouchableOpacity activeOpacity={1} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 24 }} onPress={() => setShowNoSquadInfoModal(false)}>
+                <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()} style={{ backgroundColor: '#1E3A3A', borderRadius: 16, padding: 20, borderWidth: 1, borderColor: 'rgba(31, 162, 166, 0.3)' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 16 }}>
+                    <Ionicons name="eye-outline" size={22} color="#1FA2A6" style={{ flexShrink: 0 }} />
+                    <Text style={{ color: '#E2E8F0', fontSize: 14, lineHeight: 22, flex: 1 }}>
+                      Kadro tahmini yapmadığınız için tahmin yapamazsınız. İzlemek için aşağıdaki sekmelere geçin:
+                    </Text>
+                  </View>
+                  {onNavigateToTab ? (
+                    <View style={{ gap: 10 }}>
+                      <TouchableOpacity onPress={() => { onNavigateToTab('prediction'); setShowNoSquadInfoModal(false); }} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 10, paddingHorizontal: 12, backgroundColor: 'rgba(31, 162, 166, 0.2)', borderRadius: 10 }}>
+                        <Ionicons name="analytics-outline" size={18} color="#5EEAD4" />
+                        <View><Text style={{ color: '#5EEAD4', fontWeight: '600' }}>Tahmin</Text><Text style={{ color: 'rgba(94, 234, 212, 0.8)', fontSize: 12 }}>Topluluk / Gerçek kadro</Text></View>
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => { onNavigateToTab('live'); setShowNoSquadInfoModal(false); }} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 10, paddingHorizontal: 12, backgroundColor: 'rgba(31, 162, 166, 0.2)', borderRadius: 10 }}>
+                        <Ionicons name="pulse-outline" size={18} color="#5EEAD4" />
+                        <View><Text style={{ color: '#5EEAD4', fontWeight: '600' }}>Canlı</Text><Text style={{ color: 'rgba(94, 234, 212, 0.8)', fontSize: 12 }}>Olaylar</Text></View>
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => { onNavigateToTab('stats'); setShowNoSquadInfoModal(false); }} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 10, paddingHorizontal: 12, backgroundColor: 'rgba(31, 162, 166, 0.2)', borderRadius: 10 }}>
+                        <Ionicons name="bar-chart-outline" size={18} color="#5EEAD4" />
+                        <View><Text style={{ color: '#5EEAD4', fontWeight: '600' }}>İstatistik</Text><Text style={{ color: 'rgba(94, 234, 212, 0.8)', fontSize: 12 }}>Canlı istatistikler</Text></View>
+                      </TouchableOpacity>
+                    </View>
+                  ) : null}
+                  <TouchableOpacity onPress={() => setShowNoSquadInfoModal(false)} style={{ marginTop: 16, paddingVertical: 10, alignItems: 'center', borderRadius: 10, backgroundColor: 'rgba(100, 116, 139, 0.2)' }}>
+                    <Text style={{ color: '#94A3B8', fontWeight: '600' }}>Kapat</Text>
+                  </TouchableOpacity>
+                </TouchableOpacity>
+              </TouchableOpacity>
+            </Modal>
+          </>
         )}
 
         {/* ✅ Saha altı: Sadece simetrik toolbar [Formasyon] | 🔓 | [Tamamla] – Tahminin/Gerçek 11/Atak Defans yapısı kaldırıldı */}

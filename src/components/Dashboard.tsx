@@ -475,17 +475,21 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
     const favoriteTeamIds = favoriteTeams.map(t => t.id);
     const bothFavorites = homeId != null && awayId != null && favoriteTeamIds.includes(homeId) && favoriteTeamIds.includes(awayId);
 
+    const canDeletePrediction = status === 'upcoming';
     const handleLongPress = () => {
-      if (hasPrediction && matchId != null && onDeletePrediction) {
-        Alert.alert(
-          'Tahmini sil',
-          'Bu maça yaptığınız tahmini silmek istiyor musunuz? Maç detayına girerek kadro ve tahminleri tekrar kurabilir veya güncelleyebilirsiniz.',
-          [
-            { text: 'Vazgeç', style: 'cancel' },
-            { text: 'Sil', style: 'destructive', onPress: () => onDeletePrediction(matchId) },
-          ]
-        );
+      if (!hasPrediction || matchId == null || !onDeletePrediction) return;
+      if (!canDeletePrediction) {
+        Alert.alert('Tahmin silinemez', 'Maç başladığı veya bittiği için tahmin artık silinemez.');
+        return;
       }
+      Alert.alert(
+        'Tahmini sil',
+        'Bu maça yaptığınız tahmini silmek istiyor musunuz? Maç detayına girerek kadro ve tahminleri tekrar kurabilir veya güncelleyebilirsiniz.',
+        [
+          { text: 'Vazgeç', style: 'cancel' },
+          { text: 'Sil', style: 'destructive', onPress: () => onDeletePrediction(matchId) },
+        ]
+      );
     };
     
     // Geri sayım hesaplama (countdownTicker ile her saniye güncellenir)
@@ -574,7 +578,10 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
                 style={styles.matchCardTournamentBadgePrediction}
                 onPress={(e) => {
                   e?.stopPropagation?.();
-                  
+                  if (!canDeletePrediction) {
+                    Alert.alert('Tahmin silinemez', 'Maç başladığı veya bittiği için tahmin artık silinemez.');
+                    return;
+                  }
                   if (bothFavorites) {
                     // ✅ İki favori takım varsa: Özel modal göster (seçilebilir seçenekler + onay butonu)
                     const homeTeamName = match?.teams?.home?.name || 'Ev Sahibi';
@@ -1260,12 +1267,12 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
         {/* Boş Durum - Hiç maç yoksa (ne canlı ne yaklaşan ne geçmiş) */}
         {!showLoadingIndicator && filteredUpcomingMatches.length === 0 && filteredLiveMatches.length === 0 && displayPastMatches.length === 0 && (
           <View style={styles.emptyState}>
-            <Ionicons name="football-outline" size={48} color="#64748B" />
+            <Ionicons name={error ? 'cloud-offline-outline' : 'football-outline'} size={48} color={error ? '#F59E0B' : '#64748B'} />
             <Text style={styles.emptyText}>
               {favoriteTeams.length === 0 
                 ? t('dashboard.selectFavoriteTeam')
                 : error 
-                  ? t('dashboard.matchLoadError')
+                  ? error
                   : t('dashboard.noMatchesFound')}
             </Text>
             {favoriteTeams.length === 0 && (

@@ -192,12 +192,16 @@ function transformDbMatchToApiFormat(dbMatch: any): any {
 // ====================
 
 export const matchesApi = {
-  // Get live matches - direkt backend'den çek (database sorgusu timeout'a neden oluyordu)
-  getLiveMatches: async () => {
+  // Get live matches - direkt backend'den çek. favoriteTeamIds verilirse Celta Vigo vb. favori maçlar da döner.
+  getLiveMatches: async (favoriteTeamIds?: number[]) => {
     try {
-      // ✅ Direkt backend'den çek - database sorgusu atlandı
+      const query =
+        favoriteTeamIds?.length &&
+        favoriteTeamIds.every((id) => typeof id === 'number' && !Number.isNaN(id))
+          ? `?favoriteTeamIds=${favoriteTeamIds.join(',')}`
+          : '';
       try {
-        const backendResult = await request('/matches/live');
+        const backendResult = await request(`/matches/live${query}`);
         return backendResult;
       } catch (backendError: any) {
         logger.error('Backend failed for live matches', { error: backendError }, 'API');
@@ -318,8 +322,9 @@ export const matchesApi = {
   // Get prediction data (statistics + events combined)
   getPredictionData: (matchId: number) => request(`/matches/${matchId}/prediction-data`),
 
-  // Get match lineups
-  getMatchLineups: (matchId: number) => request(`/matches/${matchId}/lineups`),
+  // Get match lineups (refresh: true = cache atla, canlı maçta kadro taze gelsin)
+  getMatchLineups: (matchId: number, refresh = false) =>
+    request(`/matches/${matchId}/lineups${refresh ? '?refresh=1' : ''}`),
 
   // Get head to head
   getHeadToHead: (team1Id: number, team2Id: number) => 

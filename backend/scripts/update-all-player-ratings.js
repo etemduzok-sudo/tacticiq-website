@@ -37,6 +37,14 @@ if (!supabaseKey || supabaseKey.trim() === '') {
   process.exit(0);
 }
 
+// ✅ Script çökmesin: yakalanmamış hata ve rejection'larda sadece logla, çıkma
+process.on('unhandledRejection', (reason, promise) => {
+  console.warn('⚠️ [unhandledRejection]', reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('⚠️ [uncaughtException]', err.message);
+});
+
 const { createClient } = require('@supabase/supabase-js');
 const footballApi = require('../services/footballApi');
 const {
@@ -181,10 +189,10 @@ const LEAGUE_PRIORITY = {
   235: 21, // Russian Premier League
 };
 
-// Rate limiting - API-Football PRO: 60 requests/minute (optimized for 75k daily limit)
+// Rate limiting - API-Football PRO: 100 requests/minute (aggressive for 75k daily limit)
 let requestCount = 0;
-const MAX_REQUESTS_PER_MINUTE = 60;
-const REQUEST_INTERVAL = 1000; // 1 saniye (60 req/min = her 1 saniyede 1 req)
+const MAX_REQUESTS_PER_MINUTE = 100;
+const REQUEST_INTERVAL = 600; // 0.6 saniye (100 req/min = her 0.6 saniyede 1 req)
 
 async function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -366,6 +374,50 @@ async function savePowerScore(scoreData) {
   } catch (error) {
     console.warn(`⚠️ PowerScore kaydedilemedi:`, error.message);
     return false;
+  }
+}
+
+/**
+ * Takım kadrosundaki oyuncuların rating'lerini players tablosundan alıp team_squads.players[] ile senkronize et.
+ * check-status rating sayısını team_squads üzerinden yaptığı için bu gerekli.
+ */
+async function syncTeamSquadRatings(teamId, season = CURRENT_SEASON) {
+  try {
+    const { data: squad, error: squadErr } = await supabase
+      .from('team_squads')
+      .select('players')
+      .eq('team_id', teamId)
+      .eq('season', season)
+      .single();
+    if (squadErr || !squad?.players?.length) return;
+
+    const { data: playerRows, error: playersErr } = await supabase
+      .from('players')
+      .select('id, rating')
+      .eq('team_id', teamId);
+    if (playersErr || !playerRows?.length) return;
+
+    const ratingByPlayerId = new Map(playerRows.map(p => [p.id, p.rating]));
+    let updated = 0;
+    const newPlayers = squad.players.map(p => {
+      const id = p.id || p.player_id;
+      const r = ratingByPlayerId.get(id);
+      if (r != null && r !== p.rating) {
+        updated++;
+        return { ...p, rating: r };
+      }
+      return p;
+    });
+
+    if (updated > 0) {
+      await supabase
+        .from('team_squads')
+        .update({ players: newPlayers, updated_at: new Date().toISOString() })
+        .eq('team_id', teamId)
+        .eq('season', season);
+    }
+  } catch (e) {
+    console.warn(`⚠️ team_squads sync (team ${teamId}):`, e.message);
   }
 }
 
@@ -712,9 +764,9 @@ async function processAllTeamsFromDB(fetchApiStats = false, season = CURRENT_SEA
     
     console.log(`   ⚽ ${teamName} (${playersToProcess.length}/${players.length} oyuncu${fetchApiStats ? ` - ${players.length - playersToProcess.length} zaten rating'li` : ''})`);
     
-    // Batch işlem: Aynı anda 20 oyuncu için API çağrısı yap (rate limit korunur)
-    // API-Football PRO: 60 req/min = her 1 saniyede 1 req, batch'ler arası 1s delay ile 20 paralel güvenli
-    const batchSize = fetchApiStats ? 20 : 40;
+    // Batch işlem: Aynı anda 30 oyuncu için API çağrısı yap (rate limit korunur)
+    // API-Football PRO: 100 req/min = her 0.6 saniyede 1 req, batch'ler arası 0.6s delay ile 30 paralel güvenli
+    const batchSize = fetchApiStats ? 30 : 50;
     for (let i = 0; i < playersToProcess.length; i += batchSize) {
       const batch = playersToProcess.slice(i, i + batchSize);
       
@@ -742,11 +794,14 @@ async function processAllTeamsFromDB(fetchApiStats = false, season = CURRENT_SEA
       }
       
       // Rate limiting (sadece API çağrısı varsa) - batch'ler arası delay
-      // API-Football PRO: 60 req/min = her 1 saniyede 1 req
+      // API-Football PRO: 100 req/min = her 0.6 saniyede 1 req
       if (fetchApiStats && i + batchSize < playersToProcess.length) {
-        await delay(REQUEST_INTERVAL); // Batch'ler arası 1 saniye (rate limit korunur)
+        await delay(REQUEST_INTERVAL); // Batch'ler arası 0.6 saniye (rate limit korunur)
       }
     }
+
+    // ✅ Takım bitti: players tablosundaki rating'leri team_squads.players[] ile senkronize et (check-status buradan sayıyor)
+    await syncTeamSquadRatings(teamId, season);
   }
   
   console.log(`\n✅ TAMAMLANDI: ${processedPlayers}/${totalPlayers} oyuncu işlendi (${skippedPlayers} zaten rating'li, ${errors} hata, ${apiCalls} API çağrısı)`);
@@ -763,65 +818,69 @@ async function processAllTeamsFromDB(fetchApiStats = false, season = CURRENT_SEA
  * @param {number|null} leagueId - Takımın lig ID'si (teamToLeague'dan, ekstra sorgu yok)
  */
 async function processPlayerFromDB(player, teamId, season, fetchApiStats = false, leagueId = null) {
-  let attrs = getDefaultAttributesByPosition(player.position);
-  
-  // API'den istatistik çek (opsiyonel - 7500 limit!)
-  if (fetchApiStats && player.id) {
-    const playerStats = await getPlayerStats(player.id, season);
-    if (playerStats?.statistics?.length > 0) {
-      const latestStats = playerStats.statistics[0];
-      const playerData = playerStats.player || {};
-      const calculated = calculatePlayerAttributesFromStats(latestStats, playerData);
-      attrs = { ...attrs, ...calculated };
+  try {
+    let attrs = getDefaultAttributesByPosition(player.position);
+    
+    // API'den istatistik çek (opsiyonel - 75000 limit!)
+    if (fetchApiStats && player.id) {
+      const playerStats = await getPlayerStats(player.id, season);
+      if (playerStats?.statistics?.length > 0) {
+        const latestStats = playerStats.statistics[0];
+        const playerData = playerStats.player || {};
+        const calculated = calculatePlayerAttributesFromStats(latestStats, playerData);
+        attrs = { ...attrs, ...calculated };
+      }
     }
-  }
-  
-  // Mevcut rating varsa koru, yoksa hesaplananı kullan
-  const finalRating = player.rating || attrs.rating;
-  
-  // Oyuncu tablosuna kaydet (rating)
-  // Name fallback: API'den gelen name yoksa mevcut name'i kullan veya "Unknown Player" kullan
-  const playerName = player.name || `Unknown Player ${player.id}`;
-  
-  const playerRecord = {
-    id: player.id,
-    name: playerName,
-    age: player.age || null,
-    nationality: player.nationality || null,
-    position: player.position || null,
-    rating: finalRating,
-    team_id: teamId,
-    photo: player.photo || null,
-    updated_at: new Date().toISOString(),
-  };
-  
-  await savePlayerToDb(playerRecord);
-  
-  // player_power_scores tablosuna kaydet (pas, şut, dribling, defans, fizik, hız)
-  if (leagueId) {
-    const powerScoreRecord = {
-      player_id: player.id,
-      team_id: teamId,
-      league_id: leagueId,
-      season: season,
+    
+    // Mevcut rating varsa koru, yoksa hesaplananı kullan
+    const finalRating = player.rating || attrs.rating;
+    
+    // Oyuncu tablosuna kaydet (rating)
+    const playerName = player.name || `Unknown Player ${player.id}`;
+    
+    const playerRecord = {
+      id: player.id,
+      name: playerName,
+      age: player.age || null,
+      nationality: player.nationality || null,
       position: player.position || null,
-      power_score: attrs.powerScore || attrs.rating || 75,
-      shooting: attrs.shooting || null,
-      passing: attrs.passing || null,
-      dribbling: attrs.dribbling || null,
-      defense: attrs.defense || attrs.defending || null,
-      physical: attrs.physical || null,
-      pace: attrs.pace || null,
-      form: attrs.form || 50,
-      discipline: attrs.discipline || 70,
-      fitness_status: attrs.fitnessStatus || 'fit',
+      rating: finalRating,
+      team_id: teamId,
+      photo: player.photo || null,
       updated_at: new Date().toISOString(),
     };
     
-    await savePowerScore(powerScoreRecord);
+    await savePlayerToDb(playerRecord);
+    
+    // player_power_scores tablosuna kaydet (pas, şut, dribling, defans, fizik, hız)
+    if (leagueId) {
+      const powerScoreRecord = {
+        player_id: player.id,
+        team_id: teamId,
+        league_id: leagueId,
+        season: season,
+        position: player.position || null,
+        power_score: attrs.powerScore || attrs.rating || 75,
+        shooting: attrs.shooting || null,
+        passing: attrs.passing || null,
+        dribbling: attrs.dribbling || null,
+        defense: attrs.defense || attrs.defending || null,
+        physical: attrs.physical || null,
+        pace: attrs.pace || null,
+        form: attrs.form || 50,
+        discipline: attrs.discipline || 70,
+        fitness_status: attrs.fitnessStatus || 'fit',
+        updated_at: new Date().toISOString(),
+      };
+      
+      await savePowerScore(powerScoreRecord);
+    }
+    
+    return attrs;
+  } catch (err) {
+    console.warn(`⚠️ processPlayerFromDB ${player?.id}:`, err.message);
+    return null;
   }
-  
-  return attrs;
 }
 
 

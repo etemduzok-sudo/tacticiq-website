@@ -10,6 +10,8 @@ const TOP_LEAGUES = [
   'scottish premiership', 'belgian pro league', 'austrian bundesliga', 'swiss super league',
   'liga profesional', 'primera división', 'campeonato brasileiro', 'brasileirão',
   'liga mx', 'ekstraklasa', 'russian premier league', 'super league',
+  // La Liga (İspanya) – Celta Vigo vb. için tüm varyantlar
+  'la liga española', 'la liga santander', 'laliga santander', 'primera división de españa', 'spanish la liga',
   // Güney/Kuzey Amerika üst ligleri
   'chilean primera', 'primera división de chile', 'chile primera',
   'costa rica primera', 'liga fpd', 'primera división de costa rica',

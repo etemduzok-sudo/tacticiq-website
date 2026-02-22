@@ -425,6 +425,7 @@ async function getFixtureEvents(fixtureId, skipCache = false) {
 }
 
 // Get fixture lineups (PRO plan)
+// skipCache: route'ta ?refresh=1 varsa mutlaka true geçilmeli; yoksa NodeCache 60sn boş cevabı döner, canlıda kadro gelmez.
 async function getFixtureLineups(fixtureId, skipCache = false) {
   const cacheKey = `lineups-${fixtureId}`;
   if (skipCache) {

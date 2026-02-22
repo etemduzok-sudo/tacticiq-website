@@ -208,10 +208,6 @@ class AuthService {
         'tacticiq_player_counts',
         'tacticiq-matches-cache',
         'tacticiq-matches-cache-timestamp',
-        // Eski key'ler (geriye dönük uyumluluk)
-        'fan-manager-user',
-        'fan-manager-language',
-        'fan-manager-favorite-clubs',
       ]);
       console.log('✅ [AuthService] AsyncStorage temizlendi');
 

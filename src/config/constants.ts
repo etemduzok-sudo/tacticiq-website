@@ -228,7 +228,7 @@ export const STORAGE_KEYS = {
   FAVORITE_TEAMS: 'tacticiq-favorite-clubs',
   FAVORITE_CLUBS: 'tacticiq-favorite-clubs', // Alias for FAVORITE_TEAMS
   PREDICTIONS: 'tacticiq-predictions-',  // Append matchId
-  SQUAD: 'tacticiq-squad-',              // Append matchId (NEW - replaces fan-manager-squad-)
+  SQUAD: 'tacticiq-squad-',              // Append matchId
   RATINGS: 'tacticiq-ratings-',          // Append matchId
   ONBOARDING: 'tacticiq-onboarding-complete',
   PRO_STATUS: 'tacticiq-pro-status',
@@ -242,13 +242,6 @@ export const STORAGE_KEYS = {
   BULK_SQUAD_PREFIX: 'tacticiq-bulk-squad-',
   BULK_COACH_PREFIX: 'tacticiq-bulk-coach-',
   BULK_INFO_PREFIX: 'tacticiq-bulk-info-',
-};
-
-// Legacy keys for backward compatibility (migration period)
-// These will be checked as fallback when new keys don't have data
-export const LEGACY_STORAGE_KEYS = {
-  PREDICTIONS: 'fan-manager-predictions-',  // Old prefix
-  SQUAD: 'fan-manager-squad-',              // Old prefix
 };
 
 /**

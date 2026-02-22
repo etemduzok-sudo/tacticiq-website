@@ -158,8 +158,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#1A1F2E',
     borderRadius: 16,
     padding: 24,
-    width: '100%',
-    maxWidth: 400,
+    width: '90%',
+    maxWidth: 360,
+    alignSelf: 'center',
     alignItems: 'center',
   },
   emoji: {

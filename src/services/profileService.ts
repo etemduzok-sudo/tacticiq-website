@@ -20,9 +20,8 @@ import {
 const STORAGE_KEY = STORAGE_KEYS.USER;  // 'tacticiq-user'
 const PLAYER_COUNTS_KEY = 'tacticiq_player_counts';
 
-// Legacy key'ler (migration için)
+// Eski tacticiq key'ler (migration için; fan-manager kullanılmıyor)
 const LEGACY_KEYS = [
-  'fan-manager-user',
   'tacticiq_user_profile',
 ];
 

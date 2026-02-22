@@ -8,6 +8,7 @@ const footballApi = require('../services/footballApi');
 const databaseService = require('../services/databaseService');
 const { filterTopLeagueMatches } = require('../utils/liveMatchFilter');
 const { calculateRatingFromStats, calculatePlayerAttributesFromStats, getDefaultRatingByPosition } = require('../utils/playerRatingFromStats');
+const { getDisplayRatingsMap } = require('../utils/displayRating');
 const { supabase } = require('../config/supabase');
 
 if (!supabase) {
@@ -204,8 +205,10 @@ function getStatValue(statistics, type) {
 // GET /api/matches/live - Get live matches
 router.get('/live', async (req, res) => {
   try {
-    // 🔥 1. CHECK CACHE FIRST (12 saniye)
-    if (isCacheValid(API_CACHE.liveMatches.timestamp, CACHE_DURATION.liveMatches)) {
+    const favIdsParam = req.query.favoriteTeamIds || req.query.favorite_team_ids;
+    const hasFavIds = favIdsParam && typeof favIdsParam === 'string' && favIdsParam.trim().length > 0;
+    // 🔥 1. CHECK CACHE FIRST (12 saniye) – favori takım ID’si varsa cache atlanır (kişiye özel liste gerekir)
+    if (!hasFavIds && isCacheValid(API_CACHE.liveMatches.timestamp, CACHE_DURATION.liveMatches)) {
       console.log('✅ [LIVE] Returning from MEMORY CACHE (age:', Math.round((Date.now() - API_CACHE.liveMatches.timestamp) / 1000), 'seconds)');
       return res.json({
         success: true,
@@ -242,11 +245,32 @@ router.get('/live', async (req, res) => {
           seenIds.add(fixtureId);
           return true;
         });
-        // 🔥 SADECE ÜST LİG: Kadın, 2. lig, Deportivo Zap vb. hariç (Arjantin, Liga MX, Şili, CR, Kolombiya 1. lig dahil)
+        // Favori takım maçlarını eklemek için filtre öncesi listeyi sakla (Celta Vigo vb. kaybolmasın)
+        const rawUniqueMatches = [...uniqueMatches];
+        // 🔥 SADECE ÜST LİG: Kadın, 2. lig vb. hariç
         const beforeFilter = uniqueMatches.length;
         uniqueMatches = filterTopLeagueMatches(uniqueMatches);
         if (beforeFilter !== uniqueMatches.length) {
           console.log('✅ [LIVE] Top-league filter:', beforeFilter, '->', uniqueMatches.length, 'matches');
+        }
+        // Favori eklemeden önce sadece filtrelenmiş listeyi cache için sakla
+        const filteredOnlyForCache = [...uniqueMatches];
+        // ✅ Favori takım ID'leri verilmişse, üst ligde olmasa bile o maçları listeye ekle (Celta Vigo vb.)
+        if (hasFavIds) {
+          const favIds = new Set(favIdsParam.split(',').map(s => parseInt(s, 10)).filter(n => !Number.isNaN(n)));
+          const existingIds = new Set(uniqueMatches.map(m => m.fixture?.id));
+          for (const m of rawUniqueMatches) {
+            if (existingIds.has(m.fixture?.id)) continue;
+            const homeId = m.teams?.home?.id;
+            const awayId = m.teams?.away?.id;
+            if ((homeId != null && favIds.has(homeId)) || (awayId != null && favIds.has(awayId))) {
+              uniqueMatches.push(m);
+              existingIds.add(m.fixture?.id);
+            }
+          }
+          if (favIds.size > 0) {
+            console.log('✅ [LIVE] Added favorite-team live matches', { favoriteTeamIds: favIds.size, totalNow: uniqueMatches.length });
+          }
         }
         
         // ✅ EVENT'LERİ KAYDET: API-Football /fixtures?live=all endpoint'i event'leri de içeriyor!
@@ -279,14 +303,14 @@ router.get('/live', async (req, res) => {
         
         // ✅ Mock maç ekleme DEVRE DIŞI - gerçek maçlar için
 
-        // 🔥 UPDATE CACHE with deduplicated data
+        // Cache'e sadece üst lig listesini yaz (favori eklemesi kullanıcıya özel)
         API_CACHE.liveMatches = {
-          data: uniqueMatches,
+          data: filteredOnlyForCache,
           timestamp: Date.now(),
         };
-        console.log('💾 [LIVE] Cached', uniqueMatches.length, 'unique matches for 12 seconds (filtered', (data.response?.length || 0) - uniqueMatches.length, 'duplicates)');
+        console.log('💾 [LIVE] Cached', filteredOnlyForCache.length, 'unique matches for 12 seconds');
         
-        // Sync to database if enabled (use unique matches)
+        // Sync to database if enabled (use full list including favorites)
         if (databaseService.enabled && uniqueMatches && uniqueMatches.length > 0) {
           await databaseService.upsertMatches(uniqueMatches);
         }
@@ -663,10 +687,18 @@ router.get('/:id', async (req, res) => {
       .eq('id', id)
       .single();
 
-    // 2. If found in DB and not live, return it
-    if (!dbError && dbMatch) {
-      // If match is not live, return cached data
-      if (!['1H', '2H', 'HT', 'LIVE', 'ET', 'BT', 'P'].includes(dbMatch.status)) {
+    const skipCache = req.query.refresh === '1' || req.query.refresh === 'true';
+    const dbStatus = dbMatch?.status || '';
+    const isLiveByStatus = ['1H', '2H', 'HT', 'LIVE', 'ET', 'BT', 'P'].includes(dbStatus);
+    const fixtureDate = dbMatch?.fixture_date ? new Date(dbMatch.fixture_date).getTime() : 0;
+    const now = Date.now();
+    const startedByTime = fixtureDate > 0 && now >= fixtureDate - 60000;
+    const withinMatchWindow = fixtureDate > 0 && (now - fixtureDate) < 3.5 * 60 * 60 * 1000;
+    const possiblyLive = startedByTime && withinMatchWindow && !['FT', 'AET', 'PEN'].includes(dbStatus);
+
+    // 2. If found in DB and not live and not refresh → return cached
+    if (!dbError && dbMatch && !skipCache) {
+      if (!isLiveByStatus) {
         return res.json({
           success: true,
           data: dbMatch,
@@ -676,10 +708,10 @@ router.get('/:id', async (req, res) => {
       }
     }
 
-    // 3. If live or not in DB, fetch from API
-    if (process.env.API_FOOTBALL_KEY) {
+    // 3. If live, possibly live (start time passed), or refresh=1 → fetch from API for fresh data
+    if (process.env.API_FOOTBALL_KEY && (isLiveByStatus || possiblyLive || skipCache)) {
       try {
-        const apiData = await footballApi.getFixtureDetails(id);
+        const apiData = await footballApi.getFixtureDetails(id, skipCache);
         
         if (apiData && apiData.response && apiData.response[0]) {
           const fixture = apiData.response[0];
@@ -927,10 +959,22 @@ function transformPlayerStats(apiResponse) {
         const cards = stats.cards || {};
         const penalty = stats.penalty || {};
 
-        // Calculate derived stats
-        const isGoalkeeper = games.position === 'G';
-        const passAccuracy = passes.total > 0 
-          ? Math.round((passes.accuracy || 0)) 
+        // Calculate derived stats (API bazen 'G', 'GK' veya 'Goalkeeper' döner)
+        const posStr = String(games.position || '').toUpperCase();
+        const isGoalkeeper = posStr === 'G' || posStr === 'GK' || String(games.position || '').toLowerCase().includes('goalkeeper');
+        const passAccuracy = passes.total > 0
+          ? Math.round((passes.accuracy || 0))
+          : 0;
+
+        // Kaleci istatistikleri: API bazen goalkeeper objesi veya goals.conceded farklı path'te döner
+        const gkSaves = isGoalkeeper
+          ? (stats.goalkeeper?.saves ?? stats.saves ?? 0)
+          : 0;
+        const gkConceded = isGoalkeeper
+          ? (goals.conceded ?? stats.goals?.conceded ?? 0)
+          : 0;
+        const savePct = (gkSaves + gkConceded) > 0
+          ? Math.round((100 * gkSaves) / (gkSaves + gkConceded))
           : 0;
 
         return {
@@ -940,60 +984,61 @@ function transformPlayerStats(apiResponse) {
           photo: player.photo,
           number: games.number,
           position: games.position || 'MF',
-          
+
           // Game stats
           rating: parseFloat(games.rating) || 0,
           minutesPlayed: games.minutes || 0,
-          
+
           // Goals & Assists
           goals: goals.total || 0,
           assists: goals.assists || 0,
-          
+
           // Shots
           shots: shots.total || 0,
           shotsOnTarget: shots.on || 0,
-          shotsInsideBox: 0, // Not available in this endpoint
-          
+          shotsInsideBox: 0,
+
           // Passes
           totalPasses: passes.total || 0,
           passesCompleted: passes.accuracy ? Math.round((passes.total || 0) * (passes.accuracy / 100)) : 0,
           passAccuracy: passAccuracy,
           keyPasses: passes.key || 0,
-          longPasses: 0, // Not available
-          
+          longPasses: 0,
+
           // Dribbling
           dribbleAttempts: dribbles.attempts || 0,
           dribbleSuccess: dribbles.success || 0,
-          dispossessed: 0, // Not available
-          
+          dispossessed: 0,
+
           // Defending
           tackles: tackles.total || 0,
           blocks: tackles.blocks || 0,
           interceptions: tackles.interceptions || 0,
-          
+
           // Duels
           duelsTotal: duels.total || 0,
           duelsWon: duels.won || 0,
-          aerialDuels: 0, // Not available directly
+          aerialDuels: 0,
           aerialWon: 0,
-          
+
           // Fouls & Cards
           foulsDrawn: fouls.drawn || 0,
           foulsCommitted: fouls.committed || 0,
           yellowCards: cards.yellow || 0,
           redCards: cards.red || 0,
-          
+
           // Penalty
           penaltyWon: penalty.won || 0,
           penaltyScored: penalty.scored || 0,
           penaltyMissed: penalty.missed || 0,
           penaltySaved: penalty.saved || 0,
-          
+
           // Goalkeeper specific
           isGoalkeeper: isGoalkeeper,
-          saves: isGoalkeeper ? (stats.goalkeeper?.saves || 0) : 0,
-          goalsAgainst: isGoalkeeper ? (goals.conceded || 0) : 0,
-          
+          saves: gkSaves,
+          goalsAgainst: gkConceded,
+          savePercentage: isGoalkeeper ? savePct : undefined,
+
           // Team info
           teamId: teamId,
           teamName: teamName
@@ -1099,7 +1144,7 @@ function generateEstimatedHeatmaps(lineupsData, playersData) {
       const player = playerEntry.player || {};
       const playerId = player.id;
       const playerName = player.name;
-      const position = player.pos || 'M';
+      const position = player.pos || player.position || 'M';
       const gridPos = player.grid; // e.g., "1:1", "2:3"
 
       // Find player stats
@@ -1140,21 +1185,44 @@ function generateEstimatedHeatmaps(lineupsData, playersData) {
 function generatePlayerHeatPoints(position, gridPos, stats, isHomeTeam) {
   const points = [];
   const pos = (position || 'M').toUpperCase();
+  const isGK = pos === 'G' || pos === 'GK' || String(position || '').toLowerCase().includes('goalkeeper');
+
+  // Goalkeeper: gerçekçi ısı haritası – ceza sahasında dağınık noktalar, kale çizgisine yakın yoğun, dışarı doğru yumuşak geçiş
+  if (isGK) {
+    const centerX = 50;
+    const penaltyDepth = 18;   // ceza sahası derinliği (%)
+    const boxWidth = 52;       // x: 24-76
+    const goalLineHome = 3;
+    const goalLineAway = 97;
+    const numPoints = 140;     // grid değil, dağınık nokta sayısı
+
+    for (let i = 0; i < numPoints; i++) {
+      // Ceza sahası içinde rastgele konum (biraz 6 yard kutusu ağırlıklı)
+      const x = 24 + Math.random() * 52;
+      const yRel = Math.random() * penaltyDepth;
+      const y = isHomeTeam ? goalLineHome + yRel : goalLineAway - yRel;
+
+      // Kale çizgisine yakın = daha sıcak; merkeze (x=50) yakın hafif fazla
+      const distFromGoal = yRel / penaltyDepth;  // 0 = kale, 1 = ceza noktası
+      const centerBias = 1 - 0.25 * Math.abs(x - centerX) / (boxWidth / 2);
+      let intensity = (1 - distFromGoal * 0.85) * centerBias;
+      intensity = Math.max(0.12, Math.min(0.98, intensity + (Math.random() - 0.5) * 0.15));
+      points.push({ x, y, intensity, type: 'position' });
+    }
+    return points;
+  }
 
   // Base position from grid (e.g., "2:3" = row 2, column 3)
-  let baseX = 50; // Center by default
+  let baseX = 50;
   let baseY = 50;
 
   if (gridPos) {
     const [row, col] = gridPos.split(':').map(Number);
-    // Convert grid to percentage (1-5 rows, 1-5 cols typically)
-    baseY = (row / 5) * 100; // Y is vertical (goal line to goal line)
-    baseX = (col / 5) * 100; // X is horizontal (left to right)
+    baseY = (row / 5) * 100;
+    baseX = (col / 5) * 100;
   }
 
-  // Adjust based on position type
   const positionAdjustments = {
-    'G': { baseY: 5, spreadX: 10, spreadY: 5 },
     'D': { baseY: 20, spreadX: 25, spreadY: 15 },
     'M': { baseY: 50, spreadX: 30, spreadY: 25 },
     'F': { baseY: 80, spreadX: 20, spreadY: 15 }
@@ -1162,7 +1230,6 @@ function generatePlayerHeatPoints(position, gridPos, stats, isHomeTeam) {
 
   const adj = positionAdjustments[pos] || positionAdjustments['M'];
 
-  // Generate main activity point
   points.push({
     x: baseX,
     y: isHomeTeam ? adj.baseY : (100 - adj.baseY),
@@ -1170,12 +1237,10 @@ function generatePlayerHeatPoints(position, gridPos, stats, isHomeTeam) {
     type: 'position'
   });
 
-  // Add activity spread based on stats
   const passActivity = (stats.passes?.total || 0) / 100;
   const tackleActivity = (stats.tackles?.total || 0) / 10;
   const shotActivity = (stats.shots?.total || 0) / 5;
 
-  // Secondary points based on activity
   if (passActivity > 0) {
     points.push({
       x: baseX + (Math.random() - 0.5) * adj.spreadX,
@@ -1185,7 +1250,7 @@ function generatePlayerHeatPoints(position, gridPos, stats, isHomeTeam) {
     });
   }
 
-  if (tackleActivity > 0 && pos !== 'G' && pos !== 'F') {
+  if (tackleActivity > 0 && pos !== 'F') {
     points.push({
       x: baseX + (Math.random() - 0.5) * adj.spreadX,
       y: isHomeTeam ? adj.baseY - (Math.random() * 10) : (100 - adj.baseY + Math.random() * 10),
@@ -1194,7 +1259,7 @@ function generatePlayerHeatPoints(position, gridPos, stats, isHomeTeam) {
     });
   }
 
-  if (shotActivity > 0 && pos !== 'G' && pos !== 'D') {
+  if (shotActivity > 0 && pos !== 'D') {
     points.push({
       x: baseX + (Math.random() - 0.5) * 15,
       y: isHomeTeam ? 85 + Math.random() * 10 : 5 + Math.random() * 10,
@@ -1206,11 +1271,26 @@ function generatePlayerHeatPoints(position, gridPos, stats, isHomeTeam) {
   return points;
 }
 
-// Helper: Calculate player zone percentages
+// Helper: Activity weight from API-Football stats (passes, shots, tackles, duels)
+// So high-involvement players count more in team heatmap
+function playerActivityWeight(stats) {
+  const passes = Number(stats.passes?.total) || 0;
+  const tackles = Number(stats.tackles?.total) || 0;
+  const shots = Number(stats.shots?.total) || 0;
+  const duelsTotal = Number(stats.duels?.total) || 0;
+  const duelsWon = Number(stats.duels?.won) || 0;
+  const minutes = Number(stats.games?.minutes) || 90;
+  const scale = Math.min(1, minutes / 90);
+  const raw = (passes / 60) * 0.35 + (tackles / 5) * 0.25 + (shots / 2) * 0.2 + (Math.max(duelsTotal, duelsWon) / 12) * 0.2;
+  const weight = 0.4 + 0.6 * Math.min(1, raw);
+  return scale * weight;
+}
+
+// Helper: Calculate player zone contributions (9 zones), weighted by position + API stats
 function calculatePlayerZones(position, stats) {
   const pos = (position || 'M').toUpperCase();
+  const isGK = pos === 'G' || pos === 'GK' || String(position || '').toLowerCase().includes('goalkeeper');
 
-  // Base zone distribution by position
   const zoneTemplates = {
     'G': { defense: 95, midfield: 5, attack: 0, left: 20, center: 60, right: 20 },
     'D': { defense: 70, midfield: 25, attack: 5, left: 30, center: 40, right: 30 },
@@ -1218,48 +1298,74 @@ function calculatePlayerZones(position, stats) {
     'F': { defense: 5, midfield: 30, attack: 65, left: 25, center: 50, right: 25 }
   };
 
-  const template = zoneTemplates[pos] || zoneTemplates['M'];
+  const template = zoneTemplates[isGK ? 'G' : pos] || zoneTemplates['M'];
+  const w = playerActivityWeight(stats || {});
 
-  // Adjust based on stats if available
-  const passAccuracy = stats.passes?.accuracy || 0;
-  const tackles = stats.tackles?.total || 0;
+  const dL = template.defense * (template.left / 100) * w;
+  const dC = template.defense * (template.center / 100) * w;
+  const dR = template.defense * (template.right / 100) * w;
+  const mL = template.midfield * (template.left / 100) * w;
+  const mC = template.midfield * (template.center / 100) * w;
+  const mR = template.midfield * (template.right / 100) * w;
+  const aL = template.attack * (template.left / 100) * w;
+  const aC = template.attack * (template.center / 100) * w;
+  const aR = template.attack * (template.right / 100) * w;
 
   return {
-    defenseLeft: template.defense * (template.left / 100),
-    defenseCenter: template.defense * (template.center / 100),
-    defenseRight: template.defense * (template.right / 100),
-    midfieldLeft: template.midfield * (template.left / 100),
-    midfieldCenter: template.midfield * (template.center / 100),
-    midfieldRight: template.midfield * (template.right / 100),
-    attackLeft: template.attack * (template.left / 100),
-    attackCenter: template.attack * (template.center / 100),
-    attackRight: template.attack * (template.right / 100)
+    defenseLeft: dL,
+    defenseCenter: dC,
+    defenseRight: dR,
+    midfieldLeft: mL,
+    midfieldCenter: mC,
+    midfieldRight: mR,
+    attackLeft: aL,
+    attackCenter: aC,
+    attackRight: aR
   };
 }
 
-// Helper: Calculate aggregated team zones
+// Helper: Aggregate team zones from all players' zone contributions (API-Football driven)
 function calculateTeamZones(playerHeatmaps, formation) {
-  // Default balanced distribution
-  let zones = {
-    defense: 33,
-    midfield: 34,
-    attack: 33,
-    leftFlank: 30,
-    center: 40,
-    rightFlank: 30
+  const fallback = () => {
+    const zones = { defense: 33, midfield: 34, attack: 33, leftFlank: 30, center: 40, rightFlank: 30 };
+    const parts = formation.split('-').map(Number);
+    if (parts.length >= 3) {
+      const [def, mid, att] = parts;
+      const total = def + mid + att;
+      zones.defense = Math.round((def / total) * 100);
+      zones.midfield = Math.round((mid / total) * 100);
+      zones.attack = Math.round((att / total) * 100);
+    }
+    return zones;
   };
 
-  // Adjust based on formation
-  const formationParts = formation.split('-').map(Number);
-  if (formationParts.length >= 3) {
-    const [def, mid, att] = formationParts;
-    const total = def + mid + att;
-    zones.defense = Math.round((def / total) * 100);
-    zones.midfield = Math.round((mid / total) * 100);
-    zones.attack = Math.round((att / total) * 100);
+  if (!Array.isArray(playerHeatmaps) || playerHeatmaps.length === 0) return fallback();
+
+  let defense = 0, midfield = 0, attack = 0;
+  let leftFlank = 0, center = 0, rightFlank = 0;
+
+  for (const p of playerHeatmaps) {
+    const z = p.zones || {};
+    defense += (z.defenseLeft || 0) + (z.defenseCenter || 0) + (z.defenseRight || 0);
+    midfield += (z.midfieldLeft || 0) + (z.midfieldCenter || 0) + (z.midfieldRight || 0);
+    attack += (z.attackLeft || 0) + (z.attackCenter || 0) + (z.attackRight || 0);
+    leftFlank += (z.defenseLeft || 0) + (z.midfieldLeft || 0) + (z.attackLeft || 0);
+    center += (z.defenseCenter || 0) + (z.midfieldCenter || 0) + (z.attackCenter || 0);
+    rightFlank += (z.defenseRight || 0) + (z.midfieldRight || 0) + (z.attackRight || 0);
   }
 
-  return zones;
+  const totalV = defense + midfield + attack;
+  const totalH = leftFlank + center + rightFlank;
+  if (totalV < 1e-6 || totalH < 1e-6) return fallback();
+
+  return {
+    defense: Math.round((defense / totalV) * 100),
+    midfield: Math.round((midfield / totalV) * 100),
+    attack: Math.round((attack / totalV) * 100),
+    leftFlank: Math.round((leftFlank / totalH) * 100),
+    center: Math.round((center / totalH) * 100),
+    rightFlank: Math.round((rightFlank / totalH) * 100)
+  };
 }
 
 // GET /api/matches/:id/prediction-data - Get prediction data from API-Football
@@ -1757,8 +1863,134 @@ router.get('/:id/events/live', async (req, res) => {
   }
 });
 
+// Helper: fixtures/players yanıtından sentetik lineups üret (lineups API boş döndüğünde fallback)
+const GRID_433 = ['1:1', '2:1', '2:2', '2:3', '2:4', '3:1', '3:2', '3:3', '4:1', '4:2', '4:3'];
+function positionOrder(pos) {
+  const p = (pos || '').toUpperCase();
+  if (p === 'G' || p === 'GK') return 0;
+  if (p.startsWith('D') || p === 'CB' || p === 'LB' || p === 'RB' || p === 'LWB' || p === 'RWB') return 1;
+  if (p.startsWith('M') || p === 'CM' || p === 'CDM' || p === 'CAM' || p === 'LM' || p === 'RM') return 2;
+  return 3; // F, FW, ST, etc.
+}
+function buildLineupsFromFixturePlayers(playersApiResponse) {
+  if (!playersApiResponse || !Array.isArray(playersApiResponse) || playersApiResponse.length < 2) return null;
+  const result = [];
+  for (const teamData of playersApiResponse) {
+    const teamId = teamData.team?.id;
+    const teamName = teamData.team?.name;
+    if (!teamId || !teamData.players || !Array.isArray(teamData.players)) continue;
+    const withStats = teamData.players
+      .map((p) => {
+        const player = p.player || {};
+        const stats = p.statistics?.[0] || {};
+        const games = stats.games || {};
+        const pos = (games.position || player.position || 'M').toString().toUpperCase();
+        const num = games.number != null ? games.number : player.number;
+        const minutes = parseInt(games.minutes, 10) || 0;
+        const rating = parseFloat(games.rating) || null;
+        return { player, pos, num, minutes, rating };
+      })
+      .filter((x) => x.player && x.player.id);
+    const sorted = withStats.sort((a, b) => {
+      const orderA = positionOrder(a.pos);
+      const orderB = positionOrder(b.pos);
+      if (orderA !== orderB) return orderA - orderB;
+      return (b.minutes || 0) - (a.minutes || 0);
+    });
+    const startXI = sorted.slice(0, 11).map((item, idx) => ({
+      player: {
+        id: item.player.id,
+        name: item.player.name || 'Unknown',
+        number: item.num != null ? item.num : idx + 1,
+        pos: item.pos || 'M',
+        grid: GRID_433[idx] || '2:2',
+        rating: item.rating != null ? item.rating : 75,
+      },
+    }));
+    if (startXI.length < 11) continue;
+    const substitutes = sorted.slice(11).map((item, idx) => ({
+      player: {
+        id: item.player.id,
+        name: item.player.name || 'Unknown',
+        number: item.num != null ? item.num : 12 + idx,
+        pos: item.pos || 'M',
+        grid: null,
+        rating: item.rating != null ? item.rating : 75,
+      },
+    }));
+    result.push({
+      team: { id: teamId, name: teamName },
+      formation: '4-3-3',
+      startXI,
+      substitutes,
+    });
+  }
+  return result.length >= 2 ? result : null;
+}
+
+// Helper: Takım kadrolarından (players/squads) sentetik ilk 11 – 1 GK, 4 DEF, 3 MID, 3 FWD
+function squadPlayerPosOrder(p) {
+  const pos = (p.position || '').toString().toLowerCase();
+  if (pos === 'goalkeeper' || pos === 'g' || pos === 'gk') return 0;
+  if (pos.includes('defender') || pos === 'd' || pos === 'cb' || pos === 'lb' || pos === 'rb' || pos === 'lwb' || pos === 'rwb') return 1;
+  if (pos.includes('midfielder') || pos === 'm' || pos === 'cm' || pos === 'cdm' || pos === 'cam' || pos === 'lm' || pos === 'rm') return 2;
+  return 3;
+}
+function buildLineupsFromTeamSquads(homeSquadData, awaySquadData, homeTeamId, homeTeamName, awayTeamId, awayTeamName) {
+  const posChar = (p) => {
+    const pos = (p.position || 'M').toString().toLowerCase();
+    if (pos.startsWith('g') || pos === 'goalkeeper') return 'G';
+    if (pos.startsWith('d') || pos.includes('defender')) return 'D';
+    if (pos.startsWith('m') || pos.includes('midfielder')) return 'M';
+    if (pos.startsWith('a') || pos.startsWith('f') || pos.includes('forward') || pos.includes('attacker')) return 'F';
+    return 'M';
+  };
+  const buildOne = (squadData, teamId, teamName) => {
+    const players = squadData?.players || squadData?.response?.[0]?.players;
+    if (!players || !Array.isArray(players) || players.length < 11) return null;
+    const sorted = [...players].sort((a, b) => squadPlayerPosOrder(a) - squadPlayerPosOrder(b));
+    const gk = sorted.filter(p => squadPlayerPosOrder(p) === 0);
+    const def = sorted.filter(p => squadPlayerPosOrder(p) === 1);
+    const mid = sorted.filter(p => squadPlayerPosOrder(p) === 2);
+    const fwd = sorted.filter(p => squadPlayerPosOrder(p) === 3);
+    const pick = [
+      ...(gk.slice(0, 1)),
+      ...(def.slice(0, 4)),
+      ...(mid.slice(0, 3)),
+      ...(fwd.slice(0, 3)),
+    ];
+    if (pick.length < 11) return null;
+    const startXI = pick.slice(0, 11).map((pl, idx) => ({
+      player: {
+        id: pl.id,
+        name: pl.name || 'Unknown',
+        number: pl.number != null ? pl.number : idx + 1,
+        pos: posChar(pl),
+        grid: GRID_433[idx] || '2:2',
+        rating: pl.rating != null ? pl.rating : 75,
+      },
+    }));
+    const subs = sorted.slice(11, 18);
+    const substitutes = subs.map((pl, idx) => ({
+      player: {
+        id: pl.id,
+        name: pl.name || 'Unknown',
+        number: pl.number != null ? pl.number : 12 + idx,
+        pos: posChar(pl),
+        grid: null,
+        rating: pl.rating != null ? pl.rating : 75,
+      },
+    }));
+    return { team: { id: teamId, name: teamName }, formation: '4-3-3', startXI, substitutes };
+  };
+  const homeLineup = buildOne(homeSquadData, homeTeamId, homeTeamName);
+  const awayLineup = buildOne(awaySquadData, awayTeamId, awayTeamName);
+  if (!homeLineup || !awayLineup || homeLineup.startXI.length < 11 || awayLineup.startXI.length < 11) return null;
+  return [homeLineup, awayLineup];
+}
+
 // GET /api/matches/:id/lineups - Get match lineups with team colors and player details
-// ?refresh=1 ile cache atlanır, API'den taze çekilir ve rating'ler güncellenir
+// ?refresh=1 ile DB + NodeCache atlanır, API'den taze çekilir. skipCache mutlaka getFixtureLineups'a geçirilmeli.
 router.get('/:id/lineups', async (req, res) => {
   try {
     const { id } = req.params;
@@ -1979,10 +2211,11 @@ router.get('/:id/lineups', async (req, res) => {
           console.warn('⚠️ [Lineups] Failed to fetch ratings for cached lineups:', e.message);
         }
       }
+      const displayRatingsMap = await getDisplayRatingsMap(playerIds, ratingsMap, supabase);
       const applyRating = (list) => (list || []).map((item) => {
         const p = item.player || item;
         const id = p && p.id;
-        const dbRating = id ? ratingsMap[id] : null;
+        const dbRating = id ? (displayRatingsMap.get(id) ?? ratingsMap[id]) : null;
         const raw = dbRating != null ? dbRating : (p && (p.rating != null && p.rating !== undefined) ? p.rating : 75);
         const rating = Math.round(Number(raw)) || 75;
         const positionStr = p && (p.position || p.pos) || '';
@@ -2005,10 +2238,65 @@ router.get('/:id/lineups', async (req, res) => {
       });
     }
     
-    // 2. API'den çek
-    console.log(`📡 [Lineups] Fetching from API for match ${matchId}`);
-    const data = await footballApi.getFixtureLineups(matchId);
-    
+    // 2. API'den çek (refresh=1 ise NodeCache atlanır, API'ye gerçekten tekrar istek gider)
+    console.log(`📡 [Lineups] Fetching from API for match ${matchId}${skipCache ? ' (refresh=1, cache bypass)' : ''}`);
+    let data = await footballApi.getFixtureLineups(matchId, skipCache);
+
+    // 2b. Fallback: lineups boşsa fixtures/players ile ilk 11 türet
+    if (!data.response || data.response.length === 0) {
+      try {
+        const playersData = await footballApi.getFixturePlayers(matchId, skipCache);
+        if (playersData?.response && playersData.response.length >= 2) {
+          const built = buildLineupsFromFixturePlayers(playersData.response);
+          if (built && built.length >= 2 && built.every(l => l.startXI && l.startXI.length >= 11)) {
+            console.log(`📋 [Lineups] Fallback: fixtures/players ile ilk 11 türetildi (match ${matchId})`);
+            data = { response: built };
+          }
+        }
+      } catch (e) {
+        console.warn('⚠️ [Lineups] Fallback fixtures/players failed:', e.message);
+      }
+    }
+
+    // 2c. Fallback: Hâlâ boşsa takım kadrolarından (players/squads) sentetik ilk 11
+    if (!data.response || data.response.length === 0) {
+      try {
+        let homeTeamId = cachedMatch?.home_team_id;
+        let awayTeamId = cachedMatch?.away_team_id;
+        if ((!homeTeamId || !awayTeamId) && skipCache) {
+          const fixtureRes = await footballApi.getFixtureDetails(matchId, true);
+          const fixture = fixtureRes?.response?.[0];
+          if (fixture?.teams?.home?.id) homeTeamId = fixture.teams.home.id;
+          if (fixture?.teams?.away?.id) awayTeamId = fixture.teams.away.id;
+        }
+        if (!homeTeamId || !awayTeamId) {
+          const { data: matchRow } = await supabase.from('matches').select('home_team_id, away_team_id').eq('id', matchId).single();
+          if (matchRow) {
+            homeTeamId = homeTeamId || matchRow.home_team_id;
+            awayTeamId = awayTeamId || matchRow.away_team_id;
+          }
+        }
+        if (homeTeamId && awayTeamId) {
+          const season = new Date().getFullYear();
+          const [homeSquad, awaySquad] = await Promise.all([
+            footballApi.getTeamSquad(homeTeamId, season, true).catch(() => ({ response: [] })),
+            footballApi.getTeamSquad(awayTeamId, season, true).catch(() => ({ response: [] })),
+          ]);
+          const homeData = homeSquad?.response?.[0];
+          const awayData = awaySquad?.response?.[0];
+          const homeName = homeData?.team?.name || 'Home';
+          const awayName = awayData?.team?.name || 'Away';
+          const built = buildLineupsFromTeamSquads(homeData, awayData, homeTeamId, homeName, awayTeamId, awayName);
+          if (built && built.length >= 2) {
+            console.log(`📋 [Lineups] Fallback: takım kadrolarından ilk 11 türetildi (match ${matchId})`);
+            data = { response: built };
+          }
+        }
+      } catch (e) {
+        console.warn('⚠️ [Lineups] Fallback team squads failed:', e.message);
+      }
+    }
+
     if (!data.response || data.response.length === 0) {
       return res.json({
         success: true,
@@ -2292,6 +2580,11 @@ router.get('/:id/lineups', async (req, res) => {
           }
         }
         
+        // Topluluk blend: n >= 2 ise R = (10*R_api + n*avg)/(10+n); yoksa API rating
+        const ids = enriched.map((p) => p.id).filter(Boolean);
+        const apiMap = enriched.reduce((acc, p) => { acc[p.id] = p.rating; return acc; }, {});
+        const displayMap = await getDisplayRatingsMap(ids, apiMap, supabase);
+        enriched = enriched.map((p) => ({ ...p, rating: displayMap.get(p.id) ?? p.rating }));
         return enriched;
       };
       

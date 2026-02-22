@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const footballApi = require('../services/footballApi');
 const { calculateRatingFromStats } = require('../utils/playerRatingFromStats');
+const { getDisplayRatingsMap } = require('../utils/displayRating');
 const { supabase } = require('../config/supabase');
 
 if (!supabase) {
@@ -415,11 +416,18 @@ router.get('/:id/squad', async (req, res) => {
             .maybeSingle();
 
           if (!newError && newRow?.players?.length > 0) {
+            const playerIds = newRow.players.map((p) => p.id).filter(Boolean);
+            const apiMap = newRow.players.reduce((acc, p) => { acc[p.id] = p.rating; return acc; }, {});
+            const displayMap = await getDisplayRatingsMap(playerIds, apiMap, supabase);
+            const playersWithDisplayRating = newRow.players.map((p) => ({
+              ...p,
+              rating: displayMap.get(p.id) ?? p.rating,
+            }));
             return res.json({
               success: true,
               data: {
                 team: newRow.team_data || { id: newRow.team_id, name: newRow.team_name },
-                players: newRow.players,
+                players: playersWithDisplayRating,
               },
               cached: false,
             });
@@ -442,11 +450,19 @@ router.get('/:id/squad', async (req, res) => {
       });
     }
 
+    const playerIds = (row.players || []).map((p) => p.id).filter(Boolean);
+    const apiMap = (row.players || []).reduce((acc, p) => { acc[p.id] = p.rating; return acc; }, {});
+    const displayMap = await getDisplayRatingsMap(playerIds, apiMap, supabase);
+    const playersWithDisplayRating = (row.players || []).map((p) => ({
+      ...p,
+      rating: displayMap.get(p.id) ?? p.rating,
+    }));
+
     res.json({
       success: true,
       data: {
         team: row.team_data || { id: row.team_id, name: row.team_name },
-        players: row.players,
+        players: playersWithDisplayRating,
       },
       cached: true,
     });

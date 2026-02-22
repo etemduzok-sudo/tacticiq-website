@@ -2,13 +2,11 @@
 // ✅ OAuth girişi sonrası Supabase'deki tahminler de gösterilir
 import { useState, useCallback, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { STORAGE_KEYS, LEGACY_STORAGE_KEYS } from '../config/constants';
+import { STORAGE_KEYS } from '../config/constants';
 import { predictionsDb } from '../services/databaseService';
 
 const SQUAD_KEY_PREFIX = STORAGE_KEYS.SQUAD;
-const LEGACY_SQUAD_KEY_PREFIX = LEGACY_STORAGE_KEYS.SQUAD;
 const PREDICTION_KEY_PREFIX = STORAGE_KEYS.PREDICTIONS;
-const LEGACY_PREDICTION_KEY_PREFIX = LEGACY_STORAGE_KEYS.PREDICTIONS;
 
 export function useMatchesWithPredictions(matchIds: number[]) {
   const [matchIdsWithPredictions, setMatchIdsWithPredictions] = useState<Set<number>>(new Set());
@@ -23,26 +21,21 @@ export function useMatchesWithPredictions(matchIds: number[]) {
       const matchIdsSet = new Set(matchIds);
 
       const allKeys = await AsyncStorage.getAllKeys();
-      const predRelatedKeys = allKeys.filter(k => 
-        k.startsWith(PREDICTION_KEY_PREFIX) || k.startsWith(LEGACY_PREDICTION_KEY_PREFIX) || 
-        k.startsWith(SQUAD_KEY_PREFIX) || k.startsWith(LEGACY_SQUAD_KEY_PREFIX)
+      const predRelatedKeys = allKeys.filter(k =>
+        k.startsWith(PREDICTION_KEY_PREFIX) || k.startsWith(SQUAD_KEY_PREFIX)
       );
       console.log(`🔄 [PREDICTIONS] Checking ${matchIds.length} matches, prediction/squad keys: ${predRelatedKeys.length}`, predRelatedKeys);
 
       for (const matchId of matchIds) {
         const predKeyBase = `${PREDICTION_KEY_PREFIX}${matchId}`;
-        const legacyPredKeyBase = `${LEGACY_PREDICTION_KEY_PREFIX}${matchId}`;
         const squadKeyBase = `${SQUAD_KEY_PREFIX}${matchId}`;
-        const legacySquadKeyBase = `${LEGACY_SQUAD_KEY_PREFIX}${matchId}`;
-        
-        const predKeys = predRelatedKeys.filter(k => 
-          k === predKeyBase || k.startsWith(`${predKeyBase}-`) ||
-          k === legacyPredKeyBase || k.startsWith(`${legacyPredKeyBase}-`)
+
+        const predKeys = predRelatedKeys.filter(k =>
+          k === predKeyBase || k.startsWith(`${predKeyBase}-`)
         );
-        
-        const squadKeys = predRelatedKeys.filter(k => 
-          k === squadKeyBase || k.startsWith(`${squadKeyBase}-`) ||
-          k === legacySquadKeyBase || k.startsWith(`${legacySquadKeyBase}-`)
+
+        const squadKeys = predRelatedKeys.filter(k =>
+          k === squadKeyBase || k.startsWith(`${squadKeyBase}-`)
         );
         
         let hasPred = false;
@@ -141,13 +134,10 @@ export function useMatchesWithPredictions(matchIds: number[]) {
         // ✅ Sadece belirli takıma özel anahtarları temizle
         keysToRemove = allKeys.filter(k =>
           k === `${PREDICTION_KEY_PREFIX}${matchId}-${teamId}` ||
-          k === `${SQUAD_KEY_PREFIX}${matchId}-${teamId}` ||
-          k === `${LEGACY_PREDICTION_KEY_PREFIX}${matchId}-${teamId}` ||
-          k === `${LEGACY_SQUAD_KEY_PREFIX}${matchId}-${teamId}`
+          k === `${SQUAD_KEY_PREFIX}${matchId}-${teamId}`
         );
         predictionKeys = allKeys.filter(k =>
-          k === `${PREDICTION_KEY_PREFIX}${matchId}-${teamId}` ||
-          k === `${LEGACY_PREDICTION_KEY_PREFIX}${matchId}-${teamId}`
+          k === `${PREDICTION_KEY_PREFIX}${matchId}-${teamId}`
         );
       } else {
         // ✅ Tüm tahminleri temizle (hem basit hem takıma özel)
@@ -155,17 +145,11 @@ export function useMatchesWithPredictions(matchIds: number[]) {
           k === `${PREDICTION_KEY_PREFIX}${matchId}` ||
           k.startsWith(`${PREDICTION_KEY_PREFIX}${matchId}-`) ||
           k === `${SQUAD_KEY_PREFIX}${matchId}` ||
-          k.startsWith(`${SQUAD_KEY_PREFIX}${matchId}-`) ||
-          k === `${LEGACY_PREDICTION_KEY_PREFIX}${matchId}` ||
-          k.startsWith(`${LEGACY_PREDICTION_KEY_PREFIX}${matchId}-`) ||
-          k === `${LEGACY_SQUAD_KEY_PREFIX}${matchId}` ||
-          k.startsWith(`${LEGACY_SQUAD_KEY_PREFIX}${matchId}-`)
+          k.startsWith(`${SQUAD_KEY_PREFIX}${matchId}-`)
         );
         predictionKeys = allKeys.filter(k =>
           k === `${PREDICTION_KEY_PREFIX}${matchId}` ||
-          k.startsWith(`${PREDICTION_KEY_PREFIX}${matchId}-`) ||
-          k === `${LEGACY_PREDICTION_KEY_PREFIX}${matchId}` ||
-          k.startsWith(`${LEGACY_PREDICTION_KEY_PREFIX}${matchId}-`)
+          k.startsWith(`${PREDICTION_KEY_PREFIX}${matchId}-`)
         );
       }
       

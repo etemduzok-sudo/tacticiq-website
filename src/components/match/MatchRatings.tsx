@@ -56,7 +56,7 @@ import {
 } from '../../services/predictionScoringService';
 import { TrainingType, FocusPrediction, AnalysisCluster } from '../../types/prediction.types';
 import ScoringEngine from '../../logic/ScoringEngine';
-import { STORAGE_KEYS, LEGACY_STORAGE_KEYS, TEXT } from '../../config/constants';
+import { STORAGE_KEYS, TEXT } from '../../config/constants';
 import { handleError, ErrorType } from '../../utils/GlobalErrorHandler';
 import { checkAndAwardBadges, UserStats, BadgeAwardResult } from '../../services/badgeService';
 import { getBadgeColor, getBadgeTierName } from '../../types/badges.types';
@@ -1018,12 +1018,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
 
   const loadPredictionsAndCalculateScores = async () => {
     try {
-      // Try new key first, fallback to legacy key
-      const predictionDataStr = await AsyncStorage.getItem(
-        `${STORAGE_KEYS.PREDICTIONS}${matchData.id}`
-      ) || await AsyncStorage.getItem(
-        `${LEGACY_STORAGE_KEYS.PREDICTIONS}${matchData.id}`
-      );
+      const predictionDataStr = await AsyncStorage.getItem(`${STORAGE_KEYS.PREDICTIONS}${matchData.id}`);
       
       if (!predictionDataStr) return;
       

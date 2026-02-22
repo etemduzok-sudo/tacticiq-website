@@ -109,6 +109,22 @@ function buildEnhancedPlayers(players, dbPlayersMap, injuriesMap = {}) {
   });
 }
 
+// 429 gelirse 60 sn bekleyip tekrar dene (max 2 retry) — koç/renk güncellemesi atlanmasın
+async function withRetry429(fn, retries = 2) {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await fn();
+    } catch (e) {
+      const is429 = (e?.response?.status === 429) || (e?.message && String(e.message).includes('429'));
+      if (is429 && attempt < retries) {
+        await new Promise((r) => setTimeout(r, 60000));
+      } else {
+        throw e;
+      }
+    }
+  }
+}
+
 // ✅ Tek bir takımın TÜM verilerini sync et: kadro + coach + takım bilgileri + renkler
 // ÖNEMLİ: Coach için HER ZAMAN /coachs endpoint'i kullanılır (maç oynamamış takımlar için de)
 async function syncOneTeamSquad(teamId, teamName, options = {}) {
@@ -116,11 +132,11 @@ async function syncOneTeamSquad(teamId, teamName, options = {}) {
   const result = { ok: false, count: 0, coachUpdated: false, colorsUpdated: false };
   
   try {
-    // 1. COACH'U HER ZAMAN /coachs ENDPOINT'İNDEN ÇEK (en güvenilir kaynak!)
+    // 1. COACH'U HER ZAMAN /coachs ENDPOINT'İNDEN ÇEK (429'da 60sn bekleyip tekrar dene)
     let currentCoach = null;
     if (syncCoach) {
       try {
-        const coachData = await footballApi.getTeamCoach(teamId);
+        const coachData = await withRetry429(() => footballApi.getTeamCoach(teamId));
         if (coachData.response && coachData.response.length > 0) {
           const coaches = coachData.response;
           // Aktif coach'u bul (career.end = null olan)
@@ -131,17 +147,22 @@ async function syncOneTeamSquad(teamId, teamName, options = {}) {
           if (activeCoach) {
             currentCoach = activeCoach.name;
             
-            // Coach'u hemen DB'ye kaydet
+            // Coach'u hemen DB'ye kaydet (api_football_id sayı olarak eşleşsin)
             if (supabase && currentCoach) {
-              await supabase
+              const tid = Number(teamId) || teamId;
+              const { error } = await supabase
                 .from('static_teams')
                 .update({ 
                   coach: currentCoach, 
                   coach_api_id: activeCoach.id,
                   last_updated: new Date().toISOString() 
                 })
-                .eq('api_football_id', teamId);
-              result.coachUpdated = true;
+                .eq('api_football_id', tid);
+              if (error) {
+                console.warn(`⚠️ Coach DB update failed for ${teamId}:`, error.message);
+              } else {
+                result.coachUpdated = true;
+              }
             }
           }
         }

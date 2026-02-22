@@ -30,7 +30,7 @@ import { MatchRatings } from './match/MatchRatings';
 import { AnalysisFocusModal, AnalysisFocusType } from './AnalysisFocusModal';
 import { ConfirmModal } from './ui/ConfirmModal';
 // CountdownWarningModal kaldırıldı - 120 saniyelik kural artık yok
-import { STORAGE_KEYS, LEGACY_STORAGE_KEYS } from '../config/constants';
+import { STORAGE_KEYS } from '../config/constants';
 import { predictionsDb } from '../services/databaseService';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BRAND, COLORS, SPACING, SIZES } from '../theme/theme';
@@ -161,10 +161,8 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
       if (bothFav && homeId != null && awayId != null) {
         const key1 = `${STORAGE_KEYS.PREDICTIONS}${matchId}-${homeId}`;
         const key2 = `${STORAGE_KEYS.PREDICTIONS}${matchId}-${awayId}`;
-        const alt1 = `${LEGACY_STORAGE_KEYS.PREDICTIONS}${matchId}-${homeId}`;
-        const alt2 = `${LEGACY_STORAGE_KEYS.PREDICTIONS}${matchId}-${awayId}`;
-        const raw1 = await AsyncStorage.getItem(key1) || await AsyncStorage.getItem(alt1);
-        const raw2 = await AsyncStorage.getItem(key2) || await AsyncStorage.getItem(alt2);
+        const raw1 = await AsyncStorage.getItem(key1);
+        const raw2 = await AsyncStorage.getItem(key2);
         let has = false;
         if (raw1) {
           const p = JSON.parse(raw1);
@@ -174,13 +172,18 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
           const p = JSON.parse(raw2);
           has = has || !!(p?.matchPredictions && Object.values(p.matchPredictions).some((v: any) => v != null)) || !!(p?.playerPredictions && Object.keys(p.playerPredictions).length > 0);
         }
-        // ✅ Mock maçlar için squad storage'ını da kontrol et
-        if (isMockMatch && effectiveTeamId != null) {
-          const squadKey = `${STORAGE_KEYS.SQUAD}${matchId}-${effectiveTeamId}`;
+        // ✅ Kadro tamamlanmış mı? (mock + gerçek maç – iki favori için her iki takım)
+        const squadKey1 = `${STORAGE_KEYS.SQUAD}${matchId}-${homeId}`;
+        const squadKey2 = `${STORAGE_KEYS.SQUAD}${matchId}-${awayId}`;
+        for (const squadKey of [squadKey1, squadKey2]) {
           const squadRaw = await AsyncStorage.getItem(squadKey);
           if (squadRaw) {
-            const squad = JSON.parse(squadRaw);
-            has = has || (squad.isCompleted === true && squad.matchId === fixtureId && squad.attackPlayersArray?.length >= 11);
+            try {
+              const squad = JSON.parse(squadRaw);
+              const hasSquad = squad.isCompleted === true && squad.attackPlayersArray?.length >= 11;
+              if (isMockMatch) has = has || (hasSquad && squad.matchId === fixtureId);
+              else has = has || hasSquad;
+            } catch (_) {}
           }
         }
         setHasPrediction(has);
@@ -189,8 +192,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
       
       // ✅ Tek favori takım veya mock maç
       const predKey = effectiveTeamId != null ? `${STORAGE_KEYS.PREDICTIONS}${matchId}-${effectiveTeamId}` : `${STORAGE_KEYS.PREDICTIONS}${matchId}`;
-      const predRaw = await AsyncStorage.getItem(predKey)
-        || await AsyncStorage.getItem(effectiveTeamId != null ? `${LEGACY_STORAGE_KEYS.PREDICTIONS}${matchId}-${effectiveTeamId}` : `${LEGACY_STORAGE_KEYS.PREDICTIONS}${matchId}`);
+      const predRaw = await AsyncStorage.getItem(predKey);
       
       let hasPred = false;
       if (predRaw) {
@@ -200,17 +202,18 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
         hasPred = !!hasMatchPred || !!hasPlayerPred;
       }
       
-      // ✅ Mock maçlar için squad storage'ını da kontrol et
-      if (isMockMatch && effectiveTeamId != null) {
-        const squadKey = `${STORAGE_KEYS.SQUAD}${matchId}-${effectiveTeamId}`;
-        const squadRaw = await AsyncStorage.getItem(squadKey);
-        if (squadRaw) {
+      // ✅ Kadro tamamlanmış mı? (mock + gerçek maç – Tahmin sekmesinde kadronun görünmesi için)
+      const squadKey = effectiveTeamId != null ? `${STORAGE_KEYS.SQUAD}${matchId}-${effectiveTeamId}` : `${STORAGE_KEYS.SQUAD}${matchId}`;
+      const squadRaw = await AsyncStorage.getItem(squadKey);
+      if (squadRaw) {
+        try {
           const squad = JSON.parse(squadRaw);
-          const hasSquad = squad.isCompleted === true && squad.matchId === fixtureId && squad.attackPlayersArray?.length >= 11;
-          hasPred = hasPred || hasSquad;
-        }
+          const hasSquad = squad.isCompleted === true && squad.attackPlayersArray?.length >= 11;
+          if (isMockMatch) hasPred = hasPred || (hasSquad && squad.matchId === fixtureId);
+          else hasPred = hasPred || hasSquad;
+        } catch (_) {}
       }
-      
+
       setHasPrediction(hasPred);
       
       // ✅ hasViewedCommunityData değerini de oku
@@ -256,11 +259,9 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
       if ((bothFavorites && teamToReset != null) || (isMockMatch && effectiveTeamId != null)) {
         const teamIdToUse = teamToReset ?? effectiveTeamId;
         await AsyncStorage.removeItem(`${STORAGE_KEYS.PREDICTIONS}${matchId}-${teamIdToUse}`);
-        await AsyncStorage.removeItem(`${LEGACY_STORAGE_KEYS.PREDICTIONS}${matchId}-${teamIdToUse}`);
         const squadKey = `${STORAGE_KEYS.SQUAD}${matchId}-${teamIdToUse}`;
         // ✅ Storage'dan tamamen sil (isCompleted = false yapmak yerine)
         await AsyncStorage.removeItem(squadKey);
-        await AsyncStorage.removeItem(`${LEGACY_STORAGE_KEYS.SQUAD}${matchId}-${teamIdToUse}`);
         
         const userDataStr = await AsyncStorage.getItem(STORAGE_KEYS.USER);
         const userData = userDataStr ? JSON.parse(userDataStr) : null;
@@ -269,11 +270,9 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
       } else {
         // ✅ Tek favori takım: Normal storage key kullan
         await AsyncStorage.removeItem(STORAGE_KEYS.PREDICTIONS + matchId);
-        await AsyncStorage.removeItem(`${LEGACY_STORAGE_KEYS.PREDICTIONS}${matchId}`);
         const squadKey = `${STORAGE_KEYS.SQUAD}${matchId}`;
         // ✅ Storage'dan tamamen sil
         await AsyncStorage.removeItem(squadKey);
-        await AsyncStorage.removeItem(`${LEGACY_STORAGE_KEYS.SQUAD}${matchId}`);
         
         const userDataStr = await AsyncStorage.getItem(STORAGE_KEYS.USER);
         const userData = userDataStr ? JSON.parse(userDataStr) : null;
@@ -313,6 +312,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
   
   // ✅ Mock maçlar için sabit başlangıç zamanı (her render'da yeniden hesaplanmaması için)
   const mockMatchStartTimeRef = React.useRef<number | null>(null);
+  const lineupsRetryRef = React.useRef<{ t2: ReturnType<typeof setTimeout> | null; t5: ReturnType<typeof setTimeout> | null }>({ t2: null, t5: null });
   
   // ✅ Geri sayım ticker - her saniye güncelle
   React.useEffect(() => {
@@ -420,35 +420,106 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
   const [liveStatistics, setLiveStatistics] = React.useState<any>(null);
   
   // ✅ Canlı maç mı kontrol et (erken kontrol - canlı güncelleme için)
-  // preloadedMatch, match veya liveMatchData'dan herhangi biri canlı ise güncellemeye devam et
+  // 1) Status canlı ise (1H, 2H, HT ...) VEYA
+  // 2) Maç başlama saati geçtiyse ve bitmemişse → canlı kabul et ve polling başlat (ilk poll'da gerçek status gelir)
   const LIVE_STATUSES_EARLY = ['1H', '2H', 'HT', 'ET', 'P', 'BT', 'LIVE', 'INT'];
+  const FINISHED_STATUSES = ['FT', 'AET', 'PEN', 'ABD', 'AWD', 'WO', 'CANC', 'PST', 'SUSP'];
   const earlyMatchStatus = liveMatchData?.fixture?.status?.short || match?.fixture?.status?.short || match?.status?.short || preloadedMatch?.fixture?.status?.short || preloadedMatch?.status?.short || '';
-  const isMatchLiveEarly = LIVE_STATUSES_EARLY.includes(earlyMatchStatus) || 
-                           liveMatchData?.fixture?.status?.short === '2H' || 
-                           liveMatchData?.fixture?.status?.short === '1H';
+  const isStatusLive = LIVE_STATUSES_EARLY.includes(earlyMatchStatus);
+  const isStatusFinished = FINISHED_STATUSES.some(s => earlyMatchStatus?.startsWith?.(s) || earlyMatchStatus === s);
+  const fixtureDate = liveMatchData?.fixture?.date || match?.fixture?.date || preloadedMatch?.fixture?.date || match?.fixture_date || preloadedMatch?.fixture_date;
+  const startTimeMs = fixtureDate ? new Date(fixtureDate).getTime() : 0;
+  const nowMs = Date.now();
+  const matchStartedByTime = startTimeMs > 0 && nowMs >= startTimeMs - 60000; // 1 dk tolerans
+  const matchNotFinishedByTime = startTimeMs > 0 && (nowMs - startTimeMs) < 3.5 * 60 * 60 * 1000; // 3.5 saat içinde
+  const isPotentiallyLive = matchStartedByTime && matchNotFinishedByTime && !isStatusFinished;
+  const isMatchLiveEarly = isStatusLive || isPotentiallyLive;
   
-  // ✅ preloadedMatch varken de lineups'ı çek (arka planda) - refresh=1 ile
+  // ✅ Lineups'ı çek. Canlı/bitmiş maçta ilk istek refresh=1 ile (cache atla, API'den taze kadro gelsin).
   React.useEffect(() => {
-    if (matchId) {
-      const fetchLineups = async () => {
-        try {
-          // ✅ Canlı maçlarda refresh=1 kullan
-          const response = await api.matches.getMatchLineups(Number(matchId));
-          if (response?.success && response?.data && response.data.length > 0) {
-            // ✅ startXI'si dolu olan lineup'ları kabul et
-            const hasStartXI = response.data.some((l: any) => l.startXI && l.startXI.length > 0);
-            if (hasStartXI) {
-              setManualLineups(response.data);
-              console.log('📋 Lineups yüklendi:', response.data[0]?.team?.name, response.data[0]?.formation);
-            }
+    if (!matchId) return;
+    const isLiveOrFinished = earlyMatchStatus && (LIVE_STATUSES_EARLY.includes(earlyMatchStatus) || FINISHED_STATUSES.some((s: string) => earlyMatchStatus?.startsWith?.(s) || earlyMatchStatus === s));
+    const refresh = !!isLiveOrFinished;
+    const fetchLineups = async (doRefresh: boolean): Promise<boolean> => {
+      try {
+        const response = await api.matches.getMatchLineups(Number(matchId), doRefresh);
+        if (response?.success && response?.data && response.data.length > 0) {
+          const hasStartXI = response.data.some((l: any) => l.startXI && l.startXI.length >= 11);
+          if (hasStartXI) {
+            setManualLineups(response.data);
+            console.log('📋 Lineups yüklendi:', response.data[0]?.team?.name, response.data[0]?.formation);
+            return true;
           }
-        } catch (e) {
-          console.log('📋 Lineups yükleme hatası:', e);
         }
-      };
-      fetchLineups();
-    }
-  }, [matchId]);
+        if (isLiveOrFinished) {
+          console.warn('📋 Lineups boş döndü (canlı/bitmiş maç)', { matchId, refresh: doRefresh });
+        }
+      } catch (e) {
+        console.log('📋 Lineups yükleme hatası:', e);
+      }
+      return false;
+    };
+
+    fetchLineups(refresh).then((ok) => {
+      if (isLiveOrFinished && !ok) {
+        lineupsRetryRef.current.t2 = setTimeout(() => fetchLineups(true), 2000);
+        lineupsRetryRef.current.t5 = setTimeout(() => fetchLineups(true), 5000);
+      }
+    });
+
+    return () => {
+      if (lineupsRetryRef.current.t2) clearTimeout(lineupsRetryRef.current.t2);
+      if (lineupsRetryRef.current.t5) clearTimeout(lineupsRetryRef.current.t5);
+      lineupsRetryRef.current.t2 = null;
+      lineupsRetryRef.current.t5 = null;
+    };
+  }, [matchId, earlyMatchStatus]);
+
+  // ✅ CANLI MAÇTA KADRO BOŞSA PERİYODİK YENİDEN ÇEK – maç başladıktan sonra API kadroyu açıklar
+  const lineupsHasStartXI = React.useMemo(() => {
+    const arr = apiLineups || manualLineups;
+    if (!arr || !Array.isArray(arr) || arr.length === 0) return false;
+    return arr.some((l: any) => l.startXI && l.startXI.length >= 11);
+  }, [apiLineups, manualLineups]);
+
+  React.useEffect(() => {
+    if (!matchId || !isMatchLiveEarly || lineupsHasStartXI) return;
+
+    let attempts = 0;
+    const MAX_ATTEMPTS = 8;
+    const INTERVAL_MS = 15000;
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+
+    const pollLineups = async () => {
+      attempts += 1;
+      try {
+        const response = await api.matches.getMatchLineups(Number(matchId), true);
+        if (response?.success && response?.data && response.data.length > 0) {
+          const hasStartXI = response.data.some((l: any) => l.startXI && l.startXI.length >= 11);
+          if (hasStartXI) {
+            setManualLineups(response.data);
+            console.log('📋 [Canlı] Kadro açıklandı, lineups güncellendi:', response.data[0]?.team?.name);
+            if (intervalId) clearInterval(intervalId);
+            return true;
+          }
+        }
+      } catch (_) {}
+      return false;
+    };
+
+    pollLineups();
+    intervalId = setInterval(() => {
+      if (attempts >= MAX_ATTEMPTS && intervalId) {
+        clearInterval(intervalId);
+        return;
+      }
+      pollLineups();
+    }, INTERVAL_MS);
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [matchId, isMatchLiveEarly, lineupsHasStartXI]);
   
   // ✅ CANLI MAÇ GÜNCELLEME - preloadedMatch kullanılsa bile
   React.useEffect(() => {
@@ -458,14 +529,14 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
     
     const fetchLiveData = async () => {
       try {
-        // ✅ Paralel olarak tüm canlı verileri çek - refresh=true ile cache'i atla
-        const [matchRes, eventsRes, statsRes] = await Promise.allSettled([
-          api.matches.getMatchDetails(Number(matchId), true),  // refresh=true
-          api.matches.getMatchEvents(Number(matchId), true),   // refresh=true
-          api.matches.getMatchStatistics(Number(matchId), true), // refresh=true
+        // ✅ Paralel: canlı veriler + lineups (refresh ile; kadro açıklanınca hemen gelsin)
+        const [matchRes, eventsRes, statsRes, lineupsRes] = await Promise.allSettled([
+          api.matches.getMatchDetails(Number(matchId), true),
+          api.matches.getMatchEvents(Number(matchId), true),
+          api.matches.getMatchStatistics(Number(matchId), true),
+          api.matches.getMatchLineups(Number(matchId), true),
         ]);
         
-        // ✅ Sadece geçerli fixture.status varsa güncelle (rate limit/500 sonrası boş status ile üzerine yazma)
         if (matchRes.status === 'fulfilled' && matchRes.value?.success && matchRes.value.data?.fixture?.status != null) {
           const short = matchRes.value.data.fixture.status?.short ?? matchRes.value.data.fixture.status?.long ?? '';
           if (short !== '' || matchRes.value.data.fixture.status?.elapsed != null) {
@@ -480,6 +551,14 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
         if (statsRes.status === 'fulfilled' && statsRes.value?.success) {
           setLiveStatistics(statsRes.value.data);
         }
+
+        if (lineupsRes.status === 'fulfilled' && lineupsRes.value?.success && lineupsRes.value.data?.length > 0) {
+          const hasStartXI = lineupsRes.value.data.some((l: any) => l.startXI && l.startXI.length >= 11);
+          if (hasStartXI) {
+            setManualLineups(lineupsRes.value.data);
+            console.log('📋 [Canlı döngü] Lineups güncellendi:', lineupsRes.value.data[0]?.team?.name);
+          }
+        }
         
         console.log('🔄 Canlı veriler güncellendi:', {
           elapsed: matchRes.status === 'fulfilled' ? matchRes.value?.data?.fixture?.status?.elapsed : null,
@@ -490,11 +569,11 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
       }
     };
     
-    // İlk çağrı
+    // İlk çağrı hemen
     fetchLiveData();
     
-    // Her 15 saniyede bir güncelle
-    const interval = setInterval(fetchLiveData, 15000);
+    // Her 10 saniyede bir güncelle (canlı istatistikler anlık gelsin)
+    const interval = setInterval(fetchLiveData, 10000);
     
     return () => {
       console.log('⏹️ Canlı maç güncelleme döngüsü durduruldu');
@@ -655,9 +734,8 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
     || getManagerFromLineups(match?.teams?.away?.id) 
     || getCoachFallback(match?.teams?.away?.name);
 
-  // ✅ LIVE_STATUSES zaten yukarıda tanımlı, burada tekrar tanımlama
-  const FINISHED_STATUSES = ['FT', 'AET', 'PEN', 'AWD', 'WO', 'ABD', 'CANC']; // Sadece gerçekten bitmiş/iptal maçlar
-  const POSTPONED_STATUSES = ['PST', 'SUSP', 'TBD']; // Ertelenmiş/askıya alınmış - bunlar bitmiş sayılmaz
+  // Biten maç (ertelenen PST/SUSP hariç) – FINISHED_STATUSES yukarıda tanımlı
+  const REALLY_FINISHED_STATUSES = ['FT', 'AET', 'PEN', 'AWD', 'WO', 'ABD', 'CANC'];
   
   // ✅ Mock maçlar için gerçek zamandan status belirle - countdownTicker ile her saniye güncellensin
   // ✅ DÜZELTME: currentMatch kullan; boş status'ta match (preloaded) ile yedekle ki canlı maç "başlamadı" görünmesin
@@ -732,7 +810,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
   }, [matchId, currentMatch?.fixture?.status, currentMatch?.fixture?.timestamp, match?.fixture?.status, match?.fixture?.timestamp, liveMatchData, countdownTicker]);
   
   const isMatchLive = LIVE_STATUSES_EARLY.includes(matchStatus);
-  const isMatchFinished = FINISHED_STATUSES.includes(matchStatus);
+  const isMatchFinished = REALLY_FINISHED_STATUSES.includes(matchStatus);
   
   // ✅ DEBUG: Maç statüsünü konsola yazdır
   React.useEffect(() => {
@@ -772,9 +850,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
         // ✅ Biten maçları tara - RATINGS storage'ından kontrol et
         const allKeys = await AsyncStorage.getAllKeys();
         const ratingKeys = allKeys.filter(k => k.startsWith(STORAGE_KEYS.RATINGS));
-        const predictionKeys = allKeys.filter(k => 
-          k.startsWith(STORAGE_KEYS.PREDICTIONS) || k.startsWith(LEGACY_STORAGE_KEYS.PREDICTIONS)
-        );
+        const predictionKeys = allKeys.filter(k => k.startsWith(STORAGE_KEYS.PREDICTIONS));
         
         const pendingMatches: {matchId: string; teamName: string; date: string; reminderCount: number}[] = [];
         
@@ -1164,6 +1240,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
             startingXIPopupShown={startingXIPopupShown}
             onStartingXIPopupShown={() => setStartingXIPopupShown(true)}
             hasViewedCommunityData={hasViewedCommunityData}
+            onNavigateToTab={(tab) => setActiveTab(tab)}
           />
         );
       
@@ -1201,7 +1278,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
         return <MatchLive matchData={matchData} matchId={matchId} events={currentEvents} />;
       
       case 'stats':
-        return <MatchStats matchData={matchData} matchId={matchId} favoriteTeamIds={favoriteTeamIds} events={currentEvents} />;
+        return <MatchStats matchData={matchData} matchId={matchId} favoriteTeamIds={favoriteTeamIds} events={currentEvents} liveStatistics={liveStatistics} isMatchLive={!!isMatchLiveEarly} />;
       
       case 'ratings':
         return <MatchRatings matchData={matchData} lineups={lineups} favoriteTeamIds={favoriteTeamIds} hasPrediction={hasPrediction === true} />;
@@ -1267,6 +1344,10 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
           {hasPrediction ? (
             <TouchableOpacity
               onPress={() => {
+                if (isMatchLive || isMatchFinished) {
+                  Alert.alert('Tahmin silinemez', 'Maç başladığı veya bittiği için tahmin artık silinemez.');
+                  return;
+                }
                 if (bothFavorites) setShowResetTeamPickerModal(true);
                 else setShowResetPredictionsModal(true);
               }}

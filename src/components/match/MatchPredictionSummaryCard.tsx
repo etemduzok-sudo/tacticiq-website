@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
-import { STORAGE_KEYS, LEGACY_STORAGE_KEYS } from '../../config/constants';
+import { STORAGE_KEYS } from '../../config/constants';
 
 interface MatchPredictionSummaryCardProps {
   matchId: number;
@@ -36,8 +36,7 @@ export function MatchPredictionSummaryCard({ matchId, matchData, onViewDetails }
     try {
       // Tahmin verisini yükle
       const predKey = `${STORAGE_KEYS.PREDICTIONS}${matchId}`;
-      const legacyPredKey = `${LEGACY_STORAGE_KEYS.PREDICTIONS}${matchId}`;
-      const predData = await AsyncStorage.getItem(predKey) || await AsyncStorage.getItem(legacyPredKey);
+      const predData = await AsyncStorage.getItem(predKey);
       
       setHasPrediction(!!predData);
     } catch (error) {

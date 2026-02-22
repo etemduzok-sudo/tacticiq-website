@@ -165,7 +165,7 @@ export default function App() {
     i18n.on('languageChanged', handler);
     return () => i18n.off('languageChanged', handler);
   }, []);
-  
+
   // i18n.language her zaman güncel dili verir
   const currentLang = i18nInstance?.language?.split('-')[0] || i18n.language || 'en';
 

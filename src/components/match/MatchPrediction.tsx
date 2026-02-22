@@ -34,7 +34,7 @@ import Svg, {
   Path, 
 } from 'react-native-svg';
 import { FocusPrediction, SCORING_CONSTANTS } from '../../types/prediction.types';
-import { SCORING, TEXT, STORAGE_KEYS, LEGACY_STORAGE_KEYS, PITCH_LAYOUT } from '../../config/constants';
+import { SCORING, TEXT, STORAGE_KEYS, PITCH_LAYOUT } from '../../config/constants';
 import { handleError, ErrorType, ErrorSeverity } from '../../utils/GlobalErrorHandler';
 import { predictionsDb } from '../../services/databaseService';
 import { ConfirmModal, ConfirmButton } from '../ui/ConfirmModal';
@@ -155,6 +155,16 @@ function isGoalkeeperPlayer(p: { position?: string; pos?: string } | null | unde
   if (!pos) return false;
   const lower = pos.toLowerCase();
   return pos === 'GK' || pos === 'G' || lower === 'goalkeeper' || lower.startsWith('goalkeeper');
+}
+
+// ✅ Reytingi 0–100 tam puan üzerinden göster; yuvarlayıp farkları kaybetme (60–70 arası anlamlı)
+// API: 0–10 (maç reytingi) → ×10 (6.7 → 67). Zaten 11–100 ise olduğu gibi (tam sayı).
+function normalizeRatingTo100(rating: number | null | undefined): number | null {
+  if (rating == null || Number(rating) <= 0) return null;
+  const r = Number(rating);
+  if (r > 0 && r <= 10) return Math.min(100, Math.round(r * 10)); // 6.7 → 67
+  if (r > 10 && r <= 100) return Math.round(r); // 72.4 → 72 (tam sayı, ondalık yok)
+  return Math.min(100, Math.max(0, Math.round(r)));
 }
 
 // ✅ Pozisyon isimlerini kısaltmaya çevir (MatchSquad ile uyumlu)
@@ -461,10 +471,6 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
     () => (matchId && effectivePredictionTeamId != null ? `${STORAGE_KEYS.SQUAD}${matchId}-${effectivePredictionTeamId}` : matchId ? `${STORAGE_KEYS.SQUAD}${matchId}` : null),
     [matchId, effectivePredictionTeamId]
   );
-  const legacySquadStorageKey = React.useMemo(
-    () => (matchId && effectivePredictionTeamId != null ? `${LEGACY_STORAGE_KEYS.SQUAD}${matchId}-${effectivePredictionTeamId}` : matchId ? `${LEGACY_STORAGE_KEYS.SQUAD}${matchId}` : null),
-    [matchId, effectivePredictionTeamId]
-  );
   // ✅ predictionStorageKey: matchId ve effectivePredictionTeamId kullan (MatchSquad ile tutarlı)
   const predictionStorageKey = React.useMemo(
     () => (matchId && effectivePredictionTeamId != null ? `${STORAGE_KEYS.PREDICTIONS}${matchId}-${effectivePredictionTeamId}` : matchId ? `${STORAGE_KEYS.PREDICTIONS}${matchId}` : null),
@@ -486,7 +492,9 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
   const [viewOnlyPopupShown, setViewOnlyPopupShown] = useState(false); // ✅ İlk giriş popup gösterildi mi?
   const [liveReactionPlayer, setLiveReactionPlayer] = useState<any>(null); // ✅ Canlı maç reaction popup
   const [liveReactions, setLiveReactions] = useState<{[playerId: number]: string}>({}); // ✅ Gönderilen reaction'lar
-  const [teamPerformance, setTeamPerformance] = useState<number>(5); // ✅ Takım performans barı (1-10)
+  const [teamPerformance, setTeamPerformance] = useState<number>(5); // ✅ Takım performans puanı (1-10), sayfaya dönünce gösterilir
+  const [communityTeamPerformanceAvg, setCommunityTeamPerformanceAvg] = useState<number | null>(null); // ✅ Topluluk ortalaması (API'den gelecek)
+  const [showCommunityAvgTooltip, setShowCommunityAvgTooltip] = useState(false); // ✅ Yeşil çizgiye tıklanınca "Ortalama topluluk verisi"
   const [threeFieldActiveIndex, setThreeFieldActiveIndex] = useState(0); // ✅ 3 saha görünümünde aktif sayfa
   const [predictionViewIndex, setPredictionViewIndex] = useState(0); // ✅ 0: Benim Tahminim, 1: Topluluk, 2: Gerçek
   
@@ -496,8 +504,8 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
   // ✅ ThreeFieldView için veri hazırlama (tüm maçlar için 3 saha görünümü)
   const threeFieldData = useMemo(() => {
     
-    // Kullanıcı kadrosu - SADECE tahmin yapılmışsa göster
-    const userSquad = hasPrediction && attackPlayersArray.length >= 11 && attackFormation ? {
+    // Kullanıcı kadrosu - storage'dan yüklü tam kadro varsa göster (hasPrediction yanı sıra kadro tamamlanmışsa da)
+    const userSquad = (attackPlayersArray.length >= 11 && attackFormation) ? {
       players: attackPlayersArray.map((p: any) => ({
         id: p.id,
         name: p.name,
@@ -510,19 +518,34 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
       defenseFormation: defenseFormation || attackFormation,
     } : null;
     
-    // Gerçek kadro (lineups'tan)
+    // Grid sırası: "row:col" (örn. 1:1 = kaleci, 2:x = defans, 3:x = orta, 4:x = forvet) → formasyon slot sırası
+    const sortByGrid = (list: { grid?: string | null }[]) => {
+      return [...list].sort((a, b) => {
+        const parse = (g: string | null | undefined) => {
+          if (!g || typeof g !== 'string') return { row: 99, col: 99 };
+          const [r, c] = g.split(':').map(Number);
+          return { row: Number.isNaN(r) ? 99 : r, col: Number.isNaN(c) ? 99 : c };
+        };
+        const pa = parse(a.grid);
+        const pb = parse(b.grid);
+        if (pa.row !== pb.row) return pa.row - pb.row;
+        return pa.col - pb.col;
+      });
+    };
+
+    // Gerçek kadro (lineups'tan) – formasyon slot sırasına göre (grid)
     const resolvedTeamId = effectivePredictionTeamId ?? predictionTeamId;
     let actualPlayers: any[] = [];
     let actualFormation = '4-3-3';
-    
+
     // Önce lineups'tan dene
     if (lineups && lineups.length > 0) {
-      const targetLineup = resolvedTeamId 
+      const targetLineup = resolvedTeamId
         ? lineups.find((l: any) => l.team?.id === resolvedTeamId)
         : lineups[0];
-      
+
       if (targetLineup?.startXI) {
-        actualPlayers = targetLineup.startXI.map((item: any) => {
+        const mapped = targetLineup.startXI.map((item: any) => {
           const player = item.player || item;
           return {
             id: player.id,
@@ -531,23 +554,25 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
             position: player.pos || player.position || '',
             photo: player.photo,
             rating: player.rating,
+            grid: player.grid ?? item.grid,
           };
         });
+        actualPlayers = sortByGrid(mapped);
         actualFormation = targetLineup.formation || '4-3-3';
       }
     }
-    
+
     // ✅ Mock maçlar için fallback - lineups boşsa mock lineup kullan
     const matchIdNum = matchId ? Number(matchId) : null;
     if (actualPlayers.length === 0 && matchIdNum && isMockTestMatch(matchIdNum)) {
       const mockLineups = getMockLineup(matchIdNum);
       if (mockLineups && mockLineups.length > 0) {
-        const targetLineup = resolvedTeamId 
+        const targetLineup = resolvedTeamId
           ? mockLineups.find((l: any) => l.team?.id === resolvedTeamId)
           : mockLineups[0];
-        
+
         if (targetLineup?.startXI) {
-          actualPlayers = targetLineup.startXI.map((item: any) => {
+          const mapped = targetLineup.startXI.map((item: any) => {
             const player = item.player || item;
             return {
               id: player.id,
@@ -556,8 +581,10 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
               position: player.pos || player.position || '',
               photo: player.photo,
               rating: player.rating,
+              grid: player.grid ?? item.grid,
             };
           });
+          actualPlayers = sortByGrid(mapped);
           actualFormation = targetLineup.formation || '4-3-3';
         }
       }
@@ -1097,11 +1124,6 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
         // ✅ Önce normal key'i kontrol et
         let squadData = await AsyncStorage.getItem(key);
         
-        // ✅ Eğer bulunamazsa legacy key'i de kontrol et
-        if (!squadData && legacySquadStorageKey) {
-          squadData = await AsyncStorage.getItem(legacySquadStorageKey);
-        }
-        
         if (squadData) {
           const parsed = JSON.parse(squadData);
           let arr: any[] = [];
@@ -1131,7 +1153,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
           }
           setSquadLoaded(true);
         } else {
-          console.log('⚠️ [MatchPrediction] Kadro bulunamadı:', { key, legacyKey: legacySquadStorageKey });
+          console.log('⚠️ [MatchPrediction] Kadro bulunamadı:', { key });
           setSquadLoaded(true);
         }
       } catch (error) {
@@ -1140,7 +1162,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
       }
     };
     loadSquad();
-  }, [squadStorageKey, legacySquadStorageKey]);
+  }, [squadStorageKey]);
 
   // ✅ Yedek oyuncuları hesapla (tüm kadro - ilk 11)
   const reserveTeamPlayers = React.useMemo(() => {
@@ -1232,8 +1254,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
     if (!predictionStorageKey) return;
     const load = async () => {
       try {
-        const altKey = predictionTeamId != null ? `${LEGACY_STORAGE_KEYS.PREDICTIONS}${matchData?.id}-${predictionTeamId}` : `${LEGACY_STORAGE_KEYS.PREDICTIONS}${matchData?.id}`;
-        const data = await AsyncStorage.getItem(predictionStorageKey) || await AsyncStorage.getItem(altKey);
+        const data = await AsyncStorage.getItem(predictionStorageKey);
         if (!data) return;
         const parsed = JSON.parse(data);
         if (parsed.matchPredictions) {
@@ -1290,6 +1311,10 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
         // Bu değer true ise kullanıcı topluluk verilerini gördükten sonra silip yeni tahmin yapmış
         if (parsed.madeAfterCommunityViewed !== undefined) {
           setMadeAfterCommunityViewed(parsed.madeAfterCommunityViewed === true);
+        }
+        // ✅ Takım performans puanı – sayfaya dönünce göster
+        if (parsed.teamPerformance != null && typeof parsed.teamPerformance === 'number') {
+          setTeamPerformance(Math.max(1, Math.min(10, Math.round(parsed.teamPerformance))));
         }
         // ✅ İlk yükleme tamamlandı - artık değişiklikleri takip edebiliriz
         setTimeout(() => setInitialPredictionsLoaded(true), 100);
@@ -1576,6 +1601,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
         playerPredictions: cleanedPlayerPredictions,
         focusedPredictions: focusedPredictions, // 🌟 Strategic Focus
         selectedAnalysisFocus: selectedAnalysisFocus, // 🎯 Seçilen analiz odağı
+        teamPerformance, // ✅ Takım performans puanı (1-10), sayfaya dönünce gösterilir
         isPredictionLocked: true, // ✅ Kaydedildi = kilitli
         hasViewedCommunityData: hasViewedCommunityData, // ✅ Topluluk verileri görüldü mü?
         independentPredictionBonus: !hasViewedCommunityData && !madeAfterCommunityViewed, // ✅ Bağımsız tahmin bonusu (+%10) - topluluk görüp silip yaptıysa yok
@@ -2151,8 +2177,9 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Football Field - Horizontal scroll ile çoklu saha (Benim Tahminim | Topluluk | Gerçek) */}
+        {/* Football Field - Horizontal scroll ile çoklu saha (Benim Tahminim | Topluluk | Gerçek). Canlı/bitmiş maçta her zaman 3 saha (kural). */}
         {threeFieldData && (
+          (isMatchLive || isMatchFinished) ||
           (threeFieldData.userSquad && threeFieldData.userSquad.players.length > 0) ||
           threeFieldData.communitySquad.players.length > 0 ||
           threeFieldData.actualSquad.players.length > 0
@@ -2201,19 +2228,19 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                               <View style={styles.playerCardWrapper}>
                                 {hasPredictions && <View style={styles.predictionGlowBehind} />}
                                 <TouchableOpacity
-                                  style={[styles.playerCard, hasPredictions && styles.playerCardPredicted, player.rating >= 85 && styles.playerCardElite, (player.position === 'GK' || (player.position && String(player.position).toUpperCase() === 'GK')) && styles.playerCardGK]}
+                                  style={[styles.playerCard, hasPredictions && styles.playerCardPredicted, (normalizeRatingTo100(player.rating) ?? 0) >= 85 && styles.playerCardElite, (player.position === 'GK' || (player.position && String(player.position).toUpperCase() === 'GK')) && styles.playerCardGK]}
                                   onPress={() => setSelectedPlayer(player)}
                                   activeOpacity={0.8}
                                 >
                                   <LinearGradient colors={['#1E3A3A', '#0F2A24']} style={styles.playerCardGradient}>
-                                    <View style={[styles.jerseyNumberBadge, player.rating >= 85 && { backgroundColor: '#C9A44C' }, (player.position === 'GK' || (player.position && String(player.position).toUpperCase() === 'GK')) && { backgroundColor: '#3B82F6' }]}>
+                                    <View style={[styles.jerseyNumberBadge, (normalizeRatingTo100(player.rating) ?? 0) >= 85 && { backgroundColor: '#C9A44C' }, (player.position === 'GK' || (player.position && String(player.position).toUpperCase() === 'GK')) && { backgroundColor: '#3B82F6' }]}>
                                       <Text style={styles.jerseyNumberText}>
                                         {player.number != null && player.number > 0 ? player.number : '-'}
                                       </Text>
                                     </View>
                                     <Text style={styles.playerName} numberOfLines={1}>{player.name.split(' ').pop()}</Text>
                                     <View style={styles.playerBottomRow}>
-                                      <Text style={styles.playerRatingBottom}>{player.rating != null && player.rating > 0 ? String(Math.round(Number(player.rating))) : '–'}</Text>
+                                      <Text style={styles.playerRatingBottom}>{normalizeRatingTo100(player.rating) != null ? String(normalizeRatingTo100(player.rating)) : '–'}</Text>
                                       <Text style={styles.playerPositionBottom} numberOfLines={1}>{positionLabel}</Text>
                                     </View>
                                   </LinearGradient>
@@ -2292,30 +2319,20 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                               activeOpacity={communityDataVisible ? 0.7 : 1}
                             >
                               <LinearGradient colors={['#1E3A3A', '#0F2A24']} style={styles.playerCardGradient}>
-                                <View style={[styles.jerseyNumberBadge, player.rating >= 85 && { backgroundColor: '#C9A44C' }]}>
+                                <View style={[styles.jerseyNumberBadge, (normalizeRatingTo100(player.rating) ?? 0) >= 85 && { backgroundColor: '#C9A44C' }]}>
                                   <Text style={styles.jerseyNumberText}>{player.number != null && player.number > 0 ? player.number : '-'}</Text>
                                 </View>
                                 <Text style={styles.playerName} numberOfLines={1}>{player.name.split(' ').pop()}</Text>
-                              </LinearGradient>
-                              {player.rating > 0 && (
-                                <View style={{
-                                  position: 'absolute', top: -4, right: -4,
-                                  width: 20, height: 20, borderRadius: 10,
-                                  backgroundColor: player.rating >= 85 ? '#C9A44C' : player.rating >= 75 ? '#10B981' : player.rating >= 65 ? '#3B82F6' : '#64748B',
-                                  justifyContent: 'center', alignItems: 'center',
-                                  borderWidth: 1.5, borderColor: '#0A1A1A', zIndex: 10,
-                                }}>
-                                  <Text style={{ color: '#FFF', fontSize: 8, fontWeight: '800' }}>{player.rating}</Text>
+                                <View style={styles.playerBottomRow}>
+                                  <Text style={styles.playerRatingBottom}>{normalizeRatingTo100(player.rating) != null ? String(normalizeRatingTo100(player.rating)) : '–'}</Text>
+                                  <Text style={styles.playerPositionBottom} numberOfLines={1}>{getPositionAbbreviation(player.position || '')}</Text>
                                 </View>
-                              )}
+                              </LinearGradient>
                             </TouchableOpacity>
                           </View>
                         );
                       });
                     })()}
-                  </View>
-                  <View style={styles.fieldFormationBadge}>
-                    <Text style={styles.fieldFormationText}>{threeFieldData.communitySquad.formation}</Text>
                   </View>
                   {!communityDataVisible && (
                     <View style={{
@@ -2357,13 +2374,20 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                               key={`actual-field-${player.id}-${index}`}
                               style={[styles.playerSlot, { left: `${pos.x}%`, top: `${pos.y}%` }]}
                             >
+                              {liveReactions[player.id] && (
+                                <View style={styles.liveReactionBadgeOuter}>
+                                  {liveReactions[player.id] === 'good' ? <Text style={{ fontSize: 10 }}>🔥</Text> : liveReactions[player.id] === 'bad' ? <Text style={{ fontSize: 10 }}>👎</Text> : liveReactions[player.id] === 'yellowcard' ? <View style={{ width: 8, height: 11, borderRadius: 2, backgroundColor: '#FBBF24' }} /> : liveReactions[player.id] === 'redcard' ? <View style={{ width: 8, height: 11, borderRadius: 2, backgroundColor: '#DC2626' }} /> : liveReactions[player.id] === 'sub' ? <Text style={{ fontSize: 9 }}>🔄</Text> : <Text style={{ fontSize: 10 }}>⚽</Text>}
+                                </View>
+                              )}
                               <TouchableOpacity 
-                                style={[
-                                  styles.playerCard, 
-                                  player.rating >= 85 && styles.playerCardElite,
+                                  style={[
+                                  styles.playerCard,
+                                  (normalizeRatingTo100(player.rating) ?? 0) >= 85 && styles.playerCardElite,
                                   liveReactions[player.id] === 'good' && { borderColor: '#10B981', borderWidth: 2 },
                                   liveReactions[player.id] === 'bad' && { borderColor: '#EF4444', borderWidth: 2 },
-                                  liveReactions[player.id] === 'card' && { borderColor: '#FBBF24', borderWidth: 2 },
+                                  liveReactions[player.id] === 'yellowcard' && { borderColor: '#FBBF24', borderWidth: 2 },
+                                  liveReactions[player.id] === 'redcard' && { borderColor: '#DC2626', borderWidth: 2 },
+                                  liveReactions[player.id] === 'sub' && { borderColor: '#EF4444', borderWidth: 3 },
                                 ]}
                                 onPress={() => {
                                   if (isMatchLive) {
@@ -2382,34 +2406,15 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                                 activeOpacity={0.7}
                               >
                                 <LinearGradient colors={['#1E3A3A', '#0F2A24']} style={styles.playerCardGradient}>
-                                  <View style={[styles.jerseyNumberBadge, player.rating >= 85 && { backgroundColor: '#C9A44C' }]}>
+                                  <View style={[styles.jerseyNumberBadge, (normalizeRatingTo100(player.rating) ?? 0) >= 85 && { backgroundColor: '#C9A44C' }]}>
                                     <Text style={styles.jerseyNumberText}>{player.number != null && player.number > 0 ? player.number : '-'}</Text>
                                   </View>
                                   <Text style={styles.playerName} numberOfLines={1}>{player.name.split(' ').pop()}</Text>
+                                  <View style={styles.playerBottomRow}>
+                                    <Text style={styles.playerRatingBottom}>{normalizeRatingTo100(player.rating) != null ? String(normalizeRatingTo100(player.rating)) : '–'}</Text>
+                                    <Text style={styles.playerPositionBottom} numberOfLines={1}>{getPositionAbbreviation(player.position || '')}</Text>
+                                  </View>
                                 </LinearGradient>
-                                {player.rating > 0 && (
-                                  <View style={{
-                                    position: 'absolute', top: -4, right: -4,
-                                    width: 20, height: 20, borderRadius: 10,
-                                    backgroundColor: player.rating >= 85 ? '#C9A44C' : player.rating >= 75 ? '#10B981' : player.rating >= 65 ? '#3B82F6' : '#64748B',
-                                    justifyContent: 'center', alignItems: 'center',
-                                    borderWidth: 1.5, borderColor: '#0A1A1A', zIndex: 10,
-                                  }}>
-                                    <Text style={{ color: '#FFF', fontSize: 8, fontWeight: '800' }}>{player.rating}</Text>
-                                  </View>
-                                )}
-                                {liveReactions[player.id] && (
-                                  <View style={{
-                                    position: 'absolute', top: -6, left: -6,
-                                    width: 18, height: 18, borderRadius: 9,
-                                    backgroundColor: '#0A1A1A',
-                                    justifyContent: 'center', alignItems: 'center', zIndex: 11,
-                                  }}>
-                                    <Text style={{ fontSize: 10 }}>
-                                      {liveReactions[player.id] === 'good' ? '🔥' : liveReactions[player.id] === 'bad' ? '👎' : liveReactions[player.id] === 'card' ? '🟨' : '⚽'}
-                                    </Text>
-                                  </View>
-                                )}
                               </TouchableOpacity>
                             </View>
                           );
@@ -2552,31 +2557,57 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                     </View>
                   )}
                   
-                  {/* Gerçek saha altı: Kadro ile aynı konteyner stili, içinde performans çubuğu */}
+                  {/* Gerçek saha altı: Takım performansı – kaydırma yok, 2 satır etiket, topluluk ort. yeşil çizgi + tıklanınca tooltip */}
                   {threeFieldActiveIndex === actualIndex && isMatchLive && threeFieldData.actualSquad.players.length > 0 && (
-                    <View style={styles.fieldBelowSection}>
-                      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                          <Text style={{ color: '#94A3B8', fontSize: 10, fontWeight: '600', marginRight: 4 }}>Performans</Text>
+                    <View style={[styles.fieldBelowSection, styles.fieldBelowSectionTeamPerf]}>
+                      <View style={styles.fieldBelowSectionTeamPerfRow}>
+                        <View style={styles.fieldBelowSectionLabel}>
+                          <Text style={{ color: '#94A3B8', fontSize: 10, fontWeight: '600' }}>Takım</Text>
+                          <Text style={{ color: '#94A3B8', fontSize: 10, fontWeight: '600' }}>performansı</Text>
+                        </View>
+                        <View style={styles.fieldBelowSectionBarWrap}>
                           {[1,2,3,4,5,6,7,8,9,10].map(v => (
                             <TouchableOpacity
                               key={v}
-                              onPress={() => setTeamPerformance(v)}
-                              style={{
-                                width: 26, height: 20, borderRadius: 4, alignItems: 'center', justifyContent: 'center',
-                                backgroundColor: v <= teamPerformance
-                                  ? (teamPerformance >= 7 ? 'rgba(16,185,129,0.8)' : teamPerformance >= 4 ? 'rgba(245,158,11,0.8)' : 'rgba(239,68,68,0.8)')
-                                  : 'rgba(255,255,255,0.06)',
-                                borderWidth: v === teamPerformance ? 1.5 : 0,
-                                borderColor: v === teamPerformance ? '#FFF' : 'transparent',
-                              }}
+                              onPress={() => handleTeamPerformanceChange(v)}
+                              style={[
+                                styles.teamPerfButton,
+                                {
+                                  backgroundColor: v <= teamPerformance
+                                    ? (teamPerformance >= 7 ? 'rgba(16,185,129,0.8)' : teamPerformance >= 4 ? 'rgba(245,158,11,0.8)' : 'rgba(239,68,68,0.8)')
+                                    : 'rgba(255,255,255,0.06)',
+                                  borderWidth: v === teamPerformance ? 1.5 : 0,
+                                  borderColor: v === teamPerformance ? '#FFF' : 'transparent',
+                                },
+                              ]}
                               activeOpacity={0.7}
                             >
                               <Text style={{ color: v <= teamPerformance ? '#FFF' : '#64748B', fontSize: 9, fontWeight: '700' }}>{v}</Text>
                             </TouchableOpacity>
                           ))}
+                          {/* Topluluk ortalaması yeşil çizgi – tıklanınca "Ortalama topluluk verisi" aynı satırda */}
+                          <TouchableOpacity
+                            activeOpacity={0.8}
+                            onPress={() => setShowCommunityAvgTooltip(!showCommunityAvgTooltip)}
+                            style={[
+                              styles.communityAvgLine,
+                              {
+                                left: `${(((communityTeamPerformanceAvg != null ? communityTeamPerformanceAvg : 5) - 1) / 9) * 100}%`,
+                                backgroundColor: communityTeamPerformanceAvg != null ? '#10B981' : 'rgba(16,185,129,0.5)',
+                              },
+                            ]}
+                          />
                         </View>
-                      </ScrollView>
+                        {showCommunityAvgTooltip && (
+                          <TouchableOpacity
+                            activeOpacity={1}
+                            onPress={() => setShowCommunityAvgTooltip(false)}
+                            style={styles.communityAvgLabelInline}
+                          >
+                            <Text style={{ color: '#10B981', fontSize: 10, fontWeight: '600' }} numberOfLines={1}>Ort. topluluk</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
                     </View>
                   )}
 
@@ -2684,10 +2715,11 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                         style={[
                           styles.playerCard,
                           hasPredictions && styles.playerCardPredicted,
-                          !(isMatchLive || isMatchFinished) && player.rating >= 85 && styles.playerCardElite,
-                          !(isMatchLive || isMatchFinished) && player.rating < 85 && (player.position === 'GK' || isGoalkeeperPlayer(player)) && styles.playerCardGK,
-                          signalBorderStyle && { borderColor: signalBorderStyle.borderColor, borderWidth: signalBorderStyle.borderWidth, ...(Platform.OS === 'web' && signalBorderStyle.glowColor ? { boxShadow: `0 0 ${signalBorderStyle.glowRadius || 6}px ${signalBorderStyle.glowColor}` } : {}) },
-                          !signalBorderStyle && communityBorder && { borderColor: communityBorder.color, borderWidth: communityBorder.width },
+                          hasSubstitution && { borderColor: '#EF4444', borderWidth: 3 },
+                          !(isMatchLive || isMatchFinished) && (normalizeRatingTo100(player.rating) ?? 0) >= 85 && styles.playerCardElite,
+                          !(isMatchLive || isMatchFinished) && (normalizeRatingTo100(player.rating) ?? 0) < 85 && (player.position === 'GK' || isGoalkeeperPlayer(player)) && styles.playerCardGK,
+                          signalBorderStyle && !hasSubstitution && { borderColor: signalBorderStyle.borderColor, borderWidth: signalBorderStyle.borderWidth, ...(Platform.OS === 'web' && signalBorderStyle.glowColor ? { boxShadow: `0 0 ${signalBorderStyle.glowRadius || 6}px ${signalBorderStyle.glowColor}` } : {}) },
+                          !signalBorderStyle && communityBorder && !hasSubstitution && { borderColor: communityBorder.color, borderWidth: communityBorder.width },
                           !signalBorderStyle && !communityBorder && (isMatchLive || isMatchFinished) && (positionLabel === 'GK' || isGoalkeeperPlayer(player)) && styles.playerCardGKCommunity,
                           !signalBorderStyle && !communityBorder && (isMatchLive || isMatchFinished) && (positionLabel === 'ST' || (player.position && String(player.position).toUpperCase() === 'ST')) && styles.playerCardSTCommunity,
                           isViewOnlyMode && { opacity: 0.85 },
@@ -2698,8 +2730,8 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                         <LinearGradient colors={['#1E3A3A', '#0F2A24']} style={styles.playerCardGradient}>
                           <View style={[
                             styles.jerseyNumberBadge,
-                            player.rating >= 85 && { backgroundColor: '#C9A44C' },
-                            player.rating < 85 && (player.position === 'GK' || isGoalkeeperPlayer(player)) && { backgroundColor: '#3B82F6' },
+                            (normalizeRatingTo100(player.rating) ?? 0) >= 85 && { backgroundColor: '#C9A44C' },
+                            (normalizeRatingTo100(player.rating) ?? 0) < 85 && (player.position === 'GK' || isGoalkeeperPlayer(player)) && { backgroundColor: '#3B82F6' },
                           ]}>
                             <Text style={styles.jerseyNumberText}>
                               {player.number != null && player.number > 0 ? player.number : '-'}
@@ -2710,16 +2742,16 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                           </Text>
                           {/* Kadro sekmesi ile aynı: reyting sol alt, pozisyon sağ alt */}
                           <View style={styles.playerBottomRow}>
-                            <Text style={styles.playerRatingBottom}>{player.rating != null && player.rating > 0 ? String(Math.round(Number(player.rating))) : '–'}</Text>
+                            <Text style={styles.playerRatingBottom}>{normalizeRatingTo100(player.rating) != null ? String(normalizeRatingTo100(player.rating)) : '–'}</Text>
                             <Text style={styles.playerPositionBottom} numberOfLines={1}>{positionLabel}</Text>
                           </View>
                         </LinearGradient>
                       </TouchableOpacity>
                     </View>
-                    {/* ✅ Tik badge - tahmin yapıldı göstergesi */}
+                    {/* ✅ Tik badge - tahmin yapıldı göstergesi (sol üst, "i" sağda kalır – üst üste binmez) */}
                     {hasPredictions && (
-                      <View style={styles.predictionCheckBadgeTopRight}>
-                        <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                      <View style={styles.predictionCheckBadgeTopLeft}>
+                        <Ionicons name="checkmark" size={14} color="#FFFFFF" />
                       </View>
                     )}
                     {/* Sinyal bilgisi kurallara göre sadece "i" ikonuna tıklanınca popup'ta gösterilir */}
@@ -5227,40 +5259,45 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
       {liveReactionPlayer && isMatchLive && (() => {
         const pId = liveReactionPlayer.id;
         const community = communityPredictions[pId];
+        const isGK = (liveReactionPlayer.position || '').toUpperCase() === 'GK' || (liveReactionPlayer.position || '').toUpperCase() === 'G' || String(liveReactionPlayer.position || '').toLowerCase().includes('goalkeeper');
         const reactions = [
-          { key: 'good', emoji: '🔥', label: 'Çok İyi', color: '#10B981', pct: community ? Math.round((community.goal + community.assist) / community.totalPredictions * 50) : 24 },
-          { key: 'bad', emoji: '👎', label: 'Kötü', color: '#EF4444', pct: community ? Math.round(community.yellowCard / community.totalPredictions * 100) : 12 },
-          { key: 'goal', emoji: '⚽', label: 'Gol Yakın', color: '#3B82F6', pct: community ? Math.round(community.goal / community.totalPredictions * 100) : 18 },
-          { key: 'redcard', emoji: '🟥', label: 'Kırmızı Kart', color: '#DC2626', pct: community ? Math.round(community.redCard / community.totalPredictions * 100) : 3 },
-          { key: 'sub', emoji: '🔄', label: 'Çıkmalı', color: '#8B5CF6', pct: community ? Math.round(community.substitutedOut / community.totalPredictions * 100) : 35 },
+          { key: 'good', icon: '🔥', label: 'Çok İyi', color: '#10B981', pct: community ? Math.round((community.goal + community.assist) / Math.max(1, community.totalPredictions) * 50) : 24 },
+          { key: 'bad', icon: '👎', label: 'Kötü', color: '#EF4444', pct: community ? Math.round(community.substitutedOut / Math.max(1, community.totalPredictions) * 100) : 12 },
+          { key: 'goal', icon: '⚽', label: isGK ? 'Gol Yer' : 'Gol Yakın', color: '#3B82F6', pct: community ? Math.round(community.goal / Math.max(1, community.totalPredictions) * 100) : 18 },
+          { key: 'yellowcard', icon: 'card', label: 'Sarı Kart Görür', color: '#FBBF24', pct: community ? Math.round(community.yellowCard / Math.max(1, community.totalPredictions) * 100) : 15 },
+          { key: 'redcard', icon: 'card', label: 'Kırmızı Kart', color: '#DC2626', pct: community ? Math.round(community.redCard / Math.max(1, community.totalPredictions) * 100) : 3 },
+          { key: 'sub', icon: '🔄', label: 'Çıkmalı', color: '#8B5CF6', pct: community ? Math.round(community.substitutedOut / Math.max(1, community.totalPredictions) * 100) : 35 },
         ];
         return (
         <Modal visible={true} transparent animationType="fade" statusBarTranslucent>
-          <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' }} activeOpacity={1} onPress={() => setLiveReactionPlayer(null)}>
+          <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'flex-end', alignItems: 'center' }} activeOpacity={1} onPress={() => setLiveReactionPlayer(null)}>
+            <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()} style={{ width: '92%', maxWidth: 400, alignSelf: 'center' }}>
             <View style={{
-              backgroundColor: '#1E3A3A', borderTopLeftRadius: 20, borderTopRightRadius: 20,
-              padding: 20, borderTopWidth: 1, borderColor: 'rgba(16,185,129,0.3)',
+              backgroundColor: '#0F1F1F', borderTopLeftRadius: 24, borderTopRightRadius: 24,
+              padding: 24, paddingBottom: 28, borderTopWidth: 2, borderColor: 'rgba(16,185,129,0.4)',
             }}>
-              <View style={{ alignItems: 'center', marginBottom: 16 }}>
-                <Text style={{ fontSize: 16, fontWeight: '700', color: '#E2E8F0' }}>
+              <View style={{ alignItems: 'center', marginBottom: 20 }}>
+                <Text style={{ fontSize: 18, fontWeight: '800', color: '#F1F5F9' }}>
                   {liveReactionPlayer.name}
                 </Text>
-                <Text style={{ fontSize: 12, color: '#94A3B8', marginTop: 2 }}>
+                <Text style={{ fontSize: 13, color: '#94A3B8', marginTop: 4, fontWeight: '500' }}>
                   Canlı Değerlendirme
                 </Text>
               </View>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginBottom: 12 }}>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 10, marginBottom: 16 }}>
                 {reactions.map(reaction => {
                   const isActive = liveReactions[pId] === reaction.key;
+                  const isCardIcon = reaction.icon === 'card';
+                  const isYellow = reaction.key === 'yellowcard';
                   return (
                     <TouchableOpacity
                       key={reaction.key}
                       style={{
-                        alignItems: 'center', padding: 8, borderRadius: 12,
-                        backgroundColor: isActive ? `${reaction.color}20` : 'rgba(255,255,255,0.05)',
-                        borderWidth: isActive ? 2 : 1,
-                        borderColor: isActive ? reaction.color : 'rgba(255,255,255,0.1)',
-                        minWidth: 54,
+                        alignItems: 'center', paddingVertical: 12, paddingHorizontal: 14, borderRadius: 14,
+                        backgroundColor: isActive ? `${reaction.color}25` : 'rgba(255,255,255,0.08)',
+                        borderWidth: isActive ? 2.5 : 1,
+                        borderColor: isActive ? reaction.color : 'rgba(255,255,255,0.12)',
+                        minWidth: 72,
                       }}
                       onPress={() => {
                         setLiveReactions(prev => ({
@@ -5271,9 +5308,13 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                       }}
                       activeOpacity={0.7}
                     >
-                      <Text style={{ fontSize: 20 }}>{reaction.emoji}</Text>
-                      <Text style={{ fontSize: 8, color: reaction.color, marginTop: 3, fontWeight: '600' }}>{reaction.label}</Text>
-                      <Text style={{ fontSize: 8, color: '#64748B', marginTop: 1 }}>%{reaction.pct}</Text>
+                      {isCardIcon ? (
+                        <View style={{ width: 22, height: 28, borderRadius: 3, backgroundColor: isYellow ? '#FBBF24' : '#DC2626', borderWidth: 1, borderColor: 'rgba(0,0,0,0.2)', marginBottom: 4 }} />
+                      ) : (
+                        <Text style={{ fontSize: 24, marginBottom: 2 }}>{reaction.icon}</Text>
+                      )}
+                      <Text style={{ fontSize: 11, color: reaction.color, fontWeight: '700' }}>{reaction.label}</Text>
+                      <Text style={{ fontSize: 11, color: '#94A3B8', marginTop: 2, fontWeight: '600' }}>%{reaction.pct}</Text>
                     </TouchableOpacity>
                   );
                 })}
@@ -5282,7 +5323,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                 <View style={{ backgroundColor: 'rgba(139,92,246,0.1)', borderRadius: 10, padding: 12, marginBottom: 12, borderWidth: 1, borderColor: 'rgba(139,92,246,0.2)' }}>
                   <Text style={{ color: '#A78BFA', fontSize: 11, fontWeight: '600', marginBottom: 8 }}>Yerine kim girmeli?</Text>
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-                    {attackTeamPlayers.filter((p: any) => p.id !== pId).slice(11, 18).map((sub: any) => (
+                    {([...attackPlayersArray, ...reserveTeamPlayers].filter((p: any) => p.id !== pId).slice(11, 18)).map((sub: any) => (
                       <TouchableOpacity
                         key={sub.id}
                         style={{ paddingHorizontal: 10, paddingVertical: 5, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 6 }}
@@ -5306,6 +5347,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                 <Text style={{ color: '#64748B', fontSize: 13 }}>Kapat</Text>
               </TouchableOpacity>
             </View>
+            </TouchableOpacity>
           </TouchableOpacity>
         </Modal>
         );
@@ -6945,10 +6987,11 @@ const styles = StyleSheet.create({
   },
   // ✅ Kadro sekmesi bottomBar ile aynı genişlik/boşluk – paddingHorizontal yok, bar tam genişlik
   fieldBelowContent: {
-    marginTop: 3, // ✅ 3px daha yukarı (Kadro konteyneri ile geçişte sıçrama olmasın)
+    marginTop: 3,
     paddingHorizontal: 0,
     minHeight: 50,
-    paddingBottom: 4,
+    paddingBottom: 10,
+    overflow: 'visible',
   },
   // ✅ Benim Tahminim konteyneri ile aynı yükseklik (50px) – geçişte sıçrama olmasın
   fieldBelowSection: {
@@ -6960,6 +7003,55 @@ const styles = StyleSheet.create({
     maxHeight: 50,
     borderWidth: 1,
     borderColor: 'rgba(31, 162, 166, 0.3)',
+  },
+  fieldBelowSectionTeamPerf: {
+    maxHeight: undefined,
+    minHeight: 44,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  fieldBelowSectionTeamPerfRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'nowrap',
+    width: '100%',
+  },
+  fieldBelowSectionLabel: {
+    marginRight: 10,
+    justifyContent: 'center',
+    minWidth: 32,
+  },
+  fieldBelowSectionBarWrap: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    position: 'relative',
+    gap: 2,
+    minWidth: 0,
+  },
+  teamPerfButton: {
+    flex: 1,
+    minWidth: 0,
+    height: 22,
+    borderRadius: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  communityAvgLine: {
+    position: 'absolute',
+    marginLeft: -2,
+    width: 4,
+    height: 22,
+    borderRadius: 2,
+    top: 0,
+  },
+  communityAvgLabelInline: {
+    marginLeft: 8,
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+    backgroundColor: 'rgba(16,185,129,0.2)',
+    borderRadius: 6,
+    flexShrink: 0,
   },
   // ✅ Sol kullanıcı sayısı, sağ Atak/Defans formasyonları (favori takım)
   communityStatsCardInner: {
@@ -7173,6 +7265,9 @@ const styles = StyleSheet.create({
   },
   fieldGradient: {
     flex: 1,
+    padding: 20,
+    overflow: 'hidden',
+    borderRadius: 10,
   },
   fieldSvg: {
     position: 'absolute',
@@ -7430,6 +7525,21 @@ const styles = StyleSheet.create({
     width: 64,
     height: 76,
   },
+  liveReactionBadgeOuter: {
+    position: 'absolute',
+    top: -4,
+    left: -4,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#0A1A1A',
+    borderWidth: 1.5,
+    borderColor: '#334155',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 12,
+    elevation: 12,
+  },
   // Tahmin yapılan oyuncu kartının arkasında hafif sarı hale (eskisi gibi daha yumuşak)
   predictionGlowBehind: {
     position: 'absolute',
@@ -7556,7 +7666,27 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: '#FFFFFF',
   },
-  // ✅ Tahmin yapıldı tik - Kadro X butonu ile aynı stilde (yeşil versiyon)
+  // ✅ Tahmin yapıldı tik - sol üst (sağdaki "i" ile üst üste binmesin)
+  predictionCheckBadgeTopLeft: {
+    position: 'absolute',
+    top: -6,
+    left: -6,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#10B981',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 14,
+    elevation: 14,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.3, shadowRadius: 2 },
+      android: { elevation: 6 },
+      web: { boxShadow: '0 1px 4px rgba(0,0,0,0.4)' },
+    }),
+  },
   predictionCheckBadgeTopRight: {
     position: 'absolute',
     top: -8,

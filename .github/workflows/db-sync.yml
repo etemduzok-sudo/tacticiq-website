@@ -1,0 +1,100 @@
+name: DB Sync - Daily Update
+
+on:
+  schedule:
+    # Her gün UTC 00:05'te çalış (API limiti yenilenince)
+    - cron: '5 0 * * *'
+  workflow_dispatch:
+    inputs:
+      max_teams:
+        description: 'Max teams to process (0 = unlimited)'
+        required: false
+        default: '0'
+      phase:
+        description: 'Which phase to run'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - teams
+          - ratings
+
+jobs:
+  sync-database:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300  # 5 saat max (API limiti dolana kadar)
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Run DB Sync Script
+        working-directory: backend
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+          NODE_ENV: production
+        run: |
+          echo "=========================================="
+          echo "DB SYNC STARTED: $(date)"
+          echo "=========================================="
+          
+          # Phase seçimi
+          PHASE="${{ github.event.inputs.phase || 'all' }}"
+          MAX_TEAMS="${{ github.event.inputs.max_teams || '0' }}"
+          
+          if [ "$PHASE" = "all" ] || [ "$PHASE" = "teams" ]; then
+            echo ""
+            echo ">>> PHASE 1: Team Data (Coach + Colors + Squad)"
+            node scripts/github-db-sync.js --phase=teams --max-teams=$MAX_TEAMS || true
+          fi
+          
+          if [ "$PHASE" = "all" ] || [ "$PHASE" = "ratings" ]; then
+            echo ""
+            echo ">>> PHASE 2: Player Ratings"
+            node scripts/github-db-sync.js --phase=ratings --max-teams=$MAX_TEAMS || true
+          fi
+          
+          echo ""
+          echo "=========================================="
+          echo "DB SYNC COMPLETED: $(date)"
+          echo "=========================================="
+
+      - name: Generate Status Report
+        working-directory: backend
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          node -e "
+          const { createClient } = require('@supabase/supabase-js');
+          const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+          (async () => {
+            const { count: total } = await supabase.from('static_teams').select('*', { count: 'exact', head: true });
+            const { count: coach } = await supabase.from('static_teams').select('*', { count: 'exact', head: true }).not('coach', 'is', null);
+            const { count: colors } = await supabase.from('static_teams').select('*', { count: 'exact', head: true }).not('colors_primary', 'is', null);
+            const { count: squads } = await supabase.from('team_squads').select('*', { count: 'exact', head: true }).eq('season', 2025);
+            console.log('');
+            console.log('╔════════════════════════════════════════╗');
+            console.log('║         FINAL DB STATUS                ║');
+            console.log('╠════════════════════════════════════════╣');
+            console.log('║  Total Teams: ' + String(total).padStart(6) + '                   ║');
+            console.log('║  With Coach:  ' + String(coach).padStart(6) + ' (' + Math.round(coach/total*100) + '%)              ║');
+            console.log('║  With Colors: ' + String(colors).padStart(6) + ' (' + Math.round(colors/total*100) + '%)              ║');
+            console.log('║  Squads 2025: ' + String(squads).padStart(6) + ' (' + Math.round(squads/total*100) + '%)              ║');
+            console.log('╚════════════════════════════════════════╝');
+          })();
+          "
