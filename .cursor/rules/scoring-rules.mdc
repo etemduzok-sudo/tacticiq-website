@@ -1,0 +1,46 @@
+# TacticIQ - Puanlama Sistemi Kuralları
+
+## TEK KAYNAK: backend/services/scoringService.js
+
+Frontend ASLA kendi puan hesaplaması yapmaz. Backend'den gelen puanı gösterir.
+
+## 1000 Tam Puan Sistemi
+
+### Maç Tahmin Puanları (Kullanıcı)
+| Tahmin | Puan | Tolerans |
+|--------|------|----------|
+| Tam Skor | 100 | Tam isabet |
+| Doğru Kazanan | 60 | - |
+| Doğru Berabere | 50 | - |
+| Gol Farkı | 30 | Tam isabet |
+| İlk Gol | 40 | Takım doğru |
+| Toplam Gol | 30 | Aralık doğru |
+| Sarı Kartlar | 20 | ±1 tolerans |
+| Kırmızı Kartlar | 30 | Tam isabet |
+| Kornerler | 20 | ±2 tolerans |
+
+### Strategic Focus System
+- Doğru focus: 2x bonus
+- Yanlış focus: -1.5x ceza
+- Max 3 focus seçilebilir
+
+### Training Multipliers
+- Attack: 1.20x (tempo + bireysel cluster)
+- Defense: 1.20x (disiplin + fiziksel cluster)
+- Balanced: 1.10x (tüm cluster'lar)
+
+### Cluster Yapısı
+- **Tempo:** first_goal + total_goals
+- **Disiplin:** yellow_cards + red_cards
+- **Fiziksel:** corners + total_goals
+- **Bireysel:** exact_score + first_goal
+
+## Oyuncu Reytingleri
+- 100 tam puan üzerinden (0-100 skala)
+- Topluluk ortalaması gösterilir
+- Min 10 oy gerekli (hasSufficientData)
+
+## Teknik Direktör Reytingleri
+- 10 tam puan üzerinden (0-10 skala)
+- Kategoriler: Taktik, motivasyon, değişiklikler vb.
+- Min 10 oy gerekli

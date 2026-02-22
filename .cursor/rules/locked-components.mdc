@@ -4,22 +4,19 @@
 
 Aşağıdaki bileşenler UI/UX olarak tamamlanmış ve test edilmiştir. **Bu dosyalarda değişiklik yapmayın** (kullanıcı açıkça istemediği sürece).
 
-### 🔒 Kilitli Dosyalar:
+### 🔒 Kilitli Dosyalar (Mobil App):
 
 1. **`src/components/match/MatchLive.tsx`**
    - Canlı maç eventleri (goller, kartlar, değişiklikler)
    - Event akışı ve timeline
    - API entegrasyonu tamamlandı
-   - Mock veri fallback'i mevcut
+   - mockTestData import'u var ama MOCK_TEST_ENABLED=false
 
 2. **`src/components/match/MatchStats.tsx`**
    - Maç istatistikleri (topla oynama, şutlar, kornerler vb.)
    - Oyuncu istatistikleri dropdown'ları
    - xG (Expected Goals) hesaplaması
-   - Takım ve oyuncu ısı haritaları
-   - Kaleci istatistikleri
-   - Ek detaylar bölümü (müdahale, blok, kartlar vb.)
-   - API entegrasyonu tamamlandı (oyuncu/ısı haritası mock)
+   - API entegrasyonu tamamlandı
 
 ### ✅ Bu dosyalarda yapılabilecek değişiklikler:
 
@@ -34,14 +31,29 @@ Aşağıdaki bileşenler UI/UX olarak tamamlanmış ve test edilmiştir. **Bu do
 - Layout değişiklikleri
 - Yeni özellik ekleme (kullanıcı istemediği sürece)
 
-### 📅 Kilitlenme Tarihi: 10 Şubat 2026
+### 📅 İlk Kilitlenme: 10 Şubat 2026
+### 📅 Son Güncelleme: 22 Şubat 2026
 
-### 📝 Not:
-Oyuncu istatistikleri ve ısı haritaları şu anda mock veri kullanıyor. Gelecekte API entegrasyonu yapılacak:
-- Oyuncu istatistikleri: `fixtures/players` endpoint'i
-- Isı haritaları: Pozisyon tracking API'si (varsa)
+---
 
-API entegrasyonu yapılırken:
-1. Mock veri yapısını koru (interface'ler aynı kalsın)
-2. Sadece veri kaynağını değiştir
-3. Görsel çıktı aynı kalmalı
+## 🔒 Kilitli Yapılandırmalar (FAZ 1-6 Sonuçları):
+
+### Puanlama Sistemi
+- **Kaynak:** `backend/services/scoringService.js` (TEK KAYNAK)
+- **Sistem:** 1000 Tam Puan üzerinden
+- **Frontend sadece gösterir, hesaplama yapmaz**
+- Değişiklik yapılacaksa ÖNCE backend, SONRA frontend güncellenir
+
+### API Port
+- **Backend:** Port 3001 (değiştirilmemeli)
+- **Tüm frontend referansları 3001'e yönlendirildi**
+
+### Mock Veri Sistemi
+- **Merkezi dosya:** `src/data/mockDataProvider.ts`
+- **Auth:** Gerçek `authService.ts` kullanılır (mockAuthService silindi)
+- **Topluluk verileri:** Veri yoksa boş state gösterilir, sahte veri üretilmez
+
+### Kaldırılan Paketler (Geri eklenmemeli)
+- `@react-native-firebase/*` (3 paket)
+- `@testing-library/*`, `jest-expo`, `@playwright/test`, `playwright`
+- Website: `@mui/*`, `@emotion/*`, `react-dnd*`, `react-slick`, `react-popper`, `react-responsive-masonry`

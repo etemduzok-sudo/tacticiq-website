@@ -1,4 +1,5 @@
 # TacticIQ - 3 Saha Görünümü & Tahmin Sekmesi Kuralları
+# DURUM: Mobil app'te implement edilmiş, website'de henüz yok (FAZ 9'da tanıtım sayfası eklenecek)
 
 ## Genel Bakış
 Tahmin sekmesinde 3 saha yan yana horizontal scroll ile gösterilir: Benim Tahminim, Topluluk, Gerçek.
