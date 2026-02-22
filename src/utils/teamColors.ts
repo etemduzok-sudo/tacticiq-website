@@ -309,7 +309,8 @@ export const fetchTeamColorsFromApi = async (teamId: number): Promise<string[] |
   }
   
   try {
-    const response = await fetch(`http://localhost:3001/api/static-teams/${teamId}/colors`);
+    const apiUrl = __DEV__ ? 'http://localhost:3001/api' : 'https://api.tacticiq.com/api';
+    const response = await fetch(`${apiUrl}/static-teams/${teamId}/colors`);
     if (response.ok) {
       const data = await response.json();
       if (data.success && data.colors) {

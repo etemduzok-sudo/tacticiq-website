@@ -35,7 +35,7 @@ export const APP_VERSION = {
 export const API_CONFIG = {
   // Backend API
   backend: {
-    development: 'http://localhost:3000/api',
+    development: 'http://localhost:3001/api',
     production: 'https://api.tacticiq.com/api',
   },
   

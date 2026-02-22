@@ -78,10 +78,10 @@ export function PredictionProvider({ children }: PredictionProviderProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // API Base URL - Backend 3001 portunda çalışıyor
+  // API Base URL - Backend port 3001
   const API_URL = __DEV__ 
     ? 'http://localhost:3001/api'
-    : 'https://your-production-api.com/api';
+    : 'https://api.tacticiq.com/api';
 
   // ============================================
   // ACTIONS

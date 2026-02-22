@@ -135,10 +135,10 @@ export function MatchProvider({ children }: MatchProviderProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // API Base URL
+  // API Base URL - Backend port 3001
   const API_URL = __DEV__ 
-    ? 'http://localhost:3000/api'
-    : 'https://your-production-api.com/api';
+    ? 'http://localhost:3001/api'
+    : 'https://api.tacticiq.com/api';
 
   // ============================================
   // ACTIONS
