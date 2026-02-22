@@ -18,7 +18,6 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import i18n from '../i18n';
 import { changeLanguage as changeI18nLanguage } from '../i18n';
 import { setUserTimezone } from '../utils/timezoneUtils';
 import { getFallbackClubTeamsForProfile } from '../data/staticTeamsData';
@@ -27,33 +26,28 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown, ZoomIn, FadeIn, FadeOut } from 'react-native-reanimated';
-import { AdBanner } from '../components/ads/AdBanner';
 import { usersDb, predictionsDb } from '../services/databaseService';
 import { STORAGE_KEYS, isSuperAdmin } from '../config/constants';
-import ScoringEngine from '../logic/ScoringEngine';
 import { AnalysisCluster } from '../types/prediction.types';
-import { getAllAvailableBadges, getUserBadges } from '../services/badgeService';
+import { getAllAvailableBadges } from '../services/badgeService';
 import { Badge, getBadgeColor, getBadgeTierName } from '../types/badges.types';
-import { ALL_BADGES, BadgeDefinition, getBadgeById } from '../constants/badges';
+import { ALL_BADGES } from '../constants/badges';
 import { useFavoriteTeams } from '../hooks/useFavoriteTeams';
 import { logger } from '../utils/logger';
 import { profileService } from '../services/profileService';
 import { setFavoriteTeams as saveFavoriteTeamsToStorage } from '../utils/storageUtils';
 import { calculateTopPercent } from '../types/profile.types';
 import { teamsApi } from '../services/api';
-import { SPACING, TYPOGRAPHY, BRAND, DARK_MODE, LIGHT_MODE, COLORS, SIZES, SHADOWS } from '../theme/theme';
+import { SPACING, TYPOGRAPHY, BRAND, COLORS, SIZES, SHADOWS } from '../theme/theme';
 import { StandardHeader, ScreenLayout } from '../components/layouts';
 import { useTheme } from '../contexts/ThemeContext';
-import { containerStyles } from '../utils/styleHelpers';
 import { ChangePasswordModal } from '../components/profile/ChangePasswordModal';
 import authService from '../services/authService';
 import { LegalDocumentScreen } from './LegalDocumentScreen';
-import { translateCountry, formatCountryDisplay, getCountryFlag, getCountryFlagUrl, getCountryRankingLabel, getCountryFromCode } from '../utils/countryUtils';
+import { translateCountry, getCountryFlag, getCountryFlagUrl, getCountryRankingLabel, getCountryFromCode } from '../utils/countryUtils';
 import { getDeviceCountryCode } from '../utils/deviceCountry';
 import { formatWorldRankingDisplay } from '../types/profile.types';
 
-// ❌ Kaldırıldı - Theme artık component içinde dinamik olarak alınıyor
-// const theme = COLORS.dark;
 
 interface ProfileScreenProps {
   onBack: () => void;

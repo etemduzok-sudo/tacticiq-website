@@ -27,7 +27,6 @@ import { Ionicons } from '@expo/vector-icons';
 import Animated, { 
   SlideInDown,
   SlideOutDown,
-  ZoomIn,
   useAnimatedStyle,
   withRepeat,
   withTiming,
@@ -572,8 +571,8 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favor
   // ✅ Attack & Defense Formation States
   const [attackFormation, setAttackFormation] = useState<string | null>(null);
   const [defenseFormation, setDefenseFormation] = useState<string | null>(null);
-  const [attackPlayers, setAttackPlayers] = useState<Record<number, typeof players[0] | null>>({});
-  const [defensePlayers, setDefensePlayers] = useState<Record<number, typeof players[0] | null>>({});
+  const [attackPlayers, setAttackPlayers] = useState<Record<number, any | null>>({});
+  const [defensePlayers, setDefensePlayers] = useState<Record<number, any | null>>({});
   
   // ✅ Current editing mode: 'attack' or 'defense'
   const [editingMode, setEditingMode] = useState<'attack' | 'defense'>('attack');
@@ -630,7 +629,7 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favor
   // Artık kullanıcılar maç başladıktan sonra sayfayı açtıklarında normal "İlk 11" popup'ı görecek
   
   // ✅ Atak formasyonundaki oyuncu değişikliklerini takip et (defans formasyonu yönetimi için)
-  const previousAttackPlayersRef = React.useRef<Record<number, typeof players[0] | null>>({});
+  const previousAttackPlayersRef = React.useRef<Record<number, any | null>>({});
   const attackPlayersInitializedRef = React.useRef(false);
   
   // ✅ Sadece oynanan/canlı maçta kadro kilitli (MatchDetail'den gelen prop öncelikli)
@@ -790,7 +789,7 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favor
         setAttackFormation(formation.id);
         
         // Oyuncuları pozisyonlara otomatik yerleştir
-        const autoPlayers: Record<number, typeof players[0] | null> = {};
+        const autoPlayers: Record<number, any | null> = {};
         const usedPlayerIds = new Set<number>();
         
         // Her slot için en uygun oyuncuyu bul
@@ -850,7 +849,7 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favor
         setAttackFormation(formation.id);
         setAttackPlayers(autoPlayers);
         const defenseForm = formations.find(f => f.id === popularDefenseFormationId) || formation;
-        const defenseAutoPlayers: Record<number, typeof players[0] | null> = {};
+        const defenseAutoPlayers: Record<number, any | null> = {};
         const defUsed = new Set<number>();
         (defenseForm.positions || formation.positions).forEach((positionType: string, slotIndex: number) => {
           const slotPos = (positionType || '').toUpperCase();
@@ -1302,8 +1301,8 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favor
         setAttackFormation(attackForm.id);
         setDefenseFormation(defenseForm?.id || attackForm.id);
         
-        const autoAttackPlayers: Record<number, typeof players[0] | null> = {};
-        const autoDefensePlayers: Record<number, typeof players[0] | null> = {};
+        const autoAttackPlayers: Record<number, any | null> = {};
+        const autoDefensePlayers: Record<number, any | null> = {};
         const usedPlayerIds = new Set<number>();
         
         // Atak formasyonu için oyuncuları yerleştir
@@ -1630,7 +1629,7 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favor
   const [showPlayerModal, setShowPlayerModal] = useState(false);
   const [showNoSquadInfoModal, setShowNoSquadInfoModal] = useState(false);
   const [formationType, setFormationType] = useState<'attack' | 'defense' | 'balanced'>('attack');
-  const [selectedPlayerForDetail, setSelectedPlayerForDetail] = useState<typeof players[0] | null>(null);
+  const [selectedPlayerForDetail, setSelectedPlayerForDetail] = useState<any | null>(null);
   const [isSaving, setIsSaving] = useState(false); // ✅ Kaydediliyor... göstergesi için
   const savingRef = React.useRef(false); // ✅ handleComplete sırasında savePartialState'i engelle
   const [isSquadLocked, setIsSquadLocked] = useState(false); // ✅ Kadro kilitli mi? (Tamamla sonrası)
@@ -1710,7 +1709,7 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favor
   
   // ✅ Get attack squad players for defense selection
   const attackSquadPlayers = React.useMemo(() => {
-    return Object.values(attackPlayers).filter(Boolean) as typeof players;
+    return Object.values(attackPlayers).filter(Boolean) as any[];
   }, [attackPlayers]);
   
   // ✅ Show defense confirmation when attack squad is complete (11 players)
@@ -1889,10 +1888,10 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favor
       setDefenseFormation(formationId);
       
       const defFormation = formations.find((f: any) => f.id === formationId);
-      const defPlayers: Record<number, typeof players[0] | null> = {};
+      const defPlayers: Record<number, any | null> = {};
       
       // ✅ Önce atak kadrosundaki kaleci'yi bul
-      let goalkeeper: typeof players[0] | null = null;
+      let goalkeeper: any | null = null;
       Object.entries(attackPlayers).forEach(([slot, p]) => {
         if (p && isGoalkeeperPlayer(p)) {
           goalkeeper = p;
@@ -2063,7 +2062,7 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favor
     }
   };
 
-  const handlePlayerSelect = (player: typeof players[0]) => {
+  const handlePlayerSelect = (player: any) => {
     // ✅ Sakat veya cezalı oyuncu kadroya eklenemez (kısıt kalkınca tekrar eklenebilir)
     if (player.eligible_for_selection === false || player.injured || player.suspended) {
       showInfo(

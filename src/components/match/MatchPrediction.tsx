@@ -19,7 +19,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { formationPositions, formationLabels } from '../../constants/formations';
-// ThreeFieldView kaldırıldı - FootballField tabanlı horizontal scroll kullanılıyor
 import Svg, { 
   Rect, 
   Circle, 
@@ -27,12 +26,12 @@ import Svg, {
   Path, 
 } from 'react-native-svg';
 import { FocusPrediction, SCORING_CONSTANTS } from '../../types/prediction.types';
-import { SCORING, TEXT, STORAGE_KEYS, PITCH_LAYOUT } from '../../config/constants';
+import { STORAGE_KEYS, PITCH_LAYOUT } from '../../config/constants';
 import { handleError, ErrorType, ErrorSeverity } from '../../utils/GlobalErrorHandler';
 import { predictionsDb } from '../../services/databaseService';
 import { ConfirmModal, ConfirmButton } from '../ui/ConfirmModal';
-import { ANALYSIS_FOCUSES, type AnalysisFocus, type AnalysisFocusType } from '../AnalysisFocusModal';
-import { FOCUS_CATEGORY_MAPPING, getCategoryFocus, PLAYER_RELATED_CATEGORIES, doesFocusIncludePlayerPredictions } from '../../constants/predictionConstants';
+import { ANALYSIS_FOCUSES, type AnalysisFocusType } from '../AnalysisFocusModal';
+import { FOCUS_CATEGORY_MAPPING, doesFocusIncludePlayerPredictions } from '../../constants/predictionConstants';
 import { isMockTestMatch, MOCK_MATCH_IDS, getMatch1Start, getMatch2Start, getMockUserTeamId, getMockCommunitySignals, getMockLineup } from '../../data/mockTestData';
 import PlayerPredictionModal from './PlayerPredictionModal';
 import { 
@@ -42,23 +41,19 @@ import {
   PlayerSignals,
   PlayerSignal,
   getSignalBorderStyle,
-  getDominantSignal,
   SIGNAL_BONUS_POINTS,
   checkSignalConflict,
   MIN_USERS_FOR_PERCENTAGE,
   MIN_USERS_FOR_PERCENTAGE_MOCK,
 } from '../../types/signals.types';
 import {
-  calculatePredictionTiming,
   getMatchPhase,
   getOccurredEvents,
   getTimingBadgeProps,
-  TIMING_LABELS,
   type MatchPhase,
   type MatchEvent as TimingMatchEvent,
 } from '../../utils/predictionTiming';
 
-// Constants imported from ../../constants/predictionConstants
 
 // Web için animasyonları devre dışı bırak
 const isWeb = Platform.OS === 'web';
