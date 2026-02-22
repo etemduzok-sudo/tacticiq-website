@@ -95,7 +95,6 @@ async function hasMatchStarted(matchId) {
 router.post('/', authenticateToken, validatePrediction, async (req, res) => {
   try {
     const {
-      userId,
       matchId,
       homeScore,
       awayScore,
@@ -107,6 +106,7 @@ router.post('/', authenticateToken, validatePrediction, async (req, res) => {
       focusedPredictions,
       trainingType
     } = req.body;
+    const userId = req.user?.id || req.body.userId;
 
     // Check if match has started
     const matchStarted = await hasMatchStarted(matchId);

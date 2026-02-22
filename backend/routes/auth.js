@@ -156,18 +156,7 @@ router.get('/check-username/:username', async (req, res) => {
       });
     }
 
-    // ✅ DEV MODE: Her zaman kullanılabilir döndür (Supabase users tablosu henüz hazır değil)
-    const DEV_MODE = true;
-    if (DEV_MODE) {
-      console.log(`✅ [DEV] Username check: ${username} -> available (dev mode)`);
-      return res.json({ 
-        success: true,
-        available: true,
-        message: 'Kullanıcı adı kullanılabilir' 
-      });
-    }
-
-    // Supabase'de kontrol et (production'da kullanılacak)
+    // Supabase'de kontrol et
     let query = supabase
       .from('users')
       .select('id, username')
