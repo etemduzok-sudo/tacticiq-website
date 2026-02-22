@@ -53,13 +53,6 @@ export default defineConfig({
             '@radix-ui/react-toggle-group',
             '@radix-ui/react-tooltip',
           ],
-          // MUI kütüphaneleri
-          'vendor-mui': [
-            '@mui/material',
-            '@mui/icons-material',
-            '@emotion/react',
-            '@emotion/styled',
-          ],
           // Grafik ve chart kütüphaneleri
           'vendor-charts': ['recharts'],
           // Animasyon kütüphaneleri
