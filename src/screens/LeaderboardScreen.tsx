@@ -23,46 +23,17 @@ import {
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-// Mock leaderboard data
-const generateMockLeaderboard = (filter: LeaderboardFilterType): LeaderboardEntry[] => {
-  const names = [
-    'AhmetPro', 'FutbolKurdu', 'TahminciAli', 'MaçUzmanı', 'GoalMaster',
-    'AnalystKing', 'ProTahmin', 'GolcüAvcı', 'TaktikUs', 'ScoreWizard',
-    'DerbiKralı', 'LigEfsanesi', 'TopçuBaba', 'FormAnaliz', 'SkorCanavarı',
-  ];
-  
-  return names.map((name, idx) => {
-    const points = 12847 - (idx * 847) + Math.floor(Math.random() * 100);
-    const level = Math.min(10, Math.floor(points / 1000) + 1);
-    const levelData = LEVEL_THRESHOLDS[level - 1];
-    
-    return {
-      rank: idx + 1,
-      userId: `user${idx}`,
-      username: name,
-      totalPoints: points,
-      level,
-      levelTitle: levelData?.title || 'Çaylak',
-      currentStreak: idx < 5 ? 12 - idx * 2 : Math.floor(Math.random() * 5),
-      isPro: idx < 3,
-      isCurrentUser: false,
-      rankChange: Math.floor(Math.random() * 50) - 20,
-    };
-  });
-};
-
-// Mock current user data
-const MOCK_CURRENT_USER: LeaderboardEntry = {
-  rank: 312,
-  userId: 'currentUser',
-  username: 'Etem Düzok',
-  totalPoints: 847.5,
-  level: 6,
-  levelTitle: 'Profesyonel',
-  currentStreak: 4,
-  isPro: true,
+const EMPTY_CURRENT_USER: LeaderboardEntry = {
+  rank: 0,
+  userId: '',
+  username: '',
+  totalPoints: 0,
+  level: 1,
+  levelTitle: 'Çaylak',
+  currentStreak: 0,
+  isPro: false,
   isCurrentUser: true,
-  rankChange: 23,
+  rankChange: 0,
 };
 
 export default function LeaderboardScreen() {
@@ -72,12 +43,12 @@ export default function LeaderboardScreen() {
   const [regionFilter, setRegionFilter] = useState<LeaderboardFilterType>('turkey');
   const [timeFilter, setTimeFilter] = useState<LeaderboardTimeFilter>('all_time');
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
-  const [currentUser, setCurrentUser] = useState<LeaderboardEntry>(MOCK_CURRENT_USER);
+  const [currentUser, setCurrentUser] = useState<LeaderboardEntry>(EMPTY_CURRENT_USER);
   const [weeklyRisers, setWeeklyRisers] = useState<LeaderboardEntry[]>([]);
   
   useEffect(() => {
-    // Load leaderboard data
-    const data = generateMockLeaderboard(regionFilter);
+    // Gerçek veri backend'den gelecek - şimdilik boş
+    const data: LeaderboardEntry[] = [];
     setLeaderboard(data);
     
     // Weekly risers - top 3 who gained most points

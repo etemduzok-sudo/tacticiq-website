@@ -29,123 +29,35 @@ import { calculateLevel, getShortTeamName } from '../services/scoringService';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-// Mock data for demonstration
-const MOCK_USER_PROFILE: UserScoringProfile = {
-  userId: 'user123',
-  totalPoints: 847.5,
-  level: 6,
-  levelTitle: 'Profesyonel',
-  levelProgress: 68,
-  rankTurkey: 312,
-  rankWorld: 4891,
-  totalUsersTurkey: 12500,
-  totalUsersWorld: 89000,
+const EMPTY_USER_PROFILE: UserScoringProfile = {
+  userId: '',
+  totalPoints: 0,
+  level: 1,
+  levelTitle: 'Çaylak',
+  levelProgress: 0,
+  rankTurkey: 0,
+  rankWorld: 0,
+  totalUsersTurkey: 0,
+  totalUsersWorld: 0,
   successRates: {
-    score: 38,
-    squad: 72,
-    player: 45,
+    score: 0,
+    squad: 0,
+    player: 0,
   },
-  currentStreak: 4,
-  bestStreak: 7,
+  currentStreak: 0,
+  bestStreak: 0,
   recentMatches: [],
 };
 
-const MOCK_RECENT_MATCHES: MatchScoreDetail[] = [
-  {
-    matchId: 1,
-    homeTeam: 'Real Madrid',
-    awayTeam: 'Barcelona',
-    matchDate: '2026-02-18',
-    analysisFocus: 'attack',
-    baseScores: {
-      scoreCorrect: 10,
-      totalGoalsCorrect: 4,
-      squadCorrect: 4.5,
-      attackFormationCorrect: 4.5,
-      defenseFormationCorrect: 0,
-    },
-    playerPredictions: [
-      { playerId: 1, playerName: 'Vinicius Jr', predictionType: 'goal', points: 4.5, isCorrect: true },
-      { playerId: 2, playerName: 'Bellingham', predictionType: 'assist', points: 2.5, isCorrect: true },
-      { playerId: 3, playerName: 'Araujo', predictionType: 'yellowCard', points: 1.5, isCorrect: true },
-    ],
-    multipliers: {
-      analysisFocusMultiplier: 1.5,
-      timeBonusMultiplier: 1.15,
-      streakBonus: 2,
-    },
-    subtotalBase: 23,
-    subtotalPlayerPredictions: 8.5,
-    subtotalBonuses: 8.9,
-    totalScore: 42.4,
-    predictedAt: '2026-02-17T14:32:00Z',
-    matchStartedAt: '2026-02-18T20:00:00Z',
-  },
-  {
-    matchId: 2,
-    homeTeam: 'Galatasaray',
-    awayTeam: 'Fenerbahce',
-    matchDate: '2026-02-15',
-    analysisFocus: 'balanced',
-    baseScores: {
-      scoreCorrect: 5,
-      totalGoalsCorrect: 2,
-      squadCorrect: 5,
-      attackFormationCorrect: 3.6,
-      defenseFormationCorrect: 2.4,
-    },
-    playerPredictions: [
-      { playerId: 4, playerName: 'Icardi', predictionType: 'goal', points: 3.6, isCorrect: true },
-    ],
-    multipliers: {
-      analysisFocusMultiplier: 1.2,
-      timeBonusMultiplier: 1.0,
-      streakBonus: 2,
-    },
-    subtotalBase: 18,
-    subtotalPlayerPredictions: 3.6,
-    subtotalBonuses: 9.6,
-    totalScore: 31.2,
-    predictedAt: '2026-02-15T10:00:00Z',
-    matchStartedAt: '2026-02-15T19:00:00Z',
-  },
-  {
-    matchId: 3,
-    homeTeam: 'Barcelona',
-    awayTeam: 'Atletico Madrid',
-    matchDate: '2026-02-12',
-    analysisFocus: 'defense',
-    baseScores: {
-      scoreCorrect: 2,
-      totalGoalsCorrect: 0,
-      squadCorrect: 4,
-      attackFormationCorrect: 1,
-      defenseFormationCorrect: 3,
-    },
-    playerPredictions: [
-      { playerId: 5, playerName: 'Pedri', predictionType: 'assist', points: 2.5, isCorrect: true },
-    ],
-    multipliers: {
-      analysisFocusMultiplier: 1.5,
-      timeBonusMultiplier: 0.9,
-      streakBonus: 0,
-    },
-    subtotalBase: 10,
-    subtotalPlayerPredictions: 2.5,
-    subtotalBonuses: 6.2,
-    totalScore: 18.7,
-    predictedAt: '2026-02-12T18:30:00Z',
-    matchStartedAt: '2026-02-12T20:00:00Z',
-  },
-];
+// Gerçek veri gelene kadar boş - backend'den çekilecek
 
 export default function ScoringScreen() {
   const { theme } = useTheme();
   const { t } = useTranslation();
   const colors = theme === 'dark' ? COLORS.dark : COLORS.light;
   
-  const [userProfile, setUserProfile] = useState<UserScoringProfile>(MOCK_USER_PROFILE);
-  const [recentMatches, setRecentMatches] = useState<MatchScoreDetail[]>(MOCK_RECENT_MATCHES);
+  const [userProfile, setUserProfile] = useState<UserScoringProfile>(EMPTY_USER_PROFILE);
+  const [recentMatches, setRecentMatches] = useState<MatchScoreDetail[]>([]);
   const [selectedMatchIndex, setSelectedMatchIndex] = useState(0);
   const [expandedMatch, setExpandedMatch] = useState<number | null>(0);
   const [timeFilter, setTimeFilter] = useState<'week' | 'month' | 'all'>('week');
