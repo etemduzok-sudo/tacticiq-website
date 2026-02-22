@@ -1,41 +1,34 @@
 # Büyük Dosya Parçalama Planı
 
-## DURUM: Planlandı - Henüz uygulanmadı
-## TARİH: 22 Şubat 2026
+## DURUM: FAZ 1 TAMAMLANDI
+## TARİH: 23 Şubat 2026 (güncellendi)
 
 Bu dosyalar çok büyük ve parçalanması gerekiyor.
 Parçalamada KURAL: JSX/style/render kısmına DOKUNMA, sadece logic çıkar.
 
 ---
 
-## 1. MatchPrediction.tsx (9,914 satır)
+## 1. MatchPrediction.tsx - FAZ 1 TAMAMLANDI
 
-### Mevcut Yapı:
+### Önceki: 9,914 satır → Şimdiki: 7,930 satır (1,984 satır azaldı)
+
+### Yapılanlar:
+1. ✅ `PlayerPredictionModal` (1203 satır) → `src/components/match/PlayerPredictionModal.tsx` (1763 satır, kendi stilleri dahil)
+2. ✅ `SubstituteModal` (200 satır) → SİLİNDİ (hiçbir yerde kullanılmıyordu)
+3. ✅ Sabitler → `src/constants/predictionConstants.ts` (32 satır)
+   - FOCUS_CATEGORY_MAPPING, getCategoryFocus, PLAYER_RELATED_CATEGORIES, doesFocusIncludePlayerPredictions
+4. ✅ Kullanılmayan import'lar temizlendi (FlatList, Animated, SlideInDown/Out)
+5. ✅ Kullanılmayan stiller temizlendi (~509 satır SubstituteModal stilleri)
+6. ⏸️ `FootballField` → Ertelendi (3 farklı versiyon, JSX değişikliği gerektirir)
+
+### Kalan Yapı (7,930 satır):
 - Satır 1-65: Import'lar
-- Satır 66-221: Sabitler ve yardımcı fonksiyonlar (FOCUS_CATEGORY_MAPPING, getCategoryFocus vb.)
-- Satır 222-381: Interface tanımları (MatchPredictionScreenProps)
-- Satır 382-430: FootballField bileşeni (SVG saha çizimi)
-- Satır 431-5382: ANA BİLEŞEN + dakika seçenekleri sabitleri
-- Satır 5385-6588: PlayerPredictionModal (1203 satır) - AYRI DOSYAYA ÇIKARILABİLİR
-- Satır 6591-6788: SubstituteModal (197 satır) - AYRI DOSYAYA ÇIKARILABİLİR
-- Satır 6790-9914: StyleSheet (3124 satır)
-
-### Parçalama Planı:
-1. `PlayerPredictionModal` → `src/components/match/PlayerPredictionModal.tsx`
-   - Props: player, predictions, onClose, onCancel, onPredictionChange, startingXI, reservePlayers, onSubstituteConfirm, allPlayerPredictions
-   - İlgili style'ları da taşı
-   
-2. `SubstituteModal` → `src/components/match/SubstituteModal.tsx`
-   - Props: visible, players, startingXI, type, playerName, selectedSubstitute, selectedMinute, onSave, onClose
-   - İlgili style'ları da taşı
-
-3. `FootballField` → `src/components/match/FootballField.tsx`
-   - SVG saha çizimi, genel kullanılabilir
-
-4. Sabitler → `src/constants/predictionConstants.ts`
-   - FOCUS_CATEGORY_MAPPING, getCategoryFocus, MINUTE_OPTIONS vb.
-
-### Tahmini Kazanç: ~1600 satır çıkarılır → 8300 satıra düşer
+- Satır 66-68: Sabitler referansı (constants'tan import)
+- Satır 69-145: isWeb, Slider, dimension helpers
+- Satır 146-370: Interface + helper fonksiyonlar
+- Satır 371-400: FootballField (SVG saha)
+- Satır 401-5360: ANA BİLEŞEN
+- Satır 5361-7930: StyleSheet (~2569 satır)
 
 ---
 
