@@ -31,12 +31,16 @@ if (!supabase) {
 // - Amerika: 00:00-06:00 UTC  
 // - Asya: 06:00-14:00 UTC
 // Bu yüzden adaptif interval YANLIŞ!
-// SABİT 12s = 7,200 calls/day = %96 kullanım
+// PRO Plan: 75,000 calls/day
+// Canlı maç varken: 5s interval (~17,280 calls/day)
+// Canlı maç yokken: 30s interval (~2,880 calls/day)
 // ============================================
 
-const FIXED_INTERVAL = 12000; // SABİT 12 saniye - dünya geneli
-const DAILY_API_LIMIT = 7500;
-const SAFE_DAILY_LIMIT = 7200; // %96 kullanım (300 buffer)
+const FIXED_INTERVAL = 12000; // Varsayılan 12 saniye
+const LIVE_MATCH_INTERVAL = 5000; // Canlı maç varken 5 saniye
+const IDLE_INTERVAL = 30000; // Canlı maç yokken 30 saniye
+const DAILY_API_LIMIT = 75000;
+const SAFE_DAILY_LIMIT = 70000; // %93 kullanım (5000 buffer)
 
 let syncTimer = null;
 let currentInterval = FIXED_INTERVAL; // SABİT 12s

@@ -1,0 +1,84 @@
+name: DB Backup - Weekly
+
+on:
+  schedule:
+    # Her Pazar 02:00 UTC
+    - cron: '0 2 * * 0'
+  workflow_dispatch:
+
+jobs:
+  backup-database:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Export Database Tables
+        working-directory: backend
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          mkdir -p backup
+          DATE=$(date +%Y-%m-%d)
+          
+          node -e "
+          const { createClient } = require('@supabase/supabase-js');
+          const fs = require('fs');
+          const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+          
+          const tables = [
+            'users', 'predictions', 'prediction_scores', 'match_results',
+            'user_stats', 'leaderboard_snapshots', 'player_community_ratings',
+            'squad_predictions', 'formation_statistics'
+          ];
+          
+          (async () => {
+            const summary = {};
+            for (const table of tables) {
+              try {
+                const { data, error, count } = await supabase
+                  .from(table)
+                  .select('*', { count: 'exact' })
+                  .limit(10000);
+                
+                if (error) {
+                  console.error('Error exporting ' + table + ':', error.message);
+                  summary[table] = { error: error.message };
+                  continue;
+                }
+                
+                fs.writeFileSync('backup/' + table + '_${DATE}.json', JSON.stringify(data, null, 2));
+                summary[table] = { rows: data?.length || 0, total: count };
+                console.log('Exported ' + table + ': ' + (data?.length || 0) + ' rows');
+              } catch (e) {
+                console.error('Failed ' + table + ':', e.message);
+                summary[table] = { error: e.message };
+              }
+            }
+            
+            fs.writeFileSync('backup/summary_${DATE}.json', JSON.stringify(summary, null, 2));
+            console.log('');
+            console.log('Backup complete:', JSON.stringify(summary, null, 2));
+          })();
+          "
+
+      - name: Upload Backup Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-backup-${{ github.run_number }}
+          path: backend/backup/
+          retention-days: 90

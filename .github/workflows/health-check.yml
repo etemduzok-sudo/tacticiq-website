@@ -1,0 +1,66 @@
+name: Health Check
+
+on:
+  schedule:
+    # Her 6 saatte bir
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Check Website (Vercel)
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://tacticiq.com" || echo "000")
+          if [ "$STATUS" = "200" ]; then
+            echo "Website OK (HTTP $STATUS)"
+          else
+            echo "::warning::Website returned HTTP $STATUS"
+          fi
+
+      - name: Check Supabase Connection
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+            "$SUPABASE_URL/rest/v1/" || echo "000")
+          if [ "$STATUS" = "200" ]; then
+            echo "Supabase OK (HTTP $STATUS)"
+          else
+            echo "::error::Supabase returned HTTP $STATUS"
+            exit 1
+          fi
+
+      - name: Check API-Football Quota
+        env:
+          API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+        run: |
+          if [ -z "$API_FOOTBALL_KEY" ]; then
+            echo "::warning::API_FOOTBALL_KEY not set"
+            exit 0
+          fi
+          
+          RESPONSE=$(curl -s "https://v3.football.api-sports.io/status" \
+            -H "x-apisports-key: $API_FOOTBALL_KEY")
+          
+          CURRENT=$(echo "$RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('response',{}).get('requests',{}).get('current',0))" 2>/dev/null || echo "0")
+          LIMIT=$(echo "$RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('response',{}).get('requests',{}).get('limit_day',0))" 2>/dev/null || echo "0")
+          
+          echo "API-Football: $CURRENT / $LIMIT calls today"
+          
+          if [ "$LIMIT" -gt 0 ]; then
+            PERCENT=$((CURRENT * 100 / LIMIT))
+            if [ "$PERCENT" -gt 90 ]; then
+              echo "::warning::API quota at ${PERCENT}% ($CURRENT/$LIMIT)"
+            fi
+          fi
+
+      - name: Summary
+        run: |
+          echo "Health check completed at $(date -u)"
