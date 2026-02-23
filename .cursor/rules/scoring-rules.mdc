@@ -4,36 +4,54 @@
 
 Frontend ASLA kendi puan hesaplaması yapmaz. Backend'den gelen puanı gösterir.
 
-## 1000 Tam Puan Sistemi
+## Puan Ölçeği
+- Tek maç teorik max: ~330 puan (neredeyse imkansız)
+- Gerçekçi iyi maç: 80-150 puan
+- Ortalama maç: 30-60 puan
 
-### Maç Tahmin Puanları (Kullanıcı)
+## Maç Tahmin Puanları
 | Tahmin | Puan | Tolerans |
 |--------|------|----------|
-| Tam Skor | 100 | Tam isabet |
-| Doğru Kazanan | 60 | - |
-| Doğru Berabere | 50 | - |
-| Gol Farkı | 30 | Tam isabet |
-| İlk Gol | 40 | Takım doğru |
-| Toplam Gol | 30 | Aralık doğru |
-| Sarı Kartlar | 20 | ±1 tolerans |
-| Kırmızı Kartlar | 30 | Tam isabet |
-| Kornerler | 20 | ±2 tolerans |
+| Tam Skor | 50 | Tam isabet |
+| Doğru Kazanan | 30 | - |
+| Doğru Berabere | 25 | - |
+| Gol Farkı | 15 | Tam isabet |
+| İlk Gol | 20 | Takım doğru |
+| Toplam Gol | 15 | Aralık doğru |
+| Sarı Kartlar | 10 | ±1 tolerans |
+| Kırmızı Kartlar | 15 | Tam isabet |
+| Kornerler | 10 | ±2 tolerans |
+| **Max base** | **190** | |
 
-### Strategic Focus System
+## Strategic Focus System
 - Doğru focus: 2x bonus
 - Yanlış focus: -1.5x ceza
 - Max 3 focus seçilebilir
 
-### Training Multipliers
+## Training Multipliers
 - Attack: 1.20x (tempo + bireysel cluster)
 - Defense: 1.20x (disiplin + fiziksel cluster)
 - Balanced: 1.10x (tüm cluster'lar)
 
-### Cluster Yapısı
+## Cluster Yapısı
 - **Tempo:** first_goal + total_goals
 - **Disiplin:** yellow_cards + red_cards
 - **Fiziksel:** corners + total_goals
 - **Bireysel:** exact_score + first_goal
+
+## Seviye Sistemi (Kümülatif Toplam Puan)
+| Seviye | Puan | Unvan |
+|--------|------|-------|
+| 1 | 0-100 | Çaylak |
+| 2 | 100-300 | Amatör |
+| 3 | 300-600 | Meraklı |
+| 4 | 600-1000 | Analist |
+| 5 | 1000-1500 | Uzman |
+| 6 | 1500-2500 | Profesyonel |
+| 7 | 2500-4000 | Elit |
+| 8 | 4000-6000 | Efsane |
+| 9 | 6000-10000 | Grandmaster |
+| 10 | 10000+ | Hall of Fame |
 
 ## Oyuncu Reytingleri
 - 100 tam puan üzerinden (0-100 skala)
@@ -42,5 +60,4 @@ Frontend ASLA kendi puan hesaplaması yapmaz. Backend'den gelen puanı gösterir
 
 ## Teknik Direktör Reytingleri
 - 10 tam puan üzerinden (0-10 skala)
-- Kategoriler: Taktik, motivasyon, değişiklikler vb.
 - Min 10 oy gerekli

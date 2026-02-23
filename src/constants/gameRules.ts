@@ -3,20 +3,21 @@
 // KAYNAK: Backend scoringService.js - Frontend sadece gösterir
 
 /**
- * PUANLAMA KURALLARI - 1000 Tam Puan Sistemi
+ * PUANLAMA KURALLARI
+ * Tek maç max ~330 puan (teorik), gerçekçi 80-150
  * Gerçek hesaplama backend'de yapılır.
  * Bu değerler UI'da zorluk göstergesi ve puan önizleme içindir.
  */
 
 // Base Points (Zorluk Seviyesine Göre)
 export const BASE_POINTS = {
-  TRIVIAL: 10,       // Çok kolay (örn: maç sonucu)
-  VERY_EASY: 20,     // Kolay (örn: toplam gol aralığı)
-  EASY: 30,          // Kolay (örn: sarı kart sayısı)
-  MEDIUM: 40,        // Orta (örn: ilk gol dakikası)
-  HARD: 60,          // Zor (örn: gol atan oyuncu)
-  VERY_HARD: 100,    // Çok zor (örn: maçın adamı)
-  EXPERT: 150,       // Uzman (örn: penaltı + dakika)
+  TRIVIAL: 5,        // Çok kolay (örn: maç sonucu)
+  VERY_EASY: 8,      // Kolay (örn: toplam gol aralığı)
+  EASY: 10,          // Kolay (örn: sarı kart sayısı)
+  MEDIUM: 15,        // Orta (örn: ilk gol dakikası)
+  HARD: 20,          // Zor (örn: gol atan oyuncu)
+  VERY_HARD: 30,     // Çok zor (örn: maçın adamı)
+  EXPERT: 50,        // Uzman (örn: penaltı + dakika)
 } as const;
 
 // Prediction Difficulty Mapping
@@ -150,7 +151,7 @@ export const SCORING_RULES = {
   MIN_PREDICTIONS_FOR_SCORING: 3,
   
   // Maksimum puan limiti (tek maç)
-  MAX_POINTS_PER_MATCH: 1000,
+  MAX_POINTS_PER_MATCH: 330,
   
   // Negatif puan limiti
   MIN_POINTS_PER_MATCH: -500,

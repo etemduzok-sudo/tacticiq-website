@@ -2,11 +2,12 @@
 // TacticIQ - Centralized Constants Management
 
 /**
- * Scoring Constants - Backend ile senkron (1000 tam puan sistemi)
+ * Scoring Constants - Backend ile senkron
+ * Tek maç max ~330 (teorik), gerçekçi 80-150
  * Gerçek hesaplama: backend/services/scoringService.js
  */
 export const SCORING = {
-  MAX_POINTS_PER_MATCH: 1000,
+  MAX_POINTS_PER_MATCH: 330,
 
   FOCUS: {
     CORRECT: 2.0,

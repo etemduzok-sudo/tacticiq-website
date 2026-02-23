@@ -1,5 +1,5 @@
 // TacticIQ - Puanlama Sistemi Tipleri
-// 1000 Tam Puan Sistemi (tek maç max ~1000 puan)
+// Tek maç max ~330 puan (teorik), gerçekçi 80-150 puan
 // KAYNAK: Backend scoringService.js - Frontend sadece gösterir, hesaplamaz
 
 /**
@@ -60,42 +60,42 @@ export const ANALYSIS_FOCUS_MULTIPLIERS: Record<AnalysisFocusType, {
  * Gerçek hesaplama backend'de yapılır.
  */
 export const BASE_SCORES = {
-  // Skor Tahminleri (1000 puan sistemi)
-  SCORE_EXACT: 100,          // Tam skor isabet (2-1 → 2-1)
-  SCORE_GOAL_DIFF: 30,       // Gol farkı doğru (2-1 → 3-2)
-  SCORE_WINNER: 60,          // Galibiyet doğru (2-1 → 1-0)
+  // Skor Tahminleri (tek maç max ~190 base)
+  SCORE_EXACT: 50,           // Tam skor isabet (2-1 → 2-1)
+  SCORE_GOAL_DIFF: 15,       // Gol farkı doğru (2-1 → 3-2)
+  SCORE_WINNER: 30,          // Galibiyet doğru (2-1 → 1-0)
 
   // Toplam Gol
-  TOTAL_GOALS_EXACT: 30,     // Tam isabet
-  TOTAL_GOALS_CLOSE: 15,     // ±1 fark
+  TOTAL_GOALS_EXACT: 15,     // Tam isabet
+  TOTAL_GOALS_CLOSE: 8,      // ±1 fark
 
   // İlk Gol
-  FIRST_GOAL: 40,            // İlk golü atan takım
+  FIRST_GOAL: 20,            // İlk golü atan takım
 
   // Kadro Tahminleri
-  SQUAD_PER_PLAYER: 5,       // Her doğru oyuncu
+  SQUAD_PER_PLAYER: 2,       // Her doğru oyuncu
   
   // Formasyon Tahminleri
-  ATTACK_FORMATION_EXACT: 20, // Atak formasyonu tam
-  ATTACK_FORMATION_SIMILAR: 10, // Benzer tip
-  DEFENSE_FORMATION_EXACT: 15, // Defans formasyonu tam
-  DEFENSE_FORMATION_SIMILAR: 5, // Benzer tip
+  ATTACK_FORMATION_EXACT: 10, // Atak formasyonu tam
+  ATTACK_FORMATION_SIMILAR: 5, // Benzer tip
+  DEFENSE_FORMATION_EXACT: 8, // Defans formasyonu tam
+  DEFENSE_FORMATION_SIMILAR: 3, // Benzer tip
   
   // Detaylı Tahminler
-  YELLOW_CARDS: 20,          // Sarı kartlar (±1 tolerans)
-  RED_CARDS: 30,             // Kırmızı kartlar
-  CORNERS: 20,              // Kornerler (±2 tolerans)
+  YELLOW_CARDS: 10,          // Sarı kartlar (±1 tolerans)
+  RED_CARDS: 15,             // Kırmızı kartlar
+  CORNERS: 10,               // Kornerler (±2 tolerans)
 
   // Oyuncu Tahminleri
-  PLAYER_GOAL: 25,           // Gol atacak
-  PLAYER_ASSIST: 20,         // Asist yapacak
-  PLAYER_YELLOW_CARD: 10,    // Sarı kart
-  PLAYER_RED_CARD: 30,       // Kırmızı kart
-  PLAYER_SUBSTITUTED: 8,     // Oyundan çıkacak
-  PLAYER_MAN_OF_MATCH: 40,   // Maçın adamı
-  PLAYER_PENALTY_TAKER: 15,  // Penaltı kullanacak
-  PLAYER_PENALTY_SCORED: 25, // Penaltı atacak
-  PLAYER_PENALTY_MISSED: 50, // Penaltı kaçıracak
+  PLAYER_GOAL: 12,           // Gol atacak
+  PLAYER_ASSIST: 10,         // Asist yapacak
+  PLAYER_YELLOW_CARD: 5,     // Sarı kart
+  PLAYER_RED_CARD: 15,       // Kırmızı kart
+  PLAYER_SUBSTITUTED: 4,     // Oyundan çıkacak
+  PLAYER_MAN_OF_MATCH: 20,   // Maçın adamı
+  PLAYER_PENALTY_TAKER: 8,   // Penaltı kullanacak
+  PLAYER_PENALTY_SCORED: 12, // Penaltı atacak
+  PLAYER_PENALTY_MISSED: 25, // Penaltı kaçıracak
 };
 
 /**
@@ -124,16 +124,16 @@ export const STREAK_BONUSES = {
  * Seviye Sistemi
  */
 export const LEVEL_THRESHOLDS = [
-  { level: 1, minPoints: 0, maxPoints: 50, title: 'Çaylak', color: '#9CA3AF' },
-  { level: 2, minPoints: 50, maxPoints: 150, title: 'Amatör', color: '#6B7280' },
-  { level: 3, minPoints: 150, maxPoints: 300, title: 'Meraklı', color: '#3B82F6' },
-  { level: 4, minPoints: 300, maxPoints: 500, title: 'Analist', color: '#10B981' },
-  { level: 5, minPoints: 500, maxPoints: 800, title: 'Uzman', color: '#F59E0B' },
-  { level: 6, minPoints: 800, maxPoints: 1200, title: 'Profesyonel', color: '#8B5CF6' },
-  { level: 7, minPoints: 1200, maxPoints: 1800, title: 'Elit', color: '#EC4899' },
-  { level: 8, minPoints: 1800, maxPoints: 2500, title: 'Efsane', color: '#EF4444' },
-  { level: 9, minPoints: 2500, maxPoints: 3500, title: 'Grandmaster', color: '#C9A44C' },
-  { level: 10, minPoints: 3500, maxPoints: Infinity, title: 'Hall of Fame', color: '#FFD700' },
+  { level: 1, minPoints: 0, maxPoints: 100, title: 'Çaylak', color: '#9CA3AF' },
+  { level: 2, minPoints: 100, maxPoints: 300, title: 'Amatör', color: '#6B7280' },
+  { level: 3, minPoints: 300, maxPoints: 600, title: 'Meraklı', color: '#3B82F6' },
+  { level: 4, minPoints: 600, maxPoints: 1000, title: 'Analist', color: '#10B981' },
+  { level: 5, minPoints: 1000, maxPoints: 1500, title: 'Uzman', color: '#F59E0B' },
+  { level: 6, minPoints: 1500, maxPoints: 2500, title: 'Profesyonel', color: '#8B5CF6' },
+  { level: 7, minPoints: 2500, maxPoints: 4000, title: 'Elit', color: '#EC4899' },
+  { level: 8, minPoints: 4000, maxPoints: 6000, title: 'Efsane', color: '#EF4444' },
+  { level: 9, minPoints: 6000, maxPoints: 10000, title: 'Grandmaster', color: '#C9A44C' },
+  { level: 10, minPoints: 10000, maxPoints: Infinity, title: 'Hall of Fame', color: '#FFD700' },
 ];
 
 /**

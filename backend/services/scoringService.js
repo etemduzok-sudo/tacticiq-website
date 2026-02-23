@@ -11,21 +11,19 @@ const { supabase } = require('../config/supabase');
 // SCORING RULES (from gameRules.ts)
 // ============================================
 
-// 1000 TAM PUAN SİSTEMİ
-// Maksimum base puan: 300 + Focus bonus + Training bonus = ~1000
+// Tek maç max ~190 base + focus/training bonus = ~330 teorik max
+// Gerçekçi iyi maç: 80-150 puan | Ortalama maç: 30-60 puan
 const SCORING_RULES = {
-  // Temel tahminler (toplam: 300 base puan)
-  EXACT_SCORE: 100,       // Tam skor tahmini
-  CORRECT_WINNER: 60,     // Doğru kazanan/berabere
-  CORRECT_DRAW: 50,       // Berabere doğru tahmin
-  GOAL_DIFFERENCE: 30,    // Gol farkı doğru
+  EXACT_SCORE: 50,        // Tam skor tahmini (en zor)
+  CORRECT_WINNER: 30,     // Doğru kazanan
+  CORRECT_DRAW: 25,       // Berabere doğru tahmin
+  GOAL_DIFFERENCE: 15,    // Gol farkı doğru
 
-  // Detaylı tahminler
-  FIRST_GOAL: 40,         // İlk golü atan
-  TOTAL_GOALS: 30,        // Toplam gol aralığı
-  YELLOW_CARDS: 20,       // Sarı kartlar (±1 tolerans)
-  RED_CARDS: 30,          // Kırmızı kartlar
-  CORNERS: 20,            // Kornerler (±2 tolerans)
+  FIRST_GOAL: 20,         // İlk golü atan takım
+  TOTAL_GOALS: 15,        // Toplam gol aralığı
+  YELLOW_CARDS: 10,       // Sarı kartlar (±1 tolerans)
+  RED_CARDS: 15,          // Kırmızı kartlar
+  CORNERS: 10,            // Kornerler (±2 tolerans)
 
   // Strategic Focus System
   FOCUS_MULTIPLIER: 2.0,  // 2x puan (doğru focus)
