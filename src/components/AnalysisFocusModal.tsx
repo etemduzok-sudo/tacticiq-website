@@ -337,8 +337,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   focusCard: {
-    // Responsive: Geniş ekranda 3 sütun, dar ekranda 2 sütun
-    width: width > 600 ? '32%' : '48%',
+    // 2 sütun, 3 satır düzeni (tüm ekran boyutlarında)
+    width: '48%',
     borderRadius: 12,
     borderWidth: 1.5,
     padding: 10, // ✅ Sabit padding

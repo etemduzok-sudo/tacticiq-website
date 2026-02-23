@@ -23,7 +23,7 @@ on:
 jobs:
   sync-database:
     runs-on: ubuntu-latest
-    timeout-minutes: 300  # 5 saat max (API limiti dolana kadar)
+    timeout-minutes: 180  # 3 saat max (75K limit ile ~1 saat yeterli)
     
     steps:
       - name: Checkout repository

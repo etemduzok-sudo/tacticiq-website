@@ -419,8 +419,12 @@ export const teamsApi = {
   }),
 
   // Get team squad (oyuncu kadrosu)
-  getTeamSquad: (teamId: number, season?: number) => {
-    const params = season ? `?season=${season}` : '';
+  // forceRefresh: API'den zorla yeniden çek (eski/giden oyuncuları temizlemek için)
+  getTeamSquad: (teamId: number, season?: number, forceRefresh?: boolean) => {
+    const search = new URLSearchParams();
+    if (season) search.set('season', String(season));
+    if (forceRefresh) search.set('force_refresh', '1');
+    const params = search.toString() ? `?${search.toString()}` : '';
     return request(`/teams/${teamId}/squad${params}`);
   },
 

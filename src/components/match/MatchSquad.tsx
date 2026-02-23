@@ -19,7 +19,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../../config/supabase';
 import { STORAGE_KEYS, PITCH_LAYOUT } from '../../config/constants';
 import { squadPredictionsApi, teamsApi, matchesApi } from '../../services/api';
-import { getBulkSquad, refreshBulkSquad } from '../../services/bulkDataService';
+import { getBulkSquad, refreshBulkSquad, clearBulkSquad } from '../../services/bulkDataService';
 import { predictionsDb } from '../../services/databaseService';
 import { ConfirmModal, ConfirmButton } from '../ui/ConfirmModal';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -195,6 +195,7 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favor
   const [isLoadingSquad, setIsLoadingSquad] = React.useState(false);
   const [squadLoadingFromApi, setSquadLoadingFromApi] = React.useState(false); // true = API'den çekiliyor (mesaj için)
   const [squadRetryKey, setSquadRetryKey] = React.useState(0);
+  const squadForceRefreshRef = React.useRef(false);
 
   // ✅ Topluluk "oyundan çıksın" verisi (subOutRate = subOutVotes / totalPredictors)
   // Mock 999999: API yoksa client-side fallback ile her zaman göster
@@ -216,9 +217,14 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favor
     return () => { cancelled = true; };
   }, [matchId, isVisible]);
 
-  const retrySquadFetch = React.useCallback(() => {
+  const retrySquadFetch = React.useCallback((forceRefresh = false) => {
+    if (forceRefresh) {
+      squadForceRefreshRef.current = true;
+      clearBulkSquad(homeTeamId || 0).catch(() => {});
+      clearBulkSquad(awayTeamId || 0).catch(() => {});
+    }
     setSquadRetryKey((k) => k + 1);
-  }, []);
+  }, [homeTeamId, awayTeamId]);
 
   // ✅ Lineups yoksa kadro: önce uygulama cache'inden (bulk), yoksa API
   React.useEffect(() => {

@@ -28,13 +28,14 @@ const args = process.argv.slice(2);
 const PHASE = args.find(a => a.startsWith('--phase='))?.replace('--phase=', '') || 'teams';
 const MAX_TEAMS = parseInt(args.find(a => a.startsWith('--max-teams='))?.replace('--max-teams=', '') || '0', 10);
 
-// Rate limiting: 1 team = ~5 API calls, so ~12 teams/minute to stay safe
-const BATCH_SIZE = 10;
-const BATCH_PAUSE_MS = 60000; // 60 sec between batches
-const TEAM_DELAY_MS = 5000;   // 5 sec between teams
+// 75,000 API limiti ile hızlı çalış: ~25,000 çağrı gerekiyor = limitin %33'ü
+const BATCH_SIZE = 50;
+const BATCH_PAUSE_MS = 5000;  // 5 sec between batches
+const TEAM_DELAY_MS = 800;    // 800ms between teams (~75 teams/min)
 
 let apiCallCount = 0;
 let teamsProcessed = 0;
+const startTime = Date.now();
 let coachUpdated = 0;
 let colorsUpdated = 0;
 let ratingsUpdated = 0;
@@ -176,8 +177,10 @@ async function runTeamsPhase() {
       if (result.coachUpdated) coachUpdated++;
       if (result.colorsUpdated) colorsUpdated++;
       
-      if ((i + 1) % 10 === 0) {
-        log(`Progress: ${i + 1}/${toProcess.length} | Coach: +${coachUpdated} | Colors: +${colorsUpdated}`);
+      if ((i + 1) % 25 === 0) {
+        const elapsed = Math.round((Date.now() - startTime) / 60000);
+        const eta = toProcess.length > 0 ? Math.round(elapsed * (toProcess.length - i - 1) / (i + 1)) : 0;
+        log(`Progress: ${i + 1}/${toProcess.length} (${Math.round((i+1)/toProcess.length*100)}%) | API: ~${apiCallCount} | Coach: +${coachUpdated} | Colors: +${colorsUpdated} | ${elapsed}m elapsed, ~${eta}m remaining`);
       }
     } catch (err) {
       if (err.message?.includes('429') || err.message?.includes('limit')) {
@@ -218,9 +221,9 @@ async function runRatingsPhase() {
   try {
     await processAllTeamsFromDB({
       maxTeams: MAX_TEAMS > 0 ? MAX_TEAMS : undefined,
-      delayMs: 2000,
-      batchSize: 20,
-      pauseAfterBatch: 30000
+      delayMs: 800,
+      batchSize: 50,
+      pauseAfterBatch: 5000
     });
     log('✅ Ratings phase complete');
   } catch (err) {

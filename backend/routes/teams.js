@@ -366,11 +366,13 @@ router.get('/:id/coach', async (req, res) => {
 });
 
 // GET /api/teams/:id/squad - Get team squad from DB; yoksa tek seferlik API'den çek ve kaydet
+// ?force_refresh=1 → Kadro güncel değilse (eski oyuncular vb.) API'den zorla yeniden çek
 router.get('/:id/squad', async (req, res) => {
   try {
     const teamId = parseInt(req.params.id, 10);
-    const { season } = req.query;
+    const { season, force_refresh } = req.query;
     const currentSeason = parseInt(season, 10) || 2025;
+    const shouldForceRefresh = force_refresh === '1' || force_refresh === 'true';
 
     if (!supabase) {
       // 🧪 Supabase yoksa bile mock test kadroları döndür
@@ -400,9 +402,14 @@ router.get('/:id/squad', async (req, res) => {
       });
     }
 
-    // Kadro DB'de yoksa tek seferlik API'den çek ve kaydet (on-demand sync)
-    if (!row || !row.players || (Array.isArray(row.players) && row.players.length === 0)) {
-      console.log(`🔄 Squad missing for team ${teamId}, triggering on-demand sync...`);
+    // Kadro DB'de yoksa VEYA force_refresh isteniyorsa API'den çek ve kaydet
+    const needsSync = !row || !row.players || (Array.isArray(row.players) && row.players.length === 0) || shouldForceRefresh;
+    if (needsSync) {
+      if (shouldForceRefresh) {
+        console.log(`🔄 Force refresh requested for team ${teamId}, re-syncing from API...`);
+      } else {
+        console.log(`🔄 Squad missing for team ${teamId}, triggering on-demand sync...`);
+      }
       try {
         const squadSyncService = require('../services/squadSyncService');
         const result = await squadSyncService.syncOneTeamSquad(teamId, null);
@@ -435,6 +442,26 @@ router.get('/:id/squad', async (req, res) => {
         }
       } catch (syncErr) {
         console.warn('⚠️ On-demand squad sync failed:', syncErr.message);
+      }
+
+      // force_refresh başarısız olduysa mevcut veriyi döndür (eski kadro bile olsa)
+      if (shouldForceRefresh && row?.players?.length > 0) {
+        const playerIds = (row.players || []).map((p) => p.id).filter(Boolean);
+        const apiMap = (row.players || []).reduce((acc, p) => { acc[p.id] = p.rating; return acc; }, {});
+        const displayMap = await getDisplayRatingsMap(playerIds, apiMap, supabase);
+        const playersWithDisplayRating = (row.players || []).map((p) => ({
+          ...p,
+          rating: displayMap.get(p.id) ?? p.rating,
+        }));
+        return res.json({
+          success: true,
+          data: {
+            team: row.team_data || { id: row.team_id, name: row.team_name },
+            players: playersWithDisplayRating,
+          },
+          cached: true,
+          refreshFailed: true,
+        });
       }
 
       // 🧪 MOCK TEST: Mock takımlar için kadro verisi döndür
