@@ -419,12 +419,8 @@ export const teamsApi = {
   }),
 
   // Get team squad (oyuncu kadrosu)
-  // forceRefresh: API'den zorla yeniden çek (eski/giden oyuncuları temizlemek için)
-  getTeamSquad: (teamId: number, season?: number, forceRefresh?: boolean) => {
-    const search = new URLSearchParams();
-    if (season) search.set('season', String(season));
-    if (forceRefresh) search.set('force_refresh', '1');
-    const params = search.toString() ? `?${search.toString()}` : '';
+  getTeamSquad: (teamId: number, season?: number) => {
+    const params = season ? `?season=${season}` : '';
     return request(`/teams/${teamId}/squad${params}`);
   },
 
@@ -653,6 +649,36 @@ export const squadPredictionsApi = {
 };
 
 // Export all
+// ====================
+// SCORING API
+// ====================
+export const scoringApi = {
+  getMatchScores: async (matchId: number) => {
+    return request<{ success: boolean; data: any[]; count: number }>(
+      `/scoring/match/${matchId}`
+    );
+  },
+
+  getUserScores: async (userId: string, limit = 50) => {
+    return request<{ success: boolean; data: any[]; stats: any }>(
+      `/scoring/user/${userId}?limit=${limit}`
+    );
+  },
+
+  getUserStats: async (userId: string) => {
+    return request<{ success: boolean; data: any }>(
+      `/scoring/stats/${userId}`
+    );
+  },
+
+  finalizeMatch: async (matchId: number) => {
+    return request<{ success: boolean; data: any; message: string }>(
+      `/scoring/finalize/${matchId}`,
+      { method: 'POST' }
+    );
+  },
+};
+
 export default {
   matches: matchesApi,
   leagues: leaguesApi,
@@ -660,6 +686,7 @@ export default {
   players: playersApi,
   legalDocuments: legalDocumentsApi,
   squadPredictions: squadPredictionsApi,
+  scoring: scoringApi,
   utils: {
     getTodayDate,
     getDateRange,
@@ -668,7 +695,7 @@ export default {
     isMatchLive,
     isMatchFinished,
   },
-  getBaseUrl: () => API_BASE_URL, // Export base URL for direct fetch
+  getBaseUrl: () => API_BASE_URL,
 };
 
 // ====================

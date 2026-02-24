@@ -368,13 +368,15 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
     // ✅ Yeni takım eklendiyse: Ref'i güncelle, cache'i temizle ve TÜM maçları yeniden fetch et
     if (addedTeamIds.length > 0) {
       logger.info('🆕 New teams added, clearing cache and fetching all matches...', { addedTeams: addedTeamIds }, 'MATCHES');
-      // ✅ KRITIK: Ref'i hemen güncelle - fetchMatches ref'ten okuyacak
       favoriteTeamsRef.current = favoriteTeams;
       setLoading(true);
+      // Mevcut maç state'lerini hemen temizle - geçici yanlış veri gösterimini engelle
+      setLiveMatches([]);
+      setUpcomingMatches([]);
+      setPastMatches([]);
       clearMatchesCache().then(async () => {
         await fetchMatches();
-        // ✅ Canlı maçları da hemen kontrol et (yeni takımın canlı maçı olabilir)
-        fetchLiveOnly();
+        await fetchLiveOnly();
       });
     } 
     // ✅ Sadece takım çıkarıldıysa: Mevcut maçları filtrele (cache temizleme gerekmez)

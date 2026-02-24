@@ -511,14 +511,15 @@ async function getTeamUpcomingMatches(teamId, limit = 10) {
 }
 
 // Get team squad (players)
-// skipCache: true = sync için taze veri (kadro güncellemesi)
+// KİLİTLİ: season parametresi GÖNDERİLMEZ - API-Football /players/squads güncel kadroyu season olmadan döndürür
+// season parametresi gönderildiğinde boş döner (API davranışı)
 async function getTeamSquad(teamId, season = 2025, skipCache = false) {
-  const cacheKey = skipCache ? null : `team-squad-${teamId}-${season}`;
-  const cacheDuration = skipCache ? 0 : 86400; // 24 hour cache
+  const cacheKey = skipCache ? null : `team-squad-${teamId}`;
+  const cacheDuration = skipCache ? 0 : 86400;
   if (skipCache) {
-    cache.del(`team-squad-${teamId}-${season}`); // Eski cache'i temizle
+    cache.del(`team-squad-${teamId}`);
   }
-  return makeRequest('/players/squads', { team: teamId, season }, cacheKey, cacheDuration);
+  return makeRequest('/players/squads', { team: teamId }, cacheKey, cacheDuration);
 }
 
 // Get injuries/suspensions for a team (sakatlık, sarı/kırmızı kart cezalılar)

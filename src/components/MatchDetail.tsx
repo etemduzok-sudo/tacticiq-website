@@ -1262,11 +1262,10 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
             hasPrediction={hasPrediction === true}
             initialAnalysisFocus={effectiveAnalysisFocus}
             lineups={lineups}
+            liveEvents={currentEvents}
             favoriteTeamIds={favoriteTeamIds}
             onPredictionsSaved={() => checkPredictions(homeId, awayId, bothFavorites)}
             onPredictionsSavedForTeam={async (savedTeamId) => {
-              // ✅ "Diğer takım için de tahmin yapmak ister misiniz?" popup'ı kaldırıldı
-              // Artık kullanıcı maç kartına tıklayınca baştan takım seçimi yapacak
               await checkPredictions(homeId, awayId, bothFavorites);
             }}
             onHasUnsavedChanges={handleHasUnsavedChanges}

@@ -143,7 +143,7 @@ export function useFavoriteTeams() {
     return () => clearInterval(interval);
   }, [teamIdsKey, triggerBulkDownload]);
 
-  // ✅ Supabase senkronizasyonu arka planda - UI'ı bloklamaz
+  // KİLİTLİ: Supabase sync - updated_at timestamp karşılaştırması ile son güncellenen master
   const syncWithSupabaseInBackground = useCallback(async (localTeams: FavoriteTeam[] | null) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -151,25 +151,62 @@ export function useFavoriteTeams() {
       
       const { data: profile, error } = await supabase
         .from('user_profiles')
-        .select('favorite_teams_json')
+        .select('favorite_teams_json, updated_at')
         .eq('id', user.id)
         .single();
       
       if (!error && profile?.favorite_teams_json) {
         const supabaseTeams = jsonToTeams(profile.favorite_teams_json);
+        const supabaseUpdatedAt = profile.updated_at ? new Date(profile.updated_at).getTime() : 0;
+        
+        let localUpdatedAt = 0;
+        try {
+          const AsyncStorageModule = await import('@react-native-async-storage/async-storage');
+          const AsyncStorage = AsyncStorageModule.default;
+          const localTs = await AsyncStorage.getItem('tacticiq-favorite-teams-updated-at');
+          if (localTs) localUpdatedAt = new Date(localTs).getTime();
+        } catch (e) { /* ignore */ }
         
         if (supabaseTeams && supabaseTeams.length > 0) {
-          // Supabase'den gelen takımlar varsa ve lokal boşsa, Supabase'i kullan
           if (!localTeams || localTeams.length === 0) {
             setFavoriteTeams(supabaseTeams);
             await saveFavoriteTeams(supabaseTeams);
-            logger.info('Synced favorite teams from Supabase', { count: supabaseTeams.length }, 'FAVORITE_TEAMS');
-            // ✅ Kadrolar dahil tüm veriyi hemen uygulama belleğine çek
+            try {
+              const ASM = await import('@react-native-async-storage/async-storage');
+              await ASM.default.setItem('tacticiq-favorite-teams-updated-at', profile.updated_at || new Date().toISOString());
+            } catch (e) { /* ignore */ }
+            logger.info('Synced favorite teams from Supabase (local empty)', { count: supabaseTeams.length }, 'FAVORITE_TEAMS');
             const ids = supabaseTeams.map(t => t.id).filter(Boolean);
             if (ids.length > 0) triggerBulkDownload(ids);
           } else {
-            // İkisinde de takım varsa, lokali ana kaynak olarak tut ama Supabase'i güncelle
-            await syncToSupabase(localTeams);
+            const localIds = localTeams.map(t => t.id).sort().join(',');
+            const supabaseIds = supabaseTeams.map(t => t.id).sort().join(',');
+            if (localIds !== supabaseIds) {
+              if (supabaseUpdatedAt > localUpdatedAt) {
+                logger.info('Supabase is newer, pulling from Supabase', {
+                  local: localTeams.map(t => t.name),
+                  supabase: supabaseTeams.map(t => t.name),
+                  supabaseUpdatedAt: new Date(supabaseUpdatedAt).toISOString(),
+                  localUpdatedAt: localUpdatedAt ? new Date(localUpdatedAt).toISOString() : 'none',
+                }, 'FAVORITE_TEAMS');
+                setFavoriteTeams(supabaseTeams);
+                await saveFavoriteTeams(supabaseTeams);
+                try {
+                  const ASM2 = await import('@react-native-async-storage/async-storage');
+                  await ASM2.default.setItem('tacticiq-favorite-teams-updated-at', profile.updated_at || new Date().toISOString());
+                } catch (e) { /* ignore */ }
+                const ids = supabaseTeams.map(t => t.id).filter(Boolean);
+                if (ids.length > 0) triggerBulkDownload(ids);
+              } else {
+                logger.info('Local is newer, pushing to Supabase', {
+                  local: localTeams.map(t => t.name),
+                  supabase: supabaseTeams.map(t => t.name),
+                  localUpdatedAt: localUpdatedAt ? new Date(localUpdatedAt).toISOString() : 'none',
+                  supabaseUpdatedAt: new Date(supabaseUpdatedAt).toISOString(),
+                }, 'FAVORITE_TEAMS');
+                await syncToSupabase(localTeams);
+              }
+            }
           }
         } else if (localTeams && localTeams.length > 0) {
           await syncToSupabase(localTeams);
@@ -178,33 +215,45 @@ export function useFavoriteTeams() {
         await syncToSupabase(localTeams);
       }
     } catch (supabaseError) {
-      // Supabase hatası - sessizce devam et
       logger.debug('Supabase sync skipped', { error: supabaseError }, 'FAVORITE_TEAMS');
     }
   }, [triggerBulkDownload]);
   
-  // Supabase'e senkronize et
-  const syncToSupabase = async (teams: FavoriteTeam[]) => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      
-      const { error } = await supabase
-        .from('user_profiles')
-        .update({ 
-          favorite_teams_json: teamsToJson(teams),
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', user.id);
-      
-      if (error) {
-        logger.warn('Failed to sync to Supabase', { error: error.message }, 'FAVORITE_TEAMS');
-      } else {
+  // Supabase'e senkronize et (retry ile)
+  const syncToSupabase = async (teams: FavoriteTeam[], retries = 2): Promise<boolean> => {
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return false;
+        
+        const { error } = await supabase
+          .from('user_profiles')
+          .update({ 
+            favorite_teams_json: teamsToJson(teams),
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', user.id);
+        
+        if (error) {
+          logger.warn('Failed to sync to Supabase', { error: error.message, attempt }, 'FAVORITE_TEAMS');
+          if (attempt < retries) {
+            await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+            continue;
+          }
+          return false;
+        }
         logger.debug('Synced to Supabase', { count: teams.length }, 'FAVORITE_TEAMS');
+        return true;
+      } catch (err: any) {
+        logger.warn('Supabase sync error', { error: err?.message, attempt }, 'FAVORITE_TEAMS');
+        if (attempt < retries) {
+          await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+          continue;
+        }
+        return false;
       }
-    } catch (err) {
-      logger.debug('Supabase sync error', { error: err }, 'FAVORITE_TEAMS');
     }
+    return false;
   };
 
   // ✅ Mount'ta sadece 1 kez çalış
@@ -290,14 +339,22 @@ export function useFavoriteTeams() {
     }
   };
 
+  const updateLocalTimestamp = async () => {
+    try {
+      const { default: AsyncStorage } = await import('@react-native-async-storage/async-storage');
+      await AsyncStorage.setItem('tacticiq-favorite-teams-updated-at', new Date().toISOString());
+    } catch (e) { /* ignore */ }
+  };
+
   const addFavoriteTeam = useCallback(async (team: FavoriteTeam) => {
     try {
       const updated = [...favoriteTeams, team];
       const success = await saveFavoriteTeams(updated);
       if (success) {
         setFavoriteTeams(updated);
-        await syncToSupabase(updated);
-        logger.info('Added favorite team', { teamName: team.name, teamId: team.id }, 'FAVORITE_TEAMS');
+        await updateLocalTimestamp();
+        const synced = await syncToSupabase(updated);
+        logger.info('Added favorite team', { teamName: team.name, teamId: team.id, syncedToSupabase: synced }, 'FAVORITE_TEAMS');
         
         triggerBackendSync(team.id, team.name);
         
@@ -317,8 +374,9 @@ export function useFavoriteTeams() {
       const success = await saveFavoriteTeams(updated);
       if (success) {
         setFavoriteTeams(updated);
-        await syncToSupabase(updated);
-        logger.info('Removed favorite team', { teamId }, 'FAVORITE_TEAMS');
+        await updateLocalTimestamp();
+        const synced = await syncToSupabase(updated);
+        logger.info('Removed favorite team', { teamId, syncedToSupabase: synced }, 'FAVORITE_TEAMS');
       }
     } catch (error) {
       logger.error('Error removing favorite team', { error, teamId }, 'FAVORITE_TEAMS');
@@ -331,8 +389,14 @@ export function useFavoriteTeams() {
       const success = await saveFavoriteTeams(teams);
       if (success) {
         setFavoriteTeams(teams);
-        await syncToSupabase(teams);
-        logger.info('Set all favorite teams', { count: teams.length, teams: teams.map(t => ({ name: t.name, type: t.type })) }, 'FAVORITE_TEAMS');
+        await updateLocalTimestamp();
+        
+        const syncSuccess = await syncToSupabase(teams);
+        if (!syncSuccess) {
+          logger.warn('Supabase sync failed for setAllFavoriteTeams, will retry on next app open', { count: teams.length }, 'FAVORITE_TEAMS');
+        }
+        
+        logger.info('Set all favorite teams', { count: teams.length, syncedToSupabase: syncSuccess, teams: teams.map(t => ({ name: t.name, type: t.type })) }, 'FAVORITE_TEAMS');
         
         // Backend sync
         const syncPromises = teams.map(t => triggerBackendSync(t.id, t.name));

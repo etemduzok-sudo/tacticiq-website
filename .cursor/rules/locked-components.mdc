@@ -32,7 +32,121 @@ Aşağıdaki bileşenler UI/UX olarak tamamlanmış ve test edilmiştir. **Bu do
 - Yeni özellik ekleme (kullanıcı istemediği sürece)
 
 ### 📅 İlk Kilitlenme: 10 Şubat 2026
-### 📅 Son Güncelleme: 22 Şubat 2026
+### 📅 Son Güncelleme: 23 Şubat 2026
+
+---
+
+## 🔒 KİLİTLİ: Gerçek Kadro Gösterim Kuralları (23 Şubat 2026)
+
+Bu kurallar `MatchPrediction.tsx` ve `MatchSquad.tsx` içinde geçerlidir.
+**ONAY ALINMADAN DEĞİŞTİRİLMEZ.**
+
+### Durum Matrisi:
+
+| Durum | Tahmin Yapmamış | Tahmin Yapmış |
+|-------|----------------|---------------|
+| **Maç başlamadı, lineup yok** | Gerçek tab GİZLİ | Gerçek tab GİZLİ |
+| **Maç başlamadı, lineup var** | Gerçek tab GİZLİ (spoiler koruması) | Gerçek tab GÖRÜNÜR ama "Gerçek Kadroyu Gör" butonu ile (butona basınca tahminler KALİCİ KİLİTLENİR) |
+| **Maç canlı** | Gerçek tab GÖRÜNÜR + tüm veriler açık | Gerçek tab GÖRÜNÜR + tüm veriler açık, tahminler otomatik kilitli |
+| **Maç bitmiş** | Gerçek tab GÖRÜNÜR | Gerçek tab GÖRÜNÜR + Puan kartı gösterilir |
+
+### Kritik State'ler:
+- `hasViewedRealLineup` → true ise tahminler kalıcı kilitli (AsyncStorage'da saklanır)
+- `realLineupVisible` = `isMatchLive || isMatchFinished || hasViewedRealLineup`
+- `canShowRealLineupButton` = `!isMatchLive && !isMatchFinished && hasPrediction && hasRealLineupData && !hasViewedRealLineup`
+
+### Gerçek İlk 11 Yükleme:
+- `MatchSquad.tsx` → `useEffect` lineup geldiğinde **HER ZAMAN** state'e yazar (gösterim kontrolü ayrı)
+- `isKadroLocked` kontrolü lineup yüklemeden KALDIRILDI (sadece gösterimde kontrol var)
+
+---
+
+## 🔒 KİLİTLİ: Topluluk Verileri Gösterim Kuralları (23 Şubat 2026)
+
+| Durum | Gösterim |
+|-------|----------|
+| Tahmin yapmamış | "Topluluk Verileri Kilitli" empty state |
+| Tahmin yapmış, görmemiş | "Topluluk Verilerini Gör" butonu (basınca tahminler kilitlenir) |
+| Tahmin yapmış, görmüş | Topluluk verileri görünür, tahminler kalıcı kilitli |
+| Maç canlı/bitmiş | Tüm topluluk verileri otomatik açık |
+
+### Kritik State'ler:
+- `communityDataVisible` = `hasViewedCommunityData || isMatchLive || isMatchFinished`
+- Mock veri gösterilmez, empty state veya gerçek veri gösterilir
+
+---
+
+## 🔒 KİLİTLİ: Oyuncu Reaction Sistemi (23 Şubat 2026)
+
+- Gerçek sahada (predictionViewIndex === 2) oyuncu tıklanınca:
+  - Maç canlı/bitmiş → `liveReactionPlayer` popup açılır (tüm kullanıcılar için)
+  - Maç başlamamış → `playerInfoPopup` açılır
+- **Her kullanıcı** (tahmin yapmış/yapmamış) canlı/bitmiş maçta oyuncu reaction yapabilir
+
+---
+
+## 🔒 KİLİTLİ: Gerçek Saha Canlı Güncelleme (23 Şubat 2026)
+
+### Substitution Yansıtma:
+- `threeFieldData.actualSquad` useMemo'sunda `liveEvents` dinlenir
+- Substitution event geldiğinde çıkan oyuncu, giren oyuncuyla sahada değiştirilir
+- Giren oyuncuya yeşil `isSubstitute` badge eklenir (yukarı ok)
+- Giren oyuncunun `substitutedFor` ve `subMinute` bilgisi saklanır
+
+### Oyuncu Performans Popup:
+- Gerçek sahada oyuncuya tıklanınca `liveEvents`'ten maç içi performans çıkarılır
+- Gösterilen bilgiler: goller, asistler, sarı/kırmızı kartlar, değişiklik durumu (girdi/çıktı)
+- Bunlar reaction butonlarının üstünde "Maç Performansı" kartı olarak gösterilir
+- `liveEvents` prop'u MatchDetail → MatchPrediction'a `currentEvents` olarak geçirilir
+
+---
+
+## 🔒 KİLİTLİ: Mock Veri Kuralları (23 Şubat 2026)
+
+- `communityMatchPredictions` state'i mock veriler içerir ama `hasRealCommunityData = false` olduğu sürece GÖSTERİLMEZ
+- Topluluk sekmesinde `hasRealCommunityData` false ise "Topluluk Verileri Henüz Yeterli Değil" empty state gösterilir
+- Topluluk sahasının altındaki 1.516 kullanıcı satırı da `hasRealCommunityData` false ise gizlenir
+- Mock oyuncu topluluk verileri (setCommunityPredictions) KALDIRILDI, `communityPredictions` boş object
+- Mock canlı sinyal verileri KALINIYOR (backend API hazır olunca değiştirilecek)
+- `hasRealCommunityData` flag'i backend topluluk API'si hazır olunca `true` yapılacak
+- **ONAY ALINMADAN MOCK VERİ EKLENMEYECEK**
+
+---
+
+## 🔒 KİLİTLİ: Takım Performansı Değerlendirmesi (23 Şubat 2026)
+
+- `handleTeamPerformanceChange(value)` fonksiyonu tanımlı ve çalışır durumda
+- 1-10 arası butonlarla değerlendirme yapılabilir
+- Değer `predictionData`'da kaydedilir ve AsyncStorage'dan yüklenir
+
+---
+
+## 🔒 KİLİTLİ: Gerçek Sonuçlar (actualResults) Veri Kaynağı (23 Şubat 2026)
+
+- `actualResults` hem `matchData` hem `liveEvents`'ten beslenir
+- Skor: `matchData.goals` / `matchData.score` → `fullTimeHomeScore/awayScore`
+- Kartlar: `liveEvents`'ten card event'leri sayılır → `totalYellowCards/totalRedCards`
+- İlk gol dakikası: `liveEvents`'ten ilk goal event'i → `firstGoalMinute`
+- Oyuncu event'leri: `liveEvents`'ten her oyuncu için gol/asist/kart/sub bilgisi → `playerEvents`
+- Dependency array: `[matchPhase, isMatchLive, isMatchFinished, matchId, matchData, liveEvents]`
+
+---
+
+## 🔒 KİLİTLİ: Puan Hesaplama ve Gösterim (23 Şubat 2026)
+
+- Backend: `scoringService.js` TEK KAYNAK (değişiklik önce backend, sonra frontend)
+- Frontend: `scoringApi` ile `api.ts` üzerinden çekilir
+- Maç bittiğinde + tahmin yapılmışsa → `MatchPrediction.tsx`'de otomatik puan kartı gösterilir
+- Puan kartı cluster bazlı: Tempo, Disiplin, Fiziksel, Bireysel
+- Doğruluk yüzdesi ve odak bonusu/cezası gösterilir
+
+---
+
+## 🔒 KİLİTLİ: AnalysisFocusModal Layout (23 Şubat 2026)
+
+- `AnalysisFocusModal.tsx` → 2 sütun, 3 satır layout
+- `focusCard` genişliği: sabit `'48%'`
+- **DEĞİŞTİRİLMEZ** - 3 sütun veya farklı layout kullanılmaz
 
 ---
 
@@ -57,3 +171,35 @@ Aşağıdaki bileşenler UI/UX olarak tamamlanmış ve test edilmiştir. **Bu do
 - `@react-native-firebase/*` (3 paket)
 - `@testing-library/*`, `jest-expo`, `@playwright/test`, `playwright`
 - Website: `@mui/*`, `@emotion/*`, `react-dnd*`, `react-slick`, `react-popper`, `react-responsive-masonry`
+
+---
+
+## 🔒 KİLİTLİ: Kadro Senkronizasyonu (23 Şubat 2026)
+
+- `/players/squads` API-Football endpoint'i TEK KAYNAK
+- `squadSyncService.js` → season parametresi KULLANILMAZ (current squad döner)
+- Lineup fallback: sadece DB'deki mevcut kadro daha küçükse yazılır
+- `cleanupTransferredPlayers()` ve `verifySquadPlayerTeamIds()` KALDIRILDI, geri eklenmez
+- `backend/routes/teams.js` → filtreleme mantığı KALDIRILDI, geri eklenmez
+
+---
+
+## 🔒 KİLİTLİ: Favori Takımlar Senkronizasyonu (23 Şubat 2026)
+
+- Kural: Maks 1 milli takım + 5 kulüp takımı
+- Senkronizasyon: `updated_at` timestamp karşılaştırması (en son güncellenen master)
+- Supabase daha yeni → lokali güncelle
+- Lokal daha yeni → Supabase'i güncelle
+- "Daha fazla takım olan kaynak master" KULLANILMAZ
+
+---
+
+## 🔒 KİLİTLİ: Tahmin Kilitleme Sistemi (23 Şubat 2026)
+
+- Oyuncu tahmini kaydetmek tahminleri KİLİTLEMEZ
+- Sadece şu durumlarda tahminler kilitlenir:
+  1. Maç başladığında (canlı)
+  2. Maç bittiğinde
+  3. "Topluluk Verilerini Gör" butonuna basıldığında
+  4. "Gerçek Kadroyu Gör" butonuna basıldığında
+- Genel "Kaydet" butonu tahminleri kayıt eder ama KİLİTLEMEZ (maç başlamadıysa)

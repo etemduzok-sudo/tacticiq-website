@@ -337,7 +337,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   focusCard: {
-    // 2 sütun, 3 satır düzeni (tüm ekran boyutlarında)
+    // KİLİTLİ: Her zaman 2 sütun 3 satır - ekran genişliğinden bağımsız
     width: '48%',
     borderRadius: 12,
     borderWidth: 1.5,

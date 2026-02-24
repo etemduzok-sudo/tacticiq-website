@@ -241,10 +241,24 @@ async function syncOneTeamSquad(teamId, teamName, options = {}) {
       if (supabase && playerIds.length > 0) {
         const { data: dbPlayers, error } = await supabase
           .from('players')
-          .select('id, rating, age, nationality, position')
+          .select('id, team_id, rating, age, nationality, position')
           .in('id', playerIds);
         if (!error && dbPlayers) {
           dbPlayersMap = dbPlayers.reduce((acc, p) => { acc[p.id] = p; return acc; }, {});
+        }
+
+        // /players/squads bu takımın güncel kadrosudur (API-Football resmi kaynak).
+        // players tablosundaki team_id'yi bu takıma güncelle - stale verileri düzelt.
+        const stalePlayerIds = playerIds.filter(pid => {
+          const dbPlayer = dbPlayersMap[pid];
+          return dbPlayer && Number(dbPlayer.team_id) !== Number(teamId);
+        });
+        if (stalePlayerIds.length > 0 && supabase) {
+          await supabase
+            .from('players')
+            .update({ team_id: Number(teamId) })
+            .in('id', stalePlayerIds);
+          console.log(`📝 [SQUAD SYNC] ${teamName || teamId}: Updated team_id for ${stalePlayerIds.length} player(s) to match squad`);
         }
       }
 
@@ -287,16 +301,33 @@ async function syncOneTeamSquad(teamId, teamName, options = {}) {
     }
 
     // 4b. Lineup fallback (sadece 18 oyuncu - /players/squads boşsa)
+    // KORUMA: Mevcut DB'de daha büyük kadro varsa lineup ile üzerine yazma
     if (lineupPlayers.length > 0) {
       if (supabase) {
-        await supabase.from('team_squads').upsert({
-          team_id: teamId, season: CURRENT_SEASON, team_name: teamName || `Team ${teamId}`,
-          team_data: { id: teamId, name: teamName, coach: finalCoach },
-          players: lineupPlayers, updated_at: new Date().toISOString(),
-        }, { onConflict: 'team_id,season' });
-        result.ok = true;
-        result.count = lineupPlayers.length;
-        result.source = 'lineup';
+        const { data: existingSquad } = await supabase
+          .from('team_squads')
+          .select('players')
+          .eq('team_id', teamId)
+          .eq('season', CURRENT_SEASON)
+          .maybeSingle();
+        
+        const existingCount = existingSquad?.players?.length || 0;
+        
+        if (existingCount > lineupPlayers.length) {
+          console.log(`⚠️ [LINEUP SKIP] ${teamName || teamId}: Mevcut kadro (${existingCount}) lineup'tan (${lineupPlayers.length}) büyük, üzerine yazılmadı`);
+          result.ok = true;
+          result.count = existingCount;
+          result.source = 'cached';
+        } else {
+          await supabase.from('team_squads').upsert({
+            team_id: teamId, season: CURRENT_SEASON, team_name: teamName || `Team ${teamId}`,
+            team_data: { id: teamId, name: teamName, coach: finalCoach },
+            players: lineupPlayers, updated_at: new Date().toISOString(),
+          }, { onConflict: 'team_id,season' });
+          result.ok = true;
+          result.count = lineupPlayers.length;
+          result.source = 'lineup';
+        }
       }
       if (lineupCoach && !currentCoach && supabase) {
         await supabase.from('static_teams').update({ coach: lineupCoach, last_updated: new Date().toISOString() }).eq('api_football_id', teamId);
@@ -496,7 +527,7 @@ function getSquadSyncStatus() {
 module.exports = {
   syncAllSquads,
   syncOneTeamSquad,
-  syncSingleTeamNow, // ✅ Favori takım eklendiğinde hemen sync için
+  syncSingleTeamNow,
   startDailySquadSync,
   stopDailySquadSync,
   getSquadSyncStatus,

@@ -28,6 +28,7 @@ import Svg, {
 import { FocusPrediction, SCORING_CONSTANTS } from '../../types/prediction.types';
 import { STORAGE_KEYS, PITCH_LAYOUT } from '../../config/constants';
 import { handleError, ErrorType, ErrorSeverity } from '../../utils/GlobalErrorHandler';
+import { scoringApi } from '../../services/api';
 import { predictionsDb } from '../../services/databaseService';
 import { ConfirmModal, ConfirmButton } from '../ui/ConfirmModal';
 import { ANALYSIS_FOCUSES, type AnalysisFocusType } from '../AnalysisFocusModal';
@@ -182,6 +183,8 @@ interface MatchPredictionScreenProps {
   onHasUnsavedChanges?: (hasChanges: boolean, saveFn: () => Promise<void>) => void;
   /** Maç kadrosu (lineups) - yedek oyuncular için */
   lineups?: any[];
+  /** Canlı maç event'leri (goller, kartlar, değişiklikler) */
+  liveEvents?: any[];
   /** Favori takım ID'leri */
   favoriteTeamIds?: number[];
   /** Canlı maç (sadece bilgi (i) ikonu gösterilir, replace/remove yok) */
@@ -365,6 +368,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
   initialAnalysisFocus,
   onHasUnsavedChanges,
   lineups,
+  liveEvents = [],
   favoriteTeamIds = [],
   hasPrediction = false,
   isMatchLive = false,
@@ -448,6 +452,12 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
   
   // ✅ TOPLULUK VERİLERİ KİLİTLEME SİSTEMİ
   const [hasViewedCommunityData, setHasViewedCommunityData] = useState(false); // ✅ Topluluk verilerini gördü mü? (kalıcı kilit)
+  
+  // ✅ MAÇ PUANI GÖSTERİMİ (KİLİTLİ KURAL)
+  // Maç bittikten sonra tahmin yapılmışsa otomatik olarak puanı çeker ve gösterir
+  const [predictionScore, setPredictionScore] = useState<any>(null);
+  const [scoreLoading, setScoreLoading] = useState(false);
+  const scoreFetchedRef = useRef(false);
   
   // ✅ ThreeFieldView için veri hazırlama (tüm maçlar için 3 saha görünümü)
   const threeFieldData = useMemo(() => {
@@ -538,6 +548,48 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
       }
     }
     
+    // ✅ CANLI MAÇ: Substitution event'lerini gerçek sahaya yansıt
+    // KİLİTLİ KURAL: Oyuncu değişikliği olduğunda çıkan oyuncu yerine giren oyuncu sahada gösterilir
+    if (actualPlayers.length > 0 && liveEvents && liveEvents.length > 0) {
+      const targetTeamId = resolvedTeamId || matchData?.homeTeam?.id;
+      const substitutions = liveEvents.filter((e: any) => {
+        const eventType = (e.type || '').toLowerCase();
+        const isSubst = eventType === 'subst' || eventType === 'substitution';
+        if (!isSubst) return false;
+        const eventTeamId = e.team?.id;
+        return eventTeamId === targetTeamId;
+      });
+      
+      for (const sub of substitutions) {
+        const playerOut = sub.player?.id || sub.player?.name;
+        const playerIn = sub.assist || {};
+        const playerInData = {
+          id: typeof playerIn === 'object' ? playerIn.id : 0,
+          name: typeof playerIn === 'object' ? playerIn.name : (typeof playerIn === 'string' ? playerIn : ''),
+          number: 0,
+          position: '',
+          photo: null,
+          rating: null,
+          grid: null,
+          isSubstitute: true,
+          substitutedFor: typeof sub.player === 'object' ? sub.player.name : sub.player,
+          subMinute: sub.time?.elapsed || 0,
+        };
+        
+        const outIdx = actualPlayers.findIndex((p: any) => {
+          if (typeof playerOut === 'number') return p.id === playerOut;
+          return p.name === playerOut;
+        });
+        
+        if (outIdx >= 0 && playerInData.id) {
+          const outPlayer = actualPlayers[outIdx];
+          playerInData.grid = outPlayer.grid;
+          playerInData.position = outPlayer.position;
+          actualPlayers[outIdx] = playerInData;
+        }
+      }
+    }
+
     // Topluluk kadrosu: sabit sıralama (render'da değişmez, sadece interval ile güncellenir)
     const communityPlayers = actualPlayers.length > 0 
       ? [...actualPlayers].slice(0, 11)
@@ -565,7 +617,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
         logo: matchData?.awayTeam?.logo,
       },
     };
-  }, [hasPrediction, attackPlayersArray, attackFormation, defenseFormation, lineups, effectivePredictionTeamId, predictionTeamId, matchData, matchId]);
+  }, [hasPrediction, attackPlayersArray, attackFormation, defenseFormation, lineups, liveEvents, effectivePredictionTeamId, predictionTeamId, matchData, matchId]);
   const [showCommunityConfirmModal, setShowCommunityConfirmModal] = useState(false); // ✅ Topluluk verileri görmek için onay modal'ı
   const [independentPredictionBonus, setIndependentPredictionBonus] = useState(true); // ✅ Bağımsız tahmin bonusu aktif mi?
   const [madeAfterCommunityViewed, setMadeAfterCommunityViewed] = useState(false); // ✅ Topluluk verilerini gördükten sonra silip yeni tahmin yaptı mı? (%80 puan kaybı)
@@ -621,14 +673,52 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
   }>>({});
   
   // ✅ TOPLULUK VERİLERİ GÖRÜNÜRLüK KONTROLÜ
-  // YENİ KURAL: Topluluk verileri SADECE kullanıcı bilinçli olarak görmek istediğinde görünür
+  // KİLİTLİ KURAL - ONAY ALINMADAN DEĞİŞTİRME:
   // 1. Tahmin kaydedildikten sonra kullanıcı "Topluluk Verilerini Gör" butonuna basarsa
   // 2. VEYA maç canlı/bitmiş ise (izleme modu)
   // DİKKAT: hasViewedCommunityData = true ise tüm tahminler KALİCİ KİLİTLİ
   const communityDataVisible = hasViewedCommunityData || isMatchLive || isMatchFinished;
-  
-  // ✅ TOPLULUK TAHMİN VERİLERİ (Mock - Backend'den gelecek)
-  // İzleme modunda bu veriler öntanımlı olarak gösterilecek
+
+  // ✅ GERÇEK KADRO GÖRÜNÜRLüK KONTROLÜ
+  // KİLİTLİ KURAL - ONAY ALINMADAN DEĞİŞTİRME:
+  // A) Maç canlı/bitmiş → Gerçek tab her zaman görünür (tüm kullanıcılar için)
+  // B) Maç başlamadı + tahmin yapmamış → Gerçek tab ASLA gösterilmez (spoiler koruması)
+  // C) Maç başlamadı + tahmin yapmış + lineup var → "Gerçek Kadroyu Gör" butonu gösterilir
+  //    Butona basınca: gerçek kadro açılır + tahminler KALİCİ KİLİTLENİR
+  const [hasViewedRealLineup, setHasViewedRealLineup] = useState(false);
+  const hasRealLineupData = lineups && Array.isArray(lineups) && lineups.length > 0 && lineups.some((l: any) => l?.startXI?.length > 0);
+  const realLineupVisible = isMatchLive || isMatchFinished || hasViewedRealLineup;
+  const canShowRealLineupButton = !isMatchLive && !isMatchFinished && hasPrediction && hasRealLineupData && !hasViewedRealLineup;
+
+  // ✅ MAÇ BİTTİKTEN SONRA PUAN HESAPLAMA (KİLİTLİ KURAL)
+  React.useEffect(() => {
+    if (!isMatchFinished || !hasPrediction || scoreFetchedRef.current) return;
+    scoreFetchedRef.current = true;
+    
+    const fetchScore = async () => {
+      setScoreLoading(true);
+      try {
+        const matchId = matchData?.id;
+        if (!matchId) return;
+        const result = await scoringApi.getMatchScores(matchId);
+        if (result.success && result.data?.length > 0) {
+          setPredictionScore(result.data[0]);
+        }
+      } catch (e) {
+        console.warn('Puan yüklenemedi:', e);
+      } finally {
+        setScoreLoading(false);
+      }
+    };
+    fetchScore();
+  }, [isMatchFinished, hasPrediction, matchData?.id]);
+
+  // ✅ KİLİTLİ KURAL: Topluluk verileri gerçek backend'den gelmeden mock gösterilmez
+  // hasRealCommunityData = false → topluluk sekmesinde empty state gösterilir
+  // hasRealCommunityData = true → gerçek backend verileri gösterilir (backend entegre edildiğinde)
+  const hasRealCommunityData = false; // TODO: Backend topluluk API'si hazır olunca true yapılacak
+
+  // ✅ TOPLULUK TAHMİN VERİLERİ (Backend'den gelecek - şu an kullanılmıyor)
   const [communityMatchPredictions] = useState({
     // İlk Yarı Skor
     firstHalf: {
@@ -854,6 +944,63 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
       const htHome = matchData?.score?.halftime?.home ?? null;
       const htAway = matchData?.score?.halftime?.away ?? null;
       
+      // Event'lerden kart ve gol bilgilerini çıkar
+      let totalYellowCards: number | null = null;
+      let totalRedCards: number | null = null;
+      let firstGoalMinute: number | null = null;
+      const playerEventsMap: Record<number, { goals: number; assists: number; yellowCards: number; redCards: number; substitutedOut: boolean; substituteMinute: number | null }> = {};
+      
+      if (liveEvents && liveEvents.length > 0) {
+        let yellowCount = 0;
+        let redCount = 0;
+        let firstGoalMin: number | null = null;
+        
+        for (const evt of liveEvents) {
+          const evtType = (evt.type || '').toLowerCase();
+          const playerId = evt.player?.id;
+          const assistId = evt.assist?.id;
+          const minute = evt.time?.elapsed || 0;
+          
+          if (evtType === 'goal') {
+            if (firstGoalMin === null) firstGoalMin = minute;
+            if (playerId) {
+              if (!playerEventsMap[playerId]) playerEventsMap[playerId] = { goals: 0, assists: 0, yellowCards: 0, redCards: 0, substitutedOut: false, substituteMinute: null };
+              playerEventsMap[playerId].goals++;
+            }
+            if (assistId) {
+              if (!playerEventsMap[assistId]) playerEventsMap[assistId] = { goals: 0, assists: 0, yellowCards: 0, redCards: 0, substitutedOut: false, substituteMinute: null };
+              playerEventsMap[assistId].assists++;
+            }
+          } else if (evtType === 'card') {
+            const detail = (evt.detail || '').toLowerCase();
+            if (detail.includes('yellow')) {
+              yellowCount++;
+              if (playerId) {
+                if (!playerEventsMap[playerId]) playerEventsMap[playerId] = { goals: 0, assists: 0, yellowCards: 0, redCards: 0, substitutedOut: false, substituteMinute: null };
+                playerEventsMap[playerId].yellowCards++;
+              }
+            }
+            if (detail.includes('red')) {
+              redCount++;
+              if (playerId) {
+                if (!playerEventsMap[playerId]) playerEventsMap[playerId] = { goals: 0, assists: 0, yellowCards: 0, redCards: 0, substitutedOut: false, substituteMinute: null };
+                playerEventsMap[playerId].redCards++;
+              }
+            }
+          } else if (evtType === 'subst' || evtType === 'substitution') {
+            if (playerId) {
+              if (!playerEventsMap[playerId]) playerEventsMap[playerId] = { goals: 0, assists: 0, yellowCards: 0, redCards: 0, substitutedOut: false, substituteMinute: null };
+              playerEventsMap[playerId].substitutedOut = true;
+              playerEventsMap[playerId].substituteMinute = minute;
+            }
+          }
+        }
+        
+        totalYellowCards = yellowCount;
+        totalRedCards = redCount;
+        firstGoalMinute = firstGoalMin;
+      }
+      
       setActualResults({
         firstHalfHomeScore: htHome,
         firstHalfAwayScore: htAway,
@@ -861,15 +1008,15 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
         secondHalfAwayScore: awayScore !== null && htAway !== null ? awayScore - htAway : null,
         fullTimeHomeScore: homeScore,
         fullTimeAwayScore: awayScore,
-        totalYellowCards: null, // API'den çekilecek
-        totalRedCards: null,
+        totalYellowCards,
+        totalRedCards,
         totalGoals: homeScore !== null && awayScore !== null ? homeScore + awayScore : null,
-        firstGoalMinute: null,
-        playerEvents: {},
+        firstGoalMinute,
+        playerEvents: playerEventsMap,
       });
     }
-  }, [matchPhase, isMatchLive, isMatchFinished, matchId, matchData]);
-  
+  }, [matchPhase, isMatchLive, isMatchFinished, matchId, matchData, liveEvents]);
+
   // ✅ Tahmin doğruluğunu kontrol et
   const checkPredictionAccuracy = React.useCallback((category: string, predictedValue: any): { isCorrect: boolean | null; actualValue: any } => {
     if (!isMatchLive && !isMatchFinished) {
@@ -943,38 +1090,9 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
   } | null>(null);
   const [ownPredictionNote, setOwnPredictionNote] = useState('');
   
-  // ✅ Topluluk verilerini yükle (mock - backend hazır olunca API'den çekilecek)
-  React.useEffect(() => {
-    if (!attackPlayersArray || attackPlayersArray.length === 0) return;
-    
-    // Mock community data - her oyuncu için rastgele oranlar
-    const mockCommunity: Record<number, any> = {};
-    attackPlayersArray.forEach((player: any) => {
-      // Forvet/hücumcular için gol/asist oranı yüksek
-      const isForward = ['ST', 'CF', 'LW', 'RW', 'SS'].includes(player.position?.toUpperCase()) || 
-                        player.position?.toLowerCase().includes('forward') ||
-                        player.position?.toLowerCase().includes('striker');
-      // Orta saha için asist oranı yüksek
-      const isMidfielder = ['CAM', 'CM', 'CDM', 'RM', 'LM', 'AM'].includes(player.position?.toUpperCase()) ||
-                           player.position?.toLowerCase().includes('midfield');
-      // Defans için kart oranı yüksek
-      const isDefender = ['CB', 'LB', 'RB', 'LWB', 'RWB'].includes(player.position?.toUpperCase()) ||
-                         player.position?.toLowerCase().includes('back') ||
-                         player.position?.toLowerCase().includes('defender');
-      
-      mockCommunity[player.id] = {
-        goal: isForward ? 0.15 + Math.random() * 0.35 : isMidfielder ? 0.05 + Math.random() * 0.15 : Math.random() * 0.08,
-        assist: isForward ? 0.10 + Math.random() * 0.20 : isMidfielder ? 0.15 + Math.random() * 0.25 : Math.random() * 0.10,
-        yellowCard: isDefender ? 0.15 + Math.random() * 0.25 : isMidfielder ? 0.10 + Math.random() * 0.15 : Math.random() * 0.12,
-        redCard: Math.random() * 0.08,
-        penalty: isForward ? 0.02 + Math.random() * 0.12 : Math.random() * 0.05, // Forvetler penaltıcı daha yüksek
-        substitutedOut: 0.15 + Math.random() * 0.25, // Herkes için benzer
-        injuredOut: Math.random() * 0.05,
-        totalPredictions: Math.floor(50 + Math.random() * 200),
-      };
-    });
-    setCommunityPredictions(mockCommunity);
-  }, [attackPlayersArray]);
+  // ✅ KİLİTLİ KURAL: Mock topluluk oyuncu verileri KALDIRILDI
+  // Backend topluluk API'si hazır olduğunda burası gerçek verilerle doldurulacak
+  // setCommunityPredictions(realDataFromBackend);
   
   // ✅ Canlı maç sinyallerini yükle (sadece canlı maçlarda)
   React.useEffect(() => {
@@ -1219,29 +1337,11 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
         if (parsed.playerPredictions && typeof parsed.playerPredictions === 'object') setPlayerPredictions(parsed.playerPredictions);
         if (Array.isArray(parsed.focusedPredictions)) setFocusedPredictions(parsed.focusedPredictions);
         if (parsed.selectedAnalysisFocus) setSelectedAnalysisFocus(parsed.selectedAnalysisFocus);
-        // ✅ Tahmin kilidi durumunu yükle
-        // Kullanıcı manuel olarak kilidi açmadığı sürece, kaydedilmiş tahminler kilitli kalmalı
-        // AsyncStorage'da isPredictionLocked değeri varsa onu kullan (kullanıcı manuel olarak değiştirmişse)
-        // Eğer isPredictionLocked belirtilmemişse ama tahminler varsa, varsayılan olarak kilitli yap
-        const hasPredictions = (parsed.matchPredictions && Object.values(parsed.matchPredictions).some(v => v !== null)) || 
-                               (parsed.playerPredictions && Object.keys(parsed.playerPredictions).length > 0);
-        
-        if (parsed.isPredictionLocked !== undefined) {
-          // ✅ AsyncStorage'da açıkça belirtilmişse onu kullan (kullanıcı manuel olarak değiştirmiş)
-          setIsPredictionLocked(parsed.isPredictionLocked === true);
-        } else if (hasPredictions) {
-          // ✅ Tahminler varsa ama kilit durumu belirtilmemişse, varsayılan olarak kilitli yap
-          // Bu durumda AsyncStorage'a da kaydet ki bir sonraki girişte kilitli gelsin
+        // KİLİTLİ: Maç başlamadan tahminler hiçbir zaman otomatik kilitlenmez
+        // Sadece maç başladığında/bittikçe kilitlenir (isMatchLive/isMatchFinished kontrolü ayrı yapılır)
+        if (isMatchLive || isMatchFinished) {
           setIsPredictionLocked(true);
-          // AsyncStorage'a kilit durumunu kaydet
-          try {
-            parsed.isPredictionLocked = true;
-            await AsyncStorage.setItem(predictionStorageKey || `${STORAGE_KEYS.PREDICTIONS}${matchData?.id}`, JSON.stringify(parsed));
-          } catch (e) {
-            console.warn('Kilit durumu kaydedilemedi:', e);
-          }
         } else {
-          // Tahmin yoksa kilitli değil
           setIsPredictionLocked(false);
         }
         
@@ -1249,10 +1349,15 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
         // Bu değer true ise kullanıcı topluluk verilerini görmüş demek, tahminleri kalıcı kilitli
         if (parsed.hasViewedCommunityData !== undefined) {
           setHasViewedCommunityData(parsed.hasViewedCommunityData === true);
-          // Eğer topluluk verilerini gördüyse, bağımsız tahmin bonusu yok
           if (parsed.hasViewedCommunityData === true) {
             setIndependentPredictionBonus(false);
           }
+        }
+        
+        // ✅ GERÇEK KADRO KİLİTLEME - hasViewedRealLineup yükle
+        // Bu değer true ise kullanıcı gerçek kadroyu görmüş, tahminler kalıcı kilitli
+        if (parsed.hasViewedRealLineup === true) {
+          setHasViewedRealLineup(true);
         }
         
         // ✅ TOPLULUK GÖRDÜKTEN SONRA YENİ TAHMİN - madeAfterCommunityViewed yükle
@@ -1422,19 +1527,9 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
       return;
     }
     
-    // ✅ Tahminler kilitliyse ama topluluk verilerini görmemişse:
-    // Oyuncu tahminleri analiz odağında değilse kilitli
-    if (isPredictionLocked && !isMatchLive && !isMatchFinished) {
-      // Oyuncu tahmin kategorisini belirle
-      const playerCategory = `player_${category}`; // örn: player_willScore, player_willAssist
-      const isInAnalysisFocus = isCategoryInSelectedFocus(playerCategory) || isCategoryInSelectedFocus(category);
-      if (!isInAnalysisFocus) {
-        setLockedWarningReason('unlock_at_bottom');
-        setShowLockedWarningModal(true);
-        return;
-      }
-    } else if (isPredictionLocked) {
-      setLockedWarningReason((isMatchLive || isMatchFinished) ? 'match_started' : 'unlock_at_bottom');
+    // Maç başladıysa/bittiyse tahmin değiştirilemez
+    if (isMatchLive || isMatchFinished) {
+      setLockedWarningReason('match_started');
       setShowLockedWarningModal(true);
       return;
     }
@@ -1502,8 +1597,13 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
     });
   };
 
+  // ✅ TAKIM PERFORMANSI DEĞERLENDİRME (1-10)
+  const handleTeamPerformanceChange = React.useCallback((value: number) => {
+    setTeamPerformance(value);
+  }, []);
+
   const handleSavePredictions = async () => {
-    if (isSaving) return; // Zaten kaydediliyor, tekrar basılmasın
+    if (isSaving) return;
     
     try {
       // ✅ YENİ KURAL: 120 saniyelik kısıtlama kaldırıldı
@@ -1550,7 +1650,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
         focusedPredictions: focusedPredictions, // 🌟 Strategic Focus
         selectedAnalysisFocus: selectedAnalysisFocus, // 🎯 Seçilen analiz odağı
         teamPerformance, // ✅ Takım performans puanı (1-10), sayfaya dönünce gösterilir
-        isPredictionLocked: true, // ✅ Kaydedildi = kilitli
+        isPredictionLocked: (isMatchLive || isMatchFinished), // Sadece maç başladıysa/bittiyse kilitli
         hasViewedCommunityData: hasViewedCommunityData, // ✅ Topluluk verileri görüldü mü?
         independentPredictionBonus: !hasViewedCommunityData && !madeAfterCommunityViewed, // ✅ Bağımsız tahmin bonusu (+%10) - topluluk görüp silip yaptıysa yok
         madeAfterCommunityViewed: madeAfterCommunityViewed, // ✅ Topluluk gördükten sonra silip yeni tahmin yaptı mı? (%80 puan kaybı)
@@ -1637,9 +1737,10 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
         // Continue even if database save fails (we have local backup)
       }
       
-      setIsSaving(false); // ✅ Kaydetme tamamlandı
-      setHasUnsavedChanges(false); // ✅ Değişiklikler kaydedildi
-      setIsPredictionLocked(true); // ✅ Tahminler kaydedildi, kilitle (kırmızı kilit)
+      setIsSaving(false);
+      setHasUnsavedChanges(false);
+      // KİLİTLİ: Kaydetme sonrası kilitleme YAPILMAZ - kullanıcı maç başlayana kadar tahmin eklemeye devam edebilir
+      // Kilit sadece maç başladığında/bittiğinde aktif olur
       
       // ✅ TOPLULUK VERİLERİ MODAL - Kayıt sonrası kullanıcıya sor
       // Eğer daha önce topluluk verilerini görmemişse, görmek isteyip istemediğini sor
@@ -1809,18 +1910,16 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
     if (hasPrediction && !hasViewedCommunityData) {
       setSectionInfoPopup({
         title: sectionData.title,
-        description: sectionData.generalDescription + '\n\n📊 Topluluk verilerini görmek için "Topluluk Verilerini Gör" butonuna basın.\n\n⚠️ DİKKAT: Topluluk verilerini görürseniz tahminleriniz kalıcı olarak kilitlenir!',
-        stats: [], // Topluluk verileri gizli
+        description: sectionData.generalDescription + '\n\n📊 Bağımsız tahmin modundasınız. Topluluk verilerini görmek için Topluluk sekmesini veya sayfa altındaki butonu kullanın.\n\n⚠️ DİKKAT: Topluluk verilerini görürseniz tahminleriniz kalıcı olarak kilitlenir!',
+        stats: [],
       });
       return;
     }
     
-    // ✅ Tahmin henüz kaydedilmemişse
-    // Genel bilgi + "Önce tahmininizi kaydedin" uyarısı göster
     setSectionInfoPopup({
       title: sectionData.title,
       description: sectionData.generalDescription + '\n\n📝 Topluluk tahminlerini görmek için önce kendi tahminlerinizi kaydedin.',
-      stats: [], // Topluluk verileri gizli - henüz tahmin yok
+      stats: [],
     });
   };
 
@@ -1956,19 +2055,9 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
       return;
     }
     
-    // ✅ Tahminler kilitliyse ama topluluk verilerini görmemişse:
-    // Skor tahminleri analiz odağında değilse kilitli
-    if (isPredictionLocked && !isMatchLive && !isMatchFinished) {
-      // Skor tahminleri genelde analiz odağına dahil değil - kontrol et
-      const scoreCategory = category.includes('firstHalf') ? 'firstHalfScore' : 'fullTimeScore';
-      const isInAnalysisFocus = isCategoryInSelectedFocus(scoreCategory);
-      if (!isInAnalysisFocus) {
-        setLockedWarningReason('unlock_at_bottom');
-        setShowLockedWarningModal(true);
-        return;
-      }
-    } else if (isPredictionLocked) {
-      setLockedWarningReason((isMatchLive || isMatchFinished) ? 'match_started' : 'unlock_at_bottom');
+    // Maç başladıysa/bittiyse tahmin değiştirilemez
+    if (isMatchLive || isMatchFinished) {
+      setLockedWarningReason('match_started');
       setShowLockedWarningModal(true);
       return;
     }
@@ -2283,22 +2372,51 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                     })()}
                   </View>
                   {!communityDataVisible && (
-                    <View style={{
-                      position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-                      alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20,
-                      backgroundColor: 'rgba(10,26,26,0.7)', zIndex: 15,
-                      borderRadius: 12,
-                    }}>
-                      <Ionicons name="lock-closed" size={36} color="rgba(245,158,11,0.4)" />
+                    <TouchableOpacity
+                      style={{
+                        position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                        alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20,
+                        backgroundColor: 'rgba(10,26,26,0.7)', zIndex: 15,
+                        borderRadius: 12,
+                      }}
+                      activeOpacity={hasPrediction && !hasViewedCommunityData ? 0.7 : 1}
+                      onPress={async () => {
+                        if (!hasPrediction) return;
+                        if (hasViewedCommunityData) return;
+                        setHasViewedCommunityData(true);
+                        setIndependentPredictionBonus(false);
+                        onViewedCommunityData?.();
+                        try {
+                          const storageKey = predictionStorageKey || `${STORAGE_KEYS.PREDICTIONS}${matchData?.id}`;
+                          const existingData = await AsyncStorage.getItem(storageKey);
+                          if (existingData) {
+                            const parsed = JSON.parse(existingData);
+                            parsed.hasViewedCommunityData = true;
+                            parsed.independentPredictionBonus = false;
+                            await AsyncStorage.setItem(storageKey, JSON.stringify(parsed));
+                          }
+                        } catch (e) {
+                          console.warn('Topluluk verileri durumu kaydedilemedi:', e);
+                        }
+                      }}
+                    >
+                      <Ionicons name={hasPrediction ? "eye" : "lock-closed"} size={36} color="rgba(245,158,11,0.4)" />
                       <Text style={{ color: '#F59E0B', fontSize: 13, fontWeight: '600', marginTop: 8, textAlign: 'center' }}>
-                        Topluluk Tahminleri Gizli
+                        {hasPrediction
+                          ? 'Topluluk Verilerini Gör'
+                          : 'Topluluk Tahminleri Gizli'}
                       </Text>
                       <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, marginTop: 4, textAlign: 'center' }}>
                         {hasPrediction
-                          ? 'Tahminlerinizi kaydedin ve topluluk verilerini açın'
-                          : 'Maç başladığında otomatik açılacak'}
+                          ? 'Dokunarak topluluk verilerini açın'
+                          : 'Önce tahminlerinizi yapın ve kaydedin'}
                       </Text>
-                    </View>
+                      {hasPrediction && (
+                        <Text style={{ color: 'rgba(239,68,68,0.7)', fontSize: 9, marginTop: 6, textAlign: 'center' }}>
+                          ⚠️ Tahminleriniz kalıcı kilitlenecek
+                        </Text>
+                      )}
+                    </TouchableOpacity>
                   )}
                   <View style={styles.fieldInnerLabel}>
                     <Ionicons name="people" size={10} color="#F59E0B" />
@@ -2307,8 +2425,10 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                 </FootballField>
               </View>
               
-              {/* 3. Gerçek Kadro (API) - her zaman göster */}
-              <View style={[styles.multiFieldWrapper, { width: fieldWidth }]}>
+              {/* 3. Gerçek Kadro (API) - KİLİTLİ KURAL: Gösterim koşulları realLineupVisible */}
+              {/* Maç canlı/bitmiş VEYA tahmin yapmış+gerçek kadro görmeyi kabul etmiş ise göster */}
+              {/* Tahmin yapmamış + maç başlamamış → spoiler koruması, bu saha gizli */}
+              <View style={[styles.multiFieldWrapper, { width: fieldWidth }, !realLineupVisible && !isMatchLive && !isMatchFinished && { opacity: 0.3 }]}>
                 <FootballField style={[styles.mainField, fieldDynamicStyle]}>
                   {threeFieldData.actualSquad.players.length > 0 ? (
                     <View style={styles.playersContainer}>
@@ -2322,6 +2442,12 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                               key={`actual-field-${player.id}-${index}`}
                               style={[styles.playerSlot, { left: `${pos.x}%`, top: `${pos.y}%` }]}
                             >
+                              {/* Substitution badge - yeni giren oyuncu */}
+                              {player.isSubstitute && (
+                                <View style={{ position: 'absolute', top: -6, right: -6, zIndex: 30, backgroundColor: '#10B981', borderRadius: 8, width: 16, height: 16, alignItems: 'center', justifyContent: 'center' }}>
+                                  <Ionicons name="arrow-up" size={10} color="#fff" />
+                                </View>
+                              )}
                               {liveReactions[player.id] && (
                                 <View style={styles.liveReactionBadgeOuter}>
                                   {liveReactions[player.id] === 'good' ? <Text style={{ fontSize: 10 }}>🔥</Text> : liveReactions[player.id] === 'bad' ? <Text style={{ fontSize: 10 }}>👎</Text> : liveReactions[player.id] === 'yellowcard' ? <View style={{ width: 8, height: 11, borderRadius: 2, backgroundColor: '#FBBF24' }} /> : liveReactions[player.id] === 'redcard' ? <View style={{ width: 8, height: 11, borderRadius: 2, backgroundColor: '#DC2626' }} /> : liveReactions[player.id] === 'sub' ? <Text style={{ fontSize: 9 }}>🔄</Text> : <Text style={{ fontSize: 10 }}>⚽</Text>}
@@ -2331,6 +2457,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                                   style={[
                                   styles.playerCard,
                                   (normalizeRatingTo100(player.rating) ?? 0) >= 85 && styles.playerCardElite,
+                                  player.isSubstitute && { borderColor: '#10B981', borderWidth: 1.5 },
                                   liveReactions[player.id] === 'good' && { borderColor: '#10B981', borderWidth: 2 },
                                   liveReactions[player.id] === 'bad' && { borderColor: '#EF4444', borderWidth: 2 },
                                   liveReactions[player.id] === 'yellowcard' && { borderColor: '#FBBF24', borderWidth: 2 },
@@ -2338,7 +2465,8 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                                   liveReactions[player.id] === 'sub' && { borderColor: '#EF4444', borderWidth: 3 },
                                 ]}
                                 onPress={() => {
-                                  if (isMatchLive) {
+                                  if (isMatchLive || isMatchFinished) {
+                                    // Canlı/bitmiş maçta her kullanıcı oyuncu reaction yapabilir
                                     setLiveReactionPlayer(player);
                                   } else {
                                     setPlayerInfoPopup({
@@ -2448,15 +2576,13 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                             Topluluk verileri maç başladığında açılacak
                           </Text>
                         </View>
-                      ) : (
-                        /* ✅ Favori takımımız: Atak / Defans formasyonları (Ev/Dep yok), yükseklik Benim Tahminim ile aynı */
+                      ) : hasRealCommunityData ? (
                         <View style={styles.communityStatsCardInner}>
                           <View style={styles.communityStatsLeft}>
                             <Ionicons name="people" size={16} color="#1FA2A6" />
                             <Text style={styles.communityStatsUserCount}>
                               {communityMatchPredictions.totalUsers.toLocaleString()}
                             </Text>
-                            <Text style={styles.communityStatsUserLabel}>kullanıcı</Text>
                           </View>
                           <View style={styles.communityStatsRight}>
                             <TouchableOpacity
@@ -2500,6 +2626,13 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                               <Ionicons name="chevron-forward" size={12} color="#6B7280" />
                             </TouchableOpacity>
                           </View>
+                        </View>
+                      ) : (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 6, gap: 6 }}>
+                          <Ionicons name="people" size={14} color="#94A3B8" />
+                          <Text style={{ color: '#94A3B8', fontSize: 11, fontWeight: '500' }}>
+                            Topluluk verileri henüz yeterli değil
+                          </Text>
                         </View>
                       )}
                     </View>
@@ -2733,13 +2866,65 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
           </View>
         )}
 
+        {/* ✅ MAÇ PUANI KARTI - KİLİTLİ KURAL: Maç bittikten sonra tahmin yapılmışsa göster */}
+        {isMatchFinished && hasPrediction && (predictionScore || scoreLoading) && (
+          <View style={{ marginHorizontal: 16, marginBottom: 12, borderRadius: 16, overflow: 'hidden' }}>
+            <LinearGradient
+              colors={['#0F2A24', '#1A3A32', '#0F2A24']}
+              style={{ padding: 16, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(16,185,129,0.3)' }}
+            >
+              {scoreLoading ? (
+                <View style={{ alignItems: 'center', paddingVertical: 16 }}>
+                  <ActivityIndicator size="small" color="#10B981" />
+                  <Text style={{ color: '#94A3B8', fontSize: 12, marginTop: 8 }}>Puan hesaplanıyor...</Text>
+                </View>
+              ) : predictionScore ? (
+                <>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <Ionicons name="trophy" size={20} color="#F59E0B" />
+                      <Text style={{ color: '#F1F5F9', fontSize: 16, fontWeight: '700' }}>Tahmin Puanın</Text>
+                    </View>
+                    <View style={{ backgroundColor: 'rgba(16,185,129,0.2)', paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(16,185,129,0.4)' }}>
+                      <Text style={{ color: '#34D399', fontSize: 22, fontWeight: '800' }}>{predictionScore.total_score}</Text>
+                    </View>
+                  </View>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>
+                    {[
+                      { label: 'Tempo', score: predictionScore.tempo_score, color: '#3B82F6' },
+                      { label: 'Disiplin', score: predictionScore.disiplin_score, color: '#F59E0B' },
+                      { label: 'Fiziksel', score: predictionScore.fiziksel_score, color: '#EF4444' },
+                      { label: 'Bireysel', score: predictionScore.bireysel_score, color: '#8B5CF6' },
+                    ].map(cluster => (
+                      <View key={cluster.label} style={{ flex: 1, alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 8, paddingVertical: 8 }}>
+                        <Text style={{ color: cluster.color, fontSize: 10, fontWeight: '600', marginBottom: 4 }}>{cluster.label}</Text>
+                        <Text style={{ color: '#F1F5F9', fontSize: 14, fontWeight: '700' }}>{cluster.score ?? 0}</Text>
+                      </View>
+                    ))}
+                  </View>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)' }}>
+                    <Text style={{ color: '#94A3B8', fontSize: 11 }}>
+                      Doğruluk: {predictionScore.correct_predictions}/{predictionScore.total_predictions} ({parseFloat(predictionScore.accuracy_percentage).toFixed(0)}%)
+                    </Text>
+                    {predictionScore.focus_bonus !== 0 && (
+                      <Text style={{ color: predictionScore.focus_bonus > 0 ? '#34D399' : '#EF4444', fontSize: 11, fontWeight: '600' }}>
+                        Odak: {predictionScore.focus_bonus > 0 ? '+' : ''}{predictionScore.focus_bonus}
+                      </Text>
+                    )}
+                  </View>
+                </>
+              ) : null}
+            </LinearGradient>
+          </View>
+        )}
+
         {/* PREDICTION CATEGORIES - Swipeable tab views */}
         {/* ✅ Tahmin görünüm sekmeleri: Benim Tahminim | Topluluk | Gerçek */}
         <View style={styles.predictionViewTabs}>
           {[
             { label: 'Benim Tahminim', icon: 'person' as const, color: '#1FA2A6' },
             { label: 'Topluluk', icon: 'people' as const, color: '#F59E0B' },
-            ...(isMatchLive || isMatchFinished ? [{ label: 'Gerçek', icon: 'football' as const, color: '#10B981' }] : []),
+            ...((isMatchLive || isMatchFinished || (hasPrediction && hasRealLineupData)) ? [{ label: 'Gerçek', icon: 'football' as const, color: '#10B981' }] : []),
           ].map((tab, idx) => (
             <TouchableOpacity
               key={tab.label}
@@ -2765,7 +2950,134 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
         </View>
 
         {/* Tüm viewler için aynı kart formatı: 0=Benim, 1=Topluluk (readonly), 2=Gerçek (readonly+live) */}
-        {(predictionViewIndex === 0 || predictionViewIndex === 1 || (predictionViewIndex === 2 && (isMatchLive || isMatchFinished))) && (
+        {/* KİLİTLİ: Topluluk sekmesinde communityDataVisible false ise empty state göster, mock veri asla gösterilmez */}
+        {predictionViewIndex === 1 && !communityDataVisible && (
+          <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 40, paddingHorizontal: 24 }}>
+            <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(245,158,11,0.12)', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+              <Ionicons name="people" size={32} color="#F59E0B" />
+            </View>
+            <Text style={{ color: '#F1F5F9', fontSize: 17, fontWeight: '700', textAlign: 'center', marginBottom: 8 }}>
+              {hasPrediction
+                ? 'Bağımsız Tahmin Modundasınız'
+                : 'Topluluk Verileri Kilitli'}
+            </Text>
+            <Text style={{ color: '#94A3B8', fontSize: 13, textAlign: 'center', lineHeight: 20, marginBottom: 20 }}>
+              {hasPrediction
+                ? 'Topluluk tahminlerini görmek için aşağıdaki butonu kullanabilirsiniz.\n\nMaç başladığında topluluk verileri otomatik açılacak ve +%10 bağımsız tahmin bonusu kazanacaksınız.'
+                : 'Topluluk tahminlerini görmek için önce kendi tahminlerinizi yapın ve kaydedin.'}
+            </Text>
+            {hasPrediction && !hasViewedCommunityData && (
+              <TouchableOpacity
+                style={{
+                  backgroundColor: 'rgba(59, 130, 246, 0.15)',
+                  borderRadius: 12,
+                  paddingVertical: 14,
+                  paddingHorizontal: 24,
+                  borderWidth: 1,
+                  borderColor: 'rgba(59, 130, 246, 0.3)',
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 10,
+                }}
+                onPress={async () => {
+                  setHasViewedCommunityData(true);
+                  setIndependentPredictionBonus(false);
+                  onViewedCommunityData?.();
+                  try {
+                    const storageKey = predictionStorageKey || `${STORAGE_KEYS.PREDICTIONS}${matchData?.id}`;
+                    const existingData = await AsyncStorage.getItem(storageKey);
+                    if (existingData) {
+                      const parsed = JSON.parse(existingData);
+                      parsed.hasViewedCommunityData = true;
+                      parsed.independentPredictionBonus = false;
+                      await AsyncStorage.setItem(storageKey, JSON.stringify(parsed));
+                    }
+                  } catch (e) {
+                    console.warn('Topluluk verileri durumu kaydedilemedi:', e);
+                  }
+                }}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="eye" size={20} color="#60A5FA" />
+                <Text style={{ fontSize: 15, fontWeight: '600', color: '#60A5FA' }}>Topluluk Verilerini Gör</Text>
+              </TouchableOpacity>
+            )}
+            {hasPrediction && !hasViewedCommunityData && (
+              <View style={{ marginTop: 12, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(239,68,68,0.1)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 }}>
+                <Ionicons name="warning" size={14} color="#EF4444" />
+                <Text style={{ fontSize: 11, color: '#FCA5A5' }}>Topluluk verilerini görürseniz tahminleriniz kalıcı kilitlenir</Text>
+              </View>
+            )}
+          </View>
+        )}
+        {/* KİLİTLİ KURAL: Gerçek kadro tab'ında realLineupVisible false ise "Gerçek Kadroyu Gör" butonu göster */}
+        {predictionViewIndex === 2 && !realLineupVisible && (
+          <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 40, paddingHorizontal: 24 }}>
+            <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(16,185,129,0.12)', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+              <Ionicons name="football" size={32} color="#10B981" />
+            </View>
+            <Text style={{ color: '#F1F5F9', fontSize: 17, fontWeight: '700', textAlign: 'center', marginBottom: 8 }}>
+              Gerçek Kadro Hazır
+            </Text>
+            <Text style={{ color: '#94A3B8', fontSize: 13, textAlign: 'center', lineHeight: 20, marginBottom: 20 }}>
+              {'Gerçek ilk 11 ve formasyon açıklandı.\nGörmek isterseniz aşağıdaki butonu kullanın.\n\n⚠️ Gerçek kadroyu görürseniz tahminleriniz kalıcı olarak kilitlenecektir.'}
+            </Text>
+            {canShowRealLineupButton && (
+              <TouchableOpacity
+                style={{
+                  backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                  borderRadius: 12,
+                  paddingVertical: 14,
+                  paddingHorizontal: 24,
+                  borderWidth: 1,
+                  borderColor: 'rgba(16, 185, 129, 0.3)',
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 10,
+                }}
+                onPress={async () => {
+                  setHasViewedRealLineup(true);
+                  setIsPredictionLocked(true);
+                  try {
+                    const storageKey = predictionStorageKey || `${STORAGE_KEYS.PREDICTIONS}${matchData?.id}`;
+                    const existingData = await AsyncStorage.getItem(storageKey);
+                    if (existingData) {
+                      const parsed = JSON.parse(existingData);
+                      parsed.hasViewedRealLineup = true;
+                      parsed.isPredictionLocked = true;
+                      await AsyncStorage.setItem(storageKey, JSON.stringify(parsed));
+                    }
+                  } catch (e) {
+                    console.warn('Gerçek kadro durumu kaydedilemedi:', e);
+                  }
+                }}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="eye" size={20} color="#34D399" />
+                <Text style={{ fontSize: 15, fontWeight: '600', color: '#34D399' }}>Gerçek Kadroyu Gör</Text>
+              </TouchableOpacity>
+            )}
+            <View style={{ marginTop: 12, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(239,68,68,0.1)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 }}>
+              <Ionicons name="warning" size={14} color="#EF4444" />
+              <Text style={{ fontSize: 11, color: '#FCA5A5' }}>Gerçek kadroyu görürseniz tahminleriniz kalıcı kilitlenir</Text>
+            </View>
+          </View>
+        )}
+        {/* KİLİTLİ: Topluluk sekmesinde hasRealCommunityData false ise mock veriler ile kartlar gösterilmez */}
+        {predictionViewIndex === 1 && communityDataVisible && !hasRealCommunityData && (
+          <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 40, paddingHorizontal: 24 }}>
+            <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(245,158,11,0.12)', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+              <Ionicons name="people" size={32} color="#F59E0B" />
+            </View>
+            <Text style={{ color: '#F1F5F9', fontSize: 17, fontWeight: '700', textAlign: 'center', marginBottom: 8 }}>
+              Topluluk Verileri Henüz Yeterli Değil
+            </Text>
+            <Text style={{ color: '#94A3B8', fontSize: 13, textAlign: 'center', lineHeight: 20 }}>
+              Yeterli sayıda kullanıcı tahmin yaptığında topluluk verileri burada gösterilecektir.
+            </Text>
+          </View>
+        )}
+        {(predictionViewIndex === 0 || (predictionViewIndex === 1 && communityDataVisible && hasRealCommunityData) || (predictionViewIndex === 2 && realLineupVisible)) && (
         <View style={[
           styles.predictionsSection,
         ]}>
@@ -3873,35 +4185,69 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                 </View>
               )}
 
-              {/* Kaydet Butonu - Sağda (flex: 1) */}
-              <TouchableOpacity 
-                style={[
-                  styles.submitButton, 
-                  (isSaving || isPredictionLocked) && styles.submitButtonDisabled
-                ]}
-                activeOpacity={0.8}
-                onPress={handleSavePredictions}
-                disabled={isSaving || isPredictionLocked}
-              >
-                <LinearGradient
-                  colors={(isSaving || isPredictionLocked) ? ['#4B5563', '#374151'] : ['#1FA2A6', '#047857']}
-                  style={styles.submitButtonGradient}
+              {/* Kaydet veya Topluluk Verilerini Gör Butonu */}
+              {hasPrediction && !hasUnsavedChanges && !hasViewedCommunityData && !isSaving && !(isMatchLive || isMatchFinished) ? (
+                <TouchableOpacity 
+                  style={[styles.submitButton]}
+                  activeOpacity={0.8}
+                  onPress={async () => {
+                    setHasViewedCommunityData(true);
+                    setIndependentPredictionBonus(false);
+                    onViewedCommunityData?.();
+                    try {
+                      const storageKey = predictionStorageKey || `${STORAGE_KEYS.PREDICTIONS}${matchData?.id}`;
+                      const existingData = await AsyncStorage.getItem(storageKey);
+                      if (existingData) {
+                        const parsed = JSON.parse(existingData);
+                        parsed.hasViewedCommunityData = true;
+                        parsed.independentPredictionBonus = false;
+                        await AsyncStorage.setItem(storageKey, JSON.stringify(parsed));
+                      }
+                    } catch (e) {
+                      console.warn('Topluluk verileri durumu kaydedilemedi:', e);
+                    }
+                  }}
                 >
-                  {isSaving ? (
-                    <View style={styles.submitButtonLoading}>
-                      <ActivityIndicator size="small" color="#FFFFFF" />
-                      <Text style={styles.submitButtonText}>Kaydediliyor...</Text>
-                    </View>
-                  ) : isPredictionLocked ? (
+                  <LinearGradient
+                    colors={['#1E40AF', '#1D4ED8']}
+                    style={styles.submitButtonGradient}
+                  >
                     <View style={styles.submitButtonContent}>
-                      <Ionicons name="lock-closed" size={18} color="#EF4444" style={{ marginRight: 6 }} />
-                      <Text style={styles.submitButtonTextLocked}>Tahminler Kilitli</Text>
+                      <Ionicons name="people" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
+                      <Text style={styles.submitButtonText}>Topluluk Verilerini Gör</Text>
                     </View>
-                  ) : (
-                    <Text style={styles.submitButtonText}>Tahminleri Kaydet</Text>
-                  )}
-                </LinearGradient>
-              </TouchableOpacity>
+                  </LinearGradient>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity 
+                  style={[
+                    styles.submitButton, 
+                    (isSaving || isPredictionLocked) && styles.submitButtonDisabled
+                  ]}
+                  activeOpacity={0.8}
+                  onPress={handleSavePredictions}
+                  disabled={isSaving || isPredictionLocked}
+                >
+                  <LinearGradient
+                    colors={(isSaving || isPredictionLocked) ? ['#4B5563', '#374151'] : ['#1FA2A6', '#047857']}
+                    style={styles.submitButtonGradient}
+                  >
+                    {isSaving ? (
+                      <View style={styles.submitButtonLoading}>
+                        <ActivityIndicator size="small" color="#FFFFFF" />
+                        <Text style={styles.submitButtonText}>Kaydediliyor...</Text>
+                      </View>
+                    ) : isPredictionLocked ? (
+                      <View style={styles.submitButtonContent}>
+                        <Ionicons name="lock-closed" size={18} color="#EF4444" style={{ marginRight: 6 }} />
+                        <Text style={styles.submitButtonTextLocked}>Tahminler Kilitli</Text>
+                      </View>
+                    ) : (
+                      <Text style={styles.submitButtonText}>Tahminleri Kaydet</Text>
+                    )}
+                  </LinearGradient>
+                </TouchableOpacity>
+              )}
             </View>
           )}
         </View>
@@ -5203,18 +5549,39 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
         </Modal>
       )}
 
-      {/* ✅ CANLI MAÇ REACTION MODAL */}
-      {liveReactionPlayer && isMatchLive && (() => {
+      {/* ✅ CANLI MAÇ REACTION MODAL - KİLİTLİ KURAL: Canlı/bitmiş maçta tüm kullanıcılar erişebilir */}
+      {liveReactionPlayer && (isMatchLive || isMatchFinished) && (() => {
         const pId = liveReactionPlayer.id;
+        const pName = liveReactionPlayer.name || '';
         const community = communityPredictions[pId];
         const isGK = (liveReactionPlayer.position || '').toUpperCase() === 'GK' || (liveReactionPlayer.position || '').toUpperCase() === 'G' || String(liveReactionPlayer.position || '').toLowerCase().includes('goalkeeper');
+        
+        // ✅ Oyuncunun maç içi performansını event'lerden çıkar
+        const playerEvents = (liveEvents || []).filter((e: any) => {
+          const eName = typeof e.player === 'object' ? e.player?.name : e.player;
+          const aName = typeof e.assist === 'object' ? e.assist?.name : e.assist;
+          return (eName && pName && eName.toLowerCase().includes(pName.split(' ').pop()?.toLowerCase() || '')) ||
+                 (aName && pName && aName.toLowerCase().includes(pName.split(' ').pop()?.toLowerCase() || '')) ||
+                 (e.player?.id === pId) || (e.assist?.id === pId);
+        });
+        
+        const goals = playerEvents.filter((e: any) => (e.type || '').toLowerCase() === 'goal' && e.player?.id === pId && (e.detail || '').toLowerCase() !== 'own goal').length;
+        const assists = playerEvents.filter((e: any) => (e.type || '').toLowerCase() === 'goal' && (e.assist?.id === pId || (typeof e.assist === 'object' && e.assist?.name?.toLowerCase().includes(pName.split(' ').pop()?.toLowerCase() || '')))).length;
+        const yellowCards = playerEvents.filter((e: any) => (e.type || '').toLowerCase() === 'card' && (e.detail || '').toLowerCase().includes('yellow') && e.player?.id === pId).length;
+        const redCards = playerEvents.filter((e: any) => (e.type || '').toLowerCase() === 'card' && (e.detail || '').toLowerCase().includes('red') && e.player?.id === pId).length;
+        const wasSubbedOut = playerEvents.some((e: any) => ((e.type || '').toLowerCase() === 'subst' || (e.type || '').toLowerCase() === 'substitution') && e.player?.id === pId);
+        const wasSubbedIn = liveReactionPlayer.isSubstitute === true;
+        const subMinute = wasSubbedIn ? liveReactionPlayer.subMinute : playerEvents.find((e: any) => ((e.type || '').toLowerCase() === 'subst' || (e.type || '').toLowerCase() === 'substitution') && e.player?.id === pId)?.time?.elapsed;
+        
+        const hasPerformanceData = goals > 0 || assists > 0 || yellowCards > 0 || redCards > 0 || wasSubbedOut || wasSubbedIn;
+        
         const reactions = [
-          { key: 'good', icon: '🔥', label: 'Çok İyi', color: '#10B981', pct: community ? Math.round((community.goal + community.assist) / Math.max(1, community.totalPredictions) * 50) : 24 },
-          { key: 'bad', icon: '👎', label: 'Kötü', color: '#EF4444', pct: community ? Math.round(community.substitutedOut / Math.max(1, community.totalPredictions) * 100) : 12 },
-          { key: 'goal', icon: '⚽', label: isGK ? 'Gol Yer' : 'Gol Yakın', color: '#3B82F6', pct: community ? Math.round(community.goal / Math.max(1, community.totalPredictions) * 100) : 18 },
-          { key: 'yellowcard', icon: 'card', label: 'Sarı Kart Görür', color: '#FBBF24', pct: community ? Math.round(community.yellowCard / Math.max(1, community.totalPredictions) * 100) : 15 },
-          { key: 'redcard', icon: 'card', label: 'Kırmızı Kart', color: '#DC2626', pct: community ? Math.round(community.redCard / Math.max(1, community.totalPredictions) * 100) : 3 },
-          { key: 'sub', icon: '🔄', label: 'Çıkmalı', color: '#8B5CF6', pct: community ? Math.round(community.substitutedOut / Math.max(1, community.totalPredictions) * 100) : 35 },
+          { key: 'good', icon: '🔥', label: 'Çok İyi', color: '#10B981', pct: community ? Math.round((community.goal + community.assist) / Math.max(1, community.totalPredictions) * 50) : 0 },
+          { key: 'bad', icon: '👎', label: 'Kötü', color: '#EF4444', pct: community ? Math.round(community.substitutedOut / Math.max(1, community.totalPredictions) * 100) : 0 },
+          { key: 'goal', icon: '⚽', label: isGK ? 'Gol Yer' : 'Gol Yakın', color: '#3B82F6', pct: community ? Math.round(community.goal / Math.max(1, community.totalPredictions) * 100) : 0 },
+          { key: 'yellowcard', icon: 'card', label: 'Sarı Kart Görür', color: '#FBBF24', pct: community ? Math.round(community.yellowCard / Math.max(1, community.totalPredictions) * 100) : 0 },
+          { key: 'redcard', icon: 'card', label: 'Kırmızı Kart', color: '#DC2626', pct: community ? Math.round(community.redCard / Math.max(1, community.totalPredictions) * 100) : 0 },
+          { key: 'sub', icon: '🔄', label: 'Çıkmalı', color: '#8B5CF6', pct: community ? Math.round(community.substitutedOut / Math.max(1, community.totalPredictions) * 100) : 0 },
         ];
         return (
         <Modal visible={true} transparent animationType="fade" statusBarTranslucent>
@@ -5224,14 +5591,60 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
               backgroundColor: '#0F1F1F', borderTopLeftRadius: 24, borderTopRightRadius: 24,
               padding: 24, paddingBottom: 28, borderTopWidth: 2, borderColor: 'rgba(16,185,129,0.4)',
             }}>
-              <View style={{ alignItems: 'center', marginBottom: 20 }}>
+              <View style={{ alignItems: 'center', marginBottom: hasPerformanceData ? 12 : 20 }}>
                 <Text style={{ fontSize: 18, fontWeight: '800', color: '#F1F5F9' }}>
-                  {liveReactionPlayer.name}
+                  {pName}
                 </Text>
                 <Text style={{ fontSize: 13, color: '#94A3B8', marginTop: 4, fontWeight: '500' }}>
-                  Canlı Değerlendirme
+                  {isMatchFinished ? 'Maç Sonu Değerlendirme' : 'Canlı Değerlendirme'}
                 </Text>
               </View>
+
+              {/* ✅ OYUNCU MAÇ İÇİ PERFORMANSI - Event'lerden çıkarılan gerçek veriler */}
+              {hasPerformanceData && (
+                <View style={{ backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 12, padding: 12, marginBottom: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' }}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: '#94A3B8', marginBottom: 10, textTransform: 'uppercase', letterSpacing: 1 }}>Maç Performansı</Text>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                    {goals > 0 && (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(59,130,246,0.15)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 }}>
+                        <Text style={{ fontSize: 14 }}>⚽</Text>
+                        <Text style={{ color: '#60A5FA', fontSize: 12, fontWeight: '700' }}>{goals} Gol</Text>
+                      </View>
+                    )}
+                    {assists > 0 && (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(16,185,129,0.15)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 }}>
+                        <Text style={{ fontSize: 14 }}>👟</Text>
+                        <Text style={{ color: '#34D399', fontSize: 12, fontWeight: '700' }}>{assists} Asist</Text>
+                      </View>
+                    )}
+                    {yellowCards > 0 && (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(251,191,36,0.15)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 }}>
+                        <View style={{ width: 10, height: 14, borderRadius: 2, backgroundColor: '#FBBF24' }} />
+                        <Text style={{ color: '#FBBF24', fontSize: 12, fontWeight: '700' }}>Sarı Kart</Text>
+                      </View>
+                    )}
+                    {redCards > 0 && (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(220,38,38,0.15)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 }}>
+                        <View style={{ width: 10, height: 14, borderRadius: 2, backgroundColor: '#DC2626' }} />
+                        <Text style={{ color: '#EF4444', fontSize: 12, fontWeight: '700' }}>Kırmızı Kart</Text>
+                      </View>
+                    )}
+                    {wasSubbedOut && (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(239,68,68,0.15)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 }}>
+                        <Ionicons name="arrow-down-circle" size={14} color="#EF4444" />
+                        <Text style={{ color: '#EF4444', fontSize: 12, fontWeight: '700' }}>Çıktı {subMinute ? `(${subMinute}')` : ''}</Text>
+                      </View>
+                    )}
+                    {wasSubbedIn && (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(16,185,129,0.15)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 }}>
+                        <Ionicons name="arrow-up-circle" size={14} color="#10B981" />
+                        <Text style={{ color: '#10B981', fontSize: 12, fontWeight: '700' }}>Girdi {subMinute ? `(${subMinute}')` : ''}{liveReactionPlayer.substitutedFor ? ` ↔ ${liveReactionPlayer.substitutedFor.split(' ').pop()}` : ''}</Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+              )}
+
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 10, marginBottom: 16 }}>
                 {reactions.map(reaction => {
                   const isActive = liveReactions[pId] === reaction.key;

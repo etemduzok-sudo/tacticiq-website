@@ -2400,7 +2400,7 @@ router.get('/:id/lineups', async (req, res) => {
           batches.push(players.slice(i, i + batchSize));
         }
         
-        const enriched = [];
+        let enriched = [];
         for (const batch of batches) {
           const batchResults = await Promise.all(batch.map(async (item) => {
           const player = item.player || item;
