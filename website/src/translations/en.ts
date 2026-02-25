@@ -307,10 +307,30 @@ export default {
   'legal.privacy.section2.brazil.title': 'E. BRAZIL (LGPD) and NIGERIA (NDPA)',
   'legal.privacy.section2.brazil.content': 'Data Protection Officer for Brazil and Nigeria users: dpo@tacticiq.app',
   
+  // Legal - Cookies
+  'legal.cookies.title': 'Cookie Policy',
+  'legal.cookies.description': 'Cookie usage and management',
+
+  // Legal - KVKK
+  'legal.kvkk.title': 'KVKK Disclosure Statement',
+  'legal.kvkk.description': 'Personal Data Protection Law information',
+
+  // Legal - Consent
+  'legal.consent.title': 'Explicit Consent Statement',
+  'legal.consent.description': 'Explicit consent statement under KVKK',
+
+  // Legal - Sales
+  'legal.sales.title': 'Distance Sales Agreement',
+  'legal.sales.description': 'Digital content sales terms and right of withdrawal',
+
   // Legal - DMCA
   'legal.dmca.title': 'Copyright and DMCA Notice',
+  'legal.dmca.description': 'Intellectual property rights and DMCA notice',
   'legal.dmca.content': 'We respect the intellectual property rights of others. If you believe any content on the platform infringes your copyright, please notify legal@tacticiq.app.',
   'legal.dmca.copyright': '© 2025 TacticIQ. All Rights Reserved. TacticIQ is a registered trademark of TacticIQ.',
+
+  // Legal - Copyright
+  'legal.copyright.title': 'Copyright and DMCA Notice',
   
   // Legal - China Mandatory
   'legal.china.title': 'China - Healthy Gaming Advisory',
@@ -332,6 +352,131 @@ export default {
   'legal.contact.platforms.title': 'Platforms',
   'legal.contact.platforms.ios': 'iOS app coming soon',
   'legal.contact.platforms.android': 'Android app coming soon',
+
+  // Legal Documents
+  'legal.title': 'Legal Documents',
+  'legal.description': 'Platform terms of use and legal information',
+  'legal.select': 'Select a document',
+  'legal.terms.fullContent': `Last Updated: January 1, 2026
+
+1. INTRODUCTION AND ACCEPTANCE
+These Terms of Service ("Terms") constitute a legal agreement between TacticIQ ("Company") and you ("User") regarding your use of the TacticIQ web platform and mobile application ("Service"). By using the platform, you agree to be bound by these Terms.
+
+2. VIRTUAL ITEMS AND CURRENCY
+The Service may include "Points", "XP", or other virtual assets ("Virtual Items").
+
+No Ownership: You do not own any Virtual Items. The Company grants you only a limited, revocable, non-transferable license to use these items within the platform.
+
+No Cash Value: Virtual Items cannot be converted to real money, refunded, or sold outside the Company.
+
+3. INTELLECTUAL PROPERTY AND COPYRIGHT
+All rights, title, and interest in the Service (including code, graphics, sounds, characters) belong to the Company.
+
+4. RIGHT OF WITHDRAWAL
+Since digital content delivery begins immediately, the right of withdrawal does not apply.
+
+5. ACCOUNT TERMINATION
+The Company reserves the right to terminate your account without prior notice in cases of cheating, bot usage, hate speech, or violation of these Terms.
+
+6. CONTACT
+For inquiries: legal@tacticiq.app
+Support: support@tacticiq.app`,
+  'legal.privacy.fullContent': `Last Updated: January 1, 2026
+
+1. DATA COLLECTION AND USE
+We process device ID, IP address, general location data, and in-platform activities to improve the platform, prevent cheating, and (with your consent) provide personalized advertisements.
+
+2. REGIONAL PRIVACY RIGHTS
+
+A. TURKEY (KVKK)
+Data Controller: TacticIQ
+Email: kvkk@tacticiq.app
+
+B. EUROPE (GDPR)
+You have the right to erasure, data portability, and restriction of processing.
+
+C. USA (CCPA/CPRA)
+If you are under 13, we do not collect your personal data without verified parental consent.
+
+3. CONTACT
+For inquiries: privacy@tacticiq.app`,
+  'legal.cookies.fullContent': `Last Updated: January 1, 2026
+
+1. COOKIE USAGE
+Our platform uses cookies to enhance your experience.
+
+2. COOKIE TYPES
+- Necessary Cookies: Required for platform operation
+- Functional Cookies: Remembers settings like language preference and theme selection
+- Analytics Cookies: Helps us understand platform usage
+- Marketing Cookies: Displays content that may interest you
+
+3. COOKIE MANAGEMENT
+You can manage cookies through your browser settings.`,
+  'legal.kvkk.fullContent': `Under Law No. 6698 on the Protection of Personal Data ("KVKK"):
+
+DATA CONTROLLER: TacticIQ
+Email: kvkk@tacticiq.app
+
+PROCESSED DATA:
+- Identity Information (Name, Surname, Email)
+- Contact Information
+- In-Platform Activity Data
+- Device and IP Information
+
+PROCESSING PURPOSES:
+- Membership and service delivery
+- User experience improvement
+- Security and fraud prevention
+
+YOUR RIGHTS:
+To exercise your rights under KVKK Article 11, you may contact kvkk@tacticiq.app.`,
+  'legal.consent.fullContent': `Under KVKK, by TacticIQ:
+
+DISCLOSURE:
+• I have been informed that my personal data will be processed
+• I know the purposes for which my data will be used
+• I have been informed about my rights
+
+CONSENT:
+I give my EXPLICIT CONSENT for the processing and transfer of the following personal data:
+✓ My Identity Information
+✓ My Contact Information
+✓ My In-Platform Activity Data
+✓ My Device and IP Information
+
+MY RIGHTS:
+I acknowledge that I can withdraw this consent at any time and exercise my rights under KVKK Article 11.`,
+  'legal.sales.fullContent': `Under Consumer Protection Law No. 6502
+
+1. PARTIES
+SELLER: TacticIQ
+Email: sales@tacticiq.app
+
+2. SUBJECT OF AGREEMENT
+Premium membership package and digital content sales.
+
+3. PAYMENT
+Payment is processed through App Store or Google Play.
+
+4. RIGHT OF WITHDRAWAL
+Since digital content delivery begins immediately, the right of withdrawal does not apply.
+
+5. CONTACT
+sales@tacticiq.app`,
+  'legal.dmca.fullContent': `All content on the TacticIQ platform is protected by copyright.
+
+INTELLECTUAL PROPERTY:
+- Platform source code
+- Designs and graphics
+- Brand and logo
+- Content and texts
+
+USAGE:
+Copying, distributing, or using platform content for commercial purposes is prohibited.
+
+DMCA NOTICE:
+For copyright infringement notices: copyright@tacticiq.app`,
 
   // Language Names
   'lang.en': 'English',
@@ -437,6 +582,8 @@ export default {
   'auth.error.google': 'Google sign-in failed.',
   'auth.error.apple': 'Apple sign-in failed.',
   'auth.forgotPassword': 'Forgot Password',
+  'auth.email.spam.warning': 'Check your email. If you can\'t find the email, don\'t forget to check your spam folder.',
+  'auth.email.spam.check': '📧 Check your spam folder too',
 
   // Change Password
   'changePassword.title': 'Change Password',
@@ -548,11 +695,61 @@ export default {
   'user.delete.confirm.description': 'This action cannot be undone. All your data, predictions, points, and badges will be permanently deleted.',
   'user.delete.confirm.cancel': 'Cancel',
   'user.delete.confirm.delete': 'Yes, Delete Account',
+  'user.delete.confirm.text': 'Type "delete" to confirm',
+  'user.delete.confirm.placeholder': 'delete',
+  'user.delete.confirm.deleting': 'Deleting...',
+  'user.delete.confirm.error': 'You must type "delete" to confirm',
 
   // Profile Section
   'profile.title': 'My Profile',
+  'profile.description': 'Manage your profile information',
+  'profile.edit': 'Edit',
+  'profile.cancel': 'Cancel',
+  'profile.save': 'Save',
+  'profile.updated': 'Profile updated',
+  'profile.updateFailed': 'Failed to update profile',
+  'profile.stats.title': 'Statistics',
+  'profile.stats.totalPredictions': 'Total Predictions',
+  'profile.stats.successRate': 'Success Rate',
+  'profile.stats.totalPoints': 'Total Points',
+  'profile.stats.recentActivity': 'Recent Activity',
+  'profile.stats.noActivity': 'No activity yet',
+  'profile.stats.startPredicting': 'Start making predictions!',
+  'profile.predictions.title': 'Predictions',
+  'profile.predictions.history': 'Prediction History',
+  'profile.predictions.description': 'Your past predictions and results',
+  'profile.predictions.empty': 'You haven\'t made any predictions yet',
+  'profile.predictions.start': 'Make predictions on matches to earn points',
+  'profile.predictions.startButton': 'Start Predicting',
   'profile.settings.title': 'Settings',
+  'profile.settings.notifications': 'Notification Settings',
+  'profile.settings.notificationsDesc': 'Manage your notification preferences',
+  'profile.settings.emailNotifications': 'Email Notifications',
+  'profile.settings.emailNotificationsDesc': 'Match results and prediction reminders',
+  'profile.settings.weeklySummary': 'Weekly Summary',
+  'profile.settings.weeklySummaryDesc': 'Weekly performance summary',
+  'profile.settings.campaignNotifications': 'Campaign Notifications',
+  'profile.settings.campaignNotificationsDesc': 'Discounts and special offers',
+  'profile.settings.language': 'Language & Region',
+  'profile.settings.languageDesc': 'Your preferred language and region settings',
+  'profile.settings.languageLabel': 'Language',
+  'profile.settings.timezone': 'Timezone',
+  'profile.settings.security': 'Security',
+  'profile.settings.changePassword': 'Change Password',
+  'profile.settings.changePasswordDesc': 'Change your password regularly for account security',
+  'profile.settings.sessions': 'Session Information',
+  'profile.settings.sessionsDesc': 'Your active sessions and device information',
+  'profile.settings.currentDevice': 'This Device',
+  'profile.settings.active': 'Active',
+  'profile.settings.legalDocuments': 'Legal Documents',
+  'profile.settings.legalDocumentsDesc': 'Platform terms of use and legal information',
+  'profile.settings.viewLegal': 'View Legal Documents',
+  'profile.settings.advanced': 'Advanced Settings',
+  'profile.settings.dangerous': 'Dangerous Actions',
   'profile.settings.upgrade': 'Upgrade to Pro',
+  'profile.settings.logout': 'Sign Out',
+  'profile.settings.proMember': 'Pro Member',
+  'profile.settings.freePlan': 'Free Plan',
 
   // CTA Section
   'cta.title': 'Start Your Professional Football Analysis Journey',
@@ -561,9 +758,22 @@ export default {
   'cta.features.no_card': 'No Credit Card Required',
   'cta.features.skill': 'Skill-Based Game',
   'cta.features.virtual': 'Virtual Points - No Real Money',
+  'cta.waitlist': 'Join Waitlist',
+  'cta.learnMore': 'Learn More',
+  'cta.getStarted': 'Get Started',
+  'cta.emailPlaceholder': 'Enter your email address',
+  'cta.submit': 'Submit',
+  'cta.submitting': 'Processing...',
   'cta.email.placeholder': 'Enter your email address',
   'cta.button': 'Get Started Now',
   'cta.privacy': 'We respect your privacy. Your data will never be shared.',
+
+  // Fair Play Statement
+  'fairPlay.intro': 'TacticIQ is NOT a betting platform.',
+  'fairPlay.noBetting': 'No real money betting',
+  'fairPlay.noOdds': 'No odds, no payouts, no monetary rewards',
+  'fairPlay.skillBased': 'All outcomes are skill and data-based',
+  'fairPlay.virtualPoints': 'Points, XP, rankings are virtual and non-monetary',
 
   // Footer - Not Betting
   'footer.notBetting.title': 'Not a Betting Platform',
@@ -715,6 +925,7 @@ export default {
   'newsletter.form.subscribe': 'Subscribe',
   'newsletter.form.subscribing': 'Subscribing...',
   'newsletter.form.privacy': 'Unsubscribe anytime. Privacy policy',
+  'newsletter.form.privacyLink': 'Privacy policy',
   'newsletter.error': 'Please enter a valid email',
   'newsletter.success': 'Successfully subscribed!',
   'newsletter.subscribed.title': 'Congratulations!',

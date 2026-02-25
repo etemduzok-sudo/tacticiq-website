@@ -1506,9 +1506,9 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
           <Text style={styles.sectionTitle}>Kategoriler</Text>
 
           {coachCategories.map((category, index) => {
-            const userRating = coachRatings[category.id];
-            const communityRating = communityRatings[category.id];
-            const difference = userRating - communityRating;
+            const userRating = coachRatings[category.id] ?? 0;
+            const communityRating = communityRatings[category.id] ?? 0;
+            const difference = (userRating || 0) - (communityRating || 0);
 
             return (
               <Animated.View

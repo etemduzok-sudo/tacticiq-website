@@ -1,24 +1,12 @@
 import { Moon, Sun } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
-import { useEffect, useState } from 'react';
+import { useTheme } from 'next-themes';
 
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
-
-  useEffect(() => {
-    const stored = localStorage.getItem('tacticiq-theme');
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const initialTheme = (stored as 'light' | 'dark') || (prefersDark ? 'dark' : 'light');
-    
-    setTheme(initialTheme);
-    document.documentElement.classList.toggle('dark', initialTheme === 'dark');
-  }, []);
+  const { theme, setTheme, resolvedTheme } = useTheme();
 
   const toggleTheme = () => {
-    const newTheme = theme === 'light' ? 'dark' : 'light';
-    setTheme(newTheme);
-    localStorage.setItem('tacticiq-theme', newTheme);
-    document.documentElement.classList.toggle('dark', newTheme === 'dark');
+    setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
   };
 
   return (
@@ -28,10 +16,10 @@ export function ThemeToggle() {
       onClick={toggleTheme}
       className="gap-2"
     >
-      {theme === 'light' ? (
-        <Moon className="size-4" />
-      ) : (
+      {resolvedTheme === 'dark' ? (
         <Sun className="size-4" />
+      ) : (
+        <Moon className="size-4" />
       )}
     </Button>
   );

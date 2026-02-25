@@ -37,9 +37,7 @@ export function Footer() {
       )}
 
       {/* Footer */}
-      <footer className="text-white py-12 md:py-16 relative overflow-hidden" style={{
-        background: 'linear-gradient(135deg, #1F3231 0%, #2B7C73 100%)'
-      }}>
+      <footer className="py-12 md:py-16 relative overflow-hidden bg-primary text-primary-foreground dark:bg-gradient-to-br dark:from-[#1F3231] dark:to-[#2B7C73]">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
             {/* Brand */}

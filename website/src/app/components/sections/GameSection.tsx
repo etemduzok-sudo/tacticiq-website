@@ -85,10 +85,10 @@ export function GameSection() {
           <Badge className="mb-4 bg-[#1FA2A6] text-white hover:bg-[#1FA2A6]/90">
             {t('game.badge') || 'Beceri Bazlı Tahmin Oyunu'}
           </Badge>
-          <h2 className="text-4xl md:text-5xl font-bold mb-4 text-[#0F2A24] dark:text-white">
+          <h2 className="text-4xl md:text-5xl font-bold mb-4 text-foreground">
             {t('game.title') || 'Futbol Bilgini Göster'}
           </h2>
-          <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
+          <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
             {t('game.description') || 'Şans değil, bilgi ve analiz. Maç skorundan kadro tahminine kadar her detayı analiz et ve becerini kanıtla.'}
           </p>
         </motion.div>
@@ -103,13 +103,13 @@ export function GameSection() {
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: index * 0.1 }}
             >
-              <Card className="h-full hover:shadow-lg transition-shadow dark:bg-[#0F2A24]/80 dark:border-[#1FA2A6]/30">
+              <Card className="h-full hover:shadow-lg transition-shadow">
                 <CardHeader>
                   <feature.icon className={`w-12 h-12 ${feature.color} mb-4`} />
-                  <CardTitle className="text-lg dark:text-white">{feature.title}</CardTitle>
+                  <CardTitle className="text-lg text-foreground">{feature.title}</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <CardDescription className="dark:text-gray-300">{feature.description}</CardDescription>
+                  <CardDescription className="text-muted-foreground">{feature.description}</CardDescription>
                 </CardContent>
               </Card>
             </motion.div>
@@ -124,7 +124,7 @@ export function GameSection() {
           transition={{ duration: 0.5 }}
           className="mb-16"
         >
-          <h3 className="text-3xl font-bold text-center mb-12 text-[#0F2A24] dark:text-white">
+          <h3 className="text-3xl font-bold text-center mb-12 text-foreground">
             Nasıl Çalışır?
           </h3>
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
@@ -140,8 +140,8 @@ export function GameSection() {
                 <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-[#1FA2A6] to-[#C9A44C] flex items-center justify-center">
                   <span className="text-2xl font-bold text-white">{step.number}</span>
                 </div>
-                <h4 className="text-xl font-semibold mb-2 text-[#0F2A24] dark:text-white">{step.title}</h4>
-                <p className="text-gray-600 dark:text-gray-300">{step.description}</p>
+                <h4 className="text-xl font-semibold mb-2 text-foreground">{step.title}</h4>
+                <p className="text-muted-foreground">{step.description}</p>
               </motion.div>
             ))}
           </div>
@@ -155,7 +155,7 @@ export function GameSection() {
           transition={{ duration: 0.5 }}
           className="mb-16"
         >
-          <Card className="bg-gradient-to-r from-[#0F2A24] to-[#1a3d35] text-white border-[#1FA2A6]/40 overflow-hidden">
+          <Card className="bg-gradient-to-r from-primary to-primary/80 dark:from-[#0F2A24] dark:to-[#1a3d35] text-primary-foreground border-secondary/40 overflow-hidden">
             <CardContent className="pt-8 pb-8">
               <div className="grid md:grid-cols-3 gap-8 text-center">
                 <div>
@@ -199,7 +199,7 @@ export function GameSection() {
             <Smartphone className="w-6 h-6 mr-2" />
             Uygulamayı İndir
           </Button>
-          <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
+          <p className="mt-4 text-sm text-muted-foreground">
             {t('game.notBetting') || 'Bu bir bahis uygulaması değildir. Tamamen beceri bazlı tahmin oyunudur.'}
           </p>
         </motion.div>
@@ -212,7 +212,7 @@ export function GameSection() {
           transition={{ duration: 0.5, delay: 0.3 }}
           className="mt-12 max-w-2xl mx-auto"
         >
-          <Card className="bg-[#0F2A24] text-white border-[#1FA2A6]">
+          <Card className="bg-primary dark:bg-[#0F2A24] text-primary-foreground border-secondary">
             <CardContent className="pt-6">
               <div className="flex items-start gap-4">
                 <Shield className="w-6 h-6 text-[#C9A44C] flex-shrink-0 mt-1" />

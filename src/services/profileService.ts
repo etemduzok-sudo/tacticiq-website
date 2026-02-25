@@ -183,7 +183,10 @@ class ProfileService {
       const profile = fromSupabaseProfile(data as SupabaseUserProfile);
       await this.saveToCache(profile);
       return profile;
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.name === 'AbortError' || error?.message?.includes('aborted')) {
+        return null;
+      }
       console.error('[ProfileService] fetchProfileFromSupabase error:', error);
       return null;
     }

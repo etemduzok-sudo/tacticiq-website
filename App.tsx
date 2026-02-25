@@ -10,7 +10,8 @@ import MaintenanceScreen from './src/components/MaintenanceScreen';
 import { useFavoriteTeamMatches } from './src/hooks/useFavoriteTeamMatches';
 import { useFavoriteTeams } from './src/hooks/useFavoriteTeams';
 import { ProfileCard } from './src/components/ProfileCard';
-import { DARK_MODE } from './src/theme/theme';
+import { DARK_MODE, LIGHT_MODE, COLORS } from './src/theme/theme';
+import { useTheme as useAppTheme } from './src/contexts/ThemeContext';
 import { markBadgeAsShown } from './src/services/badgeService';
 import { logger } from './src/utils/logger';
 import { useAppNavigation } from './src/hooks/useAppNavigation';
@@ -581,7 +582,7 @@ export default function App() {
               {isMaintenanceMode ? (
                 <MaintenanceScreen />
               ) : (
-                <View key={currentScreen === 'onboarding' ? 'content-onboarding' : `content-${currentLang}-${forceUpdateKey}`} style={{ flex: 1, backgroundColor: '#0F2A24' }}>
+                <ThemedRootView viewKey={currentScreen === 'onboarding' ? 'content-onboarding' : `content-${currentLang}-${forceUpdateKey}`}>
                   {renderScreen()}
                   
                   {/* Kişi kartı + favori takım barı — Maçlar, Sıralama, Rozetler, Profil (hepsi aynı yapı) */}
@@ -648,7 +649,7 @@ export default function App() {
                       </View>
                     </View>
                   )}
-                </View>
+                </ThemedRootView>
               )}
               </FavoriteSquadsProvider>
             </MatchProvider>
@@ -656,6 +657,16 @@ export default function App() {
         </ThemeProvider>
       </SafeAreaProvider>
     </ErrorBoundary>
+  );
+}
+
+function ThemedRootView({ viewKey, children }: { viewKey: string; children: React.ReactNode }) {
+  const { theme } = useAppTheme();
+  const bg = theme === 'light' ? LIGHT_MODE.background : '#0F2A24';
+  return (
+    <View key={viewKey} style={{ flex: 1, backgroundColor: bg }}>
+      {children}
+    </View>
   );
 }
 

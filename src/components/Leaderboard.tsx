@@ -13,12 +13,12 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, { FadeInDown, FadeIn as FadeInNative } from 'react-native-reanimated';
+import Animated, { FadeInDown as FadeInDownNative, FadeIn as FadeInNative } from 'react-native-reanimated';
 
-// ✅ Web platformunda FadeIn.delay() çalışmıyor - wrapper ile düzelt
-const FadeIn = Platform.OS === 'web' 
-  ? { duration: () => ({ delay: () => undefined }), delay: () => ({ duration: () => undefined }) }
-  : FadeInNative;
+// ✅ Web platformunda animasyon API'leri çalışmıyor - wrapper ile düzelt
+const noopAnim = { duration: () => noopAnim, delay: () => noopAnim, springify: () => noopAnim } as any;
+const FadeIn = Platform.OS === 'web' ? noopAnim : FadeInNative;
+const FadeInDown = Platform.OS === 'web' ? noopAnim : FadeInDownNative;
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from 'react-i18next';
 import { Badge, BadgeTier, getBadgeColor, getBadgeTierName } from '../types/badges.types';

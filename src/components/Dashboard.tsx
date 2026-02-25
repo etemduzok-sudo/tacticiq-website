@@ -39,7 +39,8 @@ import { isMockTestMatch } from '../data/mockTestData';
 // Bu global cache, component remount'larında bile korunur
 const globalCoachCache: Record<number, string> = {};
 import { logger } from '../utils/logger';
-import { COLORS, SPACING, TYPOGRAPHY, SIZES, SHADOWS, BRAND } from '../theme/theme';
+import { COLORS, SPACING, TYPOGRAPHY, SIZES, SHADOWS, BRAND, LIGHT_MODE } from '../theme/theme';
+import { useTheme } from '../contexts/ThemeContext';
 import { WEBSITE_DARK_COLORS } from '../config/WebsiteDesignSystem';
 import { cardStyles, textStyles, containerStyles } from '../utils/styleHelpers';
 import { translateCountry } from '../utils/countryUtils';
@@ -64,6 +65,8 @@ interface DashboardProps {
 
 export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, selectedTeamIds = [], hasFavoriteTeams = true }: DashboardProps) {
   const { t } = useTranslation();
+  const { theme } = useTheme();
+  const themeColors = theme === 'light' ? COLORS.light : COLORS.dark;
   const [isPremium, setIsPremium] = useState(false);
   // ✅ selectedTeamIds artık App.tsx'ten prop olarak geliyor
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -1179,7 +1182,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
 
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: themeColors.background }]}>
       {/* Grid Pattern Background - Splash screen ile uyumlu */}
       <View style={styles.gridPattern} />
       

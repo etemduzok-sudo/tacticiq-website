@@ -43,10 +43,10 @@ const supabase = createClient(
 const SEASON = 2025;
 const API_DAILY_LIMIT = 75000; // Günlük sorgu limiti (API-Football)
 const DELAY_MS = Math.max(400, parseInt(process.argv.find(a => a.startsWith('--delay='))?.replace('--delay=', '') || '1000', 10));
-// Takım sync: 1 takım = 1 geçişte koç+renk+kadro (4–6 API çağrısı). Dakikada ~10 takım = 429 önlemek.
-const TEAM_SYNC_BATCH_SIZE = 10;
-const TEAM_SYNC_PAUSE_AFTER_BATCH_MS = 60000; // 60 sn
-const TEAM_SYNC_DELAY_MS = 6000; // Takım başı ~6 sn (içinde 4–6 API var)
+// Takım sync: 1 takım = 1 geçişte koç+renk+kadro (4–6 API çağrısı). Hızlandırıldı: ~30 takım/dk.
+const TEAM_SYNC_BATCH_SIZE = 20;
+const TEAM_SYNC_PAUSE_AFTER_BATCH_MS = 20000; // 20 sn (önceden 60)
+const TEAM_SYNC_DELAY_MS = 2000; // Takım başı ~2 sn (önceden 6)
 const MAX_TEAMS_PER_ROUND = (() => {
   const arg = process.argv.find(a => a.startsWith('--max-teams='));
   return arg ? Math.max(1, parseInt(arg.replace('--max-teams=', ''), 10) || 0) : 0;

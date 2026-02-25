@@ -293,6 +293,9 @@ export const predictionsDb = {
       if (error) throw error;
       return { success: true, data };
     } catch (error: any) {
+      if (error?.name === 'AbortError' || error?.message?.includes('aborted')) {
+        return { success: false, error: 'Request cancelled', data: [] };
+      }
       console.error('❌ Error fetching user predictions:', error.message);
       return { success: false, error: error.message, data: [] };
     }

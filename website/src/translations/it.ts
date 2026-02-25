@@ -677,4 +677,337 @@ export default {
   'blog.posts.post3.desc': 'Impara a interpretare passaggi chiave, contributo ai gol attesi (xG+xA) e altre metriche a livello di giocatore.',
   'blog.posts.post3.category': 'Analisi Giocatori',
   'blog.posts.post3.date': '5 Gen, 2026',
+
+  // Blog Posts (missing)
+  'blog.posts.post4.title': 'Decifrare il Sistema dei Gol Attesi (xG)',
+  'blog.posts.post4.desc': 'Scopri come viene calcolato il xG, cosa significa e come usarlo nelle tue previsioni.',
+  'blog.posts.post4.category': 'Analisi',
+  'blog.posts.post4.date': '3 Gen, 2026',
+  'blog.posts.post5.title': 'Strategie di Pressing e Analisi Difensiva',
+  'blog.posts.post5.desc': 'Analizza i sistemi difensivi di pressing alto, blocco medio e blocco basso, e scopri quali squadre usano quali strategie.',
+  'blog.posts.post5.category': 'Tattiche',
+  'blog.posts.post5.date': '1 Gen, 2026',
+  'blog.posts.post6.title': 'Leggere i Cambiamenti di Momentum nella Partita',
+  'blog.posts.post6.desc': 'Come individuare i cambiamenti di momentum nelle partite in diretta e adattare le tue previsioni di conseguenza.',
+  'blog.posts.post6.category': 'Analisi in Diretta',
+  'blog.posts.post6.date': '28 Dic, 2025',
+  'blog.comingSoon': 'La pagina di dettaglio del blog sarà disponibile presto!',
+  'blog.allPostsComingSoon': 'La pagina del blog sarà disponibile presto! Tutti gli articoli saranno elencati qui.',
+
+  // Hero (missing keys)
+  'hero.cta.loading': 'Invio in corso...',
+  'hero.video.title': 'Come Funziona TacticIQ?',
+
+  // Feature Details (missing)
+  'features.predictionCategories.title': 'Categorie di Previsione',
+  'features.predictionCategories.match': '14 Categorie di Partita',
+  'features.predictionCategories.player': '7 Categorie di Giocatore',
+  'features.strategicFocus.title': 'Sistema di Focus Strategico',
+  'features.strategicFocus.description': 'Concentrati su 3 previsioni, guadagna 2x punti per quelle corrette, -1.5x penalità per quelle sbagliate',
+  'features.trainingMultipliers.title': 'Moltiplicatori di Allenamento',
+  'features.trainingMultipliers.description': 'Aumenta i tuoi punti con 5 diversi tipi di moltiplicatori di allenamento',
+  'features.formations.title': 'Costruzione della Rosa',
+  'features.formations.description': 'Componi la tua squadra con 26 opzioni di formazione diverse',
+  'features.badges.title': 'Sistema di Badge',
+  'features.badges.description': 'Mostra i tuoi successi guadagnando oltre 20 badge diversi',
+  'features.leaderboard.title': 'Classifica',
+  'features.leaderboard.description': 'Competi nelle classifiche globali, stagionali, settimanali e mensili',
+
+  // Pricing (missing)
+  'pricing.pro.original_price': '11,99€',
+
+  // Footer (missing keys)
+  'footer.legal.terms': 'Termini di Servizio',
+  'footer.legal.privacy': 'Informativa sulla Privacy',
+  'footer.legal.dmca': 'Diritti d\'Autore',
+  'footer.legal.contact': 'Contatto',
+  'footer.support.title': 'Supporto',
+  'footer.support.email': 'Email di Supporto',
+  'footer.support.faq': 'Domande Frequenti',
+  'footer.disclaimer': 'TacticIQ non è una piattaforma di scommesse. È un gioco di analisi e previsione calcistica basato sulle abilità.',
+
+  // Legal - Common
+  'legal.back': 'Indietro',
+  'legal.close': 'Chiudi',
+  'legal.lastUpdated': 'Ultimo Aggiornamento',
+  'legal.updateDate': 'Gennaio 2025',
+
+  // Legal - Terms of Service (sections)
+  'legal.terms.section1.title': '1. Introduzione e Accettazione',
+  'legal.terms.section1.content': 'Questi Termini di Servizio ("Termini") costituiscono un accordo legale tra TacticIQ ("Azienda") e lei ("Utente") riguardo all\'uso della piattaforma TacticIQ ("Servizio"). Accedendo, utilizzando o registrandosi alla piattaforma, accetta di essere vincolato da questi Termini.',
+  'legal.terms.section2.title': '2. Articoli e Valuta Virtuale',
+  'legal.terms.section2.intro': 'Il Servizio può includere "Punti", "XP" o altri beni virtuali ("Articoli Virtuali").',
+  'legal.terms.section2.ownership.title': 'Nessuna Proprietà',
+  'legal.terms.section2.ownership.content': 'Non possiede alcun Articolo Virtuale. L\'Azienda le concede solo una licenza limitata, revocabile e non trasferibile per utilizzare questi articoli all\'interno della piattaforma.',
+  'legal.terms.section2.cashValue.title': 'Nessun Valore in Denaro',
+  'legal.terms.section2.cashValue.content': 'Gli Articoli Virtuali non possono essere convertiti in denaro reale, rimborsati o venduti al di fuori dell\'Azienda.',
+  'legal.terms.section2.lootBox.title': 'Trasparenza',
+  'legal.terms.section2.lootBox.content': 'Tutti i contenuti e le funzionalità all\'interno della piattaforma sono chiaramente indicati senza costi nascosti.',
+  'legal.terms.section3.title': '3. Proprietà Intellettuale e Diritti d\'Autore',
+  'legal.terms.section3.intro': 'Tutti i diritti, titoli e interessi del Servizio (inclusi codice, grafica, suoni, personaggi) appartengono all\'Azienda.',
+  'legal.terms.section3.ugc.title': 'Contenuto dell\'Utente',
+  'legal.terms.section3.ugc.content': 'Lei dichiara che qualsiasi contenuto caricato o creato sulla piattaforma (foto profilo, commenti) non viola diritti d\'autore.',
+  'legal.terms.section3.reverse.title': 'Reverse Engineering',
+  'legal.terms.section3.reverse.content': 'Decodificare, copiare o modificare il codice sorgente della piattaforma è severamente vietato e può comportare azioni legali.',
+  'legal.terms.section4.title': '4. Diritto di Recesso',
+  'legal.terms.section4.eu.title': 'Utenti dell\'Unione Europea e Francia',
+  'legal.terms.section4.eu.content': 'Acquistando contenuto digitale, accetta che l\'esecuzione inizia immediatamente. Pertanto, rinuncia espressamente al suo diritto di recesso di 14 giorni una volta completato l\'acquisto.',
+  'legal.terms.section4.eu.confirmation': 'Cliccando su "Acquista", riconosco di ricevere accesso immediato al contenuto digitale e rinuncio al mio diritto di recesso.',
+  'legal.terms.section4.turkey.title': 'Utenti della Turchia',
+  'legal.terms.section4.turkey.content': 'Ai sensi del Regolamento sui Contratti a Distanza, Articolo 15/ğ, i servizi eseguiti immediatamente in ambiente elettronico sono esclusi dal diritto di recesso. Nessun rimborso.',
+  'legal.terms.section5.title': '5. Chiusura dell\'Account',
+  'legal.terms.section5.content': 'L\'Azienda si riserva il diritto di chiudere il suo account senza preavviso in caso di frode, incitamento all\'odio o violazione di questi Termini. Non saranno previsti rimborsi per Articoli Virtuali in account chiusi.',
+
+  // Legal - Privacy Policy (sections)
+  'legal.privacy.section1.title': '1. Raccolta e Utilizzo dei Dati',
+  'legal.privacy.section1.content': 'Trattiamo ID dispositivo, indirizzo IP, dati di localizzazione generali e attività sulla piattaforma per migliorare il servizio, prevenire frodi e (con il suo consenso) fornire esperienze personalizzate.',
+  'legal.privacy.section2.title': '2. Diritti alla Privacy Regionali',
+  'legal.privacy.section2.turkey.title': 'A. TURCHIA (KVKK)',
+  'legal.privacy.section2.turkey.responsible': 'Titolare del Trattamento per gli utenti in Turchia: TacticIQ',
+  'legal.privacy.section2.turkey.consent.title': 'Consenso Esplicito',
+  'legal.privacy.section2.turkey.consent.content': 'Le attività di marketing e il trasferimento internazionale dei dati richiedono il suo consenso esplicito ai sensi degli Articoli 5 e 9 di KVKK.',
+  'legal.privacy.section2.turkey.rights.title': 'Diritti di Richiesta',
+  'legal.privacy.section2.turkey.rights.content': 'Per esercitare i suoi diritti ai sensi dell\'Articolo 11 di KVKK, contatti kvkk@tacticiq.app.',
+  'legal.privacy.section2.turkey.iys.title': 'IYS (Sistema di Gestione dei Messaggi)',
+  'legal.privacy.section2.turkey.iys.content': 'Può gestire i messaggi elettronici commerciali inviati tramite IYS.',
+  'legal.privacy.section2.eu.title': 'B. EUROPA (GDPR)',
+  'legal.privacy.section2.eu.basis.title': 'Base del Trattamento dei Dati',
+  'legal.privacy.section2.eu.basis.content': 'I dati necessari per il funzionamento della piattaforma sono trattati sulla base dell\'"Esecuzione del Contratto" (Art 6.1.b), i dati analitici sulla base del "Legittimo Interesse" (Art 6.1.f).',
+  'legal.privacy.section2.eu.rights.title': 'I Suoi Diritti',
+  'legal.privacy.section2.eu.rights.content': 'Ha diritto alla cancellazione (Diritto all\'Oblio), alla portabilità dei dati e alla limitazione del trattamento.',
+  'legal.privacy.section2.usa.title': 'C. USA (CCPA/COPPA)',
+  'legal.privacy.section2.usa.coppa.title': 'Minori (COPPA)',
+  'legal.privacy.section2.usa.coppa.content': 'Se ha meno di 13 anni, non raccogliamo i suoi dati personali senza il consenso verificato dei genitori.',
+  'legal.privacy.section2.usa.ccpa.title': 'Vendita dei Dati',
+  'legal.privacy.section2.usa.ccpa.content': 'I residenti in California hanno il diritto di "Non Vendere le Mie Informazioni Personali".',
+  'legal.privacy.section2.china.title': 'D. CINA (PIPL)',
+  'legal.privacy.section2.china.content': 'I dati degli utenti cinesi sono conservati su server nella Cina continentale e non vengono trasferiti all\'estero.',
+  'legal.privacy.section2.brazil.title': 'E. BRASILE (LGPD) e NIGERIA (NDPA)',
+  'legal.privacy.section2.brazil.content': 'Responsabile della Protezione dei Dati per utenti di Brasile e Nigeria: dpo@tacticiq.app',
+
+  // Legal - DMCA
+  'legal.dmca.title': 'Diritti d\'Autore e Notifica DMCA',
+  'legal.dmca.content': 'Rispettiamo i diritti di proprietà intellettuale di terzi. Se ritiene che qualsiasi contenuto sulla piattaforma violi i suoi diritti d\'autore, notifichi legal@tacticiq.app.',
+  'legal.dmca.copyright': '© 2025 TacticIQ. Tutti i Diritti Riservati. TacticIQ è un marchio registrato di TacticIQ.',
+  'legal.dmca.description': 'Diritti di proprietà intellettuale e notifica DMCA',
+
+  // Legal - China Mandatory
+  'legal.china.title': 'Cina - Avviso di Gioco Sano',
+  'legal.china.mandate': '健康游戏忠告',
+  'legal.china.line1': '抵制不良游戏，拒绝盗版游戏。',
+  'legal.china.line2': '注意自我保护，谨防受骗上当。',
+  'legal.china.line3': '适度游戏益脑，沉迷游戏伤身。',
+  'legal.china.line4': '合理安排时间，享受健康生活。',
+
+  // Legal - Contact
+  'legal.contact.title': 'Informazioni di Contatto',
+  'legal.contact.company.title': 'Informazioni Aziendali',
+  'legal.contact.company.name': 'Nome dell\'Azienda',
+  'legal.contact.company.email': 'Email Generale',
+  'legal.contact.company.support': 'Email di Supporto',
+  'legal.contact.company.legal': 'Email Legale',
+  'legal.contact.company.kvkk': 'Email KVKK',
+  'legal.contact.company.dpo': 'Responsabile della Protezione dei Dati',
+  'legal.contact.platforms.title': 'Piattaforme',
+  'legal.contact.platforms.ios': 'App iOS in arrivo',
+  'legal.contact.platforms.android': 'App Android in arrivo',
+
+  // Legal Documents Section
+  'legal.title': 'Documenti Legali',
+  'legal.description': 'Condizioni d\'uso della piattaforma e informazioni legali',
+  'legal.select': 'Seleziona un documento',
+  'legal.cookies.description': 'Uso e gestione dei cookie',
+  'legal.copyright.title': 'Diritti d\'Autore e Notifica DMCA',
+  'legal.kvkk.title': 'Testo Informativo KVKK',
+  'legal.kvkk.description': 'Informazioni sulla Legge sulla Protezione dei Dati Personali',
+  'legal.consent.title': 'Testo di Consenso Esplicito',
+  'legal.consent.description': 'Dichiarazione di consenso esplicito ai sensi di KVKK',
+  'legal.sales.title': 'Contratto di Vendita a Distanza',
+  'legal.sales.description': 'Condizioni di vendita di contenuti digitali e diritto di recesso',
+
+  // Legal Full Content
+  'legal.terms.fullContent': `Ultimo Aggiornamento: 1 Gennaio 2026
+
+1. INTRODUZIONE E ACCETTAZIONE
+Questi Termini di Servizio ("Termini") costituiscono un accordo legale tra TacticIQ ("Azienda") e lei ("Utente") riguardo all'uso della piattaforma web e dell'applicazione mobile TacticIQ ("Servizio"). Utilizzando la piattaforma, accetta questi Termini.
+
+2. ARTICOLI E VALUTA VIRTUALE
+Il Servizio può includere "Punti", "XP" o altri beni virtuali ("Articoli Virtuali").
+
+Nessuna Proprietà: Non possiede alcun Articolo Virtuale. L'Azienda le concede solo una licenza limitata, revocabile e non trasferibile per utilizzare questi articoli all'interno della piattaforma.
+
+Nessun Valore in Denaro: Gli Articoli Virtuali non possono essere convertiti in denaro reale, rimborsati o venduti al di fuori dell'Azienda.
+
+3. PROPRIETÀ INTELLETTUALE E DIRITTI D'AUTORE
+Tutti i diritti, titoli e interessi del Servizio (codice, grafica, suoni, personaggi) appartengono all'Azienda.
+
+4. DIRITTO DI RECESSO
+Poiché la consegna del contenuto digitale inizia immediatamente, non sussiste il diritto di recesso.
+
+5. CHIUSURA DELL'ACCOUNT
+L'Azienda si riserva il diritto di chiudere il suo account senza preavviso in caso di frode, uso di bot, incitamento all'odio o violazione di questi Termini.
+
+6. CONTATTO
+Domande: legal@tacticiq.app
+Supporto: support@tacticiq.app`,
+  'legal.privacy.fullContent': `Ultimo Aggiornamento: 1 Gennaio 2026
+
+1. RACCOLTA E UTILIZZO DEI DATI
+Trattiamo ID dispositivo, indirizzo IP, dati di localizzazione generali e attività sulla piattaforma per migliorare il servizio, prevenire frodi e (con il suo consenso) fornire esperienze personalizzate.
+
+2. DIRITTI ALLA PRIVACY REGIONALI
+
+A. TURCHIA (KVKK)
+Titolare del Trattamento: TacticIQ
+Email: kvkk@tacticiq.app
+
+B. EUROPA (GDPR)
+Ha diritto alla cancellazione, portabilità e limitazione del trattamento dei suoi dati.
+
+C. USA (CCPA/CPRA)
+Se ha meno di 13 anni, non raccogliamo i suoi dati personali senza il consenso verificato dei genitori.
+
+3. CONTATTO
+Domande: privacy@tacticiq.app`,
+  'legal.cookies.fullContent': `Ultimo Aggiornamento: 1 Gennaio 2026
+
+1. USO DEI COOKIE
+La nostra piattaforma utilizza cookie per migliorare la sua esperienza.
+
+2. TIPI DI COOKIE
+- Cookie Necessari: Obbligatori per il funzionamento della piattaforma
+- Cookie Funzionali: Ricordano la sua preferenza di lingua, selezione del tema
+- Cookie di Analisi: Ci aiutano a comprendere l'utilizzo della piattaforma
+- Cookie di Marketing: Mostrano contenuti che potrebbero interessarle
+
+3. GESTIONE DEI COOKIE
+Può gestire i cookie dalle impostazioni del suo browser.`,
+  'legal.kvkk.fullContent': `Nell'ambito della Legge n. 6698 sulla Protezione dei Dati Personali ("KVKK"):
+
+TITOLARE DEL TRATTAMENTO: TacticIQ
+Email: kvkk@tacticiq.app
+
+DATI TRATTATI:
+- Dati di Identità (Nome, Cognome, Email)
+- Dati di Contatto
+- Dati di Attività sulla Piattaforma
+- Dati del Dispositivo e IP
+
+FINALITÀ DEL TRATTAMENTO:
+- Iscrizione e fornitura dei servizi
+- Miglioramento dell'esperienza utente
+- Sicurezza e prevenzione delle frodi
+
+I SUOI DIRITTI:
+Per esercitare i suoi diritti ai sensi dell'Articolo 11 di KVKK, contatti kvkk@tacticiq.app.`,
+  'legal.consent.fullContent': `Nell'ambito di KVKK, da parte di TacticIQ:
+
+INFORMATIVA:
+• Sono stato informato sul trattamento dei miei dati personali
+• So per quali finalità saranno utilizzati i miei dati
+• Sono stato informato sui miei diritti
+
+CONSENSO:
+Presto il mio CONSENSO ESPLICITO al trattamento e al trasferimento dei seguenti dati personali:
+✓ I miei Dati di Identità
+✓ I miei Dati di Contatto
+✓ I miei Dati di Attività sulla Piattaforma
+✓ I miei Dati del Dispositivo e IP
+
+I MIEI DIRITTI:
+So che posso revocare questo consenso in qualsiasi momento ed esercitare i miei diritti ai sensi dell'Articolo 11 di KVKK.`,
+  'legal.sales.fullContent': `Ai sensi della Legge n. 6502 sulla Tutela del Consumatore
+
+1. PARTI
+VENDITORE: TacticIQ
+Email: sales@tacticiq.app
+
+2. OGGETTO DEL CONTRATTO
+Vendita di abbonamento premium e contenuti digitali.
+
+3. PAGAMENTO
+Il pagamento avviene tramite App Store o Google Play.
+
+4. DIRITTO DI RECESSO
+Non sussiste il diritto di recesso poiché la consegna del contenuto digitale è già iniziata.
+
+5. CONTATTO
+sales@tacticiq.app`,
+  'legal.dmca.fullContent': `Tutti i contenuti della piattaforma TacticIQ sono protetti da diritto d'autore.
+
+PROPRIETÀ INTELLETTUALE:
+- Codice della piattaforma
+- Design e grafica
+- Marchio e logo
+- Contenuti e testi
+
+UTILIZZO:
+È vietato copiare, distribuire o utilizzare a fini commerciali i contenuti della piattaforma.
+
+NOTIFICA DMCA:
+Per notifiche di violazione del diritto d'autore: copyright@tacticiq.app`,
+
+  // Profile (detailed settings)
+  'profile.description': 'Gestisci le informazioni del tuo profilo',
+  'profile.edit': 'Modifica',
+  'profile.cancel': 'Annulla',
+  'profile.save': 'Salva',
+  'profile.updated': 'Profilo aggiornato',
+  'profile.updateFailed': 'Impossibile aggiornare il profilo',
+  'profile.stats.title': 'Statistiche',
+  'profile.stats.totalPredictions': 'Totale Previsioni',
+  'profile.stats.successRate': 'Tasso di Successo',
+  'profile.stats.totalPoints': 'Punti Totali',
+  'profile.stats.recentActivity': 'Attività Recente',
+  'profile.stats.noActivity': 'Nessuna attività ancora',
+  'profile.stats.startPredicting': 'Inizia a fare previsioni!',
+  'profile.predictions.title': 'Previsioni',
+  'profile.predictions.history': 'Cronologia Previsioni',
+  'profile.predictions.description': 'Le tue previsioni passate e i risultati',
+  'profile.predictions.empty': 'Non hai ancora fatto previsioni',
+  'profile.predictions.start': 'Guadagna punti facendo previsioni sulle partite',
+  'profile.predictions.startButton': 'Inizia a Prevedere',
+  'profile.settings.notifications': 'Impostazioni Notifiche',
+  'profile.settings.notificationsDesc': 'Gestisci le tue preferenze di notifica',
+  'profile.settings.emailNotifications': 'Notifiche Email',
+  'profile.settings.emailNotificationsDesc': 'Risultati delle partite e promemoria previsioni',
+  'profile.settings.weeklySummary': 'Riepilogo Settimanale',
+  'profile.settings.weeklySummaryDesc': 'Riepilogo settimanale delle prestazioni',
+  'profile.settings.campaignNotifications': 'Notifiche Campagne',
+  'profile.settings.campaignNotificationsDesc': 'Sconti e offerte speciali',
+  'profile.settings.language': 'Lingua e Regione',
+  'profile.settings.languageDesc': 'Impostazioni di lingua e regione preferite',
+  'profile.settings.languageLabel': 'Lingua',
+  'profile.settings.timezone': 'Fuso Orario',
+  'profile.settings.security': 'Sicurezza',
+  'profile.settings.changePassword': 'Cambia Password',
+  'profile.settings.changePasswordDesc': 'Cambia regolarmente la tua password per la sicurezza del tuo account',
+  'profile.settings.sessions': 'Informazioni Sessioni',
+  'profile.settings.sessionsDesc': 'Le tue sessioni attive e informazioni sui dispositivi',
+  'profile.settings.currentDevice': 'Questo Dispositivo',
+  'profile.settings.active': 'Attivo',
+  'profile.settings.legalDocuments': 'Documenti Legali',
+  'profile.settings.legalDocumentsDesc': 'Condizioni d\'uso della piattaforma e informazioni legali',
+  'profile.settings.viewLegal': 'Visualizza Documenti Legali',
+  'profile.settings.advanced': 'Impostazioni Avanzate',
+  'profile.settings.dangerous': 'Operazioni Pericolose',
+  'profile.settings.logout': 'Esci',
+  'profile.settings.proMember': 'Membro Pro',
+  'profile.settings.freePlan': 'Piano Gratuito',
+
+  // User Delete Confirmation (additional)
+  'user.delete.confirm.text': 'Scrivi "elimina" o "delete" per confermare',
+  'user.delete.confirm.placeholder': 'elimina o delete',
+  'user.delete.confirm.deleting': 'Eliminazione in corso...',
+  'user.delete.confirm.error': 'Devi scrivere "elimina" o "delete" per confermare',
+
+  // Auth Email Spam Warning
+  'auth.email.spam.warning': 'Controlla la tua email. Se non trovi il messaggio, controlla anche la cartella spam.',
+  'auth.email.spam.check': '📧 Controlla anche la cartella spam',
+
+  // CTA (additional)
+  'cta.submitting': 'Elaborazione...',
+
+  // Newsletter (additional)
+  'newsletter.form.privacyLink': 'Politica sulla privacy',
 };

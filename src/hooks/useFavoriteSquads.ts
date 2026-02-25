@@ -103,6 +103,9 @@ export function useFavoriteSquads(favoriteTeamIds: number[]) {
         if (cancelled) return;
         
         if (error) {
+          if (error.message?.includes('aborted') || error.message?.includes('AbortError')) {
+            return;
+          }
           logger.error('[FavSquads] Supabase hata', { error: error.message }, 'SQUADS');
           setLoading(false);
           setVersion(v => v + 1);
@@ -132,6 +135,9 @@ export function useFavoriteSquads(favoriteTeamIds: number[]) {
         logger.info('[FavSquads] Toplam: ' + Object.keys(next).length + ' takım yüklendi', undefined, 'SQUADS');
         setSquads(next);
       } catch (e: any) {
+        if (e?.name === 'AbortError' || e?.message?.includes('aborted')) {
+          return;
+        }
         logger.error('[FavSquads] Exception', { error: e?.message }, 'SQUADS');
       } finally {
         if (!cancelled) {

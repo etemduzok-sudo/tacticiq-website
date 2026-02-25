@@ -700,4 +700,288 @@ export default {
   'blog.posts.post3.desc': '学习解读关键传球、预期进球贡献（xG+xA）和其他球员级别指标。',
   'blog.posts.post3.category': '球员分析',
   'blog.posts.post3.date': '2026年1月5日',
+
+  'blog.posts.post4.title': '解码预期进球（xG）系统',
+  'blog.posts.post4.desc': '了解xG是如何计算的、它的含义以及如何在预测中使用它。',
+  'blog.posts.post4.category': '分析',
+  'blog.posts.post4.date': '2026年1月3日',
+
+  'blog.posts.post5.title': '压迫策略与防守分析',
+  'blog.posts.post5.desc': '分析高位压迫、中位防守和低位防守系统，了解哪些球队使用哪种策略。',
+  'blog.posts.post5.category': '战术',
+  'blog.posts.post5.date': '2026年1月1日',
+
+  'blog.posts.post6.title': '解读比赛中的动量变化',
+  'blog.posts.post6.desc': '如何在实时比赛中检测动量变化并相应调整您的预测。',
+  'blog.posts.post6.category': '实时分析',
+  'blog.posts.post6.date': '2025年12月28日',
+
+  'blog.comingSoon': '博客详情页即将推出！',
+  'blog.allPostsComingSoon': '博客页面即将推出！所有文章将在此列出。',
+
+  // Hero missing
+  'hero.cta.loading': '发送中...',
+  'hero.video.title': 'TacticIQ如何运作？',
+
+  // Feature Details
+  'features.predictionCategories.title': '预测类别',
+  'features.predictionCategories.match': '14个比赛类别',
+  'features.predictionCategories.player': '7个球员类别',
+  'features.strategicFocus.title': '战略聚焦系统',
+  'features.strategicFocus.description': '聚焦3个预测，正确得2倍积分，错误扣1.5倍积分',
+  'features.trainingMultipliers.title': '训练倍数',
+  'features.trainingMultipliers.description': '通过5种不同类型的训练倍数提升积分',
+  'features.formations.title': '阵容构建',
+  'features.formations.description': '使用26种不同阵型选项构建您的球队',
+  'features.badges.title': '徽章系统',
+  'features.badges.description': '通过获得20+种不同徽章展示您的成就',
+  'features.leaderboard.title': '排行榜',
+  'features.leaderboard.description': '在全球、赛季、每周和每月排名中竞争',
+
+  // Footer missing
+  'footer.legal.terms': '服务条款',
+  'footer.legal.privacy': '隐私政策',
+  'footer.legal.dmca': '版权',
+  'footer.legal.contact': '联系我们',
+  'footer.support.title': '支持',
+  'footer.support.email': '支持邮箱',
+  'footer.support.faq': '常见问题',
+  'footer.disclaimer': 'TacticIQ不是博彩平台。它是一款基于技能的足球分析和预测游戏。',
+
+  // Legal - Common
+  'legal.back': '返回',
+  'legal.close': '关闭',
+  'legal.lastUpdated': '最后更新',
+  'legal.updateDate': '2025年1月',
+
+  // Legal - Terms of Service
+  'legal.terms.section1.title': '1. 介绍与接受',
+  'legal.terms.section1.content': '本服务条款（"条款"）构成TacticIQ（"公司"）与您（"用户"）之间关于您使用TacticIQ平台（"服务"）的法律协议。通过访问、使用或注册该平台，您同意受这些条款约束。',
+
+  'legal.terms.section2.title': '2. 虚拟物品和货币',
+  'legal.terms.section2.intro': '服务可能包含"积分"、"XP"或其他虚拟资产（"虚拟物品"）。',
+  'legal.terms.section2.ownership.title': '无所有权',
+  'legal.terms.section2.ownership.content': '您不拥有任何虚拟物品。公司仅授予您在平台内使用这些物品的有限、可撤销、不可转让的许可。',
+  'legal.terms.section2.cashValue.title': '无现金价值',
+  'legal.terms.section2.cashValue.content': '虚拟物品不能转换为真实货币、退款或在公司外出售。',
+  'legal.terms.section2.lootBox.title': '透明度',
+  'legal.terms.section2.lootBox.content': '平台内的所有内容和功能均已明确说明，没有隐藏费用。',
+
+  'legal.terms.section3.title': '3. 知识产权和版权',
+  'legal.terms.section3.intro': '服务中的所有权利、所有权和利益（包括代码、图形、声音、角色）归公司所有。',
+  'legal.terms.section3.ugc.title': '用户内容',
+  'legal.terms.section3.ugc.content': '您声明您在平台上上传或创建的任何内容（个人资料图片、评论）不侵犯版权。',
+  'legal.terms.section3.reverse.title': '逆向工程',
+  'legal.terms.section3.reverse.content': '解码、复制或修改平台源代码是严格禁止的，可能导致法律诉讼。',
+
+  'legal.terms.section4.title': '4. 撤回权',
+  'legal.terms.section4.eu.title': '欧盟和法国用户',
+  'legal.terms.section4.eu.content': '购买数字内容时，您同意立即开始执行。因此，一旦购买完成，您明确放弃14天撤回权。',
+  'legal.terms.section4.eu.confirmation': '点击"购买"即表示我确认立即获得数字内容访问权，并放弃撤回权。',
+  'legal.terms.section4.turkey.title': '土耳其用户',
+  'legal.terms.section4.turkey.content': '根据远程合同条例第15/ğ条，在电子环境中立即执行的服务不在撤回权范围内。不予退款。',
+
+  'legal.terms.section5.title': '5. 账户终止',
+  'legal.terms.section5.content': '公司保留在作弊、仇恨言论或违反本条款的情况下，无需事先通知即可终止您账户的权利。已终止账户中的虚拟物品不予退还。',
+
+  // Legal - Privacy Policy
+  'legal.privacy.section1.title': '1. 数据收集和使用',
+  'legal.privacy.section1.content': '我们处理设备ID、IP地址、一般位置数据和平台内活动，以改善平台、防止作弊并（在您同意的情况下）提供个性化体验。',
+
+  'legal.privacy.section2.title': '2. 区域隐私权',
+  'legal.privacy.section2.turkey.title': 'A. 土耳其 (KVKK)',
+  'legal.privacy.section2.turkey.responsible': '土耳其用户的数据控制者：TacticIQ',
+  'legal.privacy.section2.turkey.consent.title': '明确同意',
+  'legal.privacy.section2.turkey.consent.content': '营销和国际数据传输活动需要您根据KVKK第5条和第9条的明确同意。',
+  'legal.privacy.section2.turkey.rights.title': '申请权利',
+  'legal.privacy.section2.turkey.rights.content': '如需行使KVKK第11条规定的权利，请联系kvkk@tacticiq.app。',
+  'legal.privacy.section2.turkey.iys.title': '消息管理系统 (IYS)',
+  'legal.privacy.section2.turkey.iys.content': '您可以通过IYS管理发送给您的商业电子消息。',
+
+  'legal.privacy.section2.eu.title': 'B. 欧洲 (GDPR)',
+  'legal.privacy.section2.eu.basis.title': '数据处理基础',
+  'legal.privacy.section2.eu.basis.content': '平台运营所需的数据基于"合同履行"（第6.1.b条）处理，分析数据基于"合法利益"（第6.1.f条）处理。',
+  'legal.privacy.section2.eu.rights.title': '您的权利',
+  'legal.privacy.section2.eu.rights.content': '您有权删除（被遗忘权）、数据可携带性和限制处理。',
+
+  'legal.privacy.section2.usa.title': 'C. 美国 (CCPA/COPPA)',
+  'legal.privacy.section2.usa.coppa.title': '儿童 (COPPA)',
+  'legal.privacy.section2.usa.coppa.content': '如果您未满13岁，未经验证的家长同意，我们不会收集您的个人数据。',
+  'legal.privacy.section2.usa.ccpa.title': '数据出售',
+  'legal.privacy.section2.usa.ccpa.content': '加利福尼亚居民有权"不要出售我的个人信息"。',
+
+  'legal.privacy.section2.china.title': 'D. 中国 (PIPL)',
+  'legal.privacy.section2.china.content': '中国用户的数据存储在中国大陆的服务器上，不会传输到境外。',
+
+  'legal.privacy.section2.brazil.title': 'E. 巴西 (LGPD) 和尼日利亚 (NDPA)',
+  'legal.privacy.section2.brazil.content': '巴西和尼日利亚用户的数据保护官：dpo@tacticiq.app',
+
+  // Legal - DMCA
+  'legal.dmca.title': '版权和DMCA通知',
+  'legal.dmca.content': '我们尊重他人的知识产权。如果您认为平台上的任何内容侵犯了您的版权，请通知legal@tacticiq.app。',
+  'legal.dmca.copyright': '© 2025 TacticIQ. 保留所有权利。TacticIQ是TacticIQ的注册商标。',
+  'legal.dmca.description': '知识产权和DMCA通知',
+
+  // Legal - China Mandatory
+  'legal.china.title': '中国 - 健康游戏忠告',
+  'legal.china.mandate': '健康游戏忠告',
+  'legal.china.line1': '抵制不良游戏，拒绝盗版游戏。',
+  'legal.china.line2': '注意自我保护，谨防受骗上当。',
+  'legal.china.line3': '适度游戏益脑，沉迷游戏伤身。',
+  'legal.china.line4': '合理安排时间，享受健康生活。',
+
+  // Legal - Contact
+  'legal.contact.title': '联系信息',
+  'legal.contact.company.title': '公司信息',
+  'legal.contact.company.name': '公司名称',
+  'legal.contact.company.email': '通用邮箱',
+  'legal.contact.company.support': '支持邮箱',
+  'legal.contact.company.legal': '法律邮箱',
+  'legal.contact.company.kvkk': 'KVKK邮箱',
+  'legal.contact.company.dpo': '数据保护官',
+  'legal.contact.platforms.title': '平台',
+  'legal.contact.platforms.ios': 'iOS应用即将推出',
+  'legal.contact.platforms.android': 'Android应用即将推出',
+
+  // Pricing missing
+  'pricing.pro.original_price': '$18',
+
+  // User delete confirm details
+  'user.delete.confirm.text': '请输入"删除"或"delete"以确认',
+  'user.delete.confirm.placeholder': '删除 或 delete',
+  'user.delete.confirm.deleting': '删除中...',
+  'user.delete.confirm.error': '您需要输入"删除"或"delete"进行确认',
+
+  // Profile section details
+  'profile.description': '管理您的个人资料信息',
+  'profile.edit': '编辑',
+  'profile.cancel': '取消',
+  'profile.save': '保存',
+  'profile.updated': '个人资料已更新',
+  'profile.updateFailed': '个人资料更新失败',
+  'profile.stats.title': '统计',
+  'profile.stats.totalPredictions': '总预测数',
+  'profile.stats.successRate': '成功率',
+  'profile.stats.totalPoints': '总积分',
+  'profile.stats.recentActivity': '最近活动',
+  'profile.stats.noActivity': '暂无活动',
+  'profile.stats.startPredicting': '开始进行预测！',
+  'profile.predictions.title': '预测',
+  'profile.predictions.history': '预测历史',
+  'profile.predictions.description': '您过去的预测及其结果',
+  'profile.predictions.empty': '您还没有进行任何预测',
+  'profile.predictions.start': '通过预测比赛来赚取积分',
+  'profile.predictions.startButton': '开始预测',
+  'profile.settings.notifications': '通知设置',
+  'profile.settings.notificationsDesc': '管理您的通知偏好',
+  'profile.settings.emailNotifications': '邮件通知',
+  'profile.settings.emailNotificationsDesc': '比赛结果和预测提醒',
+  'profile.settings.weeklySummary': '每周摘要',
+  'profile.settings.weeklySummaryDesc': '每周表现摘要',
+  'profile.settings.campaignNotifications': '活动通知',
+  'profile.settings.campaignNotificationsDesc': '折扣和特别优惠',
+  'profile.settings.language': '语言和地区',
+  'profile.settings.languageDesc': '您首选的语言和地区设置',
+  'profile.settings.languageLabel': '语言',
+  'profile.settings.timezone': '时区',
+  'profile.settings.security': '安全',
+  'profile.settings.changePassword': '更改密码',
+  'profile.settings.changePasswordDesc': '定期更改密码以保护账户安全',
+  'profile.settings.sessions': '会话信息',
+  'profile.settings.sessionsDesc': '您的活跃会话和设备信息',
+  'profile.settings.currentDevice': '当前设备',
+  'profile.settings.active': '活跃',
+  'profile.settings.legalDocuments': '法律文件',
+  'profile.settings.legalDocumentsDesc': '平台使用条款和法律信息',
+  'profile.settings.viewLegal': '查看法律文件',
+  'profile.settings.advanced': '高级设置',
+  'profile.settings.dangerous': '危险操作',
+  'profile.settings.logout': '退出',
+  'profile.settings.proMember': 'Pro会员',
+  'profile.settings.freePlan': '免费计划',
+
+  // Legal Documents section
+  'legal.title': '法律文件',
+  'legal.description': '平台使用条款和法律信息',
+  'legal.select': '选择一个文件',
+  'legal.cookies.description': 'Cookie的使用和管理',
+  'legal.copyright.title': '版权和DMCA通知',
+
+  // Legal full content
+  'legal.terms.fullContent': `最后更新：2026年1月1日
+
+1. 介绍与接受
+本服务条款（"条款"）构成TacticIQ（"公司"）与您（"用户"）之间关于您使用TacticIQ网络平台和移动应用（"服务"）的法律协议。使用本平台即表示您接受这些条款。
+
+2. 虚拟物品和货币
+服务可能包含"积分"、"XP"或其他虚拟资产（"虚拟物品"）。
+
+无所有权：您不拥有任何虚拟物品。公司仅授予您在平台内使用这些物品的有限、可撤销、不可转让的许可。
+
+无现金价值：虚拟物品不能转换为真实货币、退款或在公司外出售。
+
+3. 知识产权和版权
+服务中的所有权利、所有权和利益（包括代码、图形、声音、角色）归公司所有。
+
+4. 撤回权
+由于数字内容交付已开始，不存在撤回权。
+
+5. 账户终止
+公司保留在作弊、使用机器人、仇恨言论或违反本条款的情况下，无需事先通知即可终止您账户的权利。
+
+6. 联系方式
+咨询：legal@tacticiq.app
+支持：support@tacticiq.app`,
+  'legal.privacy.fullContent': `最后更新：2026年1月1日
+
+1. 数据收集和使用
+我们处理设备ID、IP地址、一般位置数据和平台内活动，以改善平台、防止作弊并（在您同意的情况下）提供个性化广告。
+
+2. 区域隐私权
+
+A. 土耳其 (KVKK)
+数据控制者：TacticIQ
+电子邮件：kvkk@tacticiq.app
+
+B. 欧洲 (GDPR)
+您有权删除、数据可携带性和限制处理。
+
+C. 美国 (CCPA/CPRA)
+如果您未满13岁，未经验证的家长同意，我们不会收集您的个人数据。
+
+3. 联系方式
+咨询：privacy@tacticiq.app`,
+  'legal.cookies.fullContent': `最后更新：2026年1月1日
+
+1. Cookie使用
+我们的平台使用Cookie来改善您的体验。
+
+2. Cookie类型
+- 必要Cookie：平台运行所必需的
+- 功能性Cookie：记住您的设置，如语言偏好和主题选择
+- 分析Cookie：帮助我们了解平台使用情况
+- 营销Cookie：显示可能对您感兴趣的内容
+
+3. Cookie管理
+您可以从浏览器设置中管理Cookie。`,
+  'legal.dmca.fullContent': `TacticIQ平台的所有内容受版权保护。
+
+知识产权：
+- 平台代码
+- 设计和图形
+- 品牌和标志
+- 内容和文本
+
+使用：
+禁止复制、分发或将平台内容用于商业目的。
+
+DMCA通知：
+如需报告版权侵权：copyright@tacticiq.app`,
+
+  // Email Spam Warning
+  'auth.email.spam.warning': '请检查您的邮箱。如果找不到邮件，请检查垃圾邮件文件夹。',
+  'auth.email.spam.check': '📧 也请检查垃圾邮件文件夹',
+
+  // CTA additional
+  'cta.submitting': '处理中...',
 };

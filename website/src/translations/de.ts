@@ -24,6 +24,8 @@ export default {
   'hero.description': 'Analysieren Sie Spiele wie ein Profi. Treffen Sie datenbasierte Vorhersagen, bewerten Sie taktische Entscheidungen und verbessern Sie Ihre Fußball-Intelligenz.',
   'hero.cta.primary': 'Zur Warteliste',
   'hero.cta.secondary': 'Mehr Erfahren',
+  'hero.cta.loading': 'Wird gesendet...',
+  'hero.video.title': 'Wie funktioniert TacticIQ?',
   'hero.notBetting': 'Keine Wettplattform - Fähigkeitsbasierte Analyse',
   'hero.stats.users': 'Aktive Nutzer',
   'hero.stats.predictions': 'Vorhersagen Gemacht',
@@ -92,6 +94,22 @@ export default {
   'features.ratings.description': 'Bewerte Teams, Spieler, Trainer und taktische Genauigkeit. Faire, transparente Bewertung basierend auf objektiven Daten.',
   'features.progression.title': 'Fähigkeitsentwicklung',
   'features.progression.description': 'Verdiene XP, Level, Abzeichen und klettere in globalen Rankings. Wissensbasierte Gamification, kein Glück.',
+
+  // Feature Details
+  'features.predictionCategories.title': 'Vorhersagekategorien',
+  'features.predictionCategories.match': '14 Spielkategorien',
+  'features.predictionCategories.player': '7 Spielerkategorien',
+  'features.strategicFocus.title': 'Strategisches Fokussystem',
+  'features.strategicFocus.description': 'Konzentrieren Sie sich auf 3 Vorhersagen, verdienen Sie 2x Punkte für richtige, -1.5x Strafe für falsche',
+  'features.trainingMultipliers.title': 'Trainings-Multiplikatoren',
+  'features.trainingMultipliers.description': 'Steigern Sie Ihre Punkte mit 5 verschiedenen Arten von Trainings-Multiplikatoren',
+  'features.formations.title': 'Kaderaufbau',
+  'features.formations.description': 'Bauen Sie Ihr Team mit 26 verschiedenen Formationsoptionen auf',
+  'features.badges.title': 'Abzeichen-System',
+  'features.badges.description': 'Zeigen Sie Ihre Erfolge, indem Sie 20+ verschiedene Abzeichen verdienen',
+  'features.leaderboard.title': 'Bestenliste',
+  'features.leaderboard.description': 'Konkurrieren Sie in globalen, Saison-, Wochen- und Monatsranglisten',
+
   'howItWorks.title': 'Wie es funktioniert',
   'howItWorks.subtitle': '6 einfache Schritte zur professionellen Fußballanalyse mit TacticIQ',
   'howItWorks.steps.step1.title': 'Spiel auswählen',
@@ -178,6 +196,11 @@ export default {
   'legal.lastUpdated': 'Zuletzt aktualisiert',
   'legal.updateDate': 'Januar 2025',
 
+  // Legal Documents Section
+  'legal.title': 'Rechtliche Dokumente',
+  'legal.description': 'Nutzungsbedingungen und rechtliche Informationen der Plattform',
+  'legal.select': 'Wählen Sie ein Dokument',
+
   // Legal - Terms of Service
   'legal.terms.title': 'Nutzungsbedingungen (AGB)',
   'legal.terms.section1.title': '1. Einleitung und Annahme',
@@ -208,7 +231,32 @@ export default {
   
   'legal.terms.section5.title': '5. Kontobeendigung',
   'legal.terms.section5.content': 'Das Unternehmen behält sich das Recht vor, Ihr Konto ohne vorherige Ankündigung bei Betrug, Hassreden oder Verstößen gegen diese Bedingungen zu beenden. Für virtuelle Gegenstände in beendeten Konten werden keine Rückerstattungen gewährt.',
-  
+
+  'legal.terms.fullContent': `Letzte Aktualisierung: 1. Januar 2026
+
+1. EINLEITUNG UND ANNAHME
+Diese Nutzungsbedingungen („Bedingungen") stellen eine rechtliche Vereinbarung zwischen TacticIQ („Unternehmen") und Ihnen („Nutzer") bezüglich Ihrer Nutzung der TacticIQ-Webplattform und mobilen Anwendung („Dienst") dar. Durch die Nutzung der Plattform erklären Sie sich mit diesen Bedingungen einverstanden.
+
+2. VIRTUELLE GEGENSTÄNDE UND WÄHRUNG
+Der Dienst kann „Punkte", „XP" oder andere virtuelle Vermögenswerte („Virtuelle Gegenstände") enthalten.
+
+Kein Eigentum: Sie besitzen keine Virtuellen Gegenstände. Das Unternehmen gewährt Ihnen lediglich eine eingeschränkte, widerrufliche, nicht übertragbare Lizenz zur Nutzung dieser Gegenstände innerhalb der Plattform.
+
+Kein Geldwert: Virtuelle Gegenstände können nicht in echtes Geld umgewandelt, zurückerstattet oder außerhalb des Unternehmens verkauft werden.
+
+3. GEISTIGES EIGENTUM UND URHEBERRECHT
+Alle Rechte, Titel und Interessen am Dienst (einschließlich Code, Grafiken, Sounds, Charaktere) gehören dem Unternehmen.
+
+4. WIDERRUFSRECHT
+Da die Bereitstellung digitaler Inhalte sofort beginnt, besteht kein Widerrufsrecht (gemäß EU-Fernabsatzrichtlinie und §356 Abs. 5 BGB).
+
+5. KONTOBEENDIGUNG
+Das Unternehmen behält sich das Recht vor, Ihr Konto ohne vorherige Ankündigung bei Betrug, Bot-Nutzung, Hassreden oder Verstößen gegen diese Bedingungen zu beenden.
+
+6. KONTAKT
+Fragen: legal@tacticiq.app
+Support: support@tacticiq.app`,
+
   // Legal - Privacy Policy
   'legal.privacy.title': 'Datenschutzerklärung',
   'legal.privacy.section1.title': '1. Datenerfassung und -nutzung',
@@ -241,12 +289,129 @@ export default {
   
   'legal.privacy.section2.brazil.title': 'E. BRASILIEN (LGPD) und NIGERIA (NDPA)',
   'legal.privacy.section2.brazil.content': 'Datenschutzbeauftragter für Nutzer aus Brasilien und Nigeria: dpo@tacticiq.app',
+
+  'legal.privacy.fullContent': `Letzte Aktualisierung: 1. Januar 2026
+
+1. DATENERFASSUNG UND -NUTZUNG
+Wir verarbeiten Geräte-ID, IP-Adresse, allgemeine Standortdaten und Plattformaktivitäten, um die Plattform zu verbessern, Betrug zu verhindern und (mit Ihrer Zustimmung) personalisierte Werbung bereitzustellen.
+
+2. REGIONALE DATENSCHUTZRECHTE
+
+A. TÜRKEI (KVKK)
+Datenverantwortlicher: TacticIQ
+E-Mail: kvkk@tacticiq.app
+
+B. EUROPA (DSGVO)
+Sie haben das Recht auf Löschung, Datenübertragbarkeit und Einschränkung der Verarbeitung.
+
+C. USA (CCPA/CPRA)
+Wenn Sie unter 13 Jahre alt sind, erfassen wir Ihre persönlichen Daten nicht ohne verifizierte elterliche Zustimmung.
+
+3. KONTAKT
+Fragen: privacy@tacticiq.app`,
+
+  // Legal - Cookies
+  'legal.cookies.title': 'Cookie-Richtlinie',
+  'legal.cookies.description': 'Verwendung und Verwaltung von Cookies',
+  'legal.cookies.fullContent': `Letzte Aktualisierung: 1. Januar 2026
+
+1. COOKIE-VERWENDUNG
+Unsere Plattform verwendet Cookies, um Ihr Erlebnis zu verbessern.
+
+2. COOKIE-TYPEN
+- Notwendige Cookies: Für den Betrieb der Plattform erforderlich
+- Funktionale Cookies: Speichern Ihre Einstellungen wie Sprachpräferenz und Theme-Auswahl
+- Analyse-Cookies: Helfen uns, die Nutzung der Plattform zu verstehen
+- Marketing-Cookies: Zeigen Ihnen möglicherweise interessante Inhalte an
+
+3. COOKIE-VERWALTUNG
+Sie können Cookies über Ihre Browsereinstellungen verwalten.`,
+
+  // Legal - KVKK
+  'legal.kvkk.title': 'KVKK-Aufklärungstext',
+  'legal.kvkk.description': 'Information gemäß dem türkischen Datenschutzgesetz',
+  'legal.kvkk.fullContent': `Gemäß dem türkischen Gesetz Nr. 6698 zum Schutz personenbezogener Daten ("KVKK"):
+
+DATENVERANTWORTLICHER: TacticIQ
+E-Mail: kvkk@tacticiq.app
+
+VERARBEITETE DATEN:
+- Identifikationsdaten (Name, Nachname, E-Mail)
+- Kontaktinformationen
+- Aktivitätsdaten innerhalb der Plattform
+- Geräte- und IP-Informationen
+
+VERARBEITUNGSZWECKE:
+- Mitgliedschaft und Dienstleistungserbringung
+- Verbesserung der Benutzererfahrung
+- Sicherheit und Betrugsprävention
+
+IHRE RECHTE:
+Zur Ausübung Ihrer Rechte gemäß KVKK Art. 11 kontaktieren Sie bitte kvkk@tacticiq.app.`,
+
+  // Legal - Consent
+  'legal.consent.title': 'Einwilligungserklärung',
+  'legal.consent.description': 'Ausdrückliche Einwilligungserklärung gemäß KVKK',
+  'legal.consent.fullContent': `Gemäß KVKK durch TacticIQ:
+
+AUFKLÄRUNG:
+• Ich wurde darüber informiert, dass meine personenbezogenen Daten verarbeitet werden
+• Ich weiß, zu welchen Zwecken meine Daten verwendet werden
+• Ich wurde über meine Rechte informiert
+
+EINWILLIGUNG:
+Ich erteile meine AUSDRÜCKLICHE EINWILLIGUNG zur Verarbeitung und Übermittlung folgender personenbezogener Daten:
+✓ Meine Identifikationsdaten
+✓ Meine Kontaktdaten
+✓ Meine Aktivitätsdaten innerhalb der Plattform
+✓ Meine Geräte- und IP-Informationen
+
+MEINE RECHTE:
+Ich bin mir bewusst, dass ich diese Einwilligung jederzeit widerrufen und meine Rechte gemäß KVKK Art. 11 ausüben kann.`,
+
+  // Legal - Sales
+  'legal.sales.title': 'Fernabsatzvertrag',
+  'legal.sales.description': 'Verkaufsbedingungen für digitale Inhalte und Widerrufsrecht',
+  'legal.sales.fullContent': `Gemäß dem türkischen Verbraucherschutzgesetz Nr. 6502
+
+1. PARTEIEN
+VERKÄUFER: TacticIQ
+E-Mail: sales@tacticiq.app
+
+2. VERTRAGSGEGENSTAND
+Premium-Mitgliedspaket und Verkauf digitaler Inhalte.
+
+3. ZAHLUNG
+Die Zahlung erfolgt über den App Store oder Google Play.
+
+4. WIDERRUFSRECHT
+Da die Bereitstellung digitaler Inhalte sofort beginnt, besteht kein Widerrufsrecht (gemäß TKHK Art. 15/1-ğ).
+
+5. KONTAKT
+sales@tacticiq.app`,
   
   // Legal - DMCA
   'legal.dmca.title': 'Urheberrecht und DMCA-Hinweis',
+  'legal.dmca.description': 'Geistige Eigentumsrechte und DMCA-Hinweis',
   'legal.dmca.content': 'Wir respektieren die geistigen Eigentumsrechte anderer. Wenn Sie glauben, dass Inhalte auf der Plattform Ihr Urheberrecht verletzen, benachrichtigen Sie bitte legal@tacticiq.app.',
   'legal.dmca.copyright': '© 2025 TacticIQ. Alle Rechte vorbehalten. TacticIQ ist eine eingetragene Marke von TacticIQ.',
-  
+  'legal.dmca.fullContent': `Alle Inhalte der TacticIQ-Plattform sind urheberrechtlich geschützt.
+
+GEISTIGES EIGENTUM:
+- Plattform-Quellcode
+- Design und Grafiken
+- Marke und Logo
+- Inhalte und Texte
+
+NUTZUNG:
+Das Kopieren, Verbreiten oder kommerzielle Verwenden von Plattforminhalten ist untersagt.
+
+DMCA-HINWEIS:
+Für Urheberrechtsverletzungsmeldungen: copyright@tacticiq.app`,
+
+  // Legal - Copyright
+  'legal.copyright.title': 'Urheberrecht und DMCA-Hinweis',
+
   // Legal - China Mandatory
   'legal.china.title': 'China - Gesundheitsspiel-Hinweis',
   'legal.china.mandate': '健康游戏忠告',
@@ -267,7 +432,17 @@ export default {
   'legal.contact.platforms.title': 'Plattformen',
   'legal.contact.platforms.ios': 'iOS-App kommt bald',
   'legal.contact.platforms.android': 'Android-App kommt bald',
-  
+
+  // Language Names
+  'lang.en': 'English',
+  'lang.de': 'Deutsch',
+  'lang.fr': 'Français',
+  'lang.es': 'Español',
+  'lang.it': 'Italiano',
+  'lang.tr': 'Türkçe',
+  'lang.ar': 'العربية',
+  'lang.zh': '中文',
+
   // Player Predictions Section
   'player.title': 'Spielervorhersagen',
   'player.subtitle': 'Individuelle Leistungsanalyse mit 8 Spielerkategorien',
@@ -344,6 +519,9 @@ export default {
   'auth.error.ageRestriction': 'Sie müssen mindestens 18 Jahre alt sein',
   'auth.error.passwordMismatch': 'Passwörter stimmen nicht überein',
   'auth.error.termsRequired': 'Bitte akzeptieren Sie die Allgemeinen Geschäftsbedingungen und die Datenschutzerklärung',
+  'auth.error.general': 'Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.',
+  'auth.error.google': 'Anmeldung mit Google fehlgeschlagen.',
+  'auth.error.apple': 'Anmeldung mit Apple fehlgeschlagen.',
   'auth.google.signin': 'Mit Google anmelden',
   'auth.google.signup': 'Mit Google registrieren',
   'auth.google.redirect': 'Weiterleitung zu Google...',
@@ -352,12 +530,17 @@ export default {
   'auth.apple.redirect': 'Weiterleitung zu Apple...',
   'auth.email.signin': 'Mit E-Mail anmelden',
   'auth.email.signup': 'Mit E-Mail registrieren',
+  'auth.email.verification': 'Bitte bestätigen Sie Ihre E-Mail-Adresse. Prüfen Sie Ihren Posteingang.',
   'auth.no_account': 'Noch kein Konto?',
   'auth.have_account': 'Bereits ein Konto?',
   'auth.disclaimer': 'Mit der Registrierung bestätigen Sie, dass TacticIQ ein Geschicklichkeitsspiel und keine Glücksspielplattform ist. Alle Punkte und Belohnungen sind virtuell.',
   'auth.success.signin': 'Erfolgreich angemeldet!',
   'auth.success.signup': 'Konto erstellt! Willkommen.',
   'auth.forgotPassword': 'Passwort vergessen',
+
+  // Email Spam Warning
+  'auth.email.spam.warning': 'Prüfen Sie Ihre E-Mail. Falls Sie die E-Mail nicht finden, schauen Sie bitte auch in Ihrem Spam-Ordner nach.',
+  'auth.email.spam.check': '📧 Prüfen Sie auch Ihren Spam-Ordner',
 
   // Change Password
   'changePassword.title': 'Passwort ändern',
@@ -469,11 +652,61 @@ export default {
   'user.delete.confirm.description': 'Diese Aktion kann nicht rückgängig gemacht werden. Alle Ihre Daten, Vorhersagen, Punkte und Abzeichen werden dauerhaft gelöscht.',
   'user.delete.confirm.cancel': 'Abbrechen',
   'user.delete.confirm.delete': 'Ja, Konto löschen',
+  'user.delete.confirm.text': 'Geben Sie zur Bestätigung "löschen" oder "delete" ein',
+  'user.delete.confirm.placeholder': 'löschen oder delete',
+  'user.delete.confirm.deleting': 'Wird gelöscht...',
+  'user.delete.confirm.error': 'Sie müssen zur Bestätigung "löschen" oder "delete" eingeben',
 
   // Profile Section
   'profile.title': 'Mein Profil',
+  'profile.description': 'Verwalten Sie Ihre Profilinformationen',
+  'profile.edit': 'Bearbeiten',
+  'profile.cancel': 'Abbrechen',
+  'profile.save': 'Speichern',
+  'profile.updated': 'Profil aktualisiert',
+  'profile.updateFailed': 'Profil konnte nicht aktualisiert werden',
+  'profile.stats.title': 'Statistiken',
+  'profile.stats.totalPredictions': 'Gesamte Vorhersagen',
+  'profile.stats.successRate': 'Erfolgsquote',
+  'profile.stats.totalPoints': 'Gesamtpunktzahl',
+  'profile.stats.recentActivity': 'Letzte Aktivitäten',
+  'profile.stats.noActivity': 'Noch keine Aktivität',
+  'profile.stats.startPredicting': 'Beginnen Sie mit Vorhersagen!',
+  'profile.predictions.title': 'Vorhersagen',
+  'profile.predictions.history': 'Vorhersageverlauf',
+  'profile.predictions.description': 'Ihre bisherigen Vorhersagen und Ergebnisse',
+  'profile.predictions.empty': 'Sie haben noch keine Vorhersagen gemacht',
+  'profile.predictions.start': 'Sammeln Sie Punkte, indem Sie Spielvorhersagen treffen',
+  'profile.predictions.startButton': 'Mit Vorhersagen beginnen',
   'profile.settings.title': 'Einstellungen',
+  'profile.settings.notifications': 'Benachrichtigungseinstellungen',
+  'profile.settings.notificationsDesc': 'Verwalten Sie Ihre Benachrichtigungspräferenzen',
+  'profile.settings.emailNotifications': 'E-Mail-Benachrichtigungen',
+  'profile.settings.emailNotificationsDesc': 'Spielergebnisse und Vorhersageerinnerungen',
+  'profile.settings.weeklySummary': 'Wöchentliche Zusammenfassung',
+  'profile.settings.weeklySummaryDesc': 'Wöchentliche Leistungsübersicht',
+  'profile.settings.campaignNotifications': 'Kampagnen-Benachrichtigungen',
+  'profile.settings.campaignNotificationsDesc': 'Rabatte und Sonderangebote',
+  'profile.settings.language': 'Sprache & Region',
+  'profile.settings.languageDesc': 'Bevorzugte Sprach- und Regionseinstellungen',
+  'profile.settings.languageLabel': 'Sprache',
+  'profile.settings.timezone': 'Zeitzone',
+  'profile.settings.security': 'Sicherheit',
+  'profile.settings.changePassword': 'Passwort ändern',
+  'profile.settings.changePasswordDesc': 'Ändern Sie Ihr Passwort regelmäßig für die Kontosicherheit',
+  'profile.settings.sessions': 'Sitzungsinformationen',
+  'profile.settings.sessionsDesc': 'Ihre aktiven Sitzungen und Geräteinformationen',
+  'profile.settings.currentDevice': 'Dieses Gerät',
+  'profile.settings.active': 'Aktiv',
+  'profile.settings.legalDocuments': 'Rechtliche Dokumente',
+  'profile.settings.legalDocumentsDesc': 'Nutzungsbedingungen und rechtliche Informationen der Plattform',
+  'profile.settings.viewLegal': 'Rechtliche Dokumente anzeigen',
+  'profile.settings.advanced': 'Erweiterte Einstellungen',
+  'profile.settings.dangerous': 'Gefährliche Aktionen',
   'profile.settings.upgrade': 'Auf Pro upgraden',
+  'profile.settings.logout': 'Abmelden',
+  'profile.settings.proMember': 'Pro-Mitglied',
+  'profile.settings.freePlan': 'Kostenloser Plan',
 
   // Blog
   'blog.subtitle': 'Fußballanalyse, taktische Tipps und Plattform-Updates vom TacticIQ-Team',
@@ -522,6 +755,12 @@ export default {
   'cta.email.placeholder': 'Geben Sie Ihre E-Mail-Adresse ein',
   'cta.button': 'Jetzt starten',
   'cta.privacy': 'Wir respektieren Ihre Privatsphäre. Ihre Daten werden niemals geteilt.',
+  'cta.waitlist': 'Zur Warteliste',
+  'cta.learnMore': 'Mehr erfahren',
+  'cta.getStarted': 'Loslegen',
+  'cta.emailPlaceholder': 'Geben Sie Ihre E-Mail-Adresse ein',
+  'cta.submit': 'Absenden',
+  'cta.submitting': 'Wird verarbeitet...',
 
   // Footer - Not Betting
   'footer.notBetting.title': 'Keine Wettplattform',
@@ -552,22 +791,6 @@ export default {
   'game.security.title': 'Sichere und faire Umgebung',
   'game.security.description': 'Alle Spiele funktionieren mit transparenten Algorithmen. Keine zufälligen Mechaniken. Nur Wissen und Fähigkeit.',
 
-  // Feature Details
-  'features.strategicFocus.title': 'Strategisches Fokussystem',
-  'features.strategicFocus.description': 'Konzentrieren Sie sich auf 3 Vorhersagen, verdienen Sie 2x Punkte für richtige, -1.5x Strafe für falsche',
-  'features.trainingMultipliers.title': 'Trainings-Multiplikatoren',
-  'features.trainingMultipliers.description': 'Steigern Sie Ihre Punkte mit 5 verschiedenen Arten von Trainings-Multiplikatoren',
-  'features.formations.title': 'Kaderaufbau',
-  'features.formations.description': 'Bauen Sie Ihr Team mit 26 verschiedenen Formationsoptionen auf',
-  'features.badges.title': 'Abzeichen-System',
-  'features.badges.description': 'Zeigen Sie Ihre Erfolge, indem Sie 20+ verschiedene Abzeichen verdienen',
-  'features.leaderboard.title': 'Bestenliste',
-  'features.leaderboard.description': 'Konkurrieren Sie in globalen, Saison-, Wochen- und Monatsranglisten',
-
-  // Hero
-  'hero.cta.loading': 'Wird gesendet...',
-  'hero.video.title': 'Wie funktioniert TacticIQ?',
-
   // Visitor Counter
   'visitor.total': 'Gesamtbesucher',
   'visitor.online': 'Jetzt online',
@@ -588,4 +811,206 @@ export default {
   'partners.cta.button': 'Partner werden',
   'partners.noPartners': 'Noch keine Partner hinzugefügt',
   'partners.website': 'Webseite',
+
+  // FAQ Section
+  'faq.badge': 'FAQ',
+  'faq.title': 'Häufig gestellte Fragen',
+  'faq.subtitle': 'Alles, was Sie über TacticIQ wissen müssen',
+  'faq.stillHaveQuestions': 'Haben Sie noch Fragen?',
+  'faq.contactUs': 'Kontaktieren Sie uns',
+  'faq.q1.question': 'Ist TacticIQ eine Wettseite?',
+  'faq.q1.answer': 'Nein! TacticIQ ist KEINE Wettplattform. Es gibt keine Einzahlungen, keine Auszahlungen und keine Geldgewinne. Es handelt sich um eine rein fähigkeitsbasierte Fußball-Analyseplattform, um Ihr Fußballwissen zu testen. Alle Punkte und XP sind virtuell und dienen ausschließlich der Unterhaltung.',
+  'faq.q2.question': 'Muss ich bezahlen, um die Plattform zu nutzen?',
+  'faq.q2.answer': 'TacticIQ bietet ein kostenloses Starterpaket. Sie können auf grundlegende Funktionen zugreifen, begrenzte Vorhersagen treffen und die Plattform kennenlernen. Für unbegrenzte Vorhersagen, erweiterte Statistiken und ein werbefreies Erlebnis können Sie auf das Professionelle Paket upgraden.',
+  'faq.q3.question': 'Welche Ligen und Spiele werden abgedeckt?',
+  'faq.q3.answer': 'TacticIQ deckt Spiele aus über 25 großen Ligen ab, darunter Premier League, La Liga, Serie A, Bundesliga, Ligue 1, Süper Lig und mehr. Champions League, Europa League und internationale Turniere sind ebenfalls enthalten.',
+  'faq.q4.question': 'Wie funktioniert das Punktesystem?',
+  'faq.q4.answer': 'Sie verdienen Punkte für richtige Vorhersagen. Jede Kategorie hat unterschiedliche Punktwerte. In den 3 Kategorien, die Sie für den Strategischen Fokus auswählen, verdienen Sie 2x Punkte. Mit steigender Genauigkeit erhalten Sie Multiplikator-Boni. Durch das Sammeln von XP steigen Sie im Level auf und verdienen spezielle Abzeichen.',
+  'faq.q5.question': 'Gibt es eine mobile App?',
+  'faq.q5.answer': 'Unsere iOS- und Android-Apps kommen bald! Bis dahin können Sie unsere Webplattform über Ihren mobilen Browser nutzen – sie ist vollständig responsive und mobiloptimiert.',
+  'faq.q6.question': 'Wie kann ich mein Konto löschen?',
+  'faq.q6.answer': 'Sie können die Option „Konto löschen" in Ihren Kontoeinstellungen verwenden. Diese Aktion ist unwiderruflich und alle Ihre Daten, Vorhersagen und Punkte werden dauerhaft gelöscht.',
+  'faq.q7.question': 'Welche Sprachen werden unterstützt?',
+  'faq.q7.answer': 'TacticIQ ist in 8 Sprachen verfügbar: Englisch, Deutsch, Französisch, Spanisch, Italienisch, Türkisch, Arabisch und Chinesisch. RTL-Unterstützung (rechts nach links) für Arabisch ist ebenfalls enthalten.',
+  'faq.q8.question': 'Sind meine Daten sicher?',
+  'faq.q8.answer': 'Ja! Alle Ihre Daten werden verschlüsselt und auf sicheren Servern gespeichert. Wir sind vollständig DSGVO-, KVKK- und anderen Datenschutzbestimmungen konform. Ihre Daten werden niemals an Dritte weitergegeben.',
+
+  // Cookie Consent
+  'cookie.title': 'Cookie-Nutzung',
+  'cookie.description': 'Wir verwenden Cookies, um Ihr Erlebnis zu verbessern. Sie können die Cookie-Einstellungen anpassen oder alle akzeptieren.',
+  'cookie.learnMore': 'Mehr erfahren',
+  'cookie.customize': 'Anpassen',
+  'cookie.acceptAll': 'Alle akzeptieren',
+  'cookie.rejectAll': 'Alle ablehnen',
+  'cookie.savePreferences': 'Einstellungen speichern',
+  'cookie.settings.title': 'Cookie-Einstellungen',
+  'cookie.settings.description': 'Wählen Sie die Cookie-Typen, die Sie verwenden möchten. Notwendige Cookies sind immer aktiv.',
+  'cookie.types.necessary.title': 'Notwendige Cookies',
+  'cookie.types.necessary.description': 'Für den Betrieb der Plattform erforderlich. Werden für Sitzungsverwaltung, Sicherheit und grundlegende Funktionen verwendet. Können nicht deaktiviert werden.',
+  'cookie.types.functional.title': 'Funktionale Cookies',
+  'cookie.types.functional.description': 'Speichern Personalisierungseinstellungen wie Sprachpräferenz und Theme-Auswahl.',
+  'cookie.types.analytics.title': 'Analyse-Cookies',
+  'cookie.types.analytics.description': 'Helfen uns, die Nutzung der Plattform zu verstehen. Erfassen anonyme Daten wie Besucherzahlen und beliebte Seiten.',
+  'cookie.types.marketing.title': 'Marketing-Cookies',
+  'cookie.types.marketing.description': 'Werden verwendet, um Ihnen möglicherweise interessante Inhalte und Angebote anzuzeigen.',
+
+  // Contact Section
+  'contact.badge': 'KONTAKT',
+  'contact.title': 'Kontaktieren Sie uns',
+  'contact.subtitle': 'Haben Sie Fragen? Wir helfen Ihnen gerne.',
+  'contact.info.title': 'Erreichen Sie uns',
+  'contact.info.description': 'Unser Team ist immer bereit, Ihnen zu helfen. Senden Sie eine E-Mail oder füllen Sie das Formular für die schnellste Antwort aus.',
+  'contact.info.email.title': 'E-Mail-Support',
+  'contact.info.email.response': 'Antwort innerhalb von 24 Stunden',
+  'contact.info.address.title': 'Adresse',
+  'contact.info.hours.title': 'Öffnungszeiten',
+  'contact.info.hours.time': 'Montag - Freitag: 09:00 - 18:00',
+  'contact.info.hours.days': 'Samstag - Sonntag: Geschlossen',
+  'contact.info.response.title': 'Durchschnittliche Antwortzeit',
+  'contact.info.response.time': '< 24 Stunden',
+  'contact.info.response.description': 'Wir beantworten die meisten Anfragen innerhalb von 24 Stunden',
+  'contact.form.name.label': 'Vollständiger Name',
+  'contact.form.name.placeholder': 'Max Mustermann',
+  'contact.form.email.label': 'E-Mail',
+  'contact.form.email.placeholder': 'max@beispiel.com',
+  'contact.form.category.label': 'Kategorie',
+  'contact.form.category.placeholder': 'Wählen Sie eine Kategorie',
+  'contact.form.category.general': 'Allgemeine Anfrage',
+  'contact.form.category.support': 'Technischer Support',
+  'contact.form.category.billing': 'Abrechnung & Zahlung',
+  'contact.form.category.partnership': 'Geschäftspartnerschaft',
+  'contact.form.category.press': 'Presse & Medien',
+  'contact.form.category.other': 'Sonstiges',
+  'contact.form.subject.label': 'Betreff',
+  'contact.form.subject.placeholder': 'Betreff Ihrer Nachricht',
+  'contact.form.message.label': 'Ihre Nachricht',
+  'contact.form.message.placeholder': 'Schreiben Sie hier Ihre Nachricht...',
+  'contact.form.submit': 'Nachricht senden',
+  'contact.form.sending': 'Wird gesendet...',
+  'contact.form.privacy': 'Ihre Daten werden gemäß unserer Datenschutzerklärung geschützt.',
+  'contact.form.error': 'Bitte füllen Sie alle Pflichtfelder aus',
+  'contact.form.success': 'Nachricht erfolgreich gesendet!',
+  'contact.form.submitted.title': 'Vielen Dank!',
+  'contact.form.submitted.description': 'Ihre Nachricht wurde empfangen. Wir werden uns in Kürze bei Ihnen melden.',
+
+  // Testimonials
+  'testimonials.badge': 'REFERENZEN',
+  'testimonials.title': 'Beliebt bei Fußballanalysten',
+  'testimonials.subtitle': 'Erfahren Sie, was unsere Community über TacticIQ sagt',
+  'testimonials.users.user1.role': 'Fußballanalyst',
+  'testimonials.users.user1.text': 'TacticIQ hat meine Spielanalyse revolutioniert. Die xG-Daten und Vorhersagen sind unglaublich genau!',
+  'testimonials.users.user2.role': 'Sportjournalist',
+  'testimonials.users.user2.text': 'Die beste taktische Analyseplattform, die ich je genutzt habe. Hilft mir, bessere Spielberichte zu schreiben.',
+  'testimonials.users.user3.role': 'Amateurtrainer',
+  'testimonials.users.user3.text': 'Ich nutze TacticIQ, um mein Team vorzubereiten. Die Formationsanalyse ist hervorragend.',
+  'testimonials.users.user4.role': 'Fußballbegeisterter',
+  'testimonials.users.user4.text': 'Endlich eine Plattform, die nicht auf Glücksspiel setzt, sondern auf echte Analyse. Großartig!',
+  'testimonials.users.user5.role': 'Datenwissenschaftler',
+  'testimonials.users.user5.text': 'Die statistische Tiefe ist beeindruckend. Hervorragend geeignet, um die moderne Fußballanalytik zu verstehen.',
+  'testimonials.users.user6.role': 'Fantasy-Liga-Spieler',
+  'testimonials.users.user6.text': 'TacticIQ hilft mir, bessere Fantasy-Team-Entscheidungen mit echten Daten zu treffen.',
+  'testimonials.stats.rating': 'Durchschnittliche Bewertung',
+  'testimonials.stats.users': 'Aktive Nutzer',
+  'testimonials.stats.predictions': 'Vorhersagen gemacht',
+  'testimonials.stats.leagues': 'Abgedeckte Ligen',
+
+  // Newsletter
+  'newsletter.badge': 'NEWSLETTER',
+  'newsletter.title': 'Keine Analyse verpassen',
+  'newsletter.subtitle': 'Erhalten Sie wöchentliche Analyseberichte, exklusive Vorhersagen und taktische Einblicke in Ihrem Posteingang.',
+  'newsletter.benefit1': 'Wöchentliche Spielanalysen und Vorhersagen',
+  'newsletter.benefit2': 'Exklusive taktische Einblicke und Berichte',
+  'newsletter.benefit3': 'Erfahren Sie als Erster von neuen Funktionen',
+  'newsletter.form.title': 'Abonnieren',
+  'newsletter.form.description': 'Geben Sie Ihre E-Mail ein, um wöchentliche Einblicke zu erhalten',
+  'newsletter.form.placeholder': 'Ihre E-Mail-Adresse',
+  'newsletter.form.subscribe': 'Abonnieren',
+  'newsletter.form.subscribing': 'Wird abonniert...',
+  'newsletter.form.privacy': 'Jederzeit abbestellbar. Datenschutzerklärung',
+  'newsletter.form.privacyLink': 'Datenschutzerklärung',
+  'newsletter.error': 'Bitte geben Sie eine gültige E-Mail-Adresse ein',
+  'newsletter.success': 'Erfolgreich abonniert!',
+  'newsletter.subscribed.title': 'Herzlichen Glückwunsch!',
+  'newsletter.subscribed.description': 'Prüfen Sie Ihre E-Mail und bestätigen Sie Ihr Abonnement.',
+  'newsletter.stats.subscribers': 'Abonnenten',
+  'newsletter.stats.weekly': 'Wöchentlich',
+
+  // 404 Page
+  'notFound.title': 'Seite nicht gefunden',
+  'notFound.description': 'Die von Ihnen gesuchte Seite existiert nicht oder wurde verschoben.',
+  'notFound.goHome': 'Zur Startseite',
+  'notFound.goBack': 'Zurück',
+  'notFound.popular': 'Beliebte Seiten',
+  'notFound.links.features': 'Funktionen',
+  'notFound.links.pricing': 'Preise',
+  'notFound.links.contact': 'Kontakt',
+  'notFound.links.faq': 'FAQ',
+
+  // About Section
+  'about.badge': 'ÜBER UNS',
+  'about.title': 'Unsere Mission & Team',
+  'about.subtitle': 'Ein leidenschaftliches Team, das daran arbeitet, Fußballanalyse für jeden zugänglich zu machen.',
+  'about.mission.title': 'Unsere Mission',
+  'about.mission.description': 'Bei TacticIQ wollen wir die Sportintelligenz demokratisieren, indem wir KI-gestützte professionelle Einblicke für Fußballfans bereitstellen. Unser Ziel ist es, jeden Fußballbegeisterten in einen Taktikexperten zu verwandeln.',
+  'about.values.title': 'Unsere Werte',
+  'about.values.accuracy.title': 'Genauigkeit',
+  'about.values.accuracy.description': 'Zuverlässige Analyse mit aktuellen Daten und fortschrittlichen Algorithmen',
+  'about.values.innovation.title': 'Innovation',
+  'about.values.innovation.description': 'Kontinuierlich weiterentwickelte Technologie und neue Funktionen',
+  'about.values.accessibility.title': 'Zugänglichkeit',
+  'about.values.accessibility.description': 'Verfügbar in 8 Sprachen, in über 150 Ländern, für jeden konzipiert',
+  'about.values.community.title': 'Gemeinschaft',
+  'about.values.community.description': 'Globale Plattform, die Fußballfans zusammenbringt',
+  'about.team.title': 'Unser Team',
+  'about.team.ceo.role': 'Gründer & CEO',
+  'about.team.ceo.bio': 'Hat TacticIQ mit Leidenschaft für Fußball und einer Vision für Technologie geschaffen',
+  'about.team.cto.role': 'CTO & Chefentwickler',
+  'about.team.cto.bio': 'KI- und Machine-Learning-Experte, über 10 Jahre Erfahrung',
+  'about.team.head_analytics.role': 'Leiter Analytik',
+  'about.team.head_analytics.bio': 'Professioneller Fußballanalyst, UEFA-lizenzierter Trainer',
+  'about.team.head_design.role': 'Design-Direktor',
+  'about.team.head_design.bio': 'UX/UI-Design-Experte, fokussiert auf Benutzererfahrung',
+  'about.stats.founded': 'Gegründet',
+  'about.stats.users': 'Nutzer',
+  'about.stats.leagues': 'Ligen',
+  'about.stats.languages': 'Sprachen',
+
+  // Press
+  'press.badge': 'PRESSEMAPPE',
+  'press.title': 'Presse & Medien',
+  'press.subtitle': 'Laden Sie Logos, Bilder und Pressemitteilungen herunter',
+  'press.kit.title': 'Pressemappe',
+  'press.kit.logos.title': 'Logo-Pakete',
+  'press.kit.logos.description': 'TacticIQ-Logos in verschiedenen Formaten',
+  'press.kit.brandGuidelines.title': 'Markenrichtlinien',
+  'press.kit.brandGuidelines.description': 'Regeln und Richtlinien zur Markennutzung',
+  'press.kit.screenshots.title': 'Screenshots',
+  'press.kit.screenshots.description': 'App-Screenshots und Oberflächenbilder',
+  'press.kit.videos.title': 'Videomaterialien',
+  'press.kit.videos.description': 'Werbevideos und Demo-Inhalte',
+  'press.kit.download': 'Herunterladen',
+  'press.kit.downloadAll': 'Alles herunterladen (ZIP)',
+  'press.releases.title': 'Pressemitteilungen',
+  'press.releases.release1.title': 'TacticIQ erreicht 50.000 Nutzer',
+  'press.releases.release1.excerpt': 'Die Plattform wächst weltweit weiter schnell',
+  'press.releases.release2.title': 'Neues KI-Vorhersagemodell gestartet',
+  'press.releases.release2.excerpt': '85% Genauigkeit durch fortschrittliches maschinelles Lernen',
+  'press.releases.release3.title': 'Unterstützung für 8 Sprachen hinzugefügt',
+  'press.releases.release3.excerpt': 'Mehrsprachige Unterstützung für globale Zugänglichkeit',
+  'press.releases.viewAll': 'Alle Pressemitteilungen anzeigen',
+  'press.contact.title': 'Medienkontakt',
+  'press.contact.description': 'Für Presseanfragen und Interviewwünsche',
+
+  // Stats
+  'stats.activeUsers': 'Aktive Nutzer',
+  'stats.predictions': 'Vorhersagen gemacht',
+  'stats.accuracy': 'Durchschnittliche Genauigkeit',
+  'stats.countries': 'Länder',
+
+  // Fair Play Statement
+  'fairPlay.intro': 'TacticIQ ist KEINE Wettplattform.',
+  'fairPlay.noBetting': 'Kein Wetten mit echtem Geld',
+  'fairPlay.noOdds': 'Keine Quoten, keine Auszahlungen, keine Geldgewinne',
+  'fairPlay.skillBased': 'Alle Ergebnisse basieren auf Fähigkeiten und Daten',
+  'fairPlay.virtualPoints': 'Punkte, XP und Ranglisten sind virtuell und nicht monetär',
 };

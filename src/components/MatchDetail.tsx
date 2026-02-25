@@ -33,7 +33,8 @@ import { ConfirmModal } from './ui/ConfirmModal';
 import { STORAGE_KEYS } from '../config/constants';
 import { predictionsDb } from '../services/databaseService';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BRAND, COLORS, SPACING, SIZES } from '../theme/theme';
+import { BRAND, COLORS, SPACING, SIZES, LIGHT_MODE } from '../theme/theme';
+import { useTheme } from '../contexts/ThemeContext';
 import { getTeamColors as getTeamColorsUtil } from '../utils/teamColors';
 import { isMockTestMatch, MOCK_MATCH_IDS, getMatch1Start, getMatch2Start, MATCH_1_EVENTS, MATCH_2_EVENTS, computeLiveState, getMockUserTeamId } from '../data/mockTestData';
 
@@ -79,6 +80,8 @@ const tabs = [
 export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFocus, preloadedMatch, forceResultSummary, predictionTeamId }: MatchDetailProps) {
   const { width: windowWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
+  const { theme } = useTheme();
+  const themeColors = theme === 'light' ? COLORS.light : COLORS.dark;
   const isNarrow = windowWidth < 420;
   const centerInfoMinWidth = isNarrow ? 100 : 160;
   const countdownPadding = isNarrow ? 4 : 8;
@@ -1290,8 +1293,8 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" />
+    <View style={[styles.container, { backgroundColor: themeColors.background }]}>
+      <StatusBar barStyle={theme === 'light' ? 'dark-content' : 'light-content'} />
       
       {/* ✅ Grid Pattern Background - Dashboard ile aynı */}
       <View style={styles.gridPattern} />
