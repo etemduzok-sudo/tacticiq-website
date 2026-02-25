@@ -54,6 +54,8 @@ import {
   type MatchPhase,
   type MatchEvent as TimingMatchEvent,
 } from '../../utils/predictionTiming';
+import { useTheme } from '../../contexts/ThemeContext';
+import { COLORS } from '../../theme/theme';
 
 
 // Web için animasyonları devre dışı bırak
@@ -376,7 +378,14 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
   onViewedCommunityData,
 }) => {
   const { width: winW, height: winH } = useWindowDimensions();
-  
+  const { theme } = useTheme();
+  const isLight = theme === 'light';
+  const themeColors = isLight ? COLORS.light : COLORS.dark;
+  const cardTitleColor = isLight ? themeColors.foreground : '#F1F5F9';
+  const cardLabelColor = isLight ? themeColors.mutedForeground : '#CBD5E1';
+  const segmentBg = isLight ? 'rgba(15, 42, 36, 0.08)' : 'rgba(15, 23, 42, 0.4)';
+  const segmentBorder = isLight ? 'rgba(15, 42, 36, 0.15)' : 'rgba(100, 116, 139, 0.35)';
+
   // Kadro ile BİREBİR aynı hesaplama (runtime'da)
   const fieldWidth = isWeb ? Math.min(winW, 500) - PITCH_LAYOUT.H_PADDING : winW - PITCH_LAYOUT.H_PADDING;
   const fieldHeight = isWeb 
@@ -3093,7 +3102,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                   <View style={[styles.cardIconSmall, styles.cardIconFirstHalf]}>
                     <Text style={styles.cardEmoji}>⏱️</Text>
                   </View>
-                  <Text style={styles.combinedCardTitle}>İlk Yarı</Text>
+                  <Text style={[styles.combinedCardTitle, { color: cardTitleColor }]}>İlk Yarı</Text>
                   {predictionViewIndex === 0 && !isViewOnlyMode && isCategoryInSelectedFocus('firstHalfHomeScore') && (
                     <View style={styles.focusBonusBadge}>
                       <Ionicons name="star" size={14} color="#F59E0B" />
@@ -3248,7 +3257,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                   <View style={[styles.cardIconSmall, styles.cardIconFullTime]}>
                     <Text style={styles.cardEmoji}>🏆</Text>
                   </View>
-                  <Text style={styles.combinedCardTitle}>Maç Sonu</Text>
+                  <Text style={[styles.combinedCardTitle, { color: cardTitleColor }]}>Maç Sonu</Text>
                   {/* Bonus badge sadece normal modda */}
                   {!isViewOnlyMode && isCategoryInSelectedFocus('secondHalfHomeScore') && (
                     <View style={styles.focusBonusBadge}>
@@ -3413,7 +3422,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
               <View style={styles.combinedCardTitleRowWithInfo}>
                 <View style={styles.combinedCardTitleRow}>
                   <Ionicons name="football-outline" size={18} color="#10B981" style={{ marginRight: 4 }} />
-                  <Text style={styles.combinedCardTitle}>Gol Tahminleri</Text>
+                  <Text style={[styles.combinedCardTitle, { color: cardTitleColor }]}>Gol Tahminleri</Text>
                   {/* Bonus badge sadece normal modda */}
                   {!isViewOnlyMode && (isCategoryInSelectedFocus('totalGoals') || isCategoryInSelectedFocus('firstGoalTime')) && (
                     <View style={styles.focusBonusBadge}>
@@ -3450,7 +3459,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
             {/* Toplam Gol - Disiplin Tarzı Zarif */}
             <View style={styles.disciplineBarSection}>
               <View style={styles.disciplineBarHeader}>
-                <Text style={styles.disciplineBarTitle}>Toplam Gol</Text>
+                <Text style={[styles.disciplineBarTitle, { color: cardLabelColor }]}>Toplam Gol</Text>
                 {!isCardReadOnly && !isViewOnlyMode && <Text style={[styles.disciplineBarValue, { color: '#10B981' }]}>{effectiveTotalGoals || '?'}</Text>}
               </View>
               <View style={styles.disciplineBarTrack}>
@@ -3462,13 +3471,14 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                       key={range}
                       style={[
                         styles.disciplineBarSegment,
+                        !(isSelected || isCommunityTop) && { backgroundColor: segmentBg, borderColor: segmentBorder },
                         (isSelected || isCommunityTop) && styles.disciplineBarSegmentActiveEmerald,
                       ]}
                       onPress={() => !isCardReadOnly && !isViewOnlyMode && handlePredictionChange('totalGoals', range)}
                       activeOpacity={isCardReadOnly ? 1 : 0.7}
                       disabled={isCardReadOnly}
                     >
-                      <Text style={[styles.disciplineBarSegmentText, (isSelected || isCommunityTop) && styles.disciplineBarSegmentTextActive]}>
+                      <Text style={[styles.disciplineBarSegmentText, { color: cardLabelColor }, (isSelected || isCommunityTop) && styles.disciplineBarSegmentTextActive]}>
                         {range}
                       </Text>
                     </TouchableOpacity>
@@ -3485,14 +3495,14 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                 <View style={[styles.cardIconSmall, styles.cardIconTime]}>
                   <Text style={styles.cardEmoji}>⏰</Text>
                 </View>
-                <Text style={styles.combinedCardTitle}>İlk Gol Zamanı</Text>
+                <Text style={[styles.combinedCardTitle, { color: cardTitleColor }]}>İlk Gol Zamanı</Text>
               </View>
             </View>
             
             <View style={styles.firstGoalTimeline}>
               {/* 1. Yarı (1-15', 16-30', 31-45', 45+) */}
               <View style={styles.timelineRow}>
-                <Text style={styles.timelineRowLabel}>1Y</Text>
+                <Text style={[styles.timelineRowLabel, { color: cardLabelColor }]}>1Y</Text>
                 <View style={styles.timelineRowButtons}>
                   {[
                     { label: "1-15'", value: '1-15' },
@@ -3508,13 +3518,14 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                         key={t.value} 
                         style={[
                           styles.timelineBtnCompact,
+                          !isActive && { backgroundColor: segmentBg, borderColor: segmentBorder },
                           isActive && styles.timelineBtnCompactActiveFirst,
                         ]}
                         onPress={() => !isCardReadOnly && !isViewOnlyMode && handlePredictionChange('firstGoalTime', t.value)}
                         activeOpacity={isCardReadOnly ? 1 : 0.7}
                         disabled={isCardReadOnly}
                       >
-                        <Text style={[styles.timelineBtnTextCompact, isActive && styles.timelineBtnTextCompactActive]}>
+                        <Text style={[styles.timelineBtnTextCompact, { color: cardLabelColor }, isActive && styles.timelineBtnTextCompactActive]}>
                           {t.label}
                         </Text>
                       </TouchableOpacity>
@@ -3525,7 +3536,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
               
               {/* 2. Yarı (46-60', 61-75', 76-90', 90+) */}
               <View style={styles.timelineRow}>
-                <Text style={styles.timelineRowLabel}>2Y</Text>
+                <Text style={[styles.timelineRowLabel, { color: cardLabelColor }]}>2Y</Text>
                 <View style={styles.timelineRowButtons}>
                   {[
                     { label: "46-60'", value: '46-60' },
@@ -3541,13 +3552,14 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                         key={t.value} 
                         style={[
                           styles.timelineBtnCompact,
+                          !isActive && { backgroundColor: segmentBg, borderColor: segmentBorder },
                           isActive && styles.timelineBtnCompactActiveSecond,
                         ]}
                         onPress={() => !isCardReadOnly && !isViewOnlyMode && handlePredictionChange('firstGoalTime', t.value)}
                         activeOpacity={isCardReadOnly ? 1 : 0.7}
                         disabled={isCardReadOnly}
                       >
-                        <Text style={[styles.timelineBtnTextCompact, isActive && styles.timelineBtnTextCompactActive]}>
+                        <Text style={[styles.timelineBtnTextCompact, { color: cardLabelColor }, isActive && styles.timelineBtnTextCompactActive]}>
                           {t.label}
                         </Text>
                       </TouchableOpacity>
@@ -3558,13 +3570,13 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
               
               {/* Gol Yok Olabilir */}
               <TouchableOpacity 
-                style={[styles.noGoalBtn, (isCardReadOnly ? displayValues.firstGoalTime : predictions.firstGoalTime) === 'no_goal' && styles.noGoalBtnActive]}
+                style={[styles.noGoalBtn, (isCardReadOnly ? displayValues.firstGoalTime : predictions.firstGoalTime) !== 'no_goal' && { backgroundColor: segmentBg, borderColor: segmentBorder }, (isCardReadOnly ? displayValues.firstGoalTime : predictions.firstGoalTime) === 'no_goal' && styles.noGoalBtnActive]}
                 onPress={() => !isCardReadOnly && !isViewOnlyMode && handlePredictionChange('firstGoalTime', 'no_goal')}
                 activeOpacity={isCardReadOnly ? 1 : 0.7}
                 disabled={isViewOnlyMode}
               >
                 <Ionicons name="close-circle-outline" size={12} color={(isCardReadOnly ? displayValues.firstGoalTime : predictions.firstGoalTime) === 'no_goal' ? '#FFF' : '#94A3B8'} />
-                <Text style={[styles.noGoalBtnText, (isCardReadOnly ? displayValues.firstGoalTime : predictions.firstGoalTime) === 'no_goal' && styles.noGoalBtnTextActive]}>Gol yok</Text>
+                <Text style={[styles.noGoalBtnText, { color: cardLabelColor }, (isCardReadOnly ? displayValues.firstGoalTime : predictions.firstGoalTime) === 'no_goal' && styles.noGoalBtnTextActive]}>Gol yok</Text>
               </TouchableOpacity>
             </View>
           </TouchableOpacity>
@@ -3589,7 +3601,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
               <View style={styles.combinedCardTitleRowWithInfo}>
                 <View style={styles.combinedCardTitleRow}>
                   <Ionicons name="card-outline" size={18} color="#FBBF24" style={{ marginRight: 4 }} />
-                  <Text style={styles.combinedCardTitle}>Disiplin</Text>
+                  <Text style={[styles.combinedCardTitle, { color: cardTitleColor }]}>Disiplin</Text>
                   {/* Bonus badge sadece normal modda */}
                   {!isViewOnlyMode && (isCategoryInSelectedFocus('yellowCards') || isCategoryInSelectedFocus('redCards')) && (
                     <View style={styles.focusBonusBadge}>
@@ -3654,7 +3666,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                             (isSelected || isCommunityTop) && { borderWidth: 0 }
                           ]}
                         />
-                        <Text style={[styles.verticalBarLabel, (isSelected || isCommunityTop) && { color: '#FBBF24', fontWeight: '600' }]}>
+                        <Text style={[styles.verticalBarLabel, { color: cardLabelColor }, (isSelected || isCommunityTop) && { color: '#FBBF24', fontWeight: '600' }]}>
                           {item.label}
                         </Text>
                       </TouchableOpacity>
@@ -3696,7 +3708,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                             (isSelected || isCommunityTop) && { borderWidth: 0 }
                           ]}
                         />
-                        <Text style={[styles.verticalBarLabel, (isSelected || isCommunityTop) && { color: '#F87171', fontWeight: '600' }]}>
+                        <Text style={[styles.verticalBarLabel, { color: cardLabelColor }, (isSelected || isCommunityTop) && { color: '#F87171', fontWeight: '600' }]}>
                           {item.label}
                         </Text>
                       </TouchableOpacity>
@@ -3727,7 +3739,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                   <View style={[styles.cardIconSmall, styles.cardIconPossession]}>
                     <Text style={styles.cardEmoji}>📊</Text>
                   </View>
-                  <Text style={styles.combinedCardTitle}>Topa Sahip Olma</Text>
+                  <Text style={[styles.combinedCardTitle, { color: cardTitleColor }]}>Topa Sahip Olma</Text>
                   {/* Bonus badge sadece normal modda */}
                   {!isViewOnlyMode && isCategoryInSelectedFocus('possession') && (
                     <View style={styles.focusBonusBadge}>
@@ -3761,7 +3773,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
             {/* Zarif Display */}
             <View style={styles.possessionDisplayElegant}>
               <View style={styles.possessionTeamElegant}>
-                <Text style={styles.possessionTeamLabelElegant}>EV</Text>
+                <Text style={[styles.possessionTeamLabelElegant, { color: cardLabelColor }]}>EV</Text>
                 <Text style={styles.possessionTeamValueElegant}>
                   {(isCardReadOnly ? displayValues.possession : predictions.possession) ? `${isCardReadOnly ? displayValues.possession : predictions.possession}%` : '-'}
                 </Text>
@@ -3773,8 +3785,8 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
               </View>
               
               <View style={styles.possessionTeamElegant}>
-                <Text style={styles.possessionTeamLabelElegant}>DEP</Text>
-                <Text style={[styles.possessionTeamValueElegant, { color: '#94A3B8' }]}>
+                <Text style={[styles.possessionTeamLabelElegant, { color: cardLabelColor }]}>DEP</Text>
+                <Text style={[styles.possessionTeamValueElegant, { color: cardLabelColor }]}>
                   {(isCardReadOnly ? displayValues.possession : predictions.possession) ? `${100 - parseInt((isCardReadOnly ? displayValues.possession : predictions.possession) || '50')}%` : '-'}
                 </Text>
               </View>
@@ -3826,7 +3838,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                   <View style={[styles.cardIconSmall, styles.cardIconShots]}>
                     <Text style={styles.cardEmoji}>🎯</Text>
                   </View>
-                  <Text style={styles.combinedCardTitle}>Şut İstatistikleri</Text>
+                  <Text style={[styles.combinedCardTitle, { color: cardTitleColor }]}>Şut İstatistikleri</Text>
                   {/* Bonus badge sadece normal modda */}
                   {!isViewOnlyMode && (isCategoryInSelectedFocus('totalShots') || isCategoryInSelectedFocus('shotsOnTarget')) && (
                     <View style={styles.focusBonusBadge}>
@@ -3870,7 +3882,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
             {/* Toplam Şut - Disiplin Tarzı */}
             <View style={styles.disciplineBarSection}>
               <View style={styles.disciplineBarHeader}>
-                <Text style={styles.disciplineBarTitle}>Toplam Şut</Text>
+                <Text style={[styles.disciplineBarTitle, { color: cardLabelColor }]}>Toplam Şut</Text>
                 {!isViewOnlyMode && <Text style={[styles.disciplineBarValue, { color: '#60A5FA' }]}>{predictions.totalShots || '?'}</Text>}
               </View>
               <View style={styles.disciplineBarTrack}>
@@ -3882,13 +3894,14 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                       key={range}
                       style={[
                         styles.disciplineBarSegment,
+                        !(isSelected || isCommunityTop) && { backgroundColor: segmentBg, borderColor: segmentBorder },
                         (isSelected || isCommunityTop) && styles.disciplineBarSegmentActiveBlue,
                       ]}
                       onPress={() => !isCardReadOnly && !isViewOnlyMode && handlePredictionChange('totalShots', range)}
                       activeOpacity={isCardReadOnly ? 1 : 0.7}
                       disabled={isViewOnlyMode}
                     >
-                      <Text style={[styles.disciplineBarSegmentText, (isSelected || isCommunityTop) && styles.disciplineBarSegmentTextActive]}>
+                      <Text style={[styles.disciplineBarSegmentText, { color: cardLabelColor }, (isSelected || isCommunityTop) && styles.disciplineBarSegmentTextActive]}>
                         {range}
                       </Text>
                     </TouchableOpacity>
@@ -3902,7 +3915,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
             {/* İsabetli Şut - Disiplin Tarzı */}
             <View style={styles.disciplineBarSection}>
               <View style={styles.disciplineBarHeader}>
-                <Text style={styles.disciplineBarTitle}>İsabetli Şut</Text>
+                <Text style={[styles.disciplineBarTitle, { color: cardLabelColor }]}>İsabetli Şut</Text>
                 {!isViewOnlyMode && <Text style={[styles.disciplineBarValue, { color: '#34D399' }]}>{predictions.shotsOnTarget || '?'}</Text>}
               </View>
               <View style={styles.disciplineBarTrack}>
@@ -3914,13 +3927,14 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                       key={range}
                       style={[
                         styles.disciplineBarSegment,
+                        !(isSelected || isCommunityTop) && { backgroundColor: segmentBg, borderColor: segmentBorder },
                         (isSelected || isCommunityTop) && styles.disciplineBarSegmentActiveGreen,
                       ]}
                       onPress={() => !isCardReadOnly && !isViewOnlyMode && handlePredictionChange('shotsOnTarget', range)}
                       activeOpacity={isCardReadOnly ? 1 : 0.7}
                       disabled={isViewOnlyMode}
                     >
-                      <Text style={[styles.disciplineBarSegmentText, (isSelected || isCommunityTop) && styles.disciplineBarSegmentTextActive]}>
+                      <Text style={[styles.disciplineBarSegmentText, { color: cardLabelColor }, (isSelected || isCommunityTop) && styles.disciplineBarSegmentTextActive]}>
                         {range}
                       </Text>
                     </TouchableOpacity>
@@ -3934,7 +3948,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
             {/* Korner - Disiplin Tarzı */}
             <View style={styles.disciplineBarSection}>
               <View style={styles.disciplineBarHeader}>
-                <Text style={styles.disciplineBarTitle}>Toplam Korner</Text>
+                <Text style={[styles.disciplineBarTitle, { color: cardLabelColor }]}>Toplam Korner</Text>
                 {!isViewOnlyMode && <Text style={[styles.disciplineBarValue, { color: '#F59E0B' }]}>{predictions.totalCorners || '?'}</Text>}
               </View>
               <View style={styles.disciplineBarTrack}>
@@ -3946,13 +3960,14 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                       key={range}
                       style={[
                         styles.disciplineBarSegment,
+                        !(isSelected || isCommunityTop) && { backgroundColor: segmentBg, borderColor: segmentBorder },
                         (isSelected || isCommunityTop) && styles.disciplineBarSegmentActiveOrange
                       ]}
                       onPress={() => !isCardReadOnly && !isViewOnlyMode && handlePredictionChange('totalCorners', range)}
                       activeOpacity={isCardReadOnly ? 1 : 0.7}
                       disabled={isViewOnlyMode}
                     >
-                      <Text style={[styles.disciplineBarSegmentText, (isSelected || isCommunityTop) && styles.disciplineBarSegmentTextActive]}>
+                      <Text style={[styles.disciplineBarSegmentText, { color: cardLabelColor }, (isSelected || isCommunityTop) && styles.disciplineBarSegmentTextActive]}>
                         {range}
                       </Text>
                     </TouchableOpacity>
@@ -3982,7 +3997,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
               <View style={styles.combinedCardTitleRowWithInfo}>
                 <View style={styles.combinedCardTitleRow}>
                   <Ionicons name="bulb-outline" size={18} color="#F59E0B" style={{ marginRight: 4 }} />
-                  <Text style={styles.combinedCardTitle}>Taktik Tahminleri</Text>
+                  <Text style={[styles.combinedCardTitle, { color: cardTitleColor }]}>Taktik Tahminleri</Text>
                   {/* Bonus badge sadece normal modda */}
                   {!isViewOnlyMode && (isCategoryInSelectedFocus('tempo') || isCategoryInSelectedFocus('scenario')) && (
                     <View style={styles.focusBonusBadge}>
@@ -4019,7 +4034,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
             <View style={styles.disciplineBarSection}>
               <View style={styles.disciplineBarHeader}>
                 <Ionicons name="speedometer-outline" size={14} color="#F59E0B" />
-                <Text style={styles.disciplineBarTitle}>Oyun Temposu</Text>
+                <Text style={[styles.disciplineBarTitle, { color: cardLabelColor }]}>Oyun Temposu</Text>
                 {!isViewOnlyMode && <Text style={[styles.disciplineBarValue, { color: '#F59E0B' }]}>{predictions.tempo ? predictions.tempo.split(' ')[0] : '?'}</Text>}
               </View>
               <View style={styles.tempoButtonRow}>
@@ -4058,7 +4073,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
             <View style={styles.disciplineBarSection}>
               <View style={styles.disciplineBarHeader}>
                 <Ionicons name="git-branch-outline" size={14} color="#A78BFA" />
-                <Text style={styles.disciplineBarTitle}>Maç Senaryosu</Text>
+                <Text style={[styles.disciplineBarTitle, { color: cardLabelColor }]}>Maç Senaryosu</Text>
               </View>
               <View style={styles.scenarioGrid}>
                 {[
@@ -4374,7 +4389,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
             padding: 16,
           }}>
             <View style={{
-              backgroundColor: '#1A2E2A',
+              backgroundColor: themeColors.popover,
               borderRadius: 16,
               width: '100%',
               maxWidth: 380, // ✅ STANDART: 380px genişlik
@@ -4400,27 +4415,27 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
               </View>
               
               {/* Kategori */}
-              <Text style={{ color: '#94A3B8', fontSize: 14, marginBottom: 12 }}>
+              <Text style={{ color: themeColors.mutedForeground, fontSize: 14, marginBottom: 12 }}>
                 {comparisonModal.categoryLabel}
               </Text>
               
               {/* Karşılaştırma */}
               <View style={{ 
-                backgroundColor: 'rgba(0,0,0,0.3)', 
+                backgroundColor: isLight ? themeColors.muted : 'rgba(0,0,0,0.3)', 
                 borderRadius: 12, 
                 padding: 16,
                 marginBottom: 16,
               }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
                   <View style={{ flex: 1, alignItems: 'center' }}>
-                    <Text style={{ color: '#64748B', fontSize: 12, marginBottom: 4 }}>Senin Tahminin</Text>
-                    <Text style={{ color: '#FFFFFF', fontSize: 20, fontWeight: '700' }}>
+                    <Text style={{ color: themeColors.mutedForeground, fontSize: 12, marginBottom: 4 }}>Senin Tahminin</Text>
+                    <Text style={{ color: themeColors.foreground, fontSize: 20, fontWeight: '700' }}>
                       {comparisonModal.predicted ?? '-'}
                     </Text>
                   </View>
-                  <View style={{ width: 1, backgroundColor: '#334155' }} />
+                  <View style={{ width: 1, backgroundColor: themeColors.border }} />
                   <View style={{ flex: 1, alignItems: 'center' }}>
-                    <Text style={{ color: '#64748B', fontSize: 12, marginBottom: 4 }}>Gerçek Sonuç</Text>
+                    <Text style={{ color: themeColors.mutedForeground, fontSize: 12, marginBottom: 4 }}>Gerçek Sonuç</Text>
                     <Text style={{ 
                       color: comparisonModal.isCorrect ? '#10B981' : '#EF4444', 
                       fontSize: 20, 
@@ -4469,11 +4484,11 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
               onPress={() => setSignalPopupPlayer(null)}
             />
             <View style={{
-              backgroundColor: '#0F2A24',
+              backgroundColor: themeColors.popover,
               borderTopLeftRadius: 24,
               borderTopRightRadius: 24,
               borderWidth: 1,
-              borderColor: 'rgba(31, 162, 166, 0.3)',
+              borderColor: themeColors.border,
               paddingBottom: 24,
             }}>
               {/* Header – kompakt */}
@@ -4484,15 +4499,15 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                 paddingHorizontal: 16,
                 paddingVertical: 12,
                 borderBottomWidth: 1,
-                borderBottomColor: 'rgba(255,255,255,0.1)',
+                borderBottomColor: themeColors.border,
               }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                   <Ionicons name="pulse" size={22} color="#F59E0B" />
                   <View>
-                    <Text style={{ fontSize: 15, fontWeight: '700', color: '#FFFFFF' }}>
+                    <Text style={{ fontSize: 15, fontWeight: '700', color: themeColors.foreground }}>
                       {signalPopupPlayer.playerName}
                     </Text>
-                    <Text style={{ fontSize: 11, color: '#9CA3AF' }}>
+                    <Text style={{ fontSize: 11, color: themeColors.mutedForeground }}>
                       {signalPopupPlayer.positionLabel} – Canlı Sinyaller
                     </Text>
                   </View>
@@ -4782,7 +4797,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
             <View style={{
               width: '100%',
               maxWidth: 380, // ✅ STANDART: 380px genişlik
-              backgroundColor: '#1E3A3A',
+              backgroundColor: themeColors.popover,
               borderRadius: 16,
               borderWidth: 1,
               borderColor: 'rgba(239, 68, 68, 0.4)',
@@ -4801,7 +4816,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
               }}>Tahminler Kilitli</Text>
               <Text style={{
                 fontSize: 15,
-                color: '#E5E7EB',
+                color: themeColors.foreground,
                 lineHeight: 22,
                 textAlign: 'center',
                 marginBottom: 24,
@@ -4859,7 +4874,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
             <View style={{
               width: '100%',
               maxWidth: 380, // ✅ STANDART: 380px genişlik
-              backgroundColor: '#1E3A3A',
+              backgroundColor: themeColors.popover,
               borderRadius: 16,
               borderWidth: 1,
               borderColor: 'rgba(239, 68, 68, 0.4)',
@@ -4892,7 +4907,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
               {/* Description */}
               <Text style={{
                 fontSize: 15,
-                color: '#E5E7EB',
+                color: themeColors.foreground,
                 lineHeight: 22,
                 textAlign: 'center',
                 marginBottom: 16,

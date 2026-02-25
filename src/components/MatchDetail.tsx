@@ -1292,6 +1292,11 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
     }
   };
 
+  const isLight = theme === 'light';
+  const headerBg = isLight ? themeColors.card : '#0F2A24';
+  const headerFg = isLight ? themeColors.foreground : '#F8FAFB';
+  const headerMuted = isLight ? themeColors.mutedForeground : '#94A3B8';
+
   return (
     <View style={[styles.container, { backgroundColor: themeColors.background }]}>
       <StatusBar barStyle={theme === 'light' ? 'dark-content' : 'light-content'} />
@@ -1299,8 +1304,8 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
       {/* ✅ Grid Pattern Background - Dashboard ile aynı */}
       <View style={styles.gridPattern} />
 
-      {/* Sticky Match Card Header - ProfileCard overlay gibi */}
-      <View style={styles.matchCardOverlay}>
+      {/* Sticky Match Card Header - ProfileCard overlay gibi - tema ile uyumlu */}
+      <View style={[styles.matchCardOverlay, { backgroundColor: headerBg }]}>
         {/* ✅ Home Team Color Bar – beyaz varsa diğer takımla farklı konumda (biri üstte biri altta) */}
         <LinearGradient
           colors={matchData.homeTeam.color}
@@ -1328,18 +1333,18 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
         <View style={styles.matchCard}>
         {/* Top Row: Back Button + League Badge + Prediction Star */}
         <View style={styles.topRow}>
-          <TouchableOpacity onPress={handleBackPress} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
+          <TouchableOpacity onPress={handleBackPress} style={[styles.backButton, isLight && { backgroundColor: themeColors.muted, borderColor: themeColors.border }]}>
+            <Ionicons name="arrow-back" size={20} color={headerFg} />
           </TouchableOpacity>
 
           <View style={styles.centerBadges}>
-            <View style={styles.leagueBadge}>
+            <View style={[styles.leagueBadge, isLight && { backgroundColor: themeColors.muted, borderColor: themeColors.border }]}>
               <Ionicons name="trophy" size={12} color="#1FA2A6" />
-              <Text style={styles.leagueText}>{matchData.league}</Text>
+              <Text style={[styles.leagueText, isLight && { color: themeColors.foreground }]}>{matchData.league}</Text>
             </View>
             <View style={styles.stadiumBadge}>
-              <Ionicons name="location" size={10} color="#94A3B8" />
-              <Text style={styles.stadiumText}>{matchData.stadium}</Text>
+              <Ionicons name="location" size={10} color={headerMuted} />
+              <Text style={[styles.stadiumText, { color: headerMuted }]}>{matchData.stadium}</Text>
             </View>
           </View>
 
@@ -1370,39 +1375,39 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
           {/* Home Team */}
           <View style={styles.teamSide}>
             <View style={styles.teamNameWrap}>
-              <Text style={styles.teamNameLarge} numberOfLines={1} ellipsizeMode="tail">{matchData.homeTeam.name}</Text>
+              <Text style={[styles.teamNameLarge, { color: headerFg }]} numberOfLines={1} ellipsizeMode="tail">{matchData.homeTeam.name}</Text>
             </View>
             {matchData.homeTeam.manager?.trim() ? (
-              <Text style={styles.managerText}>{matchData.homeTeam.manager.trim()}</Text>
+              <Text style={[styles.managerText, { color: headerMuted }]}>{matchData.homeTeam.manager.trim()}</Text>
             ) : (
               <View style={{ height: 14 }} />
             )}
             {/* Canlı veya biten maçta skor göster */}
             {(matchData.isLive || isMatchFinished) && (
               <View style={styles.liveScoreBox}>
-                <Text style={styles.liveScoreText}>{matchData.homeScore}</Text>
+                <Text style={[styles.liveScoreText, { color: headerFg }]}>{matchData.homeScore}</Text>
               </View>
             )}
           </View>
 
           {/* Center: Canlıda sadece CANLI + dakika (Rule 1/3); biten maçta tarih/saat; başlamamışta geri sayım */}
-          <View style={styles.centerInfo}>
+          <View style={[styles.centerInfo, isLight && { backgroundColor: themeColors.muted, borderColor: themeColors.border }]}>
             {matchData.isLive ? (
               <>
                 {/* CANLI Badge */}
                 <View style={styles.liveBadge}>
                   <View style={styles.liveDot} />
-                  <Text style={styles.liveBadgeText}>CANLI</Text>
+                  <Text style={[styles.liveBadgeText, { color: headerFg }]}>CANLI</Text>
                 </View>
                 {/* Dakika:Salise formatında göster - uzatma varsa "45+3" formatında */}
-                <Text style={styles.liveMinuteText}>
+                <Text style={[styles.liveMinuteText, { color: headerFg }]}>
                   {matchData.extraTime != null && matchData.extraTime > 0
                     ? `${matchData.minute}+${matchData.extraTime}`
                     : `${matchData.minute}:${String(matchData.second ?? 0).padStart(2, '0')}`}
                 </Text>
                 {/* İlk yarı / İkinci yarı bilgisi - skor gösterilmez (zaten takımların altında gösteriliyor) */}
                 {/* Mantık: 45+ uzatma dakikaları İLK YARIYA dahil, 90+ uzatma dakikaları İKİNCİ YARIYA dahil */}
-                <Text style={styles.halftimeText}>
+                <Text style={[styles.halftimeText, { color: headerMuted }]}>
                   {(matchData.minute ?? 0) < 46 || ((matchData.minute ?? 0) === 45 && matchData.extraTime != null)
                     ? 'İlk Yarı' 
                     : 'İkinci Yarı'}
@@ -1410,8 +1415,8 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
               </>
             ) : isMatchFinished ? (
               <>
-                <Text style={styles.dateText}>● {matchData.date}</Text>
-                <Text style={styles.liveMinuteText}>
+                <Text style={[styles.dateText, { color: headerMuted }]}>● {matchData.date}</Text>
+                <Text style={[styles.liveMinuteText, { color: headerFg }]}>
                   {matchData.minute ?? 90}:{String(matchData.second ?? 0).padStart(2, '0')}
                 </Text>
               </>
@@ -1419,8 +1424,8 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
               <>
                 {/* Tarih - Dashboard stili ile aynı */}
                 <View style={styles.dateInfoRow}>
-                  <Ionicons name="time" size={9} color="#94A3B8" />
-                  <Text style={styles.dateText}>{matchData.date}</Text>
+                  <Ionicons name="time" size={9} color={headerMuted} />
+                  <Text style={[styles.dateText, { color: headerMuted }]}>{matchData.date}</Text>
                 </View>
                 
                 {/* Saat Badge - Dashboard stili ile aynı */}
@@ -1430,7 +1435,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                 >
-                  <Text style={styles.timeBadgeText}>{matchData.time}</Text>
+                  <Text style={[styles.timeBadgeText, isLight && { color: '#FFFFFF' }]}>{matchData.time}</Text>
                 </LinearGradient>
                 
                 {/* Countdown - Sadece 120 sn kala giren kullanıcılar için, yanıp söner */}
@@ -1497,17 +1502,17 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
           {/* Away Team */}
           <View style={[styles.teamSide, styles.teamSideAway]}>
             <View style={styles.teamNameWrap}>
-              <Text style={styles.teamNameLarge} numberOfLines={1} ellipsizeMode="tail">{matchData.awayTeam.name}</Text>
+              <Text style={[styles.teamNameLarge, { color: headerFg }]} numberOfLines={1} ellipsizeMode="tail">{matchData.awayTeam.name}</Text>
             </View>
             {matchData.awayTeam.manager?.trim() ? (
-              <Text style={styles.managerText}>{matchData.awayTeam.manager.trim()}</Text>
+              <Text style={[styles.managerText, { color: headerMuted }]}>{matchData.awayTeam.manager.trim()}</Text>
             ) : (
               <View style={{ height: 14 }} />
             )}
             {/* Canlı veya biten maçta skor göster */}
             {(matchData.isLive || isMatchFinished) && (
               <View style={styles.liveScoreBox}>
-                <Text style={styles.liveScoreText}>{matchData.awayScore}</Text>
+                <Text style={[styles.liveScoreText, { color: headerFg }]}>{matchData.awayScore}</Text>
               </View>
             )}
           </View>
@@ -1647,7 +1652,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
 
       {/* ✅ 120 saniyelik CountdownWarningModal kaldırıldı - artık kullanılmıyor */}
 
-      <View style={[styles.bottomNavBar, { paddingBottom: Math.max(insets.bottom, 8) }]}>
+      <View style={[styles.bottomNavBar, { paddingBottom: Math.max(insets.bottom, 8), backgroundColor: headerBg }]}>
         <View style={styles.bottomNav}>
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
