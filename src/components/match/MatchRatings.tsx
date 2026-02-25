@@ -22,6 +22,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import { PlayerRatingSlider } from './PlayerRatingSlider';
+import { useTheme } from '../../contexts/ThemeContext';
+import { COLORS } from '../../theme/theme';
 
 // Web için animasyonları devre dışı bırak
 const isWeb = Platform.OS === 'web';
@@ -188,6 +190,10 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
   favoriteTeamIds = [],
   hasPrediction = true, // ✅ Varsayılan true - eski maçlar için geriye uyumluluk
 }) => {
+  const { theme } = useTheme();
+  const isLight = theme === 'light';
+  const themeColors = isLight ? COLORS.light : COLORS.dark;
+
   // ✅ İZLEME MODU: Kadro tahmini yapılmadıysa değerlendirme yapılamaz
   const isViewOnlyMode = !hasPrediction;
   // ⚽ Takım kadrosu state
@@ -1298,16 +1304,21 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Tab Bar - İstatistik sekmesiyle aynı stil */}
+      {/* Tab Bar - açık temada okunaklı (hafif zemin + koyu metin) */}
       <View style={styles.tabsContainer}>
         <TouchableOpacity
-          style={[styles.tab, activeTab === 'coach' && styles.tabActive]}
+          style={[
+            styles.tab,
+            activeTab === 'coach' && styles.tabActive,
+            isLight && { backgroundColor: activeTab === 'coach' ? 'rgba(31, 162, 166, 0.12)' : themeColors.muted, borderColor: activeTab === 'coach' ? BRAND.secondary : themeColors.border },
+          ]}
           onPress={() => handleTabSwitch('coach')}
           activeOpacity={0.7}
         >
           <Text style={[
             styles.tabText,
-            activeTab === 'coach' && styles.tabTextActive
+            activeTab === 'coach' && styles.tabTextActive,
+            isLight && { color: activeTab === 'coach' ? BRAND.secondary : themeColors.foreground },
           ]}>
             👔 TD Değerlendirmesi
           </Text>
@@ -1315,13 +1326,18 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.tab, activeTab === 'player' && styles.tabActive]}
+          style={[
+            styles.tab,
+            activeTab === 'player' && styles.tabActive,
+            isLight && { backgroundColor: activeTab === 'player' ? 'rgba(31, 162, 166, 0.12)' : themeColors.muted, borderColor: activeTab === 'player' ? BRAND.secondary : themeColors.border },
+          ]}
           onPress={() => handleTabSwitch('player')}
           activeOpacity={0.7}
         >
           <Text style={[
             styles.tabText,
-            activeTab === 'player' && styles.tabTextActive
+            activeTab === 'player' && styles.tabTextActive,
+            isLight && { color: activeTab === 'player' ? BRAND.secondary : themeColors.foreground },
           ]}>
             ⚽ Futbolcu Değerlendirmeleri
           </Text>
@@ -1351,23 +1367,23 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
       >
         {activeTab === 'coach' ? (
         <>
-        {/* Premium Header Card */}
+        {/* Premium Header Card - açık temada açık kart + okunaklı metin */}
         <Animated.View 
           entering={isWeb ? undefined : FadeIn.duration(400)}
-          style={styles.headerCard}
+          style={[styles.headerCard, isLight && { backgroundColor: themeColors.card, borderWidth: 1, borderColor: themeColors.border }]}
         >
           <LinearGradient
-            colors={['rgba(15, 42, 36, 0.95)', 'rgba(31, 162, 166, 0.15)', 'rgba(15, 42, 36, 0.95)']} // ✅ Design System
+            colors={isLight ? [themeColors.card, themeColors.card] : ['rgba(15, 42, 36, 0.95)', 'rgba(31, 162, 166, 0.15)', 'rgba(15, 42, 36, 0.95)']}
             style={styles.headerGradient}
           >
             {/* 🔒 Kilit İkonu - Ortalanmış */}
             {/* TD İsim + Kilit - Aynı Satır */}
             <View style={styles.coachHeaderRow}>
               <View style={styles.coachHeaderLeft}>
-                <Text style={styles.headerTitle}>
+                <Text style={[styles.headerTitle, isLight && { color: themeColors.foreground }]}>
                   {targetTeamInfo.manager || 'Teknik Direktör'}
                 </Text>
-                <Text style={styles.headerSubtitle}>
+                <Text style={[styles.headerSubtitle, isLight && { color: themeColors.mutedForeground }]}>
                   {targetTeamInfo.name} Teknik Direktörü
                 </Text>
               </View>
@@ -1391,10 +1407,10 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
               )}
             </View>
 
-            {/* Score Comparison - Premium Design */}
-            <View style={styles.scoreComparisonCard}>
+            {/* Score Comparison - açık temada hafif zemin + okunaklı metin */}
+            <View style={[styles.scoreComparisonCard, isLight && { backgroundColor: themeColors.muted, borderColor: themeColors.border }]}>
               <LinearGradient
-                colors={['rgba(31, 162, 166, 0.1)', 'rgba(15, 42, 36, 0.3)', 'rgba(201, 164, 76, 0.1)']} // ✅ Design System
+                colors={isLight ? [themeColors.muted, themeColors.muted] : ['rgba(31, 162, 166, 0.1)', 'rgba(15, 42, 36, 0.3)', 'rgba(201, 164, 76, 0.1)']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.scoreComparisonGradient}
@@ -1403,13 +1419,13 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
                 <View style={[styles.scoreColumn, isViewOnlyMode && styles.scoreColumnDisabled]}>
                   <View style={styles.scoreLabelRow}>
                     <Ionicons name="person" size={12} color={isViewOnlyMode ? '#64748B' : '#1FA2A6'} />
-                    <Text style={[styles.scoreLabel, { color: isViewOnlyMode ? '#64748B' : '#1FA2A6' }]}>
+                    <Text style={[styles.scoreLabel, { color: isViewOnlyMode ? '#64748B' : '#1FA2A6' }, isLight && isViewOnlyMode && { color: themeColors.mutedForeground }]}>
                       {isViewOnlyMode ? 'DEĞERLENDİRME YOK' : 'SİZİN PUANINIZ'}
                     </Text>
                   </View>
                   {isViewOnlyMode ? (
                     <View style={styles.scoreCircleDisabled}>
-                      <Text style={styles.scoreTextDisabled}>—</Text>
+                      <Text style={[styles.scoreTextDisabled, isLight && { color: themeColors.mutedForeground }]}>—</Text>
                     </View>
                   ) : (
                     <View style={styles.scoreCircle}>
@@ -1437,8 +1453,8 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
                         />
                       </Svg>
                       <View style={styles.scoreValue}>
-                        <Text style={styles.scoreText}>{userScore}</Text>
-                        <Text style={styles.scoreMax}>/10</Text>
+                        <Text style={[styles.scoreText, isLight && { color: themeColors.foreground }]}>{userScore}</Text>
+                        <Text style={[styles.scoreMax, isLight && { color: themeColors.mutedForeground }]}>/10</Text>
                       </View>
                     </View>
                   )}
@@ -1446,8 +1462,8 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
 
                 {/* VS Divider */}
                 <View style={styles.scoreDivider}>
-                  <View style={styles.scoreDividerDiamond}>
-                    <Text style={styles.scoreDividerText}>VS</Text>
+                  <View style={[styles.scoreDividerDiamond, isLight && { backgroundColor: themeColors.border }]}>
+                    <Text style={[styles.scoreDividerText, isLight && { color: themeColors.foreground }]}>VS</Text>
                   </View>
                 </View>
 
@@ -1482,8 +1498,8 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
                       />
                     </Svg>
                     <View style={styles.scoreValue}>
-                      <Text style={styles.scoreTextCommunity}>{communityScore}</Text>
-                      <Text style={styles.scoreMax}>/10</Text>
+                      <Text style={[styles.scoreTextCommunity, isLight && { color: themeColors.foreground }]}>{communityScore}</Text>
+                      <Text style={[styles.scoreMax, isLight && { color: themeColors.mutedForeground }]}>/10</Text>
                     </View>
                   </View>
                 </View>
@@ -1492,18 +1508,18 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
 
             {/* Voters Row */}
             <View style={styles.votersRow}>
-              <View style={styles.votersDot} />
-              <Text style={styles.votersText}>
+              <View style={[styles.votersDot, isLight && { backgroundColor: themeColors.mutedForeground }]} />
+              <Text style={[styles.votersText, isLight && { color: themeColors.mutedForeground }]}>
                 {totalVoters > 0 ? `${totalVoters.toLocaleString()} kullanıcı değerlendirdi` : 'Henüz topluluk değerlendirmesi yok'}
               </Text>
-              <View style={styles.votersDot} />
+              <View style={[styles.votersDot, isLight && { backgroundColor: themeColors.mutedForeground }]} />
             </View>
           </LinearGradient>
         </Animated.View>
 
         {/* Rating Categories */}
         <View style={styles.categoriesContainer}>
-          <Text style={styles.sectionTitle}>Kategoriler</Text>
+          <Text style={[styles.sectionTitle, isLight && { color: themeColors.foreground }]}>Kategoriler</Text>
 
           {coachCategories.map((category, index) => {
             const userRating = coachRatings[category.id] ?? 0;
@@ -1514,19 +1530,19 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
               <Animated.View
                 key={category.id}
                 entering={!isWeb && FadeIn ? FadeIn.delay(index * 80) : undefined}
-                style={styles.categoryCard}
+                style={[styles.categoryCard, isLight && { backgroundColor: themeColors.card, borderColor: themeColors.border }]}
               >
                 {/* Category Header */}
                 <View style={styles.categoryHeader}>
                   <View style={styles.categoryTitleRow}>
                     <Text style={styles.categoryEmoji}>{category.emoji}</Text>
                     <View style={styles.categoryTitleContainer}>
-                      <Text style={styles.categoryTitle}>{category.title}</Text>
-                      <Text style={styles.categoryDescription}>{category.description}</Text>
+                      <Text style={[styles.categoryTitle, isLight && { color: themeColors.foreground }]}>{category.title}</Text>
+                      <Text style={[styles.categoryDescription, isLight && { color: themeColors.mutedForeground }]}>{category.description}</Text>
                     </View>
                   </View>
                   <View style={styles.categoryWeight}>
-                    <Text style={styles.categoryWeightText}>{category.weight}%</Text>
+                    <Text style={[styles.categoryWeightText, isLight && { color: themeColors.foreground }]}>{category.weight}%</Text>
                   </View>
                 </View>
 
@@ -1765,11 +1781,11 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
 
             {sortedPlayers.length > 0 && (
               <>
-                {/* 🎯 HEADER: Başlık + Kilit */}
+                {/* 🎯 HEADER: Başlık + Kilit - açık temada okunaklı */}
                 <View style={styles.playerRatingHeader}>
                   <View style={styles.playerRatingHeaderLeft}>
-                    <Text style={styles.playerRatingHeaderTitle}>⚽ Oyuncu Değerlendirmeleri</Text>
-                    <Text style={styles.playerRatingHeaderSubtitle}>
+                    <Text style={[styles.playerRatingHeaderTitle, isLight && { color: themeColors.foreground }]}>⚽ Oyuncu Değerlendirmeleri</Text>
+                    <Text style={[styles.playerRatingHeaderSubtitle, isLight && { color: themeColors.mutedForeground }]}>
                       {starters.length} İlk 11 • {substitutesPlayed.length} Oyuna Girdi
                     </Text>
                   </View>
@@ -1844,6 +1860,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
                               styles.playerCardMini,
                               isSelected && styles.playerCardMiniSelected,
                               isGK && styles.playerCardMiniGK,
+                              isLight && { borderColor: themeColors.border, backgroundColor: themeColors.card },
                             ]}
                             onPress={() => {
                               // ✅ İzleme modunda da oyuncu seçilebilmeli (topluluk verileri gösterilir)
@@ -1871,7 +1888,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
                             activeOpacity={0.7}
                           >
                             <LinearGradient
-                              colors={['#1E3A3A', '#0F2A24']}
+                              colors={isLight ? [themeColors.card, themeColors.card] : ['#1E3A3A', '#0F2A24']}
                               style={styles.playerCardMiniGradient}
                             >
                               {/* Forma Numarası Badge - Üstte */}
@@ -1879,12 +1896,12 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
                                 styles.playerCardMiniJerseyBadge,
                                 isGK && styles.playerCardMiniJerseyBadgeGK,
                               ]}>
-                                <Text style={styles.playerCardMiniNumber}>{player.number}</Text>
+                                <Text style={[styles.playerCardMiniNumber, isLight && { color: themeColors.foreground }]}>{player.number}</Text>
                               </View>
                               
                               {/* İsim */}
                               <Text 
-                                style={styles.playerCardMiniName} 
+                                style={[styles.playerCardMiniName, isLight && { color: themeColors.foreground }]} 
                                 numberOfLines={1}
                               >
                                 {player.name.split(' ').pop()}
@@ -1899,7 +1916,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
                                   </View>
                                 ) : (
                                   <View style={[styles.playerCardMiniStatus, player.isSubstitute && { backgroundColor: 'rgba(249, 115, 22, 0.2)' }]}>
-                                    <Text style={[styles.playerCardMiniStatusText, player.isSubstitute && { color: '#F97316' }]}>
+                                    <Text style={[styles.playerCardMiniStatusText, player.isSubstitute && { color: '#F97316' }, isLight && !player.isSubstitute && { color: themeColors.mutedForeground }]}>
                                       {player.isSubstitute ? '🔄' : '⚽'}
                                     </Text>
                                   </View>
@@ -1917,14 +1934,14 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
                       return (
                         <View key={player.id} style={styles.playerCardMiniWrapper}>
                           <TouchableOpacity
-                            style={[styles.playerCardMini, styles.playerCardMiniDisabled]}
+                            style={[styles.playerCardMini, styles.playerCardMiniDisabled, isLight && { borderColor: themeColors.border, backgroundColor: themeColors.muted }]}
                             onPress={() => {
                               setLockedPlayerInfo({ name: player.name, reason: 'Oyuna girmedi' });
                             }}
                             activeOpacity={0.5}
                           >
                             <LinearGradient
-                              colors={['#334155', '#1E293B']}
+                              colors={isLight ? [themeColors.muted, themeColors.muted] : ['#334155', '#1E293B']}
                               style={styles.playerCardMiniGradient}
                             >
                               {/* Forma Numarası Badge */}
@@ -1968,31 +1985,33 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
                     : (isViewOnlyMode ? communityData.communityAvg : 0);
                   
                   return (
-                    <View style={styles.selectedPlayerPanel}>
+                    <View style={[styles.selectedPlayerPanel, isLight && { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
                       {/* Oyuncu Başlık */}
                       <View style={styles.selectedPlayerHeader}>
                         <LinearGradient
-                          colors={isGK ? ['#C9A44C', '#8B6914'] : ['#1FA2A6', '#0F2A24']}
+                          colors={isLight ? [themeColors.muted, themeColors.muted] : (isGK ? ['#C9A44C', '#8B6914'] : ['#1FA2A6', '#0F2A24'])}
                           style={styles.selectedPlayerHeaderJersey}
                         >
-                          <Text style={styles.selectedPlayerHeaderNumber}>{selectedPlayer.number}</Text>
+                          <Text style={[styles.selectedPlayerHeaderNumber, isLight && { color: themeColors.foreground }]}>{selectedPlayer.number}</Text>
                         </LinearGradient>
                         <View style={styles.selectedPlayerHeaderInfo}>
-                          <Text style={styles.selectedPlayerHeaderName}>{selectedPlayer.name}</Text>
-                          <Text style={styles.selectedPlayerHeaderPos}>
+                          <Text style={[styles.selectedPlayerHeaderName, isLight && { color: themeColors.foreground }]}>{selectedPlayer.name}</Text>
+                          <Text style={[styles.selectedPlayerHeaderPos, isLight && { color: themeColors.mutedForeground }]}>
                             {isGK ? '🧤 Kaleci' : `⚽ ${selectedPlayer.position}`}
                           </Text>
                         </View>
                         <View style={styles.selectedPlayerHeaderAvg}>
                           <Text style={[
                             styles.selectedPlayerHeaderAvgLabel, 
-                            isViewOnlyMode && { color: '#C9A44C' }
+                            isViewOnlyMode && { color: '#C9A44C' },
+                            isLight && !isViewOnlyMode && { color: themeColors.mutedForeground },
                           ]}>
                             {isViewOnlyMode ? 'Topluluk' : 'Ortalama'}
                           </Text>
                           <Text style={[
                             styles.selectedPlayerHeaderAvgValue, 
-                            { color: isViewOnlyMode ? '#C9A44C' : getRatingColor(avgRating) }
+                            { color: isViewOnlyMode ? '#C9A44C' : getRatingColor(avgRating) },
+                            isLight && !isViewOnlyMode && avgRating === 0 && { color: themeColors.mutedForeground },
                           ]}>
                             {avgRating > 0 ? avgRating.toFixed(1) : '—'}
                           </Text>
@@ -2001,9 +2020,9 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
                       
                       {/* 🔀 Değerlendirme Modu Toggle - İzleme modunda gizle */}
                       {isViewOnlyMode ? (
-                        <View style={styles.viewOnlyCommunityBadge}>
+                        <View style={[styles.viewOnlyCommunityBadge, isLight && { backgroundColor: themeColors.muted, borderColor: themeColors.border }]}>
                           <Ionicons name="people" size={14} color="#C9A44C" />
-                          <Text style={styles.viewOnlyCommunityText}>
+                          <Text style={[styles.viewOnlyCommunityText, isLight && { color: themeColors.foreground }]}>
                             Topluluk Değerlendirmesi • {communityData.voters} oy
                           </Text>
                         </View>
@@ -2074,7 +2093,8 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
                                       style={[
                                         styles.categoryCardFixed,
                                         isSelected && styles.categoryCardSelected,
-                                        isSelected && { borderColor: category.color }
+                                        isSelected && { borderColor: category.color },
+                                        isLight && { backgroundColor: themeColors.card, borderColor: isSelected ? category.color : themeColors.border },
                                       ]}
                                       onPress={() => setSelectedCategoryId(category.id)}
                                       activeOpacity={0.7}
@@ -2082,14 +2102,15 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
                                       <Text style={styles.categoryCardEmojiLarge}>{category.emoji}</Text>
                                       <Text style={[
                                         styles.categoryCardTitleFixed,
-                                        isSelected && { color: category.color }
+                                        isSelected && { color: category.color },
+                                        isLight && !isSelected && { color: themeColors.foreground },
                                       ]}>{category.title}</Text>
                                       
                                       {/* Topluluk + Kullanıcı Puanları */}
                                       <View style={styles.categoryCardScores}>
                                         {/* Topluluk Puanı */}
                                         <View style={styles.categoryCardScoreRow}>
-                                          <Text style={styles.categoryCardScoreLabel}>👥</Text>
+                                          <Text style={[styles.categoryCardScoreLabel, isLight && { color: themeColors.mutedForeground }]}>👥</Text>
                                           <Text style={[styles.categoryCardScoreValue, { color: '#C9A44C' }]}>
                                             {commRating?.toFixed(1) || '—'}
                                           </Text>
@@ -2097,10 +2118,11 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
                                         {/* Kullanıcı - İzleme modunda gri */}
                                         {!isViewOnlyMode && (
                                           <View style={styles.categoryCardScoreRow}>
-                                            <Text style={styles.categoryCardScoreLabel}>👤</Text>
+                                            <Text style={[styles.categoryCardScoreLabel, isLight && { color: themeColors.mutedForeground }]}>👤</Text>
                                             <Text style={[
                                               styles.categoryCardScoreValue, 
-                                              { color: userRating !== undefined ? getRatingColor(userRating) : '#64748B' }
+                                              { color: userRating !== undefined ? getRatingColor(userRating) : '#64748B' },
+                                              isLight && userRating === undefined && { color: themeColors.mutedForeground },
                                             ]}>
                                               {userRating !== undefined ? userRating.toFixed(1) : '—'}
                                             </Text>
@@ -2110,7 +2132,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
                                       {/* İzleme modunda: Oy sayısı ve % */}
                                       {isViewOnlyMode && (
                                         <View style={styles.categoryCardVoterInfo}>
-                                          <Text style={styles.categoryCardVoterText}>
+                                          <Text style={[styles.categoryCardVoterText, isLight && { color: themeColors.mutedForeground }]}>
                                             {communityData.voters} oy
                                           </Text>
                                         </View>
@@ -2369,7 +2391,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
           style={styles.savePopupOverlay}
           onPress={() => setShowLockPopup(false)}
         >
-          <Pressable onPress={(e) => e.stopPropagation()} style={styles.lockPopupContainer}>
+          <Pressable onPress={(e) => e.stopPropagation()} style={[styles.lockPopupContainer, isLight && { backgroundColor: themeColors.popover, borderColor: themeColors.border }]}>
             {/* Icon */}
             <View style={[styles.lockPopupIcon, {
               backgroundColor: ratingTimeInfo.isLocked 
@@ -2391,7 +2413,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
             </Text>
 
             {/* Description */}
-            <Text style={styles.lockPopupDesc}>
+            <Text style={[styles.lockPopupDesc, isLight && { color: themeColors.mutedForeground }]}>
               {ratingTimeInfo.lockReason === 'not_started' && (
                 <>Maç henüz başlamadı. Değerlendirme, maç bittikten sonra <Text style={{ fontWeight: '700', color: '#10B981' }}>24 saat</Text> boyunca açık olacak.</>
               )}
@@ -2411,30 +2433,30 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
 
             {/* Info Cards */}
             <View style={styles.lockPopupInfoCards}>
-              <View style={styles.lockPopupInfoCard}>
+              <View style={[styles.lockPopupInfoCard, isLight && { backgroundColor: themeColors.muted, borderColor: themeColors.border }]}>
                 <Ionicons name="timer-outline" size={20} color="#1FA2A6" />
-                <Text style={styles.lockPopupInfoCardTitle}>Kilit Açılışı</Text>
-                <Text style={styles.lockPopupInfoCardDesc}>Maç bitiş düdüğü</Text>
+                <Text style={[styles.lockPopupInfoCardTitle, isLight && { color: themeColors.foreground }]}>Kilit Açılışı</Text>
+                <Text style={[styles.lockPopupInfoCardDesc, isLight && { color: themeColors.mutedForeground }]}>Maç bitiş düdüğü</Text>
               </View>
-              <View style={styles.lockPopupInfoCard}>
+              <View style={[styles.lockPopupInfoCard, isLight && { backgroundColor: themeColors.muted, borderColor: themeColors.border }]}>
                 <Ionicons name="hourglass-outline" size={20} color="#F59E0B" />
-                <Text style={styles.lockPopupInfoCardTitle}>Süre</Text>
-                <Text style={styles.lockPopupInfoCardDesc}>24 saat</Text>
+                <Text style={[styles.lockPopupInfoCardTitle, isLight && { color: themeColors.foreground }]}>Süre</Text>
+                <Text style={[styles.lockPopupInfoCardDesc, isLight && { color: themeColors.mutedForeground }]}>24 saat</Text>
               </View>
-              <View style={styles.lockPopupInfoCard}>
+              <View style={[styles.lockPopupInfoCard, isLight && { backgroundColor: themeColors.muted, borderColor: themeColors.border }]}>
                 <Ionicons name="lock-closed-outline" size={20} color="#EF4444" />
-                <Text style={styles.lockPopupInfoCardTitle}>Kilit Kapanışı</Text>
-                <Text style={styles.lockPopupInfoCardDesc}>24 saat sonra</Text>
+                <Text style={[styles.lockPopupInfoCardTitle, isLight && { color: themeColors.foreground }]}>Kilit Kapanışı</Text>
+                <Text style={[styles.lockPopupInfoCardDesc, isLight && { color: themeColors.mutedForeground }]}>24 saat sonra</Text>
               </View>
             </View>
 
             {/* Close Button */}
             <TouchableOpacity
-              style={styles.lockPopupCloseBtn}
+              style={[styles.lockPopupCloseBtn, isLight && { backgroundColor: 'rgba(31, 162, 166, 0.12)', borderColor: themeColors.border }]}
               onPress={() => setShowLockPopup(false)}
               activeOpacity={0.7}
             >
-              <Text style={styles.lockPopupCloseBtnText}>Anladım</Text>
+              <Text style={[styles.lockPopupCloseBtnText, isLight && { color: themeColors.foreground }]}>Anladım</Text>
             </TouchableOpacity>
           </Pressable>
         </Pressable>
@@ -2451,7 +2473,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
           style={styles.savePopupOverlay}
           onPress={() => setLockedPlayerInfo(null)}
         >
-          <Pressable onPress={(e) => e.stopPropagation()} style={styles.lockPopupContainer}>
+          <Pressable onPress={(e) => e.stopPropagation()} style={[styles.lockPopupContainer, isLight && { backgroundColor: themeColors.popover, borderColor: themeColors.border }]}>
             {/* Icon */}
             <View style={[styles.lockPopupIcon, { backgroundColor: 'rgba(239, 68, 68, 0.15)' }]}>
               <Ionicons name="person-remove" size={32} color="#EF4444" />
@@ -2463,19 +2485,19 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
             </Text>
 
             {/* Description */}
-            <Text style={styles.lockPopupDesc}>
-              <Text style={{ fontWeight: '700', color: '#F1F5F9' }}>{lockedPlayerInfo?.name}</Text> bu maçta {lockedPlayerInfo?.reason}.
+            <Text style={[styles.lockPopupDesc, isLight && { color: themeColors.mutedForeground }]}>
+              <Text style={{ fontWeight: '700', color: isLight ? themeColors.foreground : '#F1F5F9' }}>{lockedPlayerInfo?.name}</Text> bu maçta {lockedPlayerInfo?.reason}.
               {'\n\n'}
               Sadece maçta oynayan oyuncular (ilk 11 + sonradan oyuna giren) değerlendirilebilir.
             </Text>
 
             {/* Close Button */}
             <TouchableOpacity
-              style={styles.lockPopupCloseBtn}
+              style={[styles.lockPopupCloseBtn, isLight && { backgroundColor: 'rgba(31, 162, 166, 0.12)', borderColor: themeColors.border }]}
               onPress={() => setLockedPlayerInfo(null)}
               activeOpacity={0.7}
             >
-              <Text style={styles.lockPopupCloseBtnText}>Anladım</Text>
+              <Text style={[styles.lockPopupCloseBtnText, isLight && { color: themeColors.foreground }]}>Anladım</Text>
             </TouchableOpacity>
           </Pressable>
         </Pressable>
@@ -2492,7 +2514,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
           style={styles.savePopupOverlay}
           onPress={() => setShowViewOnlyPopup(false)}
         >
-          <Pressable onPress={(e) => e.stopPropagation()} style={styles.lockPopupContainer}>
+          <Pressable onPress={(e) => e.stopPropagation()} style={[styles.lockPopupContainer, isLight && { backgroundColor: themeColors.popover, borderColor: themeColors.border }]}>
             {/* Icon */}
             <View style={[styles.lockPopupIcon, { backgroundColor: 'rgba(239, 68, 68, 0.15)' }]}>
               <Ionicons name="eye-off" size={32} color="#EF4444" />
@@ -2504,19 +2526,19 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
             </Text>
 
             {/* Description */}
-            <Text style={styles.lockPopupDesc}>
+            <Text style={[styles.lockPopupDesc, isLight && { color: themeColors.mutedForeground }]}>
               <Text style={{ fontWeight: '700', color: '#EF4444' }}>Kadro tahmini yapmadığınız</Text> için bu maç için değerlendirme yapamazsınız.
               {'\n\n'}
               Topluluk puanlarını görüntüleyebilir ancak kendi değerlendirmenizi yapamazsınız.
             </Text>
 
             {/* 24 Saat Kuralı Info Card */}
-            <View style={styles.viewOnlyRuleCard}>
+            <View style={[styles.viewOnlyRuleCard, isLight && { backgroundColor: themeColors.muted, borderColor: themeColors.border }]}>
               <View style={styles.viewOnlyRuleHeader}>
                 <Ionicons name="time-outline" size={18} color="#10B981" />
-                <Text style={styles.viewOnlyRuleTitle}>Değerlendirme Kuralı</Text>
+                <Text style={[styles.viewOnlyRuleTitle, isLight && { color: themeColors.foreground }]}>Değerlendirme Kuralı</Text>
               </View>
-              <Text style={styles.viewOnlyRuleText}>
+              <Text style={[styles.viewOnlyRuleText, isLight && { color: themeColors.mutedForeground }]}>
                 Bu maça kadro tahmini yapan kullanıcılar, maç bittikten sonra{' '}
                 <Text style={{ fontWeight: '700', color: '#10B981' }}>{ratingTimeInfo.hoursRemaining} saat</Text>{' '}
                 boyunca TD ve oyuncuları değerlendirebilir.
@@ -2524,20 +2546,25 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
             </View>
 
             {/* Gelecek Maçlar Info Card */}
-            <View style={styles.viewOnlyInfoCard}>
+            <View style={[styles.viewOnlyInfoCard, isLight && { backgroundColor: themeColors.muted, borderColor: themeColors.border }]}>
               <Ionicons name="bulb-outline" size={20} color="#F59E0B" />
-              <Text style={styles.viewOnlyInfoText}>
+              <Text style={[styles.viewOnlyInfoText, isLight && { color: themeColors.mutedForeground }]}>
                 Gelecek maçlarda değerlendirme yapabilmek için maç başlamadan önce kadro tahmini yapmalısınız.
               </Text>
             </View>
 
-            {/* Close Button */}
+            {/* Close Button - belirgin CTA */}
             <TouchableOpacity
-              style={styles.lockPopupCloseBtn}
+              style={[
+                styles.lockPopupCloseBtn,
+                isLight
+                  ? { backgroundColor: '#1FA2A6', borderColor: '#1FA2A6', borderWidth: 2, paddingVertical: 14, paddingHorizontal: 24 }
+                  : { backgroundColor: '#1FA2A6', borderColor: '#1FA2A6', borderWidth: 0, paddingVertical: 14, paddingHorizontal: 24 },
+              ]}
               onPress={() => setShowViewOnlyPopup(false)}
               activeOpacity={0.7}
             >
-              <Text style={styles.lockPopupCloseBtnText}>Anladım, İzlemeye Devam Et</Text>
+              <Text style={[styles.lockPopupCloseBtnText, { color: '#FFFFFF', fontWeight: '700', fontSize: 16 }]}>Anladım, İzlemeye Devam Et</Text>
             </TouchableOpacity>
           </Pressable>
         </Pressable>
@@ -2554,28 +2581,28 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
           style={styles.savePopupOverlay}
           onPress={() => setDeleteConfirmPlayer(null)}
         >
-          <Pressable onPress={(e) => e.stopPropagation()} style={styles.deleteConfirmContainer}>
+          <Pressable onPress={(e) => e.stopPropagation()} style={[styles.deleteConfirmContainer, isLight && { backgroundColor: themeColors.popover, borderColor: themeColors.border }]}>
             {/* Icon */}
             <View style={styles.deleteConfirmIcon}>
               <Ionicons name="trash-outline" size={28} color="#EF4444" />
             </View>
 
             {/* Title */}
-            <Text style={styles.deleteConfirmTitle}>Değerlendirmeyi Sil</Text>
+            <Text style={[styles.deleteConfirmTitle, isLight && { color: themeColors.foreground }]}>Değerlendirmeyi Sil</Text>
 
             {/* Description */}
-            <Text style={styles.deleteConfirmDesc}>
-              <Text style={{ fontWeight: '600', color: '#F1F5F9' }}>{deleteConfirmPlayer?.name}</Text> için verdiğiniz puanları silmek istiyor musunuz?
+            <Text style={[styles.deleteConfirmDesc, isLight && { color: themeColors.mutedForeground }]}>
+              <Text style={{ fontWeight: '600', color: isLight ? themeColors.foreground : '#F1F5F9' }}>{deleteConfirmPlayer?.name}</Text> için verdiğiniz puanları silmek istiyor musunuz?
             </Text>
 
             {/* Buttons */}
             <View style={styles.deleteConfirmButtons}>
               <TouchableOpacity
-                style={styles.deleteConfirmBtnCancel}
+                style={[styles.deleteConfirmBtnCancel, isLight && { backgroundColor: themeColors.muted, borderColor: themeColors.border }]}
                 onPress={() => setDeleteConfirmPlayer(null)}
                 activeOpacity={0.7}
               >
-                <Text style={styles.deleteConfirmBtnCancelText}>Vazgeç</Text>
+                <Text style={[styles.deleteConfirmBtnCancelText, isLight && { color: themeColors.mutedForeground }]}>Vazgeç</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -2613,17 +2640,17 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
           style={styles.savePopupOverlay}
           onPress={() => { setShowSavePopup(false); setPendingTab(null); }}
         >
-          <Pressable onPress={(e) => e.stopPropagation()} style={styles.savePopupContainer}>
+          <Pressable onPress={(e) => e.stopPropagation()} style={[styles.savePopupContainer, isLight && { backgroundColor: themeColors.popover, borderColor: themeColors.border }]}>
             {/* Icon */}
             <View style={styles.savePopupIconContainer}>
               <Ionicons name="save-outline" size={32} color="#1FA2A6" />
             </View>
 
             {/* Title */}
-            <Text style={styles.savePopupTitle}>Değişiklikleri Kaydet</Text>
+            <Text style={[styles.savePopupTitle, isLight && { color: themeColors.foreground }]}>Değişiklikleri Kaydet</Text>
 
             {/* Description */}
-            <Text style={styles.savePopupDescription}>
+            <Text style={[styles.savePopupDescription, isLight && { color: themeColors.mutedForeground }]}>
               {activeTab === 'coach' 
                 ? 'TD değerlendirmenizdeki değişiklikler kaydedilmedi. Kaydetmek istiyor musunuz?'
                 : 'Futbolcu değerlendirmelerinizdeki değişiklikler kaydedilmedi. Kaydetmek istiyor musunuz?'
@@ -2633,12 +2660,12 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
             {/* Buttons */}
             <View style={styles.savePopupButtons}>
               <TouchableOpacity
-                style={styles.savePopupBtnCancel}
+                style={[styles.savePopupBtnCancel, isLight && { borderColor: themeColors.border }]}
                 onPress={handleDiscardAndSwitch}
                 activeOpacity={0.7}
               >
                 <Ionicons name="close-circle-outline" size={18} color="#EF4444" />
-                <Text style={styles.savePopupBtnCancelText}>Kaydetme</Text>
+                <Text style={[styles.savePopupBtnCancelText, isLight && { color: themeColors.foreground }]}>Kaydetme</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -2672,7 +2699,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
           style={styles.savePopupOverlay}
           onPress={() => setShowSaveConfirmModal(false)}
         >
-          <Pressable onPress={(e) => e.stopPropagation()} style={styles.savePopupContainer}>
+<Pressable onPress={(e) => e.stopPropagation()} style={[styles.savePopupContainer, isLight && { backgroundColor: themeColors.popover, borderColor: themeColors.border }]}>
             {/* Icon */}
             <View style={{
               width: 64,
@@ -2692,26 +2719,26 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
             </Text>
             
             {/* Description */}
-            <Text style={styles.savePopupDesc}>
-              {saveConfirmType === 'coach' 
+            <Text style={[styles.savePopupDesc, isLight && { color: themeColors.mutedForeground }]}>
+              {saveConfirmType === 'coach'
                 ? 'Teknik direktör değerlendirmeniz kaydedilecek ve artık değiştirilemeyecek.'
                 : 'Futbolcu değerlendirmeleriniz kaydedilecek ve artık değiştirilemeyecek.'
               }
             </Text>
             
-            <Text style={[styles.savePopupDesc, { color: '#94A3B8', marginTop: 8, fontSize: 11 }]}>
+            <Text style={[styles.savePopupDesc, { marginTop: 8, fontSize: 11 }, isLight ? { color: themeColors.mutedForeground } : { color: '#94A3B8' }]}>
               ⚠️ Bu işlem geri alınamaz. Değerlendirmelerinizi kontrol ettiniz mi?
             </Text>
             
             {/* Buttons */}
             <View style={styles.savePopupBtns}>
               <TouchableOpacity
-                style={styles.savePopupBtnCancel}
+                style={[styles.savePopupBtnCancel, isLight && { borderColor: themeColors.border }]}
                 onPress={() => setShowSaveConfirmModal(false)}
                 activeOpacity={0.7}
               >
                 <Ionicons name="close-circle-outline" size={18} color="#EF4444" />
-                <Text style={styles.savePopupBtnCancelText}>Vazgeç</Text>
+                <Text style={[styles.savePopupBtnCancelText, isLight && { color: themeColors.foreground }]}>Vazgeç</Text>
               </TouchableOpacity>
 
               <TouchableOpacity

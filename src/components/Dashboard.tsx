@@ -66,7 +66,8 @@ interface DashboardProps {
 export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, selectedTeamIds = [], hasFavoriteTeams = true }: DashboardProps) {
   const { t } = useTranslation();
   const { theme } = useTheme();
-  const themeColors = theme === 'light' ? COLORS.light : COLORS.dark;
+  const isLight = theme === 'light';
+  const themeColors = isLight ? COLORS.light : COLORS.dark;
   const [isPremium, setIsPremium] = useState(false);
   // ✅ selectedTeamIds artık App.tsx'ten prop olarak geliyor
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -552,28 +553,25 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
         activeOpacity={isLocked ? 1 : 0.8}
         disabled={isLocked}
       >
-        <LinearGradient
-          colors={['#1A3A34', '#162E29', '#122520']}
-          style={styles.matchCard}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
+        <View
+          style={[
+            styles.matchCard,
+            isLight
+              ? { backgroundColor: themeColors.card, borderColor: themeColors.border }
+              : {},
+          ]}
         >
-          {/* Sol kenar gradient şerit */}
-          <LinearGradient
-            colors={homeColors}
-            style={styles.matchCardLeftStrip}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 0, y: 1 }}
-          />
-          
-          {/* Sağ kenar gradient şerit */}
-          <LinearGradient
-            colors={[...awayColors].reverse()}
-            style={styles.matchCardRightStrip}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 0, y: 1 }}
-          />
-          
+          {!isLight && (
+            <LinearGradient
+              colors={['#1A3A34', '#162E29', '#122520']}
+              style={StyleSheet.absoluteFill}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            />
+          )}
+          {/* Takım renkleri her zaman 2 renk (gradient) - açık/koyu tema aynı */}
+            <LinearGradient colors={homeColors} style={styles.matchCardLeftStrip} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} />
+            <LinearGradient colors={[...awayColors].reverse()} style={styles.matchCardRightStrip} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} />
           <View style={styles.matchCardContent}>
               {/* Turnuva Badge - En Üstte Ortada (Tahmin varsa sarı ve tıklanabilir) */}
             {hasPrediction && matchId != null && onDeletePrediction ? (
@@ -609,9 +607,9 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
                 <Text style={styles.matchCardTournamentTextPrediction}>{match.league.name}</Text>
               </TouchableOpacity>
             ) : (
-              <View style={styles.matchCardTournamentBadge}>
-                <Ionicons name="trophy" size={9} color={COLORS.dark.primaryLight} />
-                <Text style={styles.matchCardTournamentText}>{match.league.name}</Text>
+              <View style={[styles.matchCardTournamentBadge, isLight && { backgroundColor: themeColors.muted, borderColor: themeColors.border }]}>
+                <Ionicons name="trophy" size={9} color={isLight ? themeColors.foreground : COLORS.dark.primaryLight} />
+                <Text style={[styles.matchCardTournamentText, isLight && { color: themeColors.foreground }]}>{match.league.name}</Text>
               </View>
             )}
             
@@ -640,8 +638,8 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
               
               return (
                 <View style={styles.matchCardVenueContainer}>
-                  <Ionicons name="location" size={9} color={COLORS.dark.mutedForeground} />
-                  <Text style={styles.matchCardVenueText} numberOfLines={1}>
+                  <Ionicons name="location" size={9} color={isLight ? themeColors.mutedForeground : COLORS.dark.mutedForeground} />
+                  <Text style={[styles.matchCardVenueText, isLight && { color: themeColors.mutedForeground }]} numberOfLines={1}>
                     {venueName || 'Stadyum bilgisi yok'}
                   </Text>
                 </View>
@@ -652,12 +650,12 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
             <View style={styles.matchCardTeamsContainer}>
               {/* Ev Sahibi Takım */}
               <View style={styles.matchCardTeamLeft}>
-                <Text style={styles.matchCardTeamName} numberOfLines={1} ellipsizeMode="tail">{getDisplayTeamName(match.teams.home.name)}</Text>
-                <Text style={styles.matchCardCoachName}>{getCoachName(match.teams.home.name, match.teams.home.id)}</Text>
+                <Text style={[styles.matchCardTeamName, isLight && { color: themeColors.foreground }]} numberOfLines={1} ellipsizeMode="tail">{getDisplayTeamName(match.teams.home.name)}</Text>
+                <Text style={[styles.matchCardCoachName, isLight && { color: themeColors.mutedForeground }]}>{getCoachName(match.teams.home.name, match.teams.home.id)}</Text>
                 {/* ✅ Her zaman aynı yükseklikte skor alanı - sıçrama olmasın */}
                 {(status === 'live' || status === 'finished') ? (
-                  <View style={status === 'live' ? styles.matchCardScoreBoxLive : styles.matchCardScoreBox}>
-                    <Text style={status === 'live' ? styles.matchCardScoreTextLive : styles.matchCardScoreText}>{match.goals?.home ?? 0}</Text>
+                  <View style={[status === 'live' ? styles.matchCardScoreBoxLive : styles.matchCardScoreBox, isLight && (status === 'live' ? {} : { backgroundColor: themeColors.muted })]}>
+                    <Text style={[status === 'live' ? styles.matchCardScoreTextLive : styles.matchCardScoreText, isLight && status !== 'live' && { color: themeColors.foreground }]}>{match.goals?.home ?? 0}</Text>
                   </View>
                 ) : (
                   <View style={styles.matchCardScoreBoxPlaceholder} />
@@ -669,8 +667,8 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
                 <View style={styles.matchCardMatchInfoCard}>
                   {/* Tarih */}
                   <View style={styles.matchCardInfoRow}>
-                    <Ionicons name="time" size={9} color={COLORS.dark.mutedForeground} />
-                    <Text style={styles.matchCardInfoTextBold}>
+                    <Ionicons name="time" size={9} color={isLight ? themeColors.mutedForeground : COLORS.dark.mutedForeground} />
+                    <Text style={[styles.matchCardInfoTextBold, isLight && { color: themeColors.mutedForeground }]}>
                       {new Date(match.fixture.date).toLocaleDateString('tr-TR', { 
                         day: 'numeric', 
                         month: 'long', 
@@ -746,12 +744,12 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
               
               {/* Deplasman Takım */}
               <View style={styles.matchCardTeamRight}>
-                <Text style={[styles.matchCardTeamName, styles.matchCardTeamNameRight]} numberOfLines={1} ellipsizeMode="tail">{getDisplayTeamName(match.teams.away.name)}</Text>
-                <Text style={styles.matchCardCoachNameAway}>{getCoachName(match.teams.away.name, match.teams.away.id)}</Text>
+                <Text style={[styles.matchCardTeamName, styles.matchCardTeamNameRight, isLight && { color: themeColors.foreground }]} numberOfLines={1} ellipsizeMode="tail">{getDisplayTeamName(match.teams.away.name)}</Text>
+                <Text style={[styles.matchCardCoachNameAway, isLight && { color: themeColors.mutedForeground }]}>{getCoachName(match.teams.away.name, match.teams.away.id)}</Text>
                 {/* ✅ Her zaman aynı yükseklikte skor alanı - sıçrama olmasın */}
                 {(status === 'live' || status === 'finished') ? (
-                  <View style={status === 'live' ? styles.matchCardScoreBoxLive : styles.matchCardScoreBox}>
-                    <Text style={status === 'live' ? styles.matchCardScoreTextLive : styles.matchCardScoreText}>{match.goals?.away ?? 0}</Text>
+                  <View style={[status === 'live' ? styles.matchCardScoreBoxLive : styles.matchCardScoreBox, isLight && (status === 'live' ? {} : { backgroundColor: themeColors.muted })]}>
+                    <Text style={[status === 'live' ? styles.matchCardScoreTextLive : styles.matchCardScoreText, isLight && status !== 'live' && { color: themeColors.foreground }]}>{match.goals?.away ?? 0}</Text>
                   </View>
                 ) : (
                   <View style={styles.matchCardScoreBoxPlaceholder} />
@@ -774,25 +772,33 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
                 </LinearGradient>
               ) : status === 'finished' ? (
                 <View style={styles.matchCardFinishedContainer}>
-                  <LinearGradient
-                    colors={['#475569', '#334155']}
-                    style={styles.matchCardFinishedBadge}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                  >
-                    <Ionicons name="checkmark-circle" size={14} color="#94a3b8" />
-                    <Text style={styles.matchCardFinishedText}>MAÇ BİTTİ</Text>
-                    <Ionicons name="chevron-forward" size={12} color="#94a3b8" />
-                  </LinearGradient>
+                  {isLight ? (
+                    <View style={[styles.matchCardFinishedBadge, { backgroundColor: themeColors.muted, borderWidth: 1, borderColor: themeColors.border }]}>
+                      <Ionicons name="checkmark-circle" size={14} color={themeColors.mutedForeground} />
+                      <Text style={[styles.matchCardFinishedText, { color: themeColors.foreground }]}>MAÇ BİTTİ</Text>
+                      <Ionicons name="chevron-forward" size={12} color={themeColors.mutedForeground} />
+                    </View>
+                  ) : (
+                    <LinearGradient
+                      colors={['#475569', '#334155']}
+                      style={styles.matchCardFinishedBadge}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                    >
+                      <Ionicons name="checkmark-circle" size={14} color="#94a3b8" />
+                      <Text style={styles.matchCardFinishedText}>MAÇ BİTTİ</Text>
+                      <Ionicons name="chevron-forward" size={12} color="#94a3b8" />
+                    </LinearGradient>
+                  )}
                 </View>
             ) : (
               status === 'upcoming' && timeDiff > 0 ? (
                 isLocked ? (
                   // 10 günden fazla - tahmine kapalı
                   <View style={styles.matchCardLockedContainer}>
-                    <View style={styles.matchCardLockedBadge}>
-                      <Ionicons name="lock-closed" size={14} color="#64748B" />
-                      <Text style={styles.matchCardLockedText}>
+                    <View style={[styles.matchCardLockedBadge, isLight && { backgroundColor: themeColors.muted, borderColor: themeColors.border }]}>
+                      <Ionicons name="lock-closed" size={14} color={isLight ? themeColors.mutedForeground : '#64748B'} />
+                      <Text style={[styles.matchCardLockedText, isLight && { color: themeColors.mutedForeground }]}>
                         {daysRemaining} GÜN SONRA • TAHMİNE KAPALI
                       </Text>
                     </View>
@@ -860,7 +866,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
             )}
             </View>
           </View>
-        </LinearGradient>
+        </View>
       </TouchableOpacity>
     );
   };
@@ -1182,17 +1188,24 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
 
 
   return (
-    <View style={[styles.container, { backgroundColor: themeColors.background }]}>
-      {/* Grid Pattern Background - Splash screen ile uyumlu */}
-      <View style={styles.gridPattern} />
+    <View style={[styles.container, { backgroundColor: themeColors.background }]} key={`dashboard-${theme}`}>
+      {/* Grid Pattern Background - açık modda açık zemin + görünür kareli yapı */}
+      <View style={[
+        styles.gridPattern,
+        isLight && { backgroundColor: themeColors.background },
+        theme === 'light' && Platform.OS === 'web' && {
+          backgroundImage: `linear-gradient(to right, rgba(15, 42, 36, 0.12) 1px, transparent 1px), linear-gradient(to bottom, rgba(15, 42, 36, 0.12) 1px, transparent 1px)`,
+          backgroundSize: '32px 32px',
+        },
+      ]} />
       
       {/* ✅ Takım filtresi artık ProfileCard içinde - App.tsx'ten yönetiliyor */}
 
       {/* Scrollable Content */}
       <ScrollView
         ref={scrollViewRef}
-        style={[styles.scrollView, { opacity: initialScrollDone ? 1 : 0 }]}
-        contentContainerStyle={styles.scrollContent}
+        style={[styles.scrollView, { opacity: initialScrollDone ? 1 : 0 }, isLight && { backgroundColor: 'transparent' }]}
+        contentContainerStyle={[styles.scrollContent, isLight && { backgroundColor: 'transparent' }]}
         contentOffset={pastSectionHeight > 0 ? { x: 0, y: pastSectionHeight } : undefined}
         showsVerticalScrollIndicator={false}
         snapToOffsets={snapOffsets}
@@ -1204,8 +1217,8 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
         {/* ✅ Loading Indicator - Grid pattern üzerinde */}
         {showLoadingIndicator && (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={BRAND.primary} />
-            <Text style={styles.loadingText}>Maçlar yükleniyor...</Text>
+            <ActivityIndicator size="large" color={isLight ? themeColors.foreground : BRAND.primary} />
+            <Text style={[styles.loadingText, isLight && { color: themeColors.mutedForeground }]}>Maçlar yükleniyor...</Text>
           </View>
         )}
 
@@ -1268,13 +1281,13 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
         )}
 
         {/* Boş Durum - Hiç maç yoksa (ne canlı ne yaklaşan ne geçmiş) */}
-        {!showLoadingIndicator && filteredUpcomingMatches.length === 0 && filteredLiveMatches.length === 0 && displayPastMatches.length === 0 && (
+{!showLoadingIndicator && filteredUpcomingMatches.length === 0 && filteredLiveMatches.length === 0 && displayPastMatches.length === 0 && (
           <View style={styles.emptyState}>
-            <Ionicons name={error ? 'cloud-offline-outline' : 'football-outline'} size={48} color={error ? '#F59E0B' : '#64748B'} />
-            <Text style={styles.emptyText}>
-              {favoriteTeams.length === 0 
+            <Ionicons name={error ? 'cloud-offline-outline' : 'football-outline'} size={48} color={error ? '#F59E0B' : (isLight ? themeColors.mutedForeground : '#64748B')} />
+            <Text style={[styles.emptyText, isLight && { color: themeColors.foreground }]}>
+              {favoriteTeams.length === 0
                 ? t('dashboard.selectFavoriteTeam')
-                : error 
+                : error
                   ? error
                   : t('dashboard.noMatchesFound')}
             </Text>

@@ -19,6 +19,8 @@ import Animated, {
   withTiming,
   useSharedValue,
 } from 'react-native-reanimated';
+import { useTheme } from '../contexts/ThemeContext';
+import { COLORS } from '../theme/theme';
 
 // Web için animasyonları devre dışı bırak
 const isWeb = Platform.OS === 'web';
@@ -34,6 +36,9 @@ export const PaymentSuccessModal: React.FC<PaymentSuccessModalProps> = ({
   onClose,
   plan,
 }) => {
+  const { theme } = useTheme();
+  const isLight = theme === 'light';
+  const themeColors = isLight ? COLORS.light : COLORS.dark;
   const scale = useSharedValue(1);
 
   useEffect(() => {
@@ -61,7 +66,7 @@ export const PaymentSuccessModal: React.FC<PaymentSuccessModalProps> = ({
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
-        <Animated.View entering={isWeb ? undefined : FadeIn} style={styles.container}>
+        <Animated.View entering={isWeb ? undefined : FadeIn} style={[styles.container, isLight && { backgroundColor: themeColors.popover }]}>
           <Animated.View entering={isWeb ? undefined : ZoomIn.delay(200)}>
             <LinearGradient
               colors={['#F59E0B', '#D97706']}
@@ -73,28 +78,28 @@ export const PaymentSuccessModal: React.FC<PaymentSuccessModalProps> = ({
             </LinearGradient>
           </Animated.View>
 
-          <Text style={styles.title}>Ödeme Başarılı! 🎉</Text>
-          <Text style={styles.subtitle}>
+          <Text style={[styles.title, isLight && { color: themeColors.foreground }]}>Ödeme Başarılı! 🎉</Text>
+          <Text style={[styles.subtitle, isLight && { color: themeColors.mutedForeground }]}>
             Artık TacticIQ PRO üyesisin!
           </Text>
 
-          <View style={styles.detailsContainer}>
+          <View style={[styles.detailsContainer, isLight && { backgroundColor: themeColors.muted }]}>
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Plan:</Text>
-              <Text style={styles.detailValue}>{plan?.title}</Text>
+              <Text style={[styles.detailLabel, isLight && { color: themeColors.mutedForeground }]}>Plan:</Text>
+              <Text style={[styles.detailValue, isLight && { color: themeColors.foreground }]}>{plan?.title}</Text>
             </View>
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Tutar:</Text>
-              <Text style={styles.detailValue}>₺{plan?.price}</Text>
+              <Text style={[styles.detailLabel, isLight && { color: themeColors.mutedForeground }]}>Tutar:</Text>
+              <Text style={[styles.detailValue, isLight && { color: themeColors.foreground }]}>₺{plan?.price}</Text>
             </View>
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Başlangıç:</Text>
-              <Text style={styles.detailValue}>Hemen</Text>
+              <Text style={[styles.detailLabel, isLight && { color: themeColors.mutedForeground }]}>Başlangıç:</Text>
+              <Text style={[styles.detailValue, isLight && { color: themeColors.foreground }]}>Hemen</Text>
             </View>
           </View>
 
           <View style={styles.benefitsContainer}>
-            <Text style={styles.benefitsTitle}>Kazandıklarınız:</Text>
+            <Text style={[styles.benefitsTitle, isLight && { color: themeColors.foreground }]}>Kazandıklarınız:</Text>
             <View style={styles.benefitsList}>
               {[
                 'Sınırsız tahmin',
@@ -104,7 +109,7 @@ export const PaymentSuccessModal: React.FC<PaymentSuccessModalProps> = ({
               ].map((benefit, index) => (
                 <View key={index} style={styles.benefitItem}>
                   <Ionicons name="checkmark" size={16} color="#059669" />
-                  <Text style={styles.benefitText}>{benefit}</Text>
+                  <Text style={[styles.benefitText, isLight && { color: themeColors.mutedForeground }]}>{benefit}</Text>
                 </View>
               ))}
             </View>

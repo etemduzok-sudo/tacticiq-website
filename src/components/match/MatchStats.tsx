@@ -16,7 +16,8 @@ import { Platform } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../services/api';
-import { BRAND, DARK_MODE } from '../../theme/theme';
+import { useTheme } from '../../contexts/ThemeContext';
+import { BRAND, DARK_MODE, COLORS } from '../../theme/theme';
 import { isMockTestMatch, getMockMatchStatistics, getMockPlayerStatistics } from '../../data/mockTestData';
 import { PITCH_LAYOUT } from '../../config/constants';
 
@@ -428,6 +429,10 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
   liveStatistics,
   isMatchLive = false,
 }) => {
+  const { theme } = useTheme();
+  const isLight = theme === 'light';
+  const themeColors = isLight ? COLORS.light : COLORS.dark;
+
   // ✅ Substitution bilgilerini parse et
   const substitutionMap = useMemo(() => {
     const map: Record<number, SubstitutionInfo> = {};
@@ -824,17 +829,22 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
   // ✅ Maç henüz başlamadıysa - ScrollView kullanmadan sabit konteyner (Canlı sekmesiyle aynı)
   if (isMatchNotStarted) {
     return (
-      <SafeAreaView style={styles.container}>
-        {/* Tabs - her zaman göster */}
+      <SafeAreaView style={[styles.container, isLight && { backgroundColor: themeColors.background }]}>
+        {/* Tabs - her zaman göster; açık temada okunaklı */}
         <View style={styles.tabsContainer}>
           <TouchableOpacity
-            style={[styles.tab, activeTab === 'match' && styles.tabActive]}
+            style={[
+              styles.tab,
+              activeTab === 'match' && styles.tabActive,
+              isLight && { backgroundColor: activeTab === 'match' ? 'rgba(31, 162, 166, 0.12)' : themeColors.muted, borderColor: activeTab === 'match' ? BRAND.secondary : themeColors.border },
+            ]}
             onPress={() => setActiveTab('match')}
             activeOpacity={0.7}
           >
             <Text style={[
               styles.tabText,
-              activeTab === 'match' && styles.tabTextActive
+              activeTab === 'match' && styles.tabTextActive,
+              isLight && { color: activeTab === 'match' ? BRAND.secondary : themeColors.foreground },
             ]}>
               📊 Maç İstatistikleri
             </Text>
@@ -842,13 +852,18 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.tab, activeTab === 'players' && styles.tabActive]}
+            style={[
+              styles.tab,
+              activeTab === 'players' && styles.tabActive,
+              isLight && { backgroundColor: activeTab === 'players' ? 'rgba(31, 162, 166, 0.12)' : themeColors.muted, borderColor: activeTab === 'players' ? BRAND.secondary : themeColors.border },
+            ]}
             onPress={() => setActiveTab('players')}
             activeOpacity={0.7}
           >
             <Text style={[
               styles.tabText,
-              activeTab === 'players' && styles.tabTextActive
+              activeTab === 'players' && styles.tabTextActive,
+              isLight && { color: activeTab === 'players' ? BRAND.secondary : themeColors.foreground },
             ]}>
               ⭐ Oyuncu İstatistikleri
             </Text>
@@ -856,9 +871,9 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
           </TouchableOpacity>
         </View>
 
-        {/* Maç başlamadı bildirimi - sabit konteyner */}
+        {/* Maç başlamadı bildirimi - açık temada açık kart + koyu metin */}
         <View style={styles.notStartedContainer}>
-          <View style={styles.notStartedCard}>
+          <View style={[styles.notStartedCard, isLight && { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
             <View style={styles.notStartedIconContainer}>
               <Ionicons 
                 name={activeTab === 'match' ? 'stats-chart-outline' : 'people-outline'} 
@@ -866,10 +881,10 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
                 color={BRAND.accent} 
               />
             </View>
-            <Text style={styles.notStartedTitle}>
+            <Text style={[styles.notStartedTitle, isLight && { color: themeColors.foreground }]}>
               {activeTab === 'match' ? 'Maç İstatistikleri' : 'Oyuncu İstatistikleri'}
             </Text>
-            <Text style={styles.notStartedSubtitle}>
+            <Text style={[styles.notStartedSubtitle, isLight && { color: themeColors.mutedForeground }]}>
               {activeTab === 'match' 
                 ? 'Maç başladığında canlı istatistikler\nburada görünecek'
                 : 'Maç başladığında canlı oyuncu performansları\nburada görünecek'}
@@ -881,17 +896,22 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Tabs */}
+    <SafeAreaView style={[styles.container, isLight && { backgroundColor: themeColors.background }]}>
+      {/* Tabs - açık temada okunaklı */}
       <View style={styles.tabsContainer}>
         <TouchableOpacity
-          style={[styles.tab, activeTab === 'match' && styles.tabActive]}
+          style={[
+            styles.tab,
+            activeTab === 'match' && styles.tabActive,
+            isLight && { backgroundColor: activeTab === 'match' ? 'rgba(31, 162, 166, 0.12)' : themeColors.muted, borderColor: activeTab === 'match' ? BRAND.secondary : themeColors.border },
+          ]}
           onPress={() => setActiveTab('match')}
           activeOpacity={0.7}
         >
           <Text style={[
             styles.tabText,
-            activeTab === 'match' && styles.tabTextActive
+            activeTab === 'match' && styles.tabTextActive,
+            isLight && { color: activeTab === 'match' ? BRAND.secondary : themeColors.foreground },
           ]}>
             📊 Maç İstatistikleri
           </Text>
@@ -899,13 +919,18 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.tab, activeTab === 'players' && styles.tabActive]}
+          style={[
+            styles.tab,
+            activeTab === 'players' && styles.tabActive,
+            isLight && { backgroundColor: activeTab === 'players' ? 'rgba(31, 162, 166, 0.12)' : themeColors.muted, borderColor: activeTab === 'players' ? BRAND.secondary : themeColors.border },
+          ]}
           onPress={() => setActiveTab('players')}
           activeOpacity={0.7}
         >
           <Text style={[
             styles.tabText,
-            activeTab === 'players' && styles.tabTextActive
+            activeTab === 'players' && styles.tabTextActive,
+            isLight && { color: activeTab === 'players' ? BRAND.secondary : themeColors.foreground },
           ]}>
             ⭐ Oyuncu İstatistikleri
           </Text>
@@ -925,7 +950,7 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
             {statsLoading ? (
               <View style={styles.statsLoadingWrap}>
                 <ActivityIndicator size="large" color={BRAND.secondary} />
-                <Text style={styles.statsLoadingText}>Maç istatistikleri yükleniyor...</Text>
+                <Text style={[styles.statsLoadingText, isLight && { color: themeColors.mutedForeground }]}>Maç istatistikleri yükleniyor...</Text>
               </View>
             ) : (
               <>
@@ -980,13 +1005,18 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
                   <Animated.View
                     key={`${stat.label}-${index}`}
                     entering={isWeb ? undefined : FadeIn.delay(index * 25)}
-                    style={styles.statRowCard}
+                    style={[
+                      styles.statRowCard,
+                      isLight && { backgroundColor: themeColors.card, borderBottomColor: themeColors.border, borderBottomWidth: 1 },
+                    ]}
                   >
-                    {/* Üst: Değerler ve Label */}
+                    {/* Üst: Değerler ve Label - açık temada okunaklı */}
                     <View style={styles.statHeader}>
                       <Text style={[
                         styles.statValueText,
-                        stat.home > stat.away && styles.statValueTextWinner
+                        stat.home > stat.away && styles.statValueTextWinner,
+                        isLight && { color: themeColors.foreground },
+                        isLight && stat.home > stat.away && { color: '#10B981' },
                       ]}>
                         {stat.homeDisplay}
                       </Text>
@@ -995,19 +1025,21 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
                         <View style={[styles.statIconBg, { backgroundColor: `${iconColor}40` }]}>
                           <Ionicons name={iconName as any} size={16} color={iconColor} />
                         </View>
-                        <Text style={styles.statLabelText}>{stat.label}</Text>
+                        <Text style={[styles.statLabelText, isLight && { color: themeColors.mutedForeground }]}>{stat.label}</Text>
                       </View>
                       
                       <Text style={[
                         styles.statValueText,
-                        stat.away > stat.home && styles.statValueTextWinnerAway
+                        stat.away > stat.home && styles.statValueTextWinnerAway,
+                        isLight && { color: themeColors.foreground },
+                        isLight && stat.away > stat.home && { color: '#F59E0B' },
                       ]}>
                         {stat.awayDisplay}
                       </Text>
                     </View>
                     
                     {/* Alt: Progress Bar */}
-                    <View style={styles.progressBarContainer}>
+                    <View style={[styles.progressBarContainer, isLight && { backgroundColor: themeColors.muted }]}>
                       <Animated.View
                         entering={isWeb ? undefined : FadeIn.delay(index * 25 + 80).duration(500)}
                         style={[

@@ -3,6 +3,8 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import { useTheme } from '../contexts/ThemeContext';
+import { COLORS } from '../theme/theme';
 
 interface BottomNavigationProps {
   activeTab: string;
@@ -17,14 +19,28 @@ const tabConfig = [
   { id: 'profile', labelKey: 'navigation.profile', icon: 'person-outline', activeIcon: 'person' },
 ];
 
+const activeColor = '#059669';
+
 export function BottomNavigation({ activeTab, onTabChange }: BottomNavigationProps) {
   const { t } = useTranslation();
-  
+  const { theme } = useTheme();
+  const isLight = theme === 'light';
+  const themeColors = isLight ? COLORS.light : COLORS.dark;
+
   return (
-    <View style={styles.container}>
+    <View style={[
+      styles.container,
+      isLight && {
+        backgroundColor: themeColors.muted,
+        borderTopWidth: 1,
+        borderTopColor: themeColors.border,
+      },
+    ]}>
       <View style={styles.tabContainer}>
         {tabConfig.map((tab) => {
           const isActive = activeTab === tab.id;
+          const iconColor = isActive ? activeColor : (isLight ? themeColors.mutedForeground : '#64748B');
+          const labelColor = isActive ? activeColor : (isLight ? themeColors.mutedForeground : '#64748B');
 
           return (
             <TouchableOpacity
@@ -36,19 +52,14 @@ export function BottomNavigation({ activeTab, onTabChange }: BottomNavigationPro
               ]}
               activeOpacity={0.7}
             >
-              {/* Icon */}
               <Ionicons
                 name={isActive ? tab.activeIcon : tab.icon}
                 size={20}
-                color={isActive ? '#059669' : '#64748B'}
+                color={iconColor}
               />
-
-              {/* Label - Çeviri ile */}
-              <Text style={[styles.label, isActive && styles.activeLabel]}>
+              <Text style={[styles.label, isActive && styles.activeLabel, { color: labelColor }]}>
                 {t(tab.labelKey)}
               </Text>
-
-              {/* Active Indicator - Yazının altında */}
               {isActive && <View style={styles.activeIndicator} />}
             </TouchableOpacity>
           );

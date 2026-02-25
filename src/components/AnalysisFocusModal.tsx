@@ -12,7 +12,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
-import { SPACING, SIZES } from '../theme/theme';
+import { SPACING, SIZES, COLORS } from '../theme/theme';
+import { useTheme } from '../contexts/ThemeContext';
 import { ANALYSIS_FOCUS_PREDICTIONS } from '../config/analysisFocusMapping';
 
 const { width, height } = Dimensions.get('window');
@@ -157,6 +158,9 @@ export const AnalysisFocusModal: React.FC<AnalysisFocusModalProps> = ({
   onSelectFocus,
   matchInfo,
 }) => {
+  const { theme } = useTheme();
+  const themeColors = theme === 'light' ? COLORS.light : COLORS.dark;
+  const isLight = theme === 'light';
   const [selectedFocus, setSelectedFocus] = useState<AnalysisFocusType | null>(null);
 
   const handleSelectFocus = (focus: AnalysisFocus) => {
@@ -223,17 +227,23 @@ export const AnalysisFocusModal: React.FC<AnalysisFocusModalProps> = ({
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
-        {/* ✅ Grid Pattern Background */}
-        <View style={styles.gridPattern} />
+        {/* ✅ Grid Pattern Background - açık modda daha görünür */}
+        <View style={[
+          styles.gridPattern,
+          isLight && Platform.OS === 'web' && {
+            backgroundImage: `linear-gradient(to right, rgba(15, 42, 36, 0.18) 1px, transparent 1px), linear-gradient(to bottom, rgba(15, 42, 36, 0.18) 1px, transparent 1px)`,
+            backgroundSize: '40px 40px',
+          },
+        ]} />
         
         {/* Kapatma için overlay'e tıklama */}
         <TouchableOpacity style={styles.overlayTouch} onPress={onClose} activeOpacity={1} />
         
-        <View style={styles.modalContainer}>
+        <View style={[styles.modalContainer, { backgroundColor: themeColors.popover, borderColor: themeColors.border }]}>
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.title}>Analiz Odağı Sistemi</Text>
-            <Text style={styles.subtitle}>
+            <Text style={[styles.title, { color: themeColors.foreground }]}>Analiz Odağı Sistemi</Text>
+            <Text style={[styles.subtitle, { color: themeColors.mutedForeground }]}>
               Maç öncesi analiz odağınızı seçin ve belirli kategorilerde bonus kazanın
             </Text>
           </View>

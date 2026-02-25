@@ -2933,10 +2933,9 @@ const createStyles = (isDark: boolean = true) => {
     zIndex: 0,
     ...Platform.select({
       web: {
-        backgroundImage: `
-          linear-gradient(to right, rgba(31, 162, 166, 0.08) 1px, transparent 1px),
-          linear-gradient(to bottom, rgba(31, 162, 166, 0.08) 1px, transparent 1px)
-        `,
+        backgroundImage: isDark
+          ? `linear-gradient(to right, rgba(31, 162, 166, 0.08) 1px, transparent 1px), linear-gradient(to bottom, rgba(31, 162, 166, 0.08) 1px, transparent 1px)`
+          : `linear-gradient(to right, rgba(15, 42, 36, 0.2) 1px, transparent 1px), linear-gradient(to bottom, rgba(15, 42, 36, 0.2) 1px, transparent 1px)`,
         backgroundSize: '40px 40px',
       },
       default: {

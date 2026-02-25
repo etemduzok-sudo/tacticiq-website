@@ -11,6 +11,8 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeIn, ZoomIn } from 'react-native-reanimated';
+import { useTheme } from '../contexts/ThemeContext';
+import { COLORS } from '../theme/theme';
 
 // Web için animasyonları devre dışı bırak
 const isWeb = Platform.OS === 'web';
@@ -26,6 +28,10 @@ export const PaymentFailedModal: React.FC<PaymentFailedModalProps> = ({
   onClose,
   onRetry,
 }) => {
+  const { theme } = useTheme();
+  const isLight = theme === 'light';
+  const themeColors = isLight ? COLORS.light : COLORS.dark;
+
   return (
     <Modal
       visible={visible}
@@ -34,20 +40,20 @@ export const PaymentFailedModal: React.FC<PaymentFailedModalProps> = ({
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
-        <Animated.View entering={isWeb ? undefined : FadeIn} style={styles.container}>
+        <Animated.View entering={isWeb ? undefined : FadeIn} style={[styles.container, isLight && { backgroundColor: themeColors.popover }]}>
           <Animated.View entering={isWeb ? undefined : ZoomIn.delay(200)}>
             <View style={styles.iconContainer}>
               <Ionicons name="close-circle" size={64} color="#EF4444" />
             </View>
           </Animated.View>
 
-          <Text style={styles.title}>Ödeme Başarısız</Text>
-          <Text style={styles.subtitle}>
+          <Text style={[styles.title, isLight && { color: themeColors.foreground }]}>Ödeme Başarısız</Text>
+          <Text style={[styles.subtitle, isLight && { color: themeColors.mutedForeground }]}>
             Üzgünüz, ödeme işleminiz gerçekleştirilemedi.
           </Text>
 
-          <View style={styles.reasonsContainer}>
-            <Text style={styles.reasonsTitle}>Olası Nedenler:</Text>
+          <View style={[styles.reasonsContainer, isLight && { backgroundColor: themeColors.muted }]}>
+            <Text style={[styles.reasonsTitle, isLight && { color: themeColors.foreground }]}>Olası Nedenler:</Text>
             <View style={styles.reasonsList}>
               {[
                 'Yetersiz bakiye',
@@ -57,7 +63,7 @@ export const PaymentFailedModal: React.FC<PaymentFailedModalProps> = ({
               ].map((reason, index) => (
                 <View key={index} style={styles.reasonItem}>
                   <Text style={styles.reasonBullet}>•</Text>
-                  <Text style={styles.reasonText}>{reason}</Text>
+                  <Text style={[styles.reasonText, isLight && { color: themeColors.mutedForeground }]}>{reason}</Text>
                 </View>
               ))}
             </View>
@@ -85,7 +91,7 @@ export const PaymentFailedModal: React.FC<PaymentFailedModalProps> = ({
               onPress={onClose}
               activeOpacity={0.7}
             >
-              <Text style={styles.cancelButtonText}>İptal</Text>
+              <Text style={[styles.cancelButtonText, isLight && { color: themeColors.foreground }]}>İptal</Text>
             </TouchableOpacity>
           </View>
         </Animated.View>

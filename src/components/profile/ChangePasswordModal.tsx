@@ -20,6 +20,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { COLORS, SPACING, TYPOGRAPHY, SIZES } from '../../theme/theme';
+import { useTheme } from '../../contexts/ThemeContext';
 
 interface ChangePasswordModalProps {
   visible: boolean;
@@ -30,8 +31,9 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
   visible,
   onClose,
 }) => {
-  const theme = COLORS.dark; // Use dark theme colors
-  const styles = createStyles(theme);
+  const { theme } = useTheme();
+  const themeColors = theme === 'light' ? COLORS.light : COLORS.dark;
+  const styles = createStyles(themeColors);
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');

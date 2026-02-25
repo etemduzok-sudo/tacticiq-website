@@ -825,3 +825,651 @@ Zaman: 22.02.2026 22:42:38
   Coach: 69% | Renkler: 53% | Kadrolar: 86% | Rating: 57%
   GENEL TAMAMLANMA: 66%
 ================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 24.02.2026 22:11:01
+
+--- KARSILASTIRMA (onceki rapor vs simdiki) ---
+  Toplam takim: 6620  [+3]
+  Coach ile: 4568 (69%)  [+17]
+  Renkler ile: 5609 (85%)  [+2102]
+  Kadrolar 2025: 5663 (86%)  [+4]
+  Oyuncu (ratingli): 17867  [+2743]
+  Toplam oyuncu: 22545  [-3828]
+  Rating %: 79%  [+22]
+  ORTALAMA %: 80%  [+14]
+
+--- OZET ---
+  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 79%
+  GENEL TAMAMLANMA: 80%
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 24.02.2026 22:16:03
+
+--- KARSILASTIRMA (onceki rapor vs simdiki) ---
+  Toplam takim: 6620  [degismedi]
+  Coach ile: 4568 (69%)  [degismedi]
+  Renkler ile: 5609 (85%)  [degismedi]
+  Kadrolar 2025: 5663 (86%)  [degismedi]
+  Oyuncu (ratingli): 17867  [degismedi]
+  Toplam oyuncu: 22545  [degismedi]
+  Rating %: 79%  [degismedi]
+  ORTALAMA %: 80%  [degismedi]
+
+--- OZET ---
+  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 79%
+  GENEL TAMAMLANMA: 80%
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 25.02.2026 01:24:12
+
+--- KARSILASTIRMA (onceki rapor vs simdiki) ---
+  Toplam takim: 6620  [degismedi]
+  Coach ile: 4568 (69%)  [degismedi]
+  Renkler ile: 5609 (85%)  [degismedi]
+  Kadrolar 2025: 5663 (86%)  [degismedi]
+  Oyuncu (ratingli): 17867  [degismedi]
+  Toplam oyuncu: 22545  [degismedi]
+  Rating %: 79%  [degismedi]
+  ORTALAMA %: 80%  [degismedi]
+
+--- OZET ---
+  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 79%
+  GENEL TAMAMLANMA: 80%
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 25.02.2026 13:03:56
+
+--- KARSILASTIRMA (onceki rapor vs simdiki) ---
+  Toplam takim: 6620  [degismedi]
+  Coach ile: 4571 (69%)  [+3]
+  Renkler ile: 5609 (85%)  [degismedi]
+  Kadrolar 2025: 5675 (86%)  [+12]
+  Oyuncu (ratingli): 23489  [+5622]
+  Toplam oyuncu: 25196  [+2651]
+  Rating %: 93%  [+14]
+  ORTALAMA %: 83%  [+3]
+
+--- OZET ---
+  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 93%
+  GENEL TAMAMLANMA: 83%
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 25.02.2026 13:05:53
+
+--- KARSILASTIRMA (onceki rapor vs simdiki) ---
+  Toplam takim: 6620  [degismedi]
+  Coach ile: 4571 (69%)  [degismedi]
+  Renkler ile: 5609 (85%)  [degismedi]
+  Kadrolar 2025: 5675 (86%)  [degismedi]
+  Oyuncu (ratingli): 23471  [-18]
+  Toplam oyuncu: 25198  [+2]
+  Rating %: 93%  [degismedi]
+  ORTALAMA %: 83%  [degismedi]
+
+--- OZET ---
+  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 93%
+  GENEL TAMAMLANMA: 83%
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 25.02.2026 13:12:32
+
+--- KARSILASTIRMA (onceki rapor vs simdiki) ---
+  Toplam takim: 6620  [degismedi]
+  Coach ile: 4571 (69%)  [degismedi]
+  Renkler ile: 5609 (85%)  [degismedi]
+  Kadrolar 2025: 5675 (86%)  [degismedi]
+  Oyuncu (ratingli): 23413  [-58]
+  Toplam oyuncu: 25140  [-58]
+  Rating %: 93%  [degismedi]
+  ORTALAMA %: 83%  [degismedi]
+
+--- OZET ---
+  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 93%
+  GENEL TAMAMLANMA: 83%
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 25.02.2026 13:17:35
+
+--- KARSILASTIRMA (onceki rapor vs simdiki) ---
+  Toplam takim: 6620  [degismedi]
+  Coach ile: 4571 (69%)  [degismedi]
+  Renkler ile: 5609 (85%)  [degismedi]
+  Kadrolar 2025: 5675 (86%)  [degismedi]
+  Oyuncu (ratingli): 23425  [+12]
+  Toplam oyuncu: 25152  [+12]
+  Rating %: 93%  [degismedi]
+  ORTALAMA %: 83%  [degismedi]
+
+--- OZET ---
+  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 93%
+  GENEL TAMAMLANMA: 83%
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 25.02.2026 13:22:35
+
+--- KARSILASTIRMA (onceki rapor vs simdiki) ---
+  Toplam takim: 6620  [degismedi]
+  Coach ile: 4571 (69%)  [degismedi]
+  Renkler ile: 5609 (85%)  [degismedi]
+  Kadrolar 2025: 5675 (86%)  [degismedi]
+  Oyuncu (ratingli): 23385  [-40]
+  Toplam oyuncu: 25112  [-40]
+  Rating %: 93%  [degismedi]
+  ORTALAMA %: 83%  [degismedi]
+
+--- OZET ---
+  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 93%
+  GENEL TAMAMLANMA: 83%
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 25.02.2026 13:27:35
+
+--- KARSILASTIRMA (onceki rapor vs simdiki) ---
+  Toplam takim: 6620  [degismedi]
+  Coach ile: 4571 (69%)  [degismedi]
+  Renkler ile: 5609 (85%)  [degismedi]
+  Kadrolar 2025: 5675 (86%)  [degismedi]
+  Oyuncu (ratingli): 23220  [-165]
+  Toplam oyuncu: 24972  [-140]
+  Rating %: 93%  [degismedi]
+  ORTALAMA %: 83%  [degismedi]
+
+--- OZET ---
+  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 93%
+  GENEL TAMAMLANMA: 83%
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 25.02.2026 13:32:35
+
+--- KARSILASTIRMA (onceki rapor vs simdiki) ---
+  Toplam takim: 6620  [degismedi]
+  Coach ile: 4571 (69%)  [degismedi]
+  Renkler ile: 5609 (85%)  [degismedi]
+  Kadrolar 2025: 5675 (86%)  [degismedi]
+  Oyuncu (ratingli): 23170  [-50]
+  Toplam oyuncu: 24990  [+18]
+  Rating %: 93%  [degismedi]
+  ORTALAMA %: 83%  [degismedi]
+
+--- OZET ---
+  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 93%
+  GENEL TAMAMLANMA: 83%
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 25.02.2026 13:37:35
+
+--- KARSILASTIRMA (onceki rapor vs simdiki) ---
+  Toplam takim: 6620  [degismedi]
+  Coach ile: 4571 (69%)  [degismedi]
+  Renkler ile: 5609 (85%)  [degismedi]
+  Kadrolar 2025: 5675 (86%)  [degismedi]
+  Oyuncu (ratingli): 23148  [-22]
+  Toplam oyuncu: 24968  [-22]
+  Rating %: 93%  [degismedi]
+  ORTALAMA %: 83%  [degismedi]
+
+--- OZET ---
+  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 93%
+  GENEL TAMAMLANMA: 83%
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 25.02.2026 13:42:35
+
+--- KARSILASTIRMA (onceki rapor vs simdiki) ---
+  Toplam takim: 6620  [degismedi]
+  Coach ile: 4571 (69%)  [degismedi]
+  Renkler ile: 5609 (85%)  [degismedi]
+  Kadrolar 2025: 5675 (86%)  [degismedi]
+  Oyuncu (ratingli): 23217  [+69]
+  Toplam oyuncu: 25024  [+56]
+  Rating %: 93%  [degismedi]
+  ORTALAMA %: 83%  [degismedi]
+
+--- OZET ---
+  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 93%
+  GENEL TAMAMLANMA: 83%
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 25.02.2026 13:47:35
+
+--- KARSILASTIRMA (onceki rapor vs simdiki) ---
+  Toplam takim: 6620  [degismedi]
+  Coach ile: 4571 (69%)  [degismedi]
+  Renkler ile: 5609 (85%)  [degismedi]
+  Kadrolar 2025: 5675 (86%)  [degismedi]
+  Oyuncu (ratingli): 23235  [+18]
+  Toplam oyuncu: 25042  [+18]
+  Rating %: 93%  [degismedi]
+  ORTALAMA %: 83%  [degismedi]
+
+--- OZET ---
+  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 93%
+  GENEL TAMAMLANMA: 83%
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 25.02.2026 13:52:35
+
+--- KARSILASTIRMA (onceki rapor vs simdiki) ---
+  Toplam takim: 6620  [degismedi]
+  Coach ile: 4571 (69%)  [degismedi]
+  Renkler ile: 5609 (85%)  [degismedi]
+  Kadrolar 2025: 5675 (86%)  [degismedi]
+  Oyuncu (ratingli): 23235  [degismedi]
+  Toplam oyuncu: 25042  [degismedi]
+  Rating %: 93%  [degismedi]
+  ORTALAMA %: 83%  [degismedi]
+
+--- OZET ---
+  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 93%
+  GENEL TAMAMLANMA: 83%
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 25.02.2026 13:57:35
+
+--- KARSILASTIRMA (onceki rapor vs simdiki) ---
+  Toplam takim: 6620  [degismedi]
+  Coach ile: 4571 (69%)  [degismedi]
+  Renkler ile: 5609 (85%)  [degismedi]
+  Kadrolar 2025: 5675 (86%)  [degismedi]
+  Oyuncu (ratingli): 23272  [+37]
+  Toplam oyuncu: 25099  [+57]
+  Rating %: 93%  [degismedi]
+  ORTALAMA %: 83%  [degismedi]
+
+--- OZET ---
+  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 93%
+  GENEL TAMAMLANMA: 83%
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 25.02.2026 14:02:35
+
+--- KARSILASTIRMA (onceki rapor vs simdiki) ---
+  Toplam takim: 6620  [degismedi]
+  Coach ile: 4571 (69%)  [degismedi]
+  Renkler ile: 5609 (85%)  [degismedi]
+  Kadrolar 2025: 5675 (86%)  [degismedi]
+  Oyuncu (ratingli): 23302  [+30]
+  Toplam oyuncu: 25109  [+10]
+  Rating %: 93%  [degismedi]
+  ORTALAMA %: 83%  [degismedi]
+
+--- OZET ---
+  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 93%
+  GENEL TAMAMLANMA: 83%
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 25.02.2026 14:07:35
+
+--- KARSILASTIRMA (onceki rapor vs simdiki) ---
+  Toplam takim: 6620  [degismedi]
+  Coach ile: 4571 (69%)  [degismedi]
+  Renkler ile: 5609 (85%)  [degismedi]
+  Kadrolar 2025: 5675 (86%)  [degismedi]
+  Oyuncu (ratingli): 23310  [+8]
+  Toplam oyuncu: 25117  [+8]
+  Rating %: 93%  [degismedi]
+  ORTALAMA %: 83%  [degismedi]
+
+--- OZET ---
+  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 93%
+  GENEL TAMAMLANMA: 83%
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 25.02.2026 14:12:36
+
+--- KARSILASTIRMA (onceki rapor vs simdiki) ---
+  Toplam takim: 6620  [degismedi]
+  Coach ile: 4571 (69%)  [degismedi]
+  Renkler ile: 5609 (85%)  [degismedi]
+  Kadrolar 2025: 5675 (86%)  [degismedi]
+  Oyuncu (ratingli): 23122  [-188]
+  Toplam oyuncu: 24949  [-168]
+  Rating %: 93%  [degismedi]
+  ORTALAMA %: 83%  [degismedi]
+
+--- OZET ---
+  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 93%
+  GENEL TAMAMLANMA: 83%
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 25.02.2026 14:17:36
+
+--- KARSILASTIRMA (onceki rapor vs simdiki) ---
+  Toplam takim: 6620  [degismedi]
+  Coach ile: 4571 (69%)  [degismedi]
+  Renkler ile: 5609 (85%)  [degismedi]
+  Kadrolar 2025: 5675 (86%)  [degismedi]
+  Oyuncu (ratingli): 23444  [+322]
+  Toplam oyuncu: 25138  [+189]
+  Rating %: 93%  [degismedi]
+  ORTALAMA %: 83%  [degismedi]
+
+--- OZET ---
+  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 93%
+  GENEL TAMAMLANMA: 83%
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 25.02.2026 14:22:36
+
+--- KARSILASTIRMA (onceki rapor vs simdiki) ---
+  Toplam takim: 6620  [degismedi]
+  Coach ile: 4571 (69%)  [degismedi]
+  Renkler ile: 5609 (85%)  [degismedi]
+  Kadrolar 2025: 5675 (86%)  [degismedi]
+  Oyuncu (ratingli): 23436  [-8]
+  Toplam oyuncu: 25150  [+12]
+  Rating %: 93%  [degismedi]
+  ORTALAMA %: 83%  [degismedi]
+
+--- OZET ---
+  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 93%
+  GENEL TAMAMLANMA: 83%
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 25.02.2026 14:27:36
+
+--- KARSILASTIRMA (onceki rapor vs simdiki) ---
+  Toplam takim: 6620  [degismedi]
+  Coach ile: 4571 (69%)  [degismedi]
+  Renkler ile: 5609 (85%)  [degismedi]
+  Kadrolar 2025: 5675 (86%)  [degismedi]
+  Oyuncu (ratingli): 23461  [+25]
+  Toplam oyuncu: 25175  [+25]
+  Rating %: 93%  [degismedi]
+  ORTALAMA %: 83%  [degismedi]
+
+--- OZET ---
+  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 93%
+  GENEL TAMAMLANMA: 83%
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 25.02.2026 14:32:36
+
+--- KARSILASTIRMA (onceki rapor vs simdiki) ---
+  Toplam takim: 6620  [degismedi]
+  Coach ile: 4571 (69%)  [degismedi]
+  Renkler ile: 5609 (85%)  [degismedi]
+  Kadrolar 2025: 5675 (86%)  [degismedi]
+  Oyuncu (ratingli): 23461  [degismedi]
+  Toplam oyuncu: 25175  [degismedi]
+  Rating %: 93%  [degismedi]
+  ORTALAMA %: 83%  [degismedi]
+
+--- OZET ---
+  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 93%
+  GENEL TAMAMLANMA: 83%
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 25.02.2026 14:37:36
+
+--- KARSILASTIRMA (onceki rapor vs simdiki) ---
+  Toplam takim: 6620  [degismedi]
+  Coach ile: 4571 (69%)  [degismedi]
+  Renkler ile: 5609 (85%)  [degismedi]
+  Kadrolar 2025: 5675 (86%)  [degismedi]
+  Oyuncu (ratingli): 23453  [-8]
+  Toplam oyuncu: 25167  [-8]
+  Rating %: 93%  [degismedi]
+  ORTALAMA %: 83%  [degismedi]
+
+--- OZET ---
+  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 93%
+  GENEL TAMAMLANMA: 83%
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 25.02.2026 14:42:36
+
+--- KARSILASTIRMA (onceki rapor vs simdiki) ---
+  Toplam takim: 6620  [degismedi]
+  Coach ile: 4571 (69%)  [degismedi]
+  Renkler ile: 5609 (85%)  [degismedi]
+  Kadrolar 2025: 5675 (86%)  [degismedi]
+  Oyuncu (ratingli): 23498  [+45]
+  Toplam oyuncu: 25212  [+45]
+  Rating %: 93%  [degismedi]
+  ORTALAMA %: 83%  [degismedi]
+
+--- OZET ---
+  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 93%
+  GENEL TAMAMLANMA: 83%
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 25.02.2026 14:47:36
+
+--- KARSILASTIRMA (onceki rapor vs simdiki) ---
+  Toplam takim: 6620  [degismedi]
+  Coach ile: 4571 (69%)  [degismedi]
+  Renkler ile: 5609 (85%)  [degismedi]
+  Kadrolar 2025: 5675 (86%)  [degismedi]
+  Oyuncu (ratingli): 23531  [+33]
+  Toplam oyuncu: 25245  [+33]
+  Rating %: 93%  [degismedi]
+  ORTALAMA %: 83%  [degismedi]
+
+--- OZET ---
+  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 93%
+  GENEL TAMAMLANMA: 83%
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 25.02.2026 14:52:36
+
+--- KARSILASTIRMA (onceki rapor vs simdiki) ---
+  Toplam takim: 6620  [degismedi]
+  Coach ile: 4571 (69%)  [degismedi]
+  Renkler ile: 5609 (85%)  [degismedi]
+  Kadrolar 2025: 5675 (86%)  [degismedi]
+  Oyuncu (ratingli): 23522  [-9]
+  Toplam oyuncu: 25236  [-9]
+  Rating %: 93%  [degismedi]
+  ORTALAMA %: 83%  [degismedi]
+
+--- OZET ---
+  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 93%
+  GENEL TAMAMLANMA: 83%
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 25.02.2026 14:57:36
+
+--- KARSILASTIRMA (onceki rapor vs simdiki) ---
+  Toplam takim: 6620  [degismedi]
+  Coach ile: 4571 (69%)  [degismedi]
+  Renkler ile: 5609 (85%)  [degismedi]
+  Kadrolar 2025: 5675 (86%)  [degismedi]
+  Oyuncu (ratingli): 23496  [-26]
+  Toplam oyuncu: 25210  [-26]
+  Rating %: 93%  [degismedi]
+  ORTALAMA %: 83%  [degismedi]
+
+--- OZET ---
+  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 93%
+  GENEL TAMAMLANMA: 83%
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 25.02.2026 15:02:36
+
+--- KARSILASTIRMA (onceki rapor vs simdiki) ---
+  Toplam takim: 6620  [degismedi]
+  Coach ile: 4571 (69%)  [degismedi]
+  Renkler ile: 5609 (85%)  [degismedi]
+  Kadrolar 2025: 5675 (86%)  [degismedi]
+  Oyuncu (ratingli): 23567  [+71]
+  Toplam oyuncu: 25281  [+71]
+  Rating %: 93%  [degismedi]
+  ORTALAMA %: 83%  [degismedi]
+
+--- OZET ---
+  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 93%
+  GENEL TAMAMLANMA: 83%
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 25.02.2026 15:07:36
+
+--- KARSILASTIRMA (onceki rapor vs simdiki) ---
+  Toplam takim: 6620  [degismedi]
+  Coach ile: 4571 (69%)  [degismedi]
+  Renkler ile: 5609 (85%)  [degismedi]
+  Kadrolar 2025: 5675 (86%)  [degismedi]
+  Oyuncu (ratingli): 23549  [-18]
+  Toplam oyuncu: 25263  [-18]
+  Rating %: 93%  [degismedi]
+  ORTALAMA %: 83%  [degismedi]
+
+--- OZET ---
+  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 93%
+  GENEL TAMAMLANMA: 83%
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 25.02.2026 15:12:36
+
+--- KARSILASTIRMA (onceki rapor vs simdiki) ---
+  Toplam takim: 6620  [degismedi]
+  Coach ile: 4571 (69%)  [degismedi]
+  Renkler ile: 5609 (85%)  [degismedi]
+  Kadrolar 2025: 5675 (86%)  [degismedi]
+  Oyuncu (ratingli): 23549  [degismedi]
+  Toplam oyuncu: 25263  [degismedi]
+  Rating %: 93%  [degismedi]
+  ORTALAMA %: 83%  [degismedi]
+
+--- OZET ---
+  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 93%
+  GENEL TAMAMLANMA: 83%
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 25.02.2026 15:17:36
+
+--- KARSILASTIRMA (onceki rapor vs simdiki) ---
+  Toplam takim: 6620  [degismedi]
+  Coach ile: 4571 (69%)  [degismedi]
+  Renkler ile: 5609 (85%)  [degismedi]
+  Kadrolar 2025: 5675 (86%)  [degismedi]
+  Oyuncu (ratingli): 23549  [degismedi]
+  Toplam oyuncu: 25263  [degismedi]
+  Rating %: 93%  [degismedi]
+  ORTALAMA %: 83%  [degismedi]
+
+--- OZET ---
+  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 93%
+  GENEL TAMAMLANMA: 83%
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 25.02.2026 15:22:36
+
+--- KARSILASTIRMA (onceki rapor vs simdiki) ---
+  Toplam takim: 6620  [degismedi]
+  Coach ile: 4571 (69%)  [degismedi]
+  Renkler ile: 5609 (85%)  [degismedi]
+  Kadrolar 2025: 5675 (86%)  [degismedi]
+  Oyuncu (ratingli): 23541  [-8]
+  Toplam oyuncu: 25255  [-8]
+  Rating %: 93%  [degismedi]
+  ORTALAMA %: 83%  [degismedi]
+
+--- OZET ---
+  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 93%
+  GENEL TAMAMLANMA: 83%
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 25.02.2026 15:27:36
+
+--- KARSILASTIRMA (onceki rapor vs simdiki) ---
+  Toplam takim: 6620  [degismedi]
+  Coach ile: 4571 (69%)  [degismedi]
+  Renkler ile: 5609 (85%)  [degismedi]
+  Kadrolar 2025: 5675 (86%)  [degismedi]
+  Oyuncu (ratingli): 23541  [degismedi]
+  Toplam oyuncu: 25255  [degismedi]
+  Rating %: 93%  [degismedi]
+  ORTALAMA %: 83%  [degismedi]
+
+--- OZET ---
+  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 93%
+  GENEL TAMAMLANMA: 83%
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 25.02.2026 15:32:36
+
+--- KARSILASTIRMA (onceki rapor vs simdiki) ---
+  Toplam takim: 6620  [degismedi]
+  Coach ile: 4571 (69%)  [degismedi]
+  Renkler ile: 5609 (85%)  [degismedi]
+  Kadrolar 2025: 5675 (86%)  [degismedi]
+  Oyuncu (ratingli): 23506  [-35]
+  Toplam oyuncu: 25245  [-10]
+  Rating %: 93%  [degismedi]
+  ORTALAMA %: 83%  [degismedi]
+
+--- OZET ---
+  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 93%
+  GENEL TAMAMLANMA: 83%
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 25.02.2026 15:37:51
+
+--- KARSILASTIRMA (onceki rapor vs simdiki) ---
+  Toplam takim: 0  [-6620]
+  Coach ile: 0 (0%)  [-4571]
+  Renkler ile: 0 (0%)  [-5609]
+  Kadrolar 2025: 0 (0%)  [-5675]
+  Oyuncu (ratingli): 0  [-23506]
+  Toplam oyuncu: 0  [-25245]
+  Rating %: 0%  [-93]
+  ORTALAMA %: 0%  [-83]
+
+--- OZET ---
+  Coach: 0% | Renkler: 0% | Kadrolar: 0% | Rating: 0%
+  GENEL TAMAMLANMA: 0%
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 25.02.2026 15:42:51
+
+--- KARSILASTIRMA (onceki rapor vs simdiki) ---
+  Toplam takim: 6620  [+6620]
+  Coach ile: 4571 (69%)  [+4571]
+  Renkler ile: 5610 (85%)  [+5610]
+  Kadrolar 2025: 5675 (86%)  [+5675]
+  Oyuncu (ratingli): 23319  [+23319]
+  Toplam oyuncu: 25146  [+25146]
+  Rating %: 93%  [+93]
+  ORTALAMA %: 83%  [+83]
+
+--- OZET ---
+  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 93%
+  GENEL TAMAMLANMA: 83%
+================================================

@@ -16,75 +16,99 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function ChatScreen() {
   const { theme } = useTheme();
-  const colors = theme === 'dark' ? COLORS.dark : COLORS.light;
+  const isLight = theme === 'light';
+  const colors = isLight ? COLORS.light : COLORS.dark;
   
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, isLight && { borderBottomWidth: 1, borderBottomColor: colors.border }]}>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Sohbet</Text>
-        <View style={styles.comingSoonBadge}>
-          <Text style={styles.comingSoonBadgeText}>Yakında</Text>
+        <View style={[styles.comingSoonBadge, isLight && { backgroundColor: 'rgba(201, 164, 76, 0.15)', borderColor: colors.border }]}>
+          <Text style={[styles.comingSoonBadgeText, isLight && { color: '#B45309' }]}>Yakında</Text>
         </View>
       </View>
       
-      {/* Coming Soon Content */}
       <View style={styles.comingSoonContainer}>
-        <LinearGradient
-          colors={['#1A2E2A', '#0F2420']}
-          style={styles.comingSoonCard}
-        >
-          {/* Icon */}
-          <View style={styles.iconContainer}>
-            <LinearGradient
-              colors={['rgba(31, 162, 166, 0.3)', 'rgba(31, 162, 166, 0.1)']}
-              style={styles.iconGradient}
-            >
+        {isLight ? (
+          <View style={[
+            styles.comingSoonCard,
+            {
+              backgroundColor: colors.card,
+              borderWidth: 1,
+              borderColor: colors.border,
+            },
+          ]}>
+            <View style={[styles.iconContainer, isLight && { backgroundColor: colors.muted, borderRadius: 60, padding: 4 }]}>
               <Ionicons name="chatbubbles-outline" size={60} color="#1FA2A6" />
-            </LinearGradient>
-          </View>
-          
-          {/* Title */}
-          <Text style={styles.comingSoonTitle}>Sohbet Odası</Text>
-          <Text style={styles.comingSoonSubtitle}>Çok Yakında</Text>
-          
-          {/* Description */}
-          <Text style={styles.comingSoonDescription}>
-            Maç sırasında diğer TacticIQ kullanıcılarıyla{'\n'}
-            canlı sohbet edebileceksiniz.
-          </Text>
-          
-          {/* Features List */}
-          <View style={styles.featuresContainer}>
-            <View style={styles.featureItem}>
-              <Ionicons name="checkmark-circle" size={18} color="#1FA2A6" />
-              <Text style={styles.featureText}>Canlı maç sohbeti</Text>
             </View>
-            <View style={styles.featureItem}>
-              <Ionicons name="checkmark-circle" size={18} color="#1FA2A6" />
-              <Text style={styles.featureText}>Takım bazlı odalar</Text>
-            </View>
-            <View style={styles.featureItem}>
-              <Ionicons name="checkmark-circle" size={18} color="#1FA2A6" />
-              <Text style={styles.featureText}>Emoji ve gif desteği</Text>
-            </View>
-            <View style={styles.featureItem}>
-              <Ionicons name="checkmark-circle" size={18} color="#1FA2A6" />
-              <Text style={styles.featureText}>AI moderasyonu</Text>
-            </View>
-          </View>
-          
-          {/* Countdown or Beta Info */}
-          <View style={styles.betaInfoContainer}>
-            <Ionicons name="rocket-outline" size={16} color="#C9A44C" />
-            <Text style={styles.betaInfoText}>
-              PRO kullanıcılar için beta erişim yakında
+            <Text style={[styles.comingSoonTitle, { color: colors.foreground }]}>Sohbet Odası</Text>
+            <Text style={[styles.comingSoonSubtitle, { color: '#047857' }]}>Çok Yakında</Text>
+            <Text style={[styles.comingSoonDescription, { color: colors.mutedForeground }]}>
+              Maç sırasında diğer TacticIQ kullanıcılarıyla{'\n'}
+              canlı sohbet edebileceksiniz.
             </Text>
+            <View style={styles.featuresContainer}>
+              {['Canlı maç sohbeti', 'Takım bazlı odalar', 'Emoji ve gif desteği', 'AI moderasyonu'].map((label) => (
+                <View key={label} style={styles.featureItem}>
+                  <Ionicons name="checkmark-circle" size={18} color="#1FA2A6" />
+                  <Text style={[styles.featureText, { color: colors.foreground }]}>{label}</Text>
+                </View>
+              ))}
+            </View>
+            <View style={[styles.betaInfoContainer, isLight && { backgroundColor: 'rgba(201, 164, 76, 0.12)', borderColor: colors.border }]}>
+              <Ionicons name="rocket-outline" size={16} color="#C9A44C" />
+              <Text style={[styles.betaInfoText, isLight && { color: '#B45309' }]}>
+                PRO kullanıcılar için beta erişim yakında
+              </Text>
+            </View>
           </View>
-        </LinearGradient>
+        ) : (
+          <LinearGradient
+            colors={['#1A2E2A', '#0F2420']}
+            style={[styles.comingSoonCard, { borderWidth: 1, borderColor: 'rgba(31, 162, 166, 0.25)' }]}
+          >
+            <View style={styles.iconContainer}>
+              <LinearGradient
+                colors={['rgba(31, 162, 166, 0.3)', 'rgba(31, 162, 166, 0.1)']}
+                style={styles.iconGradient}
+              >
+                <Ionicons name="chatbubbles-outline" size={60} color="#1FA2A6" />
+              </LinearGradient>
+            </View>
+            <Text style={styles.comingSoonTitle}>Sohbet Odası</Text>
+            <Text style={styles.comingSoonSubtitle}>Çok Yakında</Text>
+            <Text style={styles.comingSoonDescription}>
+              Maç sırasında diğer TacticIQ kullanıcılarıyla{'\n'}
+              canlı sohbet edebileceksiniz.
+            </Text>
+            <View style={styles.featuresContainer}>
+              <View style={styles.featureItem}>
+                <Ionicons name="checkmark-circle" size={18} color="#1FA2A6" />
+                <Text style={styles.featureText}>Canlı maç sohbeti</Text>
+              </View>
+              <View style={styles.featureItem}>
+                <Ionicons name="checkmark-circle" size={18} color="#1FA2A6" />
+                <Text style={styles.featureText}>Takım bazlı odalar</Text>
+              </View>
+              <View style={styles.featureItem}>
+                <Ionicons name="checkmark-circle" size={18} color="#1FA2A6" />
+                <Text style={styles.featureText}>Emoji ve gif desteği</Text>
+              </View>
+              <View style={styles.featureItem}>
+                <Ionicons name="checkmark-circle" size={18} color="#1FA2A6" />
+                <Text style={styles.featureText}>AI moderasyonu</Text>
+              </View>
+            </View>
+            <View style={styles.betaInfoContainer}>
+              <Ionicons name="rocket-outline" size={16} color="#C9A44C" />
+              <Text style={styles.betaInfoText}>
+                PRO kullanıcılar için beta erişim yakında
+              </Text>
+            </View>
+          </LinearGradient>
+        )}
         
-        {/* Footer Note */}
-        <Text style={styles.footerNote}>
+        <Text style={[styles.footerNote, { color: colors.mutedForeground }]}>
           TacticIQ'yu kullandığınız için teşekkürler.{'\n'}
           Sohbet özelliğini sizin için geliştiriyoruz!
         </Text>

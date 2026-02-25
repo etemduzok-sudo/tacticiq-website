@@ -19,6 +19,8 @@ import { getTeamColors } from '../utils/teamColors';
 import { useTranslation } from '../hooks/useTranslation';
 import { getCountryRankingLabel } from '../utils/countryUtils';
 import { getDeviceCountryCode } from '../utils/deviceCountry';
+import { useTheme } from '../contexts/ThemeContext';
+import { COLORS } from '../theme/theme';
 
 interface FavoriteTeam {
   id: number;
@@ -60,6 +62,9 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
   showTeamFilter = false,
 }) => {
   const { t } = useTranslation();
+  const { theme } = useTheme();
+  const isLight = theme === 'light';
+  const themeColors = isLight ? COLORS.light : COLORS.dark;
   const [showBadgePopup, setShowBadgePopup] = useState(false);
   
   // ✅ Rozetleri cache'den anında başlat (2 aşamalı yükleme önleme)
@@ -221,10 +226,30 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
       <View>
         <View style={styles.profileButton}>
           {/* Profile card container with grid pattern */}
-            <View style={styles.cardWrapper}>
-              {/* Grid Pattern Background */}
-              <View style={styles.gridPattern} />
-              <View style={styles.whiteCard}>
+            <View style={[
+              styles.cardWrapper,
+              isLight && {
+                backgroundColor: themeColors.card,
+                borderWidth: 1,
+                borderColor: themeColors.border,
+              },
+            ]}>
+              {/* Grid Pattern Background - açık modda daha görünür */}
+              <View style={[
+                styles.gridPattern,
+                isLight && Platform.OS === 'web' && {
+                  backgroundImage: `linear-gradient(to right, rgba(15, 42, 36, 0.1) 1px, transparent 1px), linear-gradient(to bottom, rgba(15, 42, 36, 0.1) 1px, transparent 1px)`,
+                  backgroundSize: '40px 40px',
+                },
+              ]} />
+              <View style={[
+                styles.whiteCard,
+                isLight && {
+                  backgroundColor: themeColors.card,
+                  borderWidth: 1,
+                  borderColor: themeColors.border,
+                },
+              ]}>
             <TouchableOpacity onPress={onPress} activeOpacity={1} style={{ flex: 1 }}>
             <View style={styles.profileContainer}>
               <View style={styles.profileLeft}>
@@ -242,7 +267,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
                 
                 <View style={styles.profileInfo}>
                   <View style={styles.nameRow}>
-                    <Text style={styles.profileName}>{userDisplayName}</Text>
+                    <Text style={[styles.profileName, isLight && { color: themeColors.foreground }]}>{userDisplayName}</Text>
                     {profile?.isPro && (
                       <View style={styles.proBadge}>
                         <Text style={styles.proBadgeText}>PRO</Text>
@@ -251,7 +276,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
                   </View>
                   <View style={styles.statsRow}>
                     <Ionicons name="trending-up" size={11} color="#F79F1B" />
-                    <Text style={styles.profileStats}>
+                    <Text style={[styles.profileStats, isLight && { color: themeColors.mutedForeground }]}>
                       {t('profile.level', { defaultValue: 'Level' })} {userLevel} • {userPoints.toLocaleString()} {t('profile.points', { defaultValue: 'Puan' })}
                     </Text>
                   </View>
@@ -259,16 +284,16 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
               </View>
               
               <View style={styles.profileRight}>
-                <View style={styles.rankingCard}>
-                  <Text style={styles.rankingLabel}>
+                <View style={[styles.rankingCard, isLight && { backgroundColor: themeColors.muted, borderWidth: 1, borderColor: themeColors.border }]}>
+                  <Text style={[styles.rankingLabel, isLight && { color: themeColors.mutedForeground }]}>
                     {t(`profile.countryRanking.${getDeviceCountryCode()?.toUpperCase() || 'TR'}`, { 
                       defaultValue: getCountryRankingLabel(getDeviceCountryCode()) 
                     })}
                   </Text>
                   <View style={styles.rankingValueContainer}>
-                    <View style={styles.rankingGradient}>
+                    <View style={[styles.rankingGradient, isLight && { backgroundColor: themeColors.card }]}>
                       <Ionicons name="trophy" size={12} color="#F79F1B" />
-                      <Text style={styles.rankingValue}>
+                      <Text style={[styles.rankingValue, isLight && { color: themeColors.foreground }]}>
                         #{countryRank || '–'} / {totalPlayers.toLocaleString()}
                       </Text>
                     </View>
@@ -281,7 +306,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
             <View style={styles.badgesContainer}>
               <View style={styles.badgesHeader}>
                 <Ionicons name="ribbon" size={14} color="#F79F1B" />
-                <Text style={styles.badgesTitle}>{t('badges.myBadges')}</Text>
+                <Text style={[styles.badgesTitle, isLight && { color: themeColors.foreground }]}>{t('badges.myBadges')}</Text>
                 <View style={styles.badgeCount}>
                   <Text style={styles.badgeCountText}>{earnedBadges.length}</Text>
                 </View>
@@ -375,9 +400,22 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
             </View>
             </TouchableOpacity>
 
-            {/* ✅ Takım Filtre Barı - Modern pill tasarımı */}
+            {/* ✅ Takım Filtre Barı - Modern pill tasarımı, çerçeve ile ayrım */}
             {showTeamFilter && favoriteTeams.length > 0 && (
-              <View style={styles.teamFilterSection}>
+              <View style={[
+                styles.teamFilterSection,
+                isLight && {
+                  borderTopColor: themeColors.border,
+                  borderTopWidth: 1,
+                  backgroundColor: themeColors.muted,
+                  marginHorizontal: -4,
+                  paddingHorizontal: 12,
+                  paddingBottom: 10,
+                  marginBottom: -2,
+                  borderBottomLeftRadius: 12,
+                  borderBottomRightRadius: 12,
+                },
+              ]}>
                 <ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
@@ -388,23 +426,29 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
                     style={[
                       styles.teamFilterChip,
                       selectedTeamIds.length === 0 && styles.teamFilterChipActive,
+                      isLight && selectedTeamIds.length === 0 && { backgroundColor: 'rgba(31, 162, 166, 0.18)', borderColor: '#1FA2A6' },
+                      isLight && selectedTeamIds.length > 0 && { backgroundColor: themeColors.muted, borderColor: themeColors.border },
                     ]}
                     onPress={() => onTeamSelect?.(null)}
                     activeOpacity={0.7}
                   >
                     <View style={[
                       styles.teamChipIconWrap,
-                      selectedTeamIds.length === 0 && { backgroundColor: 'rgba(255,255,255,0.2)' },
+                      selectedTeamIds.length === 0 && !isLight && { backgroundColor: 'rgba(255,255,255,0.2)' },
+                      selectedTeamIds.length === 0 && isLight && { backgroundColor: 'rgba(255,255,255,0.4)' },
+                      isLight && selectedTeamIds.length > 0 && { backgroundColor: themeColors.border },
                     ]}>
                       <Ionicons 
                         name="apps" 
                         size={12} 
-                        color={selectedTeamIds.length === 0 ? '#FFFFFF' : '#64748B'} 
+                        color={selectedTeamIds.length === 0 ? (isLight ? '#047857' : '#FFFFFF') : (isLight ? themeColors.mutedForeground : '#64748B')} 
                       />
                     </View>
                     <Text style={[
                       styles.teamFilterChipText,
                       selectedTeamIds.length === 0 && styles.teamFilterChipTextActive,
+                      selectedTeamIds.length === 0 && isLight && { color: '#047857' },
+                      isLight && selectedTeamIds.length > 0 && { color: themeColors.foreground },
                     ]}>
                       {t('common.all')}
                     </Text>
@@ -423,6 +467,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
                             backgroundColor: `${colors[0]}22`,
                             borderColor: colors[0],
                           },
+                          isLight && !isSelected && { backgroundColor: themeColors.muted, borderColor: themeColors.border },
                         ]}
                         onPress={() => onTeamSelect?.(team.id)}
                         activeOpacity={0.7}
@@ -442,6 +487,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
                           style={[
                             styles.teamFilterChipText,
                             isSelected && { color: '#F1F5F9' },
+                            isLight && !isSelected && { color: themeColors.foreground },
                           ]} 
                           numberOfLines={1}
                         >

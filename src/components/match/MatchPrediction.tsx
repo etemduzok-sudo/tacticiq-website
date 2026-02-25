@@ -1347,13 +1347,8 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
         if (parsed.playerPredictions && typeof parsed.playerPredictions === 'object') setPlayerPredictions(parsed.playerPredictions);
         if (Array.isArray(parsed.focusedPredictions)) setFocusedPredictions(parsed.focusedPredictions);
         if (parsed.selectedAnalysisFocus) setSelectedAnalysisFocus(parsed.selectedAnalysisFocus);
-        // KİLİTLİ: Maç başlamadan tahminler hiçbir zaman otomatik kilitlenmez
-        // Sadece maç başladığında/bittikçe kilitlenir (isMatchLive/isMatchFinished kontrolü ayrı yapılır)
-        if (isMatchLive || isMatchFinished) {
-          setIsPredictionLocked(true);
-        } else {
-          setIsPredictionLocked(false);
-        }
+        // Kilit: kayıtta saklanan değer veya maç canlı/bitmişse kilitli
+        setIsPredictionLocked(parsed.isPredictionLocked === true || isMatchLive || isMatchFinished);
         
         // ✅ TOPLULUK VERİLERİ KİLİTLEME - hasViewedCommunityData yükle
         // Bu değer true ise kullanıcı topluluk verilerini görmüş demek, tahminleri kalıcı kilitli
@@ -1660,7 +1655,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
         focusedPredictions: focusedPredictions, // 🌟 Strategic Focus
         selectedAnalysisFocus: selectedAnalysisFocus, // 🎯 Seçilen analiz odağı
         teamPerformance, // ✅ Takım performans puanı (1-10), sayfaya dönünce gösterilir
-        isPredictionLocked: (isMatchLive || isMatchFinished), // Sadece maç başladıysa/bittiyse kilitli
+        isPredictionLocked: true, // Kaydet sonrası kilitli (kullanıcı kilidi tekrar açabilir)
         hasViewedCommunityData: hasViewedCommunityData, // ✅ Topluluk verileri görüldü mü?
         independentPredictionBonus: !hasViewedCommunityData && !madeAfterCommunityViewed, // ✅ Bağımsız tahmin bonusu (+%10) - topluluk görüp silip yaptıysa yok
         madeAfterCommunityViewed: madeAfterCommunityViewed, // ✅ Topluluk gördükten sonra silip yeni tahmin yaptı mı? (%80 puan kaybı)
@@ -1749,8 +1744,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
       
       setIsSaving(false);
       setHasUnsavedChanges(false);
-      // KİLİTLİ: Kaydetme sonrası kilitleme YAPILMAZ - kullanıcı maç başlayana kadar tahmin eklemeye devam edebilir
-      // Kilit sadece maç başladığında/bittiğinde aktif olur
+      setIsPredictionLocked(true); // Kaydedince kilitlenip kırmızı göster (eskiden olduğu gibi)
       
       // ✅ TOPLULUK VERİLERİ MODAL - Kayıt sonrası kullanıcıya sor
       // Eğer daha önce topluluk verilerini görmemişse, görmek isteyip istemediğini sor
@@ -2283,7 +2277,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                                   <LinearGradient colors={['#1E3A3A', '#0F2A24']} style={styles.playerCardGradient}>
                                     <View style={[styles.jerseyNumberBadge, (normalizeRatingTo100(player.rating) ?? 0) >= 85 && { backgroundColor: '#C9A44C' }, (player.position === 'GK' || (player.position && String(player.position).toUpperCase() === 'GK')) && { backgroundColor: '#3B82F6' }]}>
                                       <Text style={styles.jerseyNumberText}>
-                                        {player.number != null && player.number > 0 ? player.number : '-'}
+                                        {(player.number ?? player.jersey_number ?? (player as any).shirt_number) != null && (player.number ?? player.jersey_number ?? (player as any).shirt_number) > 0 ? (player.number ?? player.jersey_number ?? (player as any).shirt_number) : '-'}
                                       </Text>
                                     </View>
                                     <Text style={styles.playerName} numberOfLines={1}>{player.name.split(' ').pop()}</Text>
@@ -2367,7 +2361,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                             >
                               <LinearGradient colors={['#1E3A3A', '#0F2A24']} style={styles.playerCardGradient}>
                                 <View style={[styles.jerseyNumberBadge, (normalizeRatingTo100(player.rating) ?? 0) >= 85 && { backgroundColor: '#C9A44C' }]}>
-                                  <Text style={styles.jerseyNumberText}>{player.number != null && player.number > 0 ? player.number : '-'}</Text>
+                                  <Text style={styles.jerseyNumberText}>{(player.number ?? player.jersey_number ?? (player as any).shirt_number) != null && (player.number ?? player.jersey_number ?? (player as any).shirt_number) > 0 ? (player.number ?? player.jersey_number ?? (player as any).shirt_number) : '-'}</Text>
                                 </View>
                                 <Text style={styles.playerName} numberOfLines={1}>{player.name.split(' ').pop()}</Text>
                                 <View style={styles.playerBottomRow}>
@@ -2459,7 +2453,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                               >
                                 <LinearGradient colors={['#1E3A3A', '#0F2A24']} style={styles.playerCardGradient}>
                                   <View style={[styles.jerseyNumberBadge, (normalizeRatingTo100(player.rating) ?? 0) >= 85 && { backgroundColor: '#C9A44C' }]}>
-                                    <Text style={styles.jerseyNumberText}>{player.number != null && player.number > 0 ? player.number : '-'}</Text>
+                                    <Text style={styles.jerseyNumberText}>{(player.number ?? player.jersey_number ?? (player as any).shirt_number) != null && (player.number ?? player.jersey_number ?? (player as any).shirt_number) > 0 ? (player.number ?? player.jersey_number ?? (player as any).shirt_number) : '-'}</Text>
                                   </View>
                                   <Text style={styles.playerName} numberOfLines={1}>{player.name.split(' ').pop()}</Text>
                                   <View style={styles.playerBottomRow}>
@@ -2813,7 +2807,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                             (normalizeRatingTo100(player.rating) ?? 0) < 85 && (player.position === 'GK' || isGoalkeeperPlayer(player)) && { backgroundColor: '#3B82F6' },
                           ]}>
                             <Text style={styles.jerseyNumberText}>
-                              {player.number != null && player.number > 0 ? player.number : '-'}
+                              {(player.number ?? player.jersey_number ?? (player as any).shirt_number) != null && (player.number ?? player.jersey_number ?? (player as any).shirt_number) > 0 ? (player.number ?? player.jersey_number ?? (player as any).shirt_number) : '-'}
                             </Text>
                           </View>
                           <Text style={styles.playerName} numberOfLines={1}>
@@ -2954,12 +2948,12 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
             <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(245,158,11,0.12)', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
               <Ionicons name="people" size={32} color="#F59E0B" />
             </View>
-            <Text style={{ color: '#F1F5F9', fontSize: 17, fontWeight: '700', textAlign: 'center', marginBottom: 8 }}>
+            <Text style={{ color: cardTitleColor, fontSize: 17, fontWeight: '700', textAlign: 'center', marginBottom: 8 }}>
               {hasPrediction
                 ? 'Bağımsız Tahmin Modundasınız'
                 : 'Topluluk Verileri Kilitli'}
             </Text>
-            <Text style={{ color: '#94A3B8', fontSize: 13, textAlign: 'center', lineHeight: 20, marginBottom: 20 }}>
+            <Text style={{ color: cardLabelColor, fontSize: 13, textAlign: 'center', lineHeight: 20, marginBottom: 20 }}>
               {hasPrediction
                 ? 'Topluluk tahminlerini görmek için aşağıdaki butonu kullanabilirsiniz.\n\nMaç başladığında topluluk verileri otomatik açılacak ve +%10 bağımsız tahmin bonusu kazanacaksınız.'
                 : 'Topluluk tahminlerini görmek için önce kendi tahminlerinizi yapın ve kaydedin.'}
@@ -3003,7 +2997,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
             {hasPrediction && !hasViewedCommunityData && (
               <View style={{ marginTop: 12, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(239,68,68,0.1)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 }}>
                 <Ionicons name="warning" size={14} color="#EF4444" />
-                <Text style={{ fontSize: 11, color: '#FCA5A5' }}>Topluluk verilerini görürseniz tahminleriniz kalıcı kilitlenir</Text>
+                <Text style={{ fontSize: 11, color: isLight ? '#B91C1C' : '#FCA5A5' }}>Topluluk verilerini görürseniz tahminleriniz kalıcı kilitlenir</Text>
               </View>
             )}
           </View>
@@ -3014,10 +3008,10 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
             <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(16,185,129,0.12)', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
               <Ionicons name="football" size={32} color="#10B981" />
             </View>
-            <Text style={{ color: '#F1F5F9', fontSize: 17, fontWeight: '700', textAlign: 'center', marginBottom: 8 }}>
+            <Text style={{ color: cardTitleColor, fontSize: 17, fontWeight: '700', textAlign: 'center', marginBottom: 8 }}>
               Gerçek Kadro Hazır
             </Text>
-            <Text style={{ color: '#94A3B8', fontSize: 13, textAlign: 'center', lineHeight: 20, marginBottom: 20 }}>
+            <Text style={{ color: cardLabelColor, fontSize: 13, textAlign: 'center', lineHeight: 20, marginBottom: 20 }}>
               {'Gerçek ilk 11 ve formasyon açıklandı.\nGörmek isterseniz aşağıdaki butonu kullanın.\n\n⚠️ Gerçek kadroyu görürseniz tahminleriniz kalıcı olarak kilitlenecektir.'}
             </Text>
             {canShowRealLineupButton && (
@@ -3057,7 +3051,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
             )}
             <View style={{ marginTop: 12, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(239,68,68,0.1)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 }}>
               <Ionicons name="warning" size={14} color="#EF4444" />
-              <Text style={{ fontSize: 11, color: '#FCA5A5' }}>Gerçek kadroyu görürseniz tahminleriniz kalıcı kilitlenir</Text>
+              <Text style={{ fontSize: 11, color: isLight ? '#B91C1C' : '#FCA5A5' }}>Gerçek kadroyu görürseniz tahminleriniz kalıcı kilitlenir</Text>
             </View>
           </View>
         )}
@@ -3067,10 +3061,10 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
             <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(245,158,11,0.12)', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
               <Ionicons name="people" size={32} color="#F59E0B" />
             </View>
-            <Text style={{ color: '#F1F5F9', fontSize: 17, fontWeight: '700', textAlign: 'center', marginBottom: 8 }}>
+            <Text style={{ color: cardTitleColor, fontSize: 17, fontWeight: '700', textAlign: 'center', marginBottom: 8 }}>
               Topluluk Verileri Henüz Yeterli Değil
             </Text>
-            <Text style={{ color: '#94A3B8', fontSize: 13, textAlign: 'center', lineHeight: 20 }}>
+            <Text style={{ color: cardLabelColor, fontSize: 13, textAlign: 'center', lineHeight: 20 }}>
               Yeterli sayıda kullanıcı tahmin yaptığında topluluk verileri burada gösterilecektir.
             </Text>
           </View>
@@ -3125,7 +3119,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                   })}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <Text style={styles.sectionInfoButtonText}>i</Text>
+                  <Text style={[styles.sectionInfoButtonText, { color: cardLabelColor }]}>i</Text>
                 </TouchableOpacity>
                 )}
               </View>
@@ -3134,7 +3128,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
             {/* Minimalist Skor Seçici */}
             <View style={styles.scoreDisplayMinimal}>
               <View style={styles.scoreTeamMinimal}>
-                <Text style={[styles.scoreTeamLabelMinimal, styles.scoreTeamLabelFirstHalf]}>EV</Text>
+                <Text style={[styles.scoreTeamLabelMinimal, styles.scoreTeamLabelFirstHalf, { color: cardLabelColor }]}>EV</Text>
                 <View style={styles.scoreValueContainerMinimal}>
                   {!isCardReadOnly && (
                   <TouchableOpacity 
@@ -3144,7 +3138,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                     <Ionicons name="remove" size={18} color="#64748B" />
                   </TouchableOpacity>
                   )}
-                  <Text style={[styles.scoreValueMinimal, styles.scoreValueFirstHalf]}>{displayValues.firstHalfHomeScore != null ? displayValues.firstHalfHomeScore : '-'}</Text>
+                  <Text style={[styles.scoreValueMinimal, styles.scoreValueFirstHalf, { color: cardTitleColor }]}>{displayValues.firstHalfHomeScore != null ? displayValues.firstHalfHomeScore : '-'}</Text>
                   {!isCardReadOnly && (
                   <TouchableOpacity 
                     style={styles.scoreAdjustBtn}
@@ -3157,11 +3151,11 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
               </View>
               
               <View style={styles.scoreDashMinimal}>
-                <Text style={styles.scoreDashTextMinimal}>:</Text>
+                <Text style={[styles.scoreDashTextMinimal, { color: cardTitleColor }]}>:</Text>
               </View>
               
               <View style={styles.scoreTeamMinimal}>
-                <Text style={[styles.scoreTeamLabelMinimal, styles.scoreTeamLabelFirstHalf]}>DEP</Text>
+                <Text style={[styles.scoreTeamLabelMinimal, styles.scoreTeamLabelFirstHalf, { color: cardLabelColor }]}>DEP</Text>
                 <View style={styles.scoreValueContainerMinimal}>
                   {!isCardReadOnly && (
                   <TouchableOpacity 
@@ -3171,7 +3165,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                     <Ionicons name="remove" size={18} color="#64748B" />
                   </TouchableOpacity>
                   )}
-                  <Text style={[styles.scoreValueMinimal, styles.scoreValueFirstHalf]}>{displayValues.firstHalfAwayScore != null ? displayValues.firstHalfAwayScore : '-'}</Text>
+                  <Text style={[styles.scoreValueMinimal, styles.scoreValueFirstHalf, { color: cardTitleColor }]}>{displayValues.firstHalfAwayScore != null ? displayValues.firstHalfAwayScore : '-'}</Text>
                   {!isCardReadOnly && (
                   <TouchableOpacity 
                     style={styles.scoreAdjustBtn}
@@ -3190,9 +3184,9 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
             <View style={styles.sliderSectionCombined}>
               <View style={styles.sliderHeaderCombined}>
                 <Ionicons name="time-outline" size={12} color="#64748B" />
-                <Text style={styles.sliderLabelCombined}>Uzatma Süresi</Text>
+                <Text style={[styles.sliderLabelCombined, { color: cardLabelColor }]}>Uzatma Süresi</Text>
                 <View style={[styles.sliderValueBadgeCombined, styles.sliderValueBadgeFirstHalf]}>
-                  <Text style={styles.sliderValueTextCombined}>
+                  <Text style={[styles.sliderValueTextCombined, isLight && { color: themeColors.foreground }]}>
                     +{(() => {
                       const val = predictions.firstHalfInjuryTime;
                       if (!val) return '0';
@@ -3226,7 +3220,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                       hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
                       activeOpacity={0.7}
                     >
-                      <Text style={styles.sliderMarkCombined}>{mark === 10 ? '10+' : mark}</Text>
+                      <Text style={[styles.sliderMarkCombined, { color: cardLabelColor }]}>{mark === 10 ? '10+' : mark}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -3284,7 +3278,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                   })}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <Text style={styles.sectionInfoButtonText}>i</Text>
+                  <Text style={[styles.sectionInfoButtonText, { color: cardLabelColor }]}>i</Text>
                 </TouchableOpacity>
                 )}
               </View>
@@ -3293,7 +3287,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
             {/* Minimalist Skor Seçici */}
             <View style={styles.scoreDisplayMinimal}>
               <View style={styles.scoreTeamMinimal}>
-                <Text style={[styles.scoreTeamLabelMinimal, styles.scoreTeamLabelFullTime]}>EV</Text>
+                <Text style={[styles.scoreTeamLabelMinimal, styles.scoreTeamLabelFullTime, { color: cardLabelColor }]}>EV</Text>
                 <View style={styles.scoreValueContainerMinimal}>
                   {!isCardReadOnly && (
                   <TouchableOpacity 
@@ -3307,7 +3301,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                     <Ionicons name="remove" size={18} color="#64748B" />
                   </TouchableOpacity>
                   )}
-                  <Text style={[styles.scoreValueMinimal, styles.scoreValueFullTime]}>{displayValues.secondHalfHomeScore != null ? displayValues.secondHalfHomeScore : '-'}</Text>
+                  <Text style={[styles.scoreValueMinimal, styles.scoreValueFullTime, { color: cardTitleColor }]}>{displayValues.secondHalfHomeScore != null ? displayValues.secondHalfHomeScore : '-'}</Text>
                   {!isCardReadOnly && (
                   <TouchableOpacity 
                     style={styles.scoreAdjustBtn}
@@ -3320,11 +3314,11 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
               </View>
               
               <View style={styles.scoreDashMinimal}>
-                <Text style={styles.scoreDashTextMinimal}>:</Text>
+                <Text style={[styles.scoreDashTextMinimal, { color: cardTitleColor }]}>:</Text>
               </View>
               
               <View style={styles.scoreTeamMinimal}>
-                <Text style={[styles.scoreTeamLabelMinimal, styles.scoreTeamLabelFullTime]}>DEP</Text>
+                <Text style={[styles.scoreTeamLabelMinimal, styles.scoreTeamLabelFullTime, { color: cardLabelColor }]}>DEP</Text>
                 <View style={styles.scoreValueContainerMinimal}>
                   {!isCardReadOnly && (
                   <TouchableOpacity 
@@ -3338,7 +3332,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                     <Ionicons name="remove" size={18} color="#64748B" />
                   </TouchableOpacity>
                   )}
-                  <Text style={[styles.scoreValueMinimal, styles.scoreValueFullTime]}>{displayValues.secondHalfAwayScore != null ? displayValues.secondHalfAwayScore : '-'}</Text>
+                  <Text style={[styles.scoreValueMinimal, styles.scoreValueFullTime, { color: cardTitleColor }]}>{displayValues.secondHalfAwayScore != null ? displayValues.secondHalfAwayScore : '-'}</Text>
                   {!isCardReadOnly && (
                   <TouchableOpacity 
                     style={styles.scoreAdjustBtn}
@@ -3357,9 +3351,9 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
             <View style={styles.sliderSectionCombined}>
               <View style={styles.sliderHeaderCombined}>
                 <Ionicons name="time-outline" size={12} color="#64748B" />
-                <Text style={styles.sliderLabelCombined}>Uzatma Süresi</Text>
+                <Text style={[styles.sliderLabelCombined, { color: cardLabelColor }]}>Uzatma Süresi</Text>
                 <View style={[styles.sliderValueBadgeCombined, styles.sliderValueBadgeFullTime]}>
-                  <Text style={styles.sliderValueTextCombined}>
+                  <Text style={[styles.sliderValueTextCombined, isLight && { color: themeColors.foreground }]}>
                     +{(() => {
                       const val = predictions.secondHalfInjuryTime;
                       if (!val) return '0';
@@ -3393,7 +3387,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                       hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
                       activeOpacity={0.7}
                     >
-                      <Text style={styles.sliderMarkCombined}>{mark === 10 ? '10+' : mark}</Text>
+                      <Text style={[styles.sliderMarkCombined, { color: cardLabelColor }]}>{mark === 10 ? '10+' : mark}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -3450,7 +3444,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                   })}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <Text style={styles.sectionInfoButtonText}>i</Text>
+                  <Text style={[styles.sectionInfoButtonText, { color: cardLabelColor }]}>i</Text>
                 </TouchableOpacity>
                 )}
               </View>
@@ -3460,7 +3454,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
             <View style={styles.disciplineBarSection}>
               <View style={styles.disciplineBarHeader}>
                 <Text style={[styles.disciplineBarTitle, { color: cardLabelColor }]}>Toplam Gol</Text>
-                {!isCardReadOnly && !isViewOnlyMode && <Text style={[styles.disciplineBarValue, { color: '#10B981' }]}>{effectiveTotalGoals || '?'}</Text>}
+                {!isCardReadOnly && !isViewOnlyMode && <Text style={[styles.disciplineBarValue, { color: isLight ? themeColors.foreground : '#10B981' }]}>{effectiveTotalGoals || '?'}</Text>}
               </View>
               <View style={styles.disciplineBarTrack}>
                 {TOTAL_GOALS_RANGES.map((range) => {
@@ -3629,7 +3623,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                   })}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <Text style={styles.sectionInfoButtonText}>i</Text>
+                  <Text style={[styles.sectionInfoButtonText, { color: cardLabelColor }]}>i</Text>
                 </TouchableOpacity>
                 )}
               </View>
@@ -3764,7 +3758,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                   })}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <Text style={styles.sectionInfoButtonText}>i</Text>
+                  <Text style={[styles.sectionInfoButtonText, { color: cardLabelColor }]}>i</Text>
                 </TouchableOpacity>
                 )}
               </View>
@@ -3809,7 +3803,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                 />
                 <View style={styles.sliderMarksCombined}>
                   {[30, 35, 40, 45, 50, 55, 60, 65, 70].map((mark) => (
-                    <Text key={String(mark)} style={styles.sliderMarkCombined}>{mark}</Text>
+                    <Text key={String(mark)} style={[styles.sliderMarkCombined, { color: cardLabelColor }]}>{mark}</Text>
                   ))}
                 </View>
               </View>
@@ -3873,7 +3867,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                   })}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <Text style={styles.sectionInfoButtonText}>i</Text>
+                  <Text style={[styles.sectionInfoButtonText, { color: cardLabelColor }]}>i</Text>
                 </TouchableOpacity>
                 )}
               </View>
@@ -4024,7 +4018,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                   })}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <Text style={styles.sectionInfoButtonText}>i</Text>
+                  <Text style={[styles.sectionInfoButtonText, { color: cardLabelColor }]}>i</Text>
                 </TouchableOpacity>
                 )}
               </View>
@@ -4057,8 +4051,8 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                       activeOpacity={isCardReadOnly ? 1 : 0.7}
                       disabled={isViewOnlyMode}
                     >
-                      <Ionicons name={item.icon as any} size={16} color={isActive ? item.color : '#64748B'} />
-                      <Text style={[styles.tempoBtnText, isActive && { color: item.color }]}>
+                      <Ionicons name={item.icon as any} size={16} color={isActive ? item.color : (isLight ? themeColors.mutedForeground : '#64748B')} />
+                      <Text style={[styles.tempoBtnText, !isActive && { color: cardLabelColor }, isActive && { color: item.color }]}>
                         {item.label}
                       </Text>
                     </TouchableOpacity>
@@ -4096,8 +4090,8 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                       activeOpacity={isCardReadOnly ? 1 : 0.7}
                       disabled={isViewOnlyMode}
                     >
-                      <Ionicons name={item.icon as any} size={18} color={isActive ? item.color : '#64748B'} />
-                      <Text style={[styles.scenarioBtnText, isActive && { color: item.color }]}>
+                      <Ionicons name={item.icon as any} size={18} color={isActive ? item.color : (isLight ? themeColors.mutedForeground : '#64748B')} />
+                      <Text style={[styles.scenarioBtnText, !isActive && { color: cardLabelColor }, isActive && { color: item.color }]}>
                         {item.label}
                       </Text>
                     </TouchableOpacity>

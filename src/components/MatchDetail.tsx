@@ -1293,7 +1293,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
   };
 
   const isLight = theme === 'light';
-  const headerBg = isLight ? themeColors.card : '#0F2A24';
+  const headerBg = isLight ? themeColors.muted : '#0F2A24';
   const headerFg = isLight ? themeColors.foreground : '#F8FAFB';
   const headerMuted = isLight ? themeColors.mutedForeground : '#94A3B8';
 
@@ -1301,8 +1301,14 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
     <View style={[styles.container, { backgroundColor: themeColors.background }]}>
       <StatusBar barStyle={theme === 'light' ? 'dark-content' : 'light-content'} />
       
-      {/* ✅ Grid Pattern Background - Dashboard ile aynı */}
-      <View style={styles.gridPattern} />
+      {/* ✅ Grid Pattern Background - açık modda daha görünür kareli yapı */}
+      <View style={[
+        styles.gridPattern,
+        isLight && Platform.OS === 'web' && {
+          backgroundImage: `linear-gradient(to right, rgba(15, 42, 36, 0.2) 1px, transparent 1px), linear-gradient(to bottom, rgba(15, 42, 36, 0.2) 1px, transparent 1px)`,
+          backgroundSize: '40px 40px',
+        },
+      ]} />
 
       {/* Sticky Match Card Header - ProfileCard overlay gibi - tema ile uyumlu */}
       <View style={[styles.matchCardOverlay, { backgroundColor: headerBg }]}>
@@ -1428,15 +1434,21 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
                   <Text style={[styles.dateText, { color: headerMuted }]}>{matchData.date}</Text>
                 </View>
                 
-                {/* Saat Badge - Dashboard stili ile aynı */}
-                <LinearGradient
-                  colors={['#1FA2A6', '#047857']}
-                  style={styles.timeBadge}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                >
-                  <Text style={[styles.timeBadgeText, isLight && { color: '#FFFFFF' }]}>{matchData.time}</Text>
-                </LinearGradient>
+                {/* Saat Badge - açık temada hafif zemin + koyu metin (koyu alan kalmasın) */}
+                {isLight ? (
+                  <View style={[styles.timeBadge, { backgroundColor: themeColors.muted, borderWidth: 1, borderColor: themeColors.border }]}>
+                    <Text style={[styles.timeBadgeText, { color: themeColors.foreground }]}>{matchData.time}</Text>
+                  </View>
+                ) : (
+                  <LinearGradient
+                    colors={['#1FA2A6', '#047857']}
+                    style={styles.timeBadge}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                  >
+                    <Text style={styles.timeBadgeText}>{matchData.time}</Text>
+                  </LinearGradient>
+                )}
                 
                 {/* Countdown - Sadece 120 sn kala giren kullanıcılar için, yanıp söner */}
                 {/* ✅ Container her zaman render ediliyor - layout sabit kalıyor */}
@@ -1698,7 +1710,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
         </View>
       </View>
 
-      {/* ✅ Maç Sonu Popup - Sonuçlar, Puanlar ve Rozetler */}
+      {/* ✅ Maç Sonu Popup - açık temada açık kart + okunaklı metin */}
       <Modal
         visible={showMatchEndPopup}
         animationType="fade"
@@ -1706,101 +1718,140 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
         onRequestClose={() => setShowMatchEndPopup(false)}
       >
         <View style={matchEndStyles.overlay}>
-          <View style={matchEndStyles.modal}>
-            <LinearGradient
-              colors={['#0F2A24', '#1E3A3A', '#0F2A24']}
-              style={matchEndStyles.gradient}
-            >
-              {/* Header */}
-              <View style={matchEndStyles.header}>
-                <Ionicons name="trophy" size={32} color="#FFD700" />
-                <Text style={matchEndStyles.title}>Maç Sona Erdi!</Text>
-              </View>
-              
-              {/* Skor */}
-              <View style={matchEndStyles.scoreContainer}>
-                <View style={matchEndStyles.teamScore}>
-                  <Text style={matchEndStyles.teamName}>{matchData.homeName || 'Ev Sahibi'}</Text>
-                  <Text style={matchEndStyles.scoreText}>{matchData.homeScore ?? 0}</Text>
+          <View style={[matchEndStyles.modal, isLight && { borderColor: themeColors.border }]}>
+            {isLight ? (
+              <View style={[matchEndStyles.gradient, { backgroundColor: themeColors.card }]}>
+                <View style={matchEndStyles.header}>
+                  <Ionicons name="trophy" size={32} color="#C9A44C" />
+                  <Text style={[matchEndStyles.title, { color: themeColors.foreground }]}>Maç Sona Erdi!</Text>
                 </View>
-                <Text style={matchEndStyles.scoreSeparator}>-</Text>
-                <View style={matchEndStyles.teamScore}>
-                  <Text style={matchEndStyles.teamName}>{matchData.awayName || 'Deplasman'}</Text>
-                  <Text style={matchEndStyles.scoreText}>{matchData.awayScore ?? 0}</Text>
-                </View>
-              </View>
-              
-              {/* Puan Özeti */}
-              <View style={matchEndStyles.summarySection}>
-                <Text style={matchEndStyles.sectionTitle}>Tahmin Puanlarınız</Text>
-                
-                <View style={matchEndStyles.pointsGrid}>
-                  <View style={matchEndStyles.pointItem}>
-                    <Ionicons name="people" size={20} color="#1FA2A6" />
-                    <Text style={matchEndStyles.pointLabel}>Kadro</Text>
-                    <Text style={matchEndStyles.pointValue}>+25</Text>
+                <View style={[matchEndStyles.scoreContainer, { backgroundColor: themeColors.muted }]}>
+                  <View style={matchEndStyles.teamScore}>
+                    <Text style={[matchEndStyles.teamName, { color: themeColors.mutedForeground }]}>{matchData.homeName || 'Ev Sahibi'}</Text>
+                    <Text style={[matchEndStyles.scoreText, { color: themeColors.foreground }]}>{matchData.homeScore ?? 0}</Text>
                   </View>
-                  <View style={matchEndStyles.pointItem}>
-                    <Ionicons name="analytics" size={20} color="#8B5CF6" />
-                    <Text style={matchEndStyles.pointLabel}>Maç Tahmini</Text>
-                    <Text style={matchEndStyles.pointValue}>+15</Text>
-                  </View>
-                  <View style={matchEndStyles.pointItem}>
-                    <Ionicons name="person" size={20} color="#F59E0B" />
-                    <Text style={matchEndStyles.pointLabel}>Oyuncu</Text>
-                    <Text style={matchEndStyles.pointValue}>+10</Text>
+                  <Text style={[matchEndStyles.scoreSeparator, { color: themeColors.mutedForeground }]}>-</Text>
+                  <View style={matchEndStyles.teamScore}>
+                    <Text style={[matchEndStyles.teamName, { color: themeColors.mutedForeground }]}>{matchData.awayName || 'Deplasman'}</Text>
+                    <Text style={[matchEndStyles.scoreText, { color: themeColors.foreground }]}>{matchData.awayScore ?? 0}</Text>
                   </View>
                 </View>
-                
-                <View style={matchEndStyles.totalPoints}>
-                  <Text style={matchEndStyles.totalLabel}>Toplam Puan</Text>
-                  <Text style={matchEndStyles.totalValue}>+50</Text>
+                <View style={matchEndStyles.summarySection}>
+                  <Text style={[matchEndStyles.sectionTitle, { color: themeColors.mutedForeground }]}>Tahmin Puanlarınız</Text>
+                  <View style={matchEndStyles.pointsGrid}>
+                    <View style={[matchEndStyles.pointItem, { backgroundColor: themeColors.muted }]}>
+                      <Ionicons name="people" size={20} color="#1FA2A6" />
+                      <Text style={[matchEndStyles.pointLabel, { color: themeColors.mutedForeground }]}>Kadro</Text>
+                      <Text style={[matchEndStyles.pointValue, { color: '#059669' }]}>+25</Text>
+                    </View>
+                    <View style={[matchEndStyles.pointItem, { backgroundColor: themeColors.muted }]}>
+                      <Ionicons name="analytics" size={20} color="#8B5CF6" />
+                      <Text style={[matchEndStyles.pointLabel, { color: themeColors.mutedForeground }]}>Maç Tahmini</Text>
+                      <Text style={[matchEndStyles.pointValue, { color: '#7C3AED' }]}>+15</Text>
+                    </View>
+                    <View style={[matchEndStyles.pointItem, { backgroundColor: themeColors.muted }]}>
+                      <Ionicons name="person" size={20} color="#F59E0B" />
+                      <Text style={[matchEndStyles.pointLabel, { color: themeColors.mutedForeground }]}>Oyuncu</Text>
+                      <Text style={[matchEndStyles.pointValue, { color: '#D97706' }]}>+10</Text>
+                    </View>
+                  </View>
+                  <View style={[matchEndStyles.totalPoints, { backgroundColor: themeColors.muted }]}>
+                    <Text style={[matchEndStyles.totalLabel, { color: themeColors.foreground }]}>Toplam Puan</Text>
+                    <Text style={[matchEndStyles.totalValue, { color: '#059669' }]}>+50</Text>
+                  </View>
+                </View>
+                <View style={matchEndStyles.badgeSection}>
+                  <Text style={[matchEndStyles.sectionTitle, { color: themeColors.mutedForeground }]}>Kazanılan Rozetler</Text>
+                  <View style={matchEndStyles.badgeRow}>
+                    <View style={[matchEndStyles.badge, { backgroundColor: themeColors.muted }]}>
+                      <Text style={matchEndStyles.badgeEmoji}>🎯</Text>
+                      <Text style={[matchEndStyles.badgeName, { color: themeColors.foreground }]}>Skor Tahmini</Text>
+                    </View>
+                    <View style={[matchEndStyles.badge, { backgroundColor: themeColors.muted }]}>
+                      <Text style={matchEndStyles.badgeEmoji}>⚡</Text>
+                      <Text style={[matchEndStyles.badgeName, { color: themeColors.foreground }]}>Hızlı Tahmin</Text>
+                    </View>
+                  </View>
+                </View>
+                <View style={matchEndStyles.buttonContainer}>
+                  <TouchableOpacity style={matchEndStyles.primaryButton} onPress={() => { setShowMatchEndPopup(false); setActiveTab('ratings'); }}>
+                    <LinearGradient colors={['#1FA2A6', '#047857']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={matchEndStyles.buttonGradient}>
+                      <Ionicons name="star" size={18} color="#FFFFFF" />
+                      <Text style={matchEndStyles.buttonText}>Puanlama Yap</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={matchEndStyles.secondaryButton} onPress={() => setShowMatchEndPopup(false)}>
+                    <Text style={[matchEndStyles.secondaryButtonText, { color: themeColors.mutedForeground }]}>Daha Sonra</Text>
+                  </TouchableOpacity>
                 </View>
               </View>
-              
-              {/* Rozetler */}
-              <View style={matchEndStyles.badgeSection}>
-                <Text style={matchEndStyles.sectionTitle}>Kazanılan Rozetler</Text>
-                <View style={matchEndStyles.badgeRow}>
-                  <View style={matchEndStyles.badge}>
-                    <Text style={matchEndStyles.badgeEmoji}>🎯</Text>
-                    <Text style={matchEndStyles.badgeName}>Skor Tahmini</Text>
+            ) : (
+              <LinearGradient colors={['#0F2A24', '#1E3A3A', '#0F2A24']} style={matchEndStyles.gradient}>
+                <View style={matchEndStyles.header}>
+                  <Ionicons name="trophy" size={32} color="#FFD700" />
+                  <Text style={matchEndStyles.title}>Maç Sona Erdi!</Text>
+                </View>
+                <View style={matchEndStyles.scoreContainer}>
+                  <View style={matchEndStyles.teamScore}>
+                    <Text style={matchEndStyles.teamName}>{matchData.homeName || 'Ev Sahibi'}</Text>
+                    <Text style={matchEndStyles.scoreText}>{matchData.homeScore ?? 0}</Text>
                   </View>
-                  <View style={matchEndStyles.badge}>
-                    <Text style={matchEndStyles.badgeEmoji}>⚡</Text>
-                    <Text style={matchEndStyles.badgeName}>Hızlı Tahmin</Text>
+                  <Text style={matchEndStyles.scoreSeparator}>-</Text>
+                  <View style={matchEndStyles.teamScore}>
+                    <Text style={matchEndStyles.teamName}>{matchData.awayName || 'Deplasman'}</Text>
+                    <Text style={matchEndStyles.scoreText}>{matchData.awayScore ?? 0}</Text>
                   </View>
                 </View>
-              </View>
-              
-              {/* Butonlar */}
-              <View style={matchEndStyles.buttonContainer}>
-                <TouchableOpacity
-                  style={matchEndStyles.primaryButton}
-                  onPress={() => {
-                    setShowMatchEndPopup(false);
-                    setActiveTab('ratings'); // Reyting sekmesine git
-                  }}
-                >
-                  <LinearGradient
-                    colors={['#1FA2A6', '#047857']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={matchEndStyles.buttonGradient}
-                  >
-                    <Ionicons name="star" size={18} color="#FFFFFF" />
-                    <Text style={matchEndStyles.buttonText}>Puanlama Yap</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-                
-                <TouchableOpacity
-                  style={matchEndStyles.secondaryButton}
-                  onPress={() => setShowMatchEndPopup(false)}
-                >
-                  <Text style={matchEndStyles.secondaryButtonText}>Daha Sonra</Text>
-                </TouchableOpacity>
-              </View>
-            </LinearGradient>
+                <View style={matchEndStyles.summarySection}>
+                  <Text style={matchEndStyles.sectionTitle}>Tahmin Puanlarınız</Text>
+                  <View style={matchEndStyles.pointsGrid}>
+                    <View style={matchEndStyles.pointItem}>
+                      <Ionicons name="people" size={20} color="#1FA2A6" />
+                      <Text style={matchEndStyles.pointLabel}>Kadro</Text>
+                      <Text style={matchEndStyles.pointValue}>+25</Text>
+                    </View>
+                    <View style={matchEndStyles.pointItem}>
+                      <Ionicons name="analytics" size={20} color="#8B5CF6" />
+                      <Text style={matchEndStyles.pointLabel}>Maç Tahmini</Text>
+                      <Text style={matchEndStyles.pointValue}>+15</Text>
+                    </View>
+                    <View style={matchEndStyles.pointItem}>
+                      <Ionicons name="person" size={20} color="#F59E0B" />
+                      <Text style={matchEndStyles.pointLabel}>Oyuncu</Text>
+                      <Text style={matchEndStyles.pointValue}>+10</Text>
+                    </View>
+                  </View>
+                  <View style={matchEndStyles.totalPoints}>
+                    <Text style={matchEndStyles.totalLabel}>Toplam Puan</Text>
+                    <Text style={matchEndStyles.totalValue}>+50</Text>
+                  </View>
+                </View>
+                <View style={matchEndStyles.badgeSection}>
+                  <Text style={matchEndStyles.sectionTitle}>Kazanılan Rozetler</Text>
+                  <View style={matchEndStyles.badgeRow}>
+                    <View style={matchEndStyles.badge}>
+                      <Text style={matchEndStyles.badgeEmoji}>🎯</Text>
+                      <Text style={matchEndStyles.badgeName}>Skor Tahmini</Text>
+                    </View>
+                    <View style={matchEndStyles.badge}>
+                      <Text style={matchEndStyles.badgeEmoji}>⚡</Text>
+                      <Text style={matchEndStyles.badgeName}>Hızlı Tahmin</Text>
+                    </View>
+                  </View>
+                </View>
+                <View style={matchEndStyles.buttonContainer}>
+                  <TouchableOpacity style={matchEndStyles.primaryButton} onPress={() => { setShowMatchEndPopup(false); setActiveTab('ratings'); }}>
+                    <LinearGradient colors={['#1FA2A6', '#047857']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={matchEndStyles.buttonGradient}>
+                      <Ionicons name="star" size={18} color="#FFFFFF" />
+                      <Text style={matchEndStyles.buttonText}>Puanlama Yap</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={matchEndStyles.secondaryButton} onPress={() => setShowMatchEndPopup(false)}>
+                    <Text style={matchEndStyles.secondaryButtonText}>Daha Sonra</Text>
+                  </TouchableOpacity>
+                </View>
+              </LinearGradient>
+            )}
           </View>
         </View>
       </Modal>

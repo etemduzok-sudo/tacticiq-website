@@ -1,12 +1,14 @@
 /**
  * Uygulama içi onay / uyarı popup (tarayıcı confirm/alert yerine).
- * TacticIQ dark tema, Modal + overlay + kart.
+ * TacticIQ tema uyumlu (açık/koyu), Modal + overlay + kart.
  */
 
 import React from 'react';
 import { View, Text, Modal, TouchableOpacity, StyleSheet } from 'react-native';
 import { showAlert } from '../../utils/alertHelper';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../../contexts/ThemeContext';
+import { COLORS } from '../../theme/theme';
 
 export type ConfirmButton = {
   text: string;
@@ -100,6 +102,8 @@ export function ConfirmModal({
   buttons,
   onRequestClose,
 }: Props) {
+  const { theme } = useTheme();
+  const themeColors = theme === 'light' ? COLORS.light : COLORS.dark;
   // ✅ Loading state - çift tıklama koruması
   const [isProcessing, setIsProcessing] = React.useState(false);
   
@@ -127,14 +131,19 @@ export function ConfirmModal({
           onPress={isProcessing ? undefined : onRequestClose}
           disabled={isProcessing}
         />
-        <View style={[styles.card, { pointerEvents: 'auto' }]}>
+        <View style={[styles.card, { pointerEvents: 'auto', backgroundColor: themeColors.popover }]}>
           <View style={styles.iconRow}>
             <Ionicons name="warning" size={40} color="#F59E0B" />
           </View>
-          <Text style={styles.title}>{title}</Text>
-          <Text style={styles.message}>{message}</Text>
+          <Text style={[styles.title, { color: themeColors.foreground }]}>{title}</Text>
+          <Text style={[styles.message, { color: themeColors.mutedForeground }]}>{message}</Text>
           <View style={styles.buttonsRow}>
-            {buttons.map((b, i) => (
+            {buttons.map((b, i) => {
+              const isLight = theme === 'light';
+              const isCancel = b.style === 'cancel';
+              const isDestructive = b.style === 'destructive';
+              const isDefault = !b.style || b.style === 'default';
+              return (
               <TouchableOpacity
                 key={i}
                 style={[
@@ -142,6 +151,9 @@ export function ConfirmModal({
                   b.style === 'cancel' && styles.btnCancel,
                   b.style === 'destructive' && styles.btnDestructive,
                   (!b.style || b.style === 'default') && styles.btnDefault,
+                  isLight && isCancel && { backgroundColor: themeColors.muted, borderWidth: 1, borderColor: themeColors.border },
+                  isLight && isDefault && { backgroundColor: '#1FA2A6', borderWidth: 0 },
+                  isLight && isDestructive && { backgroundColor: '#DC2626', borderColor: '#DC2626' },
                   isProcessing && { opacity: 0.5 }, // ✅ Disabled görünümü
                 ]}
                 onPress={async () => {
@@ -182,12 +194,16 @@ export function ConfirmModal({
                   style={[
                     styles.btnText,
                     b.style === 'destructive' && styles.btnTextDestructive,
+                    theme === 'light' && b.style === 'cancel' && { color: themeColors.foreground },
+                    theme === 'light' && (b.style === 'default' || !b.style) && { color: '#FFFFFF', fontWeight: '700' },
+                    theme === 'light' && b.style === 'destructive' && { color: '#FFFFFF', fontWeight: '700' },
                   ]}
                 >
                   {isProcessing && b.style === 'destructive' ? 'İşleniyor...' : b.text}
                 </Text>
               </TouchableOpacity>
-            ))}
+            );
+            })}
           </View>
         </View>
       </View>

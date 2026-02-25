@@ -5,6 +5,7 @@ import { View, StyleSheet, ScrollView, SafeAreaView, Platform } from 'react-nati
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS, SPACING } from '../../theme/theme';
 import { containerStyles } from '../../utils/styleHelpers';
+import { useTheme } from '../../contexts/ThemeContext';
 
 interface ScreenLayoutProps {
   children: React.ReactNode;
@@ -24,7 +25,7 @@ interface ScreenLayoutProps {
  * Provides consistent screen structure across the app:
  * - SafeAreaView support
  * - ScrollView support
- * - Gradient background option
+ * - Gradient background option (dark) / solid background (light)
  * - Grid pattern (hero style) option
  * - Consistent padding and spacing
  */
@@ -39,6 +40,10 @@ export const ScreenLayout: React.FC<ScreenLayoutProps> = ({
   showsVerticalScrollIndicator = false,
   showGridPattern = true,
 }) => {
+  const { theme } = useTheme();
+  const isLight = theme === 'light';
+  const themeColors = isLight ? COLORS.light : COLORS.dark;
+
   const Container = safeArea ? SafeAreaView : View;
   const containerStyle = safeArea ? containerStyles.safeArea : containerStyles.screen;
 
@@ -59,7 +64,26 @@ export const ScreenLayout: React.FC<ScreenLayoutProps> = ({
     </View>
   );
 
-  // Grid Pattern + Gradient (Hero style - default)
+  if (isLight) {
+    return (
+      <Container style={[containerStyle, style, { backgroundColor: themeColors.background }]}>
+        {showGridPattern && (
+          <View
+            style={[
+              styles.gridPattern,
+              { backgroundColor: themeColors.background },
+              Platform.OS === 'web' && {
+                backgroundImage: `linear-gradient(to right, rgba(15, 42, 36, 0.08) 1px, transparent 1px), linear-gradient(to bottom, rgba(15, 42, 36, 0.08) 1px, transparent 1px)`,
+                backgroundSize: '40px 40px',
+              },
+            ]}
+          />
+        )}
+        {content}
+      </Container>
+    );
+  }
+
   return (
     <Container style={[containerStyle, style]}>
       <LinearGradient

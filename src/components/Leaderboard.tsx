@@ -21,6 +21,8 @@ const FadeIn = Platform.OS === 'web' ? noopAnim : FadeInNative;
 const FadeInDown = Platform.OS === 'web' ? noopAnim : FadeInDownNative;
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from 'react-i18next';
+import { useTheme } from '../contexts/ThemeContext';
+import { COLORS } from '../theme/theme';
 import { Badge, BadgeTier, getBadgeColor, getBadgeTierName } from '../types/badges.types';
 
 const { width } = Dimensions.get('window');
@@ -72,6 +74,9 @@ interface LeaderboardProps {
 
 export function Leaderboard({ onNavigate }: LeaderboardProps = {}) {
   const { t } = useTranslation();
+  const { theme } = useTheme();
+  const themeColors = theme === 'light' ? COLORS.light : COLORS.dark;
+  const isLight = theme === 'light';
   const [activeTab, setActiveTab] = useState<'overall' | 'weekly' | 'monthly' | 'friends'>('overall');
   const [isLoading, setIsLoading] = useState(true);
 
@@ -119,8 +124,14 @@ export function Leaderboard({ onNavigate }: LeaderboardProps = {}) {
   // ✅ Yükleme ekranı
   if (isLoading) {
     return (
-      <View style={styles.container}>
-        <View style={styles.gridPattern} />
+      <View style={[styles.container, { backgroundColor: themeColors.background }]}>
+        <View style={[
+          styles.gridPattern,
+          isLight && Platform.OS === 'web' && {
+            backgroundImage: `linear-gradient(to right, rgba(15, 42, 36, 0.2) 1px, transparent 1px), linear-gradient(to bottom, rgba(15, 42, 36, 0.2) 1px, transparent 1px)`,
+            backgroundSize: '40px 40px',
+          },
+        ]} />
         <View style={styles.loadingContainer}>
           <Animated.View entering={isWeb ? undefined : FadeInNative.duration(300)}>
             <View style={styles.loadingIconContainer}>
@@ -128,21 +139,27 @@ export function Leaderboard({ onNavigate }: LeaderboardProps = {}) {
             </View>
           </Animated.View>
           <ActivityIndicator size="large" color="#1FA2A6" style={{ marginTop: 16 }} />
-          <Text style={styles.loadingText}>{t('common.loading')}</Text>
+          <Text style={[styles.loadingText, { color: themeColors.mutedForeground }]}>{t('common.loading')}</Text>
         </View>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      {/* Grid Pattern Background - Dashboard ile aynı */}
-      <View style={styles.gridPattern} />
+    <View style={[styles.container, { backgroundColor: themeColors.background }]}>
+      {/* Grid Pattern Background - açık modda daha görünür kareli yapı */}
+      <View style={[
+        styles.gridPattern,
+        isLight && Platform.OS === 'web' && {
+          backgroundImage: `linear-gradient(to right, rgba(15, 42, 36, 0.2) 1px, transparent 1px), linear-gradient(to bottom, rgba(15, 42, 36, 0.2) 1px, transparent 1px)`,
+          backgroundSize: '40px 40px',
+        },
+      ]} />
       
       {/* Header with Stats */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>🏆 Sıralama</Text>
-        <Text style={styles.headerSubtitle}>En iyilerle yarış!</Text>
+        <Text style={[styles.headerTitle, { color: themeColors.foreground }]}>🏆 Sıralama</Text>
+        <Text style={[styles.headerSubtitle, { color: themeColors.mutedForeground }]}>En iyilerle yarış!</Text>
 
         {/* Current User Stats Card */}
         {currentUserData && (
@@ -191,8 +208,8 @@ export function Leaderboard({ onNavigate }: LeaderboardProps = {}) {
                 style={[styles.tab, isActive && styles.tabActive]}
                 activeOpacity={0.8}
               >
-                <Ionicons name={tab.icon as any} size={18} color={isActive ? '#059669' : '#64748B'} />
-                <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]}>{t(tab.labelKey)}</Text>
+                <Ionicons name={tab.icon as any} size={18} color={isActive ? '#059669' : (isLight ? themeColors.mutedForeground : '#64748B')} />
+                <Text style={[styles.tabLabel, { color: isActive ? '#059669' : (isLight ? themeColors.mutedForeground : '#64748B') }, isActive && styles.tabLabelActive]}>{t(tab.labelKey)}</Text>
               </TouchableOpacity>
             );
           })}

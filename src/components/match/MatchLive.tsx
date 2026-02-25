@@ -16,7 +16,8 @@ import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import api from '../../services/api';
-import { BRAND, DARK_MODE } from '../../theme/theme';
+import { useTheme } from '../../contexts/ThemeContext';
+import { BRAND, DARK_MODE, COLORS } from '../../theme/theme';
 import { MOCK_MATCH_IDS, isMockTestMatch, getMockMatchEvents, getMatch1Start, getMatch2Start } from '../../data/mockTestData';
 
 const isWeb = Platform.OS === 'web';
@@ -57,7 +58,10 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
   events: propEvents,
 }) => {
   const { t } = useTranslation();
-  
+  const { theme } = useTheme();
+  const isLight = theme === 'light';
+  const themeColors = isLight ? COLORS.light : COLORS.dark;
+
   // ✅ Maç durumunu matchData'dan kontrol et
   // matchData.status direkt olarak MatchDetail'dan geliyor
   const matchStatus = matchData?.status || '';
@@ -767,17 +771,17 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
   // RENDER
   // =====================================
   
-  // ✅ Maç başlamadıysa bildirim göster
+  // ✅ Maç başlamadıysa bildirim göster (açık temada açık kart + koyu metin)
   if (matchNotStarted) {
     return (
-      <SafeAreaView style={styles.container} edges={[]}>
+      <SafeAreaView style={[styles.container, isLight && { backgroundColor: themeColors.background }]} edges={[]}>
         <View style={styles.notStartedContainer}>
-          <View style={styles.notStartedCard}>
+          <View style={[styles.notStartedCard, isLight && { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
             <View style={styles.notStartedIconContainer}>
               <Ionicons name="time-outline" size={48} color={BRAND.accent} />
             </View>
-            <Text style={styles.notStartedTitle}>Maç Henüz Başlamadı</Text>
-            <Text style={styles.notStartedSubtitle}>
+            <Text style={[styles.notStartedTitle, isLight && { color: themeColors.foreground }]}>Maç Henüz Başlamadı</Text>
+            <Text style={[styles.notStartedSubtitle, isLight && { color: themeColors.mutedForeground }]}>
               Maç başladığında canlı olaylar{'\n'}burada görünecek
             </Text>
           </View>
@@ -789,10 +793,10 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
   // Loading state - sadece maç başladıysa göster
   if (loading && liveEvents.length === 0) {
     return (
-      <SafeAreaView style={styles.container} edges={[]}>
+      <SafeAreaView style={[styles.container, isLight && { backgroundColor: themeColors.background }]} edges={[]}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={BRAND.secondary} />
-          <Text style={styles.loadingText}>Canlı veriler yükleniyor...</Text>
+          <Text style={[styles.loadingText, isLight && { color: themeColors.mutedForeground }]}>Canlı veriler yükleniyor...</Text>
         </View>
       </SafeAreaView>
     );
@@ -801,14 +805,14 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
   // Error state - API connection failed or other error
   if (error && liveEvents.length === 0) {
     return (
-      <SafeAreaView style={styles.container} edges={[]}>
+      <SafeAreaView style={[styles.container, isLight && { backgroundColor: themeColors.background }]} edges={[]}>
         <View style={styles.notStartedContainer}>
-          <View style={styles.notStartedCard}>
+          <View style={[styles.notStartedCard, isLight && { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
             <View style={styles.notStartedIconContainer}>
               <Ionicons name="cloud-offline-outline" size={48} color="#F59E0B" />
             </View>
-            <Text style={styles.notStartedTitle}>Bağlantı Hatası</Text>
-            <Text style={styles.notStartedSubtitle}>
+            <Text style={[styles.notStartedTitle, isLight && { color: themeColors.foreground }]}>Bağlantı Hatası</Text>
+            <Text style={[styles.notStartedSubtitle, isLight && { color: themeColors.mutedForeground }]}>
               Canlı maç verisi alınamadı.{'\n'}Lütfen internet bağlantınızı kontrol edin.
             </Text>
           </View>

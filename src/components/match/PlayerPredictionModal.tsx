@@ -17,6 +17,8 @@ import Animated, {
   SlideInDown,
   SlideOutDown,
 } from 'react-native-reanimated';
+import { useTheme } from '../../contexts/ThemeContext';
+import { COLORS } from '../../theme/theme';
 
 const isWeb = Platform.OS === 'web';
 const { height } = Dimensions.get('window');
@@ -71,6 +73,9 @@ const PlayerPredictionModal = ({
   onUnlockLock,
   onSaveAndLock,
 }: PlayerPredictionModalProps) => {
+  const { theme } = useTheme();
+  const themeColors = theme === 'light' ? COLORS.light : COLORS.dark;
+  const isLight = theme === 'light';
   const [expandedSubstituteType, setExpandedSubstituteType] = useState<'normal' | 'injury' | null>(null);
   const [localSubstituteId, setLocalSubstituteId] = useState<string | null>(null);
   const [localMinuteRange, setLocalMinuteRange] = useState<string | null>(null);
@@ -243,27 +248,27 @@ const PlayerPredictionModal = ({
         <Animated.View
           entering={isWeb ? undefined : SlideInDown.duration(300)}
           exiting={isWeb ? undefined : SlideOutDown.duration(300)}
-          style={styles.playerModalContent}
+          style={[styles.playerModalContent, { backgroundColor: themeColors.popover }]}
         >
           <LinearGradient
-            colors={['#1E3A3A', '#0F2A24']}
+            colors={isLight ? [themeColors.muted, themeColors.card] : ['#1E3A3A', '#0F2A24']}
             style={styles.playerModalHeader}
           >
             <TouchableOpacity onPress={onClose} style={styles.modalCloseButton}>
-              <Ionicons name="close" size={24} color="#FFFFFF" />
+              <Ionicons name="close" size={24} color={themeColors.foreground} />
             </TouchableOpacity>
 
             <View style={styles.playerModalInfo}>
               <View style={styles.playerNumberCircle}>
-                <Text style={styles.playerNumberLarge}>{player.number}</Text>
+                <Text style={[styles.playerNumberLarge, { color: themeColors.foreground }]}>{player.number ?? player.shirt_number ?? player.jersey_number ?? '-'}</Text>
                 <View style={styles.playerRatingCircle}>
                   <Text style={styles.playerRatingSmall}>{player.rating}</Text>
                 </View>
               </View>
 
               <View style={styles.playerDetails}>
-                <Text style={styles.playerNameLarge}>{player.name}</Text>
-                <Text style={styles.playerPositionModal}>
+                <Text style={[styles.playerNameLarge, { color: themeColors.foreground }]}>{player.name}</Text>
+                <Text style={[styles.playerPositionModal, { color: themeColors.mutedForeground }]}>
                   {player.position} • Form: <Text style={styles.formText}>{player.form}%</Text>
                 </Text>
               </View>
@@ -1162,7 +1167,7 @@ const PlayerPredictionModal = ({
             </ScrollView>
           )}
 
-          <View style={styles.playerModalActions}>
+          <View style={[styles.playerModalActions, { backgroundColor: themeColors.popover, borderTopColor: themeColors.border }]}>
             <TouchableOpacity 
               style={styles.cancelButton} 
               onPress={() => {
@@ -1174,7 +1179,7 @@ const PlayerPredictionModal = ({
               }} 
               activeOpacity={0.7}
             >
-              <Text style={styles.cancelButtonText}>İptal Et</Text>
+              <Text style={[styles.cancelButtonText, { color: themeColors.foreground }]}>İptal Et</Text>
             </TouchableOpacity>
             <TouchableOpacity 
               style={[
