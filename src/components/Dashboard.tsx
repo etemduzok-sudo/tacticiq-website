@@ -1155,17 +1155,13 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
     } catch (_) {}
   };
 
-  // ✅ Maç kartı yüksekliği (sabit height + marginBottom)
+  // ✅ KİLİTLİ: Referans = canlı veya en yakın yaklaşan maç filtre barının hemen altında görünsün.
+  // İçerik sırası: Biten → Canlı → Yaklaşan (biten üstte); açılışta scroll = referans (ilk canlı/yaklaşan).
   const MATCH_CARD_HEIGHT = 175 + 8;
-  const SCROLL_CONTENT_PADDING_TOP = Platform.OS === 'ios' ? 238 : 228;
-
-  // ✅ Biten bölüm yüksekliği - canlı/yaklaşan ilk kart ekranın en üstünde ve kesilmeden (Resim 2)
-  const pastCount = displayPastMatches.length || pastMatches.length;
-  const pastSectionHeight = pastCount * MATCH_CARD_HEIGHT;
-  // ⚠️ KİLİTLİ: Bu değer kullanıcı onayı ile sabitlendi. ASLA DEĞİŞTİRME (canlı/yaklaşan ilk kart pozisyonu).
-  const SCROLL_INSET_TOP = 156;
-  const scrollYToLiveOrUpcoming = (filteredLiveMatches.length > 0 || filteredUpcomingMatches.length > 0)
-    ? Math.max(0, SCROLL_CONTENT_PADDING_TOP + pastSectionHeight - SCROLL_INSET_TOP)
+  const SCROLL_CONTENT_PADDING_TOP = Platform.OS === 'ios' ? 260 : 256;
+  const pastCountForScroll = displayPastMatches.length || pastMatches.length;
+  const defaultScrollY = pastCountForScroll > 0
+    ? SCROLL_CONTENT_PADDING_TOP + pastCountForScroll * MATCH_CARD_HEIGHT
     : 0;
 
   // ✅ İlk açılışta içerik göster
@@ -1180,51 +1176,44 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
     setTimeout(doShow, 80);
   }, [initialScrollDone, loading, isLoadingScreen]);
 
-  // ✅ Filtre değiştiğinde canlı/yaklaşan bölüme scroll
+  // ✅ Filtre değiştiğinde referansa (canlı/yaklaşan ilk kart) scroll
   const lastSelectedTeamIdsRef = React.useRef<number[]>([]);
   React.useEffect(() => {
     const filterChanged = JSON.stringify(selectedTeamIds) !== JSON.stringify(lastSelectedTeamIdsRef.current);
     lastSelectedTeamIdsRef.current = selectedTeamIds;
     if (filterChanged && scrollViewRef.current) {
       setTimeout(() => {
-        (scrollViewRef.current as any)?.scrollTo?.({ y: scrollYToLiveOrUpcoming, animated: true });
+        (scrollViewRef.current as any)?.scrollTo?.({ y: defaultScrollYRef.current, animated: true });
         if (!initialScrollDone) setInitialScrollDone(true);
       }, 100);
     }
-  }, [selectedTeamIds, initialScrollDone, scrollYToLiveOrUpcoming]);
+  }, [selectedTeamIds, initialScrollDone]);
 
-  // ✅ Web'de contentOffset güvenilir değil - veri yüklendikten sonra scroll zorla (birden fazla deneme)
+  // ✅ Veri yüklendikten sonra referansa (canlı/yaklaşan ilk kart) scroll – contentOffset tek seferde güvenilir olmayabilir
+  const hasScrolledToRefRef = React.useRef(false);
   React.useEffect(() => {
-    if (scrollYToLiveOrUpcoming <= 0 || loading || !hasLoadedOnce) return;
-    const scrollToTarget = () => {
+    if (!hasLoadedOnce || loading || hasScrolledToRefRef.current) return;
+    hasScrolledToRefRef.current = true;
+    const t = setTimeout(() => {
       if (scrollViewRef.current && typeof (scrollViewRef.current as any).scrollTo === 'function') {
-        (scrollViewRef.current as any).scrollTo({ y: scrollYToLiveOrUpcoming, animated: false });
+        (scrollViewRef.current as any).scrollTo({ y: defaultScrollYRef.current, animated: false });
       }
-    };
-    scrollToTarget();
-    const t1 = setTimeout(scrollToTarget, 150);
-    const t2 = setTimeout(scrollToTarget, 400);
-    const t3 = setTimeout(scrollToTarget, 800);
-    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
-  }, [scrollYToLiveOrUpcoming, loading, hasLoadedOnce]);
+    }, 150);
+    return () => clearTimeout(t);
+  }, [hasLoadedOnce, loading]);
 
-  // ✅ Ön tanımlı: canlı maç görünen alanın üstünde; layout bittikten sonra scrollTo (contentOffset güvenilir değil)
-
-  // ✅ Ön tanımlı scroll: canlı maç görünen alanın üstünde (resim 2’deki gibi, filtre hemen altında)
-  const defaultScrollY = scrollYToLiveOrUpcoming;
   const defaultScrollYRef = React.useRef(defaultScrollY);
   defaultScrollYRef.current = defaultScrollY;
 
-  // ✅ Ekrana 5 sn dokunulmazsa scroll bu pozisyona (canlı/yaklaşan ilk kart) döner – KİLİTLİ davranış
+  // ✅ Ekrana 5 sn dokunulmazsa scroll referansa (canlı/yaklaşan ilk kart) döner
   const SNAP_BACK_DELAY_MS = 5000;
   const snapBackTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const scheduleSnapBack = React.useCallback(() => {
     if (snapBackTimeoutRef.current) clearTimeout(snapBackTimeoutRef.current);
     snapBackTimeoutRef.current = setTimeout(() => {
       snapBackTimeoutRef.current = null;
-      const y = defaultScrollYRef.current;
       if (scrollViewRef.current && typeof (scrollViewRef.current as any).scrollTo === 'function') {
-        (scrollViewRef.current as any).scrollTo({ y, animated: true });
+        (scrollViewRef.current as any).scrollTo({ y: defaultScrollYRef.current, animated: true });
       }
     }, SNAP_BACK_DELAY_MS);
   }, []);
@@ -1242,26 +1231,27 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
     scheduleSnapBack();
   }, [cancelSnapBack, scheduleSnapBack]);
 
-  // ✅ Snap noktaları - sıra: Biten | Canlı | Yaklaşan
+  // ✅ Snap noktaları - sıra: Biten | Canlı | Yaklaşan (referans = canlı/yaklaşan başı)
   const snapOffsets = React.useMemo(() => {
-    const pastCount = displayPastMatches.length || pastMatches.length;
     const liveCount = filteredLiveMatches.length;
     const upcomingCount = filteredUpcomingMatches.length;
+    const pastCount = displayPastMatches.length || pastMatches.length;
     const total = pastCount + liveCount + upcomingCount;
     if (total > 20) return [];
 
     const offsets: number[] = [];
-    for (let i = 0; i < pastCount; i++) offsets.push(i * MATCH_CARD_HEIGHT);
-    const liveStart = pastCount * MATCH_CARD_HEIGHT;
-    for (let i = 0; i < liveCount; i++) offsets.push(liveStart + i * MATCH_CARD_HEIGHT);
-    const upcomingStart = liveStart + liveCount * MATCH_CARD_HEIGHT;
-    for (let i = 0; i < upcomingCount; i++) offsets.push(upcomingStart + i * MATCH_CARD_HEIGHT);
+    for (let i = 0; i < pastCount; i++) offsets.push(SCROLL_CONTENT_PADDING_TOP + i * MATCH_CARD_HEIGHT);
+    const pastStart = SCROLL_CONTENT_PADDING_TOP + pastCount * MATCH_CARD_HEIGHT;
+    for (let i = 0; i < liveCount; i++) offsets.push(pastStart + i * MATCH_CARD_HEIGHT);
+    const liveStart = pastStart + liveCount * MATCH_CARD_HEIGHT;
+    for (let i = 0; i < upcomingCount; i++) offsets.push(liveStart + i * MATCH_CARD_HEIGHT);
     return offsets;
-  }, [MATCH_CARD_HEIGHT, displayPastMatches.length, pastMatches.length, filteredLiveMatches.length, filteredUpcomingMatches.length]);
+  }, [MATCH_CARD_HEIGHT, SCROLL_CONTENT_PADDING_TOP, displayPastMatches.length, pastMatches.length, filteredLiveMatches.length, filteredUpcomingMatches.length]);
 
   // ✅ Loading durumunda da grid pattern göster
   // Maçlar yüklenirken veya backend çalışmıyorken bile UI gösterilmeli
-  const showLoadingIndicator = loading && !hasLoadedOnce;
+  // ✅ Favori takım yokken yükleniyor gösterme; favori varsa ve loading ise göster
+  const showLoadingIndicator = loading && (favoriteTeams?.length ?? 0) > 0;
   
 
   // ✅ handleTeamSelect artık App.tsx'te - ProfileCard üzerinden yönetiliyor
@@ -1308,25 +1298,20 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
         onScrollBeginDrag={cancelSnapBack}
         onScrollEndDrag={scheduleSnapBack}
         onMomentumScrollEnd={scheduleSnapBack}
-        onLayout={() => {
-          if (scrollYToLiveOrUpcoming > 0 && scrollViewRef.current) {
-            requestAnimationFrame(() => {
-              (scrollViewRef.current as any)?.scrollTo?.({ y: scrollYToLiveOrUpcoming, animated: false });
-            });
-          }
-        }}
       >
 
         {/* ✅ Loading Indicator - Grid pattern üzerinde */}
         {showLoadingIndicator && (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={isLight ? themeColors.foreground : BRAND.primary} />
-            <Text style={[styles.loadingText, isLight && { color: themeColors.mutedForeground }]}>Maçlar yükleniyor...</Text>
+            <Text style={[styles.loadingText, isLight && { color: themeColors.mutedForeground }]}>
+              {(favoriteTeams?.length ?? 0) <= 1 ? t('dashboard.matchesLoadingOne') : t('dashboard.matchesLoadingMany')}
+            </Text>
           </View>
         )}
 
-        {/* ✅ Sıra: Biten (en üst, en eski→en yeni) → Canlı → Yaklaşan. Scroll: canlı/yaklaşan görünür alanda (Resim 3). */}
-        {/* ✅ BİTEN MAÇLAR - En üstte, başlık YOK (kullanıcı istemedi). En eski→en yeni sıra. */}
+        {/* ✅ Sıra: Biten → Canlı → Yaklaşan. Referans = ilk canlı/yaklaşan kart (defaultScrollY ile filtre barı altında). */}
+        {/* ✅ BİTEN MAÇLAR - En üstte (yukarı kaydırınca görünür) */}
         {!showLoadingIndicator && (displayPastMatches.length > 0 || pastMatches.length > 0) && (
           <View key={`past-section-${pastMatches.length}`} style={styles.matchesListContainer}>
             {(displayPastMatches.length > 0 ? displayPastMatches : pastMatches).map((match, index) => (
@@ -1345,7 +1330,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
           </View>
         )}
 
-        {/* ✅ CANLI MAÇLAR - Biten'in altında */}
+        {/* ✅ CANLI MAÇLAR - Referans blok (açılışta görünen ilk bölüm) */}
         {!showLoadingIndicator && filteredLiveMatches.length > 0 && (
           <View style={styles.matchesListContainer}>
             {filteredLiveMatches.map((match, index) => (
@@ -1364,7 +1349,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
           </View>
         )}
 
-        {/* ✅ YAKLAŞAN MAÇLAR - En altta, en yakın en üstte */}
+        {/* ✅ YAKLAŞAN MAÇLAR - Referans blok (resim 2: lig, takımlar, tarih, geri sayım) */}
         {!showLoadingIndicator && filteredUpcomingMatches.length > 0 && (
           <View style={styles.matchesListContainer}>
             {filteredUpcomingMatches.map((match, index) => (
@@ -1389,7 +1374,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
             <Ionicons name={error ? 'cloud-offline-outline' : 'football-outline'} size={48} color={error ? '#F59E0B' : (isLight ? themeColors.mutedForeground : '#64748B')} />
             <Text style={[styles.emptyText, isLight && { color: themeColors.foreground }]}>
               {favoriteTeams.length === 0
-                ? t('dashboard.selectFavoriteTeam')
+                ? t('dashboard.noFavoriteTeamSelected')
                 : error
                   ? error
                   : t('dashboard.noMatchesFound')}
@@ -1950,7 +1935,7 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   scrollContent: {
-    paddingTop: Platform.OS === 'ios' ? 238 : 228, // ✅ ProfileCard yüksekliği + filtre barı + boşluk (2px yukarı)
+    paddingTop: Platform.OS === 'ios' ? 260 : 256, // ✅ KİLİTLİ: ProfileCard + filtre barı; yaklaşan maç bar altında kalmasın
     paddingBottom: 100 + SIZES.tabBarHeight, // ✅ Footer navigation için extra padding
     backgroundColor: 'transparent', // Grid pattern görünsün
   },

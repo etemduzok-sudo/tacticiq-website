@@ -1,7 +1,6 @@
 // Matches Routes
-// DB-FIRST STRATEGY: Sync script'leri (sync-planned-matches, sync-all-teams-matches) DB'yi doldurur.
-// Uygulama /date ve /team/season endpoint'lerinde önce DB'den okur, boşsa API fallback.
-// Bu sayede API kotası korunur, yanıt süreleri düşer.
+// DB-ONLY for app: Uygulama sadece DB'den veri alır; API-Football'dan doğrudan uygulamaya veri dönülmez.
+// Sync script'leri (sync-planned-matches, sync-all-teams-matches vb.) DB'yi doldurur.
 const express = require('express');
 const router = express.Router();
 const footballApi = require('../services/footballApi');
@@ -473,21 +472,16 @@ router.get('/team/:teamId/season/:season', async (req, res) => {
       }
     }
     
-    // 2. TRY DATABASE (much faster than API!)
+    // 2. TRY DATABASE ONLY – uygulama sadece DB'den veri alır, API-Football'a doğrudan gidilmez
     if (databaseService.enabled) {
       try {
         const dbRows = await databaseService.getTeamMatches(teamId, season);
-        if (dbRows && dbRows.length > 0) {
-          const dbMatches = dbRows.map(dbRowToApiMatch).filter(Boolean);
-          console.log(`✅ Found ${dbMatches.length} matches in DATABASE (fast!)`);
-          
-          // 🔥 CACHE IN MEMORY (API format)
-          API_CACHE.teamMatches.set(cacheKey, {
-            data: dbMatches,
-            timestamp: Date.now(),
-          });
-          console.log(`💾 [TEAM] Cached ${dbMatches.length} matches for 6 hours`);
-          
+        const dbMatches = (dbRows && dbRows.length > 0)
+          ? dbRows.map(dbRowToApiMatch).filter(Boolean)
+          : [];
+        if (dbMatches.length > 0) {
+          console.log(`✅ Found ${dbMatches.length} matches in DATABASE`);
+          API_CACHE.teamMatches.set(cacheKey, { data: dbMatches, timestamp: Date.now() });
           return res.json({
             success: true,
             data: dbMatches,
@@ -496,36 +490,32 @@ router.get('/team/:teamId/season/:season', async (req, res) => {
             count: dbMatches.length
           });
         }
+        // DB boş: boş dizi dön, API'ye fallback YOK (veri sync scriptleri ile DB'ye yazılır)
+        console.log(`📭 No matches in DB for team ${teamId} season ${season} (sync scripts will populate)`);
+        return res.json({
+          success: true,
+          data: [],
+          source: 'database',
+          cached: false,
+          count: 0
+        });
       } catch (dbError) {
-        console.warn('Database lookup failed, falling back to API:', dbError.message);
+        console.warn('Database lookup failed:', dbError.message);
+        return res.status(500).json({
+          success: false,
+          error: 'Database error',
+          data: []
+        });
       }
     }
     
-    // 3. Fallback to API if database is empty
-    console.log('⚠️ Database empty, fetching from API-Football...');
-    const data = await footballApi.getFixturesByTeam(teamId, season);
-    
-    // 🔥 CACHE IN MEMORY
-    if (data.response && data.response.length > 0) {
-      API_CACHE.teamMatches.set(cacheKey, {
-        data: data.response,
-        timestamp: Date.now(),
-      });
-      console.log(`💾 [TEAM] Cached ${data.response.length} matches from API for 6 hours`);
-    }
-    
-    // Sync to database for next time
-    if (databaseService.enabled && data.response && data.response.length > 0) {
-      console.log(`💾 Syncing ${data.response.length} matches to database...`);
-      await databaseService.upsertMatches(data.response);
-    }
-    
+    // DB servisi kapalıysa boş dön (API'ye doğrudan gidilmez)
     res.json({
       success: true,
-      data: data.response,
-      source: 'api',
+      data: [],
+      source: 'none',
       cached: false,
-      count: data.response?.length || 0
+      count: 0
     });
   } catch (error) {
     console.error('❌ Error fetching team season matches:', error);

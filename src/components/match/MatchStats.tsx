@@ -21,6 +21,7 @@ import { useTranslation } from '../../hooks/useTranslation';
 import { BRAND, DARK_MODE, COLORS } from '../../theme/theme';
 import { isMockTestMatch, getMockMatchStatistics, getMockPlayerStatistics } from '../../data/mockTestData';
 import { PITCH_LAYOUT } from '../../config/constants';
+import { formatPlayerDisplayName } from '../../utils/playerNameUtils';
 
 const { width, height } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
@@ -450,9 +451,9 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
         if (event.player?.id) {
           map[event.player.id] = {
             playerId: event.player.id,
-            playerName: event.player.name,
+            playerName: formatPlayerDisplayName(event.player),
             minuteOut: minute,
-            replacedBy: event.assist?.name || '',
+            replacedBy: event.assist ? formatPlayerDisplayName(event.assist) : '',
           };
         }
         
@@ -460,9 +461,9 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
         if (event.assist?.id) {
           map[event.assist.id] = {
             playerId: event.assist.id,
-            playerName: event.assist.name,
+            playerName: formatPlayerDisplayName(event.assist),
             minuteIn: minute,
-            replacedFor: event.player?.name || '',
+            replacedFor: event.player ? formatPlayerDisplayName(event.player) : '',
           };
         }
       }
@@ -1397,7 +1398,7 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
                         <Text style={styles.playerNumberTextNew}>{player.number}</Text>
                       </View>
                       <View style={styles.playerNameBlock}>
-                        <Text style={styles.playerNameNew}>{player.name}</Text>
+                        <Text style={styles.playerNameNew}>{formatPlayerDisplayName(player)}</Text>
                         <Text style={styles.playerPosNew}>
                           {player.position} • {player.minutesPlayed}'
                           {/* ✅ Giriş/Çıkış bilgisi */}

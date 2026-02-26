@@ -1,0 +1,24 @@
+# Dashboard scroll + Favori takımlar – Kilitli davranış
+
+## KRİTİK: Değiştirilmemesi gerekenler
+
+### 1. Ana sayfa – Referans sabit (canlı/yaklaşan maç konumu)
+
+- **Referans**: Canlı veya en yakın yaklaşan maç kartı **her zaman** profil + filtre barının hemen altında (sabit konum).
+- **`src/components/Dashboard.tsx`**:
+  - **İçerik sırası (değiştirilmemeli):** 1) Canlı maçlar, 2) Yaklaşan maçlar, 3) Biten maçlar. Biten en altta; aşağı kaydırarak görülür.
+  - `SCROLL_CONTENT_PADDING_TOP`: iOS 260, diğer 256. Profil + filtre barı yüksekliği; **küçültülmemeli**.
+  - `styles.scrollContent.paddingTop`: Aynı değer (260/256).
+  - Başlangıç scroll = 0 (referans blok padding’den hemen sonra). Geçmiş maç sayısına bağlı scroll **yok** – konum kaymaz.
+
+### 2. Favori takımlar – 4. ve 5. takım
+
+- Kullanıcı 4 veya 5 takım seçebilir (örn. Başakşehir). **Hepsi** filtre barında ve maç listesinde görünmeli.
+- **`src/utils/storageUtils.ts`**:
+  - `validateFavoriteTeamsLenient`: Okurken `id` number veya string kabul edilir; string ise number’a çevrilir.
+  - `setFavoriteTeams`: Kaydetmeden önce tüm `id` değerleri number’a normalize edilir; böylece 4./5. takım “invalid” sayılıp silinmez.
+- **`src/hooks/useFavoriteTeams.ts`**:
+  - Supabase sync: **Yerel listede takım sayısı Supabase’den fazlaysa** (yeni eklenen takım) yerel liste korunur, Supabase’e push edilir; Supabase ile üzerine yazılmaz.
+  - `jsonToTeams`: Supabase’den gelen `id` string olsa bile number’a normalize edilir.
+
+### İlk kilitlenme: 26 Şubat 2026

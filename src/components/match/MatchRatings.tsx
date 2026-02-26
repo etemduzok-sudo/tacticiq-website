@@ -25,6 +25,7 @@ import { PlayerRatingSlider } from './PlayerRatingSlider';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useTranslation } from '../../hooks/useTranslation';
 import { COLORS } from '../../theme/theme';
+import { formatPlayerDisplayName } from '../../utils/playerNameUtils';
 
 // Web için animasyonları devre dışı bırak
 const isWeb = Platform.OS === 'web';
@@ -665,14 +666,14 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
             return;
           }
           if (isDisabled) {
-            setLockedPlayerInfo({ name: player.name, reason: 'Oyuna girmedi' });
+            setLockedPlayerInfo({ name: formatPlayerDisplayName(player), reason: 'Oyuna girmedi' });
             return;
           }
           if (isCategoryMismatch) {
             const reason = categoryViewMode === 'goalkeeper' 
               ? 'Kaleci kategorileri sadece kaleciler için geçerlidir' 
               : 'Oyuncu kategorileri kaleciler için geçerli değildir';
-            setLockedPlayerInfo({ name: player.name, reason });
+            setLockedPlayerInfo({ name: formatPlayerDisplayName(player), reason });
             return;
           }
           setSelectedPlayerId(player.id);
@@ -690,7 +691,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
           
           <View style={styles.playerListInfo}>
             <Text style={[styles.playerListName, isEffectivelyDisabled && { color: '#64748B' }]} numberOfLines={1}>
-              {player.name}
+              {formatPlayerDisplayName(player)}
             </Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
               <Text style={styles.playerListPosition}>{isGK ? 'GK' : player.position}</Text>
@@ -810,7 +811,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
     // 🔒 Oynamayan oyuncu kontrolü
     if (player && player.isSubstitute && !player.playedInMatch) {
       setLockedPlayerInfo({ 
-        name: player.name, 
+        name: formatPlayerDisplayName(player), 
         reason: 'oyuna girmedi' 
       });
       return;
@@ -1906,7 +1907,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
                                 style={[styles.playerCardMiniName, isLight && { color: themeColors.foreground }]} 
                                 numberOfLines={1}
                               >
-                                {player.name.split(' ').pop()}
+                                {formatPlayerDisplayName(player).split(' ').pop() ?? ''}
                               </Text>
                               
                               {/* Alt Satır: Puan + Status */}
@@ -1938,7 +1939,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
                           <TouchableOpacity
                             style={[styles.playerCardMini, styles.playerCardMiniDisabled, isLight && { borderColor: themeColors.border, backgroundColor: themeColors.muted }]}
                             onPress={() => {
-                              setLockedPlayerInfo({ name: player.name, reason: 'Oyuna girmedi' });
+                              setLockedPlayerInfo({ name: formatPlayerDisplayName(player), reason: 'Oyuna girmedi' });
                             }}
                             activeOpacity={0.5}
                           >
@@ -1953,7 +1954,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
                               
                               {/* İsim */}
                               <Text style={[styles.playerCardMiniName, { color: '#64748B' }]} numberOfLines={1}>
-                                {player.name.split(' ').pop()}
+                                {formatPlayerDisplayName(player).split(' ').pop() ?? ''}
                               </Text>
                               
                               {/* Alt Satır: Status */}
@@ -2357,7 +2358,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
                             </LinearGradient>
                             
                             <View style={styles.ratedPlayerInfo}>
-                              <Text style={styles.ratedPlayerName}>{player.name}</Text>
+                              <Text style={styles.ratedPlayerName}>{formatPlayerDisplayName(player)}</Text>
                               <Text style={styles.ratedPlayerPos}>{isGK ? 'Kaleci' : player.position}</Text>
                             </View>
                             

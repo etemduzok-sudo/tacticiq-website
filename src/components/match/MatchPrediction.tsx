@@ -34,6 +34,7 @@ import { ConfirmModal, ConfirmButton } from '../ui/ConfirmModal';
 import { ANALYSIS_FOCUSES, type AnalysisFocusType } from '../AnalysisFocusModal';
 import { FOCUS_CATEGORY_MAPPING, doesFocusIncludePlayerPredictions } from '../../constants/predictionConstants';
 import { isMockTestMatch, MOCK_MATCH_IDS, getMatch1Start, getMatch2Start, getMockUserTeamId, getMockCommunitySignals, getMockLineup } from '../../data/mockTestData';
+import { formatPlayerDisplayName } from '../../utils/playerNameUtils';
 import PlayerPredictionModal from './PlayerPredictionModal';
 import { 
   SIGNAL_COLORS, 
@@ -680,6 +681,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
   const [lockConfirmType, setLockConfirmType] = useState<'community' | 'real' | null>(null); // ✅ Saha içi "Gör" butonuna basınca: Emin misiniz? popup
   const [independentPredictionBonus, setIndependentPredictionBonus] = useState(true); // ✅ Bağımsız tahmin bonusu aktif mi?
   const [madeAfterCommunityViewed, setMadeAfterCommunityViewed] = useState(false); // ✅ Topluluk verilerini gördükten sonra silip yeni tahmin yaptı mı? (%80 puan kaybı)
+  const [hasChosenIndependentAfterSave, setHasChosenIndependentAfterSave] = useState(false); // ✅ "Tahminler Kaydedildi" popup'ta "Bağımsız Devam Et" seçildi mi? (Bu seçilmeden "Bağımsız Tahmin Modundasınız" gösterilmez)
   
   // ✅ OYUNCU BİLGİ POPUP - Web için Alert yerine Modal (editPlayer: "i" ile açıldığında tahmin düzenlemek için)
   const [playerInfoPopup, setPlayerInfoPopup] = useState<{
@@ -885,8 +887,8 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
   const communityTopPredictions = React.useMemo(() => ({
     totalGoals: '3-4', // En popüler toplam gol aralığı
     firstGoalTime: communityMatchPredictions.goals.mostPopularFirstGoalTime,
-    yellowCards: '3-4', // En popüler sarı kart aralığı (UI'da 0-2, 3-4, 5-6, 7+)
-    redCards: '0', // Çoğu maçta kırmızı kart yok
+    yellowCards: '3-4', // En popüler sarı kart aralığı (UI'da 1-2, 3-4, 5-6, 7+)
+    redCards: '1', // Çoğu maçta 0 kırmızı; UI 1, 2, 3, 4+ (seçim yoksa 0 sayılır)
     totalShots: '11-20', // En popüler şut aralığı
     shotsOnTarget: '6-10', // En popüler isabetli şut (UI'da 0-5, 6-10, 11-15, 16+ var)
     totalCorners: '7-10', // En popüler korner aralığı
@@ -1530,6 +1532,10 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
         if (parsed.madeAfterCommunityViewed !== undefined) {
           setMadeAfterCommunityViewed(parsed.madeAfterCommunityViewed === true);
         }
+        // ✅ Bağımsız Devam Et seçildi mi? (Tahminler Kaydedildi popup'tan sonra)
+        if (parsed.hasChosenIndependentAfterSave === true) {
+          setHasChosenIndependentAfterSave(true);
+        }
         // ✅ Takım performans puanı – sayfaya dönünce göster
         if (parsed.teamPerformance != null && typeof parsed.teamPerformance === 'number') {
           setTeamPerformance(Math.max(1, Math.min(10, Math.round(parsed.teamPerformance))));
@@ -1630,10 +1636,10 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
       }
     });
     
-    // ✅ Sarı kart aralığını belirle
+    // ✅ Sarı kart aralığını belirle (1-2, 3-4, 5-6, 7+)
     if (hasAnyCardPrediction) {
       let yellowCardRange: string;
-      if (totalYellowCards <= 2) yellowCardRange = '0-2';
+      if (totalYellowCards <= 2) yellowCardRange = '1-2';
       else if (totalYellowCards <= 4) yellowCardRange = '3-4';
       else if (totalYellowCards <= 6) yellowCardRange = '5-6';
       else yellowCardRange = '7+';
@@ -1646,19 +1652,19 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
         });
       }
       
-      // Kırmızı kart aralığını belirle
-      let redCardRange: string;
-      if (totalRedCards === 0) redCardRange = '0';
-      else if (totalRedCards === 1) redCardRange = '1';
-      else if (totalRedCards === 2) redCardRange = '2';
-      else redCardRange = '3+';
-      
-      // Kullanıcı manuel seçim yapmamışsa otomatik güncelle
-      if (predictions.redCards === null) {
-        setPredictions(prev => {
-          if (prev.redCards === redCardRange) return prev;
-          return { ...prev, redCards: redCardRange };
-        });
+      // Kırmızı kart: 1, 2, 3, 4+ (seçim yoksa puanlamada 0 kırmızı sayılır)
+      if (totalRedCards >= 1) {
+        let redCardRange: string;
+        if (totalRedCards === 1) redCardRange = '1';
+        else if (totalRedCards === 2) redCardRange = '2';
+        else if (totalRedCards === 3) redCardRange = '3';
+        else redCardRange = '4+';
+        if (predictions.redCards === null) {
+          setPredictions(prev => {
+            if (prev.redCards === redCardRange) return prev;
+            return { ...prev, redCards: redCardRange };
+          });
+        }
       }
     }
     
@@ -1684,7 +1690,12 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
 
   const handlePlayerPredictionChange = (category: string, value: string | boolean) => {
     if (!selectedPlayer) return;
-    
+    // ✅ Master kilit: Tahminler kaydedilip kilitlendiyse oyuncu tahmininde değişiklik yok
+    if (isPredictionLocked) {
+      setLockedWarningReason('match_started');
+      setShowLockedWarningModal(true);
+      return;
+    }
     // ✅ TOPLULUK VERİLERİ GÖRÜLDÜYse TÜM TAHMİNLER KALİCİ KİLİTLİ
     if (hasViewedCommunityData) {
       setLockedWarningReason('unlock_at_bottom');
@@ -1818,6 +1829,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
         teamPerformance, // ✅ Takım performans puanı (1-10), sayfaya dönünce gösterilir
         isPredictionLocked: true, // Kaydet sonrası kilitli (geriye uyum)
         hasViewedCommunityData: hasViewedCommunityData, // ✅ Topluluk verileri görüldü mü?
+        hasChosenIndependentAfterSave: hasChosenIndependentAfterSave,
         independentPredictionBonus: !hasViewedCommunityData && !madeAfterCommunityViewed, // ✅ Bağımsız tahmin bonusu (+%10) - topluluk görüp silip yaptıysa yok
         madeAfterCommunityViewed: madeAfterCommunityViewed, // ✅ Topluluk gördükten sonra silip yeni tahmin yaptı mı? (%80 puan kaybı)
         timestamp: new Date().toISOString(),
@@ -1881,20 +1893,25 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
         }
 
 
-        // Execute all database saves with timeout (5 saniye)
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Database timeout')), 5000)
+        // Execute all database saves with timeout (15 saniye – ağ yavaşsa kilit yine local'de kalır)
+        const timeoutMs = 15000;
+        const timeoutPromise = new Promise<never>((_, reject) => 
+          setTimeout(() => reject(new Error('Database timeout')), timeoutMs)
         );
         
         try {
           const results = await Promise.race([
             Promise.allSettled(predictionPromises),
             timeoutPromise
-          ]) as PromiseSettledResult<any>[];
+          ]) as PromiseSettledResult<any>[] | undefined;
           
-          const successCount = results.filter(r => r.status === 'fulfilled').length;
-          const failCount = results.filter(r => r.status === 'rejected').length;
-          console.log(`✅ Predictions saved: ${successCount} success, ${failCount} failed`);
+          if (Array.isArray(results)) {
+            const successCount = results.filter(r => r.status === 'fulfilled').length;
+            const failCount = results.filter(r => r.status === 'rejected').length;
+            console.log(`✅ Predictions saved: ${successCount} success, ${failCount} failed`);
+          } else {
+            console.warn('⚠️ Database save timed out, but local backup is available');
+          }
         } catch (timeoutErr) {
           console.warn('⚠️ Database save timed out, but local backup is available');
         }
@@ -1905,18 +1922,13 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
       
       setIsSaving(false);
       setHasUnsavedChanges(false);
-      setIsPredictionLocked(true); // Kaydedince kilitlenip kırmızı göster (eskiden olduğu gibi)
-      
-      // ✅ TOPLULUK VERİLERİ MODAL - Kayıt sonrası kullanıcıya sor
-      // Eğer daha önce topluluk verilerini görmemişse, görmek isteyip istemediğini sor
+      setIsPredictionLocked(true); // Master kilit: kaydedince ne maç ne oyuncu tahmini değiştirilemez
+
+      showInfo('Kaydedildi', 'Tahminleriniz kilitlendi. Maç ve oyuncu tahminlerinde değişiklik yapılamaz.');
+
+      // ✅ TOPLULUK VERİLERİ MODAL - Kayıt sonrası kullanıcıya sor (bağımsız devam edebilir)
       if (!hasViewedCommunityData) {
         setShowCommunityConfirmModal(true);
-      } else {
-        // Zaten görmüşse, normal mesaj göster
-        showInfo(
-          'Tahminler Güncellendi!',
-          'Tahminleriniz güncellendi.'
-        );
       }
       
       // ✅ MatchDetail'da yıldızı güncelle
@@ -2094,26 +2106,24 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
       setShowViewOnlyWarningModal(true);
       return;
     }
-    
+    // ✅ Master kilit: Tahminler kaydedilip kilitlendiyse maç tahmininde değişiklik yok
+    if (isPredictionLocked) {
+      setLockedWarningReason('match_started');
+      setShowLockedWarningModal(true);
+      return;
+    }
     // ✅ TOPLULUK VERİLERİ GÖRÜLDÜYse TÜM TAHMİNLER KALİCİ KİLİTLİ
-    // Kullanıcı topluluk verilerini gördüyse, artık hiçbir tahmin değiştiremez
     if (hasViewedCommunityData) {
       setLockedWarningReason('unlock_at_bottom');
       setShowLockedWarningModal(true);
       return;
     }
-    
     // ✅ Maç başladıysa veya bittiyse - tüm tahminler kilitli
     if (isMatchLive || isMatchFinished) {
       setLockedWarningReason('match_started');
       setShowLockedWarningModal(true);
       return;
     }
-    
-    // ✅ TOPLULUK VERİLERİNİ GÖRMEDİYSE - TÜM TAHMİNLER DEĞİŞTİRİLEBİLİR
-    // Kilit durumuna bakılmaksızın, kullanıcı maç başlamadan önce istediği tahmini değiştirebilir
-    // (Topluluk verilerini görmediği sürece)
-    
     // ✅ Değişiklik yapıldı - kaydedilmemiş değişiklik var
     if (initialPredictionsLoaded) setHasUnsavedChanges(true);
     
@@ -2425,7 +2435,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
       const yc = ar.totalYellowCards;
       let yellowRange: string | null = null;
       if (yc != null) {
-        if (yc <= 2) yellowRange = '0-2';
+        if (yc <= 2) yellowRange = '1-2';
         else if (yc <= 4) yellowRange = '3-4';
         else if (yc <= 6) yellowRange = '5-6';
         else yellowRange = '7+';
@@ -2433,10 +2443,11 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
       const rc = ar.totalRedCards;
       let redRange: string | null = null;
       if (rc != null) {
-        if (rc === 0) redRange = '0';
-        else if (rc === 1) redRange = '1';
+        if (rc === 1) redRange = '1';
         else if (rc === 2) redRange = '2';
-        else redRange = '3+';
+        else if (rc === 3) redRange = '3';
+        else if (rc >= 4) redRange = '4+';
+        else redRange = null; // 0 kırmızı → tahmin aralığı yok (skorda 0 sayılır)
       }
       // İlk yarı uzatma: liveEvents'tan dakika<=45 olan eventlerdeki max extra; yoksa mevcut yarı 45'teyse matchData.extraTime
       const firstHalfExtraFromEvents = (liveEvents || []).reduce((max: number, e: any) => {
@@ -2595,7 +2606,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                                       </Text>
                                     </View>
                                     <Text style={styles.playerName} numberOfLines={1}>
-                                        {(player.firstname && player.lastname) ? `${String(player.firstname).trim()} ${String(player.lastname).trim()}` : (player.name || '')}
+                                        {formatPlayerDisplayName(player)}
                                       </Text>
                                     <View style={styles.playerBottomRow}>
                                       <Text style={styles.playerRatingBottom}>{normalizeRatingTo100(player.rating) != null ? String(normalizeRatingTo100(player.rating)) : '–'}</Text>
@@ -2682,7 +2693,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                                 if (!communityDataVisible) return;
                                 const community = communityPredictions[player.id];
                                 setPlayerInfoPopup({
-                                  playerName: (player.firstname && player.lastname) ? `${String(player.firstname).trim()} ${String(player.lastname).trim()}` : (player.name || ''),
+                                  playerName: formatPlayerDisplayName(player),
                                   position: player.position || '',
                                   rating: player.rating ?? null,
                                   userPredictions: [],
@@ -2706,7 +2717,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                                   <Text style={styles.jerseyNumberText}>{(player.number ?? player.jersey_number ?? (player as any).shirt_number) != null && (player.number ?? player.jersey_number ?? (player as any).shirt_number) > 0 ? (player.number ?? player.jersey_number ?? (player as any).shirt_number) : '-'}</Text>
                                 </View>
                                 <Text style={styles.playerName} numberOfLines={1}>
-                                  {(player.firstname && player.lastname) ? `${String(player.firstname).trim()} ${String(player.lastname).trim()}` : (player.name || '')}
+                                  {formatPlayerDisplayName(player)}
                                 </Text>
                                 <View style={styles.playerBottomRow}>
                                   <Text style={styles.playerRatingBottom}>{normalizeRatingTo100(player.rating) != null ? String(normalizeRatingTo100(player.rating)) : '–'}</Text>
@@ -2986,7 +2997,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                                     <Text style={styles.jerseyNumberText}>{(player.number ?? player.jersey_number ?? (player as any).shirt_number) != null && (player.number ?? player.jersey_number ?? (player as any).shirt_number) > 0 ? (player.number ?? player.jersey_number ?? (player as any).shirt_number) : '-'}</Text>
                                   </View>
                                   <Text style={styles.playerName} numberOfLines={1}>
-                                    {(player.firstname && player.lastname) ? `${String(player.firstname).trim()} ${String(player.lastname).trim()}` : (player.name || '')}
+                                    {formatPlayerDisplayName(player)}
                                   </Text>
                                   <View style={styles.playerBottomRow}>
                                     <Text style={styles.playerRatingBottom}>{normalizeRatingTo100(player.rating) != null ? String(normalizeRatingTo100(player.rating)) : '–'}</Text>
@@ -3280,7 +3291,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                             </Text>
                           </View>
                           <Text style={styles.playerName} numberOfLines={1}>
-                            {(player.firstname && player.lastname) ? `${String(player.firstname).trim()} ${String(player.lastname).trim()}` : (player.name || '')}
+                            {formatPlayerDisplayName(player)}
                           </Text>
                           {/* Kadro sekmesi ile aynı: reyting sol alt, pozisyon sağ alt */}
                           <View style={styles.playerBottomRow}>
@@ -3418,20 +3429,26 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
         {/* KİLİTLİ: Topluluk sekmesinde communityDataVisible false ise empty state göster, mock veri asla gösterilmez */}
         {predictionViewIndex === 1 && !communityDataVisible && (
           <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 40, paddingHorizontal: 24 }}>
-            <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(245,158,11,0.12)', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
-              <Ionicons name="people" size={32} color="#F59E0B" />
+            <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: (hasViewedCommunityData || hasViewedRealLineup) ? 'rgba(239,68,68,0.12)' : 'rgba(245,158,11,0.12)', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+              <Ionicons name={(hasViewedCommunityData || hasViewedRealLineup) ? 'lock-closed' : 'people'} size={32} color={(hasViewedCommunityData || hasViewedRealLineup) ? '#EF4444' : '#F59E0B'} />
             </View>
             <Text style={{ color: cardTitleColor, fontSize: 17, fontWeight: '700', textAlign: 'center', marginBottom: 8 }}>
-              {hasPrediction
-                ? 'Bağımsız Tahmin Modundasınız'
-                : 'Topluluk Verileri Kilitli'}
+              {hasViewedCommunityData || hasViewedRealLineup
+                ? 'Artık tahmin yapamazsınız'
+                : hasPrediction && hasChosenIndependentAfterSave
+                  ? 'Bağımsız Tahmin Modundasınız'
+                  : 'Topluluk Verileri Kilitli'}
             </Text>
             <Text style={{ color: cardLabelColor, fontSize: 13, textAlign: 'center', lineHeight: 20, marginBottom: 20 }}>
-              {hasPrediction
-                ? 'Topluluk tahminlerini görmek için aşağıdaki butonu kullanabilirsiniz.\n\nMaç başladığında topluluk verileri otomatik açılacak ve +%10 bağımsız tahmin bonusu kazanacaksınız.'
-                : 'Topluluk tahminlerini görmek için önce kendi tahminlerinizi yapın ve kaydedin.'}
+              {hasViewedCommunityData || hasViewedRealLineup
+                ? 'Topluluk tercihleri ve/veya canlı takım dizilişini gördünüz. Tahminleriniz kalıcı olarak kilitlidir.'
+                : hasPrediction && hasChosenIndependentAfterSave
+                  ? 'Topluluk tahminlerini görmek için aşağıdaki butonu kullanabilirsiniz.\n\nMaç başladığında topluluk verileri otomatik açılacak ve +%10 bağımsız tahmin bonusu kazanacaksınız.'
+                  : hasPrediction
+                    ? 'Topluluk tahminlerini görmek için aşağıdaki butonu kullanabilirsiniz.'
+                    : 'Topluluk tahminlerini görmek için önce kendi tahminlerinizi yapın ve kaydedin.'}
             </Text>
-            {hasPrediction && !hasViewedCommunityData && (
+            {hasPrediction && !hasViewedCommunityData && !hasViewedRealLineup && (
               <>
                 <TouchableOpacity
                   style={{
@@ -3480,7 +3497,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                 </TouchableOpacity>
               </>
             )}
-            {hasPrediction && !hasViewedCommunityData && (
+            {hasPrediction && !hasViewedCommunityData && !hasViewedRealLineup && (
               <View style={{ marginTop: 12, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(239,68,68,0.1)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 }}>
                 <Ionicons name="warning" size={14} color="#EF4444" />
                 <Text style={{ fontSize: 11, color: isLight ? '#B91C1C' : '#FCA5A5' }}>Topluluk verilerini görürseniz tahminleriniz kalıcı kilitlenir</Text>
@@ -4079,7 +4096,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                 </View>
                 <View style={styles.verticalBarsContainer}>
                   {[
-                    { label: '0-2', height: 20, color: '#FBBF24' },
+                    { label: '1-2', height: 20, color: '#FBBF24' },
                     { label: '3-4', height: 32, color: '#FBBF24' },
                     { label: '5-6', height: 44, color: '#FBBF24' },
                     { label: '7+', height: 56, color: '#FBBF24' },
@@ -4127,10 +4144,10 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                 </View>
                 <View style={styles.verticalBarsContainer}>
                   {[
-                    { label: '0', height: 16, color: '#F87171' },
-                    { label: '1', height: 28, color: '#F87171' },
-                    { label: '2', height: 44, color: '#F87171' },
-                    { label: '3+', height: 56, color: '#F87171' },
+                    { label: '1', height: 24, color: '#F87171' },
+                    { label: '2', height: 36, color: '#F87171' },
+                    { label: '3', height: 48, color: '#F87171' },
+                    { label: '4+', height: 56, color: '#F87171' },
                   ].map((item) => {
                     const isSelected = isCardReadOnly ? displayValues.redCards === item.label : predictions.redCards === item.label;
                     const isCommunityTop = !isCardReadOnly && isViewOnlyMode && communityTopPredictions.redCards === item.label;
@@ -4668,8 +4685,8 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
           )}
         </View>
 
-        {/* ✅ Toolbar altı bildirim kartı (Resim 1 tarzı): Bağımsız / Topluluk görüldü / Gerçek görüldü */}
-        {predictionViewIndex !== 2 && !isViewOnlyMode && (
+        {/* ✅ Toolbar altı bildirim kartı: Sadece tahmin kaydedildikten sonra göster (boş konteyner görünmesin) */}
+        {predictionViewIndex !== 2 && !isViewOnlyMode && (hasViewedCommunityData || hasViewedRealLineup || (hasPrediction && hasChosenIndependentAfterSave)) && (
           <View style={{ marginTop: 20, marginHorizontal: 16, borderRadius: 16, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 6 }}>
             <LinearGradient colors={isLight ? ['rgba(30, 41, 59, 0.98)', 'rgba(51, 65, 85, 0.95)'] : ['rgba(18, 45, 38, 0.92)', 'rgba(28, 55, 47, 0.88)']} style={{ paddingVertical: 24, paddingHorizontal: 22, alignItems: 'center' }}>
               {hasViewedCommunityData ? (
@@ -4688,7 +4705,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                   <Text style={{ color: '#F1F5F9', fontSize: 16, fontWeight: '700', textAlign: 'center', marginBottom: 6 }}>Gerçek Kadro Görüntülendi</Text>
                   <Text style={{ color: 'rgba(241, 245, 249, 0.82)', fontSize: 13, textAlign: 'center', lineHeight: 20 }}>Tahminleriniz kalıcı olarak kilitlendi. Canlı maçta oyuncu değerlendirmesi yapabilirsiniz.</Text>
                 </>
-              ) : hasPrediction ? (
+              ) : hasPrediction && hasChosenIndependentAfterSave ? (
                 <>
                   <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: 'rgba(245, 158, 11, 0.18)', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
                     <Ionicons name="people" size={28} color="#F59E0B" />
@@ -4715,12 +4732,12 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
         <PlayerPredictionModal
           player={selectedPlayer}
           predictions={currentPlayerPredictions}
-          isPredictionLocked={isPlayerLocked(selectedPlayer.id)}
+          isPredictionLocked={isPlayerLocked(selectedPlayer.id) || isPredictionLocked}
           onShowLockedWarning={() => {
             setLockedWarningReason((isMatchLive || isMatchFinished) ? 'match_started' : 'unlock_at_bottom');
             setShowLockedWarningModal(true);
           }}
-          onUnlockLock={(!isMatchLive && !isMatchFinished) ? () => unlockSinglePlayer(selectedPlayer.id) : undefined}
+          onUnlockLock={(!isMatchLive && !isMatchFinished && !isPredictionLocked) ? () => unlockSinglePlayer(selectedPlayer.id) : undefined}
           onSaveAndLock={async () => {
             await saveSinglePlayerAndLock(selectedPlayer.id);
             setSelectedPlayer(null);
@@ -4732,7 +4749,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
           reservePlayers={reserveTeamPlayers.length > 0 ? reserveTeamPlayers : allTeamPlayers}
           allPlayerPredictions={playerPredictions}
           onSubstituteConfirm={(type, playerId, minute) => {
-            if (!selectedPlayer) return;
+            if (!selectedPlayer || isPredictionLocked) return;
             const category = type === 'normal' ? 'substitutePlayer' : 'injurySubstitutePlayer';
             const minuteCategory = type === 'normal' ? 'substituteMinute' : 'injurySubstituteMinute';
             const outCategory = type === 'normal' ? 'substitutedOut' : 'injuredOut';
@@ -5990,9 +6007,21 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                     borderWidth: 1,
                     borderColor: 'rgba(16, 185, 129, 0.3)',
                   }}
-                  onPress={() => {
+                  onPress={async () => {
                     setShowCommunityConfirmModal(false);
+                    setHasChosenIndependentAfterSave(true);
                     setIsPredictionLocked(false); // Bağımsız modda maç başlayana kadar düzenlenebilir
+                    try {
+                      const storageKey = predictionStorageKey || `${STORAGE_KEYS.PREDICTIONS}${matchData?.id}`;
+                      const existingData = await AsyncStorage.getItem(storageKey);
+                      if (existingData) {
+                        const parsed = JSON.parse(existingData);
+                        parsed.hasChosenIndependentAfterSave = true;
+                        await AsyncStorage.setItem(storageKey, JSON.stringify(parsed));
+                      }
+                    } catch (e) {
+                      console.warn('Bağımsız mod durumu kaydedilemedi:', e);
+                    }
                     showInfo(
                       'Bağımsız Tahmin Modu Aktif!',
                       'Maç başlayana kadar tahminlerinizi serbestçe düzenleyebilirsiniz.\n\nMaç başladığında:\n• Tahminleriniz otomatik kilitlenir\n• Topluluk verileri açılır\n• +%10 bağımsız tahmin bonusu kazanırsınız!'
@@ -6258,7 +6287,7 @@ const styles = StyleSheet.create({
   },
   // ✅ Tek scroll için dış wrapper: 3 saha + alttaki tüm içerik (sekmeler, Maça ait tahminler)
   scrollContentOuter: {
-    paddingBottom: 120,
+    paddingBottom: 200,
     maxWidth: '100%',
   },
   scrollContent: {

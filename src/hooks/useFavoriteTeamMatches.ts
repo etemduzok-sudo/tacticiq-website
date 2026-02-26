@@ -7,7 +7,6 @@ import { useFavoriteTeams } from './useFavoriteTeams';
 import { logger } from '../utils/logger';
 import { getAllBulkMatches, isBulkDataValid } from '../services/bulkDataService';
 import { MOCK_TEST_ENABLED, getMockMatches, isMockTestMatch } from '../data/mockTestData';
-import { MOCK_TEST_ENABLED, getMockMatches, isMockTestMatch } from '../data/mockTestData';
 
 // Cache keys
 const CACHE_KEY = 'tacticiq-matches-cache';
@@ -803,27 +802,6 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
         
         // ✅ İlk yüklemeden sonra HEMEN canlı maçları da çek
         // Bu, cache'den NS ile gelen ama gerçekte canlı olan maçları yakalar
-        console.log('🔴 fetchMatches tamamlandı, fetchLiveOnly çağrılıyor...');
-        
-        // ✅ DEBUG: Juventus maçlarını logla
-        const allMatches = [...past, ...live, ...upcoming];
-        const juvMatches = allMatches.filter(m => {
-          const home = (m.teams?.home?.name || '').toLowerCase();
-          const away = (m.teams?.away?.name || '').toLowerCase();
-          return home.includes('juve') || away.includes('juve');
-        });
-        console.log('🔴 Juventus maçları (tüm kategoriler):', juvMatches.map(m => ({
-          id: m.fixture?.id,
-          home: m.teams?.home?.name,
-          homeId: m.teams?.home?.id,
-          away: m.teams?.away?.name,
-          awayId: m.teams?.away?.id,
-          status: m.fixture?.status?.short,
-          timestamp: m.fixture?.timestamp,
-          date: new Date((m.fixture?.timestamp || 0) * 1000).toLocaleString(),
-          category: past.includes(m) ? 'past' : live.includes(m) ? 'live' : 'upcoming'
-        })));
-        
         setTimeout(() => {
           fetchLiveOnly();
         }, 100); // Küçük delay - state'lerin yerleşmesi için

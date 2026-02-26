@@ -17,6 +17,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Rect, Line, Circle, Path, Defs, RadialGradient, Stop } from 'react-native-svg';
 import { PITCH_LAYOUT } from '../../config/constants';
+import { formatPlayerDisplayName } from '../../utils/playerNameUtils';
 
 const { width } = Dimensions.get('window');
 
@@ -251,7 +252,7 @@ export function MatchPredictionVisualOnly() {
                         <Text style={styles.jerseyNumber}>{player.number}</Text>
                       </LinearGradient>
                       
-                      <Text style={styles.playerName} numberOfLines={1}>{player.name}</Text>
+                      <Text style={styles.playerName} numberOfLines={1}>{formatPlayerDisplayName(player)}</Text>
                       
                       <View style={styles.playerFooter}>
                         <Text style={[styles.playerRating, isElite && styles.playerRatingElite]}>
@@ -461,7 +462,7 @@ export function MatchPredictionVisualOnly() {
             </View>
             
             <View style={styles.optionButtonsRow}>
-              {['0-2', '3-4', '5-6', '7+'].map((r, i) => (
+              {['1-2', '3-4', '5-6', '7+'].map((r, i) => (
                 <TouchableOpacity 
                   key={i} 
                   style={[
@@ -488,19 +489,19 @@ export function MatchPredictionVisualOnly() {
             </View>
             
             <View style={styles.optionButtonsRow}>
-              {['0', '1', '2', '3+'].map((r, i) => (
-                <TouchableOpacity 
-                  key={i} 
-                  style={[
-                    styles.optionBtn,
-                    r === '0' && [styles.optionBtnActive, { backgroundColor: CARD_THEMES.card.border }]
-                  ]}
-                >
-                  <Text style={[styles.optionBtnText, { color: CARD_THEMES.card.accent }, r === '0' && styles.optionBtnTextActive]}>
-                    {r}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+{['1', '2', '3', '4+'].map((r, i) => (
+                  <TouchableOpacity 
+                    key={i} 
+                    style={[
+                      styles.optionBtn,
+                      r === '1' && [styles.optionBtnActive, { backgroundColor: CARD_THEMES.card.border }]
+                    ]}
+                  >
+                    <Text style={[styles.optionBtnText, { color: CARD_THEMES.card.accent }, r === '1' && styles.optionBtnTextActive]}>
+                      {r}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
             </View>
           </View>
 

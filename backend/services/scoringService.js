@@ -99,10 +99,11 @@ function calculateTotalGoalsPoints(prediction, result) {
 }
 
 // Calculate yellow cards points (±1 tolerance)
+// Tercih yoksa (null) 0 sarı kart sayılır; gerçek 0 ise puan verilir
 function calculateYellowCardsPoints(prediction, result) {
-  if (!prediction.yellow_cards || !result.yellow_cards) return 0;
-  
-  const diff = Math.abs(prediction.yellow_cards - result.yellow_cards);
+  const pred = prediction.yellow_cards != null ? Number(prediction.yellow_cards) : 0;
+  const actual = result.yellow_cards != null ? Number(result.yellow_cards) : 0;
+  const diff = Math.abs(pred - actual);
   if (diff <= 1) {
     return SCORING_RULES.YELLOW_CARDS;
   }
@@ -110,11 +111,24 @@ function calculateYellowCardsPoints(prediction, result) {
 }
 
 // Calculate red cards points
+// Tercih yoksa (null) 0 kırmızı kart sayılır; gerçek 0 ise puan verilir
+// Tahmin: '1', '2', '3', '4+' (string) veya sayı; 3 = en az 3, 4+ = en az 4
 function calculateRedCardsPoints(prediction, result) {
-  if (!prediction.red_cards || !result.red_cards) return 0;
-  
-  if (prediction.red_cards === result.red_cards) {
-    return SCORING_RULES.RED_CARDS;
+  const raw = prediction.red_cards;
+  const actual = result.red_cards != null ? Number(result.red_cards) : 0;
+  if (raw == null) {
+    return actual === 0 ? SCORING_RULES.RED_CARDS : 0;
+  }
+  const s = String(raw).trim();
+  if (s === '1') return actual === 1 ? SCORING_RULES.RED_CARDS : 0;
+  if (s === '2') return actual === 2 ? SCORING_RULES.RED_CARDS : 0;
+  if (s === '3' || s === '3+') return actual >= 3 ? SCORING_RULES.RED_CARDS : 0;
+  if (s === '4+') return actual >= 4 ? SCORING_RULES.RED_CARDS : 0;
+  const n = Number(raw);
+  if (!Number.isNaN(n) && n >= 1) {
+    if (n <= 2) return actual === n ? SCORING_RULES.RED_CARDS : 0;
+    if (n === 3) return actual >= 3 ? SCORING_RULES.RED_CARDS : 0;
+    return actual >= 4 ? SCORING_RULES.RED_CARDS : 0;
   }
   return 0;
 }

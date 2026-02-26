@@ -4,10 +4,13 @@ import SafeIcon from '../SafeIcon';
 import { useTheme } from '../../contexts/ThemeContext';
 import { COLORS, SIZES, TYPOGRAPHY, SPACING, SHADOWS } from '../../theme/theme';
 import Card from '../atoms/Card';
+import { formatPlayerDisplayName } from '../../utils/playerNameUtils';
 
 interface PlayerCardProps {
   player: {
     name: string;
+    firstname?: string | null;
+    lastname?: string | null;
     number: number;
     position: string;
     photo?: string;
@@ -43,7 +46,7 @@ const PlayerCard = React.memo(function PlayerCard({ player, stats, onPress, comp
                   <Text style={styles.numberText}>{player.number}</Text>
                 </View>
                 <Text style={[styles.playerName, { color: colors.text }]} numberOfLines={1}>
-                  {player.name}
+                  {formatPlayerDisplayName(player)}
                 </Text>
               </View>
               <Text style={[styles.position, { color: colors.textSecondary }]}>

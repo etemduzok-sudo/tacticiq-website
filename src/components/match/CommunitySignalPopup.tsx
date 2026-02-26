@@ -25,6 +25,7 @@ import Animated, {
   FadeOut 
 } from 'react-native-reanimated';
 import { CommunitySignalData, getCommunitySignal } from '../../services/communitySignalService';
+import { formatPlayerDisplayName } from '../../utils/playerNameUtils';
 
 const { width, height } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
@@ -196,7 +197,7 @@ export const CommunitySignalPopup: React.FC<CommunitySignalPopupProps> = ({
                           <Text style={styles.rankText}>{index + 1}</Text>
                         </View>
                         <View style={styles.suggestionInfo}>
-                          <Text style={styles.suggestionName}>{suggestion.player.name}</Text>
+                          <Text style={styles.suggestionName}>{formatPlayerDisplayName(suggestion.player)}</Text>
                           <Text style={styles.suggestionPosition}>
                             {suggestion.player.position}
                             {suggestion.player.number ? ` • #${suggestion.player.number}` : ''}

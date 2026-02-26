@@ -14,6 +14,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../services/api';
 import { useFavoriteTeams } from '../../hooks/useFavoriteTeams';
+import { formatPlayerDisplayName } from '../../utils/playerNameUtils';
 
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
@@ -381,7 +382,7 @@ export function MatchResultSummary({ matchId, matchData }: MatchResultSummaryPro
                 <Text style={styles.playerNumber}>{player.number || '-'}</Text>
               </View>
               <View>
-                <Text style={styles.playerName}>{player.name}</Text>
+                <Text style={styles.playerName}>{formatPlayerDisplayName(player)}</Text>
                 <Text style={styles.playerPosition}>{player.position}</Text>
               </View>
             </View>
@@ -578,7 +579,7 @@ export function MatchResultSummary({ matchId, matchData }: MatchResultSummaryPro
               <View style={styles.playerHeatMapPlaceholder}>
                 <Ionicons name="thermometer-outline" size={22} color="#1FA2A6" />
                 <Text style={styles.playerHeatMapText}>
-                  {player.name} — Isı haritası API desteği eklendiğinde görüntülenecek
+                  {formatPlayerDisplayName(player)} — Isı haritası API desteği eklendiğinde görüntülenecek
                 </Text>
               </View>
             </View>

@@ -19,6 +19,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING } from '../../theme/theme';
 import { PITCH_LAYOUT } from '../../config/constants';
+import { formatPlayerDisplayName } from '../../utils/playerNameUtils';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
@@ -35,6 +36,8 @@ const SNAP_INTERVAL = FIELD_WIDTH;
 interface Player {
   id: number;
   name: string;
+  firstname?: string | null;
+  lastname?: string | null;
   number: number;
   position: string;
   photo?: string;
@@ -231,7 +234,7 @@ const FieldCard: React.FC<{
                 </View>
               )}
               <Text style={styles.playerName} numberOfLines={1}>
-                {player.name.split(' ').pop()?.substring(0, 8) || ''}
+                {formatPlayerDisplayName(player).split(' ').pop()?.substring(0, 8) || ''}
               </Text>
               
               {/* Event badge'leri */}

@@ -2,7 +2,7 @@
 // ✅ Supabase senkronizasyonu eklendi
 // ✅ Bulk data download entegrasyonu eklendi
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { getFavoriteTeams, setFavoriteTeams as saveFavoriteTeams, validateFavoriteTeams } from '../utils/storageUtils';
+import { getFavoriteTeams, setFavoriteTeams as saveFavoriteTeams } from '../utils/storageUtils';
 import { supabase } from '../config/supabase';
 import { logger } from '../utils/logger';
 import { downloadBulkData, isBulkDataValid, clearBulkData, BulkDownloadProgress } from '../services/bulkDataService';
@@ -21,15 +21,19 @@ const teamsToJson = (teams: FavoriteTeam[]): string => {
   return JSON.stringify(teams);
 };
 
-// Supabase'den gelen JSON string'i takım array'ine çevir
+// Supabase'den gelen JSON string'i takım array'ine çevir (id string/number normalize)
 const jsonToTeams = (json: string | null): FavoriteTeam[] | null => {
   if (!json) return null;
   try {
     const parsed = JSON.parse(json);
-    if (Array.isArray(parsed) && validateFavoriteTeams(parsed)) {
-      return parsed;
-    }
-    return null;
+    if (!Array.isArray(parsed) || parsed.length === 0) return null;
+    const normalized = parsed.map((t: any) => {
+      if (!t || typeof t.name !== 'string' || t.name.length === 0) return null;
+      const id = typeof t.id === 'number' ? t.id : parseInt(String(t.id), 10);
+      if (Number.isNaN(id)) return null;
+      return { ...t, id, logo: t.logo ?? '' } as FavoriteTeam;
+    }).filter(Boolean);
+    return normalized.length > 0 ? normalized : null;
   } catch {
     return null;
   }
@@ -182,7 +186,9 @@ export function useFavoriteTeams() {
             const localIds = localTeams.map(t => t.id).sort().join(',');
             const supabaseIds = supabaseTeams.map(t => t.id).sort().join(',');
             if (localIds !== supabaseIds) {
-              if (supabaseUpdatedAt > localUpdatedAt) {
+              // ✅ Yerel listede daha fazla takım varsa (örn. yeni eklenen 4. takım) Supabase ile ezme – yerel master
+              const preferLocal = (localTeams?.length ?? 0) > (supabaseTeams?.length ?? 0);
+              if (!preferLocal && supabaseUpdatedAt > localUpdatedAt) {
                 logger.info('Supabase is newer, pulling from Supabase', {
                   local: localTeams.map(t => t.name),
                   supabase: supabaseTeams.map(t => t.name),
@@ -197,6 +203,12 @@ export function useFavoriteTeams() {
                 } catch (e) { /* ignore */ }
                 const ids = supabaseTeams.map(t => t.id).filter(Boolean);
                 if (ids.length > 0) triggerBulkDownload(ids);
+              } else if (preferLocal) {
+                logger.info('Local has more teams, pushing to Supabase (keep local)', {
+                  local: localTeams.map(t => t.name),
+                  supabase: supabaseTeams.map(t => t.name),
+                }, 'FAVORITE_TEAMS');
+                await syncToSupabase(localTeams);
               } else {
                 logger.info('Local is newer, pushing to Supabase', {
                   local: localTeams.map(t => t.name),

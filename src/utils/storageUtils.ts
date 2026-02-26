@@ -71,14 +71,26 @@ export async function clearAllStorage(): Promise<boolean> {
   }
 }
 
-// Validate favorite teams data
+// Validate favorite teams data (strict: id must be number - for saving)
 export function validateFavoriteTeams(data: any): boolean {
   if (!Array.isArray(data)) return false;
-  
-  return data.every(team => 
+  return data.every(team =>
     team &&
     typeof team === 'object' &&
     typeof team.id === 'number' &&
+    typeof team.name === 'string' &&
+    team.name.length > 0
+  );
+}
+
+// Lenient validation for reading: accept id as number or string (JSON/AsyncStorage can store numbers as strings)
+// Prevents deleting user data when format is slightly different
+export function validateFavoriteTeamsLenient(data: any): boolean {
+  if (!Array.isArray(data)) return false;
+  return data.every(team =>
+    team &&
+    typeof team === 'object' &&
+    (typeof team.id === 'number' || (typeof team.id === 'string' && team.id !== '')) &&
     typeof team.name === 'string' &&
     team.name.length > 0
   );
@@ -145,13 +157,25 @@ const TEAM_NAME_TO_CORRECT_ID: Record<string, number> = {
 
 // Get favorite teams safely with ID migration
 export async function getFavoriteTeams() {
-  const teams = await getStorageItem<Array<{ id: number; name: string; logo: string }>>(
+  const raw = await getStorageItem<Array<{ id: number | string; name: string; logo?: string }>>(
     STORAGE_KEYS.FAVORITE_CLUBS,
-    validateFavoriteTeams
+    validateFavoriteTeamsLenient
   );
-  
-  if (!teams) return null;
-  
+
+  if (!raw || raw.length === 0) return null;
+
+  // ✅ Normalize id to number (AsyncStorage/JSON may have string id) so we never lose teams
+  let needsSave = false;
+  const teams = raw.map(team => {
+    const numId = typeof team.id === 'number' ? team.id : parseInt(String(team.id), 10);
+    if (Number.isNaN(numId)) return null;
+    if (typeof team.id !== 'number') needsSave = true;
+    return { ...team, id: numId, logo: team.logo ?? '' } as { id: number; name: string; logo: string };
+  }).filter(Boolean) as Array<{ id: number; name: string; logo: string }>;
+
+  if (teams.length === 0) return null;
+  if (needsSave) await setStorageItem(STORAGE_KEYS.FAVORITE_CLUBS, teams);
+
   // ✅ Migrate to correct API-Football IDs based on team name
   let needsUpdate = false;
   const migratedTeams = teams.map(team => {
@@ -188,12 +212,17 @@ export async function getFavoriteTeams() {
   return migratedTeams;
 }
 
-// Set favorite teams safely
-export async function setFavoriteTeams(teams: Array<{ id: number; name: string; logo: string; colors?: string[] }>) {
-  if (!validateFavoriteTeams(teams)) {
+// Set favorite teams safely (normalize id to number so 4th/5th team is never dropped)
+export async function setFavoriteTeams(teams: Array<{ id: number | string; name: string; logo?: string; colors?: string[] }>) {
+  if (!Array.isArray(teams) || teams.length === 0) return false;
+  const normalized = teams.map(t => {
+    const numId = typeof t.id === 'number' ? t.id : parseInt(String(t.id), 10);
+    if (Number.isNaN(numId)) return null;
+    return { ...t, id: numId, logo: t.logo ?? '' } as { id: number; name: string; logo: string; colors?: string[] };
+  }).filter(Boolean) as Array<{ id: number; name: string; logo: string; colors?: string[] }>;
+  if (normalized.length === 0 || !validateFavoriteTeams(normalized)) {
     console.error('Invalid favorite teams data');
     return false;
   }
-  
-  return setStorageItem(STORAGE_KEYS.FAVORITE_CLUBS, teams);
+  return setStorageItem(STORAGE_KEYS.FAVORITE_CLUBS, normalized);
 }

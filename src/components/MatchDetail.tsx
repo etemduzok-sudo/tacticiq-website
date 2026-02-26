@@ -1065,6 +1065,13 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
     }
     
     const state = computeLiveState(matchStart, events);
+    if (!state) {
+      return {
+        homeScore: currentMatch?.goals?.home ?? 0,
+        awayScore: currentMatch?.goals?.away ?? 0,
+        halftimeScore: currentMatch?.score?.halftime || null,
+      };
+    }
     
     // İlk yarı skorunu hesapla (45. dakikaya kadar olan goller)
     // ✅ Kendi kalesine gol durumunda teamSide tersine çevrilir
@@ -1702,8 +1709,10 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
               text: t('matchDetail.save'), 
               onPress: async () => { 
                 if (predictionSaveFn) {
-                  await predictionSaveFn();
+                  const saveFn = predictionSaveFn();
+                  if (typeof saveFn === 'function') await saveFn();
                 }
+                setPredictionHasUnsavedChanges(false);
                 setShowUnsavedChangesModal(false);
                 if (pendingTabChange) {
                   setActiveTab(pendingTabChange);

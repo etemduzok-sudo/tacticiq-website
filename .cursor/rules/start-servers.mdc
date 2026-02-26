@@ -1,0 +1,32 @@
+# TacticIQ - Sunucuları Başlatma
+
+## Portlar
+- **8082** (veya 19006): Frontend (Expo web) – `ERR_CONNECTION_REFUSED` = frontend çalışmıyor
+- **3001**: Backend API – maçlar, kadro, koç vb. buradan gelir
+
+## Yeniden başlatma (sırayla)
+
+### 1. Backend (port 3001)
+```bash
+cd c:\TacticIQ\backend
+npm run dev
+```
+Veya ana klasörden: `npm run backend:dev`
+
+### 2. Frontend – Web (port 8082)
+```bash
+cd c:\TacticIQ
+npm start
+```
+Tarayıcıda web için: `npx expo start --web`  
+Adres çıktıda yazar (genelde http://localhost:8082 veya 19006).
+
+### 3. Cache temizleyerek frontend
+```bash
+cd c:\TacticIQ
+npx expo start -c
+```
+
+## Sorun: "Bu sayfaya ulaşılamıyor" / ERR_CONNECTION_REFUSED
+- **localhost:8082** açılmıyorsa → Frontend (Expo) kapalı; yukarıdaki `npm start` veya `npx expo start --web` ile başlatın.
+- **Maçlar gelmiyor / API hataları** → Backend (3001) kapalı; `npm run backend:dev` ile başlatın.

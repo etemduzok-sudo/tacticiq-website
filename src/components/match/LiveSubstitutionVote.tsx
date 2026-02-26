@@ -16,10 +16,13 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING } from '../../theme/theme';
+import { formatPlayerDisplayName } from '../../utils/playerNameUtils';
 
 interface Player {
   id: number;
   name: string;
+  firstname?: string | null;
+  lastname?: string | null;
   number: number;
   position: string;
   photo?: string;
@@ -324,7 +327,7 @@ export default function LiveSubstitutionVote({
                     <Text style={styles.playerSelectNumberText}>{player.number}</Text>
                   </View>
                   <Text style={styles.playerSelectName} numberOfLines={1}>
-                    {player.name.split(' ').pop()}
+                    {formatPlayerDisplayName(player).split(' ').pop() ?? ''}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -351,7 +354,7 @@ export default function LiveSubstitutionVote({
                     <Text style={styles.playerSelectNumberText}>{player.number}</Text>
                   </View>
                   <Text style={styles.playerSelectName} numberOfLines={1}>
-                    {player.name.split(' ').pop()}
+                    {formatPlayerDisplayName(player).split(' ').pop() ?? ''}
                   </Text>
                 </TouchableOpacity>
               ))}

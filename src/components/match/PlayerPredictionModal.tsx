@@ -19,6 +19,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useTheme } from '../../contexts/ThemeContext';
 import { COLORS } from '../../theme/theme';
+import { formatPlayerDisplayName } from '../../utils/playerNameUtils';
 
 const isWeb = Platform.OS === 'web';
 const { height } = Dimensions.get('window');
@@ -198,7 +199,7 @@ const PlayerPredictionModal = ({
           <View style={styles.substituteButtonSingleRow}>
             <Ionicons name="arrow-down" size={14} color="#EF4444" />
             <Text style={styles.substituteButtonLabel}>Çıkar:</Text>
-            <Text style={styles.substituteButtonPlayerNameSingle}>{player.name.split(' ').pop()}</Text>
+            <Text style={styles.substituteButtonPlayerNameSingle}>{formatPlayerDisplayName(player).split(' ').pop() ?? ''}</Text>
           </View>
           <View style={styles.substituteButtonSingleRow}>
             <Ionicons name="arrow-up" size={14} color="#10B981" />
@@ -220,7 +221,7 @@ const PlayerPredictionModal = ({
           <View style={styles.substituteButtonSingleRow}>
             <Ionicons name="arrow-down" size={14} color="#EF4444" />
             <Text style={styles.substituteButtonLabel}>Çıkar:</Text>
-            <Text style={styles.substituteButtonPlayerNameSingle}>{player.name.split(' ').pop()}</Text>
+            <Text style={styles.substituteButtonPlayerNameSingle}>{formatPlayerDisplayName(player).split(' ').pop() ?? ''}</Text>
           </View>
           <View style={styles.substituteButtonSingleRow}>
             <Ionicons name="arrow-up" size={14} color="#10B981" />
@@ -267,7 +268,7 @@ const PlayerPredictionModal = ({
               </View>
 
               <View style={styles.playerDetails}>
-                <Text style={[styles.playerNameLarge, { color: themeColors.foreground }]}>{player.name}</Text>
+                <Text style={[styles.playerNameLarge, { color: themeColors.foreground }]}>{formatPlayerDisplayName(player)}</Text>
                 <Text style={[styles.playerPositionModal, { color: themeColors.mutedForeground }]}>
                   {player.position} • Form: <Text style={styles.formText}>{player.form}%</Text>
                 </Text>
@@ -276,7 +277,7 @@ const PlayerPredictionModal = ({
             {/* Tahmin yapılan oyuncu her zaman görünsün */}
             <View style={styles.tahminYapilanOyuncuBar}>
               <Ionicons name="person" size={14} color="#1FA2A6" />
-              <Text style={styles.tahminYapilanOyuncuText}>Tahmin: {player.name}</Text>
+              <Text style={styles.tahminYapilanOyuncuText}>Tahmin: {formatPlayerDisplayName(player)}</Text>
             </View>
           </LinearGradient>
 
