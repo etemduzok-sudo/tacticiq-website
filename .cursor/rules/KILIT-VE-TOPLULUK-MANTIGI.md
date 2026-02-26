@@ -12,10 +12,10 @@ Kurallara göre tahminler **sadece** şu 4 durumda kilitlenir:
 |---|--------|-----------------|
 | 1 | Maç canlı | Maç başladığında otomatik |
 | 2 | Maç bitti | Maç bittiğinde otomatik |
-| 3 | "Topluluk Verilerini Gör"e basıldı | Tahmin sekmesi → Kaydet sonrası modal veya büyük mavi buton |
-| 4 | "Gerçek Kadroyu Gör"e basıldı | Gerçek kadro butonu (maç başlamadan önce) |
+| 3 | "Topluluk Verilerini Gör"e basıldı **ve gerçek topluluk verisi mevcut** | Tahmin sekmesi → Kaydet sonrası modal veya saha içi buton; sadece `hasRealCommunityData` true iken kilitlenir |
+| 4 | "Gerçek Kadroyu Gör"e basıldı **(ilk 11 API'dan gelmişse)** | Gerçek kadro butonu (maç başlamadan önce); ilk 11 belli değilse buton yok, kilit yok |
 
-**Önemli:** Genel "Tahminleri Kaydet" butonu tahminleri **kaydeder** ama (maç başlamadıysa) **kilitlemez**. Kilit = yukarıdaki 4 durumdan biri.
+**Önemli:** Genel "Tahminleri Kaydet" butonu tahminleri **kaydeder** ama (maç başlamadıysa) **kilitlemez**. Kilit = yukarıdaki 4 durumdan biri. Topluluk verisi "yeterli değil" / "oluştuğunda görülecek" iken veya gerçek ilk 11 belli değilken tahminler **kalıcı kilitlenmez**.
 
 ---
 
