@@ -590,6 +590,7 @@ export default {
   'newsletter.form.subscribe': '订阅',
   'newsletter.form.subscribing': '订阅中...',
   'newsletter.form.privacy': '随时取消订阅。隐私政策',
+  'newsletter.form.privacyLink': '隐私政策',
   'newsletter.error': '请输入有效的电子邮件',
   'newsletter.success': '订阅成功！',
   'newsletter.subscribed.title': '恭喜！',
@@ -905,6 +906,15 @@ export default {
   'legal.description': '平台使用条款和法律信息',
   'legal.select': '选择一个文件',
   'legal.cookies.description': 'Cookie的使用和管理',
+  'legal.kvkk.title': 'KVKK披露声明',
+  'legal.kvkk.description': '个人数据保护法信息',
+  'legal.consent.title': '明确同意声明',
+  'legal.consent.description': 'KVKK下的明确同意声明',
+  'legal.sales.title': '远程销售协议',
+  'legal.sales.description': '数字内容销售条款和撤回权',
+  'legal.kvkk.fullContent': `根据《个人数据保护法》第6698号（"KVKK"）：\n数据控制者：TacticIQ\n邮箱：kvkk@tacticiq.app\n\n处理的数据：身份、联系、活动、设备/IP。\n\n您的权利：kvkk@tacticiq.app`,
+  'legal.consent.fullContent': `根据KVKK，TacticIQ：\n披露：我已被告知我的个人数据将被处理。\n同意：我明确同意处理和传输上述个人数据。\n我的权利：我承认可随时撤回此同意并行使KVKK第11条规定的权利。`,
+  'legal.sales.fullContent': `根据《消费者保护法》第6502号\n1. 双方：卖方 TacticIQ 2. 协议标的：高级会员 3. 付款：通过应用商店 4. 撤回权：数字内容不适用 5. 联系：sales@tacticiq.app`,
   'legal.copyright.title': '版权和DMCA通知',
 
   // Legal full content

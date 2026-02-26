@@ -1,0 +1,58 @@
+# KİLİTLİ: Maç Bitiş Düdüğü ve Snapshot Kuralları
+
+## DEĞİŞTİRMEYİN
+
+Bu kurallar **onay alınmadan değiştirilmez**. Bitiş zamanı ve maç sonu verisi davranışı buna göre sabittir.
+
+---
+
+## 1. Bitiş düdüğü SADECE API'den
+
+- **Kaynak:** API-Football `fixture.timestamp` (başlama) + `fixture.status.elapsed` (maç dakikası, bitiş düdüğü anı).
+- **Bitiş zamanı (saniye):** `timestamp + (elapsed * 60)`. **Sabit 90 veya tahmin (başlama+2h vb.) ASLA kullanılmaz.**
+- **elapsed yoksa:** Bitiş zamanı "bilinmiyor" sayılır; `getMatchEndTimestampSec` **null** döner. Tahmin yapılmaz.
+
+**İlgili kod:**
+- `src/components/Dashboard.tsx`: `getMatchEndTimestampSec(match)` — sadece `match.fixture?.timestamp` ve `match.fixture?.status?.elapsed` kullanır.
+
+---
+
+## 2. Ana ekranda biten maçlar (1 saat kuralı)
+
+- Sadece **bitiş düdüğünden (API elapsed) itibaren 60 dakika** içindeki biten maçlar ana listede gösterilir.
+- Filtre: `getMatchEndTimestampSec(match)` != null ve `(nowSec - endSec)` 0 ile 3600 arasında.
+- Bitiş zamanı hesaplanamıyorsa (elapsed yok) maç bu listede **gösterilmez**.
+
+---
+
+## 3. Biten maça tıklanınca (24 saat kuralı)
+
+- **Bitişten sonra 24 saatten az:** Reyting/oylama popup (`onMatchResultSelect`).
+- **24 saat veya üzeri (veya bitiş zamanı bilinmiyorsa):** Maç detay, **stats** sekmesi.
+- Hem **tek favori** hem **iki favori (modal seçimi sonrası)** için aynı kural uygulanır.
+- Bitiş zamanı yine sadece `getMatchEndTimestampSec` ile (API elapsed); tahmin yok.
+
+---
+
+## 4. Maç sonu snapshot (tek kaynak: API bitiş anı)
+
+- **Ne zaman alınır:** Sadece API-Football **FT (veya AET/PEN)** döndüğü anda, o anda toplanan tam maç verisi (getFixtureDetails + events + statistics).
+- **Nereye yazılır:** `match_end_snapshots` tablosu (`match_id`, `snapshot` JSONB, `created_at`).
+- **Başka snapshot yok:** Farklı bir zamanda veya farklı bir mantıkla (tahmini bitiş, cron, vb.) snapshot alınmaz/kabul edilmez.
+
+**İlgili kod:**
+- `backend/services/liveMatchService.js`: Maç FT olduğunda `saveMatchEndSnapshot(fixture.id, fullMatch)` — sadece bu akışta çağrılır.
+- `backend/routes/matches.js` GET `/api/matches/:id`: Maç FT/AET/PEN ise önce `match_end_snapshots` sorgulanır; kayıt varsa cevap **sadece** bu snapshot. Yoksa mevcut DB/API cevabı döner.
+
+---
+
+## 5. İzin verilmeyen değişiklikler
+
+- Bitiş zamanı için sabit 90 dakika veya "kickoff + 2 saat" gibi tahmin kullanmak.
+- Snapshot'ı FT anı dışında başka bir tetikleyiciyle almak veya farklı bir tabloda tutmak.
+- 24 saat yerine farklı süre (örn. 12 saat) koymak — sadece kullanıcı açıkça isterse.
+- 1 saat kuralını kaldırmak veya farklı süre yapmak — sadece kullanıcı açıkça isterse.
+
+---
+
+**İlk kilitlenme:** 23 Şubat 2026

@@ -521,7 +521,7 @@ export default function ProfileSetupScreen({
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('İzin Gerekli', 'Galeriye erişmek için izin vermeniz gerekiyor.');
+        Alert.alert(t('profileSetup.permissionRequired'), t('profileSetup.galleryPermission'));
         return;
       }
 
@@ -537,7 +537,7 @@ export default function ProfileSetupScreen({
       }
     } catch (error) {
       console.error('Error picking image:', error);
-      Alert.alert('Hata', 'Fotoğraf seçilirken bir hata oluştu.');
+      Alert.alert(t('common.error'), t('profileSetup.galleryError'));
     }
   };
 
@@ -545,7 +545,7 @@ export default function ProfileSetupScreen({
     try {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('İzin Gerekli', 'Kamera kullanmak için izin vermeniz gerekiyor.');
+        Alert.alert(t('profileSetup.permissionRequired'), t('profileSetup.cameraPermission'));
         return;
       }
 
@@ -561,21 +561,21 @@ export default function ProfileSetupScreen({
       }
     } catch (error) {
       console.error('Error taking photo:', error);
-      Alert.alert('Hata', 'Fotoğraf çekilirken bir hata oluştu.');
+      Alert.alert(t('common.error'), t('profileSetup.cameraError'));
     }
   };
 
   const handleNext = () => {
     if (currentStep === 'profile') {
       if (!nickname.trim() || nickname.trim().length < 3) {
-        Alert.alert('Hata', 'Nickname en az 3 karakter olmalıdır');
+        Alert.alert(t('common.error'), t('profileSetup.nicknameMinLength'));
         return;
       }
       animateTransition('forward', () => setCurrentStep('national-team'));
     } else if (currentStep === 'national-team') {
       // Free plan için milli takım zorunlu
       if (!isPro && !selectedNationalTeam) {
-        Alert.alert('Hata', 'Free plan için milli takım seçimi zorunludur');
+        Alert.alert(t('common.error'), t('profileSetup.nationalTeamRequired'));
         return;
       }
       // Pro plan için milli takım opsiyonel, kulüp takımlarına geç
@@ -587,7 +587,7 @@ export default function ProfileSetupScreen({
     } else if (currentStep === 'club-teams') {
       // Pro plan için en az 1 takım seçilmeli
       if (isPro && selectedClubTeams.length === 0) {
-        Alert.alert('Bilgi', 'Pro plan için en az 1 kulüp takımı seçmelisiniz');
+        Alert.alert(t('common.info'), t('profileSetup.clubRequired'));
         return;
       }
       handleComplete();
@@ -641,7 +641,7 @@ export default function ProfileSetupScreen({
       }, 300);
     } catch (error) {
       console.error('Error saving profile:', error);
-      Alert.alert('Hata', 'Profil kaydedilirken bir hata oluştu');
+      Alert.alert(t('common.error'), t('profileSetup.saveError'));
       setLoading(false);
     }
   };
@@ -691,11 +691,11 @@ export default function ProfileSetupScreen({
       setShowTeamModal(false);
     } else {
       if (selectedClubTeams.length >= 5) {
-        Alert.alert('Limit', 'En fazla 5 kulüp takımı seçebilirsiniz');
+        Alert.alert(t('profileSetup.limit'), t('profileSetup.maxFiveClubs'));
         return;
       }
       if (selectedClubTeams.some(t => t.id === team.id)) {
-        Alert.alert('Bilgi', 'Bu takım zaten seçili');
+        Alert.alert(t('profileSetup.info'), t('profileSetup.teamAlreadySelected'));
         return;
       }
       setSelectedClubTeams([...selectedClubTeams, team]);

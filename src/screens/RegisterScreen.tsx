@@ -27,6 +27,8 @@ import {
   WEBSITE_TYPOGRAPHY as WDS_TYPOGRAPHY,
 } from '../config/WebsiteDesignSystem';
 import { AUTH_LOGO_SIZE, AUTH_LOGO_MARGIN_TOP, AUTH_LOGO_MARGIN_BOTTOM } from '../constants/logoConstants';
+import { useTheme } from '../contexts/ThemeContext';
+import { useTranslation } from '../hooks/useTranslation';
 import authService from '../services/authService';
 import socialAuthService from '../services/socialAuthService'; // Google & Apple Sign In
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -86,6 +88,10 @@ export default function RegisterScreen({
   onRegisterSuccess,
   onNavigateToLegal,
 }: RegisterScreenProps) {
+  const { t } = useTranslation();
+  const { theme } = useTheme();
+  const isLight = theme === 'light';
+  const themeColors = isLight ? COLORS.light : COLORS.dark;
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -174,40 +180,40 @@ export default function RegisterScreen({
         // Web'de Alert.alert çalışmadığı için direkt yönlendir
         onRegisterSuccess();
       } else {
-        Alert.alert('Hata', `❌ ${result.error || `${provider} ile kayıt başarısız`}`);
+        Alert.alert(t('common.error'), `❌ ${result.error || `${provider} ${t('register.socialRegisterFailed')}`}`);
       }
     } catch (error: any) {
       setLoading(false);
-      Alert.alert('Hata', `❌ ${error.message || 'Bir hata oluştu'}`);
+      Alert.alert(t('common.error'), `❌ ${error.message || t('register.errorOccurred')}`);
     }
   };
 
   const handleRegister = async () => {
     // ✅ ZORUNLU: Kullanıcı adı kontrolü
     if (!username.trim() || username.trim().length < 3) {
-      Alert.alert('❌ Hata', 'Kullanıcı adı en az 3 karakter olmalıdır');
+      Alert.alert(`❌ ${t('common.error')}`, t('register.usernameMinLength'));
       return;
     }
     // ✅ ZORUNLU: Kullanıcı adı müsait mi?
     if (usernameStatus !== 'available') {
-      Alert.alert('❌ Hata', 'Lütfen müsait bir kullanıcı adı seçin');
+      Alert.alert(`❌ ${t('common.error')}`, t('register.usernameAvailable'));
       return;
     }
     if (!email.trim() || !password.trim() || !confirmPassword.trim()) {
-      Alert.alert('❌ Hata', 'Lütfen tüm alanları doldurun');
+      Alert.alert(`❌ ${t('common.error')}`, t('register.fillAllFields'));
       return;
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      Alert.alert('❌ Hata', 'Geçerli bir e-posta adresi girin');
+      Alert.alert(`❌ ${t('common.error')}`, t('register.validEmail'));
       return;
     }
     if (password.length < 6) {
-      Alert.alert('❌ Hata', 'Şifre en az 6 karakter olmalıdır');
+      Alert.alert(`❌ ${t('common.error')}`, t('register.passwordMinLength'));
       return;
     }
     if (password !== confirmPassword) {
-      Alert.alert('❌ Hata', 'Şifreler eşleşmiyor');
+      Alert.alert(`❌ ${t('common.error')}`, t('register.passwordsDontMatch'));
       return;
     }
     await proceedWithRegistration();
@@ -232,12 +238,12 @@ export default function RegisterScreen({
           }
           
           if (age < 18) {
-            Alert.alert('❌ Kayıt Olunamadı', '18 yaşının altındaki kullanıcılar için kayıt kabul edilmemektedir.');
+            Alert.alert(`❌ ${t('register.underAgeTitle')}`, t('register.underAgeMessage'));
             setLoading(false);
             return;
           }
         } else if (isMinorStr === 'true') {
-          Alert.alert('❌ Kayıt Olunamadı', '18 yaşının altındaki kullanıcılar için kayıt kabul edilmemektedir.');
+          Alert.alert(`❌ ${t('register.underAgeTitle')}`, t('register.underAgeMessage'));
           setLoading(false);
           return;
         }
@@ -251,237 +257,110 @@ export default function RegisterScreen({
       const result = await authService.signUp(email.trim(), password, username.trim());
       setLoading(false);
       if (result.success) {
-        Alert.alert('✅ Kayıt Başarılı!', 'Hoş geldiniz!', [
+        Alert.alert(`✅ ${t('register.welcomeTitle')}`, t('register.welcomeMessage'), [
           { text: 'Tamam', onPress: () => onRegisterSuccess() },
         ]);
       } else {
-        Alert.alert('❌ Hata', result.error || 'Kayıt başarısız oldu');
+        Alert.alert(`❌ ${t('common.error')}`, result.error || t('register.registerFailed'));
       }
     } catch (error: any) {
       setLoading(false);
-      Alert.alert('❌ Hata', error.message || 'Bir hata oluştu');
+      Alert.alert(`❌ ${t('common.error')}`, error.message || t('register.errorOccurred'));
     }
   };
 
-  return (
-    <SafeAreaView style={styles.safeArea}>
-      <LinearGradient
-        colors={['#0a1612', '#0F2A24', '#0a1612']}
-        style={styles.container}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0, y: 1 }}
-      >
-        {/* Grid Pattern Background */}
-        <View style={styles.gridPattern} />
-        {/* Back Button - Sol üst köşe */}
-        <TouchableOpacity style={styles.backButtonTop} onPress={onBack} activeOpacity={0.7}>
-          <Ionicons name="arrow-back" size={WEBSITE_ICON_SIZES.lg} color={WEBSITE_BRAND_COLORS.white} />
-        </TouchableOpacity>
-        
-        <View style={styles.screenContainer}>
-          <View style={styles.contentWrapper}>
-            <View style={styles.content}>
-              {/* [B] BRAND ZONE - OnboardingScreen ile aynı konum (sıçrama olmasın) */}
-              <View style={styles.brandZone}>
-                {Platform.OS === 'web' ? (
-                  <img 
-                    src="/TacticIQ.svg" 
-                    alt="TacticIQ" 
-                    style={{ width: AUTH_LOGO_SIZE, height: AUTH_LOGO_SIZE }} 
-                  />
-                ) : (
-                  <Image
-                    source={require('../../assets/logo.png')}
-                    style={{ width: AUTH_LOGO_SIZE, height: AUTH_LOGO_SIZE }}
-                    resizeMode="contain"
-                  />
-                )}
-              </View>
-
-            {/* [C] PRIMARY ACTION ZONE - Social Buttons */}
+  const mainContent = (
+    <>
+      <View style={styles.gridPattern} />
+      <TouchableOpacity style={[styles.backButtonTop, isLight && { backgroundColor: themeColors.muted, borderColor: themeColors.border }]} onPress={onBack} activeOpacity={0.7}>
+        <Ionicons name="arrow-back" size={WEBSITE_ICON_SIZES.lg} color={isLight ? themeColors.foreground : WEBSITE_BRAND_COLORS.white} />
+      </TouchableOpacity>
+      <View style={styles.screenContainer}>
+        <View style={styles.contentWrapper}>
+          <View style={styles.content}>
+            <View style={styles.brandZone}>
+              {Platform.OS === 'web' ? <img src="/TacticIQ.svg" alt="TacticIQ" style={{ width: AUTH_LOGO_SIZE, height: AUTH_LOGO_SIZE }} /> : <Image source={require('../../assets/logo.png')} style={{ width: AUTH_LOGO_SIZE, height: AUTH_LOGO_SIZE }} resizeMode="contain" />}
+            </View>
             <View style={styles.socialZone}>
-              <TouchableOpacity
-                style={styles.googleButton}
-                onPress={() => handleSocialRegister('Google')}
-                activeOpacity={0.8}
-              >
+              <TouchableOpacity style={styles.googleButton} onPress={() => handleSocialRegister('Google')} activeOpacity={0.8}>
                 <Ionicons name="logo-google" size={20} color="#4285F4" />
-                <Text style={styles.googleButtonText}>Google ile Kayıt Ol</Text>
+                <Text style={styles.googleButtonText}>{t('register.googleSignUp')}</Text>
               </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.appleButton}
-                onPress={() => handleSocialRegister('Apple')}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="logo-apple" size={20} color="#FFFFFF" />
-                <Text style={styles.appleButtonText}>Apple ile Kayıt Ol</Text>
+              <TouchableOpacity style={[styles.appleButton, isLight && { backgroundColor: themeColors.foreground }]} onPress={() => handleSocialRegister('Apple')} activeOpacity={0.8}>
+                <Ionicons name="logo-apple" size={20} color={isLight ? themeColors.background : '#FFFFFF'} />
+                <Text style={[styles.appleButtonText, isLight && { color: themeColors.background }]}>{t('register.appleSignUp')}</Text>
               </TouchableOpacity>
             </View>
-
-            {/* [D] DIVIDER ZONE */}
             <View style={styles.dividerZone}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>veya</Text>
-              <View style={styles.dividerLine} />
+              <View style={[styles.dividerLine, isLight && { backgroundColor: themeColors.border }]} />
+              <Text style={[styles.dividerText, isLight && { color: themeColors.mutedForeground }]}>{t('register.or')}</Text>
+              <View style={[styles.dividerLine, isLight && { backgroundColor: themeColors.border }]} />
             </View>
-
-            {/* [E] FORM INPUT ZONE */}
             <View style={styles.formZone}>
-              {/* Username */}
-              <View style={styles.inputWrapper}>
-                <Ionicons name="person-outline" size={20} color={BRAND.emerald} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Kullanıcı adı"
-                  placeholderTextColor="#64748B"
-                  value={username}
-                  onChangeText={handleUsernameChange}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-                {usernameStatus !== 'idle' && (
-                  <View style={styles.statusIndicator}>
-                    {usernameStatus === 'checking' && <Text style={styles.checkingText}>⏳</Text>}
-                    {usernameStatus === 'available' && <Text style={styles.availableText}>✅</Text>}
-                    {usernameStatus === 'taken' && <Text style={styles.takenText}>❌</Text>}
-                  </View>
-                )}
+              <View style={[styles.inputWrapper, isLight && { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
+                <Ionicons name="person-outline" size={20} color={isLight ? themeColors.ring : BRAND.emerald} style={styles.inputIcon} />
+                <TextInput style={[styles.input, isLight && { color: themeColors.foreground }]} placeholder={t('register.usernamePlaceholder')} placeholderTextColor={isLight ? themeColors.mutedForeground : '#64748B'} value={username} onChangeText={handleUsernameChange} autoCapitalize="none" autoCorrect={false} />
+                {usernameStatus !== 'idle' && <View style={styles.statusIndicator}>{usernameStatus === 'checking' && <Text style={styles.checkingText}>⏳</Text>}{usernameStatus === 'available' && <Text style={styles.availableText}>✅</Text>}{usernameStatus === 'taken' && <Text style={styles.takenText}>❌</Text>}</View>}
               </View>
-
-              {/* Email */}
-              <View style={styles.inputWrapper}>
-                <Ionicons name="mail-outline" size={20} color="#059669" style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="E-posta"
-                  placeholderTextColor="#64748B"
-                  value={email}
-                  onChangeText={handleEmailChange}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-                {emailStatus !== 'idle' && (
-                  <View style={styles.statusIndicator}>
-                    {emailStatus === 'checking' && <Text style={styles.checkingText}>⏳</Text>}
-                    {emailStatus === 'available' && <Text style={styles.availableText}>✅</Text>}
-                    {emailStatus === 'taken' && <Text style={styles.takenText}>❌</Text>}
-                  </View>
-                )}
+              <View style={[styles.inputWrapper, isLight && { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
+                <Ionicons name="mail-outline" size={20} color={isLight ? themeColors.ring : '#059669'} style={styles.inputIcon} />
+                <TextInput style={[styles.input, isLight && { color: themeColors.foreground }]} placeholder={t('auth.email')} placeholderTextColor={isLight ? themeColors.mutedForeground : '#64748B'} value={email} onChangeText={handleEmailChange} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
+                {emailStatus !== 'idle' && <View style={styles.statusIndicator}>{emailStatus === 'checking' && <Text style={styles.checkingText}>⏳</Text>}{emailStatus === 'available' && <Text style={styles.availableText}>✅</Text>}{emailStatus === 'taken' && <Text style={styles.takenText}>❌</Text>}</View>}
               </View>
-
-              {/* Password */}
-              <View style={styles.inputWrapper}>
-                <Ionicons name="lock-closed-outline" size={20} color="#059669" style={styles.inputIcon} />
-                <TextInput
-                  style={[styles.input, styles.inputWithRightIcon]}
-                  placeholder="Şifre"
-                  placeholderTextColor="#64748B"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry={!showPassword}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-                <TouchableOpacity
-                  style={styles.eyeButton}
-                  onPress={() => setShowPassword(!showPassword)}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons
-                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                    size={20}
-                    color="#9CA3AF"
-                  />
+              <View style={[styles.inputWrapper, isLight && { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
+                <Ionicons name="lock-closed-outline" size={20} color={isLight ? themeColors.ring : '#059669'} style={styles.inputIcon} />
+                <TextInput style={[styles.input, styles.inputWithRightIcon, isLight && { color: themeColors.foreground }]} placeholder={t('register.passwordPlaceholder')} placeholderTextColor={isLight ? themeColors.mutedForeground : '#64748B'} value={password} onChangeText={setPassword} secureTextEntry={!showPassword} autoCapitalize="none" autoCorrect={false} />
+                <TouchableOpacity style={styles.eyeButton} onPress={() => setShowPassword(!showPassword)} activeOpacity={0.7}>
+                  <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={isLight ? themeColors.mutedForeground : '#9CA3AF'} />
                 </TouchableOpacity>
               </View>
-
-              {/* Confirm Password */}
-              <View style={styles.inputWrapper}>
-                <Ionicons name="lock-closed-outline" size={20} color="#059669" style={styles.inputIcon} />
-                <TextInput
-                  style={[
-                    styles.input,
-                    styles.inputWithRightIcon,
-                    passwordMatchStatus === 'mismatch' && styles.inputError,
-                    passwordMatchStatus === 'match' && styles.inputSuccess,
-                  ]}
-                  placeholder="Şifre tekrar"
-                  placeholderTextColor="#64748B"
-                  value={confirmPassword}
-                  onChangeText={handleConfirmPasswordChange}
-                  secureTextEntry={!showConfirmPassword}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-                <TouchableOpacity
-                  style={styles.eyeButton}
-                  onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons
-                    name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'}
-                    size={20}
-                    color="#9CA3AF"
-                  />
+              <View style={[styles.inputWrapper, isLight && { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
+                <Ionicons name="lock-closed-outline" size={20} color={isLight ? themeColors.ring : '#059669'} style={styles.inputIcon} />
+                <TextInput style={[styles.input, styles.inputWithRightIcon, passwordMatchStatus === 'mismatch' && styles.inputError, passwordMatchStatus === 'match' && styles.inputSuccess, isLight && { color: themeColors.foreground }]} placeholder={t('register.confirmPasswordPlaceholder')} placeholderTextColor={isLight ? themeColors.mutedForeground : '#64748B'} value={confirmPassword} onChangeText={handleConfirmPasswordChange} secureTextEntry={!showConfirmPassword} autoCapitalize="none" autoCorrect={false} />
+                <TouchableOpacity style={styles.eyeButton} onPress={() => setShowConfirmPassword(!showConfirmPassword)} activeOpacity={0.7}>
+                  <Ionicons name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={isLight ? themeColors.mutedForeground : '#9CA3AF'} />
                 </TouchableOpacity>
-                {passwordMatchStatus !== 'idle' && (
-                  <View style={[styles.statusIndicator, { right: 44 }]}>
-                    {passwordMatchStatus === 'match' && <Text style={styles.availableText}>✅</Text>}
-                    {passwordMatchStatus === 'mismatch' && <Text style={styles.takenText}>❌</Text>}
-                  </View>
-                )}
+                {passwordMatchStatus !== 'idle' && <View style={[styles.statusIndicator, { right: 44 }]}>{passwordMatchStatus === 'match' && <Text style={styles.availableText}>✅</Text>}{passwordMatchStatus === 'mismatch' && <Text style={styles.takenText}>❌</Text>}</View>}
               </View>
-
-              {/* [G] PRIMARY CTA BUTTON */}
-              <TouchableOpacity
-                style={styles.ctaButton}
-                onPress={handleRegister}
-                activeOpacity={0.8}
-              >
-                <LinearGradient
-                  colors={[WEBSITE_BRAND_COLORS.secondary, WEBSITE_BRAND_COLORS.primary]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.ctaButtonGradient}
-                >
-                  <Text style={styles.ctaButtonText}>Kayıt Ol</Text>
+              <TouchableOpacity style={styles.ctaButton} onPress={handleRegister} activeOpacity={0.8}>
+                <LinearGradient colors={[WEBSITE_BRAND_COLORS.secondary, WEBSITE_BRAND_COLORS.primary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.ctaButtonGradient}>
+                  <Text style={styles.ctaButtonText}>{t('register.signUp')}</Text>
                 </LinearGradient>
               </TouchableOpacity>
             </View>
-
-            {/* Secondary Link */}
             <View style={styles.secondaryLinkContainer}>
-              <Text style={styles.secondaryLinkText}>Zaten hesabınız var mı? </Text>
+              <Text style={[styles.secondaryLinkText, isLight && { color: themeColors.mutedForeground }]}>{t('register.alreadyHaveAccount')} </Text>
               <TouchableOpacity onPress={onBack} activeOpacity={0.7}>
-                <Text style={styles.secondaryLink}>Giriş Yap</Text>
+                <Text style={[styles.secondaryLink, isLight && { color: themeColors.ring }]}>{t('register.login')}</Text>
               </TouchableOpacity>
             </View>
-
-            {/* Progress Indicator - 5 noktalı (Language, Age, Legal, Auth/Register, FavoriteTeams) */}
             <View style={styles.progressRow}>
-              <View style={styles.progressDot} />
-              <View style={styles.progressLine} />
-              <View style={styles.progressDot} />
-              <View style={styles.progressLine} />
-              <View style={styles.progressDot} />
-              <View style={styles.progressLine} />
-              <View style={[styles.progressDot, styles.progressDotActive]} />
-              <View style={styles.progressLine} />
-              <View style={styles.progressDot} />
-            </View>
+              <View style={[styles.progressDot, isLight && { backgroundColor: themeColors.muted }]} />
+              <View style={[styles.progressLine, isLight && { backgroundColor: themeColors.border }]} />
+              <View style={[styles.progressDot, isLight && { backgroundColor: themeColors.muted }]} />
+              <View style={[styles.progressLine, isLight && { backgroundColor: themeColors.border }]} />
+              <View style={[styles.progressDot, isLight && { backgroundColor: themeColors.muted }]} />
+              <View style={[styles.progressLine, isLight && { backgroundColor: themeColors.border }]} />
+              <View style={[styles.progressDot, styles.progressDotActive, isLight && { backgroundColor: themeColors.ring || WEBSITE_BRAND_COLORS.primary }]} />
+              <View style={[styles.progressLine, isLight && { backgroundColor: themeColors.border }]} />
+              <View style={[styles.progressDot, isLight && { backgroundColor: themeColors.muted }]} />
             </View>
           </View>
         </View>
-
-        {/* [H] FOOTER ZONE - FIXED AT BOTTOM */}
         <View style={styles.footerZone}>
-          <Text style={styles.footer}>
-            © 2026. Tüm hakları saklıdır.
-          </Text>
+          <Text style={[styles.footer, isLight && { color: themeColors.mutedForeground }]}>{t('auth.allRightsReserved')}</Text>
         </View>
-      </LinearGradient>
+      </View>
+    </>
+  );
+
+  return (
+    <SafeAreaView style={[styles.safeArea, isLight && { backgroundColor: themeColors.background }]}>
+      {isLight ? (
+        <View style={[styles.container, { backgroundColor: themeColors.background }]}>{mainContent}</View>
+      ) : (
+        <LinearGradient colors={['#0a1612', '#0F2A24', '#0a1612']} style={styles.container} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}>{mainContent}</LinearGradient>
+      )}
     </SafeAreaView>
   );
 }

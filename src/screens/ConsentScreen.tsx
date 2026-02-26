@@ -103,8 +103,8 @@ export const ConsentScreen: React.FC<ConsentScreenProps> = ({
     
     if (isChild && (key === 'analytics' || key === 'marketing' || key === 'personalizedAds')) {
       Alert.alert(
-        t('common.info') || 'Bilgi',
-        t('consent.childModeRestriction') || 'Çocuk modunda bu özellikler devre dışıdır'
+        t('common.info'),
+        t('consent.childModeRestriction')
       );
       return;
     }
@@ -118,8 +118,8 @@ export const ConsentScreen: React.FC<ConsentScreenProps> = ({
   const handleAcceptAll = () => {
     if (isChild) {
       Alert.alert(
-        t('common.info') || 'Bilgi',
-        t('consent.childModeRestriction') || 'Çocuk modunda tüm özellikler kabul edilemez'
+        t('common.info'),
+        t('consent.childModeRestrictionAll')
       );
       return;
     }
@@ -160,19 +160,19 @@ export const ConsentScreen: React.FC<ConsentScreenProps> = ({
       await applyConsentPreferences(finalPreferences);
       
       Alert.alert(
-        t('common.done') || 'Tamam',
-        t('consent.saveSuccess') || 'Tercihleriniz kaydedildi',
+        t('common.done'),
+        t('consent.saveSuccess'),
         [
           {
-            text: t('common.done') || 'Tamam',
+            text: t('common.done'),
             onPress: () => onComplete(),
           },
         ]
       );
     } catch (error) {
       Alert.alert(
-        t('common.error') || 'Hata',
-        t('consent.saveError') || 'Tercihler kaydedilemedi'
+        t('common.error'),
+        t('consent.saveError')
       );
     } finally {
       setSaving(false);
@@ -188,13 +188,13 @@ export const ConsentScreen: React.FC<ConsentScreenProps> = ({
   const getInfoMessage = () => {
     switch (region) {
       case 'TR':
-        return t('consent.kvkkInfo') || 'Gizliliğinizi önemsiyoruz. Bu tercihler KVKK kapsamında korunmaktadır.';
+        return t('consent.kvkkInfo');
       case 'EU':
-        return t('consent.gdprInfo') || 'Gizliliğinizi önemsiyoruz. Bu tercihler GDPR kapsamında korunmaktadır.';
+        return t('consent.gdprInfo');
       case 'US':
-        return t('consent.ccpaInfo') || 'Gizliliğinizi önemsiyoruz. Bu tercihler CCPA kapsamında korunmaktadır.';
+        return t('consent.ccpaInfo');
       default:
-        return t('consent.defaultInfo') || 'Verilerinizi korumak için tercihlerinizi belirleyin.';
+        return t('consent.defaultInfo');
     }
   };
 
@@ -210,7 +210,7 @@ export const ConsentScreen: React.FC<ConsentScreenProps> = ({
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={BRAND.emerald} />
             <Text style={styles.loadingText}>
-              {t('common.loading') || 'Yükleniyor...'}
+              {t('common.loading')}
             </Text>
           </View>
         </LinearGradient>
@@ -233,10 +233,10 @@ export const ConsentScreen: React.FC<ConsentScreenProps> = ({
           {/* Header */}
           <AnimatedView style={styles.header}>
             <Text style={styles.title}>
-              {t('consent.title') || 'Gizlilik Tercihleri'}
+              {t('consent.title')}
             </Text>
             <Text style={styles.subtitle}>
-              {t('consent.subtitle') || 'Verilerinizin nasıl kullanılacağını seçin'}
+              {t('consent.subtitle')}
             </Text>
           </AnimatedView>
 
@@ -252,16 +252,16 @@ export const ConsentScreen: React.FC<ConsentScreenProps> = ({
               <View style={styles.optionContent}>
                 <View style={styles.optionHeader}>
                   <Text style={styles.optionTitle}>
-                    {t('consent.essential') || 'Zorunlu Çerezler'}
+                    {t('consent.essential')}
                   </Text>
                   <View style={styles.requiredBadge}>
                     <Text style={styles.requiredText}>
-                      {t('consent.required') || 'Zorunlu'}
+                      {t('consent.required')}
                     </Text>
                   </View>
                 </View>
                 <Text style={styles.optionDescription}>
-                  {t('consent.essentialDesc') || 'Uygulamanın çalışması için gerekli'}
+                  {t('consent.essentialDesc')}
                 </Text>
               </View>
               <View style={[styles.toggle, styles.toggleDisabled]}>
@@ -279,16 +279,16 @@ export const ConsentScreen: React.FC<ConsentScreenProps> = ({
               <View style={styles.optionContent}>
                 <View style={styles.optionHeader}>
                   <Text style={styles.optionTitle}>
-                    {t('consent.analytics') || 'Analitik'}
+                    {t('consent.analytics')}
                   </Text>
                   <View style={styles.optionalBadge}>
                     <Text style={styles.optionalText}>
-                      {t('consent.optional') || 'İsteğe Bağlı'}
+                      {t('consent.optional')}
                     </Text>
                   </View>
                 </View>
                 <Text style={styles.optionDescription}>
-                  {t('consent.analyticsDesc') || 'Uygulama performansını analiz etmek için'}
+                  {t('consent.analyticsDesc')}
                 </Text>
               </View>
               <View style={[styles.toggle, preferences.analytics && styles.toggleActive]}>
@@ -308,16 +308,16 @@ export const ConsentScreen: React.FC<ConsentScreenProps> = ({
               <View style={styles.optionContent}>
                 <View style={styles.optionHeader}>
                   <Text style={styles.optionTitle}>
-                    {t('consent.marketing') || 'Pazarlama'}
+                    {t('consent.marketing')}
                   </Text>
                   <View style={styles.optionalBadge}>
                     <Text style={styles.optionalText}>
-                      {t('consent.optional') || 'İsteğe Bağlı'}
+                      {t('consent.optional')}
                     </Text>
                   </View>
                 </View>
                 <Text style={styles.optionDescription}>
-                  {t('consent.marketingDesc') || 'Kampanya ve bildirimler için'}
+                  {t('consent.marketingDesc')}
                 </Text>
               </View>
               <View style={[styles.toggle, preferences.marketing && styles.toggleActive]}>
@@ -337,16 +337,16 @@ export const ConsentScreen: React.FC<ConsentScreenProps> = ({
               <View style={styles.optionContent}>
                 <View style={styles.optionHeader}>
                   <Text style={styles.optionTitle}>
-                    {t('consent.personalizedAds') || 'Kişiselleştirilmiş Reklamlar'}
+                    {t('consent.personalizedAds')}
                   </Text>
                   <View style={styles.optionalBadge}>
                     <Text style={styles.optionalText}>
-                      {t('consent.optional') || 'İsteğe Bağlı'}
+                      {t('consent.optional')}
                     </Text>
                   </View>
                 </View>
                 <Text style={styles.optionDescription}>
-                  {t('consent.personalizedAdsDesc') || 'İlgi alanlarınıza göre reklamlar'}
+                  {t('consent.personalizedAdsDesc')}
                 </Text>
               </View>
               <View style={[styles.toggle, preferences.personalizedAds && styles.toggleActive]}>
@@ -366,16 +366,16 @@ export const ConsentScreen: React.FC<ConsentScreenProps> = ({
                 <View style={styles.optionContent}>
                   <View style={styles.optionHeader}>
                     <Text style={styles.optionTitle}>
-                      {t('consent.dataTransfer') || 'Yurt Dışına Veri Aktarımı'}
+                      {t('consent.dataTransfer')}
                     </Text>
                     <View style={styles.optionalBadge}>
                       <Text style={styles.optionalText}>
-                        {t('consent.optional') || 'İsteğe Bağlı'}
+                        {t('consent.optional')}
                       </Text>
                     </View>
                   </View>
                   <Text style={styles.optionDescription}>
-                    {t('consent.dataTransferDesc') || 'KVKK kapsamında açık rıza gereklidir'}
+                    {t('consent.dataTransferDesc')}
                   </Text>
                 </View>
                 <View style={[styles.toggle, preferences.dataTransfer && styles.toggleActive]}>
@@ -396,7 +396,7 @@ export const ConsentScreen: React.FC<ConsentScreenProps> = ({
               disabled={saving}
             >
               <Text style={styles.rejectButtonText}>
-                {t('consent.rejectAll') || 'Tümünü Reddet'}
+                {t('consent.rejectAll')}
               </Text>
             </TouchableOpacity>
 
@@ -407,7 +407,7 @@ export const ConsentScreen: React.FC<ConsentScreenProps> = ({
               disabled={saving || isChild}
             >
               <Text style={styles.acceptButtonText}>
-                {t('consent.acceptAll') || 'Tümünü Kabul Et'}
+                {t('consent.acceptAll')}
               </Text>
             </TouchableOpacity>
           </AnimatedView>
@@ -430,7 +430,7 @@ export const ConsentScreen: React.FC<ConsentScreenProps> = ({
                   <ActivityIndicator size="small" color={BRAND.white} />
                 ) : (
                   <Text style={styles.saveButtonText}>
-                    {t('consent.save') || 'Kaydet ve Devam Et'}
+                    {t('consent.save')}
                   </Text>
                 )}
               </LinearGradient>
@@ -444,7 +444,7 @@ export const ConsentScreen: React.FC<ConsentScreenProps> = ({
               activeOpacity={0.7}
             >
               <Text style={styles.linkText}>
-                {t('consent.viewPrivacyPolicy') || 'Gizlilik Politikası'}
+                {t('consent.viewPrivacyPolicy')}
               </Text>
             </TouchableOpacity>
             
@@ -455,7 +455,7 @@ export const ConsentScreen: React.FC<ConsentScreenProps> = ({
               activeOpacity={0.7}
             >
               <Text style={styles.linkText}>
-                {t('consent.viewCookiePolicy') || 'Çerez Politikası'}
+                {t('consent.viewCookiePolicy')}
               </Text>
             </TouchableOpacity>
 
@@ -467,7 +467,7 @@ export const ConsentScreen: React.FC<ConsentScreenProps> = ({
                   activeOpacity={0.7}
                 >
                   <Text style={styles.linkText}>
-                    {t('consent.viewKvkkInfo') || 'KVKK Aydınlatma'}
+                    {t('consent.viewKvkkInfo')}
                   </Text>
                 </TouchableOpacity>
               </>

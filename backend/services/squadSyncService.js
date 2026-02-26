@@ -22,6 +22,8 @@ let isSyncing = false;
 let lastSquadSyncTime = null;
 let lastSquadSyncStats = { teams: 0, ok: 0, fail: 0, coachUpdated: 0, colorsUpdated: 0 };
 
+const { selectActiveCoach } = require('../utils/selectActiveCoach');
+
 // ✅ Bilinen takım renkleri (API'den çekilemezse fallback)
 const KNOWN_TEAM_COLORS = {
   // Türkiye
@@ -92,9 +94,14 @@ function buildEnhancedPlayers(players, dbPlayersMap, injuriesMap = {}) {
       playerNumber = null;
     }
     
+    const fullName = (player.firstname && player.lastname)
+      ? `${String(player.firstname).trim()} ${String(player.lastname).trim()}`
+      : player.name;
     return {
       id: player.id,
-      name: player.name,
+      name: fullName || player.name,
+      firstname: player.firstname || null,
+      lastname: player.lastname || null,
       age: player.age || dbPlayer?.age || null,
       number: playerNumber,
       position: player.position,
@@ -138,14 +145,10 @@ async function syncOneTeamSquad(teamId, teamName, options = {}) {
       try {
         const coachData = await withRetry429(() => footballApi.getTeamCoach(teamId));
         if (coachData.response && coachData.response.length > 0) {
-          const coaches = coachData.response;
-          // Aktif coach'u bul (career.end = null olan)
-          const activeCoach = coaches.find(c => 
-            c.career && c.career.some(car => car.team?.id == teamId && !car.end)
-          ) || coaches[0];
+          const selected = selectActiveCoach(coachData.response, teamId);
           
-          if (activeCoach) {
-            currentCoach = activeCoach.name;
+          if (selected) {
+            currentCoach = selected.name;
             
             // Coach'u hemen DB'ye kaydet (api_football_id sayı olarak eşleşsin)
             if (supabase && currentCoach) {
@@ -154,7 +157,7 @@ async function syncOneTeamSquad(teamId, teamName, options = {}) {
                 .from('static_teams')
                 .update({ 
                   coach: currentCoach, 
-                  coach_api_id: activeCoach.id,
+                  coach_api_id: selected.id,
                   last_updated: new Date().toISOString() 
                 })
                 .eq('api_football_id', tid);
@@ -221,15 +224,17 @@ async function syncOneTeamSquad(teamId, teamName, options = {}) {
 
     const finalCoach = currentCoach || lineupCoach;
 
-    // Takım bilgilerini çek (enhanced players için)
+    // Takım bilgileri (renkler için) ve sakatlıklar
+    // API tasarrufu: injuries sadece kadro veya lineup varsa çekilir (aksi halde kullanılmıyor)
+    const needInjuries = (squadData?.players?.length > 0) || (lineupPlayers.length > 0);
     let teamInfoData = { response: [] };
     let injuriesList = [];
     const [injuries, teamInfo] = await Promise.all([
-      footballApi.getTeamInjuries(teamId, CURRENT_SEASON).catch(() => []),
+      needInjuries ? footballApi.getTeamInjuries(teamId, CURRENT_SEASON).catch(() => []) : Promise.resolve([]),
       syncTeamInfo ? footballApi.getTeamInfo(teamId).catch(() => ({ response: [] })) : Promise.resolve({ response: [] }),
     ]);
-    injuriesList = injuries;
-    teamInfoData = teamInfo;
+    injuriesList = Array.isArray(injuries) ? injuries : [];
+    teamInfoData = teamInfo || { response: [] };
 
     // 4a. /players/squads'tan tam kadro varsa kaydet (rating + sakatlık dahil)
     if (squadData && squadData.players && squadData.players.length > 0) {

@@ -44,6 +44,8 @@ import {
   WEBSITE_TYPOGRAPHY,
 } from '../config/WebsiteDesignSystem';
 import { AUTH_LOGO_SIZE, AUTH_LOGO_MARGIN_TOP, AUTH_LOGO_MARGIN_BOTTOM } from '../constants/logoConstants';
+import { useTheme } from '../contexts/ThemeContext';
+import { COLORS } from '../theme/theme';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -90,7 +92,10 @@ const languages = [
 
 export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
   const { t, i18n } = useTranslation();
-  
+  const { theme } = useTheme();
+  const isLight = theme === 'light';
+  const themeColors = isLight ? COLORS.light : COLORS.dark;
+
   const [currentStep, setCurrentStep] = useState<OnboardingStep>('language');
   const [selectedLanguage, setSelectedLanguage] = useState<string>('tr');
   
@@ -301,7 +306,7 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
 
   const handleComplete = async () => {
     if (!legalAccepted) {
-      Alert.alert(t('consent.error') || 'Hata', t('consent.mustAccept') || 'Devam etmek için yasal belgeleri kabul etmelisiniz');
+      Alert.alert(t('consent.error') || t('common.error'), t('consent.mustAccept'));
       return;
     }
     setLoading(true);
@@ -313,7 +318,7 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
       setTimeout(() => onComplete(), 300);
     } catch (error) {
       console.error('Error saving consent:', error);
-      Alert.alert(t('consent.error') || 'Hata', t('consent.saveFailed') || 'Kaydedilemedi');
+      Alert.alert(t('consent.error'), t('consent.saveFailed'));
     } finally {
       setLoading(false);
     }
@@ -406,37 +411,28 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
   // ===== LANGUAGE STEP - PREMIUM DESIGN (No Scroll) =====
   const renderLanguageStep = () => (
     <View style={styles.stepContainer}>
-      {/* 🌍 Animasyonlu dönen subtitle - tüm dillerde */}
-      <Animated.View style={{ 
-        opacity: subtitleFade,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 10,
-        marginTop: 0,
-      }}>
-        <Text style={[styles.stepSubtitle, { fontSize: 15, fontWeight: '600', marginBottom: 0 }]}>{subtitleTranslations[subtitleLangIndex].text}</Text>
+      <Animated.View style={{ opacity: subtitleFade, alignItems: 'center', justifyContent: 'center', marginBottom: 10, marginTop: 0 }}>
+        <Text style={[styles.stepSubtitle, { fontSize: 15, fontWeight: '600', marginBottom: 0 }, isLight && { color: themeColors.mutedForeground }]}>{subtitleTranslations[subtitleLangIndex].text}</Text>
       </Animated.View>
-
-      {/* 2 sütun 5 satır grid - 10 dil için - NO SCROLL */}
       <View style={styles.languageGridPremium}>
         {languages.map((lang) => (
           <TouchableOpacity
             key={lang.code}
-            style={styles.languageCardPremium}
+            style={[styles.languageCardPremium, isLight && { backgroundColor: themeColors.card, borderColor: themeColors.border }]}
             onPress={() => handleLanguageSelect(lang.code)}
             activeOpacity={0.85}
           >
-            <LinearGradient
-              colors={['rgba(15, 42, 36, 0.95)', 'rgba(15, 42, 36, 0.95)']}
-              style={styles.languageCardGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <View style={styles.flagWrapperGrid}>
-                <FlagComponent code={lang.code} />
+            {isLight ? (
+              <View style={[styles.languageCardGradient, { backgroundColor: themeColors.card }]}>
+                <View style={styles.flagWrapperGrid}><FlagComponent code={lang.code} /></View>
+                <Text style={[styles.languageNameGrid, { color: themeColors.foreground }]}>{lang.name}</Text>
               </View>
-              <Text style={styles.languageNameGrid}>{lang.name}</Text>
-            </LinearGradient>
+            ) : (
+              <LinearGradient colors={['rgba(15, 42, 36, 0.95)', 'rgba(15, 42, 36, 0.95)']} style={styles.languageCardGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+                <View style={styles.flagWrapperGrid}><FlagComponent code={lang.code} /></View>
+                <Text style={styles.languageNameGrid}>{lang.name}</Text>
+              </LinearGradient>
+            )}
           </TouchableOpacity>
         ))}
       </View>
@@ -446,42 +442,28 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
   // ===== AGE STEP =====
   const renderAgeStep = () => (
     <View style={styles.stepContainer}>
-      <Text style={styles.stepTitle}>{getTranslation('ageGate.title')}</Text>
-      <Text style={styles.stepSubtitle}>{getTranslation('ageGate.subtitle')}</Text>
-
+      <Text style={[styles.stepTitle, isLight && { color: themeColors.foreground }]}>{getTranslation('ageGate.title')}</Text>
+      <Text style={[styles.stepSubtitle, isLight && { color: themeColors.mutedForeground }]}>{getTranslation('ageGate.subtitle')}</Text>
       <View style={styles.dateRow}>
-        <TouchableOpacity style={styles.dateCard} onPress={() => setShowDatePicker('day')}>
-          <Text style={styles.dateLabel}>{getTranslation('ageGate.day')}</Text>
-          <Text style={styles.dateValue}>{selectedDay}</Text>
+        <TouchableOpacity style={[styles.dateCard, isLight && { backgroundColor: themeColors.card, borderColor: themeColors.border }]} onPress={() => setShowDatePicker('day')}>
+          <Text style={[styles.dateLabel, isLight && { color: themeColors.mutedForeground }]}>{getTranslation('ageGate.day')}</Text>
+          <Text style={[styles.dateValue, isLight && { color: themeColors.foreground }]}>{selectedDay}</Text>
         </TouchableOpacity>
-
-        <TouchableOpacity style={[styles.dateCard, styles.dateCardWide]} onPress={() => setShowDatePicker('month')}>
-          <Text style={styles.dateLabel}>{getTranslation('ageGate.month')}</Text>
-          <Text style={styles.dateValue}>{getMonthLabel(selectedMonth - 1)}</Text>
+        <TouchableOpacity style={[styles.dateCard, styles.dateCardWide, isLight && { backgroundColor: themeColors.card, borderColor: themeColors.border }]} onPress={() => setShowDatePicker('month')}>
+          <Text style={[styles.dateLabel, isLight && { color: themeColors.mutedForeground }]}>{getTranslation('ageGate.month')}</Text>
+          <Text style={[styles.dateValue, isLight && { color: themeColors.foreground }]}>{getMonthLabel(selectedMonth - 1)}</Text>
         </TouchableOpacity>
-
-        <TouchableOpacity style={styles.dateCard} onPress={() => setShowDatePicker('year')}>
-          <Text style={styles.dateLabel}>{getTranslation('ageGate.year')}</Text>
-          <Text style={styles.dateValue}>{selectedYear}</Text>
+        <TouchableOpacity style={[styles.dateCard, isLight && { backgroundColor: themeColors.card, borderColor: themeColors.border }]} onPress={() => setShowDatePicker('year')}>
+          <Text style={[styles.dateLabel, isLight && { color: themeColors.mutedForeground }]}>{getTranslation('ageGate.year')}</Text>
+          <Text style={[styles.dateValue, isLight && { color: themeColors.foreground }]}>{selectedYear}</Text>
         </TouchableOpacity>
       </View>
-
-      <View style={styles.ageDisplayBox}>
-        <Text style={styles.ageNumber}>{calculateAge()}</Text>
-        <Text style={styles.ageUnit}>{getTranslation('ageGate.yearsOld')}</Text>
+      <View style={[styles.ageDisplayBox, isLight && { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
+        <Text style={[styles.ageNumber, isLight && { color: themeColors.ring || WEBSITE_BRAND_COLORS.primary }]}>{calculateAge()}</Text>
+        <Text style={[styles.ageUnit, isLight && { color: themeColors.foreground }]}>{getTranslation('ageGate.yearsOld')}</Text>
       </View>
-
-      <TouchableOpacity
-        style={[styles.primaryBtn, calculateAge() < 18 && styles.primaryBtnDisabled]} 
-        onPress={handleAgeVerification}
-        disabled={calculateAge() < 18}
-      >
-        <LinearGradient
-          colors={calculateAge() < 18 ? ['#444', '#333'] : [WEBSITE_BRAND_COLORS.secondary, WEBSITE_BRAND_COLORS.primary]} 
-          style={styles.primaryBtnGradient} 
-          start={{ x: 0, y: 0 }} 
-          end={{ x: 1, y: 0 }}
-        >
+      <TouchableOpacity style={[styles.primaryBtn, calculateAge() < 18 && styles.primaryBtnDisabled]} onPress={handleAgeVerification} disabled={calculateAge() < 18}>
+        <LinearGradient colors={calculateAge() < 18 ? ['#444', '#333'] : [WEBSITE_BRAND_COLORS.secondary, WEBSITE_BRAND_COLORS.primary]} style={styles.primaryBtnGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
           <Text style={styles.primaryBtnText}>{getTranslation('common.continue')}</Text>
         </LinearGradient>
       </TouchableOpacity>
@@ -491,81 +473,35 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
   // ===== LEGAL STEP =====
   const renderLegalStep = () => (
     <View style={styles.stepContainer}>
-      <Text style={styles.stepTitle}>{getTranslation('legal.title')}</Text>
-      <Text style={styles.stepSubtitle}>{getTranslation('legal.subtitle')}</Text>
-
-      {/* Scroll edilebilir yasal döküman listesi */}
+      <Text style={[styles.stepTitle, isLight && { color: themeColors.foreground }]}>{getTranslation('legal.title')}</Text>
+      <Text style={[styles.stepSubtitle, isLight && { color: themeColors.mutedForeground }]}>{getTranslation('legal.subtitle')}</Text>
       <ScrollView style={styles.legalListScroll} showsVerticalScrollIndicator={true} nestedScrollEnabled={true}>
-      <View style={styles.legalList}>
-          {/* Kullanım Koşulları */}
-        <TouchableOpacity style={styles.legalItem} onPress={() => handleOpenLegalDoc('terms')}>
-            <Text style={styles.legalIcon}>📋</Text>
-            <Text style={styles.legalTitle}>{getTranslation('legal.terms.title')}</Text>
-            <Text style={styles.legalArrow}>›</Text>
-        </TouchableOpacity>
-
-          {/* Gizlilik Politikası */}
-        <TouchableOpacity style={styles.legalItem} onPress={() => handleOpenLegalDoc('privacy')}>
-            <Text style={styles.legalIcon}>🔒</Text>
-            <Text style={styles.legalTitle}>{getTranslation('legal.privacy.title')}</Text>
-            <Text style={styles.legalArrow}>›</Text>
-        </TouchableOpacity>
-
-          {/* Çerez Politikası */}
-          <TouchableOpacity style={styles.legalItem} onPress={() => handleOpenLegalDoc('cookies')}>
-            <Text style={styles.legalIcon}>🍪</Text>
-            <Text style={styles.legalTitle}>{getTranslation('legal.cookies.title')}</Text>
-            <Text style={styles.legalArrow}>›</Text>
-        </TouchableOpacity>
-
-          {/* KVKK */}
-        <TouchableOpacity style={styles.legalItem} onPress={() => handleOpenLegalDoc('kvkk')}>
-            <Text style={styles.legalIcon}>⚖️</Text>
-            <Text style={styles.legalTitle}>{getTranslation('legal.kvkk.title')}</Text>
-            <Text style={styles.legalArrow}>›</Text>
-          </TouchableOpacity>
-
-          {/* Açık Rıza Metni */}
-          <TouchableOpacity style={styles.legalItem} onPress={() => handleOpenLegalDoc('consent')}>
-            <Text style={styles.legalIcon}>✅</Text>
-            <Text style={styles.legalTitle}>{getTranslation('legal.consent.title')}</Text>
-            <Text style={styles.legalArrow}>›</Text>
-          </TouchableOpacity>
-
-          {/* Mesafeli Satış Sözleşmesi */}
-          <TouchableOpacity style={styles.legalItem} onPress={() => handleOpenLegalDoc('sales')}>
-            <Text style={styles.legalIcon}>💳</Text>
-            <Text style={styles.legalTitle}>{getTranslation('legal.sales.title')}</Text>
-            <Text style={styles.legalArrow}>›</Text>
-          </TouchableOpacity>
-
-          {/* Telif Hakkı */}
-          <TouchableOpacity style={styles.legalItem} onPress={() => handleOpenLegalDoc('copyright')}>
-            <Text style={styles.legalIcon}>©️</Text>
-            <Text style={styles.legalTitle}>{getTranslation('legal.copyright.title')}</Text>
-            <Text style={styles.legalArrow}>›</Text>
-        </TouchableOpacity>
-      </View>
+        <View style={styles.legalList}>
+          {[
+            { key: 'terms', icon: '📋', titleKey: 'legal.terms.title' },
+            { key: 'privacy', icon: '🔒', titleKey: 'legal.privacy.title' },
+            { key: 'cookies', icon: '🍪', titleKey: 'legal.cookies.title' },
+            { key: 'kvkk', icon: '⚖️', titleKey: 'legal.kvkk.title' },
+            { key: 'consent', icon: '✅', titleKey: 'legal.consent.title' },
+            { key: 'sales', icon: '💳', titleKey: 'legal.sales.title' },
+            { key: 'copyright', icon: '©️', titleKey: 'legal.copyright.title' },
+          ].map(({ key, icon, titleKey }) => (
+            <TouchableOpacity key={key} style={[styles.legalItem, isLight && { backgroundColor: themeColors.card, borderColor: themeColors.border }]} onPress={() => handleOpenLegalDoc(key as any)}>
+              <Text style={styles.legalIcon}>{icon}</Text>
+              <Text style={[styles.legalTitle, isLight && { color: themeColors.foreground }]}>{getTranslation(titleKey)}</Text>
+              <Text style={[styles.legalArrow, isLight && { color: themeColors.mutedForeground }]}>›</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
       </ScrollView>
-
-      <TouchableOpacity style={styles.checkboxRow} onPress={() => setLegalAccepted(!legalAccepted)}>
+      <TouchableOpacity style={[styles.checkboxRow, isLight && { backgroundColor: themeColors.card, borderColor: themeColors.border }]} onPress={() => setLegalAccepted(!legalAccepted)}>
         <View style={[styles.checkbox, legalAccepted && styles.checkboxChecked]}>
           {legalAccepted && <Text style={styles.checkmark}>✓</Text>}
         </View>
-        <Text style={styles.checkboxText}>{getTranslation('legal.iAccept')}</Text>
+        <Text style={[styles.checkboxText, isLight && { color: themeColors.foreground }]}>{getTranslation('legal.iAccept')}</Text>
       </TouchableOpacity>
-
-      <TouchableOpacity
-        style={[styles.primaryBtn, !legalAccepted && styles.primaryBtnDisabled]} 
-        onPress={handleComplete}
-        disabled={!legalAccepted || loading}
-      >
-        <LinearGradient
-          colors={legalAccepted ? [WEBSITE_BRAND_COLORS.secondary, WEBSITE_BRAND_COLORS.primary] : ['#444', '#333']} 
-          style={styles.primaryBtnGradient} 
-          start={{ x: 0, y: 0 }} 
-          end={{ x: 1, y: 0 }}
-        >
+      <TouchableOpacity style={[styles.primaryBtn, !legalAccepted && styles.primaryBtnDisabled]} onPress={handleComplete} disabled={!legalAccepted || loading}>
+        <LinearGradient colors={legalAccepted ? [WEBSITE_BRAND_COLORS.secondary, WEBSITE_BRAND_COLORS.primary] : ['#444', '#333']} style={styles.primaryBtnGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
           {loading ? <ActivityIndicator color={WEBSITE_BRAND_COLORS.white} size="small" /> : <Text style={styles.primaryBtnText}>{getTranslation('common.getStarted')}</Text>}
         </LinearGradient>
       </TouchableOpacity>
@@ -598,21 +534,21 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
     return (
       <Modal visible={showDatePicker !== null} transparent animationType="fade">
         <View style={styles.modalOverlay}>
-          <View style={styles.pickerModal}>
-            <View style={styles.pickerHeader}>
-              <Text style={styles.pickerTitle}>{title}</Text>
+          <View style={[styles.pickerModal, isLight && { backgroundColor: themeColors.card }]}>
+            <View style={[styles.pickerHeader, isLight && { backgroundColor: themeColors.muted, borderBottomColor: themeColors.border }]}>
+              <Text style={[styles.pickerTitle, isLight && { color: themeColors.foreground }]}>{title}</Text>
               <TouchableOpacity onPress={() => setShowDatePicker(null)}>
-                <Text style={styles.pickerClose}>✕</Text>
+                <Text style={[styles.pickerClose, isLight && { color: themeColors.foreground }]}>✕</Text>
               </TouchableOpacity>
             </View>
             <ScrollView style={styles.pickerScroll} showsVerticalScrollIndicator={false}>
               {items.map(item => (
                 <TouchableOpacity
                   key={item.value}
-                  style={[styles.pickerItem, item.value === selectedValue && styles.pickerItemSelected]}
+                  style={[styles.pickerItem, item.value === selectedValue && styles.pickerItemSelected, isLight && { backgroundColor: themeColors.muted }, isLight && item.value === selectedValue && { backgroundColor: themeColors.ring || WEBSITE_BRAND_COLORS.primary }]}
                   onPress={() => onSelect(item.value)}
                 >
-                  <Text style={[styles.pickerItemText, item.value === selectedValue && styles.pickerItemTextSelected]}>
+                  <Text style={[styles.pickerItemText, item.value === selectedValue && styles.pickerItemTextSelected, isLight && { color: themeColors.foreground }, isLight && item.value === selectedValue && { color: '#fff' }]}>
                     {item.label}
                   </Text>
                 </TouchableOpacity>
@@ -635,72 +571,57 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
       setPreferences(prev => ({ ...prev, [key]: !prev[key] }));
     };
     
-    return (
+return (
     <Modal visible={showLegalModal} transparent animationType="slide">
       <View style={styles.modalOverlay}>
-        <View style={styles.legalModal}>
-          <View style={styles.legalModalHeader}>
-              <Text style={styles.legalModalTitle}>{legalContent?.title || ''}</Text>
+        <View style={[styles.legalModal, isLight && { backgroundColor: themeColors.card }]}>
+          <View style={[styles.legalModalHeader, isLight && { backgroundColor: themeColors.muted, borderBottomColor: themeColors.border }]}>
+            <Text style={[styles.legalModalTitle, isLight && { color: themeColors.foreground }]}>{legalContent?.title || ''}</Text>
             <TouchableOpacity onPress={() => setShowLegalModal(false)}>
-              <Text style={styles.legalModalClose}>✕</Text>
+              <Text style={[styles.legalModalClose, isLight && { color: themeColors.foreground }]}>✕</Text>
             </TouchableOpacity>
           </View>
           {isCookiesModal ? (
             <ScrollView style={styles.legalModalScroll} showsVerticalScrollIndicator={true}>
-              {/* Çerez içeriği */}
-              <Text style={styles.legalModalContent}>{legalContent?.content || ''}</Text>
-              
-              {/* Çerez türleri için toggle butonları */}
-              <View style={styles.cookieControls}>
-                  <Text style={styles.cookieControlsTitle}>Çerez Tercihleri</Text>
-                  
-                  {/* Zorunlu Çerezler */}
-                  <View style={styles.cookieToggleRow}>
-                    <View style={styles.cookieToggleInfo}>
-                      <Text style={styles.cookieToggleLabel}>{getTranslation('cookies.essential') || 'Zorunlu Çerezler'}</Text>
-                      <Text style={styles.cookieToggleDesc}>{getTranslation('cookies.essentialDesc') || 'Uygulamanın çalışması için gerekli'}</Text>
-          </View>
-                    <View style={[styles.cookieToggleSwitch, styles.cookieToggleSwitchActive]}>
-                      <Text style={styles.cookieToggleSwitchText}>✓</Text>
+              <Text style={[styles.legalModalContent, isLight && { color: themeColors.foreground }]}>{legalContent?.content || ''}</Text>
+              <View style={[styles.cookieControls, isLight && { backgroundColor: 'transparent' }]}>
+                <Text style={[styles.cookieControlsTitle, isLight && { color: themeColors.foreground }]}>Çerez Tercihleri</Text>
+                <View style={[styles.cookieToggleRow, isLight && { backgroundColor: themeColors.muted }]}>
+                  <View style={styles.cookieToggleInfo}>
+                    <Text style={[styles.cookieToggleLabel, isLight && { color: themeColors.foreground }]}>{getTranslation('cookies.essential') || 'Zorunlu Çerezler'}</Text>
+                    <Text style={[styles.cookieToggleDesc, isLight && { color: themeColors.mutedForeground }]}>{getTranslation('cookies.essentialDesc') || 'Uygulamanın çalışması için gerekli'}</Text>
+                  </View>
+                  <View style={[styles.cookieToggleSwitch, styles.cookieToggleSwitchActive]}>
+                    <Text style={styles.cookieToggleSwitchText}>✓</Text>
+                  </View>
+                </View>
+                <View style={[styles.cookieToggleRow, isLight && { backgroundColor: themeColors.muted }]}>
+                  <View style={styles.cookieToggleInfo}>
+                    <Text style={[styles.cookieToggleLabel, isLight && { color: themeColors.foreground }]}>{getTranslation('cookies.analytics') || 'Analitik Çerezler'}</Text>
+                    <Text style={[styles.cookieToggleDesc, isLight && { color: themeColors.mutedForeground }]}>{getTranslation('cookies.analyticsDesc') || 'Performansı iyileştirmemize yardımcı olur'}</Text>
+                  </View>
+                  <TouchableOpacity style={[styles.cookieToggleSwitch, preferences.analytics && styles.cookieToggleSwitchActive]} onPress={() => toggleCookiePreference('analytics')}>
+                    <Text style={styles.cookieToggleSwitchText}>{preferences.analytics ? '✓' : ''}</Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={[styles.cookieToggleRow, isLight && { backgroundColor: themeColors.muted }]}>
+                  <View style={styles.cookieToggleInfo}>
+                    <Text style={[styles.cookieToggleLabel, isLight && { color: themeColors.foreground }]}>{getTranslation('cookies.marketing') || 'Pazarlama Çerezleri'}</Text>
+                    <Text style={[styles.cookieToggleDesc, isLight && { color: themeColors.mutedForeground }]}>{getTranslation('cookies.marketingDesc') || 'Kişiselleştirilmiş içerik sunar'}</Text>
+                  </View>
+                  <TouchableOpacity style={[styles.cookieToggleSwitch, preferences.marketing && styles.cookieToggleSwitchActive]} onPress={() => toggleCookiePreference('marketing')}>
+                    <Text style={styles.cookieToggleSwitchText}>{preferences.marketing ? '✓' : ''}</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
-            </View>
-
-                  {/* Analitik Çerezler */}
-                  <View style={styles.cookieToggleRow}>
-                    <View style={styles.cookieToggleInfo}>
-                      <Text style={styles.cookieToggleLabel}>{getTranslation('cookies.analytics') || 'Analitik Çerezler'}</Text>
-                      <Text style={styles.cookieToggleDesc}>{getTranslation('cookies.analyticsDesc') || 'Performansı iyileştirmemize yardımcı olur'}</Text>
-                </View>
-                    <TouchableOpacity 
-                      style={[styles.cookieToggleSwitch, preferences.analytics && styles.cookieToggleSwitchActive]}
-                      onPress={() => toggleCookiePreference('analytics')}
-                    >
-                      <Text style={styles.cookieToggleSwitchText}>{preferences.analytics ? '✓' : ''}</Text>
-              </TouchableOpacity>
-                  </View>
-
-                  {/* Pazarlama Çerezleri */}
-                  <View style={styles.cookieToggleRow}>
-                    <View style={styles.cookieToggleInfo}>
-                      <Text style={styles.cookieToggleLabel}>{getTranslation('cookies.marketing') || 'Pazarlama Çerezleri'}</Text>
-                      <Text style={styles.cookieToggleDesc}>{getTranslation('cookies.marketingDesc') || 'Kişiselleştirilmiş içerik sunar'}</Text>
-                </View>
-          <TouchableOpacity
-                      style={[styles.cookieToggleSwitch, preferences.marketing && styles.cookieToggleSwitchActive]}
-                      onPress={() => toggleCookiePreference('marketing')}
-          >
-                      <Text style={styles.cookieToggleSwitchText}>{preferences.marketing ? '✓' : ''}</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
             </ScrollView>
           ) : (
             <ScrollView style={styles.legalModalScroll} showsVerticalScrollIndicator={true}>
-              <Text style={styles.legalModalContent}>{legalContent?.content || ''}</Text>
+              <Text style={[styles.legalModalContent, isLight && { color: themeColors.foreground }]}>{legalContent?.content || ''}</Text>
             </ScrollView>
           )}
-            <TouchableOpacity style={styles.legalModalBtn} onPress={() => setShowLegalModal(false)}>
-              <Text style={styles.legalModalBtnText}>{getTranslation('common.close')}</Text>
+          <TouchableOpacity style={[styles.legalModalBtn, isLight && { backgroundColor: themeColors.ring || WEBSITE_BRAND_COLORS.primary }]} onPress={() => setShowLegalModal(false)}>
+            <Text style={styles.legalModalBtnText}>{getTranslation('common.close')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -710,63 +631,82 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
 
   // ===== MAIN RENDER =====
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <LinearGradient colors={['#0a1612', '#0F2A24', '#0a1612']} style={styles.container} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}>
-        <View style={styles.gridPattern} />
-        
-        <View style={styles.mainContent}>
-          {/* Back Button - Sol üst köşe */}
-          {currentStep !== 'language' && (
-            <TouchableOpacity style={styles.backButtonTop} onPress={handleBack} activeOpacity={0.7}>
-              <Ionicons name="arrow-back" size={WEBSITE_ICON_SIZES.lg} color={WEBSITE_BRAND_COLORS.white} />
+    <SafeAreaView style={[styles.safeArea, isLight && { backgroundColor: themeColors.background }]}>
+      {isLight ? (
+        <View style={[styles.container, { backgroundColor: themeColors.background }]}>
+          <View style={[styles.gridPattern, Platform.OS === 'web' && { backgroundImage: `linear-gradient(to right, rgba(15,42,36,0.08) 1px, transparent 1px), linear-gradient(to bottom, rgba(15,42,36,0.08) 1px, transparent 1px)`, backgroundSize: '40px 40px' }]} />
+          <View style={styles.mainContent}>
+            {currentStep !== 'language' && (
+              <TouchableOpacity style={[styles.backButtonTop, { backgroundColor: themeColors.muted, borderColor: themeColors.border }]} onPress={handleBack} activeOpacity={0.7}>
+                <Ionicons name="arrow-back" size={WEBSITE_ICON_SIZES.lg} color={themeColors.foreground} />
               </TouchableOpacity>
             )}
-
-          {/* Logo - Her sayfada aynı yerde ve boyutta */}
-          <View style={styles.logoContainer}>
-            <Image source={require('../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
+            <View style={styles.logoContainer}>
+              <Image source={require('../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
+            </View>
+            <Animated.View
+              style={[styles.contentWrapper, { opacity: fadeAnim, transform: [{ translateX: slideAnim }, { scale: scaleAnim }] }]}
+            >
+              {currentStep === 'language' && renderLanguageStep()}
+              {currentStep === 'age' && renderAgeStep()}
+              {currentStep === 'legal' && renderLegalStep()}
+            </Animated.View>
+            <View style={styles.progressRow}>
+              <View style={[styles.progressDot, currentStep === 'language' && styles.progressDotActive, { backgroundColor: themeColors.muted }, currentStep === 'language' && { backgroundColor: themeColors.ring || '#1FA2A6' }]} />
+              <View style={[styles.progressLine, { backgroundColor: themeColors.border }]} />
+              <View style={[styles.progressDot, currentStep === 'age' && styles.progressDotActive, { backgroundColor: themeColors.muted }, currentStep === 'age' && { backgroundColor: themeColors.ring || '#1FA2A6' }]} />
+              <View style={[styles.progressLine, { backgroundColor: themeColors.border }]} />
+              <View style={[styles.progressDot, currentStep === 'legal' && styles.progressDotActive, { backgroundColor: themeColors.muted }, currentStep === 'legal' && { backgroundColor: themeColors.ring || '#1FA2A6' }]} />
+              <View style={[styles.progressLine, { backgroundColor: themeColors.border }]} />
+              <View style={[styles.progressDot, { backgroundColor: themeColors.muted }]} />
+              <View style={[styles.progressLine, { backgroundColor: themeColors.border }]} />
+              <View style={[styles.progressDot, { backgroundColor: themeColors.muted }]} />
+            </View>
+            <View style={styles.footer}>
+              <Text style={[styles.footerText, { color: themeColors.mutedForeground }]}>© 2026 TacticIQ</Text>
+            </View>
           </View>
-
-          {/* Content - İçerik alta yakın (Animasyonlu) */}
-          <Animated.View 
-            style={[
-              styles.contentWrapper,
-              {
-                opacity: fadeAnim,
-                transform: [
-                  { translateX: slideAnim },
-                  { scale: scaleAnim },
-                ],
-              },
-            ]}
-          >
-            {currentStep === 'language' && renderLanguageStep()}
-            {currentStep === 'age' && renderAgeStep()}
-            {currentStep === 'legal' && renderLegalStep()}
-          </Animated.View>
-
-          {/* Progress - 5 noktalı (Language, Age, Legal, Auth, FavoriteTeams) */}
-          <View style={styles.progressRow}>
-            <View style={[styles.progressDot, currentStep === 'language' && styles.progressDotActive]} />
-            <View style={styles.progressLine} />
-            <View style={[styles.progressDot, currentStep === 'age' && styles.progressDotActive]} />
-            <View style={styles.progressLine} />
-            <View style={[styles.progressDot, currentStep === 'legal' && styles.progressDotActive]} />
-            <View style={styles.progressLine} />
-            <View style={styles.progressDot} />
-            <View style={styles.progressLine} />
-            <View style={styles.progressDot} />
-          </View>
-
-          {/* Footer */}
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>© 2026 TacticIQ</Text>
-          </View>
+          {renderDatePickerModal()}
+          {renderLegalModal()}
         </View>
-
-        {renderDatePickerModal()}
-        {renderLegalModal()}
-      </LinearGradient>
+      ) : (
+        <LinearGradient colors={['#0a1612', '#0F2A24', '#0a1612']} style={styles.container} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}>
+          <View style={styles.gridPattern} />
+          <View style={styles.mainContent}>
+            {currentStep !== 'language' && (
+              <TouchableOpacity style={styles.backButtonTop} onPress={handleBack} activeOpacity={0.7}>
+                <Ionicons name="arrow-back" size={WEBSITE_ICON_SIZES.lg} color={WEBSITE_BRAND_COLORS.white} />
+              </TouchableOpacity>
+            )}
+            <View style={styles.logoContainer}>
+              <Image source={require('../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
+            </View>
+            <Animated.View
+              style={[styles.contentWrapper, { opacity: fadeAnim, transform: [{ translateX: slideAnim }, { scale: scaleAnim }] }]}
+            >
+              {currentStep === 'language' && renderLanguageStep()}
+              {currentStep === 'age' && renderAgeStep()}
+              {currentStep === 'legal' && renderLegalStep()}
+            </Animated.View>
+            <View style={styles.progressRow}>
+              <View style={[styles.progressDot, currentStep === 'language' && styles.progressDotActive]} />
+              <View style={styles.progressLine} />
+              <View style={[styles.progressDot, currentStep === 'age' && styles.progressDotActive]} />
+              <View style={styles.progressLine} />
+              <View style={[styles.progressDot, currentStep === 'legal' && styles.progressDotActive]} />
+              <View style={styles.progressLine} />
+              <View style={styles.progressDot} />
+              <View style={styles.progressLine} />
+              <View style={styles.progressDot} />
+            </View>
+            <View style={styles.footer}>
+              <Text style={styles.footerText}>© 2026 TacticIQ</Text>
+            </View>
+          </View>
+          {renderDatePickerModal()}
+          {renderLegalModal()}
+        </LinearGradient>
+      )}
     </SafeAreaView>
   );
 }

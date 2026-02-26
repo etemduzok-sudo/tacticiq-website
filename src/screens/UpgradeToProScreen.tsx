@@ -12,92 +12,41 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { PaymentOptionsModal } from './PaymentOptionsModal';
+import { useTranslation } from '../hooks/useTranslation';
 
 interface UpgradeToProScreenProps {
   onClose: () => void;
   onUpgradeSuccess: () => void;
 }
 
-const proFeatures = [
-  {
-    id: '1',
-    icon: 'flash',
-    title: 'Sınırsız Tahmin',
-    description: 'Tüm maçlarda tahmin yapabilme',
-    color: '#F59E0B',
-  },
-  {
-    id: '2',
-    icon: 'trophy',
-    title: 'Özel Turnuvalar',
-    description: 'Pro kullanıcılara özel turnuvalara erişim',
-    color: '#F59E0B',
-  },
-  {
-    id: '3',
-    icon: 'analytics',
-    title: 'Detaylı İstatistikler',
-    description: 'Gelişmiş analiz ve performans verileri',
-    color: '#F59E0B',
-  },
-  {
-    id: '4',
-    icon: 'shield-checkmark',
-    title: 'Reklamsız Deneyim',
-    description: 'Hiç reklam görmeden oyna',
-    color: '#F59E0B',
-  },
-  {
-    id: '5',
-    icon: 'star',
-    title: 'Özel Rozetler',
-    description: 'Pro kullanıcılara özel rozet ve ödüller',
-    color: '#F59E0B',
-  },
-  {
-    id: '6',
-    icon: 'people',
-    title: 'Öncelikli Destek',
-    description: '7/24 öncelikli müşteri desteği',
-    color: '#F59E0B',
-  },
+const proFeatureKeys = [
+  { id: '1', icon: 'flash', titleKey: 'upgrade.unlimitedPredictions', descKey: 'upgrade.unlimitedPredictionsDesc', color: '#F59E0B' },
+  { id: '2', icon: 'trophy', titleKey: 'upgrade.specialTournaments', descKey: 'upgrade.specialTournamentsDesc', color: '#F59E0B' },
+  { id: '3', icon: 'analytics', titleKey: 'upgrade.detailedStats', descKey: 'upgrade.detailedStatsDesc', color: '#F59E0B' },
+  { id: '4', icon: 'shield-checkmark', titleKey: 'upgrade.adFree', descKey: 'upgrade.adFreeDesc', color: '#F59E0B' },
+  { id: '5', icon: 'star', titleKey: 'upgrade.specialBadges', descKey: 'upgrade.specialBadgesDesc', color: '#F59E0B' },
+  { id: '6', icon: 'people', titleKey: 'upgrade.prioritySupport', descKey: 'upgrade.prioritySupportDesc', color: '#F59E0B' },
 ];
 
 const pricingPlans = [
-  {
-    id: 'monthly',
-    title: 'Aylık',
-    price: '49,99',
-    period: '/ay',
-    badge: null,
-    savings: null,
-    color: ['#059669', '#047857'],
-  },
-  {
-    id: 'yearly',
-    title: 'Yıllık',
-    price: '399,99',
-    period: '/yıl',
-    badge: '%33 İNDİRİM',
-    savings: '199,89 TL tasarruf',
-    color: ['#F59E0B', '#D97706'],
-    popular: true,
-  },
+  { id: 'monthly', titleKey: 'upgrade.monthly', price: '49,99', periodKey: 'upgrade.periodMonth', badgeKey: null, savingsKey: null, color: ['#059669', '#047857'] },
+  { id: 'yearly', titleKey: 'upgrade.yearly', price: '399,99', periodKey: 'upgrade.periodYear', badgeKey: 'upgrade.discountBadge', savingsKey: 'upgrade.savingsText', color: ['#F59E0B', '#D97706'], popular: true },
 ];
 
-const comparisonFeatures = [
-  { feature: 'Günlük Tahmin Limiti', free: '3 maç', pro: 'Sınırsız' },
-  { feature: 'Özel Turnuvalar', free: '❌', pro: '✅' },
-  { feature: 'Detaylı İstatistikler', free: '❌', pro: '✅' },
-  { feature: 'Reklamsız', free: '❌', pro: '✅' },
-  { feature: 'Özel Rozetler', free: '❌', pro: '✅' },
-  { feature: 'Öncelikli Destek', free: '❌', pro: '✅' },
+const getComparisonFeatures = (t: (k: string) => string) => [
+  { feature: t('upgrade.comparisonDailyLimit'), free: t('upgrade.comparisonFree3'), pro: t('upgrade.comparisonUnlimited') },
+  { feature: t('upgrade.comparisonSpecialTournaments'), free: '❌', pro: '✅' },
+  { feature: t('upgrade.comparisonDetailedStats'), free: '❌', pro: '✅' },
+  { feature: t('upgrade.comparisonAdFree'), free: '❌', pro: '✅' },
+  { feature: t('upgrade.comparisonBadges'), free: '❌', pro: '✅' },
+  { feature: t('upgrade.comparisonSupport'), free: '❌', pro: '✅' },
 ];
 
 export const UpgradeToProScreen: React.FC<UpgradeToProScreenProps> = ({
   onClose,
   onUpgradeSuccess,
 }) => {
+  const { t } = useTranslation();
   const [selectedPlan, setSelectedPlan] = useState('yearly');
   const [paymentModalVisible, setPaymentModalVisible] = useState(false);
 
@@ -136,15 +85,15 @@ export const UpgradeToProScreen: React.FC<UpgradeToProScreenProps> = ({
               <Ionicons name="trophy" size={48} color="#FFFFFF" />
             </LinearGradient>
 
-            <Text style={styles.heroTitle}>TacticIQ PRO</Text>
+            <Text style={styles.heroTitle}>{t('upgrade.heroTitle')}</Text>
             <Text style={styles.heroSubtitle}>
-              Tüm premium özelliklerin kilidini aç ve rakiplerinin önüne geç!
+              {t('upgrade.heroSubtitle')}
             </Text>
           </Animated.View>
 
           {/* Pricing Plans */}
           <Animated.View entering={FadeInDown.delay(100)} style={styles.pricingSection}>
-            <Text style={styles.sectionTitle}>Plan Seç</Text>
+            <Text style={styles.sectionTitle}>{t('upgrade.choosePlan')}</Text>
 
             <View style={styles.pricingCards}>
               {pricingPlans.map((plan, index) => (
@@ -159,29 +108,29 @@ export const UpgradeToProScreen: React.FC<UpgradeToProScreenProps> = ({
                 >
                   {plan.popular && (
                     <View style={styles.popularBadge}>
-                      <Text style={styles.popularBadgeText}>EN POPÜLER</Text>
+                      <Text style={styles.popularBadgeText}>{t('upgrade.mostPopular')}</Text>
                     </View>
                   )}
 
-                  {plan.badge && (
+                  {plan.badgeKey && (
                     <LinearGradient
                       colors={['#EF4444', '#DC2626']}
                       style={styles.discountBadge}
                     >
-                      <Text style={styles.discountBadgeText}>{plan.badge}</Text>
+                      <Text style={styles.discountBadgeText}>{t(plan.badgeKey)}</Text>
                     </LinearGradient>
                   )}
 
                   <View style={styles.pricingCardContent}>
-                    <Text style={styles.planTitle}>{plan.title}</Text>
+                    <Text style={styles.planTitle}>{t(plan.titleKey)}</Text>
 
                     <View style={styles.priceRow}>
                       <Text style={styles.price}>₺{plan.price}</Text>
-                      <Text style={styles.period}>{plan.period}</Text>
+                      <Text style={styles.period}>{plan.periodKey ? t(plan.periodKey) : ''}</Text>
                     </View>
 
-                    {plan.savings && (
-                      <Text style={styles.savings}>{plan.savings}</Text>
+                    {plan.savingsKey && (
+                      <Text style={styles.savings}>{t(plan.savingsKey)}</Text>
                     )}
 
                     {selectedPlan === plan.id && (
@@ -197,10 +146,10 @@ export const UpgradeToProScreen: React.FC<UpgradeToProScreenProps> = ({
 
           {/* Pro Features */}
           <Animated.View entering={FadeInDown.delay(200)} style={styles.featuresSection}>
-            <Text style={styles.sectionTitle}>Premium Özellikler</Text>
+            <Text style={styles.sectionTitle}>{t('upgrade.premiumFeatures')}</Text>
 
             <View style={styles.featuresList}>
-              {proFeatures.map((feature, index) => (
+              {proFeatureKeys.map((feature, index) => (
                 <Animated.View
                   key={feature.id}
                   entering={FadeInDown.delay(250 + index * 50)}
@@ -219,9 +168,9 @@ export const UpgradeToProScreen: React.FC<UpgradeToProScreenProps> = ({
                     />
                   </View>
                   <View style={styles.featureContent}>
-                    <Text style={styles.featureTitle}>{feature.title}</Text>
+                    <Text style={styles.featureTitle}>{t(feature.titleKey)}</Text>
                     <Text style={styles.featureDescription}>
-                      {feature.description}
+                      {t(feature.descKey)}
                     </Text>
                   </View>
                 </Animated.View>
@@ -231,20 +180,20 @@ export const UpgradeToProScreen: React.FC<UpgradeToProScreenProps> = ({
 
           {/* Comparison Table */}
           <Animated.View entering={FadeInDown.delay(300)} style={styles.comparisonSection}>
-            <Text style={styles.sectionTitle}>Ücretsiz vs Pro</Text>
+            <Text style={styles.sectionTitle}>{t('upgrade.freeVsPro')}</Text>
 
             <View style={styles.comparisonTable}>
               {/* Header */}
               <View style={styles.comparisonHeader}>
-                <Text style={styles.comparisonHeaderCell}>Özellik</Text>
-                <Text style={styles.comparisonHeaderCell}>Ücretsiz</Text>
+                <Text style={styles.comparisonHeaderCell}>{t('upgrade.feature')}</Text>
+                <Text style={styles.comparisonHeaderCell}>{t('upgrade.free')}</Text>
                 <Text style={[styles.comparisonHeaderCell, styles.proHeaderCell]}>
-                  PRO
+                  {t('upgrade.pro').toUpperCase()}
                 </Text>
               </View>
 
               {/* Rows */}
-              {comparisonFeatures.map((item, index) => (
+              {getComparisonFeatures(t).map((item, index) => (
                 <View
                   key={index}
                   style={[
@@ -286,14 +235,14 @@ export const UpgradeToProScreen: React.FC<UpgradeToProScreenProps> = ({
                 end={{ x: 1, y: 0 }}
                 style={styles.upgradeButtonGradient}
               >
-                <Text style={styles.upgradeButtonText}>PRO'ya Geç</Text>
+                <Text style={styles.upgradeButtonText}>{t('upgrade.upgradeToPro')}</Text>
                 <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
               </LinearGradient>
             </TouchableOpacity>
           </View>
 
           <Text style={styles.disclaimer}>
-            İstediğin zaman iptal edebilirsin. Otomatik yenileme.
+            {t('upgrade.disclaimer')}
           </Text>
         </View>
 

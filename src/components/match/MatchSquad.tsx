@@ -2996,7 +2996,6 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favor
                     }
                   }}
                   activeOpacity={(hasViewedCommunityData && isSquadLocked) || isKadroLocked ? 1 : 0.7}
-                  disabled={hasViewedCommunityData && isSquadLocked}
                 >
                   <Ionicons 
                     name={(isSquadLocked || isKadroLocked) ? "lock-closed" : "lock-open"} 

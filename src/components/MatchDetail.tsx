@@ -35,6 +35,7 @@ import { predictionsDb } from '../services/databaseService';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BRAND, COLORS, SPACING, SIZES, LIGHT_MODE } from '../theme/theme';
 import { useTheme } from '../contexts/ThemeContext';
+import { useTranslation } from '../hooks/useTranslation';
 import { getTeamColors as getTeamColorsUtil } from '../utils/teamColors';
 import { isMockTestMatch, MOCK_MATCH_IDS, getMatch1Start, getMatch2Start, MATCH_1_EVENTS, MATCH_2_EVENTS, computeLiveState, getMockUserTeamId } from '../data/mockTestData';
 
@@ -69,18 +70,20 @@ const matchData = {
   time: '20:00',
 };
 
-const tabs = [
-  { id: 'squad', label: 'Kadro', icon: 'people' },
-  { id: 'prediction', label: 'Tahmin', icon: 'analytics' },
-  { id: 'live', label: 'Canlı', icon: 'pulse' },
-  { id: 'stats', label: 'İstatistik', icon: 'bar-chart' },
-  { id: 'ratings', label: 'Reyting', icon: 'star' },
+const TAB_IDS = [
+  { id: 'squad', icon: 'people' as const },
+  { id: 'prediction', icon: 'analytics' as const },
+  { id: 'live', icon: 'pulse' as const },
+  { id: 'stats', icon: 'bar-chart' as const },
+  { id: 'ratings', icon: 'star' as const },
 ];
 
 export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFocus, preloadedMatch, forceResultSummary, predictionTeamId }: MatchDetailProps) {
   const { width: windowWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const { theme } = useTheme();
+  const tabs = React.useMemo(() => TAB_IDS.map(tab => ({ ...tab, label: t(`matchDetail.tabs.${tab.id}`) })), [t]);
   const themeColors = theme === 'light' ? COLORS.light : COLORS.dark;
   const isNarrow = windowWidth < 420;
   const centerInfoMinWidth = isNarrow ? 100 : 160;
@@ -190,6 +193,26 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
           }
         }
         setHasPrediction(has);
+        // ✅ İki favori maçta da hasViewedCommunityData oku (her iki takımın tahmin kaydından)
+        let viewedCommunity = false;
+        if (raw1) {
+          try {
+            const p1 = JSON.parse(raw1);
+            if (p1?.hasViewedCommunityData === true) viewedCommunity = true;
+          } catch (_) {}
+        }
+        if (!viewedCommunity && raw2) {
+          try {
+            const p2 = JSON.parse(raw2);
+            if (p2?.hasViewedCommunityData === true) viewedCommunity = true;
+          } catch (_) {}
+        }
+        if (!viewedCommunity) {
+          const cKey1 = `community_viewed_${matchId}-${homeId}`;
+          const cKey2 = `community_viewed_${matchId}-${awayId}`;
+          if (await AsyncStorage.getItem(cKey1) || await AsyncStorage.getItem(cKey2)) viewedCommunity = true;
+        }
+        setHasViewedCommunityData(viewedCommunity);
         return;
       }
       
@@ -290,7 +313,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
       console.log('✅ Tahminler silindi:', { matchId, teamId: teamToReset ?? effectiveTeamId, isMockMatch });
     } catch (e) { 
       console.error('❌ Reset predictions failed', e); 
-      Alert.alert('Hata', 'Tahminler silinirken bir hata oluştu. Lütfen tekrar deneyin.');
+      Alert.alert(t('common.error'), t('matchDetail.errorDeletingPredictions'));
     }
     // ✅ Analiz odağı modal'ını açma - kullanıcı tahmin yapmadığı için gerek yok
     // setShowAnalysisFocusModal(true);
@@ -540,18 +563,51 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
           api.matches.getMatchLineups(Number(matchId), true),
         ]);
         
-        if (matchRes.status === 'fulfilled' && matchRes.value?.success && matchRes.value.data?.fixture?.status != null) {
-          const short = matchRes.value.data.fixture.status?.short ?? matchRes.value.data.fixture.status?.long ?? '';
-          if (short !== '' || matchRes.value.data.fixture.status?.elapsed != null) {
-            setLiveMatchData(matchRes.value.data);
+        // ✅ Backend bazen DB formatı döner (fixture yok, data.elapsed / data.status) – API formatına normalize et
+        if (matchRes.status === 'fulfilled' && matchRes.value?.success && matchRes.value.data) {
+          const raw = matchRes.value.data;
+          let toSet = raw;
+          if (!raw.fixture && (raw.elapsed != null || raw.status != null)) {
+            toSet = {
+              fixture: {
+                id: raw.id ?? matchId,
+                date: raw.fixture_date || raw.fixture?.date || new Date().toISOString(),
+                timestamp: raw.fixture_timestamp ?? new Date(raw.fixture_date || raw.fixture?.date).getTime() / 1000,
+                status: {
+                  short: raw.status || 'NS',
+                  long: raw.status_long || raw.status || 'Not Started',
+                  elapsed: raw.elapsed ?? raw.fixture?.status?.elapsed ?? null,
+                  extraTime: raw.extra_time ?? raw.fixture?.status?.extraTime ?? null,
+                },
+                venue: raw.venue_name ? { name: raw.venue_name, city: raw.venue_city } : raw.fixture?.venue,
+              },
+              goals: { home: raw.home_score ?? raw.goals?.home, away: raw.away_score ?? raw.goals?.away },
+              score: {
+                halftime: raw.halftime_home != null ? { home: raw.halftime_home, away: raw.halftime_away } : raw.score?.halftime,
+                fulltime: raw.fulltime_home != null ? { home: raw.fulltime_home, away: raw.fulltime_away } : raw.score?.fulltime,
+              },
+              teams: raw.teams ?? {
+                home: raw.home_team ?? { id: raw.home_team_id, name: null, logo: null },
+                away: raw.away_team ?? { id: raw.away_team_id, name: null, logo: null },
+              },
+              league: raw.league ?? raw.league_id,
+            };
+          }
+          const short = toSet.fixture?.status?.short ?? toSet.fixture?.status?.long ?? '';
+          const elapsed = toSet.fixture?.status?.elapsed;
+          if (short !== '' || elapsed != null) {
+            setLiveMatchData(toSet);
           }
         }
         
         if (eventsRes.status === 'fulfilled' && eventsRes.value?.success) {
-          setLiveEvents(eventsRes.value.data || []);
+          const newEvents = eventsRes.value.data ?? [];
+          // ✅ Yeni event listesi boş gelse bile mevcut eventleri asla silme; sadece yeni veri geldiyse güncelle
+          if (newEvents.length > 0) setLiveEvents(newEvents);
         }
         
-        if (statsRes.status === 'fulfilled' && statsRes.value?.success) {
+        if (statsRes.status === 'fulfilled' && statsRes.value?.success && statsRes.value.data != null) {
+          // ✅ İstatistikleri boş/null ile asla silme; sadece anlamlı veri geldiyse güncelle
           setLiveStatistics(statsRes.value.data);
         }
 
@@ -563,9 +619,12 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
           }
         }
         
+        const normalizedElapsed = matchRes.status === 'fulfilled' && matchRes.value?.data
+          ? (matchRes.value.data.fixture?.status?.elapsed ?? matchRes.value.data.elapsed)
+          : null;
         console.log('🔄 Canlı veriler güncellendi:', {
-          elapsed: matchRes.status === 'fulfilled' ? matchRes.value?.data?.fixture?.status?.elapsed : null,
-          eventsCount: eventsRes.status === 'fulfilled' ? eventsRes.value?.data?.length : 0
+          elapsed: normalizedElapsed,
+          eventsCount: eventsRes.status === 'fulfilled' ? (eventsRes.value?.data?.length ?? 0) : 0
         });
       } catch (e) {
         console.log('🔴 Canlı veri güncelleme hatası:', e);
@@ -575,8 +634,8 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
     // İlk çağrı hemen
     fetchLiveData();
     
-    // Her 10 saniyede bir güncelle (canlı istatistikler anlık gelsin)
-    const interval = setInterval(fetchLiveData, 10000);
+    // En geç 15 sn içinde görünsün: her 8 saniyede bir güncelle
+    const interval = setInterval(fetchLiveData, 8000);
     
     return () => {
       console.log('⏹️ Canlı maç güncelleme döngüsü durduruldu');
@@ -893,7 +952,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
                 if (reminderCount < 3) {
                   pendingMatches.push({
                     matchId: predMatchId,
-                    teamName: pred.teamName || 'Takım',
+                    teamName: pred.teamName || t('matchDetail.team'),
                     date: pred.matchDate || '',
                     reminderCount: reminderCount,
                   });
@@ -1181,7 +1240,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
     return (
       <View style={[styles.container, styles.centerContent]}>
         <ActivityIndicator size="large" color="#1FA2A6" />
-        <Text style={styles.loadingText}>Maç detayları yükleniyor...</Text>
+        <Text style={styles.loadingText}>{t('matchDetail.loading')}</Text>
       </View>
     );
   }
@@ -1191,10 +1250,10 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
     return (
       <View style={[styles.container, styles.centerContent]}>
         <Ionicons name="alert-circle" size={48} color="#EF4444" />
-        <Text style={styles.errorText}>Veriler yüklenemedi</Text>
+        <Text style={styles.errorText}>{t('matchDetail.dataLoadError')}</Text>
         <Text style={styles.errorSubtext}>{error}</Text>
         <TouchableOpacity onPress={onBack} style={styles.retryButton}>
-          <Text style={styles.retryButtonText}>Geri Dön</Text>
+          <Text style={styles.retryButtonText}>{t('matchDetail.goBack')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -1212,7 +1271,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
         if (bothFavorites && !effectivePredictionTeamId) {
           return (
             <View style={styles.centerContent}>
-              <Text style={styles.placeholderText}>Hangi takım için kadro seçeceğinizi yukarıdaki pencereden seçin.</Text>
+              <Text style={styles.placeholderText}>{t('matchDetail.selectTeamSquad')}</Text>
             </View>
           );
         }
@@ -1251,7 +1310,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
         if (bothFavorites && !effectivePredictionTeamId) {
           return (
             <View style={styles.centerContent}>
-              <Text style={styles.placeholderText}>Hangi takım için tahmin yapacağınızı yukarıdaki pencereden seçin.</Text>
+              <Text style={styles.placeholderText}>{t('matchDetail.selectTeamPrediction')}</Text>
             </View>
           );
         }
@@ -1266,6 +1325,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
             initialAnalysisFocus={effectiveAnalysisFocus}
             lineups={lineups}
             liveEvents={currentEvents}
+            liveStatistics={liveStatistics}
             favoriteTeamIds={favoriteTeamIds}
             onPredictionsSaved={() => checkPredictions(homeId, awayId, bothFavorites)}
             onPredictionsSavedForTeam={async (savedTeamId) => {
@@ -1301,9 +1361,10 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
     <View style={[styles.container, { backgroundColor: themeColors.background }]}>
       <StatusBar barStyle={theme === 'light' ? 'dark-content' : 'light-content'} />
       
-      {/* ✅ Grid Pattern Background - açık modda daha görünür kareli yapı */}
+      {/* ✅ Grid Pattern – İstatistik/Canlı sekmelerinde daha net kareli yapı */}
       <View style={[
         styles.gridPattern,
+        (activeTab === 'stats' || activeTab === 'live') && styles.gridPatternStrong,
         isLight && Platform.OS === 'web' && {
           backgroundImage: `linear-gradient(to right, rgba(15, 42, 36, 0.2) 1px, transparent 1px), linear-gradient(to bottom, rgba(15, 42, 36, 0.2) 1px, transparent 1px)`,
           backgroundSize: '40px 40px',
@@ -1358,7 +1419,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
             <TouchableOpacity
               onPress={() => {
                 if (isMatchLive || isMatchFinished) {
-                  Alert.alert('Tahmin silinemez', 'Maç başladığı veya bittiği için tahmin artık silinemez.');
+                  Alert.alert(t('matchDetail.cannotDeletePredictionTitle'), t('matchDetail.cannotDeletePredictionMessage'));
                   return;
                 }
                 if (bothFavorites) setShowResetTeamPickerModal(true);
@@ -1366,10 +1427,10 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
               }}
               style={styles.starButton}
               hitSlop={12}
-              accessibilityLabel="Tahminleri silmek istiyor musunuz?"
+              accessibilityLabel={t('matchDetail.confirmDeletePredictions')}
             >
               <Ionicons name="star" size={20} color="#EAB308" />
-              <Text style={styles.starButtonText}>Tahmin{'\n'}Yapıldı</Text>
+              <Text style={styles.starButtonText}>{t('matchDetail.predictionDone')}</Text>
             </TouchableOpacity>
           ) : (
             <View style={styles.emptySpace} />
@@ -1403,20 +1464,28 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
                 {/* CANLI Badge */}
                 <View style={styles.liveBadge}>
                   <View style={styles.liveDot} />
-                  <Text style={[styles.liveBadgeText, { color: headerFg }]}>CANLI</Text>
+                  <Text style={[styles.liveBadgeText, { color: headerFg }]}>{t('matchCard.live')}</Text>
                 </View>
-                {/* Dakika:Salise formatında göster - uzatma varsa "45+3" formatında */}
+                {/* Dakika: 1./2. uzatma için 90+1..90+15 ve 105+1..105+15; normalde dakika:salise veya 45+3 */}
                 <Text style={[styles.liveMinuteText, { color: headerFg }]}>
-                  {matchData.extraTime != null && matchData.extraTime > 0
-                    ? `${matchData.minute}+${matchData.extraTime}`
-                    : `${matchData.minute}:${String(matchData.second ?? 0).padStart(2, '0')}`}
+                  {(() => {
+                    const min = matchData.minute ?? 0;
+                    if (min >= 106) return `${min - 105}:${String(matchData.second ?? 0).padStart(2, '0')}`;
+                    if (min >= 91) return `${min - 90}:${String(matchData.second ?? 0).padStart(2, '0')}`;
+                    if (matchData.extraTime != null && matchData.extraTime > 0) return `${matchData.minute}+${matchData.extraTime}`;
+                    return `${matchData.minute}:${String(matchData.second ?? 0).padStart(2, '0')}`;
+                  })()}
                 </Text>
-                {/* İlk yarı / İkinci yarı bilgisi - skor gösterilmez (zaten takımların altında gösteriliyor) */}
-                {/* Mantık: 45+ uzatma dakikaları İLK YARIYA dahil, 90+ uzatma dakikaları İKİNCİ YARIYA dahil */}
+                {/* İlk yarı / İkinci yarı / 1. Uzatma / 2. Uzatma */}
                 <Text style={[styles.halftimeText, { color: headerMuted }]}>
-                  {(matchData.minute ?? 0) < 46 || ((matchData.minute ?? 0) === 45 && matchData.extraTime != null)
-                    ? 'İlk Yarı' 
-                    : 'İkinci Yarı'}
+                  {(() => {
+                    const min = matchData.minute ?? 0;
+                    const status = matchData.status || '';
+                    if (min >= 106 || status === 'AET' || status === 'PEN') return t('matchDetail.extraTime2');
+                    if (min >= 91 || status === 'ET') return t('matchDetail.extraTime1');
+                    if (min < 46 || (min === 45 && matchData.extraTime != null)) return t('matchDetail.firstHalf');
+                    return t('matchDetail.secondHalf');
+                  })()}
                 </Text>
               </>
             ) : isMatchFinished ? (
@@ -1428,21 +1497,21 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
               </>
             ) : (
               <>
-                {/* Tarih - Dashboard stili ile aynı */}
+                {/* Tarih ve saat konteyner içinde ortalı */}
                 <View style={styles.dateInfoRow}>
                   <Ionicons name="time" size={9} color={headerMuted} />
                   <Text style={[styles.dateText, { color: headerMuted }]}>{matchData.date}</Text>
                 </View>
                 
-                {/* Saat Badge - açık temada hafif zemin + koyu metin (koyu alan kalmasın) */}
+                {/* Saat Badge - ortalı */}
                 {isLight ? (
-                  <View style={[styles.timeBadge, { backgroundColor: themeColors.muted, borderWidth: 1, borderColor: themeColors.border }]}>
+                  <View style={[styles.timeBadge, { backgroundColor: themeColors.muted, borderWidth: 1, borderColor: themeColors.border, alignSelf: 'center' }]}>
                     <Text style={[styles.timeBadgeText, { color: themeColors.foreground }]}>{matchData.time}</Text>
                   </View>
                 ) : (
                   <LinearGradient
                     colors={['#1FA2A6', '#047857']}
-                    style={styles.timeBadge}
+                    style={[styles.timeBadge, { alignSelf: 'center' }]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                   >
@@ -1454,14 +1523,14 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
                 {/* ✅ Container her zaman render ediliyor - layout sabit kalıyor */}
                 <View style={styles.countdownRow}>
                   {countdownData && countdownData.type === 'countdown' && countdownData.isVisible ? (
-                    <View style={styles.countdownContent} pointerEvents="none">
+                    <View style={[styles.countdownContent, { pointerEvents: 'none' }]}>
                       <View style={{ opacity: countdownData.shouldBlink && countdownData.seconds > 30 ? (countdownTicker % 2 === 0 ? 1 : 0.3) : 1 }}>
                         <LinearGradient
                           colors={[countdownData.color, countdownData.color === '#EF4444' ? '#B91C1C' : countdownData.color === '#F97316' ? '#EA580C' : countdownData.color === '#F59E0B' ? '#D97706' : countdownData.color === '#84CC16' ? '#65A30D' : '#059669']}
                           style={styles.countdownBox}
                         >
                           <Text style={styles.countdownNumber}>{String(countdownData.hours).padStart(2, '0')}</Text>
-                          <Text style={styles.countdownLabel}>Saat</Text>
+                          <Text style={styles.countdownLabel}>{t('matchDetail.countdownHours')}</Text>
                         </LinearGradient>
                       </View>
                       
@@ -1475,7 +1544,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
                           style={styles.countdownBox}
                         >
                           <Text style={styles.countdownNumber}>{String(countdownData.minutes).padStart(2, '0')}</Text>
-                          <Text style={styles.countdownLabel}>Dakika</Text>
+                          <Text style={styles.countdownLabel}>{t('matchDetail.countdownMinutes')}</Text>
                         </LinearGradient>
                       </View>
                       
@@ -1489,7 +1558,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
                           style={styles.countdownBox}
                         >
                           <Text style={styles.countdownNumber}>{String(countdownData.seconds).padStart(2, '0')}</Text>
-                          <Text style={styles.countdownLabel}>Saniye</Text>
+                          <Text style={styles.countdownLabel}>{t('matchDetail.countdownSeconds')}</Text>
                         </LinearGradient>
                       </View>
                     </View>
@@ -1503,7 +1572,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
                     end={{ x: 1, y: 0 }}
                   >
                     <Text style={styles.daysRemainingText}>
-                      MAÇA {countdownData.days} GÜN KALDI
+                      {t('matchDetail.daysLeft', { count: countdownData.days })}
                     </Text>
                   </LinearGradient>
                 )}
@@ -1543,11 +1612,11 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
       {showSquadUnsavedModal && (
         <ConfirmModal
           visible={true}
-          title="Kaydedilmemiş Değişiklikler"
-          message="Kadronuzda kaydedilmemiş değişiklikler var. Çıkmadan önce 'Tamamla' butonuna basarak kaydetmelisiniz, yoksa değişiklikler kaybolacak."
+          title={t('matchDetail.unsavedSquadTitle')}
+          message={t('matchDetail.unsavedSquadMessage')}
           buttons={[
             { 
-              text: 'Geri Dön', 
+              text: t('matchDetail.goBackBtn'), 
               style: 'cancel', 
               onPress: () => { 
                 setShowSquadUnsavedModal(false); 
@@ -1556,7 +1625,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
               } 
             },
             { 
-              text: 'Kaydetmeden Çık', 
+              text: t('matchDetail.leaveWithoutSaving'), 
               style: 'destructive', 
               onPress: () => { 
                 setShowSquadUnsavedModal(false); 
@@ -1579,11 +1648,11 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
       {showResetPredictionsModal && (
         <ConfirmModal
           visible={true}
-          title="Tahminleri sil"
-          message="Bu maça yapılan tahminleri silmek istiyor musunuz?"
+          title={t('matchDetail.deletePredictionsTitle')}
+          message={t('matchDetail.deletePredictionsMessage')}
           buttons={[
-            { text: 'Hayır', style: 'cancel', onPress: () => { setShowResetPredictionsModal(false); setActiveTab('squad'); } },
-            { text: 'Sil', style: 'destructive', onPress: () => handleResetPredictionsConfirm() },
+            { text: t('matchDetail.no'), style: 'cancel', onPress: () => { setShowResetPredictionsModal(false); setActiveTab('squad'); } },
+            { text: t('matchDetail.delete'), style: 'destructive', onPress: () => handleResetPredictionsConfirm() },
           ]}
           onRequestClose={() => setShowResetPredictionsModal(false)}
         />
@@ -1597,11 +1666,11 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
       {showResetTeamPickerModal && matchData && bothFavorites && (
         <ConfirmModal
           visible={true}
-          title="Hangi takım için tahmini silmek istiyorsunuz?"
-          message="Silmek istediğiniz takımın tahminlerini seçin."
+          title={t('matchDetail.whichTeamDeleteTitle')}
+          message={t('matchDetail.whichTeamDeleteMessage')}
           buttons={[
-            { text: String(matchData.homeTeam?.name ?? 'Ev Sahibi'), onPress: () => { setShowResetTeamPickerModal(false); handleResetPredictionsConfirm(homeId!); } },
-            { text: String(matchData.awayTeam?.name ?? 'Deplasman'), onPress: () => { setShowResetTeamPickerModal(false); handleResetPredictionsConfirm(awayId!); } },
+            { text: String(matchData.homeTeam?.name ?? t('matchDetail.homeTeam')), onPress: () => { setShowResetTeamPickerModal(false); handleResetPredictionsConfirm(homeId!); } },
+            { text: String(matchData.awayTeam?.name ?? t('matchDetail.awayTeam')), onPress: () => { setShowResetTeamPickerModal(false); handleResetPredictionsConfirm(awayId!); } },
           ]}
           onRequestClose={() => setShowResetTeamPickerModal(false)}
         />
@@ -1614,11 +1683,11 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
       {showUnsavedChangesModal && (
         <ConfirmModal
           visible={true}
-          title="Kaydedilmemiş Değişiklikler"
-          message="Tahminlerinizde kaydedilmemiş değişiklikler var. Kaydetmek ister misiniz?"
+          title={t('matchDetail.unsavedPredictionTitle')}
+          message={t('matchDetail.unsavedPredictionMessage')}
           buttons={[
             { 
-              text: 'Kaydetme', 
+              text: t('matchDetail.dontSave'), 
               style: 'cancel', 
               onPress: () => { 
                 setShowUnsavedChangesModal(false);
@@ -1630,7 +1699,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
               } 
             },
             { 
-              text: 'Kaydet', 
+              text: t('matchDetail.save'), 
               onPress: async () => { 
                 if (predictionSaveFn) {
                   await predictionSaveFn();
@@ -1723,53 +1792,53 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
               <View style={[matchEndStyles.gradient, { backgroundColor: themeColors.card }]}>
                 <View style={matchEndStyles.header}>
                   <Ionicons name="trophy" size={32} color="#C9A44C" />
-                  <Text style={[matchEndStyles.title, { color: themeColors.foreground }]}>Maç Sona Erdi!</Text>
+                  <Text style={[matchEndStyles.title, { color: themeColors.foreground }]}>{t('matchDetail.matchEndTitle')}</Text>
                 </View>
                 <View style={[matchEndStyles.scoreContainer, { backgroundColor: themeColors.muted }]}>
                   <View style={matchEndStyles.teamScore}>
-                    <Text style={[matchEndStyles.teamName, { color: themeColors.mutedForeground }]}>{matchData.homeName || 'Ev Sahibi'}</Text>
+                    <Text style={[matchEndStyles.teamName, { color: themeColors.mutedForeground }]}>{matchData.homeName || t('matchDetail.homeTeam')}</Text>
                     <Text style={[matchEndStyles.scoreText, { color: themeColors.foreground }]}>{matchData.homeScore ?? 0}</Text>
                   </View>
                   <Text style={[matchEndStyles.scoreSeparator, { color: themeColors.mutedForeground }]}>-</Text>
                   <View style={matchEndStyles.teamScore}>
-                    <Text style={[matchEndStyles.teamName, { color: themeColors.mutedForeground }]}>{matchData.awayName || 'Deplasman'}</Text>
+                    <Text style={[matchEndStyles.teamName, { color: themeColors.mutedForeground }]}>{matchData.awayName || t('matchDetail.awayTeam')}</Text>
                     <Text style={[matchEndStyles.scoreText, { color: themeColors.foreground }]}>{matchData.awayScore ?? 0}</Text>
                   </View>
                 </View>
                 <View style={matchEndStyles.summarySection}>
-                  <Text style={[matchEndStyles.sectionTitle, { color: themeColors.mutedForeground }]}>Tahmin Puanlarınız</Text>
+                  <Text style={[matchEndStyles.sectionTitle, { color: themeColors.mutedForeground }]}>{t('matchDetail.yourPredictionPoints')}</Text>
                   <View style={matchEndStyles.pointsGrid}>
                     <View style={[matchEndStyles.pointItem, { backgroundColor: themeColors.muted }]}>
                       <Ionicons name="people" size={20} color="#1FA2A6" />
-                      <Text style={[matchEndStyles.pointLabel, { color: themeColors.mutedForeground }]}>Kadro</Text>
+                      <Text style={[matchEndStyles.pointLabel, { color: themeColors.mutedForeground }]}>{t('matchDetail.squadLabel')}</Text>
                       <Text style={[matchEndStyles.pointValue, { color: '#059669' }]}>+25</Text>
                     </View>
                     <View style={[matchEndStyles.pointItem, { backgroundColor: themeColors.muted }]}>
                       <Ionicons name="analytics" size={20} color="#8B5CF6" />
-                      <Text style={[matchEndStyles.pointLabel, { color: themeColors.mutedForeground }]}>Maç Tahmini</Text>
+                      <Text style={[matchEndStyles.pointLabel, { color: themeColors.mutedForeground }]}>{t('matchDetail.matchPredictionLabel')}</Text>
                       <Text style={[matchEndStyles.pointValue, { color: '#7C3AED' }]}>+15</Text>
                     </View>
                     <View style={[matchEndStyles.pointItem, { backgroundColor: themeColors.muted }]}>
                       <Ionicons name="person" size={20} color="#F59E0B" />
-                      <Text style={[matchEndStyles.pointLabel, { color: themeColors.mutedForeground }]}>Oyuncu</Text>
+                      <Text style={[matchEndStyles.pointLabel, { color: themeColors.mutedForeground }]}>{t('matchDetail.playerLabel')}</Text>
                       <Text style={[matchEndStyles.pointValue, { color: '#D97706' }]}>+10</Text>
                     </View>
                   </View>
                   <View style={[matchEndStyles.totalPoints, { backgroundColor: themeColors.muted }]}>
-                    <Text style={[matchEndStyles.totalLabel, { color: themeColors.foreground }]}>Toplam Puan</Text>
+                    <Text style={[matchEndStyles.totalLabel, { color: themeColors.foreground }]}>{t('matchDetail.totalPointsLabel')}</Text>
                     <Text style={[matchEndStyles.totalValue, { color: '#059669' }]}>+50</Text>
                   </View>
                 </View>
                 <View style={matchEndStyles.badgeSection}>
-                  <Text style={[matchEndStyles.sectionTitle, { color: themeColors.mutedForeground }]}>Kazanılan Rozetler</Text>
+                  <Text style={[matchEndStyles.sectionTitle, { color: themeColors.mutedForeground }]}>{t('matchDetail.earnedBadges')}</Text>
                   <View style={matchEndStyles.badgeRow}>
                     <View style={[matchEndStyles.badge, { backgroundColor: themeColors.muted }]}>
                       <Text style={matchEndStyles.badgeEmoji}>🎯</Text>
-                      <Text style={[matchEndStyles.badgeName, { color: themeColors.foreground }]}>Skor Tahmini</Text>
+                      <Text style={[matchEndStyles.badgeName, { color: themeColors.foreground }]}>{t('matchDetail.badgeScorePrediction')}</Text>
                     </View>
                     <View style={[matchEndStyles.badge, { backgroundColor: themeColors.muted }]}>
                       <Text style={matchEndStyles.badgeEmoji}>⚡</Text>
-                      <Text style={[matchEndStyles.badgeName, { color: themeColors.foreground }]}>Hızlı Tahmin</Text>
+                      <Text style={[matchEndStyles.badgeName, { color: themeColors.foreground }]}>{t('matchDetail.badgeQuickPrediction')}</Text>
                     </View>
                   </View>
                 </View>
@@ -1777,11 +1846,11 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
                   <TouchableOpacity style={matchEndStyles.primaryButton} onPress={() => { setShowMatchEndPopup(false); setActiveTab('ratings'); }}>
                     <LinearGradient colors={['#1FA2A6', '#047857']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={matchEndStyles.buttonGradient}>
                       <Ionicons name="star" size={18} color="#FFFFFF" />
-                      <Text style={matchEndStyles.buttonText}>Puanlama Yap</Text>
+                      <Text style={matchEndStyles.buttonText}>{t('matchDetail.doRating')}</Text>
                     </LinearGradient>
                   </TouchableOpacity>
                   <TouchableOpacity style={matchEndStyles.secondaryButton} onPress={() => setShowMatchEndPopup(false)}>
-                    <Text style={[matchEndStyles.secondaryButtonText, { color: themeColors.mutedForeground }]}>Daha Sonra</Text>
+                    <Text style={[matchEndStyles.secondaryButtonText, { color: themeColors.mutedForeground }]}>{t('matchDetail.later')}</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -1789,53 +1858,53 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
               <LinearGradient colors={['#0F2A24', '#1E3A3A', '#0F2A24']} style={matchEndStyles.gradient}>
                 <View style={matchEndStyles.header}>
                   <Ionicons name="trophy" size={32} color="#FFD700" />
-                  <Text style={matchEndStyles.title}>Maç Sona Erdi!</Text>
+                  <Text style={matchEndStyles.title}>{t('matchDetail.matchEndTitle')}</Text>
                 </View>
                 <View style={matchEndStyles.scoreContainer}>
                   <View style={matchEndStyles.teamScore}>
-                    <Text style={matchEndStyles.teamName}>{matchData.homeName || 'Ev Sahibi'}</Text>
+                    <Text style={matchEndStyles.teamName}>{matchData.homeName || t('matchDetail.homeTeam')}</Text>
                     <Text style={matchEndStyles.scoreText}>{matchData.homeScore ?? 0}</Text>
                   </View>
                   <Text style={matchEndStyles.scoreSeparator}>-</Text>
                   <View style={matchEndStyles.teamScore}>
-                    <Text style={matchEndStyles.teamName}>{matchData.awayName || 'Deplasman'}</Text>
+                    <Text style={matchEndStyles.teamName}>{matchData.awayName || t('matchDetail.awayTeam')}</Text>
                     <Text style={matchEndStyles.scoreText}>{matchData.awayScore ?? 0}</Text>
                   </View>
                 </View>
                 <View style={matchEndStyles.summarySection}>
-                  <Text style={matchEndStyles.sectionTitle}>Tahmin Puanlarınız</Text>
+                  <Text style={matchEndStyles.sectionTitle}>{t('matchDetail.yourPredictionPoints')}</Text>
                   <View style={matchEndStyles.pointsGrid}>
                     <View style={matchEndStyles.pointItem}>
                       <Ionicons name="people" size={20} color="#1FA2A6" />
-                      <Text style={matchEndStyles.pointLabel}>Kadro</Text>
+                      <Text style={matchEndStyles.pointLabel}>{t('matchDetail.squadLabel')}</Text>
                       <Text style={matchEndStyles.pointValue}>+25</Text>
                     </View>
                     <View style={matchEndStyles.pointItem}>
                       <Ionicons name="analytics" size={20} color="#8B5CF6" />
-                      <Text style={matchEndStyles.pointLabel}>Maç Tahmini</Text>
+                      <Text style={matchEndStyles.pointLabel}>{t('matchDetail.matchPredictionLabel')}</Text>
                       <Text style={matchEndStyles.pointValue}>+15</Text>
                     </View>
                     <View style={matchEndStyles.pointItem}>
                       <Ionicons name="person" size={20} color="#F59E0B" />
-                      <Text style={matchEndStyles.pointLabel}>Oyuncu</Text>
+                      <Text style={matchEndStyles.pointLabel}>{t('matchDetail.playerLabel')}</Text>
                       <Text style={matchEndStyles.pointValue}>+10</Text>
                     </View>
                   </View>
                   <View style={matchEndStyles.totalPoints}>
-                    <Text style={matchEndStyles.totalLabel}>Toplam Puan</Text>
+                    <Text style={matchEndStyles.totalLabel}>{t('matchDetail.totalPointsLabel')}</Text>
                     <Text style={matchEndStyles.totalValue}>+50</Text>
                   </View>
                 </View>
                 <View style={matchEndStyles.badgeSection}>
-                  <Text style={matchEndStyles.sectionTitle}>Kazanılan Rozetler</Text>
+                  <Text style={matchEndStyles.sectionTitle}>{t('matchDetail.earnedBadges')}</Text>
                   <View style={matchEndStyles.badgeRow}>
                     <View style={matchEndStyles.badge}>
                       <Text style={matchEndStyles.badgeEmoji}>🎯</Text>
-                      <Text style={matchEndStyles.badgeName}>Skor Tahmini</Text>
+                      <Text style={matchEndStyles.badgeName}>{t('matchDetail.badgeScorePrediction')}</Text>
                     </View>
                     <View style={matchEndStyles.badge}>
                       <Text style={matchEndStyles.badgeEmoji}>⚡</Text>
-                      <Text style={matchEndStyles.badgeName}>Hızlı Tahmin</Text>
+                      <Text style={matchEndStyles.badgeName}>{t('matchDetail.badgeQuickPrediction')}</Text>
                     </View>
                   </View>
                 </View>
@@ -1843,11 +1912,11 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
                   <TouchableOpacity style={matchEndStyles.primaryButton} onPress={() => { setShowMatchEndPopup(false); setActiveTab('ratings'); }}>
                     <LinearGradient colors={['#1FA2A6', '#047857']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={matchEndStyles.buttonGradient}>
                       <Ionicons name="star" size={18} color="#FFFFFF" />
-                      <Text style={matchEndStyles.buttonText}>Puanlama Yap</Text>
+                      <Text style={matchEndStyles.buttonText}>{t('matchDetail.doRating')}</Text>
                     </LinearGradient>
                   </TouchableOpacity>
                   <TouchableOpacity style={matchEndStyles.secondaryButton} onPress={() => setShowMatchEndPopup(false)}>
-                    <Text style={matchEndStyles.secondaryButtonText}>Daha Sonra</Text>
+                    <Text style={matchEndStyles.secondaryButtonText}>{t('matchDetail.later')}</Text>
                   </TouchableOpacity>
                 </View>
               </LinearGradient>
@@ -1872,9 +1941,9 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
               {/* Header */}
               <View style={matchEndStyles.header}>
                 <Ionicons name="notifications-outline" size={32} color="#F59E0B" />
-                <Text style={[matchEndStyles.title, { fontSize: 20 }]}>Reyting Hatırlatması</Text>
+                <Text style={[matchEndStyles.title, { fontSize: 20 }]}>{t('matchDetail.ratingReminderTitle')}</Text>
                 <Text style={{ color: '#94A3B8', fontSize: 12, textAlign: 'center', marginTop: 4 }}>
-                  Biten maçlarınız için reyting vermeyi unutmayın!
+                  {t('matchDetail.ratingReminderMessage')}
                 </Text>
               </View>
               
@@ -1918,7 +1987,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
                     style={matchEndStyles.buttonGradient}
                   >
                     <Ionicons name="star" size={16} color="#FFFFFF" />
-                    <Text style={matchEndStyles.buttonText}>Reyting Ver</Text>
+                    <Text style={matchEndStyles.buttonText}>{t('matchDetail.giveRating')}</Text>
                   </LinearGradient>
                 </TouchableOpacity>
                 
@@ -1926,7 +1995,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
                   style={matchEndStyles.secondaryButton}
                   onPress={() => setShowRatingReminder(false)}
                 >
-                  <Text style={matchEndStyles.secondaryButtonText}>Sonra Hatırlat</Text>
+                  <Text style={matchEndStyles.secondaryButtonText}>{t('matchDetail.remindLater')}</Text>
                 </TouchableOpacity>
               </View>
             </LinearGradient>
@@ -2135,6 +2204,17 @@ const styles = StyleSheet.create({
       },
     }),
   },
+  // İstatistik/Canlı sekmelerinde daha net kareli yapı
+  gridPatternStrong: Platform.select({
+    web: {
+      backgroundImage: `
+        linear-gradient(to right, rgba(31, 162, 166, 0.22) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(31, 162, 166, 0.22) 1px, transparent 1px)
+      `,
+      backgroundSize: '40px 40px',
+    },
+    default: {},
+  }),
   
   // Match Card Overlay - Dashboard canlı maç kartı ile aynı yükseklik (~158px içerik + status bar)
   matchCardOverlay: {
@@ -2302,24 +2382,25 @@ const styles = StyleSheet.create({
   },
   centerInfo: {
     alignItems: 'center',
+    justifyContent: 'center',
     paddingHorizontal: 8,
     backgroundColor: 'rgba(15, 42, 36, 0.6)',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(31, 162, 166, 0.15)',
-    paddingVertical: 6,
+    paddingVertical: 12,
     width: 100, // ✅ Sabit genişlik - layout kaymasını önler
     flexShrink: 0,
-    // ✅ Layout'un sabit kalması için - opacity değişikliği layout'u etkilemesin
     height: 80, // ✅ Sabit yükseklik - geri sayım için yeterli alan
-    justifyContent: 'center', // ✅ İçeriği dikey olarak ortala
   },
-  // ✅ Tarih satırı - Dashboard stili
+  // ✅ Tarih satırı - konteyner içinde ortalı
   dateInfoRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 4,
     marginBottom: 4,
+    width: '100%',
   },
   dateText: {
     fontSize: 10,

@@ -161,37 +161,58 @@ export function Leaderboard({ onNavigate }: LeaderboardProps = {}) {
         <Text style={[styles.headerTitle, { color: themeColors.foreground }]}>🏆 Sıralama</Text>
         <Text style={[styles.headerSubtitle, { color: themeColors.mutedForeground }]}>En iyilerle yarış!</Text>
 
-        {/* Current User Stats Card */}
+        {/* Current User Stats Card - açık temada açık kart */}
         {currentUserData && (
           <Animated.View entering={isWeb ? undefined : FadeInNative.delay(100).duration(300)}>
-            <LinearGradient
-              colors={['#059669', '#047857']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.currentUserCard}
-            >
-              <View style={styles.currentUserLeft}>
-                <Image source={{ uri: currentUserData.avatar }} style={styles.currentUserAvatar} />
-                <View>
-                  <Text style={styles.currentUserName}>{currentUserData.username}</Text>
-                  <View style={styles.currentUserStats}>
-                    <View style={styles.currentUserStat}>
-                      <Ionicons name="trophy" size={12} color="#FFF" />
-                      <Text style={styles.currentUserStatText}>#{currentUserData.rank}</Text>
-                    </View>
-                    <View style={styles.currentUserStat}>
-                      <Ionicons name="star" size={12} color="#FFF" />
-                      <Text style={styles.currentUserStatText}>{currentUserData.points.toLocaleString()}</Text>
+            {isLight ? (
+              <View style={[styles.currentUserCard, { backgroundColor: themeColors.card, borderWidth: 1, borderColor: themeColors.border }]}>
+                <View style={styles.currentUserLeft}>
+                  <Image source={{ uri: currentUserData.avatar }} style={styles.currentUserAvatar} />
+                  <View>
+                    <Text style={[styles.currentUserName, { color: themeColors.foreground }]}>{currentUserData.username}</Text>
+                    <View style={styles.currentUserStats}>
+                      <View style={styles.currentUserStat}>
+                        <Ionicons name="trophy" size={12} color="#059669" />
+                        <Text style={[styles.currentUserStatText, { color: themeColors.foreground }]}>#{currentUserData.rank}</Text>
+                      </View>
+                      <View style={styles.currentUserStat}>
+                        <Ionicons name="star" size={12} color="#059669" />
+                        <Text style={[styles.currentUserStatText, { color: themeColors.foreground }]}>{currentUserData.points.toLocaleString()}</Text>
+                      </View>
                     </View>
                   </View>
                 </View>
-              </View>
-              <View style={styles.currentUserRight}>
-                <View style={styles.levelBadge}>
-                  <Text style={styles.levelBadgeText}>Lvl {currentUserData.level}</Text>
+                <View style={styles.currentUserRight}>
+                  <View style={[styles.levelBadge, { backgroundColor: themeColors.muted }]}>
+                    <Text style={[styles.levelBadgeText, { color: themeColors.foreground }]}>Lvl {currentUserData.level}</Text>
+                  </View>
                 </View>
               </View>
-            </LinearGradient>
+            ) : (
+              <LinearGradient colors={['#059669', '#047857']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.currentUserCard}>
+                <View style={styles.currentUserLeft}>
+                  <Image source={{ uri: currentUserData.avatar }} style={styles.currentUserAvatar} />
+                  <View>
+                    <Text style={styles.currentUserName}>{currentUserData.username}</Text>
+                    <View style={styles.currentUserStats}>
+                      <View style={styles.currentUserStat}>
+                        <Ionicons name="trophy" size={12} color="#FFF" />
+                        <Text style={styles.currentUserStatText}>#{currentUserData.rank}</Text>
+                      </View>
+                      <View style={styles.currentUserStat}>
+                        <Ionicons name="star" size={12} color="#FFF" />
+                        <Text style={styles.currentUserStatText}>{currentUserData.points.toLocaleString()}</Text>
+                      </View>
+                    </View>
+                  </View>
+                </View>
+                <View style={styles.currentUserRight}>
+                  <View style={styles.levelBadge}>
+                    <Text style={styles.levelBadgeText}>Lvl {currentUserData.level}</Text>
+                  </View>
+                </View>
+              </LinearGradient>
+            )}
           </Animated.View>
         )}
       </View>
@@ -227,14 +248,14 @@ export function Leaderboard({ onNavigate }: LeaderboardProps = {}) {
                 style={styles.podiumAvatarContainer}
               >
                 <Image source={{ uri: currentData[1].avatar }} style={styles.podiumAvatar} />
-                <View style={styles.podiumRankBadge}>
-                  <Text style={styles.podiumRankText}>2</Text>
+                <View style={[styles.podiumRankBadge, isLight && { backgroundColor: themeColors.muted, borderColor: themeColors.border }]}>
+                  <Text style={[styles.podiumRankText, isLight && { color: themeColors.foreground }]}>2</Text>
                 </View>
               </LinearGradient>
-              <Text style={styles.podiumName} numberOfLines={1}>{currentData[1].username}</Text>
-              <Text style={styles.podiumPoints}>{currentData[1].points.toLocaleString()}</Text>
-              <View style={[styles.podiumPlatform, { height: 80 }]}>
-                <Ionicons name="medal" size={24} color="#C0C0C0" />
+              <Text style={[styles.podiumName, isLight && { color: themeColors.foreground }]} numberOfLines={1}>{currentData[1].username}</Text>
+              <Text style={[styles.podiumPoints, isLight && { color: '#059669' }]}>{currentData[1].points.toLocaleString()}</Text>
+              <View style={[styles.podiumPlatform, { height: 80 }, isLight && { backgroundColor: themeColors.muted, borderColor: themeColors.border }]}>
+                <Ionicons name="medal" size={24} color={isLight ? '#64748B' : '#C0C0C0'} />
               </View>
             </Animated.View>
 
@@ -248,13 +269,13 @@ export function Leaderboard({ onNavigate }: LeaderboardProps = {}) {
                 style={[styles.podiumAvatarContainer, styles.podiumAvatarFirst]}
               >
                 <Image source={{ uri: currentData[0].avatar }} style={styles.podiumAvatar} />
-                <View style={styles.podiumRankBadge}>
-                  <Text style={styles.podiumRankText}>1</Text>
+                <View style={[styles.podiumRankBadge, isLight && { backgroundColor: themeColors.muted, borderColor: themeColors.border }]}>
+                  <Text style={[styles.podiumRankText, isLight && { color: themeColors.foreground }]}>1</Text>
                 </View>
               </LinearGradient>
-              <Text style={styles.podiumName} numberOfLines={1}>{currentData[0].username}</Text>
-              <Text style={styles.podiumPoints}>{currentData[0].points.toLocaleString()}</Text>
-              <View style={[styles.podiumPlatform, styles.podiumPlatformFirst, { height: 100 }]}>
+              <Text style={[styles.podiumName, isLight && { color: themeColors.foreground }]} numberOfLines={1}>{currentData[0].username}</Text>
+              <Text style={[styles.podiumPoints, isLight && { color: '#059669' }]}>{currentData[0].points.toLocaleString()}</Text>
+              <View style={[styles.podiumPlatform, styles.podiumPlatformFirst, { height: 100 }, isLight && { backgroundColor: themeColors.muted, borderColor: themeColors.border }]}>
                 <Ionicons name="trophy" size={32} color="#FFD700" />
               </View>
             </Animated.View>
@@ -266,14 +287,14 @@ export function Leaderboard({ onNavigate }: LeaderboardProps = {}) {
                 style={styles.podiumAvatarContainer}
               >
                 <Image source={{ uri: currentData[2].avatar }} style={styles.podiumAvatar} />
-                <View style={styles.podiumRankBadge}>
-                  <Text style={styles.podiumRankText}>3</Text>
+                <View style={[styles.podiumRankBadge, isLight && { backgroundColor: themeColors.muted, borderColor: themeColors.border }]}>
+                  <Text style={[styles.podiumRankText, isLight && { color: themeColors.foreground }]}>3</Text>
                 </View>
               </LinearGradient>
-              <Text style={styles.podiumName} numberOfLines={1}>{currentData[2].username}</Text>
-              <Text style={styles.podiumPoints}>{currentData[2].points.toLocaleString()}</Text>
-              <View style={[styles.podiumPlatform, { height: 60 }]}>
-                <Ionicons name="medal" size={24} color="#CD7F32" />
+              <Text style={[styles.podiumName, isLight && { color: themeColors.foreground }]} numberOfLines={1}>{currentData[2].username}</Text>
+              <Text style={[styles.podiumPoints, isLight && { color: '#059669' }]}>{currentData[2].points.toLocaleString()}</Text>
+              <View style={[styles.podiumPlatform, { height: 60 }, isLight && { backgroundColor: themeColors.muted, borderColor: themeColors.border }]}>
+                <Ionicons name="medal" size={24} color={isLight ? '#92400E' : '#CD7F32'} />
               </View>
             </Animated.View>
           </View>
@@ -301,6 +322,8 @@ export function Leaderboard({ onNavigate }: LeaderboardProps = {}) {
                 style={[
                   styles.leaderboardItem,
                   user.isCurrentUser && styles.leaderboardItemCurrent,
+                  isLight && { backgroundColor: themeColors.card, borderColor: themeColors.border },
+                  isLight && user.isCurrentUser && { backgroundColor: themeColors.muted, borderColor: themeColors.ring || '#1FA2A6' },
                 ]}
               >
                 {/* Rank */}
@@ -322,7 +345,7 @@ export function Leaderboard({ onNavigate }: LeaderboardProps = {}) {
                 <Image source={{ uri: user.avatar }} style={styles.userAvatar} />
                 <View style={styles.userInfo}>
                   <View style={styles.userNameContainer}>
-                    <Text style={[styles.userName, user.isCurrentUser && styles.userNameCurrent]}>
+                    <Text style={[styles.userName, user.isCurrentUser && styles.userNameCurrent, isLight && { color: themeColors.foreground }]}>
                       {user.username}
                     </Text>
                     <Text style={styles.userTeam}>{user.team}</Text>
@@ -357,8 +380,8 @@ export function Leaderboard({ onNavigate }: LeaderboardProps = {}) {
 
                 {/* Points */}
                 <View style={styles.pointsContainer}>
-                  <Text style={styles.pointsValue}>{user.points.toLocaleString()}</Text>
-                  <Text style={styles.pointsLabel}>puan</Text>
+                  <Text style={[styles.pointsValue, isLight && { color: themeColors.foreground }]}>{user.points.toLocaleString()}</Text>
+                  <Text style={[styles.pointsLabel, isLight && { color: themeColors.mutedForeground }]}>puan</Text>
                 </View>
               </View>
             </Animated.View>

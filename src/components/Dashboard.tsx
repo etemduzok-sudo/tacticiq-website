@@ -49,6 +49,8 @@ const { width } = Dimensions.get('window');
 
 interface DashboardProps {
   onNavigate: (screen: string, params?: any) => void;
+  /** Biten maça tıklanınca reyting/oylama popup'ını açar */
+  onMatchResultSelect?: (matchId: string) => void;
   matchData: {
     pastMatches: any[];
     liveMatches: any[];
@@ -63,7 +65,7 @@ interface DashboardProps {
   hasFavoriteTeams?: boolean;
 }
 
-export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, selectedTeamIds = [], hasFavoriteTeams = true }: DashboardProps) {
+export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResultSelect, matchData, selectedTeamIds = [], hasFavoriteTeams = true }: DashboardProps) {
   const { t } = useTranslation();
   const { theme } = useTheme();
   const isLight = theme === 'light';
@@ -107,7 +109,15 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
     isFinished: boolean;
   } | null>(null);
   // ✅ 120 saniyelik uyarı state'i kaldırıldı - artık kullanılmıyor
-  
+
+  // ✅ Bitiş düdüğü zamanı: SADECE API'den (fixture.timestamp + status.elapsed). Tahmin yok; elapsed yoksa null.
+  const getMatchEndTimestampSec = React.useCallback((match: any): number | null => {
+    const ts = match?.fixture?.timestamp;
+    const elapsed = match?.fixture?.status?.elapsed;
+    if (ts == null || elapsed == null || typeof elapsed !== 'number') return null;
+    return ts + elapsed * 60;
+  }, []);
+
   // ✅ Maça tıklandığında: İki favori takım varsa popup göster, yoksa direkt devam et
   const handleMatchPress = (match: any) => {
     try {
@@ -131,8 +141,8 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
     
     // ✅ İki favori takım varsa: Hangi favori takım için devam ediyorsunuz?
     if (bothFavorites) {
-      const homeTeamName = match?.teams?.home?.name || 'Ev Sahibi';
-      const awayTeamName = match?.teams?.away?.name || 'Deplasman';
+      const homeTeamName = match?.teams?.home?.name || t('dashboard.homeTeam');
+      const awayTeamName = match?.teams?.away?.name || t('dashboard.awayTeam');
       
       // ✅ Maç durumuna göre initialTab belirle
       const FINISHED_STATUSES = ['FT', 'AET', 'PEN', 'AWD', 'WO', 'ABD', 'CANC'];
@@ -209,6 +219,15 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
     }
     
     if (isFinished) {
+      // Bitiş zamanı sadece API'den (elapsed); 24 saat içinde → reyting, sonrası → istatistik
+      const endSec = getMatchEndTimestampSec(match);
+      if (endSec != null) {
+        const hoursSinceEnd = (Date.now() / 1000 - endSec) / 3600;
+        if (hoursSinceEnd < 24 && onMatchResultSelect) {
+          onMatchResultSelect(String(match.fixture.id));
+          return;
+        }
+      }
       onNavigate('match-detail', {
         id: String(match.fixture.id),
         initialTab: 'stats',
@@ -397,17 +416,32 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
       try {
         const response = await teamsApi.getBulkCoaches(uniqueIds);
         if (response?.success && response?.data) {
-          const coachData = response.data as Record<string, { coach: string | null }>;
+          const coachData = response.data as Record<string, { coach: string | null; isStale?: boolean }>;
+          const staleIds: number[] = [];
           let updated = false;
-          
+
           Object.entries(coachData).forEach(([teamId, data]) => {
             if (data.coach) {
               globalCoachCache[parseInt(teamId, 10)] = data.coach;
               updated = true;
             }
+            if (data.isStale) staleIds.push(parseInt(teamId, 10));
           });
-          
-          // State'i güncelle (re-render trigger)
+
+          // Stale coach'ları API'den yenile (arka planda)
+          if (staleIds.length > 0) {
+            teamsApi.refreshCoaches(staleIds).then((refreshRes: any) => {
+              if (refreshRes?.success && refreshRes?.data) {
+                Object.entries(refreshRes.data).forEach(([tid, d]: [string, any]) => {
+                  if (d?.coach) {
+                    globalCoachCache[parseInt(tid, 10)] = d.coach;
+                    setCoachCacheVersion(v => v + 1);
+                  }
+                });
+              }
+            }).catch(() => {});
+          }
+
           if (updated) {
             setCoachCacheVersion(v => v + 1);
           }
@@ -483,7 +517,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
     const handleLongPress = () => {
       if (!hasPrediction || matchId == null || !onDeletePrediction) return;
       if (!canDeletePrediction) {
-        Alert.alert('Tahmin silinemez', 'Maç başladığı veya bittiği için tahmin artık silinemez.');
+        Alert.alert(t('matchDetail.cannotDeletePredictionTitle'), t('matchDetail.cannotDeletePredictionMessage'));
         return;
       }
       Alert.alert(
@@ -580,13 +614,13 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
                 onPress={(e) => {
                   e?.stopPropagation?.();
                   if (!canDeletePrediction) {
-                    Alert.alert('Tahmin silinemez', 'Maç başladığı veya bittiği için tahmin artık silinemez.');
+                    Alert.alert(t('matchDetail.cannotDeletePredictionTitle'), t('matchDetail.cannotDeletePredictionMessage'));
                     return;
                   }
                   if (bothFavorites) {
                     // ✅ İki favori takım varsa: Özel modal göster (seçilebilir seçenekler + onay butonu)
-                    const homeTeamName = match?.teams?.home?.name || 'Ev Sahibi';
-                    const awayTeamName = match?.teams?.away?.name || 'Deplasman';
+                    const homeTeamName = match?.teams?.home?.name || t('dashboard.homeTeam');
+                    const awayTeamName = match?.teams?.away?.name || t('dashboard.awayTeam');
                     setDeletePredictionTeamModal({
                       matchId,
                       homeId: homeId!,
@@ -1065,8 +1099,10 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
     });
   }, [pastMatches, selectedTeamIds, filterMatchesByTeam, filteredLiveMatches]);
 
-  // ✅ Yeni üye (favori takım yok): biten maç gösterme - üyelik + favori takım seçimi tamamlanınca göster
-  const displayPastMatches = hasFavoriteTeams ? filteredPastMatches : [];
+  // ✅ Biten maçlar: favori takım varsa göster. Filtre boş dönerse (ID uyuşmazlığı vb.) pastMatches fallback
+  const displayPastMatches = hasFavoriteTeams
+    ? (filteredPastMatches.length > 0 ? filteredPastMatches : pastMatches)
+    : [];
 
   // ✅ Tüm maç ID'lerini birleştir (tahmin kontrolü için - canlı, yaklaşan, biten)
   const allActiveMatchIds = React.useMemo(() => {
@@ -1107,77 +1143,121 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
     return () => clearInterval(interval);
   }, [allActiveMatchIds.length, refreshPredictions]);
 
+  // ✅ Web: "Mobilde de giriş yapın" bilgisi (oturumda bir kez, kapatılabilir)
+  const [webMobileHintDismissed, setWebMobileHintDismissed] = useState(() => {
+    if (Platform.OS !== 'web' || typeof sessionStorage === 'undefined') return true;
+    return !!sessionStorage.getItem('tacticiq_web_mobile_hint_dismissed');
+  });
+  const dismissWebMobileHint = () => {
+    setWebMobileHintDismissed(true);
+    try {
+      if (typeof sessionStorage !== 'undefined') sessionStorage.setItem('tacticiq_web_mobile_hint_dismissed', '1');
+    } catch (_) {}
+  };
+
   // ✅ Maç kartı yüksekliği (sabit height + marginBottom)
-  // matchCardContainer.height (175) + matchCardWrapper.marginBottom (8) = 183
   const MATCH_CARD_HEIGHT = 175 + 8;
+  const SCROLL_CONTENT_PADDING_TOP = Platform.OS === 'ios' ? 238 : 228;
 
-  // ✅ Biten maçlar bölümünün toplam yüksekliği (en üstte, yukarı kaydırınca görünür)
-  const pastSectionHeight = React.useMemo(() => {
-    return displayPastMatches.length * MATCH_CARD_HEIGHT;
-  }, [displayPastMatches.length]);
+  // ✅ Biten bölüm yüksekliği - canlı/yaklaşan ilk kart ekranın en üstünde ve kesilmeden (Resim 2)
+  const pastCount = displayPastMatches.length || pastMatches.length;
+  const pastSectionHeight = pastCount * MATCH_CARD_HEIGHT;
+  // ⚠️ KİLİTLİ: Bu değer kullanıcı onayı ile sabitlendi. ASLA DEĞİŞTİRME (canlı/yaklaşan ilk kart pozisyonu).
+  const SCROLL_INSET_TOP = 156;
+  const scrollYToLiveOrUpcoming = (filteredLiveMatches.length > 0 || filteredUpcomingMatches.length > 0)
+    ? Math.max(0, SCROLL_CONTENT_PADDING_TOP + pastSectionHeight - SCROLL_INSET_TOP)
+    : 0;
 
-  // ✅ Biten maç flash önleme: Önce scroll uygula, sonra içeriği göster
+  // ✅ İlk açılışta içerik göster
   const hasScrolledForDisplayRef = React.useRef(false);
   const isLoadingScreen = loading && !hasLoadedOnce;
   React.useEffect(() => {
     if (initialScrollDone || loading || isLoadingScreen) return;
-    const targetY = Math.max(0, pastSectionHeight);
     const doShow = () => {
       hasScrolledForDisplayRef.current = true;
       setInitialScrollDone(true);
     };
-    if (targetY > 0 && scrollViewRef.current) {
-      const scrollTo = (scrollViewRef.current as any)?.scrollTo;
-      if (scrollTo) {
-        // Önce scroll et (contentOffset + scrollTo yedek), sonra göster
-        requestAnimationFrame(() => {
-          scrollTo({ y: targetY, animated: false });
-          setTimeout(doShow, 80);
-        });
-      } else {
-        setTimeout(doShow, 120);
-      }
-    } else {
-      setTimeout(doShow, 80);
-    }
-  }, [initialScrollDone, loading, isLoadingScreen, pastSectionHeight]);
+    setTimeout(doShow, 80);
+  }, [initialScrollDone, loading, isLoadingScreen]);
 
-  // ✅ Filtre değiştiğinde Canlı/Yaklaşan alanına scroll et (biten atlanır)
+  // ✅ Filtre değiştiğinde canlı/yaklaşan bölüme scroll
   const lastSelectedTeamIdsRef = React.useRef<number[]>([]);
   React.useEffect(() => {
     const filterChanged = JSON.stringify(selectedTeamIds) !== JSON.stringify(lastSelectedTeamIdsRef.current);
     lastSelectedTeamIdsRef.current = selectedTeamIds;
-
     if (filterChanged && scrollViewRef.current) {
       setTimeout(() => {
-        const targetY = Math.max(0, pastSectionHeight);
-        (scrollViewRef.current as any)?.scrollTo?.({ y: targetY, animated: true });
+        (scrollViewRef.current as any)?.scrollTo?.({ y: scrollYToLiveOrUpcoming, animated: true });
         if (!initialScrollDone) setInitialScrollDone(true);
       }, 100);
     }
-  }, [selectedTeamIds, initialScrollDone, pastSectionHeight]);
+  }, [selectedTeamIds, initialScrollDone, scrollYToLiveOrUpcoming]);
 
-  // ✅ Snap noktaları - sıra: Biten (en üst) | Canlı | Yaklaşan (yukarı kaydırınca biten görünür)
+  // ✅ Web'de contentOffset güvenilir değil - veri yüklendikten sonra scroll zorla (birden fazla deneme)
+  React.useEffect(() => {
+    if (scrollYToLiveOrUpcoming <= 0 || loading || !hasLoadedOnce) return;
+    const scrollToTarget = () => {
+      if (scrollViewRef.current && typeof (scrollViewRef.current as any).scrollTo === 'function') {
+        (scrollViewRef.current as any).scrollTo({ y: scrollYToLiveOrUpcoming, animated: false });
+      }
+    };
+    scrollToTarget();
+    const t1 = setTimeout(scrollToTarget, 150);
+    const t2 = setTimeout(scrollToTarget, 400);
+    const t3 = setTimeout(scrollToTarget, 800);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+  }, [scrollYToLiveOrUpcoming, loading, hasLoadedOnce]);
+
+  // ✅ Ön tanımlı: canlı maç görünen alanın üstünde; layout bittikten sonra scrollTo (contentOffset güvenilir değil)
+
+  // ✅ Ön tanımlı scroll: canlı maç görünen alanın üstünde (resim 2’deki gibi, filtre hemen altında)
+  const defaultScrollY = scrollYToLiveOrUpcoming;
+  const defaultScrollYRef = React.useRef(defaultScrollY);
+  defaultScrollYRef.current = defaultScrollY;
+
+  // ✅ Ekrana 5 sn dokunulmazsa scroll bu pozisyona (canlı/yaklaşan ilk kart) döner – KİLİTLİ davranış
+  const SNAP_BACK_DELAY_MS = 5000;
+  const snapBackTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scheduleSnapBack = React.useCallback(() => {
+    if (snapBackTimeoutRef.current) clearTimeout(snapBackTimeoutRef.current);
+    snapBackTimeoutRef.current = setTimeout(() => {
+      snapBackTimeoutRef.current = null;
+      const y = defaultScrollYRef.current;
+      if (scrollViewRef.current && typeof (scrollViewRef.current as any).scrollTo === 'function') {
+        (scrollViewRef.current as any).scrollTo({ y, animated: true });
+      }
+    }, SNAP_BACK_DELAY_MS);
+  }, []);
+  const cancelSnapBack = React.useCallback(() => {
+    if (snapBackTimeoutRef.current) {
+      clearTimeout(snapBackTimeoutRef.current);
+      snapBackTimeoutRef.current = null;
+    }
+  }, []);
+  React.useEffect(() => () => cancelSnapBack(), [cancelSnapBack]);
+
+  // ✅ Web'de onScrollEndDrag bazen tetiklenmiyor; onScroll ile son hareketten 5 sn sonra snap-back
+  const onScrollSnapBack = React.useCallback(() => {
+    cancelSnapBack();
+    scheduleSnapBack();
+  }, [cancelSnapBack, scheduleSnapBack]);
+
+  // ✅ Snap noktaları - sıra: Biten | Canlı | Yaklaşan
   const snapOffsets = React.useMemo(() => {
-    const offsets: number[] = [];
-    const pastCount = displayPastMatches.length;
+    const pastCount = displayPastMatches.length || pastMatches.length;
     const liveCount = filteredLiveMatches.length;
     const upcomingCount = filteredUpcomingMatches.length;
+    const total = pastCount + liveCount + upcomingCount;
+    if (total > 20) return [];
 
-    // Biten maçlar (0'dan başlar - en üstte, yukarı kaydırınca görünür)
-    for (let i = 0; i < pastCount; i++) {
-      offsets.push(i * MATCH_CARD_HEIGHT);
-    }
-    const liveStart = pastSectionHeight;
-    for (let i = 0; i < liveCount; i++) {
-      offsets.push(liveStart + i * MATCH_CARD_HEIGHT);
-    }
+    const offsets: number[] = [];
+    for (let i = 0; i < pastCount; i++) offsets.push(i * MATCH_CARD_HEIGHT);
+    const liveStart = pastCount * MATCH_CARD_HEIGHT;
+    for (let i = 0; i < liveCount; i++) offsets.push(liveStart + i * MATCH_CARD_HEIGHT);
     const upcomingStart = liveStart + liveCount * MATCH_CARD_HEIGHT;
-    for (let i = 0; i < upcomingCount; i++) {
-      offsets.push(upcomingStart + i * MATCH_CARD_HEIGHT);
-    }
+    for (let i = 0; i < upcomingCount; i++) offsets.push(upcomingStart + i * MATCH_CARD_HEIGHT);
     return offsets;
-  }, [MATCH_CARD_HEIGHT, pastSectionHeight, displayPastMatches.length, filteredLiveMatches.length, filteredUpcomingMatches.length]);
+  }, [MATCH_CARD_HEIGHT, displayPastMatches.length, pastMatches.length, filteredLiveMatches.length, filteredUpcomingMatches.length]);
 
   // ✅ Loading durumunda da grid pattern göster
   // Maçlar yüklenirken veya backend çalışmıyorken bile UI gösterilmeli
@@ -1201,17 +1281,40 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
       
       {/* ✅ Takım filtresi artık ProfileCard içinde - App.tsx'ten yönetiliyor */}
 
+      {/* Web: Mobil giriş bilgisi (sadece web, kapatılabilir) */}
+      {Platform.OS === 'web' && !webMobileHintDismissed && (
+        <View style={[styles.webMobileHintBanner, isLight && styles.webMobileHintBannerLight]}>
+          <Ionicons name="phone-portrait-outline" size={16} color={isLight ? '#0F2A24' : '#94A3B8'} />
+          <Text style={[styles.webMobileHintText, isLight && { color: '#0F2A24' }]} numberOfLines={2}>
+            {t('auth.mobileSignInHint')}
+          </Text>
+          <TouchableOpacity onPress={dismissWebMobileHint} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} style={styles.webMobileHintClose}>
+            <Ionicons name="close" size={18} color={isLight ? '#0F2A24' : '#94A3B8'} />
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* Scrollable Content */}
       <ScrollView
         ref={scrollViewRef}
         style={[styles.scrollView, { opacity: initialScrollDone ? 1 : 0 }, isLight && { backgroundColor: 'transparent' }]}
         contentContainerStyle={[styles.scrollContent, isLight && { backgroundColor: 'transparent' }]}
-        contentOffset={pastSectionHeight > 0 ? { x: 0, y: pastSectionHeight } : undefined}
-        showsVerticalScrollIndicator={false}
-        snapToOffsets={snapOffsets}
-        snapToAlignment="start"
-        decelerationRate="fast"
+        contentOffset={{ x: 0, y: defaultScrollY }}
+        {...(Platform.OS !== 'web' ? { automaticallyAdjustContentInsets: false } : {})}
+        showsVerticalScrollIndicator={Platform.OS === 'web'}
+        {...(snapOffsets.length > 0 ? { snapToOffsets: snapOffsets, snapToAlignment: 'start' as const, decelerationRate: 'fast' as const } : {})}
         scrollEventThrottle={16}
+        onScroll={onScrollSnapBack}
+        onScrollBeginDrag={cancelSnapBack}
+        onScrollEndDrag={scheduleSnapBack}
+        onMomentumScrollEnd={scheduleSnapBack}
+        onLayout={() => {
+          if (scrollYToLiveOrUpcoming > 0 && scrollViewRef.current) {
+            requestAnimationFrame(() => {
+              (scrollViewRef.current as any)?.scrollTo?.({ y: scrollYToLiveOrUpcoming, animated: false });
+            });
+          }
+        }}
       >
 
         {/* ✅ Loading Indicator - Grid pattern üzerinde */}
@@ -1222,11 +1325,11 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
           </View>
         )}
 
-        {/* Sıra: Biten (en üst, yukarı kaydırınca görünür) | Canlı | Yaklaşan - varsayılan Canlı/Yaklaşan görünür */}
-        {/* ✅ BİTEN MAÇLAR - En üstte; ekran yukarı kaydırılınca görünür (başlık yok - sıçrama önlenir) */}
-        {!showLoadingIndicator && displayPastMatches.length > 0 && (
-          <View style={styles.matchesListContainer}>
-            {displayPastMatches.map((match, index) => (
+        {/* ✅ Sıra: Biten (en üst, en eski→en yeni) → Canlı → Yaklaşan. Scroll: canlı/yaklaşan görünür alanda (Resim 3). */}
+        {/* ✅ BİTEN MAÇLAR - En üstte, başlık YOK (kullanıcı istemedi). En eski→en yeni sıra. */}
+        {!showLoadingIndicator && (displayPastMatches.length > 0 || pastMatches.length > 0) && (
+          <View key={`past-section-${pastMatches.length}`} style={styles.matchesListContainer}>
+            {(displayPastMatches.length > 0 ? displayPastMatches : pastMatches).map((match, index) => (
               <Animated.View 
                 key={`past-${match.fixture.id}`} 
                 entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(50 + index * 30).springify()}
@@ -1242,7 +1345,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
           </View>
         )}
 
-        {/* ✅ CANLI MAÇLAR - Varsayılan görünür alan */}
+        {/* ✅ CANLI MAÇLAR - Biten'in altında */}
         {!showLoadingIndicator && filteredLiveMatches.length > 0 && (
           <View style={styles.matchesListContainer}>
             {filteredLiveMatches.map((match, index) => (
@@ -1261,7 +1364,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
           </View>
         )}
 
-        {/* ✅ YAKLAŞAN MAÇLAR */}
+        {/* ✅ YAKLAŞAN MAÇLAR - En altta, en yakın en üstte */}
         {!showLoadingIndicator && filteredUpcomingMatches.length > 0 && (
           <View style={styles.matchesListContainer}>
             {filteredUpcomingMatches.map((match, index) => (
@@ -1281,7 +1384,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
         )}
 
         {/* Boş Durum - Hiç maç yoksa (ne canlı ne yaklaşan ne geçmiş) */}
-{!showLoadingIndicator && filteredUpcomingMatches.length === 0 && filteredLiveMatches.length === 0 && displayPastMatches.length === 0 && (
+        {!showLoadingIndicator && filteredUpcomingMatches.length === 0 && filteredLiveMatches.length === 0 && displayPastMatches.length === 0 && pastMatches.length === 0 && (
           <View style={styles.emptyState}>
             <Ionicons name={error ? 'cloud-offline-outline' : 'football-outline'} size={48} color={error ? '#F59E0B' : (isLight ? themeColors.mutedForeground : '#64748B')} />
             <Text style={[styles.emptyText, isLight && { color: themeColors.foreground }]}>
@@ -1325,8 +1428,8 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
         }}
         onSelectFocus={handleAnalysisFocusSelect}
         matchInfo={selectedMatchForAnalysis ? {
-          homeTeam: selectedMatchForAnalysis.teams?.home?.name || 'Ev Sahibi',
-          awayTeam: selectedMatchForAnalysis.teams?.away?.name || 'Deplasman',
+          homeTeam: selectedMatchForAnalysis.teams?.home?.name || t('dashboard.homeTeam'),
+          awayTeam: selectedMatchForAnalysis.teams?.away?.name || t('dashboard.awayTeam'),
           date: new Date(selectedMatchForAnalysis.fixture?.timestamp * 1000).toLocaleDateString('tr-TR', {
             day: 'numeric',
             month: 'long',
@@ -1598,7 +1701,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
                       setSelectedTeamToDelete(null);
                     } catch (error) {
                       console.error('❌ Tahmin silme hatası:', error);
-                      Alert.alert('Hata', 'Tahmin silinirken bir hata oluştu. Lütfen tekrar deneyin.');
+                      Alert.alert(t('common.error'), t('dashboard.errorDeletingPrediction'));
                     }
                   }}
                   activeOpacity={selectedTeamToDelete ? 0.8 : 1}
@@ -1679,17 +1782,27 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
                   }}
                   onPress={() => {
                     const { match, homeId, initialTab, hasPrediction, isLive, isFinished } = teamSelectionModal;
-                    if (hasPrediction || isLive || isFinished) {
+                    if (isFinished) {
+                      const endSec = getMatchEndTimestampSec(match);
+                      if (endSec != null && (Date.now() / 1000 - endSec) / 3600 < 24 && onMatchResultSelect) {
+                        onMatchResultSelect(String(match.fixture.id));
+                        setTeamSelectionModal(null);
+                        return;
+                      }
+                      onNavigate('match-detail', { id: String(match.fixture.id), initialTab: 'stats', matchData: match, predictionTeamId: homeId });
+                      setTeamSelectionModal(null);
+                      return;
+                    }
+                    if (hasPrediction || isLive) {
                       onNavigate('match-detail', {
                         id: String(match.fixture.id),
                         initialTab,
                         matchData: match,
-                        predictionTeamId: homeId, // ✅ predictionTeamId eklendi
+                        predictionTeamId: homeId,
                       });
                     } else {
-                      // Tahmin yok: analiz odağı seçimi göster
                       setSelectedMatchForAnalysis(match);
-                      setSelectedPredictionTeamIdForAnalysis(homeId); // ✅ Seçilen takım ID'sini sakla
+                      setSelectedPredictionTeamIdForAnalysis(homeId);
                       setAnalysisFocusModalVisible(true);
                     }
                     setTeamSelectionModal(null);
@@ -1718,17 +1831,27 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, matchData, 
                   }}
                   onPress={() => {
                     const { match, awayId, initialTab, hasPrediction, isLive, isFinished } = teamSelectionModal;
-                    if (hasPrediction || isLive || isFinished) {
+                    if (isFinished) {
+                      const endSec = getMatchEndTimestampSec(match);
+                      if (endSec != null && (Date.now() / 1000 - endSec) / 3600 < 24 && onMatchResultSelect) {
+                        onMatchResultSelect(String(match.fixture.id));
+                        setTeamSelectionModal(null);
+                        return;
+                      }
+                      onNavigate('match-detail', { id: String(match.fixture.id), initialTab: 'stats', matchData: match, predictionTeamId: awayId });
+                      setTeamSelectionModal(null);
+                      return;
+                    }
+                    if (hasPrediction || isLive) {
                       onNavigate('match-detail', {
                         id: String(match.fixture.id),
                         initialTab,
                         matchData: match,
-                        predictionTeamId: awayId, // ✅ predictionTeamId eklendi
+                        predictionTeamId: awayId,
                       });
                     } else {
-                      // Tahmin yok: analiz odağı seçimi göster
                       setSelectedMatchForAnalysis(match);
-                      setSelectedPredictionTeamIdForAnalysis(awayId); // ✅ Seçilen takım ID'sini sakla
+                      setSelectedPredictionTeamIdForAnalysis(awayId);
                       setAnalysisFocusModalVisible(true);
                     }
                     setTeamSelectionModal(null);
@@ -1830,6 +1953,36 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'ios' ? 238 : 228, // ✅ ProfileCard yüksekliği + filtre barı + boşluk (2px yukarı)
     paddingBottom: 100 + SIZES.tabBarHeight, // ✅ Footer navigation için extra padding
     backgroundColor: 'transparent', // Grid pattern görünsün
+  },
+
+  // Web: Mobil giriş bilgi bandı
+  webMobileHintBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 4,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: 'rgba(31, 162, 166, 0.12)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.25)',
+    zIndex: 10,
+  },
+  webMobileHintBannerLight: {
+    backgroundColor: 'rgba(15, 42, 36, 0.08)',
+    borderColor: 'rgba(15, 42, 36, 0.2)',
+  },
+  webMobileHintText: {
+    flex: 1,
+    fontSize: 12,
+    color: '#94A3B8',
+    lineHeight: 18,
+  },
+  webMobileHintClose: {
+    padding: 4,
   },
 
   // Section - %75 azaltılmış boşluklar
@@ -2756,6 +2909,22 @@ const styles = StyleSheet.create({
     width: '100%',
     marginBottom: SPACING.md,
   },
+  pastMatchesSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: SPACING.base,
+    paddingVertical: SPACING.md,
+    marginBottom: SPACING.sm,
+  },
+  pastMatchesSectionHeaderLight: {
+    // Açık modda aynı stil
+  },
+  pastMatchesSectionHeaderText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#94A3B8',
+  },
   pastMatchesCollapsedBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -3085,7 +3254,7 @@ const styles = StyleSheet.create({
   matchCardTeamsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'stretch',
     marginBottom: 4,
     gap: 6,
   },
@@ -3118,6 +3287,8 @@ const styles = StyleSheet.create({
   },
   matchCardCenterInfo: {
     alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'stretch',
     minWidth: 140,
     maxWidth: 160,
   },
@@ -3154,6 +3325,7 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
     gap: 3,
+    marginTop: 6,
   },
   matchCardInfoRow: {
     flexDirection: 'row',

@@ -83,9 +83,9 @@ export const LegalDocumentScreen: React.FC<LegalDocumentScreenProps> = ({
         <View style={styles.header}>
           <TouchableOpacity onPress={onBack} style={styles.backButton}>
             <Ionicons name="chevron-back" size={24} color="#1FA2A6" />
-            <Text style={styles.backText}>Geri</Text>
+            <Text style={styles.backText}>{t('legalScreen.back')}</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Yasal Belgeler</Text>
+          <Text style={styles.headerTitle}>{t('legalScreen.documents')}</Text>
           <View style={styles.headerSpacer} />
         </View>
 
@@ -156,7 +156,7 @@ export const LegalDocumentScreen: React.FC<LegalDocumentScreenProps> = ({
           <View style={styles.readingArea}>
             {loading ? (
               <View style={styles.loadingContainer}>
-                <Text style={styles.loadingText}>Yükleniyor...</Text>
+                <Text style={styles.loadingText}>{t('legalScreen.loading')}</Text>
               </View>
             ) : currentDoc ? (
               <ScrollView
@@ -165,12 +165,12 @@ export const LegalDocumentScreen: React.FC<LegalDocumentScreenProps> = ({
                 showsVerticalScrollIndicator={true}
               >
                 <Text style={styles.readingTitle}>{currentDoc.title}</Text>
-                <Text style={styles.readingMeta}>Son Güncelleme: 1 Ocak 2026</Text>
+                <Text style={styles.readingMeta}>{t('legalScreen.lastUpdated')}</Text>
                 <Text style={styles.readingText}>{currentDoc.content}</Text>
               </ScrollView>
             ) : (
               <View style={styles.emptyContainer}>
-                <Text style={styles.emptyText}>Yukarıdan bir belge seçin</Text>
+                <Text style={styles.emptyText}>{t('legalScreen.selectDocument')}</Text>
               </View>
             )}
           </View>
@@ -184,7 +184,7 @@ export const LegalDocumentScreen: React.FC<LegalDocumentScreenProps> = ({
               end={{ x: 1, y: 0 }}
               style={styles.closeButton}
             >
-              <Text style={styles.closeButtonText}>Kapat</Text>
+              <Text style={styles.closeButtonText}>{t('legalScreen.close')}</Text>
             </LinearGradient>
           </TouchableOpacity>
         </View>

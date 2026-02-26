@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -34,6 +35,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<TabParamList>();
 
 function BottomTabs() {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const colors = theme === 'dark' ? COLORS.dark : COLORS.light;
 
@@ -65,7 +67,7 @@ function BottomTabs() {
           tabBarIcon: ({ color, size }) => (
             <SafeIcon name="home" size={size} color={color} />
           ),
-          tabBarLabel: 'Ana Sayfa',
+          tabBarLabel: t('navigation.home'),
         }}
       />
       <Tab.Screen
@@ -76,7 +78,7 @@ function BottomTabs() {
           tabBarIcon: ({ color, size }) => (
             <SafeIcon name="stats-chart" size={size} color={color} />
           ),
-          tabBarLabel: 'Puanlama',
+          tabBarLabel: t('navigation.scoring'),
         }}
       />
       <Tab.Screen
@@ -87,7 +89,7 @@ function BottomTabs() {
           tabBarIcon: ({ color, size }) => (
             <SafeIcon name="trophy" size={size} color={color} />
           ),
-          tabBarLabel: 'Sıralama',
+          tabBarLabel: t('navigation.leaderboard'),
         }}
       />
       <Tab.Screen
@@ -98,7 +100,7 @@ function BottomTabs() {
           tabBarIcon: ({ color, size }) => (
             <SafeIcon name="chatbubbles" size={size} color={color} />
           ),
-          tabBarLabel: 'Sohbet',
+          tabBarLabel: t('navigation.chat'),
         }}
       />
       <Tab.Screen
@@ -109,7 +111,7 @@ function BottomTabs() {
           tabBarIcon: ({ color, size }) => (
             <SafeIcon name="person" size={size} color={color} />
           ),
-          tabBarLabel: 'Profil',
+          tabBarLabel: t('navigation.profile'),
         }}
       />
     </Tab.Navigator>

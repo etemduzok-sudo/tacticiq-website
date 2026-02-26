@@ -13,7 +13,7 @@ Aşağıdaki bileşenler UI/UX olarak tamamlanmış ve test edilmiştir. **Bu do
    - mockTestData import'u var ama MOCK_TEST_ENABLED=false
 
 2. **`src/components/match/MatchStats.tsx`**
-   - Maç istatistikleri (topla oynama, şutlar, kornerler vb.)
+   - Maç istatistikleri (topa sahip olma, şutlar, kornerler vb.)
    - Oyuncu istatistikleri dropdown'ları
    - xG (Expected Goals) hesaplaması
    - API entegrasyonu tamamlandı
@@ -191,6 +191,71 @@ Bu kurallar `MatchPrediction.tsx` ve `MatchSquad.tsx` içinde geçerlidir.
 - Supabase daha yeni → lokali güncelle
 - Lokal daha yeni → Supabase'i güncelle
 - "Daha fazla takım olan kaynak master" KULLANILMAZ
+
+---
+
+## 🔒 KİLİTLİ: Kadro – Formasyon Seç Butonu Konumu (26 Şubat 2026)
+
+- **Dosya:** `src/components/match/MatchSquad.tsx`
+- **Stil:** `selectFormationButton` → `marginTop: 12`, `height: 50`, `borderRadius: 12`
+- Buton konumu kullanıcı onayı ile sabitlendi (Resim 1 ile uyumlu). **Değiştirilmez.**
+
+---
+
+## 🔒 KİLİTLİ: Tahmin Sekmesi – Sahaların Yeri ve 3 Nokta (26 Şubat 2026)
+
+- **Dosya:** `src/components/match/MatchPrediction.tsx`
+- **Sabit blok (dikey scroll ile kaymaz):** `multiFieldFixedSection` → sahalar + hemen altında **scroll olmayan** 3 nokta (`multiFieldPageIndicatorsFixed`). 3 nokta sahaların altında sabit kalır.
+- **Saha konumları kilitli:** `multiFieldFixedSection` paddingTop: 2; `multiFieldWrapper` paddingHorizontal: 12, paddingTop/Bottom: 8; sahalar Kadro ile aynı hizada.
+- **Yatay scroll:** `snapToInterval={winW}`, `snapToAlignment="center"` – sağa/sola kaydırınca saha kesilmeden tam görünür, sahaya ortalı.
+- **DEĞİŞTİRİLMEZ** – saha yerleri ve 3 noktalı bildirim konumu sabit.
+
+---
+
+## 🔒 KİLİTLİ: Tahmin Sekmesi – Konteyner, 3 Nokta ve Saha İçi Boş Görünümleri (26 Şubat 2026)
+
+**Dosya:** `src/components/match/MatchPrediction.tsx`  
+**Bu yapılar kullanıcı onayı ile sabitlendi. ASLA DEĞİŞTİRME – kullanıcı açıkça istemediği sürece.**
+
+### Konteyner (saha altı bilgi kutusu)
+- **Stil:** `fieldBelowContent` → **marginTop: 9** (saha ile konteyner arası mesafe). Değiştirilmez.
+- Konteyner sahaya bitişik (arada ek boşluk yok); sıra: Saha → Konteyner → 3 nokta.
+
+### 3 nokta (sayfa göstergesi)
+- **Konum:** `multiFieldPageIndicatorsFixed` → **position: absolute, left: 0, right: 0, bottom: 9**, zIndex: 10.
+- **bottom: 9** sabit; ekranın en altında kesilmeden görünür. Değiştirilmez.
+
+### Saha içi boş görünümler (3 panel)
+
+| Panel | İkon / metin | Kurallar |
+|-------|----------------|----------|
+| **Benim Tahminim** | Soru işareti | Sadece **Text "?"** – fontSize: **36**, fontWeight: **700**, color: #FFFFFF. **Etrafında daire/border YOK.** Başlık ve alt satır **beyaz**. İkon wrapper'da backgroundColor/hale YOK. |
+| **Topluluk** | Kilit / istatistik | Ionicons **lock-closed** veya **stats-chart-outline**, **size: 45**, color: **#F59E0B**. Başlık #F59E0B, alt satır rgba(255,255,255,0.5). İkon etrafında **hale/backgroundColor YOK** (transparent wrapper). |
+| **Gerçek** | Kırmızı ünlem | Ionicons **alert-circle**, **size: 45**, color: **#EF4444**. Başlık "İlk 11'ler Henüz Belli Değil" **#EF4444**, **textShadow YOK** (okunaklılık için gölge kullanılmaz). Alt satır rgba(255,255,255,0.6). İkon etrafında hale YOK. |
+
+### İlk saha altı konteyner metni
+- "Kadro sekmesinden formasyon seçin..." ve diğer bilgi metinleri **beyaz** (#FFFFFF). Diğer iki panelin konteyner renkleri kendi temasında kalır (Topluluk: sarı/turuncu, Gerçek: kırmızı).
+
+### Özet – yapılmayacaklar
+- Konteyner `marginTop` veya 3 nokta `bottom` değerini değiştirmek.
+- Soru işaretine daire/border eklemek veya ikonu help-circle yapmak.
+- Topluluk/Gerçek saha içi ikonlarına hale/backgroundColor eklemek.
+- Kırmızı "İlk 11'ler Henüz Belli Değil" yazısına textShadow eklemek.
+- İlk sahada yazıları beyaz dışı renge çevirmek.
+
+---
+
+## 🔒 KİLİTLİ: Dashboard Scroll Ayarları (26 Şubat 2026)
+
+**Bu ayarlar kullanıcı onayı ile sabitlendi. ASLA DEĞİŞTİRME.**
+
+- **Dosya:** `src/components/Dashboard.tsx`
+- **SCROLL_INSET_TOP = 156** – Canlı/yaklaşan ilk kartın ekrandaki dikey konumu
+- **SCROLL_CONTENT_PADDING_TOP** – iOS: 238, diğer: 228
+- **SNAP_BACK_DELAY_MS = 5000** – Ekrana 5 sn dokunulmazsa scroll canlı/yaklaşan ilk karta döner
+- **scrollYToLiveOrUpcoming** formülü: `SCROLL_CONTENT_PADDING_TOP + pastSectionHeight - SCROLL_INSET_TOP`
+- Biten maçlar en üstte (eski → yeni), sonra canlı, sonra yaklaşan
+- "Biten Maçlar (71)" başlığı kaldırıldı, geri eklenmez
 
 ---
 

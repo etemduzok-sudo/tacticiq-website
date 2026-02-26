@@ -14,6 +14,7 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SER
 
 const REPORT_FILE = path.join(__dirname, '..', 'data', 'db-status-report.txt');
 const LAST_SNAPSHOT_FILE = path.join(__dirname, '..', 'data', 'db-status-last.json');
+const BASELINE_FILE = path.join(__dirname, '..', 'data', 'db-status-baseline.json');
 const INTERVAL_MS = 5 * 60 * 1000; // 5 dakika
 const MAX_REPORT_BLOCKS = 100;     // Son 100 blok (~8 saat) tutulur
 
@@ -31,6 +32,27 @@ function loadPrevious() {
   return null;
 }
 
+/** Günlük baseline: bugünün tarihi son baseline tarihinden farklıysa mevcut snapshot'ı baseline yap. */
+function loadOrUpdateBaseline(currentSnapshot) {
+  const today = new Date().toDateString();
+  let baseline = null;
+  try {
+    if (fs.existsSync(BASELINE_FILE)) {
+      baseline = JSON.parse(fs.readFileSync(BASELINE_FILE, 'utf8'));
+      const baselineDay = baseline.at ? new Date(baseline.at).toDateString() : '';
+      if (baselineDay !== today) {
+        baseline = null;
+      }
+    }
+  } catch (e) {}
+  if (!baseline) {
+    baseline = { ...currentSnapshot, at: new Date().toISOString(), _label: 'Baseline bugun' };
+    ensureDataDir();
+    fs.writeFileSync(BASELINE_FILE, JSON.stringify(baseline, null, 0));
+  }
+  return baseline;
+}
+
 function saveSnapshot(data) {
   ensureDataDir();
   fs.writeFileSync(LAST_SNAPSHOT_FILE, JSON.stringify({ ...data, at: new Date().toISOString() }, null, 0));
@@ -42,6 +64,18 @@ function formatDiff(now, prev) {
   if (d === 0) return ' (degismedi)';
   if (d > 0) return ` (+${d})`;
   return ` (${d})`;
+}
+
+/** Tahmini sure (saat) %100 tamamlanmaya - koç/renk/kadro ~45 takım/dk, rating ~400 oyuncu/saat. */
+function estimateHoursTo100(stats) {
+  if (!stats || stats.avgPct >= 100) return 0;
+  const totalTeams = stats.totalTeams || 1;
+  const totalPlayers = stats.totalPlayers || 0;
+  const teamsToSync = totalTeams - Math.min(stats.withCoach || 0, stats.withColors || 0, stats.squads2025 || 0);
+  const teamHours = Math.max(0, teamsToSync) / 45 / 60;
+  const playersWithoutRating = totalPlayers - (stats.playersWithRating || 0);
+  const ratingHours = Math.max(0, playersWithoutRating) / 400;
+  return Math.round((teamHours + ratingHours) * 10) / 10;
 }
 
 function appendReportBlock(newBlockText) {
@@ -64,22 +98,30 @@ async function fetchStats() {
   const { count: withColors } = await supabase.from('static_teams').select('*', { count: 'exact', head: true }).not('colors_primary', 'is', null);
   const { count: squads2025 } = await supabase.from('team_squads').select('*', { count: 'exact', head: true }).eq('season', 2025);
 
-  const { data: ratingSquads } = await supabase
-    .from('team_squads')
-    .select('team_id, players')
-    .eq('season', 2025)
-    .limit(2000);
-
+  // Rating: tum kadrolar uzerinden sayim (sayfalı, 500'er)
   let teamsWithRating = 0, playersWithRating = 0, totalPlayers = 0;
-  for (const squad of (ratingSquads || [])) {
-    if (Array.isArray(squad.players)) {
-      totalPlayers += squad.players.length;
-      const withRating = squad.players.filter(p => p.rating !== undefined && p.rating !== null);
-      if (withRating.length > 0) {
-        teamsWithRating++;
-        playersWithRating += withRating.length;
+  const pageSize = 500;
+  let offset = 0;
+  while (true) {
+    const { data: ratingSquads } = await supabase
+      .from('team_squads')
+      .select('team_id, players')
+      .eq('season', 2025)
+      .order('team_id', { ascending: true })
+      .range(offset, offset + pageSize - 1);
+    if (!ratingSquads?.length) break;
+    for (const squad of ratingSquads) {
+      if (Array.isArray(squad.players)) {
+        totalPlayers += squad.players.length;
+        const withRating = squad.players.filter(p => p.rating !== undefined && p.rating !== null);
+        if (withRating.length > 0) {
+          teamsWithRating++;
+          playersWithRating += withRating.length;
+        }
       }
     }
+    if (ratingSquads.length < pageSize) break;
+    offset += pageSize;
   }
 
   const coachPct = totalTeams ? Math.round(withCoach / totalTeams * 100) : 0;
@@ -110,6 +152,9 @@ async function runReport() {
   const prev = loadPrevious();
   const s = await fetchStats();
 
+  const baseline = loadOrUpdateBaseline(s);
+  const baselineDate = baseline?.at ? new Date(baseline.at).toLocaleDateString('tr-TR') : '-';
+
   const lines = [];
   lines.push('');
   lines.push('========== DB GUNCELLEME RAPORU (5 dk) ==========');
@@ -127,7 +172,7 @@ async function runReport() {
     return `  ${label}: ${nowVal}${suffix}${diffStr}`;
   };
 
-  lines.push('--- KARSILASTIRMA (onceki rapor vs simdiki) ---');
+  lines.push('--- 5 DK ONCEKI OLCUM vs SIMDI ---');
   lines.push(fmt('Toplam takim', s.totalTeams, prev?.totalTeams));
   lines.push(fmt('Coach ile', s.withCoach, prev?.withCoach, ` (${s.coachPct}%)`));
   lines.push(fmt('Renkler ile', s.withColors, prev?.withColors, ` (${s.colorsPct}%)`));
@@ -137,9 +182,26 @@ async function runReport() {
   lines.push(fmt('Rating %', s.ratingPct, prev?.ratingPct, '%'));
   lines.push(fmt('ORTALAMA %', s.avgPct, prev?.avgPct, '%'));
   lines.push('');
+  lines.push(`--- BASELINE (${baselineDate}) ile KARSILASTIRMA - Gunluk ilerleme ---`);
+  lines.push(fmt('Toplam takim', s.totalTeams, baseline?.totalTeams));
+  lines.push(fmt('Coach ile', s.withCoach, baseline?.withCoach, ` (${s.coachPct}%)`));
+  lines.push(fmt('Renkler ile', s.withColors, baseline?.withColors, ` (${s.colorsPct}%)`));
+  lines.push(fmt('Kadrolar 2025', s.squads2025, baseline?.squads2025, ` (${s.squadsPct}%)`));
+  lines.push(fmt('Oyuncu (ratingli)', s.playersWithRating, baseline?.playersWithRating));
+  lines.push(fmt('Toplam oyuncu', s.totalPlayers, baseline?.totalPlayers));
+  lines.push(fmt('Rating %', s.ratingPct, baseline?.ratingPct, '%'));
+  lines.push(fmt('ORTALAMA %', s.avgPct, baseline?.avgPct, '%'));
+  lines.push('');
+  const tahminiSaat = estimateHoursTo100(s);
   lines.push('--- OZET ---');
   lines.push(`  Coach: ${s.coachPct}% | Renkler: ${s.colorsPct}% | Kadrolar: ${s.squadsPct}% | Rating: ${s.ratingPct}%`);
   lines.push(`  GENEL TAMAMLANMA: ${s.avgPct}%`);
+  if (s.avgPct < 100 && tahminiSaat > 0) {
+    lines.push(`  TAHMINI SURE %100'E: ~${tahminiSaat} saat (sync script calisirsa).`);
+  } else if (s.avgPct >= 100) {
+    lines.push('  Hedef: %100 tamamlandi.');
+  }
+  lines.push('  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.');
   lines.push('================================================');
   lines.push('');
 

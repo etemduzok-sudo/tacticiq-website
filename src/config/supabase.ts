@@ -9,10 +9,21 @@ import { Platform } from 'react-native';
 const SUPABASE_URL = 'https://jxdgiskusjljlpzvrzau.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_Qjep7tf9H98yk5UBgcPtVw_x4iQUixY';
 
-// Create Supabase client with AsyncStorage for session persistence
+// ✅ Web'de session'ın kesin kalıcı olması için localStorage adapter (önceki davranış)
+const webStorage = typeof window !== 'undefined' && window.localStorage
+  ? {
+      getItem: (key: string) => Promise.resolve(window.localStorage.getItem(key)),
+      setItem: (key: string, value: string) => Promise.resolve(window.localStorage.setItem(key, value)),
+      removeItem: (key: string) => Promise.resolve(window.localStorage.removeItem(key)),
+    }
+  : undefined;
+
+const authStorage = Platform.OS === 'web' && webStorage ? webStorage : AsyncStorage;
+
+// Create Supabase client with platform-appropriate storage for session persistence
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
-    storage: AsyncStorage,
+    storage: authStorage,
     autoRefreshToken: true,
     persistSession: true,
     // ✅ Web OAuth için URL'deki session token'larını algıla

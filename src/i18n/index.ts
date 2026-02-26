@@ -22,42 +22,25 @@ const RTL_LANGUAGES = ['ar', 'he', 'fa', 'ur'];
 // Storage key for language preference
 const LANGUAGE_STORAGE_KEY = 'tacticiq-language';
 
-// Get device language or default to Turkish
+// Varsayılan uygulama dili İngilizce; sadece kullanıcı daha önce dil seçtiyse o kullanılır.
 const getDeviceLanguage = async (): Promise<string> => {
   try {
-    // Web için localStorage kullan (runtime'da kontrol)
+    const supportedLanguages = ['tr', 'en', 'es', 'de', 'fr', 'it', 'ar', 'zh', 'ru', 'hi'];
     if (Platform.OS === 'web') {
       try {
         if (typeof window !== 'undefined' && window.localStorage) {
-          const saved = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
-          if (saved) return saved;
-          
-          // Browser language detection (sadece browser'da)
-          if (typeof navigator !== 'undefined' && navigator.language) {
-            const browserLang = navigator.language.split('-')[0];
-            const supportedLanguages = ['tr', 'en', 'es', 'de', 'fr', 'it', 'ar', 'zh', 'ru', 'hi'];
-            if (supportedLanguages.includes(browserLang)) return browserLang;
-          }
+          const saved = window.localStorage.getItem(LANGUAGE_STORAGE_KEY) || window.localStorage.getItem('@user_language');
+          if (saved && supportedLanguages.includes(saved)) return saved;
         }
-      } catch (e) {
-        // Web'de localStorage erişilemezse devam et
-      }
-      return 'en'; // Web için default
+      } catch (e) {}
+      return 'en';
     }
-    
-    // Native için AsyncStorage
-    const savedLanguage = await AsyncStorage.getItem(LANGUAGE_STORAGE_KEY);
-    if (savedLanguage) {
-      return savedLanguage;
-    }
-    
-    const deviceLocale = Localization.getLocales()[0]?.languageCode || 'en';
-    const supportedLanguages = ['tr', 'en', 'es', 'de', 'fr', 'it', 'ar', 'zh', 'ru', 'hi'];
-    
-    return supportedLanguages.includes(deviceLocale) ? deviceLocale : 'en';
+    const savedLanguage = await AsyncStorage.getItem(LANGUAGE_STORAGE_KEY) || await AsyncStorage.getItem('@user_language');
+    if (savedLanguage && supportedLanguages.includes(savedLanguage)) return savedLanguage;
+    return 'en';
   } catch (error) {
     console.warn('Error getting device language:', error);
-    return 'tr';
+    return 'en';
   }
 };
 
@@ -162,7 +145,20 @@ export const changeLanguage = async (language: string) => {
 
 // Get current language
 export const getCurrentLanguage = (): string => {
-  return i18n.language || 'tr';
+  return i18n.language || 'en';
+};
+
+/** OAuth / sayfa yeniden yüklemesi sonrası kaydedilmiş dili depodan okuyup i18n'e uygular. App mount'ta çağırın. */
+export const applySavedLanguage = async (): Promise<string> => {
+  const language = await getDeviceLanguage();
+  if (i18n.language !== language) {
+    configureRTL(language);
+    await i18n.changeLanguage(language);
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      document.documentElement.setAttribute('dir', RTL_LANGUAGES.includes(language) ? 'rtl' : 'ltr');
+    }
+  }
+  return language;
 };
 
 // Check if current language is RTL

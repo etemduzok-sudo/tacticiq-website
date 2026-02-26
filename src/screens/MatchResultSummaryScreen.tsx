@@ -72,7 +72,7 @@ const matchTimeline = [
 
 // Match Statistics Summary
 const matchStats = [
-  { label: 'Topla Oynama', home: 58, away: 42, unit: '%' },
+  { label: 'Topa Sahip Olma', home: 58, away: 42, unit: '%' },
   { label: 'Toplam Şut', home: 12, away: 8, unit: '' },
   { label: 'İsabetli Şut', home: 5, away: 3, unit: '' },
   { label: 'Korner', home: 6, away: 4, unit: '' },

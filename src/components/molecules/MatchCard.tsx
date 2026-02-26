@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
 import SafeIcon from '../SafeIcon';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useTranslation } from '../../hooks/useTranslation';
 import { COLORS, SIZES, TYPOGRAPHY, SPACING, SHADOWS } from '../../theme/theme';
 import Card from '../atoms/Card';
 import Badge from '../atoms/Badge';
@@ -33,13 +34,14 @@ const MatchCard = React.memo(function MatchCard({
   competition,
   onPress,
 }: MatchCardProps) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const colors = theme === 'dark' ? COLORS.dark : COLORS.light;
 
   const getStatusBadge = () => {
     switch (status) {
       case 'live':
-        return <Badge label="CANLI" variant="error" size="small" />;
+        return <Badge label={t('matchCard.live')} variant="error" size="small" />;
       case 'upcoming':
         return (
           <Text style={[styles.time, { color: colors.textSecondary }]}>
@@ -49,7 +51,7 @@ const MatchCard = React.memo(function MatchCard({
       case 'finished':
         return (
           <Text style={[styles.finished, { color: colors.textSecondary }]}>
-            MS
+            {t('matchCard.fullTime')}
           </Text>
         );
     }

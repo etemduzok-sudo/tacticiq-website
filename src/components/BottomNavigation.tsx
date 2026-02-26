@@ -60,7 +60,7 @@ export function BottomNavigation({ activeTab, onTabChange }: BottomNavigationPro
               <Text style={[styles.label, isActive && styles.activeLabel, { color: labelColor }]}>
                 {t(tab.labelKey)}
               </Text>
-              {isActive && <View style={styles.activeIndicator} />}
+              {isActive && <View style={[styles.activeIndicator, { pointerEvents: 'none' }]} />}
             </TouchableOpacity>
           );
         })}

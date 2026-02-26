@@ -127,59 +127,82 @@ export default function ScoringScreen() {
           <Ionicons name="stats-chart" size={24} color={colors.primary || '#1FA2A6'} />
         </View>
         
-        {/* Profile Summary Card */}
-        <LinearGradient
-          colors={['#1A2E2A', '#0F2420']}
-          style={styles.profileCard}
-        >
-          <View style={styles.profileMainRow}>
-            <View style={styles.profilePointsSection}>
-              <Text style={styles.profilePointsValue}>{userProfile.totalPoints.toFixed(1)}</Text>
-              <Text style={styles.profilePointsLabel}>{t('scoring.points')}</Text>
-            </View>
-            
-            <View style={styles.profileLevelSection}>
-              <View style={styles.levelBadge}>
-                <Text style={[styles.levelBadgeText, { color: levelInfo.color }]}>
-                  Seviye {levelInfo.level}
-                </Text>
+        {/* Profile Summary Card - açık temada açık kart + koyu metin */}
+        {theme === 'light' ? (
+          <View style={[styles.profileCard, { backgroundColor: colors.card || '#FFFFFF', borderWidth: 1, borderColor: colors.border || 'rgba(15,42,36,0.1)' }]}>
+            <View style={styles.profileMainRow}>
+              <View style={styles.profilePointsSection}>
+                <Text style={[styles.profilePointsValue, { color: colors.text }]}>{userProfile.totalPoints.toFixed(1)}</Text>
+                <Text style={[styles.profilePointsLabel, { color: colors.textSecondary }]}>{t('scoring.points')}</Text>
               </View>
-              <Text style={[styles.levelTitle, { color: levelInfo.color }]}>{levelInfo.title}</Text>
-              
-              {/* Progress Bar */}
-              <View style={styles.progressBarContainer}>
-                <Animated.View
-                  style={[
-                    styles.progressBarFill,
-                    {
-                      width: progressAnim.interpolate({
-                        inputRange: [0, 100],
-                        outputRange: ['0%', '100%'],
-                      }),
+              <View style={styles.profileLevelSection}>
+                <View style={[styles.levelBadge, { backgroundColor: colors.muted || '#E6E6E6' }]}>
+                  <Text style={[styles.levelBadgeText, { color: levelInfo.color }]}>Seviye {levelInfo.level}</Text>
+                </View>
+                <Text style={[styles.levelTitle, { color: levelInfo.color }]}>{levelInfo.title}</Text>
+                <View style={[styles.progressBarContainer, { backgroundColor: colors.muted || '#E6E6E6' }]}>
+                  <Animated.View
+                    style={[styles.progressBarFill, {
+                      width: progressAnim.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] }),
                       backgroundColor: levelInfo.color,
-                    },
-                  ]}
-                />
+                    }]}
+                  />
+                </View>
+                <Text style={[styles.progressText, { color: colors.textSecondary }]}>{userProfile.levelProgress}%</Text>
               </View>
-              <Text style={styles.progressText}>{userProfile.levelProgress}%</Text>
+            </View>
+            <View style={[styles.rankingsRow, { borderTopColor: colors.border || 'rgba(15,42,36,0.1)' }]}>
+              <View style={styles.rankingItem}>
+                <Text style={styles.rankingFlag}>🇹🇷</Text>
+                <Text style={[styles.rankingValue, { color: colors.text }]}>#{userProfile.rankTurkey.toLocaleString()}</Text>
+                <Text style={[styles.rankingTotal, { color: colors.textSecondary }]}>/ {(userProfile.totalUsersTurkey / 1000).toFixed(1)}K</Text>
+              </View>
+              <View style={[styles.rankingDivider, { backgroundColor: colors.border || 'rgba(15,42,36,0.2)' }]} />
+              <View style={styles.rankingItem}>
+                <Text style={styles.rankingFlag}>🌍</Text>
+                <Text style={[styles.rankingValue, { color: colors.text }]}>#{userProfile.rankWorld.toLocaleString()}</Text>
+                <Text style={[styles.rankingTotal, { color: colors.textSecondary }]}>/ {(userProfile.totalUsersWorld / 1000).toFixed(0)}K</Text>
+              </View>
             </View>
           </View>
-          
-          {/* Rankings */}
-          <View style={styles.rankingsRow}>
-            <View style={styles.rankingItem}>
-              <Text style={styles.rankingFlag}>🇹🇷</Text>
-              <Text style={styles.rankingValue}>#{userProfile.rankTurkey.toLocaleString()}</Text>
-              <Text style={styles.rankingTotal}>/ {(userProfile.totalUsersTurkey / 1000).toFixed(1)}K</Text>
+        ) : (
+          <LinearGradient colors={['#1A2E2A', '#0F2420']} style={styles.profileCard}>
+            <View style={styles.profileMainRow}>
+              <View style={styles.profilePointsSection}>
+                <Text style={styles.profilePointsValue}>{userProfile.totalPoints.toFixed(1)}</Text>
+                <Text style={styles.profilePointsLabel}>{t('scoring.points')}</Text>
+              </View>
+              <View style={styles.profileLevelSection}>
+                <View style={styles.levelBadge}>
+                  <Text style={[styles.levelBadgeText, { color: levelInfo.color }]}>Seviye {levelInfo.level}</Text>
+                </View>
+                <Text style={[styles.levelTitle, { color: levelInfo.color }]}>{levelInfo.title}</Text>
+                <View style={styles.progressBarContainer}>
+                  <Animated.View
+                    style={[styles.progressBarFill, {
+                      width: progressAnim.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] }),
+                      backgroundColor: levelInfo.color,
+                    }]}
+                  />
+                </View>
+                <Text style={styles.progressText}>{userProfile.levelProgress}%</Text>
+              </View>
             </View>
-            <View style={styles.rankingDivider} />
-            <View style={styles.rankingItem}>
-              <Text style={styles.rankingFlag}>🌍</Text>
-              <Text style={styles.rankingValue}>#{userProfile.rankWorld.toLocaleString()}</Text>
-              <Text style={styles.rankingTotal}>/ {(userProfile.totalUsersWorld / 1000).toFixed(0)}K</Text>
+            <View style={styles.rankingsRow}>
+              <View style={styles.rankingItem}>
+                <Text style={styles.rankingFlag}>🇹🇷</Text>
+                <Text style={styles.rankingValue}>#{userProfile.rankTurkey.toLocaleString()}</Text>
+                <Text style={styles.rankingTotal}>/ {(userProfile.totalUsersTurkey / 1000).toFixed(1)}K</Text>
+              </View>
+              <View style={styles.rankingDivider} />
+              <View style={styles.rankingItem}>
+                <Text style={styles.rankingFlag}>🌍</Text>
+                <Text style={styles.rankingValue}>#{userProfile.rankWorld.toLocaleString()}</Text>
+                <Text style={styles.rankingTotal}>/ {(userProfile.totalUsersWorld / 1000).toFixed(0)}K</Text>
+              </View>
             </View>
-          </View>
-        </LinearGradient>
+          </LinearGradient>
+        )}
         
         {/* Nasıl puan kazanılır? - Puanlama mantığı */}
         <View style={[styles.howItWorksCard, { backgroundColor: colors.card || 'rgba(255,255,255,0.03)' }]}>

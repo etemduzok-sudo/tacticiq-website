@@ -213,6 +213,8 @@ export function useAppNavigation() {
     logger.debug('Tab changed', { tab }, 'NAVIGATION');
     setActiveTab(tab);
     setCurrentScreen(tab as Screen);
+    // Ana sayfaya geçildiğinde takım filtresini sıfırla – tüm favori takımların maçları görünsün
+    if (tab === 'home') setSelectedTeamIds([]);
   }, []);
 
   const handleMatchSelect = useCallback((matchId: string, options?: { initialTab?: string; predictionTeamId?: number }) => {
@@ -303,6 +305,7 @@ export function useAppNavigation() {
       case 'matches':
         setActiveTab('home');
         setCurrentScreen('home');
+        setSelectedTeamIds([]); // Tüm favori takımların maçları görünsün
         break;
       default:
         logger.warn('Unknown navigation target', { screen }, 'DASHBOARD');

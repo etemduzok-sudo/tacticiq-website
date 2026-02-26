@@ -21,6 +21,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { COLORS, SPACING, TYPOGRAPHY, SIZES } from '../../theme/theme';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useTranslation } from '../../hooks/useTranslation';
 
 interface ChangePasswordModalProps {
   visible: boolean;
@@ -32,6 +33,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
   onClose,
 }) => {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const themeColors = theme === 'light' ? COLORS.light : COLORS.dark;
   const styles = createStyles(themeColors);
   const [oldPassword, setOldPassword] = useState('');
@@ -44,27 +46,27 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
 
   const validateForm = (): boolean => {
     if (!oldPassword) {
-      Alert.alert('Hata', 'Mevcut şifrenizi girin');
+      Alert.alert(t('common.error'), t('changePassword.currentPasswordRequired'));
       return false;
     }
 
     if (!newPassword) {
-      Alert.alert('Hata', 'Yeni şifrenizi girin');
+      Alert.alert(t('common.error'), t('changePassword.newPasswordRequired'));
       return false;
     }
 
     if (newPassword.length < 6) {
-      Alert.alert('Hata', 'Şifre en az 6 karakter olmalı');
+      Alert.alert(t('common.error'), t('changePassword.passwordMinLength'));
       return false;
     }
 
     if (newPassword === oldPassword) {
-      Alert.alert('Hata', 'Yeni şifre eskisiyle aynı olamaz');
+      Alert.alert(t('common.error'), t('changePassword.samePassword'));
       return false;
     }
 
     if (newPassword !== confirmPassword) {
-      Alert.alert('Hata', 'Şifreler eşleşmiyor');
+      Alert.alert(t('common.error'), t('changePassword.passwordsDontMatch'));
       return false;
     }
 
@@ -83,9 +85,9 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
       
       if (error) throw error;
       
-      Alert.alert('Başarılı', 'Şifreniz başarıyla değiştirildi', [
+      Alert.alert(t('common.success'), t('changePassword.success'), [
         {
-          text: 'Tamam',
+          text: t('common.done'),
           onPress: () => {
             setOldPassword('');
             setNewPassword('');
@@ -95,7 +97,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
         },
       ]);
     } catch (error: any) {
-      Alert.alert('Hata', error.message || 'Şifre değiştirilemedi');
+      Alert.alert(t('common.error'), error.message || t('changePassword.failed'));
     } finally {
       setLoading(false);
     }
@@ -138,10 +140,10 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
               <View style={styles.headerIcon}>
                 <Ionicons name="lock-closed" size={24} color={theme.primary} />
               </View>
-              <Text style={styles.title}>Şifre Değiştir</Text>
-              <Text style={styles.description}>
-                Güvenliğiniz için şifrenizi düzenli olarak değiştirin.
-              </Text>
+            <Text style={styles.title}>{t('changePassword.title')}</Text>
+            <Text style={styles.description}>
+              {t('changePassword.description')}
+            </Text>
             </View>
 
             {/* Mevcut Şifre */}

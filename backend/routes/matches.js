@@ -348,6 +348,27 @@ router.get('/live', async (req, res) => {
   }
 });
 
+// GET /api/matches/api-status - API kotası / günlük kalan istek (maç 77 dk'da takılıyorsa kontrol için)
+router.get('/api-status', async (req, res) => {
+  try {
+    const status = footballApi.getApiStatus();
+    const remaining = status.remaining != null ? parseInt(status.remaining, 10) : null;
+    const limit = status.limit != null ? parseInt(status.limit, 10) : null;
+    res.json({
+      success: true,
+      api: {
+        remaining,
+        limit,
+        updatedAt: status.updatedAt,
+        internalRequestCount: status.internalRequestCount,
+      },
+      message: remaining === 0 ? 'API günlük kotası bitti. Güncelleme yarın sıfırlanır.' : (remaining != null ? `${remaining} istek kaldı.` : 'Henüz API çağrısı yapılmadı; bir maç açın veya liste yenileyin.'),
+    });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
 // GET /api/matches/date/:date - Get matches by date (format: YYYY-MM-DD)
 // DB-FIRST: Önce DB'den çek (sync-planned-matches ile doldurulur), boşsa API fallback
 router.get('/date/:date', async (req, res) => {
@@ -696,9 +717,25 @@ router.get('/:id', async (req, res) => {
     const withinMatchWindow = fixtureDate > 0 && (now - fixtureDate) < 3.5 * 60 * 60 * 1000;
     const possiblyLive = startedByTime && withinMatchWindow && !['FT', 'AET', 'PEN'].includes(dbStatus);
 
-    // 2. If found in DB and not live and not refresh → return cached
+    // 2. If found in DB and not live and not refresh → return cached (biten maçta snapshot varsa onu döndür)
     if (!dbError && dbMatch && !skipCache) {
       if (!isLiveByStatus) {
+        const isFinished = ['FT', 'AET', 'PEN'].includes(dbStatus);
+        if (isFinished && supabase) {
+          const { data: snapshotRow } = await supabase
+            .from('match_end_snapshots')
+            .select('snapshot')
+            .eq('match_id', matchId)
+            .single();
+          if (snapshotRow?.snapshot) {
+            return res.json({
+              success: true,
+              data: snapshotRow.snapshot,
+              source: 'snapshot',
+              cached: true
+            });
+          }
+        }
         return res.json({
           success: true,
           data: dbMatch,
@@ -732,8 +769,25 @@ router.get('/:id', async (req, res) => {
       }
     }
 
-    // 4. Fallback: return DB data if exists, even if live
+    // 4. Fallback: return DB data if exists (biten maçta snapshot varsa onu döndür)
     if (!dbError && dbMatch) {
+      const isFinishedFallback = ['FT', 'AET', 'PEN'].includes(dbMatch.status || '');
+      if (isFinishedFallback && supabase) {
+        const { data: snapshotRow } = await supabase
+          .from('match_end_snapshots')
+          .select('snapshot')
+          .eq('match_id', matchId)
+          .single();
+        if (snapshotRow?.snapshot) {
+          return res.json({
+            success: true,
+            data: snapshotRow.snapshot,
+            source: 'snapshot',
+            cached: true,
+            warning: 'API unavailable, showing snapshot'
+          });
+        }
+      }
       return res.json({
         success: true,
         data: dbMatch,
@@ -966,13 +1020,11 @@ function transformPlayerStats(apiResponse) {
           ? Math.round((passes.accuracy || 0))
           : 0;
 
-        // Kaleci istatistikleri: API bazen goalkeeper objesi veya goals.conceded farklı path'te döner
-        const gkSaves = isGoalkeeper
-          ? (stats.goalkeeper?.saves ?? stats.saves ?? 0)
-          : 0;
-        const gkConceded = isGoalkeeper
-          ? (goals.conceded ?? stats.goals?.conceded ?? 0)
-          : 0;
+        // Kaleci istatistikleri: API-Football farklı path'lerde dönebiliyor (goalkeeper.saves, goals.saves, saves)
+        const rawSaves = stats.goalkeeper?.saves ?? stats.goals?.saves ?? stats.saves;
+        const gkSaves = isGoalkeeper ? (parseInt(rawSaves, 10) || 0) : 0;
+        const rawConceded = goals.conceded ?? stats.goals?.conceded;
+        const gkConceded = isGoalkeeper ? (parseInt(rawConceded, 10) || 0) : 0;
         const savePct = (gkSaves + gkConceded) > 0
           ? Math.round((100 * gkSaves) / (gkSaves + gkConceded))
           : 0;
@@ -1732,15 +1784,16 @@ router.get('/:id/events/live', async (req, res) => {
     }
 
     // 3. Canlı maçlarda API'den güncel veri çek ve DB'ye yaz (mock maçlar hariç)
-    // ✅ refresh=1 parametresi ile cache atlanır
+    // ✅ Canlı maçta her zaman taze event çek (skipCache=true) – güncelleme gecikmesini önler
     const skipCache = req.query.refresh === '1' || req.query.refresh === 'true';
     const isLive = ['1H', '2H', 'HT', 'ET', 'P', 'LIVE', 'BT'].includes(matchStatus);
     const isMockMatch = matchId === 999999; // Mock maç için API çağrısı yapma
+    const forceFreshForLive = isLive && !isMockMatch; // Canlı maçta cache atla
     if (isLive && !isMockMatch) {
       try {
         const [fixtureData, eventsData] = await Promise.all([
-          footballApi.getFixtureDetails(matchId, skipCache), // ✅ skipCache parametresi
-          footballApi.getFixtureEvents(matchId, skipCache),  // ✅ skipCache parametresi
+          footballApi.getFixtureDetails(matchId, skipCache || forceFreshForLive),
+          footballApi.getFixtureEvents(matchId, skipCache || forceFreshForLive),  // ✅ Canlıda her zaman taze
         ]);
         const apiMatch = fixtureData?.response?.[0];
         const apiEvents = eventsData?.response || [];
@@ -1844,8 +1897,41 @@ router.get('/:id/events/live', async (req, res) => {
     }
     
     // ✅ Sentetik eventleri ana listeye ekle
-    const allEvents = [...events, ...syntheticEvents];
-    
+    let allEvents = [...events, ...syntheticEvents];
+    // ✅ Tekrarlayan kart eventlerini kaldır (aynı oyuncu + aynı renk, 2 dk içinde)
+    allEvents = allEvents.sort((a, b) => {
+      const at = (a.time?.elapsed || 0) + (a.time?.extra || 0) * 0.01;
+      const bt = (b.time?.elapsed || 0) + (b.time?.extra || 0) * 0.01;
+      return at - bt;
+    }).filter((e, i, arr) => {
+      const type = (e.type || '').toLowerCase();
+      const detail = (e.detail || '').toLowerCase();
+      if (type !== 'card' || !e.player) return true;
+      const playerKey = String(e.player?.id ?? e.player?.name ?? '').trim();
+      const color = detail.includes('red') ? 'red' : 'yellow';
+      const t = (e.time?.elapsed || 0) + (e.time?.extra || 0) * 0.01;
+      let duplicate = false;
+      for (let j = i - 1; j >= 0; j--) {
+        const prev = arr[j];
+        const pt = (prev.time?.elapsed || 0) + (prev.time?.extra || 0) * 0.01;
+        if (t - pt > 2.01) break;
+        if ((prev.type || '').toLowerCase() !== 'card' || !prev.player) continue;
+        const pKey = String(prev.player?.id ?? prev.player?.name ?? '').trim();
+        const pColor = (prev.detail || '').toLowerCase().includes('red') ? 'red' : 'yellow';
+        if (pKey === playerKey && pColor === color) {
+          duplicate = true;
+          break;
+        }
+      }
+      return !duplicate;
+    });
+    // Kronolojik sırayı koru
+    allEvents.sort((a, b) => {
+      const at = (a.time?.elapsed || 0) + (a.time?.extra || 0) * 0.01;
+      const bt = (b.time?.elapsed || 0) + (b.time?.extra || 0) * 0.01;
+      return at - bt;
+    });
+
     res.json({
       success: true,
       status: matchStatus,

@@ -76,8 +76,8 @@ export default {
   'features.categories.yellow_cards.desc': 'Toplam sarı kart sayısını tahmin edin (0-8+)',
   'features.categories.red_cards.title': 'Kırmızı Kart',
   'features.categories.red_cards.desc': 'Kırmızı kart görülüp görülmeyeceğini tahmin edin',
-  'features.categories.possession.title': 'Top Hakimiyeti',
-  'features.categories.possession.desc': 'Hangi takımın daha fazla top hakimiyetine sahip olacağını tahmin edin',
+  'features.categories.possession.title': 'Topa Sahip Olma',
+  'features.categories.possession.desc': 'Hangi takımın daha fazla topa sahip olacağını tahmin edin',
   'features.categories.total_shots.title': 'Toplam Şut Sayısı',
   'features.categories.total_shots.desc': 'Her iki takımın toplam şut sayısını tahmin edin',
   'features.categories.shots_on_target.title': 'İsabetli Şut Sayısı',
@@ -109,6 +109,9 @@ export default {
   'features.badges.description': '20+ farklı rozet kazanarak başarılarını sergile',
   'features.leaderboard.title': 'Liderlik Tablosu',
   'features.leaderboard.description': 'Global, sezon, haftalık ve aylık sıralamalarda yarış',
+  'features.predictionCategories.title': 'Tahmin Kategorileri',
+  'features.predictionCategories.match': '14 Maç Kategorisi',
+  'features.predictionCategories.player': '7 Oyuncu Kategorisi',
 
   // How It Works
   'howItWorks.title': 'Nasıl Çalışır?',
@@ -1007,4 +1010,15 @@ Telif hakkı ihlali bildirimi için: copyright@tacticiq.app`,
   'partners.cta.button': 'Ortak Ol',
   'partners.noPartners': 'Henüz partner eklenmemiş',
   'partners.website': 'Web Sitesi',
+
+  // 404 Page
+  'notFound.title': 'Sayfa Bulunamadı',
+  'notFound.description': 'Aradığınız sayfa mevcut değil veya taşınmış.',
+  'notFound.goHome': 'Ana Sayfaya Dön',
+  'notFound.goBack': 'Geri Dön',
+  'notFound.popular': 'Popüler Sayfalar',
+  'notFound.links.features': 'Özellikler',
+  'notFound.links.pricing': 'Fiyatlandırma',
+  'notFound.links.contact': 'İletişim',
+  'notFound.links.faq': 'SSS',
 };

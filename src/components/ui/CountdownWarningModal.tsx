@@ -7,6 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, Modal, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useTranslation } from '../../hooks/useTranslation';
 import { COLORS } from '../../theme/theme';
 
 type Props = {
@@ -114,6 +115,7 @@ export function CountdownWarningModal({
   onContinue,
   onCancel,
 }: Props) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const isLight = theme === 'light';
   const themeColors = isLight ? COLORS.light : COLORS.dark;
@@ -159,14 +161,14 @@ export function CountdownWarningModal({
             <Ionicons name="time-outline" size={48} color="#EF4444" />
           </View>
           
-          <Text style={[styles.title, isLight && { color: themeColors.foreground }]}>Maç Başlamak Üzere!</Text>
+          <Text style={[styles.title, isLight && { color: themeColors.foreground }]}>{t('countdownModal.title')}</Text>
           
           <Text style={[styles.message, isLight && { color: themeColors.mutedForeground }]}>
-            Maçın başlamasına kalan süre:
+            {t('countdownModal.remainingTime')}:
           </Text>
           
           <View style={[styles.countdownBox, isLight && { borderColor: themeColors.border }]}>
-            <Text style={[styles.countdownLabel, isLight && { color: themeColors.mutedForeground }]}>Kalan Süre</Text>
+            <Text style={[styles.countdownLabel, isLight && { color: themeColors.mutedForeground }]}>{t('countdownModal.remainingTime')}</Text>
             <Text style={styles.countdownNumber}>{displayValue} sn</Text>
             {displayValue <= 30 && (
               <Text style={[styles.warningText, isLight && { color: '#B91C1C' }]}>
@@ -186,7 +188,7 @@ export function CountdownWarningModal({
                 onPress={onCancel}
                 activeOpacity={0.8}
               >
-                <Text style={[styles.btnText, isLight && { color: themeColors.foreground }]}>İptal</Text>
+                <Text style={[styles.btnText, isLight && { color: themeColors.foreground }]}>{t('countdownModal.cancel')}</Text>
               </TouchableOpacity>
             )}
             <TouchableOpacity
@@ -194,7 +196,7 @@ export function CountdownWarningModal({
               onPress={onContinue}
               activeOpacity={0.8}
             >
-              <Text style={styles.btnText}>Devam Et</Text>
+              <Text style={styles.btnText}>{t('countdownModal.continue')}</Text>
             </TouchableOpacity>
           </View>
         </View>

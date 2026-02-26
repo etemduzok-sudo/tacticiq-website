@@ -212,20 +212,21 @@ router.post('/download', async (req, res) => {
       try {
         const coachData = await footballApi.getTeamCoach(tid);
         if (coachData.response && coachData.response.length > 0) {
-          const coaches = coachData.response;
-          const currentCoach = coaches.find(c => 
-            c.career && c.career.some(car => car.team?.id == tid && !car.end)
-          ) || coaches[0];
+          const { selectActiveCoach } = require('../utils/selectActiveCoach');
+          const selected = selectActiveCoach(coachData.response, tid);
+          const currentCoach = selected && coachData.response.find((c) => c.id === selected.id);
           
-          teamData.coach = {
-            id: currentCoach.id,
-            name: currentCoach.name,
-            firstName: currentCoach.firstname,
-            lastName: currentCoach.lastname,
-            age: currentCoach.age,
-            nationality: currentCoach.nationality,
-          };
-          console.log(`  ✅ Team ${tid}: Coach ${currentCoach.name}`);
+          if (currentCoach) {
+            teamData.coach = {
+              id: currentCoach.id,
+              name: selected.name,
+              firstName: currentCoach.firstname,
+              lastName: currentCoach.lastname,
+              age: currentCoach.age,
+              nationality: currentCoach.nationality,
+            };
+            console.log(`  ✅ Team ${tid}: Coach ${selected.name}`);
+          }
         }
       } catch (e) {
         console.warn(`  ⚠️ Team ${tid} coach error:`, e.message);

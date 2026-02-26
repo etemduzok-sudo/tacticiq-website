@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from 'react-i18next';
 import api from '../../services/api';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -38,6 +39,162 @@ interface LiveEvent {
   playerOut?: string | null; // ✅ Substitution için: Kim çıktı
   playerIn?: string | null; // ✅ Substitution için: Kim girdi
   isOwnGoal?: boolean; // ✅ Own goal flag'i
+}
+
+// ✅ API event listesini LiveEvent[] formatına çevir (parent eventleri ile timeline senkronu için)
+function transformApiEventsToLiveEvents(events: any[], matchData: any): LiveEvent[] {
+  if (!events?.length) return [];
+  const out = events
+    .filter((e: any) => e && e.time)
+    .map((event: any) => {
+      const eventType = event.type?.toLowerCase() || 'unknown';
+      const detail = (event.detail || '').toLowerCase();
+      const detailNorm = detail.replace(/-/g, ' ').trim();
+      let description = '';
+      let displayType = eventType;
+      if (detail === 'match kick off' || detail === 'kick off' || detailNorm === '1st half' || detailNorm === 'first half') {
+        description = 'Maç başladı'; displayType = 'kickoff';
+      } else if (detailNorm.includes('first half extra time')) {
+        const ex = Number(event.comments) || event.time?.extra || 0;
+        description = ex > 0 ? `45. dk'da ilk yarının sonuna +${ex} dk eklendi` : '45. dk uzatma';
+        displayType = 'stoppage';
+      } else if (event.time?.elapsed === 90 && (event.time?.extra != null && event.time.extra > 0) && detailNorm.includes('second half extra time')) {
+        description = `90. dk'da maçın sonuna +${event.time.extra} dk eklendi`; displayType = 'stoppage';
+      } else if (detailNorm.includes('second half extra time') || (detailNorm.includes('extra time') && event.time?.elapsed === 90)) {
+        const ex = event.time?.extra ?? 0;
+        description = ex > 0 ? `90. dk'da maçın sonuna +${ex} dk eklendi` : '90. dk uzatma';
+        displayType = 'stoppage';
+      } else if ((detail === 'half time' || detail === 'halftime' || detailNorm === 'half time')) {
+        description = 'İlk yarı bitiş düdüğü'; displayType = 'halftime';
+      } else if (detailNorm.includes('second half') || detail === '2nd half' || detail === 'second half started') {
+        description = 'İkinci yarı başladı'; displayType = 'kickoff';
+      } else if (detail === 'match finished' || detail === 'full time' || detailNorm.includes('full time')) {
+        description = 'Maç bitti'; displayType = 'fulltime';
+      } else if (eventType === 'status') {
+        description = detail === 'half time' || detail === 'halftime' ? 'İlk yarı bitiş düdüğü' : detail === 'match finished' || detail === 'full time' ? 'Maç bitti' : (event.detail || 'Durum değişikliği');
+        displayType = detail === 'half time' || detail === 'halftime' ? 'halftime' : detail === 'match finished' || detail === 'full time' ? 'fulltime' : 'stoppage';
+      } else if (eventType === 'goal') {
+        description = detail.includes('penalty') ? 'Penaltı golü' : detail.includes('own goal') ? 'Kendi kalesine' : detail.includes('free kick') || detailNorm.includes('serbest vuruş') ? 'Serbest vuruştan gol' : 'GOL!';
+      } else if (eventType === 'card') {
+        description = detail.includes('yellow') ? 'Sarı kart' : detail.includes('red') ? 'Kırmızı kart' : '';
+      } else if (eventType === 'subst') {
+        description = 'Değişiklik'; displayType = 'substitution';
+      } else if (eventType === 'var') { description = 'VAR'; }
+      else { description = event.comments || event.detail || ''; }
+      let teamSide: 'home' | 'away' | null = null;
+      if (event.team?.id) {
+        const homeId = matchData?.teams?.home?.id || matchData?.homeTeam?.id;
+        const awayId = matchData?.teams?.away?.id || matchData?.awayTeam?.id;
+        if (event.team.id === homeId) teamSide = 'home';
+        else if (event.team.id === awayId) teamSide = 'away';
+      } else if (event.team?.name) {
+        const homeName = matchData?.teams?.home?.name || matchData?.homeTeam?.name || '';
+        teamSide = event.team.name.toLowerCase().includes(homeName.toLowerCase()) ? 'home' : 'away';
+      }
+      let playerOut: string | null = null;
+      let playerIn: string | null = null;
+      if (displayType === 'substitution') {
+        playerOut = typeof event.player === 'string' ? event.player : event.player?.name || null;
+        playerIn = typeof event.assist === 'string' ? event.assist : event.assist?.name || (typeof event.comments === 'string' ? event.comments : null) || null;
+      }
+      const calculatedScore = event.goals ? `${event.goals.home}-${event.goals.away}` : null;
+      return {
+        minute: event.time?.elapsed || 0,
+        extraTime: event.time?.extra || null,
+        type: displayType,
+        team: teamSide,
+        player: displayType === 'substitution' ? playerOut : (typeof event.player === 'string' ? event.player : event.player?.name || null),
+        assist: typeof event.assist === 'string' ? event.assist : (event.assist?.name || null),
+        description,
+        detail: event.detail || '',
+        score: calculatedScore,
+        playerOut,
+        playerIn,
+        isOwnGoal: detail.includes('own goal'),
+      };
+    })
+    .sort((a: LiveEvent, b: LiveEvent) => {
+      const aTime = a.minute + (a.extraTime || 0) * 0.01;
+      const bTime = b.minute + (b.extraTime || 0) * 0.01;
+      if (Math.abs(aTime - bTime) > 0.001) return bTime - aTime;
+      const sys = ['kickoff', 'halftime', 'fulltime', 'stoppage'];
+      const aSys = sys.includes(a.type) ? 0 : 1;
+      const bSys = sys.includes(b.type) ? 0 : 1;
+      return bSys - aSys;
+    });
+  const hasKickoff = out.some(e => e.type === 'kickoff' && e.minute === 0);
+  if (!hasKickoff && out.length > 0) {
+    out.unshift({ minute: 0, extraTime: null, type: 'kickoff', team: null, description: 'Maç başladı' });
+  }
+  return out;
+}
+
+// ✅ Tekrarlayan eventleri kaldır: aynı oyuncu + aynı kart/dk içinde iki kez görünmesin (API bazen aynı olayı 41' ve 42'de dönebiliyor)
+function dedupeLiveEvents(events: LiveEvent[]): LiveEvent[] {
+  if (!events.length) return events;
+  const sorted = [...events].sort((a, b) => {
+    const aT = a.minute + (a.extraTime ?? 0) * 0.01;
+    const bT = b.minute + (b.extraTime ?? 0) * 0.01;
+    return aT - bT;
+  });
+  const seen = new Map<string, number>();
+  const out: LiveEvent[] = [];
+  for (const e of sorted) {
+    const t = e.minute + (e.extraTime ?? 0) * 0.01;
+    let key: string;
+    if (e.type === 'card' && e.player) {
+      const color = (e.detail?.toLowerCase().includes('red') || e.description?.includes('Kırmızı')) ? 'red' : 'yellow';
+      key = `card-${String(e.player).trim()}-${color}`;
+      const lastT = seen.get(key);
+      if (lastT != null && t - lastT <= 2.01) continue; // Aynı oyuncu + aynı renk kart, 2 dk içinde tekrar → atla
+      seen.set(key, t);
+    } else {
+      key = `${e.minute}-${e.extraTime ?? ''}-${e.type}-${e.player ?? ''}-${e.description ?? ''}`;
+      if (seen.has(key)) continue;
+      seen.set(key, t);
+    }
+    out.push(e);
+  }
+  // Orijinal sırayı koru: en son event üstte (ters kronolojik)
+  const byTime = (a: LiveEvent, b: LiveEvent) => {
+    const aT = a.minute + (a.extraTime ?? 0) * 0.01;
+    const bT = b.minute + (b.extraTime ?? 0) * 0.01;
+    return bT - aT;
+  };
+  out.sort(byTime);
+  return out;
+}
+
+// ✅ Aynı oyuncu: sarı → kırmızı → kırmızı ise ilk kırmızı "2. Sarıdan kırmızı (VAR iptal)", ikinci "Direkt kırmızı"
+function fixCardDescriptionsForVar(events: LiveEvent[]): LiveEvent[] {
+  if (!events.length) return events;
+  const isRed = (e: LiveEvent) => e.type === 'card' && (e.detail?.toLowerCase().includes('red') ?? e.description?.includes('Kırmızı'));
+  const isYellow = (e: LiveEvent) => e.type === 'card' && (e.detail?.toLowerCase().includes('yellow') ?? e.description?.includes('Sarı'));
+  const cardIndicesByPlayer = new Map<string, number[]>();
+  events.forEach((e, i) => {
+    if (e.type !== 'card' || !e.player) return;
+    const key = String(e.player).trim();
+    if (!cardIndicesByPlayer.has(key)) cardIndicesByPlayer.set(key, []);
+    cardIndicesByPlayer.get(key)!.push(i);
+  });
+  const overrideDesc: Record<number, string> = {};
+  cardIndicesByPlayer.forEach((indices) => {
+    const cards = indices.map((i) => ({ i, e: events[i] })).sort((a, b) => {
+      const ta = a.e.minute + (a.e.extraTime ?? 0) * 0.01;
+      const tb = b.e.minute + (b.e.extraTime ?? 0) * 0.01;
+      return ta - tb;
+    });
+    const reds = cards.filter((c) => isRed(c.e));
+    const yellows = cards.filter((c) => isYellow(c.e));
+    if (yellows.length >= 1 && reds.length >= 2) {
+      overrideDesc[reds[0].i] = '2. Sarıdan kırmızı (VAR iptal)';
+      overrideDesc[reds[1].i] = 'Direkt kırmızı';
+    }
+  });
+  if (Object.keys(overrideDesc).length === 0) return events;
+  return events.map((e, i) =>
+    overrideDesc[i] != null ? { ...e, description: overrideDesc[i] } : e
+  );
 }
 
 interface MatchLiveScreenProps {
@@ -116,6 +273,16 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
       setLoading(false);
     }
   }, [isMatchNotStartedFromData, matchId]);
+
+  // ✅ Parent (MatchDetail) canlı eventleri her 10 sn güncelliyor – hemen timeline'a yansıt (maç kartı ile senkron)
+  useEffect(() => {
+    if (!propEvents || !Array.isArray(propEvents) || propEvents.length === 0 || !matchData) return;
+    const transformed = transformApiEventsToLiveEvents(propEvents, matchData);
+    if (transformed.length > 0) {
+      setLiveEvents(transformed);
+      setLoading(false);
+    }
+  }, [propEvents, matchData]);
 
   // Mock maç (999999): 52. dk, skor 5-4, ilk yarı 1 dk uzadı, 45+1 ev sahibi kırmızı kart, en az 8 event
   const MOCK_999999_EVENTS = [
@@ -400,7 +567,8 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
     };
 
     fetchLiveData();
-    const interval = setInterval(fetchLiveData, 15000);
+    // ✅ Canlı maçta en geç ~8 sn'de güncelleme (backend canlıda cache atlıyor)
+    const interval = setInterval(fetchLiveData, 8000);
     return () => clearInterval(interval);
   // ✅ matchData objesi yerine scalar değerler kullan (gereksiz re-fetch'i önle)
   }, [matchId, matchData?.fixture?.status?.short, isMatchNotStartedFromData, matchNotStarted]);
@@ -455,12 +623,33 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
     return { currentMinute: minute, currentExtraTime: extraTime };
   }, [matchId, matchData?.minute, matchData?.extraTime, matchData?.fixture?.status?.elapsed, matchData?.fixture?.status?.extraTime, ticker]); // ✅ ticker: mock'ta her saniye güncelle
   
+  // ✅ Tekrarlayan eventleri kaldır, kart etiketlerini düzelt, uzatma devrelerinde 1./2. Uzatma eventlerini ekle
+  const displayedEvents = useMemo(() => {
+    const base = fixCardDescriptionsForVar(dedupeLiveEvents(liveEvents));
+    const status = matchData?.status || matchData?.fixture?.status?.short || '';
+    const elapsed = matchData?.minute ?? matchData?.fixture?.status?.elapsed ?? 0;
+    const inOrAfterET = ['ET', 'AET', 'PEN'].includes(status) || elapsed >= 91;
+    if (!inOrAfterET) return base;
+    const has1ET = base.some(e => e.type === 'et_period' && e.minute === 91) || base.some(e => (e.description || '').includes('1. Uzatma'));
+    const has2ET = base.some(e => e.type === 'et_period' && e.minute === 106) || base.some(e => (e.description || '').includes('2. Uzatma'));
+    const etEvents: LiveEvent[] = [];
+    if (!has1ET) etEvents.push({ minute: 91, extraTime: null, type: 'et_period', team: null, description: '1. Uzatma devresi başladı' });
+    if (!has2ET && (elapsed >= 106 || ['AET', 'PEN'].includes(status))) etEvents.push({ minute: 106, extraTime: null, type: 'et_period', team: null, description: '2. Uzatma devresi başladı' });
+    if (etEvents.length === 0) return base;
+    const combined = [...base, ...etEvents].sort((a, b) => {
+      const aT = a.minute + (a.extraTime ?? 0) * 0.01;
+      const bT = b.minute + (b.extraTime ?? 0) * 0.01;
+      return bT - aT;
+    });
+    return combined;
+  }, [liveEvents, matchData?.status, matchData?.minute, matchData?.fixture?.status?.short, matchData?.fixture?.status?.elapsed]);
+
   // ✅ eventsUpToNow'u da useMemo ile hesapla
   // ✅ Mock maçlarda gerçek zamandan filtreleme yap
   const eventsUpToNow = useMemo(() => {
     const isMockMatch = isMockTestMatch(Number(matchId));
     
-    return liveEvents.filter((e) => {
+    return displayedEvents.filter((e) => {
       // ✅ "Maç başladı" (kickoff) eventini göster - sadece minute 0 olan kickoff eventini göster
       // Diğer kickoff eventleri (ikinci yarı başladı) zaten gösterilecek
       // if (e.type === 'kickoff') return false; // KALDIRILDI - "Maç başladı" eventini göstermek için
@@ -536,9 +725,9 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
       }
       
       // ✅ Gerçek maçlar için mevcut mantık - extraTime'ı da dikkate al
-      // Maç bittiğinde (FT status) tüm eventleri göster
+      // Maç bittiğinde (FT / AET / PEN) tüm eventleri göster (uzatma sonrası dahil)
       const matchStatus = matchData?.status || matchData?.fixture?.status?.short || '';
-      if (matchStatus === 'FT') {
+      if (matchStatus === 'FT' || matchStatus === 'AET' || matchStatus === 'PEN') {
         return true;
       }
       
@@ -564,7 +753,7 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
       // ✅ Epsilon 0.005 (0.01 = 1 dakika uzamalı süre, çok büyüktü - eventler 1 dk erken görünüyordu)
       return eventMin <= currentMin + 0.005;
     });
-  }, [liveEvents, currentMinute, currentExtraTime, matchId, ticker]); // ✅ ticker: mock'ta her saniye güncelle
+  }, [displayedEvents, currentMinute, currentExtraTime, matchId, ticker]); // ✅ ticker: mock'ta her saniye güncelle
   
   // ✅ Yeni eventler geldiğinde otomatik scroll yap (en üste - en yeni evente)
   useEffect(() => {
@@ -603,6 +792,7 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
       case 'halftime':
       case 'fulltime':
       case 'stoppage':
+      case 'et_period':
         return { icon: 'time', color: BRAND.accent, bg: 'rgba(201, 164, 76, 0.15)' };
       default:
         return { icon: 'ellipse', color: '#6B7280', bg: 'rgba(107, 114, 128, 0.15)' };
@@ -614,7 +804,7 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
   // =====================================
   const renderEventCard = (event: LiveEvent, index: number, totalEvents: number) => {
     const style = getEventStyle(event);
-    const isSystemEvent = ['kickoff', 'halftime', 'fulltime', 'stoppage'].includes(event.type);
+    const isSystemEvent = ['kickoff', 'halftime', 'fulltime', 'stoppage', 'et_period'].includes(event.type);
     const isHome = event.team === 'home';
     const isAway = event.team === 'away';
     
@@ -771,29 +961,35 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
   // RENDER
   // =====================================
   
-  // ✅ Maç başlamadıysa bildirim göster (açık temada açık kart + koyu metin)
+  // ✅ Maç başlamadıysa: popup kart + renkli yapı (header ile aynı), arka plan şeffaf (grid görünsün)
+  const homeColors = (matchData?.homeTeam?.color as string[] | undefined) || ['#1FA2A6', '#0F2A24'];
+  const awayColors = (matchData?.awayTeam?.color as string[] | undefined) || ['#F97316', '#EA580C'];
   if (matchNotStarted) {
     return (
-      <SafeAreaView style={[styles.container, isLight && { backgroundColor: themeColors.background }]} edges={[]}>
+      <SafeAreaView style={[styles.container, { backgroundColor: 'transparent' }]} edges={[]}>
         <View style={styles.notStartedContainer}>
-          <View style={[styles.notStartedCard, isLight && { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
-            <View style={styles.notStartedIconContainer}>
-              <Ionicons name="time-outline" size={48} color={BRAND.accent} />
+          <View style={styles.notStartedCardWrapper}>
+            <LinearGradient colors={homeColors} style={styles.cardColorBarLeft} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} />
+            <LinearGradient colors={awayColors} style={styles.cardColorBarRight} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} />
+            <View style={[styles.notStartedCard, isLight && { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
+              <View style={styles.notStartedIconContainer}>
+                <Ionicons name="time-outline" size={48} color={BRAND.accent} />
+              </View>
+              <Text style={[styles.notStartedTitle, isLight && { color: themeColors.foreground }]}>Maç Henüz Başlamadı</Text>
+              <Text style={[styles.notStartedSubtitle, isLight && { color: themeColors.mutedForeground }]}>
+                Maç başladığında canlı olaylar{'\n'}burada görünecek
+              </Text>
             </View>
-            <Text style={[styles.notStartedTitle, isLight && { color: themeColors.foreground }]}>Maç Henüz Başlamadı</Text>
-            <Text style={[styles.notStartedSubtitle, isLight && { color: themeColors.mutedForeground }]}>
-              Maç başladığında canlı olaylar{'\n'}burada görünecek
-            </Text>
           </View>
         </View>
       </SafeAreaView>
     );
   }
 
-  // Loading state - sadece maç başladıysa göster
+  // Loading state - şeffaf arka plan (grid görünsün)
   if (loading && liveEvents.length === 0) {
     return (
-      <SafeAreaView style={[styles.container, isLight && { backgroundColor: themeColors.background }]} edges={[]}>
+      <SafeAreaView style={[styles.container, { backgroundColor: 'transparent' }]} edges={[]}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={BRAND.secondary} />
           <Text style={[styles.loadingText, isLight && { color: themeColors.mutedForeground }]}>Canlı veriler yükleniyor...</Text>
@@ -802,19 +998,23 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
     );
   }
 
-  // Error state - API connection failed or other error
+  // Error state - popup kart + renkli yapı
   if (error && liveEvents.length === 0) {
     return (
-      <SafeAreaView style={[styles.container, isLight && { backgroundColor: themeColors.background }]} edges={[]}>
+      <SafeAreaView style={[styles.container, { backgroundColor: 'transparent' }]} edges={[]}>
         <View style={styles.notStartedContainer}>
-          <View style={[styles.notStartedCard, isLight && { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
-            <View style={styles.notStartedIconContainer}>
-              <Ionicons name="cloud-offline-outline" size={48} color="#F59E0B" />
+          <View style={styles.notStartedCardWrapper}>
+            <LinearGradient colors={homeColors} style={styles.cardColorBarLeft} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} />
+            <LinearGradient colors={awayColors} style={styles.cardColorBarRight} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} />
+            <View style={[styles.notStartedCard, isLight && { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
+              <View style={styles.notStartedIconContainer}>
+                <Ionicons name="cloud-offline-outline" size={48} color="#F59E0B" />
+              </View>
+              <Text style={[styles.notStartedTitle, isLight && { color: themeColors.foreground }]}>Bağlantı Hatası</Text>
+              <Text style={[styles.notStartedSubtitle, isLight && { color: themeColors.mutedForeground }]}>
+                Canlı maç verisi alınamadı.{'\n'}Lütfen internet bağlantınızı kontrol edin.
+              </Text>
             </View>
-            <Text style={[styles.notStartedTitle, isLight && { color: themeColors.foreground }]}>Bağlantı Hatası</Text>
-            <Text style={[styles.notStartedSubtitle, isLight && { color: themeColors.mutedForeground }]}>
-              Canlı maç verisi alınamadı.{'\n'}Lütfen internet bağlantınızı kontrol edin.
-            </Text>
           </View>
         </View>
       </SafeAreaView>
@@ -822,7 +1022,7 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={[]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: 'transparent' }]} edges={[]}>
       {/* ✅ "Canlı Olaylar" başlık bar'ı kaldırıldı */}
       <ScrollView 
         ref={scrollViewRef}
@@ -1017,12 +1217,41 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   
-  // Not Started - Sabit boyut, tüm sekmelerde aynı görünüm (sıçrama önleme)
+  // Not Started - Sabit boyut, popup + renkli yapı (header ile aynı) – sabit yükseklik sıçrama önler
   notStartedContainer: {
-    flex: 1, // Tüm alanı kapla
+    flex: 1,
+    minHeight: 280,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
+    overflow: 'hidden',
+  },
+  notStartedCardWrapper: {
+    position: 'relative',
+    width: 310,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  cardColorBarLeft: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 5,
+    zIndex: 0,
+    borderTopLeftRadius: 16,
+    borderBottomLeftRadius: 16,
+  },
+  cardColorBarRight: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: 5,
+    zIndex: 0,
+    borderTopRightRadius: 16,
+    borderBottomRightRadius: 16,
   },
   notStartedCard: {
     backgroundColor: DARK_MODE.card,
@@ -1031,9 +1260,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: DARK_MODE.border,
-    width: 300, // Sabit genişlik
-    height: 240, // Sabit yükseklik - sıçrama önleme
+    width: 300,
+    height: 240,
     justifyContent: 'center',
+    marginHorizontal: 5, // Renkli çubuklarla çakışmasın
+    zIndex: 1,
   },
   notStartedIconContainer: {
     width: 80,
@@ -1058,10 +1289,10 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   
-  // Tab header - İstatistik sekmesiyle aynı yükseklik ve stil (sıçrama önleme)
+  // Tab header - şeffaf arka plan (grid kareli yapı görünsün)
   liveTabHeader: {
     flexDirection: 'row',
-    backgroundColor: '#1E293B', // Solid arka plan - grid görünmesin
+    backgroundColor: 'transparent',
     borderBottomWidth: 1,
     borderBottomColor: DARK_MODE.border,
     paddingHorizontal: 12,
@@ -1074,7 +1305,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 12,
-    backgroundColor: '#1D4044', // Solid arka plan - grid görünmesin (secondary tonu)
+    backgroundColor: 'rgba(31, 162, 166, 0.12)', // Hafif ton – grid görünsün
     borderWidth: 1,
     borderColor: `${BRAND.secondary}40`,
   },

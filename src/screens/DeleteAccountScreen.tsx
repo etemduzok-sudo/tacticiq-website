@@ -13,6 +13,7 @@ import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
 import { ScreenLayout, StandardHeader } from '../components/layouts';
 import { textStyles, cardStyles, buttonStyles, inputStyles } from '../utils/styleHelpers';
 import { SPACING, COLORS, SIZES, TYPOGRAPHY } from '../theme/theme';
+import { useTranslation } from '../hooks/useTranslation';
 
 interface DeleteAccountScreenProps {
   onBack: () => void;
@@ -23,12 +24,14 @@ export const DeleteAccountScreen: React.FC<DeleteAccountScreenProps> = ({
   onBack,
   onDeleteConfirm,
 }) => {
+  const { t } = useTranslation();
   const [confirmText, setConfirmText] = useState('');
   const [showFinalConfirm, setShowFinalConfirm] = useState(false);
 
   const handleDelete = () => {
-    if (confirmText.toLowerCase() !== 'sil') {
-      Alert.alert('Hata', 'Lütfen "SIL" yazarak onaylayın');
+    const confirmWord = (t('deleteAccount.confirmWord') || 'sil').toLowerCase().trim();
+    if (confirmText.toLowerCase().trim() !== confirmWord) {
+      Alert.alert(t('common.error'), t('deleteAccount.typeSilToConfirm'));
       return;
     }
 
@@ -43,7 +46,7 @@ export const DeleteAccountScreen: React.FC<DeleteAccountScreenProps> = ({
     }, 100);
   };
 
-  const isDeleteEnabled = confirmText.toLowerCase() === 'sil';
+  const isDeleteEnabled = confirmText.toLowerCase().trim() === (t('deleteAccount.confirmWord') || 'sil').toLowerCase().trim();
 
   return (
     <ScreenLayout safeArea scrollable>

@@ -369,7 +369,7 @@ function AdminDataProviderInternal({ children }: { children: ReactNode }) {
     { id: '10', key: 'scenario', title: 'Maç Senaryosu', description: 'Maçın nasıl gelişeceğini tahmin edin (baskılı başlangıç, geç gol vb.)', emoji: '🧠', featured: true, enabled: true, order: 10, createdAt: '', updatedAt: '' },
     { id: '11', key: 'total_goals', title: 'Toplam Gol Sayısı', description: 'Maçta atılacak toplam gol sayısını tahmin edin (0-5+)', emoji: '🧮', featured: true, enabled: true, order: 11, createdAt: '', updatedAt: '' },
     { id: '12', key: 'first_goal', title: 'İlk Gol Zamanı', description: 'İlk golün hangi dakika aralığında atılacağını tahmin edin', emoji: '⏰', featured: true, enabled: true, order: 12, createdAt: '', updatedAt: '' },
-    { id: '13', key: 'possession', title: 'Top Hakimiyeti', description: 'Hangi takımın daha fazla top hakimiyetine sahip olacağını tahmin edin', emoji: '📊', featured: false, enabled: true, order: 13, createdAt: '', updatedAt: '' },
+    { id: '13', key: 'possession', title: 'Topa Sahip Olma', description: 'Hangi takımın daha fazla topa sahip olacağını tahmin edin', emoji: '📊', featured: false, enabled: true, order: 13, createdAt: '', updatedAt: '' },
     { id: '14', key: 'corners', title: 'Korner Sayısı', description: 'Toplam korner sayısını tahmin edin (0-15+)', emoji: '🚩', featured: false, enabled: true, order: 14, createdAt: '', updatedAt: '' },
     { id: '15', key: 'goal_expectation', title: 'Gol Beklentisi (xG)', description: 'Her iki takımın beklenen gol değerini (Expected Goals) tahmin edin', emoji: '⚡', featured: true, enabled: true, order: 15, createdAt: '', updatedAt: '' },
   ];

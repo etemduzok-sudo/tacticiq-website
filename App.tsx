@@ -89,6 +89,7 @@ if (Platform.OS === 'web') {
 import './src/i18n'; // Initialize i18n
 import i18n from './src/i18n';
 import { useTranslation } from 'react-i18next';
+import { applySavedLanguage } from './src/i18n';
 
 // Web için UIManager polyfills
 if (Platform.OS === 'web') {
@@ -152,12 +153,33 @@ LogBox.ignoreLogs([
   'Non-serializable values were found in the navigation state',
 ]);
 
+// OAuth işlenirken gösterilen ekran (ThemeProvider içinde render edildiği için tema + çeviri burada)
+function OAuthLoadingScreen() {
+  const { t } = useTranslation();
+  const { theme } = useAppTheme();
+  const isLight = theme === 'light';
+  const colors = isLight ? COLORS.light : COLORS.dark;
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' }}>
+      <Text style={{ color: colors.foreground, fontSize: 18, marginBottom: 10 }}>{t('auth.loggingIn')}</Text>
+      <Text style={{ color: colors.mutedForeground, fontSize: 14 }}>{t('auth.pleaseWait')}</Text>
+    </View>
+  );
+}
+
 export default function App() {
   const { i18n: i18nInstance } = useTranslation();
-  
+
   // 🌍 Dil değişikliğini zorla algıla - useTranslation + manuel listener
   const [forceUpdateKey, setForceUpdateKey] = useState(0);
-  
+
+  // OAuth / sayfa yeniden yüklemesi sonrası kaydedilmiş dili depodan uygula (İngilizce seçilse bile doğru dil gelsin)
+  useEffect(() => {
+    applySavedLanguage().then((lang) => {
+      if (i18n.language !== lang) setForceUpdateKey((k) => k + 1);
+    }).catch(() => {});
+  }, []);
+
   useEffect(() => {
     const handler = (lng: string) => {
       console.log('[App] Language changed to:', lng);
@@ -195,10 +217,10 @@ export default function App() {
     // Arka planda sessizce bulk data'yı güncelle (cache geçerliyse skip edecek)
     const teamIds = favoriteTeams.map(t => t.id).filter(Boolean);
     if (teamIds.length > 0) {
-      // Kısa bir delay ile başlat (UI'ı bloklamadan)
+      // Kısa gecikme ile başlat (UI ilk çizimi tamamlansın, giriş sonrası maçlar daha erken yüklensin)
       setTimeout(() => {
         triggerBulkDownload(teamIds);
-      }, 3000);
+      }, 500);
     }
   }, [favoriteTeams, teamsLoading]);
 
@@ -278,14 +300,9 @@ export default function App() {
 
   const renderScreen = () => {
     try {
-      // ✅ OAuth işlenirken splash gösterme - bekle
+      // ✅ OAuth işlenirken – tema + çeviri uyumlu (OAuthLoadingScreen ThemeProvider içinde)
       if (isProcessingOAuth) {
-        return (
-          <View style={{ flex: 1, backgroundColor: '#0a1612', alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={{ color: '#1FA2A6', fontSize: 18, marginBottom: 10 }}>Giriş yapılıyor...</Text>
-            <Text style={{ color: '#94a3b8', fontSize: 14 }}>Lütfen bekleyin</Text>
-          </View>
-        );
+        return <OAuthLoadingScreen />;
       }
       
       switch (currentScreen) {
@@ -358,6 +375,7 @@ export default function App() {
           return (
             <Dashboard
               onNavigate={navHandlers.handleDashboardNavigate}
+              onMatchResultSelect={navHandlers.handleMatchResultSelect}
               matchData={matchData}
               selectedTeamIds={selectedTeamIds}
               hasFavoriteTeams={(favoriteTeams?.length ?? 0) > 0}

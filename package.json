@@ -10,6 +10,7 @@
     "web:dev": "expo start --web",
     "backend:dev": "npm run dev --prefix backend",
     "backend:start": "npm run start --prefix backend",
+    "backend:watch": "node scripts/backend-watcher.js",
     "lint": "eslint . --ext .ts,.tsx",
     "type-check": "tsc --noEmit",
     "workspace:check": "powershell -ExecutionPolicy Bypass -File ./scripts/sync-worktrees.ps1 check",

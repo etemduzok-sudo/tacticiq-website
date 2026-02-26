@@ -281,18 +281,18 @@ async function syncTeamInfo(maxCalls) {
         calls++;
         
         if (coachData.response?.length > 0) {
-          const activeCoach = coachData.response.find(c => 
-            c.career?.some(car => car.team?.id == team.api_football_id && !car.end)
-          ) || coachData.response[0];
-          
-          await supabase
-            .from('static_teams')
-            .update({
-              coach: activeCoach.name,
-              coach_api_id: activeCoach.id,
+          const { selectActiveCoach } = require('../utils/selectActiveCoach');
+          const selected = selectActiveCoach(coachData.response, team.api_football_id);
+          if (selected) {
+            await supabase
+              .from('static_teams')
+              .update({
+                coach: selected.name,
+                coach_api_id: selected.id,
               last_updated: new Date().toISOString()
             })
-            .eq('api_football_id', team.api_football_id);
+              .eq('api_football_id', team.api_football_id);
+          }
         }
       }
       
@@ -469,16 +469,19 @@ async function syncNationalTeams(maxCalls) {
       calls++;
       
       if (coachData.response?.length > 0) {
-        const coach = coachData.response[0];
-        await supabase
-          .from('static_teams')
-          .update({
-            coach: coach.name,
-            coach_api_id: coach.id,
+        const { selectActiveCoach } = require('../utils/selectActiveCoach');
+        const selected = selectActiveCoach(coachData.response, team.api_football_id);
+        if (selected) {
+          await supabase
+            .from('static_teams')
+            .update({
+              coach: selected.name,
+              coach_api_id: selected.id,
             last_updated: new Date().toISOString()
           })
           .eq('api_football_id', team.api_football_id);
-        updated++;
+          updated++;
+        }
       }
     } catch (error) {
       // Skip

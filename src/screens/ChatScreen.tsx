@@ -11,10 +11,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING } from '../theme/theme';
 import { useTheme } from '../contexts/ThemeContext';
+import { useTranslation } from '../hooks/useTranslation';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function ChatScreen() {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const isLight = theme === 'light';
   const colors = isLight ? COLORS.light : COLORS.dark;
@@ -22,9 +24,9 @@ export default function ChatScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, isLight && { borderBottomWidth: 1, borderBottomColor: colors.border }]}>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Sohbet</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>{t('chat.title')}</Text>
         <View style={[styles.comingSoonBadge, isLight && { backgroundColor: 'rgba(201, 164, 76, 0.15)', borderColor: colors.border }]}>
-          <Text style={[styles.comingSoonBadgeText, isLight && { color: '#B45309' }]}>Yakında</Text>
+          <Text style={[styles.comingSoonBadgeText, isLight && { color: '#B45309' }]}>{t('chat.comingSoon')}</Text>
         </View>
       </View>
       
@@ -41,14 +43,13 @@ export default function ChatScreen() {
             <View style={[styles.iconContainer, isLight && { backgroundColor: colors.muted, borderRadius: 60, padding: 4 }]}>
               <Ionicons name="chatbubbles-outline" size={60} color="#1FA2A6" />
             </View>
-            <Text style={[styles.comingSoonTitle, { color: colors.foreground }]}>Sohbet Odası</Text>
-            <Text style={[styles.comingSoonSubtitle, { color: '#047857' }]}>Çok Yakında</Text>
+            <Text style={[styles.comingSoonTitle, { color: colors.foreground }]}>{t('chat.roomTitle')}</Text>
+            <Text style={[styles.comingSoonSubtitle, { color: '#047857' }]}>{t('chat.comingSoonSubtitle')}</Text>
             <Text style={[styles.comingSoonDescription, { color: colors.mutedForeground }]}>
-              Maç sırasında diğer TacticIQ kullanıcılarıyla{'\n'}
-              canlı sohbet edebileceksiniz.
+              {t('chat.comingSoonDescription')}
             </Text>
             <View style={styles.featuresContainer}>
-              {['Canlı maç sohbeti', 'Takım bazlı odalar', 'Emoji ve gif desteği', 'AI moderasyonu'].map((label) => (
+              {[t('chat.featureLiveChat'), t('chat.featureTeamRooms'), t('chat.featureEmoji'), t('chat.featureModeration')].map((label) => (
                 <View key={label} style={styles.featureItem}>
                   <Ionicons name="checkmark-circle" size={18} color="#1FA2A6" />
                   <Text style={[styles.featureText, { color: colors.foreground }]}>{label}</Text>
@@ -58,7 +59,7 @@ export default function ChatScreen() {
             <View style={[styles.betaInfoContainer, isLight && { backgroundColor: 'rgba(201, 164, 76, 0.12)', borderColor: colors.border }]}>
               <Ionicons name="rocket-outline" size={16} color="#C9A44C" />
               <Text style={[styles.betaInfoText, isLight && { color: '#B45309' }]}>
-                PRO kullanıcılar için beta erişim yakında
+                {t('chat.betaAccessInfo')}
               </Text>
             </View>
           </View>
@@ -75,42 +76,40 @@ export default function ChatScreen() {
                 <Ionicons name="chatbubbles-outline" size={60} color="#1FA2A6" />
               </LinearGradient>
             </View>
-            <Text style={styles.comingSoonTitle}>Sohbet Odası</Text>
-            <Text style={styles.comingSoonSubtitle}>Çok Yakında</Text>
+            <Text style={styles.comingSoonTitle}>{t('chat.roomTitle')}</Text>
+            <Text style={styles.comingSoonSubtitle}>{t('chat.comingSoonSubtitle')}</Text>
             <Text style={styles.comingSoonDescription}>
-              Maç sırasında diğer TacticIQ kullanıcılarıyla{'\n'}
-              canlı sohbet edebileceksiniz.
+              {t('chat.comingSoonDescription')}
             </Text>
             <View style={styles.featuresContainer}>
               <View style={styles.featureItem}>
                 <Ionicons name="checkmark-circle" size={18} color="#1FA2A6" />
-                <Text style={styles.featureText}>Canlı maç sohbeti</Text>
+                <Text style={styles.featureText}>{t('chat.featureLiveChat')}</Text>
               </View>
               <View style={styles.featureItem}>
                 <Ionicons name="checkmark-circle" size={18} color="#1FA2A6" />
-                <Text style={styles.featureText}>Takım bazlı odalar</Text>
+                <Text style={styles.featureText}>{t('chat.featureTeamRooms')}</Text>
               </View>
               <View style={styles.featureItem}>
                 <Ionicons name="checkmark-circle" size={18} color="#1FA2A6" />
-                <Text style={styles.featureText}>Emoji ve gif desteği</Text>
+                <Text style={styles.featureText}>{t('chat.featureEmoji')}</Text>
               </View>
               <View style={styles.featureItem}>
                 <Ionicons name="checkmark-circle" size={18} color="#1FA2A6" />
-                <Text style={styles.featureText}>AI moderasyonu</Text>
+                <Text style={styles.featureText}>{t('chat.featureModeration')}</Text>
               </View>
             </View>
             <View style={styles.betaInfoContainer}>
               <Ionicons name="rocket-outline" size={16} color="#C9A44C" />
               <Text style={styles.betaInfoText}>
-                PRO kullanıcılar için beta erişim yakında
+                {t('chat.betaAccessInfo')}
               </Text>
             </View>
           </LinearGradient>
         )}
         
         <Text style={[styles.footerNote, { color: colors.mutedForeground }]}>
-          TacticIQ'yu kullandığınız için teşekkürler.{'\n'}
-          Sohbet özelliğini sizin için geliştiriyoruz!
+          {t('chat.footerNote')}
         </Text>
       </View>
     </SafeAreaView>

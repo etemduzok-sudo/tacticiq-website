@@ -10,6 +10,8 @@ if (!supabase) {
   console.warn('⚠️ Supabase not configured in routes/teams.js - some features will be disabled');
 }
 
+const { selectActiveCoach } = require('../utils/selectActiveCoach');
+
 // GET /api/teams/search/:query - Search teams by name
 router.get('/search/:query', async (req, res) => {
   try {
@@ -26,6 +28,40 @@ router.get('/search/:query', async (req, res) => {
       success: false,
       error: error.message,
     });
+  }
+});
+
+// POST /api/teams/coaches/refresh - Stale coach'ları API'den çekip DB güncelle
+// teamIds: number[] - max 5 (rate limit)
+router.post('/coaches/refresh', async (req, res) => {
+  try {
+    const { teamIds } = req.body;
+    if (!teamIds || !Array.isArray(teamIds) || teamIds.length === 0) {
+      return res.status(400).json({ success: false, error: 'teamIds required' });
+    }
+    const ids = teamIds.slice(0, 5);
+    const results = {};
+    for (const teamId of ids) {
+      try {
+        const data = await footballApi.getTeamCoach(teamId);
+        const selected = data.response?.length ? selectActiveCoach(data.response, teamId) : null;
+        if (selected && supabase) {
+          await supabase.from('static_teams').update({
+            coach: selected.name,
+            coach_api_id: selected.id,
+            last_updated: new Date().toISOString(),
+          }).eq('api_football_id', teamId);
+          results[teamId] = { coach: selected.name, updated: true };
+        } else {
+          results[teamId] = { coach: null, updated: false };
+        }
+      } catch (e) {
+        results[teamId] = { coach: null, updated: false, error: e.message };
+      }
+    }
+    res.json({ success: true, data: results });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
@@ -312,21 +348,31 @@ router.get('/:id/coach', async (req, res) => {
       });
     }
     
-    // Get the current coach (aktif olarak o takımda çalışan - end tarihi olmayan)
-    const coaches = data.response;
-    const currentCoach = coaches.find(c => 
-      c.career && c.career.some(car => car.team?.id == teamId && !car.end)
-    ) || coaches[0];
+    // Güncel coach seç (birden fazla end=null varsa en son başlayan)
+    const selected = selectActiveCoach(data.response, teamId);
+    const apiCoach = selected && data.response.find((c) => c.id === selected.id);
     
-    console.log(`✅ API'den coach bulundu: ${currentCoach.name}`);
+    if (!selected || !apiCoach) {
+      return res.json({
+        success: true,
+        data: {
+          teamId: id,
+          coach: null,
+          message: 'No coach data available',
+        },
+        cached: data.cached || false,
+      });
+    }
+    
+    console.log(`✅ API'den coach bulundu: ${selected.name}`);
     
     // 3. Veritabanına kaydet (güncel tutmak için)
-    if (supabase && currentCoach) {
+    if (supabase && selected.name) {
       const { error: updateError } = await supabase
         .from('static_teams')
         .update({ 
-          coach: currentCoach.name,
-          coach_api_id: currentCoach.id,
+          coach: selected.name,
+          coach_api_id: selected.id,
           last_updated: new Date().toISOString()
         })
         .eq('api_football_id', teamId);
@@ -334,7 +380,7 @@ router.get('/:id/coach', async (req, res) => {
       if (updateError) {
         console.warn(`⚠️ Coach DB güncelleme hatası (team ${teamId}):`, updateError.message);
       } else {
-        console.log(`💾 Coach DB'ye kaydedildi: ${currentCoach.name}`);
+        console.log(`💾 Coach DB'ye kaydedildi: ${selected.name}`);
       }
     }
     
@@ -343,12 +389,12 @@ router.get('/:id/coach', async (req, res) => {
       data: {
         teamId: id,
         coach: {
-          id: currentCoach.id,
-          name: currentCoach.name,
-          firstName: currentCoach.firstname,
-          lastName: currentCoach.lastname,
-          age: currentCoach.age,
-          nationality: currentCoach.nationality,
+          id: apiCoach.id,
+          name: selected.name,
+          firstName: apiCoach.firstname,
+          lastName: apiCoach.lastname,
+          age: apiCoach.age,
+          nationality: apiCoach.nationality,
           // ⚠️ TELİF: Fotoğraflar telifli olabilir
           photo: null,
         },
@@ -366,11 +412,13 @@ router.get('/:id/coach', async (req, res) => {
 });
 
 // GET /api/teams/:id/squad - Get team squad from DB; yoksa tek seferlik API'den çek ve kaydet
+// ?refresh=1 veya ?refresh=true → Kadroyu API'den zorla yenile (eski oyuncular sorunu için)
 router.get('/:id/squad', async (req, res) => {
   try {
     const teamId = parseInt(req.params.id, 10);
-    const { season } = req.query;
+    const { season, refresh } = req.query;
     const currentSeason = parseInt(season, 10) || 2025;
+    const forceRefresh = refresh === '1' || refresh === 'true';
 
     if (!supabase) {
       // 🧪 Supabase yoksa bile mock test kadroları döndür
@@ -385,7 +433,7 @@ router.get('/:id/squad', async (req, res) => {
       });
     }
 
-    const { data: row, error } = await supabase
+    let { data: row, error } = await supabase
       .from('team_squads')
       .select('team_id, team_name, team_data, players, updated_at')
       .eq('team_id', teamId)
@@ -400,9 +448,10 @@ router.get('/:id/squad', async (req, res) => {
       });
     }
 
-    // Kadro DB'de yoksa tek seferlik API'den çek ve kaydet (on-demand sync)
-    if (!row || !row.players || (Array.isArray(row.players) && row.players.length === 0)) {
-      console.log(`🔄 Squad missing for team ${teamId}, triggering on-demand sync...`);
+    // Kadro DB'de yoksa veya ?refresh=1 ile zorla yenileme istenirse API'den çek
+    const needsSync = !row || !row.players || (Array.isArray(row.players) && row.players.length === 0) || forceRefresh;
+    if (needsSync) {
+      console.log(`🔄 Squad ${forceRefresh ? 'refresh' : 'missing'} for team ${teamId}, triggering on-demand sync...`);
       try {
         const squadSyncService = require('../services/squadSyncService');
         const result = await squadSyncService.syncOneTeamSquad(teamId, null);

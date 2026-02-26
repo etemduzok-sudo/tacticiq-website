@@ -27,6 +27,8 @@ import {
   WEBSITE_ICON_SIZES,
   WEBSITE_TYPOGRAPHY as WDS_TYPOGRAPHY,
 } from '../config/WebsiteDesignSystem';
+import { useTheme } from '../contexts/ThemeContext';
+import { useTranslation } from '../hooks/useTranslation';
 import authService from '../services/authService';
 
 // ============================================
@@ -75,6 +77,10 @@ interface ForgotPasswordScreenProps {
 export default function ForgotPasswordScreen({
   onBack,
 }: ForgotPasswordScreenProps) {
+  const { t } = useTranslation();
+  const { theme } = useTheme();
+  const isLight = theme === 'light';
+  const themeColors = isLight ? COLORS.light : COLORS.dark;
   const [email, setEmail] = useState('');
   const [isEmailSent, setIsEmailSent] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -105,7 +111,7 @@ export default function ForgotPasswordScreen({
 
   const handleSendEmail = async () => {
     if (!email || !email.includes('@')) {
-      Alert.alert('Hata', 'Geçersiz email adresi');
+      Alert.alert(t('common.error'), t('forgotPassword.invalidEmail'));
       return;
     }
     setIsLoading(true);
@@ -114,180 +120,90 @@ export default function ForgotPasswordScreen({
     if (result.success) {
       setIsEmailSent(true);
     } else {
-      Alert.alert('Hata', `Şifre sıfırlama başarısız: ${result.error}`);
+      Alert.alert(t('common.error'), `${t('forgotPassword.resetFailed')}: ${result.error}`);
     }
   };
 
   // Animasyonlar kaldırıldı (sıçrama yok)
 
-  return (
-    <SafeAreaView style={styles.safeArea}>
-      <LinearGradient
-        colors={['#0a1612', '#0F2A24', '#0a1612']}
-        style={styles.container}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0, y: 1 }}
-      >
-        {/* Grid Pattern Background */}
-        <View style={styles.gridPattern} />
-        {/* Back Button - Sol üst köşe */}
-        <TouchableOpacity style={styles.backButtonTop} onPress={onBack} activeOpacity={0.7}>
-          <Ionicons name="arrow-back" size={WEBSITE_ICON_SIZES.lg} color={WEBSITE_BRAND_COLORS.white} />
-        </TouchableOpacity>
-        
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.keyboardView}
-        >
-          <View style={styles.screenContainer}>
-            <View style={styles.contentWrapper}>
-
-              <View style={styles.content}>
+  const mainContent = (
+    <>
+      <View style={styles.gridPattern} />
+      <TouchableOpacity style={[styles.backButtonTop, isLight && { backgroundColor: themeColors.muted, borderColor: themeColors.border }]} onPress={onBack} activeOpacity={0.7}>
+        <Ionicons name="arrow-back" size={WEBSITE_ICON_SIZES.lg} color={isLight ? themeColors.foreground : WEBSITE_BRAND_COLORS.white} />
+      </TouchableOpacity>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
+        <View style={styles.screenContainer}>
+          <View style={styles.contentWrapper}>
+            <View style={styles.content}>
               {!isEmailSent ? (
                 <>
-                  {/* [B] BRAND ZONE - OnboardingScreen ile aynı konum */}
                   <View style={styles.brandZone}>
-                    {Platform.OS === 'web' ? (
-                      <img 
-                        src="/TacticIQ.svg" 
-                        alt="TacticIQ" 
-                        style={{ width: 180, height: 180 }} 
-                      />
-                    ) : (
-                      <Image
-                        source={require('../../assets/logo.png')}
-                        style={{ width: 180, height: 180 }}
-                        resizeMode="contain"
-                      />
-                    )}
+                    {Platform.OS === 'web' ? <img src="/TacticIQ.svg" alt="TacticIQ" style={{ width: 180, height: 180 }} /> : <Image source={require('../../assets/logo.png')} style={{ width: 180, height: 180 }} resizeMode="contain" />}
                   </View>
-
-                  {/* [C] PRIMARY ACTION ZONE - SPACER (no social buttons on this screen) */}
                   <View style={styles.socialZoneSpacer} />
-
-                  {/* [D] DIVIDER ZONE - SPACER (no divider on this screen) */}
                   <View style={styles.dividerZoneSpacer} />
-
-                  {/* [E] FORM INPUT ZONE */}
                   <View style={styles.formZone}>
-                    <View style={styles.inputWrapper}>
-                      <Ionicons
-                        name="mail-outline"
-                        size={20}
-                        color="#059669"
-                        style={styles.inputIcon}
-                      />
-                      <TextInput
-                        style={[
-                          styles.input,
-                          emailStatus === 'available' && styles.inputSuccess,
-                          emailStatus === 'taken' && styles.inputError,
-                        ]}
-                        placeholder="E-posta"
-                        placeholderTextColor="#64748B"
-                        value={email}
-                        onChangeText={handleEmailChange}
-                        keyboardType="email-address"
-                        autoCapitalize="none"
-                        autoCorrect={false}
-                      />
-                      {emailStatus !== 'idle' && (
-                        <View style={styles.statusIndicator}>
-                          {emailStatus === 'checking' && <Text style={styles.checkingText}>⏳</Text>}
-                          {emailStatus === 'available' && <Text style={styles.availableText}>✅</Text>}
-                          {emailStatus === 'taken' && <Text style={styles.takenText}>❌</Text>}
-                        </View>
-                      )}
+                    <View style={[styles.inputWrapper, isLight && { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
+                      <Ionicons name="mail-outline" size={20} color={isLight ? themeColors.ring : '#059669'} style={styles.inputIcon} />
+                      <TextInput style={[styles.input, emailStatus === 'available' && styles.inputSuccess, emailStatus === 'taken' && styles.inputError, isLight && { color: themeColors.foreground }]} placeholder={t('auth.email')} placeholderTextColor={isLight ? themeColors.mutedForeground : '#64748B'} value={email} onChangeText={handleEmailChange} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
+                      {emailStatus !== 'idle' && <View style={styles.statusIndicator}>{emailStatus === 'checking' && <Text style={styles.checkingText}>⏳</Text>}{emailStatus === 'available' && <Text style={styles.availableText}>✅</Text>}{emailStatus === 'taken' && <Text style={styles.takenText}>❌</Text>}</View>}
                     </View>
-
-                    {/* [G] PRIMARY CTA BUTTON */}
-                    <TouchableOpacity
-                      style={[styles.ctaButton, isLoading && styles.ctaButtonDisabled]}
-                      onPress={handleSendEmail}
-                      disabled={isLoading}
-                      activeOpacity={0.8}
-                    >
-                      <LinearGradient
-                        colors={[WEBSITE_BRAND_COLORS.secondary, WEBSITE_BRAND_COLORS.primary]}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
-                        style={styles.ctaButtonGradient}
-                      >
-                        {isLoading ? (
-                          <View style={styles.loadingContainer}>
-                            <ActivityIndicator color="#FFFFFF" />
-                            <Text style={styles.ctaButtonText}>Gönderiliyor...</Text>
-                          </View>
-                        ) : (
-                          <Text style={styles.ctaButtonText}>Şifre Sıfırlama Linki Gönder</Text>
-                        )}
+                    <TouchableOpacity style={[styles.ctaButton, isLoading && styles.ctaButtonDisabled]} onPress={handleSendEmail} disabled={isLoading} activeOpacity={0.8}>
+                      <LinearGradient colors={[WEBSITE_BRAND_COLORS.secondary, WEBSITE_BRAND_COLORS.primary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.ctaButtonGradient}>
+                        {isLoading ? <View style={styles.loadingContainer}><ActivityIndicator color="#FFFFFF" /><Text style={styles.ctaButtonText}>{t('forgotPassword.sending')}</Text></View> : <Text style={styles.ctaButtonText}>{t('forgotPassword.sendResetLink')}</Text>}
                       </LinearGradient>
                     </TouchableOpacity>
                   </View>
-
-                  {/* [F] SECONDARY ACTION LINKS */}
                   <View style={styles.secondaryLinkContainer}>
-                    <Text style={styles.secondaryLinkText}>Şifrenizi hatırladınız mı? </Text>
+                    <Text style={[styles.secondaryLinkText, isLight && { color: themeColors.mutedForeground }]}>{t('forgotPassword.rememberPassword')} </Text>
                     <TouchableOpacity onPress={onBack} activeOpacity={0.7}>
-                      <Text style={styles.secondaryLink}>Giriş Yap</Text>
+                      <Text style={[styles.secondaryLink, isLight && { color: themeColors.ring }]}>{t('forgotPassword.login')}</Text>
                     </TouchableOpacity>
                   </View>
                 </>
               ) : (
                 <>
-                  {/* [B] BRAND ZONE - OnboardingScreen ile aynı konum */}
                   <View style={styles.brandZone}>
-                    <Image
-                      source={Platform.OS === 'web' ? { uri: '/TacticIQ.svg' } : require('../../assets/logo.png')}
-                      style={{ width: 180, height: 180 }}
-                      resizeMode="contain"
-                    />
+                    <Image source={Platform.OS === 'web' ? { uri: '/TacticIQ.svg' } : require('../../assets/logo.png')} style={{ width: 180, height: 180 }} resizeMode="contain" />
                   </View>
-
-                  {/* Success Message */}
-                  <View style={styles.successContainer}>
-                    <Ionicons name="checkmark-circle" size={64} color="#059669" />
-                    <Text style={styles.successTitle}>Email Gönderildi!</Text>
-                    <Text style={styles.successMessage}>
-                      Şifre sıfırlama bağlantısı{' '}
-                      <Text style={styles.successEmail}>{email}</Text> adresine gönderildi.
-                    </Text>
-
-                    <View style={styles.helpBox}>
+                  <View style={[styles.successContainer, isLight && { backgroundColor: themeColors.card }]}>
+                    <Ionicons name="checkmark-circle" size={64} color={isLight ? themeColors.ring : '#059669'} />
+                    <Text style={[styles.successTitle, isLight && { color: themeColors.foreground }]}>{t('forgotPassword.emailSentTitle')}</Text>
+                    <Text style={[styles.successMessage, isLight && { color: themeColors.mutedForeground }]}>{t('forgotPassword.emailSentMessage', { email })}</Text>
+                    <View style={[styles.helpBox, isLight && { backgroundColor: themeColors.muted }]}>
                       <View style={styles.helpHeader}>
-                        <Ionicons name="help-circle-outline" size={16} color="#059669" />
-                        <Text style={styles.helpTitle}>Email gelmediyse:</Text>
+                        <Ionicons name="help-circle-outline" size={16} color={isLight ? themeColors.ring : '#059669'} />
+                        <Text style={[styles.helpTitle, isLight && { color: themeColors.foreground }]}>{t('forgotPassword.emailNotReceived')}</Text>
                       </View>
                       <View style={styles.helpList}>
-                        <Text style={styles.helpItem}>• Spam klasörünü kontrol edin</Text>
-                        <Text style={styles.helpItem}>• Email adresini doğru yazdığınızdan emin olun</Text>
+                        <Text style={[styles.helpItem, isLight && { color: themeColors.mutedForeground }]}>• {t('forgotPassword.checkSpam')}</Text>
+                        <Text style={[styles.helpItem, isLight && { color: themeColors.mutedForeground }]}>• {t('forgotPassword.checkAddress')}</Text>
                       </View>
                     </View>
-
-                    <TouchableOpacity
-                      style={styles.retryButton}
-                      onPress={() => {
-                        setIsEmailSent(false);
-                      }}
-                      activeOpacity={0.8}
-                    >
-                      <Text style={styles.retryButtonText}>Tekrar Dene</Text>
+                    <TouchableOpacity style={[styles.retryButton, isLight && { backgroundColor: themeColors.ring }]} onPress={() => setIsEmailSent(false)} activeOpacity={0.8}>
+                      <Text style={styles.retryButtonText}>{t('forgotPassword.retry')}</Text>
                     </TouchableOpacity>
                   </View>
                 </>
               )}
-              </View>
-            </View>
-
-            {/* [H] FOOTER ZONE - FIXED AT BOTTOM (OUTSIDE SCROLLABLE CONTENT) */}
-            <View style={styles.footerZone}>
-              <Text style={styles.footer}>
-                © 2026. Tüm hakları saklıdır.
-              </Text>
             </View>
           </View>
-        </KeyboardAvoidingView>
-      </LinearGradient>
+          <View style={styles.footerZone}>
+            <Text style={[styles.footer, isLight && { color: themeColors.mutedForeground }]}>{t('auth.allRightsReserved')}</Text>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+    </>
+  );
+
+  return (
+    <SafeAreaView style={[styles.safeArea, isLight && { backgroundColor: themeColors.background }]}>
+      {isLight ? (
+        <View style={[styles.container, { backgroundColor: themeColors.background }]}>{mainContent}</View>
+      ) : (
+        <LinearGradient colors={['#0a1612', '#0F2A24', '#0a1612']} style={styles.container} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}>{mainContent}</LinearGradient>
+      )}
     </SafeAreaView>
   );
 }

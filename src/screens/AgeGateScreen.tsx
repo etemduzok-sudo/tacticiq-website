@@ -17,7 +17,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { BRAND, SPACING, TYPOGRAPHY } from '../theme/theme';
 import { AUTH_GRADIENT } from '../theme/gradients';
+import { STANDARD_COLORS_LIGHT } from '../constants/standardLayout';
 import { useTranslation } from '../hooks/useTranslation';
+import { useTheme } from '../contexts/ThemeContext';
 import {
   ConsentPreferences,
   detectRegion,
@@ -45,6 +47,9 @@ const DAYS = Array.from({ length: 31 }, (_, i) => i + 1);
 
 export const AgeGateScreen: React.FC<AgeGateScreenProps> = ({ onComplete }) => {
   const { t } = useTranslation();
+  const { theme } = useTheme();
+  const isLight = theme === 'light';
+  const colors = isLight ? STANDARD_COLORS_LIGHT : { card: '#0F2A24', border: 'rgba(230,230,230,0.1)', foreground: '#E6E6E6', mutedForeground: 'rgba(255,255,255,0.75)', background: AUTH_GRADIENT.colors[0], secondary: BRAND.secondary };
   
   // No pre-selected date - user must choose
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
@@ -194,7 +199,7 @@ export const AgeGateScreen: React.FC<AgeGateScreenProps> = ({ onComplete }) => {
     if (!legalAccepted) {
       Alert.alert(
         t('common.error') || 'Hata',
-        'Lütfen yasal belgeleri okuyup kabul edin'
+        t('ageGate.pleaseAcceptLegal')
       );
       return;
     }
@@ -203,7 +208,7 @@ export const AgeGateScreen: React.FC<AgeGateScreenProps> = ({ onComplete }) => {
     if (selectedYear === null || selectedMonth === null || selectedDay === null) {
       Alert.alert(
         t('common.error') || 'Hata',
-        'Lütfen doğum tarihinizi seçin'
+        t('ageGate.pleaseSelectBirthDate')
       );
       return;
     }
@@ -215,7 +220,7 @@ export const AgeGateScreen: React.FC<AgeGateScreenProps> = ({ onComplete }) => {
       if (age === null) {
         Alert.alert(
           t('common.error') || 'Hata',
-          'Lütfen doğum tarihinizi seçin'
+          t('ageGate.pleaseSelectBirthDate')
         );
         setSaving(false);
         return;
@@ -225,7 +230,7 @@ export const AgeGateScreen: React.FC<AgeGateScreenProps> = ({ onComplete }) => {
       if (age < 18) {
         Alert.alert(
           t('common.error') || 'Hata',
-          '18 yaşından küçükler kayıt olamaz. Lütfen doğum tarihinizi kontrol edin.'
+          t('ageGate.underAgeCannotRegister')
         );
         setSaving(false);
         return;
@@ -273,7 +278,7 @@ export const AgeGateScreen: React.FC<AgeGateScreenProps> = ({ onComplete }) => {
       onComplete(isMinor);
     } catch (error) {
       console.error('Error:', error);
-      Alert.alert(t('common.error') || 'Hata', 'Bir hata oluştu');
+      Alert.alert(t('common.error'), t('common.errorOccurred'));
       setSaving(false);
     }
   };
@@ -557,58 +562,80 @@ export const AgeGateScreen: React.FC<AgeGateScreenProps> = ({ onComplete }) => {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, isLight && { backgroundColor: colors.background }]}>
+      {isLight ? (
+        <View style={[styles.container, { backgroundColor: colors.background }]}>
+          <View style={[styles.gridPattern, Platform.OS === 'web' && { backgroundImage: `linear-gradient(to right, rgba(15,42,36,0.12) 1px, transparent 1px), linear-gradient(to bottom, rgba(15,42,36,0.12) 1px, transparent 1px)`, backgroundSize: '40px 40px' }]} />
+          <View style={styles.content}>
+            <Image source={logoImage} style={styles.logoImage} resizeMode="contain" />
+            <Text style={[styles.title, { color: colors.foreground }]}>{t('ageGate.title') || 'Yaş Doğrulama'}</Text>
+            <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>{t('ageGate.subtitle') || 'Doğum tarihinizi seçin'}</Text>
+            {selectedYear && selectedMonth && selectedDay && (
+              <View style={[styles.ageDisplay, { backgroundColor: isLight ? 'rgba(31, 162, 166, 0.12)' : undefined, borderColor: colors.secondary, borderWidth: 1.5 }]}>
+                <Text style={[styles.ageText, { color: colors.secondary }]}>{calculateAge() || '-'} {t('ageGate.yearsOld') || 'yaşında'}</Text>
+              </View>
+            )}
+            <View style={styles.pickersContainer}>
+              <View style={styles.pickerColumn}>
+                <Text style={[styles.pickerLabel, { color: colors.foreground }]}>{t('ageGate.year') || 'Yıl'}</Text>
+                <View style={[styles.pickerWrapper, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1.5 }]}>{renderScrollablePicker(YEARS, selectedYear, setSelectedYear)}</View>
+              </View>
+              <View style={styles.pickerColumn}>
+                <Text style={[styles.pickerLabel, { color: colors.foreground }]}>{t('ageGate.month') || 'Ay'}</Text>
+                <View style={[styles.pickerWrapper, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1.5 }]}>{renderScrollablePicker(MONTHS, selectedMonth, setSelectedMonth, (m) => m.toString().padStart(2, '0'))}</View>
+              </View>
+              <View style={styles.pickerColumn}>
+                <Text style={[styles.pickerLabel, { color: colors.foreground }]}>{t('ageGate.day') || 'Gün'}</Text>
+                <View style={[styles.pickerWrapper, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1.5 }]}>{renderScrollablePicker(DAYS, selectedDay, setSelectedDay, (d) => d.toString().padStart(2, '0'))}</View>
+              </View>
+            </View>
+            <View style={styles.buttonsRow}>
+              <TouchableOpacity style={[styles.linkButton, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1.5 }]} onPress={() => setShowLegalModal(true)}>
+                <Text style={[styles.linkButtonText, { color: colors.foreground }]}>📋 {t('legal.title') || 'Yasal Belgeler'}</Text>
+                {legalAccepted && <Text style={[styles.checkmark, { color: colors.secondary }]}>✓</Text>}
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.linkButton, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1.5 }]} onPress={() => setShowConsentModal(true)}>
+                <Text style={[styles.linkButtonText, { color: colors.foreground }]}>🔒 {t('consent.title') || 'Gizlilik'}</Text>
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity style={styles.continueButton} onPress={handleContinue} disabled={saving || !legalAccepted}>
+              <LinearGradient colors={[BRAND.secondary, '#047857']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.continueGradient}>
+                {saving ? <ActivityIndicator size="small" color={BRAND.white} /> : <Text style={styles.continueText}>{t('common.next') || 'Devam Et'}</Text>}
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : (
       <LinearGradient colors={AUTH_GRADIENT.colors} style={styles.container} start={AUTH_GRADIENT.start} end={AUTH_GRADIENT.end}>
-        {/* Grid Pattern Background */}
         <View style={styles.gridPattern} />
         <View style={styles.content}>
-          <Image 
-            source={logoImage} 
-            style={styles.logoImage}
-            resizeMode="contain" 
-          />
-          
+          <Image source={logoImage} style={styles.logoImage} resizeMode="contain" />
           <Text style={styles.title}>{t('ageGate.title') || 'Yaş Doğrulama'}</Text>
           <Text style={styles.subtitle}>{t('ageGate.subtitle') || 'Doğum tarihinizi seçin'}</Text>
-          
-          {/* Yaş Göstergesi - Basitleştirilmiş */}
           {selectedYear && selectedMonth && selectedDay && (
             <View style={styles.ageDisplay}>
-              <Text style={styles.ageText}>
-                {calculateAge() || '-'} {t('ageGate.yearsOld') || 'yaşında'}
-              </Text>
+              <Text style={styles.ageText}>{calculateAge() || '-'} {t('ageGate.yearsOld') || 'yaşında'}</Text>
             </View>
           )}
-
           <View style={styles.pickersContainer}>
             <View style={styles.pickerColumn}>
               <Text style={styles.pickerLabel}>{t('ageGate.year') || 'Yıl'}</Text>
-              <View style={styles.pickerWrapper}>
-                {renderScrollablePicker(YEARS, selectedYear, setSelectedYear)}
-              </View>
+              <View style={styles.pickerWrapper}>{renderScrollablePicker(YEARS, selectedYear, setSelectedYear)}</View>
             </View>
-
             <View style={styles.pickerColumn}>
               <Text style={styles.pickerLabel}>{t('ageGate.month') || 'Ay'}</Text>
-              <View style={styles.pickerWrapper}>
-                {renderScrollablePicker(MONTHS, selectedMonth, setSelectedMonth, (m) => m.toString().padStart(2, '0'))}
-              </View>
+              <View style={styles.pickerWrapper}>{renderScrollablePicker(MONTHS, selectedMonth, setSelectedMonth, (m) => m.toString().padStart(2, '0'))}</View>
             </View>
-
             <View style={styles.pickerColumn}>
               <Text style={styles.pickerLabel}>{t('ageGate.day') || 'Gün'}</Text>
-              <View style={styles.pickerWrapper}>
-                {renderScrollablePicker(DAYS, selectedDay, setSelectedDay, (d) => d.toString().padStart(2, '0'))}
-              </View>
+              <View style={styles.pickerWrapper}>{renderScrollablePicker(DAYS, selectedDay, setSelectedDay, (d) => d.toString().padStart(2, '0'))}</View>
             </View>
           </View>
-
           <View style={styles.buttonsRow}>
             <TouchableOpacity style={styles.linkButton} onPress={() => setShowLegalModal(true)}>
               <Text style={styles.linkButtonText}>📋 {t('legal.title') || 'Yasal Belgeler'}</Text>
               {legalAccepted && <Text style={styles.checkmark}>✓</Text>}
             </TouchableOpacity>
-
             <TouchableOpacity style={styles.linkButton} onPress={() => setShowConsentModal(true)}>
               <Text style={styles.linkButtonText}>🔒 {t('consent.title') || 'Gizlilik'}</Text>
             </TouchableOpacity>
@@ -616,18 +643,14 @@ export const AgeGateScreen: React.FC<AgeGateScreenProps> = ({ onComplete }) => {
 
           <TouchableOpacity style={styles.continueButton} onPress={handleContinue} disabled={saving || !legalAccepted}>
             <LinearGradient colors={[BRAND.emerald, '#047857']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.continueGradient}>
-              {saving ? (
-                <ActivityIndicator size="small" color={BRAND.white} />
-              ) : (
-                <Text style={styles.continueText}>{t('common.next') || 'Devam Et'}</Text>
-              )}
+              {saving ? <ActivityIndicator size="small" color={BRAND.white} /> : <Text style={styles.continueText}>{t('common.next') || 'Devam Et'}</Text>}
             </LinearGradient>
           </TouchableOpacity>
         </View>
-
-        {renderConsentModal()}
-        {renderLegalModal()}
       </LinearGradient>
+      )}
+      {renderConsentModal()}
+      {renderLegalModal()}
     </SafeAreaView>
   );
 };

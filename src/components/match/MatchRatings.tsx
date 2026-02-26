@@ -23,6 +23,7 @@ import Svg, { Circle } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import { PlayerRatingSlider } from './PlayerRatingSlider';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useTranslation } from '../../hooks/useTranslation';
 import { COLORS } from '../../theme/theme';
 
 // Web için animasyonları devre dışı bırak
@@ -191,6 +192,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
   hasPrediction = true, // ✅ Varsayılan true - eski maçlar için geriye uyumluluk
 }) => {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const isLight = theme === 'light';
   const themeColors = isLight ? COLORS.light : COLORS.dark;
 
@@ -1081,7 +1083,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
     } catch (error) {
       console.error('Error saving ratings:', error);
       if (!silent) {
-        Alert.alert('Hata!', 'Değerlendirmeler kaydedilemedi. Lütfen tekrar deneyin.');
+        Alert.alert(t('common.error'), t('matchRatings.ratingsSaveFailed'));
       }
     }
   };
@@ -1148,7 +1150,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
     } catch (error) {
       console.error('Error saving player ratings:', error);
       if (!silent) {
-        Alert.alert('Hata!', 'Değerlendirmeler kaydedilemedi. Lütfen tekrar deneyin.');
+        Alert.alert(t('common.error'), t('matchRatings.ratingsSaveFailed'));
       }
     }
   };

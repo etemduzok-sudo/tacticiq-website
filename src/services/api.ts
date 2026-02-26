@@ -418,9 +418,19 @@ export const teamsApi = {
     body: JSON.stringify({ teamIds }),
   }),
 
+  // Stale coach'ları API'den yenile (max 5 takım)
+  refreshCoaches: (teamIds: number[]) => request('/teams/coaches/refresh', {
+    method: 'POST',
+    body: JSON.stringify({ teamIds }),
+  }),
+
   // Get team squad (oyuncu kadrosu)
-  getTeamSquad: (teamId: number, season?: number) => {
-    const params = season ? `?season=${season}` : '';
+  // refresh=true → API'den zorla yenile (eski oyuncular sorunu için)
+  getTeamSquad: (teamId: number, season?: number, refresh?: boolean) => {
+    const p = new URLSearchParams();
+    if (season) p.set('season', String(season));
+    if (refresh) p.set('refresh', '1');
+    const params = p.toString() ? `?${p.toString()}` : '';
     return request(`/teams/${teamId}/squad${params}`);
   },
 

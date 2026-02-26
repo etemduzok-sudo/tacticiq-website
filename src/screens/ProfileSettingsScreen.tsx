@@ -20,6 +20,7 @@ import { SPACING, COLORS, BRAND, SIZES, TYPOGRAPHY } from '../theme/theme';
 import { authApi } from '../services/api';
 import { STORAGE_KEYS } from '../config/constants';
 import { profileService } from '../services/profileService';
+import { useTranslation } from '../hooks/useTranslation';
 
 interface ProfileSettingsScreenProps {
   onBack: () => void;
@@ -42,6 +43,7 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
   onNavigateToDeleteAccount,
   onNavigateToProUpgrade,
 }) => {
+  const { t } = useTranslation();
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
   const [initialUsername, setInitialUsername] = useState(''); // Başlangıç kullanıcı adı
@@ -152,14 +154,14 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
   const handleThemeChange = (newTheme: Theme) => {
     setTheme(newTheme);
     setHasChanges(true);
-    Alert.alert('Tema Değişti', `${newTheme} tema uygulandı`);
+    Alert.alert(t('profile.themeChanged'), `${newTheme} ${t('profile.themeApplied')}`);
   };
 
   const handleSave = async () => {
     try {
       // ✅ Kullanıcı adı kontrolü: Mutlaka available olmalı
       if (username && username !== initialUsername && usernameStatus !== 'available') {
-        Alert.alert('Uyarı', 'Lütfen kullanılabilir bir kullanıcı adı seçin');
+        Alert.alert(t('profile.warning'), t('profile.usernameWarning'));
         return;
       }
 
@@ -176,14 +178,14 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
         
         setHasChanges(false);
         setUsernameStatus('idle'); // Durumu sıfırla
-        Alert.alert('Başarılı', 'Değişiklikler kaydedildi! ✓\n\nWeb ve mobil senkronize edildi.');
+        Alert.alert(t('common.success'), t('profile.changesSaved'));
         console.log('✅ Profile updated via unified service:', { name, username, theme });
       } else {
-        Alert.alert('Hata', 'Değişiklikler kaydedilemedi: ' + result.error);
+        Alert.alert(t('common.error'), t('profile.settingsSaveFailed') + ' ' + result.error);
       }
     } catch (error: any) {
       console.error('Error saving profile:', error);
-      Alert.alert('Hata', 'Değişiklikler kaydedilirken bir hata oluştu');
+      Alert.alert(t('common.error'), t('profile.settingsSaveError'));
     }
   };
 
@@ -198,8 +200,8 @@ export const ProfileSettingsScreen: React.FC<ProfileSettingsScreenProps> = ({
   const handleBackPress = () => {
     if (hasChanges) {
       Alert.alert(
-        'Kaydedilmemiş Değişiklikler',
-        'Değişiklikleriniz kaydedilmedi. Çıkmak istediğinize emin misiniz?',
+        t('profile.unsavedChangesTitle'),
+        t('profile.unsavedChangesMessage'),
         [
           { text: 'Hayır', style: 'cancel' },
           { text: 'Evet', onPress: () => onBack() },

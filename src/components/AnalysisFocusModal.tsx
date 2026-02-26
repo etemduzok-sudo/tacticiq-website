@@ -77,7 +77,7 @@ export interface AnalysisFocus {
   backgroundColor: string; // Kart zemin rengi
 }
 
-// Web tasarımına uygun renkler - daha canlı ve okunabilir
+// Yumuşak dolgu renkleri – sert koyu tonlar yerine daha okunaklı
 export const ANALYSIS_FOCUSES: AnalysisFocus[] = [
   {
     id: 'defense',
@@ -85,9 +85,9 @@ export const ANALYSIS_FOCUSES: AnalysisFocus[] = [
     bonus: '+20% Defansif',
     description: 'Sarı/kırmızı kartlar, isabetli şutlar',
     icon: 'shield-outline',
-    color: '#93C5FD', // ✅ Daha parlak mavi
+    color: '#93C5FD',
     borderColor: '#3B82F6',
-    backgroundColor: '#0F172A', // ✅ Daha derin koyu mavi
+    backgroundColor: '#1E293B', // Yumuşak koyu mavi
   },
   {
     id: 'offense',
@@ -95,9 +95,9 @@ export const ANALYSIS_FOCUSES: AnalysisFocus[] = [
     bonus: '+20% Ofansif',
     description: 'Gol tahminleri, ilk gol, toplam şut',
     icon: 'flash-outline',
-    color: '#FCA5A5', // ✅ Daha parlak kırmızı
+    color: '#FCA5A5',
     borderColor: '#EF4444',
-    backgroundColor: '#1F0A0A', // ✅ Daha derin koyu kırmızı
+    backgroundColor: '#2D1F1F', // Yumuşak koyu kırmızı
   },
   {
     id: 'midfield',
@@ -105,9 +105,9 @@ export const ANALYSIS_FOCUSES: AnalysisFocus[] = [
     bonus: '+15% Orta Saha',
     description: 'Top hakimiyeti, pas, anahtar pas',
     icon: 'radio-button-on-outline',
-    color: '#D8B4FE', // ✅ Daha parlak mor
+    color: '#D8B4FE',
     borderColor: '#A855F7',
-    backgroundColor: '#1E1033', // ✅ Daha derin koyu mor
+    backgroundColor: '#2A2040', // Yumuşak koyu mor
   },
   {
     id: 'physical',
@@ -115,9 +115,9 @@ export const ANALYSIS_FOCUSES: AnalysisFocus[] = [
     bonus: '+15% Fiziksel',
     description: 'Maç temposu, koşu, sprint sayısı',
     icon: 'pulse-outline',
-    color: '#86EFAC', // ✅ Daha parlak yeşil
+    color: '#86EFAC',
     borderColor: '#22C55E',
-    backgroundColor: '#052E16', // ✅ Derin yeşil
+    backgroundColor: '#0F3D2E', // Yumuşak koyu yeşil
   },
   {
     id: 'tactical',
@@ -125,9 +125,9 @@ export const ANALYSIS_FOCUSES: AnalysisFocus[] = [
     bonus: '+25% Taktiksel',
     description: 'Formasyon, maç senaryosu, strateji',
     icon: 'layers-outline',
-    color: '#FDE047', // ✅ Daha parlak sarı
+    color: '#FDE047',
     borderColor: '#EAB308',
-    backgroundColor: '#1C1A05', // ✅ Derin sarı-kahve
+    backgroundColor: '#2D2A10', // Yumuşak sarı-kahve
   },
   {
     id: 'player',
@@ -135,9 +135,9 @@ export const ANALYSIS_FOCUSES: AnalysisFocus[] = [
     bonus: '+30% Bireysel',
     description: 'Golcü, asist kralı, maçın oyuncusu',
     icon: 'people-outline',
-    color: '#FDBA74', // ✅ Daha parlak turuncu
+    color: '#FDBA74',
     borderColor: '#F97316',
-    backgroundColor: '#1C1006', // ✅ Derin turuncu-kahve
+    backgroundColor: '#2D2010', // Yumuşak turuncu-kahve
   },
 ];
 
@@ -226,17 +226,18 @@ export const AnalysisFocusModal: React.FC<AnalysisFocusModalProps> = ({
       animationType="none"
       onRequestClose={onClose}
     >
-      <View style={styles.overlay}>
-        {/* ✅ Grid Pattern Background - açık modda daha görünür */}
+      <View style={[styles.overlay, isLight && { backgroundColor: themeColors.background }]}>
+        {/* ✅ Grid: koyu modda koyu zemin + turkuaz grid; açık modda açık zemin + koyu grid */}
         <View style={[
           styles.gridPattern,
-          isLight && Platform.OS === 'web' && {
-            backgroundImage: `linear-gradient(to right, rgba(15, 42, 36, 0.18) 1px, transparent 1px), linear-gradient(to bottom, rgba(15, 42, 36, 0.18) 1px, transparent 1px)`,
-            backgroundSize: '40px 40px',
+          isLight && {
+            ...(Platform.OS === 'web' ? {
+              backgroundImage: `linear-gradient(to right, rgba(15, 42, 36, 0.2) 1px, transparent 1px), linear-gradient(to bottom, rgba(15, 42, 36, 0.2) 1px, transparent 1px)`,
+              backgroundSize: '40px 40px',
+            } : {}),
           },
         ]} />
         
-        {/* Kapatma için overlay'e tıklama */}
         <TouchableOpacity style={styles.overlayTouch} onPress={onClose} activeOpacity={1} />
         
         <View style={[styles.modalContainer, { backgroundColor: themeColors.popover, borderColor: themeColors.border }]}>
@@ -263,12 +264,11 @@ export const AnalysisFocusModal: React.FC<AnalysisFocusModalProps> = ({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: '#0F2A24', // ✅ Design System: Koyu yeşil taban
+    backgroundColor: '#0F2A24', // Koyu mod varsayılan; açık modda component'te themeColors.background override
     justifyContent: 'center',
     alignItems: 'center',
-    padding: SPACING.lg, // ✅ Boş alanı artırdık
+    padding: SPACING.lg,
   },
-  // ✅ Grid Pattern Background - Dashboard ile aynı
   gridPattern: {
     position: 'absolute',
     top: 0,

@@ -35,7 +35,7 @@ import { ALL_BADGES } from '../constants/badges';
 import { useFavoriteTeams } from '../hooks/useFavoriteTeams';
 import { logger } from '../utils/logger';
 import { profileService } from '../services/profileService';
-import { setFavoriteTeams as saveFavoriteTeamsToStorage } from '../utils/storageUtils';
+import { setFavoriteTeams as saveFavoriteTeamsToStorage, clearAllStorage } from '../utils/storageUtils';
 import { calculateTopPercent } from '../types/profile.types';
 import { teamsApi } from '../services/api';
 import { SPACING, TYPOGRAPHY, BRAND, COLORS, SIZES, SHADOWS } from '../theme/theme';
@@ -485,6 +485,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   // 🔒 SECURITY STATE
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
   const [showDeleteAccountDialog, setShowDeleteAccountDialog] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleting, setDeleting] = useState(false);
 
@@ -884,7 +885,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     try {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('İzin Gerekli', 'Kamera kullanmak için izin vermeniz gerekiyor.');
+        Alert.alert(t('profileSetup.permissionRequired'), t('profile.cameraPermissionRequired'));
         return;
       }
 
@@ -900,7 +901,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       }
     } catch (error) {
       console.error('Error taking photo:', error);
-      Alert.alert('Hata', 'Fotoğraf çekilirken bir hata oluştu.');
+      Alert.alert(t('common.error'), t('profile.cameraError'));
     }
   };
 
@@ -909,7 +910,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('İzin Gerekli', 'Galeriye erişmek için izin vermeniz gerekiyor.');
+        Alert.alert(t('profileSetup.permissionRequired'), t('profile.galleryPermissionRequired'));
         return;
       }
 
@@ -925,7 +926,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       }
     } catch (error) {
       console.error('Error picking image:', error);
-      Alert.alert('Hata', 'Fotoğraf seçilirken bir hata oluştu.');
+      Alert.alert(t('common.error'), t('profile.galleryError'));
     }
   };
 
@@ -968,7 +969,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       }
     } catch (error) {
       console.error('Error saving profile photo:', error);
-      Alert.alert('Hata', 'Fotoğraf kaydedilirken bir hata oluştu.');
+      Alert.alert(t('common.error'), t('profile.savePhotoError'));
     }
   };
 
@@ -1643,7 +1644,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             {isPro && (
               <View style={styles.formField}>
                 <Text style={styles.formLabel}>
-                  Kulüp Takımları <Text style={styles.formHint}>(Maksimum 5)</Text>
+                  {t('teamSelection.clubTeamsLabel')} <Text style={styles.formHint}>{t('teamSelection.maxFiveHint')}</Text>
                 </Text>
                 <TouchableOpacity
                   style={[
@@ -1769,11 +1770,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                                 
                                 if (emptyIndex === -1) {
                                   console.log('⚠️ No empty slot - all 5 filled');
-                                  if (Platform.OS === 'web') {
-                                    window.alert('Maksimum 5 kulüp takımı seçebilirsiniz. Bir takımı kaldırıp tekrar deneyin.');
-                                  } else {
-                                    Alert.alert('Uyarı', 'Maksimum 5 kulüp takımı seçebilirsiniz.');
-                                  }
+                                  Alert.alert(t('profile.warning'), t('profile.maxFiveClubs'));
                                   return;
                                 }
                                 
@@ -2404,7 +2401,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               onPress={() => setShowLegalModal(true)}
             >
               <Ionicons name="document-text-outline" size={20} color={theme.primary} />
-              <Text style={styles.legalButtonText}>Yasal Bilgilendirmeler</Text>
+              <Text style={styles.legalButtonText}>{t('profile.legalInfo')}</Text>
             </TouchableOpacity>
           </Animated.View>
 
@@ -2412,7 +2409,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           <Animated.View entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(350)} style={styles.card}>
             <View style={styles.cardHeader}>
               <Ionicons name="shield-outline" size={20} color={theme.primary} />
-              <Text style={styles.cardTitle}>Güvenlik ve Hesap</Text>
+              <Text style={styles.cardTitle}>{t('profile.securityAndAccount')}</Text>
             </View>
 
             {/* Şifre Değiştir - Web ile aynı */}
@@ -2421,77 +2418,55 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               onPress={() => setShowChangePasswordModal(true)}
             >
               <Ionicons name="lock-closed-outline" size={20} color={theme.primary} />
-              <Text style={styles.securityButtonText}>Şifre Değiştir</Text>
+              <Text style={styles.securityButtonText}>{t('changePassword.title')}</Text>
               <Ionicons name="chevron-forward" size={20} color={theme.mutedForeground} />
             </TouchableOpacity>
 
-            {/* Çıkış Yap - Web ve Mobile uyumlu */}
+            {/* Yerel önbelleği temizle - port/cihaz değişince eski veriyi silmek için */}
             <TouchableOpacity 
-              style={[styles.securityButton, { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.3)' }]}
-              onPress={() => {
-                // Direkt çıkış yap fonksiyonu
-                const doLogout = async () => {
-                  console.log('🚪 Logout started...');
-                  try {
-                    // ✅ Web için: ÖNCE localStorage'ı manuel temizle (en güvenli yol)
-                    if (Platform.OS === 'web' && typeof window !== 'undefined') {
-                      console.log('🗑️ Manuel localStorage temizliği başlıyor...');
-                      // Tüm localStorage'ı temizle
-                      const keyCount = window.localStorage.length;
-                      window.localStorage.clear();
-                      window.sessionStorage?.clear();
-                      console.log('✅ Manuel localStorage temizlendi:', keyCount, 'key');
-                      
-                      // ✅ Storage temizlendikten sonra HEMEN yönlendir
-                      // AuthService.signOut() arka planda çalışsın, beklemiyoruz
-                      console.log('🔄 Sayfayı yeniliyoruz...');
-                      
-                      // AuthService'i arka planda çağır (beklemeden)
-                      authService.signOut().catch(e => console.warn('Background signOut error:', e));
-                      
-                      // Hemen yönlendir
-                      window.location.href = '/?logout=' + Date.now();
-                      return;
-                    }
-
-                    // Mobile için normal akış
-                    const result = await authService.signOut();
-                    console.log('✅ AuthService signOut completed:', result);
-                    Alert.alert('Başarılı', 'Çıkış yapıldı');
-                    onBack();
-                  } catch (error: any) {
-                    console.error('❌ Logout error:', error);
-                    // Hata olsa bile storage'ı temizle ve sayfayı yenile
-                    if (Platform.OS === 'web' && typeof window !== 'undefined') {
-                      window.localStorage.clear();
-                      window.sessionStorage?.clear();
-                      window.location.href = '/?logout=' + Date.now();
-                    } else {
-                      Alert.alert('Hata', error.message || 'Çıkış yapılamadı');
-                    }
-                  }
-                };
-
-                // Onay al ve çıkış yap
-                if (Platform.OS === 'web') {
-                  const confirmed = window.confirm('Çıkış yapmak istediğinizden emin misiniz?');
-                  if (confirmed) {
-                    doLogout();
-                  }
-                } else {
-                  Alert.alert(
-                    'Çıkış Yap',
-                    'Çıkış yapmak istediğinizden emin misiniz?',
-                    [
-                      { text: 'İptal', style: 'cancel' },
-                      { text: 'Çıkış Yap', style: 'destructive', onPress: doLogout },
-                    ]
-                  );
-                }
+              style={styles.securityButton}
+              onPress={async () => {
+                Alert.alert(
+                  t('profile.clearCache'),
+                  t('profile.clearCacheConfirm'),
+                  [
+                    { text: t('common.cancel'), style: 'cancel' },
+                    {
+                      text: t('common.ok'),
+                      onPress: async () => {
+                        try {
+                          if (Platform.OS === 'web' && typeof window?.localStorage !== 'undefined') {
+                            window.localStorage.clear();
+                            window.sessionStorage?.clear?.();
+                          }
+                          await clearAllStorage();
+                          Alert.alert(t('common.success'), t('profile.clearCacheDone'));
+                          if (Platform.OS === 'web' && typeof window !== 'undefined') {
+                            window.location.reload();
+                          } else {
+                            onBack();
+                          }
+                        } catch (e: any) {
+                          Alert.alert(t('common.error'), e?.message || t('common.errorOccurred'));
+                        }
+                      },
+                    },
+                  ]
+                );
               }}
             >
+              <Ionicons name="trash-bin-outline" size={20} color={theme.primary} />
+              <Text style={styles.securityButtonText}>{t('profile.clearCache')}</Text>
+              <Ionicons name="chevron-forward" size={20} color={theme.mutedForeground} />
+            </TouchableOpacity>
+
+            {/* Çıkış Yap - Web ve Mobile: Özel modal (açık/koyu mod uyumlu) */}
+            <TouchableOpacity 
+              style={[styles.securityButton, { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.3)' }]}
+              onPress={() => setShowLogoutModal(true)}
+            >
               <Ionicons name="log-out-outline" size={20} color="#EF4444" />
-              <Text style={[styles.securityButtonText, { color: '#EF4444' }]}>Çıkış Yap</Text>
+              <Text style={[styles.securityButtonText, { color: '#EF4444' }]}>{t('profile.logout')}</Text>
               <Ionicons name="chevron-forward" size={20} color="#EF4444" />
             </TouchableOpacity>
 
@@ -2502,11 +2477,62 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 onPress={() => setShowDeleteAccountDialog(true)}
               >
                 <Ionicons name="trash-outline" size={20} color={theme.destructive} />
-                <Text style={styles.deleteButtonText}>Hesabı Sil</Text>
+                <Text style={styles.deleteButtonText}>{t('profile.deleteAccount')}</Text>
                 <Ionicons name="warning-outline" size={20} color={theme.destructive} />
               </TouchableOpacity>
             </View>
           </Animated.View>
+
+          {/* Çıkış Yap Onay Modal - Web & Mobile, açık/koyu mod uyumlu */}
+          <Modal
+            visible={showLogoutModal}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setShowLogoutModal(false)}
+          >
+            <Pressable style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.5)' }]} onPress={() => setShowLogoutModal(false)}>
+              <View style={{ width: '90%', maxWidth: 400, alignSelf: 'center' }} onStartShouldSetResponder={() => true}>
+                <Animated.View entering={FadeInDown} style={[styles.modalContent, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                  <Text style={[styles.modalTitle, { color: theme.foreground }]}>{t('profile.logout')}</Text>
+                  <Text style={[styles.modalDescription, { color: theme.mutedForeground }]}>
+                    {t('profile.logoutConfirmMessage')}
+                  </Text>
+                  <View style={[styles.modalActions, { flexDirection: 'row', gap: SPACING.md }]}>
+                    <TouchableOpacity
+                      style={[styles.modalButton, styles.modalButtonCancel, { borderColor: theme.border, backgroundColor: theme.muted }]}
+                      onPress={() => setShowLogoutModal(false)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.modalButtonCancelText, { color: theme.foreground }]}>{t('common.cancel')}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                    style={[styles.modalButton, { backgroundColor: '#EF4444', flex: 1, height: 48, borderRadius: SIZES.radiusLg, alignItems: 'center', justifyContent: 'center' }]}
+                    onPress={async () => {
+                      setShowLogoutModal(false);
+                      try {
+                        if (Platform.OS === 'web' && typeof window !== 'undefined') {
+                          window.localStorage.clear();
+                          window.sessionStorage?.clear();
+                          authService.signOut().catch(() => {});
+                          window.location.href = '/?logout=' + Date.now();
+                          return;
+                        }
+                        await authService.signOut();
+                        Alert.alert(t('common.success'), t('profile.logoutSuccess'));
+                        onBack();
+                      } catch (error: any) {
+                        Alert.alert(t('common.error'), error.message || t('profile.logoutFailed'));
+                      }
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.modalButtonDeleteText}>{t('profile.logout')}</Text>
+                  </TouchableOpacity>
+                </View>
+              </Animated.View>
+              </View>
+            </Pressable>
+          </Modal>
 
           {/* Şifre Değiştir Modal */}
           <ChangePasswordModal
@@ -2578,7 +2604,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                     onPress={async () => {
                       const confirmText = deleteConfirmText.toLowerCase().trim();
                       if (confirmText !== 'sil' && confirmText !== 'delete') {
-                        Alert.alert('Hata', 'Onay için "sil" veya "delete" yazmanız gerekiyor');
+                        Alert.alert(t('common.error'), t('profile.typeToConfirm'));
                         return;
                       }
 
@@ -2588,7 +2614,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                         const { data: { user } } = await supabase.auth.getUser();
                         
                         if (!user) {
-                          Alert.alert('Hata', 'Kullanıcı oturumu bulunamadı');
+                          Alert.alert(t('common.error'), t('profile.sessionNotFound'));
                           return;
                         }
 
@@ -2607,12 +2633,12 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                         }
 
                         await AsyncStorage.clear();
-                        Alert.alert('Başarılı', 'Hesabınız başarıyla silindi');
+                        Alert.alert(t('common.success'), t('profile.accountDeleted'));
                         setShowDeleteAccountDialog(false);
                         setDeleteConfirmText('');
                         onBack();
                       } catch (error: any) {
-                        Alert.alert('Hata', error.message || 'Hesap silme başarısız');
+                        Alert.alert(t('common.error'), error.message || t('profile.accountDeleteFailed'));
                       } finally {
                         setDeleting(false);
                       }
@@ -2960,16 +2986,17 @@ const createStyles = (isDark: boolean = true) => {
     alignSelf: 'center',
   },
 
-  // Profile Header Card - Web ile uyumlu
+  // Profile Header Card - açık modda grid'den ayrılsın (hafif koyu ton + çerçeve)
   profileHeaderCard: {
-    backgroundColor: theme.card,
+    backgroundColor: isDark ? theme.card : 'rgba(242,245,244,0.98)',
     borderRadius: SIZES.radiusXl,
-    borderWidth: 1,
-    borderColor: theme.border,
+    borderWidth: isDark ? 1 : 1.5,
+    borderColor: isDark ? theme.border : 'rgba(15, 42, 36, 0.18)',
     marginBottom: SPACING.base,
-    overflow: 'visible', // Avatar'ın badge'lerin üstünde görünmesi için
+    overflow: 'visible',
     zIndex: 5,
     position: 'relative',
+    ...(!isDark && Platform.OS === 'web' ? { boxShadow: '0 1px 3px rgba(15,42,36,0.08)' } : {}),
   },
   profileHeaderBanner: {
     height: 80,
@@ -3077,22 +3104,20 @@ const createStyles = (isDark: boolean = true) => {
     color: theme.mutedForeground,
   },
 
-  // Ranking Card - Tek kart, her satır bir bilgi
   rankingCard_single: {
     width: '100%',
-    backgroundColor: theme.card + '80', // 50% opacity
-    borderWidth: 1,
-    borderColor: theme.border,
+    backgroundColor: isDark ? theme.card + '80' : 'rgba(242,245,244,0.96)',
+    borderWidth: isDark ? 1 : 1.5,
+    borderColor: isDark ? theme.border : 'rgba(15, 42, 36, 0.18)',
     borderRadius: SIZES.radiusMd,
     overflow: 'hidden',
     marginTop: SPACING.lg,
   },
-  // Ranking Table - Web ile aynı tablo formatı
   rankingTableContainer: {
     width: '100%',
-    backgroundColor: theme.card + '80', // 50% opacity
-    borderWidth: 1,
-    borderColor: theme.border,
+    backgroundColor: isDark ? theme.card + '80' : 'rgba(242,245,244,0.96)',
+    borderWidth: isDark ? 1 : 1.5,
+    borderColor: isDark ? theme.border : 'rgba(15, 42, 36, 0.18)',
     borderRadius: SIZES.radiusMd,
     overflow: 'hidden',
     marginTop: SPACING.lg,
@@ -3341,24 +3366,23 @@ const createStyles = (isDark: boolean = true) => {
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
 
-  // Card
-  // Card Styles - Web ile aynı (daha temiz ve modern)
+  // Card - açık modda grid'den ayrılsın: bir tık koyu zemin (en zemin yapıdan belirgin ayrım)
   card: {
-    backgroundColor: theme.card,
-    borderWidth: 1,
-    borderColor: theme.border,
-    borderRadius: SIZES.radiusLg, // Web'de daha küçük radius
+    backgroundColor: isDark ? theme.card : 'rgba(242,245,244,0.98)',
+    borderWidth: isDark ? 1 : 1.5,
+    borderColor: isDark ? theme.border : 'rgba(15, 42, 36, 0.18)',
+    borderRadius: SIZES.radiusLg,
     padding: SPACING.lg,
-    marginBottom: SPACING.base, // Web'de daha az margin
+    marginBottom: SPACING.base,
     ...Platform.select({
       ios: {
-        shadowColor: '#000',
+        shadowColor: isDark ? '#000' : 'rgba(15,42,36,0.12)',
         shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
+        shadowOpacity: isDark ? 0.05 : 0.08,
         shadowRadius: 2,
       },
-      android: { elevation: 1 },
-      web: { boxShadow: '0 1px 2px rgba(0,0,0,0.05)' },
+      android: { elevation: isDark ? 1 : 2 },
+      web: { boxShadow: isDark ? '0 1px 2px rgba(0,0,0,0.05)' : '0 1px 3px rgba(15,42,36,0.08)' },
     }),
   },
   cardHeader: {
@@ -5261,7 +5285,7 @@ const createStyles = (isDark: boolean = true) => {
   },
   teamBadgeText: {
     fontSize: 13,
-    color: '#E2E8F0',
+    color: isDark ? '#E2E8F0' : '#0F2A24',
     fontWeight: '600',
     letterSpacing: 0.3,
   },

@@ -32,6 +32,7 @@ import {
   WEBSITE_TYPOGRAPHY as WDS_TYPOGRAPHY,
 } from '../config/WebsiteDesignSystem';
 import { AUTH_LOGO_SIZE, AUTH_LOGO_MARGIN_TOP, AUTH_LOGO_MARGIN_BOTTOM } from '../constants/logoConstants';
+import { useTheme } from '../contexts/ThemeContext';
 
 // ============================================
 // SHARED LAYOUT CONSTANTS (MUST BE IDENTICAL)
@@ -91,6 +92,9 @@ export default function AuthScreen({
   onBack,
 }: AuthScreenProps) {
   const { t, isRTL } = useTranslation();
+  const { theme } = useTheme();
+  const isLight = theme === 'light';
+  const themeColors = isLight ? COLORS.light : COLORS.dark;
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -208,249 +212,126 @@ export default function AuthScreen({
     }
   };
 
-  // ✅ OAuth tam ekran loading overlay - sayfa yönlendirilene kadar gösterilir
+  // ✅ OAuth tam ekran loading – dil t() ile güncellenir; açık mod tema uyumlu
   if (oauthLoading) {
+    const loadingContent = (
+      <>
+        <View style={[styles.gridPattern, isLight && Platform.OS === 'web' && { backgroundImage: `linear-gradient(to right, rgba(15,42,36,0.1) 1px, transparent 1px), linear-gradient(to bottom, rgba(15,42,36,0.1) 1px, transparent 1px)`, backgroundSize: '40px 40px' }]} />
+        <View style={styles.oauthLoadingContent}>
+          {Platform.OS === 'web' ? (
+            <img src="/TacticIQ.svg" alt="TacticIQ" style={{ width: AUTH_LOGO_SIZE, height: AUTH_LOGO_SIZE, marginBottom: 32 }} />
+          ) : (
+            <Image source={require('../../assets/logo.png')} style={{ width: AUTH_LOGO_SIZE, height: AUTH_LOGO_SIZE, marginBottom: 32 }} resizeMode="contain" />
+          )}
+          <ActivityIndicator size="large" color={isLight ? themeColors.ring : '#1FA2A6'} style={{ marginBottom: 16 }} />
+          <Text style={[styles.oauthLoadingText, isLight && { color: themeColors.foreground }]}>{t('auth.loggingIn')}</Text>
+          <Text style={[styles.oauthLoadingSubtext, isLight && { color: themeColors.mutedForeground }]}>{t('auth.pleaseWait')}</Text>
+        </View>
+      </>
+    );
     return (
-      <SafeAreaView style={styles.safeArea}>
-        <LinearGradient
-          colors={['#0a1612', '#0F2A24', '#0a1612']}
-          style={[styles.container, styles.oauthLoadingContainer]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-        >
-          {/* Grid Pattern Background */}
-          <View style={styles.gridPattern} />
-          <View style={styles.oauthLoadingContent}>
-            {Platform.OS === 'web' ? (
-              <img 
-                src="/TacticIQ.svg" 
-                alt="TacticIQ" 
-                style={{ width: AUTH_LOGO_SIZE, height: AUTH_LOGO_SIZE, marginBottom: 32 }} 
-              />
-            ) : (
-              <Image
-                source={require('../../assets/logo.png')}
-                style={{ width: AUTH_LOGO_SIZE, height: AUTH_LOGO_SIZE, marginBottom: 32 }}
-                resizeMode="contain"
-              />
-            )}
-            <ActivityIndicator size="large" color="#1FA2A6" style={{ marginBottom: 16 }} />
-            <Text style={styles.oauthLoadingText}>{t('auth.loggingIn')}</Text>
-            <Text style={styles.oauthLoadingSubtext}>{t('auth.pleaseWait')}</Text>
-          </View>
-        </LinearGradient>
+      <SafeAreaView style={[styles.safeArea, isLight && { backgroundColor: themeColors.background }]}>
+        {isLight ? (
+          <View style={[styles.container, styles.oauthLoadingContainer, { backgroundColor: themeColors.background }]}>{loadingContent}</View>
+        ) : (
+          <LinearGradient colors={['#0a1612', '#0F2A24', '#0a1612']} style={[styles.container, styles.oauthLoadingContainer]} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}>
+            {loadingContent}
+          </LinearGradient>
+        )}
       </SafeAreaView>
     );
   }
 
-  return (
-    <SafeAreaView style={styles.safeArea}>
-      <LinearGradient
-        colors={['#0a1612', '#0F2A24', '#0a1612']}
-        style={styles.container}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0, y: 1 }}
-      >
-        {/* Grid Pattern Background */}
-        <View style={styles.gridPattern} />
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.keyboardView}
-        >
-          {/* Back Button - Sol üst köşe */}
-          {onBack && (
-            <TouchableOpacity style={styles.backButtonTop} onPress={onBack} activeOpacity={0.7}>
-              <Ionicons name="arrow-back" size={WEBSITE_ICON_SIZES.lg} color={WEBSITE_BRAND_COLORS.white} />
-            </TouchableOpacity>
-          )}
-
-          <View style={styles.screenContainer}>
-            <View style={styles.contentWrapper}>
-
-              <View style={styles.content}>
-              {/* [B] BRAND ZONE - Tüm giriş ekranlarında aynı logo boyutu (200px) */}
+  const mainContent = (
+    <>
+      <View style={[styles.gridPattern, isLight && Platform.OS === 'web' && { backgroundImage: `linear-gradient(to right, rgba(15,42,36,0.08) 1px, transparent 1px), linear-gradient(to bottom, rgba(15,42,36,0.08) 1px, transparent 1px)`, backgroundSize: '40px 40px' }]} />
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
+        {onBack && (
+          <TouchableOpacity style={[styles.backButtonTop, isLight && { backgroundColor: themeColors.muted, borderColor: themeColors.border }]} onPress={onBack} activeOpacity={0.7}>
+            <Ionicons name="arrow-back" size={WEBSITE_ICON_SIZES.lg} color={isLight ? themeColors.foreground : WEBSITE_BRAND_COLORS.white} />
+          </TouchableOpacity>
+        )}
+        <View style={styles.screenContainer}>
+          <View style={styles.contentWrapper}>
+            <View style={styles.content}>
               <View style={styles.brandZone}>
-                {Platform.OS === 'web' ? (
-                  <img 
-                    src="/TacticIQ.svg" 
-                    alt="TacticIQ" 
-                    style={{ width: 180, height: 180 }} 
-                  />
-                ) : (
-                  <Image
-                    source={require('../../assets/logo.png')}
-                    style={{ width: 180, height: 180 }}
-                    resizeMode="contain"
-                  />
-                )}
+                {Platform.OS === 'web' ? <img src="/TacticIQ.svg" alt="TacticIQ" style={{ width: 180, height: 180 }} /> : <Image source={require('../../assets/logo.png')} style={{ width: 180, height: 180 }} resizeMode="contain" />}
               </View>
-
-              {/* [C] PRIMARY ACTION ZONE - Social Buttons */}
               <View style={styles.socialZone}>
-                <TouchableOpacity
-                  style={styles.googleButton}
-                  onPress={() => handleSocialLogin('Google')}
-                  activeOpacity={0.8}
-                >
+                <TouchableOpacity style={styles.googleButton} onPress={() => handleSocialLogin('Google')} activeOpacity={0.8}>
                   <Ionicons name="logo-google" size={20} color="#4285F4" />
-                  <Text style={styles.googleButtonText} numberOfLines={1} adjustsFontSizeToFit>
-                    {t('auth.signInWithGoogle')}
-                  </Text>
+                  <Text style={styles.googleButtonText} numberOfLines={1} adjustsFontSizeToFit>{t('auth.signInWithGoogle')}</Text>
                 </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.appleButton}
-                  onPress={() => handleSocialLogin('Apple')}
-                  activeOpacity={0.8}
-                >
-                  <Ionicons name="logo-apple" size={20} color="#FFFFFF" />
-                  <Text style={styles.appleButtonText} numberOfLines={1} adjustsFontSizeToFit>
-                    {t('auth.signInWithApple')}
-                  </Text>
+                <TouchableOpacity style={[styles.appleButton, isLight && { backgroundColor: themeColors.foreground }]} onPress={() => handleSocialLogin('Apple')} activeOpacity={0.8}>
+                  <Ionicons name="logo-apple" size={20} color={isLight ? themeColors.background : '#FFFFFF'} />
+                  <Text style={[styles.appleButtonText, isLight && { color: themeColors.background }]} numberOfLines={1} adjustsFontSizeToFit>{t('auth.signInWithApple')}</Text>
                 </TouchableOpacity>
               </View>
-
-              {/* [D] DIVIDER ZONE */}
               <View style={styles.dividerZone}>
-                <Text style={styles.dividerText}>{t('auth.orContinueWith')}</Text>
+                <Text style={[styles.dividerText, isLight && { color: themeColors.mutedForeground }]}>{t('auth.orContinueWith')}</Text>
               </View>
-
-              {/* [E] FORM INPUT ZONE */}
               <View style={styles.formZone}>
-                {/* Email Input */}
                 <View style={styles.inputGroup}>
-                  <Text style={styles.label}>{t('auth.email')}</Text>
-                  <View style={styles.inputWrapper}>
-                    <Ionicons 
-                      name="mail-outline" 
-                      size={20} 
-                      color="#059669" 
-                      style={styles.inputIcon} 
-                    />
-                    <TextInput
-                      style={[
-                        styles.input,
-                        emailStatus === 'available' && styles.inputSuccess,
-                        emailStatus === 'taken' && styles.inputError,
-                      ]}
-                      placeholder="ornek@email.com"
-                      placeholderTextColor="#64748B"
-                      value={loginEmail}
-                      onChangeText={handleEmailChange}
-                      keyboardType="email-address"
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                    />
-                    {emailStatus !== 'idle' && (
-                      <View style={styles.statusIndicator}>
-                        {emailStatus === 'checking' && <Text style={styles.checkingText}>⏳</Text>}
-                        {emailStatus === 'available' && <Text style={styles.availableText}>✅</Text>}
-                        {emailStatus === 'taken' && <Text style={styles.takenText}>❌</Text>}
-                      </View>
-                    )}
+                  <Text style={[styles.label, isLight && { color: themeColors.foreground }]}>{t('auth.email')}</Text>
+                  <View style={[styles.inputWrapper, isLight && { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
+                    <Ionicons name="mail-outline" size={20} color={isLight ? themeColors.ring : '#059669'} style={styles.inputIcon} />
+                    <TextInput style={[styles.input, emailStatus === 'available' && styles.inputSuccess, emailStatus === 'taken' && styles.inputError, isLight && { color: themeColors.foreground }]} placeholder="ornek@email.com" placeholderTextColor={isLight ? themeColors.mutedForeground : '#64748B'} value={loginEmail} onChangeText={handleEmailChange} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} />
+                    {emailStatus !== 'idle' && <View style={styles.statusIndicator}>{emailStatus === 'checking' && <Text style={styles.checkingText}>⏳</Text>}{emailStatus === 'available' && <Text style={styles.availableText}>✅</Text>}{emailStatus === 'taken' && <Text style={styles.takenText}>❌</Text>}</View>}
                   </View>
                 </View>
-
-                {/* Password Input */}
                 <View style={styles.inputGroup}>
-                  <Text style={styles.label}>{t('auth.password')}</Text>
-                  <View style={styles.inputWrapper}>
-                    <Ionicons 
-                      name="lock-closed-outline" 
-                      size={20} 
-                      color="#059669" 
-                      style={styles.inputIcon} 
-                    />
-                    <TextInput
-                      style={[styles.input, styles.inputWithRightIcon]}
-                      placeholder="••••••••"
-                      placeholderTextColor="#64748B"
-                      value={loginPassword}
-                      onChangeText={setLoginPassword}
-                      secureTextEntry={!showPassword}
-                      autoCapitalize="none"
-                    />
-                    <TouchableOpacity
-                      style={styles.eyeButton}
-                      onPress={() => setShowPassword(!showPassword)}
-                      activeOpacity={0.7}
-                    >
-                      <Ionicons
-                        name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                        size={20}
-                        color="#64748B"
-                      />
+                  <Text style={[styles.label, isLight && { color: themeColors.foreground }]}>{t('auth.password')}</Text>
+                  <View style={[styles.inputWrapper, isLight && { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
+                    <Ionicons name="lock-closed-outline" size={20} color={isLight ? themeColors.ring : '#059669'} style={styles.inputIcon} />
+                    <TextInput style={[styles.input, styles.inputWithRightIcon, isLight && { color: themeColors.foreground }]} placeholder="••••••••" placeholderTextColor={isLight ? themeColors.mutedForeground : '#64748B'} value={loginPassword} onChangeText={setLoginPassword} secureTextEntry={!showPassword} autoCapitalize="none" />
+                    <TouchableOpacity style={styles.eyeButton} onPress={() => setShowPassword(!showPassword)} activeOpacity={0.7}>
+                      <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={isLight ? themeColors.mutedForeground : '#64748B'} />
                     </TouchableOpacity>
                   </View>
                 </View>
-
-                {/* [F] SECONDARY ACTION LINKS */}
-                <TouchableOpacity
-                  style={styles.forgotPassword}
-                  onPress={onForgotPassword}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.forgotPasswordText}>{t('auth.forgotPassword')}</Text>
+                <TouchableOpacity style={styles.forgotPassword} onPress={onForgotPassword} activeOpacity={0.7}>
+                  <Text style={[styles.forgotPasswordText, isLight && { color: themeColors.ring }]}>{t('auth.forgotPassword')}</Text>
                 </TouchableOpacity>
-
-                {/* [G] PRIMARY CTA BUTTON */}
-                <TouchableOpacity
-                  style={styles.ctaButton}
-                  onPress={handleLogin}
-                  activeOpacity={0.8}
-                  disabled={loading}
-                >
-                  <LinearGradient
-                    colors={[WEBSITE_BRAND_COLORS.secondary, WEBSITE_BRAND_COLORS.primary]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.ctaButtonGradient}
-                  >
-                    {loading ? (
-                      <ActivityIndicator color="#FFFFFF" />
-                    ) : (
-                      <Text style={styles.ctaButtonText} numberOfLines={1} adjustsFontSizeToFit>
-                        {t('auth.login')}
-                      </Text>
-                    )}
+                <TouchableOpacity style={styles.ctaButton} onPress={handleLogin} activeOpacity={0.8} disabled={loading}>
+                  <LinearGradient colors={[WEBSITE_BRAND_COLORS.secondary, WEBSITE_BRAND_COLORS.primary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.ctaButtonGradient}>
+                    {loading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.ctaButtonText} numberOfLines={1} adjustsFontSizeToFit>{t('auth.login')}</Text>}
                   </LinearGradient>
                 </TouchableOpacity>
               </View>
-
-              {/* Secondary Link */}
               <View style={styles.secondaryLinkContainer}>
-                <Text style={styles.secondaryLinkText}>{t('auth.noAccount')} </Text>
+                <Text style={[styles.secondaryLinkText, isLight && { color: themeColors.mutedForeground }]}>{t('auth.noAccount')} </Text>
                 <TouchableOpacity onPress={onRegister} activeOpacity={0.7}>
-                  <Text style={styles.secondaryLink} numberOfLines={1} adjustsFontSizeToFit>
-                    {t('auth.signUp')}
-                  </Text>
+                  <Text style={[styles.secondaryLink, isLight && { color: themeColors.ring }]} numberOfLines={1} adjustsFontSizeToFit>{t('auth.signUp')}</Text>
                 </TouchableOpacity>
               </View>
-              </View>
-
-              {/* Progress Indicator - 5 noktalı (Language, Age, Legal, Auth, FavoriteTeams) */}
-              <View style={styles.progressRow}>
-                <View style={styles.progressDot} />
-                <View style={styles.progressLine} />
-                <View style={styles.progressDot} />
-                <View style={styles.progressLine} />
-                <View style={styles.progressDot} />
-                <View style={styles.progressLine} />
-                <View style={[styles.progressDot, styles.progressDotActive]} />
-                <View style={styles.progressLine} />
-                <View style={styles.progressDot} />
-              </View>
             </View>
-
-            {/* [H] FOOTER ZONE - FIXED AT BOTTOM (OUTSIDE SCROLLABLE CONTENT) */}
-            <View style={styles.footerZone}>
-              <Text style={styles.footer}>
-                © 2026. {t('auth.allRightsReserved')}
-              </Text>
+            <View style={styles.progressRow}>
+              <View style={[styles.progressDot, isLight && { backgroundColor: themeColors.muted }]} />
+              <View style={[styles.progressLine, isLight && { backgroundColor: themeColors.border }]} />
+              <View style={[styles.progressDot, isLight && { backgroundColor: themeColors.muted }]} />
+              <View style={[styles.progressLine, isLight && { backgroundColor: themeColors.border }]} />
+              <View style={[styles.progressDot, isLight && { backgroundColor: themeColors.muted }]} />
+              <View style={[styles.progressLine, isLight && { backgroundColor: themeColors.border }]} />
+              <View style={[styles.progressDot, styles.progressDotActive, isLight && { backgroundColor: themeColors.ring || WEBSITE_BRAND_COLORS.primary }]} />
+              <View style={[styles.progressLine, isLight && { backgroundColor: themeColors.border }]} />
+              <View style={[styles.progressDot, isLight && { backgroundColor: themeColors.muted }]} />
             </View>
           </View>
-        </KeyboardAvoidingView>
-      </LinearGradient>
+          <View style={styles.footerZone}>
+            <Text style={[styles.footer, isLight && { color: themeColors.mutedForeground }]}>© 2026. {t('auth.allRightsReserved')}</Text>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+    </>
+  );
+
+  return (
+    <SafeAreaView style={[styles.safeArea, isLight && { backgroundColor: themeColors.background }]}>
+      {isLight ? (
+        <View style={[styles.container, { backgroundColor: themeColors.background }]}>{mainContent}</View>
+      ) : (
+        <LinearGradient colors={['#0a1612', '#0F2A24', '#0a1612']} style={styles.container} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}>{mainContent}</LinearGradient>
+      )}
     </SafeAreaView>
   );
 }

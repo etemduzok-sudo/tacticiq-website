@@ -24,6 +24,19 @@ const supabase = createClient(
 
 const SEASON = 2025;
 
+/** Sadece üst lig erkek takımları - U20/youth/alt lig HARİÇ */
+const TRACKED_LEAGUE_TYPES = [
+  'domestic_top', 'domestic_cup', 'continental', 'continental_club', 'continental_national',
+  'confederation_format', 'global', 'international', 'world_cup', 'continental_championship',
+];
+const EXCLUDE_NAME_PATTERNS = ['U20', 'U21', 'U19', 'U23', 'U18', ' Youth', ' B ', ' II', ' U20'];
+
+function isExcludedTeam(name) {
+  if (!name || typeof name !== 'string') return true;
+  const n = name.toUpperCase();
+  return EXCLUDE_NAME_PATTERNS.some((p) => n.includes(p.toUpperCase()));
+}
+
 function parseArgs() {
   const args = process.argv.slice(2);
   let maxTeams = 2000;
@@ -41,38 +54,34 @@ function parseArgs() {
 }
 
 async function getTeamsMissingData() {
-  // Coach eksik
-  const { data: noCoach } = await supabase
-    .from('static_teams')
-    .select('api_football_id, name')
-    .is('coach', null)
-    .not('api_football_id', 'is', null);
-  const coachIds = new Set((noCoach || []).map(t => t.api_football_id));
+  const baseFilter = (q) => q.in('league_type', TRACKED_LEAGUE_TYPES).not('api_football_id', 'is', null);
+
+  // Coach eksik - sadece üst lig, U20/youth hariç
+  const { data: noCoach } = await baseFilter(
+    supabase.from('static_teams').select('api_football_id, name').is('coach', null)
+  );
+  const coachFiltered = (noCoach || []).filter((t) => !isExcludedTeam(t.name));
+  const coachIds = new Set(coachFiltered.map((t) => t.api_football_id));
 
   // Renk eksik
-  const { data: noColors } = await supabase
-    .from('static_teams')
-    .select('api_football_id, name')
-    .is('colors_primary', null)
-    .not('api_football_id', 'is', null);
-  const colorIds = new Set((noColors || []).map(t => t.api_football_id));
+  const { data: noColors } = await baseFilter(
+    supabase.from('static_teams').select('api_football_id, name').is('colors_primary', null)
+  );
+  const colorFiltered = (noColors || []).filter((t) => !isExcludedTeam(t.name));
+  const colorIds = new Set(colorFiltered.map((t) => t.api_football_id));
 
-  // 2025 kadro eksik: static_teams'te olup team_squads'da season=2025 kaydı olmayan
-  const { data: allTeams } = await supabase
-    .from('static_teams')
-    .select('api_football_id, name')
-    .not('api_football_id', 'is', null);
-  const { data: squads2025 } = await supabase
-    .from('team_squads')
-    .select('team_id')
-    .eq('season', SEASON);
-  const hasSquadIds = new Set((squads2025 || []).map(s => s.team_id));
-  const noSquad = (allTeams || []).filter(t => !hasSquadIds.has(t.api_football_id));
+  // 2025 kadro eksik - sadece üst lig
+  const { data: allTeams } = await baseFilter(
+    supabase.from('static_teams').select('api_football_id, name')
+  );
+  const { data: squads2025 } = await supabase.from('team_squads').select('team_id').eq('season', SEASON);
+  const hasSquadIds = new Set((squads2025 || []).map((s) => s.team_id));
+  const noSquad = (allTeams || []).filter((t) => !hasSquadIds.has(t.api_football_id) && !isExcludedTeam(t.name));
 
   const byId = new Map();
-  (noCoach || []).forEach(t => byId.set(t.api_football_id, t));
-  (noColors || []).forEach(t => byId.set(t.api_football_id, t));
-  noSquad.forEach(t => byId.set(t.api_football_id, t));
+  coachFiltered.forEach((t) => byId.set(t.api_football_id, t));
+  colorFiltered.forEach((t) => byId.set(t.api_football_id, t));
+  noSquad.forEach((t) => byId.set(t.api_football_id, t));
 
   const list = Array.from(byId.values());
   const priority = list.map(t => ({
@@ -96,6 +105,7 @@ async function main() {
   console.log('');
 
   const { list, stats } = await getTeamsMissingData();
+  console.log(`  [Sadece üst lig erkek takımları - U20/youth/alt lig HARİÇ]`);
   console.log(`  Eksik coach: ${stats.noCoach} | Eksik renk: ${stats.noColors} | Eksik kadro ${SEASON}: ${stats.noSquad}`);
   console.log(`  İşlenecek (tekil) takım: ${list.length} (max: ${maxTeams}, aralık: ${delayMs}ms, eşzamanlı: ${concurrency})`);
   console.log('');

@@ -12,6 +12,7 @@ import Animated, { FadeInDown, useAnimatedStyle, withTiming } from 'react-native
 import { ScreenLayout, StandardHeader } from '../components/layouts';
 import { containerStyles, textStyles, cardStyles } from '../utils/styleHelpers';
 import { SPACING, COLORS } from '../theme/theme';
+import { useTranslation } from '../hooks/useTranslation';
 
 interface NotificationsScreenProps {
   onBack: () => void;
@@ -20,6 +21,7 @@ interface NotificationsScreenProps {
 export const NotificationsScreen: React.FC<NotificationsScreenProps> = ({
   onBack,
 }) => {
+  const { t } = useTranslation();
   const [matchReminders, setMatchReminders] = useState(true);
   const [teamNews, setTeamNews] = useState(true);
   const [weeklyStats, setWeeklyStats] = useState(false);
@@ -41,13 +43,13 @@ export const NotificationsScreen: React.FC<NotificationsScreenProps> = ({
         break;
     }
 
-    Alert.alert('Başarılı', 'Bildirim ayarları güncellendi');
+    Alert.alert(t('common.success'), t('notificationsScreen.settingsUpdated'));
   };
 
   return (
     <ScreenLayout safeArea scrollable>
       <StandardHeader
-        title="Bildirimler"
+        title={t('notificationsScreen.title')}
         onBack={onBack}
       />
 
@@ -56,14 +58,14 @@ export const NotificationsScreen: React.FC<NotificationsScreenProps> = ({
           <Animated.View entering={FadeInDown.delay(0)} style={styles.card}>
             <View style={styles.cardHeader}>
               <Ionicons name="trophy-outline" size={20} color="#059669" />
-              <Text style={styles.cardTitle}>Maç Bildirimleri</Text>
+              <Text style={styles.cardTitle}>{t('notificationsScreen.matchNotifications')}</Text>
             </View>
 
             <View style={styles.notificationItem}>
               <View style={styles.notificationLeft}>
-                <Text style={styles.notificationTitle}>Maç Hatırlatıcıları</Text>
+                <Text style={styles.notificationTitle}>{t('notificationsScreen.matchReminders')}</Text>
                 <Text style={styles.notificationSubtitle}>
-                  Favori takımlarınızın maçlarından önce bildirim alın
+                  {t('notificationsScreen.matchRemindersDesc')}
                 </Text>
               </View>
               <ToggleSwitch
@@ -77,15 +79,15 @@ export const NotificationsScreen: React.FC<NotificationsScreenProps> = ({
               <View style={styles.detailsBox}>
                 <View style={styles.detailItem}>
                   <View style={styles.detailDot} />
-                  <Text style={styles.detailText}>Maçtan 1 saat önce</Text>
+                  <Text style={styles.detailText}>{t('notificationsScreen.oneHourBefore')}</Text>
                 </View>
                 <View style={styles.detailItem}>
                   <View style={styles.detailDot} />
-                  <Text style={styles.detailText}>Maç başladığında</Text>
+                  <Text style={styles.detailText}>{t('notificationsScreen.matchStart')}</Text>
                 </View>
                 <View style={styles.detailItem}>
                   <View style={styles.detailDot} />
-                  <Text style={styles.detailText}>Maç bittiğinde</Text>
+                  <Text style={styles.detailText}>{t('notificationsScreen.matchEnd')}</Text>
                 </View>
               </View>
             )}
@@ -95,14 +97,14 @@ export const NotificationsScreen: React.FC<NotificationsScreenProps> = ({
           <Animated.View entering={FadeInDown.delay(100)} style={styles.card}>
             <View style={styles.cardHeader}>
               <Ionicons name="flag-outline" size={20} color="#059669" />
-              <Text style={styles.cardTitle}>Takım Haberleri</Text>
+              <Text style={styles.cardTitle}>{t('notificationsScreen.teamNews')}</Text>
             </View>
 
             <View style={styles.notificationItem}>
               <View style={styles.notificationLeft}>
-                <Text style={styles.notificationTitle}>Takım Güncellemeleri</Text>
+                <Text style={styles.notificationTitle}>{t('notificationsScreen.teamUpdates')}</Text>
                 <Text style={styles.notificationSubtitle}>
-                  Favori takımlarınız hakkında transfer ve haberler
+                  {t('notificationsScreen.teamUpdatesDesc')}
                 </Text>
               </View>
               <ToggleSwitch
@@ -116,14 +118,14 @@ export const NotificationsScreen: React.FC<NotificationsScreenProps> = ({
           <Animated.View entering={FadeInDown.delay(200)} style={styles.card}>
             <View style={styles.cardHeader}>
               <Ionicons name="trending-up-outline" size={20} color="#059669" />
-              <Text style={styles.cardTitle}>İstatistikler</Text>
+              <Text style={styles.cardTitle}>{t('notificationsScreen.statistics')}</Text>
             </View>
 
             <View style={styles.notificationItem}>
               <View style={styles.notificationLeft}>
-                <Text style={styles.notificationTitle}>Haftalık Özet</Text>
+                <Text style={styles.notificationTitle}>{t('notificationsScreen.weeklySummary')}</Text>
                 <Text style={styles.notificationSubtitle}>
-                  Haftalık performans özetinizi her Pazartesi alın
+                  {t('notificationsScreen.weeklySummaryDesc')}
                 </Text>
               </View>
               <ToggleSwitch
@@ -137,14 +139,14 @@ export const NotificationsScreen: React.FC<NotificationsScreenProps> = ({
           <Animated.View entering={FadeInDown.delay(300)} style={styles.card}>
             <View style={styles.cardHeader}>
               <Ionicons name="mail-outline" size={20} color="#059669" />
-              <Text style={styles.cardTitle}>E-posta Bildirimleri</Text>
+              <Text style={styles.cardTitle}>{t('notificationsScreen.emailNotifications')}</Text>
             </View>
 
             <View style={styles.notificationItem}>
               <View style={styles.notificationLeft}>
-                <Text style={styles.notificationTitle}>E-posta ile Bildir</Text>
+                <Text style={styles.notificationTitle}>{t('notificationsScreen.emailNotify')}</Text>
                 <Text style={styles.notificationSubtitle}>
-                  Bildirimleri e-posta olarak da alın
+                  {t('notificationsScreen.emailNotifyDesc')}
                 </Text>
               </View>
               <ToggleSwitch
@@ -158,10 +160,10 @@ export const NotificationsScreen: React.FC<NotificationsScreenProps> = ({
           <Animated.View entering={FadeInDown.delay(400)} style={styles.infoCard}>
             <View style={styles.infoHeader}>
               <Text style={styles.infoIcon}>💡</Text>
-              <Text style={styles.infoTitle}>İpucu:</Text>
+              <Text style={styles.infoTitle}>{t('notificationsScreen.tip')}</Text>
             </View>
             <Text style={styles.infoText}>
-              Bildirim ayarlarınızı cihaz ayarlarından da yönetebilirsiniz.
+              {t('notificationsScreen.tipMessage')}
             </Text>
           </Animated.View>
 
@@ -169,7 +171,7 @@ export const NotificationsScreen: React.FC<NotificationsScreenProps> = ({
           <Animated.View entering={FadeInDown.delay(500)} style={styles.previewCard}>
             <View style={styles.cardHeader}>
               <Ionicons name="notifications-outline" size={20} color="#F59E0B" />
-              <Text style={styles.cardTitle}>Bildirim Önizleme</Text>
+              <Text style={styles.cardTitle}>{t('notificationsScreen.previewTitle')}</Text>
             </View>
 
             <View style={styles.previewItem}>
@@ -177,9 +179,9 @@ export const NotificationsScreen: React.FC<NotificationsScreenProps> = ({
                 <Ionicons name="trophy" size={20} color="#059669" />
               </View>
               <View style={styles.previewContent}>
-                <Text style={styles.previewTitle}>Galatasaray - Fenerbahçe</Text>
-                <Text style={styles.previewSubtitle}>Maç 1 saat içinde başlıyor!</Text>
-                <Text style={styles.previewTime}>Şimdi</Text>
+                <Text style={styles.previewTitle}>{t('notificationsScreen.previewMatchTitle')}</Text>
+                <Text style={styles.previewSubtitle}>{t('notificationsScreen.previewMatchSubtitle')}</Text>
+                <Text style={styles.previewTime}>{t('notificationsScreen.previewNow')}</Text>
               </View>
             </View>
 
@@ -188,11 +190,11 @@ export const NotificationsScreen: React.FC<NotificationsScreenProps> = ({
                 <Ionicons name="newspaper" size={20} color="#3B82F6" />
               </View>
               <View style={styles.previewContent}>
-                <Text style={styles.previewTitle}>Transfer Haberi</Text>
+                <Text style={styles.previewTitle}>{t('notificationsScreen.previewTransferTitle')}</Text>
                 <Text style={styles.previewSubtitle}>
-                  Galatasaray yeni transferini açıkladı
+                  {t('notificationsScreen.previewTransferSubtitle')}
                 </Text>
-                <Text style={styles.previewTime}>2 saat önce</Text>
+                <Text style={styles.previewTime}>{t('notificationsScreen.previewAgo')}</Text>
               </View>
             </View>
           </Animated.View>

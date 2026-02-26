@@ -176,6 +176,27 @@ async function updateMatchInDatabase(matchData) {
   }
 }
 
+// Snapshot: Sadece API-Football bitiş düdüğü (FT) anında alınır; başka snapshot yok.
+async function saveMatchEndSnapshot(matchId, fullMatchPayload) {
+  if (!supabase) return;
+  try {
+    const { error } = await supabase
+      .from('match_end_snapshots')
+      .upsert(
+        {
+          match_id: matchId,
+          snapshot: fullMatchPayload,
+          created_at: new Date().toISOString(),
+        },
+        { onConflict: 'match_id' }
+      );
+    if (error) throw error;
+    console.log(`📸 Match end snapshot saved for match ${matchId}`);
+  } catch (err) {
+    console.error('Error saving match end snapshot:', err);
+  }
+}
+
 // Create match result when match finishes
 async function createMatchResult(matchData) {
   try {
@@ -337,6 +358,9 @@ async function pollLiveMatches() {
             
             // Create match result
             await createMatchResult(fullMatch);
+            
+            // Snapshot: Sadece bitiş düdüğü (API FT) ile birlikte bu anda alınır; tek snapshot.
+            await saveMatchEndSnapshot(liveMatch.fixture.id, fullMatch);
             
             // Schedule finalization (after 1 minute)
             setTimeout(async () => {

@@ -31,29 +31,32 @@ export const STADIUM_GRADIENT = {
   end: '#1FA2A6',            // Secondary (turkuaz)
 };
 
-// ☀️ LIGHT MODE - TacticIQ Design System v1.0
+// ☀️ LIGHT MODE - TacticIQ Design System v1.0 (Açık mod standart: konteyner ayrımı + yumuşak tonlar)
 export const LIGHT_MODE = {
   background: '#fafaf9',           // Ana arka plan (açık bej)
   foreground: '#0F2A24',           // Ana metin rengi (koyu yeşil - Primary)
-  card: '#ffffff',                 // Kart arka planı (beyaz)
+  card: 'rgba(255, 255, 255, 0.97)', // Kart: hafif ton – grid’den ayrılsın
   cardForeground: '#0F2A24',       // Kart metin rengi (Primary)
-  popover: '#ffffff',              // Popup arka planı (beyaz)
+  popover: 'rgba(255, 255, 255, 0.98)', // Popup arka planı
   popoverForeground: '#0F2A24',    // Popup metin rengi (Primary)
   primary: '#0F2A24',              // Primary buton rengi (koyu yeşil)
   primaryForeground: '#ffffff',     // Primary buton text (beyaz)
   secondary: '#1FA2A6',            // Secondary buton rengi (turkuaz)
   secondaryForeground: '#ffffff',  // Secondary buton text (beyaz)
-  muted: '#E6E6E6',                // Muted arka plan (açık gri)
+  muted: '#E8E8E6',                // Muted arka plan (açık gri)
   mutedForeground: '#0F2A24',      // Muted metin rengi (Primary)
   accent: '#C9A44C',               // Vurgu rengi (altın)
   accentForeground: '#0F2A24',     // Accent text rengi (Primary)
   destructive: '#8C3A3A',          // Hata/silme rengi (koyu kırmızı)
   destructiveForeground: '#ffffff', // Destructive text (beyaz)
-  border: 'rgba(15, 42, 36, 0.1)', // Border rengi (Primary %10 opacity)
-  input: 'transparent',            // Input border (şeffaf)
-  inputBackground: '#f3f3f5',      // Input arka plan
+  border: 'rgba(15, 42, 36, 0.18)', // Border: belirgin çerçeve (açık mod standart)
+  input: 'rgba(15, 42, 36, 0.2)',  // Input border
+  inputBackground: '#f0f2f1',     // Input arka plan (yumuşak)
   switchBackground: '#cbced4',     // Toggle/switch rengi
   ring: '#1FA2A6',                 // Focus ring (Secondary - turkuaz)
+  // Açık mod konteyner token’ları (ekranlarda tek tip kullanım)
+  containerBg: 'rgba(255, 255, 255, 0.97)', // Konteyner dolgu
+  cardBorder: 'rgba(15, 42, 36, 0.18)',     // Konteyner çerçeve
   
   // Chart Colors (Light Mode)
   chart1: '#1FA2A6',               // Ana chart rengi (turkuaz - Secondary)
@@ -86,6 +89,8 @@ export const DARK_MODE = {
   inputBackground: '#0F2A24',      // Input arka plan (Primary)
   switchBackground: '#334155',     // Switch/toggle arka plan
   ring: '#1FA2A6',                 // Focus ring (Secondary - turkuaz)
+  containerBg: '#0F2A24',          // Konteyner dolgu (dark = card)
+  cardBorder: 'rgba(230, 230, 230, 0.15)', // Konteyner çerçeve
   
   // Chart Colors (Dark Mode)
   chart1: '#1FA2A6',               // Turkuaz (Secondary)

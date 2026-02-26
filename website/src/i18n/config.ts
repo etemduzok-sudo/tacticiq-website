@@ -17,7 +17,7 @@ i18n
       ru: { translation: translations.ru },
       hi: { translation: translations.hi },
     },
-    lng: 'tr',
+    lng: 'en',
     fallbackLng: 'en',
     interpolation: {
       escapeValue: false,

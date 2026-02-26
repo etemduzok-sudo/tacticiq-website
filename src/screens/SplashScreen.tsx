@@ -12,23 +12,15 @@ import { LinearGradient } from 'expo-linear-gradient';
 // ✅ Animasyon import'ları kaldırıldı (sıçrama yok)
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
-  AUTH_GRADIENT,
-} from '../theme/gradients';
-import {
   BRAND,
-  TYPOGRAPHY,
   SPACING,
-  SIZES,
-  SHADOWS,
-  OPACITY,
   Z_INDEX,
+  COLORS,
+  LIGHT_MODE,
+  DARK_MODE,
 } from '../theme/theme';
-import {
-  WEBSITE_BRAND_COLORS,
-  WEBSITE_SPACING as WDS_SPACING,
-} from '../config/WebsiteDesignSystem';
+import { useTheme } from '../contexts/ThemeContext';
 import { supabase } from '../config/supabase';
-import socialAuthService from '../services/socialAuthService';
 
 const { width, height } = Dimensions.get('window');
 
@@ -37,9 +29,13 @@ interface SplashScreenProps {
 }
 
 export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
-  // ✅ Logo animasyonları kaldırıldı (sıçrama yok)
-  // ✅ Loading dots animasyonları kaldırıldı (sadece görünür)
-  // ✅ Background circles kaldırıldı (baloncuklar)
+  const { theme } = useTheme();
+  const isLight = theme === 'light';
+  const bgColor = isLight ? LIGHT_MODE.background : DARK_MODE.background;
+  const gradientColors = isLight
+    ? ['#fafaf9', '#E8E8E6', '#f5f7f6']
+    : ['#0a1612', '#0F2A24', '#0a1612'];
+  const gridOpacity = isLight ? 'rgba(15, 42, 36, 0.12)' : 'rgba(31, 162, 166, 0.12)';
 
   useEffect(() => {
     // Web için OAuth callback ve session kontrolü
@@ -208,15 +204,18 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
   // ✅ Tüm animated style'lar kaldırıldı (standart görünüm)
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: bgColor }]}>
       <LinearGradient
-        colors={['#0a1612', '#0F2A24', '#0a1612']}
+        colors={gradientColors}
         style={styles.container}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
       >
-        {/* Grid Pattern Background */}
-        <View style={styles.gridPattern} />
+        {/* Grid Pattern Background - tema uyumlu */}
+        <View style={[styles.gridPattern, Platform.OS === 'web' && isLight && {
+          backgroundImage: `linear-gradient(to right, ${gridOpacity} 1px, transparent 1px), linear-gradient(to bottom, ${gridOpacity} 1px, transparent 1px)`,
+          backgroundSize: '40px 40px',
+        }]} />
 
         {/* Main Content */}
         <View style={styles.content}>
@@ -238,7 +237,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: WEBSITE_BRAND_COLORS.primary,
+    backgroundColor: BRAND.primary,
   },
   container: {
     flex: 1,

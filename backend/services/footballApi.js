@@ -23,6 +23,8 @@ const BASE_URL = 'https://v3.football.api-sports.io';
 // Request counter (resets daily)
 let requestCount = 0;
 let lastResetDate = new Date().toDateString();
+// Son API yanıtındaki rate limit (api-status endpoint için)
+let lastRateLimit = { limit: null, remaining: null, updatedAt: null };
 
 // Reset counter daily
 function checkAndResetCounter() {
@@ -71,9 +73,19 @@ async function makeRequest(endpoint, params = {}, cacheKey = null, cacheDuration
     });
 
     requestCount++;
-    console.log(`📡 API Request #${requestCount}/75000: ${endpoint}`);
+    const limitDay = response.headers['x-ratelimit-requests-limit'];
+    const remainingDay = response.headers['x-ratelimit-requests-remaining'];
+    if (limitDay != null || remainingDay != null) {
+      console.log(`📡 API #${requestCount}: ${endpoint} | Günlük kalan: ${remainingDay ?? '?'}/${limitDay ?? '?'}`);
+    } else {
+      console.log(`📡 API Request #${requestCount}/75000: ${endpoint}`);
+    }
 
     const data = response.data;
+    if (limitDay != null || remainingDay != null) {
+      lastRateLimit = { limit: limitDay, remaining: remainingDay, updatedAt: new Date().toISOString() };
+      if (data) data._rateLimit = lastRateLimit;
+    }
 
     // Cache the response
     if (cacheKey && data) {
@@ -83,14 +95,19 @@ async function makeRequest(endpoint, params = {}, cacheKey = null, cacheDuration
 
     return data;
   } catch (error) {
-    // Silently handle 403 (Forbidden) errors - API key issues
-    if (error.response && error.response.status === 403) {
-      // Return empty response instead of throwing error
+    const status = error.response?.status;
+    // 403 = API key geçersiz / yetkisiz
+    if (status === 403) {
+      console.warn('⚠️ API 403: API key geçersiz veya yetkisiz. Güncelleme alınamıyor.');
       return { response: [], results: 0, errors: ['API key invalid or missing'] };
     }
-    
-    // For other errors, log but still return empty response
-    console.error('API Error:', error.message);
+    // 429 = Günlük veya dakikalık limit aşıldı
+    if (status === 429) {
+      console.warn('⚠️ API 429: Günlük/dakika limiti aşıldı. Güncelleme alınamıyor (limit yarın sıfırlanır).');
+      return { response: [], results: 0, errors: ['Rate limit exceeded (429)'] };
+    }
+    // Diğer hatalar
+    console.error('API Error:', error.message, status ? `(${status})` : '');
     return { response: [], results: 0, errors: [error.message] };
   }
 }
@@ -533,9 +550,10 @@ async function getTeamInjuries(teamId, season = 2025) {
 }
 
 // Get team coach (teknik direktör)
-// ✅ Bu endpoint HER ZAMAN güncel coach verisini döndürür (maç oynamamış takımlar için de)
+// ✅ Bu endpoint güncel coach verisini döndürür (maç oynamamış takımlar için de)
+// 2 saat cache - koç değişikliklerinde daha hızlı güncelleme
 async function getTeamCoach(teamId) {
-  return makeRequest('/coachs', { team: teamId }, `team-coach-${teamId}`, 43200); // 12 hour cache
+  return makeRequest('/coachs', { team: teamId }, `team-coach-${teamId}`, 7200); // 2 hour cache
 }
 
 // Get team transfers (son transferler)
@@ -711,8 +729,17 @@ function clearCache() {
   console.log('🗑️ Cache cleared');
 }
 
+// API kotası / durumu (son yanıttaki rate limit header'ları)
+function getApiStatus() {
+  return {
+    ...lastRateLimit,
+    internalRequestCount: requestCount,
+  };
+}
+
 // Export
 module.exports = {
+  getApiStatus,
   // ✅ Internal API request function (for scripts)
   apiRequest: makeRequest,
   getLiveMatches,

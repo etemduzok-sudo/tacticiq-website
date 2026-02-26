@@ -89,35 +89,8 @@ async function fetchCoachForTeam(teamId) {
       return null;
     }
     
-    // Aktif coach'u bul (end tarihi olmayan)
-    const currentCoach = data.response.find(c => 
-      c.career && c.career.some(car => car.team?.id === teamId && !car.end)
-    );
-    
-    if (currentCoach) {
-      return {
-        name: currentCoach.name,
-        id: currentCoach.id,
-      };
-    }
-    
-    // Aktif bulunamadıysa en son kariyer kaydına bak
-    const sortedByCareer = data.response.sort((a, b) => {
-      const aLatest = a.career?.find(c => c.team?.id === teamId);
-      const bLatest = b.career?.find(c => c.team?.id === teamId);
-      const aStart = aLatest?.start ? new Date(aLatest.start) : new Date(0);
-      const bStart = bLatest?.start ? new Date(bLatest.start) : new Date(0);
-      return bStart - aStart;
-    });
-    
-    if (sortedByCareer[0]) {
-      return {
-        name: sortedByCareer[0].name,
-        id: sortedByCareer[0].id,
-      };
-    }
-    
-    return null;
+    const { selectActiveCoach } = require('../utils/selectActiveCoach');
+    return selectActiveCoach(data.response, teamId);
   } catch (error) {
     console.error(`  ❌ Coach fetch error for team ${teamId}:`, error.message);
     return null;

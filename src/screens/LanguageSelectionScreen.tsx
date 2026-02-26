@@ -15,8 +15,9 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { FlagDE, FlagGB, FlagES, FlagFR, FlagIT, FlagTR, FlagAR, FlagCN, FlagRU, FlagIN } from '../components/flags';
 import { AUTH_GRADIENT } from '../theme/gradients';
-import { STANDARD_LAYOUT, STANDARD_COLORS } from '../constants/standardLayout';
+import { STANDARD_LAYOUT, STANDARD_COLORS, STANDARD_COLORS_LIGHT } from '../constants/standardLayout';
 import { useTranslation } from '../hooks/useTranslation';
+import { useTheme } from '../contexts/ThemeContext';
 import { BRAND, SPACING, TYPOGRAPHY } from '../theme/theme';
 import { LEGAL_DOCUMENTS, getLegalContent, getLegalContentSync } from '../data/legalContent';
 import { getCurrentLanguage } from '../i18n';
@@ -34,6 +35,9 @@ export default function LanguageSelectionScreen({
   onBack,
 }: LanguageSelectionScreenProps) {
   const { t, i18n } = useTranslation();
+  const { theme } = useTheme();
+  const isLight = theme === 'light';
+  const colors = isLight ? STANDARD_COLORS_LIGHT : STANDARD_COLORS;
   const [selectedLanguage, setSelectedLanguage] = useState(i18n?.language || 'en');
   const [legalAccepted, setLegalAccepted] = useState(false);
   const [showLanguageModal, setShowLanguageModal] = useState(false);
@@ -299,7 +303,48 @@ export default function LanguageSelectionScreen({
   );
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, isLight && { backgroundColor: colors.background }]}>
+      {isLight ? (
+        <View style={[styles.container, { backgroundColor: colors.background }]}>
+          <View style={[styles.gridPattern, Platform.OS === 'web' && { backgroundImage: `linear-gradient(to right, rgba(15,42,36,0.12) 1px, transparent 1px), linear-gradient(to bottom, rgba(15,42,36,0.12) 1px, transparent 1px)`, backgroundSize: '40px 40px' }]} />
+          <View style={styles.screenContainer}>
+            <View style={styles.content}>
+              <View style={styles.logoContainer}>
+                <Image source={logoImage} style={styles.logoImage} resizeMode="contain" />
+              </View>
+              <View style={[styles.infoContainer, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1.5 }]}>
+                <Text style={[styles.infoTitle, { color: colors.foreground }]}>
+                  {selectedLanguage === 'tr' ? 'Dil Seçimi' : selectedLanguage === 'en' ? 'Language Selection' : selectedLanguage === 'de' ? 'Sprachauswahl' : selectedLanguage === 'es' ? 'Selección de Idioma' : selectedLanguage === 'fr' ? 'Sélection de la Langue' : selectedLanguage === 'it' ? 'Selezione Lingua' : selectedLanguage === 'ar' ? 'اختيار اللغة' : selectedLanguage === 'ru' ? 'Выбор языка' : selectedLanguage === 'hi' ? 'भाषा चयन' : 'Language Selection'}
+                </Text>
+                <Text style={[styles.infoSubtitle, { color: colors.mutedForeground }]}>
+                  {selectedLanguage === 'tr' ? 'Lütfen tercih ettiğiniz dili seçin' : selectedLanguage === 'en' ? 'Please select your preferred language' : selectedLanguage === 'de' ? 'Bitte wählen Sie Ihre bevorzugte Sprache' : selectedLanguage === 'es' ? 'Por favor seleccione su idioma preferido' : selectedLanguage === 'fr' ? 'Veuillez sélectionner votre langue préférée' : selectedLanguage === 'it' ? 'Seleziona la tua lingua preferita' : selectedLanguage === 'ar' ? 'يرجى اختيار لغتك المفضلة' : selectedLanguage === 'ru' ? 'Пожалуйста, выберите предпочитаемый язык' : selectedLanguage === 'hi' ? 'कृपया अपनी भाषा चुनें' : 'Please select your preferred language'}
+                </Text>
+              </View>
+              <View style={styles.languageGrid}>
+                {languages.map((lang) => {
+                  const isSelected = lang.code === selectedLanguage;
+                  return (
+                    <TouchableOpacity
+                      key={lang.code}
+                      style={[
+                        styles.languageButton,
+                        { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1.5 },
+                        isSelected && { backgroundColor: 'rgba(31, 162, 166, 0.15)', borderColor: colors.secondary, borderWidth: 2 },
+                      ]}
+                      onPress={() => handleLanguagePress(lang.code)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.languageButtonFlag}><FlagComponent code={lang.code} /></View>
+                      <Text style={[styles.languageButtonText, { color: colors.foreground }, isSelected && { color: colors.secondary, fontWeight: '700' }]}>{lang.name}</Text>
+                      {isSelected && <Text style={[styles.languageButtonCheckmark, { color: colors.secondary }]}>✓</Text>}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          </View>
+        </View>
+      ) : (
       <LinearGradient
         colors={AUTH_GRADIENT.colors}
         style={styles.container}
@@ -371,10 +416,11 @@ export default function LanguageSelectionScreen({
         </View>
 
         {/* Modals */}
-        {renderLanguageModal()}
-        {renderLegalModal()}
-        {renderCookieModal()}
       </LinearGradient>
+      )}
+      {renderLanguageModal()}
+      {renderLegalModal()}
+      {renderCookieModal()}
     </SafeAreaView>
   );
 }

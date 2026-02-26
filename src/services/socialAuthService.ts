@@ -8,23 +8,31 @@ import { STORAGE_KEYS } from '../config/constants';
 import { supabase } from '../config/supabase';
 import profileService from './profileService';
 
-// ✅ Platform'a göre OAuth redirect URI
-const getRedirectUri = () => {
+// ✅ Platform'a göre OAuth redirect URI - HER ZAMAN sign-in anında hesapla (mobilde modül yüklemede yanlış dönebiliyordu)
+// Supabase redirectTo ile Redirect URLs listesi BİREBİR eşleşmeli (trailing slash dahil). Wildcard: http://localhost:8083/**
+function getRedirectUri(): string {
   if (Platform.OS === 'web') {
-    // Web için mevcut URL'i kullan (Supabase otomatik handle eder)
-    // ✅ Development için localhost, production için domain
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8081';
+    let origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8081';
+    // Supabase doc: "Make sure to include a trailing `/`" - allowlist ile exact match için hep slash ile gönder
+    if (!origin.endsWith('/')) origin = origin + '/';
     console.log('🌐 [socialAuth] Web redirect URI:', origin);
+    if (typeof window !== 'undefined' && origin.includes('localhost')) {
+      console.warn(
+        '⚠️ [socialAuth] Dev: Redirect URLs\'te tam bu değer olmalı (slash dahil) veya wildcard:',
+        origin,
+        'veya',
+        origin.replace(/\/$/, '') + '/**'
+      );
+    }
     return origin;
   }
-  // Mobile için deep link
-  return makeRedirectUri({
+  const uri = makeRedirectUri({
     scheme: 'tacticiq',
     path: 'auth/callback',
   });
-};
-
-const redirectUri = getRedirectUri();
+  console.log('📱 [socialAuth] Mobile redirect URI:', uri);
+  return uri;
+}
 
 interface SocialAuthResult {
   success: boolean;
@@ -44,6 +52,7 @@ class SocialAuthService {
    */
   async signInWithGoogle(): Promise<SocialAuthResult> {
     try {
+      const redirectUri = getRedirectUri();
       console.log('🔑 [socialAuth] Google Sign In başlatıldı...');
       console.log('📍 Redirect URI:', redirectUri);
       
@@ -138,6 +147,7 @@ class SocialAuthService {
    */
   async signInWithApple(): Promise<SocialAuthResult> {
     try {
+      const redirectUri = getRedirectUri();
       console.log('🔑 [socialAuth] Apple Sign In başlatıldı...');
       console.log('📍 Redirect URI:', redirectUri);
       console.log('🌐 Platform:', Platform.OS);

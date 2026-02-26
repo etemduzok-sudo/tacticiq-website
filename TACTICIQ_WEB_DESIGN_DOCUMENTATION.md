@@ -519,7 +519,7 @@ ANA SAYFA (Doğrudan)
 
 ##### **Sekme 4: 📊 İstatistik (Stats)**
 - **İçerik:**
-  - **Topla Oynama:** Ev Sahibi % vs Deplasman %
+  - **Topa Sahip Olma:** Ev Sahibi % vs Deplasman %
   - **Şutlar:** Toplam şut, İsabetli şut (grafik)
   - **Kornerler:** Ev Sahibi vs Deplasman
   - **Pas İsabeti:** Ev Sahibi % vs Deplasman %

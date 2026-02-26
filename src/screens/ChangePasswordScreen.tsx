@@ -20,6 +20,7 @@ import { authApi } from '../services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { logger } from '../utils/logger';
 import { STORAGE_KEYS } from '../config/constants';
+import { useTranslation } from '../hooks/useTranslation';
 
 interface ChangePasswordScreenProps {
   onBack: () => void;
@@ -28,6 +29,7 @@ interface ChangePasswordScreenProps {
 export const ChangePasswordScreen: React.FC<ChangePasswordScreenProps> = ({
   onBack,
 }) => {
+  const { t } = useTranslation();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -56,22 +58,22 @@ export const ChangePasswordScreen: React.FC<ChangePasswordScreenProps> = ({
   const handleSubmit = async () => {
     // Validation
     if (!currentPassword || !newPassword || !confirmPassword) {
-      Alert.alert('Hata', 'Tüm alanları doldurun');
+      Alert.alert(t('common.error'), t('changePassword.fillAllFields'));
       return;
     }
 
     if (newPassword.length < 6) {
-      Alert.alert('Hata', 'Yeni şifre en az 6 karakter olmalı');
+      Alert.alert(t('common.error'), t('changePassword.newPasswordMinLength'));
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      Alert.alert('Hata', 'Yeni şifreler eşleşmiyor');
+      Alert.alert(t('common.error'), t('changePassword.newPasswordsDontMatch'));
       return;
     }
 
     if (!userEmail) {
-      Alert.alert('Hata', 'Kullanıcı bilgisi bulunamadı. Lütfen tekrar giriş yapın.');
+      Alert.alert(t('common.error'), t('changePassword.userNotFound'));
       return;
     }
 
@@ -96,11 +98,11 @@ export const ChangePasswordScreen: React.FC<ChangePasswordScreenProps> = ({
       ]
     );
       } else {
-        Alert.alert('Hata', result.error || 'Şifre değiştirilemedi');
+        Alert.alert(t('common.error'), result.error || t('changePassword.passwordChangeFailed'));
       }
     } catch (error: any) {
       logger.error('Change password error', { error }, 'CHANGE_PASSWORD');
-      Alert.alert('Hata', error.message || 'Şifre değiştirilemedi. Lütfen tekrar deneyin.');
+      Alert.alert(t('common.error'), error.message || t('changePassword.passwordChangeFailed'));
     } finally {
       setLoading(false);
     }

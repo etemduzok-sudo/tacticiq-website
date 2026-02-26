@@ -768,18 +768,16 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
       const { past, live, upcoming } = categorizeMatches(favoriteMatches);
       logger.info('📊 Categorized results', { past: past.length, live: live.length, upcoming: upcoming.length }, 'MATCHES');
       
-      // ✅ Gerçek veri yoksa
+      // ✅ API'dan 0 maç döndü
       if (past.length === 0 && live.length === 0 && upcoming.length === 0) {
         logger.info('⚠️ No favorite team matches found from API', undefined, 'MATCHES');
         
-        // ✅ Backend bağlantı hatası: Ana sayfada maç gösterme, uyarı göster (yayında daha sonra güncellenebilir)
+        // ✅ Backend erişilemez: Cache'i ASLA silme – kullanıcı cache'teki maçları görsün
         if (backendConnectionError && successfulFetches === 0) {
-          setError('Sunucuya bağlanılamadı. Maçlar şu an gösterilemiyor. Lütfen bağlantınızı kontrol edin veya daha sonra tekrar deneyin.');
-          setPastMatches([]);
-          setLiveMatches([]);
-          setUpcomingMatches([]);
+          logger.info('✅ Backend unreachable, keeping existing/cached matches (no state clear)', undefined, 'MATCHES');
+          setError(null);
+          setLoading(false);
         } else if (hasLoadedOnce) {
-          // Backend cevap verdi ama maç dönmedi – cache'i koru
           logger.info('✅ Keeping cached matches (no new matches from API)', undefined, 'MATCHES');
           setError(null);
         } else {

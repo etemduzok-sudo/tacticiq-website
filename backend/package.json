@@ -5,7 +5,10 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "db:report": "node scripts/db-status-report-every-5min.js",
+    "db:sync-and-report": "node scripts/run-db-sync-and-report.js",
+    "db:sync-and-report:loop": "node scripts/run-db-sync-and-report.js --loop"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.90.0",

@@ -92,15 +92,12 @@ async function syncTeam(teamId, teamName) {
     
     // Coach
     if (coachData.response && coachData.response.length > 0) {
-      const coaches = coachData.response;
-      const currentCoach = coaches.find(c => 
-        c.career && c.career.some(car => car.team?.id == teamId && !car.end)
-      ) || coaches[0];
-      
-      if (currentCoach) {
-        updateData.coach = currentCoach.name;
-        updateData.coach_api_id = currentCoach.id;
-        result.coach = currentCoach.name;
+      const { selectActiveCoach } = require('../utils/selectActiveCoach');
+      const selected = selectActiveCoach(coachData.response, teamId);
+      if (selected) {
+        updateData.coach = selected.name;
+        updateData.coach_api_id = selected.id;
+        result.coach = selected.name;
       }
     }
     

@@ -20,6 +20,7 @@ import Animated, {
   useSharedValue,
 } from 'react-native-reanimated';
 import { useTheme } from '../contexts/ThemeContext';
+import { useTranslation } from '../hooks/useTranslation';
 import { COLORS } from '../theme/theme';
 
 // Web için animasyonları devre dışı bırak
@@ -36,6 +37,7 @@ export const PaymentSuccessModal: React.FC<PaymentSuccessModalProps> = ({
   onClose,
   plan,
 }) => {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const isLight = theme === 'light';
   const themeColors = isLight ? COLORS.light : COLORS.dark;
@@ -78,34 +80,34 @@ export const PaymentSuccessModal: React.FC<PaymentSuccessModalProps> = ({
             </LinearGradient>
           </Animated.View>
 
-          <Text style={[styles.title, isLight && { color: themeColors.foreground }]}>Ödeme Başarılı! 🎉</Text>
+          <Text style={[styles.title, isLight && { color: themeColors.foreground }]}>{t('paymentSuccess.title')}</Text>
           <Text style={[styles.subtitle, isLight && { color: themeColors.mutedForeground }]}>
-            Artık TacticIQ PRO üyesisin!
+            {t('paymentSuccess.subtitle')}
           </Text>
 
           <View style={[styles.detailsContainer, isLight && { backgroundColor: themeColors.muted }]}>
             <View style={styles.detailRow}>
-              <Text style={[styles.detailLabel, isLight && { color: themeColors.mutedForeground }]}>Plan:</Text>
+              <Text style={[styles.detailLabel, isLight && { color: themeColors.mutedForeground }]}>{t('paymentSuccess.plan')}</Text>
               <Text style={[styles.detailValue, isLight && { color: themeColors.foreground }]}>{plan?.title}</Text>
             </View>
             <View style={styles.detailRow}>
-              <Text style={[styles.detailLabel, isLight && { color: themeColors.mutedForeground }]}>Tutar:</Text>
+              <Text style={[styles.detailLabel, isLight && { color: themeColors.mutedForeground }]}>{t('paymentSuccess.amount')}</Text>
               <Text style={[styles.detailValue, isLight && { color: themeColors.foreground }]}>₺{plan?.price}</Text>
             </View>
             <View style={styles.detailRow}>
-              <Text style={[styles.detailLabel, isLight && { color: themeColors.mutedForeground }]}>Başlangıç:</Text>
-              <Text style={[styles.detailValue, isLight && { color: themeColors.foreground }]}>Hemen</Text>
+              <Text style={[styles.detailLabel, isLight && { color: themeColors.mutedForeground }]}>{t('paymentSuccess.startDate')}</Text>
+              <Text style={[styles.detailValue, isLight && { color: themeColors.foreground }]}>{t('paymentSuccess.startNow')}</Text>
             </View>
           </View>
 
           <View style={styles.benefitsContainer}>
-            <Text style={[styles.benefitsTitle, isLight && { color: themeColors.foreground }]}>Kazandıklarınız:</Text>
+            <Text style={[styles.benefitsTitle, isLight && { color: themeColors.foreground }]}>{t('paymentSuccess.benefitsTitle')}</Text>
             <View style={styles.benefitsList}>
               {[
-                'Sınırsız tahmin',
-                'Reklamsız deneyim',
-                'Özel turnuvalar',
-                'Detaylı istatistikler',
+                t('paymentSuccess.benefitUnlimited'),
+                t('paymentSuccess.benefitAdFree'),
+                t('paymentSuccess.benefitTournaments'),
+                t('paymentSuccess.benefitStats'),
               ].map((benefit, index) => (
                 <View key={index} style={styles.benefitItem}>
                   <Ionicons name="checkmark" size={16} color="#059669" />
@@ -126,7 +128,7 @@ export const PaymentSuccessModal: React.FC<PaymentSuccessModalProps> = ({
               end={{ x: 1, y: 0 }}
               style={styles.buttonGradient}
             >
-              <Text style={styles.buttonText}>Harika! Başlayalım</Text>
+              <Text style={styles.buttonText}>{t('paymentSuccess.buttonGreat')}</Text>
               <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
             </LinearGradient>
           </TouchableOpacity>

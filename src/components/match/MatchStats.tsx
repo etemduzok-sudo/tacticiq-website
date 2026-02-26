@@ -17,6 +17,7 @@ import Svg, { Circle } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../services/api';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useTranslation } from '../../hooks/useTranslation';
 import { BRAND, DARK_MODE, COLORS } from '../../theme/theme';
 import { isMockTestMatch, getMockMatchStatistics, getMockPlayerStatistics } from '../../data/mockTestData';
 import { PITCH_LAYOUT } from '../../config/constants';
@@ -49,7 +50,7 @@ interface DisplayStat {
 }
 
 const STAT_LABELS: Record<string, string> = {
-  'Ball Possession': 'Topla Oynama (%)',
+  'Ball Possession': 'Topa Sahip Olma (%)',
   'Total Shots': 'Toplam Şut',
   'Shots on Goal': 'İsabetli Şut',
   // 'Shots off Goal' ve 'Blocked Shots' kullanıcı isteği ile kaldırıldı
@@ -128,7 +129,7 @@ interface SubstitutionInfo {
 
 // Canlı/API yoksa kullanılacak varsayılan veri
 const defaultDetailedStats: DisplayStat[] = [
-  { label: 'Topla Oynama (%)', home: 58, away: 42, homeDisplay: 58, awayDisplay: 42 },
+  { label: 'Topa Sahip Olma (%)', home: 58, away: 42, homeDisplay: 58, awayDisplay: 42 },
   { label: 'Toplam Şut', home: 12, away: 8, homeDisplay: 12, awayDisplay: 8 },
   { label: 'İsabetli Şut', home: 5, away: 3, homeDisplay: 5, awayDisplay: 3 },
   { label: 'Korner', home: 6, away: 4, homeDisplay: 6, awayDisplay: 4 },
@@ -166,7 +167,7 @@ function apiStatsToDisplay(stats: ApiMatchStat[]): DisplayStat[] {
 function getStatIconForLabel(label: string): { icon: string; color: string } {
   const l = label.toLowerCase();
   if (l.includes('xg') || l.includes('gol beklentisi') || l.includes('expected')) return { icon: 'analytics', color: '#22D3EE' };
-  if (l.includes('topla oynama') || l.includes('possession')) return { icon: 'pie-chart', color: '#8B5CF6' };
+  if (l.includes('topa sahip olma') || l.includes('possession')) return { icon: 'pie-chart', color: '#8B5CF6' };
   if (l.includes('isabetli şut') || l.includes('shots on')) return { icon: 'checkmark-circle', color: '#10B981' };
   if (l.includes('şut')) return { icon: 'locate', color: '#3B82F6' };
   if (l.includes('korner')) return { icon: 'flag', color: '#F59E0B' };
@@ -430,6 +431,7 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
   isMatchLive = false,
 }) => {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const isLight = theme === 'light';
   const themeColors = isLight ? COLORS.light : COLORS.dark;
 
@@ -709,8 +711,8 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
     };
 
     fetchLiveStats(); // İlk çağrı hemen
-    const interval = setInterval(fetchLiveStats, 10000);
-    console.log('📊 [MatchStats] Canlı maç istatistik polling başlatıldı (10s)');
+    const interval = setInterval(fetchLiveStats, 5000); // 5 sn: kaleci kurtarışı vb. anlık yansısın
+    console.log('📊 [MatchStats] Canlı maç istatistik polling başlatıldı (5s)');
     return () => {
       cancelled = true;
       clearInterval(interval);
@@ -826,10 +828,14 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
     };
   }, [matchId, matchData?.status, matchData?.fixture?.status?.short]);
 
-  // ✅ Maç henüz başlamadıysa - ScrollView kullanmadan sabit konteyner (Canlı sekmesiyle aynı)
+  // Renkli yapı için takım renkleri (popup kart kenarları)
+  const homeColors = (matchData?.homeTeam?.color as string[] | undefined) || ['#1FA2A6', '#0F2A24'];
+  const awayColors = (matchData?.awayTeam?.color as string[] | undefined) || ['#F97316', '#EA580C'];
+
+  // ✅ Maç henüz başlamadıysa - popup kart + renkli yapı, şeffaf arka plan (grid görünsün)
   if (isMatchNotStarted) {
     return (
-      <SafeAreaView style={[styles.container, isLight && { backgroundColor: themeColors.background }]}>
+      <SafeAreaView style={[styles.container, { backgroundColor: 'transparent' }]}>
         {/* Tabs - her zaman göster; açık temada okunaklı */}
         <View style={styles.tabsContainer}>
           <TouchableOpacity
@@ -846,7 +852,7 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
               activeTab === 'match' && styles.tabTextActive,
               isLight && { color: activeTab === 'match' ? BRAND.secondary : themeColors.foreground },
             ]}>
-              📊 Maç İstatistikleri
+              📊 {t('matchStats.matchStatsTab')}
             </Text>
             {activeTab === 'match' && <View style={styles.tabIndicator} />}
           </TouchableOpacity>
@@ -865,30 +871,34 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
               activeTab === 'players' && styles.tabTextActive,
               isLight && { color: activeTab === 'players' ? BRAND.secondary : themeColors.foreground },
             ]}>
-              ⭐ Oyuncu İstatistikleri
+              ⭐ {t('matchStats.playerStatsTab')}
             </Text>
             {activeTab === 'players' && <View style={styles.tabIndicator} />}
           </TouchableOpacity>
         </View>
 
-        {/* Maç başlamadı bildirimi - açık temada açık kart + koyu metin */}
+        {/* Maç başlamadı bildirimi - popup + renkli yapı (header ile aynı) */}
         <View style={styles.notStartedContainer}>
-          <View style={[styles.notStartedCard, isLight && { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
-            <View style={styles.notStartedIconContainer}>
-              <Ionicons 
-                name={activeTab === 'match' ? 'stats-chart-outline' : 'people-outline'} 
-                size={48} 
-                color={BRAND.accent} 
-              />
+          <View style={styles.notStartedCardWrapper}>
+            <LinearGradient colors={homeColors} style={styles.cardColorBarLeft} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} />
+            <LinearGradient colors={awayColors} style={styles.cardColorBarRight} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} />
+            <View style={[styles.notStartedCard, isLight && { backgroundColor: themeColors.card, borderColor: themeColors.border }]}>
+              <View style={styles.notStartedIconContainer}>
+                <Ionicons 
+                  name={activeTab === 'match' ? 'stats-chart-outline' : 'people-outline'} 
+                  size={48} 
+                  color={BRAND.accent} 
+                />
+              </View>
+              <Text style={[styles.notStartedTitle, isLight && { color: themeColors.foreground }]}>
+                {activeTab === 'match' ? t('matchStats.matchStatsTab') : t('matchStats.playerStatsTab')}
+              </Text>
+              <Text style={[styles.notStartedSubtitle, isLight && { color: themeColors.mutedForeground }]}>
+                {activeTab === 'match' 
+                  ? 'Maç başladığında canlı istatistikler\nburada görünecek'
+                  : 'Maç başladığında canlı oyuncu performansları\nburada görünecek'}
+              </Text>
             </View>
-            <Text style={[styles.notStartedTitle, isLight && { color: themeColors.foreground }]}>
-              {activeTab === 'match' ? 'Maç İstatistikleri' : 'Oyuncu İstatistikleri'}
-            </Text>
-            <Text style={[styles.notStartedSubtitle, isLight && { color: themeColors.mutedForeground }]}>
-              {activeTab === 'match' 
-                ? 'Maç başladığında canlı istatistikler\nburada görünecek'
-                : 'Maç başladığında canlı oyuncu performansları\nburada görünecek'}
-            </Text>
           </View>
         </View>
       </SafeAreaView>
@@ -896,7 +906,7 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
   }
 
   return (
-    <SafeAreaView style={[styles.container, isLight && { backgroundColor: themeColors.background }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: 'transparent' }]}>
       {/* Tabs - açık temada okunaklı */}
       <View style={styles.tabsContainer}>
         <TouchableOpacity
@@ -913,7 +923,7 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
             activeTab === 'match' && styles.tabTextActive,
             isLight && { color: activeTab === 'match' ? BRAND.secondary : themeColors.foreground },
           ]}>
-            📊 Maç İstatistikleri
+            📊 {t('matchStats.matchStatsTab')}
           </Text>
           {activeTab === 'match' && <View style={styles.tabIndicator} />}
         </TouchableOpacity>
@@ -932,7 +942,7 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
             activeTab === 'players' && styles.tabTextActive,
             isLight && { color: activeTab === 'players' ? BRAND.secondary : themeColors.foreground },
           ]}>
-            ⭐ Oyuncu İstatistikleri
+            ⭐ {t('matchStats.playerStatsTab')}
           </Text>
           {activeTab === 'players' && <View style={styles.tabIndicator} />}
         </TouchableOpacity>
@@ -977,14 +987,14 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
                       <View style={styles.xgContent}>
                         <View style={[styles.xgValueBox, homeWins && styles.xgValueBoxWinner]}>
                           <Text style={[styles.xgValue, homeWins && styles.xgValueWinner]}>{xg.home.toFixed(2)}</Text>
-                          <Text style={styles.xgTeamLabel}>Ev Sahibi</Text>
+                          <Text style={styles.xgTeamLabel}>{t('matchStats.home')}</Text>
                         </View>
                         <View style={styles.xgVsContainer}>
                           <Text style={styles.xgVsText}>vs</Text>
                         </View>
                         <View style={[styles.xgValueBox, awayWins && styles.xgValueBoxWinnerAway]}>
                           <Text style={[styles.xgValue, awayWins && styles.xgValueWinnerAway]}>{xg.away.toFixed(2)}</Text>
-                          <Text style={styles.xgTeamLabel}>Deplasman</Text>
+                          <Text style={styles.xgTeamLabel}>{t('matchStats.away')}</Text>
                         </View>
                       </View>
                       <Text style={styles.xgFormula}>
@@ -1068,8 +1078,8 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
               // Favori takım hangisi? Home mu Away mi?
               const homeTeamId = matchData?.homeId || matchData?.teams?.home?.id;
               const awayTeamId = matchData?.awayId || matchData?.teams?.away?.id;
-              const homeName = matchData?.homeName || matchData?.teams?.home?.name || 'Ev Sahibi';
-              const awayName = matchData?.awayName || matchData?.teams?.away?.name || 'Deplasman';
+              const homeName = matchData?.homeName || matchData?.teams?.home?.name || t('matchStats.home');
+              const awayName = matchData?.awayName || matchData?.teams?.away?.name || t('matchStats.away');
               
               const isFavoriteHome = favoriteTeamIds.includes(homeTeamId);
               const isFavoriteAway = favoriteTeamIds.includes(awayTeamId);
@@ -1335,8 +1345,8 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
               
               // Favori takımın oyuncularını seç - API'den gelen veriler kullan
               const favoriteTeamName = isFavoriteAway 
-                ? (matchData?.awayName || 'Deplasman')
-                : (matchData?.homeName || 'Ev Sahibi');
+                ? (matchData?.awayName || t('matchStats.away'))
+                : (matchData?.homeName || t('matchStats.home'));
               
               // ✅ Sadece API'den gelen veriyi kullan; anlamsız/yanlış veri göstermek güven kaybına yol açar
               const apiPlayers = isFavoriteAway ? playerStats.away : playerStats.home;
@@ -1477,7 +1487,7 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
                                 <Ionicons name="shield-checkmark" size={18} color="#8B5CF6" />
                               </View>
                               <Text style={styles.statCardValue}>{player.penaltySaved || 0}</Text>
-                              <Text style={styles.statCardLabel}>Penaltı Kurtarış</Text>
+                              <Text style={styles.statCardLabel}>{t('matchStats.penaltySave')}</Text>
                             </View>
                             <View style={styles.statCardNew}>
                               <View style={[styles.statCardIcon, { backgroundColor: 'rgba(20, 184, 166, 0.15)' }]}>
@@ -1510,7 +1520,7 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
                             {(player.minutesPlayed > 0 && (player.saves ?? 0) === 0 && (player.goalsAgainst ?? 0) === 0) && (
                               <View style={styles.gkStatsNote}>
                                 <Ionicons name="information-circle-outline" size={14} color="#7A9A94" />
-                                <Text style={styles.gkStatsNoteText}>Canlı maçta kaleci istatistikleri maç sonuna doğru güncellenir.</Text>
+                                <Text style={styles.gkStatsNoteText}>Kaleci istatistikleri (kurtarış, gol yedi) birkaç saniye içinde güncellenir.</Text>
                               </View>
                             )}
                           </>
@@ -1818,7 +1828,7 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
                                 : (player.penaltyScored || 0)}
                             </Text>
                             <Text style={styles.extraDetailLabel}>
-                              {player.isGoalkeeper ? 'Penaltı Kurtarış' : 'Penaltı Gol'}
+                              {player.isGoalkeeper ? t('matchStats.penaltySave') : t('matchStats.penaltyGoal')}
                             </Text>
                           </View>
                         </View>
@@ -1910,12 +1920,41 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     fontWeight: '500',
   },
-  // ✅ Maç henüz başlamadı - Canlı sekmesiyle aynı stil (sabit boyut, sıçrama önleme)
+  // ✅ Maç henüz başlamadı - popup + renkli yapı (header ile aynı) – sabit yükseklik sıçrama önler
   notStartedContainer: {
-    flex: 1, // Tüm alanı kapla
+    flex: 1,
+    minHeight: 280,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
+    overflow: 'hidden',
+  },
+  notStartedCardWrapper: {
+    position: 'relative',
+    width: 310,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  cardColorBarLeft: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 5,
+    zIndex: 0,
+    borderTopLeftRadius: 16,
+    borderBottomLeftRadius: 16,
+  },
+  cardColorBarRight: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: 5,
+    zIndex: 0,
+    borderTopRightRadius: 16,
+    borderBottomRightRadius: 16,
   },
   notStartedCard: {
     backgroundColor: DARK_MODE.card,
@@ -1924,9 +1963,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: DARK_MODE.border,
-    width: 300, // Sabit genişlik
-    height: 240, // Sabit yükseklik - sıçrama önleme
+    width: 300,
+    height: 240,
     justifyContent: 'center',
+    marginHorizontal: 5,
+    zIndex: 1,
   },
   notStartedIconContainer: {
     width: 80,

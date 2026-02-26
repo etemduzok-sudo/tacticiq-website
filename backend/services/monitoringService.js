@@ -9,6 +9,7 @@ const fs = require('fs');
 const ADMIN_EMAIL = 'etemduzok@gmail.com';
 const INFO_EMAIL = 'info@tacticiq.com';
 const HEALTH_CHECK_INTERVAL = 30000; // 30 saniye
+const BACKEND_PORT = process.env.PORT || 3001;
 const MAX_RESTART_ATTEMPTS = 5;
 const RESTART_COOLDOWN = 60000; // 1 dakika
 
@@ -24,7 +25,7 @@ const checkBackendHealth = async () => {
     
     const options = {
       hostname: 'localhost',
-      port: 3000,
+      port: BACKEND_PORT,
       path: '/health',
       method: 'GET',
       timeout: 5000,
@@ -97,10 +98,10 @@ const restartBackend = async () => {
   console.log(`🔄 Attempting to restart backend (Attempt ${restartAttempts}/${MAX_RESTART_ATTEMPTS})...`);
 
   try {
-    // Find and kill existing node process on port 3000
+    // Find and kill existing node process on backend port
     const killCommand = process.platform === 'win32' 
-      ? `netstat -ano | findstr :3000 | findstr LISTENING | for /f "tokens=5" %a in ('more') do taskkill /F /PID %a`
-      : `lsof -ti:3000 | xargs kill -9`;
+      ? `netstat -ano | findstr :${BACKEND_PORT} | findstr LISTENING | for /f "tokens=5" %a in ('more') do taskkill /F /PID %a`
+      : `lsof -ti:${BACKEND_PORT} | xargs kill -9`;
 
     exec(killCommand, (error) => {
       if (error) {
@@ -211,7 +212,7 @@ const sendAdminAlert = async (errorMessage) => {
             </div>
             
             <div style="text-align: center; margin: 30px 0;">
-              <a href="http://localhost:3000/health" class="button">Backend Health Check</a>
+              <a href="http://localhost:${BACKEND_PORT}/health" class="button">Backend Health Check</a>
             </div>
             
             <p><strong>Not:</strong> Bu mail otomatik olarak gönderilmiştir. Backend servisi düzeltildikten sonra sistem normal çalışmaya devam edecektir.</p>
@@ -251,7 +252,7 @@ Yapılması Gerekenler:
 3. Log'ları Kontrol Edin:
    backend/logs/error.log
 
-Backend Health Check: http://localhost:3000/health
+Backend Health Check: http://localhost:${BACKEND_PORT}/health
 
 Not: Bu mail otomatik olarak gönderilmiştir.
 
