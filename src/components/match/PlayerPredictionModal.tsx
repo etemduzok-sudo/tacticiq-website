@@ -619,7 +619,16 @@ const PlayerPredictionModal = ({
                             <TouchableOpacity
                               key={range.value}
                               style={[styles.minuteRangeButtonCompact, styles.minuteRangeButtonCompact2Row, isSelected && styles.minuteRangeButtonCompactSelected]}
-                              onPress={() => setLocalMinuteRange(range.value)}
+                              onPress={() => {
+                                setLocalMinuteRange(range.value);
+                                if (localSubstituteId && onSubstituteConfirm && expandedSubstituteType === 'normal' && !isPredictionLocked) {
+                                  onSubstituteConfirm('normal', localSubstituteId, range.value);
+                                  setExpandedSubstituteType(null);
+                                  setLocalSubstituteId(null);
+                                  setLocalMinuteRange(null);
+                                  setShowPlayerDropdown(false);
+                                }
+                              }}
                               activeOpacity={0.7}
                             >
                               <Text style={[styles.minuteRangeTextCompact, isSelected && styles.minuteRangeTextCompactSelected]}>
@@ -636,7 +645,16 @@ const PlayerPredictionModal = ({
                             <TouchableOpacity
                               key={range.value}
                               style={[styles.minuteRangeButtonCompact, styles.minuteRangeButtonCompact2Row, isSelected && styles.minuteRangeButtonCompactSelected]}
-                              onPress={() => setLocalMinuteRange(range.value)}
+                              onPress={() => {
+                                setLocalMinuteRange(range.value);
+                                if (localSubstituteId && onSubstituteConfirm && expandedSubstituteType === 'normal' && !isPredictionLocked) {
+                                  onSubstituteConfirm('normal', localSubstituteId, range.value);
+                                  setExpandedSubstituteType(null);
+                                  setLocalSubstituteId(null);
+                                  setLocalMinuteRange(null);
+                                  setShowPlayerDropdown(false);
+                                }
+                              }}
                               activeOpacity={0.7}
                             >
                               <Text style={[styles.minuteRangeTextCompact, isSelected && styles.minuteRangeTextCompactSelected]}>
@@ -648,48 +666,6 @@ const PlayerPredictionModal = ({
                       </View>
                     </View>
                   </View>
-                  
-                  {localSubstituteId && (
-                    <View style={styles.autoSaveInfo}>
-                      <Ionicons name="checkmark-circle" size={16} color="#10B981" />
-                      <Text style={styles.autoSaveInfoText}>
-                        {localMinuteRange 
-                          ? 'Hem oyuncu hem dakika seçildi - otomatik kaydedilecek' 
-                          : 'Oyuncu seçildi - dakika seçebilir veya kaydet butonuna basabilirsiniz'}
-                      </Text>
-                    </View>
-                  )}
-                  
-                  {localSubstituteId && (
-                    <TouchableOpacity
-                      ref={expandedSubstituteType === 'normal' ? saveButtonRef : null}
-                      style={[
-                        styles.manualSaveButton,
-                        isPredictionLocked && styles.manualSaveButtonDisabled,
-                      ]}
-                      onPress={() => {
-                        if (!isPredictionLocked && onSubstituteConfirm && expandedSubstituteType === 'normal' && localSubstituteId) {
-                          onSubstituteConfirm('normal', localSubstituteId, localMinuteRange || null);
-                          setExpandedSubstituteType(null);
-                          setShowPlayerDropdown(false);
-                        }
-                      }}
-                      onLayout={() => {
-                        if (expandedSubstituteType === 'normal' && scrollViewRef.current) {
-                          setTimeout(() => {
-                            scrollViewRef.current?.scrollToEnd({ animated: true });
-                          }, 100);
-                        }
-                      }}
-                      activeOpacity={isPredictionLocked ? 1 : 0.7}
-                      disabled={isPredictionLocked}
-                    >
-                      <Text style={[
-                        styles.manualSaveButtonText,
-                        isPredictionLocked && styles.manualSaveButtonTextDisabled,
-                      ]}>Kaydet</Text>
-                    </TouchableOpacity>
-                  )}
                 </View>
               )}
             </View>
@@ -822,7 +798,16 @@ const PlayerPredictionModal = ({
                             <TouchableOpacity
                               key={range.value}
                               style={[styles.minuteRangeButtonCompact, styles.minuteRangeButtonCompact2Row, isSelected && styles.minuteRangeButtonCompactSelected]}
-                              onPress={() => setLocalMinuteRange(range.value)}
+                              onPress={() => {
+                                setLocalMinuteRange(range.value);
+                                if (localSubstituteId && onSubstituteConfirm && expandedSubstituteType === 'injury' && !isPredictionLocked) {
+                                  onSubstituteConfirm('injury', localSubstituteId, range.value);
+                                  setExpandedSubstituteType(null);
+                                  setLocalSubstituteId(null);
+                                  setLocalMinuteRange(null);
+                                  setShowPlayerDropdown(false);
+                                }
+                              }}
                               activeOpacity={0.7}
                             >
                               <Text style={[styles.minuteRangeTextCompact, isSelected && styles.minuteRangeTextCompactSelected]}>
@@ -839,7 +824,16 @@ const PlayerPredictionModal = ({
                             <TouchableOpacity
                               key={range.value}
                               style={[styles.minuteRangeButtonCompact, styles.minuteRangeButtonCompact2Row, isSelected && styles.minuteRangeButtonCompactSelected]}
-                              onPress={() => setLocalMinuteRange(range.value)}
+                              onPress={() => {
+                                setLocalMinuteRange(range.value);
+                                if (localSubstituteId && onSubstituteConfirm && expandedSubstituteType === 'injury' && !isPredictionLocked) {
+                                  onSubstituteConfirm('injury', localSubstituteId, range.value);
+                                  setExpandedSubstituteType(null);
+                                  setLocalSubstituteId(null);
+                                  setLocalMinuteRange(null);
+                                  setShowPlayerDropdown(false);
+                                }
+                              }}
                               activeOpacity={0.7}
                             >
                               <Text style={[styles.minuteRangeTextCompact, isSelected && styles.minuteRangeTextCompactSelected]}>
@@ -851,48 +845,6 @@ const PlayerPredictionModal = ({
                       </View>
                     </View>
                   </View>
-                  
-                  {localSubstituteId && (
-                    <View style={styles.autoSaveInfo}>
-                      <Ionicons name="checkmark-circle" size={16} color="#10B981" />
-                      <Text style={styles.autoSaveInfoText}>
-                        {localMinuteRange 
-                          ? 'Hem oyuncu hem dakika seçildi - otomatik kaydedilecek' 
-                          : 'Oyuncu seçildi - dakika seçebilir veya kaydet butonuna basabilirsiniz'}
-                      </Text>
-                    </View>
-                  )}
-                  
-                  {localSubstituteId && (
-                    <TouchableOpacity
-                      ref={expandedSubstituteType === 'injury' ? saveButtonRef : null}
-                      style={[
-                        styles.manualSaveButton,
-                        isPredictionLocked && styles.manualSaveButtonDisabled,
-                      ]}
-                      onPress={() => {
-                        if (!isPredictionLocked && onSubstituteConfirm && expandedSubstituteType === 'injury' && localSubstituteId) {
-                          onSubstituteConfirm('injury', localSubstituteId, localMinuteRange || null);
-                          setExpandedSubstituteType(null);
-                          setShowPlayerDropdown(false);
-                        }
-                      }}
-                      onLayout={() => {
-                        if (expandedSubstituteType === 'injury' && scrollViewRef.current) {
-                          setTimeout(() => {
-                            scrollViewRef.current?.scrollToEnd({ animated: true });
-                          }, 100);
-                        }
-                      }}
-                      activeOpacity={isPredictionLocked ? 1 : 0.7}
-                      disabled={isPredictionLocked}
-                    >
-                      <Text style={[
-                        styles.manualSaveButtonText,
-                        isPredictionLocked && styles.manualSaveButtonTextDisabled,
-                      ]}>Kaydet</Text>
-                    </TouchableOpacity>
-                  )}
                 </View>
               )}
             </View>

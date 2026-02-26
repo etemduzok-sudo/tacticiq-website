@@ -371,7 +371,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
   React.useEffect(() => {
     if (isMockTestMatch(Number(matchId))) {
       // ✅ Her zaman güncel başlangıç zamanını kullan (sayfa yenilendiğinde de doğru olsun)
-      const expectedStartTime = Number(matchId) === MOCK_MATCH_IDS.GS_FB ? getMatch1Start() : getMatch2Start();
+      const expectedStartTime = (Number(matchId) === MOCK_MATCH_IDS.GS_FB || Number(matchId) === MOCK_MATCH_IDS.TEST_6H) ? getMatch1Start() : getMatch2Start();
       
       // Eğer ref null ise veya beklenen zamanla uyumsuzsa güncelle
       if (mockMatchStartTimeRef.current === null || mockMatchStartTimeRef.current !== expectedStartTime) {
@@ -397,7 +397,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
         } else {
           // Hiçbiri yoksa getMatch1Start/getMatch2Start kullan
           timestampToUse = expectedStartTime;
-          console.log(`📌 ${Number(matchId) === MOCK_MATCH_IDS.GS_FB ? 'getMatch1Start' : 'getMatch2Start'}() kullanılıyor:`, new Date(timestampToUse).toISOString());
+          console.log(`📌 ${(Number(matchId) === MOCK_MATCH_IDS.GS_FB || Number(matchId) === MOCK_MATCH_IDS.TEST_6H) ? 'getMatch1Start' : 'getMatch2Start'}() kullanılıyor:`, new Date(timestampToUse).toISOString());
         }
         
         // Timestamp'i sabitle
@@ -846,7 +846,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
       return apiStatus;
     }
     // Mock maçlar için gerçek zamandan kontrol et
-    const matchStart = Number(matchId) === MOCK_MATCH_IDS.GS_FB ? getMatch1Start() : getMatch2Start();
+    const matchStart = (Number(matchId) === MOCK_MATCH_IDS.GS_FB || Number(matchId) === MOCK_MATCH_IDS.TEST_6H) ? getMatch1Start() : getMatch2Start();
     const now = Date.now();
     const elapsedMs = now - matchStart;
     const elapsedSeconds = elapsedMs / 1000;
@@ -998,7 +998,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
       return { matchMinute: rawMatchMinute, matchExtraTime: extraTime, matchSecond: 0 };
     }
     
-    const matchStart = Number(matchId) === MOCK_MATCH_IDS.GS_FB ? getMatch1Start() : getMatch2Start();
+    const matchStart = (Number(matchId) === MOCK_MATCH_IDS.GS_FB || Number(matchId) === MOCK_MATCH_IDS.TEST_6H) ? getMatch1Start() : getMatch2Start();
     const now = Date.now();
     const elapsedMs = now - matchStart;
     const elapsedSeconds = elapsedMs / 1000; // Ondalıklı saniye (örn: 5.234)
@@ -1052,8 +1052,8 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
       };
     }
     
-    const matchStart = Number(matchId) === MOCK_MATCH_IDS.GS_FB ? getMatch1Start() : getMatch2Start();
-    const events = Number(matchId) === MOCK_MATCH_IDS.GS_FB ? MATCH_1_EVENTS : MATCH_2_EVENTS;
+    const matchStart = (Number(matchId) === MOCK_MATCH_IDS.GS_FB || Number(matchId) === MOCK_MATCH_IDS.TEST_6H) ? getMatch1Start() : getMatch2Start();
+    const events = (Number(matchId) === MOCK_MATCH_IDS.GS_FB || Number(matchId) === MOCK_MATCH_IDS.TEST_6H) ? MATCH_1_EVENTS : MATCH_2_EVENTS;
     
     // ✅ Güvenlik kontrolü: events undefined olabilir
     if (!events || !Array.isArray(events)) {

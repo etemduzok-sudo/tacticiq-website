@@ -6,6 +6,8 @@ import api from '../services/api';
 import { useFavoriteTeams } from './useFavoriteTeams';
 import { logger } from '../utils/logger';
 import { getAllBulkMatches, isBulkDataValid } from '../services/bulkDataService';
+import { MOCK_TEST_ENABLED, getMockMatches, isMockTestMatch } from '../data/mockTestData';
+import { MOCK_TEST_ENABLED, getMockMatches, isMockTestMatch } from '../data/mockTestData';
 
 // Cache keys
 const CACHE_KEY = 'tacticiq-matches-cache';
@@ -953,10 +955,19 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
     return () => clearInterval(t);
   }, [hasLoadedOnce, favoriteTeamIdsString]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ✅ Test maçı (6 saat sonra başlayacak) mock açıksa upcoming'e ekle
+  const upcomingWithMock = useMemo(() => {
+    if (!MOCK_TEST_ENABLED) return upcomingMatches;
+    const mock = getMockMatches();
+    if (!mock.length) return upcomingMatches;
+    const withoutMock = upcomingMatches.filter((m) => !isMockTestMatch(m.fixture?.id ?? 0));
+    return [...mock, ...withoutMock];
+  }, [upcomingMatches]);
+
   return {
     pastMatches,
     liveMatches,
-    upcomingMatches,
+    upcomingMatches: upcomingWithMock,
     loading,
     error,
     refetch: fetchMatches,

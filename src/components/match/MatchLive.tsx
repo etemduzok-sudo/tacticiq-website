@@ -250,7 +250,7 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
       setTicker(prev => prev + 1);
       
       // ✅ Her saniye maç başlangıç zamanını kontrol et
-      const matchStart = Number(matchId) === MOCK_MATCH_IDS.GS_FB ? getMatch1Start() : getMatch2Start();
+      const matchStart = (Number(matchId) === MOCK_MATCH_IDS.GS_FB || Number(matchId) === MOCK_MATCH_IDS.TEST_6H) ? getMatch1Start() : getMatch2Start();
       const now = Date.now();
       const hasStarted = now >= matchStart;
       
@@ -314,7 +314,7 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
     if (isMockMatch) {
       const matchStart = String(matchId) === '999999' 
         ? Date.now() - 52 * 1000 // Mock 999999 için 52. dakikada
-        : (Number(matchId) === MOCK_MATCH_IDS.GS_FB ? getMatch1Start() : getMatch2Start());
+        : ((Number(matchId) === MOCK_MATCH_IDS.GS_FB || Number(matchId) === MOCK_MATCH_IDS.TEST_6H) ? getMatch1Start() : getMatch2Start());
       const now = Date.now();
       const hasStarted = now >= matchStart;
       
@@ -581,7 +581,7 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
     
     // ✅ Mock maçlarda her zaman gerçek zamandan hesapla (matchData.minute takılı kalmasın)
     if (isMockMatch && matchId) {
-      const matchStart = Number(matchId) === MOCK_MATCH_IDS.GS_FB ? getMatch1Start() : getMatch2Start();
+      const matchStart = (Number(matchId) === MOCK_MATCH_IDS.GS_FB || Number(matchId) === MOCK_MATCH_IDS.TEST_6H) ? getMatch1Start() : getMatch2Start();
       const now = Date.now();
       const elapsedSeconds = Math.floor((now - matchStart) / 1000);
       const elapsedMinutes = elapsedSeconds; // 1 sn = 1 dk
@@ -662,7 +662,7 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
       
       // ✅ Mock maçlarda gerçek zamandan kontrol et
       if (isMockMatch && matchId) {
-        const matchStart = Number(matchId) === MOCK_MATCH_IDS.GS_FB ? getMatch1Start() : getMatch2Start();
+        const matchStart = (Number(matchId) === MOCK_MATCH_IDS.GS_FB || Number(matchId) === MOCK_MATCH_IDS.TEST_6H) ? getMatch1Start() : getMatch2Start();
         const now = Date.now();
         const elapsedSeconds = Math.floor((now - matchStart) / 1000);
         const elapsedMinutes = elapsedSeconds; // Gerçek zaman (0-112)

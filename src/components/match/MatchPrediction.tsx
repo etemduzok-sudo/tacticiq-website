@@ -583,9 +583,10 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
     // ✅ Mock maçlar için fallback - lineups boşsa mock lineup kullan
     const matchIdNum = matchId ? Number(matchId) : null;
     if (actualPlayers.length === 0 && matchIdNum && isMockTestMatch(matchIdNum)) {
-      const mockLineups = getMockLineup(matchIdNum);
-      if (mockLineups && mockLineups.length > 0) {
-        const targetLineup = resolveTargetLineup(mockLineups);
+      const rawMock = getMockLineup(matchIdNum);
+      const mockList = Array.isArray(rawMock) ? rawMock : (rawMock?.away ? [rawMock.away] : rawMock?.home ? [rawMock.home] : []);
+      if (mockList.length > 0) {
+        const targetLineup = resolveTargetLineup(mockList);
 
         if (targetLineup?.startXI) {
           const mapped = targetLineup.startXI.map((item: any) => {
@@ -777,10 +778,12 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
     fetchScore();
   }, [isMatchFinished, hasPrediction, matchData?.id]);
 
-  // ✅ KİLİTLİ KURAL: Topluluk verileri gerçek backend'den gelmeden mock gösterilmez
-  // hasRealCommunityData = false → topluluk sekmesinde empty state gösterilir
-  // hasRealCommunityData = true → gerçek backend verileri gösterilir (backend entegre edildiğinde)
-  const hasRealCommunityData = false; // TODO: Backend topluluk API'si hazır olunca true yapılacak
+  // ✅ Topluluk verisi: 1 kişi dahil olsa bile ortalamalar hesaplanır (bir kişi de bin kişi de veriyi oluşturur)
+  // hasRealCommunityData = true → en az 1 katılımcı verisi var; ortalamalar bu veriden hesaplanır
+  const hasRealCommunityData = useMemo(() => {
+    const entries = Object.values(communityPredictions);
+    return entries.length > 0 && entries.some((c) => c && c.totalPredictions >= 1);
+  }, [communityPredictions]);
 
   // ✅ TOPLULUK TAHMİN VERİLERİ (Backend'den gelecek - şu an kullanılmıyor)
   const [communityMatchPredictions] = useState({
@@ -935,6 +938,42 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
       setOccurredEvents(events);
     }
   }, [matchPhase, isMatchLive, isMatchFinished, matchId, matchData?.events]);
+
+  // ✅ Gerçek kadro görüldükten sonra takım performansı topluluk ortalaması: 5 dk'da bir güncelleme (API hazır olduğunda bağlanacak)
+  useEffect(() => {
+    if (!matchId || (!isMatchLive && !isMatchFinished)) return;
+    const fetchCommunityAvg = () => {
+      // Topluluk verisi 1 kişi dahil olsa bile ortalamayı hesapla (bir kişi de bin kişi de veriyi oluşturur)
+      // TODO: scoringApi.getCommunityTeamPerformance(matchId, teamId) → { avg, participantCount }
+      // participantCount >= 1 ise setCommunityTeamPerformanceAvg(avg) ve gerekirse setCommunityPredictions(...)
+      // Şu an backend endpoint yok; eklendiğinde burada çağrılacak.
+    };
+    fetchCommunityAvg();
+    const interval = setInterval(fetchCommunityAvg, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [matchId, isMatchLive, isMatchFinished]);
+
+  // ✅ Mock test maçı: topluluk verisi ve takım performans ortalaması seed'le (test için)
+  useEffect(() => {
+    const matchIdNum = matchId ? Number(matchId) : null;
+    if (!matchIdNum || !isMockTestMatch(matchIdNum)) return;
+    const total = 100;
+    setCommunityPredictions({
+      101: { goal: 24, assist: 12, yellowCard: 15, redCard: 3, penalty: 2, substitutedOut: 35, injuredOut: 5, totalPredictions: total },
+      102: { goal: 18, assist: 22, yellowCard: 8, redCard: 1, penalty: 0, substitutedOut: 12, injuredOut: 2, totalPredictions: total },
+      103: { goal: 8, assist: 5, yellowCard: 25, redCard: 2, penalty: 1, substitutedOut: 45, injuredOut: 8, totalPredictions: total },
+      104: { goal: 14, assist: 18, yellowCard: 10, redCard: 0, penalty: 0, substitutedOut: 20, injuredOut: 3, totalPredictions: total },
+      105: { goal: 6, assist: 10, yellowCard: 12, redCard: 1, penalty: 0, substitutedOut: 28, injuredOut: 4, totalPredictions: total },
+      106: { goal: 10, assist: 8, yellowCard: 6, redCard: 0, penalty: 0, substitutedOut: 15, injuredOut: 2, totalPredictions: total },
+      107: { goal: 2, assist: 4, yellowCard: 18, redCard: 0, penalty: 0, substitutedOut: 22, injuredOut: 5, totalPredictions: total },
+      108: { goal: 0, assist: 2, yellowCard: 14, redCard: 1, penalty: 0, substitutedOut: 18, injuredOut: 3, totalPredictions: total },
+      109: { goal: 1, assist: 3, yellowCard: 20, redCard: 0, penalty: 0, substitutedOut: 25, injuredOut: 6, totalPredictions: total },
+      110: { goal: 0, assist: 1, yellowCard: 8, redCard: 0, penalty: 0, substitutedOut: 10, injuredOut: 2, totalPredictions: total },
+      111: { goal: 0, assist: 0, yellowCard: 2, redCard: 0, penalty: 0, substitutedOut: 5, injuredOut: 1, totalPredictions: total },
+      112: { goal: 12, assist: 6, yellowCard: 11, redCard: 0, penalty: 0, substitutedOut: 30, injuredOut: 4, totalPredictions: total },
+    });
+    setCommunityTeamPerformanceAvg(6.2);
+  }, [matchId]);
   
   // ✅ Tahmin kategorisi için timing badge bilgisi al
   const getTimingInfo = React.useCallback((category: string) => {
@@ -2701,7 +2740,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                             style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: isLight ? 'rgba(59, 130, 246, 0.9)' : 'rgba(217, 119, 6, 0.92)', borderRadius: 999, paddingVertical: 12, paddingHorizontal: 28, minWidth: 180 }}
                             onPress={() => {
                               if (hasRealCommunityData) setLockConfirmType('community');
-                              else showInfo('Topluluk Verileri Henüz Hazır Değil', 'Yeterli veri oluştuğunda burada görünecek. Tahminleriniz şu an düzenlenebilir.');
+                              else showInfo('Bu maç için henüz yeterli topluluk verisi yok', 'Topluluk verisi oluşturulmaya başladığı anda (1 kişi dahil) ortalamalar hesaplanacak ve burada görünecek. Tahminleriniz şu an düzenlenebilir.');
                             }}
                             activeOpacity={0.88}
                           >
@@ -2742,10 +2781,10 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                         <Ionicons name="stats-chart-outline" size={45} color="#F59E0B" />
                       </View>
                       <Text style={{ color: '#F59E0B', fontSize: 13, fontWeight: '700', textAlign: 'center', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 }}>
-                        Topluluk Verileri Henüz Yeterli Değil
+                        Bu maç için henüz yeterli topluluk verisi yok
                       </Text>
                       <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, textAlign: 'center', marginTop: 4 }}>
-                        Canlıya çıkınca tüm kullanıcı tahminleriyle oluşacak
+                        Veri oluşturulmaya başladığında (1 kişi dahil) ortalamalar hesaplanacak
                       </Text>
                     </View>
                   )}
@@ -2818,7 +2857,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                     ) : (
                       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 4, gap: 6, width: '100%', minWidth: 0 }}>
                         <Ionicons name="people" size={16} color="#F59E0B" style={{ flexShrink: 0 }} />
-                        <Text style={[styles.fieldBelowNoteText, { color: '#F59E0B', flex: 1, minWidth: 0 }]} numberOfLines={1}>Topluluk verileri oluştuğunda burada görülecek</Text>
+                        <Text style={[styles.fieldBelowNoteText, { color: '#F59E0B', flex: 1, minWidth: 0 }]} numberOfLines={2}>Henüz yeterli topluluk verisi yok. Veri oluşunca (1 kişi dahil) ortalamalar burada görünecek.</Text>
                       </View>
                     )}
                   </View>
@@ -2842,24 +2881,49 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
               <View style={[styles.multiFieldWrapper, { width: effectivePageWidth }]}>
                 <FootballField style={[styles.mainField, fieldDynamicStyle]}>
                   {threeFieldData.actualSquad.players.length === 0 ? (
-                    <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, zIndex: 20 }}>
-                      <View style={{ width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
-                        <Ionicons name="alert-circle" size={45} color="#EF4444" />
+                    <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, zIndex: 20 }}>
+                      <View style={{ width: '100%', maxWidth: 280, borderRadius: 24, overflow: 'hidden', alignItems: 'center', shadowColor: '#0f172a', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.2, shadowRadius: 24, elevation: 12 }}>
+                        <LinearGradient colors={isLight ? ['rgba(30, 41, 59, 0.96)', 'rgba(51, 65, 85, 0.92)'] : ['rgba(18, 45, 38, 0.9)', 'rgba(28, 55, 47, 0.86)']} style={{ paddingVertical: 32, paddingHorizontal: 28, width: '100%', alignItems: 'center' }}>
+                          <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(148, 163, 184, 0.15)', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+                            <Ionicons name="time-outline" size={26} color="#94A3B8" />
+                          </View>
+                          <Text style={{ color: '#F1F5F9', fontSize: 15, fontWeight: '600', textAlign: 'center', marginBottom: 6, letterSpacing: 0.4 }}>
+                            Henüz ilk 11 belli olmadı
+                          </Text>
+                          <Text style={{ color: 'rgba(241, 245, 249, 0.78)', fontSize: 12, textAlign: 'center', lineHeight: 18, paddingHorizontal: 8 }}>
+                            Maç kadroları açıklandığında ilk 11 ve formasyon burada görünecek.
+                          </Text>
+                        </LinearGradient>
                       </View>
-                      <Text style={{ color: '#EF4444', fontSize: 13, fontWeight: '700', textAlign: 'center' }}>
-                        İlk 11'ler Henüz Belli Değil
-                      </Text>
-                      <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11, textAlign: 'center', marginTop: 4 }}>
-                        Maç kadroları açıklandığında burada gösterilecek
-                      </Text>
                     </View>
                   ) : (realLineupVisible || isMatchLive || isMatchFinished) ? (
                     <View style={styles.playersContainer}>
                       {(() => {
                         const actualFormation = threeFieldData.actualSquad.formation || '4-3-3';
                         const positions = formationPositions[actualFormation] || formationPositions['4-3-3'] || mockPositions;
+                        const LIVE_REACTION_ICONS = [
+                          { key: 'good', icon: '🔥', isCard: false },
+                          { key: 'bad', icon: '👎', isCard: false },
+                          { key: 'goal', icon: '⚽', isCard: false },
+                          { key: 'yellowcard', icon: 'card', isCard: true, color: '#FBBF24' },
+                          { key: 'redcard', icon: 'card', isCard: true, color: '#DC2626' },
+                          { key: 'sub', icon: '🔄', isCard: false },
+                        ];
                         return threeFieldData.actualSquad.players.slice(0, 11).map((player: any, index: number) => {
                           const pos = positions[index] || { x: 50, y: 50 };
+                          const community = communityPredictions[player.id];
+                          const totalVotes = community ? Math.max(1, community.totalPredictions) : 0;
+                          const reactionPcts = community ? [
+                            Math.round((community.goal + community.assist) / totalVotes * 50),
+                            Math.round(community.substitutedOut / totalVotes * 100),
+                            Math.round(community.goal / totalVotes * 100),
+                            Math.round(community.yellowCard / totalVotes * 100),
+                            Math.round(community.redCard / totalVotes * 100),
+                            Math.round(community.substitutedOut / totalVotes * 100),
+                          ] : [0, 0, 0, 0, 0, 0];
+                          const showIcon = (i: number) => reactionPcts[i] > 10;
+                          const hasAnyIcons = reactionPcts.some((p) => p > 10);
+                          const userVoted = !!liveReactions[player.id];
                           return (
                             <View
                               key={`actual-field-${player.id}-${index}`}
@@ -2870,12 +2934,39 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                                   <Ionicons name="arrow-up" size={10} color="#fff" />
                                 </View>
                               )}
+                              {/* 6 bildirim ikonu: oy oranı %10'u aşanlar, üst 3 alt 3 soldan sağa aynı sıra */}
+                              {hasAnyIcons && (
+                                <>
+                                  <View style={{ position: 'absolute', top: -14, left: 0, right: 0, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', zIndex: 11, paddingHorizontal: 2 }}>
+                                    {LIVE_REACTION_ICONS.slice(0, 3).map((r, i) => (
+                                      showIcon(i) ? (
+                                        <View key={r.key} style={{ width: 14, height: 14, alignItems: 'center', justifyContent: 'center' }}>
+                                          {r.isCard ? <View style={{ width: 8, height: 10, borderRadius: 1, backgroundColor: r.color }} /> : <Text style={{ fontSize: 10 }}>{r.icon}</Text>}
+                                        </View>
+                                      ) : <View key={r.key} style={{ width: 14, height: 14 }} />
+                                    ))}
+                                  </View>
+                                  <View style={{ position: 'absolute', bottom: -14, left: 0, right: 0, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', zIndex: 11, paddingHorizontal: 2 }}>
+                                    {LIVE_REACTION_ICONS.slice(3, 6).map((r, i) => (
+                                      showIcon(i + 3) ? (
+                                        <View key={r.key} style={{ width: 14, height: 14, alignItems: 'center', justifyContent: 'center' }}>
+                                          {r.isCard ? <View style={{ width: 8, height: 10, borderRadius: 1, backgroundColor: r.color }} /> : <Text style={{ fontSize: 10 }}>{r.icon}</Text>}
+                                        </View>
+                                      ) : <View key={r.key} style={{ width: 14, height: 14 }} />
+                                    ))}
+                                  </View>
+                                </>
+                              )}
                               {liveReactions[player.id] && (
-                                <View style={styles.liveReactionBadgeOuter}>
+                                <View style={[styles.liveReactionBadgeOuter, { zIndex: 12 }]}>
                                   {liveReactions[player.id] === 'good' ? <Text style={{ fontSize: 10 }}>🔥</Text> : liveReactions[player.id] === 'bad' ? <Text style={{ fontSize: 10 }}>👎</Text> : liveReactions[player.id] === 'yellowcard' ? <View style={{ width: 8, height: 11, borderRadius: 2, backgroundColor: '#FBBF24' }} /> : liveReactions[player.id] === 'redcard' ? <View style={{ width: 8, height: 11, borderRadius: 2, backgroundColor: '#DC2626' }} /> : liveReactions[player.id] === 'sub' ? <Text style={{ fontSize: 9 }}>🔄</Text> : <Text style={{ fontSize: 10 }}>⚽</Text>}
                                 </View>
                               )}
-                              <TouchableOpacity 
+                              <View style={{ position: 'relative' }}>
+                                {userVoted && (
+                                  <View style={[styles.predictionGlowBehind, { backgroundColor: 'rgba(234, 179, 8, 0.4)', zIndex: 0 }]} />
+                                )}
+                                <TouchableOpacity 
                                   style={[
                                   styles.playerCard,
                                   (normalizeRatingTo100(player.rating) ?? 0) >= 85 && styles.playerCardElite,
@@ -2885,21 +2976,9 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                                   liveReactions[player.id] === 'yellowcard' && { borderColor: '#FBBF24', borderWidth: 2 },
                                   liveReactions[player.id] === 'redcard' && { borderColor: '#DC2626', borderWidth: 2 },
                                   liveReactions[player.id] === 'sub' && { borderColor: '#EF4444', borderWidth: 3 },
+                                  userVoted && { borderColor: '#EAB308', borderWidth: 2 },
                                 ]}
-                                onPress={() => {
-                                  if (isMatchLive || isMatchFinished) {
-                                    setLiveReactionPlayer(player);
-                                  } else {
-                                    setPlayerInfoPopup({
-                                      playerName: (player.firstname && player.lastname) ? `${String(player.firstname).trim()} ${String(player.lastname).trim()}` : (player.name || ''),
-                                      position: player.position || '',
-                                      rating: player.rating ?? null,
-                                      userPredictions: [],
-                                      communityData: null,
-                                      showCommunityData: false,
-                                    });
-                                  }
-                                }}
+                                onPress={() => setLiveReactionPlayer(player)}
                                 activeOpacity={0.7}
                               >
                                 <LinearGradient colors={['#1E3A3A', '#0F2A24']} style={styles.playerCardGradient}>
@@ -2915,6 +2994,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                                   </View>
                                 </LinearGradient>
                               </TouchableOpacity>
+                              </View>
                             </View>
                           );
                         });
@@ -2969,7 +3049,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                       <Text style={styles.fieldFormationText}>{threeFieldData.actualSquad.formation}</Text>
                     </View>
                   )}
-                  {/* Performans barı saha altına taşındı */}
+                  {/* Performans barı saha altına taşındı (dikey bar kaldırıldı) */}
                   <View style={styles.fieldInnerLabel}>
                     <Ionicons name="football" size={10} color="#EF4444" />
                     <Text style={[styles.fieldInnerLabelText, { color: '#EF4444' }]}>Gerçek</Text>
@@ -2982,26 +3062,65 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                   </View>
                 </FootballField>
                 <View style={{ height: 0 }} />
-                {/* Gerçek sekmesi altı bilgilendirme konteynerı – API (ApiFootball) kadro bilgisi */}
+                {/* Gerçek sekmesi altı: kadro yoksa bilgi; gerçek kadro görüldükten sonra yatay takım performans barı (1-10 kesikli, topluluk ortalaması sayı) */}
                 <View style={styles.fieldBelowContent}>
-                  <View style={styles.fieldBelowSection}>
-                    {threeFieldData.actualSquad.players.length === 0 ? (
+                  {threeFieldData.actualSquad.players.length === 0 ? (
+                    <LinearGradient colors={isLight ? ['rgba(30, 41, 59, 0.96)', 'rgba(51, 65, 85, 0.92)'] : ['rgba(18, 45, 38, 0.9)', 'rgba(28, 55, 47, 0.86)']} style={{ borderRadius: 10, overflow: 'hidden', minHeight: 40, paddingVertical: 6, paddingHorizontal: 8, justifyContent: 'center', borderWidth: 1, borderColor: isLight ? 'rgba(148, 163, 184, 0.15)' : 'rgba(16, 185, 129, 0.15)' }}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 4, gap: 6, width: '100%', minWidth: 0 }}>
                         <Ionicons name="time-outline" size={16} color="#94A3B8" style={{ flexShrink: 0 }} />
-                        <Text style={[styles.fieldBelowNoteText, { color: '#94A3B8', flex: 1, minWidth: 0 }]} numberOfLines={1}>İlk 11 açıklandığında burada görünecek</Text>
+                        <Text style={[styles.fieldBelowNoteText, { color: '#94A3B8', flex: 1, minWidth: 0 }]} numberOfLines={2}>Henüz ilk 11 belli olmadı. Açıklandığında burada görünecek.</Text>
                       </View>
-                    ) : realLineupVisible ? (
-                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 4, gap: 6, width: '100%', minWidth: 0 }}>
-                        <Ionicons name="football" size={16} color="#10B981" style={{ flexShrink: 0 }} />
-                        <Text style={[styles.fieldBelowNoteText, { color: '#10B981', flex: 1, minWidth: 0 }]} numberOfLines={2}>Maç başladığında oyuncular için değerlendirme yapabilirsiniz</Text>
-                      </View>
-                    ) : (
+                    </LinearGradient>
+                  ) : !realLineupVisible ? (
+                    <LinearGradient colors={isLight ? ['rgba(30, 41, 59, 0.96)', 'rgba(51, 65, 85, 0.92)'] : ['rgba(18, 45, 38, 0.9)', 'rgba(28, 55, 47, 0.86)']} style={{ borderRadius: 10, overflow: 'hidden', minHeight: 40, paddingVertical: 6, paddingHorizontal: 8, justifyContent: 'center', borderWidth: 1, borderColor: isLight ? 'rgba(148, 163, 184, 0.15)' : 'rgba(16, 185, 129, 0.15)' }}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 4, gap: 6, width: '100%', minWidth: 0 }}>
                         <Ionicons name="information-circle" size={16} color="#60A5FA" style={{ flexShrink: 0 }} />
-                        <Text style={[styles.fieldBelowNoteText, { color: '#60A5FA', flex: 1, minWidth: 0 }]} numberOfLines={2}>Gerçek Kadroyu Gör ile ilk 11'i görün; maç başlayınca oyuncuları değerlendirebilirsiniz</Text>
+                        <Text style={[styles.fieldBelowNoteText, { color: '#60A5FA', flex: 1, minWidth: 0 }]} numberOfLines={2}>Gerçek kadro açıklandığında burada görebilir ve oyuncuları canlı maç içinde değerlendirebilirsiniz</Text>
                       </View>
-                    )}
-                  </View>
+                    </LinearGradient>
+                  ) : (
+                    <View style={[styles.fieldBelowSection, styles.fieldBelowSectionTeamPerf, { flexDirection: 'row', alignItems: 'center', flexWrap: 'nowrap', width: '100%', minWidth: 0 }]}>
+                      <View style={[styles.fieldBelowSectionLabel, { marginRight: 8 }]}>
+                        <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.9)', lineHeight: 14 }}>Takım</Text>
+                        <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.9)', lineHeight: 14 }}>performansı</Text>
+                      </View>
+                      <View style={[styles.fieldBelowSectionBarWrap, { flex: 1, minWidth: 0, height: 24, position: 'relative' }]}>
+                        {/* 1-10 yatay kesikli çizgi (10 segment) */}
+                        <View style={{ flexDirection: 'row', flex: 1, alignItems: 'center', height: 20 }}>
+                          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
+                            <TouchableOpacity
+                              key={n}
+                              onPress={() => setTeamPerformance(n)}
+                              style={{
+                                flex: 1,
+                                minWidth: 0,
+                                height: 18,
+                                borderLeftWidth: n === 1 ? 0 : 1,
+                                borderLeftColor: 'rgba(255,255,255,0.35)',
+                                borderStyle: 'dashed',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                backgroundColor: teamPerformance === n ? 'rgba(16, 185, 129, 0.4)' : 'transparent',
+                                borderRadius: 2,
+                              }}
+                              activeOpacity={0.8}
+                            >
+                              <Text style={{ fontSize: 9, fontWeight: '600', color: teamPerformance === n ? '#10B981' : 'rgba(255,255,255,0.5)' }}>{n}</Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                        {/* Topluluk ortalaması: kırmızı ile işaretli, ~5 dk günc. dinamik gösterim */}
+                        {communityTeamPerformanceAvg != null && (
+                          <View style={{ position: 'absolute', left: `${Math.max(0, Math.min(100, ((communityTeamPerformanceAvg - 1) / 9) * 100))}%`, marginLeft: -10, top: 0, width: 20, alignItems: 'center', zIndex: 2 }}>
+                            <View style={[styles.communityAvgLabelInline, { backgroundColor: 'rgba(239, 68, 68, 0.25)', borderWidth: 1, borderColor: 'rgba(239, 68, 68, 0.5)' }]}>
+                              <Text style={{ fontSize: 10, fontWeight: '700', color: '#EF4444' }}>{communityTeamPerformanceAvg.toFixed(1)}</Text>
+                            </View>
+                            <Text style={{ fontSize: 7, color: 'rgba(239, 68, 68, 0.9)', marginTop: 2, fontWeight: '600' }}>~5 dk günc.</Text>
+                          </View>
+                        )}
+                      </View>
+                    </View>
+                  )}
                 </View>
               </View>
               </View>
@@ -3110,8 +3229,19 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                       { left: `${pos.x}%`, top: `${pos.y}%` }, // ✅ Sabit pozisyon
                     ]}
                   >
-                    {/* ✅ "i" butonu: Benim Tahminim'de doğrudan tahmin modalı (resim 2) açılır - kendi tahminlerini görsün/düzenlesin */}
-                    <TouchableOpacity style={styles.predictionCardInfoIconRed} onPress={() => setSelectedPlayer(player)} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} activeOpacity={0.7}>
+                    {/* ✅ "i" butonu: Gerçek sekmesi + canlı/bitmiş → canlı tahmin + topluluk popup; aksi halde tahmin modalı */}
+                    <TouchableOpacity
+                      style={styles.predictionCardInfoIconRed}
+                      onPress={() => {
+                        if (predictionViewIndex === 2 && (isMatchLive || isMatchFinished)) {
+                          setLiveReactionPlayer(player);
+                        } else {
+                          setSelectedPlayer(player);
+                        }
+                      }}
+                      hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                      activeOpacity={0.7}
+                    >
                       <Text style={styles.infoIconText}>i</Text>
                     </TouchableOpacity>
                     {/* ✅ Tahmin yapılan oyuncu: kartın arkasında parlak sarı glow */}
@@ -3130,7 +3260,13 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                           !signalBorderStyle && !communityBorder && (isMatchLive || isMatchFinished) && (positionLabel === 'ST' || (player.position && String(player.position).toUpperCase() === 'ST')) && styles.playerCardSTCommunity,
                           isViewOnlyMode && { opacity: 0.85 },
                         ]}
-                        onPress={() => setSelectedPlayer(player)}
+                        onPress={() => {
+                          if (predictionViewIndex === 2 && (isMatchLive || isMatchFinished)) {
+                            setLiveReactionPlayer(player);
+                          } else {
+                            setSelectedPlayer(player);
+                          }
+                        }}
                         activeOpacity={isViewOnlyMode ? 1 : 0.8}
                       >
                         <LinearGradient colors={['#1E3A3A', '#0F2A24']} style={styles.playerCardGradient}>
@@ -3327,7 +3463,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                         console.warn('Topluluk verileri durumu kaydedilemedi:', e);
                       }
                     } else {
-                      showInfo('Topluluk Verileri Henüz Hazır Değil', 'Yeterli veri oluştuğunda burada görünecek. Tahminleriniz şu an düzenlenebilir.');
+                      showInfo('Bu maç için henüz yeterli topluluk verisi yok', 'Topluluk verisi oluşturulmaya başladığı anda (1 kişi dahil) ortalamalar hesaplanacak ve burada görünecek. Tahminleriniz şu an düzenlenebilir.');
                     }
                   }}
                   activeOpacity={0.7}
@@ -3360,10 +3496,10 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
               <Ionicons name="people" size={32} color="#F59E0B" />
             </View>
             <Text style={{ color: cardTitleColor, fontSize: 17, fontWeight: '700', textAlign: 'center', marginBottom: 8 }}>
-              Topluluk Verileri Henüz Yeterli Değil
+              Bu maç için henüz yeterli topluluk verisi yok
             </Text>
             <Text style={{ color: cardLabelColor, fontSize: 13, textAlign: 'center', lineHeight: 20 }}>
-              Yeterli sayıda kullanıcı tahmin yaptığında topluluk verileri burada gösterilecektir.
+              Topluluk verisi oluşturulmaya başladığında (1 kişi dahil) ortalamalar hesaplanacak ve burada görünecek.
             </Text>
           </View>
         )}
@@ -4505,12 +4641,12 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                   styles.submitButton, 
                   (isSaving || isPredictionLocked) && styles.submitButtonDisabled
                 ]}
-                activeOpacity={0.8}
+                activeOpacity={0.85}
                 onPress={handleSavePredictions}
                 disabled={isSaving || isPredictionLocked}
               >
                 <LinearGradient
-                  colors={(isSaving || isPredictionLocked) ? ['#4B5563', '#374151'] : ['#1FA2A6', '#047857']}
+                  colors={(isSaving || isPredictionLocked) ? ['rgba(71, 85, 105, 0.9)', 'rgba(51, 65, 85, 0.95)'] : ['rgba(20, 184, 166, 0.95)', 'rgba(13, 148, 136, 0.95)']}
                   style={styles.submitButtonGradient}
                 >
                   {isSaving ? (
@@ -4520,17 +4656,56 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                     </View>
                   ) : isPredictionLocked ? (
                     <View style={styles.submitButtonContent}>
-                      <Ionicons name="lock-closed" size={18} color="#EF4444" style={{ marginRight: 6 }} />
-                      <Text style={styles.submitButtonTextLocked}>Tahminler Kilitli</Text>
+                      <Ionicons name="lock-closed" size={18} color="rgba(248, 113, 113, 0.95)" style={{ marginRight: 6 }} />
+                      <Text style={[styles.submitButtonTextLocked, { color: 'rgba(254, 202, 202, 0.98)' }]}>Tahminler Kilitli</Text>
                     </View>
                   ) : (
-                    <Text style={styles.submitButtonText}>Tahminleri Kaydet</Text>
+                    <Text style={[styles.submitButtonText, { fontWeight: '600', letterSpacing: 0.2 }]}>Tahminleri Kaydet</Text>
                     )}
                   </LinearGradient>
                 </TouchableOpacity>
             </View>
           )}
         </View>
+
+        {/* ✅ Toolbar altı bildirim kartı (Resim 1 tarzı): Bağımsız / Topluluk görüldü / Gerçek görüldü */}
+        {predictionViewIndex !== 2 && !isViewOnlyMode && (
+          <View style={{ marginTop: 20, marginHorizontal: 16, borderRadius: 16, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 6 }}>
+            <LinearGradient colors={isLight ? ['rgba(30, 41, 59, 0.98)', 'rgba(51, 65, 85, 0.95)'] : ['rgba(18, 45, 38, 0.92)', 'rgba(28, 55, 47, 0.88)']} style={{ paddingVertical: 24, paddingHorizontal: 22, alignItems: 'center' }}>
+              {hasViewedCommunityData ? (
+                <>
+                  <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: 'rgba(245, 158, 11, 0.18)', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
+                    <Ionicons name="people" size={28} color="#F59E0B" />
+                  </View>
+                  <Text style={{ color: '#F1F5F9', fontSize: 16, fontWeight: '700', textAlign: 'center', marginBottom: 6 }}>Topluluk Verileri Görüntülendi</Text>
+                  <Text style={{ color: 'rgba(241, 245, 249, 0.82)', fontSize: 13, textAlign: 'center', lineHeight: 20 }}>Tahminleriniz kalıcı olarak kilitlendi. Topluluk tahminlerini kullanabilirsiniz.</Text>
+                </>
+              ) : hasViewedRealLineup ? (
+                <>
+                  <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: 'rgba(16, 185, 129, 0.18)', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
+                    <Ionicons name="football" size={28} color="#10B981" />
+                  </View>
+                  <Text style={{ color: '#F1F5F9', fontSize: 16, fontWeight: '700', textAlign: 'center', marginBottom: 6 }}>Gerçek Kadro Görüntülendi</Text>
+                  <Text style={{ color: 'rgba(241, 245, 249, 0.82)', fontSize: 13, textAlign: 'center', lineHeight: 20 }}>Tahminleriniz kalıcı olarak kilitlendi. Canlı maçta oyuncu değerlendirmesi yapabilirsiniz.</Text>
+                </>
+              ) : hasPrediction ? (
+                <>
+                  <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: 'rgba(245, 158, 11, 0.18)', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
+                    <Ionicons name="people" size={28} color="#F59E0B" />
+                  </View>
+                  <Text style={{ color: '#F1F5F9', fontSize: 16, fontWeight: '700', textAlign: 'center', marginBottom: 6 }}>Bağımsız Tahmin Modundasınız</Text>
+                  <Text style={{ color: 'rgba(241, 245, 249, 0.82)', fontSize: 13, textAlign: 'center', lineHeight: 20, marginBottom: 6 }}>
+                    Topluluk tahminlerini görmek için aşağıdaki butonu kullanabilirsiniz.
+                  </Text>
+                  <Text style={{ color: 'rgba(241, 245, 249, 0.78)', fontSize: 13, textAlign: 'center', lineHeight: 20 }}>
+                    Maç başladığında topluluk verileri otomatik açılacak ve +%10 bağımsız tahmin bonusu kazanacaksınız.
+                  </Text>
+                </>
+              ) : null}
+            </LinearGradient>
+          </View>
+        )}
+
       </View>
       )}
       </ScrollView>
@@ -5760,8 +5935,8 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                       );
                     } else {
                       showInfo(
-                        'Topluluk Verileri Henüz Hazır Değil',
-                        'Yeterli veri oluştuğunda topluluk sekmesinde görünecek. Tahminleriniz şu an düzenlenebilir.'
+                        'Bu maç için henüz yeterli topluluk verisi yok',
+                        'Topluluk verisi oluşturulmaya başladığı anda (1 kişi dahil) ortalamalar hesaplanacak ve topluluk sekmesinde görünecek. Tahminleriniz şu an düzenlenebilir.'
                       );
                     }
                   }}
@@ -5911,13 +6086,14 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
         
         const hasPerformanceData = goals > 0 || assists > 0 || yellowCards > 0 || redCards > 0 || wasSubbedOut || wasSubbedIn;
         
+        const totalVotes = community ? Math.max(1, community.totalPredictions) : 0;
         const reactions = [
-          { key: 'good', icon: '🔥', label: 'Çok İyi', color: '#10B981', pct: community ? Math.round((community.goal + community.assist) / Math.max(1, community.totalPredictions) * 50) : 0 },
-          { key: 'bad', icon: '👎', label: 'Kötü', color: '#EF4444', pct: community ? Math.round(community.substitutedOut / Math.max(1, community.totalPredictions) * 100) : 0 },
-          { key: 'goal', icon: '⚽', label: isGK ? 'Gol Yer' : 'Gol Yakın', color: '#3B82F6', pct: community ? Math.round(community.goal / Math.max(1, community.totalPredictions) * 100) : 0 },
-          { key: 'yellowcard', icon: 'card', label: 'Sarı Kart Görür', color: '#FBBF24', pct: community ? Math.round(community.yellowCard / Math.max(1, community.totalPredictions) * 100) : 0 },
-          { key: 'redcard', icon: 'card', label: 'Kırmızı Kart', color: '#DC2626', pct: community ? Math.round(community.redCard / Math.max(1, community.totalPredictions) * 100) : 0 },
-          { key: 'sub', icon: '🔄', label: 'Çıkmalı', color: '#8B5CF6', pct: community ? Math.round(community.substitutedOut / Math.max(1, community.totalPredictions) * 100) : 0 },
+          { key: 'good', icon: '🔥', label: 'Çok İyi', color: '#10B981', count: community ? (community.goal + community.assist) : 0, pct: community ? Math.round((community.goal + community.assist) / totalVotes * 50) : 0 },
+          { key: 'bad', icon: '👎', label: 'Kötü', color: '#EF4444', count: community ? community.substitutedOut : 0, pct: community ? Math.round(community.substitutedOut / totalVotes * 100) : 0 },
+          { key: 'goal', icon: '⚽', label: isGK ? 'Gol Yer' : 'Gol Yakın', color: '#3B82F6', count: community ? community.goal : 0, pct: community ? Math.round(community.goal / totalVotes * 100) : 0 },
+          { key: 'yellowcard', icon: 'card', label: 'Sarı Kart Görür', color: '#FBBF24', count: community ? community.yellowCard : 0, pct: community ? Math.round(community.yellowCard / totalVotes * 100) : 0 },
+          { key: 'redcard', icon: 'card', label: 'Kırmızı Kart', color: '#DC2626', count: community ? community.redCard : 0, pct: community ? Math.round(community.redCard / totalVotes * 100) : 0 },
+          { key: 'sub', icon: '🔄', label: 'Çıkmalı', color: '#8B5CF6', count: community ? community.substitutedOut : 0, pct: community ? Math.round(community.substitutedOut / totalVotes * 100) : 0 },
         ];
         return (
         <Modal visible={true} transparent animationType="fade" statusBarTranslucent>
@@ -5933,6 +6109,9 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                 </Text>
                 <Text style={{ fontSize: 13, color: '#94A3B8', marginTop: 4, fontWeight: '500' }}>
                   {isMatchFinished ? 'Maç Sonu Değerlendirme' : 'Canlı Değerlendirme'}
+                </Text>
+                <Text style={{ fontSize: 11, color: '#1FA2A6', marginTop: 6, fontWeight: '600' }}>
+                  Canlı tahminler ve topluluk verileri
                 </Text>
               </View>
 
@@ -5981,6 +6160,15 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                 </View>
               )}
 
+              {community && totalVotes > 0 ? (
+                <Text style={{ fontSize: 12, color: '#94A3B8', marginBottom: 10, textAlign: 'center' }}>
+                  {totalVotes.toLocaleString()} kişi bu oyuncu için tahmin yaptı · Tahminler arasındaki yüzdeler aşağıda
+                </Text>
+              ) : (
+                <Text style={{ fontSize: 12, color: '#94A3B8', marginBottom: 10, textAlign: 'center' }}>
+                  Henüz topluluk verisi yok · Aşağıdan oy verebilirsiniz
+                </Text>
+              )}
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 10, marginBottom: 16 }}>
                 {reactions.map(reaction => {
                   const isActive = liveReactions[pId] === reaction.key;
@@ -6011,7 +6199,8 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                         <Text style={{ fontSize: 24, marginBottom: 2 }}>{reaction.icon}</Text>
                       )}
                       <Text style={{ fontSize: 11, color: reaction.color, fontWeight: '700' }}>{reaction.label}</Text>
-                      <Text style={{ fontSize: 11, color: '#94A3B8', marginTop: 2, fontWeight: '600' }}>%{reaction.pct}</Text>
+                      <Text style={{ fontSize: 10, color: '#94A3B8', marginTop: 2, fontWeight: '600' }}>{reaction.count} kişi</Text>
+                      <Text style={{ fontSize: 10, color: '#64748B', marginTop: 0, fontWeight: '600' }}>%{reaction.pct} (tahminler arası)</Text>
                     </TouchableOpacity>
                   );
                 })}
@@ -8333,37 +8522,37 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(148, 163, 184, 0.3)',
   },
   
-  // ✅ Tahmin Toolbar (Kilit + Kaydet)
+  // ✅ Tahmin Toolbar (Kilit + Kaydet) – daha yumuşak görünüm
   predictionToolbar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 16,
-    marginTop: 16,
-    paddingHorizontal: 16,
+    gap: 14,
+    marginTop: 18,
+    paddingHorizontal: 18,
   },
   predictionLockButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     alignItems: 'center',
     justifyContent: 'center',
   },
   predictionLockButtonLocked: {
-    backgroundColor: 'rgba(239, 68, 68, 0.2)',
-    borderWidth: 2,
-    borderColor: '#EF4444',
+    backgroundColor: 'rgba(239, 68, 68, 0.14)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(248, 113, 113, 0.5)',
   },
   predictionLockButtonOpen: {
-    backgroundColor: 'rgba(16, 185, 129, 0.2)',
-    borderWidth: 2,
-    borderColor: '#10B981',
+    backgroundColor: 'rgba(20, 184, 166, 0.14)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(45, 212, 191, 0.45)',
   },
-  // Submit Button
+  // Submit Button – daha az kaba, teal tonları
   submitButton: {
     flex: 1,
-    height: 50,
-    borderRadius: 12,
+    height: 48,
+    borderRadius: 14,
     overflow: 'hidden',
   },
   submitButtonGradient: {
