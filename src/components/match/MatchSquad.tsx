@@ -650,6 +650,8 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favor
   // ✅ Confirmation modal for defense formation
   const [showDefenseConfirmModal, setShowDefenseConfirmModal] = useState(false);
   const [formationConfirmModal, setFormationConfirmModal] = useState<{ formationId: string } | null>(null);
+  // ✅ Kadro Tamamlandı – ekran ortasında birkaç saniye gösterilen standart popup
+  const [showSquadCompletePopup, setShowSquadCompletePopup] = useState<string | null>(null);
   
   // ✅ Track if defense confirmation was already shown
   const [defenseConfirmShown, setDefenseConfirmShown] = useState(false);
@@ -2178,10 +2180,8 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favor
       setDefensePlayers({ ...attackPlayers }); // ✅ Aynı oyuncular defans için de kopyalanıyor
       
       const formation = formations.find(f => f.id === attackFormation);
-      showInfo(
-        'Kadro Tamamlandı! ⚽',
-        `Atak ve defans için aynı formasyon kullanılacak:\n\n${formation?.name}\n\n⚠️ ÖNEMLİ: Bu sayfadan ayrılmadan önce değişiklikleri kaydetmek için "Tamamla" butonuna basmanız gerekiyor.\n\nTamamla'ya basmadan çıkarsanız değişiklikler kaydedilmez!`
-      );
+      setShowSquadCompletePopup(formation?.name ?? '');
+      setTimeout(() => setShowSquadCompletePopup(null), 3000);
     }
   };
 
@@ -3739,6 +3739,38 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favor
             </View>
           </View>
         </View>
+      </Modal>
+
+      {/* ✅ Kadro Tamamlandı – ekran ortasında standart popup, 3 sn sonra kapanır */}
+      <Modal
+        visible={showSquadCompletePopup !== null}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setShowSquadCompletePopup(null)}
+      >
+        <TouchableOpacity
+          style={styles.squadCompleteOverlay}
+          activeOpacity={1}
+          onPress={() => setShowSquadCompletePopup(null)}
+        >
+          <View style={styles.squadCompleteModal}>
+            <LinearGradient colors={['#1A2E2A', '#0F2420']} style={styles.squadCompleteGradient}>
+              <View style={styles.squadCompleteIcon}>
+                <Ionicons name="football" size={44} color="#1FA2A6" />
+              </View>
+              <Text style={styles.squadCompleteTitle}>Kadro Tamamlandı! ⚽</Text>
+              <Text style={styles.squadCompleteFormation}>
+                Atak ve defans için aynı formasyon kullanılacak: {showSquadCompletePopup}
+              </Text>
+              <View style={styles.squadCompleteInfo}>
+                <Ionicons name="information-circle" size={18} color="#F59E0B" />
+                <Text style={styles.squadCompleteInfoText}>
+                  Bu sayfadan ayrılmadan önce değişiklikleri kaydetmek için "Tamamla" butonuna basmanız gerekiyor. Tamamla'ya basmadan çıkarsanız değişiklikler kaydedilmez!
+                </Text>
+              </View>
+            </LinearGradient>
+          </View>
+        </TouchableOpacity>
       </Modal>
 
       {/* Atak formasyonu değişikliği – uygulama içi onay popup */}
@@ -7276,7 +7308,72 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFFFFF',
   },
-  
+
+  // ✅ Kadro Tamamlandı popup (ortada, standart popup stili)
+  squadCompleteOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  squadCompleteModal: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    width: '100%',
+    maxWidth: 380,
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.3)',
+    ...Platform.select({
+      ios: { shadowColor: '#1FA2A6', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 16 },
+      android: { elevation: 12 },
+      web: { boxShadow: '0 8px 32px rgba(31, 162, 166, 0.25)' },
+    }),
+  },
+  squadCompleteGradient: {
+    paddingVertical: 28,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+  },
+  squadCompleteIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: 'rgba(31, 162, 166, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+  },
+  squadCompleteTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  squadCompleteFormation: {
+    fontSize: 15,
+    color: '#CBD5E1',
+    textAlign: 'center',
+    marginBottom: 14,
+    fontWeight: '600',
+  },
+  squadCompleteInfo: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    backgroundColor: 'rgba(245, 158, 11, 0.12)',
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.25)',
+  },
+  squadCompleteInfoText: {
+    fontSize: 12,
+    color: '#FDE68A',
+    flex: 1,
+    lineHeight: 18,
+  },
 
   // Formation Detail Modal
   formationDetailOverlay: {
