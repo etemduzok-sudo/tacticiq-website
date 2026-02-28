@@ -103,6 +103,8 @@ interface MatchSquadProps {
   onStartingXIPopupShown?: () => void;
   /** ✅ Topluluk verilerini gördü mü? (görüldüyse kadro kilidi açılamaz) */
   hasViewedCommunityData?: boolean;
+  /** ✅ Tahminler kaydedilip kilitlendiyse kadro düzenleme kapatılır (Tahmin sekmesinde "Tahminleri Kaydet" sonrası) */
+  squadEditingDisabled?: boolean;
   /** Kadro yokken (canlı/biten maç) Tahmin / Canlı / İstatistik sekmelerine yönlendirmek için */
   onNavigateToTab?: (tab: 'prediction' | 'live' | 'stats') => void;
 }
@@ -154,7 +156,7 @@ const FootballField = ({ children, style }: any) => (
   </View>
 );
 
-export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favoriteTeamIdsProp = [], predictionTeamId, onComplete, onAttackFormationChangeConfirmed, isVisible = true, isMatchFinished = false, isMatchLive: isMatchLiveProp, onHasUnsavedChanges, startingXIPopupShown = false, onStartingXIPopupShown, hasViewedCommunityData = false, onNavigateToTab }: MatchSquadProps) {
+export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favoriteTeamIdsProp = [], predictionTeamId, onComplete, onAttackFormationChangeConfirmed, isVisible = true, isMatchFinished = false, isMatchLive: isMatchLiveProp, onHasUnsavedChanges, startingXIPopupShown = false, onStartingXIPopupShown, hasViewedCommunityData = false, squadEditingDisabled = false, onNavigateToTab }: MatchSquadProps) {
   const { width: winW, height: winH } = useWindowDimensions();
   const { theme } = useTheme();
   const { t } = useTranslation();
@@ -669,7 +671,7 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favor
   const [showPreferencePopup, setShowPreferencePopup] = useState<{
     position: string;
     positionLabel: string;
-    player: { id: number; name: string; number: number };
+    player: { id: number; name: string; number: number; stats?: { pace?: number; shooting?: number; passing?: number; dribbling?: number; defending?: number; physical?: number }; rating?: number | null };
     preferencePercentage: number;
     totalPreferences: number;
     allPreferences: { playerId: number; playerName: string; percentage: number; count: number }[];
@@ -1754,7 +1756,7 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favor
   const [isSaving, setIsSaving] = useState(false); // ✅ Kaydediliyor... göstergesi için
   const savingRef = React.useRef(false); // ✅ handleComplete sırasında savePartialState'i engelle
   const [isSquadLocked, setIsSquadLocked] = useState(false); // ✅ Kadro kilitli mi? (Tamamla sonrası)
-  
+  const effectiveSquadLocked = isSquadLocked || isKadroLocked || squadEditingDisabled;
   // ✅ Önceki kilit durumu - kilit açıldığında reset flag
   const prevSquadLockedRef = React.useRef(isSquadLocked);
   
@@ -1870,7 +1872,7 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favor
     }
 
     // Defans formasyonu yoksa veya kilitliyse kontrol etme
-    if (!defenseFormation || isKadroLocked || isSquadLocked) {
+    if (!defenseFormation || effectiveSquadLocked) {
       previousAttackPlayersRef.current = { ...attackPlayers };
       return;
     }
@@ -2161,7 +2163,7 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favor
     setEditingMode('defense');
     setFormationType('defense');
     // ✅ Canlı/biten maç veya kadro kilitli ise formasyon değişikliğine izin verme
-    if (isKadroLocked || isSquadLocked) return;
+    if (effectiveSquadLocked) return;
     setTimeout(() => {
       setShowFormationModal(true);
     }, 300);
@@ -2626,7 +2628,7 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favor
                         )}
                         {/* Remove button - Top Right */}
                         {/* ✅ X butonu: Kadro düzenlenebilir durumda gösterilir (maç başlamamış VE kadro kilitli değil) */}
-                        {!isKadroLocked && !isSquadLocked && (
+                        {!effectiveSquadLocked && (
                           <TouchableOpacity
                             style={[styles.removeButton, { pointerEvents: 'auto' }]}
                             onPress={(e) => {
@@ -2668,7 +2670,7 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favor
                                 setShowPreferencePopup({
                                   position: posData.position,
                                   positionLabel: posData.positionLabel,
-                                  player: posData.player,
+                                  player: { ...posData.player, stats: (player as any).stats, rating: (player as any).rating },
                                   preferencePercentage: posData.preferencePercentage,
                                   totalPreferences: posData.totalPreferences,
                                   allPreferences: posData.allPreferences,
@@ -2968,12 +2970,15 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favor
                 <TouchableOpacity
                   style={[
                     styles.lockButtonCenter,
-                    (isSquadLocked || isKadroLocked) ? styles.lockButtonCenterLocked : styles.lockButtonCenterOpen,
+                    effectiveSquadLocked ? styles.lockButtonCenterLocked : styles.lockButtonCenterOpen,
                     hasViewedCommunityData && isSquadLocked && { opacity: 0.5 },
                     isKadroLocked && { opacity: 0.9 }
                   ]}
                   onPress={() => {
-                    // Maç başladı veya bittiyse kilit asla açılmaz
+                    if (squadEditingDisabled) {
+                      showInfo('Tahmin kilitli', 'Kadro düzenlemek için önce Tahmin sekmesinde kilidi açın.');
+                      return;
+                    }
                     if (isKadroLocked) {
                       showInfo('🔒 ' + t('matchSquad.squadLocked'), t('matchSquad.lockCannotOpen'));
                       return;
@@ -2996,12 +3001,12 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favor
                       }
                     }
                   }}
-                  activeOpacity={(hasViewedCommunityData && isSquadLocked) || isKadroLocked ? 1 : 0.7}
+                  activeOpacity={effectiveSquadLocked ? 1 : 0.7}
                 >
                   <Ionicons 
-                    name={(isSquadLocked || isKadroLocked) ? "lock-closed" : "lock-open"} 
+                    name={effectiveSquadLocked ? "lock-closed" : "lock-open"} 
                     size={20} 
-                    color={(isSquadLocked || isKadroLocked) ? '#EF4444' : '#10B981'} 
+                    color={effectiveSquadLocked ? '#EF4444' : '#10B981'} 
                   />
                 </TouchableOpacity>
 
@@ -3009,23 +3014,23 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favor
                 <TouchableOpacity
                   style={[
                     styles.completeButtonSymmetric,
-                    isLight && (isSquadLocked || !isCompleteButtonActive || isKadroLocked) && { backgroundColor: themeColors.border, opacity: 0.8 },
-                    isLight && !(isSquadLocked || !isCompleteButtonActive || isKadroLocked) && { backgroundColor: themeColors.ring || '#1FA2A6' },
-                    !isLight && (isSquadLocked || !isCompleteButtonActive || isKadroLocked) && styles.completeButtonSymmetricDisabled,
+                    isLight && (effectiveSquadLocked || !isCompleteButtonActive) && { backgroundColor: themeColors.border, opacity: 0.8 },
+                    isLight && !(effectiveSquadLocked || !isCompleteButtonActive) && { backgroundColor: themeColors.ring || '#1FA2A6' },
+                    !isLight && (effectiveSquadLocked || !isCompleteButtonActive) && styles.completeButtonSymmetricDisabled,
                   ]}
                   onPress={handleComplete}
-                  disabled={isSquadLocked || !isCompleteButtonActive || isKadroLocked}
+                  disabled={effectiveSquadLocked || !isCompleteButtonActive}
                   activeOpacity={0.8}
                 >
                   <Text style={[
                     styles.completeButtonSymmetricText,
-                    isLight && { color: (isSquadLocked || !isCompleteButtonActive || isKadroLocked) ? themeColors.mutedForeground : themeColors.primaryForeground || '#FFFFFF' },
-                    (isSquadLocked || !isCompleteButtonActive || isKadroLocked) && !isLight && { opacity: 0.5 }
+                    isLight && { color: (effectiveSquadLocked || !isCompleteButtonActive) ? themeColors.mutedForeground : themeColors.primaryForeground || '#FFFFFF' },
+                    (effectiveSquadLocked || !isCompleteButtonActive) && !isLight && { opacity: 0.5 }
                   ]}>Tamamla</Text>
                   <Ionicons 
                     name="checkmark-circle" 
                     size={18} 
-                    color={(isSquadLocked || !isCompleteButtonActive || isKadroLocked) ? (isLight ? themeColors.mutedForeground : 'rgba(255,255,255,0.5)') : (isLight ? themeColors.primaryForeground || '#FFFFFF' : '#FFFFFF')} 
+                    color={(effectiveSquadLocked || !isCompleteButtonActive) ? (isLight ? themeColors.mutedForeground : 'rgba(255,255,255,0.5)') : (isLight ? themeColors.primaryForeground || '#FFFFFF' : '#FFFFFF')} 
                   />
                 </TouchableOpacity>
               </View>
@@ -3255,64 +3260,58 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favor
               {showPlayerRatingDropdown && (
                 <View style={styles.playerRatingDropdownContent}>
                   {(() => {
-                    // ✅ Kaleci mi kontrol et (pozisyon GK ise)
+                    const popupPlayer = showPreferencePopup?.player;
                     const isGoalkeeper = showPreferencePopup?.positionLabel?.toUpperCase() === 'GK' || 
                                          showPreferencePopup?.positionLabel?.toLowerCase().includes('kaleci');
-                    
-                    // ✅ Kaleci özellikleri
-                    const goalkeeperCategories = [
-                      { id: 'diving', emoji: '🧤', title: 'Dalış', rating: 7.8, voters: 1842 },
-                      { id: 'reflexes', emoji: '⚡', title: 'Refleks', rating: 8.2, voters: 1756 },
-                      { id: 'handling', emoji: '🤲', title: 'Top Tutma', rating: 7.5, voters: 1821 },
-                      { id: 'positioning', emoji: '📍', title: 'Konumlanma', rating: 7.6, voters: 1689 },
-                      { id: 'kicking', emoji: '🦵', title: 'Uzun Top', rating: 6.8, voters: 1734 },
-                      { id: 'communication', emoji: '📢', title: 'İletişim', rating: 7.2, voters: 1798 },
-                      { id: 'aerialReach', emoji: '🙌', title: 'Hava Topu', rating: 7.9, voters: 1667 },
-                      { id: 'oneOnOne', emoji: '🎯', title: 'Bire Bir', rating: 7.4, voters: 1712 },
-                      { id: 'concentration', emoji: '🧠', title: 'Konsantrasyon', rating: 7.7, voters: 1745 },
+                    const stats = popupPlayer?.stats || {};
+                    const normalizedRating = normalizeRatingTo100(popupPlayer?.rating ?? null);
+                    const allStatsDefault = (
+                      (stats.pace ?? 70) === 70 && (stats.shooting ?? 70) === 70 &&
+                      (stats.passing ?? 70) === 70 && (stats.dribbling ?? 70) === 70 &&
+                      (stats.defending ?? 70) === 70 && (stats.physical ?? 70) === 70
+                    );
+                    const calculatedStats = allStatsDefault ? {
+                      pace: normalizedRating, shooting: normalizedRating, passing: normalizedRating,
+                      dribbling: normalizedRating, defending: normalizedRating, physical: normalizedRating,
+                    } : {
+                      pace: stats.pace ?? 70, shooting: stats.shooting ?? 70, passing: stats.passing ?? 70,
+                      dribbling: stats.dribbling ?? 70, defending: stats.defending ?? 70, physical: stats.physical ?? 70,
+                    };
+                    const goalkeeperItems: { id: string; title: string; value: number }[] = [
+                      { id: 'pace', title: 'Plonjon', value: calculatedStats.pace },
+                      { id: 'shooting', title: 'Refleks', value: calculatedStats.shooting },
+                      { id: 'passing', title: 'Top Tutma', value: calculatedStats.passing },
+                      { id: 'dribbling', title: 'Yer Tutuş', value: calculatedStats.dribbling },
+                      { id: 'defending', title: 'Hava Topu', value: calculatedStats.defending },
+                      { id: 'physical', title: 'Bire Bir', value: calculatedStats.physical },
                     ];
-                    
-                    // ✅ Saha oyuncusu özellikleri
-                    const outfieldCategories = [
-                      { id: 'shooting', emoji: '🎯', title: 'Şut', rating: 7.2, voters: 1842 },
-                      { id: 'passing', emoji: '🌀', title: 'Pas', rating: 6.8, voters: 1756 },
-                      { id: 'dribbling', emoji: '🌀', title: 'Dribling', rating: 7.5, voters: 1821 },
-                      { id: 'defense', emoji: '🛡️', title: 'Savunma', rating: 6.3, voters: 1689 },
-                      { id: 'physical', emoji: '💪', title: 'Fizik', rating: 7.0, voters: 1734 },
-                      { id: 'speed', emoji: '⚡', title: 'Hız', rating: 6.9, voters: 1798 },
-                      { id: 'vision', emoji: '👁️', title: 'Vizyon', rating: 7.1, voters: 1667 },
-                      { id: 'positioning', emoji: '📍', title: 'Konumlanma', rating: 6.7, voters: 1712 },
-                      { id: 'stamina', emoji: '🔋', title: 'Dayanıklılık', rating: 7.3, voters: 1745 },
+                    const outfieldItems: { id: string; title: string; value: number }[] = [
+                      { id: 'pace', title: 'Hız', value: calculatedStats.pace },
+                      { id: 'shooting', title: 'Şut', value: calculatedStats.shooting },
+                      { id: 'passing', title: 'Pas', value: calculatedStats.passing },
+                      { id: 'dribbling', title: 'Dribling', value: calculatedStats.dribbling },
+                      { id: 'defending', title: 'Savunma', value: calculatedStats.defending },
+                      { id: 'physical', title: 'Fizik', value: calculatedStats.physical },
                     ];
-                    
-                    const categories = isGoalkeeper ? goalkeeperCategories : outfieldCategories;
-                    
-                    return categories.map((cat) => (
-                      <View key={cat.id} style={styles.playerRatingDropdownRow}>
-                        <View style={styles.playerRatingDropdownRowLeft}>
-                          <Text style={styles.playerRatingDropdownEmoji}>{cat.emoji}</Text>
-                          <Text style={styles.playerRatingDropdownTitle}>{cat.title}</Text>
-                        </View>
-                        <View style={styles.playerRatingDropdownRowRight}>
-                          <View style={styles.playerRatingDropdownBar}>
-                            <View 
-                              style={[
-                                styles.playerRatingDropdownBarFill, 
-                                { 
-                                  width: `${(cat.rating / 10) * 100}%`,
-                                  backgroundColor: cat.rating >= 7 ? '#10B981' : cat.rating >= 5 ? '#F59E0B' : '#EF4444'
-                                }
-                              ]} 
-                            />
+                    const items = isGoalkeeper ? goalkeeperItems : outfieldItems;
+                    const getStatColor = (v: number) => v >= 80 ? '#10B981' : v >= 70 ? '#F59E0B' : '#EF4444';
+                    return items.map((item) => {
+                      const value = Math.max(50, Math.min(99, item.value));
+                      const color = getStatColor(value);
+                      return (
+                        <View key={item.id} style={styles.playerRatingDropdownRow}>
+                          <View style={styles.playerRatingDropdownRowLeft}>
+                            <Text style={styles.playerRatingDropdownTitle}>{item.title}</Text>
                           </View>
-                          <Text style={[
-                            styles.playerRatingDropdownValue,
-                            { color: cat.rating >= 7 ? '#10B981' : cat.rating >= 5 ? '#F59E0B' : '#EF4444' }
-                          ]}>{cat.rating.toFixed(1)}</Text>
-                          <Text style={styles.playerRatingDropdownVoters}>{cat.voters}</Text>
+                          <View style={styles.playerRatingDropdownRowRight}>
+                            <View style={styles.playerRatingDropdownBar}>
+                              <View style={[styles.playerRatingDropdownBarFill, { width: `${value}%`, backgroundColor: color }]} />
+                            </View>
+                            <Text style={[styles.playerRatingDropdownValue, { color }]}>{value}</Text>
+                          </View>
                         </View>
-                      </View>
-                    ));
+                      );
+                    });
                   })()}
                 </View>
               )}
@@ -4619,14 +4618,14 @@ const PlayerModal = ({ visible, players, selectedPlayers, positionLabel, onSelec
                         physical: stats.physical ?? 70,
                       };
                       
-                      // ✅ Kaleci özellikleri (pace→Dalış, shooting→Refleks, vb. mapping)
+                      // ✅ Kaleci özellikleri (Oyuncu İstatistikleri popup ile aynı isimler: Plonjon, Refleks, Top Tutma, Yer Tutuş, Hava Topu, Bire Bir)
                       const goalkeeperStats = [
-                        { label: 'DALIŞ', value: calculatedStats.pace, icon: 'hand-left' },
-                        { label: 'REFLEKS', value: calculatedStats.shooting, icon: 'flash' },
-                        { label: 'TOP TUT', value: calculatedStats.passing, icon: 'hand-right' },
-                        { label: 'KONUM', value: calculatedStats.dribbling, icon: 'locate' },
-                        { label: 'HAVA', value: calculatedStats.defending, icon: 'arrow-up' },
-                        { label: '1V1', value: calculatedStats.physical, icon: 'body' },
+                        { label: 'Plonjon', value: calculatedStats.pace, icon: 'hand-left' },
+                        { label: 'Refleks', value: calculatedStats.shooting, icon: 'flash' },
+                        { label: 'Top Tutma', value: calculatedStats.passing, icon: 'hand-right' },
+                        { label: 'Yer Tutuş', value: calculatedStats.dribbling, icon: 'locate' },
+                        { label: 'Hava Topu', value: calculatedStats.defending, icon: 'arrow-up' },
+                        { label: 'Bire Bir', value: calculatedStats.physical, icon: 'body' },
                       ];
                       
                       // ✅ Saha oyuncusu özellikleri
@@ -4836,6 +4835,13 @@ const PlayerDetailModal = ({ player, onClose, matchId, positionLabel, communityD
                 <Text style={[styles.playerDetailMeta, isLight && { color: themeColors.mutedForeground }]}>
                   {player.position} • {player.team} • {player.age} yaş
                 </Text>
+                {/* Ortalama reyting (sarı) - sağda */}
+                <View style={styles.playerDetailInfoRow}>
+                  <View />
+                  <Text style={styles.playerDetailRatingHighlight}>
+                    {formatRatingDisplay(player.rating)}
+                  </Text>
+                </View>
                 <View style={styles.playerDetailBadges}>
                   <View style={[styles.nationalityBadge, isLight && { backgroundColor: 'rgba(15, 42, 36, 0.12)' }]}>
                     <Ionicons name="flag" size={12} color={isLight ? themeColors.foreground : '#FFFFFF'} />
@@ -4872,59 +4878,42 @@ const PlayerDetailModal = ({ player, onClose, matchId, positionLabel, communityD
             
             <View style={styles.statsGridCompact}>
               {(() => {
-                // ✅ Kaleci mi kontrol et
                 const playerPos = (player.position || player.pos || '').toUpperCase();
                 const isGK = playerPos === 'GK' || playerPos === 'G' || playerPos.toLowerCase().includes('goalkeeper') || 
                              positionLabel?.toUpperCase() === 'GK' || positionLabel?.toLowerCase().includes('kaleci');
-                
-                // ✅ Kaleci özellikleri (pace→Dalış, shooting→Refleks, vb. mapping)
                 const goalkeeperStatNames: Record<string, string> = {
-                  pace: 'Dalış',
-                  shooting: 'Refleks',
-                  passing: 'Top Tutma',
-                  dribbling: 'Konumlanma',
-                  defending: 'Hava Topu',
-                  physical: 'Bire Bir'
+                  pace: 'Plonjon', shooting: 'Refleks', passing: 'Top Tutma',
+                  dribbling: 'Yer Tutuş', defending: 'Hava Topu', physical: 'Bire Bir'
                 };
-                
-                // ✅ Saha oyuncusu özellikleri
                 const outfieldStatNames: Record<string, string> = {
-                  pace: 'Hız',
-                  shooting: 'Şut',
-                  passing: 'Pas',
-                  dribbling: 'Dribling',
-                  defending: 'Savunma',
-                  physical: 'Fizik'
+                  pace: 'Hız', shooting: 'Şut', passing: 'Pas',
+                  dribbling: 'Dribling', defending: 'Savunma', physical: 'Fizik'
                 };
-                
                 const statNames = isGK ? goalkeeperStatNames : outfieldStatNames;
-                
-                return Object.entries(player.stats || {}).map(([key, value]: [string, any]) => {
-                  const clampedValue = Math.max(50, Math.min(99, Number(value) || 70));
-                  const statColor = clampedValue >= 80 ? '#1FA2A6' : clampedValue >= 70 ? '#F59E0B' : '#9CA3AF';
-                  
+                const STAT_KEYS = ['pace', 'shooting', 'passing', 'dribbling', 'defending', 'physical'] as const;
+                const stats = player.stats || {};
+                const normalizedRating = normalizeRatingTo100(player.rating ?? null);
+                const allStatsDefault = STAT_KEYS.every(k => (stats[k] ?? 70) === 70);
+                const calculatedStats = allStatsDefault
+                  ? { pace: normalizedRating, shooting: normalizedRating, passing: normalizedRating, dribbling: normalizedRating, defending: normalizedRating, physical: normalizedRating }
+                  : { pace: stats.pace ?? 70, shooting: stats.shooting ?? 70, passing: stats.passing ?? 70, dribbling: stats.dribbling ?? 70, defending: stats.defending ?? 70, physical: stats.physical ?? 70 };
+                return STAT_KEYS.map((key) => {
+                  const value = Math.max(50, Math.min(99, calculatedStats[key]));
+                  const statColor = value >= 80 ? '#1FA2A6' : value >= 70 ? '#F59E0B' : '#9CA3AF';
                   return (
                     <View key={key} style={[styles.statItemCompact, isLight && { backgroundColor: themeColors.muted, borderColor: themeColors.border }]}>
-                      {/* Label - Sol */}
                       <Text style={[styles.statLabelCompact, isLight && { color: themeColors.mutedForeground }]}>{statNames[key] || key}</Text>
-                      {/* Progress Bar - Orta */}
                       <View style={styles.statBarBackgroundCompact}>
-                        <View 
-                          style={[
-                            styles.statBarFillCompact, 
-                            { width: `${clampedValue}%`, backgroundColor: statColor }
-                          ]} 
-                        />
+                        <View style={[styles.statBarFillCompact, { width: `${value}%`, backgroundColor: statColor }]} />
                       </View>
-                      {/* Value - Sağ */}
-                      <Text style={[styles.statValueCompact, { color: statColor }]}>{clampedValue}</Text>
+                      <Text style={[styles.statValueCompact, { color: statColor }]}>{value}</Text>
                     </View>
                   );
                 });
               })()}
             </View>
 
-            {/* ✅ Form/Pozisyon/Yaş - tek satır inline */}
+            {/* ✅ Form/Pozisyon - yaş üstte (position • team • age) gösterildiği için altta tekrar yok */}
             <View style={styles.additionalInfoCompact}>
               <View style={[styles.infoChip, isLight && { backgroundColor: 'rgba(31, 162, 166, 0.08)', borderColor: themeColors.border }]}>
                 <Ionicons name="fitness" size={14} color="#1FA2A6" />
@@ -4934,54 +4923,6 @@ const PlayerDetailModal = ({ player, onClose, matchId, positionLabel, communityD
                 <Ionicons name="shirt" size={14} color="#1FA2A6" />
                 <Text style={[styles.infoChipText, isLight && { color: themeColors.foreground }]}>{player.position}</Text>
               </View>
-              <View style={[styles.infoChip, isLight && { backgroundColor: 'rgba(31, 162, 166, 0.08)', borderColor: themeColors.border }]}>
-                <Ionicons name="person" size={14} color="#1FA2A6" />
-                <Text style={[styles.infoChipText, isLight && { color: themeColors.foreground }]}>{player.age} yaş</Text>
-              </View>
-            </View>
-            
-            {/* Topluluk Tercihleri - Kompakt versiyon */}
-            <View style={[styles.communityStatsSectionCompact, isLight && { borderTopColor: themeColors.border }]}>
-              <Text style={[styles.playerDetailSectionTitleCompact, isLight && { color: themeColors.foreground }]}>👥 Topluluk Tercihleri</Text>
-              
-              {communityDataVisible ? (
-                communityStats.loading ? (
-                  <View style={styles.communityStatsCompactLoading}>
-                    <Text style={{ color: themeColors.mutedForeground, fontSize: 12 }}>Yükleniyor...</Text>
-                  </View>
-                ) : (
-                  <View style={styles.communityStatsCompactRow}>
-                    {/* İlk 11'de görmek isteyenler */}
-                    <View style={[styles.communityStatChip, isLight && { backgroundColor: themeColors.muted, borderColor: themeColors.border }]}>
-                      <Ionicons name="football" size={14} color="#1FA2A6" />
-                      <Text style={[styles.communityStatChipLabel, isLight && { color: themeColors.mutedForeground }]}>İlk 11</Text>
-                      <Text style={[
-                        styles.communityStatChipValue,
-                        { color: communityStats.inStartingXI >= 60 ? '#10B981' : communityStats.inStartingXI >= 40 ? '#F59E0B' : '#64748B' }
-                      ]}>%{communityStats.inStartingXI}</Text>
-                    </View>
-                    
-                    {/* Bu pozisyonda görmek isteyenler */}
-                    {positionLabel && (
-                      <View style={[styles.communityStatChip, isLight && { backgroundColor: themeColors.muted, borderColor: themeColors.border }]}>
-                        <Ionicons name="locate" size={14} color="#3B82F6" />
-                        <Text style={[styles.communityStatChipLabel, isLight && { color: themeColors.mutedForeground }]}>{positionLabel}</Text>
-                        <Text style={[
-                          styles.communityStatChipValue,
-                          { color: communityStats.inThisPosition >= 50 ? '#3B82F6' : communityStats.inThisPosition >= 30 ? '#F59E0B' : '#64748B' }
-                        ]}>%{communityStats.inThisPosition}</Text>
-                      </View>
-                    )}
-                  </View>
-                )
-              ) : (
-                <View style={[styles.communityStatsCompactLocked, isLight && { backgroundColor: themeColors.muted }]}>
-                  <Ionicons name="lock-closed" size={16} color={themeColors.mutedForeground} />
-                  <Text style={[styles.communityStatsCompactLockedText, isLight && { color: themeColors.mutedForeground }]}>
-                    Tahminlerinizi kaydedin
-                  </Text>
-                </View>
-              )}
             </View>
           </View>
 
@@ -7812,6 +7753,22 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#9CA3AF',
     marginTop: 4,
+  },
+  playerDetailInfoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+    marginTop: 4,
+  },
+  playerDetailInfoText: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.7)',
+  },
+  playerDetailRatingHighlight: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#C9A44C',
   },
   playerDetailBadges: {
     flexDirection: 'row',

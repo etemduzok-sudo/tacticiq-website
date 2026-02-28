@@ -107,6 +107,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
   const [analysisFocusOverride, setAnalysisFocusOverride] = useState<AnalysisFocusType | null>(null);
   const [showResetPredictionsModal, setShowResetPredictionsModal] = useState(false);
   const [hasPrediction, setHasPrediction] = useState<boolean | null>(null); // null = henüz kontrol edilmedi
+  const [predictionLocked, setPredictionLocked] = useState(false); // ✅ Tahminler kaydedilip kilitlendi mi? (Kadro sekmesi düzenleme kapatılır)
   const [hasViewedCommunityData, setHasViewedCommunityData] = useState(false); // ✅ Topluluk verilerini gördü mü?
   const effectiveAnalysisFocus = analysisFocusOverride ?? analysisFocus;
 
@@ -213,6 +214,21 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
           if (await AsyncStorage.getItem(cKey1) || await AsyncStorage.getItem(cKey2)) viewedCommunity = true;
         }
         setHasViewedCommunityData(viewedCommunity);
+        // ✅ Tahmin kilit durumu (en az bir takım kilitliyse kilitli say)
+        let locked = false;
+        if (raw1) {
+          try {
+            const p1 = JSON.parse(raw1);
+            if (p1?.isPredictionLocked === true) locked = true;
+          } catch (_) {}
+        }
+        if (!locked && raw2) {
+          try {
+            const p2 = JSON.parse(raw2);
+            if (p2?.isPredictionLocked === true) locked = true;
+          } catch (_) {}
+        }
+        setPredictionLocked(locked);
         return;
       }
       
@@ -261,6 +277,14 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
         }
       }
       setHasViewedCommunityData(viewedCommunity);
+      let locked = false;
+      if (predRaw) {
+        try {
+          const pred = JSON.parse(predRaw);
+          if (pred?.isPredictionLocked === true) locked = true;
+        } catch (_) {}
+      }
+      setPredictionLocked(locked);
     } catch (e) {
       console.warn('checkPredictions error:', e);
       setHasPrediction(false);
@@ -307,9 +331,10 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
       }
       
       setHasPrediction(false);
+      setPredictionLocked(false);
       if (bothFavorites) checkPredictions(homeId, awayId, true);
       else checkPredictions();
-      
+
       console.log('✅ Tahminler silindi:', { matchId, teamId: teamToReset ?? effectiveTeamId, isMockMatch });
     } catch (e) { 
       console.error('❌ Reset predictions failed', e); 
@@ -1122,15 +1147,14 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
       setPendingBackAction(true);
       return;
     }
-    // ✅ Tahmin sekmesinde de kaydedilmemiş değişiklik kontrolü
-    // ✅ Kilitli durumda uyarı gösterme
-    if (activeTab === 'prediction' && predictionHasUnsavedChanges && !isMatchFinished && !isKadroLocked) {
+    // ✅ Tahmin sekmesinde kaydedilmemiş değişiklik kontrolü (tahmin yoksa uyarı gösterme)
+    if (activeTab === 'prediction' && predictionHasUnsavedChanges && hasPrediction && !isMatchFinished && !isKadroLocked) {
       setPendingBackAction(true);
       setShowUnsavedChangesModal(true);
       return;
     }
     onBack();
-  }, [activeTab, squadHasUnsavedChanges, predictionHasUnsavedChanges, isMatchFinished, isKadroLocked, onBack]);
+  }, [activeTab, squadHasUnsavedChanges, predictionHasUnsavedChanges, hasPrediction, isMatchFinished, isKadroLocked, onBack]);
 
   // Transform API data to component format
   // ✅ useMemo ile sarmalayarak mock maçlar için timestamp'i sabitle
@@ -1293,6 +1317,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
             lineups={lineups}
             favoriteTeamIds={favoriteTeamIds}
             predictionTeamId={predictionTeamIdForProps}
+            squadEditingDisabled={predictionLocked}
             onComplete={() => setActiveTab('prediction')}
             onAttackFormationChangeConfirmed={() => {
               // ✅ Sadece analiz odağı seçilmemişse modal'ı aç
@@ -1335,6 +1360,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
             liveStatistics={liveStatistics}
             favoriteTeamIds={favoriteTeamIds}
             onPredictionsSaved={() => checkPredictions(homeId, awayId, bothFavorites)}
+            onPredictionLockedChange={setPredictionLocked}
             onPredictionsSavedForTeam={async (savedTeamId) => {
               await checkPredictions(homeId, awayId, bothFavorites);
             }}
@@ -1424,11 +1450,34 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
 
           {hasPrediction ? (
             <TouchableOpacity
-              onPress={() => {
+              onPress={async () => {
                 if (isMatchLive || isMatchFinished) {
                   Alert.alert(t('matchDetail.cannotDeletePredictionTitle'), t('matchDetail.cannotDeletePredictionMessage'));
                   return;
                 }
+                // ✅ Bağımsız tahmin modunda kilitlenmiş + topluluk/canlı veriler görülmüşse tahmin silinemez
+                try {
+                  const allKeys = await AsyncStorage.getAllKeys();
+                  const predPrefix = `${STORAGE_KEYS.PREDICTIONS}${matchId}`;
+                  const predKeys = allKeys.filter(k => k === predPrefix || k.startsWith(predPrefix + '-'));
+                  let cannotDeleteIndependent = false;
+                  for (const key of predKeys) {
+                    const raw = await AsyncStorage.getItem(key);
+                    if (raw) {
+                      try {
+                        const p = JSON.parse(raw);
+                        if (p?.hasChosenIndependentAfterSave === true && (p?.hasViewedCommunityData === true || p?.hasViewedRealLineup === true)) {
+                          cannotDeleteIndependent = true;
+                          break;
+                        }
+                      } catch (_) {}
+                    }
+                  }
+                  if (cannotDeleteIndependent) {
+                    Alert.alert(t('matchDetail.cannotDeleteIndependentTitle'), t('matchDetail.cannotDeleteIndependentMessage'));
+                    return;
+                  }
+                } catch (_) {}
                 if (bothFavorites) setShowResetTeamPickerModal(true);
                 else setShowResetPredictionsModal(true);
               }}
@@ -1503,7 +1552,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
                 </Text>
               </>
             ) : (
-              <>
+              <View style={styles.dateTimeContainer}>
                 {/* Tarih ve saat konteyner içinde ortalı */}
                 <View style={styles.dateInfoRow}>
                   <Ionicons name="time" size={9} color={headerMuted} />
@@ -1583,7 +1632,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
                     </Text>
                   </LinearGradient>
                 )}
-              </>
+              </View>
             )}
           </View>
 
@@ -1656,7 +1705,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
         <ConfirmModal
           visible={true}
           title={t('matchDetail.deletePredictionsTitle')}
-          message={t('matchDetail.deletePredictionsMessage')}
+          message={t('matchDetail.deletePredictionsAndSquadMessage')}
           buttons={[
             { text: t('matchDetail.no'), style: 'cancel', onPress: () => { setShowResetPredictionsModal(false); setActiveTab('squad'); } },
             { text: t('matchDetail.delete'), style: 'destructive', onPress: () => handleResetPredictionsConfirm() },
@@ -1757,9 +1806,8 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
                   setShowSquadUnsavedModal(true);
                   return;
                 }
-                // ✅ Tahmin sekmesinden ayrılırken kaydedilmemiş değişiklik kontrolü
-                // ✅ Biten maçlarda veya kilitli kadrolarda uyarı gösterilmez (değişiklik yapılamaz)
-                if (activeTab === 'prediction' && tab.id !== 'prediction' && predictionHasUnsavedChanges && !isMatchFinished && !isKadroLocked) {
+                // ✅ Tahmin sekmesinden ayrılırken kaydedilmemiş değişiklik kontrolü (tahmin yoksa uyarı gösterme)
+                if (activeTab === 'prediction' && tab.id !== 'prediction' && predictionHasUnsavedChanges && hasPrediction && !isMatchFinished && !isKadroLocked) {
                   setPendingTabChange(tab.id);
                   setShowUnsavedChangesModal(true);
                   return;
@@ -2401,6 +2449,12 @@ const styles = StyleSheet.create({
     width: 100, // ✅ Sabit genişlik - layout kaymasını önler
     flexShrink: 0,
     height: 80, // ✅ Sabit yükseklik - geri sayım için yeterli alan
+  },
+  // ✅ Tarih/saat bloğu - konteyner içinde birkaç satır aşağı
+  dateTimeContainer: {
+    paddingTop: 34,
+    alignItems: 'center',
+    width: '100%',
   },
   // ✅ Tarih satırı - konteyner içinde ortalı
   dateInfoRow: {

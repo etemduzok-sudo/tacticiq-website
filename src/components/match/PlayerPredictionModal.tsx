@@ -54,7 +54,12 @@ export interface PlayerPredictionModalProps {
   onSubstituteConfirm?: (type: 'normal' | 'injury', playerId: string, minute: string) => void;
   allPlayerPredictions?: Record<string | number, any>;
   isPredictionLocked?: boolean;
-  onShowLockedWarning?: () => void;
+  /** Sadece bu oyuncu kilitli (master kilit değil) */
+  isThisPlayerLocked?: boolean;
+  /** Sayfa altı master kilit kilitli */
+  isMasterLocked?: boolean;
+  /** Kilit uyarısı – reason: 'master_then_player' = iki aşamalı mesaj */
+  onShowLockedWarning?: (reason?: 'master_then_player') => void;
   onUnlockLock?: () => void;
   onSaveAndLock?: () => void | Promise<void>;
 }
@@ -70,10 +75,13 @@ const PlayerPredictionModal = ({
   onSubstituteConfirm,
   allPlayerPredictions = {},
   isPredictionLocked = false,
+  isThisPlayerLocked = false,
+  isMasterLocked = false,
   onShowLockedWarning,
   onUnlockLock,
   onSaveAndLock,
 }: PlayerPredictionModalProps) => {
+  const isLocked = isPredictionLocked ?? (isThisPlayerLocked || isMasterLocked);
   const { theme } = useTheme();
   const themeColors = theme === 'light' ? COLORS.light : COLORS.dark;
   const isLight = theme === 'light';
@@ -108,11 +116,18 @@ const PlayerPredictionModal = ({
   const getSubstituteName = (id: string | null) =>
     id ? (reservePlayers || []).find((p: any) => p.id.toString() === id)?.name : null;
 
+  /** Kilitliyken tahmin değiştirmeyi engelle. Master kilitliyse iki aşamalı uyarı; sadece oyuncu kilitliyse popup içi mesaj. */
+  const handlePredictionChange = (category: string, value: string | boolean) => {
+    if (isLocked) {
+      if (isMasterLocked) onShowLockedWarning?.('master_then_player');
+      return;
+    }
+    onPredictionChange(category, value);
+  };
+
   const openDropdown = (type: 'normal' | 'injury') => {
-    if (isPredictionLocked) {
-      if (onShowLockedWarning) {
-        onShowLockedWarning();
-      }
+    if (isLocked) {
+      if (isMasterLocked) onShowLockedWarning?.('master_then_player');
       return;
     }
     
@@ -183,7 +198,7 @@ const PlayerPredictionModal = ({
   }, [expandedSubstituteType]);
 
   React.useEffect(() => {
-    if (!isPredictionLocked && expandedSubstituteType && localSubstituteId && localMinuteRange && onSubstituteConfirm) {
+    if (!isLocked && expandedSubstituteType && localSubstituteId && localMinuteRange && onSubstituteConfirm) {
       const timer = setTimeout(() => {
         onSubstituteConfirm(expandedSubstituteType, localSubstituteId, localMinuteRange);
         setExpandedSubstituteType(null);
@@ -191,7 +206,7 @@ const PlayerPredictionModal = ({
       }, 2000);
       return () => clearTimeout(timer);
     }
-  }, [isPredictionLocked, expandedSubstituteType, localSubstituteId, localMinuteRange, onSubstituteConfirm]);
+  }, [isLocked, expandedSubstituteType, localSubstituteId, localMinuteRange, onSubstituteConfirm]);
 
   const buttonLabelNormal = predictions.substitutePlayer
     ? (
@@ -296,7 +311,7 @@ const PlayerPredictionModal = ({
                   styles.predictionButton,
                   predictions.willScore && styles.predictionButtonActive,
                 ]}
-                onPress={() => onPredictionChange('willScore', true)}
+                onPress={() => handlePredictionChange('willScore', true)}
                 activeOpacity={0.8}
               >
                 <Text style={[
@@ -317,7 +332,7 @@ const PlayerPredictionModal = ({
                         styles.subOptionButton,
                         predictions.goalCount === count && styles.subOptionButtonActive,
                       ]}
-                      onPress={() => onPredictionChange('goalCount', count)}
+                      onPress={() => handlePredictionChange('goalCount', count)}
                       activeOpacity={0.8}
                     >
                       <Text style={[
@@ -339,7 +354,7 @@ const PlayerPredictionModal = ({
                   styles.predictionButton,
                   predictions.willAssist && styles.predictionButtonActive,
                 ]}
-                onPress={() => onPredictionChange('willAssist', true)}
+                onPress={() => handlePredictionChange('willAssist', true)}
                 activeOpacity={0.8}
               >
                 <Text style={[
@@ -360,7 +375,7 @@ const PlayerPredictionModal = ({
                         styles.subOptionButton,
                         predictions.assistCount === count && styles.subOptionButtonActive,
                       ]}
-                      onPress={() => onPredictionChange('assistCount', count)}
+                      onPress={() => handlePredictionChange('assistCount', count)}
                       activeOpacity={0.8}
                     >
                       <Text style={[
@@ -389,7 +404,7 @@ const PlayerPredictionModal = ({
                   styles.gridButton,
                   predictions.penaltyTaker && styles.gridButtonActive,
                 ]}
-                onPress={() => onPredictionChange('penaltyTaker', true)}
+                onPress={() => handlePredictionChange('penaltyTaker', true)}
                 activeOpacity={0.8}
               >
                 <Text style={styles.gridButtonEmoji}>🥅</Text>
@@ -404,7 +419,7 @@ const PlayerPredictionModal = ({
                   styles.gridButton,
                   predictions.penaltyScored && styles.gridButtonActive,
                 ]}
-                onPress={() => onPredictionChange('penaltyScored', true)}
+                onPress={() => handlePredictionChange('penaltyScored', true)}
                 activeOpacity={0.8}
               >
                 <Text style={styles.gridButtonEmoji}>✅</Text>
@@ -419,7 +434,7 @@ const PlayerPredictionModal = ({
                   styles.gridButton,
                   predictions.penaltyMissed && styles.gridButtonActive,
                 ]}
-                onPress={() => onPredictionChange('penaltyMissed', true)}
+                onPress={() => handlePredictionChange('penaltyMissed', true)}
                 activeOpacity={0.8}
               >
                 <Text style={styles.gridButtonEmoji}>❌</Text>
@@ -444,7 +459,7 @@ const PlayerPredictionModal = ({
                   styles.gridButton,
                   predictions.yellowCard && styles.gridButtonActive,
                 ]}
-                onPress={() => onPredictionChange('yellowCard', true)}
+                onPress={() => handlePredictionChange('yellowCard', true)}
                 activeOpacity={0.8}
               >
                 <Text style={styles.gridButtonEmoji}>🟨</Text>
@@ -459,7 +474,7 @@ const PlayerPredictionModal = ({
                   styles.gridButton,
                   predictions.secondYellowRed && styles.gridButtonActive,
                 ]}
-                onPress={() => onPredictionChange('secondYellowRed', true)}
+                onPress={() => handlePredictionChange('secondYellowRed', true)}
                 activeOpacity={0.8}
               >
                 <Text style={styles.gridButtonEmoji}>🟨🟥</Text>
@@ -474,7 +489,7 @@ const PlayerPredictionModal = ({
                   styles.gridButton,
                   predictions.directRedCard && styles.gridButtonActive,
                 ]}
-                onPress={() => onPredictionChange('directRedCard', true)}
+                onPress={() => handlePredictionChange('directRedCard', true)}
                 activeOpacity={0.8}
               >
                 <Text style={styles.gridButtonEmoji}>🟥</Text>
@@ -492,34 +507,39 @@ const PlayerPredictionModal = ({
               <View style={styles.penaltySectionLine} />
             </View>
 
-            {/* Oyundan Çıkar - butonun hemen altında dropdown */}
+            {/* Oyundan Çıkar - butonun hemen altında dropdown; kilitliyken tıklanınca resim 2 bildirimi */}
             <View style={styles.predictionGroup}>
               <Pressable
                 style={[
                   styles.predictionButton,
                   predictions.substitutedOut && styles.predictionButtonActive,
-                  isPredictionLocked && styles.predictionButtonDisabled,
+                  isLocked && styles.predictionButtonDisabled,
                 ]}
-                onPress={() => openDropdown('normal')}
+                onPress={() => {
+                  if (isLocked) {
+                    if (isMasterLocked) onShowLockedWarning?.('master_then_player');
+                    return;
+                  }
+                  openDropdown('normal');
+                }}
                 hitSlop={16}
-                disabled={isPredictionLocked}
               >
                 {typeof buttonLabelNormal === 'string' ? (
                   <View style={styles.predictionButtonContent}>
-                    {isPredictionLocked && (
+                    {isLocked && (
                       <Ionicons name="lock-closed" size={16} color="#EF4444" style={{ marginRight: 6 }} />
                     )}
                     <Text style={[
                       styles.predictionButtonText,
                       predictions.substitutedOut && styles.predictionButtonTextActive,
-                      isPredictionLocked && styles.predictionButtonTextDisabled,
+                      isLocked && styles.predictionButtonTextDisabled,
                     ]}>
                       🔄 {buttonLabelNormal}
                     </Text>
                   </View>
                 ) : (
                   <View style={styles.predictionButtonContent}>
-                    {isPredictionLocked && (
+                    {isLocked && (
                       <Ionicons name="lock-closed" size={16} color="#EF4444" style={{ marginRight: 6 }} />
                     )}
                     {buttonLabelNormal}
@@ -527,7 +547,7 @@ const PlayerPredictionModal = ({
                 )}
               </Pressable>
 
-              {expandedSubstituteType === 'normal' && !isPredictionLocked && (
+              {expandedSubstituteType === 'normal' && !isLocked && (
                 <View style={styles.inlineSubstituteDropdown}>
                   <Text style={styles.inlineSubstituteTitle}>Yerine girecek oyuncu & dakika aralığı</Text>
                   
@@ -622,7 +642,7 @@ const PlayerPredictionModal = ({
                               style={[styles.minuteRangeButtonCompact, styles.minuteRangeButtonCompact2Row, isSelected && styles.minuteRangeButtonCompactSelected]}
                               onPress={() => {
                                 setLocalMinuteRange(range.value);
-                                if (localSubstituteId && onSubstituteConfirm && expandedSubstituteType === 'normal' && !isPredictionLocked) {
+                                if (localSubstituteId && onSubstituteConfirm && expandedSubstituteType === 'normal' && !isLocked) {
                                   onSubstituteConfirm('normal', localSubstituteId, range.value);
                                   setExpandedSubstituteType(null);
                                   setLocalSubstituteId(null);
@@ -648,7 +668,7 @@ const PlayerPredictionModal = ({
                               style={[styles.minuteRangeButtonCompact, styles.minuteRangeButtonCompact2Row, isSelected && styles.minuteRangeButtonCompactSelected]}
                               onPress={() => {
                                 setLocalMinuteRange(range.value);
-                                if (localSubstituteId && onSubstituteConfirm && expandedSubstituteType === 'normal' && !isPredictionLocked) {
+                                if (localSubstituteId && onSubstituteConfirm && expandedSubstituteType === 'normal' && !isLocked) {
                                   onSubstituteConfirm('normal', localSubstituteId, range.value);
                                   setExpandedSubstituteType(null);
                                   setLocalSubstituteId(null);
@@ -671,34 +691,39 @@ const PlayerPredictionModal = ({
               )}
             </View>
 
-            {/* Sakatlanarak Çıkar - butonun hemen altında dropdown */}
+            {/* Sakatlanarak Çıkar - butonun hemen altında dropdown; kilitliyken tıklanınca resim 2 bildirimi */}
             <View style={styles.predictionGroup}>
               <Pressable
                 style={[
                   styles.predictionButton,
                   predictions.injuredOut && styles.predictionButtonActive,
-                  isPredictionLocked && styles.predictionButtonDisabled,
+                  isLocked && styles.predictionButtonDisabled,
                 ]}
-                onPress={() => openDropdown('injury')}
+                onPress={() => {
+                  if (isLocked) {
+                    if (isMasterLocked) onShowLockedWarning?.('master_then_player');
+                    return;
+                  }
+                  openDropdown('injury');
+                }}
                 hitSlop={16}
-                disabled={isPredictionLocked}
               >
                 {typeof buttonLabelInjury === 'string' ? (
                   <View style={styles.predictionButtonContent}>
-                    {isPredictionLocked && (
+                    {isLocked && (
                       <Ionicons name="lock-closed" size={16} color="#EF4444" style={{ marginRight: 6 }} />
                     )}
                     <Text style={[
                       styles.predictionButtonText,
                       predictions.injuredOut && styles.predictionButtonTextActive,
-                      isPredictionLocked && styles.predictionButtonTextDisabled,
+                      isLocked && styles.predictionButtonTextDisabled,
                     ]}>
                       🚑 {buttonLabelInjury}
                     </Text>
                   </View>
                 ) : (
                   <View style={styles.predictionButtonContent}>
-                    {isPredictionLocked && (
+                    {isLocked && (
                       <Ionicons name="lock-closed" size={16} color="#EF4444" style={{ marginRight: 6 }} />
                     )}
                     {buttonLabelInjury}
@@ -706,7 +731,7 @@ const PlayerPredictionModal = ({
                 )}
               </Pressable>
 
-              {expandedSubstituteType === 'injury' && !isPredictionLocked && (
+              {expandedSubstituteType === 'injury' && !isLocked && (
                 <View style={styles.inlineSubstituteDropdown}>
                   <Text style={styles.inlineSubstituteTitle}>Yerine girecek oyuncu & dakika aralığı</Text>
                   
@@ -801,7 +826,7 @@ const PlayerPredictionModal = ({
                               style={[styles.minuteRangeButtonCompact, styles.minuteRangeButtonCompact2Row, isSelected && styles.minuteRangeButtonCompactSelected]}
                               onPress={() => {
                                 setLocalMinuteRange(range.value);
-                                if (localSubstituteId && onSubstituteConfirm && expandedSubstituteType === 'injury' && !isPredictionLocked) {
+                                if (localSubstituteId && onSubstituteConfirm && expandedSubstituteType === 'injury' && !isLocked) {
                                   onSubstituteConfirm('injury', localSubstituteId, range.value);
                                   setExpandedSubstituteType(null);
                                   setLocalSubstituteId(null);
@@ -827,7 +852,7 @@ const PlayerPredictionModal = ({
                               style={[styles.minuteRangeButtonCompact, styles.minuteRangeButtonCompact2Row, isSelected && styles.minuteRangeButtonCompactSelected]}
                               onPress={() => {
                                 setLocalMinuteRange(range.value);
-                                if (localSubstituteId && onSubstituteConfirm && expandedSubstituteType === 'injury' && !isPredictionLocked) {
+                                if (localSubstituteId && onSubstituteConfirm && expandedSubstituteType === 'injury' && !isLocked) {
                                   onSubstituteConfirm('injury', localSubstituteId, range.value);
                                   setExpandedSubstituteType(null);
                                   setLocalSubstituteId(null);
@@ -864,7 +889,7 @@ const PlayerPredictionModal = ({
                   styles.predictionButton,
                   predictions.willScore && styles.predictionButtonActive,
                 ]}
-                onPress={() => onPredictionChange('willScore', true)}
+                onPress={() => handlePredictionChange('willScore', true)}
                 activeOpacity={0.8}
               >
                 <Text style={[
@@ -885,7 +910,7 @@ const PlayerPredictionModal = ({
                         styles.subOptionButton,
                         predictions.goalCount === count && styles.subOptionButtonActive,
                       ]}
-                      onPress={() => onPredictionChange('goalCount', count)}
+                      onPress={() => handlePredictionChange('goalCount', count)}
                       activeOpacity={0.8}
                     >
                       <Text style={[
@@ -907,7 +932,7 @@ const PlayerPredictionModal = ({
                   styles.predictionButton,
                   predictions.willAssist && styles.predictionButtonActive,
                 ]}
-                onPress={() => onPredictionChange('willAssist', true)}
+                onPress={() => handlePredictionChange('willAssist', true)}
                 activeOpacity={0.8}
               >
                 <Text style={[
@@ -928,7 +953,7 @@ const PlayerPredictionModal = ({
                         styles.subOptionButton,
                         predictions.assistCount === count && styles.subOptionButtonActive,
                       ]}
-                      onPress={() => onPredictionChange('assistCount', count)}
+                      onPress={() => handlePredictionChange('assistCount', count)}
                       activeOpacity={0.8}
                     >
                       <Text style={[
@@ -956,7 +981,7 @@ const PlayerPredictionModal = ({
                 styles.predictionButton,
                 predictions.penaltyTaker && styles.predictionButtonActive,
               ]}
-              onPress={() => onPredictionChange('penaltyTaker', true)}
+              onPress={() => handlePredictionChange('penaltyTaker', true)}
               activeOpacity={0.8}
             >
               <Text style={[
@@ -973,7 +998,7 @@ const PlayerPredictionModal = ({
                 styles.predictionButton,
                 predictions.penaltyScored && styles.predictionButtonActive,
               ]}
-              onPress={() => onPredictionChange('penaltyScored', true)}
+              onPress={() => handlePredictionChange('penaltyScored', true)}
               activeOpacity={0.8}
             >
               <Text style={[
@@ -990,7 +1015,7 @@ const PlayerPredictionModal = ({
                 styles.predictionButton,
                 predictions.penaltyMissed && styles.predictionButtonActive,
               ]}
-              onPress={() => onPredictionChange('penaltyMissed', true)}
+              onPress={() => handlePredictionChange('penaltyMissed', true)}
               activeOpacity={0.8}
             >
               <Text style={[
@@ -1014,7 +1039,7 @@ const PlayerPredictionModal = ({
                 styles.predictionButton,
                 predictions.yellowCard && styles.predictionButtonActive,
               ]}
-              onPress={() => onPredictionChange('yellowCard', true)}
+              onPress={() => handlePredictionChange('yellowCard', true)}
               activeOpacity={0.8}
             >
               <Text style={[
@@ -1031,7 +1056,7 @@ const PlayerPredictionModal = ({
                 styles.predictionButton,
                 predictions.secondYellowRed && styles.predictionButtonActive,
               ]}
-              onPress={() => onPredictionChange('secondYellowRed', true)}
+              onPress={() => handlePredictionChange('secondYellowRed', true)}
               activeOpacity={0.8}
             >
               <Text style={[
@@ -1048,7 +1073,7 @@ const PlayerPredictionModal = ({
                 styles.predictionButton,
                 predictions.directRedCard && styles.predictionButtonActive,
               ]}
-              onPress={() => onPredictionChange('directRedCard', true)}
+              onPress={() => handlePredictionChange('directRedCard', true)}
               activeOpacity={0.8}
             >
               <Text style={[
@@ -1066,23 +1091,28 @@ const PlayerPredictionModal = ({
               <View style={styles.penaltySectionLine} />
             </View>
 
-            {/* Oyundan Çıkar */}
+            {/* Oyundan Çıkar - kilitliyken tıklanınca resim 2 bildirimi */}
             <View style={styles.predictionGroup}>
               <Pressable
                 style={[
                   styles.predictionButton,
                   predictions.substitutedOut && styles.predictionButtonActive,
-                  isPredictionLocked && styles.predictionButtonDisabled,
+                  isLocked && styles.predictionButtonDisabled,
                 ]}
-                onPress={() => openDropdown('normal')}
+                onPress={() => {
+                  if (isLocked) {
+                    if (isMasterLocked) onShowLockedWarning?.('master_then_player');
+                    return;
+                  }
+                  openDropdown('normal');
+                }}
                 hitSlop={16}
-                disabled={isPredictionLocked}
               >
                 {typeof buttonLabelNormal === 'string' ? (
                   <Text style={[
                     styles.predictionButtonText,
                     predictions.substitutedOut && styles.predictionButtonTextActive,
-                    isPredictionLocked && styles.predictionButtonTextDisabled,
+                    isLocked && styles.predictionButtonTextDisabled,
                   ]}>
                     🔄 {buttonLabelNormal}
                   </Text>
@@ -1092,23 +1122,28 @@ const PlayerPredictionModal = ({
               </Pressable>
             </View>
 
-            {/* Sakatlanarak Çıkar */}
+            {/* Sakatlanarak Çıkar - kilitliyken tıklanınca resim 2 bildirimi */}
             <View style={styles.predictionGroup}>
               <Pressable
                 style={[
                   styles.predictionButton,
                   predictions.injuredOut && styles.predictionButtonActive,
-                  isPredictionLocked && styles.predictionButtonDisabled,
+                  isLocked && styles.predictionButtonDisabled,
                 ]}
-                onPress={() => openDropdown('injury')}
+                onPress={() => {
+                  if (isLocked) {
+                    if (isMasterLocked) onShowLockedWarning?.('master_then_player');
+                    return;
+                  }
+                  openDropdown('injury');
+                }}
                 hitSlop={16}
-                disabled={isPredictionLocked}
               >
                 {typeof buttonLabelInjury === 'string' ? (
                   <Text style={[
                     styles.predictionButtonText,
                     predictions.injuredOut && styles.predictionButtonTextActive,
-                    isPredictionLocked && styles.predictionButtonTextDisabled,
+                    isLocked && styles.predictionButtonTextDisabled,
                   ]}>
                     🚑 {buttonLabelInjury}
                   </Text>
@@ -1120,9 +1155,19 @@ const PlayerPredictionModal = ({
             </ScrollView>
           )}
 
+          {isLocked && (
+            <View style={{ paddingHorizontal: 16, paddingVertical: 10, backgroundColor: isLight ? 'rgba(239, 68, 68, 0.08)' : 'rgba(239, 68, 68, 0.12)', borderTopWidth: 1, borderTopColor: 'rgba(239, 68, 68, 0.2)' }}>
+              <Text style={{ fontSize: 12, color: isLight ? '#B91C1C' : '#FCA5A5', textAlign: 'center', lineHeight: 18 }}>
+                {isMasterLocked
+                  ? 'Önce sayfa altındaki master kilidi açın. Sonra bu oyuncu kartına gelerek "Tahminler Kilitli" butonuna basıp oyuncu kilidini açın.'
+                  : 'Değiştirmek için alttaki "Tahminler Kilitli" butonuna basarak bu oyuncunun kilidini açın.'}
+              </Text>
+            </View>
+          )}
+
           <View style={[styles.playerModalActions, { backgroundColor: themeColors.popover, borderTopColor: themeColors.border }]}>
             <TouchableOpacity 
-              style={styles.cancelButton} 
+              style={[styles.cancelButton, isMasterLocked && { opacity: 0.5 }]} 
               onPress={() => {
                 if (onCancel) {
                   onCancel();
@@ -1137,24 +1182,29 @@ const PlayerPredictionModal = ({
             <TouchableOpacity 
               style={[
                 styles.saveButton,
-                isPredictionLocked && !onUnlockLock && styles.saveButtonDisabled,
+                isLocked && styles.saveButtonDisabled,
               ]} 
               onPress={() => {
-                if (isPredictionLocked) {
-                  if (onUnlockLock) onUnlockLock();
-                  else if (onShowLockedWarning) onShowLockedWarning();
-                } else {
-                  if (onSaveAndLock) onSaveAndLock(); else onClose();
+                if (isLocked) {
+                  if (isThisPlayerLocked && !isMasterLocked && onUnlockLock) {
+                    onUnlockLock();
+                    return;
+                  }
+                  if (isMasterLocked) {
+                    onShowLockedWarning?.('master_then_player');
+                    return;
+                  }
+                  return;
                 }
+                if (onSaveAndLock) onSaveAndLock(); else onClose();
               }}
               activeOpacity={0.8}
-              disabled={false}
             >
               <LinearGradient 
-                colors={isPredictionLocked ? ['#4B5563', '#374151'] : ['#1FA2A6', '#047857']} 
+                colors={isLocked ? ['#4B5563', '#374151'] : ['#1FA2A6', '#047857']} 
                 style={styles.saveButtonGradient}
               >
-                {isPredictionLocked ? (
+                {isLocked ? (
                   <View style={styles.saveButtonContent}>
                     <Ionicons name="lock-closed" size={18} color="#EF4444" style={{ marginRight: 6 }} />
                     <Text style={styles.saveButtonTextLocked}>Tahminler Kilitli</Text>

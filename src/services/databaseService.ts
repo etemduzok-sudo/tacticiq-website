@@ -236,7 +236,7 @@ export const leaguesDb = {
 
 export const predictionsDb = {
   /**
-   * Create a new prediction
+   * Create a new prediction (uses prediction_items table; run supabase/008_prediction_items.sql if missing)
    */
   createPrediction: async (prediction: {
     user_id: string;
@@ -246,8 +246,13 @@ export const predictionsDb = {
   }) => {
     try {
       const { data, error } = await supabase
-        .from('predictions')
-        .insert(prediction)
+        .from('prediction_items')
+        .insert({
+          user_id: prediction.user_id,
+          match_id: prediction.match_id,
+          prediction_type: prediction.prediction_type,
+          prediction_value: prediction.prediction_value,
+        })
         .select()
         .single();
 
@@ -260,18 +265,19 @@ export const predictionsDb = {
   },
 
   /**
-   * Get user's predictions for a match
+   * Get user's predictions for a match (from prediction_items)
    */
   getUserMatchPredictions: async (userId: string, matchId: string) => {
     try {
       const { data, error } = await supabase
-        .from('predictions')
+        .from('prediction_items')
         .select('*')
         .eq('user_id', userId)
-        .eq('match_id', matchId);
+        .eq('match_id', String(matchId))
+        .order('created_at', { ascending: true });
 
       if (error) throw error;
-      return { success: true, data };
+      return { success: true, data: data ?? [] };
     } catch (error: any) {
       console.error('❌ Error fetching predictions:', error.message);
       return { success: false, error: error.message, data: [] };
@@ -279,19 +285,19 @@ export const predictionsDb = {
   },
 
   /**
-   * Get user's all predictions
+   * Get user's all predictions (from prediction_items)
    */
   getUserPredictions: async (userId: string, limit = 50) => {
     try {
       const { data, error } = await supabase
-        .from('predictions')
+        .from('prediction_items')
         .select('*')
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
         .limit(limit);
 
       if (error) throw error;
-      return { success: true, data };
+      return { success: true, data: data ?? [] };
     } catch (error: any) {
       if (error?.name === 'AbortError' || error?.message?.includes('aborted')) {
         return { success: false, error: 'Request cancelled', data: [] };
@@ -302,15 +308,15 @@ export const predictionsDb = {
   },
 
   /**
-   * Delete all predictions for a match (e.g. when user changes formation)
+   * Delete all predictions for a match (from prediction_items)
    */
   deletePredictionsByMatch: async (userId: string, matchId: string) => {
     try {
       const { error } = await supabase
-        .from('predictions')
+        .from('prediction_items')
         .delete()
         .eq('user_id', userId)
-        .eq('match_id', matchId);
+        .eq('match_id', String(matchId));
 
       if (error) throw error;
       return { success: true };
