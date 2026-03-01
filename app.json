@@ -51,7 +51,7 @@
       "newArchEnabled": true,
       "router": {
         "origin": false,
-        "root": "./app"
+        "root": "./src"
       },
       "eas": {
         "projectId": "f33d2180-e311-47ac-b004-59e271e144f4"

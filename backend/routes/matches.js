@@ -939,27 +939,7 @@ router.get('/:id/players', async (req, res) => {
       });
     }
 
-    // DB cache: match_player_stats tablosundan kontrol et
-    const skipCache = req.query.refresh === '1' || req.query.refresh === 'true';
-    if (!skipCache && supabase) {
-      try {
-        const { data: cached } = await supabase
-          .from('match_player_stats')
-          .select('data, updated_at')
-          .eq('match_id', matchId)
-          .single();
-        if (cached?.data) {
-          const age = Date.now() - new Date(cached.updated_at).getTime();
-          const { data: matchRow } = await supabase.from('matches').select('status').eq('id', matchId).single();
-          const isFinal = matchRow && ['FT', 'AET', 'PEN'].includes(matchRow.status);
-          if (isFinal || age < 30000) {
-            const transformedData = transformPlayerStats(cached.data);
-            return res.json({ success: true, data: transformedData, source: 'database', cached: true });
-          }
-        }
-      } catch (_) { /* cache miss → API'ye düş */ }
-    }
-
+    // Try to fetch from API-Football
     try {
       const playersData = await footballApi.getFixturePlayers(matchId);
       
@@ -971,17 +951,7 @@ router.get('/:id/players', async (req, res) => {
         });
       }
 
-      // DB'ye kaydet (sonraki isteklerde cache olarak kullanılsın)
-      if (supabase) {
-        try {
-          await supabase.from('match_player_stats').upsert({
-            match_id: matchId,
-            data: playersData.response,
-            updated_at: new Date().toISOString(),
-          }, { onConflict: 'match_id' });
-        } catch (_) { /* DB kayıt hatası sessiz */ }
-      }
-
+      // Transform API response to frontend format
       const transformedData = transformPlayerStats(playersData.response);
       
       return res.json({
@@ -2345,9 +2315,63 @@ router.get('/:id/lineups', async (req, res) => {
     }
     
     // 2. API'den çek (refresh=1 ise NodeCache atlanır, API'ye gerçekten tekrar istek gider)
-    // Gerçek maç kadrosu sadece API-Football fixture lineups ile; takım kadrosu/fallback kullanılmaz (sakat vb. yanlış oyuncu riski).
     console.log(`📡 [Lineups] Fetching from API for match ${matchId}${skipCache ? ' (refresh=1, cache bypass)' : ''}`);
     let data = await footballApi.getFixtureLineups(matchId, skipCache);
+
+    // 2b. Fallback: lineups boşsa fixtures/players ile ilk 11 türet
+    if (!data.response || data.response.length === 0) {
+      try {
+        const playersData = await footballApi.getFixturePlayers(matchId, skipCache);
+        if (playersData?.response && playersData.response.length >= 2) {
+          const built = buildLineupsFromFixturePlayers(playersData.response);
+          if (built && built.length >= 2 && built.every(l => l.startXI && l.startXI.length >= 11)) {
+            console.log(`📋 [Lineups] Fallback: fixtures/players ile ilk 11 türetildi (match ${matchId})`);
+            data = { response: built };
+          }
+        }
+      } catch (e) {
+        console.warn('⚠️ [Lineups] Fallback fixtures/players failed:', e.message);
+      }
+    }
+
+    // 2c. Fallback: Hâlâ boşsa takım kadrolarından (players/squads) sentetik ilk 11
+    if (!data.response || data.response.length === 0) {
+      try {
+        let homeTeamId = cachedMatch?.home_team_id;
+        let awayTeamId = cachedMatch?.away_team_id;
+        if ((!homeTeamId || !awayTeamId) && skipCache) {
+          const fixtureRes = await footballApi.getFixtureDetails(matchId, true);
+          const fixture = fixtureRes?.response?.[0];
+          if (fixture?.teams?.home?.id) homeTeamId = fixture.teams.home.id;
+          if (fixture?.teams?.away?.id) awayTeamId = fixture.teams.away.id;
+        }
+        if (!homeTeamId || !awayTeamId) {
+          const { data: matchRow } = await supabase.from('matches').select('home_team_id, away_team_id').eq('id', matchId).single();
+          if (matchRow) {
+            homeTeamId = homeTeamId || matchRow.home_team_id;
+            awayTeamId = awayTeamId || matchRow.away_team_id;
+          }
+        }
+        if (homeTeamId && awayTeamId) {
+          const season = new Date().getFullYear();
+          const [homeSquad, awaySquad] = await Promise.all([
+            footballApi.getTeamSquad(homeTeamId, season, true).catch(() => ({ response: [] })),
+            footballApi.getTeamSquad(awayTeamId, season, true).catch(() => ({ response: [] })),
+          ]);
+          const homeData = homeSquad?.response?.[0];
+          const awayData = awaySquad?.response?.[0];
+          const homeName = homeData?.team?.name || 'Home';
+          const awayName = awayData?.team?.name || 'Away';
+          const built = buildLineupsFromTeamSquads(homeData, awayData, homeTeamId, homeName, awayTeamId, awayName);
+          if (built && built.length >= 2) {
+            console.log(`📋 [Lineups] Fallback: takım kadrolarından ilk 11 türetildi (match ${matchId})`);
+            data = { response: built };
+          }
+        }
+      } catch (e) {
+        console.warn('⚠️ [Lineups] Fallback team squads failed:', e.message);
+      }
+    }
 
     if (!data.response || data.response.length === 0) {
       return res.json({

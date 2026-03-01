@@ -7,6 +7,3 @@
 {"error":"Invalid or expired token","ip":"127.0.0.1","level":"warn","message":"Authentication failed: Invalid token","service":"fan-manager-api","timestamp":"2026-02-10 16:00:39"}
 {"error":"Invalid or expired token","ip":"127.0.0.1","level":"warn","message":"Authentication failed: Invalid token","service":"fan-manager-api","timestamp":"2026-02-21 16:48:17"}
 {"error":"Invalid or expired token","ip":"127.0.0.1","level":"warn","message":"Authentication failed: Invalid token","service":"fan-manager-api","timestamp":"2026-02-25 21:55:52"}
-{"error":"Invalid or expired token","ip":"127.0.0.1","level":"warn","message":"Authentication failed: Invalid token","service":"fan-manager-api","timestamp":"2026-02-28 10:50:48"}
-{"error":"Invalid or expired token","ip":"127.0.0.1","level":"warn","message":"Authentication failed: Invalid token","service":"fan-manager-api","timestamp":"2026-02-28 10:52:07"}
-{"error":"Invalid or expired token","ip":"127.0.0.1","level":"warn","message":"Authentication failed: Invalid token","service":"fan-manager-api","timestamp":"2026-02-28 18:52:01"}

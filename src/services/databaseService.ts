@@ -302,9 +302,7 @@ export const predictionsDb = {
       if (error?.name === 'AbortError' || error?.message?.includes('aborted')) {
         return { success: false, error: 'Request cancelled', data: [] };
       }
-      if (!error.message?.includes('prediction_items')) {
-        console.error('❌ Error fetching user predictions:', error.message);
-      }
+      console.error('❌ Error fetching user predictions:', error.message);
       return { success: false, error: error.message, data: [] };
     }
   },

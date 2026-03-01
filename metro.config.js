@@ -4,11 +4,6 @@ const { getDefaultConfig } = require('expo/metro-config');
 /** @type {import('expo/metro-config').MetroConfig} */
 const config = getDefaultConfig(__dirname);
 
-// Web için Expo Router'ı devre dışı bırak
-if (process.env.EXPO_PLATFORM === 'web') {
-  config.resolver.sourceExts = [...config.resolver.sourceExts, 'web.js', 'web.jsx', 'web.ts', 'web.tsx'];
-}
-
 // Web için özel ayarlar
 config.resolver.sourceExts.push('web.js', 'web.jsx', 'web.ts', 'web.tsx');
 config.resolver.assetExts = config.resolver.assetExts.filter(ext => ext !== 'svg');

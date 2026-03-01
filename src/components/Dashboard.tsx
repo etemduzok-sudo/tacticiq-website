@@ -112,8 +112,6 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
     isFinished: boolean;
   } | null>(null);
   // ✅ 120 saniyelik uyarı state'i kaldırıldı - artık kullanılmıyor
-  // ✅ Cache veya API'den veri geldiğinde listeyi göster
-  const [canShowList, setCanShowList] = useState(false);
 
   // ✅ Bitiş düdüğü zamanı: SADECE API'den (fixture.timestamp + status.elapsed). Tahmin yok; elapsed yoksa null.
   const getMatchEndTimestampSec = React.useCallback((match: any): number | null => {
@@ -964,16 +962,6 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
     }
   }, [pastMatches, liveMatches, upcomingMatches]);
 
-  // ✅ Cache yüklenir yüklenmez listeyi göster; background refresh sırasında mevcut veri görünür kalır
-  React.useEffect(() => {
-    const hasFavorites = (favoriteTeams?.length ?? 0) > 0;
-    if (!hasFavorites) {
-      setCanShowList(true);
-    } else if (hasLoadedOnce && !loading) {
-      setCanShowList(true);
-    }
-  }, [loading, hasLoadedOnce, favoriteTeams?.length]);
-
   // Get all upcoming matches (not just 24 hours)
   const now = Date.now() / 1000;
   const allUpcomingMatches = upcomingMatches.filter(match => {
@@ -1277,9 +1265,10 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
   // Snap offsets devre dışı: ölçüm tabanlı scroll sistemiyle tahmini snap noktaları uyumsuz.
   const snapOffsets: number[] = [];
 
-  // ✅ Loading: sadece ilk yüklemede göster; cache/hasLoadedOnce sonrası background refresh'te gösterme
-  const showLoadingIndicator = (!hasLoadedOnce && (loading || !canShowList) && (favoriteTeams?.length ?? 0) > 0);
-  const showMatchList = !showLoadingIndicator && canShowList;
+  // ✅ Loading durumunda da grid pattern göster
+  // Maçlar yüklenirken veya backend çalışmıyorken bile UI gösterilmeli
+  // ✅ Favori takım yokken yükleniyor gösterme; favori varsa ve loading ise göster
+  const showLoadingIndicator = loading && (favoriteTeams?.length ?? 0) > 0;
   
 
   // ✅ handleTeamSelect artık App.tsx'te - ProfileCard üzerinden yönetiliyor
@@ -1354,7 +1343,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
 
         {/* Sıra: Biten → [Marker] → Canlı → Yaklaşan. Scroll açılışta ilk canlı/yaklaşan kartı üstte kilitler. */}
         {/* BİTEN MAÇLAR - Yukarı kaydırınca görünür; kart pozisyonu bozulmaz */}
-        {showMatchList && (displayPastMatches.length > 0 || pastMatches.length > 0) && (
+        {!showLoadingIndicator && (displayPastMatches.length > 0 || pastMatches.length > 0) && (
           <View key={`past-section-${pastMatches.length}`} style={styles.matchesListContainer}>
             {(displayPastMatches.length > 0 ? displayPastMatches : pastMatches).map((match, index) => (
               <Animated.View
@@ -1373,10 +1362,10 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
         )}
 
         {/* Scroll hedef marker: ilk canlı/yaklaşan kartın konumu buna göre kilitlenir */}
-        {showMatchList && <View onLayout={onRefMarkerLayout} style={{ height: 1 }} />}
+        {!showLoadingIndicator && <View onLayout={onRefMarkerLayout} style={{ height: 1 }} />}
 
         {/* CANLI MAÇLAR - Açılışta görünen ilk bölüm (pozisyon kilitli) */}
-        {showMatchList && filteredLiveMatches.length > 0 && (
+        {!showLoadingIndicator && filteredLiveMatches.length > 0 && (
           <View style={styles.matchesListContainer} onLayout={onLiveListAnchorLayout}>
             {filteredLiveMatches.map((match, index) => (
               <Animated.View 
@@ -1395,7 +1384,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
         )}
 
         {/* ✅ YAKLAŞAN MAÇLAR - Referans blok (resim 2: lig, takımlar, tarih, geri sayım) */}
-        {showMatchList && filteredUpcomingMatches.length > 0 && (
+        {!showLoadingIndicator && filteredUpcomingMatches.length > 0 && (
           <View
             style={styles.matchesListContainer}
             onLayout={filteredLiveMatches.length === 0 ? onUpcomingListAnchorLayout : undefined}
@@ -1417,7 +1406,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
         )}
 
         {/* Boş Durum - Hiç maç yoksa (ne canlı ne yaklaşan ne geçmiş) */}
-        {showMatchList && filteredUpcomingMatches.length === 0 && filteredLiveMatches.length === 0 && displayPastMatches.length === 0 && pastMatches.length === 0 && (
+        {!showLoadingIndicator && filteredUpcomingMatches.length === 0 && filteredLiveMatches.length === 0 && displayPastMatches.length === 0 && pastMatches.length === 0 && (
           <View style={styles.emptyState}>
             <Ionicons name={error ? 'cloud-offline-outline' : 'football-outline'} size={48} color={error ? '#F59E0B' : (isLight ? themeColors.mutedForeground : '#64748B')} />
             <Text style={[styles.emptyText, isLight && { color: themeColors.foreground }]}>

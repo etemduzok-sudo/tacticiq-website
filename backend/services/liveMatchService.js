@@ -12,7 +12,7 @@ const { supabase } = require('../config/supabase');
 // CONFIGURATION
 // ============================================
 
-const POLLING_INTERVAL = 8000; // 8 seconds - PRO plan: 75K/day → daha hızlı güncelleme
+const POLLING_INTERVAL = 15000; // 15 seconds - canlı event senkronizasyonu
 const FINALIZATION_DELAY = 60000; // 1 minute after match ends
 
 let pollingTimer = null;
@@ -321,10 +321,8 @@ async function pollLiveMatches() {
         }
       }
       
-      // Her canlı maç için DB'yi güncelle (status değişmese bile elapsed güncellensin)
-      await updateMatchInDatabase(liveMatch);
-
       if (dbMatch) {
+        // Detect changes
         const changes = detectScoreChanges(dbMatch, {
           home_score: liveMatch.goals.home,
           away_score: liveMatch.goals.away,
@@ -333,6 +331,9 @@ async function pollLiveMatches() {
 
         if (changes.length > 0) {
           console.log(`🎯 Match ${liveMatch.fixture.id} changes:`, changes);
+          
+          // Update database
+          await updateMatchInDatabase(liveMatch);
           
           // If match finished, create result and finalize
           if (['FT', 'AET', 'PEN'].includes(liveMatch.fixture.status.short)) {

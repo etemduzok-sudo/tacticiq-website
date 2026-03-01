@@ -1,21 +1,19 @@
 // Aggressive Cache Service
-// Günlük 75,000 API call ile maksimum veri toplama (PRO plan)
+// Günlük 7,498-7,499 API call ile maksimum veri toplama
 
 const footballApi = require('./footballApi');
 const databaseService = require('./databaseService');
-const { supabase } = require('../config/supabase');
 
-// 🎯 PRO PLAN: Target ~60,000 API calls/day (80% usage, 15K buffer for manual queries)
+// 🎯 OPTIMIZED: Target 7,368 API calls/day (98.2% usage)
 const REFRESH_INTERVALS = {
-  liveMatches: 5 * 1000,               // 5 sn → ~17,280 call/gün (canlı maç + event)
-  liveStatistics: 8 * 1000,            // 8 sn → ~10,800 call/gün (maç istatistik + oyuncu verisi)
-  upcomingMatches: 1 * 60 * 60 * 1000, // 1 saat → 144 call/gün (6 lig)
-  teamSeasons: 2 * 60 * 60 * 1000,     // 2 saat → 120 call/gün (10 takım)
-  standings: 2 * 60 * 60 * 1000,       // 2 saat → 72 call/gün (6 lig)
+  liveMatches: 12 * 1000,              // 12 sn → 7,200 call/gün
+  upcomingMatches: 2 * 60 * 60 * 1000, // 2 saat → 72 call/gün (6 lig)
+  teamSeasons: 4 * 60 * 60 * 1000,     // 4 saat → 60 call/gün (10 takım)
+  standings: 4 * 60 * 60 * 1000,       // 4 saat → 36 call/gün (6 lig)
 };
 
-// TOPLAM: ~28,416 call/gün (arka plan) + frontend polling ~30K = ~58K
-// Buffer: ~17K call (yedek)
+// TOPLAM: 7,368 call/gün
+// Buffer: 132 call (manuel sorgular için)
 
 // Tracked teams (will be populated from user favorites)
 let trackedTeams = new Set([
@@ -84,10 +82,11 @@ function incrementCallCounter(type) {
   stats.callsToday++;
   stats.breakdown[type]++;
   
-  if (stats.callsToday % 500 === 0) {
-    const remaining = 75000 - stats.callsToday;
-    const percentage = ((stats.callsToday / 75000) * 100).toFixed(1);
-    console.log(`📊 [AGGRESSIVE CACHE] ${stats.callsToday}/75000 calls (${percentage}%) | Remaining: ${remaining}`);
+  // Log every 100 calls
+  if (stats.callsToday % 100 === 0) {
+    const remaining = 7500 - stats.callsToday;
+    const percentage = ((stats.callsToday / 7500) * 100).toFixed(1);
+    console.log(`📊 [AGGRESSIVE CACHE] ${stats.callsToday}/7500 calls (${percentage}%) | Remaining: ${remaining}`);
   }
 }
 
@@ -137,79 +136,7 @@ async function refreshLiveMatches() {
   }
 }
 
-// 2. Refresh Live Match Statistics + Player Stats (every 8 seconds for live matches)
-async function refreshLiveStatistics() {
-  try {
-    const today = new Date().toISOString().split('T')[0];
-
-    const { data: liveMatches } = await supabase
-      .from('matches')
-      .select('id, status')
-      .in('status', ['1H', '2H', 'HT', 'ET', 'P', 'BT', 'LIVE', 'INT'])
-      .gte('fixture_date', `${today}T00:00:00`);
-
-    if (!liveMatches || liveMatches.length === 0) return;
-
-    for (const match of liveMatches) {
-      try {
-        const [statsData, playersData] = await Promise.all([
-          footballApi.getFixtureStatistics(match.id, true),
-          footballApi.getFixturePlayers(match.id),
-        ]);
-        incrementCallCounter('statistics');
-        incrementCallCounter('statistics');
-
-        if (statsData?.response && statsData.response.length >= 2) {
-          for (const stat of statsData.response) {
-            if (!stat?.team?.id) continue;
-            const getSV = (arr, type) => {
-              const s = (arr || []).find(x => x.type === type);
-              return s ? (parseInt(s.value) || 0) : 0;
-            };
-            await supabase.from('match_statistics').upsert({
-              match_id: match.id,
-              team_id: stat.team.id,
-              shots_on_goal: getSV(stat.statistics, 'Shots on Goal'),
-              shots_off_goal: getSV(stat.statistics, 'Shots off Goal'),
-              total_shots: getSV(stat.statistics, 'Total Shots'),
-              blocked_shots: getSV(stat.statistics, 'Blocked Shots'),
-              shots_inside_box: getSV(stat.statistics, 'Shots insidebox'),
-              shots_outside_box: getSV(stat.statistics, 'Shots outsidebox'),
-              fouls: getSV(stat.statistics, 'Fouls'),
-              corner_kicks: getSV(stat.statistics, 'Corner Kicks'),
-              offsides: getSV(stat.statistics, 'Offsides'),
-              ball_possession: parseInt(getSV(stat.statistics, 'Ball Possession') || 0),
-              yellow_cards: getSV(stat.statistics, 'Yellow Cards'),
-              red_cards: getSV(stat.statistics, 'Red Cards'),
-              goalkeeper_saves: getSV(stat.statistics, 'Goalkeeper Saves'),
-              total_passes: getSV(stat.statistics, 'Total passes'),
-              passes_accurate: getSV(stat.statistics, 'Passes accurate'),
-              passes_percentage: parseInt(getSV(stat.statistics, 'Passes %') || 0),
-            }, { onConflict: 'match_id,team_id' });
-          }
-        }
-
-        if (playersData?.response && playersData.response.length > 0) {
-          await supabase
-            .from('match_player_stats')
-            .upsert({
-              match_id: match.id,
-              data: playersData.response,
-              updated_at: new Date().toISOString(),
-            }, { onConflict: 'match_id' });
-        }
-      } catch (err) {
-        console.error(`❌ [LIVE STATS] Error for match ${match.id}:`, err.message);
-      }
-
-      await new Promise(resolve => setTimeout(resolve, 200));
-    }
-  } catch (error) {
-    console.error('❌ [LIVE STATS] Error:', error.message);
-  }
-}
-
-// 3. Refresh Upcoming Matches (every 1 hour) - 144 calls/day
+// 2. Refresh Upcoming Matches (every 2 hours) - 72 calls/day
 async function refreshUpcomingMatches() {
   try {
     console.log('📅 [UPCOMING] Fetching upcoming matches...');
@@ -297,20 +224,18 @@ function startAggressiveCaching() {
   // Clear any existing intervals
   stopAggressiveCaching();
   
-  console.log('🚀 [AGGRESSIVE CACHE] Starting aggressive caching service (PRO 75K)...');
-  console.log(`📊 Target: ~60,000 API calls per day (80% of 75K limit)`);
+  console.log('🚀 [AGGRESSIVE CACHE] Starting aggressive caching service...');
+  console.log(`📊 Target: 7,368 API calls per day (98.2% usage)`);
   console.log(`📊 Breakdown:`);
-  console.log(`   - Live Matches: ~17,280 calls (5s interval)`);
-  console.log(`   - Live Stats+Players: ~10,800 calls (8s interval)`);
-  console.log(`   - Upcoming: 144 calls (1h interval, 6 leagues)`);
-  console.log(`   - Teams: 120 calls (2h interval, 10 teams)`);
-  console.log(`   - Standings: 72 calls (2h interval, 6 leagues)`);
+  console.log(`   - Live Matches: 7,200 calls (12s interval)`);
+  console.log(`   - Upcoming: 72 calls (2h interval, 6 leagues)`);
+  console.log(`   - Teams: 60 calls (4h interval, 10 teams)`);
+  console.log(`   - Standings: 36 calls (4h interval, 6 leagues)`);
   
   isRunning = true;
   
   // Initial fetch
   refreshLiveMatches();
-  refreshLiveStatistics();
   refreshUpcomingMatches();
   refreshTeamSeasons();
   refreshStandings();
@@ -325,14 +250,6 @@ function startAggressiveCaching() {
       // Continue - don't crash
     }
   }, REFRESH_INTERVALS.liveMatches));
-  
-  cacheIntervals.push(setInterval(() => {
-    try {
-      refreshLiveStatistics();
-    } catch (error) {
-      console.error('❌ [AGGRESSIVE CACHE] Error in refreshLiveStatistics interval:', error.message);
-    }
-  }, REFRESH_INTERVALS.liveStatistics));
   
   cacheIntervals.push(setInterval(() => {
     try {
@@ -364,13 +281,17 @@ function startAggressiveCaching() {
     }
   }, REFRESH_INTERVALS.standings));
   
+  // Stats logging every 10 minutes
   cacheIntervals.push(setInterval(() => {
-    const percentage = ((stats.callsToday / 75000) * 100).toFixed(1);
+    const percentage = ((stats.callsToday / 7500) * 100).toFixed(1);
+    const targetPercentage = ((stats.callsToday / 7368) * 100).toFixed(1);
     console.log('📊 [AGGRESSIVE CACHE] Stats:', {
       totalToday: stats.callsToday,
-      limit: 75000,
-      remaining: 75000 - stats.callsToday,
-      usage: percentage + '%',
+      target: 7368,
+      hardLimit: 7500,
+      remaining: 7500 - stats.callsToday,
+      usageVsTarget: targetPercentage + '%',
+      usageVsLimit: percentage + '%',
       breakdown: stats.breakdown,
     });
   }, 10 * 60 * 1000));
@@ -381,9 +302,9 @@ function getStats() {
   resetDailyStats();
   return {
     ...stats,
-    target: 75000,
-    remaining: 75000 - stats.callsToday,
-    percentage: ((stats.callsToday / 75000) * 100).toFixed(1),
+    target: 7500,
+    remaining: 7500 - stats.callsToday,
+    percentage: ((stats.callsToday / 7500) * 100).toFixed(1),
   };
 }
 
@@ -399,6 +320,5 @@ module.exports = {
   getStats,
   addTrackedTeam,
   refreshLiveMatches,
-  refreshLiveStatistics,
   isRunning: () => isRunning,
 };
