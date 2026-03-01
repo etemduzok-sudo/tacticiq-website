@@ -224,9 +224,6 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
   const matchStatus = matchData?.status || '';
   const isMatchNotStartedFromData = NOT_STARTED_STATUSES.includes(matchStatus) || matchStatus === '' || matchStatus === 'NS';
   
-  // Debug log
-  console.log('🔍 MatchLive status check:', { matchStatus, isMatchNotStartedFromData, matchData: !!matchData });
-  
   // States – sadece canlı olaylar (istatistikler İstatistik sekmesinde)
   const [liveEvents, setLiveEvents] = useState<LiveEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -384,10 +381,22 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
           // API-Football event listesi: Kick Off, First Half Extra Time, Half Time, Second Half Started,
           // Match Finished, Normal Goal, Penalty, Own Goal, Yellow/Red Card, Substitution, Var
           const transformedEvents = events
-            .filter((event: any) => event && event.time)
+            .filter((event: any) => event && (event.time || event.elapsed != null || event.minute != null))
             .map((event: any) => {
               const eventType = event.type?.toLowerCase() || 'unknown';
               const detail = (event.detail || '').toLowerCase();
+              let elapsed = event.time?.elapsed ?? event.elapsed ?? event.minute ?? 0;
+              let extra = event.time?.extra ?? event.extra ?? null;
+              // İlk yarı uzatması: API bazen elapsed 46/47/48 gönderir, extra yok → 45+1, 45+2, 45+3
+              if (elapsed >= 46 && elapsed <= 48 && (extra == null || extra === 0)) {
+                extra = elapsed - 45;
+                elapsed = 45;
+              }
+              // İkinci yarı uzatması: 91-99 → 90+1 .. 90+9
+              if (elapsed >= 91 && elapsed <= 99 && (extra == null || extra === 0)) {
+                extra = elapsed - 90;
+                elapsed = 90;
+              }
               const detailNorm = detail.replace(/-/g, ' ').trim();
               const isSynthetic = event.isSynthetic === true; // Backend'den gelen sentetik event mi?
               
@@ -506,8 +515,8 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
               }
               
               return {
-                minute: event.time?.elapsed || 0,
-                extraTime: event.time?.extra || null,
+                minute: elapsed,
+                extraTime: extra,
                 type: displayType,
                 team: teamSide, // ✅ Own goal durumunda da kendi takımında görünür
                 player: displayType === 'substitution' ? playerOut : (typeof event.player === 'string' ? event.player : event.player?.name || null),
@@ -566,11 +575,18 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
       }
     };
 
+    // Parent (MatchDetail) zaten her 5 sn'de events çekip propEvents ile gönderiyor.
+    // Eğer parent'tan event geliyorsa kendi polling'imize gerek yok → double API tüketimini önle.
+    const hasParentEvents = propEvents && Array.isArray(propEvents) && propEvents.length > 0;
+    if (hasParentEvents) {
+      // İlk yüklemede parent verisi yoksa bir kez çek
+      if (liveEvents.length === 0) fetchLiveData();
+      return;
+    }
+
     fetchLiveData();
-    // ✅ Canlı maçta en geç ~8 sn'de güncelleme (backend canlıda cache atlıyor)
     const interval = setInterval(fetchLiveData, 8000);
     return () => clearInterval(interval);
-  // ✅ matchData objesi yerine scalar değerler kullan (gereksiz re-fetch'i önle)
   }, [matchId, matchData?.fixture?.status?.short, isMatchNotStartedFromData, matchNotStarted]);
 
   // Maçın şu anki dakikası ve uzatma bilgisi (header ile tutarlı – timeline sadece bu dakikaya kadar gösterilir)
@@ -750,8 +766,8 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
       // ✅ Diğer eventler için normal kontrol
       const eventMin = e.minute + (e.extraTime ?? 0) * 0.01;
       const currentMin = currentMinute + (currentExtraTime ?? 0) * 0.01;
-      // ✅ Epsilon 0.005 (0.01 = 1 dakika uzamalı süre, çok büyüktü - eventler 1 dk erken görünüyordu)
-      return eventMin <= currentMin + 0.005;
+      // ✅ Tolerans: API golü 45+1 olarak gönderebiliyor, ekran 45:00 gösterebiliyor – golün listede kalması için 2 dk tolerans
+      return eventMin <= currentMin + 2.0;
     });
   }, [displayedEvents, currentMinute, currentExtraTime, matchId, ticker]); // ✅ ticker: mock'ta her saniye güncelle
   
@@ -967,6 +983,8 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
   if (matchNotStarted) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: 'transparent' }]} edges={[]}>
+        {/* MatchStats tab bar ile aynı yükseklikte boşluk (sekme geçişinde sıçrama önlenir) */}
+        <View style={{ height: 60 }} />
         <View style={styles.notStartedContainer}>
           <View style={styles.notStartedCardWrapper}>
             <LinearGradient colors={homeColors} style={styles.cardColorBarLeft} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} />
@@ -990,6 +1008,7 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
   if (loading && liveEvents.length === 0) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: 'transparent' }]} edges={[]}>
+        <View style={{ height: 60 }} />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={BRAND.secondary} />
           <Text style={[styles.loadingText, isLight && { color: themeColors.mutedForeground }]}>Canlı veriler yükleniyor...</Text>
@@ -1002,6 +1021,7 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
   if (error && liveEvents.length === 0) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: 'transparent' }]} edges={[]}>
+        <View style={{ height: 60 }} />
         <View style={styles.notStartedContainer}>
           <View style={styles.notStartedCardWrapper}>
             <LinearGradient colors={homeColors} style={styles.cardColorBarLeft} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} />

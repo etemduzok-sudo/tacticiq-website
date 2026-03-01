@@ -6,7 +6,7 @@
 // Environment variables - Production'da gerçek backend URL'inizi buraya ekleyin
 export const API_CONFIG = {
   // Base URL - .env dosyasından veya default değerden alınır
-  BASE_URL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api',
+  BASE_URL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api',
   
   // API versiyonu
   VERSION: 'v1',

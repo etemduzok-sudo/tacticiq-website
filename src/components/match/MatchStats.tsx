@@ -128,20 +128,7 @@ interface SubstitutionInfo {
   replacedFor?: string; // Kimin yerine girdi
 }
 
-// Canlı/API yoksa kullanılacak varsayılan veri
-const defaultDetailedStats: DisplayStat[] = [
-  { label: 'Topa Sahip Olma (%)', home: 58, away: 42, homeDisplay: 58, awayDisplay: 42 },
-  { label: 'Toplam Şut', home: 12, away: 8, homeDisplay: 12, awayDisplay: 8 },
-  { label: 'İsabetli Şut', home: 5, away: 3, homeDisplay: 5, awayDisplay: 3 },
-  { label: 'Korner', home: 6, away: 4, homeDisplay: 6, awayDisplay: 4 },
-  { label: 'Ofsayt', home: 3, away: 5, homeDisplay: 3, awayDisplay: 5 },
-  { label: 'Pas İsabeti (%)', home: 86, away: 81, homeDisplay: 86, awayDisplay: 81 },
-  { label: 'Toplam Pas', home: 412, away: 298, homeDisplay: 412, awayDisplay: 298 },
-  { label: 'Faul', home: 8, away: 11, homeDisplay: 8, awayDisplay: 11 },
-  { label: 'Sarı Kart', home: 2, away: 3, homeDisplay: 2, awayDisplay: 3 },
-  { label: 'Kırmızı Kart', home: 0, away: 0, homeDisplay: 0, awayDisplay: 0 },
-  { label: 'Kaleci Kurtarışı', home: 3, away: 4, homeDisplay: 3, awayDisplay: 4 },
-];
+// ✅ Varsayılan sahte veri kaldırıldı – API'den veri gelene kadar boş/sıfır gösterilir (hatalı istatistik önlenir)
 
 function parseStatValue(v: number | string | null): number {
   if (v == null) return 0;
@@ -183,197 +170,7 @@ function getStatIconForLabel(label: string): { icon: string; color: string } {
   return { icon: 'stats-chart', color: '#7A9A94' };
 }
 
-const topPlayers = {
-  home: [
-    {
-      name: 'Fernando Muslera',
-      number: 25,
-      position: 'GK',
-      rating: 7.5,
-      minutesPlayed: 90,
-      goals: 0,
-      assists: 0,
-      shots: 0,
-      shotsOnTarget: 0,
-      shotsInsideBox: 0,
-      totalPasses: 28,
-      passesCompleted: 22,
-      passAccuracy: 79,
-      keyPasses: 0,
-      longPasses: 8,
-      dribbleAttempts: 0,
-      dribbleSuccess: 0,
-      dispossessed: 0,
-      tackles: 0,
-      duelsTotal: 2,
-      duelsWon: 1,
-      aerialDuels: 2,
-      aerialWon: 2,
-      // Ek detaylar
-      blocks: 0,
-      interceptions: 0,
-      foulsDrawn: 0,
-      foulsCommitted: 0,
-      yellowCards: 0,
-      redCards: 0,
-      penaltyWon: 0,
-      penaltyScored: 0,
-      penaltyMissed: 0,
-      // Kaleci özel istatistikler
-      isGoalkeeper: true,
-      saves: 5,
-      goalsAgainst: 2,
-      penaltySaved: 1, // API: penalty.saved
-    },
-    {
-      name: 'Mauro Icardi',
-      number: 9,
-      position: 'FW',
-      rating: 8.7,
-      minutesPlayed: 67,
-      goals: 2,
-      assists: 1,
-      shots: 5,
-      shotsOnTarget: 3,
-      shotsInsideBox: 4,
-      totalPasses: 23,
-      passesCompleted: 20,
-      passAccuracy: 87,
-      keyPasses: 2,
-      longPasses: 3,
-      dribbleAttempts: 8,
-      dribbleSuccess: 6,
-      dispossessed: 2,
-      tackles: 0,
-      duelsTotal: 12,
-      duelsWon: 8,
-      aerialDuels: 5,
-      aerialWon: 3,
-      // Ek detaylar
-      blocks: 0,
-      interceptions: 0,
-      foulsDrawn: 3,
-      foulsCommitted: 1,
-      yellowCards: 0,
-      redCards: 0,
-      penaltyWon: 1,
-      penaltyScored: 1,
-      penaltyMissed: 0,
-    },
-    {
-      name: 'Wilfried Zaha',
-      number: 14,
-      position: 'LW',
-      rating: 8.3,
-      minutesPlayed: 90,
-      goals: 1,
-      assists: 2,
-      shots: 4,
-      shotsOnTarget: 2,
-      shotsInsideBox: 3,
-      totalPasses: 45,
-      passesCompleted: 38,
-      passAccuracy: 84,
-      keyPasses: 4,
-      longPasses: 2,
-      dribbleAttempts: 12,
-      dribbleSuccess: 9,
-      dispossessed: 3,
-      tackles: 2,
-      duelsTotal: 15,
-      duelsWon: 11,
-      aerialDuels: 3,
-      aerialWon: 2,
-      // Ek detaylar
-      blocks: 1,
-      interceptions: 2,
-      foulsDrawn: 4,
-      foulsCommitted: 2,
-      yellowCards: 1,
-      redCards: 0,
-      penaltyWon: 0,
-      penaltyScored: 0,
-      penaltyMissed: 0,
-    },
-  ],
-  away: [
-    {
-      name: 'Edin Dzeko',
-      number: 9,
-      position: 'ST',
-      rating: 7.8,
-      minutesPlayed: 90,
-      goals: 1,
-      assists: 0,
-      shots: 6,
-      shotsOnTarget: 2,
-      shotsInsideBox: 4,
-      totalPasses: 18,
-      passesCompleted: 14,
-      passAccuracy: 78,
-      keyPasses: 1,
-      longPasses: 2,
-      dribbleAttempts: 4,
-      dribbleSuccess: 2,
-      dispossessed: 3,
-      // Ek detaylar
-      blocks: 0,
-      interceptions: 1,
-      foulsDrawn: 2,
-      foulsCommitted: 3,
-      yellowCards: 1,
-      redCards: 0,
-      penaltyWon: 0,
-      penaltyScored: 0,
-      penaltyMissed: 0,
-      tackles: 1,
-      duelsTotal: 14,
-      duelsWon: 8,
-      aerialDuels: 8,
-      aerialWon: 5,
-    },
-    {
-      name: 'Dominik Livakovic',
-      number: 1,
-      position: 'GK',
-      rating: 7.2,
-      minutesPlayed: 90,
-      goals: 0,
-      assists: 0,
-      shots: 0,
-      shotsOnTarget: 0,
-      shotsInsideBox: 0,
-      totalPasses: 24,
-      passesCompleted: 19,
-      passAccuracy: 79,
-      keyPasses: 0,
-      longPasses: 6,
-      dribbleAttempts: 0,
-      dribbleSuccess: 0,
-      dispossessed: 0,
-      tackles: 0,
-      duelsTotal: 3,
-      duelsWon: 2,
-      aerialDuels: 3,
-      aerialWon: 3,
-      // Ek detaylar
-      blocks: 0,
-      interceptions: 0,
-      foulsDrawn: 0,
-      foulsCommitted: 1,
-      yellowCards: 0,
-      redCards: 0,
-      penaltyWon: 0,
-      penaltyScored: 0,
-      penaltyMissed: 0,
-      // Kaleci özel istatistikler
-      isGoalkeeper: true,
-      saves: 4,
-      goalsAgainst: 3,
-      penaltySaved: 0, // API: penalty.saved
-    },
-  ],
-};
+// (hardcoded topPlayers mock verileri kaldırıldı – tüm veriler API'den gelir)
 
 // Maç başlamadı mı kontrolü
 const NOT_STARTED_STATUSES = ['NS', 'TBD', 'PST', 'CANC', 'ABD', 'AWD', 'WO'];
@@ -482,7 +279,7 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
   });
   
   const [activeTab, setActiveTab] = useState<'match' | 'players'>('match');
-  const [matchStats, setMatchStats] = useState<DisplayStat[]>(defaultDetailedStats);
+  const [matchStats, setMatchStats] = useState<DisplayStat[]>([]);
   // ✅ Oyuncu kartları açılır/kapanır state
   const [expandedPlayers, setExpandedPlayers] = useState<Set<string>>(new Set());
   // ✅ API'den gelen oyuncu istatistikleri
@@ -559,6 +356,11 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
   // NOT: Boş status + isLive=true = canlı maç (cache stale olabilir)
   const isMatchNotStarted = !hasMockStats && !matchData?.isLive && !isLiveStatus && (NOT_STARTED_STATUSES.includes(matchStatus) || matchStatus === '');
 
+  // ✅ Maç başlamadıysa istatistikleri gösterme; state'i temizle ki eski veri kalmasın
+  useEffect(() => {
+    if (isMatchNotStarted) setMatchStats([]);
+  }, [isMatchNotStarted]);
+
   // ✅ CANLI İSTATİSTİK: Parent (MatchDetail) her 15 sn çekiyor; gelen liveStatistics ile maç istatistiklerini güncelle
   useEffect(() => {
     if (!liveStatistics || !isLiveStatus) return;
@@ -585,6 +387,10 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
 
   useEffect(() => {
     if (!matchId) return;
+    if (isMatchNotStarted) {
+      setStatsLoading(false);
+      return;
+    }
     const id = parseInt(matchId, 10);
     if (isNaN(id)) {
       setStatsLoading(false);
@@ -649,76 +455,17 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
           setMatchStats(apiStatsToDisplay(response.statistics));
         }
       } catch (_e) {
-        console.log('📊 [MatchStats] API hatası, varsayılan veriler kullanılıyor:', _e);
-        if (!cancelled) setMatchStats(defaultDetailedStats);
+        if (!cancelled) setMatchStats([]);
       } finally {
         if (!cancelled) setStatsLoading(false);
       }
     })();
     return () => { cancelled = true; };
-  }, [matchId, isLiveStatus]);
+  }, [matchId, isLiveStatus, isMatchNotStarted]);
 
-  // ✅ CANLI MAÇ: Maç ve oyuncu istatistiklerini 10 saniyede bir tazele (anlık veri, refresh=1 ile API'den)
-  useEffect(() => {
-    if (!matchId || !isLiveStatus) return;
-    const id = parseInt(matchId, 10);
-    if (isNaN(id)) return;
-    if (isMockTestMatch(id)) return;
-
-    let cancelled = false;
-
-    const fetchLiveStats = async () => {
-      if (cancelled) return;
-      try {
-        const [statsRes, playersRes] = await Promise.all([
-          api.matches.getMatchStatistics(id, true), // refresh=1: her seferinde taze veri
-          api.matches.getMatchPlayers(id),
-        ]);
-        if (cancelled) return;
-
-        const rawData = statsRes?.data ?? statsRes?.statistics;
-        if (rawData && Array.isArray(rawData) && rawData.length >= 2) {
-          const homeStats = rawData[0]?.statistics || [];
-          const awayStats = rawData[1]?.statistics || [];
-          const mergedStats: ApiMatchStat[] = [];
-          const statTypes = new Set([
-            ...homeStats.map((s: any) => s.type),
-            ...awayStats.map((s: any) => s.type),
-          ]);
-          statTypes.forEach((type: string) => {
-            const homeStat = homeStats.find((s: any) => s.type === type);
-            const awayStat = awayStats.find((s: any) => s.type === type);
-            mergedStats.push({
-              type,
-              home: homeStat?.value ?? null,
-              away: awayStat?.value ?? null,
-            });
-          });
-          if (mergedStats.length > 0) setMatchStats(apiStatsToDisplay(mergedStats));
-        }
-
-        const rawPlayers = playersRes?.data;
-        if (rawPlayers?.home && rawPlayers?.away) {
-          const filterPlayed = (players: any[]) =>
-            players.filter((p: any) => (p.minutesPlayed && p.minutesPlayed > 0) || (p.rating && p.rating > 0));
-          setPlayerStats({
-            home: filterPlayed(rawPlayers.home || []),
-            away: filterPlayed(rawPlayers.away || []),
-          });
-        }
-      } catch (_e) {
-        // sessiz
-      }
-    };
-
-    fetchLiveStats(); // İlk çağrı hemen
-    const interval = setInterval(fetchLiveStats, 5000); // 5 sn: kaleci kurtarışı vb. anlık yansısın
-    console.log('📊 [MatchStats] Canlı maç istatistik polling başlatıldı (5s)');
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-    };
-  }, [matchId, isLiveStatus]);
+  // ✅ CANLI MAÇ: Parent (MatchDetail) her 8 sn polling yapıyor → liveStatistics prop ile gelir.
+  // Kendi polling'imiz yok; parent'ın verilerini kullan → double-polling ve gereksiz API tüketimini önler.
+  // Oyuncu istatistikleri için de parent üzerinden gelen veriyi tercih et.
 
   // ✅ Oyuncu istatistiklerini API'den çek
   useEffect(() => {
@@ -777,57 +524,9 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
     return () => { cancelled = true; };
   }, [matchId]);
 
-  // ✅ Isı haritası verilerini API'den çek
-  useEffect(() => {
-    if (!matchId) return;
-    const id = parseInt(matchId, 10);
-    if (isNaN(id)) return;
-    
-    // Mock maçlar için skip
-    if (isMockTestMatch(id)) return;
-    
-    let cancelled = false;
-    
-    const fetchHeatmaps = async () => {
-      try {
-        const response = await api.matches.getMatchHeatmaps(id);
-        if (cancelled) return;
-        
-        if (response?.success && response?.data) {
-          setHeatmapData({
-            home: response.data.home || null,
-            away: response.data.away || null,
-          });
-          console.log('🔥 [MatchStats] Isı haritası verileri yüklendi:', {
-            homeZones: response.data.home?.aggregatedZones,
-            awayZones: response.data.away?.aggregatedZones,
-            homePlayersCount: response.data.home?.players?.length,
-            awayPlayersCount: response.data.away?.players?.length,
-          });
-        }
-      } catch (_e) {
-        console.log('🔥 [MatchStats] Isı haritası API hatası:', _e);
-      }
-    };
-    
-    // İlk yükleme
-    fetchHeatmaps();
-    
-    // ✅ Canlı maçlarda 30 saniyede bir güncelle (ısı haritaları daha az sık güncellenir)
-    const matchStatus = matchData?.status || matchData?.fixture?.status?.short || '';
-    const isLive = ['1H', '2H', 'HT', 'ET', 'P', 'LIVE', 'BT', 'INT'].includes(matchStatus);
-    
-    let interval: ReturnType<typeof setInterval> | null = null;
-    if (isLive) {
-      interval = setInterval(fetchHeatmaps, 30000); // 30 saniye
-      console.log('🔥 [MatchStats] Canlı ısı haritası güncelleme başlatıldı (30s interval)');
-    }
-    
-    return () => { 
-      cancelled = true; 
-      if (interval) clearInterval(interval);
-    };
-  }, [matchId, matchData?.status, matchData?.fixture?.status?.short]);
+  // Isı haritası devre dışı: API-Football gerçek tracking verisi sağlamıyor;
+  // generateEstimatedHeatmaps sahte/tahmini veri üretiyordu.
+  // Gerçek ısı haritası API'si (StatsBomb/Opta vb.) entegre edildiğinde tekrar açılacak.
 
   // Renkli yapı için takım renkleri (popup kart kenarları)
   const homeColors = (matchData?.homeTeam?.color as string[] | undefined) || ['#1FA2A6', '#0F2A24'];
@@ -963,6 +662,26 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
                 <ActivityIndicator size="large" color={BRAND.secondary} />
                 <Text style={[styles.statsLoadingText, isLight && { color: themeColors.mutedForeground }]}>Maç istatistikleri yükleniyor...</Text>
               </View>
+            ) : isMatchNotStarted ? (
+              <View style={[styles.statsLoadingWrap, { paddingVertical: 48 }]}>
+                <Ionicons name="stats-chart-outline" size={48} color={BRAND.secondary} style={{ opacity: 0.6, marginBottom: 12 }} />
+                <Text style={[styles.statsLoadingText, isLight && { color: themeColors.mutedForeground }, { fontWeight: '600', marginBottom: 6 }]}>
+                  Maç henüz başlamadı
+                </Text>
+                <Text style={[styles.statsLoadingText, isLight && { color: themeColors.mutedForeground }, { fontSize: 13, opacity: 0.9 }]}>
+                  Maç başladığında istatistikler burada görünecek.
+                </Text>
+              </View>
+            ) : matchStats.length === 0 ? (
+              <View style={[styles.statsLoadingWrap, { paddingVertical: 48 }]}>
+                <Ionicons name="stats-chart-outline" size={48} color={BRAND.secondary} style={{ opacity: 0.6, marginBottom: 12 }} />
+                <Text style={[styles.statsLoadingText, isLight && { color: themeColors.mutedForeground }, { fontWeight: '600', marginBottom: 6 }]}>
+                  İstatistik henüz yok
+                </Text>
+                <Text style={[styles.statsLoadingText, isLight && { color: themeColors.mutedForeground }, { fontSize: 13, opacity: 0.9 }]}>
+                  Canlı maç istatistikleri API'den geldiğinde burada görünecek.
+                </Text>
+              </View>
             ) : (
               <>
                 {/* xG (Gol Beklentisi) - Öne Çıkan Kart */}
@@ -1074,9 +793,10 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
               </>
             )}
 
-            {/* Takım Isı Haritaları - Favori takım önce, alt alta yerleşim */}
+            {/* Takım Isı Haritaları - Devre dışı: gerçek tracking API'si entegre edildiğinde açılacak */}
             {(() => {
-              // Favori takım hangisi? Home mu Away mi?
+              // Isı haritası şimdilik gizli
+              return null;
               const homeTeamId = matchData?.homeId || matchData?.teams?.home?.id;
               const awayTeamId = matchData?.awayId || matchData?.teams?.away?.id;
               const homeName = matchData?.homeName || matchData?.teams?.home?.name || t('matchStats.home');
@@ -1588,14 +1308,13 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
                         )}
                       </View>
                       
-                      {/* Oyuncu Isı Haritası - API verilerinden veya pozisyon bazlı çizim */}
-                      <View style={styles.playerHeatmapSection}>
+                      {/* Oyuncu Isı Haritası - Devre dışı: gerçek tracking API'si entegre edildiğinde açılacak */}
+                      {false && <View style={styles.playerHeatmapSection}>
                         <View style={styles.playerHeatmapHeader}>
                           <Ionicons name="flame" size={16} color="#F59E0B" />
                           <Text style={styles.playerHeatmapTitle}>Oyuncu Isı Haritası</Text>
                         </View>
                         <View style={styles.playerHeatmapField}>
-                          {/* Saha çizgileri */}
                           <View style={styles.fieldBorderNew} />
                           <View style={styles.centerLineNew} />
                           <View style={styles.centerCircleNew} />
@@ -1753,7 +1472,7 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
                             ));
                           })()}
                         </View>
-                      </View>
+                      </View>}
                       
                       {/* Ek Detaylar Bölümü - Ana kartlarla aynı boyut */}
                       <View style={styles.extraDetailsSection}>

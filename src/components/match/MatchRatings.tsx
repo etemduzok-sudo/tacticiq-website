@@ -2542,9 +2542,9 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
                 <Text style={[styles.viewOnlyRuleTitle, isLight && { color: themeColors.foreground }]}>Değerlendirme Kuralı</Text>
               </View>
               <Text style={[styles.viewOnlyRuleText, isLight && { color: themeColors.mutedForeground }]}>
-                Bu maça kadro tahmini yapan kullanıcılar, maç bittikten sonra{' '}
-                <Text style={{ fontWeight: '700', color: '#10B981' }}>{ratingTimeInfo.hoursRemaining} saat</Text>{' '}
-                boyunca TD ve oyuncuları değerlendirebilir.
+                Bu maça kadro tahmini yapan kullanıcılar,{' '}
+                <Text style={{ fontWeight: '700', color: '#10B981' }}>maçın bitişinden sonraki 24 saat boyunca</Text>{' '}
+                TD ve oyuncuları değerlendirebilir.
               </Text>
             </View>
 
