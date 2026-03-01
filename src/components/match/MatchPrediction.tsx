@@ -3414,27 +3414,53 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                     </View>
                   </TouchableOpacity>
                 </View>
-                {/* Takım performansı popup: bilgi + 1–10 seçimi (alttan kesilme yok) */}
+                {/* Takım performansı popup: bilgi + 1–10 seçimi; ScrollView ile üst/alt kesilme önlenir */}
                 <Modal visible={showTeamPerfPopup} transparent animationType="fade" statusBarTranslucent>
-                  <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center', padding: 20 }} activeOpacity={1} onPress={() => setShowTeamPerfPopup(false)}>
-                    <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 340, backgroundColor: '#0F1F1F', borderRadius: 20, padding: 24, borderWidth: 1, borderColor: 'rgba(16,185,129,0.3)' }}>
-                      <Text style={{ fontSize: 18, fontWeight: '800', color: '#F1F5F9', textAlign: 'center', marginBottom: 8 }}>Takım performansı</Text>
-                      <Text style={{ fontSize: 12, color: '#94A3B8', textAlign: 'center', marginBottom: 12, lineHeight: 18 }}>
-                        Takımınızın maçtaki performansını 1–10 arası puanlayın. Maç boyunca istediğiniz an güncelleyebilirsiniz; topluluk ortalaması da anlık değerlendirmeyi yansıtır.
-                      </Text>
-                      <Text style={{ fontSize: 11, color: 'rgba(148,163,184,0.9)', textAlign: 'center', marginBottom: 20, lineHeight: 16 }}>
-                        Oyuncu kartlarına dokunarak Çok İyi/Kötü, Gol Atar/Çıkmalı, kart ve Maçın adamı oyu da verebilirsiniz; tüm tercihleriniz canlı maç boyunca her an değiştirilebilir.
-                      </Text>
-                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, marginBottom: 20 }}>
-                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
-                          <TouchableOpacity key={n} onPress={() => { setTeamPerformance(n); setShowTeamPerfPopup(false); }} style={{ width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: teamPerformance === n ? 'rgba(16, 185, 129, 0.5)' : 'rgba(255,255,255,0.08)', borderWidth: teamPerformance === n ? 2 : 1, borderColor: teamPerformance === n ? '#10B981' : 'rgba(255,255,255,0.15)' }} activeOpacity={0.8}>
-                            <Text style={{ fontSize: 16, fontWeight: '700', color: teamPerformance === n ? '#10B981' : 'rgba(255,255,255,0.8)' }}>{n}</Text>
+                  <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center', paddingVertical: 28, paddingHorizontal: 20 }} activeOpacity={1} onPress={() => setShowTeamPerfPopup(false)}>
+                    <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 340, maxHeight: '88%' }}>
+                      <ScrollView style={{ maxHeight: '100%' }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
+                        <View style={{ backgroundColor: '#0F1F1F', borderRadius: 20, padding: 24, borderWidth: 1, borderColor: 'rgba(16,185,129,0.35)' }}>
+                          <Text style={{ fontSize: 18, fontWeight: '800', color: '#F1F5F9', textAlign: 'center', marginBottom: 10 }}>Takım performansı</Text>
+                          <Text style={{ fontSize: 12, color: '#94A3B8', textAlign: 'center', marginBottom: 14, lineHeight: 18 }}>
+                            Takımınızın maçtaki performansını 1–10 arası puanlayın. Maç boyunca istediğiniz an güncelleyebilirsiniz; topluluk ortalaması da anlık değerlendirmeyi yansıtır.
+                          </Text>
+                          <Text style={{ fontSize: 11, color: '#94A3B8', textAlign: 'center', marginBottom: 8 }}>Oyuncu kartlarına dokunarak şu oyları da verebilirsiniz:</Text>
+                          <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', marginBottom: 10, gap: 6 }}>
+                            <View style={{ backgroundColor: 'rgba(16,185,129,0.25)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(16,185,129,0.5)' }}>
+                              <Text style={{ fontSize: 10, fontWeight: '700', color: '#34D399' }}>Çok İyi</Text>
+                            </View>
+                            <View style={{ backgroundColor: 'rgba(239,68,68,0.25)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(239,68,68,0.5)' }}>
+                              <Text style={{ fontSize: 10, fontWeight: '700', color: '#F87171' }}>Kötü</Text>
+                            </View>
+                            <View style={{ backgroundColor: 'rgba(59,130,246,0.25)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(59,130,246,0.5)' }}>
+                              <Text style={{ fontSize: 10, fontWeight: '700', color: '#60A5FA' }}>Gol Atar</Text>
+                            </View>
+                            <View style={{ backgroundColor: 'rgba(139,92,246,0.25)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(139,92,246,0.5)' }}>
+                              <Text style={{ fontSize: 10, fontWeight: '700', color: '#A78BFA' }}>Çıkmalı</Text>
+                            </View>
+                            <View style={{ backgroundColor: 'rgba(251,191,36,0.25)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(251,191,36,0.5)' }}>
+                              <Text style={{ fontSize: 10, fontWeight: '700', color: '#FBBF24' }}>Sarı Kart</Text>
+                            </View>
+                            <View style={{ backgroundColor: 'rgba(220,38,38,0.25)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(220,38,38,0.5)' }}>
+                              <Text style={{ fontSize: 10, fontWeight: '700', color: '#F87171' }}>Kırmızı Kart</Text>
+                            </View>
+                            <View style={{ backgroundColor: 'rgba(234,179,8,0.25)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(234,179,8,0.6)' }}>
+                              <Text style={{ fontSize: 10, fontWeight: '700', color: '#EAB308' }}>Maçın adamı</Text>
+                            </View>
+                          </View>
+                          <Text style={{ fontSize: 10, color: '#64748B', textAlign: 'center', marginBottom: 18, lineHeight: 14 }}>Tüm tercihleriniz canlı maç boyunca her an değiştirilebilir.</Text>
+                          <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, marginBottom: 20 }}>
+                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
+                              <TouchableOpacity key={n} onPress={() => { setTeamPerformance(n); setShowTeamPerfPopup(false); }} style={{ width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: teamPerformance === n ? 'rgba(16, 185, 129, 0.5)' : 'rgba(255,255,255,0.08)', borderWidth: teamPerformance === n ? 2 : 1, borderColor: teamPerformance === n ? '#10B981' : 'rgba(255,255,255,0.15)' }} activeOpacity={0.8}>
+                                <Text style={{ fontSize: 16, fontWeight: '700', color: teamPerformance === n ? '#10B981' : 'rgba(255,255,255,0.8)' }}>{n}</Text>
+                              </TouchableOpacity>
+                            ))}
+                          </View>
+                          <TouchableOpacity onPress={() => setShowTeamPerfPopup(false)} style={{ backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 12, paddingVertical: 12, alignItems: 'center' }} activeOpacity={0.8}>
+                            <Text style={{ fontSize: 14, fontWeight: '600', color: '#94A3B8' }}>Kapat</Text>
                           </TouchableOpacity>
-                        ))}
-                      </View>
-                      <TouchableOpacity onPress={() => setShowTeamPerfPopup(false)} style={{ backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 12, paddingVertical: 12, alignItems: 'center' }} activeOpacity={0.8}>
-                        <Text style={{ fontSize: 14, fontWeight: '600', color: '#94A3B8' }}>Kapat</Text>
-                      </TouchableOpacity>
+                        </View>
+                      </ScrollView>
                     </TouchableOpacity>
                   </TouchableOpacity>
                 </Modal>
@@ -6458,8 +6484,9 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
         ];
         return (
         <Modal visible={true} transparent animationType="fade" statusBarTranslucent>
-          <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'flex-end', alignItems: 'center' }} activeOpacity={1} onPress={() => setLiveReactionPlayer(null)}>
-            <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()} style={{ width: '92%', maxWidth: 400, alignSelf: 'center' }}>
+          <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'flex-end', alignItems: 'center', paddingBottom: 0 }} activeOpacity={1} onPress={() => setLiveReactionPlayer(null)}>
+            <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()} style={{ width: '92%', maxWidth: 400, maxHeight: '90%', alignSelf: 'center' }}>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }} style={{ maxHeight: '100%' }}>
             <View style={{
               backgroundColor: '#0F1F1F', borderTopLeftRadius: 24, borderTopRightRadius: 24,
               padding: 24, paddingBottom: 28, borderTopWidth: 2, borderColor: 'rgba(16,185,129,0.4)',
@@ -6645,24 +6672,50 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                   if (isGK) return isPlayerGK(p);
                   return !isPlayerGK(p);
                 });
+                // Topluluk "yerine X girmeli" yüzdesi (API'den substituteVotePct doldurulacak)
+                const substituteVotePct: Record<number, number> = {};
+                const maxSubPct = eligibleSubs.length > 0 ? Math.max(...eligibleSubs.map((s: any) => substituteVotePct[s.id] ?? 0)) : 0;
+                const isTopSub = (subId: number) => maxSubPct > 0 && (substituteVotePct[subId] ?? 0) === maxSubPct;
                 return (
-                <View style={{ backgroundColor: 'rgba(139,92,246,0.1)', borderRadius: 10, padding: 12, marginBottom: 12, borderWidth: 1, borderColor: 'rgba(139,92,246,0.2)' }}>
+                <View style={{ backgroundColor: 'rgba(139,92,246,0.1)', borderRadius: 10, padding: 12, marginBottom: 16, borderWidth: 1, borderColor: 'rgba(139,92,246,0.2)' }}>
                   <Text style={{ color: '#A78BFA', fontSize: 11, fontWeight: '600', marginBottom: 8 }}>Yerine kim girmeli?</Text>
-                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-                    {eligibleSubs.slice(0, 12).map((sub: any) => (
-                      <TouchableOpacity
-                        key={sub.id}
-                        style={{ paddingHorizontal: 10, paddingVertical: 5, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 6 }}
-                        onPress={() => {
-                          setLiveReactions(prev => ({ ...prev, [pId]: { ...normalizeLiveReaction(prev[pId]), row2: 'sub' } }));
-                          setLiveReactionPlayer(null);
-                        }}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={{ color: '#E2E8F0', fontSize: 10, fontWeight: '500' }}>{sub.name?.split(' ').pop()}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={true}
+                    contentContainerStyle={{ paddingRight: 8 }}
+                    style={{ marginHorizontal: -4 }}
+                  >
+                    {eligibleSubs.map((sub: any) => {
+                      const pct = substituteVotePct[sub.id] ?? 0;
+                      const top = isTopSub(sub.id);
+                      return (
+                        <TouchableOpacity
+                          key={sub.id}
+                          style={{
+                            paddingHorizontal: 12,
+                            paddingVertical: 8,
+                            borderRadius: 8,
+                            minWidth: 72,
+                            alignItems: 'center',
+                            marginRight: 8,
+                            backgroundColor: top ? 'rgba(16,185,129,0.22)' : 'rgba(255,255,255,0.08)',
+                            borderWidth: top ? 2 : 0,
+                            borderColor: top ? '#10B981' : 'transparent',
+                          }}
+                          onPress={() => {
+                            setLiveReactions(prev => ({ ...prev, [pId]: { ...normalizeLiveReaction(prev[pId]), row2: 'sub' } }));
+                            setLiveReactionPlayer(null);
+                          }}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={{ color: top ? '#34D399' : '#E2E8F0', fontSize: 11, fontWeight: '600' }}>{sub.name?.split(' ').pop()}</Text>
+                          <Text style={{ color: top ? '#6EE7B7' : '#94A3B8', fontSize: 9, marginTop: 4, fontWeight: '500' }}>
+                            %{pct} girmeli
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
                 </View>
                 );
               })()}
@@ -6682,6 +6735,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                 <Text style={{ color: '#64748B', fontSize: 13 }}>Kapat</Text>
               </TouchableOpacity>
             </View>
+            </ScrollView>
             </TouchableOpacity>
           </TouchableOpacity>
         </Modal>
