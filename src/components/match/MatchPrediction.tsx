@@ -502,7 +502,8 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
       Animated.sequence([
         Animated.timing(motmScaleAnim, { toValue: 1.12, duration: 900, useNativeDriver: true }),
         Animated.timing(motmScaleAnim, { toValue: 1, duration: 900, useNativeDriver: true }),
-      ])
+      ]),
+      { iterations: 6 }
     );
     loop.start();
     return () => loop.stop();
@@ -3383,8 +3384,8 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                   </View>
                 </FootballField>
                 <View style={{ height: 0 }} />
-                {/* Gerçek sekmesi altı: Takım performansı butonu (tıklanınca popup; alttan kesilme yok) */}
-                <View style={[styles.fieldBelowContent, { minHeight: 44, paddingBottom: 16 }, (isMatchLive || isMatchFinished) && predictionViewIndex === 2 && !playerCardHintDismissed && playerCardHintViewCount < PLAYER_CARD_HINT_MAX && { minHeight: 64 }]}>
+                {/* Gerçek sekmesi altı: Takım performansı butonu (geniş tıklanır alan, popup; ilk yüklemede kesilme yok) */}
+                <View style={[styles.fieldBelowContent, { minHeight: 56, height: undefined, paddingBottom: 28, paddingTop: 4, overflow: 'visible' }, (isMatchLive || isMatchFinished) && predictionViewIndex === 2 && !playerCardHintDismissed && playerCardHintViewCount < PLAYER_CARD_HINT_MAX && { minHeight: 72 }]}>
                   {(isMatchLive || isMatchFinished) && predictionViewIndex === 2 && !playerCardHintDismissed && playerCardHintViewCount < PLAYER_CARD_HINT_MAX && (
                     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4, paddingVertical: 4, paddingHorizontal: 8 }}>
                       <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.75)', flex: 1 }} numberOfLines={1}>💡 Kartlara dokunarak değerlendirme yapabilirsiniz.</Text>
@@ -3395,35 +3396,41 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                   )}
                   <TouchableOpacity
                     onPress={() => setShowTeamPerfPopup(true)}
-                    activeOpacity={0.8}
-                    style={[styles.fieldBelowSection, styles.fieldBelowSectionTeamPerf, { flexDirection: 'row', alignItems: 'center', flexWrap: 'nowrap', width: '100%', minWidth: 0 }, (threeFieldData.actualSquad.players.length === 0 || !realLineupVisible) && { opacity: 0.5 }, { pointerEvents: threeFieldData.actualSquad.players.length > 0 && realLineupVisible ? 'auto' : 'none' }]}
+                    activeOpacity={0.75}
+                    hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
+                    style={[styles.fieldBelowSection, styles.fieldBelowSectionTeamPerf, { flexDirection: 'row', alignItems: 'center', flexWrap: 'nowrap', width: '100%', minWidth: 0, minHeight: 48, paddingVertical: 12 }, (threeFieldData.actualSquad.players.length === 0 || !realLineupVisible) && { opacity: 0.5 }, { pointerEvents: threeFieldData.actualSquad.players.length > 0 && realLineupVisible ? 'auto' : 'none' }]}
                   >
                     <View style={[styles.fieldBelowSectionLabel, { marginRight: 8 }]}>
                       <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.9)', lineHeight: 14 }}>Takım</Text>
                       <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.9)', lineHeight: 14 }}>performansı</Text>
                     </View>
-                    <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 6 }}>
+                    <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 4 }}>
                       <Text style={{ fontSize: 13, fontWeight: '700', color: '#10B981' }}>{teamPerformance} / 10</Text>
                       <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.5)" />
                     </View>
                   </TouchableOpacity>
                 </View>
-                {/* Takım performansı popup: bilgi + 1–10 seçimi (alttan kesilme yok) */}
+                {/* Takım performansı popup: canlı değerlendirme kartı tarzında (yeşil çerçeve, ikon, Kapat elips) */}
                 <Modal visible={showTeamPerfPopup} transparent animationType="fade" statusBarTranslucent>
-                  <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center', padding: 20 }} activeOpacity={1} onPress={() => setShowTeamPerfPopup(false)}>
-                    <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 340, backgroundColor: '#0F1F1F', borderRadius: 20, padding: 24, borderWidth: 1, borderColor: 'rgba(16,185,129,0.3)' }}>
-                      <Text style={{ fontSize: 18, fontWeight: '800', color: '#F1F5F9', textAlign: 'center', marginBottom: 8 }}>Takım performansı</Text>
-                      <Text style={{ fontSize: 12, color: '#94A3B8', textAlign: 'center', marginBottom: 20, lineHeight: 18 }}>
-                        Takımınızın maçtaki performansını 1–10 arası puanlayın. Maç boyunca güncelleyebilirsiniz; topluluk ortalaması da kullanıcıların anlık değerlendirmesini yansıtır.
-                      </Text>
-                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, marginBottom: 20 }}>
+                  <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'center', alignItems: 'center', padding: 24 }} activeOpacity={1} onPress={() => setShowTeamPerfPopup(false)}>
+                    <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()} style={{ width: '92%', maxWidth: 380, backgroundColor: '#0F1F1F', borderRadius: 24, padding: 24, paddingBottom: 28, borderTopWidth: 2, borderLeftWidth: 1, borderRightWidth: 1, borderBottomWidth: 1, borderColor: 'rgba(16,185,129,0.4)' }}>
+                      <View style={{ alignItems: 'center', marginBottom: 16 }}>
+                        <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(16,185,129,0.15)', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+                          <Ionicons name="stats-chart" size={24} color="#10B981" />
+                        </View>
+                        <Text style={{ fontSize: 20, fontWeight: '800', color: '#F1F5F9', textAlign: 'center', marginBottom: 4 }}>Takım performansı</Text>
+                        <Text style={{ fontSize: 12, color: '#94A3B8', textAlign: 'center', lineHeight: 18 }}>
+                          Takımınızın maçtaki performansını 1–10 arası puanlayın. Maç boyunca güncelleyebilirsiniz; topluluk ortalaması da anlık değerlendirmeyi yansıtır.
+                        </Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 10, marginBottom: 24 }}>
                         {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
-                          <TouchableOpacity key={n} onPress={() => { setTeamPerformance(n); setShowTeamPerfPopup(false); }} style={{ width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: teamPerformance === n ? 'rgba(16, 185, 129, 0.5)' : 'rgba(255,255,255,0.08)', borderWidth: teamPerformance === n ? 2 : 1, borderColor: teamPerformance === n ? '#10B981' : 'rgba(255,255,255,0.15)' }} activeOpacity={0.8}>
-                            <Text style={{ fontSize: 16, fontWeight: '700', color: teamPerformance === n ? '#10B981' : 'rgba(255,255,255,0.8)' }}>{n}</Text>
+                          <TouchableOpacity key={n} onPress={() => { setTeamPerformance(n); setShowTeamPerfPopup(false); }} style={{ width: 46, height: 46, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: teamPerformance === n ? 'rgba(16, 185, 129, 0.35)' : 'rgba(255,255,255,0.08)', borderWidth: teamPerformance === n ? 2.5 : 1, borderColor: teamPerformance === n ? '#10B981' : 'rgba(255,255,255,0.12)' }} activeOpacity={0.8}>
+                            <Text style={{ fontSize: 17, fontWeight: '700', color: teamPerformance === n ? '#10B981' : 'rgba(255,255,255,0.85)' }}>{n}</Text>
                           </TouchableOpacity>
                         ))}
                       </View>
-                      <TouchableOpacity onPress={() => setShowTeamPerfPopup(false)} style={{ backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 12, paddingVertical: 12, alignItems: 'center' }} activeOpacity={0.8}>
+                      <TouchableOpacity onPress={() => setShowTeamPerfPopup(false)} style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 10, paddingHorizontal: 24, borderRadius: 999, borderWidth: 1.5, borderColor: 'rgba(148,163,184,0.5)' }} activeOpacity={0.8}>
                         <Text style={{ fontSize: 14, fontWeight: '600', color: '#94A3B8' }}>Kapat</Text>
                       </TouchableOpacity>
                     </TouchableOpacity>
@@ -6558,19 +6565,20 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                       setLiveReactions(prev => ({ ...prev, [pId]: { ...normalizeLiveReaction(prev[pId]), row3: (normalizeLiveReaction(prev[pId]).row3 === reaction.key ? undefined : reaction.key) as 'yellowcard'|'redcard' } }));
                     }
                   };
-                  return (
-                    <TouchableOpacity
-                      key={reaction.key}
-                      style={{
-                        alignItems: 'center', paddingVertical: 12, paddingHorizontal: 14, borderRadius: 14,
-                        backgroundColor: isActive ? `${reaction.color}25` : 'rgba(255,255,255,0.08)',
-                        borderWidth: isActive ? 2.5 : 1,
-                        borderColor: isActive ? reaction.color : 'rgba(255,255,255,0.12)',
-                        minWidth: 72,
-                      }}
-                      onPress={onPress}
-                      activeOpacity={0.7}
-                    >
+                  const btnStyle = {
+                    alignItems: 'center' as const,
+                    paddingVertical: 12,
+                    paddingHorizontal: 14,
+                    borderRadius: 14,
+                    backgroundColor: isActive ? `${reaction.color}25` : 'rgba(255,255,255,0.08)',
+                    borderWidth: isActive ? 2.5 : 1,
+                    borderColor: isActive ? reaction.color : 'rgba(255,255,255,0.12)',
+                    minWidth: reaction.key === 'motm' ? undefined : 72,
+                    flex: reaction.key === 'motm' ? 1 : undefined,
+                    width: reaction.key === 'motm' ? '100%' as const : undefined,
+                  };
+                  const btnContent = (
+                    <>
                       {reaction.key === 'motm' ? (
                         <Ionicons name="star" size={24} color={reaction.color} style={{ marginBottom: 4 }} />
                       ) : isCardIcon ? (
@@ -6581,6 +6589,31 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                       <Text style={{ fontSize: 11, color: reaction.color, fontWeight: '700' }}>{reaction.label}</Text>
                       <Text style={{ fontSize: 10, color: '#94A3B8', marginTop: 2, fontWeight: '600' }}>{reaction.count} kişi</Text>
                       <Text style={{ fontSize: 10, color: '#64748B', marginTop: 0, fontWeight: '600' }}>%{reaction.pct} (tahminler arası)</Text>
+                    </>
+                  );
+                  if (reaction.key === 'motm') {
+                    return (
+                      <View key={reaction.key} style={{ width: '100%', marginTop: 4 }}>
+                        <Animated.View style={{ transform: [{ scale: motmScaleAnim }] }}>
+                          <TouchableOpacity
+                            style={btnStyle}
+                            onPress={onPress}
+                            activeOpacity={0.7}
+                          >
+                            {btnContent}
+                          </TouchableOpacity>
+                        </Animated.View>
+                      </View>
+                    );
+                  }
+                  return (
+                    <TouchableOpacity
+                      key={reaction.key}
+                      style={btnStyle}
+                      onPress={onPress}
+                      activeOpacity={0.7}
+                    >
+                      {btnContent}
                     </TouchableOpacity>
                   );
                 })}
@@ -6632,7 +6665,15 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                 );
               })()}
               <TouchableOpacity
-                style={{ alignItems: 'center', padding: 10 }}
+                style={{
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  paddingVertical: 10,
+                  paddingHorizontal: 24,
+                  borderRadius: 999,
+                  borderWidth: 1.5,
+                  borderColor: 'rgba(148,163,184,0.5)',
+                }}
                 onPress={() => setLiveReactionPlayer(null)}
                 activeOpacity={0.7}
               >
