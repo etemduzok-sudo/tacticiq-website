@@ -19,6 +19,7 @@ import { useOAuth } from './src/hooks/useOAuth';
 import { initWebZoomPrevention } from './src/utils/webZoomPrevention';
 import { getUserTimezone } from './src/utils/timezoneUtils';
 import { subscribeToast } from './src/utils/alertHelper';
+import { BackendStatusProvider, BackendStatusBannerSlot } from './src/contexts/BackendStatusContext';
 
 // Web için React Native'in built-in Animated API'sini kullan, native için reanimated
 import { Animated as RNAnimated } from 'react-native';
@@ -605,7 +606,9 @@ export default function App() {
               {isMaintenanceMode ? (
                 <MaintenanceScreen />
               ) : (
+                <BackendStatusProvider>
                 <ThemedRootView viewKey={currentScreen === 'onboarding' ? 'content-onboarding' : `content-${currentLang}-${forceUpdateKey}`}>
+                  <BackendStatusBannerSlot />
                   {renderScreen()}
                   
                   {/* Kişi kartı + favori takım barı — Maçlar, Sıralama, Rozetler, Profil (hepsi aynı yapı) */}
@@ -679,6 +682,7 @@ export default function App() {
                     </View>
                   )}
                 </ThemedRootView>
+                </BackendStatusProvider>
               )}
               </FavoriteSquadsProvider>
             </MatchProvider>

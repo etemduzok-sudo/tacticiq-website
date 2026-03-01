@@ -49,27 +49,6 @@ interface MatchDetailProps {
   predictionTeamId?: number; // ✅ İki favori takım maçında hangi takım için tahmin yapılacağı
 }
 
-// Mock match data
-const matchData = {
-  id: '1',
-  homeTeam: {
-    name: 'Galatasaray',
-    logo: '🦁',
-    color: ['#FDB913', '#E30613'],
-    manager: 'Okan Buruk',
-  },
-  awayTeam: {
-    name: 'Fenerbahçe',
-    logo: '🐤',
-    color: ['#FCCF1E', '#001A70'],
-    manager: 'İsmail Kartal',
-  },
-  league: 'Süper Lig',
-  stadium: 'Ali Sami Yen',
-  date: '2 Oca 2026',
-  time: '20:00',
-};
-
 const TAB_IDS = [
   { id: 'squad', icon: 'people' as const },
   { id: 'prediction', icon: 'analytics' as const },
@@ -391,49 +370,15 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
 
   const loading = shouldFetchFromApi ? apiLoading : false;
   
-  // ✅ Mock maçlar için sabit başlangıç zamanı (her render'da yeniden hesaplanmaması için)
-  // Bu useEffect'i match yüklendikten sonra çalıştır
+  // ✅ Mock maçlar için başlangıç zamanı - MOCK_MATCH_SIMULATE_LIVE'ta HER ZAMAN getMatch1Start kullan (preloadedMatch eski kalıyor)
   React.useEffect(() => {
     if (isMockTestMatch(Number(matchId))) {
-      // ✅ Her zaman güncel başlangıç zamanını kullan (sayfa yenilendiğinde de doğru olsun)
       const expectedStartTime = (Number(matchId) === MOCK_MATCH_IDS.GS_FB || Number(matchId) === MOCK_MATCH_IDS.TEST_6H) ? getMatch1Start() : getMatch2Start();
-      
-      // Eğer ref null ise veya beklenen zamanla uyumsuzsa güncelle
-      if (mockMatchStartTimeRef.current === null || mockMatchStartTimeRef.current !== expectedStartTime) {
-        // Öncelik sırası: preloadedMatch > match > getMatch1Start/getMatch2Start
-        let timestampToUse: number | null = null;
-        
-        if (preloadedMatch?.fixture?.timestamp) {
-          // preloadedMatch'ten gelen timestamp saniye cinsinden, milisaniyeye çevir
-          timestampToUse = preloadedMatch.fixture.timestamp * 1000;
-          console.log('📌 preloadedMatch.timestamp kullanılıyor:', new Date(timestampToUse).toISOString());
-        } else if (preloadedMatch?.fixture?.date) {
-          // date varsa onu kullan
-          timestampToUse = new Date(preloadedMatch.fixture.date).getTime();
-          console.log('📌 preloadedMatch.date kullanılıyor:', new Date(timestampToUse).toISOString());
-        } else if (match?.fixture?.timestamp) {
-          // match yüklendikten sonra timestamp'i sabitle
-          timestampToUse = match.fixture.timestamp * 1000;
-          console.log('📌 match.timestamp kullanılıyor:', new Date(timestampToUse).toISOString());
-        } else if (match?.fixture?.date) {
-          // date varsa onu kullan
-          timestampToUse = new Date(match.fixture.date).getTime();
-          console.log('📌 match.date kullanılıyor:', new Date(timestampToUse).toISOString());
-        } else {
-          // Hiçbiri yoksa getMatch1Start/getMatch2Start kullan
-          timestampToUse = expectedStartTime;
-          console.log(`📌 ${(Number(matchId) === MOCK_MATCH_IDS.GS_FB || Number(matchId) === MOCK_MATCH_IDS.TEST_6H) ? 'getMatch1Start' : 'getMatch2Start'}() kullanılıyor:`, new Date(timestampToUse).toISOString());
-        }
-        
-        // Timestamp'i sabitle
-        if (timestampToUse !== null) {
-          mockMatchStartTimeRef.current = timestampToUse;
-          const remainingSeconds = Math.floor((timestampToUse - Date.now()) / 1000);
-          console.log('🔒 Mock maç timestamp sabitlendi:', new Date(timestampToUse).toISOString(), 'Kalan süre:', remainingSeconds, 'saniye');
-        }
-      }
+      mockMatchStartTimeRef.current = expectedStartTime;
+      const elapsedSec = Math.floor((Date.now() - expectedStartTime) / 1000);
+      console.log('🔒 Mock maç (canlı sim):', new Date(expectedStartTime).toISOString(), 'geçen:', elapsedSec, 'sn');
     }
-  }, [matchId, preloadedMatch, match]);
+  }, [matchId]);
   
   // ✅ Canlı maçta otomatik olarak sekme yönlendirmesi
   // - Tahmin yapılmamış canlı maç → Kadro sekmesi (İlk 11 popup gösterilecek)
@@ -854,12 +799,11 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
       }
       return apiStatus;
     }
-    // Mock maçlar için gerçek zamandan kontrol et
+    // Mock maçlar için gerçek zamandan kontrol et - getMatch1Start() her çağrıda "şu an - 10 dk" döner
     const matchStart = (Number(matchId) === MOCK_MATCH_IDS.GS_FB || Number(matchId) === MOCK_MATCH_IDS.TEST_6H) ? getMatch1Start() : getMatch2Start();
     const now = Date.now();
     const elapsedMs = now - matchStart;
-    const elapsedSeconds = elapsedMs / 1000;
-    const elapsedMinutes = Math.floor(elapsedSeconds);
+    const elapsedMinutes = Math.floor(elapsedMs / 60000); // Dakika cinsinden (önceden saniye kullanılıyordu - bug)
     
     if (elapsedMinutes < 0) {
       return 'NS'; // Not Started
@@ -1019,9 +963,10 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
     const matchStart = (Number(matchId) === MOCK_MATCH_IDS.GS_FB || Number(matchId) === MOCK_MATCH_IDS.TEST_6H) ? getMatch1Start() : getMatch2Start();
     const now = Date.now();
     const elapsedMs = now - matchStart;
-    const elapsedSeconds = elapsedMs / 1000; // Ondalıklı saniye (örn: 5.234)
-    const elapsedMinutes = Math.floor(elapsedSeconds); // Tam dakika (örn: 5)
-    const salise = Math.floor((elapsedSeconds - elapsedMinutes) * 100); // Salise (0-99)
+    const elapsedSecondsTotal = elapsedMs / 1000;
+    const elapsedMinutes = Math.floor(elapsedSecondsTotal / 60);
+    // Ekranda dakika:saniye (0-59) göstermek için – her saniye re-render'da değişir
+    const secondWithinMinute = Math.floor(elapsedSecondsTotal) % 60;
     
     if (elapsedMinutes < 0) {
       return { matchMinute: 0, matchExtraTime: null, matchSecond: 0 };
@@ -1030,34 +975,24 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
       return { matchMinute: 90, matchExtraTime: 4, matchSecond: 0 };
     }
     
-    // ✅ İlk yarı: 0-45 dk (normal)
     if (elapsedMinutes < 45) {
-      return { matchMinute: elapsedMinutes, matchExtraTime: null, matchSecond: salise };
+      return { matchMinute: elapsedMinutes, matchExtraTime: null, matchSecond: secondWithinMinute };
     }
-    
-    // ✅ İlk yarı uzatması: 45-48 dk → "45+1", "45+2", "45+3" formatında
     if (elapsedMinutes <= 48) {
       const extraTime = elapsedMinutes - 45;
-      return { matchMinute: 45, matchExtraTime: extraTime, matchSecond: salise };
+      return { matchMinute: 45, matchExtraTime: extraTime, matchSecond: secondWithinMinute };
     }
-    
-    // ✅ Devre arası: 48-60 dk (15 saniye = 15 dakika simülasyon)
     if (elapsedMinutes < 60) {
       return { matchMinute: 45, matchExtraTime: 3, matchSecond: 0 };
     }
-    
-    // ✅ İkinci yarı: 60-90 dk → 46. dk'dan başlar (45+3'ten sonra)
     if (elapsedMinutes < 90) {
-      const secondHalfMinute = 46 + (elapsedMinutes - 60); // 60. dk = 46. dk
-      return { matchMinute: secondHalfMinute, matchExtraTime: null, matchSecond: salise };
+      const secondHalfMinute = 46 + (elapsedMinutes - 60);
+      return { matchMinute: secondHalfMinute, matchExtraTime: null, matchSecond: secondWithinMinute };
     }
-    
-    // ✅ İkinci yarı uzatması: 90-94 dk → "90+1", "90+2", "90+3", "90+4" formatında
     if (elapsedMinutes <= 94) {
       const extraTime = elapsedMinutes - 90;
-      return { matchMinute: 90, matchExtraTime: extraTime, matchSecond: salise };
+      return { matchMinute: 90, matchExtraTime: extraTime, matchSecond: secondWithinMinute };
     }
-    
     return { matchMinute: 90, matchExtraTime: 4, matchSecond: 0 };
   })();
   // ✅ Mock maçlarda skorları gerçek zamandan hesapla (goller eventlerden gelir)

@@ -934,18 +934,28 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
     return () => clearInterval(t);
   }, [hasLoadedOnce, favoriteTeamIdsString]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ✅ Test maçı (6 saat sonra başlayacak) mock açıksa upcoming'e ekle
+  // ✅ Mock canlı simülasyondaysa canlı listeye, değilse yaklaşana ekle (ana sayfada görünsün)
+  const liveWithMock = useMemo(() => {
+    if (!MOCK_TEST_ENABLED) return liveMatches;
+    const mock = getMockMatches();
+    const liveMock = (mock || []).filter((m) => m?.fixture?.status?.short && LIVE_STATUSES.includes(m.fixture.status.short));
+    if (!liveMock.length) return liveMatches;
+    const withoutMock = liveMatches.filter((m) => !isMockTestMatch(m.fixture?.id ?? 0));
+    return [...liveMock, ...withoutMock];
+  }, [liveMatches]);
+
   const upcomingWithMock = useMemo(() => {
     if (!MOCK_TEST_ENABLED) return upcomingMatches;
     const mock = getMockMatches();
-    if (!mock.length) return upcomingMatches;
+    const upcomingMock = (mock || []).filter((m) => !m?.fixture?.status?.short || !LIVE_STATUSES.includes(m.fixture.status.short));
+    if (!upcomingMock.length) return upcomingMatches;
     const withoutMock = upcomingMatches.filter((m) => !isMockTestMatch(m.fixture?.id ?? 0));
-    return [...mock, ...withoutMock];
+    return [...upcomingMock, ...withoutMock];
   }, [upcomingMatches]);
 
   return {
     pastMatches,
-    liveMatches,
+    liveMatches: liveWithMock,
     upcomingMatches: upcomingWithMock,
     loading,
     error,

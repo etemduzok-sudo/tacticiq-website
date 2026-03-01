@@ -1,0 +1,8 @@
+# Maçın Adamı (MOTM) – Tek Oy Kuralı
+
+## Kural
+**Maçın adamı için yalnızca tek bir oyuncuya oy kullanılabilir.** Kullanıcı başka bir oyuncuya "Maçın adamı" verdiğinde, önceki seçim iptal edilir; sadece en son seçilen oyuncu maçın adamı rozetini taşır.
+
+## Uygulama
+- Canlı değerlendirmede "Maçın adamı" seçildiğinde: `liveReactions` içinde sadece seçilen oyuncuda `row4: 'motm'` kalmalı, diğer tüm oyuncuların `row4` alanı temizlenmeli.
+- Maçın adamı rozeti, sarı kart veya kırmızı kart rozeti ile çakışırsa **her zaman üstte** gösterilir (daha yüksek `zIndex` ile).

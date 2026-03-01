@@ -19,45 +19,8 @@
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
-// Supabase env kontrolü - yoksa script sessizce çık, backend'i çökertme
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey =
-  process.env.SUPABASE_SERVICE_ROLE_KEY ||
-  process.env.SUPABASE_SERVICE_KEY ||
-  process.env.SUPABASE_KEY;
-
-if (!supabaseUrl || !supabaseKey) {
-  console.warn('⚠️ Supabase env missing. update-all-player-ratings SKIPPED.');
-  process.exit(0);
-}
-
-// Supabase key formatı: 'eyJ...' (JWT) veya 'sb_...' olabilir
-if (!supabaseKey || supabaseKey.trim() === '') {
-  console.warn('⚠️ Supabase key empty. SKIPPED.');
-  process.exit(0);
-}
-
-// ✅ Script çökmesin: yakalanmamış hata ve rejection'larda sadece logla, çıkma
-process.on('unhandledRejection', (reason, promise) => {
-  console.warn('⚠️ [unhandledRejection]', reason);
-});
-process.on('uncaughtException', (err) => {
-  console.error('⚠️ [uncaughtException]', err.message);
-});
-
-const { createClient } = require('@supabase/supabase-js');
-const footballApi = require('../services/footballApi');
-const {
-  calculatePlayerAttributesFromStats,
-  calculateForm,
-  getFitnessMultiplier,
-  clamp0_100,
-} = require('../utils/playerRatingFromStats');
-
-const supabase = createClient(supabaseUrl, supabaseKey);
-
 // =====================================================
-// DESTEKLENEN LİGLER (API-Football League IDs)
+// DESTEKLENEN LİGLER (API-Football League IDs) - env'den bağımsız, her zaman export
 // =====================================================
 const SUPPORTED_LEAGUES = {
   // Türkiye
@@ -117,6 +80,51 @@ const SUPPORTED_LEAGUES = {
 };
 
 const CURRENT_SEASON = 2025;
+
+// Supabase env kontrolü - script doğrudan çalıştırılıyorsa çık; require edildiyse stub export (backend çökmesin)
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey =
+  process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  process.env.SUPABASE_SERVICE_KEY ||
+  process.env.SUPABASE_KEY;
+
+const hasSupabase = supabaseUrl && supabaseKey && supabaseKey.trim() !== '';
+
+if (!hasSupabase) {
+  if (require.main === module) {
+    console.warn('⚠️ Supabase env missing. update-all-player-ratings SKIPPED.');
+    process.exit(0);
+  }
+  // Require edildi (server/scheduler): process.exit YAPMA, stub export et
+  console.warn('⚠️ Supabase env missing. update-all-player-ratings SKIPPED (stub export).');
+  module.exports = {
+    processAllTeamsFromDB: async () => ({ teamsProcessed: 0, skipped: 0, errors: [] }),
+    getAllTeamsFromDB: async () => [],
+    getDefaultAttributesByPosition: () => ({}),
+    SUPPORTED_LEAGUES,
+    CURRENT_SEASON,
+  };
+  return;
+}
+
+// ✅ Script çökmesin: yakalanmamış hata ve rejection'larda sadece logla, çıkma
+process.on('unhandledRejection', (reason, promise) => {
+  console.warn('⚠️ [unhandledRejection]', reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('⚠️ [uncaughtException]', err.message);
+});
+
+const { createClient } = require('@supabase/supabase-js');
+const footballApi = require('../services/footballApi');
+const {
+  calculatePlayerAttributesFromStats,
+  calculateForm,
+  getFitnessMultiplier,
+  clamp0_100,
+} = require('../utils/playerRatingFromStats');
+
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 // API limit: 75000 günlük - 500 yedek = 74500 kullanılabilir
 const API_RESERVE = 500;

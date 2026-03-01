@@ -10,6 +10,7 @@ import profileService from './profileService';
 
 // ✅ Platform'a göre OAuth redirect URI - HER ZAMAN sign-in anında hesapla (mobilde modül yüklemede yanlış dönebiliyordu)
 // Supabase redirectTo ile Redirect URLs listesi BİREBİR eşleşmeli (trailing slash dahil). Wildcard: http://localhost:8083/**
+// 📱 MOBİL: native ile tacticiq:// zorla - makeRedirectUri Expo Go'da exp:// döndürüp Supabase'in web'e yönlendirmesine neden oluyordu
 function getRedirectUri(): string {
   if (Platform.OS === 'web') {
     let origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8081';
@@ -26,12 +27,17 @@ function getRedirectUri(): string {
     }
     return origin;
   }
+  // ✅ native: Her zaman tacticiq:// kullan - makeRedirectUri Expo Go'da exp:// döndürüyor,
+  // Supabase bu URL'i allowlist'te bulamayınca Site URL'e (web) yönlendiriyordu
   const uri = makeRedirectUri({
+    native: 'tacticiq://auth/callback',
     scheme: 'tacticiq',
     path: 'auth/callback',
   });
-  console.log('📱 [socialAuth] Mobile redirect URI:', uri);
-  return uri;
+  // Fallback: native bazen sadece bare/standalone'da çalışır, yine de tacticiq:// kullan
+  const finalUri = uri.startsWith('tacticiq://') ? uri : 'tacticiq://auth/callback';
+  console.log('📱 [socialAuth] Mobile redirect URI:', finalUri, '(raw:', uri, ')');
+  return finalUri;
 }
 
 interface SocialAuthResult {

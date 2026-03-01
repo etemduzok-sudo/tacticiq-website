@@ -551,29 +551,29 @@ router.get('/:id', async (req, res) => {
     const { id } = req.params;
     const matchId = parseInt(id);
     
-    // 🧪 MOCK TEST: 888001 ve 888002 icin match detail
+    // 🧪 MOCK TEST: 888001 (Nottingham Forest-Fenerbahçe) ve 888002 (Real-Barça) – getMockMatches ile uyumlu
     if (matchId === 888001 || matchId === 888002) {
       const now = new Date();
-      const isGsFb = matchId === 888001;
+      const is888001 = matchId === 888001;
       return res.json({
         success: true,
         data: {
           fixture: {
             id: matchId,
-            referee: isGsFb ? 'C. Çakır' : 'F. Brych',
+            referee: is888001 ? 'M. Oliver' : 'F. Brych',
             timezone: 'UTC',
             date: now.toISOString(),
             timestamp: Math.floor(now.getTime() / 1000),
-            venue: isGsFb 
-              ? { id: 888, name: 'Rams Park', city: 'İstanbul' }
+            venue: is888001
+              ? { id: 888, name: 'City Ground', city: 'Nottingham' }
               : { id: 889, name: 'Santiago Bernabéu', city: 'Madrid' },
             status: { long: 'Not Started', short: 'NS', elapsed: null },
           },
-          league: isGsFb
-            ? { id: 203, name: 'Süper Lig', country: 'Turkey', logo: null, season: 2025 }
+          league: is888001
+            ? { id: 203, name: 'UEFA Europa League', country: 'Europe', logo: null, season: 2025 }
             : { id: 140, name: 'La Liga', country: 'Spain', logo: null, season: 2025 },
-          teams: isGsFb
-            ? { home: { id: 645, name: 'Galatasaray', logo: null }, away: { id: 611, name: 'Fenerbahçe', logo: null } }
+          teams: is888001
+            ? { home: { id: 65, name: 'Nottingham Forest', logo: null }, away: { id: 611, name: 'Fenerbahçe', logo: null } }
             : { home: { id: 541, name: 'Real Madrid', logo: null }, away: { id: 529, name: 'Barcelona', logo: null } },
           goals: { home: null, away: null },
           score: { halftime: { home: null, away: null }, fulltime: { home: null, away: null }, extratime: { home: null, away: null }, penalty: { home: null, away: null } },
@@ -820,30 +820,52 @@ router.get('/:id/statistics', async (req, res) => {
     const { id } = req.params;
     const matchId = parseInt(id);
     const skipCache = req.query.refresh === '1' || req.query.refresh === 'true';
-    
-    // ✅ MOCK MATCH: ID 999999 için özel istatistik döndür
+
+    // ✅ MOCK MATCH: 999999, 888001, 888002 için istatistik döndür (supabase null olsa da 500 düşmez)
+    const mockStatsPayload = (homeName, awayName, homeId = 9999, awayId = 9998) => ({
+      success: true,
+      data: [
+        { team: { id: homeId, name: homeName }, statistics: [
+          { type: 'Shots on Goal', value: 5 }, { type: 'Shots off Goal', value: 3 }, { type: 'Total Shots', value: 12 },
+          { type: 'Ball Possession', value: '58%' }, { type: 'Corner Kicks', value: 6 }, { type: 'Fouls', value: 9 },
+          { type: 'Yellow Cards', value: 1 }, { type: 'Red Cards', value: 0 }, { type: 'Total passes', value: 412 },
+          { type: 'Passes accurate', value: 356 }, { type: 'Passes %', value: '86%' }
+        ]},
+        { team: { id: awayId, name: awayName }, statistics: [
+          { type: 'Shots on Goal', value: 3 }, { type: 'Shots off Goal', value: 4 }, { type: 'Total Shots', value: 9 },
+          { type: 'Ball Possession', value: '42%' }, { type: 'Corner Kicks', value: 3 }, { type: 'Fouls', value: 12 },
+          { type: 'Yellow Cards', value: 2 }, { type: 'Red Cards', value: 0 }, { type: 'Total passes', value: 298 },
+          { type: 'Passes accurate', value: 241 }, { type: 'Passes %', value: '81%' }
+        ]}
+      ],
+      source: 'mock',
+      cached: false
+    });
     if (matchId === 999999) {
-      return res.json({
-        success: true,
-        data: [
-          { team: { id: 9999, name: 'Mock Home Team' }, statistics: [
-            { type: 'Shots on Goal', value: 5 }, { type: 'Shots off Goal', value: 3 }, { type: 'Total Shots', value: 12 },
-            { type: 'Ball Possession', value: '58%' }, { type: 'Corner Kicks', value: 6 }, { type: 'Fouls', value: 9 },
-            { type: 'Yellow Cards', value: 1 }, { type: 'Red Cards', value: 0 }, { type: 'Total passes', value: 412 },
-            { type: 'Passes accurate', value: 356 }, { type: 'Passes %', value: '86%' }
-          ]},
-          { team: { id: 9998, name: 'Mock Away Team' }, statistics: [
-            { type: 'Shots on Goal', value: 3 }, { type: 'Shots off Goal', value: 4 }, { type: 'Total Shots', value: 9 },
-            { type: 'Ball Possession', value: '42%' }, { type: 'Corner Kicks', value: 3 }, { type: 'Fouls', value: 12 },
-            { type: 'Yellow Cards', value: 2 }, { type: 'Red Cards', value: 0 }, { type: 'Total passes', value: 298 },
-            { type: 'Passes accurate', value: 241 }, { type: 'Passes %', value: '81%' }
-          ]}
-        ],
-        source: 'mock',
-        cached: false
-      });
+      return res.json(mockStatsPayload('Mock Home Team', 'Mock Away Team'));
     }
-    
+    if (matchId === 888001) {
+      return res.json(mockStatsPayload('Nottingham Forest', 'Fenerbahçe', 65, 611));
+    }
+    if (matchId === 888002) {
+      return res.json(mockStatsPayload('Mock Home', 'Mock Away', 9997, 9996));
+    }
+
+    // Supabase yoksa sadece API veya boş dön (500 verme)
+    if (!supabase) {
+      if (process.env.API_FOOTBALL_KEY || process.env.FOOTBALL_API_KEY) {
+        try {
+          const apiData = await footballApi.getFixtureStatistics(matchId, skipCache);
+          if (apiData && apiData.response) {
+            return res.json({ success: true, data: apiData.response, source: 'api', cached: apiData.cached || false });
+          }
+        } catch (apiErr) {
+          console.error('API statistics error:', apiErr);
+        }
+      }
+      return res.json({ success: true, data: [], message: 'No statistics available' });
+    }
+
     // 1. Try database first
     const { data: dbStats, error: dbError } = await supabase
       .from('match_statistics')
@@ -2103,13 +2125,13 @@ router.get('/:id/lineups', async (req, res) => {
     const matchId = parseInt(id);
     const skipCache = req.query.refresh === '1' || req.query.refresh === 'true';
     
-    // 🧪 MOCK TEST: GS vs FB (888001) ve Real vs Barça (888002) lineup
+    // 🧪 MOCK TEST: Nottingham Forest vs Fenerbahçe (888001) ve Real vs Barça (888002) lineup
     if (matchId === 888001) {
       return res.json({
         success: true,
         data: [
           {
-            team: { id: 645, name: 'Galatasaray', logo: null, colors: { primary: '#E30613', secondary: '#FDB913' } },
+            team: { id: 65, name: 'Nottingham Forest', logo: null, colors: { primary: '#DD0000', secondary: '#FFFFFF' } },
             coach: { id: 901, name: 'O. Buruk', photo: null },
             formation: '4-3-3',
             startXI: [

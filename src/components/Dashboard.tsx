@@ -1057,10 +1057,12 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
     return filtered;
   }, [favoriteTeams]);
 
-  // ✅ Canlı maçları filtrele: Hook'tan gelen liveMatches kaynak (API 1H/2H + başlama saati geçmiş NS)
+  // ✅ Canlı maçları filtrele: Hook'tan gelen liveMatches. Mock test maçı her zaman listeye dahil (tahmin olsun olmasın test edilebilsin).
   const filteredLiveMatches = React.useMemo(() => {
     const filtered = filterMatchesByTeam(liveMatches, selectedTeamIds);
-    const uniqueLive = filtered.reduce((acc: any[], match) => {
+    const mockLive = liveMatches.filter((m) => isMockTestMatch(m.fixture?.id ?? 0));
+    const merged = [...mockLive, ...filtered];
+    const uniqueLive = merged.reduce((acc: any[], match) => {
       const fixtureId = match.fixture?.id;
       if (fixtureId && !acc.some(m => m.fixture?.id === fixtureId)) acc.push(match);
       return acc;

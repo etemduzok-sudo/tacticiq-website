@@ -5,37 +5,64 @@
 
 export const MOCK_TEST_ENABLED = true;
 
-/** Test maçı: 6 saat sonra başlayacak. Diğer ID'ler ileride eklenebilir. */
+/** Canlı maç senaryosu: true iken mock maç "şu an oynanıyor" (1H, dakika ilerliyor) olarak gösterilir. */
+export const MOCK_MATCH_SIMULATE_LIVE = true;
+
+/** Test maçı: 6 saat sonra başlayacak (veya canlı simülasyonda geçmişte başlamış). */
 export const MOCK_MATCH_IDS = {
   TEST_6H: 888001,
   GS_FB: 888001,   // aynı maç (geri uyumluluk)
   REAL_BARCA: 999002,
 } as Record<string, number>;
 
-/** 6 saat sonra başlama zamanı (ms) */
+/** Canlı simülasyonda: maç başlangıcı "şu an - 10 dakika" (1. yarı oynanıyor). Aksi halde 6 saat sonra. */
 export function getMatch1Start(): number {
+  if (typeof MOCK_MATCH_SIMULATE_LIVE !== 'undefined' && MOCK_MATCH_SIMULATE_LIVE) {
+    return Date.now() - 10 * 60 * 1000; // 10 dakika önce başladı
+  }
   return Date.now() + 6 * 60 * 60 * 1000;
 }
 
 export function getMatch2Start(): number {
-  return Date.now() + 6 * 60 * 60 * 1000;
+  return getMatch1Start();
+}
+
+/** Canlı simülasyonda geçen dakika (maç başlangıcından bu yana). */
+function getMockElapsedMinute(): number {
+  if (typeof MOCK_MATCH_SIMULATE_LIVE !== 'undefined' && MOCK_MATCH_SIMULATE_LIVE) {
+    const start = getMatch1Start();
+    const elapsedMs = Date.now() - start;
+    return Math.min(45, Math.max(0, Math.floor(elapsedMs / 60000)));
+  }
+  return 0;
+}
+
+/** Canlı simülasyonda fixture status (1H / 2H / HT). */
+function getMockFixtureStatus(): { short: string; long: string; elapsed: number | null } {
+  if (typeof MOCK_MATCH_SIMULATE_LIVE !== 'undefined' && MOCK_MATCH_SIMULATE_LIVE) {
+    const elapsed = getMockElapsedMinute();
+    if (elapsed >= 45) return { short: 'HT', long: 'Halftime', elapsed: 45 };
+    return { short: '1H', long: 'First Half', elapsed };
+  }
+  return { short: 'NS', long: 'Not Started', elapsed: null };
 }
 
 export function getMockMatches(): any[] {
   if (!MOCK_TEST_ENABLED) return [];
   const start = getMatch1Start();
+  const status = getMockFixtureStatus();
   return [
     {
       fixture: {
         id: MOCK_MATCH_IDS.TEST_6H,
         date: new Date(start).toISOString(),
         timestamp: Math.floor(start / 1000),
-        status: { short: 'NS', long: 'Not Started', elapsed: null },
+        status,
       },
       league: { id: 203, name: 'UEFA Europa League', country: 'Europe', logo: '' },
       teams: {
-        home: { id: 51, name: 'Nottingham Forest', logo: '' },
-        away: { id: 52, name: 'Fenerbahçe', logo: '' },
+        home: { id: 65, name: 'Nottingham Forest', logo: '' },
+        away: { id: 611, name: 'Fenerbahçe', logo: '' },
       },
       goals: { home: null, away: null },
       score: { halftime: { home: null, away: null }, fulltime: { home: null, away: null } },
@@ -48,10 +75,10 @@ export function isMockTestMatch(matchId: number): boolean {
   return matchId === MOCK_MATCH_IDS.TEST_6H || matchId === MOCK_MATCH_IDS.GS_FB;
 }
 
-/** Tahmin yapılacak takım (Fenerbahçe = 52) */
+/** Tahmin yapılacak takım (Fenerbahçe = 611) */
 export function getMockUserTeamId(matchId: number): number | undefined {
   if (!isMockTestMatch(matchId)) return undefined;
-  return 52;
+  return 611;
 }
 
 export function getMockMatchStatistics(_matchId: number): any {
@@ -108,18 +135,18 @@ export function getMockLineup(matchId: number): any {
       position: p.position,
       photo: '',
     },
-    team: { id: 52, name: 'Fenerbahçe' },
+    team: { id: 611, name: 'Fenerbahçe' },
   }));
   const subs = MOCK_LINEUP_PLAYERS.slice(11).map((p) => ({
     player: { id: p.id, name: p.name, number: p.number, pos: p.position, position: p.position, photo: '' },
-    team: { id: 52, name: 'Fenerbahçe' },
+    team: { id: 611, name: 'Fenerbahçe' },
   }));
   return {
     home: { startXI: [], substitutes: [] },
     away: {
       startXI,
       substitutes: subs,
-      team: { id: 52, name: 'Fenerbahçe', logo: '' },
+      team: { id: 611, name: 'Fenerbahçe', logo: '' },
     },
   };
 }

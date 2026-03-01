@@ -1,0 +1,19 @@
+# Gerçek Maçlara Mock Veri Konulmaz
+
+## Kural
+**Gerçek maçlara (Antalya-Fenerbahçe, GS-BJK vb. gerçek fixture ID’li tüm maçlar) ASLA mock/sahte veri dönülmez veya gösterilmez.**
+
+## Test / mock maç ID’leri (sadece bunlar mock alır)
+- `888001` – Test maçı (GS-FB / Nottingham–Fener)
+- `888002` – Test maçı (Real–Barça)
+- `999999` – Genel test mock maçı
+
+Backend’de `backend/routes/matches.js` içinde `MOCK_TEST_MATCH_IDS` ve `isMockTestMatchId()` kullanılır. Sadece bu ID’ler için mock veri döndürülebilir.
+
+## Yapılması gerekenler
+- Gerçek fixture ID’si (API-Football veya DB’den gelen) olan her maç için: veri yoksa mock doldurma; 404 veya “veri yok” mesajı dön.
+- Yeni endpoint veya fallback yazarken: mock kullanacaksan sadece `isMockTestMatchId(matchId)` ile kontrol et; gerçek maç ID’leri için mock dönme.
+- Frontend: `isMockTestMatch(matchId)` sadece 888001/999999 gibi test ID’leri için true olmalı; gerçek maçlar için asla mock UI/veri gösterme.
+
+## Antalya–Fenerbahçe
+Bu maç gerçek fixture ID’si ile gelir; hiçbir yerde bu maça özel veya genel “son çare” mock’u uygulanmaz.
