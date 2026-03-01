@@ -1,24 +1,36 @@
-# Dashboard scroll + Favori takımlar – Kilitli davranış
+# Dashboard scroll + Ana sayfa hizalama – KİLİTLİ (değiştirme)
 
-## KRİTİK: Değiştirilmemesi gerekenler
+## KRİTİK: Ana sayfa hizalaması bozulmasın
 
-### 1. Ana sayfa – Referans sabit (canlı/yaklaşan maç konumu)
+### 1. Ana sayfa (Dashboard) – Referans sabit
 
-- **Referans**: Canlı veya en yakın yaklaşan maç kartı **her zaman** profil + filtre barının hemen altında (sabit konum).
-- **`src/components/Dashboard.tsx`**:
-  - **İçerik sırası (değiştirilmemeli):** 1) Canlı maçlar, 2) Yaklaşan maçlar, 3) Biten maçlar. Biten en altta; aşağı kaydırarak görülür.
-  - `SCROLL_CONTENT_PADDING_TOP`: iOS 260, diğer 256. Profil + filtre barı yüksekliği; **küçültülmemeli**.
-  - `styles.scrollContent.paddingTop`: Aynı değer (260/256).
-  - Başlangıç scroll = 0 (referans blok padding’den hemen sonra). Geçmiş maç sayısına bağlı scroll **yok** – konum kaymaz.
+- **En üstteki maç kartı** (canlı veya ilk yaklaşan) **her zaman** filtre barının hemen altında, aynı dikey konumda görünür. Bu konum **tüm uygulama için** kilitlidir.
+
+- **`App.tsx`**
+  - Overlay yüksekliği **sadece** overlay `View`'ın `onLayout` ile ölçülür; `profileCardHeight` state’i buna göre güncellenir.
+  - `profileCardOverlay`: `paddingBottom: 0` (ekstra boşluk yok). Değiştirme.
+
+- **`src/components/Dashboard.tsx`**
+  - **İçerik sırası (sabit):** 1) Biten maçlar, 2) Scroll marker (1px), 3) Canlı maçlar, 4) Yaklaşan maçlar. Biten maçlar yukarı kaydırınca görünür; açılışta ekranda ilk canlı/yaklaşan kart vardır.
+  - **ScrollView:** `position: 'absolute'`, `top: SCROLL_VIEW_TOP_MARGIN`, `left: 0`, `right: 0`, `bottom: 0`. Margin = `profileCardHeight` (fallback: iOS 280, diğer 272). Bu sayede liste overlay’in altından başlar; kart overlay altına kayıp kesilmez.
+  - **contentContainerStyle:** `paddingTop: 0`. Üst boşluk yok; ilk kart scroll alanının en üstünde.
+  - Açılışta ve filtre değişiminde scroll, ilk canlı/yaklaşan kartı bu sabit konuma getirir (`activeAnchorY`, `defaultScrollY`). Bu davranışı kaldırma veya hedefi değiştirme.
+
+- **`src/screens/MatchListScreen.tsx`**
+  - İlk kart konumu Dashboard ile aynı: `paddingTop: profileCardHeight` (ek +8 yok). Fallback: iOS 280, diğer 272.
 
 ### 2. Favori takımlar – 4. ve 5. takım
 
-- Kullanıcı 4 veya 5 takım seçebilir (örn. Başakşehir). **Hepsi** filtre barında ve maç listesinde görünmeli.
-- **`src/utils/storageUtils.ts`**:
-  - `validateFavoriteTeamsLenient`: Okurken `id` number veya string kabul edilir; string ise number’a çevrilir.
-  - `setFavoriteTeams`: Kaydetmeden önce tüm `id` değerleri number’a normalize edilir; böylece 4./5. takım “invalid” sayılıp silinmez.
-- **`src/hooks/useFavoriteTeams.ts`**:
-  - Supabase sync: **Yerel listede takım sayısı Supabase’den fazlaysa** (yeni eklenen takım) yerel liste korunur, Supabase’e push edilir; Supabase ile üzerine yazılmaz.
-  - `jsonToTeams`: Supabase’den gelen `id` string olsa bile number’a normalize edilir.
+- Kullanıcı 4 veya 5 takım seçebilir. Hepsi filtre barında ve maç listesinde görünmeli.
+- **`src/utils/storageUtils.ts`**: `validateFavoriteTeamsLenient`, `setFavoriteTeams` – id number/string normalize.
+- **`src/hooks/useFavoriteTeams.ts`**: Yerel liste Supabase’den fazlaysa korunur; `jsonToTeams` id’yi number’a çevirir.
 
-### İlk kilitlenme: 26 Şubat 2026
+### Yapma
+
+- ScrollView’a `marginTop` yerine farklı bir konumlama verme (absolute + top kullanılıyor).
+- İçerik sırasını “Biten → Marker → Canlı → Yaklaşan” dışına taşıma.
+- Overlay’e `paddingBottom` ekleme veya `profileCardHeight` ölçümünü farklı bir elemandan alma.
+- İlk canlı/yaklaşan kartın açılış scroll hedefini kaldırma veya değiştirme.
+
+---
+İlk kilit: 26 Şub 2026. Güncel kilit: 1 Mar 2026.

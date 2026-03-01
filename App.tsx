@@ -379,6 +379,7 @@ export default function App() {
               matchData={matchData}
               selectedTeamIds={selectedTeamIds}
               hasFavoriteTeams={(favoriteTeams?.length ?? 0) > 0}
+              profileCardHeight={profileCardHeight}
             />
           );
         
@@ -391,6 +392,7 @@ export default function App() {
               matchData={matchData}
               selectedTeamIds={selectedTeamIds}
               showOnlyFinished={true}
+              profileCardHeight={profileCardHeight}
             />
           );
         
@@ -570,6 +572,9 @@ export default function App() {
   // ✅ Yeni sekme yapısı: home | scoring | leaderboard | chat | profile
   const shouldShowBottomNav = ['home', 'matches', 'finished', 'scoring', 'leaderboard', 'chat', 'badges', 'profile'].includes(currentScreen);
 
+  // ProfileCard gerçek yüksekliğini ölç (Dashboard/MatchListScreen'e geçirilir)
+  const [profileCardHeight, setProfileCardHeight] = useState(0);
+
   // Web toast sistemi - showInfo/showError/showSuccess web'de window.alert yerine in-app toast gösterir
   const [globalToast, setGlobalToast] = useState<{ title: string; message?: string; type: 'info' | 'error' | 'success' } | null>(null);
   const globalToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -605,7 +610,13 @@ export default function App() {
                   
                   {/* Kişi kartı + favori takım barı — Maçlar, Sıralama, Rozetler, Profil (hepsi aynı yapı) */}
                   {['home', 'matches', 'finished', 'leaderboard', 'badges', 'profile'].includes(currentScreen) && (
-                    <View style={styles.profileCardOverlay}>
+                    <View
+                      style={styles.profileCardOverlay}
+                      onLayout={(e) => {
+                        const h = e.nativeEvent.layout.height;
+                        if (h > 0 && Math.abs(h - profileCardHeight) > 2) setProfileCardHeight(h);
+                      }}
+                    >
                       <ProfileCard 
                         onPress={() => navHandlers.handleDashboardNavigate('profile')} 
                         newBadge={newBadge}
@@ -716,7 +727,7 @@ const styles = StyleSheet.create({
     elevation: 10,
     backgroundColor: 'transparent',
     paddingTop: 0,
-    paddingBottom: 8,
+    paddingBottom: 0,
     paddingHorizontal: 0,
     pointerEvents: 'box-none',
   },

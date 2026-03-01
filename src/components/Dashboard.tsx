@@ -41,6 +41,7 @@ const globalCoachCache: Record<number, string> = {};
 import { logger } from '../utils/logger';
 import { COLORS, SPACING, TYPOGRAPHY, SIZES, SHADOWS, BRAND, LIGHT_MODE } from '../theme/theme';
 import { useTheme } from '../contexts/ThemeContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WEBSITE_DARK_COLORS } from '../config/WebsiteDesignSystem';
 import { cardStyles, textStyles, containerStyles } from '../utils/styleHelpers';
 import { translateCountry } from '../utils/countryUtils';
@@ -63,11 +64,13 @@ interface DashboardProps {
   selectedTeamIds?: number[]; // ✅ App.tsx'ten gelen seçili takımlar
   /** ✅ Yeni üye (favori takım yok) için biten maç gösterme - üyelik + favori takım seçimi tamamlanınca göster */
   hasFavoriteTeams?: boolean;
+  profileCardHeight?: number;
 }
 
-export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResultSelect, matchData, selectedTeamIds = [], hasFavoriteTeams = true }: DashboardProps) {
+export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResultSelect, matchData, selectedTeamIds = [], hasFavoriteTeams = true, profileCardHeight = 0 }: DashboardProps) {
   const { t } = useTranslation();
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
   const isLight = theme === 'light';
   const themeColors = isLight ? COLORS.light : COLORS.dark;
   const [isPremium, setIsPremium] = useState(false);
@@ -1155,55 +1158,83 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
     } catch (_) {}
   };
 
-  // ✅ KİLİTLİ: Referans = canlı veya en yakın yaklaşan maç filtre barının hemen altında görünsün.
-  // İçerik sırası: Biten → Canlı → Yaklaşan (biten üstte); açılışta scroll = referans (ilk canlı/yaklaşan).
-  const MATCH_CARD_HEIGHT = 175 + 8;
-  const SCROLL_CONTENT_PADDING_TOP = Platform.OS === 'ios' ? 260 : 256;
-  const pastCountForScroll = displayPastMatches.length || pastMatches.length;
-  const defaultScrollY = pastCountForScroll > 0
-    ? SCROLL_CONTENT_PADDING_TOP + pastCountForScroll * MATCH_CARD_HEIGHT
-    : 0;
+  // ✅ Kart en üstte: üst padding yok; altta tab bar için boşluk
+  const FALLBACK_PADDING = Platform.OS === 'ios' ? 280 : 272;
+  const SCROLL_VIEW_TOP_MARGIN = profileCardHeight > 0 ? profileCardHeight : FALLBACK_PADDING;
+  const SCROLL_CONTENT_PADDING_TOP = 0;
 
-  // ✅ İlk açılışta içerik göster
-  const hasScrolledForDisplayRef = React.useRef(false);
-  const isLoadingScreen = loading && !hasLoadedOnce;
-  React.useEffect(() => {
-    if (initialScrollDone || loading || isLoadingScreen) return;
-    const doShow = () => {
-      hasScrolledForDisplayRef.current = true;
-      setInitialScrollDone(true);
-    };
-    setTimeout(doShow, 80);
-  }, [initialScrollDone, loading, isLoadingScreen]);
+  // İlk canlı/yaklaşan kartın scroll content içindeki Y pozisyonu (onLayout ile doğrudan ölçülür)
+  const [refMarkerY, setRefMarkerY] = React.useState(0);
+  const onRefMarkerLayout = React.useCallback((e: any) => {
+    const y = e.nativeEvent.layout.y;
+    if (y >= 0) setRefMarkerY((prev) => (Math.abs(prev - y) > 2 ? y : prev));
+  }, []);
+  const [liveListAnchorY, setLiveListAnchorY] = React.useState(0);
+  const onLiveListAnchorLayout = React.useCallback((e: any) => {
+    const y = e.nativeEvent.layout.y;
+    if (y >= 0) setLiveListAnchorY((prev) => (Math.abs(prev - y) > 2 ? y : prev));
+  }, []);
+  const [upcomingListAnchorY, setUpcomingListAnchorY] = React.useState(0);
+  const onUpcomingListAnchorLayout = React.useCallback((e: any) => {
+    const y = e.nativeEvent.layout.y;
+    if (y >= 0) setUpcomingListAnchorY((prev) => (Math.abs(prev - y) > 2 ? y : prev));
+  }, []);
+  const activeAnchorY = liveListAnchorY > 0
+    ? liveListAnchorY
+    : (upcomingListAnchorY > 0 ? upcomingListAnchorY : refMarkerY);
+  const fallbackScrollY = 0;
 
-  // ✅ Filtre değiştiğinde referansa (canlı/yaklaşan ilk kart) scroll
-  const lastSelectedTeamIdsRef = React.useRef<number[]>([]);
-  React.useEffect(() => {
-    const filterChanged = JSON.stringify(selectedTeamIds) !== JSON.stringify(lastSelectedTeamIdsRef.current);
-    lastSelectedTeamIdsRef.current = selectedTeamIds;
-    if (filterChanged && scrollViewRef.current) {
-      setTimeout(() => {
-        (scrollViewRef.current as any)?.scrollTo?.({ y: defaultScrollYRef.current, animated: true });
-        if (!initialScrollDone) setInitialScrollDone(true);
-      }, 100);
-    }
-  }, [selectedTeamIds, initialScrollDone]);
-
-  // ✅ Veri yüklendikten sonra referansa (canlı/yaklaşan ilk kart) scroll – contentOffset tek seferde güvenilir olmayabilir
-  const hasScrolledToRefRef = React.useRef(false);
-  React.useEffect(() => {
-    if (!hasLoadedOnce || loading || hasScrolledToRefRef.current) return;
-    hasScrolledToRefRef.current = true;
-    const t = setTimeout(() => {
-      if (scrollViewRef.current && typeof (scrollViewRef.current as any).scrollTo === 'function') {
-        (scrollViewRef.current as any).scrollTo({ y: defaultScrollYRef.current, animated: false });
-      }
-    }, 150);
-    return () => clearTimeout(t);
-  }, [hasLoadedOnce, loading]);
-
+  // scrollY = markerY - contentPaddingTop → içerik ScrollView üstünden başlar
+  const defaultScrollY = activeAnchorY > 0
+    ? Math.max(0, activeAnchorY - SCROLL_CONTENT_PADDING_TOP)
+    : fallbackScrollY;
   const defaultScrollYRef = React.useRef(defaultScrollY);
   defaultScrollYRef.current = defaultScrollY;
+
+  // ✅ Filtre değişiminde (seçili takım/ilk görünen kart) yeniden hizalama tetikleyicisi
+  const selectedTeamIdsKey = React.useMemo(
+    () => [...selectedTeamIds].sort((a, b) => a - b).join(','),
+    [selectedTeamIds]
+  );
+  const firstLiveMatchId = filteredLiveMatches[0]?.fixture?.id ?? null;
+  const firstUpcomingMatchId = filteredUpcomingMatches[0]?.fixture?.id ?? null;
+
+  // Fallback: 2sn içinde ölçüm gelmezse yine de göster
+  React.useEffect(() => {
+    if (initialScrollDone) return;
+    const fallback = setTimeout(() => { setInitialScrollDone(true); }, 2000);
+    return () => clearTimeout(fallback);
+  }, [initialScrollDone]);
+
+  // Ana scroll effect: açılışta ve filtre değişiminde ilk canlı/yaklaşan kartı görünür alana hizala
+  React.useEffect(() => {
+    if (!hasLoadedOnce) return;
+    const scrollTo = activeAnchorY > 0
+      ? Math.max(0, activeAnchorY - SCROLL_CONTENT_PADDING_TOP)
+      : fallbackScrollY;
+    const t = setTimeout(() => {
+      if (scrollViewRef.current && typeof (scrollViewRef.current as any).scrollTo === 'function') {
+        (scrollViewRef.current as any).scrollTo({ y: scrollTo, animated: false });
+      }
+      if (!initialScrollDone) setInitialScrollDone(true);
+    }, 30);
+    return () => clearTimeout(t);
+  }, [
+    refMarkerY,
+    liveListAnchorY,
+    upcomingListAnchorY,
+    activeAnchorY,
+    hasLoadedOnce,
+    initialScrollDone,
+    SCROLL_CONTENT_PADDING_TOP,
+    SCROLL_VIEW_TOP_MARGIN,
+    fallbackScrollY,
+    selectedTeamIdsKey,
+    firstLiveMatchId,
+    firstUpcomingMatchId,
+    filteredLiveMatches.length,
+    filteredUpcomingMatches.length,
+  ]);
 
   // ✅ Ekrana 5 sn dokunulmazsa scroll referansa (canlı/yaklaşan ilk kart) döner
   const SNAP_BACK_DELAY_MS = 5000;
@@ -1231,22 +1262,8 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
     scheduleSnapBack();
   }, [cancelSnapBack, scheduleSnapBack]);
 
-  // ✅ Snap noktaları - sıra: Biten | Canlı | Yaklaşan (referans = canlı/yaklaşan başı)
-  const snapOffsets = React.useMemo(() => {
-    const liveCount = filteredLiveMatches.length;
-    const upcomingCount = filteredUpcomingMatches.length;
-    const pastCount = displayPastMatches.length || pastMatches.length;
-    const total = pastCount + liveCount + upcomingCount;
-    if (total > 20) return [];
-
-    const offsets: number[] = [];
-    for (let i = 0; i < pastCount; i++) offsets.push(SCROLL_CONTENT_PADDING_TOP + i * MATCH_CARD_HEIGHT);
-    const pastStart = SCROLL_CONTENT_PADDING_TOP + pastCount * MATCH_CARD_HEIGHT;
-    for (let i = 0; i < liveCount; i++) offsets.push(pastStart + i * MATCH_CARD_HEIGHT);
-    const liveStart = pastStart + liveCount * MATCH_CARD_HEIGHT;
-    for (let i = 0; i < upcomingCount; i++) offsets.push(liveStart + i * MATCH_CARD_HEIGHT);
-    return offsets;
-  }, [MATCH_CARD_HEIGHT, SCROLL_CONTENT_PADDING_TOP, displayPastMatches.length, pastMatches.length, filteredLiveMatches.length, filteredUpcomingMatches.length]);
+  // Snap offsets devre dışı: ölçüm tabanlı scroll sistemiyle tahmini snap noktaları uyumsuz.
+  const snapOffsets: number[] = [];
 
   // ✅ Loading durumunda da grid pattern göster
   // Maçlar yüklenirken veya backend çalışmıyorken bile UI gösterilmeli
@@ -1287,9 +1304,23 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
       {/* Scrollable Content */}
       <ScrollView
         ref={scrollViewRef}
-        style={[styles.scrollView, { opacity: initialScrollDone ? 1 : 0 }, isLight && { backgroundColor: 'transparent' }]}
-        contentContainerStyle={[styles.scrollContent, isLight && { backgroundColor: 'transparent' }]}
-        contentOffset={{ x: 0, y: defaultScrollY }}
+        style={[
+          styles.scrollView,
+          {
+            opacity: initialScrollDone ? 1 : 0,
+            position: 'absolute',
+            top: SCROLL_VIEW_TOP_MARGIN,
+            left: 0,
+            right: 0,
+            bottom: 0,
+          },
+          isLight && { backgroundColor: 'transparent' }
+        ]}
+        contentContainerStyle={[
+          styles.scrollContent,
+          isLight && { backgroundColor: 'transparent' },
+          { paddingTop: SCROLL_CONTENT_PADDING_TOP, paddingBottom: 120 + SIZES.tabBarHeight + insets.bottom },
+        ]}
         {...(Platform.OS !== 'web' ? { automaticallyAdjustContentInsets: false } : {})}
         showsVerticalScrollIndicator={Platform.OS === 'web'}
         {...(snapOffsets.length > 0 ? { snapToOffsets: snapOffsets, snapToAlignment: 'start' as const, decelerationRate: 'fast' as const } : {})}
@@ -1310,13 +1341,13 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
           </View>
         )}
 
-        {/* ✅ Sıra: Biten → Canlı → Yaklaşan. Referans = ilk canlı/yaklaşan kart (defaultScrollY ile filtre barı altında). */}
-        {/* ✅ BİTEN MAÇLAR - En üstte (yukarı kaydırınca görünür) */}
+        {/* Sıra: Biten → [Marker] → Canlı → Yaklaşan. Scroll açılışta ilk canlı/yaklaşan kartı üstte kilitler. */}
+        {/* BİTEN MAÇLAR - Yukarı kaydırınca görünür; kart pozisyonu bozulmaz */}
         {!showLoadingIndicator && (displayPastMatches.length > 0 || pastMatches.length > 0) && (
           <View key={`past-section-${pastMatches.length}`} style={styles.matchesListContainer}>
             {(displayPastMatches.length > 0 ? displayPastMatches : pastMatches).map((match, index) => (
-              <Animated.View 
-                key={`past-${match.fixture.id}`} 
+              <Animated.View
+                key={`past-${match.fixture.id}`}
                 entering={Platform.OS === 'web' ? FadeInDown : FadeInDown.delay(50 + index * 30).springify()}
                 style={styles.matchCardWrapper}
               >
@@ -1330,9 +1361,12 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
           </View>
         )}
 
-        {/* ✅ CANLI MAÇLAR - Referans blok (açılışta görünen ilk bölüm) */}
+        {/* Scroll hedef marker: ilk canlı/yaklaşan kartın konumu buna göre kilitlenir */}
+        {!showLoadingIndicator && <View onLayout={onRefMarkerLayout} style={{ height: 1 }} />}
+
+        {/* CANLI MAÇLAR - Açılışta görünen ilk bölüm (pozisyon kilitli) */}
         {!showLoadingIndicator && filteredLiveMatches.length > 0 && (
-          <View style={styles.matchesListContainer}>
+          <View style={styles.matchesListContainer} onLayout={onLiveListAnchorLayout}>
             {filteredLiveMatches.map((match, index) => (
               <Animated.View 
                 key={`live-${match.fixture.id}`} 
@@ -1351,7 +1385,10 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
 
         {/* ✅ YAKLAŞAN MAÇLAR - Referans blok (resim 2: lig, takımlar, tarih, geri sayım) */}
         {!showLoadingIndicator && filteredUpcomingMatches.length > 0 && (
-          <View style={styles.matchesListContainer}>
+          <View
+            style={styles.matchesListContainer}
+            onLayout={filteredLiveMatches.length === 0 ? onUpcomingListAnchorLayout : undefined}
+          >
             {filteredUpcomingMatches.map((match, index) => (
               <Animated.View 
                 key={`upcoming-${match.fixture.id}`} 
@@ -1400,8 +1437,8 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
           </View>
         )}
 
-        {/* Bottom Padding */}
-        <View style={{ height: 100 + SIZES.tabBarHeight }} />
+        {/* Bottom Padding - BottomNav + safe area; maç kartları kesilmeden scroll edilebilsin */}
+        <View style={{ height: 120 + SIZES.tabBarHeight + insets.bottom }} />
       </ScrollView>
       
       {/* ✅ Analiz Odağı Seçim Modal'ı */}
@@ -1935,9 +1972,8 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   scrollContent: {
-    paddingTop: Platform.OS === 'ios' ? 260 : 256, // ✅ KİLİTLİ: ProfileCard + filtre barı; yaklaşan maç bar altında kalmasın
-    paddingBottom: 100 + SIZES.tabBarHeight, // ✅ Footer navigation için extra padding
-    backgroundColor: 'transparent', // Grid pattern görünsün
+    paddingBottom: 100 + SIZES.tabBarHeight,
+    backgroundColor: 'transparent',
   },
 
   // Web: Mobil giriş bilgi bandı

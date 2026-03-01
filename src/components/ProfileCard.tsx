@@ -33,6 +33,7 @@ interface ProfileCardProps {
   onPress: () => void;
   newBadge?: { id: string; name: string; emoji: string; description: string; tier: number } | null;
   onBadgePopupClose?: () => void;
+  onHeightChange?: (height: number) => void;
   // Takım filtre için
   favoriteTeams?: FavoriteTeam[];
   selectedTeamIds?: number[];
@@ -56,6 +57,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
   onPress, 
   newBadge, 
   onBadgePopupClose,
+  onHeightChange,
   favoriteTeams = [],
   selectedTeamIds = [],
   onTeamSelect,
@@ -226,14 +228,20 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
       <View>
         <View style={styles.profileButton}>
           {/* Profile card container with grid pattern */}
-            <View style={[
+            <View
+              style={[
               styles.cardWrapper,
               isLight && {
                 backgroundColor: themeColors.card,
                 borderWidth: 1,
                 borderColor: themeColors.border,
               },
-            ]}>
+              ]}
+              onLayout={(e) => {
+                const h = e.nativeEvent.layout.height;
+                if (h > 0) onHeightChange?.(h);
+              }}
+            >
               {/* Grid Pattern Background - açık modda daha görünür */}
               <View style={[
                 styles.gridPattern,

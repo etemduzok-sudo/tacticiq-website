@@ -27,6 +27,8 @@ const getEnteringAnimation = (index: number = 0, baseDelay: number = 150) => {
 };
 import { logger } from '../utils/logger';
 import { translateCountry } from '../utils/countryUtils';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SIZES } from '../theme/theme';
 import { getTeamColors as getTeamColorsUtil } from '../utils/teamColors';
 import { useMatchesWithPredictions } from '../hooks/useMatchesWithPredictions';
 import { MatchPredictionSummaryCard } from '../components/match/MatchPredictionSummaryCard';
@@ -41,6 +43,7 @@ interface MatchListScreenProps {
   /** Tümü: boş array → tüm favori takımların maçları. Tek/çoklu: sadece seçili takımların maçları. */
   selectedTeamIds?: number[];
   showOnlyFinished?: boolean;
+  profileCardHeight?: number;
   matchData: {
     pastMatches?: any[];
     liveMatches: any[];
@@ -59,9 +62,11 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
   selectedTeamIds = [],
   showOnlyFinished = false,
   matchData,
+  profileCardHeight = 0,
 }) => {
   const scrollViewRef = useRef<ScrollView>(null);
   const matchCardPositions = useRef<{ [key: string]: number }>({});
+  const insets = useSafeAreaInsets();
   const { favoriteTeams } = useFavoriteTeams();
   const { liveMatches = [], pastMatches = [], loading, error, hasLoadedOnce } = matchData;
 
@@ -476,7 +481,13 @@ export const MatchListScreen: React.FC<MatchListScreenProps> = memo(({
           ref={scrollViewRef}
           style={styles.scrollView}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[
+            styles.scrollContent,
+            {
+              paddingTop: profileCardHeight > 0 ? profileCardHeight : (Platform.OS === 'ios' ? 280 : 272),
+              paddingBottom: 120 + SIZES.tabBarHeight + insets.bottom,
+            },
+          ]}
         >
           {/* ✅ SADECE CANLI MAÇLAR - Takım seçiliyse filtreli */}
           
@@ -750,9 +761,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingTop: Platform.OS === 'ios' ? 245 : 235, // ✅ Profil ile aynı: kişi kartı + favori takım barı
+    paddingTop: Platform.OS === 'ios' ? 280 : 272, // ✅ ProfileCard + filtre; maç kartları kesilmeden
     paddingHorizontal: 16,
-    paddingBottom: 100,
+    paddingBottom: 100, // Override: contentContainerStyle'da insets ile
   },
   loadingContainer: {
     flex: 1,
