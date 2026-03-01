@@ -2181,7 +2181,7 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favor
       
       const formation = formations.find(f => f.id === attackFormation);
       setShowSquadCompletePopup(formation?.name ?? '');
-      setTimeout(() => setShowSquadCompletePopup(null), 3000);
+      setTimeout(() => setShowSquadCompletePopup(null), 5000);
     }
   };
 
@@ -2295,50 +2295,18 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favor
       }
       
       setAttackPlayers(prev => {
-        console.log('✅ setAttackPlayers prev:', {
-          keys: Object.keys(prev),
-          slot0: prev[0],
-          slotIndex: prev[slotIndex],
-          count: Object.keys(prev).filter(k => prev[parseInt(k)]).length
-        });
-        
-        // Önce mevcut state'i kopyala
+        // Önce mevcut state'i kopyala; hem sayı hem string slot anahtarını temizle
+        // (storage'dan gelen veri bazen string key kullanır, çıkarılan oyuncu yedeklerde görünsün)
         const updated = { ...prev };
-        // Slot'u null yap
         updated[slotIndex] = null;
-        
-        // Debug: Güncellenmiş state'i kontrol et
-        console.log('✅ setAttackPlayers updated:', {
-          keys: Object.keys(updated),
-          slot0: updated[0],
-          slotIndex: updated[slotIndex],
-          slotIndexValue: updated[slotIndex],
-          count: Object.keys(updated).filter(k => updated[parseInt(k)]).length
-        });
-        
+        updated[String(slotIndex)] = null;
         return updated;
       });
     } else {
       setDefensePlayers(prev => {
-        console.log('✅ setDefensePlayers prev:', {
-          keys: Object.keys(prev),
-          slot0: prev[0],
-          slotIndex: prev[slotIndex],
-          count: Object.keys(prev).filter(k => prev[parseInt(k)]).length
-        });
-        
-        // Önce mevcut state'i kopyala
         const updated = { ...prev };
-        // Slot'u null yap
         updated[slotIndex] = null;
-        
-        console.log('✅ setDefensePlayers updated:', {
-          keys: Object.keys(updated),
-          slot0: updated[0],
-          slotIndex: updated[slotIndex],
-          count: Object.keys(updated).filter(k => updated[parseInt(k)]).length
-        });
-        
+        updated[String(slotIndex)] = null;
         return updated;
       });
     }
@@ -3741,7 +3709,7 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favor
         </View>
       </Modal>
 
-      {/* ✅ Kadro Tamamlandı – ekran ortasında standart popup, 3 sn sonra kapanır */}
+      {/* ✅ Kadro Tamamlandı – ekran ortasında standart popup, 5 sn sonra kapanır */}
       <Modal
         visible={showSquadCompletePopup !== null}
         animationType="fade"
@@ -4343,9 +4311,12 @@ const PlayerModal = ({ visible, players, selectedPlayers, positionLabel, onSelec
     seenIds.add(p.id);
     return true;
   });
+  // Sadece gerçekten kadrodaki (non-null) oyuncuları "seçili" say; çıkarılan oyuncu yedekte görünsün
+  const selectedIds = new Set(
+    Object.values(selectedPlayers).filter((sp: any) => sp != null && sp.id != null).map((sp: any) => sp.id)
+  );
   const eligiblePlayers = dedupedPlayers.filter(
-    (p: any) =>
-      !Object.values(selectedPlayers).some((sp: any) => sp?.id === p.id) && isPlayerEligible(p)
+    (p: any) => !selectedIds.has(p.id) && isPlayerEligible(p)
   );
   const canAddToSquad = (p: any) => p.eligible_for_selection !== false && !p.injured && !p.suspended;
 

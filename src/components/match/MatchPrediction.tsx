@@ -541,10 +541,11 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
     };
 
     // Gerçek kadro (lineups'tan) – formasyon slot sırasına göre (grid)
-    // Favori takım kadrosu gösterilmeli: predictionTeamId yoksa favori olan ev/deplasman kadrosunu seç
+    // Pozisyon/formasyon API'den gelmeli; gelmediyse kadro "hazır" sayılmaz, "henüz netleşmedi" gösterilir
     const resolvedTeamId = effectivePredictionTeamId ?? predictionTeamId;
     let actualPlayers: any[] = [];
     let actualFormation = '4-3-3';
+    let hasLineupButNoFormation = false;
     const homeTeamId = matchData?.homeTeam?.id;
     const awayTeamId = matchData?.awayTeam?.id;
 
@@ -563,11 +564,16 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
       return lineupList[0];
     };
 
-    // Önce lineups'tan dene
+    // Önce lineups'tan dene – kadroyu sadece API'den formasyon da geldiyse doldur
     if (lineups && lineups.length > 0) {
       const targetLineup = resolveTargetLineup(lineups);
+      const hasStartXI = (targetLineup?.startXI?.length ?? 0) >= 11;
+      const hasFormationFromApi = !!(targetLineup?.formation);
 
-      if (targetLineup?.startXI) {
+      if (hasStartXI && !hasFormationFromApi) {
+        hasLineupButNoFormation = true;
+      }
+      if (targetLineup?.startXI && targetLineup?.formation) {
         const mapped = targetLineup.startXI.map((item: any) => {
           const player = item.player || item;
           return {
@@ -581,11 +587,11 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
           };
         });
         actualPlayers = sortByGrid(mapped);
-        actualFormation = targetLineup.formation || '4-3-3';
+        actualFormation = targetLineup.formation;
       }
     }
 
-    // ✅ Mock maçlar için fallback - lineups boşsa mock lineup kullan
+    // ✅ Sadece test maçı (888001) için mock kadro – gerçek maçlarda asla mock kullanılmaz (sakat/yanlış oyuncu riski)
     const matchIdNum = matchId ? Number(matchId) : null;
     if (actualPlayers.length === 0 && matchIdNum && isMockTestMatch(matchIdNum)) {
       const rawMock = getMockLineup(matchIdNum);
@@ -675,6 +681,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
         players: actualPlayers,
         formation: actualFormation,
       },
+      hasLineupButNoFormation,
       homeTeam: {
         id: matchData?.homeTeam?.id || 0,
         name: matchData?.homeTeam?.name || '',
@@ -748,7 +755,29 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
     injuredOut: number;    // Sakatlanarak çıkar oranı
     totalPredictions: number; // Kaç kullanıcı tahmin yaptı
   }>>({});
-  
+
+  /** Gerçek maçlarda topluluk verisi yoksa kullanılan nötr değer (mock veri gösterilmez) */
+  const EMPTY_COMMUNITY_DATA = { goal: 0, assist: 0, yellowCard: 0, redCard: 0, penalty: 0, substitutedOut: 0, injuredOut: 0, totalPredictions: 0 };
+  /** Topluluk kartı/popup için mock tahmin oranları — sadece mock maçlarda kullanılır; gerçek maçlarda EMPTY_COMMUNITY_DATA kullan */
+  const getMockCommunityDataForPlayer = (player: any): { goal: number; assist: number; yellowCard: number; redCard: number; penalty: number; substitutedOut: number; injuredOut: number; totalPredictions: number } => {
+    const pos = (player?.position || player?.pos || '').toUpperCase();
+    const id = Number(player?.id) || 0;
+    const seed = id % 7;
+    const isGK = pos === 'GK' || pos === 'G';
+    const isDef = pos.includes('D') || pos === 'CB' || pos === 'LB' || pos === 'RB';
+    const isMid = pos.includes('M') || pos === 'CM' || pos === 'CDM' || pos === 'CAM';
+    if (isGK) {
+      return { goal: 0.02, assist: 0.01, yellowCard: 0.08, redCard: 0.01, penalty: 0.15, substitutedOut: 0.05, injuredOut: 0.02, totalPredictions: 800 + seed * 100 };
+    }
+    if (isDef) {
+      return { goal: 0.08 + seed * 0.02, assist: 0.12 + seed * 0.02, yellowCard: 0.25 + seed * 0.03, redCard: 0.02, penalty: 0.05, substitutedOut: 0.18 + seed * 0.02, injuredOut: 0.03, totalPredictions: 900 + seed * 80 };
+    }
+    if (isMid) {
+      return { goal: 0.22 + seed * 0.03, assist: 0.35 + seed * 0.04, yellowCard: 0.18 + seed * 0.02, redCard: 0.01, penalty: 0.12 + seed * 0.02, substitutedOut: 0.28 + seed * 0.02, injuredOut: 0.04, totalPredictions: 1100 + seed * 90 };
+    }
+    return { goal: 0.42 + seed * 0.05, assist: 0.28 + seed * 0.03, yellowCard: 0.12, redCard: 0.01, penalty: 0.25 + seed * 0.03, substitutedOut: 0.22, injuredOut: 0.02, totalPredictions: 1200 + seed * 100 };
+  };
+
   // ✅ TOPLULUK VERİLERİ GÖRÜNÜRLüK KONTROLÜ
   // KİLİTLİ KURAL - ONAY ALINMADAN DEĞİŞTİRME:
   // 1. Tahmin kaydedildikten sonra kullanıcı "Topluluk Verilerini Gör" butonuna basarsa
@@ -766,6 +795,12 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
   const hasRealLineupData = lineups && Array.isArray(lineups) && lineups.length > 0 && lineups.some((l: any) => l?.startXI?.length > 0);
   // 🔒 KİLİTLİ KURAL (locked-components.mdc): realLineupVisible = isMatchLive || isMatchFinished || hasViewedRealLineup
   const realLineupVisible = isMatchLive || isMatchFinished || hasViewedRealLineup;
+  React.useEffect(() => {
+    if (!__DEV__ || !matchData?.id) return;
+    const lineupCount = Array.isArray(lineups) ? lineups.length : 0;
+    const withStartXI = Array.isArray(lineups) ? lineups.filter((l: any) => l?.startXI?.length > 0).length : 0;
+    console.log('[LINEUP] Gerçek kadro API/DB:', { matchId: matchData.id, lineupCount, withStartXI, kadroAciklandi: hasRealLineupData });
+  }, [matchData?.id, lineups, hasRealLineupData]);
   const canShowRealLineupButton = !isMatchLive && !isMatchFinished && hasPrediction && hasRealLineupData && !hasViewedRealLineup;
 
   // ✅ MAÇ BİTTİKTEN SONRA PUAN HESAPLAMA (KİLİTLİ KURAL)
@@ -1278,38 +1313,38 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
   // Backend topluluk API'si hazır olduğunda burası gerçek verilerle doldurulacak
   // setCommunityPredictions(realDataFromBackend);
   
-  // ✅ Canlı maç sinyallerini yükle (sadece canlı maçlarda)
+  // ✅ Canlı maç sinyallerini yükle (sadece canlı maçlarda). Gerçek maçlarda mock sinyal yok — sadece API verisi veya boş.
   React.useEffect(() => {
     if (!isMatchLive || !attackPlayersArray || attackPlayersArray.length === 0) {
       setLiveSignals({});
       return;
     }
-    
-    // Mock sinyal verileri oluştur
+    const isMock = matchIdNum != null && isMockTestMatch(matchIdNum);
+    if (!isMock) {
+      setLiveSignals({});
+      return;
+    }
+    // Sadece mock maçlarda mock sinyal verileri
     const signalsMap: Record<number, PlayerSignals> = {};
     attackPlayersArray.forEach((player: any) => {
       const isGoalkeeper = player.position?.toUpperCase() === 'GK' || 
                            player.position?.toLowerCase().includes('goalkeeper');
-      const teamId = predictionTeamId || 611; // Default FB
-      
+      const teamId = predictionTeamId || 611;
       signalsMap[player.id] = getMockCommunitySignals(
         player.id,
         player.name,
         isGoalkeeper,
         teamId,
-        45 // Mock dakika
+        45
       );
     });
     setLiveSignals(signalsMap);
-    
-    // Her 30 saniyede güncelle (canlı maç simülasyonu)
     const interval = setInterval(() => {
       const updatedSignals: Record<number, PlayerSignals> = {};
       attackPlayersArray.forEach((player: any) => {
         const isGoalkeeper = player.position?.toUpperCase() === 'GK' || 
                              player.position?.toLowerCase().includes('goalkeeper');
         const teamId = predictionTeamId || 611;
-        
         updatedSignals[player.id] = getMockCommunitySignals(
           player.id,
           player.name,
@@ -1320,9 +1355,8 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
       });
       setLiveSignals(updatedSignals);
     }, 30000);
-    
     return () => clearInterval(interval);
-  }, [isMatchLive, attackPlayersArray, predictionTeamId]);
+  }, [isMatchLive, attackPlayersArray, predictionTeamId, matchIdNum]);
   
   // ✅ Topluluk oranına göre çerçeve kalınlığı hesapla (0-4)
   const getCommunityBorderWidth = (rate: number): number => {
@@ -2782,16 +2816,20 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                       })()}
                     </View>
                   ) : (
-                    <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', zIndex: 20, paddingHorizontal: 24 }}>
-                      <View style={{ alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
-                        <Text style={{ color: '#FFFFFF', fontSize: 36, fontWeight: '700' }}>?</Text>
+                    <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, zIndex: 20 }}>
+                      <View style={{ width: 280, minHeight: 368, borderRadius: 24, overflow: 'hidden', alignItems: 'center', shadowColor: '#0f172a', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.2, shadowRadius: 24, elevation: 12 }}>
+                        <LinearGradient colors={isLight ? ['rgba(30, 41, 59, 0.96)', 'rgba(51, 65, 85, 0.92)'] : ['rgba(18, 45, 38, 0.9)', 'rgba(28, 55, 47, 0.86)']} style={{ paddingVertical: 32, paddingHorizontal: 28, width: '100%', minHeight: 368, alignItems: 'center', justifyContent: 'center' }}>
+                          <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(96, 165, 250, 0.2)', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+                            <Ionicons name="person-outline" size={24} color="#60A5FA" />
+                          </View>
+                          <Text style={{ color: '#F1F5F9', fontSize: 15, fontWeight: '600', textAlign: 'center', marginBottom: 6, letterSpacing: 0.4 }}>
+                            Kadro Tahmini Yapılmadı
+                          </Text>
+                          <Text style={{ color: 'rgba(241, 245, 249, 0.78)', fontSize: 12, textAlign: 'center', lineHeight: 18, paddingHorizontal: 8 }}>
+                            Bu maç için kadro ve oyuncu tahmini yapılmadı
+                          </Text>
+                        </LinearGradient>
                       </View>
-                      <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '700', textAlign: 'center', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 }}>
-                        Kadro Tahmini Yapılmadı
-                      </Text>
-                      <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 11, textAlign: 'center', marginTop: 4, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 1 }}>
-                        Bu maç için kadro ve oyuncu tahmini yapılmadı
-                      </Text>
                     </View>
                   )}
                     <View style={styles.fieldInnerLabel}>
@@ -2838,6 +2876,9 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                       const positions = formationPositions[commFormation] || formationPositions['4-3-3'] || mockPositions;
                       return threeFieldData.communitySquad.players.slice(0, 11).map((player: any, index: number) => {
                         const pos = positions[index] || { x: 50, y: 50 };
+                        const community = communityPredictions[player.id] || (matchIdNum && isMockTestMatch(matchIdNum) ? getMockCommunityDataForPlayer(player) : EMPTY_COMMUNITY_DATA);
+                        const goalPct = Math.round(community.goal * 100);
+                        const assistPct = Math.round(community.assist * 100);
                         return (
                           <View
                             key={`community-field-${player.id}-${index}`}
@@ -2847,22 +2888,22 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                               style={[styles.playerCard, player.rating >= 85 && styles.playerCardElite]}
                               onPress={() => {
                                 if (!communityDataVisible) return;
-                                const community = communityPredictions[player.id];
+                                const data = communityPredictions[player.id] || (matchIdNum && isMockTestMatch(matchIdNum) ? getMockCommunityDataForPlayer(player) : EMPTY_COMMUNITY_DATA);
                                 setPlayerInfoPopup({
                                   playerName: formatPlayerDisplayName(player),
                                   position: player.position || '',
                                   rating: player.rating ?? null,
                                   userPredictions: [],
-                                  communityData: community ? {
-                                    totalUsers: community.totalPredictions,
-                                    goal: community.goal,
-                                    assist: community.assist,
-                                    yellowCard: community.yellowCard,
-                                    redCard: community.redCard,
-                                    penalty: community.penalty,
-                                    substitutedOut: community.substitutedOut,
-                                    injuredOut: community.injuredOut,
-                                  } : null,
+                                  communityData: {
+                                    totalUsers: data.totalPredictions,
+                                    goal: data.goal,
+                                    assist: data.assist,
+                                    yellowCard: data.yellowCard,
+                                    redCard: data.redCard,
+                                    penalty: data.penalty,
+                                    substitutedOut: data.substitutedOut,
+                                    injuredOut: data.injuredOut,
+                                  },
                                   showCommunityData: true,
                                 });
                               }}
@@ -2879,6 +2920,17 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                                   <Text style={styles.playerRatingBottom}>{normalizeRatingTo100(player.rating) != null ? String(normalizeRatingTo100(player.rating)) : '–'}</Text>
                                   <Text style={styles.playerPositionBottom} numberOfLines={1}>{getPositionAbbreviation(player.position || '')}</Text>
                                 </View>
+                                {/* Topluluk: tek satırda Gol/Asist + belirteç, üst üste binme yok */}
+                                <View style={{ marginTop: 2, paddingTop: 3, borderTopWidth: 1, borderTopColor: 'rgba(31, 162, 166, 0.3)', alignItems: 'center', justifyContent: 'center' }}>
+                                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', flexWrap: 'nowrap', gap: 4 }}>
+                                    <Text style={{ fontSize: 8, color: '#10B981' }}>⚽%{goalPct}</Text>
+                                    <Text style={{ fontSize: 8, color: '#3B82F6' }}>🅰️%{assistPct}</Text>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(31, 162, 166, 0.5)', paddingHorizontal: 4, paddingVertical: 1, borderRadius: 4 }}>
+                                      <Ionicons name="people" size={8} color="#FFF" />
+                                      <Text style={{ fontSize: 7, fontWeight: '600', color: '#FFF', marginLeft: 2 }}>Topl.</Text>
+                                    </View>
+                                  </View>
+                                </View>
                               </LinearGradient>
                             </TouchableOpacity>
                           </View>
@@ -2888,16 +2940,20 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                   </View>
                   {/* Resim 1 bildirimi kaldırıldı: "Topluluk verileri oluştu" kartı yok; onay için resim 2 (Emin misiniz?) kullanılıyor */}
                   {!hasPrediction && !communityDataVisible && (
-                    <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', zIndex: 15, paddingHorizontal: 24 }}>
-                      <View style={{ width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
-                        <Ionicons name="lock-closed" size={45} color="#F59E0B" />
+                    <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, zIndex: 15 }}>
+                      <View style={{ width: 280, minHeight: 368, borderRadius: 24, overflow: 'hidden', alignItems: 'center', shadowColor: '#0f172a', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.2, shadowRadius: 24, elevation: 12 }}>
+                        <LinearGradient colors={isLight ? ['rgba(30, 41, 59, 0.96)', 'rgba(51, 65, 85, 0.92)'] : ['rgba(18, 45, 38, 0.9)', 'rgba(28, 55, 47, 0.86)']} style={{ paddingVertical: 32, paddingHorizontal: 28, width: '100%', minHeight: 368, alignItems: 'center', justifyContent: 'center' }}>
+                          <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(245, 158, 11, 0.2)', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+                            <Ionicons name="lock-closed" size={24} color="#F59E0B" />
+                          </View>
+                          <Text style={{ color: '#F1F5F9', fontSize: 15, fontWeight: '600', textAlign: 'center', marginBottom: 6, letterSpacing: 0.4 }}>
+                            Topluluk Tahminleri Gizli
+                          </Text>
+                          <Text style={{ color: 'rgba(241, 245, 249, 0.78)', fontSize: 12, textAlign: 'center', lineHeight: 18, paddingHorizontal: 8 }}>
+                            Önce tahminlerinizi yapın ve kaydedin
+                          </Text>
+                        </LinearGradient>
                       </View>
-                      <Text style={{ color: '#F59E0B', fontSize: 13, fontWeight: '700', textAlign: 'center', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 }}>
-                        Topluluk Tahminleri Gizli
-                      </Text>
-                      <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, textAlign: 'center', marginTop: 4 }}>
-                        Önce tahminlerinizi yapın ve kaydedin
-                      </Text>
                     </View>
                   )}
                   {/* Şerit bildirimi kaldırıldı: topluluk verisi yokken saha içinde ayrı mesaj gösterilmiyor */}
@@ -2982,20 +3038,23 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
               </View>
               
               {/* 3. Gerçek Kadro (API) - Saha içinde: İlk 11 yok | Gerçek Kadro Hazır (Gör/Vazgeç) | Oyuncu kartları; alt boşluk ile sütun yüksekliği diğerleriyle aynı */}
+              {/* Gerçek kadro sadece API/DB'den (lineups.startXI) geldiyse "açıklandı" sayılır; mock ile doldurulmuş kadro "henüz açıklanmadı" gösterir */}
               <View style={[styles.multiFieldWrapper, { width: effectivePageWidth }]}>
                 <FootballField style={[styles.mainField, fieldDynamicStyle]}>
-                  {threeFieldData.actualSquad.players.length === 0 ? (
+                  {(!hasRealLineupData || threeFieldData.actualSquad.players.length === 0) ? (
                     <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, zIndex: 20 }}>
-                      <View style={{ width: '100%', maxWidth: 280, borderRadius: 24, overflow: 'hidden', alignItems: 'center', shadowColor: '#0f172a', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.2, shadowRadius: 24, elevation: 12 }}>
-                        <LinearGradient colors={isLight ? ['rgba(30, 41, 59, 0.96)', 'rgba(51, 65, 85, 0.92)'] : ['rgba(18, 45, 38, 0.9)', 'rgba(28, 55, 47, 0.86)']} style={{ paddingVertical: 32, paddingHorizontal: 28, width: '100%', alignItems: 'center' }}>
+                      <View style={{ width: 280, minHeight: 368, borderRadius: 24, overflow: 'hidden', alignItems: 'center', shadowColor: '#0f172a', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.2, shadowRadius: 24, elevation: 12 }}>
+                        <LinearGradient colors={isLight ? ['rgba(30, 41, 59, 0.96)', 'rgba(51, 65, 85, 0.92)'] : ['rgba(18, 45, 38, 0.9)', 'rgba(28, 55, 47, 0.86)']} style={{ paddingVertical: 32, paddingHorizontal: 28, width: '100%', minHeight: 368, alignItems: 'center', justifyContent: 'center' }}>
                           <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(148, 163, 184, 0.15)', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
-                            <Ionicons name="time-outline" size={26} color="#94A3B8" />
+                            <Ionicons name={threeFieldData.hasLineupButNoFormation ? 'help-circle-outline' : 'time-outline'} size={26} color="#94A3B8" />
                           </View>
                           <Text style={{ color: '#F1F5F9', fontSize: 15, fontWeight: '600', textAlign: 'center', marginBottom: 6, letterSpacing: 0.4 }}>
-                            Henüz ilk 11 belli olmadı
+                            {threeFieldData.hasLineupButNoFormation ? 'Kadro ve formasyon bilgisi henüz netleşmedi' : 'Gerçek kadrolar henüz açıklanmadı'}
                           </Text>
                           <Text style={{ color: 'rgba(241, 245, 249, 0.78)', fontSize: 12, textAlign: 'center', lineHeight: 18, paddingHorizontal: 8 }}>
-                            Maç kadroları açıklandığında ilk 11 ve formasyon burada görünecek.
+                            {threeFieldData.hasLineupButNoFormation
+                              ? 'İlk 11 bilgisi gelmiş ancak formasyon/pozisyon bilgisi API\'den henüz gelmedi. Netleşince burada gösterilecek.'
+                              : 'Bu maçın gerçek kadroları henüz açıklanmadı. Kadrolar açıklanınca burada gösterilecek.'}
                           </Text>
                         </LinearGradient>
                       </View>
@@ -3003,8 +3062,35 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                   ) : (realLineupVisible || isMatchLive || isMatchFinished) ? (
                     <View style={styles.playersContainer}>
                       {(() => {
+                        // Gerçek kadro: API'den gelen formasyon ile formationPositions tablosundan yerleşim al
+                        // Oyuncular zaten grid'e göre sıralı (sortByGrid); index sırası formationPositions slot sırasıyla eşleşir
                         const actualFormation = threeFieldData.actualSquad.formation || '4-3-3';
-                        const positions = formationPositions[actualFormation] || formationPositions['4-3-3'] || mockPositions;
+                        const knownPositions = formationPositions[actualFormation];
+                        
+                        // API formasyonu tabloda yoksa → formasyon string'inden dinamik kademeli yerleşim üret
+                        let positions: Array<{ x: number; y: number }>;
+                        if (knownPositions) {
+                          positions = knownPositions;
+                        } else {
+                          const parts = actualFormation.split('-').map(Number).filter(n => !isNaN(n) && n > 0);
+                          if (parts.length >= 2) {
+                            const rows = [1, ...parts]; // GK (1) + formasyon satırları
+                            const yValues = rows.map((_, ri) => 88 - (ri / (rows.length - 1)) * 78);
+                            const generated: Array<{ x: number; y: number }> = [];
+                            rows.forEach((count, ri) => {
+                              const y = yValues[ri];
+                              for (let ci = 0; ci < count; ci++) {
+                                const x = count === 1 ? 50 : 12 + (ci / (count - 1)) * 76;
+                                // Hafif kademeli ofset: kenar oyuncuları 2-3% yukarı (düz çizgi olmasın)
+                                const edgeOffset = count > 2 ? (ci === 0 || ci === count - 1 ? -2 : ci === Math.floor(count / 2) ? 2 : 0) : 0;
+                                generated.push({ x, y: y + edgeOffset });
+                              }
+                            });
+                            positions = generated.length === 11 ? generated : (formationPositions['4-3-3'] || mockPositions);
+                          } else {
+                            positions = formationPositions['4-3-3'] || mockPositions;
+                          }
+                        }
                         const LIVE_REACTION_ICONS = [
                           { key: 'good', icon: '🔥', isCard: false },
                           { key: 'bad', icon: '👎', isCard: false },
@@ -3105,45 +3191,45 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                       })()}
                     </View>
                   ) : (
-                    <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, zIndex: 20 }}>
-                      <View style={{ width: 280, minHeight: 368, borderRadius: 24, overflow: 'hidden', alignItems: 'center', shadowColor: '#0f172a', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.2, shadowRadius: 24, elevation: 12 }}>
-                        <LinearGradient colors={isLight ? ['rgba(30, 41, 59, 0.96)', 'rgba(51, 65, 85, 0.92)'] : ['rgba(18, 45, 38, 0.9)', 'rgba(28, 55, 47, 0.86)']} style={{ paddingVertical: 32, paddingHorizontal: 28, width: '100%', minHeight: 368, alignItems: 'center', justifyContent: 'center' }}>
-                          <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(16, 185, 129, 0.1)', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
-                            <Ionicons name="football" size={24} color="#10B981" />
+                    <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28, zIndex: 20 }}>
+                      <View style={{ width: 280, minHeight: 368, borderRadius: 24, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(239, 68, 68, 0.25)', shadowColor: '#0f172a', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.2, shadowRadius: 24, elevation: 12 }}>
+                        <LinearGradient colors={isLight ? ['rgba(30, 41, 59, 0.96)', 'rgba(51, 65, 85, 0.92)'] : ['rgba(18, 45, 38, 0.9)', 'rgba(28, 55, 47, 0.86)']} style={{ paddingVertical: 24, paddingHorizontal: 22, width: '100%', minHeight: 368, alignItems: 'center', justifyContent: 'flex-start' }}>
+                          <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(239, 68, 68, 0.15)', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+                            <Ionicons name="football" size={22} color="#EF4444" />
                           </View>
-                          <Text style={{ color: '#F1F5F9', fontSize: 15, fontWeight: '600', textAlign: 'center', marginBottom: 6, letterSpacing: 0.4 }}>
-                            Gerçek Kadro Hazır
+                          <Text style={{ color: '#F1F5F9', fontSize: 15, fontWeight: '700', textAlign: 'center', marginBottom: 2 }}>
+                            Gerçek kadro hazır!
                           </Text>
-                          <Text style={{ color: 'rgba(241, 245, 249, 0.78)', fontSize: 12, textAlign: 'center', lineHeight: 18, marginBottom: 12, paddingHorizontal: 8 }}>
-                            Gerçek ilk 11 ve formasyon açıklandı. Görmek isterseniz aşağıdaki butonu kullanın.
-                          </Text>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 20 }}>
-                            <Ionicons name="lock-closed-outline" size={12} color="#94A3B8" />
-                            <Text style={{ fontSize: 11, color: '#94A3B8' }}>Görürseniz tahminleriniz kalıcı olarak kilitlenir</Text>
+                          <ScrollView style={{ maxHeight: 140 }} contentContainerStyle={{ paddingHorizontal: 4 }} showsVerticalScrollIndicator={false}>
+                            <Text style={{ color: '#94A3B8', fontSize: 12, textAlign: 'center', lineHeight: 19, marginBottom: 8 }}>
+                              Maçın kadrosunu görmeden önce kadro oluşturunuz ve oyunculara ve maça ait tahminlerinizi yapınız.
+                            </Text>
+                            <Text style={{ color: '#94A3B8', fontSize: 12, textAlign: 'center', lineHeight: 19 }}>
+                              Tahminlerinizi görmeden önce maç kadrosunu görmek isterseniz bu maç için{' '}
+                              <Text style={{ color: '#EF4444', fontWeight: '600' }}>artık tahmin yapamayacaksınız.</Text>
+                            </Text>
+                          </ScrollView>
+                          <View style={{ marginTop: 16, alignItems: 'center', width: '100%' }}>
+                            <TouchableOpacity
+                              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: 'transparent', borderRadius: 999, paddingVertical: 11, paddingHorizontal: 24, minWidth: 160, borderWidth: 1.5, borderColor: '#EF4444' }}
+                              onPress={() => setLockConfirmType('real')}
+                              activeOpacity={0.88}
+                            >
+                              <Ionicons name="eye-outline" size={18} color="#EF4444" />
+                              <Text style={{ fontSize: 14, fontWeight: '600', color: '#EF4444' }}>Kadroyu gör</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={{ marginTop: 10, paddingVertical: 8, paddingHorizontal: 16 }}
+                              onPress={() => {
+                                setPredictionViewIndex(0);
+                                setThreeFieldActiveIndex(0);
+                                threeFieldScrollRef.current?.scrollTo({ x: 0, animated: true });
+                              }}
+                              activeOpacity={0.7}
+                            >
+                              <Text style={{ fontSize: 13, fontWeight: '500', color: '#94A3B8' }}>Vazgeç</Text>
+                            </TouchableOpacity>
                           </View>
-                          {canShowRealLineupButton && (
-                            <>
-                              <TouchableOpacity
-                                style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: 'rgba(16, 185, 129, 0.9)', borderRadius: 999, paddingVertical: 12, paddingHorizontal: 28, minWidth: 180 }}
-                                onPress={() => setLockConfirmType('real')}
-                                activeOpacity={0.88}
-                              >
-                                <Ionicons name="eye-outline" size={18} color="#FFFFFF" />
-                                <Text style={{ fontSize: 14, fontWeight: '600', color: '#FFFFFF' }}>Gerçek Kadroyu Gör</Text>
-                              </TouchableOpacity>
-                              <TouchableOpacity
-                                style={{ marginTop: 16, paddingVertical: 10, paddingHorizontal: 24, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(148, 163, 184, 0.35)', backgroundColor: 'rgba(148, 163, 184, 0.08)' }}
-                                onPress={() => {
-                                  setPredictionViewIndex(0);
-                                  setThreeFieldActiveIndex(0);
-                                  threeFieldScrollRef.current?.scrollTo({ x: 0, animated: true });
-                                }}
-                                activeOpacity={0.7}
-                              >
-                                <Text style={{ fontSize: 13, fontWeight: '500', color: '#94A3B8' }}>Vazgeç</Text>
-                              </TouchableOpacity>
-                            </>
-                          )}
                         </LinearGradient>
                       </View>
                     </View>
@@ -3166,60 +3252,54 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                   </View>
                 </FootballField>
                 <View style={{ height: 0 }} />
-                {/* Gerçek sekmesi altı: şerit kaldırıldı, mesajlar sadece saha içi overlay'de; kadro varsa ve görüldüyse takım performans barı */}
-                <View style={styles.fieldBelowContent}>
-                  {threeFieldData.actualSquad.players.length === 0 || !realLineupVisible ? (
-                    <View style={{ minHeight: 40 }} />
-                  ) : (
-                    <View style={[styles.fieldBelowSection, styles.fieldBelowSectionTeamPerf, { flexDirection: 'row', alignItems: 'center', flexWrap: 'nowrap', width: '100%', minWidth: 0 }]}>
-                      <View style={[styles.fieldBelowSectionLabel, { marginRight: 8 }]}>
-                        <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.9)', lineHeight: 14 }}>Takım</Text>
-                        <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.9)', lineHeight: 14 }}>performansı</Text>
-                      </View>
-                      <View style={[styles.fieldBelowSectionBarWrap, { flex: 1, minWidth: 0, height: 24, position: 'relative' }]}>
-                        {/* 1-10 yatay kesikli çizgi (10 segment) */}
-                        <View style={{ flexDirection: 'row', flex: 1, alignItems: 'center', height: 20 }}>
-                          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
-                            <TouchableOpacity
-                              key={n}
-                              onPress={() => setTeamPerformance(n)}
-                              style={{
-                                flex: 1,
-                                minWidth: 0,
-                                height: 18,
-                                borderLeftWidth: n === 1 ? 0 : 1,
-                                borderLeftColor: 'rgba(255,255,255,0.35)',
-                                borderStyle: 'dashed',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                backgroundColor: teamPerformance === n ? 'rgba(16, 185, 129, 0.4)' : 'transparent',
-                                borderRadius: 2,
-                              }}
-                              activeOpacity={0.8}
-                            >
-                              <Text style={{ fontSize: 9, fontWeight: '600', color: teamPerformance === n ? '#10B981' : 'rgba(255,255,255,0.5)' }}>{n}</Text>
-                            </TouchableOpacity>
-                          ))}
-                        </View>
-                        {/* Topluluk ortalaması: kırmızı ile işaretli, ~5 dk günc. dinamik gösterim */}
-                        {communityTeamPerformanceAvg != null && (
-                          <View style={{ position: 'absolute', left: `${Math.max(0, Math.min(100, ((communityTeamPerformanceAvg - 1) / 9) * 100))}%`, marginLeft: -10, top: 0, width: 20, alignItems: 'center', zIndex: 2 }}>
-                            <View style={[styles.communityAvgLabelInline, { backgroundColor: 'rgba(239, 68, 68, 0.25)', borderWidth: 1, borderColor: 'rgba(239, 68, 68, 0.5)' }]}>
-                              <Text style={{ fontSize: 10, fontWeight: '700', color: '#EF4444' }}>{communityTeamPerformanceAvg.toFixed(1)}</Text>
-                            </View>
-                            <Text style={{ fontSize: 7, color: 'rgba(239, 68, 68, 0.9)', marginTop: 2, fontWeight: '600' }}>~5 dk günc.</Text>
-                          </View>
-                        )}
-                      </View>
+                {/* Gerçek sekmesi altı: Takım performansı barı her zaman aynı yerde ve yükseklikte (sonradan görünüp sahayı kesmesin) */}
+                <View style={[styles.fieldBelowContent, { minHeight: 44, height: 44 }]}>
+                  <View style={[styles.fieldBelowSection, styles.fieldBelowSectionTeamPerf, { flexDirection: 'row', alignItems: 'center', flexWrap: 'nowrap', width: '100%', minWidth: 0 }, (threeFieldData.actualSquad.players.length === 0 || !realLineupVisible) && { opacity: 0.5 }, { pointerEvents: threeFieldData.actualSquad.players.length > 0 && realLineupVisible ? 'auto' : 'none' }]}>
+                    <View style={[styles.fieldBelowSectionLabel, { marginRight: 8 }]}>
+                      <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.9)', lineHeight: 14 }}>Takım</Text>
+                      <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.9)', lineHeight: 14 }}>performansı</Text>
                     </View>
-                  )}
+                    <View style={[styles.fieldBelowSectionBarWrap, { flex: 1, minWidth: 0, height: 24, position: 'relative' }]}>
+                      <View style={{ flexDirection: 'row', flex: 1, alignItems: 'center', height: 20 }}>
+                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
+                          <TouchableOpacity
+                            key={n}
+                            onPress={() => setTeamPerformance(n)}
+                            style={{
+                              flex: 1,
+                              minWidth: 0,
+                              height: 18,
+                              borderLeftWidth: n === 1 ? 0 : 1,
+                              borderLeftColor: 'rgba(255,255,255,0.35)',
+                              borderStyle: 'dashed',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              backgroundColor: teamPerformance === n ? 'rgba(16, 185, 129, 0.4)' : 'transparent',
+                              borderRadius: 2,
+                            }}
+                            activeOpacity={0.8}
+                          >
+                            <Text style={{ fontSize: 9, fontWeight: '600', color: teamPerformance === n ? '#10B981' : 'rgba(255,255,255,0.5)' }}>{n}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                      {communityTeamPerformanceAvg != null && threeFieldData.actualSquad.players.length > 0 && realLineupVisible && (
+                        <View style={{ position: 'absolute', left: `${Math.max(0, Math.min(100, ((communityTeamPerformanceAvg - 1) / 9) * 100))}%`, marginLeft: -10, top: 0, width: 20, alignItems: 'center', zIndex: 2 }}>
+                          <View style={[styles.communityAvgLabelInline, { backgroundColor: 'rgba(239, 68, 68, 0.25)', borderWidth: 1, borderColor: 'rgba(239, 68, 68, 0.5)' }]}>
+                            <Text style={{ fontSize: 10, fontWeight: '700', color: '#EF4444' }}>{communityTeamPerformanceAvg.toFixed(1)}</Text>
+                          </View>
+                          <Text style={{ fontSize: 7, color: 'rgba(239, 68, 68, 0.9)', marginTop: 2, fontWeight: '600' }}>~5 dk günc.</Text>
+                        </View>
+                      )}
+                    </View>
+                  </View>
                 </View>
               </View>
               </View>
             </ScrollView>
           </View>
           {/* ✅ 3 nokta: ekranın en altında, kesilmeden görünsün */}
-          <View style={[styles.multiFieldPageIndicatorsFixed, { position: 'absolute', left: 0, right: 0, bottom: 9, zIndex: 10 }]} pointerEvents="box-none">
+          <View style={[styles.multiFieldPageIndicatorsFixed, { position: 'absolute', left: 0, right: 0, bottom: 9, zIndex: 10, pointerEvents: 'box-none' }]}>
             {[0, 1, 2].map((i) => (
               <View key={i} style={[styles.multiFieldPageDot, threeFieldActiveIndex === i && styles.multiFieldPageDotActive]} />
             ))}
@@ -5357,29 +5437,35 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
         <Modal visible transparent animationType="fade" onRequestClose={() => setLockConfirmType(null)} statusBarTranslucent>
           <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
             <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={() => setLockConfirmType(null)} />
-            <View style={{ width: '100%', maxWidth: 340, backgroundColor: '#1E3A3A', borderRadius: 16, borderWidth: 1, borderColor: 'rgba(31, 162, 166, 0.4)', padding: 24 }}>
-              <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(245, 158, 11, 0.2)', alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginBottom: 16 }}>
-                <Ionicons name="lock-closed" size={28} color="#F59E0B" />
+            <View style={{ width: '100%', maxWidth: 320, backgroundColor: lockConfirmType === 'real' ? '#152d28' : '#1E3A3A', borderRadius: 16, borderWidth: 1, borderColor: lockConfirmType === 'real' ? 'rgba(239, 68, 68, 0.3)' : 'rgba(31, 162, 166, 0.4)', padding: 22 }}>
+              <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: lockConfirmType === 'real' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(245, 158, 11, 0.2)', alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginBottom: 14 }}>
+                <Ionicons name="lock-closed" size={24} color={lockConfirmType === 'real' ? '#EF4444' : '#F59E0B'} />
               </View>
-              <Text style={{ fontSize: 18, fontWeight: '700', color: '#FFFFFF', textAlign: 'center', marginBottom: 10 }}>Emin misiniz?</Text>
-              <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.9)', lineHeight: 21, textAlign: 'center', marginBottom: 24 }}>
-                Artık tahmininizi değiştiremeyeceksiniz. Bu işlem geri alınamaz.
+              <Text style={{ fontSize: 16, fontWeight: '700', color: '#FFFFFF', textAlign: 'center', marginBottom: 8 }}>
+                {lockConfirmType === 'real' ? 'Kadroyu görmek istediğinize emin misiniz?' : 'Emin misiniz?'}
               </Text>
-              <View style={{ flexDirection: 'row', gap: 12, justifyContent: 'center' }}>
+              <Text style={{ fontSize: 13, color: '#94A3B8', lineHeight: 20, textAlign: 'center', marginBottom: 20 }}>
+                {lockConfirmType === 'real'
+                  ? 'Artık tahmin yapamayacak ve puan kazanmayacaksınız. Bu işlem geri alınamaz.'
+                  : 'Artık tahmininizi değiştiremeyeceksiniz. Bu işlem geri alınamaz.'}
+              </Text>
+              <View style={{ flexDirection: 'row', gap: 10, justifyContent: 'center' }}>
                 <TouchableOpacity
-                  style={{ flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: 'rgba(107, 114, 128, 0.5)', alignItems: 'center' }}
+                  style={{ flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: 'rgba(71, 85, 105, 0.5)', alignItems: 'center' }}
                   onPress={() => setLockConfirmType(null)}
                   activeOpacity={0.8}
                 >
-                  <Text style={{ fontSize: 15, fontWeight: '600', color: '#E5E7EB' }}>Vazgeç</Text>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#E2E8F0' }}>Vazgeç</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={{
                     flex: 1,
-                    paddingVertical: 14,
+                    paddingVertical: 12,
                     borderRadius: 12,
                     alignItems: 'center',
-                    backgroundColor: lockConfirmType === 'community' ? '#3B82F6' : '#10B981',
+                    backgroundColor: lockConfirmType === 'community' ? '#3B82F6' : 'transparent',
+                    borderWidth: lockConfirmType === 'real' ? 1.5 : 0,
+                    borderColor: lockConfirmType === 'real' ? '#EF4444' : 'transparent',
                   }}
                   onPress={async () => {
                     const wasCommunity = lockConfirmType === 'community';
@@ -5428,14 +5514,17 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                       setPredictionViewIndex(2);
                       setThreeFieldActiveIndex(2);
                       setTimeout(() => {
-                        mainScrollRef.current?.scrollToEnd({ animated: true });
+                        // Gerçek sekmesinde saha üstten kesilmesin: dikey scroll en alta değil, en üste (saha görünsün)
+                        mainScrollRef.current?.scrollTo({ y: 0, animated: true });
                         threeFieldScrollRef.current?.scrollTo({ x: effectivePageWidth * 2, animated: true });
                       }, 300);
                     }
                   }}
                   activeOpacity={0.8}
                 >
-                  <Text style={{ fontSize: 15, fontWeight: '700', color: '#FFFFFF' }}>Eminim</Text>
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: lockConfirmType === 'real' ? '#EF4444' : '#FFFFFF' }}>
+                    {lockConfirmType === 'real' ? 'Kadroyu gör' : 'Eminim'}
+                  </Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -5591,13 +5680,13 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
               borderColor: 'rgba(31, 162, 166, 0.3)',
               overflow: 'hidden',
             }}>
-              {/* Header */}
+              {/* Header: Topluluk verisi ise teal/people, değilse kırmızı i */}
               <View style={{
-                backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                backgroundColor: playerInfoPopup.showCommunityData ? 'rgba(31, 162, 166, 0.2)' : 'rgba(239, 68, 68, 0.2)',
                 paddingVertical: 14,
                 paddingHorizontal: 16,
                 borderBottomWidth: 1,
-                borderBottomColor: 'rgba(239, 68, 68, 0.3)',
+                borderBottomColor: playerInfoPopup.showCommunityData ? 'rgba(31, 162, 166, 0.35)' : 'rgba(239, 68, 68, 0.3)',
                 flexDirection: 'row',
                 alignItems: 'center',
                 justifyContent: 'space-between',
@@ -5607,15 +5696,24 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                     width: 28,
                     height: 28,
                     borderRadius: 14,
-                    backgroundColor: '#EF4444',
+                    backgroundColor: playerInfoPopup.showCommunityData ? '#1FA2A6' : '#EF4444',
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}>
-                    <Text style={{ color: '#FFF', fontWeight: '700', fontStyle: 'italic' }}>i</Text>
+                    {playerInfoPopup.showCommunityData ? (
+                      <Ionicons name="people" size={16} color="#FFF" />
+                    ) : (
+                      <Text style={{ color: '#FFF', fontWeight: '700', fontStyle: 'italic' }}>i</Text>
+                    )}
                   </View>
                   <Text style={{ fontSize: 18, fontWeight: '700', color: '#FFFFFF' }}>
                     {playerInfoPopup.playerName}
                   </Text>
+                  {playerInfoPopup.showCommunityData && (
+                    <View style={{ backgroundColor: 'rgba(31, 162, 166, 0.3)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
+                      <Text style={{ fontSize: 11, fontWeight: '600', color: '#5EEAD4' }}>Topluluk</Text>
+                    </View>
+                  )}
                 </View>
                 <TouchableOpacity onPress={() => setPlayerInfoPopup(null)}>
                   <Ionicons name="close" size={24} color="#94A3B8" />
@@ -5650,9 +5748,12 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
 
                 {/* Topluluk Verileri */}
                 <View>
-                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#3B82F6', marginBottom: 8 }}>
-                    📊 Topluluk Tahminleri
-                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                    <Ionicons name="people" size={18} color="#1FA2A6" />
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: '#1FA2A6' }}>
+                      Topluluk Tahminleri
+                    </Text>
+                  </View>
                   {playerInfoPopup.communityData ? (
                     playerInfoPopup.showCommunityData ? (
                       <View style={{ gap: 8 }}>

@@ -659,8 +659,8 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
     // İlk çağrı hemen
     fetchLiveData();
     
-    // En geç 15 sn içinde görünsün: her 8 saniyede bir güncelle
-    const interval = setInterval(fetchLiveData, 8000);
+    // 75K API bütçe → her 5 saniyede bir güncelle (canlı istatistik anlık yansısın)
+    const interval = setInterval(fetchLiveData, 5000);
     
     return () => {
       console.log('⏹️ Canlı maç güncelleme döngüsü durduruldu');
@@ -843,24 +843,8 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
         const timeSinceStart = now - matchTime;
         const hoursSinceMatch = timeSinceStart / (1000 * 60 * 60);
         
-        // ✅ YENİ: Maç başlamış ama statü NS - muhtemelen canlı (cache stale)
-        // Son 3 saat içinde başlamış ve statü NS/TBD/boş ise → potansiyel canlı
-        if (timeSinceStart > 0 && timeSinceStart < 3 * 60 * 60 * 1000 && 
-            (apiStatus === 'NS' || apiStatus === '' || apiStatus === 'TBD' || !apiStatus)) {
-          const estimatedMinutes = Math.floor(timeSinceStart / 60000);
-          console.log(`🔴 [MatchDetail] Maç ${matchId} potansiyel canlı (NS ama ${estimatedMinutes}dk geçmiş) - 1H döndürülüyor`);
-          // ✅ 45 dakikadan az ise 1H, 45-60 arası HT, 60+ ise 2H varsay
-          if (estimatedMinutes < 45) {
-            return '1H';
-          } else if (estimatedMinutes < 60) {
-            return 'HT';
-          } else if (estimatedMinutes < 105) {
-            return '2H';
-          } else {
-            // 105+ dakika - muhtemelen bitmiş
-            return 'FT';
-          }
-        }
+        // ✅ API status'a güven: NS ise canlı sayma (spinner / "canlı veriler yükleniyor" maç başlamadan dönmesin)
+        // Potansiyel canlı (NS ama vakit geçmiş) override kaldırıldı; API 1H döndüğünde canlı gösterilir.
         
         // Maç başlamasından 3+ saat geçtiyse ve statü hala NS, boş veya belirsiz ise, FT say
         if (hoursSinceMatch > 3 && (apiStatus === 'NS' || apiStatus === '' || apiStatus === 'TBD' || !apiStatus)) {
@@ -1014,13 +998,22 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
   // ✅ Mock maçlarda dakika her saniye güncellenir (countdownTicker ile); yoksa API'den gelen elapsed
   // ✅ DÜZELTME: currentMatch (liveMatchData || match) kullan (canlı güncelleme için)
   const rawMatchMinute = currentMatch?.fixture?.status?.elapsed ?? 0;
+  const apiStatus = currentMatch?.fixture?.status?.short ?? currentMatch?.fixture?.status ?? '';
   // ✅ Dakika, uzatma ve salise hesaplama (mock maçlarda gerçek zamandan)
   const { matchMinute, matchExtraTime, matchSecond } = (() => {
     if (!matchId || !currentMatch?.fixture) return { matchMinute: rawMatchMinute, matchExtraTime: null, matchSecond: 0 };
     if (!isMockTestMatch(Number(matchId))) {
-      // Gerçek maçlar için API'den gelen extraTime bilgisini kullan
-      const extraTime = currentMatch?.fixture?.status?.extraTime ?? null;
-      return { matchMinute: rawMatchMinute, matchExtraTime: extraTime, matchSecond: 0 };
+      // Gerçek maçlar: API bazen ilk yarı uzatmasında extraTime göndermez, elapsed 46/47/48 olur
+      let minute = rawMatchMinute;
+      let extraTime = currentMatch?.fixture?.status?.extraTime ?? null;
+      if (apiStatus === '1H' && rawMatchMinute >= 46 && rawMatchMinute <= 48) {
+        minute = 45;
+        extraTime = rawMatchMinute - 45;
+      } else if (apiStatus === '2H' && rawMatchMinute >= 91 && rawMatchMinute <= 99) {
+        minute = 90;
+        if (extraTime == null) extraTime = rawMatchMinute - 90;
+      }
+      return { matchMinute: minute, matchExtraTime: extraTime, matchSecond: 0 };
     }
     
     const matchStart = (Number(matchId) === MOCK_MATCH_IDS.GS_FB || Number(matchId) === MOCK_MATCH_IDS.TEST_6H) ? getMatch1Start() : getMatch2Start();

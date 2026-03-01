@@ -504,7 +504,8 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
     }, 'MATCHES');
     
     try {
-      if (!hasLoadedOnce && pastMatches.length === 0 && upcomingMatches.length === 0) {
+      // ✅ Sadece ilk yüklemede loading göster; sonraki refresh'lerde cache verisi görünür kalsın
+      if (teams && teams.length > 0 && !hasLoadedOnce) {
         setLoading(true);
       }
       setError(null);
