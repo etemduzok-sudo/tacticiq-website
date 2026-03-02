@@ -818,68 +818,63 @@ function copyBackupApiKeyFromQuery(req, res, next) {
   }
   next();
 }
-async function handleBackupDb(req, res) {
-  try {
-    const { supabase } = require('./config/supabase');
-    const { TABLES_TO_BACKUP, fetchOneTable } = require('./services/backupService');
-    if (!supabase) {
-      return res.status(503).json({ success: false, error: 'Supabase yapılandırılmadı.' });
+async function runBackupToStorage(supabase, folderName) {
+  const { TABLES_TO_BACKUP, fetchOneTable } = require('./services/backupService');
+  const uploaded = [];
+  const results = [];
+  let totalRecords = 0;
+  for (const tableName of TABLES_TO_BACKUP) {
+    const data = await fetchOneTable(supabase, tableName);
+    if (data === null) {
+      results.push({ table: tableName, success: false, count: 0 });
+      continue;
     }
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-    const folderName = `backup-${timestamp}`;
-    const uploaded = [];
-    const results = [];
-    let totalRecords = 0;
-    // Tablo tablo oku + yükle (aynı anda tek tablo bellekte = 512MB limitinde OOM riski azalır)
-    for (const tableName of TABLES_TO_BACKUP) {
-      const data = await fetchOneTable(supabase, tableName);
-      if (data === null) {
-        results.push({ table: tableName, success: false, count: 0 });
-        continue;
-      }
-      const body = Buffer.from(JSON.stringify(data), 'utf8');
-      const { error } = await supabase.storage
-        .from(BACKUP_STORAGE_BUCKET)
-        .upload(`${folderName}/${tableName}.json`, body, { contentType: 'application/json', upsert: true });
-      if (error) {
-        console.error(`[backup-db] Storage upload ${tableName}:`, error.message);
-        return res.status(500).json({
-          success: false,
-          error: `Storage yükleme hatası: ${error.message}. Supabase Dashboard → Storage → "${BACKUP_STORAGE_BUCKET}" bucket'ını oluşturun (public değil).`,
-          folderName,
-          uploaded,
-        });
-      }
-      uploaded.push(tableName);
-      results.push({ table: tableName, success: true, count: data.length });
-      totalRecords += data.length;
-    }
-    const summary = {
-      timestamp: new Date().toISOString(),
-      folderName,
-      tables: results,
-      totalRecords,
-    };
-    const summaryBody = Buffer.from(JSON.stringify(summary), 'utf8');
-    const { error: summaryErr } = await supabase.storage
+    const body = Buffer.from(JSON.stringify(data), 'utf8');
+    const { error } = await supabase.storage
       .from(BACKUP_STORAGE_BUCKET)
-      .upload(`${folderName}/_summary.json`, summaryBody, { contentType: 'application/json', upsert: true });
-    if (summaryErr) {
-      console.warn('[backup-db] _summary upload:', summaryErr.message);
-    } else {
-      uploaded.push('_summary.json');
+      .upload(`${folderName}/${tableName}.json`, body, { contentType: 'application/json', upsert: true });
+    if (error) {
+      console.error(`[backup-db] Storage upload ${tableName}:`, error.message);
+      return { ok: false, folderName, uploaded, error: error.message };
     }
-    res.json({
-      success: true,
-      folderName,
-      totalRecords,
-      uploaded,
-      message: 'Yedek Supabase Storage\'a yüklendi. Bilgisayar kapalıyken cron-job.org vb. ile bu endpoint günlük tetiklenebilir.',
-    });
-  } catch (err) {
-    console.error('[backup-db]', err);
-    res.status(500).json({ success: false, error: err.message });
+    uploaded.push(tableName);
+    results.push({ table: tableName, success: true, count: data.length });
+    totalRecords += data.length;
   }
+  const summary = { timestamp: new Date().toISOString(), folderName, tables: results, totalRecords };
+  const { error: summaryErr } = await supabase.storage
+    .from(BACKUP_STORAGE_BUCKET)
+    .upload(`${folderName}/_summary.json`, Buffer.from(JSON.stringify(summary), 'utf8'), { contentType: 'application/json', upsert: true });
+  if (summaryErr) console.warn('[backup-db] _summary upload:', summaryErr.message);
+  else uploaded.push('_summary.json');
+  return { ok: true, folderName, totalRecords, uploaded };
+}
+
+async function handleBackupDb(req, res) {
+  const { supabase } = require('./config/supabase');
+  if (!supabase) {
+    return res.status(503).json({ success: false, error: 'Supabase yapılandırılmadı.' });
+  }
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  const folderName = `backup-${timestamp}`;
+  // Hemen 202 dön; yedek arka planda çalışsın (cron-job.org ~30sn timeout olmasın)
+  res.status(202).json({
+    success: true,
+    folderName,
+    message: 'Yedek arka planda başlatıldı. Birkaç dakika içinde Supabase Storage → db-backups içinde görünür. Cron timeout almaz.',
+  });
+  setImmediate(async () => {
+    try {
+      const result = await runBackupToStorage(supabase, folderName);
+      if (result.ok) {
+        console.log(`[backup-db] Tamamlandı: ${result.folderName}, ${result.totalRecords} kayıt, ${result.uploaded.length} dosya`);
+      } else {
+        console.error(`[backup-db] Hata: ${result.folderName}`, result.error);
+      }
+    } catch (err) {
+      console.error('[backup-db] Arka plan hatası:', err);
+    }
+  });
 }
 app.get('/api/admin/backup-db', copyBackupApiKeyFromQuery, authenticateApiKey, handleBackupDb);
 app.post('/api/admin/backup-db', authenticateApiKey, handleBackupDb);
