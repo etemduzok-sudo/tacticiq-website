@@ -821,13 +821,22 @@ function copyBackupApiKeyFromQuery(req, res, next) {
 async function handleBackupDb(req, res) {
   try {
     const { supabase } = require('./config/supabase');
-    const { runBackup } = require('./services/backupService');
+    const { TABLES_TO_BACKUP, fetchOneTable } = require('./services/backupService');
     if (!supabase) {
       return res.status(503).json({ success: false, error: 'Supabase yapılandırılmadı.' });
     }
-    const { folderName, tables, summary } = await runBackup(supabase);
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const folderName = `backup-${timestamp}`;
     const uploaded = [];
-    for (const [tableName, data] of Object.entries(tables)) {
+    const results = [];
+    let totalRecords = 0;
+    // Tablo tablo oku + yükle (aynı anda tek tablo bellekte = 512MB limitinde OOM riski azalır)
+    for (const tableName of TABLES_TO_BACKUP) {
+      const data = await fetchOneTable(supabase, tableName);
+      if (data === null) {
+        results.push({ table: tableName, success: false, count: 0 });
+        continue;
+      }
       const body = Buffer.from(JSON.stringify(data), 'utf8');
       const { error } = await supabase.storage
         .from(BACKUP_STORAGE_BUCKET)
@@ -842,7 +851,15 @@ async function handleBackupDb(req, res) {
         });
       }
       uploaded.push(tableName);
+      results.push({ table: tableName, success: true, count: data.length });
+      totalRecords += data.length;
     }
+    const summary = {
+      timestamp: new Date().toISOString(),
+      folderName,
+      tables: results,
+      totalRecords,
+    };
     const summaryBody = Buffer.from(JSON.stringify(summary), 'utf8');
     const { error: summaryErr } = await supabase.storage
       .from(BACKUP_STORAGE_BUCKET)
@@ -855,7 +872,7 @@ async function handleBackupDb(req, res) {
     res.json({
       success: true,
       folderName,
-      totalRecords: summary.totalRecords,
+      totalRecords,
       uploaded,
       message: 'Yedek Supabase Storage\'a yüklendi. Bilgisayar kapalıyken cron-job.org vb. ile bu endpoint günlük tetiklenebilir.',
     });

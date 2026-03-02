@@ -1,6 +1,6 @@
 /**
  * DB yedekleme servisi - hem script hem API tarafından kullanılır.
- * Supabase'den tabloları okur, bellek içi yedek döndürür.
+ * Tablo tablo okur/yükler; tüm tabloları aynı anda bellekte tutmaz (512MB limit için).
  */
 
 const TABLES_TO_BACKUP = [
@@ -44,9 +44,7 @@ async function fetchAllRows(supabase, tableName) {
 }
 
 /**
- * Yedek verisini üretir (disk veya Storage'a yazmaz).
- * @param {object} supabase - Supabase client
- * @returns {Promise<{ timestamp: string, folderName: string, tables: object, summary: object }>}
+ * Eski API: Tüm tabloları bellekte toplar (script için; bellek riski var).
  */
 async function runBackup(supabase) {
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
@@ -74,7 +72,15 @@ async function runBackup(supabase) {
   return { timestamp, folderName, tables, summary };
 }
 
+/**
+ * Tek tablo okur; API tarafında tablo tablo yedek alırken bellek tasarrufu için kullanılır.
+ */
+async function fetchOneTable(supabase, tableName) {
+  return fetchAllRows(supabase, tableName);
+}
+
 module.exports = {
   TABLES_TO_BACKUP,
   runBackup,
+  fetchOneTable,
 };
