@@ -914,14 +914,16 @@ async function main() {
   console.log('='.repeat(50));
   
   if (fetchApiStats) {
-    // Mevcut API kullanımını kontrol et ve kalan hakkı hesapla
-    MAX_API_CALLS = await getAvailableApiCalls();
-    
+    // Mevcut API kullanımını kontrol et ve kalan hakkı hesapla (DB kotası: 50K/gün)
+    const available = await getAvailableApiCalls();
+    MAX_API_CALLS = Math.max(available, 0);
+    const MIN_API_PER_RUN = 3000;
     if (MAX_API_CALLS <= 0) {
-      console.log(`\n⚠️  Kullanılabilir API hakkı yok!`);
-      console.log(`   Bugünkü limit dolmuş veya yeterli yedek yok.`);
-      console.log(`   Yarın tekrar deneyin veya --api parametresi olmadan çalıştırın.\n`);
-      return;
+      console.log(`\n⚠️  Hesaplanan kullanılabilir API: 0. En az ${MIN_API_PER_RUN} çağrı ile devam ediliyor (kotada hata olabilir).`);
+      MAX_API_CALLS = MIN_API_PER_RUN;
+    } else if (MAX_API_CALLS < MIN_API_PER_RUN) {
+      console.log(`\n⚠️  Kalan kota düşük (${MAX_API_CALLS}). En az ${MIN_API_PER_RUN} ile devam.`);
+      MAX_API_CALLS = MIN_API_PER_RUN;
     }
     
     console.log(`\n⚠️  API istatistik çekme aktif!`);

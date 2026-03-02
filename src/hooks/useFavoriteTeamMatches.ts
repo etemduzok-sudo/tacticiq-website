@@ -159,6 +159,8 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
   const [error, setError] = useState<string | null>(null);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false); // Track if we've successfully loaded data
   const cacheLoadedRef = useRef(false); // ✅ Cache yüklenip yüklenmediğini takip et
+  const fetchCompletedRef = useRef(false); // ✅ Fetch bittiyse cache uygulama (geri dönüşte eski liste yanıp sönmesin)
+  const cacheApplyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ✅ Dışarıdan geçilen favoriteTeams varsa onu kullan, yoksa hook'tan al
   const { favoriteTeams: hookFavoriteTeams, loading: teamsLoading } = useFavoriteTeams();
@@ -234,13 +236,29 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
     }
   }, [favoriteTeams]);
   
-  // ✅ HIZLI BAŞLANGIÇ: Component mount olduğunda HEMEN cache'den yükle
+  // ✅ HIZLI BAŞLANGIÇ: Component mount olduğunda cache'den yükle (gecikmeli - fetch önce biterse eski liste yanıp sönmesin)
   // Bu effect en önce çalışmalı - favoriteTeams beklenmeden
   // ✅ Bulk data cache'den de okur (offline mod desteği)
+  const CACHE_APPLY_DELAY_MS = 800;
   useEffect(() => {
     if (cacheLoadedRef.current) return; // Sadece bir kez çalış
     cacheLoadedRef.current = true;
-    
+    fetchCompletedRef.current = false;
+
+    const applyCacheDelayed = (rePast: Match[], reLive: Match[], reUpcoming: Match[], logLabel: string) => {
+      if (cacheApplyTimeoutRef.current) clearTimeout(cacheApplyTimeoutRef.current);
+      cacheApplyTimeoutRef.current = setTimeout(() => {
+        cacheApplyTimeoutRef.current = null;
+        if (fetchCompletedRef.current) return; // Fetch zaten bitti, cache gösterme (geri dönüş/hot reload flash önlemi)
+        setPastMatches(rePast);
+        setLiveMatches(reLive);
+        setUpcomingMatches(reUpcoming);
+        setHasLoadedOnce(true);
+        setLoading(false);
+        logger.info(logLabel, { total: rePast.length + reLive.length + reUpcoming.length, past: rePast.length, live: reLive.length, upcoming: reUpcoming.length }, 'CACHE');
+      }, CACHE_APPLY_DELAY_MS);
+    };
+
     const quickLoad = async () => {
       // ✅ Inline kategorileme fonksiyonu (PST = postponed, bitmiş değil!)
       const now = Date.now();
@@ -295,18 +313,7 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
           
           if (allCached.length > 0) {
             const { rePast, reLive, reUpcoming } = categorizeQuick(allCached);
-            
-            setPastMatches(rePast);
-            setLiveMatches(reLive);
-            setUpcomingMatches(reUpcoming);
-            setHasLoadedOnce(true);
-            setLoading(false);
-            logger.info('⚡ INSTANT cache load', { 
-              total: allCached.length, 
-              past: rePast.length, 
-              live: reLive.length, 
-              upcoming: reUpcoming.length 
-            }, 'CACHE');
+            applyCacheDelayed(rePast, reLive, reUpcoming, '⚡ INSTANT cache load');
             return;
           }
         }
@@ -323,18 +330,7 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
             const bulkMatches = await getAllBulkMatches(teamIds);
             if (bulkMatches && bulkMatches.length > 0) {
               const { rePast, reLive, reUpcoming } = categorizeQuick(bulkMatches as Match[]);
-              
-              setPastMatches(rePast);
-              setLiveMatches(reLive);
-              setUpcomingMatches(reUpcoming);
-              setHasLoadedOnce(true);
-              setLoading(false);
-              logger.info('⚡ INSTANT BULK cache load', { 
-                total: bulkMatches.length, 
-                past: rePast.length, 
-                live: reLive.length, 
-                upcoming: reUpcoming.length 
-              }, 'BULK_CACHE');
+              applyCacheDelayed(rePast, reLive, reUpcoming, '⚡ INSTANT BULK cache load');
               return;
             }
           }
@@ -346,8 +342,14 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
       // Cache yoksa normal yüklemeyi bekle
       logger.debug('No instant cache, waiting for fetch', undefined, 'CACHE');
     };
-    
+
     quickLoad();
+    return () => {
+      if (cacheApplyTimeoutRef.current) {
+        clearTimeout(cacheApplyTimeoutRef.current);
+        cacheApplyTimeoutRef.current = null;
+      }
+    };
   }, []); // ✅ Hiç dependency yok - sadece mount'ta çalış
   
   // ✅ Favori takımlar değiştiğinde maçları yeniden fetch et (yeni takım eklendiğinde VEYA değiştirildiğinde)
@@ -493,12 +495,13 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
         return;
       }
 
-      // 4) Başlama saati geçmiş ama statü hâlâ NS/TBD → "Oynanıyor"da göster (API 1H/2H/FT dönene kadar)
+      // 4) Başlama saati geçmiş ama statü hâlâ NS/TBD
       if (withinLiveWindow) {
+        // Kısa süre önce başladı, API güncellememiş olabilir → canlıda göster
         live.push(match);
       } else {
-        // Çok eski ve hâlâ NS → Biten'e SADECE API FT döndüğünde geçecek, süreyle değil. Şimdilik yaklaşanda bırak.
-        upcoming.push(match);
+        // Çok eski ve hâlâ NS → biten say (eski milli maçlar vb. "yaklaşan"da kalmasın)
+        past.push(match);
       }
     });
 
@@ -798,7 +801,8 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
       // ✅ API'dan 0 maç döndü
       if (past.length === 0 && live.length === 0 && upcoming.length === 0) {
         logger.info('⚠️ No favorite team matches found from API', undefined, 'MATCHES');
-        
+        fetchCompletedRef.current = true; // Cache gecikmeli uygulamasını iptal et (geri dönüş flash önlemi)
+
         // ✅ Backend erişilemez: Cache'i ASLA silme – kullanıcı cache'teki maçları görsün
         if (backendConnectionError && successfulFetches === 0) {
           logger.info('✅ Backend unreachable, keeping existing/cached matches (no state clear)', undefined, 'MATCHES');
@@ -813,6 +817,7 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
           setUpcomingMatches([]);
         }
       } else {
+        fetchCompletedRef.current = true; // Cache gecikmeli uygulamasını iptal et (geri dönüş/hot reload flash önlemi)
         setPastMatches(past);
         setLiveMatches(live);
         setUpcomingMatches(upcoming); // Tüm gelecek maçlar (limit yok)
@@ -904,13 +909,21 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
         setPastMatches(prev => prev.filter(m => !liveMatchIds.has(m.fixture?.id)));
       }
       
-      // Live maçları güncelle: API canlıları + "saat bazlı canlı". Biten'e SADECE API'den FT/bitiş statüsü gelince geçir.
+      // Biten maç ID'leri – canlı listesinde asla kalmasın
+      const finishedIds = new Set(nowFinishedFromApi.map(m => m.fixture?.id));
+
+      // Live maçları güncelle: API canlıları + "saat bazlı canlı"; bitenleri çıkar
       setLiveMatches(prev => {
         const newIds = new Set(newLive.map(m => m.fixture?.id));
-        const timeBasedStillLive = prev.filter(m => isTimeBasedLive(m) && !newIds.has(m.fixture?.id));
-        const asPast = [...nowFinishedFromApi];
-        if (asPast.length > 0) {
-          setPastMatches(p => [...asPast, ...p]);
+        const timeBasedStillLive = prev.filter(
+          m => isTimeBasedLive(m) && !newIds.has(m.fixture?.id) && !finishedIds.has(m.fixture?.id)
+        );
+        if (nowFinishedFromApi.length > 0) {
+          setPastMatches(p => {
+            const existingIds = new Set(p.map(x => x.fixture?.id));
+            const toAdd = nowFinishedFromApi.filter(m => !existingIds.has(m.fixture?.id));
+            return toAdd.length ? [...toAdd, ...p] : p;
+          });
         }
         return [...newLive, ...timeBasedStillLive];
       });
@@ -919,8 +932,9 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
     }
   }, []); // ✅ favoriteTeams çıkarıldı, ref kullanılıyor
 
-  // ✅ Favori takım ID'leri değişince fetch; debounce ile kısa aralıklı çok güncellemede tek fetch (kaybolma/yanıp sönme önlenir)
+  // ✅ Favori takım ID'leri değişince fetch; ilk mount/geri dönüşte hemen fetch (eski cache yanıp sönmesin), sonra debounce
   const FETCH_DEBOUNCE_MS = 400;
+  const isFirstFetchRunRef = useRef(true);
   useEffect(() => {
     if (!favoriteTeamIdsString) {
       setPastMatches([]);
@@ -935,9 +949,11 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
     favoriteTeamsRef.current = favoriteTeams;
     if (!hasLoadedOnce) setLoading(true);
 
+    const delay = isFirstFetchRunRef.current ? 0 : FETCH_DEBOUNCE_MS;
+    if (isFirstFetchRunRef.current) isFirstFetchRunRef.current = false;
     const t = setTimeout(() => {
       fetchMatches();
-    }, FETCH_DEBOUNCE_MS);
+    }, delay);
     return () => clearTimeout(t);
   }, [favoriteTeamIdsString]); // eslint-disable-line react-hooks/exhaustive-deps
 

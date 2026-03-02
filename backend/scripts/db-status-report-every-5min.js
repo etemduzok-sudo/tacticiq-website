@@ -12,6 +12,9 @@ require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 const { supabase, isConfigured } = require('../config/supabase');
 if (!isConfigured || !supabase) {
   console.warn('Uyari: Supabase yapilandirilmadi. Rapor atlanacak.');
+} else {
+  const u = process.env.SUPABASE_URL || '';
+  console.warn('Supabase baglantisi: ' + (u ? u.replace(/https?:\/\//, '').split('.')[0] + '.supabase.co' : 'YOK'));
 }
 
 const REPORT_FILE = path.join(__dirname, '..', 'data', 'db-status-report.txt');
@@ -96,22 +99,37 @@ function appendReportBlock(newBlockText) {
 
 async function fetchStats() {
   if (!supabase) return null;
-  const { count: totalTeams } = await supabase.from('static_teams').select('*', { count: 'exact', head: true });
-  const { count: withCoach } = await supabase.from('static_teams').select('*', { count: 'exact', head: true }).not('coach', 'is', null);
-  const { count: withColors } = await supabase.from('static_teams').select('*', { count: 'exact', head: true }).not('colors_primary', 'is', null);
-  const { count: squads2025 } = await supabase.from('team_squads').select('*', { count: 'exact', head: true }).eq('season', 2025);
+  const r1 = await supabase.from('static_teams').select('*', { count: 'exact', head: true });
+  if (r1.error) {
+    console.error('[DB RAPOR] static_teams sorgu hatasi:', r1.error.message, r1.error.code || '');
+    return null;
+  }
+  const totalTeams = r1.count ?? 0;
+  const r2 = await supabase.from('static_teams').select('*', { count: 'exact', head: true }).not('coach', 'is', null);
+  const r3 = await supabase.from('static_teams').select('*', { count: 'exact', head: true }).not('colors_primary', 'is', null);
+  const r4 = await supabase.from('team_squads').select('*', { count: 'exact', head: true }).eq('season', 2025);
+  if (r2.error) console.error('[DB RAPOR] static_teams (coach) hatasi:', r2.error.message);
+  if (r3.error) console.error('[DB RAPOR] static_teams (colors) hatasi:', r3.error.message);
+  if (r4.error) console.error('[DB RAPOR] team_squads hatasi:', r4.error.message);
+  const withCoach = r2.count ?? 0;
+  const withColors = r3.count ?? 0;
+  const squads2025 = r4.count ?? 0;
 
   // Rating: tum kadrolar uzerinden sayim (sayfalı, 500'er)
   let teamsWithRating = 0, playersWithRating = 0, totalPlayers = 0;
   const pageSize = 500;
   let offset = 0;
   while (true) {
-    const { data: ratingSquads } = await supabase
+    const { data: ratingSquads, error: rangeError } = await supabase
       .from('team_squads')
       .select('team_id, players')
       .eq('season', 2025)
       .order('team_id', { ascending: true })
       .range(offset, offset + pageSize - 1);
+    if (rangeError) {
+      console.error('[DB RAPOR] team_squads (range) hatasi:', rangeError.message);
+      break;
+    }
     if (!ratingSquads?.length) break;
     for (const squad of ratingSquads) {
       if (Array.isArray(squad.players)) {
@@ -207,12 +225,20 @@ async function runReport() {
   lines.push('--- OZET ---');
   lines.push(`  Coach: ${s.coachPct}% | Renkler: ${s.colorsPct}% | Kadrolar: ${s.squadsPct}% | Rating: ${s.ratingPct}%`);
   lines.push(`  GENEL TAMAMLANMA: ${s.avgPct}%`);
-  if (s.avgPct < 100 && tahminiSaat > 0) {
+  if (s.totalTeams === 0) {
+    lines.push('');
+    lines.push('  *** UYARI: static_teams tablosu bos (0 takim). ***');
+    lines.push('  Rapor sadece DB okur; API\'den veri cekmez. Ilerleme icin once');
+    lines.push('  static_teams\'i doldurun: node scripts/full-world-db-sync.js');
+    lines.push('  veya node scripts/full-db-sync.js (bir kez). Sonra run-phased-db-complete.js calistirin.');
+  } else if (s.avgPct < 100 && tahminiSaat > 0) {
     lines.push(`  TAHMINI SURE %100'E: ~${tahminiSaat} saat (sync script calisirsa).`);
   } else if (s.avgPct >= 100) {
     lines.push('  Hedef: %100 tamamlandi.');
   }
-  lines.push('  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.');
+  if (s.totalTeams > 0) {
+    lines.push('  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.');
+  }
   lines.push('================================================');
   lines.push('');
 

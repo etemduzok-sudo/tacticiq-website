@@ -1,15 +1,16 @@
 @echo off
-REM DB Yedekleme - Windows GOREV ZAMANLAYICI ile 04:00'de her gun calistir
-REM (post-reset-full-sync 03:00'de calistigi icin yedek sync sonrasi alinir)
+REM DB Yedekleme - Her gun 04:00'te calismasi icin once schedule-backup-task.ps1 calistirin.
+REM Manuel yedek icin: bu .bat dosyasini calistirin veya: node scripts\backup-db.js (backend klasorundan)
 REM
-REM Gorev Olusturma:
-REM   1. Gorev Zamanlayici ac (taskschd.msc)
-REM   2. Temel Gorev Olustur
-REM   3. Tetikleyici: Gunluk, 04:00
-REM   4. Eylem: Program baslat -> Bu .bat dosyasi
+REM Otomatik gorev olusturma (bir kez):
+REM   PowerShell: cd c:\TacticIQ\backend\scripts
+REM   .\schedule-backup-task.ps1
 REM
 
-cd /d "%~dp0.."
+cd /d "c:\TacticIQ\backend"
+if not exist ".env" (
+  echo Uyari: .env bulunamadi. Yedek Supabase baglantisi yapilamayabilir.
+)
 echo [%date% %time%] DB Yedekleme basliyor...
 node scripts\backup-db.js
 echo [%date% %time%] Bitti.

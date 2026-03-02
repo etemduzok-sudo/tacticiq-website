@@ -1,6 +1,8 @@
 // TacticIQ - Supabase Configuration
+const path = require('path');
 const { createClient } = require('@supabase/supabase-js');
-require('dotenv').config();
+// Her zaman backend/.env kullan (hangi dizinden çalıştırılırsa çalıştırılsın)
+require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
 // Supabase URL - fallback sırası
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.SUPABASE_PROJECT_URL || '';

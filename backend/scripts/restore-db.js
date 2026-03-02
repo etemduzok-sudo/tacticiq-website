@@ -1,20 +1,20 @@
 /**
  * TacticIQ Database Restore Script
  * JSON yedeklerinden Supabase'e geri yükler
- * 
+ *
  * Kullanım: node scripts/restore-db.js <backup-folder>
  * Örnek: node scripts/restore-db.js backups/backup-2026-02-02T12-00-00
  */
 
-require('dotenv').config();
-const { createClient } = require('@supabase/supabase-js');
-const fs = require('fs');
 const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
+const { supabase } = require('../config/supabase');
+const fs = require('fs');
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
-
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } });
+if (!supabase) {
+  console.error('Supabase yapılandırılmadı. .env içinde SUPABASE_URL ve SUPABASE_SERVICE_ROLE_KEY kontrol edin.');
+  process.exit(1);
+}
 
 // Tablo restore sırası (matches → teams, leagues FK bağımlılığı)
 const RESTORE_ORDER = [

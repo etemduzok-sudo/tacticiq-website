@@ -51,30 +51,79 @@ const DELAY_MS = Math.max(400, parseInt(process.argv.find(a => a.startsWith('--d
 // Takım sync: 1 takım = 1 geçişte koç+renk+kadro (4–6 API çağrısı). --delay= ile ayarlanır.
 const TEAM_SYNC_BATCH_SIZE = 30;
 const TEAM_SYNC_PAUSE_AFTER_BATCH_MS = 5000;  // 5 sn (hızlandırıldı)
-const TEAM_SYNC_DELAY_MS = Math.max(400, parseInt(process.argv.find(a => a.startsWith('--delay='))?.replace('--delay=', '') || '600', 10));
+const TEAM_SYNC_DELAY_MS = Math.max(300, parseInt(process.argv.find(a => a.startsWith('--delay='))?.replace('--delay=', '') || '400', 10));
 const MAX_TEAMS_PER_ROUND = (() => {
   const arg = process.argv.find(a => a.startsWith('--max-teams='));
   return arg ? Math.max(1, parseInt(arg.replace('--max-teams=', ''), 10) || 0) : 0;
 })(); // 0 = sınırsız
 
 async function fetchStats() {
-  const { count: totalTeams } = await supabase.from('static_teams').select('*', { count: 'exact', head: true });
-  const { count: withCoach } = await supabase.from('static_teams').select('*', { count: 'exact', head: true }).not('coach', 'is', null);
-  const { count: withColors } = await supabase.from('static_teams').select('*', { count: 'exact', head: true }).not('colors_primary', 'is', null);
-  const { count: squads2025 } = await supabase.from('team_squads').select('*', { count: 'exact', head: true }).eq('season', SEASON);
+  await ensureLeagueTypeChecked();
+  const teamFilter = useLeagueTypeFilter
+    ? (q) => q.in('league_type', TRACKED_LEAGUE_TYPES)
+    : () => {};
+  let rTeams = supabase.from('static_teams').select('*', { count: 'exact', head: true });
+  let rCoach = supabase.from('static_teams').select('*', { count: 'exact', head: true }).not('coach', 'is', null);
+  let rColors = supabase.from('static_teams').select('*', { count: 'exact', head: true }).not('colors_primary', 'is', null);
+  rTeams = teamFilter(rTeams);
+  rCoach = teamFilter(rCoach);
+  rColors = teamFilter(rColors);
+  const [resTeams, resCoach, resColors] = await Promise.all([
+    rTeams,
+    rCoach,
+    rColors,
+  ]);
+  const totalTeams = resTeams.count ?? 0;
+  const withCoach = resCoach.count ?? 0;
+  const withColors = resColors.count ?? 0;
 
-  const { data: ratingSquads } = await supabase
-    .from('team_squads')
-    .select('team_id, players')
-    .eq('season', SEASON)
-    .order('team_id', { ascending: true })
-    .limit(2000);
-
+  let squads2025 = 0;
   let playersWithRating = 0, totalPlayers = 0;
-  for (const squad of (ratingSquads || [])) {
-    if (Array.isArray(squad.players)) {
-      totalPlayers += squad.players.length;
-      playersWithRating += squad.players.filter(p => p.rating != null).length;
+  if (useLeagueTypeFilter) {
+    const { data: trackedRows } = await supabase.from('static_teams').select('api_football_id').in('league_type', TRACKED_LEAGUE_TYPES);
+    const trackedIdSet = new Set((trackedRows || []).map((r) => r.api_football_id));
+    const pageSize = 500;
+    let offset = 0;
+    while (true) {
+      const { data: ratingSquads } = await supabase
+        .from('team_squads')
+        .select('team_id, players')
+        .eq('season', SEASON)
+        .order('team_id', { ascending: true })
+        .range(offset, offset + pageSize - 1);
+      if (!ratingSquads?.length) break;
+      for (const squad of ratingSquads) {
+        if (!trackedIdSet.has(squad.team_id)) continue;
+        squads2025++;
+        if (Array.isArray(squad.players)) {
+          totalPlayers += squad.players.length;
+          playersWithRating += squad.players.filter(p => p.rating != null).length;
+        }
+      }
+      if (ratingSquads.length < pageSize) break;
+      offset += pageSize;
+    }
+  } else {
+    const rSquads = await supabase.from('team_squads').select('*', { count: 'exact', head: true }).eq('season', SEASON);
+    squads2025 = rSquads.count ?? 0;
+    const pageSize = 500;
+    let offset = 0;
+    while (true) {
+      const { data: ratingSquads } = await supabase
+        .from('team_squads')
+        .select('team_id, players')
+        .eq('season', SEASON)
+        .order('team_id', { ascending: true })
+        .range(offset, offset + pageSize - 1);
+      if (!ratingSquads?.length) break;
+      for (const squad of ratingSquads) {
+        if (Array.isArray(squad.players)) {
+          totalPlayers += squad.players.length;
+          playersWithRating += squad.players.filter(p => p.rating != null).length;
+        }
+      }
+      if (ratingSquads.length < pageSize) break;
+      offset += pageSize;
     }
   }
 
@@ -126,15 +175,20 @@ async function ensureLeagueTypeChecked() {
   }
 }
 
-/** Koç, renk veya kadro eksik olan takımlar. league_type varsa sadece üst lig erkek; yoksa tümü. KOÇ EKSİK OLANLAR ÖNCE. */
+/** Koç, renk veya kadro eksik olan takımlar. Sadece izlenen ligler (TRACKED_LEAGUE_TYPES); U19/alt lig/amatör dahil değil. --all-teams ile tüm takımlar. */
 async function getTeamsMissingAny() {
   await ensureLeagueTypeChecked();
+  const baseFilter = (q) => {
+    q = q.not('api_football_id', 'is', null);
+    if (useLeagueTypeFilter) q = q.in('league_type', TRACKED_LEAGUE_TYPES);
+    return q;
+  };
   const pageSize = 1000;
   const noCoachList = [];
   let page = 0;
   while (true) {
-    let q = supabase.from('static_teams').select('api_football_id, name').is('coach', null).not('api_football_id', 'is', null);
-    if (useLeagueTypeFilter && TRACKED_LEAGUE_TYPES.length) q = q.in('league_type', TRACKED_LEAGUE_TYPES);
+    let q = supabase.from('static_teams').select('api_football_id, name').is('coach', null);
+    q = baseFilter(q);
     const { data: chunk } = await q.range(page * pageSize, (page + 1) * pageSize - 1);
     if (!chunk?.length) break;
     noCoachList.push(...chunk);
@@ -144,8 +198,8 @@ async function getTeamsMissingAny() {
   const noColorsList = [];
   page = 0;
   while (true) {
-    let q = supabase.from('static_teams').select('api_football_id, name').is('colors_primary', null).not('api_football_id', 'is', null);
-    if (useLeagueTypeFilter && TRACKED_LEAGUE_TYPES.length) q = q.in('league_type', TRACKED_LEAGUE_TYPES);
+    let q = supabase.from('static_teams').select('api_football_id, name').is('colors_primary', null);
+    q = baseFilter(q);
     const { data: chunk } = await q.range(page * pageSize, (page + 1) * pageSize - 1);
     if (!chunk?.length) break;
     noColorsList.push(...chunk);
@@ -157,8 +211,8 @@ async function getTeamsMissingAny() {
   const noSquadList = [];
   page = 0;
   while (true) {
-    let q = supabase.from('static_teams').select('api_football_id, name').not('api_football_id', 'is', null);
-    if (useLeagueTypeFilter && TRACKED_LEAGUE_TYPES.length) q = q.in('league_type', TRACKED_LEAGUE_TYPES);
+    let q = supabase.from('static_teams').select('api_football_id, name');
+    q = baseFilter(q);
     const { data: chunk } = await q.range(page * pageSize, (page + 1) * pageSize - 1);
     if (!chunk?.length) break;
     chunk.filter((t) => !hasSquad.has(t.api_football_id)).forEach((t) => noSquadList.push(t));
@@ -173,11 +227,11 @@ async function getTeamsMissingAny() {
   noColorsList.forEach(t => { if (!byId.has(t.api_football_id)) byId.set(t.api_football_id, { ...t, missingCoach: false, missingColors: true, missingSquad: noSquadIds.has(t.api_football_id) }); });
   noSquadList.forEach(t => { if (!byId.has(t.api_football_id)) byId.set(t.api_football_id, { ...t, missingCoach: noCoachIds.has(t.api_football_id), missingColors: noColorsIds.has(t.api_football_id), missingSquad: true }); });
   const list = Array.from(byId.values());
+  // Önce renk eksik (raporda hemen artış), sonra koç, sonra kadro — böylece her sync raporda görünür
   list.sort((a, b) => {
+    if (a.missingColors !== b.missingColors) return a.missingColors ? -1 : 1;
     if (a.missingCoach !== b.missingCoach) return a.missingCoach ? -1 : 1;
-    const scoreA = (a.missingColors ? 1 : 0) + (a.missingSquad ? 1 : 0);
-    const scoreB = (b.missingColors ? 1 : 0) + (b.missingSquad ? 1 : 0);
-    return scoreB - scoreA;
+    return (b.missingSquad ? 1 : 0) - (a.missingSquad ? 1 : 0);
   });
   return list;
 }
@@ -206,7 +260,8 @@ async function withRetry429(fn, retries = 2) {
 // —— Faz 1: Takım verisi (Koç + Renk + Kadro) — 1 takım = 1 sync = hepsi güncellenir ——
 async function runTeamDataPhase() {
   console.log('\n╔══ FAZ 1: TAKIM VERİSİ (Koç + Renk + Kadro) %100 ══╗');
-  console.log('   Bir API kullanımı = bir takım için koç, renk ve kadro birlikte çekilip DB güncellenir.\n');
+  console.log('   Kadrosu DOLU takımlar: hafif sync (sadece koç+renk, 2 API/takım). Kadrosu EKSİK: tam sync.');
+  console.log('   Hızlı ilerleme için: node scripts/run-phased-db-complete.js --max-teams=300\n');
   let round = 0;
   while (true) {
     const stats = await fetchStats();
@@ -225,9 +280,14 @@ async function runTeamDataPhase() {
     let ok = 0, coachOk = 0, colorsOk = 0, noData = 0;
     for (let i = 0; i < toProcess.length; i++) {
       const t = toProcess[i];
+      const lightSync = !t.missingSquad;
       try {
         const result = await withRetry429(() =>
-          syncOneTeamSquad(t.api_football_id, t.name, { syncCoach: true, syncTeamInfo: true })
+          syncOneTeamSquad(t.api_football_id, t.name, {
+            syncCoach: true,
+            syncTeamInfo: true,
+            coachAndColorsOnly: lightSync,
+          })
         );
         if (result.ok) ok++;
         if (result.coachUpdated) coachOk++;
@@ -244,10 +304,15 @@ async function runTeamDataPhase() {
         }
       }
     }
+    const afterRound = await fetchStats();
     console.log(`   Tur sonu: işlenen: ${toProcess.length} | güncellenen: ${ok} (koç: +${coachOk}, renk: +${colorsOk}) | API'den veri gelmeyen: ${noData}`);
+    console.log(`   Rapor: Koç ${afterRound.coachPct}% (${afterRound.withCoach}/${afterRound.totalTeams}) | Renk ${afterRound.colorsPct}% (${afterRound.withColors}/${afterRound.totalTeams}) | Kadro ${afterRound.squadsPct}%`);
     if (MAX_TEAMS_PER_ROUND) {
       console.log('   --max-teams ile sınırlı run bitti.');
       return;
+    }
+    if (list.length > 0 && coachOk === 0 && colorsOk === 0) {
+      console.warn('   ⚠ Bu turda hiç koç/renk güncellenmedi. API veya DB kontrolü önerilir (scripts/test-one-team-sync.js).');
     }
     await delay(2000);
   }
@@ -269,8 +334,8 @@ async function runRatingsPhase() {
       return;
     }
     if (lastRatingPct === stats.ratingPct) noProgressRuns++; else noProgressRuns = 0;
-    if (noProgressRuns >= 2) {
-      console.log(`   Rating: İlerleme yok (${stats.ratingPct}%). API limiti veya veri bitti. Çıkılıyor.\n`);
+    if (noProgressRuns >= 5) {
+      console.log(`   Rating: 5 tur üst üste ilerleme yok (${stats.ratingPct}%). API limiti veya veri bitti. Çıkılıyor.\n`);
       return;
     }
     lastRatingPct = stats.ratingPct;

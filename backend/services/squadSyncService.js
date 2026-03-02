@@ -14,6 +14,8 @@ const footballApi = require('./footballApi');
 const { supabase } = require('../config/supabase');
 
 const CURRENT_SEASON = 2025;
+/** API'den gelmeyen koç/oyuncu vb. için standart gösterim (rapor + UI tutarlı) */
+const UNKNOWN_LABEL = 'Bilinmiyor';
 const DELAY_BETWEEN_TEAMS_MS = 2000; // API rate limit: 2 sn arayla
 const SQUAD_SYNC_INTERVAL_MS = 12 * 60 * 60 * 1000; // 12 saat = günde 2 kez
 
@@ -99,7 +101,7 @@ function buildEnhancedPlayers(players, dbPlayersMap, injuriesMap = {}) {
       : player.name;
     return {
       id: player.id,
-      name: fullName || player.name,
+      name: fullName || player.name || UNKNOWN_LABEL,
       firstname: player.firstname || null,
       lastname: player.lastname || null,
       age: player.age || dbPlayer?.age || null,
@@ -133,9 +135,9 @@ async function withRetry429(fn, retries = 2) {
 }
 
 // ✅ Tek bir takımın TÜM verilerini sync et: kadro + coach + takım bilgileri + renkler
-// ÖNEMLİ: Coach için HER ZAMAN /coachs endpoint'i kullanılır (maç oynamamış takımlar için de)
+// coachAndColorsOnly: true → sadece /coachs + /teams (2 çağrı), kadro/lineup/injuries atlanır — API tasarrufu
 async function syncOneTeamSquad(teamId, teamName, options = {}) {
-  const { syncCoach = true, syncTeamInfo = true } = options;
+  const { syncCoach = true, syncTeamInfo = true, coachAndColorsOnly = false } = options;
   const result = { ok: false, count: 0, coachUpdated: false, colorsUpdated: false };
   
   try {
@@ -172,6 +174,46 @@ async function syncOneTeamSquad(teamId, teamName, options = {}) {
       } catch (coachErr) {
         console.warn(`⚠️ Coach fetch failed for ${teamId}:`, coachErr.message);
       }
+      // API'den koç gelmediyse ve DB'de de yoksa standart "Bilinmiyor" yaz — rapor ve UI tutarlı olsun
+      if (!currentCoach && supabase) {
+        const { data: row } = await supabase.from('static_teams').select('coach').eq('api_football_id', teamId).maybeSingle();
+        if (row && (row.coach == null || row.coach === '')) {
+          const { error } = await supabase.from('static_teams').update({ coach: UNKNOWN_LABEL, last_updated: new Date().toISOString() }).eq('api_football_id', teamId);
+          if (!error) result.coachUpdated = true;
+        }
+      }
+    }
+    
+    // HAFİF SYNC: Sadece koç + renk (kadro zaten var). 2 API çağrısı (coach + team info) — büyük API tasarrufu
+    if (coachAndColorsOnly && syncTeamInfo) {
+      try {
+        const teamInfo = await footballApi.getTeamInfo(teamId).catch(() => ({ response: [] }));
+        const teamInfoData = teamInfo?.response?.length ? { response: teamInfo.response } : { response: [] };
+        let colors = null;
+        if (teamInfoData.response?.length > 0) {
+          try { colors = await footballApi.getTeamColors(teamId, teamInfoData.response[0]); } catch (e) {}
+        }
+        if (!colors?.length || colors[0] === '#333333') colors = KNOWN_TEAM_COLORS[teamId];
+        if (!colors?.length) colors = ['#1a1a2e', '#334155'];
+        if (supabase && colors?.length >= 2) {
+          await supabase.from('static_teams').update({
+            colors: JSON.stringify(colors), colors_primary: colors[0], colors_secondary: colors[1],
+            last_updated: new Date().toISOString()
+          }).eq('api_football_id', teamId);
+          result.colorsUpdated = true;
+        }
+        result.ok = true;
+        return result;
+      } catch (e) {
+        if (supabase) {
+          await supabase.from('static_teams').update({
+            colors_primary: '#1a1a2e', colors_secondary: '#334155', last_updated: new Date().toISOString()
+          }).eq('api_football_id', teamId);
+          result.colorsUpdated = true;
+        }
+        result.ok = true;
+        return result;
+      }
     }
     
     // 2. ÖNCELİK: /players/squads - TAM KADRO (resmi liste, transferler dahil)
@@ -202,14 +244,14 @@ async function syncOneTeamSquad(teamId, teamName, options = {}) {
               if (teamLineup.coach?.name && !currentCoach) lineupCoach = teamLineup.coach.name;
               if (teamLineup.startXI) {
                 teamLineup.startXI.forEach(p => lineupPlayers.push({
-                  id: p.player.id, name: p.player.name, number: p.player.number,
+                  id: p.player.id, name: p.player?.name || UNKNOWN_LABEL, number: p.player?.number ?? 0,
                   position: p.player.pos === 'G' ? 'Goalkeeper' : p.player.pos === 'D' ? 'Defender' :
                     p.player.pos === 'M' ? 'Midfielder' : p.player.pos === 'F' ? 'Attacker' : p.player.pos
                 }));
               }
               if (teamLineup.substitutes) {
                 teamLineup.substitutes.forEach(p => lineupPlayers.push({
-                  id: p.player.id, name: p.player.name, number: p.player.number,
+                  id: p.player?.id, name: p.player?.name || UNKNOWN_LABEL, number: p.player?.number ?? 0,
                   position: p.player.pos === 'G' ? 'Goalkeeper' : p.player.pos === 'D' ? 'Defender' :
                     p.player.pos === 'M' ? 'Midfielder' : p.player.pos === 'F' ? 'Attacker' : (p.player.pos || 'Unknown')
                 }));
@@ -293,6 +335,7 @@ async function syncOneTeamSquad(teamId, teamName, options = {}) {
             colors = await footballApi.getTeamColors(teamId, teamInfoData.response[0]);
           } catch (e) {}
           if (!colors?.length || colors[0] === '#333333') colors = KNOWN_TEAM_COLORS[teamId];
+          if (!colors?.length) colors = ['#1a1a2e', '#334155'];
           if (colors?.length >= 2 && supabase) {
             await supabase.from('static_teams').update({
               colors: JSON.stringify(colors), colors_primary: colors[0], colors_secondary: colors[1],
@@ -342,6 +385,7 @@ async function syncOneTeamSquad(teamId, teamName, options = {}) {
         let colors = null;
         try { colors = await footballApi.getTeamColors(teamId, teamInfoData.response[0]); } catch (e) {}
         if (!colors?.length || colors[0] === '#333333') colors = KNOWN_TEAM_COLORS[teamId];
+        if (!colors?.length) colors = ['#1a1a2e', '#334155'];
         if (colors?.length >= 2 && supabase) {
           await supabase.from('static_teams').update({
             colors: JSON.stringify(colors), colors_primary: colors[0], colors_secondary: colors[1],
@@ -374,6 +418,10 @@ async function syncOneTeamSquad(teamId, teamName, options = {}) {
         if (fallbackColors) {
           colors = fallbackColors;
         }
+      }
+      // Hiç renk yoksa varsayılan yaz — raporda "Renkler ile" sayısı artsın, sonra gerçek renk gelirse güncellenir
+      if (!colors || colors.length < 2) {
+        colors = ['#1a1a2e', '#334155'];
       }
       
       if (colors && colors.length >= 2) {

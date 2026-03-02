@@ -18,6 +18,19 @@ node scripts/restore-db.js backup-2026-02-02T04-59-53
 - Belirtilen yedekten verileri geri yükler
 - Upsert kullanır (mevcut veriler güncellenir)
 
+### Günlük otomatik yedek
+
+**A) Bilgisayar açıkken (Windows):** Günde 04:00 için yerel görev:
+```powershell
+cd c:\TacticIQ\backend\scripts
+.\schedule-backup-task.ps1
+```
+- Yedekler: `backend/backups/backup-YYYY-MM-DDTHH-MM-SS/`
+
+**B) Bilgisayar kapalıyken:** Backend sunucuda çalışıyorsa, cron ile API tetikleyin; yedek Supabase Storage'a yazılır.
+- Endpoint: `POST /api/admin/backup-db` (header: `x-api-key: YOUR_VALID_API_KEY`)
+- Detay: `backend/docs/BACKUP-CRON-SUNUCU.md`
+
 ---
 
 ## 🔄 Kadro Senkronizasyonu

@@ -64,15 +64,23 @@ export function MatchResultSummaryPopup({
     if (!matchId) return;
     setLoading(true);
     setError(null);
+    const POPUP_TIMEOUT_MS = 12000; // 12 saniye – backend yoksa hemen hata göster
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Bağlantı zaman aşımı. Backend çalışıyor mu? (port 3001)')), POPUP_TIMEOUT_MS)
+    );
     try {
-      const res = await api.matches.getMatchDetails(parseInt(matchId));
+      const res = await Promise.race([
+        api.matches.getMatchDetails(parseInt(matchId)),
+        timeoutPromise,
+      ]);
       if (res?.success && res?.data) {
         setMatchData(res.data);
       } else {
         setError('Maç verisi yüklenemedi');
       }
     } catch (err: any) {
-      setError(err?.message || 'Yükleme hatası');
+      const msg = err?.message || 'Yükleme hatası';
+      setError(msg.includes('Backend') || msg.includes('zaman aşımı') ? msg : 'Maç verisi alınamadı. Backend\'in çalıştığından emin olun.');
     } finally {
       setLoading(false);
     }
@@ -128,8 +136,9 @@ export function MatchResultSummaryPopup({
               </View>
             ) : error ? (
               <View style={styles.errorContainer}>
-                <Ionicons name="alert-circle-outline" size={48} color="#EF4444" />
+                <Ionicons name="cloud-offline-outline" size={48} color="#EF4444" />
                 <Text style={styles.errorText}>{error}</Text>
+                <Text style={styles.errorHint}>Backend kapalıysa: terminalde{'\n'}cd backend → npm run dev</Text>
                 <TouchableOpacity style={styles.retryBtn} onPress={loadMatchData}>
                   <Text style={styles.retryBtnText}>Tekrar Dene</Text>
                 </TouchableOpacity>
@@ -209,6 +218,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#EF4444',
     textAlign: 'center',
+  },
+  errorHint: {
+    fontSize: 12,
+    color: '#94A3B8',
+    textAlign: 'center',
+    marginTop: 4,
   },
   retryBtn: {
     backgroundColor: 'rgba(31, 162, 166, 0.2)',

@@ -2924,7 +2924,7 @@ const styles = StyleSheet.create({
   matchCardContainer: {
     width: '100%',
     maxWidth: 768,
-    height: 175, // ✅ Sabit yükseklik - tam 3 kart ekrana sığsın
+    height: 205, // 3 tam kart sığsın (eskiden 175 ile 3.5 sığıyordu)
   },
   matchCardPredictionStarHitArea: {
     position: 'absolute',
@@ -3221,7 +3221,7 @@ const styles = StyleSheet.create({
 
   matchCard: {
     width: '100%',
-    height: 175, // ✅ Sabit yükseklik - tam 3 kart ekrana sığsın
+    height: 205, // 3 tam kart sığsın (eskiden 175 ile 3.5 sığıyordu)
     borderRadius: SIZES.radiusXl,
     borderBottomLeftRadius: 25, // ✅ Profil kartı gibi yuvarlatılmış alt köşeler
     borderBottomRightRadius: 25, // ✅ Profil kartı gibi yuvarlatılmış alt köşeler

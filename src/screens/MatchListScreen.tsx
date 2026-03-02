@@ -943,7 +943,7 @@ const matchCardStyles = StyleSheet.create({
   matchCardContainer: {
     width: '100%',
     maxWidth: 768,
-    height: 180, // ✅ Sabit yükseklik - %10 azaltıldı (200 → 180)
+    height: 235,
     marginBottom: 0,
   },
   matchCardPredictionStarHitArea: {
@@ -956,7 +956,7 @@ const matchCardStyles = StyleSheet.create({
   matchCard: {
     width: '100%',
     maxWidth: 768,
-    height: 180, // ✅ Sabit yükseklik - %10 azaltıldı (200 → 180)
+    height: 215,
     borderRadius: 16,
     borderBottomLeftRadius: 25,
     borderBottomRightRadius: 25,

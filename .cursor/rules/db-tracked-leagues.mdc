@@ -1,0 +1,21 @@
+# DB: Hangi Ligler ve Takımlar Sayılır / Sync Edilir
+
+## Kural
+**Veritabanında "olması gereken" takımlar sadece izlenen lig türlerindedir.** U19, alt lig, amatör takımlar (ör. Crotone U19) ne raporda sayılır ne de koç/renk/kadro sync'inde işlenir; API bu takımlar için harcanmaz.
+
+## İzlenen lig türleri (TRACKED_LEAGUE_TYPES)
+- `domestic_top` – Üst düzey yerel lig (Süper Lig, Premier League, La Liga vb.)
+- `domestic_cup` – Yerel kupa
+- `continental`, `continental_club`, `continental_national` – Kıtasal
+- `confederation_format`, `global`, `international`, `world_cup`, `continental_championship`
+
+## Nerede kullanılır
+- **run-phased-db-complete.js:** `getTeamsMissingAny()` ve `fetchStats()` sadece `league_type IN (TRACKED_LEAGUE_TYPES)` takımlarını listeler / sayar. `--all-teams` ile tüm takımlar işlenir.
+- **dbStatusReportService.js:** Rapor (db-status-report.txt) takım sayılarını ve yüzdeleri sadece izlenen liglerdeki takımlara göre hesaplar.
+- **update-coach-colors-squads.js:** Zaten aynı filtreyi kullanır.
+
+## DB'den izlenmeyen takımları toplu silmek
+**Script:** `backend/scripts/delete-untracked-teams-data.js` — TRACKED_LEAGUE_TYPES dışı / league_type null takımlar + team_squads, ilgili matches, predictions, match_results, favorite_teams, substitution_votes silinir. Önce `--dry-run`, sonra argümansız çalıştırın.
+
+## DB'de U19 / istenmeyen takımlar varsa
+`static_teams` tablosunda bu takımlar başka bir sync ile eklenmiş olabilir. Script'ler bunları **sync etmez** ve rapor **saymaz**. Kalıcı temizlik için yukarıdaki script'i çalıştırın.

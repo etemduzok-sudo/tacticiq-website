@@ -673,7 +673,7 @@ export default function App() {
 
                   {/* Global in-app toast (web'de window.alert yerine) */}
                   {Platform.OS === 'web' && globalToast && (
-                    <View style={styles.globalToastOverlay} pointerEvents="box-none">
+                    <View style={[styles.globalToastOverlay, { pointerEvents: 'box-none' }]}>
                       <View style={[
                         styles.globalToast,
                         globalToast.type === 'error' && styles.globalToastError,
