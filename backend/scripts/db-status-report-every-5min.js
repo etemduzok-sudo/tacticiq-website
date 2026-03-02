@@ -115,17 +115,19 @@ async function fetchStats() {
   const withColors = r3.count ?? 0;
   const squads2025 = r4.count ?? 0;
 
-  // Rating: tum kadrolar uzerinden sayim (sayfalı, 500'er)
+  // Rating: tum kadrolar uzerinden sayim. Cursor tabanli sayfalama (Supabase istek basina ~1000 satir limiti; offset 1000+ bazen 0 donuyor).
   let teamsWithRating = 0, playersWithRating = 0, totalPlayers = 0;
-  const pageSize = 500;
-  let offset = 0;
+  const pageSize = 1000;
+  let lastTeamId = null;
   while (true) {
-    const { data: ratingSquads, error: rangeError } = await supabase
+    let q = supabase
       .from('team_squads')
       .select('team_id, players')
       .eq('season', 2025)
       .order('team_id', { ascending: true })
-      .range(offset, offset + pageSize - 1);
+      .limit(pageSize);
+    if (lastTeamId != null) q = q.gt('team_id', lastTeamId);
+    const { data: ratingSquads, error: rangeError } = await q;
     if (rangeError) {
       console.error('[DB RAPOR] team_squads (range) hatasi:', rangeError.message);
       break;
@@ -141,8 +143,8 @@ async function fetchStats() {
         }
       }
     }
+    lastTeamId = ratingSquads[ratingSquads.length - 1]?.team_id;
     if (ratingSquads.length < pageSize) break;
-    offset += pageSize;
   }
 
   const coachPct = totalTeams ? Math.round(withCoach / totalTeams * 100) : 0;
@@ -188,7 +190,6 @@ async function runReport() {
   lines.push('');
   lines.push('========== DB GUNCELLEME RAPORU (5 dk) ==========');
   lines.push('Zaman: ' + now.toLocaleString('tr-TR'));
-  lines.push('');
 
   const fmt = (label, nowVal, prevVal, suffix = '') => {
     const diff = prevVal != null ? (nowVal - prevVal) : null;
@@ -198,28 +199,52 @@ async function runReport() {
       else if (diff < 0) diffStr = `  [${diff}]`;
       else diffStr = '  [degismedi]';
     }
-    return `  ${label}: ${nowVal}${suffix}${diffStr}`;
+    return { line: `  ${label}: ${nowVal}${suffix}${diffStr}`, diff };
   };
 
+  const coachF = fmt('Toplam takim', s.totalTeams, prev?.totalTeams);
+  const withCoachF = fmt('Coach ile', s.withCoach, prev?.withCoach, ` (${s.coachPct}%)`);
+  const withColorsF = fmt('Renkler ile', s.withColors, prev?.withColors, ` (${s.colorsPct}%)`);
+  const squadsF = fmt('Kadrolar 2025', s.squads2025, prev?.squads2025, ` (${s.squadsPct}%)`);
+  const ratingPlayersF = fmt('Oyuncu (ratingli)', s.playersWithRating, prev?.playersWithRating);
+  const totalPlayersF = fmt('Toplam oyuncu', s.totalPlayers, prev?.totalPlayers);
+  const ratingPctF = fmt('Rating %', s.ratingPct, prev?.ratingPct, '%');
+  const avgPctF = fmt('ORTALAMA %', s.avgPct, prev?.avgPct, '%');
+
+  const hasAnyChange = [withCoachF.diff, withColorsF.diff, squadsF.diff, ratingPlayersF.diff].some(d => d != null && d !== 0);
+  if (hasAnyChange) {
+    const parts = [];
+    if (withCoachF.diff && withCoachF.diff !== 0) parts.push('Coach ' + (withCoachF.diff > 0 ? '+' : '') + withCoachF.diff);
+    if (withColorsF.diff && withColorsF.diff !== 0) parts.push('Renk ' + (withColorsF.diff > 0 ? '+' : '') + withColorsF.diff);
+    if (squadsF.diff && squadsF.diff !== 0) parts.push('Kadro ' + (squadsF.diff > 0 ? '+' : '') + squadsF.diff);
+    if (ratingPlayersF.diff && ratingPlayersF.diff !== 0) parts.push('Ratingli oyuncu ' + (ratingPlayersF.diff > 0 ? '+' : '') + ratingPlayersF.diff);
+    lines.push('');
+    lines.push('  *** 5 DK ILERLEME: VAR  ***  ' + (parts.length ? parts.join(', ') : ''));
+  } else {
+    lines.push('');
+    lines.push('  *** 5 DK ILERLEME: YOK - Script durdurulabilir. Daha net cozum bulunana kadar. ***');
+  }
+  lines.push('');
+
   lines.push('--- 5 DK ONCEKI OLCUM vs SIMDI ---');
-  lines.push(fmt('Toplam takim', s.totalTeams, prev?.totalTeams));
-  lines.push(fmt('Coach ile', s.withCoach, prev?.withCoach, ` (${s.coachPct}%)`));
-  lines.push(fmt('Renkler ile', s.withColors, prev?.withColors, ` (${s.colorsPct}%)`));
-  lines.push(fmt('Kadrolar 2025', s.squads2025, prev?.squads2025, ` (${s.squadsPct}%)`));
-  lines.push(fmt('Oyuncu (ratingli)', s.playersWithRating, prev?.playersWithRating));
-  lines.push(fmt('Toplam oyuncu', s.totalPlayers, prev?.totalPlayers));
-  lines.push(fmt('Rating %', s.ratingPct, prev?.ratingPct, '%'));
-  lines.push(fmt('ORTALAMA %', s.avgPct, prev?.avgPct, '%'));
+  lines.push(coachF.line);
+  lines.push(withCoachF.line);
+  lines.push(withColorsF.line);
+  lines.push(squadsF.line);
+  lines.push(ratingPlayersF.line);
+  lines.push(totalPlayersF.line);
+  lines.push(ratingPctF.line);
+  lines.push(avgPctF.line);
   lines.push('');
   lines.push(`--- BASELINE (${baselineDate}) ile KARSILASTIRMA - Gunluk ilerleme ---`);
-  lines.push(fmt('Toplam takim', s.totalTeams, baseline?.totalTeams));
-  lines.push(fmt('Coach ile', s.withCoach, baseline?.withCoach, ` (${s.coachPct}%)`));
-  lines.push(fmt('Renkler ile', s.withColors, baseline?.withColors, ` (${s.colorsPct}%)`));
-  lines.push(fmt('Kadrolar 2025', s.squads2025, baseline?.squads2025, ` (${s.squadsPct}%)`));
-  lines.push(fmt('Oyuncu (ratingli)', s.playersWithRating, baseline?.playersWithRating));
-  lines.push(fmt('Toplam oyuncu', s.totalPlayers, baseline?.totalPlayers));
-  lines.push(fmt('Rating %', s.ratingPct, baseline?.ratingPct, '%'));
-  lines.push(fmt('ORTALAMA %', s.avgPct, baseline?.avgPct, '%'));
+  lines.push(fmt('Toplam takim', s.totalTeams, baseline?.totalTeams).line);
+  lines.push(fmt('Coach ile', s.withCoach, baseline?.withCoach, ` (${s.coachPct}%)`).line);
+  lines.push(fmt('Renkler ile', s.withColors, baseline?.withColors, ` (${s.colorsPct}%)`).line);
+  lines.push(fmt('Kadrolar 2025', s.squads2025, baseline?.squads2025, ` (${s.squadsPct}%)`).line);
+  lines.push(fmt('Oyuncu (ratingli)', s.playersWithRating, baseline?.playersWithRating).line);
+  lines.push(fmt('Toplam oyuncu', s.totalPlayers, baseline?.totalPlayers).line);
+  lines.push(fmt('Rating %', s.ratingPct, baseline?.ratingPct, '%').line);
+  lines.push(fmt('ORTALAMA %', s.avgPct, baseline?.avgPct, '%').line);
   lines.push('');
   const tahminiSaat = estimateHoursTo100(s);
   lines.push('--- OZET ---');
@@ -244,6 +269,14 @@ async function runReport() {
 
   const text = lines.join('\n');
   console.log(text);
+
+  // Ani dusus korumasi: onceki snapshot'ta cok oyuncu varken simdi cok azsa (Supabase sayfa limiti vb.) snapshot yazma.
+  if (prev?.totalPlayers != null && prev.totalPlayers > 50000 && s.totalPlayers < prev.totalPlayers * 0.5) {
+    console.warn('[DB RAPOR] UYARI: totalPlayers onceki ' + prev.totalPlayers + ' iken simdi ' + s.totalPlayers + ' – snapshot guncellenmedi (sayfa limiti?). Rapor bloku yazildi.');
+    appendReportBlock(text);
+    return;
+  }
+
   appendReportBlock(text);
   saveSnapshot(s);
 }

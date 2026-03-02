@@ -271,14 +271,17 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
     }
   }, [isMatchNotStartedFromData, matchId]);
 
-  // ✅ Parent (MatchDetail) canlı eventleri her 10 sn güncelliyor – hemen timeline'a yansıt (maç kartı ile senkron)
+  // ✅ Parent (MatchDetail) her 5 sn event çekiyor – sadece veri gerçekten değiştiyse state güncelle (titreme önlenir)
+  const lastEventsSignatureRef = useRef<string>('');
   useEffect(() => {
-    if (!propEvents || !Array.isArray(propEvents) || propEvents.length === 0 || !matchData) return;
+    if (!propEvents || !Array.isArray(propEvents) || !matchData) return;
     const transformed = transformApiEventsToLiveEvents(propEvents, matchData);
-    if (transformed.length > 0) {
-      setLiveEvents(transformed);
-      setLoading(false);
-    }
+    if (transformed.length === 0) return;
+    const signature = `${transformed.length}-${transformed[transformed.length - 1]?.minute ?? 0}-${transformed[transformed.length - 1]?.type ?? ''}-${transformed[transformed.length - 1]?.player ?? ''}-${transformed[transformed.length - 1]?.description ?? ''}`;
+    if (signature === lastEventsSignatureRef.current) return;
+    lastEventsSignatureRef.current = signature;
+    setLiveEvents(transformed);
+    setLoading(false);
   }, [propEvents, matchData]);
 
   // Mock maç (999999): 52. dk, skor 5-4, ilk yarı 1 dk uzadı, 45+1 ev sahibi kırmızı kart, en az 8 event
@@ -895,7 +898,7 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
                   ) : null}
                   {event.playerIn ? (
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                      <Ionicons name="arrow-up-circle" size={14} color="#10B981" />
+                      <Ionicons name="person-add-circle" size={14} color="#F97316" />
                       <Text style={styles.eventPlayer} numberOfLines={1}>
                         <Text style={{ fontWeight: '700' }}>{event.playerIn}</Text>
                       </Text>
@@ -953,7 +956,7 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
                       <Text style={[styles.eventPlayer, styles.eventPlayerRight]} numberOfLines={1}>
                         <Text style={{ fontWeight: '700' }}>{event.playerIn}</Text>
                       </Text>
-                      <Ionicons name="arrow-up-circle" size={14} color="#10B981" />
+                      <Ionicons name="person-add-circle" size={14} color="#F97316" />
                     </View>
                   ) : null}
                 </>

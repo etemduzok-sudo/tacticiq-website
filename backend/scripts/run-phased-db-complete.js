@@ -49,9 +49,9 @@ const SEASON = 2025;
 const API_DAILY_LIMIT = 75000; // Günlük sorgu limiti (API-Football)
 const DELAY_MS = Math.max(400, parseInt(process.argv.find(a => a.startsWith('--delay='))?.replace('--delay=', '') || '1000', 10));
 // Takım sync: 1 takım = 1 geçişte koç+renk+kadro (4–6 API çağrısı). --delay= ile ayarlanır.
-const TEAM_SYNC_BATCH_SIZE = 30;
-const TEAM_SYNC_PAUSE_AFTER_BATCH_MS = 5000;  // 5 sn (hızlandırıldı)
-const TEAM_SYNC_DELAY_MS = Math.max(300, parseInt(process.argv.find(a => a.startsWith('--delay='))?.replace('--delay=', '') || '400', 10));
+const TEAM_SYNC_BATCH_SIZE = 50;   // 30→50: daha az duraklama
+const TEAM_SYNC_PAUSE_AFTER_BATCH_MS = 2000;  // 5sn→2sn: batch arası bekleme kısaltıldı
+const TEAM_SYNC_DELAY_MS = Math.max(300, parseInt(process.argv.find(a => a.startsWith('--delay='))?.replace('--delay=', '') || '350', 10));
 const MAX_TEAMS_PER_ROUND = (() => {
   const arg = process.argv.find(a => a.startsWith('--max-teams='));
   return arg ? Math.max(1, parseInt(arg.replace('--max-teams=', ''), 10) || 0) : 0;

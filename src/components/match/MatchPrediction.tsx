@@ -3232,8 +3232,8 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                               style={[styles.playerSlot, { left: `${pos.x}%`, top: `${pos.y}%` }]}
                             >
                               {player.isSubstitute && (
-                                <View style={{ position: 'absolute', top: -6, right: -6, zIndex: 30, backgroundColor: '#10B981', borderRadius: 8, width: 16, height: 16, alignItems: 'center', justifyContent: 'center' }}>
-                                  <Ionicons name="arrow-up" size={10} color="#fff" />
+                                <View style={{ position: 'absolute', top: -6, right: -6, zIndex: 30, backgroundColor: '#F97316', borderRadius: 8, width: 16, height: 16, alignItems: 'center', justifyContent: 'center' }}>
+                                  <Ionicons name="person-add" size={10} color="#fff" />
                                 </View>
                               )}
                               {/* Üst sol: Çok İyi/Kötü — üst sağ: Gol Atar/Çıkmalı (ortaya 3px) */}
@@ -3318,7 +3318,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                                   style={[
                                   styles.playerCard,
                                   (normalizeRatingTo100(player.rating) ?? 0) >= 85 && styles.playerCardElite,
-                                  player.isSubstitute && { borderColor: '#10B981', borderWidth: 1.5 },
+                                  player.isSubstitute && { borderColor: '#F97316', borderWidth: 1.5 },
                                   getReactionBorderColor(playerReaction) && { borderColor: getReactionBorderColor(playerReaction), borderWidth: 2 },
                                   userVoted && !getReactionBorderColor(playerReaction) && { borderColor: '#EAB308', borderWidth: 2 },
                                 ]}
@@ -6035,9 +6035,9 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                                 <Text style={{ fontSize: 12, fontWeight: '600', color: '#E2E8F0' }}>{playerInfoPopup.playerName}</Text>
                               </View>
                               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                                <Ionicons name="arrow-up-circle" size={14} color="#10B981" />
+                                <Ionicons name="person-add-circle" size={14} color="#F97316" />
                                 <Text style={{ fontSize: 12, color: '#94A3B8' }}>En çok tahmin edilen giren:</Text>
-                                <Text style={{ fontSize: 12, fontWeight: '600', color: '#10B981' }}>Yedek Oyuncu</Text>
+                                <Text style={{ fontSize: 12, fontWeight: '600', color: '#F97316' }}>Yedek Oyuncu</Text>
                               </View>
                               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                                 <Ionicons name="time" size={14} color="#60A5FA" />
@@ -6073,9 +6073,9 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                                 </Text>
                               </View>
                               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                                <Ionicons name="arrow-up-circle" size={14} color="#10B981" />
+                                <Ionicons name="person-add-circle" size={14} color="#F97316" />
                                 <Text style={{ fontSize: 12, color: '#94A3B8' }}>Yerine girer:</Text>
-                                <Text style={{ fontSize: 12, fontWeight: '600', color: '#10B981' }}>Acil yedek</Text>
+                                <Text style={{ fontSize: 12, fontWeight: '600', color: '#F97316' }}>Acil yedek</Text>
                               </View>
                             </View>
                           </View>
@@ -6595,9 +6595,9 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                       </View>
                     )}
                     {wasSubbedIn && (
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(16,185,129,0.15)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 }}>
-                        <Ionicons name="arrow-up-circle" size={14} color="#10B981" />
-                        <Text style={{ color: '#10B981', fontSize: 12, fontWeight: '700' }}>Girdi {subMinute ? `(${subMinute}')` : ''}{liveReactionPlayer.substitutedFor ? ` ↔ ${liveReactionPlayer.substitutedFor.split(' ').pop()}` : ''}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(249,115,22,0.15)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 }}>
+                        <Ionicons name="person-add-circle" size={14} color="#F97316" />
+                        <Text style={{ color: '#F97316', fontSize: 12, fontWeight: '700' }}>Girdi {subMinute ? `(${subMinute}')` : ''}{liveReactionPlayer.substitutedFor ? ` ↔ ${liveReactionPlayer.substitutedFor.split(' ').pop()}` : ''}</Text>
                       </View>
                     )}
                   </View>

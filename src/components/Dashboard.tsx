@@ -46,6 +46,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WEBSITE_DARK_COLORS } from '../config/WebsiteDesignSystem';
 import { cardStyles, textStyles, containerStyles } from '../utils/styleHelpers';
 import { translateCountry } from '../utils/countryUtils';
+import { shortenCoachName } from '../utils/coachNameUtils';
+import { getBulkCoach } from '../services/bulkDataService';
 
 const { width } = Dimensions.get('window');
 
@@ -394,16 +396,31 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
   // ✅ Coach cache state (component içinde re-render trigger için)
   const [coachCacheVersion, setCoachCacheVersion] = useState(0);
   
-  // ✅ Maçlar yüklendiğinde coach verilerini API'den toplu çek
+  // ✅ Maçlar yüklendiğinde: maç payload'ındaki koç → bulk cache → backend/DB sırasıyla doldur
   useEffect(() => {
     const fetchCoachesForMatches = async () => {
-      // Tüm maçlardaki takım ID'lerini topla
       const allMatches = [
         ...matchData.upcomingMatches,
         ...matchData.liveMatches,
-        ...matchData.pastMatches.slice(0, 10), // Biten maçlardan sadece son 10
+        ...matchData.pastMatches.slice(0, 10),
       ];
-      
+
+      // 0) Backend maç cevabında coach varsa (/live zenginleştirmesi) hemen cache'e yaz – her iki takım da
+      let fromPayload = false;
+      allMatches.forEach(match => {
+        const homeCoach = (match.teams?.home as any)?.coach;
+        const awayCoach = (match.teams?.away as any)?.coach;
+        if (match.teams?.home?.id && homeCoach) {
+          globalCoachCache[match.teams.home.id] = typeof homeCoach === 'string' ? homeCoach : (homeCoach?.name ?? '');
+          fromPayload = true;
+        }
+        if (match.teams?.away?.id && awayCoach) {
+          globalCoachCache[match.teams.away.id] = typeof awayCoach === 'string' ? awayCoach : (awayCoach?.name ?? '');
+          fromPayload = true;
+        }
+      });
+      if (fromPayload) setCoachCacheVersion((v) => v + 1);
+
       const teamIds: number[] = [];
       allMatches.forEach(match => {
         if (match.teams?.home?.id && !globalCoachCache[match.teams.home.id]) {
@@ -413,14 +430,32 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
           teamIds.push(match.teams.away.id);
         }
       });
-      
-      // Benzersiz ID'leri al
+
       const uniqueIds = [...new Set(teamIds)];
-      
       if (uniqueIds.length === 0) return;
-      
+
+      // 1) Bulk cache'den oku (favori takımlar indirilirken TD de geliyor) – anında görünsün
       try {
-        const response = await teamsApi.getBulkCoaches(uniqueIds);
+        const bulkResults = await Promise.all(
+          uniqueIds.map(async (id) => ({ id, coach: await getBulkCoach(id) }))
+        );
+        let fromBulk = false;
+        bulkResults.forEach(({ id, coach }) => {
+          const name = coach?.name ?? (typeof coach === 'string' ? coach : null);
+          if (name) {
+            globalCoachCache[id] = name;
+            fromBulk = true;
+          }
+        });
+        if (fromBulk) setCoachCacheVersion((v) => v + 1);
+      } catch (_) {}
+
+      // 2) Eksik kalan takımlar için backend/uygulama DB'sinden toplu çek (mobil → bizim API → bizim DB)
+      const idsToFetch = uniqueIds.filter((id) => !globalCoachCache[id]);
+      if (idsToFetch.length === 0) return;
+
+      try {
+        const response = await teamsApi.getBulkCoaches(idsToFetch);
         if (response?.success && response?.data) {
           const coachData = response.data as Record<string, { coach: string | null; isStale?: boolean }>;
           const staleIds: number[] = [];
@@ -434,46 +469,40 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
             if (data.isStale) staleIds.push(parseInt(teamId, 10));
           });
 
-          // Stale coach'ları API'den yenile (arka planda)
           if (staleIds.length > 0) {
             teamsApi.refreshCoaches(staleIds).then((refreshRes: any) => {
               if (refreshRes?.success && refreshRes?.data) {
                 Object.entries(refreshRes.data).forEach(([tid, d]: [string, any]) => {
                   if (d?.coach) {
                     globalCoachCache[parseInt(tid, 10)] = d.coach;
-                    setCoachCacheVersion(v => v + 1);
+                    setCoachCacheVersion((v) => v + 1);
                   }
                 });
               }
             }).catch(() => {});
           }
 
-          if (updated) {
-            setCoachCacheVersion(v => v + 1);
-          }
+          if (updated) setCoachCacheVersion((v) => v + 1);
         }
       } catch (error) {
-        // API hatası - sessizce devam et
         logger.warn('Coach bulk fetch failed', { error }, 'Dashboard');
       }
     };
-    
-    // Maçlar yüklendiğinde çek
+
     if (matchData.hasLoadedOnce && !matchData.loading) {
       fetchCoachesForMatches();
     }
   }, [matchData.hasLoadedOnce, matchData.loading, matchData.upcomingMatches.length, matchData.liveMatches.length]);
   
-  // ✅ Teknik direktör ismini al - sadece cache'ten oku (DB/API'den doldurulur)
+  // ✅ Teknik direktör ismini al - sadece DB/cache'ten; yoksa "..." veya "Bilinmiyor"
   const getCoachName = (teamName: string, teamId?: number): string => {
-    // Eğer teamId varsa ve cache'te varsa, cache'ten döndür
+    let name: string;
     if (teamId && globalCoachCache[teamId]) {
-      return globalCoachCache[teamId];
+      name = globalCoachCache[teamId];
+    } else {
+      name = teamId ? '...' : 'Bilinmiyor';
     }
-    
-    // Cache'te yoksa "Yükleniyor..." veya boş göster
-    // Not: API bulk fetch arka planda çalışıyor, cache dolacak
-    return teamId ? '...' : 'Bilinmiyor';
+    return shortenCoachName(name);
   };
 
   // ✅ Takım adını çevir (milli takımlar için)
@@ -587,7 +616,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
     
     return (
       <TouchableOpacity
-        style={styles.matchCardContainer}
+        style={[styles.matchCardContainer, { height: matchCardHeight }]}
         onPress={isLocked ? undefined : onPress}
         onLongPress={handleLongPress}
         activeOpacity={isLocked ? 1 : 0.8}
@@ -596,6 +625,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
         <View
           style={[
             styles.matchCard,
+            { height: matchCardHeight },
             isLight
               ? { backgroundColor: themeColors.card, borderColor: themeColors.border }
               : {},
@@ -613,6 +643,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
             <LinearGradient colors={homeColors} style={styles.matchCardLeftStrip} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} />
             <LinearGradient colors={[...awayColors].reverse()} style={styles.matchCardRightStrip} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} />
           <View style={styles.matchCardContent}>
+            <View style={styles.matchCardContentTop}>
               {/* Turnuva Badge - En Üstte Ortada (Tahmin varsa sarı ve tıklanabilir) */}
             {hasPrediction && matchId != null && onDeletePrediction ? (
               <TouchableOpacity
@@ -686,16 +717,15 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
               );
             })()}
             
-            {/* Takımlar Bölümü */}
+            {/* Takımlar Bölümü - skorlar maç detaydaki gibi tek tip çerçeve (renkli konteyner yok) */}
             <View style={styles.matchCardTeamsContainer}>
               {/* Ev Sahibi Takım */}
               <View style={styles.matchCardTeamLeft}>
                 <Text style={[styles.matchCardTeamName, isLight && { color: themeColors.foreground }]} numberOfLines={1} ellipsizeMode="tail">{getDisplayTeamName(match.teams.home.name)}</Text>
-                <Text style={[styles.matchCardCoachName, isLight && { color: themeColors.mutedForeground }]}>{getCoachName(match.teams.home.name, match.teams.home.id)}</Text>
-                {/* ✅ Her zaman aynı yükseklikte skor alanı - sıçrama olmasın */}
+                <Text style={[styles.matchCardCoachName, isLight && { color: BRAND.accent }]} numberOfLines={1} ellipsizeMode="tail">{getCoachName(match.teams.home.name, match.teams.home.id)}</Text>
                 {(status === 'live' || status === 'finished') ? (
-                  <View style={[status === 'live' ? styles.matchCardScoreBoxLive : styles.matchCardScoreBox, isLight && (status === 'live' ? {} : { backgroundColor: themeColors.muted })]}>
-                    <Text style={[status === 'live' ? styles.matchCardScoreTextLive : styles.matchCardScoreText, isLight && status !== 'live' && { color: themeColors.foreground }]}>{match.goals?.home ?? 0}</Text>
+                  <View style={[styles.matchCardScoreFrame, isLight && { backgroundColor: themeColors.muted, borderColor: themeColors.border }]}>
+                    <Text style={[styles.matchCardScoreFrameText, isLight && { color: themeColors.foreground }]}>{match.goals?.home ?? 0}</Text>
                   </View>
                 ) : (
                   <View style={styles.matchCardScoreBoxPlaceholder} />
@@ -785,20 +815,19 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
               {/* Deplasman Takım */}
               <View style={styles.matchCardTeamRight}>
                 <Text style={[styles.matchCardTeamName, styles.matchCardTeamNameRight, isLight && { color: themeColors.foreground }]} numberOfLines={1} ellipsizeMode="tail">{getDisplayTeamName(match.teams.away.name)}</Text>
-                <Text style={[styles.matchCardCoachNameAway, isLight && { color: themeColors.mutedForeground }]}>{getCoachName(match.teams.away.name, match.teams.away.id)}</Text>
-                {/* ✅ Her zaman aynı yükseklikte skor alanı - sıçrama olmasın */}
+                <Text style={[styles.matchCardCoachNameAway, isLight && { color: BRAND.accent }]} numberOfLines={1} ellipsizeMode="tail">{getCoachName(match.teams.away.name, match.teams.away.id)}</Text>
                 {(status === 'live' || status === 'finished') ? (
-                  <View style={[status === 'live' ? styles.matchCardScoreBoxLive : styles.matchCardScoreBox, isLight && (status === 'live' ? {} : { backgroundColor: themeColors.muted })]}>
-                    <Text style={[status === 'live' ? styles.matchCardScoreTextLive : styles.matchCardScoreText, isLight && status !== 'live' && { color: themeColors.foreground }]}>{match.goals?.away ?? 0}</Text>
+                  <View style={[styles.matchCardScoreFrame, isLight && { backgroundColor: themeColors.muted, borderColor: themeColors.border }]}>
+                    <Text style={[styles.matchCardScoreFrameText, isLight && { color: themeColors.foreground }]}>{match.goals?.away ?? 0}</Text>
                   </View>
                 ) : (
                   <View style={styles.matchCardScoreBoxPlaceholder} />
                 )}
               </View>
             </View>
+            </View>
             
-            {/* Durum Badge'i (Canlı, Bitti, Geri Sayım, Kilitli) */}
-            {/* ✅ Her zaman aynı yükseklikte container - kart yüksekliği sabit kalsın */}
+            {/* Durum Badge'i (Canlı, Bitti, Geri Sayım, Kilitli) - her zaman görünür, kesilmez */}
             <View style={styles.matchCardLiveContainer}>
               {status === 'live' ? (
                 <LinearGradient
@@ -964,6 +993,14 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
       }, 'DASHBOARD');
     }
   }, [pastMatches, liveMatches, upcomingMatches]);
+
+  // ✅ Scroll alanı yüksekliği – 3 maç kartı sığacak şekilde kart yüksekliği (%14 kısaltılmış)
+  const [scrollAreaHeight, setScrollAreaHeight] = useState(0);
+  const CARD_GAP = 8;
+  const HEIGHT_SCALE = 0.86; // %14 daha kısa kart
+  const matchCardHeight = scrollAreaHeight > 0
+    ? Math.floor(((scrollAreaHeight - CARD_GAP * 2) / 3) * HEIGHT_SCALE)
+    : 176; // 205 * 0.86
 
   // ✅ Cache yüklenir yüklenmez listeyi göster; cache'ten maç gelince hemen göster (yanıp sönme önlenir)
   React.useEffect(() => {
@@ -1190,7 +1227,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
   // ✅ Kart en üstte: üst padding yok; altta tab bar için boşluk
   const FALLBACK_PADDING = Platform.OS === 'ios' ? 280 : 272;
   const SCROLL_VIEW_TOP_MARGIN = profileCardHeight > 0 ? profileCardHeight : FALLBACK_PADDING;
-  const SCROLL_CONTENT_PADDING_TOP = 0;
+  const SCROLL_CONTENT_PADDING_TOP = 6; // Maç kartları filtre çubuğunun altına 6px oturur (1px aşağı)
 
   // İlk canlı/yaklaşan kartın scroll content içindeki Y pozisyonu (onLayout ile doğrudan ölçülür)
   const [refMarkerY, setRefMarkerY] = React.useState(0);
@@ -1219,6 +1256,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
     : fallbackScrollY;
   const defaultScrollYRef = React.useRef(defaultScrollY);
   defaultScrollYRef.current = defaultScrollY;
+  const lastScrollTargetRef = React.useRef(0);
 
   // ✅ Filtre değişiminde (seçili takım/ilk görünen kart) yeniden hizalama tetikleyicisi
   const selectedTeamIdsKey = React.useMemo(
@@ -1228,25 +1266,44 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
   const firstLiveMatchId = filteredLiveMatches[0]?.fixture?.id ?? null;
   const firstUpcomingMatchId = filteredUpcomingMatches[0]?.fixture?.id ?? null;
 
-  // Fallback: 2sn içinde ölçüm gelmezse yine de göster
+  const hasAnyMatches = (filteredLiveMatches.length + filteredUpcomingMatches.length + displayPastMatches.length) > 0;
+  const hasLiveOrUpcoming = filteredLiveMatches.length > 0 || filteredUpcomingMatches.length > 0;
+
+  // Fallback: ölçüm/scroll gelmezse kısa sürede içeriği göster (hot reload / Web’de güvenilir)
   React.useEffect(() => {
     if (initialScrollDone) return;
-    const fallback = setTimeout(() => { setInitialScrollDone(true); }, 2000);
+    if (hasLiveOrUpcoming) {
+      const lastResort = setTimeout(() => setInitialScrollDone(true), Platform.OS === 'web' ? 1200 : 1500);
+      return () => clearTimeout(lastResort);
+    }
+    const delayMs = Platform.OS === 'web' ? 150 : 400;
+    const fallback = setTimeout(() => setInitialScrollDone(true), delayMs);
     return () => clearTimeout(fallback);
-  }, [initialScrollDone]);
+  }, [initialScrollDone, hasLiveOrUpcoming]);
 
-  // Ana scroll effect: açılışta ve filtre değişiminde ilk canlı/yaklaşan kartı görünür alana hizala
+  // Sadece biten maç varsa listeyi hemen göster; canlı/yaklaşan varsa scroll effect göstersin (açılışta canlı/yaklaşan üstte)
   React.useEffect(() => {
-    if (!hasLoadedOnce) return;
+    if (initialScrollDone || !hasLoadedOnce || !hasAnyMatches) return;
+    if (hasLiveOrUpcoming) return;
+    const t = setTimeout(() => setInitialScrollDone(true), Platform.OS === 'web' ? 0 : 50);
+    return () => clearTimeout(t);
+  }, [initialScrollDone, hasLoadedOnce, hasAnyMatches, hasLiveOrUpcoming]);
+
+  // Ana scroll: canlı/yaklaşan varsa ilk canlı/yaklaşan bölüme kaydır. Canlı/yaklaşan varken asla scrollTo(0) yapma (biten görünmesin).
+  React.useEffect(() => {
+    if (!hasLoadedOnce || !hasAnyMatches) return;
     const scrollTo = activeAnchorY > 0
       ? Math.max(0, activeAnchorY - SCROLL_CONTENT_PADDING_TOP)
       : fallbackScrollY;
+    if (hasLiveOrUpcoming && scrollTo <= 0) return; // Layout gelene kadar bekle, 0'a kaydırma
+    const delayMs = hasLiveOrUpcoming ? (Platform.OS === 'web' ? 180 : 120) : 50;
     const t = setTimeout(() => {
       if (scrollViewRef.current && typeof (scrollViewRef.current as any).scrollTo === 'function') {
         (scrollViewRef.current as any).scrollTo({ y: scrollTo, animated: false });
+        if (scrollTo > 0) lastScrollTargetRef.current = scrollTo;
       }
-      if (!initialScrollDone) setInitialScrollDone(true);
-    }, 30);
+      if (!initialScrollDone && (scrollTo > 0 || !hasLiveOrUpcoming)) setInitialScrollDone(true);
+    }, delayMs);
     return () => clearTimeout(t);
   }, [
     refMarkerY,
@@ -1254,6 +1311,8 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
     upcomingListAnchorY,
     activeAnchorY,
     hasLoadedOnce,
+    hasAnyMatches,
+    hasLiveOrUpcoming,
     initialScrollDone,
     SCROLL_CONTENT_PADDING_TOP,
     SCROLL_VIEW_TOP_MARGIN,
@@ -1273,7 +1332,8 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
     snapBackTimeoutRef.current = setTimeout(() => {
       snapBackTimeoutRef.current = null;
       if (scrollViewRef.current && typeof (scrollViewRef.current as any).scrollTo === 'function') {
-        (scrollViewRef.current as any).scrollTo({ y: defaultScrollYRef.current, animated: true });
+        const targetY = lastScrollTargetRef.current > 0 ? lastScrollTargetRef.current : defaultScrollYRef.current;
+        (scrollViewRef.current as any).scrollTo({ y: targetY, animated: true });
       }
     }, SNAP_BACK_DELAY_MS);
   }, []);
@@ -1332,6 +1392,7 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
       {/* Scrollable Content */}
       <ScrollView
         ref={scrollViewRef}
+        onLayout={(e) => setScrollAreaHeight(e.nativeEvent.layout.height)}
         style={[
           styles.scrollView,
           {
@@ -3261,7 +3322,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingBottom: 2,
     zIndex: 1,
-    justifyContent: 'space-between', // ✅ İçeriği eşit dağıt
+    justifyContent: 'space-between',
+  },
+  matchCardContentTop: {
+    flex: 1,
+    flexShrink: 1,
+    minHeight: 0,
   },
   matchCardTournamentRow: {
     flexDirection: 'row',
@@ -3303,19 +3369,19 @@ const styles = StyleSheet.create({
   matchCardTeamsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'stretch',
+    alignItems: 'flex-end', // Skor kutuları aynı hizada kalsın, uzun antrenör ismi dengeyi bozmasın
     marginBottom: 4,
     gap: 6,
   },
   matchCardTeamLeft: {
     flex: 1,
     alignItems: 'flex-start',
-    minWidth: 0, // ✅ Text overflow için
+    minWidth: 0,
   },
   matchCardTeamRight: {
     flex: 1,
     alignItems: 'flex-end',
-    minWidth: 0, // ✅ Text overflow için
+    minWidth: 0,
   },
   matchCardTeamName: {
     ...TYPOGRAPHY.bodySmallSemibold,
@@ -3328,11 +3394,15 @@ const styles = StyleSheet.create({
   },
   matchCardCoachName: {
     ...TYPOGRAPHY.caption,
-    color: COLORS.dark.mutedForeground,
+    color: BRAND.accent,
+    height: 16,
+    lineHeight: 16,
   },
   matchCardCoachNameAway: {
     ...TYPOGRAPHY.caption,
-    color: COLORS.dark.warning,
+    color: BRAND.accent,
+    height: 16,
+    lineHeight: 16,
   },
   matchCardCenterInfo: {
     alignItems: 'center',
@@ -3461,7 +3531,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 0,
     marginTop: 0,
-    height: 38, // ✅ Sabit yükseklik - tüm durumlar için aynı (kompakt)
+    height: 38,
+    flexShrink: 0, // OYNANIYOR etiketi kesilmesin
   },
   matchCardLiveBadge: {
     flexDirection: 'row',
@@ -3754,6 +3825,36 @@ const styles = StyleSheet.create({
     width: 36,
     height: 26, // Skor kutusu ile aynı yükseklik
     opacity: 0,
+  },
+  // Maç detaydaki gibi tek tip çerçeve (renkli konteyner yok)
+  matchCardScoreFrame: {
+    marginTop: 3,
+    backgroundColor: '#0F2A24',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 36,
+    height: 26,
+    borderWidth: 1,
+    borderColor: 'rgba(31, 162, 166, 0.3)',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#334155',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+      },
+      android: { elevation: 3 },
+      web: { boxShadow: '0 2px 4px rgba(30, 41, 59, 0.3)' },
+    }),
+  },
+  matchCardScoreFrameText: {
+    ...TYPOGRAPHY.h3,
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: BRAND.white,
   },
   matchCardScoreBox: {
     marginTop: 3,

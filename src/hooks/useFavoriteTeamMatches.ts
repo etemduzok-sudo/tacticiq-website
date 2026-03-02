@@ -103,15 +103,15 @@ export function isNationalTeamMatch(m: Match): boolean {
 function normalizeMatchFormat(raw: any): Match | null {
   if (!raw) return null;
   
-  // Zaten API formatındaysa (fixture + teams var)
+  // Zaten API formatındaysa (fixture + teams var) – coach varsa koru
   if (raw.fixture && raw.teams?.home?.id != null) {
     return raw as Match;
   }
-  
+
   // DB formatından API formatına dönüştür
   const fixtureId = raw.fixture?.id || raw.id || raw.source_match_id;
   if (!fixtureId) return null;
-  
+
   const homeTeam = raw.teams?.home || raw.home_team || { id: raw.home_team_id, name: null, logo: null };
   const awayTeam = raw.teams?.away || raw.away_team || { id: raw.away_team_id, name: null, logo: null };
   
@@ -139,8 +139,8 @@ function normalizeMatchFormat(raw: any): Match | null {
     },
     league: raw.league || { id: raw.league_id, name: null, country: null, logo: null },
     teams: {
-      home: { id: homeTeam.id || homeTeam.api_football_id, name: homeTeam.name, logo: homeTeam.logo },
-      away: { id: awayTeam.id || awayTeam.api_football_id, name: awayTeam.name, logo: awayTeam.logo },
+      home: { id: homeTeam.id || homeTeam.api_football_id, name: homeTeam.name, logo: homeTeam.logo, coach: homeTeam.coach ?? undefined },
+      away: { id: awayTeam.id || awayTeam.api_football_id, name: awayTeam.name, logo: awayTeam.logo, coach: awayTeam.coach ?? undefined },
     },
     goals: raw.goals || { home: raw.home_score ?? null, away: raw.away_score ?? null },
     score: raw.score || {
@@ -313,7 +313,8 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
           
           if (allCached.length > 0) {
             const { rePast, reLive, reUpcoming } = categorizeQuick(allCached);
-            applyCacheDelayed(rePast, reLive, reUpcoming, '⚡ INSTANT cache load');
+            // Canlıyı cache'den gösterme – eski statü 1→0 titremesini önle; full fetch / fetchLiveOnly belirlesin
+            applyCacheDelayed(rePast, [], reUpcoming, '⚡ INSTANT cache load');
             return;
           }
         }
@@ -330,7 +331,7 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
             const bulkMatches = await getAllBulkMatches(teamIds);
             if (bulkMatches && bulkMatches.length > 0) {
               const { rePast, reLive, reUpcoming } = categorizeQuick(bulkMatches as Match[]);
-              applyCacheDelayed(rePast, reLive, reUpcoming, '⚡ INSTANT BULK cache load');
+              applyCacheDelayed(rePast, [], reUpcoming, '⚡ INSTANT BULK cache load');
               return;
             }
           }
@@ -477,8 +478,12 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
       const startedAgo = now - matchTime;
       const withinLiveWindow = startedAgo >= 0 && startedAgo <= MAX_LIVE_WINDOW_MS;
 
-      // 1) Canlı maçlar (API'den gelen kesin canlı statü)
+      // 1) Canlı maçlar (API'den gelen kesin canlı statü) – ama maç 3.5 saatten eskiyse statü güncel değildir (cache/DB'de 2H kalmış), biten say
       if (LIVE_STATUSES.includes(status)) {
+        if (startedAgo > MAX_LIVE_WINDOW_MS) {
+          past.push(match);
+          return;
+        }
         live.push(match);
         return;
       }
@@ -912,21 +917,21 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
       // Biten maç ID'leri – canlı listesinde asla kalmasın
       const finishedIds = new Set(nowFinishedFromApi.map(m => m.fixture?.id));
 
-      // Live maçları güncelle: API canlıları + "saat bazlı canlı"; bitenleri çıkar
+      // Live maçları güncelle: API canlıları + "saat bazlı canlı"; bitenleri çıkar (setState içinde setState çağırma – titreme önlenir)
       setLiveMatches(prev => {
         const newIds = new Set(newLive.map(m => m.fixture?.id));
         const timeBasedStillLive = prev.filter(
           m => isTimeBasedLive(m) && !newIds.has(m.fixture?.id) && !finishedIds.has(m.fixture?.id)
         );
-        if (nowFinishedFromApi.length > 0) {
-          setPastMatches(p => {
-            const existingIds = new Set(p.map(x => x.fixture?.id));
-            const toAdd = nowFinishedFromApi.filter(m => !existingIds.has(m.fixture?.id));
-            return toAdd.length ? [...toAdd, ...p] : p;
-          });
-        }
         return [...newLive, ...timeBasedStillLive];
       });
+      if (nowFinishedFromApi.length > 0) {
+        setPastMatches(p => {
+          const existingIds = new Set(p.map(x => x.fixture?.id));
+          const toAdd = nowFinishedFromApi.filter(m => !existingIds.has(m.fixture?.id));
+          return toAdd.length ? [...toAdd, ...p] : p;
+        });
+      }
     } catch (err) {
       console.log('🔴 Canlı maç fetch hatası:', err);
     }

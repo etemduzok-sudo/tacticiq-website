@@ -313,6 +313,17 @@ router.get('/live', async (req, res) => {
         if (databaseService.enabled && uniqueMatches && uniqueMatches.length > 0) {
           await databaseService.upsertMatches(uniqueMatches);
         }
+
+        // ✅ Maç kartında her iki takımın koçunu göstermek için static_teams'ten coach ekle
+        if (supabase && uniqueMatches.length > 0) {
+          const teamIds = [...new Set(uniqueMatches.flatMap(m => [m.teams?.home?.id, m.teams?.away?.id].filter(Boolean)))];
+          const { data: coachRows } = await supabase.from('static_teams').select('api_football_id, coach').in('api_football_id', teamIds);
+          const coachByTeamId = (coachRows || []).reduce((acc, row) => { acc[row.api_football_id] = row.coach || null; return acc; }, {});
+          uniqueMatches.forEach(m => {
+            if (m.teams?.home?.id != null) m.teams.home.coach = coachByTeamId[m.teams.home.id] ?? null;
+            if (m.teams?.away?.id != null) m.teams.away.coach = coachByTeamId[m.teams.away.id] ?? null;
+          });
+        }
         
         return res.json({
           success: true,
@@ -328,6 +339,15 @@ router.get('/live', async (req, res) => {
 
     // 4. DB'den gelen canlı maçları döndür (mock maç DEVRE DIŞI)
     let finalMatches = (!dbError && dbMatches) ? dbMatches : [];
+    if (supabase && finalMatches.length > 0) {
+      const teamIds = [...new Set(finalMatches.flatMap(m => [m.home_team_id, m.away_team_id].filter(Boolean)))];
+      const { data: coachRows } = await supabase.from('static_teams').select('api_football_id, coach').in('api_football_id', teamIds);
+      const coachByTeamId = (coachRows || []).reduce((acc, row) => { acc[row.api_football_id] = row.coach || null; return acc; }, {});
+      finalMatches.forEach(m => {
+        if (m.home_team) m.home_team.coach = coachByTeamId[m.home_team_id] ?? null;
+        if (m.away_team) m.away_team.coach = coachByTeamId[m.away_team_id] ?? null;
+      });
+    }
 
     res.json({
       success: true,

@@ -1,5 +1,25 @@
 # DB Güncelleme ve Rapor Nasıl Çalıştırılır
 
+## Koç neden tek tek güncelleniyor? Tek API ile tüm koçlar alınamaz mı?
+
+**Hayır.** API-Football'da `/coachs` endpoint'i sadece şu parametreleri kabul ediyor:
+- `team` = takım ID (1 takım başına 1 istek)
+- `id` = koç ID
+- `search` = isimle arama
+
+**Lig bazlı veya "tüm koçları getir" diye bir endpoint yok.** Bu yüzden her takım için ayrı istek atmak zorundayız.
+
+**Hızlandırmak için:** Sadece koç güncellemek istersen (kadro/renk çekmeden) `run-coach-only-fast.js` kullan. 1 API/takım + kısa gecikme (250ms) ile 5 dk'da yüzlerce koç güncellenir:
+```powershell
+node scripts/run-coach-only-fast.js
+```
+
+## Neden ilerleme yavaş? (02.03.2026 optimizasyonları)
+
+- **run-db-sync-and-report.js**: Batch'ler arası **2 dakika** bekleniyordu → **30 saniye** yapıldı. Batch boyutu 200 → 400 takım.
+- **run-phased-db-complete.js**: Her 30 takımda **5 sn** duraklama → **2 sn**; batch 30 → 50 takım; takım arası gecikme 400ms → 350ms.
+- Bu ayarlarla ilerleme belirgin şekilde hızlanır. API rate limit (429) alırsan `--delay=600` veya `--delay=1000` ile script'i tekrar çalıştır.
+
 ## Neden "ilerleme olmuyor"? / %84'te takılı kaldı
 
 - **db-status-report.txt** sadece **mevcut DB sayılarını** yazar (koç %, kadro %, rating %). Bu sayıların artması için **DB'yi güncelleyen script'lerin** çalışması gerekir.

@@ -18,8 +18,8 @@ const { spawn } = require('child_process');
 const BACKEND_DIR = path.join(__dirname, '..');
 const REPORT_SCRIPT = path.join(__dirname, 'db-status-report-every-5min.js');
 const SYNC_SCRIPT = path.join(__dirname, 'update-coach-colors-squads.js');
-const BATCH_SIZE = 200;
-const BATCH_DELAY_MS = 2 * 60 * 1000; // Batch arası 2 dk (rapor güncellensin)
+const BATCH_SIZE = 400;                    // 200→400: batch başına daha çok takım
+const BATCH_DELAY_MS = 30 * 1000;         // 2dk→30sn: batch arası bekleme (ilerleme hızlandı)
 
 let reportChild = null;
 
@@ -58,7 +58,7 @@ async function main() {
   console.log('');
   console.log('  • Rapor: backend/data/db-status-report.txt (her 5 dakikada guncellenir)');
   console.log('  • Sync: update-coach-colors-squads.js (filtre yok, tum eksik takimlar)');
-  console.log('  • Her batch: ' + BATCH_SIZE + ' takim, 2 dk arayla tekrar.');
+  console.log('  • Her batch: ' + BATCH_SIZE + ' takim, ' + (BATCH_DELAY_MS / 1000) + ' sn arayla tekrar.');
   console.log('');
 
   startReport();

@@ -144,7 +144,7 @@ const SuggestionCard: React.FC<{
               </View>
             )}
             <View style={styles.inBadge}>
-              <Ionicons name="arrow-up" size={10} color="#FFFFFF" />
+              <Ionicons name="person-add" size={10} color="#FFFFFF" />
             </View>
           </View>
           <Text style={styles.playerName} numberOfLines={1}>
@@ -525,7 +525,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: -2,
     right: -2,
-    backgroundColor: '#10B981',
+    backgroundColor: '#F97316',
     width: 16,
     height: 16,
     borderRadius: 8,

@@ -2,6 +2,60 @@
 // Handles syncing API data to Supabase
 const { supabase, isConfigured } = require('../config/supabase');
 
+// Maç senkronunda gördüğümüz tüm takımları (rakipler dahil) static_teams'te yoksa ekler
+async function ensureTeamsInStaticTeams(fixtures) {
+  if (!isConfigured || !supabase || !fixtures || fixtures.length === 0) return;
+  const teamsMap = new Map();
+  for (const f of fixtures) {
+    if (f.teams?.home?.id != null && f.teams?.home?.name) {
+      teamsMap.set(Number(f.teams.home.id), { id: Number(f.teams.home.id), name: String(f.teams.home.name).trim() });
+    }
+    if (f.teams?.away?.id != null && f.teams?.away?.name) {
+      teamsMap.set(Number(f.teams.away.id), { id: Number(f.teams.away.id), name: String(f.teams.away.name).trim() });
+    }
+  }
+  const teams = Array.from(teamsMap.values()).filter((t) => t.id && t.name);
+  if (teams.length === 0) return;
+  const ids = teams.map((t) => t.id);
+  const { data: existing } = await supabase
+    .from('static_teams')
+    .select('api_football_id')
+    .in('api_football_id', ids);
+  const existingIds = new Set((existing || []).map((r) => r.api_football_id));
+  const toInsert = teams.filter((t) => !existingIds.has(t.id));
+  if (toInsert.length === 0) return;
+  const rowsFull = toInsert.map((t) => ({
+    api_football_id: t.id,
+    name: t.name,
+    country: 'Unknown',
+    league_type: 'domestic_top',
+    team_type: 'club',
+    last_updated: new Date().toISOString(),
+  }));
+  const rowsMinimal = toInsert.map((t) => ({
+    api_football_id: t.id,
+    name: t.name,
+    country: 'Unknown',
+    last_updated: new Date().toISOString(),
+  }));
+  const BATCH = 50;
+  let added = 0;
+  for (let i = 0; i < toInsert.length; i += BATCH) {
+    const batch = rowsFull.slice(i, i + BATCH);
+    const { error } = await supabase.from('static_teams').upsert(batch, { onConflict: 'api_football_id' });
+    if (error) {
+      const batchMin = rowsMinimal.slice(i, i + BATCH);
+      const { error: err2 } = await supabase.from('static_teams').upsert(batchMin, { onConflict: 'api_football_id' });
+      if (!err2) added += batchMin.length;
+    } else {
+      added += batch.length;
+    }
+  }
+  if (added > 0 && !process.env.SUPPRESS_SYNC_LOGS) {
+    console.log(`  📋 static_teams: ${added} rakip takım eklendi`);
+  }
+}
+
 class DatabaseService {
   constructor() {
     this.enabled = isConfigured;
@@ -179,7 +233,7 @@ class DatabaseService {
       const result = await this.upsertMatch(match);
       if (result) results.push(result);
     }
-    
+    await ensureTeamsInStaticTeams(matchesArray);
     if (!opts.quiet || results.length > 0) {
       console.log(`💾 Synced ${results.length}/${matchesArray.length} matches to database`);
     }
@@ -234,6 +288,7 @@ class DatabaseService {
       const { data, error } = await supabase.from('matches').upsert(rows, { onConflict: 'id' });
       if (!error) saved += rows.length;
     }
+    await ensureTeamsInStaticTeams(fixtures);
     if (!opts.quiet) console.log(`💾 Synced ${saved}/${fixtures.length} matches to database`);
     return Array(saved).fill({});
   }

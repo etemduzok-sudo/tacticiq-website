@@ -37,6 +37,7 @@ import { BRAND, COLORS, SPACING, SIZES, LIGHT_MODE } from '../theme/theme';
 import { useTheme } from '../contexts/ThemeContext';
 import { useTranslation } from '../hooks/useTranslation';
 import { getTeamColors as getTeamColorsUtil } from '../utils/teamColors';
+import { shortenCoachName } from '../utils/coachNameUtils';
 import { isMockTestMatch, MOCK_MATCH_IDS, getMatch1Start, getMatch2Start, MATCH_1_EVENTS, MATCH_2_EVENTS, computeLiveState, getMockUserTeamId } from '../data/mockTestData';
 
 interface MatchDetailProps {
@@ -756,15 +757,12 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
     return typeof coach === 'string' ? coach : coach?.name || '';
   };
   
-  // ✅ Teknik direktör öncelik sırası:
-  // 1. Teams/Coach API state'inden (en güncel, maça özel)
-  // 2. Lineups'tan (maça özel)
-  // 3. Fallback listesinden (son çare)
+  // ✅ Teknik direktör: API/lineup → fallback (sadece DB/API’den gelen veya fallback listesi)
   const homeManager = coaches.home
-    || getManagerFromLineups(match?.teams?.home?.id) 
+    || getManagerFromLineups(match?.teams?.home?.id)
     || getCoachFallback(match?.teams?.home?.name);
   const awayManager = coaches.away
-    || getManagerFromLineups(match?.teams?.away?.id) 
+    || getManagerFromLineups(match?.teams?.away?.id)
     || getCoachFallback(match?.teams?.away?.name);
 
   // Biten maç (ertelenen PST/SUSP hariç) – FINISHED_STATUSES yukarıda tanımlı
@@ -1435,7 +1433,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
               <Text style={[styles.teamNameLarge, { color: headerFg }]} numberOfLines={1} ellipsizeMode="tail">{matchData.homeTeam.name}</Text>
             </View>
             {matchData.homeTeam.manager?.trim() ? (
-              <Text style={[styles.managerText, { color: headerMuted }]}>{matchData.homeTeam.manager.trim()}</Text>
+              <Text style={[styles.managerText, { color: BRAND.accent }]} numberOfLines={1} ellipsizeMode="tail">{shortenCoachName(matchData.homeTeam.manager.trim())}</Text>
             ) : (
               <View style={{ height: 14 }} />
             )}
@@ -1576,7 +1574,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
               <Text style={[styles.teamNameLarge, { color: headerFg }]} numberOfLines={1} ellipsizeMode="tail">{matchData.awayTeam.name}</Text>
             </View>
             {matchData.awayTeam.manager?.trim() ? (
-              <Text style={[styles.managerText, { color: headerMuted }]}>{matchData.awayTeam.manager.trim()}</Text>
+              <Text style={[styles.managerText, { color: BRAND.accent }]} numberOfLines={1} ellipsizeMode="tail">{shortenCoachName(matchData.awayTeam.manager.trim())}</Text>
             ) : (
               <View style={{ height: 14 }} />
             )}
@@ -2361,9 +2359,11 @@ const styles = StyleSheet.create({
   },
   managerText: {
     fontSize: 9,
-    color: '#94A3B8',
+    color: BRAND.accent,
     textAlign: 'center',
     fontStyle: 'italic',
+    height: 14,
+    lineHeight: 14,
   },
   teamColorStrip: {
     width: 40,

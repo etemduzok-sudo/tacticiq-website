@@ -269,6 +269,65 @@ router.post('/download', async (req, res) => {
       }
     });
 
+    // ✅ Rakip takımların koçlarını da ekle (maçlarda gördüğümüz tüm takımlar – favori + rakip)
+    const favSet = new Set(teamIds.map((id) => parseInt(id, 10)));
+    const opponentIds = new Set();
+    Object.values(results).forEach((data) => {
+      (data.matches || []).forEach((m) => {
+        const homeId = m.teams?.home?.id != null ? parseInt(m.teams.home.id, 10) : null;
+        const awayId = m.teams?.away?.id != null ? parseInt(m.teams.away.id, 10) : null;
+        if (homeId && !favSet.has(homeId)) opponentIds.add(homeId);
+        if (awayId && !favSet.has(awayId)) opponentIds.add(awayId);
+      });
+    });
+    const opponentList = Array.from(opponentIds).filter(Boolean).slice(0, 80);
+
+    if (opponentList.length > 0 && supabase) {
+      const { data: opponentRows } = await supabase
+        .from('static_teams')
+        .select('api_football_id, coach, name')
+        .in('api_football_id', opponentList);
+
+      const coachByOpponent = (opponentRows || []).reduce((acc, row) => {
+        if (row.coach) acc[row.api_football_id] = row.coach;
+        return acc;
+      }, {});
+
+      const missingCoachIds = opponentList.filter((id) => !coachByOpponent[id]);
+      const { selectActiveCoach } = require('../utils/selectActiveCoach');
+      const maxApiOpponents = 20;
+      for (let i = 0; i < Math.min(missingCoachIds.length, maxApiOpponents); i++) {
+        const oid = missingCoachIds[i];
+        try {
+          const coachData = await footballApi.getTeamCoach(oid);
+          if (coachData.response && coachData.response.length > 0) {
+            const selected = selectActiveCoach(coachData.response, oid);
+            const currentCoach = selected && coachData.response.find((c) => c.id === selected.id);
+            if (currentCoach && selected) {
+              coachByOpponent[oid] = selected.name;
+            }
+          }
+        } catch (e) {
+          // skip
+        }
+      }
+
+      opponentList.forEach((oid) => {
+        const coachName = coachByOpponent[oid];
+        if (coachName && !results[oid]) {
+          results[oid] = {
+            info: null,
+            coach: { id: null, name: coachName },
+            squad: [],
+            matches: [],
+          };
+        }
+      });
+      if (opponentList.length > 0) {
+        console.log(`  ✅ [BULK] Rakip koçları eklendi: ${Object.keys(results).length - teamIds.length} takım`);
+      }
+    }
+
     const elapsed = Date.now() - startTime;
     const responseJson = JSON.stringify({ success: true, data: results });
     const sizeKB = Math.round(responseJson.length / 1024);
