@@ -203,6 +203,10 @@ interface MatchPredictionScreenProps {
   hasPrediction?: boolean;
   /** ✅ Topluluk verilerini gördüğünde MatchDetail'a bildir (kadro kilidi için) */
   onViewedCommunityData?: () => void;
+  /** Kadro sekmesinden "Tahmin > Topluluk/Gerçek" ile gelindiyse açılacak alt sekme: 1 = Topluluk, 2 = Gerçek */
+  initialPredictionSubIndex?: number | null;
+  /** initialPredictionSubIndex uygulandıktan sonra çağrılır (MatchDetail state temizler) */
+  onInitialPredictionSubIndexApplied?: () => void;
 }
 
 // Mock Formation Data
@@ -384,6 +388,8 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
   isMatchLive = false,
   isMatchFinished = false,
   onViewedCommunityData,
+  initialPredictionSubIndex,
+  onInitialPredictionSubIndexApplied,
 }) => {
   const { width: winW, height: winH } = useWindowDimensions();
   const [scrollViewWidth, setScrollViewWidth] = useState(0); // ✅ Yatay scroll gerçek genişlik (enlemesine ortalı snap için)
@@ -491,6 +497,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
   };
   const hasAnyReaction = (r: LiveReactionRow): boolean => !!(r.row1 || r.row2 || r.row3 || r.row4);
   const [teamPerformance, setTeamPerformance] = useState<number>(5); // ✅ Takım performans puanı (1-10), sayfaya dönünce gösterilir
+  const [previousTeamPerformance, setPreviousTeamPerformance] = useState<number | null>(null); // ✅ Bir önceki verilen not (modalda farklı renkte gösterilir)
   const [showTeamPerfPopup, setShowTeamPerfPopup] = useState(false); // ✅ Takım performansı seçimi popup (alttan kesilme + bilgi + seçim tek yerde)
   const [communityTeamPerformanceAvg, setCommunityTeamPerformanceAvg] = useState<number | null>(null); // ✅ Topluluk ortalaması (API'den gelecek)
   const [showCommunityAvgTooltip, setShowCommunityAvgTooltip] = useState(false); // ✅ Kırmızı çizgiye tıklanınca konuşma balonu
@@ -515,6 +522,15 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
   const mainScrollRef = useRef<ScrollView>(null); // ✅ Dikey scroll – kayıt sonrası en alta kaydırma
   const initialPlayerPredictionsRef = useRef<string | null>(null); // ✅ Popup açıldığında oyuncu tahmininin snapshot'ı (kaydedilmeden çıkış uyarısı için)
   const [predictionViewIndex, setPredictionViewIndex] = useState(0); // ✅ 0: Benim Tahminim, 1: Topluluk, 2: Gerçek
+
+  // ✅ Kadro sekmesinden "Tahmin > Topluluk/Gerçek" ile gelindiyse ilgili alt sekmeyi aç
+  React.useEffect(() => {
+    if (initialPredictionSubIndex != null && (initialPredictionSubIndex === 1 || initialPredictionSubIndex === 2)) {
+      setPredictionViewIndex(initialPredictionSubIndex);
+      setThreeFieldActiveIndex(initialPredictionSubIndex);
+      onInitialPredictionSubIndexApplied?.();
+    }
+  }, [initialPredictionSubIndex]);
 
   // ✅ Takım performansı balonu / oyuncu kartı ipucu gösterim sayılarını yükle (en fazla birkaç kez göster)
   const TEAM_PERF_BUBBLE_MAX = 3;
@@ -2794,8 +2810,8 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
         scrollEnabled={!threeFieldData || predictionViewIndex !== 2}
       >
       {threeFieldData && (
-        <View style={[styles.multiFieldFixedSection, { position: 'relative' }]}>
-          <View style={[styles.multiFieldContainer, { minHeight: fieldHeight + 44 + 48 }]}>
+        <View style={[styles.multiFieldFixedSection, { position: 'relative', paddingBottom: 36 }]}>
+          <View style={[styles.multiFieldContainer, { minHeight: fieldHeight + 45 }]}>
             <ScrollView
               ref={threeFieldScrollRef}
               horizontal
@@ -2838,9 +2854,9 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
               }}
               scrollEventThrottle={16}
             >
-              <View style={{ flexDirection: 'row', width: effectivePageWidth * 3, alignItems: 'flex-start' }}>
-              {/* 1. Kullanıcı Tahmini – Kadro ile aynı padding (sıçrama önlenir) */}
-              <View style={[styles.multiFieldWrapper, styles.multiFieldWrapperKadroMatch, { width: effectivePageWidth }]}>
+              <View style={{ flexDirection: 'row', width: effectivePageWidth * 3, alignItems: 'stretch' }}>
+              {/* 1. Kullanıcı Tahmini – Kadro ile aynı padding; üç sekme aynı yükseklikte */}
+              <View style={[styles.multiFieldWrapper, styles.multiFieldWrapperKadroMatch, { width: effectivePageWidth, minHeight: fieldHeight + 45 }]}>
                 <FootballField style={[styles.mainField, fieldDynamicStyle]}>
                   {threeFieldData.userSquad && threeFieldData.userSquad.players.length > 0 ? (
                     <View style={styles.playersContainer}>
@@ -2917,24 +2933,27 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                     </View>
                   </FootballField>
                   <View style={{ height: 0 }} />
-                  {/* Saha 0 altı – Benim Tahminim: bilgilendirme notu, saha ile birlikte kayar */}
-                  <View style={styles.fieldBelowContent}>
+                  {/* Saha 0 altı – Benim Tahminim */}
+                  <View style={[styles.fieldBelowContent, { height: 45, justifyContent: 'flex-end' }]}>
                     {!(threeFieldData.userSquad && threeFieldData.userSquad.players.length > 0) ? (
-                      <View style={[styles.infoNote, { marginTop: 0 }]}>
+                      <View style={[styles.infoNote, { marginTop: 0, overflow: 'hidden', position: 'relative', paddingLeft: 10 }]}>
+                        <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 5, backgroundColor: '#60A5FA' }} />
                         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, flex: 1, minWidth: 0 }}>
                           <Ionicons name="information-circle" size={18} color="#FFFFFF" style={{ flexShrink: 0 }} />
                           <Text style={[styles.fieldBelowNoteText, { color: '#FFFFFF', flex: 1 }]} numberOfLines={1}>Kadro sekmesinden formasyon seçin, sonra burada tahmin yapın.</Text>
                         </View>
                       </View>
                     ) : !hasPrediction && (isMatchLive || isMatchFinished) ? (
-                      <View style={[styles.infoNote, { backgroundColor: 'rgba(96, 165, 250, 0.2)', borderColor: 'rgba(96, 165, 250, 0.5)' }]}>
+                      <View style={[styles.infoNote, { backgroundColor: 'rgba(96, 165, 250, 0.2)', borderColor: 'rgba(96, 165, 250, 0.5)', overflow: 'hidden', position: 'relative', paddingLeft: 10 }]}>
+                        <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 5, backgroundColor: '#60A5FA' }} />
                         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, flex: 1, minWidth: 0 }}>
                           <Ionicons name="eye-outline" size={18} color="#FFFFFF" style={{ flexShrink: 0 }} />
                           <Text style={[styles.fieldBelowNoteText, { color: '#FFFFFF', flex: 1 }]} numberOfLines={1}>Kadro yok. Topluluk için oyuncu kartına tıklayın.</Text>
                         </View>
                       </View>
                     ) : (
-                      <View style={[styles.infoNote, { marginTop: 0 }]}>
+                      <View style={[styles.infoNote, { marginTop: 0, overflow: 'hidden', position: 'relative', paddingLeft: 10 }]}>
+                        <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 5, backgroundColor: '#60A5FA' }} />
                         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, flex: 1, minWidth: 0 }}>
                           <Ionicons name="information-circle" size={18} color="#FFFFFF" style={{ flexShrink: 0 }} />
                           <Text style={[styles.fieldBelowNoteText, { color: '#FFFFFF', flex: 1 }]} numberOfLines={1}>Oyuncu kartına tıklayıp tahmin girin ve aşağı kaydırın.</Text>
@@ -2944,8 +2963,8 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                   </View>
                 </View>
               
-              {/* 2. Topluluk Kadrosu */}
-              <View style={[styles.multiFieldWrapper, { width: effectivePageWidth }]}>
+              {/* 2. Topluluk Kadrosu – üç sekme aynı yükseklikte */}
+              <View style={[styles.multiFieldWrapper, { width: effectivePageWidth, minHeight: fieldHeight + 45 }]}>
                 <FootballField style={[styles.mainField, fieldDynamicStyle]}>
                   <View style={[
                     styles.playersContainer,
@@ -3042,10 +3061,11 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                   </View>
                 </FootballField>
                 <View style={{ height: 0 }} />
-                {/* Saha 1 altı – Topluluk: sadece "Topluluk verilerini gör" denildikten sonra gösterilir (istatistik/yüzde formatı); yoksa boş spacer ile sütun yüksekliği Benim Tahminim ile aynı kalır */}
+                {/* Saha 1 altı – Topluluk */}
                 {hasViewedCommunityData ? (
-                <View style={styles.fieldBelowContent}>
-                  <View style={styles.fieldBelowSection}>
+                <View style={[styles.fieldBelowContent, { height: 45, justifyContent: 'flex-end' }]}>
+                  <View style={[styles.fieldBelowSection, { overflow: 'hidden', position: 'relative', paddingLeft: 13 }]}>
+                    <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 5, backgroundColor: '#F59E0B' }} />
                     {!communityDataVisible ? (
                       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 4, gap: 6, width: '100%', minWidth: 0 }}>
                         <Ionicons name="lock-closed" size={16} color="#F59E0B" style={{ flexShrink: 0 }} />
@@ -3107,18 +3127,17 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                   </View>
                 </View>
                 ) : (
-                /* Şerit kaldırıldı: bilgi sadece saha içi overlay'de gösteriliyor */
-                <View style={styles.fieldBelowContent}>
-                  <View style={styles.fieldBelowSection}>
+                <View style={[styles.fieldBelowContent, { height: 45, justifyContent: 'flex-end' }]}>
+                  <View style={[styles.fieldBelowSection, { overflow: 'hidden', position: 'relative', paddingLeft: 13 }]}>
+                    <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 5, backgroundColor: '#F59E0B' }} />
                     <View style={{ minHeight: 28 }} />
                   </View>
                 </View>
                 )}
               </View>
               
-              {/* 3. Gerçek Kadro (API) - Saha içinde: İlk 11 yok | Gerçek Kadro Hazır (Gör/Vazgeç) | Oyuncu kartları; alt boşluk ile sütun yüksekliği diğerleriyle aynı */}
-              {/* Gerçek kadro sadece API/DB'den (lineups.startXI) geldiyse "açıklandı" sayılır; mock ile doldurulmuş kadro "henüz açıklanmadı" gösterir */}
-              <View style={[styles.multiFieldWrapper, { width: effectivePageWidth }]}>
+              {/* 3. Gerçek Kadro (API) – üç sekme aynı yükseklikte */}
+              <View style={[styles.multiFieldWrapper, { width: effectivePageWidth, minHeight: fieldHeight + 45 }]}>
                 <FootballField style={[styles.mainField, fieldDynamicStyle]}>
                   {(!hasRealLineupData || threeFieldData.actualSquad.players.length === 0) ? (
                     <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, zIndex: 20 }}>
@@ -3384,33 +3403,33 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                   </View>
                 </FootballField>
                 <View style={{ height: 0 }} />
-                {/* Gerçek sekmesi altı: Takım performansı butonu (tıklanınca popup; alttan kesilme yok) */}
-                <View style={[styles.fieldBelowContent, { minHeight: 44, paddingBottom: 16 }, (isMatchLive || isMatchFinished) && predictionViewIndex === 2 && !playerCardHintDismissed && playerCardHintViewCount < PLAYER_CARD_HINT_MAX && { minHeight: 78 }]}>
-                  {(isMatchLive || isMatchFinished) && predictionViewIndex === 2 && !playerCardHintDismissed && playerCardHintViewCount < PLAYER_CARD_HINT_MAX && (
-                    <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 6, paddingVertical: 4, paddingHorizontal: 8 }}>
-                      <View style={{ flex: 1, marginRight: 8 }}>
-                        <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.9)', lineHeight: 16, marginBottom: 2 }}>💡 Oyuncu kartlarına dokunun: Çok İyi/Kötü, Gol Atar/Çıkmalı, Sarı/Kırmızı Kart, Maçın adamı oyu verin.</Text>
-                        <Text style={{ fontSize: 10, color: 'rgba(148,163,184,0.95)', lineHeight: 14 }}>Canlı maç boyunca istediğiniz an topluma düşüncenizi iletebilir, tercihlerinizi her an güncelleyebilirsiniz.</Text>
-                      </View>
-                      <TouchableOpacity onPress={() => { setPlayerCardHintDismissed(true); const next = playerCardHintViewCount + 1; setPlayerCardHintViewCount(next); AsyncStorage.setItem('tacticiq_team_perf_player_hint_views', String(next)).catch(() => {}); }} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }} style={{ padding: 2 }}>
-                        <Ionicons name="close" size={14} color="rgba(255,255,255,0.6)" />
-                      </TouchableOpacity>
-                    </View>
-                  )}
+                {/* Gerçek sekmesi altı: Takım performansı – 45px diğer sekmelerle aynı hizada */}
+                <View style={[styles.fieldBelowContent, { height: 45, justifyContent: 'flex-end', overflow: 'hidden' }]}>
                   <TouchableOpacity
                     onPress={() => setShowTeamPerfPopup(true)}
-                    activeOpacity={0.85}
-                    style={[styles.fieldBelowSection, styles.fieldBelowSectionTeamPerf, { flexDirection: 'row', alignItems: 'center', flexWrap: 'nowrap', width: '100%', minWidth: 0, borderWidth: 1.5, borderColor: 'rgba(16,185,129,0.35)' }, (threeFieldData.actualSquad.players.length === 0 || !realLineupVisible) && { opacity: 0.5 }, { pointerEvents: threeFieldData.actualSquad.players.length > 0 && realLineupVisible ? 'auto' : 'none' }]}
+                    activeOpacity={0.78}
+                    style={[styles.fieldBelowSection, styles.fieldBelowSectionTeamPerf, {
+                      flexDirection: 'row', alignItems: 'center', flexWrap: 'nowrap', width: '100%', minWidth: 0,
+                      borderRadius: 12, overflow: 'hidden',
+                      backgroundColor: '#263E3C',
+                      borderWidth: 1, borderColor: 'rgba(45,212,191,0.35)',
+                      shadowColor: '#2DD4BF', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.15, shadowRadius: 6, elevation: 3,
+                      paddingVertical: 6, paddingRight: 8, paddingLeft: 0,
+                    }, (threeFieldData.actualSquad.players.length === 0 || !realLineupVisible) && { opacity: 0.5 }, { pointerEvents: threeFieldData.actualSquad.players.length > 0 && realLineupVisible ? 'auto' : 'none' }]}
                   >
-                    <View style={[styles.fieldBelowSectionLabel, { marginRight: 8 }]}>
-                      <Text style={{ fontSize: 12, fontWeight: '700', color: '#E2E8F0', lineHeight: 15 }}>Takım</Text>
-                      <Text style={{ fontSize: 12, fontWeight: '700', color: '#E2E8F0', lineHeight: 15 }}>performansı</Text>
-                      <Text style={{ fontSize: 9, color: 'rgba(16,185,129,0.95)', marginTop: 2, lineHeight: 12 }}>Tıklayın, 1–10 oy verin</Text>
+                    <View style={{ width: 5, height: '100%', backgroundColor: '#EF4444', position: 'absolute', left: 0 }} />
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 8, flex: 1, minWidth: 0 }}>
+                      <View style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: 'rgba(45,212,191,0.2)', alignItems: 'center', justifyContent: 'center', marginRight: 8, flexShrink: 0 }}>
+                        <Ionicons name="stats-chart" size={14} color="#5EEAD4" />
+                      </View>
+                      <Text style={{ fontSize: 13, fontWeight: '400', color: '#E2E8F0', letterSpacing: 0.2, flex: 1 }} numberOfLines={1} ellipsizeMode="tail">Takım oyun performansı</Text>
                     </View>
-                    <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 6 }}>
-                      <Text style={{ fontSize: 14, fontWeight: '800', color: '#10B981' }}>{teamPerformance} / 10</Text>
-                      <Ionicons name="finger-print-outline" size={18} color="rgba(16,185,129,0.8)" style={{ marginRight: 4 }} />
-                      <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.5)" />
+                    <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(45,212,191,0.25)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(45,212,191,0.5)', flexShrink: 0 }}>
+                      <Text style={{ fontSize: 11, fontWeight: '400', color: '#A78BFA', marginRight: 6 }} numberOfLines={1}>
+                        {communityMatchPredictions.totalUsers > 0 ? `${communityMatchPredictions.totalUsers.toLocaleString()} kişi` : '—'}
+                      </Text>
+                      <Text style={{ fontSize: 13, fontWeight: '400', color: '#F0FDFA' }}>{communityTeamPerformanceAvg != null ? communityTeamPerformanceAvg.toFixed(1) : '—'}/10</Text>
+                      <Ionicons name="chevron-forward" size={16} color="#5EEAD4" style={{ marginLeft: 6 }} />
                     </View>
                   </TouchableOpacity>
                 </View>
@@ -3424,6 +3443,11 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                           <Text style={{ fontSize: 12, color: '#94A3B8', textAlign: 'center', marginBottom: 14, lineHeight: 18 }}>
                             Takımınızın maçtaki performansını 1–10 arası puanlayın. Maç boyunca istediğiniz an güncelleyebilirsiniz; topluluk ortalaması da anlık değerlendirmeyi yansıtır.
                           </Text>
+                          {communityTeamPerformanceAvg != null && (
+                            <Text style={{ fontSize: 12, color: '#5EEAD4', fontWeight: '600', textAlign: 'center', marginBottom: 12 }}>
+                              Topluluk ort.: {Math.floor(communityTeamPerformanceAvg)} tam, 10'da {Math.round((communityTeamPerformanceAvg - Math.floor(communityTeamPerformanceAvg)) * 10)} ({communityTeamPerformanceAvg.toFixed(1)}/10)
+                            </Text>
+                          )}
                           <Text style={{ fontSize: 11, color: '#94A3B8', textAlign: 'center', marginBottom: 8 }}>Oyuncu kartlarına dokunarak şu oyları da verebilirsiniz:</Text>
                           <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', marginBottom: 10, gap: 6 }}>
                             <View style={{ backgroundColor: 'rgba(16,185,129,0.25)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(16,185,129,0.5)' }}>
@@ -3450,12 +3474,35 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                           </View>
                           <Text style={{ fontSize: 10, color: '#64748B', textAlign: 'center', marginBottom: 18, lineHeight: 14 }}>Tüm tercihleriniz canlı maç boyunca her an değiştirilebilir.</Text>
                           <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, marginBottom: 20 }}>
-                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
-                              <TouchableOpacity key={n} onPress={() => { setTeamPerformance(n); setShowTeamPerfPopup(false); }} style={{ width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: teamPerformance === n ? 'rgba(16, 185, 129, 0.5)' : 'rgba(255,255,255,0.08)', borderWidth: teamPerformance === n ? 2 : 1, borderColor: teamPerformance === n ? '#10B981' : 'rgba(255,255,255,0.15)' }} activeOpacity={0.8}>
-                                <Text style={{ fontSize: 16, fontWeight: '700', color: teamPerformance === n ? '#10B981' : 'rgba(255,255,255,0.8)' }}>{n}</Text>
-                              </TouchableOpacity>
-                            ))}
+                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => {
+                              const isSelected = teamPerformance === n;
+                              const isPrevious = previousTeamPerformance != null && previousTeamPerformance === n;
+                              return (
+                                <TouchableOpacity
+                                  key={n}
+                                  onPress={() => {
+                                    setPreviousTeamPerformance(teamPerformance);
+                                    setTeamPerformance(n);
+                                    setShowTeamPerfPopup(false);
+                                  }}
+                                  style={{
+                                    width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center',
+                                    backgroundColor: isSelected ? 'rgba(16, 185, 129, 0.5)' : isPrevious ? 'rgba(245, 158, 11, 0.35)' : 'rgba(255,255,255,0.08)',
+                                    borderWidth: isSelected ? 2 : 1,
+                                    borderColor: isSelected ? '#10B981' : isPrevious ? '#F59E0B' : 'rgba(255,255,255,0.15)',
+                                  }}
+                                  activeOpacity={0.8}
+                                >
+                                  <Text style={{ fontSize: 16, fontWeight: '700', color: isSelected ? '#10B981' : isPrevious ? '#FBBF24' : 'rgba(255,255,255,0.8)' }}>{n}</Text>
+                                </TouchableOpacity>
+                              );
+                            })}
                           </View>
+                          {previousTeamPerformance != null && (
+                            <Text style={{ fontSize: 11, color: '#94A3B8', textAlign: 'center', marginBottom: 12 }}>
+                              Turuncu: önceki puanınız ({previousTeamPerformance}/10)
+                            </Text>
+                          )}
                           <TouchableOpacity onPress={() => setShowTeamPerfPopup(false)} style={{ backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 12, paddingVertical: 12, alignItems: 'center' }} activeOpacity={0.8}>
                             <Text style={{ fontSize: 14, fontWeight: '600', color: '#94A3B8' }}>Kapat</Text>
                           </TouchableOpacity>
@@ -3468,8 +3515,8 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
               </View>
             </ScrollView>
           </View>
-          {/* ✅ 3 nokta: ekranın en altında, kesilmeden görünsün */}
-          <View style={[styles.multiFieldPageIndicatorsFixed, { position: 'absolute', left: 0, right: 0, bottom: 9, zIndex: 10, pointerEvents: 'box-none' }]}>
+          {/* ✅ 3 nokta: konteyner altında */}
+          <View style={[styles.multiFieldPageIndicatorsFixed, { position: 'absolute', left: 0, right: 0, bottom: 21, zIndex: 20, pointerEvents: 'box-none' }]}>
             {[0, 1, 2].map((i) => (
               <View key={i} style={[styles.multiFieldPageDot, threeFieldActiveIndex === i && styles.multiFieldPageDotActive]} />
             ))}
@@ -3656,7 +3703,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
         {!threeFieldData && (
           <View style={{ marginTop: 16 }}>
             {!hasPrediction && (isMatchLive || isMatchFinished) ? (
-              <View style={[styles.infoNote, { backgroundColor: 'rgba(31, 162, 166, 0.15)', borderColor: 'rgba(31, 162, 166, 0.3)' }]}>
+              <View style={styles.infoNote}>
                 <Ionicons name="eye-outline" size={14} color="#1FA2A6" style={{ flexShrink: 0 }} />
                 <Text style={[styles.infoText, { color: '#5EEAD4', fontSize: 11 }]} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8}>
                   Kadro tahmini yapmadığınız için tahmin yapamazsınız. Topluluk verilerini görmek için oyuncu kartlarına tıklayın.
@@ -6681,7 +6728,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                   <Text style={{ color: '#A78BFA', fontSize: 11, fontWeight: '600', marginBottom: 8 }}>Yerine kim girmeli?</Text>
                   <ScrollView
                     horizontal
-                    showsHorizontalScrollIndicator={true}
+                    showsHorizontalScrollIndicator={false}
                     contentContainerStyle={{ paddingRight: 8 }}
                     style={{ marginHorizontal: -4 }}
                   >
@@ -6990,34 +7037,32 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: '#1FA2A6',
   },
-  // ✅ 3 konteyner: düşük yükseklik, saha altında +1px aşağı
+  // ✅ 3 konteyner: saha altında; ~%20 kısaltıldı, iç kutular 40px
   fieldBelowContent: {
-    marginTop: 9,
+    marginTop: 2,
     paddingHorizontal: 0,
     width: '100%',
-    minHeight: 44,
-    height: 44,
+    minHeight: 48,
     paddingBottom: 0,
-    overflow: 'hidden',
     justifyContent: 'center',
   },
   fieldBelowSection: {
     backgroundColor: '#1E3A3A',
     borderRadius: 10,
-    paddingVertical: 6,
+    paddingVertical: 4,
     paddingHorizontal: 8,
-    minHeight: 40,
     height: 40,
+    minHeight: 40,
     borderWidth: 1,
     borderColor: 'rgba(31, 162, 166, 0.3)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   fieldBelowSectionTeamPerf: {
-    minHeight: 40,
     height: 40,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
+    minHeight: 40,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
     justifyContent: 'center',
   },
   fieldBelowSectionTeamPerfRow: {
@@ -7092,12 +7137,13 @@ const styles = StyleSheet.create({
   communityStatsChipValue: {
     color: '#F1F5F9',
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '400',
     marginTop: 2,
   },
   communityStatsChipLabel: {
     color: '#94A3B8',
     fontSize: 9,
+    fontWeight: '400',
     marginTop: 0,
   },
   communityStatsLeft: {
@@ -7868,16 +7914,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    minHeight: 40,
     height: 40,
-    paddingVertical: 6,
+    minHeight: 40,
+    paddingVertical: 4,
     paddingHorizontal: 8,
     marginTop: 0,
     marginBottom: 0,
-    backgroundColor: '#1E3A3A',
+    backgroundColor: '#263E3C',
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: 'rgba(31, 162, 166, 0.3)',
+    borderColor: 'rgba(45,212,191,0.35)',
   },
   infoText: {
     fontSize: 11,
@@ -7888,7 +7934,7 @@ const styles = StyleSheet.create({
   // Konteyner bilgi metni – ortalı, okunaklı
   fieldBelowNoteText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '400',
     flex: 1,
     flexShrink: 1,
     textAlign: 'center',

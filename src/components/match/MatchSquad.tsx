@@ -105,8 +105,8 @@ interface MatchSquadProps {
   hasViewedCommunityData?: boolean;
   /** ✅ Tahminler kaydedilip kilitlendiyse kadro düzenleme kapatılır (Tahmin sekmesinde "Tahminleri Kaydet" sonrası) */
   squadEditingDisabled?: boolean;
-  /** Kadro yokken (canlı/biten maç) Tahmin / Canlı / İstatistik sekmelerine yönlendirmek için */
-  onNavigateToTab?: (tab: 'prediction' | 'live' | 'stats') => void;
+  /** Kadro yokken (canlı/biten maç) Tahmin / Canlı / İstatistik sekmelerine yönlendirmek için. predictionSubIndex: 1 = Topluluk, 2 = Gerçek */
+  onNavigateToTab?: (tab: 'prediction' | 'live' | 'stats', options?: { predictionSubIndex?: number }) => void;
 }
 
 /** API'den gelen tüm kaleci varyantlarını tanı (G, GK, Goalkeeper vb.) */
@@ -2795,8 +2795,8 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favor
               style={{
                 marginHorizontal: 12, marginTop: 8, marginBottom: 12,
                 paddingVertical: 10, paddingHorizontal: 12,
-                backgroundColor: 'rgba(31, 162, 166, 0.12)', borderRadius: 10,
-                borderWidth: 1, borderColor: 'rgba(31, 162, 166, 0.25)',
+                backgroundColor: '#263E3C', borderRadius: 10,
+                borderWidth: 1, borderColor: 'rgba(45,212,191,0.35)',
                 flexDirection: 'row', alignItems: 'center', gap: 8,
               }}
             >
@@ -2817,10 +2817,24 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favor
                   </View>
                   {onNavigateToTab ? (
                     <View style={{ gap: 10 }}>
-                      <TouchableOpacity onPress={() => { onNavigateToTab('prediction'); setShowNoSquadInfoModal(false); }} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 10, paddingHorizontal: 12, backgroundColor: 'rgba(31, 162, 166, 0.2)', borderRadius: 10 }}>
-                        <Ionicons name="analytics-outline" size={18} color="#5EEAD4" />
-                        <View><Text style={{ color: '#5EEAD4', fontWeight: '600' }}>Tahmin</Text><Text style={{ color: 'rgba(94, 234, 212, 0.8)', fontSize: 12 }}>Topluluk / Gerçek kadro</Text></View>
-                      </TouchableOpacity>
+                      <View style={{ backgroundColor: 'rgba(31, 162, 166, 0.15)', borderRadius: 10, overflow: 'hidden' }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8, paddingHorizontal: 12 }}>
+                          <Ionicons name="analytics-outline" size={18} color="#5EEAD4" />
+                          <Text style={{ color: '#5EEAD4', fontWeight: '600' }}>Tahmin</Text>
+                        </View>
+                        <TouchableOpacity onPress={() => { onNavigateToTab('prediction', { predictionSubIndex: 1 }); setShowNoSquadInfoModal(false); }} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8, paddingHorizontal: 12, paddingLeft: 38, borderTopWidth: 1, borderTopColor: 'rgba(31, 162, 166, 0.2)' }}>
+                          <Ionicons name="people-outline" size={16} color="#99F6E4" />
+                          <Text style={{ color: '#E0F2FE', fontSize: 13 }}>Topluluk verileri</Text>
+                          <View style={{ flex: 1 }} />
+                          <Ionicons name="chevron-forward" size={14} color="rgba(94, 234, 212, 0.7)" />
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => { onNavigateToTab('prediction', { predictionSubIndex: 2 }); setShowNoSquadInfoModal(false); }} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8, paddingHorizontal: 12, paddingLeft: 38, borderTopWidth: 1, borderTopColor: 'rgba(31, 162, 166, 0.2)' }}>
+                          <Ionicons name="football-outline" size={16} color="#99F6E4" />
+                          <Text style={{ color: '#E0F2FE', fontSize: 13 }}>Gerçek</Text>
+                          <View style={{ flex: 1 }} />
+                          <Ionicons name="chevron-forward" size={14} color="rgba(94, 234, 212, 0.7)" />
+                        </TouchableOpacity>
+                      </View>
                       <TouchableOpacity onPress={() => { onNavigateToTab('live'); setShowNoSquadInfoModal(false); }} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 10, paddingHorizontal: 12, backgroundColor: 'rgba(31, 162, 166, 0.2)', borderRadius: 10 }}>
                         <Ionicons name="pulse-outline" size={18} color="#5EEAD4" />
                         <View><Text style={{ color: '#5EEAD4', fontWeight: '600' }}>Canlı</Text><Text style={{ color: 'rgba(94, 234, 212, 0.8)', fontSize: 12 }}>Olaylar</Text></View>

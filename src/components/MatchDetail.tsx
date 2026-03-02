@@ -88,6 +88,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
   const [hasPrediction, setHasPrediction] = useState<boolean | null>(null); // null = henüz kontrol edilmedi
   const [predictionLocked, setPredictionLocked] = useState(false); // ✅ Tahminler kaydedilip kilitlendi mi? (Kadro sekmesi düzenleme kapatılır)
   const [hasViewedCommunityData, setHasViewedCommunityData] = useState(false); // ✅ Topluluk verilerini gördü mü?
+  const [predictionSubIndexToOpen, setPredictionSubIndexToOpen] = useState<number | null>(null); // ✅ Kadro popup'tan "Topluluk verileri" / "Gerçek" ile gelindiyse 1 veya 2
   const effectiveAnalysisFocus = analysisFocusOverride ?? analysisFocus;
 
   // ✅ Kaydedilmemiş değişiklik kontrolü - Tahmin sekmesi
@@ -1262,7 +1263,10 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
             startingXIPopupShown={startingXIPopupShown}
             onStartingXIPopupShown={() => setStartingXIPopupShown(true)}
             hasViewedCommunityData={hasViewedCommunityData}
-            onNavigateToTab={(tab) => setActiveTab(tab)}
+            onNavigateToTab={(tab, options) => {
+              setActiveTab(tab);
+              if (tab === 'prediction' && options?.predictionSubIndex != null) setPredictionSubIndexToOpen(options.predictionSubIndex);
+            }}
           />
         );
       
@@ -1294,6 +1298,8 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
             }}
             onHasUnsavedChanges={handleHasUnsavedChanges}
             onViewedCommunityData={() => setHasViewedCommunityData(true)}
+            initialPredictionSubIndex={predictionSubIndexToOpen}
+            onInitialPredictionSubIndexApplied={() => setPredictionSubIndexToOpen(null)}
           />
         );
       
