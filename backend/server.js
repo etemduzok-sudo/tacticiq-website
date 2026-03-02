@@ -7,7 +7,8 @@ const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const axios = require('axios');
-require('dotenv').config();
+// Her zaman backend/.env kullan (proje kökünden çalıştırılsa bile)
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 // ✅ SECURITY: Import auth middleware for protected endpoints
 const { authenticateApiKey } = require('./middleware/auth');
@@ -807,6 +808,64 @@ app.get('/api/admin/player-ratings/leagues', authenticateApiKey, (req, res) => {
     }))
   });
 });
+
+// GET/POST /api/admin/backup-db - DB yedek alır ve Supabase Storage'a yükler (cron-job.org varsayılan GET ile tetiklenebilir)
+// API key: header x-api-key veya query ?api_key=XXX (cron-job.org'da POST/header yoksa URL'de api_key kullanın)
+const BACKUP_STORAGE_BUCKET = 'db-backups';
+function copyBackupApiKeyFromQuery(req, res, next) {
+  if (!req.headers['x-api-key'] && req.query.api_key) {
+    req.headers['x-api-key'] = req.query.api_key;
+  }
+  next();
+}
+async function handleBackupDb(req, res) {
+  try {
+    const { supabase } = require('./config/supabase');
+    const { runBackup } = require('./services/backupService');
+    if (!supabase) {
+      return res.status(503).json({ success: false, error: 'Supabase yapılandırılmadı.' });
+    }
+    const { folderName, tables, summary } = await runBackup(supabase);
+    const uploaded = [];
+    for (const [tableName, data] of Object.entries(tables)) {
+      const body = Buffer.from(JSON.stringify(data), 'utf8');
+      const { error } = await supabase.storage
+        .from(BACKUP_STORAGE_BUCKET)
+        .upload(`${folderName}/${tableName}.json`, body, { contentType: 'application/json', upsert: true });
+      if (error) {
+        console.error(`[backup-db] Storage upload ${tableName}:`, error.message);
+        return res.status(500).json({
+          success: false,
+          error: `Storage yükleme hatası: ${error.message}. Supabase Dashboard → Storage → "${BACKUP_STORAGE_BUCKET}" bucket'ını oluşturun (public değil).`,
+          folderName,
+          uploaded,
+        });
+      }
+      uploaded.push(tableName);
+    }
+    const summaryBody = Buffer.from(JSON.stringify(summary), 'utf8');
+    const { error: summaryErr } = await supabase.storage
+      .from(BACKUP_STORAGE_BUCKET)
+      .upload(`${folderName}/_summary.json`, summaryBody, { contentType: 'application/json', upsert: true });
+    if (summaryErr) {
+      console.warn('[backup-db] _summary upload:', summaryErr.message);
+    } else {
+      uploaded.push('_summary.json');
+    }
+    res.json({
+      success: true,
+      folderName,
+      totalRecords: summary.totalRecords,
+      uploaded,
+      message: 'Yedek Supabase Storage\'a yüklendi. Bilgisayar kapalıyken cron-job.org vb. ile bu endpoint günlük tetiklenebilir.',
+    });
+  } catch (err) {
+    console.error('[backup-db]', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+}
+app.get('/api/admin/backup-db', copyBackupApiKeyFromQuery, authenticateApiKey, handleBackupDb);
+app.post('/api/admin/backup-db', authenticateApiKey, handleBackupDb);
 
 // Error handler
 app.use((err, req, res, next) => {
