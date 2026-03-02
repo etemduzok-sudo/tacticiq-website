@@ -571,14 +571,18 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
     threeFieldScrollRef.current?.scrollTo({ x: targetX, animated: false });
   }, [scrollViewWidth]);
 
-  // ✅ Yarıdan fazla sürüklendiyse hedef sayfaya yumuşak snap (gecikmeli scrollTo ile ekrana yansır)
+  // ✅ Her zaman tam sayfa snap: arada kalmayı önlemek için anında (animated: false) konuma getir
   const snapToPage = (targetX: number, page: number) => {
-    setThreeFieldActiveIndex(page);
-    setPredictionViewIndex(page);
+    const safePage = Math.max(0, Math.min(page, 2));
+    const w = scrollViewWidth > 0 ? scrollViewWidth : effectivePageWidth;
+    const safeX = w > 0 ? Math.max(0, Math.min(safePage * w, w * 2)) : 0;
+    setThreeFieldActiveIndex(safePage);
+    setPredictionViewIndex(safePage);
     const ref = threeFieldScrollRef.current;
-    if (ref?.scrollTo) {
-      setTimeout(() => ref.scrollTo({ x: targetX, animated: true }), 0);
-      setTimeout(() => ref.scrollTo({ x: targetX, animated: true }), 80);
+    if (ref?.scrollTo && (w > 0)) {
+      requestAnimationFrame(() => {
+        ref.scrollTo({ x: safeX, animated: false });
+      });
     }
   };
 
@@ -2826,37 +2830,36 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                 if (w > 0 && Math.abs(w - scrollViewWidth) > 0.5) setScrollViewWidth(w);
               }}
               decelerationRate="fast"
-              snapToInterval={effectivePageWidth}
+              snapToInterval={scrollViewWidth > 0 ? scrollViewWidth : undefined}
               snapToAlignment="start"
-              snapToOffsets={effectivePageWidth > 0 ? [0, effectivePageWidth, effectivePageWidth * 2] : undefined}
+              snapToOffsets={scrollViewWidth > 0 ? [0, scrollViewWidth, scrollViewWidth * 2] : undefined}
               onScroll={(e) => {
                 const offsetX = e.nativeEvent.contentOffset.x;
-                const w = effectivePageWidth;
+                const w = scrollViewWidth > 0 ? scrollViewWidth : effectivePageWidth;
                 const newIndex = w > 0 ? Math.round(offsetX / w) : 0;
-                if (newIndex !== threeFieldActiveIndex) {
-                  setThreeFieldActiveIndex(newIndex);
-                  setPredictionViewIndex(newIndex);
+                const clamped = Math.max(0, Math.min(newIndex, 2));
+                if (clamped !== threeFieldActiveIndex) {
+                  setThreeFieldActiveIndex(clamped);
+                  setPredictionViewIndex(clamped);
                 }
               }}
               onMomentumScrollEnd={(e) => {
                 const offsetX = e.nativeEvent.contentOffset.x;
-                const w = effectivePageWidth;
-                const page = w > 0 ? Math.round(offsetX / w) : 0;
-                const targetX = Math.max(0, Math.min(page * w, w * 2));
-                if (w > 0) snapToPage(targetX, page);
+                const w = scrollViewWidth > 0 ? scrollViewWidth : effectivePageWidth;
+                const page = w > 0 ? Math.max(0, Math.min(2, Math.round(offsetX / w))) : 0;
+                if (w > 0) snapToPage(page * w, page);
               }}
               onScrollEndDrag={(e) => {
                 const offsetX = e.nativeEvent.contentOffset.x;
-                const w = effectivePageWidth;
-                const page = w > 0 ? Math.round(offsetX / w) : 0;
-                const targetX = Math.max(0, Math.min(page * w, w * 2));
-                if (w > 0) snapToPage(targetX, page);
+                const w = scrollViewWidth > 0 ? scrollViewWidth : effectivePageWidth;
+                const page = w > 0 ? Math.max(0, Math.min(2, Math.round(offsetX / w))) : 0;
+                if (w > 0) snapToPage(page * w, page);
               }}
               scrollEventThrottle={16}
             >
-              <View style={{ flexDirection: 'row', width: effectivePageWidth * 3, alignItems: 'stretch' }}>
+              <View style={{ flexDirection: 'row', width: (scrollViewWidth > 0 ? scrollViewWidth : effectivePageWidth) * 3, alignItems: 'stretch' }}>
               {/* 1. Kullanıcı Tahmini – Kadro ile aynı padding; üç sekme aynı yükseklikte */}
-              <View style={[styles.multiFieldWrapper, styles.multiFieldWrapperKadroMatch, { width: effectivePageWidth, minHeight: fieldHeight + 45 }]}>
+              <View style={[styles.multiFieldWrapper, styles.multiFieldWrapperKadroMatch, { width: scrollViewWidth > 0 ? scrollViewWidth : effectivePageWidth, minHeight: fieldHeight + 45 }]}>
                 <FootballField style={[styles.mainField, fieldDynamicStyle]}>
                   {threeFieldData.userSquad && threeFieldData.userSquad.players.length > 0 ? (
                     <View style={styles.playersContainer}>
@@ -2964,7 +2967,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                 </View>
               
               {/* 2. Topluluk Kadrosu – üç sekme aynı yükseklikte */}
-              <View style={[styles.multiFieldWrapper, { width: effectivePageWidth, minHeight: fieldHeight + 45 }]}>
+              <View style={[styles.multiFieldWrapper, { width: scrollViewWidth > 0 ? scrollViewWidth : effectivePageWidth, minHeight: fieldHeight + 45 }]}>
                 <FootballField style={[styles.mainField, fieldDynamicStyle]}>
                   <View style={[
                     styles.playersContainer,
@@ -3137,7 +3140,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
               </View>
               
               {/* 3. Gerçek Kadro (API) – üç sekme aynı yükseklikte */}
-              <View style={[styles.multiFieldWrapper, { width: effectivePageWidth, minHeight: fieldHeight + 45 }]}>
+              <View style={[styles.multiFieldWrapper, { width: scrollViewWidth > 0 ? scrollViewWidth : effectivePageWidth, minHeight: fieldHeight + 45 }]}>
                 <FootballField style={[styles.mainField, fieldDynamicStyle]}>
                   {(!hasRealLineupData || threeFieldData.actualSquad.players.length === 0) ? (
                     <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, zIndex: 20 }}>
@@ -3439,7 +3442,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                     <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 340, maxHeight: '88%' }}>
                       <ScrollView style={{ maxHeight: '100%' }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
                         <View style={{ backgroundColor: '#0F1F1F', borderRadius: 20, padding: 24, borderWidth: 1, borderColor: 'rgba(16,185,129,0.35)' }}>
-                          <Text style={{ fontSize: 18, fontWeight: '800', color: '#F1F5F9', textAlign: 'center', marginBottom: 10 }}>Takım performansı</Text>
+                          <Text style={{ fontSize: 18, fontWeight: '600', color: '#F1F5F9', textAlign: 'center', marginBottom: 10 }}>Oyun içi takım ve oyuncu performansı</Text>
                           <Text style={{ fontSize: 12, color: '#94A3B8', textAlign: 'center', marginBottom: 14, lineHeight: 18 }}>
                             Takımınızın maçtaki performansını 1–10 arası puanlayın. Maç boyunca istediğiniz an güncelleyebilirsiniz; topluluk ortalaması da anlık değerlendirmeyi yansıtır.
                           </Text>
