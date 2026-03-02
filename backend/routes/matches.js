@@ -490,8 +490,28 @@ router.get('/team/:teamId/season/:season', async (req, res) => {
             count: dbMatches.length
           });
         }
-        // DB boş: boş dizi dön, API'ye fallback YOK (veri sync scriptleri ile DB'ye yazılır)
-        console.log(`📭 No matches in DB for team ${teamId} season ${season} (sync scripts will populate)`);
+        // DB boş: API fallback – sync script çalışmamışsa en azından API'den maçları göster (Türkiye 777 vb.)
+        console.log(`📭 No matches in DB for team ${teamId} season ${season}, trying API fallback...`);
+        try {
+          const apiData = await footballApi.getFixturesByTeam(teamId, season);
+          const apiMatches = apiData.response || [];
+          if (apiMatches.length > 0) {
+            console.log(`✅ [TEAM] API fallback: ${apiMatches.length} matches for team ${teamId} season ${season}`);
+            API_CACHE.teamMatches.set(cacheKey, { data: apiMatches, timestamp: Date.now() });
+            if (databaseService.enabled) {
+              await databaseService.upsertMatches(apiMatches).catch((err) => console.warn('Upsert after API fallback:', err.message));
+            }
+            return res.json({
+              success: true,
+              data: apiMatches,
+              source: 'api',
+              cached: false,
+              count: apiMatches.length
+            });
+          }
+        } catch (apiErr) {
+          console.warn('API fallback failed for team', teamId, 'season', season, apiErr.message);
+        }
         return res.json({
           success: true,
           data: [],

@@ -1,13 +1,23 @@
-// Backend durduğunda tüm ekranların üstünde gösterilen şerit – overlay, ekran yapısını bozmaz
+// Bağlantı hatası şeridi: kullanıcıya gri/sakin, admin'e kırmızı/dikkat çekici
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 
 const BANNER_HEIGHT = 32;
 
-export function BackendDownBanner() {
+type BackendDownBannerProps = {
+  /** Admin ise kırmızı ve teknik mesaj; değilse gri ve "internet kontrol edin" */
+  isAdmin?: boolean;
+};
+
+export function BackendDownBanner({ isAdmin = false }: BackendDownBannerProps) {
+  const isAdminStyle = isAdmin;
   return (
-    <View style={styles.banner}>
-      <Text style={styles.text}>Backend durdu. Veriler güncellenemiyor.</Text>
+    <View style={[styles.banner, isAdminStyle && styles.bannerAdmin]}>
+      <Text style={[styles.text, isAdminStyle && styles.textAdmin]}>
+        {isAdminStyle
+          ? 'Backend cevap vermiyor. Veriler güncellenemiyor.'
+          : 'İnternet bağlantınızı kontrol edin.'}
+      </Text>
     </View>
   );
 }
@@ -19,16 +29,26 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: BANNER_HEIGHT,
-    backgroundColor: 'rgba(185, 28, 28, 0.95)',
+    backgroundColor: 'rgba(100, 116, 139, 0.92)',
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 12,
     zIndex: 9999,
   },
+  bannerAdmin: {
+    backgroundColor: 'rgba(185, 28, 28, 0.98)',
+    borderBottomWidth: 2,
+    borderBottomColor: 'rgba(255, 255, 255, 0.4)',
+  },
   text: {
-    color: '#FFF',
+    color: 'rgba(255, 255, 255, 0.95)',
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '500',
+  },
+  textAdmin: {
+    color: '#FFF',
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
 });
 

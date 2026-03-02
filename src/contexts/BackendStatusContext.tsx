@@ -1,7 +1,9 @@
-// Backend durumu – backend durduğunda tüm ekranlarda "Backend durdu" şeridi gösterilir
+// Backend durumu – backend durduğunda şerit gösterilir; tekrar bağlanınca bildirim
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import api from '../services/api';
 import { BackendDownBanner } from '../components/BackendDownBanner';
+import { showSuccess } from '../utils/alertHelper';
+import { useAdmin } from '../admin/AdminContext';
 
 const HEALTH_POLL_MS = 15000;
 const HEALTH_TIMEOUT_MS = 8000;
@@ -22,6 +24,7 @@ function getHealthUrl(): string {
 export function BackendStatusProvider({ children }: { children: React.ReactNode }) {
   const [isBackendDown, setIsBackendDown] = useState(false);
   const mounted = useRef(true);
+  const wasDownRef = useRef(false);
 
   useEffect(() => {
     mounted.current = true;
@@ -36,13 +39,21 @@ export function BackendStatusProvider({ children }: { children: React.ReactNode 
         const res = await fetch(url, { signal: controller.signal });
         clearTimeout(t);
         if (mounted.current && res.ok) {
+          if (wasDownRef.current) {
+            wasDownRef.current = false;
+            showSuccess('Backend tekrar bağlandı', 'Veriler güncellenebilir.');
+          }
           setIsBackendDown(false);
         } else if (mounted.current) {
+          wasDownRef.current = true;
           setIsBackendDown(true);
         }
       } catch {
         clearTimeout(t);
-        if (mounted.current) setIsBackendDown(true);
+        if (mounted.current) {
+          wasDownRef.current = true;
+          setIsBackendDown(true);
+        }
       }
     };
 
@@ -76,10 +87,11 @@ export function useBackendStatus() {
   return useContext(BackendStatusContext);
 }
 
-// Tüm ekranların üstünde gösterilecek slot – overlay, ekran yapısını bozmaz
+// Kullanıcı: gri şerit "İnternet bağlantınızı kontrol edin". Admin: kırmızı dikkat çekici şerit.
 export function BackendStatusBannerSlot() {
   const { isBackendDown } = useBackendStatus();
-  return isBackendDown ? <BackendDownBanner /> : null;
+  const { isAdmin } = useAdmin();
+  return isBackendDown ? <BackendDownBanner isAdmin={isAdmin} /> : null;
 }
 
 // İçeriğe banner yüksekliği kadar üst padding ekler (banner overlay olduğunda üstteki içerik görünür kalsın)

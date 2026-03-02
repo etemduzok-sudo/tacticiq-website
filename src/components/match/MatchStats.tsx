@@ -679,7 +679,7 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
                   İstatistik henüz yok
                 </Text>
                 <Text style={[styles.statsLoadingText, isLight && { color: themeColors.mutedForeground }, { fontSize: 13, opacity: 0.9 }]}>
-                  Canlı maç istatistikleri API'den geldiğinde burada görünecek.
+                  Canlı maç istatistikleri db ile bağlantı kurulduğunda (yani internete bağlıysanız) burada görünecek.
                 </Text>
               </View>
             ) : (

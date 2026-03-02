@@ -20,6 +20,7 @@ import { initWebZoomPrevention } from './src/utils/webZoomPrevention';
 import { getUserTimezone } from './src/utils/timezoneUtils';
 import { subscribeToast } from './src/utils/alertHelper';
 import { BackendStatusProvider, BackendStatusBannerSlot } from './src/contexts/BackendStatusContext';
+import { AdminProvider } from './src/admin/AdminContext';
 
 // Web için React Native'in built-in Animated API'sini kullan, native için reanimated
 import { Animated as RNAnimated } from 'react-native';
@@ -606,6 +607,7 @@ export default function App() {
               {isMaintenanceMode ? (
                 <MaintenanceScreen />
               ) : (
+                <AdminProvider>
                 <BackendStatusProvider>
                 <ThemedRootView viewKey={currentScreen === 'onboarding' ? 'content-onboarding' : `content-${currentLang}-${forceUpdateKey}`}>
                   <BackendStatusBannerSlot />
@@ -683,6 +685,7 @@ export default function App() {
                   )}
                 </ThemedRootView>
                 </BackendStatusProvider>
+                </AdminProvider>
               )}
               </FavoriteSquadsProvider>
             </MatchProvider>

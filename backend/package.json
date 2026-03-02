@@ -8,7 +8,8 @@
     "dev": "nodemon server.js",
     "db:report": "node scripts/db-status-report-every-5min.js",
     "db:sync-and-report": "node scripts/run-db-sync-and-report.js",
-    "db:sync-and-report:loop": "node scripts/run-db-sync-and-report.js --loop"
+    "db:sync-and-report:loop": "node scripts/run-db-sync-and-report.js --loop",
+    "matches:next6h": "node scripts/list-matches-next-6h.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.90.0",

@@ -111,27 +111,28 @@ const allowedOrigins = [
   ] : []),
 ];
 
+// Development = NODE_ENV !== 'production' (undefined da kabul)
+const isDev = process.env.NODE_ENV !== 'production';
 app.use(cors({
   origin: (origin, callback) => {
-    // Development'ta her türlü localhost originine izin ver
-    if (!origin || (process.env.NODE_ENV === 'development' && origin.includes('localhost'))) {
+    // Origin yoksa (Postman, mobil) izin ver
+    if (!origin) return callback(null, true);
+    // Development'ta localhost ve 127.0.0.1 her port için izin ver
+    if (isDev && (origin.includes('localhost') || origin.startsWith('http://127.0.0.1:'))) {
       return callback(null, true);
     }
-    
-    // Check if origin is allowed
-    if (allowedOrigins.includes(origin)) {
+    // Development'ta LAN IP
+    if (isDev && /^http:\/\/192\.168\.\d+\.\d+:\d+$/.test(origin)) {
       return callback(null, true);
     }
-    
-    // Allow LAN IPs only in development
-    if (process.env.NODE_ENV === 'development' && /^http:\/\/192\.168\.\d+\.\d+:\d+$/.test(origin)) {
-      return callback(null, true);
-    }
-    
+    if (allowedOrigins.includes(origin)) return callback(null, true);
     console.warn('⚠️ CORS: Blocked origin:', origin);
     callback(new Error('CORS policy violation'), false);
   },
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+  optionsSuccessStatus: 204,
 })); // Enable CORS for web
 app.use(compression()); // Compress responses
 app.use(express.json());

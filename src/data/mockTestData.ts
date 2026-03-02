@@ -3,10 +3,11 @@
  * MOCK_TEST_ENABLED = true iken Dashboard'da test maçı görünür ve tüm güncellemeler test edilebilir.
  */
 
-export const MOCK_TEST_ENABLED = true;
+/** Mock maç kapalı: 75K API kotası 50K DB güncelleme + 25K canlı maç testi için kullanılacak. */
+export const MOCK_TEST_ENABLED = false;
 
 /** Canlı maç senaryosu: true iken mock maç "şu an oynanıyor" (1H, dakika ilerliyor) olarak gösterilir. */
-export const MOCK_MATCH_SIMULATE_LIVE = true;
+export const MOCK_MATCH_SIMULATE_LIVE = false;
 
 /** Test maçı: 6 saat sonra başlayacak (veya canlı simülasyonda geçmişte başlamış). */
 export const MOCK_MATCH_IDS = {
