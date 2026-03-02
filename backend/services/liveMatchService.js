@@ -7,6 +7,7 @@
 const footballApi = require('./footballApi');
 const { finalizeMatch } = require('./scoringService');
 const { supabase } = require('../config/supabase');
+const apiUsageTracker = require('./apiUsageTracker');
 
 // ============================================
 // CONFIGURATION
@@ -266,8 +267,10 @@ async function pollLiveMatches() {
   console.log('🔄 Polling live matches...');
 
   try {
+    if (!apiUsageTracker.canMakeMatchSyncCall()) {
+      return;
+    }
     // ✅ 0. STALE NS MAÇLARI KONTROL ET (zamanı geçmiş ama hala NS)
-    // Bu maçları fixture ID ile direkt API'den sorgula
     const staleMatches = await getStaleNsMatches();
     if (staleMatches.length > 0) {
       console.log(`🔍 Checking ${staleMatches.length} stale NS matches by fixture ID...`);
@@ -291,6 +294,7 @@ async function pollLiveMatches() {
 
     // 2. Fetch live data from API-Football
     const apiData = await footballApi.getLiveMatches();
+    apiUsageTracker.incrementMatchSync(1);
     const liveMatches = apiData.response || [];
 
     console.log(`🔴 ${liveMatches.length} matches currently live`);
@@ -341,18 +345,19 @@ async function pollLiveMatches() {
             // ✅ Event'ler zaten liveMatch'te varsa kullan, yoksa ayrı çek
             let events = liveMatch.events || [];
             if (events.length === 0) {
-              // Fallback: Ayrı çek (eski yöntem)
+              if (!apiUsageTracker.canMakeMatchSyncCall()) break;
               const eventsData = await footballApi.getFixtureEvents(liveMatch.fixture.id);
+              apiUsageTracker.incrementMatchSync(1);
               events = eventsData.response || [];
             }
-            
-            // Fetch full match data (with statistics)
+            if (!apiUsageTracker.canMakeMatchSyncCall()) break;
             const fullMatchData = await footballApi.getFixtureDetails(liveMatch.fixture.id);
+            apiUsageTracker.incrementMatchSync(1);
             const fullMatch = fullMatchData.response[0] || liveMatch;
             fullMatch.events = events;
-            
-            // Fetch statistics
+            if (!apiUsageTracker.canMakeMatchSyncCall()) break;
             const statsData = await footballApi.getFixtureStatistics(liveMatch.fixture.id);
+            apiUsageTracker.incrementMatchSync(1);
             fullMatch.statistics = statsData.response;
             
             // Create match result

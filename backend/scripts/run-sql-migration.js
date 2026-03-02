@@ -148,6 +148,7 @@ async function checkExistingTables() {
   
   const tables = [
     'users', 'user_stats', 'user_profiles', 'predictions', 'prediction_scores',
+    'prediction_items',
     'matches', 'teams', 'leagues', 'static_teams', 'favorite_teams',
     'match_timeline', 'match_summaries', 'leaderboard_snapshots'
   ];
@@ -187,6 +188,8 @@ async function main() {
   console.log('║   2. SQL Editor\'ı açın                                 ║');
   console.log('║   3. 006_enhanced_match_tracking.sql içeriğini         ║');
   console.log('║      yapıştırıp çalıştırın                             ║');
+  console.log('║   prediction_items için:                               ║');
+  console.log('║   supabase/migrations/20260302_prediction_items.sql   ║');
   console.log('║                                                        ║');
   console.log('╚════════════════════════════════════════════════════════╝\n');
 }

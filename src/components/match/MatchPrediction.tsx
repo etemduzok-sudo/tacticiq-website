@@ -5664,12 +5664,18 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                 <Ionicons name="lock-closed" size={24} color={lockConfirmType === 'real' ? '#EF4444' : '#F59E0B'} />
               </View>
               <Text style={{ fontSize: 16, fontWeight: '700', color: '#FFFFFF', textAlign: 'center', marginBottom: 8 }}>
-                {lockConfirmType === 'real' ? 'Kadroyu görmek istediğinize emin misiniz?' : 'Emin misiniz?'}
+                {lockConfirmType === 'real' ? 'Kadroyu görmek istediğinize emin misiniz?' : (lockConfirmType === 'community' ? 'Topluluk verilerini görmek istediğinize emin misiniz?' : 'Emin misiniz?')}
               </Text>
               <Text style={{ fontSize: 13, color: '#94A3B8', lineHeight: 20, textAlign: 'center', marginBottom: 20 }}>
                 {lockConfirmType === 'real'
-                  ? 'Artık tahmin yapamayacak ve puan kazanmayacaksınız. Bu işlem geri alınamaz.'
-                  : 'Artık tahmininizi değiştiremeyeceksiniz. Bu işlem geri alınamaz.'}
+                  ? (hasPrediction
+                      ? 'Kadroyu gördükten sonra kadro ve tahminlerinizi değiştiremeyeceksiniz. Bu işlem geri alınamaz.'
+                      : 'Artık tahmin yapamayacak ve puan kazanmayacaksınız. Bu işlem geri alınamaz.')
+                  : lockConfirmType === 'community'
+                    ? (hasPrediction
+                        ? 'Topluluk verilerini gördükten sonra kadro ve tahminlerinizi değiştiremeyeceksiniz. Bu işlem geri alınamaz.'
+                        : 'Artık tahmin yapamayacak ve puan kazanmayacaksınız. Bu işlem geri alınamaz.')
+                    : 'Artık tahmininizi değiştiremeyeceksiniz. Bu işlem geri alınamaz.'}
               </Text>
               <View style={{ flexDirection: 'row', gap: 10, justifyContent: 'center' }}>
                 <TouchableOpacity

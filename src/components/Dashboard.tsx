@@ -32,6 +32,7 @@ import { ConfirmModal } from './ui/ConfirmModal';
 // CountdownWarningModal kaldırıldı - 120 saniyelik kural artık yok
 import { getTeamColors } from '../utils/teamColors';
 import { useMatchesWithPredictions } from '../hooks/useMatchesWithPredictions';
+import { isNationalTeamMatch } from '../hooks/useFavoriteTeamMatches';
 import { useTranslation } from '../hooks/useTranslation';
 import { matchesDb } from '../services/databaseService';
 import { isMockTestMatch } from '../data/mockTestData';
@@ -964,15 +965,18 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
     }
   }, [pastMatches, liveMatches, upcomingMatches]);
 
-  // ✅ Cache yüklenir yüklenmez listeyi göster; background refresh sırasında mevcut veri görünür kalır
+  // ✅ Cache yüklenir yüklenmez listeyi göster; cache'ten maç gelince hemen göster (yanıp sönme önlenir)
   React.useEffect(() => {
     const hasFavorites = (favoriteTeams?.length ?? 0) > 0;
+    const hasMatches = (pastMatches?.length ?? 0) + (liveMatches?.length ?? 0) + (upcomingMatches?.length ?? 0) > 0;
     if (!hasFavorites) {
       setCanShowList(true);
     } else if (hasLoadedOnce && !loading) {
       setCanShowList(true);
+    } else if (hasMatches) {
+      setCanShowList(true);
     }
-  }, [loading, hasLoadedOnce, favoriteTeams?.length]);
+  }, [loading, hasLoadedOnce, favoriteTeams?.length, pastMatches?.length, liveMatches?.length, upcomingMatches?.length]);
 
   // Get all upcoming matches (not just 24 hours)
   const now = Date.now() / 1000;
@@ -1057,9 +1061,12 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
     return filtered;
   }, [favoriteTeams]);
 
+  // ✅ Takımlar yüklenirken filtre uygulama – tüm maçları göster (milli takım kısa süre görünüp sonra hepsinin yüklenmesi yanıp sönmesini önler)
+  const skipTeamFilter = teamsLoading;
+
   // ✅ Canlı maçları filtrele: Hook'tan gelen liveMatches. Mock test maçı her zaman listeye dahil (tahmin olsun olmasın test edilebilsin).
   const filteredLiveMatches = React.useMemo(() => {
-    const filtered = filterMatchesByTeam(liveMatches, selectedTeamIds);
+    const filtered = skipTeamFilter ? liveMatches : filterMatchesByTeam(liveMatches, selectedTeamIds);
     const mockLive = liveMatches.filter((m) => isMockTestMatch(m.fixture?.id ?? 0));
     const merged = [...mockLive, ...filtered];
     const uniqueLive = merged.reduce((acc: any[], match) => {
@@ -1067,12 +1074,16 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
       if (fixtureId && !acc.some(m => m.fixture?.id === fixtureId)) acc.push(match);
       return acc;
     }, []);
-    return uniqueLive.sort((a, b) => (b.fixture?.timestamp || 0) - (a.fixture?.timestamp || 0));
-  }, [liveMatches, selectedTeamIds, filterMatchesByTeam]);
+    return uniqueLive.sort((a, b) => {
+      const ts = (b.fixture?.timestamp || 0) - (a.fixture?.timestamp || 0);
+      if (ts !== 0) return ts;
+      return (isNationalTeamMatch(a) ? 1 : 0) - (isNationalTeamMatch(b) ? 1 : 0);
+    });
+  }, [liveMatches, selectedTeamIds, filterMatchesByTeam, skipTeamFilter]);
 
   const filteredUpcomingMatches = React.useMemo(() => {
     // ✅ Mock maçları da filtreleme fonksiyonundan geçir
-    const filtered = filterMatchesByTeam(allUpcomingMatches, selectedTeamIds);
+    const filtered = skipTeamFilter ? allUpcomingMatches : filterMatchesByTeam(allUpcomingMatches, selectedTeamIds);
     
     // Birleştir: filtrelenmiş maçlar (mock + gerçek birlikte filtrelendi)
     const combined = filtered;
@@ -1087,17 +1098,19 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
       return acc;
     }, []);
     
-    // Tarih sırasına göre sırala (en yakın en üstte)
+    // Tarih sırasına göre sırala (en yakın en üstte); aynı tarihte kulüp maçları milli takımdan önce
     return uniqueMatches.sort((a, b) => {
       const timeDiff = a.fixture.timestamp - b.fixture.timestamp;
       if (timeDiff !== 0) return timeDiff;
-      return getLeaguePriority(a.league.name) - getLeaguePriority(b.league.name);
+      const leagueDiff = getLeaguePriority(a.league.name) - getLeaguePriority(b.league.name);
+      if (leagueDiff !== 0) return leagueDiff;
+      return (isNationalTeamMatch(a) ? 1 : 0) - (isNationalTeamMatch(b) ? 1 : 0);
     });
-  }, [allUpcomingMatches, selectedTeamIds, filterMatchesByTeam, filteredLiveMatches]);
+  }, [allUpcomingMatches, selectedTeamIds, filterMatchesByTeam, filteredLiveMatches, skipTeamFilter]);
 
   // ✅ Filtrelenmiş geçmiş maçlar (selectedTeamIds'e göre)
   const filteredPastMatches = React.useMemo(() => {
-    const filtered = filterMatchesByTeam(pastMatches, selectedTeamIds);
+    const filtered = skipTeamFilter ? pastMatches : filterMatchesByTeam(pastMatches, selectedTeamIds);
     
     // ✅ Duplicate fixture ID'leri kaldır VE canlı maçları hariç tut
     const liveIds = new Set(filteredLiveMatches.map(m => m.fixture?.id));
@@ -1110,11 +1123,13 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
       return acc;
     }, []);
     
-    // ✅ Sırala: En eski üstte, en son biten altta (yaklaşan maçların hemen üzerinde)
+    // ✅ Sırala: En eski üstte, en son biten altta; aynı tarihte kulüp maçları milli takımdan önce
     return uniqueMatches.sort((a, b) => {
-      return (a.fixture?.timestamp || 0) - (b.fixture?.timestamp || 0);
+      const ts = (a.fixture?.timestamp || 0) - (b.fixture?.timestamp || 0);
+      if (ts !== 0) return ts;
+      return (isNationalTeamMatch(a) ? 1 : 0) - (isNationalTeamMatch(b) ? 1 : 0);
     });
-  }, [pastMatches, selectedTeamIds, filterMatchesByTeam, filteredLiveMatches]);
+  }, [pastMatches, selectedTeamIds, filterMatchesByTeam, filteredLiveMatches, skipTeamFilter]);
 
   // ✅ Biten maçlar: favori takım varsa göster. Filtre boş dönerse (ID uyuşmazlığı vb.) pastMatches fallback
   const displayPastMatches = hasFavoriteTeams

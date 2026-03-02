@@ -1,20 +1,17 @@
 -- ============================================
--- TACTICIQ - PREDICTION_ITEMS (type/value per row)
+-- TACTICIQ - prediction_items (type/value per row)
 -- ============================================
--- Tahminler kaydedilirken prediction_type / prediction_value ile
--- satır bazlı kayıt için kullanılır. predictions tablosunda bu
--- sütunlar yoksa bu migration'ı çalıştırın.
--- Supabase SQL Editor'da çalıştırın.
+-- Maç/oyuncu tahminleri satır bazlı (prediction_type / prediction_value).
+-- Frontend: databaseService.ts predictionsDb → prediction_items
 -- ============================================
 
--- Not: Aynı migration supabase/migrations/20260302_prediction_items.sql içinde (gen_random_uuid ile).
 CREATE TABLE IF NOT EXISTS public.prediction_items (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL,
   match_id TEXT NOT NULL,
   prediction_type TEXT NOT NULL,
   prediction_value JSONB NOT NULL,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_prediction_items_user_id ON public.prediction_items(user_id);

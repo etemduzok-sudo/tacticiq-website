@@ -9,6 +9,7 @@
 const { supabase } = require('../config/supabase');
 const footballApi = require('./footballApi');
 const databaseService = require('./databaseService');
+const apiUsageTracker = require('./apiUsageTracker');
 
 // Timeline service - maç akışını kaydet
 let timelineService;
@@ -36,11 +37,12 @@ if (!supabase) {
 // Canlı maç yokken: 30s interval (~2,880 calls/day)
 // ============================================
 
-const FIXED_INTERVAL = 12000; // Varsayılan 12 saniye
-const LIVE_MATCH_INTERVAL = 5000; // Canlı maç varken 5 saniye
-const IDLE_INTERVAL = 30000; // Canlı maç yokken 30 saniye
-const DAILY_API_LIMIT = 75000;
-const SAFE_DAILY_LIMIT = 70000; // %93 kullanım (5000 buffer)
+const FIXED_INTERVAL = 12000; // 12 saniye
+const LIVE_MATCH_INTERVAL = 5000;
+const IDLE_INTERVAL = 30000;
+// Maç sync kotası: 25K/gün (50K = rating, takım, koç, kadro)
+const DAILY_API_LIMIT = apiUsageTracker.MATCH_SYNC_LIMIT;
+const SAFE_DAILY_LIMIT = Math.floor(DAILY_API_LIMIT * 0.95); // %95'te yavaşla
 
 let syncTimer = null;
 let currentInterval = FIXED_INTERVAL; // SABİT 12s
@@ -57,38 +59,29 @@ function trackApiCall() {
   const now = new Date();
   const currentHour = now.getUTCHours();
   const currentDay = now.getUTCDate();
-  
-  // Reset daily counter at midnight UTC
   if (currentDay !== lastDayReset) {
     apiCallsToday = 0;
     lastDayReset = currentDay;
-    console.log('📊 Daily API counter reset (UTC midnight)');
+    console.log('📊 [MAÇ SYNC] Günlük sayaç sıfırlandı');
   }
-  
-  // Reset hourly counter
   if (currentHour !== lastHourReset) {
-    console.log(`📈 Hour ${lastHourReset}:00 UTC - Used ${apiCallsThisHour} calls`);
     apiCallsThisHour = 0;
     lastHourReset = currentHour;
   }
-  
   apiCallsToday++;
   apiCallsThisHour++;
+  apiUsageTracker.incrementMatchSync(1);
 }
 
 function canMakeApiCall() {
-  // Stop if approaching daily limit (leave 300 calls buffer for emergencies)
+  if (!apiUsageTracker.canMakeMatchSyncCall()) {
+    console.log(`🛑 [MAÇ SYNC] Günlük limit (${DAILY_API_LIMIT}) doldu`);
+    return false;
+  }
   if (apiCallsToday >= SAFE_DAILY_LIMIT) {
-    console.log(`⚠️ Daily limit approaching (${apiCallsToday}/${SAFE_DAILY_LIMIT}), throttling...`);
+    console.log(`⚠️ [MAÇ SYNC] Limite yaklaşıldı (${apiCallsToday}/${SAFE_DAILY_LIMIT}), yavaşlıyor...`);
     return false;
   }
-  
-  // Hard stop at 7500
-  if (apiCallsToday >= DAILY_API_LIMIT) {
-    console.log(`🛑 Daily API limit reached (${apiCallsToday}/${DAILY_API_LIMIT})`);
-    return false;
-  }
-  
   return true;
 }
 

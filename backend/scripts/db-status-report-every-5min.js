@@ -9,8 +9,10 @@ const path = require('path');
 const fs = require('fs');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
-const { createClient } = require('@supabase/supabase-js');
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+const { supabase, isConfigured } = require('../config/supabase');
+if (!isConfigured || !supabase) {
+  console.warn('Uyari: Supabase yapilandirilmadi. Rapor atlanacak.');
+}
 
 const REPORT_FILE = path.join(__dirname, '..', 'data', 'db-status-report.txt');
 const LAST_SNAPSHOT_FILE = path.join(__dirname, '..', 'data', 'db-status-last.json');
@@ -93,6 +95,7 @@ function appendReportBlock(newBlockText) {
 }
 
 async function fetchStats() {
+  if (!supabase) return null;
   const { count: totalTeams } = await supabase.from('static_teams').select('*', { count: 'exact', head: true });
   const { count: withCoach } = await supabase.from('static_teams').select('*', { count: 'exact', head: true }).not('coach', 'is', null);
   const { count: withColors } = await supabase.from('static_teams').select('*', { count: 'exact', head: true }).not('colors_primary', 'is', null);
@@ -148,9 +151,17 @@ async function fetchStats() {
 }
 
 async function runReport() {
+  if (!isConfigured || !supabase) {
+    console.log('Supabase yapilandirilmadi, rapor atlaniyor.');
+    return;
+  }
   const now = new Date();
   const prev = loadPrevious();
   const s = await fetchStats();
+  if (!s) {
+    console.log('fetchStats basarisiz, rapor atlaniyor.');
+    return;
+  }
 
   const baseline = loadOrUpdateBaseline(s);
   const baselineDate = baseline?.at ? new Date(baseline.at).toLocaleDateString('tr-TR') : '-';

@@ -63,9 +63,10 @@ async function makeRequest(endpoint, params = {}, cacheKey = null, cacheDuration
       return { response: [], results: 0, errors: [] };
     }
 
-    // Make API request
+    // API-Football dashboard keys use x-apisports-key; RapidAPI keys use x-rapidapi-key. Gönderiyoruz ikisini de.
     const response = await axios.get(`${BASE_URL}${endpoint}`, {
       headers: {
+        'x-apisports-key': API_KEY,
         'x-rapidapi-key': API_KEY,
         'x-rapidapi-host': 'v3.football.api-sports.io',
       },
@@ -357,16 +358,27 @@ async function getFixturesByDate(date) {
 }
 
 // Get fixtures by date range (1 API call = many days) - MAX data per call
+// Tek günde "date" parametresi kullan (API bazen from/to ile 0 dönebiliyor)
 async function getFixturesByDateRange(fromDate, toDate) {
-  const cacheKey = `fixtures-${fromDate}-${toDate}`;
-  const data = await makeRequest('/fixtures', { from: fromDate, to: toDate }, cacheKey, 1800);
+  const sameDay = fromDate === toDate;
+  const cacheKey = sameDay ? `fixtures-date-${fromDate}` : `fixtures-${fromDate}-${toDate}`;
+  const params = sameDay ? { date: fromDate } : { from: fromDate, to: toDate };
+  const data = await makeRequest('/fixtures', params, cacheKey, 1800);
+  const rawCount = data.response?.length || 0;
+  if (rawCount > 0) {
+    console.log(`🔍 [RANGE ${fromDate}→${toDate}] API ham: ${rawCount} maç`);
+  }
   if (data.response && data.response.length > 0) {
     const filtered = filterMatches(data.response);
+    console.log(`🔍 [RANGE ${fromDate}→${toDate}] Filtre sonrası: ${filtered.length}/${rawCount} maç`);
     return {
       ...data,
       response: filtered,
       results: filtered.length,
     };
+  }
+  if (rawCount === 0 && (data.errors?.length || data.response)) {
+    console.log(`🔍 [RANGE ${fromDate}→${toDate}] API 0 maç döndürdü (param: ${fromDate === toDate ? 'date' : 'from/to'})`);
   }
   return data;
 }

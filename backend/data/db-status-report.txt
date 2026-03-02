@@ -1,148 +1,4 @@
 ========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 25.02.2026 14:52:36
-
---- KARSILASTIRMA (onceki rapor vs simdiki) ---
-  Toplam takim: 6620  [degismedi]
-  Coach ile: 4571 (69%)  [degismedi]
-  Renkler ile: 5609 (85%)  [degismedi]
-  Kadrolar 2025: 5675 (86%)  [degismedi]
-  Oyuncu (ratingli): 23522  [-9]
-  Toplam oyuncu: 25236  [-9]
-  Rating %: 93%  [degismedi]
-  ORTALAMA %: 83%  [degismedi]
-
---- OZET ---
-  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 93%
-  GENEL TAMAMLANMA: 83%
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 25.02.2026 14:57:36
-
---- KARSILASTIRMA (onceki rapor vs simdiki) ---
-  Toplam takim: 6620  [degismedi]
-  Coach ile: 4571 (69%)  [degismedi]
-  Renkler ile: 5609 (85%)  [degismedi]
-  Kadrolar 2025: 5675 (86%)  [degismedi]
-  Oyuncu (ratingli): 23496  [-26]
-  Toplam oyuncu: 25210  [-26]
-  Rating %: 93%  [degismedi]
-  ORTALAMA %: 83%  [degismedi]
-
---- OZET ---
-  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 93%
-  GENEL TAMAMLANMA: 83%
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 25.02.2026 15:02:36
-
---- KARSILASTIRMA (onceki rapor vs simdiki) ---
-  Toplam takim: 6620  [degismedi]
-  Coach ile: 4571 (69%)  [degismedi]
-  Renkler ile: 5609 (85%)  [degismedi]
-  Kadrolar 2025: 5675 (86%)  [degismedi]
-  Oyuncu (ratingli): 23567  [+71]
-  Toplam oyuncu: 25281  [+71]
-  Rating %: 93%  [degismedi]
-  ORTALAMA %: 83%  [degismedi]
-
---- OZET ---
-  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 93%
-  GENEL TAMAMLANMA: 83%
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 25.02.2026 15:07:36
-
---- KARSILASTIRMA (onceki rapor vs simdiki) ---
-  Toplam takim: 6620  [degismedi]
-  Coach ile: 4571 (69%)  [degismedi]
-  Renkler ile: 5609 (85%)  [degismedi]
-  Kadrolar 2025: 5675 (86%)  [degismedi]
-  Oyuncu (ratingli): 23549  [-18]
-  Toplam oyuncu: 25263  [-18]
-  Rating %: 93%  [degismedi]
-  ORTALAMA %: 83%  [degismedi]
-
---- OZET ---
-  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 93%
-  GENEL TAMAMLANMA: 83%
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 25.02.2026 15:12:36
-
---- KARSILASTIRMA (onceki rapor vs simdiki) ---
-  Toplam takim: 6620  [degismedi]
-  Coach ile: 4571 (69%)  [degismedi]
-  Renkler ile: 5609 (85%)  [degismedi]
-  Kadrolar 2025: 5675 (86%)  [degismedi]
-  Oyuncu (ratingli): 23549  [degismedi]
-  Toplam oyuncu: 25263  [degismedi]
-  Rating %: 93%  [degismedi]
-  ORTALAMA %: 83%  [degismedi]
-
---- OZET ---
-  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 93%
-  GENEL TAMAMLANMA: 83%
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 25.02.2026 15:17:36
-
---- KARSILASTIRMA (onceki rapor vs simdiki) ---
-  Toplam takim: 6620  [degismedi]
-  Coach ile: 4571 (69%)  [degismedi]
-  Renkler ile: 5609 (85%)  [degismedi]
-  Kadrolar 2025: 5675 (86%)  [degismedi]
-  Oyuncu (ratingli): 23549  [degismedi]
-  Toplam oyuncu: 25263  [degismedi]
-  Rating %: 93%  [degismedi]
-  ORTALAMA %: 83%  [degismedi]
-
---- OZET ---
-  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 93%
-  GENEL TAMAMLANMA: 83%
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 25.02.2026 15:22:36
-
---- KARSILASTIRMA (onceki rapor vs simdiki) ---
-  Toplam takim: 6620  [degismedi]
-  Coach ile: 4571 (69%)  [degismedi]
-  Renkler ile: 5609 (85%)  [degismedi]
-  Kadrolar 2025: 5675 (86%)  [degismedi]
-  Oyuncu (ratingli): 23541  [-8]
-  Toplam oyuncu: 25255  [-8]
-  Rating %: 93%  [degismedi]
-  ORTALAMA %: 83%  [degismedi]
-
---- OZET ---
-  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 93%
-  GENEL TAMAMLANMA: 83%
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 25.02.2026 15:27:36
-
---- KARSILASTIRMA (onceki rapor vs simdiki) ---
-  Toplam takim: 6620  [degismedi]
-  Coach ile: 4571 (69%)  [degismedi]
-  Renkler ile: 5609 (85%)  [degismedi]
-  Kadrolar 2025: 5675 (86%)  [degismedi]
-  Oyuncu (ratingli): 23541  [degismedi]
-  Toplam oyuncu: 25255  [degismedi]
-  Rating %: 93%  [degismedi]
-  ORTALAMA %: 83%  [degismedi]
-
---- OZET ---
-  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 93%
-  GENEL TAMAMLANMA: 83%
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
 Zaman: 25.02.2026 15:32:36
 
 --- KARSILASTIRMA (onceki rapor vs simdiki) ---
@@ -2693,5 +2549,237 @@ Zaman: 01.03.2026 15:33:39
   Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
   GENEL TAMAMLANMA: 84%
   TAHMINI SURE %100'E: ~22 saat (sync script calisirsa).
+  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 02.03.2026 19:15:19
+
+--- 5 DK ONCEKI OLCUM vs SIMDI ---
+  Toplam takim: 0  [-6628]
+  Coach ile: 0 (0%)  [-4577]
+  Renkler ile: 0 (0%)  [-5621]
+  Kadrolar 2025: 0 (0%)  [-5677]
+  Oyuncu (ratingli): 0  [-131913]
+  Toplam oyuncu: 0  [-140412]
+  Rating %: 0%  [-94]
+  ORTALAMA %: 0%  [-84]
+
+--- BASELINE (02.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
+  Toplam takim: 0  [degismedi]
+  Coach ile: 0 (0%)  [degismedi]
+  Renkler ile: 0 (0%)  [degismedi]
+  Kadrolar 2025: 0 (0%)  [degismedi]
+  Oyuncu (ratingli): 0  [degismedi]
+  Toplam oyuncu: 0  [degismedi]
+  Rating %: 0%  [degismedi]
+  ORTALAMA %: 0%  [degismedi]
+
+--- OZET ---
+  Coach: 0% | Renkler: 0% | Kadrolar: 0% | Rating: 0%
+  GENEL TAMAMLANMA: 0%
+  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 02.03.2026 19:20:20
+
+--- 5 DK ONCEKI OLCUM vs SIMDI ---
+  Toplam takim: 0  [degismedi]
+  Coach ile: 0 (0%)  [degismedi]
+  Renkler ile: 0 (0%)  [degismedi]
+  Kadrolar 2025: 0 (0%)  [degismedi]
+  Oyuncu (ratingli): 0  [degismedi]
+  Toplam oyuncu: 0  [degismedi]
+  Rating %: 0%  [degismedi]
+  ORTALAMA %: 0%  [degismedi]
+
+--- BASELINE (02.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
+  Toplam takim: 0  [degismedi]
+  Coach ile: 0 (0%)  [degismedi]
+  Renkler ile: 0 (0%)  [degismedi]
+  Kadrolar 2025: 0 (0%)  [degismedi]
+  Oyuncu (ratingli): 0  [degismedi]
+  Toplam oyuncu: 0  [degismedi]
+  Rating %: 0%  [degismedi]
+  ORTALAMA %: 0%  [degismedi]
+
+--- OZET ---
+  Coach: 0% | Renkler: 0% | Kadrolar: 0% | Rating: 0%
+  GENEL TAMAMLANMA: 0%
+  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 02.03.2026 19:25:20
+
+--- 5 DK ONCEKI OLCUM vs SIMDI ---
+  Toplam takim: 0  [degismedi]
+  Coach ile: 0 (0%)  [degismedi]
+  Renkler ile: 0 (0%)  [degismedi]
+  Kadrolar 2025: 0 (0%)  [degismedi]
+  Oyuncu (ratingli): 0  [degismedi]
+  Toplam oyuncu: 0  [degismedi]
+  Rating %: 0%  [degismedi]
+  ORTALAMA %: 0%  [degismedi]
+
+--- BASELINE (02.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
+  Toplam takim: 0  [degismedi]
+  Coach ile: 0 (0%)  [degismedi]
+  Renkler ile: 0 (0%)  [degismedi]
+  Kadrolar 2025: 0 (0%)  [degismedi]
+  Oyuncu (ratingli): 0  [degismedi]
+  Toplam oyuncu: 0  [degismedi]
+  Rating %: 0%  [degismedi]
+  ORTALAMA %: 0%  [degismedi]
+
+--- OZET ---
+  Coach: 0% | Renkler: 0% | Kadrolar: 0% | Rating: 0%
+  GENEL TAMAMLANMA: 0%
+  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 02.03.2026 19:30:20
+
+--- 5 DK ONCEKI OLCUM vs SIMDI ---
+  Toplam takim: 0  [degismedi]
+  Coach ile: 0 (0%)  [degismedi]
+  Renkler ile: 0 (0%)  [degismedi]
+  Kadrolar 2025: 0 (0%)  [degismedi]
+  Oyuncu (ratingli): 0  [degismedi]
+  Toplam oyuncu: 0  [degismedi]
+  Rating %: 0%  [degismedi]
+  ORTALAMA %: 0%  [degismedi]
+
+--- BASELINE (02.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
+  Toplam takim: 0  [degismedi]
+  Coach ile: 0 (0%)  [degismedi]
+  Renkler ile: 0 (0%)  [degismedi]
+  Kadrolar 2025: 0 (0%)  [degismedi]
+  Oyuncu (ratingli): 0  [degismedi]
+  Toplam oyuncu: 0  [degismedi]
+  Rating %: 0%  [degismedi]
+  ORTALAMA %: 0%  [degismedi]
+
+--- OZET ---
+  Coach: 0% | Renkler: 0% | Kadrolar: 0% | Rating: 0%
+  GENEL TAMAMLANMA: 0%
+  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 02.03.2026 19:35:20
+
+--- 5 DK ONCEKI OLCUM vs SIMDI ---
+  Toplam takim: 0  [degismedi]
+  Coach ile: 0 (0%)  [degismedi]
+  Renkler ile: 0 (0%)  [degismedi]
+  Kadrolar 2025: 0 (0%)  [degismedi]
+  Oyuncu (ratingli): 0  [degismedi]
+  Toplam oyuncu: 0  [degismedi]
+  Rating %: 0%  [degismedi]
+  ORTALAMA %: 0%  [degismedi]
+
+--- BASELINE (02.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
+  Toplam takim: 0  [degismedi]
+  Coach ile: 0 (0%)  [degismedi]
+  Renkler ile: 0 (0%)  [degismedi]
+  Kadrolar 2025: 0 (0%)  [degismedi]
+  Oyuncu (ratingli): 0  [degismedi]
+  Toplam oyuncu: 0  [degismedi]
+  Rating %: 0%  [degismedi]
+  ORTALAMA %: 0%  [degismedi]
+
+--- OZET ---
+  Coach: 0% | Renkler: 0% | Kadrolar: 0% | Rating: 0%
+  GENEL TAMAMLANMA: 0%
+  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 02.03.2026 19:40:20
+
+--- 5 DK ONCEKI OLCUM vs SIMDI ---
+  Toplam takim: 0  [degismedi]
+  Coach ile: 0 (0%)  [degismedi]
+  Renkler ile: 0 (0%)  [degismedi]
+  Kadrolar 2025: 0 (0%)  [degismedi]
+  Oyuncu (ratingli): 0  [degismedi]
+  Toplam oyuncu: 0  [degismedi]
+  Rating %: 0%  [degismedi]
+  ORTALAMA %: 0%  [degismedi]
+
+--- BASELINE (02.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
+  Toplam takim: 0  [degismedi]
+  Coach ile: 0 (0%)  [degismedi]
+  Renkler ile: 0 (0%)  [degismedi]
+  Kadrolar 2025: 0 (0%)  [degismedi]
+  Oyuncu (ratingli): 0  [degismedi]
+  Toplam oyuncu: 0  [degismedi]
+  Rating %: 0%  [degismedi]
+  ORTALAMA %: 0%  [degismedi]
+
+--- OZET ---
+  Coach: 0% | Renkler: 0% | Kadrolar: 0% | Rating: 0%
+  GENEL TAMAMLANMA: 0%
+  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 02.03.2026 19:48:02
+
+--- 5 DK ONCEKI OLCUM vs SIMDI ---
+  Toplam takim: 0  [degismedi]
+  Coach ile: 0 (0%)  [degismedi]
+  Renkler ile: 0 (0%)  [degismedi]
+  Kadrolar 2025: 0 (0%)  [degismedi]
+  Oyuncu (ratingli): 0  [degismedi]
+  Toplam oyuncu: 0  [degismedi]
+  Rating %: 0%  [degismedi]
+  ORTALAMA %: 0%  [degismedi]
+
+--- BASELINE (02.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
+  Toplam takim: 0  [degismedi]
+  Coach ile: 0 (0%)  [degismedi]
+  Renkler ile: 0 (0%)  [degismedi]
+  Kadrolar 2025: 0 (0%)  [degismedi]
+  Oyuncu (ratingli): 0  [degismedi]
+  Toplam oyuncu: 0  [degismedi]
+  Rating %: 0%  [degismedi]
+  ORTALAMA %: 0%  [degismedi]
+
+--- OZET ---
+  Coach: 0% | Renkler: 0% | Kadrolar: 0% | Rating: 0%
+  GENEL TAMAMLANMA: 0%
+  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 02.03.2026 19:53:02
+
+--- 5 DK ONCEKI OLCUM vs SIMDI ---
+  Toplam takim: 0  [degismedi]
+  Coach ile: 0 (0%)  [degismedi]
+  Renkler ile: 0 (0%)  [degismedi]
+  Kadrolar 2025: 0 (0%)  [degismedi]
+  Oyuncu (ratingli): 0  [degismedi]
+  Toplam oyuncu: 0  [degismedi]
+  Rating %: 0%  [degismedi]
+  ORTALAMA %: 0%  [degismedi]
+
+--- BASELINE (02.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
+  Toplam takim: 0  [degismedi]
+  Coach ile: 0 (0%)  [degismedi]
+  Renkler ile: 0 (0%)  [degismedi]
+  Kadrolar 2025: 0 (0%)  [degismedi]
+  Oyuncu (ratingli): 0  [degismedi]
+  Toplam oyuncu: 0  [degismedi]
+  Rating %: 0%  [degismedi]
+  ORTALAMA %: 0%  [degismedi]
+
+--- OZET ---
+  Coach: 0% | Renkler: 0% | Kadrolar: 0% | Rating: 0%
+  GENEL TAMAMLANMA: 0%
   Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
 ================================================

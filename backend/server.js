@@ -174,21 +174,27 @@ app.use('/api/leaderboard/snapshots', require('./routes/leaderboardSnapshots'));
 app.use('/api/squad-predictions', squadPredictionsRouter); // 📋 Kadro tahminleri ve istatistikler
 app.use('/api/bulk-data', bulkDataRouter); // 📦 Tüm takım verilerini tek seferde indir (offline)
 
-// 🔥 Rate Limiter Stats — API-Football günlük çağrı (smartSync 12s + aggressiveCache toplamı)
+// 🔥 API kullanım: 75K = 50K (DB güncellemeleri) + 25K (maç sync)
+app.get('/api/usage', (req, res) => {
+  try {
+    const apiUsageTracker = require('./services/apiUsageTracker');
+    const status = apiUsageTracker.getStatus();
+    res.json({ success: true, ...status });
+  } catch (e) {
+    res.json({ success: false, error: e.message });
+  }
+});
+
+// 🔥 Rate Limiter Stats — API-Football günlük çağrı (maç sync + DB güncellemeleri)
 app.get('/api/rate-limit/stats', (req, res) => {
   const stats = getStats();
+  let usage = { matchSync: { used: 0, limit: 25000 }, dbUpdates: { used: 0, limit: 50000 } };
+  try {
+    const apiUsageTracker = require('./services/apiUsageTracker');
+    usage = apiUsageTracker.getStatus();
+  } catch (e) { /* */ }
+  const todaysCalls = usage.matchSync.used + usage.dbUpdates.used;
   const limit = 75000;
-  let todaysCalls = 0;
-  try {
-    const smartSyncService = require('./services/smartSyncService');
-    const syncStatus = smartSyncService.getStatus();
-    todaysCalls += (syncStatus && typeof syncStatus.apiCallsToday === 'number') ? syncStatus.apiCallsToday : 0;
-  } catch (e) { /* smartSync yoksa 0 */ }
-  try {
-    const aggressiveCacheService = require('./services/aggressiveCacheService');
-    const cacheStats = aggressiveCacheService.getStats();
-    todaysCalls += (cacheStats && typeof cacheStats.callsToday === 'number') ? cacheStats.callsToday : 0;
-  } catch (e) { /* aggressiveCache yoksa 0 */ }
   const remaining = Math.max(0, limit - todaysCalls);
   res.json({
     success: true,
@@ -196,6 +202,8 @@ app.get('/api/rate-limit/stats', (req, res) => {
     todaysCalls,
     remaining,
     limit,
+    matchSync: usage.matchSync,
+    dbUpdates: usage.dbUpdates,
     rateLimiterDisabled: DISABLE_RATE_LIMITER,
   });
 });
@@ -255,6 +263,41 @@ app.get('/api/leaderboard/snapshot-status', (req, res) => {
     res.json({ success: true, ...status });
   } catch (error) {
     res.json({ success: false, error: error.message });
+  }
+});
+
+// DB güncelleme ilerleme raporu (yüzde: koç, renk, kadro, rating, genel)
+app.get('/api/db-update-status', async (req, res) => {
+  try {
+    const dbStatusReportService = require('./services/dbStatusReportService');
+    const stats = await dbStatusReportService.fetchStats();
+    if (!stats) {
+      return res.status(503).json({ success: false, error: 'Supabase yapılandırılmadı veya veri alınamadı.' });
+    }
+    res.json({
+      success: true,
+      at: stats.at,
+      percent: {
+        coach: stats.coachPct,
+        colors: stats.colorsPct,
+        squads: stats.squadsPct,
+        rating: stats.ratingPct,
+        abilities: stats.abilitiesPct,
+        overall: stats.avgPct,
+      },
+      counts: {
+        totalTeams: stats.totalTeams,
+        withCoach: stats.withCoach,
+        withColors: stats.withColors,
+        squads2025: stats.squads2025,
+        totalPlayers: stats.totalPlayers,
+        playersWithRating: stats.playersWithRating,
+        playersWithAbilities: stats.playersWithAbilities,
+      },
+      summary: `DB güncellemesi: ${stats.avgPct}% (Koç ${stats.coachPct}% | Renk ${stats.colorsPct}% | Kadro ${stats.squadsPct}% | Rating ${stats.ratingPct}%)`,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
@@ -887,6 +930,16 @@ app.listen(PORT, '0.0.0.0', () => {
       console.log(`🔴 Live match polling started (15s interval)`);
     } catch (error) {
       console.error('❌ Failed to start live match polling:', error.message);
+    }
+
+    // ============================================
+    // 7. DB GÜNCELLEME RAPORU (5 dk'da bir - lig, takım, koç, kadro, rating, yetenek)
+    // ============================================
+    try {
+      const dbStatusReportService = require('./services/dbStatusReportService');
+      dbStatusReportService.startPeriodicReport(5 * 60 * 1000);
+    } catch (error) {
+      console.warn('⚠️ DB rapor servisi başlatılamadı:', error.message);
     }
   });
   

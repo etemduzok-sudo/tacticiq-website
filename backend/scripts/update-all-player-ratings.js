@@ -126,9 +126,9 @@ const {
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// API limit: 75000 günlük - 500 yedek = 74500 kullanılabilir
+// DB güncellemeleri (rating, takım, koç, kadro, takvim): max 50K/gün (kalan 25K = maç sync)
 const API_RESERVE = 500;
-const API_DAILY_LIMIT = 75000;
+const API_DAILY_LIMIT = parseInt(process.env.API_LIMIT_DB_UPDATES || '50000', 10);
 
 /**
  * Mevcut API kullanımını kontrol et ve kalan hakkı hesapla
@@ -158,14 +158,11 @@ async function getAvailableApiCalls() {
     // aggressiveCache yoksa devam et
   }
   
+  // Maç sync (aggressive + smartSync) ayrı 25K kullanır; bu script max 50K
   const remaining = Math.max(0, API_DAILY_LIMIT - usedToday);
-  const available = Math.max(0, remaining - API_RESERVE);
-  
-  console.log(`📊 API Durumu:`);
-  console.log(`   Bugünkü kullanım: ${usedToday}`);
-  console.log(`   Kalan: ${remaining}`);
-  console.log(`   Kullanılabilir (${API_RESERVE} yedek hariç): ${available}`);
-  
+  const available = Math.min(API_DAILY_LIMIT, Math.max(0, remaining - API_RESERVE));
+
+  console.log(`📊 [DB GÜNCELLEME] Kota: ${API_DAILY_LIMIT}, Kalan: ${remaining}, Kullanılabilir: ${available}`);
   return available;
 }
 

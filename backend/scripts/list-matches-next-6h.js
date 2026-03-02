@@ -1,16 +1,14 @@
 #!/usr/bin/env node
 /**
  * Önümüzdeki 6 saat içinde başlayacak maçları listeler.
- * Canlı maç testleri için kullanılır (25K API kotası).
+ * Backend ile aynı footballApi servisini kullanır (aynı header, .env, filtre).
  * Kullanım: node backend/scripts/list-matches-next-6h.js
  */
 
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
-const axios = require('axios');
-const API_KEY = process.env.FOOTBALL_API_KEY || process.env.API_FOOTBALL_KEY;
-const BASE_URL = 'https://v3.football.api-sports.io';
+const footballApi = require('../services/footballApi');
 
 const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
 
@@ -23,7 +21,6 @@ async function listMatchesNext6Hours() {
   const end6h = new Date(now.getTime() + SIX_HOURS_MS);
 
   const fromDate = toYYYYMMDD(now);
-  // Yarını da ekle (6 saat gece yarısını geçebilir)
   const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
   const toDate = toYYYYMMDD(end6h.getTime() > tomorrow.getTime() ? tomorrow : end6h);
 
@@ -34,24 +31,16 @@ async function listMatchesNext6Hours() {
   console.log(`6 saat sonra:    ${end6h.toISOString()}`);
   console.log(`Tarih aralığı:   ${fromDate} → ${toDate}\n`);
 
-  if (!API_KEY || API_KEY === 'YOUR_API_KEY_HERE') {
-    console.error('Hata: FOOTBALL_API_KEY .env içinde tanımlı değil.');
-    process.exit(1);
-  }
-
   let rawResponse;
   try {
-    const res = await axios.get(`${BASE_URL}/fixtures`, {
-      headers: { 'x-rapidapi-key': API_KEY, 'x-rapidapi-host': 'v3.football.api-sports.io' },
-      params: { from: fromDate, to: toDate },
-    });
-    rawResponse = res.data?.response || [];
+    const data = await footballApi.getFixturesByDateRange(fromDate, toDate);
+    rawResponse = data?.response || [];
   } catch (err) {
     console.error('API hatası:', err.message, err.response?.data ? err.response.data : '');
     process.exit(1);
   }
 
-  console.log(`📡 API'den ham: ${rawResponse.length} maç\n`);
+  console.log(`📡 API'den (backend servisi): ${rawResponse.length} maç\n`);
 
   if (rawResponse.length === 0) {
     console.log('Bu tarih aralığında API maç döndürmedi. Tarih veya lig kapsamını kontrol edin.\n');

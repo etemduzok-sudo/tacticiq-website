@@ -380,7 +380,10 @@ export default function App() {
               onMatchResultSelect={navHandlers.handleMatchResultSelect}
               matchData={matchData}
               selectedTeamIds={selectedTeamIds}
-              hasFavoriteTeams={(favoriteTeams?.length ?? 0) > 0}
+              hasFavoriteTeams={
+                (favoriteTeams?.length ?? 0) > 0 ||
+                (matchData.pastMatches?.length + matchData.liveMatches?.length + matchData.upcomingMatches?.length > 0)
+              }
               profileCardHeight={profileCardHeight}
             />
           );

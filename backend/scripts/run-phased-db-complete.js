@@ -35,10 +35,15 @@ function releaseLock() {
 const { createClient } = require('@supabase/supabase-js');
 const { syncOneTeamSquad } = require('../services/squadSyncService');
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+const supabaseKey =
+  process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  process.env.SUPABASE_SERVICE_KEY ||
+  process.env.SUPABASE_ANON_KEY;
+if (!process.env.SUPABASE_URL || !supabaseKey) {
+  console.error('Hata: .env icinde SUPABASE_URL ve SUPABASE_SERVICE_ROLE_KEY (veya SUPABASE_ANON_KEY) gerekli.');
+  process.exit(1);
+}
+const supabase = createClient(process.env.SUPABASE_URL, supabaseKey);
 
 const SEASON = 2025;
 const API_DAILY_LIMIT = 75000; // Günlük sorgu limiti (API-Football)
