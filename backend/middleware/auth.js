@@ -211,7 +211,7 @@ function requirePro(req, res, next) {
  * API Key authentication (for external services)
  */
 function authenticateApiKey(req, res, next) {
-  const apiKey = req.headers['x-api-key'];
+  const apiKey = (req.headers['x-api-key'] || '').trim();
   
   if (!apiKey) {
     return res.status(401).json({
@@ -220,8 +220,8 @@ function authenticateApiKey(req, res, next) {
     });
   }
   
-  // Validate API key (should be stored in database)
-  const validApiKeys = (process.env.VALID_API_KEYS || '').split(',');
+  // Validate API key (trim each key: "key1, key2" parses correctly)
+  const validApiKeys = (process.env.VALID_API_KEYS || '').split(',').map(k => k.trim()).filter(Boolean);
   
   if (!validApiKeys.includes(apiKey)) {
     logger.warn('Invalid API key attempt', {
