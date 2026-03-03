@@ -648,22 +648,22 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
         </TouchableOpacity>
       </View>
 
-      {/* Content */}
+      {/* Content - sabit minHeight ile sıçrama önlenir */}
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { minHeight: 320 }]}
         showsVerticalScrollIndicator={false}
       >
         {activeTab === 'match' ? (
           // MAÇ İSTATİSTİKLERİ (canlı API verisi veya varsayılan)
-          <View style={styles.statsContainer}>
+          <View style={[styles.statsContainer, { minHeight: 280 }]}>
             {statsLoading ? (
-              <View style={styles.statsLoadingWrap}>
+              <View style={[styles.statsLoadingWrap, styles.statsEmptyMinHeight]}>
                 <ActivityIndicator size="large" color={BRAND.secondary} />
                 <Text style={[styles.statsLoadingText, isLight && { color: themeColors.mutedForeground }]}>Maç istatistikleri yükleniyor...</Text>
               </View>
             ) : isMatchNotStarted ? (
-              <View style={[styles.statsLoadingWrap, { paddingVertical: 48 }]}>
+              <View style={[styles.statsLoadingWrap, styles.statsEmptyMinHeight]}>
                 <Ionicons name="stats-chart-outline" size={48} color={BRAND.secondary} style={{ opacity: 0.6, marginBottom: 12 }} />
                 <Text style={[styles.statsLoadingText, isLight && { color: themeColors.mutedForeground }, { fontWeight: '600', marginBottom: 6 }]}>
                   Maç henüz başlamadı
@@ -673,13 +673,13 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
                 </Text>
               </View>
             ) : matchStats.length === 0 ? (
-              <View style={[styles.statsLoadingWrap, { paddingVertical: 48 }]}>
+              <View style={[styles.statsLoadingWrap, styles.statsEmptyMinHeight]}>
                 <Ionicons name="stats-chart-outline" size={48} color={BRAND.secondary} style={{ opacity: 0.6, marginBottom: 12 }} />
                 <Text style={[styles.statsLoadingText, isLight && { color: themeColors.mutedForeground }, { fontWeight: '600', marginBottom: 6 }]}>
-                  İstatistik henüz yok
+                  Maç istatistikleri henüz mevcut değil.
                 </Text>
                 <Text style={[styles.statsLoadingText, isLight && { color: themeColors.mutedForeground }, { fontSize: 13, opacity: 0.9 }]}>
-                  Canlı maç istatistikleri db ile bağlantı kurulduğunda (yani internete bağlıysanız) burada görünecek.
+                  Maç başladıktan sonra veriler güncellenir.
                 </Text>
               </View>
             ) : (
@@ -1051,11 +1051,11 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
           </View>
         ) : (
           // OYUNCU PERFORMANSLARI - Sadece Favori Takım
-          <View style={styles.playersContainerNew}>
+          <View style={[styles.playersContainerNew, { minHeight: 280 }]}>
             {playersLoading ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={BRAND.accent} />
-                <Text style={styles.loadingText}>Oyuncu istatistikleri yükleniyor...</Text>
+              <View style={[styles.statsLoadingWrap, styles.statsEmptyMinHeight]}>
+                <ActivityIndicator size="large" color={BRAND.secondary} />
+                <Text style={[styles.statsLoadingText, isLight && { color: themeColors.mutedForeground }]}>Oyuncu istatistikleri yükleniyor...</Text>
               </View>
             ) : (() => {
               // Favori takım hangisi?
@@ -1075,10 +1075,12 @@ export const MatchStats: React.FC<MatchStatsScreenProps> = ({
               // Veri yoksa yükleniyor/veri yok mesajı göster, asla sahte oyuncu listesi gösterme
               if (rawPlayers.length === 0) {
                 return (
-                  <View style={styles.loadingContainer}>
-                    <Ionicons name="stats-chart-outline" size={48} color={BRAND.accent} style={{ marginBottom: 12 }} />
-                    <Text style={styles.loadingText}>Oyuncu istatistikleri henüz mevcut değil.</Text>
-                    <Text style={[styles.loadingText, { fontSize: 13, opacity: 0.8, marginTop: 4 }]}>
+                  <View style={[styles.statsLoadingWrap, styles.statsEmptyMinHeight]}>
+                    <Ionicons name="stats-chart-outline" size={48} color={BRAND.secondary} style={{ opacity: 0.6, marginBottom: 12 }} />
+                    <Text style={[styles.statsLoadingText, isLight && { color: themeColors.mutedForeground }, { fontWeight: '600', marginBottom: 6 }]}>
+                      Oyuncu istatistikleri henüz mevcut değil.
+                    </Text>
+                    <Text style={[styles.statsLoadingText, isLight && { color: themeColors.mutedForeground }, { fontSize: 13, opacity: 0.9 }]}>
                       Maç başladıktan sonra veriler güncellenir.
                     </Text>
                   </View>
@@ -1634,6 +1636,9 @@ const styles = StyleSheet.create({
     paddingVertical: 48,
     alignItems: 'center',
     gap: 12,
+  },
+  statsEmptyMinHeight: {
+    minHeight: 200,
   },
   statsLoadingText: {
     fontSize: 14,

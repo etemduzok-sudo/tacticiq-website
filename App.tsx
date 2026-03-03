@@ -19,7 +19,7 @@ import { useOAuth } from './src/hooks/useOAuth';
 import { initWebZoomPrevention } from './src/utils/webZoomPrevention';
 import { getUserTimezone } from './src/utils/timezoneUtils';
 import { subscribeToast } from './src/utils/alertHelper';
-import { BackendStatusProvider, BackendStatusBannerSlot } from './src/contexts/BackendStatusContext';
+import { BackendStatusProvider, BackendStatusBannerSlot, TouchActivityWrapper } from './src/contexts/BackendStatusContext';
 import { AdminProvider } from './src/admin/AdminContext';
 
 // Web için React Native'in built-in Animated API'sini kullan, native için reanimated
@@ -613,8 +613,9 @@ export default function App() {
                 <AdminProvider>
                 <BackendStatusProvider>
                 <ThemedRootView viewKey={currentScreen === 'onboarding' ? 'content-onboarding' : `content-${currentLang}-${forceUpdateKey}`}>
-                  <BackendStatusBannerSlot />
-                  {renderScreen()}
+                  <TouchActivityWrapper>
+                    <BackendStatusBannerSlot hasBottomNav={shouldShowBottomNav} />
+                    {renderScreen()}
                   
                   {/* Kişi kartı + favori takım barı — Maçlar, Sıralama, Rozetler, Profil (hepsi aynı yapı) */}
                   {['home', 'matches', 'finished', 'leaderboard', 'badges', 'profile'].includes(currentScreen) && (
@@ -686,6 +687,7 @@ export default function App() {
                       </View>
                     </View>
                   )}
+                  </TouchActivityWrapper>
                 </ThemedRootView>
                 </BackendStatusProvider>
                 </AdminProvider>
