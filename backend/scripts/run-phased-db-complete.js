@@ -11,6 +11,8 @@ const { spawn } = require('child_process');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
 const LOCK_FILE = path.join(__dirname, '..', 'data', '.phased-db-complete.lock');
+/** Bugün DB sync kapalı; kalan API canlı maç için. Bu dosyayı silince sync tekrar çalışır. */
+const PAUSE_FILE = path.join(__dirname, '..', 'data', '.db-sync-paused');
 function takeLock() {
   try {
     const dataDir = path.dirname(LOCK_FILE);
@@ -34,6 +36,39 @@ function releaseLock() {
 
 const { createClient } = require('@supabase/supabase-js');
 const { syncOneTeamSquad } = require('../services/squadSyncService');
+const footballApi = require('../services/footballApi');
+
+const API_USAGE_FILE = path.join(__dirname, '..', 'data', 'api-usage-now.json');
+const API_USAGE_SERVER_FILE = path.join(__dirname, '..', 'data', 'api-usage-from-server.json');
+const API_RESERVE_FOR_LIVE = 7500; // Canli mac testi icin ayrilacak
+const API_MAX_USE = 75000 - API_RESERVE_FOR_LIVE; // 67500 - bu sayiya gelince dur
+function getServerUsage() {
+  try {
+    if (fs.existsSync(API_USAGE_SERVER_FILE)) {
+      const s = JSON.parse(fs.readFileSync(API_USAGE_SERVER_FILE, 'utf8'));
+      return { used: s.used ?? 0, remaining: s.remaining ?? 75000, limit: s.limit ?? 75000 };
+    }
+  } catch (_) {}
+  return { used: 0, remaining: 75000, limit: 75000 };
+}
+function shouldStopForReserve() {
+  const s = getServerUsage();
+  return s.used >= API_MAX_USE || s.remaining <= API_RESERVE_FOR_LIVE;
+}
+const API_USAGE_INTERVAL_MS = 5 * 60 * 1000; // 5 dk'da bir dosyaya yaz
+function writeApiUsage() {
+  try {
+    const stats = footballApi.getCacheStats ? footballApi.getCacheStats() : null;
+    const count = stats ? (stats.requestCount ?? 0) : 0;
+    const dataDir = path.dirname(API_USAGE_FILE);
+    if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+    fs.writeFileSync(API_USAGE_FILE, JSON.stringify({
+      count,
+      limit: 75000,
+      at: new Date().toISOString(),
+    }, null, 0));
+  } catch (e) { /* ignore */ }
+}
 
 const supabaseKey =
   process.env.SUPABASE_SERVICE_ROLE_KEY ||
@@ -175,8 +210,8 @@ async function ensureLeagueTypeChecked() {
   }
 }
 
-/** Koç, renk veya kadro eksik olan takımlar. Sadece izlenen ligler (TRACKED_LEAGUE_TYPES); U19/alt lig/amatör dahil değil. --all-teams ile tüm takımlar. */
-async function getTeamsMissingAny() {
+/** Koç, renk veya kadro eksik olan takımlar. stats verilip koç+renk %100 ise sadece kadro eksik döner (API tasarrufu). */
+async function getTeamsMissingAny(stats) {
   await ensureLeagueTypeChecked();
   const baseFilter = (q) => {
     q = q.not('api_football_id', 'is', null);
@@ -184,6 +219,34 @@ async function getTeamsMissingAny() {
     return q;
   };
   const pageSize = 1000;
+  // team_squads tum satirlari sayfalayarak al (Supabase 1000 satir limiti var)
+  const hasSquad = new Set();
+  let squadOffset = 0;
+  while (true) {
+    const { data: squadChunk } = await supabase.from('team_squads').select('team_id').eq('season', SEASON).order('team_id', { ascending: true }).range(squadOffset, squadOffset + pageSize - 1);
+    if (!squadChunk?.length) break;
+    squadChunk.forEach((r) => hasSquad.add(r.team_id));
+    if (squadChunk.length < pageSize) break;
+    squadOffset += pageSize;
+  }
+  const noSquadList = [];
+  let lastTeamId = null;
+  while (true) {
+    let q = supabase.from('static_teams').select('api_football_id, name').order('api_football_id', { ascending: true }).limit(pageSize);
+    q = baseFilter(q);
+    if (lastTeamId != null) q = q.gt('api_football_id', lastTeamId);
+    const { data: chunk, error } = await q;
+    if (error) { console.warn('   getTeamsMissingAny noSquad sayfa hatasi:', error.message); break; }
+    if (!chunk?.length) break;
+    chunk.filter((t) => !hasSquad.has(t.api_football_id)).forEach((t) => noSquadList.push(t));
+    lastTeamId = chunk[chunk.length - 1]?.api_football_id;
+    if (chunk.length < pageSize) break;
+  }
+  // Koç ve renk %100 ise sadece kadro eksik takımlar — API sadece kadroya gitsin (hafif sync 0)
+  if (stats && (stats.coachPct || 0) >= 100 && (stats.colorsPct || 0) >= 100) {
+    return noSquadList.map((t) => ({ ...t, missingCoach: false, missingColors: false, missingSquad: true }));
+  }
+
   const noCoachList = [];
   let page = 0;
   while (true) {
@@ -206,19 +269,6 @@ async function getTeamsMissingAny() {
     if (chunk.length < pageSize) break;
     page++;
   }
-  const { data: squads } = await supabase.from('team_squads').select('team_id').eq('season', SEASON);
-  const hasSquad = new Set((squads || []).map((s) => s.team_id));
-  const noSquadList = [];
-  page = 0;
-  while (true) {
-    let q = supabase.from('static_teams').select('api_football_id, name');
-    q = baseFilter(q);
-    const { data: chunk } = await q.range(page * pageSize, (page + 1) * pageSize - 1);
-    if (!chunk?.length) break;
-    chunk.filter((t) => !hasSquad.has(t.api_football_id)).forEach((t) => noSquadList.push(t));
-    if (chunk.length < pageSize) break;
-    page++;
-  }
   const noCoachIds = new Set(noCoachList.map(t => t.api_football_id));
   const noColorsIds = new Set(noColorsList.map(t => t.api_football_id));
   const noSquadIds = new Set(noSquadList.map(t => t.api_football_id));
@@ -227,7 +277,6 @@ async function getTeamsMissingAny() {
   noColorsList.forEach(t => { if (!byId.has(t.api_football_id)) byId.set(t.api_football_id, { ...t, missingCoach: false, missingColors: true, missingSquad: noSquadIds.has(t.api_football_id) }); });
   noSquadList.forEach(t => { if (!byId.has(t.api_football_id)) byId.set(t.api_football_id, { ...t, missingCoach: noCoachIds.has(t.api_football_id), missingColors: noColorsIds.has(t.api_football_id), missingSquad: true }); });
   const list = Array.from(byId.values());
-  // Önce renk eksik (raporda hemen artış), sonra koç, sonra kadro — böylece her sync raporda görünür
   list.sort((a, b) => {
     if (a.missingColors !== b.missingColors) return a.missingColors ? -1 : 1;
     if (a.missingCoach !== b.missingCoach) return a.missingCoach ? -1 : 1;
@@ -261,24 +310,35 @@ async function withRetry429(fn, retries = 2) {
 async function runTeamDataPhase() {
   console.log('\n╔══ FAZ 1: TAKIM VERİSİ (Koç + Renk + Kadro) %100 ══╗');
   console.log('   Kadrosu DOLU takımlar: hafif sync (sadece koç+renk, 2 API/takım). Kadrosu EKSİK: tam sync.');
-  console.log('   Hızlı ilerleme için: node scripts/run-phased-db-complete.js --max-teams=300\n');
+  console.log('   Canli mac icin 7500 API ayrildi; kullanım ' + API_MAX_USE + "'e gelince script durur.\n");
   let round = 0;
   while (true) {
+    if (shouldStopForReserve()) {
+      const s = getServerUsage();
+      console.log(`\n   ⏹ KOTA: ${s.used} / ${API_MAX_USE} – 7500 API canli mac testi icin ayrildi, script durduruluyor.`);
+      return;
+    }
     const stats = await fetchStats();
     if ((stats.coachPct >= 100 && stats.colorsPct >= 100 && stats.squadsPct >= 100) || stats.totalTeams === 0) {
       console.log(`   Koç/Renk/Kadro hedefe ulaşıldı (${stats.coachPct}% / ${stats.colorsPct}% / ${stats.squadsPct}%).\n`);
       return;
     }
-    const list = await getTeamsMissingAny();
+    const list = await getTeamsMissingAny(stats);
     if (list.length === 0) {
-      console.log('   Eksik takım yok.\n');
+      console.log('   Eksik takım yok (Kadro %100 veya listede yok). Faz 1 bitti.\n');
       return;
     }
     round++;
     const toProcess = MAX_TEAMS_PER_ROUND ? list.slice(0, MAX_TEAMS_PER_ROUND) : list;
-    console.log(`   Tur ${round}: ${list.length} takımda eksik var. İşlenecek: ${toProcess.length}${MAX_TEAMS_PER_ROUND ? ' (--max-teams=' + MAX_TEAMS_PER_ROUND + ')' : ''}.`);
+    const kadroEksik = list.filter((t) => t.missingSquad).length;
+    const onlySquad = (stats.coachPct >= 100 && stats.colorsPct >= 100);
+    console.log(`   Tur ${round}: ${list.length} takımda eksik var (kadro eksik: ${kadroEksik}). İşlenecek: ${toProcess.length}${MAX_TEAMS_PER_ROUND ? ' (--max-teams=' + MAX_TEAMS_PER_ROUND + ')' : ''}${onlySquad ? ' [sadece kadro - API kadroya odakli]' : ''}.`);
     let ok = 0, coachOk = 0, colorsOk = 0, noData = 0;
     for (let i = 0; i < toProcess.length; i++) {
+      if (shouldStopForReserve()) {
+        console.log(`\n   ⏹ KOTA: 67500'e ulasildi (7500 canli mac icin ayrildi). Script durduruluyor.`);
+        return;
+      }
       const t = toProcess[i];
       const lightSync = !t.missingSquad;
       try {
@@ -324,6 +384,10 @@ async function runRatingsPhase() {
   let lastRatingPct = -1;
   let noProgressRuns = 0;
   while (true) {
+    if (shouldStopForReserve()) {
+      console.log(`   ⏹ KOTA: 67500 – 7500 canli mac icin ayrildi, rating fazi atlaniyor.\n`);
+      return;
+    }
     const stats = await fetchStats();
     if (stats.ratingPct >= 100) {
       console.log(`   Rating: ${stats.ratingPct}% (hedefe ulaşıldı).\n`);
@@ -339,9 +403,9 @@ async function runRatingsPhase() {
       return;
     }
     lastRatingPct = stats.ratingPct;
-    console.log(`   Rating şu an: ${stats.ratingPct}%. update-all-player-ratings.js çalıştırılıyor...`);
+    console.log(`   Rating şu an: ${stats.ratingPct}%. update-all-player-ratings.js çalıştırılıyor (max ${API_MAX_USE} kullanilacak)...`);
     await new Promise((resolve, reject) => {
-      const child = spawn('node', [path.join(__dirname, 'update-all-player-ratings.js'), '--api'], {
+      const child = spawn('node', [path.join(__dirname, 'update-all-player-ratings.js'), '--api', '--max-use=' + API_MAX_USE], {
         cwd: path.join(__dirname, '..'),
         stdio: 'inherit',
         shell: true,
@@ -354,9 +418,21 @@ async function runRatingsPhase() {
 }
 
 async function main() {
+  if (fs.existsSync(PAUSE_FILE)) {
+    console.log('DB sync bugun kapali (.db-sync-paused). Kalan API canli mac icin. Devam etmek icin bu dosyayi silin.');
+    process.exit(0);
+  }
   takeLock();
   process.on('exit', releaseLock);
   process.on('SIGINT', () => { releaseLock(); process.exit(0); });
+  process.on('uncaughtException', (err) => {
+    console.error('\n❌ Beklenmedik hata (Faz 1 kadro/rating devam etmeyi durdurdu):', err.message);
+    releaseLock();
+    process.exit(1);
+  });
+  writeApiUsage();
+  const apiUsageTimer = setInterval(writeApiUsage, API_USAGE_INTERVAL_MS);
+  process.on('exit', () => clearInterval(apiUsageTimer));
   try {
     console.log('');
     console.log('╔════════════════════════════════════════════════════════════════╗');

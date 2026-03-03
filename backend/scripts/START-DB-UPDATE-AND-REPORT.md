@@ -1,5 +1,18 @@
 # DB Güncelleme ve Rapor Nasıl Çalıştırılır
 
+## Canlı maç için 7500 API ayrıldı
+
+- Günlük limit 75.000; **67500'e gelince sync script otomatik durur** (7500 canlı maç testi için bırakılır).
+- `run-phased-db-complete.js` ve `update-all-player-ratings.js` sunucudaki kullanımı (`api-usage-from-server.json`) okuyup 67500'de çıkıyor.
+
+## Kadro + oyuncu rating tek API'de var mı?
+
+**Hayır.** API-Football'da:
+- **Kadro:** `/players/squads?team={id}` → 1 istek = 1 takımın kadro listesi (isim, pozisyon; rating yok).
+- **Oyuncu rating / performans:** `/players?id={playerId}&season={year}` → 1 istek = 1 oyuncunun istatistikleri (rating, pas, şut vb.).
+
+Yani kadro ve rating ayrı endpoint'ler; tek istekte hem kadro hem tüm oyuncu rating'i alınamıyor. Kadro çektikten sonra her oyuncu için ayrı `/players` çağrısı gerekir.
+
 ## Koç neden tek tek güncelleniyor? Tek API ile tüm koçlar alınamaz mı?
 
 **Hayır.** API-Football'da `/coachs` endpoint'i sadece şu parametreleri kabul ediyor:

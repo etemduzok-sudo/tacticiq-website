@@ -437,7 +437,7 @@ async function syncOneTeamSquad(teamId, teamName, options = {}) {
       await supabase.from('static_teams').update(updateData).eq('api_football_id', teamId);
     }
 
-    // Mevcut DB'deki kadro varsa onu döndür
+    // API'den kadro gelmedi: yine de team_squads'a minimal satir yaz (Kadrolar 2025 sayisi artsin, ayni takim tekrar islenmesin)
     if (supabase) {
       const { data: existingSquad } = await supabase
         .from('team_squads')
@@ -449,6 +449,23 @@ async function syncOneTeamSquad(teamId, teamName, options = {}) {
         result.ok = true;
         result.count = existingSquad.players.length;
         result.reason = 'cached';
+      } else {
+        const { error: upsertErr } = await supabase.from('team_squads').upsert(
+          {
+            team_id: teamId,
+            season: CURRENT_SEASON,
+            team_name: teamName || `Team ${teamId}`,
+            team_data: { id: teamId, name: teamName, coach: finalCoach },
+            players: [],
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'team_id,season' }
+        );
+        if (!upsertErr) {
+          result.ok = true;
+          result.count = 0;
+          result.reason = 'empty';
+        }
       }
     }
     return { ...result, reason: result.reason || 'empty' };

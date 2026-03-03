@@ -1,9 +1,29 @@
 // Football API Service (API-Football.com)
+const path = require('path');
+const fs = require('fs');
 const axios = require('axios');
 const NodeCache = require('node-cache');
 const sharp = require('sharp');
 const https = require('https');
 const http = require('http');
+
+const API_USAGE_SERVER_FILE = path.join(__dirname, '..', 'data', 'api-usage-from-server.json');
+function writeServerUsage(limit, remaining) {
+  try {
+    const limitNum = parseInt(limit, 10) || 75000;
+    const remainingNum = parseInt(remaining, 10);
+    if (isNaN(remainingNum)) return;
+    const dataDir = path.dirname(API_USAGE_SERVER_FILE);
+    if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+    fs.writeFileSync(API_USAGE_SERVER_FILE, JSON.stringify({
+      limit: limitNum,
+      remaining: remainingNum,
+      used: limitNum - remainingNum,
+      at: new Date().toISOString(),
+      date: new Date().toISOString().slice(0, 10),
+    }, null, 0));
+  } catch (e) { /* ignore */ }
+}
 
 // Cache configuration
 // stdTTL: 3600 = 1 hour cache
@@ -85,6 +105,7 @@ async function makeRequest(endpoint, params = {}, cacheKey = null, cacheDuration
     const data = response.data;
     if (limitDay != null || remainingDay != null) {
       lastRateLimit = { limit: limitDay, remaining: remainingDay, updatedAt: new Date().toISOString() };
+      writeServerUsage(limitDay, remainingDay);
       if (data) data._rateLimit = lastRateLimit;
     }
 

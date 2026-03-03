@@ -1,5 +1,5 @@
 // MatchPredictionScreen.tsx - React Native FULL COMPLETE VERSION
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useLayoutEffect } from 'react';
 import {
   View,
   Text,
@@ -534,17 +534,19 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
   }, [motmScaleAnim]);
   const [playerCardHintDismissed, setPlayerCardHintDismissed] = useState(false); // ✅ "Oyuncu kartlarına tıklayın" ipucu kapatıldı mı
   const [playerCardHintViewCount, setPlayerCardHintViewCount] = useState<number>(0); // ✅ İpucu kaç kez gösterildi (max 3)
-  const [threeFieldActiveIndex, setThreeFieldActiveIndex] = useState(0); // ✅ 3 saha görünümünde aktif sayfa
+  // ✅ Kadro popup'tan "Topluluk verileri" / "Gerçek" ile gelindiyse ilk render'dan itibaren o sayfada aç (İzleme Modu popup'ı göstermeden)
+  const initialSubIndex = (initialPredictionSubIndex === 1 || initialPredictionSubIndex === 2) ? initialPredictionSubIndex : 0;
+  const [threeFieldActiveIndex, setThreeFieldActiveIndex] = useState(initialSubIndex); // ✅ 3 saha görünümünde aktif sayfa
   const threeFieldScrollRef = useRef<ScrollView>(null); // ✅ Horizontal saha scroll ref
   const mainScrollRef = useRef<ScrollView>(null); // ✅ Dikey scroll – kayıt sonrası en alta kaydırma
   const initialPlayerPredictionsRef = useRef<string | null>(null); // ✅ Popup açıldığında oyuncu tahmininin snapshot'ı (kaydedilmeden çıkış uyarısı için)
-  const [predictionViewIndex, setPredictionViewIndex] = useState(0); // ✅ 0: Benim Tahminim, 1: Topluluk, 2: Gerçek
+  const [predictionViewIndex, setPredictionViewIndex] = useState(initialSubIndex); // ✅ 0: Benim Tahminim, 1: Topluluk, 2: Gerçek
+  const openedFromSquadPopupRef = useRef(false); // ✅ Kadro popup'tan Topluluk/Gerçek ile açıldıysa true; parent prop'u null yapsa bile overlay gösterme
+  if (initialPredictionSubIndex === 1 || initialPredictionSubIndex === 2) openedFromSquadPopupRef.current = true;
 
-  // ✅ Kadro sekmesinden "Tahmin > Topluluk/Gerçek" ile gelindiyse ilgili alt sekmeyi aç
+  // ✅ Kadro sekmesinden "Tahmin > Topluluk/Gerçek" ile gelindiyse callback'i çağır (ref zaten render'da set edildi)
   React.useEffect(() => {
     if (initialPredictionSubIndex != null && (initialPredictionSubIndex === 1 || initialPredictionSubIndex === 2)) {
-      setPredictionViewIndex(initialPredictionSubIndex);
-      setThreeFieldActiveIndex(initialPredictionSubIndex);
       onInitialPredictionSubIndexApplied?.();
     }
   }, [initialPredictionSubIndex]);
@@ -580,13 +582,13 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
     else initialPlayerPredictionsRef.current = null;
   }, [selectedPlayer?.id]);
 
-  // ✅ Sadece genişlik (layout) değişince snap düzelt; viewport ile aynı ölçü kullan
-  useEffect(() => {
+  // ✅ Sadece genişlik (layout) değişince snap düzelt; viewport ile aynı ölçü kullan. useLayoutEffect ile Kadro popup'tan Topluluk/Gerçek açıldığında ilk sayfa (İzleme Modu) kısa görünmez.
+  useLayoutEffect(() => {
     if (scrollViewWidth <= 0) return;
     const page = Math.max(0, Math.min(threeFieldActiveIndex, 2));
     const targetX = page * scrollViewWidth;
     threeFieldScrollRef.current?.scrollTo({ x: targetX, animated: false });
-  }, [scrollViewWidth]);
+  }, [scrollViewWidth, threeFieldActiveIndex]);
 
   // ✅ Her zaman tam sayfa snap: arada kalmayı önlemek için anında (animated: false) konuma getir
   const snapToPage = (targetX: number, page: number) => {
@@ -1052,13 +1054,16 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
     possession: communityMatchPredictions.possession.avgHomePossession,
   }), [communityMatchPredictions]);
   
+  // Kadro popup'tan "Topluluk verileri" veya "Gerçek" ile gelindiyse indeksi değiştirme (zaten doğru sayfadayız)
   React.useEffect(() => {
-    if (isViewOnlyMode && !initialPredictionsLoaded) {
+    if (isViewOnlyMode && !initialPredictionsLoaded && initialPredictionSubIndex !== 1 && initialPredictionSubIndex !== 2) {
       console.log('📊 [VIEW_ONLY] Tahmin yapılmamış maç — Topluluk sekmesi aktif edilecek');
       setPredictionViewIndex(1);
       setInitialPredictionsLoaded(true);
+    } else if (initialPredictionSubIndex === 1 || initialPredictionSubIndex === 2) {
+      setInitialPredictionsLoaded(true);
     }
-  }, [isViewOnlyMode, initialPredictionsLoaded]);
+  }, [isViewOnlyMode, initialPredictionsLoaded, initialPredictionSubIndex]);
   
   // ✅ MAÇ DURUMU VE TIMING SİSTEMİ
   // Maç phase'i ve gerçekleşen olayları hesapla (predictionTiming.ts kullanarak)
@@ -2843,6 +2848,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={{ paddingHorizontal: 0 }}
               style={{ width: '100%', maxWidth: '100%', borderBottomWidth: 0 }}
+              contentOffset={initialSubIndex > 0 ? { x: initialSubIndex * effectivePageWidth, y: 0 } : undefined}
               onLayout={(e) => {
                 const w = e.nativeEvent.layout.width;
                 if (w > 0 && Math.abs(w - scrollViewWidth) > 0.5) setScrollViewWidth(w);
@@ -2931,7 +2937,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                         });
                       })()}
                     </View>
-                  ) : (
+                  ) : (!openedFromSquadPopupRef.current ? (
                     <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, zIndex: 20 }}>
                       <View style={{
                         width: 280,
@@ -3004,14 +3010,14 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                             }}>
                               <Ionicons name="bulb-outline" size={18} color="#FCD34D" />
                               <Text style={{ flex: 1, fontSize: 12, color: 'rgba(240, 253, 250, 0.9)', lineHeight: 18 }}>
-                                Gelecek maçlarda değerlendirme yapabilmek için maç başlamadan önce kadro tahmini yapın.
+                                Maçlara ait tahmin yaparak puan kazanmak için maç başlamadan önce kadronuzu oluşturun.
                               </Text>
                             </View>
                           )}
                         </LinearGradient>
                       </View>
                     </View>
-                  )}
+                  ) : null)}
                     <View style={styles.fieldInnerLabel}>
                       <Ionicons name="person" size={10} color="#60A5FA" />
                       <Text style={[styles.fieldInnerLabelText, { color: '#60A5FA', textShadowColor: 'rgba(0,0,0,0.4)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 1 }]}>Benim Tahminim</Text>

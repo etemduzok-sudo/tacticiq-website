@@ -2520,7 +2520,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
           <Pressable onPress={(e) => e.stopPropagation()} style={[styles.lockPopupContainer, isLight && { backgroundColor: themeColors.popover, borderColor: themeColors.border }]}>
             {/* Icon */}
             <View style={[styles.lockPopupIcon, { backgroundColor: 'rgba(239, 68, 68, 0.15)' }]}>
-              <Ionicons name="eye-off" size={32} color="#EF4444" />
+              <Ionicons name="eye-outline" size={32} color="#EF4444" />
             </View>
 
             {/* Title */}
@@ -2552,7 +2552,7 @@ export const MatchRatings: React.FC<MatchRatingsScreenProps> = ({
             <View style={[styles.viewOnlyInfoCard, isLight && { backgroundColor: themeColors.muted, borderColor: themeColors.border }]}>
               <Ionicons name="bulb-outline" size={20} color="#F59E0B" />
               <Text style={[styles.viewOnlyInfoText, isLight && { color: themeColors.mutedForeground }]}>
-                Gelecek maçlarda değerlendirme yapabilmek için maç başlamadan önce kadro tahmini yapmalısınız.
+                Maçlara ait tahmin yaparak puan kazanmak için maç başlamadan önce kadronuzu oluşturmalısınız.
               </Text>
             </View>
 

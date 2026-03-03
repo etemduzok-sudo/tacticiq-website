@@ -168,6 +168,20 @@ async function getAvailableApiCalls() {
 
 // Dinamik olarak hesaplanacak
 let MAX_API_CALLS = 0;
+let MAX_USE_FROM_SERVER = 0; // 67500 = canli mac icin 7500 ayrildiginda; 0 = kontrol yok
+
+function getServerUsageFromFile() {
+  try {
+    const path = require('path');
+    const fs = require('fs');
+    const f = path.join(__dirname, '..', 'data', 'api-usage-from-server.json');
+    if (fs.existsSync(f)) {
+      const s = JSON.parse(fs.readFileSync(f, 'utf8'));
+      return { used: s.used ?? 0, remaining: s.remaining ?? 75000, limit: s.limit ?? 75000 };
+    }
+  } catch (_) {}
+  return { used: 0, remaining: 75000, limit: 75000 };
+}
 
 // En büyük ligler (öncelik sırası - 1 = en yüksek)
 const LEAGUE_PRIORITY = {
@@ -775,10 +789,17 @@ async function processAllTeamsFromDB(fetchApiStats = false, season = CURRENT_SEA
     for (let i = 0; i < playersToProcess.length; i += batchSize) {
       const batch = playersToProcess.slice(i, i + batchSize);
       
-      // API limit kontrolü
+      // API limit kontrolü (yerel sayac + sunucu dosyasi: 67500'de dur)
       if (fetchApiStats && apiCalls >= MAX_API_CALLS) {
-        console.log(`\n⚠️ API limit yaklaşıyor (${apiCalls}/${MAX_API_CALLS}). Durduruluyor...`);
+        console.log(`\n⚠️ API limit (${apiCalls}/${MAX_API_CALLS}). Durduruluyor...`);
         return { total: totalPlayers, processed: processedPlayers, skipped: skippedPlayers, errors, apiCalls };
+      }
+      if (MAX_USE_FROM_SERVER > 0) {
+        const s = getServerUsageFromFile();
+        if (s.used >= MAX_USE_FROM_SERVER) {
+          console.log(`\n⚠️ Kota ${MAX_USE_FROM_SERVER} (7500 canli mac icin ayrildi). Durduruluyor.`);
+          return { total: totalPlayers, processed: processedPlayers, skipped: skippedPlayers, errors, apiCalls };
+        }
       }
       
       // Batch'i paralel işle (sadece API çağrısı varsa)
@@ -903,6 +924,9 @@ args.forEach(arg => {
   if (arg.startsWith('--season=')) {
     season = parseInt(arg.split('=')[1], 10);
   }
+  if (arg.startsWith('--max-use=')) {
+    MAX_USE_FROM_SERVER = parseInt(arg.replace('--max-use=', ''), 10) || 0;
+  }
 });
 
 async function main() {
@@ -914,20 +938,25 @@ async function main() {
   console.log('='.repeat(50));
   
   if (fetchApiStats) {
-    // Mevcut API kullanımını kontrol et ve kalan hakkı hesapla (DB kotası: 50K/gün)
-    const available = await getAvailableApiCalls();
-    MAX_API_CALLS = Math.max(available, 0);
-    const MIN_API_PER_RUN = 3000;
-    if (MAX_API_CALLS <= 0) {
-      console.log(`\n⚠️  Hesaplanan kullanılabilir API: 0. En az ${MIN_API_PER_RUN} çağrı ile devam ediliyor (kotada hata olabilir).`);
-      MAX_API_CALLS = MIN_API_PER_RUN;
-    } else if (MAX_API_CALLS < MIN_API_PER_RUN) {
-      console.log(`\n⚠️  Kalan kota düşük (${MAX_API_CALLS}). En az ${MIN_API_PER_RUN} ile devam.`);
-      MAX_API_CALLS = MIN_API_PER_RUN;
+    if (MAX_USE_FROM_SERVER > 0) {
+      const s = getServerUsageFromFile();
+      const allowed = Math.max(0, MAX_USE_FROM_SERVER - s.used);
+      MAX_API_CALLS = allowed;
+      console.log(`\n⚠️  Canli mac icin kota: max ${MAX_USE_FROM_SERVER} kullanilacak (sunucuda ${s.used} kullanildi, kalan: ${allowed})`);
+    } else {
+      const available = await getAvailableApiCalls();
+      MAX_API_CALLS = Math.max(available, 0);
+      const MIN_API_PER_RUN = 3000;
+      if (MAX_API_CALLS <= 0) {
+        console.log(`\n⚠️  Hesaplanan kullanılabilir API: 0. En az ${MIN_API_PER_RUN} çağrı ile devam ediliyor (kotada hata olabilir).`);
+        MAX_API_CALLS = MIN_API_PER_RUN;
+      } else if (MAX_API_CALLS < MIN_API_PER_RUN) {
+        console.log(`\n⚠️  Kalan kota düşük (${MAX_API_CALLS}). En az ${MIN_API_PER_RUN} ile devam.`);
+        MAX_API_CALLS = MIN_API_PER_RUN;
+      }
     }
-    
     console.log(`\n⚠️  API istatistik çekme aktif!`);
-    console.log(`   - Max ${MAX_API_CALLS} API çağrısı (${API_RESERVE} yedek bırakıldı)`);
+    console.log(`   - Max ${MAX_API_CALLS} API çağrısı${MAX_USE_FROM_SERVER ? ` (67500'de dur, 7500 canli mac icin)` : ` (${API_RESERVE} yedek bırakıldı)`}`);
     console.log(`   - En büyük liglerden başlayarak işlenecek\n`);
   }
   

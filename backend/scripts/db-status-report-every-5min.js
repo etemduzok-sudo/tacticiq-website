@@ -20,6 +20,8 @@ if (!isConfigured || !supabase) {
 const REPORT_FILE = path.join(__dirname, '..', 'data', 'db-status-report.txt');
 const LAST_SNAPSHOT_FILE = path.join(__dirname, '..', 'data', 'db-status-last.json');
 const BASELINE_FILE = path.join(__dirname, '..', 'data', 'db-status-baseline.json');
+const API_USAGE_FILE = path.join(__dirname, '..', 'data', 'api-usage-now.json');
+const API_USAGE_SERVER_FILE = path.join(__dirname, '..', 'data', 'api-usage-from-server.json');
 const INTERVAL_MS = 5 * 60 * 1000; // 5 dakika
 const MAX_REPORT_BLOCKS = 100;     // Son 100 blok (~8 saat) tutulur
 
@@ -222,7 +224,7 @@ async function runReport() {
     lines.push('  *** 5 DK ILERLEME: VAR  ***  ' + (parts.length ? parts.join(', ') : ''));
   } else {
     lines.push('');
-    lines.push('  *** 5 DK ILERLEME: YOK - Script durdurulabilir. Daha net cozum bulunana kadar. ***');
+    lines.push('  *** 5 DK ILERLEME: YOK - run-phased-db-complete.js calismiyor veya bu aralikta veri degismedi. Ilerleme icin script\'i baslatin. ***');
   }
   lines.push('');
 
@@ -231,6 +233,7 @@ async function runReport() {
   lines.push(withCoachF.line);
   lines.push(withColorsF.line);
   lines.push(squadsF.line);
+  lines.push('  (Kadrolar: API /players/squads = guncel kadro, transferler dahil; DB\'de season=2025 etiketi)');
   lines.push(ratingPlayersF.line);
   lines.push(totalPlayersF.line);
   lines.push(ratingPctF.line);
@@ -245,6 +248,24 @@ async function runReport() {
   lines.push(fmt('Toplam oyuncu', s.totalPlayers, baseline?.totalPlayers).line);
   lines.push(fmt('Rating %', s.ratingPct, baseline?.ratingPct, '%').line);
   lines.push(fmt('ORTALAMA %', s.avgPct, baseline?.avgPct, '%').line);
+  lines.push('');
+  const today = new Date().toISOString().slice(0, 10);
+  let apiUsageLine = '  API (API-Football): - (henuz istek atilmadi)';
+  try {
+    if (fs.existsSync(API_USAGE_SERVER_FILE)) {
+      const s = JSON.parse(fs.readFileSync(API_USAGE_SERVER_FILE, 'utf8'));
+      const used = s.used ?? (s.limit - s.remaining);
+      const limit = s.limit ?? 75000;
+      const remaining = s.remaining ?? (limit - used);
+      const pct = limit ? Math.round((used / limit) * 100) : 0;
+      const at = s.at ? new Date(s.at).toLocaleString('tr-TR') : '-';
+      const tarihNot = s.date === today ? '' : ' [onceki gun - kota 00:00 UTC\'de sifirlanir]';
+      apiUsageLine = `  API (panel ile ayni): ${used} / ${limit} kullanildi (%${pct}) | kalan: ${remaining}  (son: ${at})${tarihNot}`;
+    }
+  } catch (_) {}
+  lines.push('--- API KULLANIMI (API-Football sunucudan, her istekte guncellenir) ---');
+  lines.push(apiUsageLine);
+  lines.push('  Not: Bu sayi tum uygulama toplamidir (backend + sync). Neden %42 istek DB\'de %42 ilerleme degil: her takim 4-6 istek, bos/429 yanitlar da sayilir.');
   lines.push('');
   const tahminiSaat = estimateHoursTo100(s);
   lines.push('--- OZET ---');
