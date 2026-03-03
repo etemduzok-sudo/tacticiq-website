@@ -9,6 +9,9 @@ export const MOCK_TEST_ENABLED = false;
 /** Canlı maç senaryosu: true iken mock maç "şu an oynanıyor" (1H, dakika ilerliyor) olarak gösterilir. */
 export const MOCK_MATCH_SIMULATE_LIVE = false;
 
+/** Mock canlı maç 999999: Dashboard canlı listesinde gösterilir; topluluk verileri var, kullanıcı tahmini yok. */
+export const MOCK_LIVE_999999_ENABLED = true;
+
 /** Test maçı: 6 saat sonra başlayacak (veya canlı simülasyonda geçmişte başlamış). */
 export const MOCK_MATCH_IDS = {
   TEST_6H: 888001,
@@ -71,9 +74,40 @@ export function getMockMatches(): any[] {
   ];
 }
 
+/** Mock canlı maç ID (topluluk verisi var, kullanıcı tahmini yok senaryosu). */
+export const MOCK_LIVE_999999_ID = 999999;
+
+/** Canlı listede gösterilecek mock maç 999999 – 52. dk, 2H, skor 5-4. */
+export function getMockLiveMatch999999(): any {
+  const start = Date.now() - 52 * 60 * 1000;
+  return {
+    fixture: {
+      id: MOCK_LIVE_999999_ID,
+      date: new Date(start).toISOString(),
+      timestamp: Math.floor(start / 1000),
+      status: { short: '2H', long: 'Second Half', elapsed: 52 },
+      venue: { name: 'Mock Stadium' },
+    },
+    league: { id: 999, name: 'Mock League', country: 'TR', logo: null },
+    teams: {
+      home: { id: 9999, name: 'Mock Home Team', logo: null },
+      away: { id: 9998, name: 'Mock Away Team', logo: null },
+    },
+    goals: { home: 5, away: 4 },
+    score: {
+      halftime: { home: 3, away: 2 },
+      fulltime: { home: 5, away: 4 },
+    },
+  };
+}
+
 export function isMockTestMatch(matchId: number): boolean {
   if (!MOCK_TEST_ENABLED) return false;
   return matchId === MOCK_MATCH_IDS.TEST_6H || matchId === MOCK_MATCH_IDS.GS_FB;
+}
+
+export function isMockLive999999(matchId: number): boolean {
+  return matchId === MOCK_LIVE_999999_ID;
 }
 
 /** Tahmin yapılacak takım (Fenerbahçe = 611) */

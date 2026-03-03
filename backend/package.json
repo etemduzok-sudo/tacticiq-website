@@ -9,6 +9,7 @@
     "db:report": "node scripts/db-status-report-every-5min.js",
     "db:phased": "node scripts/run-phased-db-complete.js --delay=350",
     "db:colors-only": "node scripts/run-colors-only-fast.js",
+    "db:sync-after-03turkey": "node scripts/run-at-03-turkey-then-sync.js",
     "db:sync-and-report": "node scripts/run-db-sync-and-report.js",
     "db:sync-and-report:loop": "node scripts/run-db-sync-and-report.js --loop",
     "matches:next6h": "node scripts/list-matches-next-6h.js"

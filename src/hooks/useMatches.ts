@@ -4,6 +4,7 @@ import api from '../services/api';
 import { useFavoriteTeams } from './useFavoriteTeams';
 import { Match, ApiResponse } from '../types/match.types';
 import { logger } from '../utils/logger';
+import { getMockLiveMatch999999 } from '../data/mockTestData';
 
 interface UseMatchesResult {
   matches: Match[];
@@ -173,27 +174,6 @@ export function useLeagueMatches(leagueId: number, season?: number) {
   return { matches, loading, error };
 }
 
-// ✅ Mock maç (999999) – Canlı: 52. dk, 1H, skor 5-4 (ev sahibi önde), ilk yarı 1 dk uzadı, 45+1'de ev sahibi kırmızı kart
-const MOCK_MATCH_999999 = {
-  fixture: {
-    id: 999999,
-    date: new Date().toISOString(),
-    timestamp: Math.floor(Date.now() / 1000) - 52 * 60,
-    status: { short: '2H', long: 'Second Half', elapsed: 52 },
-    venue: { name: 'Mock Stadium' },
-  },
-  league: { id: 999, name: 'Mock League', country: 'TR', logo: null },
-  teams: {
-    home: { id: 9999, name: 'Mock Home Team', logo: null },
-    away: { id: 9998, name: 'Mock Away Team', logo: null },
-  },
-  goals: { home: 5, away: 4 },
-  score: {
-    halftime: { home: 3, away: 2 },
-    fulltime: { home: 5, away: 4 },
-  },
-};
-
 // 3-5-2: Atak formasyonu (GK, CB, CB, CB, LWB, CM, CM, CM, RWB, ST, ST)
 const MOCK_352_POSITIONS = ['GK', 'CB', 'CB', 'CB', 'LWB', 'CM', 'CM', 'CM', 'RWB', 'ST', 'ST'];
 // 3-6-1: Defans formasyonu (GK, CB, CB, CB, LB, DM, DM, RB, LM, RM, ST)
@@ -295,7 +275,7 @@ export function useMatchDetails(matchId: number) {
       // ✅ Mock maç (999999): API çağrısı yapma, anında mock veri set et (uygulama takılmasın)
       if (matchId === 999999) {
         logger.info(`🔄 Mock match 999999 – using local data (no API)`, { matchId }, 'MATCH_DETAILS');
-        setMatch(MOCK_MATCH_999999);
+        setMatch(getMockLiveMatch999999());
         setLineups(buildMockLineups());
         setStatistics(null);
         setEvents([]);

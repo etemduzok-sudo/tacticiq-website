@@ -6,7 +6,7 @@ import api from '../services/api';
 import { useFavoriteTeams } from './useFavoriteTeams';
 import { logger } from '../utils/logger';
 import { getAllBulkMatches, isBulkDataValid } from '../services/bulkDataService';
-import { MOCK_TEST_ENABLED, getMockMatches, isMockTestMatch } from '../data/mockTestData';
+import { MOCK_TEST_ENABLED, MOCK_LIVE_999999_ENABLED, getMockMatches, getMockLiveMatch999999, isMockTestMatch } from '../data/mockTestData';
 
 // Cache keys
 const CACHE_KEY = 'tacticiq-matches-cache';
@@ -985,13 +985,22 @@ export function useFavoriteTeamMatches(externalFavoriteTeams?: FavoriteTeam[]): 
   }, [hasLoadedOnce, favoriteTeamIdsString]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ✅ Mock canlı simülasyondaysa canlı listeye, değilse yaklaşana ekle (ana sayfada görünsün)
+  // ✅ Mock 999999: canlı listede göster (topluluk verisi var, kullanıcı tahmini yok)
   const liveWithMock = useMemo(() => {
-    if (!MOCK_TEST_ENABLED) return liveMatches;
-    const mock = getMockMatches();
-    const liveMock = (mock || []).filter((m) => m?.fixture?.status?.short && LIVE_STATUSES.includes(m.fixture.status.short));
-    if (!liveMock.length) return liveMatches;
-    const withoutMock = liveMatches.filter((m) => !isMockTestMatch(m.fixture?.id ?? 0));
-    return [...liveMock, ...withoutMock];
+    let result = liveMatches;
+    if (MOCK_TEST_ENABLED) {
+      const mock = getMockMatches();
+      const liveMock = (mock || []).filter((m) => m?.fixture?.status?.short && LIVE_STATUSES.includes(m.fixture.status.short));
+      if (liveMock.length) {
+        const withoutMock = result.filter((m) => !isMockTestMatch(m.fixture?.id ?? 0));
+        result = [...liveMock, ...withoutMock];
+      }
+    }
+    if (MOCK_LIVE_999999_ENABLED) {
+      const has999999 = result.some((m) => (m.fixture?.id ?? (m as any).id) === 999999);
+      if (!has999999) result = [getMockLiveMatch999999(), ...result];
+    }
+    return result;
   }, [liveMatches]);
 
   const upcomingWithMock = useMemo(() => {

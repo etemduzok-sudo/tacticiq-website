@@ -35,7 +35,7 @@ import { useMatchesWithPredictions } from '../hooks/useMatchesWithPredictions';
 import { isNationalTeamMatch } from '../hooks/useFavoriteTeamMatches';
 import { useTranslation } from '../hooks/useTranslation';
 import { matchesDb } from '../services/databaseService';
-import { isMockTestMatch } from '../data/mockTestData';
+import { isMockTestMatch, isMockLive999999 } from '../data/mockTestData';
 // Coach cache - takım ID'sine göre teknik direktör isimlerini cache'le (global)
 // Bu global cache, component remount'larında bile korunur
 const globalCoachCache: Record<number, string> = {};
@@ -1015,11 +1015,12 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
     }
   }, [loading, hasLoadedOnce, favoriteTeams?.length, pastMatches?.length, liveMatches?.length, upcomingMatches?.length]);
 
-  // Get all upcoming matches (not just 24 hours)
+  // 6 saat içinde başlayacak yaklaşan maçlar
   const now = Date.now() / 1000;
+  const UPCOMING_WINDOW_SEC = 6 * 60 * 60; // 6 saat
   const allUpcomingMatches = upcomingMatches.filter(match => {
     const matchTime = match.fixture.timestamp;
-    return matchTime >= now;
+    return matchTime >= now && matchTime <= now + UPCOMING_WINDOW_SEC;
   });
 
   // ✅ Filter matches by selected teams (ID and name matching) - ÇOKLU SEÇİM
@@ -1101,10 +1102,10 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
   // ✅ Takımlar yüklenirken filtre uygulama – tüm maçları göster (milli takım kısa süre görünüp sonra hepsinin yüklenmesi yanıp sönmesini önler)
   const skipTeamFilter = teamsLoading;
 
-  // ✅ Canlı maçları filtrele: Hook'tan gelen liveMatches. Mock test maçı her zaman listeye dahil (tahmin olsun olmasın test edilebilsin).
+  // ✅ Canlı maçları filtrele: Hook'tan gelen liveMatches. Mock test maçı (888001) ve mock canlı 999999 her zaman listeye dahil.
   const filteredLiveMatches = React.useMemo(() => {
     const filtered = skipTeamFilter ? liveMatches : filterMatchesByTeam(liveMatches, selectedTeamIds);
-    const mockLive = liveMatches.filter((m) => isMockTestMatch(m.fixture?.id ?? 0));
+    const mockLive = liveMatches.filter((m) => isMockTestMatch(m.fixture?.id ?? 0) || isMockLive999999(m.fixture?.id ?? 0));
     const merged = [...mockLive, ...filtered];
     const uniqueLive = merged.reduce((acc: any[], match) => {
       const fixtureId = match.fixture?.id;

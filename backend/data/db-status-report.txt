@@ -1,3063 +1,835 @@
 ========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 02.03.2026 22:29:15
+Zaman: 03.03.2026 03:03:06
 
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6630  [degismedi]
-  Coach ile: 4578 (69%)  [+1]
-  Renkler ile: 5625 (85%)  [+1]
-  Kadrolar 2025: 5677 (86%)  [degismedi]
-  Oyuncu (ratingli): 131913  [degismedi]
-  Toplam oyuncu: 140412  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 84%  [degismedi]
-
---- BASELINE (02.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6630  [+6630]
-  Coach ile: 4578 (69%)  [+4578]
-  Renkler ile: 5625 (85%)  [+5625]
-  Kadrolar 2025: 5677 (86%)  [+5677]
-  Oyuncu (ratingli): 131913  [+131913]
-  Toplam oyuncu: 140412  [+140412]
-  Rating %: 94%  [+94]
-  ORTALAMA %: 84%  [+84]
-
---- OZET ---
-  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 84%
-  TAHMINI SURE %100'E: ~22 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 02.03.2026 22:30:33
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6630  [degismedi]
-  Coach ile: 4578 (69%)  [degismedi]
-  Renkler ile: 5625 (85%)  [degismedi]
-  Kadrolar 2025: 5677 (86%)  [degismedi]
-  Oyuncu (ratingli): 131913  [degismedi]
-  Toplam oyuncu: 140412  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 84%  [degismedi]
-
---- BASELINE (02.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6630  [+6630]
-  Coach ile: 4578 (69%)  [+4578]
-  Renkler ile: 5625 (85%)  [+5625]
-  Kadrolar 2025: 5677 (86%)  [+5677]
-  Oyuncu (ratingli): 131913  [+131913]
-  Toplam oyuncu: 140412  [+140412]
-  Rating %: 94%  [+94]
-  ORTALAMA %: 84%  [+84]
-
---- OZET ---
-  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 84%
-  TAHMINI SURE %100'E: ~22 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 02.03.2026 22:34:15
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6630  [degismedi]
-  Coach ile: 4578 (69%)  [degismedi]
-  Renkler ile: 5625 (85%)  [degismedi]
-  Kadrolar 2025: 5677 (86%)  [degismedi]
-  Oyuncu (ratingli): 131913  [degismedi]
-  Toplam oyuncu: 140412  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 84%  [degismedi]
-
---- BASELINE (02.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6630  [+6630]
-  Coach ile: 4578 (69%)  [+4578]
-  Renkler ile: 5625 (85%)  [+5625]
-  Kadrolar 2025: 5677 (86%)  [+5677]
-  Oyuncu (ratingli): 131913  [+131913]
-  Toplam oyuncu: 140412  [+140412]
-  Rating %: 94%  [+94]
-  ORTALAMA %: 84%  [+84]
-
---- OZET ---
-  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 84%
-  TAHMINI SURE %100'E: ~22 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 02.03.2026 22:35:33
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6630  [degismedi]
-  Coach ile: 4578 (69%)  [degismedi]
-  Renkler ile: 5625 (85%)  [degismedi]
-  Kadrolar 2025: 5677 (86%)  [degismedi]
-  Oyuncu (ratingli): 131913  [degismedi]
-  Toplam oyuncu: 140412  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 84%  [degismedi]
-
---- BASELINE (02.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6630  [+6630]
-  Coach ile: 4578 (69%)  [+4578]
-  Renkler ile: 5625 (85%)  [+5625]
-  Kadrolar 2025: 5677 (86%)  [+5677]
-  Oyuncu (ratingli): 131913  [+131913]
-  Toplam oyuncu: 140412  [+140412]
-  Rating %: 94%  [+94]
-  ORTALAMA %: 84%  [+84]
-
---- OZET ---
-  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 84%
-  TAHMINI SURE %100'E: ~22 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 02.03.2026 22:39:15
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6630  [degismedi]
-  Coach ile: 4578 (69%)  [degismedi]
-  Renkler ile: 5625 (85%)  [degismedi]
-  Kadrolar 2025: 5677 (86%)  [degismedi]
-  Oyuncu (ratingli): 131913  [degismedi]
-  Toplam oyuncu: 140412  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 84%  [degismedi]
-
---- BASELINE (02.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6630  [+6630]
-  Coach ile: 4578 (69%)  [+4578]
-  Renkler ile: 5625 (85%)  [+5625]
-  Kadrolar 2025: 5677 (86%)  [+5677]
-  Oyuncu (ratingli): 131913  [+131913]
-  Toplam oyuncu: 140412  [+140412]
-  Rating %: 94%  [+94]
-  ORTALAMA %: 84%  [+84]
-
---- OZET ---
-  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 84%
-  TAHMINI SURE %100'E: ~22 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 02.03.2026 22:40:33
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6630  [degismedi]
-  Coach ile: 4578 (69%)  [degismedi]
-  Renkler ile: 5626 (85%)  [+1]
-  Kadrolar 2025: 5677 (86%)  [degismedi]
-  Oyuncu (ratingli): 131913  [degismedi]
-  Toplam oyuncu: 140412  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 84%  [degismedi]
-
---- BASELINE (02.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6630  [+6630]
-  Coach ile: 4578 (69%)  [+4578]
-  Renkler ile: 5626 (85%)  [+5626]
-  Kadrolar 2025: 5677 (86%)  [+5677]
-  Oyuncu (ratingli): 131913  [+131913]
-  Toplam oyuncu: 140412  [+140412]
-  Rating %: 94%  [+94]
-  ORTALAMA %: 84%  [+84]
-
---- OZET ---
-  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 84%
-  TAHMINI SURE %100'E: ~22 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 02.03.2026 22:44:15
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6630  [degismedi]
-  Coach ile: 4578 (69%)  [degismedi]
-  Renkler ile: 5626 (85%)  [degismedi]
-  Kadrolar 2025: 5677 (86%)  [degismedi]
-  Oyuncu (ratingli): 131913  [degismedi]
-  Toplam oyuncu: 140412  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 84%  [degismedi]
-
---- BASELINE (02.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6630  [+6630]
-  Coach ile: 4578 (69%)  [+4578]
-  Renkler ile: 5626 (85%)  [+5626]
-  Kadrolar 2025: 5677 (86%)  [+5677]
-  Oyuncu (ratingli): 131913  [+131913]
-  Toplam oyuncu: 140412  [+140412]
-  Rating %: 94%  [+94]
-  ORTALAMA %: 84%  [+84]
-
---- OZET ---
-  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 84%
-  TAHMINI SURE %100'E: ~22 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 02.03.2026 22:45:33
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6630  [degismedi]
-  Coach ile: 4578 (69%)  [degismedi]
-  Renkler ile: 5626 (85%)  [degismedi]
-  Kadrolar 2025: 5677 (86%)  [degismedi]
-  Oyuncu (ratingli): 131913  [degismedi]
-  Toplam oyuncu: 140412  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 84%  [degismedi]
-
---- BASELINE (02.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6630  [+6630]
-  Coach ile: 4578 (69%)  [+4578]
-  Renkler ile: 5626 (85%)  [+5626]
-  Kadrolar 2025: 5677 (86%)  [+5677]
-  Oyuncu (ratingli): 131913  [+131913]
-  Toplam oyuncu: 140412  [+140412]
-  Rating %: 94%  [+94]
-  ORTALAMA %: 84%  [+84]
-
---- OZET ---
-  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 84%
-  TAHMINI SURE %100'E: ~22 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 02.03.2026 22:49:15
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6630  [degismedi]
-  Coach ile: 4578 (69%)  [degismedi]
-  Renkler ile: 5626 (85%)  [degismedi]
-  Kadrolar 2025: 5677 (86%)  [degismedi]
-  Oyuncu (ratingli): 131913  [degismedi]
-  Toplam oyuncu: 140412  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 84%  [degismedi]
-
---- BASELINE (02.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6630  [+6630]
-  Coach ile: 4578 (69%)  [+4578]
-  Renkler ile: 5626 (85%)  [+5626]
-  Kadrolar 2025: 5677 (86%)  [+5677]
-  Oyuncu (ratingli): 131913  [+131913]
-  Toplam oyuncu: 140412  [+140412]
-  Rating %: 94%  [+94]
-  ORTALAMA %: 84%  [+84]
-
---- OZET ---
-  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 84%
-  TAHMINI SURE %100'E: ~22 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 02.03.2026 22:50:33
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6630  [degismedi]
-  Coach ile: 4579 (69%)  [+1]
-  Renkler ile: 5626 (85%)  [degismedi]
-  Kadrolar 2025: 5677 (86%)  [degismedi]
-  Oyuncu (ratingli): 131913  [degismedi]
-  Toplam oyuncu: 140412  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 84%  [degismedi]
-
---- BASELINE (02.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6630  [+6630]
-  Coach ile: 4579 (69%)  [+4579]
-  Renkler ile: 5626 (85%)  [+5626]
-  Kadrolar 2025: 5677 (86%)  [+5677]
-  Oyuncu (ratingli): 131913  [+131913]
-  Toplam oyuncu: 140412  [+140412]
-  Rating %: 94%  [+94]
-  ORTALAMA %: 84%  [+84]
-
---- OZET ---
-  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 84%
-  TAHMINI SURE %100'E: ~22 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 02.03.2026 22:54:15
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6630  [degismedi]
-  Coach ile: 4579 (69%)  [degismedi]
-  Renkler ile: 5626 (85%)  [degismedi]
-  Kadrolar 2025: 5677 (86%)  [degismedi]
-  Oyuncu (ratingli): 131913  [degismedi]
-  Toplam oyuncu: 140412  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 84%  [degismedi]
-
---- BASELINE (02.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6630  [+6630]
-  Coach ile: 4579 (69%)  [+4579]
-  Renkler ile: 5626 (85%)  [+5626]
-  Kadrolar 2025: 5677 (86%)  [+5677]
-  Oyuncu (ratingli): 131913  [+131913]
-  Toplam oyuncu: 140412  [+140412]
-  Rating %: 94%  [+94]
-  ORTALAMA %: 84%  [+84]
-
---- OZET ---
-  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 84%
-  TAHMINI SURE %100'E: ~22 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 02.03.2026 22:55:33
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6630  [degismedi]
-  Coach ile: 4579 (69%)  [degismedi]
-  Renkler ile: 5626 (85%)  [degismedi]
-  Kadrolar 2025: 5677 (86%)  [degismedi]
-  Oyuncu (ratingli): 131913  [degismedi]
-  Toplam oyuncu: 140412  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 84%  [degismedi]
-
---- BASELINE (02.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6630  [+6630]
-  Coach ile: 4579 (69%)  [+4579]
-  Renkler ile: 5626 (85%)  [+5626]
-  Kadrolar 2025: 5677 (86%)  [+5677]
-  Oyuncu (ratingli): 131913  [+131913]
-  Toplam oyuncu: 140412  [+140412]
-  Rating %: 94%  [+94]
-  ORTALAMA %: 84%  [+84]
-
---- OZET ---
-  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 84%
-  TAHMINI SURE %100'E: ~22 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 02.03.2026 22:59:15
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6630  [degismedi]
-  Coach ile: 4579 (69%)  [degismedi]
-  Renkler ile: 5626 (85%)  [degismedi]
-  Kadrolar 2025: 5677 (86%)  [degismedi]
-  Oyuncu (ratingli): 131913  [degismedi]
-  Toplam oyuncu: 140412  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 84%  [degismedi]
-
---- BASELINE (02.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6630  [+6630]
-  Coach ile: 4579 (69%)  [+4579]
-  Renkler ile: 5626 (85%)  [+5626]
-  Kadrolar 2025: 5677 (86%)  [+5677]
-  Oyuncu (ratingli): 131913  [+131913]
-  Toplam oyuncu: 140412  [+140412]
-  Rating %: 94%  [+94]
-  ORTALAMA %: 84%  [+84]
-
---- OZET ---
-  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 84%
-  TAHMINI SURE %100'E: ~22 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 02.03.2026 23:00:33
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6630  [degismedi]
-  Coach ile: 4579 (69%)  [degismedi]
-  Renkler ile: 5626 (85%)  [degismedi]
-  Kadrolar 2025: 5677 (86%)  [degismedi]
-  Oyuncu (ratingli): 131913  [degismedi]
-  Toplam oyuncu: 140412  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 84%  [degismedi]
-
---- BASELINE (02.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6630  [+6630]
-  Coach ile: 4579 (69%)  [+4579]
-  Renkler ile: 5626 (85%)  [+5626]
-  Kadrolar 2025: 5677 (86%)  [+5677]
-  Oyuncu (ratingli): 131913  [+131913]
-  Toplam oyuncu: 140412  [+140412]
-  Rating %: 94%  [+94]
-  ORTALAMA %: 84%  [+84]
-
---- OZET ---
-  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 84%
-  TAHMINI SURE %100'E: ~22 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 02.03.2026 23:04:15
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6630  [degismedi]
-  Coach ile: 4579 (69%)  [degismedi]
-  Renkler ile: 5626 (85%)  [degismedi]
-  Kadrolar 2025: 5677 (86%)  [degismedi]
-  Oyuncu (ratingli): 131913  [degismedi]
-  Toplam oyuncu: 140412  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 84%  [degismedi]
-
---- BASELINE (02.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6630  [+6630]
-  Coach ile: 4579 (69%)  [+4579]
-  Renkler ile: 5626 (85%)  [+5626]
-  Kadrolar 2025: 5677 (86%)  [+5677]
-  Oyuncu (ratingli): 131913  [+131913]
-  Toplam oyuncu: 140412  [+140412]
-  Rating %: 94%  [+94]
-  ORTALAMA %: 84%  [+84]
-
---- OZET ---
-  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 84%
-  TAHMINI SURE %100'E: ~22 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 02.03.2026 23:05:33
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6630  [degismedi]
-  Coach ile: 4579 (69%)  [degismedi]
-  Renkler ile: 5626 (85%)  [degismedi]
-  Kadrolar 2025: 5677 (86%)  [degismedi]
-  Oyuncu (ratingli): 131913  [degismedi]
-  Toplam oyuncu: 140412  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 84%  [degismedi]
-
---- BASELINE (02.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6630  [+6630]
-  Coach ile: 4579 (69%)  [+4579]
-  Renkler ile: 5626 (85%)  [+5626]
-  Kadrolar 2025: 5677 (86%)  [+5677]
-  Oyuncu (ratingli): 131913  [+131913]
-  Toplam oyuncu: 140412  [+140412]
-  Rating %: 94%  [+94]
-  ORTALAMA %: 84%  [+84]
-
---- OZET ---
-  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 84%
-  TAHMINI SURE %100'E: ~22 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 02.03.2026 23:09:15
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [-11]
-  Coach ile: 4568 (69%)  [-11]
-  Renkler ile: 5615 (85%)  [-11]
-  Kadrolar 2025: 5666 (86%)  [-11]
-  Oyuncu (ratingli): 74344  [-57569]
-  Toplam oyuncu: 80288  [-60124]
-  Rating %: 93%  [-1]
-  ORTALAMA %: 83%  [-1]
-
---- BASELINE (02.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [+6619]
-  Coach ile: 4568 (69%)  [+4568]
-  Renkler ile: 5615 (85%)  [+5615]
-  Kadrolar 2025: 5666 (86%)  [+5666]
-  Oyuncu (ratingli): 74344  [+74344]
-  Toplam oyuncu: 80288  [+80288]
-  Rating %: 93%  [+93]
-  ORTALAMA %: 83%  [+83]
-
---- OZET ---
-  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 93%
-  GENEL TAMAMLANMA: 83%
-  TAHMINI SURE %100'E: ~15.6 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 02.03.2026 23:10:33
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4568 (69%)  [degismedi]
-  Renkler ile: 5615 (85%)  [degismedi]
-  Kadrolar 2025: 5666 (86%)  [degismedi]
-  Oyuncu (ratingli): 131684  [+57340]
-  Toplam oyuncu: 140183  [+59895]
-  Rating %: 94%  [+1]
-  ORTALAMA %: 84%  [+1]
-
---- BASELINE (02.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [+6619]
-  Coach ile: 4568 (69%)  [+4568]
-  Renkler ile: 5615 (85%)  [+5615]
-  Kadrolar 2025: 5666 (86%)  [+5666]
-  Oyuncu (ratingli): 131684  [+131684]
-  Toplam oyuncu: 140183  [+140183]
-  Rating %: 94%  [+94]
-  ORTALAMA %: 84%  [+84]
-
---- OZET ---
-  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 84%
-  TAHMINI SURE %100'E: ~22 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 02.03.2026 23:23:08
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4575 (69%)  [+7]
-  Renkler ile: 5616 (85%)  [+1]
-  Kadrolar 2025: 5666 (86%)  [degismedi]
-  Oyuncu (ratingli): 131684  [degismedi]
-  Toplam oyuncu: 140183  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 84%  [degismedi]
-
---- BASELINE (02.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [+6619]
-  Coach ile: 4575 (69%)  [+4575]
-  Renkler ile: 5616 (85%)  [+5616]
-  Kadrolar 2025: 5666 (86%)  [+5666]
-  Oyuncu (ratingli): 131684  [+131684]
-  Toplam oyuncu: 140183  [+140183]
-  Rating %: 94%  [+94]
-  ORTALAMA %: 84%  [+84]
-
---- OZET ---
-  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 84%
-  TAHMINI SURE %100'E: ~22 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 02.03.2026 23:23:08
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4575 (69%)  [+7]
-  Renkler ile: 5616 (85%)  [+1]
-  Kadrolar 2025: 5666 (86%)  [degismedi]
-  Oyuncu (ratingli): 131684  [degismedi]
-  Toplam oyuncu: 140183  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 84%  [degismedi]
-
---- BASELINE (02.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [+6619]
-  Coach ile: 4575 (69%)  [+4575]
-  Renkler ile: 5616 (85%)  [+5616]
-  Kadrolar 2025: 5666 (86%)  [+5666]
-  Oyuncu (ratingli): 131684  [+131684]
-  Toplam oyuncu: 140183  [+140183]
-  Rating %: 94%  [+94]
-  ORTALAMA %: 84%  [+84]
-
---- OZET ---
-  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 84%
-  TAHMINI SURE %100'E: ~22 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 02.03.2026 23:28:08
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4580 (69%)  [+5]
-  Renkler ile: 5617 (85%)  [+1]
-  Kadrolar 2025: 5666 (86%)  [degismedi]
-  Oyuncu (ratingli): 131684  [degismedi]
-  Toplam oyuncu: 140183  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 84%  [degismedi]
-
---- BASELINE (02.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [+6619]
-  Coach ile: 4580 (69%)  [+4580]
-  Renkler ile: 5617 (85%)  [+5617]
-  Kadrolar 2025: 5666 (86%)  [+5666]
-  Oyuncu (ratingli): 131684  [+131684]
-  Toplam oyuncu: 140183  [+140183]
-  Rating %: 94%  [+94]
-  ORTALAMA %: 84%  [+84]
-
---- OZET ---
-  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 84%
-  TAHMINI SURE %100'E: ~22 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 02.03.2026 23:28:08
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4580 (69%)  [+5]
-  Renkler ile: 5617 (85%)  [+1]
-  Kadrolar 2025: 5666 (86%)  [degismedi]
-  Oyuncu (ratingli): 131684  [degismedi]
-  Toplam oyuncu: 140183  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 84%  [degismedi]
-
---- BASELINE (02.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [+6619]
-  Coach ile: 4580 (69%)  [+4580]
-  Renkler ile: 5617 (85%)  [+5617]
-  Kadrolar 2025: 5666 (86%)  [+5666]
-  Oyuncu (ratingli): 131684  [+131684]
-  Toplam oyuncu: 140183  [+140183]
-  Rating %: 94%  [+94]
-  ORTALAMA %: 84%  [+84]
-
---- OZET ---
-  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 84%
-  TAHMINI SURE %100'E: ~22 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 02.03.2026 23:33:08
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4580 (69%)  [degismedi]
-  Renkler ile: 5617 (85%)  [degismedi]
-  Kadrolar 2025: 5666 (86%)  [degismedi]
-  Oyuncu (ratingli): 131684  [degismedi]
-  Toplam oyuncu: 140183  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 84%  [degismedi]
-
---- BASELINE (02.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [+6619]
-  Coach ile: 4580 (69%)  [+4580]
-  Renkler ile: 5617 (85%)  [+5617]
-  Kadrolar 2025: 5666 (86%)  [+5666]
-  Oyuncu (ratingli): 131684  [+131684]
-  Toplam oyuncu: 140183  [+140183]
-  Rating %: 94%  [+94]
-  ORTALAMA %: 84%  [+84]
-
---- OZET ---
-  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 84%
-  TAHMINI SURE %100'E: ~22 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 02.03.2026 23:33:08
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4580 (69%)  [degismedi]
-  Renkler ile: 5617 (85%)  [degismedi]
-  Kadrolar 2025: 5666 (86%)  [degismedi]
-  Oyuncu (ratingli): 131684  [degismedi]
-  Toplam oyuncu: 140183  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 84%  [degismedi]
-
---- BASELINE (02.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [+6619]
-  Coach ile: 4580 (69%)  [+4580]
-  Renkler ile: 5617 (85%)  [+5617]
-  Kadrolar 2025: 5666 (86%)  [+5666]
-  Oyuncu (ratingli): 131684  [+131684]
-  Toplam oyuncu: 140183  [+140183]
-  Rating %: 94%  [+94]
-  ORTALAMA %: 84%  [+84]
-
---- OZET ---
-  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 84%
-  TAHMINI SURE %100'E: ~22 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 02.03.2026 23:38:08
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4580 (69%)  [degismedi]
-  Renkler ile: 5617 (85%)  [degismedi]
-  Kadrolar 2025: 5666 (86%)  [degismedi]
-  Oyuncu (ratingli): 131684  [degismedi]
-  Toplam oyuncu: 140183  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 84%  [degismedi]
-
---- BASELINE (02.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [+6619]
-  Coach ile: 4580 (69%)  [+4580]
-  Renkler ile: 5617 (85%)  [+5617]
-  Kadrolar 2025: 5666 (86%)  [+5666]
-  Oyuncu (ratingli): 131684  [+131684]
-  Toplam oyuncu: 140183  [+140183]
-  Rating %: 94%  [+94]
-  ORTALAMA %: 84%  [+84]
-
---- OZET ---
-  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 84%
-  TAHMINI SURE %100'E: ~22 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 02.03.2026 23:38:08
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4580 (69%)  [degismedi]
-  Renkler ile: 5617 (85%)  [degismedi]
-  Kadrolar 2025: 5666 (86%)  [degismedi]
-  Oyuncu (ratingli): 131684  [degismedi]
-  Toplam oyuncu: 140183  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 84%  [degismedi]
-
---- BASELINE (02.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [+6619]
-  Coach ile: 4580 (69%)  [+4580]
-  Renkler ile: 5617 (85%)  [+5617]
-  Kadrolar 2025: 5666 (86%)  [+5666]
-  Oyuncu (ratingli): 131684  [+131684]
-  Toplam oyuncu: 140183  [+140183]
-  Rating %: 94%  [+94]
-  ORTALAMA %: 84%  [+84]
-
---- OZET ---
-  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 84%
-  TAHMINI SURE %100'E: ~22 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 02.03.2026 23:43:08
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4580 (69%)  [degismedi]
-  Renkler ile: 5617 (85%)  [degismedi]
-  Kadrolar 2025: 5666 (86%)  [degismedi]
-  Oyuncu (ratingli): 131684  [degismedi]
-  Toplam oyuncu: 140183  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 84%  [degismedi]
-
---- BASELINE (02.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [+6619]
-  Coach ile: 4580 (69%)  [+4580]
-  Renkler ile: 5617 (85%)  [+5617]
-  Kadrolar 2025: 5666 (86%)  [+5666]
-  Oyuncu (ratingli): 131684  [+131684]
-  Toplam oyuncu: 140183  [+140183]
-  Rating %: 94%  [+94]
-  ORTALAMA %: 84%  [+84]
-
---- OZET ---
-  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 84%
-  TAHMINI SURE %100'E: ~22 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 02.03.2026 23:43:08
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4580 (69%)  [degismedi]
-  Renkler ile: 5617 (85%)  [degismedi]
-  Kadrolar 2025: 5666 (86%)  [degismedi]
-  Oyuncu (ratingli): 131684  [degismedi]
-  Toplam oyuncu: 140183  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 84%  [degismedi]
-
---- BASELINE (02.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [+6619]
-  Coach ile: 4580 (69%)  [+4580]
-  Renkler ile: 5617 (85%)  [+5617]
-  Kadrolar 2025: 5666 (86%)  [+5666]
-  Oyuncu (ratingli): 131684  [+131684]
-  Toplam oyuncu: 140183  [+140183]
-  Rating %: 94%  [+94]
-  ORTALAMA %: 84%  [+84]
-
---- OZET ---
-  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 84%
-  TAHMINI SURE %100'E: ~22 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 02.03.2026 23:48:08
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4580 (69%)  [degismedi]
-  Renkler ile: 5617 (85%)  [degismedi]
-  Kadrolar 2025: 5666 (86%)  [degismedi]
-  Oyuncu (ratingli): 131684  [degismedi]
-  Toplam oyuncu: 140183  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 84%  [degismedi]
-
---- BASELINE (02.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [+6619]
-  Coach ile: 4580 (69%)  [+4580]
-  Renkler ile: 5617 (85%)  [+5617]
-  Kadrolar 2025: 5666 (86%)  [+5666]
-  Oyuncu (ratingli): 131684  [+131684]
-  Toplam oyuncu: 140183  [+140183]
-  Rating %: 94%  [+94]
-  ORTALAMA %: 84%  [+84]
-
---- OZET ---
-  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 84%
-  TAHMINI SURE %100'E: ~22 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 02.03.2026 23:48:08
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4580 (69%)  [degismedi]
-  Renkler ile: 5617 (85%)  [degismedi]
-  Kadrolar 2025: 5666 (86%)  [degismedi]
-  Oyuncu (ratingli): 131684  [degismedi]
-  Toplam oyuncu: 140183  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 84%  [degismedi]
-
---- BASELINE (02.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [+6619]
-  Coach ile: 4580 (69%)  [+4580]
-  Renkler ile: 5617 (85%)  [+5617]
-  Kadrolar 2025: 5666 (86%)  [+5666]
-  Oyuncu (ratingli): 131684  [+131684]
-  Toplam oyuncu: 140183  [+140183]
-  Rating %: 94%  [+94]
-  ORTALAMA %: 84%  [+84]
-
---- OZET ---
-  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 84%
-  TAHMINI SURE %100'E: ~22 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 02.03.2026 23:53:08
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4580 (69%)  [degismedi]
-  Renkler ile: 5617 (85%)  [degismedi]
-  Kadrolar 2025: 5666 (86%)  [degismedi]
-  Oyuncu (ratingli): 131684  [degismedi]
-  Toplam oyuncu: 140183  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 84%  [degismedi]
-
---- BASELINE (02.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [+6619]
-  Coach ile: 4580 (69%)  [+4580]
-  Renkler ile: 5617 (85%)  [+5617]
-  Kadrolar 2025: 5666 (86%)  [+5666]
-  Oyuncu (ratingli): 131684  [+131684]
-  Toplam oyuncu: 140183  [+140183]
-  Rating %: 94%  [+94]
-  ORTALAMA %: 84%  [+84]
-
---- OZET ---
-  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 84%
-  TAHMINI SURE %100'E: ~22 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 02.03.2026 23:53:08
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4580 (69%)  [degismedi]
-  Renkler ile: 5617 (85%)  [degismedi]
-  Kadrolar 2025: 5666 (86%)  [degismedi]
-  Oyuncu (ratingli): 131684  [degismedi]
-  Toplam oyuncu: 140183  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 84%  [degismedi]
-
---- BASELINE (02.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [+6619]
-  Coach ile: 4580 (69%)  [+4580]
-  Renkler ile: 5617 (85%)  [+5617]
-  Kadrolar 2025: 5666 (86%)  [+5666]
-  Oyuncu (ratingli): 131684  [+131684]
-  Toplam oyuncu: 140183  [+140183]
-  Rating %: 94%  [+94]
-  ORTALAMA %: 84%  [+84]
-
---- OZET ---
-  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 84%
-  TAHMINI SURE %100'E: ~22 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 02.03.2026 23:58:08
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4580 (69%)  [degismedi]
-  Renkler ile: 5617 (85%)  [degismedi]
-  Kadrolar 2025: 5666 (86%)  [degismedi]
-  Oyuncu (ratingli): 131684  [degismedi]
-  Toplam oyuncu: 140183  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 84%  [degismedi]
-
---- BASELINE (02.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [+6619]
-  Coach ile: 4580 (69%)  [+4580]
-  Renkler ile: 5617 (85%)  [+5617]
-  Kadrolar 2025: 5666 (86%)  [+5666]
-  Oyuncu (ratingli): 131684  [+131684]
-  Toplam oyuncu: 140183  [+140183]
-  Rating %: 94%  [+94]
-  ORTALAMA %: 84%  [+84]
-
---- OZET ---
-  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 84%
-  TAHMINI SURE %100'E: ~22 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 02.03.2026 23:58:08
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4580 (69%)  [degismedi]
-  Renkler ile: 5617 (85%)  [degismedi]
-  Kadrolar 2025: 5666 (86%)  [degismedi]
-  Oyuncu (ratingli): 131684  [degismedi]
-  Toplam oyuncu: 140183  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 84%  [degismedi]
-
---- BASELINE (02.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [+6619]
-  Coach ile: 4580 (69%)  [+4580]
-  Renkler ile: 5617 (85%)  [+5617]
-  Kadrolar 2025: 5666 (86%)  [+5666]
-  Oyuncu (ratingli): 131684  [+131684]
-  Toplam oyuncu: 140183  [+140183]
-  Rating %: 94%  [+94]
-  ORTALAMA %: 84%  [+84]
-
---- OZET ---
-  Coach: 69% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 84%
-  TAHMINI SURE %100'E: ~22 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 00:03:08
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4630 (70%)  [+50]
-  Renkler ile: 5617 (85%)  [degismedi]
-  Kadrolar 2025: 5666 (86%)  [degismedi]
-  Oyuncu (ratingli): 131684  [degismedi]
-  Toplam oyuncu: 140183  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 84%  [degismedi]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4630 (70%)  [degismedi]
-  Renkler ile: 5617 (85%)  [degismedi]
-  Kadrolar 2025: 5666 (86%)  [degismedi]
-  Oyuncu (ratingli): 131684  [degismedi]
-  Toplam oyuncu: 140183  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 84%  [degismedi]
-
---- OZET ---
-  Coach: 70% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 84%
-  TAHMINI SURE %100'E: ~22 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 00:03:08
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4630 (70%)  [+50]
-  Renkler ile: 5617 (85%)  [degismedi]
-  Kadrolar 2025: 5666 (86%)  [degismedi]
-  Oyuncu (ratingli): 131684  [degismedi]
-  Toplam oyuncu: 140183  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 84%  [degismedi]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4630 (70%)  [degismedi]
-  Renkler ile: 5617 (85%)  [degismedi]
-  Kadrolar 2025: 5666 (86%)  [degismedi]
-  Oyuncu (ratingli): 131684  [degismedi]
-  Toplam oyuncu: 140183  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 84%  [degismedi]
-
---- OZET ---
-  Coach: 70% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 84%
-  TAHMINI SURE %100'E: ~22 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 00:06:30
-
-  *** 5 DK ILERLEME: VAR  ***  Coach +104, Renk +4
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4734 (72%)  [+104]
-  Renkler ile: 5621 (85%)  [+4]
-  Kadrolar 2025: 5666 (86%)  [degismedi]
-  Oyuncu (ratingli): 131684  [degismedi]
-  Toplam oyuncu: 140183  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 84%  [degismedi]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4734 (72%)  [+104]
-  Renkler ile: 5621 (85%)  [+4]
-  Kadrolar 2025: 5666 (86%)  [degismedi]
-  Oyuncu (ratingli): 131684  [degismedi]
-  Toplam oyuncu: 140183  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 84%  [degismedi]
-
---- OZET ---
-  Coach: 72% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 84%
-  TAHMINI SURE %100'E: ~21.9 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 00:07:25
-
-  *** 5 DK ILERLEME: VAR  ***  Coach +24
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4758 (72%)  [+24]
-  Renkler ile: 5621 (85%)  [degismedi]
-  Kadrolar 2025: 5666 (86%)  [degismedi]
-  Oyuncu (ratingli): 131684  [degismedi]
-  Toplam oyuncu: 140183  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 84%  [degismedi]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4758 (72%)  [+128]
-  Renkler ile: 5621 (85%)  [+4]
-  Kadrolar 2025: 5666 (86%)  [degismedi]
-  Oyuncu (ratingli): 131684  [degismedi]
-  Toplam oyuncu: 140183  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 84%  [degismedi]
-
---- OZET ---
-  Coach: 72% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 84%
-  TAHMINI SURE %100'E: ~21.9 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 00:08:08
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4783 (72%)  [+25]
-  Renkler ile: 5621 (85%)  [degismedi]
-  Kadrolar 2025: 5666 (86%)  [degismedi]
-  Oyuncu (ratingli): 107749  [-23935]
-  Toplam oyuncu: 115349  [-24834]
-  Rating %: 93%  [-1]
-  ORTALAMA %: 84%  [degismedi]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4783 (72%)  [+153]
-  Renkler ile: 5621 (85%)  [+4]
-  Kadrolar 2025: 5666 (86%)  [degismedi]
-  Oyuncu (ratingli): 107749  [-23935]
-  Toplam oyuncu: 115349  [-24834]
-  Rating %: 93%  [-1]
-  ORTALAMA %: 84%  [degismedi]
-
---- OZET ---
-  Coach: 72% | Renkler: 85% | Kadrolar: 86% | Rating: 93%
-  GENEL TAMAMLANMA: 84%
-  TAHMINI SURE %100'E: ~19.7 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 00:08:08
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4783 (72%)  [+25]
-  Renkler ile: 5621 (85%)  [degismedi]
-  Kadrolar 2025: 5666 (86%)  [degismedi]
-  Oyuncu (ratingli): 118361  [-13323]
-  Toplam oyuncu: 126247  [-13936]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 84%  [degismedi]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4783 (72%)  [+153]
-  Renkler ile: 5621 (85%)  [+4]
-  Kadrolar 2025: 5666 (86%)  [degismedi]
-  Oyuncu (ratingli): 118361  [-13323]
-  Toplam oyuncu: 126247  [-13936]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 84%  [degismedi]
-
---- OZET ---
-  Coach: 72% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 84%
-  TAHMINI SURE %100'E: ~20.4 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 00:12:12
-
-  *** 5 DK ILERLEME: VAR  ***  Coach +130, Renk +6, Ratingli oyuncu +13323
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4913 (74%)  [+130]
-  Renkler ile: 5627 (85%)  [+6]
-  Kadrolar 2025: 5666 (86%)  [degismedi]
-  Oyuncu (ratingli): 131684  [+13323]
-  Toplam oyuncu: 140183  [+13936]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 85%  [+1]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4913 (74%)  [+283]
-  Renkler ile: 5627 (85%)  [+10]
-  Kadrolar 2025: 5666 (86%)  [degismedi]
-  Oyuncu (ratingli): 131684  [degismedi]
-  Toplam oyuncu: 140183  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 85%  [+1]
-
---- OZET ---
-  Coach: 74% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 85%
-  TAHMINI SURE %100'E: ~21.9 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 00:13:08
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4921 (74%)  [+8]
-  Renkler ile: 5627 (85%)  [degismedi]
-  Kadrolar 2025: 5666 (86%)  [degismedi]
-  Oyuncu (ratingli): 0  [-131684]
-  Toplam oyuncu: 0  [-140183]
-  Rating %: 0%  [-94]
-  ORTALAMA %: 61%  [-24]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4921 (74%)  [+291]
-  Renkler ile: 5627 (85%)  [+10]
-  Kadrolar 2025: 5666 (86%)  [degismedi]
-  Oyuncu (ratingli): 0  [-131684]
-  Toplam oyuncu: 0  [-140183]
-  Rating %: 0%  [-94]
-  ORTALAMA %: 61%  [-23]
-
---- OZET ---
-  Coach: 74% | Renkler: 85% | Kadrolar: 86% | Rating: 0%
-  GENEL TAMAMLANMA: 61%
-  TAHMINI SURE %100'E: ~0.6 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 00:13:08
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4921 (74%)  [+8]
-  Renkler ile: 5627 (85%)  [degismedi]
-  Kadrolar 2025: 5666 (86%)  [degismedi]
-  Oyuncu (ratingli): 0  [-131684]
-  Toplam oyuncu: 0  [-140183]
-  Rating %: 0%  [-94]
-  ORTALAMA %: 61%  [-24]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4921 (74%)  [+291]
-  Renkler ile: 5627 (85%)  [+10]
-  Kadrolar 2025: 5666 (86%)  [degismedi]
-  Oyuncu (ratingli): 0  [-131684]
-  Toplam oyuncu: 0  [-140183]
-  Rating %: 0%  [-94]
-  ORTALAMA %: 61%  [-23]
-
---- OZET ---
-  Coach: 74% | Renkler: 85% | Kadrolar: 86% | Rating: 0%
-  GENEL TAMAMLANMA: 61%
-  TAHMINI SURE %100'E: ~0.6 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 00:12:43
-
-  *** 5 DK ILERLEME: VAR  ***  Coach +8
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4921 (74%)  [+8]
-  Renkler ile: 5627 (85%)  [degismedi]
-  Kadrolar 2025: 5666 (86%)  [degismedi]
-  Oyuncu (ratingli): 131684  [degismedi]
-  Toplam oyuncu: 140183  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 85%  [degismedi]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4921 (74%)  [+291]
-  Renkler ile: 5627 (85%)  [+10]
-  Kadrolar 2025: 5666 (86%)  [degismedi]
-  Oyuncu (ratingli): 131684  [degismedi]
-  Toplam oyuncu: 140183  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 85%  [+1]
-
---- OZET ---
-  Coach: 74% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 85%
-  TAHMINI SURE %100'E: ~21.9 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 00:17:12
-
-  *** 5 DK ILERLEME: VAR  ***  Coach +1, Renk +6, Kadro +2, Ratingli oyuncu +3
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4922 (74%)  [+1]
-  Renkler ile: 5633 (85%)  [+6]
-  Kadrolar 2025: 5668 (86%)  [+2]
-  Oyuncu (ratingli): 131687  [+3]
-  Toplam oyuncu: 140186  [+3]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 85%  [degismedi]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4922 (74%)  [+292]
-  Renkler ile: 5633 (85%)  [+16]
-  Kadrolar 2025: 5668 (86%)  [+2]
-  Oyuncu (ratingli): 131687  [+3]
-  Toplam oyuncu: 140186  [+3]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 85%  [+1]
-
---- OZET ---
-  Coach: 74% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 85%
-  TAHMINI SURE %100'E: ~21.9 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 00:17:43
-
-  *** 5 DK ILERLEME: YOK - Script durdurulabilir. Daha net cozum bulunana kadar. ***
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4922 (74%)  [degismedi]
-  Renkler ile: 5633 (85%)  [degismedi]
-  Kadrolar 2025: 5668 (86%)  [degismedi]
-  Oyuncu (ratingli): 131687  [degismedi]
-  Toplam oyuncu: 140186  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 85%  [degismedi]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4922 (74%)  [+292]
-  Renkler ile: 5633 (85%)  [+16]
-  Kadrolar 2025: 5668 (86%)  [+2]
-  Oyuncu (ratingli): 131687  [+3]
-  Toplam oyuncu: 140186  [+3]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 85%  [+1]
-
---- OZET ---
-  Coach: 74% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 85%
-  TAHMINI SURE %100'E: ~21.9 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 00:18:08
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4922 (74%)  [degismedi]
-  Renkler ile: 5634 (85%)  [+1]
-  Kadrolar 2025: 5668 (86%)  [degismedi]
-  Oyuncu (ratingli): 131687  [degismedi]
-  Toplam oyuncu: 140186  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 85%  [degismedi]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4922 (74%)  [+292]
-  Renkler ile: 5634 (85%)  [+17]
-  Kadrolar 2025: 5668 (86%)  [+2]
-  Oyuncu (ratingli): 131687  [+3]
-  Toplam oyuncu: 140186  [+3]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 85%  [+1]
-
---- OZET ---
-  Coach: 74% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 85%
-  TAHMINI SURE %100'E: ~21.9 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 00:18:08
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4922 (74%)  [degismedi]
-  Renkler ile: 5634 (85%)  [+1]
-  Kadrolar 2025: 5668 (86%)  [degismedi]
-  Oyuncu (ratingli): 131687  [degismedi]
-  Toplam oyuncu: 140186  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 85%  [degismedi]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4922 (74%)  [+292]
-  Renkler ile: 5634 (85%)  [+17]
-  Kadrolar 2025: 5668 (86%)  [+2]
-  Oyuncu (ratingli): 131687  [+3]
-  Toplam oyuncu: 140186  [+3]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 85%  [+1]
-
---- OZET ---
-  Coach: 74% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 85%
-  TAHMINI SURE %100'E: ~21.9 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 00:22:12
-
-  *** 5 DK ILERLEME: VAR  ***  Renk +5, Kadro +2, Ratingli oyuncu +52
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4922 (74%)  [degismedi]
-  Renkler ile: 5639 (85%)  [+5]
-  Kadrolar 2025: 5670 (86%)  [+2]
-  Oyuncu (ratingli): 131739  [+52]
-  Toplam oyuncu: 140238  [+52]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 85%  [degismedi]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4922 (74%)  [+292]
-  Renkler ile: 5639 (85%)  [+22]
-  Kadrolar 2025: 5670 (86%)  [+4]
-  Oyuncu (ratingli): 131739  [+55]
-  Toplam oyuncu: 140238  [+55]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 85%  [+1]
-
---- OZET ---
-  Coach: 74% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 85%
-  TAHMINI SURE %100'E: ~21.9 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 00:23:08
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4922 (74%)  [degismedi]
-  Renkler ile: 5639 (85%)  [degismedi]
-  Kadrolar 2025: 5673 (86%)  [+3]
-  Oyuncu (ratingli): 0  [-131739]
-  Toplam oyuncu: 0  [-140238]
-  Rating %: 0%  [-94]
-  ORTALAMA %: 61%  [-24]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4922 (74%)  [+292]
-  Renkler ile: 5639 (85%)  [+22]
-  Kadrolar 2025: 5673 (86%)  [+7]
-  Oyuncu (ratingli): 0  [-131684]
-  Toplam oyuncu: 0  [-140183]
-  Rating %: 0%  [-94]
-  ORTALAMA %: 61%  [-23]
-
---- OZET ---
-  Coach: 74% | Renkler: 85% | Kadrolar: 86% | Rating: 0%
-  GENEL TAMAMLANMA: 61%
-  TAHMINI SURE %100'E: ~0.6 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 00:22:43
-
-  *** 5 DK ILERLEME: VAR  ***  Kadro +2, Ratingli oyuncu -47984
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4922 (74%)  [degismedi]
-  Renkler ile: 5639 (85%)  [degismedi]
-  Kadrolar 2025: 5672 (86%)  [+2]
-  Oyuncu (ratingli): 83755  [-47984]
-  Toplam oyuncu: 90523  [-49715]
-  Rating %: 93%  [-1]
-  ORTALAMA %: 85%  [degismedi]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4922 (74%)  [+292]
-  Renkler ile: 5639 (85%)  [+22]
-  Kadrolar 2025: 5672 (86%)  [+6]
-  Oyuncu (ratingli): 83755  [-47929]
-  Toplam oyuncu: 90523  [-49660]
-  Rating %: 93%  [-1]
-  ORTALAMA %: 85%  [+1]
-
---- OZET ---
-  Coach: 74% | Renkler: 85% | Kadrolar: 86% | Rating: 93%
-  GENEL TAMAMLANMA: 85%
-  TAHMINI SURE %100'E: ~17.5 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 00:23:08
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4922 (74%)  [degismedi]
-  Renkler ile: 5639 (85%)  [degismedi]
-  Kadrolar 2025: 5673 (86%)  [+3]
-  Oyuncu (ratingli): 0  [-131739]
-  Toplam oyuncu: 0  [-140238]
-  Rating %: 0%  [-94]
-  ORTALAMA %: 61%  [-24]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4922 (74%)  [+292]
-  Renkler ile: 5639 (85%)  [+22]
-  Kadrolar 2025: 5673 (86%)  [+7]
-  Oyuncu (ratingli): 0  [-131684]
-  Toplam oyuncu: 0  [-140183]
-  Rating %: 0%  [-94]
-  ORTALAMA %: 61%  [-23]
-
---- OZET ---
-  Coach: 74% | Renkler: 85% | Kadrolar: 86% | Rating: 0%
-  GENEL TAMAMLANMA: 61%
-  TAHMINI SURE %100'E: ~0.6 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 00:27:12
-
-  *** 5 DK ILERLEME: VAR  ***  Renk +6, Kadro +1, Ratingli oyuncu +131827
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4922 (74%)  [degismedi]
-  Renkler ile: 5645 (85%)  [+6]
-  Kadrolar 2025: 5674 (86%)  [+1]
-  Oyuncu (ratingli): 131827  [+131827]
-  Toplam oyuncu: 140326  [+140326]
-  Rating %: 94%  [+94]
-  ORTALAMA %: 85%  [+24]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4922 (74%)  [+292]
-  Renkler ile: 5645 (85%)  [+28]
-  Kadrolar 2025: 5674 (86%)  [+8]
-  Oyuncu (ratingli): 131827  [+143]
-  Toplam oyuncu: 140326  [+143]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 85%  [+1]
-
---- OZET ---
-  Coach: 74% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 85%
-  TAHMINI SURE %100'E: ~21.9 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 00:27:43
-
-  *** 5 DK ILERLEME: YOK - Script durdurulabilir. Daha net cozum bulunana kadar. ***
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4922 (74%)  [degismedi]
-  Renkler ile: 5645 (85%)  [degismedi]
-  Kadrolar 2025: 5674 (86%)  [degismedi]
-  Oyuncu (ratingli): 131827  [degismedi]
-  Toplam oyuncu: 140326  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 85%  [degismedi]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4922 (74%)  [+292]
-  Renkler ile: 5645 (85%)  [+28]
-  Kadrolar 2025: 5674 (86%)  [+8]
-  Oyuncu (ratingli): 131827  [+143]
-  Toplam oyuncu: 140326  [+143]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 85%  [+1]
-
---- OZET ---
-  Coach: 74% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 85%
-  TAHMINI SURE %100'E: ~21.9 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 00:28:08
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4922 (74%)  [degismedi]
-  Renkler ile: 5645 (85%)  [degismedi]
-  Kadrolar 2025: 5674 (86%)  [degismedi]
-  Oyuncu (ratingli): 131827  [degismedi]
-  Toplam oyuncu: 140326  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 85%  [degismedi]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4922 (74%)  [+292]
-  Renkler ile: 5645 (85%)  [+28]
-  Kadrolar 2025: 5674 (86%)  [+8]
-  Oyuncu (ratingli): 131827  [+143]
-  Toplam oyuncu: 140326  [+143]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 85%  [+1]
-
---- OZET ---
-  Coach: 74% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 85%
-  TAHMINI SURE %100'E: ~21.9 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 00:28:08
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4922 (74%)  [degismedi]
-  Renkler ile: 5645 (85%)  [degismedi]
-  Kadrolar 2025: 5674 (86%)  [degismedi]
-  Oyuncu (ratingli): 131827  [degismedi]
-  Toplam oyuncu: 140326  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 85%  [degismedi]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4922 (74%)  [+292]
-  Renkler ile: 5645 (85%)  [+28]
-  Kadrolar 2025: 5674 (86%)  [+8]
-  Oyuncu (ratingli): 131827  [+143]
-  Toplam oyuncu: 140326  [+143]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 85%  [+1]
-
---- OZET ---
-  Coach: 74% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 85%
-  TAHMINI SURE %100'E: ~21.9 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 00:32:12
-
-  *** 5 DK ILERLEME: VAR  ***  Coach +66, Renk +1
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4988 (75%)  [+66]
-  Renkler ile: 5646 (85%)  [+1]
-  Kadrolar 2025: 5674 (86%)  [degismedi]
-  Oyuncu (ratingli): 131827  [degismedi]
-  Toplam oyuncu: 140326  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 85%  [degismedi]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 4988 (75%)  [+358]
-  Renkler ile: 5646 (85%)  [+29]
-  Kadrolar 2025: 5674 (86%)  [+8]
-  Oyuncu (ratingli): 131827  [+143]
-  Toplam oyuncu: 140326  [+143]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 85%  [+1]
-
---- OZET ---
-  Coach: 75% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 85%
-  TAHMINI SURE %100'E: ~21.9 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 00:32:43
-
-  *** 5 DK ILERLEME: VAR  ***  Coach +20
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 5008 (76%)  [+20]
-  Renkler ile: 5646 (85%)  [degismedi]
-  Kadrolar 2025: 5674 (86%)  [degismedi]
-  Oyuncu (ratingli): 131827  [degismedi]
-  Toplam oyuncu: 140326  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 85%  [degismedi]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 5008 (76%)  [+378]
-  Renkler ile: 5646 (85%)  [+29]
-  Kadrolar 2025: 5674 (86%)  [+8]
-  Oyuncu (ratingli): 131827  [+143]
-  Toplam oyuncu: 140326  [+143]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 85%  [+1]
-
---- OZET ---
-  Coach: 76% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 85%
-  TAHMINI SURE %100'E: ~21.8 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 00:33:08
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 5022 (76%)  [+14]
-  Renkler ile: 5646 (85%)  [degismedi]
-  Kadrolar 2025: 5674 (86%)  [degismedi]
-  Oyuncu (ratingli): 131827  [degismedi]
-  Toplam oyuncu: 140326  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 85%  [degismedi]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 5022 (76%)  [+392]
-  Renkler ile: 5646 (85%)  [+29]
-  Kadrolar 2025: 5674 (86%)  [+8]
-  Oyuncu (ratingli): 131827  [+143]
-  Toplam oyuncu: 140326  [+143]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 85%  [+1]
-
---- OZET ---
-  Coach: 76% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 85%
-  TAHMINI SURE %100'E: ~21.8 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 00:33:08
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 5022 (76%)  [+14]
-  Renkler ile: 5646 (85%)  [degismedi]
-  Kadrolar 2025: 5674 (86%)  [degismedi]
-  Oyuncu (ratingli): 131827  [degismedi]
-  Toplam oyuncu: 140326  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 85%  [degismedi]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 5022 (76%)  [+392]
-  Renkler ile: 5646 (85%)  [+29]
-  Kadrolar 2025: 5674 (86%)  [+8]
-  Oyuncu (ratingli): 131827  [+143]
-  Toplam oyuncu: 140326  [+143]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 85%  [+1]
-
---- OZET ---
-  Coach: 76% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 85%
-  TAHMINI SURE %100'E: ~21.8 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 00:37:12
-
-  *** 5 DK ILERLEME: VAR  ***  Coach +158
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 5180 (78%)  [+158]
-  Renkler ile: 5646 (85%)  [degismedi]
-  Kadrolar 2025: 5674 (86%)  [degismedi]
-  Oyuncu (ratingli): 131827  [degismedi]
-  Toplam oyuncu: 140326  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 86%  [+1]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 5180 (78%)  [+550]
-  Renkler ile: 5646 (85%)  [+29]
-  Kadrolar 2025: 5674 (86%)  [+8]
-  Oyuncu (ratingli): 131827  [+143]
-  Toplam oyuncu: 140326  [+143]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 86%  [+2]
-
---- OZET ---
-  Coach: 78% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 86%
-  TAHMINI SURE %100'E: ~21.8 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 00:37:43
-
-  *** 5 DK ILERLEME: VAR  ***  Coach +21
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 5201 (79%)  [+21]
-  Renkler ile: 5646 (85%)  [degismedi]
-  Kadrolar 2025: 5674 (86%)  [degismedi]
-  Oyuncu (ratingli): 131827  [degismedi]
-  Toplam oyuncu: 140326  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 86%  [degismedi]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 5201 (79%)  [+571]
-  Renkler ile: 5646 (85%)  [+29]
-  Kadrolar 2025: 5674 (86%)  [+8]
-  Oyuncu (ratingli): 131827  [+143]
-  Toplam oyuncu: 140326  [+143]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 86%  [+2]
-
---- OZET ---
-  Coach: 79% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 86%
-  TAHMINI SURE %100'E: ~21.8 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 00:38:08
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 5218 (79%)  [+17]
-  Renkler ile: 5646 (85%)  [degismedi]
-  Kadrolar 2025: 5674 (86%)  [degismedi]
-  Oyuncu (ratingli): 131827  [degismedi]
-  Toplam oyuncu: 140326  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 86%  [degismedi]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 5218 (79%)  [+588]
-  Renkler ile: 5646 (85%)  [+29]
-  Kadrolar 2025: 5674 (86%)  [+8]
-  Oyuncu (ratingli): 131827  [+143]
-  Toplam oyuncu: 140326  [+143]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 86%  [+2]
-
---- OZET ---
-  Coach: 79% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 86%
-  TAHMINI SURE %100'E: ~21.8 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 00:38:08
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 5218 (79%)  [+17]
-  Renkler ile: 5646 (85%)  [degismedi]
-  Kadrolar 2025: 5674 (86%)  [degismedi]
-  Oyuncu (ratingli): 131827  [degismedi]
-  Toplam oyuncu: 140326  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 86%  [degismedi]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 5218 (79%)  [+588]
-  Renkler ile: 5646 (85%)  [+29]
-  Kadrolar 2025: 5674 (86%)  [+8]
-  Oyuncu (ratingli): 131827  [+143]
-  Toplam oyuncu: 140326  [+143]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 86%  [+2]
-
---- OZET ---
-  Coach: 79% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 86%
-  TAHMINI SURE %100'E: ~21.8 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 00:42:12
-
-  *** 5 DK ILERLEME: VAR  ***  Coach +167
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 5385 (81%)  [+167]
-  Renkler ile: 5646 (85%)  [degismedi]
-  Kadrolar 2025: 5674 (86%)  [degismedi]
-  Oyuncu (ratingli): 131827  [degismedi]
-  Toplam oyuncu: 140326  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 87%  [+1]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 5385 (81%)  [+755]
-  Renkler ile: 5646 (85%)  [+29]
-  Kadrolar 2025: 5674 (86%)  [+8]
-  Oyuncu (ratingli): 131827  [+143]
-  Toplam oyuncu: 140326  [+143]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 87%  [+3]
-
---- OZET ---
-  Coach: 81% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 87%
-  TAHMINI SURE %100'E: ~21.7 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 00:42:43
-
-  *** 5 DK ILERLEME: VAR  ***  Coach +21
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 5406 (82%)  [+21]
-  Renkler ile: 5646 (85%)  [degismedi]
-  Kadrolar 2025: 5674 (86%)  [degismedi]
-  Oyuncu (ratingli): 131827  [degismedi]
-  Toplam oyuncu: 140326  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 87%  [degismedi]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 5406 (82%)  [+776]
-  Renkler ile: 5646 (85%)  [+29]
-  Kadrolar 2025: 5674 (86%)  [+8]
-  Oyuncu (ratingli): 131827  [+143]
-  Toplam oyuncu: 140326  [+143]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 87%  [+3]
-
---- OZET ---
-  Coach: 82% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 87%
-  TAHMINI SURE %100'E: ~21.7 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 00:43:08
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 5418 (82%)  [+12]
-  Renkler ile: 5646 (85%)  [degismedi]
-  Kadrolar 2025: 5674 (86%)  [degismedi]
-  Oyuncu (ratingli): 131827  [degismedi]
-  Toplam oyuncu: 140326  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 87%  [degismedi]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 5418 (82%)  [+788]
-  Renkler ile: 5646 (85%)  [+29]
-  Kadrolar 2025: 5674 (86%)  [+8]
-  Oyuncu (ratingli): 131827  [+143]
-  Toplam oyuncu: 140326  [+143]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 87%  [+3]
-
---- OZET ---
-  Coach: 82% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 87%
-  TAHMINI SURE %100'E: ~21.7 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 00:43:08
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 5418 (82%)  [+12]
-  Renkler ile: 5646 (85%)  [degismedi]
-  Kadrolar 2025: 5674 (86%)  [degismedi]
-  Oyuncu (ratingli): 131827  [degismedi]
-  Toplam oyuncu: 140326  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 87%  [degismedi]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 5418 (82%)  [+788]
-  Renkler ile: 5646 (85%)  [+29]
-  Kadrolar 2025: 5674 (86%)  [+8]
-  Oyuncu (ratingli): 131827  [+143]
-  Toplam oyuncu: 140326  [+143]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 87%  [+3]
-
---- OZET ---
-  Coach: 82% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 87%
-  TAHMINI SURE %100'E: ~21.7 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 00:47:12
-
-  *** 5 DK ILERLEME: VAR  ***  Coach +167
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 5585 (84%)  [+167]
-  Renkler ile: 5646 (85%)  [degismedi]
-  Kadrolar 2025: 5674 (86%)  [degismedi]
-  Oyuncu (ratingli): 131827  [degismedi]
-  Toplam oyuncu: 140326  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 87%  [degismedi]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 5585 (84%)  [+955]
-  Renkler ile: 5646 (85%)  [+29]
-  Kadrolar 2025: 5674 (86%)  [+8]
-  Oyuncu (ratingli): 131827  [+143]
-  Toplam oyuncu: 140326  [+143]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 87%  [+3]
-
---- OZET ---
-  Coach: 84% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 87%
-  TAHMINI SURE %100'E: ~21.6 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 00:47:43
-
-  *** 5 DK ILERLEME: VAR  ***  Coach +21
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 5606 (85%)  [+21]
-  Renkler ile: 5646 (85%)  [degismedi]
-  Kadrolar 2025: 5674 (86%)  [degismedi]
-  Oyuncu (ratingli): 131827  [degismedi]
-  Toplam oyuncu: 140326  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 88%  [+1]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 5606 (85%)  [+976]
-  Renkler ile: 5646 (85%)  [+29]
-  Kadrolar 2025: 5674 (86%)  [+8]
-  Oyuncu (ratingli): 131827  [+143]
-  Toplam oyuncu: 140326  [+143]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 88%  [+4]
-
---- OZET ---
-  Coach: 85% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 88%
-  TAHMINI SURE %100'E: ~21.6 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 00:48:08
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 5624 (85%)  [+18]
-  Renkler ile: 5646 (85%)  [degismedi]
-  Kadrolar 2025: 5674 (86%)  [degismedi]
-  Oyuncu (ratingli): 131827  [degismedi]
-  Toplam oyuncu: 140326  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 88%  [degismedi]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 5624 (85%)  [+994]
-  Renkler ile: 5646 (85%)  [+29]
-  Kadrolar 2025: 5674 (86%)  [+8]
-  Oyuncu (ratingli): 131827  [+143]
-  Toplam oyuncu: 140326  [+143]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 88%  [+4]
-
---- OZET ---
-  Coach: 85% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 88%
-  TAHMINI SURE %100'E: ~21.6 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 00:48:08
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 5624 (85%)  [+18]
-  Renkler ile: 5646 (85%)  [degismedi]
-  Kadrolar 2025: 5674 (86%)  [degismedi]
-  Oyuncu (ratingli): 131827  [degismedi]
-  Toplam oyuncu: 140326  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 88%  [degismedi]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 5624 (85%)  [+994]
-  Renkler ile: 5646 (85%)  [+29]
-  Kadrolar 2025: 5674 (86%)  [+8]
-  Oyuncu (ratingli): 131827  [+143]
-  Toplam oyuncu: 140326  [+143]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 88%  [+4]
-
---- OZET ---
-  Coach: 85% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 88%
-  TAHMINI SURE %100'E: ~21.6 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 00:52:12
-
-  *** 5 DK ILERLEME: VAR  ***  Coach +165
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 5789 (87%)  [+165]
-  Renkler ile: 5646 (85%)  [degismedi]
-  Kadrolar 2025: 5674 (86%)  [degismedi]
-  Oyuncu (ratingli): 131827  [degismedi]
-  Toplam oyuncu: 140326  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 88%  [degismedi]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 5789 (87%)  [+1159]
-  Renkler ile: 5646 (85%)  [+29]
-  Kadrolar 2025: 5674 (86%)  [+8]
-  Oyuncu (ratingli): 131827  [+143]
-  Toplam oyuncu: 140326  [+143]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 88%  [+4]
-
---- OZET ---
-  Coach: 87% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 88%
-  TAHMINI SURE %100'E: ~21.6 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 00:52:43
-
-  *** 5 DK ILERLEME: VAR  ***  Coach +23
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 5812 (88%)  [+23]
-  Renkler ile: 5646 (85%)  [degismedi]
-  Kadrolar 2025: 5674 (86%)  [degismedi]
-  Oyuncu (ratingli): 131827  [degismedi]
-  Toplam oyuncu: 140326  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 88%  [degismedi]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 5812 (88%)  [+1182]
-  Renkler ile: 5646 (85%)  [+29]
-  Kadrolar 2025: 5674 (86%)  [+8]
-  Oyuncu (ratingli): 131827  [+143]
-  Toplam oyuncu: 140326  [+143]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 88%  [+4]
-
---- OZET ---
-  Coach: 88% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 88%
-  TAHMINI SURE %100'E: ~21.6 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 00:53:08
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 5823 (88%)  [+11]
-  Renkler ile: 5646 (85%)  [degismedi]
-  Kadrolar 2025: 5674 (86%)  [degismedi]
-  Oyuncu (ratingli): 131827  [degismedi]
-  Toplam oyuncu: 140326  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 88%  [degismedi]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 5823 (88%)  [+1193]
-  Renkler ile: 5646 (85%)  [+29]
-  Kadrolar 2025: 5674 (86%)  [+8]
-  Oyuncu (ratingli): 131827  [+143]
-  Toplam oyuncu: 140326  [+143]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 88%  [+4]
-
---- OZET ---
-  Coach: 88% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 88%
-  TAHMINI SURE %100'E: ~21.6 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 00:53:08
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 5823 (88%)  [+11]
-  Renkler ile: 5646 (85%)  [degismedi]
-  Kadrolar 2025: 5674 (86%)  [degismedi]
-  Oyuncu (ratingli): 131827  [degismedi]
-  Toplam oyuncu: 140326  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 88%  [degismedi]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 5823 (88%)  [+1193]
-  Renkler ile: 5646 (85%)  [+29]
-  Kadrolar 2025: 5674 (86%)  [+8]
-  Oyuncu (ratingli): 131827  [+143]
-  Toplam oyuncu: 140326  [+143]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 88%  [+4]
-
---- OZET ---
-  Coach: 88% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 88%
-  TAHMINI SURE %100'E: ~21.6 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 00:57:12
-
-  *** 5 DK ILERLEME: VAR  ***  Coach +135
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 5958 (90%)  [+135]
-  Renkler ile: 5646 (85%)  [degismedi]
-  Kadrolar 2025: 5674 (86%)  [degismedi]
-  Oyuncu (ratingli): 131827  [degismedi]
-  Toplam oyuncu: 140326  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 89%  [+1]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 5958 (90%)  [+1328]
-  Renkler ile: 5646 (85%)  [+29]
-  Kadrolar 2025: 5674 (86%)  [+8]
-  Oyuncu (ratingli): 131827  [+143]
-  Toplam oyuncu: 140326  [+143]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 89%  [+5]
-
---- OZET ---
-  Coach: 90% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 89%
-  TAHMINI SURE %100'E: ~21.6 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 00:57:43
-
-  *** 5 DK ILERLEME: VAR  ***  Coach +21
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 5979 (90%)  [+21]
-  Renkler ile: 5646 (85%)  [degismedi]
-  Kadrolar 2025: 5674 (86%)  [degismedi]
-  Oyuncu (ratingli): 131827  [degismedi]
-  Toplam oyuncu: 140326  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 89%  [degismedi]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 5979 (90%)  [+1349]
-  Renkler ile: 5646 (85%)  [+29]
-  Kadrolar 2025: 5674 (86%)  [+8]
-  Oyuncu (ratingli): 131827  [+143]
-  Toplam oyuncu: 140326  [+143]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 89%  [+5]
-
---- OZET ---
-  Coach: 90% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 89%
-  TAHMINI SURE %100'E: ~21.6 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 00:58:08
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 5996 (91%)  [+17]
-  Renkler ile: 5646 (85%)  [degismedi]
-  Kadrolar 2025: 5674 (86%)  [degismedi]
-  Oyuncu (ratingli): 131827  [degismedi]
-  Toplam oyuncu: 140326  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 89%  [degismedi]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 5996 (91%)  [+1366]
-  Renkler ile: 5646 (85%)  [+29]
-  Kadrolar 2025: 5674 (86%)  [+8]
-  Oyuncu (ratingli): 131827  [+143]
-  Toplam oyuncu: 140326  [+143]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 89%  [+5]
-
---- OZET ---
-  Coach: 91% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 89%
-  TAHMINI SURE %100'E: ~21.6 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 00:58:08
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 5996 (91%)  [+17]
-  Renkler ile: 5646 (85%)  [degismedi]
-  Kadrolar 2025: 5674 (86%)  [degismedi]
-  Oyuncu (ratingli): 131827  [degismedi]
-  Toplam oyuncu: 140326  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 89%  [degismedi]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 5996 (91%)  [+1366]
-  Renkler ile: 5646 (85%)  [+29]
-  Kadrolar 2025: 5674 (86%)  [+8]
-  Oyuncu (ratingli): 131827  [+143]
-  Toplam oyuncu: 140326  [+143]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 89%  [+5]
-
---- OZET ---
-  Coach: 91% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 89%
-  TAHMINI SURE %100'E: ~21.6 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 01:02:12
-
-  *** 5 DK ILERLEME: VAR  ***  Coach +87
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 6083 (92%)  [+87]
-  Renkler ile: 5646 (85%)  [degismedi]
-  Kadrolar 2025: 5674 (86%)  [degismedi]
-  Oyuncu (ratingli): 131827  [degismedi]
-  Toplam oyuncu: 140326  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 89%  [degismedi]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 6083 (92%)  [+1453]
-  Renkler ile: 5646 (85%)  [+29]
-  Kadrolar 2025: 5674 (86%)  [+8]
-  Oyuncu (ratingli): 131827  [+143]
-  Toplam oyuncu: 140326  [+143]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 89%  [+5]
-
---- OZET ---
-  Coach: 92% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 89%
-  TAHMINI SURE %100'E: ~21.6 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 01:02:43
-
-  *** 5 DK ILERLEME: VAR  ***  Coach +21
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 6104 (92%)  [+21]
-  Renkler ile: 5646 (85%)  [degismedi]
-  Kadrolar 2025: 5674 (86%)  [degismedi]
-  Oyuncu (ratingli): 131827  [degismedi]
-  Toplam oyuncu: 140326  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 89%  [degismedi]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 6104 (92%)  [+1474]
-  Renkler ile: 5646 (85%)  [+29]
-  Kadrolar 2025: 5674 (86%)  [+8]
-  Oyuncu (ratingli): 131827  [+143]
-  Toplam oyuncu: 140326  [+143]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 89%  [+5]
-
---- OZET ---
-  Coach: 92% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 89%
-  TAHMINI SURE %100'E: ~21.6 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 01:03:08
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 6119 (92%)  [+15]
-  Renkler ile: 5646 (85%)  [degismedi]
-  Kadrolar 2025: 5674 (86%)  [degismedi]
-  Oyuncu (ratingli): 131827  [degismedi]
-  Toplam oyuncu: 140326  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 89%  [degismedi]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 6119 (92%)  [+1489]
-  Renkler ile: 5646 (85%)  [+29]
-  Kadrolar 2025: 5674 (86%)  [+8]
-  Oyuncu (ratingli): 131827  [+143]
-  Toplam oyuncu: 140326  [+143]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 89%  [+5]
-
---- OZET ---
-  Coach: 92% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 89%
-  TAHMINI SURE %100'E: ~21.6 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 01:03:08
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 6119 (92%)  [+15]
-  Renkler ile: 5646 (85%)  [degismedi]
-  Kadrolar 2025: 5674 (86%)  [degismedi]
-  Oyuncu (ratingli): 131827  [degismedi]
-  Toplam oyuncu: 140326  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 89%  [degismedi]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 6119 (92%)  [+1489]
-  Renkler ile: 5646 (85%)  [+29]
-  Kadrolar 2025: 5674 (86%)  [+8]
-  Oyuncu (ratingli): 131827  [+143]
-  Toplam oyuncu: 140326  [+143]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 89%  [+5]
-
---- OZET ---
-  Coach: 92% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 89%
-  TAHMINI SURE %100'E: ~21.6 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 01:07:12
-
-  *** 5 DK ILERLEME: VAR  ***  Coach +138
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 6257 (95%)  [+138]
-  Renkler ile: 5646 (85%)  [degismedi]
-  Kadrolar 2025: 5674 (86%)  [degismedi]
-  Oyuncu (ratingli): 131827  [degismedi]
-  Toplam oyuncu: 140326  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 90%  [+1]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 6257 (95%)  [+1627]
-  Renkler ile: 5646 (85%)  [+29]
-  Kadrolar 2025: 5674 (86%)  [+8]
-  Oyuncu (ratingli): 131827  [+143]
-  Toplam oyuncu: 140326  [+143]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 90%  [+6]
-
---- OZET ---
-  Coach: 95% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 90%
-  TAHMINI SURE %100'E: ~21.6 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 01:07:43
-
-  *** 5 DK ILERLEME: VAR  ***  Coach +16
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 6273 (95%)  [+16]
-  Renkler ile: 5646 (85%)  [degismedi]
-  Kadrolar 2025: 5674 (86%)  [degismedi]
-  Oyuncu (ratingli): 131827  [degismedi]
-  Toplam oyuncu: 140326  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 90%  [degismedi]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 6273 (95%)  [+1643]
-  Renkler ile: 5646 (85%)  [+29]
-  Kadrolar 2025: 5674 (86%)  [+8]
-  Oyuncu (ratingli): 131827  [+143]
-  Toplam oyuncu: 140326  [+143]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 90%  [+6]
-
---- OZET ---
-  Coach: 95% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 90%
-  TAHMINI SURE %100'E: ~21.6 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 01:08:08
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 6288 (95%)  [+15]
-  Renkler ile: 5646 (85%)  [degismedi]
-  Kadrolar 2025: 5674 (86%)  [degismedi]
-  Oyuncu (ratingli): 131827  [degismedi]
-  Toplam oyuncu: 140326  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 90%  [degismedi]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 6288 (95%)  [+1658]
-  Renkler ile: 5646 (85%)  [+29]
-  Kadrolar 2025: 5674 (86%)  [+8]
-  Oyuncu (ratingli): 131827  [+143]
-  Toplam oyuncu: 140326  [+143]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 90%  [+6]
-
---- OZET ---
-  Coach: 95% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 90%
-  TAHMINI SURE %100'E: ~21.6 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 01:08:08
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 6288 (95%)  [+15]
-  Renkler ile: 5646 (85%)  [degismedi]
-  Kadrolar 2025: 5674 (86%)  [degismedi]
-  Oyuncu (ratingli): 131827  [degismedi]
-  Toplam oyuncu: 140326  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 90%  [degismedi]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 6288 (95%)  [+1658]
-  Renkler ile: 5646 (85%)  [+29]
-  Kadrolar 2025: 5674 (86%)  [+8]
-  Oyuncu (ratingli): 131827  [+143]
-  Toplam oyuncu: 140326  [+143]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 90%  [+6]
-
---- OZET ---
-  Coach: 95% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 90%
-  TAHMINI SURE %100'E: ~21.6 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 01:12:12
-
-  *** 5 DK ILERLEME: VAR  ***  Coach +148
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 6436 (97%)  [+148]
-  Renkler ile: 5646 (85%)  [degismedi]
-  Kadrolar 2025: 5674 (86%)  [degismedi]
-  Oyuncu (ratingli): 131827  [degismedi]
-  Toplam oyuncu: 140326  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 91%  [+1]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 6436 (97%)  [+1806]
-  Renkler ile: 5646 (85%)  [+29]
-  Kadrolar 2025: 5674 (86%)  [+8]
-  Oyuncu (ratingli): 131827  [+143]
-  Toplam oyuncu: 140326  [+143]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 91%  [+7]
-
---- OZET ---
-  Coach: 97% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 91%
-  TAHMINI SURE %100'E: ~21.6 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 01:12:44
-
-  *** 5 DK ILERLEME: VAR  ***  Coach +20
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 6456 (98%)  [+20]
-  Renkler ile: 5646 (85%)  [degismedi]
-  Kadrolar 2025: 5674 (86%)  [degismedi]
-  Oyuncu (ratingli): 131827  [degismedi]
-  Toplam oyuncu: 140326  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 91%  [degismedi]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 6456 (98%)  [+1826]
-  Renkler ile: 5646 (85%)  [+29]
-  Kadrolar 2025: 5674 (86%)  [+8]
-  Oyuncu (ratingli): 131827  [+143]
-  Toplam oyuncu: 140326  [+143]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 91%  [+7]
-
---- OZET ---
-  Coach: 98% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 91%
-  TAHMINI SURE %100'E: ~21.6 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 01:13:08
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 6470 (98%)  [+14]
-  Renkler ile: 5646 (85%)  [degismedi]
-  Kadrolar 2025: 5674 (86%)  [degismedi]
-  Oyuncu (ratingli): 14327  [-117500]
-  Toplam oyuncu: 16527  [-123799]
-  Rating %: 87%  [-7]
-  ORTALAMA %: 89%  [-2]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 6470 (98%)  [+1840]
-  Renkler ile: 5646 (85%)  [+29]
-  Kadrolar 2025: 5674 (86%)  [+8]
-  Oyuncu (ratingli): 14327  [-117357]
-  Toplam oyuncu: 16527  [-123656]
-  Rating %: 87%  [-7]
-  ORTALAMA %: 89%  [+5]
-
---- OZET ---
-  Coach: 98% | Renkler: 85% | Kadrolar: 86% | Rating: 87%
-  GENEL TAMAMLANMA: 89%
-  TAHMINI SURE %100'E: ~5.9 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 01:13:08
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 6470 (98%)  [+14]
-  Renkler ile: 5646 (85%)  [degismedi]
-  Kadrolar 2025: 5674 (86%)  [degismedi]
-  Oyuncu (ratingli): 131827  [degismedi]
-  Toplam oyuncu: 140326  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 91%  [degismedi]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 6470 (98%)  [+1840]
-  Renkler ile: 5646 (85%)  [+29]
-  Kadrolar 2025: 5674 (86%)  [+8]
-  Oyuncu (ratingli): 131827  [+143]
-  Toplam oyuncu: 140326  [+143]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 91%  [+7]
-
---- OZET ---
-  Coach: 98% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 91%
-  TAHMINI SURE %100'E: ~21.6 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 01:17:12
-
-  *** 5 DK ILERLEME: VAR  ***  Coach +149
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 6619 (100%)  [+149]
-  Renkler ile: 5646 (85%)  [degismedi]
-  Kadrolar 2025: 5674 (86%)  [degismedi]
-  Oyuncu (ratingli): 131827  [degismedi]
-  Toplam oyuncu: 140326  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 91%  [degismedi]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 6619 (100%)  [+1989]
-  Renkler ile: 5646 (85%)  [+29]
-  Kadrolar 2025: 5674 (86%)  [+8]
-  Oyuncu (ratingli): 131827  [+143]
-  Toplam oyuncu: 140326  [+143]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 91%  [+7]
-
---- OZET ---
-  Coach: 100% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 91%
-  TAHMINI SURE %100'E: ~21.6 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 01:17:44
-
-  *** 5 DK ILERLEME: YOK - Script durdurulabilir. Daha net cozum bulunana kadar. ***
+  *** 5 DK ILERLEME: VAR  ***  Ratingli oyuncu -131827
 
 --- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
+  Toplam takim: 6621  [degismedi]
   Coach ile: 6619 (100%)  [degismedi]
-  Renkler ile: 5646 (85%)  [degismedi]
-  Kadrolar 2025: 5674 (86%)  [degismedi]
-  Oyuncu (ratingli): 131827  [degismedi]
-  Toplam oyuncu: 140326  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 91%  [degismedi]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 6619 (100%)  [+1989]
-  Renkler ile: 5646 (85%)  [+29]
-  Kadrolar 2025: 5674 (86%)  [+8]
-  Oyuncu (ratingli): 131827  [+143]
-  Toplam oyuncu: 140326  [+143]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 91%  [+7]
-
---- OZET ---
-  Coach: 100% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 91%
-  TAHMINI SURE %100'E: ~21.6 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 01:18:08
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 6619 (100%)  [degismedi]
-  Renkler ile: 5646 (85%)  [degismedi]
-  Kadrolar 2025: 5674 (86%)  [degismedi]
-  Oyuncu (ratingli): 131827  [degismedi]
-  Toplam oyuncu: 140326  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 91%  [degismedi]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 6619 (100%)  [+1989]
-  Renkler ile: 5646 (85%)  [+29]
-  Kadrolar 2025: 5674 (86%)  [+8]
-  Oyuncu (ratingli): 131827  [+143]
-  Toplam oyuncu: 140326  [+143]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 91%  [+7]
-
---- OZET ---
-  Coach: 100% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 91%
-  TAHMINI SURE %100'E: ~21.6 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 01:18:08
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 6619 (100%)  [degismedi]
-  Renkler ile: 5646 (85%)  [degismedi]
-  Kadrolar 2025: 5674 (86%)  [degismedi]
-  Oyuncu (ratingli): 131827  [degismedi]
-  Toplam oyuncu: 140326  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 91%  [degismedi]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 6619 (100%)  [+1989]
-  Renkler ile: 5646 (85%)  [+29]
-  Kadrolar 2025: 5674 (86%)  [+8]
-  Oyuncu (ratingli): 131827  [+143]
-  Toplam oyuncu: 140326  [+143]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 91%  [+7]
-
---- OZET ---
-  Coach: 100% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 91%
-  TAHMINI SURE %100'E: ~21.6 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 01:22:12
-
-  *** 5 DK ILERLEME: YOK - Script durdurulabilir. Daha net cozum bulunana kadar. ***
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 6619 (100%)  [degismedi]
-  Renkler ile: 5646 (85%)  [degismedi]
-  Kadrolar 2025: 5674 (86%)  [degismedi]
-  Oyuncu (ratingli): 131827  [degismedi]
-  Toplam oyuncu: 140326  [degismedi]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 91%  [degismedi]
-
---- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 6619 (100%)  [+1989]
-  Renkler ile: 5646 (85%)  [+29]
-  Kadrolar 2025: 5674 (86%)  [+8]
-  Oyuncu (ratingli): 131827  [+143]
-  Toplam oyuncu: 140326  [+143]
-  Rating %: 94%  [degismedi]
-  ORTALAMA %: 91%  [+7]
-
---- OZET ---
-  Coach: 100% | Renkler: 85% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 91%
-  TAHMINI SURE %100'E: ~21.6 saat (sync script calisirsa).
-  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
-================================================
-
-========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 01:23:08
-
---- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
-  Coach ile: 6619 (100%)  [degismedi]
-  Renkler ile: 5718 (86%)  [+72]
+  Renkler ile: 6619 (100%)  [degismedi]
   Kadrolar 2025: 5674 (86%)  [degismedi]
   Oyuncu (ratingli): 0  [-131827]
   Toplam oyuncu: 0  [-140326]
   Rating %: 0%  [-94]
-  ORTALAMA %: 68%  [-23]
+  ORTALAMA %: 72%  [-23]
 
 --- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
+  Toplam takim: 6621  [+2]
   Coach ile: 6619 (100%)  [+1989]
-  Renkler ile: 5718 (86%)  [+101]
+  Renkler ile: 6619 (100%)  [+1002]
   Kadrolar 2025: 5674 (86%)  [+8]
   Oyuncu (ratingli): 0  [-131684]
   Toplam oyuncu: 0  [-140183]
   Rating %: 0%  [-94]
-  ORTALAMA %: 68%  [-16]
+  ORTALAMA %: 72%  [-12]
 
 --- OZET ---
-  Coach: 100% | Renkler: 86% | Kadrolar: 86% | Rating: 0%
-  GENEL TAMAMLANMA: 68%
+  Coach: 100% | Renkler: 100% | Kadrolar: 86% | Rating: 0%
+  GENEL TAMAMLANMA: 72%
   TAHMINI SURE %100'E: ~0.4 saat (sync script calisirsa).
   Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
 ================================================
 
 ========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 01:23:08
+Zaman: 03.03.2026 03:03:06
 
 --- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
+  Toplam takim: 6621  [degismedi]
   Coach ile: 6619 (100%)  [degismedi]
-  Renkler ile: 5717 (86%)  [+71]
+  Renkler ile: 6619 (100%)  [degismedi]
+  Kadrolar 2025: 5674 (86%)  [degismedi]
+  Oyuncu (ratingli): 131827  [degismedi]
+  Toplam oyuncu: 140326  [degismedi]
+  Rating %: 94%  [degismedi]
+  ORTALAMA %: 95%  [degismedi]
+
+--- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
+  Toplam takim: 6621  [+2]
+  Coach ile: 6619 (100%)  [+1989]
+  Renkler ile: 6619 (100%)  [+1002]
+  Kadrolar 2025: 5674 (86%)  [+8]
+  Oyuncu (ratingli): 131827  [+143]
+  Toplam oyuncu: 140326  [+143]
+  Rating %: 94%  [degismedi]
+  ORTALAMA %: 95%  [+11]
+
+--- OZET ---
+  Coach: 100% | Renkler: 100% | Kadrolar: 86% | Rating: 94%
+  GENEL TAMAMLANMA: 95%
+  TAHMINI SURE %100'E: ~21.6 saat (sync script calisirsa).
+  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 03.03.2026 03:08:06
+
+--- 5 DK ONCEKI OLCUM vs SIMDI ---
+  Toplam takim: 6621  [degismedi]
+  Coach ile: 6619 (100%)  [degismedi]
+  Renkler ile: 6619 (100%)  [degismedi]
+  Kadrolar 2025: 5674 (86%)  [degismedi]
+  Oyuncu (ratingli): 0  [-131827]
+  Toplam oyuncu: 0  [-140326]
+  Rating %: 0%  [-94]
+  ORTALAMA %: 72%  [-23]
+
+--- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
+  Toplam takim: 6621  [+2]
+  Coach ile: 6619 (100%)  [+1989]
+  Renkler ile: 6619 (100%)  [+1002]
+  Kadrolar 2025: 5674 (86%)  [+8]
+  Oyuncu (ratingli): 0  [-131684]
+  Toplam oyuncu: 0  [-140183]
+  Rating %: 0%  [-94]
+  ORTALAMA %: 72%  [-12]
+
+--- OZET ---
+  Coach: 100% | Renkler: 100% | Kadrolar: 86% | Rating: 0%
+  GENEL TAMAMLANMA: 72%
+  TAHMINI SURE %100'E: ~0.4 saat (sync script calisirsa).
+  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 03.03.2026 03:08:06
+
+--- 5 DK ONCEKI OLCUM vs SIMDI ---
+  Toplam takim: 6621  [degismedi]
+  Coach ile: 6619 (100%)  [degismedi]
+  Renkler ile: 6619 (100%)  [degismedi]
+  Kadrolar 2025: 5674 (86%)  [degismedi]
+  Oyuncu (ratingli): 131827  [degismedi]
+  Toplam oyuncu: 140326  [degismedi]
+  Rating %: 94%  [degismedi]
+  ORTALAMA %: 95%  [degismedi]
+
+--- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
+  Toplam takim: 6621  [+2]
+  Coach ile: 6619 (100%)  [+1989]
+  Renkler ile: 6619 (100%)  [+1002]
+  Kadrolar 2025: 5674 (86%)  [+8]
+  Oyuncu (ratingli): 131827  [+143]
+  Toplam oyuncu: 140326  [+143]
+  Rating %: 94%  [degismedi]
+  ORTALAMA %: 95%  [+11]
+
+--- OZET ---
+  Coach: 100% | Renkler: 100% | Kadrolar: 86% | Rating: 94%
+  GENEL TAMAMLANMA: 95%
+  TAHMINI SURE %100'E: ~21.6 saat (sync script calisirsa).
+  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 03.03.2026 03:13:06
+
+--- 5 DK ONCEKI OLCUM vs SIMDI ---
+  Toplam takim: 6621  [degismedi]
+  Coach ile: 6619 (100%)  [degismedi]
+  Renkler ile: 6619 (100%)  [degismedi]
+  Kadrolar 2025: 5674 (86%)  [degismedi]
+  Oyuncu (ratingli): 64040  [-67787]
+  Toplam oyuncu: 69800  [-70526]
+  Rating %: 92%  [-2]
+  ORTALAMA %: 95%  [degismedi]
+
+--- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
+  Toplam takim: 6621  [+2]
+  Coach ile: 6619 (100%)  [+1989]
+  Renkler ile: 6619 (100%)  [+1002]
+  Kadrolar 2025: 5674 (86%)  [+8]
+  Oyuncu (ratingli): 64040  [-67644]
+  Toplam oyuncu: 69800  [-70383]
+  Rating %: 92%  [-2]
+  ORTALAMA %: 95%  [+11]
+
+--- OZET ---
+  Coach: 100% | Renkler: 100% | Kadrolar: 86% | Rating: 92%
+  GENEL TAMAMLANMA: 95%
+  TAHMINI SURE %100'E: ~14.8 saat (sync script calisirsa).
+  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 03.03.2026 03:13:06
+
+--- 5 DK ONCEKI OLCUM vs SIMDI ---
+  Toplam takim: 6621  [degismedi]
+  Coach ile: 6619 (100%)  [degismedi]
+  Renkler ile: 6619 (100%)  [degismedi]
+  Kadrolar 2025: 5674 (86%)  [degismedi]
+  Oyuncu (ratingli): 83755  [-48072]
+  Toplam oyuncu: 90523  [-49803]
+  Rating %: 93%  [-1]
+  ORTALAMA %: 95%  [degismedi]
+
+--- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
+  Toplam takim: 6621  [+2]
+  Coach ile: 6619 (100%)  [+1989]
+  Renkler ile: 6619 (100%)  [+1002]
+  Kadrolar 2025: 5674 (86%)  [+8]
+  Oyuncu (ratingli): 83755  [-47929]
+  Toplam oyuncu: 90523  [-49660]
+  Rating %: 93%  [-1]
+  ORTALAMA %: 95%  [+11]
+
+--- OZET ---
+  Coach: 100% | Renkler: 100% | Kadrolar: 86% | Rating: 93%
+  GENEL TAMAMLANMA: 95%
+  TAHMINI SURE %100'E: ~17.3 saat (sync script calisirsa).
+  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 03.03.2026 03:13:06
+
+  *** 5 DK ILERLEME: YOK - Script durdurulabilir. Daha net cozum bulunana kadar. ***
+
+--- 5 DK ONCEKI OLCUM vs SIMDI ---
+  Toplam takim: 6621  [degismedi]
+  Coach ile: 6619 (100%)  [degismedi]
+  Renkler ile: 6619 (100%)  [degismedi]
+  Kadrolar 2025: 5674 (86%)  [degismedi]
+  Oyuncu (ratingli): 131827  [degismedi]
+  Toplam oyuncu: 140326  [degismedi]
+  Rating %: 94%  [degismedi]
+  ORTALAMA %: 95%  [degismedi]
+
+--- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
+  Toplam takim: 6621  [+2]
+  Coach ile: 6619 (100%)  [+1989]
+  Renkler ile: 6619 (100%)  [+1002]
+  Kadrolar 2025: 5674 (86%)  [+8]
+  Oyuncu (ratingli): 131827  [+143]
+  Toplam oyuncu: 140326  [+143]
+  Rating %: 94%  [degismedi]
+  ORTALAMA %: 95%  [+11]
+
+--- OZET ---
+  Coach: 100% | Renkler: 100% | Kadrolar: 86% | Rating: 94%
+  GENEL TAMAMLANMA: 95%
+  TAHMINI SURE %100'E: ~21.6 saat (sync script calisirsa).
+  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 03.03.2026 03:13:06
+
+  *** 5 DK ILERLEME: YOK - Script durdurulabilir. Daha net cozum bulunana kadar. ***
+
+--- 5 DK ONCEKI OLCUM vs SIMDI ---
+  Toplam takim: 6621  [degismedi]
+  Coach ile: 6619 (100%)  [degismedi]
+  Renkler ile: 6619 (100%)  [degismedi]
+  Kadrolar 2025: 5674 (86%)  [degismedi]
+  Oyuncu (ratingli): 131827  [degismedi]
+  Toplam oyuncu: 140326  [degismedi]
+  Rating %: 94%  [degismedi]
+  ORTALAMA %: 95%  [degismedi]
+
+--- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
+  Toplam takim: 6621  [+2]
+  Coach ile: 6619 (100%)  [+1989]
+  Renkler ile: 6619 (100%)  [+1002]
+  Kadrolar 2025: 5674 (86%)  [+8]
+  Oyuncu (ratingli): 131827  [+143]
+  Toplam oyuncu: 140326  [+143]
+  Rating %: 94%  [degismedi]
+  ORTALAMA %: 95%  [+11]
+
+--- OZET ---
+  Coach: 100% | Renkler: 100% | Kadrolar: 86% | Rating: 94%
+  GENEL TAMAMLANMA: 95%
+  TAHMINI SURE %100'E: ~21.6 saat (sync script calisirsa).
+  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 03.03.2026 03:18:06
+
+--- 5 DK ONCEKI OLCUM vs SIMDI ---
+  Toplam takim: 6621  [degismedi]
+  Coach ile: 6619 (100%)  [degismedi]
+  Renkler ile: 6619 (100%)  [degismedi]
   Kadrolar 2025: 5674 (86%)  [degismedi]
   Oyuncu (ratingli): 14327  [-117500]
   Toplam oyuncu: 16527  [-123799]
   Rating %: 87%  [-7]
-  ORTALAMA %: 90%  [-1]
+  ORTALAMA %: 93%  [-2]
 
 --- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
+  Toplam takim: 6621  [+2]
   Coach ile: 6619 (100%)  [+1989]
-  Renkler ile: 5717 (86%)  [+100]
+  Renkler ile: 6619 (100%)  [+1002]
   Kadrolar 2025: 5674 (86%)  [+8]
   Oyuncu (ratingli): 14327  [-117357]
   Toplam oyuncu: 16527  [-123656]
   Rating %: 87%  [-7]
-  ORTALAMA %: 90%  [+6]
+  ORTALAMA %: 93%  [+9]
 
 --- OZET ---
-  Coach: 100% | Renkler: 86% | Kadrolar: 86% | Rating: 87%
-  GENEL TAMAMLANMA: 90%
+  Coach: 100% | Renkler: 100% | Kadrolar: 86% | Rating: 87%
+  GENEL TAMAMLANMA: 93%
   TAHMINI SURE %100'E: ~5.9 saat (sync script calisirsa).
   Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
 ================================================
 
 ========== DB GUNCELLEME RAPORU (5 dk) ==========
-Zaman: 03.03.2026 01:22:44
+Zaman: 03.03.2026 03:18:06
 
-  *** 5 DK ILERLEME: VAR  ***  Renk +30
+  *** 5 DK ILERLEME: VAR  ***  Ratingli oyuncu -117500
 
 --- 5 DK ONCEKI OLCUM vs SIMDI ---
-  Toplam takim: 6619  [degismedi]
+  Toplam takim: 6621  [degismedi]
   Coach ile: 6619 (100%)  [degismedi]
-  Renkler ile: 5676 (86%)  [+30]
+  Renkler ile: 6619 (100%)  [degismedi]
+  Kadrolar 2025: 5674 (86%)  [degismedi]
+  Oyuncu (ratingli): 14327  [-117500]
+  Toplam oyuncu: 16527  [-123799]
+  Rating %: 87%  [-7]
+  ORTALAMA %: 93%  [-2]
+
+--- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
+  Toplam takim: 6621  [+2]
+  Coach ile: 6619 (100%)  [+1989]
+  Renkler ile: 6619 (100%)  [+1002]
+  Kadrolar 2025: 5674 (86%)  [+8]
+  Oyuncu (ratingli): 14327  [-117357]
+  Toplam oyuncu: 16527  [-123656]
+  Rating %: 87%  [-7]
+  ORTALAMA %: 93%  [+9]
+
+--- OZET ---
+  Coach: 100% | Renkler: 100% | Kadrolar: 86% | Rating: 87%
+  GENEL TAMAMLANMA: 93%
+  TAHMINI SURE %100'E: ~5.9 saat (sync script calisirsa).
+  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 03.03.2026 03:18:06
+
+  *** 5 DK ILERLEME: YOK - Script durdurulabilir. Daha net cozum bulunana kadar. ***
+
+--- 5 DK ONCEKI OLCUM vs SIMDI ---
+  Toplam takim: 6621  [degismedi]
+  Coach ile: 6619 (100%)  [degismedi]
+  Renkler ile: 6619 (100%)  [degismedi]
   Kadrolar 2025: 5674 (86%)  [degismedi]
   Oyuncu (ratingli): 131827  [degismedi]
   Toplam oyuncu: 140326  [degismedi]
   Rating %: 94%  [degismedi]
-  ORTALAMA %: 92%  [+1]
+  ORTALAMA %: 95%  [degismedi]
 
 --- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
-  Toplam takim: 6619  [degismedi]
+  Toplam takim: 6621  [+2]
   Coach ile: 6619 (100%)  [+1989]
-  Renkler ile: 5676 (86%)  [+59]
+  Renkler ile: 6619 (100%)  [+1002]
   Kadrolar 2025: 5674 (86%)  [+8]
   Oyuncu (ratingli): 131827  [+143]
   Toplam oyuncu: 140326  [+143]
   Rating %: 94%  [degismedi]
-  ORTALAMA %: 92%  [+8]
+  ORTALAMA %: 95%  [+11]
 
 --- OZET ---
-  Coach: 100% | Renkler: 86% | Kadrolar: 86% | Rating: 94%
-  GENEL TAMAMLANMA: 92%
+  Coach: 100% | Renkler: 100% | Kadrolar: 86% | Rating: 94%
+  GENEL TAMAMLANMA: 95%
+  TAHMINI SURE %100'E: ~21.6 saat (sync script calisirsa).
+  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 03.03.2026 03:23:06
+
+--- 5 DK ONCEKI OLCUM vs SIMDI ---
+  Toplam takim: 6621  [degismedi]
+  Coach ile: 6619 (100%)  [degismedi]
+  Renkler ile: 6619 (100%)  [degismedi]
+  Kadrolar 2025: 5674 (86%)  [degismedi]
+  Oyuncu (ratingli): 14327  [-117500]
+  Toplam oyuncu: 16527  [-123799]
+  Rating %: 87%  [-7]
+  ORTALAMA %: 93%  [-2]
+
+--- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
+  Toplam takim: 6621  [+2]
+  Coach ile: 6619 (100%)  [+1989]
+  Renkler ile: 6619 (100%)  [+1002]
+  Kadrolar 2025: 5674 (86%)  [+8]
+  Oyuncu (ratingli): 14327  [-117357]
+  Toplam oyuncu: 16527  [-123656]
+  Rating %: 87%  [-7]
+  ORTALAMA %: 93%  [+9]
+
+--- OZET ---
+  Coach: 100% | Renkler: 100% | Kadrolar: 86% | Rating: 87%
+  GENEL TAMAMLANMA: 93%
+  TAHMINI SURE %100'E: ~5.9 saat (sync script calisirsa).
+  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 03.03.2026 03:23:06
+
+  *** 5 DK ILERLEME: VAR  ***  Ratingli oyuncu -117500
+
+--- 5 DK ONCEKI OLCUM vs SIMDI ---
+  Toplam takim: 6621  [degismedi]
+  Coach ile: 6619 (100%)  [degismedi]
+  Renkler ile: 6619 (100%)  [degismedi]
+  Kadrolar 2025: 5674 (86%)  [degismedi]
+  Oyuncu (ratingli): 14327  [-117500]
+  Toplam oyuncu: 16527  [-123799]
+  Rating %: 87%  [-7]
+  ORTALAMA %: 93%  [-2]
+
+--- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
+  Toplam takim: 6621  [+2]
+  Coach ile: 6619 (100%)  [+1989]
+  Renkler ile: 6619 (100%)  [+1002]
+  Kadrolar 2025: 5674 (86%)  [+8]
+  Oyuncu (ratingli): 14327  [-117357]
+  Toplam oyuncu: 16527  [-123656]
+  Rating %: 87%  [-7]
+  ORTALAMA %: 93%  [+9]
+
+--- OZET ---
+  Coach: 100% | Renkler: 100% | Kadrolar: 86% | Rating: 87%
+  GENEL TAMAMLANMA: 93%
+  TAHMINI SURE %100'E: ~5.9 saat (sync script calisirsa).
+  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 03.03.2026 03:23:06
+
+--- 5 DK ONCEKI OLCUM vs SIMDI ---
+  Toplam takim: 6621  [degismedi]
+  Coach ile: 6619 (100%)  [degismedi]
+  Renkler ile: 6619 (100%)  [degismedi]
+  Kadrolar 2025: 5674 (86%)  [degismedi]
+  Oyuncu (ratingli): 14327  [-117500]
+  Toplam oyuncu: 16527  [-123799]
+  Rating %: 87%  [-7]
+  ORTALAMA %: 93%  [-2]
+
+--- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
+  Toplam takim: 6621  [+2]
+  Coach ile: 6619 (100%)  [+1989]
+  Renkler ile: 6619 (100%)  [+1002]
+  Kadrolar 2025: 5674 (86%)  [+8]
+  Oyuncu (ratingli): 14327  [-117357]
+  Toplam oyuncu: 16527  [-123656]
+  Rating %: 87%  [-7]
+  ORTALAMA %: 93%  [+9]
+
+--- OZET ---
+  Coach: 100% | Renkler: 100% | Kadrolar: 86% | Rating: 87%
+  GENEL TAMAMLANMA: 93%
+  TAHMINI SURE %100'E: ~5.9 saat (sync script calisirsa).
+  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 03.03.2026 03:23:06
+
+  *** 5 DK ILERLEME: VAR  ***  Ratingli oyuncu -117500
+
+--- 5 DK ONCEKI OLCUM vs SIMDI ---
+  Toplam takim: 6621  [degismedi]
+  Coach ile: 6619 (100%)  [degismedi]
+  Renkler ile: 6619 (100%)  [degismedi]
+  Kadrolar 2025: 5674 (86%)  [degismedi]
+  Oyuncu (ratingli): 14327  [-117500]
+  Toplam oyuncu: 16527  [-123799]
+  Rating %: 87%  [-7]
+  ORTALAMA %: 93%  [-2]
+
+--- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
+  Toplam takim: 6621  [+2]
+  Coach ile: 6619 (100%)  [+1989]
+  Renkler ile: 6619 (100%)  [+1002]
+  Kadrolar 2025: 5674 (86%)  [+8]
+  Oyuncu (ratingli): 14327  [-117357]
+  Toplam oyuncu: 16527  [-123656]
+  Rating %: 87%  [-7]
+  ORTALAMA %: 93%  [+9]
+
+--- OZET ---
+  Coach: 100% | Renkler: 100% | Kadrolar: 86% | Rating: 87%
+  GENEL TAMAMLANMA: 93%
+  TAHMINI SURE %100'E: ~5.9 saat (sync script calisirsa).
+  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 03.03.2026 03:28:06
+
+  *** 5 DK ILERLEME: YOK - Script durdurulabilir. Daha net cozum bulunana kadar. ***
+
+--- 5 DK ONCEKI OLCUM vs SIMDI ---
+  Toplam takim: 6621  [degismedi]
+  Coach ile: 6619 (100%)  [degismedi]
+  Renkler ile: 6619 (100%)  [degismedi]
+  Kadrolar 2025: 5674 (86%)  [degismedi]
+  Oyuncu (ratingli): 14327  [degismedi]
+  Toplam oyuncu: 16527  [degismedi]
+  Rating %: 87%  [degismedi]
+  ORTALAMA %: 93%  [degismedi]
+
+--- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
+  Toplam takim: 6621  [+2]
+  Coach ile: 6619 (100%)  [+1989]
+  Renkler ile: 6619 (100%)  [+1002]
+  Kadrolar 2025: 5674 (86%)  [+8]
+  Oyuncu (ratingli): 14327  [-117357]
+  Toplam oyuncu: 16527  [-123656]
+  Rating %: 87%  [-7]
+  ORTALAMA %: 93%  [+9]
+
+--- OZET ---
+  Coach: 100% | Renkler: 100% | Kadrolar: 86% | Rating: 87%
+  GENEL TAMAMLANMA: 93%
+  TAHMINI SURE %100'E: ~5.9 saat (sync script calisirsa).
+  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 03.03.2026 03:28:06
+
+--- 5 DK ONCEKI OLCUM vs SIMDI ---
+  Toplam takim: 6621  [degismedi]
+  Coach ile: 6619 (100%)  [degismedi]
+  Renkler ile: 6619 (100%)  [degismedi]
+  Kadrolar 2025: 5674 (86%)  [degismedi]
+  Oyuncu (ratingli): 14327  [degismedi]
+  Toplam oyuncu: 16527  [degismedi]
+  Rating %: 87%  [degismedi]
+  ORTALAMA %: 93%  [degismedi]
+
+--- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
+  Toplam takim: 6621  [+2]
+  Coach ile: 6619 (100%)  [+1989]
+  Renkler ile: 6619 (100%)  [+1002]
+  Kadrolar 2025: 5674 (86%)  [+8]
+  Oyuncu (ratingli): 14327  [-117357]
+  Toplam oyuncu: 16527  [-123656]
+  Rating %: 87%  [-7]
+  ORTALAMA %: 93%  [+9]
+
+--- OZET ---
+  Coach: 100% | Renkler: 100% | Kadrolar: 86% | Rating: 87%
+  GENEL TAMAMLANMA: 93%
+  TAHMINI SURE %100'E: ~5.9 saat (sync script calisirsa).
+  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 03.03.2026 03:28:06
+
+--- 5 DK ONCEKI OLCUM vs SIMDI ---
+  Toplam takim: 6621  [degismedi]
+  Coach ile: 6619 (100%)  [degismedi]
+  Renkler ile: 6619 (100%)  [degismedi]
+  Kadrolar 2025: 5674 (86%)  [degismedi]
+  Oyuncu (ratingli): 14327  [degismedi]
+  Toplam oyuncu: 16527  [degismedi]
+  Rating %: 87%  [degismedi]
+  ORTALAMA %: 93%  [degismedi]
+
+--- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
+  Toplam takim: 6621  [+2]
+  Coach ile: 6619 (100%)  [+1989]
+  Renkler ile: 6619 (100%)  [+1002]
+  Kadrolar 2025: 5674 (86%)  [+8]
+  Oyuncu (ratingli): 14327  [-117357]
+  Toplam oyuncu: 16527  [-123656]
+  Rating %: 87%  [-7]
+  ORTALAMA %: 93%  [+9]
+
+--- OZET ---
+  Coach: 100% | Renkler: 100% | Kadrolar: 86% | Rating: 87%
+  GENEL TAMAMLANMA: 93%
+  TAHMINI SURE %100'E: ~5.9 saat (sync script calisirsa).
+  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 03.03.2026 03:28:06
+
+  *** 5 DK ILERLEME: YOK - Script durdurulabilir. Daha net cozum bulunana kadar. ***
+
+--- 5 DK ONCEKI OLCUM vs SIMDI ---
+  Toplam takim: 6621  [degismedi]
+  Coach ile: 6619 (100%)  [degismedi]
+  Renkler ile: 6619 (100%)  [degismedi]
+  Kadrolar 2025: 5674 (86%)  [degismedi]
+  Oyuncu (ratingli): 14327  [degismedi]
+  Toplam oyuncu: 16527  [degismedi]
+  Rating %: 87%  [degismedi]
+  ORTALAMA %: 93%  [degismedi]
+
+--- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
+  Toplam takim: 6621  [+2]
+  Coach ile: 6619 (100%)  [+1989]
+  Renkler ile: 6619 (100%)  [+1002]
+  Kadrolar 2025: 5674 (86%)  [+8]
+  Oyuncu (ratingli): 14327  [-117357]
+  Toplam oyuncu: 16527  [-123656]
+  Rating %: 87%  [-7]
+  ORTALAMA %: 93%  [+9]
+
+--- OZET ---
+  Coach: 100% | Renkler: 100% | Kadrolar: 86% | Rating: 87%
+  GENEL TAMAMLANMA: 93%
+  TAHMINI SURE %100'E: ~5.9 saat (sync script calisirsa).
+  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 03.03.2026 03:33:06
+
+  *** 5 DK ILERLEME: VAR  ***  Ratingli oyuncu +12540
+
+--- 5 DK ONCEKI OLCUM vs SIMDI ---
+  Toplam takim: 6621  [degismedi]
+  Coach ile: 6619 (100%)  [degismedi]
+  Renkler ile: 6619 (100%)  [degismedi]
+  Kadrolar 2025: 5674 (86%)  [degismedi]
+  Oyuncu (ratingli): 26867  [+12540]
+  Toplam oyuncu: 31282  [+14755]
+  Rating %: 86%  [-1]
+  ORTALAMA %: 93%  [degismedi]
+
+--- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
+  Toplam takim: 6621  [+2]
+  Coach ile: 6619 (100%)  [+1989]
+  Renkler ile: 6619 (100%)  [+1002]
+  Kadrolar 2025: 5674 (86%)  [+8]
+  Oyuncu (ratingli): 26867  [-104817]
+  Toplam oyuncu: 31282  [-108901]
+  Rating %: 86%  [-8]
+  ORTALAMA %: 93%  [+9]
+
+--- OZET ---
+  Coach: 100% | Renkler: 100% | Kadrolar: 86% | Rating: 86%
+  GENEL TAMAMLANMA: 93%
+  TAHMINI SURE %100'E: ~11.4 saat (sync script calisirsa).
+  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 03.03.2026 03:33:06
+
+  *** 5 DK ILERLEME: VAR  ***  Ratingli oyuncu +12540
+
+--- 5 DK ONCEKI OLCUM vs SIMDI ---
+  Toplam takim: 6621  [degismedi]
+  Coach ile: 6619 (100%)  [degismedi]
+  Renkler ile: 6619 (100%)  [degismedi]
+  Kadrolar 2025: 5674 (86%)  [degismedi]
+  Oyuncu (ratingli): 26867  [+12540]
+  Toplam oyuncu: 31282  [+14755]
+  Rating %: 86%  [-1]
+  ORTALAMA %: 93%  [degismedi]
+
+--- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
+  Toplam takim: 6621  [+2]
+  Coach ile: 6619 (100%)  [+1989]
+  Renkler ile: 6619 (100%)  [+1002]
+  Kadrolar 2025: 5674 (86%)  [+8]
+  Oyuncu (ratingli): 26867  [-104817]
+  Toplam oyuncu: 31282  [-108901]
+  Rating %: 86%  [-8]
+  ORTALAMA %: 93%  [+9]
+
+--- OZET ---
+  Coach: 100% | Renkler: 100% | Kadrolar: 86% | Rating: 86%
+  GENEL TAMAMLANMA: 93%
+  TAHMINI SURE %100'E: ~11.4 saat (sync script calisirsa).
+  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 03.03.2026 03:33:06
+
+--- 5 DK ONCEKI OLCUM vs SIMDI ---
+  Toplam takim: 6621  [degismedi]
+  Coach ile: 6619 (100%)  [degismedi]
+  Renkler ile: 6619 (100%)  [degismedi]
+  Kadrolar 2025: 5674 (86%)  [degismedi]
+  Oyuncu (ratingli): 131827  [+117500]
+  Toplam oyuncu: 140326  [+123799]
+  Rating %: 94%  [+7]
+  ORTALAMA %: 95%  [+2]
+
+--- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
+  Toplam takim: 6621  [+2]
+  Coach ile: 6619 (100%)  [+1989]
+  Renkler ile: 6619 (100%)  [+1002]
+  Kadrolar 2025: 5674 (86%)  [+8]
+  Oyuncu (ratingli): 131827  [+143]
+  Toplam oyuncu: 140326  [+143]
+  Rating %: 94%  [degismedi]
+  ORTALAMA %: 95%  [+11]
+
+--- OZET ---
+  Coach: 100% | Renkler: 100% | Kadrolar: 86% | Rating: 94%
+  GENEL TAMAMLANMA: 95%
+  TAHMINI SURE %100'E: ~21.6 saat (sync script calisirsa).
+  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 03.03.2026 03:33:06
+
+--- 5 DK ONCEKI OLCUM vs SIMDI ---
+  Toplam takim: 6621  [degismedi]
+  Coach ile: 6619 (100%)  [degismedi]
+  Renkler ile: 6619 (100%)  [degismedi]
+  Kadrolar 2025: 5674 (86%)  [degismedi]
+  Oyuncu (ratingli): 131827  [+117500]
+  Toplam oyuncu: 140326  [+123799]
+  Rating %: 94%  [+7]
+  ORTALAMA %: 95%  [+2]
+
+--- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
+  Toplam takim: 6621  [+2]
+  Coach ile: 6619 (100%)  [+1989]
+  Renkler ile: 6619 (100%)  [+1002]
+  Kadrolar 2025: 5674 (86%)  [+8]
+  Oyuncu (ratingli): 131827  [+143]
+  Toplam oyuncu: 140326  [+143]
+  Rating %: 94%  [degismedi]
+  ORTALAMA %: 95%  [+11]
+
+--- OZET ---
+  Coach: 100% | Renkler: 100% | Kadrolar: 86% | Rating: 94%
+  GENEL TAMAMLANMA: 95%
+  TAHMINI SURE %100'E: ~21.6 saat (sync script calisirsa).
+  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 03.03.2026 03:38:06
+
+--- 5 DK ONCEKI OLCUM vs SIMDI ---
+  Toplam takim: 6621  [degismedi]
+  Coach ile: 6619 (100%)  [degismedi]
+  Renkler ile: 6619 (100%)  [degismedi]
+  Kadrolar 2025: 5674 (86%)  [degismedi]
+  Oyuncu (ratingli): 0  [-131827]
+  Toplam oyuncu: 0  [-140326]
+  Rating %: 0%  [-94]
+  ORTALAMA %: 72%  [-23]
+
+--- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
+  Toplam takim: 6621  [+2]
+  Coach ile: 6619 (100%)  [+1989]
+  Renkler ile: 6619 (100%)  [+1002]
+  Kadrolar 2025: 5674 (86%)  [+8]
+  Oyuncu (ratingli): 0  [-131684]
+  Toplam oyuncu: 0  [-140183]
+  Rating %: 0%  [-94]
+  ORTALAMA %: 72%  [-12]
+
+--- OZET ---
+  Coach: 100% | Renkler: 100% | Kadrolar: 86% | Rating: 0%
+  GENEL TAMAMLANMA: 72%
+  TAHMINI SURE %100'E: ~0.4 saat (sync script calisirsa).
+  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 03.03.2026 03:38:06
+
+  *** 5 DK ILERLEME: YOK - Script durdurulabilir. Daha net cozum bulunana kadar. ***
+
+--- 5 DK ONCEKI OLCUM vs SIMDI ---
+  Toplam takim: 6621  [degismedi]
+  Coach ile: 6619 (100%)  [degismedi]
+  Renkler ile: 6619 (100%)  [degismedi]
+  Kadrolar 2025: 5674 (86%)  [degismedi]
+  Oyuncu (ratingli): 131827  [degismedi]
+  Toplam oyuncu: 140326  [degismedi]
+  Rating %: 94%  [degismedi]
+  ORTALAMA %: 95%  [degismedi]
+
+--- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
+  Toplam takim: 6621  [+2]
+  Coach ile: 6619 (100%)  [+1989]
+  Renkler ile: 6619 (100%)  [+1002]
+  Kadrolar 2025: 5674 (86%)  [+8]
+  Oyuncu (ratingli): 131827  [+143]
+  Toplam oyuncu: 140326  [+143]
+  Rating %: 94%  [degismedi]
+  ORTALAMA %: 95%  [+11]
+
+--- OZET ---
+  Coach: 100% | Renkler: 100% | Kadrolar: 86% | Rating: 94%
+  GENEL TAMAMLANMA: 95%
+  TAHMINI SURE %100'E: ~21.6 saat (sync script calisirsa).
+  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 03.03.2026 03:38:06
+
+  *** 5 DK ILERLEME: YOK - Script durdurulabilir. Daha net cozum bulunana kadar. ***
+
+--- 5 DK ONCEKI OLCUM vs SIMDI ---
+  Toplam takim: 6621  [degismedi]
+  Coach ile: 6619 (100%)  [degismedi]
+  Renkler ile: 6619 (100%)  [degismedi]
+  Kadrolar 2025: 5674 (86%)  [degismedi]
+  Oyuncu (ratingli): 131827  [degismedi]
+  Toplam oyuncu: 140326  [degismedi]
+  Rating %: 94%  [degismedi]
+  ORTALAMA %: 95%  [degismedi]
+
+--- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
+  Toplam takim: 6621  [+2]
+  Coach ile: 6619 (100%)  [+1989]
+  Renkler ile: 6619 (100%)  [+1002]
+  Kadrolar 2025: 5674 (86%)  [+8]
+  Oyuncu (ratingli): 131827  [+143]
+  Toplam oyuncu: 140326  [+143]
+  Rating %: 94%  [degismedi]
+  ORTALAMA %: 95%  [+11]
+
+--- OZET ---
+  Coach: 100% | Renkler: 100% | Kadrolar: 86% | Rating: 94%
+  GENEL TAMAMLANMA: 95%
+  TAHMINI SURE %100'E: ~21.6 saat (sync script calisirsa).
+  Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
+================================================
+
+========== DB GUNCELLEME RAPORU (5 dk) ==========
+Zaman: 03.03.2026 03:38:06
+
+--- 5 DK ONCEKI OLCUM vs SIMDI ---
+  Toplam takim: 6621  [degismedi]
+  Coach ile: 6619 (100%)  [degismedi]
+  Renkler ile: 6619 (100%)  [degismedi]
+  Kadrolar 2025: 5674 (86%)  [degismedi]
+  Oyuncu (ratingli): 131827  [degismedi]
+  Toplam oyuncu: 140326  [degismedi]
+  Rating %: 94%  [degismedi]
+  ORTALAMA %: 95%  [degismedi]
+
+--- BASELINE (03.03.2026) ile KARSILASTIRMA - Gunluk ilerleme ---
+  Toplam takim: 6621  [+2]
+  Coach ile: 6619 (100%)  [+1989]
+  Renkler ile: 6619 (100%)  [+1002]
+  Kadrolar 2025: 5674 (86%)  [+8]
+  Oyuncu (ratingli): 131827  [+143]
+  Toplam oyuncu: 140326  [+143]
+  Rating %: 94%  [degismedi]
+  ORTALAMA %: 95%  [+11]
+
+--- OZET ---
+  Coach: 100% | Renkler: 100% | Kadrolar: 86% | Rating: 94%
+  GENEL TAMAMLANMA: 95%
   TAHMINI SURE %100'E: ~21.6 saat (sync script calisirsa).
   Not: Ilerleme icin run-db-sync-and-report.js veya run-phased-db-complete.js calismali.
 ================================================
