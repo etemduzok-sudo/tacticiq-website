@@ -34,7 +34,7 @@ import { predictionsDb } from '../../services/databaseService';
 import { ConfirmModal, ConfirmButton } from '../ui/ConfirmModal';
 import { ANALYSIS_FOCUSES, type AnalysisFocusType } from '../AnalysisFocusModal';
 import { FOCUS_CATEGORY_MAPPING, doesFocusIncludePlayerPredictions } from '../../constants/predictionConstants';
-import { isMockTestMatch, MOCK_MATCH_IDS, getMatch1Start, getMatch2Start, getMockUserTeamId, getMockCommunitySignals, getMockLineup } from '../../data/mockTestData';
+import { isMockTestMatch, MOCK_MATCH_IDS, getMatch1Start, getMatch2Start, getMockUserTeamId, getMockCommunitySignals, getMockLineup, getMockCommunityDataForLivePitch } from '../../data/mockTestData';
 import { formatPlayerDisplayName } from '../../utils/playerNameUtils';
 import PlayerPredictionModal from './PlayerPredictionModal';
 import { 
@@ -3256,7 +3256,7 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                         ];
                         return threeFieldData.actualSquad.players.slice(0, 11).map((player: any, index: number) => {
                           const pos = positions[index] || { x: 50, y: 50 };
-                          const community = communityPredictions[player.id];
+                          const community = communityPredictions[player.id] ?? (matchIdNum != null && isMockTestMatch(matchIdNum) ? getMockCommunityDataForLivePitch(player) : undefined);
                           const totalVotes = community ? Math.max(1, community.totalPredictions) : 0;
                           const reactionPcts = community ? [
                             Math.round((community.goal + community.assist) / totalVotes * 50),
@@ -3270,16 +3270,19 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                           const hasAnyIcons = reactionPcts.some((p) => p > 10);
                           const playerReaction = normalizeLiveReaction(liveReactions[player.id]);
                           const userVoted = hasAnyReaction(playerReaction);
-                          const ICON_SIZE = 18; const CARD_ICON_W = 10; const CARD_ICON_H = 14; // %25 büyük (14->18, 8x10->10x14)
-                          const BADGE_SIZE = 25;
-                          const BADGE_INSET = 0;
-                          const BADGE_TOP_INSET = 3; // Üst rozetler: ortaya doğru 2-3px
-                          const BADGE_TOP = -13;   // Üst rozet: kartın üstüne taşar
-                          // Alt 3 rozet: sarı/kırmızı 2px yukarı, maçın adamı 3px daha yukarı ve %10 büyük
-                          const BADGE_BOTTOM = -21;      // Sarı ve kırmızı kart
-                          const BADGE_BOTTOM_MOTM = -16; // Maçın adamı — 3px daha yukarı
-                          const BADGE_SIZE_MOTM = 28;    // Maçın adamı rozeti %10 büyük (25→28)
-                          const BADGE_BOTTOM_INSET = 0;  // Sarı sol kenar, kırmızı sağ kenar
+                          const CARD_ICON_W = 10; const CARD_ICON_H = 14;
+                          const BADGE_SIZE = 22;       // Kullanıcı rozeti
+                          const BADGE_SIZE_COMM = 18;   // Topluluk rozeti (daha küçük, çakışma olmasın)
+                          const BADGE_TOP = -14;
+                          const BADGE_BOTTOM = -18;
+                          const BADGE_BOTTOM_MOTM = -14;
+                          const BADGE_SIZE_MOTM = 24;
+                          const ROW_GAP = 4;   // Topluluk satırı ile kullanıcı satırı arası (dikey)
+                          const ICON_GAP = 2;  // Aynı satırdaki ikonlar arası
+                          const hasRow1 = hasAnyIcons && (showIcon(0) || showIcon(1)) || playerReaction.row1;
+                          const hasRow2 = hasAnyIcons && (showIcon(2) || showIcon(5)) || playerReaction.row2;
+                          const hasBottomLeft = (hasAnyIcons && showIcon(3)) || playerReaction.row3 === 'yellowcard';
+                          const hasBottomRight = (hasAnyIcons && showIcon(4)) || playerReaction.row3 === 'redcard';
                           return (
                             <View
                               key={`actual-field-${player.id}-${index}`}
@@ -3290,78 +3293,90 @@ export const MatchPrediction: React.FC<MatchPredictionScreenProps> = ({
                                   <Ionicons name="person-add" size={10} color="#fff" />
                                 </View>
                               )}
-                              {/* Üst sol: Çok İyi/Kötü — üst sağ: Gol Atar/Çıkmalı (ortaya 3px) */}
-                              {hasAnyIcons && (
-                                <>
-                                  <View style={{ position: 'absolute', top: BADGE_TOP, left: BADGE_TOP_INSET, flexDirection: 'row', gap: 2, alignItems: 'center', zIndex: 11 }}>
-                                    {LIVE_REACTION_ICONS.slice(0, 2).map((r, i) => (
-                                      showIcon(i) ? (
-                                        <View key={r.key} style={[styles.liveReactionBadgeOuter, { width: BADGE_SIZE, height: BADGE_SIZE, borderRadius: BADGE_SIZE/2, zIndex: 11, borderColor: r.key === 'good' ? '#10B981' : '#EF4444' }]}>
-                                          {r.isCard ? <View style={{ width: CARD_ICON_W-2, height: CARD_ICON_H-2, borderRadius: 2, backgroundColor: r.color }} /> : <Text style={{ fontSize: 13 }}>{r.icon}</Text>}
+                              {/* Üst sol: 1. satır = topluluk (Çok İyi/Kötü), 2. satır = kullanıcı — dikey, çakışma yok */}
+                              {hasRow1 && (
+                                <View style={{ position: 'absolute', top: BADGE_TOP, left: 0, flexDirection: 'column', alignItems: 'flex-start', gap: ROW_GAP, zIndex: 12 }}>
+                                  {(showIcon(0) || showIcon(1)) && (
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: ICON_GAP }}>
+                                      {showIcon(0) && (
+                                        <View style={[styles.liveReactionBadgeOuter, { width: BADGE_SIZE_COMM, height: BADGE_SIZE_COMM, borderRadius: BADGE_SIZE_COMM/2, borderColor: '#10B981' }]}>
+                                          <Text style={{ fontSize: 10 }}>🔥</Text>
                                         </View>
-                                      ) : null
-                                    ))}
-                                  </View>
-                                  <View style={{ position: 'absolute', top: BADGE_TOP, right: BADGE_TOP_INSET, flexDirection: 'row', gap: 2, alignItems: 'center', zIndex: 11 }}>
-                                    {[LIVE_REACTION_ICONS[2], LIVE_REACTION_ICONS[5]].map((r, i) => (
-                                      showIcon(i === 0 ? 2 : 5) ? (
-                                        <View key={r.key} style={[styles.liveReactionBadgeOuter, { width: BADGE_SIZE, height: BADGE_SIZE, borderRadius: BADGE_SIZE/2, zIndex: 11, borderColor: r.key === 'goal' ? '#3B82F6' : '#8B5CF6' }]}>
-                                          {r.isCard ? <View style={{ width: CARD_ICON_W-2, height: CARD_ICON_H-2, borderRadius: 2, backgroundColor: r.color }} /> : <Text style={{ fontSize: 13 }}>{r.icon}</Text>}
+                                      )}
+                                      {showIcon(1) && (
+                                        <View style={[styles.liveReactionBadgeOuter, { width: BADGE_SIZE_COMM, height: BADGE_SIZE_COMM, borderRadius: BADGE_SIZE_COMM/2, borderColor: '#EF4444' }]}>
+                                          <Text style={{ fontSize: 10 }}>👎</Text>
                                         </View>
-                                      ) : null
-                                    ))}
-                                  </View>
-                                  {/* Alt 3 alan: sol = Sarı Kart, orta = Maçın adamı, sağ = Kırmızı Kart — aynı hizada, simetrik */}
+                                      )}
+                                    </View>
+                                  )}
+                                  {playerReaction.row1 && (
+                                    <View style={[styles.liveReactionBadgeOuter, { width: BADGE_SIZE, height: BADGE_SIZE, borderRadius: BADGE_SIZE/2, borderColor: playerReaction.row1 === 'good' ? '#10B981' : '#EF4444' }]}>
+                                      {playerReaction.row1 === 'good' ? <Text style={{ fontSize: 11 }}>🔥</Text> : <Text style={{ fontSize: 11 }}>👎</Text>}
+                                    </View>
+                                  )}
+                                </View>
+                              )}
+                              {/* Üst sağ: 1. satır = topluluk (Gol/Çıkar), 2. satır = kullanıcı — dikey */}
+                              {hasRow2 && (
+                                <View style={{ position: 'absolute', top: BADGE_TOP, right: 0, flexDirection: 'column', alignItems: 'flex-end', gap: ROW_GAP, zIndex: 12 }}>
+                                  {(showIcon(2) || showIcon(5)) && (
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: ICON_GAP }}>
+                                      {showIcon(2) && (
+                                        <View style={[styles.liveReactionBadgeOuter, { width: BADGE_SIZE_COMM, height: BADGE_SIZE_COMM, borderRadius: BADGE_SIZE_COMM/2, borderColor: '#3B82F6' }]}>
+                                          <Text style={{ fontSize: 10 }}>⚽</Text>
+                                        </View>
+                                      )}
+                                      {showIcon(5) && (
+                                        <View style={[styles.liveReactionBadgeOuter, { width: BADGE_SIZE_COMM, height: BADGE_SIZE_COMM, borderRadius: BADGE_SIZE_COMM/2, borderColor: '#8B5CF6' }]}>
+                                          <Text style={{ fontSize: 9 }}>🔄</Text>
+                                        </View>
+                                      )}
+                                    </View>
+                                  )}
+                                  {playerReaction.row2 && (
+                                    <View style={[styles.liveReactionBadgeOuter, { width: BADGE_SIZE, height: BADGE_SIZE, borderRadius: BADGE_SIZE/2, borderColor: playerReaction.row2 === 'goal' ? '#3B82F6' : '#8B5CF6' }]}>
+                                      {playerReaction.row2 === 'goal' ? <Text style={{ fontSize: 11 }}>⚽</Text> : <Text style={{ fontSize: 10 }}>🔄</Text>}
+                                    </View>
+                                  )}
+                                </View>
+                              )}
+                              {/* Alt sol: 1. satır = topluluk sarı, 2. satır = kullanıcı sarı — dikey */}
+                              {hasBottomLeft && (
+                                <View style={{ position: 'absolute', bottom: BADGE_BOTTOM, left: 0, flexDirection: 'column', alignItems: 'flex-start', gap: ROW_GAP, zIndex: 12 }}>
                                   {showIcon(3) && (
-                                    <View style={{ position: 'absolute', bottom: BADGE_BOTTOM, left: BADGE_BOTTOM_INSET, width: BADGE_SIZE, height: BADGE_SIZE, alignItems: 'center', justifyContent: 'center', zIndex: 11 }}>
-                                      <View style={[styles.liveReactionBadgeOuter, { width: BADGE_SIZE, height: BADGE_SIZE, borderRadius: BADGE_SIZE/2, zIndex: 11, borderColor: '#FBBF24', position: 'relative', top: 0, left: 0 }]}>
-                                        <View style={{ width: CARD_ICON_W, height: CARD_ICON_H, borderRadius: 2, backgroundColor: '#FBBF24' }} />
-                                      </View>
+                                    <View style={[styles.liveReactionBadgeOuter, { width: BADGE_SIZE_COMM, height: BADGE_SIZE_COMM, borderRadius: BADGE_SIZE_COMM/2, borderColor: '#FBBF24', justifyContent: 'center', alignItems: 'center' }]}>
+                                      <View style={{ width: 7, height: 10, borderRadius: 2, backgroundColor: '#FBBF24' }} />
                                     </View>
                                   )}
-                                  <View style={{ position: 'absolute', bottom: BADGE_BOTTOM_MOTM, left: '50%', marginLeft: -BADGE_SIZE_MOTM/2, width: BADGE_SIZE_MOTM, height: BADGE_SIZE_MOTM, alignItems: 'center', justifyContent: 'center', zIndex: 11 }} />
-                                  {showIcon(4) && (
-                                    <View style={{ position: 'absolute', bottom: BADGE_BOTTOM, right: BADGE_BOTTOM_INSET, width: BADGE_SIZE, height: BADGE_SIZE, alignItems: 'center', justifyContent: 'center', zIndex: 11 }}>
-                                      <View style={[styles.liveReactionBadgeOuter, { width: BADGE_SIZE, height: BADGE_SIZE, borderRadius: BADGE_SIZE/2, zIndex: 11, borderColor: '#DC2626', position: 'relative', top: 0, left: 0 }]}>
-                                        <View style={{ width: CARD_ICON_W, height: CARD_ICON_H, borderRadius: 2, backgroundColor: '#DC2626' }} />
-                                      </View>
+                                  {playerReaction.row3 === 'yellowcard' && (
+                                    <View style={[styles.liveReactionBadgeOuter, { width: BADGE_SIZE, height: BADGE_SIZE, borderRadius: BADGE_SIZE/2, borderColor: '#FBBF24', justifyContent: 'center', alignItems: 'center' }]}>
+                                      <View style={{ width: CARD_ICON_W, height: CARD_ICON_H, borderRadius: 2, backgroundColor: '#FBBF24' }} />
                                     </View>
                                   )}
-                                </>
-                              )}
-                              {/* Kullanıcı seçimleri: üst rozetler ortaya 3px */}
-                              {playerReaction.row1 && (
-                                <View style={[styles.liveReactionBadgeOuter, { width: BADGE_SIZE, height: BADGE_SIZE, borderRadius: BADGE_SIZE/2, zIndex: 12, top: BADGE_TOP, left: BADGE_TOP_INSET, borderColor: playerReaction.row1 === 'good' ? '#10B981' : '#EF4444' }]}>
-                                  {playerReaction.row1 === 'good' ? <Text style={{ fontSize: 13 }}>🔥</Text> : <Text style={{ fontSize: 13 }}>👎</Text>}
                                 </View>
                               )}
-                              {playerReaction.row2 && (
-                                <View style={{ position: 'absolute', top: BADGE_TOP, right: BADGE_TOP_INSET, width: BADGE_SIZE, height: BADGE_SIZE, zIndex: 12, alignItems: 'center', justifyContent: 'center' }}>
-                                  <View style={[styles.liveReactionBadgeOuter, { width: BADGE_SIZE, height: BADGE_SIZE, borderRadius: BADGE_SIZE/2, borderColor: playerReaction.row2 === 'goal' ? '#3B82F6' : '#8B5CF6', position: 'relative', top: 0, left: 0 }]}>
-                                    {playerReaction.row2 === 'goal' ? <Text style={{ fontSize: 13 }}>⚽</Text> : <Text style={{ fontSize: 12 }}>🔄</Text>}
-                                  </View>
-                                </View>
-                              )}
-                              {/* Alt 3 rozet: sarı sol, maçın adamı orta, kırmızı sağ — aynı hizada, simetrik */}
-                              {playerReaction.row3 === 'yellowcard' && (
-                                <View style={{ position: 'absolute', bottom: BADGE_BOTTOM, left: BADGE_BOTTOM_INSET, width: BADGE_SIZE, height: BADGE_SIZE, alignItems: 'center', justifyContent: 'center', zIndex: 12 }}>
-                                  <View style={[styles.liveReactionBadgeOuter, { width: BADGE_SIZE, height: BADGE_SIZE, borderRadius: BADGE_SIZE/2, borderColor: '#FBBF24', position: 'relative', top: 0, left: 0 }]}>
-                                    <View style={{ width: CARD_ICON_W, height: CARD_ICON_H, borderRadius: 2, backgroundColor: '#FBBF24' }} />
-                                  </View>
-                                </View>
-                              )}
+                              {/* Alt orta: Sadece kullanıcı Maçın adamı */}
                               {playerReaction.row4 === 'motm' && (
                                 <Animated.View style={{ position: 'absolute', bottom: BADGE_BOTTOM_MOTM, left: '50%', marginLeft: -BADGE_SIZE_MOTM/2, width: BADGE_SIZE_MOTM, height: BADGE_SIZE_MOTM, alignItems: 'center', justifyContent: 'center', zIndex: 14, transform: [{ scale: motmScaleAnim }] }}>
-                                  <View style={[styles.liveReactionBadgeOuter, { width: BADGE_SIZE_MOTM, height: BADGE_SIZE_MOTM, borderRadius: BADGE_SIZE_MOTM/2, borderColor: '#EAB308', position: 'relative', top: 0, left: 0 }]}>
-                                    <Ionicons name="star" size={15} color="#EAB308" />
+                                  <View style={[styles.liveReactionBadgeOuter, { width: BADGE_SIZE_MOTM, height: BADGE_SIZE_MOTM, borderRadius: BADGE_SIZE_MOTM/2, borderColor: '#EAB308' }]}>
+                                    <Ionicons name="star" size={13} color="#EAB308" />
                                   </View>
                                 </Animated.View>
                               )}
-                              {playerReaction.row3 === 'redcard' && (
-                                <View style={{ position: 'absolute', bottom: BADGE_BOTTOM, right: BADGE_BOTTOM_INSET, width: BADGE_SIZE, height: BADGE_SIZE, alignItems: 'center', justifyContent: 'center', zIndex: 12 }}>
-                                  <View style={[styles.liveReactionBadgeOuter, { width: BADGE_SIZE, height: BADGE_SIZE, borderRadius: BADGE_SIZE/2, borderColor: '#DC2626', position: 'relative', top: 0, left: 0 }]}>
-                                    <View style={{ width: CARD_ICON_W, height: CARD_ICON_H, borderRadius: 2, backgroundColor: '#DC2626' }} />
-                                  </View>
+                              {/* Alt sağ: 1. satır = topluluk kırmızı, 2. satır = kullanıcı kırmızı — dikey */}
+                              {hasBottomRight && (
+                                <View style={{ position: 'absolute', bottom: BADGE_BOTTOM, right: 0, flexDirection: 'column', alignItems: 'flex-end', gap: ROW_GAP, zIndex: 12 }}>
+                                  {showIcon(4) && (
+                                    <View style={[styles.liveReactionBadgeOuter, { width: BADGE_SIZE_COMM, height: BADGE_SIZE_COMM, borderRadius: BADGE_SIZE_COMM/2, borderColor: '#DC2626', justifyContent: 'center', alignItems: 'center' }]}>
+                                      <View style={{ width: 7, height: 10, borderRadius: 2, backgroundColor: '#DC2626' }} />
+                                    </View>
+                                  )}
+                                  {playerReaction.row3 === 'redcard' && (
+                                    <View style={[styles.liveReactionBadgeOuter, { width: BADGE_SIZE, height: BADGE_SIZE, borderRadius: BADGE_SIZE/2, borderColor: '#DC2626', justifyContent: 'center', alignItems: 'center' }]}>
+                                      <View style={{ width: CARD_ICON_W, height: CARD_ICON_H, borderRadius: 2, backgroundColor: '#DC2626' }} />
+                                    </View>
+                                  )}
                                 </View>
                               )}
                               <View style={{ position: 'relative' }}>

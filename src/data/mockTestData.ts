@@ -4,10 +4,10 @@
  */
 
 /** Mock maç kapalı: 75K API kotası 50K DB güncelleme + 25K canlı maç testi için kullanılacak. */
-export const MOCK_TEST_ENABLED = false;
+export const MOCK_TEST_ENABLED = true;
 
 /** Canlı maç senaryosu: true iken mock maç "şu an oynanıyor" (1H, dakika ilerliyor) olarak gösterilir. */
-export const MOCK_MATCH_SIMULATE_LIVE = false;
+export const MOCK_MATCH_SIMULATE_LIVE = true;
 
 /** Mock canlı maç 999999: Dashboard canlı listesinde gösterilir; topluluk verileri var, kullanıcı tahmini yok. */
 export const MOCK_LIVE_999999_ENABLED = true;
@@ -138,6 +138,67 @@ export function getMockCommunitySignals(matchId: number): any {
       102: { goal: 18, assist: 22, yellowCard: 8, redCard: 1, substitutedOut: 12, totalPredictions: 100 },
       103: { goal: 8, assist: 5, yellowCard: 25, redCard: 2, substitutedOut: 45, totalPredictions: 100 },
     },
+  };
+}
+
+/**
+ * Canlı saha (Gerçek kadro) üzerinde topluluk değerlendirme ikonlarını göstermek için mock veri.
+ * Sayılar (count) formatında; yüzde >10 çıkacak şekilde (gol atar, oyundan çıkar, sarı/kırmızı kart).
+ */
+export function getMockCommunityDataForLivePitch(player: { id?: number; position?: string; pos?: string }): {
+  goal: number;
+  assist: number;
+  yellowCard: number;
+  redCard: number;
+  penalty: number;
+  substitutedOut: number;
+  injuredOut: number;
+  totalPredictions: number;
+} {
+  const id = Number(player?.id) ?? 0;
+  const pos = (player?.position || player?.pos || '').toUpperCase();
+  const seed = id % 11;
+  const total = 100;
+  const isGK = pos === 'GK' || pos === 'G';
+  const isDef = /D|CB|LB|RB/.test(pos);
+  const isMid = /M|CM|CDM|CAM/.test(pos);
+  if (isGK) {
+    return { goal: 2, assist: 1, yellowCard: 8, redCard: 1, penalty: 12, substitutedOut: 6, injuredOut: 2, totalPredictions: total };
+  }
+  if (isDef) {
+    return {
+      goal: 6 + seed,
+      assist: 10 + seed,
+      yellowCard: 18 + (seed % 10),
+      redCard: 1 + (seed % 3),
+      penalty: 4,
+      substitutedOut: 14 + (seed % 8),
+      injuredOut: 2,
+      totalPredictions: total,
+    };
+  }
+  if (isMid) {
+    return {
+      goal: 20 + (seed % 15),
+      assist: 28 + (seed % 10),
+      yellowCard: 12 + (seed % 8),
+      redCard: 1,
+      penalty: 8 + (seed % 5),
+      substitutedOut: 22 + (seed % 12),
+      injuredOut: 3,
+      totalPredictions: total,
+    };
+  }
+  // Forvet
+  return {
+    goal: 38 + (seed % 12),
+    assist: 22 + (seed % 8),
+    yellowCard: 10 + (seed % 6),
+    redCard: 2,
+    penalty: 18 + (seed % 7),
+    substitutedOut: 18 + (seed % 10),
+    injuredOut: 1,
+    totalPredictions: total,
   };
 }
 
