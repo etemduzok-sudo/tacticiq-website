@@ -7,6 +7,8 @@
     "start": "node server.js",
     "dev": "nodemon server.js",
     "db:report": "node scripts/db-status-report-every-5min.js",
+    "db:report:watch": "powershell -ExecutionPolicy Bypass -File scripts/show-db-report-every-5min.ps1",
+    "db:rating-only": "node scripts/update-all-player-ratings.js --api",
     "db:phased": "node scripts/run-phased-db-complete.js --delay=350",
     "db:colors-only": "node scripts/run-colors-only-fast.js",
     "db:sync-after-03turkey": "node scripts/run-at-03-turkey-then-sync.js",

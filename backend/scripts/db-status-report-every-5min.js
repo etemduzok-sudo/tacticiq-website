@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * DB güncelleme raporu - 5 dakikada bir çalışır, önceki raporla karşılaştırmalı yazar.
+ * DB güncelleme raporu - 1 dakikada bir çalışır, önceki raporla karşılaştırmalı yazar.
  * Çıktı: konsol + backend/data/db-status-report.txt (yeni blok eklenir, son MAX_REPORT_BLOCKS blok tutulur)
  * Kullanım: node scripts/db-status-report-every-5min.js
  */
@@ -22,7 +22,7 @@ const LAST_SNAPSHOT_FILE = path.join(__dirname, '..', 'data', 'db-status-last.js
 const BASELINE_FILE = path.join(__dirname, '..', 'data', 'db-status-baseline.json');
 const API_USAGE_FILE = path.join(__dirname, '..', 'data', 'api-usage-now.json');
 const API_USAGE_SERVER_FILE = path.join(__dirname, '..', 'data', 'api-usage-from-server.json');
-const INTERVAL_MS = 5 * 60 * 1000; // 5 dakika
+const INTERVAL_MS = 1 * 60 * 1000; // 1 dakika (rating artışını takip için)
 const MAX_REPORT_BLOCKS = 100;     // Son 100 blok (~8 saat) tutulur
 
 function ensureDataDir() {
@@ -87,7 +87,7 @@ function estimateHoursTo100(stats) {
 
 function appendReportBlock(newBlockText) {
   ensureDataDir();
-  const separator = '========== DB GUNCELLEME RAPORU (5 dk) ==========';
+  const separator = '========== DB GUNCELLEME RAPORU (1 dk) ==========';
   let existing = '';
   if (fs.existsSync(REPORT_FILE)) {
     existing = fs.readFileSync(REPORT_FILE, 'utf8');
@@ -117,9 +117,9 @@ async function fetchStats() {
   const withColors = r3.count ?? 0;
   const squads2025 = r4.count ?? 0;
 
-  // Rating: tum kadrolar uzerinden sayim. Cursor tabanli sayfalama (Supabase istek basina ~1000 satir limiti; offset 1000+ bazen 0 donuyor).
+  // Rating: tum kadrolar uzerinden sayim. Kucuk sayfa (150) - "players" JSON buyuk, yanit limiti asilmasin diye.
   let teamsWithRating = 0, playersWithRating = 0, totalPlayers = 0;
-  const pageSize = 1000;
+  const pageSize = 150;
   let lastTeamId = null;
   while (true) {
     let q = supabase
@@ -190,7 +190,7 @@ async function runReport() {
 
   const lines = [];
   lines.push('');
-  lines.push('========== DB GUNCELLEME RAPORU (5 dk) ==========');
+  lines.push('========== DB GUNCELLEME RAPORU (1 dk) ==========');
   lines.push('Zaman: ' + now.toLocaleString('tr-TR'));
 
   const fmt = (label, nowVal, prevVal, suffix = '') => {
@@ -221,14 +221,14 @@ async function runReport() {
     if (squadsF.diff && squadsF.diff !== 0) parts.push('Kadro ' + (squadsF.diff > 0 ? '+' : '') + squadsF.diff);
     if (ratingPlayersF.diff && ratingPlayersF.diff !== 0) parts.push('Ratingli oyuncu ' + (ratingPlayersF.diff > 0 ? '+' : '') + ratingPlayersF.diff);
     lines.push('');
-    lines.push('  *** 5 DK ILERLEME: VAR  ***  ' + (parts.length ? parts.join(', ') : ''));
+    lines.push('  *** 1 DK ILERLEME: VAR  ***  ' + (parts.length ? parts.join(', ') : ''));
   } else {
     lines.push('');
-    lines.push('  *** 5 DK ILERLEME: YOK - run-phased-db-complete.js calismiyor veya bu aralikta veri degismedi. Ilerleme icin script\'i baslatin. ***');
+    lines.push('  *** 1 DK ILERLEME: YOK - run-phased-db-complete.js calismiyor veya bu aralikta veri degismedi. Ilerleme icin script\'i baslatin. ***');
   }
   lines.push('');
 
-  lines.push('--- 5 DK ONCEKI OLCUM vs SIMDI ---');
+  lines.push('--- 1 DK ONCEKI OLCUM vs SIMDI ---');
   lines.push(coachF.line);
   lines.push(withCoachF.line);
   lines.push(withColorsF.line);
@@ -304,7 +304,7 @@ async function runReport() {
 
 async function main() {
   ensureDataDir();
-  console.log('DB raporu 5 dakikada bir yazilacak. Rapor dosyasi: ' + REPORT_FILE);
+  console.log('DB raporu 1 dakikada bir yazilacak. Rapor dosyasi: ' + REPORT_FILE);
   console.log('Ilk rapor simdi aliniyor...\n');
 
   await runReport();

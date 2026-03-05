@@ -13,9 +13,11 @@
  */
 
 const path = require('path');
+const fs = require('fs');
 const { spawn } = require('child_process');
 
 const BACKEND_DIR = path.join(__dirname, '..');
+const PAUSE_FILE = path.join(BACKEND_DIR, 'data', '.db-sync-paused');
 const REPORT_SCRIPT = path.join(__dirname, 'db-status-report-every-5min.js');
 const SYNC_SCRIPT = path.join(__dirname, 'update-coach-colors-squads.js');
 const BATCH_SIZE = 400;                    // 200→400: batch başına daha çok takım
@@ -51,6 +53,10 @@ function runSyncBatch() {
 }
 
 async function main() {
+  if (fs.existsSync(PAUSE_FILE)) {
+    console.log('DB sync kapali (.db-sync-paused). Devam etmek icin backend/data/.db-sync-paused dosyasini silin.');
+    process.exit(0);
+  }
   console.log('');
   console.log('╔════════════════════════════════════════════════════════════════╗');
   console.log('║  TacticIQ DB Sync + Rapor (her 5 dk)                            ║');

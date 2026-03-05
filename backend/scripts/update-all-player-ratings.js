@@ -17,7 +17,10 @@
  */
 
 const path = require('path');
+const fs = require('fs');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
+
+const PAUSE_FILE = path.join(__dirname, '..', 'data', '.db-sync-paused');
 
 // =====================================================
 // DESTEKLENEN LİGLER (API-Football League IDs) - env'den bağımsız, her zaman export
@@ -678,7 +681,7 @@ async function getPlayersWithoutRatings(teamId, playerIds) {
     const now = new Date();
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     
-    // Gerçek rating'i olan oyuncuları bul
+    // Gerçek rating'i olan veya default (75-78) olan oyuncuları atla – API kotasını aynı oyuncular için tekrar yakmayalım
     const playersWithRealRating = new Set();
     
     (data || []).forEach(p => {
@@ -690,9 +693,10 @@ async function getPlayersWithoutRatings(teamId, playerIds) {
         return; // Bu oyuncuyu çek
       }
       
-      // Default rating değerlerinden biri ise → çek (gerçek değil)
+      // Default (75-78): API çağırma – zaten değer var; tekrar çağrı kotayı yer (aynı oyuncu sürekli çekiliyordu)
       if (DEFAULT_RATINGS.includes(rating)) {
-        return; // Bu oyuncuyu çek
+        playersWithRealRating.add(p.id);
+        return;
       }
       
       // updated_at çok eski ise (30 günden eski) → yenile
@@ -759,19 +763,11 @@ async function processAllTeamsFromDB(fetchApiStats = false, season = CURRENT_SEA
     if (fetchApiStats) {
       const playerIds = players.map(p => p.id).filter(Boolean);
       
-      // Önce rating kontrolü
+      // Önce rating kontrolü – API'yı sadece rating'i olmayan oyuncular için kullan (kota israfı önleme)
       const playersWithoutRating = await getPlayersWithoutRatings(teamId, playerIds);
       
-      // Sonra PowerScore kontrolü (league_id teamToLeague'dan)
-      const playersWithoutPowerScores = leagueId 
-        ? await getPlayersWithoutPowerScores(teamId, playerIds, leagueId, season)
-        : playerIds;
-      
-      // Her iki kontrolü de geçen oyuncuları al (birinde eksik varsa çek)
-      const playersToFetch = new Set([
-        ...playersWithoutRating,
-        ...playersWithoutPowerScores
-      ]);
+      // Sadece rating'i eksik olanları API ile çek; power_score eksik olanları bu turda atla (ayrı job'da doldurulabilir)
+      const playersToFetch = new Set(playersWithoutRating);
       
       playersToProcess = players.filter(p => playersToFetch.has(p.id));
       skippedPlayers += (players.length - playersToProcess.length);
@@ -930,6 +926,10 @@ args.forEach(arg => {
 });
 
 async function main() {
+  if (fs.existsSync(PAUSE_FILE)) {
+    console.log('DB sync kapali (.db-sync-paused). Devam etmek icin backend/data/.db-sync-paused dosyasini silin.');
+    process.exit(0);
+  }
   console.log('🚀 TacticIQ Oyuncu Rating Güncelleme Sistemi (DB-FIRST)');
   console.log('='.repeat(50));
   console.log(`📅 Sezon: ${season}`);

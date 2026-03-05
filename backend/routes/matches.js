@@ -1695,6 +1695,46 @@ router.get('/:id/events', async (req, res) => {
   }
 });
 
+// GET /api/matches/:id/team-performance-avg?teamId=XXX - Takım performans topluluk ortalaması (her kullanıcının sadece en son değerlendirmesi kullanılır)
+router.get('/:id/team-performance-avg', async (req, res) => {
+  try {
+    const matchId = String(req.params.id);
+    const teamId = req.query.teamId ? String(req.query.teamId) : null;
+    if (!matchId || !teamId) {
+      return res.status(400).json({ success: false, error: 'matchId and teamId required' });
+    }
+    const predictionType = `team_performance_${teamId}`;
+    if (!supabase) {
+      return res.json({ success: true, avg: null, participantCount: 0, source: 'none' });
+    }
+    const { data: rows, error } = await supabase
+      .from('prediction_items')
+      .select('user_id, prediction_value, created_at')
+      .eq('match_id', matchId)
+      .eq('prediction_type', predictionType)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    if (!rows || rows.length === 0) {
+      return res.json({ success: true, avg: null, participantCount: 0, source: 'database' });
+    }
+    const latestByUser = new Map();
+    for (const r of rows) {
+      if (!latestByUser.has(r.user_id)) {
+        const val = typeof r.prediction_value === 'number' ? r.prediction_value : (r.prediction_value?.value ?? r.prediction_value);
+        const num = typeof val === 'number' && !isNaN(val) ? Math.max(1, Math.min(10, val)) : null;
+        if (num != null) latestByUser.set(r.user_id, num);
+      }
+    }
+    const values = [...latestByUser.values()];
+    const participantCount = values.length;
+    const avg = participantCount > 0 ? values.reduce((a, b) => a + b, 0) / participantCount : null;
+    return res.json({ success: true, avg, participantCount, source: 'database' });
+  } catch (error) {
+    console.error('Error fetching team performance avg:', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // GET /api/matches/:id/community-stats - Topluluk tahmin istatistikleri
 router.get('/:id/community-stats', async (req, res) => {
   try {

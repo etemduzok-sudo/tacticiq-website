@@ -137,8 +137,8 @@ export function MatchResultSummaryPopup({
             ) : error ? (
               <View style={styles.errorContainer}>
                 <Ionicons name="cloud-offline-outline" size={48} color="#EF4444" />
-                <Text style={styles.errorText}>{error}</Text>
-                <Text style={styles.errorHint}>Backend kapalıysa: terminalde{'\n'}cd backend → npm run dev</Text>
+                <Text style={styles.errorText}>Veriler yüklenemedi</Text>
+                <Text style={styles.errorHint}>İnternet bağlantınızı kontrol edin.</Text>
                 <TouchableOpacity style={styles.retryBtn} onPress={loadMatchData}>
                   <Text style={styles.retryBtnText}>Tekrar Dene</Text>
                 </TouchableOpacity>

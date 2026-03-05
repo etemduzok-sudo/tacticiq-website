@@ -38,7 +38,8 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useTranslation } from '../hooks/useTranslation';
 import { getTeamColors as getTeamColorsUtil } from '../utils/teamColors';
 import { shortenCoachName } from '../utils/coachNameUtils';
-import { isMockTestMatch, MOCK_MATCH_IDS, getMatch1Start, getMatch2Start, MATCH_1_EVENTS, MATCH_2_EVENTS, computeLiveState, getMockUserTeamId } from '../data/mockTestData';
+import { isMockTestMatch, MOCK_MATCH_IDS, getMatch1Start, getMatch2Start, getMockMatchStart, MATCH_1_EVENTS, MATCH_2_EVENTS, computeLiveState, getMockUserTeamId } from '../data/mockTestData';
+import { NetworkErrorDisplay } from './NetworkErrorDisplay';
 
 interface MatchDetailProps {
   matchId: string;
@@ -372,10 +373,10 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
 
   const loading = shouldFetchFromApi ? apiLoading : false;
   
-  // ✅ Mock maçlar için başlangıç zamanı - MOCK_MATCH_SIMULATE_LIVE'ta HER ZAMAN getMatch1Start kullan (preloadedMatch eski kalıyor)
+  // ✅ Mock maçlar için başlangıç zamanı (TEST_6H canlı simülasyon, TEST_1H 1 saat sonra)
   React.useEffect(() => {
     if (isMockTestMatch(Number(matchId))) {
-      const expectedStartTime = (Number(matchId) === MOCK_MATCH_IDS.GS_FB || Number(matchId) === MOCK_MATCH_IDS.TEST_6H) ? getMatch1Start() : getMatch2Start();
+      const expectedStartTime = getMockMatchStart(Number(matchId));
       mockMatchStartTimeRef.current = expectedStartTime;
       const elapsedSec = Math.floor((Date.now() - expectedStartTime) / 1000);
       console.log('🔒 Mock maç (canlı sim):', new Date(expectedStartTime).toISOString(), 'geçen:', elapsedSec, 'sn');
@@ -798,8 +799,8 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
       }
       return apiStatus;
     }
-    // Mock maçlar için gerçek zamandan kontrol et - getMatch1Start() her çağrıda "şu an - 10 dk" döner
-    const matchStart = (Number(matchId) === MOCK_MATCH_IDS.GS_FB || Number(matchId) === MOCK_MATCH_IDS.TEST_6H) ? getMatch1Start() : getMatch2Start();
+    // Mock maçlar için gerçek zamandan kontrol et (TEST_6H canlı sim, TEST_1H 1 saat sonra)
+    const matchStart = getMockMatchStart(Number(matchId));
     const now = Date.now();
     const elapsedMs = now - matchStart;
     const elapsedMinutes = Math.floor(elapsedMs / 60000); // Dakika cinsinden (önceden saniye kullanılıyordu - bug)
@@ -959,7 +960,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
       return { matchMinute: minute, matchExtraTime: extraTime, matchSecond: 0 };
     }
     
-    const matchStart = (Number(matchId) === MOCK_MATCH_IDS.GS_FB || Number(matchId) === MOCK_MATCH_IDS.TEST_6H) ? getMatch1Start() : getMatch2Start();
+    const matchStart = getMockMatchStart(Number(matchId));
     const now = Date.now();
     const elapsedMs = now - matchStart;
     const elapsedSecondsTotal = elapsedMs / 1000;
@@ -1004,8 +1005,8 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
       };
     }
     
-    const matchStart = (Number(matchId) === MOCK_MATCH_IDS.GS_FB || Number(matchId) === MOCK_MATCH_IDS.TEST_6H) ? getMatch1Start() : getMatch2Start();
-    const events = (Number(matchId) === MOCK_MATCH_IDS.GS_FB || Number(matchId) === MOCK_MATCH_IDS.TEST_6H) ? MATCH_1_EVENTS : MATCH_2_EVENTS;
+    const matchStart = getMockMatchStart(Number(matchId));
+    const events = (Number(matchId) === MOCK_MATCH_IDS.TEST_1H) ? MATCH_2_EVENTS : (Number(matchId) === MOCK_MATCH_IDS.GS_FB || Number(matchId) === MOCK_MATCH_IDS.TEST_6H ? MATCH_1_EVENTS : MATCH_2_EVENTS);
     
     // ✅ Güvenlik kontrolü: events undefined olabilir
     if (!events || !Array.isArray(events)) {
@@ -1203,16 +1204,16 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
     );
   }
 
-  // Error state
+  // Error state – üst bar + orta overlay (internet hatası ile aynı stil)
   if (error) {
     return (
-      <View style={[styles.container, styles.centerContent]}>
-        <Ionicons name="alert-circle" size={48} color="#EF4444" />
-        <Text style={styles.errorText}>{t('matchDetail.dataLoadError')}</Text>
-        <Text style={styles.errorSubtext}>{error}</Text>
-        <TouchableOpacity onPress={onBack} style={styles.retryButton}>
-          <Text style={styles.retryButtonText}>{t('matchDetail.goBack')}</Text>
-        </TouchableOpacity>
+      <View style={styles.container}>
+        <NetworkErrorDisplay
+          mainMessage={t('matchDetail.dataLoadError')}
+          subMessage={error}
+          buttonText={t('matchDetail.goBack')}
+          onButtonPress={onBack}
+        />
       </View>
     );
   }
@@ -1286,6 +1287,7 @@ export function MatchDetail({ matchId, onBack, initialTab = 'squad', analysisFoc
             hasPrediction={hasPrediction === true}
             initialAnalysisFocus={effectiveAnalysisFocus}
             lineups={lineups}
+            lineupsError={error ?? null}
             liveEvents={currentEvents}
             liveStatistics={liveStatistics}
             favoriteTeamIds={favoriteTeamIds}

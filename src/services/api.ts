@@ -100,10 +100,9 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
     }
     
     if (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError') || error.message?.includes('ERR_CONNECTION_REFUSED')) {
-      // Log network errors with context (even in dev, but with appropriate level)
-      const networkError = new Error('Backend bağlantısı kurulamadı');
-      handleNetworkError(networkError.message, { 
-        endpoint, 
+      const networkError = new Error('İnternet bağlantınızı kontrol edin');
+      handleNetworkError(networkError.message, {
+        endpoint,
         method: options?.method || 'GET',
         timeout: API_CONFIG.timeout,
         timestamp: new Date().toISOString(),
@@ -318,6 +317,12 @@ export const matchesApi = {
   // Get community stats (topluluk tahmin istatistikleri)
   getCommunityStats: (matchId: number | string) =>
     request(`/matches/${matchId}/community-stats`),
+
+  // Get team performance community average (her kullanıcının sadece en son değerlendirmesi kullanılır)
+  getTeamPerformanceAvg: (matchId: number | string, teamId: number) =>
+    request<{ success: boolean; avg: number | null; participantCount: number; source: string }>(
+      `/matches/${matchId}/team-performance-avg?teamId=${teamId}`
+    ),
 
   // Get prediction data (statistics + events combined)
   getPredictionData: (matchId: number) => request(`/matches/${matchId}/prediction-data`),

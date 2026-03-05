@@ -19,7 +19,7 @@ import { useTranslation } from 'react-i18next';
 import api from '../../services/api';
 import { useTheme } from '../../contexts/ThemeContext';
 import { BRAND, DARK_MODE, COLORS } from '../../theme/theme';
-import { MOCK_MATCH_IDS, isMockTestMatch, getMockMatchEvents, getMatch1Start, getMatch2Start } from '../../data/mockTestData';
+import { MOCK_MATCH_IDS, isMockTestMatch, getMockMatchEvents, getMatch1Start, getMatch2Start, getMockMatchStart } from '../../data/mockTestData';
 
 const isWeb = Platform.OS === 'web';
 
@@ -39,6 +39,7 @@ interface LiveEvent {
   playerOut?: string | null; // ✅ Substitution için: Kim çıktı
   playerIn?: string | null; // ✅ Substitution için: Kim girdi
   isOwnGoal?: boolean; // ✅ Own goal flag'i
+  isHalftimeBreak?: boolean; // Devre arasında verilen kart (düdük ile 2. yarı arasında)
 }
 
 // ✅ API event listesini LiveEvent[] formatına çevir (parent eventleri ile timeline senkronu için)
@@ -246,8 +247,8 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
     const interval = setInterval(() => {
       setTicker(prev => prev + 1);
       
-      // ✅ Her saniye maç başlangıç zamanını kontrol et
-      const matchStart = (Number(matchId) === MOCK_MATCH_IDS.GS_FB || Number(matchId) === MOCK_MATCH_IDS.TEST_6H) ? getMatch1Start() : getMatch2Start();
+      // ✅ Her saniye maç başlangıç zamanını kontrol et (TEST_1H = 1 saat sonra)
+      const matchStart = isMockTestMatch(Number(matchId)) ? getMockMatchStart(Number(matchId)) : getMatch2Start();
       const now = Date.now();
       const hasStarted = now >= matchStart;
       
@@ -312,9 +313,9 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
     
     // ✅ Mock maçlar için gerçek zamandan kontrol et
     if (isMockMatch) {
-      const matchStart = String(matchId) === '999999' 
-        ? Date.now() - 52 * 1000 // Mock 999999 için 52. dakikada
-        : ((Number(matchId) === MOCK_MATCH_IDS.GS_FB || Number(matchId) === MOCK_MATCH_IDS.TEST_6H) ? getMatch1Start() : getMatch2Start());
+      const matchStart = String(matchId) === '999999'
+        ? Date.now() - 52 * 60 * 1000 // Mock 999999 için 52. dakikada
+        : getMockMatchStart(Number(matchId));
       const now = Date.now();
       const hasStarted = now >= matchStart;
       
@@ -383,17 +384,25 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
         if (events && events.length > 0) {
           // API-Football event listesi: Kick Off, First Half Extra Time, Half Time, Second Half Started,
           // Match Finished, Normal Goal, Penalty, Own Goal, Yellow/Red Card, Substitution, Var
-          const transformedEvents = events
-            .filter((event: any) => event && (event.time || event.elapsed != null || event.minute != null))
-            .map((event: any) => {
+          const filteredEvents = events.filter((event: any) => event && (event.time || event.elapsed != null || event.minute != null));
+          // "İkinci yarı başladı"ndan sonra gelen 46-48 eventleri ikinci yarı dakikasıdır; dönüştürme (devre arasında gol imkansız)
+          const secondHalfStartIdx = filteredEvents.findIndex((e: any) => {
+            const d = (e.detail || '').toLowerCase();
+            return d.includes('second half') || d === '2nd half' || d === 'second half started';
+          });
+          const transformedEvents = filteredEvents
+            .map((event: any, index: number) => {
               const eventType = event.type?.toLowerCase() || 'unknown';
               const detail = (event.detail || '').toLowerCase();
               let elapsed = event.time?.elapsed ?? event.elapsed ?? event.minute ?? 0;
               let extra = event.time?.extra ?? event.extra ?? null;
               // İlk yarı uzatması: API bazen elapsed 46/47/48 gönderir, extra yok → 45+1, 45+2, 45+3
+              // SADECE "İkinci yarı başladı"ndan ÖNCE gelen eventlerde uygula (sonrası = gerçek 46, 47, 48. dk)
               if (elapsed >= 46 && elapsed <= 48 && (extra == null || extra === 0)) {
-                extra = elapsed - 45;
-                elapsed = 45;
+                if (secondHalfStartIdx < 0 || index < secondHalfStartIdx) {
+                  extra = elapsed - 45;
+                  elapsed = 45;
+                }
               }
               // İkinci yarı uzatması: 91-99 → 90+1 .. 90+9
               if (elapsed >= 91 && elapsed <= 99 && (extra == null || extra === 0)) {
@@ -532,6 +541,9 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
                 playerIn: playerIn,
                 // ✅ Own goal flag'i ekle (skor hesaplaması için)
                 isOwnGoal: detail.includes('own goal'),
+                // Devre arasında verilen kart: API comments/detail ile "devre arası", "during break" gönderebilir
+                isHalftimeBreak: (displayType === 'card' || eventType === 'card') && (elapsed === 45 && (extra == null || extra === 0)) &&
+                  /devre\s*arası|during\s*break|halftime\s*break/i.test((event.comments || '') + (event.detail || '')),
               };
             })
             // Sırala: yüksek dakika üstte. Aynı dakikada (örn. 45+1): önce oyuncu olayları (kırmızı kart, gol), sonra sistem (İlk yarı bitti)
@@ -598,9 +610,9 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
   const { currentMinute, currentExtraTime } = useMemo(() => {
     const isMockMatch = isMockTestMatch(Number(matchId));
     
-    // ✅ Mock maçlarda her zaman gerçek zamandan hesapla (matchData.minute takılı kalmasın)
+    // ✅ Mock maçlarda her zaman gerçek zamandan hesapla (TEST_1H = 1 saat sonra başlar)
     if (isMockMatch && matchId) {
-      const matchStart = (Number(matchId) === MOCK_MATCH_IDS.GS_FB || Number(matchId) === MOCK_MATCH_IDS.TEST_6H) ? getMatch1Start() : getMatch2Start();
+      const matchStart = String(matchId) === '999999' ? Date.now() - 52 * 60 * 1000 : getMockMatchStart(Number(matchId));
       const now = Date.now();
       const elapsedSeconds = Math.floor((now - matchStart) / 1000);
       const elapsedMinutes = elapsedSeconds; // 1 sn = 1 dk
@@ -681,7 +693,7 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
       
       // ✅ Mock maçlarda gerçek zamandan kontrol et
       if (isMockMatch && matchId) {
-        const matchStart = (Number(matchId) === MOCK_MATCH_IDS.GS_FB || Number(matchId) === MOCK_MATCH_IDS.TEST_6H) ? getMatch1Start() : getMatch2Start();
+        const matchStart = String(matchId) === '999999' ? Date.now() - 52 * 60 * 1000 : getMockMatchStart(Number(matchId));
         const now = Date.now();
         const elapsedSeconds = Math.floor((now - matchStart) / 1000);
         const elapsedMinutes = elapsedSeconds; // Gerçek zaman (0-112)
@@ -1033,9 +1045,9 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
               <View style={styles.notStartedIconContainer}>
                 <Ionicons name="cloud-offline-outline" size={48} color="#F59E0B" />
               </View>
-              <Text style={[styles.notStartedTitle, isLight && { color: themeColors.foreground }]}>Bağlantı Hatası</Text>
+              <Text style={[styles.notStartedTitle, isLight && { color: themeColors.foreground }]}>Veriler yüklenemedi</Text>
               <Text style={[styles.notStartedSubtitle, isLight && { color: themeColors.mutedForeground }]}>
-                Canlı maç verisi alınamadı.{'\n'}Lütfen internet bağlantınızı kontrol edin.
+                İnternet bağlantınızı kontrol edin.
               </Text>
             </View>
           </View>
@@ -1129,16 +1141,21 @@ export const MatchLive: React.FC<MatchLiveScreenProps> = ({
                     return min - 0.1;
                   }
                   
-                  // ✅ Halftime (ilk yarı bitiş düdüğü) - 45+3' 
-                  // Uzatma dakikasına göre sırala: 45 + extra = 45.03 (extra/100)
+                  // ✅ Halftime (ilk yarı bitiş düdüğü) - her zaman 45+1/45+2/45+3 eventlerinden SONRA
+                  // İlk yarı uzatmasındaki kartlar düdükten önce; devre arası kartı ise düdük ile 2. yarı arasında
                   if (e.type === 'halftime') {
-                    return 45 + extra * 0.01 + 0.001; // stoppage'dan sonra, kickoff'tan önce
+                    return 45.05; // 45+3'ten (45.03) sonra, kickoff'tan (45.999) önce
                   }
                   
-                  // ✅ Kickoff (ikinci yarı başladı) - 46'
-                  // Halftime'dan SONRA (daha yeni) ama 2. yarı eventlerinden ÖNCE (daha eski)
-                  if (e.type === 'kickoff' && min === 46) {
-                    return 46 - 0.001; // 46'dan hemen önce (46' normal eventlerinden önce)
+                  // ✅ Devre arasında verilen kart: İlk yarı bitiş düdüğü ile 2. yarı arasında
+                  if ((e as any).isHalftimeBreak) {
+                    return 45.5; // halftime (45.05) ile kickoff (45.999) arası
+                  }
+                  
+                  // ✅ Kickoff (ikinci yarı başladı) - 46' veya API 45+1 gönderse bile
+                  // Her zaman halftime'dan SONRA (daha yeni) sıralanmalı; API bazen 45+1 gönderiyor
+                  if (e.type === 'kickoff' && min !== 0) {
+                    return 46 - 0.001; // 46'dan hemen önce (2. yarı başlangıcı)
                   }
                   
                   // ✅ Fulltime (maç bitti) - 90+extra
@@ -1343,32 +1360,32 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   eventsContent: {
-    paddingVertical: 8,
-    paddingBottom: 40,
+    paddingVertical: 12,
+    paddingBottom: 48,
   },
   
   // Timeline Row
   timelineRow: {
     flexDirection: 'row',
-    minHeight: 70,
+    minHeight: 72,
     position: 'relative',
   },
   timelineSide: {
     flex: 1,
-    paddingVertical: 8,
+    paddingVertical: 10,
   },
   timelineSideLeft: {
-    paddingRight: 8,
+    paddingRight: 10,
     alignItems: 'flex-end',
   },
   timelineSideRight: {
-    paddingLeft: 8,
+    paddingLeft: 10,
     alignItems: 'flex-start',
   },
   
   // Timeline Center (vertical line)
   timelineCenter: {
-    width: 50,
+    width: 52,
     alignItems: 'center',
     position: 'relative',
   },
@@ -1376,50 +1393,56 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0,
     bottom: 0,
-    width: 2,
-    backgroundColor: 'rgba(31, 162, 166, 0.3)',
+    width: 2.5,
+    backgroundColor: 'rgba(31, 162, 166, 0.35)',
   },
-  timelineLineToStart: {
-    // ✅ Kaldırıldı - başlangıç eventinden öncesine ait çizgi görünmesin
-    // bottom: -2000, // Başlangıca kadar uzat - kesintisiz çizgi
-  },
+  timelineLineToStart: {},
   timelineDot: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 1,
-    marginTop: 20,
+    marginTop: 18,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   timelineDotText: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '800',
     color: '#FFFFFF',
+    letterSpacing: 0.3,
   },
   timelineMinuteBadge: {
     position: 'absolute',
-    top: 52,
-    backgroundColor: 'rgba(31, 162, 166, 0.15)',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
+    top: 50,
+    backgroundColor: 'rgba(31, 162, 166, 0.12)',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 8,
   },
   timelineMinuteText: {
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: '600',
     color: BRAND.secondary,
+    letterSpacing: 0.2,
   },
   
   // Event Card
   eventCard: {
     backgroundColor: DARK_MODE.card,
-    borderRadius: 10,
-    padding: 10,
+    borderRadius: 12,
+    padding: 12,
     borderWidth: 1,
     borderLeftWidth: 3,
     maxWidth: '95%',
     minWidth: 120,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.12,
+    shadowRadius: 3,
+    elevation: 2,
   },
   eventCardLeft: {
     borderLeftWidth: 3,
@@ -1432,12 +1455,12 @@ const styles = StyleSheet.create({
   eventCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
   eventIcon: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1445,11 +1468,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     flex: 1,
+    letterSpacing: 0.2,
   },
   eventPlayer: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#E2E8F0',
+    color: '#CBD5E1',
     marginTop: 4,
   },
   eventPlayerRight: {
@@ -1464,10 +1488,11 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   eventScore: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '800',
     color: '#10B981',
     marginTop: 4,
+    letterSpacing: 0.5,
   },
   eventScoreRight: {
     textAlign: 'right',
@@ -1478,49 +1503,55 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    top: 12,
+    top: 14,
     alignItems: 'center',
     zIndex: 2,
   },
   systemEventCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
     backgroundColor: DARK_MODE.card,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
     borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 1,
   },
   systemEventText: {
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '600',
+    letterSpacing: 0.3,
   },
   
-  // Devre arası görseli - yeni basit layout
+  // Devre arası görseli
   timelineHalftimeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
+    paddingVertical: 14,
     position: 'relative',
   },
   timelineHalftimeCenterLine: {
     position: 'absolute',
     left: '50%',
-    marginLeft: -1.5,
+    marginLeft: -1,
     top: 0,
     bottom: 0,
-    width: 3,
-    backgroundColor: 'rgba(239, 68, 68, 0.4)',
+    width: 2,
+    backgroundColor: 'rgba(239, 68, 68, 0.25)',
   },
   timelineHalftimeCardNew: {
-    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
     borderWidth: 1,
-    borderColor: '#EF4444',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 6,
+    borderColor: 'rgba(239, 68, 68, 0.5)',
+    borderRadius: 14,
+    paddingHorizontal: 18,
+    paddingVertical: 8,
     zIndex: 10,
   },
   // Eski style'lar (kullanılmıyor ama uyumluluk için bırakıldı)
@@ -1558,9 +1589,9 @@ const styles = StyleSheet.create({
   },
   timelineHalftimeText: {
     fontSize: 11,
-    fontWeight: '700',
-    color: '#EF4444',
-    letterSpacing: 0.5,
+    fontWeight: '600',
+    color: 'rgba(239, 68, 68, 0.95)',
+    letterSpacing: 0.8,
   },
   timelineHalftimeSubtext: {
     fontSize: 9,

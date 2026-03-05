@@ -58,8 +58,10 @@ export interface PlayerPredictionModalProps {
   isThisPlayerLocked?: boolean;
   /** Sayfa altı master kilit kilitli */
   isMasterLocked?: boolean;
-  /** Kilit uyarısı – reason: 'master_then_player' = iki aşamalı mesaj */
-  onShowLockedWarning?: (reason?: 'master_then_player') => void;
+  /** Kilit uyarısı – reason: 'master_then_player' = iki aşamalı mesaj; kalıcı kilit nedenleri popup'ta dinamik mesaj için */
+  onShowLockedWarning?: (reason?: 'master_then_player' | 'community_viewed' | 'real_lineup_viewed' | 'community_and_lineup_viewed') => void;
+  /** Topluluk/gerçek kadro görüldüyse kalıcı kilit – alttaki kırmızı bildirim gizlenir, her tıklamada uyarı popup'ı gösterilir */
+  permanentLockReason?: 'community_viewed' | 'real_lineup_viewed' | 'community_and_lineup_viewed' | null;
   onUnlockLock?: () => void;
   onSaveAndLock?: () => void | Promise<void>;
 }
@@ -80,8 +82,10 @@ const PlayerPredictionModal = ({
   onShowLockedWarning,
   onUnlockLock,
   onSaveAndLock,
+  permanentLockReason = null,
 }: PlayerPredictionModalProps) => {
   const isLocked = isPredictionLocked ?? (isThisPlayerLocked || isMasterLocked);
+  const showPermanentLockOverlay = Boolean(permanentLockReason);
   const { theme } = useTheme();
   const themeColors = theme === 'light' ? COLORS.light : COLORS.dark;
   const isLight = theme === 'light';
@@ -116,10 +120,12 @@ const PlayerPredictionModal = ({
   const getSubstituteName = (id: string | null) =>
     id ? (reservePlayers || []).find((p: any) => p.id.toString() === id)?.name : null;
 
-  /** Kilitliyken tahmin değiştirmeyi engelle. Master kilitliyse iki aşamalı uyarı; sadece oyuncu kilitliyse popup içi mesaj. */
+  /** Kilitliyken tahmin değiştirmeyi engelle. Kalıcı kilit (topluluk/gerçek kadro) varsa o sebep; yoksa master_then_player. */
+  const showLockWarning = () => onShowLockedWarning?.(permanentLockReason ?? 'master_then_player');
+
   const handlePredictionChange = (category: string, value: string | boolean) => {
     if (isLocked) {
-      if (isMasterLocked) onShowLockedWarning?.('master_then_player');
+      showLockWarning();
       return;
     }
     onPredictionChange(category, value);
@@ -127,7 +133,7 @@ const PlayerPredictionModal = ({
 
   const openDropdown = (type: 'normal' | 'injury') => {
     if (isLocked) {
-      if (isMasterLocked) onShowLockedWarning?.('master_then_player');
+      showLockWarning();
       return;
     }
     
@@ -187,6 +193,18 @@ const PlayerPredictionModal = ({
       setLocalMinuteRange(currentMin || null);
     }
   };
+
+  // Mevcut tahminle modal açıldığında "Yerine kim girmeli?" seçimini göster
+  React.useEffect(() => {
+    if (predictions.substitutedOut && predictions.substitutePlayer) {
+      setLocalSubstituteId(String(predictions.substitutePlayer));
+      setLocalMinuteRange(predictions.substituteMinute ?? null);
+    }
+    if (predictions.injuredOut && predictions.injurySubstitutePlayer) {
+      setLocalSubstituteId(String(predictions.injurySubstitutePlayer));
+      setLocalMinuteRange(predictions.injurySubstituteMinute ?? null);
+    }
+  }, [player?.id, predictions.substitutedOut, predictions.substitutePlayer, predictions.substituteMinute, predictions.injuredOut, predictions.injurySubstitutePlayer, predictions.injurySubstituteMinute]);
 
   React.useEffect(() => {
     if (expandedSubstituteType && scrollViewRef.current) {
@@ -297,6 +315,7 @@ const PlayerPredictionModal = ({
           </LinearGradient>
 
           {expandedSubstituteType ? (
+            <View style={{ flex: 1 }}>
             <ScrollView
               ref={scrollViewRef}
               style={styles.playerPredictionsScroll}
@@ -517,7 +536,7 @@ const PlayerPredictionModal = ({
                 ]}
                 onPress={() => {
                   if (isLocked) {
-                    if (isMasterLocked) onShowLockedWarning?.('master_then_player');
+                    showLockWarning();
                     return;
                   }
                   openDropdown('normal');
@@ -701,7 +720,7 @@ const PlayerPredictionModal = ({
                 ]}
                 onPress={() => {
                   if (isLocked) {
-                    if (isMasterLocked) onShowLockedWarning?.('master_then_player');
+                    showLockWarning();
                     return;
                   }
                   openDropdown('injury');
@@ -875,7 +894,12 @@ const PlayerPredictionModal = ({
               )}
             </View>
             </ScrollView>
+            {showPermanentLockOverlay && (
+              <Pressable style={StyleSheet.absoluteFill} onPress={showLockWarning} />
+            )}
+            </View>
           ) : (
+            <View style={{ flex: 1 }}>
             <ScrollView
               style={styles.playerPredictionsScroll}
               contentContainerStyle={styles.playerPredictionsContent}
@@ -1101,7 +1125,7 @@ const PlayerPredictionModal = ({
                 ]}
                 onPress={() => {
                   if (isLocked) {
-                    if (isMasterLocked) onShowLockedWarning?.('master_then_player');
+                    showLockWarning();
                     return;
                   }
                   openDropdown('normal');
@@ -1120,6 +1144,145 @@ const PlayerPredictionModal = ({
                   buttonLabelNormal
                 )}
               </Pressable>
+
+              {/* Yerine kim girmeli? – varsayılan görünümde de göster (seçim yapılabilsin) */}
+              {(predictions.substitutedOut || expandedSubstituteType === 'normal') && !isLocked && (
+                <View style={styles.inlineSubstituteDropdown}>
+                  <Text style={styles.inlineSubstituteTitle}>Yerine girecek oyuncu & dakika aralığı</Text>
+                  <View style={styles.dropdownContainer}>
+                    <Text style={styles.dropdownLabel}>Yerine Girecek Oyuncu</Text>
+                    <TouchableOpacity
+                      style={styles.dropdownButton}
+                      onPress={() => setShowPlayerDropdown(!showPlayerDropdown)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.dropdownButtonContent}>
+                        {localSubstituteId ? (
+                          <>
+                            <View style={styles.dropdownSelectedPlayer}>
+                              <View style={styles.dropdownPlayerNumber}>
+                                <Text style={styles.dropdownPlayerNumberText}>
+                                  {availableSubstitutes.find((p: any) => p.id.toString() === localSubstituteId)?.number || ''}
+                                </Text>
+                              </View>
+                              <Text style={styles.dropdownSelectedText}>
+                                {getSubstituteName(localSubstituteId)}
+                              </Text>
+                            </View>
+                          </>
+                        ) : (
+                          <Text style={styles.dropdownPlaceholder}>Oyuncu seçin...</Text>
+                        )}
+                        <Ionicons
+                          name={showPlayerDropdown ? 'chevron-up' : 'chevron-down'}
+                          size={20}
+                          color="#9CA3AF"
+                        />
+                      </View>
+                    </TouchableOpacity>
+                    {showPlayerDropdown && (
+                      <View style={styles.dropdownMenu}>
+                        {availableSubstitutes.length === 0 ? (
+                          <View style={styles.dropdownEmptyState}>
+                            <Ionicons name="alert-circle" size={24} color="#9CA3AF" />
+                            <Text style={styles.dropdownEmptyText}>
+                              {isGoalkeeperPlayer(player)
+                                ? 'Yedek kaleci bulunamadı. Kaleci sadece kaleci ile değiştirilebilir.'
+                                : 'Yedek oyuncu bulunamadı. Oyuncu sadece oyuncu ile değiştirilebilir.'}
+                            </Text>
+                          </View>
+                        ) : (
+                          <FlatList
+                            data={availableSubstitutes}
+                            keyExtractor={(item) => item.id.toString()}
+                            renderItem={({ item }) => {
+                              const isSelected = localSubstituteId === item.id.toString();
+                              return (
+                                <TouchableOpacity
+                                  style={[styles.dropdownMenuItem, isSelected && styles.dropdownMenuItemSelected]}
+                                  onPress={() => {
+                                    setLocalSubstituteId(item.id.toString());
+                                    setShowPlayerDropdown(false);
+                                  }}
+                                  activeOpacity={0.7}
+                                >
+                                  <View style={styles.dropdownMenuItemContent}>
+                                    <View style={styles.dropdownPlayerNumberSmall}>
+                                      <Text style={styles.dropdownPlayerNumberTextSmall}>{item.number}</Text>
+                                    </View>
+                                    <Text style={[styles.dropdownMenuItemText, isSelected && styles.dropdownMenuItemTextSelected]}>
+                                      {item.name}
+                                    </Text>
+                                  </View>
+                                </TouchableOpacity>
+                              );
+                            }}
+                            style={styles.dropdownMenuList}
+                            nestedScrollEnabled={true}
+                          />
+                        )}
+                      </View>
+                    )}
+                  </View>
+                  <View style={styles.minuteRangeContainer}>
+                    <Text style={styles.dropdownLabel}>Değişiklik Dakikası</Text>
+                    <View style={styles.minuteRanges2RowGridCompact}>
+                      <View style={styles.minuteRangesRowCompact}>
+                        {SUBSTITUTE_MINUTE_RANGES.slice(0, 4).map((range) => {
+                          const isSelected = localMinuteRange === range.value;
+                          return (
+                            <TouchableOpacity
+                              key={range.value}
+                              style={[styles.minuteRangeButtonCompact, styles.minuteRangeButtonCompact2Row, isSelected && styles.minuteRangeButtonCompactSelected]}
+                              onPress={() => {
+                                setLocalMinuteRange(range.value);
+                                if (localSubstituteId && onSubstituteConfirm && !isLocked) {
+                                  onSubstituteConfirm('normal', localSubstituteId, range.value);
+                                  setExpandedSubstituteType(null);
+                                  setLocalSubstituteId(null);
+                                  setLocalMinuteRange(null);
+                                  setShowPlayerDropdown(false);
+                                }
+                              }}
+                              activeOpacity={0.7}
+                            >
+                              <Text style={[styles.minuteRangeTextCompact, isSelected && styles.minuteRangeTextCompactSelected]}>
+                                {range.label}
+                              </Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                      <View style={styles.minuteRangesRowCompact}>
+                        {SUBSTITUTE_MINUTE_RANGES.slice(4).map((range) => {
+                          const isSelected = localMinuteRange === range.value;
+                          return (
+                            <TouchableOpacity
+                              key={range.value}
+                              style={[styles.minuteRangeButtonCompact, styles.minuteRangeButtonCompact2Row, isSelected && styles.minuteRangeButtonCompactSelected]}
+                              onPress={() => {
+                                setLocalMinuteRange(range.value);
+                                if (localSubstituteId && onSubstituteConfirm && !isLocked) {
+                                  onSubstituteConfirm('normal', localSubstituteId, range.value);
+                                  setExpandedSubstituteType(null);
+                                  setLocalSubstituteId(null);
+                                  setLocalMinuteRange(null);
+                                  setShowPlayerDropdown(false);
+                                }
+                              }}
+                              activeOpacity={0.7}
+                            >
+                              <Text style={[styles.minuteRangeTextCompact, isSelected && styles.minuteRangeTextCompactSelected]}>
+                                {range.label}
+                              </Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    </View>
+                  </View>
+                </View>
+              )}
             </View>
 
             {/* Sakatlanarak Çıkar - kilitliyken tıklanınca resim 2 bildirimi */}
@@ -1132,7 +1295,7 @@ const PlayerPredictionModal = ({
                 ]}
                 onPress={() => {
                   if (isLocked) {
-                    if (isMasterLocked) onShowLockedWarning?.('master_then_player');
+                    showLockWarning();
                     return;
                   }
                   openDropdown('injury');
@@ -1153,9 +1316,13 @@ const PlayerPredictionModal = ({
               </Pressable>
             </View>
             </ScrollView>
+            {showPermanentLockOverlay && (
+              <Pressable style={StyleSheet.absoluteFill} onPress={showLockWarning} />
+            )}
+            </View>
           )}
 
-          {isLocked && (
+          {isLocked && !permanentLockReason && (
             <View style={{ paddingHorizontal: 16, paddingVertical: 10, backgroundColor: isLight ? 'rgba(239, 68, 68, 0.08)' : 'rgba(239, 68, 68, 0.12)', borderTopWidth: 1, borderTopColor: 'rgba(239, 68, 68, 0.2)' }}>
               <Text style={{ fontSize: 12, color: isLight ? '#B91C1C' : '#FCA5A5', textAlign: 'center', lineHeight: 18 }}>
                 {isMasterLocked
@@ -1186,14 +1353,11 @@ const PlayerPredictionModal = ({
               ]} 
               onPress={() => {
                 if (isLocked) {
-                  if (isThisPlayerLocked && !isMasterLocked && onUnlockLock) {
+                  if (isThisPlayerLocked && !isMasterLocked && !permanentLockReason && onUnlockLock) {
                     onUnlockLock();
                     return;
                   }
-                  if (isMasterLocked) {
-                    onShowLockedWarning?.('master_then_player');
-                    return;
-                  }
+                  showLockWarning();
                   return;
                 }
                 if (onSaveAndLock) onSaveAndLock(); else onClose();

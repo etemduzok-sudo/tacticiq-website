@@ -1031,7 +1031,7 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favor
     // ✅ Mock 999999: Tahmin yapılmamış senaryosu – otomatik kadro/ilk 11 popup yok, kadro sekmesi boş kalır
     const fixtureId = Number(matchId);
     if (isMockLive999999(fixtureId)) return;
-    const isMockMatch = fixtureId === MOCK_MATCH_IDS.REAL_BARCA || fixtureId === MOCK_MATCH_IDS.GS_FB || fixtureId === MOCK_MATCH_IDS.TEST_6H;
+    const isMockMatch = fixtureId === MOCK_MATCH_IDS.REAL_BARCA || fixtureId === MOCK_MATCH_IDS.GS_FB || fixtureId === MOCK_MATCH_IDS.TEST_6H || fixtureId === MOCK_MATCH_IDS.TEST_1H;
     
     // Kullanıcının takımını bul (predictionTeamId veya favoriteTeamIds'den)
     const userTeamId = predictionTeamId || (isMockMatch ? getMockUserTeamId(fixtureId) : null) || (favoriteTeamIds.length > 0 ? favoriteTeamIds[0] : null);
@@ -1666,7 +1666,7 @@ export function MatchSquad({ matchData, matchId, lineups, favoriteTeamIds: favor
     (async () => {
       try {
         const fixtureId = Number(matchId);
-        const isMockMatch = fixtureId === MOCK_MATCH_IDS.REAL_BARCA || fixtureId === MOCK_MATCH_IDS.GS_FB || fixtureId === MOCK_MATCH_IDS.TEST_6H;
+        const isMockMatch = fixtureId === MOCK_MATCH_IDS.REAL_BARCA || fixtureId === MOCK_MATCH_IDS.GS_FB || fixtureId === MOCK_MATCH_IDS.TEST_6H || fixtureId === MOCK_MATCH_IDS.TEST_1H;
         
         // Mock maçlar için: Storage'da kayıt olsa bile, gerçekten tamamlanmış mı kontrol et
         const raw = await AsyncStorage.getItem(squadStorageKey);

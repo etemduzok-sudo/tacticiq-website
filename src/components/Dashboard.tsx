@@ -1120,15 +1120,14 @@ export const Dashboard = React.memo(function Dashboard({ onNavigate, onMatchResu
   }, [liveMatches, selectedTeamIds, filterMatchesByTeam, skipTeamFilter]);
 
   const filteredUpcomingMatches = React.useMemo(() => {
-    // ✅ Mock maçları da filtreleme fonksiyonundan geçir
+    // ✅ Mock yaklaşan maçlar (TEST_1H vb.) her zaman listeye dahil – canlı mock gibi
+    const mockUpcoming = allUpcomingMatches.filter((m) => isMockTestMatch(m.fixture?.id ?? 0));
     const filtered = skipTeamFilter ? allUpcomingMatches : filterMatchesByTeam(allUpcomingMatches, selectedTeamIds);
-    
-    // Birleştir: filtrelenmiş maçlar (mock + gerçek birlikte filtrelendi)
-    const combined = filtered;
+    const merged = [...mockUpcoming, ...filtered];
     
     // ✅ Duplicate fixture ID'leri kaldır (canlı maçları da hariç tut)
     const liveIds = new Set(filteredLiveMatches.map(m => m.fixture?.id));
-    const uniqueMatches = combined.reduce((acc: any[], match) => {
+    const uniqueMatches = merged.reduce((acc: any[], match) => {
       const fixtureId = match.fixture?.id;
       if (fixtureId && !acc.some(m => m.fixture?.id === fixtureId) && !liveIds.has(fixtureId)) {
         acc.push(match);

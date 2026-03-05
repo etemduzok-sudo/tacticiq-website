@@ -80,7 +80,7 @@ export const TEXT = {
   
   // Error messages
   ERRORS: {
-    NETWORK: 'İnternet bağlantısı kurulamadı',
+    NETWORK: 'İnternet bağlantınızı kontrol edin',
     API: 'Veriler yüklenemedi. Lütfen tekrar deneyin.',
     AUTH: 'Oturum süreniz doldu. Lütfen tekrar giriş yapın.',
     VALIDATION: 'Lütfen tüm alanları doldurun',
